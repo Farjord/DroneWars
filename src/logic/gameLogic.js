@@ -324,9 +324,16 @@ const getLaneOfDrone = (droneId, playerState) => {
     
     let userLane = null;
     if (isAbility) {
-        // This call is fine because getLaneOfDrone is in the same file.
-        userLane = getLaneOfDrone(source.id, actingPlayerState);
-        if (!userLane) return [];
+        // Check if the source is a drone on the board to determine its lane
+        const isDroneSource = Object.values(actingPlayerState.dronesOnBoard).flat().some(d => d.id === source.id);
+        
+        if (isDroneSource) {
+            userLane = getLaneOfDrone(source.id, actingPlayerState);
+            // If it's a drone ability but we can't find its lane, something is wrong.
+            if (!userLane) return [];
+        }
+        // If it's not a drone source (e.g., a ship ability), userLane remains null, 
+        // which is correct for abilities that can target ANY_LANE.
     }
       const processPlayerDrones = (playerState, playerType) => {
       Object.entries(playerState.dronesOnBoard).forEach(([lane, drones]) => {
