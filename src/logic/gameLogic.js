@@ -555,6 +555,44 @@ const checkWinCondition = (opponentPlayerState) => {
     return false;
 };
 
+const validateDeployment = (player, drone, turn, totalPlayerDrones, playerEffectiveStats) => {
+    if (totalPlayerDrones >= playerEffectiveStats.totals.cpuLimit) {
+      return { isValid: false, reason: "CPU Limit Reached", message: "You cannot deploy more drones than your CPU Control Value." };
+    }
+
+    const baseDroneInfo = fullDroneCollection.find(d => d.name === drone.name);
+    const upgrades = player.appliedUpgrades[drone.name] || [];
+    let effectiveLimit = baseDroneInfo.limit;
+    upgrades.forEach(upgrade => {
+        if (upgrade.mod.stat === 'limit') {
+            effectiveLimit += upgrade.mod.value;
+        }
+    });
+
+    if ((player.deployedDroneCounts[drone.name] || 0) >= effectiveLimit) {
+      return { isValid: false, reason: "Deployment Limit Reached", message: `The deployment limit for ${drone.name} is currently ${effectiveLimit}.` };
+    }
+
+    const droneCost = drone.class;
+    let energyCost = 0;
+    let budgetCost = 0;
+
+    if (turn === 1) {
+        budgetCost = Math.min(player.initialDeploymentBudget, droneCost);
+        energyCost = droneCost - budgetCost;
+    } else {
+        budgetCost = Math.min(player.deploymentBudget, droneCost);
+        energyCost = droneCost - budgetCost;
+    }
+
+    if (player.energy < energyCost) {
+      return { isValid: false, reason: "Not Enough Energy", message: `This action requires ${energyCost} energy, but you only have ${player.energy}.` };
+    }
+
+    return { isValid: true, budgetCost, energyCost };
+};
+
+
 export const gameEngine = {
   initialPlayerState,
   buildDeckFromList,
@@ -570,4 +608,5 @@ export const gameEngine = {
   updateAuras,
   getLaneOfDrone,
   getValidTargets,
+  validateDeployment, 
 };

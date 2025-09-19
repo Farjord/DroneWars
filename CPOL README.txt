@@ -23,3 +23,45 @@ I am in the process of migrating my game so that it multiplayer compatible. This
 Can you advise me of the next step to undertake, please? 
 
 I want to go through this one small step at a time, so please do not provide instructions for the entire refactor, just the next part to move. 
+
+---------
+
+Checking In a New Version (Saving Your Work)
+This is the standard 3-step process to save your changes to GitHub.
+
+$git add .$
+
+Use: Prepares all your saved changes for the next commit.
+
+$git commit -m "Your message here"$
+
+Use: Saves your prepared changes as a new version with a descriptive message.
+
+$git push$
+
+Use: Uploads your new saved version (commit) to your GitHub repository.
+
+Viewing & Restoring Old Versions
+These commands let you look into the past and retrieve old code.
+
+$git log$
+
+Use: Shows the history of all your commits, with the newest at the top. Use this to find the commit hash (the unique ID) of an old version.
+
+$git log --oneline$
+
+Use: Shows a compact, one-line view of your commit history, which is much easier to read.
+
+$git checkout <commit_hash>$
+
+Use: Temporarily switches all your project files to an old version to look around.
+
+To return to the present: $git checkout master$
+
+$git checkout <commit_hash> -- path/to/file.js$
+
+Use: Restores a single file from an old version without affecting any other files. You must commit this change afterwards.
+
+$git revert <commit_hash>$
+
+Use: Safely undoes a specific past commit by creating a new commit that reverses its changes. You must push this new "revert" commit afterwards.

@@ -138,6 +138,8 @@ const isResolvingAttackRef = useRef(false);
   const [validAbilityTargets, setValidAbilityTargets] = useState([]);
   const [shipAbilityMode, setShipAbilityMode] = useState(null); // { sectionName, ability }
   const [shipAbilityConfirmation, setShipAbilityConfirmation] = useState(null);
+  const [preliminaryShipAbilityModal, setPreliminaryShipAbilityModal] = useState(null);
+
 
   // --- NEW: CARD PLAYING STATE ---
   const [selectedCard, setSelectedCard] = useState(null); // { card data }
@@ -320,7 +322,7 @@ const endTurn = useCallback((actingPlayer) => {
       setValidAbilityTargets([]);
       setValidCardTargets([]);
     }
-  }, [abilityMode, selectedCard, player1, player2, multiSelectState]);
+  }, [abilityMode, shipAbilityMode, selectedCard, player1, player2, multiSelectState]);
 
   const cancelAbilityMode = () => {
     if (abilityMode) {
@@ -692,14 +694,19 @@ if (effect.type === 'DAMAGE') {
             }
             return { ...prev, deck: newDeck, hand: newHand, discardPile: newDiscard };
         });
-        setMandatoryAction({ type: 'discard', player: 'player1', count: effect.value.discard });
-        setShowMandatoryActionModal(true);
+        setMandatoryAction({ type: 'discard', player: 'player1', count: effect.value.discard, fromAbility: true });
+        setFooterView('hand');
+        setIsFooterOpen(true);
     }
     
 setShipAbilityMode(null);
 setShipAbilityConfirmation(null);
-endTurn('player1');
+if (effect.type !== 'DRAW_THEN_DISCARD') {
+    endTurn('player1');
+    }
 }, [addLogEntry, endTurn, gameEngine, player1.name, player2, placedSections, opponentPlacedSections, resolveAttack]);
+
+
 
 
 // ---  LOGIC TO RESOLVE A CARD ---
@@ -2168,7 +2175,8 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     const overlayColor = sectionStatus === 'critical' ? 'bg-red-900/60' : sectionStatus === 'damaged' ? 'bg-yellow-900/50' : 'bg-black/60';
     const borderColor = sectionStatus === 'critical' ? 'border-red-500' : sectionStatus === 'damaged' ? 'border-yellow-500' : (isOpponent ? 'border-pink-500' : 'border-cyan-500');
     const shadowColor = isOpponent ? 'shadow-pink-500/20' : 'shadow-cyan-500/20';
-    const hoverEffect = isHovered ? 'scale-105 shadow-xl' : 'hover:scale-105';
+    const hoverEffect = isHovered ? 'scale-105 shadow-xl' : '';
+
 
     const cardTargetEffect = isCardTarget ? 'ring-4 ring-purple-400 shadow-lg shadow-purple-400/50 animate-pulse' : '';
     const sectionName = section === 'droneControlHub' ? 'Drone Control Hub' : section.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
@@ -3226,46 +3234,19 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
   const handleDeployDrone = (lane) => {
     if (!selectedDrone || currentPlayer !== 'player1' || passInfo.player1Passed) return;
 
-    if (totalPlayer1Drones >= player1EffectiveStats.totals.cpuLimit) {
-     setModalContent({ title: "CPU Limit Reached", text: "You cannot deploy more drones than your CPU Control Value.", isBlocking: true });
+    const validationResult = gameEngine.validateDeployment(player1, selectedDrone, turn, totalPlayer1Drones, player1EffectiveStats);
+
+    if (!validationResult.isValid) {
+      setModalContent({ title: validationResult.reason, text: validationResult.message, isBlocking: true });
       return;
     }
 
-    const baseDroneInfo = fullDroneCollection.find(d => d.name === selectedDrone.name);
-    const upgrades = player1.appliedUpgrades[selectedDrone.name] || [];
-    let effectiveLimit = baseDroneInfo.limit;
-    upgrades.forEach(upgrade => {
-        if (upgrade.mod.stat === 'limit') {
-            effectiveLimit += upgrade.mod.value;
-        }
-    });
-
-    if ((player1.deployedDroneCounts[selectedDrone.name] || 0) >= effectiveLimit) {
-     setModalContent({ title: "Deployment Limit Reached", text: `The deployment limit for ${selectedDrone.name} is currently ${effectiveLimit}.`, isBlocking: true });
-      return;
-    }
-
-    const droneCost = selectedDrone.class;
-    let energyCost = 0;
-    let budgetCost = 0;
-
-    if (turn === 1) {
-        budgetCost = Math.min(player1.initialDeploymentBudget, droneCost);
-        energyCost = droneCost - budgetCost;
-    } else {
-        budgetCost = Math.min(player1.deploymentBudget, droneCost);
-        energyCost = droneCost - budgetCost;
-    }
-
-    if (player1.energy < energyCost) {
-     setModalContent({ title: "Not Enough Energy", text: `This action requires ${energyCost} energy, but you only have ${player1.energy}.`, isBlocking: true });
-      return;
-    }
+    const { budgetCost, energyCost } = validationResult;
 
     if (turn === 1 && energyCost > 0) {
-       setDeploymentConfirmation({ lane, budgetCost, energyCost });
+      setDeploymentConfirmation({ lane, budgetCost, energyCost });
     } else {
-       executeDeployment(lane, budgetCost, energyCost);
+      executeDeployment(lane, budgetCost, energyCost);
     }
   };
 
@@ -3461,26 +3442,32 @@ if (selectedCard && validCardTargets.some(t => t.id === target.id)) {
   };
   
 const handleShipAbilityClick = (e, section, ability) => {
-e.stopPropagation();
-if (turnPhase !== 'action' || currentPlayer !== 'player1' || passInfo.player1Passed) return;
+    e.stopPropagation();
+    if (turnPhase !== 'action' || currentPlayer !== 'player1' || passInfo.player1Passed) return;
 
-if (player1.energy < ability.cost.energy) {
-   setModalContent({ title: "Not Enough Energy", text: `This ability costs ${ability.cost.energy} energy, but you only have ${player1.energy}.`, isBlocking: true});
-    return;
-}
-
-if (!ability.targeting) {
-    setShipAbilityConfirmation({ ability, sectionName: section.name, target: null });
-} else {
-    if (shipAbilityMode?.ability.id === ability.id) {
-        setShipAbilityMode(null);
-    } else {
-        setShipAbilityMode({ sectionName: section.name, ability });
-        setSelectedDrone(null);
-        cancelAbilityMode();
-        cancelCardSelection();
+    if (player1.energy < ability.cost.energy) {
+       setModalContent({ title: "Not Enough Energy", text: `This ability costs ${ability.cost.energy} energy, but you only have ${player1.energy}.`, isBlocking: true});
+        return;
     }
-}
+
+    if (!ability.targeting) {
+        setShipAbilityConfirmation({ ability, sectionName: section.name, target: null });
+    } else {
+        setPreliminaryShipAbilityModal({
+            section,
+            ability,
+            onConfirm: () => {
+                setPreliminaryShipAbilityModal(null);
+                setShipAbilityMode({ sectionName: section.name, ability });
+                setSelectedDrone(null);
+                cancelAbilityMode();
+                cancelCardSelection();
+            },
+            onCancel: () => {
+                setPreliminaryShipAbilityModal(null);
+            }
+        });
+    }
 };
 
   const handleTokenClick = (e, token, isPlayer) => {
@@ -3537,7 +3524,7 @@ if (!ability.targeting) {
           e.stopPropagation();
       }
 
-      if ((abilityMode && validAbilityTargets.some(t => t.id === token.id)) || (selectedCard && validCardTargets.some(t => t.id === token.id))) {
+      if ((abilityMode && validAbilityTargets.some(t => t.id === token.id)) || (selectedCard && validCardTargets.some(t => t.id === token.id)) || (shipAbilityMode && validAbilityTargets.some(t => t.id === token.id))) {
        handleTargetClick(token, 'drone', isPlayer);
         return;
       }
@@ -3741,6 +3728,7 @@ if (!ability.targeting) {
   };
   
   const handleConfirmMandatoryDiscard = (card) => {
+    let actionSource;
     addLogEntry({
         player: player1.name,
         actionType: 'DISCARD_MANDATORY',
@@ -3757,9 +3745,14 @@ if (!ability.targeting) {
         };
     });
    setMandatoryAction(prev => {
+        actionSource = prev;
         const newCount = prev.count - 1;
         if (newCount <= 0) {
-            handlePostDiscardAction();
+            if (actionSource.fromAbility) {
+                endTurn('player1');
+            } else {
+                handlePostDiscardAction();
+            }
             return null;
         }
         return { ...prev, count: newCount };
@@ -4183,7 +4176,9 @@ if (!ability.targeting) {
                       <div className="flex items-center gap-4 mb-2">
                         <h3 className={`text-lg font-semibold ${player1.hand.length > player1EffectiveStats.totals.handLimit ? 'text-red-400' : 'text-white'}`}>Your Hand ({player1.hand.length}/{player1EffectiveStats.totals.handLimit})</h3>
                       </div>
-                      
+                      {mandatoryAction?.type === 'discard' && mandatoryAction.fromAbility && (
+                          <p className="text-yellow-400 font-bold mb-2">You must discard {mandatoryAction.count} card(s).</p>
+                      )}
                       <div 
                         className="relative flex justify-center items-center h-[350px]" 
                         style={ applyFanEffect ? { width: `${targetHandWidthPx}px` } : {} }
@@ -4441,6 +4436,20 @@ if (!ability.targeting) {
       </div>
         </GamePhaseModal>
        )}
+
+      {preliminaryShipAbilityModal && (
+        <GamePhaseModal
+          title={`Activate Ability: ${preliminaryShipAbilityModal.ability.name}`}
+          text={`Do you want to activate the ${preliminaryShipAbilityModal.section.name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}'s ability? This will cost ${preliminaryShipAbilityModal.ability.cost.energy} energy.`}
+          onClose={preliminaryShipAbilityModal.onCancel}
+        >
+          <div className="flex justify-center gap-4 mt-6">
+            <button onClick={preliminaryShipAbilityModal.onCancel} className="bg-pink-600 text-white font-bold py-2 px-6 rounded-full hover:bg-pink-700 transition-colors">Cancel</button>
+            <button onClick={preliminaryShipAbilityModal.onConfirm} className="bg-green-600 text-white font-bold py-2 px-6 rounded-full hover:bg-green-700 transition-colors">Continue</button>
+          </div>
+        </GamePhaseModal>
+      )}
+
  {mandatoryAction && showMandatoryActionModal && (
     <GamePhaseModal
        title={mandatoryAction.type === 'discard' ? "Hand Limit Exceeded" : "CPU Limit Exceeded"}
