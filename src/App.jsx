@@ -3343,65 +3343,6 @@ useEffect(() => {
   // --- FIX 4: Clean up the dependency array ---
   }, [pendingAttack, resolveAttack]);
 
-  // --- MODIFIED --- to handle targeting for cards
-const handleTargetClick = (target, targetType, isPlayer) => {
-if (shipAbilityMode && validAbilityTargets.some(t => t.id === target.id)) {
-    setShipAbilityConfirmation({
-        ability: shipAbilityMode.ability,
-        sectionName: shipAbilityMode.sectionName,
-        target: target
-    });
-    return;
-}
-if (abilityMode && validAbilityTargets.some(t => t.id === target.id)) {
-resolveAbility(abilityMode.ability, abilityMode.drone, target);
-return;
-}
-    
-    // --- NEW --- Card Targeting Logic
-if (selectedCard && validCardTargets.some(t => t.id === target.id)) {
-  const owner = isPlayer ? 'player1' : 'player2';
-  setCardConfirmation({ card: selectedCard, target: { ...target, owner } });
-  return;
-    }
-
-    if (turnPhase === 'action' && currentPlayer === 'player1' && selectedDrone && !selectedDrone.isExhausted && !isPlayer) {
-        const [attackerLane] = Object.entries(player1.dronesOnBoard).find(([_, drones]) => drones.some(d => d.id === selectedDrone.id)) || [];
-        
-        let targetLane;
-        if (targetType === 'drone') {
-          [targetLane] = Object.entries(player2.dronesOnBoard).find(([_, drones]) => drones.some(d => d.id === target.id)) || [];
-        } else if (targetType === 'section') {
-            const laneIndex = opponentPlacedSections.findIndex(name => name === target.name);
-            if (laneIndex !== -1) {
-                targetLane = `lane${laneIndex + 1}`;
-                
-                // --- NEW GUARDIAN CHECK ---
-                const opponentDronesInLane = player2.dronesOnBoard[targetLane];
-                const hasGuardian = opponentDronesInLane.some(drone => {
-                    const effectiveStats = gameEngine.calculateEffectiveStats(drone, targetLane, player2, player1, { player1: placedSections, player2: opponentPlacedSections });
-                    return effectiveStats.keywords.has('GUARDIAN');
-                });
-        
-                if (hasGuardian) {
-                    setModalContent({ title: "Invalid Target", text: "This ship section is protected by a Guardian drone and cannot be targeted.", isBlocking: true });
-                    return; // Stop the attack
-                }
-                // --- END GUARDIAN CHECK ---
-            }
-        }
-
-        if (attackerLane && targetLane && attackerLane === targetLane) {
-           setPendingAttack({ attacker: selectedDrone, target, targetType, lane: attackerLane, attackingPlayer: 'player1' });
-        } else {
-           setModalContent({ title: "Invalid Target", text: "You can only attack targets in the same lane.", isBlocking: true });
-        }
-    } else {
-        if (targetType === 'drone') {
-         setDetailedDrone(target);
-        }
-    }
-  };
   
   const handleAbilityIconClick = (e, drone, ability) => {
     e.stopPropagation();
@@ -3470,57 +3411,104 @@ const handleShipAbilityClick = (e, section, ability) => {
 };
 
   const handleTokenClick = (e, token, isPlayer) => {
-    e.stopPropagation(); // Stop all clicks from bubbling up to avoid side effects
+      e.stopPropagation();
 
-    // 1. Handle targeting for an active card, drone ability, or ship ability
-    if (validAbilityTargets.some(t => t.id === token.id) || validCardTargets.some(t => t.id === token.id)) {
-        handleTargetClick(token, 'drone', isPlayer);
+      // 1. Handle targeting for an active card or ability
+      if (validAbilityTargets.some(t => t.id === token.id) || validCardTargets.some(t => t.id === token.id)) {
+          handleTargetClick(token, 'drone', isPlayer);
+          return;
+      }
+
+      // 2. Handle standard attack logic directly
+      if (turnPhase === 'action' && currentPlayer === 'player1' && selectedDrone && !selectedDrone.isExhausted && !isPlayer) {
+          const [attackerLane] = Object.entries(player1.dronesOnBoard).find(([_, drones]) => drones.some(d => d.id === selectedDrone.id)) || [];
+          const [targetLane] = Object.entries(player2.dronesOnBoard).find(([_, drones]) => drones.some(d => d.id === token.id)) || [];
+
+          if (attackerLane && targetLane && attackerLane === targetLane) {
+              const opponentDronesInLane = player2.dronesOnBoard[targetLane];
+              const hasGuardian = opponentDronesInLane.some(drone => {
+                  const effectiveStats = gameEngine.calculateEffectiveStats(drone, targetLane, player2, player1, { player1: placedSections, player2: opponentPlacedSections });
+                  return effectiveStats.keywords.has('GUARDIAN');
+              });
+
+              if (hasGuardian) {
+                  setModalContent({ title: "Invalid Target", text: "This lane is protected by a Guardian drone. You must destroy it before targeting other drones.", isBlocking: true });
+              } else {
+                  setPendingAttack({ attacker: selectedDrone, target: token, targetType: 'drone', lane: attackerLane, attackingPlayer: 'player1' });
+              }
+          } else {
+              setModalContent({ title: "Invalid Target", text: "You can only attack targets in the same lane.", isBlocking: true });
+          }
+          return;
+      }
+
+      // 3. Handle multi-move drone selection
+      if (multiSelectState && multiSelectState.phase === 'select_drones' && isPlayer) {
+          const { selectedDrones, maxSelection } = multiSelectState;
+          const isAlreadySelected = selectedDrones.some(d => d.id === token.id);
+          if (isAlreadySelected) {
+              setMultiSelectState(prev => ({ ...prev, selectedDrones: prev.selectedDrones.filter(d => d.id !== token.id) }));
+          } else if (selectedDrones.length < maxSelection) {
+              setMultiSelectState(prev => ({ ...prev, selectedDrones: [...prev.selectedDrones, token] }));
+          }
+          return;
+      }
+
+      // 4. Handle mandatory destruction
+      if (mandatoryAction?.type === 'destroy' && isPlayer) {
+          setConfirmationModal({
+              type: 'destroy', target: token,
+              onConfirm: () => handleConfirmMandatoryDestroy(token), onCancel: () => setConfirmationModal(null),
+              text: `Are you sure you want to destroy your ${token.name}?`
+          });
+          return;
+      }
+
+      // 5. Handle selecting/deselecting one of your own drones
+      if (isPlayer && turnPhase === 'action' && currentPlayer === 'player1' && !passInfo.player1Passed) {
+          if (token.isExhausted) return;
+          if (selectedDrone?.id === token.id) {
+              setSelectedDrone(null);
+          } else {
+              setSelectedDrone(token);
+              cancelAbilityMode();
+              cancelCardSelection();
+          }
+          return;
+      }
+
+      // 6. Fallback: show drone details
+      setDetailedDrone(token);
+  };
+
+  
+  const handleTargetClick = (target, targetType, isPlayer) => {
+      // This function will now ONLY handle targeting for cards and abilities.
+      // Standard attack targeting is moved to handleTokenClick.
+
+      if (shipAbilityMode && validAbilityTargets.some(t => t.id === target.id)) {
+          setShipAbilityConfirmation({
+              ability: shipAbilityMode.ability,
+              sectionName: shipAbilityMode.sectionName,
+              target: target
+          });
+          return;
+      }
+      if (abilityMode && validAbilityTargets.some(t => t.id === target.id)) {
+          resolveAbility(abilityMode.ability, abilityMode.drone, target);
+          return;
+      }
+
+      if (selectedCard && validCardTargets.some(t => t.id === target.id)) {
+        const owner = isPlayer ? 'player1' : 'player2';
+        setCardConfirmation({ card: selectedCard, target: { ...target, owner } });
         return;
-    }
+      }
 
-    // 2. Handle targeting for a standard attack (the main fix)
-    if (turnPhase === 'action' && currentPlayer === 'player1' && selectedDrone && !isPlayer) {
-        handleTargetClick(token, 'drone', false);
-        return;
-    }
-
-    // 3. Handle multi-move drone selection
-    if (multiSelectState && multiSelectState.phase === 'select_drones' && isPlayer) {
-        const { selectedDrones, maxSelection } = multiSelectState;
-        const isAlreadySelected = selectedDrones.some(d => d.id === token.id);
-        if (isAlreadySelected) {
-            setMultiSelectState(prev => ({ ...prev, selectedDrones: prev.selectedDrones.filter(d => d.id !== token.id) }));
-        } else if (selectedDrones.length < maxSelection) {
-            setMultiSelectState(prev => ({ ...prev, selectedDrones: [...prev.selectedDrones, token] }));
-        }
-        return;
-    }
-
-    // 4. Handle mandatory destruction
-    if (mandatoryAction?.type === 'destroy' && isPlayer) {
-        setConfirmationModal({
-            type: 'destroy', target: token,
-            onConfirm: () => handleConfirmMandatoryDestroy(token), onCancel: () => setConfirmationModal(null),
-            text: `Are you sure you want to destroy your ${token.name}?`
-        });
-        return;
-    }
-
-    // 5. Handle selecting/deselecting one of your own drones for an action
-    if (isPlayer && turnPhase === 'action' && currentPlayer === 'player1' && !passInfo.player1Passed) {
-        if (token.isExhausted) return;
-        if (selectedDrone?.id === token.id) {
-            setSelectedDrone(null);
-        } else {
-            setSelectedDrone(token);
-            cancelAbilityMode();
-            cancelCardSelection();
-        }
-        return;
-    }
-
-    // 6. If none of the above, fall back to showing drone details
-    setDetailedDrone(token);
+      // If no ability/card is active, clicking any drone just shows its details.
+      if (targetType === 'drone') {
+          setDetailedDrone(target);
+      }
   };
 
 
@@ -4522,27 +4510,7 @@ const handleShipAbilityClick = (e, section, ability) => {
           );
       })()}
 
-          {shipAbilityConfirmation && (() => {
-              const { ability, sectionName, target } = shipAbilityConfirmation;
-              const sectionDisplayName = sectionName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-              let targetDisplayName = '';
-              if (target) {
-                  targetDisplayName = target.name;
-              }
 
-              return (
-                <GamePhaseModal
-                  title={`Confirm Ability: ${ability.name}`}
-                  text={`Use ${sectionDisplayName}'s ability${target ? ` on ${targetDisplayName}`: ''}? This will cost ${ability.cost.energy} energy.`}
-                  onClose={() => setShipAbilityConfirmation(null)}
-                >
-                  <div className="flex justify-center gap-4 mt-6">
-                    <button onClick={() => setShipAbilityConfirmation(null)} className="bg-pink-600 text-white font-bold py-2 px-6 rounded-full hover:bg-pink-700 transition-colors">Cancel</button>
-                    <button onClick={() => resolveShipAbility(ability, sectionName, target)} className="bg-green-600 text-white font-bold py-2 px-6 rounded-full hover:bg-green-700 transition-colors">Confirm</button>
-                  </div>
-                </GamePhaseModal>
-              );
-          })()}
 
         {showAiHandModal && AI_HAND_DEBUG_MODE && (
           <GamePhaseModal
