@@ -164,6 +164,13 @@ const isResolvingAttackRef = useRef(false);
   const [initialShieldAllocation, setInitialShieldAllocation] = useState(null); // For shield allocation reset
    const [optionalDiscardCount, setOptionalDiscardCount] = useState(0); // For optional discard phase
 
+  // Shield reallocation state
+  const [reallocationPhase, setReallocationPhase] = useState(null); // 'removing' | 'adding' | null
+  const [shieldsToRemove, setShieldsToRemove] = useState(0);
+  const [shieldsToAdd, setShieldsToAdd] = useState(0);
+  const [originalShieldAllocation, setOriginalShieldAllocation] = useState(null);
+  const [reallocationAbility, setReallocationAbility] = useState(null);
+
   // Memoize effective stats for performance and easy access
   const player1EffectiveStats = useMemo(() => gameEngine.calculateEffectiveShipStats(player1, placedSections), [player1.shipSections, placedSections]);
   const player2EffectiveStats = useMemo(() => gameEngine.calculateEffectiveShipStats(player2, opponentPlacedSections), [player2.shipSections, opponentPlacedSections]);
@@ -746,12 +753,38 @@ const resolveShipAbility = useCallback((ability, sectionName, target) => {
         setMandatoryAction({ type: 'discard', player: 'player1', count: effect.value.discard, fromAbility: true });
         setFooterView('hand');
         setIsFooterOpen(true);
+        return; // Exit early to prevent clearing state
+    } else if (effect.type === 'REALLOCATE_SHIELDS') {
+        // Special handling for shield reallocation - generate detailed log entry
+        const removedShields = reallocationAbility ? reallocationAbility.ability.effect.value.maxShields - shieldsToAdd : 0;
+        addLogEntry({
+            player: player1.name,
+            actionType: 'SHIP_ABILITY',
+            source: `${sectionName}'s ${ability.name}`,
+            target: 'Ship Sections',
+            outcome: `Reallocated ${removedShields} shields between ship sections.`
+        }, 'resolveShipAbility');
+
+        // Clear reallocation state
+        setReallocationPhase(null);
+        setShieldsToRemove(0);
+        setShieldsToAdd(0);
+        setOriginalShieldAllocation(null);
+        setReallocationAbility(null);
+
+        // Clear modal state before ending turn
+        setShipAbilityMode(null);
+        setShipAbilityConfirmation(null);
+
+        // End turn
+        endTurn('player1');
+        return;
     }
-    
+
     setShipAbilityMode(null);
     setShipAbilityConfirmation(null);
 
-}, [addLogEntry, endTurn, gameEngine, player1.name, player2, placedSections, opponentPlacedSections, resolveAttack]);
+}, [addLogEntry, endTurn, gameEngine, player1.name, player2, placedSections, opponentPlacedSections, resolveAttack, reallocationAbility, shieldsToAdd]);
 
 
 // ---  LOGIC TO RESOLVE A CARD ---
@@ -1781,7 +1814,7 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     );
 };
 
-  const ShipSectionsDisplay = ({ player, playerEffectiveStats, isPlayer, placedSections, onSectionClick, onAbilityClick, onTargetClick, isInteractive, validCardTargets }) => {
+  const ShipSectionsDisplay = ({ player, playerEffectiveStats, isPlayer, placedSections, onSectionClick, onAbilityClick, onTargetClick, isInteractive, validCardTargets, reallocationPhase }) => {
     return (
       <div className="flex w-full justify-between gap-8">
         {[0, 1, 2].map((laneIndex) => {
@@ -1792,7 +1825,26 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
           
           const sectionStats = player.shipSections[sectionName];
           const isCardTarget = validCardTargets.some(t => t.id === sectionName);
-          
+
+          // Determine shield reallocation visual state
+          let reallocationState = null;
+          if (reallocationPhase && isPlayer) {
+            if (reallocationPhase === 'removing') {
+              if (sectionStats.allocatedShields > 0) {
+                reallocationState = 'can-remove';
+              } else {
+                reallocationState = 'cannot-remove';
+              }
+            } else if (reallocationPhase === 'adding') {
+              const effectiveMaxShields = gameEngine.getEffectiveSectionMaxShields(sectionName, player, placedSections);
+              if (sectionStats.allocatedShields < effectiveMaxShields) {
+                reallocationState = 'can-add';
+              } else {
+                reallocationState = 'cannot-add';
+              }
+            }
+          }
+
           return (
             <div key={laneIndex} className="flex-1 min-w-0">
               <ShipSection
@@ -1815,6 +1867,7 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
                 isHovered={hoveredTarget?.type === 'section' && hoveredTarget?.target.name === sectionName}
                 onMouseEnter={() => !isPlayer && setHoveredTarget({ target: { name: sectionName, ...sectionStats }, type: 'section' })}
                 onMouseLeave={() => !isPlayer && setHoveredTarget(null)}
+                reallocationState={reallocationState}
               />
             </div>
           );
@@ -2313,7 +2366,7 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     );
   };
 
-  const ShipSection = ({ section, stats, effectiveStatsForDisplay, isPlayer, isPlaceholder, onClick, onAbilityClick, isInteractive, isOpponent, isHovered, onMouseEnter, onMouseLeave, isCardTarget, isInMiddleLane }) => {
+  const ShipSection = ({ section, stats, effectiveStatsForDisplay, isPlayer, isPlaceholder, onClick, onAbilityClick, isInteractive, isOpponent, isHovered, onMouseEnter, onMouseLeave, isCardTarget, isInMiddleLane, reallocationState }) => {
     if (isPlaceholder) {
       return (
         <div
@@ -2328,10 +2381,40 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     const sectionStatus = gameEngine.getShipStatus(stats);
     
     const overlayColor = sectionStatus === 'critical' ? 'bg-red-900/60' : sectionStatus === 'damaged' ? 'bg-yellow-900/50' : 'bg-black/60';
-    const borderColor = sectionStatus === 'critical' ? 'border-red-500' : sectionStatus === 'damaged' ? 'border-yellow-500' : (isOpponent ? 'border-pink-500' : 'border-cyan-500');
+    let borderColor = sectionStatus === 'critical' ? 'border-red-500' : sectionStatus === 'damaged' ? 'border-yellow-500' : (isOpponent ? 'border-pink-500' : 'border-cyan-500');
     const shadowColor = isOpponent ? 'shadow-pink-500/20' : 'shadow-cyan-500/20';
     const hoverEffect = isHovered ? 'scale-105 shadow-xl' : '';
 
+    // Override border color for shield reallocation states
+    let reallocationEffect = '';
+    if (reallocationState) {
+      switch (reallocationState) {
+        case 'can-remove':
+          borderColor = 'border-orange-400';
+          reallocationEffect = 'ring-2 ring-orange-400/50 shadow-lg shadow-orange-400/30';
+          break;
+        case 'removed-from':
+          borderColor = 'border-orange-600';
+          reallocationEffect = 'ring-4 ring-orange-600/80 shadow-lg shadow-orange-600/50 bg-orange-900/20';
+          break;
+        case 'cannot-remove':
+          borderColor = 'border-gray-600';
+          reallocationEffect = 'opacity-50';
+          break;
+        case 'can-add':
+          borderColor = 'border-green-400';
+          reallocationEffect = 'ring-2 ring-green-400/50 shadow-lg shadow-green-400/30';
+          break;
+        case 'added-to':
+          borderColor = 'border-green-600';
+          reallocationEffect = 'ring-4 ring-green-600/80 shadow-lg shadow-green-600/50 bg-green-900/20';
+          break;
+        case 'cannot-add':
+          borderColor = 'border-gray-600';
+          reallocationEffect = 'opacity-50';
+          break;
+      }
+    }
 
     const cardTargetEffect = isCardTarget ? 'ring-4 ring-purple-400 shadow-lg shadow-purple-400/50 animate-pulse' : '';
     const sectionName = section === 'droneControlHub' ? 'Drone Control Hub' : section.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
@@ -2351,6 +2434,7 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
           ${borderColor}
           ${isInteractive ? `cursor-pointer ${hoverEffect}` : ''}
           ${cardTargetEffect}
+          ${reallocationEffect}
         `}
         style={backgroundImageStyle}
         onClick={onClick}
@@ -3159,6 +3243,107 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
      setShieldsToAllocate(prev => prev - 1);
     }
   };
+
+  // Shield reallocation handlers
+  const handleRemoveShield = (sectionName) => {
+    if (shieldsToRemove <= 0) return;
+
+    const section = player1.shipSections[sectionName];
+    if (section.allocatedShields <= 0) return;
+
+    setPlayer1(prev => ({
+      ...prev,
+      shipSections: {
+        ...prev.shipSections,
+        [sectionName]: {
+          ...prev.shipSections[sectionName],
+          allocatedShields: prev.shipSections[sectionName].allocatedShields - 1
+        }
+      }
+    }));
+
+    setShieldsToRemove(prev => prev - 1);
+    setShieldsToAdd(prev => prev + 1);
+  };
+
+  const handleAddShield = (sectionName) => {
+    if (shieldsToAdd <= 0) return;
+
+    const section = player1.shipSections[sectionName];
+    const effectiveMaxShields = gameEngine.getEffectiveSectionMaxShields(sectionName, player1, placedSections);
+    if (section.allocatedShields >= effectiveMaxShields) return;
+
+    setPlayer1(prev => ({
+      ...prev,
+      shipSections: {
+        ...prev.shipSections,
+        [sectionName]: {
+          ...prev.shipSections[sectionName],
+          allocatedShields: prev.shipSections[sectionName].allocatedShields + 1
+        }
+      }
+    }));
+
+    setShieldsToAdd(prev => prev - 1);
+  };
+
+  const handleContinueToAddPhase = () => {
+    setReallocationPhase('adding');
+  };
+
+  const handleResetReallocation = () => {
+    // Restore original shields
+    setPlayer1(prev => ({
+      ...prev,
+      shipSections: originalShieldAllocation
+    }));
+
+    // Reset counters
+    setShieldsToRemove(reallocationAbility.ability.effect.value.maxShields);
+    setShieldsToAdd(0);
+    setReallocationPhase('removing');
+  };
+
+  const handleCancelReallocation = () => {
+    // Restore original shields
+    setPlayer1(prev => ({
+      ...prev,
+      shipSections: originalShieldAllocation
+    }));
+
+    // Clear reallocation state
+    setReallocationPhase(null);
+    setShieldsToRemove(0);
+    setShieldsToAdd(0);
+    setOriginalShieldAllocation(null);
+    setReallocationAbility(null);
+  };
+
+  const handleConfirmReallocation = () => {
+    // Show confirmation modal with energy deduction
+    setShipAbilityConfirmation({
+      ability: reallocationAbility.ability,
+      sectionName: reallocationAbility.sectionName,
+      target: null
+    });
+  };
+
+  const handleShipSectionClick = (sectionName) => {
+    // Handle shield reallocation if active
+    if (reallocationPhase) {
+      if (reallocationPhase === 'removing') {
+        handleRemoveShield(sectionName);
+      } else if (reallocationPhase === 'adding') {
+        handleAddShield(sectionName);
+      }
+      return;
+    }
+
+    // Handle normal shield allocation during allocateShields phase
+    if (turnPhase === 'allocateShields') {
+      handleAllocateShield(sectionName);
+    }
+  };
   
   const handleResetShieldAllocation = () => {
    setPlayer1(prev => ({ ...prev, shipSections: initialShieldAllocation }));
@@ -3185,6 +3370,7 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
       }
       return { ...prev, shipSections: newSections };
     });
+
 
     const determineFirstPlayer = () => {
         // Priority 1: A card/ability effect overrides the normal rules.
@@ -3559,9 +3745,20 @@ const handleShipAbilityClick = (e, section, ability) => {
     if (shipAbilityMode?.ability.id === ability.id) {
         setShipAbilityMode(null);
     } else {
-        // If the ability has no target, it should resolve immediately.
+        // If the ability has no target, handle it appropriately.
     if (!ability.targeting) {
-        setShipAbilityConfirmation({ ability, sectionName: section.name, target: null });
+        // Special handling for shield reallocation
+        if (ability.effect.type === 'REALLOCATE_SHIELDS') {
+            // Start reallocation mode without energy deduction
+            setReallocationPhase('removing');
+            setShieldsToRemove(ability.effect.value.maxShields);
+            setShieldsToAdd(0);
+            setOriginalShieldAllocation(JSON.parse(JSON.stringify(player1.shipSections)));
+            setReallocationAbility({ ability, sectionName: section.name });
+        } else {
+            // Other non-targeted abilities resolve immediately
+            setShipAbilityConfirmation({ ability, sectionName: section.name, target: null });
+        }
     } else {
             // Otherwise, enter targeting mode for the new ability.
             setShipAbilityMode({ sectionName: section.name, ability });
@@ -4259,6 +4456,8 @@ const handleShipAbilityClick = (e, section, ability) => {
         {turnPhase === 'deployment' && <div className="flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-cyan-500/50"><Rocket className="text-purple-400 mr-2" /> <span className="font-bold text-lg">{turn === 1 ? player1.initialDeploymentBudget : player1.deploymentBudget}</span></div>}
         <div className={`flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-cyan-500/50 ${totalPlayer1Drones > player1EffectiveStats.totals.cpuLimit ? 'text-red-400' : ''}`}><Cpu className="text-cyan-400 mr-2" /> <span className="font-bold text-lg">{totalPlayer1Drones} / {player1EffectiveStats.totals.cpuLimit}</span></div>
         {turnPhase === 'allocateShields' && <div className="flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-cyan-500/50"><ShieldCheck className="text-cyan-300 mr-2" /> <span className="font-bold text-lg">{shieldsToAllocate}</span></div>}
+        {reallocationPhase === 'removing' && <div className="flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-orange-500/50"><ShieldCheck className="text-orange-300 mr-2" /> <span className="font-bold text-lg">{shieldsToRemove}</span></div>}
+        {reallocationPhase === 'adding' && <div className="flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-green-500/50"><ShieldCheck className="text-green-300 mr-2" /> <span className="font-bold text-lg">{shieldsToAdd}</span></div>}
               <button onClick={handleReset} className="bg-pink-700 text-white p-3 rounded-full shadow-lg hover:bg-pink-600 transition-colors duration-200" aria-label="Reset Game"><RotateCcw /></button>
               <button className="bg-slate-700 text-white p-3 rounded-full shadow-lg hover:bg-slate-600 transition-colors duration-200"><Settings /></button>
             </div>
@@ -4346,7 +4545,9 @@ const handleShipAbilityClick = (e, section, ability) => {
                       <ShipSectionsDisplay player={player2} playerEffectiveStats={player2EffectiveStats} isPlayer={false} placedSections={opponentPlacedSections} onTargetClick={handleTargetClick} isInteractive={false} selectedCard={selectedCard} validCardTargets={validCardTargets} />
                       <DroneLanesDisplay player={player2} isPlayer={false} placedSections={opponentPlacedSections} onLaneClick={handleLaneClick} selectedDrone={selectedDrone} selectedCard={selectedCard} validCardTargets={validCardTargets} />
                       <DroneLanesDisplay player={player1} isPlayer={true} placedSections={placedSections} onLaneClick={handleLaneClick} selectedDrone={selectedDrone} selectedCard={selectedCard} validCardTargets={validCardTargets} />
-                      <ShipSectionsDisplay player={player1} playerEffectiveStats={player1EffectiveStats} isPlayer={true} placedSections={placedSections} onSectionClick={handleAllocateShield} onAbilityClick={handleShipAbilityClick} onTargetClick={handleTargetClick} isInteractive={turnPhase === 'allocateShields'} selectedCard={selectedCard} validCardTargets={validCardTargets} />
+
+
+                      <ShipSectionsDisplay player={player1} playerEffectiveStats={player1EffectiveStats} isPlayer={true} placedSections={placedSections} onSectionClick={handleShipSectionClick} onAbilityClick={handleShipAbilityClick} onTargetClick={handleTargetClick} isInteractive={turnPhase === 'allocateShields' || reallocationPhase} selectedCard={selectedCard} validCardTargets={validCardTargets} reallocationPhase={reallocationPhase} />
               </div>
             )}
         </>
@@ -4606,10 +4807,10 @@ const handleShipAbilityClick = (e, section, ability) => {
                 </div>
               </div>
             )}
-            {turnPhase === 'allocateShields' && 
+            {turnPhase === 'allocateShields' &&
     <div className="flex justify-center items-center gap-4 mt-8">
         <button onClick={handleResetShieldAllocation} className={`text-white font-bold py-3 px-8 rounded-full transition-colors duration-200 bg-pink-600 hover:bg-pink-700 shadow-lg shadow-pink-500/30`}>Reset Allocation</button>
-        
+
         <div className="flex items-center gap-3 text-white bg-slate-900/80 border border-cyan-500/50 px-6 py-2 rounded-full shadow-lg">
             <ShieldCheck size={20} className="text-cyan-300" />
             <span className="font-bold text-lg font-orbitron tracking-wider">
@@ -4617,10 +4818,59 @@ const handleShipAbilityClick = (e, section, ability) => {
             </span>
             <span className="text-sm text-gray-400">Shields to Allocate</span>
         </div>
-        
+
         <button onClick={handleEndAllocation} className="text-white font-bold py-3 px-8 rounded-full transition-colors duration-200 bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/30">End Allocation</button>
     </div>
 }
+
+            {/* Shield Reallocation UI */}
+            {reallocationPhase && (
+              <div className="flex justify-center items-center gap-4 mt-8">
+                <button onClick={handleResetReallocation} className="text-white font-bold py-3 px-8 rounded-full transition-colors duration-200 bg-pink-600 hover:bg-pink-700 shadow-lg shadow-pink-500/30">
+                  Reset Reallocation
+                </button>
+
+                {reallocationPhase === 'removing' && (
+                  <>
+                    <div className="flex items-center gap-3 text-white bg-slate-900/80 border border-orange-500/50 px-6 py-2 rounded-full shadow-lg">
+                      <ShieldCheck size={20} className="text-orange-300" />
+                      <span className="font-bold text-lg font-orbitron tracking-wider">
+                        {shieldsToRemove}
+                      </span>
+                      <span className="text-sm text-gray-400">Shields to Remove</span>
+                    </div>
+
+                    {shieldsToAdd > 0 && (
+                      <button onClick={handleContinueToAddPhase} className="text-white font-bold py-3 px-8 rounded-full transition-colors duration-200 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-500/30">
+                        Continue to Add Phase ({shieldsToAdd})
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {reallocationPhase === 'adding' && (
+                  <>
+                    <div className="flex items-center gap-3 text-white bg-slate-900/80 border border-green-500/50 px-6 py-2 rounded-full shadow-lg">
+                      <ShieldCheck size={20} className="text-green-300" />
+                      <span className="font-bold text-lg font-orbitron tracking-wider">
+                        {shieldsToAdd}
+                      </span>
+                      <span className="text-sm text-gray-400">Shields to Add</span>
+                    </div>
+
+                    {shieldsToAdd === 0 && (
+                      <button onClick={handleConfirmReallocation} className="text-white font-bold py-3 px-8 rounded-full transition-colors duration-200 bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/30">
+                        Confirm Reallocation
+                      </button>
+                    )}
+                  </>
+                )}
+
+                <button onClick={handleCancelReallocation} className="text-white font-bold py-3 px-8 rounded-full transition-colors duration-200 bg-gray-600 hover:bg-gray-700 shadow-lg shadow-gray-500/30">
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
         </footer>
       )}

@@ -12,11 +12,11 @@
       image: '/img/Bridge.png',
       ability: {
         id: 'ABILITY_SHIP_01',
-        name: 'Flak Cannons',
-        description: 'Deal 1 damage to any drone.',
-        cost: { energy: 2 },
-        targeting: { type: 'DRONE', affinity: 'ANY', location: 'ANY_LANE' },
-        effect: { type: 'DAMAGE', value: 1, damageType: 'NORMAL' }
+        name: 'Recalculate',
+        description: 'Draw a card, then discard a card.',
+        cost: { energy: 1 },
+        targeting: null,
+        effect: { type: 'DRAW_THEN_DISCARD', value: { draw: 1, discard: 1 } }
       }
     },
 
@@ -33,11 +33,11 @@
       image: '/img/Power_Cell.png',
       ability: {
         id: 'ABILITY_SHIP_02',
-        name: 'Power Cycle',
-        description: 'Draw a card, then discard a card.',
+        name: 'Reallocate Shields',
+        description: 'Take up to 2 shields from your ship sections and redeploy them elsewhere.',
         cost: { energy: 1 },
         targeting: null,
-        effect: { type: 'DRAW_THEN_DISCARD', value: { draw: 1, discard: 1 } }
+        effect: { type: 'REALLOCATE_SHIELDS', value: { maxShields: 2 } }
       }
     },
 

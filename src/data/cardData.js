@@ -76,7 +76,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 0,
-    image: 'https://placehold.co/128x128/a855f7/ffffff?text=Out+Think',
+    image: '/cards/OutThink.png',
     description: 'Draw 1 card.',
     // No targeting is needed
     effect: {
@@ -356,7 +356,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 0,
-    image: '/cards/Overcharge.pngFs',
+    image: '/cards/Overcharge.png',
     description: 'Give a friendly drone +2 attack until the end of the turn.',
     targeting: {
       type: 'DRONE',
@@ -375,7 +375,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 2,
-    image: 'https://placehold.co/128x128/38bdf8/ffffff?text=SPD+',
+    image: '/cards/Streamline.png',
     description: 'Give all friendly drones in a line a permanent +1 speed bonus. Go again.',
     targeting: {
       type: 'LANE',
@@ -395,7 +395,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: 'https://placehold.co/128x128/f87171/ffffff?text=ATK-',
+    image: '/cards/StaticField.png',
     description: 'Give an enemy drone -2 attack until the end of the turn. Go again.',
     targeting: {
       type: 'DRONE',
@@ -415,7 +415,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: 'https://placehold.co/128x128/7dd3fc/ffffff?text=SPD+',
+    image: '/cards/Boosters.png',
     description: 'Give a friendly drone +2 speed until the end of the turn.',
     targeting: {
       type: 'DRONE',

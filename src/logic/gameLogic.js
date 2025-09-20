@@ -599,6 +599,92 @@ const validateDeployment = (player, drone, turn, totalPlayerDrones, playerEffect
     return { isValid: true, budgetCost, energyCost };
 };
 
+// Shield reallocation functions for multiplayer compatibility
+const validateShieldRemoval = (playerState, sectionName, placedSections) => {
+    const section = playerState.shipSections[sectionName];
+    if (!section) {
+        return { valid: false, error: 'Section not found' };
+    }
+
+    if (section.allocatedShields <= 0) {
+        return { valid: false, error: 'No shields to remove' };
+    }
+
+    return { valid: true };
+};
+
+const validateShieldAddition = (playerState, sectionName, placedSections) => {
+    const section = playerState.shipSections[sectionName];
+    if (!section) {
+        return { valid: false, error: 'Section not found', maxAvailable: 0 };
+    }
+
+    const effectiveMaxShields = getEffectiveSectionMaxShields(sectionName, playerState, placedSections);
+    const availableSlots = effectiveMaxShields - section.allocatedShields;
+
+    if (availableSlots <= 0) {
+        return { valid: false, error: 'Section at maximum shields', maxAvailable: 0 };
+    }
+
+    return { valid: true, maxAvailable: availableSlots };
+};
+
+const executeShieldReallocation = (playerState, reallocationData, placedSections) => {
+    const { removals, additions } = reallocationData;
+
+    // Create deep copy of player state
+    const newPlayerState = {
+        ...playerState,
+        shipSections: { ...playerState.shipSections }
+    };
+
+    // Apply removals
+    removals.forEach(({ section, count }) => {
+        newPlayerState.shipSections[section] = {
+            ...newPlayerState.shipSections[section],
+            allocatedShields: newPlayerState.shipSections[section].allocatedShields - count
+        };
+    });
+
+    // Apply additions
+    additions.forEach(({ section, count }) => {
+        newPlayerState.shipSections[section] = {
+            ...newPlayerState.shipSections[section],
+            allocatedShields: newPlayerState.shipSections[section].allocatedShields + count
+        };
+    });
+
+    return newPlayerState;
+};
+
+const getValidShieldReallocationTargets = (playerState, phase, placedSections) => {
+    const targets = [];
+
+    Object.keys(playerState.shipSections).forEach(sectionName => {
+        if (phase === 'remove') {
+            const validation = validateShieldRemoval(playerState, sectionName, placedSections);
+            if (validation.valid) {
+                targets.push({
+                    id: sectionName,
+                    name: sectionName,
+                    availableShields: playerState.shipSections[sectionName].allocatedShields
+                });
+            }
+        } else if (phase === 'add') {
+            const validation = validateShieldAddition(playerState, sectionName, placedSections);
+            if (validation.valid) {
+                targets.push({
+                    id: sectionName,
+                    name: sectionName,
+                    maxAvailable: validation.maxAvailable
+                });
+            }
+        }
+    });
+
+    return targets;
+};
+
 
 export const gameEngine = {
   initialPlayerState,
@@ -615,5 +701,9 @@ export const gameEngine = {
   updateAuras,
   getLaneOfDrone,
   getValidTargets,
-  validateDeployment, 
+  validateDeployment,
+  validateShieldRemoval,
+  validateShieldAddition,
+  executeShieldReallocation,
+  getValidShieldReallocationTargets
 };

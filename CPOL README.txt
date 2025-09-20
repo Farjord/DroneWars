@@ -7,7 +7,8 @@ AI - Don't play Out Think if the opponent has passed.
 AI - Got incorrect lethal bonus when using Armor-Piercing Shot
 Upgrades - Show limit per card on the popup. 
 AI - Chose to buff a card that didn't have a clear line of attack - both were valued the same. 
-Avenger Drone - Not Triggering
+AI - Chose to add a buff to an exhausted drone.
+
 
 ?Still exists?
 AI - targeting of damage cards is too low on the priority, especially if taking out high value, ready piece. Revisit. 
