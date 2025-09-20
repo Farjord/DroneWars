@@ -1,3 +1,4 @@
+//GEMINI CHECK
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Shield, Bolt, Wrench, Sprout, Hand, ShipWheel, Settings, X, ChevronRight, ChevronLeft, Plus, RotateCcw, ShieldCheck, Sword, Search, Gavel, Bomb, Rocket, Skull, Bug, Cpu, Target, View, Zap, Heart, ChevronUp, ChevronDown } from 'lucide-react';
 import './App.css';
