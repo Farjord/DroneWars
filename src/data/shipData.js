@@ -29,7 +29,7 @@
         damaged: { 'Energy Per Turn': 10, 'Max Energy': 10, 'Shields Per Turn': 2 },
         critical: { 'Energy Per Turn': 9, 'Max Energy': 9, 'Shields Per Turn': 1 },
       },
-      middleLaneBonus: { 'Energy Per Turn': 2, 'Max Energy': 2, 'Shields Per Turn': 2 },
+      middleLaneBonus: { 'Energy Per Turn': 2, 'Max Energy': 2, 'Shields Per Turn': 1 },
       image: '/img/Power_Cell.png',
       ability: {
         id: 'ABILITY_SHIP_02',

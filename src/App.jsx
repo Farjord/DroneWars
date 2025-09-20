@@ -1892,7 +1892,7 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     return (
      <GamePhaseModal title="AI Action Report" text="" onClose={onClose}>
              <div className="text-left text-gray-300 space-y-3 mt-4 text-center">
-                     <p><strong className="text-pink-400">{attackerName}</strong> attacked in <strong>{lane.replace('lane', 'Lane ')}</strong>.</p>
+                     <p><strong className="text-pink-400">{attackerName}</strong> attacked in <strong>{lane?.replace('lane', 'Lane ') || 'Unknown Lane'}</strong>.</p>
                   {interceptorName ? (
                        <p>Your <strong className="text-yellow-400">{interceptorName}</strong> intercepted the attack, which was targeting your <strong className="text-cyan-400">{targetDisplayName}</strong>!</p>
                     ) : (
@@ -1947,7 +1947,7 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     return (
      <GamePhaseModal
      title="Interception Opportunity!"
-     text={`Combat in ${lane.replace('lane', 'Lane ')}`}
+     text={`Combat in ${lane?.replace('lane', 'Lane ') || 'Unknown Lane'}`}
      onClose={onDecline}
      maxWidthClass="max-w-3xl"
       >

@@ -480,7 +480,7 @@ const calculateAfterAttackStateAndEffects = (playerState, attacker) => {
   const effects = [];
   let stateModified = false;
 
-  const afterAttackAbilities = baseDrone.abilities.filter(ability => ability.effect.type === 'AFTER_ATTACK');
+  const afterAttackAbilities = baseDrone.abilities.filter(ability => ability.effect?.type === 'AFTER_ATTACK');
 
   afterAttackAbilities.forEach(ability => {
       const { subEffect } = ability.effect;
