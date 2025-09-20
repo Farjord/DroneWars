@@ -341,7 +341,6 @@ const resolveAttack = useCallback((attackDetails, isAbilityOrCard = false) => {
         return;
     }
     isResolvingAttackRef.current = true;
-
     const { attacker, target, targetType, interceptor, attackingPlayer, abilityDamage, goAgain, aiContext } = attackDetails;
     const finalTarget = interceptor || target;
     const finalTargetType = interceptor ? 'drone' : targetType;
@@ -570,7 +569,7 @@ const resolveAttack = useCallback((attackDetails, isAbilityOrCard = false) => {
     setPendingAttack(null);
     isResolvingAttackRef.current = false;
 
-}, [endTurn, triggerExplosion, addLogEntry, gameEngine, placedSections, opponentPlacedSections]);
+}, [endTurn, triggerExplosion, addLogEntry, placedSections, opponentPlacedSections]);
 
 
 
@@ -684,6 +683,7 @@ const resolveAbility = useCallback((ability, userDrone, targetDrone) => {
 // ---  LOGIC TO RESOLVE A SHIP ABILITY ---
 const resolveShipAbility = useCallback((ability, sectionName, target) => {
     const { cost, effect } = ability;
+    setPlayer1(prev => ({ ...prev, energy: prev.energy - cost.energy }));
 
     addLogEntry({
         player: player1.name,
@@ -701,8 +701,7 @@ const resolveShipAbility = useCallback((ability, sectionName, target) => {
             attackingPlayer: 'player1',
             abilityDamage: effect.value,
             lane: gameEngine.getLaneOfDrone(target.id, player2),
-            damageType: effect.damageType,
-            cost: cost
+            damageType: effect.damageType
         }, true);
     } else if (effect.type === 'RECALL_DRONE') {
         setPlayer1(prev => {
@@ -1512,13 +1511,19 @@ const ShipAbilityIcon = ({ onClick, ability, isUsable, isSelected }) => (
 <button
     onClick={onClick}
     disabled={!isUsable}
-    className={`absolute top-1/2 -right-3.5 -translate-y-1/2 w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center border-2 border-black/50 z-20 transition-all duration-200 ${isUsable ? 'hover:bg-purple-500' : 'bg-gray-700 opacity-60 cursor-not-allowed'} ${isSelected ? 'ring-2 ring-yellow-300 scale-110' : ''}`}
+    // The className is now just for appearance, not position
+    className={`absolute w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center border-2 border-black/50 z-20 transition-all duration-200 ${isUsable ? 'hover:bg-purple-500' : 'bg-gray-700 opacity-60 cursor-not-allowed'} ${isSelected ? 'ring-2 ring-yellow-300 scale-110' : ''}`}
+    // This inline style will override any external CSS file
+    style={{
+        top: '50%',
+        right: '-0.875rem', // This is the equivalent of Tailwind's -right-3.5
+        transform: 'translateY(-50%)'
+    }}
     title={`${ability.name} - Cost: ${ability.cost.energy} Energy`}
 >
 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-300"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
 </button>
 );
-
   const DroneToken = ({ drone, onClick, isPlayer, isSelected, isSelectedForMove, isHit, isPotentialInterceptor, onMouseEnter, onMouseLeave, effectiveStats, onAbilityClick, isActionTarget }) => {
     const baseDrone = useMemo(() => fullDroneCollection.find(d => d.name === drone.name), [drone.name]);
     const { maxShields } = effectiveStats;
@@ -1804,7 +1809,7 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
             <div 
               key={lane} 
               onClick={(e) => onLaneClick(e, lane, isPlayer)}
-              className={`flex-1 rounded-lg border-2 transition-all duration-200 p-2
+              className={`flex-1 rounded-lg border-2 transition-all duration-200 p-2 lane-background
                 ${isTargetable ? 'border-purple-500 bg-purple-900/40 ring-2 ring-purple-400 animate-pulse' : 'border-gray-700/50 bg-black/20'} 
                 ${isInteractivePlayerLane ? 'cursor-pointer hover:bg-cyan-900/50' : ''}
               `}
@@ -2297,22 +2302,24 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
               </div>
               
               {/* --- THIS IS THE UPDATED SECTION --- */}
-              <div className="relative flex flex-col items-center justify-center h-full pl-4 text-center">
+              <div className="flex flex-col items-center justify-center h-full pl-4 text-center">
                 {isPlayer && stats.ability && (
                   <>
-                    <h4 className="font-bold text-sm text-purple-300 leading-tight">{stats.ability.name}</h4>
-                    <p className="text-xs text-gray-400 leading-tight mt-1">{stats.ability.description}</p>
-                    <ShipAbilityIcon 
-                      ability={stats.ability}
-                      isUsable={
-                        turnPhase === 'action' &&
-                        currentPlayer === 'player1' &&
-                        !passInfo.player1Passed &&
-                        player1.energy >= stats.ability.cost.energy
-                      }
-                      isSelected={shipAbilityMode?.ability.id === stats.ability.id}
-                      onClick={(e) => onAbilityClick(e, {name: section, ...stats}, stats.ability)}
-                    />
+                    <div className="relative w-full mb-1">
+                      <h4 className="font-bold text-sm text-purple-300 leading-tight">{stats.ability.name}</h4>
+                      <ShipAbilityIcon 
+                        ability={stats.ability}
+                        isUsable={
+                          turnPhase === 'action' &&
+                          currentPlayer === 'player1' &&
+                          !passInfo.player1Passed &&
+                          player1.energy >= stats.ability.cost.energy
+                        }
+                        isSelected={shipAbilityMode?.ability.id === stats.ability.id}
+                        onClick={(e) => onAbilityClick(e, {name: section, ...stats}, stats.ability)}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400 leading-tight">{stats.ability.description}</p>
                   </>
                 )}
               </div>
@@ -3318,89 +3325,37 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
   };
 
 useEffect(() => {
-    console.log("%cAttack useEffect triggered", "color: orange; font-weight: bold;");
-    console.log("Current pendingAttack state:", pendingAttack);
-
-    if (!pendingAttack) {
-        console.log("No pending attack. Aborting.");
+    if (!pendingAttack || pendingAttack.attackingPlayer !== 'player2') {
         return;
     }
 
-    console.log("%cProceeding to resolve attack...", "color: lightgreen;");
-    const { attacker, target, targetType, lane, attackingPlayer } = pendingAttack;
-    
-    const attackerPlayer = attackingPlayer === 'player1' ? player1Ref.current : player2Ref.current;
-    const attackerOpponent = attackingPlayer === 'player1' ? player2Ref.current : player1Ref.current;
+    const { attacker, target, targetType, lane } = pendingAttack;
 
-    // Calculate effective stats for attacker
     const effectiveAttacker = gameEngine.calculateEffectiveStats(
-        attacker,
-        lane,
-        attackerPlayer,
-        attackerOpponent,
+        attacker, lane, player2Ref.current, player1Ref.current,
         { player1: placedSections, player2: opponentPlacedSections }
     );
 
-    if (attackingPlayer === 'player1') {
-        const potentialInterceptors = player2Ref.current.dronesOnBoard[lane]
-            .filter(d => {
-                const effectiveInterceptor = gameEngine.calculateEffectiveStats(
-                    d,
-                    lane,
-                    player2Ref.current,
-                    player1Ref.current,
-                    { player1: placedSections, player2: opponentPlacedSections }
-                );
-                return !d.isExhausted &&
-                       (effectiveInterceptor.speed > effectiveAttacker.speed || effectiveInterceptor.keywords.has('ALWAYS_INTERCEPTS')) &&
-                       (targetType !== 'drone' || d.id !== target.id);
-            })
-            .sort((a, b) => a.class - b.class);
+    const potentialInterceptors = player1Ref.current.dronesOnBoard[lane]
+        .filter(d => {
+            const effectiveInterceptor = gameEngine.calculateEffectiveStats(
+                d, lane, player1Ref.current, player2Ref.current,
+                { player1: placedSections, player2: opponentPlacedSections }
+            );
+            return !d.isExhausted &&
+                   (effectiveInterceptor.speed > effectiveAttacker.speed || effectiveInterceptor.keywords.has('ALWAYS_INTERCEPTS')) &&
+                   (targetType !== 'drone' || d.id !== target.id);
+        });
 
-        let interceptor = null;
-        if (potentialInterceptors.length > 0) {
-            if (targetType === 'section' || target.class === undefined || potentialInterceptors[0].class < target.class) {
-                interceptor = potentialInterceptors[0];
-            }
-        }
-
-        if (interceptor) {
-            setInterceptionModal({
-                interceptor,
-                originalTarget: target,
-                onClose: () => {
-                    resolveAttack({ ...pendingAttack, interceptor });
-                    setInterceptionModal(null);
-                },
-            });
-        } else {
-            resolveAttack(pendingAttack);
-        }
-    } else if (attackingPlayer === 'player2') {
-        const potentialInterceptors = player1Ref.current.dronesOnBoard[lane]
-            .filter(d => {
-                const effectiveInterceptor = gameEngine.calculateEffectiveStats(
-                    d,
-                    lane,
-                    player1Ref.current,
-                    player2Ref.current,
-                    { player1: placedSections, player2: opponentPlacedSections }
-                );
-                return !d.isExhausted &&
-                       (effectiveInterceptor.speed > effectiveAttacker.speed || effectiveInterceptor.keywords.has('ALWAYS_INTERCEPTS')) &&
-                       (targetType !== 'drone' || d.id !== target.id);
-            });
-
-        if (potentialInterceptors.length > 0) {
-            setPlayerInterceptionChoice({
-                attackDetails: pendingAttack,
-                interceptors: potentialInterceptors,
-            });
-        } else {
-            resolveAttack(pendingAttack);
-        }
+    if (potentialInterceptors.length > 0) {
+        setPlayerInterceptionChoice({
+            attackDetails: pendingAttack,
+            interceptors: potentialInterceptors,
+        });
+    } else {
+        resolveAttack(pendingAttack);
     }
-}, [pendingAttack, resolveAttack]);
+}, [pendingAttack, resolveAttack, placedSections, opponentPlacedSections]);
   
   const handleAbilityIconClick = (e, drone, ability) => {
     e.stopPropagation();
@@ -3472,6 +3427,19 @@ const handleShipAbilityClick = (e, section, ability) => {
       e.stopPropagation();
       console.log(`--- handleTokenClick triggered for ${token.name} (isPlayer: ${isPlayer}) ---`);
 
+      // NEW: Prioritize multi-move selection
+      if (multiSelectState && multiSelectState.phase === 'select_drones' && isPlayer) {
+          console.log("Action: Multi-move drone selection.");
+          const { selectedDrones, maxSelection } = multiSelectState;
+          const isAlreadySelected = selectedDrones.some(d => d.id === token.id);
+          if (isAlreadySelected) {
+              setMultiSelectState(prev => ({ ...prev, selectedDrones: prev.selectedDrones.filter(d => d.id !== token.id) }));
+          } else if (selectedDrones.length < maxSelection) {
+              setMultiSelectState(prev => ({ ...prev, selectedDrones: [...prev.selectedDrones, token] }));
+          }
+          return;
+      }
+
       // 1. Handle targeting for an active card or ability
       if (validAbilityTargets.some(t => t.id === token.id) || validCardTargets.some(t => t.id === token.id)) {
           console.log("Action: Targeting for an active card/ability.");
@@ -3503,8 +3471,47 @@ const handleShipAbilityClick = (e, section, ability) => {
                   console.log("FAILURE: Target is protected by a Guardian drone.");
                   setModalContent({ title: "Invalid Target", text: "This lane is protected by a Guardian drone. You must destroy it before targeting other drones.", isBlocking: true });
               } else {
-                  console.log("SUCCESS: No Guardian. Calling setPendingAttack.");
-                  setPendingAttack({ attacker: selectedDrone, target: token, targetType: 'drone', lane: attackerLane, attackingPlayer: 'player1' });
+                  console.log("SUCCESS: No Guardian. Checking for interception.");
+                  const attackDetails = { attacker: selectedDrone, target: token, targetType: 'drone', lane: attackerLane, attackingPlayer: 'player1' };
+                  
+                  const effectiveAttacker = gameEngine.calculateEffectiveStats(
+                      selectedDrone, attackerLane, player1, player2,
+                      { player1: placedSections, player2: opponentPlacedSections }
+                  );
+
+                  const potentialInterceptors = player2.dronesOnBoard[attackerLane]
+                      .filter(d => {
+                          const effectiveInterceptor = gameEngine.calculateEffectiveStats(
+                              d, attackerLane, player2, player1,
+                              { player1: placedSections, player2: opponentPlacedSections }
+                          );
+                          return !d.isExhausted &&
+                                 (effectiveInterceptor.speed > effectiveAttacker.speed || effectiveInterceptor.keywords.has('ALWAYS_INTERCEPTS')) &&
+                                 (d.id !== token.id);
+                      })
+                      .sort((a, b) => a.class - b.class);
+
+                  let interceptor = null;
+                  if (potentialInterceptors.length > 0) {
+                      if (token.class === undefined || potentialInterceptors[0].class < token.class) {
+                          interceptor = potentialInterceptors[0];
+                      }
+                  }
+
+                  if (interceptor) {
+                      setInterceptionModal({
+                          interceptor,
+                          originalTarget: token,
+                          onClose: () => {
+                              resolveAttack({ ...attackDetails, interceptor });
+                              setInterceptionModal(null);
+                              setSelectedDrone(null);
+                          },
+                      });
+                  } else {
+                      resolveAttack(attackDetails);
+                      setSelectedDrone(null);
+                  }
               }
           } else {
               console.log("FAILURE: Lanes do not match or could not be found.");
