@@ -462,11 +462,11 @@ const fullCardCollection = [
   {
     id: 'CARD020',
     baseCardId: 'CARD020',
-    name: 'Reinforced Hangar',
+    name: 'Slimline Bodywork',
     maxInDeck: 2,
     type: 'Upgrade', // New card type
     cost: 3,
-    image: 'https://placehold.co/128x128/a855f7/ffffff?text=Hangar',
+    image: '/cards/SlimlineBodywork.png',
     description: 'Permanently increase the deployment limit of a target drone type by 1. Go again.',
     targeting: {
       type: 'DRONE_CARD' // New targeting type for drone cards in your active pool
@@ -504,7 +504,7 @@ const fullCardCollection = [
     maxInDeck: 3,
     type: 'Action',
     cost: 1,
-    image: 'https://placehold.co/128x128/ef4444/ffffff?text=Sabotage',
+    image: '/cards/SystemSabotage.png',
     description: 'Destroy a single applied Upgrade on an enemy drone type.',
     targeting: {
       type: 'APPLIED_UPGRADE', // New targeting for an active upgrade
@@ -522,7 +522,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: 'https://placehold.co/128x128/34d399/ffffff?text=Maneuver',
+    image: '/cards/Maneuver.png',
     description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move. Go again.',
     effect: {
       type: 'SINGLE_MOVE',
@@ -537,7 +537,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 0,
-    image: 'https://placehold.co/128x128/34d399/ffffff?text=Maneuver',
+    image: '/cards/Maneuver.png',
     description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move. Go again.',
     effect: {
       type: 'SINGLE_MOVE',

@@ -356,7 +356,7 @@ const resolveAttack = useCallback((attackDetails, isAbilityOrCard = false) => {
         return;
     }
     isResolvingAttackRef.current = true;
-    const { attacker, target, targetType, interceptor, attackingPlayer, abilityDamage, goAgain, aiContext } = attackDetails;
+    const { attacker, target, targetType, interceptor, attackingPlayer, abilityDamage, goAgain, aiContext, lane } = attackDetails;
     const finalTarget = interceptor || target;
     const finalTargetType = interceptor ? 'drone' : targetType;
 
@@ -446,10 +446,11 @@ const resolveAttack = useCallback((attackDetails, isAbilityOrCard = false) => {
         }
     }
 
+    const laneForLog = attackerLane || (lane ? lane.replace('lane', 'Lane ') : null);
     const targetForLog = finalTargetType === 'drone'
-        ? `${finalTarget.name} (${attackerLane})`
+        ? `${finalTarget.name} (${laneForLog})`
         : finalTarget.name;
-    const sourceForLog = `${attacker.name} (${attackerLane})`;
+    const sourceForLog = `${attacker.name} (${laneForLog})`;
 
     addLogEntry({
         player: attackingPlayerId === 'player1' ? player1Ref.current.name : player2Ref.current.name,
@@ -462,7 +463,7 @@ const resolveAttack = useCallback((attackDetails, isAbilityOrCard = false) => {
     if (attackingPlayerId === 'player2') {
         setAiActionReport({
             attackerName: attacker.name,
-            lane: attackerLane,
+            lane: attackerLane || lane, // Use passed lane parameter if attackerLane is null (card-based attacks)
             targetName: finalTarget.name,
             targetType: finalTargetType,
             interceptorName: interceptor ? interceptor.name : null,
@@ -854,16 +855,30 @@ const resolveShipAbility = useCallback((ability, sectionName, target) => {
     // --- If AI is playing, set up the report modal ---
     if (actingPlayerId === 'player2') {
         let targetDisplayName = '';
+        let targetLane = '';
+
         if (target) {
             if (target.name) {
                 targetDisplayName = target.name;
+
+                // Find the lane for drone targets
+                if (target.id && target.owner) {
+                    const targetPlayerState = target.owner === 'player1' ? player1 : player2;
+                    for (const [lane, drones] of Object.entries(targetPlayerState.dronesOnBoard)) {
+                        if (drones.some(drone => drone.id === target.id)) {
+                            targetLane = lane.replace('lane', 'Lane ');
+                            break;
+                        }
+                    }
+                }
             } else if (target.id.startsWith('lane')) {
                 targetDisplayName = `Lane ${target.id.slice(-1)}`;
+                targetLane = `Lane ${target.id.slice(-1)}`;
             } else {
                 targetDisplayName = target.id.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
             }
         }
-        setAiCardPlayReport({ card, targetName: targetDisplayName });
+        setAiCardPlayReport({ card, targetName: targetDisplayName, targetLane });
     }
     const actingPlayerUpdater = actingPlayerId === 'player1' ? setPlayer1 : setPlayer2;
     const opponentUpdater = actingPlayerId === 'player1' ? setPlayer2 : setPlayer1;
@@ -1996,14 +2011,18 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
   // MODAL FOR AI CARD PLAY ---
   const AICardPlayReportModal = ({ report, onClose }) => {
     if (!report) return null;
-    const { card, targetName } = report;
-  
+    const { card, targetName, targetLane } = report;
+
     return (
       <GamePhaseModal title="AI Action: Card Played" text="" onClose={onClose}>
         <div className="flex flex-col items-center gap-4 mt-4">
             <p className="text-center text-lg text-gray-300">
                 The opponent played <strong className="text-purple-400">{card.name}</strong>
-                {targetName && <> on <strong className="text-cyan-400">{targetName}</strong></>}!
+                {targetName && (
+                    <> on <strong className="text-cyan-400">{targetName}</strong>
+                    {targetLane && <> in <strong className="text-yellow-400">{targetLane}</strong></>}
+                    </>
+                )}!
             </p>
             {/* Display the card that was played */}
             <div className="transform scale-75">

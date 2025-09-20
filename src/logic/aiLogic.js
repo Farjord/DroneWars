@@ -419,25 +419,28 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
               if (card.targeting?.type === 'LANE') {
                   const laneId = target.id;
                   const dronesInLane = player2.dronesOnBoard[laneId] || [];
+                  const activeDronesInLane = dronesInLane.filter(drone => !drone.isExhausted);
 
-                  if (dronesInLane.length === 0) {
+                  if (activeDronesInLane.length === 0) {
                       score = 0;
-                      action.logic.push('No Drones in Lane');
+                      action.logic.push('No Active Drones in Lane');
                   } else {
                       const currentLaneScore = calculateLaneScore(laneId, player2, player1, allSections, getShipStatus, calculateEffectiveStats);
-                      
+
                       const tempAiState = JSON.parse(JSON.stringify(player2));
                       tempAiState.dronesOnBoard[laneId].forEach(drone => {
-                          if (!drone.statMods) drone.statMods = [];
-                          drone.statMods.push(mod);
+                          if (!drone.isExhausted) {
+                              if (!drone.statMods) drone.statMods = [];
+                              drone.statMods.push(mod);
+                          }
                       });
-                      
+
                       const projectedLaneScore = calculateLaneScore(laneId, tempAiState, player1, allSections, getShipStatus, calculateEffectiveStats);
                       const laneImpact = projectedLaneScore - currentLaneScore;
-                      
-                      score = (laneImpact * 1.5) + (dronesInLane.length * 10);
+
+                      score = (laneImpact * 1.5) + (activeDronesInLane.length * 10);
                       action.logic.push(`Lane Impact: ${laneImpact.toFixed(0)}`);
-                      action.logic.push(`Multi-Buff Bonus: ${dronesInLane.length * 10}`);
+                      action.logic.push(`Multi-Buff Bonus: ${activeDronesInLane.length * 10}`);
                   }
               } else {
                   if (mod.stat === 'attack' && mod.value > 0) {
@@ -459,17 +462,31 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
                           action.logic.push(`Threat Reduction: ${effectiveTarget.attack * 8}`);
                       }
                   } else if (mod.stat === 'speed' && mod.value > 0) {
-                      const targetLane = getLaneOfDrone(target.id, player2);
-                      const opponentsInLane = player1.dronesOnBoard[targetLane] || [];
-                      const opponentMaxSpeed = opponentsInLane.length > 0 ? Math.max(...opponentsInLane.map(d => calculateEffectiveStats(d, targetLane, player1, player2, allSections).speed)) : -1;
-                      const effectiveTarget = calculateEffectiveStats(target, targetLane, player2, player1, allSections);
-                      
-                      if (effectiveTarget.speed <= opponentMaxSpeed && (effectiveTarget.speed + mod.value) > opponentMaxSpeed) {
-                          score = 60;
-                          action.logic.push(`Interceptor Overcome Bonus: 60`);
+                      if (target.isExhausted) {
+                          score = -1;
+                          action.logic.push('Invalid (Exhausted)');
                       } else {
-                          score = 20;
-                          action.logic.push(`Utility Speed Bonus: 20`);
+                          const targetLane = getLaneOfDrone(target.id, player2);
+                          const opponentsInLane = player1.dronesOnBoard[targetLane] || [];
+                          const opponentMaxSpeed = opponentsInLane.length > 0 ? Math.max(...opponentsInLane.map(d => calculateEffectiveStats(d, targetLane, player1, player2, allSections).speed)) : -1;
+                          const effectiveTarget = calculateEffectiveStats(target, targetLane, player2, player1, allSections);
+
+                          if (effectiveTarget.speed <= opponentMaxSpeed && (effectiveTarget.speed + mod.value) > opponentMaxSpeed) {
+                              score = 60;
+                              action.logic.push(`Interceptor Overcome Bonus: 60`);
+                          } else {
+                              score = 20;
+                              action.logic.push(`Utility Speed Bonus: 20`);
+                          }
+                      }
+                  } else {
+                      // Catch-all for other stat modifications
+                      if (target.isExhausted) {
+                          score = -1;
+                          action.logic.push('Invalid (Exhausted)');
+                      } else {
+                          score = 10; // minimal value for other stats
+                          action.logic.push('Generic stat modification');
                       }
                   }
               }

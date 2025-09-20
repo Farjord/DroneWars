@@ -34,7 +34,7 @@ const aiPersonalities = [
     ]
   },
   {
-    name: 'The Blitz Commander',
+    name: 'The Schiazami Syndicate',
     description: 'Focuses on overwhelming firepower and direct damage to drones and ship sections.',
     // The specific 5 drones this AI will use.
     dronePool: [
