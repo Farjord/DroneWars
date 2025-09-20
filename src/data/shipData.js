@@ -50,7 +50,7 @@
         damaged: { 'Initial Deployment': 5, 'CPU Control Value': 10, 'Deployment Budget': 2 },
         critical: { 'Initial Deployment': 4, 'CPU Control Value': 8, 'Deployment Budget': 2 },
       },
-      middleLaneBonus: {'Initial Deployment': 2, 'Deployment Budget': 3, 'CPU Control Value': 2 },
+      middleLaneBonus: {'Initial Deployment': 2, 'Deployment Budget': 2, 'CPU Control Value': 2 },
       image: '/img/Drone_Control_Hub.png',
       ability: {
         id: 'ABILITY_SHIP_03',

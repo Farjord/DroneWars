@@ -109,12 +109,16 @@ const App = () => {
   }, [player2]);
   const passInfoRef = useRef(passInfo);
 const turnPhaseRef = useRef(turnPhase);
+const winnerRef = useRef(winner);
  useEffect(() => {
   passInfoRef.current = passInfo;
 }, [passInfo]);
 useEffect(() => {
   turnPhaseRef.current = turnPhase;
 }, [turnPhase]);
+useEffect(() => {
+  winnerRef.current = winner;
+}, [winner]);
 
 const isResolvingAttackRef = useRef(false);
 
@@ -202,10 +206,11 @@ const endTurn = useCallback((actingPlayer) => {
   setCurrentPlayer(nextPlayer);
   if (nextPlayer === 'player1') {
       setModalContent(null);
-  } else {
-      setModalContent({ 
-        title: "Opponent's Turn", 
-        text: "The AI is taking its turn.", 
+  } else if (!winnerRef.current) {
+      // Only show opponent turn modal if game hasn't ended
+      setModalContent({
+        title: "Opponent's Turn",
+        text: "The AI is taking its turn.",
         isBlocking: false,
         onClose: null
       });
@@ -1236,6 +1241,8 @@ const resolveShipAbility = useCallback((ability, sectionName, target) => {
     if (!effect.goAgain) {
       if (actingPlayerId === 'player1') {
         endTurn('player1');
+      } else if (actingPlayerId === 'player2') {
+        endTurn('player2');
       }
     }
 }, [player1, player2, resolveAttack, endTurn, triggerExplosion, addLogEntry, gameEngine, placedSections, opponentPlacedSections]);
@@ -1596,9 +1603,14 @@ const ShipAbilityIcon = ({ onClick, ability, isUsable, isSelected }) => (
                 ))}
               </div>
               <div className="flex w-full justify-center gap-0.5">
-                {Array.from({ length: baseDrone.hull }).map((_, i) => (
-                  <div key={i} className={`h-2 w-2 rounded-sm ${i < drone.hull ? 'bg-green-500' : 'bg-gray-400'} border border-black/50`}></div>
-                ))}
+                {Array.from({ length: baseDrone.hull }).map((_, i) => {
+                  const isFullHull = i < drone.hull;
+                  const fullHullColor = drone.isExhausted ? 'bg-green-800' : 'bg-green-500';
+                  const damagedHullColor = 'bg-gray-400';
+                  return (
+                    <div key={i} className={`h-2 w-2 rounded-sm ${isFullHull ? fullHullColor : damagedHullColor} border border-black/50`}></div>
+                  );
+                })}
               </div>
             </div>
             <div className={`absolute bottom-0 left-0 right-0 h-5 ${nameBgColor} flex items-center justify-center border-t ${borderColor}`}>
@@ -1793,7 +1805,7 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
                   if (isInteractive && onSectionClick) { // Specifically for shield allocation
                     onSectionClick(sectionName);
                   } else if (onTargetClick) { // For attacks and card/ability targeting
-                    onTargetClick({ name: sectionName, ...sectionStats }, 'section', isPlayer);
+                    onTargetClick({ id: sectionName, name: sectionName, ...sectionStats }, 'section', isPlayer);
                   }
                 }}
                 onAbilityClick={onAbilityClick}
@@ -2870,6 +2882,7 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
             const { newState: stateAfterMove } = gameEngine.applyOnMoveEffects(tempState, movedDrone, fromLane, toLane, addLogEntry);
             stateAfterMove.dronesOnBoard = gameEngine.updateAuras(stateAfterMove, player1Ref.current, { player1: placedSections, player2: opponentPlacedSections });
             setPlayer2(stateAfterMove);
+            endTurn('player2');
             break;
           }
           default:
@@ -2964,7 +2977,10 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
    const firstActor = firstPlayerOfRound;
    setCurrentPlayer(firstActor);
    setTurnPhase('action');
-    
+
+    // Don't show turn modals if game has ended
+    if (winner) return;
+
     if (firstActor === 'player1') {
      setModalContent({
             title: "Action Phase Begins",
@@ -3194,6 +3210,10 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
   const handleStartDeploymentPhase = () => {
    setPassInfo({ firstPasser: null, player1Passed: false, player2Passed: false });
    setTurnPhase('deployment');
+
+    // Don't show turn modals if game has ended
+    if (winner) return;
+
     const deploymentResource = turn === 1 ? 'Initial Deployment Points' : 'Energy';
     if (firstPlayerOfRound === 'player1') {
      setModalContent({
@@ -4008,15 +4028,27 @@ const handleShipAbilityClick = (e, section, ability) => {
   
   const handleConfirmMandatoryDestroy = (drone) => {
    setPlayer1(prev => {
-        let newPlayerState = {...prev};
-        const lane = gameEngine.getLaneOfDrone(drone.id, newPlayerState);
+        const lane = gameEngine.getLaneOfDrone(drone.id, prev);
         if (lane) {
+            // Create proper immutable copy of the nested dronesOnBoard object
+            let newPlayerState = {
+                ...prev,
+                dronesOnBoard: { ...prev.dronesOnBoard }
+            };
+
+            // Remove drone from the specific lane
             newPlayerState.dronesOnBoard[lane] = newPlayerState.dronesOnBoard[lane].filter(d => d.id !== drone.id);
+
+            // Apply destruction updates (like deployedDroneCounts)
             const onDestroyUpdates = gameEngine.onDroneDestroyed(newPlayerState, drone);
             Object.assign(newPlayerState, onDestroyUpdates);
+
+            // Update auras
             newPlayerState.dronesOnBoard = gameEngine.updateAuras(newPlayerState, player2Ref.current, { player1: placedSections, player2: opponentPlacedSections });
+
+            return newPlayerState;
         }
-        return newPlayerState;
+        return prev;
     });
 
    setMandatoryAction(prev => {
@@ -4111,13 +4143,13 @@ const handleShipAbilityClick = (e, section, ability) => {
         // The turn ends only if the card doesn't grant another action.
         if (aiCardPlayReport && !aiCardPlayReport.card.effect.goAgain) {
             endTurn('player2');
-        } else if (aiCardPlayReport && aiCardPlayReport.card.effect.goAgain) {
-             // If AI can go again, we just close the modal and the AI's turn continues.
+        } else if (aiCardPlayReport && aiCardPlayReport.card.effect.goAgain && !winner) {
+             // If AI can go again and game hasn't ended, the AI's turn continues.
              setCurrentPlayer('player2');
              setModalContent({ title: "Opponent's Turn", text: "The AI takes another action!", isBlocking: false });
         }
         setAiCardPlayReport(null);
-    }, [endTurn, aiCardPlayReport]);
+    }, [endTurn, aiCardPlayReport, winner]);
 
   const sortedPlayer1ActivePool = useMemo(() => {
     return [...player1.activeDronePool].sort((a, b) => {
@@ -4586,7 +4618,7 @@ const handleShipAbilityClick = (e, section, ability) => {
             <span className="text-sm text-gray-400">Shields to Allocate</span>
         </div>
         
-        <button onClick={handleEndAllocation} disabled={shieldsToAllocate > 0 && canAllocateMoreShields} className={`text-white font-bold py-3 px-8 rounded-full transition-colors duration-200 ${shieldsToAllocate > 0 && canAllocateMoreShields ? 'bg-gray-700 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/30'}`}>End Allocation</button>
+        <button onClick={handleEndAllocation} className="text-white font-bold py-3 px-8 rounded-full transition-colors duration-200 bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/30">End Allocation</button>
     </div>
 }
           </div>

@@ -54,6 +54,7 @@ const DeckBuilder = ({
     cost: { min: 0, max: 99 }, // Temporary values
     target: 'all',
     abilities: [],
+    hideEnhanced: false,
   });
   const [isAbilityDropdownOpen, setIsAbilityDropdownOpen] = useState(false);
   const abilityFilterRef = useRef(null);
@@ -211,6 +212,10 @@ const DeckBuilder = ({
         // Abilities filter (must have ALL selected abilities)
         if (filters.abilities.length > 0) {
           return filters.abilities.every(ability => card.keywords.includes(ability));
+        }
+        // Enhanced cards filter
+        if (filters.hideEnhanced && card.id.endsWith('_ENHANCED')) {
+          return false;
         }
         return true;
       });
@@ -387,7 +392,7 @@ const DeckBuilder = ({
         <div className="w-2/3 flex flex-col bg-slate-900/50 rounded-lg p-4 border border-gray-700">
           <h2 className="text-xl font-orbitron mb-4">Available Cards</h2>
           {/* --- NEW: Filter Input --- */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             {/* Cost Range Filter */}
             <div className="filter-select flex flex-col justify-center">
                 <label className="text-center text-gray-400 mb-1">Cost Range: {filters.cost.min} - {filters.cost.max}</label>
@@ -432,6 +437,19 @@ const DeckBuilder = ({
             <select onChange={(e) => handleFilterChange('target', e.target.value)} value={filters.target} className="filter-select h-full">
                 {filterOptions.targets.map(target => <option key={target} value={target}>{target === 'all' ? 'All Targets' : target}</option>)}
             </select>
+
+            {/* Enhanced Cards Filter */}
+            <div className="filter-select flex items-center justify-center h-full">
+                <label className="flex items-center cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={filters.hideEnhanced}
+                        onChange={(e) => handleFilterChange('hideEnhanced', e.target.checked)}
+                        className="mr-2"
+                    />
+                    <span className="text-gray-300">Hide Enhanced Cards</span>
+                </label>
+            </div>
           </div>
           <div className="flex-grow overflow-y-auto pr-2">
             <table className="w-full text-left deck-builder-table">
