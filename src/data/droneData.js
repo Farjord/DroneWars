@@ -99,10 +99,10 @@ const fullDroneCollection = [
   name: 'Kamikaze Drone', 
   class: 1, 
   limit: 4, 
-  attack: 4, 
+  attack: 3, 
   hull: 1, 
   shields: 0, 
-  speed: 4, 
+  speed: 3, 
   image: '/img/Kamikaze.png', 
   abilities: [{
       name: 'Self-Destruct',
@@ -116,7 +116,7 @@ const fullDroneCollection = [
   { name: 'Swarm Drone', class: 0, limit: 3, attack: 1, hull: 1, shields: 0, speed: 3, image: '/img/Swarm.png', abilities: [], upgradeSlots: 3 },
   { 
     name: 'Sniper Drone', 
-    class: 4, limit: 1, attack: 1, hull: 1, shields: 0, speed: 2, 
+    class: 4, limit: 2, attack: 1, hull: 1, shields: 0, speed: 2, 
     image: '/img/Sniper.png', 
     abilities: [{
         name: 'Long-Range Shot',

@@ -6,7 +6,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 2,
-    image: 'https://placehold.co/128x128/f43f5e/ffffff?text=Blast',
+    image: '/cards/LaserBlast.png',
     description: 'Deal 3 damage to any drone.',
     targeting: {
       type: 'DRONE',
@@ -22,11 +22,11 @@ const fullCardCollection = [
   {
     id: 'CARD001_ENHANCED',
     baseCardId: 'CARD001', // Links to the standard Laser Blast
-    name: 'Laser Blast (Enhanced)',
+    name: 'Laser Blast+',
     maxInDeck: 4,
     type: 'Action',
     cost: 2,
-    image: 'https://placehold.co/128x128/f43f5e/ffffff?text=Blast%2B',
+    image: '/cards/LaserBlast.png',
     description: 'Deal 4 damage to any drone.',
     targeting: {
       type: 'DRONE',
@@ -46,12 +46,27 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: 'https://placehold.co/128x128/22d3ee/ffffff?text=Draw',
+    image: '/cards/Reboot.pgn',
     description: 'Draw 2 cards from your deck.',
     // No targeting key is needed for this card
     effect: {
       type: 'DRAW',
       value: 2
+    }
+  },
+      {
+    id: 'CARD002_ENHANCED',
+    baseCardId: 'CARD002',
+    name: 'System Reboot+',
+    maxInDeck: 4,
+    type: 'Action',
+    cost: 1,
+    image: '/cards/Reboot.pgn',
+    description: 'Draw 3 cards from your deck.',
+    // No targeting key is needed for this card
+    effect: {
+      type: 'DRAW',
+      value: 3
     }
   },
    {
@@ -76,12 +91,27 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 0,
-    image: 'https://placehold.co/128x128/facc15/000000?text=Energy',
+    image: '/cards/EnergySurge.png',
     description: 'Gain 2 Energy.',
     // No targeting is needed for this effect
     effect: {
       type: 'GAIN_ENERGY',
       value: 2
+    }
+  },
+      {
+    id: 'CARD004_ENHANCED',
+    baseCardId: 'CARD004',
+    name: 'Energy Surge+',
+    maxInDeck: 4,
+    type: 'Action',
+    cost: 0,
+    image: '/cards/EnergySurge.png',
+    description: 'Gain 3 Energy.',
+    // No targeting is needed for this effect
+    effect: {
+      type: 'GAIN_ENERGY',
+      value: 3
     }
   },
     {
@@ -91,7 +121,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: 'https://placehold.co/128x128/10b981/ffffff?text=Ready',
+    image: '/cards/AdrenalineRush.png',
     description: 'Ready an exhausted friendly drone.',
     targeting: {
       type: 'DRONE',
@@ -103,6 +133,26 @@ const fullCardCollection = [
       type: 'READY_DRONE'
     }
   },
+      {
+    id: 'CARD005_ENHANCED',
+    baseCardId: 'CARD005',
+    name: 'Adrenaline Rush+',
+    maxInDeck: 4,
+    type: 'Action',
+    cost: 2,
+    image: '/cards/AdrenalineRush.png',
+    description: 'Ready an exhausted friendly drone. Go again',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'FRIENDLY',
+      location: 'ANY_LANE',
+      custom: ['EXHAUSTED'] 
+    },
+    effect: {
+      type: 'READY_DRONE',
+      goAgain: true
+    }
+  },
     {
     id: 'CARD006',
     baseCardId: 'CARD006',
@@ -110,7 +160,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: 'https://placehold.co/128x128/60a5fa/ffffff?text=Repair+',
+    image: '/cards/NanobotRepair.png',
     description: 'Restore 3 hull to a friendly drone. Cannot exceed its maximum hull.',
     targeting: {
       type: 'DRONE',
@@ -129,7 +179,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 3,
-    image: 'https://placehold.co/128x128/34d399/ffffff?text=Patch',
+    image: '/cards/EmergencyPatch.png',
     description: 'Restore 4 hull to one of your ship sections.',
     targeting: {
       type: 'SHIP_SECTION',
@@ -140,6 +190,24 @@ const fullCardCollection = [
       value: 4
     }
   },
+    {
+    id: 'CARD007_ENHANCED',
+    baseCardId: 'CARD007',
+    name: 'Emergency Patch+',
+    maxInDeck: 4,
+    type: 'Action',
+    cost: 3,
+    image: '/cards/EmergencyPatch.png',
+    description: 'Restore 5 hull to one of your ship sections.',
+    targeting: {
+      type: 'SHIP_SECTION',
+      affinity: 'FRIENDLY'
+    },
+    effect: {
+      type: 'HEAL_HULL', 
+      value: 5
+    }
+  },
   {
     id: 'CARD008',
     baseCardId: 'CARD008',
@@ -147,7 +215,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: 'https://placehold.co/128x128/4ade80/000000?text=Recharge',
+    image: '/cards/ShieldRecharge.png',
     description: 'Restore 1 shield to all friendly drones in a target lane.',
     targeting: {
       type: 'LANE', // New targeting type
@@ -166,7 +234,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 4, // High cost for a powerful effect
-    image: 'https://placehold.co/128x128/f87171/ffffff?text=Target',
+    image: '/cards/TargetLock.png',
     description: 'Destroy a single target drone.',
     targeting: {
       type: 'DRONE',
@@ -187,7 +255,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 4,
-    image: 'https://placehold.co/128x128/60a5fa/ffffff?text=Shrieker',
+    image: '/cards/ShriekerMissiles.png',
     description: 'Destroy all enemy drones with a speed of 5 or higher in a selected lane.',
     targeting: {
       type: 'LANE',
@@ -208,7 +276,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 7, // Increased cost to reflect its power
-    image: 'https://placehold.co/128x128/ef4444/ffffff?text=Nuke',
+    image: '/cards/Nuke.png',
     description: 'Destroy ALL drones in a selected lane (both sides).',
     targeting: {
       type: 'LANE',
@@ -223,11 +291,31 @@ const fullCardCollection = [
     {
     id: 'CARD012',
     baseCardId: 'CARD012',
-    name: 'Armor-Piercing Shot',
+    name: 'Piercing Shot',
     maxInDeck: 4,
     type: 'Action',
     cost: 3,
-    image: 'https://placehold.co/128x128/84cc16/ffffff?text=Pierce',
+    image: '/cards/PiercingShot.png',
+    description: 'Deal 2 piercing damage to any drone. (Piercing damage ignores shields).',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ANY', 
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 2,
+      damageType: 'PIERCING' // This new property defines the damage type
+    }
+  },
+      {
+    id: 'CARD012_ENHANCED',
+    baseCardId: 'CARD012',
+    name: 'Piercing Shot+',
+    maxInDeck: 4,
+    type: 'Action',
+    cost: 2,
+    image: '/cards/PiercingShot.png',
     description: 'Deal 2 piercing damage to any drone. (Piercing damage ignores shields).',
     targeting: {
       type: 'DRONE',
@@ -248,7 +336,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 3,
-    image: 'https://placehold.co/128x128/60a5fa/ffffff?text=Sidewinder',
+    image: '/cards/SidewinderMissiles.png',
     description: 'Deal 2 damage to all enemy drones with a speed of 3 or Less in a selected lane.',
     targeting: {
       type: 'LANE',
@@ -268,7 +356,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 0,
-    image: 'https://placehold.co/128x128/fb923c/ffffff?text=ATK+',
+    image: '/cards/Overcharge.pngFs',
     description: 'Give a friendly drone +2 attack until the end of the turn.',
     targeting: {
       type: 'DRONE',
@@ -345,7 +433,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: 'https://placehold.co/128x128/f59e0b/ffffff?text=Desperate',
+    image: '/cards/DesperateMeasures.png',
     description: 'Draw 1 card and gain 1 Energy. Repeat this effect for each of your damaged or critical ship sections.',
     effect: {
       type: 'REPEATING_EFFECT',
@@ -360,7 +448,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: 'https://placehold.co/128x128/a78bfa/ffffff?text=Move',
+    image: '/cards/Reposition.png',
     description: 'Select a lane. Move up to 3 friendly drones from that lane to another. The moved drones are not exhausted.',
     effect: {
       type: 'MULTI_MOVE',
@@ -396,14 +484,14 @@ const fullCardCollection = [
     maxInDeck: 2,
     type: 'Upgrade',
     cost: 3,
-    image: 'https://placehold.co/128x128/38bdf8/ffffff?text=Thrusters',
-    description: 'Permanently grant all drones of a target type +2 Speed.',
+    image: '/cards/OverclockedThrusters.png',
+    description: 'Permanently grant all drones of a target type +1 Speed.',
     targeting: {
       type: 'DRONE_CARD'
     },
     effect: {
       type: 'MODIFY_DRONE_BASE',
-      mod: { stat: 'speed', value: 2 },
+      mod: { stat: 'speed', value: 1 },
     },
     maxApplications: 2 // This can be stacked twice on the same drone type
 },
@@ -433,6 +521,21 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
+    image: 'https://placehold.co/128x128/34d399/ffffff?text=Maneuver',
+    description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move. Go again.',
+    effect: {
+      type: 'SINGLE_MOVE',
+      properties: ['DO_NOT_EXHAUST'],
+      goAgain: true
+    }
+},
+{
+    id: 'CARD023_ENHANCED',
+    baseCardId: 'CARD023',
+    name: 'Maneuver+',
+    maxInDeck: 4,
+    type: 'Action',
+    cost: 0,
     image: 'https://placehold.co/128x128/34d399/ffffff?text=Maneuver',
     description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move. Go again.',
     effect: {

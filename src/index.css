@@ -3,6 +3,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@tailwind base;
+@tailwind components;
+.btn-clipped {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
+}
+@tailwind utilities;
 
 .font-orbitron { font-family: 'Orbitron', sans-serif; }
 .font-exo { font-family: 'Exo', sans-serif; }

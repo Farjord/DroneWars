@@ -52,18 +52,18 @@ const aiPersonalities = [
       { id: 'CARD010', quantity: 2 }, // Shrieker Missiles
       
       // Core Damage & Buffs (Multiple Copies)
-      { id: 'CARD001', quantity: 4 }, // Laser Blast
-      { id: 'CARD012', quantity: 4 }, // Armor-Piercing Shot
+      { id: 'CARD001_ENHANCED', quantity: 4 }, // Laser Blast
+      { id: 'CARD012_ENHANCED', quantity: 4 }, // Armor-Piercing Shot
       { id: 'CARD013', quantity: 4 }, // Sidewinder Missiles
       { id: 'CARD014', quantity: 4 }, // Overcharge
       { id: 'CARD017', quantity: 3 }, // Boosters
       { id: 'CARD016', quantity: 3 }, // Static Field
-      { id: 'CARD005', quantity: 2 }, // Adrenaline Rush
+      { id: 'CARD005_ENHANCED', quantity: 2 }, // Adrenaline Rush
       
       // Resource & Consistency (Max Copies)
-      { id: 'CARD004', quantity: 2 }, // Energy Surge
+      { id: 'CARD004_ENHANCED', quantity: 2 }, // Energy Surge
       { id: 'CARD003', quantity: 2 }, // Out Think
-      { id: 'CARD002', quantity: 3 }, // System Reboot
+      { id: 'CARD002_ENHANCED', quantity: 3 }, // System Reboot
       { id: 'CARD018', quantity: 4 }, // Desperate Measures
     ]
   },

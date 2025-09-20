@@ -29,7 +29,7 @@
         damaged: { 'Energy Per Turn': 10, 'Max Energy': 10, 'Shields Per Turn': 2 },
         critical: { 'Energy Per Turn': 9, 'Max Energy': 9, 'Shields Per Turn': 1 },
       },
-      middleLaneBonus: { 'Energy Per Turn': 2, 'Max Energy': 2, 'Shields Per Turn': 1 },
+      middleLaneBonus: { 'Energy Per Turn': 2, 'Max Energy': 2, 'Shields Per Turn': 2 },
       image: '/img/Power_Cell.png',
       ability: {
         id: 'ABILITY_SHIP_02',
@@ -50,7 +50,7 @@
         damaged: { 'Initial Deployment': 5, 'CPU Control Value': 10, 'Deployment Budget': 2 },
         critical: { 'Initial Deployment': 4, 'CPU Control Value': 8, 'Deployment Budget': 2 },
       },
-      middleLaneBonus: { 'Deployment Budget': 1, 'CPU Control Value': 2 },
+      middleLaneBonus: {'Initial Deployment': 2, 'Deployment Budget': 2, 'CPU Control Value': 2 },
       image: '/img/Drone_Control_Hub.png',
       ability: {
         id: 'ABILITY_SHIP_03',

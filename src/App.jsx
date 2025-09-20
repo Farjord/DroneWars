@@ -4124,7 +4124,7 @@ const handleShipAbilityClick = (e, section, ability) => {
                 <button
                     onClick={handlePlayerPass}
                     disabled={passInfo.player1Passed}
-                    className={`text-white font-bold py-2 px-6 rounded-full transition-colors duration-200 ${
+                    className={`btn-clipped text-white font-bold py-1 px-6 transition-colors duration-200 ${
                         passInfo.player1Passed ? 'bg-gray-700 cursor-not-allowed' : 'bg-red-600 hover:bg-red-500'
                     }`}
                 >

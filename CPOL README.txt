@@ -15,7 +15,10 @@ AI - Bomber only scoring 8 for attacking the bridge??
 
 
 
-CARD018:4,CARD003:4,CARD002:4,CARD005:4,CARD012:4,CARD007:2,CARD004:4,CARD001:4,CARD023:4,CARD021:2,CARD020:2,CARD016:2
+Basic Deck:
+CARD018:4,CARD003:4,CARD002:4,CARD005:4,CARD012:4,CARD007:2,CARD004:4,CARD001:4,CARD023:4,CARD020:2,CARD016:2,CARD021:2
+
+Movement Deck: CARD023:4,CARD019:4,CARD005:4,CARD018:4,CARD007:4,CARD004:2,CARD001:4,CARD014:4,CARD021:1,CARD012:4,CARD020:2,CARD009:3
 
 
 I am in the process of migrating my game so that it multiplayer compatible. This means moving core logic functions out of the app.jsx into gameLogic.js.
@@ -29,11 +32,11 @@ I want to go through this one small step at a time, so please do not provide ins
 Checking In a New Version (Saving Your Work)
 This is the standard 3-step process to save your changes to GitHub.
 
-$git add .$
+git add .
 
 Use: Prepares all your saved changes for the next commit.
 
-$git commit -m "Your message here"$
+git commit -m "Your message here"
 
 Use: Saves your prepared changes as a new version with a descriptive message.
 
