@@ -349,236 +349,50 @@ const endTurn = useCallback((actingPlayer) => {
     setMultiSelectState(null);
   };
 
-const resolveAttack = useCallback((attackDetails, isAbilityOrCard = false) => {
+const resolveAttack = useCallback((attackDetails) => {
     // --- Prevent duplicate runs ---
     if (isResolvingAttackRef.current) {
         console.warn("Attack already in progress. Aborting duplicate call.");
         return;
     }
     isResolvingAttackRef.current = true;
-    const { attacker, target, targetType, interceptor, attackingPlayer, abilityDamage, goAgain, aiContext, lane } = attackDetails;
-    const finalTarget = interceptor || target;
-    const finalTargetType = interceptor ? 'drone' : targetType;
-
-    const attackingPlayerId = attackingPlayer;
-    const defendingPlayerId = finalTarget.owner || (attackingPlayerId === 'player1' ? 'player2' : 'player1');
-
-    const attackerPlayerState = attackingPlayerId === 'player1' ? player1Ref.current : player2Ref.current;
-    const defenderPlayerState = defendingPlayerId === 'player1' ? player1Ref.current : player2Ref.current;
-
-    const attackerStateSetter = attackingPlayerId === 'player1' ? setPlayer1 : setPlayer2;
-    const defenderStateSetter = defendingPlayerId === 'player1' ? setPlayer1 : setPlayer2;
-
-    const attackerLane = gameEngine.getLaneOfDrone(attacker.id, attackerPlayerState);
-    const effectiveAttacker = gameEngine.calculateEffectiveStats(
-        attacker,
-        attackerLane,
-        attackerPlayerState,
-        defenderPlayerState,
-        { player1: placedSections, player2: opponentPlacedSections }
-    );
-
-    let damage = abilityDamage ?? Math.max(0, effectiveAttacker.attack);
-    let damageType = attackDetails.damageType || attacker.damageType;
-    if (effectiveAttacker.keywords.has('PIERCING')) {
-        damageType = 'PIERCING';
-    }
-
-    if (finalTargetType === 'section' && !abilityDamage) {
-        const baseAttacker = fullDroneCollection.find(d => d.name === attacker.name);
-        baseAttacker?.abilities?.forEach(ability => {
-            if (ability.type === 'PASSIVE' && ability.effect.type === 'BONUS_DAMAGE_VS_SHIP') {
-                damage += ability.effect.value;
-            }
-        });
-    }
 
     const triggerHitAnimation = (targetId) => {
         setRecentlyHitDrones(prev => [...prev, targetId]);
         setTimeout(() => setRecentlyHitDrones(prev => prev.filter(id => id !== targetId)), 500);
     };
 
-    let outcome = '';
-    let shieldDamage = 0;
-    let hullDamage = 0;
-    let wasDestroyed = false;
-    let remainingShields = 0;
-    let remainingHull = 0;
+    // Use the gameEngine version
+    const result = gameEngine.resolveAttack(
+        attackDetails,
+        { player1: player1Ref.current, player2: player2Ref.current },
+        { player1: placedSections, player2: opponentPlacedSections },
+        (logEntry) => addLogEntry(logEntry, 'resolveAttack', attackDetails.attackingPlayer === 'player2' ? attackDetails.aiContext : null),
+        triggerExplosion,
+        triggerHitAnimation
+    );
 
-    if (finalTargetType === 'drone') {
-        let targetInState = null;
-        for (const lane in defenderPlayerState.dronesOnBoard) {
-            targetInState = defenderPlayerState.dronesOnBoard[lane].find(d => d.id === finalTarget.id);
-            if (targetInState) break;
-        }
-        if (targetInState) {
-            let remainingDamage = damage;
-            if (damageType !== 'PIERCING') {
-                shieldDamage = Math.min(damage, targetInState.currentShields);
-                remainingDamage -= shieldDamage;
-            }
-            hullDamage = Math.min(remainingDamage, targetInState.hull);
-            wasDestroyed = (targetInState.hull - hullDamage) <= 0;
-            remainingShields = targetInState.currentShields - shieldDamage;
-            remainingHull = wasDestroyed ? 0 : targetInState.hull - hullDamage;
-        }
-    } else {
-        const sectionInState = defenderPlayerState.shipSections[finalTarget.name];
-        if (sectionInState) {
-            let remainingDamage = damage;
-            if (damageType !== 'PIERCING') {
-                shieldDamage = Math.min(damage, sectionInState.allocatedShields);
-                remainingDamage -= shieldDamage;
-            }
-            hullDamage = Math.min(remainingDamage, sectionInState.hull);
-            wasDestroyed = (sectionInState.hull - hullDamage) <= 0;
-            remainingShields = sectionInState.allocatedShields - shieldDamage;
-            remainingHull = wasDestroyed ? 0 : sectionInState.hull - hullDamage;
-        }
-    }
+    // Update player states
+    setPlayer1(result.newPlayerStates.player1);
+    setPlayer2(result.newPlayerStates.player2);
 
-    outcome = `Dealt ${shieldDamage} shield and ${hullDamage} hull damage to ${finalTarget.name}.`;
-    if (finalTargetType === 'drone') {
-        if (wasDestroyed) {
-            outcome += ` ${finalTarget.name} Destroyed.`;
-        } else {
-            outcome += ` ${finalTarget.name} has ${remainingShields} shields and ${remainingHull} hull left.`;
-        }
-    }
-
-    const laneForLog = attackerLane || (lane ? lane.replace('lane', 'Lane ') : null);
-    const targetForLog = finalTargetType === 'drone'
-        ? `${finalTarget.name} (${laneForLog})`
-        : finalTarget.name;
-    const sourceForLog = `${attacker.name} (${laneForLog})`;
-
-    addLogEntry({
-        player: attackingPlayerId === 'player1' ? player1Ref.current.name : player2Ref.current.name,
-        actionType: 'ATTACK',
-        source: sourceForLog,
-        target: targetForLog,
-        outcome: outcome
-    }, 'resolveAttack', attackingPlayerId === 'player2' ? aiContext : null);
-
-    if (attackingPlayerId === 'player2') {
+    // Handle AI action report
+    if (attackDetails.attackingPlayer === 'player2') {
         setAiActionReport({
-            attackerName: attacker.name,
-            lane: attackerLane || lane, // Use passed lane parameter if attackerLane is null (card-based attacks)
-            targetName: finalTarget.name,
-            targetType: finalTargetType,
-            interceptorName: interceptor ? interceptor.name : null,
-            shieldDamage,
-            hullDamage,
-            wasDestroyed,
-            remainingShields,
-            remainingHull,
+            ...result.attackResult,
             isBlocking: true
         });
     }
 
-    defenderStateSetter(prev => {
-        let newPlayerState = JSON.parse(JSON.stringify(prev));
-        if (finalTargetType === 'drone') {
-            let droneDestroyed = false;
-            for (const lane in newPlayerState.dronesOnBoard) {
-                const targetIndex = newPlayerState.dronesOnBoard[lane].findIndex(d => d.id === finalTarget.id);
-                if (targetIndex !== -1) {
-                    if ((newPlayerState.dronesOnBoard[lane][targetIndex].hull - hullDamage) <= 0) {
-                        droneDestroyed = true;
-                        triggerExplosion(finalTarget.id);
-                        const destroyedDrone = newPlayerState.dronesOnBoard[lane][targetIndex];
-                        newPlayerState.dronesOnBoard[lane] =
-                            newPlayerState.dronesOnBoard[lane].filter(d => d.id !== finalTarget.id);
-                        Object.assign(newPlayerState, gameEngine.onDroneDestroyed(newPlayerState, destroyedDrone));
-                    } else {
-                        triggerHitAnimation(finalTarget.id);
-                        newPlayerState.dronesOnBoard[lane][targetIndex].hull -= hullDamage;
-                        newPlayerState.dronesOnBoard[lane][targetIndex].currentShields -= shieldDamage;
-                    }
-                    break;
-                }
-            }
-            if (droneDestroyed) {
-                const opponentState =
-                    defendingPlayerId === 'player1' ? player2Ref.current : player1Ref.current;
-                newPlayerState.dronesOnBoard = gameEngine.updateAuras(
-                    newPlayerState,
-                    opponentState,
-                    { player1: placedSections, player2: opponentPlacedSections }
-                );
-            }
-        } else {
-            newPlayerState.shipSections[finalTarget.name].hull -= hullDamage;
-            newPlayerState.shipSections[finalTarget.name].allocatedShields -= shieldDamage;
-            const defenderSections = defendingPlayerId === 'player1'
-                ? placedSections
-                : opponentPlacedSections;
-            const newEffectiveStats = gameEngine.calculateEffectiveShipStats(newPlayerState, defenderSections).totals;
-            if (newPlayerState.energy > newEffectiveStats.maxEnergy) {
-                newPlayerState.energy = newEffectiveStats.maxEnergy;
-            }
-        }
-        return newPlayerState;
+    // Handle after-attack effects
+    result.afterAttackEffects.forEach(effect => {
+        if (effect.type === 'LOG') addLogEntry(effect.payload, 'resolveAfterAttackEffects');
+        else if (effect.type === 'EXPLOSION') triggerExplosion(effect.payload.targetId);
     });
 
-    if (!isAbilityOrCard) {
-        const attackerPlayerState = attackingPlayerId === 'player1' ? player1Ref.current : player2Ref.current;
-        let tempState = JSON.parse(JSON.stringify(attackerPlayerState));
-        let droneWasOnBoard = false;
-        for (const lane in tempState.dronesOnBoard) {
-            const attackerIndex = tempState.dronesOnBoard[lane].findIndex(d => d.id === attacker.id);
-            if (attackerIndex !== -1) {
-                tempState.dronesOnBoard[lane][attackerIndex].isExhausted = true;
-                droneWasOnBoard = true;
-                break;
-            }
-        }
-
-        let finalState = tempState;
-        let afterAttackEffects = [];
-        if (droneWasOnBoard) {
-            const result = gameEngine.calculateAfterAttackStateAndEffects(tempState, attacker);
-            finalState = result.newState;
-            afterAttackEffects = result.effects;
-        }
-        attackerStateSetter(finalState);
-
-        afterAttackEffects.forEach(effect => {
-            if (effect.type === 'LOG') addLogEntry(effect.payload, 'resolveAfterAttackEffects');
-            else if (effect.type === 'EXPLOSION') triggerExplosion(effect.payload.targetId);
-        });
-
-        if (interceptor) {
-            const interceptorUpdater = attackingPlayerId === 'player1' ? setPlayer2 : setPlayer1;
-            interceptorUpdater(prev => {
-                const newDronesOnBoard = JSON.parse(JSON.stringify(prev.dronesOnBoard));
-                for (const lane in newDronesOnBoard) {
-                    const interceptorIndex = newDronesOnBoard[lane].findIndex(d => d.id === interceptor.id);
-                    if (interceptorIndex !== -1) {
-                        const effectiveStats = gameEngine.calculateEffectiveStats(
-                            newDronesOnBoard[lane][interceptorIndex],
-                            lane,
-                            prev,
-                            attackerPlayerState,
-                            { player1: placedSections, player2: opponentPlacedSections }
-                        );
-                        if (!effectiveStats.keywords.has('DEFENDER')) {
-                            newDronesOnBoard[lane][interceptorIndex].isExhausted = true;
-                        }
-                        break;
-                    }
-                }
-                return { ...prev, dronesOnBoard: newDronesOnBoard };
-            });
-        }
-
-        if (attackingPlayerId === 'player1' && !goAgain) {
-            endTurn('player1');
-        }
-    } else {
-        if (attackingPlayerId === 'player1' && !goAgain) {
-            endTurn('player1');
-        }
+    // Handle turn ending
+    if (result.attackResult.shouldEndTurn) {
+        endTurn('player1');
     }
 
     // --- FINAL CLEANUP (always runs) ---
@@ -590,172 +404,33 @@ const resolveAttack = useCallback((attackDetails, isAbilityOrCard = false) => {
 
 
 const resolveAbility = useCallback((ability, userDrone, targetDrone) => {
-    const { effect, cost } = ability;
+    const result = gameEngine.resolveAbility(
+        ability,
+        userDrone,
+        targetDrone,
+        { player1: player1Ref.current, player2: player2Ref.current },
+        { player1: placedSections, player2: opponentPlacedSections },
+        (logEntry) => addLogEntry(logEntry, 'resolveAbility'),
+        resolveAttack // Pass the attack callback for damage effects
+    );
 
-    // --- NEW: Add Logging ---
-    let targetName = '';
-    let outcome = 'Ability effect applied.';
-    
-    if (ability.targeting?.type === 'LANE') {
-        targetName = `Lane ${targetDrone.id.slice(-1)}`;
-    } else if (targetDrone) {
-        targetName = targetDrone.name;
-    }
-
-    if (effect.type === 'HEAL') {
-        outcome = `Healed ${effect.value} hull on targets in ${targetName}.`;
-        if (effect.scope !== 'LANE') {
-            outcome = `Healed ${effect.value} hull on ${targetName}.`;
-        }
-    } else if (effect.type === 'DAMAGE') {
-        outcome = `Dealt ${effect.value} damage to ${targetName}.`;
-    }
-
-    addLogEntry({
-        player: player1.name,
-        actionType: 'ABILITY',
-        source: `${userDrone.name}'s ${ability.name}`,
-        target: targetName,
-        outcome: outcome
-    }, 'resolveAbility');
-    // --- END LOGGING ---
-
-    // 1. Pay costs
-    setPlayer1(prev => {
-        let newEnergy = prev.energy;
-        if (cost.energy) {
-            newEnergy -= cost.energy;
-        }
-
-        const newDronesOnBoard = JSON.parse(JSON.stringify(prev.dronesOnBoard));
-        if (cost.exhausts) {
-            for (const lane in newDronesOnBoard) {
-                const droneIndex = newDronesOnBoard[lane].findIndex(d => d.id === userDrone.id);
-                if (droneIndex !== -1) {
-                    newDronesOnBoard[lane][droneIndex].isExhausted = true;
-                    break;
-                }
-            }
-        }
-        return { ...prev, energy: newEnergy, dronesOnBoard: newDronesOnBoard };
-    });
- 
-    // 2. Apply effects
-    if (effect.type === 'HEAL') {
-        setPlayer1(prev => {
-            const newDronesOnBoard = JSON.parse(JSON.stringify(prev.dronesOnBoard));
-            
-            if (effect.scope === 'LANE') {
-                const targetLaneId = targetDrone.id;
-                if (newDronesOnBoard[targetLaneId]) {
-                    newDronesOnBoard[targetLaneId].forEach(droneInLane => {
-                        const baseDrone = fullDroneCollection.find(d => d.name === droneInLane.name);
-                        if (baseDrone && droneInLane.hull < baseDrone.hull) {
-                            droneInLane.hull = Math.min(baseDrone.hull, droneInLane.hull + effect.value);
-                        }
-                    });
-                }
-            } else {
-                const baseTarget = fullDroneCollection.find(d => d.name === targetDrone.name);
-                const targetLaneId = gameEngine.getLaneOfDrone(targetDrone.id, prev);
-                if (targetLaneId) {
-                    const droneIndex = newDronesOnBoard[targetLaneId].findIndex(d => d.id === targetDrone.id);
-                    if (droneIndex !== -1) {
-                        newDronesOnBoard[targetLaneId][droneIndex].hull = Math.min(baseTarget.hull, newDronesOnBoard[targetLaneId][droneIndex].hull + effect.value);
-                    }
-                }
-            }
-            return { ...prev, dronesOnBoard: newDronesOnBoard };
-        });
-    } else if (effect.type === 'DAMAGE') {
-        const targetLane = gameEngine.getLaneOfDrone(targetDrone.id, player2);
-        if (targetLane) {
-          resolveAttack({
-            attacker: userDrone,
-            target: targetDrone,
-            targetType: 'drone',
-            attackingPlayer: 'player1',
-            abilityDamage: effect.value,
-            lane: targetLane,
-            damageType: effect.damageType,
-        }, true);
-        }
-        } else if (effect.type === 'GAIN_ENERGY') {
-            setPlayer1(prev => {
-                const effectiveStatsP1 = gameEngine.calculateEffectiveShipStats(prev, placedSections).totals;
-                if (prev.energy >= effectiveStatsP1.maxEnergy) return prev; // Corrected to use totals
-                const newEnergy = Math.min(effectiveStatsP1.maxEnergy, prev.energy + effect.value);
-                return {...prev, energy: newEnergy };
-            });
-        }
+    // Update player states
+    setPlayer1(result.newPlayerStates.player1);
+    setPlayer2(result.newPlayerStates.player2);
 
     cancelAbilityMode();
-    if (!effect.goAgain) { 
+    if (result.shouldEndTurn) {
         endTurn('player1');
     }
-  }, [addLogEntry, endTurn, gameEngine, player1.name, player2, placedSections, resolveAttack]);
+}, [addLogEntry, endTurn, placedSections, opponentPlacedSections, resolveAttack]);
 
 
 // ---  LOGIC TO RESOLVE A SHIP ABILITY ---
 const resolveShipAbility = useCallback((ability, sectionName, target) => {
-    const { cost, effect } = ability;
-    setPlayer1(prev => ({ ...prev, energy: prev.energy - cost.energy }));
+    const { effect } = ability;
 
-    addLogEntry({
-        player: player1.name,
-        actionType: 'SHIP_ABILITY',
-        source: `${sectionName}'s ${ability.name}`,
-        target: target?.name || 'N/A',
-        outcome: `Activated ${ability.name}.`
-    }, 'resolveShipAbility');
-
-    if (effect.type === 'DAMAGE') {
-        resolveAttack({
-            attacker: { name: sectionName },
-            target: target,
-            targetType: 'drone',
-            attackingPlayer: 'player1',
-            abilityDamage: effect.value,
-            lane: gameEngine.getLaneOfDrone(target.id, player2),
-            damageType: effect.damageType
-        }, true);
-    } else if (effect.type === 'RECALL_DRONE') {
-        setPlayer1(prev => {
-            let newState = JSON.parse(JSON.stringify(prev));
-            newState.energy -= cost.energy;
-            const lane = gameEngine.getLaneOfDrone(target.id, newState);
-            if (lane) {
-                newState.dronesOnBoard[lane] = newState.dronesOnBoard[lane].filter(d => d.id !== target.id);
-                Object.assign(newState, gameEngine.onDroneRecalled(newState, target));
-                newState.dronesOnBoard = gameEngine.updateAuras(newState, player2Ref.current, { player1: placedSections, player2: opponentPlacedSections });
-            }
-            return newState;
-        });
-        // End the turn right after recalling.
-        endTurn('player1');
-    } else if (effect.type === 'DRAW_THEN_DISCARD') {
-        setPlayer1(prev => {
-            let newState = { ...prev, energy: prev.energy - cost.energy };
-            let newDeck = [...newState.deck];
-            let newHand = [...newState.hand];
-            let newDiscard = [...newState.discardPile];
-
-            for (let i = 0; i < effect.value.draw; i++) {
-                if (newDeck.length === 0 && newDiscard.length > 0) {
-                    newDeck = [...newDiscard].sort(() => 0.5 - Math.random());
-                    newDiscard = [];
-                }
-                if (newDeck.length > 0) {
-                    newHand.push(newDeck.pop());
-                }
-            }
-            return { ...newState, deck: newDeck, hand: newHand, discardPile: newDiscard };
-        });
-        setMandatoryAction({ type: 'discard', player: 'player1', count: effect.value.discard, fromAbility: true });
-        setFooterView('hand');
-        setIsFooterOpen(true);
-        return; // Exit early to prevent clearing state
-    } else if (effect.type === 'REALLOCATE_SHIELDS') {
+    // Handle shield reallocation specially since it has unique UI state management
+    if (effect.type === 'REALLOCATE_SHIELDS') {
         // Special handling for shield reallocation - generate detailed log entry
         const removedShields = reallocationAbility ? reallocationAbility.ability.effect.value.maxShields - shieldsToAdd : 0;
         addLogEntry({
@@ -782,10 +457,44 @@ const resolveShipAbility = useCallback((ability, sectionName, target) => {
         return;
     }
 
+    // Use gameEngine for other abilities
+    const result = gameEngine.resolveShipAbility(
+        ability,
+        sectionName,
+        target,
+        { player1: player1Ref.current, player2: player2Ref.current },
+        { player1: placedSections, player2: opponentPlacedSections },
+        (logEntry) => addLogEntry(logEntry, 'resolveShipAbility'),
+        resolveAttack // Pass the attack callback for damage effects
+    );
+
+    // Update player states
+    setPlayer1(result.newPlayerStates.player1);
+    setPlayer2(result.newPlayerStates.player2);
+
+    // Handle special cases
+    if (result.mandatoryAction) {
+        setMandatoryAction(result.mandatoryAction);
+        setFooterView('hand');
+        setIsFooterOpen(true);
+        return; // Exit early to prevent clearing state
+    }
+
+    if (result.requiresShieldReallocation) {
+        // Shield reallocation will be handled by the existing UI
+        setShipAbilityMode(null);
+        setShipAbilityConfirmation(null);
+        return;
+    }
+
     setShipAbilityMode(null);
     setShipAbilityConfirmation(null);
 
-}, [addLogEntry, endTurn, gameEngine, player1.name, player2, placedSections, opponentPlacedSections, resolveAttack, reallocationAbility, shieldsToAdd]);
+    if (result.shouldEndTurn) {
+        endTurn('player1');
+    }
+
+}, [addLogEntry, endTurn, placedSections, opponentPlacedSections, resolveAttack, reallocationAbility, shieldsToAdd]);
 
 
 // ---  LOGIC TO RESOLVE A CARD ---
@@ -1150,6 +859,16 @@ const resolveShipAbility = useCallback((ability, sectionName, target) => {
     }
 
     // 2) Handle effects that target the other player or need additional actions
+    // First, pay the card costs for these special effects
+    if (effect.type === 'DAMAGE' || effect.type === 'DESTROY') {
+        actingPlayerUpdater(prev => ({
+            ...prev,
+            energy: prev.energy - (cost || 0),
+            hand: prev.hand.filter(c => c.instanceId !== card.instanceId),
+            discardPile: [...prev.discardPile, card]
+        }));
+    }
+
     if (effect.type === 'DAMAGE') {
       if (effect.scope === 'FILTERED' && target.id.startsWith('lane') && effect.filter) {
         const laneId = target.id;
@@ -3595,41 +3314,24 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     }
   };
 
-  const executeDeployment = (lane, budgetCost, energyCost) => {
-  addLogEntry({ player: player1.name, actionType: 'DEPLOY', source: selectedDrone.name, target: lane, outcome: `Deployed to ${lane}.` });
+  const executeDeployment = (lane) => {
+    const result = gameEngine.executeDeployment(
+      selectedDrone,
+      lane,
+      turn,
+      player1Ref.current,
+      player2Ref.current,
+      { player1: placedSections, player2: opponentPlacedSections },
+      (logEntry) => addLogEntry(logEntry, 'executeDeployment')
+    );
 
-   setPlayer1(prev => {
-        const tempDronesOnBoard = { ...prev.dronesOnBoard, [lane]: [...prev.dronesOnBoard[lane], { ...selectedDrone, id: 0 }] };
-        const tempPlayerState = {...prev, dronesOnBoard: tempDronesOnBoard};
-        const effectiveStats = gameEngine.calculateEffectiveStats(selectedDrone, lane, tempPlayerState, player2Ref.current, { player1: placedSections, player2: opponentPlacedSections });
-
-        const newDrone = { 
-            ...selectedDrone, 
-            id: Date.now(),
-            statMods: [],
-            currentShields: effectiveStats.maxShields,
-            currentMaxShields: effectiveStats.maxShields,
-            hull: selectedDrone.hull,
-            isExhausted: false,
-        };
-
-        const finalDronesOnBoard = { ...prev.dronesOnBoard, [lane]: [...prev.dronesOnBoard[lane], newDrone] };
-        
-        let finalPlayerState = { 
-            ...prev, 
-            dronesOnBoard: finalDronesOnBoard, 
-            deployedDroneCounts: { ...prev.deployedDroneCounts, [selectedDrone.name]: (prev.deployedDroneCounts[selectedDrone.name] || 0) + 1 },
-            initialDeploymentBudget: turn === 1 ? prev.initialDeploymentBudget - budgetCost : prev.initialDeploymentBudget,
-            deploymentBudget: turn > 1 ? prev.deploymentBudget - budgetCost : prev.deploymentBudget,
-            energy: prev.energy - energyCost
-        };
-
-        finalPlayerState.dronesOnBoard = gameEngine.updateAuras(finalPlayerState, player2Ref.current, { player1: placedSections, player2: opponentPlacedSections });
-
-        return finalPlayerState;
-    });
-   setSelectedDrone(null);
-   endTurn('player1');
+    if (result.success) {
+      setPlayer1(result.newPlayerState);
+      setSelectedDrone(null);
+      endTurn('player1');
+    } else {
+      setModalContent({ title: result.error, text: result.message, isBlocking: true });
+    }
   };
 
   const handleDeployDrone = (lane) => {
@@ -3647,14 +3349,14 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     if (turn === 1 && energyCost > 0) {
       setDeploymentConfirmation({ lane, budgetCost, energyCost });
     } else {
-      executeDeployment(lane, budgetCost, energyCost);
+      executeDeployment(lane);
     }
   };
 
   const handleConfirmDeployment = () => {
     if (!deploymentConfirmation) return;
     const { lane, budgetCost, energyCost } = deploymentConfirmation;
-   executeDeployment(lane, budgetCost, energyCost);
+   executeDeployment(lane);
    setDeploymentConfirmation(null);
   };
 
