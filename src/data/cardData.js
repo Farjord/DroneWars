@@ -46,7 +46,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: '/cards/Reboot.pgn',
+    image: '/cards/Reboot.png',
     description: 'Draw 2 cards from your deck.',
     // No targeting key is needed for this card
     effect: {
@@ -61,7 +61,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: '/cards/Reboot.pgn',
+    image: '/cards/Reboot.png',
     description: 'Draw 3 cards from your deck.',
     // No targeting key is needed for this card
     effect: {
@@ -376,7 +376,7 @@ const fullCardCollection = [
     type: 'Action',
     cost: 2,
     image: 'https://placehold.co/128x128/38bdf8/ffffff?text=SPD+',
-    description: 'Give all friendly drones in a line a permanent +1 speed bonus.',
+    description: 'Give all friendly drones in a line a permanent +1 speed bonus. Go again.',
     targeting: {
       type: 'LANE',
       affinity: 'FRIENDLY',
@@ -385,6 +385,7 @@ const fullCardCollection = [
     effect: {
       type: 'MODIFY_STAT',
       mod: { stat: 'speed', value: 1, type: 'permanent' },
+      goAgain: true
     }
   },
   {

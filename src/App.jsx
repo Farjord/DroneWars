@@ -768,7 +768,21 @@ const resolveShipAbility = useCallback((ability, sectionName, target) => {
         outcome = `Dealt ${effect.value} damage to ${targetName}.`;
       }
     }
-    if (effect.type === 'DESTROY') outcome = `Destroyed target(s) in ${targetName}.`;
+    if (effect.type === 'DESTROY') {
+        // Find the lane of the target drone for proper formatting
+        let targetWithLane = targetName;
+        if (target && target.id && target.owner) {
+            const targetPlayerState = target.owner === 'player1' ? player1 : player2;
+            for (const [lane, drones] of Object.entries(targetPlayerState.dronesOnBoard)) {
+                if (drones.some(drone => drone.id === target.id)) {
+                    const laneNumber = lane.replace('lane', 'Lane ');
+                    targetWithLane = `${target.name} (${laneNumber})`;
+                    break;
+                }
+            }
+        }
+        outcome = `Destroyed ${targetWithLane}.`;
+    }
     if (effect.type === 'MODIFY_STAT') {
         const mod = effect.mod;
         const durationText = mod.type === 'temporary' ? ' until the end of the turn' : ' permanently';
@@ -3704,6 +3718,75 @@ const handleShipAbilityClick = (e, section, ability) => {
         const owner = isPlayer ? 'player1' : 'player2';
         setCardConfirmation({ card: selectedCard, target: { ...target, owner } });
         return;
+      }
+
+      // Handle standard ship section attacks
+      if (turnPhase === 'action' && currentPlayer === 'player1' && selectedDrone && !selectedDrone.isExhausted && !isPlayer && targetType === 'section') {
+          console.log("Action: Attempting ship section attack.");
+          console.log("Attacker selected:", selectedDrone.name, `(ID: ${selectedDrone.id})`);
+          console.log("Target clicked:", target.name, `(Type: ${targetType})`);
+
+          const [attackerLane] = Object.entries(player1.dronesOnBoard).find(([_, drones]) => drones.some(d => d.id === selectedDrone.id)) || [];
+
+          console.log("Calculated Attacker Lane:", attackerLane);
+
+          if (attackerLane) {
+              console.log("SUCCESS: Found attacker lane. Checking for Guardian...");
+              const opponentDronesInLane = player2.dronesOnBoard[attackerLane];
+              const hasGuardian = opponentDronesInLane && opponentDronesInLane.some(drone => {
+                  const effectiveStats = gameEngine.calculateEffectiveStats(drone, attackerLane, player2, player1, { player1: placedSections, player2: opponentPlacedSections });
+                  return effectiveStats.keywords.has('GUARDIAN');
+              });
+
+              if (hasGuardian) {
+                  console.log("FAILURE: Ship section is protected by a Guardian drone.");
+                  setModalContent({ title: "Invalid Target", text: "This lane is protected by a Guardian drone. You must destroy it before targeting the ship section.", isBlocking: true });
+              } else {
+                  console.log("SUCCESS: No Guardian. Checking for interception.");
+                  const attackDetails = { attacker: selectedDrone, target: target, targetType: 'section', lane: attackerLane, attackingPlayer: 'player1' };
+
+                  const effectiveAttacker = gameEngine.calculateEffectiveStats(
+                      selectedDrone, attackerLane, player1, player2,
+                      { player1: placedSections, player2: opponentPlacedSections }
+                  );
+
+                  const potentialInterceptors = player2.dronesOnBoard[attackerLane]
+                      .filter(d => {
+                          const effectiveInterceptor = gameEngine.calculateEffectiveStats(
+                              d, attackerLane, player2, player1,
+                              { player1: placedSections, player2: opponentPlacedSections }
+                          );
+                          return !d.isExhausted &&
+                                 (effectiveInterceptor.speed > effectiveAttacker.speed || effectiveInterceptor.keywords.has('ALWAYS_INTERCEPTS'));
+                      })
+                      .sort((a, b) => a.class - b.class);
+
+                  let interceptor = null;
+                  if (potentialInterceptors.length > 0) {
+                      // Ship sections can always be intercepted (no class comparison needed)
+                      interceptor = potentialInterceptors[0];
+                  }
+
+                  if (interceptor) {
+                      setInterceptionModal({
+                          interceptor,
+                          originalTarget: target,
+                          onClose: () => {
+                              resolveAttack({ ...attackDetails, interceptor });
+                              setInterceptionModal(null);
+                              setSelectedDrone(null);
+                          },
+                      });
+                  } else {
+                      resolveAttack(attackDetails);
+                      setSelectedDrone(null);
+                  }
+              }
+          } else {
+              console.log("FAILURE: Could not determine attacker lane.");
+              setModalContent({ title: "Invalid Attack", text: "Could not determine the attacking drone's lane.", isBlocking: true });
+          }
+          return;
       }
 
       // If no ability/card is active, clicking any drone just shows its details.
