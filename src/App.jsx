@@ -84,6 +84,8 @@ const App = () => {
   const arrowLineRef = useRef(null);
   const droneRefs = useRef({});
   const gameAreaRef = useRef(null);
+  const [unplacedSections, setUnplacedSections] = useState([]);
+  const [selectedSectionForPlacement, setSelectedSectionForPlacement] = useState(null);
 
   const [hoveredCardId, setHoveredCardId] = useState(null);
   const [winner, setWinner] = useState(null);
@@ -2201,6 +2203,89 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
 );
   };
 
+  const ShipPlacementScreen = ({ unplaced, placed, selected, onSectionSelect, onLaneSelect, onConfirm, player }) => {
+    const allPlaced = placed.every(section => section !== null);
+  
+    return (
+      <div className="flex flex-col items-center w-full h-full justify-start pt-8 px-4">
+        <h2 className="text-3xl font-bold mb-2 text-white text-center font-orbitron">
+          Configure Your Ship Layout
+        </h2>
+        <p className="text-center text-gray-400 mb-8">
+          Select a section, then click an empty lane to place it. You can also click a placed section to pick it up again. 
+          The ship section placed in the centre lane will gain a bonus to its stats.
+        </p>
+        
+        {/* This container holds both rows of ship sections */}
+        <div className="flex flex-col items-center w-full space-y-4">
+          {/* Unplaced Sections Row */}
+          <div className="flex w-full justify-between gap-8">
+            {['bridge', 'powerCell', 'droneControlHub'].map(sectionName => (
+              <div key={sectionName} className="flex-1 min-w-0 h-[190px]">
+                {unplaced.includes(sectionName) && (
+                  <div 
+                    onClick={() => onSectionSelect(sectionName)}
+                    className={`h-full transition-all duration-300 rounded-xl ${selected === sectionName ? 'scale-105 ring-4 ring-cyan-400' : 'opacity-70 hover:opacity-100 cursor-pointer'}`}
+                  >
+                    <ShipSection 
+                      section={sectionName} 
+                      stats={player.shipSections[sectionName]}
+                      // This is the updated line that shows the base stats
+                      effectiveStatsForDisplay={player.shipSections[sectionName].stats.healthy}
+                      isPlayer={true}
+                      isInteractive={true}
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Placed Sections Row */}
+          <div className="flex w-full justify-between gap-8">
+            {[0, 1, 2].map(laneIndex => {
+              const placedSectionName = placed[laneIndex];
+              const isSelectedForPlacement = selected && !placed[laneIndex];
+              
+              return (
+                <div 
+                  key={laneIndex} 
+                  className="flex-1 min-w-0 h-[190px]"
+                  onClick={() => onLaneSelect(laneIndex)}
+                >
+                  {placedSectionName ? (
+                    <ShipSection 
+                      section={placedSectionName} 
+                      stats={player.shipSections[placedSectionName]} 
+                      effectiveStatsForDisplay={gameEngine.calculateEffectiveShipStats(player, placed).bySection[placedSectionName]}
+                      isPlayer={true} 
+                      isInteractive={true}
+                      isInMiddleLane={laneIndex === 1}
+                    />
+                  ) : (
+                    <div className={`bg-black/30 rounded-xl border-2 border-dashed border-purple-500/50 flex items-center justify-center text-purple-300/70 p-4 h-full transition-colors duration-300 ${isSelectedForPlacement ? 'cursor-pointer hover:border-purple-500 hover:bg-purple-900/20' : ''}`}>
+                      <span className="text-center font-bold">
+                        {laneIndex === 1 ? 'Lane 2 (Center Bonus)' : `Lane ${laneIndex + 1}`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        
+        <button 
+          onClick={onConfirm}
+          disabled={!allPlaced}
+          className="mt-12 bg-green-600 text-white font-bold py-3 px-8 rounded-full text-lg transition-all duration-300 disabled:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed enabled:hover:bg-green-500 shadow-lg"
+        >
+          Confirm Layout
+        </button>
+      </div>
+    );
+  };
+
   const ShipSection = ({ section, stats, effectiveStatsForDisplay, isPlayer, isPlaceholder, onClick, onAbilityClick, isInteractive, isOpponent, isHovered, onMouseEnter, onMouseLeave, isCardTarget, isInMiddleLane }) => {
     if (isPlaceholder) {
       return (
@@ -2940,38 +3025,72 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     });
   };
    
- const handlePlaceSection = (laneIndex) => {
-    if (placedSections[laneIndex]) return;
-    const nextSectionIndex = placedSections.filter(s => s !== undefined).length;
-    if (nextSectionIndex >= sectionsToPlace.length) return;
-    const nextSection = sectionsToPlace[nextSectionIndex];
-    const newPlacedSections = [...placedSections];
-    newPlacedSections[laneIndex] = nextSection;
-    setPlacedSections(newPlacedSections);
+  const handleSelectSectionForPlacement = (sectionName) => {
+    // If clicking a section in the top "unplaced" row
+    if (unplacedSections.includes(sectionName)) {
+        // Toggle selection: if it's already selected, unselect it. Otherwise, select it.
+        setSelectedSectionForPlacement(prev => prev === sectionName ? null : sectionName);
+    } else {
+        // If clicking a section that's already in a lane (a "placed" section)
+        const laneIndex = placedSections.indexOf(sectionName);
+        const newPlaced = [...placedSections];
+        newPlaced[laneIndex] = null; // Remove from lane
+        setPlacedSections(newPlaced);
+        setUnplacedSections(prev => [...prev, sectionName]); // Add back to unplaced list
+        setSelectedSectionForPlacement(null); // This is the fix: clear the selection
+    }
+  };
 
-     if (nextSectionIndex === 2) {
-      // This is the final placement. Now we start the game.
-      // 1. Draw the opponent's starting hand.
+  const handleLaneSelectForPlacement = (laneIndex) => {
+    if (selectedSectionForPlacement) {
+      // If the lane is occupied, swap with the selected section
+      if (placedSections[laneIndex]) {
+        const sectionToSwap = placedSections[laneIndex];
+        const newPlaced = [...placedSections];
+        newPlaced[laneIndex] = selectedSectionForPlacement;
+        
+        // Find where the selected section was and put the swapped one there
+        const oldIndexOfSelected = unplacedSections.indexOf(selectedSectionForPlacement);
+        const newUnplaced = [...unplacedSections];
+        newUnplaced.splice(oldIndexOfSelected, 1, sectionToSwap);
+        
+        setUnplacedSections(newUnplaced);
+        setPlacedSections(newPlaced);
+
+      } else {
+        // If the lane is empty, place the section
+        const newPlaced = [...placedSections];
+        newPlaced[laneIndex] = selectedSectionForPlacement;
+        setPlacedSections(newPlaced);
+        setUnplacedSections(prev => prev.filter(s => s !== selectedSectionForPlacement));
+      }
+      setSelectedSectionForPlacement(null);
+    } else if (placedSections[laneIndex]) {
+      // If no section is selected, clicking a placed one picks it up
+      handleSelectSectionForPlacement(placedSections[laneIndex]);
+    }
+  };
+
+  const handleConfirmPlacement = () => {
+      // This is the logic that was at the end of the old handlePlaceSection
       setPlayer2(prev => {
-      let newDeck = [...prev.deck];
-      let newHand = [];
-      const handSize = gameEngine.calculateEffectiveShipStats(prev, opponentPlacedSections).totals.handLimit;
+        let newDeck = [...prev.deck];
+        let newHand = [];
+        const handSize = gameEngine.calculateEffectiveShipStats(prev, opponentPlacedSections).totals.handLimit;
 
-      for (let i = 0; i < handSize; i++) {
-          if (newDeck.length > 0) {
-            newHand.push(newDeck.pop());
-          } else {
-              break;
+        for (let i = 0; i < handSize; i++) {
+            if (newDeck.length > 0) {
+              newHand.push(newDeck.pop());
+            } else {
+                break;
+            }
           }
-        }
-        return { ...prev, deck: newDeck, hand: newHand };
-      });
-  
-      // 2. Draw the player's starting hand.
+          return { ...prev, deck: newDeck, hand: newHand };
+        });
+    
       drawPlayerHand();
       setTurnPhase('initialDraw');
       
-      // 3. Show a modal and then determine the first player.
       const proceed = () => {
           setModalContent(null);
           proceedToFirstTurn();
@@ -2990,10 +3109,6 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
             </div>
           )
       });
-    } else {
-        // If it's not the last section, clear the modal so the next one can appear.
-        setModalContent(null);
-    }
   };
 
     const handleAllocateShield = (sectionName) => {
@@ -3103,17 +3218,22 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     setModalContent(null); // Close the drone selection modal
   };
 
+  const startPlacementPhase = () => {
+    setUnplacedSections(['bridge', 'powerCell', 'droneControlHub']);
+    setSelectedSectionForPlacement(null);
+    setPlacedSections(Array(3).fill(null));
+    setTurnPhase('placement');
+    setModalContent({
+      title: 'Phase 3: Place Your Ship Sections',
+      text: 'Now, place your ship sections. The middle lane provides a strategic bonus to whichever section is placed there.',
+      isBlocking: true,
+    });
+  };
+
    const handleDeckChoice = (choice) => {
     if (choice === 'standard') {
         addLogEntry({ player: 'SYSTEM', actionType: 'DECK_SELECTION', source: 'Player Setup', target: 'N/A', outcome: 'Player selected the Standard Deck.' }, 'handleDeckChoice');
-      // The player's deck is already the standard deck by default.
-      // We just transition to the next phase: ship placement.
-      setTurnPhase('placement');
-      setModalContent({
-        title: 'Phase 3: Place Your Ship Sections',
-        text: 'Now, place your ship sections in order: Bridge, Power Cell, then Drone Control Hub. The middle lane provides a strategic bonus to whichever section is placed there.',
-        isBlocking: true,
-      });
+      startPlacementPhase(); // This now calls our new function
     } else if (choice === 'custom') {
       // This will now switch to the deck builder screen.
       setTurnPhase('deckBuilding');
@@ -3162,12 +3282,7 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     }));
 
     // Proceed to the next phase: ship placement
-    setTurnPhase('placement');
-    setModalContent({
-      title: 'Phase 4: Place Your Ship Sections',
-      text: 'Your custom deck is ready. Now, place your ship sections to begin. The middle lane will grant an additional bonus to the section you place there.',
-      isBlocking: true,
-    });
+    startPlacementPhase(); // This now calls our new function
   };
 
   // --- ADD THIS NEW FUNCTION ---
@@ -4056,29 +4171,24 @@ const handleShipAbilityClick = (e, section, ability) => {
                         ))}
                       </div>
                     </div>
-                ) : (
-            <>
-                {turnPhase === 'placement' ? (
-                    <div className="flex flex-col items-center w-full">
-                        <h2 className="text-3xl font-bold mb-4 text-white text-center">Preview & Place Your Section</h2>
-                        <div className="mb-8 w-64">
-                         <ShipSection section={sectionsToPlace[placedSections.filter(s => s !== undefined).length] || 'bridge'} stats={player1.shipSections[sectionsToPlace[placedSections.filter(s => s !== undefined).length] || 'bridge']} isPlayer={true} isOpponent={false} />
-                        </div>
-                        <h3 className="text-2xl font-bold mb-4 text-white">Choose a lane to place your section:</h3>
-                        <div className="flex flex-row gap-8 w-full">
-                            {[0, 1, 2].map((laneIndex) => (
-                                <div key={laneIndex} className="flex-1" onClick={() => handlePlaceSection(laneIndex)}>
-                                    {placedSections[laneIndex] ? <ShipSection section={placedSections[laneIndex]} stats={player1.shipSections[placedSections[laneIndex]]} isPlayer={true} isOpponent={false} /> : <ShipSection isPlaceholder={true} onClick={() => { handlePlaceSection(laneIndex); setModalContent(null); }}/>}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ) : turnPhase === 'droneSelection' ? (
-                  <DroneSelectionScreen 
-                    onChooseDrone={handleChooseDroneForSelection}
-                    currentPair={droneSelectionPair}
-                    selectedDrones={tempSelectedDrones}
-                    />
+                  ) : (
+                    <>
+                      {turnPhase === 'placement' ? (
+                        <ShipPlacementScreen 
+                          unplaced={unplacedSections}
+                          placed={placedSections}
+                          selected={selectedSectionForPlacement}
+                          onSectionSelect={handleSelectSectionForPlacement}
+                          onLaneSelect={handleLaneSelectForPlacement}
+                          onConfirm={handleConfirmPlacement}
+                          player={player1}
+                        />
+                      ) : turnPhase === 'droneSelection' ? (
+                            <DroneSelectionScreen 
+                              onChooseDrone={handleChooseDroneForSelection}
+                              currentPair={droneSelectionPair}
+                              selectedDrones={tempSelectedDrones}
+                              />
                 ) : turnPhase === 'deckSelection' ? (
                   <div className="flex flex-col items-center justify-center h-full">
                     <h1 className="text-3xl font-orbitron font-bold text-white mb-2">Select Your Deck</h1>
