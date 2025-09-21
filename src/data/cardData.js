@@ -550,9 +550,9 @@ const fullCardCollection = [
     id: 'CARD022',
     baseCardId: 'CARD022',
     name: 'Combat Enhancement',
-    maxInDeck: 3,
+    maxInDeck: 2,
     type: 'Upgrade',
-    cost: 2,
+    cost: 5,
     image: '/cards/CombatEnhancement.png',
     description: 'Permanently increase the attack of all drones of a target type by 1.',
     targeting: {
@@ -568,9 +568,9 @@ const fullCardCollection = [
     id: 'CARD023',
     baseCardId: 'CARD023',
     name: 'Shield Amplifier',
-    maxInDeck: 3,
+    maxInDeck: 2,
     type: 'Upgrade',
-    cost: 2,
+    cost: 4,
     image: '/cards/ShieldAmplifier.png',
     description: 'Permanently increase the shields of all drones of a target type by 1.',
     targeting: {
@@ -586,9 +586,9 @@ const fullCardCollection = [
     id: 'CARD024',
     baseCardId: 'CARD024',
     name: 'Piercing Rounds',
-    maxInDeck: 2,
+    maxInDeck: 1,
     type: 'Upgrade',
-    cost: 3,
+    cost: 6,
     image: '/cards/PiercingRounds.png',
     description: 'Permanently grant all drones of a target type the Piercing keyword.',
     targeting: {
@@ -612,7 +612,7 @@ const fullCardCollection = [
     id: 'CARD025',
     baseCardId: 'CARD025',
     name: 'Strategic Planning',
-    maxInDeck: 3,
+    maxInDeck: 4,
     type: 'Action',
     cost: 1,
     image: '/cards/StrategicPlanning.png',
@@ -630,7 +630,7 @@ const fullCardCollection = [
     id: 'CARD026',
     baseCardId: 'CARD026',
     name: 'Equipment Cache',
-    maxInDeck: 2,
+    maxInDeck: 4,
     type: 'Action',
     cost: 2,
     image: '/cards/EquipmentCache.png',
@@ -653,7 +653,7 @@ const fullCardCollection = [
     name: 'Efficiency Module',
     maxInDeck: 2,
     type: 'Upgrade',
-    cost: 2,
+    cost: 4,
     image: '/cards/EfficiencyModule.png',
     description: 'Permanently reduce the deployment cost of all drones of a target type by 1.',
     targeting: {
@@ -663,7 +663,7 @@ const fullCardCollection = [
       type: 'MODIFY_DRONE_BASE',
       mod: { stat: 'cost', value: -1 }
     },
-    maxApplications: 2
+    maxApplications: 1
 }
 ];
 

@@ -1536,9 +1536,10 @@ const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSecti
     const result = resolveCardEffect(card.effect, target, actingPlayerId, currentStates, placedSections, callbacks);
 
     return {
-        newPlayerStates: result.newPlayerStates,
+        newPlayerStates: result.needsCardSelection ? currentStates : result.newPlayerStates, // Use currentStates (with card costs paid) if card selection needed
         shouldEndTurn: actingPlayerId === 'player1' && !card.effect.goAgain,
-        additionalEffects: result.additionalEffects || []
+        additionalEffects: result.additionalEffects || [],
+        needsCardSelection: result.needsCardSelection // Pass through card selection requirements
     };
 };
 
@@ -2030,7 +2031,7 @@ const resolveUnifiedDrawEffect = (effect, source, target, actingPlayerId, player
     let newHand = [...actingPlayerState.hand];
     let newDiscard = [...actingPlayerState.discardPile];
 
-    const drawCount = effect.value || (effect.value && effect.value.draw) || 1;
+    const drawCount = (effect.value && typeof effect.value === 'object' && effect.value.draw) || effect.value || 1;
 
     for (let i = 0; i < drawCount; i++) {
         if (newDeck.length === 0) {

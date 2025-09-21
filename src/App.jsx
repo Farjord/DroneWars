@@ -101,7 +101,7 @@ const App = () => {
   const [hoveredCardId, setHoveredCardId] = useState(null);
   const [tempSelectedDrones, setTempSelectedDrones] = useState([]);
   const [droneSelectionPool, setDroneSelectionPool] = useState([]);
-  const [droneSelectionPair, setDroneSelectionPair] = useState([]);
+  const [droneSelectionTrio, setDroneSelectionTrio] = useState([]);
 
   // --- COMBAT AND ATTACK STATE ---
   const [pendingAttack, setPendingAttack] = useState(null);
@@ -538,6 +538,10 @@ const App = () => {
         }
     );
 
+    // Update player states first (this includes card costs and discard)
+    setPlayer1(result.newPlayerStates.player1);
+    setPlayer2(result.newPlayerStates.player2);
+
     // Check if card needs selection (e.g., SEARCH_AND_DRAW)
     if (result.needsCardSelection) {
         setCardSelectionModal({
@@ -559,10 +563,6 @@ const App = () => {
         return; // Don't process other effects yet
     }
 
-    // Update player states
-    setPlayer1(result.newPlayerStates.player1);
-    setPlayer2(result.newPlayerStates.player2);
-
     // Handle additional effects (like attacks)
     result.additionalEffects.forEach(effect => {
         if (effect.type === 'ATTACK') {
@@ -570,7 +570,7 @@ const App = () => {
         }
     });
 
-    // Handle UI cleanup for player 1
+    // Handle UI cleanup for player 1 (only if no card selection needed)
     if (actingPlayerId === 'player1') {
         cancelCardSelection();
         setCardConfirmation(null);
@@ -591,9 +591,13 @@ const App = () => {
    */
   const handleCardSelection = useCallback((selectedCards, selectionData, originalCard, target, actingPlayerId, aiContext) => {
     const { searchedCards, remainingDeck, discardPile, shuffleAfter } = selectionData;
-    const unselectedCards = searchedCards.filter(card =>
-      !selectedCards.some(selected => selected.instanceId === card.instanceId)
-    );
+    const unselectedCards = searchedCards.filter(card => {
+      const cardIdentifier = card.instanceId || `${card.id}-${card.name}`;
+      return !selectedCards.some(selected => {
+        const selectedIdentifier = selected.instanceId || `${selected.id}-${selected.name}`;
+        return selectedIdentifier === cardIdentifier;
+      });
+    });
 
     // Create updated player states
     const currentPlayer = actingPlayerId === 'player1' ? player1 : player2;
@@ -633,7 +637,13 @@ const App = () => {
       outcome: `Drew: ${selectedCards.map(c => c.name).join(', ')}`
     }, 'handleCardSelection', actingPlayerId === 'player2' ? aiContext : null);
 
-  }, [player1, player2, addLogEntry]);
+    // End turn if this was a player 1 action (since most cards should end the turn)
+    // Cards with goAgain effect would have been handled differently
+    if (actingPlayerId === 'player1' && !originalCard.effect.goAgain) {
+      endTurn(actingPlayerId);
+    }
+
+  }, [player1, player2, addLogEntry, endTurn]);
 
   // --- MOVEMENT RESOLUTION ---
 
@@ -2198,22 +2208,22 @@ const App = () => {
   /**
    * DRONE SELECTION SCREEN COMPONENT
    * Provides interface for selecting drones during initial setup.
-   * Shows pair choices and tracks selected drones.
+   * Shows trio choices and tracks selected drones.
    * @param {Function} onChooseDrone - Callback when drone is selected
-   * @param {Array} currentPair - Current pair of drones to choose from
+   * @param {Array} currentTrio - Current trio of drones to choose from
    * @param {Array} selectedDrones - Array of already selected drones
    */
-  const DroneSelectionScreen = ({ onChooseDrone, currentPair, selectedDrones }) => {
+  const DroneSelectionScreen = ({ onChooseDrone, currentTrio, selectedDrones }) => {
     return (
       <div className="flex flex-col items-center w-full p-4">
         <h2 className="text-3xl font-bold mb-2 text-white text-center">
           Choose Your Drones
         </h2>
-        <p className="text-center text-gray-400 mb-6">Choice {selectedDrones.length + 1} of 5: Select one drone to add to your Active Drone Pool.</p>
-        
-       {currentPair.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-8 mb-8">
-           {currentPair.map((drone, index) => (
+        <p className="text-center text-gray-400 mb-6">Choice {selectedDrones.length + 1} of 5: Select one drone from the three options below to add to your Active Drone Pool.</p>
+
+       {currentTrio.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-6 mb-8">
+           {currentTrio.map((drone, index) => (
              <DroneCard key={drone.name || index} drone={drone} onClick={() => onChooseDrone(drone)} isSelectable={true} deployedCount={0}/>
             ))}
           </div>
@@ -2669,10 +2679,10 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     
     // ADDED: This code prepares the drones for the selection screen. It was previously in handlePlaceSection.
     const initialPool = [...fullDroneCollection].sort(() => 0.5 - Math.random());
-    const firstPair = initialPool.slice(0, 2);
-    const remaining = initialPool.slice(2);
-    
-    setDroneSelectionPair(firstPair);
+    const firstTrio = initialPool.slice(0, 3);
+    const remaining = initialPool.slice(3);
+
+    setDroneSelectionTrio(firstTrio);
     setDroneSelectionPool(remaining);
     setTempSelectedDrones([]);
   };
@@ -3302,7 +3312,7 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
   /**
    * HANDLE CHOOSE DRONE FOR SELECTION
    * Processes drone choice during initial drone selection phase.
-   * Advances to next pair or completes selection when 5 drones chosen.
+   * Advances to next trio or completes selection when 5 drones chosen.
    * @param {Object} chosenDrone - The drone being selected
    */
   const handleChooseDroneForSelection = (chosenDrone) => {
@@ -3311,10 +3321,10 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
      handleConfirmDroneSelection(newSelection);
     } else {
      setTempSelectedDrones(newSelection);
-      const newPair = droneSelectionPool.slice(0, 2);
-      const remaining = droneSelectionPool.slice(2);
-      
-     setDroneSelectionPair(newPair);
+      const newTrio = droneSelectionPool.slice(0, 3);
+      const remaining = droneSelectionPool.slice(3);
+
+     setDroneSelectionTrio(newTrio);
      setDroneSelectionPool(remaining);
     }
   };
@@ -4321,9 +4331,9 @@ useEffect(() => {
                           player={player1}
                         />
                       ) : turnPhase === 'droneSelection' ? (
-                            <DroneSelectionScreen 
+                            <DroneSelectionScreen
                               onChooseDrone={handleChooseDroneForSelection}
-                              currentPair={droneSelectionPair}
+                              currentTrio={droneSelectionTrio}
                               selectedDrones={tempSelectedDrones}
                               />
                 ) : turnPhase === 'deckSelection' ? (

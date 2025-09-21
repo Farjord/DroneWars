@@ -55,11 +55,19 @@ const CardSelectionModal = ({ isOpen, onClose, onConfirm, selectionData }) => {
 
   const handleCardClick = (card) => {
     setSelectedCards(prev => {
-      const isCurrentlySelected = prev.some(c => c.instanceId === card.instanceId);
+      // Use instanceId if available, otherwise use a combination of id and name as fallback
+      const cardIdentifier = card.instanceId || `${card.id}-${card.name}`;
+      const isCurrentlySelected = prev.some(c => {
+        const existingIdentifier = c.instanceId || `${c.id}-${c.name}`;
+        return existingIdentifier === cardIdentifier;
+      });
 
       if (isCurrentlySelected) {
         // Deselect the card
-        return prev.filter(c => c.instanceId !== card.instanceId);
+        return prev.filter(c => {
+          const existingIdentifier = c.instanceId || `${c.id}-${c.name}`;
+          return existingIdentifier !== cardIdentifier;
+        });
       } else if (prev.length < drawCount) {
         // Select the card if we haven't reached the limit
         return [...prev, card];
@@ -117,7 +125,11 @@ const CardSelectionModal = ({ isOpen, onClose, onConfirm, selectionData }) => {
               <SelectableCard
                 key={card.instanceId || `${card.id}-${index}`}
                 card={card}
-                isSelected={selectedCards.some(c => c.instanceId === card.instanceId)}
+                isSelected={selectedCards.some(c => {
+                  const cardIdentifier = card.instanceId || `${card.id}-${card.name}`;
+                  const existingIdentifier = c.instanceId || `${c.id}-${c.name}`;
+                  return existingIdentifier === cardIdentifier;
+                })}
                 onClick={handleCardClick}
               />
             ))}
