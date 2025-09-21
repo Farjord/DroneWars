@@ -1,17 +1,25 @@
-//GEMINI CHECK
+// ========================================
+// DRONE WARS GAME - MAIN APPLICATION
+// ========================================
+// This is the main React component that manages the UI state and coordinates
+// between the game logic engine and the user interface. All actual game rules
+// and calculations are handled by gameEngine in gameLogic.js.
+
+// --- IMPORTS AND DEPENDENCIES ---
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Shield, Bolt, Wrench, Sprout, Hand, ShipWheel, Settings, X, ChevronRight, ChevronLeft, Plus, RotateCcw, ShieldCheck, Sword, Search, Gavel, Bomb, Rocket, Skull, Bug, Cpu, Target, View, Zap, Heart, ChevronUp, ChevronDown } from 'lucide-react';
 import './App.css';
 import DeckBuilder from './DeckBuilder';
 import CardViewerModal from './CardViewerModal';
-import fullDroneCollection from './data/droneData.js'; 
+import CardSelectionModal from './CardSelectionModal';
+import fullDroneCollection from './data/droneData.js';
 import fullCardCollection from './data/cardData.js';
 import shipSectionData from './data/shipData.js';
-import aiPersonalities from './data/aiData.js'; 
+import aiPersonalities from './data/aiData.js';
 import { aiBrain } from './logic/aiLogic.js';
 import { gameEngine, startingDecklist } from './logic/gameLogic.js';
 
-// --- THEME & STYLING ---
+// --- THEME & STYLING CONFIGURATION ---
 const theme = {
   colors: {
     background: 'bg-slate-950',
@@ -31,311 +39,288 @@ const theme = {
   }
 };
 
-// --- ICON MAP ---
+// --- ICON MAPPING FOR UI COMPONENTS ---
 const iconMap = {
   Shield, Bolt, Wrench, Sprout, Hand, ShipWheel, Settings, X, ChevronRight, ChevronLeft, Plus, RotateCcw, ShieldCheck, Sword, Search, Gavel, Bomb, Rocket, Skull, Bug, Cpu, Target, View, Zap, Heart, ChevronUp, ChevronDown
 };
 
-
-// --- HELPER FUNCTIONS ---
+// --- UTILITY HELPER FUNCTIONS ---
 const getRandomDrones = (collection, count) => {
   const shuffled = [...collection].sort(() => 0.5 - Math.random());
   return shuffled.slice(0, count);
 };
 
+// ========================================
+// MAIN APPLICATION COMPONENT
+// ========================================
+// Manages all UI state, modals, and user interactions.
+// Delegates all game logic to gameEngine functions.
 
-// --- MAIN APP COMPONENT ---
 const App = () => {
+  // --- DEBUG AND DEVELOPMENT FLAGS ---
   const AI_HAND_DEBUG_MODE = true; // Set to false to disable clicking to see the AI's hand
+
+  // --- MODAL AND UI STATE ---
   const [showAiHandModal, setShowAiHandModal] = useState(false);
   const [modalContent, setModalContent] = useState(null);
   const [deploymentConfirmation, setDeploymentConfirmation] = useState(null);
   const [moveConfirmation, setMoveConfirmation] = useState(null);
   const [detailedDrone, setDetailedDrone] = useState(null);
+  const [showFirstPlayerModal, setShowFirstPlayerModal] = useState(false);
+  const [showActionPhaseStartModal, setShowActionPhaseStartModal] = useState(false);
+  const [showRoundEndModal, setShowRoundEndModal] = useState(false);
+  const [showWinnerModal, setShowWinnerModal] = useState(false);
+  const [isViewDeckModalOpen, setIsViewDeckModalOpen] = useState(false);
+  const [isViewDiscardModalOpen, setIsViewDiscardModalOpen] = useState(false);
+
+  // --- CORE GAME STATE ---
   const [turnPhase, setTurnPhase] = useState('preGame');
   const [turn, setTurn] = useState(1);
-  const [placedSections, setPlacedSections] = useState([]);
-  const [opponentPlacedSections, setOpponentPlacedSections] = useState([]);
-  const [shieldsToAllocate, setShieldsToAllocate] = useState(0);
-  const [player1, setPlayer1] = useState(gameEngine.initialPlayerState('Player 1', startingDecklist));
-  const [player2, setPlayer2] = useState(gameEngine.initialPlayerState('Player 2', startingDecklist));
   const [currentPlayer, setCurrentPlayer] = useState(null);
   const [firstPlayerOfRound, setFirstPlayerOfRound] = useState(null);
-  const [selectedDrone, setSelectedDrone] = useState(null);
-  const [passInfo, setPassInfo] = useState({ firstPasser: null, player1Passed: false, player2Passed: false });
-  const [footerView, setFooterView] = useState('drones');
-  const sectionsToPlace = ['bridge', 'powerCell', 'droneControlHub'];
-  const [showFirstPlayerModal, setShowFirstPlayerModal] = useState(false);
-  const [pendingAttack, setPendingAttack] = useState(null);
-  const [interceptionModal, setInterceptionModal] = useState(null);
   const [firstPasserOfPreviousRound, setFirstPasserOfPreviousRound] = useState(null);
   const [firstPlayerOverride, setFirstPlayerOverride] = useState(null); // For future card effects
-  const [playerInterceptionChoice, setPlayerInterceptionChoice] = useState(null);
+  const [passInfo, setPassInfo] = useState({ firstPasser: null, player1Passed: false, player2Passed: false });
+  const [winner, setWinner] = useState(null);
+
+  // --- PLAYER STATE (managed by gameEngine) ---
+  const [player1, setPlayer1] = useState(gameEngine.initialPlayerState('Player 1', startingDecklist));
+  const [player2, setPlayer2] = useState(gameEngine.initialPlayerState('Player 2', startingDecklist));
+
+  // --- SHIP SECTION PLACEMENT ---
+  const sectionsToPlace = ['bridge', 'powerCell', 'droneControlHub'];
+  const [placedSections, setPlacedSections] = useState([]);
+  const [opponentPlacedSections, setOpponentPlacedSections] = useState([]);
+  const [unplacedSections, setUnplacedSections] = useState([]);
+  const [selectedSectionForPlacement, setSelectedSectionForPlacement] = useState(null);
+  const [shieldsToAllocate, setShieldsToAllocate] = useState(0);
+
+  // --- PLAYER SELECTION AND TARGETING ---
+  const [selectedDrone, setSelectedDrone] = useState(null);
   const [hoveredTarget, setHoveredTarget] = useState(null);
-  const [potentialInterceptors, setPotentialInterceptors] = useState([]);
-  const [aiActionReport, setAiActionReport] = useState(null);
-  const [aiCardPlayReport, setAiCardPlayReport] = useState(null);
-  const [aiActionTrigger, setAiActionTrigger] = useState(0);
+  const [hoveredCardId, setHoveredCardId] = useState(null);
   const [tempSelectedDrones, setTempSelectedDrones] = useState([]);
   const [droneSelectionPool, setDroneSelectionPool] = useState([]);
   const [droneSelectionPair, setDroneSelectionPair] = useState([]);
+
+  // --- COMBAT AND ATTACK STATE ---
+  const [pendingAttack, setPendingAttack] = useState(null);
+  const [interceptionModal, setInterceptionModal] = useState(null);
+  const [playerInterceptionChoice, setPlayerInterceptionChoice] = useState(null);
+  const [potentialInterceptors, setPotentialInterceptors] = useState([]);
+
+  // --- AI BEHAVIOR AND REPORTING ---
+  const [aiActionReport, setAiActionReport] = useState(null);
+  const [aiCardPlayReport, setAiCardPlayReport] = useState(null);
+  const [aiActionTrigger, setAiActionTrigger] = useState(0);
+  const [aiDecisionLogToShow, setAiDecisionLogToShow] = useState(null);
+
+  // --- UI AND VISUAL EFFECTS ---
+  const [footerView, setFooterView] = useState('drones');
+  const [isFooterOpen, setIsFooterOpen] = useState(true);
   const [recentlyHitDrones, setRecentlyHitDrones] = useState([]);
   const [explosions, setExplosions] = useState([]);
   const [arrowState, setArrowState] = useState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
+  const [gameLog, setGameLog] = useState([]);
+  const [deck, setDeck] = useState({});
+
+  // --- REFS FOR DOM ELEMENTS AND STATE TRACKING ---
   const arrowLineRef = useRef(null);
   const droneRefs = useRef({});
   const gameAreaRef = useRef(null);
-  const [unplacedSections, setUnplacedSections] = useState([]);
-  const [selectedSectionForPlacement, setSelectedSectionForPlacement] = useState(null);
+  const isResolvingAttackRef = useRef(false);
 
-  const [hoveredCardId, setHoveredCardId] = useState(null);
-  const [winner, setWinner] = useState(null);
-  const [showWinnerModal, setShowWinnerModal] = useState(false);
-  const [showActionPhaseStartModal, setShowActionPhaseStartModal] = useState(false);
-  const [showRoundEndModal, setShowRoundEndModal] = useState(false);
-  const [gameLog, setGameLog] = useState([]);
-  const [isFooterOpen, setIsFooterOpen] = useState(true);
-  const [aiDecisionLogToShow, setAiDecisionLogToShow] = useState(null);
-  const [deck, setDeck] = useState({});
-  const [isViewDeckModalOpen, setIsViewDeckModalOpen] = useState(false);
-  const [isViewDiscardModalOpen, setIsViewDiscardModalOpen] = useState(false);
+  // --- REFS FOR AVOIDING STALE CLOSURES IN ASYNC OPERATIONS ---
   const player1Ref = useRef(player1);
   const player2Ref = useRef(player2);
-   useEffect(() => {
+  const passInfoRef = useRef(passInfo);
+  const turnPhaseRef = useRef(turnPhase);
+  const winnerRef = useRef(winner);
+
+  // Keep refs synchronized with state
+  useEffect(() => {
     player1Ref.current = player1;
   }, [player1]);
   useEffect(() => {
     player2Ref.current = player2;
   }, [player2]);
-  const passInfoRef = useRef(passInfo);
-const turnPhaseRef = useRef(turnPhase);
-const winnerRef = useRef(winner);
- useEffect(() => {
-  passInfoRef.current = passInfo;
-}, [passInfo]);
-useEffect(() => {
-  turnPhaseRef.current = turnPhase;
-}, [turnPhase]);
-useEffect(() => {
-  winnerRef.current = winner;
-}, [winner]);
+  useEffect(() => {
+    passInfoRef.current = passInfo;
+  }, [passInfo]);
+  useEffect(() => {
+    turnPhaseRef.current = turnPhase;
+  }, [turnPhase]);
+  useEffect(() => {
+    winnerRef.current = winner;
+  }, [winner]);
 
-const isResolvingAttackRef = useRef(false);
+  // --- UI CALLBACK FUNCTIONS ---
 
+  /**
+   * TRIGGER EXPLOSION ANIMATION
+   * Creates and displays an explosion effect at the location of a destroyed drone.
+   * Automatically removes the explosion after 1 second.
+   * @param {string} targetId - The ID of the drone element to explode
+   */
   const triggerExplosion = useCallback((targetId) => {
+    // Create the explosion effect using the pure function
+    const explosionEffect = gameEngine.createExplosionEffect(targetId);
+
+    // Handle UI-specific rendering
     const pos = getElementCenter(droneRefs.current[targetId]);
     if (pos) {
-      const explosionId = `${Date.now()}-${Math.random()}`;
+      const explosionId = `${explosionEffect.timestamp}-${Math.random()}`;
       setExplosions(prev => [...prev, { id: explosionId, top: pos.y, left: pos.x }]);
       setTimeout(() => {
         setExplosions(prev => prev.filter(ex => ex.id !== explosionId));
-      }, 1000);
+      }, explosionEffect.duration);
     }
-  }, 
-   
-[]);
+  }, []);
 
+  /**
+   * ADD GAME LOG ENTRY
+   * Adds a new entry to the game log with timestamp and debug information.
+   * Used to track all game actions for debugging and replay purposes.
+   * @param {Object} entry - Log entry with player, actionType, source, target, outcome
+   * @param {string} debugSource - Source function for debugging
+   * @param {Object} aiContext - AI decision context for debugging AI behavior
+   */
   const addLogEntry = useCallback((entry, debugSource, aiContext = null) => {
     const timestamp = new Date().toISOString(); // Add the timestamp here
     setGameLog(prevLog => [...prevLog, { round: turn, timestamp, debugSource, ...entry, aiDecisionContext: aiContext }]);
   }, [turn]);
 
-  // --- ABILITY STATE ---
+  // --- ABILITY AND CARD INTERACTION STATE ---
   const [abilityMode, setAbilityMode] = useState(null); // { drone, ability }
   const [validAbilityTargets, setValidAbilityTargets] = useState([]);
   const [shipAbilityMode, setShipAbilityMode] = useState(null); // { sectionName, ability }
   const [shipAbilityConfirmation, setShipAbilityConfirmation] = useState(null);
-  
-  // --- NEW: CARD PLAYING STATE ---
   const [selectedCard, setSelectedCard] = useState(null); // { card data }
   const [validCardTargets, setValidCardTargets] = useState([]); // [id1, id2, ...]
   const [cardConfirmation, setCardConfirmation] = useState(null); // { card, target }
   const [abilityConfirmation, setAbilityConfirmation] = useState(null);
   const [multiSelectState, setMultiSelectState] = useState(null); // To manage multi-step card effects
+
+  // --- UPGRADE SYSTEM STATE ---
   const [destroyUpgradeModal, setDestroyUpgradeModal] = useState(null); // For targeting specific upgrades to destroy
   const [upgradeSelectionModal, setUpgradeSelectionModal] = useState(null); // For the new upgrade target selection modal
   const [viewUpgradesModal, setViewUpgradesModal] = useState(null); // To view applied upgrades on a drone card
 
-  
-  // --- MANDATORY ACTION STATE ---
+  // --- MANDATORY ACTIONS AND SPECIAL PHASES ---
   const [mandatoryAction, setMandatoryAction] = useState(null); // e.g., { type: 'discard'/'destroy', player: 'player1', count: X }
   const [showMandatoryActionModal, setShowMandatoryActionModal] = useState(false);
   const [confirmationModal, setConfirmationModal] = useState(null); // For confirm/cancel popups
-  const [initialShieldAllocation, setInitialShieldAllocation] = useState(null); // For shield allocation reset
-   const [optionalDiscardCount, setOptionalDiscardCount] = useState(0); // For optional discard phase
+  const [optionalDiscardCount, setOptionalDiscardCount] = useState(0); // For optional discard phase
+  const [cardSelectionModal, setCardSelectionModal] = useState(null); // For search and draw card selection
 
-  // Shield reallocation state
+  // --- SHIELD REALLOCATION STATE ---
   const [reallocationPhase, setReallocationPhase] = useState(null); // 'removing' | 'adding' | null
   const [shieldsToRemove, setShieldsToRemove] = useState(0);
   const [shieldsToAdd, setShieldsToAdd] = useState(0);
   const [originalShieldAllocation, setOriginalShieldAllocation] = useState(null);
+  const [initialShieldAllocation, setInitialShieldAllocation] = useState(null); // For shield allocation reset
   const [reallocationAbility, setReallocationAbility] = useState(null);
 
-  // Memoize effective stats for performance and easy access
+  // --- PERFORMANCE OPTIMIZED COMPUTED VALUES ---
   const player1EffectiveStats = useMemo(() => gameEngine.calculateEffectiveShipStats(player1, placedSections), [player1.shipSections, placedSections]);
   const player2EffectiveStats = useMemo(() => gameEngine.calculateEffectiveShipStats(player2, opponentPlacedSections), [player2.shipSections, opponentPlacedSections]);
-
   const totalPlayer1Drones = useMemo(() => Object.values(player1.dronesOnBoard).flat().length, [player1.dronesOnBoard]);
   const totalPlayer2Drones = useMemo(() => Object.values(player2.dronesOnBoard).flat().length, [player2.dronesOnBoard]);
 
-  // --- ABILITY & GAME LOGIC (ORDER MATTERS HERE) ---
+  // ========================================
+  // GAME LOGIC WRAPPER FUNCTIONS
+  // ========================================
+  // These functions wrap gameEngine calls and handle UI state updates
 
+  // --- PHASE TRANSITION FUNCTIONS ---
+
+  /**
+   * END ACTION PHASE
+   * Transitions from action phase to round end, showing the round end modal.
+   * Called when both players pass during action phase.
+   */
   const endActionPhase = useCallback(() => {
     setShowRoundEndModal(true);
   }, []);
 
+  /**
+   * END DEPLOYMENT PHASE
+   * Transitions from deployment phase to action phase, showing the action start modal.
+   * Called when both players pass during deployment phase.
+   */
   const endDeploymentPhase = () => {
     setShowActionPhaseStartModal(true);
   };
 
-const endTurn = useCallback((actingPlayer) => {
-  const nextPlayer = actingPlayer === 'player1' ? 'player2' : 'player1';
+  // --- TURN MANAGEMENT ---
+  const endTurn = useCallback((actingPlayer) => {
+    // Use the new pure function that returns both transition and UI effects
+    const { transition, uiEffects } = gameEngine.createTurnEndEffects(
+      actingPlayer,
+      passInfoRef.current,
+      turnPhaseRef.current,
+      winnerRef.current
+    );
 
-  if (passInfoRef.current.player1Passed && passInfoRef.current.player2Passed) {
-      if (turnPhaseRef.current === 'deployment') endDeploymentPhase();
-      if (turnPhaseRef.current === 'action') endActionPhase();
-      return;
-  }
+    // Handle game state transitions
+    switch (transition.type) {
+      case 'END_PHASE':
+        if (transition.phase === 'deployment') endDeploymentPhase();
+        if (transition.phase === 'action') endActionPhase();
+        break;
 
-  const nextPlayerHasPassed = (nextPlayer === 'player1' && passInfoRef.current.player1Passed) || (nextPlayer === 'player2' && passInfoRef.current.player2Passed);
+      case 'CONTINUE_TURN':
+        setCurrentPlayer(transition.nextPlayer);
+        break;
 
-  if (nextPlayerHasPassed) {
-    // If the opponent has passed, it's the current player's turn again.
-    // We increment the trigger to force the useEffect to run again for the AI.
-    if (actingPlayer === 'player2') {
-      setAiActionTrigger(prev => prev + 1);
+      case 'CHANGE_PLAYER':
+        setCurrentPlayer(transition.nextPlayer);
+        break;
     }
-    setCurrentPlayer(actingPlayer);
-    return;
-  }
 
-  // If the next player has NOT passed, proceed as normal.
-  setCurrentPlayer(nextPlayer);
-  if (nextPlayer === 'player1') {
-      setModalContent(null);
-  } else if (!winnerRef.current) {
-      // Only show opponent turn modal if game hasn't ended
-      setModalContent({
-        title: "Opponent's Turn",
-        text: "The AI is taking its turn.",
-        isBlocking: false,
-        onClose: null
-      });
-  }
-}, [endActionPhase]);
+    // Handle UI effects
+    uiEffects.forEach(effect => {
+      switch (effect.type) {
+        case 'CLOSE_MODAL':
+          setModalContent(null);
+          break;
+        case 'SHOW_MODAL':
+          setModalContent(effect.modal);
+          break;
+        case 'TRIGGER_AI':
+          setAiActionTrigger(prev => prev + 1);
+          break;
+      }
+    });
+  }, [endActionPhase]);
   
 
   useEffect(() => {
+    const { validAbilityTargets, validCardTargets } = gameEngine.calculateAllValidTargets(
+      abilityMode,
+      shipAbilityMode,
+      multiSelectState,
+      selectedCard,
+      player1,
+      player2,
+      fullDroneCollection
+    );
+
+    setValidAbilityTargets(validAbilityTargets);
+    setValidCardTargets(validCardTargets);
+
+    // Clear conflicting selections
     if (abilityMode) {
-      const targets = gameEngine.getValidTargets('player1', abilityMode.drone, abilityMode.ability, player1, player2);
-      setValidAbilityTargets(targets);
-      setValidCardTargets([]);
       setSelectedCard(null);
       setShipAbilityMode(null);
-    } else if (shipAbilityMode) {
-    const targets = gameEngine.getValidTargets('player1', { id: shipAbilityMode.sectionName }, shipAbilityMode.ability, player1, player2);
-    setValidAbilityTargets(targets);
-    setValidCardTargets([]);
-    setSelectedCard(null);
-    } else if (multiSelectState) {  // --- Check for multiSelectState first
-      let targets = [];
-      const { phase, sourceLane, selectedDrones } = multiSelectState;
-      if (multiSelectState.card.effect.type === 'SINGLE_MOVE') {
-        if (phase === 'select_drone') {
-            // Target all friendly, non-exhausted drones
-            Object.values(player1.dronesOnBoard).flat().forEach(drone => {
-                if (!drone.isExhausted) {
-                    targets.push({ ...drone, owner: 'player1' });
-                }
-            });
-        } else if (phase === 'select_destination') {
-            // Target adjacent lanes
-            const sourceLaneIndex = parseInt(sourceLane.replace('lane', ''), 10);
-            ['lane1', 'lane2', 'lane3'].forEach(laneId => {
-              const targetLaneIndex = parseInt(laneId.replace('lane', ''), 10);
-              const isAdjacent = Math.abs(sourceLaneIndex - targetLaneIndex) === 1;
-              if (isAdjacent) {
-                targets.push({ id: laneId, owner: 'player1' });
-              }
-            });
-        }
-      } 
-       else if (phase === 'select_source_lane') {
-        // Target friendly lanes that have at least one drone
-        ['lane1', 'lane2', 'lane3'].forEach(laneId => {
-          if (player1.dronesOnBoard[laneId].length > 0) {
-            targets.push({ id: laneId, owner: 'player1' });
-          }
-        });
-      } else if (phase === 'select_drones') {
-        // Target non-exhausted drones within the selected source lane
-        player1.dronesOnBoard[sourceLane]
-          .filter(drone => !drone.isExhausted) // Filter out any drones that are already exhausted
-          .forEach(drone => {
-            targets.push({ ...drone, owner: 'player1' });
-          });
-      } else if (phase === 'select_destination_lane') {
-        // Target ADJACENT friendly lanes
-        const sourceLaneIndex = parseInt(sourceLane.replace('lane', ''), 10);
-        ['lane1', 'lane2', 'lane3'].forEach(laneId => {
-          const targetLaneIndex = parseInt(laneId.replace('lane', ''), 10);
-          const isAdjacent = Math.abs(sourceLaneIndex - targetLaneIndex) === 1;
-
-          if (isAdjacent) {
-            targets.push({ id: laneId, owner: 'player1' });
-          }
-        });
-      }
-      setValidCardTargets(targets);
-      setValidAbilityTargets([]);
-
-    } else if (selectedCard) {
-      // --- LOGIC FOR UPGRADE & MULTI-MOVE CARDS ---
-      if (selectedCard.type === 'Upgrade') {
-          const droneCardsAsTargets = player1.activeDronePool.map(drone => {
-              const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
-              const applied = player1.appliedUpgrades[drone.name] || [];
-              const alreadyHasThisUpgrade = applied.filter(upg => upg.id === selectedCard.id).length;
-              const maxApps = selectedCard.maxApplications === undefined ? 1 : selectedCard.maxApplications;
-
-              // A drone is a valid target if its slots aren't full AND it hasn't hit the limit for this specific upgrade
-              if (baseDrone && applied.length < baseDrone.upgradeSlots && alreadyHasThisUpgrade < maxApps) {
-                  return { ...drone, id: drone.name }; // Use name as ID for targeting
-              }
-              return null;
-          }).filter(Boolean); // Remove nulls
-          setValidCardTargets(droneCardsAsTargets);
-          setValidAbilityTargets([]);
-      } else if (selectedCard.effect.type === 'MULTI_MOVE') {
-          // This reuses the logic from your multiSelectState handler, keeping it in one place
-          let targets = [];
-          const { phase, sourceLane } = multiSelectState || { phase: 'select_source_lane' };
-          
-          if (phase === 'select_source_lane') {
-              ['lane1', 'lane2', 'lane3'].forEach(laneId => {
-                  if (player1.dronesOnBoard[laneId].length > 0) targets.push({ id: laneId, owner: 'player1' });
-              });
-          } else if (phase === 'select_drones') {
-              player1.dronesOnBoard[sourceLane]?.forEach(drone => targets.push({ ...drone, owner: 'player1' }));
-          } else if (phase === 'select_destination_lane') {
-              ['lane1', 'lane2', 'lane3'].forEach(laneId => {
-                  if (laneId !== sourceLane) targets.push({ id: laneId, owner: 'player1' });
-              });
-          }
-          setValidCardTargets(targets);
-          setValidAbilityTargets([]);
-      } else {
-          const targets = gameEngine.getValidTargets('player1', null, selectedCard, player1, player2);
-          setValidCardTargets(targets);
-          setValidAbilityTargets([]);
-      }
-    }
-    else {
-      setValidAbilityTargets([]);
-      setValidCardTargets([]);
     }
   }, [abilityMode, shipAbilityMode, selectedCard, player1, player2, multiSelectState]);
 
+  /**
+   * CANCEL ABILITY MODE
+   * Cancels any active ability targeting mode and clears selections.
+   * Resets UI state when player cancels an ability activation.
+   */
   const cancelAbilityMode = () => {
     if (abilityMode) {
      setAbilityMode(null);
@@ -343,13 +328,25 @@ const endTurn = useCallback((actingPlayer) => {
     }
   };
 
-  // Function to cancel card selection
+  /**
+   * CANCEL CARD SELECTION
+   * Cancels active card selection and multi-select targeting modes.
+   * Resets UI state when player cancels card play.
+   */
   const cancelCardSelection = () => {
     setSelectedCard(null);
     setMultiSelectState(null);
   };
 
-const resolveAttack = useCallback((attackDetails) => {
+  // --- COMBAT RESOLUTION ---
+
+  /**
+   * RESOLVE ATTACK
+   * Processes drone-to-drone combat using gameEngine logic.
+   * Handles animations, state updates, and turn transitions.
+   * @param {Object} attackDetails - Attack configuration with attacker, target, damage
+   */
+  const resolveAttack = useCallback((attackDetails) => {
     // --- Prevent duplicate runs ---
     if (isResolvingAttackRef.current) {
         console.warn("Attack already in progress. Aborting duplicate call.");
@@ -401,9 +398,17 @@ const resolveAttack = useCallback((attackDetails) => {
 
 }, [endTurn, triggerExplosion, addLogEntry, placedSections, opponentPlacedSections]);
 
+  // --- ABILITY RESOLUTION ---
 
-
-const resolveAbility = useCallback((ability, userDrone, targetDrone) => {
+  /**
+   * RESOLVE ABILITY
+   * Processes drone ability activation using gameEngine logic.
+   * Updates game state and handles turn transitions.
+   * @param {Object} ability - The ability being activated
+   * @param {Object} userDrone - The drone using the ability
+   * @param {Object} targetDrone - The target of the ability (if any)
+   */
+  const resolveAbility = useCallback((ability, userDrone, targetDrone) => {
     const result = gameEngine.resolveAbility(
         ability,
         userDrone,
@@ -424,40 +429,18 @@ const resolveAbility = useCallback((ability, userDrone, targetDrone) => {
     }
 }, [addLogEntry, endTurn, placedSections, opponentPlacedSections, resolveAttack]);
 
+  // --- SHIP ABILITY RESOLUTION ---
 
-// ---  LOGIC TO RESOLVE A SHIP ABILITY ---
-const resolveShipAbility = useCallback((ability, sectionName, target) => {
-    const { effect } = ability;
-
-    // Handle shield reallocation specially since it has unique UI state management
-    if (effect.type === 'REALLOCATE_SHIELDS') {
-        // Special handling for shield reallocation - generate detailed log entry
-        const removedShields = reallocationAbility ? reallocationAbility.ability.effect.value.maxShields - shieldsToAdd : 0;
-        addLogEntry({
-            player: player1.name,
-            actionType: 'SHIP_ABILITY',
-            source: `${sectionName}'s ${ability.name}`,
-            target: 'Ship Sections',
-            outcome: `Reallocated ${removedShields} shields between ship sections.`
-        }, 'resolveShipAbility');
-
-        // Clear reallocation state
-        setReallocationPhase(null);
-        setShieldsToRemove(0);
-        setShieldsToAdd(0);
-        setOriginalShieldAllocation(null);
-        setReallocationAbility(null);
-
-        // Clear modal state before ending turn
-        setShipAbilityMode(null);
-        setShipAbilityConfirmation(null);
-
-        // End turn
-        endTurn('player1');
-        return;
-    }
-
-    // Use gameEngine for other abilities
+  /**
+   * RESOLVE SHIP ABILITY
+   * Processes ship section ability activation using gameEngine logic.
+   * Handles special UI flows like mandatory actions and shield reallocation.
+   * @param {Object} ability - The ship ability being activated
+   * @param {string} sectionName - Name of the ship section using the ability
+   * @param {Object} target - The target of the ability (if any)
+   */
+  const resolveShipAbility = useCallback((ability, sectionName, target) => {
+    // Use gameEngine for all ship abilities
     const result = gameEngine.resolveShipAbility(
         ability,
         sectionName,
@@ -472,21 +455,24 @@ const resolveShipAbility = useCallback((ability, sectionName, target) => {
     setPlayer1(result.newPlayerStates.player1);
     setPlayer2(result.newPlayerStates.player2);
 
-    // Handle special cases
+    // Handle UI state based on result
     if (result.mandatoryAction) {
         setMandatoryAction(result.mandatoryAction);
         setFooterView('hand');
         setIsFooterOpen(true);
-        return; // Exit early to prevent clearing state
+        setShipAbilityMode(null);
+        setShipAbilityConfirmation(null);
+        return; // Exit early to prevent additional state changes
     }
 
     if (result.requiresShieldReallocation) {
-        // Shield reallocation will be handled by the existing UI
+        // Trigger shield reallocation UI (handled by existing reallocation system)
         setShipAbilityMode(null);
         setShipAbilityConfirmation(null);
-        return;
+        return; // Shield reallocation modal will handle the rest
     }
 
+    // Standard cleanup for completed abilities
     setShipAbilityMode(null);
     setShipAbilityConfirmation(null);
 
@@ -494,74 +480,21 @@ const resolveShipAbility = useCallback((ability, sectionName, target) => {
         endTurn('player1');
     }
 
-}, [addLogEntry, endTurn, placedSections, opponentPlacedSections, resolveAttack, reallocationAbility, shieldsToAdd]);
+}, [addLogEntry, endTurn, placedSections, opponentPlacedSections, resolveAttack]);
 
+  // --- CARD RESOLUTION ---
 
-// ---  LOGIC TO RESOLVE A CARD ---
-    const resolveCardPlay = useCallback((card, target, actingPlayerId, aiContext = null) => { 
-    const { cost, effect } = card;
-    const actingPlayerName = actingPlayerId === 'player1' ? player1.name : player2.name;
-    const targetName = target ? (target.name || target.id) : 'N/A';
-    let outcome = 'Card effect applied.';
-
-    if (effect.type === 'DRAW') outcome = `Drew ${effect.value} card(s).`;
-    if (effect.type === 'GAIN_ENERGY') outcome = `Gained ${effect.value} energy.`;
-    if (effect.type === 'HEAL_HULL') outcome = `Healed ${effect.value} hull on ${targetName}.`;
-    if (effect.type === 'HEAL_SHIELDS') outcome = `Healed ${effect.value} shields on ${targetName}.`;
-    if (effect.type === 'READY_DRONE') outcome = `Readied ${targetName}.`;
-    if (effect.type === 'DAMAGE') {
-      if (effect.scope === 'FILTERED') {
-        outcome = `Dealt ${effect.value} damage to filtered targets in ${targetName}.`;
-      } else {
-        outcome = `Dealt ${effect.value} damage to ${targetName}.`;
-      }
-    }
-    if (effect.type === 'DESTROY') {
-        // Find the lane of the target drone for proper formatting
-        let targetWithLane = targetName;
-        if (target && target.id && target.owner) {
-            const targetPlayerState = target.owner === 'player1' ? player1 : player2;
-            for (const [lane, drones] of Object.entries(targetPlayerState.dronesOnBoard)) {
-                if (drones.some(drone => drone.id === target.id)) {
-                    const laneNumber = lane.replace('lane', 'Lane ');
-                    targetWithLane = `${target.name} (${laneNumber})`;
-                    break;
-                }
-            }
-        }
-        outcome = `Destroyed ${targetWithLane}.`;
-    }
-    if (effect.type === 'MODIFY_STAT') {
-        const mod = effect.mod;
-        const durationText = mod.type === 'temporary' ? ' until the end of the turn' : ' permanently';
-        outcome = `Gave ${targetName} a ${mod.value > 0 ? '+' : ''}${mod.value} ${mod.stat} bonus${durationText}.`;
-    }
-
-    if (effect.type === 'REPEATING_EFFECT') {
-        const actingPlayerState = actingPlayerId === 'player1' ? player1 : player2;
-        let repeatCount = 1; // Base effect
-        if (effect.condition === 'OWN_DAMAGED_SECTIONS') {
-            for (const sectionName in actingPlayerState.shipSections) {
-                const section = actingPlayerState.shipSections[sectionName];
-                const status = gameEngine.getShipStatus(section);
-                if (status === 'damaged' || status === 'critical') {
-                    repeatCount++;
-                }
-            }
-        }
-        outcome = `Drew ${repeatCount} card(s) and gained ${repeatCount} energy based on damaged sections.`;
-    }
-
-   addLogEntry({
-      player: actingPlayerName,
-      actionType: 'PLAY_CARD',
-      source: card.name,
-      target: targetName,
-      outcome: outcome
-    }, 'resolveCardPlay', actingPlayerId === 'player2' ? aiContext : null);
-
-  
-    // --- If AI is playing, set up the report modal ---
+  /**
+   * RESOLVE CARD PLAY
+   * Processes card activation using gameEngine logic.
+   * Handles AI reporting, state updates, and chained effects.
+   * @param {Object} card - The card being played
+   * @param {Object} target - The target of the card (if any)
+   * @param {string} actingPlayerId - 'player1' or 'player2'
+   * @param {Object} aiContext - AI decision context for logging
+   */
+  const resolveCardPlay = useCallback((card, target, actingPlayerId, aiContext = null) => {
+    // Set up AI card play report if needed (before resolving, since gameEngine doesn't know about UI)
     if (actingPlayerId === 'player2') {
         let targetDisplayName = '';
         let targetLane = '';
@@ -589,506 +522,208 @@ const resolveShipAbility = useCallback((ability, sectionName, target) => {
         }
         setAiCardPlayReport({ card, targetName: targetDisplayName, targetLane });
     }
-    const actingPlayerUpdater = actingPlayerId === 'player1' ? setPlayer1 : setPlayer2;
-    const opponentUpdater = actingPlayerId === 'player1' ? setPlayer2 : setPlayer1;
 
-// What your new code should look like:
-    // --- NEW: UPGRADE CARD LOGIC ---
-    if (effect.type === 'MODIFY_DRONE_BASE') {
-        actingPlayerUpdater(prev => {
-            const droneName = target.name; // Target is the drone card object from the UI
-            const existingUpgrades = prev.appliedUpgrades[droneName] || [];
-            
-            const newUpgrade = {
-                ...card,
-                instanceId: `upgrade-${Date.now()}-${Math.random()}`,
-                mod: effect.mod
-            };
+    // Use the gameEngine version
+    const result = gameEngine.resolveCardPlay(
+        card,
+        target,
+        actingPlayerId,
+        { player1: player1Ref.current, player2: player2Ref.current },
+        { player1: placedSections, player2: opponentPlacedSections },
+        {
+            logCallback: (logEntry) => addLogEntry(logEntry, 'resolveCardPlay', actingPlayerId === 'player2' ? aiContext : null),
+            explosionCallback: triggerExplosion,
+            hitAnimationCallback: null, // Not needed for cards
+            resolveAttackCallback: resolveAttack
+        }
+    );
 
-            return {
-                ...prev,
-                energy: prev.energy - (cost || 0),
-                hand: prev.hand.filter(c => c.instanceId !== card.instanceId),
-                discardPile: [...prev.discardPile, card],
-                appliedUpgrades: {
-                    ...prev.appliedUpgrades,
-                    [droneName]: [...existingUpgrades, newUpgrade]
+    // Check if card needs selection (e.g., SEARCH_AND_DRAW)
+    if (result.needsCardSelection) {
+        setCardSelectionModal({
+            ...result.needsCardSelection,
+            onConfirm: (selectedCards) => {
+                // Handle the card selection
+                handleCardSelection(selectedCards, result.needsCardSelection, card, target, actingPlayerId, aiContext);
+                setCardSelectionModal(null);
+            },
+            onCancel: () => {
+                // Return cards to deck and cancel
+                setCardSelectionModal(null);
+                if (actingPlayerId === 'player1') {
+                    cancelCardSelection();
+                    setCardConfirmation(null);
                 }
-            };
+            }
         });
-    } else if (effect.type === 'DESTROY_UPGRADE') {
-        // This affects the opponent
-        opponentUpdater(prev => {
-            // Target here will be { droneName, instanceId } from the selection modal
-            const { droneName, instanceId } = target;
-            if (!prev.appliedUpgrades[droneName]) return prev; // Safety check
-
-            const newUpgradesForDrone = prev.appliedUpgrades[droneName].filter(upg => upg.instanceId !== instanceId);
-
-            const newAppliedUpgrades = { ...prev.appliedUpgrades };
-            if (newUpgradesForDrone.length > 0) {
-                newAppliedUpgrades[droneName] = newUpgradesForDrone;
-            } else {
-                delete newAppliedUpgrades[droneName];
-            }
-
-            return { ...prev, appliedUpgrades: newAppliedUpgrades };
-        });
-        
-        // The acting player still pays the cost and discards the card
-        actingPlayerUpdater(prev => ({
-            ...prev,
-            energy: prev.energy - (cost || 0),
-            hand: prev.hand.filter(c => c.instanceId !== card.instanceId),
-            discardPile: [...prev.discardPile, card],
-        }));
-    } 
-    // --- REFACTORED LOGIC (now an "else if") ---
-    else if (effect.type === 'MODIFY_STAT' && target) {
-        const updater = target.owner === actingPlayerId ? actingPlayerUpdater : opponentUpdater;
-        
-        updater(prev => {
-            const newDronesOnBoard = JSON.parse(JSON.stringify(prev.dronesOnBoard));
-
-            // NEW: Check if the target is a lane
-            if (card.targeting?.type === 'LANE') {
-                const laneId = target.id;
-                if (newDronesOnBoard[laneId]) {
-                    newDronesOnBoard[laneId].forEach(drone => {
-                        if (!drone.statMods) {
-                            drone.statMods = [];
-                        }
-                        drone.statMods.push(effect.mod);
-                    });
-                }
-            } else {
-                // Original logic for single-drone targets
-                for (const lane in newDronesOnBoard) {
-                    const idx = newDronesOnBoard[lane].findIndex(d => d.id === target.id);
-                    if (idx !== -1) {
-                        if (!newDronesOnBoard[lane][idx].statMods) {
-                            newDronesOnBoard[lane][idx].statMods = [];
-                        }
-                        newDronesOnBoard[lane][idx].statMods.push(effect.mod);
-                        break;
-                    }
-                }
-            }
-            return { ...prev, dronesOnBoard: newDronesOnBoard };
-        });
-
-        // Pay cost and discard for the acting player
-        actingPlayerUpdater(prev => ({
-            ...prev,
-            energy: prev.energy - (cost || 0),
-            hand: prev.hand.filter(c => c.instanceId !== card.instanceId),
-            discardPile: [...prev.discardPile, card],
-        }));
-
-    } else {
-        // 1) Apply immediate changes for all other card types that affect the acting player
-            actingPlayerUpdater(prev => {
-            let newState = {
-                ...prev,
-                energy: prev.energy - (cost || 0),
-                hand: prev.hand.filter(c => c.instanceId !== card.instanceId),
-                discardPile: [...prev.discardPile, card],
-            };
-
-            // DRAW
-            if (effect.type === 'DRAW') {
-                let newDeck = [...newState.deck];
-                let newHand = [...newState.hand];
-                let newDiscard = [...newState.discardPile];
-
-                for (let i = 0; i < effect.value; i++) {
-                    if (newDeck.length === 0) {
-                        if (newDiscard.length > 0) {
-                            newDeck = [...newDiscard].sort(() => 0.5 - Math.random());
-                            newDiscard = [];
-                        } else {
-                            break;
-                        }
-                    }
-                    const drawn = newDeck.pop();
-                    newHand.push(drawn);
-                }
-                newState = { ...newState, deck: newDeck, hand: newHand, discardPile: newDiscard };
-            }
-            // GAIN_ENERGY
-            else if (effect.type === 'GAIN_ENERGY') {
-                const effectiveStatsP1 = gameEngine.calculateEffectiveShipStats(newState, actingPlayerId === 'player1' ? placedSections : opponentPlacedSections).totals;
-                const newEnergy = Math.min(effectiveStatsP1.maxEnergy, newState.energy + effect.value);
-                newState = { ...newState, energy: newEnergy };
-            }
-            // REPEATING_EFFECT
-            else if (effect.type === 'REPEATING_EFFECT') {
-                let repeatCount = 1; // Base effect always happens once
-                if (effect.condition === 'OWN_DAMAGED_SECTIONS') {
-                    for (const sectionName in newState.shipSections) {
-                        const section = newState.shipSections[sectionName];
-                        const status = gameEngine.getShipStatus(section);
-                        if (status === 'damaged' || status === 'critical') {
-                            repeatCount++;
-                        }
-                    }
-                }
-
-                // Apply the sub-effects `repeatCount` times
-                for (let i = 0; i < repeatCount; i++) {
-                    effect.effects.forEach(subEffect => {
-                        if (subEffect.type === 'DRAW') {
-                            if (newState.deck.length === 0 && newState.discardPile.length > 0) {
-                                newState.deck = [...newState.discardPile].sort(() => 0.5 - Math.random());
-                                newState.discardPile = [];
-                            }
-                            if (newState.deck.length > 0) {
-                                newState.hand.push(newState.deck.pop());
-                            }
-                        } else if (subEffect.type === 'GAIN_ENERGY') {
-                            const effectiveStats = gameEngine.calculateEffectiveShipStats(newState, actingPlayerId === 'player1' ? placedSections : opponentPlacedSections).totals;
-                            newState.energy = Math.min(effectiveStats.maxEnergy, newState.energy + subEffect.value);
-                        }
-                    });
-                }
-            }
-            // READY_DRONE
-            else if (effect.type === 'READY_DRONE') {
-                const newDronesOnBoard = JSON.parse(JSON.stringify(newState.dronesOnBoard));
-                for (const lane in newDronesOnBoard) {
-                    const idx = newDronesOnBoard[lane].findIndex(d => d.id === (target && target.id));
-                    if (idx !== -1) {
-                        newDronesOnBoard[lane][idx].isExhausted = false;
-                        break;
-                    }
-                }
-                newState = { ...newState, dronesOnBoard: newDronesOnBoard };
-            }
-            // HEAL (HULL or SHIELDS)
-            else if (effect.type === 'HEAL_HULL' || effect.type === 'HEAL_SHIELDS') {
-                const isHull = effect.type === 'HEAL_HULL';
-                const healAmount = effect.value;
-
-                if (card.targeting?.type === 'DRONE') {
-                    const targetLaneKey = Object.keys(newState.dronesOnBoard).find(lane => 
-                        newState.dronesOnBoard[lane].some(drone => drone.id === (target && target.id))
-                    );
-
-                    if (targetLaneKey) {
-                        const newDronesOnBoard = {
-                            ...newState.dronesOnBoard,
-                            [targetLaneKey]: newState.dronesOnBoard[targetLaneKey].map(drone => {
-                                if (drone.id === (target && target.id)) {
-                                    if (isHull) {
-                                        const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
-                                        return { ...drone, hull: Math.min(baseDrone.hull, drone.hull + healAmount) };
-                                    } else {
-                                        return { ...drone, currentShields: Math.min(drone.currentMaxShields, drone.currentShields + healAmount) };
-                                    }
-                                }
-                                return drone;
-                            })
-                        };
-                        newState = { ...newState, dronesOnBoard: newDronesOnBoard };
-                    }
-                } else if (card.targeting?.type === 'SHIP_SECTION') {
-                    const newShipSections = JSON.parse(JSON.stringify(newState.shipSections));
-                    const sectionToUpdate = newShipSections[(target && target.id)];
-                    if (sectionToUpdate) {
-                        if (isHull) {
-                            sectionToUpdate.hull = Math.min(sectionToUpdate.maxHull, sectionToUpdate.hull + healAmount);
-                        } else {
-                            sectionToUpdate.allocatedShields = Math.min(sectionToUpdate.shields, sectionToUpdate.allocatedShields + healAmount);
-                        }
-                        newState = { ...newState, shipSections: newShipSections };
-                    }
-                } else if (card.targeting?.type === 'LANE') {
-                    const newDronesOnBoard = JSON.parse(JSON.stringify(newState.dronesOnBoard));
-                    const laneToUpdate = newDronesOnBoard[(target && target.id)];
-                    if (laneToUpdate) {
-                        laneToUpdate.forEach(droneToUpdate => {
-                            if (isHull) {
-                                const baseDrone = fullDroneCollection.find(d => d.name === droneToUpdate.name);
-                                droneToUpdate.hull = Math.min(baseDrone.hull, droneToUpdate.hull + healAmount);
-                            } else {
-                                droneToUpdate.currentShields = Math.min(droneToUpdate.currentMaxShields, droneToUpdate.currentShields + healAmount);
-                            }
-                        });
-                        newState = { ...newState, dronesOnBoard: newDronesOnBoard };
-                    }
-                }
-            }
-            // DESTROY LOGIC for PLAYER 1
-            else if (effect.type === 'DESTROY') {
-                const newDronesOnBoard = JSON.parse(JSON.stringify(newState.dronesOnBoard));
-                let dronesWereDestroyed = false;
-
-                if (effect.scope === 'LANE' && target.id) {
-                    const laneId = target.id;
-                    const destroyed = newDronesOnBoard[laneId] || [];
-                    if (destroyed.length > 0) dronesWereDestroyed = true;
-                    destroyed.forEach(d => {
-                        triggerExplosion(d.id);
-                        const updates = gameEngine.onDroneDestroyed(newState, d);
-                        newState.deployedDroneCounts = { ...(newState.deployedDroneCounts || {}), ...updates.deployedDroneCounts };
-                    });
-                    newDronesOnBoard[laneId] = [];
-                }
-                else if (effect.scope === 'SINGLE' && target && target.owner === actingPlayerId) {
-                    const laneId = gameEngine.getLaneOfDrone(target.id, newState);
-                    if (laneId) {
-                        const droneToDestroy = newDronesOnBoard[laneId].find(d => d.id === target.id);
-                        if(droneToDestroy) {
-                            dronesWereDestroyed = true;
-                            triggerExplosion(droneToDestroy.id);
-                            const updates = gameEngine.onDroneDestroyed(newState, droneToDestroy);
-                            newState.deployedDroneCounts = { ...(newState.deployedDroneCounts || {}), ...updates.deployedDroneCounts };
-                            newDronesOnBoard[laneId] = newDronesOnBoard[laneId].filter(d => d.id !== target.id);
-                        }
-                    }
-                }
-                
-                newState.dronesOnBoard = newDronesOnBoard;
-                if (dronesWereDestroyed) {
-                    const opponentState = actingPlayerId === 'player1' ? player2Ref.current : player1Ref.current;
-                    newState.dronesOnBoard = gameEngine.updateAuras(newState, opponentState, { player1: placedSections, player2: opponentPlacedSections });
-                }
-            }
-            return newState;
-        });
+        return; // Don't process other effects yet
     }
 
-    // 2) Handle effects that target the other player or need additional actions
-    // First, pay the card costs for these special effects
-    if (effect.type === 'DAMAGE' || effect.type === 'DESTROY') {
-        actingPlayerUpdater(prev => ({
-            ...prev,
-            energy: prev.energy - (cost || 0),
-            hand: prev.hand.filter(c => c.instanceId !== card.instanceId),
-            discardPile: [...prev.discardPile, card]
-        }));
-    }
+    // Update player states
+    setPlayer1(result.newPlayerStates.player1);
+    setPlayer2(result.newPlayerStates.player2);
 
-    if (effect.type === 'DAMAGE') {
-      if (effect.scope === 'FILTERED' && target.id.startsWith('lane') && effect.filter) {
-        const laneId = target.id;
-        // Determine the target player based on card affinity, not the owner of the clicked lane.
-        const targetPlayer = card.targeting?.affinity === 'ENEMY' 
-          ? (actingPlayerId === 'player1' ? 'player2' : 'player1') 
-          : actingPlayerId;
-        const targetPlayerState = targetPlayer === 'player1' ? player1 : player2;
-        const dronesInLane = targetPlayerState.dronesOnBoard[laneId] || [];
-
-        const { stat, comparison, value } = effect.filter;
-        
-        dronesInLane.forEach(droneInLane => {
-            let meetsCondition = false;
-            if (comparison === 'GTE' && droneInLane[stat] >= value) {
-                meetsCondition = true;
-            }
-            if (comparison === 'LTE' && droneInLane[stat] <= value) {
-                meetsCondition = true;
-            }
-
-            if (meetsCondition) {
-                resolveAttack({
-                    attacker: { name: card.name },
-                    target: droneInLane,
-                    targetType: 'drone',
-                    attackingPlayer: actingPlayerId,
-                    abilityDamage: effect.value,
-                    lane: laneId,
-                    goAgain: false,
-                    damageType: effect.damageType,
-                }, true);
-            }
-        });
-      }
-      else {
-        const targetPlayerState = target.owner === 'player1' ? player1 : player2;
-        const targetLane = gameEngine.getLaneOfDrone((target && target.id), targetPlayerState);
-
-        if (targetLane) {
-          resolveAttack({
-            attacker: { name: card.name },
-            target: target,
-            targetType: 'drone',
-            attackingPlayer: actingPlayerId,
-            abilityDamage: effect.value,
-            lane: targetLane,
-            goAgain: effect.goAgain || false,
-            damageType: effect.damageType,
-          }, true);
+    // Handle additional effects (like attacks)
+    result.additionalEffects.forEach(effect => {
+        if (effect.type === 'ATTACK') {
+            resolveAttack(effect.attackDetails, true);
         }
-      }
-    }
-    else if (effect.type === 'DESTROY') {
-      opponentUpdater(prev => {
-        const newState = JSON.parse(JSON.stringify(prev));
-        let dronesWereDestroyed = false;
+    });
 
-        if (effect.scope === 'LANE' && target.id) {
-          const laneId = target.id;
-          const destroyed = newState.dronesOnBoard[laneId] || [];
-          if (destroyed.length > 0) dronesWereDestroyed = true;
-          destroyed.forEach(d => {
-            triggerExplosion(d.id);
-            const updates = gameEngine.onDroneDestroyed(newState, d);
-            newState.deployedDroneCounts = { ...(newState.deployedDroneCounts || {}), ...updates.deployedDroneCounts };
-          });
-          newState.dronesOnBoard[laneId] = [];
-        }
-        else if (effect.scope === 'SINGLE' && target && target.owner !== actingPlayerId) {
-          const laneId = gameEngine.getLaneOfDrone(target.id, newState);
-          if (laneId) {
-            const droneToDestroy = newState.dronesOnBoard[laneId].find(d => d.id === target.id);
-            if (droneToDestroy) {
-              dronesWereDestroyed = true;
-              triggerExplosion(droneToDestroy.id);
-              const updates = gameEngine.onDroneDestroyed(newState, droneToDestroy);
-              newState.deployedDroneCounts = { ...(newState.deployedDroneCounts || {}), ...updates.deployedDroneCounts };
-              newState.dronesOnBoard[laneId] = newState.dronesOnBoard[laneId].filter(d => d.id !== target.id);
-            }
-          }
-        }
-        else if (effect.scope === 'FILTERED' && target.id && effect.filter) {
-          const laneId = target.id;
-          const { stat, comparison, value } = effect.filter;
-
-          const dronesToKeep = [];
-          const dronesToDestroy = [];
-
-          newState.dronesOnBoard[laneId].forEach(drone => {
-            let shouldBeDestroyed = false;
-            if (comparison === 'GTE' && drone[stat] >= value) {
-              shouldBeDestroyed = true;
-            }
-            else if (comparison === 'LTE' && drone[stat] <= value) {
-              shouldBeDestroyed = true;
-            }
-
-            if (shouldBeDestroyed) {
-              dronesToDestroy.push(drone);
-            } else {
-              dronesToKeep.push(drone);
-            }
-          });
-
-          if (dronesToDestroy.length > 0) {
-            dronesWereDestroyed = true;
-            dronesToDestroy.forEach(d => {
-              addLogEntry({
-                player: actingPlayerName,
-                actionType: 'EFFECT',
-                source: card.name,
-                target: d.name,
-                outcome: `Destroyed by ${card.name}.`
-              }, 'resolveCardPlay_filteredDestroy');
-              triggerExplosion(d.id);
-              const updates = gameEngine.onDroneDestroyed(newState, d);
-              newState.deployedDroneCounts = { ...(newState.deployedDroneCounts || {}), ...updates.deployedDroneCounts };
-            });
-            newState.dronesOnBoard[laneId] = dronesToKeep;
-          }
-        }
-
-        if (dronesWereDestroyed) {
-          const opponentState = actingPlayerId === 'player1' ? player1Ref.current : player2Ref.current;
-          newState.dronesOnBoard = gameEngine.updateAuras(newState, opponentState, { player1: placedSections, player2: opponentPlacedSections });
-        }
-        return newState;
-      });
-    }
-
+    // Handle UI cleanup for player 1
     if (actingPlayerId === 'player1') {
         cancelCardSelection();
         setCardConfirmation(null);
     }
-    
-    if (!effect.goAgain) {
-      if (actingPlayerId === 'player1') {
-        endTurn('player1');
-      } else if (actingPlayerId === 'player2') {
-        endTurn('player2');
-      }
+
+    // Handle turn ending
+    if (result.shouldEndTurn) {
+        endTurn(actingPlayerId);
     }
 }, [player1, player2, resolveAttack, endTurn, triggerExplosion, addLogEntry, gameEngine, placedSections, opponentPlacedSections]);
 
-const resolveMultiMove = useCallback((card, dronesToMove, fromLane, toLane) => {
-    const { cost, effect } = card;
+  // --- CARD SELECTION HANDLING ---
 
-    let tempState = JSON.parse(JSON.stringify(player1));
-    tempState.energy -= cost;
-    tempState.hand = tempState.hand.filter(c => c.instanceId !== card.instanceId);
-    tempState.discardPile.push(card);
+  /**
+   * HANDLE CARD SELECTION
+   * Processes the result of a card selection modal (e.g., SEARCH_AND_DRAW).
+   * Updates deck state and applies the selected cards to the player's hand.
+   */
+  const handleCardSelection = useCallback((selectedCards, selectionData, originalCard, target, actingPlayerId, aiContext) => {
+    const { searchedCards, remainingDeck, discardPile, shuffleAfter } = selectionData;
+    const unselectedCards = searchedCards.filter(card =>
+      !selectedCards.some(selected => selected.instanceId === card.instanceId)
+    );
 
-    const dronesBeingMovedIds = new Set(dronesToMove.map(d => d.id));
-    tempState.dronesOnBoard[fromLane] = tempState.dronesOnBoard[fromLane].filter(d => !dronesBeingMovedIds.has(d.id));
+    // Create updated player states
+    const currentPlayer = actingPlayerId === 'player1' ? player1 : player2;
+    const newHand = [...currentPlayer.hand, ...selectedCards];
 
-    const movedDrones = dronesToMove.map(d => ({
-        ...d,
-        isExhausted: d.isExhausted || !effect.properties?.includes('DO_NOT_EXHAUST')
-    }));
-    tempState.dronesOnBoard[toLane].push(...movedDrones);
+    // Return unselected cards to top of deck in original order
+    let newDeck = [...remainingDeck, ...unselectedCards];
 
+    // Shuffle if required
+    if (shuffleAfter) {
+      newDeck = newDeck.sort(() => 0.5 - Math.random());
+    }
+
+    const updatedPlayer = {
+      ...currentPlayer,
+      deck: newDeck,
+      hand: newHand,
+      discardPile: discardPile
+    };
+
+    // Update the appropriate player state
+    if (actingPlayerId === 'player1') {
+      setPlayer1(updatedPlayer);
+      // Handle UI cleanup
+      cancelCardSelection();
+      setCardConfirmation(null);
+    } else {
+      setPlayer2(updatedPlayer);
+    }
+
+    // Log the final selection
     addLogEntry({
-        player: player1.name, actionType: 'MULTI_MOVE', source: card.name,
-        target: `${dronesToMove.map(d => d.name).join(', ')}`,
-        outcome: `Moved ${dronesToMove.length} drone(s) from ${fromLane} to ${toLane}.`
-    }, 'resolveMultiMove');
+      player: currentPlayer.name,
+      actionType: 'CARD_SELECTION',
+      source: originalCard.name,
+      target: `Selected ${selectedCards.length} cards`,
+      outcome: `Drew: ${selectedCards.map(c => c.name).join(', ')}`
+    }, 'handleCardSelection', actingPlayerId === 'player2' ? aiContext : null);
 
-    let finalPlayerState = tempState;
-    movedDrones.forEach(movedDrone => {
-        const { newState } = gameEngine.applyOnMoveEffects(finalPlayerState, movedDrone, fromLane, toLane, addLogEntry);
-        finalPlayerState = newState;
-    });
+  }, [player1, player2, addLogEntry]);
 
-    finalPlayerState.dronesOnBoard = gameEngine.updateAuras(finalPlayerState, player2Ref.current, { player1: placedSections, player2: opponentPlacedSections });
-    setPlayer1(finalPlayerState);
-    setMultiSelectState(null);
-    cancelCardSelection();
-    endTurn('player1');
+  // --- MOVEMENT RESOLUTION ---
+
+  /**
+   * RESOLVE MULTI MOVE
+   * Processes multi-drone movement cards using gameEngine logic.
+   * Handles movement effects, aura updates, and state transitions.
+   * @param {Object} card - The movement card being played
+   * @param {Array} dronesToMove - Array of drones to move
+   * @param {string} fromLane - Source lane ID
+   * @param {string} toLane - Destination lane ID
+   */
+  const resolveMultiMove = useCallback((card, dronesToMove, fromLane, toLane) => {
+    const result = gameEngine.resolveMultiMove(
+        card,
+        dronesToMove,
+        fromLane,
+        toLane,
+        player1,
+        player2Ref.current,
+        { player1: placedSections, player2: opponentPlacedSections },
+        {
+            logCallback: addLogEntry,
+            applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects,
+            updateAurasCallback: gameEngine.updateAuras
+        }
+    );
+
+    setPlayer1(result.newPlayerState);
+
+    if (result.shouldClearMultiSelectState) {
+        setMultiSelectState(null);
+    }
+    if (result.shouldCancelCardSelection) {
+        cancelCardSelection();
+    }
+    if (result.shouldEndTurn) {
+        endTurn('player1');
+    }
 }, [player1, endTurn, addLogEntry, gameEngine, placedSections, opponentPlacedSections]);
 
 
-// ---  FUNCTION for SINGLE_MOVE ---
-const resolveSingleMove = useCallback((card, droneToMove, fromLane, toLane) => {
-    const { cost, effect } = card;
+  /**
+   * RESOLVE SINGLE MOVE
+   * Processes single-drone movement cards using gameEngine logic.
+   * Handles movement effects and maintains turn continuity (goAgain).
+   * @param {Object} card - The movement card being played
+   * @param {Object} droneToMove - The drone to move
+   * @param {string} fromLane - Source lane ID
+   * @param {string} toLane - Destination lane ID
+   */
+  const resolveSingleMove = useCallback((card, droneToMove, fromLane, toLane) => {
+    const result = gameEngine.resolveSingleMove(
+        card,
+        droneToMove,
+        fromLane,
+        toLane,
+        player1,
+        player2Ref.current,
+        { player1: placedSections, player2: opponentPlacedSections },
+        {
+            logCallback: addLogEntry,
+            applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects,
+            updateAurasCallback: gameEngine.updateAuras
+        }
+    );
 
-    let tempState = JSON.parse(JSON.stringify(player1));
-    tempState.energy -= cost;
-    tempState.hand = tempState.hand.filter(c => c.instanceId !== card.instanceId);
-    tempState.discardPile.push(card);
+    setPlayer1(result.newPlayerState);
 
-    tempState.dronesOnBoard[fromLane] = tempState.dronesOnBoard[fromLane].filter(d => d.id !== droneToMove.id);
-    
-    const movedDrone = {
-        ...droneToMove,
-        isExhausted: effect.properties?.includes('DO_NOT_EXHAUST') ? droneToMove.isExhausted : true
-    };
-    tempState.dronesOnBoard[toLane].push(movedDrone);
-
-    addLogEntry({
-        player: player1.name, actionType: 'MOVE', source: card.name,
-        target: droneToMove.name,
-        outcome: `Moved from ${fromLane} to ${toLane}.`
-    }, 'resolveSingleMove');
-
-    const { newState } = gameEngine.applyOnMoveEffects(tempState, movedDrone, fromLane, toLane, addLogEntry);
-    newState.dronesOnBoard = gameEngine.updateAuras(newState, player2Ref.current, { player1: placedSections, player2: opponentPlacedSections });
-    
-    setPlayer1(newState);
-
-    setMultiSelectState(null);
-    cancelCardSelection();
-    
-    // This card has "goAgain: true", so we do NOT call endTurn()
-}, [player1, player2, addLogEntry, gameEngine, placedSections, opponentPlacedSections]);
+    if (result.shouldClearMultiSelectState) {
+        setMultiSelectState(null);
+    }
+    if (result.shouldCancelCardSelection) {
+        cancelCardSelection();
+    }
+    if (result.shouldEndTurn) {
+        endTurn('player1');
+    }
+    // Note: Single move cards have "goAgain: true", so shouldEndTurn will be false
+}, [player1, addLogEntry, gameEngine, placedSections, opponentPlacedSections]);
 
 
 //--- END ABILITY/CARD LOGIC ---
 
-const startOptionalDiscardPhase = () => {
+  /**
+   * START OPTIONAL DISCARD PHASE
+   * Initiates the optional discard phase where players can discard excess cards.
+   * Uses player's effective discard limit for maximum cards to discard.
+   */
+  const startOptionalDiscardPhase = () => {
     const p1Stats = player1EffectiveStats; // Use the memoized stats
     setOptionalDiscardCount(0);
     setTurnPhase('optionalDiscard');
@@ -1099,12 +734,23 @@ const startOptionalDiscardPhase = () => {
     });
   };
 
-const handleFinishOptionalDiscard = () => {
+  /**
+   * HANDLE FINISH OPTIONAL DISCARD
+   * Completes the optional discard phase and transitions to shield allocation.
+   * Triggers hand drawing and proceeds to next game phase.
+   */
+  const handleFinishOptionalDiscard = () => {
     setModalContent(null);
     drawPlayerHand();
     proceedToShieldAllocation();
   };
 
+  /**
+   * HANDLE CONFIRM OPTIONAL DISCARD
+   * Processes confirmed discard of a card during optional discard phase.
+   * Updates hand, discard pile, and discard count.
+   * @param {Object} card - The card being discarded
+   */
   const handleConfirmOptionalDiscard = (card) => {
     addLogEntry({
         player: player1.name,
@@ -1123,6 +769,12 @@ const handleFinishOptionalDiscard = () => {
     setConfirmationModal(null);
   };
 
+  /**
+   * HANDLE OPTIONAL DISCARD CLICK
+   * Handles player clicking a card during optional discard phase.
+   * Shows confirmation modal or limit warning.
+   * @param {Object} card - The card being clicked for discard
+   */
   const handleOptionalDiscardClick = (card) => {
     if (optionalDiscardCount >= player1EffectiveStats.totals.discardLimit) {
         setModalContent({
@@ -1142,6 +794,12 @@ const handleFinishOptionalDiscard = () => {
   };
 
 
+  /**
+   * HANDLE FOOTER BUTTON CLICK
+   * Toggles footer panel visibility and switches between footer views.
+   * Controls hand, drones, and other bottom panel displays.
+   * @param {string} view - The footer view to display ('hand', 'drones', etc.)
+   */
   const handleFooterButtonClick = (view) => {
     if (!isFooterOpen) {
      setIsFooterOpen(true);
@@ -1157,26 +815,34 @@ const handleFinishOptionalDiscard = () => {
 
   // =========================================================================
   // ==                         WIN CONDITION CHECK                         ==
-  // =========================================================================
+  // ========================================
+  // AUTOMATED GAME STATE MONITORING
+  // ========================================
+  // These useEffect hooks monitor game state and trigger automated responses
+
+  // --- WIN CONDITION MONITORING ---
   useEffect(() => {
     if (winner) return;
 
-    // Check if Player 1 has met the win condition against Player 2
-    if (gameEngine.checkWinCondition(player2)) {
-     setWinner('Player 1');
-     setShowWinnerModal(true);
-        addLogEntry({ player: 'SYSTEM', actionType: 'GAME_END', source: 'N/A', target: 'N/A', outcome: 'Player 1 wins!' }, 'winConditionEffect');
-    // Check if Player 2 has met the win condition against Player 1
-    } else if (gameEngine.checkWinCondition(player1)) {
-     setWinner('Player 2');
-     setShowWinnerModal(true);
-        addLogEntry({ player: 'SYSTEM', actionType: 'GAME_END', source: 'N/A', target: 'N/A', outcome: `${player2.name} wins!` }, 'winConditionEffect');
-    }
-  }, [player1.shipSections, player2.shipSections, winner]);
-  // =========================================================================
+    const winnerResult = gameEngine.checkGameStateForWinner(
+      { player1, player2 },
+      {
+        logCallback: addLogEntry,
+        setWinnerCallback: setWinner,
+        showWinnerModalCallback: setShowWinnerModal
+      }
+    );
+  }, [player1.shipSections, player2.shipSections, winner, addLogEntry]);
 
 
 
+  /**
+   * GET ELEMENT CENTER
+   * Calculates the center position of a DOM element relative to the game area.
+   * Used for positioning animations and targeting arrows.
+   * @param {HTMLElement} element - The DOM element to find center of
+   * @returns {Object|null} Object with x,y coordinates or null if invalid
+   */
   const getElementCenter = (element) => {
     if (!element || !gameAreaRef.current) return null;
     const gameAreaRect = gameAreaRef.current.getBoundingClientRect();
@@ -1187,29 +853,20 @@ const handleFinishOptionalDiscard = () => {
     };
   };
 
-useEffect(() => {
-    if (turnPhase === 'action' && selectedDrone && !selectedDrone.isExhausted) {
-        const attackerLane = gameEngine.getLaneOfDrone(selectedDrone.id, player1);
-
-        if (attackerLane) {
-            const effectiveAttacker = gameEngine.calculateEffectiveStats(selectedDrone, attackerLane, player1, player2, { player1: placedSections, player2: opponentPlacedSections });
-            
-            const opponentsInLane = player2.dronesOnBoard[attackerLane] || [];
-            
-            const potential = opponentsInLane.filter(opponentDrone => {
-                const effectiveInterceptor = gameEngine.calculateEffectiveStats(opponentDrone, attackerLane, player2, player1, { player1: placedSections, player2: opponentPlacedSections });
-                return !opponentDrone.isExhausted &&
-                       (effectiveInterceptor.speed > effectiveAttacker.speed || effectiveInterceptor.keywords.has('ALWAYS_INTERCEPTS'));
-            }).map(d => d.id);
-            
-            setPotentialInterceptors(potential);
-        } else {
-            setPotentialInterceptors([]);
-        }
+  // --- INTERCEPTION MONITORING ---
+  useEffect(() => {
+    if (turnPhase === 'action') {
+        const potential = gameEngine.calculatePotentialInterceptors(
+            selectedDrone,
+            player1,
+            player2,
+            { player1: placedSections, player2: opponentPlacedSections }
+        );
+        setPotentialInterceptors(potential);
     } else {
         setPotentialInterceptors([]);
     }
-}, [selectedDrone, turnPhase, player1, player2, gameEngine.getLaneOfDrone, placedSections, opponentPlacedSections]);
+}, [selectedDrone, turnPhase, player1, player2, gameEngine, placedSections, opponentPlacedSections]);
  
   useEffect(() => {
    setHoveredTarget(null);
@@ -1254,6 +911,16 @@ useEffect(() => {
   }, [arrowState.visible]); // This effect only re-runs when the arrow's visibility changes.
 
   // --- UI COMPONENTS ---
+
+  /**
+   * TARGETING ARROW COMPONENT
+   * Renders a visual arrow from attacking drone to target during combat.
+   * Uses SVG with dynamic positioning and dashed line animation.
+   * @param {boolean} visible - Whether arrow should be displayed
+   * @param {Object} start - Starting position {x, y}
+   * @param {Object} end - Ending position {x, y}
+   * @param {Object} lineRef - React ref for the SVG line element
+   */
   const TargetingArrow = ({ visible, start, end, lineRef }) => {
     if (!visible) return null;
     return (
@@ -1269,10 +936,26 @@ useEffect(() => {
     );
   };
 
+  /**
+   * EXPLOSION COMPONENT
+   * Renders a CSS-animated explosion effect at specified coordinates.
+   * Automatically times out after animation duration.
+   * @param {number} top - Y position in pixels
+   * @param {number} left - X position in pixels
+   */
   const Explosion = ({ top, left }) => (
     <div className="explosion" style={{ top: `${top}px`, left: `${left}px` }}></div>
   );
 
+  /**
+   * STAT HEXAGON COMPONENT
+   * Renders stat values in hexagonal containers with customizable styling.
+   * Used for drone attack and speed display.
+   * @param {number} value - The stat value to display
+   * @param {boolean} isFlat - Whether to use flat hexagon shape
+   * @param {string} bgColor - Tailwind background color class
+   * @param {string} textColor - Tailwind text color class
+   */
   const StatHexagon = ({ value, isFlat, bgColor, textColor }) => (
     <div className={`${isFlat ? 'hexagon-flat' : 'hexagon'} w-full h-full bg-black flex items-center justify-center`}>
       <div className={`${isFlat ? 'hexagon-flat' : 'hexagon'} w-[calc(100%-2px)] h-[calc(100%-2px)] ${bgColor} flex items-center justify-center text-xs font-bold font-orbitron ${textColor}`}>
@@ -1281,6 +964,16 @@ useEffect(() => {
     </div>
   );
 
+  /**
+   * CARD STAT HEXAGON COMPONENT
+   * Renders card stat values with icons in hexagonal containers.
+   * Used for energy, deployment costs on cards.
+   * @param {number} value - The stat value to display
+   * @param {boolean} isFlat - Whether to use flat hexagon shape
+   * @param {React.Component} Icon - Lucide icon component
+   * @param {string} iconColor - Tailwind color class for icon
+   * @param {string} textColor - Tailwind text color class
+   */
   const CardStatHexagon = ({ value, isFlat, icon: Icon, iconColor, textColor = 'text-white' }) => (
     <div className={`${isFlat ? 'hexagon-flat' : 'hexagon'} w-full h-full bg-black/60 flex items-center justify-center p-0.5`}>
         <div className={`${isFlat ? 'hexagon-flat' : 'hexagon'} w-full h-full bg-slate-900/80 flex items-center justify-center`}>
@@ -1292,13 +985,28 @@ useEffect(() => {
     </div>
 );
 
+  /**
+   * ABILITY ICON COMPONENT
+   * Renders clickable ability activation button on drone tokens.
+   * Shows circular icon with targeting reticle design.
+   * @param {Function} onClick - Callback when ability button is clicked
+   */
   const AbilityIcon = ({ onClick }) => (
     <button onClick={onClick} className="absolute top-5 -right-3.5 w-7 h-7 bg-purple-600 rounded-full flex items-center justify-center border-2 border-black/50 z-20 hover:bg-purple-500 transition-colors">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-300"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
     </button>
   );
 
-const ShipAbilityIcon = ({ onClick, ability, isUsable, isSelected }) => (
+  /**
+   * SHIP ABILITY ICON COMPONENT
+   * Renders clickable ship section ability button with state indicators.
+   * Shows cost tooltip and visual feedback for usability.
+   * @param {Function} onClick - Callback when ability button is clicked
+   * @param {Object} ability - The ship ability data
+   * @param {boolean} isUsable - Whether ability can currently be activated
+   * @param {boolean} isSelected - Whether ability is currently selected
+   */
+  const ShipAbilityIcon = ({ onClick, ability, isUsable, isSelected }) => (
 <button
     onClick={onClick}
     disabled={!isUsable}
@@ -1315,6 +1023,23 @@ const ShipAbilityIcon = ({ onClick, ability, isUsable, isSelected }) => (
 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-300"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
 </button>
 );
+  /**
+   * DRONE TOKEN COMPONENT
+   * Renders interactive drone cards on the battlefield with all visual states.
+   * Handles animations, stats display, shield visualization, and ability access.
+   * @param {Object} drone - The drone data object
+   * @param {Function} onClick - Callback when drone is clicked
+   * @param {boolean} isPlayer - Whether this is a player-owned drone
+   * @param {boolean} isSelected - Whether drone is currently selected
+   * @param {boolean} isSelectedForMove - Whether drone is selected for movement
+   * @param {boolean} isHit - Whether drone was recently hit (for animation)
+   * @param {boolean} isPotentialInterceptor - Whether drone can intercept current attack
+   * @param {Function} onMouseEnter - Mouse enter event handler
+   * @param {Function} onMouseLeave - Mouse leave event handler
+   * @param {Object} effectiveStats - Calculated drone stats with modifiers
+   * @param {Function} onAbilityClick - Callback when ability icon is clicked
+   * @param {boolean} isActionTarget - Whether drone is target of current action
+   */
   const DroneToken = ({ drone, onClick, isPlayer, isSelected, isSelectedForMove, isHit, isPotentialInterceptor, onMouseEnter, onMouseLeave, effectiveStats, onAbilityClick, isActionTarget }) => {
     const baseDrone = useMemo(() => fullDroneCollection.find(d => d.name === drone.name), [drone.name]);
     const { maxShields } = effectiveStats;
@@ -1402,8 +1127,15 @@ const ShipAbilityIcon = ({ onClick, ability, isUsable, isSelected }) => (
     );
   };
 
-// --- MODAL FOR SELECTING UPGRADE TARGETS ---
-const UpgradeSelectionModal = ({ selectionData, onConfirm, onCancel }) => {
+  /**
+   * UPGRADE SELECTION MODAL COMPONENT
+   * Displays modal for selecting which drone type to apply an upgrade to.
+   * Shows available targets with visual selection feedback.
+   * @param {Object} selectionData - Contains card and target data
+   * @param {Function} onConfirm - Callback when upgrade target is confirmed
+   * @param {Function} onCancel - Callback when selection is cancelled
+   */
+  const UpgradeSelectionModal = ({ selectionData, onConfirm, onCancel }) => {
     const { card, targets } = selectionData;
     const [selectedTarget, setSelectedTarget] = useState(null);
 
@@ -1454,8 +1186,14 @@ const UpgradeSelectionModal = ({ selectionData, onConfirm, onCancel }) => {
     );
 };
 
-// --- MODAL TO VIEW APPLIED UPGRADES ---
-const ViewUpgradesModal = ({ modalData, onClose }) => {
+  /**
+   * VIEW UPGRADES MODAL COMPONENT
+   * Displays all upgrades currently applied to a specific drone type.
+   * Shows upgrade details in a scrollable list format.
+   * @param {Object} modalData - Contains drone name and upgrades array
+   * @param {Function} onClose - Callback when modal is closed
+   */
+  const ViewUpgradesModal = ({ modalData, onClose }) => {
     const { droneName, upgrades } = modalData;
 
     return (
@@ -1488,7 +1226,15 @@ const ViewUpgradesModal = ({ modalData, onClose }) => {
     );
 };
 
-const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
+  /**
+   * DESTROY UPGRADE MODAL COMPONENT
+   * Allows player to select and destroy an opponent's upgrade.
+   * Groups upgrades by drone type for easy navigation.
+   * @param {Object} selectionData - Contains card, targets, and opponent state
+   * @param {Function} onConfirm - Callback when upgrade destruction is confirmed
+   * @param {Function} onCancel - Callback when action is cancelled
+   */
+  const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     const { card, targets: upgradedDrones, opponentState } = selectionData;
     const [selectedUpgrade, setSelectedUpgrade] = useState(null); // e.g., { droneName: 'Scout Drone', instanceId: '...' }
 
@@ -1548,6 +1294,21 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     );
 };
 
+  /**
+   * SHIP SECTIONS DISPLAY COMPONENT
+   * Renders the ship sections area with interactive sections for each player.
+   * Handles shield allocation, abilities, and targeting states.
+   * @param {Object} player - Player state data
+   * @param {Object} playerEffectiveStats - Calculated ship stats
+   * @param {boolean} isPlayer - Whether this is the current player's ship
+   * @param {Array} placedSections - Array of placed section names
+   * @param {Function} onSectionClick - Callback for shield allocation interactions
+   * @param {Function} onAbilityClick - Callback for ship ability activation
+   * @param {Function} onTargetClick - Callback for targeting interactions
+   * @param {boolean} isInteractive - Whether sections should be interactive
+   * @param {Array} validCardTargets - Array of valid targets for current action
+   * @param {string} reallocationPhase - Current shield reallocation state
+   */
   const ShipSectionsDisplay = ({ player, playerEffectiveStats, isPlayer, placedSections, onSectionClick, onAbilityClick, onTargetClick, isInteractive, validCardTargets, reallocationPhase }) => {
     return (
       <div className="flex w-full justify-between gap-8">
@@ -1610,6 +1371,14 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     );
   };
 
+  /**
+   * DRONE LANES DISPLAY COMPONENT
+   * Renders the three battlefield lanes with their drone contents.
+   * Handles lane targeting, deployment, and visual states.
+   * @param {Object} player - Player state data
+   * @param {boolean} isPlayer - Whether this is the current player's lanes
+   * @param {Function} onLaneClick - Callback when a lane is clicked
+   */
   const DroneLanesDisplay = ({ player, isPlayer, onLaneClick }) => {
     return (
       <div className="flex w-full justify-between gap-8 min-h-[160px]">
@@ -1639,6 +1408,14 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
   };
 
 
+  /**
+   * RENDER DRONES ON BOARD
+   * Renders all drones within a specific lane with proper positioning.
+   * Applies all visual states and interaction handlers.
+   * @param {Array} drones - Array of drone objects in the lane
+   * @param {boolean} isPlayer - Whether these are player-owned drones
+   * @param {string} lane - The lane ID (lane1, lane2, lane3)
+   */
   const renderDronesOnBoard = (drones, isPlayer, lane) => {
     return (
       <div className="flex flex-wrap gap-8 pt-2 min-h-[100px] justify-center items-center">
@@ -1669,6 +1446,16 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     );
   };
 
+  /**
+   * GAME PHASE MODAL COMPONENT
+   * Base modal component used for game phase transitions and informational displays.
+   * Provides consistent styling and layout for all game modals.
+   * @param {string} title - Modal title text
+   * @param {string} text - Modal body text
+   * @param {Function} onClose - Callback when modal is closed
+   * @param {React.ReactNode} children - Additional modal content
+   * @param {string} maxWidthClass - Tailwind max-width class for modal sizing
+   */
   const GamePhaseModal = ({ title, text, onClose, children, maxWidthClass = 'max-w-lg' }) => (
     <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
       <div className={`bg-gray-900 rounded-2xl border-2 border-purple-500 p-8 shadow-2xl shadow-purple-500/20 w-full ${maxWidthClass} relative`}>
@@ -1682,6 +1469,13 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     </div>
   );
 
+  /**
+   * AI ACTION REPORT MODAL COMPONENT
+   * Displays detailed information about AI combat actions.
+   * Shows attack results, damage dealt, and target status.
+   * @param {Object} report - Combat report data with attacker, target, and damage info
+   * @param {Function} onClose - Callback when modal is closed
+   */
   const AIActionReportModal = ({ report, onClose }) => {
     if (!report) return null;
 
@@ -1727,7 +1521,13 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     );
   };
 
-  // MODAL FOR AI CARD PLAY ---
+  /**
+   * AI CARD PLAY REPORT MODAL COMPONENT
+   * Displays information about cards played by the AI opponent.
+   * Shows the card played and its target for player awareness.
+   * @param {Object} report - Card play report with card, target, and lane info
+   * @param {Function} onClose - Callback when modal is closed
+   */
   const AICardPlayReportModal = ({ report, onClose }) => {
     if (!report) return null;
     const { card, targetName, targetLane } = report;
@@ -1757,6 +1557,14 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     );
   };
 
+  /**
+   * PLAYER INTERCEPTION MODAL COMPONENT
+   * Allows player to choose whether to intercept an incoming attack.
+   * Shows attacker, target, and available interceptor drones.
+   * @param {Object} choiceData - Contains attack details and available interceptors
+   * @param {Function} onIntercept - Callback when player chooses to intercept
+   * @param {Function} onDecline - Callback when player declines interception
+   */
   const PlayerInterceptionModal = ({ choiceData, onIntercept, onDecline }) => {
     const { attackDetails, interceptors } = choiceData;
     const { attacker, target, targetType, lane } = attackDetails;
@@ -1818,6 +1626,13 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     );
   };
 
+  /**
+   * DETAILED DRONE MODAL COMPONENT
+   * Shows detailed view of a specific drone card.
+   * Used for viewing drone stats, abilities, and image.
+   * @param {Object} drone - The drone data to display
+   * @param {Function} onClose - Callback when modal is closed
+   */
   const DetailedDroneModal = ({ drone, onClose }) => (
     <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-900 rounded-2xl border-2 border-purple-500 p-8 shadow-2xl shadow-purple-500/20 w-full max-w-lg relative">
@@ -1832,7 +1647,13 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     </div>
   );
 
-  // --- COMPONENT FOR AUTO-SCALING TEXT ---
+  /**
+   * SCALING TEXT COMPONENT
+   * Automatically adjusts font size to fit text within container bounds.
+   * Prevents text overflow in responsive card layouts.
+   * @param {string} text - The text content to display
+   * @param {string} className - CSS classes to apply to the text element
+   */
   const ScalingText = ({ text, className }) => {
     const containerRef = useRef(null);
     const textRef = useRef(null);
@@ -1875,6 +1696,20 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     );
   };
 
+  /**
+   * DRONE CARD COMPONENT
+   * Renders detailed drone cards for deck building and drone pool display.
+   * Shows stats, abilities, deployment limits, and upgrade effects.
+   * @param {Object} drone - The drone data object
+   * @param {Function} onClick - Callback when card is clicked
+   * @param {boolean} isSelectable - Whether card can be selected
+   * @param {boolean} isSelected - Whether card is currently selected
+   * @param {number} deployedCount - Number of this drone type already deployed
+   * @param {boolean} ignoreDeployLimit - Whether to ignore deployment limits
+   * @param {Array} appliedUpgrades - Array of upgrades applied to this drone type
+   * @param {boolean} isUpgradeTarget - Whether this card is targeted for upgrade
+   * @param {Function} onViewUpgrades - Callback to view applied upgrades
+   */
   const DroneCard = ({ drone, onClick, isSelectable, isSelected, deployedCount, ignoreDeployLimit = false, appliedUpgrades = [], isUpgradeTarget = false, onViewUpgrades }) => {
     // We need to recalculate the limit here for the UI display
     let effectiveLimit = drone.limit;
@@ -1882,18 +1717,20 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
 
     const atLimit = deployedCount >= effectiveLimit;
     const isInteractive = isSelectable && (!atLimit || ignoreDeployLimit);
-    const deploymentCost = drone.class;
-
     // --- Calculate effective stats and determine colors ---
     const effectiveCardStats = useMemo(() => {
-        const stats = { attack: drone.attack, speed: drone.speed };
+        const stats = { attack: drone.attack, speed: drone.speed, cost: drone.class };
         appliedUpgrades.forEach(upg => {
-            if (stats.hasOwnProperty(upg.mod.stat)) {
+            if (upg.mod.stat === 'cost') {
+                stats.cost = Math.max(0, stats.cost + upg.mod.value);
+            } else if (stats.hasOwnProperty(upg.mod.stat)) {
                 stats[upg.mod.stat] += upg.mod.value;
             }
         });
         return stats;
     }, [drone, appliedUpgrades]);
+
+    const deploymentCost = effectiveCardStats.cost;
     
     const isAttackBuffed = effectiveCardStats.attack > drone.attack;
     const isAttackDebuffed = effectiveCardStats.attack < drone.attack;
@@ -1901,6 +1738,9 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     const isSpeedBuffed = effectiveCardStats.speed > drone.speed;
     const isSpeedDebuffed = effectiveCardStats.speed < drone.speed;
     const speedTextColor = isSpeedBuffed ? 'text-green-400' : isSpeedDebuffed ? 'text-red-400' : 'text-white';
+    const isCostReduced = effectiveCardStats.cost < drone.class;
+    const isCostIncreased = effectiveCardStats.cost > drone.class;
+    const costTextColor = isCostReduced ? 'text-green-400' : isCostIncreased ? 'text-red-400' : 'text-white';
     const isLimitBuffed = effectiveLimit > drone.limit;
     const limitTextColor = isLimitBuffed ? 'text-green-400' : 'text-white';
     const { name, image, attack, hull, shields, speed, abilities } = drone;
@@ -1984,7 +1824,7 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
                     <span className="text-[10px] text-gray-400">Cost</span>
                     <div className="flex items-center">
                         <Bolt size={14} className="text-yellow-300"/>
-                        <span className="text-white font-bold text-base ml-1">{deploymentCost}</span>
+                        <span className={`font-bold text-base ml-1 ${costTextColor}`}>{deploymentCost}</span>
                     </div>
                 </div>
 
@@ -2021,6 +1861,18 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
 );
   };
 
+  /**
+   * SHIP PLACEMENT SCREEN COMPONENT
+   * Provides interface for placing ship sections during initial setup.
+   * Shows unplaced sections and lane slots with center lane bonus indication.
+   * @param {Array} unplaced - Array of unplaced section names
+   * @param {Array} placed - Array of placed sections by lane index
+   * @param {string} selected - Currently selected section name
+   * @param {Function} onSectionSelect - Callback when section is selected
+   * @param {Function} onLaneSelect - Callback when lane is selected for placement
+   * @param {Function} onConfirm - Callback when layout is confirmed
+   * @param {Object} player - Player state data
+   */
   const ShipPlacementScreen = ({ unplaced, placed, selected, onSectionSelect, onLaneSelect, onConfirm, player }) => {
     const allPlaced = placed.every(section => section !== null);
   
@@ -2104,6 +1956,26 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     );
   };
 
+  /**
+   * SHIP SECTION COMPONENT
+   * Renders individual ship sections with stats, abilities, and visual states.
+   * Handles shield allocation, damage states, and interaction feedback.
+   * @param {string} section - Section name identifier
+   * @param {Object} stats - Section stats data
+   * @param {Object} effectiveStatsForDisplay - Calculated effective stats for display
+   * @param {boolean} isPlayer - Whether this is the player's section
+   * @param {boolean} isPlaceholder - Whether this is a placeholder slot
+   * @param {Function} onClick - Callback when section is clicked
+   * @param {Function} onAbilityClick - Callback when ability is activated
+   * @param {boolean} isInteractive - Whether section should be interactive
+   * @param {boolean} isOpponent - Whether this is opponent's section
+   * @param {boolean} isHovered - Whether section is currently hovered
+   * @param {Function} onMouseEnter - Mouse enter event handler
+   * @param {Function} onMouseLeave - Mouse leave event handler
+   * @param {boolean} isCardTarget - Whether section is targeted by current action
+   * @param {boolean} isInMiddleLane - Whether section is in center lane (bonus)
+   * @param {string} reallocationState - Current shield reallocation state
+   */
   const ShipSection = ({ section, stats, effectiveStatsForDisplay, isPlayer, isPlaceholder, onClick, onAbilityClick, isInteractive, isOpponent, isHovered, onMouseEnter, onMouseLeave, isCardTarget, isInMiddleLane, reallocationState }) => {
     if (isPlaceholder) {
       return (
@@ -2323,6 +2195,14 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     );
   };
 
+  /**
+   * DRONE SELECTION SCREEN COMPONENT
+   * Provides interface for selecting drones during initial setup.
+   * Shows pair choices and tracks selected drones.
+   * @param {Function} onChooseDrone - Callback when drone is selected
+   * @param {Array} currentPair - Current pair of drones to choose from
+   * @param {Array} selectedDrones - Array of already selected drones
+   */
   const DroneSelectionScreen = ({ onChooseDrone, currentPair, selectedDrones }) => {
     return (
       <div className="flex flex-col items-center w-full p-4">
@@ -2355,6 +2235,13 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
 );
   };
 
+  /**
+   * AI DECISION LOG MODAL COMPONENT
+   * Displays detailed breakdown of AI decision-making process.
+   * Shows scores, logic, and chosen actions in tabular format.
+   * @param {Array} decisionLog - Array of AI decision entries with scores and logic
+   * @param {Function} onClose - Callback when modal is closed
+   */
   const AIDecisionLogModal = ({ decisionLog, onClose }) => {
     if (!decisionLog) return null;
 
@@ -2421,31 +2308,34 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
     );
   };
   
-const beginTurnProcedures = () => {
+  /**
+   * BEGIN TURN PROCEDURES
+   * Initiates turn start sequence including mandatory discards and hand limit checks.
+   * Handles both player and AI hand management.
+   */
+  const beginTurnProcedures = () => {
     setModalContent(null); // Close the 'Start of Turn' modal
     const p1Stats = player1EffectiveStats.totals;
     const p2Stats = player2EffectiveStats.totals;
 
-    if (player1.hand.length > p1Stats.handLimit) {
-      setMandatoryAction({ type: 'discard', player: 'player1', count: player1.hand.length - p1Stats.handLimit });
+    const compliance = gameEngine.checkHandLimitCompliance(player1, player2, p1Stats, p2Stats);
+
+    if (compliance.player1NeedsDiscard) {
+      setMandatoryAction({ type: 'discard', player: 'player1', count: compliance.player1DiscardCount });
       setShowMandatoryActionModal(true);
     } else {
-      if (player2.hand.length > p2Stats.handLimit) {
-        setPlayer2(prev => {
-              let newHand = [...prev.hand];
-              const newDiscardPile = [...prev.discardPile];
-              const discardCount = newHand.length - p2Stats.handLimit;
-              for (let i = 0; i < discardCount; i++) {
-                  const cardToDiscard = newHand.splice(Math.floor(Math.random() * newHand.length), 1)[0];
-                  newDiscardPile.push(cardToDiscard);
-              }
-              return { ...prev, hand: newHand, discardPile: newDiscardPile };
-          });
+      if (compliance.player2NeedsDiscard) {
+        setPlayer2(prev => gameEngine.enforceHandLimit(prev, p2Stats.handLimit));
       }
       startOptionalDiscardPhase();
     }
   };
 
+  /**
+   * HANDLE START NEW ROUND
+   * Processes round transition including state reset and energy regeneration.
+   * Updates both players and initiates turn procedures.
+   */
   const handleStartNewRound = () => {
     setShowRoundEndModal(false);
     addLogEntry({ player: 'SYSTEM', actionType: 'NEW_ROUND', source: `Round ${turn + 1}`, target: 'N/A', outcome: 'New round begins.' }, 'startNewRound');
@@ -2457,61 +2347,26 @@ const beginTurnProcedures = () => {
     setTurn(prev => prev + 1);
     setPassInfo({ firstPasser: null, player1Passed: false, player2Passed: false });
     
-    const readyDronesAndRestoreShields = (playerState) => {
-        const newDronesOnBoard = { ...playerState.dronesOnBoard };
-        for (const lane in newDronesOnBoard) {
-           newDronesOnBoard[lane] = newDronesOnBoard[lane].map(drone => {
-                // IMPORTANT: Pass all required arguments to calculate stats correctly
-                const player = playerState.name === 'Player 1' ? player1Ref.current : player2Ref.current;
-                const opponent = playerState.name === 'Player 1' ? player2Ref.current : player1Ref.current;
-                const sections = playerState.name === 'Player 1' ? placedSections : opponentPlacedSections;
-                const effectiveStats = gameEngine.calculateEffectiveStats(drone, lane, player, opponent, { player1: placedSections, player2: opponentPlacedSections });
-
-                return {
-                    ...drone,
-                    // Filter statMods to remove temporary effects
-                    statMods: drone.statMods ? drone.statMods.filter(mod => mod.type === 'permanent') : [],
-                    isExhausted: false,
-                    currentShields: effectiveStats.maxShields,
-                };
-            });
-        }
-        return { ...playerState, dronesOnBoard: newDronesOnBoard };
-    };
-
-    // --- FIX: Use the correct variable names for stats ---
-    setPlayer1(prev => readyDronesAndRestoreShields({
-      ...prev,
-      energy: player1EffectiveStats.totals.energyPerTurn,
-      initialDeploymentBudget: 0,
-      deploymentBudget: player1EffectiveStats.totals.deploymentBudget
-    }));
+    // Use extracted game logic for round transitions
+    setPlayer1(prev => gameEngine.calculateNewRoundPlayerState(
+      prev,
+      turn,
+      player1EffectiveStats,
+      player2Ref.current,
+      { player1: placedSections, player2: opponentPlacedSections }
+    ));
 
     setPlayer2(prev => {
-        const readiedState = readyDronesAndRestoreShields({
-           ...prev,
-           energy: player2EffectiveStats.totals.energyPerTurn,
-           initialDeploymentBudget: 0,
-           deploymentBudget: player2EffectiveStats.totals.deploymentBudget
-        });
+        const baseState = gameEngine.calculateNewRoundPlayerState(
+          prev,
+          turn,
+          player2EffectiveStats,
+          player1Ref.current,
+          { player1: placedSections, player2: opponentPlacedSections }
+        );
 
-        let newDeck = [...readiedState.deck];
-        let newHand = [...readiedState.hand];
-        let newDiscard = [...readiedState.discardPile];
-        const handSize = player2EffectiveStats.totals.handLimit;
-
-        while (newHand.length < handSize) {
-            if (newDeck.length === 0) {
-                if (newDiscard.length > 0) {
-                    newDeck = [...newDiscard].sort(() => 0.5 - Math.random());
-                    newDiscard = [];
-                } else {
-                    break;
-                }
-            }
-            newHand.push(newDeck.pop());
-        }
-        return { ...readiedState, deck: newDeck, hand: newHand, discardPile: newDiscard };
+        // Draw to hand limit for AI
+        return gameEngine.drawToHandLimit(baseState, player2EffectiveStats.totals.handLimit);
     });
 
     // --- MODIFIED: Show a modal before starting the discard phases ---
@@ -2530,23 +2385,24 @@ const beginTurnProcedures = () => {
     });
   };
 
+  /**
+   * HANDLE POST DISCARD ACTION
+   * Processes actions after mandatory discard phase.
+   * Ensures AI hand limit compliance before continuing.
+   */
   const handlePostDiscardAction = () => {
     const p2Stats = gameEngine.calculateEffectiveShipStats(player2, opponentPlacedSections).totals;
     if (player2.hand.length > p2Stats.handLimit) {
-       setPlayer2(prev => {
-            let newHand = [...prev.hand];
-            const newDiscardPile = [...prev.discardPile];
-            const discardCount = newHand.length - p2Stats.handLimit;
-            for (let i = 0; i < discardCount; i++) {
-                const cardToDiscard = newHand.splice(Math.floor(Math.random() * newHand.length), 1)[0];
-                newDiscardPile.push(cardToDiscard);
-            }
-            return { ...prev, hand: newHand, discardPile: newDiscardPile };
-        });
+       setPlayer2(prev => gameEngine.enforceHandLimit(prev, p2Stats.handLimit));
     }
     startOptionalDiscardPhase();
   };
 
+  /**
+   * START DEPLOYMENT COMPLIANCE CHECK
+   * Initiates drone limit compliance checking for both players.
+   * Handles over-limit drone destruction in first player order.
+   */
   const startDeploymentComplianceCheck = () => {
    setShowFirstPlayerModal(false);
 
@@ -2598,7 +2454,8 @@ const beginTurnProcedures = () => {
     }
   };
 
-useEffect(() => {
+  // --- AI TURN EXECUTION ---
+  useEffect(() => {
     const isAiTurn = currentPlayer === 'player2' && (!modalContent || !modalContent.isBlocking) && !winner && !aiActionReport && !aiCardPlayReport && !pendingAttack && !playerInterceptionChoice && !mandatoryAction && !showFirstPlayerModal && !showActionPhaseStartModal && !showRoundEndModal;
     if (!isAiTurn) return;
 
@@ -2646,36 +2503,29 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
         });
       } else if (result.type === 'deploy') {
         const { droneToDeploy, targetLane, logContext } = result.payload;
-        addLogEntry({ player: player2.name, actionType: 'DEPLOY', source: droneToDeploy.name, target: targetLane, outcome: `Deployed to ${targetLane}.` }, 'aiDeploymentDeploy', logContext);
 
-        const droneCost = droneToDeploy.class;
-        let budgetCost = 0;
-        if (turn === 1) {
-          budgetCost = Math.min(player2.initialDeploymentBudget, droneCost);
-        } else {
-          budgetCost = Math.min(player2.deploymentBudget, droneCost);
+        addLogEntry({
+          player: player2.name,
+          actionType: 'DEPLOY',
+          source: droneToDeploy.name,
+          target: targetLane,
+          outcome: `Deployed to ${targetLane}.`
+        }, 'aiDeploymentDeploy', logContext);
+
+        const deployResult = gameEngine.executeAiDeployment(
+          droneToDeploy,
+          targetLane,
+          turn,
+          player2,
+          player1Ref.current,
+          { player1: placedSections, player2: opponentPlacedSections },
+          { addLogEntry }
+        );
+
+        if (deployResult.success) {
+          setPlayer2(deployResult.newPlayerState);
+          endTurn('player2');
         }
-        const energyCost = droneCost - budgetCost;
-
-        setPlayer2(prev => {
-          const baseDrone = fullDroneCollection.find(d => d.name === droneToDeploy.name);
-          const newDrone = {
-            ...droneToDeploy, id: Date.now(), statMods: [],
-            currentShields: baseDrone.shields, currentMaxShields: baseDrone.shields,
-            hull: baseDrone.hull, isExhausted: false,
-          };
-          let newPlayerState = {
-            ...prev,
-            dronesOnBoard: { ...prev.dronesOnBoard, [targetLane]: [...prev.dronesOnBoard[targetLane], newDrone] },
-            deployedDroneCounts: { ...prev.deployedDroneCounts, [droneToDeploy.name]: (prev.deployedDroneCounts[droneToDeploy.name] || 0) + 1 },
-            initialDeploymentBudget: turn === 1 ? prev.initialDeploymentBudget - budgetCost : prev.initialDeploymentBudget,
-            deploymentBudget: turn > 1 ? prev.deploymentBudget - budgetCost : prev.deploymentBudget,
-            energy: prev.energy - energyCost
-          };
-          newPlayerState.dronesOnBoard = gameEngine.updateAuras(newPlayerState, player1Ref.current, { player1: placedSections, player2: opponentPlacedSections });
-          return newPlayerState;
-        });
-        endTurn('player2');
 
       } else if (result.type === 'action') {
         const chosenAction = result.payload;
@@ -2696,14 +2546,38 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
             break;
           case 'move': {
             const { drone, fromLane, toLane } = chosenAction;
-            addLogEntry({ player: player2.name, actionType: 'MOVE', source: drone.name, target: toLane, outcome: `Moved from ${fromLane} to ${toLane}.` }, 'aiActionMove', logContext);
-            let tempState = JSON.parse(JSON.stringify(player2));
-            tempState.dronesOnBoard[fromLane] = tempState.dronesOnBoard[fromLane].filter(d => d.id !== drone.id);
-            const movedDrone = { ...drone, isExhausted: true };
-            tempState.dronesOnBoard[toLane].push(movedDrone);
-            const { newState: stateAfterMove } = gameEngine.applyOnMoveEffects(tempState, movedDrone, fromLane, toLane, addLogEntry);
-            stateAfterMove.dronesOnBoard = gameEngine.updateAuras(stateAfterMove, player1Ref.current, { player1: placedSections, player2: opponentPlacedSections });
-            setPlayer2(stateAfterMove);
+
+            addLogEntry({
+              player: player2.name,
+              actionType: 'MOVE',
+              source: drone.name,
+              target: toLane,
+              outcome: `Moved from ${fromLane} to ${toLane}.`
+            }, 'aiActionMove', logContext);
+
+            // Create a synthetic movement card for the gameEngine
+            const moveCard = {
+              name: 'AI Move',
+              cost: 0,
+              effect: { type: 'MOVE', properties: [] } // No special properties for AI moves
+            };
+
+            const moveResult = gameEngine.resolveSingleMove(
+              moveCard,
+              drone,
+              fromLane,
+              toLane,
+              player2,
+              player1Ref.current,
+              { player1: placedSections, player2: opponentPlacedSections },
+              {
+                logCallback: () => {}, // Already logged above
+                applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects,
+                updateAurasCallback: gameEngine.updateAuras
+              }
+            );
+
+            setPlayer2(moveResult.newPlayerState);
             endTurn('player2');
             break;
           }
@@ -2721,6 +2595,11 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     };
   }, [currentPlayer, turnPhase, passInfo, winner, aiActionTrigger, aiActionReport, aiCardPlayReport, pendingAttack, playerInterceptionChoice, mandatoryAction, modalContent, showFirstPlayerModal, showActionPhaseStartModal, showRoundEndModal]);
 
+  /**
+   * HANDLE RESET
+   * Resets the entire game state back to initial conditions.
+   * Clears all players, modals, selections, and game progress.
+   */
   const handleReset = () => {
    setTurnPhase('preGame');
    setTurn(1);
@@ -2749,7 +2628,13 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
    setShowWinnerModal(false);
   };
 
- const handleSelectOpponent = (selectedAI) => {
+  /**
+   * HANDLE SELECT OPPONENT
+   * Sets up the selected AI opponent and initiates drone selection phase.
+   * Configures AI drone pool and places opponent ship sections randomly.
+   * @param {Object} selectedAI - The selected AI personality data
+   */
+  const handleSelectOpponent = (selectedAI) => {
     // 1. Set up the opponent (Player 2) with the selected AI's data
     setPlayer2(prev => {
       // Find the full drone objects from the collection based on the names in the AI's pool
@@ -2793,6 +2678,11 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
   };
     
  
+  /**
+   * HANDLE START ACTION PHASE
+   * Transitions from deployment to action phase.
+   * Sets first player and displays appropriate turn modal.
+   */
   const handleStartActionPhase = () => {
    setShowActionPhaseStartModal(false);
    setPassInfo({ firstPasser: null, player1Passed: false, player2Passed: false });
@@ -2818,7 +2708,11 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
 }
   };
   
- // Helper function to draw cards for the player ---
+  /**
+   * DRAW PLAYER HAND
+   * Draws cards for player up to their hand limit.
+   * Handles deck shuffling from discard pile when needed.
+   */
   const drawPlayerHand = () => {
     setPlayer1(prev => {
       const effectiveStats = gameEngine.calculateEffectiveShipStats(prev, placedSections).totals;
@@ -2843,7 +2737,11 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     });
   };
 
-  // Helper function to proceed to the first turn of the game ---
+  /**
+   * PROCEED TO FIRST TURN
+   * Determines first player and initiates turn sequence.
+   * Uses game logic for first player determination.
+   */
   const proceedToFirstTurn = () => {
     const determineFirstPlayer = () => {
         if (firstPlayerOverride) {
@@ -2862,7 +2760,11 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     setShowFirstPlayerModal(true);
   };
 
-  // Helper function to proceed to the shield allocation phase ---
+  /**
+   * PROCEED TO SHIELD ALLOCATION
+   * Initiates shield restoration phase.
+   * Calculates available shields and sets up allocation UI.
+   */
   const proceedToShieldAllocation = () => {
     setSelectedCard(null);
     setSelectedDrone(null);
@@ -2878,6 +2780,12 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     });
   };
    
+  /**
+   * HANDLE SELECT SECTION FOR PLACEMENT
+   * Manages ship section selection during placement phase.
+   * Handles selection toggling and section removal from lanes.
+   * @param {string} sectionName - Name of the section being selected
+   */
   const handleSelectSectionForPlacement = (sectionName) => {
     // If clicking a section in the top "unplaced" row
     if (unplacedSections.includes(sectionName)) {
@@ -2894,6 +2802,12 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     }
   };
 
+  /**
+   * HANDLE LANE SELECT FOR PLACEMENT
+   * Places selected ship section in chosen lane.
+   * Handles lane swapping and section management.
+   * @param {number} laneIndex - Index of the lane (0, 1, 2)
+   */
   const handleLaneSelectForPlacement = (laneIndex) => {
     if (selectedSectionForPlacement) {
       // If the lane is occupied, swap with the selected section
@@ -2924,6 +2838,11 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     }
   };
 
+  /**
+   * HANDLE CONFIRM PLACEMENT
+   * Finalizes ship section placement and initiates initial card draw.
+   * Sets up both players' hands and transitions to first turn determination.
+   */
   const handleConfirmPlacement = () => {
       // This is the logic that was at the end of the old handlePlaceSection
       setPlayer2(prev => {
@@ -2964,7 +2883,13 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
       });
   };
 
-    const handleAllocateShield = (sectionName) => {
+  /**
+   * HANDLE ALLOCATE SHIELD
+   * Allocates a shield to a specific ship section during shield allocation phase.
+   * Validates shield limits and available shield count.
+   * @param {string} sectionName - Name of the section receiving the shield
+   */
+  const handleAllocateShield = (sectionName) => {
     const section = player1.shipSections[sectionName];
     const effectiveMaxShields = gameEngine.getEffectiveSectionMaxShields(sectionName, player1, placedSections);
     if (shieldsToAllocate > 0 && section.allocatedShields < effectiveMaxShields) {
@@ -2982,7 +2907,12 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     }
   };
 
-  // Shield reallocation handlers
+  /**
+   * HANDLE REMOVE SHIELD
+   * Removes a shield from a section during shield reallocation.
+   * Transfers removed shields to allocation pool.
+   * @param {string} sectionName - Name of the section losing the shield
+   */
   const handleRemoveShield = (sectionName) => {
     if (shieldsToRemove <= 0) return;
 
@@ -3004,6 +2934,12 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     setShieldsToAdd(prev => prev + 1);
   };
 
+  /**
+   * HANDLE ADD SHIELD
+   * Adds a shield to a section during shield reallocation.
+   * Validates section shield limits before allocation.
+   * @param {string} sectionName - Name of the section receiving the shield
+   */
   const handleAddShield = (sectionName) => {
     if (shieldsToAdd <= 0) return;
 
@@ -3025,10 +2961,19 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     setShieldsToAdd(prev => prev - 1);
   };
 
+  /**
+   * HANDLE CONTINUE TO ADD PHASE
+   * Transitions from shield removal to shield addition phase during reallocation.
+   */
   const handleContinueToAddPhase = () => {
     setReallocationPhase('adding');
   };
 
+  /**
+   * HANDLE RESET REALLOCATION
+   * Resets shield reallocation back to starting state.
+   * Restores original shield distribution and counters.
+   */
   const handleResetReallocation = () => {
     // Restore original shields
     setPlayer1(prev => ({
@@ -3042,6 +2987,11 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     setReallocationPhase('removing');
   };
 
+  /**
+   * HANDLE CANCEL REALLOCATION
+   * Cancels shield reallocation and restores original state.
+   * Clears all reallocation UI state.
+   */
   const handleCancelReallocation = () => {
     // Restore original shields
     setPlayer1(prev => ({
@@ -3057,6 +3007,11 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     setReallocationAbility(null);
   };
 
+  /**
+   * HANDLE CONFIRM REALLOCATION
+   * Confirms shield reallocation and triggers ability resolution.
+   * Shows final confirmation modal with energy deduction.
+   */
   const handleConfirmReallocation = () => {
     // Show confirmation modal with energy deduction
     setShipAbilityConfirmation({
@@ -3066,6 +3021,12 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     });
   };
 
+  /**
+   * HANDLE SHIP SECTION CLICK
+   * Processes clicks on ship sections for shield allocation or reallocation.
+   * Routes to appropriate handler based on current phase.
+   * @param {string} sectionName - Name of the clicked ship section
+   */
   const handleShipSectionClick = (sectionName) => {
     // Handle shield reallocation if active
     if (reallocationPhase) {
@@ -3083,11 +3044,21 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     }
   };
   
+  /**
+   * HANDLE RESET SHIELD ALLOCATION
+   * Resets shield allocation back to initial state.
+   * Restores original shield distribution.
+   */
   const handleResetShieldAllocation = () => {
    setPlayer1(prev => ({ ...prev, shipSections: initialShieldAllocation }));
    setShieldsToAllocate(player1EffectiveStats.totals.shieldsPerTurn);
   };
 
+  /**
+   * HANDLE END ALLOCATION
+   * Completes shield allocation phase and handles AI shield allocation.
+   * Determines first player and transitions to deployment phase.
+   */
   const handleEndAllocation = () => {
     const shieldsToAllocateAI = player2EffectiveStats.shieldsPerTurn;
     const aiSections = Object.keys(player2.shipSections);
@@ -3131,6 +3102,11 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
    setShowFirstPlayerModal(true);
   };
 
+  /**
+   * HANDLE START DEPLOYMENT PHASE
+   * Initiates deployment phase with appropriate turn modals.
+   * Sets first player and displays deployment instructions.
+   */
   const handleStartDeploymentPhase = () => {
    setPassInfo({ firstPasser: null, player1Passed: false, player2Passed: false });
    setTurnPhase('deployment');
@@ -3154,6 +3130,12 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
 }
   };
 
+  /**
+   * HANDLE CONFIRM DRONE SELECTION
+   * Finalizes player's drone pool selection and transitions to deck phase.
+   * Updates player state with selected drones and counts.
+   * @param {Array} selectedDrones - Array of selected drone objects
+   */
   const handleConfirmDroneSelection = (selectedDrones) => {
         const droneNames = selectedDrones.map(d => d.name).join(', ');
     addLogEntry({
@@ -3177,6 +3159,11 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     setModalContent(null); // Close the drone selection modal
   };
 
+  /**
+   * START PLACEMENT PHASE
+   * Initiates ship section placement phase.
+   * Sets up unplaced sections and placement UI state.
+   */
   const startPlacementPhase = () => {
     setUnplacedSections(['bridge', 'powerCell', 'droneControlHub']);
     setSelectedSectionForPlacement(null);
@@ -3189,7 +3176,13 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     });
   };
 
-   const handleDeckChoice = (choice) => {
+  /**
+   * HANDLE DECK CHOICE
+   * Processes player's choice between standard deck or custom deck building.
+   * Routes to appropriate phase based on selection.
+   * @param {string} choice - 'standard' or 'custom' deck choice
+   */
+  const handleDeckChoice = (choice) => {
     if (choice === 'standard') {
         addLogEntry({ player: 'SYSTEM', actionType: 'DECK_SELECTION', source: 'Player Setup', target: 'N/A', outcome: 'Player selected the Standard Deck.' }, 'handleDeckChoice');
       startPlacementPhase(); // This now calls our new function
@@ -3199,7 +3192,14 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     }
   };
 
-    const handleDeckChange = (cardId, quantity) => {
+  /**
+   * HANDLE DECK CHANGE
+   * Updates deck composition during deck building.
+   * Manages card quantities and removal.
+   * @param {string} cardId - ID of the card being changed
+   * @param {number} quantity - New quantity for the card
+   */
+  const handleDeckChange = (cardId, quantity) => {
     setDeck(prevDeck => {
       const newDeck = { ...prevDeck };
       if (quantity === 0) {
@@ -3212,6 +3212,11 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     });
   };
 
+  /**
+   * HANDLE CONFIRM DECK
+   * Finalizes custom deck composition and builds shuffled deck.
+   * Updates player state and transitions to placement phase.
+   */
   const handleConfirmDeck = () => {
     // ADD THIS BLOCK
     const deckContents = Object.entries(deck)
@@ -3244,7 +3249,12 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     startPlacementPhase(); // This now calls our new function
   };
 
-  // --- ADD THIS NEW FUNCTION ---
+  /**
+   * HANDLE IMPORT DECK
+   * Imports deck from deck code string for quick deck building.
+   * Validates deck format and card quantities.
+   * @param {string} deckCode - Formatted deck code string
+   */
   const handleImportDeck = (deckCode) => {
     try {
       const newDeck = {};
@@ -3289,6 +3299,12 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     }
   };
 
+  /**
+   * HANDLE CHOOSE DRONE FOR SELECTION
+   * Processes drone choice during initial drone selection phase.
+   * Advances to next pair or completes selection when 5 drones chosen.
+   * @param {Object} chosenDrone - The drone being selected
+   */
   const handleChooseDroneForSelection = (chosenDrone) => {
     const newSelection = [...tempSelectedDrones, chosenDrone];
     if (newSelection.length >= 5) {
@@ -3303,6 +3319,12 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     }
   };
 
+  /**
+   * HANDLE TOGGLE DRONE SELECTION
+   * Toggles drone selection state during action phase.
+   * Clears conflicting UI modes when selecting new drone.
+   * @param {Object} drone - The drone being toggled
+   */
   const handleToggleDroneSelection = (drone) => {
     if (passInfo.player1Passed) return;
     if (selectedDrone && selectedDrone.name === drone.name) {
@@ -3314,6 +3336,12 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     }
   };
 
+  /**
+   * EXECUTE DEPLOYMENT
+   * Executes drone deployment using gameEngine logic.
+   * Updates player state and handles deployment success/failure.
+   * @param {string} lane - The lane to deploy the drone to
+   */
   const executeDeployment = (lane) => {
     const result = gameEngine.executeDeployment(
       selectedDrone,
@@ -3334,6 +3362,12 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     }
   };
 
+  /**
+   * HANDLE DEPLOY DRONE
+   * Validates and initiates drone deployment to specified lane.
+   * Shows confirmation for turn 1 deployments requiring energy.
+   * @param {string} lane - The target lane for deployment
+   */
   const handleDeployDrone = (lane) => {
     if (!selectedDrone || currentPlayer !== 'player1' || passInfo.player1Passed) return;
 
@@ -3353,6 +3387,11 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     }
   };
 
+  /**
+   * HANDLE CONFIRM DEPLOYMENT
+   * Confirms deployment after showing cost confirmation.
+   * Executes the deployment and clears confirmation state.
+   */
   const handleConfirmDeployment = () => {
     if (!deploymentConfirmation) return;
     const { lane, budgetCost, energyCost } = deploymentConfirmation;
@@ -3360,6 +3399,11 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
    setDeploymentConfirmation(null);
   };
 
+  /**
+   * HANDLE PLAYER PASS
+   * Processes player passing during deployment or action phase.
+   * Manages turn transitions and phase ending logic.
+   */
   const handlePlayerPass = () => {
     if (passInfo.player1Passed) return;
      addLogEntry({ player: player1.name, actionType: 'PASS', source: 'N/A', target: 'N/A', outcome: `Passed during ${turnPhase} phase.` }, 'playerPass');
@@ -3386,34 +3430,30 @@ useEffect(() => {
         return;
     }
 
-    const { attacker, target, targetType, lane } = pendingAttack;
-
-    const effectiveAttacker = gameEngine.calculateEffectiveStats(
-        attacker, lane, player2Ref.current, player1Ref.current,
+    const interceptionResult = gameEngine.calculateAiInterception(
+        pendingAttack,
+        { player1: player1Ref.current, player2: player2Ref.current },
         { player1: placedSections, player2: opponentPlacedSections }
     );
 
-    const potentialInterceptors = player1Ref.current.dronesOnBoard[lane]
-        .filter(d => {
-            const effectiveInterceptor = gameEngine.calculateEffectiveStats(
-                d, lane, player1Ref.current, player2Ref.current,
-                { player1: placedSections, player2: opponentPlacedSections }
-            );
-            return !d.isExhausted &&
-                   (effectiveInterceptor.speed > effectiveAttacker.speed || effectiveInterceptor.keywords.has('ALWAYS_INTERCEPTS')) &&
-                   (targetType !== 'drone' || d.id !== target.id);
-        });
-
-    if (potentialInterceptors.length > 0) {
+    if (interceptionResult.hasInterceptors) {
         setPlayerInterceptionChoice({
-            attackDetails: pendingAttack,
-            interceptors: potentialInterceptors,
+            attackDetails: interceptionResult.attackDetails,
+            interceptors: interceptionResult.interceptors,
         });
     } else {
         resolveAttack(pendingAttack);
     }
 }, [pendingAttack, resolveAttack, placedSections, opponentPlacedSections]);
   
+  /**
+   * HANDLE ABILITY ICON CLICK
+   * Processes clicks on drone ability buttons.
+   * Validates energy and exhaustion, handles targeting modes, and self-targeting abilities.
+   * @param {Event} e - Click event
+   * @param {Object} drone - The drone whose ability is being activated
+   * @param {Object} ability - The ability being activated
+   */
   const handleAbilityIconClick = (e, drone, ability) => {
     e.stopPropagation();
     if (turnPhase !== 'action' || currentPlayer !== 'player1' || passInfo.player1Passed) return;
@@ -3453,7 +3493,15 @@ useEffect(() => {
     }
   };
   
-const handleShipAbilityClick = (e, section, ability) => {
+  /**
+   * HANDLE SHIP ABILITY CLICK
+   * Processes clicks on ship section ability buttons.
+   * Handles targeting, energy validation, and special abilities like shield reallocation.
+   * @param {Event} e - Click event
+   * @param {Object} section - Ship section data
+   * @param {Object} ability - Ship ability data
+   */
+  const handleShipAbilityClick = (e, section, ability) => {
     e.stopPropagation();
     if (turnPhase !== 'action' || currentPlayer !== 'player1' || passInfo.player1Passed) return;
 
@@ -3491,6 +3539,14 @@ const handleShipAbilityClick = (e, section, ability) => {
     }
 };
 
+  /**
+   * HANDLE TOKEN CLICK
+   * Main handler for drone token interactions including attacks, targeting, and selection.
+   * Routes clicks to appropriate handlers based on game state and context.
+   * @param {Event} e - Click event
+   * @param {Object} token - Drone token data
+   * @param {boolean} isPlayer - Whether token belongs to current player
+   */
   const handleTokenClick = (e, token, isPlayer) => {
       e.stopPropagation();
       console.log(`--- handleTokenClick triggered for ${token.name} (isPlayer: ${isPlayer}) ---`);
@@ -3635,6 +3691,14 @@ const handleShipAbilityClick = (e, section, ability) => {
       setDetailedDrone(token);
   };
   
+  /**
+   * HANDLE TARGET CLICK
+   * Processes targeting for abilities, cards, and ship section attacks.
+   * Routes to appropriate resolution based on active targeting mode.
+   * @param {Object} target - The target being clicked
+   * @param {string} targetType - Type of target ('drone', 'section', 'lane')
+   * @param {boolean} isPlayer - Whether target belongs to current player
+   */
   const handleTargetClick = (target, targetType, isPlayer) => {
       // This function will now ONLY handle targeting for cards and abilities.
       // Standard attack targeting is moved to handleTokenClick.
@@ -3734,6 +3798,14 @@ const handleShipAbilityClick = (e, section, ability) => {
   };
 
 
+  /**
+   * HANDLE LANE CLICK
+   * Processes clicks on battlefield lanes for deployment, movement, and targeting.
+   * Routes to different handlers based on game phase and active modes.
+   * @param {Event} e - Click event
+   * @param {string} lane - Lane identifier (lane1, lane2, lane3)
+   * @param {boolean} isPlayer - Whether lane belongs to current player
+   */
   const handleLaneClick = (e, lane, isPlayer) => {
     // Stop the click from bubbling up to the main game area div
     e.stopPropagation();
@@ -3812,7 +3884,12 @@ const handleShipAbilityClick = (e, section, ability) => {
     }
   };
 
-  // --- NEW --- Click handler for cards in hand
+  /**
+   * HANDLE CARD CLICK
+   * Processes clicks on cards in player's hand.
+   * Handles different card types including movement, upgrades, and targeted effects.
+   * @param {Object} card - The card being clicked
+   */
   const handleCardClick = (card) => {
     if (turnPhase !== 'action' || currentPlayer !== 'player1' || passInfo.player1Passed) return;
     if (player1.energy < card.cost) {
@@ -3885,6 +3962,11 @@ const handleShipAbilityClick = (e, section, ability) => {
     }
   };
 
+  /**
+   * EXECUTE MOVE
+   * Executes confirmed drone movement with effects and exhaustion.
+   * Applies on-move effects and updates auras after movement.
+   */
   const executeMove = () => {
     if (!moveConfirmation) return;
     const { drone, from, to } = moveConfirmation;
@@ -3907,6 +3989,12 @@ const handleShipAbilityClick = (e, section, ability) => {
     endTurn('player1');
   };
   
+  /**
+   * HANDLE CONFIRM MANDATORY DISCARD
+   * Processes confirmed mandatory card discard.
+   * Manages discard count and phase transitions.
+   * @param {Object} card - The card being discarded
+   */
   const handleConfirmMandatoryDiscard = (card) => {
     // Capture the current state before any updates
     const currentMandatoryAction = mandatoryAction;
@@ -3944,6 +4032,12 @@ const handleShipAbilityClick = (e, section, ability) => {
     }
   };
   
+  /**
+   * HANDLE CONFIRM MANDATORY DESTROY
+   * Processes confirmed mandatory drone destruction.
+   * Handles both player and AI compliance checking.
+   * @param {Object} drone - The drone being destroyed
+   */
   const handleConfirmMandatoryDestroy = (drone) => {
    setPlayer1(prev => {
         const lane = gameEngine.getLaneOfDrone(drone.id, prev);
@@ -4002,6 +4096,13 @@ const handleShipAbilityClick = (e, section, ability) => {
   };
 
 
+  /**
+   * GET PHASE DISPLAY NAME
+   * Returns human-readable name for game phases.
+   * Used for UI display and debugging.
+   * @param {string} phase - The game phase identifier
+   * @returns {string} Human-readable phase name
+   */
   const getPhaseDisplayName = (phase) => {
     const names = {
       preGame: "Pre-Game Setup",
@@ -4137,7 +4238,7 @@ const handleShipAbilityClick = (e, section, ability) => {
             <div className="flex items-center gap-4">
               <div className={`flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-pink-500/50 ${player2.energy > player2EffectiveStats.totals.maxEnergy ? 'text-red-400' : ''}`}><Bolt className="text-yellow-300 mr-2" /> <span className="font-bold text-lg">{player2.energy} / {player2EffectiveStats.totals.maxEnergy}</span></div>
               <div
-                onClick={() => AI_HAND_DEBUG_MODE && setShowAiHandModal(true)}
+                onClick={() => AI_HAND_DEBUG_MODE && setTimeout(() => setShowAiHandModal(true), 100)}
                 className={`flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-pink-500/50 ${AI_HAND_DEBUG_MODE ? 'cursor-pointer hover:bg-gray-800' : ''} ${player2.hand.length > player2EffectiveStats.totals.handLimit ? 'text-red-400' : ''}`}
               >
                 <Hand className="text-gray-400 mr-2" />
@@ -4797,16 +4898,16 @@ const handleShipAbilityClick = (e, section, ability) => {
         {showAiHandModal && AI_HAND_DEBUG_MODE && (
           <GamePhaseModal
             title="Opponent's Hand (Debug View)"
-            text={`The opponent is holding ${player2.hand.length} card(s). This view is for debug purposes only.`}
+            text={`The opponent is holding ${player2Ref.current.hand.length} card(s). This view is for debug purposes only.`}
             onClose={() => setShowAiHandModal(false)}
             maxWidthClass="max-w-6xl"
           >
-            <div className="flex flex-nowrap items-center gap-4 my-4 p-4 overflow-x-auto bg-black/20 rounded">  
-              {player2.hand.length > 0 ? (
-                player2.hand.map(card => (
-                  <ActionCard 
-                    key={card.instanceId} 
-                    card={card} 
+            <div className="flex flex-nowrap items-center gap-4 my-4 p-4 overflow-x-auto bg-black/20 rounded">
+              {player2Ref.current.hand.length > 0 ? (
+                player2Ref.current.hand.map(card => (
+                  <ActionCard
+                    key={card.instanceId}
+                    card={card}
                     isPlayable={false}
                   />
                 ))
@@ -4838,6 +4939,14 @@ const handleShipAbilityClick = (e, section, ability) => {
         cards={player1.discardPile}
         title="Discard Pile"
         shouldSort={false}
+      />
+
+      {/* Card Selection Modal for SEARCH_AND_DRAW effects */}
+      <CardSelectionModal
+        isOpen={!!cardSelectionModal}
+        onClose={cardSelectionModal?.onCancel || (() => setCardSelectionModal(null))}
+        onConfirm={cardSelectionModal?.onConfirm || (() => {})}
+        selectionData={cardSelectionModal}
       />
         {shipAbilityConfirmation && (() => {
           const { ability, sectionName, target } = shipAbilityConfirmation;

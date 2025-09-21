@@ -389,6 +389,17 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
               score = 1;
               action.logic.push(`Low Priority: 1`);
             }
+          } else if (card.effect.type === 'SEARCH_AND_DRAW') {
+            const energyAfterPlay = player2.energy - card.cost;
+            const drawValue = card.effect.drawCount * 12; // Value per card drawn
+            const searchBonus = card.effect.searchCount * 2; // Bonus for selection quality
+            if (energyAfterPlay >= 0) {
+              score = drawValue + searchBonus + (energyAfterPlay * 2);
+              action.logic.push(`(Draw Value: ${drawValue}) + (Search Bonus: ${searchBonus}) + (Energy Left: ${energyAfterPlay} * 2)`);
+            } else {
+              score = 2;
+              action.logic.push(`Low Priority: 2`);
+            }
           } else if (card.effect.type === 'HEAL_SHIELDS') {
             const shieldsToHeal = Math.min(card.effect.value, target.currentMaxShields - target.currentShields);
             score = shieldsToHeal * 5;

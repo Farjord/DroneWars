@@ -544,6 +544,126 @@ const fullCardCollection = [
       properties: ['DO_NOT_EXHAUST'],
       goAgain: true
     }
+},
+// --- NEW: UPGRADE CARDS ---
+{
+    id: 'CARD022',
+    baseCardId: 'CARD022',
+    name: 'Combat Enhancement',
+    maxInDeck: 3,
+    type: 'Upgrade',
+    cost: 2,
+    image: '/cards/CombatEnhancement.png',
+    description: 'Permanently increase the attack of all drones of a target type by 1.',
+    targeting: {
+      type: 'DRONE_CARD'
+    },
+    effect: {
+      type: 'MODIFY_DRONE_BASE',
+      mod: { stat: 'attack', value: 1 }
+    },
+    maxApplications: 2
+},
+{
+    id: 'CARD023',
+    baseCardId: 'CARD023',
+    name: 'Shield Amplifier',
+    maxInDeck: 3,
+    type: 'Upgrade',
+    cost: 2,
+    image: '/cards/ShieldAmplifier.png',
+    description: 'Permanently increase the shields of all drones of a target type by 1.',
+    targeting: {
+      type: 'DRONE_CARD'
+    },
+    effect: {
+      type: 'MODIFY_DRONE_BASE',
+      mod: { stat: 'shields', value: 1 }
+    },
+    maxApplications: 2
+},
+{
+    id: 'CARD024',
+    baseCardId: 'CARD024',
+    name: 'Piercing Rounds',
+    maxInDeck: 2,
+    type: 'Upgrade',
+    cost: 3,
+    image: '/cards/PiercingRounds.png',
+    description: 'Permanently grant all drones of a target type the Piercing keyword.',
+    targeting: {
+      type: 'DRONE_CARD'
+    },
+    effect: {
+      type: 'MODIFY_DRONE_BASE',
+      mod: {
+        stat: 'ability',
+        abilityToAdd: {
+          name: 'Piercing',
+          type: 'PASSIVE',
+          effect: { type: 'GRANT_KEYWORD', keyword: 'PIERCING' }
+        }
+      }
+    },
+    maxApplications: 1
+},
+// --- NEW: SEARCH AND DRAW CARD ---
+{
+    id: 'CARD025',
+    baseCardId: 'CARD025',
+    name: 'Strategic Planning',
+    maxInDeck: 3,
+    type: 'Action',
+    cost: 1,
+    image: '/cards/StrategicPlanning.png',
+    description: 'Look at the top 5 cards of your deck and draw 1. Shuffle your deck.',
+    effect: {
+        type: 'SEARCH_AND_DRAW',
+        searchCount: 5,
+        drawCount: 1,
+        shuffleAfter: true
+    }
+},
+
+// --- NEW: FILTERED SEARCH CARD ---
+{
+    id: 'CARD026',
+    baseCardId: 'CARD026',
+    name: 'Equipment Cache',
+    maxInDeck: 2,
+    type: 'Action',
+    cost: 2,
+    image: '/cards/EquipmentCache.png',
+    description: 'Search your deck for an Upgrade card and add it to your hand. Shuffle your deck.',
+    effect: {
+        type: 'SEARCH_AND_DRAW',
+        searchCount: 999, // Search entire deck
+        drawCount: 1,
+        shuffleAfter: true,
+        filter: {
+            type: 'Upgrade'
+        }
+    }
+},
+
+// --- NEW: COST-REDUCING UPGRADE CARD ---
+{
+    id: 'CARD027',
+    baseCardId: 'CARD027',
+    name: 'Efficiency Module',
+    maxInDeck: 2,
+    type: 'Upgrade',
+    cost: 2,
+    image: '/cards/EfficiencyModule.png',
+    description: 'Permanently reduce the deployment cost of all drones of a target type by 1.',
+    targeting: {
+      type: 'DRONE_CARD'
+    },
+    effect: {
+      type: 'MODIFY_DRONE_BASE',
+      mod: { stat: 'cost', value: -1 }
+    },
+    maxApplications: 2
 }
 ];
 
