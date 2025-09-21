@@ -53,6 +53,7 @@ const DeckBuilder = ({
   const [filters, setFilters] = useState({
     cost: { min: 0, max: 99 }, // Temporary values
     target: 'all',
+    type: 'all',
     abilities: [],
     hideEnhanced: false,
   });
@@ -82,6 +83,49 @@ const DeckBuilder = ({
                     if (subEffect.type) keywords.push(formatKeyword(subEffect.type));
                 });
             }
+        } else if (effect.type === 'MODIFY_DRONE_BASE' && effect.mod) {
+            // Create specific modification keywords
+            const stat = effect.mod.stat;
+            const value = effect.mod.value;
+
+            if (stat === 'attack') {
+                keywords.push(value > 0 ? 'Attack Buff' : 'Attack Debuff');
+            } else if (stat === 'speed') {
+                keywords.push(value > 0 ? 'Speed Buff' : 'Speed Debuff');
+            } else if (stat === 'shields') {
+                keywords.push(value > 0 ? 'Shield Buff' : 'Shield Debuff');
+            } else if (stat === 'cost') {
+                keywords.push(value < 0 ? 'Cost Reduction' : 'Cost Increase');
+            } else if (stat === 'limit') {
+                keywords.push(value > 0 ? 'Limit Buff' : 'Limit Debuff');
+            } else if (stat === 'ability') {
+                keywords.push('Ability Grant');
+                // Also add the specific ability being granted
+                if (effect.mod.abilityToAdd && effect.mod.abilityToAdd.name) {
+                    keywords.push(effect.mod.abilityToAdd.name);
+                }
+            } else {
+                keywords.push(formatKeyword(`${stat} Modification`));
+            }
+        } else if (effect.type === 'MODIFY_STAT' && effect.mod) {
+            // Create specific stat modification keywords
+            const stat = effect.mod.stat;
+            const value = effect.mod.value;
+            const type = effect.mod.type; // temporary or permanent
+
+            if (stat === 'attack') {
+                keywords.push(value > 0 ? 'Attack Buff' : 'Attack Debuff');
+            } else if (stat === 'speed') {
+                keywords.push(value > 0 ? 'Speed Buff' : 'Speed Debuff');
+            } else if (stat === 'shields') {
+                keywords.push(value > 0 ? 'Shield Buff' : 'Shield Debuff');
+            } else {
+                keywords.push(value > 0 ? `${stat} Buff` : `${stat} Debuff`);
+            }
+        } else if (effect.type === 'SEARCH_AND_DRAW') {
+            // Add both Search and Draw keywords for better filtering
+            keywords.push(formatKeyword(effect.type)); // "Search And Draw"
+            keywords.push('Draw'); // Also include the draw keyword
         } else if (effect.type) {
             keywords.push(formatKeyword(effect.type));
         }
@@ -90,13 +134,24 @@ const DeckBuilder = ({
         if (effect.mod?.type) keywords.push(formatKeyword(effect.mod.type));
         
         const targetingText = (() => {
-            if (!card.targeting) return 'N/A';
-            const t = formatKeyword(card.targeting.type);
-            if (card.targeting.affinity) {
-                const a = card.targeting.affinity.charAt(0) + card.targeting.affinity.slice(1).toLowerCase();
-                return `${t} (${a})`;
+            if (card.targeting) {
+                const t = formatKeyword(card.targeting.type);
+                if (card.targeting.affinity) {
+                    const a = card.targeting.affinity.charAt(0) + card.targeting.affinity.slice(1).toLowerCase();
+                    return `${t} (${a})`;
+                }
+                return t;
+            } else if (effect.type === 'MULTI_MOVE' && effect.source) {
+                // Handle MULTI_MOVE cards that have targeting in the effect
+                const sourceLocation = effect.source.location || 'Any';
+                const sourceAffinity = effect.source.affinity || 'Any';
+                const formattedAffinity = sourceAffinity.charAt(0).toUpperCase() + sourceAffinity.slice(1).toLowerCase();
+                return `${formatKeyword(sourceLocation)} (${formattedAffinity})`;
+            } else if (effect.type === 'SINGLE_MOVE') {
+                // Handle SINGLE_MOVE cards - they typically target friendly drones
+                return 'Drone (Friendly)';
             }
-            return t;
+            return 'N/A';
         })();
 
         return { ...card, keywords, targetingText };
@@ -209,6 +264,10 @@ const DeckBuilder = ({
         if (filters.target !== 'all' && card.targetingText !== filters.target) {
           return false;
         }
+        // Type filter
+        if (filters.type !== 'all' && card.type !== filters.type) {
+          return false;
+        }
         // Abilities filter (must have ALL selected abilities)
         if (filters.abilities.length > 0) {
           return filters.abilities.every(ability => card.keywords.includes(ability));
@@ -223,13 +282,26 @@ const DeckBuilder = ({
     // Sort logic
     if (sortConfig.key !== null) {
       sortableItems.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
+        const aVal = a[sortConfig.key];
+        const bVal = b[sortConfig.key];
+
+        // Handle null/undefined values
+        if (aVal == null && bVal == null) return 0;
+        if (aVal == null) return 1;
+        if (bVal == null) return -1;
+
+        // Convert to string for consistent comparison
+        const aStr = String(aVal).toLowerCase();
+        const bStr = String(bVal).toLowerCase();
+
+        if (aStr < bStr) {
           return sortConfig.direction === 'ascending' ? -1 : 1;
         }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
+        if (aStr > bStr) {
           return sortConfig.direction === 'ascending' ? 1 : -1;
         }
-        return 0;
+        // Secondary sort by ID for stability
+        return a.id.localeCompare(b.id);
       });
     }
 
@@ -238,7 +310,10 @@ const DeckBuilder = ({
 
   // --- NEW: Handler for sorting ---
   const requestSort = (key) => {
-//... (existing function)
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
     setSortConfig({ key, direction });
   };
 
@@ -252,6 +327,26 @@ const DeckBuilder = ({
             ? prev.abilities.filter(a => a !== ability)
             : [...prev.abilities, ability];
         return { ...prev, abilities };
+    });
+  };
+
+  const resetFilters = () => {
+    setFilters({
+      cost: { min: filterOptions.minCost, max: filterOptions.maxCost },
+      target: 'all',
+      type: 'all',
+      abilities: [],
+      hideEnhanced: false,
+    });
+    setIsAbilityDropdownOpen(false);
+  };
+
+  const resetDeck = () => {
+    // Clear all cards from the deck by setting each to 0
+    Object.keys(deck).forEach(cardId => {
+      if (deck[cardId] > 0) {
+        onDeckChange(cardId, 0);
+      }
     });
   };
   
@@ -390,7 +485,15 @@ const DeckBuilder = ({
 
         {/* Left Side: Available Cards Collection */}
         <div className="w-2/3 flex flex-col bg-slate-900/50 rounded-lg p-4 border border-gray-700">
-          <h2 className="text-xl font-orbitron mb-4">Available Cards</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-orbitron">Available Cards</h2>
+            <button
+              onClick={resetFilters}
+              className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm"
+            >
+              Reset Filters
+            </button>
+          </div>
           {/* --- NEW: Filter Input --- */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             {/* Cost Range Filter */}
@@ -433,9 +536,11 @@ const DeckBuilder = ({
                 )}
             </div>
 
-            {/* Target Filter */}
-            <select onChange={(e) => handleFilterChange('target', e.target.value)} value={filters.target} className="filter-select h-full">
-                {filterOptions.targets.map(target => <option key={target} value={target}>{target === 'all' ? 'All Targets' : target}</option>)}
+            {/* Type Filter */}
+            <select onChange={(e) => handleFilterChange('type', e.target.value)} value={filters.type} className="filter-select h-full">
+                <option value="all">All Types</option>
+                <option value="Action">Action Cards</option>
+                <option value="Upgrade">Upgrade Cards</option>
             </select>
 
             {/* Enhanced Cards Filter */}
@@ -457,24 +562,26 @@ const DeckBuilder = ({
               <thead>
                 <tr>
                   <th>Info</th>
-                  <th><button onClick={() => requestSort('name')} className={`w-full text-left transition-colors ${sortConfig.key === 'name' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Name{sortConfig.key === 'name' && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
-                  <th><button onClick={() => requestSort('cost')} className={`w-full text-left transition-colors ${sortConfig.key === 'cost' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Cost{sortConfig.key === 'cost' && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
-                  <th><button onClick={() => requestSort('description')} className={`w-full text-left transition-colors ${sortConfig.key === 'description' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Description{sortConfig.key === 'description' && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
+                  <th><button onClick={() => requestSort('name')} className={`w-full text-left transition-colors underline cursor-pointer ${sortConfig.key === 'name' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Name{sortConfig.key === 'name' && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
+                  <th><button onClick={() => requestSort('type')} className={`w-full text-left transition-colors underline cursor-pointer ${sortConfig.key === 'type' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Type{sortConfig.key === 'type' && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
+                  <th><button onClick={() => requestSort('cost')} className={`w-full text-left transition-colors underline cursor-pointer ${sortConfig.key === 'cost' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Cost{sortConfig.key === 'cost' && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
+                  <th><button onClick={() => requestSort('description')} className={`w-full text-left transition-colors underline cursor-pointer ${sortConfig.key === 'description' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Description{sortConfig.key === 'description' && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
                   <th>Abilities</th>
                   <th>Targeting</th>
                   <th>Quantity</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredAndSortedCards.map(card => {
+                {filteredAndSortedCards.map((card, index) => {
                   const currentCountForThisVariant = deck[card.id] || 0;
                   const totalCountForBaseCard = baseCardCounts[card.baseCardId] || 0;
                   const maxInDeck = card.maxInDeck;
                   
                   return (
-                    <tr key={card.id}>
+                    <tr key={`${card.id}-${index}`} className={card.type === 'Upgrade' ? 'bg-purple-900/10' : ''}>
                       <td><button onClick={() => setDetailedCard(card)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
                       <td className="font-bold">{card.name}</td>
+                      <td className={`font-semibold ${card.type === 'Upgrade' ? 'text-purple-400' : 'text-cyan-400'}`}>{card.type}</td>
                       <td>{card.cost}</td>
                       <td className="text-xs text-gray-400">{card.description}</td>
                       <td><div className="flex flex-wrap gap-2">{card.keywords.map(k => <span key={k} className="ability-chip">{k}</span>)}</div></td>
@@ -499,9 +606,17 @@ const DeckBuilder = ({
 
         {/* Right Side: Your Deck */}
         <div className="w-1/3 flex flex-col bg-slate-900/50 rounded-lg p-4 border border-gray-700">
-          <h2 className={`text-xl font-orbitron mb-4 transition-colors ${isDeckValid ? 'text-green-400' : 'text-white'}`}>
-            Your Deck ({cardCount}/40)
-          </h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className={`text-xl font-orbitron transition-colors ${isDeckValid ? 'text-green-400' : 'text-white'}`}>
+              Your Deck ({cardCount}/40)
+            </h2>
+            <button
+              onClick={resetDeck}
+              className="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm"
+            >
+              Reset Deck
+            </button>
+          </div>
           <div className="flex-grow overflow-y-auto pr-2 deck-list">
             {deckListForDisplay.length > 0 ? (
               deckListForDisplay.map(card => {
@@ -557,6 +672,9 @@ const DeckBuilder = ({
                   <button onClick={() => setActiveChartView('cost')} className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${activeChartView === 'cost' ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-gray-300 hover:bg-slate-600'}`}>
                     Cost
                   </button>
+                  <button onClick={() => setActiveChartView('type')} className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${activeChartView === 'type' ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-gray-300 hover:bg-slate-600'}`}>
+                    Type
+                  </button>
                   <button onClick={() => setActiveChartView('ability')} className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${activeChartView === 'ability' ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-gray-300 hover:bg-slate-600'}`}>
                     Abilities
                   </button>
@@ -573,6 +691,37 @@ const DeckBuilder = ({
                           <Tooltip cursor={{fill: 'rgba(128, 90, 213, 0.2)'}} contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
                           <Bar dataKey="count" fill="#8884d8" name="Card Count" />
                         </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                  {activeChartView === 'type' && (
+                    <div className="w-full h-full flex flex-col items-center">
+                      <h4 className="font-semibold mb-1">Card Type Distribution</h4>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
+                          <Pie
+                            data={[
+                              { name: 'Action Cards', value: deckListForDisplay.filter(card => card.type === 'Action').reduce((sum, card) => sum + card.quantity, 0), color: '#22d3ee' },
+                              { name: 'Upgrade Cards', value: deckListForDisplay.filter(card => card.type === 'Upgrade').reduce((sum, card) => sum + card.quantity, 0), color: '#c084fc' }
+                            ].filter(item => item.value > 0)}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {[
+                              { name: 'Action Cards', value: deckListForDisplay.filter(card => card.type === 'Action').reduce((sum, card) => sum + card.quantity, 0), color: '#22d3ee' },
+                              { name: 'Upgrade Cards', value: deckListForDisplay.filter(card => card.type === 'Upgrade').reduce((sum, card) => sum + card.quantity, 0), color: '#c084fc' }
+                            ].filter(item => item.value > 0).map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                          <Legend />
+                        </PieChart>
                       </ResponsiveContainer>
                     </div>
                   )}
