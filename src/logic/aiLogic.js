@@ -325,9 +325,6 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
                     if (meetsCondition) {
                         targetsHit++;
                         potentialDamage += card.effect.value;
-                        if (card.effect.damageType === 'PIERCING') {
-                            potentialDamage += (effectiveTarget.currentShields || 0);
-                        }
                     }
                 });
                 score = (potentialDamage * 10) + (targetsHit > 1 ? targetsHit * 15 : 0) - (card.cost * 4);
@@ -338,8 +335,7 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
 
                 if (card.effect.damageType === 'PIERCING') {
                     const shieldBypassValue = (target.currentShields || 0);
-                    potentialDamage += shieldBypassValue;
-                    logic.push(`Piercing through ${shieldBypassValue} shields`);
+                    logic.push(`Piercing bypasses ${shieldBypassValue} shields`);
                 }
                 
                 const damageScore = card.effect.value * 8;
