@@ -547,8 +547,8 @@ const App = () => {
         setCardSelectionModal({
             ...result.needsCardSelection,
             onConfirm: (selectedCards) => {
-                // Handle the card selection
-                handleCardSelection(selectedCards, result.needsCardSelection, card, target, actingPlayerId, aiContext);
+                // Handle the card selection, passing the updated player states that include energy costs
+                handleCardSelection(selectedCards, result.needsCardSelection, card, target, actingPlayerId, aiContext, result.newPlayerStates);
                 setCardSelectionModal(null);
             },
             onCancel: () => {
@@ -564,11 +564,16 @@ const App = () => {
     }
 
     // Handle additional effects (like attacks)
-    result.additionalEffects.forEach(effect => {
-        if (effect.type === 'ATTACK') {
-            resolveAttack(effect.attackDetails, true);
-        }
-    });
+    // Note: Filtered damage effects are now processed directly in the logic layer
+    // using snapshot-based resolution for consistency
+    if (result.additionalEffects && result.additionalEffects.length > 0) {
+        console.log(`[DEBUG] Processing ${result.additionalEffects.length} additional effects`);
+        result.additionalEffects.forEach(effect => {
+            if (effect.type === 'ATTACK') {
+                resolveAttack(effect.attackDetails, true);
+            }
+        });
+    }
 
     // Handle UI cleanup for player 1 (only if no card selection needed)
     if (actingPlayerId === 'player1') {
@@ -589,7 +594,7 @@ const App = () => {
    * Processes the result of a card selection modal (e.g., SEARCH_AND_DRAW).
    * Updates deck state and applies the selected cards to the player's hand.
    */
-  const handleCardSelection = useCallback((selectedCards, selectionData, originalCard, target, actingPlayerId, aiContext) => {
+  const handleCardSelection = useCallback((selectedCards, selectionData, originalCard, target, actingPlayerId, aiContext, playerStatesWithEnergyCosts = null) => {
     const { searchedCards, remainingDeck, discardPile, shuffleAfter } = selectionData;
     const unselectedCards = searchedCards.filter(card => {
       const cardIdentifier = card.instanceId || `${card.id}-${card.name}`;
@@ -600,7 +605,9 @@ const App = () => {
     });
 
     // Create updated player states
-    const currentPlayer = actingPlayerId === 'player1' ? player1 : player2;
+    // Use the player states that include energy costs if provided, otherwise fall back to current React state
+    const basePlayerStates = playerStatesWithEnergyCosts || { player1, player2 };
+    const currentPlayer = actingPlayerId === 'player1' ? basePlayerStates.player1 : basePlayerStates.player2;
     const newHand = [...currentPlayer.hand, ...selectedCards];
 
     // Return unselected cards to top of deck in original order
@@ -618,16 +625,6 @@ const App = () => {
       discardPile: discardPile
     };
 
-    // Update the appropriate player state
-    if (actingPlayerId === 'player1') {
-      setPlayer1(updatedPlayer);
-      // Handle UI cleanup
-      cancelCardSelection();
-      setCardConfirmation(null);
-    } else {
-      setPlayer2(updatedPlayer);
-    }
-
     // Log the final selection
     addLogEntry({
       player: currentPlayer.name,
@@ -637,9 +634,27 @@ const App = () => {
       outcome: `Drew: ${selectedCards.map(c => c.name).join(', ')}`
     }, 'handleCardSelection', actingPlayerId === 'player2' ? aiContext : null);
 
-    // End turn if this was a player 1 action (since most cards should end the turn)
-    // Cards with goAgain effect would have been handled differently
-    if (actingPlayerId === 'player1' && !originalCard.effect.goAgain) {
+    // Complete the card play by discarding the card and handling turn ending
+    // Merge current player states (which have energy costs applied) with selection updates
+    const currentStates = {
+      player1: actingPlayerId === 'player1' ? { ...currentPlayer, deck: updatedPlayer.deck, hand: updatedPlayer.hand, discardPile: updatedPlayer.discardPile } : basePlayerStates.player1,
+      player2: actingPlayerId === 'player2' ? { ...currentPlayer, deck: updatedPlayer.deck, hand: updatedPlayer.hand, discardPile: updatedPlayer.discardPile } : basePlayerStates.player2
+    };
+
+    const completion = gameEngine.finishCardPlay(originalCard, actingPlayerId, currentStates);
+
+    // Apply final state updates
+    if (actingPlayerId === 'player1') {
+      setPlayer1(completion.newPlayerStates.player1);
+      // Handle UI cleanup
+      cancelCardSelection();
+      setCardConfirmation(null);
+    } else {
+      setPlayer2(completion.newPlayerStates.player2);
+    }
+
+    // End turn if needed
+    if (completion.shouldEndTurn) {
       endTurn(actingPlayerId);
     }
 
@@ -2334,9 +2349,8 @@ const App = () => {
       setMandatoryAction({ type: 'discard', player: 'player1', count: compliance.player1DiscardCount });
       setShowMandatoryActionModal(true);
     } else {
-      if (compliance.player2NeedsDiscard) {
-        setPlayer2(prev => gameEngine.enforceHandLimit(prev, p2Stats.handLimit));
-      }
+      // REMOVED: Hand limit enforcement should only happen during dedicated discard phase
+      // Hand limits are display-only during normal gameplay
       startOptionalDiscardPhase();
     }
   };
@@ -2401,10 +2415,8 @@ const App = () => {
    * Ensures AI hand limit compliance before continuing.
    */
   const handlePostDiscardAction = () => {
-    const p2Stats = gameEngine.calculateEffectiveShipStats(player2, opponentPlacedSections).totals;
-    if (player2.hand.length > p2Stats.handLimit) {
-       setPlayer2(prev => gameEngine.enforceHandLimit(prev, p2Stats.handLimit));
-    }
+    // REMOVED: Hand limit enforcement should only happen during dedicated discard phase
+    // Hand limits are display-only during normal gameplay
     startOptionalDiscardPhase();
   };
 

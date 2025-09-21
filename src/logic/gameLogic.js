@@ -453,8 +453,14 @@ const getValidTargets = (actingPlayerId, source, definition, player1, player2) =
       }
     } else if (type === 'LANE') {
       ['lane1', 'lane2', 'lane3'].forEach(laneId => {
-        targets.push({ id: laneId, owner: 'player1' });
-        targets.push({ id: laneId, owner: 'player2' });
+        // Respect affinity for lane targeting
+        if (affinity === 'FRIENDLY' || affinity === 'ANY') {
+          targets.push({ id: laneId, owner: actingPlayerId });
+        }
+        if (affinity === 'ENEMY' || affinity === 'ANY') {
+          const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+          targets.push({ id: laneId, owner: opponentId });
+        }
       });
     } else if (type === 'DRONE_CARD') {
         const actingPlayerState = actingPlayerId === 'player1' ? player1 : player2;
@@ -1464,9 +1470,8 @@ const payCardCosts = (card, actingPlayerId, playerStates) => {
         actingPlayerState.energy -= card.cost;
     }
 
-    // Remove card from hand and add to discard pile
-    actingPlayerState.hand = actingPlayerState.hand.filter(c => c.instanceId !== card.instanceId);
-    actingPlayerState.discardPile.push(card);
+    // Note: Card discard is now handled in finishCardPlay() to ensure proper timing
+    // with card selection effects
 
     return newPlayerStates;
 };
@@ -1533,27 +1538,74 @@ const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSecti
     let currentStates = payCardCosts(card, actingPlayerId, playerStates);
 
     // Resolve the effect(s)
-    const result = resolveCardEffect(card.effect, target, actingPlayerId, currentStates, placedSections, callbacks);
+    const result = resolveCardEffect(card.effect, target, actingPlayerId, currentStates, placedSections, callbacks, card);
 
+    // If no card selection is needed, complete the card play immediately
+    if (!result.needsCardSelection) {
+        const completion = finishCardPlay(card, actingPlayerId, result.newPlayerStates);
+        return {
+            newPlayerStates: completion.newPlayerStates,
+            shouldEndTurn: completion.shouldEndTurn,
+            additionalEffects: result.additionalEffects || [],
+            needsCardSelection: false
+        };
+    }
+
+    // If card selection is needed, return current state and defer completion
     return {
-        newPlayerStates: result.needsCardSelection ? currentStates : result.newPlayerStates, // Use currentStates (with card costs paid) if card selection needed
-        shouldEndTurn: actingPlayerId === 'player1' && !card.effect.goAgain,
+        newPlayerStates: currentStates, // Use currentStates (with card costs paid) but card not discarded yet
+        shouldEndTurn: false, // Turn ending will be handled in finishCardPlay after selection
         additionalEffects: result.additionalEffects || [],
         needsCardSelection: result.needsCardSelection // Pass through card selection requirements
     };
 };
 
-const resolveCardEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks) => {
+// ========================================
+// CARD PLAY COMPLETION SYSTEM
+// ========================================
+
+/**
+ * Completes the card play process by handling final cleanup.
+ * This includes discarding the card, checking for turn ending, and applying any completion effects.
+ * Should be called after all immediate effects and card selections are complete.
+ *
+ * @param {Object} card - The card that was played
+ * @param {string} actingPlayerId - 'player1' or 'player2'
+ * @param {Object} playerStates - Current player states
+ * @returns {Object} - { newPlayerStates, shouldEndTurn }
+ */
+const finishCardPlay = (card, actingPlayerId, playerStates) => {
+    const newPlayerStates = {
+        player1: JSON.parse(JSON.stringify(playerStates.player1)),
+        player2: JSON.parse(JSON.stringify(playerStates.player2))
+    };
+
+    const actingPlayerState = newPlayerStates[actingPlayerId];
+
+    // Remove card from hand and add to discard pile (final cleanup)
+    actingPlayerState.hand = actingPlayerState.hand.filter(c => c.instanceId !== card.instanceId);
+    actingPlayerState.discardPile.push(card);
+
+    // Determine if turn should end
+    const shouldEndTurn = actingPlayerId === 'player1' && !card.effect.goAgain;
+
+    return {
+        newPlayerStates,
+        shouldEndTurn
+    };
+};
+
+const resolveCardEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null) => {
     if (effect.effects) {
         // Multi-effect card (like REPEATING_EFFECT)
-        return resolveMultiEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks);
+        return resolveMultiEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card);
     } else {
         // Single effect card
-        return resolveSingleEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks);
+        return resolveSingleEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card);
     }
 };
 
-const resolveMultiEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks) => {
+const resolveMultiEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null) => {
     let currentStates = playerStates;
     let allAdditionalEffects = [];
 
@@ -1564,7 +1616,7 @@ const resolveMultiEffect = (effect, target, actingPlayerId, playerStates, placed
         // Execute each sub-effect, repeatCount times
         for (let i = 0; i < repeatCount; i++) {
             for (const subEffect of effect.effects) {
-                const result = resolveSingleEffect(subEffect, target, actingPlayerId, currentStates, placedSections, callbacks);
+                const result = resolveSingleEffect(subEffect, target, actingPlayerId, currentStates, placedSections, callbacks, card);
                 currentStates = result.newPlayerStates;
                 if (result.additionalEffects) {
                     allAdditionalEffects.push(...result.additionalEffects);
@@ -1579,7 +1631,7 @@ const resolveMultiEffect = (effect, target, actingPlayerId, playerStates, placed
     };
 };
 
-const resolveSingleEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks) => {
+const resolveSingleEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null) => {
     switch (effect.type) {
         case 'DRAW':
             return resolveUnifiedDrawEffect(effect, null, target, actingPlayerId, playerStates, placedSections, callbacks);
@@ -1594,7 +1646,7 @@ const resolveSingleEffect = (effect, target, actingPlayerId, playerStates, place
         case 'HEAL_SHIELDS':
             return resolveHealShieldsEffect(effect, target, actingPlayerId, playerStates, callbacks);
         case 'DAMAGE':
-            return resolveUnifiedDamageEffect(effect, null, target, actingPlayerId, playerStates, placedSections, callbacks);
+            return resolveUnifiedDamageEffect(effect, null, target, actingPlayerId, playerStates, placedSections, callbacks, card);
         case 'DESTROY':
             return resolveDestroyEffect(effect, target, actingPlayerId, playerStates, callbacks);
         case 'MODIFY_STAT':
@@ -1738,23 +1790,40 @@ const resolveHealShieldsEffect = (effect, target, actingPlayerId, playerStates, 
     };
 };
 
-const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callbacks) => {
+const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callbacks, cardTargeting = null) => {
     const { resolveAttackCallback } = callbacks;
 
     if (effect.scope === 'FILTERED' && target.id.startsWith('lane') && effect.filter) {
         // Filtered damage (affects multiple drones in a lane based on criteria)
+        // Use snapshot-based resolution to ensure consistent damage calculations
         const laneId = target.id;
-        const targetPlayer = effect.affinity === 'ENEMY'
+        // Use card targeting affinity if available, otherwise fall back to effect affinity
+        const affinity = cardTargeting?.affinity || effect.affinity;
+        const targetPlayer = affinity === 'ENEMY'
             ? (actingPlayerId === 'player1' ? 'player2' : 'player1')
             : actingPlayerId;
         const targetPlayerState = playerStates[targetPlayer];
         const dronesInLane = targetPlayerState.dronesOnBoard[laneId] || [];
 
+        console.log(`[DEBUG] Filtered damage - ${actingPlayerId} targeting ${targetPlayer} ${laneId}`);
+        console.log(`[DEBUG] Drones in ${targetPlayer} ${laneId}:`, dronesInLane.map(d => `${d.name}(${d.id}) [${d.hull}hp, ${d.speed}spd]`));
+
         const { stat, comparison, value } = effect.filter;
 
-        let additionalEffects = [];
-        dronesInLane.forEach(droneInLane => {
+        // Process all attacks using snapshot state for consistent results
+        const newPlayerStates = {
+            player1: JSON.parse(JSON.stringify(playerStates.player1)),
+            player2: JSON.parse(JSON.stringify(playerStates.player2))
+        };
+
+        const updatedTargetPlayerState = newPlayerStates[targetPlayer];
+        const updatedDronesInLane = updatedTargetPlayerState.dronesOnBoard[laneId] || [];
+
+        // Apply damage to all valid targets using snapshot stats
+        for (let i = updatedDronesInLane.length - 1; i >= 0; i--) {
+            const droneInLane = updatedDronesInLane[i];
             let meetsCondition = false;
+
             if (comparison === 'GTE' && droneInLane[stat] >= value) {
                 meetsCondition = true;
             }
@@ -1762,27 +1831,36 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
                 meetsCondition = true;
             }
 
-            if (meetsCondition && resolveAttackCallback) {
-                // Queue attack for resolution by the UI layer
-                additionalEffects.push({
-                    type: 'ATTACK',
-                    attackDetails: {
-                        attacker: { name: `Card Attack` },
-                        target: droneInLane,
-                        targetType: 'drone',
-                        attackingPlayer: actingPlayerId,
-                        abilityDamage: effect.value,
-                        lane: laneId,
-                        goAgain: false,
-                        damageType: effect.damageType,
-                    }
-                });
+            console.log(`[DEBUG] ${droneInLane.name} ${stat}=${droneInLane[stat]} ${comparison} ${value} = ${meetsCondition}`);
+
+            if (meetsCondition) {
+                console.log(`[DEBUG] Applying ${effect.value} damage to ${droneInLane.name}`);
+
+                // Apply damage directly using snapshot stats
+                const totalShields = droneInLane.currentShields || 0;
+                let remainingDamage = effect.value;
+
+                // Damage shields first
+                const shieldDamage = Math.min(remainingDamage, totalShields);
+                droneInLane.currentShields = (droneInLane.currentShields || 0) - shieldDamage;
+                remainingDamage -= shieldDamage;
+
+                // Apply remaining damage to hull
+                if (remainingDamage > 0) {
+                    droneInLane.hull -= remainingDamage;
+                }
+
+                // Remove destroyed drones
+                if (droneInLane.hull <= 0) {
+                    console.log(`[DEBUG] ${droneInLane.name} destroyed`);
+                    updatedDronesInLane.splice(i, 1);
+                }
             }
-        });
+        }
 
         return {
-            newPlayerStates: playerStates,
-            additionalEffects
+            newPlayerStates,
+            additionalEffects: []
         };
     } else {
         // Single target damage
@@ -1954,12 +2032,12 @@ const resolveDestroyUpgradeEffect = (effect, target, actingPlayerId, playerState
 // === UNIFIED EFFECT HANDLERS ===
 // These handlers work for cards, drone abilities, and ship abilities
 
-const resolveUnifiedDamageEffect = (effect, source, target, actingPlayerId, playerStates, placedSections, callbacks) => {
+const resolveUnifiedDamageEffect = (effect, source, target, actingPlayerId, playerStates, placedSections, callbacks, card = null) => {
     const { resolveAttackCallback } = callbacks;
 
     // Handle filtered damage (cards only)
     if (effect.scope === 'FILTERED' && target.id.startsWith('lane') && effect.filter) {
-        return resolveDamageEffect(effect, target, actingPlayerId, playerStates, callbacks);
+        return resolveDamageEffect(effect, target, actingPlayerId, playerStates, callbacks, card?.targeting);
     }
 
     // Handle direct damage (all contexts)
@@ -2765,6 +2843,7 @@ export const gameEngine = {
   resolveShipAbility,
   executeDeployment,
   resolveCardPlay,
+  finishCardPlay,
   resolveMultiMove,
   resolveSingleMove,
 
