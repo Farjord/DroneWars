@@ -209,6 +209,11 @@ class P2PManager {
           this.emit('latency_update', { latency });
           break;
 
+        case 'PHASE_COMPLETED':
+          // Handle phase completion messages
+          this.emit('PHASE_COMPLETED', data.data);
+          break;
+
         default:
           console.warn('Unknown data type received:', data.type);
       }
