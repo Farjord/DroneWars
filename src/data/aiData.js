@@ -12,7 +12,7 @@ const aiPersonalities = [
     ],
     // The specific cards and quantities for this AI's deck.
     decklist: [
-    { id: 'CARD001', quantity: 0 },
+    { id: 'CARD001_ENHANCED', quantity: 40 },
     { id: 'CARD002', quantity: 0 },
     { id: 'CARD003', quantity: 0 },
     { id: 'CARD004', quantity: 0 },
@@ -24,17 +24,17 @@ const aiPersonalities = [
     { id: 'CARD010', quantity: 0 },
     { id: 'CARD011', quantity: 0 },
     { id: 'CARD012', quantity: 0 },
-    { id: 'CARD013', quantity: 40 },
+    { id: 'CARD013', quantity: 0 },
     { id: 'CARD014', quantity: 0 },
     { id: 'CARD015', quantity: 0 }, 
     { id: 'CARD016', quantity: 0 }, 
     { id: 'CARD017', quantity: 0 }, 
     { id: 'CARD018', quantity: 0 }, 
-    { id: 'CARD019', quantity: 2 },
+    { id: 'CARD019', quantity: 0 },
     ]
   },
   {
-    name: 'The Schiazami Syndicate',
+    name: 'Manticore - Class II Gunship',
     description: 'Focuses on overwhelming firepower and direct damage to drones and ship sections.',
     // The specific 5 drones this AI will use.
     dronePool: [

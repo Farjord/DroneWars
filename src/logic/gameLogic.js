@@ -1863,26 +1863,52 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
             additionalEffects: []
         };
     } else {
-        // Single target damage
+        // Single target damage - use snapshot-based resolution for consistency
         const targetPlayerState = playerStates[target.owner];
         const targetLane = getLaneOfDrone(target.id, targetPlayerState);
 
-        if (targetLane && resolveAttackCallback) {
-            return {
-                newPlayerStates: playerStates,
-                additionalEffects: [{
-                    type: 'ATTACK',
-                    attackDetails: {
-                        attacker: { name: `Card Attack` },
-                        target: target,
-                        targetType: 'drone',
-                        attackingPlayer: actingPlayerId,
-                        abilityDamage: effect.value,
-                        lane: targetLane,
-                        goAgain: effect.goAgain || false,
-                        damageType: effect.damageType,
+        if (targetLane) {
+            console.log(`[DEBUG] Single target damage - ${actingPlayerId} targeting ${target.name} with ${effect.value} damage`);
+
+            // Create snapshot state for consistent damage calculation
+            const newPlayerStates = {
+                player1: JSON.parse(JSON.stringify(playerStates.player1)),
+                player2: JSON.parse(JSON.stringify(playerStates.player2))
+            };
+
+            const updatedTargetPlayerState = newPlayerStates[target.owner];
+            const dronesInLane = updatedTargetPlayerState.dronesOnBoard[targetLane] || [];
+            const targetDrone = dronesInLane.find(d => d.id === target.id);
+
+            if (targetDrone) {
+                let damage = effect.value;
+                let shieldDamage = 0;
+                let remainingDamage = damage;
+
+                // Apply damage based on damage type
+                if (effect.damageType !== 'PIERCING') {
+                    shieldDamage = Math.min(damage, targetDrone.currentShields);
+                    remainingDamage -= shieldDamage;
+                    targetDrone.currentShields -= shieldDamage;
+                }
+
+                // Apply hull damage
+                targetDrone.hull -= remainingDamage;
+                console.log(`[DEBUG] Applied ${remainingDamage} hull damage to ${targetDrone.name} (${targetDrone.hull} hull remaining)`);
+
+                // Remove destroyed drone
+                if (targetDrone.hull <= 0) {
+                    console.log(`[DEBUG] ${targetDrone.name} destroyed`);
+                    const droneIndex = dronesInLane.findIndex(d => d.id === target.id);
+                    if (droneIndex >= 0) {
+                        dronesInLane.splice(droneIndex, 1);
                     }
-                }]
+                }
+            }
+
+            return {
+                newPlayerStates,
+                additionalEffects: []
             };
         }
     }
@@ -1949,20 +1975,37 @@ const resolveModifyStatEffect = (effect, target, actingPlayerId, playerStates, c
     const targetPlayerState = newPlayerStates[target.owner || actingPlayerId];
     const mod = effect.mod;
 
-    // Find the target drone and apply stat modification
-    for (const lane in targetPlayerState.dronesOnBoard) {
-        const droneIndex = targetPlayerState.dronesOnBoard[lane].findIndex(d => d.id === target.id);
-        if (droneIndex !== -1) {
-            const drone = targetPlayerState.dronesOnBoard[lane][droneIndex];
-            if (!drone.statMods) drone.statMods = [];
-
-            drone.statMods.push({
-                stat: mod.stat,
-                value: mod.value,
-                type: mod.type || 'temporary',
-                source: 'card'
+    // Check if target is a lane (e.g., 'lane1', 'lane2', 'lane3')
+    if (target.id && target.id.startsWith('lane')) {
+        // Apply stat modification to all drones in the target lane
+        const targetLane = target.id;
+        if (targetPlayerState.dronesOnBoard[targetLane]) {
+            targetPlayerState.dronesOnBoard[targetLane].forEach(drone => {
+                if (!drone.statMods) drone.statMods = [];
+                drone.statMods.push({
+                    stat: mod.stat,
+                    value: mod.value,
+                    type: mod.type || 'temporary',
+                    source: 'card'
+                });
             });
-            break;
+        }
+    } else {
+        // Single drone targeting (original logic)
+        for (const lane in targetPlayerState.dronesOnBoard) {
+            const droneIndex = targetPlayerState.dronesOnBoard[lane].findIndex(d => d.id === target.id);
+            if (droneIndex !== -1) {
+                const drone = targetPlayerState.dronesOnBoard[lane][droneIndex];
+                if (!drone.statMods) drone.statMods = [];
+
+                drone.statMods.push({
+                    stat: mod.stat,
+                    value: mod.value,
+                    type: mod.type || 'temporary',
+                    source: 'card'
+                });
+                break;
+            }
         }
     }
 
@@ -2041,7 +2084,9 @@ const resolveUnifiedDamageEffect = (effect, source, target, actingPlayerId, play
     }
 
     // Handle direct damage (all contexts)
-    const targetLane = getLaneOfDrone(target.id, playerStates.player2);
+    // Determine correct player state based on target owner (fix for cross-player targeting)
+    const targetPlayerState = target.owner === 'player1' ? playerStates.player1 : playerStates.player2;
+    const targetLane = getLaneOfDrone(target.id, targetPlayerState);
     if (targetLane && resolveAttackCallback) {
         const attackDetails = {
             attacker: source,
@@ -2053,7 +2098,21 @@ const resolveUnifiedDamageEffect = (effect, source, target, actingPlayerId, play
             damageType: effect.damageType
         };
 
-        resolveAttackCallback(attackDetails, true);
+        // Call the attack resolution directly and return the updated states
+        const attackResult = resolveAttack(
+            attackDetails,
+            playerStates,
+            placedSections,
+            callbacks.logCallback,
+            callbacks.explosionCallback,
+            callbacks.hitAnimationCallback
+        );
+
+        // FIXED: Return the properly updated states from the attack resolution
+        return {
+            newPlayerStates: attackResult.newPlayerStates,
+            additionalEffects: attackResult.afterAttackEffects || []
+        };
     }
 
     return {
@@ -2368,25 +2427,30 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
     const attackerPlayerState = playerStates[attackingPlayerId];
     const defenderPlayerState = playerStates[defendingPlayerId];
 
-    // Calculate attacker stats
-    const attackerLane = getLaneOfDrone(attacker.id, attackerPlayerState);
-    const effectiveAttacker = calculateEffectiveStats(
-        attacker,
-        attackerLane,
-        attackerPlayerState,
-        defenderPlayerState,
-        placedSections
-    );
+    // Calculate attacker stats (skip for card/ability attacks)
+    let attackerLane = null;
+    let effectiveAttacker = null;
+
+    if (!isAbilityOrCard && attacker && attacker.id) {
+        attackerLane = getLaneOfDrone(attacker.id, attackerPlayerState);
+        effectiveAttacker = calculateEffectiveStats(
+            attacker,
+            attackerLane,
+            attackerPlayerState,
+            defenderPlayerState,
+            placedSections
+        );
+    }
 
     // Calculate damage
-    let damage = abilityDamage ?? Math.max(0, effectiveAttacker.attack);
-    let finalDamageType = damageType || attacker.damageType;
-    if (effectiveAttacker.keywords.has('PIERCING')) {
+    let damage = abilityDamage ?? (effectiveAttacker ? Math.max(0, effectiveAttacker.attack) : 0);
+    let finalDamageType = damageType || (attacker ? attacker.damageType : undefined);
+    if (effectiveAttacker && effectiveAttacker.keywords && effectiveAttacker.keywords.has('PIERCING')) {
         finalDamageType = 'PIERCING';
     }
 
     // Apply ship damage bonus for drones attacking sections
-    if (finalTargetType === 'section' && !abilityDamage) {
+    if (finalTargetType === 'section' && !abilityDamage && attacker && attacker.name) {
         const baseAttacker = fullDroneCollection.find(d => d.name === attacker.name);
         baseAttacker?.abilities?.forEach(ability => {
             if (ability.type === 'PASSIVE' && ability.effect.type === 'BONUS_DAMAGE_VS_SHIP') {
@@ -2443,7 +2507,7 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
     // Log the attack
     const laneForLog = attackerLane || (lane ? lane.replace('lane', 'Lane ') : null);
     const targetForLog = finalTargetType === 'drone' ? `${finalTarget.name} (${laneForLog})` : finalTarget.name;
-    const sourceForLog = `${attacker.name} (${laneForLog})`;
+    const sourceForLog = attacker && attacker.name ? `${attacker.name} (${laneForLog})` : 'Card Effect';
 
     if (logCallback) {
         logCallback({
@@ -2503,7 +2567,7 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
 
     // Handle attacker exhaustion and after-attack effects
     let afterAttackEffects = [];
-    if (!isAbilityOrCard) {
+    if (!isAbilityOrCard && attacker && attacker.id) {
         let droneWasOnBoard = false;
         for (const laneKey in newPlayerStates[attackingPlayerId].dronesOnBoard) {
             const attackerIndex = newPlayerStates[attackingPlayerId].dronesOnBoard[laneKey].findIndex(d => d.id === attacker.id);
@@ -2545,7 +2609,7 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
     return {
         newPlayerStates,
         attackResult: {
-            attackerName: attacker.name,
+            attackerName: attacker && attacker.name ? attacker.name : 'Card Effect',
             lane: attackerLane || lane,
             targetName: finalTarget.name,
             targetType: finalTargetType,

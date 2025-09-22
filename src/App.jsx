@@ -12,6 +12,9 @@ import './App.css';
 import DeckBuilder from './DeckBuilder';
 import CardViewerModal from './CardViewerModal';
 import CardSelectionModal from './CardSelectionModal';
+import MultiplayerLobby from './MultiplayerLobby';
+import WaitingOverlay from './components/WaitingOverlay';
+import { useGameState } from './hooks/useGameState';
 import fullDroneCollection from './data/droneData.js';
 import fullCardCollection from './data/cardData.js';
 import shipSectionData from './data/shipData.js';
@@ -57,6 +60,35 @@ const getRandomDrones = (collection, count) => {
 // Delegates all game logic to gameEngine functions.
 
 const App = () => {
+  // --- CENTRALIZED GAME STATE ---
+  const {
+    gameState,
+    p2pStatus,
+    isMyTurn,
+    getLocalPlayerId,
+    getOpponentPlayerId,
+    isMultiplayer,
+    isLocalPlayer,
+    getLocalPlayerState,
+    getOpponentPlayerState,
+    getLocalPlacedSections,
+    getOpponentPlacedSections,
+    updateGameState,
+    updatePlayers,
+    updatePlayerState,
+    setPlayerStates,
+    setCurrentPlayer,
+    setTurnPhase,
+    setFirstPlayerOfRound,
+    setFirstPasserOfPreviousRound,
+    setFirstPlayerOverride,
+    setPassInfo,
+    updatePassInfo,
+    addLogEntry,
+    resetGame,
+    setWinner
+  } = useGameState();
+
   // --- DEBUG AND DEVELOPMENT FLAGS ---
   const AI_HAND_DEBUG_MODE = true; // Set to false to disable clicking to see the AI's hand
 
@@ -72,36 +104,24 @@ const App = () => {
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [isViewDeckModalOpen, setIsViewDeckModalOpen] = useState(false);
   const [isViewDiscardModalOpen, setIsViewDiscardModalOpen] = useState(false);
+  const [showMultiplayerLobby, setShowMultiplayerLobby] = useState(false);
 
-  // --- CORE GAME STATE ---
-  const [turnPhase, setTurnPhase] = useState('preGame');
-  const [turn, setTurn] = useState(1);
-  const [currentPlayer, setCurrentPlayer] = useState(null);
-  const [firstPlayerOfRound, setFirstPlayerOfRound] = useState(null);
-  const [firstPasserOfPreviousRound, setFirstPasserOfPreviousRound] = useState(null);
-  const [firstPlayerOverride, setFirstPlayerOverride] = useState(null); // For future card effects
-  const [passInfo, setPassInfo] = useState({ firstPasser: null, player1Passed: false, player2Passed: false });
-  const [winner, setWinner] = useState(null);
-
-  // --- PLAYER STATE (managed by gameEngine) ---
-  const [player1, setPlayer1] = useState(gameEngine.initialPlayerState('Player 1', startingDecklist));
-  const [player2, setPlayer2] = useState(gameEngine.initialPlayerState('Player 2', startingDecklist));
+  // --- EXTRACTED STATE (now from GameStateManager) ---
+  // Core game state comes from gameState object:
+  // gameState.turnPhase, gameState.turn, gameState.currentPlayer, etc.
+  const { turnPhase, turn, currentPlayer, firstPlayerOfRound, firstPasserOfPreviousRound, firstPlayerOverride, passInfo, winner, player1, player2, placedSections, opponentPlacedSections, unplacedSections, shieldsToAllocate, gameLog } = gameState;
 
   // --- SHIP SECTION PLACEMENT ---
   const sectionsToPlace = ['bridge', 'powerCell', 'droneControlHub'];
-  const [placedSections, setPlacedSections] = useState([]);
-  const [opponentPlacedSections, setOpponentPlacedSections] = useState([]);
-  const [unplacedSections, setUnplacedSections] = useState([]);
   const [selectedSectionForPlacement, setSelectedSectionForPlacement] = useState(null);
-  const [shieldsToAllocate, setShieldsToAllocate] = useState(0);
 
   // --- PLAYER SELECTION AND TARGETING ---
   const [selectedDrone, setSelectedDrone] = useState(null);
   const [hoveredTarget, setHoveredTarget] = useState(null);
   const [hoveredCardId, setHoveredCardId] = useState(null);
   const [tempSelectedDrones, setTempSelectedDrones] = useState([]);
-  const [droneSelectionPool, setDroneSelectionPool] = useState([]);
-  const [droneSelectionTrio, setDroneSelectionTrio] = useState([]);
+  // droneSelectionPool and droneSelectionTrio now come from gameState
+  const { droneSelectionPool, droneSelectionTrio } = gameState;
 
   // --- COMBAT AND ATTACK STATE ---
   const [pendingAttack, setPendingAttack] = useState(null);
@@ -121,7 +141,6 @@ const App = () => {
   const [recentlyHitDrones, setRecentlyHitDrones] = useState([]);
   const [explosions, setExplosions] = useState([]);
   const [arrowState, setArrowState] = useState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
-  const [gameLog, setGameLog] = useState([]);
   const [deck, setDeck] = useState({});
 
   // --- REFS FOR DOM ELEMENTS AND STATE TRACKING ---
@@ -177,18 +196,7 @@ const App = () => {
     }
   }, []);
 
-  /**
-   * ADD GAME LOG ENTRY
-   * Adds a new entry to the game log with timestamp and debug information.
-   * Used to track all game actions for debugging and replay purposes.
-   * @param {Object} entry - Log entry with player, actionType, source, target, outcome
-   * @param {string} debugSource - Source function for debugging
-   * @param {Object} aiContext - AI decision context for debugging AI behavior
-   */
-  const addLogEntry = useCallback((entry, debugSource, aiContext = null) => {
-    const timestamp = new Date().toISOString(); // Add the timestamp here
-    setGameLog(prevLog => [...prevLog, { round: turn, timestamp, debugSource, ...entry, aiDecisionContext: aiContext }]);
-  }, [turn]);
+  // addLogEntry is now provided by useGameState hook
 
   // --- ABILITY AND CARD INTERACTION STATE ---
   const [abilityMode, setAbilityMode] = useState(null); // { drone, ability }
@@ -354,47 +362,79 @@ const App = () => {
     }
     isResolvingAttackRef.current = true;
 
-    const triggerHitAnimation = (targetId) => {
-        setRecentlyHitDrones(prev => [...prev, targetId]);
-        setTimeout(() => setRecentlyHitDrones(prev => prev.filter(id => id !== targetId)), 500);
-    };
+    try {
+        const triggerHitAnimation = (targetId) => {
+            setRecentlyHitDrones(prev => [...prev, targetId]);
+            setTimeout(() => setRecentlyHitDrones(prev => prev.filter(id => id !== targetId)), 500);
+        };
 
-    // Use the gameEngine version
-    const result = gameEngine.resolveAttack(
-        attackDetails,
-        { player1: player1Ref.current, player2: player2Ref.current },
-        { player1: placedSections, player2: opponentPlacedSections },
-        (logEntry) => addLogEntry(logEntry, 'resolveAttack', attackDetails.attackingPlayer === 'player2' ? attackDetails.aiContext : null),
-        triggerExplosion,
-        triggerHitAnimation
-    );
-
-    // Update player states
-    setPlayer1(result.newPlayerStates.player1);
-    setPlayer2(result.newPlayerStates.player2);
-
-    // Handle AI action report
-    if (attackDetails.attackingPlayer === 'player2') {
-        setAiActionReport({
-            ...result.attackResult,
-            isBlocking: true
+        // Debug: Log input state
+        console.log('[ATTACK STATE DEBUG] Input player states:', {
+            player1DronesOnBoard: player1Ref.current.dronesOnBoard,
+            player2DronesOnBoard: player2Ref.current.dronesOnBoard,
+            attackDetails: attackDetails
         });
+
+        // Use the gameEngine version
+        const result = gameEngine.resolveAttack(
+            attackDetails,
+            { player1: player1Ref.current, player2: player2Ref.current },
+            { player1: placedSections, player2: opponentPlacedSections },
+            (logEntry) => addLogEntry(logEntry, 'resolveAttack', attackDetails.attackingPlayer === 'player2' ? attackDetails.aiContext : null),
+            triggerExplosion,
+            triggerHitAnimation
+        );
+
+        // Debug: Log output state
+        console.log('[ATTACK STATE DEBUG] Output player states:', {
+            player1DronesOnBoard: result.newPlayerStates.player1.dronesOnBoard,
+            player2DronesOnBoard: result.newPlayerStates.player2.dronesOnBoard,
+            attackResult: result.attackResult
+        });
+
+        // Update player states
+        console.log('[ATTACK STATE DEBUG] Calling setPlayerStates...');
+        setPlayerStates(result.newPlayerStates.player1, result.newPlayerStates.player2);
+
+        // Debug: Check if state was updated (using refs since state is async)
+        setTimeout(() => {
+            console.log('[ATTACK STATE DEBUG] State after setPlayerStates:', {
+                player1DronesOnBoard: player1Ref.current.dronesOnBoard,
+                player2DronesOnBoard: player2Ref.current.dronesOnBoard
+            });
+        }, 100);
+
+        // Handle AI action report
+        if (attackDetails.attackingPlayer === 'player2') {
+            setAiActionReport({
+                ...result.attackResult,
+                isBlocking: true
+            });
+        }
+
+        // Handle after-attack effects
+        result.afterAttackEffects.forEach(effect => {
+            if (effect.type === 'LOG') addLogEntry(effect.payload, 'resolveAfterAttackEffects');
+            else if (effect.type === 'EXPLOSION') triggerExplosion(effect.payload.targetId);
+        });
+
+        // Handle turn ending
+        if (result.attackResult.shouldEndTurn) {
+            endTurn('player1');
+        }
+
+        // Handle non-turn-ending attack cleanup
+        setPendingAttack(null);
+
+    } catch (error) {
+        console.error('Error in resolveAttack:', error);
+        // Emergency cleanup - ensure UI state doesn't get stuck
+        setPendingAttack(null);
+        setAiActionReport(null);
+    } finally {
+        // --- GUARANTEED CLEANUP (always runs) ---
+        isResolvingAttackRef.current = false;
     }
-
-    // Handle after-attack effects
-    result.afterAttackEffects.forEach(effect => {
-        if (effect.type === 'LOG') addLogEntry(effect.payload, 'resolveAfterAttackEffects');
-        else if (effect.type === 'EXPLOSION') triggerExplosion(effect.payload.targetId);
-    });
-
-    // Handle turn ending
-    if (result.attackResult.shouldEndTurn) {
-        endTurn('player1');
-    }
-
-    // --- FINAL CLEANUP (always runs) ---
-    setPendingAttack(null);
-    isResolvingAttackRef.current = false;
 
 }, [endTurn, triggerExplosion, addLogEntry, placedSections, opponentPlacedSections]);
 
@@ -420,8 +460,7 @@ const App = () => {
     );
 
     // Update player states
-    setPlayer1(result.newPlayerStates.player1);
-    setPlayer2(result.newPlayerStates.player2);
+    setPlayerStates(result.newPlayerStates.player1, result.newPlayerStates.player2);
 
     cancelAbilityMode();
     if (result.shouldEndTurn) {
@@ -452,8 +491,7 @@ const App = () => {
     );
 
     // Update player states
-    setPlayer1(result.newPlayerStates.player1);
-    setPlayer2(result.newPlayerStates.player2);
+    setPlayerStates(result.newPlayerStates.player1, result.newPlayerStates.player2);
 
     // Handle UI state based on result
     if (result.mandatoryAction) {
@@ -523,6 +561,26 @@ const App = () => {
         setAiCardPlayReport({ card, targetName: targetDisplayName, targetLane });
     }
 
+    // Debug: Log the target drone's state before game engine call
+    if (target && target.id && target.owner) {
+        const targetPlayerState = target.owner === 'player1' ? player1Ref.current : player2Ref.current;
+        let targetDrone = null;
+        for (const [lane, drones] of Object.entries(targetPlayerState.dronesOnBoard)) {
+            targetDrone = drones.find(drone => drone.id === target.id);
+            if (targetDrone) {
+                console.log('[CARD PLAY DEBUG] Target drone before gameEngine:', {
+                    droneName: targetDrone.name,
+                    hull: targetDrone.hull,
+                    currentShields: targetDrone.currentShields,
+                    cardDamage: card.effect?.value,
+                    cardType: card.effect?.type,
+                    cardDamageType: card.effect?.damageType
+                });
+                break;
+            }
+        }
+    }
+
     // Use the gameEngine version
     const result = gameEngine.resolveCardPlay(
         card,
@@ -539,8 +597,18 @@ const App = () => {
     );
 
     // Update player states first (this includes card costs and discard)
-    setPlayer1(result.newPlayerStates.player1);
-    setPlayer2(result.newPlayerStates.player2);
+    console.log('[CARD PLAY DEBUG] Updating player states after card resolution:', {
+      card: card.name,
+      actingPlayer: actingPlayerId,
+      oldPlayer1Hull: player1.dronesOnBoard,
+      oldPlayer2Hull: player2.dronesOnBoard,
+      newPlayer1Hull: result.newPlayerStates.player1.dronesOnBoard,
+      newPlayer2Hull: result.newPlayerStates.player2.dronesOnBoard
+    });
+
+    // FIXED: Now safe to use resolveCardPlay result since gameEngine properly integrates callback states
+    console.log('[CARD PLAY DEBUG] Using gameEngine integrated state (includes callback results)');
+    setPlayerStates(result.newPlayerStates.player1, result.newPlayerStates.player2);
 
     // Check if card needs selection (e.g., SEARCH_AND_DRAW)
     if (result.needsCardSelection) {
@@ -563,15 +631,18 @@ const App = () => {
         return; // Don't process other effects yet
     }
 
-    // Handle additional effects (like attacks)
-    // Note: Filtered damage effects are now processed directly in the logic layer
+    // Handle additional effects (like non-damage effects)
+    // Note: All damage effects are now processed directly in the logic layer
     // using snapshot-based resolution for consistency
     if (result.additionalEffects && result.additionalEffects.length > 0) {
         console.log(`[DEBUG] Processing ${result.additionalEffects.length} additional effects`);
         result.additionalEffects.forEach(effect => {
+            // Damage effects should not reach here anymore - they're handled in gameLogic
             if (effect.type === 'ATTACK') {
+                console.warn('[WARNING] ATTACK effect in additionalEffects - this should be handled in gameLogic now');
                 resolveAttack(effect.attackDetails, true);
             }
+            // Other effect types can be processed here if needed in the future
         });
     }
 
@@ -644,13 +715,12 @@ const App = () => {
     const completion = gameEngine.finishCardPlay(originalCard, actingPlayerId, currentStates);
 
     // Apply final state updates
+    setPlayerStates(completion.newPlayerStates.player1, completion.newPlayerStates.player2);
+
+    // Handle UI cleanup
     if (actingPlayerId === 'player1') {
-      setPlayer1(completion.newPlayerStates.player1);
-      // Handle UI cleanup
       cancelCardSelection();
       setCardConfirmation(null);
-    } else {
-      setPlayer2(completion.newPlayerStates.player2);
     }
 
     // End turn if needed
@@ -687,7 +757,7 @@ const App = () => {
         }
     );
 
-    setPlayer1(result.newPlayerState);
+    updatePlayerState('player1', result.newPlayerState);
 
     if (result.shouldClearMultiSelectState) {
         setMultiSelectState(null);
@@ -726,7 +796,7 @@ const App = () => {
         }
     );
 
-    setPlayer1(result.newPlayerState);
+    updatePlayerState('player1', result.newPlayerState);
 
     if (result.shouldClearMultiSelectState) {
         setMultiSelectState(null);
@@ -785,11 +855,11 @@ const App = () => {
         outcome: `Optionally discarded ${card.name}.`
     }, 'handleConfirmOptionalDiscard');
 
-    setPlayer1(prev => ({
-        ...prev,
-        hand: prev.hand.filter(c => c.instanceId !== card.instanceId),
-        discardPile: [...prev.discardPile, card]
-    }));
+    updatePlayerState('player1', {
+        ...player1,
+        hand: player1.hand.filter(c => c.instanceId !== card.instanceId),
+        discardPile: [...player1.discardPile, card]
+    });
     setOptionalDiscardCount(prev => prev + 1);
     setConfirmationModal(null);
   };
@@ -2368,30 +2438,28 @@ const App = () => {
     setAbilityMode(null);
     setMultiSelectState(null);
     setFirstPasserOfPreviousRound(passInfo.firstPasser);
-    setTurn(prev => prev + 1);
+    updateGameState({ turn: turn + 1 });
     setPassInfo({ firstPasser: null, player1Passed: false, player2Passed: false });
     
     // Use extracted game logic for round transitions
-    setPlayer1(prev => gameEngine.calculateNewRoundPlayerState(
-      prev,
+    const newPlayer1State = gameEngine.calculateNewRoundPlayerState(
+      player1,
       turn,
       player1EffectiveStats,
       player2Ref.current,
       { player1: placedSections, player2: opponentPlacedSections }
-    ));
+    );
 
-    setPlayer2(prev => {
-        const baseState = gameEngine.calculateNewRoundPlayerState(
-          prev,
-          turn,
-          player2EffectiveStats,
-          player1Ref.current,
-          { player1: placedSections, player2: opponentPlacedSections }
-        );
+    const basePlayer2State = gameEngine.calculateNewRoundPlayerState(
+      player2,
+      turn,
+      player2EffectiveStats,
+      player1Ref.current,
+      { player1: placedSections, player2: opponentPlacedSections }
+    );
+    const newPlayer2State = gameEngine.drawToHandLimit(basePlayer2State, player2EffectiveStats.totals.handLimit);
 
-        // Draw to hand limit for AI
-        return gameEngine.drawToHandLimit(baseState, player2EffectiveStats.totals.handLimit);
-    });
+    setPlayerStates(newPlayer1State, newPlayer2State);
 
     // --- MODIFIED: Show a modal before starting the discard phases ---
     setModalContent({
@@ -2446,24 +2514,23 @@ const App = () => {
         }
       } else {
         if (secondPlayerIsOverLimit) {
-           setPlayer2(p2 => {
-                let newP2 = {...p2};
-                let dronesToDestroyCount = Object.values(p2.dronesOnBoard).flat().length - player2EffectiveStats.totals.cpuLimit;
-                for (let i = 0; i < dronesToDestroyCount; i++) {
-                    const allDrones = Object.entries(newP2.dronesOnBoard).flatMap(([lane, drones]) => drones.map(d => ({...d, lane})));
-                    if (allDrones.length === 0) break;
+           // AI over CPU limit - destroy lowest class drones
+           let newP2 = {...player2};
+           let dronesToDestroyCount = Object.values(player2.dronesOnBoard).flat().length - player2EffectiveStats.totals.cpuLimit;
+           for (let i = 0; i < dronesToDestroyCount; i++) {
+               const allDrones = Object.entries(newP2.dronesOnBoard).flatMap(([lane, drones]) => drones.map(d => ({...d, lane})));
+               if (allDrones.length === 0) break;
 
-                    const lowestClass = Math.min(...allDrones.map(d => d.class));
-                    const candidates = allDrones.filter(d => d.class === lowestClass);
-                    const droneToDestroy = candidates[Math.floor(Math.random() * candidates.length)];
-                    
-                    newP2.dronesOnBoard[droneToDestroy.lane] = newP2.dronesOnBoard[droneToDestroy.lane].filter(d => d.id !== droneToDestroy.id);
-                    const onDestroyUpdates = gameEngine.onDroneDestroyed(newP2, droneToDestroy);
-                    Object.assign(newP2, onDestroyUpdates);
-                }
-                newP2.dronesOnBoard = gameEngine.updateAuras(newP2, player1Ref.current, { player1: placedSections, player2: opponentPlacedSections });
-                return newP2;
-            });
+               const lowestClass = Math.min(...allDrones.map(d => d.class));
+               const candidates = allDrones.filter(d => d.class === lowestClass);
+               const droneToDestroy = candidates[Math.floor(Math.random() * candidates.length)];
+
+               newP2.dronesOnBoard[droneToDestroy.lane] = newP2.dronesOnBoard[droneToDestroy.lane].filter(d => d.id !== droneToDestroy.id);
+               const onDestroyUpdates = gameEngine.onDroneDestroyed(newP2, droneToDestroy);
+               Object.assign(newP2, onDestroyUpdates);
+           }
+           newP2.dronesOnBoard = gameEngine.updateAuras(newP2, player1Ref.current, { player1: placedSections, player2: opponentPlacedSections });
+           updatePlayerState('player2', newP2);
         }
       }
       return false; 
@@ -2479,13 +2546,40 @@ const App = () => {
   // --- AI TURN EXECUTION ---
   useEffect(() => {
     const isAiTurn = currentPlayer === 'player2' && (!modalContent || !modalContent.isBlocking) && !winner && !aiActionReport && !aiCardPlayReport && !pendingAttack && !playerInterceptionChoice && !mandatoryAction && !showFirstPlayerModal && !showActionPhaseStartModal && !showRoundEndModal;
+
+    console.log('[AI TURN DEBUG] AI Turn Check:', {
+      currentPlayer,
+      isAiTurn,
+      turnPhase,
+      modalContent: modalContent?.title,
+      winner,
+      aiActionReport: !!aiActionReport,
+      aiCardPlayReport: !!aiCardPlayReport,
+      pendingAttack: !!pendingAttack,
+      playerInterceptionChoice: !!playerInterceptionChoice,
+      mandatoryAction: !!mandatoryAction,
+      showFirstPlayerModal,
+      showActionPhaseStartModal,
+      showRoundEndModal,
+      player2Passed: passInfo.player2Passed
+    });
+
     if (!isAiTurn) return;
 
     let aiTurnTimer;
 
     const executeAiTurn = () => {
+      console.log('[AI TURN DEBUG] Executing AI turn:', { turnPhase, player2Passed: passInfo.player2Passed });
+
+      // Safety check: reset stuck attack flag before AI action
+      if (isResolvingAttackRef.current) {
+        console.warn('[AI TURN SAFETY] Detected stuck attack flag, resetting before AI turn');
+        isResolvingAttackRef.current = false;
+      }
+
       let result;
 if (turnPhase === 'deployment' && !passInfo.player2Passed) {
+  console.log('[AI TURN DEBUG] Calling aiBrain.handleOpponentTurn for deployment');
   result = aiBrain.handleOpponentTurn({
     player1, 
     player2, 
@@ -2499,31 +2593,41 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     
   });
 } else if (turnPhase === 'action' && !passInfo.player2Passed) {
+    console.log('[AI TURN DEBUG] Calling aiBrain.handleOpponentAction for action phase');
     result = aiBrain.handleOpponentAction({
     player1, player2, placedSections, opponentPlacedSections,
-    getShipStatus: gameEngine.getShipStatus, 
-    getLaneOfDrone: gameEngine.getLaneOfDrone, 
+    getShipStatus: gameEngine.getShipStatus,
+    getLaneOfDrone: gameEngine.getLaneOfDrone,
     getValidTargets: gameEngine.getValidTargets,
     calculateEffectiveStats: gameEngine.calculateEffectiveStats,
     addLogEntry
   });
+} else {
+  console.log('[AI TURN DEBUG] No valid AI action conditions met:', { turnPhase, player2Passed: passInfo.player2Passed });
 }
 
-      if (!result) return; // Exit if no action was decided
+      console.log('[AI TURN DEBUG] AI brain result:', result);
+      if (!result) {
+        console.log('[AI TURN DEBUG] No result from AI brain, exiting');
+        return; // Exit if no action was decided
+      }
 
       if (result.type === 'pass') {
-        setPassInfo(prev => {
-          const wasFirstToPass = !prev.player1Passed;
-          const newPassInfo = { ...prev, player2Passed: true, firstPasser: prev.firstPasser || (wasFirstToPass ? 'player2' : null) };
-          if (newPassInfo.player1Passed) {
-            if (turnPhase === 'deployment') endDeploymentPhase();
-            else if (turnPhase === 'action') endActionPhase();
-          } else {
-            endTurn('player2');
-          }
-          return newPassInfo;
-        });
+        console.log('[AI TURN DEBUG] AI decided to pass');
+        const wasFirstToPass = !passInfo.player1Passed;
+        const newPassInfo = { ...passInfo, player2Passed: true, firstPasser: passInfo.firstPasser || (wasFirstToPass ? 'player2' : null) };
+
+        console.log('[AI TURN DEBUG] Updating pass info:', newPassInfo);
+        setPassInfo(newPassInfo);
+
+        if (newPassInfo.player1Passed) {
+          if (turnPhase === 'deployment') endDeploymentPhase();
+          else if (turnPhase === 'action') endActionPhase();
+        } else {
+          endTurn('player2');
+        }
       } else if (result.type === 'deploy') {
+        console.log('[AI TURN DEBUG] AI decided to deploy:', result.payload);
         const { droneToDeploy, targetLane, logContext } = result.payload;
 
         addLogEntry({
@@ -2544,12 +2648,16 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
           { addLogEntry }
         );
 
+        console.log('[AI TURN DEBUG] Deploy result:', deployResult);
         if (deployResult.success) {
-          setPlayer2(deployResult.newPlayerState);
+          updatePlayerState('player2', deployResult.newPlayerState);
           endTurn('player2');
+        } else {
+          console.log('[AI TURN DEBUG] Deploy failed:', deployResult);
         }
 
       } else if (result.type === 'action') {
+        console.log('[AI TURN DEBUG] AI decided to take action:', result.payload);
         const chosenAction = result.payload;
         const { logContext } = result;
         switch (chosenAction.type) {
@@ -2599,7 +2707,7 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
               }
             );
 
-            setPlayer2(moveResult.newPlayerState);
+            updatePlayerState('player2', moveResult.newPlayerState);
             endTurn('player2');
             break;
           }
@@ -2617,27 +2725,32 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     };
   }, [currentPlayer, turnPhase, passInfo, winner, aiActionTrigger, aiActionReport, aiCardPlayReport, pendingAttack, playerInterceptionChoice, mandatoryAction, modalContent, showFirstPlayerModal, showActionPhaseStartModal, showRoundEndModal]);
 
+  // --- DEFENSIVE STATE CLEANUP ---
+  // Reset attack flag when critical game state changes to prevent infinite loops
+  useEffect(() => {
+    // Reset attack flag on turn changes or game reset
+    if (winner || turnPhase === 'preGame') {
+      if (isResolvingAttackRef.current) {
+        console.log('[DEFENSIVE CLEANUP] Resetting stuck attack flag due to game state change');
+        isResolvingAttackRef.current = false;
+      }
+    }
+  }, [winner, turnPhase, currentPlayer]);
+
   /**
    * HANDLE RESET
    * Resets the entire game state back to initial conditions.
    * Clears all players, modals, selections, and game progress.
    */
   const handleReset = () => {
-   setTurnPhase('preGame');
-   setTurn(1);
-   setPlacedSections([]);
-   setOpponentPlacedSections([]);
-   setPlayer1(gameEngine.initialPlayerState('Player 1', startingDecklist));
-   setPlayer2(gameEngine.initialPlayerState('Player 2', startingDecklist));
-   setCurrentPlayer(null);
-   setFirstPlayerOfRound(null);
+   // Reset using GameStateManager
+   resetGame();
+   // Reset attack flag to prevent stuck state
+   isResolvingAttackRef.current = false;
+   // Reset UI-only state (GameStateManager handles core game state)
    setSelectedDrone(null);
-   setPassInfo({ firstPasser: null, player1Passed: false, player2Passed: false });
-   setFirstPasserOfPreviousRound(null);
-   setFirstPlayerOverride(null);
    setModalContent(null);
    setAiActionReport(null);
-   setWinner(null);
    setAbilityMode(null);
    setValidAbilityTargets([]);
    setMandatoryAction(null);
@@ -2646,7 +2759,6 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
    setSelectedCard(null);
    setValidCardTargets([]);
    setCardConfirmation(null);
-   setGameLog([]);
    setShowWinnerModal(false);
   };
 
@@ -2658,29 +2770,28 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
    */
   const handleSelectOpponent = (selectedAI) => {
     // 1. Set up the opponent (Player 2) with the selected AI's data
-    setPlayer2(prev => {
-      // Find the full drone objects from the collection based on the names in the AI's pool
-      const aiDrones = fullDroneCollection.filter(d => selectedAI.dronePool.includes(d.name));
-      
-      // Initialize the drone counts for the AI's specific pool
-      const aiInitialCounts = {};
-      aiDrones.forEach(drone => {
-        aiInitialCounts[drone.name] = 0;
-      });
+    // Find the full drone objects from the collection based on the names in the AI's pool
+    const aiDrones = fullDroneCollection.filter(d => selectedAI.dronePool.includes(d.name));
 
-      // Return a new state for Player 2, keeping the base state but overriding the key parts
-      return {
-        ...gameEngine.initialPlayerState(selectedAI.name, selectedAI.decklist), // Use AI's name and decklist
-        activeDronePool: aiDrones,
-        deployedDroneCounts: aiInitialCounts,
-      };
- });
+    // Initialize the drone counts for the AI's specific pool
+    const aiInitialCounts = {};
+    aiDrones.forEach(drone => {
+      aiInitialCounts[drone.name] = 0;
+    });
+
+    // Create new state for Player 2 and update via GameStateManager
+    const newPlayer2State = {
+      ...gameEngine.initialPlayerState(selectedAI.name, selectedAI.decklist), // Use AI's name and decklist
+      activeDronePool: aiDrones,
+      deployedDroneCounts: aiInitialCounts,
+    };
+    updatePlayerState('player2', newPlayer2State);
     // 2. Standard game start procedure
     setTurnPhase('droneSelection'); // CHANGED: This now sends you to drone selection.
     // Randomly place the opponent's ship sections
     const sections = Object.keys(player2.shipSections);
     const shuffledSections = sections.sort(() => 0.5 - Math.random());
-    setOpponentPlacedSections(shuffledSections);
+    updateGameState({ opponentPlacedSections: shuffledSections });
     
     // 3. Set the initial modal message for the player
     setModalContent({
@@ -2694,8 +2805,10 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     const firstTrio = initialPool.slice(0, 3);
     const remaining = initialPool.slice(3);
 
-    setDroneSelectionTrio(firstTrio);
-    setDroneSelectionPool(remaining);
+    updateGameState({
+      droneSelectionTrio: firstTrio,
+      droneSelectionPool: remaining
+    });
     setTempSelectedDrones([]);
   };
     
@@ -2736,27 +2849,26 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
    * Handles deck shuffling from discard pile when needed.
    */
   const drawPlayerHand = () => {
-    setPlayer1(prev => {
-      const effectiveStats = gameEngine.calculateEffectiveShipStats(prev, placedSections).totals;
-      let newDeck = [...prev.deck];
-      let newHand = [...prev.hand];
-      let newDiscardPile = [...prev.discardPile];
-      const handSize = effectiveStats.handLimit;
+    // Draw cards to hand limit for player1
+    const effectiveStats = gameEngine.calculateEffectiveShipStats(player1, placedSections).totals;
+    let newDeck = [...player1.deck];
+    let newHand = [...player1.hand];
+    let newDiscardPile = [...player1.discardPile];
+    const handSize = effectiveStats.handLimit;
 
-      while (newHand.length < handSize) {
-        if (newDeck.length === 0) {
-          if (newDiscardPile.length > 0) {
-            newDeck = [...newDiscardPile].sort(() => 0.5 - Math.random());
-            newDiscardPile = [];
-          } else {
-            break;
-          }
+    while (newHand.length < handSize) {
+      if (newDeck.length === 0) {
+        if (newDiscardPile.length > 0) {
+          newDeck = [...newDiscardPile].sort(() => 0.5 - Math.random());
+          newDiscardPile = [];
+        } else {
+          break;
         }
-        const drawnCard = newDeck.pop();
-        newHand.push(drawnCard);
       }
-      return { ...prev, deck: newDeck, hand: newHand, discardPile: newDiscardPile };
-    });
+      const drawnCard = newDeck.pop();
+      newHand.push(drawnCard);
+    }
+    updatePlayerState('player1', { ...player1, deck: newDeck, hand: newHand, discardPile: newDiscardPile });
   };
 
   /**
@@ -2792,7 +2904,7 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     setSelectedDrone(null);
     setAbilityMode(null);
     const shieldsPerTurn = player1EffectiveStats.totals.shieldsPerTurn;
-    setShieldsToAllocate(shieldsPerTurn);
+    updateGameState({ shieldsToAllocate: shieldsPerTurn });
     setInitialShieldAllocation(JSON.parse(JSON.stringify(player1.shipSections)));
     setTurnPhase('allocateShields');
     setModalContent({
@@ -2818,8 +2930,10 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
         const laneIndex = placedSections.indexOf(sectionName);
         const newPlaced = [...placedSections];
         newPlaced[laneIndex] = null; // Remove from lane
-        setPlacedSections(newPlaced);
-        setUnplacedSections(prev => [...prev, sectionName]); // Add back to unplaced list
+        updateGameState({
+          placedSections: newPlaced,
+          unplacedSections: [...unplacedSections, sectionName]
+        });
         setSelectedSectionForPlacement(null); // This is the fix: clear the selection
     }
   };
@@ -2843,15 +2957,19 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
         const newUnplaced = [...unplacedSections];
         newUnplaced.splice(oldIndexOfSelected, 1, sectionToSwap);
         
-        setUnplacedSections(newUnplaced);
-        setPlacedSections(newPlaced);
+        updateGameState({
+          unplacedSections: newUnplaced,
+          placedSections: newPlaced
+        });
 
       } else {
         // If the lane is empty, place the section
         const newPlaced = [...placedSections];
         newPlaced[laneIndex] = selectedSectionForPlacement;
-        setPlacedSections(newPlaced);
-        setUnplacedSections(prev => prev.filter(s => s !== selectedSectionForPlacement));
+        updateGameState({
+          placedSections: newPlaced,
+          unplacedSections: unplacedSections.filter(s => s !== selectedSectionForPlacement)
+        });
       }
       setSelectedSectionForPlacement(null);
     } else if (placedSections[laneIndex]) {
@@ -2867,20 +2985,19 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
    */
   const handleConfirmPlacement = () => {
       // This is the logic that was at the end of the old handlePlaceSection
-      setPlayer2(prev => {
-        let newDeck = [...prev.deck];
-        let newHand = [];
-        const handSize = gameEngine.calculateEffectiveShipStats(prev, opponentPlacedSections).totals.handLimit;
+      // Draw cards for AI player
+      let newDeck = [...player2.deck];
+      let newHand = [];
+      const handSize = gameEngine.calculateEffectiveShipStats(player2, opponentPlacedSections).totals.handLimit;
 
-        for (let i = 0; i < handSize; i++) {
-            if (newDeck.length > 0) {
-              newHand.push(newDeck.pop());
-            } else {
-                break;
-            }
+      for (let i = 0; i < handSize; i++) {
+          if (newDeck.length > 0) {
+            newHand.push(newDeck.pop());
+          } else {
+              break;
           }
-          return { ...prev, deck: newDeck, hand: newHand };
-        });
+        }
+      updatePlayerState('player2', { ...player2, deck: newDeck, hand: newHand });
     
       drawPlayerHand();
       setTurnPhase('initialDraw');
@@ -2915,17 +3032,15 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     const section = player1.shipSections[sectionName];
     const effectiveMaxShields = gameEngine.getEffectiveSectionMaxShields(sectionName, player1, placedSections);
     if (shieldsToAllocate > 0 && section.allocatedShields < effectiveMaxShields) {
-     setPlayer1(prev => {
-        const newShipSections = {
-          ...prev.shipSections,
-          [sectionName]: {
-            ...prev.shipSections[sectionName],
-            allocatedShields: prev.shipSections[sectionName].allocatedShields + 1,
-          }
-        };
-        return { ...prev, shipSections: newShipSections };
-      });
-     setShieldsToAllocate(prev => prev - 1);
+     const newShipSections = {
+        ...player1.shipSections,
+        [sectionName]: {
+          ...player1.shipSections[sectionName],
+          allocatedShields: player1.shipSections[sectionName].allocatedShields + 1,
+        }
+      };
+      updatePlayerState('player1', { ...player1, shipSections: newShipSections });
+     updateGameState({ shieldsToAllocate: shieldsToAllocate - 1 });
     }
   };
 
@@ -2941,16 +3056,14 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     const section = player1.shipSections[sectionName];
     if (section.allocatedShields <= 0) return;
 
-    setPlayer1(prev => ({
-      ...prev,
-      shipSections: {
-        ...prev.shipSections,
-        [sectionName]: {
-          ...prev.shipSections[sectionName],
-          allocatedShields: prev.shipSections[sectionName].allocatedShields - 1
-        }
+    const newShipSections = {
+      ...player1.shipSections,
+      [sectionName]: {
+        ...player1.shipSections[sectionName],
+        allocatedShields: player1.shipSections[sectionName].allocatedShields - 1
       }
-    }));
+    };
+    updatePlayerState('player1', { ...player1, shipSections: newShipSections });
 
     setShieldsToRemove(prev => prev - 1);
     setShieldsToAdd(prev => prev + 1);
@@ -2969,16 +3082,14 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     const effectiveMaxShields = gameEngine.getEffectiveSectionMaxShields(sectionName, player1, placedSections);
     if (section.allocatedShields >= effectiveMaxShields) return;
 
-    setPlayer1(prev => ({
-      ...prev,
-      shipSections: {
-        ...prev.shipSections,
-        [sectionName]: {
-          ...prev.shipSections[sectionName],
-          allocatedShields: prev.shipSections[sectionName].allocatedShields + 1
-        }
+    const newShipSections = {
+      ...player1.shipSections,
+      [sectionName]: {
+        ...player1.shipSections[sectionName],
+        allocatedShields: player1.shipSections[sectionName].allocatedShields + 1
       }
-    }));
+    };
+    updatePlayerState('player1', { ...player1, shipSections: newShipSections });
 
     setShieldsToAdd(prev => prev - 1);
   };
@@ -2998,10 +3109,10 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
    */
   const handleResetReallocation = () => {
     // Restore original shields
-    setPlayer1(prev => ({
-      ...prev,
+    updatePlayerState('player1', {
+      ...player1,
       shipSections: originalShieldAllocation
-    }));
+    });
 
     // Reset counters
     setShieldsToRemove(reallocationAbility.ability.effect.value.maxShields);
@@ -3016,10 +3127,10 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
    */
   const handleCancelReallocation = () => {
     // Restore original shields
-    setPlayer1(prev => ({
-      ...prev,
+    updatePlayerState('player1', {
+      ...player1,
       shipSections: originalShieldAllocation
-    }));
+    });
 
     // Clear reallocation state
     setReallocationPhase(null);
@@ -3072,8 +3183,8 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
    * Restores original shield distribution.
    */
   const handleResetShieldAllocation = () => {
-   setPlayer1(prev => ({ ...prev, shipSections: initialShieldAllocation }));
-   setShieldsToAllocate(player1EffectiveStats.totals.shieldsPerTurn);
+   updatePlayerState('player1', { ...player1, shipSections: initialShieldAllocation });
+   updateGameState({ shieldsToAllocate: player1EffectiveStats.totals.shieldsPerTurn });
   };
 
   /**
@@ -3084,23 +3195,21 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
   const handleEndAllocation = () => {
     const shieldsToAllocateAI = player2EffectiveStats.shieldsPerTurn;
     const aiSections = Object.keys(player2.shipSections);
-   setPlayer2(prev => {
-      let remainingAIShields = shieldsToAllocateAI;
-      // Use a deep copy to safely mutate within this function's scope before setting state
-      const newSections = JSON.parse(JSON.stringify(prev.shipSections));
-      let i = 0;
-      let failsafe = 0;
-      while (remainingAIShields > 0 && failsafe < 100) {
-        const sectionName = aiSections[i % aiSections.length];
-        if (newSections[sectionName].allocatedShields < newSections[sectionName].shields) {
-         newSections[sectionName].allocatedShields++;
-          remainingAIShields--;
-        }
-        i++;
-        failsafe++;
-      }
-      return { ...prev, shipSections: newSections };
-    });
+   // AI shield allocation
+   let remainingAIShields = shieldsToAllocateAI;
+   const newSections = JSON.parse(JSON.stringify(player2.shipSections));
+   let i = 0;
+   let failsafe = 0;
+   while (remainingAIShields > 0 && failsafe < 100) {
+     const sectionName = aiSections[i % aiSections.length];
+     if (newSections[sectionName].allocatedShields < newSections[sectionName].shields) {
+      newSections[sectionName].allocatedShields++;
+       remainingAIShields--;
+     }
+     i++;
+     failsafe++;
+   }
+   updatePlayerState('player2', { ...player2, shipSections: newSections });
 
 
     const determineFirstPlayer = () => {
@@ -3171,7 +3280,7 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     selectedDrones.forEach(drone => {
         initialCounts[drone.name] = 0;
     });
-    setPlayer1(prev => ({ ...prev, activeDronePool: selectedDrones, deployedDroneCounts: initialCounts }));
+    updatePlayerState('player1', { ...player1, activeDronePool: selectedDrones, deployedDroneCounts: initialCounts });
 
     // REMOVED: All the logic that starts the game (drawing hands, etc.) has been taken out.
     // We will move this logic to a later step.
@@ -3187,9 +3296,9 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
    * Sets up unplaced sections and placement UI state.
    */
   const startPlacementPhase = () => {
-    setUnplacedSections(['bridge', 'powerCell', 'droneControlHub']);
+    updateGameState({ unplacedSections: ['bridge', 'powerCell', 'droneControlHub'] });
     setSelectedSectionForPlacement(null);
-    setPlacedSections(Array(3).fill(null));
+    updateGameState({ placedSections: Array(3).fill(null) });
     setTurnPhase('placement');
     setModalContent({
       title: 'Phase 3: Place Your Ship Sections',
@@ -3262,10 +3371,10 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     const newPlayerDeck = gameEngine.buildDeckFromList(decklist);
 
     // Update Player 1's state with the new custom deck
-    setPlayer1(prev => ({
-      ...prev,
+    updatePlayerState('player1', {
+      ...player1,
       deck: newPlayerDeck
-    }));
+    });
 
     // Proceed to the next phase: ship placement
     startPlacementPhase(); // This now calls our new function
@@ -3336,8 +3445,10 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
       const newTrio = droneSelectionPool.slice(0, 3);
       const remaining = droneSelectionPool.slice(3);
 
-     setDroneSelectionTrio(newTrio);
-     setDroneSelectionPool(remaining);
+     updateGameState({
+       droneSelectionTrio: newTrio,
+       droneSelectionPool: remaining
+     });
     }
   };
 
@@ -3376,7 +3487,7 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
     );
 
     if (result.success) {
-      setPlayer1(result.newPlayerState);
+      updatePlayerState('player1', result.newPlayerState);
       setSelectedDrone(null);
       endTurn('player1');
     } else {
@@ -3428,23 +3539,24 @@ if (turnPhase === 'deployment' && !passInfo.player2Passed) {
    */
   const handlePlayerPass = () => {
     if (passInfo.player1Passed) return;
-     addLogEntry({ player: player1.name, actionType: 'PASS', source: 'N/A', target: 'N/A', outcome: `Passed during ${turnPhase} phase.` }, 'playerPass');
-   setPassInfo(prev => {
-        const wasFirstToPass = !prev.player2Passed;
-        const newPassInfo = {
-            ...prev,
-            player1Passed: true,
-            firstPasser: prev.firstPasser || (wasFirstToPass ? 'player1' : null)
-        };
+    addLogEntry({ player: player1.name, actionType: 'PASS', source: 'N/A', target: 'N/A', outcome: `Passed during ${turnPhase} phase.` }, 'playerPass');
 
-        if (newPassInfo.player2Passed) {
-            if (turnPhase === 'deployment') endDeploymentPhase();
-            if (turnPhase === 'action') endActionPhase();
-        } else {
-            endTurn('player1');
-        }
-        return newPassInfo;
-    });
+    const wasFirstToPass = !passInfo.player2Passed;
+    const newPassInfo = {
+        ...passInfo,
+        player1Passed: true,
+        firstPasser: passInfo.firstPasser || (wasFirstToPass ? 'player1' : null)
+    };
+
+    console.log('[PLAYER PASS DEBUG] Updating pass info:', newPassInfo);
+    setPassInfo(newPassInfo);
+
+    if (newPassInfo.player2Passed) {
+        if (turnPhase === 'deployment') endDeploymentPhase();
+        if (turnPhase === 'action') endActionPhase();
+    } else {
+        endTurn('player1');
+    }
   };
 
 useEffect(() => {
@@ -4004,7 +4116,7 @@ useEffect(() => {
 
     stateAfterMove.dronesOnBoard = gameEngine.updateAuras(stateAfterMove, player2Ref.current, { player1: placedSections, player2: opponentPlacedSections });
 
-    setPlayer1(stateAfterMove);
+    updatePlayerState('player1', stateAfterMove);
 
     setMoveConfirmation(null);
     setSelectedDrone(null);
@@ -4030,11 +4142,11 @@ useEffect(() => {
     }, 'handleConfirmMandatoryDiscard');
 
     // Update player state
-    setPlayer1(prev => ({
-        ...prev,
-        hand: prev.hand.filter(c => c.instanceId !== card.instanceId),
-        discardPile: [...prev.discardPile, card]
-    }));
+    updatePlayerState('player1', {
+        ...player1,
+        hand: player1.hand.filter(c => c.instanceId !== card.instanceId),
+        discardPile: [...player1.discardPile, card]
+    });
     
     // Clear the confirmation modal immediately
     setConfirmationModal(null);
@@ -4061,38 +4173,34 @@ useEffect(() => {
    * @param {Object} drone - The drone being destroyed
    */
   const handleConfirmMandatoryDestroy = (drone) => {
-   setPlayer1(prev => {
-        const lane = gameEngine.getLaneOfDrone(drone.id, prev);
-        if (lane) {
-            // Create proper immutable copy of the nested dronesOnBoard object
-            let newPlayerState = {
-                ...prev,
-                dronesOnBoard: { ...prev.dronesOnBoard }
-            };
+   const lane = gameEngine.getLaneOfDrone(drone.id, player1);
+   if (lane) {
+       // Create proper immutable copy of the nested dronesOnBoard object
+       let newPlayerState = {
+           ...player1,
+           dronesOnBoard: { ...player1.dronesOnBoard }
+       };
 
-            // Remove drone from the specific lane
-            newPlayerState.dronesOnBoard[lane] = newPlayerState.dronesOnBoard[lane].filter(d => d.id !== drone.id);
+       // Remove drone from the specific lane
+       newPlayerState.dronesOnBoard[lane] = newPlayerState.dronesOnBoard[lane].filter(d => d.id !== drone.id);
 
-            // Apply destruction updates (like deployedDroneCounts)
-            const onDestroyUpdates = gameEngine.onDroneDestroyed(newPlayerState, drone);
-            Object.assign(newPlayerState, onDestroyUpdates);
+       // Apply destruction updates (like deployedDroneCounts)
+       const onDestroyUpdates = gameEngine.onDroneDestroyed(newPlayerState, drone);
+       Object.assign(newPlayerState, onDestroyUpdates);
 
-            // Update auras
-            newPlayerState.dronesOnBoard = gameEngine.updateAuras(newPlayerState, player2Ref.current, { player1: placedSections, player2: opponentPlacedSections });
+       // Update auras
+       newPlayerState.dronesOnBoard = gameEngine.updateAuras(newPlayerState, player2Ref.current, { player1: placedSections, player2: opponentPlacedSections });
 
-            return newPlayerState;
-        }
-        return prev;
-    });
+       updatePlayerState('player1', newPlayerState);
+   }
 
    setMandatoryAction(prev => {
         const newCount = prev.count - 1;
         if (newCount <= 0) {
             const p2IsOver = totalPlayer2Drones > player2EffectiveStats.totals.cpuLimit;
             if (p2IsOver) {
-               setPlayer2(p2 => {
-                    let newP2 = {...p2};
-                    let dronesToDestroyCount = Object.values(p2.dronesOnBoard).flat().length - gameEngine.calculateEffectiveShipStats(p2, opponentPlacedSections).totals.cpuLimit;
+               let newP2 = {...player2};
+                    let dronesToDestroyCount = Object.values(player2.dronesOnBoard).flat().length - gameEngine.calculateEffectiveShipStats(player2, opponentPlacedSections).totals.cpuLimit;
                     for (let i = 0; i < dronesToDestroyCount; i++) {
                         const allDrones = Object.entries(newP2.dronesOnBoard).flatMap(([lane, drones]) => drones.map(d => ({...d, lane})));
                         if (allDrones.length === 0) break;
@@ -4100,14 +4208,13 @@ useEffect(() => {
                         const lowestClass = Math.min(...allDrones.map(d => d.class));
                         const candidates = allDrones.filter(d => d.class === lowestClass);
                         const droneToDestroy = candidates[Math.floor(Math.random() * candidates.length)];
-                        
+
                         newP2.dronesOnBoard[droneToDestroy.lane] = newP2.dronesOnBoard[droneToDestroy.lane].filter(d => d.id !== droneToDestroy.id);
                         const onDestroyUpdates = gameEngine.onDroneDestroyed(newP2, droneToDestroy);
                         Object.assign(newP2, onDestroyUpdates);
                     }
                     newP2.dronesOnBoard = gameEngine.updateAuras(newP2, player1Ref.current, { player1: placedSections, player2: opponentPlacedSections });
-                    return newP2;
-                });
+                    updatePlayerState('player2', newP2);
             }
            handleStartDeploymentPhase();
             return null;
@@ -4312,22 +4419,39 @@ useEffect(() => {
       <main className="flex-grow min-h-0 w-full flex flex-col items-center overflow-y-auto px-5 pb-4">
         {turnPhase === 'preGame' ? (
                     <div className="flex flex-col items-center justify-center h-full">
-                      <h1 className="text-3xl font-orbitron font-bold text-white mb-2">Select Your Opponent</h1>
-                      <p className="text-gray-400 mb-8">Choose which AI commander you want to face.</p>
-                      <div className="flex flex-wrap justify-center gap-8">
-                        {aiPersonalities.map((ai) => (
-                          <div 
-                            key={ai.name} 
-                            onClick={() => handleSelectOpponent(ai)}
-                            className="w-72 bg-gray-900 border-2 border-pink-500/50 rounded-lg p-6 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:border-pink-500 hover:scale-105 hover:shadow-2xl hover:shadow-pink-500/20"
-                          >
-                            <h2 className="text-2xl font-orbitron font-bold text-pink-400 mb-3">{ai.name}</h2>
-                            <p className="font-exo text-gray-300 flex-grow">{ai.description}</p>
-                            <button className="mt-6 bg-pink-600 text-white font-bold px-6 py-2 rounded-full hover:bg-pink-700 transition-colors duration-200">
-                              Engage
-                            </button>
+                      <h1 className="text-4xl font-orbitron font-bold text-white mb-4">Drone Wars</h1>
+                      <p className="text-gray-400 mb-8">Choose your game mode</p>
+
+                      {/* Multiplayer Button */}
+                      <div className="flex flex-col gap-6 w-full max-w-md">
+                        <button
+                          onClick={() => setShowMultiplayerLobby(true)}
+                          className="w-full bg-purple-600 border-2 border-purple-500 rounded-lg p-6 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:border-purple-400 hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/20"
+                        >
+                          <h2 className="text-2xl font-orbitron font-bold text-purple-200 mb-2">Multiplayer</h2>
+                          <p className="font-exo text-gray-300 mb-4">Play against another human player online</p>
+                          <span className="text-sm text-purple-300">Create or join a room</span>
+                        </button>
+
+                        {/* AI Section */}
+                        <div className="text-center">
+                          <h3 className="text-lg font-orbitron font-bold text-white mb-4">Or play against AI:</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {aiPersonalities.map((ai) => (
+                              <div
+                                key={ai.name}
+                                onClick={() => handleSelectOpponent(ai)}
+                                className="bg-gray-900 border-2 border-pink-500/50 rounded-lg p-4 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:border-pink-500 hover:scale-105 hover:shadow-2xl hover:shadow-pink-500/20"
+                              >
+                                <h4 className="text-lg font-orbitron font-bold text-pink-400 mb-2">{ai.name}</h4>
+                                <p className="font-exo text-gray-300 text-sm flex-grow">{ai.description}</p>
+                                <button className="mt-4 bg-pink-600 text-white font-bold px-4 py-2 rounded-full hover:bg-pink-700 transition-colors duration-200 text-sm">
+                                  Engage
+                                </button>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -4991,6 +5115,26 @@ useEffect(() => {
             </GamePhaseModal>
           );
       })()}
+
+      {/* Multiplayer Lobby */}
+      {showMultiplayerLobby && (
+        <MultiplayerLobby
+          onGameStart={() => {
+            setShowMultiplayerLobby(false);
+            setTurnPhase('droneSelection');
+          }}
+          onBack={() => setShowMultiplayerLobby(false)}
+        />
+      )}
+
+      {/* Waiting Overlay for multiplayer */}
+      <WaitingOverlay
+        isVisible={false} // TODO: Implement proper waiting logic
+        currentPlayer={currentPlayer}
+        gameMode="local" // TODO: Connect to actual game mode
+        roomCode={null} // TODO: Connect to actual room code
+        lastAction={null} // TODO: Connect to last action
+      />
     </div>
   );
 };
