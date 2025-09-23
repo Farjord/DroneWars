@@ -7,7 +7,7 @@
 
 // --- IMPORTS AND DEPENDENCIES ---
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Shield, Bolt, Wrench, Sprout, Hand, ShipWheel, Settings, X, ChevronRight, ChevronLeft, Plus, RotateCcw, ShieldCheck, Sword, Search, Gavel, Bomb, Rocket, Skull, Bug, Cpu, Target, View, Zap, Heart, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
+import { X, Sword, Rocket, Bolt, Loader2, Cpu, ChevronUp, Hand, ShieldCheck, RotateCcw, Settings } from 'lucide-react';
 import './App.css';
 import DeckBuilder from './DeckBuilder';
 import CardViewerModal from './CardViewerModal';
@@ -21,37 +21,20 @@ import shipSectionData from './data/shipData.js';
 import aiPersonalities from './data/aiData.js';
 import { aiBrain } from './logic/aiLogic.js';
 import { gameEngine, startingDecklist } from './logic/gameLogic.js';
-
-// --- THEME & STYLING CONFIGURATION ---
-const theme = {
-  colors: {
-    background: 'bg-slate-950',
-    primary: 'blue',
-    accent: 'cyan',
-    hull: {
-      healthy: 'bg-green-400',
-      damaged: 'bg-red-500',
-    },
-    shields: 'text-cyan-300',
-    energy: 'text-yellow-300',
-    deployment: 'text-purple-400',
-  },
-  font: {
-    heading: 'font-orbitron',
-    body: 'font-exo',
-  }
-};
-
-// --- ICON MAPPING FOR UI COMPONENTS ---
-const iconMap = {
-  Shield, Bolt, Wrench, Sprout, Hand, ShipWheel, Settings, X, ChevronRight, ChevronLeft, Plus, RotateCcw, ShieldCheck, Sword, Search, Gavel, Bomb, Rocket, Skull, Bug, Cpu, Target, View, Zap, Heart, ChevronUp, ChevronDown
-};
-
-// --- UTILITY HELPER FUNCTIONS ---
-const getRandomDrones = (collection, count) => {
-  const shuffled = [...collection].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, count);
-};
+import { getRandomDrones, getElementCenter, getPhaseDisplayName } from './utils/gameUtils.js';
+import CardStatHexagon from './components/ui/CardStatHexagon.jsx';
+import ActionCard from './components/ui/ActionCard.jsx';
+import DroneCard from './components/ui/DroneCard.jsx';
+import GamePhaseModal from './components/ui/GamePhaseModal.jsx';
+import ShipSection from './components/ui/ShipSection.jsx';
+import ShipSectionsDisplay from './components/ui/ShipSectionsDisplay.jsx';
+import DroneToken from './components/ui/DroneToken.jsx';
+import DroneLanesDisplay from './components/ui/DroneLanesDisplay.jsx';
+import AICardPlayReportModal from './components/modals/AICardPlayReportModal.jsx';
+import UpgradeSelectionModal from './components/modals/UpgradeSelectionModal.jsx';
+import ViewUpgradesModal from './components/modals/ViewUpgradesModal.jsx';
+import DestroyUpgradeModal from './components/modals/DestroyUpgradeModal.jsx';
+import DroneSelectionScreen, { WaitingForOpponentScreen } from './components/screens/DroneSelectionScreen.jsx';
 
 // ========================================
 // MAIN APPLICATION COMPONENT
@@ -378,7 +361,7 @@ const App = () => {
     const explosionEffect = gameEngine.createExplosionEffect(targetId);
 
     // Handle UI-specific rendering
-    const pos = getElementCenter(droneRefs.current[targetId]);
+    const pos = getElementCenter(droneRefs.current[targetId], gameAreaRef.current);
     if (pos) {
       const explosionId = `${explosionEffect.timestamp}-${Math.random()}`;
       setExplosions(prev => [...prev, { id: explosionId, top: pos.y, left: pos.x }]);
@@ -1030,9 +1013,6 @@ const App = () => {
     // Note: Single move cards have "goAgain: true", so shouldEndTurn will be false
 }, [localPlayerState, addLogEntry, gameEngine, localPlacedSections, opponentPlacedSections]);
 
-
-//--- END ABILITY/CARD LOGIC ---
-
   /**
    * START OPTIONAL DISCARD PHASE
    * Initiates the optional discard phase where players can discard excess cards.
@@ -1151,22 +1131,6 @@ const App = () => {
 
 
 
-  /**
-   * GET ELEMENT CENTER
-   * Calculates the center position of a DOM element relative to the game area.
-   * Used for positioning animations and targeting arrows.
-   * @param {HTMLElement} element - The DOM element to find center of
-   * @returns {Object|null} Object with x,y coordinates or null if invalid
-   */
-  const getElementCenter = (element) => {
-    if (!element || !gameAreaRef.current) return null;
-    const gameAreaRect = gameAreaRef.current.getBoundingClientRect();
-    const elemRect = element.getBoundingClientRect();
-    return {
-      x: elemRect.left + elemRect.width / 2 - gameAreaRect.left,
-      y: elemRect.top + elemRect.height / 2 - gameAreaRect.top,
-    };
-  };
 
   // --- INTERCEPTION MONITORING ---
   useEffect(() => {
@@ -1191,7 +1155,7 @@ const App = () => {
   // It only runs when the selected drone changes, not on every mouse move.
   useEffect(() => {
     if (selectedDrone && !abilityMode && turnPhase === 'action') {
-        const startPos = getElementCenter(droneRefs.current[selectedDrone.id]);
+        const startPos = getElementCenter(droneRefs.current[selectedDrone.id], gameAreaRef.current);
         if(startPos) {
             // Set state once to make the arrow visible and position its start point.
             setArrowState({ visible: true, start: startPos, end: { x: startPos.x, y: startPos.y } });
@@ -1262,504 +1226,7 @@ const App = () => {
     <div className="explosion" style={{ top: `${top}px`, left: `${left}px` }}></div>
   );
 
-  /**
-   * STAT HEXAGON COMPONENT
-   * Renders stat values in hexagonal containers with customizable styling.
-   * Used for drone attack and speed display.
-   * @param {number} value - The stat value to display
-   * @param {boolean} isFlat - Whether to use flat hexagon shape
-   * @param {string} bgColor - Tailwind background color class
-   * @param {string} textColor - Tailwind text color class
-   */
-  const StatHexagon = ({ value, isFlat, bgColor, textColor }) => (
-    <div className={`${isFlat ? 'hexagon-flat' : 'hexagon'} w-full h-full bg-black flex items-center justify-center`}>
-      <div className={`${isFlat ? 'hexagon-flat' : 'hexagon'} w-[calc(100%-2px)] h-[calc(100%-2px)] ${bgColor} flex items-center justify-center text-xs font-bold font-orbitron ${textColor}`}>
-        {value}
-      </div>
-    </div>
-  );
 
-  /**
-   * CARD STAT HEXAGON COMPONENT
-   * Renders card stat values with icons in hexagonal containers.
-   * Used for energy, deployment costs on cards.
-   * @param {number} value - The stat value to display
-   * @param {boolean} isFlat - Whether to use flat hexagon shape
-   * @param {React.Component} Icon - Lucide icon component
-   * @param {string} iconColor - Tailwind color class for icon
-   * @param {string} textColor - Tailwind text color class
-   */
-  const CardStatHexagon = ({ value, isFlat, icon: Icon, iconColor, textColor = 'text-white' }) => (
-    <div className={`${isFlat ? 'hexagon-flat' : 'hexagon'} w-full h-full bg-black/60 flex items-center justify-center p-0.5`}>
-        <div className={`${isFlat ? 'hexagon-flat' : 'hexagon'} w-full h-full bg-slate-900/80 flex items-center justify-center`}>
-            <div className={`flex items-center justify-center gap-1 font-bold ${textColor}`}>
-                {Icon && <Icon size={12} className={iconColor} />}
-                <span className="font-orbitron text-base">{value}</span>
-            </div>
-        </div>
-    </div>
-);
-
-  /**
-   * ABILITY ICON COMPONENT
-   * Renders clickable ability activation button on drone tokens.
-   * Shows circular icon with targeting reticle design.
-   * @param {Function} onClick - Callback when ability button is clicked
-   */
-  const AbilityIcon = ({ onClick }) => (
-    <button onClick={onClick} className="absolute top-5 -right-3.5 w-7 h-7 bg-purple-600 rounded-full flex items-center justify-center border-2 border-black/50 z-20 hover:bg-purple-500 transition-colors">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-300"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
-    </button>
-  );
-
-  /**
-   * SHIP ABILITY ICON COMPONENT
-   * Renders clickable ship section ability button with state indicators.
-   * Shows cost tooltip and visual feedback for usability.
-   * @param {Function} onClick - Callback when ability button is clicked
-   * @param {Object} ability - The ship ability data
-   * @param {boolean} isUsable - Whether ability can currently be activated
-   * @param {boolean} isSelected - Whether ability is currently selected
-   */
-  const ShipAbilityIcon = ({ onClick, ability, isUsable, isSelected }) => (
-<button
-    onClick={onClick}
-    disabled={!isUsable}
-    // The className is now just for appearance, not position
-    className={`absolute w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center border-2 border-black/50 z-20 transition-all duration-200 ${isUsable ? 'hover:bg-purple-500' : 'bg-gray-700 opacity-60 cursor-not-allowed'} ${isSelected ? 'ring-2 ring-yellow-300 scale-110' : ''}`}
-    // This inline style will override any external CSS file
-    style={{
-        top: '50%',
-        right: '-0.875rem', // This is the equivalent of Tailwind's -right-3.5
-        transform: 'translateY(-50%)'
-    }}
-    title={`${ability.name} - Cost: ${ability.cost.energy} Energy`}
->
-<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-300"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
-</button>
-);
-  /**
-   * DRONE TOKEN COMPONENT
-   * Renders interactive drone cards on the battlefield with all visual states.
-   * Handles animations, stats display, shield visualization, and ability access.
-   * @param {Object} drone - The drone data object
-   * @param {Function} onClick - Callback when drone is clicked
-   * @param {boolean} isPlayer - Whether this is a player-owned drone
-   * @param {boolean} isSelected - Whether drone is currently selected
-   * @param {boolean} isSelectedForMove - Whether drone is selected for movement
-   * @param {boolean} isHit - Whether drone was recently hit (for animation)
-   * @param {boolean} isPotentialInterceptor - Whether drone can intercept current attack
-   * @param {Function} onMouseEnter - Mouse enter event handler
-   * @param {Function} onMouseLeave - Mouse leave event handler
-   * @param {Object} effectiveStats - Calculated drone stats with modifiers
-   * @param {Function} onAbilityClick - Callback when ability icon is clicked
-   * @param {boolean} isActionTarget - Whether drone is target of current action
-   */
-  const DroneToken = ({ drone, onClick, isPlayer, isSelected, isSelectedForMove, isHit, isPotentialInterceptor, onMouseEnter, onMouseLeave, effectiveStats, onAbilityClick, isActionTarget }) => {
-    const baseDrone = useMemo(() => fullDroneCollection.find(d => d.name === drone.name), [drone.name]);
-    const { maxShields } = effectiveStats;
-    const currentShields = drone.currentShields ?? maxShields;
-    const activeAbilities = baseDrone.abilities.filter(a => a.type === 'ACTIVE');
-
-    // --- Dynamic Class Calculation ---
-    const borderColor = isPlayer ? 'border-cyan-400' : 'border-pink-500';
-    const nameBgColor = isPlayer ? 'bg-cyan-900' : 'bg-pink-950';
-    const nameTextColor = isPlayer ? 'text-cyan-100' : 'text-pink-100';
-    const statBgColor = isPlayer ? 'bg-cyan-900' : 'bg-pink-950';
-    const shieldColor = isPlayer ? 'text-cyan-400' : 'text-pink-500';
-    const emptyShieldColor = isPlayer ? 'text-cyan-300 opacity-50' : 'text-pink-400 opacity-60';
-
-    const isAttackBuffed = effectiveStats.attack > effectiveStats.baseAttack;
-    const isAttackDebuffed = effectiveStats.attack < effectiveStats.baseAttack;
-    const attackTextColor = isAttackBuffed ? 'text-green-400' : isAttackDebuffed ? 'text-red-400' : 'text-white';
-    
-    const isSpeedBuffed = effectiveStats.speed > effectiveStats.baseSpeed;
-    const isSpeedDebuffed = effectiveStats.speed < effectiveStats.baseSpeed;
-    const speedTextColor = isSpeedBuffed ? 'text-green-400' : isSpeedDebuffed ? 'text-red-400' : 'text-white';
-
-    // --- State Effects ---
-    const exhaustEffect = drone.isExhausted ? 'grayscale opacity-60' : '';
-    const hitEffect = isHit ? 'animate-shake' : '';
-    const selectedEffect = (isSelected || isSelectedForMove) ? 'scale-105 ring-2 ring-cyan-400 shadow-xl shadow-cyan-400/50' : '';
-    const actionTargetEffect = isActionTarget ? 'scale-105 ring-2 ring-purple-400 shadow-xl shadow-purple-500/50 animate-pulse' : '';
-    const mandatoryDestroyEffect = mandatoryAction?.type === 'destroy' && isPlayer ? 'ring-2 ring-red-500 animate-pulse' : '';
-
-    const isAbilityUsable = (ability) => {
-      if (drone.isExhausted && ability.cost.exhausts !== false) return false;
-      if (ability.cost.energy && localPlayerState.energy < ability.cost.energy) return false;
-      return true;
-    };
-
-    return (
-      <div ref={el => droneRefs.current[drone.id] = el}
-        onClick={(e) => onClick && onClick(e, drone, isPlayer)}
-        onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}
-        className={`relative w-[90px] h-[135px] transition-all duration-200 ${exhaustEffect} ${hitEffect} ${selectedEffect} ${actionTargetEffect} ${mandatoryDestroyEffect}`}
-      >
-        {/* Main Token Body */}
-        <div className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden`}>
-          <img src={drone.image} alt={drone.name} className="absolute inset-0 w-full h-full object-cover"/>
-          <div className="absolute inset-0 bg-black/10"></div>
-          <div className="relative z-10 h-full">
-            <div className="absolute bottom-6 left-0 right-0 w-full flex flex-col gap-1 px-2">
-              <div className="flex w-full justify-center gap-1 min-h-[12px]">
-                {Array.from({ length: maxShields }).map((_, i) => (
-                  i < currentShields 
-                    ? <svg key={i} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className={shieldColor}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="black" strokeWidth="1.5"></path></svg>
-                    : <svg key={i} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={emptyShieldColor}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="black" strokeWidth="1.5"></path></svg>
-                ))}
-              </div>
-              <div className="flex w-full justify-center gap-0.5">
-                {Array.from({ length: baseDrone.hull }).map((_, i) => {
-                  const isFullHull = i < drone.hull;
-                  const fullHullColor = drone.isExhausted ? 'bg-green-800' : 'bg-green-500';
-                  const damagedHullColor = 'bg-gray-400';
-                  return (
-                    <div key={i} className={`h-2 w-2 rounded-sm ${isFullHull ? fullHullColor : damagedHullColor} border border-black/50`}></div>
-                  );
-                })}
-              </div>
-            </div>
-            <div className={`absolute bottom-0 left-0 right-0 h-5 ${nameBgColor} flex items-center justify-center border-t ${borderColor}`}>
-              <span className={`font-orbitron text-[8px] uppercase ${nameTextColor} tracking-wider w-full text-center`}>{drone.name}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Overlapping Hexagons */}
-        <div className="absolute -top-3 left-[-14px] w-6 h-7 z-20">
-            <StatHexagon value={effectiveStats.attack} isFlat={false} bgColor={statBgColor} textColor={attackTextColor} />
-        </div>
-        <div className={`absolute -top-3 right-[-14px] w-7 h-7 z-20 ${isPotentialInterceptor ? 'interceptor-glow' : ''}`}>
-            <StatHexagon value={effectiveStats.speed} isFlat={true} bgColor={statBgColor} textColor={speedTextColor} />
-        </div>
-
-        {/* Overlapping Ability Icon */}
-        {isPlayer && activeAbilities.length > 0 && isAbilityUsable(activeAbilities[0]) && (
-            <AbilityIcon onClick={(e) => onAbilityClick && onAbilityClick(e, drone, activeAbilities[0])} />
-        )}
-      </div>
-    );
-  };
-
-  /**
-   * UPGRADE SELECTION MODAL COMPONENT
-   * Displays modal for selecting which drone type to apply an upgrade to.
-   * Shows available targets with visual selection feedback.
-   * @param {Object} selectionData - Contains card and target data
-   * @param {Function} onConfirm - Callback when upgrade target is confirmed
-   * @param {Function} onCancel - Callback when selection is cancelled
-   */
-  const UpgradeSelectionModal = ({ selectionData, onConfirm, onCancel }) => {
-    const { card, targets } = selectionData;
-    const [selectedTarget, setSelectedTarget] = useState(null);
-
-    return (
-        <GamePhaseModal
-            title={`Apply Upgrade: ${card.name}`}
-            text="Select a drone type from your active pool to apply this permanent upgrade to."
-            onClose={onCancel}
-            maxWidthClass="max-w-4xl"
-        >
-            <div className="flex justify-center my-4">
-                <ActionCard card={card} isPlayable={false} />
-            </div>
-            
-            <div className="my-4 p-4 bg-black/20 rounded-lg max-h-64 overflow-y-auto">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {targets.map(drone => (
-                        <div
-                            key={drone.id}
-                            onClick={() => setSelectedTarget(drone)}
-                            className={`p-3 rounded-lg border-2 transition-all cursor-pointer flex items-center gap-4
-                                ${selectedTarget?.id === drone.id ? 'bg-purple-700 border-purple-400' : 'bg-slate-800 border-slate-600 hover:bg-slate-700'}
-                            `}
-                        >
-                            <img src={drone.image} alt={drone.name} className="w-12 h-12 rounded-md object-cover" />
-                            <span className="font-semibold text-white">{drone.name}</span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <div className="flex justify-center gap-4 mt-6">
-                <button 
-                    onClick={onCancel} 
-                    className="bg-pink-600 text-white font-bold py-2 px-6 rounded-full hover:bg-pink-700 transition-colors"
-                >
-                    Cancel
-                </button>
-                <button 
-                    onClick={() => onConfirm(card, selectedTarget)}
-                    disabled={!selectedTarget}
-                    className="bg-green-600 text-white font-bold py-2 px-6 rounded-full transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed enabled:hover:bg-green-700"
-                >
-                    Confirm Upgrade
-                </button>
-            </div>
-        </GamePhaseModal>
-    );
-};
-
-  /**
-   * VIEW UPGRADES MODAL COMPONENT
-   * Displays all upgrades currently applied to a specific drone type.
-   * Shows upgrade details in a scrollable list format.
-   * @param {Object} modalData - Contains drone name and upgrades array
-   * @param {Function} onClose - Callback when modal is closed
-   */
-  const ViewUpgradesModal = ({ modalData, onClose }) => {
-    const { droneName, upgrades } = modalData;
-
-    return (
-        <GamePhaseModal
-            title={`Applied Upgrades: ${droneName}`}
-            text="The following permanent upgrades have been applied to this drone type."
-            onClose={onClose}
-        >
-            <div className="my-4 p-2 bg-black/20 rounded-lg max-h-80 overflow-y-auto space-y-3">
-                {upgrades.length > 0 ? (
-                    upgrades.map(upgrade => (
-                        <div key={upgrade.instanceId} className="bg-slate-800/70 p-3 rounded-lg border border-purple-500/50">
-                            <h4 className="font-bold text-purple-300">{upgrade.name}</h4>
-                            <p className="text-sm text-gray-400 mt-1">{upgrade.description}</p>
-                        </div>
-                    ))
-                ) : (
-                    <p className="text-center text-gray-500 italic">No upgrades applied.</p>
-                )}
-            </div>
-            <div className="flex justify-center mt-6">
-                <button 
-                    onClick={onClose} 
-                    className="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors"
-                >
-                    Close
-                </button>
-            </div>
-        </GamePhaseModal>
-    );
-};
-
-  /**
-   * DESTROY UPGRADE MODAL COMPONENT
-   * Allows player to select and destroy an opponent's upgrade.
-   * Groups upgrades by drone type for easy navigation.
-   * @param {Object} selectionData - Contains card, targets, and opponent state
-   * @param {Function} onConfirm - Callback when upgrade destruction is confirmed
-   * @param {Function} onCancel - Callback when action is cancelled
-   */
-  const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
-    const { card, targets: upgradedDrones, opponentState } = selectionData;
-    const [selectedUpgrade, setSelectedUpgrade] = useState(null); // e.g., { droneName: 'Scout Drone', instanceId: '...' }
-
-    return (
-        <GamePhaseModal
-            title={`System Sabotage`}
-            text="Select an enemy upgrade to destroy. The upgrade will be permanently removed."
-            onClose={onCancel}
-            maxWidthClass="max-w-4xl"
-        >
-            <div className="my-4 p-2 bg-black/20 rounded-lg max-h-[60vh] overflow-y-auto space-y-4">
-                {upgradedDrones.length > 0 ? (
-                    upgradedDrones.map(drone => {
-                        const upgradesOnThisDrone = opponentState.appliedUpgrades[drone.name] || [];
-                        return (
-                            <div key={drone.id} className="bg-slate-800/70 p-3 rounded-lg border border-pink-500/50">
-                                <h4 className="font-bold text-pink-300 mb-2">Enemy: {drone.name}</h4>
-                                <div className="space-y-2">
-                                    {upgradesOnThisDrone.map(upgrade => (
-                                        <div
-                                            key={upgrade.instanceId}
-                                            onClick={() => setSelectedUpgrade({ droneName: drone.name, instanceId: upgrade.instanceId })}
-                                            className={`p-2 rounded-md border-2 transition-all cursor-pointer 
-                                                ${selectedUpgrade?.instanceId === upgrade.instanceId 
-                                                    ? 'bg-red-700 border-red-400' 
-                                                    : 'bg-slate-900/50 border-slate-600 hover:bg-slate-700'}`
-                                            }
-                                        >
-                                            <p className="font-semibold text-white">{upgrade.name}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        );
-                    })
-                ) : (
-                    <p className="text-center text-gray-500 italic">The opponent has no active upgrades to destroy.</p>
-                )}
-            </div>
-
-            <div className="flex justify-center gap-4 mt-6">
-                <button 
-                    onClick={onCancel} 
-                    className="bg-gray-600 text-white font-bold py-2 px-6 rounded-full hover:bg-gray-700 transition-colors"
-                >
-                    Cancel
-                </button>
-                <button 
-                    onClick={() => onConfirm(card, selectedUpgrade)}
-                    disabled={!selectedUpgrade}
-                    className="bg-red-600 text-white font-bold py-2 px-6 rounded-full transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed enabled:hover:bg-red-700"
-                >
-                    Destroy Upgrade
-                </button>
-            </div>
-        </GamePhaseModal>
-    );
-};
-
-  /**
-   * SHIP SECTIONS DISPLAY COMPONENT
-   * Renders the ship sections area with interactive sections for each player.
-   * Handles shield allocation, abilities, and targeting states.
-   * @param {Object} player - Player state data
-   * @param {Object} playerEffectiveStats - Calculated ship stats
-   * @param {boolean} isPlayer - Whether this is the current player's ship
-   * @param {Array} placedSections - Array of placed section names
-   * @param {Function} onSectionClick - Callback for shield allocation interactions
-   * @param {Function} onAbilityClick - Callback for ship ability activation
-   * @param {Function} onTargetClick - Callback for targeting interactions
-   * @param {boolean} isInteractive - Whether sections should be interactive
-   * @param {Array} validCardTargets - Array of valid targets for current action
-   * @param {string} reallocationPhase - Current shield reallocation state
-   */
-  const ShipSectionsDisplay = ({ player, playerEffectiveStats, isPlayer, placedSections, onSectionClick, onAbilityClick, onTargetClick, isInteractive, validCardTargets, reallocationPhase }) => {
-    return (
-      <div className="flex w-full justify-between gap-8">
-        {[0, 1, 2].map((laneIndex) => {
-          const sectionName = localPlacedSections[laneIndex];
-          if (!sectionName) {
-            return <div key={laneIndex} className="flex-1 min-w-0 h-full bg-black/20 rounded-lg border-2 border-dashed border-gray-700"></div>;
-          }
-          
-          const sectionStats = player.shipSections[sectionName];
-          const isCardTarget = validCardTargets.some(t => t.id === sectionName);
-
-          // Determine shield reallocation visual state
-          let reallocationState = null;
-          if (reallocationPhase && isPlayer) {
-            if (reallocationPhase === 'removing') {
-              if (sectionStats.allocatedShields > 0) {
-                reallocationState = 'can-remove';
-              } else {
-                reallocationState = 'cannot-remove';
-              }
-            } else if (reallocationPhase === 'adding') {
-              const effectiveMaxShields = gameEngine.getEffectiveSectionMaxShields(sectionName, player, placedSections);
-              if (sectionStats.allocatedShields < effectiveMaxShields) {
-                reallocationState = 'can-add';
-              } else {
-                reallocationState = 'cannot-add';
-              }
-            }
-          }
-
-          return (
-            <div key={laneIndex} className="flex-1 min-w-0">
-              <ShipSection
-                section={sectionName}
-                stats={sectionStats}
-                effectiveStatsForDisplay={playerEffectiveStats.bySection[sectionName]}
-                isPlayer={isPlayer}
-                isOpponent={!isPlayer}
-                onClick={() => {
-                  if (isInteractive && onSectionClick) { // Specifically for shield allocation
-                    onSectionClick(sectionName);
-                  } else if (onTargetClick) { // For attacks and card/ability targeting
-                    onTargetClick({ id: sectionName, name: sectionName, ...sectionStats }, 'section', isPlayer);
-                  }
-                }}
-                onAbilityClick={onAbilityClick}
-                isInteractive={isInteractive || (turnPhase === 'action' && isPlayer && sectionStats.ability && localPlayerState.energy >= sectionStats.ability.cost.energy)}
-                isCardTarget={isCardTarget}
-                isInMiddleLane={laneIndex === 1}
-                isHovered={hoveredTarget?.type === 'section' && hoveredTarget?.target.name === sectionName}
-                onMouseEnter={() => !isPlayer && setHoveredTarget({ target: { name: sectionName, ...sectionStats }, type: 'section' })}
-                onMouseLeave={() => !isPlayer && setHoveredTarget(null)}
-                reallocationState={reallocationState}
-              />
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  /**
-   * DRONE LANES DISPLAY COMPONENT
-   * Renders the three battlefield lanes with their drone contents.
-   * Handles lane targeting, deployment, and visual states.
-   * @param {Object} player - Player state data
-   * @param {boolean} isPlayer - Whether this is the current player's lanes
-   * @param {Function} onLaneClick - Callback when a lane is clicked
-   */
-  const DroneLanesDisplay = ({ player, isPlayer, onLaneClick }) => {
-    return (
-      <div className="flex w-full justify-between gap-8 min-h-[160px]">
-        {['lane1', 'lane2', 'lane3'].map((lane) => {
-          const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
-          const isTargetable = (abilityMode && validAbilityTargets.some(t => t.id === lane && t.owner === owner)) ||
-                               (selectedCard && validCardTargets.some(t => t.id === lane && t.owner === owner)) ||
-                               (multiSelectState && validCardTargets.some(t => t.id === lane && t.owner === owner));
-          
-          const isInteractivePlayerLane = isPlayer && (turnPhase === 'deployment' || turnPhase === 'action');
-
-          return (
-            <div 
-              key={lane} 
-              onClick={(e) => onLaneClick(e, lane, isPlayer)}
-              className={`flex-1 rounded-lg border-2 transition-all duration-200 p-2 lane-background
-                ${isTargetable ? 'border-purple-500 bg-purple-900/40 ring-2 ring-purple-400 animate-pulse' : 'border-gray-700/50 bg-black/20'} 
-                ${isInteractivePlayerLane ? 'cursor-pointer hover:bg-cyan-900/50' : ''}
-              `}
-            >
-              {renderDronesOnBoard(player.dronesOnBoard[lane], isPlayer, lane)}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-
-  /**
-   * RENDER DRONES ON BOARD
-   * Renders all drones within a specific lane with proper positioning.
-   * Applies all visual states and interaction handlers.
-   * @param {Array} drones - Array of drone objects in the lane
-   * @param {boolean} isPlayer - Whether these are player-owned drones
-   * @param {string} lane - The lane ID (lane1, lane2, lane3)
-   */
-  const renderDronesOnBoard = (drones, isPlayer, lane) => {
-    return (
-      <div className="flex flex-wrap gap-8 pt-2 min-h-[100px] justify-center items-center">
-       {drones.map((drone) => {
-            const player = isPlayer ? localPlayerState : opponentPlayerState;
-            const opponent = isPlayer ? opponentPlayerState : localPlayerState;
-            const sections = isPlayer ? localPlacedSections : opponentPlacedSections;
-            const effectiveStats = gameEngine.calculateEffectiveStats(drone, lane, player, opponent, getPlacedSectionsForEngine());
-            return (
-                <DroneToken
-                key={drone.id}
-                drone={drone}
-                effectiveStats={effectiveStats}
-                isPlayer={isPlayer}
-                onClick={handleTokenClick}
-                onAbilityClick={handleAbilityIconClick}
-                isSelected={selectedDrone && selectedDrone.id === drone.id}
-                isSelectedForMove={multiSelectState?.phase === 'select_drones' && multiSelectState.selectedDrones.some(d => d.id === drone.id)}
-                isHit={recentlyHitDrones.includes(drone.id)}
-                isPotentialInterceptor={potentialInterceptors.includes(drone.id)}
-                isActionTarget={validAbilityTargets.some(t => t.id === drone.id) || validCardTargets.some(t => t.id === drone.id)}
-                onMouseEnter={() => !isPlayer && setHoveredTarget({ target: drone, type: 'drone', lane })}
-                onMouseLeave={() => !isPlayer && setHoveredTarget(null)}
-                 />
-            );
-        })}
-      </div>
-    );
-  };
 
   /**
    * GAME PHASE MODAL COMPONENT
@@ -1894,13 +1361,13 @@ const App = () => {
         <div className="flex justify-around items-center my-4 p-4 bg-black/20 rounded-lg">
           <div className="flex flex-col items-center">
             <h4 className="text-lg font-bold text-pink-400 mb-2">Attacker</h4>
-           <DroneToken drone={attacker} isPlayer={false} effectiveStats={gameEngine.calculateEffectiveStats(attacker, lane, opponentPlayerState, localPlayerState, getPlacedSectionsForEngine())}/>
+           <DroneToken drone={attacker} isPlayer={false} effectiveStats={gameEngine.calculateEffectiveStats(attacker, lane, opponentPlayerState, localPlayerState, getPlacedSectionsForEngine())} droneRefs={droneRefs} mandatoryAction={mandatoryAction} localPlayerState={localPlayerState}/>
           </div>
           <div className="text-4xl font-bold text-gray-500">VS</div>
           <div className="flex flex-col items-center">
             <h4 className="text-lg font-bold text-cyan-400 mb-2">Target</h4>
            {targetType === 'drone' ? (
-             <DroneToken drone={target} isPlayer={true} effectiveStats={gameEngine.calculateEffectiveStats(target, lane, localPlayerState, opponentPlayerState, getPlacedSectionsForEngine())} />
+             <DroneToken drone={target} isPlayer={true} effectiveStats={gameEngine.calculateEffectiveStats(target, lane, localPlayerState, opponentPlayerState, getPlacedSectionsForEngine())} droneRefs={droneRefs} mandatoryAction={mandatoryAction} localPlayerState={localPlayerState} />
 
            ) : (
              <div className="transform scale-75">
@@ -1909,6 +1376,13 @@ const App = () => {
                  stats={localPlayerState.shipSections[target.name]}
                  isPlayer={true}
                  isInteractive={false}
+                 gameEngine={gameEngine}
+                 turnPhase={turnPhase}
+                 isMyTurn={isMyTurn}
+                 passInfo={passInfo}
+                 getLocalPlayerId={getLocalPlayerId}
+                 localPlayerState={localPlayerState}
+                 shipAbilityMode={shipAbilityMode}
                  />
              </div>
            )}
@@ -1925,6 +1399,9 @@ const App = () => {
              isPlayer={true}
              onClick={() => onIntercept(drone)}
                effectiveStats={gameEngine.calculateEffectiveStats(drone, lane, localPlayerState, opponentPlayerState, getPlacedSectionsForEngine())}
+               droneRefs={droneRefs}
+               mandatoryAction={mandatoryAction}
+               localPlayerState={localPlayerState}
                />
           ))}
         </div>
@@ -2046,7 +1523,6 @@ const App = () => {
     }, [drone, appliedUpgrades]);
 
     const deploymentCost = effectiveCardStats.cost;
-    
     const isAttackBuffed = effectiveCardStats.attack > drone.attack;
     const isAttackDebuffed = effectiveCardStats.attack < drone.attack;
     const attackTextColor = isAttackBuffed ? 'text-green-400' : isAttackDebuffed ? 'text-red-400' : 'text-white';
@@ -2219,13 +1695,19 @@ const App = () => {
                     onClick={() => onSectionSelect(sectionName)}
                     className={`h-full transition-all duration-300 rounded-xl ${selected === sectionName ? 'scale-105 ring-4 ring-cyan-400' : 'opacity-70 hover:opacity-100 cursor-pointer'}`}
                   >
-                    <ShipSection 
-                      section={sectionName} 
+                    <ShipSection
+                      section={sectionName}
                       stats={player.shipSections[sectionName]}
-                      // This is the updated line that shows the base stats
                       effectiveStatsForDisplay={player.shipSections[sectionName].stats.healthy}
                       isPlayer={true}
                       isInteractive={true}
+                      gameEngine={gameEngine}
+                      turnPhase={turnPhase}
+                      isMyTurn={isMyTurn}
+                      passInfo={passInfo}
+                      getLocalPlayerId={getLocalPlayerId}
+                      localPlayerState={localPlayerState}
+                      shipAbilityMode={shipAbilityMode}
                     />
                   </div>
                 )}
@@ -2246,13 +1728,20 @@ const App = () => {
                   onClick={() => onLaneSelect(laneIndex)}
                 >
                   {placedSectionName ? (
-                    <ShipSection 
-                      section={placedSectionName} 
-                      stats={player.shipSections[placedSectionName]} 
+                    <ShipSection
+                      section={placedSectionName}
+                      stats={player.shipSections[placedSectionName]}
                       effectiveStatsForDisplay={gameEngine.calculateEffectiveShipStats(player, placed).bySection[placedSectionName]}
-                      isPlayer={true} 
+                      isPlayer={true}
                       isInteractive={true}
                       isInMiddleLane={laneIndex === 1}
+                      gameEngine={gameEngine}
+                      turnPhase={turnPhase}
+                      isMyTurn={isMyTurn}
+                      passInfo={passInfo}
+                      getLocalPlayerId={getLocalPlayerId}
+                      localPlayerState={localPlayerState}
+                      shipAbilityMode={shipAbilityMode}
                     />
                   ) : (
                     <div className={`bg-black/30 rounded-xl border-2 border-dashed border-purple-500/50 flex items-center justify-center text-purple-300/70 p-4 h-full transition-colors duration-300 ${isSelectedForPlacement ? 'cursor-pointer hover:border-purple-500 hover:bg-purple-900/20' : ''}`}>
@@ -2281,307 +1770,8 @@ const App = () => {
     );
   };
 
-  /**
-   * SHIP SECTION COMPONENT
-   * Renders individual ship sections with stats, abilities, and visual states.
-   * Handles shield allocation, damage states, and interaction feedback.
-   * @param {string} section - Section name identifier
-   * @param {Object} stats - Section stats data
-   * @param {Object} effectiveStatsForDisplay - Calculated effective stats for display
-   * @param {boolean} isPlayer - Whether this is the player's section
-   * @param {boolean} isPlaceholder - Whether this is a placeholder slot
-   * @param {Function} onClick - Callback when section is clicked
-   * @param {Function} onAbilityClick - Callback when ability is activated
-   * @param {boolean} isInteractive - Whether section should be interactive
-   * @param {boolean} isOpponent - Whether this is opponent's section
-   * @param {boolean} isHovered - Whether section is currently hovered
-   * @param {Function} onMouseEnter - Mouse enter event handler
-   * @param {Function} onMouseLeave - Mouse leave event handler
-   * @param {boolean} isCardTarget - Whether section is targeted by current action
-   * @param {boolean} isInMiddleLane - Whether section is in center lane (bonus)
-   * @param {string} reallocationState - Current shield reallocation state
-   */
-  const ShipSection = ({ section, stats, effectiveStatsForDisplay, isPlayer, isPlaceholder, onClick, onAbilityClick, isInteractive, isOpponent, isHovered, onMouseEnter, onMouseLeave, isCardTarget, isInMiddleLane, reallocationState }) => {
-    if (isPlaceholder) {
-      return (
-        <div
-          className="bg-black/30 rounded-lg border-2 border-dashed border-purple-500/50 flex items-center justify-center text-purple-300/70 p-4 min-h-[160px] h-full transition-colors duration-300 cursor-pointer hover:border-purple-500 hover:text-purple-300"
-          onClick={onClick}
-        >
-          <span className="text-center">Click to place section</span>
-        </div>
-      );
-    }
-    
-    const sectionStatus = gameEngine.getShipStatus(stats);
-    
-    const overlayColor = sectionStatus === 'critical' ? 'bg-red-900/60' : sectionStatus === 'damaged' ? 'bg-yellow-900/50' : 'bg-black/60';
-    let borderColor = sectionStatus === 'critical' ? 'border-red-500' : sectionStatus === 'damaged' ? 'border-yellow-500' : (isOpponent ? 'border-pink-500' : 'border-cyan-500');
-    const shadowColor = isOpponent ? 'shadow-pink-500/20' : 'shadow-cyan-500/20';
-    const hoverEffect = isHovered ? 'scale-105 shadow-xl' : '';
-
-    // Override border color for shield reallocation states
-    let reallocationEffect = '';
-    if (reallocationState) {
-      switch (reallocationState) {
-        case 'can-remove':
-          borderColor = 'border-orange-400';
-          reallocationEffect = 'ring-2 ring-orange-400/50 shadow-lg shadow-orange-400/30';
-          break;
-        case 'removed-from':
-          borderColor = 'border-orange-600';
-          reallocationEffect = 'ring-4 ring-orange-600/80 shadow-lg shadow-orange-600/50 bg-orange-900/20';
-          break;
-        case 'cannot-remove':
-          borderColor = 'border-gray-600';
-          reallocationEffect = 'opacity-50';
-          break;
-        case 'can-add':
-          borderColor = 'border-green-400';
-          reallocationEffect = 'ring-2 ring-green-400/50 shadow-lg shadow-green-400/30';
-          break;
-        case 'added-to':
-          borderColor = 'border-green-600';
-          reallocationEffect = 'ring-4 ring-green-600/80 shadow-lg shadow-green-600/50 bg-green-900/20';
-          break;
-        case 'cannot-add':
-          borderColor = 'border-gray-600';
-          reallocationEffect = 'opacity-50';
-          break;
-      }
-    }
-
-    const cardTargetEffect = isCardTarget ? 'ring-4 ring-purple-400 shadow-lg shadow-purple-400/50 animate-pulse' : '';
-    const sectionName = section === 'droneControlHub' ? 'Drone Control Hub' : section.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-
-    const backgroundImageStyle = {
-      backgroundImage: `url(${stats.image})`,
-      backgroundPosition: 'center center',
-      backgroundRepeat: 'no-repeat',
-      backgroundSize: 'cover',
-    };
-
-    return (
-      <div
-        className={`
-          relative rounded-xl shadow-lg ${shadowColor} border-2 h-full
-          transition-all duration-300 overflow-hidden
-          ${borderColor}
-          ${isInteractive ? `cursor-pointer ${hoverEffect}` : ''}
-          ${cardTargetEffect}
-          ${reallocationEffect}
-        `}
-        style={backgroundImageStyle}
-        onClick={onClick}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-      >
-        <div className={`absolute inset-0 ${overlayColor}`}></div>
-        
-        <div className="relative z-10 flex flex-col items-center p-4 h-full">
-            <div className={`absolute top-2 right-2 flex items-center gap-1 font-semibold text-xs px-2 py-0.5 rounded-full ${sectionStatus === 'healthy' ? 'bg-green-500/20 text-green-300' : sectionStatus === 'damaged' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-red-500/20 text-red-300'}`}>
-                {sectionStatus.charAt(0).toUpperCase() + sectionStatus.slice(1)}
-            </div>
-          
-            <div className="flex flex-col items-center gap-2 text-center">
-              <p className="font-bold text-lg text-white">{sectionName}</p>
-              <p className="text-xs text-gray-400 italic max-w-[200px]">{stats.description}</p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-2 w-full items-center mt-auto">
-              <div className="flex flex-col items-start text-sm text-gray-300">
-                {effectiveStatsForDisplay && Object.entries(effectiveStatsForDisplay).map(([key, value]) => {
-                  const isBoosted = isInMiddleLane && stats.middleLaneBonus && stats.middleLaneBonus[key];
-                  return (
-                      <span key={key} className="flex items-center text-xs">
-                          <span className="font-semibold mr-1">{key}:</span>
-                          <span className={isBoosted ? 'text-green-400 font-bold' : ''}>{value}</span>
-                      </span>
-                  );
-                })}
-              </div>
-
-              <div className="flex flex-col items-center">
-                <div className="flex gap-1 items-center mb-2">
-                  {Array(stats.shields).fill(0).map((_, i) => (
-                    <div key={i}>
-                      {i < stats.allocatedShields 
-                        ? <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" className="text-cyan-300"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="black" strokeWidth="1.5"></path></svg>
-                        : <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="black" strokeWidth="1.5"></path></svg>
-                      }
-                    </div>
-                  ))}
-                </div>
-                <div className="flex w-full justify-center gap-1">
-                  {Array.from({ length: stats.maxHull }).map((_, i) => {
-                      const hullPoint = i + 1;
-                      const { critical, damaged } = stats.thresholds;
-                      let thresholdColor;
-                      if (hullPoint <= critical) {
-                          thresholdColor = 'bg-red-500';
-                      } else if (hullPoint <= damaged) {
-                          thresholdColor = 'bg-orange-500';
-                      } else {
-                          thresholdColor = 'bg-green-500';
-                      }
-                      const isFilled = i < stats.hull;
-                      return (
-                        <div key={i} className={`h-4 w-4 rounded-sm ${isFilled ? thresholdColor : 'bg-gray-400'} border border-black/50`}></div>
-                      );
-                  })}
-                </div>
-              </div>
-              
-              {/* --- THIS IS THE UPDATED SECTION --- */}
-              <div className="flex flex-col items-center justify-center h-full pl-4 text-center">
-                {isPlayer && stats.ability && (
-                  <>
-                    <div className="relative w-full mb-1">
-                      <h4 className="font-bold text-sm text-purple-300 leading-tight">{stats.ability.name}</h4>
-                      <ShipAbilityIcon 
-                        ability={stats.ability}
-                        isUsable={
-                          turnPhase === 'action' &&
-                          isMyTurn() &&
-                          !passInfo[`${getLocalPlayerId()}Passed`] &&
-                          localPlayerState.energy >= stats.ability.cost.energy
-                        }
-                        isSelected={shipAbilityMode?.ability.id === stats.ability.id}
-                        onClick={(e) => onAbilityClick(e, {name: section, ...stats}, stats.ability)}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-400 leading-tight">{stats.ability.description}</p>
-                  </>
-                )}
-              </div>
-            </div>
-        </div>
-      </div>
-    );
-  };
   
-  // --- NEW: ActionCard COMPONENT ---
-  const ActionCard = ({ card, onClick, isPlayable, isSelected, isMandatoryTarget }) => {
-    const { name, cost, image, description } = card;
-  
-    return (
-<div
-  onClick={(e) => {
-    e.stopPropagation();
-    if (isPlayable || isMandatoryTarget) {
-      onClick(card);
-    }
-  }}
-  className={`
-    w-52 h-72 rounded-lg p-1 relative group transition-all duration-200 flex-shrink-0
-          ${isPlayable ? 'cursor-pointer' : 'cursor-not-allowed'}
-          ${isSelected ? 'bg-purple-400' : 'bg-purple-800/80'}
-            ${!isPlayable && !isMandatoryTarget ? 'grayscale' : ''}
-          ${isMandatoryTarget ? 'cursor-pointer ring-2 ring-red-500 animate-pulse' : ''}
-        `}
-      >
-        <div
-          className={`
-            w-full h-full bg-slate-900 flex flex-col font-orbitron text-purple-300 overflow-hidden rounded-md
-            transition-all duration-200
-            ${isPlayable && !isSelected ? 'group-hover:bg-slate-800' : ''}
-          `}
-        >
-          {/* Header */}
-          <div className="text-center py-1 px-2 bg-purple-900/50 flex justify-between items-center">
-            <span className="font-bold text-sm uppercase tracking-wider truncate">{name}</span>
-            <div className="flex items-center bg-slate-800/70 px-2 py-0.5 rounded-full">
-              <Bolt size={12} className="text-yellow-300" />
-              <span className="text-white font-bold text-sm ml-1">{cost}</span>
-            </div>
-          </div>
-  
-          {/* Image */}
-          <div className="p-1">
-            <div className="relative h-24">
-              <img src={image} alt={name} className="w-full h-full object-cover rounded" />
-              <div className="absolute inset-0 border border-purple-400/50 rounded"></div>
-            </div>
-          </div>
-  
-          {/* Description */}
-          <div className="flex-grow mx-2 my-1 bg-black/50 border border-purple-800/70 p-2 flex flex-col min-h-0">
-            <div className="flex-grow relative font-exo font-normal text-purple-200">
-              <p className="text-sm leading-tight text-center">{description}</p>
-            </div>
-          </div>
-  
-          {/* Type Footer */}
-          <div className="text-center text-xs py-1 bg-purple-900/50 uppercase font-semibold tracking-widest">
-            {card.type} Card
-          </div>
-        </div>
-      </div>
-    );
-  };
 
-  /**
-   * DRONE SELECTION SCREEN COMPONENT
-   * Provides interface for selecting drones during initial setup.
-   * Shows trio choices and tracks selected drones.
-   * @param {Function} onChooseDrone - Callback when drone is selected
-   * @param {Array} currentTrio - Current trio of drones to choose from
-   * @param {Array} selectedDrones - Array of already selected drones
-   */
-  const WaitingForOpponentScreen = ({ phase, localPlayerStatus }) => {
-    return (
-      <div className="flex flex-col items-center justify-center h-full">
-        <div className="text-center p-8">
-          <Loader2 className="w-16 h-16 mx-auto text-cyan-400 animate-spin mb-6" />
-          <h2 className="text-3xl font-bold text-white mb-4">
-            Waiting for Your Opponent
-          </h2>
-          <p className="text-gray-400 text-lg mb-6">
-            {phase === 'droneSelection' && 'Your opponent is still selecting their drones...'}
-            {phase === 'deckSelection' && 'Your opponent is still choosing their deck...'}
-          </p>
-          {localPlayerStatus && (
-            <div className="bg-slate-800 rounded-lg p-4 max-w-md mx-auto">
-              <h3 className="text-lg font-bold text-green-400 mb-2">✅ Your Selection Complete</h3>
-              <p className="text-gray-300 text-sm">{localPlayerStatus}</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const DroneSelectionScreen = ({ onChooseDrone, currentTrio, selectedDrones }) => {
-    return (
-      <div className="flex flex-col items-center w-full p-4">
-        <h2 className="text-3xl font-bold mb-2 text-white text-center">
-          Choose Your Drones
-        </h2>
-        <p className="text-center text-gray-400 mb-6">Choice {selectedDrones.length + 1} of 5: Select one drone from the three options below to add to your Active Drone Pool.</p>
-
-       {currentTrio.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-6 mb-8">
-           {currentTrio.map((drone, index) => (
-             <DroneCard key={drone.name || index} drone={drone} onClick={() => onChooseDrone(drone)} isSelectable={true} deployedCount={0}/>
-            ))}
-          </div>
-        )}
-
-        <div className="w-full mt-8 pt-8 border-t border-gray-700">
-          <h3 className="text-2xl font-bold text-white text-center mb-4">Your Selection ({selectedDrones.length}/5)</h3>
-         {selectedDrones.length > 0 ? (
-            <div className="flex flex-wrap justify-center gap-6">
-             {selectedDrones.map((drone, index) => (
-               <DroneCard key={index} drone={drone} isSelectable={false} deployedCount={0}/>
-              ))}
-            </div>
-          ) : (
-            <p className="text-center text-gray-500">No drones selected yet.</p>
-          )}
-        </div>
-      </div>
-);
-  };
 
   /**
    * AI DECISION LOG MODAL COMPONENT
@@ -4487,28 +3677,6 @@ useEffect(() => {
   };
 
 
-  /**
-   * GET PHASE DISPLAY NAME
-   * Returns human-readable name for game phases.
-   * Used for UI display and debugging.
-   * @param {string} phase - The game phase identifier
-   * @returns {string} Human-readable phase name
-   */
-  const getPhaseDisplayName = (phase) => {
-    const names = {
-      preGame: "Pre-Game Setup",
-      placement: "Placement Phase",
-      droneSelection: "Drone Selection",
-      initialDraw: "Draw Phase",
-      optionalDiscard: "Discard Phase",
-      allocateShields: "Shield Allocation",
-      deployment: "Deployment Phase",
-      action: "Action Phase",
-      combatPending: "Combat Phase Pending",
-      roundEnd: "Round Over"
-    };
-    return names[phase] || "Unknown Phase";
-  };
     const downloadLogAsCSV = () => {
       if (gameLog.length === 0) {
         alert("The game log is empty.");
@@ -4846,12 +4014,12 @@ useEffect(() => {
                   })()
                 ) : (
                   <div className="flex flex-col items-center w-full space-y-2">
-                      <ShipSectionsDisplay player={opponentPlayerState} playerEffectiveStats={opponentPlayerEffectiveStats} isPlayer={false} placedSections={opponentPlacedSections} onTargetClick={handleTargetClick} isInteractive={false} selectedCard={selectedCard} validCardTargets={validCardTargets} />
-                      <DroneLanesDisplay player={opponentPlayerState} isPlayer={false} placedSections={opponentPlacedSections} onLaneClick={handleLaneClick} selectedDrone={selectedDrone} selectedCard={selectedCard} validCardTargets={validCardTargets} />
-                      <DroneLanesDisplay player={localPlayerState} isPlayer={true} placedSections={localPlacedSections} onLaneClick={handleLaneClick} selectedDrone={selectedDrone} selectedCard={selectedCard} validCardTargets={validCardTargets} />
+                      <ShipSectionsDisplay player={opponentPlayerState} playerEffectiveStats={opponentPlayerEffectiveStats} isPlayer={false} placedSections={opponentPlacedSections} onTargetClick={handleTargetClick} isInteractive={false} selectedCard={selectedCard} validCardTargets={validCardTargets} gameEngine={gameEngine} turnPhase={turnPhase} isMyTurn={isMyTurn} passInfo={passInfo} getLocalPlayerId={getLocalPlayerId} localPlayerState={localPlayerState} shipAbilityMode={shipAbilityMode} hoveredTarget={hoveredTarget} setHoveredTarget={setHoveredTarget} />
+                      <DroneLanesDisplay player={opponentPlayerState} isPlayer={false} onLaneClick={handleLaneClick} getLocalPlayerId={getLocalPlayerId} getOpponentPlayerId={getOpponentPlayerId} abilityMode={abilityMode} validAbilityTargets={validAbilityTargets} selectedCard={selectedCard} validCardTargets={validCardTargets} multiSelectState={multiSelectState} turnPhase={turnPhase} localPlayerState={localPlayerState} opponentPlayerState={opponentPlayerState} localPlacedSections={localPlacedSections} opponentPlacedSections={opponentPlacedSections} gameEngine={gameEngine} getPlacedSectionsForEngine={getPlacedSectionsForEngine} handleTokenClick={handleTokenClick} handleAbilityIconClick={handleAbilityIconClick} selectedDrone={selectedDrone} recentlyHitDrones={recentlyHitDrones} potentialInterceptors={potentialInterceptors} droneRefs={droneRefs} mandatoryAction={mandatoryAction} setHoveredTarget={setHoveredTarget} />
+                      <DroneLanesDisplay player={localPlayerState} isPlayer={true} onLaneClick={handleLaneClick} getLocalPlayerId={getLocalPlayerId} getOpponentPlayerId={getOpponentPlayerId} abilityMode={abilityMode} validAbilityTargets={validAbilityTargets} selectedCard={selectedCard} validCardTargets={validCardTargets} multiSelectState={multiSelectState} turnPhase={turnPhase} localPlayerState={localPlayerState} opponentPlayerState={opponentPlayerState} localPlacedSections={localPlacedSections} opponentPlacedSections={opponentPlacedSections} gameEngine={gameEngine} getPlacedSectionsForEngine={getPlacedSectionsForEngine} handleTokenClick={handleTokenClick} handleAbilityIconClick={handleAbilityIconClick} selectedDrone={selectedDrone} recentlyHitDrones={recentlyHitDrones} potentialInterceptors={potentialInterceptors} droneRefs={droneRefs} mandatoryAction={mandatoryAction} setHoveredTarget={setHoveredTarget} />
 
 
-                      <ShipSectionsDisplay player={localPlayerState} playerEffectiveStats={localPlayerEffectiveStats} isPlayer={true} placedSections={localPlacedSections} onSectionClick={handleShipSectionClick} onAbilityClick={handleShipAbilityClick} onTargetClick={handleTargetClick} isInteractive={turnPhase === 'allocateShields' || reallocationPhase} selectedCard={selectedCard} validCardTargets={validCardTargets} reallocationPhase={reallocationPhase} />
+                      <ShipSectionsDisplay player={localPlayerState} playerEffectiveStats={localPlayerEffectiveStats} isPlayer={true} placedSections={localPlacedSections} onSectionClick={handleShipSectionClick} onAbilityClick={handleShipAbilityClick} onTargetClick={handleTargetClick} isInteractive={turnPhase === 'allocateShields' || reallocationPhase} selectedCard={selectedCard} validCardTargets={validCardTargets} reallocationPhase={reallocationPhase} gameEngine={gameEngine} turnPhase={turnPhase} isMyTurn={isMyTurn} passInfo={passInfo} getLocalPlayerId={getLocalPlayerId} localPlayerState={localPlayerState} shipAbilityMode={shipAbilityMode} hoveredTarget={hoveredTarget} setHoveredTarget={setHoveredTarget} />
               </div>
             )}
         </>

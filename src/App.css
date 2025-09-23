@@ -1,3 +1,24 @@
+/* === THEME SYSTEM - CSS CUSTOM PROPERTIES === */
+:root {
+  /* Color System */
+  --color-background: rgb(2 6 23); /* bg-slate-950 equivalent */
+  --color-primary: rgb(59 130 246); /* blue-500 */
+  --color-accent: rgb(6 182 212); /* cyan-500 */
+
+  /* Hull Colors */
+  --color-hull-healthy: rgb(74 222 128); /* bg-green-400 */
+  --color-hull-damaged: rgb(239 68 68); /* bg-red-500 */
+
+  /* Text Colors */
+  --color-shields: rgb(103 232 249); /* text-cyan-300 */
+  --color-energy: rgb(253 224 71); /* text-yellow-300 */
+  --color-deployment: rgb(196 181 253); /* text-purple-400 */
+
+  /* Font Families */
+  --font-heading: 'Orbitron', sans-serif;
+  --font-body: 'Exo', sans-serif;
+}
+
 .lane-background {
   background-image: url('/img/Space_Background.png'); /* Path from the 'public' folder */
   background-position: center center; /* This is the magic part that centers the image */
