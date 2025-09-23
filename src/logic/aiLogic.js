@@ -1,8 +1,8 @@
 import fullDroneCollection from '../data/droneData.js';
 
- const calculateLaneScore = (laneId, aiPlayerState, humanPlayerState, allSections, getShipStatus, calculateEffectiveStats) => {
- const aiDronesInLane = aiPlayerState.dronesOnBoard[laneId] || [];
- const humanDronesInLane = humanPlayerState.dronesOnBoard[laneId] || [];
+ const calculateLaneScore = (laneId, player2State, player1State, allSections, getShipStatus, calculateEffectiveStats) => {
+ const aiDronesInLane = player2State.dronesOnBoard[laneId] || [];
+ const humanDronesInLane = player1State.dronesOnBoard[laneId] || [];
  const laneIndex = parseInt(laneId.slice(-1)) - 1;
 
  const getPower = (drones, owner, opponent, sections) => drones.reduce((sum, drone) => {
@@ -11,8 +11,8 @@ import fullDroneCollection from '../data/droneData.js';
  return sum + threatValue + (drone.hull || 0) + (drone.currentShields || 0);
  }, 0);
 
-  const aiPower = getPower(aiDronesInLane, aiPlayerState, humanPlayerState, allSections);
-  const humanPower = getPower(humanDronesInLane, humanPlayerState, aiPlayerState, allSections);
+  const aiPower = getPower(aiDronesInLane, player2State, player1State, allSections);
+  const humanPower = getPower(humanDronesInLane, player1State, player2State, allSections);
   const baseScore = aiPower - humanPower;
   
   const getMaxSpeed = (drones, owner, opponent, sections) => {
@@ -20,20 +20,20 @@ import fullDroneCollection from '../data/droneData.js';
     return Math.max(...drones.map(d => calculateEffectiveStats(d, laneId, owner, opponent, sections).speed));
   };
   
-  const aiMaxSpeed = getMaxSpeed(aiDronesInLane, aiPlayerState, humanPlayerState, allSections);
-  const humanMaxSpeed = getMaxSpeed(humanDronesInLane, humanPlayerState, aiPlayerState, allSections);
+  const aiMaxSpeed = getMaxSpeed(aiDronesInLane, player2State, player1State, allSections);
+  const humanMaxSpeed = getMaxSpeed(humanDronesInLane, player1State, player2State, allSections);
   const speedScore = (aiMaxSpeed - humanMaxSpeed) * 5;
 
   let healthModifier = 0;
   const aiSectionName = allSections.player2[laneIndex];
   if (aiSectionName) {
-    const aiSectionStatus = getShipStatus(aiPlayerState.shipSections[aiSectionName]);
+    const aiSectionStatus = getShipStatus(player2State.shipSections[aiSectionName]);
     if (aiSectionStatus === 'damaged') healthModifier -= 20;
     if (aiSectionStatus === 'critical') healthModifier -= 40;
   }
   const humanSectionName = allSections.player1[laneIndex];
   if (humanSectionName) {
-    const humanSectionStatus = getShipStatus(humanPlayerState.shipSections[humanSectionName]);
+    const humanSectionStatus = getShipStatus(player1State.shipSections[humanSectionName]);
     if (humanSectionStatus === 'damaged') healthModifier += 15;
     if (humanSectionStatus === 'critical') healthModifier += 30;
   }
@@ -41,7 +41,7 @@ import fullDroneCollection from '../data/droneData.js';
   return baseScore + speedScore + healthModifier;
 };
 
-const handleOpponentTurn = ({ player1, player2, turn, opponentPlacedSections, placedSections, getShipStatus, calculateEffectiveShipStats, calculateEffectiveStats, addLogEntry }) => {
+const handleOpponentTurn = ({ player1, player2, turn, placedSections, opponentPlacedSections, getShipStatus, calculateEffectiveShipStats, calculateEffectiveStats, addLogEntry }) => {
     const effectiveStats = calculateEffectiveShipStats(player2, opponentPlacedSections).totals;
     const totalDrones = Object.values(player2.dronesOnBoard).flat().length;
     const availableResources = turn === 1

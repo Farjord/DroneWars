@@ -5,7 +5,7 @@ const fullCardCollection = [
     name: 'Laser Blast',
     maxInDeck: 4,
     type: 'Action',
-    cost: 2,
+    cost: 3,
     image: '/cards/LaserBlast.png',
     description: 'Deal 3 damage to any drone.',
     targeting: {
@@ -47,11 +47,12 @@ const fullCardCollection = [
     type: 'Action',
     cost: 1,
     image: '/cards/Reboot.png',
-    description: 'Draw 2 cards from your deck.',
+    description: 'Draw 2 cards from your deck. Go again.',
     // No targeting key is needed for this card
     effect: {
       type: 'DRAW',
-      value: 2
+      value: 2,
+      goAgain: true
     }
   },
       {
@@ -60,14 +61,15 @@ const fullCardCollection = [
     name: 'System Reboot+',
     maxInDeck: 4,
     type: 'Action',
-    cost: 1,
+    cost: 2,
     image: '/cards/Reboot.png',
-    description: 'Draw 3 cards from your deck.',
+    description: 'Draw 3 cards from your deck Go again.',
     // No targeting key is needed for this card
     effect: {
       type: 'DRAW',
-      value: 3
-    }
+      value: 3,
+      goAgain: true
+     }
   },
    {
     id: 'CARD003',
@@ -75,7 +77,7 @@ const fullCardCollection = [
     name: 'Out Think',
     maxInDeck: 4,
     type: 'Action',
-    cost: 0,
+    cost: 1,
     image: '/cards/OutThink.png',
     description: 'Draw 1 card.',
     // No targeting is needed
@@ -92,11 +94,12 @@ const fullCardCollection = [
     type: 'Action',
     cost: 0,
     image: '/cards/EnergySurge.png',
-    description: 'Gain 2 Energy.',
+    description: 'Gain 2 Energy. Go again',
     // No targeting is needed for this effect
     effect: {
       type: 'GAIN_ENERGY',
-      value: 2
+      value: 2,
+      goAgain: true
     }
   },
       {
@@ -107,11 +110,12 @@ const fullCardCollection = [
     type: 'Action',
     cost: 0,
     image: '/cards/EnergySurge.png',
-    description: 'Gain 3 Energy.',
+    description: 'Gain 3 Energy. Go again.',
     // No targeting is needed for this effect
     effect: {
       type: 'GAIN_ENERGY',
-      value: 3
+      value: 3,
+      goAgain: true
     }
   },
     {
@@ -120,7 +124,7 @@ const fullCardCollection = [
     name: 'Adrenaline Rush',
     maxInDeck: 4,
     type: 'Action',
-    cost: 1,
+    cost: 2,
     image: '/cards/AdrenalineRush.png',
     description: 'Ready an exhausted friendly drone.',
     targeting: {
@@ -139,7 +143,7 @@ const fullCardCollection = [
     name: 'Adrenaline Rush+',
     maxInDeck: 4,
     type: 'Action',
-    cost: 2,
+    cost: 3,
     image: '/cards/AdrenalineRush.png',
     description: 'Ready an exhausted friendly drone. Go again',
     targeting: {
@@ -161,7 +165,7 @@ const fullCardCollection = [
     type: 'Action',
     cost: 1,
     image: '/cards/NanobotRepair.png',
-    description: 'Restore 3 hull to a friendly drone. Cannot exceed its maximum hull.',
+    description: 'Restore 3 hull to a friendly drone. Cannot exceed its maximum hull. Go again.',
     targeting: {
       type: 'DRONE',
       affinity: 'FRIENDLY',
@@ -169,7 +173,8 @@ const fullCardCollection = [
     },
     effect: {
       type: 'HEAL_HULL', 
-      value: 3
+      value: 3,
+      goAgain:  true
     }
   },
   {
@@ -216,14 +221,15 @@ const fullCardCollection = [
     type: 'Action',
     cost: 1,
     image: '/cards/ShieldRecharge.png',
-    description: 'Restore 1 shield to all friendly drones in a target lane.',
+    description: 'Restore 2 shield to all friendly drones in a target lane. Go again.',
     targeting: {
       type: 'LANE', // New targeting type
       affinity: 'FRIENDLY'
     },
     effect: {
       type: 'HEAL_SHIELDS',
-      value: 1
+      value: 2,
+      goAgain: true
     }
   },
   // Single-target destroy
@@ -233,7 +239,7 @@ const fullCardCollection = [
     name: 'Target Lock',
     maxInDeck: 4,
     type: 'Action',
-    cost: 4, // High cost for a powerful effect
+    cost: 5, // High cost for a powerful effect
     image: '/cards/TargetLock.png',
     description: 'Destroy a single target drone.',
     targeting: {
@@ -273,7 +279,7 @@ const fullCardCollection = [
     id: 'CARD011',
     baseCardId: 'CARD011',
     name: 'Nuke',
-    maxInDeck: 4,
+    maxInDeck: 2,
     type: 'Action',
     cost: 7, // Increased cost to reflect its power
     image: '/cards/Nuke.png',
@@ -294,7 +300,7 @@ const fullCardCollection = [
     name: 'Piercing Shot',
     maxInDeck: 4,
     type: 'Action',
-    cost: 3,
+    cost: 4,
     image: '/cards/PiercingShot.png',
     description: 'Deal 2 piercing damage to any drone. (Piercing damage ignores shields).',
     targeting: {
@@ -314,7 +320,7 @@ const fullCardCollection = [
     name: 'Piercing Shot+',
     maxInDeck: 4,
     type: 'Action',
-    cost: 2,
+    cost: 3,
     image: '/cards/PiercingShot.png',
     description: 'Deal 2 piercing damage to any drone. (Piercing damage ignores shields).',
     targeting: {
@@ -439,7 +445,8 @@ const fullCardCollection = [
     effect: {
       type: 'REPEATING_EFFECT',
       effects: [{ type: 'DRAW', value: 1 }, { type: 'GAIN_ENERGY', value: 1 }],
-      condition: 'OWN_DAMAGED_SECTIONS'
+      condition: 'OWN_DAMAGED_SECTIONS',
+      goAgain: true
     }
   },
     {
@@ -501,7 +508,7 @@ const fullCardCollection = [
     id: 'CARD022',
     baseCardId: 'CARD022',
     name: 'System Sabotage',
-    maxInDeck: 3,
+    maxInDeck: 4,
     type: 'Action',
     cost: 1,
     image: '/cards/SystemSabotage.png',
@@ -614,7 +621,7 @@ const fullCardCollection = [
     name: 'Strategic Planning',
     maxInDeck: 4,
     type: 'Action',
-    cost: 1,
+    cost: 2,
     image: '/cards/StrategicPlanning.png',
     description: 'Look at the top 5 cards of your deck and draw 1. Shuffle your deck.',
     effect: {
@@ -632,7 +639,7 @@ const fullCardCollection = [
     name: 'Equipment Cache',
     maxInDeck: 4,
     type: 'Action',
-    cost: 2,
+    cost: 4,
     image: '/cards/EquipmentCache.png',
     description: 'Search your deck for an Upgrade card and add it to your hand. Shuffle your deck.',
     effect: {

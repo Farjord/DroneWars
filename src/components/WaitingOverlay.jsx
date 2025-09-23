@@ -7,11 +7,11 @@
 import React from 'react';
 import { Loader2, Clock, User } from 'lucide-react';
 
-const WaitingOverlay = ({ isVisible, currentPlayer, gameMode, roomCode, lastAction }) => {
+const WaitingOverlay = ({ isVisible, currentPlayer, gameMode, roomCode, lastAction, localPlayerState, opponentPlayerState, getLocalPlayerId }) => {
   if (!isVisible) return null;
 
   const isMultiplayer = gameMode !== 'local';
-  const opponentName = currentPlayer === 'player1' ? 'Player 1' : 'Player 2';
+  const opponentName = currentPlayer === getLocalPlayerId() ? localPlayerState?.name || 'You' : opponentPlayerState?.name || 'Opponent';
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-40 pointer-events-none">
