@@ -129,6 +129,23 @@ export const useGameState = () => {
     gameStateManager.setWinner(winnerId);
   }, []);
 
+  // Action processing methods
+  const processAction = useCallback(async (actionType, payload) => {
+    return await gameStateManager.processAction(actionType, payload);
+  }, []);
+
+  const isActionInProgress = useCallback(() => {
+    return gameStateManager.isActionInProgress();
+  }, []);
+
+  const getActionQueueLength = useCallback(() => {
+    return gameStateManager.getActionQueueLength();
+  }, []);
+
+  const clearActionQueue = useCallback(() => {
+    gameStateManager.clearActionQueue();
+  }, []);
+
   return {
     // State
     gameState,
@@ -163,6 +180,12 @@ export const useGameState = () => {
     addLogEntry,
     resetGame,
     setWinner,
+
+    // Action processing
+    processAction,
+    isActionInProgress,
+    getActionQueueLength,
+    clearActionQueue,
 
     // Direct access to managers (for complex operations)
     gameStateManager,

@@ -88,6 +88,11 @@ const App = () => {
     resetGame,
     setWinner,
 
+    // Action processing
+    processAction,
+    isActionInProgress,
+    getActionQueueLength,
+
     // Direct manager access
     gameStateManager,
     p2pManager
@@ -95,6 +100,30 @@ const App = () => {
 
   // --- DEBUG AND DEVELOPMENT FLAGS ---
   const AI_HAND_DEBUG_MODE = true; // Set to false to disable clicking to see the AI's hand
+  const RACE_CONDITION_DEBUG = true; // Set to false to disable race condition monitoring
+
+  // Race condition monitoring
+  useEffect(() => {
+    if (RACE_CONDITION_DEBUG) {
+      const checkForRaceConditions = () => {
+        const actionInProgress = isActionInProgress();
+        const queueLength = getActionQueueLength();
+
+        if (actionInProgress || queueLength > 0) {
+          console.log('[RACE DEBUG] Action processing state:', {
+            actionInProgress,
+            queueLength,
+            currentPlayer: gameState.currentPlayer,
+            turnPhase: gameState.turnPhase,
+            timestamp: Date.now()
+          });
+        }
+      };
+
+      const interval = setInterval(checkForRaceConditions, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [isActionInProgress, getActionQueueLength, gameState.currentPlayer, gameState.turnPhase]);
 
   // --- MODAL AND UI STATE ---
   const [showAiHandModal, setShowAiHandModal] = useState(false);
@@ -567,11 +596,11 @@ const App = () => {
 
   /**
    * RESOLVE ATTACK
-   * Processes drone-to-drone combat using gameEngine logic.
+   * Processes drone-to-drone combat using ActionProcessor.
    * Handles animations, state updates, and turn transitions.
    * @param {Object} attackDetails - Attack configuration with attacker, target, damage
    */
-  const resolveAttack = useCallback((attackDetails) => {
+  const resolveAttack = useCallback(async (attackDetails) => {
     // --- Prevent duplicate runs ---
     if (isResolvingAttackRef.current) {
         console.warn("Attack already in progress. Aborting duplicate call.");
@@ -585,19 +614,15 @@ const App = () => {
             setTimeout(() => setRecentlyHitDrones(prev => prev.filter(id => id !== targetId)), 500);
         };
 
+        // Process attack through ActionProcessor
+        const result = await processAction('attack', {
+            attackDetails: attackDetails
+        });
 
-        // Use the gameEngine version
-        const result = gameEngine.resolveAttack(
-            attackDetails,
-            getPlayerStatesForEngine(),
-            getPlacedSectionsForEngine(),
-            (logEntry) => addLogEntry(logEntry, 'resolveAttack', attackDetails.attackingPlayer === getOpponentPlayerId() ? attackDetails.aiContext : null),
-            triggerExplosion,
-            triggerHitAnimation
-        );
-
-        // Update player states
-        updateGameStateFromEngineResult(result.newPlayerStates);
+        // Handle UI effects (animations, reports)
+        if (attackDetails.targetId) {
+            triggerHitAnimation(attackDetails.targetId);
+        }
 
         // Handle AI action report
         if (attackDetails.attackingPlayer === getOpponentPlayerId()) {
@@ -608,10 +633,11 @@ const App = () => {
         }
 
         // Handle after-attack effects
-        result.afterAttackEffects.forEach(effect => {
-            if (effect.type === 'LOG') addLogEntry(effect.payload, 'resolveAfterAttackEffects');
-            else if (effect.type === 'EXPLOSION') triggerExplosion(effect.payload.targetId);
-        });
+        if (result.afterAttackEffects) {
+            result.afterAttackEffects.forEach(effect => {
+                if (effect.type === 'EXPLOSION') triggerExplosion(effect.payload.targetId);
+            });
+        }
 
         // Handle turn ending
         if (result.attackResult.shouldEndTurn) {
@@ -631,59 +657,36 @@ const App = () => {
         isResolvingAttackRef.current = false;
     }
 
-}, [endTurn, triggerExplosion, addLogEntry, localPlacedSections, opponentPlacedSections]);
+}, [endTurn, triggerExplosion, processAction, getLocalPlayerId, getOpponentPlayerId]);
 
   // --- ABILITY RESOLUTION ---
 
   /**
    * RESOLVE ABILITY
-   * Processes drone ability activation using gameEngine logic.
+   * Processes drone ability activation using ActionProcessor.
    * Updates game state and handles turn transitions.
    * @param {Object} ability - The ability being activated
    * @param {Object} userDrone - The drone using the ability
    * @param {Object} targetDrone - The target of the ability (if any)
    */
-  const resolveAbility = useCallback((ability, userDrone, targetDrone) => {
-    // Create a specialized attack callback that synchronously updates GameStateManager
-    const synchronousAttackCallback = (attackDetails) => {
-      // Get current state from GameStateManager (this will be up-to-date)
-      const currentGameState = gameStateManager.getState();
-      const currentPlayerStates = { player1: currentGameState.player1, player2: currentGameState.player2 };
+  const resolveAbility = useCallback(async (ability, userDrone, targetDrone) => {
+    try {
+      // Process ability through ActionProcessor
+      const result = await processAction('ability', {
+        droneId: userDrone.id,
+        abilityIndex: userDrone.abilities.indexOf(ability),
+        targetId: targetDrone?.id || null
+      });
 
-      // Call gameEngine.resolveAttack directly instead of the UI wrapper
-      const attackResult = gameEngine.resolveAttack(
-        attackDetails,
-        currentPlayerStates,
-        getPlacedSectionsForEngine(),
-        (logEntry) => addLogEntry(logEntry, 'resolveAttack-internal'),
-        triggerExplosion,
-        triggerHitAnimation
-      );
-
-      // Synchronously update GameStateManager with attack results
-      gameStateManager.setPlayerStates(attackResult.newPlayerStates.player1, attackResult.newPlayerStates.player2);
-
-      return attackResult;
-    };
-
-    const result = gameEngine.resolveAbility(
-        ability,
-        userDrone,
-        targetDrone,
-        getPlayerStatesForEngine(),
-        getPlacedSectionsForEngine(),
-        (logEntry) => addLogEntry(logEntry, 'resolveAbility'),
-        synchronousAttackCallback // Use the synchronous callback
-    );
-
-    // Update player states with final ability result
-    updateGameStateFromEngineResult(result.newPlayerStates);
-
-    cancelAbilityMode();
-    if (result.shouldEndTurn) {
+      cancelAbilityMode();
+      if (result.shouldEndTurn) {
         endTurn(getLocalPlayerId());
+      }
+    } catch (error) {
+      console.error('Error in resolveAbility:', error);
+      cancelAbilityMode();
     }
-}, [addLogEntry, endTurn, localPlacedSections, opponentPlacedSections, triggerExplosion, triggerHitAnimation]);
+  }, [processAction, endTurn, getLocalPlayerId]);
 
   // --- SHIP ABILITY RESOLUTION ---
 
@@ -2796,14 +2799,28 @@ const App = () => {
 
   // --- AI TURN EXECUTION ---
   useEffect(() => {
-    const isAiTurn = !isMultiplayer() && currentPlayer === getOpponentPlayerId() && (!modalContent || !modalContent.isBlocking) && !winner && !aiActionReport && !aiCardPlayReport && !pendingAttack && !playerInterceptionChoice && !mandatoryAction && !showFirstPlayerModal && !showActionPhaseStartModal && !showRoundEndModal;
+    const isMultiplayerGame = isMultiplayer();
+    const opponentId = getOpponentPlayerId();
+    const isCurrentPlayerOpponent = currentPlayer === opponentId;
+    const hasBlockingConditions = (modalContent && modalContent.isBlocking) || winner || aiActionReport || aiCardPlayReport || pendingAttack || playerInterceptionChoice || mandatoryAction || showFirstPlayerModal || showActionPhaseStartModal || showRoundEndModal;
 
+    const isAiTurn = !isMultiplayerGame && isCurrentPlayerOpponent && !hasBlockingConditions;
+
+    console.log(`[AI TURN CHECK] AI turn calculation:`, {
+      isMultiplayerGame,
+      currentPlayer,
+      opponentId,
+      isCurrentPlayerOpponent,
+      hasBlockingConditions,
+      isAiTurn,
+      turnPhase
+    });
 
     if (!isAiTurn) return;
 
     let aiTurnTimer;
 
-    const executeAiTurn = () => {
+    const executeAiTurn = async () => {
 
       // Safety check: reset stuck attack flag before AI action
       if (isResolvingAttackRef.current) {
@@ -2811,135 +2828,18 @@ const App = () => {
         isResolvingAttackRef.current = false;
       }
 
-      let result;
-if (turnPhase === 'deployment' && !passInfo[getOpponentPlayerId() + 'Passed']) {
-  result = aiBrain.handleOpponentTurn({
-    ...getPlayerStatesForEngine(),
-    turn,
-    placedSections: gameState.placedSections,
-    opponentPlacedSections: gameState.opponentPlacedSections,
-    getShipStatus: gameEngine.getShipStatus,
-    calculateEffectiveShipStats: gameEngine.calculateEffectiveShipStats,
-    calculateEffectiveStats: gameEngine.calculateEffectiveStats,
-    addLogEntry
-
-  });
-} else if (turnPhase === 'action' && !passInfo[getOpponentPlayerId() + 'Passed']) {
-    result = aiBrain.handleOpponentAction({
-    ...getPlayerStatesForEngine(),
-    placedSections: gameState.placedSections,
-    opponentPlacedSections: gameState.opponentPlacedSections,
-    getShipStatus: gameEngine.getShipStatus,
-    getLaneOfDrone: gameEngine.getLaneOfDrone,
-    getValidTargets: gameEngine.getValidTargets,
-    calculateEffectiveStats: gameEngine.calculateEffectiveStats,
-    addLogEntry
-  });
-} else {
-}
-
-      if (!result) {
-        return; // Exit if no action was decided
+      // Notify gameLogic to handle AI turn
+      try {
+        await processAction('aiTurn', {
+          turnPhase,
+          playerId: getOpponentPlayerId()
+        });
+      } catch (error) {
+        console.error('Error processing AI turn:', error);
+        // Fallback: end turn to prevent getting stuck
+        endTurn(getOpponentPlayerId());
       }
 
-      if (result.type === 'pass') {
-        const wasFirstToPass = !passInfo[getLocalPlayerId() + 'Passed'];
-        const newPassInfo = { ...passInfo, [getOpponentPlayerId() + 'Passed']: true, firstPasser: passInfo.firstPasser || (wasFirstToPass ? getOpponentPlayerId() : null) };
-
-        setPassInfo(newPassInfo);
-
-        if (newPassInfo[getLocalPlayerId() + 'Passed']) {
-          if (turnPhase === 'deployment') endDeploymentPhase();
-          else if (turnPhase === 'action') endActionPhase();
-        } else {
-          endTurn(getOpponentPlayerId());
-        }
-      } else if (result.type === 'deploy') {
-        const { droneToDeploy, targetLane, logContext } = result.payload;
-
-        addLogEntry({
-          player: opponentPlayerState.name,
-          actionType: 'DEPLOY',
-          source: droneToDeploy.name,
-          target: targetLane,
-          outcome: `Deployed to ${targetLane}.`
-        }, 'aiDeploymentDeploy', logContext);
-
-        const deployResult = gameEngine.executeAiDeployment(
-          droneToDeploy,
-          targetLane,
-          turn,
-          gameState.player2,
-          gameState.player1,
-          getPlacedSectionsForEngine(),
-          { addLogEntry }
-        );
-
-        if (deployResult.success) {
-          gameStateManager.updatePlayerState('player2', deployResult.newPlayerState);
-          endTurn(getOpponentPlayerId());
-        } else {
-        }
-
-      } else if (result.type === 'action') {
-        const chosenAction = result.payload;
-        const { logContext } = result;
-        switch (chosenAction.type) {
-          case 'play_card':
-            resolveCardPlay(chosenAction.card, chosenAction.target, getOpponentPlayerId(), logContext);
-            break;
-          case 'attack':
-            setPendingAttack({
-              attacker: chosenAction.attacker,
-              target: chosenAction.target,
-              targetType: chosenAction.targetType,
-              lane: chosenAction.attacker.lane,
-              attackingPlayer: getOpponentPlayerId(),
-              aiContext: logContext,
-            });
-            break;
-          case 'move': {
-            const { drone, fromLane, toLane } = chosenAction;
-
-            addLogEntry({
-              player: opponentPlayerState.name,
-              actionType: 'MOVE',
-              source: drone.name,
-              target: toLane,
-              outcome: `Moved from ${fromLane} to ${toLane}.`
-            }, 'aiActionMove', logContext);
-
-            // Create a synthetic movement card for the gameEngine
-            const moveCard = {
-              name: 'AI Move',
-              cost: 0,
-              effect: { type: 'MOVE', properties: [] } // No special properties for AI moves
-            };
-
-            const moveResult = gameEngine.resolveSingleMove(
-              moveCard,
-              drone,
-              fromLane,
-              toLane,
-              opponentPlayerState,
-              gameState.player1,
-              getPlacedSectionsForEngine(),
-              {
-                logCallback: () => {}, // Already logged above
-                applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects,
-                updateAurasCallback: gameEngine.updateAuras
-              }
-            );
-
-            updatePlayerState(getOpponentPlayerId(), moveResult.newPlayerState);
-            endTurn(getOpponentPlayerId());
-            break;
-          }
-          default:
-            endTurn(getOpponentPlayerId());
-            break;
-        }
-      }
     };
 
     aiTurnTimer = setTimeout(executeAiTurn, 1500);
@@ -2960,6 +2860,76 @@ if (turnPhase === 'deployment' && !passInfo[getOpponentPlayerId() + 'Passed']) {
       }
     }
   }, [winner, turnPhase, currentPlayer]);
+
+  // --- REACTIVE MODAL UPDATES FOR TURN CHANGES ---
+  // Update modals when currentPlayer changes during active phases
+  const [lastCurrentPlayer, setLastCurrentPlayer] = useState(currentPlayer);
+
+  useEffect(() => {
+    // Only update modals during active gameplay phases
+    if (turnPhase !== 'deployment' && turnPhase !== 'action') return;
+
+    // Don't interfere with other modal states
+    if (winner || showFirstPlayerModal || showActionPhaseStartModal || showRoundEndModal) return;
+
+    // Don't update if there are active confirmations
+    if (deploymentConfirmation || moveConfirmation || cardConfirmation) return;
+
+    // Only update when currentPlayer actually changes (not when modal is closed)
+    if (currentPlayer === lastCurrentPlayer) return;
+
+    const myTurn = isMyTurn();
+    const isMultiplayerGame = isMultiplayer();
+
+    console.log(`[MODAL UPDATE] Turn change detected:`, {
+      currentPlayer,
+      lastCurrentPlayer,
+      myTurn,
+      turnPhase,
+      isMultiplayerGame,
+      currentModalTitle: modalContent?.title
+    });
+
+    // Update the tracked currentPlayer
+    setLastCurrentPlayer(currentPlayer);
+
+    if (myTurn) {
+      // It's now the local player's turn
+      if (turnPhase === 'deployment') {
+        const deploymentResource = turn === 1 ? 'Initial Deployment Points' : 'Energy';
+        setModalContent({
+          title: "Your Turn to Deploy",
+          text: `Select a drone and a lane to deploy it. Drones cost ${deploymentResource} this turn. Or, click "Pass" to end your deployment for this phase.`,
+          isBlocking: true
+        });
+      } else if (turnPhase === 'action') {
+        setModalContent({
+          title: "Action Phase - Your Turn",
+          text: "It's your turn to act. Select a drone to move or attack, play a card, or use an ability.",
+          isBlocking: true
+        });
+      }
+    } else {
+      // It's now the opponent's turn
+      if (turnPhase === 'deployment') {
+        setModalContent({
+          title: isMultiplayerGame ? "Opponent's Turn" : "AI Thinking...",
+          text: isMultiplayerGame ?
+            "Your opponent is deploying a drone. Wait for their turn to complete." :
+            "AI is deciding on drone deployment...",
+          isBlocking: false
+        });
+      } else if (turnPhase === 'action') {
+        setModalContent({
+          title: isMultiplayerGame ? "Opponent's Turn" : "AI Thinking...",
+          text: isMultiplayerGame ?
+            "Your opponent is taking their turn." :
+            "AI is deciding on its next action...",
+          isBlocking: false
+        });
+      }
+    }
+  }, [currentPlayer, turnPhase, isMyTurn, isMultiplayer, turn, winner, showFirstPlayerModal, showActionPhaseStartModal, showRoundEndModal, deploymentConfirmation, moveConfirmation, cardConfirmation, lastCurrentPlayer, modalContent?.title]);
 
   /**
    * HANDLE RESET

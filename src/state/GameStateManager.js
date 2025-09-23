@@ -5,6 +5,7 @@
 // Separates core game state from UI state and provides event-driven updates.
 
 import { gameEngine, startingDecklist } from '../logic/gameLogic.js';
+import ActionProcessor from './ActionProcessor.js';
 
 class GameStateManager {
   constructor() {
@@ -47,6 +48,9 @@ class GameStateManager {
       opponentId: null,
       gameMode: 'local', // 'local', 'host', 'guest'
     };
+
+    // Initialize action processor
+    this.actionProcessor = new ActionProcessor(this);
 
     // Initialize state
     this.reset();
@@ -100,8 +104,103 @@ class GameStateManager {
    */
   setState(updates, eventType = 'STATE_UPDATE') {
     const prevState = { ...this.state };
+
+    // Validate state consistency before update
+    this.validateStateUpdate(updates, prevState);
+
     this.state = { ...this.state, ...updates };
     this.emit(eventType, { updates, prevState });
+  }
+
+  /**
+   * Validate state updates for consistency and race conditions
+   */
+  validateStateUpdate(updates, prevState) {
+    // Check for concurrent action processing - only warn about external updates
+    // ActionProcessor is allowed to update state during action processing
+    if (this.actionProcessor.isActionInProgress() && Object.keys(updates).length > 0) {
+      // Get the current call stack to see if this update is coming from ActionProcessor
+      const stack = new Error().stack;
+      const isFromActionProcessor = stack && stack.includes('ActionProcessor');
+
+      if (!isFromActionProcessor) {
+        const dangerousUpdates = ['player1', 'player2', 'turnPhase', 'currentPlayer'];
+        const hasDangerousUpdate = dangerousUpdates.some(key => key in updates);
+
+        if (hasDangerousUpdate) {
+          console.warn('Race condition detected: External state update during action processing', {
+            updates: Object.keys(updates),
+            actionInProgress: true,
+            queueLength: this.actionProcessor.getQueueLength(),
+            stack: stack?.split('\n').slice(0, 5) // First 5 lines of stack for debugging
+          });
+        }
+      }
+    }
+
+    // Validate player state consistency
+    if (updates.player1 || updates.player2) {
+      this.validatePlayerStates(updates.player1 || prevState.player1, updates.player2 || prevState.player2);
+    }
+
+    // Validate turn phase transitions
+    if (updates.turnPhase && updates.turnPhase !== prevState.turnPhase) {
+      this.validateTurnPhaseTransition(prevState.turnPhase, updates.turnPhase);
+    }
+  }
+
+  /**
+   * Validate player states for data integrity
+   */
+  validatePlayerStates(player1, player2) {
+    if (!player1 || !player2) return;
+
+    // Check for negative values
+    const validatePlayerValues = (player, playerId) => {
+      if (player.energy < 0) {
+        console.error(`Invalid state: ${playerId} has negative energy: ${player.energy}`);
+      }
+      if (player.deploymentBudget < 0) {
+        console.error(`Invalid state: ${playerId} has negative deployment budget: ${player.deploymentBudget}`);
+      }
+    };
+
+    validatePlayerValues(player1, 'player1');
+    validatePlayerValues(player2, 'player2');
+
+    // Check for duplicate drone IDs
+    const allDroneIds = new Set();
+    [player1, player2].forEach((player, playerIndex) => {
+      Object.values(player.dronesOnBoard).forEach(lane => {
+        lane.forEach(drone => {
+          if (allDroneIds.has(drone.id)) {
+            console.error(`Duplicate drone ID detected: ${drone.id} in player${playerIndex + 1}`);
+          }
+          allDroneIds.add(drone.id);
+        });
+      });
+    });
+  }
+
+  /**
+   * Validate turn phase transitions
+   */
+  validateTurnPhaseTransition(fromPhase, toPhase) {
+    const validTransitions = {
+      'preGame': ['droneSelection', 'deckSelection'],
+      'droneSelection': ['deckSelection'],
+      'deckSelection': ['placement'],
+      'placement': ['initialDraw', 'deployment'],
+      'initialDraw': ['deployment'],
+      'deployment': ['action', 'roundEnd'],
+      'action': ['deployment', 'roundEnd', 'gameEnd'],
+      'roundEnd': ['deployment', 'gameEnd'],
+      'gameEnd': []
+    };
+
+    if (!validTransitions[fromPhase]?.includes(toPhase)) {
+      console.warn(`Invalid turn phase transition: ${fromPhase} -> ${toPhase}`);
+    }
   }
 
   // --- GAME STATE METHODS ---
@@ -341,6 +440,42 @@ class GameStateManager {
    */
   setWinner(winnerId) {
     this.setState({ winner: winnerId }, 'GAME_ENDED');
+  }
+
+  // --- ACTION PROCESSING ---
+
+  /**
+   * Process a game action through the action queue
+   * @param {string} actionType - Type of action (attack, ability, deployment, etc.)
+   * @param {Object} payload - Action-specific data
+   * @returns {Promise} Resolves when action is complete
+   */
+  async processAction(actionType, payload) {
+    return await this.actionProcessor.queueAction({
+      type: actionType,
+      payload: payload
+    });
+  }
+
+  /**
+   * Check if any actions are currently being processed
+   */
+  isActionInProgress() {
+    return this.actionProcessor.isActionInProgress();
+  }
+
+  /**
+   * Get current action queue length
+   */
+  getActionQueueLength() {
+    return this.actionProcessor.getQueueLength();
+  }
+
+  /**
+   * Emergency action queue clear (use with caution)
+   */
+  clearActionQueue() {
+    this.actionProcessor.clearQueue();
   }
 }
 
