@@ -52,8 +52,45 @@ class GameStateManager {
     // Initialize action processor
     this.actionProcessor = new ActionProcessor(this);
 
+    // P2P integration will be set up lazily when needed
+    this.p2pIntegrationSetup = false;
+
     // Initialize state
     this.reset();
+  }
+
+  // --- P2P INTEGRATION ---
+
+  /**
+   * Set up P2P integration (called lazily when needed)
+   * @param {Object} p2pManager - P2P manager instance
+   */
+  setupP2PIntegration(p2pManager) {
+    if (this.p2pIntegrationSetup) return;
+
+    // Wire up bidirectional integration
+    this.actionProcessor.setP2PManager(p2pManager);
+    p2pManager.setActionProcessor(this.actionProcessor);
+
+    // Subscribe to P2P events
+    p2pManager.subscribe((event) => {
+      switch (event.type) {
+        case 'multiplayer_mode_change':
+          this.setMultiplayerMode(event.data.mode, event.data.isHost);
+          break;
+        case 'state_sync_requested':
+          // Send current state for initial sync
+          const currentState = this.getState();
+          p2pManager.sendData({
+            type: 'GAME_STATE_SYNC',
+            state: currentState,
+            timestamp: Date.now(),
+          });
+          break;
+      }
+    });
+
+    this.p2pIntegrationSetup = true;
   }
 
   // --- EVENT SYSTEM ---
@@ -116,13 +153,13 @@ class GameStateManager {
    * Validate state updates for consistency and race conditions
    */
   validateStateUpdate(updates, prevState) {
+    // Get the current call stack to see if this update is coming from ActionProcessor
+    const stack = new Error().stack;
+    const isFromActionProcessor = stack && stack.includes('ActionProcessor');
+
     // Check for concurrent action processing - only warn about external updates
     // ActionProcessor is allowed to update state during action processing
     if (this.actionProcessor.isActionInProgress() && Object.keys(updates).length > 0) {
-      // Get the current call stack to see if this update is coming from ActionProcessor
-      const stack = new Error().stack;
-      const isFromActionProcessor = stack && stack.includes('ActionProcessor');
-
       if (!isFromActionProcessor) {
         const dangerousUpdates = ['player1', 'player2', 'turnPhase', 'currentPlayer'];
         const hasDangerousUpdate = dangerousUpdates.some(key => key in updates);
@@ -137,6 +174,9 @@ class GameStateManager {
         }
       }
     }
+
+    // Check for ActionProcessor bypass during active gameplay phases
+    this.validateActionProcessorUsage(updates, prevState, isFromActionProcessor, stack);
 
     // Validate player state consistency
     if (updates.player1 || updates.player2) {
@@ -201,6 +241,246 @@ class GameStateManager {
     if (!validTransitions[fromPhase]?.includes(toPhase)) {
       console.warn(`Invalid turn phase transition: ${fromPhase} -> ${toPhase}`);
     }
+  }
+
+  /**
+   * Validate ActionProcessor usage during active gameplay
+   */
+  validateActionProcessorUsage(updates, prevState, isFromActionProcessor, stack) {
+    // Skip validation during initialization and setup phases
+    if (this.isInitializationPhase(prevState.turnPhase)) {
+      return;
+    }
+
+    // Define critical game state changes that should go through ActionProcessor
+    const criticalGameStateUpdates = [
+      'player1',           // Player state changes
+      'player2',           // Player state changes
+      'currentPlayer',     // Turn management
+      'turnPhase',        // Phase transitions
+      'turn',             // Round progression
+      'passInfo',         // Pass state management
+      'winner',           // Game end state
+      'firstPlayerOfRound', // Turn order management
+      'firstPasserOfPreviousRound' // Turn order management
+    ];
+
+    // Define UI state updates that are allowed to bypass ActionProcessor
+    const allowedUIStateUpdates = [
+      'gameLog',          // Logging is UI state
+      'shieldsToAllocate', // Already handled by shield allocation actions
+      'placedSections',   // UI-level placement state (debatable)
+      'opponentPlacedSections', // UI-level placement state (debatable)
+      'unplacedSections', // UI-level placement state (debatable)
+      'droneSelectionPool', // UI-level drone selection state
+      'droneSelectionTrio'  // UI-level drone selection state
+    ];
+
+    // Check for critical updates that bypass ActionProcessor
+    const criticalUpdates = Object.keys(updates).filter(key =>
+      criticalGameStateUpdates.includes(key)
+    );
+
+    const allowedUpdates = Object.keys(updates).filter(key =>
+      allowedUIStateUpdates.includes(key)
+    );
+
+    if (criticalUpdates.length > 0 && !isFromActionProcessor) {
+      // Extract caller information from stack trace
+      const stackLines = stack?.split('\n') || [];
+      const callerLine = stackLines.find(line =>
+        line.includes('.jsx') && !line.includes('GameStateManager')
+      ) || stackLines[2] || 'Unknown';
+
+      console.warn('⚠️ ActionProcessor bypass detected: Critical game state updated directly', {
+        updates: criticalUpdates,
+        turnPhase: prevState.turnPhase,
+        caller: callerLine.trim(),
+        allUpdates: Object.keys(updates),
+        actionInProgress: this.actionProcessor.isActionInProgress(),
+        recommendation: 'Use processAction() instead of direct state updates'
+      });
+
+      // Log detailed debug information
+      console.debug('🐛 ActionProcessor bypass debug info:', {
+        stackTrace: stackLines.slice(0, 8),
+        currentState: {
+          turnPhase: prevState.turnPhase,
+          currentPlayer: prevState.currentPlayer,
+          turn: prevState.turn
+        },
+        updateDetails: updates
+      });
+    }
+
+    // Log informational message for allowed UI updates (only in debug mode)
+    if (allowedUpdates.length > 0 && !isFromActionProcessor && process.env.NODE_ENV === 'development') {
+      console.debug('ℹ️ UI state update (allowed):', {
+        updates: allowedUpdates,
+        turnPhase: prevState.turnPhase
+      });
+    }
+
+    // Validate that appropriate functions are updating game state
+    this.validateFunctionAppropriateForStateUpdate(updates, prevState, isFromActionProcessor, stack);
+  }
+
+  /**
+   * Check if current phase is initialization/setup phase
+   */
+  isInitializationPhase(turnPhase) {
+    const initPhases = [
+      'preGame',
+      'droneSelection',
+      'deckSelection',
+      'deckBuilding',
+      'placement',
+      'initialDraw'
+    ];
+    return initPhases.includes(turnPhase);
+  }
+
+  /**
+   * Validate that appropriate functions are updating game state
+   */
+  validateFunctionAppropriateForStateUpdate(updates, prevState, isFromActionProcessor, stack) {
+    // Skip validation during initialization phases
+    if (this.isInitializationPhase(prevState.turnPhase)) {
+      return;
+    }
+
+    // Skip if already validated as ActionProcessor update
+    if (isFromActionProcessor) {
+      return;
+    }
+
+    // Extract function names from stack trace
+    const stackLines = stack?.split('\n') || [];
+    const callerInfo = this.extractCallerInfo(stackLines);
+
+    // Define functions that should NOT be updating game state
+    const inappropriateFunctions = [
+      // UI Event Handlers that should use ActionProcessor instead
+      'handle',           // Generic event handlers (handleClick, handleSubmit, etc.)
+      'onClick',          // Click handlers
+      'onSubmit',         // Form handlers
+      'onSelect',         // Selection handlers
+      'onConfirm',        // Confirmation handlers
+      'onComplete',       // Completion handlers
+
+      // UI Component Functions
+      'render',           // Rendering functions
+      'component',        // Generic component functions
+      'modal',            // Modal-related functions
+      'display',          // Display functions
+      'show',             // Show/hide functions
+      'hide',             // Show/hide functions
+
+      // UI State Management
+      'setModal',         // UI modal state
+      'setSelected',      // UI selection state
+      'setActive',        // UI active state
+      'setVisible',       // UI visibility state
+
+      // Non-game Logic Functions
+      'calculate',        // Calculation functions (should be pure)
+      'format',           // Formatting functions
+      'validate',         // Validation functions (should be pure)
+      'transform',        // Data transformation functions
+    ];
+
+    // Define functions that ARE allowed to update game state
+    const appropriateFunctions = [
+      // Core game state management
+      'GameStateManager',     // Direct GameStateManager methods
+      'ActionProcessor',      // ActionProcessor methods
+      'gameLogic',           // Game logic functions
+      'gameEngine',          // Game engine functions
+
+      // Setup and initialization
+      'reset',               // Reset operations
+      'initialize',          // Initialization functions
+      'setup',               // Setup functions
+      'init',                // Init functions
+
+      // Internal state management
+      'setState',            // Direct setState calls (allowed for internal operations)
+      'updateState',         // Internal state updates
+      'syncState',           // State synchronization
+
+      // P2P and network operations
+      'p2p',                 // P2P operations
+      'network',             // Network operations
+      'sync',                // Synchronization operations
+    ];
+
+    // Check if any inappropriate functions are in the call stack
+    const inappropriateCallers = callerInfo.functions.filter(func =>
+      inappropriateFunctions.some(inappropriate =>
+        func.toLowerCase().includes(inappropriate.toLowerCase())
+      )
+    );
+
+    // Check if any appropriate functions are in the call stack
+    const appropriateCallers = callerInfo.functions.filter(func =>
+      appropriateFunctions.some(appropriate =>
+        func.toLowerCase().includes(appropriate.toLowerCase())
+      )
+    );
+
+    // Only flag if we have inappropriate callers and no appropriate ones
+    if (inappropriateCallers.length > 0 && appropriateCallers.length === 0) {
+      console.warn('🚨 Inappropriate function updating game state:', {
+        inappropriateFunctions: inappropriateCallers,
+        updates: Object.keys(updates),
+        turnPhase: prevState.turnPhase,
+        callerInfo: callerInfo,
+        recommendation: 'UI functions should use processAction() instead of direct state updates',
+        architecture: 'UI → ActionProcessor → gameLogic.js → GameStateManager'
+      });
+
+      // Log detailed debug information
+      console.debug('🔍 Function validation debug info:', {
+        allFunctionsInStack: callerInfo.functions,
+        inappropriateFound: inappropriateCallers,
+        appropriateFound: appropriateCallers,
+        updateDetails: updates,
+        stackTrace: stackLines.slice(0, 10)
+      });
+    }
+  }
+
+  /**
+   * Extract caller information from stack trace
+   */
+  extractCallerInfo(stackLines) {
+    const functions = [];
+    const files = [];
+
+    for (const line of stackLines) {
+      // Extract function names - look for patterns like "at functionName (" or "at Object.functionName ("
+      const functionMatch = line.match(/at\s+([\w.$]+)\s*\(/);
+      if (functionMatch) {
+        const funcName = functionMatch[1];
+        // Filter out generic names and keep meaningful function names
+        if (funcName !== 'Object' && funcName !== 'anonymous' && !funcName.startsWith('eval')) {
+          functions.push(funcName);
+        }
+      }
+
+      // Extract file names
+      const fileMatch = line.match(/\/([^\/]+\.(jsx?|ts|tsx)):\d+/);
+      if (fileMatch) {
+        files.push(fileMatch[1]);
+      }
+    }
+
+    return {
+      functions: [...new Set(functions)], // Remove duplicates
+      files: [...new Set(files)],         // Remove duplicates
+      primaryCaller: functions[0] || 'Unknown',
+      primaryFile: files[0] || 'Unknown'
+    };
   }
 
   // --- GAME STATE METHODS ---
@@ -396,10 +676,20 @@ class GameStateManager {
    * Get placed sections for opponent (UI perspective)
    */
   getOpponentPlacedSections() {
-    if (this.state.gameMode === 'local') return this.state.opponentPlacedSections;
-    if (this.state.gameMode === 'host') return this.state.opponentPlacedSections;
-    if (this.state.gameMode === 'guest') return this.state.placedSections;
-    return this.state.opponentPlacedSections;
+    let result;
+    if (this.state.gameMode === 'local') result = this.state.opponentPlacedSections;
+    else if (this.state.gameMode === 'host') result = this.state.opponentPlacedSections;
+    else if (this.state.gameMode === 'guest') result = this.state.placedSections;
+    else result = this.state.opponentPlacedSections;
+
+    console.log('🔍 [DEBUG] GameStateManager.getOpponentPlacedSections:', {
+      gameMode: this.state.gameMode,
+      result,
+      rawOpponentPlacedSections: this.state.opponentPlacedSections,
+      rawPlacedSections: this.state.placedSections
+    });
+
+    return result;
   }
 
   /**

@@ -12,15 +12,32 @@ class ActionProcessor {
     this.gameStateManager = gameStateManager;
     this.actionQueue = [];
     this.isProcessing = false;
+    this.p2pManager = null;
     this.actionLocks = {
       attack: false,
       ability: false,
       deployment: false,
       cardPlay: false,
       turnTransition: false,
+      phaseTransition: false,
+      roundStart: false,
+      allocateShield: false,
+      resetShieldAllocation: false,
+      endShieldAllocation: false,
+      reallocateShields: false,
       aiAction: false,
-      aiTurn: false
+      aiTurn: false,
+      playerPass: false,
+      aiShipPlacement: false
     };
+  }
+
+  /**
+   * Set P2P manager for multiplayer support
+   * @param {Object} p2pManager - P2P manager instance
+   */
+  setP2PManager(p2pManager) {
+    this.p2pManager = p2pManager;
   }
 
   /**
@@ -72,11 +89,24 @@ class ActionProcessor {
    * @param {Object} action - Action to process
    */
   async processAction(action) {
-    const { type, payload } = action;
+    const { type, payload, isNetworkAction = false } = action;
 
     // Check for action-specific locks
     if (this.actionLocks[type]) {
       throw new Error(`Action ${type} is currently locked`);
+    }
+
+    // Send to peer BEFORE processing locally (unless this is a network action)
+    if (!isNetworkAction && this.p2pManager && this.p2pManager.isConnected) {
+      const multiplayerState = this.gameStateManager.get('multiplayer');
+      if (multiplayerState && multiplayerState.enabled) {
+        console.log(`[P2P ACTION] Sending action to peer:`, { type, payload });
+        this.p2pManager.sendData({
+          type: 'ACTION',
+          action: { type, payload },
+          timestamp: Date.now()
+        });
+      }
     }
 
     // Set lock for this action type
@@ -99,11 +129,32 @@ class ActionProcessor {
         case 'turnTransition':
           return await this.processTurnTransition(payload);
 
+        case 'phaseTransition':
+          return await this.processPhaseTransition(payload);
+
+        case 'roundStart':
+          return await this.processRoundStart(payload);
+
+        case 'allocateShield':
+          return await this.processAllocateShield(payload);
+
+        case 'resetShieldAllocation':
+          return await this.processResetShieldAllocation(payload);
+
+        case 'endShieldAllocation':
+          return await this.processEndShieldAllocation(payload);
+
+        case 'reallocateShields':
+          return await this.processReallocateShields(payload);
+
         case 'aiAction':
           return await this.processAiAction(payload);
 
         case 'aiTurn':
           return await this.processAiTurn(payload);
+
+        case 'playerPass':
+          return await this.processPlayerPass(payload);
 
         default:
           throw new Error(`Unknown action type: ${type}`);
@@ -315,6 +366,15 @@ class ActionProcessor {
       turn: currentState.turn
     });
 
+    // Use gameLogic function to calculate transition effects
+    const transitionResult = gameEngine.calculateTurnTransition(
+      currentState.currentPlayer,
+      currentState.passInfo,
+      currentState.turnPhase,
+      currentState.winner
+    );
+
+    // Apply explicit changes (overrides calculated logic if provided)
     if (newPhase) {
       console.log(`[TURN TRANSITION DEBUG] Setting new phase: ${newPhase}`);
       this.gameStateManager.setTurnPhase(newPhase);
@@ -329,10 +389,335 @@ class ActionProcessor {
     console.log(`[TURN TRANSITION DEBUG] State after transition:`, {
       turnPhase: newState.turnPhase,
       currentPlayer: newState.currentPlayer,
-      turn: newState.turn
+      turn: newState.turn,
+      transitionType: transitionResult.type
     });
 
-    return { success: true };
+    return { success: true, transitionType: transitionResult.type };
+  }
+
+  /**
+   * Process phase transition action
+   */
+  async processPhaseTransition(payload) {
+    const { newPhase, resetPassInfo = true } = payload;
+
+    console.log(`[PHASE TRANSITION DEBUG] Processing phase transition to: ${newPhase}`);
+
+    const currentState = this.gameStateManager.getState();
+    const stateUpdates = {};
+
+    // Handle phase-specific initialization
+    if (newPhase === 'allocateShields') {
+      // Initialize shield allocation for local player
+      const localPlayerId = this.gameStateManager.getLocalPlayerId();
+      const localPlayerState = currentState[localPlayerId];
+
+      // Calculate shields available this turn
+      const effectiveStats = gameEngine.calculateEffectiveStats(localPlayerState);
+      const shieldsPerTurn = effectiveStats.totals.shieldsPerTurn;
+
+      stateUpdates.shieldsToAllocate = shieldsPerTurn;
+      console.log(`[SHIELD ALLOCATION DEBUG] Initialized shields to allocate: ${shieldsPerTurn}`);
+    } else if (newPhase === 'placement') {
+      // Initialize placement phase
+      stateUpdates.unplacedSections = ['bridge', 'powerCell', 'droneControlHub'];
+      stateUpdates.placedSections = Array(3).fill(null);
+      stateUpdates.opponentPlacedSections = Array(3).fill(null);
+      console.log(`[PLACEMENT DEBUG] Initialized placement phase`);
+    }
+
+    // Use gameLogic function to calculate phase transition effects
+    const phaseTransitionResult = gameEngine.calculateTurnTransition(
+      currentState.currentPlayer,
+      currentState.passInfo,
+      currentState.turnPhase,
+      currentState.winner
+    );
+
+    // Apply the phase change and any phase-specific updates
+    stateUpdates.turnPhase = newPhase;
+    this.gameStateManager.setState(stateUpdates);
+
+    // Reset pass info if requested (typical for new phase)
+    if (resetPassInfo) {
+      this.gameStateManager.setPassInfo({
+        firstPasser: null,
+        player1Passed: false,
+        player2Passed: false
+      });
+    }
+
+    console.log(`[PHASE TRANSITION DEBUG] Phase transition complete: ${currentState.turnPhase} → ${newPhase}`);
+
+    return { success: true, newPhase, transitionType: phaseTransitionResult.type };
+  }
+
+  /**
+   * Process round start action
+   */
+  async processRoundStart(payload) {
+    const { newTurn, newPhase = 'deployment', firstPlayer } = payload;
+
+    console.log(`[ROUND START DEBUG] Processing round start for turn: ${newTurn}`);
+
+    const currentState = this.gameStateManager.getState();
+
+    // Use gameLogic functions to calculate round start effects
+    const determinedFirstPlayer = firstPlayer || gameEngine.determineFirstPlayer(
+      newTurn,
+      currentState.firstPlayerOverride,
+      currentState.firstPasserOfPreviousRound
+    );
+
+    // Calculate new player states for the round
+    const newPlayer1State = gameEngine.calculateNewRoundPlayerState(
+      currentState.player1,
+      newTurn,
+      gameEngine.calculateEffectiveStats,
+      currentState.player2,
+      currentState.placedSections
+    );
+
+    const newPlayer2State = gameEngine.calculateNewRoundPlayerState(
+      currentState.player2,
+      newTurn,
+      gameEngine.calculateEffectiveStats,
+      currentState.player1,
+      currentState.opponentPlacedSections
+    );
+
+    // Apply all round start changes
+    this.gameStateManager.setState({
+      turn: newTurn,
+      turnPhase: newPhase,
+      currentPlayer: determinedFirstPlayer,
+      firstPlayerOfRound: determinedFirstPlayer,
+      passInfo: {
+        firstPasser: null,
+        player1Passed: false,
+        player2Passed: false
+      }
+    });
+
+    // Update player states
+    this.gameStateManager.setPlayerStates(newPlayer1State, newPlayer2State);
+
+    console.log(`[ROUND START DEBUG] Round start complete - Turn ${newTurn}, First player: ${determinedFirstPlayer}`);
+
+    return {
+      success: true,
+      newTurn,
+      newPhase,
+      firstPlayer: determinedFirstPlayer,
+      playerStates: { player1: newPlayer1State, player2: newPlayer2State }
+    };
+  }
+
+  /**
+   * Process shield allocation action
+   */
+  async processAllocateShield(payload) {
+    const { sectionName, playerId = this.gameStateManager.getLocalPlayerId() } = payload;
+
+    console.log(`[SHIELD ALLOCATION DEBUG] Processing shield allocation:`, { sectionName, playerId });
+
+    const currentState = this.gameStateManager.getState();
+    const playerState = currentState[playerId];
+
+    // Use gameLogic function to process shield allocation
+    const result = gameEngine.processShieldAllocation(currentState, playerId, sectionName);
+
+    if (result.success) {
+      // Update both player state and game state
+      this.gameStateManager.updatePlayerState(playerId, result.newPlayerState);
+      this.gameStateManager.setState({
+        shieldsToAllocate: result.newShieldsToAllocate
+      });
+
+      console.log(`[SHIELD ALLOCATION DEBUG] Shield allocated successfully`);
+    }
+
+    return result;
+  }
+
+  /**
+   * Process reset shield allocation action
+   */
+  async processResetShieldAllocation(payload) {
+    const { playerId = this.gameStateManager.getLocalPlayerId() } = payload;
+
+    console.log(`[SHIELD ALLOCATION DEBUG] Processing shield allocation reset for player:`, playerId);
+
+    const currentState = this.gameStateManager.getState();
+
+    // Use gameLogic function to reset shield allocation
+    const result = gameEngine.processResetShieldAllocation(currentState, playerId);
+
+    if (result.success) {
+      // Update both player state and game state
+      this.gameStateManager.updatePlayerState(playerId, result.newPlayerState);
+      this.gameStateManager.setState({
+        shieldsToAllocate: result.newShieldsToAllocate
+      });
+
+      console.log(`[SHIELD ALLOCATION DEBUG] Shield allocation reset successfully`);
+    }
+
+    return result;
+  }
+
+  /**
+   * Process end shield allocation action
+   */
+  async processEndShieldAllocation(payload) {
+    const { playerId = this.gameStateManager.getLocalPlayerId() } = payload;
+
+    console.log(`[SHIELD ALLOCATION DEBUG] Processing end shield allocation`);
+
+    const currentState = this.gameStateManager.getState();
+
+    // Use gameLogic function to end shield allocation phase
+    const result = gameEngine.processEndShieldAllocation(currentState, playerId);
+
+    if (result.success) {
+      // Update player states
+      if (result.player1State) {
+        this.gameStateManager.updatePlayerState('player1', result.player1State);
+      }
+      if (result.player2State) {
+        this.gameStateManager.updatePlayerState('player2', result.player2State);
+      }
+
+      // Update game state with phase transition
+      this.gameStateManager.setState({
+        turnPhase: result.newPhase,
+        currentPlayer: result.firstPlayer,
+        firstPlayerOfRound: result.firstPlayer,
+        firstPlayerOverride: null // Clear any override after using it
+      });
+
+      console.log(`[SHIELD ALLOCATION DEBUG] Shield allocation phase ended, transitioning to: ${result.newPhase}`);
+    }
+
+    return result;
+  }
+
+  /**
+   * Process shield reallocation action
+   */
+  async processReallocateShields(payload) {
+    const {
+      action, // 'remove', 'add', or 'restore'
+      sectionName,
+      originalShipSections, // for 'restore' action
+      playerId = this.gameStateManager.getLocalPlayerId()
+    } = payload;
+
+    console.log(`[SHIELD REALLOCATION DEBUG] Processing shield reallocation:`, { action, sectionName, playerId });
+
+    const currentState = this.gameStateManager.getState();
+    const playerState = currentState[playerId];
+
+    if (action === 'remove') {
+      // Validate shield removal
+      const section = playerState.shipSections[sectionName];
+      if (!section || section.allocatedShields <= 0) {
+        return {
+          success: false,
+          error: 'Cannot remove shield from this section'
+        };
+      }
+
+      // Create new player state with shield removed
+      const newShipSections = {
+        ...playerState.shipSections,
+        [sectionName]: {
+          ...playerState.shipSections[sectionName],
+          allocatedShields: playerState.shipSections[sectionName].allocatedShields - 1
+        }
+      };
+
+      const newPlayerState = {
+        ...playerState,
+        shipSections: newShipSections
+      };
+
+      this.gameStateManager.updatePlayerState(playerId, newPlayerState);
+
+      console.log(`[SHIELD REALLOCATION DEBUG] Shield removed from ${sectionName}`);
+      return {
+        success: true,
+        action: 'remove',
+        sectionName,
+        newPlayerState
+      };
+
+    } else if (action === 'add') {
+      // Validate shield addition - need access to placed sections for effective max calculation
+      const placedSections = playerId === 'player1' ? currentState.placedSections : currentState.opponentPlacedSections;
+      const effectiveMaxShields = gameEngine.getEffectiveSectionMaxShields(sectionName, playerState, placedSections);
+      const section = playerState.shipSections[sectionName];
+
+      if (!section || section.allocatedShields >= effectiveMaxShields) {
+        return {
+          success: false,
+          error: 'Cannot add shield to this section'
+        };
+      }
+
+      // Create new player state with shield added
+      const newShipSections = {
+        ...playerState.shipSections,
+        [sectionName]: {
+          ...playerState.shipSections[sectionName],
+          allocatedShields: playerState.shipSections[sectionName].allocatedShields + 1
+        }
+      };
+
+      const newPlayerState = {
+        ...playerState,
+        shipSections: newShipSections
+      };
+
+      this.gameStateManager.updatePlayerState(playerId, newPlayerState);
+
+      console.log(`[SHIELD REALLOCATION DEBUG] Shield added to ${sectionName}`);
+      return {
+        success: true,
+        action: 'add',
+        sectionName,
+        newPlayerState
+      };
+
+    } else if (action === 'restore') {
+      // Restore original shield configuration
+      if (!originalShipSections) {
+        return {
+          success: false,
+          error: 'No original ship sections provided for restore'
+        };
+      }
+
+      const newPlayerState = {
+        ...playerState,
+        shipSections: originalShipSections
+      };
+
+      this.gameStateManager.updatePlayerState(playerId, newPlayerState);
+
+      console.log(`[SHIELD REALLOCATION DEBUG] Shield allocation restored to original state`);
+      return {
+        success: true,
+        action: 'restore',
+        newPlayerState
+      };
+    }
+
+    return {
+      success: false,
+      error: `Unknown reallocation action: ${action}`
+    };
   }
 
   /**
@@ -663,6 +1048,93 @@ class ActionProcessor {
    */
   getQueueLength() {
     return this.actionQueue.length;
+  }
+
+  /**
+   * Process action received from network peer
+   * @param {Object} actionData - Action data from peer
+   */
+  async processNetworkAction(actionData) {
+    const { action } = actionData;
+    console.log(`[P2P ACTION] Processing network action:`, action);
+
+    // Mark as network action to prevent re-sending
+    const networkAction = {
+      ...action,
+      isNetworkAction: true
+    };
+
+    // Queue the network action for processing
+    return await this.queueAction(networkAction);
+  }
+
+  /**
+   * Process player pass action
+   */
+  async processPlayerPass(payload) {
+    const { playerId, playerName, turnPhase, passInfo, opponentPlayerId } = payload;
+
+    console.log('[PLAYER PASS DEBUG] Processing player pass through ActionProcessor:', {
+      playerId,
+      playerName,
+      turnPhase,
+      currentPassInfo: passInfo
+    });
+
+    const currentState = this.gameStateManager.getState();
+
+    // Add log entry
+    this.gameStateManager.addLogEntry({
+      player: playerName,
+      actionType: 'PASS',
+      source: 'N/A',
+      target: 'N/A',
+      outcome: `Passed during ${turnPhase} phase.`
+    }, 'playerPass');
+
+    // Calculate pass info updates
+    const opponentPassKey = `${opponentPlayerId}Passed`;
+    const localPassKey = `${playerId}Passed`;
+    const wasFirstToPass = !passInfo[opponentPassKey];
+    const newPassInfo = {
+      ...passInfo,
+      [localPassKey]: true,
+      firstPasser: passInfo.firstPasser || (wasFirstToPass ? playerId : null)
+    };
+
+    console.log('[PLAYER PASS DEBUG] Updating pass info:', newPassInfo);
+
+    // Update pass info through GameStateManager
+    this.gameStateManager.setPassInfo(newPassInfo, 'ActionProcessor');
+
+    // Handle phase transitions based on both players passing
+    if (newPassInfo[opponentPlayerId + 'Passed']) {
+      if (turnPhase === 'deployment') {
+        await this.processPhaseTransition({ nextPhase: 'action' });
+      } else if (turnPhase === 'action') {
+        await this.processPhaseTransition({ nextPhase: 'endRound' });
+      }
+    } else {
+      // End turn for current player - switch to opponent
+      await this.processTurnTransition({
+        newPlayer: opponentPlayerId
+      });
+    }
+
+    // Sync to P2P if multiplayer
+    if (this.p2pManager && this.p2pManager.isConnected) {
+      this.p2pManager.sendAction('playerPass', {
+        playerId,
+        playerName,
+        turnPhase,
+        passInfo: newPassInfo
+      });
+    }
+
+    return {
+      success: true,
+      newPassInfo
+    };
   }
 
   /**

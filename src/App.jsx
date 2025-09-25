@@ -254,8 +254,13 @@ const App = () => {
       const localPlayerHasSelectedDrones = localPlayerState.activeDronePool && localPlayerState.activeDronePool.length === 5;
       if (localPlayerHasSelectedDrones) {
         console.log('Both players completed drone selection, progressing to deck selection');
-        setTurnPhase('deckSelection');
-        setModalContent(null);
+        (async () => {
+          await processAction('phaseTransition', {
+            newPhase: 'deckSelection',
+            trigger: 'multiplayerDroneSelectionComplete'
+          });
+          setModalContent(null);
+        })();
       }
     }
 
@@ -263,11 +268,12 @@ const App = () => {
       const localPlayerHasDeck = localPlayerState.deck && localPlayerState.deck.length > 0;
       if (localPlayerHasDeck) {
         console.log('Both players completed deck selection, progressing to placement');
-        // Call the placement phase setup directly instead of using the function
-        updateGameState({ unplacedSections: ['bridge', 'powerCell', 'droneControlHub'] });
+        // Use ActionProcessor for phase transition and state setup
+        processAction('phaseTransition', {
+          newPhase: 'placement',
+          trigger: 'multiplayerDeckSelectionComplete'
+        });
         setSelectedSectionForPlacement(null);
-        updateGameState({ placedSections: Array(3).fill(null), opponentPlacedSections: Array(3).fill(null) });
-        setTurnPhase('placement');
         setModalContent({
           title: 'Phase 3: Place Your Ship Sections',
           text: 'Now, place your ship sections. The middle lane provides a strategic bonus to whichever section is placed there.',
@@ -284,8 +290,11 @@ const App = () => {
         // Both players have completed placement, proceed with game start
         console.log('Both players completed placement, transitioning to initialDraw phase');
 
-      // Set phase to initialDraw
-      setTurnPhase('initialDraw');
+      // Set phase to initialDraw using ActionProcessor
+      processAction('phaseTransition', {
+        newPhase: 'initialDraw',
+        trigger: 'multiplayerPlacementComplete'
+      });
 
       // Draw hands for both players if not already done
       const localPlayerId = getLocalPlayerId();
@@ -312,19 +321,13 @@ const App = () => {
       const proceed = () => {
         setModalContent(null);
 
-        // Inline proceedToFirstTurn logic
-        const determineFirstPlayer = () => {
-          if (firstPlayerOverride) {
-            setFirstPlayerOverride(null);
-            return firstPlayerOverride;
-          }
-          if (turn === 1) {
-            return Math.random() < 0.5 ? getLocalPlayerId() : getOpponentPlayerId();
-          }
-          return firstPasserOfPreviousRound || getLocalPlayerId();
-        };
+        // Use pure function from gameLogic.js
+        const firstPlayer = gameEngine.determineFirstPlayer(turn, firstPlayerOverride, firstPasserOfPreviousRound);
 
-        const firstPlayer = determineFirstPlayer();
+        // Clear the override after using it
+        if (firstPlayerOverride) {
+          setFirstPlayerOverride(null);
+        }
 
 
         setCurrentPlayer(firstPlayer);
@@ -491,7 +494,7 @@ const App = () => {
   };
 
   // --- TURN MANAGEMENT ---
-  const endTurn = useCallback((actingPlayer) => {
+  const endTurn = useCallback(async (actingPlayer) => {
     // Use the new pure function that returns both transition and UI effects
     const { transition, uiEffects } = gameEngine.createTurnEndEffects(
       actingPlayer,
@@ -500,7 +503,7 @@ const App = () => {
       winnerRef.current
     );
 
-    // Handle game state transitions
+    // Handle game state transitions through ActionProcessor
     switch (transition.type) {
       case 'END_PHASE':
         if (transition.phase === 'deployment') endDeploymentPhase();
@@ -508,11 +511,17 @@ const App = () => {
         break;
 
       case 'CONTINUE_TURN':
-        setCurrentPlayer(transition.nextPlayer);
+        await processAction('turnTransition', {
+          newPlayer: transition.nextPlayer,
+          reason: 'continueTurn'
+        });
         break;
 
       case 'CHANGE_PLAYER':
-        setCurrentPlayer(transition.nextPlayer);
+        await processAction('turnTransition', {
+          newPlayer: transition.nextPlayer,
+          reason: 'changePlayer'
+        });
         break;
     }
 
@@ -1019,10 +1028,15 @@ const App = () => {
    * Initiates the optional discard phase where players can discard excess cards.
    * Uses player's effective discard limit for maximum cards to discard.
    */
-  const startOptionalDiscardPhase = () => {
+  const startOptionalDiscardPhase = async () => {
     const p1Stats = localPlayerEffectiveStats; // Use the memoized stats
     setOptionalDiscardCount(0);
-    setTurnPhase('optionalDiscard');
+
+    await processAction('phaseTransition', {
+      newPhase: 'optionalDiscard',
+      trigger: 'startOptionalDiscardPhase'
+    });
+
     setModalContent({
         title: 'Optional Discard Phase',
         text: `You may discard up to ${p1Stats.totals.discardLimit} cards from your hand. Click a card to discard it, then press "Finish Discarding" when you are done.`,
@@ -1574,13 +1588,23 @@ const App = () => {
    */
   const beginTurnProcedures = () => {
     setModalContent(null); // Close the 'Start of Turn' modal
-    const p1Stats = localPlayerEffectiveStats.totals;
-    const p2Stats = opponentPlayerEffectiveStats.totals;
 
-    const compliance = gameEngine.checkHandLimitCompliance(localPlayerState, opponentPlayerState, localPlayerEffectiveStats, opponentPlayerEffectiveStats);
+    // Use consolidated hand limit checking
+    const playerStates = { player1: gameState.player1, player2: gameState.player2 };
+    const effectiveStats = {
+      player1: { totals: localPlayerEffectiveStats.totals },
+      player2: { totals: opponentPlayerEffectiveStats.totals }
+    };
 
-    if (compliance[getLocalPlayerId() + 'NeedsDiscard']) {
-      setMandatoryAction({ type: 'discard', player: getLocalPlayerId(), count: compliance[getLocalPlayerId() + 'DiscardCount'] });
+    const violations = gameEngine.checkHandLimitViolations(playerStates, effectiveStats);
+    const localPlayerId = getLocalPlayerId();
+
+    if (violations[localPlayerId].needsDiscard) {
+      setMandatoryAction({
+        type: 'discard',
+        player: localPlayerId,
+        count: violations[localPlayerId].discardCount
+      });
       setShowMandatoryActionModal(true);
     } else {
       // REMOVED: Hand limit enforcement should only happen during dedicated discard phase
@@ -1594,37 +1618,19 @@ const App = () => {
    * Processes round transition including state reset and energy regeneration.
    * Updates both players and initiates turn procedures.
    */
-  const handleStartNewRound = () => {
+  const handleStartNewRound = async () => {
     setShowRoundEndModal(false);
-    addLogEntry({ player: 'SYSTEM', actionType: 'NEW_ROUND', source: `Round ${turn + 1}`, target: 'N/A', outcome: 'New round begins.' }, 'startNewRound');
     setSelectedCard(null);
     setSelectedDrone(null);
     setAbilityMode(null);
     setMultiSelectState(null);
     setFirstPasserOfPreviousRound(passInfo.firstPasser);
-    updateGameState({ turn: turn + 1 });
-    setPassInfo({ firstPasser: null, [getLocalPlayerId() + 'Passed']: false, [getOpponentPlayerId() + 'Passed']: false });
-    
-    // Use extracted game logic for round transitions
-    const baseLocalPlayerState = gameEngine.calculateNewRoundPlayerState(
-      localPlayerState,
-      turn,
-      localPlayerEffectiveStats,
-      gameState.player2,
-      getPlacedSectionsForEngine()
-    );
-    const newPlayer1State = gameEngine.drawToHandLimit(baseLocalPlayerState, localPlayerEffectiveStats.totals.handLimit);
 
-    const baseOpponentPlayerState = gameEngine.calculateNewRoundPlayerState(
-      opponentPlayerState,
-      turn,
-      opponentPlayerEffectiveStats,
-      gameState.player1,
-      getPlacedSectionsForEngine()
-    );
-    const newPlayer2State = gameEngine.drawToHandLimit(baseOpponentPlayerState, opponentPlayerEffectiveStats.totals.handLimit);
-
-    gameStateManager.setPlayerStates(newPlayer1State, newPlayer2State);
+    // Use processAction for complete round start logic
+    await processAction('roundStart', {
+      newTurn: turn + 1,
+      trigger: 'roundEndModal'
+    });
 
     // --- MODIFIED: Show a modal before starting the discard phases ---
     setModalContent({
@@ -1747,8 +1753,15 @@ const App = () => {
         });
       } catch (error) {
         console.error('Error processing AI turn:', error);
-        // Fallback: end turn to prevent getting stuck
-        endTurn(getOpponentPlayerId());
+        // Fallback: use ActionProcessor for turn transition to prevent getting stuck
+        try {
+          await processAction('turnTransition', {
+            newPlayer: getLocalPlayerId(),
+            reason: 'aiTurnError'
+          });
+        } catch (fallbackError) {
+          console.error('Error in AI turn fallback:', fallbackError);
+        }
       }
 
     };
@@ -1890,6 +1903,7 @@ const App = () => {
       ...gameEngine.initialPlayerState(selectedAI.name, selectedAI.decklist), // Use AI's name and decklist
       activeDronePool: aiDrones,
       deployedDroneCounts: aiInitialCounts,
+      aiPersonality: selectedAI, // Store the full AI personality data
     };
 
     updatePlayerState(getOpponentPlayerId(), newPlayer2State);
@@ -1925,12 +1939,21 @@ const App = () => {
    * Transitions from deployment to action phase.
    * Sets first player and displays appropriate turn modal.
    */
-  const handleStartActionPhase = () => {
+  const handleStartActionPhase = async () => {
    setShowActionPhaseStartModal(false);
    setPassInfo({ firstPasser: null, [getLocalPlayerId() + 'Passed']: false, [getOpponentPlayerId() + 'Passed']: false });
    const firstActor = firstPlayerOfRound;
-   setCurrentPlayer(firstActor);
-   setTurnPhase('action');
+
+   // Use processAction for phase and player transition
+   await processAction('phaseTransition', {
+     newPhase: 'action',
+     resetPassInfo: false // We already reset it above
+   });
+
+   await processAction('turnTransition', {
+     newPlayer: firstActor,
+     reason: 'startActionPhase'
+   });
 
     // Don't show turn modals if game has ended
     if (winner) return;
@@ -1983,20 +2006,21 @@ const App = () => {
    * Determines first player and initiates turn sequence.
    * Uses game logic for first player determination.
    */
-  const proceedToFirstTurn = () => {
-    const determineFirstPlayer = () => {
-        if (firstPlayerOverride) {
-           setFirstPlayerOverride(null);
-            return firstPlayerOverride;
-        }
-        if (turn === 1) {
-            return Math.random() < 0.5 ? getLocalPlayerId() : getOpponentPlayerId();
-        }
-        return firstPasserOfPreviousRound || getLocalPlayerId();
-    };
+  const proceedToFirstTurn = async () => {
+    // Use pure function from gameLogic.js
+    const firstPlayer = gameEngine.determineFirstPlayer(turn, firstPlayerOverride, firstPasserOfPreviousRound);
 
-    const firstPlayer = determineFirstPlayer();
-    setCurrentPlayer(firstPlayer);
+    // Clear the override after using it
+    if (firstPlayerOverride) {
+      setFirstPlayerOverride(null);
+    }
+
+    // Use processAction for state updates
+    await processAction('turnTransition', {
+      newPlayer: firstPlayer,
+      reason: 'proceedToFirstTurn'
+    });
+
     setFirstPlayerOfRound(firstPlayer);
     setShowFirstPlayerModal(true);
   };
@@ -2006,14 +2030,18 @@ const App = () => {
    * Initiates shield restoration phase.
    * Calculates available shields and sets up allocation UI.
    */
-  const proceedToShieldAllocation = () => {
+  const proceedToShieldAllocation = async () => {
     setSelectedCard(null);
     setSelectedDrone(null);
     setAbilityMode(null);
     const shieldsPerTurn = localPlayerEffectiveStats.totals.shieldsPerTurn;
-    updateGameState({ shieldsToAllocate: shieldsPerTurn });
     setInitialShieldAllocation(JSON.parse(JSON.stringify(localPlayerState.shipSections)));
-    setTurnPhase('allocateShields');
+
+    await processAction('phaseTransition', {
+      newPhase: 'allocateShields',
+      trigger: 'proceedToShieldAllocation'
+    });
+
     setModalContent({
         title: 'Phase: Restore Shields',
         text: `You have ${shieldsPerTurn} shields to restore. Click on any of your damaged ship sections to add a shield. When finished, click "End Allocation" to continue.`,
@@ -2093,7 +2121,7 @@ const App = () => {
    * Finalizes ship section placement and initiates initial card draw.
    * Sets up both players' hands and transitions to first turn determination.
    */
-  const handleConfirmPlacement = () => {
+  const handleConfirmPlacement = async () => {
     console.log(`🔥 handleConfirmPlacement called`);
 
     // Draw cards for local player
@@ -2128,26 +2156,35 @@ const App = () => {
     }
 
     if (areBothPlayersReady('placement')) {
-      setTurnPhase('initialDraw');
+      await processAction('phaseTransition', {
+        newPhase: 'initialDraw',
+        trigger: 'handleConfirmPlacement'
+      });
 
-      const proceed = () => {
+      const proceed = async () => {
         setModalContent(null);
-        proceedToFirstTurn();
+        await proceedToFirstTurn();
       };
 
-      setModalContent({
-          title: 'Start of Turn: Cards Drawn',
-          text: 'You have automatically drawn up to your hand limit. The first player will now be determined.',
-          onClose: proceed,
-          isBlocking: true,
-          children: (
-            <div className="flex justify-center mt-6">
-              <button onClick={proceed} className="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors">
-                Continue
-              </button>
-            </div>
-          )
-      });
+      // In single player mode, automatically proceed without modal
+      if (!isMultiplayer()) {
+        console.log('🔥 Single player mode: automatically proceeding to first turn');
+        await proceed();
+      } else {
+        setModalContent({
+            title: 'Start of Turn: Cards Drawn',
+            text: 'You have automatically drawn up to your hand limit. The first player will now be determined.',
+            onClose: proceed,
+            isBlocking: true,
+            children: (
+              <div className="flex justify-center mt-6">
+                <button onClick={proceed} className="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors">
+                  Continue
+                </button>
+              </div>
+            )
+        });
+      }
     }
     // If not both ready in multiplayer, stay in placement phase and let WaitingForOpponentScreen handle it
   };
@@ -2158,20 +2195,12 @@ const App = () => {
    * Validates shield limits and available shield count.
    * @param {string} sectionName - Name of the section receiving the shield
    */
-  const handleAllocateShield = (sectionName) => {
-    const section = localPlayerState.shipSections[sectionName];
-    const effectiveMaxShields = gameEngine.getEffectiveSectionMaxShields(sectionName, localPlayerState, localPlacedSections);
-    if (shieldsToAllocate > 0 && section.allocatedShields < effectiveMaxShields) {
-     const newShipSections = {
-        ...localPlayerState.shipSections,
-        [sectionName]: {
-          ...localPlayerState.shipSections[sectionName],
-          allocatedShields: localPlayerState.shipSections[sectionName].allocatedShields + 1,
-        }
-      };
-      updatePlayerState(getLocalPlayerId(), { ...localPlayerState, shipSections: newShipSections });
-     updateGameState({ shieldsToAllocate: shieldsToAllocate - 1 });
-    }
+  const handleAllocateShield = async (sectionName) => {
+    // Use ActionProcessor for shield allocation
+    await processAction('allocateShield', {
+      sectionName: sectionName,
+      playerId: getLocalPlayerId()
+    });
   };
 
   /**
@@ -2180,23 +2209,23 @@ const App = () => {
    * Transfers removed shields to allocation pool.
    * @param {string} sectionName - Name of the section losing the shield
    */
-  const handleRemoveShield = (sectionName) => {
+  const handleRemoveShield = async (sectionName) => {
     if (shieldsToRemove <= 0) return;
 
     const section = localPlayerState.shipSections[sectionName];
     if (section.allocatedShields <= 0) return;
 
-    const newShipSections = {
-      ...localPlayerState.shipSections,
-      [sectionName]: {
-        ...localPlayerState.shipSections[sectionName],
-        allocatedShields: localPlayerState.shipSections[sectionName].allocatedShields - 1
-      }
-    };
-    updatePlayerState(getLocalPlayerId(), { ...localPlayerState, shipSections: newShipSections });
+    // Use ActionProcessor for shield reallocation
+    const result = await processAction('reallocateShields', {
+      action: 'remove',
+      sectionName: sectionName,
+      playerId: getLocalPlayerId()
+    });
 
-    setShieldsToRemove(prev => prev - 1);
-    setShieldsToAdd(prev => prev + 1);
+    if (result.success) {
+      setShieldsToRemove(prev => prev - 1);
+      setShieldsToAdd(prev => prev + 1);
+    }
   };
 
   /**
@@ -2205,23 +2234,23 @@ const App = () => {
    * Validates section shield limits before allocation.
    * @param {string} sectionName - Name of the section receiving the shield
    */
-  const handleAddShield = (sectionName) => {
+  const handleAddShield = async (sectionName) => {
     if (shieldsToAdd <= 0) return;
 
     const section = localPlayerState.shipSections[sectionName];
     const effectiveMaxShields = gameEngine.getEffectiveSectionMaxShields(sectionName, localPlayerState, localPlacedSections);
     if (section.allocatedShields >= effectiveMaxShields) return;
 
-    const newShipSections = {
-      ...localPlayerState.shipSections,
-      [sectionName]: {
-        ...localPlayerState.shipSections[sectionName],
-        allocatedShields: localPlayerState.shipSections[sectionName].allocatedShields + 1
-      }
-    };
-    updatePlayerState(getLocalPlayerId(), { ...localPlayerState, shipSections: newShipSections });
+    // Use ActionProcessor for shield reallocation
+    const result = await processAction('reallocateShields', {
+      action: 'add',
+      sectionName: sectionName,
+      playerId: getLocalPlayerId()
+    });
 
-    setShieldsToAdd(prev => prev - 1);
+    if (result.success) {
+      setShieldsToAdd(prev => prev - 1);
+    }
   };
 
   /**
@@ -2255,11 +2284,12 @@ const App = () => {
    * Cancels shield reallocation and restores original state.
    * Clears all reallocation UI state.
    */
-  const handleCancelReallocation = () => {
-    // Restore original shields
-    updatePlayerState(getLocalPlayerId(), {
-      ...localPlayerState,
-      shipSections: originalShieldAllocation
+  const handleCancelReallocation = async () => {
+    // Restore original shields using ActionProcessor
+    await processAction('reallocateShields', {
+      action: 'restore',
+      originalShipSections: originalShieldAllocation,
+      playerId: getLocalPlayerId()
     });
 
     // Clear reallocation state
@@ -2312,9 +2342,11 @@ const App = () => {
    * Resets shield allocation back to initial state.
    * Restores original shield distribution.
    */
-  const handleResetShieldAllocation = () => {
-   updatePlayerState(getLocalPlayerId(), { ...localPlayerState, shipSections: initialShieldAllocation });
-   updateGameState({ shieldsToAllocate: localPlayerEffectiveStats.totals.shieldsPerTurn });
+  const handleResetShieldAllocation = async () => {
+    // Use ActionProcessor for shield allocation reset
+    await processAction('resetShieldAllocation', {
+      playerId: getLocalPlayerId()
+    });
   };
 
   /**
@@ -2322,45 +2354,13 @@ const App = () => {
    * Completes shield allocation phase and handles AI shield allocation.
    * Determines first player and transitions to deployment phase.
    */
-  const handleEndAllocation = () => {
-    const shieldsToAllocateAI = opponentPlayerEffectiveStats.shieldsPerTurn;
-    const aiSections = Object.keys(opponentPlayerState.shipSections);
-   // AI shield allocation
-   let remainingAIShields = shieldsToAllocateAI;
-   const newSections = JSON.parse(JSON.stringify(opponentPlayerState.shipSections));
-   let i = 0;
-   let failsafe = 0;
-   while (remainingAIShields > 0 && failsafe < 100) {
-     const sectionName = aiSections[i % aiSections.length];
-     if (newSections[sectionName].allocatedShields < newSections[sectionName].shields) {
-      newSections[sectionName].allocatedShields++;
-       remainingAIShields--;
-     }
-     i++;
-     failsafe++;
-   }
-   updatePlayerState(getOpponentPlayerId(), { ...opponentPlayerState, shipSections: newSections });
+  const handleEndAllocation = async () => {
+    // Use processAction for shield allocation completion
+    await processAction('endShieldAllocation', {
+      trigger: 'manualEndAllocation'
+    });
 
-
-    const determineFirstPlayer = () => {
-        // Priority 1: A card/ability effect overrides the normal rules.
-        if (firstPlayerOverride) {
-           setFirstPlayerOverride(null); // Clear the override after using it
-            return firstPlayerOverride;
-        }
-        // Priority 2: For the very first round, it's random.
-        if (turn === 1) {
-            return Math.random() < 0.5 ? getLocalPlayerId() : getOpponentPlayerId();
-        }
-        // Priority 3: The player who passed first in the previous round goes first.
-        // If for some reason no one passed first (e.g. simultaneous pass), default to local player.
-        return firstPasserOfPreviousRound || getLocalPlayerId();
-    };
-
-    const firstPlayer = determineFirstPlayer();
-   setCurrentPlayer(firstPlayer);
-   setFirstPlayerOfRound(firstPlayer);
-   setShowFirstPlayerModal(true);
+    setShowFirstPlayerModal(true);
   };
 
   /**
@@ -2368,9 +2368,14 @@ const App = () => {
    * Initiates deployment phase with appropriate turn modals.
    * Sets first player and displays deployment instructions.
    */
-  const handleStartDeploymentPhase = () => {
+  const handleStartDeploymentPhase = async () => {
    setPassInfo({ firstPasser: null, [getLocalPlayerId() + 'Passed']: false, [getOpponentPlayerId() + 'Passed']: false });
-   setTurnPhase('deployment');
+
+   // Use processAction for phase transition
+   await processAction('phaseTransition', {
+     newPhase: 'deployment',
+     resetPassInfo: false // We already reset it above
+   });
 
     // Don't show turn modals if game has ended
     if (winner) return;
@@ -2424,7 +2429,10 @@ const App = () => {
 
     // Check if both players are ready to proceed
     if (areBothPlayersReady('droneSelection')) {
-      setTurnPhase('deckSelection');
+      processAction('phaseTransition', {
+        newPhase: 'deckSelection',
+        trigger: 'droneSelectionComplete'
+      });
       setModalContent(null);
     } else {
       // Show waiting screen
@@ -2437,11 +2445,48 @@ const App = () => {
    * Initiates ship section placement phase.
    * Sets up unplaced sections and placement UI state.
    */
-  const startPlacementPhase = () => {
+  const startPlacementPhase = async () => {
     updateGameState({ unplacedSections: ['bridge', 'powerCell', 'droneControlHub'] });
     setSelectedSectionForPlacement(null);
     updateGameState({ placedSections: Array(3).fill(null), opponentPlacedSections: Array(3).fill(null) });
-    setTurnPhase('placement');
+
+    // In single player mode, automatically place AI opponent's ship sections
+    if (!isMultiplayer()) {
+      // Get AI personality ship deployment configuration
+      const aiPersonality = opponentPlayerState.aiPersonality;
+      let aiPlacedSections;
+
+      if (aiPersonality && aiPersonality.shipDeployment) {
+        // Use AI's custom ship deployment strategy
+        aiPlacedSections = aiPersonality.shipDeployment.placement;
+        console.log(`🤖 AI "${aiPersonality.name}" ship sections deployed using ${aiPersonality.shipDeployment.strategy} strategy:`, {
+          placement: aiPlacedSections,
+          reasoning: aiPersonality.shipDeployment.reasoning
+        });
+      } else {
+        // Fallback to default placement if AI data doesn't have ship deployment config
+        aiPlacedSections = ['bridge', 'droneControlHub', 'powerCell'];
+        console.log('🤖 AI ship sections auto-placed (default):', aiPlacedSections);
+      }
+
+      await processAction('aiShipPlacement', {
+        placement: aiPlacedSections,
+        aiPersonality: aiPersonality?.name || 'Default'
+      });
+
+      // Debug: Verify the sections were set correctly
+      console.log('🔍 [DEBUG] After setting opponent sections in startPlacementPhase:', {
+        aiPlacedSections,
+        gameStateAfterUpdate: gameState.opponentPlacedSections,
+        gameMode: gameState.gameMode
+      });
+    }
+
+    await processAction('phaseTransition', {
+      newPhase: 'placement',
+      trigger: 'startPlacementPhase'
+    });
+
     setModalContent({
       title: 'Phase 3: Place Your Ship Sections',
       text: 'Now, place your ship sections. The middle lane provides a strategic bonus to whichever section is placed there.',
@@ -2483,7 +2528,10 @@ const App = () => {
       }
       // If not ready, the waiting screen will be shown by the render logic
     } else if (choice === 'custom') {
-      setTurnPhase('deckBuilding');
+      processAction('phaseTransition', {
+        newPhase: 'deckBuilding',
+        trigger: 'customDeckChoice'
+      });
     }
   };
 
@@ -2642,27 +2690,29 @@ const App = () => {
 
   /**
    * EXECUTE DEPLOYMENT
-   * Executes drone deployment using gameEngine logic.
-   * Updates player state and handles deployment success/failure.
+   * Executes drone deployment using ActionProcessor.
+   * Handles deployment through proper action processing pipeline.
    * @param {string} lane - The lane to deploy the drone to
    */
-  const executeDeployment = (lane) => {
-    const result = gameEngine.executeDeployment(
-      selectedDrone,
-      lane,
-      turn,
-      gameState.player1,
-      gameState.player2,
-      getPlacedSectionsForEngine(),
-      (logEntry) => addLogEntry(logEntry, 'executeDeployment')
-    );
+  const executeDeployment = async (lane) => {
+    try {
+      // Use ActionProcessor for deployment
+      const result = await processAction('deployment', {
+        droneData: selectedDrone,
+        laneId: lane,
+        playerId: getLocalPlayerId(),
+        turn: turn
+      });
 
-    if (result.success) {
-      updatePlayerState(getLocalPlayerId(), result.newPlayerState);
-      setSelectedDrone(null);
-      endTurn(getLocalPlayerId());
-    } else {
-      setModalContent({ title: result.error, text: result.message, isBlocking: true });
+      if (result.success) {
+        setSelectedDrone(null);
+        endTurn(getLocalPlayerId());
+      } else {
+        setModalContent({ title: result.error, text: result.message, isBlocking: true });
+      }
+    } catch (error) {
+      console.error('Error executing deployment:', error);
+      setModalContent({ title: 'Deployment Error', text: 'Failed to execute deployment', isBlocking: true });
     }
   };
 
@@ -2675,20 +2725,22 @@ const App = () => {
   const handleDeployDrone = (lane) => {
     if (!selectedDrone || currentPlayer !== getLocalPlayerId() || passInfo[getLocalPlayerId() + 'Passed']) return;
 
-    const validationResult = gameEngine.validateDeployment(localPlayerState, selectedDrone, turn, totalLocalPlayerDrones, localPlayerEffectiveStats);
-
-    if (!validationResult.isValid) {
-      setModalContent({ title: validationResult.reason, text: validationResult.message, isBlocking: true });
-      return;
+    // For turn 1, we need cost information for confirmation modal
+    if (turn === 1) {
+      const validationResult = gameEngine.validateDeployment(localPlayerState, selectedDrone, turn, totalLocalPlayerDrones, localPlayerEffectiveStats);
+      if (!validationResult.isValid) {
+        setModalContent({ title: validationResult.reason, text: validationResult.message, isBlocking: true });
+        return;
+      }
+      const { budgetCost, energyCost } = validationResult;
+      if (energyCost > 0) {
+        setDeploymentConfirmation({ lane, budgetCost, energyCost });
+        return;
+      }
     }
 
-    const { budgetCost, energyCost } = validationResult;
-
-    if (turn === 1 && energyCost > 0) {
-      setDeploymentConfirmation({ lane, budgetCost, energyCost });
-    } else {
-      executeDeployment(lane);
-    }
+    // Execute deployment (handles its own validation)
+    executeDeployment(lane);
   };
 
   /**
@@ -2708,28 +2760,16 @@ const App = () => {
    * Processes player passing during deployment or action phase.
    * Manages turn transitions and phase ending logic.
    */
-  const handlePlayerPass = () => {
+  const handlePlayerPass = async () => {
     if (passInfo[`${getLocalPlayerId()}Passed`]) return;
-    addLogEntry({ player: localPlayerState.name, actionType: 'PASS', source: 'N/A', target: 'N/A', outcome: `Passed during ${turnPhase} phase.` }, 'playerPass');
 
-    const opponentPassKey = `${getOpponentPlayerId()}Passed`;
-    const localPassKey = `${getLocalPlayerId()}Passed`;
-    const wasFirstToPass = !passInfo[opponentPassKey];
-    const newPassInfo = {
-        ...passInfo,
-        [localPassKey]: true,
-        firstPasser: passInfo.firstPasser || (wasFirstToPass ? getLocalPlayerId() : null)
-    };
-
-    console.log('[PLAYER PASS DEBUG] Updating pass info:', newPassInfo);
-    setPassInfo(newPassInfo);
-
-    if (newPassInfo[getOpponentPlayerId() + 'Passed']) {
-        if (turnPhase === 'deployment') endDeploymentPhase();
-        if (turnPhase === 'action') endActionPhase();
-    } else {
-        endTurn(getLocalPlayerId());
-    }
+    await processAction('playerPass', {
+      playerId: getLocalPlayerId(),
+      playerName: localPlayerState.name,
+      turnPhase: turnPhase,
+      passInfo: passInfo,
+      opponentPlayerId: getOpponentPlayerId()
+    });
   };
 
 useEffect(() => {
@@ -3433,22 +3473,34 @@ useEffect(() => {
         document.body.removeChild(link);
       }
     };
-    const handleCloseAiReport = useCallback(() => {
+    const handleCloseAiReport = useCallback(async () => {
         setAiActionReport(null);
-        endTurn(getOpponentPlayerId());
-    }, [endTurn]);
+        // Use ActionProcessor for turn transition instead of direct endTurn call
+        await processAction('turnTransition', {
+            newPlayer: getLocalPlayerId(),
+            reason: 'aiReportClosed'
+        });
+    }, [processAction, getLocalPlayerId]);
 
-    const handleCloseAiCardReport = useCallback(() => {
+    const handleCloseAiCardReport = useCallback(async () => {
         // The turn ends only if the card doesn't grant another action.
         if (aiCardPlayReport && !aiCardPlayReport.card.effect.goAgain) {
-            endTurn(getOpponentPlayerId());
+            // Use ActionProcessor for turn transition instead of direct endTurn call
+            await processAction('turnTransition', {
+                newPlayer: getLocalPlayerId(),
+                reason: 'aiCardReportClosed'
+            });
         } else if (aiCardPlayReport && aiCardPlayReport.card.effect.goAgain && !winner) {
              // If AI can go again and game hasn't ended, the AI's turn continues.
-             setCurrentPlayer(getOpponentPlayerId());
+             // Use ActionProcessor for player transition instead of direct setCurrentPlayer call
+             await processAction('turnTransition', {
+                 newPlayer: getOpponentPlayerId(),
+                 reason: 'aiGoAgain'
+             });
              setModalContent({ title: "Opponent's Turn", text: "Your opponent takes another action!", isBlocking: false });
         }
         setAiCardPlayReport(null);
-    }, [endTurn, aiCardPlayReport, winner]);
+    }, [processAction, getLocalPlayerId, getOpponentPlayerId, aiCardPlayReport, winner]);
 
   const sortedLocalActivePool = useMemo(() => {
     return [...localPlayerState.activeDronePool].sort((a, b) => {
@@ -3742,7 +3794,16 @@ useEffect(() => {
                   })()
                 ) : (
                   <div className="flex flex-col items-center w-full space-y-2">
-                      <ShipSectionsDisplay player={opponentPlayerState} playerEffectiveStats={opponentPlayerEffectiveStats} isPlayer={false} placedSections={opponentPlacedSections} onTargetClick={handleTargetClick} isInteractive={false} selectedCard={selectedCard} validCardTargets={validCardTargets} gameEngine={gameEngine} turnPhase={turnPhase} isMyTurn={isMyTurn} passInfo={passInfo} getLocalPlayerId={getLocalPlayerId} localPlayerState={localPlayerState} shipAbilityMode={shipAbilityMode} hoveredTarget={hoveredTarget} setHoveredTarget={setHoveredTarget} />
+                      {(() => {
+                        console.log('🔍 [DEBUG] Rendering opponent ShipSectionsDisplay with data:', {
+                          opponentPlacedSections,
+                          opponentPlacedSectionsLength: opponentPlacedSections?.length,
+                          opponentPlacedSectionsContent: opponentPlacedSections?.map((section, index) => `[${index}]: ${section || 'null'}`),
+                          turnPhase,
+                          gameMode: gameState.gameMode
+                        });
+                        return <ShipSectionsDisplay player={opponentPlayerState} playerEffectiveStats={opponentPlayerEffectiveStats} isPlayer={false} placedSections={opponentPlacedSections} onTargetClick={handleTargetClick} isInteractive={false} selectedCard={selectedCard} validCardTargets={validCardTargets} gameEngine={gameEngine} turnPhase={turnPhase} isMyTurn={isMyTurn} passInfo={passInfo} getLocalPlayerId={getLocalPlayerId} localPlayerState={localPlayerState} shipAbilityMode={shipAbilityMode} hoveredTarget={hoveredTarget} setHoveredTarget={setHoveredTarget} />;
+                      })()}
                       <DroneLanesDisplay player={opponentPlayerState} isPlayer={false} onLaneClick={handleLaneClick} getLocalPlayerId={getLocalPlayerId} getOpponentPlayerId={getOpponentPlayerId} abilityMode={abilityMode} validAbilityTargets={validAbilityTargets} selectedCard={selectedCard} validCardTargets={validCardTargets} multiSelectState={multiSelectState} turnPhase={turnPhase} localPlayerState={localPlayerState} opponentPlayerState={opponentPlayerState} localPlacedSections={localPlacedSections} opponentPlacedSections={opponentPlacedSections} gameEngine={gameEngine} getPlacedSectionsForEngine={getPlacedSectionsForEngine} handleTokenClick={handleTokenClick} handleAbilityIconClick={handleAbilityIconClick} selectedDrone={selectedDrone} recentlyHitDrones={recentlyHitDrones} potentialInterceptors={potentialInterceptors} droneRefs={droneRefs} mandatoryAction={mandatoryAction} setHoveredTarget={setHoveredTarget} />
                       <DroneLanesDisplay player={localPlayerState} isPlayer={true} onLaneClick={handleLaneClick} getLocalPlayerId={getLocalPlayerId} getOpponentPlayerId={getOpponentPlayerId} abilityMode={abilityMode} validAbilityTargets={validAbilityTargets} selectedCard={selectedCard} validCardTargets={validCardTargets} multiSelectState={multiSelectState} turnPhase={turnPhase} localPlayerState={localPlayerState} opponentPlayerState={opponentPlayerState} localPlacedSections={localPlacedSections} opponentPlacedSections={opponentPlacedSections} gameEngine={gameEngine} getPlacedSectionsForEngine={getPlacedSectionsForEngine} handleTokenClick={handleTokenClick} handleAbilityIconClick={handleAbilityIconClick} selectedDrone={selectedDrone} recentlyHitDrones={recentlyHitDrones} potentialInterceptors={potentialInterceptors} droneRefs={droneRefs} mandatoryAction={mandatoryAction} setHoveredTarget={setHoveredTarget} />
 

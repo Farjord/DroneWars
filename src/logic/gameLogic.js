@@ -760,6 +760,161 @@ const getValidShieldReallocationTargets = (playerState, phase, placedSections) =
     return targets;
 };
 
+// === SHIELD ALLOCATION SYSTEM ===
+
+/**
+ * Process single shield allocation
+ * @param {Object} currentState - Current game state
+ * @param {string} playerId - Player allocating the shield
+ * @param {string} sectionName - Section to allocate shield to
+ * @returns {Object} - { success, newPlayerState, newShieldsToAllocate, error }
+ */
+const processShieldAllocation = (currentState, playerId, sectionName) => {
+  const playerState = currentState[playerId];
+  const placedSections = playerId === 'player1' ? currentState.placedSections : currentState.opponentPlacedSections;
+
+  // Validate shield allocation
+  const validation = validateShieldAddition(playerState, sectionName, placedSections);
+
+  if (!validation.valid || currentState.shieldsToAllocate <= 0) {
+    return {
+      success: false,
+      error: validation.error || 'No shields available to allocate',
+      newPlayerState: playerState,
+      newShieldsToAllocate: currentState.shieldsToAllocate
+    };
+  }
+
+  // Create updated player state
+  const newPlayerState = {
+    ...playerState,
+    shipSections: {
+      ...playerState.shipSections,
+      [sectionName]: {
+        ...playerState.shipSections[sectionName],
+        allocatedShields: playerState.shipSections[sectionName].allocatedShields + 1
+      }
+    }
+  };
+
+  return {
+    success: true,
+    newPlayerState,
+    newShieldsToAllocate: currentState.shieldsToAllocate - 1,
+    sectionName,
+    playerId
+  };
+};
+
+/**
+ * Process reset shield allocation
+ * @param {Object} currentState - Current game state
+ * @param {string} playerId - Player resetting allocation
+ * @returns {Object} - { success, newPlayerState, newShieldsToAllocate }
+ */
+const processResetShieldAllocation = (currentState, playerId) => {
+  const playerState = currentState[playerId];
+  const placedSections = playerId === 'player1' ? currentState.placedSections : currentState.opponentPlacedSections;
+
+  // Calculate effective stats to get shields per turn
+  const effectiveStats = calculateEffectiveShipStats(playerState, placedSections);
+  const totalShieldsPerTurn = effectiveStats.totals.shieldsPerTurn;
+
+  // Reset all sections to their initial state (0 allocated shields)
+  const resetShipSections = {};
+  Object.keys(playerState.shipSections).forEach(sectionName => {
+    resetShipSections[sectionName] = {
+      ...playerState.shipSections[sectionName],
+      allocatedShields: 0
+    };
+  });
+
+  const newPlayerState = {
+    ...playerState,
+    shipSections: resetShipSections
+  };
+
+  return {
+    success: true,
+    newPlayerState,
+    newShieldsToAllocate: totalShieldsPerTurn,
+    playerId
+  };
+};
+
+/**
+ * Process end shield allocation phase
+ * @param {Object} currentState - Current game state
+ * @param {string} playerId - Player ending allocation (usually local player)
+ * @returns {Object} - { success, player1State, player2State, newPhase, firstPlayer }
+ */
+const processEndShieldAllocation = (currentState, playerId) => {
+  const localPlayerId = playerId;
+  const opponentPlayerId = localPlayerId === 'player1' ? 'player2' : 'player1';
+
+  // Get current player states
+  const localPlayerState = currentState[localPlayerId];
+  const opponentPlayerState = currentState[opponentPlayerId];
+
+  // Process AI shield allocation for opponent
+  const opponentPlacedSections = opponentPlayerId === 'player1' ? currentState.placedSections : currentState.opponentPlacedSections;
+  const opponentEffectiveStats = calculateEffectiveShipStats(opponentPlayerState, opponentPlacedSections);
+  const opponentShieldsToAllocate = opponentEffectiveStats.totals.shieldsPerTurn;
+
+  // AI shield allocation logic (round-robin style)
+  const aiNewSections = JSON.parse(JSON.stringify(opponentPlayerState.shipSections));
+  const aiSectionNames = Object.keys(aiNewSections);
+  let remainingAIShields = opponentShieldsToAllocate;
+  let sectionIndex = 0;
+  let failsafe = 0;
+
+  while (remainingAIShields > 0 && failsafe < 100) {
+    const sectionName = aiSectionNames[sectionIndex % aiSectionNames.length];
+    const section = aiNewSections[sectionName];
+
+    // Get effective max shields for this section
+    const effectiveMax = getEffectiveSectionMaxShields(sectionName, opponentPlayerState, opponentPlacedSections);
+
+    if (section.allocatedShields < effectiveMax) {
+      section.allocatedShields++;
+      remainingAIShields--;
+    }
+
+    sectionIndex++;
+    failsafe++;
+  }
+
+  const newOpponentPlayerState = {
+    ...opponentPlayerState,
+    shipSections: aiNewSections
+  };
+
+  // Determine first player using existing game logic
+  const firstPlayer = determineFirstPlayer(
+    currentState.turn,
+    currentState.firstPlayerOverride,
+    currentState.firstPasserOfPreviousRound
+  );
+
+  // Prepare result based on which player is which
+  const result = {
+    success: true,
+    newPhase: 'deployment',
+    firstPlayer: firstPlayer
+  };
+
+  // Set the correct player states
+  if (localPlayerId === 'player1') {
+    result.player1State = localPlayerState;
+    result.player2State = newOpponentPlayerState;
+  } else {
+    result.player1State = newOpponentPlayerState;
+    result.player2State = localPlayerState;
+  }
+
+  return result;
+};
+
 // ========================================
 // ABILITY RESOLUTION SYSTEM
 // ========================================
@@ -1173,6 +1328,234 @@ const calculatePassTransition = (passingPlayer, passInfo, turnPhase) => {
         newPassInfo,
         nextPlayer
     };
+};
+
+// === ENHANCED TURN TRANSITION SYSTEM ===
+
+/**
+ * Process turn transition with full state management
+ * @param {Object} currentState - Current game state
+ * @param {string} actingPlayer - Player who is ending their turn
+ * @returns {Object} - { newState, uiEffects, transitionType }
+ */
+const processTurnTransition = (currentState, actingPlayer) => {
+  // Calculate base transition logic
+  const transition = calculateTurnTransition(
+    actingPlayer,
+    currentState.passInfo,
+    currentState.turnPhase,
+    currentState.winner
+  );
+
+  let newState = { ...currentState };
+  const uiEffects = [];
+
+  // Apply state changes based on transition type
+  switch (transition.type) {
+    case 'END_PHASE':
+      // Phase is ending - prepare for phase transition
+      uiEffects.push({
+        type: 'PHASE_END',
+        phase: transition.phase,
+        trigger: 'both_players_passed'
+      });
+
+      // Clear pass info for next phase
+      newState.passInfo = {
+        firstPasser: null,
+        player1Passed: false,
+        player2Passed: false
+      };
+      break;
+
+    case 'CHANGE_PLAYER':
+      // Normal turn transition
+      newState.currentPlayer = transition.nextPlayer;
+
+      if (transition.showOpponentModal) {
+        uiEffects.push({
+          type: 'SHOW_WAITING_MODAL',
+          player: transition.nextPlayer
+        });
+      }
+      break;
+
+    case 'CONTINUE_TURN':
+      // Player continues (opponent has passed)
+      // No state change needed
+      break;
+  }
+
+  return {
+    newState,
+    uiEffects,
+    transitionType: transition.type
+  };
+};
+
+/**
+ * Process phase change with state management
+ * @param {Object} currentState - Current game state
+ * @param {string} newPhase - New phase to transition to
+ * @param {string} trigger - What triggered the phase change
+ * @returns {Object} - { newState, uiEffects }
+ */
+const processPhaseChange = (currentState, newPhase, trigger = 'manual') => {
+  let newState = {
+    ...currentState,
+    turnPhase: newPhase
+  };
+
+  const uiEffects = [];
+
+  // Handle phase-specific setup
+  switch (newPhase) {
+    case 'deployment':
+      // Starting deployment phase
+      newState.passInfo = {
+        firstPasser: null,
+        player1Passed: false,
+        player2Passed: false
+      };
+
+      // Determine first player for the phase
+      const firstPlayer = determineFirstPlayer(
+        currentState.turn,
+        currentState.firstPlayerOverride,
+        currentState.firstPasserOfPreviousRound
+      );
+
+      newState.currentPlayer = firstPlayer;
+      newState.firstPlayerOfRound = firstPlayer;
+
+      uiEffects.push({
+        type: 'PHASE_START',
+        phase: 'deployment',
+        firstPlayer: firstPlayer
+      });
+      break;
+
+    case 'action':
+      // Starting action phase
+      newState.passInfo = {
+        firstPasser: null,
+        player1Passed: false,
+        player2Passed: false
+      };
+
+      // First player of action phase is determined by deployment pass order
+      const actionFirstPlayer = currentState.passInfo.firstPasser || currentState.firstPlayerOfRound;
+      newState.currentPlayer = actionFirstPlayer;
+
+      uiEffects.push({
+        type: 'PHASE_START',
+        phase: 'action',
+        firstPlayer: actionFirstPlayer
+      });
+      break;
+
+    case 'roundEnd':
+      // Ending the round
+      uiEffects.push({
+        type: 'ROUND_END',
+        turn: currentState.turn
+      });
+      break;
+
+    default:
+      console.warn(`Unknown phase: ${newPhase}`);
+  }
+
+  return {
+    newState,
+    uiEffects
+  };
+};
+
+/**
+ * Process round start with full state management
+ * @param {Object} currentState - Current game state
+ * @param {number} turn - New turn number
+ * @returns {Object} - { newState, uiEffects }
+ */
+const processRoundStart = (currentState, turn) => {
+  // Calculate new player states using existing logic
+  const newPlayer1State = calculateNewRoundPlayerState(
+    currentState.player1,
+    turn,
+    calculateEffectiveStats, // Function reference for stats calculation
+    currentState.player2,
+    currentState.placedSections
+  );
+
+  const newPlayer2State = calculateNewRoundPlayerState(
+    currentState.player2,
+    turn,
+    calculateEffectiveStats, // Function reference for stats calculation
+    currentState.player1,
+    currentState.opponentPlacedSections
+  );
+
+  // Draw to hand limit
+  const player1WithCards = drawToHandLimit(
+    newPlayer1State,
+    calculateEffectiveShipStats(newPlayer1State, currentState.placedSections).totals.handLimit
+  );
+
+  const player2WithCards = drawToHandLimit(
+    newPlayer2State,
+    calculateEffectiveShipStats(newPlayer2State, currentState.opponentPlacedSections).totals.handLimit
+  );
+
+  // Determine first player
+  const firstPlayer = determineFirstPlayer(
+    turn,
+    currentState.firstPlayerOverride,
+    currentState.firstPasserOfPreviousRound
+  );
+
+  const newState = {
+    ...currentState,
+    turn: turn,
+    turnPhase: 'deployment',
+    currentPlayer: firstPlayer,
+    firstPlayerOfRound: firstPlayer,
+    firstPasserOfPreviousRound: currentState.passInfo.firstPasser,
+    passInfo: {
+      firstPasser: null,
+      player1Passed: false,
+      player2Passed: false
+    },
+    player1: player1WithCards,
+    player2: player2WithCards
+  };
+
+  const uiEffects = [
+    {
+      type: 'ROUND_START',
+      turn: turn,
+      firstPlayer: firstPlayer
+    },
+    {
+      type: 'LOG_ENTRY',
+      entry: {
+        player: 'SYSTEM',
+        actionType: 'NEW_ROUND',
+        source: `Round ${turn}`,
+        target: 'N/A',
+        outcome: 'New round begins.'
+      }
+    },
+    {
+      type: 'SHOW_ROUND_START_MODAL',
+      turn: turn
+    }
+  ];
+
+  return {
+    newState,
+    uiEffects
+  };
 };
 
 // === ROUND MANAGEMENT SYSTEM ===
@@ -2701,6 +3084,128 @@ const checkHandLimitCompliance = (player1State, player2State, player1Stats, play
 };
 
 // ========================================
+// CONSOLIDATED HAND LIMIT FUNCTIONS
+// ========================================
+
+/**
+ * Check hand limit violations for both players
+ * Pure function that determines if either player needs to discard
+ * @param {Object} playerStates - { player1: playerState, player2: playerState }
+ * @param {Object} effectiveStats - { player1: stats, player2: stats }
+ * @returns {Object} Violation information for both players
+ */
+const checkHandLimitViolations = (playerStates, effectiveStats) => {
+    const violations = {};
+
+    for (const playerId of ['player1', 'player2']) {
+        const playerState = playerStates[playerId];
+        const stats = effectiveStats[playerId];
+
+        const hasViolation = playerState.hand.length > stats.totals.handLimit;
+        const discardCount = hasViolation ? playerState.hand.length - stats.totals.handLimit : 0;
+
+        violations[playerId] = {
+            needsDiscard: hasViolation,
+            discardCount: discardCount,
+            currentHandSize: playerState.hand.length,
+            handLimit: stats.totals.handLimit
+        };
+    }
+
+    violations.hasAnyViolations = violations.player1.needsDiscard || violations.player2.needsDiscard;
+
+    return violations;
+};
+
+/**
+ * Enforce hand limits by automatically discarding excess cards
+ * Pure function that returns new player state with hand limit enforced
+ * @param {Object} playerState - Current player state
+ * @param {number} handLimit - Maximum allowed hand size
+ * @returns {Object} New player state with enforced hand limit
+ */
+const enforceHandLimits = (playerState, handLimit) => {
+    if (playerState.hand.length <= handLimit) {
+        return {
+            ...playerState,
+            discardCount: 0
+        };
+    }
+
+    const newHand = [...playerState.hand];
+    const newDiscardPile = [...playerState.discardPile];
+    const discardCount = newHand.length - handLimit;
+
+    // Randomly discard excess cards
+    for (let i = 0; i < discardCount; i++) {
+        if (newHand.length > 0) {
+            const randomIndex = Math.floor(Math.random() * newHand.length);
+            const cardToDiscard = newHand.splice(randomIndex, 1)[0];
+            newDiscardPile.push(cardToDiscard);
+        }
+    }
+
+    return {
+        ...playerState,
+        hand: newHand,
+        discardPile: newDiscardPile,
+        discardCount: discardCount
+    };
+};
+
+/**
+ * Process discard phase for a player
+ * Pure function that handles voluntary card discarding
+ * @param {Object} playerState - Current player state
+ * @param {number} discardCount - Number of cards to discard
+ * @param {Array} cardsToDiscard - Optional specific cards to discard
+ * @returns {Object} New player state after discarding
+ */
+const processDiscardPhase = (playerState, discardCount, cardsToDiscard = null) => {
+    if (discardCount <= 0) {
+        return {
+            ...playerState,
+            discardCount: 0
+        };
+    }
+
+    const newHand = [...playerState.hand];
+    const newDiscardPile = [...playerState.discardPile];
+    let actualDiscardCount = 0;
+
+    if (cardsToDiscard && cardsToDiscard.length > 0) {
+        // Discard specific cards
+        cardsToDiscard.forEach(card => {
+            const cardIndex = newHand.findIndex(handCard =>
+                handCard.instanceId === card.instanceId ||
+                (handCard.name === card.name && handCard.id === card.id)
+            );
+
+            if (cardIndex !== -1 && actualDiscardCount < discardCount) {
+                const discardedCard = newHand.splice(cardIndex, 1)[0];
+                newDiscardPile.push(discardedCard);
+                actualDiscardCount++;
+            }
+        });
+    } else {
+        // Random discard if no specific cards provided
+        for (let i = 0; i < discardCount && newHand.length > 0; i++) {
+            const randomIndex = Math.floor(Math.random() * newHand.length);
+            const cardToDiscard = newHand.splice(randomIndex, 1)[0];
+            newDiscardPile.push(cardToDiscard);
+            actualDiscardCount++;
+        }
+    }
+
+    return {
+        ...playerState,
+        hand: newHand,
+        discardPile: newDiscardPile,
+        discardCount: actualDiscardCount
+    };
+};
+
+// ========================================
 // TARGETING LOGIC FUNCTIONS
 // ========================================
 
@@ -2901,6 +3406,11 @@ export const gameEngine = {
   executeShieldReallocation,
   getValidShieldReallocationTargets,
 
+  // --- Shield Allocation System ---
+  processShieldAllocation,
+  processResetShieldAllocation,
+  processEndShieldAllocation,
+
   // --- Action Resolution ---
   resolveAttack,
   resolveAbility,
@@ -2926,6 +3436,15 @@ export const gameEngine = {
   determineFirstPlayer,
   enforceHandLimit,
   checkHandLimitCompliance,
+  // --- Consolidated Hand Limit Functions ---
+  checkHandLimitViolations,
+  enforceHandLimits,
+  processDiscardPhase,
+
+  // --- Enhanced Turn Transition System ---
+  processTurnTransition,
+  processPhaseChange,
+  processRoundStart,
 
   // --- UI Effects (for multiplayer compatibility) ---
   createExplosionEffect,

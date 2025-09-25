@@ -4,12 +4,18 @@ const aiPersonalities = [
     description: 'Focuses on overwhelming firepower and direct destruction.',
     // The specific 5 drones this AI will use.
     dronePool: [
-      'Heavy Fighter', 
-      'Standard Fighter', 
-      'Kamikaze Drone', 
-      'Bomber', 
+      'Heavy Fighter',
+      'Standard Fighter',
+      'Kamikaze Drone',
+      'Bomber',
       'Swarm Drone'
     ],
+    // Strategic ship section placement [lane0, lane1, lane2]
+    shipDeployment: {
+      strategy: 'aggressive',
+      placement: ['powerCell', 'bridge', 'droneControlHub'],
+      reasoning: 'Places powerCell in outer lane for safety, bridge in middle lane for combat bonus, droneControlHub in outer lane for flexibility'
+    },
     // The specific cards and quantities for this AI's deck.
     decklist: [
     { id: 'CARD001_ENHANCED', quantity: 40 },
@@ -38,12 +44,18 @@ const aiPersonalities = [
     description: 'Focuses on overwhelming firepower and direct damage to drones and ship sections.',
     // The specific 5 drones this AI will use.
     dronePool: [
-      'Heavy Fighter', 
-      'Standard Fighter', 
-      'Kamikaze Drone', 
-      'Bomber', 
+      'Heavy Fighter',
+      'Standard Fighter',
+      'Kamikaze Drone',
+      'Bomber',
       'Avenger Drone'
     ],
+    // Strategic ship section placement [lane0, lane1, lane2]
+    shipDeployment: {
+      strategy: 'balanced',
+      placement: ['bridge', 'droneControlHub', 'powerCell'],
+      reasoning: 'Places bridge in outer lane for durability, droneControlHub in middle for deployment bonus, powerCell in outer for resource safety'
+    },
     // The specific cards and quantities for this AI's deck.
     decklist: [
       // High-Power Removal (Limited Copies)
@@ -73,6 +85,11 @@ const aiPersonalities = [
   //   name: 'Swarm Tactician',
   //   description: 'Overwhelms the enemy with numerous, low-cost drones.',
   //   dronePool: ['Swarm Drone', 'Scout Drone', 'Standard Fighter', 'Interceptor', 'Repair Drone'],
+  //   shipDeployment: {
+  //     strategy: 'defensive',
+  //     placement: ['droneControlHub', 'powerCell', 'bridge'],
+  //     reasoning: 'Places droneControlHub in outer for swarm deployment, powerCell in middle for energy bonus, bridge in outer for protection'
+  //   },
   //   decklist: [
   //      { id: 'CARD002', quantity: 2 },
   //      { id: 'CARD008', quantity: 2 },

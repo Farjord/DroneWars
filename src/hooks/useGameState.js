@@ -12,6 +12,11 @@ export const useGameState = () => {
   const [gameState, setGameState] = useState(gameStateManager.getState());
   const [p2pStatus, setP2pStatus] = useState(p2pManager.getStatus());
 
+  // Set up P2P integration on first render
+  useEffect(() => {
+    gameStateManager.setupP2PIntegration(p2pManager);
+  }, []);
+
   // Subscribe to game state changes
   useEffect(() => {
     const unsubscribe = gameStateManager.subscribe((event) => {
@@ -69,7 +74,15 @@ export const useGameState = () => {
   }, [gameState.gameMode, gameState.placedSections, gameState.opponentPlacedSections]);
 
   const getOpponentPlacedSections = useCallback(() => {
-    return gameStateManager.getOpponentPlacedSections();
+    const sections = gameStateManager.getOpponentPlacedSections();
+    console.log('🔍 [DEBUG] getOpponentPlacedSections called:', {
+      sections,
+      gameMode: gameState.gameMode,
+      rawPlacedSections: gameState.placedSections,
+      rawOpponentPlacedSections: gameState.opponentPlacedSections,
+      sectionsLength: sections?.length
+    });
+    return sections;
   }, [gameState.gameMode, gameState.placedSections, gameState.opponentPlacedSections]);
 
   // State update methods

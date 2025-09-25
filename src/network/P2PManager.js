@@ -5,8 +5,6 @@
 // Manages room creation, joining, and command synchronization
 
 import Peer from 'peerjs';
-import gameStateManager from '../state/GameStateManager.js';
-import commandManager from './CommandManager.js';
 
 class P2PManager {
   constructor() {
@@ -16,9 +14,15 @@ class P2PManager {
     this.isHost = false;
     this.isConnected = false;
     this.listeners = new Set();
+    this.actionProcessor = null;
+  }
 
-    // Set this as the network handler for command manager
-    commandManager.setNetworkHandler(this);
+  /**
+   * Set ActionProcessor for handling received actions
+   * @param {Object} actionProcessor - ActionProcessor instance
+   */
+  setActionProcessor(actionProcessor) {
+    this.actionProcessor = actionProcessor;
   }
 
   /**
@@ -65,7 +69,7 @@ class P2PManager {
       return new Promise((resolve, reject) => {
         this.peer.on('open', (id) => {
           console.log('Host peer opened with ID:', id);
-          gameStateManager.setMultiplayerMode('host', true);
+          this.emit('multiplayer_mode_change', { mode: 'host', isHost: true });
           this.emit('room_created', { roomCode: this.roomCode });
           resolve(this.roomCode);
         });
@@ -118,7 +122,7 @@ class P2PManager {
 
           this.connection.on('open', () => {
             console.log('Connected to host');
-            gameStateManager.setMultiplayerMode('guest', false);
+            this.emit('multiplayer_mode_change', { mode: 'guest', isHost: false });
             this.emit('joined_room', { roomCode });
             resolve();
           });
@@ -185,17 +189,16 @@ class P2PManager {
    */
   async handleReceivedData(data) {
     try {
-      console.log('Received data:', data);
+      console.log('Received P2P data:', data);
 
       switch (data.type) {
-        case 'COMMAND':
-          // Execute received command without sending to network
-          await commandManager.receiveCommand(data.command);
-          break;
-
-        case 'GAME_STATE_SYNC':
-          // Sync game state (for initial connection)
-          this.syncGameState(data.state);
+        case 'ACTION':
+          // Route actions through ActionProcessor
+          if (this.actionProcessor) {
+            await this.actionProcessor.processNetworkAction(data);
+          } else {
+            console.error('ActionProcessor not set - cannot process network action');
+          }
           break;
 
         case 'PING':
@@ -210,15 +213,15 @@ class P2PManager {
           break;
 
         case 'PHASE_COMPLETED':
-          // Handle phase completion messages
+          // Handle phase completion messages (UI-level synchronization)
           this.emit('PHASE_COMPLETED', data.data);
           break;
 
         default:
-          console.warn('Unknown data type received:', data.type);
+          console.warn('Unknown P2P data type received:', data.type);
       }
     } catch (error) {
-      console.error('Error handling received data:', error);
+      console.error('Error handling received P2P data:', error);
     }
   }
 
@@ -238,34 +241,20 @@ class P2PManager {
     }
   }
 
-  /**
-   * Send command to peer (called by CommandManager)
-   */
-  sendCommand(command) {
-    this.sendData({
-      type: 'COMMAND',
-      command: command,
-      timestamp: Date.now(),
-    });
-  }
 
   /**
-   * Sync game state with peer
+   * Sync game state with peer (deprecated - use ActionProcessor for state changes)
    */
   syncGameState(state = null) {
+    console.warn('syncGameState is deprecated - use ActionProcessor for state changes');
+
     if (state) {
-      // Receive state sync
-      const currentState = gameStateManager.getState();
-      const mergedState = { ...currentState, ...state };
-      gameStateManager.setState(mergedState, 'STATE_SYNCED');
+      // Log received state sync but don't apply directly
+      console.log('Received state sync (not applied):', state);
+      this.emit('state_sync_received', { state });
     } else {
-      // Send state sync
-      const currentState = gameStateManager.getState();
-      this.sendData({
-        type: 'GAME_STATE_SYNC',
-        state: currentState,
-        timestamp: Date.now(),
-      });
+      // Send current state for initial sync only - emit event to get state
+      this.emit('state_sync_requested', {});
     }
   }
 
@@ -300,7 +289,7 @@ class P2PManager {
     this.roomCode = null;
 
     // Reset to local mode
-    gameStateManager.setMultiplayerMode('local', false);
+    this.emit('multiplayer_mode_change', { mode: 'local', isHost: false });
 
     this.emit('disconnected', {});
   }
