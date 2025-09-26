@@ -142,6 +142,30 @@ class GameStateManager {
   setState(updates, eventType = 'STATE_UPDATE') {
     const prevState = { ...this.state };
 
+    // Extract caller information from stack trace for detailed logging
+    const stack = new Error().stack;
+    const callerInfo = this.extractCallerInfo(stack);
+
+    // Only log ship section updates to focus on the AI placement issue
+    const criticalUpdates = Object.keys(updates).filter(key =>
+      ['opponentPlacedSections', 'placedSections'].includes(key)
+    );
+    if (criticalUpdates.length > 0) {
+      console.error('🚨 SHIP SECTIONS CHANGED:', {
+        eventType,
+        changedKeys: criticalUpdates,
+        oldValues: criticalUpdates.reduce((acc, key) => {
+          acc[key] = prevState[key];
+          return acc;
+        }, {}),
+        newValues: criticalUpdates.reduce((acc, key) => {
+          acc[key] = updates[key];
+          return acc;
+        }, {}),
+        caller: `${callerInfo.callerFunction} in ${callerInfo.callerFile}:${callerInfo.callerLine}`
+      });
+    }
+
     // Validate state consistency before update
     this.validateStateUpdate(updates, prevState);
 
@@ -682,12 +706,15 @@ class GameStateManager {
     else if (this.state.gameMode === 'guest') result = this.state.placedSections;
     else result = this.state.opponentPlacedSections;
 
-    console.log('🔍 [DEBUG] GameStateManager.getOpponentPlacedSections:', {
-      gameMode: this.state.gameMode,
-      result,
-      rawOpponentPlacedSections: this.state.opponentPlacedSections,
-      rawPlacedSections: this.state.placedSections
-    });
+    // Only debug during placement phase when there's actual data
+    if (this.state.turnPhase === 'placement' && result.some(s => s !== null)) {
+      console.log('🔍 [DEBUG] GameStateManager.getOpponentPlacedSections:', {
+        gameMode: this.state.gameMode,
+        result,
+        rawOpponentPlacedSections: this.state.opponentPlacedSections,
+        rawPlacedSections: this.state.placedSections
+      });
+    }
 
     return result;
   }

@@ -52,34 +52,25 @@ const ShipSectionsDisplay = ({
   hoveredTarget,
   setHoveredTarget
 }) => {
-  console.log('🔍 [DEBUG] ShipSectionsDisplay rendering with props:', {
-    isPlayer,
-    placedSections,
-    placedSectionsType: Array.isArray(placedSections) ? 'array' : typeof placedSections,
-    placedSectionsLength: placedSections?.length,
-    sectionsDetail: placedSections?.map((section, index) => ({
-      index,
-      value: section,
-      type: typeof section,
-      isEmpty: !section
-    }))
-  });
 
   return (
     <div className="flex w-full justify-between gap-8">
       {[0, 1, 2].map((laneIndex) => {
         const sectionName = placedSections[laneIndex];
-        console.log(`🔍 [DEBUG] Lane ${laneIndex}:`, {
-          sectionName,
-          type: typeof sectionName,
-          isEmpty: !sectionName,
-          isPlayer
-        });
         if (!sectionName) {
+          console.log(`🚨 [DEBUG] Lane ${laneIndex} rendering EMPTY div - no hover possible:`, {
+            sectionName,
+            sectionNameType: typeof sectionName,
+            sectionNameValue: JSON.stringify(sectionName),
+            isPlayer,
+            entirePlacedSections: placedSections,
+            playerShipSections: player?.shipSections ? Object.keys(player.shipSections) : 'NO_SHIP_SECTIONS'
+          });
           return <div key={laneIndex} className="flex-1 min-w-0 h-full bg-black/20 rounded-lg border-2 border-dashed border-gray-700"></div>;
         }
 
         const sectionStats = player.shipSections[sectionName];
+
         const isCardTarget = validCardTargets.some(t => t.id === sectionName);
 
         // Determine shield reallocation visual state

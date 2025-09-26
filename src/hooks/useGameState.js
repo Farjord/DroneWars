@@ -75,15 +75,12 @@ export const useGameState = () => {
 
   const getOpponentPlacedSections = useCallback(() => {
     const sections = gameStateManager.getOpponentPlacedSections();
-    console.log('🔍 [DEBUG] getOpponentPlacedSections called:', {
-      sections,
-      gameMode: gameState.gameMode,
-      rawPlacedSections: gameState.placedSections,
-      rawOpponentPlacedSections: gameState.opponentPlacedSections,
-      sectionsLength: sections?.length
-    });
+    // Only debug during placement phase when sections should exist
+    if (gameState.turnPhase === 'placement' && sections.some(s => s !== null)) {
+      console.error('🔥 CRITICAL - getOpponentPlacedSections returning:', sections, 'from gameState:', gameState.opponentPlacedSections);
+    }
     return sections;
-  }, [gameState.gameMode, gameState.placedSections, gameState.opponentPlacedSections]);
+  }, [gameState.gameMode, gameState.placedSections, gameState.opponentPlacedSections, gameState.turnPhase]);
 
   // State update methods
   const updateGameState = useCallback((updates, eventType) => {

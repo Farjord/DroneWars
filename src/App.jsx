@@ -2056,6 +2056,7 @@ const App = () => {
    * @param {string} sectionName - Name of the section being selected
    */
   const handleSelectSectionForPlacement = (sectionName) => {
+    console.error('🔥 CRITICAL - handleSelectSectionForPlacement called with:', sectionName, 'gameMode:', gameState.gameMode);
     // If clicking a section in the top "unplaced" row
     if (unplacedSections.includes(sectionName)) {
         // Toggle selection: if it's already selected, unselect it. Otherwise, select it.
@@ -2081,6 +2082,7 @@ const App = () => {
    * @param {number} laneIndex - Index of the lane (0, 1, 2)
    */
   const handleLaneSelectForPlacement = (laneIndex) => {
+    console.error('🔥 CRITICAL - handleLaneSelectForPlacement called with lane:', laneIndex, 'gameMode:', gameState.gameMode);
     if (selectedSectionForPlacement) {
       // If the lane is occupied, swap with the selected section
       if (localPlacedSections[laneIndex]) {
@@ -2448,7 +2450,14 @@ const App = () => {
   const startPlacementPhase = async () => {
     updateGameState({ unplacedSections: ['bridge', 'powerCell', 'droneControlHub'] });
     setSelectedSectionForPlacement(null);
-    updateGameState({ placedSections: Array(3).fill(null), opponentPlacedSections: Array(3).fill(null) });
+
+    // Reset player sections, but handle opponent sections differently for single vs multiplayer
+    if (isMultiplayer()) {
+      updateGameState({ placedSections: Array(3).fill(null), opponentPlacedSections: Array(3).fill(null) });
+    } else {
+      // In single player, only reset player sections - AI sections will be set by AI placement logic
+      updateGameState({ placedSections: Array(3).fill(null) });
+    }
 
     // In single player mode, automatically place AI opponent's ship sections
     if (!isMultiplayer()) {
@@ -3795,13 +3804,6 @@ useEffect(() => {
                 ) : (
                   <div className="flex flex-col items-center w-full space-y-2">
                       {(() => {
-                        console.log('🔍 [DEBUG] Rendering opponent ShipSectionsDisplay with data:', {
-                          opponentPlacedSections,
-                          opponentPlacedSectionsLength: opponentPlacedSections?.length,
-                          opponentPlacedSectionsContent: opponentPlacedSections?.map((section, index) => `[${index}]: ${section || 'null'}`),
-                          turnPhase,
-                          gameMode: gameState.gameMode
-                        });
                         return <ShipSectionsDisplay player={opponentPlayerState} playerEffectiveStats={opponentPlayerEffectiveStats} isPlayer={false} placedSections={opponentPlacedSections} onTargetClick={handleTargetClick} isInteractive={false} selectedCard={selectedCard} validCardTargets={validCardTargets} gameEngine={gameEngine} turnPhase={turnPhase} isMyTurn={isMyTurn} passInfo={passInfo} getLocalPlayerId={getLocalPlayerId} localPlayerState={localPlayerState} shipAbilityMode={shipAbilityMode} hoveredTarget={hoveredTarget} setHoveredTarget={setHoveredTarget} />;
                       })()}
                       <DroneLanesDisplay player={opponentPlayerState} isPlayer={false} onLaneClick={handleLaneClick} getLocalPlayerId={getLocalPlayerId} getOpponentPlayerId={getOpponentPlayerId} abilityMode={abilityMode} validAbilityTargets={validAbilityTargets} selectedCard={selectedCard} validCardTargets={validCardTargets} multiSelectState={multiSelectState} turnPhase={turnPhase} localPlayerState={localPlayerState} opponentPlayerState={opponentPlayerState} localPlacedSections={localPlacedSections} opponentPlacedSections={opponentPlacedSections} gameEngine={gameEngine} getPlacedSectionsForEngine={getPlacedSectionsForEngine} handleTokenClick={handleTokenClick} handleAbilityIconClick={handleAbilityIconClick} selectedDrone={selectedDrone} recentlyHitDrones={recentlyHitDrones} potentialInterceptors={potentialInterceptors} droneRefs={droneRefs} mandatoryAction={mandatoryAction} setHoveredTarget={setHoveredTarget} />

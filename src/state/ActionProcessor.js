@@ -156,6 +156,9 @@ class ActionProcessor {
         case 'playerPass':
           return await this.processPlayerPass(payload);
 
+        case 'aiShipPlacement':
+          return await this.processAiShipPlacement(payload);
+
         default:
           throw new Error(`Unknown action type: ${type}`);
       }
@@ -1134,6 +1137,50 @@ class ActionProcessor {
     return {
       success: true,
       newPassInfo
+    };
+  }
+
+  /**
+   * Process AI ship placement action
+   */
+  async processAiShipPlacement(payload) {
+    const { placement, aiPersonality } = payload;
+
+    console.log('[AI SHIP PLACEMENT] Processing AI ship placement:', {
+      placement,
+      aiPersonality
+    });
+
+    // Update opponent placed sections through GameStateManager
+    console.error('🔥 CRITICAL - Setting opponentPlacedSections to:', placement);
+    this.gameStateManager.setState({
+      opponentPlacedSections: placement
+    }, 'aiShipPlacement');
+
+    // Verify it was set correctly
+    const newState = this.gameStateManager.getState();
+    console.error('🔥 CRITICAL - After setState, opponentPlacedSections is now:', newState.opponentPlacedSections);
+
+    // Add log entry
+    this.gameStateManager.addLogEntry({
+      player: 'AI Opponent',
+      actionType: 'SHIP_PLACEMENT',
+      source: 'AI System',
+      target: 'Ship Sections',
+      outcome: `${aiPersonality} deployed ship sections: ${placement.join(', ')}`
+    }, 'aiShipPlacement');
+
+    // Sync to P2P if multiplayer (though this shouldn't happen for AI placement)
+    if (this.p2pManager && this.p2pManager.isConnected) {
+      this.p2pManager.sendAction('aiShipPlacement', {
+        placement,
+        aiPersonality
+      });
+    }
+
+    return {
+      success: true,
+      placement
     };
   }
 
