@@ -6,41 +6,19 @@
 
 import { gameEngine, startingDecklist } from '../logic/gameLogic.js';
 import ActionProcessor from './ActionProcessor.js';
-import phaseManager from './PhaseManager.js';
+// PhaseManager dependency removed - using direct phase checks
 
 class GameStateManager {
   constructor() {
+    console.log('🔄 GAMESTATE INITIALIZATION: Creating new GameStateManager instance');
+
     // Event listeners for state changes
     this.listeners = new Set();
 
-    // Core game state (shared across players)
+    // Core application state (minimal until game starts)
     this.state = {
-      // --- GAME FLOW ---
-      turnPhase: 'preGame',
-      turn: 1,
-      currentPlayer: null,
-      firstPlayerOfRound: null,
-      firstPasserOfPreviousRound: null,
-      firstPlayerOverride: null,
-      passInfo: { firstPasser: null, player1Passed: false, player2Passed: false },
-      winner: null,
-
-      // --- PLAYER STATES ---
-      player1: gameEngine.initialPlayerState('Player 1', startingDecklist),
-      player2: gameEngine.initialPlayerState('Player 2', startingDecklist),
-
-      // --- SHIP PLACEMENT ---
-      placedSections: [],
-      opponentPlacedSections: [],
-      unplacedSections: [],
-      shieldsToAllocate: 0,
-
-      // --- DRONE SELECTION ---
-      droneSelectionPool: [],
-      droneSelectionTrio: [],
-
-      // --- GAME LOG ---
-      gameLog: [],
+      // --- APPLICATION STATE ---
+      appState: 'menu', // 'menu', 'inGame', 'gameOver'
 
       // --- MULTIPLAYER STATE ---
       isHost: false,
@@ -48,6 +26,26 @@ class GameStateManager {
       isConnected: false,
       opponentId: null,
       gameMode: 'local', // 'local', 'host', 'guest'
+
+      // --- GAME STATE (null until game starts) ---
+      gameActive: false,
+      turnPhase: null,
+      turn: null,
+      currentPlayer: null,
+      firstPlayerOfRound: null,
+      firstPasserOfPreviousRound: null,
+      firstPlayerOverride: null,
+      passInfo: null,
+      winner: null,
+      player1: null,
+      player2: null,
+      placedSections: [],
+      opponentPlacedSections: [],
+      unplacedSections: [],
+      shieldsToAllocate: 0,
+      droneSelectionPool: [],
+      droneSelectionTrio: [],
+      gameLog: [],
     };
 
     // Initialize action processor
@@ -56,8 +54,11 @@ class GameStateManager {
     // P2P integration will be set up lazily when needed
     this.p2pIntegrationSetup = false;
 
-    // Initialize state
-    this.reset();
+    // Log initial application state
+    console.log('🔄 GAMESTATE INITIALIZATION: GameStateManager created');
+    console.log('📱 App State:', this.state.appState);
+    console.log('🎮 Game Active:', this.state.gameActive);
+    console.log('✅ GAMESTATE INITIALIZATION: GameStateManager ready (no game active)');
   }
 
   // --- P2P INTEGRATION ---
@@ -145,27 +146,48 @@ class GameStateManager {
 
     // Extract caller information from stack trace for detailed logging
     const stack = new Error().stack;
-    const callerInfo = this.extractCallerInfo(stack);
+    const stackLines = stack ? stack.split('\n') : [];
+    const callerInfo = this.extractCallerInfo(stackLines);
 
-    // Only log ship section updates to focus on the AI placement issue
-    const criticalUpdates = Object.keys(updates).filter(key =>
-      ['opponentPlacedSections', 'placedSections'].includes(key)
-    );
-    if (criticalUpdates.length > 0) {
-      console.error('🚨 SHIP SECTIONS CHANGED:', {
-        eventType,
-        changedKeys: criticalUpdates,
-        oldValues: criticalUpdates.reduce((acc, key) => {
-          acc[key] = prevState[key];
-          return acc;
-        }, {}),
-        newValues: criticalUpdates.reduce((acc, key) => {
-          acc[key] = updates[key];
-          return acc;
-        }, {}),
-        caller: `${callerInfo.callerFunction} in ${callerInfo.callerFile}:${callerInfo.callerLine}`
-      });
+    // Check for architecture violations - App.jsx should NEVER directly update GameStateManager
+    const isAppJsxCaller = stackLines.some(line => line.includes('App.jsx'));
+    if (isAppJsxCaller) {
+      console.error('🚨 ARCHITECTURE VIOLATION: App.jsx is directly updating GameStateManager!');
+      console.error('📋 App.jsx should only call ActionProcessor or PhaseManager methods');
+      console.error('🔍 Stack trace:', stack);
     }
+
+    // Comprehensive state change logging
+    const updateKeys = Object.keys(updates);
+    const caller = `${callerInfo.primaryCaller} in ${callerInfo.primaryFile}`;
+
+    console.log(`🔍 GAMESTATE CHANGE [${eventType}] from ${caller}:`, {
+      changedKeys: updateKeys,
+      allUpdates: updates,
+      architectureViolation: isAppJsxCaller
+    });
+
+    // Special detailed logging for player state changes (skip during initialization)
+    const isInitializationEvent = ['GAME_RESET', 'INITIALIZATION'].includes(eventType);
+    if ((updates.player1 || updates.player2) && !isInitializationEvent) {
+      this.logPlayerStateChanges(updates, prevState, caller, eventType);
+    }
+
+    // Log other critical state changes
+    updateKeys.forEach(key => {
+      if (!['player1', 'player2'].includes(key)) {
+        const oldValue = prevState[key];
+        const newValue = updates[key];
+        if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+          console.log(`🔍 STATE CHANGE: ${key}`, {
+            before: oldValue,
+            after: newValue,
+            caller: caller,
+            eventType: eventType
+          });
+        }
+      }
+    });
 
     // Validate state consistency before update
     this.validateStateUpdate(updates, prevState);
@@ -256,10 +278,14 @@ class GameStateManager {
       'droneSelection': ['deckSelection'],
       'deckSelection': ['placement'],
       'placement': ['initialDraw', 'deployment'],
-      'initialDraw': ['deployment'],
+      'initialDraw': ['mandatoryDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
+      'mandatoryDiscard': ['draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
+      'draw': ['allocateShields', 'mandatoryDroneRemoval', 'deployment'],
+      'allocateShields': ['mandatoryDroneRemoval', 'deployment'],
+      'mandatoryDroneRemoval': ['deployment'],
       'deployment': ['action', 'roundEnd'],
-      'action': ['deployment', 'roundEnd', 'gameEnd'],
-      'roundEnd': ['deployment', 'gameEnd'],
+      'action': ['deployment', 'roundEnd', 'mandatoryDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'gameEnd'],
+      'roundEnd': ['mandatoryDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'gameEnd'],
       'gameEnd': []
     };
 
@@ -278,7 +304,14 @@ class GameStateManager {
     }
 
     // Skip validation during simultaneous phases - direct updates are expected
-    if (phaseManager.isSimultaneousPhase(prevState.turnPhase)) {
+    const simultaneousPhases = ['droneSelection', 'deckSelection', 'placement', 'mandatoryDiscard', 'allocateShields', 'mandatoryDroneRemoval'];
+    if (simultaneousPhases.includes(prevState.turnPhase)) {
+      return;
+    }
+
+    // Skip validation during automatic phases - GameFlowManager handles these directly
+    const automaticPhases = ['draw', 'determineFirstPlayer'];
+    if (automaticPhases.includes(prevState.turnPhase) || automaticPhases.includes(updates.turnPhase)) {
       return;
     }
 
@@ -353,6 +386,58 @@ class GameStateManager {
 
     // Validate that appropriate functions are updating game state
     this.validateFunctionAppropriateForStateUpdate(updates, prevState, isFromActionProcessor, stack);
+  }
+
+  /**
+   * Log detailed player state changes for debugging
+   */
+  logPlayerStateChanges(updates, prevState, caller, eventType) {
+    ['player1', 'player2'].forEach(playerId => {
+      if (updates[playerId]) {
+        const oldPlayer = prevState[playerId];
+        const newPlayer = updates[playerId];
+
+        console.log(`🚨 PLAYER STATE CHANGE [${playerId}] [${eventType}] from ${caller}:`);
+
+        // Critical properties that commonly cause AI issues
+        const criticalProps = ['energy', 'activeDronePool', 'hand', 'deck', 'dronesOnBoard', 'deploymentBudget', 'initialDeploymentBudget'];
+
+        criticalProps.forEach(prop => {
+          const oldValue = oldPlayer[prop];
+          const newValue = newPlayer[prop];
+
+          if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+            // Special formatting for different property types
+            if (prop === 'energy' || prop === 'deploymentBudget' || prop === 'initialDeploymentBudget') {
+              console.log(`  💰 ${prop}: ${oldValue} → ${newValue}`);
+              if (newValue === undefined || newValue === null || isNaN(newValue)) {
+                console.error(`  🚨 WARNING: ${prop} became ${newValue}!`);
+              }
+            } else if (prop === 'activeDronePool') {
+              const oldCount = Array.isArray(oldValue) ? oldValue.length : 'undefined';
+              const newCount = Array.isArray(newValue) ? newValue.length : 'undefined';
+              const oldNames = Array.isArray(oldValue) ? oldValue.map(d => d.name) : 'undefined';
+              const newNames = Array.isArray(newValue) ? newValue.map(d => d.name) : 'undefined';
+              console.log(`  🤖 ${prop}: [${oldCount} drones] → [${newCount} drones]`);
+              console.log(`    Old drones: ${oldNames}`);
+              console.log(`    New drones: ${newNames}`);
+            } else if (prop === 'hand' || prop === 'deck') {
+              const oldCount = Array.isArray(oldValue) ? oldValue.length : 'undefined';
+              const newCount = Array.isArray(newValue) ? newValue.length : 'undefined';
+              console.log(`  🃏 ${prop}: [${oldCount} cards] → [${newCount} cards]`);
+            } else if (prop === 'dronesOnBoard') {
+              const oldLaneCounts = oldValue ? `L1:${oldValue.lane1?.length || 0} L2:${oldValue.lane2?.length || 0} L3:${oldValue.lane3?.length || 0}` : 'undefined';
+              const newLaneCounts = newValue ? `L1:${newValue.lane1?.length || 0} L2:${newValue.lane2?.length || 0} L3:${newValue.lane3?.length || 0}` : 'undefined';
+              console.log(`  🛸 ${prop}: ${oldLaneCounts} → ${newLaneCounts}`);
+            } else {
+              console.log(`  📝 ${prop}:`, { before: oldValue, after: newValue });
+            }
+          }
+        });
+
+        console.log(`🔍 Full ${playerId} state:`, newPlayer);
+      }
+    });
   }
 
   /**
@@ -540,6 +625,103 @@ class GameStateManager {
     };
 
     this.setState(initialState, 'GAME_RESET');
+  }
+
+  /**
+   * Start a new game session - initialize players and game state
+   * @param {string} gameMode - 'local', 'host', 'guest'
+   * @param {Object} player1Config - Player 1 configuration
+   * @param {Object} player2Config - Player 2 configuration
+   */
+  startGame(gameMode = 'local', player1Config = {}, player2Config = {}) {
+    console.log('🎮 GAME START: Initializing new game session');
+
+    const gameState = {
+      // Activate game
+      appState: 'inGame',
+      gameActive: true,
+      gameMode: gameMode,
+
+      // Initialize game flow
+      turnPhase: 'preGame',
+      turn: 1,
+      currentPlayer: null,
+      firstPlayerOfRound: null,
+      firstPasserOfPreviousRound: null,
+      firstPlayerOverride: null,
+      passInfo: { firstPasser: null, player1Passed: false, player2Passed: false },
+      winner: null,
+
+      // Initialize players with custom configurations
+      player1: {
+        ...gameEngine.initialPlayerState(
+          player1Config.name || 'Player 1',
+          player1Config.decklist || startingDecklist
+        ),
+        ...player1Config
+      },
+      player2: {
+        ...gameEngine.initialPlayerState(
+          player2Config.name || 'Player 2',
+          player2Config.decklist || startingDecklist
+        ),
+        ...player2Config
+      },
+
+      // Initialize game components
+      placedSections: [],
+      opponentPlacedSections: [],
+      unplacedSections: [],
+      shieldsToAllocate: 0,
+      droneSelectionPool: [],
+      droneSelectionTrio: [],
+      gameLog: [],
+    };
+
+    this.setState(gameState, 'GAME_STARTED');
+
+    console.log('👤 Player 1 Created:', {
+      name: gameState.player1.name,
+      energy: gameState.player1.energy,
+      deckCount: gameState.player1.deck?.length || 0
+    });
+    console.log('👤 Player 2 Created:', {
+      name: gameState.player2.name,
+      energy: gameState.player2.energy,
+      deckCount: gameState.player2.deck?.length || 0
+    });
+    console.log('✅ GAME START: Game session initialized successfully');
+  }
+
+  /**
+   * End current game session - return to menu state
+   */
+  endGame() {
+    console.log('🎮 GAME END: Ending current game session');
+
+    this.setState({
+      appState: 'menu',
+      gameActive: false,
+      turnPhase: null,
+      turn: null,
+      currentPlayer: null,
+      firstPlayerOfRound: null,
+      firstPasserOfPreviousRound: null,
+      firstPlayerOverride: null,
+      passInfo: null,
+      winner: null,
+      player1: null,
+      player2: null,
+      placedSections: [],
+      opponentPlacedSections: [],
+      unplacedSections: [],
+      shieldsToAllocate: 0,
+      droneSelectionPool: [],
+      droneSelectionTrio: [],
+      gameLog: [],
+    }, 'GAME_ENDED');
+
+    console.log('✅ GAME END: Returned to menu state');
   }
 
   /**

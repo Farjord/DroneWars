@@ -22,8 +22,12 @@ import aiPersonalities from './data/aiData.js';
 import { aiBrain } from './logic/aiLogic.js';
 import { gameEngine, startingDecklist } from './logic/gameLogic.js';
 import { getRandomDrones, getElementCenter, getPhaseDisplayName } from './utils/gameUtils.js';
-import phaseManager from './state/PhaseManager.js';
+import { initializeDroneSelection, advanceDroneSelectionTrio } from './utils/droneSelectionUtils.js';
+import { initializeShipPlacement } from './utils/shipPlacementUtils.js';
+import gameFlowManager from './state/GameFlowManager.js';
+import simultaneousActionManager from './state/SimultaneousActionManager.js';
 import aiPhaseProcessor from './state/AIPhaseProcessor.js';
+// ActionProcessor is created internally by GameStateManager
 import CardStatHexagon from './components/ui/CardStatHexagon.jsx';
 import ActionCard from './components/ui/ActionCard.jsx';
 import DroneCard from './components/ui/DroneCard.jsx';
@@ -111,12 +115,20 @@ const App = () => {
     }
   }, [isActionInProgress, getActionQueueLength, gameState.currentPlayer, gameState.turnPhase]);
 
-  // --- PHASE MANAGER INITIALIZATION AND EVENT HANDLING ---
+  // --- MANAGER INITIALIZATION AND EVENT HANDLING ---
   useEffect(() => {
-    // Initialize PhaseManager with external dependencies
-    phaseManager.initialize(
+    // Initialize SimultaneousActionManager with external dependencies
+    simultaneousActionManager.initialize(
       gameStateManager,
       aiPhaseProcessor,
+      () => gameState.gameMode !== 'local'
+    );
+
+    // Initialize GameFlowManager with managers and dependencies
+    gameFlowManager.initialize(
+      gameStateManager,
+      simultaneousActionManager,
+      gameStateManager.actionProcessor, // Use ActionProcessor instance from GameStateManager
       () => gameState.gameMode !== 'local'
     );
 
@@ -129,6 +141,11 @@ const App = () => {
 
     console.log('🔧 PhaseManager and AIPhaseProcessor initialized');
   }, []); // Run once on component mount
+
+  // --- MODAL AND UI STATE ---
+  // MOVED UP: Must be declared before useEffect that uses setModalContent
+  const [showAiHandModal, setShowAiHandModal] = useState(false);
+  const [modalContent, setModalContent] = useState(null);
 
   // PhaseManager event listeners
   useEffect(() => {
@@ -163,11 +180,10 @@ const App = () => {
       } else if (type === 'phaseCompleted') {
         // Handle phase completion (both players done)
         if (phase === 'droneSelection') {
-          console.log('🎯 Both players completed drone selection, transitioning to deck selection');
+          console.log('🎯 Both players completed drone selection, PhaseManager will handle transition');
 
-          // Clear temporary selections and transition
+          // Clear temporary UI state only - PhaseManager handles phase transitions
           setTempSelectedDrones([]);
-          setTurnPhase('deckSelection');
           setModalContent(null);
 
           // Reset phase completion tracking
@@ -179,25 +195,47 @@ const App = () => {
             ...prev,
             droneSelection: false
           }));
+
+          // PhaseManager should handle the actual phase transition
         }
+      } else if (type === 'phaseTransition') {
+        // Handle phase transitions from GameFlowManager
+        const { newPhase, previousPhase, firstPlayerResult } = event;
+        console.log(`🔄 App.jsx handling phase transition: ${previousPhase} → ${newPhase}`);
+
+        // Handle automatic first player determination
+        if (newPhase === 'determineFirstPlayer' && firstPlayerResult) {
+          console.log('🎯 First player determined, showing modal');
+          setShowFirstPlayerModal(true);
+        }
+
+        // Safety check: Ensure placement data is initialized when entering placement phase
+        if (newPhase === 'placement') {
+          console.log('🚢 Ensuring placement data is initialized');
+
+          // Check if unplacedSections exists and has content
+          if (!unplacedSections || unplacedSections.length === 0) {
+            console.log('⚠️ Missing placement data, initializing...');
+            const placementData = initializeShipPlacement();
+            updateGameState(placementData);
+          }
+        }
+
       }
     };
 
-    const unsubscribe = phaseManager.subscribe(handlePhaseEvent);
-    return unsubscribe;
+    // Subscribe to both managers for different types of events
+    const unsubscribeGameFlow = gameFlowManager.subscribe(handlePhaseEvent);
+    const unsubscribeSimultaneous = simultaneousActionManager.subscribe(handlePhaseEvent);
+
+    return () => {
+      unsubscribeGameFlow();
+      unsubscribeSimultaneous();
+    };
   }, [isMultiplayer, getLocalPlayerId, setTurnPhase, setModalContent]);
 
-  // Start drone selection phase when entering droneSelection
-  useEffect(() => {
-    if (gameState.turnPhase === 'droneSelection') {
-      console.log('🚀 Starting drone selection phase');
-      phaseManager.startSimultaneousPhase('droneSelection');
-    }
-  }, [gameState.turnPhase]);
-
-  // --- MODAL AND UI STATE ---
-  const [showAiHandModal, setShowAiHandModal] = useState(false);
-  const [modalContent, setModalContent] = useState(null);
+  // GameFlowManager now handles phase transitions automatically
+  // No manual phase starting needed
 
   // --- MULTIPLAYER PHASE SYNC STATE ---
   const [opponentPhaseCompletion, setOpponentPhaseCompletion] = useState({
@@ -864,7 +902,7 @@ const App = () => {
 
     // Debug: Log the target drone's state before game engine call
     if (target && target.id && target.owner) {
-        const targetPlayerState = target.owner === getLocalPlayerId() ? gameState.player1 : gameState.player2;
+        const targetPlayerState = target.owner === getLocalPlayerId() ? getLocalPlayerState() : getOpponentPlayerState();
         let targetDrone = null;
         for (const [lane, drones] of Object.entries(targetPlayerState.dronesOnBoard)) {
             targetDrone = drones.find(drone => drone.id === target.id);
@@ -1049,7 +1087,7 @@ const App = () => {
         fromLane,
         toLane,
         localPlayerState,
-        gameState.player2,
+        getOpponentPlayerState(),
         getPlacedSectionsForEngine(),
         {
             logCallback: addLogEntry,
@@ -1088,7 +1126,7 @@ const App = () => {
         fromLane,
         toLane,
         localPlayerState,
-        gameState.player2,
+        getOpponentPlayerState(),
         getPlacedSectionsForEngine(),
         {
             logCallback: addLogEntry,
@@ -1788,7 +1826,7 @@ const App = () => {
                const onDestroyUpdates = gameEngine.onDroneDestroyed(newOpponentPlayer, droneToDestroy);
                Object.assign(newOpponentPlayer, onDestroyUpdates);
            }
-           newOpponentPlayer.dronesOnBoard = gameEngine.updateAuras(newOpponentPlayer, gameState.player1, getPlacedSectionsForEngine());
+           newOpponentPlayer.dronesOnBoard = gameEngine.updateAuras(newOpponentPlayer, getLocalPlayerState(), getPlacedSectionsForEngine());
            updatePlayerState(getOpponentPlayerId(), newOpponentPlayer);
         }
       }
@@ -1965,8 +2003,8 @@ const App = () => {
    * @param {Object} selectedAI - The selected AI personality data
    */
   const handleSelectOpponent = (selectedAI) => {
+    console.log('🎮 Starting new game against AI:', selectedAI.name);
 
-    // 1. Set up the opponent (Player 2) with the selected AI's data
     // Find the full drone objects from the collection based on the names in the AI's pool
     const aiDrones = fullDroneCollection.filter(d => selectedAI.dronePool.includes(d.name));
 
@@ -1976,38 +2014,32 @@ const App = () => {
       aiInitialCounts[drone.name] = 0;
     });
 
-    // Create new state for Player 2 and update via GameStateManager
-    const newPlayer2State = {
-      ...gameEngine.initialPlayerState(selectedAI.name, selectedAI.decklist), // Use AI's name and decklist
-      activeDronePool: aiDrones,
-      deployedDroneCounts: aiInitialCounts,
-      aiPersonality: selectedAI, // Store the full AI personality data
-    };
+    // Start the game session with proper player configurations
+    gameStateManager.startGame('local',
+      { name: 'Player 1' }, // Player 1 config
+      {
+        name: selectedAI.name,
+        decklist: selectedAI.decklist,
+        activeDronePool: aiDrones,
+        deployedDroneCounts: aiInitialCounts,
+        aiPersonality: selectedAI
+      }
+    );
 
-    updatePlayerState(getOpponentPlayerId(), newPlayer2State);
-    // 2. Standard game start procedure
-    setTurnPhase('droneSelection'); // CHANGED: This now sends you to drone selection.
-    // Randomly place the opponent's ship sections
-    const sections = Object.keys(opponentPlayerState.shipSections);
-    const shuffledSections = sections.sort(() => 0.5 - Math.random());
-    updateGameState({ opponentPlacedSections: shuffledSections });
-    
-    // 3. Set the initial modal message for the player
+    // Start game flow after game session is initialized
+    gameFlowManager.startGameFlow('droneSelection');
+
+    // TODO: Ship placement should be handled by PhaseManager/AIPhaseProcessor, not App.jsx
+    // Removing architecture violation - opponentPlacedSections will be set by proper phase management
+
+    // Set the initial modal message for the player (UI concern)
     setModalContent({
-        title: 'Phase 2: Choose Your Drones', // CHANGED: Updated title for the modal.
-        text: 'Select 5 drones from your full collection to add to your Active Drone Pool. These are the drones you can launch during the game. Once you have made your selection, click "Confirm Selection".', // CHANGED: Updated instructions.
+        title: 'Phase 2: Choose Your Drones',
+        text: 'Select 5 drones from your full collection to add to your Active Drone Pool. These are the drones you can launch during the game. Once you have made your selection, click "Confirm Selection".',
         isBlocking: true
     });
-    
-    // ADDED: This code prepares the drones for the selection screen. It was previously in handlePlaceSection.
-    const initialPool = [...fullDroneCollection].sort(() => 0.5 - Math.random());
-    const firstTrio = initialPool.slice(0, 3);
-    const remaining = initialPool.slice(3);
 
-    updateGameState({
-      droneSelectionTrio: firstTrio,
-      droneSelectionPool: remaining
-    });
+    // Clear UI state
     setTempSelectedDrones([]);
   };
     
@@ -2152,10 +2184,9 @@ const App = () => {
         const newPlaced = [...localPlacedSections];
         newPlaced[laneIndex] = null; // Remove from lane
 
-        // Use direct GameStateManager updates for placement phase
+        // Update local player's placed sections (always update placedSections for local player)
         updateGameState({
-          placedSections: gameState.gameMode === 'guest' ? opponentPlacedSections : newPlaced,
-          opponentPlacedSections: gameState.gameMode === 'guest' ? newPlaced : placedSections,
+          placedSections: newPlaced,
           unplacedSections: [...unplacedSections, sectionName]
         });
 
@@ -2190,11 +2221,10 @@ const App = () => {
         const newUnplaced = [...unplacedSections];
         newUnplaced.splice(oldIndexOfSelected, 1, sectionToSwap);
 
-        // Use direct GameStateManager updates for placement phase
+        // Update local player's placement state (always update placedSections for local player)
         updateGameState({
           unplacedSections: newUnplaced,
-          placedSections: gameState.gameMode === 'guest' ? opponentPlacedSections : newPlaced,
-          opponentPlacedSections: gameState.gameMode === 'guest' ? newPlaced : placedSections
+          placedSections: newPlaced
         });
 
       } else {
@@ -2204,8 +2234,7 @@ const App = () => {
 
         // Use direct GameStateManager updates for placement phase
         updateGameState({
-          placedSections: gameState.gameMode === 'guest' ? opponentPlacedSections : newPlaced,
-          opponentPlacedSections: gameState.gameMode === 'guest' ? newPlaced : placedSections,
+          placedSections: newPlaced,
           unplacedSections: unplacedSections.filter(s => s !== selectedSectionForPlacement)
         });
       }
@@ -2218,9 +2247,8 @@ const App = () => {
 
   /**
    * HANDLE CONFIRM PLACEMENT
-   * Finalizes ship section placement and initiates initial card draw.
-   * Sets up both players' hands and transitions to first turn determination.
-   * Uses direct GameStateManager updates for placement state changes.
+   * Finalizes ship section placement using PhaseManager.
+   * Validates placement and delegates to PhaseManager for processing.
    */
   const handleConfirmPlacement = async () => {
     const { turnPhase } = gameState;
@@ -2230,65 +2258,56 @@ const App = () => {
 
     console.log(`🔧 handleConfirmPlacement called`);
 
-    // Draw cards for local player using direct updates
-    drawPlayerHand();
-
-    // In local mode, also draw cards for AI player using direct updates
-    if (!isMultiplayer()) {
-      let newDeck = [...opponentPlayerState.deck];
-      let newHand = [];
-      const handSize = gameEngine.calculateEffectiveShipStats(opponentPlayerState, opponentPlacedSections).totals.handLimit;
-
-      for (let i = 0; i < handSize; i++) {
-        if (newDeck.length > 0) {
-          newHand.push(newDeck.pop());
-        } else {
-          break;
-        }
-      }
-      updatePlayerState(getOpponentPlayerId(), { ...opponentPlayerState, deck: newDeck, hand: newHand });
+    // Validate that all sections are placed
+    const hasEmptySections = localPlacedSections.some(section => section === null || section === undefined);
+    if (hasEmptySections) {
+      setModalContent({
+        title: 'Incomplete Placement',
+        text: 'All ship sections must be placed before confirming placement.',
+        onClose: () => setModalContent(null),
+        isBlocking: false
+      });
+      return;
     }
 
-    console.log(`🔧 About to call sendPhaseCompletion('placement')`);
-    // Send completion notification to opponent
-    sendPhaseCompletion('placement');
+    console.log(`🔧 Submitting placement to PhaseManager:`, localPlacedSections);
 
-    console.log(`🔧 About to check if both players are ready`);
-    // Check if both players are ready to proceed
-    if (areBothPlayersReady('placement')) {
-      console.log(`🔧 Both players ready! Proceeding to next phase`);
+    // Submit placement to SimultaneousActionManager
+    try {
+      const submissionResult = await simultaneousActionManager.submitPlacement(getLocalPlayerId(), localPlacedSections);
 
-      // Use direct GameStateManager updates for phase transition during placement
-      setTurnPhase('initialDraw');
-
-      const proceed = async () => {
-        setModalContent(null);
-        await proceedToFirstTurn();
-      };
-
-      // In single player mode, automatically proceed without modal
-      if (!isMultiplayer()) {
-        console.log('🔧 Single player mode: automatically proceeding to first turn');
-        await proceed();
-      } else {
+      if (!submissionResult.success) {
+        console.error('❌ Placement submission failed:', submissionResult.error);
         setModalContent({
-            title: 'Start of Turn: Cards Drawn',
-            text: 'You have automatically drawn up to your hand limit. The first player will now be determined.',
-            onClose: proceed,
-            isBlocking: true,
-            children: (
-              <div className="flex justify-center mt-6">
-                <button onClick={proceed} className="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors">
-                  Continue
-                </button>
-              </div>
-            )
+          title: 'Placement Error',
+          text: submissionResult.error,
+          onClose: () => setModalContent(null),
+          isBlocking: false
+        });
+        return;
+      }
+
+      console.log('✅ Placement submitted successfully:', submissionResult);
+
+      // In multiplayer mode, show waiting message if opponent hasn't completed
+      if (isMultiplayer() && !submissionResult.data.bothComplete) {
+        setModalContent({
+          title: 'Placement Confirmed',
+          text: 'Your ship placement has been confirmed. Waiting for opponent to complete their placement...',
+          onClose: () => setModalContent(null),
+          isBlocking: false
         });
       }
-    } else {
-      console.log(`🔧 Not both players ready yet, staying in placement phase`);
+
+    } catch (error) {
+      console.error('❌ Error submitting placement:', error);
+      setModalContent({
+        title: 'Placement Error',
+        text: 'An error occurred while submitting placement. Please try again.',
+        onClose: () => setModalContent(null),
+        isBlocking: false
+      });
     }
-    // If not both ready in multiplayer, stay in placement phase and let WaitingForOpponentScreen handle it
   };
 
   /**
@@ -2593,7 +2612,8 @@ const App = () => {
    */
   const handleGameAction = async (actionType, payload) => {
     const phase = gameState.turnPhase;
-    const isSequential = phaseManager.isSequentialPhase(phase);
+    // TODO: Get phase type from GameFlowManager
+    const isSequential = ['deployment', 'action'].includes(phase);
 
     console.log(`[PHASE ROUTING] ${actionType} in ${phase} → ${isSequential ? 'ActionProcessor' : 'Direct Update'}`);
 
@@ -2741,7 +2761,7 @@ const App = () => {
 
         // Phase transition actions (for simultaneous phases)
         case 'phaseTransition':
-          if (phaseManager.isSimultaneousPhase(turnPhase)) {
+          if (!['deployment', 'action'].includes(turnPhase)) {
             console.log(`🔄 Simultaneous phase transition: ${turnPhase} -> ${payload.newPhase}`);
             setTurnPhase(payload.newPhase);
 
@@ -3188,66 +3208,7 @@ const App = () => {
   };
 
 
-  /**
-   * START PLACEMENT PHASE
-   * Initiates ship section placement phase.
-   * Sets up unplaced sections and placement UI state.
-   */
-  const startPlacementPhase = async () => {
-    updateGameState({ unplacedSections: ['bridge', 'powerCell', 'droneControlHub'] });
-    setSelectedSectionForPlacement(null);
-
-    // Reset player sections, but handle opponent sections differently for single vs multiplayer
-    if (isMultiplayer()) {
-      updateGameState({ placedSections: Array(3).fill(null), opponentPlacedSections: Array(3).fill(null) });
-    } else {
-      // In single player, only reset player sections - AI sections will be set by AI placement logic
-      updateGameState({ placedSections: Array(3).fill(null) });
-    }
-
-    // In single player mode, automatically place AI opponent's ship sections
-    if (!isMultiplayer()) {
-      // Get AI personality ship deployment configuration
-      const aiPersonality = opponentPlayerState.aiPersonality;
-      let aiPlacedSections;
-
-      if (aiPersonality && aiPersonality.shipDeployment) {
-        // Use AI's custom ship deployment strategy
-        aiPlacedSections = aiPersonality.shipDeployment.placement;
-        console.log(`🤖 AI "${aiPersonality.name}" ship sections deployed using ${aiPersonality.shipDeployment.strategy} strategy:`, {
-          placement: aiPlacedSections,
-          reasoning: aiPersonality.shipDeployment.reasoning
-        });
-      } else {
-        // Fallback to default placement if AI data doesn't have ship deployment config
-        aiPlacedSections = ['bridge', 'droneControlHub', 'powerCell'];
-        console.log('🤖 AI ship sections auto-placed (default):', aiPlacedSections);
-      }
-
-      await processAction('aiShipPlacement', {
-        placement: aiPlacedSections,
-        aiPersonality: aiPersonality?.name || 'Default'
-      });
-
-      // Debug: Verify the sections were set correctly
-      console.log('🔍 [DEBUG] After setting opponent sections in startPlacementPhase:', {
-        aiPlacedSections,
-        gameStateAfterUpdate: gameState.opponentPlacedSections,
-        gameMode: gameState.gameMode
-      });
-    }
-
-    await processAction('phaseTransition', {
-      newPhase: 'placement',
-      trigger: 'startPlacementPhase'
-    });
-
-    setModalContent({
-      title: 'Phase 3: Place Your Ship Sections',
-      text: 'Now, place your ship sections. The middle lane provides a strategic bonus to whichever section is placed there.',
-      isBlocking: true,
-    });
-  };
+  // Legacy startPlacementPhase function removed - now handled by GameFlowManager + utility functions
 
   /**
    * HANDLE DECK CHOICE
@@ -3269,11 +3230,15 @@ const App = () => {
       const localPlayerId = getLocalPlayerId();
       const standardDeck = gameEngine.buildDeckFromList(startingDecklist);
 
-      // Use direct GameStateManager updates for deck selection phase
-      updatePlayerState(localPlayerId, {
-        ...gameState[localPlayerId],
-        deck: standardDeck
-      });
+      // REFACTORED: Use SimultaneousActionManager to submit deck selection
+      const submissionResult = simultaneousActionManager.submitDeckSelection(localPlayerId, standardDeck);
+
+      if (!submissionResult.success) {
+        console.error('❌ Deck selection submission failed:', submissionResult.error);
+        return;
+      }
+
+      console.log('✅ Standard deck selection submitted to PhaseManager');
 
       addLogEntry({
         player: 'SYSTEM',
@@ -3283,20 +3248,11 @@ const App = () => {
         outcome: 'Player selected the Standard Deck.'
       }, 'handleDeckChoice');
 
-      // Send completion notification to opponent for multiplayer sync
-      sendPhaseCompletion('deckSelection');
-
-      // Handle phase transition when both players ready
-      if (areBothPlayersReady('deckSelection')) {
-        console.log('🔧 Both players ready for deck selection, starting placement phase');
-        startPlacementPhase();
-      } else {
-        console.log('🔧 Waiting for opponent to complete deck selection');
-      }
     } else if (choice === 'custom') {
       console.log('🔧 Transitioning to deck building phase');
 
-      // Use direct GameStateManager updates for phase transition during simultaneous phase
+      // REFACTORED: Use PhaseManager to handle phase transition
+      // For now, still use direct transition - will be refactored when we handle deckBuilding phase
       setTurnPhase('deckBuilding');
     }
   };
@@ -3355,23 +3311,16 @@ const App = () => {
     const decklist = Object.entries(deck).map(([id, quantity]) => ({ id, quantity }));
     const newPlayerDeck = gameEngine.buildDeckFromList(decklist);
 
-    // Use direct GameStateManager updates for deck building phase
+    // REFACTORED: Use SimultaneousActionManager to submit deck selection
     const localPlayerId = getLocalPlayerId();
-    updatePlayerState(localPlayerId, {
-      ...gameState[localPlayerId],
-      deck: newPlayerDeck
-    });
+    const submissionResult = simultaneousActionManager.submitDeckSelection(localPlayerId, newPlayerDeck);
 
-    // Send completion notification to opponent for multiplayer sync
-    sendPhaseCompletion('deckSelection');
-
-    // Handle phase transition when both players ready
-    if (areBothPlayersReady('deckSelection')) {
-      console.log('🔧 Both players ready for custom deck, starting placement phase');
-      startPlacementPhase();
-    } else {
-      console.log('🔧 Waiting for opponent to complete deck selection');
+    if (!submissionResult.success) {
+      console.error('❌ Custom deck selection submission failed:', submissionResult.error);
+      return;
     }
+
+    console.log('✅ Custom deck selection submitted to PhaseManager');
   };
 
   /**
@@ -3444,14 +3393,10 @@ const App = () => {
 
     if (newSelection.length < 5) {
       // Continue selection process - advance to next trio
-      const newTrio = droneSelectionPool.slice(0, 3);
-      const remaining = droneSelectionPool.slice(3);
+      const nextTrioData = advanceDroneSelectionTrio(droneSelectionPool);
 
-      // Use direct GameStateManager updates for drone selection phase
-      updateGameState({
-        droneSelectionTrio: newTrio,
-        droneSelectionPool: remaining
-      });
+      // REFACTORED: Update drone selection pool directly
+      updateGameState(nextTrioData);
 
       console.log('🔧 Advanced to next trio, selected:', newSelection.length, 'of 5 drones');
     } else {
@@ -3473,7 +3418,7 @@ const App = () => {
     console.log('🔧 handleContinueDroneSelection called with:', tempSelectedDrones.length, 'drones');
 
     const localPlayerId = getLocalPlayerId();
-    const submissionResult = phaseManager.submitDroneSelection(localPlayerId, tempSelectedDrones);
+    const submissionResult = simultaneousActionManager.submitDroneSelection(localPlayerId, tempSelectedDrones);
 
     if (!submissionResult.success) {
       console.error('❌ Drone selection submission failed:', submissionResult.error);
@@ -3481,6 +3426,9 @@ const App = () => {
     }
 
     console.log('✅ Drone selection submitted to PhaseManager');
+
+    // Clear temporary selection after successful submission
+    setTempSelectedDrones([]);
 
     // PhaseManager will handle:
     // - GameStateManager updates when both players complete
@@ -4220,7 +4168,7 @@ useEffect(() => {
        Object.assign(newPlayerState, onDestroyUpdates);
 
        // Update auras
-       newPlayerState.dronesOnBoard = gameEngine.updateAuras(newPlayerState, gameState.player2, getPlacedSectionsForEngine());
+       newPlayerState.dronesOnBoard = gameEngine.updateAuras(newPlayerState, getOpponentPlayerState(), getPlacedSectionsForEngine());
 
        updatePlayerState(getLocalPlayerId(), newPlayerState);
    }
@@ -4244,7 +4192,7 @@ useEffect(() => {
                         const onDestroyUpdates = gameEngine.onDroneDestroyed(newOpponentPlayer, droneToDestroy);
                         Object.assign(newOpponentPlayer, onDestroyUpdates);
                     }
-                    newOpponentPlayer.dronesOnBoard = gameEngine.updateAuras(newOpponentPlayer, gameState.player1, getPlacedSectionsForEngine());
+                    newOpponentPlayer.dronesOnBoard = gameEngine.updateAuras(newOpponentPlayer, getLocalPlayerState(), getPlacedSectionsForEngine());
                     updatePlayerState(getOpponentPlayerId(), newOpponentPlayer);
             }
            handleStartDeploymentPhase();
@@ -4517,8 +4465,8 @@ useEffect(() => {
                           const localPlayerCompleted = localPhaseCompletion.droneSelection;
 
                           if (isMultiplayer() && localPlayerCompleted && !opponentPhaseCompletion.droneSelection) {
-                            // Get drone names from PhaseManager commitments or fallback to GameState
-                            const commitmentStatus = phaseManager.getPhaseCommitmentStatus('droneSelection');
+                            // Get drone names from SimultaneousActionManager commitments or fallback to GameState
+                            const commitmentStatus = simultaneousActionManager.getPhaseCommitmentStatus('droneSelection');
                             const localDrones = commitmentStatus.commitments?.player1?.drones ||
                                                localPlayerState.activeDronePool ||
                                                tempSelectedDrones;
@@ -5235,32 +5183,19 @@ useEffect(() => {
         <MultiplayerLobby
           onGameStart={() => {
             setShowMultiplayerLobby(false);
-            setTurnPhase('droneSelection');
+            console.log('🎮 Starting multiplayer game');
 
-            // Initialize drone selection pools for multiplayer
-            const initialPool = [...fullDroneCollection].sort(() => 0.5 - Math.random());
-            const firstTrio = initialPool.slice(0, 3);
-            const remaining = initialPool.slice(3);
+            // Start multiplayer game session with empty decks and drone pools for customization
+            gameStateManager.startGame(
+              gameState.gameMode,
+              { name: 'Player 1', deck: [], activeDronePool: [] },
+              { name: 'Player 2', deck: [], activeDronePool: [] }
+            );
 
-            updateGameState({
-              droneSelectionTrio: firstTrio,
-              droneSelectionPool: remaining
-            });
+            // Start game flow after game session is initialized
+            gameFlowManager.startGameFlow('droneSelection');
+
             setTempSelectedDrones([]);
-
-            // Clear player decks for multiplayer deck selection
-            const localPlayerId = getLocalPlayerId();
-            const opponentPlayerId = getOpponentPlayerId();
-            updatePlayerState(localPlayerId, {
-              ...gameState[localPlayerId],
-              deck: [],
-              activeDronePool: []
-            });
-            updatePlayerState(opponentPlayerId, {
-              ...gameState[opponentPlayerId],
-              deck: [],
-              activeDronePool: []
-            });
 
             // Set the initial modal message for multiplayer
             setModalContent({

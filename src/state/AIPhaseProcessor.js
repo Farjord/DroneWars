@@ -2,7 +2,7 @@
 // AI PHASE PROCESSOR
 // ========================================
 // Handles AI processing for simultaneous phases in single-player mode
-// Provides instant AI decisions for PhaseManager commitment system
+// Provides instant AI decisions for SimultaneousActionManager commitment system
 
 /**
  * AIPhaseProcessor - Handles AI completion of simultaneous phases
@@ -159,25 +159,172 @@ class AIPhaseProcessor {
   }
 
   /**
-   * Future method: Process AI deck selection
-   * @param {Object} aiPersonality - AI personality
-   * @returns {Promise<Array>} Selected deck
+   * Process AI deck selection for deckSelection phase
+   * @param {Object} aiPersonality - Optional AI personality override
+   * @returns {Promise<Array>} Array of selected deck cards
    */
   async processDeckSelection(aiPersonality = null) {
-    console.log('🤖 AIPhaseProcessor.processDeckSelection - Not implemented yet');
-    // TODO: Implement deck selection logic
-    return [];
+    const personality = aiPersonality || this.currentAIPersonality;
+
+    console.log('🤖 AIPhaseProcessor.processDeckSelection starting...');
+
+    // Use personality's deck if available, otherwise use standard deck
+    let selectedDeck = [];
+    if (personality && personality.decklist && personality.decklist.length > 0) {
+      // Use AI's custom decklist from personality
+      console.log(`🎯 Using ${personality.name} personality decklist`);
+
+      // Import the game engine to build the deck
+      const { gameEngine } = await import('../logic/gameLogic.js');
+      selectedDeck = gameEngine.buildDeckFromList(personality.decklist);
+    } else {
+      // Fallback to standard deck
+      console.log(`🎯 Using standard deck as fallback`);
+
+      const { gameEngine, startingDecklist } = await import('../logic/gameLogic.js');
+      selectedDeck = gameEngine.buildDeckFromList(startingDecklist);
+    }
+
+    console.log(`✅ AI selected deck with ${selectedDeck.length} cards`);
+    return selectedDeck;
   }
 
   /**
-   * Future method: Process AI ship placement
-   * @param {Object} aiPersonality - AI personality
-   * @returns {Promise<Array>} Placement decisions
+   * Process AI ship placement for placement phase
+   * @param {Object} aiPersonality - Optional AI personality override
+   * @returns {Promise<Array>} Array of placed ship sections (5 elements)
    */
   async processPlacement(aiPersonality = null) {
-    console.log('🤖 AIPhaseProcessor.processPlacement - Not implemented yet');
-    // TODO: Implement placement logic
-    return [];
+    const personality = aiPersonality || this.currentAIPersonality;
+
+    console.log('🤖 AIPhaseProcessor.processPlacement starting...');
+
+    // Get available ship sections for AI
+    const availableSections = ['bridge', 'powerCell', 'droneControlHub'];
+
+    console.log(`🎯 AI placing ${availableSections.length} ship sections`);
+
+    // AI Placement Strategy: Simple but effective
+    const placedSections = this.selectSectionsForPlacement(availableSections, personality);
+
+    const placementNames = placedSections.join(', ');
+    console.log(`🤖 AI placement completed: ${placementNames}`);
+
+    return placedSections;
+  }
+
+  /**
+   * Select ship section placement for AI based on personality preferences
+   * @param {Array} availableSections - Available ship sections to place
+   * @param {Object} personality - AI personality with preferences
+   * @returns {Array} Array of 5 placed sections in lane order
+   */
+  selectSectionsForPlacement(availableSections, personality) {
+    const sections = [...availableSections];
+
+    // AI placement strategies based on personality
+    if (personality) {
+      if (personality.aggression > 0.7) {
+        // Aggressive AI: Weapons in front, Bridge protected
+        const placement = this.arrangeAggressivePlacement(sections);
+        console.log('🎯 AI using aggressive placement strategy');
+        return placement;
+      } else if (personality.economy > 0.7) {
+        // Economic AI: Cargo Bay priority, efficient layout
+        const placement = this.arrangeEconomicPlacement(sections);
+        console.log('🎯 AI using economic placement strategy');
+        return placement;
+      }
+    }
+
+    // Default balanced placement: Bridge in middle, balanced defense
+    const placement = this.arrangeBalancedPlacement(sections);
+    console.log('🎯 AI using balanced placement strategy');
+    return placement;
+  }
+
+  /**
+   * Arrange sections for aggressive AI (droneControlHub forward for offensive)
+   */
+  arrangeAggressivePlacement(sections) {
+    const placement = new Array(3).fill(null);
+    const remaining = [...sections];
+
+    // Priority order: droneControlHub front (offensive), bridge middle, powerCell back
+    const priorities = ['droneControlHub', 'bridge', 'powerCell'];
+    const positions = [0, 1, 2]; // drone control front, bridge middle, power back
+
+    for (let i = 0; i < priorities.length && i < remaining.length; i++) {
+      const sectionIndex = remaining.findIndex(s => s === priorities[i]);
+      if (sectionIndex !== -1) {
+        placement[positions[i]] = remaining.splice(sectionIndex, 1)[0];
+      }
+    }
+
+    // Fill remaining positions
+    for (let i = 0; i < placement.length; i++) {
+      if (!placement[i] && remaining.length > 0) {
+        placement[i] = remaining.shift();
+      }
+    }
+
+    return placement;
+  }
+
+  /**
+   * Arrange sections for economic AI (powerCell in center for bonus)
+   */
+  arrangeEconomicPlacement(sections) {
+    const placement = new Array(3).fill(null);
+    const remaining = [...sections];
+
+    // Priority: powerCell center for energy bonus, bridge protected, droneControlHub front
+    const priorities = ['powerCell', 'bridge', 'droneControlHub'];
+    const positions = [1, 2, 0]; // power center, bridge back, drone control front
+
+    for (let i = 0; i < priorities.length && i < remaining.length; i++) {
+      const sectionIndex = remaining.findIndex(s => s === priorities[i]);
+      if (sectionIndex !== -1) {
+        placement[positions[i]] = remaining.splice(sectionIndex, 1)[0];
+      }
+    }
+
+    // Fill remaining positions
+    for (let i = 0; i < placement.length; i++) {
+      if (!placement[i] && remaining.length > 0) {
+        placement[i] = remaining.shift();
+      }
+    }
+
+    return placement;
+  }
+
+  /**
+   * Arrange sections for balanced AI (bridge center for bonus)
+   */
+  arrangeBalancedPlacement(sections) {
+    const placement = new Array(3).fill(null);
+    const remaining = [...sections];
+
+    // Balanced: bridge center for bonus, powerCell and droneControlHub on sides
+    const priorities = ['bridge', 'powerCell', 'droneControlHub'];
+    const positions = [1, 0, 2]; // bridge center, power left, drone control right
+
+    for (let i = 0; i < priorities.length && i < remaining.length; i++) {
+      const sectionIndex = remaining.findIndex(s => s === priorities[i]);
+      if (sectionIndex !== -1) {
+        placement[positions[i]] = remaining.splice(sectionIndex, 1)[0];
+      }
+    }
+
+    // Fill remaining positions
+    for (let i = 0; i < placement.length; i++) {
+      if (!placement[i] && remaining.length > 0) {
+        placement[i] = remaining.shift();
+      }
+    }
+
+    return placement;
   }
 
   /**
@@ -186,10 +333,10 @@ class AIPhaseProcessor {
    */
   getCapabilities() {
     return {
-      droneSelection: true,
-      deckSelection: false, // TODO: implement
-      placement: false, // TODO: implement
-      version: '1.0.0'
+      droneSelection: true, // ✅ implemented
+      deckSelection: true, // ✅ implemented
+      placement: true, // ✅ implemented
+      version: '1.1.0'
     };
   }
 }

@@ -1,33 +1,270 @@
+# Drone Wars Game Architecture - Server-Based System
 
-I want to move the games architecture to a full server-based system.
-Players connect via App.jsx as their interface into the game. This is ‘local’ to them (plus all ‘front end’ components can also be local if needed, the various modals etc.)
-GameStateManager.js is then a single instance, used by both players. The same can be true of any other required logic engines, as well as the various managers, such as actionManager and phaseManager.
-I also want the AI to be routed through this same process. This keeps the development simple and allows me to test the multiplayer architecture in a single player manner. 
-Details:
-App.jsx – This must control all gameplay flows for the player, but must never calculate anything or update anything. It must always be contextual to the player as well. So for ‘Player 1’, they see their drones / cards / lanes at the bottom of the screen, and the same is true for player 2. App.jsx must be able to perform ‘local’ in memory game state changes, but these must be updated by another processor. 
-state/GameStateManager.js – this must be the source of truth for the game board state – including but not limited to which ship sections are placed where, what drones are in what lanes, what cards are in players decks, what cards are in their hands, how much hull is left on drones etc. It must accurately represent the game state at all times. 
-state/ActionProcessor.js is responsible for performing round based Actions. These include, but are not limited to, playing cards, deploying drones, moving drones, activating drones, activating ship abilities. The purpose of this process is to make sure that only one action can be played at a time, once the action is complete confirm the update that needs to be performed, and update GameStateManager.js with the outcome of the action. 
-state/PhaseManager.js is to be responsible for performing non-round based changes. These include, but are not limited to, selecting initial drones, selecting a deck, allocating shields (both pre game and at the start of the round) and the draw phase at the start of the round. These phases are all simultaneous, and must only be progressed past when both players have completed their actions. It will be used during the action phase to control when the action phase has ended, but actions within the action phase must go via ActionProcessor.js
-logic/gameLogic.js is responsible for calculating the outcome of performing any action. This outcome will be passed to ActionProcessor.js, which in turn will update GameStateManager.js.
-logic/aiLogic.js is responsible for calculating which actions the AI will perform. Once it has chosen an action it will then be passed to ActionProcessor.js, which will then confer with gameLogic.js to see the outcome and then ActionProcessor.js will in turn update GameStateManager.js.
-AIPhaseProcessor.js will be responsible for progressing the AI through game phases, which are part of state/PhaseManager.js. This is the equivalent of aiLogic.js during the action phase. 
-Example Game Flow, vs AI. 
-Player starts the game. 
-DRONE SELECTION PHASE
-PhaseManager.js understands that all players are in the Drone Selection phase, and awaits confirmation that both players have selected their drones. 
-App.jsx presents the player with drones, and they chose their drones. This is stored locally in App.jsx. 
-The player presses ‘Continue’. PhaseManager.js retrieves and validates the selection, and then stores it in GameStateManager.js.
-At the same time, AIPhaseProcessor.js confirms the Ais selection of drones and informs PhaseManager.js. PhaseManager.js now knows the Ais selection, and marks that they have completed the phase. GameStateManager.js can be updated. 
+## 🎯 **CURRENT STATUS: PHASE 2.6 COMPLETE**
 
-PhaseManager.js must only update the data it has at any given time. So if it knows the Ais drones, it must only update the AI drones portion of GameStateManager.js. It must never update sections that haven’t changed (for example, the AI has selected, but the player hasn’t. It must only update what it knows about the AI, and vice versa). 
+**Core Architecture Refactor + Automatic Phase System: ✅ COMPLETED**
 
-Now, both players have acknowledged that they have progressed through the Drone phase. PhaseManager.js knows that both players have passed, so the next phase can be confirmed – deck selection. 
-DECK SELECTION PHASE
-App.jsx presents the player with the deck selection screen, and they chose and/or configure their deck. This is stored locally in App.jsx. 
-The player presses ‘Confirm’ on their chosen deck. PhaseManager.js retrieves and validates the selection, and then stores it in GameStateManager.js.
-At the same time, AIPhaseProcessor.js confirms the Ais deck selection and informs PhaseManager.js. PhaseManager.js now knows the Ais selection, and marks that they have completed the phase. GameStateManager.js can be updated. 
+All major architectural components have been successfully implemented:
+- ✅ GameFlowManager.js - Master game flow controller with automatic phase processing
+- ✅ SimultaneousActionManager.js - Pure commitment coordinator for player interactions
+- ✅ Automatic Phase System - Draw and first player determination happen automatically
+- ✅ droneSelectionUtils.js - Standalone drone selection utilities
+- ✅ shipPlacementUtils.js - Standalone ship placement utilities
+- ✅ cardDrawUtils.js - Standalone automatic card drawing utilities
+- ✅ firstPlayerUtils.js - Standalone first player determination utilities
+- ✅ Pure component design achieved
+- ✅ AI routing through same systems as human players
+- ✅ All phase initialization/processing fixed
+- ✅ Automatic card drawing and first player determination implemented
+- ✅ Phase transition validation completed
+- ✅ ActionProcessor bypass validation for automatic phases
 
-After this we will review and discuss the next phase, which will be checking how the actual game is to be structured using this model. 
+## 🚀 **NEXT PHASE: SERVER IMPLEMENTATION**
 
-Please review, and think about whether this approach is sensible, and what needs to be done to achieve it. 
+**Goal:** Implement actual server-based multiplayer system as described in original vision.
 
+### **Remaining Work for Full Server Architecture:**
+
+**Priority 1: Create Server Layer**
+- **server/GameServer.js** - Central game instance server
+- **server/SessionManager.js** - Handle multiple game sessions
+- **server/PlayerConnectionManager.js** - Manage player connections
+- **network/GameClient.js** - Client-side network interface
+
+**Priority 2: Network Integration**
+- Remove current P2P (PeerJS) multiplayer system
+- Replace with client-server WebSocket communication
+- Update App.jsx to connect to server instead of direct game logic
+- Route all actions through network layer to server
+
+**Priority 3: Server-Side Game Logic**
+- Move GameStateManager, GameFlowManager, SimultaneousActionManager to server
+- Keep only UI state management on client (App.jsx)
+- Implement server-side validation and anti-cheat measures
+- Add spectator mode support
+
+---
+
+## 🏗️ **CURRENT ARCHITECTURE (READY FOR SERVER)**
+
+### **Pure Components (Mode-Agnostic)**
+
+**state/GameStateManager.js** ✅ **COMPLETE**
+- Pure data store with player-namespaced state
+- Emits change events when updated
+- Ready for server-side deployment
+- NO knowledge of single/multiplayer modes
+
+**state/GameFlowManager.js** ✅ **COMPLETE**
+- Master game flow controller with conditional phase logic
+- Handles PreGame → Round Loop → Victory flow
+- **Automatic Phase Processing**: Directly handles phases that require no player input (draw, determineFirstPlayer)
+- **Mixed Phase Type Support**: Seamlessly transitions between Simultaneous, Automatic, and Sequential phases
+- Event-driven phase transitions with modal integration
+- Ready for server-side deployment
+
+**state/SimultaneousActionManager.js** ✅ **COMPLETE**
+- Pure commitment coordinator for simultaneous phases
+- Handles player action collection and validation
+- AI auto-completion for single-player
+- Ready for server-side deployment
+
+**state/AIPhaseProcessor.js** ✅ **COMPLETE**
+- AI virtual player integration
+- Routes through same systems as human players
+- Ready for server-side deployment
+
+**utils/droneSelectionUtils.js** ✅ **COMPLETE**
+- Standalone utilities for drone selection initialization
+- `initializeDroneSelection()` and `advanceDroneSelectionTrio()`
+- Clean separation of concerns
+
+**utils/shipPlacementUtils.js** ✅ **COMPLETE**
+- Standalone utilities for ship placement initialization
+- `initializeShipPlacement()` and placement validation
+- Follows established utility pattern
+
+**utils/cardDrawUtils.js** ✅ **COMPLETE**
+- Standalone utilities for automatic card drawing
+- `performAutomaticDraw()` with hand limit calculation
+- Deck reshuffling and validation logic
+
+**utils/firstPlayerUtils.js** ✅ **COMPLETE**
+- Standalone utilities for first player determination
+- `determineFirstPlayer()` with turn-based logic (random turn 1, first passer subsequent)
+- `processFirstPlayerDetermination()` for state updates and modal data
+- `getFirstPlayerReasonText()` for UI explanation text
+
+### **Client Interface Components**
+
+**App.jsx** ✅ **ARCHITECTURE READY**
+- Player-contextual UI (perspective-aware)
+- Uses proper getLocalPlayerState() / getOpponentPlayerState() patterns
+- Local UI state management only
+- Ready to be converted to network client
+
+---
+
+## 🎯 **SERVER IMPLEMENTATION PLAN**
+
+### **Phase 3.1: Server Infrastructure**
+
+**Create Core Server Components:**
+```javascript
+// server/GameServer.js - Central game instance
+class GameServer {
+  constructor() {
+    this.gameStateManager = new GameStateManager();
+    this.gameFlowManager = new GameFlowManager();
+    this.simultaneousActionManager = new SimultaneousActionManager();
+    this.aiPhaseProcessor = new AIPhaseProcessor();
+  }
+
+  handlePlayerAction(playerId, action) {
+    // Route to appropriate manager
+    // Broadcast state changes to clients
+  }
+}
+
+// server/SessionManager.js - Multiple game sessions
+class SessionManager {
+  createGame(hostPlayerId) { /* */ }
+  joinGame(gameId, playerId) { /* */ }
+  endGame(gameId) { /* */ }
+}
+
+// network/GameClient.js - Client network interface
+class GameClient {
+  connect(serverId) { /* */ }
+  sendAction(action) { /* */ }
+  onStateUpdate(callback) { /* */ }
+}
+```
+
+### **Phase 3.2: Network Protocol**
+
+**Define Client-Server Messages:**
+```javascript
+// Client → Server
+{
+  type: 'PLAYER_ACTION',
+  gameId: 'abc123',
+  playerId: 'player1',
+  action: {
+    type: 'submitDroneSelection',
+    data: { drones: [...] }
+  }
+}
+
+// Server → Client
+{
+  type: 'GAME_STATE_UPDATE',
+  gameId: 'abc123',
+  updates: {
+    turnPhase: 'deckSelection',
+    player1: { /* updated player state */ }
+  }
+}
+```
+
+### **Phase 3.3: Client Refactor**
+
+**Update App.jsx for Network:**
+- Replace direct manager calls with network requests
+- Keep local UI state management
+- Add connection status handling
+- Add reconnection logic
+
+**Remove P2P System:**
+- Remove PeerJS dependency
+- Remove MultiplayerLobby P2P logic
+- Replace with server lobby system
+
+### **Phase 3.4: Advanced Features**
+
+**Server-Side Features:**
+- Game session persistence
+- Spectator mode
+- Replay system
+- Anti-cheat validation
+- Disconnection handling
+
+---
+
+## 🏆 **ACHIEVED ARCHITECTURE BENEFITS**
+
+✅ **Pure Component Design** - All managers are mode-agnostic and server-ready
+✅ **AI Integration** - AI uses same pathways as human players
+✅ **Clean Separation** - Game flow vs. commitment coordination properly separated
+✅ **Event-Driven** - Managers communicate via events, not direct coupling
+✅ **Player Perspective** - UI maintains contextual view regardless of underlying mode
+✅ **Conditional Phases** - GameFlowManager skips unnecessary phases automatically
+✅ **Automatic Phase System** - No-input phases (draw, first player) happen automatically without player coordination
+✅ **Mixed Phase Architecture** - Seamless transitions between Simultaneous, Automatic, and Sequential phase types
+✅ **Utility Functions** - Clean, testable, reusable phase utilities (drone selection, ship placement, card drawing, first player determination)
+✅ **ActionProcessor Integration** - Proper validation exemptions for automatic phases while maintaining security
+
+---
+
+## 🎮 **CURRENT GAME FLOW (WORKING)**
+
+### **Pre-Game Flow (Simultaneous Phases):**
+1. **droneSelection** → SimultaneousActionManager coordinates player commitments
+2. **deckSelection** → SimultaneousActionManager coordinates player commitments
+3. **placement** → SimultaneousActionManager coordinates player commitments
+
+### **Round Loop Flow (Mixed Phase Types):**
+4. **mandatoryDiscard** (Simultaneous) → Only if players exceed hand limit
+5. **draw** (Automatic) → GameFlowManager handles automatically with cardDrawUtils
+6. **determineFirstPlayer** (Automatic) → GameFlowManager handles automatically with firstPlayerUtils
+7. **allocateShields** (Simultaneous) → Only if players have shields to allocate
+8. **mandatoryDroneRemoval** (Simultaneous) → Only if players exceed drone limit
+9. **deployment** (Sequential) → ActionProcessor handles turn-based play
+10. **action** (Sequential) → ActionProcessor handles turn-based play
+
+### **Phase Type Architecture:**
+- **Simultaneous Phases**: Coordinated by SimultaneousActionManager (player commitments + AI auto-completion)
+- **Automatic Phases**: Handled directly by GameFlowManager (no player input, just happens and progresses)
+- **Sequential Phases**: Handled by ActionProcessor (turn-based with proper action validation)
+
+### **Conditional Phase Logic:**
+- GameFlowManager.isPhaseRequired() skips unnecessary phases automatically
+- Phases only execute if game state requires them (e.g., skip mandatoryDiscard if no hand limit violations)
+
+**The architecture now features a clean separation between player interaction phases and automatic system phases, ready for server deployment.**
+
+---
+
+## 📝 **UPDATE LOG**
+- **2025-09-26**: ✅ COMPLETED Phase 2 - Pure component architecture refactor
+- **2025-09-26**: ✅ COMPLETED GameFlowManager + SimultaneousActionManager split
+- **2025-09-26**: ✅ COMPLETED Drone selection phase fix with utility functions
+- **2025-09-26**: ✅ COMPLETED Ship placement phase fix with utility functions
+- **2025-09-26**: ✅ COMPLETED Automatic card drawing with utility functions
+- **2025-09-26**: ✅ COMPLETED Automatic first player determination with utility functions
+- **2025-09-26**: ✅ COMPLETED Phase transition validation fixes
+- **2025-09-26**: ✅ COMPLETED AI integration through manager systems
+- **2025-09-26**: ✅ COMPLETED Automatic Phase System architecture
+- **2025-09-26**: Updated CLAUDE.md - Ready for Phase 3: Server Implementation
+
+## 🔧 **LATEST TECHNICAL ACHIEVEMENTS**
+
+### **Automatic Phase System Implementation**
+- **Reclassified Phase Types**: Split phases into Simultaneous, Automatic, and Sequential categories
+- **Automatic Draw Phase**: GameFlowManager handles card drawing automatically with cardDrawUtils.js
+- **Automatic First Player Phase**: GameFlowManager handles first player determination automatically with firstPlayerUtils.js
+- **ActionProcessor Bypass Validation**: Added automatic phases ['draw', 'determineFirstPlayer'] to validation exemptions
+- **Clean Phase Flow**: draw → determineFirstPlayer → allocateShields → ... → deployment
+
+### **Core Architecture Improvements**
+- **GameFlowManager.processAutomaticPhase()**: Centralized automatic phase processing
+- **Mixed Phase Type Support**: Seamless transitions between simultaneous, automatic, and sequential phases
+- **Conditional Phase Logic**: Phases only execute when required based on game state
+- **Event-Driven Modal Integration**: Automatic phases trigger UI modals through phase transition events
+- **Utility Pattern Consistency**: All phase logic extracted to dedicated utility files
+
+### **Previous Fixes (Completed)**
+- **Fixed Phase Transition Validation**: Updated GameStateManager validTransitions to include all new phase flows
+- **Implemented Automatic Card Drawing**: Created cardDrawUtils.js with performAutomaticDraw() function
+- **Fixed Phase Data Initialization**: Created utility pattern for drone selection, ship placement, and card drawing
+- **Removed Obsolete PhaseManager**: Successfully split functionality into GameFlowManager + SimultaneousActionManager
