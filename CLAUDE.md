@@ -1,8 +1,8 @@
 # Drone Wars Game Architecture - Server-Based System
 
-## 🎯 **CURRENT STATUS: PHASE 2.7 COMPLETE**
+## 🎯 **CURRENT STATUS: PHASE 2.8 COMPLETE**
 
-**Core Architecture Refactor + Screen Separation: ✅ COMPLETED**
+**Core Architecture Refactor + Screen Separation + AI Initialization: ✅ COMPLETED**
 
 All major architectural components have been successfully implemented:
 - ✅ GameFlowManager.js - Master game flow controller with automatic phase processing
@@ -20,6 +20,83 @@ All major architectural components have been successfully implemented:
 - ✅ ActionProcessor bypass validation for automatic phases
 - ✅ Screen separation architecture - AppRouter + dedicated phase screens
 - ✅ App.jsx now only handles active gameplay (no pre-game phases)
+- ✅ **AppRouter.jsx** - Central routing component with proper manager initialization
+- ✅ AI initialization fix - AIPhaseProcessor properly initialized for all game phases
+
+## 🚨 **CRITICAL TODO: FIX PASS LOGIC ARCHITECTURE VIOLATION**
+
+### **Current Problem:**
+After a player passes, they're still being prompted for actions. Root cause is competing AI turn management systems that violate the server-based architecture.
+
+### **Architecture Violations Identified:**
+1. **App.jsx manages AI turn execution** (lines 1839-1886) - AI TURN EXECUTION useEffect determines when AI should act
+2. **ActionProcessor calls aiBrain directly** - processAiTurn() bypasses AIPhaseProcessor and calls aiBrain.handleOpponentTurn() directly
+3. **Competing turn management** - Both App.jsx and ActionProcessor try to manage AI timing
+4. **Missing pass validation** - ActionProcessor doesn't check pass states before triggering actions
+
+### **Detailed Implementation Tasks:**
+
+#### **Task 1: Remove AI Turn Management from App.jsx** ⚠️ HIGH PRIORITY
+- **File**: `src/App.jsx` lines 1839-1886
+- **Action**: Delete entire AI TURN EXECUTION useEffect
+- **Details**: Remove hasBlockingConditions logic, AI timing logic, executeAiTurn function
+- **Reason**: App.jsx should be purely reactive to state changes, not drive AI logic
+- **Expected Result**: App.jsx becomes pure UI layer as intended in server architecture
+
+#### **Task 2: Expand AIPhaseProcessor for All Phases** ⚠️ HIGH PRIORITY
+- **File**: `src/state/AIPhaseProcessor.js`
+- **Missing Methods**:
+  - `handleDeploymentTurn(gameState)` - AI decisions for deployment phase
+  - `handleActionTurn(gameState)` - AI decisions for action phase
+  - `shouldPass(gameState, phase)` - Logic to determine when AI should pass
+- **Implementation**: Each method calls appropriate aiLogic.js functions, returns decision to ActionProcessor
+- **Reason**: AIPhaseProcessor should be AI's complete equivalent to App.jsx for ALL phases
+
+#### **Task 3: Fix ActionProcessor AI Delegation** ⚠️ HIGH PRIORITY
+- **File**: `src/state/ActionProcessor.js` method `processAiTurn()`
+- **Current Issue**: Directly calls `aiBrain.handleOpponentTurn()` and `aiBrain.handleOpponentAction()`
+- **Required Change**: Replace with calls to AIPhaseProcessor methods
+- **Implementation**:
+  ```javascript
+  // Instead of: aiDecision = aiBrain.handleOpponentTurn(...)
+  // Use: aiDecision = await this.aiPhaseProcessor.handleDeploymentTurn(currentState)
+  ```
+- **Reason**: Maintain proper separation - ActionProcessor = neutral engine, AIPhaseProcessor = AI interface
+
+#### **Task 4: Add Pass State Validation** ⚠️ HIGH PRIORITY
+- **File**: `src/state/ActionProcessor.js`
+- **Location**: Before any player action processing, before calling AIPhaseProcessor
+- **Implementation**: Check `passInfo[playerId + 'Passed']` before allowing actions
+- **Details**:
+  - Validate human player hasn't passed before processing their actions
+  - Validate AI hasn't passed before calling AIPhaseProcessor
+  - Only allow phase transitions when both players have acted or passed
+- **Reason**: Prevent actions after passing to fix the core reported issue
+
+#### **Task 5: Implement Automatic Turn Management** ⚠️ MEDIUM PRIORITY
+- **File**: `src/state/ActionProcessor.js`
+- **Goal**: ActionProcessor automatically determines whose turn it is without App.jsx intervention
+- **Implementation**:
+  - Check currentPlayer state
+  - Check pass status for current player
+  - If human player's turn and not passed: wait for App.jsx action
+  - If AI player's turn and not passed: call AIPhaseProcessor automatically
+  - If both passed: trigger phase transition
+- **Reason**: Single source of truth for turn management
+
+### **Expected Outcome:**
+- ✅ Pass logic works correctly - no more actions after passing
+- ✅ Clean architecture: App.jsx (human UI) ↔ ActionProcessor (neutral engine) ↔ AIPhaseProcessor (AI interface)
+- ✅ Single turn management system (ActionProcessor only)
+- ✅ Proper delegation flow: ActionProcessor → AIPhaseProcessor → aiLogic.js → ActionProcessor
+
+### **Testing Checklist:**
+- [ ] Human player passes → no more action prompts
+- [ ] AI passes → no more AI actions
+- [ ] Both players pass → phase transitions correctly
+- [ ] App.jsx has no AI turn management code
+- [ ] AIPhaseProcessor handles all AI decisions
+- [ ] ActionProcessor is the only turn manager
 
 ## 🚀 **NEXT PHASE: SERVER IMPLEMENTATION**
 
@@ -72,8 +149,10 @@ All major architectural components have been successfully implemented:
 - Ready for server-side deployment
 
 **state/AIPhaseProcessor.js** ✅ **COMPLETE**
-- AI virtual player integration
-- Routes through same systems as human players
+- **AI's equivalent to App.jsx for ALL game phases** (simultaneous AND sequential)
+- Complete AI player interface - handles AI decisions across ALL phases
+- Routes through same systems as human players via ActionProcessor/PhaseManager
+- Calls logic/aiLogic.js for decision-making, then submits actions to ActionProcessor
 - Ready for server-side deployment
 
 **utils/droneSelectionUtils.js** ✅ **COMPLETE**
@@ -103,6 +182,8 @@ All major architectural components have been successfully implemented:
 - Central routing based on `gameState.appState` and `gameState.turnPhase`
 - Routes: menu → lobby → droneSelection → deckSelection → placement → App.jsx
 - Clean separation between menu, lobby, pre-game phases, and active gameplay
+- **Manager Initialization**: Properly initializes SimultaneousActionManager and AIPhaseProcessor
+- **Cross-Phase Compatibility**: Ensures managers are available during all game phases
 
 **Dedicated Phase Screens:**
 - **src/screens/MenuScreen.jsx** ✅ **COMPLETE** - Game mode selection
@@ -119,6 +200,31 @@ All major architectural components have been successfully implemented:
 - Uses proper getLocalPlayerState() / getOpponentPlayerState() patterns
 - Local UI state management only
 - Ready to be converted to network client
+
+---
+
+## 🤖 **AI ARCHITECTURE FLOW**
+
+### **Proper AI Decision Flow (Intended Architecture):**
+
+**For Human Player:**
+- **App.jsx** → **ActionProcessor/PhaseManager** → **GameStateManager**
+- App.jsx handles all player interactions across all phases
+- App.jsx sends actions to ActionProcessor/PhaseManager for execution
+
+**For AI Player:**
+- **ActionProcessor** → **AIPhaseProcessor** → **logic/aiLogic.js** → **AIPhaseProcessor** → **ActionProcessor** → **GameStateManager**
+- AIPhaseProcessor is AI's equivalent to App.jsx for ALL phases
+- ActionProcessor delegates to AIPhaseProcessor when it's AI's turn
+- AIPhaseProcessor calls aiLogic.js for decision-making
+- AIPhaseProcessor submits actions back to ActionProcessor for execution
+
+### **Key Principles:**
+- **ActionProcessor** = Neutral game engine that both human and AI interact with
+- **App.jsx** = Human player interface (UI layer)
+- **AIPhaseProcessor** = AI player interface (decision layer)
+- **logic/aiLogic.js** = AI business logic (called by AIPhaseProcessor)
+- **GameStateManager** = Single source of truth (updated only by ActionProcessor)
 
 ---
 
@@ -252,6 +358,36 @@ class GameClient {
 
 ---
 
+## 📊 **CURRENT IMPLEMENTATION STATUS**
+
+### **✅ What's Working:**
+- **SimultaneousActionManager**: Handles droneSelection, deckSelection, placement phases correctly
+- **Basic ActionProcessor Structure**: Handles action processing and validation
+- **AIPhaseProcessor for Simultaneous Phases**: Works for droneSelection, deckSelection, placement
+- **GameFlowManager**: Automatic phase progression and conditional phase logic
+- **Screen Separation**: AppRouter and dedicated phase screens working correctly
+- **Phase Transitions**: Most phase flows work correctly
+- **Ship Placement Data**: Successfully preserved from placement to deployment phases
+
+### **❌ What's Broken (Architecture Violations):**
+- **Pass Logic**: Players still prompted for actions after passing
+- **AI Turn Management**: App.jsx incorrectly manages AI timing (lines 1839-1886)
+- **ActionProcessor AI Calls**: Directly calls aiBrain instead of delegating to AIPhaseProcessor
+- **Competing Turn Systems**: Both App.jsx and ActionProcessor try to manage turns
+- **Missing Pass Validation**: ActionProcessor doesn't check pass states before actions
+
+### **⚠️ What's Missing:**
+- **AIPhaseProcessor Deployment Methods**: No handleDeploymentTurn() method
+- **AIPhaseProcessor Action Methods**: No handleActionTurn() method
+- **Pass Decision Logic**: No shouldPass() logic in AIPhaseProcessor
+- **Automatic Turn Management**: ActionProcessor doesn't automatically manage turns
+- **Proper AI Delegation**: ActionProcessor → AIPhaseProcessor → aiLogic flow not implemented
+
+### **🎯 Next Steps:**
+Follow the detailed tasks in the "CRITICAL TODO" section above to fix pass logic and complete the server-ready architecture.
+
+---
+
 ## 📝 **UPDATE LOG**
 - **2025-09-26**: ✅ COMPLETED Phase 2 - Pure component architecture refactor
 - **2025-09-26**: ✅ COMPLETED GameFlowManager + SimultaneousActionManager split
@@ -265,7 +401,9 @@ class GameClient {
 - **2025-09-26**: ✅ COMPLETED Screen separation architecture - AppRouter + dedicated phase screens
 - **2025-09-26**: ✅ COMPLETED App.jsx refactor - Now handles only active gameplay
 - **2025-09-26**: ✅ FIXED GameStateManager logging crash on game start (null player properties)
-- **2025-09-26**: Updated CLAUDE.md - Phase 2.7 Complete: Ready for Phase 3: Server Implementation
+- **2025-09-26**: ✅ FIXED AI drone selection error - Moved AIPhaseProcessor initialization to AppRouter
+- **2025-09-26**: Updated CLAUDE.md - Phase 2.8 Complete: Ready for Phase 3: Server Implementation
+- **2025-09-26**: 🚨 IDENTIFIED Critical Pass Logic Architecture Violation - Added comprehensive TODO section for fixing AI turn management
 
 ## 🔧 **LATEST TECHNICAL ACHIEVEMENTS**
 
@@ -297,8 +435,29 @@ class GameClient {
 - **Event-Driven Modal Integration**: Automatic phases trigger UI modals through phase transition events
 - **Utility Pattern Consistency**: All phase logic extracted to dedicated utility files
 
+### **Latest Achievements (Phase 2.8)**
+
+#### **AppRouter Implementation**
+- **Central Routing Component**: AppRouter.jsx now handles all screen transitions based on gameState.appState and gameState.turnPhase
+- **Manager Initialization Centralization**: Moved SimultaneousActionManager and AIPhaseProcessor initialization from App.jsx to AppRouter.jsx
+- **Cross-Phase Compatibility**: Ensures all managers are properly initialized during pre-game phases (droneSelection, deckSelection, placement)
+- **Clean Architecture**: Separates routing logic from gameplay logic, preparing for server-based architecture
+
+#### **AI Initialization Fix**
+- **Root Cause**: AIPhaseProcessor was initialized in App.jsx, but App.jsx was never rendered during pre-game phases
+- **Solution**: Moved AIPhaseProcessor.initialize() to AppRouter.jsx to ensure initialization happens during all game phases
+- **Result**: Fixed "Not enough drones available for AI selection: 0" error in single-player mode
+- **Benefits**: AI can now properly access fullDroneCollection during drone selection phase
+
+#### **Architecture Improvements**
+- **Phase-Aware Initialization**: Managers are now initialized at the correct lifecycle stage for all game phases
+- **Reduced Duplication**: Eliminated duplicate initialization code between App.jsx and AppRouter.jsx
+- **Server Readiness**: Manager initialization pattern is now ready for server-side deployment
+
 ### **Previous Fixes (Completed)**
 - **Fixed Phase Transition Validation**: Updated GameStateManager validTransitions to include all new phase flows
 - **Implemented Automatic Card Drawing**: Created cardDrawUtils.js with performAutomaticDraw() function
 - **Fixed Phase Data Initialization**: Created utility pattern for drone selection, ship placement, and card drawing
 - **Removed Obsolete PhaseManager**: Successfully split functionality into GameFlowManager + SimultaneousActionManager
+- **Screen Extraction**: Successfully extracted all pre-game phases from monolithic App.jsx into dedicated screen components
+- **Architecture Violation Fixes**: Eliminated improper GameStateManager updates from UI components

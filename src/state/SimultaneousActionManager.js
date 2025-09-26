@@ -315,6 +315,10 @@ class SimultaneousActionManager {
 
       case 'placement':
         const placementKey = playerId === 'player1' ? 'placedSections' : 'opponentPlacedSections';
+        console.log(`[PLACEMENT DATA DEBUG] SimultaneousActionManager storing placement for ${playerId}:`, {
+          placementKey,
+          placementData: actionData.placement
+        });
         this.gameStateManager.setState({
           [placementKey]: actionData.placement
         });

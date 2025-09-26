@@ -40,8 +40,20 @@ class AIPhaseProcessor {
     // Use personality's drone pool if available, otherwise use general pool
     let availableDrones = [];
     if (personality && personality.dronePool && personality.dronePool.length > 0) {
-      availableDrones = [...personality.dronePool];
-      console.log(`🎯 Using ${personality.name} personality drone pool: ${availableDrones.length} drones`);
+      // Map personality drone names to full drone objects from the collection
+      availableDrones = personality.dronePool.map(droneName => {
+        const droneObject = this.dronePool?.find(drone => drone.name === droneName);
+        if (!droneObject) {
+          console.warn(`⚠️ AI personality references unknown drone: ${droneName}`);
+        }
+        return droneObject;
+      }).filter(drone => drone); // Remove any undefined entries
+
+      console.log(`🎯 Using ${personality.name} personality drone pool: ${availableDrones.length} drones mapped from ${personality.dronePool.length} names`);
+
+      // Log mapped drone names for verification
+      const mappedNames = availableDrones.map(d => d.name).join(', ');
+      console.log(`🎯 Mapped drones: ${mappedNames}`);
     } else {
       // Fallback to general drone pool
       availableDrones = this.dronePool ? [...this.dronePool] : [];
@@ -50,6 +62,19 @@ class AIPhaseProcessor {
 
     if (availableDrones.length < 5) {
       console.error('❌ Not enough drones available for AI selection:', availableDrones.length);
+
+      // Enhanced error reporting for debugging
+      if (personality && personality.dronePool) {
+        const missingDrones = personality.dronePool.filter(droneName =>
+          !this.dronePool?.find(drone => drone.name === droneName)
+        );
+        if (missingDrones.length > 0) {
+          console.error(`❌ Missing drones from collection: ${missingDrones.join(', ')}`);
+        }
+        console.error(`❌ Available from personality: ${availableDrones.map(d => d.name).join(', ')}`);
+        console.error(`❌ Expected from personality: ${personality.dronePool.join(', ')}`);
+      }
+
       throw new Error(`Insufficient drones for AI selection: ${availableDrones.length} available, need 5`);
     }
 

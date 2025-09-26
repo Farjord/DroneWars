@@ -7,6 +7,11 @@
 import { useState, useEffect } from 'react';
 import { useGameState } from './hooks/useGameState.js';
 import gameStateManager from './state/GameStateManager.js';
+import simultaneousActionManager from './state/SimultaneousActionManager.js';
+import gameFlowManager from './state/GameFlowManager.js';
+import aiPhaseProcessor from './state/AIPhaseProcessor.js';
+import fullDroneCollection from './data/droneData.js';
+import aiPersonalities from './data/aiData.js';
 import MenuScreen from './screens/MenuScreen.jsx';
 import LobbyScreen from './screens/LobbyScreen.jsx';
 import DroneSelectionScreen from './components/screens/DroneSelectionScreen.jsx';
@@ -33,6 +38,37 @@ function AppRouter() {
 
     return () => clearTimeout(timer);
   }, []);
+
+  // Initialize SimultaneousActionManager for pre-game phases
+  useEffect(() => {
+    simultaneousActionManager.initialize(
+      gameStateManager,
+      aiPhaseProcessor,
+      () => gameState.gameMode !== 'local'
+    );
+    console.log('🔧 SimultaneousActionManager initialized in AppRouter');
+  }, [gameState.gameMode]);
+
+  // Initialize AIPhaseProcessor with game data
+  useEffect(() => {
+    aiPhaseProcessor.initialize(
+      aiPersonalities,
+      fullDroneCollection,
+      gameState.selectedAIPersonality || aiPersonalities[0]
+    );
+    console.log('🤖 AIPhaseProcessor initialized in AppRouter');
+  }, [gameState.selectedAIPersonality]);
+
+  // Initialize GameFlowManager with all managers
+  useEffect(() => {
+    gameFlowManager.initialize(
+      gameStateManager,
+      simultaneousActionManager,
+      gameStateManager.actionProcessor, // Use ActionProcessor instance from GameStateManager
+      () => gameState.gameMode !== 'local'
+    );
+    console.log('🔄 GameFlowManager initialized in AppRouter');
+  }, [gameState.gameMode]);
 
   if (isLoading) {
     return (

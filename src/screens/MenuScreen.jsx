@@ -5,25 +5,26 @@
 // Clean separation from game logic - no player state access
 
 import { useState } from 'react';
-import gameStateManager from '../state/GameStateManager.js';
+import { useGameState } from '../hooks/useGameState.js';
 
 /**
  * MenuScreen - Main menu for selecting game mode
  * No access to game state or player data - pure menu functionality
  */
 function MenuScreen() {
+  const { updateGameState } = useGameState();
   const [showModeSelection, setShowModeSelection] = useState(false);
 
   const handleSinglePlayer = () => {
     console.log('🎮 Selected: Single Player');
     // Transition to lobby for AI selection
-    gameStateManager.setState({ appState: 'lobby', gameMode: 'local' });
+    updateGameState({ appState: 'lobby', gameMode: 'local' });
   };
 
   const handleMultiplayer = () => {
     console.log('🎮 Selected: Multiplayer');
     // Transition to lobby for multiplayer setup
-    gameStateManager.setState({ appState: 'lobby', gameMode: 'multiplayer' });
+    updateGameState({ appState: 'lobby', gameMode: 'multiplayer' });
   };
 
   const handleShowModes = () => {

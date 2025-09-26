@@ -553,12 +553,21 @@ class GameFlowManager {
 
     console.log(`🔄 GameFlowManager: Transitioning from '${previousPhase}' to '${newPhase}' (${this.gameStage})`);
 
-    // Update GameStateManager
+    // Initialize phase-specific data when transitioning to certain phases
+    let phaseData = {};
+    if (newPhase === 'placement') {
+      console.log('🚢 GameFlowManager: Initializing placement phase data');
+      const placementData = initializeShipPlacement();
+      phaseData = placementData;
+    }
+
+    // Update GameStateManager with new phase and any phase-specific data
     if (this.gameStateManager) {
       this.gameStateManager.setState({
         turnPhase: newPhase,
         gameStage: this.gameStage,
-        roundNumber: this.roundNumber
+        roundNumber: this.roundNumber,
+        ...phaseData
       });
     }
 

@@ -155,9 +155,6 @@ function DroneSelectionScreen() {
 
     console.log('✅ Drone selection submitted to PhaseManager');
 
-    // Clear temporary selection after successful submission
-    setTempSelectedDrones([]);
-
     // PhaseManager will handle:
     // - GameStateManager updates when both players complete
     // - Event emission for UI state changes

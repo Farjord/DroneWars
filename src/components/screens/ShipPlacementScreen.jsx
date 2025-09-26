@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { useGameState } from '../../hooks/useGameState.js';
 import { WaitingForOpponentScreen } from './DroneSelectionScreen.jsx';
 import ShipSection from '../ui/ShipSection.jsx';
+import { gameEngine } from '../../logic/gameLogic.js';
 import simultaneousActionManager from '../../state/SimultaneousActionManager.js';
 
 /**
@@ -28,10 +29,15 @@ function ShipPlacementScreen() {
 
   const { turnPhase, unplacedSections } = gameState;
   const localPlayerState = getLocalPlayerState();
-  const localPlacedSections = getLocalPlacedSections();
+  const initialPlacedSections = getLocalPlacedSections();
 
   // Local state for ship placement process
   const [selectedSectionForPlacement, setSelectedSectionForPlacement] = useState(null);
+
+  // Local placement state (initialized from global state)
+  const [localPlacedSections, setLocalPlacedSections] = useState(initialPlacedSections || [null, null, null]);
+  const [localUnplacedSections, setLocalUnplacedSections] = useState(unplacedSections || ['bridge', 'powerCell', 'droneControlHub']);
+
   const [localPhaseCompletion, setLocalPhaseCompletion] = useState({
     placement: false
   });
@@ -75,7 +81,7 @@ function ShipPlacementScreen() {
    * HANDLE SELECT SECTION FOR PLACEMENT
    * Manages ship section selection during placement phase.
    * Handles selection toggling and section removal from lanes.
-   * Uses direct GameStateManager updates for placement state changes.
+   * Uses local state for placement changes during UI interactions.
    * @param {string} sectionName - Name of the section being selected
    */
   const handleSelectSectionForPlacement = (sectionName) => {
@@ -85,7 +91,7 @@ function ShipPlacementScreen() {
     console.log('🔧 handleSelectSectionForPlacement called with:', sectionName, 'gameMode:', gameState.gameMode);
 
     // If clicking a section in the top "unplaced" row
-    if (unplacedSections.includes(sectionName)) {
+    if (localUnplacedSections.includes(sectionName)) {
         // Toggle selection: if it's already selected, unselect it. Otherwise, select it.
         setSelectedSectionForPlacement(prev => prev === sectionName ? null : sectionName);
     } else {
@@ -94,11 +100,9 @@ function ShipPlacementScreen() {
         const newPlaced = [...localPlacedSections];
         newPlaced[laneIndex] = null; // Remove from lane
 
-        // Update local player's placed sections (always update placedSections for local player)
-        updateGameState({
-          placedSections: newPlaced,
-          unplacedSections: [...unplacedSections, sectionName]
-        });
+        // Update local state instead of GameStateManager
+        setLocalPlacedSections(newPlaced);
+        setLocalUnplacedSections(prev => [...prev, sectionName]);
 
         setSelectedSectionForPlacement(null); // Clear the selection
     }
@@ -108,7 +112,7 @@ function ShipPlacementScreen() {
    * HANDLE LANE SELECT FOR PLACEMENT
    * Places selected ship section in chosen lane.
    * Handles lane swapping and section management.
-   * Uses direct GameStateManager updates for placement state changes.
+   * Uses local state for placement changes during UI interactions.
    * @param {number} laneIndex - Index of the lane (0, 1, 2)
    */
   const handleLaneSelectForPlacement = (laneIndex) => {
@@ -125,26 +129,22 @@ function ShipPlacementScreen() {
         newPlaced[laneIndex] = selectedSectionForPlacement;
 
         // Find where the selected section was and put the swapped one there
-        const oldIndexOfSelected = unplacedSections.indexOf(selectedSectionForPlacement);
-        const newUnplaced = [...unplacedSections];
+        const oldIndexOfSelected = localUnplacedSections.indexOf(selectedSectionForPlacement);
+        const newUnplaced = [...localUnplacedSections];
         newUnplaced.splice(oldIndexOfSelected, 1, sectionToSwap);
 
-        // Update local player's placement state (always update placedSections for local player)
-        updateGameState({
-          unplacedSections: newUnplaced,
-          placedSections: newPlaced
-        });
+        // Update local state instead of GameStateManager
+        setLocalPlacedSections(newPlaced);
+        setLocalUnplacedSections(newUnplaced);
 
       } else {
         // If the lane is empty, place the section
         const newPlaced = [...localPlacedSections];
         newPlaced[laneIndex] = selectedSectionForPlacement;
 
-        // Use direct GameStateManager updates for placement phase
-        updateGameState({
-          placedSections: newPlaced,
-          unplacedSections: unplacedSections.filter(s => s !== selectedSectionForPlacement)
-        });
+        // Update local state instead of GameStateManager
+        setLocalPlacedSections(newPlaced);
+        setLocalUnplacedSections(prev => prev.filter(s => s !== selectedSectionForPlacement));
       }
       setSelectedSectionForPlacement(null);
     } else if (localPlacedSections[laneIndex]) {
@@ -264,7 +264,7 @@ function ShipPlacementScreen() {
         <div className="flex w-full justify-between gap-8">
           {['bridge', 'powerCell', 'droneControlHub'].map(sectionName => (
             <div key={sectionName} className="flex-1 min-w-0 h-[190px]">
-              {unplacedSections.includes(sectionName) && (
+              {localUnplacedSections.includes(sectionName) && (
                 <div
                   onClick={() => handleSelectSectionForPlacement(sectionName)}
                   className={`h-full transition-all duration-300 rounded-xl ${selectedSectionForPlacement === sectionName ? 'scale-105 ring-4 ring-cyan-400' : 'opacity-70 hover:opacity-100 cursor-pointer'}`}
@@ -275,7 +275,7 @@ function ShipPlacementScreen() {
                     effectiveStatsForDisplay={localPlayerState.shipSections[sectionName].stats.healthy}
                     isPlayer={true}
                     isInteractive={true}
-                    gameEngine={null}
+                    gameEngine={gameEngine}
                     turnPhase={turnPhase}
                     isMyTurn={() => true}
                     passInfo={{}}
@@ -309,7 +309,7 @@ function ShipPlacementScreen() {
                     isPlayer={true}
                     isInteractive={true}
                     isInMiddleLane={laneIndex === 1}
-                    gameEngine={null}
+                    gameEngine={gameEngine}
                     turnPhase={turnPhase}
                     isMyTurn={() => true}
                     passInfo={{}}

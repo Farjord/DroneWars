@@ -152,8 +152,13 @@ class GameStateManager {
     const callerInfo = this.extractCallerInfo(stackLines);
 
     // Check for architecture violations - App.jsx should NEVER directly update GameStateManager
+    // However, App.jsx can call ActionProcessor/PhaseManager which then update GameStateManager
     const isAppJsxCaller = stackLines.some(line => line.includes('App.jsx'));
-    if (isAppJsxCaller) {
+    const isViaActionProcessor = stackLines.some(line => line.includes('ActionProcessor'));
+    const isViaPhaseManager = stackLines.some(line => line.includes('PhaseManager'));
+    const isLegitimateCall = isViaActionProcessor || isViaPhaseManager;
+
+    if (isAppJsxCaller && !isLegitimateCall) {
       console.error('🚨 ARCHITECTURE VIOLATION: App.jsx is directly updating GameStateManager!');
       console.error('📋 App.jsx should only call ActionProcessor or PhaseManager methods');
       console.error('🔍 Stack trace:', stack);
@@ -166,7 +171,7 @@ class GameStateManager {
     console.log(`🔍 GAMESTATE CHANGE [${eventType}] from ${caller}:`, {
       changedKeys: updateKeys,
       allUpdates: updates,
-      architectureViolation: isAppJsxCaller
+      architectureViolation: isAppJsxCaller && !isLegitimateCall
     });
 
     // Special detailed logging for player state changes (skip during initialization)
@@ -281,14 +286,15 @@ class GameStateManager {
       'droneSelection': ['deckSelection'],
       'deckSelection': ['placement'],
       'placement': ['initialDraw', 'deployment'],
-      'initialDraw': ['mandatoryDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
-      'mandatoryDiscard': ['draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
-      'draw': ['allocateShields', 'mandatoryDroneRemoval', 'deployment'],
+      'initialDraw': ['mandatoryDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
+      'mandatoryDiscard': ['draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
+      'draw': ['determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
+      'determineFirstPlayer': ['allocateShields', 'mandatoryDroneRemoval', 'deployment'],
       'allocateShields': ['mandatoryDroneRemoval', 'deployment'],
       'mandatoryDroneRemoval': ['deployment'],
       'deployment': ['action', 'roundEnd'],
-      'action': ['deployment', 'roundEnd', 'mandatoryDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'gameEnd'],
-      'roundEnd': ['mandatoryDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'gameEnd'],
+      'action': ['deployment', 'roundEnd', 'mandatoryDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'gameEnd'],
+      'roundEnd': ['mandatoryDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'gameEnd'],
       'gameEnd': []
     };
 
@@ -419,11 +425,47 @@ class GameStateManager {
             } else if (prop === 'activeDronePool') {
               const oldCount = Array.isArray(oldValue) ? oldValue.length : 'undefined';
               const newCount = Array.isArray(newValue) ? newValue.length : 'undefined';
-              const oldNames = Array.isArray(oldValue) ? oldValue.map(d => d.name) : 'undefined';
-              const newNames = Array.isArray(newValue) ? newValue.map(d => d.name) : 'undefined';
+
+              // Enhanced debugging for drone name extraction
+              let oldNames, newNames;
+
+              if (Array.isArray(oldValue)) {
+                try {
+                  oldNames = oldValue.map(d => d?.name || 'UNNAMED').join(',');
+                } catch (e) {
+                  oldNames = `ERROR_MAPPING_OLD: ${e.message}`;
+                }
+              } else {
+                oldNames = 'undefined';
+              }
+
+              if (Array.isArray(newValue)) {
+                try {
+                  newNames = newValue.map(d => d?.name || 'UNNAMED').join(',');
+                } catch (e) {
+                  newNames = `ERROR_MAPPING_NEW: ${e.message}`;
+                }
+              } else {
+                newNames = 'undefined';
+              }
+
               console.log(`  🤖 ${prop}: [${oldCount} drones] → [${newCount} drones]`);
               console.log(`    Old drones: ${oldNames}`);
               console.log(`    New drones: ${newNames}`);
+
+              // Additional debug info if there's an issue
+              if (newNames.includes('ERROR') || newNames === 'undefined') {
+                console.log(`    🔍 Debug newValue:`, newValue);
+                if (Array.isArray(newValue) && newValue.length > 0) {
+                  console.log(`    🔍 First drone object:`, newValue[0]);
+                }
+              }
+
+              // Track source of activeDronePool updates for debugging
+              if (oldCount !== newCount || oldNames !== newNames) {
+                const stack = new Error().stack?.split('\n').slice(1, 4).join('\n') || 'No stack trace';
+                console.log(`    📍 Update source:\n${stack}`);
+              }
             } else if (prop === 'hand' || prop === 'deck') {
               const oldCount = Array.isArray(oldValue) ? oldValue.length : 'undefined';
               const newCount = Array.isArray(newValue) ? newValue.length : 'undefined';

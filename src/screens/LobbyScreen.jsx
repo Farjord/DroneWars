@@ -5,7 +5,6 @@
 // Clean separation from game logic - no game state access
 
 import { useState } from 'react';
-import gameStateManager from '../state/GameStateManager.js';
 import { useGameState } from '../hooks/useGameState.js';
 import aiPersonalities from '../data/aiData.js';
 import fullDroneCollection from '../data/droneData.js';
@@ -15,7 +14,7 @@ import fullDroneCollection from '../data/droneData.js';
  * No access to game player data - pure lobby functionality
  */
 function LobbyScreen() {
-  const { gameState } = useGameState();
+  const { gameState, updateGameState, gameStateManager } = useGameState();
   const [selectedAI, setSelectedAI] = useState(null);
 
   const isSinglePlayer = gameState.gameMode === 'local';
@@ -23,7 +22,7 @@ function LobbyScreen() {
 
   const handleBackToMenu = () => {
     console.log('🔙 Returning to main menu');
-    gameStateManager.setState({ appState: 'menu', gameMode: 'local' });
+    updateGameState({ appState: 'menu', gameMode: 'local' });
   };
 
   const handleSelectAI = (ai) => {
@@ -55,7 +54,7 @@ function LobbyScreen() {
       );
 
       // Transition to game
-      gameStateManager.setState({ appState: 'inGame' });
+      updateGameState({ appState: 'inGame' });
     } else if (isMultiplayer) {
       console.log('🎮 Starting multiplayer game');
 
@@ -66,7 +65,7 @@ function LobbyScreen() {
       );
 
       // Transition to game
-      gameStateManager.setState({ appState: 'inGame' });
+      updateGameState({ appState: 'inGame' });
     }
   };
 

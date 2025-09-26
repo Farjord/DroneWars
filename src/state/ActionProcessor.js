@@ -410,6 +410,14 @@ class ActionProcessor {
     console.log(`[PHASE TRANSITION DEBUG] Processing phase transition to: ${newPhase}`);
 
     const currentState = this.gameStateManager.getState();
+
+    // LOG PLACEMENT DATA BEFORE TRANSITION
+    console.log(`[PLACEMENT DATA DEBUG] BEFORE transition to ${newPhase}:`, {
+      currentPhase: currentState.turnPhase,
+      placedSections: currentState.placedSections,
+      opponentPlacedSections: currentState.opponentPlacedSections
+    });
+
     const stateUpdates = {};
 
     // Handle phase-specific initialization
@@ -454,6 +462,15 @@ class ActionProcessor {
     }
 
     console.log(`[PHASE TRANSITION DEBUG] Phase transition complete: ${currentState.turnPhase} → ${newPhase}`);
+
+    // LOG PLACEMENT DATA AFTER TRANSITION
+    const finalState = this.gameStateManager.getState();
+    console.log(`[PLACEMENT DATA DEBUG] AFTER transition to ${newPhase}:`, {
+      newPhase: finalState.turnPhase,
+      placedSections: finalState.placedSections,
+      opponentPlacedSections: finalState.opponentPlacedSections,
+      stateUpdatesApplied: stateUpdates
+    });
 
     return { success: true, newPhase, transitionType: phaseTransitionResult.type };
   }

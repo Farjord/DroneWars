@@ -115,13 +115,6 @@ const App = () => {
 
   // --- MANAGER INITIALIZATION AND EVENT HANDLING ---
   useEffect(() => {
-    // Initialize SimultaneousActionManager with external dependencies
-    simultaneousActionManager.initialize(
-      gameStateManager,
-      aiPhaseProcessor,
-      () => gameState.gameMode !== 'local'
-    );
-
     // Initialize GameFlowManager with managers and dependencies
     gameFlowManager.initialize(
       gameStateManager,
@@ -130,14 +123,8 @@ const App = () => {
       () => gameState.gameMode !== 'local'
     );
 
-    // Initialize AIPhaseProcessor with game data
-    aiPhaseProcessor.initialize(
-      aiPersonalities,
-      fullDroneCollection,
-      gameState.selectedAIPersonality || aiPersonalities[0]
-    );
 
-    console.log('🔧 PhaseManager and AIPhaseProcessor initialized');
+    console.log('🔧 GameFlowManager initialized');
   }, []); // Run once on component mount
 
   // --- MODAL AND UI STATE ---
@@ -2060,13 +2047,12 @@ const App = () => {
    */
   const handleStartActionPhase = async () => {
    setShowActionPhaseStartModal(false);
-   setPassInfo({ firstPasser: null, [getLocalPlayerId() + 'Passed']: false, [getOpponentPlayerId() + 'Passed']: false });
    const firstActor = firstPlayerOfRound;
 
    // Use processAction for phase and player transition
    await processAction('phaseTransition', {
      newPhase: 'action',
-     resetPassInfo: false // We already reset it above
+     resetPassInfo: true // Let ActionProcessor handle pass info reset
    });
 
    await processAction('turnTransition', {
@@ -2814,51 +2800,6 @@ const App = () => {
   // ROUND START SEQUENCE
   // ========================================
 
-  /**
-   * HANDLE ROUND START
-   * Orchestrates the complete round start sequence with proper phase transitions.
-   * Manages both simultaneous and sequential phases with multiplayer synchronization.
-   */
-  const handleRoundStart = async () => {
-    console.log('🔄 Starting new round sequence');
-
-    try {
-      // 1. Hand limit enforcement (simultaneous)
-      console.log('🔄 Phase 1: Hand limit enforcement (simultaneous)');
-      setTurnPhase('optionalDiscard');
-      await waitForBothPlayersComplete('optionalDiscard');
-
-      // 2. Shield allocation (simultaneous)
-      console.log('🔄 Phase 2: Shield allocation (simultaneous)');
-      setTurnPhase('allocateShields');
-      await waitForBothPlayersComplete('allocateShields');
-
-      // 3. Start deployment (sequential)
-      console.log('🔄 Phase 3: Starting deployment phase (sequential)');
-      setTurnPhase('deployment');
-
-      // Determine first player for sequential phase
-      const firstPlayer = gameEngine.determineFirstPlayer(
-        gameState.turn,
-        gameState.firstPlayerOverride,
-        gameState.firstPasserOfPreviousRound
-      );
-
-      setCurrentPlayer(firstPlayer);
-      setFirstPlayerOfRound(firstPlayer);
-
-      // Reset pass info for new round
-      setPassInfo({
-        firstPasser: null,
-        player1Passed: false,
-        player2Passed: false
-      });
-
-      console.log('✅ Round start sequence complete');
-    } catch (error) {
-      console.error('❌ Error during round start sequence:', error);
-    }
-  };
 
   /**
    * WAIT FOR BOTH PLAYERS COMPLETE
@@ -3189,12 +3130,10 @@ const App = () => {
    * Sets first player and displays deployment instructions.
    */
   const handleStartDeploymentPhase = async () => {
-   setPassInfo({ firstPasser: null, [getLocalPlayerId() + 'Passed']: false, [getOpponentPlayerId() + 'Passed']: false });
-
    // Use processAction for phase transition
    await processAction('phaseTransition', {
      newPhase: 'deployment',
-     resetPassInfo: false // We already reset it above
+     resetPassInfo: true // Let ActionProcessor handle pass info reset
    });
 
     // Don't show turn modals if game has ended
