@@ -23,6 +23,7 @@ import { aiBrain } from './logic/aiLogic.js';
 import { gameEngine, startingDecklist } from './logic/gameLogic.js';
 import { getRandomDrones, getElementCenter, getPhaseDisplayName } from './utils/gameUtils.js';
 import phaseManager from './state/PhaseManager.js';
+import aiPhaseProcessor from './state/AIPhaseProcessor.js';
 import CardStatHexagon from './components/ui/CardStatHexagon.jsx';
 import ActionCard from './components/ui/ActionCard.jsx';
 import DroneCard from './components/ui/DroneCard.jsx';
@@ -110,6 +111,90 @@ const App = () => {
     }
   }, [isActionInProgress, getActionQueueLength, gameState.currentPlayer, gameState.turnPhase]);
 
+  // --- PHASE MANAGER INITIALIZATION AND EVENT HANDLING ---
+  useEffect(() => {
+    // Initialize PhaseManager with external dependencies
+    phaseManager.initialize(
+      gameStateManager,
+      aiPhaseProcessor,
+      () => gameState.gameMode !== 'local'
+    );
+
+    // Initialize AIPhaseProcessor with game data
+    aiPhaseProcessor.initialize(
+      aiPersonalities,
+      fullDroneCollection,
+      gameState.selectedAIPersonality || aiPersonalities[0]
+    );
+
+    console.log('🔧 PhaseManager and AIPhaseProcessor initialized');
+  }, []); // Run once on component mount
+
+  // PhaseManager event listeners
+  useEffect(() => {
+    const handlePhaseEvent = (event) => {
+      const { type, phase, playerId, data } = event;
+
+      console.log(`🔔 App.jsx received PhaseManager event: ${type}`, { phase, playerId });
+
+      if (type === 'playerCompleted') {
+        // Handle individual player completion
+        if (phase === 'droneSelection') {
+          console.log(`✅ ${playerId} completed drone selection`);
+
+          const isLocalPlayer = playerId === getLocalPlayerId();
+
+          if (isLocalPlayer) {
+            // Track local completion
+            setLocalPhaseCompletion(prev => ({
+              ...prev,
+              droneSelection: true
+            }));
+          } else {
+            // Track opponent completion in multiplayer
+            if (isMultiplayer()) {
+              setOpponentPhaseCompletion(prev => ({
+                ...prev,
+                droneSelection: true
+              }));
+            }
+          }
+        }
+      } else if (type === 'phaseCompleted') {
+        // Handle phase completion (both players done)
+        if (phase === 'droneSelection') {
+          console.log('🎯 Both players completed drone selection, transitioning to deck selection');
+
+          // Clear temporary selections and transition
+          setTempSelectedDrones([]);
+          setTurnPhase('deckSelection');
+          setModalContent(null);
+
+          // Reset phase completion tracking
+          setLocalPhaseCompletion(prev => ({
+            ...prev,
+            droneSelection: false
+          }));
+          setOpponentPhaseCompletion(prev => ({
+            ...prev,
+            droneSelection: false
+          }));
+        }
+      }
+    };
+
+    const unsubscribe = phaseManager.subscribe(handlePhaseEvent);
+    return unsubscribe;
+  }, [isMultiplayer, getLocalPlayerId, setTurnPhase, setModalContent]);
+
+  // Start drone selection phase when entering droneSelection
+  useEffect(() => {
+    if (gameState.turnPhase === 'droneSelection') {
+      console.log('🚀 Starting drone selection phase');
+      phaseManager.startSimultaneousPhase('droneSelection');
+    }
+  }, [gameState.turnPhase]);
+
   // --- MODAL AND UI STATE ---
   const [showAiHandModal, setShowAiHandModal] = useState(false);
   const [modalContent, setModalContent] = useState(null);
@@ -120,6 +205,8 @@ const App = () => {
     deckSelection: false,
     placement: false
   });
+
+  // --- LOCAL PHASE COMPLETION TRACKING ---
   const [localPhaseCompletion, setLocalPhaseCompletion] = useState({
     droneSelection: false,
     deckSelection: false,
@@ -1724,16 +1811,6 @@ const App = () => {
 
     const isAiTurn = !isMultiplayerGame && isCurrentPlayerOpponent && !hasBlockingConditions;
 
-    console.log(`[AI TURN CHECK] AI turn calculation:`, {
-      isMultiplayerGame,
-      currentPlayer,
-      opponentId,
-      isCurrentPlayerOpponent,
-      hasBlockingConditions,
-      isAiTurn,
-      turnPhase
-    });
-
     if (!isAiTurn) return;
 
     let aiTurnTimer;
@@ -3110,60 +3187,6 @@ const App = () => {
 }
   };
 
-  /**
-   * HANDLE CONFIRM DRONE SELECTION
-   * Finalizes player's drone pool selection and transitions to deck phase.
-   * Updates player state with selected drones and counts.
-   * Uses direct GameStateManager updates for simultaneous phase processing.
-   * @param {Array} selectedDrones - Array of selected drone objects
-   */
-  const handleConfirmDroneSelection = (selectedDrones) => {
-    const { turnPhase } = gameState;
-
-    // Only handle during drone selection phase
-    if (turnPhase !== 'droneSelection') return;
-
-    console.log('🔧 handleConfirmDroneSelection called with:', selectedDrones.map(d => d.name));
-
-    const droneNames = selectedDrones.map(d => d.name).join(', ');
-    addLogEntry({
-      player: 'SYSTEM',
-      actionType: 'DRONE_SELECTION',
-      source: 'Player Setup',
-      target: 'N/A',
-      outcome: `Player selected drones: ${droneNames}.`
-    }, 'handleConfirmDroneSelection');
-
-    const initialCounts = {};
-    selectedDrones.forEach(drone => {
-      initialCounts[drone.name] = 0;
-    });
-
-    const localPlayerId = getLocalPlayerId();
-
-    // Use direct GameStateManager updates for drone selection phase
-    updatePlayerState(localPlayerId, {
-      ...gameState[localPlayerId],
-      activeDronePool: selectedDrones,
-      deployedDroneCounts: initialCounts
-    });
-
-    // Send completion notification to opponent for multiplayer sync
-    sendPhaseCompletion('droneSelection');
-
-    // Handle phase transition when both players ready
-    if (areBothPlayersReady('droneSelection')) {
-      console.log('🔧 Both players ready for drone selection, transitioning to deckSelection');
-
-      // Use direct GameStateManager updates for phase transition during simultaneous phase
-      setTurnPhase('deckSelection');
-      setModalContent(null);
-    } else {
-      console.log('🔧 Waiting for opponent to complete drone selection');
-      // Show waiting screen
-      setModalContent(null); // This will trigger the waiting screen in the render logic
-    }
-  };
 
   /**
    * START PLACEMENT PHASE
@@ -3417,13 +3440,10 @@ const App = () => {
     console.log('🔧 handleChooseDroneForSelection called with:', chosenDrone.name);
 
     const newSelection = [...tempSelectedDrones, chosenDrone];
+    setTempSelectedDrones(newSelection);
 
-    if (newSelection.length >= 5) {
-      // Complete drone selection with 5 drones
-      handleConfirmDroneSelection(newSelection);
-    } else {
-      // Continue selection process - update temporary selection and advance trio
-      setTempSelectedDrones(newSelection);
+    if (newSelection.length < 5) {
+      // Continue selection process - advance to next trio
       const newTrio = droneSelectionPool.slice(0, 3);
       const remaining = droneSelectionPool.slice(3);
 
@@ -3434,7 +3454,39 @@ const App = () => {
       });
 
       console.log('🔧 Advanced to next trio, selected:', newSelection.length, 'of 5 drones');
+    } else {
+      console.log('🔧 All 5 drones selected, waiting for Continue button click');
     }
+  };
+
+  /**
+   * HANDLE CONTINUE DRONE SELECTION
+   * Processes the Continue button click after 5 drones are selected.
+   * Uses PhaseManager submission pattern for drone selection.
+   */
+  const handleContinueDroneSelection = () => {
+    const { turnPhase } = gameState;
+
+    // Only handle during drone selection phase
+    if (turnPhase !== 'droneSelection') return;
+
+    console.log('🔧 handleContinueDroneSelection called with:', tempSelectedDrones.length, 'drones');
+
+    const localPlayerId = getLocalPlayerId();
+    const submissionResult = phaseManager.submitDroneSelection(localPlayerId, tempSelectedDrones);
+
+    if (!submissionResult.success) {
+      console.error('❌ Drone selection submission failed:', submissionResult.error);
+      return;
+    }
+
+    console.log('✅ Drone selection submitted to PhaseManager');
+
+    // PhaseManager will handle:
+    // - GameStateManager updates when both players complete
+    // - Event emission for UI state changes
+    // - Phase transition logic
+    // - AI completion in single-player mode
   };
 
   /**
@@ -4461,11 +4513,20 @@ useEffect(() => {
                         })()
                       ) : turnPhase === 'droneSelection' ? (
                         (() => {
-                          const localPlayerHasSelectedDrones = localPlayerState.activeDronePool && localPlayerState.activeDronePool.length === 5;
-                          const opponentPlayerHasSelectedDrones = opponentPlayerState.activeDronePool && opponentPlayerState.activeDronePool.length === 5;
+                          // Check if local player has completed drone selection via PhaseManager
+                          const localPlayerCompleted = localPhaseCompletion.droneSelection;
 
-                          if (isMultiplayer() && localPlayerHasSelectedDrones && !opponentPhaseCompletion.droneSelection) {
-                            const localDroneNames = localPlayerState.activeDronePool.map(d => d.name).join(', ');
+                          if (isMultiplayer() && localPlayerCompleted && !opponentPhaseCompletion.droneSelection) {
+                            // Get drone names from PhaseManager commitments or fallback to GameState
+                            const commitmentStatus = phaseManager.getPhaseCommitmentStatus('droneSelection');
+                            const localDrones = commitmentStatus.commitments?.player1?.drones ||
+                                               localPlayerState.activeDronePool ||
+                                               tempSelectedDrones;
+
+                            const localDroneNames = localDrones.length > 0 ?
+                              localDrones.map(d => d.name).join(', ') :
+                              'Selection complete';
+
                             return (
                               <WaitingForOpponentScreen
                                 phase="droneSelection"
@@ -4478,6 +4539,7 @@ useEffect(() => {
                                 onChooseDrone={handleChooseDroneForSelection}
                                 currentTrio={droneSelectionTrio}
                                 selectedDrones={tempSelectedDrones}
+                                onContinue={handleContinueDroneSelection}
                               />
                             );
                           }
