@@ -1,8 +1,8 @@
 # Drone Wars Game Architecture - Server-Based System
 
-## 🎯 **CURRENT STATUS: PHASE 2.6 COMPLETE**
+## 🎯 **CURRENT STATUS: PHASE 2.7 COMPLETE**
 
-**Core Architecture Refactor + Automatic Phase System: ✅ COMPLETED**
+**Core Architecture Refactor + Screen Separation: ✅ COMPLETED**
 
 All major architectural components have been successfully implemented:
 - ✅ GameFlowManager.js - Master game flow controller with automatic phase processing
@@ -18,6 +18,8 @@ All major architectural components have been successfully implemented:
 - ✅ Automatic card drawing and first player determination implemented
 - ✅ Phase transition validation completed
 - ✅ ActionProcessor bypass validation for automatic phases
+- ✅ Screen separation architecture - AppRouter + dedicated phase screens
+- ✅ App.jsx now only handles active gameplay (no pre-game phases)
 
 ## 🚀 **NEXT PHASE: SERVER IMPLEMENTATION**
 
@@ -95,9 +97,24 @@ All major architectural components have been successfully implemented:
 - `processFirstPlayerDetermination()` for state updates and modal data
 - `getFirstPlayerReasonText()` for UI explanation text
 
+### **Screen Separation Architecture** ✅ **NEW**
+
+**AppRouter.jsx** ✅ **COMPLETE**
+- Central routing based on `gameState.appState` and `gameState.turnPhase`
+- Routes: menu → lobby → droneSelection → deckSelection → placement → App.jsx
+- Clean separation between menu, lobby, pre-game phases, and active gameplay
+
+**Dedicated Phase Screens:**
+- **src/screens/MenuScreen.jsx** ✅ **COMPLETE** - Game mode selection
+- **src/screens/LobbyScreen.jsx** ✅ **COMPLETE** - AI selection / multiplayer setup
+- **src/components/screens/DroneSelectionScreen.jsx** ✅ **COMPLETE** - Drone selection with state management
+- **src/components/screens/DeckSelectionScreen.jsx** ✅ **COMPLETE** - Standard vs custom deck choice
+- **src/components/screens/ShipPlacementScreen.jsx** ✅ **COMPLETE** - Ship section placement
+
 ### **Client Interface Components**
 
-**App.jsx** ✅ **ARCHITECTURE READY**
+**App.jsx** ✅ **GAMEPLAY ONLY**
+- **NOW HANDLES ONLY ACTIVE GAMEPLAY** - No longer renders pre-game phases
 - Player-contextual UI (perspective-aware)
 - Uses proper getLocalPlayerState() / getOpponentPlayerState() patterns
 - Local UI state management only
@@ -245,9 +262,26 @@ class GameClient {
 - **2025-09-26**: ✅ COMPLETED Phase transition validation fixes
 - **2025-09-26**: ✅ COMPLETED AI integration through manager systems
 - **2025-09-26**: ✅ COMPLETED Automatic Phase System architecture
-- **2025-09-26**: Updated CLAUDE.md - Ready for Phase 3: Server Implementation
+- **2025-09-26**: ✅ COMPLETED Screen separation architecture - AppRouter + dedicated phase screens
+- **2025-09-26**: ✅ COMPLETED App.jsx refactor - Now handles only active gameplay
+- **2025-09-26**: ✅ FIXED GameStateManager logging crash on game start (null player properties)
+- **2025-09-26**: Updated CLAUDE.md - Phase 2.7 Complete: Ready for Phase 3: Server Implementation
 
 ## 🔧 **LATEST TECHNICAL ACHIEVEMENTS**
+
+### **Screen Separation Architecture Implementation**
+- **AppRouter Centralization**: All phase routing now handled by single AppRouter component
+- **Dedicated Phase Screens**: Pre-game phases extracted from monolithic App.jsx into dedicated components
+- **Pure Port Approach**: Preserved exact look and feel while extracting functionality
+- **Self-Contained Components**: Each phase screen includes its own state management and event handling
+- **Multiplayer Support**: All phase screens include waiting screens and phase completion tracking
+- **Clean Screen Flow**: menu → lobby → droneSelection → deckSelection → placement → active gameplay
+- **App.jsx Optimization**: Now only handles active gameplay phases (action, deployment, combat)
+
+### **Critical Bug Fixes**
+- **GameStateManager Logging Crash**: Fixed null pointer exception when accessing player properties during game initialization
+- **Defensive Null Checks**: Added proper null checks in logPlayerStateChanges() method
+- **Startup Stability**: Resolved "Cannot read properties of null" error on game start
 
 ### **Automatic Phase System Implementation**
 - **Reclassified Phase Types**: Split phases into Simultaneous, Automatic, and Sequential categories

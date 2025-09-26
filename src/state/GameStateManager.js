@@ -6,6 +6,8 @@
 
 import { gameEngine, startingDecklist } from '../logic/gameLogic.js';
 import ActionProcessor from './ActionProcessor.js';
+import fullDroneCollection from '../data/droneData.js';
+import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
 // PhaseManager dependency removed - using direct phase checks
 
 class GameStateManager {
@@ -274,6 +276,7 @@ class GameStateManager {
    */
   validateTurnPhaseTransition(fromPhase, toPhase) {
     const validTransitions = {
+      null: ['droneSelection', 'preGame'],
       'preGame': ['droneSelection', 'deckSelection'],
       'droneSelection': ['deckSelection'],
       'deckSelection': ['placement'],
@@ -403,8 +406,8 @@ class GameStateManager {
         const criticalProps = ['energy', 'activeDronePool', 'hand', 'deck', 'dronesOnBoard', 'deploymentBudget', 'initialDeploymentBudget'];
 
         criticalProps.forEach(prop => {
-          const oldValue = oldPlayer[prop];
-          const newValue = newPlayer[prop];
+          const oldValue = oldPlayer ? oldPlayer[prop] : undefined;
+          const newValue = newPlayer ? newPlayer[prop] : undefined;
 
           if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
             // Special formatting for different property types
@@ -445,6 +448,7 @@ class GameStateManager {
    */
   isInitializationPhase(turnPhase) {
     const initPhases = [
+      null,
       'preGame',
       'droneSelection',
       'deckSelection',
@@ -643,7 +647,7 @@ class GameStateManager {
       gameMode: gameMode,
 
       // Initialize game flow
-      turnPhase: 'preGame',
+      turnPhase: 'droneSelection',
       turn: 1,
       currentPlayer: null,
       firstPlayerOfRound: null,
@@ -673,10 +677,13 @@ class GameStateManager {
       opponentPlacedSections: [],
       unplacedSections: [],
       shieldsToAllocate: 0,
-      droneSelectionPool: [],
-      droneSelectionTrio: [],
       gameLog: [],
     };
+
+    // Initialize drone selection data for the droneSelection phase
+    const droneSelectionData = initializeDroneSelection(fullDroneCollection);
+    gameState.droneSelectionPool = droneSelectionData.droneSelectionPool;
+    gameState.droneSelectionTrio = droneSelectionData.droneSelectionTrio;
 
     this.setState(gameState, 'GAME_STARTED');
 

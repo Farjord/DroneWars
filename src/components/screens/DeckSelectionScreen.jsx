@@ -134,7 +134,16 @@ function DeckSelectionScreen() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-full">
+    <div className="h-screen bg-gray-950 text-white font-sans overflow-hidden flex flex-col bg-gradient-to-br from-gray-900 via-indigo-950 to-black relative">
+      <style>
+        {`
+          .hexagon { clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
+          .hexagon-flat { clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }
+          .font-orbitron { font-family: 'Orbitron', sans-serif; }
+          .font-exo { font-family: 'Exo', sans-serif; }
+        `}
+      </style>
+      <div className="flex flex-col items-center justify-center h-full">
       <h1 className="text-3xl font-orbitron font-bold text-white mb-2">Select Your Deck</h1>
       <p className="text-gray-400 mb-8">Choose a pre-defined deck or build your own.</p>
       <div className="flex flex-wrap justify-center gap-8">
@@ -159,6 +168,7 @@ function DeckSelectionScreen() {
           </button>
         </div>
       </div>
+    </div>
     </div>
   );
 }

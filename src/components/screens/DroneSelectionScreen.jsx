@@ -53,8 +53,7 @@ function DroneSelectionScreen() {
     getLocalPlayerId,
     getOpponentPlayerId,
     isMultiplayer,
-    getLocalPlayerState,
-    updateGameState
+    getLocalPlayerState
   } = useGameState();
 
   const { droneSelectionPool, droneSelectionTrio, turnPhase } = gameState;
@@ -62,6 +61,10 @@ function DroneSelectionScreen() {
 
   // Local state for drone selection process
   const [tempSelectedDrones, setTempSelectedDrones] = useState([]);
+
+  // Local state for trio management (initialized from global state)
+  const [currentTrio, setCurrentTrio] = useState(droneSelectionTrio);
+  const [remainingPool, setRemainingPool] = useState(droneSelectionPool);
   const [localPhaseCompletion, setLocalPhaseCompletion] = useState({
     droneSelection: false
   });
@@ -105,7 +108,7 @@ function DroneSelectionScreen() {
   /**
    * HANDLE CHOOSE DRONE FOR SELECTION
    * Advances to next trio or completes selection when 5 drones chosen.
-   * Uses direct GameStateManager updates for drone selection state.
+   * Uses local state management only - no direct GameStateManager updates.
    * @param {Object} chosenDrone - The drone being selected
    */
   const handleChooseDroneForSelection = (chosenDrone) => {
@@ -118,13 +121,14 @@ function DroneSelectionScreen() {
     setTempSelectedDrones(newSelection);
 
     if (newSelection.length < 5) {
-      // Continue selection process - advance to next trio
-      const nextTrioData = advanceDroneSelectionTrio(droneSelectionPool);
+      // Continue selection process - advance to next trio using local state
+      const nextTrioData = advanceDroneSelectionTrio(remainingPool);
 
-      // Update drone selection pool directly
-      updateGameState(nextTrioData);
+      // Update local state only - no GameStateManager updates
+      setCurrentTrio(nextTrioData.droneSelectionTrio);
+      setRemainingPool(nextTrioData.droneSelectionPool);
 
-      console.log('🔧 Advanced to next trio, selected:', newSelection.length, 'of 5 drones');
+      console.log('🔧 Advanced to next trio locally, selected:', newSelection.length, 'of 5 drones');
     } else {
       console.log('🔧 All 5 drones selected, waiting for Continue button click');
     }
@@ -187,7 +191,16 @@ function DroneSelectionScreen() {
   const isSelectionComplete = tempSelectedDrones.length === 5;
 
   return (
-    <div className="flex flex-col items-center w-full p-4">
+    <div className="h-screen bg-gray-950 text-white font-sans overflow-hidden flex flex-col bg-gradient-to-br from-gray-900 via-indigo-950 to-black relative">
+      <style>
+        {`
+          .hexagon { clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
+          .hexagon-flat { clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }
+          .font-orbitron { font-family: 'Orbitron', sans-serif; }
+          .font-exo { font-family: 'Exo', sans-serif; }
+        `}
+      </style>
+      <div className="flex flex-col items-center w-full p-4">
       <h2 className="text-3xl font-bold mb-2 text-white text-center">
         Choose Your Drones
       </h2>
@@ -216,9 +229,9 @@ function DroneSelectionScreen() {
             Choice {tempSelectedDrones.length + 1} of 5: Select one drone from the three options below to add to your Active Drone Pool.
           </p>
 
-          {droneSelectionTrio && droneSelectionTrio.length > 0 && (
+          {currentTrio && currentTrio.length > 0 && (
             <div className="flex flex-wrap justify-center gap-6 mb-8">
-              {droneSelectionTrio.map((drone, index) => (
+              {currentTrio.map((drone, index) => (
                 <DroneCard
                   key={drone.name || index}
                   drone={drone}
@@ -274,6 +287,7 @@ function DroneSelectionScreen() {
           <p className="text-center text-gray-500">No drones selected yet.</p>
         )}
       </div>
+    </div>
     </div>
   );
 }

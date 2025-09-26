@@ -4395,47 +4395,9 @@ useEffect(() => {
       )}
       
       <main className="flex-grow min-h-0 w-full flex flex-col items-center overflow-y-auto px-5 pb-4">
-        {turnPhase === 'preGame' ? (
-                    <div className="flex flex-col items-center justify-center h-full">
-                      <h1 className="text-4xl font-orbitron font-bold text-white mb-4">Drone Wars</h1>
-                      <p className="text-gray-400 mb-8">Choose your game mode</p>
-
-                      {/* Multiplayer Button */}
-                      <div className="flex flex-col gap-6 w-full max-w-md">
-                        <button
-                          onClick={() => setShowMultiplayerLobby(true)}
-                          className="w-full bg-purple-600 border-2 border-purple-500 rounded-lg p-6 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:border-purple-400 hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/20"
-                        >
-                          <h2 className="text-2xl font-orbitron font-bold text-purple-200 mb-2">Multiplayer</h2>
-                          <p className="font-exo text-gray-300 mb-4">Play against another human player online</p>
-                          <span className="text-sm text-purple-300">Create or join a room</span>
-                        </button>
-
-                        {/* AI Section */}
-                        <div className="text-center">
-                          <h3 className="text-lg font-orbitron font-bold text-white mb-4">Or play against AI:</h3>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {aiPersonalities.map((ai) => (
-                              <div
-                                key={ai.name}
-                                onClick={() => handleSelectOpponent(ai)}
-                                className="bg-gray-900 border-2 border-pink-500/50 rounded-lg p-4 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:border-pink-500 hover:scale-105 hover:shadow-2xl hover:shadow-pink-500/20"
-                              >
-                                <h4 className="text-lg font-orbitron font-bold text-pink-400 mb-2">{ai.name}</h4>
-                                <p className="font-exo text-gray-300 text-sm flex-grow">{ai.description}</p>
-                                <button className="mt-4 bg-pink-600 text-white font-bold px-4 py-2 rounded-full hover:bg-pink-700 transition-colors duration-200 text-sm">
-                                  Engage
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Phase rendering now handled by AppRouter - phases should not reach here */}
-                      <div className="flex flex-col items-center w-full space-y-2">
+        {/* All pre-game phases now handled by AppRouter - only active gameplay here */}
+        <>
+          <div className="flex flex-col items-center w-full space-y-2">
                       {(() => {
                         return <ShipSectionsDisplay player={opponentPlayerState} playerEffectiveStats={opponentPlayerEffectiveStats} isPlayer={false} placedSections={opponentPlacedSections} onTargetClick={handleTargetClick} isInteractive={false} selectedCard={selectedCard} validCardTargets={validCardTargets} gameEngine={gameEngine} turnPhase={turnPhase} isMyTurn={isMyTurn} passInfo={passInfo} getLocalPlayerId={getLocalPlayerId} localPlayerState={localPlayerState} shipAbilityMode={shipAbilityMode} hoveredTarget={hoveredTarget} setHoveredTarget={setHoveredTarget} />;
                       })()}

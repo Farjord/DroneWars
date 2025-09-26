@@ -240,7 +240,16 @@ function ShipPlacementScreen() {
   });
 
   return (
-    <div className="flex flex-col items-center w-full h-full justify-start pt-8 px-4">
+    <div className="h-screen bg-gray-950 text-white font-sans overflow-hidden flex flex-col bg-gradient-to-br from-gray-900 via-indigo-950 to-black relative">
+      <style>
+        {`
+          .hexagon { clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
+          .hexagon-flat { clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }
+          .font-orbitron { font-family: 'Orbitron', sans-serif; }
+          .font-exo { font-family: 'Exo', sans-serif; }
+        `}
+      </style>
+      <div className="flex flex-col items-center w-full h-full justify-start pt-8 px-4">
       <h2 className="text-3xl font-bold mb-2 text-white text-center font-orbitron">
         Configure Your Ship Layout
       </h2>
@@ -331,6 +340,7 @@ function ShipPlacementScreen() {
       >
         Confirm Layout
       </button>
+    </div>
     </div>
   );
 }
