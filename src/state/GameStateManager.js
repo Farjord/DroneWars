@@ -6,6 +6,7 @@
 
 import { gameEngine, startingDecklist } from '../logic/gameLogic.js';
 import ActionProcessor from './ActionProcessor.js';
+import phaseManager from './PhaseManager.js';
 
 class GameStateManager {
   constructor() {
@@ -273,6 +274,11 @@ class GameStateManager {
   validateActionProcessorUsage(updates, prevState, isFromActionProcessor, stack) {
     // Skip validation during initialization and setup phases
     if (this.isInitializationPhase(prevState.turnPhase)) {
+      return;
+    }
+
+    // Skip validation during simultaneous phases - direct updates are expected
+    if (phaseManager.isSimultaneousPhase(prevState.turnPhase)) {
       return;
     }
 

@@ -22,6 +22,7 @@ import aiPersonalities from './data/aiData.js';
 import { aiBrain } from './logic/aiLogic.js';
 import { gameEngine, startingDecklist } from './logic/gameLogic.js';
 import { getRandomDrones, getElementCenter, getPhaseDisplayName } from './utils/gameUtils.js';
+import phaseManager from './state/PhaseManager.js';
 import CardStatHexagon from './components/ui/CardStatHexagon.jsx';
 import ActionCard from './components/ui/ActionCard.jsx';
 import DroneCard from './components/ui/DroneCard.jsx';
@@ -2053,10 +2054,17 @@ const App = () => {
    * HANDLE SELECT SECTION FOR PLACEMENT
    * Manages ship section selection during placement phase.
    * Handles selection toggling and section removal from lanes.
+   * Uses direct GameStateManager updates for placement state changes.
    * @param {string} sectionName - Name of the section being selected
    */
   const handleSelectSectionForPlacement = (sectionName) => {
-    console.error('🔥 CRITICAL - handleSelectSectionForPlacement called with:', sectionName, 'gameMode:', gameState.gameMode);
+    const { turnPhase } = gameState;
+
+    // Only handle during placement phase
+    if (turnPhase !== 'placement') return;
+
+    console.log('🔧 handleSelectSectionForPlacement called with:', sectionName, 'gameMode:', gameState.gameMode);
+
     // If clicking a section in the top "unplaced" row
     if (unplacedSections.includes(sectionName)) {
         // Toggle selection: if it's already selected, unselect it. Otherwise, select it.
@@ -2066,12 +2074,15 @@ const App = () => {
         const laneIndex = localPlacedSections.indexOf(sectionName);
         const newPlaced = [...localPlacedSections];
         newPlaced[laneIndex] = null; // Remove from lane
+
+        // Use direct GameStateManager updates for placement phase
         updateGameState({
           placedSections: gameState.gameMode === 'guest' ? opponentPlacedSections : newPlaced,
           opponentPlacedSections: gameState.gameMode === 'guest' ? newPlaced : placedSections,
           unplacedSections: [...unplacedSections, sectionName]
         });
-        setSelectedSectionForPlacement(null); // This is the fix: clear the selection
+
+        setSelectedSectionForPlacement(null); // Clear the selection
     }
   };
 
@@ -2079,22 +2090,30 @@ const App = () => {
    * HANDLE LANE SELECT FOR PLACEMENT
    * Places selected ship section in chosen lane.
    * Handles lane swapping and section management.
+   * Uses direct GameStateManager updates for placement state changes.
    * @param {number} laneIndex - Index of the lane (0, 1, 2)
    */
   const handleLaneSelectForPlacement = (laneIndex) => {
-    console.error('🔥 CRITICAL - handleLaneSelectForPlacement called with lane:', laneIndex, 'gameMode:', gameState.gameMode);
+    const { turnPhase } = gameState;
+
+    // Only handle during placement phase
+    if (turnPhase !== 'placement') return;
+
+    console.log('🔧 handleLaneSelectForPlacement called with lane:', laneIndex, 'gameMode:', gameState.gameMode);
+
     if (selectedSectionForPlacement) {
       // If the lane is occupied, swap with the selected section
       if (localPlacedSections[laneIndex]) {
         const sectionToSwap = localPlacedSections[laneIndex];
         const newPlaced = [...localPlacedSections];
         newPlaced[laneIndex] = selectedSectionForPlacement;
-        
+
         // Find where the selected section was and put the swapped one there
         const oldIndexOfSelected = unplacedSections.indexOf(selectedSectionForPlacement);
         const newUnplaced = [...unplacedSections];
         newUnplaced.splice(oldIndexOfSelected, 1, sectionToSwap);
-        
+
+        // Use direct GameStateManager updates for placement phase
         updateGameState({
           unplacedSections: newUnplaced,
           placedSections: gameState.gameMode === 'guest' ? opponentPlacedSections : newPlaced,
@@ -2105,6 +2124,8 @@ const App = () => {
         // If the lane is empty, place the section
         const newPlaced = [...localPlacedSections];
         newPlaced[laneIndex] = selectedSectionForPlacement;
+
+        // Use direct GameStateManager updates for placement phase
         updateGameState({
           placedSections: gameState.gameMode === 'guest' ? opponentPlacedSections : newPlaced,
           opponentPlacedSections: gameState.gameMode === 'guest' ? newPlaced : placedSections,
@@ -2122,14 +2143,20 @@ const App = () => {
    * HANDLE CONFIRM PLACEMENT
    * Finalizes ship section placement and initiates initial card draw.
    * Sets up both players' hands and transitions to first turn determination.
+   * Uses direct GameStateManager updates for placement state changes.
    */
   const handleConfirmPlacement = async () => {
-    console.log(`🔥 handleConfirmPlacement called`);
+    const { turnPhase } = gameState;
 
-    // Draw cards for local player
+    // Only handle during placement phase
+    if (turnPhase !== 'placement') return;
+
+    console.log(`🔧 handleConfirmPlacement called`);
+
+    // Draw cards for local player using direct updates
     drawPlayerHand();
 
-    // In local mode, also draw cards for AI player
+    // In local mode, also draw cards for AI player using direct updates
     if (!isMultiplayer()) {
       let newDeck = [...opponentPlayerState.deck];
       let newHand = [];
@@ -2145,23 +2172,17 @@ const App = () => {
       updatePlayerState(getOpponentPlayerId(), { ...opponentPlayerState, deck: newDeck, hand: newHand });
     }
 
-    console.log(`🔥 About to call sendPhaseCompletion('placement')`);
+    console.log(`🔧 About to call sendPhaseCompletion('placement')`);
     // Send completion notification to opponent
     sendPhaseCompletion('placement');
 
-    console.log(`🔥 About to check if both players are ready`);
+    console.log(`🔧 About to check if both players are ready`);
     // Check if both players are ready to proceed
     if (areBothPlayersReady('placement')) {
-      console.log(`🔥 Both players ready! Proceeding to next phase`);
-    } else {
-      console.log(`🔥 Not both players ready yet, staying in placement phase`);
-    }
+      console.log(`🔧 Both players ready! Proceeding to next phase`);
 
-    if (areBothPlayersReady('placement')) {
-      await processAction('phaseTransition', {
-        newPhase: 'initialDraw',
-        trigger: 'handleConfirmPlacement'
-      });
+      // Use direct GameStateManager updates for phase transition during placement
+      setTurnPhase('initialDraw');
 
       const proceed = async () => {
         setModalContent(null);
@@ -2170,7 +2191,7 @@ const App = () => {
 
       // In single player mode, automatically proceed without modal
       if (!isMultiplayer()) {
-        console.log('🔥 Single player mode: automatically proceeding to first turn');
+        console.log('🔧 Single player mode: automatically proceeding to first turn');
         await proceed();
       } else {
         setModalContent({
@@ -2187,6 +2208,8 @@ const App = () => {
             )
         });
       }
+    } else {
+      console.log(`🔧 Not both players ready yet, staying in placement phase`);
     }
     // If not both ready in multiplayer, stay in placement phase and let WaitingForOpponentScreen handle it
   };
@@ -2198,11 +2221,19 @@ const App = () => {
    * @param {string} sectionName - Name of the section receiving the shield
    */
   const handleAllocateShield = async (sectionName) => {
-    // Use ActionProcessor for shield allocation
-    await processAction('allocateShield', {
-      sectionName: sectionName,
-      playerId: getLocalPlayerId()
-    });
+    const { turnPhase } = gameState;
+
+    if (turnPhase === 'allocateShields') {
+      // Round start shield allocation - use direct GameStateManager updates
+      const result = gameEngine.processShieldAllocation({ sectionName }, getLocalPlayerState());
+      updatePlayerState(getLocalPlayerId(), result.newPlayerState);
+    } else {
+      // Action phase shield reallocation - use ActionProcessor
+      await processAction('allocateShield', {
+        sectionName: sectionName,
+        playerId: getLocalPlayerId()
+      });
+    }
   };
 
   /**
@@ -2345,10 +2376,18 @@ const App = () => {
    * Restores original shield distribution.
    */
   const handleResetShieldAllocation = async () => {
-    // Use ActionProcessor for shield allocation reset
-    await processAction('resetShieldAllocation', {
-      playerId: getLocalPlayerId()
-    });
+    const { turnPhase } = gameState;
+
+    if (turnPhase === 'allocateShields') {
+      // Round start shield allocation reset - use direct GameStateManager updates
+      const result = gameEngine.resetShieldAllocation(getLocalPlayerState());
+      updatePlayerState(getLocalPlayerId(), result.newPlayerState);
+    } else {
+      // Action phase shield reallocation reset - use ActionProcessor
+      await processAction('resetShieldAllocation', {
+        playerId: getLocalPlayerId()
+      });
+    }
   };
 
   /**
@@ -2357,12 +2396,685 @@ const App = () => {
    * Determines first player and transitions to deployment phase.
    */
   const handleEndAllocation = async () => {
-    // Use processAction for shield allocation completion
-    await processAction('endShieldAllocation', {
-      trigger: 'manualEndAllocation'
-    });
+    const { turnPhase } = gameState;
+
+    if (turnPhase === 'allocateShields') {
+      // Round start shield allocation completion - use direct GameStateManager updates
+      const result = gameEngine.endShieldAllocation({ trigger: 'manualEndAllocation' }, gameState);
+
+      // Update both players if AI completion occurred
+      if (result.newGameState.player1) {
+        updatePlayerState('player1', result.newGameState.player1);
+      }
+      if (result.newGameState.player2) {
+        updatePlayerState('player2', result.newGameState.player2);
+      }
+
+      // Handle phase transition if needed
+      if (result.phaseTransition) {
+        setTurnPhase(result.phaseTransition.newPhase);
+        if (result.phaseTransition.firstPlayer) {
+          setCurrentPlayer(result.phaseTransition.firstPlayer);
+        }
+      }
+    } else {
+      // Action phase shield operations - use ActionProcessor
+      await processAction('endShieldAllocation', {
+        trigger: 'manualEndAllocation'
+      });
+    }
 
     setShowFirstPlayerModal(true);
+  };
+
+  // ========================================
+  // SHIELD ALLOCATION CONTEXT DETECTION
+  // ========================================
+
+  /**
+   * HANDLE SHIELD ACTION
+   * Smart routing for shield actions based on phase context.
+   * Routes between round start (simultaneous) and action phase (sequential) handling.
+   * @param {string} actionType - The shield action type
+   * @param {Object} payload - Action payload data
+   */
+  const handleShieldAction = (actionType, payload) => {
+    const phase = gameState.turnPhase;
+
+    console.log(`🛡️ handleShieldAction: ${actionType} in phase ${phase}`);
+
+    if (phase === 'allocateShields') {
+      // Round start shield allocation - simultaneous phase processing
+      console.log(`🛡️ Routing to round start shield handling (simultaneous)`);
+      handleRoundStartShieldAction(actionType, payload);
+    } else if (phase === 'action') {
+      // Action phase shield reallocation - sequential phase processing
+      console.log(`🛡️ Routing to action phase shield handling (sequential)`);
+      processAction(actionType, payload);
+    } else {
+      console.warn(`⚠️ Shield action ${actionType} not valid for phase ${phase}`);
+    }
+  };
+
+  /**
+   * HANDLE ROUND START SHIELD ACTION
+   * Processes shield actions during round start allocateShields phase.
+   * Uses direct GameStateManager updates for simultaneous processing.
+   * @param {string} actionType - The shield action type
+   * @param {Object} payload - Action payload data
+   */
+  const handleRoundStartShieldAction = (actionType, payload) => {
+    const { turnPhase } = gameState;
+
+    // Validate we're in the correct phase
+    if (turnPhase !== 'allocateShields') {
+      console.warn(`⚠️ Round start shield action ${actionType} called during ${turnPhase} phase`);
+      return;
+    }
+
+    console.log(`🛡️⚡ Processing round start shield action: ${actionType}`);
+
+    try {
+      switch (actionType) {
+        case 'allocateShield':
+          if (payload.sectionName) {
+            handleAllocateShield(payload.sectionName);
+          } else {
+            console.error('allocateShield action missing sectionName in payload');
+          }
+          break;
+
+        case 'resetShieldAllocation':
+          handleResetShieldAllocation();
+          break;
+
+        case 'endShieldAllocation':
+          handleEndAllocation();
+          break;
+
+        default:
+          console.warn(`⚠️ Unknown round start shield action: ${actionType}`);
+          break;
+      }
+    } catch (error) {
+      console.error(`❌ Error processing round start shield action ${actionType}:`, error);
+    }
+  };
+
+  // ========================================
+  // PHASE-AWARE ACTION ROUTING
+  // ========================================
+
+  /**
+   * HANDLE GAME ACTION
+   * Phase-aware routing function that directs actions to appropriate handlers.
+   * Routes based on phase type: sequential phases use ActionProcessor,
+   * simultaneous phases use direct GameStateManager updates.
+   * @param {string} actionType - The type of action to perform
+   * @param {Object} payload - Action-specific data
+   * @returns {Promise} Result of the action processing
+   */
+  const handleGameAction = async (actionType, payload) => {
+    const phase = gameState.turnPhase;
+    const isSequential = phaseManager.isSequentialPhase(phase);
+
+    console.log(`[PHASE ROUTING] ${actionType} in ${phase} → ${isSequential ? 'ActionProcessor' : 'Direct Update'}`);
+
+    // Special case for shield actions
+    if (actionType.includes('Shield') || actionType.includes('shield')) {
+      console.log(`[SHIELD ROUTING] ${actionType} in ${phase} → ${phase === 'allocateShields' ? 'Round Start (Simultaneous)' : 'Action Phase (Sequential)'}`);
+    }
+
+    if (isSequential) {
+      // Sequential phases: use ActionProcessor for serialized execution
+      return await processAction(actionType, payload);
+    } else {
+      // Simultaneous phases: use direct updates for parallel execution
+      return handleSimultaneousAction(actionType, payload);
+    }
+  };
+
+  /**
+   * HANDLE SIMULTANEOUS ACTION
+   * Routes simultaneous phase actions to appropriate direct update functions.
+   * Handles parallel player actions during setup and round start phases.
+   * @param {string} actionType - The type of action to perform
+   * @param {Object} payload - Action-specific data
+   * @returns {Object} Result of the action processing
+   */
+  const handleSimultaneousAction = (actionType, payload) => {
+    const { turnPhase } = gameState;
+
+    console.log(`⚡ handleSimultaneousAction: ${actionType} in ${turnPhase} phase`);
+
+    try {
+      // Route based on action type and current phase
+      switch (actionType) {
+        // Shield allocation actions
+        case 'allocateShield':
+          if (turnPhase === 'allocateShields') {
+            const result = gameEngine.processShieldAllocation(payload, getLocalPlayerState());
+            updatePlayerState(getLocalPlayerId(), result.newPlayerState);
+            return { success: true, result };
+          }
+          break;
+
+        case 'resetShieldAllocation':
+          if (turnPhase === 'allocateShields') {
+            const result = gameEngine.resetShieldAllocation(getLocalPlayerState());
+            updatePlayerState(getLocalPlayerId(), result.newPlayerState);
+            return { success: true, result };
+          }
+          break;
+
+        case 'endShieldAllocation':
+          if (turnPhase === 'allocateShields') {
+            const result = gameEngine.endShieldAllocation(payload, gameState);
+
+            // Update both players if AI completion occurred
+            if (result.newGameState.player1) {
+              updatePlayerState('player1', result.newGameState.player1);
+            }
+            if (result.newGameState.player2) {
+              updatePlayerState('player2', result.newGameState.player2);
+            }
+
+            // Handle phase transition if needed
+            if (result.phaseTransition) {
+              setTurnPhase(result.phaseTransition.newPhase);
+              if (result.phaseTransition.firstPlayer) {
+                setCurrentPlayer(result.phaseTransition.firstPlayer);
+              }
+            }
+
+            return { success: true, result };
+          }
+          break;
+
+        // Hand limit enforcement actions
+        case 'discardCard':
+          if (turnPhase === 'optionalDiscard') {
+            handleRoundStartDiscard(payload.card || payload);
+            return { success: true, message: 'Card discarded during round start' };
+          }
+          break;
+
+        case 'drawToHandLimit':
+          if (turnPhase === 'optionalDiscard') {
+            handleRoundStartDraw();
+            return { success: true, message: 'Drew cards to hand limit' };
+          }
+          break;
+
+        case 'confirmHandLimit':
+          if (turnPhase === 'optionalDiscard') {
+            checkBothPlayersHandLimitComplete();
+            return { success: true, message: 'Hand limit enforcement completed' };
+          }
+          break;
+
+        // Setup phase actions
+        case 'selectDrone':
+        case 'confirmDroneSelection':
+          if (turnPhase === 'droneSelection') {
+            const result = gameEngine.processDroneSelection(payload, getLocalPlayerState());
+            updatePlayerState(getLocalPlayerId(), result.newPlayerState);
+            return { success: true, result };
+          }
+          break;
+
+        case 'selectDeck':
+        case 'confirmDeckSelection':
+          if (turnPhase === 'deckSelection') {
+            const result = gameEngine.processDeckSelection(payload, getLocalPlayerState());
+            updatePlayerState(getLocalPlayerId(), result.newPlayerState);
+            return { success: true, result };
+          }
+          break;
+
+        case 'addCardToDeck':
+        case 'removeCardFromDeck':
+        case 'confirmDeck':
+          if (turnPhase === 'deckBuilding') {
+            const result = gameEngine.processDeckBuilding(payload, getLocalPlayerState());
+            updatePlayerState(getLocalPlayerId(), result.newPlayerState);
+            return { success: true, result };
+          }
+          break;
+
+        // Placement actions
+        case 'placePiece':
+        case 'confirmPlacement':
+          if (turnPhase === 'placement') {
+            const result = gameEngine.processPlacement(payload, getLocalPlayerState());
+            updatePlayerState(getLocalPlayerId(), result.newPlayerState);
+            return { success: true, result };
+          }
+          break;
+
+        // Initial draw actions
+        case 'drawCard':
+        case 'confirmInitialHand':
+          if (turnPhase === 'initialDraw') {
+            const result = gameEngine.processInitialDraw(payload, getLocalPlayerState());
+            updatePlayerState(getLocalPlayerId(), result.newPlayerState);
+            return { success: true, result };
+          }
+          break;
+
+        // Phase transition actions (for simultaneous phases)
+        case 'phaseTransition':
+          if (phaseManager.isSimultaneousPhase(turnPhase)) {
+            console.log(`🔄 Simultaneous phase transition: ${turnPhase} -> ${payload.newPhase}`);
+            setTurnPhase(payload.newPhase);
+
+            // Handle any additional state updates
+            if (payload.firstPlayer) {
+              setCurrentPlayer(payload.firstPlayer);
+            }
+
+            return { success: true, message: `Transitioned to ${payload.newPhase}` };
+          }
+          break;
+
+        // Generic state updates
+        case 'updateGameState':
+          updateGameState(payload);
+          return { success: true, message: 'Game state updated directly' };
+
+        default:
+          console.warn(`⚠️ Unhandled simultaneous action: ${actionType} in phase ${turnPhase}`);
+          return {
+            success: false,
+            error: `No handler for simultaneous action: ${actionType} in phase ${turnPhase}`
+          };
+      }
+
+      // If we get here, the action was not appropriate for the current phase
+      return {
+        success: false,
+        error: `Action ${actionType} not valid for current phase ${turnPhase}`
+      };
+    } catch (error) {
+      console.error(`❌ Error in handleSimultaneousAction:`, error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  };
+
+  // ========================================
+  // ROUND START SEQUENCE
+  // ========================================
+
+  /**
+   * HANDLE ROUND START
+   * Orchestrates the complete round start sequence with proper phase transitions.
+   * Manages both simultaneous and sequential phases with multiplayer synchronization.
+   */
+  const handleRoundStart = async () => {
+    console.log('🔄 Starting new round sequence');
+
+    try {
+      // 1. Hand limit enforcement (simultaneous)
+      console.log('🔄 Phase 1: Hand limit enforcement (simultaneous)');
+      setTurnPhase('optionalDiscard');
+      await waitForBothPlayersComplete('optionalDiscard');
+
+      // 2. Shield allocation (simultaneous)
+      console.log('🔄 Phase 2: Shield allocation (simultaneous)');
+      setTurnPhase('allocateShields');
+      await waitForBothPlayersComplete('allocateShields');
+
+      // 3. Start deployment (sequential)
+      console.log('🔄 Phase 3: Starting deployment phase (sequential)');
+      setTurnPhase('deployment');
+
+      // Determine first player for sequential phase
+      const firstPlayer = gameEngine.determineFirstPlayer(
+        gameState.turn,
+        gameState.firstPlayerOverride,
+        gameState.firstPasserOfPreviousRound
+      );
+
+      setCurrentPlayer(firstPlayer);
+      setFirstPlayerOfRound(firstPlayer);
+
+      // Reset pass info for new round
+      setPassInfo({
+        firstPasser: null,
+        player1Passed: false,
+        player2Passed: false
+      });
+
+      console.log('✅ Round start sequence complete');
+    } catch (error) {
+      console.error('❌ Error during round start sequence:', error);
+    }
+  };
+
+  /**
+   * WAIT FOR BOTH PLAYERS COMPLETE
+   * Waits for both players to complete a simultaneous phase before proceeding.
+   * Handles both local AI and multiplayer scenarios.
+   * @param {string} phase - The phase to wait for completion
+   * @returns {Promise} Resolves when both players are complete
+   */
+  const waitForBothPlayersComplete = async (phase) => {
+    return new Promise((resolve, reject) => {
+      console.log(`⏳ Waiting for both players to complete ${phase} phase`);
+
+      // Set up timeout for safety (30 seconds max wait)
+      const timeout = setTimeout(() => {
+        console.warn(`⚠️ Timeout waiting for ${phase} completion`);
+        resolve(); // Continue anyway to prevent game lockup
+      }, 30000);
+
+      const checkCompletion = () => {
+        if (!isMultiplayer()) {
+          // Single player mode - handle AI completion automatically
+          console.log(`🤖 Single player mode: handling AI completion for ${phase}`);
+          handleAIPhaseCompletion(phase);
+          clearTimeout(timeout);
+          resolve();
+          return;
+        }
+
+        // Multiplayer mode - check if both players are ready
+        if (areBothPlayersReady(phase)) {
+          console.log(`✅ Both players completed ${phase} phase`);
+          clearTimeout(timeout);
+          resolve();
+          return;
+        }
+
+        // Not ready yet - continue waiting
+        console.log(`⏳ Still waiting for ${phase} completion`);
+      };
+
+      // Initial check
+      checkCompletion();
+
+      // Set up periodic checking for multiplayer
+      if (isMultiplayer()) {
+        const checkInterval = setInterval(() => {
+          if (areBothPlayersReady(phase)) {
+            clearInterval(checkInterval);
+            clearTimeout(timeout);
+            console.log(`✅ Both players completed ${phase} phase`);
+            resolve();
+          }
+        }, 1000); // Check every second
+
+        // Store interval for cleanup on timeout
+        timeout._checkInterval = checkInterval;
+      }
+    });
+  };
+
+  /**
+   * HANDLE AI PHASE COMPLETION
+   * Automatically handles AI completion of simultaneous phases.
+   * @param {string} phase - The phase to complete for AI
+   */
+  const handleAIPhaseCompletion = (phase) => {
+    console.log(`🤖 Handling AI completion for ${phase} phase`);
+
+    const opponentPlayerId = getOpponentPlayerId();
+    const opponentPlayerState = getOpponentPlayerState();
+
+    switch (phase) {
+      case 'optionalDiscard':
+        // AI hand limit enforcement
+        const opponentStats = gameEngine.calculateEffectiveShipStats(
+          opponentPlayerState,
+          getOpponentPlacedSections()
+        ).totals;
+
+        if (opponentPlayerState.hand.length > opponentStats.handLimit) {
+          const cardsToDiscard = opponentPlayerState.hand.length - opponentStats.handLimit;
+          const cardsToDiscard_actual = opponentPlayerState.hand.slice(0, cardsToDiscard);
+
+          updatePlayerState(opponentPlayerId, {
+            hand: opponentPlayerState.hand.slice(cardsToDiscard),
+            discardPile: [...opponentPlayerState.discardPile, ...cardsToDiscard_actual]
+          });
+
+          addLogEntry({
+            player: opponentPlayerState.name,
+            actionType: 'DISCARD_OPTIONAL',
+            cardsDiscarded: cardsToDiscard,
+            timestamp: Date.now()
+          });
+        }
+
+        // AI draw to hand limit
+        handleRoundStartDraw_AI();
+        break;
+
+      case 'allocateShields':
+        // AI shield allocation - use simple allocation strategy
+        const aiShieldResult = aiBrain.makeShieldAllocationDecision(
+          opponentPlayerState,
+          getOpponentPlacedSections()
+        );
+
+        if (aiShieldResult && aiShieldResult.newShipSections) {
+          updatePlayerState(opponentPlayerId, {
+            shipSections: aiShieldResult.newShipSections
+          });
+
+          addLogEntry({
+            player: opponentPlayerState.name,
+            actionType: 'SHIELD_ALLOCATION',
+            timestamp: Date.now()
+          });
+        }
+        break;
+
+      default:
+        console.warn(`⚠️ No AI completion handler for phase: ${phase}`);
+    }
+
+    console.log(`✅ AI completion for ${phase} phase finished`);
+  };
+
+  // ========================================
+  // SIMULTANEOUS HAND LIMIT ENFORCEMENT
+  // ========================================
+
+  /**
+   * HANDLE ROUND START DISCARD
+   * Handles simultaneous discard during optionalDiscard phase.
+   * Uses direct GameStateManager updates for parallel player actions.
+   * @param {Object} card - The card being discarded
+   */
+  const handleRoundStartDiscard = (card) => {
+    const { turnPhase } = gameState;
+
+    if (turnPhase === 'optionalDiscard') {
+      // Round start discard - use direct GameStateManager updates
+      const currentPlayerState = getLocalPlayerState();
+      const newHand = currentPlayerState.hand.filter(c => c.id !== card.id);
+      const newDiscardPile = [...currentPlayerState.discardPile, card];
+
+      updatePlayerState(getLocalPlayerId(), {
+        hand: newHand,
+        discardPile: newDiscardPile
+      });
+
+      // Update UI state
+      setOptionalDiscardCount(prev => prev + 1);
+
+      // Add log entry
+      addLogEntry({
+        player: currentPlayerState.name,
+        actionType: 'DISCARD_OPTIONAL',
+        card: card.name,
+        timestamp: Date.now()
+      });
+
+      // Check if both players are complete
+      checkBothPlayersHandLimitComplete();
+    }
+  };
+
+  /**
+   * HANDLE ROUND START DRAW
+   * Handles simultaneous draw during round start.
+   * Uses direct GameStateManager updates for parallel player actions.
+   */
+  const handleRoundStartDraw = () => {
+    const { turnPhase } = gameState;
+
+    if (turnPhase === 'optionalDiscard') {
+      // Round start draw - use direct GameStateManager updates
+      const currentPlayerState = getLocalPlayerState();
+      const effectiveStats = gameEngine.calculateEffectiveShipStats(currentPlayerState, getLocalPlacedSections()).totals;
+
+      let newDeck = [...currentPlayerState.deck];
+      let newHand = [...currentPlayerState.hand];
+      let newDiscardPile = [...currentPlayerState.discardPile];
+      const handLimit = effectiveStats.handLimit;
+
+      // Draw cards up to hand limit
+      while (newHand.length < handLimit && (newDeck.length > 0 || newDiscardPile.length > 0)) {
+        if (newDeck.length === 0) {
+          // Shuffle discard pile into deck
+          newDeck = [...newDiscardPile].sort(() => 0.5 - Math.random());
+          newDiscardPile = [];
+        }
+
+        const drawnCard = newDeck.shift();
+        if (drawnCard) {
+          newHand.push(drawnCard);
+        }
+      }
+
+      updatePlayerState(getLocalPlayerId(), {
+        deck: newDeck,
+        hand: newHand,
+        discardPile: newDiscardPile
+      });
+
+      // Add log entry
+      addLogEntry({
+        player: currentPlayerState.name,
+        actionType: 'DRAW_TO_HAND_LIMIT',
+        cardsDrawn: newHand.length - currentPlayerState.hand.length,
+        timestamp: Date.now()
+      });
+
+      // Check if both players are complete
+      checkBothPlayersHandLimitComplete();
+    }
+  };
+
+  /**
+   * CHECK BOTH PLAYERS HAND LIMIT COMPLETE
+   * Checks if both players have completed hand limit enforcement.
+   * Transitions to shield allocation phase when both are ready.
+   */
+  const checkBothPlayersHandLimitComplete = () => {
+    const { turnPhase } = gameState;
+
+    if (turnPhase !== 'optionalDiscard') return;
+
+    // In local mode, check if local player is done and handle AI
+    if (!isMultiplayer()) {
+      const localPlayerState = getLocalPlayerState();
+      const opponentPlayerState = getOpponentPlayerState();
+      const localStats = gameEngine.calculateEffectiveShipStats(localPlayerState, getLocalPlacedSections()).totals;
+      const opponentStats = gameEngine.calculateEffectiveShipStats(opponentPlayerState, getOpponentPlacedSections()).totals;
+
+      const localHandLimitMet = localPlayerState.hand.length <= localStats.handLimit;
+
+      if (localHandLimitMet) {
+        // Handle AI hand limit enforcement
+        if (opponentPlayerState.hand.length > opponentStats.handLimit) {
+          const cardsToDiscard = opponentPlayerState.hand.length - opponentStats.handLimit;
+          const cardsToDiscard_actual = opponentPlayerState.hand.slice(0, cardsToDiscard);
+
+          updatePlayerState(getOpponentPlayerId(), {
+            hand: opponentPlayerState.hand.slice(cardsToDiscard),
+            discardPile: [...opponentPlayerState.discardPile, ...cardsToDiscard_actual]
+          });
+        }
+
+        // Draw AI to hand limit
+        handleRoundStartDraw_AI();
+
+        // Transition to shield allocation
+        proceedToShieldAllocation();
+      }
+    } else {
+      // In multiplayer mode, wait for both players to complete
+      // This would be handled by multiplayer synchronization
+      // For now, assume single player completion triggers transition
+      const localPlayerState = getLocalPlayerState();
+      const localStats = gameEngine.calculateEffectiveShipStats(localPlayerState, getLocalPlacedSections()).totals;
+      const localHandLimitMet = localPlayerState.hand.length <= localStats.handLimit;
+
+      if (localHandLimitMet) {
+        // Send completion signal to opponent
+        if (p2pManager && isMultiplayer()) {
+          p2pManager.sendData({
+            type: 'PHASE_COMPLETED',
+            phase: 'optionalDiscard',
+            playerId: getLocalPlayerId(),
+            timestamp: Date.now()
+          });
+        }
+
+        // Check if opponent is also complete (this would be handled by P2P events)
+        // For now, proceed to shield allocation
+        proceedToShieldAllocation();
+      }
+    }
+  };
+
+  /**
+   * HANDLE ROUND START DRAW AI
+   * Handles AI drawing to hand limit during round start.
+   * Internal helper for AI hand limit enforcement.
+   */
+  const handleRoundStartDraw_AI = () => {
+    const opponentPlayerState = getOpponentPlayerState();
+    const opponentStats = gameEngine.calculateEffectiveShipStats(opponentPlayerState, getOpponentPlacedSections()).totals;
+
+    let newDeck = [...opponentPlayerState.deck];
+    let newHand = [...opponentPlayerState.hand];
+    let newDiscardPile = [...opponentPlayerState.discardPile];
+    const handLimit = opponentStats.handLimit;
+
+    // Draw cards up to hand limit for AI
+    while (newHand.length < handLimit && (newDeck.length > 0 || newDiscardPile.length > 0)) {
+      if (newDeck.length === 0) {
+        // Shuffle discard pile into deck
+        newDeck = [...newDiscardPile].sort(() => 0.5 - Math.random());
+        newDiscardPile = [];
+      }
+
+      const drawnCard = newDeck.shift();
+      if (drawnCard) {
+        newHand.push(drawnCard);
+      }
+    }
+
+    updatePlayerState(getOpponentPlayerId(), {
+      deck: newDeck,
+      hand: newHand,
+      discardPile: newDiscardPile
+    });
+
+    // Add log entry
+    addLogEntry({
+      player: opponentPlayerState.name,
+      actionType: 'DRAW_TO_HAND_LIMIT',
+      cardsDrawn: newHand.length - opponentPlayerState.hand.length,
+      timestamp: Date.now()
+    });
   };
 
   /**
@@ -2402,9 +3114,17 @@ const App = () => {
    * HANDLE CONFIRM DRONE SELECTION
    * Finalizes player's drone pool selection and transitions to deck phase.
    * Updates player state with selected drones and counts.
+   * Uses direct GameStateManager updates for simultaneous phase processing.
    * @param {Array} selectedDrones - Array of selected drone objects
    */
   const handleConfirmDroneSelection = (selectedDrones) => {
+    const { turnPhase } = gameState;
+
+    // Only handle during drone selection phase
+    if (turnPhase !== 'droneSelection') return;
+
+    console.log('🔧 handleConfirmDroneSelection called with:', selectedDrones.map(d => d.name));
+
     const droneNames = selectedDrones.map(d => d.name).join(', ');
     addLogEntry({
       player: 'SYSTEM',
@@ -2420,23 +3140,26 @@ const App = () => {
     });
 
     const localPlayerId = getLocalPlayerId();
+
+    // Use direct GameStateManager updates for drone selection phase
     updatePlayerState(localPlayerId, {
       ...gameState[localPlayerId],
       activeDronePool: selectedDrones,
       deployedDroneCounts: initialCounts
     });
 
-    // Send completion notification to opponent
+    // Send completion notification to opponent for multiplayer sync
     sendPhaseCompletion('droneSelection');
 
-    // Check if both players are ready to proceed
+    // Handle phase transition when both players ready
     if (areBothPlayersReady('droneSelection')) {
-      processAction('phaseTransition', {
-        newPhase: 'deckSelection',
-        trigger: 'droneSelectionComplete'
-      });
+      console.log('🔧 Both players ready for drone selection, transitioning to deckSelection');
+
+      // Use direct GameStateManager updates for phase transition during simultaneous phase
+      setTurnPhase('deckSelection');
       setModalContent(null);
     } else {
+      console.log('🔧 Waiting for opponent to complete drone selection');
       // Show waiting screen
       setModalContent(null); // This will trigger the waiting screen in the render logic
     }
@@ -2507,14 +3230,23 @@ const App = () => {
    * HANDLE DECK CHOICE
    * Processes player's choice between standard deck or custom deck building.
    * Routes to appropriate phase based on selection.
+   * Uses direct GameStateManager updates for deck selection phase.
    * @param {string} choice - 'standard' or 'custom' deck choice
    */
   const handleDeckChoice = (choice) => {
+    const { turnPhase } = gameState;
+
+    // Only handle during deck selection phase
+    if (turnPhase !== 'deckSelection') return;
+
+    console.log('🔧 handleDeckChoice called with:', choice);
+
     if (choice === 'standard') {
       // Build the standard deck for the local player
       const localPlayerId = getLocalPlayerId();
       const standardDeck = gameEngine.buildDeckFromList(startingDecklist);
 
+      // Use direct GameStateManager updates for deck selection phase
       updatePlayerState(localPlayerId, {
         ...gameState[localPlayerId],
         deck: standardDeck
@@ -2528,19 +3260,21 @@ const App = () => {
         outcome: 'Player selected the Standard Deck.'
       }, 'handleDeckChoice');
 
-      // Send completion notification to opponent
+      // Send completion notification to opponent for multiplayer sync
       sendPhaseCompletion('deckSelection');
 
-      // Check if both players are ready to proceed
+      // Handle phase transition when both players ready
       if (areBothPlayersReady('deckSelection')) {
+        console.log('🔧 Both players ready for deck selection, starting placement phase');
         startPlacementPhase();
+      } else {
+        console.log('🔧 Waiting for opponent to complete deck selection');
       }
-      // If not ready, the waiting screen will be shown by the render logic
     } else if (choice === 'custom') {
-      processAction('phaseTransition', {
-        newPhase: 'deckBuilding',
-        trigger: 'customDeckChoice'
-      });
+      console.log('🔧 Transitioning to deck building phase');
+
+      // Use direct GameStateManager updates for phase transition during simultaneous phase
+      setTurnPhase('deckBuilding');
     }
   };
 
@@ -2568,9 +3302,17 @@ const App = () => {
    * HANDLE CONFIRM DECK
    * Finalizes custom deck composition and builds shuffled deck.
    * Updates player state and transitions to placement phase.
+   * Uses direct GameStateManager updates for deck building phase.
    */
   const handleConfirmDeck = () => {
-    // ADD THIS BLOCK
+    const { turnPhase } = gameState;
+
+    // Only handle during deck building phase
+    if (turnPhase !== 'deckBuilding') return;
+
+    console.log('🔧 handleConfirmDeck called');
+
+    // Log deck contents for debugging
     const deckContents = Object.entries(deck)
       .map(([cardId, quantity]) => {
           const cardName = fullCardCollection.find(c => c.id === cardId)?.name || cardId;
@@ -2585,27 +3327,28 @@ const App = () => {
         target: 'N/A',
         outcome: `Custom deck confirmed with cards: ${deckContents}.`
     }, 'handleConfirmDeck');
-    // The 'deck' state has been updated by handleDeckChange, so we can use it directly
-    const decklist = Object.entries(deck).map(([id, quantity]) => ({ id, quantity }));
 
-    // Use our existing helper to build the final, shuffled deck
+    // Build the final shuffled deck from the custom composition
+    const decklist = Object.entries(deck).map(([id, quantity]) => ({ id, quantity }));
     const newPlayerDeck = gameEngine.buildDeckFromList(decklist);
 
-    // Update local player's state with the new custom deck
+    // Use direct GameStateManager updates for deck building phase
     const localPlayerId = getLocalPlayerId();
     updatePlayerState(localPlayerId, {
       ...gameState[localPlayerId],
       deck: newPlayerDeck
     });
 
-    // Send completion notification to opponent
+    // Send completion notification to opponent for multiplayer sync
     sendPhaseCompletion('deckSelection');
 
-    // Check if both players are ready to proceed
+    // Handle phase transition when both players ready
     if (areBothPlayersReady('deckSelection')) {
+      console.log('🔧 Both players ready for custom deck, starting placement phase');
       startPlacementPhase();
+    } else {
+      console.log('🔧 Waiting for opponent to complete deck selection');
     }
-    // If not ready, the waiting screen will be shown by the render logic
   };
 
   /**
@@ -2662,21 +3405,35 @@ const App = () => {
    * HANDLE CHOOSE DRONE FOR SELECTION
    * Processes drone choice during initial drone selection phase.
    * Advances to next trio or completes selection when 5 drones chosen.
+   * Uses direct GameStateManager updates for drone selection state.
    * @param {Object} chosenDrone - The drone being selected
    */
   const handleChooseDroneForSelection = (chosenDrone) => {
+    const { turnPhase } = gameState;
+
+    // Only handle during drone selection phase
+    if (turnPhase !== 'droneSelection') return;
+
+    console.log('🔧 handleChooseDroneForSelection called with:', chosenDrone.name);
+
     const newSelection = [...tempSelectedDrones, chosenDrone];
+
     if (newSelection.length >= 5) {
-     handleConfirmDroneSelection(newSelection);
+      // Complete drone selection with 5 drones
+      handleConfirmDroneSelection(newSelection);
     } else {
-     setTempSelectedDrones(newSelection);
+      // Continue selection process - update temporary selection and advance trio
+      setTempSelectedDrones(newSelection);
       const newTrio = droneSelectionPool.slice(0, 3);
       const remaining = droneSelectionPool.slice(3);
 
-     updateGameState({
-       droneSelectionTrio: newTrio,
-       droneSelectionPool: remaining
-     });
+      // Use direct GameStateManager updates for drone selection phase
+      updateGameState({
+        droneSelectionTrio: newTrio,
+        droneSelectionPool: remaining
+      });
+
+      console.log('🔧 Advanced to next trio, selected:', newSelection.length, 'of 5 drones');
     }
   };
 
@@ -3964,7 +4721,7 @@ useEffect(() => {
                                     mandatoryAction?.type === 'discard'
                                       ? (c) => setConfirmationModal({ type: 'discard', target: c, onConfirm: () => handleConfirmMandatoryDiscard(c), onCancel: () => setConfirmationModal(null), text: `Are you sure you want to discard ${c.name}?` })
                                       : turnPhase === 'optionalDiscard'
-                                        ? handleOptionalDiscardClick
+                                        ? (c) => setConfirmationModal({ type: 'discard', target: c, onConfirm: () => handleRoundStartDiscard(c), onCancel: () => setConfirmationModal(null), text: `Are you sure you want to discard ${c.name}?` })
                                         : handleCardClick
                                   }
                                 />
@@ -3981,7 +4738,7 @@ useEffect(() => {
                       {turnPhase === 'optionalDiscard' && (
                         <div className="flex flex-col items-center">
                           <p className="text-sm text-gray-400 mb-2">Discarded: {optionalDiscardCount} / {localPlayerEffectiveStats.discardLimit}</p>
-                          <button onClick={handleFinishOptionalDiscard} className={`mt-4 text-white font-bold py-2 px-4 rounded-full transition-colors duration-200 bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/20`}>
+                          <button onClick={() => { handleRoundStartDraw(); checkBothPlayersHandLimitComplete(); }} className={`mt-4 text-white font-bold py-2 px-4 rounded-full transition-colors duration-200 bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/20`}>
                             Finish Discarding
                           </button>
                         </div>

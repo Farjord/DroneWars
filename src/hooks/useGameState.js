@@ -7,6 +7,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import gameStateManager from '../state/GameStateManager.js';
 import p2pManager from '../network/P2PManager.js';
+import { isSimultaneousPhase, isSequentialPhase } from '../utils/gameUtils.js';
 
 export const useGameState = () => {
   const [gameState, setGameState] = useState(gameStateManager.getState());
@@ -156,6 +157,36 @@ export const useGameState = () => {
     gameStateManager.clearActionQueue();
   }, []);
 
+  // Phase-aware routing methods
+  const isCurrentPhaseSimultaneous = useCallback(() => {
+    return isSimultaneousPhase(gameState.turnPhase);
+  }, [gameState.turnPhase]);
+
+  const isCurrentPhaseSequential = useCallback(() => {
+    return isSequentialPhase(gameState.turnPhase);
+  }, [gameState.turnPhase]);
+
+  const routeAction = useCallback(async (actionType, payload) => {
+    const currentPhase = gameState.turnPhase;
+    const isSequential = isSequentialPhase(currentPhase);
+
+    console.log(`🔀 useGameState.routeAction: ${actionType} in phase ${currentPhase} (${isSequential ? 'sequential' : 'simultaneous'})`);
+
+    if (isSequential) {
+      // Sequential phases: use ActionProcessor for serialized execution
+      return await processAction(actionType, payload);
+    } else {
+      // Simultaneous phases: direct updates (requires implementation in calling component)
+      console.warn(`⚠️ Simultaneous phase action ${actionType} requires direct GameStateManager updates in component`);
+      return {
+        success: false,
+        error: `Simultaneous phase action ${actionType} should use direct updates (updateGameState/updatePlayerState) rather than routeAction`,
+        phase: currentPhase,
+        recommendation: 'Use direct GameStateManager methods for simultaneous phases'
+      };
+    }
+  }, [gameState.turnPhase, processAction]);
+
   return {
     // State
     gameState,
@@ -196,6 +227,11 @@ export const useGameState = () => {
     isActionInProgress,
     getActionQueueLength,
     clearActionQueue,
+
+    // Phase-aware routing
+    isSimultaneousPhase: isCurrentPhaseSimultaneous,
+    isSequentialPhase: isCurrentPhaseSequential,
+    routeAction,
 
     // Direct access to managers (for complex operations)
     gameStateManager,

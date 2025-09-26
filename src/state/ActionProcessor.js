@@ -21,9 +21,6 @@ class ActionProcessor {
       turnTransition: false,
       phaseTransition: false,
       roundStart: false,
-      allocateShield: false,
-      resetShieldAllocation: false,
-      endShieldAllocation: false,
       reallocateShields: false,
       aiAction: false,
       aiTurn: false,
@@ -91,6 +88,20 @@ class ActionProcessor {
   async processAction(action) {
     const { type, payload, isNetworkAction = false } = action;
 
+    // Get current state for validation
+    const currentState = this.gameStateManager.getState();
+
+    // Validate that round start shield allocation actions use direct updates
+    if (type === 'allocateShield' && currentState.turnPhase === 'allocateShields') {
+      throw new Error('Round start shield allocation should use direct updates, not ActionProcessor');
+    }
+    if (type === 'resetShieldAllocation' && currentState.turnPhase === 'allocateShields') {
+      throw new Error('Round start shield allocation reset should use direct updates, not ActionProcessor');
+    }
+    if (type === 'endShieldAllocation' && currentState.turnPhase === 'allocateShields') {
+      throw new Error('Round start shield allocation completion should use direct updates, not ActionProcessor');
+    }
+
     // Check for action-specific locks
     if (this.actionLocks[type]) {
       throw new Error(`Action ${type} is currently locked`);
@@ -134,15 +145,6 @@ class ActionProcessor {
 
         case 'roundStart':
           return await this.processRoundStart(payload);
-
-        case 'allocateShield':
-          return await this.processAllocateShield(payload);
-
-        case 'resetShieldAllocation':
-          return await this.processResetShieldAllocation(payload);
-
-        case 'endShieldAllocation':
-          return await this.processEndShieldAllocation(payload);
 
         case 'reallocateShields':
           return await this.processReallocateShields(payload);
@@ -517,97 +519,11 @@ class ActionProcessor {
     };
   }
 
-  /**
-   * Process shield allocation action
-   */
-  async processAllocateShield(payload) {
-    const { sectionName, playerId = this.gameStateManager.getLocalPlayerId() } = payload;
-
-    console.log(`[SHIELD ALLOCATION DEBUG] Processing shield allocation:`, { sectionName, playerId });
-
-    const currentState = this.gameStateManager.getState();
-    const playerState = currentState[playerId];
-
-    // Use gameLogic function to process shield allocation
-    const result = gameEngine.processShieldAllocation(currentState, playerId, sectionName);
-
-    if (result.success) {
-      // Update both player state and game state
-      this.gameStateManager.updatePlayerState(playerId, result.newPlayerState);
-      this.gameStateManager.setState({
-        shieldsToAllocate: result.newShieldsToAllocate
-      });
-
-      console.log(`[SHIELD ALLOCATION DEBUG] Shield allocated successfully`);
-    }
-
-    return result;
-  }
 
   /**
-   * Process reset shield allocation action
-   */
-  async processResetShieldAllocation(payload) {
-    const { playerId = this.gameStateManager.getLocalPlayerId() } = payload;
-
-    console.log(`[SHIELD ALLOCATION DEBUG] Processing shield allocation reset for player:`, playerId);
-
-    const currentState = this.gameStateManager.getState();
-
-    // Use gameLogic function to reset shield allocation
-    const result = gameEngine.processResetShieldAllocation(currentState, playerId);
-
-    if (result.success) {
-      // Update both player state and game state
-      this.gameStateManager.updatePlayerState(playerId, result.newPlayerState);
-      this.gameStateManager.setState({
-        shieldsToAllocate: result.newShieldsToAllocate
-      });
-
-      console.log(`[SHIELD ALLOCATION DEBUG] Shield allocation reset successfully`);
-    }
-
-    return result;
-  }
-
-  /**
-   * Process end shield allocation action
-   */
-  async processEndShieldAllocation(payload) {
-    const { playerId = this.gameStateManager.getLocalPlayerId() } = payload;
-
-    console.log(`[SHIELD ALLOCATION DEBUG] Processing end shield allocation`);
-
-    const currentState = this.gameStateManager.getState();
-
-    // Use gameLogic function to end shield allocation phase
-    const result = gameEngine.processEndShieldAllocation(currentState, playerId);
-
-    if (result.success) {
-      // Update player states
-      if (result.player1State) {
-        this.gameStateManager.updatePlayerState('player1', result.player1State);
-      }
-      if (result.player2State) {
-        this.gameStateManager.updatePlayerState('player2', result.player2State);
-      }
-
-      // Update game state with phase transition
-      this.gameStateManager.setState({
-        turnPhase: result.newPhase,
-        currentPlayer: result.firstPlayer,
-        firstPlayerOfRound: result.firstPlayer,
-        firstPlayerOverride: null // Clear any override after using it
-      });
-
-      console.log(`[SHIELD ALLOCATION DEBUG] Shield allocation phase ended, transitioning to: ${result.newPhase}`);
-    }
-
-    return result;
-  }
-
-  /**
-   * Process shield reallocation action
+   * Process shield reallocation action (ACTION PHASE ONLY)
+   * Handles shield reallocation abilities during action phase gameplay.
+   * Round start shield allocation should use direct GameStateManager updates.
    */
   async processReallocateShields(payload) {
     const {
@@ -617,9 +533,15 @@ class ActionProcessor {
       playerId = this.gameStateManager.getLocalPlayerId()
     } = payload;
 
-    console.log(`[SHIELD REALLOCATION DEBUG] Processing shield reallocation:`, { action, sectionName, playerId });
-
     const currentState = this.gameStateManager.getState();
+
+    // Validate this is only used during action phase
+    if (currentState.turnPhase !== 'action') {
+      throw new Error(`Shield reallocation through ActionProcessor is only valid during action phase, not ${currentState.turnPhase}`);
+    }
+
+    console.log(`[SHIELD REALLOCATION DEBUG] Processing action phase shield reallocation:`, { action, sectionName, playerId });
+
     const playerState = currentState[playerId];
 
     if (action === 'remove') {

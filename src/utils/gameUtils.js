@@ -99,3 +99,36 @@ export const arraysEqual = (arr1, arr2) => {
   const sorted2 = [...arr2].sort();
   return sorted1.every((val, i) => val === sorted2[i]);
 };
+
+// ========================================
+// GAME PHASE CONSTANTS AND UTILITIES
+// ========================================
+
+/**
+ * Phases where both players can act simultaneously
+ * These phases use direct GameStateManager updates for parallel execution
+ */
+export const SIMULTANEOUS_PHASES = [
+  'preGame', 'droneSelection', 'deckSelection', 'deckBuilding',
+  'placement', 'initialDraw', 'allocateShields', 'optionalDiscard'
+];
+
+/**
+ * Phases where players must act in sequence (turn-based)
+ * These phases use ActionProcessor for serialized execution
+ */
+export const SEQUENTIAL_PHASES = ['deployment', 'action'];
+
+/**
+ * Check if a phase allows simultaneous player actions
+ * @param {string} phase - The game phase to check
+ * @returns {boolean} True if phase is simultaneous
+ */
+export const isSimultaneousPhase = (phase) => SIMULTANEOUS_PHASES.includes(phase);
+
+/**
+ * Check if a phase requires sequential player actions
+ * @param {string} phase - The game phase to check
+ * @returns {boolean} True if phase is sequential
+ */
+export const isSequentialPhase = (phase) => SEQUENTIAL_PHASES.includes(phase);
