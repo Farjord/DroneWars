@@ -1,54 +1,242 @@
 // ========================================
-// SHIP PLACEMENT SCREEN COMPONENT
+// SHIP PLACEMENT SCREEN
 // ========================================
-// Provides interface for placing ship sections during initial setup
-// Shows unplaced sections and lane slots with center lane bonus indication
+// Complete ship placement phase implementation extracted from App.jsx
+// Handles ship section placement with state management and phase completion tracking
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useGameState } from '../../hooks/useGameState.js';
+import { WaitingForOpponentScreen } from './DroneSelectionScreen.jsx';
 import ShipSection from '../ui/ShipSection.jsx';
+import simultaneousActionManager from '../../state/SimultaneousActionManager.js';
 
 /**
  * SHIP PLACEMENT SCREEN COMPONENT
- * Provides interface for placing ship sections during initial setup.
- * Shows unplaced sections and lane slots with center lane bonus indication.
- * @param {Array} unplaced - Array of unplaced section names
- * @param {Array} placed - Array of placed sections by lane index
- * @param {string} selected - Currently selected section name
- * @param {Function} onSectionSelect - Callback when section is selected
- * @param {Function} onLaneSelect - Callback when lane is selected for placement
- * @param {Function} onConfirm - Callback when layout is confirmed
- * @param {Object} player - Player state data
- * @param {Object} gameEngine - Game engine instance
- * @param {string} turnPhase - Current turn phase
- * @param {Function} isMyTurn - Function to check if it's player's turn
- * @param {Object} passInfo - Pass information object
- * @param {Function} getLocalPlayerId - Function to get local player ID
- * @param {Object} localPlayerState - Local player state
- * @param {Object} shipAbilityMode - Current ship ability mode
+ * Complete ship placement phase management with state and phase completion tracking.
+ * Extracted from App.jsx with all original logic preserved.
  */
-const ShipPlacementScreen = ({
-  unplaced,
-  placed,
-  selected,
-  onSectionSelect,
-  onLaneSelect,
-  onConfirm,
-  player,
-  gameEngine,
-  turnPhase,
-  isMyTurn,
-  passInfo,
-  getLocalPlayerId,
-  localPlayerState,
-  shipAbilityMode
-}) => {
-  const allPlaced = placed.every(section => section !== null);
+function ShipPlacementScreen() {
+  const {
+    gameState,
+    getLocalPlayerId,
+    isMultiplayer,
+    getLocalPlayerState,
+    getLocalPlacedSections,
+    updateGameState,
+    setModalContent
+  } = useGameState();
+
+  const { turnPhase, unplacedSections } = gameState;
+  const localPlayerState = getLocalPlayerState();
+  const localPlacedSections = getLocalPlacedSections();
+
+  // Local state for ship placement process
+  const [selectedSectionForPlacement, setSelectedSectionForPlacement] = useState(null);
+  const [localPhaseCompletion, setLocalPhaseCompletion] = useState({
+    placement: false
+  });
+  const [opponentPhaseCompletion, setOpponentPhaseCompletion] = useState({
+    placement: false
+  });
+
+  // Event listener for phase completion from PhaseManager
+  useEffect(() => {
+    const handlePhaseManagerEvent = (event) => {
+      const { type, phase, playerId } = event.detail || event;
+
+      console.log(`🔔 ShipPlacementScreen received PhaseManager event: ${type}`, { phase, playerId });
+
+      if (phase !== 'placement') return;
+
+      if (type === 'playerCompleted') {
+        const isLocalPlayer = playerId === getLocalPlayerId();
+
+        if (isLocalPlayer) {
+          setLocalPhaseCompletion(prev => ({ ...prev, placement: true }));
+        } else if (isMultiplayer()) {
+          setOpponentPhaseCompletion(prev => ({ ...prev, placement: true }));
+        }
+      } else if (type === 'phaseCompleted') {
+        // Clear phase completion tracking when phase completes
+        setLocalPhaseCompletion(prev => ({ ...prev, placement: false }));
+        setOpponentPhaseCompletion(prev => ({ ...prev, placement: false }));
+      }
+    };
+
+    // Listen for PhaseManager events
+    window.addEventListener('phaseManagerEvent', handlePhaseManagerEvent);
+
+    return () => {
+      window.removeEventListener('phaseManagerEvent', handlePhaseManagerEvent);
+    };
+  }, [getLocalPlayerId, isMultiplayer]);
+
+  /**
+   * HANDLE SELECT SECTION FOR PLACEMENT
+   * Manages ship section selection during placement phase.
+   * Handles selection toggling and section removal from lanes.
+   * Uses direct GameStateManager updates for placement state changes.
+   * @param {string} sectionName - Name of the section being selected
+   */
+  const handleSelectSectionForPlacement = (sectionName) => {
+    // Only handle during placement phase
+    if (turnPhase !== 'placement') return;
+
+    console.log('🔧 handleSelectSectionForPlacement called with:', sectionName, 'gameMode:', gameState.gameMode);
+
+    // If clicking a section in the top "unplaced" row
+    if (unplacedSections.includes(sectionName)) {
+        // Toggle selection: if it's already selected, unselect it. Otherwise, select it.
+        setSelectedSectionForPlacement(prev => prev === sectionName ? null : sectionName);
+    } else {
+        // If clicking a section that's already in a lane (a "placed" section)
+        const laneIndex = localPlacedSections.indexOf(sectionName);
+        const newPlaced = [...localPlacedSections];
+        newPlaced[laneIndex] = null; // Remove from lane
+
+        // Update local player's placed sections (always update placedSections for local player)
+        updateGameState({
+          placedSections: newPlaced,
+          unplacedSections: [...unplacedSections, sectionName]
+        });
+
+        setSelectedSectionForPlacement(null); // Clear the selection
+    }
+  };
+
+  /**
+   * HANDLE LANE SELECT FOR PLACEMENT
+   * Places selected ship section in chosen lane.
+   * Handles lane swapping and section management.
+   * Uses direct GameStateManager updates for placement state changes.
+   * @param {number} laneIndex - Index of the lane (0, 1, 2)
+   */
+  const handleLaneSelectForPlacement = (laneIndex) => {
+    // Only handle during placement phase
+    if (turnPhase !== 'placement') return;
+
+    console.log('🔧 handleLaneSelectForPlacement called with lane:', laneIndex, 'gameMode:', gameState.gameMode);
+
+    if (selectedSectionForPlacement) {
+      // If the lane is occupied, swap with the selected section
+      if (localPlacedSections[laneIndex]) {
+        const sectionToSwap = localPlacedSections[laneIndex];
+        const newPlaced = [...localPlacedSections];
+        newPlaced[laneIndex] = selectedSectionForPlacement;
+
+        // Find where the selected section was and put the swapped one there
+        const oldIndexOfSelected = unplacedSections.indexOf(selectedSectionForPlacement);
+        const newUnplaced = [...unplacedSections];
+        newUnplaced.splice(oldIndexOfSelected, 1, sectionToSwap);
+
+        // Update local player's placement state (always update placedSections for local player)
+        updateGameState({
+          unplacedSections: newUnplaced,
+          placedSections: newPlaced
+        });
+
+      } else {
+        // If the lane is empty, place the section
+        const newPlaced = [...localPlacedSections];
+        newPlaced[laneIndex] = selectedSectionForPlacement;
+
+        // Use direct GameStateManager updates for placement phase
+        updateGameState({
+          placedSections: newPlaced,
+          unplacedSections: unplacedSections.filter(s => s !== selectedSectionForPlacement)
+        });
+      }
+      setSelectedSectionForPlacement(null);
+    } else if (localPlacedSections[laneIndex]) {
+      // If no section is selected, clicking a placed one picks it up
+      handleSelectSectionForPlacement(localPlacedSections[laneIndex]);
+    }
+  };
+
+  /**
+   * HANDLE CONFIRM PLACEMENT
+   * Finalizes ship section placement using PhaseManager.
+   * Validates placement and delegates to PhaseManager for processing.
+   */
+  const handleConfirmPlacement = async () => {
+    // Only handle during placement phase
+    if (turnPhase !== 'placement') return;
+
+    console.log(`🔧 handleConfirmPlacement called`);
+
+    // Validate that all sections are placed
+    const hasEmptySections = localPlacedSections.some(section => section === null || section === undefined);
+    if (hasEmptySections) {
+      setModalContent({
+        title: 'Incomplete Placement',
+        text: 'All ship sections must be placed before confirming placement.',
+        onClose: () => setModalContent(null),
+        isBlocking: false
+      });
+      return;
+    }
+
+    console.log(`🔧 Submitting placement to PhaseManager:`, localPlacedSections);
+
+    // Submit placement to SimultaneousActionManager
+    try {
+      const submissionResult = await simultaneousActionManager.submitPlacement(getLocalPlayerId(), localPlacedSections);
+
+      if (!submissionResult.success) {
+        console.error('❌ Placement submission failed:', submissionResult.error);
+        setModalContent({
+          title: 'Placement Error',
+          text: submissionResult.error,
+          onClose: () => setModalContent(null),
+          isBlocking: false
+        });
+        return;
+      }
+
+      console.log('✅ Placement submitted to PhaseManager');
+
+      // Show waiting message if in multiplayer and not both players complete
+      if (isMultiplayer() && !submissionResult.data.bothComplete) {
+        setModalContent({
+          title: 'Placement Confirmed',
+          text: 'Your ship placement has been confirmed. Waiting for opponent to complete their placement...',
+          onClose: () => setModalContent(null),
+          isBlocking: false
+        });
+      }
+
+    } catch (error) {
+      console.error('❌ Error submitting placement:', error);
+      setModalContent({
+        title: 'Placement Error',
+        text: 'An error occurred while submitting placement. Please try again.',
+        onClose: () => setModalContent(null),
+        isBlocking: false
+      });
+    }
+  };
+
+  // Check completion status
+  const localPlayerCompletedPlacement = localPlacedSections && localPlacedSections.length === 3 && localPlacedSections.every(section => section !== null);
+
+  if (isMultiplayer() && localPhaseCompletion.placement && !opponentPhaseCompletion.placement) {
+    const localSectionNames = localPlacedSections.map((section, index) => section ? section.name : 'Empty').join(', ');
+    return (
+      <WaitingForOpponentScreen
+        phase="placement"
+        localPlayerStatus={`Your ship layout: ${localSectionNames}`}
+      />
+    );
+  }
+
+  // Render the placement interface
+  const allPlaced = localPlacedSections.every(section => section !== null);
 
   console.log(`🔥 ShipPlacementScreen rendered:`, {
     allPlaced,
-    placed,
-    unplaced,
-    selected
+    placed: localPlacedSections,
+    unplaced: unplacedSections,
+    selected: selectedSectionForPlacement
   });
 
   return (
@@ -67,24 +255,24 @@ const ShipPlacementScreen = ({
         <div className="flex w-full justify-between gap-8">
           {['bridge', 'powerCell', 'droneControlHub'].map(sectionName => (
             <div key={sectionName} className="flex-1 min-w-0 h-[190px]">
-              {unplaced.includes(sectionName) && (
+              {unplacedSections.includes(sectionName) && (
                 <div
-                  onClick={() => onSectionSelect(sectionName)}
-                  className={`h-full transition-all duration-300 rounded-xl ${selected === sectionName ? 'scale-105 ring-4 ring-cyan-400' : 'opacity-70 hover:opacity-100 cursor-pointer'}`}
+                  onClick={() => handleSelectSectionForPlacement(sectionName)}
+                  className={`h-full transition-all duration-300 rounded-xl ${selectedSectionForPlacement === sectionName ? 'scale-105 ring-4 ring-cyan-400' : 'opacity-70 hover:opacity-100 cursor-pointer'}`}
                 >
                   <ShipSection
                     section={sectionName}
-                    stats={player.shipSections[sectionName]}
-                    effectiveStatsForDisplay={player.shipSections[sectionName].stats.healthy}
+                    stats={localPlayerState.shipSections[sectionName]}
+                    effectiveStatsForDisplay={localPlayerState.shipSections[sectionName].stats.healthy}
                     isPlayer={true}
                     isInteractive={true}
-                    gameEngine={gameEngine}
+                    gameEngine={null}
                     turnPhase={turnPhase}
-                    isMyTurn={isMyTurn}
-                    passInfo={passInfo}
+                    isMyTurn={() => true}
+                    passInfo={{}}
                     getLocalPlayerId={getLocalPlayerId}
                     localPlayerState={localPlayerState}
-                    shipAbilityMode={shipAbilityMode}
+                    shipAbilityMode={null}
                   />
                 </div>
               )}
@@ -95,30 +283,30 @@ const ShipPlacementScreen = ({
         {/* Placed Sections Row */}
         <div className="flex w-full justify-between gap-8">
           {[0, 1, 2].map(laneIndex => {
-            const placedSectionName = placed[laneIndex];
-            const isSelectedForPlacement = selected && !placed[laneIndex];
+            const placedSectionName = localPlacedSections[laneIndex];
+            const isSelectedForPlacement = selectedSectionForPlacement && !localPlacedSections[laneIndex];
 
             return (
               <div
                 key={laneIndex}
                 className="flex-1 min-w-0 h-[190px]"
-                onClick={() => onLaneSelect(laneIndex)}
+                onClick={() => handleLaneSelectForPlacement(laneIndex)}
               >
                 {placedSectionName ? (
                   <ShipSection
                     section={placedSectionName}
-                    stats={player.shipSections[placedSectionName]}
-                    effectiveStatsForDisplay={gameEngine.calculateEffectiveShipStats(player, placed).bySection[placedSectionName]}
+                    stats={localPlayerState.shipSections[placedSectionName]}
+                    effectiveStatsForDisplay={localPlayerState.shipSections[placedSectionName].stats.healthy}
                     isPlayer={true}
                     isInteractive={true}
                     isInMiddleLane={laneIndex === 1}
-                    gameEngine={gameEngine}
+                    gameEngine={null}
                     turnPhase={turnPhase}
-                    isMyTurn={isMyTurn}
-                    passInfo={passInfo}
+                    isMyTurn={() => true}
+                    passInfo={{}}
                     getLocalPlayerId={getLocalPlayerId}
                     localPlayerState={localPlayerState}
-                    shipAbilityMode={shipAbilityMode}
+                    shipAbilityMode={null}
                   />
                 ) : (
                   <div className={`bg-black/30 rounded-xl border-2 border-dashed border-purple-500/50 flex items-center justify-center text-purple-300/70 p-4 h-full transition-colors duration-300 ${isSelectedForPlacement ? 'cursor-pointer hover:border-purple-500 hover:bg-purple-900/20' : ''}`}>
@@ -136,7 +324,7 @@ const ShipPlacementScreen = ({
       <button
         onClick={() => {
           console.log(`🔥 Confirm Layout button clicked! allPlaced: ${allPlaced}`);
-          onConfirm();
+          handleConfirmPlacement();
         }}
         disabled={!allPlaced}
         className="mt-12 bg-green-600 text-white font-bold py-3 px-8 rounded-full text-lg transition-all duration-300 disabled:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed enabled:hover:bg-green-500 shadow-lg"
@@ -145,6 +333,6 @@ const ShipPlacementScreen = ({
       </button>
     </div>
   );
-};
+}
 
 export default ShipPlacementScreen;

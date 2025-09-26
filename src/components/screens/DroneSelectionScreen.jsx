@@ -1,12 +1,16 @@
 // ========================================
-// DRONE SELECTION SCREEN COMPONENTS
+// DRONE SELECTION SCREEN
 // ========================================
-// Screen components for drone selection during initial setup
-// Includes both drone selection interface and waiting screen
+// Complete drone selection phase implementation extracted from App.jsx
+// Handles both single-player and multiplayer drone selection logic
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useGameState } from '../../hooks/useGameState.js';
 import DroneCard from '../ui/DroneCard.jsx';
+import { advanceDroneSelectionTrio } from '../../utils/droneSelectionUtils.js';
+import simultaneousActionManager from '../../state/SimultaneousActionManager.js';
+import gameStateManager from '../../state/GameStateManager.js';
 
 /**
  * WAITING FOR OPPONENT SCREEN COMPONENT
@@ -40,15 +44,147 @@ export const WaitingForOpponentScreen = ({ phase, localPlayerStatus }) => {
 
 /**
  * DRONE SELECTION SCREEN COMPONENT
- * Provides interface for selecting drones during initial setup.
- * Shows trio choices and tracks selected drones.
- * @param {Function} onChooseDrone - Callback when drone is selected
- * @param {Array} currentTrio - Current trio of drones to choose from
- * @param {Array} selectedDrones - Array of already selected drones
- * @param {Function} onContinue - Callback when Continue button is clicked
+ * Complete drone selection phase management with state and phase completion tracking.
+ * Extracted from App.jsx with all original logic preserved.
  */
-const DroneSelectionScreen = ({ onChooseDrone, currentTrio, selectedDrones, onContinue }) => {
-  const isSelectionComplete = selectedDrones.length === 5;
+function DroneSelectionScreen() {
+  const {
+    gameState,
+    getLocalPlayerId,
+    getOpponentPlayerId,
+    isMultiplayer,
+    getLocalPlayerState,
+    updateGameState
+  } = useGameState();
+
+  const { droneSelectionPool, droneSelectionTrio, turnPhase } = gameState;
+  const localPlayerState = getLocalPlayerState();
+
+  // Local state for drone selection process
+  const [tempSelectedDrones, setTempSelectedDrones] = useState([]);
+  const [localPhaseCompletion, setLocalPhaseCompletion] = useState({
+    droneSelection: false
+  });
+  const [opponentPhaseCompletion, setOpponentPhaseCompletion] = useState({
+    droneSelection: false
+  });
+
+  // Event listener for phase completion from PhaseManager
+  useEffect(() => {
+    const handlePhaseManagerEvent = (event) => {
+      const { type, phase, playerId } = event.detail || event;
+
+      console.log(`🔔 DroneSelectionScreen received PhaseManager event: ${type}`, { phase, playerId });
+
+      if (phase !== 'droneSelection') return;
+
+      if (type === 'playerCompleted') {
+        const isLocalPlayer = playerId === getLocalPlayerId();
+
+        if (isLocalPlayer) {
+          setLocalPhaseCompletion(prev => ({ ...prev, droneSelection: true }));
+        } else if (isMultiplayer()) {
+          setOpponentPhaseCompletion(prev => ({ ...prev, droneSelection: true }));
+        }
+      } else if (type === 'phaseCompleted') {
+        // Clear temporary UI state when phase completes
+        setTempSelectedDrones([]);
+        setLocalPhaseCompletion(prev => ({ ...prev, droneSelection: false }));
+        setOpponentPhaseCompletion(prev => ({ ...prev, droneSelection: false }));
+      }
+    };
+
+    // Listen for PhaseManager events
+    window.addEventListener('phaseManagerEvent', handlePhaseManagerEvent);
+
+    return () => {
+      window.removeEventListener('phaseManagerEvent', handlePhaseManagerEvent);
+    };
+  }, [getLocalPlayerId, isMultiplayer]);
+
+  /**
+   * HANDLE CHOOSE DRONE FOR SELECTION
+   * Advances to next trio or completes selection when 5 drones chosen.
+   * Uses direct GameStateManager updates for drone selection state.
+   * @param {Object} chosenDrone - The drone being selected
+   */
+  const handleChooseDroneForSelection = (chosenDrone) => {
+    // Only handle during drone selection phase
+    if (turnPhase !== 'droneSelection') return;
+
+    console.log('🔧 handleChooseDroneForSelection called with:', chosenDrone.name);
+
+    const newSelection = [...tempSelectedDrones, chosenDrone];
+    setTempSelectedDrones(newSelection);
+
+    if (newSelection.length < 5) {
+      // Continue selection process - advance to next trio
+      const nextTrioData = advanceDroneSelectionTrio(droneSelectionPool);
+
+      // Update drone selection pool directly
+      updateGameState(nextTrioData);
+
+      console.log('🔧 Advanced to next trio, selected:', newSelection.length, 'of 5 drones');
+    } else {
+      console.log('🔧 All 5 drones selected, waiting for Continue button click');
+    }
+  };
+
+  /**
+   * HANDLE CONTINUE DRONE SELECTION
+   * Processes the Continue button click after 5 drones are selected.
+   * Uses PhaseManager submission pattern for drone selection.
+   */
+  const handleContinueDroneSelection = () => {
+    // Only handle during drone selection phase
+    if (turnPhase !== 'droneSelection') return;
+
+    console.log('🔧 handleContinueDroneSelection called with:', tempSelectedDrones.length, 'drones');
+
+    const localPlayerId = getLocalPlayerId();
+    const submissionResult = simultaneousActionManager.submitDroneSelection(localPlayerId, tempSelectedDrones);
+
+    if (!submissionResult.success) {
+      console.error('❌ Drone selection submission failed:', submissionResult.error);
+      return;
+    }
+
+    console.log('✅ Drone selection submitted to PhaseManager');
+
+    // Clear temporary selection after successful submission
+    setTempSelectedDrones([]);
+
+    // PhaseManager will handle:
+    // - GameStateManager updates when both players complete
+    // - Event emission for UI state changes
+    // - Phase transition logic
+    // - AI completion in single-player mode
+  };
+
+  // Check if local player has completed drone selection via PhaseManager
+  const localPlayerCompleted = localPhaseCompletion.droneSelection;
+
+  if (isMultiplayer() && localPlayerCompleted && !opponentPhaseCompletion.droneSelection) {
+    // Get drone names from SimultaneousActionManager commitments or fallback to GameState
+    const commitmentStatus = simultaneousActionManager.getPhaseCommitmentStatus('droneSelection');
+    const localDrones = commitmentStatus.commitments?.player1?.drones ||
+                       localPlayerState.activeDronePool ||
+                       tempSelectedDrones;
+
+    const localDroneNames = localDrones.length > 0 ?
+      localDrones.map(d => d.name).join(', ') :
+      'Selection complete';
+
+    return (
+      <WaitingForOpponentScreen
+        phase="droneSelection"
+        localPlayerStatus={`You selected: ${localDroneNames}`}
+      />
+    );
+  }
+
+  // Show the main drone selection interface
+  const isSelectionComplete = tempSelectedDrones.length === 5;
 
   return (
     <div className="flex flex-col items-center w-full p-4">
@@ -62,14 +198,14 @@ const DroneSelectionScreen = ({ onChooseDrone, currentTrio, selectedDrones, onCo
           <div
             key={index}
             className={`w-3 h-3 rounded-full ${
-              index < selectedDrones.length
+              index < tempSelectedDrones.length
                 ? 'bg-green-500'
                 : 'bg-gray-600'
             }`}
           />
         ))}
         <span className="ml-2 text-gray-400">
-          {selectedDrones.length}/5 drones selected
+          {tempSelectedDrones.length}/5 drones selected
         </span>
       </div>
 
@@ -77,16 +213,16 @@ const DroneSelectionScreen = ({ onChooseDrone, currentTrio, selectedDrones, onCo
       {!isSelectionComplete ? (
         <>
           <p className="text-center text-gray-400 mb-6">
-            Choice {selectedDrones.length + 1} of 5: Select one drone from the three options below to add to your Active Drone Pool.
+            Choice {tempSelectedDrones.length + 1} of 5: Select one drone from the three options below to add to your Active Drone Pool.
           </p>
 
-          {currentTrio.length > 0 && (
+          {droneSelectionTrio && droneSelectionTrio.length > 0 && (
             <div className="flex flex-wrap justify-center gap-6 mb-8">
-              {currentTrio.map((drone, index) => (
+              {droneSelectionTrio.map((drone, index) => (
                 <DroneCard
                   key={drone.name || index}
                   drone={drone}
-                  onClick={() => onChooseDrone(drone)}
+                  onClick={() => handleChooseDroneForSelection(drone)}
                   isSelectable={true}
                   deployedCount={0}
                 />
@@ -105,7 +241,7 @@ const DroneSelectionScreen = ({ onChooseDrone, currentTrio, selectedDrones, onCo
 
       {/* Continue button - always present but with different states */}
       <button
-        onClick={onContinue}
+        onClick={handleContinueDroneSelection}
         disabled={!isSelectionComplete}
         className={`px-8 py-3 font-bold rounded-lg transition-all mb-8 ${
           isSelectionComplete
@@ -113,19 +249,19 @@ const DroneSelectionScreen = ({ onChooseDrone, currentTrio, selectedDrones, onCo
             : 'bg-gray-700 text-gray-500 cursor-not-allowed'
         }`}
       >
-        {isSelectionComplete ? 'Continue to Deck Selection' : `Continue (${selectedDrones.length}/5)`}
+        {isSelectionComplete ? 'Continue to Deck Selection' : `Continue (${tempSelectedDrones.length}/5)`}
       </button>
 
       {/* Selected drones display */}
       <div className="w-full mt-4 pt-8 border-t border-gray-700">
         <h3 className="text-2xl font-bold text-white text-center mb-4">
-          Your Selection ({selectedDrones.length}/5)
+          Your Selection ({tempSelectedDrones.length}/5)
           {isSelectionComplete && <span className="text-green-400 ml-2">✓</span>}
         </h3>
 
-        {selectedDrones.length > 0 ? (
+        {tempSelectedDrones.length > 0 ? (
           <div className="flex flex-wrap justify-center gap-6">
-            {selectedDrones.map((drone, index) => (
+            {tempSelectedDrones.map((drone, index) => (
               <DroneCard
                 key={index}
                 drone={drone}
@@ -140,6 +276,6 @@ const DroneSelectionScreen = ({ onChooseDrone, currentTrio, selectedDrones, onCo
       </div>
     </div>
   );
-};
+}
 
 export default DroneSelectionScreen;

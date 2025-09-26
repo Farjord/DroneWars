@@ -40,8 +40,6 @@ import AICardPlayReportModal from './components/modals/AICardPlayReportModal.jsx
 import UpgradeSelectionModal from './components/modals/UpgradeSelectionModal.jsx';
 import ViewUpgradesModal from './components/modals/ViewUpgradesModal.jsx';
 import DestroyUpgradeModal from './components/modals/DestroyUpgradeModal.jsx';
-import DroneSelectionScreen, { WaitingForOpponentScreen } from './components/screens/DroneSelectionScreen.jsx';
-import ShipPlacementScreen from './components/screens/ShipPlacementScreen.jsx';
 
 // ========================================
 // MAIN APPLICATION COMPONENT
@@ -535,10 +533,21 @@ const App = () => {
   const [reallocationAbility, setReallocationAbility] = useState(null);
 
   // --- PERFORMANCE OPTIMIZED COMPUTED VALUES ---
-  const localPlayerEffectiveStats = useMemo(() => gameEngine.calculateEffectiveShipStats(localPlayerState, localPlacedSections), [localPlayerState.shipSections, localPlacedSections]);
-  const opponentPlayerEffectiveStats = useMemo(() => gameEngine.calculateEffectiveShipStats(opponentPlayerState, opponentPlacedSections), [opponentPlayerState.shipSections, opponentPlacedSections]);
-  const totalLocalPlayerDrones = useMemo(() => Object.values(localPlayerState.dronesOnBoard).flat().length, [localPlayerState.dronesOnBoard]);
-  const totalOpponentPlayerDrones = useMemo(() => Object.values(opponentPlayerState.dronesOnBoard).flat().length, [opponentPlayerState.dronesOnBoard]);
+  const localPlayerEffectiveStats = useMemo(() => {
+    return localPlayerState ? gameEngine.calculateEffectiveShipStats(localPlayerState, localPlacedSections) : null;
+  }, [localPlayerState?.shipSections, localPlacedSections]);
+
+  const opponentPlayerEffectiveStats = useMemo(() => {
+    return opponentPlayerState ? gameEngine.calculateEffectiveShipStats(opponentPlayerState, opponentPlacedSections) : null;
+  }, [opponentPlayerState?.shipSections, opponentPlacedSections]);
+
+  const totalLocalPlayerDrones = useMemo(() => {
+    return localPlayerState ? Object.values(localPlayerState.dronesOnBoard).flat().length : 0;
+  }, [localPlayerState?.dronesOnBoard]);
+
+  const totalOpponentPlayerDrones = useMemo(() => {
+    return opponentPlayerState ? Object.values(opponentPlayerState.dronesOnBoard).flat().length : 0;
+  }, [opponentPlayerState?.dronesOnBoard]);
 
   // ========================================
   // MULTIPLAYER PHASE SYNCHRONIZATION
@@ -4425,151 +4434,8 @@ useEffect(() => {
                     </div>
                   ) : (
                     <>
-                      {turnPhase === 'placement' ? (
-                        (() => {
-                          const localPlacedSections = getLocalPlacedSections();
-                          const localPlayerCompletedPlacement = localPlacedSections && localPlacedSections.length === 3 && localPlacedSections.every(section => section !== null);
-
-                          if (isMultiplayer() && localPhaseCompletion.placement && !opponentPhaseCompletion.placement) {
-                            const localSectionNames = localPlacedSections.map((section, index) => section ? section.name : 'Empty').join(', ');
-                            return (
-                              <WaitingForOpponentScreen
-                                phase="placement"
-                                localPlayerStatus={`Your ship layout: ${localSectionNames}`}
-                              />
-                            );
-                          } else {
-                            return (
-                              <ShipPlacementScreen
-                                unplaced={unplacedSections}
-                                placed={localPlacedSections}
-                                selected={selectedSectionForPlacement}
-                                onSectionSelect={handleSelectSectionForPlacement}
-                                onLaneSelect={handleLaneSelectForPlacement}
-                                onConfirm={handleConfirmPlacement}
-                                player={localPlayerState}
-                                gameEngine={gameEngine}
-                                turnPhase={turnPhase}
-                                isMyTurn={isMyTurn}
-                                passInfo={passInfo}
-                                getLocalPlayerId={getLocalPlayerId}
-                                localPlayerState={localPlayerState}
-                                shipAbilityMode={shipAbilityMode}
-                              />
-                            );
-                          }
-                        })()
-                      ) : turnPhase === 'droneSelection' ? (
-                        (() => {
-                          // Check if local player has completed drone selection via PhaseManager
-                          const localPlayerCompleted = localPhaseCompletion.droneSelection;
-
-                          if (isMultiplayer() && localPlayerCompleted && !opponentPhaseCompletion.droneSelection) {
-                            // Get drone names from SimultaneousActionManager commitments or fallback to GameState
-                            const commitmentStatus = simultaneousActionManager.getPhaseCommitmentStatus('droneSelection');
-                            const localDrones = commitmentStatus.commitments?.player1?.drones ||
-                                               localPlayerState.activeDronePool ||
-                                               tempSelectedDrones;
-
-                            const localDroneNames = localDrones.length > 0 ?
-                              localDrones.map(d => d.name).join(', ') :
-                              'Selection complete';
-
-                            return (
-                              <WaitingForOpponentScreen
-                                phase="droneSelection"
-                                localPlayerStatus={`You selected: ${localDroneNames}`}
-                              />
-                            );
-                          } else {
-                            return (
-                              <DroneSelectionScreen
-                                onChooseDrone={handleChooseDroneForSelection}
-                                currentTrio={droneSelectionTrio}
-                                selectedDrones={tempSelectedDrones}
-                                onContinue={handleContinueDroneSelection}
-                              />
-                            );
-                          }
-                        })()
-                ) : turnPhase === 'deckSelection' ? (
-                  (() => {
-                    const localPlayerHasDeck = localPlayerState.deck && localPlayerState.deck.length > 0;
-                    const opponentPlayerHasDeck = opponentPlayerState.deck && opponentPlayerState.deck.length > 0;
-
-                    console.log('Deck selection render check:', {
-                      isMultiplayer: isMultiplayer(),
-                      localPlayerHasDeck,
-                      opponentPhaseCompletion_deckSelection: opponentPhaseCompletion.deckSelection,
-                      turnPhase,
-                      localPlayerDeckLength: localPlayerState.deck?.length
-                    });
-
-                    if (isMultiplayer() && localPlayerHasDeck && !opponentPhaseCompletion.deckSelection) {
-                      return (
-                        <WaitingForOpponentScreen
-                          phase="deckSelection"
-                          localPlayerStatus="You have selected your deck and are ready to begin."
-                        />
-                      );
-                    } else {
-                      return (
-                        <div className="flex flex-col items-center justify-center h-full">
-                          <h1 className="text-3xl font-orbitron font-bold text-white mb-2">Select Your Deck</h1>
-                          <p className="text-gray-400 mb-8">Choose a pre-defined deck or build your own.</p>
-                          <div className="flex flex-wrap justify-center gap-8">
-                            <div
-                              onClick={() => handleDeckChoice('standard')}
-                              className="w-72 bg-gray-900 border-2 border-cyan-500/50 rounded-lg p-6 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:border-cyan-500 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20"
-                            >
-                              <h2 className="text-2xl font-orbitron font-bold text-cyan-400 mb-3">Use Standard Deck</h2>
-                              <p className="font-exo text-gray-300 flex-grow">Play with the balanced, pre-built starter deck.</p>
-                              <button className="mt-6 bg-cyan-600 text-white font-bold px-6 py-2 rounded-full hover:bg-cyan-700 transition-colors duration-200">
-                                Select
-                              </button>
-                            </div>
-                            <div
-                              onClick={() => handleDeckChoice('custom')}
-                              className="w-72 bg-gray-900 border-2 border-purple-500/50 rounded-lg p-6 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:border-purple-500 hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/20"
-                            >
-                              <h2 className="text-2xl font-orbitron font-bold text-purple-400 mb-3">Build Custom Deck</h2>
-                              <p className="font-exo text-gray-300 flex-grow">Create your own deck from your card collection.</p>
-                              <button className="mt-6 bg-purple-600 text-white font-bold px-6 py-2 rounded-full hover:bg-purple-700 transition-colors duration-200">
-                                Select
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    }
-                  })()
-                ) : turnPhase === 'deckBuilding' ? (
-                  (() => {
-                    const localPlayerHasDeck = localPlayerState.deck && localPlayerState.deck.length > 0;
-                    const opponentPlayerHasDeck = opponentPlayerState.deck && opponentPlayerState.deck.length > 0;
-
-                    if (isMultiplayer() && localPlayerHasDeck && !opponentPhaseCompletion.deckSelection) {
-                      return (
-                        <WaitingForOpponentScreen
-                          phase="deckSelection"
-                          localPlayerStatus="You have built your custom deck and are ready to begin."
-                        />
-                      );
-                    } else {
-                      return (
-                        <DeckBuilder
-                          selectedDrones={localPlayerState.activeDronePool}
-                          fullCardCollection={fullCardCollection}
-                          deck={deck}
-                          onDeckChange={handleDeckChange}
-                          onConfirmDeck={handleConfirmDeck}
-                          onImportDeck={handleImportDeck}
-                        />
-                      );
-                    }
-                  })()
-                ) : (
-                  <div className="flex flex-col items-center w-full space-y-2">
+                      {/* Phase rendering now handled by AppRouter - phases should not reach here */}
+                      <div className="flex flex-col items-center w-full space-y-2">
                       {(() => {
                         return <ShipSectionsDisplay player={opponentPlayerState} playerEffectiveStats={opponentPlayerEffectiveStats} isPlayer={false} placedSections={opponentPlacedSections} onTargetClick={handleTargetClick} isInteractive={false} selectedCard={selectedCard} validCardTargets={validCardTargets} gameEngine={gameEngine} turnPhase={turnPhase} isMyTurn={isMyTurn} passInfo={passInfo} getLocalPlayerId={getLocalPlayerId} localPlayerState={localPlayerState} shipAbilityMode={shipAbilityMode} hoveredTarget={hoveredTarget} setHoveredTarget={setHoveredTarget} />;
                       })()}
