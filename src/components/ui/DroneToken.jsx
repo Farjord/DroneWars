@@ -6,6 +6,7 @@
 
 import React, { useMemo } from 'react';
 import fullDroneCollection from '../../data/droneData.js';
+import { useGameData } from '../../hooks/useGameData.js';
 
 /**
  * STAT HEXAGON COMPONENT
@@ -51,7 +52,7 @@ const AbilityIcon = ({ onClick }) => (
  * @param {boolean} isPotentialInterceptor - Whether drone can intercept current attack
  * @param {Function} onMouseEnter - Mouse enter event handler
  * @param {Function} onMouseLeave - Mouse leave event handler
- * @param {Object} effectiveStats - Calculated drone stats with modifiers
+ * @param {string} lane - Lane identifier for stats calculation
  * @param {Function} onAbilityClick - Callback when ability icon is clicked
  * @param {boolean} isActionTarget - Whether drone is target of current action
  * @param {Object} droneRefs - Ref object for drone DOM elements
@@ -68,14 +69,20 @@ const DroneToken = ({
   isPotentialInterceptor,
   onMouseEnter,
   onMouseLeave,
-  effectiveStats,
+  lane,
   onAbilityClick,
   isActionTarget,
   droneRefs,
   mandatoryAction,
   localPlayerState
 }) => {
+  // Get GameDataService for direct effective stats calculation
+  const { getEffectiveStats } = useGameData();
+
   const baseDrone = useMemo(() => fullDroneCollection.find(d => d.name === drone.name), [drone.name]);
+
+  // Calculate effective stats internally instead of receiving as prop
+  const effectiveStats = getEffectiveStats(drone, lane);
   const { maxShields } = effectiveStats;
   const currentShields = drone.currentShields ?? maxShields;
   const activeAbilities = baseDrone.abilities.filter(a => a.type === 'ACTIVE');

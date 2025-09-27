@@ -4,6 +4,8 @@
 // Standalone utility functions for card drawing phase logic
 // Handles automatic card drawing, hand limits, and deck management
 
+import GameDataService from '../services/GameDataService.js';
+
 /**
  * Calculate the hand limit for a player based on their ship section stats
  * @param {Object} playerState - Player's current state
@@ -120,14 +122,17 @@ export const validateDrawOperation = (playerState, cardCount) => {
 /**
  * Perform automatic draw phase for both players
  * @param {Object} gameState - Current game state
+ * @param {Object} gameStateManager - GameStateManager instance for GameDataService
  * @returns {Object} Updated game state after drawing
  */
-export const performAutomaticDraw = (gameState) => {
+export const performAutomaticDraw = (gameState, gameStateManager = null) => {
   console.log('🃏 Starting automatic draw phase for both players');
 
-  // We need to calculate effective stats for hand limits
-  // For now, use a default hand limit - this should be enhanced with actual ship stats
-  const defaultHandLimit = 5;
+  // Create GameDataService instance for effective stats calculation
+  let gameDataService = null;
+  if (gameStateManager) {
+    gameDataService = new GameDataService(gameStateManager);
+  }
 
   let updatedGameState = { ...gameState };
   const drawResults = {
@@ -135,8 +140,20 @@ export const performAutomaticDraw = (gameState) => {
     player2: { drawnCards: [] }
   };
 
-  // Process player1
-  const player1HandLimit = defaultHandLimit; // TODO: Calculate based on ship stats
+  // Process player1 - calculate hand limit using effective ship stats
+  let player1HandLimit = 5; // Default fallback
+  if (gameDataService && gameState.placedSections) {
+    try {
+      const player1EffectiveStats = gameDataService.getEffectiveShipStats(gameState.player1, gameState.placedSections);
+      player1HandLimit = player1EffectiveStats.totals.handLimit;
+      console.log(`📊 Player 1 effective hand limit: ${player1HandLimit} (with placed sections: ${gameState.placedSections.join(', ')})`);
+    } catch (error) {
+      console.warn('⚠️ Failed to calculate Player 1 effective stats, using default hand limit:', error);
+    }
+  } else {
+    console.warn('⚠️ GameDataService not available, using default hand limit for Player 1');
+  }
+
   const player1CardsToDraw = Math.max(0, player1HandLimit - gameState.player1.hand.length);
 
   if (player1CardsToDraw > 0) {
@@ -153,8 +170,20 @@ export const performAutomaticDraw = (gameState) => {
     console.log(`🃏 Player 1 already at hand limit (${gameState.player1.hand.length}/${player1HandLimit})`);
   }
 
-  // Process player2
-  const player2HandLimit = defaultHandLimit; // TODO: Calculate based on ship stats
+  // Process player2 - calculate hand limit using effective ship stats
+  let player2HandLimit = 5; // Default fallback
+  if (gameDataService && gameState.opponentPlacedSections) {
+    try {
+      const player2EffectiveStats = gameDataService.getEffectiveShipStats(gameState.player2, gameState.opponentPlacedSections);
+      player2HandLimit = player2EffectiveStats.totals.handLimit;
+      console.log(`📊 Player 2 effective hand limit: ${player2HandLimit} (with placed sections: ${gameState.opponentPlacedSections.join(', ')})`);
+    } catch (error) {
+      console.warn('⚠️ Failed to calculate Player 2 effective stats, using default hand limit:', error);
+    }
+  } else {
+    console.warn('⚠️ GameDataService not available, using default hand limit for Player 2');
+  }
+
   const player2CardsToDraw = Math.max(0, player2HandLimit - gameState.player2.hand.length);
 
   if (player2CardsToDraw > 0) {

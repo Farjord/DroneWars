@@ -53,6 +53,9 @@ class GameStateManager {
     // Initialize action processor
     this.actionProcessor = new ActionProcessor(this);
 
+    // Game flow manager reference (set during initialization)
+    this.gameFlowManager = null;
+
     // P2P integration will be set up lazily when needed
     this.p2pIntegrationSetup = false;
 
@@ -61,6 +64,16 @@ class GameStateManager {
     console.log('📱 App State:', this.state.appState);
     console.log('🎮 Game Active:', this.state.gameActive);
     console.log('✅ GAMESTATE INITIALIZATION: GameStateManager ready (no game active)');
+  }
+
+  // --- MANAGER REFERENCES ---
+
+  /**
+   * Set the GameFlowManager reference
+   * @param {Object} gameFlowManager - GameFlowManager instance
+   */
+  setGameFlowManager(gameFlowManager) {
+    this.gameFlowManager = gameFlowManager;
   }
 
   // --- P2P INTEGRATION ---
@@ -285,16 +298,17 @@ class GameStateManager {
       'preGame': ['droneSelection', 'deckSelection'],
       'droneSelection': ['deckSelection'],
       'deckSelection': ['placement'],
-      'placement': ['initialDraw', 'deployment'],
+      'placement': ['energyReset', 'initialDraw', 'deployment'],
+      'energyReset': ['mandatoryDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
       'initialDraw': ['mandatoryDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
-      'mandatoryDiscard': ['draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
+      'mandatoryDiscard': ['energyReset', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
       'draw': ['determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
       'determineFirstPlayer': ['allocateShields', 'mandatoryDroneRemoval', 'deployment'],
       'allocateShields': ['mandatoryDroneRemoval', 'deployment'],
       'mandatoryDroneRemoval': ['deployment'],
       'deployment': ['action', 'roundEnd'],
-      'action': ['deployment', 'roundEnd', 'mandatoryDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'gameEnd'],
-      'roundEnd': ['mandatoryDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'gameEnd'],
+      'action': ['deployment', 'roundEnd', 'energyReset', 'mandatoryDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'gameEnd'],
+      'roundEnd': ['energyReset', 'mandatoryDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'gameEnd'],
       'gameEnd': []
     };
 
@@ -319,8 +333,13 @@ class GameStateManager {
     }
 
     // Skip validation during automatic phases - GameFlowManager handles these directly
-    const automaticPhases = ['draw', 'determineFirstPlayer'];
+    const automaticPhases = ['energyReset', 'draw', 'determineFirstPlayer'];
     if (automaticPhases.includes(prevState.turnPhase) || automaticPhases.includes(updates.turnPhase)) {
+      return;
+    }
+
+    // Also skip validation if GameFlowManager is currently processing an automatic phase
+    if (this.gameFlowManager && this.gameFlowManager.isProcessingAutomaticPhase) {
       return;
     }
 

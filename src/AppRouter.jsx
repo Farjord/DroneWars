@@ -68,6 +68,10 @@ function AppRouter() {
       () => gameState.gameMode !== 'local',
       aiPhaseProcessor // Add AIPhaseProcessor for SequentialPhaseManager
     );
+
+    // Set up reverse reference for automatic phase validation
+    gameStateManager.setGameFlowManager(gameFlowManager);
+
     console.log('🔄 GameFlowManager initialized in AppRouter');
   }, [gameState.gameMode]);
 

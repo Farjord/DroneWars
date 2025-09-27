@@ -21,17 +21,18 @@ class GameFlowManager {
 
     // Game flow phase definitions
     this.PRE_GAME_PHASES = ['droneSelection', 'deckSelection', 'placement'];
-    this.ROUND_PHASES = ['mandatoryDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'action'];
+    this.ROUND_PHASES = ['energyReset', 'mandatoryDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'action'];
 
     // Phase type classification
     this.SIMULTANEOUS_PHASES = ['droneSelection', 'deckSelection', 'placement', 'mandatoryDiscard', 'allocateShields', 'mandatoryDroneRemoval'];
     this.SEQUENTIAL_PHASES = ['deployment', 'action'];
-    this.AUTOMATIC_PHASES = ['draw', 'determineFirstPlayer']; // Automatic phases handled directly by GameFlowManager
+    this.AUTOMATIC_PHASES = ['energyReset', 'draw', 'determineFirstPlayer']; // Automatic phases handled directly by GameFlowManager
 
     // Current game state
     this.currentPhase = 'preGame';
     this.gameStage = 'preGame'; // 'preGame', 'roundLoop', 'gameOver'
     this.roundNumber = 0;
+    this.isProcessingAutomaticPhase = false; // Flag to track automatic phase processing
 
     // Event listeners
     this.listeners = [];
@@ -280,12 +281,33 @@ class GameFlowManager {
   async processAutomaticPhase(phase) {
     console.log(`🤖 GameFlowManager: Processing automatic phase '${phase}'`);
 
-    if (phase === 'draw') {
-      await this.processAutomaticDrawPhase();
-    } else if (phase === 'determineFirstPlayer') {
-      await this.processAutomaticFirstPlayerPhase();
-    } else {
-      console.warn(`⚠️ No handler for automatic phase: ${phase}`);
+    // Set flag to indicate we're processing an automatic phase
+    this.isProcessingAutomaticPhase = true;
+
+    let nextPhase = null;
+
+    try {
+      if (phase === 'energyReset') {
+        nextPhase = await this.processAutomaticEnergyResetPhase();
+      } else if (phase === 'draw') {
+        nextPhase = await this.processAutomaticDrawPhase();
+      } else if (phase === 'determineFirstPlayer') {
+        nextPhase = await this.processAutomaticFirstPlayerPhase();
+      } else {
+        console.warn(`⚠️ No handler for automatic phase: ${phase}`);
+      }
+
+      // Handle phase transition while still in automatic processing mode
+      if (nextPhase) {
+        console.log(`🔄 GameFlowManager: Transitioning from automatic phase '${phase}' to '${nextPhase}'`);
+        this.transitionToPhase(nextPhase);
+      } else {
+        console.warn(`⚠️ No next phase found after automatic phase: ${phase}`);
+      }
+
+    } finally {
+      // Always clear the flag when automatic phase processing is complete
+      this.isProcessingAutomaticPhase = false;
     }
   }
 
@@ -327,13 +349,10 @@ class GameFlowManager {
         firstPlayerResult: firstPlayerResult
       });
 
-      // Automatically transition to next phase
+      // Return next phase for transition by processAutomaticPhase
       const nextPhase = this.getNextPhase('determineFirstPlayer');
-      if (nextPhase) {
-        this.transitionToPhase(nextPhase);
-      } else {
-        console.warn('⚠️ No next phase found after automatic first player determination');
-      }
+      console.log('✅ Automatic first player determination completed, returning next phase:', nextPhase);
+      return nextPhase;
 
     } catch (error) {
       console.error('❌ Error during automatic first player determination phase:', error);
@@ -361,7 +380,7 @@ class GameFlowManager {
       const currentGameState = this.gameStateManager.getState();
 
       // Perform automatic card drawing for both players
-      const drawResult = performAutomaticDraw(currentGameState);
+      const drawResult = performAutomaticDraw(currentGameState, this.gameStateManager);
 
       // Update game state with draw results
       this.gameStateManager.setState({
@@ -380,16 +399,81 @@ class GameFlowManager {
         automaticProcessed: true
       });
 
-      // Automatically transition to next phase
+      // Return next phase for transition by processAutomaticPhase
       const nextPhase = this.getNextPhase('draw');
-      if (nextPhase) {
-        this.transitionToPhase(nextPhase);
-      } else {
-        console.warn('⚠️ No next phase found after automatic draw');
-      }
+      console.log('✅ Automatic draw completed, returning next phase:', nextPhase);
+      return nextPhase;
 
     } catch (error) {
       console.error('❌ Error during automatic draw phase:', error);
+    }
+  }
+
+  /**
+   * Process the automatic energy reset phase
+   */
+  async processAutomaticEnergyResetPhase() {
+    console.log('⚡ GameFlowManager: Processing automatic energy reset phase');
+
+    const previousPhase = 'energyReset';
+
+    try {
+      if (!this.gameStateManager) {
+        console.error('❌ GameStateManager not available for energy reset');
+        return;
+      }
+
+      // Get current game state
+      const currentGameState = this.gameStateManager.getState();
+
+      // Create GameDataService instance for effective stats calculation
+      const GameDataService = (await import('../services/GameDataService.js')).default;
+      const gameDataService = new GameDataService(this.gameStateManager);
+
+      // Calculate effective ship stats for both players
+      const player1EffectiveStats = gameDataService.getEffectiveShipStats(
+        currentGameState.player1,
+        currentGameState.placedSections
+      );
+      const player2EffectiveStats = gameDataService.getEffectiveShipStats(
+        currentGameState.player2,
+        currentGameState.opponentPlacedSections
+      );
+
+      // Reset energy and deployment budget for both players
+      const updatedPlayer1 = {
+        ...currentGameState.player1,
+        energy: player1EffectiveStats.totals.energyPerTurn,
+        deploymentBudget: player1EffectiveStats.totals.deploymentBudget
+      };
+
+      const updatedPlayer2 = {
+        ...currentGameState.player2,
+        energy: player2EffectiveStats.totals.energyPerTurn,
+        deploymentBudget: player2EffectiveStats.totals.deploymentBudget
+      };
+
+      // Update player states
+      this.gameStateManager.setPlayerStates(updatedPlayer1, updatedPlayer2);
+
+      console.log(`✅ Energy reset complete - Player 1: ${updatedPlayer1.energy} energy, Player 2: ${updatedPlayer2.energy} energy`);
+
+      // Emit completion event for energy reset phase
+      this.emit('phaseTransition', {
+        newPhase: 'energyReset',
+        previousPhase: previousPhase,
+        gameStage: this.gameStage,
+        roundNumber: this.roundNumber,
+        automaticProcessed: true
+      });
+
+      // Return next phase for transition by processAutomaticPhase
+      const nextPhase = this.getNextPhase('energyReset');
+      console.log('✅ Automatic energy reset completed, returning next phase:', nextPhase);
+      return nextPhase;
+
+    } catch (error) {
+      console.error('❌ Error during automatic energy reset phase:', error);
     }
   }
 
@@ -407,7 +491,8 @@ class GameFlowManager {
 
     // Pre-game complete, transition to round loop
     if (currentPhase === 'placement') {
-      return 'initialDraw'; // Special phase before round loop starts
+      // Start the first round with energy reset
+      return 'energyReset'; // Start with energy reset instead of initialDraw
     }
 
     return null;
@@ -570,11 +655,7 @@ class GameFlowManager {
     this.currentPhase = newPhase;
 
     // Handle special phase transitions
-    if (newPhase === 'initialDraw') {
-      // After placement, before round loop
-      this.gameStage = 'roundLoop';
-      this.roundNumber = 1;
-    } else if (this.ROUND_PHASES.includes(newPhase) && this.gameStage !== 'roundLoop') {
+    if (this.ROUND_PHASES.includes(newPhase) && this.gameStage !== 'roundLoop') {
       this.gameStage = 'roundLoop';
       if (this.roundNumber === 0) {
         this.roundNumber = 1;

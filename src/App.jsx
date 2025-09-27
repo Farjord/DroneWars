@@ -297,6 +297,22 @@ const App = () => {
   const localPlacedSections = getLocalPlacedSections();
   const opponentPlacedSections = getOpponentPlacedSections();
 
+  // Defensive check for hot reload scenarios where player states might be null
+  if (!localPlayerState || !opponentPlayerState) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        backgroundColor: '#1a1a1a',
+        color: '#ffffff',
+        fontFamily: 'Arial, sans-serif'
+      }}>
+        <div>Initializing game board...</div>
+      </div>
+    );
+  }
 
   // --- SHIP SECTION PLACEMENT ---
   const sectionsToPlace = ['bridge', 'powerCell', 'droneControlHub'];
@@ -1300,7 +1316,7 @@ const App = () => {
         showWinnerModalCallback: setShowWinnerModal
       }
     );
-  }, [localPlayerState.shipSections, opponentPlayerState.shipSections, winner, addLogEntry]);
+  }, [localPlayerState?.shipSections, opponentPlayerState?.shipSections, winner, addLogEntry]);
 
 
 
@@ -1534,13 +1550,13 @@ const App = () => {
         <div className="flex justify-around items-center my-4 p-4 bg-black/20 rounded-lg">
           <div className="flex flex-col items-center">
             <h4 className="text-lg font-bold text-pink-400 mb-2">Attacker</h4>
-           <DroneToken drone={attacker} isPlayer={false} effectiveStats={getEffectiveStats(attacker, lane)} droneRefs={droneRefs} mandatoryAction={mandatoryAction} localPlayerState={localPlayerState}/>
+           <DroneToken drone={attacker} isPlayer={false} lane={lane} droneRefs={droneRefs} mandatoryAction={mandatoryAction} localPlayerState={localPlayerState}/>
           </div>
           <div className="text-4xl font-bold text-gray-500">VS</div>
           <div className="flex flex-col items-center">
             <h4 className="text-lg font-bold text-cyan-400 mb-2">Target</h4>
            {targetType === 'drone' ? (
-             <DroneToken drone={target} isPlayer={true} effectiveStats={getEffectiveStats(target, lane)} droneRefs={droneRefs} mandatoryAction={mandatoryAction} localPlayerState={localPlayerState} />
+             <DroneToken drone={target} isPlayer={true} lane={lane} droneRefs={droneRefs} mandatoryAction={mandatoryAction} localPlayerState={localPlayerState} />
 
            ) : (
              <div className="transform scale-75">
@@ -1571,7 +1587,7 @@ const App = () => {
              drone={drone}
              isPlayer={true}
              onClick={() => onIntercept(drone)}
-               effectiveStats={getEffectiveStats(drone, lane)}
+               lane={lane}
                droneRefs={droneRefs}
                mandatoryAction={mandatoryAction}
                localPlayerState={localPlayerState}
@@ -4294,17 +4310,15 @@ useEffect(() => {
         <>
           <div className="flex flex-col items-center w-full space-y-2">
                       {(() => {
-                        return <ShipSectionsDisplay player={opponentPlayerState} playerEffectiveStats={opponentPlayerEffectiveStats} isPlayer={false} placedSections={opponentPlacedSections} onTargetClick={handleTargetClick} isInteractive={false} selectedCard={selectedCard} validCardTargets={validCardTargets} gameEngine={gameEngine} turnPhase={turnPhase} isMyTurn={isMyTurn} passInfo={passInfo} getLocalPlayerId={getLocalPlayerId} localPlayerState={localPlayerState} shipAbilityMode={shipAbilityMode} hoveredTarget={hoveredTarget} setHoveredTarget={setHoveredTarget} />;
+                        return <ShipSectionsDisplay player={opponentPlayerState} isPlayer={false} placedSections={opponentPlacedSections} onTargetClick={handleTargetClick} isInteractive={false} selectedCard={selectedCard} validCardTargets={validCardTargets} gameEngine={gameEngine} turnPhase={turnPhase} isMyTurn={isMyTurn} passInfo={passInfo} getLocalPlayerId={getLocalPlayerId} localPlayerState={localPlayerState} shipAbilityMode={shipAbilityMode} hoveredTarget={hoveredTarget} setHoveredTarget={setHoveredTarget} />;
                       })()}
                       <DroneLanesDisplay player={opponentPlayerState} isPlayer={false} onLaneClick={handleLaneClick} getLocalPlayerId={getLocalPlayerId} getOpponentPlayerId={getOpponentPlayerId} abilityMode={abilityMode} validAbilityTargets={validAbilityTargets} selectedCard={selectedCard} validCardTargets={validCardTargets} multiSelectState={multiSelectState} turnPhase={turnPhase} localPlayerState={localPlayerState} opponentPlayerState={opponentPlayerState} localPlacedSections={localPlacedSections} opponentPlacedSections={opponentPlacedSections} gameEngine={gameEngine} getPlacedSectionsForEngine={getPlacedSectionsForEngine} handleTokenClick={handleTokenClick} handleAbilityIconClick={handleAbilityIconClick} selectedDrone={selectedDrone} recentlyHitDrones={recentlyHitDrones} potentialInterceptors={potentialInterceptors} droneRefs={droneRefs} mandatoryAction={mandatoryAction} setHoveredTarget={setHoveredTarget} />
                       <DroneLanesDisplay player={localPlayerState} isPlayer={true} onLaneClick={handleLaneClick} getLocalPlayerId={getLocalPlayerId} getOpponentPlayerId={getOpponentPlayerId} abilityMode={abilityMode} validAbilityTargets={validAbilityTargets} selectedCard={selectedCard} validCardTargets={validCardTargets} multiSelectState={multiSelectState} turnPhase={turnPhase} localPlayerState={localPlayerState} opponentPlayerState={opponentPlayerState} localPlacedSections={localPlacedSections} opponentPlacedSections={opponentPlacedSections} gameEngine={gameEngine} getPlacedSectionsForEngine={getPlacedSectionsForEngine} handleTokenClick={handleTokenClick} handleAbilityIconClick={handleAbilityIconClick} selectedDrone={selectedDrone} recentlyHitDrones={recentlyHitDrones} potentialInterceptors={potentialInterceptors} droneRefs={droneRefs} mandatoryAction={mandatoryAction} setHoveredTarget={setHoveredTarget} />
 
 
-                      <ShipSectionsDisplay player={localPlayerState} playerEffectiveStats={localPlayerEffectiveStats} isPlayer={true} placedSections={localPlacedSections} onSectionClick={handleShipSectionClick} onAbilityClick={handleShipAbilityClick} onTargetClick={handleTargetClick} isInteractive={turnPhase === 'allocateShields' || reallocationPhase} selectedCard={selectedCard} validCardTargets={validCardTargets} reallocationPhase={reallocationPhase} gameEngine={gameEngine} turnPhase={turnPhase} isMyTurn={isMyTurn} passInfo={passInfo} getLocalPlayerId={getLocalPlayerId} localPlayerState={localPlayerState} shipAbilityMode={shipAbilityMode} hoveredTarget={hoveredTarget} setHoveredTarget={setHoveredTarget} />
+                      <ShipSectionsDisplay player={localPlayerState} isPlayer={true} placedSections={localPlacedSections} onSectionClick={handleShipSectionClick} onAbilityClick={handleShipAbilityClick} onTargetClick={handleTargetClick} isInteractive={turnPhase === 'allocateShields' || reallocationPhase} selectedCard={selectedCard} validCardTargets={validCardTargets} reallocationPhase={reallocationPhase} gameEngine={gameEngine} turnPhase={turnPhase} isMyTurn={isMyTurn} passInfo={passInfo} getLocalPlayerId={getLocalPlayerId} localPlayerState={localPlayerState} shipAbilityMode={shipAbilityMode} hoveredTarget={hoveredTarget} setHoveredTarget={setHoveredTarget} />
               </div>
-            )}
         </>
-        )}
       </main>
 
        {turnPhase !== 'preGame' && turnPhase !== 'placement' && turnPhase !== 'droneSelection' && (

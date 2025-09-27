@@ -16,6 +16,7 @@
 import fullDroneCollection from '../data/droneData.js';
 import fullCardCollection from '../data/cardData.js';
 import shipSectionData from '../data/shipData.js';
+import { calculateEffectiveStats, calculateEffectiveShipStats } from './statsCalculator.js';
 
 // ========================================
 // DECK AND CARD MANAGEMENT
@@ -90,13 +91,13 @@ const getEffectiveSectionMaxShields = (sectionName, playerState, placedSections)
 // ========================================
 
 const initialPlayerState = (name, decklist) => {
-    const healthyStats = calculateEffectiveShipStats({ shipSections: shipSectionData }, []).totals;
+    const baseStats = calculateEffectiveShipStats({ shipSections: shipSectionData }, []).totals;
 
     return {
         name: name,
         shipSections: shipSectionData,
-        energy: healthyStats.energyPerTurn,
-        initialDeploymentBudget: healthyStats.initialDeployment,
+        energy: 0, // Energy will be set correctly during round start with actual placed sections
+        initialDeploymentBudget: baseStats.initialDeployment,
         deploymentBudget: 0,
         hand: [],
         deck: buildDeckFromList(decklist),
@@ -143,208 +144,13 @@ newDeployedCounts[droneName] -= 1;
 return { deployedDroneCounts: newDeployedCounts };
 };
 
-const calculateEffectiveShipStats = (playerState, placedSections = []) => {
-    const defaultReturn = {
-      totals: { handLimit: 0, discardLimit: 0, energyPerTurn: 0, maxEnergy: 0, shieldsPerTurn: 0, initialDeployment: 0, deploymentBudget: 0, cpuLimit: 0 },
-      bySection: {}
-    };
-
-    if (!playerState || !playerState.shipSections) {
-        return defaultReturn;
-    }
-
-    const sectionStats = {};
-    for (const sectionName in playerState.shipSections) {
-      const section = playerState.shipSections[sectionName];
-      // --- FIX 1: Call the function directly ---
-      const status = getShipStatus(section);
-      const currentStats = { ...section.stats[status] };
-      const laneIndex = placedSections.indexOf(sectionName);
-
-      if (laneIndex === 1 && section.middleLaneBonus) {
-        for (const statKey in section.middleLaneBonus) {
-          if (currentStats.hasOwnProperty(statKey)) {
-            currentStats[statKey] += section.middleLaneBonus[statKey];
-          }
-        }
-      }
-      sectionStats[sectionName] = currentStats;
-    }
-
-    const totals = {
-        handLimit: 0, discardLimit: 0, energyPerTurn: 0, maxEnergy: 0, 
-        shieldsPerTurn: 0, initialDeployment: 0, deploymentBudget: 0, cpuLimit: 0 
-    };
-    
-    for (const stats of Object.values(sectionStats)) {
-        totals.handLimit += stats['Draw'] || 0;
-        totals.discardLimit += stats['Discard'] || 0;
-        totals.energyPerTurn += stats['Energy Per Turn'] || 0;
-        totals.maxEnergy += stats['Max Energy'] || 0;
-        totals.shieldsPerTurn += stats['Shields Per Turn'] || 0;
-        totals.initialDeployment += stats['Initial Deployment'] || 0;
-        totals.deploymentBudget += stats['Deployment Budget'] || 0;
-        totals.cpuLimit += stats['CPU Control Value'] || 0;
-    }
-
-    return {
-      totals: totals,
-      bySection: sectionStats
-    };
-};
+// Stats calculation functions moved to statsCalculator.js to eliminate circular dependency
 
 // ========================================
 // DRONE STATS CALCULATION SYSTEM
 // ========================================
 
-const calculateEffectiveStats = (drone, lane, playerState, opponentState, allPlacedSections) => {
-    if (!drone || !lane || !playerState || !opponentState || !allPlacedSections) {
-        return { attack: 0, speed: 0, hull: 0, maxShields: 0, cost: 0, baseAttack: 0, baseSpeed: 0, baseCost: 0, keywords: new Set() };
-    }
-  
-    const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
-    if (!baseDrone) return { ...drone, baseAttack: drone.attack, baseSpeed: drone.speed, baseCost: drone.class || 0, cost: drone.class || 0, maxShields: 0, keywords: new Set() };
-  
-    const upgrades = playerState.appliedUpgrades[drone.name] || [];
-    let baseAttack = baseDrone.attack;
-    let baseSpeed = baseDrone.speed;
-    let baseShields = baseDrone.shields;
-    let baseCost = baseDrone.class;
-
-    upgrades.forEach(upgrade => {
-        if (upgrade.mod.stat === 'attack') baseAttack += upgrade.mod.value;
-        if (upgrade.mod.stat === 'speed') baseSpeed += upgrade.mod.value;
-        if (upgrade.mod.stat === 'shields') baseShields += upgrade.mod.value;
-        if (upgrade.mod.stat === 'cost') baseCost += upgrade.mod.value;
-    });
-
-    // Ensure cost never goes below 0
-    baseCost = Math.max(0, baseCost);
-
-    let effectiveStats = {
-      ...drone,
-      attack: baseAttack,
-      speed: baseSpeed,
-      maxShields: baseShields,
-      cost: baseCost,
-      baseAttack: baseDrone.attack,
-      baseSpeed: baseDrone.speed,
-      baseCost: baseDrone.class,
-      keywords: new Set()
-    };
-  
-    drone.statMods?.forEach(mod => {
-      if (mod.stat === 'attack') effectiveStats.attack += mod.value;
-      if (mod.stat === 'speed') effectiveStats.speed += mod.value;
-      if (mod.stat === 'cost') effectiveStats.cost = Math.max(0, effectiveStats.cost + mod.value);
-    });
-  
-    baseDrone.abilities?.forEach(ability => {
-      if (ability.type !== 'PASSIVE') return;
-  
-      if (ability.effect.type === 'GRANT_KEYWORD') {
-        effectiveStats.keywords.add(ability.effect.keyword);
-      }
-       
-      if (ability.effect.type === 'CONDITIONAL_MODIFY_STAT') {
-        const { condition, mod } = ability.effect;
-        let conditionMet = false;
-
-        if (condition.type === 'SHIP_SECTION_HULL_DAMAGED' && condition.location === 'SAME_LANE') {
-          const laneIndex = parseInt(lane.slice(-1)) - 1;
-          
-          // --- ANOTHER FIX: Corrected variable names ---
-          const sectionsForPlayer = playerState.name === 'Player 1' ? allPlacedSections.player1 : allPlacedSections.player2;
-          const sectionName = sectionsForPlayer[laneIndex];
-          
-          if (sectionName) {
-            const shipSection = playerState.shipSections[sectionName];
-            const status = getShipStatus(shipSection); // Call directly
-            if (status === 'damaged' || status === 'critical') {
-              conditionMet = true;
-            }
-          }
-        }
-        
-        if (conditionMet) {
-          if (mod.stat === 'attack') effectiveStats.attack += mod.value;
-        }
-      }
-
-      if (ability.effect.type === 'CONDITIONAL_MODIFY_STAT_SCALING') {
-        const { condition, mod } = ability.effect;
-        let scaleFactor = 0;
-
-        if (condition.type === 'OWN_DAMAGED_SECTIONS') {
-          for (const sectionName in playerState.shipSections) {
-            const shipSection = playerState.shipSections[sectionName];
-            const status = getShipStatus(shipSection); // Call directly
-            if (status === 'damaged' || status === 'critical') {
-              scaleFactor++;
-            }
-          }
-        }
-        
-        if (scaleFactor > 0) {
-          if (mod.stat === 'attack') effectiveStats.attack += (mod.value * scaleFactor);
-          if (mod.stat === 'speed') effectiveStats.speed += (mod.value * scaleFactor);
-        }
-      }
-
-      if (ability.effect.type === 'BONUS_DAMAGE_VS_SHIP') {
-        effectiveStats.potentialShipDamage = (effectiveStats.potentialShipDamage || 0) + ability.effect.value;
-      }
-
-      if (ability.effect.type === 'FLANKING_BONUS') {
-        if (lane === 'lane1' || lane === 'lane3') {
-          ability.effect.mods.forEach(mod => {
-            if (mod.stat === 'attack') effectiveStats.attack += mod.value;
-            if (mod.stat === 'speed') effectiveStats.speed += mod.value;
-          });
-        }
-      }
-    });
-  
-    playerState.dronesOnBoard[lane]?.forEach(otherDrone => {
-      if (otherDrone.id === drone.id) return;
-      const otherBaseDrone = fullDroneCollection.find(d => d.name === otherDrone.name);
-      otherBaseDrone?.abilities?.forEach(ability => {
-        if (ability.type === 'PASSIVE' && ability.scope === 'FRIENDLY_IN_LANE' && ability.effect.type === 'MODIFY_STAT') {
-          const { stat, value } = ability.effect;
-          if (stat === 'shields') {
-            effectiveStats.maxShields += value;
-          } else if (stat === 'attack') {
-            effectiveStats.attack += value;
-          } else if (stat === 'speed') {
-            effectiveStats.speed += value;
-          }
-        }
-      });
-    });
-
-    // Process abilities granted by upgrades
-    upgrades.forEach(upgrade => {
-        if (upgrade.grantedAbilities) {
-            upgrade.grantedAbilities.forEach(ability => {
-                if (ability.type !== 'PASSIVE') return;
-
-                if (ability.effect.type === 'GRANT_KEYWORD') {
-                    effectiveStats.keywords.add(ability.effect.keyword);
-                }
-
-                // Add support for other ability types as needed
-                if (ability.effect.type === 'MODIFY_STAT') {
-                    const { stat, value } = ability.effect;
-                    if (stat === 'attack') effectiveStats.attack += value;
-                    if (stat === 'speed') effectiveStats.speed += value;
-                    if (stat === 'shields') effectiveStats.maxShields += value;
-                }
-            });
-        }
-    });
-
-    return effectiveStats;
-};
+// calculateEffectiveStats function moved to statsCalculator.js to eliminate circular dependency
 
 
 const updateAuras = (playerState, opponentState, sections) => { // <-- FIX: Remove useCallback
@@ -1478,12 +1284,12 @@ const processPhaseChange = (currentState, newPhase, trigger = 'manual') => {
  * @param {number} turn - New turn number
  * @returns {Object} - { newState, uiEffects }
  */
-const processRoundStart = (currentState, turn) => {
-  // Calculate new player states using existing logic
+const processRoundStart = (currentState, turn, player1EffectiveStats, player2EffectiveStats) => {
+  // Calculate new player states using computed stats
   const newPlayer1State = calculateNewRoundPlayerState(
     currentState.player1,
     turn,
-    calculateEffectiveStats, // Function reference for stats calculation
+    player1EffectiveStats, // Pass computed ship stats
     currentState.player2,
     currentState.placedSections
   );
@@ -1491,20 +1297,20 @@ const processRoundStart = (currentState, turn) => {
   const newPlayer2State = calculateNewRoundPlayerState(
     currentState.player2,
     turn,
-    calculateEffectiveStats, // Function reference for stats calculation
+    player2EffectiveStats, // Pass computed ship stats
     currentState.player1,
     currentState.opponentPlacedSections
   );
 
-  // Draw to hand limit
+  // Draw to hand limit using computed stats
   const player1WithCards = drawToHandLimit(
     newPlayer1State,
-    calculateEffectiveShipStats(newPlayer1State, currentState.placedSections).totals.handLimit
+    player1EffectiveStats.totals.handLimit
   );
 
   const player2WithCards = drawToHandLimit(
     newPlayer2State,
-    calculateEffectiveShipStats(newPlayer2State, currentState.opponentPlacedSections).totals.handLimit
+    player2EffectiveStats.totals.handLimit
   );
 
   // Determine first player
@@ -1586,16 +1392,16 @@ const readyDronesAndRestoreShields = (playerState, opponentState, placedSections
     return { ...playerState, dronesOnBoard: newDronesOnBoard };
 };
 
-const calculateNewRoundPlayerState = (playerState, turn, effectiveStats, opponentState, placedSections) => {
+const calculateNewRoundPlayerState = (playerState, turn, effectiveShipStats, opponentState, placedSections) => {
     // Ready drones and restore shields
     const readiedState = readyDronesAndRestoreShields(playerState, opponentState, placedSections);
 
-    // Update energy and deployment budget
+    // Update energy and deployment budget using computed ship stats
     const baseState = {
         ...readiedState,
-        energy: effectiveStats.totals.energyPerTurn,
+        energy: effectiveShipStats.totals.energyPerTurn,
         initialDeploymentBudget: 0,
-        deploymentBudget: effectiveStats.totals.deploymentBudget
+        deploymentBudget: effectiveShipStats.totals.deploymentBudget
     };
 
     return baseState;
@@ -3389,8 +3195,6 @@ export const gameEngine = {
   // --- Stats and Calculations ---
   calculateAfterAttackStateAndEffects,
   applyOnMoveEffects,
-  calculateEffectiveShipStats,
-  calculateEffectiveStats,
   updateAuras,
   getLaneOfDrone,
 

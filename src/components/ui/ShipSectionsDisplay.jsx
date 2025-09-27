@@ -6,13 +6,13 @@
 
 import React from 'react';
 import ShipSection from './ShipSection.jsx';
+import { useGameData } from '../../hooks/useGameData.js';
 
 /**
  * SHIP SECTIONS DISPLAY COMPONENT
  * Renders the ship sections area with interactive sections for each player.
  * Handles shield allocation, abilities, and targeting states.
  * @param {Object} player - Player state data
- * @param {Object} playerEffectiveStats - Calculated ship stats
  * @param {boolean} isPlayer - Whether this is the current player's ship
  * @param {Array} placedSections - Array of placed section names
  * @param {Function} onSectionClick - Callback for shield allocation interactions
@@ -33,7 +33,6 @@ import ShipSection from './ShipSection.jsx';
  */
 const ShipSectionsDisplay = ({
   player,
-  playerEffectiveStats,
   isPlayer,
   placedSections,
   onSectionClick,
@@ -52,6 +51,11 @@ const ShipSectionsDisplay = ({
   hoveredTarget,
   setHoveredTarget
 }) => {
+  // Get GameDataService for direct effective stats calculation
+  const { getEffectiveShipStats } = useGameData();
+
+  // Calculate effective ship stats internally instead of receiving as prop
+  const playerEffectiveStats = getEffectiveShipStats(player, placedSections);
 
   return (
     <div className="flex w-full justify-between gap-8">

@@ -52,9 +52,6 @@ function LobbyScreen() {
           aiPersonality: selectedAI
         }
       );
-
-      // Transition to game
-      updateGameState({ appState: 'inGame' });
     } else if (isMultiplayer) {
       console.log('🎮 Starting multiplayer game');
 
@@ -63,9 +60,6 @@ function LobbyScreen() {
         { name: 'Player 1' },
         { name: 'Player 2' }
       );
-
-      // Transition to game
-      updateGameState({ appState: 'inGame' });
     }
   };
 

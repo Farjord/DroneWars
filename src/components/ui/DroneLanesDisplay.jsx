@@ -58,12 +58,11 @@ const renderDronesOnBoard = (
   return (
     <div className="flex flex-wrap gap-8 pt-2 min-h-[100px] justify-center items-center">
      {drones.map((drone) => {
-          const effectiveStats = getEffectiveStats(drone, lane);
           return (
               <DroneToken
               key={drone.id}
               drone={drone}
-              effectiveStats={effectiveStats}
+              lane={lane}
               isPlayer={isPlayer}
               onClick={handleTokenClick}
               onAbilityClick={handleAbilityIconClick}

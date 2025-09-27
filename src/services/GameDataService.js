@@ -5,7 +5,7 @@
 // Eliminates scattered calculateEffectiveStats calls across the application
 // Provides caching and consistent data access patterns
 
-import { gameEngine } from '../logic/gameLogic.js';
+import { calculateEffectiveStats, calculateEffectiveShipStats } from '../logic/statsCalculator.js';
 import gameDataCache from './gameDataCache.js';
 
 /**
@@ -32,7 +32,7 @@ class GameDataService {
 
   /**
    * Get effective stats for a drone in a specific lane
-   * Replaces direct gameEngine.calculateEffectiveStats calls
+   * Replaces direct calculateEffectiveStats calls
    *
    * @param {Object} drone - Drone object with name, stats, etc.
    * @param {string} lane - Lane identifier (lane1, lane2, lane3)
@@ -57,8 +57,8 @@ class GameDataService {
     const localPlayerId = this.gameStateManager.getLocalPlayerId();
     const opponentPlayerId = this.gameStateManager.getOpponentPlayerId();
 
-    const localPlayerState = gameState.players[localPlayerId];
-    const opponentPlayerState = gameState.players[opponentPlayerId];
+    const localPlayerState = gameState[localPlayerId];
+    const opponentPlayerState = gameState[opponentPlayerId];
 
     // Get placed sections for engine
     const placedSections = this.getPlacedSectionsForEngine();
@@ -69,7 +69,7 @@ class GameDataService {
     const opponentState = isDroneOwnedByLocal ? opponentPlayerState : localPlayerState;
 
     // Calculate effective stats using game engine
-    const effectiveStats = gameEngine.calculateEffectiveStats(
+    const effectiveStats = calculateEffectiveStats(
       drone,
       lane,
       playerState,
@@ -85,7 +85,7 @@ class GameDataService {
 
   /**
    * Get effective ship stats for a player with placed sections
-   * Replaces direct gameEngine.calculateEffectiveShipStats calls
+   * Replaces direct calculateEffectiveShipStats calls
    *
    * @param {Object} playerState - Player state object with shipSections
    * @param {Array} placedSections - Array of placed section names
@@ -111,7 +111,7 @@ class GameDataService {
     }
 
     // Calculate effective ship stats using game engine
-    const effectiveShipStats = gameEngine.calculateEffectiveShipStats(playerState, placedSections);
+    const effectiveShipStats = calculateEffectiveShipStats(playerState, placedSections);
 
     // Cache the result
     this.cache.set(cacheKey, effectiveShipStats);
@@ -129,8 +129,8 @@ class GameDataService {
     const opponentPlayerId = this.gameStateManager.getOpponentPlayerId();
 
     return {
-      [localPlayerId]: gameState.players[localPlayerId]?.placedSections || {},
-      [opponentPlayerId]: gameState.players[opponentPlayerId]?.placedSections || {}
+      [localPlayerId]: localPlayerId === 'player1' ? gameState.placedSections : gameState.opponentPlacedSections,
+      [opponentPlayerId]: opponentPlayerId === 'player1' ? gameState.placedSections : gameState.opponentPlacedSections
     };
   }
 
@@ -162,9 +162,9 @@ class GameDataService {
     const opponentPlayerId = this.gameStateManager.getOpponentPlayerId();
 
     // Compare by reference to determine which player this is
-    if (playerState === gameState.players[localPlayerId]) {
+    if (playerState === gameState[localPlayerId]) {
       return localPlayerId;
-    } else if (playerState === gameState.players[opponentPlayerId]) {
+    } else if (playerState === gameState[opponentPlayerId]) {
       return opponentPlayerId;
     }
 
@@ -181,8 +181,8 @@ class GameDataService {
     const localPlayerId = this.gameStateManager.getLocalPlayerId();
     const opponentPlayerId = this.gameStateManager.getOpponentPlayerId();
 
-    const localPlayerState = gameState.players[localPlayerId];
-    const opponentPlayerState = gameState.players[opponentPlayerId];
+    const localPlayerState = gameState[localPlayerId];
+    const opponentPlayerState = gameState[opponentPlayerId];
 
     const localDrones = (localPlayerState.dronesOnBoard[lane] || []).map(drone => ({
       ...drone,

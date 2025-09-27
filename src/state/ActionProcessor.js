@@ -522,11 +522,21 @@ class ActionProcessor {
       currentState.firstPasserOfPreviousRound
     );
 
-    // Calculate new player states for the round
+    // Calculate effective ship stats for both players
+    const player1EffectiveStats = this.gameDataService.getEffectiveShipStats(
+      currentState.player1,
+      currentState.placedSections
+    );
+    const player2EffectiveStats = this.gameDataService.getEffectiveShipStats(
+      currentState.player2,
+      currentState.opponentPlacedSections
+    );
+
+    // Calculate new player states for the round using computed stats
     const newPlayer1State = gameEngine.calculateNewRoundPlayerState(
       currentState.player1,
       newTurn,
-      this.effectiveStatsWrapper,
+      player1EffectiveStats,
       currentState.player2,
       currentState.placedSections
     );
@@ -534,7 +544,7 @@ class ActionProcessor {
     const newPlayer2State = gameEngine.calculateNewRoundPlayerState(
       currentState.player2,
       newTurn,
-      this.effectiveStatsWrapper,
+      player2EffectiveStats,
       currentState.player1,
       currentState.opponentPlacedSections
     );

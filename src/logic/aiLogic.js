@@ -42,10 +42,10 @@ import GameDataService from '../services/GameDataService.js';
   return baseScore + speedScore + healthModifier;
 };
 
-const handleOpponentTurn = ({ player1, player2, turn, placedSections, opponentPlacedSections, getShipStatus, calculateEffectiveShipStats, gameStateManager, addLogEntry }) => {
+const handleOpponentTurn = ({ player1, player2, turn, placedSections, opponentPlacedSections, getShipStatus, gameStateManager, addLogEntry }) => {
     // Create GameDataService instance for centralized data computation
     const gameDataService = new GameDataService(gameStateManager);
-    const effectiveStats = calculateEffectiveShipStats(player2, opponentPlacedSections).totals;
+    const effectiveStats = gameDataService.getEffectiveShipStats(player2, opponentPlacedSections).totals;
     const totalDrones = Object.values(player2.dronesOnBoard).flat().length;
     const availableResources = turn === 1
       ? (player2.initialDeploymentBudget + player2.energy)
