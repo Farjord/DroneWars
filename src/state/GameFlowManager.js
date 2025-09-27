@@ -7,6 +7,7 @@
 import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
 import { initializeShipPlacement } from '../utils/shipPlacementUtils.js';
 import fullDroneCollection from '../data/droneData.js';
+import sequentialPhaseManager from './SequentialPhaseManager.js';
 
 /**
  * GameFlowManager - Central authority for game phase flow and transitions
@@ -50,12 +51,34 @@ class GameFlowManager {
    * @param {Object} simultaneousActionManager - SimultaneousActionManager instance
    * @param {Object} actionProcessor - ActionProcessor instance
    * @param {Function} isMultiplayerFn - Function to check if game is multiplayer
+   * @param {Object} aiPhaseProcessor - AIPhaseProcessor instance
    */
-  initialize(gameStateManager, simultaneousActionManager, actionProcessor, isMultiplayerFn) {
+  initialize(gameStateManager, simultaneousActionManager, actionProcessor, isMultiplayerFn, aiPhaseProcessor) {
     this.gameStateManager = gameStateManager;
     this.simultaneousActionManager = simultaneousActionManager;
     this.actionProcessor = actionProcessor;
     this.isMultiplayer = isMultiplayerFn;
+
+    // Initialize AIPhaseProcessor with execution dependencies
+    // Note: aiPhaseProcessor may already be initialized with personalities/drones elsewhere
+    if (aiPhaseProcessor && aiPhaseProcessor.initialize) {
+      // Get current initialization state
+      const currentPersonality = aiPhaseProcessor.currentAIPersonality;
+      const currentDronePool = aiPhaseProcessor.dronePool;
+      const currentPersonalities = aiPhaseProcessor.aiPersonalities;
+
+      // Re-initialize with all dependencies
+      aiPhaseProcessor.initialize(
+        currentPersonalities,
+        currentDronePool,
+        currentPersonality,
+        actionProcessor,
+        gameStateManager
+      );
+    }
+
+    // Initialize SequentialPhaseManager with dependencies
+    sequentialPhaseManager.initialize(gameStateManager, actionProcessor, aiPhaseProcessor);
 
     // Subscribe to completion events from other managers
     this.setupEventListeners();
@@ -74,6 +97,13 @@ class GameFlowManager {
         }
       });
     }
+
+    // Subscribe to SequentialPhaseManager events
+    sequentialPhaseManager.subscribe((event) => {
+      if (event.type === 'phase_completed') {
+        this.onSequentialPhaseComplete(event.phase, { firstPasser: event.firstPasser });
+      }
+    });
 
     if (this.actionProcessor && typeof this.actionProcessor.subscribe === 'function') {
       this.actionProcessor.subscribe((event) => {

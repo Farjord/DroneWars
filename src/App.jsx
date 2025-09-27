@@ -27,6 +27,7 @@ import { initializeShipPlacement } from './utils/shipPlacementUtils.js';
 import gameFlowManager from './state/GameFlowManager.js';
 import simultaneousActionManager from './state/SimultaneousActionManager.js';
 import aiPhaseProcessor from './state/AIPhaseProcessor.js';
+import sequentialPhaseManager from './state/SequentialPhaseManager.js';
 // ActionProcessor is created internally by GameStateManager
 import CardStatHexagon from './components/ui/CardStatHexagon.jsx';
 import ActionCard from './components/ui/ActionCard.jsx';
@@ -40,6 +41,7 @@ import AICardPlayReportModal from './components/modals/AICardPlayReportModal.jsx
 import UpgradeSelectionModal from './components/modals/UpgradeSelectionModal.jsx';
 import ViewUpgradesModal from './components/modals/ViewUpgradesModal.jsx';
 import DestroyUpgradeModal from './components/modals/DestroyUpgradeModal.jsx';
+import DetailedDroneModal from './components/modals/debug/DetailedDroneModal.jsx';
 
 // ========================================
 // MAIN APPLICATION COMPONENT
@@ -120,12 +122,46 @@ const App = () => {
       gameStateManager,
       simultaneousActionManager,
       gameStateManager.actionProcessor, // Use ActionProcessor instance from GameStateManager
-      () => gameState.gameMode !== 'local'
+      () => gameState.gameMode !== 'local',
+      aiPhaseProcessor // Add AIPhaseProcessor for SequentialPhaseManager
     );
 
 
     console.log('🔧 GameFlowManager initialized');
   }, []); // Run once on component mount
+
+  // Subscribe to SequentialPhaseManager events
+  useEffect(() => {
+    const unsubscribe = sequentialPhaseManager.subscribe((event) => {
+      console.log('📢 SequentialPhaseManager event:', event);
+
+      // Handle different event types
+      switch (event.type) {
+        case 'phase_started':
+          console.log(`🎯 Sequential phase started: ${event.phase}, first player: ${event.firstPlayer}`);
+          break;
+
+        case 'turn_changed':
+          console.log(`🔄 Turn changed to ${event.player} in ${event.phase} phase`);
+          break;
+
+        case 'player_passed':
+          console.log(`🏳️ ${event.player} passed in ${event.phase} phase`);
+          break;
+
+        case 'phase_completed':
+          console.log(`✅ ${event.phase} phase completed, first passer: ${event.firstPasser}`);
+          break;
+
+        default:
+          console.log(`📌 Unknown sequential phase event: ${event.type}`);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
 
   // --- MODAL AND UI STATE ---
   // MOVED UP: Must be declared before useEffect that uses setModalContent
@@ -1555,26 +1591,6 @@ const App = () => {
     );
   };
 
-  /**
-   * DETAILED DRONE MODAL COMPONENT
-   * Shows detailed view of a specific drone card.
-   * Used for viewing drone stats, abilities, and image.
-   * @param {Object} drone - The drone data to display
-   * @param {Function} onClose - Callback when modal is closed
-   */
-  const DetailedDroneModal = ({ drone, onClose }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-2xl border-2 border-purple-500 p-8 shadow-2xl shadow-purple-500/20 w-full max-w-lg relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
-          <X size={24} />
-        </button>
-        <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-cyan-400 text-center mb-4">{drone.name}</h2>
-        <div className="flex justify-center">
-            <DroneCard drone={drone} isSelectable={false} deployedCount={0}/>
-        </div>
-      </div>
-    </div>
-  );
 
   /**
    * SCALING TEXT COMPONENT
@@ -1836,54 +1852,6 @@ const App = () => {
     }
   };
 
-  // --- AI TURN EXECUTION ---
-  useEffect(() => {
-    const isMultiplayerGame = isMultiplayer();
-    const opponentId = getOpponentPlayerId();
-    const isCurrentPlayerOpponent = currentPlayer === opponentId;
-    const hasBlockingConditions = (modalContent && modalContent.isBlocking) || winner || aiActionReport || aiCardPlayReport || pendingAttack || playerInterceptionChoice || mandatoryAction || showFirstPlayerModal || showActionPhaseStartModal || showRoundEndModal;
-
-    const isAiTurn = !isMultiplayerGame && isCurrentPlayerOpponent && !hasBlockingConditions;
-
-    if (!isAiTurn) return;
-
-    let aiTurnTimer;
-
-    const executeAiTurn = async () => {
-
-      // Safety check: reset stuck attack flag before AI action
-      if (isResolvingAttackRef.current) {
-        console.warn('[AI TURN SAFETY] Detected stuck attack flag, resetting before AI turn');
-        isResolvingAttackRef.current = false;
-      }
-
-      // Notify gameLogic to handle AI turn
-      try {
-        await processAction('aiTurn', {
-          turnPhase,
-          playerId: getOpponentPlayerId()
-        });
-      } catch (error) {
-        console.error('Error processing AI turn:', error);
-        // Fallback: use ActionProcessor for turn transition to prevent getting stuck
-        try {
-          await processAction('turnTransition', {
-            newPlayer: getLocalPlayerId(),
-            reason: 'aiTurnError'
-          });
-        } catch (fallbackError) {
-          console.error('Error in AI turn fallback:', fallbackError);
-        }
-      }
-
-    };
-
-    aiTurnTimer = setTimeout(executeAiTurn, 1500);
-
-    return () => {
-      clearTimeout(aiTurnTimer);
-    };
-  }, [currentPlayer, turnPhase, passInfo, winner, aiActionTrigger, aiActionReport, aiCardPlayReport, pendingAttack, playerInterceptionChoice, mandatoryAction, modalContent, showFirstPlayerModal, showActionPhaseStartModal, showRoundEndModal]);
 
   // --- DEFENSIVE STATE CLEANUP ---
   // Reset attack flag when critical game state changes to prevent infinite loops
@@ -4738,7 +4706,7 @@ useEffect(() => {
        }}
     />
  )}
-      {detailedDrone && <DetailedDroneModal drone={detailedDrone} onClose={() => setDetailedDrone(null)} />}
+      <DetailedDroneModal isOpen={!!detailedDrone} drone={detailedDrone} onClose={() => setDetailedDrone(null)} />
       {aiActionReport && <AIActionReportModal report={aiActionReport} onClose={handleCloseAiReport} />}
       {aiCardPlayReport && <AICardPlayReportModal report={aiCardPlayReport} onClose={handleCloseAiCardReport} />}
       {aiDecisionLogToShow && <AIDecisionLogModal decisionLog={aiDecisionLogToShow} onClose={() => setAiDecisionLogToShow(null)} />}

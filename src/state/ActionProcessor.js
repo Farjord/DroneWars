@@ -6,6 +6,7 @@
 
 import { gameEngine } from '../logic/gameLogic.js';
 import { aiBrain } from '../logic/aiLogic.js';
+import aiPhaseProcessor from './AIPhaseProcessor.js';
 
 class ActionProcessor {
   constructor(gameStateManager) {
@@ -91,6 +92,28 @@ class ActionProcessor {
     // Get current state for validation
     const currentState = this.gameStateManager.getState();
 
+    // PASS STATE VALIDATION - Prevent actions after players have passed
+    if (currentState.passInfo) {
+      // Actions that should be blocked if current player has passed
+      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay'];
+      if (playerActionTypes.includes(type)) {
+        // Determine the current player for this action
+        let actionPlayerId = payload.playerId || currentState.currentPlayer;
+
+        // For AI turns, the player is specified in payload
+        if (type === 'aiTurn' && payload.playerId) {
+          actionPlayerId = payload.playerId;
+        }
+
+        // Check if the player has already passed
+        const playerPassKey = `${actionPlayerId}Passed`;
+        if (currentState.passInfo[playerPassKey]) {
+          console.log(`[PASS VALIDATION] Blocking ${type} action - ${actionPlayerId} has already passed`);
+          throw new Error(`Cannot perform ${type} action: ${actionPlayerId} has already passed`);
+        }
+      }
+    }
+
     // Validate that round start shield allocation actions use direct updates
     if (type === 'allocateShield' && currentState.turnPhase === 'allocateShields') {
       throw new Error('Round start shield allocation should use direct updates, not ActionProcessor');
@@ -109,8 +132,8 @@ class ActionProcessor {
 
     // Send to peer BEFORE processing locally (unless this is a network action)
     if (!isNetworkAction && this.p2pManager && this.p2pManager.isConnected) {
-      const multiplayerState = this.gameStateManager.get('multiplayer');
-      if (multiplayerState && multiplayerState.enabled) {
+      const gameMode = this.gameStateManager.get('gameMode');
+      if (gameMode !== 'local') {
         console.log(`[P2P ACTION] Sending action to peer:`, { type, payload });
         this.p2pManager.sendData({
           type: 'ACTION',
@@ -750,7 +773,7 @@ class ActionProcessor {
   }
 
   /**
-   * Process AI turn - coordinates between aiLogic and gameLogic
+   * Process AI turn - coordinates between AIPhaseProcessor and ActionProcessor
    */
   async processAiTurn(payload) {
     const { turnPhase, playerId } = payload;
@@ -776,42 +799,18 @@ class ActionProcessor {
 
     let aiDecision;
 
-    // Have AI analyze GameStateManager state and make decision
-    console.log(`[AI TURN DEBUG] AI making decision for phase: ${turnPhase}`);
+    // Delegate to AIPhaseProcessor for AI decision making
+    console.log(`[AI TURN DEBUG] Delegating to AIPhaseProcessor for phase: ${turnPhase}`);
     if (turnPhase === 'deployment') {
-      aiDecision = aiBrain.handleOpponentTurn({
-        player1: currentState.player1,
-        player2: currentState.player2,
-        turn: currentState.turn,
-        placedSections: currentState.placedSections,
-        opponentPlacedSections: currentState.opponentPlacedSections,
-        getShipStatus: gameEngine.getShipStatus,
-        calculateEffectiveShipStats: gameEngine.calculateEffectiveShipStats,
-        calculateEffectiveStats: gameEngine.calculateEffectiveStats,
-        addLogEntry: (entry, debugSource, aiDecisionContext) => {
-          this.gameStateManager.addLogEntry(entry, debugSource, aiDecisionContext);
-        }
-      });
+      aiDecision = await aiPhaseProcessor.handleDeploymentTurn(currentState);
     } else if (turnPhase === 'action') {
-      aiDecision = aiBrain.handleOpponentAction({
-        player1: currentState.player1,
-        player2: currentState.player2,
-        placedSections: currentState.placedSections,
-        opponentPlacedSections: currentState.opponentPlacedSections,
-        getShipStatus: gameEngine.getShipStatus,
-        getLaneOfDrone: gameEngine.getLaneOfDrone,
-        getValidTargets: gameEngine.getValidTargets,
-        calculateEffectiveStats: gameEngine.calculateEffectiveStats,
-        addLogEntry: (entry, debugSource, aiDecisionContext) => {
-          this.gameStateManager.addLogEntry(entry, debugSource, aiDecisionContext);
-        }
-      });
+      aiDecision = await aiPhaseProcessor.handleActionTurn(currentState);
     } else {
       aiDecision = { type: 'pass' };
       console.log(`[AI TURN DEBUG] AI passing due to unknown phase: ${turnPhase}`);
     }
 
-    console.log(`[AI TURN DEBUG] AI decision:`, aiDecision);
+    console.log(`[AI TURN DEBUG] AI decision from AIPhaseProcessor:`, aiDecision);
 
     // Process the AI's decision through appropriate action handlers
     console.log(`[AI TURN DEBUG] Processing AI decision:`, aiDecision.type);
@@ -1122,6 +1121,7 @@ class ActionProcessor {
       placement
     };
   }
+
 
   /**
    * Clear all pending actions (emergency use only)

@@ -1,0 +1,179 @@
+================================================================================
+                        DRONE WARS - WORKING PLAN
+================================================================================
+Last Updated: 2025-09-27
+See CLAUDE.md for architecture documentation and design decisions
+See ROADMAP.md for long-term development plans and server implementation roadmap
+================================================================================
+
+CURRENT STATUS: Phase 2.11 - GameDataService Implementation
+--------------------------------------------------------
+✅ COMPLETED TODAY:
+- Removed AI turn management from App.jsx
+- Expanded AIPhaseProcessor for deployment/action phases
+- Fixed ActionProcessor AI delegation to use AIPhaseProcessor
+- Added pass state validation before processing actions
+- Created SequentialPhaseManager for turn-based phase control
+- Fixed multiplayer detection (now uses gameMode !== 'local' consistently)
+
+✅ COMPLETED: Architecture Refactor & Testing
+- Sequential phase management system is implemented
+- Pass logic architecture violations fixed
+- AI turn management centralized in SequentialPhaseManager
+- AIPhaseProcessor now handles its own routing (executeDeploymentTurn/executeActionTurn)
+- Development server running successfully with no compilation errors
+
+✅ COMPLETED: AIPhaseProcessor Self-Routing Implementation (2025-09-27)
+- Problem Solved: SequentialPhaseManager was handling too much routing logic
+- User Design Insight: "Why doesn't AIPhaseProcessor.js handle this routing? My design is that the AIPhaseProcessor would do this."
+- Changes Made:
+  * Added ActionProcessor and GameStateManager dependencies to AIPhaseProcessor.initialize()
+  * Changed methods from handleDeploymentTurn() returning decisions to executeDeploymentTurn() performing actions
+  * Added executePass() method for AI pass handling
+  * Simplified SequentialPhaseManager.processAITurn() to just trigger AI execution
+- Result: Clean architecture where AIPhaseProcessor manages its own routing internally
+
+✅ COMPLETED: Documentation Reorganization (2025-09-27)
+- Created ROADMAP.md for long-term vision and server implementation plans
+- Refactored CLAUDE.md to focus purely on timeless architecture documentation
+- WORKING_PLAN.txt now contains all current development status and recent changes
+
+================================================================================
+
+NEXT UP: Phase 2.11 - GameDataService Implementation
+----------------------------------------------------
+🎯 GOAL: Create centralized data computation layer to eliminate scattered calculateEffectiveStats calls
+
+📊 CURRENT PROBLEM ANALYSIS:
+• 52 calculateEffectiveStats calls scattered across 6 files
+• Repeated parameter passing: (drone, lane, playerState, opponentState, placedSections)
+• Tight coupling between UI components and game logic
+• No caching of expensive calculations
+• Difficult to maintain and test
+
+🗂️ IMPLEMENTATION STRATEGY (4 Sub-Phases):
+
+Phase 2.11.1: Infrastructure Creation (Priority: Critical)
+• Create GameDataService base class in src/services/
+• Implement core getEffectiveStats(drone, lane) wrapper
+• Add basic caching mechanism for performance
+• Create useGameData hook for React integration
+• Test with single component to validate approach
+
+Phase 2.11.2: High-Impact Consumer Migration (Priority: High)
+• Refactor aiLogic.js - eliminate 22 calculateEffectiveStats calls
+• Update App.jsx modal calculations - eliminate 9 calls
+• Migrate DroneLanesDisplay.jsx - eliminate 1 call
+• Preserve all existing functionality during migration
+
+Phase 2.11.3: State Manager Integration (Priority: Medium)
+• Update ActionProcessor - eliminate 3 calls
+• Update AIPhaseProcessor - eliminate 2 calls
+• Ensure seamless GameStateManager integration
+• Maintain existing manager coordination patterns
+
+Phase 2.11.4: Testing & Optimization (Priority: Medium)
+• Performance testing with caching enabled
+• Integration testing across all consumers
+• Validate no gameplay logic regression
+• Optimize caching strategy based on usage patterns
+
+⚠️ CRITICAL REQUIREMENTS TO PRESERVE:
+• All effective stats calculations must remain identical
+• No changes to game logic or combat resolution
+• Maintain performance (improve with caching)
+• Preserve multiplayer compatibility
+• Keep server-ready architecture principles
+
+📁 PROPOSED FILE STRUCTURE:
+src/services/
+├── GameDataService.js (core service class)
+├── gameDataCache.js (caching implementation)
+└── gameDataUtils.js (helper functions)
+
+src/hooks/
+└── useGameData.js (React integration hook)
+
+🚀 IMPLEMENTATION ORDER:
+1. GameDataService infrastructure with basic caching
+2. aiLogic.js migration (highest usage - 22 calls)
+3. App.jsx and UI component migration (10 calls total)
+4. State manager integration (5 calls total)
+5. Performance optimization and testing
+
+✅ SUCCESS CRITERIA:
+• 100% elimination of direct calculateEffectiveStats calls outside gameLogic.js
+• Performance improvement through caching
+• No gameplay functionality regression
+• Clean separation between data computation and UI
+• Foundation ready for modal extraction and server migration
+
+🔗 CONNECTION TO ARCHITECTURE:
+• Essential foundation before resuming modal extraction
+• Enables clean modal data access without tight coupling
+• Prepares data layer for Phase 3 server implementation
+• Aligns with server-ready architecture principles in CLAUDE.md
+
+================================================================================
+
+IMMEDIATE TESTING CHECKLIST
+---------------------------
+[ ] Human player passes → no more action prompts
+[ ] AI passes → no more AI actions
+[ ] Both players pass → phase transitions correctly
+[ ] AI automatically takes turn after 1.5s delay
+[ ] Multiplayer mode doesn't trigger AI turns
+[ ] Pass validation prevents actions after passing
+[ ] Turn transitions work smoothly
+
+================================================================================
+
+NEXT UP: Phase 3 - Server Implementation
+-----------------------------------------
+Priority 1: Create Server Layer
+- server/GameServer.js - Central game instance
+- server/SessionManager.js - Handle multiple game sessions
+- server/PlayerConnectionManager.js - Manage player connections
+- network/GameClient.js - Client-side network interface
+
+Priority 2: Network Integration
+- Remove current P2P (PeerJS) multiplayer system
+- Replace with client-server WebSocket communication
+- Update App.jsx to connect to server instead of direct game logic
+- Route all actions through network layer to server
+
+Priority 3: Server-Side Game Logic
+- Move GameStateManager, GameFlowManager, SimultaneousActionManager to server
+- Keep only UI state management on client (App.jsx)
+- Implement server-side validation and anti-cheat measures
+- Add spectator mode support
+
+================================================================================
+
+KNOWN ISSUES / BUGS
+-------------------
+- JSX syntax warnings in App.jsx (lines 4320-4357) - character "}" warnings
+- Need to verify AI turn triggering in deployment/action phases
+- Should test pass logic thoroughly with both human and AI players
+
+================================================================================
+
+QUICK NOTES
+-----------
+- AI is always player2 in single-player mode (gameMode === 'local')
+- Multiplayer detection: check gameMode !== 'local' (NOT multiplayer.enabled)
+- SequentialPhaseManager handles deployment & action phases
+- SimultaneousActionManager handles droneSelection, deckSelection, placement, etc.
+- ActionProcessor is the neutral engine for processing all actions
+- AIPhaseProcessor is AI's equivalent to App.jsx for decision making
+
+================================================================================
+
+DEVELOPMENT REMINDERS
+---------------------
+- Run server: npm run dev (running on http://localhost:5173/)
+- Always test changes with both single-player and multiplayer modes
+- Check browser console for SequentialPhaseManager events
+- GameStateManager is the single source of truth for game state
+
+================================================================================

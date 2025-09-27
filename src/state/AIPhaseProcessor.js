@@ -19,12 +19,19 @@ class AIPhaseProcessor {
    * @param {Object} aiPersonalities - Available AI personalities
    * @param {Array} dronePool - Available drones for selection
    * @param {Object} currentPersonality - Current AI personality being used
+   * @param {Object} actionProcessor - ActionProcessor instance for executing actions
+   * @param {Object} gameStateManager - GameStateManager instance for state updates
    */
-  initialize(aiPersonalities, dronePool, currentPersonality) {
+  initialize(aiPersonalities, dronePool, currentPersonality, actionProcessor = null, gameStateManager = null) {
     this.aiPersonalities = aiPersonalities;
     this.dronePool = dronePool;
     this.currentAIPersonality = currentPersonality;
+    this.actionProcessor = actionProcessor;
+    this.gameStateManager = gameStateManager;
     console.log('🤖 AIPhaseProcessor initialized with personality:', currentPersonality?.name || 'Default');
+    if (actionProcessor) {
+      console.log('🔗 AIPhaseProcessor connected to ActionProcessor for execution');
+    }
   }
 
   /**
@@ -353,6 +360,171 @@ class AIPhaseProcessor {
   }
 
   /**
+   * Execute AI turn for deployment phase
+   * @param {Object} gameState - Current game state
+   * @returns {Promise<Object>} Execution result
+   */
+  async executeDeploymentTurn(gameState) {
+    console.log('🤖 AIPhaseProcessor.executeDeploymentTurn starting...');
+
+    // Check if AI should pass
+    if (this.shouldPass(gameState, 'deployment')) {
+      return await this.executePass('deployment');
+    }
+
+    if (!this.actionProcessor) {
+      throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
+    }
+
+    // Import aiLogic to make deployment decision
+    const { aiBrain } = await import('../logic/aiLogic.js');
+    const { gameEngine } = await import('../logic/gameLogic.js');
+
+    // Call aiLogic with proper game state format
+    const aiDecision = aiBrain.handleOpponentTurn({
+      player1: gameState.player1,
+      player2: gameState.player2,
+      turn: gameState.turn,
+      placedSections: gameState.placedSections,
+      opponentPlacedSections: gameState.opponentPlacedSections,
+      getShipStatus: gameEngine.getShipStatus,
+      calculateEffectiveShipStats: gameEngine.calculateEffectiveShipStats,
+      calculateEffectiveStats: gameEngine.calculateEffectiveStats,
+      addLogEntry: (entry, debugSource, aiDecisionContext) => {
+        this.gameStateManager?.addLogEntry(entry, debugSource, aiDecisionContext);
+      }
+    });
+
+    console.log('🤖 AIPhaseProcessor executing deployment decision:', aiDecision);
+
+    // Execute the AI decision through ActionProcessor
+    const result = await this.actionProcessor.queueAction({
+      type: 'aiAction',
+      payload: { aiDecision }
+    });
+
+    return {
+      success: true,
+      action: 'executed',
+      phase: 'deployment',
+      playerId: 'player2',
+      decision: aiDecision,
+      result: result
+    };
+  }
+
+  /**
+   * Execute AI turn for action phase
+   * @param {Object} gameState - Current game state
+   * @returns {Promise<Object>} Execution result
+   */
+  async executeActionTurn(gameState) {
+    console.log('🤖 AIPhaseProcessor.executeActionTurn starting...');
+
+    // Check if AI should pass
+    if (this.shouldPass(gameState, 'action')) {
+      return await this.executePass('action');
+    }
+
+    if (!this.actionProcessor) {
+      throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
+    }
+
+    // Import aiLogic to make action decision
+    const { aiBrain } = await import('../logic/aiLogic.js');
+    const { gameEngine } = await import('../logic/gameLogic.js');
+
+    // Call aiLogic with proper game state format
+    const aiDecision = aiBrain.handleOpponentAction({
+      player1: gameState.player1,
+      player2: gameState.player2,
+      placedSections: gameState.placedSections,
+      opponentPlacedSections: gameState.opponentPlacedSections,
+      getShipStatus: gameEngine.getShipStatus,
+      getLaneOfDrone: gameEngine.getLaneOfDrone,
+      getValidTargets: gameEngine.getValidTargets,
+      calculateEffectiveStats: gameEngine.calculateEffectiveStats,
+      addLogEntry: (entry, debugSource, aiDecisionContext) => {
+        this.gameStateManager?.addLogEntry(entry, debugSource, aiDecisionContext);
+      }
+    });
+
+    console.log('🤖 AIPhaseProcessor executing action decision:', aiDecision);
+
+    // Execute the AI decision through ActionProcessor
+    const result = await this.actionProcessor.queueAction({
+      type: 'aiAction',
+      payload: { aiDecision }
+    });
+
+    return {
+      success: true,
+      action: 'executed',
+      phase: 'action',
+      playerId: 'player2',
+      decision: aiDecision,
+      result: result
+    };
+  }
+
+  /**
+   * Determine if AI should pass in the current phase
+   * @param {Object} gameState - Current game state
+   * @param {string} phase - Current phase (deployment, action)
+   * @returns {boolean} True if AI should pass
+   */
+  shouldPass(gameState, phase) {
+    const aiPassKey = 'player2Passed'; // AI is always player2
+
+    // If AI has already passed, return true
+    if (gameState.passInfo && gameState.passInfo[aiPassKey]) {
+      console.log('🤖 AI has already passed');
+      return true;
+    }
+
+    // Add AI personality-based pass logic here in the future
+    // For now, only pass if already marked as passed
+    return false;
+  }
+
+  /**
+   * Execute AI pass for the current phase
+   * @param {string} phase - Current phase
+   * @returns {Promise<Object>} Pass execution result
+   */
+  async executePass(phase) {
+    if (!this.gameStateManager) {
+      throw new Error('AIPhaseProcessor not properly initialized - missing gameStateManager');
+    }
+
+    console.log(`🏳️ AIPhaseProcessor: Executing pass for ${phase} phase`);
+
+    const currentState = this.gameStateManager.getState();
+    const playerId = 'player2'; // AI is always player2
+
+    // Update pass info
+    const wasFirstToPass = !currentState.passInfo.player1Passed && !currentState.passInfo.player2Passed;
+    const newPassInfo = {
+      ...currentState.passInfo,
+      [playerId + 'Passed']: true,
+      firstPasser: currentState.passInfo.firstPasser || (wasFirstToPass ? playerId : null)
+    };
+
+    // Update GameStateManager
+    this.gameStateManager.setPassInfo(newPassInfo);
+
+    console.log(`🏳️ AI passed in ${phase} phase, firstPasser: ${newPassInfo.firstPasser}`);
+
+    return {
+      success: true,
+      action: 'pass',
+      phase: phase,
+      playerId: playerId,
+      passInfo: newPassInfo
+    };
+  }
+
+  /**
    * Get AI processing capabilities
    * @returns {Object} Available AI processing methods
    */
@@ -361,7 +533,9 @@ class AIPhaseProcessor {
       droneSelection: true, // ✅ implemented
       deckSelection: true, // ✅ implemented
       placement: true, // ✅ implemented
-      version: '1.1.0'
+      deployment: true, // ✅ implemented
+      action: true, // ✅ implemented
+      version: '1.2.0'
     };
   }
 }

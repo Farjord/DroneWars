@@ -65,7 +65,8 @@ function AppRouter() {
       gameStateManager,
       simultaneousActionManager,
       gameStateManager.actionProcessor, // Use ActionProcessor instance from GameStateManager
-      () => gameState.gameMode !== 'local'
+      () => gameState.gameMode !== 'local',
+      aiPhaseProcessor // Add AIPhaseProcessor for SequentialPhaseManager
     );
     console.log('🔄 GameFlowManager initialized in AppRouter');
   }, [gameState.gameMode]);
