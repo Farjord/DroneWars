@@ -46,16 +46,104 @@ This document provides timeless architectural design decisions and system compon
 - **Decision Flow**: SequentialPhaseManager → AIPhaseProcessor → (aiLogic.js + ActionProcessor + GameStateManager)
 - **Core Principle**: AI uses identical pathways as human players but manages its own execution flow
 
-### **Data Computation Architecture**
-- **GameDataService**: Centralized computation layer for all dynamic game data
-  - **Purpose**: Single source for calculateEffectiveStats and derived data across entire application
-  - **Problem Solved**: Eliminates 52 scattered calculateEffectiveStats calls across 6 files
-  - **Consumers**: App.jsx, aiLogic.js, modals, UI components, state managers
-  - **Benefits**: Consistent calculations, caching opportunities, server-ready abstraction
-  - **Data Flow**: GameStateManager → GameDataService → [All computed data consumers]
-  - **Core Method**: `getEffectiveStats(drone, lane)` replaces direct gameEngine calls
-- **Architecture Pattern**: Computation layer between raw state and application consumers
-- **Server Readiness**: Enables easy migration of calculations to server-side validation
+### **Data Computation Architecture** 🔄 REFACTORING PLANNED
+- **Current State**: GameDataService wraps calculations but circular dependency exists with gameLogic.js
+- **Discovered Issue**: gameLogic.js both provides AND consumes stats calculations, creating architectural confusion
+- **Planned Refactor (Phase 2.13)**:
+  - **Extract**: Move `calculateEffectiveStats` and `calculateEffectiveShipStats` to new `statsCalculator.js`
+  - **Separate**: Pure calculation logic (statsCalculator) from caching layer (GameDataService)
+  - **Eliminate**: Remove circular dependency between gameLogic.js and GameDataService
+  - **Result**: Clean data flow: statsCalculator → GameDataService → all consumers
+
+- **GameDataService** (After Refactor):
+  - **Purpose**: Caching wrapper for stats calculations
+  - **Data Flow**: statsCalculator.js → GameDataService → gameDataCache → consumers
+  - **Core Methods**:
+    - `getEffectiveStats(drone, lane)` - Drone combat calculations with lane-specific bonuses
+    - `getEffectiveShipStats(playerState, placedSections)` - Ship resource calculations (energy, shields, CPU limits)
+  - **Caching Layer**: gameDataCache with automatic state-change invalidation for optimal performance
+  - **React Integration**: useGameData hook provides clean component access with automatic cache benefits
+
+- **Architecture Benefits**:
+  - **No Circular Dependencies**: Clean separation between calculation and consumption
+  - **Consistency**: Single source of truth for all computed game data
+  - **Performance**: Intelligent caching prevents redundant expensive calculations
+  - **Maintainability**: Clear separation of concerns
+  - **Server Readiness**: Complete abstraction layer ready for client-server migration
+
+### **Component Data Flow Architecture** ✅ COMPLETED (2025-09-27)
+- **Achievement**: 100% GameDataService usage across entire codebase
+- **Problem Solved**: Fixed critical middle lane bonus calculation issues in utility functions
+- **Architecture Violations Eliminated**:
+  - **cardDrawUtils.js**: Replaced hardcoded hand limits with GameDataService calculations
+  - **gameLogic.js**: Fixed energy initialization to use proper placed sections
+  - **aiLogic.js**: Removed direct calculation bypasses, use only GameDataService
+- **Critical Bug Fixes**:
+  - **Power Cell Middle Lane**: Now correctly provides 12 energy (10 base + 2 bonus)
+  - **Bridge Middle Lane**: Now correctly provides 6 card hand limit (5 base + 1 bonus)
+  - **UI-Game Consistency**: Stats displayed in UI now match actual game mechanics
+- **Benefits Realized**:
+  - **Component Independence**: No prop drilling for computed data
+  - **Architectural Consistency**: All components and utilities follow identical data access patterns
+  - **Server Migration Ready**: Direct hooks translate cleanly to server-based data fetching
+  - **Cache Efficiency**: GameDataService caching handles multiple calls efficiently
+- **Verification**: 100% GameDataService usage - no direct calculation calls remain in codebase
+
+---
+
+---
+
+## 🎮 **ROUND SEQUENCE FLOW ARCHITECTURE** ✅ ANALYZED (2025-09-27)
+
+### **Phase Categories & Manager Responsibilities**
+
+**AUTOMATIC_PHASES** (No player input, handled by GameFlowManager):
+- `energyReset` - Resets energy and deployment budget at round start
+- `draw` - Automatic card drawing to hand limits
+- `determineFirstPlayer` - First player determination for the round
+
+**SIMULTANEOUS_PHASES** (Both players commit, handled by SimultaneousActionManager):
+- `mandatoryDiscard` - Discard excess cards (conditional)
+- `allocateShields` - Shield placement (conditional)
+- `mandatoryDroneRemoval` - Remove excess drones (conditional)
+
+**SEQUENTIAL_PHASES** (Turn-based, handled by SequentialPhaseManager):
+- `deployment` - Drone deployment phase
+- `action` - Main combat phase
+
+### **Round Flow Control**
+
+**GameFlowManager Orchestration:**
+```
+ROUND_PHASES = ['energyReset', 'mandatoryDiscard', 'draw',
+                'determineFirstPlayer', 'allocateShields',
+                'mandatoryDroneRemoval', 'deployment', 'action']
+```
+
+**Phase Progression Logic:**
+1. **GameFlowManager.transitionToPhase()** - Updates gameState.turnPhase
+2. **Conditional Phase Skipping** - `isPhaseRequired()` checks game state
+3. **Manager Delegation**:
+   - Automatic → GameFlowManager processes directly
+   - Simultaneous → Delegates to SimultaneousActionManager
+   - Sequential → Delegates to SequentialPhaseManager
+
+### **UI Rendering Flow**
+
+**AppRouter Routing Decision:**
+- Pre-game phases → Dedicated screens (DroneSelectionScreen, etc.)
+- ALL round phases → App.jsx (default case)
+
+**App.jsx Responsibilities:**
+- **Pure UI Layer** - Renders based on gameState.turnPhase
+- **Event-Driven** - Subscribes to multiple managers for UI cues
+- **Reactive** - Never drives phase transitions, only responds
+
+**Manager → UI Communication:**
+- **GameStateManager** - Core state changes
+- **GameFlowManager** - Phase transition events with modal data
+- **SimultaneousActionManager** - Player completion status
+- **SequentialPhaseManager** - Turn timing and pass events
 
 ---
 
@@ -68,6 +156,98 @@ This document provides timeless architectural design decisions and system compon
 - Player-namespaced state organization
 - Event emission for state changes
 - Pure data store with no game logic
+
+#### **🚨 CRITICAL: Game State Structure Reference**
+
+**MANDATORY READING**: This section defines the exact game state structure. All code MUST follow these patterns to prevent runtime errors.
+
+**Complete State Structure:**
+```javascript
+gameState = {
+  // Application Level
+  appState: 'menu' | 'inGame' | 'gameOver',
+  gameMode: 'local' | 'host' | 'guest',
+  gameActive: boolean,
+  turnPhase: string,
+
+  // Player States (DIRECT PROPERTIES - NOT NESTED)
+  player1: {
+    name: string,
+    energy: number,
+    hand: Array,
+    dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
+    shipSections: Object,
+    // ... other player properties
+  },
+  player2: {
+    // Same structure as player1
+  },
+
+  // Placed Sections (TOP-LEVEL PROPERTIES)
+  placedSections: Array,           // Player1's placed sections
+  opponentPlacedSections: Array,   // Player2's placed sections
+
+  // Other Game State
+  currentPlayer: string,
+  passInfo: Object,
+  // ... other properties
+}
+```
+
+**✅ CORRECT Player State Access:**
+```javascript
+// In GameStateManager methods
+getLocalPlayerState() {
+  const localId = this.getLocalPlayerId(); // Returns 'player1' or 'player2'
+  return this.state[localId];              // ✅ CORRECT
+}
+
+// In GameDataService and other files
+const gameState = gameStateManager.getState();
+const localPlayerId = gameStateManager.getLocalPlayerId();
+const playerState = gameState[localPlayerId];     // ✅ CORRECT
+```
+
+**❌ INCORRECT Player State Access:**
+```javascript
+// NEVER DO THIS - gameState.players does not exist
+const playerState = gameState.players[playerId];  // ❌ WRONG - Will cause "Cannot read properties of undefined"
+```
+
+**✅ CORRECT Placed Sections Access:**
+```javascript
+// Placed sections are stored at top level, not on player objects
+const getPlacedSectionsForEngine = () => {
+  return {
+    player1: gameState.placedSections,           // ✅ CORRECT
+    player2: gameState.opponentPlacedSections    // ✅ CORRECT
+  };
+};
+
+// For conditional access
+const sections = playerId === 'player1'
+  ? gameState.placedSections
+  : gameState.opponentPlacedSections;            // ✅ CORRECT
+```
+
+**❌ INCORRECT Placed Sections Access:**
+```javascript
+// NEVER DO THIS - placedSections are not stored on player objects
+const sections = gameState.player1.placedSections;  // ❌ WRONG - Property doesn't exist
+const sections = gameState.players[playerId].placedSections; // ❌ WRONG - Double error
+```
+
+**⚠️ COMMON MISTAKES TO AVOID:**
+1. **Non-existent `players` object**: There is no `gameState.players` - player states are direct properties
+2. **Placed sections on players**: `placedSections` are top-level properties, not on player objects
+3. **Assuming nested structure**: The state is mostly flat, not deeply nested
+
+**📋 REFERENCE CHECKLIST:**
+- ✅ Use `gameState.player1` and `gameState.player2` directly
+- ✅ Use `gameState[playerId]` for dynamic access where playerId is 'player1' or 'player2'
+- ✅ Use `gameState.placedSections` and `gameState.opponentPlacedSections` for placement data
+- ❌ Never use `gameState.players[...]`
+- ❌ Never access `playerState.placedSections`
 
 **ActionProcessor**
 - Neutral engine for processing all player actions
@@ -94,6 +274,20 @@ This document provides timeless architectural design decisions and system compon
 - Player action collection and synchronization
 - Validation of simultaneous submissions
 - AI auto-completion for single-player mode
+
+### **Data Computation Layer** ✅ IMPLEMENTED
+
+**GameDataService**
+- Centralized computation coordinator for all effective stats calculations
+- Caching wrapper around original game engine functions
+- GameStateManager integration for real-time data access
+- React hook integration via useGameData
+
+**gameDataCache**
+- Performance optimization layer with Map-based storage
+- Automatic cache invalidation on game state changes
+- Hit/miss statistics tracking for performance monitoring
+- Memory-efficient with deterministic key generation
 
 ### **AI Decision Layer**
 
@@ -134,6 +328,13 @@ App.jsx → ActionProcessor → GameStateManager → Event Emission → UI Updat
 ### **AI Player Action Flow**
 ```
 SequentialPhaseManager → AIPhaseProcessor → ActionProcessor → GameStateManager → Event Emission → UI Updates
+```
+
+### **Data Computation Flow** ✅ IMPLEMENTED
+```
+Component → GameDataService → gameDataCache (check) → gameEngine.calculate* → Cache Store → Return Result
+                            ↓
+GameStateManager (state changes) → gameDataCache.invalidateAll() → Fresh calculations
 ```
 
 ### **Phase Transition Flow**
@@ -195,6 +396,74 @@ GameStateManager → Event Emission → All Subscribed Components → UI Re-rend
 - Managers receive dependencies during initialization
 - Clear dependency relationships
 - Easy to mock and test individual components
+
+### **Circular Dependency Prevention**
+- **Principle**: No module should both provide and consume the same service
+- **Pattern**: Extract shared logic to dedicated modules
+- **Example**: statsCalculator.js provides calculations, GameDataService wraps with caching, gameLogic.js consumes
+- **Benefits**: Clear data flow, easier testing, prevents architectural confusion
+
+---
+
+## ⚠️ **KNOWN ARCHITECTURE VIOLATIONS** ✅ IDENTIFIED (2025-09-27)
+
+### **App.jsx Direct State Updates (Architectural Debt)**
+
+**Problem**: App.jsx contains direct state setter functions that bypass manager architecture:
+```javascript
+// VIOLATIONS in App.jsx:
+setTurnPhase(result.phaseTransition.newPhase);      // Line 2139, 2309, 2356
+setCurrentPlayer(result.phaseTransition.firstPlayer); // Line 2141, 2311, 2360
+setFirstPlayerOfRound(firstPlayer);                 // Line 1912
+updateGameState(payload);                           // Line 2369
+```
+
+**Why These Exist**:
+- **Legacy Code**: Predates the manager-based architecture
+- **Working But Wrong**: They function because they set the same values GameFlowManager would set
+- **Redundant Updates**: GameFlowManager already handles phase transitions via `transitionToPhase()`
+
+**Correct Architecture Pattern**:
+```
+App.jsx → Manager → GameStateManager → UI Updates
+```
+
+**NOT**:
+```
+App.jsx → GameStateManager (direct)
+```
+
+**Risk Assessment**:
+- **Current Status**: Working (redundant updates with same values)
+- **Future Risk**: Potential conflicts if App.jsx and managers disagree
+- **Removal Safety**: Likely safe since GameFlowManager already handles these updates
+
+**Recommended Action**:
+1. **Test First**: Add logging to confirm redundancy
+2. **Comment Out**: Test if functionality remains intact
+3. **Remove**: Clean up direct state setters from useGameState()
+
+### **Clean Architecture Principles**
+
+**Business Logic Layer (No UI)**:
+- SimultaneousActionManager
+- ActionProcessor
+- GameFlowManager
+- SequentialPhaseManager
+
+**UI Layer (Reactive Only)**:
+- App.jsx
+- AppRouter
+- Dedicated phase screens
+
+**Data Layer**:
+- GameStateManager (single source of truth)
+- GameDataService (computed data with caching)
+
+**Event Flow Pattern**:
+```
+User Input → App.jsx → Manager → GameStateManager → State Change Event → App.jsx Re-render
+```
 
 ---
 

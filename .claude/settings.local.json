@@ -13,7 +13,8 @@
       "Bash(taskkill:*)",
       "Bash(cmd /c:*)",
       "Bash(del /src/network/CommandManager.js)",
-      "Read(//c/Drone-Wars-Game/drone-wars-Game/src/state/**)"
+      "Read(//c/Drone-Wars-Game/drone-wars-Game/src/state/**)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

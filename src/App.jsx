@@ -23,8 +23,6 @@ import aiPersonalities from './data/aiData.js';
 import { aiBrain } from './logic/aiLogic.js';
 import { gameEngine, startingDecklist } from './logic/gameLogic.js';
 import { getRandomDrones, getElementCenter, getPhaseDisplayName } from './utils/gameUtils.js';
-import { initializeDroneSelection, advanceDroneSelectionTrio } from './utils/droneSelectionUtils.js';
-import { initializeShipPlacement } from './utils/shipPlacementUtils.js';
 import gameFlowManager from './state/GameFlowManager.js';
 import simultaneousActionManager from './state/SimultaneousActionManager.js';
 import aiPhaseProcessor from './state/AIPhaseProcessor.js';
@@ -179,51 +177,7 @@ const App = () => {
 
       console.log(`🔔 App.jsx received PhaseManager event: ${type}`, { phase, playerId });
 
-      if (type === 'playerCompleted') {
-        // Handle individual player completion
-        if (phase === 'droneSelection') {
-          console.log(`✅ ${playerId} completed drone selection`);
-
-          const isLocalPlayer = playerId === getLocalPlayerId();
-
-          if (isLocalPlayer) {
-            // Track local completion
-            setLocalPhaseCompletion(prev => ({
-              ...prev,
-              droneSelection: true
-            }));
-          } else {
-            // Track opponent completion in multiplayer
-            if (isMultiplayer()) {
-              setOpponentPhaseCompletion(prev => ({
-                ...prev,
-                droneSelection: true
-              }));
-            }
-          }
-        }
-      } else if (type === 'phaseCompleted') {
-        // Handle phase completion (both players done)
-        if (phase === 'droneSelection') {
-          console.log('🎯 Both players completed drone selection, PhaseManager will handle transition');
-
-          // Clear temporary UI state only - PhaseManager handles phase transitions
-          setTempSelectedDrones([]);
-          setModalContent(null);
-
-          // Reset phase completion tracking
-          setLocalPhaseCompletion(prev => ({
-            ...prev,
-            droneSelection: false
-          }));
-          setOpponentPhaseCompletion(prev => ({
-            ...prev,
-            droneSelection: false
-          }));
-
-          // PhaseManager should handle the actual phase transition
-        }
-      } else if (type === 'phaseTransition') {
+      if (type === 'phaseTransition') {
         // Handle phase transitions from GameFlowManager
         const { newPhase, previousPhase, firstPlayerResult } = event;
         console.log(`🔄 App.jsx handling phase transition: ${previousPhase} → ${newPhase}`);
@@ -234,17 +188,6 @@ const App = () => {
           setShowFirstPlayerModal(true);
         }
 
-        // Safety check: Ensure placement data is initialized when entering placement phase
-        if (newPhase === 'placement') {
-          console.log('🚢 Ensuring placement data is initialized');
-
-          // Check if unplacedSections exists and has content
-          if (!unplacedSections || unplacedSections.length === 0) {
-            console.log('⚠️ Missing placement data, initializing...');
-            const placementData = initializeShipPlacement();
-            updateGameState(placementData);
-          }
-        }
 
       }
     };
@@ -262,19 +205,6 @@ const App = () => {
   // GameFlowManager now handles phase transitions automatically
   // No manual phase starting needed
 
-  // --- MULTIPLAYER PHASE SYNC STATE ---
-  const [opponentPhaseCompletion, setOpponentPhaseCompletion] = useState({
-    droneSelection: false,
-    deckSelection: false,
-    placement: false
-  });
-
-  // --- LOCAL PHASE COMPLETION TRACKING ---
-  const [localPhaseCompletion, setLocalPhaseCompletion] = useState({
-    droneSelection: false,
-    deckSelection: false,
-    placement: false
-  });
   const [deploymentConfirmation, setDeploymentConfirmation] = useState(null);
   const [moveConfirmation, setMoveConfirmation] = useState(null);
   const [detailedDrone, setDetailedDrone] = useState(null);
@@ -316,15 +246,11 @@ const App = () => {
 
   // --- SHIP SECTION PLACEMENT ---
   const sectionsToPlace = ['bridge', 'powerCell', 'droneControlHub'];
-  const [selectedSectionForPlacement, setSelectedSectionForPlacement] = useState(null);
 
   // --- PLAYER SELECTION AND TARGETING ---
   const [selectedDrone, setSelectedDrone] = useState(null);
   const [hoveredTarget, setHoveredTarget] = useState(null);
   const [hoveredCardId, setHoveredCardId] = useState(null);
-  const [tempSelectedDrones, setTempSelectedDrones] = useState([]);
-  // droneSelectionPool and droneSelectionTrio now come from gameState
-  const { droneSelectionPool, droneSelectionTrio } = gameState;
 
   // --- COMBAT AND ATTACK STATE ---
   const [pendingAttack, setPendingAttack] = useState(null);
@@ -411,113 +337,6 @@ const App = () => {
   }, [isMultiplayer, p2pManager]);
 
   // Handle when both players complete a phase
-  useEffect(() => {
-    if (!isMultiplayer()) return;
-
-    // Check for phase transitions when opponent completes phases
-    // Only progress if BOTH local player has completed AND opponent has completed
-
-    if (opponentPhaseCompletion.droneSelection && turnPhase === 'droneSelection') {
-      const localPlayerHasSelectedDrones = localPlayerState.activeDronePool && localPlayerState.activeDronePool.length === 5;
-      if (localPlayerHasSelectedDrones) {
-        console.log('Both players completed drone selection, progressing to deck selection');
-        (async () => {
-          await processAction('phaseTransition', {
-            newPhase: 'deckSelection',
-            trigger: 'multiplayerDroneSelectionComplete'
-          });
-          setModalContent(null);
-        })();
-      }
-    }
-
-    if (opponentPhaseCompletion.deckSelection && turnPhase === 'deckSelection') {
-      const localPlayerHasDeck = localPlayerState.deck && localPlayerState.deck.length > 0;
-      if (localPlayerHasDeck) {
-        console.log('Both players completed deck selection, progressing to placement');
-        // Use ActionProcessor for phase transition and state setup
-        processAction('phaseTransition', {
-          newPhase: 'placement',
-          trigger: 'multiplayerDeckSelectionComplete'
-        });
-        setSelectedSectionForPlacement(null);
-        setModalContent({
-          title: 'Phase 3: Place Your Ship Sections',
-          text: 'Now, place your ship sections. The middle lane provides a strategic bonus to whichever section is placed there.',
-          isBlocking: true,
-        });
-      } else {
-        console.log('Opponent completed deck selection, but local player has not completed yet');
-      }
-    }
-
-    if (opponentPhaseCompletion.placement && turnPhase === 'placement') {
-      // Check if local player has also completed placement (via clicking Confirm Layout)
-      if (localPhaseCompletion.placement) {
-        // Both players have completed placement, proceed with game start
-        console.log('Both players completed placement, transitioning to initialDraw phase');
-
-      // Set phase to initialDraw using ActionProcessor
-      processAction('phaseTransition', {
-        newPhase: 'initialDraw',
-        trigger: 'multiplayerPlacementComplete'
-      });
-
-      // Draw hands for both players if not already done
-      const localPlayerId = getLocalPlayerId();
-      const localPlayer = gameState[localPlayerId];
-      const opponentPlayerId = getOpponentPlayerId();
-      const opponentPlayer = gameState[opponentPlayerId];
-
-      if (!localPlayer.hand || localPlayer.hand.length === 0) {
-        const localPlacedSections = getLocalPlacedSections();
-        const handSize = getEffectiveShipStats(localPlayer, localPlacedSections).totals.handLimit;
-        let newDeck = [...localPlayer.deck];
-        let newHand = [];
-
-        for (let i = 0; i < handSize; i++) {
-          if (newDeck.length > 0) {
-            newHand.push(newDeck.pop());
-          } else {
-            break;
-          }
-        }
-        updatePlayerState(localPlayerId, { ...localPlayer, deck: newDeck, hand: newHand });
-      }
-
-      const proceed = () => {
-        setModalContent(null);
-
-        // Use pure function from gameLogic.js
-        const firstPlayer = gameEngine.determineFirstPlayer(turn, firstPlayerOverride, firstPasserOfPreviousRound);
-
-        // Clear the override after using it
-        if (firstPlayerOverride) {
-          setFirstPlayerOverride(null);
-        }
-
-
-        setCurrentPlayer(firstPlayer);
-        setFirstPlayerOfRound(firstPlayer);
-        setShowFirstPlayerModal(true);
-      };
-
-      setModalContent({
-        title: 'Start of Turn: Cards Drawn',
-        text: 'You have automatically drawn up to your hand limit. The first player will now be determined.',
-        onClose: proceed,
-        isBlocking: true,
-        children: (
-          <div className="flex justify-center mt-6">
-            <button onClick={proceed} className="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors">
-              Continue
-            </button>
-          </div>
-        )
-      });
-      }
-    }
-  }, [isMultiplayer, opponentPhaseCompletion, localPhaseCompletion, turnPhase, localPlayerState, getLocalPlacedSections, getLocalPlayerId, getOpponentPlayerId, gameState, updatePlayerState, setTurnPhase, setModalContent, setCurrentPlayer, setFirstPlayerOfRound, setShowFirstPlayerModal, firstPlayerOverride, setFirstPlayerOverride, turn, firstPasserOfPreviousRound]);
 
   // --- UI CALLBACK FUNCTIONS ---
 
@@ -621,26 +440,6 @@ const App = () => {
     }
   }, [isMultiplayer, p2pManager]);
 
-  /**
-   * Check if both players have completed a phase
-   */
-  const areBothPlayersReady = useCallback((phase) => {
-    const isMP = isMultiplayer();
-    const localReady = localPhaseCompletion[phase];
-    const opponentReady = opponentPhaseCompletion[phase];
-    const bothReady = !isMP ? true : (localReady && opponentReady);
-
-    console.log(`🔥 areBothPlayersReady(${phase}):`, {
-      isMultiplayer: isMP,
-      localReady,
-      opponentReady,
-      bothReady,
-      localPhaseCompletion,
-      opponentPhaseCompletion
-    });
-
-    return bothReady;
-  }, [isMultiplayer, localPhaseCompletion, opponentPhaseCompletion]);
 
   // ========================================
   // GAME LOGIC WRAPPER FUNCTIONS
@@ -1873,7 +1672,7 @@ const App = () => {
   // Reset attack flag when critical game state changes to prevent infinite loops
   useEffect(() => {
     // Reset attack flag on turn changes or game reset
-    if (winner || turnPhase === 'preGame') {
+    if (winner) {
       if (isResolvingAttackRef.current) {
         console.log('[DEFENSIVE CLEANUP] Resetting stuck attack flag due to game state change');
         isResolvingAttackRef.current = false;
@@ -2138,156 +1937,6 @@ const App = () => {
     });
   };
    
-  /**
-   * HANDLE SELECT SECTION FOR PLACEMENT
-   * Manages ship section selection during placement phase.
-   * Handles selection toggling and section removal from lanes.
-   * Uses direct GameStateManager updates for placement state changes.
-   * @param {string} sectionName - Name of the section being selected
-   */
-  const handleSelectSectionForPlacement = (sectionName) => {
-    const { turnPhase } = gameState;
-
-    // Only handle during placement phase
-    if (turnPhase !== 'placement') return;
-
-    console.log('🔧 handleSelectSectionForPlacement called with:', sectionName, 'gameMode:', gameState.gameMode);
-
-    // If clicking a section in the top "unplaced" row
-    if (unplacedSections.includes(sectionName)) {
-        // Toggle selection: if it's already selected, unselect it. Otherwise, select it.
-        setSelectedSectionForPlacement(prev => prev === sectionName ? null : sectionName);
-    } else {
-        // If clicking a section that's already in a lane (a "placed" section)
-        const laneIndex = localPlacedSections.indexOf(sectionName);
-        const newPlaced = [...localPlacedSections];
-        newPlaced[laneIndex] = null; // Remove from lane
-
-        // Update local player's placed sections (always update placedSections for local player)
-        updateGameState({
-          placedSections: newPlaced,
-          unplacedSections: [...unplacedSections, sectionName]
-        });
-
-        setSelectedSectionForPlacement(null); // Clear the selection
-    }
-  };
-
-  /**
-   * HANDLE LANE SELECT FOR PLACEMENT
-   * Places selected ship section in chosen lane.
-   * Handles lane swapping and section management.
-   * Uses direct GameStateManager updates for placement state changes.
-   * @param {number} laneIndex - Index of the lane (0, 1, 2)
-   */
-  const handleLaneSelectForPlacement = (laneIndex) => {
-    const { turnPhase } = gameState;
-
-    // Only handle during placement phase
-    if (turnPhase !== 'placement') return;
-
-    console.log('🔧 handleLaneSelectForPlacement called with lane:', laneIndex, 'gameMode:', gameState.gameMode);
-
-    if (selectedSectionForPlacement) {
-      // If the lane is occupied, swap with the selected section
-      if (localPlacedSections[laneIndex]) {
-        const sectionToSwap = localPlacedSections[laneIndex];
-        const newPlaced = [...localPlacedSections];
-        newPlaced[laneIndex] = selectedSectionForPlacement;
-
-        // Find where the selected section was and put the swapped one there
-        const oldIndexOfSelected = unplacedSections.indexOf(selectedSectionForPlacement);
-        const newUnplaced = [...unplacedSections];
-        newUnplaced.splice(oldIndexOfSelected, 1, sectionToSwap);
-
-        // Update local player's placement state (always update placedSections for local player)
-        updateGameState({
-          unplacedSections: newUnplaced,
-          placedSections: newPlaced
-        });
-
-      } else {
-        // If the lane is empty, place the section
-        const newPlaced = [...localPlacedSections];
-        newPlaced[laneIndex] = selectedSectionForPlacement;
-
-        // Use direct GameStateManager updates for placement phase
-        updateGameState({
-          placedSections: newPlaced,
-          unplacedSections: unplacedSections.filter(s => s !== selectedSectionForPlacement)
-        });
-      }
-      setSelectedSectionForPlacement(null);
-    } else if (localPlacedSections[laneIndex]) {
-      // If no section is selected, clicking a placed one picks it up
-      handleSelectSectionForPlacement(localPlacedSections[laneIndex]);
-    }
-  };
-
-  /**
-   * HANDLE CONFIRM PLACEMENT
-   * Finalizes ship section placement using PhaseManager.
-   * Validates placement and delegates to PhaseManager for processing.
-   */
-  const handleConfirmPlacement = async () => {
-    const { turnPhase } = gameState;
-
-    // Only handle during placement phase
-    if (turnPhase !== 'placement') return;
-
-    console.log(`🔧 handleConfirmPlacement called`);
-
-    // Validate that all sections are placed
-    const hasEmptySections = localPlacedSections.some(section => section === null || section === undefined);
-    if (hasEmptySections) {
-      setModalContent({
-        title: 'Incomplete Placement',
-        text: 'All ship sections must be placed before confirming placement.',
-        onClose: () => setModalContent(null),
-        isBlocking: false
-      });
-      return;
-    }
-
-    console.log(`🔧 Submitting placement to PhaseManager:`, localPlacedSections);
-
-    // Submit placement to SimultaneousActionManager
-    try {
-      const submissionResult = await simultaneousActionManager.submitPlacement(getLocalPlayerId(), localPlacedSections);
-
-      if (!submissionResult.success) {
-        console.error('❌ Placement submission failed:', submissionResult.error);
-        setModalContent({
-          title: 'Placement Error',
-          text: submissionResult.error,
-          onClose: () => setModalContent(null),
-          isBlocking: false
-        });
-        return;
-      }
-
-      console.log('✅ Placement submitted successfully:', submissionResult);
-
-      // In multiplayer mode, show waiting message if opponent hasn't completed
-      if (isMultiplayer() && !submissionResult.data.bothComplete) {
-        setModalContent({
-          title: 'Placement Confirmed',
-          text: 'Your ship placement has been confirmed. Waiting for opponent to complete their placement...',
-          onClose: () => setModalContent(null),
-          isBlocking: false
-        });
-      }
-
-    } catch (error) {
-      console.error('❌ Error submitting placement:', error);
-      setModalContent({
-        title: 'Placement Error',
-        text: 'An error occurred while submitting placement. Please try again.',
-        onClose: () => setModalContent(null),
-        isBlocking: false
-      });
-    }
-  };
 
   /**
    * HANDLE ALLOCATE SHIELD
@@ -2689,44 +2338,6 @@ const App = () => {
           }
           break;
 
-        // Setup phase actions
-        case 'selectDrone':
-        case 'confirmDroneSelection':
-          if (turnPhase === 'droneSelection') {
-            const result = gameEngine.processDroneSelection(payload, getLocalPlayerState());
-            updatePlayerState(getLocalPlayerId(), result.newPlayerState);
-            return { success: true, result };
-          }
-          break;
-
-        case 'selectDeck':
-        case 'confirmDeckSelection':
-          if (turnPhase === 'deckSelection') {
-            const result = gameEngine.processDeckSelection(payload, getLocalPlayerState());
-            updatePlayerState(getLocalPlayerId(), result.newPlayerState);
-            return { success: true, result };
-          }
-          break;
-
-        case 'addCardToDeck':
-        case 'removeCardFromDeck':
-        case 'confirmDeck':
-          if (turnPhase === 'deckBuilding') {
-            const result = gameEngine.processDeckBuilding(payload, getLocalPlayerState());
-            updatePlayerState(getLocalPlayerId(), result.newPlayerState);
-            return { success: true, result };
-          }
-          break;
-
-        // Placement actions
-        case 'placePiece':
-        case 'confirmPlacement':
-          if (turnPhase === 'placement') {
-            const result = gameEngine.processPlacement(payload, getLocalPlayerState());
-            updatePlayerState(getLocalPlayerId(), result.newPlayerState);
-            return { success: true, result };
-          }
-          break;
 
         // Initial draw actions
         case 'drawCard':
@@ -3142,118 +2753,6 @@ const App = () => {
 
   // Legacy startPlacementPhase function removed - now handled by GameFlowManager + utility functions
 
-  /**
-   * HANDLE DECK CHOICE
-   * Processes player's choice between standard deck or custom deck building.
-   * Routes to appropriate phase based on selection.
-   * Uses direct GameStateManager updates for deck selection phase.
-   * @param {string} choice - 'standard' or 'custom' deck choice
-   */
-  const handleDeckChoice = (choice) => {
-    const { turnPhase } = gameState;
-
-    // Only handle during deck selection phase
-    if (turnPhase !== 'deckSelection') return;
-
-    console.log('🔧 handleDeckChoice called with:', choice);
-
-    if (choice === 'standard') {
-      // Build the standard deck for the local player
-      const localPlayerId = getLocalPlayerId();
-      const standardDeck = gameEngine.buildDeckFromList(startingDecklist);
-
-      // REFACTORED: Use SimultaneousActionManager to submit deck selection
-      const submissionResult = simultaneousActionManager.submitDeckSelection(localPlayerId, standardDeck);
-
-      if (!submissionResult.success) {
-        console.error('❌ Deck selection submission failed:', submissionResult.error);
-        return;
-      }
-
-      console.log('✅ Standard deck selection submitted to PhaseManager');
-
-      addLogEntry({
-        player: 'SYSTEM',
-        actionType: 'DECK_SELECTION',
-        source: 'Player Setup',
-        target: 'N/A',
-        outcome: 'Player selected the Standard Deck.'
-      }, 'handleDeckChoice');
-
-    } else if (choice === 'custom') {
-      console.log('🔧 Transitioning to deck building phase');
-
-      // REFACTORED: Use PhaseManager to handle phase transition
-      // For now, still use direct transition - will be refactored when we handle deckBuilding phase
-      setTurnPhase('deckBuilding');
-    }
-  };
-
-  /**
-   * HANDLE DECK CHANGE
-   * Updates deck composition during deck building.
-   * Manages card quantities and removal.
-   * @param {string} cardId - ID of the card being changed
-   * @param {number} quantity - New quantity for the card
-   */
-  const handleDeckChange = (cardId, quantity) => {
-    setDeck(prevDeck => {
-      const newDeck = { ...prevDeck };
-      if (quantity === 0) {
-        // If the quantity is set to 0, remove the card from the deck object
-        delete newDeck[cardId];
-      } else {
-        newDeck[cardId] = quantity;
-      }
-      return newDeck;
-    });
-  };
-
-  /**
-   * HANDLE CONFIRM DECK
-   * Finalizes custom deck composition and builds shuffled deck.
-   * Updates player state and transitions to placement phase.
-   * Uses direct GameStateManager updates for deck building phase.
-   */
-  const handleConfirmDeck = () => {
-    const { turnPhase } = gameState;
-
-    // Only handle during deck building phase
-    if (turnPhase !== 'deckBuilding') return;
-
-    console.log('🔧 handleConfirmDeck called');
-
-    // Log deck contents for debugging
-    const deckContents = Object.entries(deck)
-      .map(([cardId, quantity]) => {
-          const cardName = fullCardCollection.find(c => c.id === cardId)?.name || cardId;
-          return `${cardName} x${quantity}`;
-      })
-      .join(', ');
-
-    addLogEntry({
-        player: 'SYSTEM',
-        actionType: 'DECK_SELECTION',
-        source: 'Player Setup',
-        target: 'N/A',
-        outcome: `Custom deck confirmed with cards: ${deckContents}.`
-    }, 'handleConfirmDeck');
-
-    // Build the final shuffled deck from the custom composition
-    const decklist = Object.entries(deck).map(([id, quantity]) => ({ id, quantity }));
-    const newPlayerDeck = gameEngine.buildDeckFromList(decklist);
-
-    // REFACTORED: Use SimultaneousActionManager to submit deck selection
-    const localPlayerId = getLocalPlayerId();
-    const submissionResult = simultaneousActionManager.submitDeckSelection(localPlayerId, newPlayerDeck);
-
-    if (!submissionResult.success) {
-      console.error('❌ Custom deck selection submission failed:', submissionResult.error);
-      return;
-    }
-
-    console.log('✅ Custom deck selection submitted to PhaseManager');
-  };
 
   /**
    * HANDLE IMPORT DECK
@@ -3305,69 +2804,6 @@ const App = () => {
     }
   };
 
-  /**
-   * HANDLE CHOOSE DRONE FOR SELECTION
-   * Processes drone choice during initial drone selection phase.
-   * Advances to next trio or completes selection when 5 drones chosen.
-   * Uses direct GameStateManager updates for drone selection state.
-   * @param {Object} chosenDrone - The drone being selected
-   */
-  const handleChooseDroneForSelection = (chosenDrone) => {
-    const { turnPhase } = gameState;
-
-    // Only handle during drone selection phase
-    if (turnPhase !== 'droneSelection') return;
-
-    console.log('🔧 handleChooseDroneForSelection called with:', chosenDrone.name);
-
-    const newSelection = [...tempSelectedDrones, chosenDrone];
-    setTempSelectedDrones(newSelection);
-
-    if (newSelection.length < 5) {
-      // Continue selection process - advance to next trio
-      const nextTrioData = advanceDroneSelectionTrio(droneSelectionPool);
-
-      // REFACTORED: Update drone selection pool directly
-      updateGameState(nextTrioData);
-
-      console.log('🔧 Advanced to next trio, selected:', newSelection.length, 'of 5 drones');
-    } else {
-      console.log('🔧 All 5 drones selected, waiting for Continue button click');
-    }
-  };
-
-  /**
-   * HANDLE CONTINUE DRONE SELECTION
-   * Processes the Continue button click after 5 drones are selected.
-   * Uses PhaseManager submission pattern for drone selection.
-   */
-  const handleContinueDroneSelection = () => {
-    const { turnPhase } = gameState;
-
-    // Only handle during drone selection phase
-    if (turnPhase !== 'droneSelection') return;
-
-    console.log('🔧 handleContinueDroneSelection called with:', tempSelectedDrones.length, 'drones');
-
-    const localPlayerId = getLocalPlayerId();
-    const submissionResult = simultaneousActionManager.submitDroneSelection(localPlayerId, tempSelectedDrones);
-
-    if (!submissionResult.success) {
-      console.error('❌ Drone selection submission failed:', submissionResult.error);
-      return;
-    }
-
-    console.log('✅ Drone selection submitted to PhaseManager');
-
-    // Clear temporary selection after successful submission
-    setTempSelectedDrones([]);
-
-    // PhaseManager will handle:
-    // - GameStateManager updates when both players complete
-    // - Event emission for UI state changes
-    // - Phase transition logic
-    // - AI completion in single-player mode
-  };
 
   /**
    * HANDLE TOGGLE DRONE SELECTION
@@ -4245,7 +3681,7 @@ useEffect(() => {
      <TargetingArrow visible={arrowState.visible} start={arrowState.start} end={arrowState.end} lineRef={arrowLineRef} />
      {explosions.map(exp => <Explosion key={exp.id} top={exp.top} left={exp.left} />)}
 
-      {!['preGame', 'placement', 'droneSelection', 'deckSelection', 'deckBuilding'].includes(turnPhase) && (
+      {(
         <header className="w-full flex justify-between items-center mb-2 flex-shrink-0 px-5 pt-8">
           <div className="flex flex-col items-start gap-2">
             <h2 className="text-lg font-bold text-pink-300 flex items-center">
@@ -4269,7 +3705,7 @@ useEffect(() => {
           <div className="text-center flex flex-col items-center">
             <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 drop-shadow-xl font-orbitron" style={{ textShadow: '0 0 15px rgba(236, 72, 153, 0.5), 0 0 5px rgba(255, 255, 255, 0.5)' }}>Drone Wars</h1>
             <div className="flex items-center gap-4 mt-2">
-              {turnPhase !== 'preGame' && <h2 className="text-2xl font-bold text-gray-300 tracking-widest font-exo">{getPhaseDisplayName(turnPhase)}</h2>}
+              <h2 className="text-2xl font-bold text-gray-300 tracking-widest font-exo">{getPhaseDisplayName(turnPhase)}</h2>
               
               {/* --- NEW BUTTON LOCATION --- */}
               {(turnPhase === 'deployment' || turnPhase === 'action') && isMyTurn() && !mandatoryAction && !multiSelectState && (
@@ -4321,7 +3757,7 @@ useEffect(() => {
         </>
       </main>
 
-       {turnPhase !== 'preGame' && turnPhase !== 'placement' && turnPhase !== 'droneSelection' && (
+       {(
         <footer className="w-full flex flex-col items-center flex-shrink-0">
           <div className="flex justify-center">
               <button onClick={() => handleFooterButtonClick('hand')} 

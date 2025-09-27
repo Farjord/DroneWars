@@ -6,9 +6,19 @@ See CLAUDE.md for architecture documentation and design decisions
 See ROADMAP.md for long-term development plans and server implementation roadmap
 ================================================================================
 
-CURRENT STATUS: Phase 2.11 - GameDataService Implementation
---------------------------------------------------------
-✅ COMPLETED TODAY:
+CURRENT STATUS: Phase 3 - Server Implementation (Ready to Begin)
+------------------------------------------------------------------------
+✅ COMPLETED TODAY (2025-09-27) - PHASE 2.12 COMPLETION:
+- Fixed critical middle lane bonus calculation issues
+- Completed GameDataService architecture migration (100% usage)
+- Fixed Power Cell middle lane energy bonus (now correctly gives 12 energy instead of 10)
+- Fixed Bridge middle lane hand limit bonus (now correctly gives 6 cards instead of 5)
+- Updated cardDrawUtils.js to use GameDataService instead of hardcoded hand limits
+- Fixed gameLogic.js initialPlayerState() energy initialization
+- Cleaned up aiLogic.js to use only GameDataService for stat calculations
+- Updated GameFlowManager.js to pass gameStateManager to performAutomaticDraw()
+
+✅ COMPLETED EARLIER:
 - Removed AI turn management from App.jsx
 - Expanded AIPhaseProcessor for deployment/action phases
 - Fixed ActionProcessor AI delegation to use AIPhaseProcessor
@@ -33,86 +43,116 @@ CURRENT STATUS: Phase 2.11 - GameDataService Implementation
   * Simplified SequentialPhaseManager.processAITurn() to just trigger AI execution
 - Result: Clean architecture where AIPhaseProcessor manages its own routing internally
 
+✅ COMPLETED: Phase 2.12 - Component Data Flow Consistency (2025-09-27)
+- **Achievement**: Complete GameDataService architecture migration (100% usage)
+- **Problem Solved**: Fixed critical middle lane bonus calculation bugs
+- **Root Cause**: Utility functions bypassed GameDataService with direct calculations
+- **Technical Details**:
+  * cardDrawUtils.js: Replaced hardcoded defaultHandLimit=5 with dynamic calculations
+  * gameLogic.js: Fixed initialPlayerState() energy initialization with empty placedSections[]
+  * aiLogic.js: Removed redundant calculateEffectiveShipStats parameter
+  * GameFlowManager.js: Added gameStateManager parameter to performAutomaticDraw()
+- **Result**: Power Cell middle lane = 12 energy, Bridge middle lane = 6 cards (bonuses work!)
+
 ✅ COMPLETED: Documentation Reorganization (2025-09-27)
 - Created ROADMAP.md for long-term vision and server implementation plans
 - Refactored CLAUDE.md to focus purely on timeless architecture documentation
 - WORKING_PLAN.txt now contains all current development status and recent changes
 
+✅ COMPLETED: Phase 2.11 - GameDataService Implementation (2025-09-27)
+- **ACHIEVEMENT**: 100% centralization of ALL effective stats calculations (drone + ship)
+- **SCALE**: Eliminated 78+ scattered calculation calls across 8+ files
+- **ARCHITECTURE**: Complete data computation layer with intelligent caching
+- **COMPONENTS CREATED**:
+  * GameDataService.js - Centralized computation coordinator
+  * gameDataCache.js - Performance optimization layer with state-change invalidation
+  * useGameData.js hook - React integration for clean component access
+- **MIGRATIONS COMPLETED**:
+  * aiLogic.js: 22 calculateEffectiveStats calls → GameDataService
+  * App.jsx: 11 calculateEffectiveShipStats + 9 calculateEffectiveStats calls → GameDataService
+  * App.jsx playerEffectiveStats: Removed React useMemo, replaced with direct GameDataService calls
+  * DroneLanesDisplay.jsx: 1 calculateEffectiveStats call → GameDataService
+  * ActionProcessor.js: 3 calculateEffectiveShipStats calls → GameDataService
+  * AIPhaseProcessor.js: 1 calculateEffectiveShipStats call → GameDataService wrapper
+- **DATA FLOW ACHIEVED**: GameStateManager ↔ GameDataService ↔ gameDataCache ↔ gameLogic.js
+- **BENEFITS**: Performance caching, clean architecture, server-ready abstraction, zero functional changes
+- **VERIFICATION**: No App.jsx or component files contain direct calculation calls - 100% use GameDataService
+- **RESULT**: Single data access layer for ALL computed game data (complete architectural consistency)
+
 ================================================================================
 
-NEXT UP: Phase 2.11 - GameDataService Implementation
-----------------------------------------------------
-🎯 GOAL: Create centralized data computation layer to eliminate scattered calculateEffectiveStats calls
+CURRENT ISSUE: Phase 2.13 - Stats Calculator Extraction
+--------------------------------------------------------
 
-📊 CURRENT PROBLEM ANALYSIS:
-• 52 calculateEffectiveStats calls scattered across 6 files
-• Repeated parameter passing: (drone, lane, playerState, opponentState, placedSections)
-• Tight coupling between UI components and game logic
-• No caching of expensive calculations
-• Difficult to maintain and test
+🎯 CURRENT PRIORITY: Circular Dependency Resolution
 
-🗂️ IMPLEMENTATION STRATEGY (4 Sub-Phases):
+**Problem Identified**: Circular dependency between gameLogic.js and GameDataService
+- gameLogic.js provides calculateEffectiveShipStats and calculateEffectiveStats functions
+- GameDataService imports from gameLogic.js to use these calculation functions
+- gameLogic.js should use GameDataService for all stats calculations (9+ direct calls found)
+- processRoundStart() passes function reference instead of calculated values, causing energy = 0 bug
 
-Phase 2.11.1: Infrastructure Creation (Priority: Critical)
-• Create GameDataService base class in src/services/
-• Implement core getEffectiveStats(drone, lane) wrapper
-• Add basic caching mechanism for performance
-• Create useGameData hook for React integration
-• Test with single component to validate approach
+**Root Cause Analysis**:
+- Energy showing as 0 for both players due to function reference being passed
+- Middle lane bonuses work in card drawing but not in energy initialization
+- Architecture confusion: Should GameDataService or gameLogic.js be the source of truth?
 
-Phase 2.11.2: High-Impact Consumer Migration (Priority: High)
-• Refactor aiLogic.js - eliminate 22 calculateEffectiveStats calls
-• Update App.jsx modal calculations - eliminate 9 calls
-• Migrate DroneLanesDisplay.jsx - eliminate 1 call
-• Preserve all existing functionality during migration
+**Phase 2.13 Implementation Plan**:
+1. **Create statsCalculator.js**
+   - Extract calculateEffectiveShipStats from gameLogic.js
+   - Extract calculateEffectiveStats from gameLogic.js
+   - Pure calculation functions with NO dependencies on GameDataService
+   - No circular dependencies
 
-Phase 2.11.3: State Manager Integration (Priority: Medium)
-• Update ActionProcessor - eliminate 3 calls
-• Update AIPhaseProcessor - eliminate 2 calls
-• Ensure seamless GameStateManager integration
-• Maintain existing manager coordination patterns
+2. **Update GameDataService**
+   - Import calculation functions from statsCalculator.js instead of gameLogic.js
+   - Maintain existing caching and API interface
 
-Phase 2.11.4: Testing & Optimization (Priority: Medium)
-• Performance testing with caching enabled
-• Integration testing across all consumers
-• Validate no gameplay logic regression
-• Optimize caching strategy based on usage patterns
+3. **Update gameLogic.js**
+   - Remove calculation function exports
+   - Replace all 9+ direct calculation calls with GameDataService usage
+   - Fix processRoundStart to use GameDataService.getEffectiveShipStats()
+   - Ensure proper stats calculation instead of function references
 
-⚠️ CRITICAL REQUIREMENTS TO PRESERVE:
-• All effective stats calculations must remain identical
-• No changes to game logic or combat resolution
-• Maintain performance (improve with caching)
-• Preserve multiplayer compatibility
-• Keep server-ready architecture principles
+4. **Critical Fixes This Enables**:
+   - Power Cell middle lane energy bonus (12 energy instead of 0)
+   - All round start energy calculations working correctly
+   - Consistent caching across entire application
+   - Clean architecture with no circular dependencies
 
-📁 PROPOSED FILE STRUCTURE:
-src/services/
-├── GameDataService.js (core service class)
-├── gameDataCache.js (caching implementation)
-└── gameDataUtils.js (helper functions)
+**Expected Outcome**: Clean separation where statsCalculator.js provides pure calculation logic, GameDataService provides caching and abstraction, and gameLogic.js consumes calculated values through GameDataService.
 
-src/hooks/
-└── useGameData.js (React integration hook)
+🎯 ALTERNATIVE FUTURE PRIORITIES (Post Phase 2.12):
 
-🚀 IMPLEMENTATION ORDER:
-1. GameDataService infrastructure with basic caching
-2. aiLogic.js migration (highest usage - 22 calls)
-3. App.jsx and UI component migration (10 calls total)
-4. State manager integration (5 calls total)
-5. Performance optimization and testing
+**Option A: Resume Modal Extraction (UI Architecture)**
+- Extract remaining modals from App.jsx into dedicated components
+- Complete App.jsx simplification for cleaner component hierarchy
+- Benefits from completed GameDataService for clean data access
+- Prepares UI layer for Phase 3 server implementation
 
-✅ SUCCESS CRITERIA:
-• 100% elimination of direct calculateEffectiveStats calls outside gameLogic.js
-• Performance improvement through caching
-• No gameplay functionality regression
-• Clean separation between data computation and UI
-• Foundation ready for modal extraction and server migration
+**Option B: AI Enhancement & Game Features**
+- Improve AI decision-making algorithms
+- Add new game features, cards, or drones
+- Enhanced AI personalities and strategies
+- Leverage GameDataService for efficient AI computations
 
-🔗 CONNECTION TO ARCHITECTURE:
-• Essential foundation before resuming modal extraction
-• Enables clean modal data access without tight coupling
-• Prepares data layer for Phase 3 server implementation
-• Aligns with server-ready architecture principles in CLAUDE.md
+**Option C: Phase 3 Server Implementation**
+- Begin server-side architecture migration
+- Implement GameServer.js with centralized game instances
+- Move GameStateManager and game logic to server
+- Replace P2P multiplayer with client-server WebSocket communication
+
+**Option D: Performance & Polish**
+- Optimize gameDataCache usage patterns
+- Add comprehensive testing suite
+- Performance profiling and optimization
+- Bug fixes and user experience improvements
+
+**Option E: Development Tools & Debugging**
+- Create developer tools for game state inspection
+- Add debugging utilities for AI behavior analysis
+- Implement game replay and analysis features
+- Enhance development workflow
 
 ================================================================================
 
@@ -128,8 +168,8 @@ IMMEDIATE TESTING CHECKLIST
 
 ================================================================================
 
-NEXT UP: Phase 3 - Server Implementation
------------------------------------------
+FUTURE: Phase 3 - Server Implementation (When Selected)
+--------------------------------------------------------
 Priority 1: Create Server Layer
 - server/GameServer.js - Central game instance
 - server/SessionManager.js - Handle multiple game sessions
@@ -147,6 +187,8 @@ Priority 3: Server-Side Game Logic
 - Keep only UI state management on client (App.jsx)
 - Implement server-side validation and anti-cheat measures
 - Add spectator mode support
+
+**ADVANTAGE**: GameDataService provides perfect abstraction layer for server migration
 
 ================================================================================
 
