@@ -4,6 +4,8 @@
 // Handles AI processing for simultaneous phases in single-player mode
 // Provides instant AI decisions for SimultaneousActionManager commitment system
 
+import GameDataService from '../services/GameDataService.js';
+
 /**
  * AIPhaseProcessor - Handles AI completion of simultaneous phases
  */
@@ -12,6 +14,7 @@ class AIPhaseProcessor {
     this.aiPersonalities = null;
     this.dronePool = null;
     this.currentAIPersonality = null;
+    this.gameDataService = null;
   }
 
   /**
@@ -28,6 +31,17 @@ class AIPhaseProcessor {
     this.currentAIPersonality = currentPersonality;
     this.actionProcessor = actionProcessor;
     this.gameStateManager = gameStateManager;
+
+    // Initialize GameDataService for centralized data computation
+    if (gameStateManager) {
+      this.gameDataService = new GameDataService(gameStateManager);
+
+      // Create wrapper function for ship stats compatibility with aiLogic.js
+      this.effectiveShipStatsWrapper = (playerState, placedSections) => {
+        return this.gameDataService.getEffectiveShipStats(playerState, placedSections);
+      };
+    }
+
     console.log('🤖 AIPhaseProcessor initialized with personality:', currentPersonality?.name || 'Default');
     if (actionProcessor) {
       console.log('🔗 AIPhaseProcessor connected to ActionProcessor for execution');
@@ -388,8 +402,8 @@ class AIPhaseProcessor {
       placedSections: gameState.placedSections,
       opponentPlacedSections: gameState.opponentPlacedSections,
       getShipStatus: gameEngine.getShipStatus,
-      calculateEffectiveShipStats: gameEngine.calculateEffectiveShipStats,
-      calculateEffectiveStats: gameEngine.calculateEffectiveStats,
+      calculateEffectiveShipStats: this.effectiveShipStatsWrapper,
+      gameStateManager: this.gameStateManager,
       addLogEntry: (entry, debugSource, aiDecisionContext) => {
         this.gameStateManager?.addLogEntry(entry, debugSource, aiDecisionContext);
       }
@@ -443,7 +457,7 @@ class AIPhaseProcessor {
       getShipStatus: gameEngine.getShipStatus,
       getLaneOfDrone: gameEngine.getLaneOfDrone,
       getValidTargets: gameEngine.getValidTargets,
-      calculateEffectiveStats: gameEngine.calculateEffectiveStats,
+      gameStateManager: this.gameStateManager,
       addLogEntry: (entry, debugSource, aiDecisionContext) => {
         this.gameStateManager?.addLogEntry(entry, debugSource, aiDecisionContext);
       }

@@ -1,12 +1,13 @@
 import fullDroneCollection from '../data/droneData.js';
+import GameDataService from '../services/GameDataService.js';
 
- const calculateLaneScore = (laneId, player2State, player1State, allSections, getShipStatus, calculateEffectiveStats) => {
+ const calculateLaneScore = (laneId, player2State, player1State, allSections, getShipStatus, gameDataService) => {
  const aiDronesInLane = player2State.dronesOnBoard[laneId] || [];
  const humanDronesInLane = player1State.dronesOnBoard[laneId] || [];
  const laneIndex = parseInt(laneId.slice(-1)) - 1;
 
  const getPower = (drones, owner, opponent, sections) => drones.reduce((sum, drone) => {
- const stats = calculateEffectiveStats(drone, laneId, owner, opponent, sections);
+ const stats = gameDataService.getEffectiveStats(drone, laneId);
  const threatValue = (stats.attack || 0) + (stats.potentialShipDamage || 0);
  return sum + threatValue + (drone.hull || 0) + (drone.currentShields || 0);
  }, 0);
@@ -17,7 +18,7 @@ import fullDroneCollection from '../data/droneData.js';
   
   const getMaxSpeed = (drones, owner, opponent, sections) => {
     if (drones.length === 0) return 0;
-    return Math.max(...drones.map(d => calculateEffectiveStats(d, laneId, owner, opponent, sections).speed));
+    return Math.max(...drones.map(d => gameDataService.getEffectiveStats(d, laneId).speed));
   };
   
   const aiMaxSpeed = getMaxSpeed(aiDronesInLane, player2State, player1State, allSections);
@@ -41,7 +42,9 @@ import fullDroneCollection from '../data/droneData.js';
   return baseScore + speedScore + healthModifier;
 };
 
-const handleOpponentTurn = ({ player1, player2, turn, placedSections, opponentPlacedSections, getShipStatus, calculateEffectiveShipStats, calculateEffectiveStats, addLogEntry }) => {
+const handleOpponentTurn = ({ player1, player2, turn, placedSections, opponentPlacedSections, getShipStatus, calculateEffectiveShipStats, gameStateManager, addLogEntry }) => {
+    // Create GameDataService instance for centralized data computation
+    const gameDataService = new GameDataService(gameStateManager);
     const effectiveStats = calculateEffectiveShipStats(player2, opponentPlacedSections).totals;
     const totalDrones = Object.values(player2.dronesOnBoard).flat().length;
     const availableResources = turn === 1
@@ -66,9 +69,9 @@ const handleOpponentTurn = ({ player1, player2, turn, placedSections, opponentPl
     const allSections = { player1: placedSections, player2: opponentPlacedSections };
 
 const currentLaneScores = {
-  lane1: calculateLaneScore('lane1', player2, player1, allSections, getShipStatus, calculateEffectiveStats),
-  lane2: calculateLaneScore('lane2', player2, player1, allSections, getShipStatus, calculateEffectiveStats),
-  lane3: calculateLaneScore('lane3', player2, player1, allSections, getShipStatus, calculateEffectiveStats),
+  lane1: calculateLaneScore('lane1', player2, player1, allSections, getShipStatus, gameDataService),
+  lane2: calculateLaneScore('lane2', player2, player1, allSections, getShipStatus, gameDataService),
+  lane3: calculateLaneScore('lane3', player2, player1, allSections, getShipStatus, gameDataService),
 };
 
     for (const drone of allPotentialDrones) {
@@ -117,7 +120,7 @@ const currentLaneScores = {
         const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
         tempAiState.dronesOnBoard[laneId].push({ ...baseDrone, id: 'temp' });
 
-        const projectedScore = calculateLaneScore(laneId, tempAiState, player1, allSections, getShipStatus, calculateEffectiveStats);
+        const projectedScore = calculateLaneScore(laneId, tempAiState, player1, allSections, getShipStatus, gameDataService);
         const impactScore = projectedScore - currentLaneScores[laneId];
 
         let strategicBonus = 0;
@@ -198,7 +201,9 @@ const currentLaneScores = {
     };
 };
 
-const handleOpponentAction = ({ player1, player2, placedSections, opponentPlacedSections, getShipStatus, getLaneOfDrone, calculateEffectiveStats, getValidTargets, addLogEntry }) => {
+const handleOpponentAction = ({ player1, player2, placedSections, opponentPlacedSections, getShipStatus, getLaneOfDrone, gameStateManager, getValidTargets, addLogEntry }) => {
+    // Create GameDataService instance for centralized data computation
+    const gameDataService = new GameDataService(gameStateManager);
     const allSections = { player1: placedSections, player2: opponentPlacedSections };
     const possibleActions = [];
     const uniqueCardPlays = new Set();
@@ -248,7 +253,7 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
       if (sectionName && player1.shipSections[sectionName].hull > 0) {
         const playerDronesInLaneForGuard = player1.dronesOnBoard[attacker.lane];
         const hasGuardian = playerDronesInLaneForGuard.some(drone => {
-            const effectiveStats = calculateEffectiveStats(drone, attacker.lane, player1, player2, allSections);
+            const effectiveStats = gameDataService.getEffectiveStats(drone, attacker.lane);
             return effectiveStats.keywords.has('GUARDIAN');
         });
 
@@ -331,7 +336,7 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
                 let targetsHit = 0;
                 const laneId = target.id;
                 dronesInLane.forEach(drone => {
-                    const effectiveTarget = calculateEffectiveStats(drone, laneId, player1, player2, allSections);
+                    const effectiveTarget = gameDataService.getEffectiveStats(drone, laneId);
                     let meetsCondition = false;
                     if (comparison === 'GTE' && effectiveTarget[stat] >= value) meetsCondition = true;
                     if (comparison === 'LTE' && effectiveTarget[stat] <= value) meetsCondition = true;
@@ -446,7 +451,7 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
                       score = 0;
                       action.logic.push('No Active Drones in Lane');
                   } else {
-                      const currentLaneScore = calculateLaneScore(laneId, player2, player1, allSections, getShipStatus, calculateEffectiveStats);
+                      const currentLaneScore = calculateLaneScore(laneId, player2, player1, allSections, getShipStatus, gameDataService);
 
                       const tempAiState = JSON.parse(JSON.stringify(player2));
                       tempAiState.dronesOnBoard[laneId].forEach(drone => {
@@ -456,7 +461,7 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
                           }
                       });
 
-                      const projectedLaneScore = calculateLaneScore(laneId, tempAiState, player1, allSections, getShipStatus, calculateEffectiveStats);
+                      const projectedLaneScore = calculateLaneScore(laneId, tempAiState, player1, allSections, getShipStatus, gameDataService);
                       const laneImpact = projectedLaneScore - currentLaneScore;
 
                       score = (laneImpact * 1.5) + (activeDronesInLane.length * 10);
@@ -478,7 +483,7 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
                           score = -1;
                           action.logic.push('Invalid Target (Already Exhausted)');
                       } else {
-                          const effectiveTarget = calculateEffectiveStats(target, getLaneOfDrone(target.id, player1), player1, player2, allSections);
+                          const effectiveTarget = gameDataService.getEffectiveStats(target, getLaneOfDrone(target.id, player1));
                           score = (effectiveTarget.attack * 8) - (mod.value * -5);
                           action.logic.push(`Threat Reduction: ${effectiveTarget.attack * 8}`);
                       }
@@ -489,8 +494,8 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
                       } else {
                           const targetLane = getLaneOfDrone(target.id, player2);
                           const opponentsInLane = player1.dronesOnBoard[targetLane] || [];
-                          const opponentMaxSpeed = opponentsInLane.length > 0 ? Math.max(...opponentsInLane.map(d => calculateEffectiveStats(d, targetLane, player1, player2, allSections).speed)) : -1;
-                          const effectiveTarget = calculateEffectiveStats(target, targetLane, player2, player1, allSections);
+                          const opponentMaxSpeed = opponentsInLane.length > 0 ? Math.max(...opponentsInLane.map(d => gameDataService.getEffectiveStats(d, targetLane).speed)) : -1;
+                          const effectiveTarget = gameDataService.getEffectiveStats(target, targetLane);
 
                           if (effectiveTarget.speed <= opponentMaxSpeed && (effectiveTarget.speed + mod.value) > opponentMaxSpeed) {
                               score = 60;
@@ -531,11 +536,11 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
   
           case 'attack': {
           const { attacker, target: attackTarget, targetType } = action;
-          const effectiveAttacker = calculateEffectiveStats(attacker, attacker.lane, player2, player1, allSections);
+          const effectiveAttacker = gameDataService.getEffectiveStats(attacker, attacker.lane);
           const attackerAttack = Math.max(0, effectiveAttacker.attack);
           
           if (targetType === 'drone') {
-            const effectiveTarget = calculateEffectiveStats(attackTarget, attacker.lane, player1, player2, allSections);
+            const effectiveTarget = gameDataService.getEffectiveStats(attackTarget, attacker.lane);
             score = (effectiveTarget.class * 10);
             action.logic.push(`(Target Class: ${effectiveTarget.class} * 10)`);
             if (effectiveAttacker.class < effectiveTarget.class) { 
@@ -593,8 +598,8 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
           action.instigator = drone.name;
           action.targetName = toLane;
 
-          const currentFromScore = calculateLaneScore(fromLane, player2, player1, allSections, getShipStatus, calculateEffectiveStats);
-          const currentToScore = calculateLaneScore(toLane, player2, player1, allSections, getShipStatus, calculateEffectiveStats);
+          const currentFromScore = calculateLaneScore(fromLane, player2, player1, allSections, getShipStatus, gameDataService);
+          const currentToScore = calculateLaneScore(toLane, player2, player1, allSections, getShipStatus, gameDataService);
           
           const tempAiState = JSON.parse(JSON.stringify(player2));
           const droneToMove = tempAiState.dronesOnBoard[fromLane].find(d => d.id === drone.id);
@@ -603,8 +608,8 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
             tempAiState.dronesOnBoard[toLane].push(droneToMove);
           }
 
-          const projectedFromScore = calculateLaneScore(fromLane, tempAiState, player1, allSections, getShipStatus, calculateEffectiveStats);
-          const projectedToScore = calculateLaneScore(toLane, tempAiState, player1, allSections, getShipStatus, calculateEffectiveStats);
+          const projectedFromScore = calculateLaneScore(fromLane, tempAiState, player1, allSections, getShipStatus, gameDataService);
+          const projectedToScore = calculateLaneScore(toLane, tempAiState, player1, allSections, getShipStatus, gameDataService);
           
           const toLaneImpact = projectedToScore - currentToScore;
           const fromLaneImpact = projectedFromScore - currentFromScore;

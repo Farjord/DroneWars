@@ -5,12 +5,19 @@
 // All game actions must go through this processor to ensure serialization.
 
 import { gameEngine } from '../logic/gameLogic.js';
-import { aiBrain } from '../logic/aiLogic.js';
 import aiPhaseProcessor from './AIPhaseProcessor.js';
+import GameDataService from '../services/GameDataService.js';
 
 class ActionProcessor {
   constructor(gameStateManager) {
     this.gameStateManager = gameStateManager;
+    this.gameDataService = new GameDataService(gameStateManager);
+
+    // Wrapper function for game logic compatibility
+    this.effectiveStatsWrapper = (drone, lane) => {
+      return this.gameDataService.getEffectiveStats(drone, lane);
+    };
+
     this.actionQueue = [];
     this.isProcessing = false;
     this.p2pManager = null;
@@ -450,7 +457,7 @@ class ActionProcessor {
       const localPlayerState = currentState[localPlayerId];
 
       // Calculate shields available this turn
-      const effectiveStats = gameEngine.calculateEffectiveStats(localPlayerState);
+      const effectiveStats = this.gameDataService.getEffectiveShipStats(localPlayerState, this.gameStateManager.getLocalPlacedSections());
       const shieldsPerTurn = effectiveStats.totals.shieldsPerTurn;
 
       stateUpdates.shieldsToAllocate = shieldsPerTurn;
@@ -519,7 +526,7 @@ class ActionProcessor {
     const newPlayer1State = gameEngine.calculateNewRoundPlayerState(
       currentState.player1,
       newTurn,
-      gameEngine.calculateEffectiveStats,
+      this.effectiveStatsWrapper,
       currentState.player2,
       currentState.placedSections
     );
@@ -527,7 +534,7 @@ class ActionProcessor {
     const newPlayer2State = gameEngine.calculateNewRoundPlayerState(
       currentState.player2,
       newTurn,
-      gameEngine.calculateEffectiveStats,
+      this.effectiveStatsWrapper,
       currentState.player1,
       currentState.opponentPlacedSections
     );

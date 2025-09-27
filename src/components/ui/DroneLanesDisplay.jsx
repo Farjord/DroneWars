@@ -6,6 +6,7 @@
 
 import React from 'react';
 import DroneToken from './DroneToken.jsx';
+import { useGameData } from '../../hooks/useGameData.js';
 
 /**
  * RENDER DRONES ON BOARD
@@ -57,10 +58,7 @@ const renderDronesOnBoard = (
   return (
     <div className="flex flex-wrap gap-8 pt-2 min-h-[100px] justify-center items-center">
      {drones.map((drone) => {
-          const player = isPlayer ? localPlayerState : opponentPlayerState;
-          const opponent = isPlayer ? opponentPlayerState : localPlayerState;
-          const sections = isPlayer ? localPlacedSections : opponentPlacedSections;
-          const effectiveStats = gameEngine.calculateEffectiveStats(drone, lane, player, opponent, getPlacedSectionsForEngine());
+          const effectiveStats = getEffectiveStats(drone, lane);
           return (
               <DroneToken
               key={drone.id}
@@ -143,6 +141,8 @@ const DroneLanesDisplay = ({
   mandatoryAction,
   setHoveredTarget
 }) => {
+  // Use GameDataService for computed data
+  const { getEffectiveStats } = useGameData();
   return (
     <div className="flex w-full justify-between gap-8 min-h-[160px]">
       {['lane1', 'lane2', 'lane3'].map((lane) => {

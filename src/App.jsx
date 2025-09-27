@@ -15,6 +15,7 @@ import CardSelectionModal from './CardSelectionModal';
 import MultiplayerLobby from './MultiplayerLobby';
 import WaitingOverlay from './components/WaitingOverlay';
 import { useGameState } from './hooks/useGameState';
+import { useGameData } from './hooks/useGameData';
 import fullDroneCollection from './data/droneData.js';
 import fullCardCollection from './data/cardData.js';
 import shipSectionData from './data/shipData.js';
@@ -87,6 +88,9 @@ const App = () => {
     gameStateManager,
     p2pManager
   } = useGameState();
+
+  // --- GAME DATA SERVICE INTEGRATION ---
+  const { getEffectiveStats, getEffectiveShipStats } = useGameData();
 
   // --- DEBUG AND DEVELOPMENT FLAGS ---
   const AI_HAND_DEBUG_MODE = true; // Set to false to disable clicking to see the AI's hand
@@ -451,7 +455,7 @@ const App = () => {
 
       if (!localPlayer.hand || localPlayer.hand.length === 0) {
         const localPlacedSections = getLocalPlacedSections();
-        const handSize = gameEngine.calculateEffectiveShipStats(localPlayer, localPlacedSections).totals.handLimit;
+        const handSize = getEffectiveShipStats(localPlayer, localPlacedSections).totals.handLimit;
         let newDeck = [...localPlayer.deck];
         let newHand = [];
 
@@ -556,13 +560,9 @@ const App = () => {
   const [reallocationAbility, setReallocationAbility] = useState(null);
 
   // --- PERFORMANCE OPTIMIZED COMPUTED VALUES ---
-  const localPlayerEffectiveStats = useMemo(() => {
-    return localPlayerState ? gameEngine.calculateEffectiveShipStats(localPlayerState, localPlacedSections) : null;
-  }, [localPlayerState?.shipSections, localPlacedSections]);
-
-  const opponentPlayerEffectiveStats = useMemo(() => {
-    return opponentPlayerState ? gameEngine.calculateEffectiveShipStats(opponentPlayerState, opponentPlacedSections) : null;
-  }, [opponentPlayerState?.shipSections, opponentPlacedSections]);
+  // Ship stats now use GameDataService for consistent caching with drone stats
+  const localPlayerEffectiveStats = localPlayerState ? getEffectiveShipStats(localPlayerState, localPlacedSections) : null;
+  const opponentPlayerEffectiveStats = opponentPlayerState ? getEffectiveShipStats(opponentPlayerState, opponentPlacedSections) : null;
 
   const totalLocalPlayerDrones = useMemo(() => {
     return localPlayerState ? Object.values(localPlayerState.dronesOnBoard).flat().length : 0;
@@ -1534,13 +1534,13 @@ const App = () => {
         <div className="flex justify-around items-center my-4 p-4 bg-black/20 rounded-lg">
           <div className="flex flex-col items-center">
             <h4 className="text-lg font-bold text-pink-400 mb-2">Attacker</h4>
-           <DroneToken drone={attacker} isPlayer={false} effectiveStats={gameEngine.calculateEffectiveStats(attacker, lane, opponentPlayerState, localPlayerState, getPlacedSectionsForEngine())} droneRefs={droneRefs} mandatoryAction={mandatoryAction} localPlayerState={localPlayerState}/>
+           <DroneToken drone={attacker} isPlayer={false} effectiveStats={getEffectiveStats(attacker, lane)} droneRefs={droneRefs} mandatoryAction={mandatoryAction} localPlayerState={localPlayerState}/>
           </div>
           <div className="text-4xl font-bold text-gray-500">VS</div>
           <div className="flex flex-col items-center">
             <h4 className="text-lg font-bold text-cyan-400 mb-2">Target</h4>
            {targetType === 'drone' ? (
-             <DroneToken drone={target} isPlayer={true} effectiveStats={gameEngine.calculateEffectiveStats(target, lane, localPlayerState, opponentPlayerState, getPlacedSectionsForEngine())} droneRefs={droneRefs} mandatoryAction={mandatoryAction} localPlayerState={localPlayerState} />
+             <DroneToken drone={target} isPlayer={true} effectiveStats={getEffectiveStats(target, lane)} droneRefs={droneRefs} mandatoryAction={mandatoryAction} localPlayerState={localPlayerState} />
 
            ) : (
              <div className="transform scale-75">
@@ -1571,7 +1571,7 @@ const App = () => {
              drone={drone}
              isPlayer={true}
              onClick={() => onIntercept(drone)}
-               effectiveStats={gameEngine.calculateEffectiveStats(drone, lane, localPlayerState, opponentPlayerState, getPlacedSectionsForEngine())}
+               effectiveStats={getEffectiveStats(drone, lane)}
                droneRefs={droneRefs}
                mandatoryAction={mandatoryAction}
                localPlayerState={localPlayerState}
@@ -2053,7 +2053,7 @@ const App = () => {
    */
   const drawPlayerHand = () => {
     // Draw cards to hand limit for local player
-    const effectiveStats = gameEngine.calculateEffectiveShipStats(localPlayerState, localPlacedSections).totals;
+    const effectiveStats = getEffectiveShipStats(localPlayerState, localPlacedSections).totals;
     let newDeck = [...localPlayerState.deck];
     let newHand = [...localPlayerState.hand];
     let newDiscardPile = [...localPlayerState.discardPile];
@@ -2842,7 +2842,7 @@ const App = () => {
     switch (phase) {
       case 'optionalDiscard':
         // AI hand limit enforcement
-        const opponentStats = gameEngine.calculateEffectiveShipStats(
+        const opponentStats = getEffectiveShipStats(
           opponentPlayerState,
           getOpponentPlacedSections()
         ).totals;
@@ -2946,7 +2946,7 @@ const App = () => {
     if (turnPhase === 'optionalDiscard') {
       // Round start draw - use direct GameStateManager updates
       const currentPlayerState = getLocalPlayerState();
-      const effectiveStats = gameEngine.calculateEffectiveShipStats(currentPlayerState, getLocalPlacedSections()).totals;
+      const effectiveStats = getEffectiveShipStats(currentPlayerState, getLocalPlacedSections()).totals;
 
       let newDeck = [...currentPlayerState.deck];
       let newHand = [...currentPlayerState.hand];
@@ -3000,8 +3000,8 @@ const App = () => {
     if (!isMultiplayer()) {
       const localPlayerState = getLocalPlayerState();
       const opponentPlayerState = getOpponentPlayerState();
-      const localStats = gameEngine.calculateEffectiveShipStats(localPlayerState, getLocalPlacedSections()).totals;
-      const opponentStats = gameEngine.calculateEffectiveShipStats(opponentPlayerState, getOpponentPlacedSections()).totals;
+      const localStats = getEffectiveShipStats(localPlayerState, getLocalPlacedSections()).totals;
+      const opponentStats = getEffectiveShipStats(opponentPlayerState, getOpponentPlacedSections()).totals;
 
       const localHandLimitMet = localPlayerState.hand.length <= localStats.handLimit;
 
@@ -3028,7 +3028,7 @@ const App = () => {
       // This would be handled by multiplayer synchronization
       // For now, assume single player completion triggers transition
       const localPlayerState = getLocalPlayerState();
-      const localStats = gameEngine.calculateEffectiveShipStats(localPlayerState, getLocalPlacedSections()).totals;
+      const localStats = getEffectiveShipStats(localPlayerState, getLocalPlacedSections()).totals;
       const localHandLimitMet = localPlayerState.hand.length <= localStats.handLimit;
 
       if (localHandLimitMet) {
@@ -3056,7 +3056,7 @@ const App = () => {
    */
   const handleRoundStartDraw_AI = () => {
     const opponentPlayerState = getOpponentPlayerState();
-    const opponentStats = gameEngine.calculateEffectiveShipStats(opponentPlayerState, getOpponentPlacedSections()).totals;
+    const opponentStats = getEffectiveShipStats(opponentPlayerState, getOpponentPlacedSections()).totals;
 
     let newDeck = [...opponentPlayerState.deck];
     let newHand = [...opponentPlayerState.hand];
@@ -3616,7 +3616,7 @@ useEffect(() => {
               console.log("SUCCESS: Lanes match. Checking for Guardian...");
               const opponentDronesInLane = opponentPlayerState.dronesOnBoard[targetLane];
               const hasGuardian = opponentDronesInLane.some(drone => {
-                  const effectiveStats = gameEngine.calculateEffectiveStats(drone, targetLane, opponentPlayerState, localPlayerState, getPlacedSectionsForEngine());
+                  const effectiveStats = getEffectiveStats(drone, targetLane);
                   return effectiveStats.keywords.has('GUARDIAN');
               });
 
@@ -3627,17 +3627,11 @@ useEffect(() => {
                   console.log("SUCCESS: No Guardian. Checking for interception.");
                   const attackDetails = { attacker: selectedDrone, target: token, targetType: 'drone', lane: attackerLane, attackingPlayer: getLocalPlayerId() };
 
-                  const effectiveAttacker = gameEngine.calculateEffectiveStats(
-                      selectedDrone, attackerLane, localPlayerState, opponentPlayerState,
-                      getPlacedSectionsForEngine()
-                  );
+                  const effectiveAttacker = getEffectiveStats(selectedDrone, attackerLane);
 
                   const potentialInterceptors = opponentPlayerState.dronesOnBoard[attackerLane]
                       .filter(d => {
-                          const effectiveInterceptor = gameEngine.calculateEffectiveStats(
-                              d, attackerLane, opponentPlayerState, localPlayerState,
-                              getPlacedSectionsForEngine()
-                          );
+                          const effectiveInterceptor = getEffectiveStats(d, attackerLane);
                           return !d.isExhausted &&
                                  (effectiveInterceptor.speed > effectiveAttacker.speed || effectiveInterceptor.keywords.has('ALWAYS_INTERCEPTS')) &&
                                  (d.id !== token.id);
@@ -3765,7 +3759,7 @@ useEffect(() => {
               console.log("SUCCESS: Found attacker lane. Checking for Guardian...");
               const opponentDronesInLane = opponentPlayerState.dronesOnBoard[attackerLane];
               const hasGuardian = opponentDronesInLane && opponentDronesInLane.some(drone => {
-                  const effectiveStats = gameEngine.calculateEffectiveStats(drone, attackerLane, opponentPlayerState, localPlayerState, getPlacedSectionsForEngine());
+                  const effectiveStats = getEffectiveStats(drone, attackerLane);
                   return effectiveStats.keywords.has('GUARDIAN');
               });
 
@@ -3776,17 +3770,11 @@ useEffect(() => {
                   console.log("SUCCESS: No Guardian. Checking for interception.");
                   const attackDetails = { attacker: selectedDrone, target: target, targetType: 'section', lane: attackerLane, attackingPlayer: getLocalPlayerId() };
 
-                  const effectiveAttacker = gameEngine.calculateEffectiveStats(
-                      selectedDrone, attackerLane, localPlayerState, opponentPlayerState,
-                      getPlacedSectionsForEngine()
-                  );
+                  const effectiveAttacker = getEffectiveStats(selectedDrone, attackerLane);
 
                   const potentialInterceptors = opponentPlayerState.dronesOnBoard[attackerLane]
                       .filter(d => {
-                          const effectiveInterceptor = gameEngine.calculateEffectiveStats(
-                              d, attackerLane, opponentPlayerState, localPlayerState,
-                              getPlacedSectionsForEngine()
-                          );
+                          const effectiveInterceptor = getEffectiveStats(d, attackerLane);
                           return !d.isExhausted &&
                                  (effectiveInterceptor.speed > effectiveAttacker.speed || effectiveInterceptor.keywords.has('ALWAYS_INTERCEPTS'));
                       })
@@ -4095,7 +4083,7 @@ useEffect(() => {
             const p2IsOver = totalOpponentPlayerDrones > opponentPlayerEffectiveStats.totals.cpuLimit;
             if (p2IsOver) {
                let newOpponentPlayer = {...opponentPlayerState};
-                    let dronesToDestroyCount = Object.values(opponentPlayerState.dronesOnBoard).flat().length - gameEngine.calculateEffectiveShipStats(opponentPlayerState, opponentPlacedSections).totals.cpuLimit;
+                    let dronesToDestroyCount = Object.values(opponentPlayerState.dronesOnBoard).flat().length - getEffectiveShipStats(opponentPlayerState, opponentPlacedSections).totals.cpuLimit;
                     for (let i = 0; i < dronesToDestroyCount; i++) {
                         const allDrones = Object.entries(newOpponentPlayer.dronesOnBoard).flatMap(([lane, drones]) => drones.map(d => ({...d, lane})));
                         if (allDrones.length === 0) break;
