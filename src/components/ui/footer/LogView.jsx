@@ -1,0 +1,79 @@
+// ========================================
+// LOG VIEW COMPONENT
+// ========================================
+// Game log display with table format and CSV download
+// Part of GameFooter component refactoring
+
+import React from 'react';
+import styles from '../GameFooter.module.css';
+
+/**
+ * LogView - Displays game log with download functionality
+ * @param {Object} props - Component props
+ * @param {Array} props.gameLog - Game log entries
+ * @param {Function} props.downloadLogAsCSV - Download log as CSV
+ * @param {Function} props.setAiDecisionLogToShow - Set AI decision log
+ */
+function LogView({
+  gameLog,
+  downloadLogAsCSV,
+  setAiDecisionLogToShow
+}) {
+  return (
+    <div className={styles.logContainer}>
+      <div className={styles.logHeader}>
+        <h3 className={styles.logTitle}>Game Log</h3>
+        <button
+          onClick={downloadLogAsCSV}
+          className={styles.downloadButton}
+        >
+          Download CSV
+        </button>
+      </div>
+      <div className={styles.logTableWrapper}>
+        <table className={styles.logTable}>
+          <thead className={styles.logTableHeader}>
+            <tr>
+              <th className={styles.logTableHeaderCell}>Rnd</th>
+              <th className={styles.logTableHeaderCell}>Timestamp (UTC)</th>
+              <th className={styles.logTableHeaderCell}>Player</th>
+              <th className={styles.logTableHeaderCell}>Action</th>
+              <th className={styles.logTableHeaderCell}>Source</th>
+              <th className={styles.logTableHeaderCell}>Target</th>
+              <th className={styles.logTableHeaderCell}>Outcome</th>
+              <th className={styles.logTableDebugHeader}>Debug Source</th>
+              <th className={styles.logTableHeaderCell}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {gameLog.map((entry, index) => (
+              <tr key={index} className={styles.logTableRow}>
+                <td className={styles.logTableCellBold}>{entry.round}</td>
+                <td className={styles.logTableCellGray}>{new Date(entry.timestamp).toLocaleTimeString('en-GB', { timeZone: 'UTC' })}</td>
+                <td className={styles.logTableCellCyan}>{entry.player}</td>
+                <td className={styles.logTableCellYellow}>{entry.actionType}</td>
+                <td className={styles.logTableCell}>{entry.source}</td>
+                <td className={styles.logTableCell}>{entry.target}</td>
+                <td className={styles.logTableCellGrayText}>{entry.outcome}</td>
+                <td className={styles.logTableCellDebug}>{entry.debugSource}</td>
+                <td className={styles.logTableCellCenter}>
+                  {entry.aiDecisionContext && (
+                    <button
+                      onClick={() => setAiDecisionLogToShow(entry.aiDecisionContext)}
+                      className={styles.aiDecisionButton}
+                      title="Show AI Decision Logic"
+                    >
+                      ℹ️
+                    </button>
+                  )}
+                </td>
+              </tr>
+            )).reverse()}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export default LogView;

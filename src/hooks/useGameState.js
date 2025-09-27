@@ -84,9 +84,7 @@ export const useGameState = () => {
   }, [gameState.gameMode, gameState.placedSections, gameState.opponentPlacedSections, gameState.turnPhase]);
 
   // State update methods
-  const updateGameState = useCallback((updates, eventType) => {
-    gameStateManager.setState(updates, eventType);
-  }, []);
+  // updateGameState removed - use managers for state transitions
 
   const updatePlayers = useCallback((player1Updates, player2Updates) => {
     gameStateManager.updatePlayers(player1Updates, player2Updates);
@@ -100,17 +98,7 @@ export const useGameState = () => {
     gameStateManager.setPlayerStates(newPlayer1, newPlayer2);
   }, []);
 
-  const setCurrentPlayer = useCallback((playerId) => {
-    gameStateManager.setCurrentPlayer(playerId);
-  }, []);
-
-  const setTurnPhase = useCallback((phase) => {
-    gameStateManager.setTurnPhase(phase);
-  }, []);
-
-  const setFirstPlayerOfRound = useCallback((playerId) => {
-    gameStateManager.setFirstPlayerOfRound(playerId);
-  }, []);
+  // Direct state setters removed - use managers for phase transitions
 
   const setFirstPasserOfPreviousRound = useCallback((playerId) => {
     gameStateManager.setFirstPasserOfPreviousRound(playerId);
@@ -207,13 +195,9 @@ export const useGameState = () => {
     getOpponentPlacedSections,
 
     // State management
-    updateGameState,
     updatePlayers,
     updatePlayerState,
     setPlayerStates,
-    setCurrentPlayer,
-    setTurnPhase,
-    setFirstPlayerOfRound,
     setFirstPasserOfPreviousRound,
     setFirstPlayerOverride,
     setPassInfo,

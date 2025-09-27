@@ -14,7 +14,7 @@ import fullDroneCollection from '../data/droneData.js';
  * No access to game player data - pure lobby functionality
  */
 function LobbyScreen() {
-  const { gameState, updateGameState, gameStateManager } = useGameState();
+  const { gameState, gameStateManager } = useGameState();
   const [selectedAI, setSelectedAI] = useState(null);
 
   const isSinglePlayer = gameState.gameMode === 'local';
@@ -22,7 +22,7 @@ function LobbyScreen() {
 
   const handleBackToMenu = () => {
     console.log('🔙 Returning to main menu');
-    updateGameState({ appState: 'menu', gameMode: 'local' });
+    gameStateManager.setState({ appState: 'menu', gameMode: 'local' });
   };
 
   const handleSelectAI = (ai) => {

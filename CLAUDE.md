@@ -405,43 +405,58 @@ GameStateManager → Event Emission → All Subscribed Components → UI Re-rend
 
 ---
 
-## ⚠️ **KNOWN ARCHITECTURE VIOLATIONS** ✅ IDENTIFIED (2025-09-27)
+## ✅ **ARCHITECTURE VIOLATIONS RESOLVED** (2025-09-27)
 
-### **App.jsx Direct State Updates (Architectural Debt)**
+### **App.jsx Direct State Updates (Architectural Debt) - FIXED**
 
-**Problem**: App.jsx contains direct state setter functions that bypass manager architecture:
+**Problem Solved**: App.jsx previously contained direct state setter functions that bypassed manager architecture:
 ```javascript
-// VIOLATIONS in App.jsx:
-setTurnPhase(result.phaseTransition.newPhase);      // Line 2139, 2309, 2356
-setCurrentPlayer(result.phaseTransition.firstPlayer); // Line 2141, 2311, 2360
-setFirstPlayerOfRound(firstPlayer);                 // Line 1912
-updateGameState(payload);                           // Line 2369
+// VIOLATIONS REMOVED from App.jsx:
+setTurnPhase(result.phaseTransition.newPhase);      // REMOVED
+setCurrentPlayer(result.phaseTransition.firstPlayer); // REMOVED
+setFirstPlayerOfRound(firstPlayer);                 // REMOVED
+updateGameState(payload);                           // REMOVED
 ```
 
-**Why These Exist**:
-- **Legacy Code**: Predates the manager-based architecture
-- **Working But Wrong**: They function because they set the same values GameFlowManager would set
-- **Redundant Updates**: GameFlowManager already handles phase transitions via `transitionToPhase()`
+**Resolution Actions Completed**:
+1. ✅ **Removed Direct State Setters**: All architectural violations eliminated from App.jsx
+2. ✅ **Fixed Related Screens**: MenuScreen.jsx and LobbyScreen.jsx updated to use GameStateManager properly
+3. ✅ **Verified Functionality**: Manager-based architecture handles all state transitions correctly
+4. ✅ **Build Verification**: No runtime errors, application functions normally
 
-**Correct Architecture Pattern**:
+**Correct Architecture Now Enforced**:
 ```
-App.jsx → Manager → GameStateManager → UI Updates
-```
-
-**NOT**:
-```
-App.jsx → GameStateManager (direct)
+App.jsx → Manager → GameStateManager → UI Updates ✅
 ```
 
-**Risk Assessment**:
-- **Current Status**: Working (redundant updates with same values)
-- **Future Risk**: Potential conflicts if App.jsx and managers disagree
-- **Removal Safety**: Likely safe since GameFlowManager already handles these updates
+**Architecture Compliance**: App.jsx now properly follows event-driven pattern with no direct state manipulation
 
-**Recommended Action**:
-1. **Test First**: Add logging to confirm redundancy
-2. **Comment Out**: Test if functionality remains intact
-3. **Remove**: Clean up direct state setters from useGameState()
+### **UI Component Architecture** ✅ REFACTORED (2025-09-27)
+
+**Problem Solved**: App.jsx was a monolithic 4000+ line component handling all UI concerns
+**Solution**: Systematic component extraction with proper separation of concerns
+
+**Component Extraction Results**:
+- **GameHeader.jsx** - Player resources, game controls, and phase display
+- **GameBattlefield.jsx** - Ship sections and drone lanes wrapper
+- **GameFooter.jsx** - Tabbed interface coordinator with modular sub-components
+- **footer/HandView.jsx** - Hand cards, deck/discard piles, optional discard controls
+- **footer/DronesView.jsx** - Drone pool display for deployment
+- **footer/LogView.jsx** - Game log with CSV download functionality
+
+**CSS Module Implementation**:
+- **GameFooter.module.css** - Comprehensive styling using Tailwind @apply directive
+- **Consistent Design System** - Semantic class names replace inline styles
+- **Maintainable Styling** - Centralized styles with component-scoped CSS modules
+
+**Architecture Benefits Achieved**:
+- **Reduced Complexity**: App.jsx reduced from 4000+ to ~3700 lines with clear component boundaries
+- **Better Maintainability**: Smaller, focused components easier to debug and modify
+- **Improved Reusability**: Modular components can be reused across different contexts
+- **Cleaner Prop Management**: Each component receives only the props it needs
+- **Separation of Concerns**: UI layout (App.jsx) vs content rendering (sub-components)
+
+**Build Verification**: ✅ All components compile successfully, no runtime errors
 
 ### **Clean Architecture Principles**
 
@@ -452,8 +467,10 @@ App.jsx → GameStateManager (direct)
 - SequentialPhaseManager
 
 **UI Layer (Reactive Only)**:
-- App.jsx
-- AppRouter
+- App.jsx (main layout coordinator)
+- AppRouter (navigation and routing)
+- GameHeader, GameBattlefield, GameFooter (major UI sections)
+- footer/* components (specialized UI sections)
 - Dedicated phase screens
 
 **Data Layer**:

@@ -12,19 +12,19 @@ import { useGameState } from '../hooks/useGameState.js';
  * No access to game state or player data - pure menu functionality
  */
 function MenuScreen() {
-  const { updateGameState } = useGameState();
+  const { gameStateManager } = useGameState();
   const [showModeSelection, setShowModeSelection] = useState(false);
 
   const handleSinglePlayer = () => {
     console.log('🎮 Selected: Single Player');
     // Transition to lobby for AI selection
-    updateGameState({ appState: 'lobby', gameMode: 'local' });
+    gameStateManager.setState({ appState: 'lobby', gameMode: 'local' });
   };
 
   const handleMultiplayer = () => {
     console.log('🎮 Selected: Multiplayer');
     // Transition to lobby for multiplayer setup
-    updateGameState({ appState: 'lobby', gameMode: 'multiplayer' });
+    gameStateManager.setState({ appState: 'lobby', gameMode: 'multiplayer' });
   };
 
   const handleShowModes = () => {

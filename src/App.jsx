@@ -18,11 +18,9 @@ import { useGameState } from './hooks/useGameState';
 import { useGameData } from './hooks/useGameData';
 import fullDroneCollection from './data/droneData.js';
 import fullCardCollection from './data/cardData.js';
-import shipSectionData from './data/shipData.js';
-import aiPersonalities from './data/aiData.js';
 import { aiBrain } from './logic/aiLogic.js';
-import { gameEngine, startingDecklist } from './logic/gameLogic.js';
-import { getRandomDrones, getElementCenter, getPhaseDisplayName } from './utils/gameUtils.js';
+import { gameEngine } from './logic/gameLogic.js';
+import { getElementCenter, getPhaseDisplayName } from './utils/gameUtils.js';
 import gameFlowManager from './state/GameFlowManager.js';
 import simultaneousActionManager from './state/SimultaneousActionManager.js';
 import aiPhaseProcessor from './state/AIPhaseProcessor.js';
@@ -41,6 +39,9 @@ import UpgradeSelectionModal from './components/modals/UpgradeSelectionModal.jsx
 import ViewUpgradesModal from './components/modals/ViewUpgradesModal.jsx';
 import DestroyUpgradeModal from './components/modals/DestroyUpgradeModal.jsx';
 import DetailedDroneModal from './components/modals/debug/DetailedDroneModal.jsx';
+import GameHeader from './components/ui/GameHeader.jsx';
+import GameBattlefield from './components/ui/GameBattlefield.jsx';
+import GameFooter from './components/ui/GameFooter.jsx';
 
 // ========================================
 // MAIN APPLICATION COMPONENT
@@ -52,27 +53,17 @@ const App = () => {
   // --- CENTRALIZED GAME STATE ---
   const {
     gameState,
-    p2pStatus,
     isMyTurn,
     getLocalPlayerId,
     getOpponentPlayerId,
     isMultiplayer,
-    isLocalPlayer,
     getLocalPlayerState,
     getOpponentPlayerState,
     getLocalPlacedSections,
     getOpponentPlacedSections,
-    updateGameState,
-    updatePlayers,
     updatePlayerState,
-    setPlayerStates,
-    setCurrentPlayer,
-    setTurnPhase,
-    setFirstPlayerOfRound,
     setFirstPasserOfPreviousRound,
     setFirstPlayerOverride,
-    setPassInfo,
-    updatePassInfo,
     addLogEntry,
     resetGame,
     setWinner,
@@ -200,7 +191,7 @@ const App = () => {
       unsubscribeGameFlow();
       unsubscribeSimultaneous();
     };
-  }, [isMultiplayer, getLocalPlayerId, setTurnPhase, setModalContent]);
+  }, [isMultiplayer, getLocalPlayerId, setModalContent]);
 
   // GameFlowManager now handles phase transitions automatically
   // No manual phase starting needed
@@ -1909,7 +1900,6 @@ const App = () => {
       reason: 'proceedToFirstTurn'
     });
 
-    setFirstPlayerOfRound(firstPlayer);
     setShowFirstPlayerModal(true);
   };
 
@@ -2134,13 +2124,7 @@ const App = () => {
         updatePlayerState('player2', result.newGameState.player2);
       }
 
-      // Handle phase transition if needed
-      if (result.phaseTransition) {
-        setTurnPhase(result.phaseTransition.newPhase);
-        if (result.phaseTransition.firstPlayer) {
-          setCurrentPlayer(result.phaseTransition.firstPlayer);
-        }
-      }
+      // Phase transitions are handled by GameFlowManager automatically
     } else {
       // Action phase shield operations - use ActionProcessor
       await processAction('endShieldAllocation', {
@@ -2304,13 +2288,7 @@ const App = () => {
               updatePlayerState('player2', result.newGameState.player2);
             }
 
-            // Handle phase transition if needed
-            if (result.phaseTransition) {
-              setTurnPhase(result.phaseTransition.newPhase);
-              if (result.phaseTransition.firstPlayer) {
-                setCurrentPlayer(result.phaseTransition.firstPlayer);
-              }
-            }
+            // Phase transitions are handled by GameFlowManager automatically
 
             return { success: true, result };
           }
@@ -2349,25 +2327,8 @@ const App = () => {
           }
           break;
 
-        // Phase transition actions (for simultaneous phases)
-        case 'phaseTransition':
-          if (!['deployment', 'action'].includes(turnPhase)) {
-            console.log(`🔄 Simultaneous phase transition: ${turnPhase} -> ${payload.newPhase}`);
-            setTurnPhase(payload.newPhase);
-
-            // Handle any additional state updates
-            if (payload.firstPlayer) {
-              setCurrentPlayer(payload.firstPlayer);
-            }
-
-            return { success: true, message: `Transitioned to ${payload.newPhase}` };
-          }
-          break;
-
-        // Generic state updates
-        case 'updateGameState':
-          updateGameState(payload);
-          return { success: true, message: 'Game state updated directly' };
+        // Phase transitions are handled by GameFlowManager automatically
+        // updateGameState actions should go through managers, not direct updates
 
         default:
           console.warn(`⚠️ Unhandled simultaneous action: ${actionType} in phase ${turnPhase}`);
@@ -3681,402 +3642,103 @@ useEffect(() => {
      <TargetingArrow visible={arrowState.visible} start={arrowState.start} end={arrowState.end} lineRef={arrowLineRef} />
      {explosions.map(exp => <Explosion key={exp.id} top={exp.top} left={exp.left} />)}
 
-      {(
-        <header className="w-full flex justify-between items-center mb-2 flex-shrink-0 px-5 pt-8">
-          <div className="flex flex-col items-start gap-2">
-            <h2 className="text-lg font-bold text-pink-300 flex items-center">
-              Opponent Resources
-              {(turnPhase === 'deployment' || turnPhase === 'action') && firstPlayerOfRound === getOpponentPlayerId() && <span className="text-base font-semibold text-yellow-300 ml-2">(First Player)</span>}
-              {(turnPhase === 'deployment' || turnPhase === 'action') && passInfo[`${getOpponentPlayerId()}Passed`] && <span className="text-base font-semibold text-red-400 ml-2">(Passed)</span>}
-            </h2>
-            <div className="flex items-center gap-4">
-              <div className={`flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-pink-500/50 ${opponentPlayerState.energy > opponentPlayerEffectiveStats.totals.maxEnergy ? 'text-red-400' : ''}`}><Bolt className="text-yellow-300 mr-2" /> <span className="font-bold text-lg">{opponentPlayerState.energy} / {opponentPlayerEffectiveStats.totals.maxEnergy}</span></div>
-              <div
-                onClick={() => AI_HAND_DEBUG_MODE && setTimeout(() => setShowAiHandModal(true), 100)}
-                className={`flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-pink-500/50 ${AI_HAND_DEBUG_MODE ? 'cursor-pointer hover:bg-gray-800' : ''} ${opponentPlayerState.hand.length > opponentPlayerEffectiveStats.totals.handLimit ? 'text-red-400' : ''}`}
-              >
-                <Hand className="text-gray-400 mr-2" />
-                <span className="font-bold text-lg">{opponentPlayerState.hand.length} / {opponentPlayerEffectiveStats.totals.handLimit}</span>
-                </div>
-                {turnPhase === 'deployment' && <div className="flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-pink-500/50"><Rocket className="text-purple-400 mr-2" /> <span className="font-bold text-lg">{turn === 1 ? opponentPlayerState.initialDeploymentBudget : opponentPlayerState.deploymentBudget}</span></div>}
-                <div className={`flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-pink-500/50 ${totalOpponentPlayerDrones > opponentPlayerEffectiveStats.totals.cpuLimit ? 'text-red-400' : ''}`}><Cpu className="text-cyan-400 mr-2" /> <span className="font-bold text-lg">{totalOpponentPlayerDrones} / {opponentPlayerEffectiveStats.totals.cpuLimit}</span></div>
-                </div>
-          </div>
-          <div className="text-center flex flex-col items-center">
-            <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 drop-shadow-xl font-orbitron" style={{ textShadow: '0 0 15px rgba(236, 72, 153, 0.5), 0 0 5px rgba(255, 255, 255, 0.5)' }}>Drone Wars</h1>
-            <div className="flex items-center gap-4 mt-2">
-              <h2 className="text-2xl font-bold text-gray-300 tracking-widest font-exo">{getPhaseDisplayName(turnPhase)}</h2>
-              
-              {/* --- NEW BUTTON LOCATION --- */}
-              {(turnPhase === 'deployment' || turnPhase === 'action') && isMyTurn() && !mandatoryAction && !multiSelectState && (
-                <button
-                    onClick={handlePlayerPass}
-                    disabled={passInfo[`${getLocalPlayerId()}Passed`]}
-                    className={`btn-clipped text-white font-bold py-1 px-6 transition-colors duration-200 ${
-                        passInfo[`${getLocalPlayerId()}Passed`] ? 'bg-gray-700 cursor-not-allowed' : 'bg-red-600 hover:bg-red-500'
-                    }`}
-                >
-                    Pass
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <h2 className="text-lg font-bold text-cyan-300 flex items-center">
-              Your Resources
-              {(turnPhase === 'deployment' || turnPhase === 'action') && firstPlayerOfRound === getLocalPlayerId() && <span className="text-base font-semibold text-yellow-300 ml-2">(First Player)</span>}
-              {(turnPhase === 'deployment' || turnPhase === 'action') && passInfo[`${getLocalPlayerId()}Passed`] && <span className="text-base font-semibold text-red-400 ml-2">(Passed)</span>}
-</h2>
-<div className="flex items-center gap-6">
-  <div className={`flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-cyan-500/50 ${localPlayerState.energy > localPlayerEffectiveStats.totals.maxEnergy ? 'text-red-400' : ''}`}><Bolt className="text-yellow-300 mr-2" /> <span className="font-bold text-lg">{localPlayerState.energy} / {localPlayerEffectiveStats.totals.maxEnergy}</span></div>
-        {turnPhase === 'deployment' && <div className="flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-cyan-500/50"><Rocket className="text-purple-400 mr-2" /> <span className="font-bold text-lg">{turn === 1 ? localPlayerState.initialDeploymentBudget : localPlayerState.deploymentBudget}</span></div>}
-        <div className={`flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-cyan-500/50 ${totalLocalPlayerDrones > localPlayerEffectiveStats.totals.cpuLimit ? 'text-red-400' : ''}`}><Cpu className="text-cyan-400 mr-2" /> <span className="font-bold text-lg">{totalLocalPlayerDrones} / {localPlayerEffectiveStats.totals.cpuLimit}</span></div>
-        {turnPhase === 'allocateShields' && <div className="flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-cyan-500/50"><ShieldCheck className="text-cyan-300 mr-2" /> <span className="font-bold text-lg">{shieldsToAllocate}</span></div>}
-        {reallocationPhase === 'removing' && <div className="flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-orange-500/50"><ShieldCheck className="text-orange-300 mr-2" /> <span className="font-bold text-lg">{shieldsToRemove}</span></div>}
-        {reallocationPhase === 'adding' && <div className="flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-green-500/50"><ShieldCheck className="text-green-300 mr-2" /> <span className="font-bold text-lg">{shieldsToAdd}</span></div>}
-              <button onClick={handleReset} className="bg-pink-700 text-white p-3 rounded-full shadow-lg hover:bg-pink-600 transition-colors duration-200" aria-label="Reset Game"><RotateCcw /></button>
-              <button className="bg-slate-700 text-white p-3 rounded-full shadow-lg hover:bg-slate-600 transition-colors duration-200"><Settings /></button>
-            </div>
-          </div>
-        </header>
-      )}
+      <GameHeader
+        localPlayerState={localPlayerState}
+        opponentPlayerState={opponentPlayerState}
+        localPlayerEffectiveStats={localPlayerEffectiveStats}
+        opponentPlayerEffectiveStats={opponentPlayerEffectiveStats}
+        turnPhase={turnPhase}
+        turn={turn}
+        passInfo={passInfo}
+        firstPlayerOfRound={firstPlayerOfRound}
+        shieldsToAllocate={shieldsToAllocate}
+        shieldsToRemove={shieldsToRemove}
+        shieldsToAdd={shieldsToAdd}
+        reallocationPhase={reallocationPhase}
+        totalLocalPlayerDrones={totalLocalPlayerDrones}
+        totalOpponentPlayerDrones={totalOpponentPlayerDrones}
+        getLocalPlayerId={getLocalPlayerId}
+        getOpponentPlayerId={getOpponentPlayerId}
+        isMyTurn={isMyTurn}
+        handlePlayerPass={handlePlayerPass}
+        handleReset={handleReset}
+        mandatoryAction={mandatoryAction}
+        multiSelectState={multiSelectState}
+        AI_HAND_DEBUG_MODE={AI_HAND_DEBUG_MODE}
+        setShowAiHandModal={setShowAiHandModal}
+      />
       
-      <main className="flex-grow min-h-0 w-full flex flex-col items-center overflow-y-auto px-5 pb-4">
-        {/* All pre-game phases now handled by AppRouter - only active gameplay here */}
-        <>
-          <div className="flex flex-col items-center w-full space-y-2">
-                      {(() => {
-                        return <ShipSectionsDisplay player={opponentPlayerState} isPlayer={false} placedSections={opponentPlacedSections} onTargetClick={handleTargetClick} isInteractive={false} selectedCard={selectedCard} validCardTargets={validCardTargets} gameEngine={gameEngine} turnPhase={turnPhase} isMyTurn={isMyTurn} passInfo={passInfo} getLocalPlayerId={getLocalPlayerId} localPlayerState={localPlayerState} shipAbilityMode={shipAbilityMode} hoveredTarget={hoveredTarget} setHoveredTarget={setHoveredTarget} />;
-                      })()}
-                      <DroneLanesDisplay player={opponentPlayerState} isPlayer={false} onLaneClick={handleLaneClick} getLocalPlayerId={getLocalPlayerId} getOpponentPlayerId={getOpponentPlayerId} abilityMode={abilityMode} validAbilityTargets={validAbilityTargets} selectedCard={selectedCard} validCardTargets={validCardTargets} multiSelectState={multiSelectState} turnPhase={turnPhase} localPlayerState={localPlayerState} opponentPlayerState={opponentPlayerState} localPlacedSections={localPlacedSections} opponentPlacedSections={opponentPlacedSections} gameEngine={gameEngine} getPlacedSectionsForEngine={getPlacedSectionsForEngine} handleTokenClick={handleTokenClick} handleAbilityIconClick={handleAbilityIconClick} selectedDrone={selectedDrone} recentlyHitDrones={recentlyHitDrones} potentialInterceptors={potentialInterceptors} droneRefs={droneRefs} mandatoryAction={mandatoryAction} setHoveredTarget={setHoveredTarget} />
-                      <DroneLanesDisplay player={localPlayerState} isPlayer={true} onLaneClick={handleLaneClick} getLocalPlayerId={getLocalPlayerId} getOpponentPlayerId={getOpponentPlayerId} abilityMode={abilityMode} validAbilityTargets={validAbilityTargets} selectedCard={selectedCard} validCardTargets={validCardTargets} multiSelectState={multiSelectState} turnPhase={turnPhase} localPlayerState={localPlayerState} opponentPlayerState={opponentPlayerState} localPlacedSections={localPlacedSections} opponentPlacedSections={opponentPlacedSections} gameEngine={gameEngine} getPlacedSectionsForEngine={getPlacedSectionsForEngine} handleTokenClick={handleTokenClick} handleAbilityIconClick={handleAbilityIconClick} selectedDrone={selectedDrone} recentlyHitDrones={recentlyHitDrones} potentialInterceptors={potentialInterceptors} droneRefs={droneRefs} mandatoryAction={mandatoryAction} setHoveredTarget={setHoveredTarget} />
+      <GameBattlefield
+        localPlayerState={localPlayerState}
+        opponentPlayerState={opponentPlayerState}
+        localPlacedSections={localPlacedSections}
+        opponentPlacedSections={opponentPlacedSections}
+        selectedCard={selectedCard}
+        validCardTargets={validCardTargets}
+        abilityMode={abilityMode}
+        validAbilityTargets={validAbilityTargets}
+        multiSelectState={multiSelectState}
+        turnPhase={turnPhase}
+        reallocationPhase={reallocationPhase}
+        shipAbilityMode={shipAbilityMode}
+        hoveredTarget={hoveredTarget}
+        selectedDrone={selectedDrone}
+        recentlyHitDrones={recentlyHitDrones}
+        potentialInterceptors={potentialInterceptors}
+        droneRefs={droneRefs}
+        mandatoryAction={mandatoryAction}
+        gameEngine={gameEngine}
+        getLocalPlayerId={getLocalPlayerId}
+        getOpponentPlayerId={getOpponentPlayerId}
+        isMyTurn={isMyTurn}
+        getPlacedSectionsForEngine={getPlacedSectionsForEngine}
+        passInfo={passInfo}
+        handleTargetClick={handleTargetClick}
+        handleLaneClick={handleLaneClick}
+        handleShipSectionClick={handleShipSectionClick}
+        handleShipAbilityClick={handleShipAbilityClick}
+        handleTokenClick={handleTokenClick}
+        handleAbilityIconClick={handleAbilityIconClick}
+        setHoveredTarget={setHoveredTarget}
+      />
 
-
-                      <ShipSectionsDisplay player={localPlayerState} isPlayer={true} placedSections={localPlacedSections} onSectionClick={handleShipSectionClick} onAbilityClick={handleShipAbilityClick} onTargetClick={handleTargetClick} isInteractive={turnPhase === 'allocateShields' || reallocationPhase} selectedCard={selectedCard} validCardTargets={validCardTargets} reallocationPhase={reallocationPhase} gameEngine={gameEngine} turnPhase={turnPhase} isMyTurn={isMyTurn} passInfo={passInfo} getLocalPlayerId={getLocalPlayerId} localPlayerState={localPlayerState} shipAbilityMode={shipAbilityMode} hoveredTarget={hoveredTarget} setHoveredTarget={setHoveredTarget} />
-              </div>
-        </>
-      </main>
-
-       {(
-        <footer className="w-full flex flex-col items-center flex-shrink-0">
-          <div className="flex justify-center">
-              <button onClick={() => handleFooterButtonClick('hand')} 
-                   className={`px-8 py-2 rounded-t-lg font-bold transition-colors ${ isFooterOpen && footerView === 'hand' ? 'bg-slate-800 text-white' : 'bg-slate-900 hover:bg-slate-800 text-cyan-300'}`}
-              >
-             <span className="flex items-center gap-2">
-                     {isFooterOpen && footerView === 'hand' && <ChevronUp size={20} />}
-                     Hand ({localPlayerState.hand.length}/{localPlayerEffectiveStats.totals.handLimit})
-                   </span>
-              </button> 
-             <button onClick={() => handleFooterButtonClick('drones')} 
-                  className={`px-8 py-2 rounded-t-lg font-bold transition-colors ${ isFooterOpen && footerView === 'drones' ? 'bg-slate-800 text-white' : 'bg-slate-900 hover:bg-slate-800 text-cyan-300'}`}
-             >
-                  <span className="flex items-center gap-2">
-                    {isFooterOpen && footerView === 'drones' && <ChevronUp size={20} />}
-                    Drones
-                  </span>
-             </button>
-
-             <button onClick={() => handleFooterButtonClick('log')} 
-                  className={`px-8 py-2 rounded-t-lg font-bold transition-colors ${ isFooterOpen && footerView === 'log' ? 'bg-slate-800 text-white' : 'bg-slate-900 hover:bg-slate-800 text-cyan-300'}`}
-             >
-                  <span className="flex items-center gap-2">
-                    {isFooterOpen && footerView === 'log' && <ChevronUp size={20} />}
-                    Log ({gameLog.length})
-                  </span>
-             </button> 
-             </div> 
-
-          <div className={`relative w-full bg-slate-800/80 backdrop-blur-sm transition-all duration-500 ease-in-out overflow-hidden ${isFooterOpen ? 'max-h-[500px] opacity-100 p-4' : 'max-h-0 opacity-0'}`}>
-              {multiSelectState && (
-                  <div className="absolute top-4 right-4 z-10 flex items-center gap-4 bg-slate-900/80 p-2 rounded-lg border border-purple-500/50">
-                      <span className="text-white font-semibold text-sm w-48 text-center">
-                          {multiSelectState.phase === 'select_source_lane' && 'Reposition: Select a source lane'}
-                          {multiSelectState.phase === 'select_drones' && `Select Drones (${multiSelectState.selectedDrones.length} / ${multiSelectState.maxSelection})`}
-                          {multiSelectState.phase === 'select_destination_lane' && 'Reposition: Select a destination lane'}
-                      </span>
-
-                      <button
-                          onClick={(e) => {
-                              e.stopPropagation();
-                              cancelCardSelection();
-                          }}
-                          className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded-full transition-colors duration-200"
-                      >
-                          Cancel
-                      </button>
-
-                      {multiSelectState.phase === 'select_drones' && (
-                          <button
-                              onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (multiSelectState.selectedDrones.length > 0) {
-                                      setMultiSelectState(prev => ({...prev, phase: 'select_destination_lane'}));
-                                  }
-                              }}
-                              disabled={multiSelectState.selectedDrones.length === 0}
-                              className={`text-white font-bold py-2 px-4 rounded-full transition-colors duration-200 ${
-                                  multiSelectState.selectedDrones.length === 0 ? 'bg-gray-700 cursor-not-allowed' : 'bg-green-600 hover:bg-green-500'
-                              }`}
-                          >
-                              Confirm Drones
-                          </button>
-                      )}
-                  </div>
-              )}
-            {footerView === 'hand' ? (
-              (() => {
-                // --- NEW DYNAMIC LAYOUT LOGIC ---
-                const cardWidthPx = 208;
-                const gapPx = 16;
-                const maxCardsBeforeFan = 7;
-                const applyFanEffect = localPlayerState.hand.length > maxCardsBeforeFan;
-               // The target width is the space needed for 7 cards with a standard gap.
-                const targetHandWidthPx = (maxCardsBeforeFan * cardWidthPx) + ((maxCardsBeforeFan - 1) * gapPx);
-                const numCards = localPlayerState.hand.length;
-
-                let marginLeftPx = 0;
-                if (numCards > 1) {
-                  // This dynamically calculates the margin (positive or negative) to fit the cards into the target width.
-                  const spaceBetweenCards = (targetHandWidthPx - cardWidthPx) / (numCards - 1);
-                  marginLeftPx = spaceBetweenCards - cardWidthPx;
-                }
-
-                return (
-                  <div className="flex flex-row justify-between w-full items-center">
-                    <div className="flex flex-col items-center w-32 min-w-32">
-                      <div onClick={() => setIsViewDiscardModalOpen(true)} className="w-24 h-32 bg-gray-900/80 rounded-lg border-2 border-gray-700 flex items-center justify-center shadow-md cursor-pointer hover:bg-gray-800/80 transition-colors duration-200"><p className="font-bold text-sm text-gray-400">{localPlayerState.discardPile.length}</p></div>
-                      <p className="mt-2 text-xs text-gray-400 font-semibold">Discard Pile</p>
-                    </div>
-
-                    <div className="flex flex-col items-center flex-grow min-w-0">
-                      <div className="flex items-center gap-4 mb-2">
-                        <h3 className={`text-lg font-semibold ${localPlayerState.hand.length > localPlayerEffectiveStats.totals.handLimit ? 'text-red-400' : 'text-white'}`}>Your Hand ({localPlayerState.hand.length}/{localPlayerEffectiveStats.totals.handLimit})</h3>
-                      </div>
-                      {mandatoryAction?.type === 'discard' && mandatoryAction.fromAbility && (
-                          <p className="text-yellow-400 font-bold mb-2">You must discard {mandatoryAction.count} card(s).</p>
-                      )}
-                      <div 
-                        className="relative flex justify-center items-center h-[350px]" 
-                        style={ applyFanEffect ? { width: `${targetHandWidthPx}px` } : {} }
-                      >
-                        <div className={`flex justify-center items-center ${!applyFanEffect && 'gap-2'}`}>
-                          {localPlayerState.hand.map((card, index) => {
-                            const hoveredIndex = hoveredCardId ? localPlayerState.hand.findIndex(c => c.instanceId === hoveredCardId) : -1;
-                            let transformClass = '';
-                            let style = { zIndex: index };
-
-                            if (applyFanEffect && hoveredIndex !== -1) {
-                              if (index < hoveredIndex) {
-                                transformClass = 'transform -translate-x-12';
-                              } else if (index > hoveredIndex) {
-                                transformClass = 'transform translate-x-12';
-                              } else {
-                                transformClass = 'transform -translate-y-8 scale-105';
-                                style.zIndex = 50;
-                              }
-                            }
-                            
-                            if (applyFanEffect && index > 0) {
-                              style.marginLeft = `${marginLeftPx}px`;
-                            }
-
-                            return (
-                              <div
-                                key={card.instanceId}
-                                className={`transition-all duration-300 ease-in-out ${transformClass}`}
-                                style={style}
-                                onMouseEnter={() => setHoveredCardId(card.instanceId)}
-                                onMouseLeave={() => setHoveredCardId(null)}
-                              >
-                                <ActionCard
-                                  card={card}
-                                  isPlayable={
-                                    (turnPhase === 'action' &&
-                                      isMyTurn() &&
-                                      !passInfo[`${getLocalPlayerId()}Passed`] &&
-                                      localPlayerState.energy >= card.cost &&
-                                      (!card.targeting || gameEngine.getValidTargets(getLocalPlayerId(), null, card, localPlayerState, opponentPlayerState).length > 0)) ||
-                                    (turnPhase === 'optionalDiscard' && optionalDiscardCount < localPlayerEffectiveStats.totals.discardLimit)
-                                  }
-                                  isMandatoryTarget={mandatoryAction?.type === 'discard'}
-                                  onClick={
-                                    mandatoryAction?.type === 'discard'
-                                      ? (c) => setConfirmationModal({ type: 'discard', target: c, onConfirm: () => handleConfirmMandatoryDiscard(c), onCancel: () => setConfirmationModal(null), text: `Are you sure you want to discard ${c.name}?` })
-                                      : turnPhase === 'optionalDiscard'
-                                        ? (c) => setConfirmationModal({ type: 'discard', target: c, onConfirm: () => handleRoundStartDiscard(c), onCancel: () => setConfirmationModal(null), text: `Are you sure you want to discard ${c.name}?` })
-                                        : handleCardClick
-                                  }
-                                />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-center w-32 min-w-32">
-                      <div onClick={() => setIsViewDeckModalOpen(true)} className="w-24 h-32 bg-indigo-900/50 rounded-lg border-2 border-purple-500 flex items-center justify-center shadow-md cursor-pointer hover:bg-indigo-800/50 transition-colors duration-200"><p className="font-bold text-sm text-white">{localPlayerState.deck.length}</p></div>
-                      <p className="mt-2 text-xs text-gray-400 font-semibold">Deck</p>
-                      {turnPhase === 'optionalDiscard' && (
-                        <div className="flex flex-col items-center">
-                          <p className="text-sm text-gray-400 mb-2">Discarded: {optionalDiscardCount} / {localPlayerEffectiveStats.discardLimit}</p>
-                          <button onClick={() => { handleRoundStartDraw(); checkBothPlayersHandLimitComplete(); }} className={`mt-4 text-white font-bold py-2 px-4 rounded-full transition-colors duration-200 bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/20`}>
-                            Finish Discarding
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()
-            ) : footerView === 'drones' ? (
-              <div className="flex flex-col items-center mb-4 w-full">
-               <div className="flex flex-wrap justify-center gap-4">
-                   {sortedLocalActivePool.map((drone, index) => {
-                       const totalResource = turn === 1 ? localPlayerState.initialDeploymentBudget + localPlayerState.energy : localPlayerState.energy;
-                       const canAfford = totalResource >= drone.class;
-                       const isUpgradeTarget = selectedCard?.type === 'Upgrade' && validCardTargets.some(t => t.id === drone.name);
-                       
-                       return (
-                           <DroneCard 
-                               key={index} 
-                               drone={drone} 
-                               onClick={handleToggleDroneSelection} 
-                               isSelected={selectedDrone && selectedDrone.name === drone.name} 
-                               isSelectable={(turnPhase === 'deployment' && isMyTurn() && !passInfo[`${getLocalPlayerId()}Passed`] && canAfford && !mandatoryAction) || isUpgradeTarget}
-                               deployedCount={localPlayerState.deployedDroneCounts[drone.name] || 0}
-                               appliedUpgrades={localPlayerState.appliedUpgrades[drone.name] || []}
-                               isUpgradeTarget={isUpgradeTarget}
-                               onViewUpgrades={(d, upgrades) => setViewUpgradesModal({ droneName: d.name, upgrades })}
-                         />
-                           
-                       );
-                     })}
-               </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center w-full h-full max-h-[350px]">
-                <div className="flex justify-between items-center w-full mb-2 px-4">
-                  <h3 className="text-lg font-semibold text-white">Game Log</h3>
-                  <button 
-                    onClick={downloadLogAsCSV} 
-                    className="bg-purple-600 text-white font-bold py-2 px-4 rounded-full hover:bg-purple-700 transition-colors"
-                  >
-                    Download CSV
-                  </button>
-                </div>
-                <div className="w-full flex-grow bg-black/30 rounded-lg p-2 overflow-y-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="sticky top-0 bg-slate-800">
-                      <tr>
-                        <th className="p-2">Rnd</th>
-                        <th className="p-2">Timestamp (UTC)</th>
-                        <th className="p-2">Player</th>
-                        <th className="p-2">Action</th>
-                        <th className="p-2">Source</th>
-                        <th className="p-2">Target</th>
-                        <th className="p-2">Outcome</th>
-                        <th className="p-2 text-xs text-gray-500">Debug Source</th>
-                        <th className="p-2"></th> 
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {gameLog.map((entry, index) => (
-                        <tr key={index} className={`border-b border-gray-700/50 hover:bg-slate-700/50`}>
-                          <td className="p-2 font-bold">{entry.round}</td>
-                          <td className="p-2 text-gray-500">{new Date(entry.timestamp).toLocaleTimeString('en-GB', { timeZone: 'UTC' })}</td>
-                          <td className="p-2 text-cyan-300">{entry.player}</td>
-                          <td className="p-2 text-yellow-300">{entry.actionType}</td>
-                          <td className="p-2">{entry.source}</td>
-                          <td className="p-2">{entry.target}</td>
-                          <td className="p-2 text-gray-400">{entry.outcome}</td>
-                          <td className="p-2 text-xs text-gray-500">{entry.debugSource}</td>
-                          <td className="p-2 text-center">
-                            {entry.aiDecisionContext && (
-                              <button 
-                                onClick={() => setAiDecisionLogToShow(entry.aiDecisionContext)} 
-                                className="text-gray-400 hover:text-white"
-                                title="Show AI Decision Logic"
-                              >
-                                ℹ️
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      )).reverse()}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-            {turnPhase === 'allocateShields' &&
-    <div className="flex justify-center items-center gap-4 mt-8">
-        <button onClick={handleResetShieldAllocation} className={`text-white font-bold py-3 px-8 rounded-full transition-colors duration-200 bg-pink-600 hover:bg-pink-700 shadow-lg shadow-pink-500/30`}>Reset Allocation</button>
-
-        <div className="flex items-center gap-3 text-white bg-slate-900/80 border border-cyan-500/50 px-6 py-2 rounded-full shadow-lg">
-            <ShieldCheck size={20} className="text-cyan-300" />
-            <span className="font-bold text-lg font-orbitron tracking-wider">
-                {shieldsToAllocate} / {localPlayerEffectiveStats.totals.shieldsPerTurn}
-            </span>
-            <span className="text-sm text-gray-400">Shields to Allocate</span>
-        </div>
-
-        <button onClick={handleEndAllocation} className="text-white font-bold py-3 px-8 rounded-full transition-colors duration-200 bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/30">End Allocation</button>
-    </div>
-}
-
-            {/* Shield Reallocation UI */}
-            {reallocationPhase && (
-              <div className="flex justify-center items-center gap-4 mt-8">
-                <button onClick={handleResetReallocation} className="text-white font-bold py-3 px-8 rounded-full transition-colors duration-200 bg-pink-600 hover:bg-pink-700 shadow-lg shadow-pink-500/30">
-                  Reset Reallocation
-                </button>
-
-                {reallocationPhase === 'removing' && (
-                  <>
-                    <div className="flex items-center gap-3 text-white bg-slate-900/80 border border-orange-500/50 px-6 py-2 rounded-full shadow-lg">
-                      <ShieldCheck size={20} className="text-orange-300" />
-                      <span className="font-bold text-lg font-orbitron tracking-wider">
-                        {shieldsToRemove}
-                      </span>
-                      <span className="text-sm text-gray-400">Shields to Remove</span>
-                    </div>
-
-                    {shieldsToAdd > 0 && (
-                      <button onClick={handleContinueToAddPhase} className="text-white font-bold py-3 px-8 rounded-full transition-colors duration-200 bg-green-600 hover:bg-green-700 shadow-lg shadow-green-500/30">
-                        Continue to Add Phase ({shieldsToAdd})
-                      </button>
-                    )}
-                  </>
-                )}
-
-                {reallocationPhase === 'adding' && (
-                  <>
-                    <div className="flex items-center gap-3 text-white bg-slate-900/80 border border-green-500/50 px-6 py-2 rounded-full shadow-lg">
-                      <ShieldCheck size={20} className="text-green-300" />
-                      <span className="font-bold text-lg font-orbitron tracking-wider">
-                        {shieldsToAdd}
-                      </span>
-                      <span className="text-sm text-gray-400">Shields to Add</span>
-                    </div>
-
-                    {shieldsToAdd === 0 && (
-                      <button onClick={handleConfirmReallocation} className="text-white font-bold py-3 px-8 rounded-full transition-colors duration-200 bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/30">
-                        Confirm Reallocation
-                      </button>
-                    )}
-                  </>
-                )}
-
-                <button onClick={handleCancelReallocation} className="text-white font-bold py-3 px-8 rounded-full transition-colors duration-200 bg-gray-600 hover:bg-gray-700 shadow-lg shadow-gray-500/30">
-                  Cancel
-                </button>
-              </div>
-            )}
-          </div>
-        </footer>
-      )}
+      <GameFooter
+        localPlayerState={localPlayerState}
+        localPlayerEffectiveStats={localPlayerEffectiveStats}
+        sortedLocalActivePool={sortedLocalActivePool}
+        gameLog={gameLog}
+        footerView={footerView}
+        isFooterOpen={isFooterOpen}
+        multiSelectState={multiSelectState}
+        selectedCard={selectedCard}
+        turnPhase={turnPhase}
+        mandatoryAction={mandatoryAction}
+        handleFooterButtonClick={handleFooterButtonClick}
+        handleCardClick={handleCardClick}
+        cancelCardSelection={cancelCardSelection}
+        downloadLogAsCSV={downloadLogAsCSV}
+        getLocalPlayerId={getLocalPlayerId}
+        isMyTurn={isMyTurn}
+        hoveredCardId={hoveredCardId}
+        setHoveredCardId={setHoveredCardId}
+        setIsViewDiscardModalOpen={setIsViewDiscardModalOpen}
+        setIsViewDeckModalOpen={setIsViewDeckModalOpen}
+        optionalDiscardCount={optionalDiscardCount}
+        handleRoundStartDraw={handleRoundStartDraw}
+        checkBothPlayersHandLimitComplete={checkBothPlayersHandLimitComplete}
+        handleToggleDroneSelection={handleToggleDroneSelection}
+        selectedDrone={selectedDrone}
+        setViewUpgradesModal={setViewUpgradesModal}
+        handleConfirmMandatoryDiscard={handleConfirmMandatoryDiscard}
+        handleRoundStartDiscard={handleRoundStartDiscard}
+        setConfirmationModal={setConfirmationModal}
+        turn={turn}
+        passInfo={passInfo}
+        validCardTargets={validCardTargets}
+        gameEngine={gameEngine}
+        opponentPlayerState={opponentPlayerState}
+        setAiDecisionLogToShow={setAiDecisionLogToShow}
+      />
 
       {/* Modals are unaffected and remain at the end */}
       {modalContent && <GamePhaseModal title={modalContent.title} text={modalContent.text} onClose={modalContent.onClose === null ? null : (modalContent.onClose || (() => setModalContent(null)))}>{modalContent.children}</GamePhaseModal>}

@@ -9,6 +9,7 @@ import { useGameState } from '../../hooks/useGameState.js';
 import { WaitingForOpponentScreen } from './DroneSelectionScreen.jsx';
 import { gameEngine, startingDecklist } from '../../logic/gameLogic.js';
 import simultaneousActionManager from '../../state/SimultaneousActionManager.js';
+import gameFlowManager from '../../state/GameFlowManager.js';
 
 /**
  * DECK SELECTION SCREEN COMPONENT
@@ -22,7 +23,6 @@ function DeckSelectionScreen() {
     isMultiplayer,
     getLocalPlayerState,
     getOpponentPlayerState,
-    setTurnPhase,
     addLogEntry
   } = useGameState();
 
@@ -107,9 +107,8 @@ function DeckSelectionScreen() {
     } else if (choice === 'custom') {
       console.log('🔧 Transitioning to deck building phase');
 
-      // Transition to deck building phase
-      // TODO: Will be refactored when we handle deckBuilding phase properly
-      setTurnPhase('deckBuilding');
+      // Transition to deck building phase through GameFlowManager
+      gameFlowManager.transitionToPhase('deckBuilding');
     }
   };
 
