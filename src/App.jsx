@@ -442,55 +442,7 @@ const App = () => {
 
   // --- PHASE TRANSITION FUNCTIONS ---
 
-  /**
-   * END ACTION PHASE
-   * Transitions from action phase to round end, showing the round end modal.
-   * Called when both players pass during action phase.
-   */
-  const endActionPhase = useCallback(async () => {
-    // Process round transition and start next round automatically
-    setSelectedCard(null);
-    setSelectedDrone(null);
-    setAbilityMode(null);
-    setMultiSelectState(null);
-    setFirstPasserOfPreviousRound(passInfo.firstPasser);
 
-    // Use processAction for complete round start logic
-    await processAction('roundStart', {
-      newTurn: turn + 1,
-      trigger: 'roundEndModal'
-    });
-
-    // Continue with turn procedures automatically
-    beginTurnProcedures();
-
-    // Show informational modal about round ending (will be dismissed by user)
-    setShowRoundEndModal(true);
-  }, [processAction, turn, passInfo.firstPasser]);
-
-  /**
-   * END DEPLOYMENT PHASE
-   * Transitions from deployment phase to action phase, showing the action start modal.
-   * Called when both players pass during deployment phase.
-   */
-  const endDeploymentPhase = async () => {
-    // Transition to action phase
-    const firstActor = firstPlayerOfRound;
-
-    // Use processAction for phase and player transition
-    await processAction('phaseTransition', {
-      newPhase: 'action',
-      resetPassInfo: true // Let ActionProcessor handle pass info reset
-    });
-
-    await processAction('turnTransition', {
-      newPlayer: firstActor,
-      reason: 'startActionPhase'
-    });
-
-    // Show informational modal after transitions are complete
-    setShowActionPhaseStartModal(true);
-  };
 
   // --- TURN MANAGEMENT ---
   const endTurn = useCallback(async (actingPlayer) => {
@@ -504,10 +456,6 @@ const App = () => {
 
     // Handle game state transitions through ActionProcessor
     switch (transition.type) {
-      case 'END_PHASE':
-        if (transition.phase === 'deployment') endDeploymentPhase();
-        if (transition.phase === 'action') endActionPhase();
-        break;
 
       case 'CONTINUE_TURN':
         await processAction('turnTransition', {
@@ -538,7 +486,7 @@ const App = () => {
           break;
       }
     });
-  }, [endActionPhase]);
+  }, []);
   
 
   useEffect(() => {
@@ -1560,72 +1508,7 @@ const App = () => {
     );
   };
   
-  /**
-   * BEGIN TURN PROCEDURES
-   * Initiates turn start sequence including mandatory discards and hand limit checks.
-   * Handles both player and AI hand management.
-   */
-  const beginTurnProcedures = () => {
-    setModalContent(null); // Close the 'Start of Turn' modal
 
-    // Use consolidated hand limit checking
-    const playerStates = { player1: gameState.player1, player2: gameState.player2 };
-    const effectiveStats = {
-      player1: { totals: localPlayerEffectiveStats.totals },
-      player2: { totals: opponentPlayerEffectiveStats.totals }
-    };
-
-    const violations = gameEngine.checkHandLimitViolations(playerStates, effectiveStats);
-    const localPlayerId = getLocalPlayerId();
-
-    if (violations[localPlayerId].needsDiscard) {
-      setMandatoryAction({
-        type: 'discard',
-        player: localPlayerId,
-        count: violations[localPlayerId].discardCount
-      });
-      setShowMandatoryActionModal(true);
-    } else {
-      // REMOVED: Hand limit enforcement should only happen during dedicated discard phase
-      // Hand limits are display-only during normal gameplay
-      startOptionalDiscardPhase();
-    }
-  };
-
-  /**
-   * HANDLE START NEW ROUND
-   * Processes round transition including state reset and energy regeneration.
-   * Updates both players and initiates turn procedures.
-   */
-  const handleStartNewRound = async () => {
-    setShowRoundEndModal(false);
-    setSelectedCard(null);
-    setSelectedDrone(null);
-    setAbilityMode(null);
-    setMultiSelectState(null);
-    setFirstPasserOfPreviousRound(passInfo.firstPasser);
-
-    // Use processAction for complete round start logic
-    await processAction('roundStart', {
-      newTurn: turn + 1,
-      trigger: 'roundEndModal'
-    });
-
-    // --- MODIFIED: Show a modal before starting the discard phases ---
-    setModalContent({
-        title: 'Start of a New Round',
-        text: 'The new round has begun. You will now resolve any mandatory discards, followed by an optional discard phase. Afterwards, you will automatically draw cards to your hand limit.', 
-        onClose: beginTurnProcedures,
-        isBlocking: true,
-        children: (
-          <div className="flex justify-center mt-6">
-            <button onClick={beginTurnProcedures} className="btn-continue">
-              Begin
-            </button>
-          </div>
-        )
-    });
-  };
 
   /**
    * HANDLE POST DISCARD ACTION
@@ -1638,60 +1521,6 @@ const App = () => {
     startOptionalDiscardPhase();
   };
 
-  /**
-   * START DEPLOYMENT COMPLIANCE CHECK
-   * Initiates drone limit compliance checking for both players.
-   * Handles over-limit drone destruction in first player order.
-   */
-  const startDeploymentComplianceCheck = () => {
-   setShowFirstPlayerModal(false);
-
-    const firstPlayerIsOverLimit = totalLocalPlayerDrones > localPlayerEffectiveStats.totals.cpuLimit;
-    const secondPlayerIsOverLimit = totalOpponentPlayerDrones > opponentPlayerEffectiveStats.totals.cpuLimit;
-    const checkOrder = firstPlayerOfRound === getLocalPlayerId() ? [getLocalPlayerId(), getOpponentPlayerId()] : [getOpponentPlayerId(), getLocalPlayerId()];
-//
-
-    const resolvePlayerCompliance = (player) => {
-      if (player === getLocalPlayerId()) {
-        if (firstPlayerIsOverLimit) {
-         setMandatoryAction({
-            type: 'destroy',
-            player: getLocalPlayerId(),
-            count: totalLocalPlayerDrones - localPlayerEffectiveStats.totals.cpuLimit,
-          });
-         setShowMandatoryActionModal(true);
-          return true;
-        }
-      } else {
-        if (secondPlayerIsOverLimit) {
-           // AI over CPU limit - destroy lowest class drones
-           let newOpponentPlayer = {...opponentPlayerState};
-           let dronesToDestroyCount = Object.values(opponentPlayerState.dronesOnBoard).flat().length - opponentPlayerEffectiveStats.totals.cpuLimit;
-           for (let i = 0; i < dronesToDestroyCount; i++) {
-               const allDrones = Object.entries(newOpponentPlayer.dronesOnBoard).flatMap(([lane, drones]) => drones.map(d => ({...d, lane})));
-               if (allDrones.length === 0) break;
-
-               const lowestClass = Math.min(...allDrones.map(d => d.class));
-               const candidates = allDrones.filter(d => d.class === lowestClass);
-               const droneToDestroy = candidates[Math.floor(Math.random() * candidates.length)];
-
-               newOpponentPlayer.dronesOnBoard[droneToDestroy.lane] = newOpponentPlayer.dronesOnBoard[droneToDestroy.lane].filter(d => d.id !== droneToDestroy.id);
-               const onDestroyUpdates = gameEngine.onDroneDestroyed(newOpponentPlayer, droneToDestroy);
-               Object.assign(newOpponentPlayer, onDestroyUpdates);
-           }
-           newOpponentPlayer.dronesOnBoard = gameEngine.updateAuras(newOpponentPlayer, getLocalPlayerState(), getPlacedSectionsForEngine());
-           updatePlayerState(getOpponentPlayerId(), newOpponentPlayer);
-        }
-      }
-      return false; 
-    };
-    
-    if (!resolvePlayerCompliance(checkOrder[0])) {
-      if (!resolvePlayerCompliance(checkOrder[1])) {
-       handleStartDeploymentPhase();
-      }
-    }
-  };
 
 
   // --- DEFENSIVE STATE CLEANUP ---
@@ -1841,40 +1670,6 @@ const App = () => {
   };
     
  
-  /**
-   * HANDLE START ACTION PHASE
-   * Transitions from deployment to action phase.
-   * Sets first player and displays appropriate turn modal.
-   */
-  const handleStartActionPhase = async () => {
-   setShowActionPhaseStartModal(false);
-   const firstActor = firstPlayerOfRound;
-
-   // Use processAction for phase and player transition
-   await processAction('phaseTransition', {
-     newPhase: 'action',
-     resetPassInfo: true // Let ActionProcessor handle pass info reset
-   });
-
-   await processAction('turnTransition', {
-     newPlayer: firstActor,
-     reason: 'startActionPhase'
-   });
-
-    // Don't show turn modals if game has ended
-    if (winner) return;
-
-    if (firstActor === getLocalPlayerId()) {
-     setModalContent({
-            title: "Action Phase Begins",
-            text: "It's your turn to act. Select a drone to move or attack, play a card, or use an ability.",
-            isBlocking: true
-        });
-} else {
- setOpponentTurnData({ phase: 'action', actionType: 'action' });
- setShowOpponentTurnModal(true);
-}
-  };
   
   /**
    * DRAW PLAYER HAND
@@ -2704,34 +2499,6 @@ const App = () => {
     });
   };
 
-  /**
-   * HANDLE START DEPLOYMENT PHASE
-   * Initiates deployment phase with appropriate turn modals.
-   * Sets first player and displays deployment instructions.
-   */
-  const handleStartDeploymentPhase = async () => {
-   // Use processAction for phase transition
-   await processAction('phaseTransition', {
-     newPhase: 'deployment',
-     resetPassInfo: true // Let ActionProcessor handle pass info reset
-   });
-
-    // Don't show turn modals if game has ended
-    if (winner) return;
-
-    const deploymentResource = turn === 1 ? 'Initial Deployment Points' : 'Energy';
-    if (firstPlayerOfRound === getLocalPlayerId()) {
-      // TODO: REMOVE AFTER TESTING - Deployment start modal disabled
-      // setModalContent({
-      //   title: "Your Turn to Deploy",
-      //   text: `Select a drone and a lane to deploy it. Drones cost ${deploymentResource} this turn. Or, click "Pass" to end your deployment for this phase.`,
-      //   isBlocking: true
-      // });
-} else {
- setOpponentTurnData({ phase: 'deployment', actionType: 'deploy' });
- setShowOpponentTurnModal(true);
-}
-  };
 
 
   // Legacy startPlacementPhase function removed - now handled by GameFlowManager + utility functions
@@ -2860,17 +2627,6 @@ const App = () => {
     executeDeployment(lane);
   };
 
-  /**
-   * HANDLE CONFIRM DEPLOYMENT
-   * Confirms deployment after showing cost confirmation.
-   * Executes the deployment and clears confirmation state.
-   */
-  const handleConfirmDeployment = () => {
-    if (!deploymentConfirmation) return;
-    const { lane, budgetCost, energyCost } = deploymentConfirmation;
-   executeDeployment(lane);
-   setDeploymentConfirmation(null);
-  };
 
   /**
    * HANDLE PLAYER PASS
@@ -3414,32 +3170,6 @@ useEffect(() => {
     }
   };
 
-  /**
-   * EXECUTE MOVE
-   * Executes confirmed drone movement with effects and exhaustion.
-   * Applies on-move effects and updates auras after movement.
-   */
-  const executeMove = () => {
-    if (!moveConfirmation) return;
-    const { drone, from, to } = moveConfirmation;
-
-    addLogEntry({ player: localPlayerState.name, actionType: 'MOVE', source: drone.name, target: to, outcome: `Moved from ${from} to ${to}.` }, 'playerMove');
-
-    let tempState = JSON.parse(JSON.stringify(localPlayerState));
-    tempState.dronesOnBoard[from] = tempState.dronesOnBoard[from].filter(d => d.id !== drone.id);
-    const movedDrone = { ...drone, isExhausted: true };
-    tempState.dronesOnBoard[to].push(movedDrone);
-
-    const { newState: stateAfterMove } = gameEngine.applyOnMoveEffects(tempState, movedDrone, from, to, addLogEntry);
-
-    stateAfterMove.dronesOnBoard = gameEngine.updateAuras(stateAfterMove, opponentPlayerState, getPlacedSectionsForEngine());
-
-    updatePlayerState(getLocalPlayerId(), stateAfterMove);
-
-    setMoveConfirmation(null);
-    setSelectedDrone(null);
-    endTurn(getLocalPlayerId());
-  };
   
   /**
    * HANDLE CONFIRM MANDATORY DISCARD
@@ -3534,7 +3264,6 @@ useEffect(() => {
                     newOpponentPlayer.dronesOnBoard = gameEngine.updateAuras(newOpponentPlayer, getLocalPlayerState(), getPlacedSectionsForEngine());
                     updatePlayerState(getOpponentPlayerId(), newOpponentPlayer);
             }
-           handleStartDeploymentPhase();
             return null;
         }
         return { ...prev, count: newCount };
@@ -3624,13 +3353,6 @@ useEffect(() => {
     );
   }, [localPlayerState.shipSections, localPlacedSections]);
 
-  const getFirstPlayerReasonText = () => {
-    if (turn === 1) {
-      return "The first player is determined randomly for the first round.";
-    }
-    const passerName = firstPasserOfPreviousRound === getLocalPlayerId() ? localPlayerState.name : opponentPlayerState.name;
-    return `${passerName} passed first in the previous round, securing the initiative.`;
-  };
 
  
   return (
@@ -3771,7 +3493,8 @@ useEffect(() => {
         localPlayerId={getLocalPlayerId()}
         localPlayerName={localPlayerState.name}
         opponentPlayerName={opponentPlayerState.name}
-        reasonText={getFirstPlayerReasonText()}
+        turn={turn}
+        firstPasserOfPreviousRound={firstPasserOfPreviousRound}
         onContinue={() => setShowFirstPlayerModal(false)}
       />
       <ActionPhaseStartModal
@@ -3792,7 +3515,13 @@ useEffect(() => {
                            <GamePhaseModal title="Confirm Deployment" text={`This deployment will use ${deploymentConfirmation.budgetCost} Initial Deployment points and cost ${deploymentConfirmation.energyCost} Energy. Proceed?`} onClose={() => setDeploymentConfirmation(null)}>
                                <div className="flex justify-center gap-4 mt-6">
                                    <button onClick={() => setDeploymentConfirmation(null)} className="bg-pink-600 text-white font-bold py-2 px-6 rounded-full hover:bg-pink-700 transition-colors">Cancel</button>
-                                   <button onClick={handleConfirmDeployment} className="bg-green-600 text-white font-bold py-2 px-6 rounded-full hover:bg-green-700 transition-colors">Confirm</button>
+                                   <button onClick={async () => {
+                                     if (!deploymentConfirmation) return;
+                                     const { lane } = deploymentConfirmation;
+
+                                     await executeDeployment(lane);
+                                     setDeploymentConfirmation(null);
+                                   }} className="bg-green-600 text-white font-bold py-2 px-6 rounded-full hover:bg-green-700 transition-colors">Confirm</button>
                                </div>
                            </GamePhaseModal>
                        )}
@@ -3800,7 +3529,20 @@ useEffect(() => {
             <GamePhaseModal title="Confirm Move" text={`Move ${moveConfirmation.drone.name} from ${moveConfirmation.from} to ${moveConfirmation.to}? The drone will be exhausted.`} onClose={() => setMoveConfirmation(null)}>
                 <div className="flex justify-center gap-4 mt-6">
                     <button onClick={() => setMoveConfirmation(null)} className="bg-pink-600 text-white font-bold py-2 px-6 rounded-full hover:bg-pink-700 transition-colors">Cancel</button>
-                    <button onClick={executeMove} className="bg-green-600 text-white font-bold py-2 px-6 rounded-full hover:bg-green-700 transition-colors">Confirm</button>
+                    <button onClick={async () => {
+                      if (!moveConfirmation) return;
+                      const { drone, from, to } = moveConfirmation;
+
+                      await processAction('move', {
+                        droneId: drone.id,
+                        fromLane: from,
+                        toLane: to,
+                        playerId: getLocalPlayerId()
+                      });
+
+                      setMoveConfirmation(null);
+                      setSelectedDrone(null);
+                    }} className="bg-green-600 text-white font-bold py-2 px-6 rounded-full hover:bg-green-700 transition-colors">Confirm</button>
                 </div>
             </GamePhaseModal>
            )}

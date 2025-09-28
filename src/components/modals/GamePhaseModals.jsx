@@ -14,7 +14,8 @@ import GamePhaseModal from '../ui/GamePhaseModal.jsx';
  * @param {string} localPlayerId - ID of the local player
  * @param {string} localPlayerName - Name of the local player
  * @param {string} opponentPlayerName - Name of the opponent player
- * @param {string} reasonText - Text explaining why this player goes first
+ * @param {number} turn - Current turn number
+ * @param {string} firstPasserOfPreviousRound - ID of player who passed first last round
  * @param {Function} onContinue - Callback when continue button is clicked
  */
 export const FirstPlayerModal = ({
@@ -23,12 +24,23 @@ export const FirstPlayerModal = ({
   localPlayerId,
   localPlayerName,
   opponentPlayerName,
-  reasonText,
+  turn,
+  firstPasserOfPreviousRound,
   onContinue
 }) => {
   if (!show) return null;
 
   const firstPlayerName = firstPlayerOfRound === localPlayerId ? localPlayerName : opponentPlayerName;
+
+  // Calculate reason text internally
+  let reasonText;
+  if (turn === 1) {
+    reasonText = "The first player is determined randomly for the first round.";
+  } else {
+    const passerName = firstPasserOfPreviousRound === localPlayerId ? localPlayerName : opponentPlayerName;
+    reasonText = `${passerName} passed first in the previous round, securing the initiative.`;
+  }
+
   const modalText = `${firstPlayerName} will go first this round. ${reasonText}`;
 
   return (
