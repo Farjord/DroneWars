@@ -35,6 +35,10 @@ class SimultaneousActionManager {
         player1: { completed: false, discardedCards: [] },
         player2: { completed: false, discardedCards: [] }
       },
+      optionalDiscard: {
+        player1: { completed: false, discardedCards: [] },
+        player2: { completed: false, discardedCards: [] }
+      },
       allocateShields: {
         player1: { completed: false, shieldAllocation: [] },
         player2: { completed: false, shieldAllocation: [] }
@@ -163,6 +167,23 @@ class SimultaneousActionManager {
     }, {
       validate: (data) => Array.isArray(data.discardedCards),
       errorMessage: 'Invalid discard data'
+    });
+  }
+
+  /**
+   * Submit optional discard for a player
+   * @param {string} playerId - The player ID submitting the discard
+   * @param {Array} discardedCards - Array of cards to discard (can be empty)
+   * @returns {Object} Submission result
+   */
+  submitOptionalDiscard(playerId, discardedCards) {
+    console.log(`🚀 SimultaneousActionManager.submitOptionalDiscard: ${playerId} discarding ${discardedCards.length} cards`);
+
+    return this.commitPlayerAction(playerId, 'optionalDiscard', {
+      discardedCards
+    }, {
+      validate: (data) => Array.isArray(data.discardedCards),
+      errorMessage: 'Invalid optional discard data'
     });
   }
 
@@ -328,6 +349,10 @@ class SimultaneousActionManager {
         // Handle discard logic
         break;
 
+      case 'optionalDiscard':
+        // Handle optional discard logic
+        break;
+
       case 'allocateShields':
         // Handle shield allocation logic
         break;
@@ -374,6 +399,13 @@ class SimultaneousActionManager {
         case 'mandatoryDiscard':
           // AI discard logic when implemented
           this.submitMandatoryDiscard('player2', []);
+          break;
+
+        case 'optionalDiscard':
+          // AI optional discard logic through AIPhaseProcessor
+          const gameState = this.gameStateManager.getState();
+          aiResult = await this.aiPhaseProcessor.executeOptionalDiscardTurn(gameState);
+          this.submitOptionalDiscard('player2', aiResult.cardsToDiscard);
           break;
 
         case 'allocateShields':

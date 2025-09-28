@@ -466,6 +466,41 @@ class AIPhaseProcessor {
   }
 
   /**
+   * Execute AI turn for optional discard phase
+   * @param {Object} gameState - Current game state
+   * @returns {Promise<Object>} Execution result
+   */
+  async executeOptionalDiscardTurn(gameState) {
+    console.log('🤖 AIPhaseProcessor.executeOptionalDiscardTurn starting...');
+
+    if (!this.actionProcessor) {
+      throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
+    }
+
+    const aiState = gameState.player2;
+
+    // Auto-pass if AI has no cards
+    if (!aiState.hand || aiState.hand.length === 0) {
+      console.log('🤖 AI has no cards, auto-passing optional discard');
+      return {
+        type: 'optionalDiscard',
+        cardsToDiscard: [],
+        playerId: 'player2'
+      };
+    }
+
+    // For now, AI always passes (discards 0 cards) during optional discard
+    // This can be enhanced later with strategic discard logic
+    console.log('🤖 AI choosing to discard 0 cards during optional discard phase');
+
+    return {
+      type: 'optionalDiscard',
+      cardsToDiscard: [],
+      playerId: 'player2'
+    };
+  }
+
+  /**
    * Determine if AI should pass in the current phase
    * @param {Object} gameState - Current game state
    * @param {string} phase - Current phase (deployment, action)

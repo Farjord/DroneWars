@@ -290,10 +290,6 @@ const App = () => {
   }, [gameState.placedSections, gameState.opponentPlacedSections]);
 
 
-  // Helper to update GameStateManager with engine results
-  const updateGameStateFromEngineResult = useCallback((engineResult) => {
-    gameStateManager.setPlayerStates(engineResult.player1, engineResult.player2);
-  }, []);
   useEffect(() => {
     passInfoRef.current = passInfo;
   }, [passInfo]);
@@ -377,7 +373,6 @@ const App = () => {
   const [mandatoryAction, setMandatoryAction] = useState(null); // e.g., { type: 'discard'/'destroy', player: getLocalPlayerId(), count: X }
   const [showMandatoryActionModal, setShowMandatoryActionModal] = useState(false);
   const [confirmationModal, setConfirmationModal] = useState(null); // For confirm/cancel popups
-  const [optionalDiscardCount, setOptionalDiscardCount] = useState(0); // For optional discard phase
   const [cardSelectionModal, setCardSelectionModal] = useState(null); // For search and draw card selection
 
   // --- SHIELD REALLOCATION STATE ---
@@ -638,20 +633,14 @@ const App = () => {
    * @param {string} sectionName - Name of the ship section using the ability
    * @param {Object} target - The target of the ability (if any)
    */
-  const resolveShipAbility = useCallback((ability, sectionName, target) => {
-    // Use gameEngine for all ship abilities
-    const result = gameEngine.resolveShipAbility(
-        ability,
-        sectionName,
-        target,
-        getPlayerStatesForEngine(),
-        getPlacedSectionsForEngine(),
-        (logEntry) => addLogEntry(logEntry, 'resolveShipAbility'),
-        resolveAttack // Pass the attack callback for damage effects
-    );
-
-    // Update player states
-    updateGameStateFromEngineResult(result.newPlayerStates);
+  const resolveShipAbility = useCallback(async (ability, sectionName, target) => {
+    // Use ActionProcessor instead of direct gameEngine call
+    const result = await processAction('shipAbility', {
+      ability: ability,
+      sectionName: sectionName,
+      targetId: target?.id || null,
+      playerId: getLocalPlayerId()
+    });
 
     // Handle UI state based on result
     if (result.mandatoryAction) {
@@ -678,7 +667,8 @@ const App = () => {
         endTurn(getLocalPlayerId());
     }
 
-}, [addLogEntry, endTurn, localPlacedSections, opponentPlacedSections, resolveAttack]);
+    return result;
+}, [processAction, getLocalPlayerId, endTurn]);
 
   // --- CARD RESOLUTION ---
 
@@ -691,8 +681,8 @@ const App = () => {
    * @param {string} actingPlayerId - getLocalPlayerId() or getOpponentPlayerId()
    * @param {Object} aiContext - AI decision context for logging
    */
-  const resolveCardPlay = useCallback((card, target, actingPlayerId, aiContext = null) => {
-    // Set up AI card play report if needed (before resolving, since gameEngine doesn't know about UI)
+  const resolveCardPlay = useCallback(async (card, target, actingPlayerId, aiContext = null) => {
+    // Set up AI card play report if needed (before resolving, since ActionProcessor doesn't know about UI)
     if (actingPlayerId === getOpponentPlayerId()) {
         let targetDisplayName = '';
         let targetLane = '';
@@ -721,54 +711,12 @@ const App = () => {
         setAiCardPlayReport({ card, targetName: targetDisplayName, targetLane });
     }
 
-    // Debug: Log the target drone's state before game engine call
-    if (target && target.id && target.owner) {
-        const targetPlayerState = target.owner === getLocalPlayerId() ? getLocalPlayerState() : getOpponentPlayerState();
-        let targetDrone = null;
-        for (const [lane, drones] of Object.entries(targetPlayerState.dronesOnBoard)) {
-            targetDrone = drones.find(drone => drone.id === target.id);
-            if (targetDrone) {
-                console.log('[CARD PLAY DEBUG] Target drone before gameEngine:', {
-                    droneName: targetDrone.name,
-                    hull: targetDrone.hull,
-                    currentShields: targetDrone.currentShields,
-                    cardDamage: card.effect?.value,
-                    cardType: card.effect?.type,
-                    cardDamageType: card.effect?.damageType
-                });
-                break;
-            }
-        }
-    }
-
-    // Use the gameEngine version
-    const result = gameEngine.resolveCardPlay(
-        card,
-        target,
-        actingPlayerId,
-        getPlayerStatesForEngine(),
-        getPlacedSectionsForEngine(),
-        {
-            logCallback: (logEntry) => addLogEntry(logEntry, 'resolveCardPlay', actingPlayerId === getOpponentPlayerId() ? aiContext : null),
-            explosionCallback: triggerExplosion,
-            hitAnimationCallback: null, // Not needed for cards
-            resolveAttackCallback: resolveAttack
-        }
-    );
-
-    // Update player states first (this includes card costs and discard)
-    console.log('[CARD PLAY DEBUG] Updating player states after card resolution:', {
-      card: card.name,
-      actingPlayer: actingPlayerId,
-      oldPlayer1Hull: localPlayerState.dronesOnBoard,
-      oldPlayer2Hull: opponentPlayerState.dronesOnBoard,
-      newPlayer1Hull: result.newPlayerStates.player1?.dronesOnBoard,
-      newPlayer2Hull: result.newPlayerStates.player2?.dronesOnBoard
+    // Use ActionProcessor instead of direct gameEngine call
+    const result = await processAction('cardPlay', {
+      card: card,
+      targetId: target?.id || null,
+      playerId: actingPlayerId
     });
-
-    // FIXED: Now safe to use resolveCardPlay result since gameEngine properly integrates callback states
-    console.log('[CARD PLAY DEBUG] Using gameEngine integrated state (includes callback results)');
-    updateGameStateFromEngineResult(result.newPlayerStates);
 
     // Check if card needs selection (e.g., SEARCH_AND_DRAW)
     if (result.needsCardSelection) {
@@ -791,22 +739,7 @@ const App = () => {
         return; // Don't process other effects yet
     }
 
-    // Handle additional effects (like non-damage effects)
-    // Note: All damage effects are now processed directly in the logic layer
-    // using snapshot-based resolution for consistency
-    if (result.additionalEffects && result.additionalEffects.length > 0) {
-        console.log(`[DEBUG] Processing ${result.additionalEffects.length} additional effects`);
-        result.additionalEffects.forEach(effect => {
-            // Damage effects should not reach here anymore - they're handled in gameLogic
-            if (effect.type === 'ATTACK') {
-                console.warn('[WARNING] ATTACK effect in additionalEffects - this should be handled in gameLogic now');
-                resolveAttack(effect.attackDetails, true);
-            }
-            // Other effect types can be processed here if needed in the future
-        });
-    }
-
-    // Handle UI cleanup for player 1 (only if no card selection needed)
+    // Handle UI cleanup for player cards
     if (actingPlayerId === getLocalPlayerId()) {
         cancelCardSelection();
         setCardConfirmation(null);
@@ -816,7 +749,9 @@ const App = () => {
     if (result.shouldEndTurn) {
         endTurn(actingPlayerId);
     }
-}, [localPlayerState, opponentPlayerState, resolveAttack, endTurn, triggerExplosion, addLogEntry, gameEngine, localPlacedSections, opponentPlacedSections]);
+
+    return result;
+}, [processAction, getLocalPlayerId, localPlayerState, opponentPlayerState, endTurn]);
 
   // --- CARD SELECTION HANDLING ---
 
@@ -874,8 +809,8 @@ const App = () => {
 
     const completion = gameEngine.finishCardPlay(originalCard, actingPlayerId, currentStates);
 
-    // Apply final state updates
-    updateGameStateFromEngineResult(completion.newPlayerStates);
+    // Apply final state updates through GameStateManager directly
+    gameStateManager.setPlayerStates(completion.newPlayerStates.player1, completion.newPlayerStates.player2);
 
     // Handle UI cleanup
     if (actingPlayerId === getLocalPlayerId()) {
@@ -970,85 +905,6 @@ const App = () => {
     // Note: Single move cards have "goAgain: true", so shouldEndTurn will be false
 }, [localPlayerState, addLogEntry, gameEngine, localPlacedSections, opponentPlacedSections]);
 
-  /**
-   * START OPTIONAL DISCARD PHASE
-   * Initiates the optional discard phase where players can discard excess cards.
-   * Uses player's effective discard limit for maximum cards to discard.
-   */
-  const startOptionalDiscardPhase = async () => {
-    const p1Stats = localPlayerEffectiveStats; // Use the memoized stats
-    setOptionalDiscardCount(0);
-
-    await processAction('phaseTransition', {
-      newPhase: 'optionalDiscard',
-      trigger: 'startOptionalDiscardPhase'
-    });
-
-    setModalContent({
-        title: 'Optional Discard Phase',
-        text: `You may discard up to ${p1Stats.totals.discardLimit} cards from your hand. Click a card to discard it, then press "Finish Discarding" when you are done.`,
-        isBlocking: true
-    });
-  };
-
-  /**
-   * HANDLE FINISH OPTIONAL DISCARD
-   * Completes the optional discard phase and transitions to shield allocation.
-   * Triggers hand drawing and proceeds to next game phase.
-   */
-  const handleFinishOptionalDiscard = () => {
-    setModalContent(null);
-    drawPlayerHand();
-    proceedToShieldAllocation();
-  };
-
-  /**
-   * HANDLE CONFIRM OPTIONAL DISCARD
-   * Processes confirmed discard of a card during optional discard phase.
-   * Updates hand, discard pile, and discard count.
-   * @param {Object} card - The card being discarded
-   */
-  const handleConfirmOptionalDiscard = (card) => {
-    addLogEntry({
-        player: localPlayerState.name,
-        actionType: 'DISCARD_OPTIONAL',
-        source: card.name,
-        target: 'N/A',
-        outcome: `Optionally discarded ${card.name}.`
-    }, 'handleConfirmOptionalDiscard');
-
-    updatePlayerState(getLocalPlayerId(), {
-        ...localPlayerState,
-        hand: localPlayerState.hand.filter(c => c.instanceId !== card.instanceId),
-        discardPile: [...localPlayerState.discardPile, card]
-    });
-    setOptionalDiscardCount(prev => prev + 1);
-    setConfirmationModal(null);
-  };
-
-  /**
-   * HANDLE OPTIONAL DISCARD CLICK
-   * Handles player clicking a card during optional discard phase.
-   * Shows confirmation modal or limit warning.
-   * @param {Object} card - The card being clicked for discard
-   */
-  const handleOptionalDiscardClick = (card) => {
-    if (optionalDiscardCount >= localPlayerEffectiveStats.totals.discardLimit) {
-        setModalContent({
-            title: "Discard Limit Reached",
-            text: `You cannot discard any more cards this turn. Your limit is ${localPlayerEffectiveStats.totals.discardLimit}.`,
-            isBlocking: true
-        });
-        return;
-    }
-    setConfirmationModal({
-        type: 'discard',
-        target: card,
-        onConfirm: () => handleConfirmOptionalDiscard(card),
-        onCancel: () => setConfirmationModal(null),
-        text: `Are you sure you want to discard ${card.name}?`
-    });
-  };
 
 
   /**
@@ -1510,16 +1366,6 @@ const App = () => {
   
 
 
-  /**
-   * HANDLE POST DISCARD ACTION
-   * Processes actions after mandatory discard phase.
-   * Ensures AI hand limit compliance before continuing.
-   */
-  const handlePostDiscardAction = () => {
-    // REMOVED: Hand limit enforcement should only happen during dedicated discard phase
-    // Hand limits are display-only during normal gameplay
-    startOptionalDiscardPhase();
-  };
 
 
 
@@ -1676,28 +1522,6 @@ const App = () => {
    * Draws cards for player up to their hand limit.
    * Handles deck shuffling from discard pile when needed.
    */
-  const drawPlayerHand = () => {
-    // Draw cards to hand limit for local player
-    const effectiveStats = getEffectiveShipStats(localPlayerState, localPlacedSections).totals;
-    let newDeck = [...localPlayerState.deck];
-    let newHand = [...localPlayerState.hand];
-    let newDiscardPile = [...localPlayerState.discardPile];
-    const handSize = effectiveStats.handLimit;
-
-    while (newHand.length < handSize) {
-      if (newDeck.length === 0) {
-        if (newDiscardPile.length > 0) {
-          newDeck = [...newDiscardPile].sort(() => 0.5 - Math.random());
-          newDiscardPile = [];
-        } else {
-          break;
-        }
-      }
-      const drawnCard = newDeck.pop();
-      newHand.push(drawnCard);
-    }
-    updatePlayerState(getLocalPlayerId(), { ...localPlayerState, deck: newDeck, hand: newHand, discardPile: newDiscardPile });
-  };
 
   /**
    * PROCEED TO FIRST TURN
@@ -1727,24 +1551,6 @@ const App = () => {
    * Initiates shield restoration phase.
    * Calculates available shields and sets up allocation UI.
    */
-  const proceedToShieldAllocation = async () => {
-    setSelectedCard(null);
-    setSelectedDrone(null);
-    setAbilityMode(null);
-    const shieldsPerTurn = localPlayerEffectiveStats.totals.shieldsPerTurn;
-    setInitialShieldAllocation(JSON.parse(JSON.stringify(localPlayerState.shipSections)));
-
-    await processAction('phaseTransition', {
-      newPhase: 'allocateShields',
-      trigger: 'proceedToShieldAllocation'
-    });
-
-    setModalContent({
-        title: 'Phase: Restore Shields',
-        text: `You have ${shieldsPerTurn} shields to restore. Click on any of your damaged ship sections to add a shield. When finished, click "End Allocation" to continue.`,
-        isBlocking: true
-    });
-  };
    
 
   /**
@@ -2113,27 +1919,6 @@ const App = () => {
           }
           break;
 
-        // Hand limit enforcement actions
-        case 'discardCard':
-          if (turnPhase === 'optionalDiscard') {
-            handleRoundStartDiscard(payload.card || payload);
-            return { success: true, message: 'Card discarded during round start' };
-          }
-          break;
-
-        case 'drawToHandLimit':
-          if (turnPhase === 'optionalDiscard') {
-            handleRoundStartDraw();
-            return { success: true, message: 'Drew cards to hand limit' };
-          }
-          break;
-
-        case 'confirmHandLimit':
-          if (turnPhase === 'optionalDiscard') {
-            checkBothPlayersHandLimitComplete();
-            return { success: true, message: 'Hand limit enforcement completed' };
-          }
-          break;
 
 
         // Initial draw actions
@@ -2312,35 +2097,6 @@ const App = () => {
    * Uses direct GameStateManager updates for parallel player actions.
    * @param {Object} card - The card being discarded
    */
-  const handleRoundStartDiscard = (card) => {
-    const { turnPhase } = gameState;
-
-    if (turnPhase === 'optionalDiscard') {
-      // Round start discard - use direct GameStateManager updates
-      const currentPlayerState = getLocalPlayerState();
-      const newHand = currentPlayerState.hand.filter(c => c.id !== card.id);
-      const newDiscardPile = [...currentPlayerState.discardPile, card];
-
-      updatePlayerState(getLocalPlayerId(), {
-        hand: newHand,
-        discardPile: newDiscardPile
-      });
-
-      // Update UI state
-      setOptionalDiscardCount(prev => prev + 1);
-
-      // Add log entry
-      addLogEntry({
-        player: currentPlayerState.name,
-        actionType: 'DISCARD_OPTIONAL',
-        card: card.name,
-        timestamp: Date.now()
-      });
-
-      // Check if both players are complete
-      checkBothPlayersHandLimitComplete();
-    }
-  };
 
   /**
    * HANDLE ROUND START DRAW
@@ -2427,8 +2183,7 @@ const App = () => {
         // Draw AI to hand limit
         handleRoundStartDraw_AI();
 
-        // Transition to shield allocation
-        proceedToShieldAllocation();
+        // Phase transitions are now handled by GameFlowManager
       }
     } else {
       // In multiplayer mode, wait for both players to complete
@@ -2450,8 +2205,7 @@ const App = () => {
         }
 
         // Check if opponent is also complete (this would be handled by P2P events)
-        // For now, proceed to shield allocation
-        proceedToShieldAllocation();
+        // Phase transitions are now handled by GameFlowManager
       }
     }
   };
@@ -3206,7 +2960,8 @@ useEffect(() => {
         if (currentMandatoryAction.fromAbility) {
             endTurn(getLocalPlayerId()); // End the turn if it was from an ability
         } else {
-            handlePostDiscardAction(); // Otherwise, proceed to the next game phase
+            // Mandatory discard completed, let game flow continue naturally
+            // The GameFlowManager will handle the transition to the next phase
         }
     } else {
         // If more discards are needed, just update the count
@@ -3468,14 +3223,12 @@ useEffect(() => {
         setHoveredCardId={setHoveredCardId}
         setIsViewDiscardModalOpen={setIsViewDiscardModalOpen}
         setIsViewDeckModalOpen={setIsViewDeckModalOpen}
-        optionalDiscardCount={optionalDiscardCount}
         handleRoundStartDraw={handleRoundStartDraw}
         checkBothPlayersHandLimitComplete={checkBothPlayersHandLimitComplete}
         handleToggleDroneSelection={handleToggleDroneSelection}
         selectedDrone={selectedDrone}
         setViewUpgradesModal={setViewUpgradesModal}
         handleConfirmMandatoryDiscard={handleConfirmMandatoryDiscard}
-        handleRoundStartDiscard={handleRoundStartDiscard}
         setConfirmationModal={setConfirmationModal}
         turn={turn}
         passInfo={passInfo}
@@ -3624,8 +3377,8 @@ useEffect(() => {
 {destroyUpgradeModal && (
     <DestroyUpgradeModal 
         selectionData={destroyUpgradeModal}
-        onConfirm={(card, target) => {
-            resolveCardPlay(card, target, getLocalPlayerId());
+        onConfirm={async (card, target) => {
+            await resolveCardPlay(card, target, getLocalPlayerId());
             setDestroyUpgradeModal(null);
         }}
         onCancel={() => {
@@ -3640,8 +3393,8 @@ useEffect(() => {
 {upgradeSelectionModal && (
     <UpgradeSelectionModal 
         selectionData={upgradeSelectionModal}
-        onConfirm={(card, target) => {
-            resolveCardPlay(card, target, getLocalPlayerId());
+        onConfirm={async (card, target) => {
+            await resolveCardPlay(card, target, getLocalPlayerId());
             setUpgradeSelectionModal(null);
         }}
         onCancel={() => {
@@ -3674,7 +3427,7 @@ useEffect(() => {
       >
         <div className="flex justify-center gap-4 mt-6">
           <button onClick={() => setCardConfirmation(null)} className="bg-pink-600 text-white font-bold py-2 px-6 rounded-full hover:bg-pink-700 transition-colors">Cancel</button>
-<button onClick={() => resolveCardPlay(cardConfirmation.card, cardConfirmation.target, getLocalPlayerId())} className="bg-green-600 text-white font-bold py-2 px-6 rounded-full hover:bg-green-700 transition-colors">Confirm</button>
+<button onClick={async () => await resolveCardPlay(cardConfirmation.card, cardConfirmation.target, getLocalPlayerId())} className="bg-green-600 text-white font-bold py-2 px-6 rounded-full hover:bg-green-700 transition-colors">Confirm</button>
         </div>
       </GamePhaseModal>
     );
@@ -3772,7 +3525,7 @@ useEffect(() => {
             >
               <div className="flex justify-center gap-4 mt-6">
                 <button onClick={() => setShipAbilityConfirmation(null)} className="bg-pink-600 text-white font-bold py-2 px-6 rounded-full hover:bg-pink-700 transition-colors">Cancel</button>
-                <button onClick={() => resolveShipAbility(ability, sectionName, target)} className="bg-green-600 text-white font-bold py-2 px-6 rounded-full hover:bg-green-700 transition-colors">Confirm</button>
+                <button onClick={async () => await resolveShipAbility(ability, sectionName, target)} className="bg-green-600 text-white font-bold py-2 px-6 rounded-full hover:bg-green-700 transition-colors">Confirm</button>
               </div>
             </GamePhaseModal>
           );

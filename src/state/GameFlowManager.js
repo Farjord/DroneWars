@@ -21,10 +21,10 @@ class GameFlowManager {
 
     // Game flow phase definitions
     this.PRE_GAME_PHASES = ['droneSelection', 'deckSelection', 'placement'];
-    this.ROUND_PHASES = ['energyReset', 'mandatoryDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'action'];
+    this.ROUND_PHASES = ['energyReset', 'mandatoryDiscard', 'optionalDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'action'];
 
     // Phase type classification
-    this.SIMULTANEOUS_PHASES = ['droneSelection', 'deckSelection', 'placement', 'mandatoryDiscard', 'allocateShields', 'mandatoryDroneRemoval'];
+    this.SIMULTANEOUS_PHASES = ['droneSelection', 'deckSelection', 'placement', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval'];
     this.SEQUENTIAL_PHASES = ['deployment', 'action'];
     this.AUTOMATIC_PHASES = ['energyReset', 'draw', 'determineFirstPlayer']; // Automatic phases handled directly by GameFlowManager
 
@@ -534,6 +534,8 @@ class GameFlowManager {
     switch(phase) {
       case 'mandatoryDiscard':
         return this.anyPlayerExceedsHandLimit(gameState);
+      case 'optionalDiscard':
+        return true; // Always required - players can choose to discard 0 cards
       case 'draw':
         return true; // Always required
       case 'determineFirstPlayer':

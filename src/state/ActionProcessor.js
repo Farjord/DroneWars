@@ -26,6 +26,7 @@ class ActionProcessor {
       ability: false,
       deployment: false,
       cardPlay: false,
+      shipAbility: false,
       turnTransition: false,
       phaseTransition: false,
       roundStart: false,
@@ -102,7 +103,7 @@ class ActionProcessor {
     // PASS STATE VALIDATION - Prevent actions after players have passed
     if (currentState.passInfo) {
       // Actions that should be blocked if current player has passed
-      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay'];
+      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'shipAbility'];
       if (playerActionTypes.includes(type)) {
         // Determine the current player for this action
         let actionPlayerId = payload.playerId || currentState.currentPlayer;
@@ -167,6 +168,9 @@ class ActionProcessor {
         case 'cardPlay':
           return await this.processCardPlay(payload);
 
+        case 'shipAbility':
+          return await this.processShipAbility(payload);
+
         case 'turnTransition':
           return await this.processTurnTransition(payload);
 
@@ -190,6 +194,9 @@ class ActionProcessor {
 
         case 'aiShipPlacement':
           return await this.processAiShipPlacement(payload);
+
+        case 'optionalDiscard':
+          return await this.processOptionalDiscard(payload);
 
         default:
           throw new Error(`Unknown action type: ${type}`);
@@ -372,6 +379,47 @@ class ActionProcessor {
       card,
       targetId,
       playerId,
+      playerStates,
+      placedSections,
+      callbacks
+    );
+
+    // Update game state with results
+    this.gameStateManager.setPlayerStates(
+      result.newPlayerStates.player1,
+      result.newPlayerStates.player2
+    );
+
+    return result;
+  }
+
+  /**
+   * Process ship ability action
+   */
+  async processShipAbility(payload) {
+    const { ability, sectionName, targetId, playerId } = payload;
+
+    const currentState = this.gameStateManager.getState();
+    const playerStates = { player1: currentState.player1, player2: currentState.player2 };
+    const placedSections = {
+      player1: currentState.placedSections,
+      player2: currentState.opponentPlacedSections
+    };
+
+    const callbacks = {
+      logCallback: (entry) => this.gameStateManager.addLogEntry(entry),
+      explosionCallback: () => {}, // UI effect - handled by App.jsx
+      hitAnimationCallback: () => {}, // UI effect - handled by App.jsx
+      resolveAttackCallback: async (attackPayload) => {
+        // Recursively handle attack through action processor
+        return await this.processAttack(attackPayload);
+      }
+    };
+
+    const result = gameEngine.resolveShipAbility(
+      ability,
+      sectionName,
+      targetId,
       playerStates,
       placedSections,
       callbacks
@@ -1145,6 +1193,45 @@ class ActionProcessor {
     };
   }
 
+
+  /**
+   * Process optional discard action
+   */
+  async processOptionalDiscard(payload) {
+    const { playerId, cardsToDiscard } = payload;
+    const currentState = this.gameStateManager.getState();
+
+    console.log(`[OPTIONAL DISCARD DEBUG] Processing optional discard for ${playerId}:`, cardsToDiscard);
+
+    if (!Array.isArray(cardsToDiscard)) {
+      throw new Error('Cards to discard must be an array');
+    }
+
+    const playerState = currentState[playerId];
+    if (!playerState) {
+      throw new Error(`Player ${playerId} not found`);
+    }
+
+    // Remove cards from hand and add to discard pile
+    const newHand = playerState.hand.filter(card =>
+      !cardsToDiscard.some(discardCard => card.instanceId === discardCard.instanceId)
+    );
+    const newDiscardPile = [...playerState.discardPile, ...cardsToDiscard];
+
+    // Update player state
+    this.gameStateManager.updatePlayerState(playerId, {
+      hand: newHand,
+      discardPile: newDiscardPile
+    });
+
+    console.log(`[OPTIONAL DISCARD DEBUG] Discarded ${cardsToDiscard.length} cards for ${playerId}`);
+
+    return {
+      success: true,
+      message: `Discarded ${cardsToDiscard.length} cards`,
+      cardsDiscarded: cardsToDiscard
+    };
+  }
 
   /**
    * Clear all pending actions (emergency use only)
