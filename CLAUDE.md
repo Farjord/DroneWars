@@ -46,16 +46,16 @@ This document provides timeless architectural design decisions and system compon
 - **Decision Flow**: SequentialPhaseManager → AIPhaseProcessor → (aiLogic.js + ActionProcessor + GameStateManager)
 - **Core Principle**: AI uses identical pathways as human players but manages its own execution flow
 
-### **Data Computation Architecture** 🔄 REFACTORING PLANNED
-- **Current State**: GameDataService wraps calculations but circular dependency exists with gameLogic.js
-- **Discovered Issue**: gameLogic.js both provides AND consumes stats calculations, creating architectural confusion
-- **Planned Refactor (Phase 2.13)**:
-  - **Extract**: Move `calculateEffectiveStats` and `calculateEffectiveShipStats` to new `statsCalculator.js`
-  - **Separate**: Pure calculation logic (statsCalculator) from caching layer (GameDataService)
-  - **Eliminate**: Remove circular dependency between gameLogic.js and GameDataService
+### **Data Computation Architecture** ✅ COMPLETED (2025-09-28)
+- **Problem Solved**: Eliminated circular dependency between gameLogic.js and GameDataService
+- **Refactor Completed**: Successfully extracted pure calculation functions to dedicated module
+- **Implementation Actions**:
+  - **Extracted**: Moved `calculateEffectiveStats`, `calculateEffectiveShipStats`, and `getShipStatus` to new `statsCalculator.js`
+  - **Separated**: Pure calculation logic (statsCalculator) from caching layer (GameDataService)
+  - **Eliminated**: Removed all circular dependencies - gameLogic.js imports from statsCalculator.js but not vice versa
   - **Result**: Clean data flow: statsCalculator → GameDataService → all consumers
 
-- **GameDataService** (After Refactor):
+- **GameDataService** (Current Implementation):
   - **Purpose**: Caching wrapper for stats calculations
   - **Data Flow**: statsCalculator.js → GameDataService → gameDataCache → consumers
   - **Core Methods**:
@@ -70,6 +70,13 @@ This document provides timeless architectural design decisions and system compon
   - **Performance**: Intelligent caching prevents redundant expensive calculations
   - **Maintainability**: Clear separation of concerns
   - **Server Readiness**: Complete abstraction layer ready for client-server migration
+
+- **Verification (2025-09-28)**:
+  - **statsCalculator.js**: Created with pure calculation functions, no external dependencies
+  - **Circular Dependencies**: Verified eliminated - no imports between gameLogic.js and GameDataService
+  - **Code Duplication**: Removed duplicate `getShipStatus` function from gameLogic.js
+  - **Build Status**: ✅ Successful build with no errors
+  - **Import Chain**: statsCalculator.js → GameDataService.js → all consumers (clean flow)
 
 ### **Component Data Flow Architecture** ✅ COMPLETED (2025-09-27)
 - **Achievement**: 100% GameDataService usage across entire codebase

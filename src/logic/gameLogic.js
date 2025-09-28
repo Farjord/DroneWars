@@ -16,7 +16,7 @@
 import fullDroneCollection from '../data/droneData.js';
 import fullCardCollection from '../data/cardData.js';
 import shipSectionData from '../data/shipData.js';
-import { calculateEffectiveStats, calculateEffectiveShipStats } from './statsCalculator.js';
+import { calculateEffectiveStats, calculateEffectiveShipStats, getShipStatus } from './statsCalculator.js';
 
 // ========================================
 // DECK AND CARD MANAGEMENT
@@ -110,15 +110,6 @@ const initialPlayerState = (name, decklist) => {
 };
 
 
-const getShipStatus = (section) => {
-    if (section.hull <= section.thresholds.critical) {
-      return 'critical';
-    }
-    if (section.hull <= section.thresholds.damaged) {
-      return 'damaged';
-    }
-    return 'healthy';
-};
 
 const onDroneDestroyed = (playerState, destroyedDrone) => {
     if (!playerState.deployedDroneCounts.hasOwnProperty(destroyedDrone.name)) {
