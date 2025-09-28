@@ -118,6 +118,9 @@ function AppRouter() {
         case 'placement':
           return <ShipPlacementScreen />;
 
+        case 'gameInitializing':
+          return <App />; // Mount early for event subscriptions
+
         // All other phases (action, deployment, etc.) use the main game board
         default:
           return <App />;

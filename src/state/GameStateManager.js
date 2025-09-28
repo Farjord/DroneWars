@@ -298,17 +298,19 @@ class GameStateManager {
       'preGame': ['droneSelection', 'deckSelection'],
       'droneSelection': ['deckSelection'],
       'deckSelection': ['placement'],
-      'placement': ['energyReset', 'initialDraw', 'deployment'],
-      'energyReset': ['mandatoryDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
-      'initialDraw': ['mandatoryDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
-      'mandatoryDiscard': ['energyReset', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
-      'draw': ['determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
-      'determineFirstPlayer': ['allocateShields', 'mandatoryDroneRemoval', 'deployment'],
+      'placement': ['gameInitializing'],
+      'gameInitializing': ['determineFirstPlayer'],
+      'energyReset': ['mandatoryDiscard', 'optionalDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
+      'initialDraw': ['mandatoryDiscard', 'optionalDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
+      'mandatoryDiscard': ['optionalDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
+      'optionalDiscard': ['draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
+      'draw': ['allocateShields', 'mandatoryDroneRemoval', 'deployment'],
+      'determineFirstPlayer': ['energyReset'],
       'allocateShields': ['mandatoryDroneRemoval', 'deployment'],
       'mandatoryDroneRemoval': ['deployment'],
       'deployment': ['action', 'roundEnd'],
-      'action': ['deployment', 'roundEnd', 'energyReset', 'mandatoryDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'gameEnd'],
-      'roundEnd': ['energyReset', 'mandatoryDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'gameEnd'],
+      'action': ['deployment', 'roundEnd', 'determineFirstPlayer', 'gameEnd'],
+      'roundEnd': ['determineFirstPlayer', 'deployment', 'gameEnd'],
       'gameEnd': []
     };
 
@@ -327,7 +329,7 @@ class GameStateManager {
     }
 
     // Skip validation during simultaneous phases - direct updates are expected
-    const simultaneousPhases = ['droneSelection', 'deckSelection', 'placement', 'mandatoryDiscard', 'allocateShields', 'mandatoryDroneRemoval'];
+    const simultaneousPhases = ['droneSelection', 'deckSelection', 'placement', 'gameInitializing', 'mandatoryDiscard', 'allocateShields', 'mandatoryDroneRemoval'];
     if (simultaneousPhases.includes(prevState.turnPhase)) {
       return;
     }
@@ -515,6 +517,7 @@ class GameStateManager {
       'deckSelection',
       'deckBuilding',
       'placement',
+      'gameInitializing',
       'initialDraw'
     ];
     return initPhases.includes(turnPhase);

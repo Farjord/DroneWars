@@ -41,6 +41,10 @@ class SimultaneousActionManager {
         player1: { completed: false, discardedCards: [] },
         player2: { completed: false, discardedCards: [] }
       },
+      determineFirstPlayer: {
+        player1: { completed: false, acknowledged: false },
+        player2: { completed: false, acknowledged: false }
+      },
       allocateShields: {
         player1: { completed: false, shieldAllocation: [] },
         player2: { completed: false, shieldAllocation: [] }
@@ -320,6 +324,64 @@ class SimultaneousActionManager {
   }
 
   /**
+   * Acknowledge first player determination
+   * @param {string} playerId - The player ID acknowledging
+   * @returns {Object} Acknowledgment result
+   */
+  acknowledgeFirstPlayer(playerId) {
+    console.log(`🎯 SimultaneousActionManager.acknowledgeFirstPlayer: ${playerId} acknowledging first player`);
+
+    return this.commitPlayerAction(playerId, 'determineFirstPlayer', {
+      acknowledged: true
+    });
+  }
+
+  /**
+   * Initialize first player determination phase
+   * Called when the phase starts to process the determination
+   * @returns {Object} First player result for UI
+   */
+  async initializeFirstPlayerPhase() {
+    console.log('🎯 SimultaneousActionManager.initializeFirstPlayerPhase: Processing first player determination');
+
+    const firstPlayerResult = await this.processFirstPlayerDetermination();
+    return firstPlayerResult;
+  }
+
+  /**
+   * Process first player determination logic
+   * @private
+   * @returns {Object} First player result
+   */
+  async processFirstPlayerDetermination() {
+    try {
+      // Import first player utilities
+      const { processFirstPlayerDetermination } = await import('../utils/firstPlayerUtils.js');
+
+      if (!this.gameStateManager) {
+        console.error('❌ GameStateManager not available for first player determination');
+        return;
+      }
+
+      // Get current game state
+      const currentGameState = this.gameStateManager.getState();
+
+      // Process first player determination
+      const firstPlayerResult = processFirstPlayerDetermination(currentGameState);
+
+      // Update game state with first player results
+      this.gameStateManager.setState(firstPlayerResult.stateUpdates);
+
+      console.log('✅ First player determination completed');
+      return firstPlayerResult;
+
+    } catch (error) {
+      console.error('❌ Error during first player determination:', error);
+      return null;
+    }
+  }
+
+  /**
    * Generic method to commit player action for any simultaneous phase
    * @param {string} playerId - The player ID
    * @param {string} phase - The phase name
@@ -503,6 +565,12 @@ class SimultaneousActionManager {
           // AI optional discard logic through AIPhaseProcessor
           const gameState = this.gameStateManager.getState();
           aiResult = await this.aiPhaseProcessor.executeOptionalDiscardTurn(gameState);
+
+          // Update AI player state with both discard and draw results
+          if (aiResult.updatedPlayerState) {
+            this.gameStateManager.updatePlayerState('player2', aiResult.updatedPlayerState);
+          }
+
           this.submitOptionalDiscard('player2', aiResult.cardsToDiscard);
           break;
 
@@ -514,6 +582,11 @@ class SimultaneousActionManager {
         case 'mandatoryDroneRemoval':
           // AI drone removal logic when implemented
           this.submitMandatoryDroneRemoval('player2', []);
+          break;
+
+        case 'determineFirstPlayer':
+          // AI automatically acknowledges first player determination
+          this.acknowledgeFirstPlayer('player2');
           break;
 
         default:

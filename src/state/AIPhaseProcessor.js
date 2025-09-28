@@ -467,8 +467,9 @@ class AIPhaseProcessor {
 
   /**
    * Execute AI turn for optional discard phase
+   * Handles both discard of excess cards and drawing to hand limit
    * @param {Object} gameState - Current game state
-   * @returns {Promise<Object>} Execution result
+   * @returns {Promise<Object>} Execution result with updated player state
    */
   async executeOptionalDiscardTurn(gameState) {
     console.log('🤖 AIPhaseProcessor.executeOptionalDiscardTurn starting...');
@@ -477,26 +478,44 @@ class AIPhaseProcessor {
       throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
     }
 
+    const { gameEngine } = await import('../logic/gameLogic.js');
     const aiState = gameState.player2;
+    const opponentPlacedSections = gameState.opponentPlacedSections;
 
-    // Auto-pass if AI has no cards
-    if (!aiState.hand || aiState.hand.length === 0) {
-      console.log('🤖 AI has no cards, auto-passing optional discard');
-      return {
-        type: 'optionalDiscard',
-        cardsToDiscard: [],
-        playerId: 'player2'
+    // Calculate effective hand limit
+    const effectiveStats = this.gameDataService.getEffectiveShipStats(aiState, opponentPlacedSections);
+    const handLimit = effectiveStats.totals.handLimit;
+
+    let updatedAiState = { ...aiState };
+    let cardsToDiscard = [];
+
+    // Handle hand limit enforcement (discard excess cards)
+    if (updatedAiState.hand.length > handLimit) {
+      const excessCards = updatedAiState.hand.length - handLimit;
+      cardsToDiscard = updatedAiState.hand.slice(0, excessCards);
+
+      updatedAiState = {
+        ...updatedAiState,
+        hand: updatedAiState.hand.slice(excessCards),
+        discardPile: [...updatedAiState.discardPile, ...cardsToDiscard]
       };
+
+      console.log(`🤖 AI discarding ${excessCards} excess cards to meet hand limit of ${handLimit}`);
     }
 
-    // For now, AI always passes (discards 0 cards) during optional discard
-    // This can be enhanced later with strategic discard logic
-    console.log('🤖 AI choosing to discard 0 cards during optional discard phase');
+    // Draw cards to hand limit using gameLogic function
+    updatedAiState = gameEngine.drawToHandLimit(updatedAiState, handLimit);
+
+    const cardsDrawn = updatedAiState.hand.length - (aiState.hand.length - cardsToDiscard.length);
+    if (cardsDrawn > 0) {
+      console.log(`🤖 AI drew ${cardsDrawn} cards to reach hand limit`);
+    }
 
     return {
       type: 'optionalDiscard',
-      cardsToDiscard: [],
-      playerId: 'player2'
+      cardsToDiscard,
+      playerId: 'player2',
+      updatedPlayerState: updatedAiState
     };
   }
 

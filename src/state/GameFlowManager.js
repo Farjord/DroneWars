@@ -20,13 +20,13 @@ class GameFlowManager {
     GameFlowManager.instance = this;
 
     // Game flow phase definitions
-    this.PRE_GAME_PHASES = ['droneSelection', 'deckSelection', 'placement'];
-    this.ROUND_PHASES = ['energyReset', 'mandatoryDiscard', 'optionalDiscard', 'draw', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'action'];
+    this.PRE_GAME_PHASES = ['droneSelection', 'deckSelection', 'placement', 'gameInitializing'];
+    this.ROUND_PHASES = ['determineFirstPlayer', 'energyReset', 'mandatoryDiscard', 'optionalDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'action'];
 
     // Phase type classification
-    this.SIMULTANEOUS_PHASES = ['droneSelection', 'deckSelection', 'placement', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval'];
+    this.SIMULTANEOUS_PHASES = ['droneSelection', 'deckSelection', 'placement', 'mandatoryDiscard', 'optionalDiscard', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval'];
     this.SEQUENTIAL_PHASES = ['deployment', 'action'];
-    this.AUTOMATIC_PHASES = ['energyReset', 'draw', 'determineFirstPlayer']; // Automatic phases handled directly by GameFlowManager
+    this.AUTOMATIC_PHASES = ['gameInitializing', 'energyReset', 'draw']; // Automatic phases handled directly by GameFlowManager
 
     // Current game state
     this.currentPhase = 'preGame';
@@ -205,7 +205,7 @@ class GameFlowManager {
    * @param {string} phase - The completed phase
    * @param {Object} data - Phase completion data
    */
-  onSimultaneousPhaseComplete(phase, data) {
+  async onSimultaneousPhaseComplete(phase, data) {
     console.log(`✅ GameFlowManager: Simultaneous phase '${phase}' completed`, data);
 
     // Determine next phase based on current game stage
@@ -219,7 +219,7 @@ class GameFlowManager {
       } else {
         // Continue with normal simultaneous phase transition
         console.log(`🔄 GameFlowManager: Continuing with simultaneous phase '${nextPhase}'`);
-        this.transitionToPhase(nextPhase);
+        await this.transitionToPhase(nextPhase);
       }
 
       // Clean up the completed phase AFTER transition is initiated
@@ -243,18 +243,18 @@ class GameFlowManager {
    * @param {string} phase - The completed phase
    * @param {Object} data - Phase completion data
    */
-  onSequentialPhaseComplete(phase, data) {
+  async onSequentialPhaseComplete(phase, data) {
     console.log(`✅ GameFlowManager: Sequential phase '${phase}' completed`, data);
 
     // Determine next phase based on current game stage
     const nextPhase = this.getNextPhase(phase);
 
     if (nextPhase) {
-      this.transitionToPhase(nextPhase);
+      await this.transitionToPhase(nextPhase);
     } else {
       // End of action phase - start new round
       if (phase === 'action') {
-        this.startNewRound();
+        await this.startNewRound();
       }
     }
   }
@@ -287,12 +287,12 @@ class GameFlowManager {
     let nextPhase = null;
 
     try {
-      if (phase === 'energyReset') {
+      if (phase === 'gameInitializing') {
+        nextPhase = await this.processGameInitializingPhase();
+      } else if (phase === 'energyReset') {
         nextPhase = await this.processAutomaticEnergyResetPhase();
       } else if (phase === 'draw') {
         nextPhase = await this.processAutomaticDrawPhase();
-      } else if (phase === 'determineFirstPlayer') {
-        nextPhase = await this.processAutomaticFirstPlayerPhase();
       } else {
         console.warn(`⚠️ No handler for automatic phase: ${phase}`);
       }
@@ -300,7 +300,7 @@ class GameFlowManager {
       // Handle phase transition while still in automatic processing mode
       if (nextPhase) {
         console.log(`🔄 GameFlowManager: Transitioning from automatic phase '${phase}' to '${nextPhase}'`);
-        this.transitionToPhase(nextPhase);
+        await this.transitionToPhase(nextPhase);
       } else {
         console.warn(`⚠️ No next phase found after automatic phase: ${phase}`);
       }
@@ -311,53 +311,6 @@ class GameFlowManager {
     }
   }
 
-  /**
-   * Process the automatic first player determination phase
-   */
-  async processAutomaticFirstPlayerPhase() {
-    console.log('🎯 GameFlowManager: Processing automatic first player determination phase');
-
-    const previousPhase = 'determineFirstPlayer';
-
-    try {
-      // Import first player utilities
-      const { processFirstPlayerDetermination } = await import('../utils/firstPlayerUtils.js');
-
-      if (!this.gameStateManager) {
-        console.error('❌ GameStateManager not available for first player determination');
-        return;
-      }
-
-      // Get current game state
-      const currentGameState = this.gameStateManager.getState();
-
-      // Process first player determination
-      const firstPlayerResult = processFirstPlayerDetermination(currentGameState);
-
-      // Update game state with first player results
-      this.gameStateManager.setState(firstPlayerResult.stateUpdates);
-
-      console.log('✅ Automatic first player determination completed, transitioning to next phase');
-
-      // Emit completion event for first player phase
-      this.emit('phaseTransition', {
-        newPhase: 'determineFirstPlayer',
-        previousPhase: previousPhase,
-        gameStage: this.gameStage,
-        roundNumber: this.roundNumber,
-        automaticProcessed: true,
-        firstPlayerResult: firstPlayerResult
-      });
-
-      // Return next phase for transition by processAutomaticPhase
-      const nextPhase = this.getNextPhase('determineFirstPlayer');
-      console.log('✅ Automatic first player determination completed, returning next phase:', nextPhase);
-      return nextPhase;
-
-    } catch (error) {
-      console.error('❌ Error during automatic first player determination phase:', error);
-    }
-  }
 
   /**
    * Process the automatic draw phase
@@ -478,6 +431,38 @@ class GameFlowManager {
   }
 
   /**
+   * Process the game initializing phase
+   * This phase ensures UI components are mounted before any round phases begin
+   */
+  async processGameInitializingPhase() {
+    console.log('🎯 GameFlowManager: Processing game initializing phase');
+
+    const previousPhase = 'gameInitializing';
+
+    try {
+      // Emit the phase transition event to allow App.jsx to mount
+      this.emit('phaseTransition', {
+        newPhase: 'gameInitializing',
+        previousPhase: 'placement',
+        gameStage: this.gameStage,
+        roundNumber: this.roundNumber
+      });
+
+      // Brief delay to allow App.jsx to mount and subscribe to events
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Get next phase (which should be determineFirstPlayer)
+      const nextPhase = this.getNextPhase('gameInitializing');
+      console.log('✅ Game initialization completed, returning next phase:', nextPhase);
+      return nextPhase;
+
+    } catch (error) {
+      console.error('❌ Error during game initialization:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Get next phase in pre-game sequence
    * @param {string} currentPhase - Current pre-game phase
    * @returns {string|null} Next pre-game phase or null if pre-game complete
@@ -490,9 +475,9 @@ class GameFlowManager {
     }
 
     // Pre-game complete, transition to round loop
-    if (currentPhase === 'placement') {
-      // Start the first round with energy reset
-      return 'energyReset'; // Start with energy reset instead of initialDraw
+    if (currentPhase === 'gameInitializing') {
+      // Start the first round with first player determination
+      return 'determineFirstPlayer'; // Start with first player determination
     }
 
     return null;
@@ -652,7 +637,7 @@ class GameFlowManager {
    * Transition to a new phase
    * @param {string} newPhase - Phase to transition to
    */
-  transitionToPhase(newPhase) {
+  async transitionToPhase(newPhase) {
     const previousPhase = this.currentPhase;
     this.currentPhase = newPhase;
 
@@ -668,10 +653,19 @@ class GameFlowManager {
 
     // Initialize phase-specific data when transitioning to certain phases
     let phaseData = {};
+    let firstPlayerResult = null;
+
     if (newPhase === 'placement') {
       console.log('🚢 GameFlowManager: Initializing placement phase data');
       const placementData = initializeShipPlacement();
       phaseData = placementData;
+    } else if (newPhase === 'determineFirstPlayer') {
+      console.log('🎯 GameFlowManager: Initializing first player determination phase');
+      // Process first player determination immediately when phase starts
+      if (this.simultaneousActionManager) {
+        firstPlayerResult = await this.simultaneousActionManager.initializeFirstPlayerPhase();
+        console.log('🎯 First player determination completed:', firstPlayerResult);
+      }
     }
 
     // Update GameStateManager with new phase and any phase-specific data
@@ -696,14 +690,15 @@ class GameFlowManager {
       newPhase,
       previousPhase,
       gameStage: this.gameStage,
-      roundNumber: this.roundNumber
+      roundNumber: this.roundNumber,
+      firstPlayerResult
     });
   }
 
   /**
    * Start a new round (loop back to beginning of round phases)
    */
-  startNewRound() {
+  async startNewRound() {
     this.roundNumber++;
     console.log(`🔄 GameFlowManager: Starting round ${this.roundNumber}`);
 
@@ -711,10 +706,10 @@ class GameFlowManager {
     const firstRequiredPhase = this.ROUND_PHASES.find(phase => this.isPhaseRequired(phase));
 
     if (firstRequiredPhase) {
-      this.transitionToPhase(firstRequiredPhase);
+      await this.transitionToPhase(firstRequiredPhase);
     } else {
       console.warn('⚠️ No required phases found for new round, defaulting to deployment');
-      this.transitionToPhase('deployment');
+      await this.transitionToPhase('deployment');
     }
   }
 

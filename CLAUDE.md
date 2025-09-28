@@ -100,17 +100,17 @@ This document provides timeless architectural design decisions and system compon
 
 ---
 
-## 🎮 **ROUND SEQUENCE FLOW ARCHITECTURE** ✅ ANALYZED (2025-09-27)
+## 🎮 **ROUND SEQUENCE FLOW ARCHITECTURE** ✅ UPDATED (2025-09-28)
 
 ### **Phase Categories & Manager Responsibilities**
 
 **AUTOMATIC_PHASES** (No player input, handled by GameFlowManager):
 - `energyReset` - Resets energy and deployment budget at round start
 - `draw` - Automatic card drawing to hand limits
-- `determineFirstPlayer` - First player determination for the round
 
 **SIMULTANEOUS_PHASES** (Both players commit, handled by SimultaneousActionManager):
 - `mandatoryDiscard` - Discard excess cards (conditional)
+- `determineFirstPlayer` - First player determination with player acknowledgment
 - `allocateShields` - Shield placement (conditional)
 - `mandatoryDroneRemoval` - Remove excess drones (conditional)
 
@@ -122,8 +122,8 @@ This document provides timeless architectural design decisions and system compon
 
 **GameFlowManager Orchestration:**
 ```
-ROUND_PHASES = ['energyReset', 'mandatoryDiscard', 'draw',
-                'determineFirstPlayer', 'allocateShields',
+ROUND_PHASES = ['determineFirstPlayer', 'energyReset', 'mandatoryDiscard',
+                'optionalDiscard', 'draw', 'allocateShields',
                 'mandatoryDroneRemoval', 'deployment', 'action']
 ```
 
@@ -134,6 +134,19 @@ ROUND_PHASES = ['energyReset', 'mandatoryDiscard', 'draw',
    - Automatic → GameFlowManager processes directly
    - Simultaneous → Delegates to SimultaneousActionManager
    - Sequential → Delegates to SequentialPhaseManager
+
+**First Player Acknowledgment System** ✅ IMPLEMENTED (2025-09-28):
+- `determineFirstPlayer` now requires player acknowledgment via Continue button
+- `SimultaneousActionManager.acknowledgeFirstPlayer()` handles player confirmation
+- Shows `WaitingForPlayerModal` when one player acknowledged but waiting for opponent
+- AI auto-acknowledges in single-player mode for seamless progression
+- Proper multiplayer synchronization ensures both players see first player before continuing
+
+**Phase Order Correction** ✅ FIXED (2025-09-28):
+- Moved `determineFirstPlayer` to START of round (before energyReset)
+- Ensures turn order is established before resource management and card handling
+- Matches GamePlayFlowAndUI.txt specification for logical game flow
+- Added missing `determineFirstPlayer` to `SimultaneousActionManager.phaseCommitments`
 
 ### **UI Rendering Flow**
 
