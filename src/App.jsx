@@ -8,7 +8,6 @@
 // --- IMPORTS AND DEPENDENCIES ---
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { X, Sword, Rocket, Bolt, Loader2, Cpu, ChevronUp, Hand, ShieldCheck, RotateCcw, Settings } from 'lucide-react';
-import './App.css';
 import DeckBuilder from './DeckBuilder';
 import CardViewerModal from './CardViewerModal';
 import CardSelectionModal from './CardSelectionModal';
@@ -39,6 +38,7 @@ import UpgradeSelectionModal from './components/modals/UpgradeSelectionModal.jsx
 import ViewUpgradesModal from './components/modals/ViewUpgradesModal.jsx';
 import DestroyUpgradeModal from './components/modals/DestroyUpgradeModal.jsx';
 import DetailedDroneModal from './components/modals/debug/DetailedDroneModal.jsx';
+import { FirstPlayerModal, ActionPhaseStartModal, RoundEndModal } from './components/modals/GamePhaseModals.jsx';
 import GameHeader from './components/ui/GameHeader.jsx';
 import GameBattlefield from './components/ui/GameBattlefield.jsx';
 import GameFooter from './components/ui/GameFooter.jsx';
@@ -1274,7 +1274,7 @@ const App = () => {
                     )}
           </div>
              <div className="flex justify-center mt-6">
-                 <button onClick={onClose} className="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors">
+                 <button onClick={onClose} className="btn-continue">
                      Continue
                  </button>
           </div>
@@ -1310,7 +1310,7 @@ const App = () => {
             </div>
         </div>
         <div className="flex justify-center mt-6">
-          <button onClick={onClose} className="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors">
+          <button onClick={onClose} className="btn-continue">
             Continue
           </button>
         </div>
@@ -1517,7 +1517,7 @@ const App = () => {
           </table>
         </div>
         <div className="flex justify-center mt-6">
-          <button onClick={onClose} className="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors">
+          <button onClick={onClose} className="btn-continue">
             Close
           </button>
         </div>
@@ -1584,7 +1584,7 @@ const App = () => {
         isBlocking: true,
         children: (
           <div className="flex justify-center mt-6">
-            <button onClick={beginTurnProcedures} className="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors">
+            <button onClick={beginTurnProcedures} className="btn-continue">
               Begin
             </button>
           </div>
@@ -1707,11 +1707,13 @@ const App = () => {
       // It's now the local player's turn
       if (turnPhase === 'deployment') {
         const deploymentResource = turn === 1 ? 'Initial Deployment Points' : 'Energy';
-        setModalContent({
-          title: "Your Turn to Deploy",
-          text: `Select a drone and a lane to deploy it. Drones cost ${deploymentResource} this turn. Or, click "Pass" to end your deployment for this phase.`,
-          isBlocking: true
-        });
+
+        // TODO: REMOVE AFTER TESTING - Deployment turn modal disabled
+        // setModalContent({
+        //   title: "Your Turn to Deploy",
+        //   text: `Select a drone and a lane to deploy it. Drones cost ${deploymentResource} this turn. Or, click "Pass" to end your deployment for this phase.`,
+        //   isBlocking: true
+        // });
       } else if (turnPhase === 'action') {
         setModalContent({
           title: "Action Phase - Your Turn",
@@ -2697,11 +2699,12 @@ const App = () => {
 
     const deploymentResource = turn === 1 ? 'Initial Deployment Points' : 'Energy';
     if (firstPlayerOfRound === getLocalPlayerId()) {
-     setModalContent({
-            title: "Your Turn to Deploy",
-            text: `Select a drone and a lane to deploy it. Drones cost ${deploymentResource} this turn. Or, click "Pass" to end your deployment for this phase.`,
-            isBlocking: true
-        });
+      // TODO: REMOVE AFTER TESTING - Deployment start modal disabled
+      // setModalContent({
+      //   title: "Your Turn to Deploy",
+      //   text: `Select a drone and a lane to deploy it. Drones cost ${deploymentResource} this turn. Or, click "Pass" to end your deployment for this phase.`,
+      //   isBlocking: true
+      // });
 } else {
  setModalContent({
         title: "Opponent's Turn",
@@ -3742,29 +3745,23 @@ useEffect(() => {
 
       {/* Modals are unaffected and remain at the end */}
       {modalContent && <GamePhaseModal title={modalContent.title} text={modalContent.text} onClose={modalContent.onClose === null ? null : (modalContent.onClose || (() => setModalContent(null)))}>{modalContent.children}</GamePhaseModal>}
-     {showFirstPlayerModal && (
-       <GamePhaseModal title="First Player Determined" text={`${firstPlayerOfRound === getLocalPlayerId() ? localPlayerState.name : opponentPlayerState.name} will go first this round. ${getFirstPlayerReasonText()}`} onClose={startDeploymentComplianceCheck}>
-         <div className="flex justify-center mt-6"><button onClick={startDeploymentComplianceCheck} className="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors">Continue</button></div>
-       </GamePhaseModal>
-        )}
-        {showActionPhaseStartModal && (
-            <GamePhaseModal title="Action Phase" text="Deployment has ended. Prepare for action!" onClose={handleStartActionPhase}>
-              <div className="flex justify-center mt-6"><button onClick={handleStartActionPhase} className="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors">Continue</button></div>
-            </GamePhaseModal>
-            )}
-                    {showRoundEndModal && (
-                    <GamePhaseModal
-                        title="Round Over"
-                        text="Both players have passed. The action phase has ended."
-                        onClose={handleStartNewRound}
-                        >
-                      <div className="flex justify-center mt-6">
-                          <button onClick={handleStartNewRound} className="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors">
-                              Begin Next Round
-                          </button>
-                      </div>
-                    </GamePhaseModal>
-                    )}
+      <FirstPlayerModal
+        show={showFirstPlayerModal}
+        firstPlayerOfRound={firstPlayerOfRound}
+        localPlayerId={getLocalPlayerId()}
+        localPlayerName={localPlayerState.name}
+        opponentPlayerName={opponentPlayerState.name}
+        reasonText={getFirstPlayerReasonText()}
+        onContinue={startDeploymentComplianceCheck}
+      />
+      <ActionPhaseStartModal
+        show={showActionPhaseStartModal}
+        onContinue={handleStartActionPhase}
+      />
+      <RoundEndModal
+        show={showRoundEndModal}
+        onContinue={handleStartNewRound}
+      />
                    {deploymentConfirmation && (
                            <GamePhaseModal title="Confirm Deployment" text={`This deployment will use ${deploymentConfirmation.budgetCost} Initial Deployment points and cost ${deploymentConfirmation.energyCost} Energy. Proceed?`} onClose={() => setDeploymentConfirmation(null)}>
                                <div className="flex justify-center gap-4 mt-6">
@@ -3788,7 +3785,7 @@ useEffect(() => {
                     onClose={interceptionModal.onClose}
                       >
       <div className="flex justify-center mt-6">
-      <button onClick={interceptionModal.onClose} className="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors">Continue</button>
+      <button onClick={interceptionModal.onClose} className="btn-continue">Continue</button>
       </div>
                     </GamePhaseModal>
                     )}
@@ -3818,7 +3815,7 @@ useEffect(() => {
             onClose={() => setShowWinnerModal(false)}
             >
       <div className="flex justify-center mt-6">
-      <button onClick={() => setShowWinnerModal(false)} className="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors">
+      <button onClick={() => setShowWinnerModal(false)} className="btn-continue">
        View Final Board
       </button>
       </div>
@@ -3959,7 +3956,7 @@ useEffect(() => {
               )}
             </div>
             <div className="flex justify-center mt-6">
-              <button onClick={() => setShowAiHandModal(false)} className="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors">
+              <button onClick={() => setShowAiHandModal(false)} className="btn-continue">
                 Close
               </button>
             </div>

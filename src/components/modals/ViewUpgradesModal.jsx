@@ -38,7 +38,7 @@ const ViewUpgradesModal = ({ modalData, onClose }) => {
           <div className="flex justify-center mt-6">
               <button
                   onClick={onClose}
-                  className="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors"
+                  className="btn-continue"
               >
                   Close
               </button>

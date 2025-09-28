@@ -162,7 +162,7 @@ function DeckSelectionScreen() {
         >
           <h2 className="text-2xl font-orbitron font-bold text-purple-400 mb-3">Build Custom Deck</h2>
           <p className="font-exo text-gray-300 flex-grow">Create your own deck from your card collection.</p>
-          <button className="mt-6 bg-purple-600 text-white font-bold px-6 py-2 rounded-full hover:bg-purple-700 transition-colors duration-200">
+          <button className="mt-6 btn-continue">
             Select
           </button>
         </div>
