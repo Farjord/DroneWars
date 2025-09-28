@@ -898,7 +898,8 @@ class GameStateManager {
    * Check if it's the local player's turn (for multiplayer)
    */
   isMyTurn() {
-    if (this.state.gameMode === 'local') return true;
+    // In local mode, player1 is the human player
+    if (this.state.gameMode === 'local') return this.state.currentPlayer === 'player1';
     if (this.state.gameMode === 'host') return this.state.currentPlayer === 'player1';
     if (this.state.gameMode === 'guest') return this.state.currentPlayer === 'player2';
     return false;

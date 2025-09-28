@@ -8,6 +8,7 @@ import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
 import { initializeShipPlacement } from '../utils/shipPlacementUtils.js';
 import fullDroneCollection from '../data/droneData.js';
 import sequentialPhaseManager from './SequentialPhaseManager.js';
+import GameDataService from '../services/GameDataService.js';
 
 /**
  * GameFlowManager - Central authority for game phase flow and transitions
@@ -42,6 +43,7 @@ class GameFlowManager {
     this.simultaneousActionManager = null;
     this.actionProcessor = null;
     this.isMultiplayer = false;
+    this.gameDataService = null;
 
     console.log('🎮 GameFlowManager initialized');
   }
@@ -59,6 +61,9 @@ class GameFlowManager {
     this.simultaneousActionManager = simultaneousActionManager;
     this.actionProcessor = actionProcessor;
     this.isMultiplayer = isMultiplayerFn;
+
+    // Initialize GameDataService for phase requirement checks
+    this.gameDataService = new GameDataService(gameStateManager);
 
     // Initialize AIPhaseProcessor with execution dependencies
     // Note: aiPhaseProcessor may already be initialized with personalities/drones elsewhere
@@ -520,7 +525,7 @@ class GameFlowManager {
       case 'mandatoryDiscard':
         return this.anyPlayerExceedsHandLimit(gameState);
       case 'optionalDiscard':
-        return true; // Always required - players can choose to discard 0 cards
+        return this.anyPlayerHasCards(gameState); // Only required if players have cards
       case 'draw':
         return true; // Always required
       case 'determineFirstPlayer':
@@ -543,8 +548,30 @@ class GameFlowManager {
    * @returns {boolean} True if any player needs to discard
    */
   anyPlayerExceedsHandLimit(gameState) {
-    // Import game engine dynamically to check hand limits
-    // For now, return false until we implement hand limit checking
+    // Use GameDataService to check effective hand limits
+    if (!this.gameDataService) {
+      console.warn('⚠️ GameDataService not initialized for hand limit check');
+      return false;
+    }
+
+    // Check player1
+    const player1HandCount = gameState.player1.hand ? gameState.player1.hand.length : 0;
+    const player1Stats = this.gameDataService.getEffectiveShipStats(gameState.player1, gameState.placedSections);
+    const player1HandLimit = player1Stats.totals.handLimit;
+
+    if (player1HandCount > player1HandLimit) {
+      return true;
+    }
+
+    // Check player2
+    const player2HandCount = gameState.player2.hand ? gameState.player2.hand.length : 0;
+    const player2Stats = this.gameDataService.getEffectiveShipStats(gameState.player2, gameState.opponentPlacedSections);
+    const player2HandLimit = player2Stats.totals.handLimit;
+
+    if (player2HandCount > player2HandLimit) {
+      return true;
+    }
+
     return false;
   }
 
@@ -560,13 +587,47 @@ class GameFlowManager {
   }
 
   /**
+   * Check if any player has cards in hand
+   * @param {Object} gameState - Current game state
+   * @returns {boolean} True if any player has at least 1 card in hand
+   */
+  anyPlayerHasCards(gameState) {
+    const player1HasCards = gameState.player1.hand && gameState.player1.hand.length > 0;
+    const player2HasCards = gameState.player2.hand && gameState.player2.hand.length > 0;
+
+    return player1HasCards || player2HasCards;
+  }
+
+  /**
    * Check if any player exceeds drone limit
    * @param {Object} gameState - Current game state
    * @returns {boolean} True if any player has too many drones
    */
   anyPlayerExceedsDroneLimit(gameState) {
-    // Check if players have too many drones on board
-    // For now, return false until we implement drone limits
+    // Use GameDataService to check effective drone limits
+    if (!this.gameDataService) {
+      console.warn('⚠️ GameDataService not initialized for drone limit check');
+      return false;
+    }
+
+    // Check player1
+    const player1DronesCount = Object.values(gameState.player1.dronesOnBoard || {}).flat().length;
+    const player1Stats = this.gameDataService.getEffectiveShipStats(gameState.player1, gameState.placedSections);
+    const player1DroneLimit = player1Stats.totals.droneLimit;
+
+    if (player1DronesCount > player1DroneLimit) {
+      return true;
+    }
+
+    // Check player2
+    const player2DronesCount = Object.values(gameState.player2.dronesOnBoard || {}).flat().length;
+    const player2Stats = this.gameDataService.getEffectiveShipStats(gameState.player2, gameState.opponentPlacedSections);
+    const player2DroneLimit = player2Stats.totals.droneLimit;
+
+    if (player2DronesCount > player2DroneLimit) {
+      return true;
+    }
+
     return false;
   }
 

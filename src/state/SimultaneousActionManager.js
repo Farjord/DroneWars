@@ -557,8 +557,16 @@ class SimultaneousActionManager {
           break;
 
         case 'mandatoryDiscard':
-          // AI discard logic when implemented
-          this.submitMandatoryDiscard('player2', []);
+          // AI mandatory discard logic through AIPhaseProcessor
+          const mandatoryDiscardGameState = this.gameStateManager.getState();
+          aiResult = await this.aiPhaseProcessor.executeMandatoryDiscardTurn(mandatoryDiscardGameState);
+
+          // Update AI player state if needed
+          if (aiResult.updatedPlayerState) {
+            this.gameStateManager.updatePlayerState('player2', aiResult.updatedPlayerState);
+          }
+
+          this.submitMandatoryDiscard('player2', aiResult.cardsToDiscard);
           break;
 
         case 'optionalDiscard':
@@ -580,8 +588,16 @@ class SimultaneousActionManager {
           break;
 
         case 'mandatoryDroneRemoval':
-          // AI drone removal logic when implemented
-          this.submitMandatoryDroneRemoval('player2', []);
+          // AI mandatory drone removal logic through AIPhaseProcessor
+          const droneRemovalGameState = this.gameStateManager.getState();
+          aiResult = await this.aiPhaseProcessor.executeMandatoryDroneRemovalTurn(droneRemovalGameState);
+
+          // Update AI player state if needed
+          if (aiResult.updatedPlayerState) {
+            this.gameStateManager.updatePlayerState('player2', aiResult.updatedPlayerState);
+          }
+
+          this.submitMandatoryDroneRemoval('player2', aiResult.dronesToRemove);
           break;
 
         case 'determineFirstPlayer':

@@ -1189,13 +1189,13 @@ const App = () => {
     console.log('🎯 App.jsx: Acknowledging first player determination');
 
     const localPlayerId = getLocalPlayerId();
-    const result = simultaneousActionManager.acknowledgeFirstPlayer(localPlayerId);
+    const result = gameStateManager.actionProcessor.acknowledgeFirstPlayer(localPlayerId);
 
     if (result.success) {
       setShowFirstPlayerModal(false);
 
       // Check if we need to show waiting state
-      const commitmentStatus = simultaneousActionManager.getPhaseCommitmentStatus('determineFirstPlayer');
+      const commitmentStatus = gameStateManager.actionProcessor.getPhaseCommitmentStatus('determineFirstPlayer');
       if (!commitmentStatus.allComplete && gameMode !== 'local') {
         // In multiplayer, show waiting state if opponent hasn't acknowledged
         setWaitingForPlayerPhase('determineFirstPlayer');

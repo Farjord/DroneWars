@@ -482,6 +482,17 @@ class AIPhaseProcessor {
     const aiState = gameState.player2;
     const opponentPlacedSections = gameState.opponentPlacedSections;
 
+    // Early return if AI has no cards
+    if (!aiState.hand || aiState.hand.length === 0) {
+      console.log('🤖 AI has no cards, auto-completing optional discard');
+      return {
+        type: 'optionalDiscard',
+        cardsToDiscard: [],
+        playerId: 'player2',
+        updatedPlayerState: aiState
+      };
+    }
+
     // Calculate effective hand limit
     const effectiveStats = this.gameDataService.getEffectiveShipStats(aiState, opponentPlacedSections);
     const handLimit = effectiveStats.totals.handLimit;
@@ -516,6 +527,118 @@ class AIPhaseProcessor {
       cardsToDiscard,
       playerId: 'player2',
       updatedPlayerState: updatedAiState
+    };
+  }
+
+  /**
+   * Execute AI turn for mandatory discard phase
+   * @param {Object} gameState - Current game state
+   * @returns {Promise<Object>} Execution result with cards to discard
+   */
+  async executeMandatoryDiscardTurn(gameState) {
+    console.log('🤖 AIPhaseProcessor.executeMandatoryDiscardTurn starting...');
+
+    if (!this.actionProcessor) {
+      throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
+    }
+
+    const aiState = gameState.player2;
+    const opponentPlacedSections = gameState.opponentPlacedSections;
+
+    // Calculate effective hand limit
+    const effectiveStats = this.gameDataService.getEffectiveShipStats(aiState, opponentPlacedSections);
+    const handLimit = effectiveStats.totals.handLimit;
+
+    // Early return if AI is already at or below hand limit
+    if (!aiState.hand || aiState.hand.length <= handLimit) {
+      console.log('🤖 AI already at/below hand limit, auto-completing mandatory discard');
+      return {
+        type: 'mandatoryDiscard',
+        cardsToDiscard: [],
+        playerId: 'player2',
+        updatedPlayerState: aiState
+      };
+    }
+
+    // Calculate cards to discard
+    const excessCards = aiState.hand.length - handLimit;
+    let cardsToDiscard = [];
+
+    // Simple AI logic: discard highest cost cards first to save energy
+    const sortedHand = [...aiState.hand].sort((a, b) => b.cost - a.cost);
+    cardsToDiscard = sortedHand.slice(0, excessCards);
+
+    console.log(`🤖 AI discarding ${cardsToDiscard.length} excess cards to meet hand limit`);
+
+    return {
+      type: 'mandatoryDiscard',
+      cardsToDiscard,
+      playerId: 'player2',
+      updatedPlayerState: aiState
+    };
+  }
+
+  /**
+   * Execute AI turn for mandatory drone removal phase
+   * @param {Object} gameState - Current game state
+   * @returns {Promise<Object>} Execution result with drones to remove
+   */
+  async executeMandatoryDroneRemovalTurn(gameState) {
+    console.log('🤖 AIPhaseProcessor.executeMandatoryDroneRemovalTurn starting...');
+
+    if (!this.actionProcessor) {
+      throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
+    }
+
+    const aiState = gameState.player2;
+    const opponentPlacedSections = gameState.opponentPlacedSections;
+
+    // Calculate effective drone limit
+    const effectiveStats = this.gameDataService.getEffectiveShipStats(aiState, opponentPlacedSections);
+    const droneLimit = effectiveStats.totals.droneLimit;
+
+    // Count total drones on board
+    const totalDrones = Object.values(aiState.dronesOnBoard || {}).flat().length;
+
+    // Early return if AI is already at or below drone limit
+    if (totalDrones <= droneLimit) {
+      console.log('🤖 AI already at/below drone limit, auto-completing mandatory drone removal');
+      return {
+        type: 'mandatoryDroneRemoval',
+        dronesToRemove: [],
+        playerId: 'player2',
+        updatedPlayerState: aiState
+      };
+    }
+
+    // Calculate drones to remove
+    const excessDrones = totalDrones - droneLimit;
+    let dronesToRemove = [];
+
+    // Simple AI logic: remove weakest drones first
+    const allDrones = [];
+    Object.entries(aiState.dronesOnBoard || {}).forEach(([lane, drones]) => {
+      drones.forEach(drone => {
+        allDrones.push({ ...drone, lane });
+      });
+    });
+
+    // Sort by effective power (lowest first)
+    allDrones.sort((a, b) => {
+      const aStats = this.gameDataService.getEffectiveStats(a, a.lane);
+      const bStats = this.gameDataService.getEffectiveStats(b, b.lane);
+      return aStats.power - bStats.power;
+    });
+
+    dronesToRemove = allDrones.slice(0, excessDrones);
+
+    console.log(`🤖 AI removing ${dronesToRemove.length} excess drones to meet drone limit`);
+
+    return {
+      type: 'mandatoryDroneRemoval',
+      dronesToRemove,
+      playerId: 'player2',
+      updatedPlayerState: aiState
     };
   }
 

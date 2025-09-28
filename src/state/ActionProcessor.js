@@ -1278,6 +1278,35 @@ class ActionProcessor {
   }
 
   /**
+   * Acknowledge first player determination
+   * Routes to SimultaneousActionManager for proper handling
+   * @param {string} playerId - Player acknowledging
+   * @returns {Object} Acknowledgment result
+   */
+  acknowledgeFirstPlayer(playerId) {
+    console.log(`🎯 ActionProcessor: Routing first player acknowledgment for ${playerId}`);
+
+    if (!this.simultaneousActionManager) {
+      console.error('❌ SimultaneousActionManager not available');
+      return { success: false, error: 'Manager not available' };
+    }
+
+    return this.simultaneousActionManager.acknowledgeFirstPlayer(playerId);
+  }
+
+  /**
+   * Get phase commitment status
+   * @param {string} phase - Phase name
+   * @returns {Object|null} Commitment status
+   */
+  getPhaseCommitmentStatus(phase) {
+    if (!this.simultaneousActionManager) {
+      return null;
+    }
+    return this.simultaneousActionManager.getPhaseCommitmentStatus(phase);
+  }
+
+  /**
    * Clear all pending actions (emergency use only)
    */
   clearQueue() {

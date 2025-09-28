@@ -11,6 +11,7 @@ Determine First Player
 - Processing:
 -- SimultaneousActionProcessor updates that both players have completed their actions
 -- GameFlowManager acknowledges that both players have completed their actions, and progresses to the next Phase. 
+
 energyReset (automatic)
 - Trigger:
 -- GameFlowManager moves to this phase. 
@@ -23,6 +24,7 @@ energyReset (automatic)
 -- actionProcessor updates each players Energy state in GameStateManager and then informs SimultaneousActionProcessor that a player has completed their action. 
 -- SimultaneousActionProcessor updates the GameStateManager as to which player(s) have completed their action. 
 -- When both players have completed their actions, GameFlowManager progresses to the next Phase. 
+
 madatoryDiscard (simultaneous)
 - Trigger:
 -- GameFlowManager moves to this phase. 
@@ -41,6 +43,7 @@ madatoryDiscard (simultaneous)
 -- actionProcessor updates the confirming players Hand / Discarded Card state in GameStateManager and then informs SimultaneousActionProcessor that a player has completed their action. 
 -- SimultaneousActionProcessor updates the GameStateManager as to which player(s) have completed their action. 
 -- When both players have completed their actions, GameFlowManager progresses to the next Phase. 
+
 draw (automatic)
 - Trigger:
 -- GameFlowManager moves to this phase. 
@@ -52,6 +55,7 @@ draw (automatic)
 -- actionProcessor automatically updates each players Hand and Deck states in GameStateManager and then informs SimultaneousActionProcessor that a player has completed their action. 
 -- SimultaneousActionProcessor updates the GameStateManager as to which player(s) have completed their action. 
 -- When both players have completed their actions, GameFlowManager progresses to the next Phase. 
+
 AllocateShields (simultaneous) 
 - Trigger:
 -- GameFlowManager moves to this phase. 
@@ -67,6 +71,7 @@ AllocateShields (simultaneous)
 -- actionProcessor updates the new Shield states in GameStateManager and then informs SimultaneousActionProcessor that a player has completed their action. 
 -- SimultaneousActionProcessor updates the GameStateManager as to which player(s) have completed their action. 
 -- When both players have completed their actions, GameFlowManager progresses to the next Phase. 
+
 madatoryDroneRemoval (simultaneous)
 - Trigger:
 -- GameFlowManager moves to this phase. 
