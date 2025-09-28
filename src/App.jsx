@@ -39,6 +39,7 @@ import ViewUpgradesModal from './components/modals/ViewUpgradesModal.jsx';
 import DestroyUpgradeModal from './components/modals/DestroyUpgradeModal.jsx';
 import DetailedDroneModal from './components/modals/debug/DetailedDroneModal.jsx';
 import { FirstPlayerModal, ActionPhaseStartModal, RoundEndModal } from './components/modals/GamePhaseModals.jsx';
+import OpponentTurnModal from './components/modals/OpponentTurnModal.jsx';
 import GameHeader from './components/ui/GameHeader.jsx';
 import GameBattlefield from './components/ui/GameBattlefield.jsx';
 import GameFooter from './components/ui/GameFooter.jsx';
@@ -202,6 +203,8 @@ const App = () => {
   const [showFirstPlayerModal, setShowFirstPlayerModal] = useState(false);
   const [showActionPhaseStartModal, setShowActionPhaseStartModal] = useState(false);
   const [showRoundEndModal, setShowRoundEndModal] = useState(false);
+  const [showOpponentTurnModal, setShowOpponentTurnModal] = useState(false);
+  const [opponentTurnData, setOpponentTurnData] = useState({ phase: 'action', actionType: 'action' });
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [isViewDeckModalOpen, setIsViewDeckModalOpen] = useState(false);
   const [isViewDiscardModalOpen, setIsViewDiscardModalOpen] = useState(false);
@@ -1714,32 +1717,22 @@ const App = () => {
         //   text: `Select a drone and a lane to deploy it. Drones cost ${deploymentResource} this turn. Or, click "Pass" to end your deployment for this phase.`,
         //   isBlocking: true
         // });
+
+        // Clear any existing modal (like "Opponent's Turn") when it becomes player's turn
+        setModalContent(null);
+        setShowOpponentTurnModal(false);
       } else if (turnPhase === 'action') {
         setModalContent({
           title: "Action Phase - Your Turn",
           text: "It's your turn to act. Select a drone to move or attack, play a card, or use an ability.",
           isBlocking: true
         });
+        setShowOpponentTurnModal(false);
       }
     } else {
       // It's now the opponent's turn
-      if (turnPhase === 'deployment') {
-        setModalContent({
-          title: isMultiplayerGame ? "Opponent's Turn" : "AI Thinking...",
-          text: isMultiplayerGame ?
-            "Your opponent is deploying a drone. Wait for their turn to complete." :
-            "AI is deciding on drone deployment...",
-          isBlocking: false
-        });
-      } else if (turnPhase === 'action') {
-        setModalContent({
-          title: isMultiplayerGame ? "Opponent's Turn" : "AI Thinking...",
-          text: isMultiplayerGame ?
-            "Your opponent is taking their turn." :
-            "AI is deciding on its next action...",
-          isBlocking: false
-        });
-      }
+      setOpponentTurnData({ phase: turnPhase, actionType: 'action' });
+      setShowOpponentTurnModal(true);
     }
   }, [currentPlayer, turnPhase, isMyTurn, isMultiplayer, turn, winner, showFirstPlayerModal, showActionPhaseStartModal, showRoundEndModal, deploymentConfirmation, moveConfirmation, cardConfirmation, lastCurrentPlayer, modalContent?.title]);
 
@@ -1846,11 +1839,8 @@ const App = () => {
             isBlocking: true
         });
 } else {
- setModalContent({
-        title: "Opponent's Turn",
-        text: "Your opponent is taking their turn.",
-        isBlocking: false
-    });
+ setOpponentTurnData({ phase: 'action', actionType: 'action' });
+ setShowOpponentTurnModal(true);
 }
   };
   
@@ -2706,11 +2696,8 @@ const App = () => {
       //   isBlocking: true
       // });
 } else {
- setModalContent({
-        title: "Opponent's Turn",
-        text: "Your opponent is deploying a drone. Wait for their turn to complete.",
-        isBlocking: false
-    });
+ setOpponentTurnData({ phase: 'deployment', actionType: 'deploy' });
+ setShowOpponentTurnModal(true);
 }
   };
 
@@ -3583,7 +3570,8 @@ useEffect(() => {
                  newPlayer: getOpponentPlayerId(),
                  reason: 'aiGoAgain'
              });
-             setModalContent({ title: "Opponent's Turn", text: "Your opponent takes another action!", isBlocking: false });
+             setOpponentTurnData({ phase: turnPhase, actionType: 'another' });
+             setShowOpponentTurnModal(true);
         }
         setAiCardPlayReport(null);
     }, [processAction, getLocalPlayerId, getOpponentPlayerId, aiCardPlayReport, winner]);
@@ -3752,7 +3740,7 @@ useEffect(() => {
         localPlayerName={localPlayerState.name}
         opponentPlayerName={opponentPlayerState.name}
         reasonText={getFirstPlayerReasonText()}
-        onContinue={startDeploymentComplianceCheck}
+        onContinue={() => setShowFirstPlayerModal(false)}
       />
       <ActionPhaseStartModal
         show={showActionPhaseStartModal}
@@ -3761,6 +3749,12 @@ useEffect(() => {
       <RoundEndModal
         show={showRoundEndModal}
         onContinue={handleStartNewRound}
+      />
+      <OpponentTurnModal
+        show={showOpponentTurnModal}
+        isMultiplayer={isMultiplayer()}
+        phase={opponentTurnData.phase}
+        actionType={opponentTurnData.actionType}
       />
                    {deploymentConfirmation && (
                            <GamePhaseModal title="Confirm Deployment" text={`This deployment will use ${deploymentConfirmation.budgetCost} Initial Deployment points and cost ${deploymentConfirmation.energyCost} Energy. Proceed?`} onClose={() => setDeploymentConfirmation(null)}>

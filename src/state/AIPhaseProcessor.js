@@ -409,21 +409,13 @@ class AIPhaseProcessor {
       }
     });
 
-    console.log('🤖 AIPhaseProcessor executing deployment decision:', aiDecision);
+    console.log('🤖 AIPhaseProcessor returning deployment decision:', aiDecision);
 
-    // Execute the AI decision through ActionProcessor
-    const result = await this.actionProcessor.queueAction({
-      type: 'aiAction',
-      payload: { aiDecision }
-    });
-
+    // Return the decision for SequentialPhaseManager to execute
     return {
-      success: true,
-      action: 'executed',
-      phase: 'deployment',
-      playerId: 'player2',
+      type: 'deployment',
       decision: aiDecision,
-      result: result
+      playerId: 'player2'
     };
   }
 
@@ -463,21 +455,13 @@ class AIPhaseProcessor {
       }
     });
 
-    console.log('🤖 AIPhaseProcessor executing action decision:', aiDecision);
+    console.log('🤖 AIPhaseProcessor returning action decision:', aiDecision);
 
-    // Execute the AI decision through ActionProcessor
-    const result = await this.actionProcessor.queueAction({
-      type: 'aiAction',
-      payload: { aiDecision }
-    });
-
+    // Return the decision for SequentialPhaseManager to execute
     return {
-      success: true,
-      action: 'executed',
-      phase: 'action',
-      playerId: 'player2',
+      type: 'action',
       decision: aiDecision,
-      result: result
+      playerId: 'player2'
     };
   }
 
@@ -507,34 +491,13 @@ class AIPhaseProcessor {
    * @returns {Promise<Object>} Pass execution result
    */
   async executePass(phase) {
-    if (!this.gameStateManager) {
-      throw new Error('AIPhaseProcessor not properly initialized - missing gameStateManager');
-    }
+    console.log(`🏳️ AIPhaseProcessor: Returning pass decision for ${phase} phase`);
 
-    console.log(`🏳️ AIPhaseProcessor: Executing pass for ${phase} phase`);
-
-    const currentState = this.gameStateManager.getState();
-    const playerId = 'player2'; // AI is always player2
-
-    // Update pass info
-    const wasFirstToPass = !currentState.passInfo.player1Passed && !currentState.passInfo.player2Passed;
-    const newPassInfo = {
-      ...currentState.passInfo,
-      [playerId + 'Passed']: true,
-      firstPasser: currentState.passInfo.firstPasser || (wasFirstToPass ? playerId : null)
-    };
-
-    // Update GameStateManager
-    this.gameStateManager.setPassInfo(newPassInfo);
-
-    console.log(`🏳️ AI passed in ${phase} phase, firstPasser: ${newPassInfo.firstPasser}`);
-
+    // Return the pass decision for SequentialPhaseManager to execute
     return {
-      success: true,
-      action: 'pass',
+      type: 'pass',
       phase: phase,
-      playerId: playerId,
-      passInfo: newPassInfo
+      playerId: 'player2'
     };
   }
 

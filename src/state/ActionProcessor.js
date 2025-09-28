@@ -437,9 +437,15 @@ class ActionProcessor {
   async processPhaseTransition(payload) {
     const { newPhase, resetPassInfo = true } = payload;
 
-    console.log(`[PHASE TRANSITION DEBUG] Processing phase transition to: ${newPhase}`);
-
     const currentState = this.gameStateManager.getState();
+
+    // Guard against re-entering same phase
+    if (currentState.turnPhase === newPhase) {
+      console.log(`[PHASE TRANSITION DEBUG] Skipping redundant transition to same phase: ${newPhase}`);
+      return { success: true, message: 'Already in phase' };
+    }
+
+    console.log(`[PHASE TRANSITION DEBUG] Processing phase transition to: ${newPhase}`);
 
     // LOG PLACEMENT DATA BEFORE TRANSITION
     console.log(`[PLACEMENT DATA DEBUG] BEFORE transition to ${newPhase}:`, {

@@ -205,26 +205,54 @@ class SequentialPhaseManager {
       // Get current game state
       const state = this.gameStateManager.getState();
 
-      // Let AIPhaseProcessor handle everything (decision + execution)
-      let result;
+      // Get AI decision (not executed)
+      let decision;
       if (this.currentPhase === 'deployment') {
-        result = await this.aiPhaseProcessor.executeDeploymentTurn(state);
+        decision = await this.aiPhaseProcessor.executeDeploymentTurn(state);
       } else if (this.currentPhase === 'action') {
-        result = await this.aiPhaseProcessor.executeActionTurn(state);
+        decision = await this.aiPhaseProcessor.executeActionTurn(state);
       } else {
         console.error(`❌ Unknown sequential phase: ${this.currentPhase}`);
         // Force pass for unknown phases
-        result = await this.aiPhaseProcessor.executePass(this.currentPhase);
+        decision = await this.aiPhaseProcessor.executePass(this.currentPhase);
       }
 
-      console.log('🤖 AI turn completed:', result);
+      console.log('🤖 AI decision received:', decision);
 
-      // Emit completion event for UI updates
-      this.emit({
-        type: 'ai_turn_completed',
-        phase: this.currentPhase,
-        result: result
-      });
+      // Execute the decision through standard flow
+      if (decision.type === 'pass') {
+        await this.processPlayerPass('player2');
+      } else if (decision.type === 'deployment') {
+        // Execute deployment through standard flow
+        const result = await this.actionProcessor.queueAction({
+          type: 'deployment',
+          payload: {
+            droneData: decision.decision.payload.droneToDeploy,
+            laneId: decision.decision.payload.targetLane,
+            playerId: 'player2',
+            turn: state.turn
+          }
+        });
+
+        // End turn after successful deployment (same as human players do)
+        if (result.success) {
+          await this.actionProcessor.queueAction({
+            type: 'turnTransition',
+            payload: {
+              newPlayer: 'player1',
+              reason: 'deploymentCompleted'
+            }
+          });
+        }
+      } else if (decision.type === 'action') {
+        // Execute action through ActionProcessor (for future implementation)
+        const result = await this.actionProcessor.queueAction({
+          type: 'aiAction',
+          payload: { aiDecision: decision.decision }
+        });
+
+        // Note: Action phase turn ending is handled differently (by actionProcessor itself)
+      }
 
     } catch (error) {
       console.error('❌ Error processing AI turn:', error);
