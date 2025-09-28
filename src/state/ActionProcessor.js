@@ -47,6 +47,14 @@ class ActionProcessor {
   }
 
   /**
+   * Set SimultaneousActionManager for round-start shield allocation routing
+   * @param {Object} simultaneousActionManager - SimultaneousActionManager instance
+   */
+  setSimultaneousActionManager(simultaneousActionManager) {
+    this.simultaneousActionManager = simultaneousActionManager;
+  }
+
+  /**
    * Queue an action for processing
    * @param {Object} action - Action object with type and payload
    * @returns {Promise} Resolves when action is complete
@@ -122,15 +130,20 @@ class ActionProcessor {
       }
     }
 
-    // Validate that round start shield allocation actions use direct updates
-    if (type === 'allocateShield' && currentState.turnPhase === 'allocateShields') {
-      throw new Error('Round start shield allocation should use direct updates, not ActionProcessor');
-    }
-    if (type === 'resetShieldAllocation' && currentState.turnPhase === 'allocateShields') {
-      throw new Error('Round start shield allocation reset should use direct updates, not ActionProcessor');
-    }
-    if (type === 'endShieldAllocation' && currentState.turnPhase === 'allocateShields') {
-      throw new Error('Round start shield allocation completion should use direct updates, not ActionProcessor');
+    // Route round start shield allocation actions to SimultaneousActionManager
+    if (currentState.turnPhase === 'allocateShields') {
+      if (type === 'allocateShield') {
+        console.log(`🛡️ Routing allocateShield to SimultaneousActionManager`);
+        return this.simultaneousActionManager.allocateShieldToSection(payload.playerId, payload.sectionName);
+      }
+      if (type === 'resetShieldAllocation') {
+        console.log(`🔄 Routing resetShieldAllocation to SimultaneousActionManager`);
+        return this.simultaneousActionManager.resetShieldAllocation(payload.playerId);
+      }
+      if (type === 'endShieldAllocation') {
+        console.log(`🏁 Routing endShieldAllocation to SimultaneousActionManager`);
+        return this.simultaneousActionManager.endShieldAllocation(payload.playerId);
+      }
     }
 
     // Check for action-specific locks
@@ -243,6 +256,13 @@ class ActionProcessor {
       result.newPlayerStates.player2
     );
 
+    // Handle automatic turn transition if needed
+    if (result.attackResult && result.attackResult.shouldEndTurn) {
+      await this.processTurnTransition({
+        newPlayer: attackDetails.attackingPlayer === 'player1' ? 'player2' : 'player1'
+      });
+    }
+
     return result;
   }
 
@@ -306,6 +326,14 @@ class ActionProcessor {
       result.newPlayerStates.player1,
       result.newPlayerStates.player2
     );
+
+    // Handle automatic turn transition if needed
+    if (result.shouldEndTurn) {
+      const currentState = this.gameStateManager.getState();
+      await this.processTurnTransition({
+        newPlayer: currentState.currentPlayer === 'player1' ? 'player2' : 'player1'
+      });
+    }
 
     return result;
   }
@@ -390,6 +418,14 @@ class ActionProcessor {
       result.newPlayerStates.player2
     );
 
+    // Handle automatic turn transition if needed
+    if (result.shouldEndTurn) {
+      const currentState = this.gameStateManager.getState();
+      await this.processTurnTransition({
+        newPlayer: currentState.currentPlayer === 'player1' ? 'player2' : 'player1'
+      });
+    }
+
     return result;
   }
 
@@ -430,6 +466,14 @@ class ActionProcessor {
       result.newPlayerStates.player1,
       result.newPlayerStates.player2
     );
+
+    // Handle automatic turn transition if needed
+    if (result.shouldEndTurn) {
+      const currentState = this.gameStateManager.getState();
+      await this.processTurnTransition({
+        newPlayer: currentState.currentPlayer === 'player1' ? 'player2' : 'player1'
+      });
+    }
 
     return result;
   }

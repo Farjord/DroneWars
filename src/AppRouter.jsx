@@ -46,6 +46,10 @@ function AppRouter() {
       aiPhaseProcessor,
       () => gameState.gameMode !== 'local'
     );
+
+    // Inject SimultaneousActionManager into ActionProcessor for shield allocation routing
+    gameStateManager.actionProcessor.setSimultaneousActionManager(simultaneousActionManager);
+
     console.log('🔧 SimultaneousActionManager initialized in AppRouter');
   }, [gameState.gameMode]);
 

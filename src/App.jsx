@@ -7,32 +7,27 @@
 
 // --- IMPORTS AND DEPENDENCIES ---
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { X, Sword, Rocket, Bolt, Loader2, Cpu, ChevronUp, Hand, ShieldCheck, RotateCcw, Settings } from 'lucide-react';
-import DeckBuilder from './DeckBuilder';
+import { X } from 'lucide-react';
 import CardViewerModal from './CardViewerModal';
 import CardSelectionModal from './CardSelectionModal';
-import MultiplayerLobby from './MultiplayerLobby';
 import WaitingOverlay from './components/WaitingOverlay';
 import { useGameState } from './hooks/useGameState';
 import { useGameData } from './hooks/useGameData';
+import { useExplosions } from './hooks/useExplosions';
 import fullDroneCollection from './data/droneData.js';
 import fullCardCollection from './data/cardData.js';
 import { aiBrain } from './logic/aiLogic.js';
 import { gameEngine } from './logic/gameLogic.js';
-import { getElementCenter, getPhaseDisplayName } from './utils/gameUtils.js';
+import { getElementCenter } from './utils/gameUtils.js';
 import gameFlowManager from './state/GameFlowManager.js';
 import simultaneousActionManager from './state/SimultaneousActionManager.js';
 import aiPhaseProcessor from './state/AIPhaseProcessor.js';
 import sequentialPhaseManager from './state/SequentialPhaseManager.js';
 // ActionProcessor is created internally by GameStateManager
-import CardStatHexagon from './components/ui/CardStatHexagon.jsx';
 import ActionCard from './components/ui/ActionCard.jsx';
-import DroneCard from './components/ui/DroneCard.jsx';
 import GamePhaseModal from './components/ui/GamePhaseModal.jsx';
 import ShipSection from './components/ui/ShipSection.jsx';
-import ShipSectionsDisplay from './components/ui/ShipSectionsDisplay.jsx';
 import DroneToken from './components/ui/DroneToken.jsx';
-import DroneLanesDisplay from './components/ui/DroneLanesDisplay.jsx';
 import AICardPlayReportModal from './components/modals/AICardPlayReportModal.jsx';
 import UpgradeSelectionModal from './components/modals/UpgradeSelectionModal.jsx';
 import ViewUpgradesModal from './components/modals/ViewUpgradesModal.jsx';
@@ -43,6 +38,21 @@ import OpponentTurnModal from './components/modals/OpponentTurnModal.jsx';
 import GameHeader from './components/ui/GameHeader.jsx';
 import GameBattlefield from './components/ui/GameBattlefield.jsx';
 import GameFooter from './components/ui/GameFooter.jsx';
+import TargetingArrow from './components/ui/TargetingArrow.jsx';
+import ExplosionEffect from './components/ui/ExplosionEffect.jsx';
+import AIActionReportModal from './components/modals/AIActionReportModal.jsx';
+import ConfirmationModal from './components/modals/ConfirmationModal.jsx';
+import MandatoryActionModal from './components/modals/MandatoryActionModal.jsx';
+import WinnerModal from './components/modals/WinnerModal.jsx';
+import AIDecisionLogModal from './components/modals/AIDecisionLogModal.jsx';
+import DeploymentConfirmationModal from './components/modals/DeploymentConfirmationModal.jsx';
+import MoveConfirmationModal from './components/modals/MoveConfirmationModal.jsx';
+import InterceptionOpportunityModal from './components/modals/InterceptionOpportunityModal.jsx';
+import AttackInterceptedModal from './components/modals/AttackInterceptedModal.jsx';
+import CardConfirmationModal from './components/modals/CardConfirmationModal.jsx';
+import DroneAbilityConfirmationModal from './components/modals/DroneAbilityConfirmationModal.jsx';
+import ShipAbilityConfirmationModal from './components/modals/ShipAbilityConfirmationModal.jsx';
+import AIHandDebugModal from './components/modals/AIHandDebugModal.jsx';
 
 // ========================================
 // MAIN APPLICATION COMPONENT
@@ -64,7 +74,6 @@ const App = () => {
     getOpponentPlacedSections,
     updatePlayerState,
     setFirstPasserOfPreviousRound,
-    setFirstPlayerOverride,
     addLogEntry,
     resetGame,
     setWinner,
@@ -208,7 +217,6 @@ const App = () => {
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [isViewDeckModalOpen, setIsViewDeckModalOpen] = useState(false);
   const [isViewDiscardModalOpen, setIsViewDiscardModalOpen] = useState(false);
-  const [showMultiplayerLobby, setShowMultiplayerLobby] = useState(false);
 
   // --- EXTRACTED STATE (now from GameStateManager) ---
   // Core game state comes from gameState object:
@@ -255,14 +263,12 @@ const App = () => {
   // --- AI BEHAVIOR AND REPORTING ---
   const [aiActionReport, setAiActionReport] = useState(null);
   const [aiCardPlayReport, setAiCardPlayReport] = useState(null);
-  const [aiActionTrigger, setAiActionTrigger] = useState(0);
   const [aiDecisionLogToShow, setAiDecisionLogToShow] = useState(null);
 
   // --- UI AND VISUAL EFFECTS ---
   const [footerView, setFooterView] = useState('drones');
   const [isFooterOpen, setIsFooterOpen] = useState(true);
   const [recentlyHitDrones, setRecentlyHitDrones] = useState([]);
-  const [explosions, setExplosions] = useState([]);
   const [arrowState, setArrowState] = useState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
   const [deck, setDeck] = useState({});
 
@@ -326,30 +332,8 @@ const App = () => {
     return unsubscribe;
   }, [isMultiplayer, p2pManager]);
 
-  // Handle when both players complete a phase
-
-  // --- UI CALLBACK FUNCTIONS ---
-
-  /**
-   * TRIGGER EXPLOSION ANIMATION
-   * Creates and displays an explosion effect at the location of a destroyed drone.
-   * Automatically removes the explosion after 1 second.
-   * @param {string} targetId - The ID of the drone element to explode
-   */
-  const triggerExplosion = useCallback((targetId) => {
-    // Create the explosion effect using the pure function
-    const explosionEffect = gameEngine.createExplosionEffect(targetId);
-
-    // Handle UI-specific rendering
-    const pos = getElementCenter(droneRefs.current[targetId], gameAreaRef.current);
-    if (pos) {
-      const explosionId = `${explosionEffect.timestamp}-${Math.random()}`;
-      setExplosions(prev => [...prev, { id: explosionId, top: pos.y, left: pos.x }]);
-      setTimeout(() => {
-        setExplosions(prev => prev.filter(ex => ex.id !== explosionId));
-      }, explosionEffect.duration);
-    }
-  }, []);
+  // Use explosion hook for visual effects
+  const { explosions, triggerExplosion } = useExplosions(droneRefs, gameAreaRef);
 
   // addLogEntry is now provided by useGameState hook
 
@@ -439,49 +423,6 @@ const App = () => {
 
 
 
-  // --- TURN MANAGEMENT ---
-  const endTurn = useCallback(async (actingPlayer) => {
-    // Use the new pure function that returns both transition and UI effects
-    const { transition, uiEffects } = gameEngine.createTurnEndEffects(
-      actingPlayer,
-      passInfoRef.current,
-      turnPhaseRef.current,
-      winnerRef.current
-    );
-
-    // Handle game state transitions through ActionProcessor
-    switch (transition.type) {
-
-      case 'CONTINUE_TURN':
-        await processAction('turnTransition', {
-          newPlayer: transition.nextPlayer,
-          reason: 'continueTurn'
-        });
-        break;
-
-      case 'CHANGE_PLAYER':
-        await processAction('turnTransition', {
-          newPlayer: transition.nextPlayer,
-          reason: 'changePlayer'
-        });
-        break;
-    }
-
-    // Handle UI effects
-    uiEffects.forEach(effect => {
-      switch (effect.type) {
-        case 'CLOSE_MODAL':
-          setModalContent(null);
-          break;
-        case 'SHOW_MODAL':
-          setModalContent(effect.modal);
-          break;
-        case 'TRIGGER_AI':
-          setAiActionTrigger(prev => prev + 1);
-          break;
-      }
-    });
-  }, []);
   
 
   useEffect(() => {
@@ -574,10 +515,6 @@ const App = () => {
             });
         }
 
-        // Handle turn ending
-        if (result.attackResult.shouldEndTurn) {
-            endTurn(getLocalPlayerId());
-        }
 
         // Handle non-turn-ending attack cleanup
         setPendingAttack(null);
@@ -592,7 +529,7 @@ const App = () => {
         isResolvingAttackRef.current = false;
     }
 
-}, [endTurn, triggerExplosion, processAction, getLocalPlayerId, getOpponentPlayerId]);
+}, [triggerExplosion, processAction, getLocalPlayerId, getOpponentPlayerId]);
 
   // --- ABILITY RESOLUTION ---
 
@@ -614,14 +551,11 @@ const App = () => {
       });
 
       cancelAbilityMode();
-      if (result.shouldEndTurn) {
-        endTurn(getLocalPlayerId());
-      }
     } catch (error) {
       console.error('Error in resolveAbility:', error);
       cancelAbilityMode();
     }
-  }, [processAction, endTurn, getLocalPlayerId]);
+  }, [processAction, getLocalPlayerId]);
 
   // --- SHIP ABILITY RESOLUTION ---
 
@@ -663,12 +597,8 @@ const App = () => {
     setShipAbilityMode(null);
     setShipAbilityConfirmation(null);
 
-    if (result.shouldEndTurn) {
-        endTurn(getLocalPlayerId());
-    }
-
     return result;
-}, [processAction, getLocalPlayerId, endTurn]);
+}, [processAction, getLocalPlayerId]);
 
   // --- CARD RESOLUTION ---
 
@@ -745,13 +675,9 @@ const App = () => {
         setCardConfirmation(null);
     }
 
-    // Handle turn ending
-    if (result.shouldEndTurn) {
-        endTurn(actingPlayerId);
-    }
 
     return result;
-}, [processAction, getLocalPlayerId, localPlayerState, opponentPlayerState, endTurn]);
+}, [processAction, getLocalPlayerId, localPlayerState, opponentPlayerState]);
 
   // --- CARD SELECTION HANDLING ---
 
@@ -818,12 +744,8 @@ const App = () => {
       setCardConfirmation(null);
     }
 
-    // End turn if needed
-    if (completion.shouldEndTurn) {
-      endTurn(actingPlayerId);
-    }
 
-  }, [localPlayerState, opponentPlayerState, addLogEntry, endTurn]);
+  }, [localPlayerState, opponentPlayerState, addLogEntry]);
 
   // --- MOVEMENT RESOLUTION ---
 
@@ -860,10 +782,7 @@ const App = () => {
     if (result.shouldCancelCardSelection) {
         cancelCardSelection();
     }
-    if (result.shouldEndTurn) {
-        endTurn(getLocalPlayerId());
-    }
-}, [localPlayerState, endTurn, addLogEntry, gameEngine, localPlacedSections, opponentPlacedSections]);
+}, [localPlayerState, addLogEntry, gameEngine, localPlacedSections, opponentPlacedSections]);
 
 
   /**
@@ -898,9 +817,6 @@ const App = () => {
     }
     if (result.shouldCancelCardSelection) {
         cancelCardSelection();
-    }
-    if (result.shouldEndTurn) {
-        endTurn(getLocalPlayerId());
     }
     // Note: Single move cards have "goAgain: true", so shouldEndTurn will be false
 }, [localPlayerState, addLogEntry, gameEngine, localPlacedSections, opponentPlacedSections]);
@@ -1007,369 +923,7 @@ const App = () => {
     };
   }, [arrowState.visible]); // This effect only re-runs when the arrow's visibility changes.
 
-  // --- UI COMPONENTS ---
-
-  /**
-   * TARGETING ARROW COMPONENT
-   * Renders a visual arrow from attacking drone to target during combat.
-   * Uses SVG with dynamic positioning and dashed line animation.
-   * @param {boolean} visible - Whether arrow should be displayed
-   * @param {Object} start - Starting position {x, y}
-   * @param {Object} end - Ending position {x, y}
-   * @param {Object} lineRef - React ref for the SVG line element
-   */
-  const TargetingArrow = ({ visible, start, end, lineRef }) => {
-    if (!visible) return null;
-    return (
-      <svg className="absolute top-0 left-0 w-full h-full pointer-events-none z-40">
-        <defs>
-          <marker id="arrowhead" markerWidth="10" markerHeight="7" 
-          refX="0" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="#ff0055" />
-          </marker>
-        </defs>
-        <line ref={lineRef} x1={start.x} y1={start.y} x2={end.x} y2={end.y} stroke="#ff0055" strokeWidth="4" markerEnd="url(#arrowhead)" strokeDasharray="10, 5" />
-      </svg>
-    );
-  };
-
-  /**
-   * EXPLOSION COMPONENT
-   * Renders a CSS-animated explosion effect at specified coordinates.
-   * Automatically times out after animation duration.
-   * @param {number} top - Y position in pixels
-   * @param {number} left - X position in pixels
-   */
-  const Explosion = ({ top, left }) => (
-    <div className="explosion" style={{ top: `${top}px`, left: `${left}px` }}></div>
-  );
-
-
-
-  /**
-   * GAME PHASE MODAL COMPONENT
-   * Base modal component used for game phase transitions and informational displays.
-   * Provides consistent styling and layout for all game modals.
-   * @param {string} title - Modal title text
-   * @param {string} text - Modal body text
-   * @param {Function} onClose - Callback when modal is closed
-   * @param {React.ReactNode} children - Additional modal content
-   * @param {string} maxWidthClass - Tailwind max-width class for modal sizing
-   */
-  const GamePhaseModal = ({ title, text, onClose, children, maxWidthClass = 'max-w-lg' }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-      <div className={`bg-gray-900 rounded-2xl border-2 border-purple-500 p-8 shadow-2xl shadow-purple-500/20 w-full ${maxWidthClass} relative`}>
-        {onClose && <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
-          <X size={24} />
-        </button>}
-        <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-cyan-400 text-center mb-4">{title}</h2>
-        <p className="text-center text-gray-400">{text}</p>
-        {children}
-      </div>
-    </div>
-  );
-
-  /**
-   * AI ACTION REPORT MODAL COMPONENT
-   * Displays detailed information about AI combat actions.
-   * Shows attack results, damage dealt, and target status.
-   * @param {Object} report - Combat report data with attacker, target, and damage info
-   * @param {Function} onClose - Callback when modal is closed
-   */
-  const AIActionReportModal = ({ report, onClose }) => {
-    if (!report) return null;
-
-    const {
-        attackerName,
-        lane,
-        targetName,
-        targetType,
-       interceptorName,
-        shieldDamage,
-        hullDamage,
-        wasDestroyed,
-       remainingShields,
-        remainingHull
-    } = report;
-
-    const targetDisplayName = targetType === 'section'
-    ? targetName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())
-    : targetName;
-
-    return (
-     <GamePhaseModal title="AI Action Report" text="" onClose={onClose}>
-             <div className="text-left text-gray-300 space-y-3 mt-4 text-center">
-                     <p><strong className="text-pink-400">{attackerName}</strong> attacked in <strong>{lane?.replace('lane', 'Lane ') || 'Unknown Lane'}</strong>.</p>
-                  {interceptorName ? (
-                       <p>Your <strong className="text-yellow-400">{interceptorName}</strong> intercepted the attack, which was targeting your <strong className="text-cyan-400">{targetDisplayName}</strong>!</p>
-                    ) : (
-                       <p>It targeted your <strong className="text-cyan-400">{targetDisplayName}</strong>.</p>
-                    )}
-                     <p>The attack dealt <strong className="text-cyan-300">{shieldDamage}</strong> damage to shields and <strong className="text-red-400">{hullDamage}</strong> damage to the hull.</p>
-                  {wasDestroyed ? (
-                       <p className="font-bold text-red-500 text-lg">The target was destroyed!</p>
-                    ) : (
-                       <p>The target has <strong className="text-cyan-300">{remainingShields}</strong> shields and <strong className="text-green-400">{remainingHull}</strong> hull remaining.</p>
-                    )}
-          </div>
-             <div className="flex justify-center mt-6">
-                 <button onClick={onClose} className="btn-continue">
-                     Continue
-                 </button>
-          </div>
-     </GamePhaseModal>
-    );
-  };
-
-  /**
-   * AI CARD PLAY REPORT MODAL COMPONENT
-   * Displays information about cards played by the AI opponent.
-   * Shows the card played and its target for player awareness.
-   * @param {Object} report - Card play report with card, target, and lane info
-   * @param {Function} onClose - Callback when modal is closed
-   */
-  const AICardPlayReportModal = ({ report, onClose }) => {
-    if (!report) return null;
-    const { card, targetName, targetLane } = report;
-
-    return (
-      <GamePhaseModal title="AI Action: Card Played" text="" onClose={onClose}>
-        <div className="flex flex-col items-center gap-4 mt-4">
-            <p className="text-center text-lg text-gray-300">
-                The opponent played <strong className="text-purple-400">{card.name}</strong>
-                {targetName && (
-                    <> on <strong className="text-cyan-400">{targetName}</strong>
-                    {targetLane && <> in <strong className="text-yellow-400">{targetLane}</strong></>}
-                    </>
-                )}!
-            </p>
-            {/* Display the card that was played */}
-            <div className="transform scale-75">
-                <ActionCard card={card} isPlayable={false} />
-            </div>
-        </div>
-        <div className="flex justify-center mt-6">
-          <button onClick={onClose} className="btn-continue">
-            Continue
-          </button>
-        </div>
-      </GamePhaseModal>
-    );
-  };
-
-  /**
-   * PLAYER INTERCEPTION MODAL COMPONENT
-   * Allows player to choose whether to intercept an incoming attack.
-   * Shows attacker, target, and available interceptor drones.
-   * @param {Object} choiceData - Contains attack details and available interceptors
-   * @param {Function} onIntercept - Callback when player chooses to intercept
-   * @param {Function} onDecline - Callback when player declines interception
-   */
-  const PlayerInterceptionModal = ({ choiceData, onIntercept, onDecline }) => {
-    const { attackDetails, interceptors } = choiceData;
-    const { attacker, target, targetType, lane } = attackDetails;
-  
-    return (
-     <GamePhaseModal
-     title="Interception Opportunity!"
-     text={`Combat in ${lane?.replace('lane', 'Lane ') || 'Unknown Lane'}`}
-     onClose={onDecline}
-     maxWidthClass="max-w-3xl"
-      >
-        <div className="flex justify-around items-center my-4 p-4 bg-black/20 rounded-lg">
-          <div className="flex flex-col items-center">
-            <h4 className="text-lg font-bold text-pink-400 mb-2">Attacker</h4>
-           <DroneToken drone={attacker} isPlayer={false} lane={lane} droneRefs={droneRefs} mandatoryAction={mandatoryAction} localPlayerState={localPlayerState}/>
-          </div>
-          <div className="text-4xl font-bold text-gray-500">VS</div>
-          <div className="flex flex-col items-center">
-            <h4 className="text-lg font-bold text-cyan-400 mb-2">Target</h4>
-           {targetType === 'drone' ? (
-             <DroneToken drone={target} isPlayer={true} lane={lane} droneRefs={droneRefs} mandatoryAction={mandatoryAction} localPlayerState={localPlayerState} />
-
-           ) : (
-             <div className="transform scale-75">
-               <ShipSection
-                 section={target.name}
-                 stats={localPlayerState.shipSections[target.name]}
-                 isPlayer={true}
-                 isInteractive={false}
-                 gameEngine={gameEngine}
-                 turnPhase={turnPhase}
-                 isMyTurn={isMyTurn}
-                 passInfo={passInfo}
-                 getLocalPlayerId={getLocalPlayerId}
-                 localPlayerState={localPlayerState}
-                 shipAbilityMode={shipAbilityMode}
-                 />
-             </div>
-           )}
-          </div>
-        </div>
-  
-        <h3 className="text-center text-white text-xl font-semibold mt-6 mb-2">Choose an Interceptor</h3>
-        <p className="text-center text-gray-400 mb-4">Drones with higher speed or special abilities can intercept the attack.</p>
-        <div className="flex flex-wrap justify-center gap-8 my-4">
-         {interceptors.map(drone => (
-           <DroneToken
-             key={drone.id}
-             drone={drone}
-             isPlayer={true}
-             onClick={() => onIntercept(drone)}
-               lane={lane}
-               droneRefs={droneRefs}
-               mandatoryAction={mandatoryAction}
-               localPlayerState={localPlayerState}
-               />
-          ))}
-        </div>
-  
-        <div className="flex justify-center mt-6">
-          <button
-           onClick={onDecline}
-           className="bg-pink-600 text-white font-bold py-2 px-6 rounded-full hover:bg-pink-700 transition-colors"
-          >
-            Decline Interception
-        </button>
-        </div>
-     </GamePhaseModal>
-    );
-  };
-
-
-  /**
-   * SCALING TEXT COMPONENT
-   * Automatically adjusts font size to fit text within container bounds.
-   * Prevents text overflow in responsive card layouts.
-   * @param {string} text - The text content to display
-   * @param {string} className - CSS classes to apply to the text element
-   */
-  const ScalingText = ({ text, className }) => {
-    const containerRef = useRef(null);
-    const textRef = useRef(null);
-
-    useEffect(() => {
-            const container = containerRef.current;
-            const textEl = textRef.current;
-            if (!container || !textEl || container.clientHeight === 0) return;
-
-            const resizeText = () => {
-                let min, max;
-               if(className.includes("font-orbitron")){
-                    min = 8; max = 16;
-                } else {
-                    min = 8; max = 12; 
-                }
-                
-                let fontSize = max;
-                
-               textEl.style.fontSize = `${fontSize}px`;
-                
-                while ((textEl.scrollHeight > container.clientHeight || textEl.scrollWidth > container.clientWidth) && fontSize > min) {
-                    fontSize -= 0.5;
-                   textEl.style.fontSize = `${fontSize}px`;
-                }
-            };
-            
-            const observer = new ResizeObserver(resizeText);
-           observer.observe(container);
-
-           resizeText();
-
-            return () => observer.disconnect();
-    }, [text, className]);
-
-    return (
-        <div ref={containerRef} className="h-full w-full flex items-center justify-center">
-            <span ref={textRef} className={className}>{text}</span>
-        </div>
-    );
-  };
-
-
-
-  
-
-
-  /**
-   * AI DECISION LOG MODAL COMPONENT
-   * Displays detailed breakdown of AI decision-making process.
-   * Shows scores, logic, and chosen actions in tabular format.
-   * @param {Array} decisionLog - Array of AI decision entries with scores and logic
-   * @param {Function} onClose - Callback when modal is closed
-   */
-  const AIDecisionLogModal = ({ decisionLog, onClose }) => {
-    if (!decisionLog) return null;
-
-    // Helper to format the target display
-    const formatTarget = (action) => {
-      // Handle new, simpler deployment logs
-      if (action.type === 'deploy' || !action.target) {
-        return action.targetName;
-      }
-
-      // Handle attack display format
-      if (action.type === 'attack') {
-        const formattedName = action.target.name.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-        return `${formattedName} (Lane ${action.attacker.lane.slice(-1)})`;
-      }
-      
-      // Handle existing action logs
-      const ownerPrefix = action.target.owner === getLocalPlayerId() ? 'Player' : 'AI';
-      if (String(action.target.id).startsWith('lane')) {
-        return `${ownerPrefix} Lane ${action.target.id.slice(-1)}`;
-      }
-      return `${ownerPrefix}: ${action.targetName}`;
-    };
-
-    return (
-      <GamePhaseModal
-        title="AI Decision Matrix"
-        text="This log shows all actions the AI considered for its turn, the score it assigned, and the logic behind that score."
-        onClose={onClose}
-        maxWidthClass="max-w-7xl" // Make the modal wider
-      >
-        <div className="mt-4 max-h-[60vh] overflow-y-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="sticky top-0 bg-slate-800">
-              <tr>
-                <th className="p-2">Type</th>
-                <th className="p-2">Instigator</th>
-                <th className="p-2">Target</th>
-                <th className="p-2 w-1/3">Logic Breakdown</th>
-                <th className="p-2">Score</th>
-                <th className="p-2">Chosen</th>
-              </tr>
-            </thead>
-            <tbody>
-              {decisionLog.sort((a,b) => b.score - a.score).map((action, index) => (
-                <tr key={index} className={`border-b border-gray-700/50 ${action.isChosen ? 'bg-purple-900/50' : 'hover:bg-slate-700/50'}`}>
-                  <td className="p-2 capitalize">{action.type ? action.type.replace('_', ' ') : 'Deploy'}</td>
-                  <td className="p-2 text-purple-300">{action.instigator}</td>
-                  <td className="p-2 text-cyan-300">{formatTarget(action)}</td>
-                  <td className="p-2 text-gray-400 text-xs">{action.logic.join(' -> ')}</td>
-                  <td className="p-2 font-bold text-lg">{action.score}</td>
-                  <td className="p-2 text-center">{action.isChosen && <span className="text-yellow-400">✔</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="flex justify-center mt-6">
-          <button onClick={onClose} className="btn-continue">
-            Close
-          </button>
-        </div>
-      </GamePhaseModal>
-    );
-  };
-  
-
-
-
-
-
-  // --- DEFENSIVE STATE CLEANUP ---
+   // --- DEFENSIVE STATE CLEANUP ---
   // Reset attack flag when critical game state changes to prevent infinite loops
   useEffect(() => {
     // Reset attack flag on turn changes or game reset
@@ -1468,83 +1022,6 @@ const App = () => {
    setShowWinnerModal(false);
   };
 
-  /**
-   * HANDLE SELECT OPPONENT
-   * Sets up the selected AI opponent and initiates drone selection phase.
-   * Configures AI drone pool and places opponent ship sections randomly.
-   * @param {Object} selectedAI - The selected AI personality data
-   */
-  const handleSelectOpponent = (selectedAI) => {
-    console.log('🎮 Starting new game against AI:', selectedAI.name);
-
-    // Find the full drone objects from the collection based on the names in the AI's pool
-    const aiDrones = fullDroneCollection.filter(d => selectedAI.dronePool.includes(d.name));
-
-    // Initialize the drone counts for the AI's specific pool
-    const aiInitialCounts = {};
-    aiDrones.forEach(drone => {
-      aiInitialCounts[drone.name] = 0;
-    });
-
-    // Start the game session with proper player configurations
-    gameStateManager.startGame('local',
-      { name: 'Player 1' }, // Player 1 config
-      {
-        name: selectedAI.name,
-        decklist: selectedAI.decklist,
-        activeDronePool: aiDrones,
-        deployedDroneCounts: aiInitialCounts,
-        aiPersonality: selectedAI
-      }
-    );
-
-    // Start game flow after game session is initialized
-    gameFlowManager.startGameFlow('droneSelection');
-
-    // TODO: Ship placement should be handled by PhaseManager/AIPhaseProcessor, not App.jsx
-    // Removing architecture violation - opponentPlacedSections will be set by proper phase management
-
-    // Set the initial modal message for the player (UI concern)
-    setModalContent({
-        title: 'Phase 2: Choose Your Drones',
-        text: 'Select 5 drones from your full collection to add to your Active Drone Pool. These are the drones you can launch during the game. Once you have made your selection, click "Confirm Selection".',
-        isBlocking: true
-    });
-
-    // Clear UI state
-    setTempSelectedDrones([]);
-  };
-    
- 
-  
-  /**
-   * DRAW PLAYER HAND
-   * Draws cards for player up to their hand limit.
-   * Handles deck shuffling from discard pile when needed.
-   */
-
-  /**
-   * PROCEED TO FIRST TURN
-   * Determines first player and initiates turn sequence.
-   * Uses game logic for first player determination.
-   */
-  const proceedToFirstTurn = async () => {
-    // Use pure function from gameLogic.js
-    const firstPlayer = gameEngine.determineFirstPlayer(turn, firstPlayerOverride, firstPasserOfPreviousRound);
-
-    // Clear the override after using it
-    if (firstPlayerOverride) {
-      setFirstPlayerOverride(null);
-    }
-
-    // Use processAction for state updates
-    await processAction('turnTransition', {
-      newPlayer: firstPlayer,
-      reason: 'proceedToFirstTurn'
-    });
-
-    setShowFirstPlayerModal(true);
-  };
 
   /**
    * PROCEED TO SHIELD ALLOCATION
@@ -1555,20 +1032,23 @@ const App = () => {
 
   /**
    * HANDLE ALLOCATE SHIELD
-   * Allocates a shield to a specific ship section during shield allocation phase.
-   * Validates shield limits and available shield count.
+   * Allocates a shield to a specific ship section.
+   * Routes to appropriate manager based on current phase.
    * @param {string} sectionName - Name of the section receiving the shield
    */
   const handleAllocateShield = async (sectionName) => {
     const { turnPhase } = gameState;
 
     if (turnPhase === 'allocateShields') {
-      // Round start shield allocation - use direct GameStateManager updates
-      const result = gameEngine.processShieldAllocation({ sectionName }, getLocalPlayerState());
-      updatePlayerState(getLocalPlayerId(), result.newPlayerState);
-    } else {
-      // Action phase shield reallocation - use ActionProcessor
+      // Round start shield allocation - routed to SimultaneousActionManager
       await processAction('allocateShield', {
+        sectionName: sectionName,
+        playerId: getLocalPlayerId()
+      });
+    } else {
+      // Action phase shield reallocation - uses ActionProcessor directly
+      await processAction('reallocateShields', {
+        action: 'add',
         sectionName: sectionName,
         playerId: getLocalPlayerId()
       });
@@ -1603,17 +1083,13 @@ const App = () => {
   /**
    * HANDLE ADD SHIELD
    * Adds a shield to a section during shield reallocation.
-   * Validates section shield limits before allocation.
+   * Validation is handled by ActionProcessor.
    * @param {string} sectionName - Name of the section receiving the shield
    */
   const handleAddShield = async (sectionName) => {
     if (shieldsToAdd <= 0) return;
 
-    const section = localPlayerState.shipSections[sectionName];
-    const effectiveMaxShields = gameEngine.getEffectiveSectionMaxShields(sectionName, localPlayerState, localPlacedSections);
-    if (section.allocatedShields >= effectiveMaxShields) return;
-
-    // Use ActionProcessor for shield reallocation
+    // Use ActionProcessor for shield reallocation (validation handled there)
     const result = await processAction('reallocateShields', {
       action: 'add',
       sectionName: sectionName,
@@ -1638,11 +1114,12 @@ const App = () => {
    * Resets shield reallocation back to starting state.
    * Restores original shield distribution and counters.
    */
-  const handleResetReallocation = () => {
-    // Restore original shields
-    updatePlayerState(getLocalPlayerId(), {
-      ...localPlayerState,
-      shipSections: originalShieldAllocation
+  const handleResetReallocation = async () => {
+    // Restore original shields using ActionProcessor
+    await processAction('reallocateShields', {
+      action: 'restore',
+      originalShipSections: originalShieldAllocation,
+      playerId: getLocalPlayerId()
     });
 
     // Reset counters
@@ -1715,47 +1192,22 @@ const App = () => {
    * Restores original shield distribution.
    */
   const handleResetShieldAllocation = async () => {
-    const { turnPhase } = gameState;
-
-    if (turnPhase === 'allocateShields') {
-      // Round start shield allocation reset - use direct GameStateManager updates
-      const result = gameEngine.resetShieldAllocation(getLocalPlayerState());
-      updatePlayerState(getLocalPlayerId(), result.newPlayerState);
-    } else {
-      // Action phase shield reallocation reset - use ActionProcessor
-      await processAction('resetShieldAllocation', {
-        playerId: getLocalPlayerId()
-      });
-    }
+    // Use ActionProcessor for all shield resets - routes to appropriate manager
+    await processAction('resetShieldAllocation', {
+      playerId: getLocalPlayerId()
+    });
   };
 
   /**
    * HANDLE END ALLOCATION
    * Completes shield allocation phase and handles AI shield allocation.
-   * Determines first player and transitions to deployment phase.
+   * Routes to appropriate manager based on current phase.
    */
   const handleEndAllocation = async () => {
-    const { turnPhase } = gameState;
-
-    if (turnPhase === 'allocateShields') {
-      // Round start shield allocation completion - use direct GameStateManager updates
-      const result = gameEngine.endShieldAllocation({ trigger: 'manualEndAllocation' }, gameState);
-
-      // Update both players if AI completion occurred
-      if (result.newGameState.player1) {
-        updatePlayerState('player1', result.newGameState.player1);
-      }
-      if (result.newGameState.player2) {
-        updatePlayerState('player2', result.newGameState.player2);
-      }
-
-      // Phase transitions are handled by GameFlowManager automatically
-    } else {
-      // Action phase shield operations - use ActionProcessor
-      await processAction('endShieldAllocation', {
-        trigger: 'manualEndAllocation'
-      });
-    }
+    // Use ActionProcessor for all shield allocation endings - routes to appropriate manager
+    await processAction('endShieldAllocation', {
+      playerId: getLocalPlayerId()
+    });
 
     setShowFirstPlayerModal(true);
   };
@@ -1884,40 +1336,7 @@ const App = () => {
     try {
       // Route based on action type and current phase
       switch (actionType) {
-        // Shield allocation actions
-        case 'allocateShield':
-          if (turnPhase === 'allocateShields') {
-            const result = gameEngine.processShieldAllocation(payload, getLocalPlayerState());
-            updatePlayerState(getLocalPlayerId(), result.newPlayerState);
-            return { success: true, result };
-          }
-          break;
-
-        case 'resetShieldAllocation':
-          if (turnPhase === 'allocateShields') {
-            const result = gameEngine.resetShieldAllocation(getLocalPlayerState());
-            updatePlayerState(getLocalPlayerId(), result.newPlayerState);
-            return { success: true, result };
-          }
-          break;
-
-        case 'endShieldAllocation':
-          if (turnPhase === 'allocateShields') {
-            const result = gameEngine.endShieldAllocation(payload, gameState);
-
-            // Update both players if AI completion occurred
-            if (result.newGameState.player1) {
-              updatePlayerState('player1', result.newGameState.player1);
-            }
-            if (result.newGameState.player2) {
-              updatePlayerState('player2', result.newGameState.player2);
-            }
-
-            // Phase transitions are handled by GameFlowManager automatically
-
-            return { success: true, result };
-          }
-          break;
+        // Shield allocation actions are now handled by ActionProcessor routing
 
 
 
@@ -2344,7 +1763,6 @@ const App = () => {
 
       if (result.success) {
         setSelectedDrone(null);
-        endTurn(getLocalPlayerId());
       } else {
         setModalContent({ title: result.error, text: result.message, isBlocking: true });
       }
@@ -2957,9 +2375,7 @@ useEffect(() => {
     const newCount = currentMandatoryAction.count - 1;
     if (newCount <= 0) {
         setMandatoryAction(null);
-        if (currentMandatoryAction.fromAbility) {
-            endTurn(getLocalPlayerId()); // End the turn if it was from an ability
-        } else {
+        if (!currentMandatoryAction.fromAbility) {
             // Mandatory discard completed, let game flow continue naturally
             // The GameFlowManager will handle the transition to the next phase
         }
@@ -3140,7 +2556,7 @@ useEffect(() => {
             `}
         </style>
      <TargetingArrow visible={arrowState.visible} start={arrowState.start} end={arrowState.end} lineRef={arrowLineRef} />
-     {explosions.map(exp => <Explosion key={exp.id} top={exp.top} left={exp.left} />)}
+     {explosions.map(exp => <ExplosionEffect key={exp.id} top={exp.top} left={exp.left} />)}
 
       <GameHeader
         localPlayerState={localPlayerState}
@@ -3264,107 +2680,94 @@ useEffect(() => {
         phase={opponentTurnData.phase}
         actionType={opponentTurnData.actionType}
       />
-                   {deploymentConfirmation && (
-                           <GamePhaseModal title="Confirm Deployment" text={`This deployment will use ${deploymentConfirmation.budgetCost} Initial Deployment points and cost ${deploymentConfirmation.energyCost} Energy. Proceed?`} onClose={() => setDeploymentConfirmation(null)}>
-                               <div className="flex justify-center gap-4 mt-6">
-                                   <button onClick={() => setDeploymentConfirmation(null)} className="bg-pink-600 text-white font-bold py-2 px-6 rounded-full hover:bg-pink-700 transition-colors">Cancel</button>
-                                   <button onClick={async () => {
-                                     if (!deploymentConfirmation) return;
-                                     const { lane } = deploymentConfirmation;
+      <DeploymentConfirmationModal
+        deploymentConfirmation={deploymentConfirmation}
+        show={!!deploymentConfirmation}
+        onCancel={() => setDeploymentConfirmation(null)}
+        onConfirm={async () => {
+          if (!deploymentConfirmation) return;
+          const { lane } = deploymentConfirmation;
+          await executeDeployment(lane);
+          setDeploymentConfirmation(null);
+        }}
+      />
+      <MoveConfirmationModal
+        moveConfirmation={moveConfirmation}
+        show={!!moveConfirmation}
+        onCancel={() => setMoveConfirmation(null)}
+        onConfirm={async () => {
+          if (!moveConfirmation) return;
+          const { drone, from, to } = moveConfirmation;
 
-                                     await executeDeployment(lane);
-                                     setDeploymentConfirmation(null);
-                                   }} className="bg-green-600 text-white font-bold py-2 px-6 rounded-full hover:bg-green-700 transition-colors">Confirm</button>
-                               </div>
-                           </GamePhaseModal>
-                       )}
-        {moveConfirmation && (
-            <GamePhaseModal title="Confirm Move" text={`Move ${moveConfirmation.drone.name} from ${moveConfirmation.from} to ${moveConfirmation.to}? The drone will be exhausted.`} onClose={() => setMoveConfirmation(null)}>
-                <div className="flex justify-center gap-4 mt-6">
-                    <button onClick={() => setMoveConfirmation(null)} className="bg-pink-600 text-white font-bold py-2 px-6 rounded-full hover:bg-pink-700 transition-colors">Cancel</button>
-                    <button onClick={async () => {
-                      if (!moveConfirmation) return;
-                      const { drone, from, to } = moveConfirmation;
+          await processAction('move', {
+            droneId: drone.id,
+            fromLane: from,
+            toLane: to,
+            playerId: getLocalPlayerId()
+          });
 
-                      await processAction('move', {
-                        droneId: drone.id,
-                        fromLane: from,
-                        toLane: to,
-                        playerId: getLocalPlayerId()
-                      });
-
-                      setMoveConfirmation(null);
-                      setSelectedDrone(null);
-                    }} className="bg-green-600 text-white font-bold py-2 px-6 rounded-full hover:bg-green-700 transition-colors">Confirm</button>
-                </div>
-            </GamePhaseModal>
-           )}
-                    {interceptionModal && (
-                    <GamePhaseModal 
-                    title="Attack Intercepted!" 
-                    text={`Your opponent used their ${interceptionModal.interceptor.name} to protect ${interceptionModal.originalTarget.name}!`}
-                    onClose={interceptionModal.onClose}
-                      >
-      <div className="flex justify-center mt-6">
-      <button onClick={interceptionModal.onClose} className="btn-continue">Continue</button>
-      </div>
-                    </GamePhaseModal>
-                    )}
+          setMoveConfirmation(null);
+          setSelectedDrone(null);
+        }}
+      />
+      <AttackInterceptedModal
+        interceptionModal={interceptionModal}
+        show={!!interceptionModal}
+        onClose={interceptionModal?.onClose}
+      />
                     
- {playerInterceptionChoice && (
-  <PlayerInterceptionModal
-   choiceData={playerInterceptionChoice}
-   onIntercept={(interceptor) => {
-      resolveAttack({ ...playerInterceptionChoice.attackDetails, interceptor });
-     setPlayerInterceptionChoice(null);
-      }}
-    onDecline={() => {
-       resolveAttack(playerInterceptionChoice.attackDetails);
-      setPlayerInterceptionChoice(null);
-       }}
-    />
- )}
+      <InterceptionOpportunityModal
+        choiceData={playerInterceptionChoice}
+        show={!!playerInterceptionChoice}
+        onIntercept={(interceptor) => {
+          resolveAttack({ ...playerInterceptionChoice.attackDetails, interceptor });
+          setPlayerInterceptionChoice(null);
+        }}
+        onDecline={() => {
+          resolveAttack(playerInterceptionChoice.attackDetails);
+          setPlayerInterceptionChoice(null);
+        }}
+        gameEngine={gameEngine}
+        turnPhase={turnPhase}
+        isMyTurn={isMyTurn}
+        passInfo={passInfo}
+        getLocalPlayerId={getLocalPlayerId}
+        localPlayerState={localPlayerState}
+        shipAbilityMode={shipAbilityMode}
+        droneRefs={droneRefs}
+        mandatoryAction={mandatoryAction}
+      />
       <DetailedDroneModal isOpen={!!detailedDrone} drone={detailedDrone} onClose={() => setDetailedDrone(null)} />
-      {aiActionReport && <AIActionReportModal report={aiActionReport} onClose={() => setAiActionReport(null)} />}
+      <AIActionReportModal
+        report={aiActionReport}
+        show={!!aiActionReport}
+        onClose={() => setAiActionReport(null)}
+      />
       {aiCardPlayReport && <AICardPlayReportModal report={aiCardPlayReport} onClose={() => setAiCardPlayReport(null)} />}
-      {aiDecisionLogToShow && <AIDecisionLogModal decisionLog={aiDecisionLogToShow} onClose={() => setAiDecisionLogToShow(null)} />}
+      <AIDecisionLogModal
+        decisionLog={aiDecisionLogToShow}
+        show={!!aiDecisionLogToShow}
+        onClose={() => setAiDecisionLogToShow(null)}
+        getLocalPlayerId={getLocalPlayerId}
+      />
 
- {winner && showWinnerModal && (
-        <GamePhaseModal
-            title={winner === getLocalPlayerId() ? "Victory!" : "Defeat!"}
-            text={winner === getLocalPlayerId() ? "You have crippled the enemy command ship." : "Your command ship has been crippled."}
-            onClose={() => setShowWinnerModal(false)}
-            >
-      <div className="flex justify-center mt-6">
-      <button onClick={() => setShowWinnerModal(false)} className="btn-continue">
-       View Final Board
-      </button>
-      </div>
-        </GamePhaseModal>
-       )}
+      <WinnerModal
+        winner={winner}
+        localPlayerId={getLocalPlayerId()}
+        show={winner && showWinnerModal}
+        onClose={() => setShowWinnerModal(false)}
+      />
 
- {mandatoryAction && showMandatoryActionModal && (
-    <GamePhaseModal
-       title={mandatoryAction.type === 'discard' ? "Hand Limit Exceeded" : "CPU Limit Exceeded"}
-       text={mandatoryAction.type === 'discard' 
-          ? `Your hand limit is now ${localPlayerEffectiveStats.handLimit}. Please select ${mandatoryAction.count} card(s) to discard.`
-          : `Your drone limit is now ${localPlayerEffectiveStats.cpuLimit}. Please select ${mandatoryAction.count} drone(s) to destroy.`
-       }
-       onClose={() => setShowMandatoryActionModal(false)}
-    />
- )}
- {confirmationModal && (
-    <GamePhaseModal
-       title={`Confirm ${confirmationModal.type === 'discard' ? 'Discard' : 'Destruction'}`}
-       text={confirmationModal.text}
-       onClose={confirmationModal.onCancel}
-    >
-        <div className="flex justify-center gap-4 mt-6">
-            <button onClick={confirmationModal.onCancel} className="bg-gray-600 text-white font-bold py-2 px-6 rounded-full hover:bg-gray-700 transition-colors">Cancel</button>
-            <button onClick={confirmationModal.onConfirm} className="bg-red-600 text-white font-bold py-2 px-6 rounded-full hover:bg-red-700 transition-colors">Confirm</button>
-        </div>
-   </GamePhaseModal>
- )}
+      <MandatoryActionModal
+        mandatoryAction={mandatoryAction}
+        effectiveStats={localPlayerEffectiveStats}
+        show={mandatoryAction && showMandatoryActionModal}
+        onClose={() => setShowMandatoryActionModal(false)}
+      />
+      <ConfirmationModal
+        confirmationModal={confirmationModal}
+        show={!!confirmationModal}
+      />
 
 {viewUpgradesModal && (
     <ViewUpgradesModal 
@@ -3404,85 +2807,31 @@ useEffect(() => {
     />
 )}
 
-  {cardConfirmation && (() => {
-    let targetDisplayName = '';
-    if (cardConfirmation.target) {
-      // Drones have a .name property
-      if (cardConfirmation.target.name) {
-        targetDisplayName = cardConfirmation.target.name;
-      // Lanes have an id like 'lane1', 'lane2', etc.
-      } else if (cardConfirmation.target.id.startsWith('lane')) {
-        targetDisplayName = `Lane ${cardConfirmation.target.id.slice(-1)}`;
-      // Ship sections have an id like 'droneControlHub'
-      } else {
-        targetDisplayName = cardConfirmation.target.id.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-      }
-    }
+      <CardConfirmationModal
+        cardConfirmation={cardConfirmation}
+        show={!!cardConfirmation}
+        onCancel={() => setCardConfirmation(null)}
+        onConfirm={async () => await resolveCardPlay(cardConfirmation.card, cardConfirmation.target, getLocalPlayerId())}
+      />
 
-    return (
-      <GamePhaseModal
-        title={`Confirm Action: ${cardConfirmation.card.name}`}
-        text={`Use ${cardConfirmation.card.name}${targetDisplayName ? ` on ${targetDisplayName}` : ''}? This will cost ${cardConfirmation.card.cost} energy.`}
-        onClose={() => setCardConfirmation(null)}
-      >
-        <div className="flex justify-center gap-4 mt-6">
-          <button onClick={() => setCardConfirmation(null)} className="bg-pink-600 text-white font-bold py-2 px-6 rounded-full hover:bg-pink-700 transition-colors">Cancel</button>
-<button onClick={async () => await resolveCardPlay(cardConfirmation.card, cardConfirmation.target, getLocalPlayerId())} className="bg-green-600 text-white font-bold py-2 px-6 rounded-full hover:bg-green-700 transition-colors">Confirm</button>
-        </div>
-      </GamePhaseModal>
-    );
-  })()}
-
-      {abilityConfirmation && (() => {
-          const { ability, drone, target } = abilityConfirmation;
-          const targetDisplayName = `Lane ${target.id.slice(-1)}`;
-
-          return (
-            <GamePhaseModal
-              title={`Confirm Ability: ${ability.name}`}
-              text={`Use ${drone.name}'s ability on ${targetDisplayName}? This will cost ${ability.cost.energy || 0} energy and exhaust the drone.`}
-              onClose={() => setAbilityConfirmation(null)}
-            >
-              <div className="flex justify-center gap-4 mt-6">
-                <button onClick={() => setAbilityConfirmation(null)} className="bg-pink-600 text-white font-bold py-2 px-6 rounded-full hover:bg-pink-700 transition-colors">Cancel</button>
-                <button onClick={() => {
-                  resolveAbility(ability, drone, target);
-                  setAbilityConfirmation(null);
-                }} className="bg-green-600 text-white font-bold py-2 px-6 rounded-full hover:bg-green-700 transition-colors">Confirm</button>
-              </div>
-            </GamePhaseModal>
-          );
-      })()}
+      <DroneAbilityConfirmationModal
+        abilityConfirmation={abilityConfirmation}
+        show={!!abilityConfirmation}
+        onCancel={() => setAbilityConfirmation(null)}
+        onConfirm={() => {
+          resolveAbility(abilityConfirmation.ability, abilityConfirmation.drone, abilityConfirmation.target);
+          setAbilityConfirmation(null);
+        }}
+      />
 
 
 
-        {showAiHandModal && AI_HAND_DEBUG_MODE && (
-          <GamePhaseModal
-            title="Opponent's Hand (Debug View)"
-            text={`The opponent is holding ${opponentPlayerState.hand.length} card(s). This view is for debug purposes only.`}
-            onClose={() => setShowAiHandModal(false)}
-            maxWidthClass="max-w-6xl"
-          >
-            <div className="flex flex-nowrap items-center gap-4 my-4 p-4 overflow-x-auto bg-black/20 rounded">
-              {opponentPlayerState.hand.length > 0 ? (
-                opponentPlayerState.hand.map(card => (
-                  <ActionCard
-                    key={card.instanceId}
-                    card={card}
-                    isPlayable={false}
-                  />
-                ))
-              ) : (
-                <p className="text-gray-500 italic">The opponent's hand is empty.</p>
-              )}
-            </div>
-            <div className="flex justify-center mt-6">
-              <button onClick={() => setShowAiHandModal(false)} className="btn-continue">
-                Close
-              </button>
-            </div>
-          </GamePhaseModal>
-        )}
+      <AIHandDebugModal
+        opponentPlayerState={opponentPlayerState}
+        show={showAiHandModal}
+        debugMode={AI_HAND_DEBUG_MODE}
+        onClose={() => setShowAiHandModal(false)}
+      />
 
       {/* Renders the modal for viewing the deck */}
       <CardViewerModal 
@@ -3509,57 +2858,13 @@ useEffect(() => {
         onConfirm={cardSelectionModal?.onConfirm || (() => {})}
         selectionData={cardSelectionModal}
       />
-        {shipAbilityConfirmation && (() => {
-          const { ability, sectionName, target } = shipAbilityConfirmation;
-          const sectionDisplayName = sectionName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-          let targetDisplayName = '';
-          if (target) {
-              targetDisplayName = target.name;
-          }
+      <ShipAbilityConfirmationModal
+        shipAbilityConfirmation={shipAbilityConfirmation}
+        show={!!shipAbilityConfirmation}
+        onCancel={() => setShipAbilityConfirmation(null)}
+        onConfirm={async () => await resolveShipAbility(shipAbilityConfirmation.ability, shipAbilityConfirmation.sectionName, shipAbilityConfirmation.target)}
+      />
 
-          return (
-            <GamePhaseModal
-              title={`Confirm Ability: ${ability.name}`}
-              text={`Use ${sectionDisplayName}'s ability${target ? ` on ${targetDisplayName}`: ''}? This will cost ${ability.cost.energy} energy.`}
-              onClose={() => setShipAbilityConfirmation(null)}
-            >
-              <div className="flex justify-center gap-4 mt-6">
-                <button onClick={() => setShipAbilityConfirmation(null)} className="bg-pink-600 text-white font-bold py-2 px-6 rounded-full hover:bg-pink-700 transition-colors">Cancel</button>
-                <button onClick={async () => await resolveShipAbility(ability, sectionName, target)} className="bg-green-600 text-white font-bold py-2 px-6 rounded-full hover:bg-green-700 transition-colors">Confirm</button>
-              </div>
-            </GamePhaseModal>
-          );
-      })()}
-
-      {/* Multiplayer Lobby */}
-      {showMultiplayerLobby && (
-        <MultiplayerLobby
-          onGameStart={() => {
-            setShowMultiplayerLobby(false);
-            console.log('🎮 Starting multiplayer game');
-
-            // Start multiplayer game session with empty decks and drone pools for customization
-            gameStateManager.startGame(
-              gameState.gameMode,
-              { name: 'Player 1', deck: [], activeDronePool: [] },
-              { name: 'Player 2', deck: [], activeDronePool: [] }
-            );
-
-            // Start game flow after game session is initialized
-            gameFlowManager.startGameFlow('droneSelection');
-
-            setTempSelectedDrones([]);
-
-            // Set the initial modal message for multiplayer
-            setModalContent({
-              title: 'Phase 1: Choose Your Drones',
-              text: 'Select 5 drones from your full collection to add to your Active Drone Pool. These are the drones you can launch during the game. Your opponent is making their selections simultaneously.',
-              isBlocking: true
-            });
-          }}
-          onBack={() => setShowMultiplayerLobby(false)}
-        />
-      )}
 
       {/* Waiting Overlay for multiplayer */}
       <WaitingOverlay

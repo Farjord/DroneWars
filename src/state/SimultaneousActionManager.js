@@ -4,6 +4,8 @@
 // Pure commitment coordinator for simultaneous phases
 // Handles player action collection, validation, and AI auto-completion
 
+import { gameEngine } from '../logic/gameLogic.js';
+
 /**
  * SimultaneousActionManager - Pure coordinator for simultaneous phase commitments
  */
@@ -202,6 +204,102 @@ class SimultaneousActionManager {
       validate: (data) => Array.isArray(data.shieldAllocation),
       errorMessage: 'Invalid shield allocation data'
     });
+  }
+
+  /**
+   * Allocate a single shield to a section during allocateShields phase
+   * @param {string} playerId - The player ID allocating the shield
+   * @param {string} sectionName - Section to allocate shield to
+   * @returns {Object} Allocation result
+   */
+  allocateShieldToSection(playerId, sectionName) {
+    console.log(`🛡️ SimultaneousActionManager.allocateShieldToSection: ${playerId} allocating shield to ${sectionName}`);
+
+    const currentState = this.gameStateManager.getState();
+
+    // Use gameLogic to process the shield allocation
+    const result = gameEngine.processShieldAllocation(currentState, playerId, sectionName);
+
+    if (result.success) {
+      // Update player state with new shield allocation
+      this.gameStateManager.updatePlayerState(playerId, result.newPlayerState);
+
+      // Update shields to allocate count
+      this.gameStateManager.updateState({
+        shieldsToAllocate: result.newShieldsToAllocate
+      });
+
+      console.log(`✅ Shield allocated to ${sectionName} for ${playerId}`);
+      return { success: true, result };
+    } else {
+      console.log(`❌ Shield allocation failed: ${result.error}`);
+      return { success: false, error: result.error };
+    }
+  }
+
+  /**
+   * Reset shield allocation for a player during allocateShields phase
+   * @param {string} playerId - The player ID resetting allocation
+   * @returns {Object} Reset result
+   */
+  resetShieldAllocation(playerId) {
+    console.log(`🔄 SimultaneousActionManager.resetShieldAllocation: ${playerId} resetting shields`);
+
+    const currentState = this.gameStateManager.getState();
+
+    // Use gameLogic to process the reset
+    const result = gameEngine.processResetShieldAllocation(currentState, playerId);
+
+    if (result.success) {
+      // Update player state with reset shield allocation
+      this.gameStateManager.updatePlayerState(playerId, result.newPlayerState);
+
+      // Update shields to allocate count
+      this.gameStateManager.updateState({
+        shieldsToAllocate: result.newShieldsToAllocate
+      });
+
+      console.log(`✅ Shield allocation reset for ${playerId}`);
+      return { success: true, result };
+    } else {
+      console.log(`❌ Shield allocation reset failed: ${result.error}`);
+      return { success: false, error: result.error };
+    }
+  }
+
+  /**
+   * End shield allocation phase for local player
+   * @param {string} playerId - The player ID ending allocation (usually local player)
+   * @returns {Object} End result with phase transition
+   */
+  endShieldAllocation(playerId) {
+    console.log(`🏁 SimultaneousActionManager.endShieldAllocation: ${playerId} ending allocation phase`);
+
+    const currentState = this.gameStateManager.getState();
+
+    // Use gameLogic to process the end allocation (includes AI completion)
+    const result = gameEngine.processEndShieldAllocation(currentState, playerId);
+
+    if (result.success) {
+      // Update both player states
+      this.gameStateManager.setPlayerStates(result.player1State, result.player2State);
+
+      // Handle phase transition if provided
+      if (result.newPhase) {
+        this.gameStateManager.setTurnPhase(result.newPhase);
+      }
+
+      // Set first player if determined
+      if (result.firstPlayer) {
+        this.gameStateManager.setCurrentPlayer(result.firstPlayer);
+      }
+
+      console.log(`✅ Shield allocation ended, transitioning to ${result.newPhase || 'next phase'}`);
+      return { success: true, result };
+    } else {
+      console.log(`❌ Shield allocation end failed: ${result.error}`);
+      return { success: false, error: result.error };
+    }
   }
 
   /**
