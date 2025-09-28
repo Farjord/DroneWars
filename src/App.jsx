@@ -447,16 +447,48 @@ const App = () => {
    * Transitions from action phase to round end, showing the round end modal.
    * Called when both players pass during action phase.
    */
-  const endActionPhase = useCallback(() => {
+  const endActionPhase = useCallback(async () => {
+    // Process round transition and start next round automatically
+    setSelectedCard(null);
+    setSelectedDrone(null);
+    setAbilityMode(null);
+    setMultiSelectState(null);
+    setFirstPasserOfPreviousRound(passInfo.firstPasser);
+
+    // Use processAction for complete round start logic
+    await processAction('roundStart', {
+      newTurn: turn + 1,
+      trigger: 'roundEndModal'
+    });
+
+    // Continue with turn procedures automatically
+    beginTurnProcedures();
+
+    // Show informational modal about round ending (will be dismissed by user)
     setShowRoundEndModal(true);
-  }, []);
+  }, [processAction, turn, passInfo.firstPasser]);
 
   /**
    * END DEPLOYMENT PHASE
    * Transitions from deployment phase to action phase, showing the action start modal.
    * Called when both players pass during deployment phase.
    */
-  const endDeploymentPhase = () => {
+  const endDeploymentPhase = async () => {
+    // Transition to action phase
+    const firstActor = firstPlayerOfRound;
+
+    // Use processAction for phase and player transition
+    await processAction('phaseTransition', {
+      newPhase: 'action',
+      resetPassInfo: true // Let ActionProcessor handle pass info reset
+    });
+
+    await processAction('turnTransition', {
+      newPlayer: firstActor,
+      reason: 'startActionPhase'
+    });
+
+    // Show informational modal after transitions are complete
     setShowActionPhaseStartModal(true);
   };
 
@@ -3744,11 +3776,11 @@ useEffect(() => {
       />
       <ActionPhaseStartModal
         show={showActionPhaseStartModal}
-        onContinue={handleStartActionPhase}
+        onContinue={() => setShowActionPhaseStartModal(false)}
       />
       <RoundEndModal
         show={showRoundEndModal}
-        onContinue={handleStartNewRound}
+        onContinue={() => setShowRoundEndModal(false)}
       />
       <OpponentTurnModal
         show={showOpponentTurnModal}
@@ -3798,8 +3830,8 @@ useEffect(() => {
     />
  )}
       <DetailedDroneModal isOpen={!!detailedDrone} drone={detailedDrone} onClose={() => setDetailedDrone(null)} />
-      {aiActionReport && <AIActionReportModal report={aiActionReport} onClose={handleCloseAiReport} />}
-      {aiCardPlayReport && <AICardPlayReportModal report={aiCardPlayReport} onClose={handleCloseAiCardReport} />}
+      {aiActionReport && <AIActionReportModal report={aiActionReport} onClose={() => setAiActionReport(null)} />}
+      {aiCardPlayReport && <AICardPlayReportModal report={aiCardPlayReport} onClose={() => setAiCardPlayReport(null)} />}
       {aiDecisionLogToShow && <AIDecisionLogModal decisionLog={aiDecisionLogToShow} onClose={() => setAiDecisionLogToShow(null)} />}
 
  {winner && showWinnerModal && (
