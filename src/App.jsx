@@ -5,43 +5,31 @@
 // between the game logic engine and the user interface. All actual game rules
 // and calculations are handled by gameEngine in gameLogic.js.
 
-// --- IMPORTS AND DEPENDENCIES ---
+// ========================================
+// SECTION 1: IMPORTS
+// ========================================
+// --- 1.1 REACT CORE IMPORTS ---
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { X } from 'lucide-react';
+
+// --- 1.2 UI COMPONENT IMPORTS ---
+import GamePhaseModal from './components/ui/GamePhaseModal.jsx';
+import GameHeader from './components/ui/GameHeader.jsx';
+import GameBattlefield from './components/ui/GameBattlefield.jsx';
+import GameFooter from './components/ui/GameFooter.jsx';
+import ModalContainer from './components/ui/ModalContainer.jsx';
+import TargetingArrow from './components/ui/TargetingArrow.jsx';
+import ExplosionEffect from './components/ui/ExplosionEffect.jsx';
+import WaitingOverlay from './components/WaitingOverlay';
+
+// --- 1.3 MODAL COMPONENT IMPORTS ---
 import CardViewerModal from './CardViewerModal';
 import CardSelectionModal from './CardSelectionModal';
-import WaitingOverlay from './components/WaitingOverlay';
-import { useGameState } from './hooks/useGameState';
-import { useGameData } from './hooks/useGameData';
-import { useExplosions } from './hooks/useExplosions';
-import fullDroneCollection from './data/droneData.js';
-import fullCardCollection from './data/cardData.js';
-import { aiBrain } from './logic/aiLogic.js';
-import { gameEngine } from './logic/gameLogic.js';
-import { getElementCenter } from './utils/gameUtils.js';
-import gameFlowManager from './state/GameFlowManager.js';
-import simultaneousActionManager from './state/SimultaneousActionManager.js';
-import aiPhaseProcessor from './state/AIPhaseProcessor.js';
-import sequentialPhaseManager from './state/SequentialPhaseManager.js';
-// ActionProcessor is created internally by GameStateManager
-import ActionCard from './components/ui/ActionCard.jsx';
-import GamePhaseModal from './components/ui/GamePhaseModal.jsx';
-import ShipSection from './components/ui/ShipSection.jsx';
-import DroneToken from './components/ui/DroneToken.jsx';
 import AICardPlayReportModal from './components/modals/AICardPlayReportModal.jsx';
-import UpgradeSelectionModal from './components/modals/UpgradeSelectionModal.jsx';
-import ViewUpgradesModal from './components/modals/ViewUpgradesModal.jsx';
-import DestroyUpgradeModal from './components/modals/DestroyUpgradeModal.jsx';
+import AIActionReportModal from './components/modals/AIActionReportModal.jsx';
 import DetailedDroneModal from './components/modals/debug/DetailedDroneModal.jsx';
 import { FirstPlayerModal, ActionPhaseStartModal, RoundEndModal } from './components/modals/GamePhaseModals.jsx';
 import OpponentTurnModal from './components/modals/OpponentTurnModal.jsx';
 import WaitingForPlayerModal from './components/modals/WaitingForPlayerModal.jsx';
-import GameHeader from './components/ui/GameHeader.jsx';
-import GameBattlefield from './components/ui/GameBattlefield.jsx';
-import GameFooter from './components/ui/GameFooter.jsx';
-import TargetingArrow from './components/ui/TargetingArrow.jsx';
-import ExplosionEffect from './components/ui/ExplosionEffect.jsx';
-import AIActionReportModal from './components/modals/AIActionReportModal.jsx';
 import ConfirmationModal from './components/modals/ConfirmationModal.jsx';
 import MandatoryActionModal from './components/modals/MandatoryActionModal.jsx';
 import WinnerModal from './components/modals/WinnerModal.jsx';
@@ -56,14 +44,40 @@ import ShipAbilityConfirmationModal from './components/modals/ShipAbilityConfirm
 import AIHandDebugModal from './components/modals/AIHandDebugModal.jsx';
 import GameDebugModal from './components/modals/GameDebugModal.jsx';
 
+// --- 1.4 HOOK IMPORTS ---
+import { useGameState } from './hooks/useGameState';
+import { useGameData } from './hooks/useGameData';
+import { useExplosions } from './hooks/useExplosions';
+
+// --- 1.5 DATA/LOGIC IMPORTS ---
+import fullCardCollection from './data/cardData.js';
+import { gameEngine } from './logic/gameLogic.js';
+
+// --- 1.6 MANAGER/STATE IMPORTS ---
+import gameFlowManager from './state/GameFlowManager.js';
+import simultaneousActionManager from './state/SimultaneousActionManager.js';
+import aiPhaseProcessor from './state/AIPhaseProcessor.js';
+import sequentialPhaseManager from './state/SequentialPhaseManager.js';
+// ActionProcessor is created internally by GameStateManager
+
+// --- 1.7 UTILITY IMPORTS ---
+import { getElementCenter } from './utils/gameUtils.js';
+
 // ========================================
-// MAIN APPLICATION COMPONENT
+// SECTION 2: MAIN COMPONENT DECLARATION
 // ========================================
-// Manages all UI state, modals, and user interactions.
-// Delegates all game logic to gameEngine functions.
 
 const App = () => {
-  // --- CENTRALIZED GAME STATE ---
+  // ========================================
+  // SECTION 3: HOOKS & STATE
+  // ========================================
+  // React hooks are grouped here for easy reference and proper ordering.
+  // Custom hooks must come first, followed by local state, then refs.
+  // This ensures proper dependency chain and prevents initialization errors.
+
+  // --- 3.1 CUSTOM HOOKS ---
+  // Game state and data management hooks provide the core interface
+  // to the game engine and computed values through the manager layer
   const {
     gameState,
     isMyTurn,
@@ -90,37 +104,112 @@ const App = () => {
     p2pManager
   } = useGameState();
 
-  // --- GAME DATA SERVICE INTEGRATION ---
   const { getEffectiveStats, getEffectiveShipStats, gameDataService } = useGameData();
 
-  // --- DEBUG AND DEVELOPMENT FLAGS ---
+  // --- 3.2 LOCAL UI STATE ---
+  // All useState declarations consolidated here to eliminate scattered state.
+  // Grouped by functionality: modal state, targeting state, game state, UI state.
+  // This centralization makes state management more maintainable and predictable.
+  // Debug and development flags
   const AI_HAND_DEBUG_MODE = true; // Set to false to disable clicking to see the AI's hand
   const RACE_CONDITION_DEBUG = true; // Set to false to disable race condition monitoring
 
-  // Race condition monitoring
-  useEffect(() => {
-    if (RACE_CONDITION_DEBUG) {
-      const checkForRaceConditions = () => {
-        const actionInProgress = isActionInProgress();
-        const queueLength = getActionQueueLength();
+  // Modal state
+  const [showAiHandModal, setShowAiHandModal] = useState(false);
+  const [showDebugModal, setShowDebugModal] = useState(false);
+  const [modalContent, setModalContent] = useState(null);
+  const [deploymentConfirmation, setDeploymentConfirmation] = useState(null);
+  const [moveConfirmation, setMoveConfirmation] = useState(null);
+  const [detailedDrone, setDetailedDrone] = useState(null);
+  const [showFirstPlayerModal, setShowFirstPlayerModal] = useState(false);
+  const [showActionPhaseStartModal, setShowActionPhaseStartModal] = useState(false);
+  const [showRoundEndModal, setShowRoundEndModal] = useState(false);
+  const [showOpponentTurnModal, setShowOpponentTurnModal] = useState(false);
+  const [waitingForPlayerPhase, setWaitingForPlayerPhase] = useState(null); // Track which phase we're waiting for player acknowledgment
+  const [opponentTurnData, setOpponentTurnData] = useState({ phase: 'action', actionType: 'action' });
+  const [showWinnerModal, setShowWinnerModal] = useState(false);
+  const [isViewDeckModalOpen, setIsViewDeckModalOpen] = useState(false);
+  const [isViewDiscardModalOpen, setIsViewDiscardModalOpen] = useState(false);
 
-        if (actionInProgress || queueLength > 0) {
-          console.log('[RACE DEBUG] Action processing state:', {
-            actionInProgress,
-            queueLength,
-            currentPlayer: gameState.currentPlayer,
-            turnPhase: gameState.turnPhase,
-            timestamp: Date.now()
-          });
-        }
-      };
+  // Player selection and targeting state
+  const [selectedDrone, setSelectedDrone] = useState(null);
+  const [hoveredTarget, setHoveredTarget] = useState(null);
+  const [hoveredCardId, setHoveredCardId] = useState(null);
 
-      const interval = setInterval(checkForRaceConditions, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [isActionInProgress, getActionQueueLength, gameState.currentPlayer, gameState.turnPhase]);
+  // Combat and attack state
+  const [pendingAttack, setPendingAttack] = useState(null);
+  const [interceptionModal, setInterceptionModal] = useState(null);
+  const [playerInterceptionChoice, setPlayerInterceptionChoice] = useState(null);
+  const [potentialInterceptors, setPotentialInterceptors] = useState([]);
 
-  // --- MANAGER INITIALIZATION AND EVENT HANDLING ---
+  // AI behavior and reporting state
+  const [aiActionReport, setAiActionReport] = useState(null);
+  const [aiCardPlayReport, setAiCardPlayReport] = useState(null);
+  const [aiDecisionLogToShow, setAiDecisionLogToShow] = useState(null);
+
+  // UI and visual effects state
+  const [footerView, setFooterView] = useState('drones');
+  const [isFooterOpen, setIsFooterOpen] = useState(true);
+  const [recentlyHitDrones, setRecentlyHitDrones] = useState([]);
+  const [arrowState, setArrowState] = useState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
+  const [deck, setDeck] = useState({});
+
+  // Ability and card interaction state
+  const [abilityMode, setAbilityMode] = useState(null); // { drone, ability }
+  const [validAbilityTargets, setValidAbilityTargets] = useState([]);
+  const [shipAbilityMode, setShipAbilityMode] = useState(null); // { sectionName, ability }
+  const [shipAbilityConfirmation, setShipAbilityConfirmation] = useState(null);
+  const [selectedCard, setSelectedCard] = useState(null); // { card data }
+  const [validCardTargets, setValidCardTargets] = useState([]); // [id1, id2, ...]
+  const [cardConfirmation, setCardConfirmation] = useState(null); // { card, target }
+  const [abilityConfirmation, setAbilityConfirmation] = useState(null);
+  const [multiSelectState, setMultiSelectState] = useState(null); // To manage multi-step card effects
+
+  // Upgrade system state
+  const [destroyUpgradeModal, setDestroyUpgradeModal] = useState(null); // For targeting specific upgrades to destroy
+  const [upgradeSelectionModal, setUpgradeSelectionModal] = useState(null); // For the new upgrade target selection modal
+  const [viewUpgradesModal, setViewUpgradesModal] = useState(null); // To view applied upgrades on a drone card
+
+  // Mandatory actions and special phases state
+  const [mandatoryAction, setMandatoryAction] = useState(null); // e.g., { type: 'discard'/'destroy', player: getLocalPlayerId(), count: X }
+  const [showMandatoryActionModal, setShowMandatoryActionModal] = useState(false);
+  const [confirmationModal, setConfirmationModal] = useState(null); // For confirm/cancel popups
+  const [cardSelectionModal, setCardSelectionModal] = useState(null); // For search and draw card selection
+
+  // Shield reallocation state
+  const [reallocationPhase, setReallocationPhase] = useState(null); // 'removing' | 'adding' | null
+  const [shieldsToAdd, setShieldsToAdd] = useState(0);
+  const [shieldsToRemove, setShieldsToRemove] = useState(0);
+  const [originalShieldAllocation, setOriginalShieldAllocation] = useState(null);
+  const [initialShieldAllocation, setInitialShieldAllocation] = useState(null); // For shield allocation reset
+  const [reallocationAbility, setReallocationAbility] = useState(null);
+
+
+  // --- 3.3 REFS ---
+  // useRef declarations for DOM manipulation and async operations.
+  // CRITICAL: These refs are positioned AFTER gameState destructuring
+  // to prevent "Cannot access before initialization" errors.
+  const arrowLineRef = useRef(null);
+  const droneRefs = useRef({});
+  const gameAreaRef = useRef(null);
+  const isResolvingAttackRef = useRef(false);
+
+  // --- 3.4 HOOKS DEPENDENT ON REFS ---
+  // These hooks require refs as parameters and must be called after ref initialization.
+  // This maintains proper dependency ordering while preserving the logical structure.
+  const { explosions, triggerExplosion } = useExplosions(droneRefs, gameAreaRef);
+
+  // Refs for async operations (defined after gameState destructuring)
+
+  // ========================================
+  // SECTION 4: MANAGER SUBSCRIPTIONS
+  // ========================================
+  // Event-driven architecture setup. All managers are initialized and subscribed
+  // to provide game flow coordination, AI processing, and state management.
+  // This follows the dependency injection pattern for clean architecture.
+
+  // --- 4.1 MANAGER INITIALIZATION ---
+  // Initialize all game flow managers with proper dependency injection
   useEffect(() => {
     // Initialize GameFlowManager with managers and dependencies
     gameFlowManager.initialize(
@@ -168,11 +257,7 @@ const App = () => {
     };
   }, []);
 
-  // --- MODAL AND UI STATE ---
-  // MOVED UP: Must be declared before useEffect that uses setModalContent
-  const [showAiHandModal, setShowAiHandModal] = useState(false);
-  const [showDebugModal, setShowDebugModal] = useState(false);
-  const [modalContent, setModalContent] = useState(null);
+  // --- 4.2 EVENT SUBSCRIPTIONS ---
 
   // PhaseManager event listeners
   useEffect(() => {
@@ -220,27 +305,42 @@ const App = () => {
     };
   }, [isMultiplayer, getLocalPlayerId, setModalContent]);
 
+  // ========================================
+  // SECTION 5: COMPUTED VALUES & MEMOIZATION
+  // ========================================
+  // Performance-critical computed values using useMemo for optimization.
+  // All game state destructuring and derived calculations happen here.
+  // This section prevents unnecessary recalculations during re-renders.
 
-  // GameFlowManager now handles phase transitions automatically
-  // No manual phase starting needed
-
-  const [deploymentConfirmation, setDeploymentConfirmation] = useState(null);
-  const [moveConfirmation, setMoveConfirmation] = useState(null);
-  const [detailedDrone, setDetailedDrone] = useState(null);
-  const [showFirstPlayerModal, setShowFirstPlayerModal] = useState(false);
-  const [showActionPhaseStartModal, setShowActionPhaseStartModal] = useState(false);
-  const [showRoundEndModal, setShowRoundEndModal] = useState(false);
-  const [showOpponentTurnModal, setShowOpponentTurnModal] = useState(false);
-  const [waitingForPlayerPhase, setWaitingForPlayerPhase] = useState(null); // Track which phase we're waiting for player acknowledgment
-  const [opponentTurnData, setOpponentTurnData] = useState({ phase: 'action', actionType: 'action' });
-  const [showWinnerModal, setShowWinnerModal] = useState(false);
-  const [isViewDeckModalOpen, setIsViewDeckModalOpen] = useState(false);
-  const [isViewDiscardModalOpen, setIsViewDiscardModalOpen] = useState(false);
+  // --- 5.1 PLAYER STATE CALCULATIONS ---
+  // Extract core game state and derive player-specific perspectives
 
   // --- EXTRACTED STATE (now from GameStateManager) ---
   // Core game state comes from gameState object:
   // gameState.turnPhase, gameState.turn, gameState.currentPlayer, etc.
   const { turnPhase, turn, currentPlayer, firstPlayerOfRound, firstPasserOfPreviousRound, firstPlayerOverride, passInfo, winner, unplacedSections, shieldsToAllocate, gameLog, placedSections } = gameState;
+
+  // --- 3.5 STATE AND REFS DEPENDENT ON GAMESTATE ---
+  // State and refs that require gameState values for initialization.
+  // Positioned after gameState destructuring to ensure proper initialization order.
+  const [lastCurrentPlayer, setLastCurrentPlayer] = useState(currentPlayer);
+
+  // Refs for async operations that need gameState values
+  const passInfoRef = useRef(passInfo);
+  const turnPhaseRef = useRef(turnPhase);
+  const winnerRef = useRef(winner);
+
+  // --- 5.2 REF SYNCHRONIZATION ---
+  // Keep refs synchronized with state values for async operations
+  useEffect(() => {
+    passInfoRef.current = passInfo;
+  }, [passInfo]);
+  useEffect(() => {
+    turnPhaseRef.current = turnPhase;
+  }, [turnPhase]);
+  useEffect(() => {
+    winnerRef.current = winner;
+  }, [winner]);
 
   // Use perspective-aware state getters for both AI and multiplayer modes
   const localPlayerState = getLocalPlayerState();
@@ -265,42 +365,8 @@ const App = () => {
     );
   }
 
-  // --- SHIP SECTION PLACEMENT ---
+  // Ship section placement data
   const sectionsToPlace = ['bridge', 'powerCell', 'droneControlHub'];
-
-  // --- PLAYER SELECTION AND TARGETING ---
-  const [selectedDrone, setSelectedDrone] = useState(null);
-  const [hoveredTarget, setHoveredTarget] = useState(null);
-  const [hoveredCardId, setHoveredCardId] = useState(null);
-
-  // --- COMBAT AND ATTACK STATE ---
-  const [pendingAttack, setPendingAttack] = useState(null);
-  const [interceptionModal, setInterceptionModal] = useState(null);
-  const [playerInterceptionChoice, setPlayerInterceptionChoice] = useState(null);
-  const [potentialInterceptors, setPotentialInterceptors] = useState([]);
-
-  // --- AI BEHAVIOR AND REPORTING ---
-  const [aiActionReport, setAiActionReport] = useState(null);
-  const [aiCardPlayReport, setAiCardPlayReport] = useState(null);
-  const [aiDecisionLogToShow, setAiDecisionLogToShow] = useState(null);
-
-  // --- UI AND VISUAL EFFECTS ---
-  const [footerView, setFooterView] = useState('drones');
-  const [isFooterOpen, setIsFooterOpen] = useState(true);
-  const [recentlyHitDrones, setRecentlyHitDrones] = useState([]);
-  const [arrowState, setArrowState] = useState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
-  const [deck, setDeck] = useState({});
-
-  // --- REFS FOR DOM ELEMENTS AND STATE TRACKING ---
-  const arrowLineRef = useRef(null);
-  const droneRefs = useRef({});
-  const gameAreaRef = useRef(null);
-  const isResolvingAttackRef = useRef(false);
-
-  // --- REFS FOR ASYNC OPERATIONS (non-game-state) ---
-  const passInfoRef = useRef(passInfo);
-  const turnPhaseRef = useRef(turnPhase);
-  const winnerRef = useRef(winner);
 
   // Helper functions to get game engine format from GameStateManager
   const getPlayerStatesForEngine = useCallback(() => {
@@ -315,17 +381,8 @@ const App = () => {
   }, [gameState.placedSections, gameState.opponentPlacedSections]);
 
 
-  useEffect(() => {
-    passInfoRef.current = passInfo;
-  }, [passInfo]);
-  useEffect(() => {
-    turnPhaseRef.current = turnPhase;
-  }, [turnPhase]);
-  useEffect(() => {
-    winnerRef.current = winner;
-  }, [winner]);
 
-  // --- MULTIPLAYER PHASE SYNC HANDLER ---
+  // --- 5.4 MULTIPLAYER PHASE SYNC HANDLER ---
   useEffect(() => {
     if (!isMultiplayer()) return;
 
@@ -335,14 +392,6 @@ const App = () => {
       if (event.type === 'PHASE_COMPLETED') {
         const { phase } = event.data || event; // Handle both event.data and direct event
         console.log(`🔥 Opponent completed phase: ${phase}`);
-        setOpponentPhaseCompletion(prev => {
-          const newState = {
-            ...prev,
-            [phase]: true
-          };
-          console.log(`🔥 Opponent phase completion updated:`, newState);
-          return newState;
-        });
       }
     };
 
@@ -351,42 +400,10 @@ const App = () => {
     return unsubscribe;
   }, [isMultiplayer, p2pManager]);
 
-  // Use explosion hook for visual effects
-  const { explosions, triggerExplosion } = useExplosions(droneRefs, gameAreaRef);
 
   // addLogEntry is now provided by useGameState hook
 
-  // --- ABILITY AND CARD INTERACTION STATE ---
-  const [abilityMode, setAbilityMode] = useState(null); // { drone, ability }
-  const [validAbilityTargets, setValidAbilityTargets] = useState([]);
-  const [shipAbilityMode, setShipAbilityMode] = useState(null); // { sectionName, ability }
-  const [shipAbilityConfirmation, setShipAbilityConfirmation] = useState(null);
-  const [selectedCard, setSelectedCard] = useState(null); // { card data }
-  const [validCardTargets, setValidCardTargets] = useState([]); // [id1, id2, ...]
-  const [cardConfirmation, setCardConfirmation] = useState(null); // { card, target }
-  const [abilityConfirmation, setAbilityConfirmation] = useState(null);
-  const [multiSelectState, setMultiSelectState] = useState(null); // To manage multi-step card effects
-
-  // --- UPGRADE SYSTEM STATE ---
-  const [destroyUpgradeModal, setDestroyUpgradeModal] = useState(null); // For targeting specific upgrades to destroy
-  const [upgradeSelectionModal, setUpgradeSelectionModal] = useState(null); // For the new upgrade target selection modal
-  const [viewUpgradesModal, setViewUpgradesModal] = useState(null); // To view applied upgrades on a drone card
-
-  // --- MANDATORY ACTIONS AND SPECIAL PHASES ---
-  const [mandatoryAction, setMandatoryAction] = useState(null); // e.g., { type: 'discard'/'destroy', player: getLocalPlayerId(), count: X }
-  const [showMandatoryActionModal, setShowMandatoryActionModal] = useState(false);
-  const [confirmationModal, setConfirmationModal] = useState(null); // For confirm/cancel popups
-  const [cardSelectionModal, setCardSelectionModal] = useState(null); // For search and draw card selection
-
-  // --- SHIELD REALLOCATION STATE ---
-  const [reallocationPhase, setReallocationPhase] = useState(null); // 'removing' | 'adding' | null
-  const [shieldsToRemove, setShieldsToRemove] = useState(0);
-  const [shieldsToAdd, setShieldsToAdd] = useState(0);
-  const [originalShieldAllocation, setOriginalShieldAllocation] = useState(null);
-  const [initialShieldAllocation, setInitialShieldAllocation] = useState(null); // For shield allocation reset
-  const [reallocationAbility, setReallocationAbility] = useState(null);
-
-  // --- PERFORMANCE OPTIMIZED COMPUTED VALUES ---
+  // --- 5.3 PERFORMANCE OPTIMIZED COMPUTED VALUES ---
   // Ship stats now use GameDataService for consistent caching with drone stats
   const localPlayerEffectiveStats = localPlayerState ? getEffectiveShipStats(localPlayerState, localPlacedSections) : null;
   const opponentPlayerEffectiveStats = opponentPlayerState ? getEffectiveShipStats(opponentPlayerState, opponentPlacedSections) : null;
@@ -399,8 +416,33 @@ const App = () => {
     return opponentPlayerState ? Object.values(opponentPlayerState.dronesOnBoard).flat().length : 0;
   }, [opponentPlayerState?.dronesOnBoard]);
 
+  // Sorted drone pool for deployment interface
+  const sortedLocalActivePool = useMemo(() => {
+    return [...localPlayerState.activeDronePool].sort((a, b) => {
+      if (a.class !== b.class) {
+        return a.class - b.class;
+      }
+      return a.name.localeCompare(b.name);
+    });
+  }, [localPlayerState.activeDronePool]);
+
+  // Shield allocation calculations
+  const canAllocateMoreShields = useMemo(() => {
+    if (!localPlayerState) return false;
+    return Object.keys(localPlayerState.shipSections).some(sectionName =>
+        localPlayerState.shipSections[sectionName].allocatedShields < gameDataService.getEffectiveSectionMaxShields(sectionName, localPlayerState, localPlacedSections)
+    );
+  }, [localPlayerState.shipSections, localPlacedSections, gameDataService]);
+
   // ========================================
-  // MULTIPLAYER PHASE SYNCHRONIZATION
+  // SECTION 6: EVENT HANDLERS
+  // ========================================
+  // User interaction handlers grouped by functionality for maintainability.
+  // All handlers use useCallback for performance optimization.
+  // Event handlers coordinate between UI actions and manager layer.
+
+  // --- 6.1 MULTIPLAYER PHASE SYNCHRONIZATION ---
+  // Handlers for coordinating game phases in multiplayer mode
   // ========================================
 
   /**
@@ -409,15 +451,6 @@ const App = () => {
   const sendPhaseCompletion = useCallback((phase) => {
     console.log(`🔥 sendPhaseCompletion called for phase: ${phase}`);
 
-    // Mark local phase as completed
-    setLocalPhaseCompletion(prev => {
-      const newState = {
-        ...prev,
-        [phase]: true
-      };
-      console.log(`🔥 Local phase completion updated:`, newState);
-      return newState;
-    });
 
     if (isMultiplayer()) {
       const message = {
@@ -432,18 +465,48 @@ const App = () => {
     }
   }, [isMultiplayer, p2pManager]);
 
+  // --- 6.2 UI EVENT HANDLERS ---
+
+  const handleCloseAiReport = useCallback(async () => {
+      setAiActionReport(null);
+      // Use ActionProcessor for turn transition instead of direct endTurn call
+      await processAction('turnTransition', {
+          newPlayer: getLocalPlayerId(),
+          reason: 'aiReportClosed'
+      });
+  }, [processAction, getLocalPlayerId]);
+
+  const handleCloseAiCardReport = useCallback(async () => {
+      // The turn ends only if the card doesn't grant another action.
+      if (aiCardPlayReport && !aiCardPlayReport.card.effect.goAgain) {
+          // Use ActionProcessor for turn transition instead of direct endTurn call
+          await processAction('turnTransition', {
+              newPlayer: getLocalPlayerId(),
+              reason: 'aiCardReportClosed'
+          });
+      } else if (aiCardPlayReport && aiCardPlayReport.card.effect.goAgain && !winner) {
+           // If AI can go again and game hasn't ended, the AI's turn continues.
+           // Use ActionProcessor for player transition instead of direct setCurrentPlayer call
+           await processAction('turnTransition', {
+               newPlayer: getOpponentPlayerId(),
+               reason: 'aiGoAgain'
+           });
+           setOpponentTurnData({ phase: turnPhase, actionType: 'another' });
+           setShowOpponentTurnModal(true);
+      }
+      setAiCardPlayReport(null);
+  }, [processAction, getLocalPlayerId, getOpponentPlayerId, aiCardPlayReport, winner]);
 
   // ========================================
-  // GAME LOGIC WRAPPER FUNCTIONS
+  // SECTION 7: GAME LOGIC FUNCTIONS
   // ========================================
-  // These functions wrap gameEngine calls and handle UI state updates
+  // Business logic wrappers that coordinate between UI and game engine.
+  // These functions handle game rule execution, validation, and state updates.
+  // All game logic is delegated to gameEngine for clean separation of concerns.
 
-  // --- PHASE TRANSITION FUNCTIONS ---
+  // --- 7.1 PHASE TRANSITION FUNCTIONS ---
 
-
-
-  
-
+  // TODO: TECHNICAL DEBT - calculateAllValidTargets needed for multi-select targeting UI - no GameDataService equivalent
   useEffect(() => {
     const { validAbilityTargets, validCardTargets } = gameEngine.calculateAllValidTargets(
       abilityMode,
@@ -451,8 +514,7 @@ const App = () => {
       multiSelectState,
       selectedCard,
       localPlayerState,
-      opponentPlayerState,
-      fullDroneCollection
+      opponentPlayerState
     );
 
     setValidAbilityTargets(validAbilityTargets);
@@ -487,13 +549,14 @@ const App = () => {
     setMultiSelectState(null);
   };
 
-  // --- COMBAT RESOLUTION ---
+  // --- 7.2 COMBAT RESOLUTION ---
 
   /**
    * RESOLVE ATTACK
    * Processes drone-to-drone combat using ActionProcessor.
    * Handles animations, state updates, and turn transitions.
    * @param {Object} attackDetails - Attack configuration with attacker, target, damage
+
    */
   const resolveAttack = useCallback(async (attackDetails) => {
     // --- Prevent duplicate runs ---
@@ -550,7 +613,7 @@ const App = () => {
 
 }, [triggerExplosion, processAction, getLocalPlayerId, getOpponentPlayerId]);
 
-  // --- ABILITY RESOLUTION ---
+  // --- 7.3 ABILITY RESOLUTION ---
 
   /**
    * RESOLVE ABILITY
@@ -576,7 +639,7 @@ const App = () => {
     }
   }, [processAction, getLocalPlayerId]);
 
-  // --- SHIP ABILITY RESOLUTION ---
+  // --- 7.4 SHIP ABILITY RESOLUTION ---
 
   /**
    * RESOLVE SHIP ABILITY
@@ -619,7 +682,7 @@ const App = () => {
     return result;
 }, [processAction, getLocalPlayerId]);
 
-  // --- CARD RESOLUTION ---
+  // --- 7.5 CARD RESOLUTION ---
 
   /**
    * RESOLVE CARD PLAY
@@ -698,7 +761,7 @@ const App = () => {
     return result;
 }, [processAction, getLocalPlayerId, localPlayerState, opponentPlayerState]);
 
-  // --- CARD SELECTION HANDLING ---
+  // --- 7.6 CARD SELECTION HANDLING ---
 
   /**
    * HANDLE CARD SELECTION
@@ -752,6 +815,7 @@ const App = () => {
       [getOpponentPlayerId()]: actingPlayerId === getOpponentPlayerId() ? { ...currentPlayer, deck: updatedPlayer.deck, hand: updatedPlayer.hand, discardPile: updatedPlayer.discardPile } : basePlayerStates[getOpponentPlayerId()]
     };
 
+    // TODO: TECHNICAL DEBT - finishCardPlay completes card resolution after modal selection - critical game flow function
     const completion = gameEngine.finishCardPlay(originalCard, actingPlayerId, currentStates);
 
     // Apply final state updates through GameStateManager directly
@@ -766,7 +830,7 @@ const App = () => {
 
   }, [localPlayerState, opponentPlayerState, addLogEntry]);
 
-  // --- MOVEMENT RESOLUTION ---
+  // --- 7.7 MOVEMENT RESOLUTION ---
 
   /**
    * RESOLVE MULTI MOVE
@@ -777,6 +841,7 @@ const App = () => {
    * @param {string} fromLane - Source lane ID
    * @param {string} toLane - Destination lane ID
    */
+  // TODO: TECHNICAL DEBT - resolveMultiMove handles multi-move card resolution - no ActionProcessor action exists
   const resolveMultiMove = useCallback((card, dronesToMove, fromLane, toLane) => {
     const result = gameEngine.resolveMultiMove(
         card,
@@ -793,6 +858,7 @@ const App = () => {
         }
     );
 
+    // TODO: TECHNICAL DEBT - Direct updatePlayerState violates architecture but resolveMultiMove not yet available in ActionProcessor
     updatePlayerState(getLocalPlayerId(), result.newPlayerState);
 
     if (result.shouldClearMultiSelectState) {
@@ -808,6 +874,9 @@ const App = () => {
    * RESOLVE SINGLE MOVE
    * Processes single-drone movement cards using gameEngine logic.
    * Handles movement effects and maintains turn continuity (goAgain).
+   *
+   * TODO: TECHNICAL DEBT - resolveSingleMove handles single-move card resolution - no ActionProcessor action exists
+   *
    * @param {Object} card - The movement card being played
    * @param {Object} droneToMove - The drone to move
    * @param {string} fromLane - Source lane ID
@@ -829,6 +898,7 @@ const App = () => {
         }
     );
 
+    // TODO: TECHNICAL DEBT - Direct updatePlayerState violates architecture but resolveMultiMove not yet available in ActionProcessor
     updatePlayerState(getLocalPlayerId(), result.newPlayerState);
 
     if (result.shouldClearMultiSelectState) {
@@ -861,14 +931,38 @@ const App = () => {
     }
   };
 
-  // =========================================================================
-  // ==                         WIN CONDITION CHECK                         ==
   // ========================================
-  // AUTOMATED GAME STATE MONITORING
+  // SECTION 8: EFFECT HOOKS
   // ========================================
-  // These useEffect hooks monitor game state and trigger automated responses
+  // Side effects and monitoring grouped by purpose for maintainability.
+  // These useEffect hooks monitor game state changes and trigger automated responses.
+  // Organized into game state monitoring, UI effects, and phase transition effects.
 
-  // --- WIN CONDITION MONITORING ---
+  // --- 8.1 TARGETING CALCULATIONS ---
+
+  // TODO: TECHNICAL DEBT - calculateAllValidTargets needed for multi-select targeting UI - no GameDataService equivalent
+  useEffect(() => {
+    const { validAbilityTargets, validCardTargets } = gameEngine.calculateAllValidTargets(
+      abilityMode,
+      shipAbilityMode,
+      multiSelectState,
+      selectedCard,
+      localPlayerState,
+      opponentPlayerState
+    );
+
+    setValidAbilityTargets(validAbilityTargets);
+    setValidCardTargets(validCardTargets);
+
+    // Clear conflicting selections
+    if (abilityMode) {
+      setSelectedCard(null);
+      setShipAbilityMode(null);
+    }
+  }, [abilityMode, shipAbilityMode, selectedCard, localPlayerState, opponentPlayerState, multiSelectState]);
+
+  // --- 8.2 WIN CONDITION MONITORING ---
+  // TODO: UI MONITORING - Win condition monitoring is appropriate UI-only effect - monitors game state for UI updates
   useEffect(() => {
     if (winner) return;
 
@@ -882,10 +976,8 @@ const App = () => {
     );
   }, [localPlayerState?.shipSections, opponentPlayerState?.shipSections, winner, addLogEntry]);
 
-
-
-
-  // --- INTERCEPTION MONITORING ---
+  // --- 8.4 INTERCEPTION MONITORING ---
+  // TODO: UI MONITORING - Interception monitoring is appropriate UI-only effect - calculates UI hints for user
   useEffect(() => {
     if (turnPhase === 'action') {
         const potential = gameEngine.calculatePotentialInterceptors(
@@ -942,7 +1034,7 @@ const App = () => {
     };
   }, [arrowState.visible]); // This effect only re-runs when the arrow's visibility changes.
 
-   // --- DEFENSIVE STATE CLEANUP ---
+   // --- 8.5 DEFENSIVE STATE CLEANUP ---
   // Reset attack flag when critical game state changes to prevent infinite loops
   useEffect(() => {
     // Reset attack flag on turn changes or game reset
@@ -954,10 +1046,8 @@ const App = () => {
     }
   }, [winner, turnPhase, currentPlayer]);
 
-  // --- REACTIVE MODAL UPDATES FOR TURN CHANGES ---
+  // --- 8.6 REACTIVE MODAL UPDATES FOR TURN CHANGES ---
   // Update modals when currentPlayer changes during active phases
-  const [lastCurrentPlayer, setLastCurrentPlayer] = useState(currentPlayer);
-
   useEffect(() => {
     // Only update modals during active gameplay phases
     if (turnPhase !== 'deployment' && turnPhase !== 'action') return;
@@ -986,17 +1076,12 @@ const App = () => {
     // Update the tracked currentPlayer
     setLastCurrentPlayer(currentPlayer);
 
+
     if (myTurn) {
       // It's now the local player's turn
       if (turnPhase === 'deployment') {
         const deploymentResource = turn === 1 ? 'Initial Deployment Points' : 'Energy';
 
-        // TODO: REMOVE AFTER TESTING - Deployment turn modal disabled
-        // setModalContent({
-        //   title: "Your Turn to Deploy",
-        //   text: `Select a drone and a lane to deploy it. Drones cost ${deploymentResource} this turn. Or, click "Pass" to end your deployment for this phase.`,
-        //   isBlocking: true
-        // });
 
         // Clear any existing modal (like "Opponent's Turn") when it becomes player's turn
         setModalContent(null);
@@ -1040,14 +1125,6 @@ const App = () => {
    setCardConfirmation(null);
    setShowWinnerModal(false);
   };
-
-
-  /**
-   * PROCEED TO SHIELD ALLOCATION
-   * Initiates shield restoration phase.
-   * Calculates available shields and sets up allocation UI.
-   */
-   
 
   /**
    * HANDLE ALLOCATE SHIELD
@@ -1187,18 +1264,18 @@ const App = () => {
    * Acknowledges first player determination for the current player.
    * Triggers waiting state if opponent hasn't acknowledged yet.
    */
-  const handleFirstPlayerAcknowledgment = () => {
+  const handleFirstPlayerAcknowledgment = async () => {
     console.log('🎯 App.jsx: Acknowledging first player determination');
 
     const localPlayerId = getLocalPlayerId();
-    const result = gameStateManager.actionProcessor.acknowledgeFirstPlayer(localPlayerId);
+    const result = await processAction('acknowledgeFirstPlayer', { playerId: localPlayerId });
 
     if (result.success) {
       setShowFirstPlayerModal(false);
 
       // Check if we need to show waiting state
-      const commitmentStatus = gameStateManager.actionProcessor.getPhaseCommitmentStatus('determineFirstPlayer');
-      if (!commitmentStatus.allComplete && gameState.gameMode !== 'local') {
+      const commitmentStatus = simultaneousActionManager.getPhaseCommitmentStatus('determineFirstPlayer');
+      if (!commitmentStatus.bothComplete && gameState.gameMode !== 'local') {
         // In multiplayer, show waiting state if opponent hasn't acknowledged
         setWaitingForPlayerPhase('determineFirstPlayer');
       }
@@ -1341,7 +1418,7 @@ const App = () => {
    */
   const handleGameAction = async (actionType, payload) => {
     const phase = gameState.turnPhase;
-    // TODO: Get phase type from GameFlowManager
+    // TODO: FUTURE WORK - Could get phase type from GameFlowManager.getPhaseType() when available
     const isSequential = ['deployment', 'action'].includes(phase);
 
     console.log(`[PHASE ROUTING] ${actionType} in ${phase} → ${isSequential ? 'ActionProcessor' : 'Direct Update'}`);
@@ -1380,14 +1457,10 @@ const App = () => {
 
 
 
-        // Initial draw actions
+        // Initial draw actions - now handled by GameFlowManager
         case 'drawCard':
         case 'confirmInitialHand':
-          if (turnPhase === 'initialDraw') {
-            const result = gameEngine.processInitialDraw(payload, getLocalPlayerState());
-            updatePlayerState(getLocalPlayerId(), result.newPlayerState);
-            return { success: true, result };
-          }
+          // These actions are no longer handled here - managed by phase system
           break;
 
         // Phase transitions are handled by GameFlowManager automatically
@@ -1477,134 +1550,6 @@ const App = () => {
       }
     });
   };
-
-
-  // ========================================
-  // SIMULTANEOUS HAND LIMIT ENFORCEMENT
-  // ========================================
-
-  /**
-   * HANDLE ROUND START DISCARD
-   * Handles simultaneous discard during optionalDiscard phase.
-   * Uses direct GameStateManager updates for parallel player actions.
-   * @param {Object} card - The card being discarded
-   */
-
-  /**
-   * HANDLE ROUND START DRAW
-   * Handles simultaneous draw during round start.
-   * Uses direct GameStateManager updates for parallel player actions.
-   */
-  const handleRoundStartDraw = () => {
-    const { turnPhase } = gameState;
-
-    if (turnPhase === 'optionalDiscard') {
-      // Round start draw - use direct GameStateManager updates
-      const currentPlayerState = getLocalPlayerState();
-      const effectiveStats = getEffectiveShipStats(currentPlayerState, getLocalPlacedSections()).totals;
-
-      let newDeck = [...currentPlayerState.deck];
-      let newHand = [...currentPlayerState.hand];
-      let newDiscardPile = [...currentPlayerState.discardPile];
-      const handLimit = effectiveStats.handLimit;
-
-      // Draw cards up to hand limit
-      while (newHand.length < handLimit && (newDeck.length > 0 || newDiscardPile.length > 0)) {
-        if (newDeck.length === 0) {
-          // Shuffle discard pile into deck
-          newDeck = [...newDiscardPile].sort(() => 0.5 - Math.random());
-          newDiscardPile = [];
-        }
-
-        const drawnCard = newDeck.shift();
-        if (drawnCard) {
-          newHand.push(drawnCard);
-        }
-      }
-
-      updatePlayerState(getLocalPlayerId(), {
-        deck: newDeck,
-        hand: newHand,
-        discardPile: newDiscardPile
-      });
-
-      // Add log entry
-      addLogEntry({
-        player: currentPlayerState.name,
-        actionType: 'DRAW_TO_HAND_LIMIT',
-        cardsDrawn: newHand.length - currentPlayerState.hand.length,
-        timestamp: Date.now()
-      });
-
-      // Check if both players are complete
-      checkBothPlayersHandLimitComplete();
-    }
-  };
-
-  /**
-   * CHECK BOTH PLAYERS HAND LIMIT COMPLETE
-   * Checks if both players have completed hand limit enforcement.
-   * Transitions to shield allocation phase when both are ready.
-   */
-  const checkBothPlayersHandLimitComplete = () => {
-    const { turnPhase } = gameState;
-
-    if (turnPhase !== 'optionalDiscard') return;
-
-    // In local mode, check if local player is done and handle AI
-    if (!isMultiplayer()) {
-      const localPlayerState = getLocalPlayerState();
-      const opponentPlayerState = getOpponentPlayerState();
-      const localStats = getEffectiveShipStats(localPlayerState, getLocalPlacedSections()).totals;
-      const opponentStats = getEffectiveShipStats(opponentPlayerState, getOpponentPlacedSections()).totals;
-
-      const localHandLimitMet = localPlayerState.hand.length <= localStats.handLimit;
-
-      if (localHandLimitMet) {
-        // Handle AI hand limit enforcement
-        if (opponentPlayerState.hand.length > opponentStats.handLimit) {
-          const cardsToDiscard = opponentPlayerState.hand.length - opponentStats.handLimit;
-          const cardsToDiscard_actual = opponentPlayerState.hand.slice(0, cardsToDiscard);
-
-          updatePlayerState(getOpponentPlayerId(), {
-            hand: opponentPlayerState.hand.slice(cardsToDiscard),
-            discardPile: [...opponentPlayerState.discardPile, ...cardsToDiscard_actual]
-          });
-        }
-
-        // AI draw is now handled by AIPhaseProcessor
-
-        // Phase transitions are now handled by GameFlowManager
-      }
-    } else {
-      // In multiplayer mode, wait for both players to complete
-      // This would be handled by multiplayer synchronization
-      // For now, assume single player completion triggers transition
-      const localPlayerState = getLocalPlayerState();
-      const localStats = getEffectiveShipStats(localPlayerState, getLocalPlacedSections()).totals;
-      const localHandLimitMet = localPlayerState.hand.length <= localStats.handLimit;
-
-      if (localHandLimitMet) {
-        // Send completion signal to opponent
-        if (p2pManager && isMultiplayer()) {
-          p2pManager.sendData({
-            type: 'PHASE_COMPLETED',
-            phase: 'optionalDiscard',
-            playerId: getLocalPlayerId(),
-            timestamp: Date.now()
-          });
-        }
-
-        // Check if opponent is also complete (this would be handled by P2P events)
-        // Phase transitions are now handled by GameFlowManager
-      }
-    }
-  };
-
-
-
-
-  // Legacy startPlacementPhase function removed - now handled by GameFlowManager + utility functions
 
 
   /**
@@ -1713,6 +1658,7 @@ const App = () => {
 
     // For turn 1, we need cost information for confirmation modal
     if (turn === 1) {
+      // TODO: UI VALIDATION - validateDeployment used for UI validation before deployment - appropriate for UI layer
       const validationResult = gameEngine.validateDeployment(localPlayerState, selectedDrone, turn, totalLocalPlayerDrones, localPlayerEffectiveStats);
       if (!validationResult.isValid) {
         setModalContent({ title: validationResult.reason, text: validationResult.message, isBlocking: true });
@@ -1747,11 +1693,12 @@ const App = () => {
     });
   };
 
-useEffect(() => {
+  useEffect(() => {
     if (!pendingAttack || pendingAttack.attackingPlayer !== getOpponentPlayerId()) {
         return;
     }
 
+    // TODO: TECHNICAL DEBT - calculateAiInterception calculates interception results for combat - core combat mechanic
     const interceptionResult = gameEngine.calculateAiInterception(
         pendingAttack,
         getPlayerStatesForEngine(),
@@ -1792,6 +1739,7 @@ useEffect(() => {
 
     // Check for self-targeting lane abilities ---
     if (ability.targeting?.type === 'LANE' && ability.targeting?.location === 'SAME_LANE') {
+        // TODO: TECHNICAL DEBT - getLaneOfDrone gets lane of drone for ability targeting - utility function needed for UI logic
         const laneId = gameEngine.getLaneOfDrone(drone.id, localPlayerState);
         if (laneId) {
             // Immediately open the confirmation modal since the target is known
@@ -1974,6 +1922,7 @@ useEffect(() => {
       }
 
       // 4. Handle mandatory destruction
+
       if (mandatoryAction?.type === 'destroy' && isPlayer) {
           console.log("Action: Mandatory destruction.");
           setConfirmationModal({
@@ -2120,7 +2069,7 @@ useEffect(() => {
     // Stop the click from bubbling up to the main game area div
     e.stopPropagation();
 
-    // --- NEW: Handle Ability Targeting ---
+    // --- 9.1 HANDLE ABILITY TARGETING ---
     if (abilityMode && abilityMode.ability.targeting.type === 'LANE') {
         const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
         if (validAbilityTargets.some(t => t.id === lane && t.owner === owner)) {
@@ -2243,12 +2192,14 @@ useEffect(() => {
     if (selectedCard?.instanceId === card.instanceId) {
       cancelCardSelection();
     } else if (card.name === 'System Sabotage') {
+        // TODO: TECHNICAL DEBT - getValidTargets gets valid targets for special cards - required for card targeting UI
         const validTargets = gameEngine.getValidTargets(getLocalPlayerId(), null, card, localPlayerState, opponentPlayerState);
         setDestroyUpgradeModal({ card, targets: validTargets, opponentState: opponentPlayerState });
         setSelectedCard(null);
         setAbilityMode(null);
         setSelectedDrone(null);
     } else if (card.type === 'Upgrade') {
+        // TODO: TECHNICAL DEBT - getValidTargets gets valid targets for upgrade cards - required for upgrade targeting UI
         const validTargets = gameEngine.getValidTargets(getLocalPlayerId(), null, card, localPlayerState, opponentPlayerState);
         if (validTargets.length > 0) {
             setUpgradeSelectionModal({ card, targets: validTargets });
@@ -2279,7 +2230,7 @@ useEffect(() => {
    * Manages discard count and phase transitions.
    * @param {Object} card - The card being discarded
    */
-  const handleConfirmMandatoryDiscard = (card) => {
+  const handleConfirmMandatoryDiscard = async (card) => {
     // Capture the current state before any updates
     const currentMandatoryAction = mandatoryAction;
 
@@ -2291,13 +2242,12 @@ useEffect(() => {
         outcome: `Discarded ${card.name}.`
     }, 'handleConfirmMandatoryDiscard');
 
-    // Update player state
-    updatePlayerState(getLocalPlayerId(), {
-        ...localPlayerState,
-        hand: localPlayerState.hand.filter(c => c.instanceId !== card.instanceId),
-        discardPile: [...localPlayerState.discardPile, card]
+    // Use ActionProcessor for proper state management
+    await processAction('optionalDiscard', {
+        playerId: getLocalPlayerId(),
+        cardsToDiscard: [card]
     });
-    
+
     // Clear the confirmation modal immediately
     setConfirmationModal(null);
 
@@ -2320,6 +2270,19 @@ useEffect(() => {
    * Processes confirmed mandatory drone destruction.
    * Handles both player and AI compliance checking.
    * @param {Object} drone - The drone being destroyed
+   *
+   * TECHNICAL DEBT: This function violates architecture by:
+   * - Using direct gameEngine calls instead of GameDataService/ActionProcessor
+   * - Direct state manipulation instead of using processAction('destroyDrone', ...)
+   * - Complex business logic in UI layer
+   *
+   * REASON FOR KEEPING: No 'destroyDrone' action exists in ActionProcessor yet.
+   * This handles critical mandatoryDroneRemoval phase functionality.
+   *
+   * TODO: Create ActionProcessor.processDestroyDrone() method to handle:
+   * - Lane detection, drone removal, onDestroy effects, aura updates
+   * - Both local and opponent destruction logic
+   * - Proper state updates through GameStateManager
    */
   const handleConfirmMandatoryDestroy = (drone) => {
    const lane = gameEngine.getLaneOfDrone(drone.id, localPlayerState);
@@ -2408,83 +2371,16 @@ useEffect(() => {
         document.body.removeChild(link);
       }
     };
-    const handleCloseAiReport = useCallback(async () => {
-        setAiActionReport(null);
-        // Use ActionProcessor for turn transition instead of direct endTurn call
-        await processAction('turnTransition', {
-            newPlayer: getLocalPlayerId(),
-            reason: 'aiReportClosed'
-        });
-    }, [processAction, getLocalPlayerId]);
 
-    const handleCloseAiCardReport = useCallback(async () => {
-        // The turn ends only if the card doesn't grant another action.
-        if (aiCardPlayReport && !aiCardPlayReport.card.effect.goAgain) {
-            // Use ActionProcessor for turn transition instead of direct endTurn call
-            await processAction('turnTransition', {
-                newPlayer: getLocalPlayerId(),
-                reason: 'aiCardReportClosed'
-            });
-        } else if (aiCardPlayReport && aiCardPlayReport.card.effect.goAgain && !winner) {
-             // If AI can go again and game hasn't ended, the AI's turn continues.
-             // Use ActionProcessor for player transition instead of direct setCurrentPlayer call
-             await processAction('turnTransition', {
-                 newPlayer: getOpponentPlayerId(),
-                 reason: 'aiGoAgain'
-             });
-             setOpponentTurnData({ phase: turnPhase, actionType: 'another' });
-             setShowOpponentTurnModal(true);
-        }
-        setAiCardPlayReport(null);
-    }, [processAction, getLocalPlayerId, getOpponentPlayerId, aiCardPlayReport, winner]);
+  // ========================================
+  // SECTION 9: RENDER
+  // ========================================
+  // Main component render with clean component composition.
+  // Uses extracted sub-components for maintainability and separation of concerns.
+  // All UI state and event handlers are passed down as props for reactive updates.
 
-  const sortedLocalActivePool = useMemo(() => {
-    return [...localPlayerState.activeDronePool].sort((a, b) => {
-      if (a.class !== b.class) {
-        return a.class - b.class;
-      }
-      return a.name.localeCompare(b.name);
-    });
-  }, [localPlayerState.activeDronePool]);
-
-  const canAllocateMoreShields = useMemo(() => {
-    if (!localPlayerState) return false;
-    return Object.keys(localPlayerState.shipSections).some(sectionName =>
-        localPlayerState.shipSections[sectionName].allocatedShields < gameEngine.getEffectiveSectionMaxShields(sectionName, localPlayerState, localPlacedSections)
-    );
-  }, [localPlayerState.shipSections, localPlacedSections]);
-
-
- 
   return (
     <div className="h-screen bg-gray-950 text-white font-sans overflow-hidden flex flex-col bg-gradient-to-br from-gray-900 via-indigo-950 to-black relative" ref={gameAreaRef} onClick={() => { cancelAbilityMode(); cancelCardSelection(); }}>
-      <style>
-        {`
-            @import url('https://fonts.googleapis.com/css2?family=Exo:wght@400;700&family=Orbitron:wght@400;700;900&display=swap');
-           .font-orbitron { font-family: 'Orbitron', sans-serif; }
-            .font-exo { font-family: 'Exo', sans-serif; }
-            .hexagon { clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
-            .hexagon-flat { clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }
-            @keyframes pulse-glow {
-                0%, 100% { filter: drop-shadow(0 0 2px rgba(255, 255, 0, 0.7)) drop-shadow(0 0 3px rgba(255, 0, 0, 0.6)); }
-                50% { filter: drop-shadow(0 0 4px rgba(255, 255, 0, 1)) drop-shadow(0 0 7px rgba(255, 0, 0, 0.8)); }
-            }
-            .interceptor-glow { animation: pulse-glow 2s infinite ease-in-out; }
-            @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); } 20%, 40%, 60%, 80% { transform: translateX(5px); } }
-           .animate-shake { animation: shake 0.5s ease-in-out; }
-            .explosion { position: absolute; width: 100px; height: 100px; background-image: radial-gradient(circle, rgba(255,159,64,1) 0%, rgba(255,87,34,0.8) 40%, rgba(255,255,255,0) 70%); border-radius: 50%; transform: translate(-50%, -50%) scale(0); animation: explode 1s ease-out forwards; pointer-events: none; z-index: 50; }
-            @keyframes explode { 0% { transform: translate(-50%, -50%) scale(0); opacity: 1; } 50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.8; } 100% { transform: translate(-50%, -50%) scale(2); opacity: 0; } }
-           .bg-grid-cyan { background-image: linear-gradient(rgba(34, 211, 238, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(34, 211, 238, 0.2) 1px, transparent 1px); background-size: 20px 20px;             .bg-grid-cyan { background-image: linear-gradient(rgba(34, 211, 238, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(34, 211, 238, 0.2) 1px, transparent 1px); background-size: 20px 20px; }
-            
-            /* --- ADD THESE STYLES --- */
-            .no-scrollbar::-webkit-scrollbar {
-              display: none;
-            }
-            .no-scrollbar {
-              -ms-overflow-style: none;  /* IE and Edge */
-              scrollbar-width: none;  /* Firefox */}
-            `}
-        </style>
      <TargetingArrow visible={arrowState.visible} start={arrowState.start} end={arrowState.end} lineRef={arrowLineRef} />
      {explosions.map(exp => <ExplosionEffect key={exp.id} top={exp.top} left={exp.left} />)}
 
@@ -2570,8 +2466,6 @@ useEffect(() => {
         setHoveredCardId={setHoveredCardId}
         setIsViewDiscardModalOpen={setIsViewDiscardModalOpen}
         setIsViewDeckModalOpen={setIsViewDeckModalOpen}
-        handleRoundStartDraw={handleRoundStartDraw}
-        checkBothPlayersHandLimitComplete={checkBothPlayersHandLimitComplete}
         handleToggleDroneSelection={handleToggleDroneSelection}
         selectedDrone={selectedDrone}
         setViewUpgradesModal={setViewUpgradesModal}
@@ -2615,7 +2509,7 @@ useEffect(() => {
         show={!!waitingForPlayerPhase}
         phase={waitingForPlayerPhase}
         opponentName={opponentPlayerState.name}
-        roomCode={null} // TODO: Connect to actual room code when multiplayer is implemented
+        roomCode={null} // TODO: MULTIPLAYER FEATURE - Connect to actual room code when multiplayer is implemented
       />
       <DeploymentConfirmationModal
         deploymentConfirmation={deploymentConfirmation}
@@ -2706,43 +2600,18 @@ useEffect(() => {
         show={!!confirmationModal}
       />
 
-{viewUpgradesModal && (
-    <ViewUpgradesModal 
-        modalData={viewUpgradesModal}
-        onClose={() => setViewUpgradesModal(null)}
-    />
-)}
-
-
-{destroyUpgradeModal && (
-    <DestroyUpgradeModal 
-        selectionData={destroyUpgradeModal}
-        onConfirm={async (card, target) => {
-            await resolveCardPlay(card, target, getLocalPlayerId());
-            setDestroyUpgradeModal(null);
-        }}
-        onCancel={() => {
-            setDestroyUpgradeModal(null);
-            cancelCardSelection();
-        }}
-    />
-)}
-
-{/* --- NEW --- Card Confirmation Modal */}
-
-{upgradeSelectionModal && (
-    <UpgradeSelectionModal 
-        selectionData={upgradeSelectionModal}
-        onConfirm={async (card, target) => {
-            await resolveCardPlay(card, target, getLocalPlayerId());
-            setUpgradeSelectionModal(null);
-        }}
-        onCancel={() => {
-            setUpgradeSelectionModal(null);
-            cancelCardSelection();
-        }}
-    />
-)}
+      {/* Upgrade-related modals consolidated into ModalContainer */}
+      <ModalContainer
+        viewUpgradesModal={viewUpgradesModal}
+        setViewUpgradesModal={setViewUpgradesModal}
+        destroyUpgradeModal={destroyUpgradeModal}
+        setDestroyUpgradeModal={setDestroyUpgradeModal}
+        upgradeSelectionModal={upgradeSelectionModal}
+        setUpgradeSelectionModal={setUpgradeSelectionModal}
+        resolveCardPlay={resolveCardPlay}
+        getLocalPlayerId={getLocalPlayerId}
+        cancelCardSelection={cancelCardSelection}
+      />
 
       <CardConfirmationModal
         cardConfirmation={cardConfirmation}
@@ -2812,17 +2681,19 @@ useEffect(() => {
 
       {/* Waiting Overlay for multiplayer */}
       <WaitingOverlay
-        isVisible={false} // TODO: Implement proper waiting logic
+        isVisible={false} // TODO: MULTIPLAYER FEATURE - Implement proper waiting logic
         currentPlayer={currentPlayer}
         gameMode={gameState.gameMode}
-        roomCode={null} // TODO: Connect to actual room code
-        lastAction={null} // TODO: Connect to last action
+        roomCode={null} // TODO: MULTIPLAYER FEATURE - Connect to actual room code
+        lastAction={null} // TODO: MULTIPLAYER FEATURE - Connect to last action
         localPlayerState={localPlayerState}
         opponentPlayerState={opponentPlayerState}
         getLocalPlayerId={getLocalPlayerId}
       />
     </div>
   );
+
 };
+
 
 export default App;

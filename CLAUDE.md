@@ -309,6 +309,28 @@ const sections = gameState.players[playerId].placedSections; // ❌ WRONG - Doub
 - Hit/miss statistics tracking for performance monitoring
 - Memory-efficient with deterministic key generation
 
+### **GameStateManager Update Ownership** ✅ IMPLEMENTED
+
+**Strict ownership boundaries prevent race conditions and architectural violations:**
+
+**GameFlowManager** (Master Orchestrator):
+- OWNS: `turnPhase`, `gameStage`, `roundNumber`, `gameActive`
+- ALLOWED: Player states during automatic phases (energyReset, draw)
+
+**SequentialPhaseManager** (Sequential Phase Executor):
+- OWNS: `passInfo` (firstPasser, player1Passed, player2Passed) during sequential phases
+- NOT ALLOWED: Phase transitions, player game state
+
+**SimultaneousActionManager** (Simultaneous Phase Executor):
+- OWNS: Player state updates from phase results, placement data, shield allocation
+- NOT ALLOWED: `turnPhase`, `currentPlayer`, `passInfo`
+
+**ActionProcessor** (Action Executor):
+- OWNS: Player state updates from actions, turn transitions within phase (`currentPlayer`)
+- NOT ALLOWED: `turnPhase`, `passInfo` (routes to appropriate manager)
+
+**Enforcement**: GameStateManager validates all updates and warns about ownership violations
+
 ### **AI Decision Layer**
 
 **AIPhaseProcessor**
@@ -366,6 +388,40 @@ GameFlowManager → Phase Managers → ActionProcessor → GameStateManager → 
 ```
 GameStateManager → Event Emission → All Subscribed Components → UI Re-render
 ```
+
+### **First Player Determination Flow** ✅ IMPLEMENTED (2025-09-29)
+```
+GameFlowManager.transitionToPhase('determineFirstPlayer')
+    ↓
+SimultaneousActionManager.initializeFirstPlayerPhase()
+    ↓
+firstPlayerUtils.processFirstPlayerDetermination(gameState)
+    ↓
+GameFlowManager receives result and applies stateUpdates (currentPlayer, firstPlayerOfRound)
+    ↓
+Both players acknowledge via SimultaneousActionManager.acknowledgeFirstPlayer()
+    ↓
+Phase completes when both acknowledged
+```
+
+**Architecture Pattern**: SimultaneousActionManager calculates and returns results, GameFlowManager applies state changes during phase transitions. This maintains clear ownership boundaries where GameFlowManager orchestrates all phase transitions and their associated state updates.
+
+### **Sequential Phase Transition Flow** ✅ FIXED (2025-09-29)
+```
+SequentialPhaseManager emits 'phase_completed' event
+    ↓
+GameFlowManager.onSequentialPhaseComplete() (SINGLE subscription)
+    ↓
+GameFlowManager.transitionToPhase() orchestrates next phase
+    ↓
+SequentialPhaseManager.initializePhase() resets passInfo and completion guard
+```
+
+**Critical Fixes Applied**:
+- **PassInfo Reset**: Each sequential phase starts with fresh passInfo to prevent carryover
+- **Completion Guard**: Prevents duplicate completion events for the same phase
+- **Single Event Source**: GameFlowManager only subscribes to SequentialPhaseManager, not ActionProcessor
+- **Architecture Pattern**: SequentialPhaseManager signals completion, GameFlowManager orchestrates transitions
 
 ---
 
@@ -559,6 +615,150 @@ App.jsx → Manager → GameStateManager → UI Updates ✅
 ```
 User Input → App.jsx → Manager → GameStateManager → State Change Event → App.jsx Re-render
 ```
+
+---
+
+## 📋 **APP.JSX FILE STRUCTURE SPECIFICATION**
+
+### **Purpose**
+App.jsx serves as the main UI coordinator for active gameplay. This structure ensures logical organization and maintainable code.\n\n### **🎯 IMPLEMENTATION STATUS** ✅ COMPLETED (2025-09-29)
+
+### **Mandatory Section Order**
+
+```javascript
+// ========================================
+// SECTION 1: IMPORTS
+// ========================================
+// --- 1.1 REACT CORE IMPORTS ---
+// --- 1.2 UI COMPONENT IMPORTS ---
+// --- 1.3 MODAL COMPONENT IMPORTS ---
+// --- 1.4 HOOK IMPORTS ---
+// --- 1.5 DATA/LOGIC IMPORTS ---
+// --- 1.6 MANAGER/STATE IMPORTS ---
+// --- 1.7 UTILITY IMPORTS ---
+
+// ========================================
+// SECTION 2: MAIN COMPONENT DECLARATION
+// ========================================
+
+// ========================================
+// SECTION 3: HOOKS & STATE
+// ========================================
+// --- 3.1 CUSTOM HOOKS (useGameState, useGameData, etc.) ---
+// --- 3.2 LOCAL UI STATE (useState declarations) ---
+// --- 3.3 REFS (useRef declarations) ---
+// --- 3.4 HOOKS DEPENDENT ON REFS (hooks requiring refs as parameters) ---
+// --- 3.5 STATE AND REFS DEPENDENT ON GAMESTATE (state/refs requiring gameState values) ---
+
+// ========================================
+// SECTION 4: MANAGER SUBSCRIPTIONS
+// ========================================
+// --- 4.1 MANAGER INITIALIZATION ---
+// --- 4.2 EVENT SUBSCRIPTIONS ---
+
+// ========================================
+// SECTION 5: COMPUTED VALUES & MEMOIZATION
+// ========================================
+// --- 5.1 PLAYER STATE CALCULATIONS ---
+// --- 5.2 REF SYNCHRONIZATION ---
+// --- 5.3 PERFORMANCE OPTIMIZED VALUES ---
+// --- 5.4 MULTIPLAYER PHASE SYNC HANDLER ---
+
+// ========================================
+// SECTION 6: EVENT HANDLERS
+// ========================================
+// --- 6.1 MULTIPLAYER PHASE SYNCHRONIZATION ---
+// --- 6.2 UI EVENT HANDLERS ---
+
+// ========================================
+// SECTION 7: GAME LOGIC FUNCTIONS
+// ========================================
+// --- 7.1 PHASE TRANSITION FUNCTIONS ---
+// --- 7.2 COMBAT RESOLUTION ---
+// --- 7.3 ABILITY RESOLUTION ---
+// --- 7.4 SHIP ABILITY RESOLUTION ---
+// --- 7.5 CARD RESOLUTION ---
+// --- 7.6 CARD SELECTION HANDLING ---
+// --- 7.7 MOVEMENT RESOLUTION ---
+
+// ========================================
+// SECTION 8: EFFECT HOOKS
+// ========================================
+// --- 8.1 TARGETING CALCULATIONS ---
+// --- 8.2 WIN CONDITION MONITORING ---
+// --- 8.4 INTERCEPTION MONITORING ---
+// --- 8.5 DEFENSIVE STATE CLEANUP ---
+// --- 8.6 REACTIVE MODAL UPDATES FOR TURN CHANGES ---
+
+// ========================================
+// SECTION 9: RENDER
+// ========================================
+```
+
+### **Section Guidelines**
+
+**Section 1: Imports**
+- Grouped by type with clear subsections (React core, UI components, modals, hooks, data/logic, managers, utilities)
+- Clear categorization prevents import confusion and maintains clean dependencies
+
+**Section 2: Component Declaration**
+- Simple functional component declaration with clear naming
+
+**Section 3: Hooks & State**
+- **Critical Ordering**: Custom hooks → useState → useRef → hooks dependent on refs → state/refs dependent on gameState
+- All useState declarations consolidated to eliminate scattered state
+- useRef positioned after gameState destructuring to prevent "Cannot access before initialization"
+- **Section 3.4**: For hooks requiring refs as parameters (e.g., useExplosions needs droneRefs, gameAreaRef)
+- **Section 3.5**: For state and refs requiring gameState values for initialization (e.g., useState(currentPlayer), useRef(passInfo))
+
+**Section 4: Manager Subscriptions**
+- Event-driven architecture initialization and subscriptions
+- Dependency injection pattern for clean architecture
+- All manager setup isolated for easy testing and modification
+
+**Section 5: Computed Values & Memoization**
+- Performance-critical section with all useMemo declarations
+- Game state destructuring happens here for proper variable access
+- **Section 5.2**: Ref synchronization useEffects to keep refs updated with state values
+- All derived calculations optimized to prevent unnecessary re-renders
+
+**Section 6: Event Handlers**
+- User interaction handlers grouped by functionality (multiplayer, UI, game actions)
+- All handlers use useCallback for performance optimization
+- Clear coordination between UI actions and manager layer
+
+**Section 7: Game Logic Functions**
+- Business logic wrappers coordinating UI with game engine
+- Clean separation: UI logic here, game rules in gameEngine
+- All game logic delegated to engine for architectural compliance
+
+**Section 8: Effect Hooks**
+- Side effects organized by purpose (targeting calculations, win condition monitoring, interception monitoring)
+- Clear separation between different types of reactive updates
+- Critical for maintaining proper game state synchronization
+- **Section 8.3**: Interception monitoring for AI attack interception logic
+
+**Section 9: Render**
+- Clean JSX with component composition architecture
+- Minimal inline logic, all complexity handled in previous sections
+- Clear prop passing for reactive updates
+
+### **Critical Architecture Rules**
+
+- **Variable Initialization Order**: gameState destructuring must happen before refs to prevent runtime errors
+- **Hook Dependencies**: Custom hooks → local state → refs → effects
+- **Performance**: All expensive calculations in Section 5 with proper memoization
+- **Separation of Concerns**: UI logic in App.jsx, game rules in gameEngine
+- **Event-Driven**: All state changes through manager layer, never direct setState
+
+### **Maintenance Notes**
+- Each section must have comprehensive header comments explaining purpose and organization
+- Follow documented ordering to prevent initialization and dependency errors
+- All new functionality should fit within existing section structure
+- Performance optimizations (useMemo, useCallback) are mandatory for large components
+- Code within sections should be logically ordered
+- Related functions should be grouped together
+- TODO comments should include clear categorization (TECHNICAL DEBT, UI VALIDATION, etc.)
 
 ---
 

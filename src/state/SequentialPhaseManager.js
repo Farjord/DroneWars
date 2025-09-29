@@ -26,6 +26,9 @@ class SequentialPhaseManager {
     this.isProcessingTurn = false;
     this.turnTimer = null;
 
+    // Phase completion guard
+    this.phaseCompleted = false;
+
     // Dependencies (set during initialization)
     this.gameStateManager = null;
     this.actionProcessor = null;
@@ -72,22 +75,35 @@ class SequentialPhaseManager {
     const sequentialPhases = ['deployment', 'action'];
     const isSequentialPhase = sequentialPhases.includes(state.turnPhase);
 
-    // Phase transition detected
+    // Phase transition detection - ALWAYS process this even if inactive
     if (state.turnPhase !== this.currentPhase) {
-      if (isSequentialPhase && !this.isPhaseActive) {
+      if (isSequentialPhase) {
+        // Transitioning to a sequential phase (either from non-sequential or between sequential phases)
+        if (this.isPhaseActive) {
+          // Clean up current phase if active
+          this.cleanupPhase();
+        }
+        // Initialize the new phase
         this.initializePhase(state.turnPhase, state.currentPlayer);
       } else if (!isSequentialPhase && this.isPhaseActive) {
+        // Transitioning out of sequential phase to non-sequential
         this.cleanupPhase();
       }
+      return; // Exit after handling transition
+    }
+
+    // Guard: Don't process turn/pass changes if phase is not active
+    if (!this.isPhaseActive) {
+      return;
     }
 
     // Turn change detected within active phase
-    if (this.isPhaseActive && state.currentPlayer !== this.currentPlayer) {
+    if (state.currentPlayer !== this.currentPlayer) {
       this.onTurnChange(state.currentPlayer);
     }
 
     // Pass info update detected
-    if (this.isPhaseActive && state.passInfo) {
+    if (state.passInfo) {
       const passChanged = JSON.stringify(state.passInfo) !== JSON.stringify(this.passInfo);
       if (passChanged) {
         this.passInfo = { ...state.passInfo };
@@ -108,12 +124,17 @@ class SequentialPhaseManager {
     this.currentPlayer = firstPlayer;
     this.isPhaseActive = true;
 
-    // Reset pass info for new phase
+    // Reset pass info for new phase - critical to prevent carryover from previous sequential phase
     this.passInfo = {
       player1Passed: false,
       player2Passed: false,
       firstPasser: null
     };
+
+    // Reset completion guard
+    this.phaseCompleted = false;
+
+    console.log(`🔄 SequentialPhaseManager: PassInfo reset for ${phase} phase:`, this.passInfo);
 
     // Emit phase start event
     this.emit({
@@ -221,9 +242,27 @@ class SequentialPhaseManager {
 
       // Execute the decision through standard flow
       if (decision.type === 'pass') {
-        await this.processPlayerPass('player2');
+        await this.actionProcessor.queueAction({
+          type: 'playerPass',
+          payload: {
+            playerId: 'player2',
+            playerName: 'AI Player',
+            turnPhase: this.currentPhase,
+            passInfo: state.passInfo,
+            opponentPlayerId: 'player1'
+          }
+        });
       } else if (decision.type === 'deployment' && decision.decision?.type === 'pass') {
-        await this.processPlayerPass('player2');
+        await this.actionProcessor.queueAction({
+          type: 'playerPass',
+          payload: {
+            playerId: 'player2',
+            playerName: 'AI Player',
+            turnPhase: this.currentPhase,
+            passInfo: state.passInfo,
+            opponentPlayerId: 'player1'
+          }
+        });
       } else if (decision.type === 'deployment') {
         // Execute deployment through standard flow
         const result = await this.actionProcessor.queueAction({
@@ -275,66 +314,35 @@ class SequentialPhaseManager {
     }
   }
 
-  /**
-   * Process player pass
-   * @param {string} playerId - Player who is passing
-   */
-  async processPlayerPass(playerId) {
-    console.log(`🏳️ SequentialPhaseManager: ${playerId} passed`);
-
-    // Update pass info
-    const wasFirstToPass = !this.passInfo.player1Passed && !this.passInfo.player2Passed;
-    this.passInfo[playerId + 'Passed'] = true;
-    if (wasFirstToPass) {
-      this.passInfo.firstPasser = playerId;
-    }
-
-    // Update GameStateManager
-    this.gameStateManager.setPassInfo(this.passInfo);
-
-    // Emit pass event
-    this.emit({
-      type: 'player_passed',
-      player: playerId,
-      phase: this.currentPhase,
-      firstPasser: this.passInfo.firstPasser
-    });
-
-    // Check if phase should end
-    await this.checkPhaseCompletion();
-  }
 
   /**
    * Check if phase should complete (both players passed)
    */
   async checkPhaseCompletion() {
+    // Guard against multiple completion events for the same phase
+    if (this.phaseCompleted) {
+      console.log(`⚠️ Phase ${this.currentPhase} already completed, ignoring duplicate completion check`);
+      return;
+    }
+
     if (this.passInfo.player1Passed && this.passInfo.player2Passed) {
       console.log(`✅ Both players passed - ${this.currentPhase} phase complete`);
 
-      // Emit phase completion event
+      // Mark phase as completed AND inactive to prevent duplicate events and race conditions
+      this.phaseCompleted = true;
+      this.isPhaseActive = false;
+
+      console.log(`🔒 Phase ${this.currentPhase} deactivated before emitting completion`);
+
+      // Emit phase completion event - phase is now inert and won't react to state changes
       this.emit({
         type: 'phase_completed',
         phase: this.currentPhase,
         firstPasser: this.passInfo.firstPasser
       });
 
-      // Trigger phase transition through ActionProcessor
-      let nextPhase;
-      if (this.currentPhase === 'deployment') {
-        nextPhase = 'action';
-      } else if (this.currentPhase === 'action') {
-        nextPhase = 'roundEnd';
-      }
-
-      if (nextPhase) {
-        await this.actionProcessor.queueAction({
-          type: 'phaseTransition',
-          payload: { newPhase: nextPhase }
-        });
-      }
-
-      // Clean up this phase
-      this.cleanupPhase();
+      // SequentialPhaseManager does NOT handle phase transitions
+      // GameFlowManager orchestrates phase transitions when it receives the completion event
     } else if (this.passInfo[this.currentPlayer + 'Passed']) {
       // Current player passed but other hasn't - switch turns
       const otherPlayer = this.currentPlayer === 'player1' ? 'player2' : 'player1';
@@ -363,6 +371,7 @@ class SequentialPhaseManager {
     this.currentPlayer = null;
     this.isPhaseActive = false;
     this.isProcessingTurn = false;
+    this.phaseCompleted = false;
     this.passInfo = {
       player1Passed: false,
       player2Passed: false,

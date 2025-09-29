@@ -211,6 +211,9 @@ class ActionProcessor {
         case 'optionalDiscard':
           return await this.processOptionalDiscard(payload);
 
+        case 'acknowledgeFirstPlayer':
+          return await this.acknowledgeFirstPlayer(payload.playerId);
+
         default:
           throw new Error(`Unknown action type: ${type}`);
       }
@@ -1180,19 +1183,8 @@ class ActionProcessor {
     // Update pass info through GameStateManager
     this.gameStateManager.setPassInfo(newPassInfo, 'ActionProcessor');
 
-    // Handle phase transitions based on both players passing
-    if (newPassInfo[opponentPlayerId + 'Passed']) {
-      if (turnPhase === 'deployment') {
-        await this.processPhaseTransition({ newPhase: 'action' });
-      } else if (turnPhase === 'action') {
-        await this.processPhaseTransition({ newPhase: 'roundEnd' });
-      }
-    } else {
-      // End turn for current player - switch to opponent
-      await this.processTurnTransition({
-        newPlayer: opponentPlayerId
-      });
-    }
+    // Phase and turn transitions are now handled by SequentialPhaseManager
+    // ActionProcessor only updates passInfo - SequentialPhaseManager detects changes and handles transitions
 
     // Sync to P2P if multiplayer
     if (this.p2pManager && this.p2pManager.isConnected) {
@@ -1310,6 +1302,7 @@ class ActionProcessor {
 
     return this.simultaneousActionManager.acknowledgeFirstPlayer(playerId);
   }
+
 
   /**
    * Get phase commitment status

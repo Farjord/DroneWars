@@ -221,6 +221,33 @@ class GameDataService {
   }
 
   /**
+   * Get effective max shields for a ship section
+   * Includes middle lane bonuses for shield capacity
+   *
+   * @param {string} sectionName - Name of the ship section
+   * @param {Object} playerState - Player state object
+   * @param {Array} placedSections - Array of placed section names
+   * @returns {number} Effective maximum shields for the section
+   */
+  getEffectiveSectionMaxShields(sectionName, playerState, placedSections = []) {
+    if (!playerState || !playerState.shipSections || !playerState.shipSections[sectionName]) {
+      return 0;
+    }
+
+    const section = playerState.shipSections[sectionName];
+    let effectiveMax = section.shields;
+
+    const laneIndex = placedSections.indexOf(sectionName);
+    // If the section is in the middle lane and has a shield bonus
+    if (laneIndex === 1 && section.middleLaneBonus && section.middleLaneBonus['Shields Per Turn']) {
+        // Assume the bonus to shields per turn also increases max shields by the same amount.
+        effectiveMax += section.middleLaneBonus['Shields Per Turn'];
+    }
+
+    return effectiveMax;
+  }
+
+  /**
    * Get cache statistics for performance monitoring
    */
   getCacheStats() {

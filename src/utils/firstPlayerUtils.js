@@ -86,12 +86,7 @@ export const processFirstPlayerDetermination = (gameState) => {
     stateUpdates.firstPlayerOverride = null;
   }
 
-  // Reset pass info for new round
-  stateUpdates.passInfo = {
-    firstPasser: null,
-    player1Passed: false,
-    player2Passed: false
-  };
+  // passInfo reset is handled by GameFlowManager at round boundaries
 
   const result = {
     stateUpdates,

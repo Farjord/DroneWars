@@ -288,15 +288,8 @@ class SimultaneousActionManager {
       // Update both player states
       this.gameStateManager.setPlayerStates(result.player1State, result.player2State);
 
-      // Handle phase transition if provided
-      if (result.newPhase) {
-        this.gameStateManager.setTurnPhase(result.newPhase);
-      }
-
-      // Set first player if determined
-      if (result.firstPlayer) {
-        this.gameStateManager.setCurrentPlayer(result.firstPlayer);
-      }
+      // Phase transitions and player determination are handled by GameFlowManager
+      // SimultaneousActionManager only handles player state updates from phase results
 
       console.log(`✅ Shield allocation ended, transitioning to ${result.newPhase || 'next phase'}`);
       return { success: true, result };
@@ -369,8 +362,8 @@ class SimultaneousActionManager {
       // Process first player determination
       const firstPlayerResult = processFirstPlayerDetermination(currentGameState);
 
-      // Update game state with first player results
-      this.gameStateManager.setState(firstPlayerResult.stateUpdates);
+      // State updates are handled by GameFlowManager when transitioning to determineFirstPlayer phase
+      // SimultaneousActionManager only calculates and returns the result
 
       console.log('✅ First player determination completed');
       return firstPlayerResult;

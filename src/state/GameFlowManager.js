@@ -111,15 +111,8 @@ class GameFlowManager {
       }
     });
 
-    if (this.actionProcessor && typeof this.actionProcessor.subscribe === 'function') {
-      this.actionProcessor.subscribe((event) => {
-        if (event.type === 'sequentialPhaseComplete') {
-          this.onSequentialPhaseComplete(event.phase, event.data);
-        }
-      });
-    } else if (this.actionProcessor) {
-      console.log('🔄 ActionProcessor available but no event subscription capability');
-    }
+    // Note: ActionProcessor subscription removed to prevent duplicate phase completion events
+    // SequentialPhaseManager is the authoritative source for sequential phase completion events
   }
 
   /**
@@ -195,7 +188,7 @@ class GameFlowManager {
         gameStage: this.gameStage,
         roundNumber: this.roundNumber,
         ...phaseData
-      });
+      }, 'GAME_INITIALIZATION', 'phaseTransition');
     }
 
     this.emit('phaseTransition', {
@@ -251,6 +244,7 @@ class GameFlowManager {
   async onSequentialPhaseComplete(phase, data) {
     console.log(`✅ GameFlowManager: Sequential phase '${phase}' completed`, data);
 
+    // GameFlowManager orchestrates ALL phase transitions
     // Determine next phase based on current game stage
     const nextPhase = this.getNextPhase(phase);
 
@@ -726,6 +720,12 @@ class GameFlowManager {
       if (this.simultaneousActionManager) {
         firstPlayerResult = await this.simultaneousActionManager.initializeFirstPlayerPhase();
         console.log('🎯 First player determination completed:', firstPlayerResult);
+
+        // Include first player state updates in phase data
+        if (firstPlayerResult && firstPlayerResult.stateUpdates) {
+          phaseData = { ...phaseData, ...firstPlayerResult.stateUpdates };
+          console.log('🎯 GameFlowManager: Including first player state updates:', firstPlayerResult.stateUpdates);
+        }
       }
     }
 
@@ -736,7 +736,7 @@ class GameFlowManager {
         gameStage: this.gameStage,
         roundNumber: this.roundNumber,
         ...phaseData
-      });
+      }, 'PHASE_TRANSITION', 'phaseTransition');
     }
 
     // Handle automatic phases directly
@@ -762,6 +762,19 @@ class GameFlowManager {
   async startNewRound() {
     this.roundNumber++;
     console.log(`🔄 GameFlowManager: Starting round ${this.roundNumber}`);
+
+    // Reset passInfo for new round
+    const resetPassInfo = {
+      player1Passed: false,
+      player2Passed: false,
+      firstPasser: null
+    };
+
+    this.gameStateManager.setState({
+      passInfo: resetPassInfo
+    }, 'ROUND_START', 'roundReset');
+
+    console.log('✅ PassInfo reset for new round');
 
     // Find first required phase in new round
     const firstRequiredPhase = this.ROUND_PHASES.find(phase => this.isPhaseRequired(phase));
@@ -789,7 +802,7 @@ class GameFlowManager {
         turnPhase: 'gameOver',
         gameStage: 'gameOver',
         winner: winnerId
-      });
+      }, 'GAME_ENDED', 'phaseTransition');
     }
 
     this.emit('gameEnded', {

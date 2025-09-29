@@ -155,8 +155,11 @@ class GameStateManager {
 
   /**
    * Update state and notify listeners
+   * @param {Object} updates - State updates to apply
+   * @param {string} eventType - Type of event for logging
+   * @param {string} context - Context of the update for validation (e.g., 'phaseTransition')
    */
-  setState(updates, eventType = 'STATE_UPDATE') {
+  setState(updates, eventType = 'STATE_UPDATE', context = null) {
     const prevState = { ...this.state };
 
     // Extract caller information from stack trace for detailed logging
@@ -210,7 +213,7 @@ class GameStateManager {
     });
 
     // Validate state consistency before update
-    this.validateStateUpdate(updates, prevState);
+    this.validateStateUpdate(updates, prevState, context);
 
     this.state = { ...this.state, ...updates };
     this.emit(eventType, { updates, prevState });
@@ -218,24 +221,38 @@ class GameStateManager {
 
   /**
    * Validate state updates for consistency and race conditions
+   * @param {Object} updates - State updates being applied
+   * @param {Object} prevState - Previous state before updates
+   * @param {string} context - Context of the update (e.g., 'phaseTransition')
    */
-  validateStateUpdate(updates, prevState) {
+  validateStateUpdate(updates, prevState, context = null) {
     // Get the current call stack to see if this update is coming from ActionProcessor
     const stack = new Error().stack;
     const isFromActionProcessor = stack && stack.includes('ActionProcessor');
 
     // Check for concurrent action processing - only warn about external updates
     // ActionProcessor is allowed to update state during action processing
+    // GameFlowManager is allowed to update phase transitions as legitimate side effects
     if (this.actionProcessor.isActionInProgress() && Object.keys(updates).length > 0) {
       if (!isFromActionProcessor) {
         const dangerousUpdates = ['player1', 'player2', 'turnPhase', 'currentPlayer'];
         const hasDangerousUpdate = dangerousUpdates.some(key => key in updates);
 
-        if (hasDangerousUpdate) {
+        // Check if this is a legitimate phase transition from GameFlowManager
+        const isFromGameFlowManager = stack && stack.includes('GameFlowManager');
+        const isPhaseTransition = context === 'phaseTransition' || (updates.turnPhase && isFromGameFlowManager);
+
+        // Only warn about truly problematic external updates, not legitimate manager flows
+        const isLegitimateManagerUpdate = isPhaseTransition && isFromGameFlowManager;
+
+        if (hasDangerousUpdate && !isLegitimateManagerUpdate) {
           console.warn('Race condition detected: External state update during action processing', {
             updates: Object.keys(updates),
             actionInProgress: true,
             queueLength: this.actionProcessor.getQueueLength(),
+            context: context,
+            isFromGameFlowManager: isFromGameFlowManager,
+            isPhaseTransition: isPhaseTransition,
             stack: stack?.split('\n').slice(0, 5) // First 5 lines of stack for debugging
           });
         }
@@ -408,6 +425,15 @@ class GameStateManager {
       return; // Allow GameFlowManager to manage phases and update player states
     }
 
+    // Allow SequentialPhaseManager to update passInfo during sequential phases
+    const isSequentialPhaseManagerUpdate = stack && stack.includes('SequentialPhaseManager');
+    const isSequentialPhase = ['deployment', 'action'].includes(prevState.turnPhase);
+    const isPassInfoUpdate = criticalUpdates.length === 1 && criticalUpdates[0] === 'passInfo';
+
+    if (isSequentialPhaseManagerUpdate && isSequentialPhase && isPassInfoUpdate) {
+      return; // Allow SequentialPhaseManager to manage pass state for sequential phases
+    }
+
     if (criticalUpdates.length > 0 && !isFromActionProcessor) {
       // Extract caller information from stack trace
       const stackLines = stack?.split('\n') || [];
@@ -446,6 +472,9 @@ class GameStateManager {
 
     // Validate that appropriate functions are updating game state
     this.validateFunctionAppropriateForStateUpdate(updates, prevState, isFromActionProcessor, stack);
+
+    // Validate ownership boundaries - each manager should only update fields it owns
+    this.validateOwnershipBoundaries(updates, stack);
   }
 
   /**
@@ -694,6 +723,74 @@ class GameStateManager {
       primaryCaller: functions[0] || 'Unknown',
       primaryFile: files[0] || 'Unknown'
     };
+  }
+
+  /**
+   * Validate ownership boundaries - each manager should only update fields it owns
+   */
+  validateOwnershipBoundaries(updates, stack) {
+    if (!stack) return;
+
+    const updateKeys = Object.keys(updates);
+    if (updateKeys.length === 0) return;
+
+    // Manager identification from stack
+    const isGameFlowManager = stack.includes('GameFlowManager');
+    const isSequentialPhaseManager = stack.includes('SequentialPhaseManager');
+    const isSimultaneousActionManager = stack.includes('SimultaneousActionManager');
+    const isActionProcessor = stack.includes('ActionProcessor');
+
+    // Define ownership boundaries
+    const ownershipRules = {
+      // GameFlowManager owns orchestration
+      'turnPhase': 'GameFlowManager',
+      'gameStage': 'GameFlowManager',
+      'roundNumber': 'GameFlowManager',
+      'gameActive': 'GameFlowManager',
+
+      // SequentialPhaseManager owns pass state during sequential phases
+      // GameFlowManager can reset passInfo at round boundaries
+      'passInfo': ['SequentialPhaseManager', 'GameFlowManager'],
+
+      // ActionProcessor can update currentPlayer for turn transitions within phase
+      // GameFlowManager can update currentPlayer for phase-to-phase transitions
+      'currentPlayer': ['ActionProcessor', 'GameFlowManager'],
+
+      // First player determination fields - ActionProcessor handles first player determination results
+      'firstPlayerOfRound': ['ActionProcessor', 'GameFlowManager'],
+      'firstPlayerOverride': ['ActionProcessor', 'GameFlowManager']
+    };
+
+    // Check each update against ownership rules
+    for (const updateKey of updateKeys) {
+      const allowedOwners = ownershipRules[updateKey];
+      if (!allowedOwners) continue; // No ownership rule defined
+
+      const allowedOwnersList = Array.isArray(allowedOwners) ? allowedOwners : [allowedOwners];
+
+      let hasPermission = false;
+      for (const allowedOwner of allowedOwnersList) {
+        if (allowedOwner === 'GameFlowManager' && isGameFlowManager) hasPermission = true;
+        else if (allowedOwner === 'SequentialPhaseManager' && isSequentialPhaseManager) hasPermission = true;
+        else if (allowedOwner === 'SimultaneousActionManager' && isSimultaneousActionManager) hasPermission = true;
+        else if (allowedOwner === 'ActionProcessor' && isActionProcessor) hasPermission = true;
+      }
+
+      if (!hasPermission) {
+        const currentManager = isGameFlowManager ? 'GameFlowManager' :
+                             isSequentialPhaseManager ? 'SequentialPhaseManager' :
+                             isSimultaneousActionManager ? 'SimultaneousActionManager' :
+                             isActionProcessor ? 'ActionProcessor' : 'Unknown';
+
+        console.warn(`🚨 OWNERSHIP VIOLATION: ${currentManager} cannot update '${updateKey}'`, {
+          updateKey,
+          currentManager,
+          allowedOwners: allowedOwnersList,
+          updates: updateKeys,
+          recommendation: `Only ${allowedOwnersList.join(' or ')} should update '${updateKey}'`
+        });
+      }
+    }
   }
 
   // --- GAME STATE METHODS ---

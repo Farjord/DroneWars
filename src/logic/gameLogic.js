@@ -3058,7 +3058,7 @@ const calculateMultiSelectTargets = (multiSelectState, playerState) => {
     return targets;
 };
 
-const calculateUpgradeTargets = (selectedCard, playerState, fullDroneCollection) => {
+const calculateUpgradeTargets = (selectedCard, playerState) => {
     return playerState.activeDronePool.map(drone => {
         const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
         const applied = playerState.appliedUpgrades[drone.name] || [];
@@ -3098,7 +3098,7 @@ const calculateMultiMoveTargets = (multiSelectState, playerState) => {
     return targets;
 };
 
-const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSelectState, selectedCard, player1, player2, fullDroneCollection) => {
+const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSelectState, selectedCard, player1, player2) => {
     let validAbilityTargets = [];
     let validCardTargets = [];
 
@@ -3110,7 +3110,7 @@ const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSelectState
         validCardTargets = calculateMultiSelectTargets(multiSelectState, player1);
     } else if (selectedCard) {
         if (selectedCard.type === 'Upgrade') {
-            validCardTargets = calculateUpgradeTargets(selectedCard, player1, fullDroneCollection);
+            validCardTargets = calculateUpgradeTargets(selectedCard, player1);
         } else if (selectedCard.effect.type === 'MULTI_MOVE') {
             validCardTargets = calculateMultiMoveTargets(multiSelectState, player1);
         } else {

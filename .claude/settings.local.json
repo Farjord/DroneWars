@@ -15,7 +15,8 @@
       "Bash(del /src/network/CommandManager.js)",
       "Read(//c/Drone-Wars-Game/drone-wars-Game/src/state/**)",
       "Bash(find:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(rg:*)"
     ],
     "deny": [],
     "ask": []
