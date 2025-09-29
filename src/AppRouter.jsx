@@ -7,7 +7,6 @@
 import { useState, useEffect } from 'react';
 import { useGameState } from './hooks/useGameState.js';
 import gameStateManager from './state/GameStateManager.js';
-import simultaneousActionManager from './state/SimultaneousActionManager.js';
 import gameFlowManager from './state/GameFlowManager.js';
 import aiPhaseProcessor from './state/AIPhaseProcessor.js';
 import fullDroneCollection from './data/droneData.js';
@@ -39,38 +38,27 @@ function AppRouter() {
     return () => clearTimeout(timer);
   }, []);
 
-  // Initialize SimultaneousActionManager for pre-game phases
-  useEffect(() => {
-    simultaneousActionManager.initialize(
-      gameStateManager,
-      aiPhaseProcessor,
-      () => gameState.gameMode !== 'local'
-    );
+  // Note: SimultaneousActionManager functionality moved to ActionProcessor
 
-    // Inject SimultaneousActionManager into ActionProcessor for shield allocation routing
-    gameStateManager.actionProcessor.setSimultaneousActionManager(simultaneousActionManager);
-
-    console.log('🔧 SimultaneousActionManager initialized in AppRouter');
-  }, [gameState.gameMode]);
-
-  // Initialize AIPhaseProcessor with game data
+  // Initialize AIPhaseProcessor with game data and dependencies
   useEffect(() => {
     aiPhaseProcessor.initialize(
       aiPersonalities,
       fullDroneCollection,
-      gameState.selectedAIPersonality || aiPersonalities[0]
+      gameState.selectedAIPersonality || aiPersonalities[0],
+      gameStateManager.actionProcessor, // Add ActionProcessor for self-execution
+      gameStateManager // Add GameStateManager for state subscription
     );
-    console.log('🤖 AIPhaseProcessor initialized in AppRouter');
+    console.log('🤖 AIPhaseProcessor initialized in AppRouter with full dependencies');
   }, [gameState.selectedAIPersonality]);
 
   // Initialize GameFlowManager with all managers
   useEffect(() => {
     gameFlowManager.initialize(
       gameStateManager,
-      simultaneousActionManager,
       gameStateManager.actionProcessor, // Use ActionProcessor instance from GameStateManager
       () => gameState.gameMode !== 'local',
-      aiPhaseProcessor // Add AIPhaseProcessor for SequentialPhaseManager
+      aiPhaseProcessor // Add AIPhaseProcessor
     );
 
     // Set up reverse reference for automatic phase validation

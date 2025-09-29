@@ -15,6 +15,10 @@ class AIPhaseProcessor {
     this.dronePool = null;
     this.currentAIPersonality = null;
     this.gameDataService = null;
+
+    // AI turn management
+    this.isProcessing = false;
+    this.turnTimer = null;
   }
 
   /**
@@ -42,9 +46,19 @@ class AIPhaseProcessor {
       };
     }
 
+    // Subscribe to game state changes for AI turn detection
+    if (gameStateManager) {
+      gameStateManager.subscribe((state) => {
+        this.checkForAITurn(state);
+      });
+    }
+
     console.log('🤖 AIPhaseProcessor initialized with personality:', currentPersonality?.name || 'Default');
     if (actionProcessor) {
       console.log('🔗 AIPhaseProcessor connected to ActionProcessor for execution');
+    }
+    if (gameStateManager) {
+      console.log('🔗 AIPhaseProcessor subscribed to GameStateManager for self-triggering');
     }
   }
 
@@ -383,7 +397,18 @@ class AIPhaseProcessor {
 
     // Check if AI should pass
     if (this.shouldPass(gameState, 'deployment')) {
-      return await this.executePass('deployment');
+      // Execute pass directly through ActionProcessor
+      await this.actionProcessor.queueAction({
+        type: 'playerPass',
+        payload: {
+          playerId: 'player2',
+          playerName: 'AI Player',
+          turnPhase: 'deployment',
+          passInfo: gameState.passInfo,
+          opponentPlayerId: 'player1'
+        }
+      });
+      return;
     }
 
     if (!this.actionProcessor) {
@@ -409,14 +434,43 @@ class AIPhaseProcessor {
       }
     });
 
-    console.log('🤖 AIPhaseProcessor returning deployment decision:', aiDecision);
+    console.log('🤖 AIPhaseProcessor executing deployment decision:', aiDecision);
 
-    // Return the decision for SequentialPhaseManager to execute
-    return {
-      type: 'deployment',
-      decision: aiDecision,
-      playerId: 'player2'
-    };
+    // Execute the decision directly through ActionProcessor
+    if (aiDecision.type === 'pass') {
+      await this.actionProcessor.queueAction({
+        type: 'playerPass',
+        payload: {
+          playerId: 'player2',
+          playerName: 'AI Player',
+          turnPhase: 'deployment',
+          passInfo: gameState.passInfo,
+          opponentPlayerId: 'player1'
+        }
+      });
+    } else if (aiDecision.type === 'deploy') {
+      // Execute deployment
+      const result = await this.actionProcessor.queueAction({
+        type: 'deployment',
+        payload: {
+          droneData: aiDecision.payload.droneToDeploy,
+          laneId: aiDecision.payload.targetLane,
+          playerId: 'player2',
+          turn: gameState.turn
+        }
+      });
+
+      // End turn after successful deployment (same as human players do)
+      if (result.success) {
+        await this.actionProcessor.queueAction({
+          type: 'turnTransition',
+          payload: {
+            newPlayer: 'player1',
+            reason: 'deploymentCompleted'
+          }
+        });
+      }
+    }
   }
 
   /**
@@ -429,7 +483,18 @@ class AIPhaseProcessor {
 
     // Check if AI should pass
     if (this.shouldPass(gameState, 'action')) {
-      return await this.executePass('action');
+      // Execute pass directly through ActionProcessor
+      await this.actionProcessor.queueAction({
+        type: 'playerPass',
+        payload: {
+          playerId: 'player2',
+          playerName: 'AI Player',
+          turnPhase: 'action',
+          passInfo: gameState.passInfo,
+          opponentPlayerId: 'player1'
+        }
+      });
+      return;
     }
 
     if (!this.actionProcessor) {
@@ -455,14 +520,29 @@ class AIPhaseProcessor {
       }
     });
 
-    console.log('🤖 AIPhaseProcessor returning action decision:', aiDecision);
+    console.log('🤖 AIPhaseProcessor executing action decision:', aiDecision);
 
-    // Return the decision for SequentialPhaseManager to execute
-    return {
-      type: 'action',
-      decision: aiDecision,
-      playerId: 'player2'
-    };
+    // Execute the decision directly through ActionProcessor
+    if (aiDecision.type === 'pass') {
+      await this.actionProcessor.queueAction({
+        type: 'playerPass',
+        payload: {
+          playerId: 'player2',
+          playerName: 'AI Player',
+          turnPhase: 'action',
+          passInfo: gameState.passInfo,
+          opponentPlayerId: 'player1'
+        }
+      });
+    } else {
+      // Execute action through ActionProcessor
+      const result = await this.actionProcessor.queueAction({
+        type: 'aiAction',
+        payload: { aiDecision: aiDecision }
+      });
+
+      // Note: Action phase turn ending is handled by ActionProcessor itself
+    }
   }
 
   /**
@@ -670,12 +750,92 @@ class AIPhaseProcessor {
   async executePass(phase) {
     console.log(`🏳️ AIPhaseProcessor: Returning pass decision for ${phase} phase`);
 
-    // Return the pass decision for SequentialPhaseManager to execute
+    // Return the pass decision for ActionProcessor to execute
     return {
       type: 'pass',
       phase: phase,
       playerId: 'player2'
     };
+  }
+
+  /**
+   * Check if AI should take a turn based on current game state
+   * @param {Object} state - Current game state
+   */
+  checkForAITurn(state) {
+    // Don't process if AI is already taking a turn or in wrong mode
+    if (this.isProcessing || state.gameMode !== 'local') {
+      return;
+    }
+
+    // Only trigger for sequential phases where AI needs to act
+    const sequentialPhases = ['deployment', 'action'];
+    if (!sequentialPhases.includes(state.turnPhase)) {
+      return;
+    }
+
+    // Only trigger if it's AI's turn (AI is always player2)
+    if (state.currentPlayer !== 'player2') {
+      return;
+    }
+
+    // Check if AI has already passed this phase
+    if (state.passInfo && state.passInfo.player2Passed) {
+      return;
+    }
+
+    console.log(`⏰ AIPhaseProcessor: Scheduling AI turn for ${state.turnPhase} phase`);
+
+    // Clear any existing timer and schedule new turn
+    clearTimeout(this.turnTimer);
+    this.turnTimer = setTimeout(() => {
+      this.executeTurn(state);
+    }, 1500); // 1.5 second delay
+  }
+
+  /**
+   * Execute AI turn for the current phase
+   * @param {Object} state - Current game state
+   */
+  async executeTurn(state) {
+    if (this.isProcessing) {
+      console.log('⚠️ AIPhaseProcessor: Already processing a turn, skipping');
+      return;
+    }
+
+    this.isProcessing = true;
+
+    try {
+      console.log(`🤖 AIPhaseProcessor: Executing AI turn for ${state.turnPhase} phase`);
+
+      let result;
+      if (state.turnPhase === 'deployment') {
+        result = await this.executeDeploymentTurn(state);
+      } else if (state.turnPhase === 'action') {
+        result = await this.executeActionTurn(state);
+      } else {
+        console.warn(`⚠️ AIPhaseProcessor: Unknown sequential phase: ${state.turnPhase}`);
+        return;
+      }
+
+      // Check if AI should continue (human has passed but AI hasn't)
+      const currentState = this.gameStateManager.getState();
+      if (currentState.passInfo &&
+          currentState.passInfo.player1Passed &&
+          !currentState.passInfo.player2Passed &&
+          currentState.currentPlayer === 'player2') {
+        console.log('🔄 AIPhaseProcessor: Human has passed - AI continues taking turns');
+        // Schedule another turn
+        setTimeout(() => {
+          this.checkForAITurn(currentState);
+        }, 100); // Small delay to let state settle
+      }
+
+    } catch (error) {
+      console.error('❌ AIPhaseProcessor: Error executing turn:', error);
+    } finally {
+      this.isProcessing = false;
+    }
   }
 
   /**

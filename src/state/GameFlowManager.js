@@ -7,7 +7,6 @@
 import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
 import { initializeShipPlacement } from '../utils/shipPlacementUtils.js';
 import fullDroneCollection from '../data/droneData.js';
-import sequentialPhaseManager from './SequentialPhaseManager.js';
 import GameDataService from '../services/GameDataService.js';
 
 /**
@@ -40,7 +39,6 @@ class GameFlowManager {
 
     // External system references (injected)
     this.gameStateManager = null;
-    this.simultaneousActionManager = null;
     this.actionProcessor = null;
     this.isMultiplayer = false;
     this.gameDataService = null;
@@ -51,14 +49,12 @@ class GameFlowManager {
   /**
    * Initialize with external system references
    * @param {Object} gameStateManager - GameStateManager instance
-   * @param {Object} simultaneousActionManager - SimultaneousActionManager instance
    * @param {Object} actionProcessor - ActionProcessor instance
    * @param {Function} isMultiplayerFn - Function to check if game is multiplayer
    * @param {Object} aiPhaseProcessor - AIPhaseProcessor instance
    */
-  initialize(gameStateManager, simultaneousActionManager, actionProcessor, isMultiplayerFn, aiPhaseProcessor) {
+  initialize(gameStateManager, actionProcessor, isMultiplayerFn, aiPhaseProcessor) {
     this.gameStateManager = gameStateManager;
-    this.simultaneousActionManager = simultaneousActionManager;
     this.actionProcessor = actionProcessor;
     this.isMultiplayer = isMultiplayerFn;
 
@@ -83,9 +79,6 @@ class GameFlowManager {
       );
     }
 
-    // Initialize SequentialPhaseManager with dependencies
-    sequentialPhaseManager.initialize(gameStateManager, actionProcessor, aiPhaseProcessor);
-
     // Subscribe to completion events from other managers
     this.setupEventListeners();
 
@@ -96,23 +89,16 @@ class GameFlowManager {
    * Set up event listeners for manager completion events
    */
   setupEventListeners() {
-    if (this.simultaneousActionManager) {
-      this.simultaneousActionManager.subscribe((event) => {
-        if (event.type === 'phaseCompleted') {
-          this.onSimultaneousPhaseComplete(event.phase, event.data);
-        }
+    // Subscribe to GameStateManager for both sequential and simultaneous phase completion detection
+    if (this.gameStateManager) {
+      this.gameStateManager.subscribe((state, eventType) => {
+        this.checkSequentialPhaseCompletion(state, eventType);
+        this.checkSimultaneousPhaseCompletion(state, eventType);
       });
     }
 
-    // Subscribe to SequentialPhaseManager events
-    sequentialPhaseManager.subscribe((event) => {
-      if (event.type === 'phase_completed') {
-        this.onSequentialPhaseComplete(event.phase, { firstPasser: event.firstPasser });
-      }
-    });
-
-    // Note: ActionProcessor subscription removed to prevent duplicate phase completion events
-    // SequentialPhaseManager is the authoritative source for sequential phase completion events
+    // Note: Direct state monitoring replaces both SequentialPhaseManager and SimultaneousActionManager event subscriptions
+    // GameFlowManager now directly detects when both sequential and simultaneous phases should complete
   }
 
   /**
@@ -165,7 +151,7 @@ class GameFlowManager {
    * Start the game flow with initial phase
    * @param {string} startingPhase - Initial phase to start with
    */
-  startGameFlow(startingPhase = 'droneSelection') {
+  async startGameFlow(startingPhase = 'droneSelection') {
     console.log(`🚀 GameFlowManager starting game flow with phase: ${startingPhase}`);
 
     this.currentPhase = startingPhase;
@@ -181,14 +167,21 @@ class GameFlowManager {
       phaseData = { ...droneSelectionData, ...placementData };
     }
 
-    // Update GameStateManager with initial phase and phase data
-    if (this.gameStateManager) {
+    // Update GameStateManager with initial phase and phase data via ActionProcessor
+    if (this.actionProcessor && this.gameStateManager) {
+      // Use processPhaseTransition for phase change
+      await this.actionProcessor.processPhaseTransition({
+        newPhase: startingPhase,
+        resetPassInfo: false  // Don't reset pass info during initialization
+      });
+
+      // Apply game stage, round number, and phase data directly
+      // These are initialization-only values not handled by standard phase transitions
       this.gameStateManager.setState({
-        turnPhase: startingPhase,
         gameStage: this.gameStage,
         roundNumber: this.roundNumber,
         ...phaseData
-      }, 'GAME_INITIALIZATION', 'phaseTransition');
+      }, 'GAME_INITIALIZATION', 'phaseInitialization');
     }
 
     this.emit('phaseTransition', {
@@ -221,18 +214,82 @@ class GameFlowManager {
       }
 
       // Clean up the completed phase AFTER transition is initiated
-      if (this.simultaneousActionManager) {
-        this.simultaneousActionManager.resetPhaseCommitments(phase);
+      if (this.actionProcessor) {
+        this.actionProcessor.clearPhaseCommitments(phase);
         console.log(`🧹 GameFlowManager: Cleaned up completed phase '${phase}' after transition`);
       }
     } else {
       console.log('🎯 GameFlowManager: Game flow completed or needs special handling');
 
       // Clean up even if no next phase
-      if (this.simultaneousActionManager) {
-        this.simultaneousActionManager.resetPhaseCommitments(phase);
+      if (this.actionProcessor) {
+        this.actionProcessor.clearPhaseCommitments(phase);
         console.log(`🧹 GameFlowManager: Cleaned up final phase '${phase}'`);
       }
+    }
+  }
+
+  /**
+   * Check if sequential phases should complete based on state changes
+   * @param {Object} state - Current game state
+   * @param {string} eventType - Type of state change
+   */
+  checkSequentialPhaseCompletion(state, eventType) {
+    // Only check on passInfo changes
+    if (eventType !== 'PASS_INFO_SET') {
+      return;
+    }
+
+    // Only check for sequential phases
+    const sequentialPhases = ['deployment', 'action'];
+    if (!sequentialPhases.includes(state.turnPhase)) {
+      return;
+    }
+
+    // Check if both players have passed
+    if (state.passInfo && state.passInfo.player1Passed && state.passInfo.player2Passed) {
+      console.log(`🎯 GameFlowManager: Detected sequential phase completion via state monitoring: ${state.turnPhase}`);
+
+      // Call the completion handler directly
+      this.onSequentialPhaseComplete(state.turnPhase, {
+        firstPasser: state.passInfo.firstPasser
+      });
+    }
+  }
+
+  /**
+   * Check for simultaneous phase completion via commitment state monitoring
+   * @param {Object} state - Current game state
+   * @param {string} eventType - Type of state change event
+   */
+  checkSimultaneousPhaseCompletion(state, eventType) {
+    // Only check on commitment changes
+    if (eventType !== 'STATE_UPDATED' || !state.commitments) {
+      return;
+    }
+
+    const currentPhase = state.turnPhase;
+
+    // Only check for simultaneous phases
+    if (!this.SIMULTANEOUS_PHASES.includes(currentPhase)) {
+      return;
+    }
+
+    // Check if commitment data exists for current phase
+    const phaseCommitments = state.commitments[currentPhase];
+    if (!phaseCommitments) {
+      return;
+    }
+
+    // Check if both players have committed
+    const bothComplete = phaseCommitments.player1?.completed &&
+                        phaseCommitments.player2?.completed;
+
+    if (bothComplete) {
+      console.log(`🎯 GameFlowManager: Detected simultaneous phase completion via state monitoring: ${currentPhase}`);
+
+      // Call the completion handler directly
+      this.onSimultaneousPhaseComplete(currentPhase, phaseCommitments);
     }
   }
 
@@ -334,10 +391,13 @@ class GameFlowManager {
       // Perform automatic card drawing for both players
       const drawResult = performAutomaticDraw(currentGameState, this.gameStateManager);
 
-      // Update game state with draw results
-      this.gameStateManager.setState({
-        player1: drawResult.player1,
-        player2: drawResult.player2
+      // Update game state with draw results via ActionProcessor
+      await this.actionProcessor.queueAction({
+        type: 'draw',
+        payload: {
+          player1: drawResult.player1,
+          player2: drawResult.player2
+        }
       });
 
       console.log('✅ Automatic draw phase completed, transitioning to next phase');
@@ -405,8 +465,14 @@ class GameFlowManager {
         deploymentBudget: player2EffectiveStats.totals.deploymentBudget
       };
 
-      // Update player states
-      this.gameStateManager.setPlayerStates(updatedPlayer1, updatedPlayer2);
+      // Update player states via ActionProcessor
+      await this.actionProcessor.queueAction({
+        type: 'energyReset',
+        payload: {
+          player1: updatedPlayer1,
+          player2: updatedPlayer2
+        }
+      });
 
       console.log(`✅ Energy reset complete - Player 1: ${updatedPlayer1.energy} energy, Player 2: ${updatedPlayer2.energy} energy`);
 
@@ -717,8 +783,8 @@ class GameFlowManager {
     } else if (newPhase === 'determineFirstPlayer') {
       console.log('🎯 GameFlowManager: Initializing first player determination phase');
       // Process first player determination immediately when phase starts
-      if (this.simultaneousActionManager) {
-        firstPlayerResult = await this.simultaneousActionManager.initializeFirstPlayerPhase();
+      if (this.actionProcessor) {
+        firstPlayerResult = await this.actionProcessor.processFirstPlayerDetermination();
         console.log('🎯 First player determination completed:', firstPlayerResult);
 
         // Include first player state updates in phase data
@@ -729,14 +795,21 @@ class GameFlowManager {
       }
     }
 
-    // Update GameStateManager with new phase and any phase-specific data
-    if (this.gameStateManager) {
+    // Update GameStateManager with new phase via ActionProcessor
+    if (this.actionProcessor && this.gameStateManager) {
+      // Use ActionProcessor for phase transition
+      await this.actionProcessor.processPhaseTransition({
+        newPhase: newPhase,
+        resetPassInfo: true  // Reset pass info for new phases
+      });
+
+      // Apply game stage, round number, and phase-specific data directly
+      // These are GameFlowManager-specific metadata not handled by standard phase transitions
       this.gameStateManager.setState({
-        turnPhase: newPhase,
         gameStage: this.gameStage,
         roundNumber: this.roundNumber,
         ...phaseData
-      }, 'PHASE_TRANSITION', 'phaseTransition');
+      }, 'PHASE_TRANSITION', 'gameFlowManagerMetadata');
     }
 
     // Handle automatic phases directly
@@ -770,9 +843,10 @@ class GameFlowManager {
       firstPasser: null
     };
 
-    this.gameStateManager.setState({
-      passInfo: resetPassInfo
-    }, 'ROUND_START', 'roundReset');
+    // Reset pass info via ActionProcessor
+    // Note: ActionProcessor's processPhaseTransition already resets pass info,
+    // but this is a specific round-level reset that may have different semantics
+    this.gameStateManager.setPassInfo(resetPassInfo);
 
     console.log('✅ PassInfo reset for new round');
 
@@ -797,12 +871,19 @@ class GameFlowManager {
     this.gameStage = 'gameOver';
     this.currentPhase = 'gameOver';
 
-    if (this.gameStateManager) {
+    // Transition to game over phase via ActionProcessor
+    if (this.actionProcessor && this.gameStateManager) {
+      // Use ActionProcessor for phase transition
+      this.actionProcessor.processPhaseTransition({
+        newPhase: 'gameOver',
+        resetPassInfo: false  // Don't reset pass info for game over
+      });
+
+      // Set game stage and winner directly for game-level metadata
       this.gameStateManager.setState({
-        turnPhase: 'gameOver',
         gameStage: 'gameOver',
         winner: winnerId
-      }, 'GAME_ENDED', 'phaseTransition');
+      }, 'GAME_ENDED', 'gameEndMetadata');
     }
 
     this.emit('gameEnded', {
@@ -837,7 +918,6 @@ class GameFlowManager {
       roundPhases: this.ROUND_PHASES,
       systemsConnected: {
         gameStateManager: !!this.gameStateManager,
-        simultaneousActionManager: !!this.simultaneousActionManager,
         actionProcessor: !!this.actionProcessor
       },
       timestamp: new Date().toISOString()

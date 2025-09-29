@@ -8,8 +8,8 @@ import React, { useState, useEffect } from 'react';
 import { useGameState } from '../../hooks/useGameState.js';
 import { WaitingForOpponentScreen } from './DroneSelectionScreen.jsx';
 import { gameEngine, startingDecklist } from '../../logic/gameLogic.js';
-import simultaneousActionManager from '../../state/SimultaneousActionManager.js';
 import gameFlowManager from '../../state/GameFlowManager.js';
+import gameStateManager from '../../state/GameStateManager.js';
 
 /**
  * DECK SELECTION SCREEN COMPONENT
@@ -75,7 +75,7 @@ function DeckSelectionScreen() {
    * Processes player's choice between standard deck and custom deck building.
    * @param {string} choice - Either 'standard' or 'custom'
    */
-  const handleDeckChoice = (choice) => {
+  const handleDeckChoice = async (choice) => {
     // Only handle during deck selection phase
     if (turnPhase !== 'deckSelection') return;
 
@@ -86,8 +86,12 @@ function DeckSelectionScreen() {
       const localPlayerId = getLocalPlayerId();
       const standardDeck = gameEngine.buildDeckFromList(startingDecklist);
 
-      // Use SimultaneousActionManager to submit deck selection
-      const submissionResult = simultaneousActionManager.submitDeckSelection(localPlayerId, standardDeck);
+      // Use ActionProcessor to submit deck selection commitment
+      const submissionResult = await gameStateManager.actionProcessor.processCommitment({
+        phase: 'deckSelection',
+        playerId: localPlayerId,
+        commitment: { deck: standardDeck }
+      });
 
       if (!submissionResult.success) {
         console.error('❌ Deck selection submission failed:', submissionResult.error);

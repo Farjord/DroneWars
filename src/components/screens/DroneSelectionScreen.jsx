@@ -9,7 +9,6 @@ import { Loader2 } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState.js';
 import DroneCard from '../ui/DroneCard.jsx';
 import { advanceDroneSelectionTrio } from '../../utils/droneSelectionUtils.js';
-import simultaneousActionManager from '../../state/SimultaneousActionManager.js';
 import gameStateManager from '../../state/GameStateManager.js';
 
 /**
@@ -146,12 +145,24 @@ function DroneSelectionScreen() {
     console.log('🔧 handleContinueDroneSelection called with:', tempSelectedDrones.length, 'drones');
 
     const localPlayerId = getLocalPlayerId();
-    const submissionResult = simultaneousActionManager.submitDroneSelection(localPlayerId, tempSelectedDrones);
 
-    if (!submissionResult.success) {
-      console.error('❌ Drone selection submission failed:', submissionResult.error);
-      return;
-    }
+    // Use the action processor with promise handling
+    gameStateManager.actionProcessor.queueAction({
+      type: 'commitment',
+      payload: {
+        playerId: localPlayerId,
+        phase: 'droneSelection',
+        actionData: { drones: tempSelectedDrones }
+      }
+    }).then(submissionResult => {
+      if (!submissionResult.success) {
+        console.error('❌ Drone selection submission failed:', submissionResult.error);
+        return;
+      }
+      console.log('✅ Drone selection submitted successfully');
+    }).catch(error => {
+      console.error('❌ Drone selection submission error:', error);
+    });
 
     console.log('✅ Drone selection submitted to PhaseManager');
 
@@ -166,8 +177,8 @@ function DroneSelectionScreen() {
   const localPlayerCompleted = localPhaseCompletion.droneSelection;
 
   if (isMultiplayer() && localPlayerCompleted && !opponentPhaseCompletion.droneSelection) {
-    // Get drone names from SimultaneousActionManager commitments or fallback to GameState
-    const commitmentStatus = simultaneousActionManager.getPhaseCommitmentStatus('droneSelection');
+    // Get drone names from ActionProcessor commitments or fallback to GameState
+    const commitmentStatus = gameStateManager.actionProcessor.getPhaseCommitmentStatus('droneSelection');
     const localDrones = commitmentStatus.commitments?.player1?.drones ||
                        localPlayerState.activeDronePool ||
                        tempSelectedDrones;

@@ -48,6 +48,9 @@ class GameStateManager {
       droneSelectionPool: [],
       droneSelectionTrio: [],
       gameLog: [],
+
+      // --- COMMITMENTS (for simultaneous phases) ---
+      commitments: {},
     };
 
     // Initialize action processor
@@ -737,7 +740,6 @@ class GameStateManager {
     // Manager identification from stack
     const isGameFlowManager = stack.includes('GameFlowManager');
     const isSequentialPhaseManager = stack.includes('SequentialPhaseManager');
-    const isSimultaneousActionManager = stack.includes('SimultaneousActionManager');
     const isActionProcessor = stack.includes('ActionProcessor');
 
     // Define ownership boundaries
@@ -772,14 +774,12 @@ class GameStateManager {
       for (const allowedOwner of allowedOwnersList) {
         if (allowedOwner === 'GameFlowManager' && isGameFlowManager) hasPermission = true;
         else if (allowedOwner === 'SequentialPhaseManager' && isSequentialPhaseManager) hasPermission = true;
-        else if (allowedOwner === 'SimultaneousActionManager' && isSimultaneousActionManager) hasPermission = true;
         else if (allowedOwner === 'ActionProcessor' && isActionProcessor) hasPermission = true;
       }
 
       if (!hasPermission) {
         const currentManager = isGameFlowManager ? 'GameFlowManager' :
                              isSequentialPhaseManager ? 'SequentialPhaseManager' :
-                             isSimultaneousActionManager ? 'SimultaneousActionManager' :
                              isActionProcessor ? 'ActionProcessor' : 'Unknown';
 
         console.warn(`🚨 OWNERSHIP VIOLATION: ${currentManager} cannot update '${updateKey}'`, {
@@ -817,6 +817,9 @@ class GameStateManager {
       droneSelectionPool: [],
       droneSelectionTrio: [],
       gameLog: [],
+
+      // --- COMMITMENTS (for simultaneous phases) ---
+      commitments: {},
     };
 
     this.setState(initialState, 'GAME_RESET');
@@ -869,6 +872,9 @@ class GameStateManager {
       unplacedSections: [],
       shieldsToAllocate: 0,
       gameLog: [],
+
+      // --- COMMITMENTS (for simultaneous phases) ---
+      commitments: {},
     };
 
     // Initialize drone selection data for the droneSelection phase
@@ -917,6 +923,9 @@ class GameStateManager {
       droneSelectionPool: [],
       droneSelectionTrio: [],
       gameLog: [],
+
+      // --- COMMITMENTS (for simultaneous phases) ---
+      commitments: {},
     }, 'GAME_ENDED');
 
     console.log('✅ GAME END: Returned to menu state');

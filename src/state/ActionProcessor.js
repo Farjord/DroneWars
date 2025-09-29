@@ -34,7 +34,9 @@ class ActionProcessor {
       aiAction: false,
       aiTurn: false,
       playerPass: false,
-      aiShipPlacement: false
+      aiShipPlacement: false,
+      commitment: false,
+      processFirstPlayerDetermination: false
     };
   }
 
@@ -46,13 +48,6 @@ class ActionProcessor {
     this.p2pManager = p2pManager;
   }
 
-  /**
-   * Set SimultaneousActionManager for round-start shield allocation routing
-   * @param {Object} simultaneousActionManager - SimultaneousActionManager instance
-   */
-  setSimultaneousActionManager(simultaneousActionManager) {
-    this.simultaneousActionManager = simultaneousActionManager;
-  }
 
   /**
    * Queue an action for processing
@@ -130,19 +125,26 @@ class ActionProcessor {
       }
     }
 
-    // Route round start shield allocation actions to SimultaneousActionManager
+    // Handle shield allocation actions via commitment system
     if (currentState.turnPhase === 'allocateShields') {
       if (type === 'allocateShield') {
-        console.log(`🛡️ Routing allocateShield to SimultaneousActionManager`);
-        return this.simultaneousActionManager.allocateShieldToSection(payload.playerId, payload.sectionName);
+        console.log(`🛡️ Processing allocateShield action`);
+        // TODO: Implement shield allocation via gameEngine
+        return { success: true, message: 'Shield allocation not yet implemented in new system' };
       }
       if (type === 'resetShieldAllocation') {
-        console.log(`🔄 Routing resetShieldAllocation to SimultaneousActionManager`);
-        return this.simultaneousActionManager.resetShieldAllocation(payload.playerId);
+        console.log(`🔄 Processing resetShieldAllocation action`);
+        // TODO: Implement shield reset via gameEngine
+        return { success: true, message: 'Shield reset not yet implemented in new system' };
       }
       if (type === 'endShieldAllocation') {
-        console.log(`🏁 Routing endShieldAllocation to SimultaneousActionManager`);
-        return this.simultaneousActionManager.endShieldAllocation(payload.playerId);
+        console.log(`🏁 Processing endShieldAllocation action`);
+        // Use commitment system for phase completion
+        return await this.processCommitment({
+          playerId: payload.playerId,
+          phase: 'allocateShields',
+          actionData: { shieldAllocation: [] }
+        });
       }
     }
 
@@ -213,6 +215,18 @@ class ActionProcessor {
 
         case 'acknowledgeFirstPlayer':
           return await this.acknowledgeFirstPlayer(payload.playerId);
+
+        case 'processFirstPlayerDetermination':
+          return await this.processFirstPlayerDetermination();
+
+        case 'commitment':
+          return await this.processCommitment(payload);
+
+        case 'draw':
+          return await this.processDraw(payload);
+
+        case 'energyReset':
+          return await this.processEnergyReset(payload);
 
         default:
           throw new Error(`Unknown action type: ${type}`);
@@ -588,17 +602,12 @@ class ActionProcessor {
       console.log(`[PLACEMENT DEBUG] Initialized placement phase`);
     }
 
-    // Use gameLogic function to calculate phase transition effects
-    const phaseTransitionResult = gameEngine.calculateTurnTransition(
-      currentState.currentPlayer,
-      currentState.passInfo,
-      currentState.turnPhase,
-      currentState.winner
-    );
-
     // Apply the phase change and any phase-specific updates
     stateUpdates.turnPhase = newPhase;
     this.gameStateManager.setState(stateUpdates);
+
+    // Reset commitments for the new phase (clean slate)
+    this.clearPhaseCommitments();
 
     // Reset pass info if requested (typical for new phase)
     if (resetPassInfo) {
@@ -620,7 +629,7 @@ class ActionProcessor {
       stateUpdatesApplied: stateUpdates
     });
 
-    return { success: true, newPhase, transitionType: phaseTransitionResult.type };
+    return { success: true, newPhase };
   }
 
   /**
@@ -1287,20 +1296,61 @@ class ActionProcessor {
   }
 
   /**
+   * Process first player determination for the round
+   * @returns {Object} First player determination result
+   */
+  async processFirstPlayerDetermination() {
+    console.log('🎯 ActionProcessor: Processing first player determination');
+
+    const currentState = this.gameStateManager.getState();
+
+    // Import first player utilities
+    const { determineFirstPlayer, getFirstPlayerReasonText } = await import('../utils/firstPlayerUtils.js');
+
+    // Determine the first player
+    const firstPlayer = determineFirstPlayer(
+      currentState.turn,
+      currentState.firstPlayerOverride,
+      currentState.firstPasserOfPreviousRound
+    );
+
+    const reasonText = getFirstPlayerReasonText(
+      currentState.turn,
+      currentState.firstPlayerOverride,
+      currentState.firstPasserOfPreviousRound
+    );
+
+    // Update state with first player information
+    this.gameStateManager.updateState({
+      currentPlayer: firstPlayer,
+      firstPlayerOfRound: firstPlayer
+    });
+
+    console.log(`✅ First player determination complete: ${firstPlayer}`);
+
+    return {
+      success: true,
+      firstPlayer,
+      reasonText,
+      turn: currentState.turn
+    };
+  }
+
+  /**
    * Acknowledge first player determination
-   * Routes to SimultaneousActionManager for proper handling
+   * Handles first player determination acknowledgment
    * @param {string} playerId - Player acknowledging
    * @returns {Object} Acknowledgment result
    */
-  acknowledgeFirstPlayer(playerId) {
-    console.log(`🎯 ActionProcessor: Routing first player acknowledgment for ${playerId}`);
+  async acknowledgeFirstPlayer(playerId) {
+    console.log(`🎯 ActionProcessor: Processing first player acknowledgment for ${playerId}`);
 
-    if (!this.simultaneousActionManager) {
-      console.error('❌ SimultaneousActionManager not available');
-      return { success: false, error: 'Manager not available' };
-    }
-
-    return this.simultaneousActionManager.acknowledgeFirstPlayer(playerId);
+    // Use the new commitment system for acknowledgments
+    return await this.processCommitment({
+      playerId,
+      phase: 'determineFirstPlayer',
+      actionData: { acknowledged: true }
+    });
   }
 
 
@@ -1310,10 +1360,274 @@ class ActionProcessor {
    * @returns {Object|null} Commitment status
    */
   getPhaseCommitmentStatus(phase) {
-    if (!this.simultaneousActionManager) {
-      return null;
+    const currentState = this.gameStateManager.getState();
+
+    if (!currentState.commitments[phase]) {
+      return {
+        phase,
+        commitments: { player1: { completed: false }, player2: { completed: false } },
+        bothComplete: false
+      };
     }
-    return this.simultaneousActionManager.getPhaseCommitmentStatus(phase);
+
+    const commitments = currentState.commitments[phase];
+    const bothComplete = commitments.player1.completed && commitments.player2.completed;
+
+    return {
+      phase,
+      commitments,
+      bothComplete
+    };
+  }
+
+  /**
+   * Clear commitments for a specific phase or all phases
+   * @param {string} phase - Optional phase name, if not provided clears all
+   */
+  clearPhaseCommitments(phase = null) {
+    const currentState = this.gameStateManager.getState();
+
+    if (phase) {
+      if (currentState.commitments[phase]) {
+        currentState.commitments[phase] = {
+          player1: { completed: false },
+          player2: { completed: false }
+        };
+      }
+      console.log(`🔄 Cleared commitments for phase: ${phase}`);
+    } else {
+      currentState.commitments = {};
+      console.log('🔄 Cleared all phase commitments');
+    }
+
+    this.gameStateManager.updateState({
+      commitments: currentState.commitments
+    });
+  }
+
+  /**
+   * Process commitment action for simultaneous phases
+   * @param {Object} payload - Commitment payload
+   * @returns {Object} Commitment result
+   */
+  async processCommitment(payload) {
+    const { playerId, phase, actionData } = payload;
+
+    console.log(`🤝 ActionProcessor: Processing ${phase} commitment for ${playerId}`);
+
+    // Get current state
+    const currentState = this.gameStateManager.getState();
+
+    // Initialize commitments for this phase if not exists
+    if (!currentState.commitments[phase]) {
+      currentState.commitments[phase] = {
+        player1: { completed: false },
+        player2: { completed: false }
+      };
+    }
+
+    // Store the commitment
+    currentState.commitments[phase][playerId] = {
+      completed: true,
+      ...actionData
+    };
+
+    // Update the state
+    this.gameStateManager.updateState({
+      commitments: currentState.commitments
+    });
+
+    // Check if both players have committed
+    const bothComplete = currentState.commitments[phase].player1.completed &&
+                        currentState.commitments[phase].player2.completed;
+
+    console.log(`✅ ${playerId} ${phase} committed, both complete: ${bothComplete}`);
+
+    // For single-player mode, auto-complete AI commitment
+    if (playerId === 'player1' && currentState.gameMode === 'local') {
+      console.log('🤖 Single-player mode: Auto-completing AI commitment');
+      // Trigger AI auto-completion through AIPhaseProcessor
+      if (aiPhaseProcessor) {
+        setTimeout(async () => {
+          try {
+            await this.handleAICommitment(phase, currentState);
+          } catch (error) {
+            console.error('AI commitment error:', error);
+          }
+        }, 100);
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        playerId,
+        phase,
+        actionData,
+        bothPlayersComplete: bothComplete
+      }
+    };
+  }
+
+  /**
+   * Handle AI commitment for simultaneous phases
+   * @param {string} phase - Phase name
+   * @param {Object} currentState - Current game state
+   */
+  async handleAICommitment(phase, currentState) {
+    try {
+      console.log(`🤖 Processing AI commitment for phase: ${phase}`);
+
+      let aiResult;
+      switch(phase) {
+        case 'droneSelection':
+          aiResult = await aiPhaseProcessor.processDroneSelection();
+          await this.queueAction({
+            type: 'commitment',
+            payload: {
+              playerId: 'player2',
+              phase: 'droneSelection',
+              actionData: { drones: aiResult }
+            }
+          });
+          break;
+
+        case 'deckSelection':
+          aiResult = await aiPhaseProcessor.processDeckSelection();
+          await this.queueAction({
+            type: 'commitment',
+            payload: {
+              playerId: 'player2',
+              phase: 'deckSelection',
+              actionData: { deck: aiResult }
+            }
+          });
+          break;
+
+        case 'placement':
+          aiResult = await aiPhaseProcessor.processPlacement();
+          await this.queueAction({
+            type: 'commitment',
+            payload: {
+              playerId: 'player2',
+              phase: 'placement',
+              actionData: { placement: aiResult }
+            }
+          });
+          break;
+
+        case 'mandatoryDiscard':
+          aiResult = await aiPhaseProcessor.executeMandatoryDiscardTurn(currentState);
+          await this.queueAction({
+            type: 'commitment',
+            payload: {
+              playerId: 'player2',
+              phase: 'mandatoryDiscard',
+              actionData: { discardedCards: aiResult.cardsToDiscard }
+            }
+          });
+          break;
+
+        case 'optionalDiscard':
+          aiResult = await aiPhaseProcessor.executeOptionalDiscardTurn(currentState);
+          await this.queueAction({
+            type: 'commitment',
+            payload: {
+              playerId: 'player2',
+              phase: 'optionalDiscard',
+              actionData: { discardedCards: aiResult.cardsToDiscard }
+            }
+          });
+          break;
+
+        case 'allocateShields':
+          // AI shield allocation when implemented
+          await this.queueAction({
+            type: 'commitment',
+            payload: {
+              playerId: 'player2',
+              phase: 'allocateShields',
+              actionData: { shieldAllocation: [] }
+            }
+          });
+          break;
+
+        case 'mandatoryDroneRemoval':
+          aiResult = await aiPhaseProcessor.executeMandatoryDroneRemovalTurn(currentState);
+          await this.queueAction({
+            type: 'commitment',
+            payload: {
+              playerId: 'player2',
+              phase: 'mandatoryDroneRemoval',
+              actionData: { removedDrones: aiResult.dronesToRemove }
+            }
+          });
+          break;
+
+        case 'determineFirstPlayer':
+          // AI automatically acknowledges first player determination
+          await this.queueAction({
+            type: 'commitment',
+            payload: {
+              playerId: 'player2',
+              phase: 'determineFirstPlayer',
+              actionData: { acknowledged: true }
+            }
+          });
+          break;
+
+        default:
+          console.warn(`⚠️ No AI handler for phase: ${phase}`);
+      }
+
+    } catch (error) {
+      console.error('AI commitment error:', error);
+    }
+  }
+
+  /**
+   * Process automatic draw action
+   * @param {Object} payload - Draw payload containing player states
+   * @returns {Object} Draw result
+   */
+  async processDraw(payload) {
+    const { player1, player2 } = payload;
+
+    console.log('🃏 ActionProcessor: Processing automatic draw');
+
+    // Update player states with draw results
+    this.gameStateManager.setState({
+      player1,
+      player2
+    });
+
+    return {
+      success: true,
+      message: 'Draw completed',
+      player1,
+      player2
+    };
+  }
+
+  /**
+   * Process energy reset action
+   * @param {Object} payload - Energy reset payload containing updated player states
+   * @returns {Object} Energy reset result
+   */
+  async processEnergyReset(payload) {
+    const { player1, player2 } = payload;
+
+    console.log('⚡ ActionProcessor: Processing energy reset');
+
+    // Update player states using setPlayerStates
+    this.gameStateManager.setPlayerStates(player1, player2);
+
+    return {
+      success: true,
+      message: 'Energy reset completed',
+      player1,
+      player2
+    };
   }
 
   /**

@@ -9,7 +9,7 @@ import { useGameState } from '../../hooks/useGameState.js';
 import { WaitingForOpponentScreen } from './DroneSelectionScreen.jsx';
 import ShipSection from '../ui/ShipSection.jsx';
 import { gameEngine } from '../../logic/gameLogic.js';
-import simultaneousActionManager from '../../state/SimultaneousActionManager.js';
+import gameStateManager from '../../state/GameStateManager.js';
 
 /**
  * SHIP PLACEMENT SCREEN COMPONENT
@@ -178,9 +178,13 @@ function ShipPlacementScreen() {
 
     console.log(`🔧 Submitting placement to PhaseManager:`, localPlacedSections);
 
-    // Submit placement to SimultaneousActionManager
+    // Submit placement to ActionProcessor
     try {
-      const submissionResult = await simultaneousActionManager.submitPlacement(getLocalPlayerId(), localPlacedSections);
+      const submissionResult = await gameStateManager.actionProcessor.processCommitment({
+        phase: 'placement',
+        playerId: getLocalPlayerId(),
+        commitment: { placedSections: localPlacedSections }
+      });
 
       if (!submissionResult.success) {
         console.error('❌ Placement submission failed:', submissionResult.error);

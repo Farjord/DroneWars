@@ -55,9 +55,7 @@ import { gameEngine } from './logic/gameLogic.js';
 
 // --- 1.6 MANAGER/STATE IMPORTS ---
 import gameFlowManager from './state/GameFlowManager.js';
-import simultaneousActionManager from './state/SimultaneousActionManager.js';
 import aiPhaseProcessor from './state/AIPhaseProcessor.js';
-import sequentialPhaseManager from './state/SequentialPhaseManager.js';
 // ActionProcessor is created internally by GameStateManager
 
 // --- 1.7 UTILITY IMPORTS ---
@@ -214,7 +212,6 @@ const App = () => {
     // Initialize GameFlowManager with managers and dependencies
     gameFlowManager.initialize(
       gameStateManager,
-      simultaneousActionManager,
       gameStateManager.actionProcessor, // Use ActionProcessor instance from GameStateManager
       () => gameState.gameMode !== 'local',
       aiPhaseProcessor // Add AIPhaseProcessor for SequentialPhaseManager
@@ -224,38 +221,7 @@ const App = () => {
     console.log('🔧 GameFlowManager initialized');
   }, []); // Run once on component mount
 
-  // Subscribe to SequentialPhaseManager events
-  useEffect(() => {
-    const unsubscribe = sequentialPhaseManager.subscribe((event) => {
-      console.log('📢 SequentialPhaseManager event:', event);
-
-      // Handle different event types
-      switch (event.type) {
-        case 'phase_started':
-          console.log(`🎯 Sequential phase started: ${event.phase}, first player: ${event.firstPlayer}`);
-          break;
-
-        case 'turn_changed':
-          console.log(`🔄 Turn changed to ${event.player} in ${event.phase} phase`);
-          break;
-
-        case 'player_passed':
-          console.log(`🏳️ ${event.player} passed in ${event.phase} phase`);
-          break;
-
-        case 'phase_completed':
-          console.log(`✅ ${event.phase} phase completed, first passer: ${event.firstPasser}`);
-          break;
-
-        default:
-          console.log(`📌 Unknown sequential phase event: ${event.type}`);
-      }
-    });
-
-    return () => {
-      unsubscribe();
-    };
-  }, []);
+  // SequentialPhaseManager removed - phase completion now handled by GameFlowManager via state monitoring
 
   // --- 4.2 EVENT SUBSCRIPTIONS ---
 
@@ -295,9 +261,8 @@ const App = () => {
       }
     };
 
-    // Subscribe to both managers for different types of events
+    // Subscribe to game flow manager for phase events
     const unsubscribeGameFlow = gameFlowManager.subscribe(handlePhaseEvent);
-    const unsubscribeSimultaneous = simultaneousActionManager.subscribe(handlePhaseEvent);
 
     return () => {
       unsubscribeGameFlow();
@@ -318,7 +283,20 @@ const App = () => {
   // --- EXTRACTED STATE (now from GameStateManager) ---
   // Core game state comes from gameState object:
   // gameState.turnPhase, gameState.turn, gameState.currentPlayer, etc.
-  const { turnPhase, turn, currentPlayer, firstPlayerOfRound, firstPasserOfPreviousRound, firstPlayerOverride, passInfo, winner, unplacedSections, shieldsToAllocate, gameLog, placedSections } = gameState;
+  const {
+    turnPhase,
+    turn,
+    currentPlayer,
+    firstPlayerOfRound,
+    firstPasserOfPreviousRound,
+    firstPlayerOverride,
+    passInfo,
+    winner,
+    unplacedSections,
+    shieldsToAllocate,
+    gameLog,
+    placedSections
+  } = gameState;
 
   // --- 3.5 STATE AND REFS DEPENDENT ON GAMESTATE ---
   // State and refs that require gameState values for initialization.
@@ -1274,8 +1252,9 @@ const App = () => {
       setShowFirstPlayerModal(false);
 
       // Check if we need to show waiting state
-      const commitmentStatus = simultaneousActionManager.getPhaseCommitmentStatus('determineFirstPlayer');
-      if (!commitmentStatus.bothComplete && gameState.gameMode !== 'local') {
+      const commitments = gameState.commitments?.determineFirstPlayer || {};
+      const bothComplete = Object.keys(commitments).length === 2;
+      if (!bothComplete && gameState.gameMode !== 'local') {
         // In multiplayer, show waiting state if opponent hasn't acknowledged
         setWaitingForPlayerPhase('determineFirstPlayer');
       }
