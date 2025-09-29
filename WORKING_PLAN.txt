@@ -8,7 +8,15 @@ See ROADMAP.md for long-term development plans and server implementation roadmap
 
 CURRENT STATUS: Phase 3 - Server Implementation (Ready to Begin)
 ------------------------------------------------------------------------
-✅ COMPLETED TODAY (2025-09-27) - PHASE 2.12 COMPLETION:
+✅ COMPLETED TODAY (2025-09-28) - CRITICAL BUG FIXES:
+- Fixed phase transition bugs preventing deployment → action progression
+- Fixed ActionProcessor method confusion (processTurnTransition vs processPhaseTransition)
+- Fixed parameter name mismatches (nextPhase → newPhase)
+- Fixed AI decision structure handling for wrapped pass decisions
+- Added GameDebugModal development tool for state inspection
+- Established clear architecture patterns for phase vs turn transitions
+
+✅ COMPLETED (2025-09-27) - PHASE 2.12 COMPLETION:
 - Fixed critical middle lane bonus calculation issues
 - Completed GameDataService architecture migration (100% usage)
 - Fixed Power Cell middle lane energy bonus (now correctly gives 12 energy instead of 10)
@@ -195,8 +203,12 @@ Priority 3: Server-Side Game Logic
 KNOWN ISSUES / BUGS
 -------------------
 - JSX syntax warnings in App.jsx (lines 4320-4357) - character "}" warnings
-- Need to verify AI turn triggering in deployment/action phases
-- Should test pass logic thoroughly with both human and AI players
+
+RECENTLY FIXED:
+- ✅ Phase transition bugs (deployment → action not working) - RESOLVED
+- ✅ AI decision structure errors ("Cannot read properties of undefined") - RESOLVED
+- ✅ ActionProcessor method confusion - RESOLVED
+- ✅ Pass loop prevention - RESOLVED
 
 ================================================================================
 
@@ -208,6 +220,9 @@ QUICK NOTES
 - SimultaneousActionManager handles droneSelection, deckSelection, placement, etc.
 - ActionProcessor is the neutral engine for processing all actions
 - AIPhaseProcessor is AI's equivalent to App.jsx for decision making
+- GameDebugModal: Settings dropdown → "Debug View" for game state inspection
+- processPhaseTransition: Changes game phases (deployment → action)
+- processTurnTransition: Switches players within same phase
 
 ================================================================================
 

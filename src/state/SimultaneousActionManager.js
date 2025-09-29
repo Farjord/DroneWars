@@ -505,6 +505,11 @@ class SimultaneousActionManager {
         });
         break;
 
+      case 'determineFirstPlayer':
+        // No state update needed - this phase is acknowledgment only
+        // First player is already set by GameFlowManager
+        break;
+
       case 'mandatoryDiscard':
         // Handle discard logic
         break;

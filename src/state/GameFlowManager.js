@@ -742,7 +742,7 @@ class GameFlowManager {
     // Handle automatic phases directly
     if (this.isAutomaticPhase(newPhase)) {
       console.log(`🤖 GameFlowManager: Auto-processing automatic phase '${newPhase}'`);
-      this.processAutomaticPhase(newPhase);
+      await this.processAutomaticPhase(newPhase);
       return; // Don't emit transition event yet - will emit after automatic processing
     }
 

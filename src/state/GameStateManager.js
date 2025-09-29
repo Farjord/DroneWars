@@ -323,9 +323,27 @@ class GameStateManager {
    * Validate ActionProcessor usage during active gameplay
    */
   validateActionProcessorUsage(updates, prevState, isFromActionProcessor, stack) {
+    // Skip validation if this update is from ActionProcessor
+    if (isFromActionProcessor) {
+      return;
+    }
+
     // Skip validation during initialization and setup phases
     if (this.isInitializationPhase(prevState.turnPhase)) {
       return;
+    }
+
+    // First check if GameFlowManager is currently processing an automatic phase
+    console.log('🔍 Checking automatic phase flag:', {
+      hasGameFlowManager: !!this.gameFlowManager,
+      isProcessingAutomaticPhase: this.gameFlowManager?.isProcessingAutomaticPhase,
+      currentPhase: prevState.turnPhase,
+      updatingFields: Object.keys(updates)
+    });
+
+    if (this.gameFlowManager && this.gameFlowManager.isProcessingAutomaticPhase) {
+      console.log('✅ Skipping validation - automatic phase processing active');
+      return; // Skip validation during automatic phase processing
     }
 
     // Skip validation during simultaneous phases - direct updates are expected
@@ -337,11 +355,6 @@ class GameStateManager {
     // Skip validation during automatic phases - GameFlowManager handles these directly
     const automaticPhases = ['energyReset', 'draw', 'determineFirstPlayer'];
     if (automaticPhases.includes(prevState.turnPhase) || automaticPhases.includes(updates.turnPhase)) {
-      return;
-    }
-
-    // Also skip validation if GameFlowManager is currently processing an automatic phase
-    if (this.gameFlowManager && this.gameFlowManager.isProcessingAutomaticPhase) {
       return;
     }
 
@@ -377,6 +390,23 @@ class GameStateManager {
     const allowedUpdates = Object.keys(updates).filter(key =>
       allowedUIStateUpdates.includes(key)
     );
+
+    // Allow GameFlowManager to update player states during automatic phases
+    const isGameFlowManagerUpdate = stack && stack.includes('GameFlowManager');
+    const isAutomaticPhaseUpdate = ['energyReset', 'draw', 'determineFirstPlayer'].includes(prevState.turnPhase) ||
+                                    ['deployment', 'action'].includes(prevState.turnPhase); // After automatic phases
+    const isPlayerStateUpdate = criticalUpdates.every(update =>
+      ['player1', 'player2'].includes(update)
+    );
+
+    // Also allow GameFlowManager to update phase-related fields
+    const isPhaseTransitionUpdate = criticalUpdates.every(update =>
+      ['turnPhase', 'gameStage', 'roundNumber', 'firstPlayerOfRound'].includes(update)
+    );
+
+    if (isGameFlowManagerUpdate && (isPlayerStateUpdate || isPhaseTransitionUpdate)) {
+      return; // Allow GameFlowManager to manage phases and update player states
+    }
 
     if (criticalUpdates.length > 0 && !isFromActionProcessor) {
       // Extract caller information from stack trace

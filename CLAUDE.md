@@ -425,6 +425,64 @@ GameStateManager → Event Emission → All Subscribed Components → UI Re-rend
 
 ---
 
+## ✅ **CRITICAL BUG FIXES COMPLETED** (2025-09-28)
+
+### **Phase Transition Architecture Bug Fixes - RESOLVED**
+
+**Problem Solved**: Multiple critical bugs in phase transition and AI decision handling that prevented proper game flow:
+
+**Issues Fixed**:
+1. **ActionProcessor Method Confusion** (Lines 1057, 1059, 1186, 1188):
+   - **Bug**: Incorrectly called `processTurnTransition` instead of `processPhaseTransition` for phase changes
+   - **Impact**: Game couldn't transition from deployment → action phase when both players passed
+   - **Fix**: Changed to correct `processPhaseTransition` method calls
+
+2. **Parameter Name Mismatch** (Lines 1186, 1188):
+   - **Bug**: Used `nextPhase` parameter instead of expected `newPhase`
+   - **Impact**: `processPhaseTransition` received undefined parameters
+   - **Fix**: Updated to use correct `newPhase` parameter name
+
+3. **AI Decision Structure Handling** (SequentialPhaseManager line 225):
+   - **Bug**: AI pass decisions wrapped in deployment format caused undefined payload access
+   - **Impact**: "Cannot read properties of undefined (reading 'droneToDeploy')" runtime error
+   - **Fix**: Added guard clause to detect wrapped pass decisions (`decision.type === 'deployment' && decision.decision?.type === 'pass'`)
+
+**Critical Architecture Pattern Established**:
+```javascript
+// ActionProcessor Method Distinctions:
+processPhaseTransition({ newPhase: 'action' })    // Changes game phases (deployment → action)
+processTurnTransition({ newPlayer: 'player2' })   // Switches players within same phase
+```
+
+**AI Decision Structure Pattern**:
+```javascript
+// AIPhaseProcessor wraps all decisions:
+{
+  type: 'deployment',           // Wrapper type
+  decision: { type: 'pass' },   // OR { type: 'deploy', payload: {...} }
+  playerId: 'player2'
+}
+// SequentialPhaseManager must check both decision.type AND decision.decision.type
+```
+
+**Architecture Benefits Achieved**:
+- ✅ **Phase Flow Fixed**: Deployment → action transitions now work correctly
+- ✅ **AI Error Elimination**: No more undefined payload crashes
+- ✅ **Pass Loop Prevention**: Both players passing now properly advances game phase
+- ✅ **Method Clarity**: Clear distinction between phase vs turn transitions
+
+### **GameDebugModal Development Tool - ADDED**
+
+**New Component**: `GameDebugModal.jsx` for game state debugging
+- **Access**: Settings dropdown → "Debug View" in GameHeader
+- **Features**:
+  - **Raw State Tab**: Complete GameStateManager data inspection
+  - **Calculated Stats Tab**: GameDataService computations display
+- **Usage**: Essential tool for debugging game state and phase transition issues
+- **Integration**: Added to App.jsx with proper modal state management
+
+---
+
 ## ✅ **ARCHITECTURE VIOLATIONS RESOLVED** (2025-09-27)
 
 ### **App.jsx Direct State Updates (Architectural Debt) - FIXED**

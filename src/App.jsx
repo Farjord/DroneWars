@@ -54,6 +54,7 @@ import CardConfirmationModal from './components/modals/CardConfirmationModal.jsx
 import DroneAbilityConfirmationModal from './components/modals/DroneAbilityConfirmationModal.jsx';
 import ShipAbilityConfirmationModal from './components/modals/ShipAbilityConfirmationModal.jsx';
 import AIHandDebugModal from './components/modals/AIHandDebugModal.jsx';
+import GameDebugModal from './components/modals/GameDebugModal.jsx';
 
 // ========================================
 // MAIN APPLICATION COMPONENT
@@ -90,7 +91,7 @@ const App = () => {
   } = useGameState();
 
   // --- GAME DATA SERVICE INTEGRATION ---
-  const { getEffectiveStats, getEffectiveShipStats } = useGameData();
+  const { getEffectiveStats, getEffectiveShipStats, gameDataService } = useGameData();
 
   // --- DEBUG AND DEVELOPMENT FLAGS ---
   const AI_HAND_DEBUG_MODE = true; // Set to false to disable clicking to see the AI's hand
@@ -170,6 +171,7 @@ const App = () => {
   // --- MODAL AND UI STATE ---
   // MOVED UP: Must be declared before useEffect that uses setModalContent
   const [showAiHandModal, setShowAiHandModal] = useState(false);
+  const [showDebugModal, setShowDebugModal] = useState(false);
   const [modalContent, setModalContent] = useState(null);
 
   // PhaseManager event listeners
@@ -1196,7 +1198,7 @@ const App = () => {
 
       // Check if we need to show waiting state
       const commitmentStatus = gameStateManager.actionProcessor.getPhaseCommitmentStatus('determineFirstPlayer');
-      if (!commitmentStatus.allComplete && gameMode !== 'local') {
+      if (!commitmentStatus.allComplete && gameState.gameMode !== 'local') {
         // In multiplayer, show waiting state if opponent hasn't acknowledged
         setWaitingForPlayerPhase('determineFirstPlayer');
       }
@@ -2510,6 +2512,7 @@ useEffect(() => {
         multiSelectState={multiSelectState}
         AI_HAND_DEBUG_MODE={AI_HAND_DEBUG_MODE}
         setShowAiHandModal={setShowAiHandModal}
+        onShowDebugModal={() => setShowDebugModal(true)}
       />
       
       <GameBattlefield
@@ -2765,6 +2768,13 @@ useEffect(() => {
         show={showAiHandModal}
         debugMode={AI_HAND_DEBUG_MODE}
         onClose={() => setShowAiHandModal(false)}
+      />
+
+      <GameDebugModal
+        show={showDebugModal}
+        onClose={() => setShowDebugModal(false)}
+        gameStateManager={gameStateManager}
+        gameDataService={gameDataService}
       />
 
       {/* Renders the modal for viewing the deck */}

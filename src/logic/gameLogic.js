@@ -1767,7 +1767,7 @@ const finishCardPlay = (card, actingPlayerId, playerStates) => {
     actingPlayerState.discardPile.push(card);
 
     // Determine if turn should end
-    const shouldEndTurn = actingPlayerId === 'player1' && !card.effect.goAgain;
+    const shouldEndTurn = !card.effect.goAgain;
 
     return {
         newPlayerStates,
@@ -2800,7 +2800,7 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
             remainingShields,
             remainingHull,
             outcome,
-            shouldEndTurn: attackingPlayerId === 'player1' && !goAgain
+            shouldEndTurn: !goAgain
         },
         afterAttackEffects
     };

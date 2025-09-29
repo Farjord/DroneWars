@@ -4,8 +4,8 @@
 // Header section showing player resources, game phase, and controls
 // Extracted from App.jsx for better component organization
 
-import React from 'react';
-import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown } from 'lucide-react';
 import { getPhaseDisplayName } from '../../utils/gameUtils.js';
 
 /**
@@ -34,6 +34,7 @@ import { getPhaseDisplayName } from '../../utils/gameUtils.js';
  * @param {Object} props.multiSelectState - Multi-select state
  * @param {boolean} props.AI_HAND_DEBUG_MODE - Debug mode for AI hand
  * @param {Function} props.setShowAiHandModal - Set AI hand modal visibility
+ * @param {Function} props.onShowDebugModal - Callback to show debug modal
  */
 function GameHeader({
   localPlayerState,
@@ -58,8 +59,25 @@ function GameHeader({
   mandatoryAction,
   multiSelectState,
   AI_HAND_DEBUG_MODE,
-  setShowAiHandModal
+  setShowAiHandModal,
+  onShowDebugModal
 }) {
+  const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowSettingsDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
   return (
     <header className="w-full flex justify-between items-center mb-2 flex-shrink-0 px-5 pt-8">
       {/* Opponent Resources */}
@@ -179,9 +197,31 @@ function GameHeader({
           >
             <RotateCcw />
           </button>
-          <button className="bg-slate-700 text-white p-3 rounded-full shadow-lg hover:bg-slate-600 transition-colors duration-200">
-            <Settings />
-          </button>
+          <div className="relative" ref={dropdownRef}>
+            <button
+              onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+              className="bg-slate-700 text-white p-3 rounded-full shadow-lg hover:bg-slate-600 transition-colors duration-200 flex items-center"
+              aria-label="Settings"
+            >
+              <Settings />
+              <ChevronDown size={16} className="ml-1" />
+            </button>
+
+            {showSettingsDropdown && (
+              <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50">
+                <button
+                  onClick={() => {
+                    onShowDebugModal && onShowDebugModal();
+                    setShowSettingsDropdown(false);
+                  }}
+                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors rounded-lg flex items-center gap-2"
+                >
+                  <Settings size={16} />
+                  Debug View
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>

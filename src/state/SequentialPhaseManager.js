@@ -222,6 +222,8 @@ class SequentialPhaseManager {
       // Execute the decision through standard flow
       if (decision.type === 'pass') {
         await this.processPlayerPass('player2');
+      } else if (decision.type === 'deployment' && decision.decision?.type === 'pass') {
+        await this.processPlayerPass('player2');
       } else if (decision.type === 'deployment') {
         // Execute deployment through standard flow
         const result = await this.actionProcessor.queueAction({
@@ -264,6 +266,12 @@ class SequentialPhaseManager {
       }
     } finally {
       this.isProcessingTurn = false;
+
+      // Check if AI should continue (human has passed)
+      if (this.passInfo && this.passInfo.player1Passed && !this.passInfo.player2Passed) {
+        console.log('🔄 Human has passed - AI continues taking turns');
+        this.checkForAITurn();
+      }
     }
   }
 

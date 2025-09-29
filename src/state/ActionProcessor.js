@@ -375,6 +375,11 @@ class ActionProcessor {
       } else {
         this.gameStateManager.updatePlayers({}, result.newPlayerState);
       }
+
+      // Handle turn transition after successful deployment
+      await this.processTurnTransition({
+        newPlayer: playerId === 'player1' ? 'player2' : 'player1'
+      });
     }
 
     return result;
@@ -508,8 +513,20 @@ class ActionProcessor {
     }
 
     if (newPlayer) {
-      console.log(`[TURN TRANSITION DEBUG] Setting new player: ${newPlayer}`);
-      this.gameStateManager.setCurrentPlayer(newPlayer);
+      const currentState = this.gameStateManager.getState();
+      let actualNewPlayer = newPlayer;
+
+      // Check if trying to switch to a player who has passed
+      if (currentState.passInfo && currentState.passInfo[`${newPlayer}Passed`]) {
+        // Keep turn with current player instead
+        actualNewPlayer = currentState.currentPlayer;
+        console.log(`[TURN TRANSITION DEBUG] ${newPlayer} has passed, keeping turn with ${actualNewPlayer}`);
+      } else {
+        console.log(`[TURN TRANSITION DEBUG] Setting new player: ${actualNewPlayer}`);
+      }
+
+      // Always set the player (even if same) to trigger state change event
+      this.gameStateManager.setCurrentPlayer(actualNewPlayer);
     }
 
     const newState = this.gameStateManager.getState();
@@ -1037,9 +1054,9 @@ class ActionProcessor {
         if (newPassInfo.player1Passed && newPassInfo.player2Passed) {
           console.log(`[AI DECISION DEBUG] Both players passed, transitioning phase`);
           if (currentState.turnPhase === 'deployment') {
-            await this.processTurnTransition({ newPhase: 'action' });
+            await this.processPhaseTransition({ newPhase: 'action' });
           } else if (currentState.turnPhase === 'action') {
-            await this.processTurnTransition({ newPhase: 'roundEnd' });
+            await this.processPhaseTransition({ newPhase: 'roundEnd' });
           }
         } else {
           console.log(`[AI DECISION DEBUG] Only AI passed, switching to other player`);
@@ -1166,9 +1183,9 @@ class ActionProcessor {
     // Handle phase transitions based on both players passing
     if (newPassInfo[opponentPlayerId + 'Passed']) {
       if (turnPhase === 'deployment') {
-        await this.processPhaseTransition({ nextPhase: 'action' });
+        await this.processPhaseTransition({ newPhase: 'action' });
       } else if (turnPhase === 'action') {
-        await this.processPhaseTransition({ nextPhase: 'endRound' });
+        await this.processPhaseTransition({ newPhase: 'roundEnd' });
       }
     } else {
       // End turn for current player - switch to opponent
