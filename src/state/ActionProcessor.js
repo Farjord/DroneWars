@@ -208,6 +208,9 @@ class ActionProcessor {
         case 'ability':
           return await this.processAbility(payload);
 
+        case 'move':
+          return await this.processMove(payload);
+
         case 'deployment':
           return await this.processDeployment(payload);
 
@@ -315,6 +318,64 @@ class ActionProcessor {
     }
 
     return result;
+  }
+
+  /**
+   * Process move action
+   */
+  async processMove(payload) {
+    const { droneId, fromLane, toLane, playerId } = payload;
+
+    const currentState = this.gameStateManager.getState();
+    const playerState = currentState[playerId];
+
+    if (!playerState) {
+      throw new Error(`Player ${playerId} not found`);
+    }
+
+    // Find the drone in the fromLane
+    const droneIndex = playerState.dronesOnBoard[fromLane].findIndex(d => d.id === droneId);
+    if (droneIndex === -1) {
+      throw new Error(`Drone ${droneId} not found in ${fromLane}`);
+    }
+
+    const drone = playerState.dronesOnBoard[fromLane][droneIndex];
+
+    // Create new drones state with drone moved
+    const newDronesOnBoard = {
+      ...playerState.dronesOnBoard,
+      [fromLane]: playerState.dronesOnBoard[fromLane].filter(d => d.id !== droneId),
+      [toLane]: [...playerState.dronesOnBoard[toLane], { ...drone, isExhausted: true }]
+    };
+
+    // Update player state
+    this.gameStateManager.updatePlayerState(playerId, {
+      dronesOnBoard: newDronesOnBoard
+    });
+
+    // Log the move
+    this.gameStateManager.addLogEntry({
+      player: playerState.name,
+      actionType: 'MOVE',
+      source: drone.name,
+      target: toLane.replace('lane', 'Lane '),
+      outcome: `Moved from ${fromLane.replace('lane', 'Lane ')} to ${toLane.replace('lane', 'Lane ')}.`
+    });
+
+    console.log(`✅ Moved ${drone.name} from ${fromLane} to ${toLane}`);
+
+    // Handle automatic turn transition (moves don't have goAgain)
+    await this.processTurnTransition({
+      newPlayer: playerId === 'player1' ? 'player2' : 'player1'
+    });
+
+    return {
+      success: true,
+      message: `${drone.name} moved from ${fromLane} to ${toLane}`,
+      drone: drone,
+      fromLane: fromLane,
+      toLane: toLane
+    };
   }
 
   /**
@@ -947,34 +1008,13 @@ class ActionProcessor {
             });
 
           case 'move':
-            // Handle move through game engine
-            const currentState = this.gameStateManager.getState();
-            const moveCard = {
-              name: 'AI Move',
-              cost: 0,
-              effect: { type: 'MOVE', properties: [] }
-            };
-
-            const moveResult = gameEngine.resolveSingleMove(
-              moveCard,
-              chosenAction.drone,
-              chosenAction.fromLane,
-              chosenAction.toLane,
-              currentState.player2,
-              currentState.player1,
-              {
-                player1: currentState.placedSections,
-                player2: currentState.opponentPlacedSections
-              },
-              {
-                logCallback: () => {},
-                applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects,
-                updateAurasCallback: gameEngine.updateAuras
-              }
-            );
-
-            this.gameStateManager.updatePlayerState('player2', moveResult.newPlayerState);
-            return moveResult;
+            // Handle move through processMove method
+            return await this.processMove({
+              droneId: chosenAction.drone.id,
+              fromLane: chosenAction.fromLane,
+              toLane: chosenAction.toLane,
+              playerId: 'player2'
+            });
 
           case 'ability':
             return await this.processAbility({
@@ -1102,7 +1142,12 @@ class ActionProcessor {
             break;
 
           case 'move':
-            actionResult = await this.processMove(chosenAction, playerId);
+            actionResult = await this.processMove({
+              droneId: chosenAction.drone.id,
+              fromLane: chosenAction.fromLane,
+              toLane: chosenAction.toLane,
+              playerId: playerId
+            });
             break;
 
           case 'ability':
@@ -1159,50 +1204,6 @@ class ActionProcessor {
       default:
         throw new Error(`Unknown AI action type: ${aiDecision.type}`);
     }
-  }
-
-  /**
-   * Process move action for AI
-   */
-  async processMove(chosenAction, playerId) {
-    const currentState = this.gameStateManager.getState();
-    const moveCard = {
-      name: 'AI Move',
-      cost: 0,
-      effect: { type: 'MOVE', properties: [] }
-    };
-
-    const playerState = currentState[playerId];
-    const opponentState = currentState[playerId === 'player1' ? 'player2' : 'player1'];
-
-    const moveResult = gameEngine.resolveSingleMove(
-      moveCard,
-      chosenAction.drone,
-      chosenAction.fromLane,
-      chosenAction.toLane,
-      playerState,
-      opponentState,
-      {
-        player1: currentState.placedSections,
-        player2: currentState.opponentPlacedSections
-      },
-      {
-        logCallback: () => {},
-        applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects,
-        updateAurasCallback: gameEngine.updateAuras
-      }
-    );
-
-    this.gameStateManager.updatePlayerState(playerId, moveResult.newPlayerState);
-
-    // Handle turn transition for moves without goAgain
-    if (moveResult.shouldEndTurn) {
-      await this.processTurnTransition({
-        newPlayer: playerId === 'player1' ? 'player2' : 'player1'
-      });
-    }
-
-    return moveResult;
   }
 
   /**
@@ -1365,10 +1366,10 @@ class ActionProcessor {
    * Process optional discard action
    */
   async processOptionalDiscard(payload) {
-    const { playerId, cardsToDiscard } = payload;
+    const { playerId, cardsToDiscard, isMandatory = false } = payload;
     const currentState = this.gameStateManager.getState();
 
-    console.log(`[OPTIONAL DISCARD DEBUG] Processing optional discard for ${playerId}:`, cardsToDiscard);
+    console.log(`[OPTIONAL DISCARD DEBUG] Processing ${isMandatory ? 'mandatory' : 'optional'} discard for ${playerId}:`, cardsToDiscard);
 
     if (!Array.isArray(cardsToDiscard)) {
       throw new Error('Cards to discard must be an array');
@@ -1378,6 +1379,17 @@ class ActionProcessor {
     if (!playerState) {
       throw new Error(`Player ${playerId} not found`);
     }
+
+    // Add log entry for each discarded card
+    cardsToDiscard.forEach(card => {
+      this.gameStateManager.addLogEntry({
+        player: playerState.name,
+        actionType: isMandatory ? 'DISCARD_MANDATORY' : 'DISCARD_OPTIONAL',
+        source: card.name,
+        target: 'N/A',
+        outcome: `Discarded ${card.name}.`
+      });
+    });
 
     // Remove cards from hand and add to discard pile
     const newHand = playerState.hand.filter(card =>

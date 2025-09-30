@@ -2707,6 +2707,9 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
         player2: JSON.parse(JSON.stringify(playerStates.player2))
     };
 
+    // Initialize afterAttackEffects array for explosions and hit animations
+    let afterAttackEffects = [];
+
     // Apply damage to defender
     if (finalTargetType === 'drone') {
         let droneDestroyed = false;
@@ -2749,8 +2752,7 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
         }
     }
 
-    // Handle attacker exhaustion and after-attack effects
-    let afterAttackEffects = [];
+    // Handle attacker exhaustion and after-attack abilities (like DESTROY_SELF)
     if (!isAbilityOrCard && attacker && attacker.id) {
         let droneWasOnBoard = false;
         for (const laneKey in newPlayerStates[attackingPlayerId].dronesOnBoard) {
@@ -2765,7 +2767,8 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
         if (droneWasOnBoard) {
             const result = calculateAfterAttackStateAndEffects(newPlayerStates[attackingPlayerId], attacker);
             newPlayerStates[attackingPlayerId] = result.newState;
-            afterAttackEffects = result.effects;
+            // Merge after-attack ability effects with existing effects
+            afterAttackEffects = [...afterAttackEffects, ...result.effects];
         }
     }
 

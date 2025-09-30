@@ -18,12 +18,17 @@ import { getElementCenter } from '../utils/gameUtils.js';
 export const useExplosions = (droneRefs, gameAreaRef) => {
   const [explosions, setExplosions] = useState([]);
 
-  const triggerExplosion = useCallback((targetId) => {
+  const triggerExplosion = useCallback((targetId, capturedPosition = null) => {
     // Create the explosion effect using the pure function
     const explosionEffect = gameEngine.createExplosionEffect(targetId);
 
-    // Handle UI-specific rendering
-    const pos = getElementCenter(droneRefs.current[targetId], gameAreaRef.current);
+    // Use captured position if provided, otherwise try to get from DOM
+    let pos = capturedPosition;
+    if (!pos) {
+      const droneElement = droneRefs.current[targetId];
+      pos = getElementCenter(droneElement, gameAreaRef.current);
+    }
+
     if (pos) {
       const explosionId = `${explosionEffect.timestamp}-${Math.random()}`;
       setExplosions(prev => [...prev, { id: explosionId, top: pos.y, left: pos.x }]);

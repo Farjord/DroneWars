@@ -8,6 +8,7 @@ import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
 import { initializeShipPlacement } from '../utils/shipPlacementUtils.js';
 import fullDroneCollection from '../data/droneData.js';
 import GameDataService from '../services/GameDataService.js';
+import { gameEngine } from '../logic/gameLogic.js';
 
 /**
  * GameFlowManager - Central authority for game phase flow and transitions
@@ -471,17 +472,39 @@ class GameFlowManager {
         currentGameState.opponentPlacedSections
       );
 
-      // Reset energy and deployment budget for both players
+      // Ready drones (unexhaust, restore shields, remove temporary mods) and reset resources
+      const allPlacedSections = {
+        player1: currentGameState.placedSections,
+        player2: currentGameState.opponentPlacedSections
+      };
+
+      // Use readyDronesAndRestoreShields to properly reset drone states
+      const readiedPlayer1 = gameEngine.readyDronesAndRestoreShields(
+        currentGameState.player1,
+        currentGameState.player2,
+        allPlacedSections.player1
+      );
+      const readiedPlayer2 = gameEngine.readyDronesAndRestoreShields(
+        currentGameState.player2,
+        currentGameState.player1,
+        allPlacedSections.player2
+      );
+
+      // Apply energy and deployment budget on top of readied states
+      // Round 1: Use initialDeploymentBudget (includes first lane bonus)
+      // Round 2+: Use deploymentBudget (ongoing resource from ship sections)
       const updatedPlayer1 = {
-        ...currentGameState.player1,
+        ...readiedPlayer1,
         energy: player1EffectiveStats.totals.energyPerTurn,
-        deploymentBudget: player1EffectiveStats.totals.deploymentBudget
+        initialDeploymentBudget: this.roundNumber === 1 ? player1EffectiveStats.totals.initialDeployment : 0,
+        deploymentBudget: this.roundNumber === 1 ? 0 : player1EffectiveStats.totals.deploymentBudget
       };
 
       const updatedPlayer2 = {
-        ...currentGameState.player2,
+        ...readiedPlayer2,
         energy: player2EffectiveStats.totals.energyPerTurn,
-        deploymentBudget: player2EffectiveStats.totals.deploymentBudget
+        initialDeploymentBudget: this.roundNumber === 1 ? player2EffectiveStats.totals.initialDeployment : 0,
+        deploymentBudget: this.roundNumber === 1 ? 0 : player2EffectiveStats.totals.deploymentBudget
       };
 
       // Update player states via ActionProcessor

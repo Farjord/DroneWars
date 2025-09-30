@@ -184,6 +184,7 @@ const App = () => {
 
   // Phase and turn tracking for modal management
   const [lastTurnPhase, setLastTurnPhase] = useState(null); // Track last phase to detect phase transitions
+  const [optionalDiscardCount, setOptionalDiscardCount] = useState(0); // Track number of optional discards during optionalDiscard phase
 
 
   // --- 3.3 REFS ---
@@ -572,7 +573,18 @@ const App = () => {
             setTimeout(() => setRecentlyHitDrones(prev => prev.filter(id => id !== targetId)), 500);
         };
 
-        // Process attack through ActionProcessor
+        // CRITICAL: Capture target position BEFORE state update removes drone from DOM
+        // This is a UI concern (rendering) - position capture belongs in App.jsx
+        // ActionProcessor maintains ownership of state updates (architectural compliance)
+        const capturedPositions = new Map();
+        if (attackDetails.targetId) {
+            const pos = getElementCenter(droneRefs.current[attackDetails.targetId], gameAreaRef.current);
+            if (pos) {
+                capturedPositions.set(attackDetails.targetId, pos);
+            }
+        }
+
+        // Process attack through ActionProcessor (ActionProcessor handles state updates)
         const result = await processAction('attack', {
             attackDetails: attackDetails
         });
@@ -590,13 +602,13 @@ const App = () => {
             });
         }
 
-        // Handle after-attack effects
+        // Handle after-attack effects with pre-captured positions
         if (result.afterAttackEffects) {
             result.afterAttackEffects.forEach(effect => {
                 if (effect.type === 'EXPLOSION') {
-                    triggerExplosion(effect.payload.targetId);
+                    const capturedPos = capturedPositions.get(effect.payload.targetId);
+                    triggerExplosion(effect.payload.targetId, capturedPos);
                 } else if (effect.type === 'HIT_ANIMATION') {
-                    // Trigger hit animation effect
                     setRecentlyHitDrones(prev => [...prev, effect.payload.targetId]);
                     setTimeout(() => {
                         setRecentlyHitDrones(prev => prev.filter(id => id !== effect.payload.targetId));
@@ -2264,18 +2276,11 @@ const App = () => {
     // Capture the current state before any updates
     const currentMandatoryAction = mandatoryAction;
 
-    addLogEntry({
-        player: localPlayerState.name,
-        actionType: 'DISCARD_MANDATORY',
-        source: card.name,
-        target: 'N/A',
-        outcome: `Discarded ${card.name}.`
-    }, 'handleConfirmMandatoryDiscard');
-
-    // Use ActionProcessor for proper state management
+    // Use ActionProcessor for proper state management (ActionProcessor handles logging)
     await processAction('optionalDiscard', {
         playerId: getLocalPlayerId(),
-        cardsToDiscard: [card]
+        cardsToDiscard: [card],
+        isMandatory: true
     });
 
     // Clear the confirmation modal immediately
@@ -2294,7 +2299,59 @@ const App = () => {
         setMandatoryAction(prev => ({ ...prev, count: newCount }));
     }
   };
-  
+
+  /**
+   * HANDLE ROUND START DISCARD
+   * Processes optional discard during optionalDiscard phase.
+   * Updates local discard count and calls ActionProcessor for state management.
+   * @param {Object} card - The card being discarded
+   */
+  const handleRoundStartDiscard = async (card) => {
+    // Use ActionProcessor for proper state management (ActionProcessor handles logging)
+    await processAction('optionalDiscard', {
+      playerId: getLocalPlayerId(),
+      cardsToDiscard: [card],
+      isMandatory: false
+    });
+
+    // Increment optional discard count
+    setOptionalDiscardCount(prev => prev + 1);
+
+    // Clear confirmation modal
+    setConfirmationModal(null);
+  };
+
+  /**
+   * HANDLE ROUND START DRAW
+   * Completes the optionalDiscard phase by committing and transitioning to draw phase.
+   * Resets the optional discard count for the next round.
+   */
+  const handleRoundStartDraw = async () => {
+    console.log('[OPTIONAL DISCARD] Player completing optional discard phase');
+
+    // Reset discard count for next round
+    setOptionalDiscardCount(0);
+
+    // Commit completion of optionalDiscard phase
+    await processAction('commitment', {
+      playerId: getLocalPlayerId(),
+      phase: 'optionalDiscard',
+      actionData: { completed: true }
+    });
+  };
+
+  /**
+   * CHECK BOTH PLAYERS HAND LIMIT COMPLETE
+   * Checks if both players have completed the optionalDiscard phase.
+   * Used to determine if phase can advance to draw.
+   * @returns {boolean} True if both players have committed
+   */
+  const checkBothPlayersHandLimitComplete = () => {
+    const commitmentStatus = actionProcessor?.getPhaseCommitmentStatus('optionalDiscard');
+    console.log('[OPTIONAL DISCARD] Commitment status:', commitmentStatus);
+    return commitmentStatus?.bothComplete || false;
+  };
+
   /**
    * HANDLE CONFIRM MANDATORY DESTROY
    * Processes confirmed mandatory drone destruction.
@@ -2507,6 +2564,10 @@ const App = () => {
         gameEngine={gameEngine}
         opponentPlayerState={opponentPlayerState}
         setAiDecisionLogToShow={setAiDecisionLogToShow}
+        optionalDiscardCount={optionalDiscardCount}
+        handleRoundStartDraw={handleRoundStartDraw}
+        handleRoundStartDiscard={handleRoundStartDiscard}
+        checkBothPlayersHandLimitComplete={checkBothPlayersHandLimitComplete}
       />
 
       {/* Modals are unaffected and remain at the end */}
