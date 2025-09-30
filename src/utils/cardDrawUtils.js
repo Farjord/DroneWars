@@ -131,7 +131,7 @@ export const performAutomaticDraw = (gameState, gameStateManager = null) => {
   // Create GameDataService instance for effective stats calculation
   let gameDataService = null;
   if (gameStateManager) {
-    gameDataService = new GameDataService(gameStateManager);
+    gameDataService = GameDataService.getInstance(gameStateManager);
   }
 
   let updatedGameState = { ...gameState };

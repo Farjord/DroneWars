@@ -4,13 +4,11 @@
 // Routes between different application screens based on app state
 // Eliminates monolithic App.jsx by separating menu from game concerns
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useGameState } from './hooks/useGameState.js';
 import gameStateManager from './state/GameStateManager.js';
 import gameFlowManager from './state/GameFlowManager.js';
 import aiPhaseProcessor from './state/AIPhaseProcessor.js';
-import fullDroneCollection from './data/droneData.js';
-import aiPersonalities from './data/aiData.js';
 import MenuScreen from './screens/MenuScreen.jsx';
 import LobbyScreen from './screens/LobbyScreen.jsx';
 import DroneSelectionScreen from './components/screens/DroneSelectionScreen.jsx';
@@ -29,6 +27,9 @@ function AppRouter() {
   const { gameState } = useGameState();
   const [isLoading, setIsLoading] = useState(true);
 
+  // Initialization guard to prevent multiple GameFlowManager initializations
+  const gameFlowInitialized = useRef(false);
+
   useEffect(() => {
     // Brief loading to ensure GameStateManager is fully initialized
     const timer = setTimeout(() => {
@@ -39,32 +40,26 @@ function AppRouter() {
   }, []);
 
   // Note: SimultaneousActionManager functionality moved to ActionProcessor
-
-  // Initialize AIPhaseProcessor with game data and dependencies
-  useEffect(() => {
-    aiPhaseProcessor.initialize(
-      aiPersonalities,
-      fullDroneCollection,
-      gameState.selectedAIPersonality || aiPersonalities[0],
-      gameStateManager.actionProcessor, // Add ActionProcessor for self-execution
-      gameStateManager // Add GameStateManager for state subscription
-    );
-    console.log('🤖 AIPhaseProcessor initialized in AppRouter with full dependencies');
-  }, [gameState.selectedAIPersonality]);
+  // Note: AIPhaseProcessor is initialized in LobbyScreen when player starts single-player game
 
   // Initialize GameFlowManager with all managers
   useEffect(() => {
-    gameFlowManager.initialize(
-      gameStateManager,
-      gameStateManager.actionProcessor, // Use ActionProcessor instance from GameStateManager
-      () => gameState.gameMode !== 'local',
-      aiPhaseProcessor // Add AIPhaseProcessor
-    );
+    if (!gameFlowInitialized.current) {
+      gameFlowManager.initialize(
+        gameStateManager,
+        gameStateManager.actionProcessor, // Use ActionProcessor instance from GameStateManager
+        () => gameState.gameMode !== 'local',
+        aiPhaseProcessor // Add AIPhaseProcessor
+      );
 
-    // Set up reverse reference for automatic phase validation
-    gameStateManager.setGameFlowManager(gameFlowManager);
+      // Set up reverse reference for automatic phase validation
+      gameStateManager.setGameFlowManager(gameFlowManager);
 
-    console.log('🔄 GameFlowManager initialized in AppRouter');
+      gameFlowInitialized.current = true;
+      console.log('🔄 GameFlowManager initialized in AppRouter');
+    } else {
+      console.log('🔄 GameFlowManager already initialized, skipping...');
+    }
   }, [gameState.gameMode]);
 
   if (isLoading) {

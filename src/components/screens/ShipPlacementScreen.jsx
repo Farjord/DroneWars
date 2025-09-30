@@ -183,7 +183,7 @@ function ShipPlacementScreen() {
       const submissionResult = await gameStateManager.actionProcessor.processCommitment({
         phase: 'placement',
         playerId: getLocalPlayerId(),
-        commitment: { placedSections: localPlacedSections }
+        actionData: { placedSections: localPlacedSections }
       });
 
       if (!submissionResult.success) {

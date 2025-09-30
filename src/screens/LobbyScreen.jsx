@@ -8,6 +8,8 @@ import { useState } from 'react';
 import { useGameState } from '../hooks/useGameState.js';
 import aiPersonalities from '../data/aiData.js';
 import fullDroneCollection from '../data/droneData.js';
+import aiPhaseProcessor from '../state/AIPhaseProcessor.js';
+import gameStateManager from '../state/GameStateManager.js';
 
 /**
  * LobbyScreen - AI selection and multiplayer setup
@@ -40,6 +42,16 @@ function LobbyScreen() {
       aiDrones.forEach(drone => {
         aiInitialCounts[drone.name] = 0;
       });
+
+      // Initialize AIPhaseProcessor for single-player game
+      aiPhaseProcessor.initialize(
+        aiPersonalities,
+        fullDroneCollection,
+        selectedAI,
+        gameStateManager.actionProcessor,
+        gameStateManager
+      );
+      console.log('🤖 AIPhaseProcessor initialized for single-player with:', selectedAI.name);
 
       // Start the game with selected AI
       gameStateManager.startGame('local',

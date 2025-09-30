@@ -49,12 +49,16 @@ class GameStateManager {
       droneSelectionTrio: [],
       gameLog: [],
 
+      // --- GAME FLOW METADATA (owned by GameFlowManager) ---
+      gameStage: 'preGame', // 'preGame', 'roundLoop', 'gameOver'
+      roundNumber: 0,
+
       // --- COMMITMENTS (for simultaneous phases) ---
       commitments: {},
     };
 
-    // Initialize action processor
-    this.actionProcessor = new ActionProcessor(this);
+    // Initialize action processor using singleton pattern
+    this.actionProcessor = ActionProcessor.getInstance(this);
 
     // Game flow manager reference (set during initialization)
     this.gameFlowManager = null;
@@ -328,7 +332,8 @@ class GameStateManager {
       'determineFirstPlayer': ['energyReset'],
       'allocateShields': ['mandatoryDroneRemoval', 'deployment'],
       'mandatoryDroneRemoval': ['deployment'],
-      'deployment': ['action', 'roundEnd'],
+      'deployment': ['deploymentComplete', 'roundEnd'],
+      'deploymentComplete': ['action'],
       'action': ['deployment', 'roundEnd', 'determineFirstPlayer', 'gameEnd'],
       'roundEnd': ['determineFirstPlayer', 'deployment', 'gameEnd'],
       'gameEnd': []

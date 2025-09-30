@@ -21,10 +21,10 @@ class GameFlowManager {
 
     // Game flow phase definitions
     this.PRE_GAME_PHASES = ['droneSelection', 'deckSelection', 'placement', 'gameInitializing'];
-    this.ROUND_PHASES = ['determineFirstPlayer', 'energyReset', 'mandatoryDiscard', 'optionalDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'action'];
+    this.ROUND_PHASES = ['determineFirstPlayer', 'energyReset', 'mandatoryDiscard', 'optionalDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'deploymentComplete', 'action'];
 
     // Phase type classification
-    this.SIMULTANEOUS_PHASES = ['droneSelection', 'deckSelection', 'placement', 'mandatoryDiscard', 'optionalDiscard', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval'];
+    this.SIMULTANEOUS_PHASES = ['droneSelection', 'deckSelection', 'placement', 'mandatoryDiscard', 'optionalDiscard', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deploymentComplete'];
     this.SEQUENTIAL_PHASES = ['deployment', 'action'];
     this.AUTOMATIC_PHASES = ['gameInitializing', 'energyReset', 'draw']; // Automatic phases handled directly by GameFlowManager
 
@@ -43,6 +43,9 @@ class GameFlowManager {
     this.isMultiplayer = false;
     this.gameDataService = null;
 
+    // Initialization guard
+    this.isInitialized = false;
+
     console.log('🎮 GameFlowManager initialized');
   }
 
@@ -54,34 +57,46 @@ class GameFlowManager {
    * @param {Object} aiPhaseProcessor - AIPhaseProcessor instance
    */
   initialize(gameStateManager, actionProcessor, isMultiplayerFn, aiPhaseProcessor) {
+    // Check if already initialized
+    if (this.isInitialized) {
+      console.log('🔧 GameFlowManager already initialized, skipping...');
+      return;
+    }
+
     this.gameStateManager = gameStateManager;
     this.actionProcessor = actionProcessor;
     this.isMultiplayer = isMultiplayerFn;
 
     // Initialize GameDataService for phase requirement checks
-    this.gameDataService = new GameDataService(gameStateManager);
+    if (!this.gameDataService) {
+      this.gameDataService = GameDataService.getInstance(gameStateManager);
+    }
 
-    // Initialize AIPhaseProcessor with execution dependencies
-    // Note: aiPhaseProcessor may already be initialized with personalities/drones elsewhere
-    if (aiPhaseProcessor && aiPhaseProcessor.initialize) {
+    // Initialize AIPhaseProcessor with execution dependencies (single-player only)
+    // Only re-initialize if in single-player mode and AI has already been set up
+    if (aiPhaseProcessor && aiPhaseProcessor.initialize && this.isMultiplayer && !this.isMultiplayer()) {
       // Get current initialization state
       const currentPersonality = aiPhaseProcessor.currentAIPersonality;
       const currentDronePool = aiPhaseProcessor.dronePool;
       const currentPersonalities = aiPhaseProcessor.aiPersonalities;
 
-      // Re-initialize with all dependencies
-      aiPhaseProcessor.initialize(
-        currentPersonalities,
-        currentDronePool,
-        currentPersonality,
-        actionProcessor,
-        gameStateManager
-      );
+      // Only re-initialize if AI has been properly set up with personality and drones
+      if (currentPersonality && currentDronePool && currentPersonalities) {
+        aiPhaseProcessor.initialize(
+          currentPersonalities,
+          currentDronePool,
+          currentPersonality,
+          actionProcessor,
+          gameStateManager
+        );
+        console.log('🔄 GameFlowManager re-initialized AIPhaseProcessor with dependencies');
+      }
     }
 
     // Subscribe to completion events from other managers
     this.setupEventListeners();
 
+    this.isInitialized = true;
     console.log('🔧 GameFlowManager initialized with external systems');
   }
 
@@ -91,7 +106,8 @@ class GameFlowManager {
   setupEventListeners() {
     // Subscribe to GameStateManager for both sequential and simultaneous phase completion detection
     if (this.gameStateManager) {
-      this.gameStateManager.subscribe((state, eventType) => {
+      this.gameStateManager.subscribe((event) => {
+        const { state, type: eventType } = event;
         this.checkSequentialPhaseCompletion(state, eventType);
         this.checkSimultaneousPhaseCompletion(state, eventType);
       });
@@ -155,8 +171,9 @@ class GameFlowManager {
     console.log(`🚀 GameFlowManager starting game flow with phase: ${startingPhase}`);
 
     this.currentPhase = startingPhase;
-    this.gameStage = 'preGame';
-    this.roundNumber = 0;
+    // Note: gameStage and roundNumber initialized in GameStateManager constructor
+    this.gameStage = this.gameStateManager.get('gameStage');
+    this.roundNumber = this.gameStateManager.get('roundNumber');
 
     // Initialize phase-specific data when entering phases
     let phaseData = {};
@@ -175,13 +192,10 @@ class GameFlowManager {
         resetPassInfo: false  // Don't reset pass info during initialization
       });
 
-      // Apply game stage, round number, and phase data directly
-      // These are initialization-only values not handled by standard phase transitions
-      this.gameStateManager.setState({
-        gameStage: this.gameStage,
-        roundNumber: this.roundNumber,
-        ...phaseData
-      }, 'GAME_INITIALIZATION', 'phaseInitialization');
+      // Apply phase data (gameStage and roundNumber already initialized in GameStateManager)
+      if (Object.keys(phaseData).length > 0) {
+        this.gameStateManager.setState(phaseData, 'GAME_INITIALIZATION', 'phaseInitialization');
+      }
     }
 
     this.emit('phaseTransition', {
@@ -199,6 +213,15 @@ class GameFlowManager {
   async onSimultaneousPhaseComplete(phase, data) {
     console.log(`✅ GameFlowManager: Simultaneous phase '${phase}' completed`, data);
 
+    // Apply commitments to permanent game state before transitioning
+    if (this.actionProcessor) {
+      const stateUpdates = this.actionProcessor.applyPhaseCommitments(phase);
+      if (Object.keys(stateUpdates).length > 0) {
+        this.gameStateManager.setState(stateUpdates, 'COMMITMENT_APPLICATION', `${phase}_completion`);
+        console.log(`📋 GameFlowManager: Applied ${phase} commitments to game state`);
+      }
+    }
+
     // Determine next phase based on current game stage
     const nextPhase = this.getNextPhase(phase);
 
@@ -212,20 +235,10 @@ class GameFlowManager {
         console.log(`🔄 GameFlowManager: Continuing with simultaneous phase '${nextPhase}'`);
         await this.transitionToPhase(nextPhase);
       }
-
-      // Clean up the completed phase AFTER transition is initiated
-      if (this.actionProcessor) {
-        this.actionProcessor.clearPhaseCommitments(phase);
-        console.log(`🧹 GameFlowManager: Cleaned up completed phase '${phase}' after transition`);
-      }
+      // Note: Commitment cleanup handled by ActionProcessor.processPhaseTransition()
     } else {
       console.log('🎯 GameFlowManager: Game flow completed or needs special handling');
-
-      // Clean up even if no next phase
-      if (this.actionProcessor) {
-        this.actionProcessor.clearPhaseCommitments(phase);
-        console.log(`🧹 GameFlowManager: Cleaned up final phase '${phase}'`);
-      }
+      // Note: Commitment cleanup handled by ActionProcessor.processPhaseTransition()
     }
   }
 
@@ -263,27 +276,33 @@ class GameFlowManager {
    * @param {string} eventType - Type of state change event
    */
   checkSimultaneousPhaseCompletion(state, eventType) {
-    // Only check on commitment changes
-    if (eventType !== 'STATE_UPDATED' || !state.commitments) {
+    // Only check on commitment changes - ignore all other state updates
+    if (eventType !== 'COMMITMENT_UPDATE' || !state.commitments) {
       return;
     }
+
+    console.log('🔍 checkSimultaneousPhaseCompletion called:', { eventType, currentPhase: state.turnPhase });
 
     const currentPhase = state.turnPhase;
 
     // Only check for simultaneous phases
     if (!this.SIMULTANEOUS_PHASES.includes(currentPhase)) {
+      console.log('🔍 Early return: Not a simultaneous phase', { currentPhase, simultaneousPhases: this.SIMULTANEOUS_PHASES });
       return;
     }
 
     // Check if commitment data exists for current phase
     const phaseCommitments = state.commitments[currentPhase];
     if (!phaseCommitments) {
+      console.log('🔍 Early return: No commitments for current phase', { currentPhase, allCommitments: Object.keys(state.commitments) });
       return;
     }
 
     // Check if both players have committed
     const bothComplete = phaseCommitments.player1?.completed &&
                         phaseCommitments.player2?.completed;
+
+    console.log('🔍 Checking completion status:', { currentPhase, player1Complete: phaseCommitments.player1?.completed, player2Complete: phaseCommitments.player2?.completed, bothComplete });
 
     if (bothComplete) {
       console.log(`🎯 GameFlowManager: Detected simultaneous phase completion via state monitoring: ${currentPhase}`);
@@ -440,7 +459,7 @@ class GameFlowManager {
 
       // Create GameDataService instance for effective stats calculation
       const GameDataService = (await import('../services/GameDataService.js')).default;
-      const gameDataService = new GameDataService(this.gameStateManager);
+      const gameDataService = GameDataService.getInstance(this.gameStateManager);
 
       // Calculate effective ship stats for both players
       const player1EffectiveStats = gameDataService.getEffectiveShipStats(

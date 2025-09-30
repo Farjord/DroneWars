@@ -27,7 +27,7 @@ import CardSelectionModal from './CardSelectionModal';
 import AICardPlayReportModal from './components/modals/AICardPlayReportModal.jsx';
 import AIActionReportModal from './components/modals/AIActionReportModal.jsx';
 import DetailedDroneModal from './components/modals/debug/DetailedDroneModal.jsx';
-import { FirstPlayerModal, ActionPhaseStartModal, RoundEndModal } from './components/modals/GamePhaseModals.jsx';
+import { FirstPlayerModal, DeploymentCompleteModal, RoundEndModal } from './components/modals/GamePhaseModals.jsx';
 import OpponentTurnModal from './components/modals/OpponentTurnModal.jsx';
 import WaitingForPlayerModal from './components/modals/WaitingForPlayerModal.jsx';
 import ConfirmationModal from './components/modals/ConfirmationModal.jsx';
@@ -120,7 +120,7 @@ const App = () => {
   const [moveConfirmation, setMoveConfirmation] = useState(null);
   const [detailedDrone, setDetailedDrone] = useState(null);
   const [showFirstPlayerModal, setShowFirstPlayerModal] = useState(false);
-  const [showActionPhaseStartModal, setShowActionPhaseStartModal] = useState(false);
+  const [showDeploymentCompleteModal, setShowDeploymentCompleteModal] = useState(false);
   const [showRoundEndModal, setShowRoundEndModal] = useState(false);
   const [showOpponentTurnModal, setShowOpponentTurnModal] = useState(false);
   const [waitingForPlayerPhase, setWaitingForPlayerPhase] = useState(null); // Track which phase we're waiting for player acknowledgment
@@ -182,6 +182,9 @@ const App = () => {
   const [initialShieldAllocation, setInitialShieldAllocation] = useState(null); // For shield allocation reset
   const [reallocationAbility, setReallocationAbility] = useState(null);
 
+  // Phase and turn tracking for modal management
+  const [lastTurnPhase, setLastTurnPhase] = useState(null); // Track last phase to detect phase transitions
+
 
   // --- 3.3 REFS ---
   // useRef declarations for DOM manipulation and async operations.
@@ -237,10 +240,25 @@ const App = () => {
         const { newPhase, previousPhase, firstPlayerResult } = event;
         console.log(`🔄 App.jsx handling phase transition: ${previousPhase} → ${newPhase}`);
 
+        // Clear opponent turn modal on phase transitions
+        // The modal will be re-shown if needed by the currentPlayer effect
+        setShowOpponentTurnModal(false);
+
+        // Clear waiting modal when transitioning away from the waiting phase
+        if (waitingForPlayerPhase === previousPhase) {
+          setWaitingForPlayerPhase(null);
+        }
+
         // Handle first player determination phase
         if (newPhase === 'determineFirstPlayer') {
           console.log('🎯 First player determination phase started, showing modal');
           setShowFirstPlayerModal(true);
+        }
+
+        // Handle deployment complete phase
+        if (newPhase === 'deploymentComplete') {
+          console.log('🎯 Deployment complete phase started, showing modal');
+          setShowDeploymentCompleteModal(true);
         }
 
       } else if (type === 'phaseComplete') {
@@ -258,6 +276,11 @@ const App = () => {
           console.log('✅ Both players acknowledged first player determination');
         }
 
+        if (phase === 'deploymentComplete') {
+          // Both players have acknowledged deployment complete
+          console.log('✅ Both players acknowledged deployment complete');
+        }
+
       }
     };
 
@@ -266,9 +289,8 @@ const App = () => {
 
     return () => {
       unsubscribeGameFlow();
-      unsubscribeSimultaneous();
     };
-  }, [isMultiplayer, getLocalPlayerId, setModalContent]);
+  }, [isMultiplayer, getLocalPlayerId, setModalContent, waitingForPlayerPhase]);
 
   // ========================================
   // SECTION 5: COMPUTED VALUES & MEMOIZATION
@@ -571,7 +593,15 @@ const App = () => {
         // Handle after-attack effects
         if (result.afterAttackEffects) {
             result.afterAttackEffects.forEach(effect => {
-                if (effect.type === 'EXPLOSION') triggerExplosion(effect.payload.targetId);
+                if (effect.type === 'EXPLOSION') {
+                    triggerExplosion(effect.payload.targetId);
+                } else if (effect.type === 'HIT_ANIMATION') {
+                    // Trigger hit animation effect
+                    setRecentlyHitDrones(prev => [...prev, effect.payload.targetId]);
+                    setTimeout(() => {
+                        setRecentlyHitDrones(prev => prev.filter(id => id !== effect.payload.targetId));
+                    }, 500);
+                }
             });
         }
 
@@ -1031,53 +1061,51 @@ const App = () => {
     if (turnPhase !== 'deployment' && turnPhase !== 'action') return;
 
     // Don't interfere with other modal states
-    if (winner || showFirstPlayerModal || showActionPhaseStartModal || showRoundEndModal) return;
+    if (winner || showFirstPlayerModal || showDeploymentCompleteModal || showRoundEndModal) return;
 
     // Don't update if there are active confirmations
     if (deploymentConfirmation || moveConfirmation || cardConfirmation) return;
 
-    // Only update when currentPlayer actually changes (not when modal is closed)
-    if (currentPlayer === lastCurrentPlayer) return;
+    // Only update when currentPlayer OR turnPhase changes
+    // This allows the modal to show when transitioning between phases (deployment → action)
+    // even if the same player remains active (e.g., AI is first player in both phases)
+    if (currentPlayer === lastCurrentPlayer && turnPhase === lastTurnPhase) return;
 
     const myTurn = isMyTurn();
     const isMultiplayerGame = isMultiplayer();
 
-    console.log(`[MODAL UPDATE] Turn change detected:`, {
+    console.log(`[MODAL UPDATE] Turn/phase change detected:`, {
       currentPlayer,
       lastCurrentPlayer,
-      myTurn,
       turnPhase,
+      lastTurnPhase,
+      myTurn,
       isMultiplayerGame,
       currentModalTitle: modalContent?.title
     });
 
-    // Update the tracked currentPlayer
+    // Update the tracked currentPlayer and turnPhase
     setLastCurrentPlayer(currentPlayer);
+    setLastTurnPhase(turnPhase);
 
 
     if (myTurn) {
       // It's now the local player's turn
+
+      // Clear any existing modal (like "Opponent's Turn") when it becomes player's turn
+      setModalContent(null);
+      setShowOpponentTurnModal(false);
+
       if (turnPhase === 'deployment') {
         const deploymentResource = turn === 1 ? 'Initial Deployment Points' : 'Energy';
-
-
-        // Clear any existing modal (like "Opponent's Turn") when it becomes player's turn
-        setModalContent(null);
-        setShowOpponentTurnModal(false);
-      } else if (turnPhase === 'action') {
-        setModalContent({
-          title: "Action Phase - Your Turn",
-          text: "It's your turn to act. Select a drone to move or attack, play a card, or use an ability.",
-          isBlocking: true
-        });
-        setShowOpponentTurnModal(false);
+        // Any deployment-specific logic would go here
       }
     } else {
       // It's now the opponent's turn
       setOpponentTurnData({ phase: turnPhase, actionType: 'action' });
       setShowOpponentTurnModal(true);
     }
-  }, [currentPlayer, turnPhase, isMyTurn, isMultiplayer, turn, winner, showFirstPlayerModal, showActionPhaseStartModal, showRoundEndModal, deploymentConfirmation, moveConfirmation, cardConfirmation, lastCurrentPlayer, modalContent?.title]);
+  }, [currentPlayer, turnPhase, isMyTurn, isMultiplayer, turn, winner, showFirstPlayerModal, showDeploymentCompleteModal, showRoundEndModal, deploymentConfirmation, moveConfirmation, cardConfirmation, lastCurrentPlayer, lastTurnPhase, modalContent?.title]);
 
   /**
    * HANDLE RESET
@@ -1257,6 +1285,29 @@ const App = () => {
       if (!bothComplete && gameState.gameMode !== 'local') {
         // In multiplayer, show waiting state if opponent hasn't acknowledged
         setWaitingForPlayerPhase('determineFirstPlayer');
+      }
+    }
+  };
+
+  /**
+   * HANDLE DEPLOYMENT COMPLETE ACKNOWLEDGMENT
+   * Acknowledges deployment complete transition for the current player.
+   * Triggers waiting state if opponent hasn't acknowledged yet.
+   */
+  const handleDeploymentCompleteAcknowledgment = async () => {
+    console.log('🎯 App.jsx: Acknowledging deployment complete');
+
+    const localPlayerId = getLocalPlayerId();
+    const result = await processAction('acknowledgeDeploymentComplete', { playerId: localPlayerId });
+
+    if (result.success) {
+      setShowDeploymentCompleteModal(false);
+
+      // Check if we need to show waiting state using fresh state from result
+      const bothComplete = result.data?.bothPlayersComplete || false;
+      if (!bothComplete) {
+        // Show waiting state if opponent hasn't acknowledged (works for both single-player AI and multiplayer)
+        setWaitingForPlayerPhase('deploymentComplete');
       }
     }
   };
@@ -2470,9 +2521,13 @@ const App = () => {
         firstPasserOfPreviousRound={firstPasserOfPreviousRound}
         onContinue={handleFirstPlayerAcknowledgment}
       />
-      <ActionPhaseStartModal
-        show={showActionPhaseStartModal}
-        onContinue={() => setShowActionPhaseStartModal(false)}
+      <DeploymentCompleteModal
+        show={showDeploymentCompleteModal}
+        firstPlayerOfRound={firstPlayerOfRound}
+        localPlayerId={getLocalPlayerId()}
+        localPlayerName={localPlayerState.name}
+        opponentPlayerName={opponentPlayerState.name}
+        onContinue={handleDeploymentCompleteAcknowledgment}
       />
       <RoundEndModal
         show={showRoundEndModal}

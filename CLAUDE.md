@@ -279,21 +279,11 @@ const sections = gameState.players[playerId].placedSections; // ❌ WRONG - Doub
 
 **GameFlowManager**
 - Master game flow controller
-- Phase transition logic and validation
-- Automatic phase processing for system-driven phases
+- Phase transition orchestration via ActionProcessor
+- Automatic phase processing for system-driven phases (draw, energy reset)
 - Conditional phase execution based on game state
-
-**SequentialPhaseManager**
-- Turn-based phase coordination (deployment, action)
-- AI turn scheduling and management
-- Pass logic implementation
-- Phase completion detection
-
-**SimultaneousActionManager**
-- Commitment-based phase coordination
-- Player action collection and synchronization
-- Validation of simultaneous submissions
-- AI auto-completion for single-player mode
+- State monitoring for sequential and simultaneous phase completion
+- **Note**: Delegates all state updates to ActionProcessor
 
 ### **Data Computation Layer** ✅ IMPLEMENTED
 
@@ -309,27 +299,37 @@ const sections = gameState.players[playerId].placedSections; // ❌ WRONG - Doub
 - Hit/miss statistics tracking for performance monitoring
 - Memory-efficient with deterministic key generation
 
-### **GameStateManager Update Ownership** ✅ IMPLEMENTED
+### **GameStateManager Update Ownership** ✅ REFACTORED (2025-09-29)
 
-**Strict ownership boundaries prevent race conditions and architectural violations:**
+**Simplified ownership after removing SequentialPhaseManager and SimultaneousActionManager:**
 
-**GameFlowManager** (Master Orchestrator):
+**ActionProcessor** (Primary State Executor):
+- OWNS: ALL player state updates (hand, energy, drones, ships, etc.)
+- OWNS: `currentPlayer` (turn transitions within phases)
+- OWNS: `passInfo` (all pass state management)
+- OWNS: `commitments` (simultaneous phase commitment tracking)
+- OWNS: `placedSections` (ship placement data)
+- Executes phase transitions via `processPhaseTransition()`
+- Single source of truth for all game state changes
+
+**GameFlowManager** (Phase Orchestrator):
 - OWNS: `turnPhase`, `gameStage`, `roundNumber`, `gameActive`
-- ALLOWED: Player states during automatic phases (energyReset, draw)
+- Monitors state via GameStateManager subscriptions
+- Delegates ALL state updates to ActionProcessor
+- Only performs metadata updates (phase tracking, game stage)
+- Decides WHEN to transition, ActionProcessor executes HOW
 
-**SequentialPhaseManager** (Sequential Phase Executor):
-- OWNS: `passInfo` (firstPasser, player1Passed, player2Passed) during sequential phases
-- NOT ALLOWED: Phase transitions, player game state
+**AIPhaseProcessor** (AI Decision Interface):
+- DOES NOT own state - delegates all updates to ActionProcessor
+- Self-triggers on AI turns via GameStateManager subscription
+- Makes decisions, then calls ActionProcessor methods
 
-**SimultaneousActionManager** (Simultaneous Phase Executor):
-- OWNS: Player state updates from phase results, placement data, shield allocation
-- NOT ALLOWED: `turnPhase`, `currentPlayer`, `passInfo`
+**Architecture Pattern**:
+```
+GameFlowManager (orchestrate) → ActionProcessor (execute) → GameStateManager (store)
+```
 
-**ActionProcessor** (Action Executor):
-- OWNS: Player state updates from actions, turn transitions within phase (`currentPlayer`)
-- NOT ALLOWED: `turnPhase`, `passInfo` (routes to appropriate manager)
-
-**Enforcement**: GameStateManager validates all updates and warns about ownership violations
+**Enforcement**: Single ownership eliminates race conditions and architectural violations
 
 ### **AI Decision Layer**
 

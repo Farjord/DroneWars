@@ -25,7 +25,7 @@ export const useGameData = () => {
   // Create GameDataService instance (memoized to prevent recreation)
   const gameDataService = useMemo(() => {
     if (!gameStateManager) return null;
-    return new GameDataService(gameStateManager);
+    return GameDataService.getInstance(gameStateManager);
   }, [gameStateManager]);
 
   // Track cache stats for debugging/optimization

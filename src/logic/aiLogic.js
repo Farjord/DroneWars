@@ -44,7 +44,7 @@ import GameDataService from '../services/GameDataService.js';
 
 const handleOpponentTurn = ({ player1, player2, turn, placedSections, opponentPlacedSections, getShipStatus, gameStateManager, addLogEntry }) => {
     // Create GameDataService instance for centralized data computation
-    const gameDataService = new GameDataService(gameStateManager);
+    const gameDataService = GameDataService.getInstance(gameStateManager);
     const effectiveStats = gameDataService.getEffectiveShipStats(player2, opponentPlacedSections).totals;
     const totalDrones = Object.values(player2.dronesOnBoard).flat().length;
     const availableResources = turn === 1
@@ -203,7 +203,7 @@ const currentLaneScores = {
 
 const handleOpponentAction = ({ player1, player2, placedSections, opponentPlacedSections, getShipStatus, getLaneOfDrone, gameStateManager, getValidTargets, addLogEntry }) => {
     // Create GameDataService instance for centralized data computation
-    const gameDataService = new GameDataService(gameStateManager);
+    const gameDataService = GameDataService.getInstance(gameStateManager);
     const allSections = { player1: placedSections, player2: opponentPlacedSections };
     const possibleActions = [];
     const uniqueCardPlays = new Set();

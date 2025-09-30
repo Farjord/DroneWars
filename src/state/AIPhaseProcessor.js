@@ -19,6 +19,10 @@ class AIPhaseProcessor {
     // AI turn management
     this.isProcessing = false;
     this.turnTimer = null;
+
+    // Initialization guards and cleanup tracking
+    this.isInitialized = false;
+    this.stateSubscriptionCleanup = null;
   }
 
   /**
@@ -30,6 +34,18 @@ class AIPhaseProcessor {
    * @param {Object} gameStateManager - GameStateManager instance for state updates
    */
   initialize(aiPersonalities, dronePool, currentPersonality, actionProcessor = null, gameStateManager = null) {
+    // Check if already initialized
+    if (this.isInitialized) {
+      console.log('🤖 AIPhaseProcessor already initialized, skipping...');
+      return;
+    }
+
+    // Clean up any previous subscription
+    if (this.stateSubscriptionCleanup) {
+      this.stateSubscriptionCleanup();
+      this.stateSubscriptionCleanup = null;
+    }
+
     this.aiPersonalities = aiPersonalities;
     this.dronePool = dronePool;
     this.currentAIPersonality = currentPersonality;
@@ -37,8 +53,8 @@ class AIPhaseProcessor {
     this.gameStateManager = gameStateManager;
 
     // Initialize GameDataService for centralized data computation
-    if (gameStateManager) {
-      this.gameDataService = new GameDataService(gameStateManager);
+    if (gameStateManager && !this.gameDataService) {
+      this.gameDataService = GameDataService.getInstance(gameStateManager);
 
       // Create wrapper function for ship stats compatibility with aiLogic.js
       this.effectiveShipStatsWrapper = (playerState, placedSections) => {
@@ -48,10 +64,12 @@ class AIPhaseProcessor {
 
     // Subscribe to game state changes for AI turn detection
     if (gameStateManager) {
-      gameStateManager.subscribe((state) => {
-        this.checkForAITurn(state);
+      this.stateSubscriptionCleanup = gameStateManager.subscribe((event) => {
+        this.checkForAITurn(event.state);
       });
     }
+
+    this.isInitialized = true;
 
     console.log('🤖 AIPhaseProcessor initialized with personality:', currentPersonality?.name || 'Default');
     if (actionProcessor) {

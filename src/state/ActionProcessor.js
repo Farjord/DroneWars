@@ -9,9 +9,38 @@ import aiPhaseProcessor from './AIPhaseProcessor.js';
 import GameDataService from '../services/GameDataService.js';
 
 class ActionProcessor {
+  // Singleton instance
+  static instance = null;
+
+  /**
+   * Get singleton instance of ActionProcessor
+   * @param {Object} gameStateManager - GameStateManager instance
+   * @returns {ActionProcessor} Single shared instance
+   */
+  static getInstance(gameStateManager) {
+    if (!ActionProcessor.instance) {
+      ActionProcessor.instance = new ActionProcessor(gameStateManager);
+    }
+    return ActionProcessor.instance;
+  }
+
+  /**
+   * Reset singleton instance (for testing and new games)
+   */
+  static reset() {
+    ActionProcessor.instance = null;
+    console.log('⚙️ ActionProcessor singleton reset');
+  }
+
   constructor(gameStateManager) {
+    // Enforce singleton pattern
+    if (ActionProcessor.instance) {
+      console.warn('⚠️ ActionProcessor already exists. Use getInstance() instead of new ActionProcessor()');
+      return ActionProcessor.instance;
+    }
+
     this.gameStateManager = gameStateManager;
-    this.gameDataService = new GameDataService(gameStateManager);
+    this.gameDataService = GameDataService.getInstance(gameStateManager);
 
     // Wrapper function for game logic compatibility
     this.effectiveStatsWrapper = (drone, lane) => {
@@ -38,6 +67,8 @@ class ActionProcessor {
       commitment: false,
       processFirstPlayerDetermination: false
     };
+
+    console.log('⚙️ ActionProcessor initialized');
   }
 
   /**
@@ -215,6 +246,9 @@ class ActionProcessor {
 
         case 'acknowledgeFirstPlayer':
           return await this.acknowledgeFirstPlayer(payload.playerId);
+
+        case 'acknowledgeDeploymentComplete':
+          return await this.acknowledgeDeploymentComplete(payload.playerId);
 
         case 'processFirstPlayerDetermination':
           return await this.processFirstPlayerDetermination();
@@ -415,6 +449,42 @@ class ActionProcessor {
       player2: currentState.opponentPlacedSections
     };
 
+    // Look up full target object from targetId
+    // gameEngine.resolveCardPlay expects a target object with .owner, .id, .name properties
+    let target = null;
+    if (targetId) {
+      // Search in both players' drones
+      for (const pid of ['player1', 'player2']) {
+        for (const lane of ['lane1', 'lane2', 'lane3']) {
+          const drones = playerStates[pid].dronesOnBoard[lane] || [];
+          const drone = drones.find(d => d.id === targetId);
+          if (drone) {
+            target = { ...drone, owner: pid };
+            break;
+          }
+        }
+        if (target) break;
+      }
+
+      // If not found in drones, check ship sections
+      if (!target) {
+        for (const pid of ['player1', 'player2']) {
+          const sections = playerStates[pid].shipSections;
+          for (const sectionName in sections) {
+            if (sections[sectionName].id === targetId) {
+              target = {
+                ...sections[sectionName],
+                name: sectionName,
+                owner: pid
+              };
+              break;
+            }
+          }
+          if (target) break;
+        }
+      }
+    }
+
     const callbacks = {
       logCallback: (entry) => this.gameStateManager.addLogEntry(entry),
       explosionCallback: () => {}, // UI effect - handled by App.jsx
@@ -427,7 +497,7 @@ class ActionProcessor {
 
     const result = gameEngine.resolveCardPlay(
       card,
-      targetId,
+      target,
       playerId,
       playerStates,
       placedSections,
@@ -581,6 +651,14 @@ class ActionProcessor {
     });
 
     const stateUpdates = {};
+
+    // Initialize currentPlayer for sequential phases (turn-based phases)
+    const sequentialPhases = ['deployment', 'action'];
+    if (sequentialPhases.includes(newPhase)) {
+      // Set currentPlayer to firstPlayerOfRound for sequential phases
+      stateUpdates.currentPlayer = currentState.firstPlayerOfRound;
+      console.log(`[PHASE TRANSITION DEBUG] Sequential phase: Setting currentPlayer to firstPlayerOfRound: ${currentState.firstPlayerOfRound}`);
+    }
 
     // Handle phase-specific initialization
     if (newPhase === 'allocateShields') {
@@ -852,8 +930,10 @@ class ActionProcessor {
           case 'attack':
             return await this.processAttack({
               attackDetails: {
-                attackerId: chosenAction.attacker.id,
-                targetId: chosenAction.target.id,
+                attacker: chosenAction.attacker,        // Full object
+                target: chosenAction.target,            // Full object
+                targetType: chosenAction.targetType || 'drone',  // Default to drone
+                lane: chosenAction.lane,                // Lane where attack occurs
                 attackingPlayer: 'player2',
                 aiContext: aiDecision.logContext
               }
@@ -1037,12 +1117,8 @@ class ActionProcessor {
             throw new Error(`Unknown AI action subtype: ${chosenAction.type}`);
         }
 
-        // Handle turn transition for action phase
-        if (actionResult.shouldEndTurn !== false) {
-          await this.processTurnTransition({
-            newPlayer: playerId === 'player1' ? 'player2' : 'player1'
-          });
-        }
+        // Turn transitions are handled by individual action processors (processAttack, processAbility, etc.)
+        // No need to call processTurnTransition here to avoid double transitions
 
         return actionResult;
 
@@ -1118,6 +1194,14 @@ class ActionProcessor {
     );
 
     this.gameStateManager.updatePlayerState(playerId, moveResult.newPlayerState);
+
+    // Handle turn transition for moves without goAgain
+    if (moveResult.shouldEndTurn) {
+      await this.processTurnTransition({
+        newPlayer: playerId === 'player1' ? 'player2' : 'player1'
+      });
+    }
+
     return moveResult;
   }
 
@@ -1192,8 +1276,29 @@ class ActionProcessor {
     // Update pass info through GameStateManager
     this.gameStateManager.setPassInfo(newPassInfo, 'ActionProcessor');
 
-    // Phase and turn transitions are now handled by SequentialPhaseManager
-    // ActionProcessor only updates passInfo - SequentialPhaseManager detects changes and handles transitions
+    // Handle turn switching when one player passes but the other hasn't
+    // ActionProcessor owns currentPlayer per ARCHITECTURE_REFACTOR.md
+    // GameFlowManager will handle phase transitions when both players pass
+    const bothPassed = newPassInfo.player1Passed && newPassInfo.player2Passed;
+
+    if (!bothPassed) {
+      // Switch to the player who hasn't passed yet
+      let nextPlayer = null;
+      if (playerId === 'player1' && !newPassInfo.player2Passed) {
+        nextPlayer = 'player2';
+      } else if (playerId === 'player2' && !newPassInfo.player1Passed) {
+        nextPlayer = 'player1';
+      }
+
+      if (nextPlayer) {
+        console.log(`[PLAYER PASS DEBUG] Switching turn to ${nextPlayer} (opponent hasn't passed)`);
+        this.gameStateManager.setState({
+          currentPlayer: nextPlayer
+        }, 'TURN_SWITCH', 'playerPass');
+      }
+    } else {
+      console.log('[PLAYER PASS DEBUG] Both players passed - GameFlowManager will handle phase transition');
+    }
 
     // Sync to P2P if multiplayer
     if (this.p2pManager && this.p2pManager.isConnected) {
@@ -1321,7 +1426,7 @@ class ActionProcessor {
     );
 
     // Update state with first player information
-    this.gameStateManager.updateState({
+    this.gameStateManager.setState({
       currentPlayer: firstPlayer,
       firstPlayerOfRound: firstPlayer
     });
@@ -1353,6 +1458,22 @@ class ActionProcessor {
     });
   }
 
+
+  /**
+   * Process deployment complete acknowledgment
+   * @param {string} playerId - Player acknowledging
+   * @returns {Object} Acknowledgment result
+   */
+  async acknowledgeDeploymentComplete(playerId) {
+    console.log(`🎯 ActionProcessor: Processing deployment complete acknowledgment for ${playerId}`);
+
+    // Use the new commitment system for acknowledgments
+    return await this.processCommitment({
+      playerId,
+      phase: 'deploymentComplete',
+      actionData: { acknowledged: true }
+    });
+  }
 
   /**
    * Get phase commitment status
@@ -1400,7 +1521,7 @@ class ActionProcessor {
       console.log('🔄 Cleared all phase commitments');
     }
 
-    this.gameStateManager.updateState({
+    this.gameStateManager.setState({
       commitments: currentState.commitments
     });
   }
@@ -1432,10 +1553,10 @@ class ActionProcessor {
       ...actionData
     };
 
-    // Update the state
-    this.gameStateManager.updateState({
+    // Update the state with specific event type for commitment changes
+    this.gameStateManager.setState({
       commitments: currentState.commitments
-    });
+    }, 'COMMITMENT_UPDATE');
 
     // Check if both players have committed
     const bothComplete = currentState.commitments[phase].player1.completed &&
@@ -1511,7 +1632,7 @@ class ActionProcessor {
             payload: {
               playerId: 'player2',
               phase: 'placement',
-              actionData: { placement: aiResult }
+              actionData: { placedSections: aiResult }
             }
           });
           break;
@@ -1576,6 +1697,25 @@ class ActionProcessor {
           });
           break;
 
+        case 'deploymentComplete':
+          // AI acknowledges deployment completion with 3-second delay for testing
+          console.log('🤖 AI will acknowledge deployment complete after 3 second delay (for testing)');
+          await new Promise(resolve => {
+            setTimeout(async () => {
+              await this.queueAction({
+                type: 'commitment',
+                payload: {
+                  playerId: 'player2',
+                  phase: 'deploymentComplete',
+                  actionData: { acknowledged: true }
+                }
+              });
+              console.log('🤖 AI acknowledged deployment complete');
+              resolve();
+            }, 3000);
+          });
+          break;
+
         default:
           console.warn(`⚠️ No AI handler for phase: ${phase}`);
       }
@@ -1583,6 +1723,117 @@ class ActionProcessor {
     } catch (error) {
       console.error('AI commitment error:', error);
     }
+  }
+
+  /**
+   * Apply phase commitments to permanent game state
+   * Transfers commitment data from temporary commitments object to actual game state fields
+   * @param {string} phase - Phase name
+   * @returns {Object} State updates to apply
+   */
+  applyPhaseCommitments(phase) {
+    const currentState = this.gameStateManager.getState();
+    const phaseCommitments = currentState.commitments[phase];
+
+    if (!phaseCommitments) {
+      console.warn(`⚠️ No commitments found for phase: ${phase}`);
+      return {};
+    }
+
+    console.log(`📋 ActionProcessor: Applying ${phase} commitments to game state`, phaseCommitments);
+
+    const stateUpdates = {};
+
+    switch(phase) {
+      case 'droneSelection':
+        // Apply drone selections to player states
+        if (phaseCommitments.player1?.drones) {
+          stateUpdates.player1 = {
+            ...currentState.player1,
+            activeDronePool: phaseCommitments.player1.drones,
+            deployedDroneCounts: phaseCommitments.player1.drones.reduce((acc, drone) => {
+              acc[drone.name] = 0;
+              return acc;
+            }, {})
+          };
+        }
+        if (phaseCommitments.player2?.drones) {
+          stateUpdates.player2 = {
+            ...currentState.player2,
+            activeDronePool: phaseCommitments.player2.drones,
+            deployedDroneCounts: phaseCommitments.player2.drones.reduce((acc, drone) => {
+              acc[drone.name] = 0;
+              return acc;
+            }, {})
+          };
+        }
+        console.log('✅ Applied drone selections to player states');
+        break;
+
+      case 'deckSelection':
+        // Apply deck selections to player states
+        if (phaseCommitments.player1?.deck) {
+          stateUpdates.player1 = {
+            ...currentState.player1,
+            deck: phaseCommitments.player1.deck,
+            discard: []
+          };
+        }
+        if (phaseCommitments.player2?.deck) {
+          stateUpdates.player2 = {
+            ...currentState.player2,
+            deck: phaseCommitments.player2.deck,
+            discard: []
+          };
+        }
+        console.log('✅ Applied deck selections to player states');
+        break;
+
+      case 'placement':
+        // Apply ship placements to top-level game state
+        if (phaseCommitments.player1?.placedSections) {
+          stateUpdates.placedSections = phaseCommitments.player1.placedSections;
+        }
+        if (phaseCommitments.player2?.placedSections) {
+          stateUpdates.opponentPlacedSections = phaseCommitments.player2.placedSections;
+        }
+        console.log('✅ Applied ship placements:', {
+          player1: stateUpdates.placedSections,
+          player2: stateUpdates.opponentPlacedSections
+        });
+        break;
+
+      case 'determineFirstPlayer':
+        // First player determination handled separately via processFirstPlayerDetermination
+        console.log('✅ First player determination (handled separately)');
+        break;
+
+      case 'mandatoryDiscard':
+      case 'optionalDiscard':
+        // Discard handled via card actions during commitment
+        console.log('✅ Discard commitments (handled via card actions)');
+        break;
+
+      case 'allocateShields':
+        // Shield allocation handled separately
+        console.log('✅ Shield allocation (handled separately)');
+        break;
+
+      case 'deploymentComplete':
+        // Acknowledgment-only phase, no state changes needed
+        console.log('✅ Deployment complete acknowledgments (no state changes)');
+        break;
+
+      case 'determineFirstPlayer':
+        // First player determination handled by GameFlowManager
+        console.log('✅ First player determination (handled by GameFlowManager)');
+        break;
+
+      default:
+        console.warn(`⚠️ No commitment application logic for phase: ${phase}`);
+    }
+
+    return stateUpdates;
   }
 
   /**

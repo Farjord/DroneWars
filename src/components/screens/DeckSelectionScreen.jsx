@@ -90,7 +90,7 @@ function DeckSelectionScreen() {
       const submissionResult = await gameStateManager.actionProcessor.processCommitment({
         phase: 'deckSelection',
         playerId: localPlayerId,
-        commitment: { deck: standardDeck }
+        actionData: { deck: standardDeck }
       });
 
       if (!submissionResult.success) {

@@ -18,12 +18,44 @@ import gameDataCache from './gameDataCache.js';
  * - Maintains server-ready architecture principles
  */
 class GameDataService {
+  // Singleton instance
+  static instance = null;
+
+  /**
+   * Get singleton instance of GameDataService
+   * @param {Object} gameStateManager - GameStateManager instance
+   * @returns {GameDataService} Single shared instance
+   */
+  static getInstance(gameStateManager) {
+    if (!GameDataService.instance) {
+      GameDataService.instance = new GameDataService(gameStateManager);
+    }
+    return GameDataService.instance;
+  }
+
+  /**
+   * Reset singleton instance (for testing and new games)
+   */
+  static reset() {
+    if (GameDataService.instance && GameDataService.instance.stateSubscriptionCleanup) {
+      GameDataService.instance.stateSubscriptionCleanup();
+    }
+    GameDataService.instance = null;
+    console.log('🎯 GameDataService singleton reset');
+  }
+
   constructor(gameStateManager) {
+    // Enforce singleton pattern
+    if (GameDataService.instance) {
+      console.warn('⚠️ GameDataService already exists. Use getInstance() instead of new GameDataService()');
+      return GameDataService.instance;
+    }
+
     this.gameStateManager = gameStateManager;
     this.cache = gameDataCache;
 
     // Subscribe to game state changes to invalidate cache
-    this.gameStateManager.subscribe(() => {
+    this.stateSubscriptionCleanup = this.gameStateManager.subscribe(() => {
       this.cache.invalidateAll();
     });
 

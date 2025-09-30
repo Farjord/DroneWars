@@ -1629,7 +1629,7 @@ const resolveSingleMove = (card, droneToMove, fromLane, toLane, playerState, opp
 
     return {
         newPlayerState: newState,
-        shouldEndTurn: false, // Single move cards have "goAgain: true"
+        shouldEndTurn: !card.effect.goAgain, // Respect goAgain property like other effects
         shouldCancelCardSelection: true,
         shouldClearMultiSelectState: true
     };
@@ -2100,7 +2100,6 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
 };
 
 const resolveDestroyEffect = (effect, target, actingPlayerId, playerStates, callbacks) => {
-    const { explosionCallback } = callbacks;
     const newPlayerStates = {
         player1: JSON.parse(JSON.stringify(playerStates.player1)),
         player2: JSON.parse(JSON.stringify(playerStates.player2))
@@ -2108,6 +2107,7 @@ const resolveDestroyEffect = (effect, target, actingPlayerId, playerStates, call
 
     const opponentPlayerId = actingPlayerId === 'player1' ? 'player2' : 'player1';
     const targetPlayerState = newPlayerStates[opponentPlayerId];
+    const additionalEffects = [];
 
     if (effect.scope === 'LANE' && target.id) {
         // Destroy all drones in a lane
@@ -2115,7 +2115,8 @@ const resolveDestroyEffect = (effect, target, actingPlayerId, playerStates, call
         const destroyed = targetPlayerState.dronesOnBoard[laneId] || [];
 
         destroyed.forEach(drone => {
-            if (explosionCallback) explosionCallback(drone.id);
+            // Add explosion effect for each destroyed drone
+            additionalEffects.push({ type: 'EXPLOSION', payload: { targetId: drone.id } });
             const updates = onDroneDestroyed(targetPlayerState, drone);
             targetPlayerState.deployedDroneCounts = {
                 ...(targetPlayerState.deployedDroneCounts || {}),
@@ -2129,7 +2130,8 @@ const resolveDestroyEffect = (effect, target, actingPlayerId, playerStates, call
         if (laneId) {
             const droneToDestroy = targetPlayerState.dronesOnBoard[laneId].find(d => d.id === target.id);
             if (droneToDestroy) {
-                if (explosionCallback) explosionCallback(droneToDestroy.id);
+                // Add explosion effect for destroyed drone
+                additionalEffects.push({ type: 'EXPLOSION', payload: { targetId: droneToDestroy.id } });
                 const updates = onDroneDestroyed(targetPlayerState, droneToDestroy);
                 targetPlayerState.deployedDroneCounts = {
                     ...(targetPlayerState.deployedDroneCounts || {}),
@@ -2142,7 +2144,7 @@ const resolveDestroyEffect = (effect, target, actingPlayerId, playerStates, call
 
     return {
         newPlayerStates,
-        additionalEffects: []
+        additionalEffects
     };
 };
 
@@ -2713,13 +2715,15 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
             if (targetIndex !== -1) {
                 if ((newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey][targetIndex].hull - hullDamage) <= 0) {
                     droneDestroyed = true;
-                    if (explosionCallback) explosionCallback(finalTarget.id);
+                    // Add explosion effect to afterAttackEffects instead of calling callback
+                    afterAttackEffects.push({ type: 'EXPLOSION', payload: { targetId: finalTarget.id } });
                     const destroyedDrone = newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey][targetIndex];
                     newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey] =
                         newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey].filter(d => d.id !== finalTarget.id);
                     Object.assign(newPlayerStates[defendingPlayerId], onDroneDestroyed(newPlayerStates[defendingPlayerId], destroyedDrone));
                 } else {
-                    if (hitAnimationCallback) hitAnimationCallback(finalTarget.id);
+                    // Add hit animation effect to afterAttackEffects instead of calling callback
+                    afterAttackEffects.push({ type: 'HIT_ANIMATION', payload: { targetId: finalTarget.id } });
                     newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey][targetIndex].hull -= hullDamage;
                     newPlayerStates[defendingPlayerId].dronesOnBoard[laneKey][targetIndex].currentShields -= shieldDamage;
                 }

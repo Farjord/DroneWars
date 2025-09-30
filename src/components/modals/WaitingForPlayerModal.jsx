@@ -40,6 +40,11 @@ const WaitingForPlayerModal = ({ show, phase, opponentName = 'Opponent', roomCod
           title: 'Waiting for Drone Removal',
           message: `Waiting for ${opponentName} to remove excess drones`
         };
+      case 'deploymentComplete':
+        return {
+          title: 'Waiting for Acknowledgment',
+          message: `Waiting for ${opponentName} to acknowledge deployment complete`
+        };
       default:
         return {
           title: 'Waiting for Opponent',
