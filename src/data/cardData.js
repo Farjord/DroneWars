@@ -8,9 +8,13 @@ const fullCardCollection = [
     cost: 3,
     image: '/cards/LaserBlast.png',
     description: 'Deal 3 damage to any drone.',
+    visualEffect: {
+      type: 'LASER_BLAST',
+      duration: 600
+    },
     targeting: {
       type: 'DRONE',
-      affinity: 'ANY', 
+      affinity: 'ANY',
       location: 'ANY_LANE'
     },
     effect: {
@@ -28,9 +32,13 @@ const fullCardCollection = [
     cost: 2,
     image: '/cards/LaserBlast.png',
     description: 'Deal 4 damage to any drone.',
+    visualEffect: {
+      type: 'LASER_BLAST',
+      duration: 600
+    },
     targeting: {
       type: 'DRONE',
-      affinity: 'ANY', 
+      affinity: 'ANY',
       location: 'ANY_LANE'
     },
     effect: {
@@ -303,9 +311,13 @@ const fullCardCollection = [
     cost: 4,
     image: '/cards/PiercingShot.png',
     description: 'Deal 2 piercing damage to any drone. (Piercing damage ignores shields).',
+    visualEffect: {
+      type: 'LASER_BLAST',
+      duration: 800
+    },
     targeting: {
       type: 'DRONE',
-      affinity: 'ANY', 
+      affinity: 'ANY',
       location: 'ANY_LANE'
     },
     effect: {
@@ -323,9 +335,13 @@ const fullCardCollection = [
     cost: 3,
     image: '/cards/PiercingShot.png',
     description: 'Deal 2 piercing damage to any drone. (Piercing damage ignores shields).',
+    visualEffect: {
+      type: 'LASER_BLAST',
+      duration: 800
+    },
     targeting: {
       type: 'DRONE',
-      affinity: 'ANY', 
+      affinity: 'ANY',
       location: 'ANY_LANE'
     },
     effect: {
@@ -344,6 +360,10 @@ const fullCardCollection = [
     cost: 3,
     image: '/cards/SidewinderMissiles.png',
     description: 'Deal 2 damage to all enemy drones with a speed of 3 or Less in a selected lane.',
+    visualEffect: {
+      type: 'ENERGY_WAVE',
+      duration: 800
+    },
     targeting: {
       type: 'LANE',
       affinity: 'ENEMY' // This card can only target enemy lanes

@@ -310,38 +310,33 @@ setAnimationManager(animationManager) {
       triggerHitAnimation
     );
 
-    // Build animation sequence
-    const animations = [];
-    animations.push({
-      animationName: 'DRONE_FLY_TO_TARGET',
-      payload: { droneId: attackDetails.attacker.id, targetId: attackDetails.target.id }
-    });
-    animations.push({
-      animationName: 'EXPLOSION',
-      payload: { targetId: attackDetails.target.id }
-    });
+    // Use animation events from gameEngine result
+    const animations = (result.animationEvents || []).map(event => ({
+      animationName: event.type,
+      payload: {
+        droneId: event.sourceId,        // DRONE_FLY handler expects droneId
+        targetId: event.targetId,
+        sourceId: event.sourceId,       // Keep for other handlers
+        amount: event.amount,
+        attackValue: event.attackValue, // For laser scaling
+        visualType: event.visualType,
+        cardName: event.cardName,
+        duration: event.duration,
+        targetPlayerId: event.targetPlayerId  // For disambiguating ship section refs
+      }
+    }));
 
-    const targetDestroyed = result.attackResult?.targetDestroyed || false;
-    if (!targetDestroyed) {
-      animations.push({
-        animationName: 'TARGET_SHAKE',
-        payload: { targetId: attackDetails.target.id }
-      });
-      animations.push({
-        animationName: 'DRONE_RETURN',
-        payload: { droneId: attackDetails.attacker.id }
-      });
-    }
+    console.log('[ANIMATION EVENTS] ActionProcessor received:', result.animationEvents);
+    console.log('[ANIMATION EVENTS] Mapped to animations:', animations);
 
     console.log('🎬 [AI ANIMATION DEBUG] Built animations array:', {
       count: animations.length,
       animations: animations.map(a => ({
         name: a.animationName,
-        droneId: a.payload.droneId,
+        sourceId: a.payload.sourceId,
         targetId: a.payload.targetId
       })),
-      hasAnimationManager: !!this.animationManager,
-      targetDestroyed
+      hasAnimationManager: !!this.animationManager
     });
 
     if (this.animationManager) {
@@ -481,6 +476,25 @@ setAnimationManager(animationManager) {
       resolveAttackCallback
     );
 
+    // Collect animation events
+    const animations = (result.animationEvents || []).map(event => ({
+      animationName: event.type,
+      payload: {
+        droneId: event.sourceId,        // DRONE_FLY handler expects droneId
+        targetId: event.targetId,
+        sourceId: event.sourceId,       // Keep for other handlers
+        amount: event.amount,
+        visualType: event.visualType,
+        duration: event.duration,
+        targetPlayerId: event.targetPlayerId  // For disambiguating ship section refs
+      }
+    }));
+
+    // Execute animations if any exist
+    if (this.animationManager && animations.length > 0) {
+      await this.animationManager.executeAnimations(animations);
+    }
+
     // Update game state with results
     this.gameStateManager.setPlayerStates(
       result.newPlayerStates.player1,
@@ -529,12 +543,54 @@ setAnimationManager(animationManager) {
     );
 
     if (result.success) {
-      // Update the specific player state
+      const deployedDroneId = result.deployedDrone?.id || droneData.id;
+
+      // PHASE 1: Add drone with isTeleporting flag (invisible placeholder)
+      const stateWithTeleportingDrone = {
+        ...result.newPlayerState,
+        dronesOnBoard: {
+          ...result.newPlayerState.dronesOnBoard,
+          [laneId]: result.newPlayerState.dronesOnBoard[laneId].map(d =>
+            d.id === deployedDroneId ? { ...d, isTeleporting: true } : d
+          )
+        }
+      };
+
       if (playerId === 'player1') {
-        this.gameStateManager.updatePlayers(result.newPlayerState, {});
+        this.gameStateManager.updatePlayers(stateWithTeleportingDrone, {});
       } else {
-        this.gameStateManager.updatePlayers({}, result.newPlayerState);
+        this.gameStateManager.updatePlayers({}, stateWithTeleportingDrone);
       }
+
+      // PHASE 2: Wait for React to render the invisible placeholder
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // PHASE 3: Start teleport animation and reveal drone partway through
+      const teleportAnimation = [{
+        animationName: 'TELEPORT_IN',
+        payload: {
+          targetId: deployedDroneId,
+          laneId: laneId,
+          playerId: playerId
+        }
+      }];
+
+      // Start the animation and reveal drone at 70% completion for overlap
+      const animationPromise = this.animationManager ?
+        this.animationManager.executeAnimations(teleportAnimation) :
+        Promise.resolve();
+
+      // Wait 70% of animation duration (420ms of 600ms), then reveal the drone
+      setTimeout(() => {
+        if (playerId === 'player1') {
+          this.gameStateManager.updatePlayers(result.newPlayerState, {});
+        } else {
+          this.gameStateManager.updatePlayers({}, result.newPlayerState);
+        }
+      }, 420);
+
+      // PHASE 4: Wait for animation to fully complete
+      await animationPromise;
 
       // Handle turn transition after successful deployment
       await this.processTurnTransition({
@@ -592,6 +648,11 @@ setAnimationManager(animationManager) {
           if (target) break;
         }
       }
+
+      // If still not found, check if it's a lane target
+      if (!target && targetId && targetId.startsWith('lane')) {
+        target = { id: targetId };
+      }
     }
 
     const callbacks = {
@@ -612,6 +673,29 @@ setAnimationManager(animationManager) {
       placedSections,
       callbacks
     );
+
+    console.log('[ANIMATION EVENTS] Card play events:', result.animationEvents);
+
+    // Collect animation events
+    const animations = (result.animationEvents || []).map(event => ({
+      animationName: event.type,
+      payload: {
+        droneId: event.sourceId,        // DRONE_FLY handler expects droneId
+        targetId: event.targetId,
+        sourceId: event.sourceId,       // Keep for other handlers
+        amount: event.amount,
+        attackValue: event.attackValue, // For laser scaling
+        visualType: event.visualType,
+        cardName: event.cardName,
+        duration: event.duration,
+        targetPlayerId: event.targetPlayerId  // For disambiguating ship section refs
+      }
+    }));
+
+    // Execute animations if any exist
+    if (this.animationManager && animations.length > 0) {
+      await this.animationManager.executeAnimations(animations);
+    }
 
     // Update game state with results
     this.gameStateManager.setPlayerStates(
@@ -661,6 +745,25 @@ setAnimationManager(animationManager) {
       placedSections,
       callbacks
     );
+
+    // Collect animation events
+    const animations = (result.animationEvents || []).map(event => ({
+      animationName: event.type,
+      payload: {
+        droneId: event.sourceId,        // DRONE_FLY handler expects droneId
+        targetId: event.targetId,
+        sourceId: event.sourceId,       // Keep for other handlers
+        amount: event.amount,
+        visualType: event.visualType,
+        duration: event.duration,
+        targetPlayerId: event.targetPlayerId  // For disambiguating ship section refs
+      }
+    }));
+
+    // Execute animations if any exist
+    if (this.animationManager && animations.length > 0) {
+      await this.animationManager.executeAnimations(animations);
+    }
 
     // Update game state with results
     this.gameStateManager.setPlayerStates(
@@ -1711,14 +1814,19 @@ setAnimationManager(animationManager) {
           break;
 
         case 'determineFirstPlayer':
-          // AI automatically acknowledges first player determination
-          await this.queueAction({
-            type: 'commitment',
-            payload: {
-              playerId: 'player2',
-              phase: 'determineFirstPlayer',
-              actionData: { acknowledged: true }
-            }
+          // AI automatically acknowledges first player determination with 1-second delay
+          await new Promise(resolve => {
+            setTimeout(async () => {
+              await this.queueAction({
+                type: 'commitment',
+                payload: {
+                  playerId: 'player2',
+                  phase: 'determineFirstPlayer',
+                  actionData: { acknowledged: true }
+                }
+              });
+              resolve();
+            }, 1000);
           });
           break;
 

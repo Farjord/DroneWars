@@ -116,11 +116,14 @@ const DroneToken = ({
     return true;
   };
 
+  // Check if drone is currently teleporting (invisible placeholder)
+  const teleportingEffect = drone.isTeleporting ? 'opacity-0 pointer-events-none' : '';
+
   return (
     <div ref={el => droneRefs.current[drone.id] = el}
       onClick={(e) => onClick && onClick(e, drone, isPlayer)}
       onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}
-      className={`relative w-[90px] h-[135px] transition-all duration-200 ${exhaustEffect} ${hitEffect} ${selectedEffect} ${actionTargetEffect} ${mandatoryDestroyEffect}`}
+      className={`relative w-[90px] h-[135px] transition-all duration-200 ${exhaustEffect} ${hitEffect} ${selectedEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect}`}
     >
       {/* Main Token Body */}
       <div className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden`}>

@@ -49,7 +49,8 @@ const ShipSectionsDisplay = ({
   localPlayerState,
   shipAbilityMode,
   hoveredTarget,
-  setHoveredTarget
+  setHoveredTarget,
+  sectionRefs
 }) => {
   // Get GameDataService for direct effective stats calculation
   const { getEffectiveShipStats } = useGameData();
@@ -115,8 +116,8 @@ const ShipSectionsDisplay = ({
               isInteractive={isInteractive || (turnPhase === 'action' && isPlayer && sectionStats.ability && localPlayerState.energy >= sectionStats.ability.cost.energy)}
               isCardTarget={isCardTarget}
               isInMiddleLane={laneIndex === 1}
-              isHovered={hoveredTarget?.type === 'section' && hoveredTarget?.target.name === sectionName}
-              onMouseEnter={() => !isPlayer && setHoveredTarget({ target: { name: sectionName, ...sectionStats }, type: 'section' })}
+              isHovered={hoveredTarget?.type === 'section' && hoveredTarget?.target.name === sectionName && hoveredTarget?.isOpponent === !isPlayer}
+              onMouseEnter={() => !isPlayer && setHoveredTarget({ target: { name: sectionName, ...sectionStats }, type: 'section', isOpponent: true })}
               onMouseLeave={() => !isPlayer && setHoveredTarget(null)}
               reallocationState={reallocationState}
               gameEngine={gameEngine}
@@ -126,6 +127,12 @@ const ShipSectionsDisplay = ({
               getLocalPlayerId={getLocalPlayerId}
               localPlayerState={localPlayerState}
               shipAbilityMode={shipAbilityMode}
+              sectionRef={(el) => {
+                if (sectionRefs && el) {
+                  const refKey = `${isPlayer ? 'local' : 'opponent'}-${sectionName}`;
+                  sectionRefs.current[refKey] = el;
+                }
+              }}
             />
           </div>
         );

@@ -4,8 +4,9 @@
 // Main menu for game mode selection
 // Clean separation from game logic - no player state access
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameState } from '../hooks/useGameState.js';
+import GameDataService from '../services/GameDataService.js';
 
 /**
  * MenuScreen - Main menu for selecting game mode
@@ -14,6 +15,22 @@ import { useGameState } from '../hooks/useGameState.js';
 function MenuScreen() {
   const { gameStateManager } = useGameState();
   const [showModeSelection, setShowModeSelection] = useState(false);
+
+  // Cleanup effect: Ensure clean slate when MenuScreen mounts
+  // This handles hot reload scenarios and ensures no stale data from previous games
+  useEffect(() => {
+    console.log('🏠 MenuScreen mounted - ensuring clean state');
+
+    // Clear GameDataService singleton and cache
+    GameDataService.reset();
+
+    // Clear ActionProcessor queue
+    if (gameStateManager?.actionProcessor) {
+      gameStateManager.actionProcessor.clearQueue();
+    }
+
+    console.log('✅ MenuScreen: State cleaned up');
+  }, [gameStateManager]);
 
   const handleSinglePlayer = () => {
     console.log('🎮 Selected: Single Player');

@@ -61,6 +61,7 @@ function GameBattlefield({
   recentlyHitDrones,
   potentialInterceptors,
   droneRefs,
+  sectionRefs,
   mandatoryAction,
   gameEngine,
   getLocalPlayerId,
@@ -98,6 +99,7 @@ function GameBattlefield({
           shipAbilityMode={shipAbilityMode}
           hoveredTarget={hoveredTarget}
           setHoveredTarget={setHoveredTarget}
+          sectionRefs={sectionRefs}
         />
 
         {/* Opponent Drone Lanes */}
@@ -179,6 +181,7 @@ function GameBattlefield({
           shipAbilityMode={shipAbilityMode}
           hoveredTarget={hoveredTarget}
           setHoveredTarget={setHoveredTarget}
+          sectionRefs={sectionRefs}
         />
       </div>
     </main>

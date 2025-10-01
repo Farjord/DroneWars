@@ -83,7 +83,8 @@ const ShipSection = ({
   passInfo,
   getLocalPlayerId,
   localPlayerState,
-  shipAbilityMode
+  shipAbilityMode,
+  sectionRef
 }) => {
   if (isPlaceholder) {
     return (
@@ -146,6 +147,7 @@ const ShipSection = ({
 
   return (
     <div
+      ref={sectionRef}
       className={`
         relative rounded-xl shadow-lg ${shadowColor} border-2 h-full
         transition-all duration-300 overflow-hidden

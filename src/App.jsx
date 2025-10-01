@@ -65,6 +65,10 @@ import { getElementCenter } from './utils/gameUtils.js';
 // --- 1.8 ANIMATION IMPORTS ---
 import AnimationManager from './state/AnimationManager.js';
 import FlyingDrone from './components/animations/FlyingDrone.jsx';
+import FlashEffect from './components/animations/FlashEffect.jsx';
+import CardVisualEffect from './components/animations/CardVisualEffect.jsx';
+import LaserEffect from './components/animations/LaserEffect.jsx';
+import TeleportEffect from './components/animations/TeleportEffect.jsx';
 // ========================================
 // SECTION 2: MAIN COMPONENT DECLARATION
 // ========================================
@@ -120,6 +124,10 @@ const App = () => {
   const [showAiHandModal, setShowAiHandModal] = useState(false);
   const [showDebugModal, setShowDebugModal] = useState(false);
   const [flyingDrones, setFlyingDrones] = useState([]);
+  const [flashEffects, setFlashEffects] = useState([]);
+  const [cardVisuals, setCardVisuals] = useState([]);
+  const [laserEffects, setLaserEffects] = useState([]);
+  const [teleportEffects, setTeleportEffects] = useState([]);
   const [animationBlocking, setAnimationBlocking] = useState(false);
   const [modalContent, setModalContent] = useState(null);
   const [deploymentConfirmation, setDeploymentConfirmation] = useState(null);
@@ -199,6 +207,7 @@ const App = () => {
   // to prevent "Cannot access before initialization" errors.
   const arrowLineRef = useRef(null);
   const droneRefs = useRef({});
+  const sectionRefs = useRef({});
   const gameAreaRef = useRef(null);
   const isResolvingAttackRef = useRef(false);
 
@@ -207,15 +216,20 @@ const App = () => {
   // This maintains proper dependency ordering while preserving the logical structure.
   const { explosions, triggerExplosion } = useExplosions(droneRefs, gameAreaRef);
   useAnimationSetup(
-  gameStateManager, 
-  droneRefs, 
+  gameStateManager,
+  droneRefs,
+  sectionRefs,
   getLocalPlayerState,  // Pass the getter function, not the value
   getOpponentPlayerState,  // Pass the getter function, not the value
-  triggerExplosion, 
-  getElementCenter, 
-  gameAreaRef, 
-  setFlyingDrones, 
-  setAnimationBlocking
+  triggerExplosion,
+  getElementCenter,
+  gameAreaRef,
+  setFlyingDrones,
+  setAnimationBlocking,
+  setFlashEffects,
+  setCardVisuals,
+  setLaserEffects,
+  setTeleportEffects
 );
   // Refs for async operations (defined after gameState destructuring)
 
@@ -256,10 +270,6 @@ const App = () => {
         // Handle phase transitions from GameFlowManager
         const { newPhase, previousPhase, firstPlayerResult } = event;
         console.log(`🔄 App.jsx handling phase transition: ${previousPhase} → ${newPhase}`);
-
-        // Clear opponent turn modal on phase transitions
-        // The modal will be re-shown if needed by the currentPlayer effect
-        setShowOpponentTurnModal(false);
 
         // Clear waiting modal when transitioning away from the waiting phase
         if (waitingForPlayerPhase === previousPhase) {
@@ -599,6 +609,9 @@ const App = () => {
                 capturedPositions.set(attackDetails.targetId, pos);
             }
         }
+
+        // Add a brief delay before attack animation starts
+        await new Promise(resolve => setTimeout(resolve, 250));
 
         // Process attack through ActionProcessor (ActionProcessor handles state updates)
         const result = await processAction('attack', {
@@ -1083,57 +1096,70 @@ const App = () => {
   }, [winner, turnPhase, currentPlayer]);
 
   // --- 8.6 REACTIVE MODAL UPDATES FOR TURN CHANGES ---
-  // Update modals when currentPlayer changes during active phases
+  // Show/hide opponent turn modal when currentPlayer changes during active phases
   useEffect(() => {
     // Only update modals during active gameplay phases
     if (turnPhase !== 'deployment' && turnPhase !== 'action') return;
 
-    // Don't interfere with other modal states
-    if (winner || showFirstPlayerModal || showDeploymentCompleteModal || showRoundEndModal) return;
+    // Don't interfere with game over or phase transition modals
+    if (winner || showDeploymentCompleteModal || showRoundEndModal) return;
 
-    // Don't update if there are active confirmations
-    if (deploymentConfirmation || moveConfirmation || cardConfirmation) return;
-
-    // Only update when currentPlayer OR turnPhase changes
-    // This allows the modal to show when transitioning between phases (deployment → action)
-    // even if the same player remains active (e.g., AI is first player in both phases)
+    // Only update when currentPlayer OR turnPhase actually changes
     if (currentPlayer === lastCurrentPlayer && turnPhase === lastTurnPhase) return;
 
     const myTurn = isMyTurn();
-    const isMultiplayerGame = isMultiplayer();
 
     console.log(`[MODAL UPDATE] Turn/phase change detected:`, {
       currentPlayer,
       lastCurrentPlayer,
       turnPhase,
       lastTurnPhase,
-      myTurn,
-      isMultiplayerGame,
-      currentModalTitle: modalContent?.title
+      myTurn
     });
 
     // Update the tracked currentPlayer and turnPhase
     setLastCurrentPlayer(currentPlayer);
     setLastTurnPhase(turnPhase);
 
-
     if (myTurn) {
-      // It's now the local player's turn
-
-      // Clear any existing modal (like "Opponent's Turn") when it becomes player's turn
-      setModalContent(null);
+      // It's now the local player's turn - hide opponent modal
       setShowOpponentTurnModal(false);
-
-      if (turnPhase === 'deployment') {
-        const deploymentResource = turn === 1 ? 'Initial Deployment Points' : 'Energy';
-        // Any deployment-specific logic would go here
-      }
     } else {
-      // It's now the opponent's turn
+      // It's now the opponent's turn - show modal
       setOpponentTurnData({ phase: turnPhase, actionType: 'action' });
       setShowOpponentTurnModal(true);
     }
-  }, [currentPlayer, turnPhase, isMyTurn, isMultiplayer, turn, winner, showFirstPlayerModal, showDeploymentCompleteModal, showRoundEndModal, deploymentConfirmation, moveConfirmation, cardConfirmation, lastCurrentPlayer, lastTurnPhase, modalContent?.title]);
+  }, [currentPlayer, turnPhase, isMyTurn, lastCurrentPlayer, lastTurnPhase, winner, showDeploymentCompleteModal, showRoundEndModal]);
+
+  /**
+   * HIDE OPPONENT TURN MODAL WHEN LEAVING ACTIVE PHASES
+   * When transitioning away from deployment/action (e.g., both players passed),
+   * clear the opponent modal regardless of other conditions
+   */
+  useEffect(() => {
+    const wasInActivePhase = lastTurnPhase === 'deployment' || lastTurnPhase === 'action';
+    const nowInActivePhase = turnPhase === 'deployment' || turnPhase === 'action';
+
+    if (wasInActivePhase && !nowInActivePhase && showOpponentTurnModal) {
+      console.log(`🚪 Hiding opponent turn modal - exiting active phase: ${lastTurnPhase} → ${turnPhase}`);
+      setShowOpponentTurnModal(false);
+    }
+  }, [turnPhase, lastTurnPhase, showOpponentTurnModal]);
+
+  /**
+   * HIDE OPPONENT TURN MODAL WHEN ANIMATIONS START
+   * Once animations start blocking, hide the modal since:
+   * 1. Animations already provide interaction blocking
+   * 2. Modal obscures the view of animations
+   * 3. Modal's purpose is fulfilled once animations start
+   * Uses animationBlocking state set by AnimationManager (mode-agnostic)
+   */
+  useEffect(() => {
+    if (animationBlocking && showOpponentTurnModal) {
+      console.log('🎬 Hiding opponent turn modal - animations started');
+      setShowOpponentTurnModal(false);
+    }
+  }, [animationBlocking, showOpponentTurnModal]);
 
   /**
    * HANDLE RESET
@@ -2485,9 +2511,9 @@ const App = () => {
   return (
     <div className="h-screen bg-gray-950 text-white font-sans overflow-hidden flex flex-col bg-gradient-to-br from-gray-900 via-indigo-950 to-black relative" ref={gameAreaRef} onClick={() => { cancelAbilityMode(); cancelCardSelection(); }}>
      <TargetingArrow visible={arrowState.visible} start={arrowState.start} end={arrowState.end} lineRef={arrowLineRef} />
-     {explosions.map(exp => <ExplosionEffect key={exp.id} top={exp.top} left={exp.left} />)}
+     {explosions.map(exp => <ExplosionEffect key={exp.id} top={exp.top} left={exp.left} size={exp.size} />)}
      {flyingDrones.map(fd => (
-  
+
       <FlyingDrone
         key={fd.id}
         droneData={fd.droneData}
@@ -2495,6 +2521,49 @@ const App = () => {
         endPos={fd.endPos}
         config={fd.config}
         onComplete={fd.onComplete}
+      />
+    ))}
+    {flashEffects.map(flash => (
+      <FlashEffect
+        key={flash.id}
+        targetId={flash.targetId}
+        color={flash.color}
+        intensity={flash.intensity}
+        onComplete={flash.onComplete}
+        droneRefs={droneRefs}
+        gameAreaRef={gameAreaRef}
+      />
+    ))}
+    {cardVisuals.map(visual => (
+      <CardVisualEffect
+        key={visual.id}
+        visualType={visual.visualType}
+        sourceId={visual.sourceId}
+        targetId={visual.targetId}
+        duration={visual.duration}
+        onComplete={visual.onComplete}
+        droneRefs={droneRefs}
+        gameAreaRef={gameAreaRef}
+      />
+    ))}
+    {laserEffects.map(laser => (
+      <LaserEffect
+        key={laser.id}
+        startPos={laser.startPos}
+        endPos={laser.endPos}
+        attackValue={laser.attackValue}
+        duration={laser.duration}
+        onComplete={laser.onComplete}
+      />
+    ))}
+    {teleportEffects.map(teleport => (
+      <TeleportEffect
+        key={teleport.id}
+        top={teleport.top}
+        left={teleport.left}
+        color={teleport.color}
+        duration={teleport.duration}
+        onComplete={teleport.onComplete}
       />
     ))}
     {animationBlocking && (
@@ -2558,6 +2627,7 @@ const App = () => {
         recentlyHitDrones={recentlyHitDrones}
         potentialInterceptors={potentialInterceptors}
         droneRefs={droneRefs}
+        sectionRefs={sectionRefs}
         mandatoryAction={mandatoryAction}
         gameEngine={gameEngine}
         getLocalPlayerId={getLocalPlayerId}
@@ -2655,8 +2725,8 @@ const App = () => {
         onConfirm={async () => {
           if (!deploymentConfirmation) return;
           const { lane } = deploymentConfirmation;
-          await executeDeployment(lane);
           setDeploymentConfirmation(null);
+          await executeDeployment(lane);
         }}
       />
       <MoveConfirmationModal

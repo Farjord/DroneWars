@@ -778,9 +778,13 @@ const resolveAbility = (ability, userDrone, targetDrone, playerStates, placedSec
     newPlayerStates.player1 = effectResult.newPlayerStates.player1;
     newPlayerStates.player2 = effectResult.newPlayerStates.player2;
 
+    // Collect animation events
+    const animationEvents = effectResult.animationEvents || [];
+
     return {
         newPlayerStates,
-        shouldEndTurn: !effect.goAgain
+        shouldEndTurn: !effect.goAgain,
+        animationEvents
     };
 };
 
@@ -814,7 +818,8 @@ const resolveShipAbility = (ability, sectionName, target, playerStates, placedSe
         return {
             newPlayerStates,
             shouldEndTurn: false,
-            requiresShieldReallocation: true
+            requiresShieldReallocation: true,
+            animationEvents: []
         };
     } else {
         // Handle other ship ability effects using modular handler
@@ -824,19 +829,30 @@ const resolveShipAbility = (ability, sectionName, target, playerStates, placedSe
         newPlayerStates.player1 = effectResult.newPlayerStates.player1;
         newPlayerStates.player2 = effectResult.newPlayerStates.player2;
 
+        // Collect animation events
+        const animationEvents = effectResult.animationEvents || [];
+
         // Handle special return cases
         if (effectResult.needsDiscardSelection) {
             return {
                 newPlayerStates,
                 shouldEndTurn: false,
-                mandatoryAction: { type: 'discard', player: 'player1', count: effectResult.needsDiscardSelection, fromAbility: true }
+                mandatoryAction: { type: 'discard', player: 'player1', count: effectResult.needsDiscardSelection, fromAbility: true },
+                animationEvents
             };
         }
+
+        return {
+            newPlayerStates,
+            shouldEndTurn: true,
+            animationEvents
+        };
     }
 
     return {
         newPlayerStates,
-        shouldEndTurn: true
+        shouldEndTurn: true,
+        animationEvents: []
     };
 };
 
@@ -1720,6 +1736,30 @@ const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSecti
     // Resolve the effect(s)
     const result = resolveCardEffect(card.effect, target, actingPlayerId, currentStates, placedSections, callbacks, card);
 
+    // Start with card visual event if card has one
+    const allAnimationEvents = [];
+
+    // Add card visual event first (plays before damage feedback)
+    if (card.visualEffect) {
+        allAnimationEvents.push({
+            type: 'CARD_VISUAL',
+            cardId: card.id,
+            cardName: card.name,
+            visualType: card.visualEffect.type,
+            sourceId: actingPlayerId === 'player1' ? 'player1-hand' : 'player2-hand',
+            targetId: target?.id,
+            duration: card.visualEffect.duration || 800,
+            timestamp: Date.now()
+        });
+    }
+
+    // Then add damage/effect events (play after card visual completes)
+    if (result.animationEvents) {
+        allAnimationEvents.push(...result.animationEvents);
+    }
+
+    console.log('[ANIMATION EVENTS] resolveCardPlay emitted:', allAnimationEvents);
+
     // If no card selection is needed, complete the card play immediately
     if (!result.needsCardSelection) {
         const completion = finishCardPlay(card, actingPlayerId, result.newPlayerStates);
@@ -1727,6 +1767,7 @@ const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSecti
             newPlayerStates: completion.newPlayerStates,
             shouldEndTurn: completion.shouldEndTurn,
             additionalEffects: result.additionalEffects || [],
+            animationEvents: allAnimationEvents,
             needsCardSelection: false
         };
     }
@@ -1736,6 +1777,7 @@ const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSecti
         newPlayerStates: currentStates, // Use currentStates (with card costs paid) but card not discarded yet
         shouldEndTurn: false, // Turn ending will be handled in finishCardPlay after selection
         additionalEffects: result.additionalEffects || [],
+        animationEvents: allAnimationEvents,
         needsCardSelection: result.needsCardSelection // Pass through card selection requirements
     };
 };
@@ -2038,9 +2080,62 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
             }
         }
 
+        // Track animation events for filtered damage
+        const animationEvents = [];
+
+        // Compare original and updated states to detect what changed
+        for (const originalDrone of dronesInLane) {
+            const updatedDrone = updatedDronesInLane.find(d => d.id === originalDrone.id);
+
+            // Check if drone meets filter condition
+            let meetsCondition = false;
+            if (comparison === 'GTE' && originalDrone[stat] >= value) {
+                meetsCondition = true;
+            }
+            if (comparison === 'LTE' && originalDrone[stat] <= value) {
+                meetsCondition = true;
+            }
+
+            if (meetsCondition) {
+                // Calculate damage that was applied
+                const originalShields = originalDrone.currentShields || 0;
+                const shieldDmg = Math.min(effect.value, originalShields);
+                const remainingDmg = effect.value - shieldDmg;
+
+                // Shield damage event
+                if (shieldDmg > 0) {
+                    animationEvents.push({
+                        type: 'SHIELD_DAMAGE',
+                        targetId: originalDrone.id,
+                        amount: shieldDmg,
+                        timestamp: Date.now()
+                    });
+                }
+
+                // Check if drone was destroyed or damaged
+                if (!updatedDrone) {
+                    // Drone was destroyed
+                    animationEvents.push({
+                        type: 'DRONE_DESTROYED',
+                        targetId: originalDrone.id,
+                        timestamp: Date.now()
+                    });
+                } else if (remainingDmg > 0) {
+                    // Drone survived but took hull damage
+                    animationEvents.push({
+                        type: 'HULL_DAMAGE',
+                        targetId: originalDrone.id,
+                        amount: remainingDmg,
+                        timestamp: Date.now()
+                    });
+                }
+            }
+        }
+
         return {
             newPlayerStates,
-            additionalEffects: []
+            additionalEffects: [],
+            animationEvents
         };
     } else {
         // Single target damage - use snapshot-based resolution for consistency
@@ -2084,18 +2179,55 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
                         dronesInLane.splice(droneIndex, 1);
                     }
                 }
+
+                // Track animation events for single target
+                const animationEvents = [];
+
+                // Shield damage event
+                if (shieldDamage > 0) {
+                    animationEvents.push({
+                        type: 'SHIELD_DAMAGE',
+                        targetId: target.id,
+                        amount: shieldDamage,
+                        timestamp: Date.now()
+                    });
+                }
+
+                // Check if target was destroyed or just damaged
+                if (targetDrone.hull <= 0) {
+                    animationEvents.push({
+                        type: 'DRONE_DESTROYED',
+                        targetId: target.id,
+                        timestamp: Date.now()
+                    });
+                } else if (remainingDamage > 0) {
+                    animationEvents.push({
+                        type: 'HULL_DAMAGE',
+                        targetId: target.id,
+                        amount: remainingDamage,
+                        timestamp: Date.now()
+                    });
+                }
+
+                return {
+                    newPlayerStates,
+                    additionalEffects: [],
+                    animationEvents
+                };
             }
 
             return {
                 newPlayerStates,
-                additionalEffects: []
+                additionalEffects: [],
+                animationEvents: []
             };
         }
     }
 
     return {
         newPlayerStates: playerStates,
-        additionalEffects: []
+        additionalEffects: [],
+        animationEvents: []
     };
 };
 
@@ -2293,13 +2425,15 @@ const resolveUnifiedDamageEffect = (effect, source, target, actingPlayerId, play
         // FIXED: Return the properly updated states from the attack resolution
         return {
             newPlayerStates: attackResult.newPlayerStates,
-            additionalEffects: attackResult.afterAttackEffects || []
+            additionalEffects: attackResult.afterAttackEffects || [],
+            animationEvents: attackResult.animationEvents || []
         };
     }
 
     return {
         newPlayerStates: playerStates,
-        additionalEffects: []
+        additionalEffects: [],
+        animationEvents: []
     };
 };
 
@@ -2557,7 +2691,7 @@ const resolveDroneAbilityEffect = (effect, userDrone, targetDrone, playerStates,
             return resolveUnifiedDamageEffect(effect, userDrone, targetDrone, 'player1', playerStates, placedSections, callbacks);
         default:
             console.warn(`Unknown drone ability effect type: ${effect.type}`);
-            return { newPlayerStates: playerStates, additionalEffects: [] };
+            return { newPlayerStates: playerStates, additionalEffects: [], animationEvents: [] };
     }
 };
 
@@ -2573,7 +2707,7 @@ const resolveShipAbilityEffect = (effect, sectionName, target, playerStates, pla
             return resolveUnifiedDrawEffect(effect, shipSource, target, 'player1', playerStates, placedSections, callbacks);
         default:
             console.warn(`Unknown ship ability effect type: ${effect.type}`);
-            return { newPlayerStates: playerStates, additionalEffects: [] };
+            return { newPlayerStates: playerStates, additionalEffects: [], animationEvents: [] };
     }
 };
 
@@ -2592,7 +2726,8 @@ const resolveShipRecallEffect = (effect, sectionName, target, playerStates, plac
 
     return {
         newPlayerStates,
-        additionalEffects: []
+        additionalEffects: [],
+        animationEvents: []
     };
 };
 
@@ -2685,6 +2820,81 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
         (finalTargetType === 'drone' ?
             (wasDestroyed ? ` ${finalTarget.name} Destroyed.` : ` ${finalTarget.name} has ${remainingShields} shields and ${remainingHull} hull left.`)
             : '');
+
+    // Create animation events array
+    const animationEvents = [];
+
+    // Always start with attack animation if there's an attacker
+    if (attacker && attacker.id && !isAbilityOrCard) {
+      animationEvents.push({
+        type: 'DRONE_ATTACK_START',
+        sourceId: attacker.id,
+        targetId: finalTarget.id,
+        attackValue: effectiveAttacker ? effectiveAttacker.attack : 1,
+        timestamp: Date.now()
+      });
+    }
+
+    // Add shield damage event if shields absorbed damage
+    if (shieldDamage > 0) {
+      animationEvents.push({
+        type: 'SHIELD_DAMAGE',
+        targetId: finalTarget.id,
+        amount: shieldDamage,
+        timestamp: Date.now()
+      });
+    }
+
+    // Handle destruction vs survival
+    if (wasDestroyed) {
+      // Target was destroyed
+      const event = {
+        type: finalTargetType === 'drone' ? 'DRONE_DESTROYED' : 'SECTION_DESTROYED',
+        targetId: finalTarget.id,
+        timestamp: Date.now()
+      };
+      // Add targetPlayerId for ship sections to disambiguate refs
+      if (finalTargetType === 'section') {
+        event.targetPlayerId = defendingPlayerId;
+      }
+      animationEvents.push(event);
+    } else {
+      // Target survived - add hull damage event if hull was hit
+      if (hullDamage > 0) {
+        const event = {
+          type: 'HULL_DAMAGE',
+          targetId: finalTarget.id,
+          amount: hullDamage,
+          timestamp: Date.now()
+        };
+        // Add targetPlayerId for ship sections to disambiguate refs
+        if (finalTargetType === 'section') {
+          event.targetPlayerId = defendingPlayerId;
+        }
+        animationEvents.push(event);
+      }
+
+      // Add section shake for any ship section damage
+      if (finalTargetType === 'section' && (shieldDamage > 0 || hullDamage > 0)) {
+        animationEvents.push({
+          type: 'SECTION_DAMAGED',
+          targetId: finalTarget.id,
+          targetPlayerId: defendingPlayerId,  // Add for proper section ref disambiguation
+          timestamp: Date.now()
+        });
+      }
+
+      // Attacker returns if target survived
+      if (attacker && attacker.id && !isAbilityOrCard) {
+        animationEvents.push({
+          type: 'DRONE_RETURN',
+          sourceId: attacker.id,
+          timestamp: Date.now()
+        });
+      }
+    }
+
+    console.log('[ANIMATION EVENTS] resolveAttack emitted:', animationEvents);
 
     // Log the attack
     const laneForLog = attackerLane || (lane ? lane.replace('lane', 'Lane ') : null);
@@ -2809,7 +3019,8 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
             outcome,
             shouldEndTurn: !goAgain
         },
-        afterAttackEffects
+        afterAttackEffects,
+        animationEvents
     };
 };
 

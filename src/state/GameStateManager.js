@@ -6,6 +6,7 @@
 
 import { gameEngine, startingDecklist } from '../logic/gameLogic.js';
 import ActionProcessor from './ActionProcessor.js';
+import GameDataService from '../services/GameDataService.js';
 import fullDroneCollection from '../data/droneData.js';
 import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
 // PhaseManager dependency removed - using direct phase checks
@@ -804,6 +805,8 @@ class GameStateManager {
    * Reset game to initial state
    */
   reset() {
+    console.log('🔄 GAME RESET: Resetting game state and clearing caches');
+
     const initialState = {
       turnPhase: 'preGame',
       turn: 1,
@@ -828,6 +831,14 @@ class GameStateManager {
     };
 
     this.setState(initialState, 'GAME_RESET');
+
+    // Clear GameDataService singleton and cache to prevent stale data
+    GameDataService.reset();
+
+    // Clear ActionProcessor queue to prevent stale actions
+    this.actionProcessor.clearQueue();
+
+    console.log('✅ GAME RESET: State, cache, and queue cleared');
   }
 
   /**
@@ -906,7 +917,7 @@ class GameStateManager {
    * End current game session - return to menu state
    */
   endGame() {
-    console.log('🎮 GAME END: Ending current game session');
+    console.log('🎮 GAME END: Ending current game session and clearing caches');
 
     this.setState({
       appState: 'menu',
@@ -933,7 +944,13 @@ class GameStateManager {
       commitments: {},
     }, 'GAME_ENDED');
 
-    console.log('✅ GAME END: Returned to menu state');
+    // Clear GameDataService singleton and cache to prevent stale data in new games
+    GameDataService.reset();
+
+    // Clear ActionProcessor queue to prevent stale actions
+    this.actionProcessor.clearQueue();
+
+    console.log('✅ GAME END: Returned to menu state, cache and queue cleared');
   }
 
   /**

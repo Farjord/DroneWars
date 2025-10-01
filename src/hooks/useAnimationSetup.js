@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
 import AnimationManager from '../state/AnimationManager.js';
+import FlashEffect from '../components/animations/FlashEffect.jsx';
+import CardVisualEffect from '../components/animations/CardVisualEffect.jsx';
 
-export function useAnimationSetup(gameStateManager, droneRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking) {
+export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setCardVisuals, setLaserEffects, setTeleportEffects) {
   useEffect(() => {
     const localPlayerState = getLocalPlayerState();
     const opponentPlayerState = getOpponentPlayerState();
@@ -9,103 +11,146 @@ export function useAnimationSetup(gameStateManager, droneRefs, getLocalPlayerSta
     const droneOriginalPositions = new Map();
     
     animationManager.registerVisualHandler('DRONE_FLY', (payload) => {
-      const { droneId, targetId, config, onComplete } = payload;
+      const { droneId, targetId, config, attackValue, onComplete } = payload;
 
-      console.log('🎬 [AI ANIMATION DEBUG] DRONE_FLY handler called:', {
+      // Skip return animations - no visual needed
+      if (config.isReturn) {
+        onComplete?.();
+        return;
+      }
+
+      console.log('🔫 [LASER DEBUG] DRONE_FLY handler called:', {
         droneId,
         targetId,
-        config,
-        hasDroneRefs: !!droneRefs.current,
-        droneRefsKeys: Object.keys(droneRefs.current || {}).length
+        attackValue,
+        config
       });
 
       const droneEl = droneRefs.current[droneId];
-      const targetEl = droneRefs.current[targetId];
 
-      console.log('🎬 [AI ANIMATION DEBUG] DOM element lookup:', {
-        droneId,
-        hasDroneEl: !!droneEl,
-        targetId,
-        hasTargetEl: !!targetEl,
-        availableRefs: Object.keys(droneRefs.current || {})
-      });
+      // Check if target is a drone first, then try sections with player prefixes
+      let targetEl = droneRefs.current[targetId];
+      if (!targetEl) {
+        // Determine if attacking drone is local or opponent to figure out target section prefix
+        const localPlayerId = gameStateManager.getLocalPlayerId();
+        const localState = gameStateManager.getState()[localPlayerId];
+        const opponentId = localPlayerId === 'player1' ? 'player2' : 'player1';
+
+        // Check if drone belongs to local player
+        const isLocalDrone = Object.values(localState.dronesOnBoard).flat().some(d => d.id === droneId);
+
+        // If local drone attacking, target is opponent section; if opponent drone, target is local section
+        const targetPrefix = isLocalDrone ? 'opponent' : 'local';
+        targetEl = sectionRefs.current[`${targetPrefix}-${targetId}`];
+      }
 
       if (!droneEl || !targetEl) {
-        console.warn('⚠️ [AI ANIMATION DEBUG] Missing DOM elements, skipping animation');
+        console.warn('⚠️ [LASER DEBUG] Missing DOM elements, skipping laser', {
+          hasDrone: !!droneEl,
+          hasTarget: !!targetEl,
+          targetId,
+          availableSections: Object.keys(sectionRefs.current || {})
+        });
         onComplete?.();
         return;
       }
 
-      console.log('✅ [AI ANIMATION DEBUG] DOM elements found, creating flying drone animation');
-      
-      const droneRect = droneEl.getBoundingClientRect();
-      const targetRect = targetEl.getBoundingClientRect();
-      
-      if (!config.isReturn) {
-        droneOriginalPositions.set(droneId, { x: droneRect.left, y: droneRect.top });
-      }
-      
-      let droneData = null;
-      let owner = null;
-      
-      [localPlayerState, opponentPlayerState].forEach((state, idx) => {
-        if (state?.dronesOnBoard) {
-          Object.values(state.dronesOnBoard).forEach(lane => {
-            const found = lane.find(d => d.id === droneId);
-            if (found) {
-              droneData = found;
-              owner = idx === 0 ? 'player1' : 'player2';
-            }
-          });
-        }
-      });
-      
-      if (!droneData) {
-        onComplete?.();
-        return;
-      }
-      
-      droneData.owner = owner;
-      
-      const startPos = config.isReturn 
-        ? { x: targetRect.left, y: targetRect.top }
-        : { x: droneRect.left, y: droneRect.top };
-        
-      const endPos = config.isReturn
-        ? droneOriginalPositions.get(droneId) || { x: droneRect.left, y: droneRect.top }
-        : { x: targetRect.left, y: targetRect.top };
-      
-      const flyingId = `${droneId}-${Date.now()}`;
-      
-      setFlyingDrones(prev => [...prev, {
-        id: flyingId,
-        droneData,
+      console.log('✅ [LASER DEBUG] Creating laser effect with attack:', attackValue);
+
+      const startPos = getElementCenter(droneEl, gameAreaRef.current);
+      const endPos = getElementCenter(targetEl, gameAreaRef.current);
+
+      const laserId = `laser-${droneId}-${Date.now()}`;
+
+      setLaserEffects(prev => [...prev, {
+        id: laserId,
         startPos,
         endPos,
-        config: { ...config, duration: config.isReturn ? 400 : 800 },
+        attackValue: attackValue || 1,
+        duration: 500,
         onComplete: () => {
-          setFlyingDrones(prev => prev.filter(fd => fd.id !== flyingId));
-          if (config.isReturn) {
-            droneOriginalPositions.delete(droneId);
-          }
+          setLaserEffects(prev => prev.filter(l => l.id !== laserId));
           onComplete?.();
         }
       }]);
     });
     
     animationManager.registerVisualHandler('EXPLOSION_EFFECT', (payload) => {
-      const targetEl = droneRefs.current[payload.targetId];
+      // Check if target is a drone first
+      let targetEl = droneRefs.current[payload.targetId];
+
+      if (!targetEl && payload.targetPlayerId) {
+        // For ship sections, use targetPlayerId to determine correct prefix
+        const localPlayerId = gameStateManager.getLocalPlayerId();
+        const prefix = payload.targetPlayerId === localPlayerId ? 'local' : 'opponent';
+        targetEl = sectionRefs.current[`${prefix}-${payload.targetId}`];
+      }
+
       if (targetEl) {
         const pos = getElementCenter(targetEl, gameAreaRef.current);
-        triggerExplosion(payload.targetId, pos);
+        // Pass size from config
+        triggerExplosion(payload.targetId, pos, payload.config?.size || 'large');
+      } else {
+        console.warn('⚠️ [EXPLOSION DEBUG] Target element not found:', payload.targetId);
       }
       payload.onComplete?.();
     });
-    
+
+    animationManager.registerVisualHandler('FLASH_EFFECT', (payload) => {
+      const { targetId, config, onComplete, targetPlayerId } = payload;
+
+      // Check if target is a drone first
+      let targetEl = droneRefs.current[targetId];
+
+      if (!targetEl && targetPlayerId) {
+        // For ship sections, use targetPlayerId to determine correct prefix
+        const localPlayerId = gameStateManager.getLocalPlayerId();
+        const prefix = targetPlayerId === localPlayerId ? 'local' : 'opponent';
+        targetEl = sectionRefs.current[`${prefix}-${targetId}`];
+      }
+
+      if (!targetEl) {
+        console.warn('⚠️ [FLASH DEBUG] Target element not found:', targetId);
+        onComplete?.();
+        return;
+      }
+
+      const flashId = `flash-${targetId}-${Date.now()}`;
+
+      setFlashEffects(prev => [...prev, {
+        id: flashId,
+        targetId: targetId,
+        color: config.color,
+        intensity: config.intensity,
+        onComplete: () => {
+          setFlashEffects(prev => prev.filter(f => f.id !== flashId));
+          onComplete?.();
+        }
+      }]);
+    });
+
+    animationManager.registerVisualHandler('CARD_VISUAL_EFFECT', (payload) => {
+      const { visualType, sourceId, targetId, duration, onComplete } = payload;
+
+      const visualId = `cardvisual-${Date.now()}`;
+
+      setCardVisuals(prev => [...prev, {
+        id: visualId,
+        visualType: visualType || 'LASER_BLAST',
+        sourceId: sourceId,
+        targetId: targetId,
+        duration: duration || 800,
+        onComplete: () => {
+          setCardVisuals(prev => prev.filter(v => v.id !== visualId));
+          onComplete?.();
+        }
+      }]);
+    });
+
     animationManager.registerVisualHandler('SHAKE_EFFECT', (payload) => {
       const { targetId, config, onComplete } = payload;
       const targetEl = droneRefs.current[targetId];
-      
+
       if (targetEl) {
         targetEl.classList.add('animate-shake-damage');
         setTimeout(() => {
@@ -116,7 +161,45 @@ export function useAnimationSetup(gameStateManager, droneRefs, getLocalPlayerSta
         onComplete?.();
       }
     });
-    
+
+    animationManager.registerVisualHandler('TELEPORT_EFFECT', (payload) => {
+      const { targetId, laneId, playerId, onComplete } = payload;
+
+      console.log('✨ [TELEPORT DEBUG] TELEPORT_EFFECT handler called:', { targetId, laneId, playerId });
+
+      // The drone should now exist as an invisible placeholder - get its exact position
+      const droneEl = droneRefs.current[targetId];
+
+      if (!droneEl) {
+        console.warn('⚠️ [TELEPORT DEBUG] Drone element not found - placeholder may not have rendered yet:', targetId);
+        onComplete?.();
+        return;
+      }
+
+      // Get the exact center position of the invisible placeholder drone
+      const referencePos = getElementCenter(droneEl, gameAreaRef.current);
+      console.log('✨ [TELEPORT DEBUG] Using exact drone placeholder position:', referencePos);
+
+      // Determine color based on local player perspective
+      const localPlayerId = gameStateManager.getLocalPlayerId();
+      const isLocalPlayer = playerId === localPlayerId;
+      const teleportColor = isLocalPlayer ? '#00ffff' : '#ec4899'; // Cyan for player, pink for opponent
+
+      const teleportId = `teleport-${targetId}-${Date.now()}`;
+
+      setTeleportEffects(prev => [...prev, {
+        id: teleportId,
+        top: referencePos.y,
+        left: referencePos.x,
+        color: teleportColor,
+        duration: 600,
+        onComplete: () => {
+          setTeleportEffects(prev => prev.filter(t => t.id !== teleportId));
+          onComplete?.();
+        }
+      }]);
+    });
+
     const unsubscribe = gameStateManager.subscribe((event) => {
       if (event.type === 'animationStateChange') {
         setAnimationBlocking(event.blocking);
@@ -126,5 +209,5 @@ export function useAnimationSetup(gameStateManager, droneRefs, getLocalPlayerSta
     gameStateManager.actionProcessor.setAnimationManager(animationManager);
     
     return unsubscribe;
-}, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking]);
+}, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setCardVisuals, setLaserEffects, setTeleportEffects]);
 }
