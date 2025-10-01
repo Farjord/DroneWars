@@ -1,24 +1,13 @@
 import React, { useState, useEffect } from 'react';
 
-const FlashEffect = ({ targetId, color = '#00bcd4', intensity = 0.6, duration = 300, onComplete, droneRefs, gameAreaRef }) => {
+const FlashEffect = ({ position, color = '#00bcd4', intensity = 0.6, onComplete }) => {
   const [opacity, setOpacity] = useState(0);
-  const [position, setPosition] = useState(null);
 
   useEffect(() => {
-    // Get target element position
-    const targetEl = droneRefs.current[targetId];
-    if (!targetEl || !gameAreaRef.current) {
+    if (!position) {
       onComplete?.();
       return;
     }
-
-    const targetRect = targetEl.getBoundingClientRect();
-    setPosition({
-      left: targetRect.left,
-      top: targetRect.top,
-      width: targetRect.width,
-      height: targetRect.height
-    });
 
     // Animation sequence: fade in quickly, hold, fade out
     const fadeInDuration = 50;
@@ -36,7 +25,7 @@ const FlashEffect = ({ targetId, color = '#00bcd4', intensity = 0.6, duration = 
       onComplete?.();
     }, fadeInDuration + holdDuration + fadeOutDuration);
 
-  }, [targetId, intensity, droneRefs, gameAreaRef, onComplete]);
+  }, [intensity, onComplete, position]);
 
   if (!position) return null;
 

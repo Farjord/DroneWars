@@ -1,30 +1,13 @@
 import React, { useState, useEffect } from 'react';
 
-const CardVisualEffect = ({ visualType, sourceId, targetId, duration = 800, onComplete, droneRefs, gameAreaRef }) => {
+const CardVisualEffect = ({ visualType, startPos, endPos, duration = 800, onComplete }) => {
   const [isActive, setIsActive] = useState(false);
-  const [positions, setPositions] = useState(null);
 
   useEffect(() => {
-    // Calculate start and end positions
-    const targetEl = droneRefs.current[targetId];
-    if (!targetEl || !gameAreaRef.current) {
+    if (!startPos || !endPos) {
       onComplete?.();
       return;
     }
-
-    const targetRect = targetEl.getBoundingClientRect();
-    const gameAreaRect = gameAreaRef.current.getBoundingClientRect();
-
-    // Source position (player hand area, approximate)
-    const sourceY = sourceId === 'player1-hand' ?
-      gameAreaRect.bottom - 100 :
-      gameAreaRect.top + 100;
-    const sourceX = gameAreaRect.left + (gameAreaRect.width / 2);
-
-    setPositions({
-      start: { x: sourceX, y: sourceY },
-      end: { x: targetRect.left + targetRect.width / 2, y: targetRect.top + targetRect.height / 2 }
-    });
 
     setIsActive(true);
 
@@ -35,38 +18,40 @@ const CardVisualEffect = ({ visualType, sourceId, targetId, duration = 800, onCo
     }, duration);
 
     return () => clearTimeout(timer);
-  }, [visualType, sourceId, targetId, duration, droneRefs, gameAreaRef, onComplete]);
+  }, [visualType, startPos, endPos, duration, onComplete]);
 
-  if (!isActive || !positions) return null;
+  if (!isActive || !startPos || !endPos) return null;
 
   // Render based on visual type
   switch (visualType) {
     case 'LASER_BLAST':
-      return <LaserBlastEffect positions={positions} duration={duration} />;
+      return <LaserBlastEffect startPos={startPos} endPos={endPos} duration={duration} />;
     case 'ENERGY_WAVE':
-      return <EnergyWaveEffect positions={positions} duration={duration} />;
+      return <EnergyWaveEffect startPos={startPos} endPos={endPos} duration={duration} />;
+    case 'NUKE_BLAST':
+      return <NukeBlastEffect endPos={endPos} duration={duration} />;
     default:
       return null;
   }
 };
 
 // Laser blast sub-component
-const LaserBlastEffect = ({ positions, duration }) => {
+const LaserBlastEffect = ({ startPos, endPos, duration }) => {
   const angle = Math.atan2(
-    positions.end.y - positions.start.y,
-    positions.end.x - positions.start.x
+    endPos.y - startPos.y,
+    endPos.x - startPos.x
   );
   const length = Math.sqrt(
-    Math.pow(positions.end.x - positions.start.x, 2) +
-    Math.pow(positions.end.y - positions.start.y, 2)
+    Math.pow(endPos.x - startPos.x, 2) +
+    Math.pow(endPos.y - startPos.y, 2)
   );
 
   return (
     <div
       style={{
         position: 'fixed',
-        left: positions.start.x,
-        top: positions.start.y,
+        left: startPos.x,
+        top: startPos.y,
         width: length,
         height: '4px',
         backgroundColor: '#ff0000',
@@ -82,13 +67,13 @@ const LaserBlastEffect = ({ positions, duration }) => {
 };
 
 // Energy wave sub-component (placeholder - customize as needed)
-const EnergyWaveEffect = ({ positions, duration }) => {
+const EnergyWaveEffect = ({ startPos, duration }) => {
   return (
     <div
       style={{
         position: 'fixed',
-        left: positions.start.x - 20,
-        top: positions.start.y - 20,
+        left: startPos.x - 20,
+        top: startPos.y - 20,
         width: '40px',
         height: '40px',
         borderRadius: '50%',
@@ -99,6 +84,45 @@ const EnergyWaveEffect = ({ positions, duration }) => {
         animation: `energyPulse ${duration}ms ease-out forwards`
       }}
     />
+  );
+};
+
+// Nuke blast sub-component - Large explosion covering lane area
+const NukeBlastEffect = ({ endPos, duration }) => {
+  return (
+    <>
+      {/* Expanding blast wave */}
+      <div
+        style={{
+          position: 'fixed',
+          left: endPos.x - 150,
+          top: endPos.y - 150,
+          width: '300px',
+          height: '300px',
+          borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(255,100,0,0.9) 0%, rgba(255,50,0,0.6) 40%, rgba(255,200,0,0.3) 70%, transparent 100%)',
+          zIndex: 9998,
+          pointerEvents: 'none',
+          animation: `nukeExpand ${duration}ms ease-out forwards`
+        }}
+      />
+      {/* Bright flash */}
+      <div
+        style={{
+          position: 'fixed',
+          left: endPos.x - 200,
+          top: endPos.y - 200,
+          width: '400px',
+          height: '400px',
+          borderRadius: '50%',
+          backgroundColor: '#ffffff',
+          opacity: 0.8,
+          zIndex: 9997,
+          pointerEvents: 'none',
+          animation: `nukeFlash ${duration}ms ease-out forwards`
+        }}
+      />
+    </>
   );
 };
 
@@ -116,5 +140,18 @@ export default CardVisualEffect;
   0% { transform: scale(1); opacity: 0.7; }
   50% { transform: scale(2); opacity: 0.5; }
   100% { transform: scale(3); opacity: 0; }
+}
+
+@keyframes nukeExpand {
+  0% { transform: scale(0.1); opacity: 1; }
+  50% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes nukeFlash {
+  0% { opacity: 0.8; transform: scale(0.5); }
+  10% { opacity: 1; transform: scale(1); }
+  40% { opacity: 0.6; transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(1.5); }
 }
 */

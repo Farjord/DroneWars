@@ -5,7 +5,7 @@
 // Extracted from App.jsx for better component organization
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown } from 'lucide-react';
+import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, Loader2 } from 'lucide-react';
 import { getPhaseDisplayName } from '../../utils/gameUtils.js';
 
 /**
@@ -28,6 +28,8 @@ import { getPhaseDisplayName } from '../../utils/gameUtils.js';
  * @param {Function} props.getLocalPlayerId - Get local player ID
  * @param {Function} props.getOpponentPlayerId - Get opponent player ID
  * @param {Function} props.isMyTurn - Check if it's local player's turn
+ * @param {string} props.currentPlayer - Current player ID
+ * @param {Function} props.isMultiplayer - Check if game is multiplayer
  * @param {Function} props.handlePlayerPass - Handle player pass action
  * @param {Function} props.handleReset - Handle game reset
  * @param {boolean} props.mandatoryAction - Whether there's a mandatory action
@@ -54,6 +56,8 @@ function GameHeader({
   getLocalPlayerId,
   getOpponentPlayerId,
   isMyTurn,
+  currentPlayer,
+  isMultiplayer,
   handlePlayerPass,
   handleReset,
   mandatoryAction,
@@ -120,28 +124,39 @@ function GameHeader({
         </div>
       </div>
 
-      {/* Center Title and Phase */}
-      <div className="text-center flex flex-col items-center">
-        <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-400 drop-shadow-xl font-orbitron"
-            style={{ textShadow: '0 0 15px rgba(236, 72, 153, 0.5), 0 0 5px rgba(255, 255, 255, 0.5)' }}>
-          Drone Wars
-        </h1>
-        <div className="flex items-center gap-4 mt-2">
-          <h2 className="text-2xl font-bold text-gray-300 tracking-widest font-exo">{getPhaseDisplayName(turnPhase)}</h2>
+      {/* Center Phase and Turn Indicator */}
+      <div className="text-center flex flex-col items-center gap-2">
+        {/* Phase Display */}
+        <h2 className="text-2xl font-bold text-gray-300 tracking-widest font-exo">{getPhaseDisplayName(turnPhase)}</h2>
 
-          {/* Pass Button */}
-          {(turnPhase === 'deployment' || turnPhase === 'action') && isMyTurn() && !mandatoryAction && !multiSelectState && (
-            <button
-              onClick={handlePlayerPass}
-              disabled={passInfo[`${getLocalPlayerId()}Passed`]}
-              className={`btn-clipped text-white font-bold py-1 px-6 transition-colors duration-200 ${
-                passInfo[`${getLocalPlayerId()}Passed`] ? 'bg-gray-700 cursor-not-allowed' : 'bg-red-600 hover:bg-red-500'
-              }`}
-            >
-              Pass
-            </button>
-          )}
-        </div>
+        {/* Turn Indicator - Only show during deployment/action phases */}
+        {(turnPhase === 'deployment' || turnPhase === 'action') && (
+          <div className="flex items-center gap-3">
+            {isMyTurn() ? (
+              <div className="flex items-center gap-2 text-2xl font-bold text-green-400 tracking-wide">
+                <span>Your Turn</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-2xl font-bold text-orange-400 tracking-wide">
+                <Loader2 className="animate-spin" size={24} />
+                <span>{isMultiplayer() ? "Opponent's Turn" : "AI Thinking..."}</span>
+              </div>
+            )}
+
+            {/* Pass Button */}
+            {isMyTurn() && !mandatoryAction && !multiSelectState && (
+              <button
+                onClick={handlePlayerPass}
+                disabled={passInfo[`${getLocalPlayerId()}Passed`]}
+                className={`btn-clipped text-white font-bold py-1 px-6 transition-colors duration-200 ${
+                  passInfo[`${getLocalPlayerId()}Passed`] ? 'bg-gray-700 cursor-not-allowed' : 'bg-red-600 hover:bg-red-500'
+                }`}
+              >
+                Pass
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Player Resources */}

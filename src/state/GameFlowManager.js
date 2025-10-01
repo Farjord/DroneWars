@@ -482,12 +482,12 @@ class GameFlowManager {
       const readiedPlayer1 = gameEngine.readyDronesAndRestoreShields(
         currentGameState.player1,
         currentGameState.player2,
-        allPlacedSections.player1
+        allPlacedSections  // Pass full structure with both players
       );
       const readiedPlayer2 = gameEngine.readyDronesAndRestoreShields(
         currentGameState.player2,
         currentGameState.player1,
-        allPlacedSections.player2
+        allPlacedSections  // Pass full structure with both players
       );
 
       // Apply energy and deployment budget on top of readied states
@@ -624,12 +624,14 @@ class GameFlowManager {
     const gameState = this.gameStateManager.getState();
 
     switch(phase) {
+      case 'energyReset':
+        return true; // Always required - automatic phase
       case 'mandatoryDiscard':
         return this.anyPlayerExceedsHandLimit(gameState);
       case 'optionalDiscard':
         return this.anyPlayerHasCards(gameState); // Only required if players have cards
       case 'draw':
-        return true; // Always required
+        return true; // Always required - automatic phase
       case 'determineFirstPlayer':
         return true; // Always required for round start
       case 'allocateShields':
@@ -639,6 +641,8 @@ class GameFlowManager {
       case 'deployment':
       case 'action':
         return true; // Always required
+      case 'deploymentComplete':
+        return false; // This phase was removed but may still be in legacy phase list
       default:
         return true; // Default to required for unknown phases
     }
@@ -878,23 +882,11 @@ class GameFlowManager {
     this.roundNumber++;
     console.log(`🔄 GameFlowManager: Starting round ${this.roundNumber}`);
 
-    // Reset passInfo for new round
-    const resetPassInfo = {
-      player1Passed: false,
-      player2Passed: false,
-      firstPasser: null
-    };
-
-    // Reset pass info via ActionProcessor
-    // Note: ActionProcessor's processPhaseTransition already resets pass info,
-    // but this is a specific round-level reset that may have different semantics
-    this.gameStateManager.setPassInfo(resetPassInfo);
-
-    console.log('✅ PassInfo reset for new round');
-
     // Find first required phase in new round
     const firstRequiredPhase = this.ROUND_PHASES.find(phase => this.isPhaseRequired(phase));
 
+    // Note: PassInfo will be reset by ActionProcessor.processPhaseTransition()
+    // when transitioning to the first phase (resetPassInfo defaults to true)
     if (firstRequiredPhase) {
       await this.transitionToPhase(firstRequiredPhase);
     } else {

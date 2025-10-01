@@ -226,6 +226,9 @@ setAnimationManager(animationManager) {
         case 'cardPlay':
           return await this.processCardPlay(payload);
 
+        case 'movementCompletion':
+          return await this.processMovementCompletion(payload);
+
         case 'shipAbility':
           return await this.processShipAbility(payload);
 
@@ -311,18 +314,12 @@ setAnimationManager(animationManager) {
     );
 
     // Use animation events from gameEngine result
+    // Spread all event properties to ensure logical position data flows through
     const animations = (result.animationEvents || []).map(event => ({
       animationName: event.type,
       payload: {
-        droneId: event.sourceId,        // DRONE_FLY handler expects droneId
-        targetId: event.targetId,
-        sourceId: event.sourceId,       // Keep for other handlers
-        amount: event.amount,
-        attackValue: event.attackValue, // For laser scaling
-        visualType: event.visualType,
-        cardName: event.cardName,
-        duration: event.duration,
-        targetPlayerId: event.targetPlayerId  // For disambiguating ship section refs
+        ...event,  // Pass ALL properties from event (sourcePlayer, sourceLane, targetPlayer, etc.)
+        droneId: event.sourceId  // Add alias for backwards compatibility
       }
     }));
 
@@ -477,16 +474,12 @@ setAnimationManager(animationManager) {
     );
 
     // Collect animation events
+    // Spread all event properties to ensure logical position data flows through
     const animations = (result.animationEvents || []).map(event => ({
       animationName: event.type,
       payload: {
-        droneId: event.sourceId,        // DRONE_FLY handler expects droneId
-        targetId: event.targetId,
-        sourceId: event.sourceId,       // Keep for other handlers
-        amount: event.amount,
-        visualType: event.visualType,
-        duration: event.duration,
-        targetPlayerId: event.targetPlayerId  // For disambiguating ship section refs
+        ...event,  // Pass ALL properties from event (sourcePlayer, sourceLane, targetPlayer, etc.)
+        droneId: event.sourceId  // Add alias for backwards compatibility
       }
     }));
 
@@ -680,15 +673,8 @@ setAnimationManager(animationManager) {
     const animations = (result.animationEvents || []).map(event => ({
       animationName: event.type,
       payload: {
-        droneId: event.sourceId,        // DRONE_FLY handler expects droneId
-        targetId: event.targetId,
-        sourceId: event.sourceId,       // Keep for other handlers
-        amount: event.amount,
-        attackValue: event.attackValue, // For laser scaling
-        visualType: event.visualType,
-        cardName: event.cardName,
-        duration: event.duration,
-        targetPlayerId: event.targetPlayerId  // For disambiguating ship section refs
+        ...event,  // Pass ALL properties from event (sourcePlayer, sourceLane, targetPlayer, etc.)
+        droneId: event.sourceId  // Add alias for backwards compatibility
       }
     }));
 
@@ -712,6 +698,90 @@ setAnimationManager(animationManager) {
     }
 
     return result;
+  }
+
+  /**
+   * Process movement card completion (SINGLE_MOVE or MULTI_MOVE)
+   * Called after user has selected drones and destination in UI
+   */
+  async processMovementCompletion(payload) {
+    const { card, movementType, drones, fromLane, toLane, playerId } = payload;
+
+    const currentState = this.gameStateManager.getState();
+    const playerStates = { player1: currentState.player1, player2: currentState.player2 };
+    const placedSections = {
+      player1: currentState.placedSections,
+      player2: currentState.opponentPlacedSections
+    };
+
+    const callbacks = {
+      logCallback: (entry) => this.gameStateManager.addLogEntry(entry),
+      applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects,
+      updateAurasCallback: gameEngine.updateAuras
+    };
+
+    let result;
+
+    if (movementType === 'single_move') {
+      // Single drone movement
+      result = gameEngine.resolveSingleMove(
+        card,
+        drones[0], // Single drone
+        fromLane,
+        toLane,
+        playerStates[playerId],
+        playerStates[playerId === 'player1' ? 'player2' : 'player1'],
+        placedSections,
+        callbacks
+      );
+
+      // Update only the acting player's state
+      const newPlayerStates = {
+        ...playerStates,
+        [playerId]: result.newPlayerState
+      };
+
+      this.gameStateManager.setPlayerStates(
+        newPlayerStates.player1,
+        newPlayerStates.player2
+      );
+    } else {
+      // Multi-drone movement
+      result = gameEngine.resolveMultiMove(
+        card,
+        drones, // Array of drones
+        fromLane,
+        toLane,
+        playerStates[playerId],
+        playerStates[playerId === 'player1' ? 'player2' : 'player1'],
+        placedSections,
+        callbacks
+      );
+
+      // Update only the acting player's state
+      const newPlayerStates = {
+        ...playerStates,
+        [playerId]: result.newPlayerState
+      };
+
+      this.gameStateManager.setPlayerStates(
+        newPlayerStates.player1,
+        newPlayerStates.player2
+      );
+    }
+
+    // Handle automatic turn transition if needed
+    if (result.shouldEndTurn) {
+      const updatedState = this.gameStateManager.getState();
+      await this.processTurnTransition({
+        newPlayer: updatedState.currentPlayer === 'player1' ? 'player2' : 'player1'
+      });
+    }
+
+    return {
+      success: true,
+      shouldEndTurn: result.shouldEndTurn
+    };
   }
 
   /**
@@ -747,16 +817,12 @@ setAnimationManager(animationManager) {
     );
 
     // Collect animation events
+    // Spread all event properties to ensure logical position data flows through
     const animations = (result.animationEvents || []).map(event => ({
       animationName: event.type,
       payload: {
-        droneId: event.sourceId,        // DRONE_FLY handler expects droneId
-        targetId: event.targetId,
-        sourceId: event.sourceId,       // Keep for other handlers
-        amount: event.amount,
-        visualType: event.visualType,
-        duration: event.duration,
-        targetPlayerId: event.targetPlayerId  // For disambiguating ship section refs
+        ...event,  // Pass ALL properties from event (sourcePlayer, sourceLane, targetPlayer, etc.)
+        droneId: event.sourceId  // Add alias for backwards compatibility
       }
     }));
 

@@ -28,7 +28,6 @@ import AICardPlayReportModal from './components/modals/AICardPlayReportModal.jsx
 import AIActionReportModal from './components/modals/AIActionReportModal.jsx';
 import DetailedDroneModal from './components/modals/debug/DetailedDroneModal.jsx';
 import { FirstPlayerModal, DeploymentCompleteModal, RoundEndModal } from './components/modals/GamePhaseModals.jsx';
-import OpponentTurnModal from './components/modals/OpponentTurnModal.jsx';
 import WaitingForPlayerModal from './components/modals/WaitingForPlayerModal.jsx';
 import ConfirmationModal from './components/modals/ConfirmationModal.jsx';
 import MandatoryActionModal from './components/modals/MandatoryActionModal.jsx';
@@ -136,9 +135,7 @@ const App = () => {
   const [showFirstPlayerModal, setShowFirstPlayerModal] = useState(false);
   const [showDeploymentCompleteModal, setShowDeploymentCompleteModal] = useState(false);
   const [showRoundEndModal, setShowRoundEndModal] = useState(false);
-  const [showOpponentTurnModal, setShowOpponentTurnModal] = useState(false);
   const [waitingForPlayerPhase, setWaitingForPlayerPhase] = useState(null); // Track which phase we're waiting for player acknowledgment
-  const [opponentTurnData, setOpponentTurnData] = useState({ phase: 'action', actionType: 'action' });
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [isViewDeckModalOpen, setIsViewDeckModalOpen] = useState(false);
   const [isViewDiscardModalOpen, setIsViewDiscardModalOpen] = useState(false);
@@ -518,8 +515,6 @@ const App = () => {
                newPlayer: getOpponentPlayerId(),
                reason: 'aiGoAgain'
            });
-           setOpponentTurnData({ phase: turnPhase, actionType: 'another' });
-           setShowOpponentTurnModal(true);
       }
       setAiCardPlayReport(null);
   }, [processAction, getLocalPlayerId, getOpponentPlayerId, aiCardPlayReport, winner]);
@@ -779,8 +774,20 @@ const App = () => {
       playerId: actingPlayerId
     });
 
-    // Check if card needs selection (e.g., SEARCH_AND_DRAW)
+    // Check if card needs selection (e.g., SEARCH_AND_DRAW or MOVEMENT)
     if (result.needsCardSelection) {
+        // Handle movement cards differently - use multiSelectState instead of modal
+        if (result.needsCardSelection.type === 'single_move' || result.needsCardSelection.type === 'multi_move') {
+            setMultiSelectState({
+                card: result.needsCardSelection.card,
+                phase: result.needsCardSelection.phase,
+                selectedDrones: [],
+                sourceLane: null
+            });
+            return; // Don't process other effects yet
+        }
+
+        // Handle other card selections (like SEARCH_AND_DRAW) with modal
         setCardSelectionModal({
             ...result.needsCardSelection,
             onConfirm: (selectedCards) => {
@@ -883,81 +890,50 @@ const App = () => {
 
   /**
    * RESOLVE MULTI MOVE
-   * Processes multi-drone movement cards using gameEngine logic.
-   * Handles movement effects, aura updates, and state transitions.
+   * Processes multi-drone movement cards through ActionProcessor.
    * @param {Object} card - The movement card being played
    * @param {Array} dronesToMove - Array of drones to move
    * @param {string} fromLane - Source lane ID
    * @param {string} toLane - Destination lane ID
    */
-  // TODO: TECHNICAL DEBT - resolveMultiMove handles multi-move card resolution - no ActionProcessor action exists
-  const resolveMultiMove = useCallback((card, dronesToMove, fromLane, toLane) => {
-    const result = gameEngine.resolveMultiMove(
-        card,
-        dronesToMove,
-        fromLane,
-        toLane,
-        localPlayerState,
-        getOpponentPlayerState(),
-        getPlacedSectionsForEngine(),
-        {
-            logCallback: addLogEntry,
-            applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects,
-            updateAurasCallback: gameEngine.updateAuras
-        }
-    );
+  const resolveMultiMove = useCallback(async (card, dronesToMove, fromLane, toLane) => {
+    await processAction('movementCompletion', {
+      card,
+      movementType: 'multi_move',
+      drones: dronesToMove,
+      fromLane,
+      toLane,
+      playerId: getLocalPlayerId()
+    });
 
-    // TODO: TECHNICAL DEBT - Direct updatePlayerState violates architecture but resolveMultiMove not yet available in ActionProcessor
-    updatePlayerState(getLocalPlayerId(), result.newPlayerState);
-
-    if (result.shouldClearMultiSelectState) {
-        setMultiSelectState(null);
-    }
-    if (result.shouldCancelCardSelection) {
-        cancelCardSelection();
-    }
-}, [localPlayerState, addLogEntry, gameEngine, localPlacedSections, opponentPlacedSections]);
+    // Clean up UI state
+    setMultiSelectState(null);
+    cancelCardSelection();
+  }, [processAction, getLocalPlayerId]);
 
 
   /**
    * RESOLVE SINGLE MOVE
-   * Processes single-drone movement cards using gameEngine logic.
-   * Handles movement effects and maintains turn continuity (goAgain).
-   *
-   * TODO: TECHNICAL DEBT - resolveSingleMove handles single-move card resolution - no ActionProcessor action exists
-   *
+   * Processes single-drone movement cards through ActionProcessor.
    * @param {Object} card - The movement card being played
    * @param {Object} droneToMove - The drone to move
    * @param {string} fromLane - Source lane ID
    * @param {string} toLane - Destination lane ID
    */
-  const resolveSingleMove = useCallback((card, droneToMove, fromLane, toLane) => {
-    const result = gameEngine.resolveSingleMove(
-        card,
-        droneToMove,
-        fromLane,
-        toLane,
-        localPlayerState,
-        getOpponentPlayerState(),
-        getPlacedSectionsForEngine(),
-        {
-            logCallback: addLogEntry,
-            applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects,
-            updateAurasCallback: gameEngine.updateAuras
-        }
-    );
+  const resolveSingleMove = useCallback(async (card, droneToMove, fromLane, toLane) => {
+    await processAction('movementCompletion', {
+      card,
+      movementType: 'single_move',
+      drones: [droneToMove],
+      fromLane,
+      toLane,
+      playerId: getLocalPlayerId()
+    });
 
-    // TODO: TECHNICAL DEBT - Direct updatePlayerState violates architecture but resolveMultiMove not yet available in ActionProcessor
-    updatePlayerState(getLocalPlayerId(), result.newPlayerState);
-
-    if (result.shouldClearMultiSelectState) {
-        setMultiSelectState(null);
-    }
-    if (result.shouldCancelCardSelection) {
-        cancelCardSelection();
-    }
-    // Note: Single move cards have "goAgain: true", so shouldEndTurn will be false
-}, [localPlayerState, addLogEntry, gameEngine, localPlacedSections, opponentPlacedSections]);
+    // Clean up UI state
+    setMultiSelectState(null);
+    cancelCardSelection();
+  }, [processAction, getLocalPlayerId]);
 
 
 
@@ -1095,71 +1071,6 @@ const App = () => {
     }
   }, [winner, turnPhase, currentPlayer]);
 
-  // --- 8.6 REACTIVE MODAL UPDATES FOR TURN CHANGES ---
-  // Show/hide opponent turn modal when currentPlayer changes during active phases
-  useEffect(() => {
-    // Only update modals during active gameplay phases
-    if (turnPhase !== 'deployment' && turnPhase !== 'action') return;
-
-    // Don't interfere with game over or phase transition modals
-    if (winner || showDeploymentCompleteModal || showRoundEndModal) return;
-
-    // Only update when currentPlayer OR turnPhase actually changes
-    if (currentPlayer === lastCurrentPlayer && turnPhase === lastTurnPhase) return;
-
-    const myTurn = isMyTurn();
-
-    console.log(`[MODAL UPDATE] Turn/phase change detected:`, {
-      currentPlayer,
-      lastCurrentPlayer,
-      turnPhase,
-      lastTurnPhase,
-      myTurn
-    });
-
-    // Update the tracked currentPlayer and turnPhase
-    setLastCurrentPlayer(currentPlayer);
-    setLastTurnPhase(turnPhase);
-
-    if (myTurn) {
-      // It's now the local player's turn - hide opponent modal
-      setShowOpponentTurnModal(false);
-    } else {
-      // It's now the opponent's turn - show modal
-      setOpponentTurnData({ phase: turnPhase, actionType: 'action' });
-      setShowOpponentTurnModal(true);
-    }
-  }, [currentPlayer, turnPhase, isMyTurn, lastCurrentPlayer, lastTurnPhase, winner, showDeploymentCompleteModal, showRoundEndModal]);
-
-  /**
-   * HIDE OPPONENT TURN MODAL WHEN LEAVING ACTIVE PHASES
-   * When transitioning away from deployment/action (e.g., both players passed),
-   * clear the opponent modal regardless of other conditions
-   */
-  useEffect(() => {
-    const wasInActivePhase = lastTurnPhase === 'deployment' || lastTurnPhase === 'action';
-    const nowInActivePhase = turnPhase === 'deployment' || turnPhase === 'action';
-
-    if (wasInActivePhase && !nowInActivePhase && showOpponentTurnModal) {
-      console.log(`🚪 Hiding opponent turn modal - exiting active phase: ${lastTurnPhase} → ${turnPhase}`);
-      setShowOpponentTurnModal(false);
-    }
-  }, [turnPhase, lastTurnPhase, showOpponentTurnModal]);
-
-  /**
-   * HIDE OPPONENT TURN MODAL WHEN ANIMATIONS START
-   * Once animations start blocking, hide the modal since:
-   * 1. Animations already provide interaction blocking
-   * 2. Modal obscures the view of animations
-   * 3. Modal's purpose is fulfilled once animations start
-   * Uses animationBlocking state set by AnimationManager (mode-agnostic)
-   */
-  useEffect(() => {
-    if (animationBlocking && showOpponentTurnModal) {
-      console.log('🎬 Hiding opponent turn modal - animations started');
-      setShowOpponentTurnModal(false);
-    }
-  }, [animationBlocking, showOpponentTurnModal]);
 
   /**
    * HANDLE RESET
@@ -2239,40 +2150,17 @@ const App = () => {
       return;
     }
 
-    if (card.effect.type === 'MULTI_MOVE') {
+    // Movement cards are now handled through processCardPlay -> needsCardSelection flow
+    if (card.effect.type === 'MULTI_MOVE' || card.effect.type === 'SINGLE_MOVE') {
       if (multiSelectState && multiSelectState.card.instanceId === card.instanceId) {
         cancelCardSelection();
       } else {
-        setMultiSelectState({
-          card: card,
-          phase: 'select_source_lane',
-          sourceLane: null,
-          selectedDrones: [],
-          maxSelection: card.effect.count,
-        });
-        setSelectedCard(card); 
-        setSelectedDrone(null);
-        setAbilityMode(null);
+        // Immediately process card play (no target needed for movement cards)
+        processCardPlay(card, null, getLocalPlayerId());
       }
       return;
     }
 
-    if (card.effect.type === 'SINGLE_MOVE') {
-      if (multiSelectState && multiSelectState.card.instanceId === card.instanceId) {
-        cancelCardSelection();
-      } else {
-        setMultiSelectState({
-          card: card,
-          phase: 'select_drone',
-          selectedDrone: null,
-          sourceLane: null,
-        });
-        setSelectedCard(card);
-        setSelectedDrone(null);
-        setAbilityMode(null);
-      }
-      return;
-    }
     if (selectedCard?.instanceId === card.instanceId) {
       cancelCardSelection();
     } else if (card.name === 'System Sabotage') {
@@ -2526,24 +2414,20 @@ const App = () => {
     {flashEffects.map(flash => (
       <FlashEffect
         key={flash.id}
-        targetId={flash.targetId}
+        position={flash.position}
         color={flash.color}
         intensity={flash.intensity}
         onComplete={flash.onComplete}
-        droneRefs={droneRefs}
-        gameAreaRef={gameAreaRef}
       />
     ))}
     {cardVisuals.map(visual => (
       <CardVisualEffect
         key={visual.id}
         visualType={visual.visualType}
-        sourceId={visual.sourceId}
-        targetId={visual.targetId}
+        startPos={visual.startPos}
+        endPos={visual.endPos}
         duration={visual.duration}
         onComplete={visual.onComplete}
-        droneRefs={droneRefs}
-        gameAreaRef={gameAreaRef}
       />
     ))}
     {laserEffects.map(laser => (
@@ -2600,6 +2484,8 @@ const App = () => {
         getLocalPlayerId={getLocalPlayerId}
         getOpponentPlayerId={getOpponentPlayerId}
         isMyTurn={isMyTurn}
+        currentPlayer={currentPlayer}
+        isMultiplayer={isMultiplayer}
         handlePlayerPass={handlePlayerPass}
         handleReset={handleReset}
         mandatoryAction={mandatoryAction}
@@ -2608,6 +2494,20 @@ const App = () => {
         setShowAiHandModal={setShowAiHandModal}
         onShowDebugModal={() => setShowDebugModal(true)}
       />
+
+      {/* Transparent Overlay - Blocks interaction during opponent's turn */}
+      {!isMyTurn() && (turnPhase === 'deployment' || turnPhase === 'action') && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'transparent',
+            zIndex: 40,
+            cursor: 'not-allowed'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        />
+      )}
       
       <GameBattlefield
         localPlayerState={localPlayerState}
@@ -2705,12 +2605,6 @@ const App = () => {
       <RoundEndModal
         show={showRoundEndModal}
         onContinue={() => setShowRoundEndModal(false)}
-      />
-      <OpponentTurnModal
-        show={showOpponentTurnModal}
-        isMultiplayer={isMultiplayer()}
-        phase={opponentTurnData.phase}
-        actionType={opponentTurnData.actionType}
       />
       <WaitingForPlayerModal
         show={!!waitingForPlayerPhase}

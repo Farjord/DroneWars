@@ -9,9 +9,34 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     const opponentPlayerState = getOpponentPlayerState();
     const animationManager = new AnimationManager(gameStateManager);
     const droneOriginalPositions = new Map();
+
+    /**
+     * Maps logical game position (player, lane, entity) to DOM element
+     * Handles perspective transformation: local player vs opponent player
+     * @param {string} playerId - 'player1' or 'player2'
+     * @param {string} laneOrSection - 'lane1', 'lane2', 'lane3', or section name
+     * @param {string} entityId - Drone ID or section name
+     * @param {string} entityType - 'drone' or 'section'
+     * @returns {HTMLElement|null} - DOM element or null if not found
+     */
+    const getElementFromLogicalPosition = (playerId, laneOrSection, entityId, entityType) => {
+      // For drones, always use droneRefs (they're keyed by ID, not perspective)
+      if (entityType === 'drone') {
+        return droneRefs.current[entityId] || null;
+      }
+
+      // For ship sections, determine prefix based on player perspective
+      if (entityType === 'section') {
+        const localPlayerId = gameStateManager.getLocalPlayerId();
+        const prefix = playerId === localPlayerId ? 'local' : 'opponent';
+        return sectionRefs.current[`${prefix}-${entityId}`] || null;
+      }
+
+      return null;
+    };
     
     animationManager.registerVisualHandler('DRONE_FLY', (payload) => {
-      const { droneId, targetId, config, attackValue, onComplete } = payload;
+      const { droneId, sourcePlayer, sourceLane, targetId, targetPlayer, targetLane, targetType, config, attackValue, onComplete } = payload;
 
       // Skip return animations - no visual needed
       if (config.isReturn) {
@@ -21,35 +46,28 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
 
       console.log('🔫 [LASER DEBUG] DRONE_FLY handler called:', {
         droneId,
+        sourcePlayer,
+        sourceLane,
         targetId,
+        targetPlayer,
+        targetType,
         attackValue,
         config
       });
 
-      const droneEl = droneRefs.current[droneId];
-
-      // Check if target is a drone first, then try sections with player prefixes
-      let targetEl = droneRefs.current[targetId];
-      if (!targetEl) {
-        // Determine if attacking drone is local or opponent to figure out target section prefix
-        const localPlayerId = gameStateManager.getLocalPlayerId();
-        const localState = gameStateManager.getState()[localPlayerId];
-        const opponentId = localPlayerId === 'player1' ? 'player2' : 'player1';
-
-        // Check if drone belongs to local player
-        const isLocalDrone = Object.values(localState.dronesOnBoard).flat().some(d => d.id === droneId);
-
-        // If local drone attacking, target is opponent section; if opponent drone, target is local section
-        const targetPrefix = isLocalDrone ? 'opponent' : 'local';
-        targetEl = sectionRefs.current[`${targetPrefix}-${targetId}`];
-      }
+      // Use logical position mapper to get DOM elements
+      const droneEl = getElementFromLogicalPosition(sourcePlayer, sourceLane, droneId, 'drone');
+      const targetEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, targetType);
 
       if (!droneEl || !targetEl) {
         console.warn('⚠️ [LASER DEBUG] Missing DOM elements, skipping laser', {
           hasDrone: !!droneEl,
           hasTarget: !!targetEl,
-          targetId,
-          availableSections: Object.keys(sectionRefs.current || {})
+          sourcePlayer,
+          sourceLane,
+          targetPlayer,
+          targetType,
+          targetId
         });
         onComplete?.();
         return;
@@ -76,50 +94,55 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     });
     
     animationManager.registerVisualHandler('EXPLOSION_EFFECT', (payload) => {
-      // Check if target is a drone first
-      let targetEl = droneRefs.current[payload.targetId];
+      const { targetId, targetPlayer, targetLane, targetType, config, onComplete } = payload;
 
-      if (!targetEl && payload.targetPlayerId) {
-        // For ship sections, use targetPlayerId to determine correct prefix
-        const localPlayerId = gameStateManager.getLocalPlayerId();
-        const prefix = payload.targetPlayerId === localPlayerId ? 'local' : 'opponent';
-        targetEl = sectionRefs.current[`${prefix}-${payload.targetId}`];
-      }
+      // Use logical position mapper to get DOM element
+      const targetEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, targetType);
 
       if (targetEl) {
         const pos = getElementCenter(targetEl, gameAreaRef.current);
         // Pass size from config
-        triggerExplosion(payload.targetId, pos, payload.config?.size || 'large');
+        triggerExplosion(targetId, pos, config?.size || 'large');
       } else {
-        console.warn('⚠️ [EXPLOSION DEBUG] Target element not found:', payload.targetId);
+        console.warn('⚠️ [EXPLOSION DEBUG] Target element not found:', {
+          targetId,
+          targetPlayer,
+          targetLane,
+          targetType
+        });
       }
-      payload.onComplete?.();
+      onComplete?.();
     });
 
     animationManager.registerVisualHandler('FLASH_EFFECT', (payload) => {
-      const { targetId, config, onComplete, targetPlayerId } = payload;
+      const { targetId, targetPlayer, targetLane, targetType, config, onComplete } = payload;
 
-      // Check if target is a drone first
-      let targetEl = droneRefs.current[targetId];
-
-      if (!targetEl && targetPlayerId) {
-        // For ship sections, use targetPlayerId to determine correct prefix
-        const localPlayerId = gameStateManager.getLocalPlayerId();
-        const prefix = targetPlayerId === localPlayerId ? 'local' : 'opponent';
-        targetEl = sectionRefs.current[`${prefix}-${targetId}`];
-      }
+      // Use logical position mapper to get DOM element
+      const targetEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, targetType);
 
       if (!targetEl) {
-        console.warn('⚠️ [FLASH DEBUG] Target element not found:', targetId);
+        console.warn('⚠️ [FLASH DEBUG] Target element not found:', {
+          targetId,
+          targetPlayer,
+          targetLane,
+          targetType
+        });
         onComplete?.();
         return;
       }
 
+      // Calculate position from target element
+      const targetRect = targetEl.getBoundingClientRect();
       const flashId = `flash-${targetId}-${Date.now()}`;
 
       setFlashEffects(prev => [...prev, {
         id: flashId,
-        targetId: targetId,
+        position: {
+          left: targetRect.left,
+          top: targetRect.top,
+          width: targetRect.width,
+          height: targetRect.height
+        },
         color: config.color,
         intensity: config.intensity,
         onComplete: () => {
@@ -130,15 +153,101 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     });
 
     animationManager.registerVisualHandler('CARD_VISUAL_EFFECT', (payload) => {
-      const { visualType, sourceId, targetId, duration, onComplete } = payload;
+      const { visualType, sourcePlayer, targetId, targetPlayer, targetLane, targetType, duration, onComplete } = payload;
+
+      // Calculate source position (player hand area)
+      const gameAreaRect = gameAreaRef.current?.getBoundingClientRect();
+      if (!gameAreaRect) {
+        onComplete?.();
+        return;
+      }
+
+      // Determine source Y based on local player perspective
+      const localPlayerId = gameStateManager.getLocalPlayerId();
+      const sourceY = sourcePlayer === localPlayerId
+        ? gameAreaRect.bottom - 100  // Local player's hand at bottom
+        : gameAreaRect.top + 100;     // Opponent's hand at top
+      const sourceX = gameAreaRect.left + (gameAreaRect.width / 2);
+
+      let targetCenter;
+
+      // Handle lane-targeted effects
+      if (targetType === 'lane') {
+        // For 'center' target (multi-player effects like Nuke), use game area center
+        if (targetPlayer === 'center') {
+          targetCenter = {
+            x: gameAreaRect.left + (gameAreaRect.width / 2),
+            y: gameAreaRect.top + (gameAreaRect.height / 2)
+          };
+        } else {
+          // For single-player lane targets (like Sidewinder Missiles)
+          // Apply perspective: show as opponent's lane for caster, own lane for receiver
+          const perspectivePlayer = sourcePlayer === localPlayerId ? targetPlayer : (targetPlayer === localPlayerId ? localPlayerId : targetPlayer);
+
+          // Get first drone in lane or use lane center if empty
+          const gameState = gameStateManager.getState();
+          const playerState = gameState[perspectivePlayer];
+          const lanesOnBoard = playerState?.dronesOnBoard || {};
+          const dronesInLane = lanesOnBoard[targetLane] || [];
+
+          if (dronesInLane.length > 0) {
+            // Use first drone as reference point
+            const firstDrone = dronesInLane[0];
+            const droneEl = droneRefs.current[firstDrone.id];
+            if (droneEl) {
+              const droneRect = droneEl.getBoundingClientRect();
+              targetCenter = {
+                x: droneRect.left + droneRect.width / 2,
+                y: droneRect.top + droneRect.height / 2
+              };
+            } else {
+              // Fallback to game area center
+              targetCenter = {
+                x: gameAreaRect.left + (gameAreaRect.width / 2),
+                y: gameAreaRect.top + (gameAreaRect.height / 2)
+              };
+            }
+          } else {
+            // Empty lane - use lane center position (approximate)
+            const laneIndex = targetLane === 'lane1' ? 0 : targetLane === 'lane2' ? 1 : 2;
+            const laneY = perspectivePlayer === localPlayerId
+              ? gameAreaRect.bottom - 200  // Local player's lanes at bottom
+              : gameAreaRect.top + 200;     // Opponent's lanes at top
+            targetCenter = {
+              x: gameAreaRect.left + (gameAreaRect.width / 4) * (laneIndex + 1),
+              y: laneY
+            };
+          }
+        }
+      } else {
+        // Use logical position mapper to get target element (drone or section)
+        const targetEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, targetType);
+
+        if (!targetEl) {
+          console.warn('⚠️ [CARD VISUAL DEBUG] Target element not found:', {
+            targetId,
+            targetPlayer,
+            targetLane,
+            targetType
+          });
+          onComplete?.();
+          return;
+        }
+
+        const targetRect = targetEl.getBoundingClientRect();
+        targetCenter = {
+          x: targetRect.left + targetRect.width / 2,
+          y: targetRect.top + targetRect.height / 2
+        };
+      }
 
       const visualId = `cardvisual-${Date.now()}`;
 
       setCardVisuals(prev => [...prev, {
         id: visualId,
         visualType: visualType || 'LASER_BLAST',
-        sourceId: sourceId,
-        targetId: targetId,
+        startPos: { x: sourceX, y: sourceY },
+        endPos: targetCenter,
         duration: duration || 800,
         onComplete: () => {
           setCardVisuals(prev => prev.filter(v => v.id !== visualId));

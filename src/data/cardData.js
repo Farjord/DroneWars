@@ -292,6 +292,10 @@ const fullCardCollection = [
     cost: 7, // Increased cost to reflect its power
     image: '/cards/Nuke.png',
     description: 'Destroy ALL drones in a selected lane (both sides).',
+    visualEffect: {
+      type: 'NUKE_BLAST',
+      duration: 1200
+    },
     targeting: {
       type: 'LANE',
       affinity: 'ANY'
@@ -574,8 +578,8 @@ const fullCardCollection = [
 },
 // --- NEW: UPGRADE CARDS ---
 {
-    id: 'CARD022',
-    baseCardId: 'CARD022',
+    id: 'CARD028',
+    baseCardId: 'CARD028',
     name: 'Combat Enhancement',
     maxInDeck: 2,
     type: 'Upgrade',
@@ -592,8 +596,8 @@ const fullCardCollection = [
     maxApplications: 2
 },
 {
-    id: 'CARD023',
-    baseCardId: 'CARD023',
+    id: 'CARD029',
+    baseCardId: 'CARD029',
     name: 'Shield Amplifier',
     maxInDeck: 2,
     type: 'Upgrade',

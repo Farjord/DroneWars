@@ -760,6 +760,127 @@ App.jsx serves as the main UI coordinator for active gameplay. This structure en
 - Related functions should be grouped together
 - TODO comments should include clear categorization (TECHNICAL DEBT, UI VALIDATION, etc.)
 
+## 🎨 **ANIMATION SYSTEM ARCHITECTURE** ✅ STANDARDIZED (2025-09-30)
+
+### **Problem Solved**
+Inconsistent animation architecture where some components calculated positions internally using refs (Pattern B) while others received pre-calculated positions (Pattern A).
+
+### **Established Pattern**
+All animation components now follow **Pattern A** - position calculation happens in useAnimationSetup hook, components receive pre-calculated data:
+
+```javascript
+// useAnimationSetup.js calculates positions
+const targetRect = targetEl.getBoundingClientRect();
+setFlashEffects(prev => [...prev, {
+    id: flashId,
+    position: {
+        left: targetRect.left,
+        top: targetRect.top,
+        width: targetRect.width,
+        height: targetRect.height
+    },
+    onComplete: () => { /* cleanup */ }
+}]);
+
+// Component receives pre-calculated position
+const FlashEffect = ({ position, onComplete }) => {
+    // Render using position, no DOM queries
+};
+```
+
+### **Standardized Components**
+All animation components follow Pattern A:
+- **FlyingDrone** - Drone movement animations
+- **LaserEffect** - Attack laser visuals
+- **TeleportEffect** - Teleport particle effects
+- **ExplosionEffect** - Destruction animations
+- **FlashEffect** - Shield damage flashes ✅ Fixed
+- **CardVisualEffect** - Card visual effects (laser blast, nuke, energy wave) ✅ Fixed
+
+### **Architecture Benefits**
+- **Separation of Concerns**: useAnimationSetup handles DOM queries and position calculation, components handle rendering
+- **React Refs Best Practice**: Refs stay in the hook layer, don't leak into component props
+- **Consistent API**: All animation components have identical prop patterns
+- **Testability**: Components can be tested without DOM dependencies
+- **Performance**: Position calculations happen once in the hook, not on every render
+
+### **Implementation Files**
+- **useAnimationSetup.js** - Registers visual handlers and calculates all positions
+- **Animation Components** - Pure rendering components receiving pre-calculated data
+- **App.jsx** - Passes state-managed animation data to components
+
+---
+
+## 🃏 **MOVEMENT CARDS ARCHITECTURE** ✅ REFACTORED (2025-09-30)
+
+### **Problem Solved**
+Movement cards (SINGLE_MOVE, MULTI_MOVE) bypassed the ActionProcessor architecture, using direct state updates in App.jsx. This prevented AI from playing movement cards and broke multiplayer synchronization.
+
+### **Solution Implemented**
+Integrated movement cards into proper ActionProcessor architecture using the `needsCardSelection` pattern for multi-step UI interactions.
+
+### **Architecture Pattern**
+
+**Two-Step Card Play Flow:**
+```javascript
+// Step 1: Initial card play returns UI requirements
+processCardPlay(card) {
+    const result = gameEngine.resolveCardEffect(card);
+    if (result.needsCardSelection.type === 'single_move') {
+        setMultiSelectState({
+            phase: 'select_drone',
+            card: card
+        });
+        return; // Wait for user input
+    }
+}
+
+// Step 2: Complete action after user selection
+resolveMovementCompletion(card, drones, fromLane, toLane) {
+    await processAction('movementCompletion', {
+        card, movementType: 'single_move',
+        drones, fromLane, toLane
+    });
+}
+```
+
+### **AI Auto-Execution**
+For AI players, movement cards execute automatically with optimal lane scoring:
+```javascript
+// gameLogic.js - resolveMovementEffect
+if (actingPlayerId === 'player2') {
+    // AI auto-executes optimal movement
+    const optimalMove = findBestMovement(playerState, lanes);
+    return executeMovement(optimalMove);
+}
+```
+
+### **Files Modified**
+
+**cardData.js**
+- Fixed duplicate card IDs:
+  - Combat Enhancement: `CARD022` → `CARD028`
+  - Shield Amplifier: `CARD023` → `CARD029`
+
+**gameLogic.js**
+- Added `SINGLE_MOVE` and `MULTI_MOVE` cases to `resolveSingleEffect` switch (lines 1880-1882)
+- Created `resolveMovementEffect` function with AI auto-execution and human needsCardSelection pattern (lines 2737-2853)
+
+**ActionProcessor.js**
+- Added `movementCompletion` case to action switch (line 229)
+- Implemented `processMovementCompletion` method (lines 721-799)
+
+**App.jsx**
+- Updated `processCardPlay` to handle movement card needsCardSelection (lines 779-787)
+- Refactored `resolveMultiMove` to use ActionProcessor (lines 899-912)
+- Updated `handleCardClick` for movement card selection flow (lines 2154-2162)
+
+### **Architecture Benefits**
+- ✅ **AI Compatible**: AI can now play movement cards with strategic lane selection
+- ✅ **Multiplayer Ready**: Proper state management through ActionProcessor
+- ✅ **Consistent Pattern**: Follows same needsCardSelection pattern as SEARCH_AND_DRAW cards
+- ✅ **Server Ready**: All state changes go through ActionProcessor for server sync
+
 ---
 
 *This document focuses on architectural design decisions and component relationships. For implementation status and current work, see WORKING_PLAN.txt. For future development plans, see ROADMAP.md.*

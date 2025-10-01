@@ -333,7 +333,7 @@ class GameStateManager {
       'determineFirstPlayer': ['energyReset'],
       'allocateShields': ['mandatoryDroneRemoval', 'deployment'],
       'mandatoryDroneRemoval': ['deployment'],
-      'deployment': ['deploymentComplete', 'roundEnd'],
+      'deployment': ['action', 'deploymentComplete', 'roundEnd'],
       'deploymentComplete': ['action'],
       'action': ['deployment', 'roundEnd', 'determineFirstPlayer', 'gameEnd'],
       'roundEnd': ['determineFirstPlayer', 'deployment', 'gameEnd'],

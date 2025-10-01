@@ -360,18 +360,26 @@ const calculateAfterAttackStateAndEffects = (playerState, attacker) => {
                   stateModified = true;
                   const destroyedDrone = newState.dronesOnBoard[lane][droneIndex];
 
-                  effects.push({ 
-                      type: 'LOG', 
+                  effects.push({
+                      type: 'LOG',
                       payload: {
                           player: newState.name, actionType: 'ABILITY', source: attacker.name, target: 'Self',
                           outcome: `Activated '${ability.name}', destroying itself.`
                       }
                   });
-                  effects.push({ type: 'EXPLOSION', payload: { targetId: attacker.id } });
+                  effects.push({
+                      type: 'EXPLOSION',
+                      payload: {
+                          targetId: attacker.id,
+                          targetPlayer: attacker.owner,
+                          targetLane: lane,
+                          targetType: 'drone'
+                      }
+                  });
 
                   newState.dronesOnBoard[lane] = newState.dronesOnBoard[lane].filter(d => d.id !== attacker.id);
                   Object.assign(newState, onDroneDestroyed(newState, destroyedDrone));
-                  break; 
+                  break;
               }
           }
       } else if (subEffect.type === 'PERMANENT_STAT_MOD') {
@@ -1740,17 +1748,90 @@ const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSecti
     const allAnimationEvents = [];
 
     // Add card visual event first (plays before damage feedback)
-    if (card.visualEffect) {
-        allAnimationEvents.push({
-            type: 'CARD_VISUAL',
-            cardId: card.id,
-            cardName: card.name,
-            visualType: card.visualEffect.type,
-            sourceId: actingPlayerId === 'player1' ? 'player1-hand' : 'player2-hand',
-            targetId: target?.id,
-            duration: card.visualEffect.duration || 800,
-            timestamp: Date.now()
-        });
+    if (card.visualEffect && target) {
+        // Determine target context
+        let targetPlayer = null;
+        let targetLane = null;
+        let targetType = null;
+
+        // Check if target is a lane (lane-scoped effects like 'lane1', 'lane2', 'lane3')
+        if (target.id && (target.id === 'lane1' || target.id === 'lane2' || target.id === 'lane3')) {
+            // Lane-targeted cards: Determine which player's lane based on targeting affinity
+            const targetingAffinity = card.targeting?.affinity || 'ANY';
+
+            if (targetingAffinity === 'ENEMY') {
+                // Offensive card targeting opponent's lane (e.g., Sidewinder Missiles)
+                targetPlayer = actingPlayerId === 'player1' ? 'player2' : 'player1';
+                targetLane = target.id;
+                targetType = 'lane';
+            } else if (targetingAffinity === 'ANY') {
+                // Multi-target effect affecting both players (e.g., Nuke)
+                // Use 'center' to indicate visual should show from middle
+                targetPlayer = 'center';
+                targetLane = target.id;
+                targetType = 'lane';
+            }
+
+            // Add card visual for lane-targeted effects
+            if (targetPlayer && targetType) {
+                allAnimationEvents.push({
+                    type: 'CARD_VISUAL',
+                    cardId: card.id,
+                    cardName: card.name,
+                    visualType: card.visualEffect.type,
+                    sourceId: actingPlayerId === 'player1' ? 'player1-hand' : 'player2-hand',
+                    sourcePlayer: actingPlayerId,
+                    targetId: target.id,
+                    targetPlayer: targetPlayer,
+                    targetLane: targetLane,
+                    targetType: targetType,
+                    duration: card.visualEffect.duration || 800,
+                    timestamp: Date.now()
+                });
+            }
+        } else {
+            // Check if target is a drone in either player's board
+            for (const playerId of ['player1', 'player2']) {
+                for (const laneKey in currentStates[playerId].dronesOnBoard) {
+                    if (currentStates[playerId].dronesOnBoard[laneKey].some(d => d.id === target.id)) {
+                        targetPlayer = playerId;
+                        targetLane = laneKey;
+                        targetType = 'drone';
+                        break;
+                    }
+                }
+                if (targetPlayer) break;
+            }
+
+            // Check if target is a ship section
+            if (!targetPlayer) {
+                for (const playerId of ['player1', 'player2']) {
+                    if (currentStates[playerId].shipSections[target.name] || currentStates[playerId].shipSections[target.id]) {
+                        targetPlayer = playerId;
+                        targetType = 'section';
+                        break;
+                    }
+                }
+            }
+
+            // Only add card visual if we found a valid single target
+            if (targetPlayer && targetType) {
+                allAnimationEvents.push({
+                    type: 'CARD_VISUAL',
+                    cardId: card.id,
+                    cardName: card.name,
+                    visualType: card.visualEffect.type,
+                    sourceId: actingPlayerId === 'player1' ? 'player1-hand' : 'player2-hand',
+                    sourcePlayer: actingPlayerId,
+                    targetId: target.id,
+                    targetPlayer: targetPlayer,
+                    targetLane: targetLane,
+                    targetType: targetType,
+                    duration: card.visualEffect.duration || 800,
+                    timestamp: Date.now()
+                });
+            }
+        }
     }
 
     // Then add damage/effect events (play after card visual completes)
@@ -1877,6 +1958,9 @@ const resolveSingleEffect = (effect, target, actingPlayerId, playerStates, place
             return resolveUpgradeEffect(effect, target, actingPlayerId, playerStates, callbacks);
         case 'DESTROY_UPGRADE':
             return resolveDestroyUpgradeEffect(effect, target, actingPlayerId, playerStates, callbacks);
+        case 'SINGLE_MOVE':
+        case 'MULTI_MOVE':
+            return resolveMovementEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card);
         default:
             console.warn(`Unknown effect type: ${effect.type}`);
             return { newPlayerStates: playerStates, additionalEffects: [] };
@@ -2107,6 +2191,9 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
                     animationEvents.push({
                         type: 'SHIELD_DAMAGE',
                         targetId: originalDrone.id,
+                        targetPlayer: targetPlayer,
+                        targetLane: laneId,
+                        targetType: 'drone',
                         amount: shieldDmg,
                         timestamp: Date.now()
                     });
@@ -2118,6 +2205,9 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
                     animationEvents.push({
                         type: 'DRONE_DESTROYED',
                         targetId: originalDrone.id,
+                        targetPlayer: targetPlayer,
+                        targetLane: laneId,
+                        targetType: 'drone',
                         timestamp: Date.now()
                     });
                 } else if (remainingDmg > 0) {
@@ -2125,6 +2215,9 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
                     animationEvents.push({
                         type: 'HULL_DAMAGE',
                         targetId: originalDrone.id,
+                        targetPlayer: targetPlayer,
+                        targetLane: laneId,
+                        targetType: 'drone',
                         amount: remainingDmg,
                         timestamp: Date.now()
                     });
@@ -2188,6 +2281,9 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
                     animationEvents.push({
                         type: 'SHIELD_DAMAGE',
                         targetId: target.id,
+                        targetPlayer: target.owner,
+                        targetLane: targetLane,
+                        targetType: 'drone',
                         amount: shieldDamage,
                         timestamp: Date.now()
                     });
@@ -2198,12 +2294,18 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
                     animationEvents.push({
                         type: 'DRONE_DESTROYED',
                         targetId: target.id,
+                        targetPlayer: target.owner,
+                        targetLane: targetLane,
+                        targetType: 'drone',
                         timestamp: Date.now()
                     });
                 } else if (remainingDamage > 0) {
                     animationEvents.push({
                         type: 'HULL_DAMAGE',
                         targetId: target.id,
+                        targetPlayer: target.owner,
+                        targetLane: targetLane,
+                        targetType: 'drone',
                         amount: remainingDamage,
                         timestamp: Date.now()
                     });
@@ -2238,32 +2340,68 @@ const resolveDestroyEffect = (effect, target, actingPlayerId, playerStates, call
     };
 
     const opponentPlayerId = actingPlayerId === 'player1' ? 'player2' : 'player1';
-    const targetPlayerState = newPlayerStates[opponentPlayerId];
-    const additionalEffects = [];
+    const animationEvents = [];
 
     if (effect.scope === 'LANE' && target.id) {
-        // Destroy all drones in a lane
+        // Destroy all drones in a lane (BOTH sides for cards like Nuke)
         const laneId = target.id;
-        const destroyed = targetPlayerState.dronesOnBoard[laneId] || [];
 
-        destroyed.forEach(drone => {
-            // Add explosion effect for each destroyed drone
-            additionalEffects.push({ type: 'EXPLOSION', payload: { targetId: drone.id } });
-            const updates = onDroneDestroyed(targetPlayerState, drone);
-            targetPlayerState.deployedDroneCounts = {
-                ...(targetPlayerState.deployedDroneCounts || {}),
+        // Destroy opponent's drones in this lane
+        const opponentDrones = newPlayerStates[opponentPlayerId].dronesOnBoard[laneId] || [];
+        opponentDrones.forEach(drone => {
+            // Add destruction animation event
+            animationEvents.push({
+                type: 'DRONE_DESTROYED',
+                targetId: drone.id,
+                targetPlayer: opponentPlayerId,
+                targetLane: laneId,
+                targetType: 'drone',
+                timestamp: Date.now()
+            });
+            const updates = onDroneDestroyed(newPlayerStates[opponentPlayerId], drone);
+            newPlayerStates[opponentPlayerId].deployedDroneCounts = {
+                ...(newPlayerStates[opponentPlayerId].deployedDroneCounts || {}),
                 ...updates.deployedDroneCounts
             };
         });
-        targetPlayerState.dronesOnBoard[laneId] = [];
+        newPlayerStates[opponentPlayerId].dronesOnBoard[laneId] = [];
+
+        // Destroy acting player's own drones in this lane (for area effect cards like Nuke)
+        const actingPlayerDrones = newPlayerStates[actingPlayerId].dronesOnBoard[laneId] || [];
+        actingPlayerDrones.forEach(drone => {
+            // Add destruction animation event
+            animationEvents.push({
+                type: 'DRONE_DESTROYED',
+                targetId: drone.id,
+                targetPlayer: actingPlayerId,
+                targetLane: laneId,
+                targetType: 'drone',
+                timestamp: Date.now()
+            });
+            const updates = onDroneDestroyed(newPlayerStates[actingPlayerId], drone);
+            newPlayerStates[actingPlayerId].deployedDroneCounts = {
+                ...(newPlayerStates[actingPlayerId].deployedDroneCounts || {}),
+                ...updates.deployedDroneCounts
+            };
+        });
+        newPlayerStates[actingPlayerId].dronesOnBoard[laneId] = [];
+
     } else if (effect.scope === 'SINGLE' && target && target.owner !== actingPlayerId) {
         // Destroy single drone
+        const targetPlayerState = newPlayerStates[opponentPlayerId];
         const laneId = getLaneOfDrone(target.id, targetPlayerState);
         if (laneId) {
             const droneToDestroy = targetPlayerState.dronesOnBoard[laneId].find(d => d.id === target.id);
             if (droneToDestroy) {
-                // Add explosion effect for destroyed drone
-                additionalEffects.push({ type: 'EXPLOSION', payload: { targetId: droneToDestroy.id } });
+                // Add destruction animation event
+                animationEvents.push({
+                    type: 'DRONE_DESTROYED',
+                    targetId: droneToDestroy.id,
+                    targetPlayer: opponentPlayerId,
+                    targetLane: laneId,
+                    targetType: 'drone',
+                    timestamp: Date.now()
+                });
                 const updates = onDroneDestroyed(targetPlayerState, droneToDestroy);
                 targetPlayerState.deployedDroneCounts = {
                     ...(targetPlayerState.deployedDroneCounts || {}),
@@ -2276,7 +2414,8 @@ const resolveDestroyEffect = (effect, target, actingPlayerId, playerStates, call
 
     return {
         newPlayerStates,
-        additionalEffects
+        additionalEffects: [],
+        animationEvents
     };
 };
 
@@ -2456,12 +2595,27 @@ const resolveUnifiedHealEffect = (effect, source, target, actingPlayerId, player
             });
         }
     } else {
+        // Check if target is a drone
         const baseTarget = fullDroneCollection.find(d => d.name === target.name);
-        const targetLaneId = getLaneOfDrone(target.id, newPlayerStates[targetPlayerId]);
-        if (targetLaneId) {
-            const droneIndex = newPlayerStates[targetPlayerId].dronesOnBoard[targetLaneId].findIndex(d => d.id === target.id);
-            if (droneIndex !== -1) {
-                newPlayerStates[targetPlayerId].dronesOnBoard[targetLaneId][droneIndex].hull = Math.min(baseTarget.hull, newPlayerStates[targetPlayerId].dronesOnBoard[targetLaneId][droneIndex].hull + effect.value);
+
+        if (baseTarget) {
+            // Heal drone
+            const targetLaneId = getLaneOfDrone(target.id, newPlayerStates[targetPlayerId]);
+            if (targetLaneId) {
+                const droneIndex = newPlayerStates[targetPlayerId].dronesOnBoard[targetLaneId].findIndex(d => d.id === target.id);
+                if (droneIndex !== -1) {
+                    newPlayerStates[targetPlayerId].dronesOnBoard[targetLaneId][droneIndex].hull = Math.min(baseTarget.hull, newPlayerStates[targetPlayerId].dronesOnBoard[targetLaneId][droneIndex].hull + effect.value);
+                }
+            }
+        } else if (target.name && newPlayerStates[targetPlayerId].shipSections[target.name]) {
+            // Heal ship section
+            const section = newPlayerStates[targetPlayerId].shipSections[target.name];
+            const sections = targetPlayerId === 'player1' ? placedSections.player1 : placedSections.player2;
+            const baseSection = sections.find(s => s.name === target.name);
+
+            if (baseSection) {
+                // Cap healing at section's max hull
+                section.hull = Math.min(baseSection.maxHull, section.hull + effect.value);
             }
         }
     }
@@ -2681,6 +2835,131 @@ const evaluateCardForAI = (card, aiState, humanState, placedSections) => {
     return score;
 };
 
+// === MOVEMENT EFFECT HANDLER ===
+
+/**
+ * Handles SINGLE_MOVE and MULTI_MOVE card effects
+ * For human players: Returns needsCardSelection for UI interaction
+ * For AI players: Auto-executes optimal movement
+ */
+const resolveMovementEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card) => {
+    // For human players (player1), return needsCardSelection to trigger UI flow
+    if (actingPlayerId === 'player1') {
+        return {
+            newPlayerStates: playerStates, // State unchanged until movement selected
+            additionalEffects: [],
+            needsCardSelection: {
+                type: effect.type === 'SINGLE_MOVE' ? 'single_move' : 'multi_move',
+                card: card,
+                effect: effect,
+                // For MULTI_MOVE, specify max count
+                maxDrones: effect.type === 'MULTI_MOVE' ? effect.count : 1,
+                // Movement-specific properties
+                doNotExhaust: effect.properties?.includes('DO_NOT_EXHAUST') || false,
+                // UI will handle multi-step selection (source lane, drones, destination)
+                phase: effect.type === 'SINGLE_MOVE' ? 'select_drone' : 'select_source_lane'
+            }
+        };
+    }
+
+    // For AI players (player2), auto-execute optimal movement
+    const opponentPlayerId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+
+    // Find best movement opportunity for AI
+    const aiState = playerStates[actingPlayerId];
+    const opponentState = playerStates[opponentPlayerId];
+
+    // Simple AI logic: Move drones to lanes where they're needed most
+    let bestMove = null;
+    let bestScore = -Infinity;
+
+    // Evaluate all possible movements
+    for (const fromLane of ['lane1', 'lane2', 'lane3']) {
+        const dronesInLane = aiState.dronesOnBoard[fromLane] || [];
+        const availableDrones = dronesInLane.filter(d => !d.isExhausted);
+
+        if (availableDrones.length === 0) continue;
+
+        for (const toLane of ['lane1', 'lane2', 'lane3']) {
+            if (fromLane === toLane) continue;
+
+            // For SINGLE_MOVE, check adjacency
+            if (effect.type === 'SINGLE_MOVE') {
+                const fromIndex = parseInt(fromLane.replace('lane', ''));
+                const toIndex = parseInt(toLane.replace('lane', ''));
+                if (Math.abs(fromIndex - toIndex) !== 1) continue; // Not adjacent
+            }
+
+            // Score this movement
+            const opponentDronesInTarget = opponentState.dronesOnBoard[toLane]?.length || 0;
+            const myDronesInTarget = aiState.dronesOnBoard[toLane]?.length || 0;
+
+            // Prefer moving to lanes with enemy drones (for attacking) or empty lanes (for positioning)
+            const score = opponentDronesInTarget * 10 - myDronesInTarget * 5;
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = {
+                    fromLane,
+                    toLane,
+                    drones: effect.type === 'SINGLE_MOVE'
+                        ? [availableDrones[0]]  // Just pick first drone
+                        : availableDrones.slice(0, Math.min(effect.count || 3, availableDrones.length))
+                };
+            }
+        }
+    }
+
+    // If no good move found, just pass (state unchanged)
+    if (!bestMove) {
+        return {
+            newPlayerStates: playerStates,
+            additionalEffects: []
+        };
+    }
+
+    // Execute the movement for AI
+    if (effect.type === 'SINGLE_MOVE') {
+        const result = resolveSingleMove(
+            card,
+            bestMove.drones[0],
+            bestMove.fromLane,
+            bestMove.toLane,
+            playerStates[actingPlayerId],
+            playerStates[opponentPlayerId],
+            placedSections,
+            callbacks
+        );
+
+        return {
+            newPlayerStates: {
+                ...playerStates,
+                [actingPlayerId]: result.newPlayerState
+            },
+            additionalEffects: []
+        };
+    } else {
+        const result = resolveMultiMove(
+            card,
+            bestMove.drones,
+            bestMove.fromLane,
+            bestMove.toLane,
+            playerStates[actingPlayerId],
+            playerStates[opponentPlayerId],
+            placedSections,
+            callbacks
+        );
+
+        return {
+            newPlayerStates: {
+                ...playerStates,
+                [actingPlayerId]: result.newPlayerState
+            },
+            additionalEffects: []
+        };
+    }
+};
+
 // Specialized handlers for unique effects
 
 const resolveDroneAbilityEffect = (effect, userDrone, targetDrone, playerStates, placedSections, callbacks) => {
@@ -2829,7 +3108,12 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
       animationEvents.push({
         type: 'DRONE_ATTACK_START',
         sourceId: attacker.id,
+        sourcePlayer: attackingPlayerId,
+        sourceLane: attackerLane,
         targetId: finalTarget.id,
+        targetPlayer: defendingPlayerId,
+        targetLane: finalTargetType === 'drone' ? getLaneOfDrone(finalTarget.id, defenderPlayerState) : null,
+        targetType: finalTargetType,
         attackValue: effectiveAttacker ? effectiveAttacker.attack : 1,
         timestamp: Date.now()
       });
@@ -2837,12 +3121,16 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
 
     // Add shield damage event if shields absorbed damage
     if (shieldDamage > 0) {
-      animationEvents.push({
+      const event = {
         type: 'SHIELD_DAMAGE',
         targetId: finalTarget.id,
+        targetPlayer: defendingPlayerId,
+        targetLane: finalTargetType === 'drone' ? getLaneOfDrone(finalTarget.id, defenderPlayerState) : null,
+        targetType: finalTargetType,
         amount: shieldDamage,
         timestamp: Date.now()
-      });
+      };
+      animationEvents.push(event);
     }
 
     // Handle destruction vs survival
@@ -2851,12 +3139,11 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
       const event = {
         type: finalTargetType === 'drone' ? 'DRONE_DESTROYED' : 'SECTION_DESTROYED',
         targetId: finalTarget.id,
+        targetPlayer: defendingPlayerId,
+        targetLane: finalTargetType === 'drone' ? getLaneOfDrone(finalTarget.id, defenderPlayerState) : null,
+        targetType: finalTargetType,
         timestamp: Date.now()
       };
-      // Add targetPlayerId for ship sections to disambiguate refs
-      if (finalTargetType === 'section') {
-        event.targetPlayerId = defendingPlayerId;
-      }
       animationEvents.push(event);
     } else {
       // Target survived - add hull damage event if hull was hit
@@ -2864,13 +3151,12 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
         const event = {
           type: 'HULL_DAMAGE',
           targetId: finalTarget.id,
+          targetPlayer: defendingPlayerId,
+          targetLane: finalTargetType === 'drone' ? getLaneOfDrone(finalTarget.id, defenderPlayerState) : null,
+          targetType: finalTargetType,
           amount: hullDamage,
           timestamp: Date.now()
         };
-        // Add targetPlayerId for ship sections to disambiguate refs
-        if (finalTargetType === 'section') {
-          event.targetPlayerId = defendingPlayerId;
-        }
         animationEvents.push(event);
       }
 
@@ -2879,7 +3165,8 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
         animationEvents.push({
           type: 'SECTION_DAMAGED',
           targetId: finalTarget.id,
-          targetPlayerId: defendingPlayerId,  // Add for proper section ref disambiguation
+          targetPlayer: defendingPlayerId,
+          targetType: 'section',
           timestamp: Date.now()
         });
       }
@@ -2889,6 +3176,8 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
         animationEvents.push({
           type: 'DRONE_RETURN',
           sourceId: attacker.id,
+          sourcePlayer: attackingPlayerId,
+          sourceLane: attackerLane,
           timestamp: Date.now()
         });
       }
