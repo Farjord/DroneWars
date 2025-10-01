@@ -244,9 +244,6 @@ setAnimationManager(animationManager) {
         case 'aiAction':
           return await this.processAiAction(payload);
 
-        case 'aiTurn':
-          return await this.processAiTurn(payload);
-
         case 'playerPass':
           return await this.processPlayerPass(payload);
 
@@ -336,8 +333,23 @@ setAnimationManager(animationManager) {
       });
     }
 
+    console.log('🎬 [AI ANIMATION DEBUG] Built animations array:', {
+      count: animations.length,
+      animations: animations.map(a => ({
+        name: a.animationName,
+        droneId: a.payload.droneId,
+        targetId: a.payload.targetId
+      })),
+      hasAnimationManager: !!this.animationManager,
+      targetDestroyed
+    });
+
     if (this.animationManager) {
+      console.log('🎬 [AI ANIMATION DEBUG] Calling animationManager.executeAnimations()');
       await this.animationManager.executeAnimations(animations);
+      console.log('🎬 [AI ANIMATION DEBUG] executeAnimations() completed');
+    } else {
+      console.warn('⚠️ [AI ANIMATION DEBUG] No animationManager available!');
     }
 
     // Update game state with results
@@ -1025,12 +1037,20 @@ setAnimationManager(animationManager) {
         const chosenAction = aiDecision.payload;
         switch (chosenAction.type) {
           case 'attack':
+            console.log('🎬 [AI ANIMATION DEBUG] processAiAction attack case:', {
+              attackerId: chosenAction.attacker?.id,
+              targetId: chosenAction.target?.id,
+              lane: chosenAction.attacker?.lane,
+              targetType: chosenAction.targetType,
+              hasAttackerObject: !!chosenAction.attacker,
+              hasTargetObject: !!chosenAction.target
+            });
             return await this.processAttack({
               attackDetails: {
                 attacker: chosenAction.attacker,        // Full object
                 target: chosenAction.target,            // Full object
                 targetType: chosenAction.targetType || 'drone',  // Default to drone
-                lane: chosenAction.lane,                // Lane where attack occurs
+                lane: chosenAction.attacker.lane,       // Extract lane from attacker object
                 attackingPlayer: 'player2',
                 aiContext: aiDecision.logContext
               }
@@ -1073,55 +1093,10 @@ setAnimationManager(animationManager) {
   }
 
   /**
-   * Process AI turn - coordinates between AIPhaseProcessor and ActionProcessor
-   */
-  async processAiTurn(payload) {
-    const { turnPhase, playerId } = payload;
-
-    console.log(`[AI TURN DEBUG] Starting AI turn for ${playerId} in phase: ${turnPhase}`);
-
-    // Get current state from GameStateManager
-    const currentState = this.gameStateManager.getState();
-    const passInfo = currentState.passInfo;
-
-    console.log(`[AI TURN DEBUG] Current state:`, {
-      turnPhase: currentState.turnPhase,
-      currentPlayer: currentState.currentPlayer,
-      turn: currentState.turn,
-      passInfo: passInfo
-    });
-
-    // Check if AI should pass
-    if (passInfo[playerId + 'Passed']) {
-      console.log(`[AI TURN DEBUG] AI already passed, returning`);
-      return { success: true, action: 'already_passed' };
-    }
-
-    let aiDecision;
-
-    // Delegate to AIPhaseProcessor for AI decision making
-    console.log(`[AI TURN DEBUG] Delegating to AIPhaseProcessor for phase: ${turnPhase}`);
-    if (turnPhase === 'deployment') {
-      aiDecision = await aiPhaseProcessor.handleDeploymentTurn(currentState);
-    } else if (turnPhase === 'action') {
-      aiDecision = await aiPhaseProcessor.handleActionTurn(currentState);
-    } else {
-      aiDecision = { type: 'pass' };
-      console.log(`[AI TURN DEBUG] AI passing due to unknown phase: ${turnPhase}`);
-    }
-
-    console.log(`[AI TURN DEBUG] AI decision from AIPhaseProcessor:`, aiDecision);
-
-    // Process the AI's decision through appropriate action handlers
-    console.log(`[AI TURN DEBUG] Processing AI decision:`, aiDecision.type);
-    const result = await this.processAiDecision(aiDecision, playerId);
-    console.log(`[AI TURN DEBUG] AI decision result:`, result);
-
-    return result;
-  }
-
-  /**
    * Process AI decision through appropriate handlers
+   * NOTE: This method is legacy/dead code - never called in current architecture.
+   * Current AI flow uses processAiAction() instead, called via type: 'aiAction'.
+   * Kept temporarily for reference, should be removed in future cleanup.
    */
   async processAiDecision(aiDecision, playerId) {
     console.log(`[AI DECISION DEBUG] Processing AI decision type: ${aiDecision.type}`);

@@ -10,14 +10,33 @@ export function useAnimationSetup(gameStateManager, droneRefs, getLocalPlayerSta
     
     animationManager.registerVisualHandler('DRONE_FLY', (payload) => {
       const { droneId, targetId, config, onComplete } = payload;
-      
+
+      console.log('🎬 [AI ANIMATION DEBUG] DRONE_FLY handler called:', {
+        droneId,
+        targetId,
+        config,
+        hasDroneRefs: !!droneRefs.current,
+        droneRefsKeys: Object.keys(droneRefs.current || {}).length
+      });
+
       const droneEl = droneRefs.current[droneId];
       const targetEl = droneRefs.current[targetId];
-      
+
+      console.log('🎬 [AI ANIMATION DEBUG] DOM element lookup:', {
+        droneId,
+        hasDroneEl: !!droneEl,
+        targetId,
+        hasTargetEl: !!targetEl,
+        availableRefs: Object.keys(droneRefs.current || {})
+      });
+
       if (!droneEl || !targetEl) {
+        console.warn('⚠️ [AI ANIMATION DEBUG] Missing DOM elements, skipping animation');
         onComplete?.();
         return;
       }
+
+      console.log('✅ [AI ANIMATION DEBUG] DOM elements found, creating flying drone animation');
       
       const droneRect = droneEl.getBoundingClientRect();
       const targetRect = targetEl.getBoundingClientRect();

@@ -65,7 +65,6 @@ export const validatePhaseAction = (phase, actionType) => {
     'reallocateShields',
 
     // Turn-based actions
-    'aiTurn',
     'playerPass',
     'turnTransition'
   ];
@@ -229,8 +228,8 @@ export const getValidActionsForPhase = (phase) => {
     allocateShields: ['allocateShield', 'resetShieldAllocation', 'endShieldAllocation'],
 
     // Gameplay phases (sequential)
-    deployment: ['deployDrone', 'pass', 'aiTurn'],
-    action: ['attack', 'playCard', 'ability', 'reallocateShields', 'pass', 'aiTurn']
+    deployment: ['deployDrone', 'pass'],
+    action: ['attack', 'playCard', 'ability', 'reallocateShields', 'pass']
   };
 
   return phaseActions[phase] || [];
