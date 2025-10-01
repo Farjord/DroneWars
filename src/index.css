@@ -138,6 +138,27 @@
   z-index: 50;
 }
 
+
+
+@keyframes shake-damage {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  10% { transform: translateX(-8px) rotate(-1deg); }
+  20% { transform: translateX(8px) rotate(1deg); }
+  30% { transform: translateX(-6px) rotate(-1deg); }
+  40% { transform: translateX(6px) rotate(1deg); }
+  50% { transform: translateX(-4px) rotate(-0.5deg); }
+  60% { transform: translateX(4px) rotate(0.5deg); }
+  70% { transform: translateX(-2px) rotate(0deg); }
+  80% { transform: translateX(2px) rotate(0deg); }
+  90% { transform: translateX(-1px) rotate(0deg); }
+}
+
+.animate-shake-damage {
+  animation: shake-damage 0.5s ease-in-out;
+  filter: brightness(1.3) saturate(1.5);
+}
+
+
 /* === GAME-SPECIFIC STYLES === */
 .lane-background {
   background-image: url('/img/Space_Background.png'); /* Path from the 'public' folder */

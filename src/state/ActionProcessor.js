@@ -41,6 +41,8 @@ class ActionProcessor {
 
     this.gameStateManager = gameStateManager;
     this.gameDataService = GameDataService.getInstance(gameStateManager);
+    this.animationManager = null;
+
 
     // Wrapper function for game logic compatibility
     this.effectiveStatsWrapper = (drone, lane) => {
@@ -78,6 +80,13 @@ class ActionProcessor {
   setP2PManager(p2pManager) {
     this.p2pManager = p2pManager;
   }
+
+  /**
+   * Set animation manager to control animations
+   */
+setAnimationManager(animationManager) {
+  this.animationManager = animationManager;
+}
 
 
   /**
@@ -303,6 +312,33 @@ class ActionProcessor {
       triggerExplosion,
       triggerHitAnimation
     );
+
+    // Build animation sequence
+    const animations = [];
+    animations.push({
+      animationName: 'DRONE_FLY_TO_TARGET',
+      payload: { droneId: attackDetails.attacker.id, targetId: attackDetails.target.id }
+    });
+    animations.push({
+      animationName: 'EXPLOSION',
+      payload: { targetId: attackDetails.target.id }
+    });
+
+    const targetDestroyed = result.attackResult?.targetDestroyed || false;
+    if (!targetDestroyed) {
+      animations.push({
+        animationName: 'TARGET_SHAKE',
+        payload: { targetId: attackDetails.target.id }
+      });
+      animations.push({
+        animationName: 'DRONE_RETURN',
+        payload: { droneId: attackDetails.attacker.id }
+      });
+    }
+
+    if (this.animationManager) {
+      await this.animationManager.executeAnimations(animations);
+    }
 
     // Update game state with results
     this.gameStateManager.setPlayerStates(
@@ -1125,8 +1161,10 @@ class ActionProcessor {
           case 'attack':
             actionResult = await this.processAttack({
               attackDetails: {
-                attackerId: chosenAction.attacker.id,
-                targetId: chosenAction.target.id,
+                attacker: chosenAction.attacker,
+                target: chosenAction.target,
+                targetType: chosenAction.targetType || 'drone',
+                lane: chosenAction.lane,
                 attackingPlayer: playerId,
                 aiContext: aiDecision.logContext
               }

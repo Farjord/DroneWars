@@ -836,13 +836,15 @@ class AIPhaseProcessor {
         return;
       }
 
-      // Check if AI should continue (human has passed but AI hasn't)
+      // Check if AI should continue taking turns
       const currentState = this.gameStateManager.getState();
-      if (currentState.passInfo &&
-          currentState.passInfo.player1Passed &&
-          !currentState.passInfo.player2Passed &&
-          currentState.currentPlayer === 'player2') {
-        console.log('🔄 AIPhaseProcessor: Human has passed - AI continues taking turns');
+      if (currentState.currentPlayer === 'player2' &&
+          currentState.passInfo &&
+          !currentState.passInfo.player2Passed) {
+        // AI should continue if:
+        // 1. Human has passed but AI hasn't, OR
+        // 2. AI played a goAgain card and still has the turn
+        console.log('🔄 AIPhaseProcessor: AI continues taking turns (either human passed or goAgain card played)');
         // Schedule another turn
         setTimeout(() => {
           this.checkForAITurn(currentState);

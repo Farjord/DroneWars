@@ -2158,7 +2158,7 @@ const resolveModifyStatEffect = (effect, target, actingPlayerId, playerStates, c
     const mod = effect.mod;
 
     // Check if target is a lane (e.g., 'lane1', 'lane2', 'lane3')
-    if (target.id && target.id.startsWith('lane')) {
+    if (target.id && typeof target.id === 'string' && target.id.startsWith('lane')) {
         // Apply stat modification to all drones in the target lane
         const targetLane = target.id;
         if (targetPlayerState.dronesOnBoard[targetLane]) {

@@ -48,6 +48,7 @@ import GameDebugModal from './components/modals/GameDebugModal.jsx';
 import { useGameState } from './hooks/useGameState';
 import { useGameData } from './hooks/useGameData';
 import { useExplosions } from './hooks/useExplosions';
+import { useAnimationSetup } from './hooks/useAnimationSetup';
 
 // --- 1.5 DATA/LOGIC IMPORTS ---
 import fullCardCollection from './data/cardData.js';
@@ -61,6 +62,9 @@ import aiPhaseProcessor from './state/AIPhaseProcessor.js';
 // --- 1.7 UTILITY IMPORTS ---
 import { getElementCenter } from './utils/gameUtils.js';
 
+// --- 1.8 ANIMATION IMPORTS ---
+import AnimationManager from './state/AnimationManager.js';
+import FlyingDrone from './components/animations/FlyingDrone.jsx';
 // ========================================
 // SECTION 2: MAIN COMPONENT DECLARATION
 // ========================================
@@ -115,6 +119,8 @@ const App = () => {
   // Modal state
   const [showAiHandModal, setShowAiHandModal] = useState(false);
   const [showDebugModal, setShowDebugModal] = useState(false);
+  const [flyingDrones, setFlyingDrones] = useState([]);
+  const [animationBlocking, setAnimationBlocking] = useState(false);
   const [modalContent, setModalContent] = useState(null);
   const [deploymentConfirmation, setDeploymentConfirmation] = useState(null);
   const [moveConfirmation, setMoveConfirmation] = useState(null);
@@ -200,7 +206,17 @@ const App = () => {
   // These hooks require refs as parameters and must be called after ref initialization.
   // This maintains proper dependency ordering while preserving the logical structure.
   const { explosions, triggerExplosion } = useExplosions(droneRefs, gameAreaRef);
-
+  useAnimationSetup(
+  gameStateManager, 
+  droneRefs, 
+  getLocalPlayerState,  // Pass the getter function, not the value
+  getOpponentPlayerState,  // Pass the getter function, not the value
+  triggerExplosion, 
+  getElementCenter, 
+  gameAreaRef, 
+  setFlyingDrones, 
+  setAnimationBlocking
+);
   // Refs for async operations (defined after gameState destructuring)
 
   // ========================================
@@ -2470,6 +2486,32 @@ const App = () => {
     <div className="h-screen bg-gray-950 text-white font-sans overflow-hidden flex flex-col bg-gradient-to-br from-gray-900 via-indigo-950 to-black relative" ref={gameAreaRef} onClick={() => { cancelAbilityMode(); cancelCardSelection(); }}>
      <TargetingArrow visible={arrowState.visible} start={arrowState.start} end={arrowState.end} lineRef={arrowLineRef} />
      {explosions.map(exp => <ExplosionEffect key={exp.id} top={exp.top} left={exp.left} />)}
+     {flyingDrones.map(fd => (
+  
+      <FlyingDrone
+        key={fd.id}
+        droneData={fd.droneData}
+        startPos={fd.startPos}
+        endPos={fd.endPos}
+        config={fd.config}
+        onComplete={fd.onComplete}
+      />
+    ))}
+    {animationBlocking && (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 10000,
+          cursor: 'not-allowed',
+          pointerEvents: 'all',
+          backgroundColor: 'transparent'
+        }}
+      />
+    )}
 
       <GameHeader
         localPlayerState={localPlayerState}
