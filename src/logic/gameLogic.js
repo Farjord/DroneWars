@@ -1066,16 +1066,21 @@ const executeAiDeployment = (droneToDeploy, targetLane, turn, playerState, oppon
 // === AI INTERCEPTION SYSTEM ===
 
 const calculateAiInterception = (pendingAttack, playerStates, placedSections) => {
-    const { attacker, target, targetType, lane } = pendingAttack;
+    const { attacker, target, targetType, lane, attackingPlayer } = pendingAttack;
+
+    // Determine defending player (opposite of attacker)
+    const defendingPlayerId = attackingPlayer === 'player1' ? 'player2' : 'player1';
+    const defendingPlayerState = playerStates[defendingPlayerId];
+    const attackingPlayerState = playerStates[attackingPlayer];
 
     const effectiveAttacker = calculateEffectiveStats(
-        attacker, lane, playerStates.player2, playerStates.player1, placedSections
+        attacker, lane, attackingPlayerState, defendingPlayerState, placedSections
     );
 
-    const potentialInterceptors = playerStates.player1.dronesOnBoard[lane]
+    const potentialInterceptors = defendingPlayerState.dronesOnBoard[lane]
         .filter(d => {
             const effectiveInterceptor = calculateEffectiveStats(
-                d, lane, playerStates.player1, playerStates.player2, placedSections
+                d, lane, defendingPlayerState, attackingPlayerState, placedSections
             );
             return !d.isExhausted &&
                    (effectiveInterceptor.speed > effectiveAttacker.speed ||

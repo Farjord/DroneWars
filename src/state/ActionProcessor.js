@@ -295,9 +295,60 @@ setAnimationManager(animationManager) {
       player2: currentState.opponentPlacedSections
     };
 
+    // Check for interception opportunity BEFORE resolving attack
+    let finalAttackDetails = { ...attackDetails };
+
+    if (!attackDetails.interceptor) {
+      const interceptionResult = gameEngine.calculateAiInterception(
+        attackDetails,
+        { player1: currentState.player1, player2: currentState.player2 },
+        allPlacedSections
+      );
+
+      if (interceptionResult.hasInterceptors) {
+        const defendingPlayerId = attackDetails.attackingPlayer === 'player1' ? 'player2' : 'player1';
+
+        // If defender is AI (player2) and game mode is local, make AI decision
+        if (defendingPlayerId === 'player2' && currentState.gameMode === 'local') {
+          console.log('🛡️ [INTERCEPTION] AI defender has interceptors, making decision...');
+
+          if (this.aiPhaseProcessor) {
+            const decision = await this.aiPhaseProcessor.makeInterceptionDecision(
+              interceptionResult.interceptors,
+              attackDetails
+            );
+
+            if (decision.interceptor) {
+              console.log('🛡️ [INTERCEPTION] AI chose to intercept with:', decision.interceptor.name);
+              finalAttackDetails.interceptor = decision.interceptor;
+
+              // Emit interception event for UI
+              this.gameStateManager.setState({
+                lastInterception: {
+                  interceptor: decision.interceptor,
+                  originalTarget: attackDetails.target,
+                  timestamp: Date.now()
+                }
+              });
+            }
+          }
+        } else {
+          // Human defender - return interception data for UI to show InterceptionOpportunityModal
+          console.log('🛡️ [INTERCEPTION] Human defender has interceptors, waiting for decision...');
+          return {
+            needsInterceptionDecision: true,
+            interceptionData: {
+              interceptors: interceptionResult.interceptors,
+              attackDetails: interceptionResult.attackDetails
+            }
+          };
+        }
+      }
+    }
+
     const logCallback = (entry) => {
       this.gameStateManager.addLogEntry(entry, 'resolveAttack',
-        attackDetails.attackingPlayer === 'player2' ? attackDetails.aiContext : null);
+        finalAttackDetails.attackingPlayer === 'player2' ? finalAttackDetails.aiContext : null);
     };
 
     // UI callbacks are handled by App.jsx
@@ -305,7 +356,7 @@ setAnimationManager(animationManager) {
     const triggerHitAnimation = () => {};
 
     const result = gameEngine.resolveAttack(
-      attackDetails,
+      finalAttackDetails,
       { player1: currentState.player1, player2: currentState.player2 },
       allPlacedSections,
       logCallback,

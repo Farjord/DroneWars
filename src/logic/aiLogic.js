@@ -686,7 +686,41 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
     return { type: 'action', payload: chosenAction, logContext: possibleActions };
 };
 
+/**
+ * AI Interception Decision
+ * Decides whether to intercept an incoming attack and which interceptor to use
+ * Logic extracted from App.jsx to maintain architecture separation
+ *
+ * @param {Array} potentialInterceptors - Drones that can intercept (pre-filtered for speed/keywords)
+ * @param {Object} target - The drone being attacked
+ * @returns {Object} - { interceptor: drone | null }
+ */
+const makeInterceptionDecision = (potentialInterceptors, target) => {
+  if (!potentialInterceptors || potentialInterceptors.length === 0) {
+    return { interceptor: null };
+  }
+
+  // Sort interceptors by class (lowest first)
+  const sortedInterceptors = [...potentialInterceptors].sort((a, b) => {
+    const classA = a.class ?? Infinity;
+    const classB = b.class ?? Infinity;
+    return classA - classB;
+  });
+
+  // Choose the lowest-class interceptor if it has a lower class than the target
+  const bestInterceptor = sortedInterceptors[0];
+  const targetClass = target.class ?? Infinity;
+  const interceptorClass = bestInterceptor.class ?? Infinity;
+
+  if (targetClass === undefined || interceptorClass < targetClass) {
+    return { interceptor: bestInterceptor };
+  }
+
+  return { interceptor: null };
+};
+
 export const aiBrain = {
   handleOpponentTurn,
   handleOpponentAction,
+  makeInterceptionDecision,
 };

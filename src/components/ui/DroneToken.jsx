@@ -7,6 +7,7 @@
 import React, { useMemo } from 'react';
 import fullDroneCollection from '../../data/droneData.js';
 import { useGameData } from '../../hooks/useGameData.js';
+import InterceptedBadge from './InterceptedBadge.jsx';
 
 /**
  * STAT HEXAGON COMPONENT
@@ -58,6 +59,7 @@ const AbilityIcon = ({ onClick }) => (
  * @param {Object} droneRefs - Ref object for drone DOM elements
  * @param {Object} mandatoryAction - Current mandatory action state
  * @param {Object} localPlayerState - Local player state
+ * @param {Object} interceptedBadge - Interception badge data ({ droneId, timestamp })
  */
 const DroneToken = ({
   drone,
@@ -74,7 +76,8 @@ const DroneToken = ({
   isActionTarget,
   droneRefs,
   mandatoryAction,
-  localPlayerState
+  localPlayerState,
+  interceptedBadge
 }) => {
   // Get GameDataService for direct effective stats calculation
   const { getEffectiveStats } = useGameData();
@@ -166,6 +169,14 @@ const DroneToken = ({
       {/* Overlapping Ability Icon */}
       {isPlayer && activeAbilities.length > 0 && isAbilityUsable(activeAbilities[0]) && (
           <AbilityIcon onClick={(e) => onAbilityClick && onAbilityClick(e, drone, activeAbilities[0])} />
+      )}
+
+      {/* Intercepted Badge */}
+      {interceptedBadge && interceptedBadge.droneId === drone.id && (
+        <InterceptedBadge
+          droneId={drone.id}
+          timestamp={interceptedBadge.timestamp}
+        />
       )}
     </div>
   );

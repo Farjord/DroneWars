@@ -42,6 +42,7 @@ import DroneLanesDisplay from './DroneLanesDisplay.jsx';
  * @param {Function} props.handleTokenClick - Handle token click
  * @param {Function} props.handleAbilityIconClick - Handle ability icon click
  * @param {Function} props.setHoveredTarget - Set hovered target
+ * @param {Object} props.interceptedBadge - Interception badge data ({ droneId, timestamp })
  */
 function GameBattlefield({
   localPlayerState,
@@ -75,7 +76,8 @@ function GameBattlefield({
   handleShipAbilityClick,
   handleTokenClick,
   handleAbilityIconClick,
-  setHoveredTarget
+  setHoveredTarget,
+  interceptedBadge
 }) {
   return (
     <main className="flex-grow min-h-0 w-full flex flex-col items-center overflow-y-auto px-5 pb-4">
@@ -129,6 +131,7 @@ function GameBattlefield({
           droneRefs={droneRefs}
           mandatoryAction={mandatoryAction}
           setHoveredTarget={setHoveredTarget}
+          interceptedBadge={interceptedBadge}
         />
 
         {/* Player Drone Lanes */}
@@ -158,6 +161,7 @@ function GameBattlefield({
           droneRefs={droneRefs}
           mandatoryAction={mandatoryAction}
           setHoveredTarget={setHoveredTarget}
+          interceptedBadge={interceptedBadge}
         />
 
         {/* Player Ship Sections */}

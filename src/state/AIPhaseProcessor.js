@@ -552,6 +552,7 @@ class AIPhaseProcessor {
           opponentPlayerId: 'player1'
         }
       });
+      return null; // No special result for pass
     } else {
       // Execute action through ActionProcessor
       const result = await this.actionProcessor.queueAction({
@@ -559,7 +560,8 @@ class AIPhaseProcessor {
         payload: { aiDecision: aiDecision }
       });
 
-      // Note: Action phase turn ending is handled by ActionProcessor itself
+      // Return result so caller can check for interception needs
+      return result;
     }
   }
 
@@ -836,6 +838,24 @@ class AIPhaseProcessor {
         return;
       }
 
+      // Check if result indicates human interception decision needed
+      if (result?.needsInterceptionDecision) {
+        console.log('🛡️ AIPhaseProcessor: AI attack needs human interception decision, pausing turn loop');
+
+        // Emit interception data to game state for UI to pick up
+        this.gameStateManager.setState({
+          pendingAiInterception: {
+            interceptionData: result.interceptionData,
+            aiPlayerId: 'player2',
+            timestamp: Date.now()
+          }
+        });
+
+        // Allow turn to resume after interception is resolved
+        this.isProcessing = false;
+        return; // Don't schedule another AI turn yet
+      }
+
       // Check if AI should continue taking turns
       const currentState = this.gameStateManager.getState();
       if (currentState.currentPlayer === 'player2' &&
@@ -859,6 +879,37 @@ class AIPhaseProcessor {
   }
 
   /**
+   * Make AI interception decision
+   * Called by ActionProcessor when AI is the defender
+   *
+   * @param {Array} interceptors - Valid interceptors (pre-filtered for speed/keywords)
+   * @param {Object} attackDetails - Attack details including attacker and target
+   * @returns {Promise<Object>} - { interceptor: drone | null }
+   */
+  async makeInterceptionDecision(interceptors, attackDetails) {
+    if (!this.isInitialized) {
+      throw new Error('AIPhaseProcessor not initialized');
+    }
+
+    console.log('🤖 AIPhaseProcessor.makeInterceptionDecision called:', {
+      interceptorCount: interceptors?.length || 0,
+      target: attackDetails.target?.name
+    });
+
+    const { aiBrain } = await import('../logic/aiLogic.js');
+
+    // Delegate to aiLogic for decision
+    const result = aiBrain.makeInterceptionDecision(interceptors, attackDetails.target);
+
+    console.log('🤖 AI interception decision:', {
+      willIntercept: !!result.interceptor,
+      interceptorName: result.interceptor?.name
+    });
+
+    return result;
+  }
+
+  /**
    * Get AI processing capabilities
    * @returns {Object} Available AI processing methods
    */
@@ -869,7 +920,8 @@ class AIPhaseProcessor {
       placement: true, // ✅ implemented
       deployment: true, // ✅ implemented
       action: true, // ✅ implemented
-      version: '1.2.0'
+      interception: true, // ✅ implemented
+      version: '1.3.0'
     };
   }
 }

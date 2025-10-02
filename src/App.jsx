@@ -20,12 +20,12 @@ import ModalContainer from './components/ui/ModalContainer.jsx';
 import TargetingArrow from './components/ui/TargetingArrow.jsx';
 import ExplosionEffect from './components/ui/ExplosionEffect.jsx';
 import WaitingOverlay from './components/WaitingOverlay';
+import InterceptedBadge from './components/ui/InterceptedBadge.jsx';
 
 // --- 1.3 MODAL COMPONENT IMPORTS ---
 import CardViewerModal from './CardViewerModal';
 import CardSelectionModal from './CardSelectionModal';
 import AICardPlayReportModal from './components/modals/AICardPlayReportModal.jsx';
-import AIActionReportModal from './components/modals/AIActionReportModal.jsx';
 import DetailedDroneModal from './components/modals/debug/DetailedDroneModal.jsx';
 import { FirstPlayerModal, DeploymentCompleteModal, RoundEndModal } from './components/modals/GamePhaseModals.jsx';
 import WaitingForPlayerModal from './components/modals/WaitingForPlayerModal.jsx';
@@ -37,6 +37,7 @@ import DeploymentConfirmationModal from './components/modals/DeploymentConfirmat
 import MoveConfirmationModal from './components/modals/MoveConfirmationModal.jsx';
 import InterceptionOpportunityModal from './components/modals/InterceptionOpportunityModal.jsx';
 import AttackInterceptedModal from './components/modals/AttackInterceptedModal.jsx';
+import OpponentDecidingInterceptionModal from './components/modals/OpponentDecidingInterceptionModal.jsx';
 import CardConfirmationModal from './components/modals/CardConfirmationModal.jsx';
 import DroneAbilityConfirmationModal from './components/modals/DroneAbilityConfirmationModal.jsx';
 import ShipAbilityConfirmationModal from './components/modals/ShipAbilityConfirmationModal.jsx';
@@ -146,13 +147,13 @@ const App = () => {
   const [hoveredCardId, setHoveredCardId] = useState(null);
 
   // Combat and attack state
-  const [pendingAttack, setPendingAttack] = useState(null);
   const [interceptionModal, setInterceptionModal] = useState(null);
   const [playerInterceptionChoice, setPlayerInterceptionChoice] = useState(null);
   const [potentialInterceptors, setPotentialInterceptors] = useState([]);
+  const [showOpponentDecidingModal, setShowOpponentDecidingModal] = useState(false); // For attacker waiting on defender
+  const [interceptedBadge, setInterceptedBadge] = useState(null); // { droneId, timestamp }
 
   // AI behavior and reporting state
-  const [aiActionReport, setAiActionReport] = useState(null);
   const [aiCardPlayReport, setAiCardPlayReport] = useState(null);
   const [aiDecisionLogToShow, setAiDecisionLogToShow] = useState(null);
 
@@ -491,15 +492,6 @@ const App = () => {
 
   // --- 6.2 UI EVENT HANDLERS ---
 
-  const handleCloseAiReport = useCallback(async () => {
-      setAiActionReport(null);
-      // Use ActionProcessor for turn transition instead of direct endTurn call
-      await processAction('turnTransition', {
-          newPlayer: getLocalPlayerId(),
-          reason: 'aiReportClosed'
-      });
-  }, [processAction, getLocalPlayerId]);
-
   const handleCloseAiCardReport = useCallback(async () => {
       // The turn ends only if the card doesn't grant another action.
       if (aiCardPlayReport && !aiCardPlayReport.card.effect.goAgain) {
@@ -613,17 +605,17 @@ const App = () => {
             attackDetails: attackDetails
         });
 
+        // Check if interception decision is needed from human defender
+        if (result?.needsInterceptionDecision) {
+            console.log('🛡️ [APP] Interception decision needed, showing modal...');
+            setPlayerInterceptionChoice(result.interceptionData);
+            isResolvingAttackRef.current = false; // Allow interception modal to re-trigger attack
+            return; // Stop processing until human makes decision
+        }
+
         // Handle UI effects (animations, reports)
         if (attackDetails.targetId) {
             triggerHitAnimation(attackDetails.targetId);
-        }
-
-        // Handle AI action report
-        if (attackDetails.attackingPlayer === getOpponentPlayerId()) {
-            setAiActionReport({
-                ...result.attackResult,
-                isBlocking: true
-            });
         }
 
         // Handle after-attack effects with pre-captured positions
@@ -641,15 +633,8 @@ const App = () => {
             });
         }
 
-
-        // Handle non-turn-ending attack cleanup
-        setPendingAttack(null);
-
     } catch (error) {
         console.error('Error in resolveAttack:', error);
-        // Emergency cleanup - ensure UI state doesn't get stuck
-        setPendingAttack(null);
-        setAiActionReport(null);
     } finally {
         // --- GUARANTEED CLEANUP (always runs) ---
         isResolvingAttackRef.current = false;
@@ -1016,7 +1001,49 @@ const App = () => {
         setPotentialInterceptors([]);
     }
 }, [selectedDrone, turnPhase, localPlayerState, opponentPlayerState, gameEngine, localPlacedSections, opponentPlacedSections]);
- 
+
+  // Monitor gameState.lastInterception for AI interception decisions
+  // Shows InterceptedBadge on the intercepting drone
+  useEffect(() => {
+    if (gameState.lastInterception) {
+      const { interceptor, timestamp } = gameState.lastInterception;
+
+      // Show intercepted badge on the intercepting drone
+      setInterceptedBadge({
+        droneId: interceptor.id,
+        timestamp: timestamp
+      });
+
+      // Show 1-second "Opponent deciding" modal for AI interception in single-player
+      if (gameState.gameMode === 'local') {
+        setShowOpponentDecidingModal(true);
+        setTimeout(() => {
+          setShowOpponentDecidingModal(false);
+        }, 1000);
+      }
+    }
+  }, [gameState.lastInterception, gameState.gameMode]);
+
+  // Monitor playerInterceptionChoice to show "Opponent Deciding" modal to attacker in multiplayer
+  // When defender (local player) is choosing whether to intercept, show modal to opponent
+  useEffect(() => {
+    // Only show in multiplayer when we're the defender choosing
+    if (playerInterceptionChoice && isMultiplayer()) {
+      // TODO: In multiplayer, emit event to opponent to show OpponentDecidingModal
+      // For now, this is handled by UI state only
+      // The attacker would need to subscribe to P2P events
+    }
+  }, [playerInterceptionChoice, isMultiplayer]);
+
+  // Monitor pendingAiInterception for AI attacks that need human interception decision
+  // When AI attacks and human has interceptors, show modal and pause AI turn loop
+  useEffect(() => {
+    if (gameState.pendingAiInterception) {
+      console.log('🛡️ [APP] AI attack needs human interception, showing modal...');
+      setPlayerInterceptionChoice(gameState.pendingAiInterception.interceptionData);
+    }
+  }, [gameState.pendingAiInterception]);
+
   useEffect(() => {
    setHoveredTarget(null);
   }, [selectedDrone]);
@@ -1085,7 +1112,6 @@ const App = () => {
    // Reset UI-only state (GameStateManager handles core game state)
    setSelectedDrone(null);
    setModalContent(null);
-   setAiActionReport(null);
    setAbilityMode(null);
    setValidAbilityTargets([]);
    setMandatoryAction(null);
@@ -1688,28 +1714,6 @@ const App = () => {
     });
   };
 
-  useEffect(() => {
-    if (!pendingAttack || pendingAttack.attackingPlayer !== getOpponentPlayerId()) {
-        return;
-    }
-
-    // TODO: TECHNICAL DEBT - calculateAiInterception calculates interception results for combat - core combat mechanic
-    const interceptionResult = gameEngine.calculateAiInterception(
-        pendingAttack,
-        getPlayerStatesForEngine(),
-        getPlacedSectionsForEngine()
-    );
-
-    if (interceptionResult.hasInterceptors) {
-        setPlayerInterceptionChoice({
-            attackDetails: interceptionResult.attackDetails,
-            interceptors: interceptionResult.interceptors,
-        });
-    } else {
-        resolveAttack(pendingAttack);
-    }
-}, [pendingAttack, resolveAttack, localPlacedSections, opponentPlacedSections]);
-  
   /**
    * HANDLE ABILITY ICON CLICK
    * Processes clicks on drone ability buttons.
@@ -1860,41 +1864,12 @@ const App = () => {
                   console.log("FAILURE: Target is protected by a Guardian drone.");
                   setModalContent({ title: "Invalid Target", text: "This lane is protected by a Guardian drone. You must destroy it before targeting other drones.", isBlocking: true });
               } else {
-                  console.log("SUCCESS: No Guardian. Checking for interception.");
+                  console.log("SUCCESS: No Guardian. Processing attack...");
                   const attackDetails = { attacker: selectedDrone, target: token, targetType: 'drone', lane: attackerLane, attackingPlayer: getLocalPlayerId() };
 
-                  const effectiveAttacker = getEffectiveStats(selectedDrone, attackerLane);
-
-                  const potentialInterceptors = opponentPlayerState.dronesOnBoard[attackerLane]
-                      .filter(d => {
-                          const effectiveInterceptor = getEffectiveStats(d, attackerLane);
-                          return !d.isExhausted &&
-                                 (effectiveInterceptor.speed > effectiveAttacker.speed || effectiveInterceptor.keywords.has('ALWAYS_INTERCEPTS')) &&
-                                 (d.id !== token.id);
-                      })
-                      .sort((a, b) => a.class - b.class);
-
-                  let interceptor = null;
-                  if (potentialInterceptors.length > 0) {
-                      if (token.class === undefined || potentialInterceptors[0].class < token.class) {
-                          interceptor = potentialInterceptors[0];
-                      }
-                  }
-
-                  if (interceptor) {
-                      setInterceptionModal({
-                          interceptor,
-                          originalTarget: token,
-                          onClose: () => {
-                              resolveAttack({ ...attackDetails, interceptor });
-                              setInterceptionModal(null);
-                              setSelectedDrone(null);
-                          },
-                      });
-                  } else {
-                      resolveAttack(attackDetails);
-                      setSelectedDrone(null);
-                  }
+                  // ActionProcessor will handle interception check
+                  resolveAttack(attackDetails);
+                  setSelectedDrone(null);
               }
           } else {
               console.log("FAILURE: Lanes do not match or could not be found.");
@@ -2004,39 +1979,12 @@ const App = () => {
                   console.log("FAILURE: Ship section is protected by a Guardian drone.");
                   setModalContent({ title: "Invalid Target", text: "This lane is protected by a Guardian drone. You must destroy it before targeting the ship section.", isBlocking: true });
               } else {
-                  console.log("SUCCESS: No Guardian. Checking for interception.");
+                  console.log("SUCCESS: No Guardian. Processing attack...");
                   const attackDetails = { attacker: selectedDrone, target: target, targetType: 'section', lane: attackerLane, attackingPlayer: getLocalPlayerId() };
 
-                  const effectiveAttacker = getEffectiveStats(selectedDrone, attackerLane);
-
-                  const potentialInterceptors = opponentPlayerState.dronesOnBoard[attackerLane]
-                      .filter(d => {
-                          const effectiveInterceptor = getEffectiveStats(d, attackerLane);
-                          return !d.isExhausted &&
-                                 (effectiveInterceptor.speed > effectiveAttacker.speed || effectiveInterceptor.keywords.has('ALWAYS_INTERCEPTS'));
-                      })
-                      .sort((a, b) => a.class - b.class);
-
-                  let interceptor = null;
-                  if (potentialInterceptors.length > 0) {
-                      // Ship sections can always be intercepted (no class comparison needed)
-                      interceptor = potentialInterceptors[0];
-                  }
-
-                  if (interceptor) {
-                      setInterceptionModal({
-                          interceptor,
-                          originalTarget: target,
-                          onClose: () => {
-                              resolveAttack({ ...attackDetails, interceptor });
-                              setInterceptionModal(null);
-                              setSelectedDrone(null);
-                          },
-                      });
-                  } else {
-                      resolveAttack(attackDetails);
-                      setSelectedDrone(null);
-                  }
+                  // ActionProcessor will handle interception check
+                  resolveAttack(attackDetails);
+                  setSelectedDrone(null);
               }
           } else {
               console.log("FAILURE: Could not determine attacker lane.");
@@ -2277,7 +2225,7 @@ const App = () => {
    * @returns {boolean} True if both players have committed
    */
   const checkBothPlayersHandLimitComplete = () => {
-    const commitmentStatus = actionProcessor?.getPhaseCommitmentStatus('optionalDiscard');
+    const commitmentStatus = gameStateManager.actionProcessor?.getPhaseCommitmentStatus('optionalDiscard');
     console.log('[OPTIONAL DISCARD] Commitment status:', commitmentStatus);
     return commitmentStatus?.bothComplete || false;
   };
@@ -2542,6 +2490,7 @@ const App = () => {
         handleTokenClick={handleTokenClick}
         handleAbilityIconClick={handleAbilityIconClick}
         setHoveredTarget={setHoveredTarget}
+        interceptedBadge={interceptedBadge}
       />
 
       <GameFooter
@@ -2651,13 +2600,53 @@ const App = () => {
       <InterceptionOpportunityModal
         choiceData={playerInterceptionChoice}
         show={!!playerInterceptionChoice}
-        onIntercept={(interceptor) => {
-          resolveAttack({ ...playerInterceptionChoice.attackDetails, interceptor });
+        onIntercept={async (interceptor) => {
+          // Store attack details before closing modal
+          const attackDetails = { ...playerInterceptionChoice.attackDetails, interceptor };
+          const wasAiAttack = !!gameState.pendingAiInterception;
+
+          // Close modal immediately to prevent animations from modal drones
           setPlayerInterceptionChoice(null);
+
+          // Wait for modal to unmount/fade out before resolving attack
+          setTimeout(async () => {
+            await resolveAttack(attackDetails);
+
+            // If this was from AI attack, clear pending state and resume AI turn
+            if (wasAiAttack) {
+              gameStateManager.setState({ pendingAiInterception: null });
+              // Trigger AI to continue if still its turn
+              const currentState = gameStateManager.getState();
+              if (currentState.currentPlayer === 'player2' && !currentState.passInfo?.player2Passed) {
+                console.log('🔄 [APP] Resuming AI turn after interception resolved');
+                setTimeout(() => aiPhaseProcessor.checkForAITurn(currentState), 100);
+              }
+            }
+          }, 400); // Delay to allow modal to close
         }}
-        onDecline={() => {
-          resolveAttack(playerInterceptionChoice.attackDetails);
+        onDecline={async () => {
+          // Store attack details before closing modal
+          const attackDetails = { ...playerInterceptionChoice.attackDetails, interceptor: null };
+          const wasAiAttack = !!gameState.pendingAiInterception;
+
+          // Close modal immediately to prevent animations from modal drones
           setPlayerInterceptionChoice(null);
+
+          // Wait for modal to unmount/fade out before resolving attack
+          setTimeout(async () => {
+            await resolveAttack(attackDetails);
+
+            // If this was from AI attack, clear pending state and resume AI turn
+            if (wasAiAttack) {
+              gameStateManager.setState({ pendingAiInterception: null });
+              // Trigger AI to continue if still its turn
+              const currentState = gameStateManager.getState();
+              if (currentState.currentPlayer === 'player2' && !currentState.passInfo?.player2Passed) {
+                console.log('🔄 [APP] Resuming AI turn after interception declined');
+                setTimeout(() => aiPhaseProcessor.checkForAITurn(currentState), 100);
+              }
+            }
+          }, 400); // Delay to allow modal to close
         }}
         gameEngine={gameEngine}
         turnPhase={turnPhase}
@@ -2669,12 +2658,11 @@ const App = () => {
         droneRefs={droneRefs}
         mandatoryAction={mandatoryAction}
       />
-      <DetailedDroneModal isOpen={!!detailedDrone} drone={detailedDrone} onClose={() => setDetailedDrone(null)} />
-      <AIActionReportModal
-        report={aiActionReport}
-        show={!!aiActionReport}
-        onClose={() => setAiActionReport(null)}
+      <OpponentDecidingInterceptionModal
+        show={showOpponentDecidingModal}
+        opponentName={opponentPlayerState?.name || 'Opponent'}
       />
+      <DetailedDroneModal isOpen={!!detailedDrone} drone={detailedDrone} onClose={() => setDetailedDrone(null)} />
       {aiCardPlayReport && <AICardPlayReportModal report={aiCardPlayReport} onClose={() => setAiCardPlayReport(null)} />}
       <AIDecisionLogModal
         decisionLog={aiDecisionLogToShow}

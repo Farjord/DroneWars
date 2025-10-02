@@ -32,6 +32,7 @@ import { useGameData } from '../../hooks/useGameData.js';
  * @param {Array} validAbilityTargets - Valid ability targets
  * @param {Array} validCardTargets - Valid card targets
  * @param {Function} setHoveredTarget - Function to set hovered target
+ * @param {Object} interceptedBadge - Interception badge data ({ droneId, timestamp })
  */
 const renderDronesOnBoard = (
   drones,
@@ -53,7 +54,8 @@ const renderDronesOnBoard = (
   mandatoryAction,
   validAbilityTargets,
   validCardTargets,
-  setHoveredTarget
+  setHoveredTarget,
+  interceptedBadge
 ) => {
   return (
     <div className="flex flex-wrap gap-8 pt-2 min-h-[100px] justify-center items-center">
@@ -76,6 +78,7 @@ const renderDronesOnBoard = (
               isActionTarget={validAbilityTargets.some(t => t.id === drone.id) || validCardTargets.some(t => t.id === drone.id)}
               onMouseEnter={() => !isPlayer && setHoveredTarget({ target: drone, type: 'drone', lane })}
               onMouseLeave={() => !isPlayer && setHoveredTarget(null)}
+              interceptedBadge={interceptedBadge}
                />
           );
       })}
@@ -112,6 +115,7 @@ const renderDronesOnBoard = (
  * @param {Object} droneRefs - Drone DOM references
  * @param {Object} mandatoryAction - Mandatory action state
  * @param {Function} setHoveredTarget - Function to set hovered target
+ * @param {Object} interceptedBadge - Interception badge data ({ droneId, timestamp })
  */
 const DroneLanesDisplay = ({
   player,
@@ -138,7 +142,8 @@ const DroneLanesDisplay = ({
   potentialInterceptors,
   droneRefs,
   mandatoryAction,
-  setHoveredTarget
+  setHoveredTarget,
+  interceptedBadge
 }) => {
   // Use GameDataService for computed data
   const { getEffectiveStats } = useGameData();
@@ -181,7 +186,8 @@ const DroneLanesDisplay = ({
               mandatoryAction,
               validAbilityTargets,
               validCardTargets,
-              setHoveredTarget
+              setHoveredTarget,
+              interceptedBadge
             )}
           </div>
         );
