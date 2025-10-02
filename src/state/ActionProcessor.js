@@ -256,9 +256,6 @@ setAnimationManager(animationManager) {
         case 'optionalDiscard':
           return await this.processOptionalDiscard(payload);
 
-        case 'acknowledgeFirstPlayer':
-          return await this.acknowledgeFirstPlayer(payload.playerId);
-
         case 'acknowledgeDeploymentComplete':
           return await this.acknowledgeDeploymentComplete(payload.playerId);
 
@@ -308,21 +305,38 @@ setAnimationManager(animationManager) {
       if (interceptionResult.hasInterceptors) {
         const defendingPlayerId = attackDetails.attackingPlayer === 'player1' ? 'player2' : 'player1';
 
-        // If defender is AI (player2) and game mode is local, make AI decision
-        if (defendingPlayerId === 'player2' && currentState.gameMode === 'local') {
-          console.log('🛡️ [INTERCEPTION] AI defender has interceptors, making decision...');
+        // Set unified interception pending state (shows "opponent deciding" modal to attacker)
+        this.gameStateManager.setState({
+          interceptionPending: {
+            attackDetails,
+            defendingPlayerId,
+            attackingPlayerId: attackDetails.attackingPlayer,
+            interceptors: interceptionResult.interceptors,
+            timestamp: Date.now()
+          }
+        });
 
+        // AI Defender - wait then decide automatically
+        if (defendingPlayerId === 'player2' && currentState.gameMode === 'local') {
+          console.log('🛡️ [INTERCEPTION] AI defender has interceptors');
+
+          // Wait 1 second (modal visible to human attacker)
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          // AI makes decision
           if (this.aiPhaseProcessor) {
             const decision = await this.aiPhaseProcessor.makeInterceptionDecision(
               interceptionResult.interceptors,
               attackDetails
             );
 
+            console.log('🛡️ [INTERCEPTION] AI decision:', decision.interceptor ? 'INTERCEPT' : 'DECLINE');
+
+            // Apply decision
             if (decision.interceptor) {
-              console.log('🛡️ [INTERCEPTION] AI chose to intercept with:', decision.interceptor.name);
               finalAttackDetails.interceptor = decision.interceptor;
 
-              // Emit interception event for UI
+              // Emit interception result for badge display
               this.gameStateManager.setState({
                 lastInterception: {
                   interceptor: decision.interceptor,
@@ -332,9 +346,15 @@ setAnimationManager(animationManager) {
               });
             }
           }
-        } else {
-          // Human defender - return interception data for UI to show InterceptionOpportunityModal
-          console.log('🛡️ [INTERCEPTION] Human defender has interceptors, waiting for decision...');
+
+          // Complete interception (clears state, closes modal)
+          this.gameStateManager.setState({ interceptionPending: null });
+
+          // Continue with attack
+        }
+        // Human Defender - return to show choice modal
+        else {
+          console.log('🛡️ [INTERCEPTION] Human defender has interceptors');
           return {
             needsInterceptionDecision: true,
             interceptionData: {
@@ -400,6 +420,15 @@ setAnimationManager(animationManager) {
       result.newPlayerStates.player1,
       result.newPlayerStates.player2
     );
+
+    // Clear interceptionPending state after attack completes (closes "opponent deciding" modal)
+    if (currentState.interceptionPending) {
+      console.log('🛡️ [INTERCEPTION] Clearing interceptionPending after attack completed');
+      this.gameStateManager.setState({ interceptionPending: null });
+    }
+
+    // Check for win conditions after attack
+    this.checkWinCondition();
 
     // Handle automatic turn transition if needed
     if (result.attackResult && result.attackResult.shouldEndTurn) {
@@ -500,6 +529,12 @@ setAnimationManager(animationManager) {
       });
     });
 
+    // Check if targetId is a lane (for lane-targeted abilities)
+    if (targetId && targetId.startsWith('lane') && !targetDrone) {
+      // Create a lane target object for lane-targeted abilities
+      targetDrone = { id: targetId };
+    }
+
     if (!userDrone || !userDrone.abilities[abilityIndex]) {
       throw new Error(`Invalid drone or ability: ${droneId}, ${abilityIndex}`);
     }
@@ -545,6 +580,9 @@ setAnimationManager(animationManager) {
       result.newPlayerStates.player2
     );
 
+    // Check for win conditions after ability
+    this.checkWinCondition();
+
     // Handle automatic turn transition if needed
     if (result.shouldEndTurn) {
       const currentState = this.gameStateManager.getState();
@@ -583,13 +621,23 @@ setAnimationManager(animationManager) {
       playerState,
       opponentState,
       placedSections,
-      logCallback
+      logCallback,
+      playerId
     );
 
     if (result.success) {
       const deployedDroneId = result.deployedDrone?.id || droneData.id;
 
-      // PHASE 1: Add drone with isTeleporting flag (invisible placeholder)
+      // Extract animation events from gameLogic result
+      const animations = (result.animationEvents || []).map(event => ({
+        animationName: event.type,
+        payload: {
+          ...event,
+          droneId: event.targetId
+        }
+      }));
+
+      // PHASE 1: Add drone with isTeleporting flag (invisible placeholder for animation)
       const stateWithTeleportingDrone = {
         ...result.newPlayerState,
         dronesOnBoard: {
@@ -606,34 +654,28 @@ setAnimationManager(animationManager) {
         this.gameStateManager.updatePlayers({}, stateWithTeleportingDrone);
       }
 
-      // PHASE 2: Wait for React to render the invisible placeholder
+      // PHASE 2: Wait briefly for React to render invisible placeholder
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      // PHASE 3: Start teleport animation and reveal drone partway through
-      const teleportAnimation = [{
-        animationName: 'TELEPORT_IN',
-        payload: {
-          targetId: deployedDroneId,
-          laneId: laneId,
-          playerId: playerId
-        }
-      }];
-
-      // Start the animation and reveal drone at 70% completion for overlap
-      const animationPromise = this.animationManager ?
-        this.animationManager.executeAnimations(teleportAnimation) :
+      // PHASE 3: Execute teleport animation and reveal drone partway through
+      const animationPromise = this.animationManager && animations.length > 0 ?
+        this.animationManager.executeAnimations(animations) :
         Promise.resolve();
 
-      // Wait 70% of animation duration (420ms of 600ms), then reveal the drone
+      // Get reveal timing from animation config
+      const teleportConfig = this.animationManager?.animations?.TELEPORT_IN || { duration: 600, config: { revealAt: 0.7 } };
+      const revealDelay = teleportConfig.duration * (teleportConfig.config?.revealAt || 0.7);
+
+      // Reveal drone at configured percentage of animation for smooth overlap
       setTimeout(() => {
         if (playerId === 'player1') {
           this.gameStateManager.updatePlayers(result.newPlayerState, {});
         } else {
           this.gameStateManager.updatePlayers({}, result.newPlayerState);
         }
-      }, 420);
+      }, revealDelay);
 
-      // PHASE 4: Wait for animation to fully complete
+      // PHASE 4: Wait for animation to complete
       await animationPromise;
 
       // Handle turn transition after successful deployment
@@ -739,6 +781,9 @@ setAnimationManager(animationManager) {
       result.newPlayerStates.player1,
       result.newPlayerStates.player2
     );
+
+    // Check for win conditions after card play
+    this.checkWinCondition();
 
     // Handle automatic turn transition if needed
     if (result.shouldEndTurn) {
@@ -900,6 +945,43 @@ setAnimationManager(animationManager) {
   }
 
   /**
+   * Check for win conditions after state-changing actions
+   * This method should be called after attacks, abilities, and card plays
+   * that could destroy ship sections and end the game
+   */
+  checkWinCondition() {
+    const currentState = this.gameStateManager.getState();
+
+    // Don't check if game already has a winner
+    if (currentState.winner) {
+      return null;
+    }
+
+    const playerStates = {
+      player1: currentState.player1,
+      player2: currentState.player2
+    };
+
+    // Create callbacks that use GameStateManager methods
+    const callbacks = {
+      logCallback: (entry) => {
+        this.gameStateManager.addLogEntry(entry, 'checkWinCondition');
+      },
+      setWinnerCallback: (winnerId) => {
+        this.gameStateManager.setWinner(winnerId);
+      },
+      showWinnerModalCallback: () => {
+        // Winner modal display is handled by App.jsx reactively through gameState.winner
+        // No need to set separate UI state here
+      }
+    };
+
+    // Call game engine to check win condition
+    const result = gameEngine.checkGameStateForWinner(playerStates, callbacks);
+    return result;
+  }
+
+  /**
    * Process turn transition
    */
   async processTurnTransition(payload) {
@@ -1023,6 +1105,47 @@ setAnimationManager(animationManager) {
         player1Passed: false,
         player2Passed: false
       });
+    }
+
+    // Show phase announcement for round phases
+    const phaseTextMap = {
+      determineFirstPlayer: 'DETERMINING FIRST PLAYER',
+      energyReset: 'ENERGY RESET',
+      mandatoryDiscard: 'MANDATORY DISCARD PHASE',
+      optionalDiscard: 'OPTIONAL DISCARD PHASE',
+      draw: 'DRAW PHASE',
+      allocateShields: 'ALLOCATE SHIELDS',
+      mandatoryDroneRemoval: 'REMOVE EXCESS DRONES',
+      deployment: 'DEPLOYMENT PHASE',
+      deploymentComplete: 'DEPLOYMENT COMPLETE',
+      action: 'ACTION PHASE'
+    };
+
+    if (phaseTextMap[newPhase] && this.animationManager) {
+      console.log(`🎬 [PHASE ANNOUNCEMENT] Showing announcement for: ${newPhase}`);
+
+      const payload = {
+        phaseText: phaseTextMap[newPhase],
+        phaseName: newPhase,
+        timestamp: Date.now()
+      };
+
+      // Add subtitle for deployment and action phases showing who goes first
+      if (newPhase === 'deployment' || newPhase === 'action') {
+        const localPlayerId = this.gameStateManager.getLocalPlayerId();
+        const isLocalPlayerFirst = currentState.firstPlayerOfRound === localPlayerId;
+        payload.subtitle = isLocalPlayerFirst ? 'You Go First' : 'Opponent Goes First';
+      }
+
+      const phaseAnnouncementEvent = {
+        animationName: 'PHASE_ANNOUNCEMENT',
+        payload: payload
+      };
+
+      // Execute phase announcement (blocks gameplay during display)
+      await this.animationManager.executeAnimations([phaseAnnouncementEvent]);
+
+      console.log(`🎬 [PHASE ANNOUNCEMENT] Announcement complete for: ${newPhase}`);
     }
 
     console.log(`[PHASE TRANSITION DEBUG] Phase transition complete: ${currentState.turnPhase} → ${newPhase}`);
@@ -1685,24 +1808,6 @@ setAnimationManager(animationManager) {
       turn: currentState.turn
     };
   }
-
-  /**
-   * Acknowledge first player determination
-   * Handles first player determination acknowledgment
-   * @param {string} playerId - Player acknowledging
-   * @returns {Object} Acknowledgment result
-   */
-  async acknowledgeFirstPlayer(playerId) {
-    console.log(`🎯 ActionProcessor: Processing first player acknowledgment for ${playerId}`);
-
-    // Use the new commitment system for acknowledgments
-    return await this.processCommitment({
-      playerId,
-      phase: 'determineFirstPlayer',
-      actionData: { acknowledged: true }
-    });
-  }
-
 
   /**
    * Process deployment complete acknowledgment

@@ -390,3 +390,149 @@
     transform: translate(-50%, -50%) scale(1);
   }
 }
+
+/* Card reveal animations */
+@keyframes cardRevealLabelShow {
+  0% {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes cardRevealDissolve {
+  0% {
+    opacity: 1;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 0.7;
+    filter: brightness(1.5) saturate(1.5);
+  }
+  100% {
+    opacity: 0;
+    filter: brightness(2) saturate(2);
+    transform: scale(0.95);
+  }
+}
+
+@keyframes cardRevealScanline {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+/* Card reveal utility classes */
+.card-reveal-label-show {
+  animation: cardRevealLabelShow 0.3s ease-out forwards;
+}
+
+.card-reveal-dissolve {
+  animation: cardRevealDissolve 0.3s ease-out forwards;
+}
+
+.card-reveal-scanline-active {
+  animation: cardRevealScanline 1.5s linear infinite;
+}
+
+/* Phase announcement animations */
+@keyframes phaseAnnouncementShine {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}
+
+@keyframes phaseAnnouncementScanline {
+  0% {
+    top: -10%;
+  }
+  100% {
+    top: 110%;
+  }
+}
+
+/* Phase announcement utility classes */
+.phase-announcement-text {
+  position: relative;
+}
+
+.phase-announcement-shine {
+  animation: phaseAnnouncementShine 2s linear infinite;
+}
+
+.phase-announcement-scanline-active {
+  animation: phaseAnnouncementScanline 2s linear infinite;
+}
+
+/* Game End Animations */
+@keyframes defeatGlow {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(255, 50, 50, 0.8),
+                 0 0 40px rgba(255, 50, 50, 0.6),
+                 0 0 60px rgba(255, 50, 50, 0.4);
+  }
+  50% {
+    text-shadow: 0 0 30px rgba(255, 50, 50, 1),
+                 0 0 60px rgba(255, 50, 50, 0.8),
+                 0 0 90px rgba(255, 50, 50, 0.6);
+  }
+}
+
+@keyframes screenFlicker {
+  0%, 100% { opacity: 1; }
+  10% { opacity: 0.8; }
+  20% { opacity: 1; }
+  30% { opacity: 0.9; }
+  40% { opacity: 1; }
+  50% { opacity: 0.85; }
+  60% { opacity: 1; }
+  70% { opacity: 0.9; }
+  80% { opacity: 1; }
+  90% { opacity: 0.95; }
+}
+
+@keyframes scanlineShutdown {
+  0% {
+    top: -100%;
+    opacity: 1;
+  }
+  80% {
+    opacity: 0.8;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes screenDistort {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  50% { transform: translateX(2px); }
+  75% { transform: translateX(-1px); }
+}
+
+.defeat-glow {
+  animation: defeatGlow 2s ease-in-out infinite;
+}
+
+.screen-flicker {
+  animation: screenFlicker 0.3s ease-in-out infinite;
+}
+
+.scanline-shutdown {
+  animation: scanlineShutdown 4s ease-out forwards;
+}
+
+.screen-distort {
+  animation: screenDistort 0.1s ease-in-out infinite;
+}

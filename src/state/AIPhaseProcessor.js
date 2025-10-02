@@ -842,16 +842,8 @@ class AIPhaseProcessor {
       if (result?.needsInterceptionDecision) {
         console.log('🛡️ AIPhaseProcessor: AI attack needs human interception decision, pausing turn loop');
 
-        // Emit interception data to game state for UI to pick up
-        this.gameStateManager.setState({
-          pendingAiInterception: {
-            interceptionData: result.interceptionData,
-            aiPlayerId: 'player2',
-            timestamp: Date.now()
-          }
-        });
-
-        // Allow turn to resume after interception is resolved
+        // ActionProcessor already set interceptionPending state, just pause AI turn loop
+        // Turn will resume after interception is resolved (state cleared)
         this.isProcessing = false;
         return; // Don't schedule another AI turn yet
       }

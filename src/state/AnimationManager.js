@@ -22,9 +22,21 @@ class AnimationManager {
       },
 
       // Card visuals
+      CARD_REVEAL: {
+        duration: 1000,  // 1 second card reveal
+        type: 'CARD_REVEAL_EFFECT',
+        config: { }
+      },
       CARD_VISUAL: {
         duration: 5000,  // Very long for testing visibility
         type: 'CARD_VISUAL_EFFECT',
+        config: { }
+      },
+
+      // Phase announcements
+      PHASE_ANNOUNCEMENT: {
+        duration: 1500,  // 1.5 second phase announcement
+        type: 'PHASE_ANNOUNCEMENT_EFFECT',
         config: { }
       },
 
@@ -32,7 +44,7 @@ class AnimationManager {
       TELEPORT_IN: {
         duration: 600,
         type: 'TELEPORT_EFFECT',
-        config: { }
+        config: { revealAt: 0.7 } // Reveal drone at 70% of animation for smooth overlap
       },
 
       // Damage feedback

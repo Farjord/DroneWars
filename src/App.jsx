@@ -27,7 +27,7 @@ import CardViewerModal from './CardViewerModal';
 import CardSelectionModal from './CardSelectionModal';
 import AICardPlayReportModal from './components/modals/AICardPlayReportModal.jsx';
 import DetailedDroneModal from './components/modals/debug/DetailedDroneModal.jsx';
-import { FirstPlayerModal, DeploymentCompleteModal, RoundEndModal } from './components/modals/GamePhaseModals.jsx';
+import { DeploymentCompleteModal, RoundEndModal } from './components/modals/GamePhaseModals.jsx';
 import WaitingForPlayerModal from './components/modals/WaitingForPlayerModal.jsx';
 import ConfirmationModal from './components/modals/ConfirmationModal.jsx';
 import MandatoryActionModal from './components/modals/MandatoryActionModal.jsx';
@@ -67,6 +67,8 @@ import AnimationManager from './state/AnimationManager.js';
 import FlyingDrone from './components/animations/FlyingDrone.jsx';
 import FlashEffect from './components/animations/FlashEffect.jsx';
 import CardVisualEffect from './components/animations/CardVisualEffect.jsx';
+import CardRevealOverlay from './components/animations/CardRevealOverlay.jsx';
+import PhaseAnnouncementOverlay from './components/animations/PhaseAnnouncementOverlay.jsx';
 import LaserEffect from './components/animations/LaserEffect.jsx';
 import TeleportEffect from './components/animations/TeleportEffect.jsx';
 // ========================================
@@ -126,6 +128,8 @@ const App = () => {
   const [flyingDrones, setFlyingDrones] = useState([]);
   const [flashEffects, setFlashEffects] = useState([]);
   const [cardVisuals, setCardVisuals] = useState([]);
+  const [cardReveals, setCardReveals] = useState([]);
+  const [phaseAnnouncements, setPhaseAnnouncements] = useState([]);
   const [laserEffects, setLaserEffects] = useState([]);
   const [teleportEffects, setTeleportEffects] = useState([]);
   const [animationBlocking, setAnimationBlocking] = useState(false);
@@ -133,7 +137,6 @@ const App = () => {
   const [deploymentConfirmation, setDeploymentConfirmation] = useState(null);
   const [moveConfirmation, setMoveConfirmation] = useState(null);
   const [detailedDrone, setDetailedDrone] = useState(null);
-  const [showFirstPlayerModal, setShowFirstPlayerModal] = useState(false);
   const [showDeploymentCompleteModal, setShowDeploymentCompleteModal] = useState(false);
   const [showRoundEndModal, setShowRoundEndModal] = useState(false);
   const [waitingForPlayerPhase, setWaitingForPlayerPhase] = useState(null); // Track which phase we're waiting for player acknowledgment
@@ -226,6 +229,8 @@ const App = () => {
   setAnimationBlocking,
   setFlashEffects,
   setCardVisuals,
+  setCardReveals,
+  setPhaseAnnouncements,
   setLaserEffects,
   setTeleportEffects
 );
@@ -274,11 +279,7 @@ const App = () => {
           setWaitingForPlayerPhase(null);
         }
 
-        // Handle first player determination phase
-        if (newPhase === 'determineFirstPlayer') {
-          console.log('🎯 First player determination phase started, showing modal');
-          setShowFirstPlayerModal(true);
-        }
+        // First player determination is now handled automatically by GameFlowManager
 
         // Handle deployment complete phase
         if (newPhase === 'deploymentComplete') {
@@ -581,22 +582,6 @@ const App = () => {
     isResolvingAttackRef.current = true;
 
     try {
-        const triggerHitAnimation = (targetId) => {
-            setRecentlyHitDrones(prev => [...prev, targetId]);
-            setTimeout(() => setRecentlyHitDrones(prev => prev.filter(id => id !== targetId)), 500);
-        };
-
-        // CRITICAL: Capture target position BEFORE state update removes drone from DOM
-        // This is a UI concern (rendering) - position capture belongs in App.jsx
-        // ActionProcessor maintains ownership of state updates (architectural compliance)
-        const capturedPositions = new Map();
-        if (attackDetails.targetId) {
-            const pos = getElementCenter(droneRefs.current[attackDetails.targetId], gameAreaRef.current);
-            if (pos) {
-                capturedPositions.set(attackDetails.targetId, pos);
-            }
-        }
-
         // Add a brief delay before attack animation starts
         await new Promise(resolve => setTimeout(resolve, 250));
 
@@ -613,25 +598,8 @@ const App = () => {
             return; // Stop processing until human makes decision
         }
 
-        // Handle UI effects (animations, reports)
-        if (attackDetails.targetId) {
-            triggerHitAnimation(attackDetails.targetId);
-        }
-
-        // Handle after-attack effects with pre-captured positions
-        if (result.afterAttackEffects) {
-            result.afterAttackEffects.forEach(effect => {
-                if (effect.type === 'EXPLOSION') {
-                    const capturedPos = capturedPositions.get(effect.payload.targetId);
-                    triggerExplosion(effect.payload.targetId, capturedPos);
-                } else if (effect.type === 'HIT_ANIMATION') {
-                    setRecentlyHitDrones(prev => [...prev, effect.payload.targetId]);
-                    setTimeout(() => {
-                        setRecentlyHitDrones(prev => prev.filter(id => id !== effect.payload.targetId));
-                    }, 500);
-                }
-            });
-        }
+        // All animations now handled by AnimationManager through ActionProcessor
+        // No direct UI effects needed here - the animation pipeline handles everything
 
     } catch (error) {
         console.error('Error in resolveAttack:', error);
@@ -972,19 +940,13 @@ const App = () => {
   }, [abilityMode, shipAbilityMode, selectedCard, localPlayerState, opponentPlayerState, multiSelectState]);
 
   // --- 8.2 WIN CONDITION MONITORING ---
-  // TODO: UI MONITORING - Win condition monitoring is appropriate UI-only effect - monitors game state for UI updates
+  // Win conditions are now checked automatically by ActionProcessor after attacks, abilities, and card plays
+  // This effect shows the winner modal when a winner is detected
   useEffect(() => {
-    if (winner) return;
-
-    const winnerResult = gameEngine.checkGameStateForWinner(
-      getPlayerStatesForEngine(),
-      {
-        logCallback: addLogEntry,
-        setWinnerCallback: setWinner,
-        showWinnerModalCallback: setShowWinnerModal
-      }
-    );
-  }, [localPlayerState?.shipSections, opponentPlayerState?.shipSections, winner, addLogEntry]);
+    if (winner && !showWinnerModal) {
+      setShowWinnerModal(true);
+    }
+  }, [winner, showWinnerModal]);
 
   // --- 8.4 INTERCEPTION MONITORING ---
   // TODO: UI MONITORING - Interception monitoring is appropriate UI-only effect - calculates UI hints for user
@@ -1002,8 +964,32 @@ const App = () => {
     }
 }, [selectedDrone, turnPhase, localPlayerState, opponentPlayerState, gameEngine, localPlacedSections, opponentPlacedSections]);
 
-  // Monitor gameState.lastInterception for AI interception decisions
-  // Shows InterceptedBadge on the intercepting drone
+  // Monitor unified interceptionPending state for both AI and human defenders
+  useEffect(() => {
+    const localPlayerId = getLocalPlayerId();
+
+    if (gameState.interceptionPending) {
+      const { attackingPlayerId, defendingPlayerId, attackDetails, interceptors } = gameState.interceptionPending;
+
+      // Show "opponent deciding" modal to attacker
+      if (attackingPlayerId === localPlayerId) {
+        setShowOpponentDecidingModal(true);
+      }
+      // Show interception choice modal to defender (human only, AI auto-decides)
+      else if (defendingPlayerId === localPlayerId) {
+        setPlayerInterceptionChoice({
+          attackDetails,
+          interceptors
+        });
+      }
+    } else {
+      // Clear both modals when interception complete
+      setShowOpponentDecidingModal(false);
+      setPlayerInterceptionChoice(null);
+    }
+  }, [gameState.interceptionPending, getLocalPlayerId]);
+
+  // Monitor gameState.lastInterception for badge display only
   useEffect(() => {
     if (gameState.lastInterception) {
       const { interceptor, timestamp } = gameState.lastInterception;
@@ -1013,36 +999,9 @@ const App = () => {
         droneId: interceptor.id,
         timestamp: timestamp
       });
-
-      // Show 1-second "Opponent deciding" modal for AI interception in single-player
-      if (gameState.gameMode === 'local') {
-        setShowOpponentDecidingModal(true);
-        setTimeout(() => {
-          setShowOpponentDecidingModal(false);
-        }, 1000);
-      }
     }
-  }, [gameState.lastInterception, gameState.gameMode]);
+  }, [gameState.lastInterception]);
 
-  // Monitor playerInterceptionChoice to show "Opponent Deciding" modal to attacker in multiplayer
-  // When defender (local player) is choosing whether to intercept, show modal to opponent
-  useEffect(() => {
-    // Only show in multiplayer when we're the defender choosing
-    if (playerInterceptionChoice && isMultiplayer()) {
-      // TODO: In multiplayer, emit event to opponent to show OpponentDecidingModal
-      // For now, this is handled by UI state only
-      // The attacker would need to subscribe to P2P events
-    }
-  }, [playerInterceptionChoice, isMultiplayer]);
-
-  // Monitor pendingAiInterception for AI attacks that need human interception decision
-  // When AI attacks and human has interceptors, show modal and pause AI turn loop
-  useEffect(() => {
-    if (gameState.pendingAiInterception) {
-      console.log('🛡️ [APP] AI attack needs human interception, showing modal...');
-      setPlayerInterceptionChoice(gameState.pendingAiInterception.interceptionData);
-    }
-  }, [gameState.pendingAiInterception]);
 
   useEffect(() => {
    setHoveredTarget(null);
@@ -1254,30 +1213,6 @@ const App = () => {
       sectionName: reallocationAbility.sectionName,
       target: null
     });
-  };
-
-  /**
-   * HANDLE FIRST PLAYER ACKNOWLEDGMENT
-   * Acknowledges first player determination for the current player.
-   * Triggers waiting state if opponent hasn't acknowledged yet.
-   */
-  const handleFirstPlayerAcknowledgment = async () => {
-    console.log('🎯 App.jsx: Acknowledging first player determination');
-
-    const localPlayerId = getLocalPlayerId();
-    const result = await processAction('acknowledgeFirstPlayer', { playerId: localPlayerId });
-
-    if (result.success) {
-      setShowFirstPlayerModal(false);
-
-      // Check if we need to show waiting state
-      const commitments = gameState.commitments?.determineFirstPlayer || {};
-      const bothComplete = Object.keys(commitments).length === 2;
-      if (!bothComplete && gameState.gameMode !== 'local') {
-        // In multiplayer, show waiting state if opponent hasn't acknowledged
-        setWaitingForPlayerPhase('determineFirstPlayer');
-      }
-    }
   };
 
   /**
@@ -2092,19 +2027,19 @@ const App = () => {
    * Handles different card types including movement, upgrades, and targeted effects.
    * @param {Object} card - The card being clicked
    */
-  const handleCardClick = (card) => {
+  const handleCardClick = async (card) => {
     if (turnPhase !== 'action' || !isMyTurn() || passInfo[`${getLocalPlayerId()}Passed`]) return;
     if (localPlayerState.energy < card.cost) {
       return;
     }
 
-    // Movement cards are now handled through processCardPlay -> needsCardSelection flow
+    // Movement cards are now handled through resolveCardPlay -> needsCardSelection flow
     if (card.effect.type === 'MULTI_MOVE' || card.effect.type === 'SINGLE_MOVE') {
       if (multiSelectState && multiSelectState.card.instanceId === card.instanceId) {
         cancelCardSelection();
       } else {
         // Immediately process card play (no target needed for movement cards)
-        processCardPlay(card, null, getLocalPlayerId());
+        await resolveCardPlay(card, null, getLocalPlayerId());
       }
       return;
     }
@@ -2378,6 +2313,22 @@ const App = () => {
         onComplete={visual.onComplete}
       />
     ))}
+    {cardReveals.map(reveal => (
+      <CardRevealOverlay
+        key={reveal.id}
+        card={reveal.card}
+        label={reveal.label}
+        onComplete={reveal.onComplete}
+      />
+    ))}
+    {phaseAnnouncements.map(announcement => (
+      <PhaseAnnouncementOverlay
+        key={announcement.id}
+        phaseText={announcement.phaseText}
+        subtitle={announcement.subtitle}
+        onComplete={announcement.onComplete}
+      />
+    ))}
     {laserEffects.map(laser => (
       <LaserEffect
         key={laser.id}
@@ -2533,16 +2484,6 @@ const App = () => {
 
       {/* Modals are unaffected and remain at the end */}
       {modalContent && <GamePhaseModal title={modalContent.title} text={modalContent.text} onClose={modalContent.onClose === null ? null : (modalContent.onClose || (() => setModalContent(null)))}>{modalContent.children}</GamePhaseModal>}
-      <FirstPlayerModal
-        show={showFirstPlayerModal}
-        firstPlayerOfRound={firstPlayerOfRound}
-        localPlayerId={getLocalPlayerId()}
-        localPlayerName={localPlayerState.name}
-        opponentPlayerName={opponentPlayerState.name}
-        turn={turn}
-        firstPasserOfPreviousRound={firstPasserOfPreviousRound}
-        onContinue={handleFirstPlayerAcknowledgment}
-      />
       <DeploymentCompleteModal
         show={showDeploymentCompleteModal}
         firstPlayerOfRound={firstPlayerOfRound}
@@ -2603,49 +2544,25 @@ const App = () => {
         onIntercept={async (interceptor) => {
           // Store attack details before closing modal
           const attackDetails = { ...playerInterceptionChoice.attackDetails, interceptor };
-          const wasAiAttack = !!gameState.pendingAiInterception;
 
-          // Close modal immediately to prevent animations from modal drones
+          // Close modal UI immediately (ActionProcessor will clear interceptionPending state)
           setPlayerInterceptionChoice(null);
 
           // Wait for modal to unmount/fade out before resolving attack
           setTimeout(async () => {
             await resolveAttack(attackDetails);
-
-            // If this was from AI attack, clear pending state and resume AI turn
-            if (wasAiAttack) {
-              gameStateManager.setState({ pendingAiInterception: null });
-              // Trigger AI to continue if still its turn
-              const currentState = gameStateManager.getState();
-              if (currentState.currentPlayer === 'player2' && !currentState.passInfo?.player2Passed) {
-                console.log('🔄 [APP] Resuming AI turn after interception resolved');
-                setTimeout(() => aiPhaseProcessor.checkForAITurn(currentState), 100);
-              }
-            }
           }, 400); // Delay to allow modal to close
         }}
         onDecline={async () => {
           // Store attack details before closing modal
           const attackDetails = { ...playerInterceptionChoice.attackDetails, interceptor: null };
-          const wasAiAttack = !!gameState.pendingAiInterception;
 
-          // Close modal immediately to prevent animations from modal drones
+          // Close modal UI immediately (ActionProcessor will clear interceptionPending state)
           setPlayerInterceptionChoice(null);
 
           // Wait for modal to unmount/fade out before resolving attack
           setTimeout(async () => {
             await resolveAttack(attackDetails);
-
-            // If this was from AI attack, clear pending state and resume AI turn
-            if (wasAiAttack) {
-              gameStateManager.setState({ pendingAiInterception: null });
-              // Trigger AI to continue if still its turn
-              const currentState = gameStateManager.getState();
-              if (currentState.currentPlayer === 'player2' && !currentState.passInfo?.player2Passed) {
-                console.log('🔄 [APP] Resuming AI turn after interception declined');
-                setTimeout(() => aiPhaseProcessor.checkForAITurn(currentState), 100);
-              }
-            }
           }, 400); // Delay to allow modal to close
         }}
         gameEngine={gameEngine}
@@ -2706,7 +2623,19 @@ const App = () => {
         cardConfirmation={cardConfirmation}
         show={!!cardConfirmation}
         onCancel={() => setCardConfirmation(null)}
-        onConfirm={async () => await resolveCardPlay(cardConfirmation.card, cardConfirmation.target, getLocalPlayerId())}
+        onConfirm={async () => {
+          // Store card details before closing modal
+          const card = cardConfirmation.card;
+          const target = cardConfirmation.target;
+
+          // Close modal immediately
+          setCardConfirmation(null);
+
+          // Wait for modal to unmount/fade out before resolving card play
+          setTimeout(async () => {
+            await resolveCardPlay(card, target, getLocalPlayerId());
+          }, 400); // Delay to allow modal to close
+        }}
       />
 
       <DroneAbilityConfirmationModal

@@ -5,7 +5,7 @@
 // Extracted from App.jsx for better component organization
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, Loader2 } from 'lucide-react';
+import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown } from 'lucide-react';
 import { getPhaseDisplayName } from '../../utils/gameUtils.js';
 
 /**
@@ -133,13 +133,38 @@ function GameHeader({
         {(turnPhase === 'deployment' || turnPhase === 'action') && (
           <div className="flex items-center gap-3">
             {isMyTurn() ? (
-              <div className="flex items-center gap-2 text-2xl font-bold text-green-400 tracking-wide">
-                <span>Your Turn</span>
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-3xl font-orbitron font-black uppercase tracking-widest"
+                  style={{
+                    background: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
+                    backgroundSize: '200% auto',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    textShadow: '0 0 30px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 136, 255, 0.3)',
+                    filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))'
+                  }}
+                >
+                  Your Turn
+                </span>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-2xl font-bold text-orange-400 tracking-wide">
-                <Loader2 className="animate-spin" size={24} />
-                <span>{isMultiplayer() ? "Opponent's Turn" : "AI Thinking..."}</span>
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-3xl font-orbitron font-black uppercase tracking-widest phase-announcement-shine"
+                  style={{
+                    background: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
+                    backgroundSize: '200% auto',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    textShadow: '0 0 30px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 136, 255, 0.3)',
+                    filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))'
+                  }}
+                >
+                  {isMultiplayer() ? "Opponent's Turn" : "AI Thinking"}
+                </span>
               </div>
             )}
 

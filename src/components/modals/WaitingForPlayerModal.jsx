@@ -2,102 +2,54 @@
 // WAITING FOR PLAYER MODAL
 // ========================================
 // Modal that appears when waiting for opponent to acknowledge in simultaneous phases
-// Shows waiting state for multiplayer synchronization
+// Shows waiting state for multiplayer synchronization with shimmer text
 
 import React from 'react';
-import { Clock, User, Loader2 } from 'lucide-react';
 
 /**
  * WaitingForPlayerModal - Shows waiting state for simultaneous phase acknowledgment
  * @param {boolean} show - Whether to show the modal
  * @param {string} phase - The phase we're waiting for (e.g., 'determineFirstPlayer')
- * @param {string} opponentName - Name of the opponent we're waiting for
- * @param {string} roomCode - Room code for multiplayer sessions
+ * @param {string} opponentName - Name of the opponent we're waiting for (not used - kept for compatibility)
+ * @param {string} roomCode - Room code for multiplayer sessions (not used - kept for compatibility)
  */
 const WaitingForPlayerModal = ({ show, phase, opponentName = 'Opponent', roomCode }) => {
   if (!show) return null;
 
-  // Get phase-specific messages
-  const getPhaseMessage = (phase) => {
+  // Get phase-specific display text
+  const getPhaseText = (phase) => {
     switch (phase) {
       case 'determineFirstPlayer':
-        return {
-          title: 'Waiting for Acknowledgment',
-          message: `Waiting for ${opponentName} to acknowledge first player determination`
-        };
+        return 'Waiting for Opponent';
       case 'mandatoryDiscard':
-        return {
-          title: 'Waiting for Discard',
-          message: `Waiting for ${opponentName} to complete mandatory discard`
-        };
+        return 'Opponent Discarding';
       case 'allocateShields':
-        return {
-          title: 'Waiting for Shield Allocation',
-          message: `Waiting for ${opponentName} to allocate shields`
-        };
+        return 'Opponent Allocating Shields';
       case 'mandatoryDroneRemoval':
-        return {
-          title: 'Waiting for Drone Removal',
-          message: `Waiting for ${opponentName} to remove excess drones`
-        };
+        return 'Opponent Removing Drones';
       case 'deploymentComplete':
-        return {
-          title: 'Waiting for Acknowledgment',
-          message: `Waiting for ${opponentName} to acknowledge deployment complete`
-        };
+        return 'Waiting for Opponent';
       default:
-        return {
-          title: 'Waiting for Opponent',
-          message: `Waiting for ${opponentName} to complete their action`
-        };
+        return 'Waiting for Opponent';
     }
   };
 
-  const { title, message } = getPhaseMessage(phase);
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 pointer-events-none">
-      <div className="bg-slate-900 rounded-2xl border-2 border-amber-500 p-6 shadow-2xl shadow-amber-500/20 max-w-md w-full mx-4">
-
-        {/* Header */}
-        <div className="text-center mb-4">
-          <div className="flex items-center justify-center gap-2 text-amber-400 mb-2">
-            <Clock className="w-6 h-6" />
-            <Loader2 className="w-6 h-6 animate-spin" />
-          </div>
-          <h3 className="text-xl font-bold text-white mb-1">
-            {title}
-          </h3>
-          <p className="text-gray-300 text-sm">
-            {message}
-          </p>
-        </div>
-
-        {/* Room info */}
-        {roomCode && (
-          <div className="bg-slate-800 rounded-lg p-3 mb-4">
-            <div className="flex items-center justify-center gap-2 text-gray-400 text-sm">
-              <User className="w-4 h-4" />
-              <span>Room: {roomCode}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Info message */}
-        <div className="bg-slate-800 rounded-lg p-3 mb-4">
-          <p className="text-gray-400 text-xs mb-1">You have completed your part:</p>
-          <p className="text-white text-sm">Waiting for opponent to finish</p>
-        </div>
-
-        {/* Animated dots */}
-        <div className="flex justify-center">
-          <div className="flex space-x-1">
-            <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce"></div>
-            <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-            <div className="w-2 h-2 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-          </div>
-        </div>
-      </div>
+    <div className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+      <h1
+        className="text-6xl font-orbitron font-black uppercase tracking-widest text-center phase-announcement-shine"
+        style={{
+          background: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
+          backgroundSize: '200% auto',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text',
+          textShadow: '0 0 30px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 136, 255, 0.3)',
+          filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))'
+        }}
+      >
+        {getPhaseText(phase)}
+      </h1>
     </div>
   );
 };

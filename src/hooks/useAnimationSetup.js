@@ -3,7 +3,7 @@ import AnimationManager from '../state/AnimationManager.js';
 import FlashEffect from '../components/animations/FlashEffect.jsx';
 import CardVisualEffect from '../components/animations/CardVisualEffect.jsx';
 
-export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setCardVisuals, setLaserEffects, setTeleportEffects) {
+export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects) {
   useEffect(() => {
     const localPlayerState = getLocalPlayerState();
     const opponentPlayerState = getOpponentPlayerState();
@@ -256,6 +256,53 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       }]);
     });
 
+    animationManager.registerVisualHandler('CARD_REVEAL_EFFECT', (payload) => {
+      const { cardData, actingPlayerId, onComplete } = payload;
+
+      console.log('🃏 [CARD REVEAL DEBUG] CARD_REVEAL_EFFECT handler called:', {
+        cardName: cardData?.name,
+        actingPlayerId
+      });
+
+      // Determine if this is the local player or opponent
+      const localPlayerId = gameStateManager.getLocalPlayerId();
+      const isLocalPlayer = actingPlayerId === localPlayerId;
+
+      const revealId = `cardreveal-${Date.now()}`;
+
+      setCardReveals(prev => [...prev, {
+        id: revealId,
+        card: cardData,
+        label: isLocalPlayer ? 'You Played' : 'Opponent Played',
+        onComplete: () => {
+          setCardReveals(prev => prev.filter(r => r.id !== revealId));
+          onComplete?.();
+        }
+      }]);
+    });
+
+    animationManager.registerVisualHandler('PHASE_ANNOUNCEMENT_EFFECT', (payload) => {
+      const { phaseText, phaseName, subtitle, onComplete } = payload;
+
+      console.log('📢 [PHASE ANNOUNCEMENT DEBUG] PHASE_ANNOUNCEMENT_EFFECT handler called:', {
+        phaseName,
+        phaseText,
+        subtitle
+      });
+
+      const announcementId = `phaseannouncement-${Date.now()}`;
+
+      setPhaseAnnouncements(prev => [...prev, {
+        id: announcementId,
+        phaseText: phaseText,
+        subtitle: subtitle,
+        onComplete: () => {
+          setPhaseAnnouncements(prev => prev.filter(a => a.id !== announcementId));
+          onComplete?.();
+        }
+      }]);
+    });
+
     animationManager.registerVisualHandler('SHAKE_EFFECT', (payload) => {
       const { targetId, config, onComplete } = payload;
       const targetEl = droneRefs.current[targetId];
@@ -318,5 +365,5 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     gameStateManager.actionProcessor.setAnimationManager(animationManager);
     
     return unsubscribe;
-}, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setCardVisuals, setLaserEffects, setTeleportEffects]);
+}, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects]);
 }

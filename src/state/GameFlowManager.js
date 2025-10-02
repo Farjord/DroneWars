@@ -25,9 +25,9 @@ class GameFlowManager {
     this.ROUND_PHASES = ['determineFirstPlayer', 'energyReset', 'mandatoryDiscard', 'optionalDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'deploymentComplete', 'action'];
 
     // Phase type classification
-    this.SIMULTANEOUS_PHASES = ['droneSelection', 'deckSelection', 'placement', 'mandatoryDiscard', 'optionalDiscard', 'determineFirstPlayer', 'allocateShields', 'mandatoryDroneRemoval', 'deploymentComplete'];
+    this.SIMULTANEOUS_PHASES = ['droneSelection', 'deckSelection', 'placement', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval', 'deploymentComplete'];
     this.SEQUENTIAL_PHASES = ['deployment', 'action'];
-    this.AUTOMATIC_PHASES = ['gameInitializing', 'energyReset', 'draw']; // Automatic phases handled directly by GameFlowManager
+    this.AUTOMATIC_PHASES = ['gameInitializing', 'energyReset', 'draw', 'determineFirstPlayer']; // Automatic phases handled directly by GameFlowManager
 
     // Current game state
     this.currentPhase = 'preGame';
@@ -369,6 +369,8 @@ class GameFlowManager {
         nextPhase = await this.processAutomaticEnergyResetPhase();
       } else if (phase === 'draw') {
         nextPhase = await this.processAutomaticDrawPhase();
+      } else if (phase === 'determineFirstPlayer') {
+        nextPhase = await this.processAutomaticFirstPlayerPhase();
       } else {
         console.warn(`⚠️ No handler for automatic phase: ${phase}`);
       }
@@ -438,6 +440,62 @@ class GameFlowManager {
 
     } catch (error) {
       console.error('❌ Error during automatic draw phase:', error);
+    }
+  }
+
+  /**
+   * Process the automatic first player determination phase
+   */
+  async processAutomaticFirstPlayerPhase() {
+    console.log('🎯 GameFlowManager: Processing automatic first player determination phase');
+
+    const previousPhase = 'determineFirstPlayer';
+
+    try {
+      // Call ActionProcessor to determine first player (this also shows first announcement)
+      const firstPlayerResult = await this.actionProcessor.processFirstPlayerDetermination();
+      console.log('🎯 First player determination completed:', firstPlayerResult);
+
+      // The first announcement "DETERMINING FIRST PLAYER" is already shown by processPhaseTransition
+      // Now show the second announcement with the result
+
+      if (this.animationManager && firstPlayerResult.stateUpdates) {
+        const localPlayerId = this.gameStateManager.getLocalPlayerId();
+        const firstPlayer = firstPlayerResult.stateUpdates.firstPlayerOfRound;
+        const isLocalPlayerFirst = firstPlayer === localPlayerId;
+
+        const announcementText = isLocalPlayerFirst ? 'YOU ARE FIRST PLAYER' : 'OPPONENT IS FIRST PLAYER';
+
+        const secondAnnouncementEvent = {
+          animationName: 'PHASE_ANNOUNCEMENT',
+          payload: {
+            phaseText: announcementText,
+            phaseName: 'firstPlayerResult',
+            timestamp: Date.now()
+          }
+        };
+
+        // Execute second announcement (blocks gameplay during display)
+        await this.animationManager.executeAnimations([secondAnnouncementEvent]);
+        console.log('🎬 [FIRST PLAYER] Second announcement complete');
+      }
+
+      // Emit completion event for first player phase
+      this.emit('phaseTransition', {
+        newPhase: 'determineFirstPlayer',
+        previousPhase: previousPhase,
+        gameStage: this.gameStage,
+        roundNumber: this.roundNumber,
+        automaticProcessed: true
+      });
+
+      // Return next phase for transition by processAutomaticPhase
+      const nextPhase = this.getNextPhase('determineFirstPlayer');
+      console.log('✅ Automatic first player determination completed, returning next phase:', nextPhase);
+      return nextPhase;
+
+    } catch (error) {
+      console.error('❌ Error during automatic first player determination:', error);
     }
   }
 
@@ -813,6 +871,11 @@ class GameFlowManager {
       this.gameStage = 'roundLoop';
       if (this.roundNumber === 0) {
         this.roundNumber = 1;
+        // Update gameState with initial round number
+        this.gameStateManager.setState({
+          roundNumber: 1,
+          turn: 1
+        });
       }
     }
 
@@ -826,19 +889,6 @@ class GameFlowManager {
       console.log('🚢 GameFlowManager: Initializing placement phase data');
       const placementData = initializeShipPlacement();
       phaseData = placementData;
-    } else if (newPhase === 'determineFirstPlayer') {
-      console.log('🎯 GameFlowManager: Initializing first player determination phase');
-      // Process first player determination immediately when phase starts
-      if (this.actionProcessor) {
-        firstPlayerResult = await this.actionProcessor.processFirstPlayerDetermination();
-        console.log('🎯 First player determination completed:', firstPlayerResult);
-
-        // Include first player state updates in phase data
-        if (firstPlayerResult && firstPlayerResult.stateUpdates) {
-          phaseData = { ...phaseData, ...firstPlayerResult.stateUpdates };
-          console.log('🎯 GameFlowManager: Including first player state updates:', firstPlayerResult.stateUpdates);
-        }
-      }
     }
 
     // Update GameStateManager with new phase via ActionProcessor
@@ -881,6 +931,12 @@ class GameFlowManager {
   async startNewRound() {
     this.roundNumber++;
     console.log(`🔄 GameFlowManager: Starting round ${this.roundNumber}`);
+
+    // Update gameState with new round number (and turn for backwards compatibility)
+    this.gameStateManager.setState({
+      roundNumber: this.roundNumber,
+      turn: this.roundNumber
+    });
 
     // Find first required phase in new round
     const firstRequiredPhase = this.ROUND_PHASES.find(phase => this.isPhaseRequired(phase));
