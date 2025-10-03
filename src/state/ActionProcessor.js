@@ -1212,6 +1212,7 @@ setAnimationManager(animationManager) {
       turnPhase: newPhase,
       currentPlayer: determinedFirstPlayer,
       firstPlayerOfRound: determinedFirstPlayer,
+      firstPasserOfPreviousRound: currentState.passInfo.firstPasser,
       passInfo: {
         firstPasser: null,
         player1Passed: false,

@@ -163,14 +163,12 @@ const ShipSection = ({
     >
       <div className={`absolute inset-0 ${overlayColor}`}></div>
 
-      <div className="relative z-10 flex flex-col items-center p-4 h-full">
-          <div className={`absolute top-2 right-2 flex items-center gap-1 font-semibold text-xs px-2 py-0.5 rounded-full ${sectionStatus === 'healthy' ? 'bg-green-500/20 text-green-300' : sectionStatus === 'damaged' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-red-500/20 text-red-300'}`}>
-              {sectionStatus.charAt(0).toUpperCase() + sectionStatus.slice(1)}
-          </div>
-
-          <div className="flex flex-col items-center gap-2 text-center">
+      <div className="relative z-10 flex flex-col items-center p-2 h-full">
+          <div className="flex items-center justify-between w-full mb-2">
             <p className="font-bold text-lg text-white">{sectionName}</p>
-            <p className="text-xs text-gray-400 italic max-w-[200px]">{stats.description}</p>
+            <div className={`flex items-center gap-1 font-semibold text-xs px-2 py-0.5 rounded-full ${sectionStatus === 'healthy' ? 'bg-green-500/20 text-green-300' : sectionStatus === 'damaged' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-red-500/20 text-red-300'}`}>
+              {sectionStatus.charAt(0).toUpperCase() + sectionStatus.slice(1)}
+            </div>
           </div>
 
           <div className="grid grid-cols-3 gap-2 w-full items-center mt-auto">

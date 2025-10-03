@@ -98,7 +98,7 @@ const ShipSectionsDisplay = ({
         }
 
         return (
-          <div key={laneIndex} className="flex-1 min-w-0">
+          <div key={laneIndex} className="flex-1 min-w-0 max-h-[120px]">
             <ShipSection
               section={sectionName}
               stats={sectionStats}

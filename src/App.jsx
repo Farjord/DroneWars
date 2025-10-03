@@ -12,6 +12,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 
 // --- 1.2 UI COMPONENT IMPORTS ---
+import SpaceBackground from './components/ui/SpaceBackground.jsx';
 import GamePhaseModal from './components/ui/GamePhaseModal.jsx';
 import GameHeader from './components/ui/GameHeader.jsx';
 import GameBattlefield from './components/ui/GameBattlefield.jsx';
@@ -2280,7 +2281,8 @@ const App = () => {
   // All UI state and event handlers are passed down as props for reactive updates.
 
   return (
-    <div className="h-screen bg-gray-950 text-white font-sans overflow-hidden flex flex-col bg-gradient-to-br from-gray-900 via-indigo-950 to-black relative" ref={gameAreaRef} onClick={() => { cancelAbilityMode(); cancelCardSelection(); }}>
+    <div className="h-screen text-white font-sans overflow-hidden flex flex-col relative" ref={gameAreaRef} onClick={() => { cancelAbilityMode(); cancelCardSelection(); }}>
+     <SpaceBackground />
      <TargetingArrow visible={arrowState.visible} start={arrowState.start} end={arrowState.end} lineRef={arrowLineRef} />
      {explosions.map(exp => <ExplosionEffect key={exp.id} top={exp.top} left={exp.left} size={exp.size} />)}
      {flyingDrones.map(fd => (
@@ -2407,7 +2409,7 @@ const App = () => {
           onClick={(e) => e.stopPropagation()}
         />
       )}
-      
+
       <GameBattlefield
         localPlayerState={localPlayerState}
         opponentPlayerState={opponentPlayerState}

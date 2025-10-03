@@ -9,34 +9,38 @@ import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown 
 import { getPhaseDisplayName } from '../../utils/gameUtils.js';
 
 /**
+ * Resource Badge Component - Angular styled resource display
+ */
+const ResourceBadge = ({ icon: Icon, value, max, iconColor, isPlayer }) => {
+  const borderGradient = isPlayer 
+    ? 'from-cyan-400/30 via-blue-400/30 to-blue-500/30' 
+    : 'from-pink-400/30 via-pink-500/30 to-pink-600/30';
+  
+  const bgGradient = 'bg-gradient-to-br from-gray-900/95 to-gray-800/95';
+  
+  return (
+    <div 
+      className={`relative p-[1px] bg-gradient-to-br ${borderGradient}`}
+      style={{ 
+        clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)'
+      }}
+    >
+      <div 
+        className={`${bgGradient} px-4 py-2 flex items-center gap-2`}
+        style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }}
+      >
+        <Icon size={18} className={iconColor} />
+        <span className="font-bold text-base text-white whitespace-nowrap">
+          {value}
+          {max !== undefined && <span className="hidden xl:inline"> / {max}</span>}
+        </span>
+      </div>
+    </div>
+  );
+};
+
+/**
  * GameHeader - Top header displaying player resources and game state
- * @param {Object} props - Component props
- * @param {Object} props.localPlayerState - Local player state data
- * @param {Object} props.opponentPlayerState - Opponent player state data
- * @param {Object} props.localPlayerEffectiveStats - Local player effective stats
- * @param {Object} props.opponentPlayerEffectiveStats - Opponent player effective stats
- * @param {string} props.turnPhase - Current turn phase
- * @param {number} props.turn - Current turn number
- * @param {Object} props.passInfo - Pass information for both players
- * @param {string} props.firstPlayerOfRound - ID of first player this round
- * @param {number} props.shieldsToAllocate - Shields available for allocation
- * @param {number} props.shieldsToRemove - Shields to remove in reallocation
- * @param {number} props.shieldsToAdd - Shields to add in reallocation
- * @param {string} props.reallocationPhase - Current reallocation phase
- * @param {number} props.totalLocalPlayerDrones - Total drones for local player
- * @param {number} props.totalOpponentPlayerDrones - Total drones for opponent
- * @param {Function} props.getLocalPlayerId - Get local player ID
- * @param {Function} props.getOpponentPlayerId - Get opponent player ID
- * @param {Function} props.isMyTurn - Check if it's local player's turn
- * @param {string} props.currentPlayer - Current player ID
- * @param {Function} props.isMultiplayer - Check if game is multiplayer
- * @param {Function} props.handlePlayerPass - Handle player pass action
- * @param {Function} props.handleReset - Handle game reset
- * @param {boolean} props.mandatoryAction - Whether there's a mandatory action
- * @param {Object} props.multiSelectState - Multi-select state
- * @param {boolean} props.AI_HAND_DEBUG_MODE - Debug mode for AI hand
- * @param {Function} props.setShowAiHandModal - Set AI hand modal visibility
- * @param {Function} props.onShowDebugModal - Callback to show debug modal
  */
 function GameHeader({
   localPlayerState,
@@ -82,52 +86,80 @@ function GameHeader({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
+
   return (
-    <header className="w-full flex justify-between items-center mb-2 flex-shrink-0 px-5 pt-8">
+    <header className="w-full flex justify-between items-start mb-2 flex-shrink-0 px-5 pt-4">
       {/* Opponent Resources */}
-      <div className="flex flex-col items-start gap-2">
-        <h2 className="text-lg font-bold text-pink-300 flex items-center">
-          Opponent Resources
-          {(turnPhase === 'deployment' || turnPhase === 'action') && firstPlayerOfRound === getOpponentPlayerId() &&
-            <span className="text-base font-semibold text-yellow-300 ml-2">(First Player)</span>}
-          {(turnPhase === 'deployment' || turnPhase === 'action') && passInfo[`${getOpponentPlayerId()}Passed`] &&
-            <span className="text-base font-semibold text-red-400 ml-2">(Passed)</span>}
+      <div className="flex flex-col gap-3">
+        <h2 
+          className="text-xl font-bold uppercase tracking-wider flex items-center gap-2"
+          style={{
+            backgroundImage: 'linear-gradient(45deg, #ec4899, #f472b6)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}
+        >
+          Opponent
+          {(turnPhase === 'deployment' || turnPhase === 'action') && firstPlayerOfRound === getOpponentPlayerId() && (
+            <span className="text-base font-semibold text-yellow-300">(First Player)</span>
+          )}
+          {(turnPhase === 'deployment' || turnPhase === 'action') && passInfo[`${getOpponentPlayerId()}Passed`] && (
+            <span className="text-base font-semibold text-red-400">(Passed)</span>
+          )}
         </h2>
-        <div className="flex items-center gap-4">
-          <div className={`flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-pink-500/50 ${
-            opponentPlayerState.energy > opponentPlayerEffectiveStats.totals.maxEnergy ? 'text-red-400' : ''
-          }`}>
-            <Bolt className="text-yellow-300 mr-2" />
-            <span className="font-bold text-lg">{opponentPlayerState.energy} / {opponentPlayerEffectiveStats.totals.maxEnergy}</span>
-          </div>
+        <div className="flex items-center gap-3">
+          <ResourceBadge 
+            icon={Bolt} 
+            value={opponentPlayerState.energy} 
+            max={opponentPlayerEffectiveStats.totals.maxEnergy}
+            iconColor="text-yellow-300"
+            isPlayer={false}
+          />
           <div
             onClick={() => AI_HAND_DEBUG_MODE && setTimeout(() => setShowAiHandModal(true), 100)}
-            className={`flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-pink-500/50 ${
-              AI_HAND_DEBUG_MODE ? 'cursor-pointer hover:bg-gray-800' : ''
-            } ${opponentPlayerState.hand.length > opponentPlayerEffectiveStats.totals.handLimit ? 'text-red-400' : ''}`}
+            className={AI_HAND_DEBUG_MODE ? 'cursor-pointer' : ''}
           >
-            <Hand className="text-gray-400 mr-2" />
-            <span className="font-bold text-lg">{opponentPlayerState.hand.length} / {opponentPlayerEffectiveStats.totals.handLimit}</span>
+            <ResourceBadge 
+              icon={Hand} 
+              value={opponentPlayerState.hand.length} 
+              max={opponentPlayerEffectiveStats.totals.handLimit}
+              iconColor="text-gray-400"
+              isPlayer={false}
+            />
           </div>
           {turnPhase === 'deployment' && (
-            <div className="flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-pink-500/50">
-              <Rocket className="text-purple-400 mr-2" />
-              <span className="font-bold text-lg">{turn === 1 ? opponentPlayerState.initialDeploymentBudget : opponentPlayerState.deploymentBudget}</span>
-            </div>
+            <ResourceBadge 
+              icon={Rocket} 
+              value={turn === 1 ? opponentPlayerState.initialDeploymentBudget : opponentPlayerState.deploymentBudget}
+              iconColor="text-purple-400"
+              isPlayer={false}
+            />
           )}
-          <div className={`flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-pink-500/50 ${
-            totalOpponentPlayerDrones > opponentPlayerEffectiveStats.totals.cpuLimit ? 'text-red-400' : ''
-          }`}>
-            <Cpu className="text-cyan-400 mr-2" />
-            <span className="font-bold text-lg">{totalOpponentPlayerDrones} / {opponentPlayerEffectiveStats.totals.cpuLimit}</span>
-          </div>
+          <ResourceBadge 
+            icon={Cpu} 
+            value={totalOpponentPlayerDrones} 
+            max={opponentPlayerEffectiveStats.totals.cpuLimit}
+            iconColor="text-cyan-400"
+            isPlayer={false}
+          />
         </div>
       </div>
 
       {/* Center Phase and Turn Indicator */}
       <div className="text-center flex flex-col items-center gap-2">
         {/* Phase Display */}
-        <h2 className="text-2xl font-bold text-gray-300 tracking-widest font-exo">{getPhaseDisplayName(turnPhase)}</h2>
+        <h2 
+          className="text-xl font-bold uppercase tracking-widest"
+          style={{
+            backgroundImage: 'linear-gradient(45deg, #6b7280, #9ca3af)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}
+        >
+          {getPhaseDisplayName(turnPhase)}
+        </h2>
 
         {/* Turn Indicator - Only show during deployment/action phases */}
         {(turnPhase === 'deployment' || turnPhase === 'action') && (
@@ -137,7 +169,7 @@ function GameHeader({
                 <span
                   className="text-3xl font-orbitron font-black uppercase tracking-widest"
                   style={{
-                    background: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
+                    backgroundImage: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
                     backgroundSize: '200% auto',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
@@ -152,15 +184,16 @@ function GameHeader({
             ) : (
               <div className="flex items-center gap-2">
                 <span
-                  className="text-3xl font-orbitron font-black uppercase tracking-widest phase-announcement-shine"
+                  className="text-3xl font-orbitron font-black uppercase tracking-widest phase-announcement-shine animate-pulse"
                   style={{
-                    background: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
+                    backgroundImage: 'linear-gradient(45deg, #ec4899, #f472b6, #ec4899)',
                     backgroundSize: '200% auto',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text',
-                    textShadow: '0 0 30px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 136, 255, 0.3)',
-                    filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))'
+                    textShadow: '0 0 30px rgba(236, 72, 153, 0.5), 0 0 60px rgba(244, 114, 182, 0.3)',
+                    filter: 'drop-shadow(0 0 20px rgba(236, 72, 153, 0.4))',
+                    animation: 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite'
                   }}
                 >
                   {isMultiplayer() ? "Opponent's Turn" : "AI Thinking"}
@@ -173,11 +206,23 @@ function GameHeader({
               <button
                 onClick={handlePlayerPass}
                 disabled={passInfo[`${getLocalPlayerId()}Passed`]}
-                className={`btn-clipped text-white font-bold py-1 px-6 transition-colors duration-200 ${
-                  passInfo[`${getLocalPlayerId()}Passed`] ? 'bg-gray-700 cursor-not-allowed' : 'bg-red-600 hover:bg-red-500'
-                }`}
+                className="relative p-[1px] transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                style={{
+                  clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                  backgroundImage: passInfo[`${getLocalPlayerId()}Passed`] 
+                    ? 'linear-gradient(45deg, rgba(75, 85, 99, 0.6), rgba(107, 114, 128, 0.6))' 
+                    : 'linear-gradient(45deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8))'
+                }}
               >
-                Pass
+                <div
+                  className="px-6 py-2 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                  style={{
+                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                    color: passInfo[`${getLocalPlayerId()}Passed`] ? '#9ca3af' : '#fca5a5'
+                  }}
+                >
+                  Pass
+                </div>
               </button>
             )}
           </div>
@@ -185,66 +230,101 @@ function GameHeader({
       </div>
 
       {/* Player Resources */}
-      <div className="flex flex-col items-end gap-2">
-        <h2 className="text-lg font-bold text-cyan-300 flex items-center">
+      <div className="flex flex-col gap-3 items-end">
+        <h2 
+          className="text-xl font-bold uppercase tracking-wider flex items-center gap-2"
+          style={{
+            backgroundImage: 'linear-gradient(45deg, #00ff88, #0088ff)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}
+        >
           Your Resources
-          {(turnPhase === 'deployment' || turnPhase === 'action') && firstPlayerOfRound === getLocalPlayerId() &&
-            <span className="text-base font-semibold text-yellow-300 ml-2">(First Player)</span>}
-          {(turnPhase === 'deployment' || turnPhase === 'action') && passInfo[`${getLocalPlayerId()}Passed`] &&
-            <span className="text-base font-semibold text-red-400 ml-2">(Passed)</span>}
-        </h2>
-        <div className="flex items-center gap-6">
-          <div className={`flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-cyan-500/50 ${
-            localPlayerState.energy > localPlayerEffectiveStats.totals.maxEnergy ? 'text-red-400' : ''
-          }`}>
-            <Bolt className="text-yellow-300 mr-2" />
-            <span className="font-bold text-lg">{localPlayerState.energy} / {localPlayerEffectiveStats.totals.maxEnergy}</span>
-          </div>
-          {turnPhase === 'deployment' && (
-            <div className="flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-cyan-500/50">
-              <Rocket className="text-purple-400 mr-2" />
-              <span className="font-bold text-lg">{turn === 1 ? localPlayerState.initialDeploymentBudget : localPlayerState.deploymentBudget}</span>
-            </div>
+          {(turnPhase === 'deployment' || turnPhase === 'action') && firstPlayerOfRound === getLocalPlayerId() && (
+            <span className="text-base font-semibold text-yellow-300">(First Player)</span>
           )}
-          <div className={`flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-cyan-500/50 ${
-            totalLocalPlayerDrones > localPlayerEffectiveStats.totals.cpuLimit ? 'text-red-400' : ''
-          }`}>
-            <Cpu className="text-cyan-400 mr-2" />
-            <span className="font-bold text-lg">{totalLocalPlayerDrones} / {localPlayerEffectiveStats.totals.cpuLimit}</span>
-          </div>
+          {(turnPhase === 'deployment' || turnPhase === 'action') && passInfo[`${getLocalPlayerId()}Passed`] && (
+            <span className="text-base font-semibold text-red-400">(Passed)</span>
+          )}
+        </h2>
+        <div className="flex items-center gap-3">
+          <ResourceBadge 
+            icon={Bolt} 
+            value={localPlayerState.energy} 
+            max={localPlayerEffectiveStats.totals.maxEnergy}
+            iconColor="text-yellow-300"
+            isPlayer={true}
+          />
+          {turnPhase === 'deployment' && (
+            <ResourceBadge 
+              icon={Rocket} 
+              value={turn === 1 ? localPlayerState.initialDeploymentBudget : localPlayerState.deploymentBudget}
+              iconColor="text-purple-400"
+              isPlayer={true}
+            />
+          )}
+          <ResourceBadge 
+            icon={Cpu} 
+            value={totalLocalPlayerDrones} 
+            max={localPlayerEffectiveStats.totals.cpuLimit}
+            iconColor="text-cyan-400"
+            isPlayer={true}
+          />
           {turnPhase === 'allocateShields' && (
-            <div className="flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-cyan-500/50">
-              <ShieldCheck className="text-cyan-300 mr-2" />
-              <span className="font-bold text-lg">{shieldsToAllocate}</span>
-            </div>
+            <ResourceBadge 
+              icon={ShieldCheck} 
+              value={shieldsToAllocate}
+              iconColor="text-cyan-300"
+              isPlayer={true}
+            />
           )}
           {reallocationPhase === 'removing' && (
-            <div className="flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-orange-500/50">
-              <ShieldCheck className="text-orange-300 mr-2" />
-              <span className="font-bold text-lg">{shieldsToRemove}</span>
-            </div>
+            <ResourceBadge 
+              icon={ShieldCheck} 
+              value={shieldsToRemove}
+              iconColor="text-orange-300"
+              isPlayer={true}
+            />
           )}
           {reallocationPhase === 'adding' && (
-            <div className="flex items-center bg-gray-900/80 rounded-full px-4 py-2 shadow-lg border border-green-500/50">
-              <ShieldCheck className="text-green-300 mr-2" />
-              <span className="font-bold text-lg">{shieldsToAdd}</span>
-            </div>
+            <ResourceBadge 
+              icon={ShieldCheck} 
+              value={shieldsToAdd}
+              iconColor="text-green-300"
+              isPlayer={true}
+            />
           )}
-          <button
+          
+          {/* Action Buttons */}
+          <button 
             onClick={handleReset}
-            className="bg-pink-700 text-white p-3 rounded-full shadow-lg hover:bg-pink-600 transition-colors duration-200"
+            className="relative p-[2px] bg-gradient-to-br from-pink-400 to-pink-600"
+            style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }}
             aria-label="Reset Game"
           >
-            <RotateCcw />
+            <div 
+              className="bg-pink-700 hover:bg-pink-600 p-2 transition-colors"
+              style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }}
+            >
+              <RotateCcw size={20} className="text-white" />
+            </div>
           </button>
+          
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
-              className="bg-slate-700 text-white p-3 rounded-full shadow-lg hover:bg-slate-600 transition-colors duration-200 flex items-center"
+              className="relative p-[2px] bg-gradient-to-br from-gray-500 to-gray-700"
+              style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }}
               aria-label="Settings"
             >
-              <Settings />
-              <ChevronDown size={16} className="ml-1" />
+              <div 
+                className="bg-slate-700 hover:bg-slate-600 p-2 transition-colors flex items-center gap-1"
+                style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }}
+              >
+                <Settings size={20} className="text-white" />
+                <ChevronDown size={16} className="text-white" />
+              </div>
             </button>
 
             {showSettingsDropdown && (
