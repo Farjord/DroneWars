@@ -1120,11 +1120,10 @@ setAnimationManager(animationManager) {
         timestamp: Date.now()
       };
 
-      // Add subtitle for deployment and action phases showing who goes first
+      // Add firstPlayerId for deployment and action phases
+      // Each client will calculate subtitle from their own perspective
       if (newPhase === 'deployment' || newPhase === 'action') {
-        const localPlayerId = this.gameStateManager.getLocalPlayerId();
-        const isLocalPlayerFirst = currentState.firstPlayerOfRound === localPlayerId;
-        payload.subtitle = isLocalPlayerFirst ? 'You Go First' : 'Opponent Goes First';
+        payload.firstPlayerId = currentState.firstPlayerOfRound;
       }
 
       const phaseAnnouncementEvent = {

@@ -7,6 +7,7 @@
 import { gameEngine, startingDecklist } from '../logic/gameLogic.js';
 import ActionProcessor from './ActionProcessor.js';
 import GameDataService from '../services/GameDataService.js';
+import GuestMessageQueueService from './GuestMessageQueueService.js';
 import fullDroneCollection from '../data/droneData.js';
 import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
 // PhaseManager dependency removed - using direct phase checks
@@ -62,6 +63,9 @@ class GameStateManager {
     // Game flow manager reference (set during initialization)
     this.gameFlowManager = null;
 
+    // Guest message queue service (initialized when guest joins)
+    this.guestQueueService = null;
+
     // P2P integration will be set up lazily when needed
     this.p2pIntegrationSetup = false;
 
@@ -100,11 +104,26 @@ class GameStateManager {
       switch (event.type) {
         case 'multiplayer_mode_change':
           this.setMultiplayerMode(event.data.mode, event.data.isHost);
+
+          // Initialize guest queue service when becoming guest
+          if (event.data.mode === 'guest' && !this.guestQueueService) {
+            console.log('🎯 [GUEST QUEUE] Initializing service for guest mode');
+            this.guestQueueService = new GuestMessageQueueService(this);
+            this.guestQueueService.initialize(p2pManager);
+          }
           break;
         case 'state_update_received':
-          // Guest receiving state update from host
+          // Guest mode: Route through queue service for sequential processing
+          // Host mode: Not applicable (host doesn't receive state updates)
           if (this.state.gameMode === 'guest') {
-            this.applyHostState(event.data.state, event.data.animations);
+            if (this.guestQueueService) {
+              // Queue service handles this - no need to do anything here
+              // Service is already subscribed to P2P events
+            } else {
+              console.warn('⚠️ [GUEST QUEUE] Service not initialized, applying state directly (fallback)');
+              this.applyHostState(event.data.state);
+              // Note: Animations will be lost in fallback mode
+            }
           }
           break;
         case 'state_sync_requested':
@@ -125,10 +144,10 @@ class GameStateManager {
   /**
    * Apply state update from host (guest only)
    * Guest is a thin client that receives authoritative state from host
+   * NOTE: Animations are handled by GuestMessageQueueService after render
    * @param {Object} hostState - Complete game state from host
-   * @param {Array} animations - Animation events to execute (optional)
    */
-  applyHostState(hostState, animations = []) {
+  applyHostState(hostState) {
     if (this.state.gameMode !== 'guest') {
       console.warn('⚠️ applyHostState should only be called in guest mode');
       return;
@@ -137,9 +156,7 @@ class GameStateManager {
     console.log('[GUEST STATE UPDATE] Applying state from host:', {
       turnPhase: hostState.turnPhase,
       currentPlayer: hostState.currentPlayer,
-      roundNumber: hostState.roundNumber,
-      hasAnimations: animations.length > 0,
-      animationCount: animations.length
+      roundNumber: hostState.roundNumber
     });
 
     // Preserve guest's local gameMode (guest must know it's the guest)
@@ -152,17 +169,10 @@ class GameStateManager {
     // Restore guest's gameMode so it knows which player it controls
     this.state.gameMode = localGameMode;
 
-    // Emit state change for UI updates
+    // Emit state change for UI updates (triggers React re-render)
     this.emit('HOST_STATE_UPDATE', { hostState });
 
-    // Execute animations if provided (guest perspective is automatically correct)
-    if (animations && animations.length > 0 && this.actionProcessor?.animationManager) {
-      console.log('🎬 [GUEST ANIMATIONS] Executing animations received from host:', {
-        animationCount: animations.length,
-        animations: animations.map(a => a.animationName)
-      });
-      this.actionProcessor.animationManager.executeAnimations(animations);
-    }
+    // Animations are executed by GuestMessageQueueService after React renders
   }
 
   // --- EVENT SYSTEM ---

@@ -282,12 +282,21 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     });
 
     animationManager.registerVisualHandler('PHASE_ANNOUNCEMENT_EFFECT', (payload) => {
-      const { phaseText, phaseName, subtitle, onComplete } = payload;
+      const { phaseText, phaseName, firstPlayerId, onComplete } = payload;
+
+      // Calculate subtitle from local player's perspective
+      let subtitle = null;
+      if (firstPlayerId) {
+        const localPlayerId = gameStateManager.getLocalPlayerId();
+        subtitle = firstPlayerId === localPlayerId ? 'You Go First' : 'Opponent Goes First';
+      }
 
       console.log('📢 [PHASE ANNOUNCEMENT DEBUG] PHASE_ANNOUNCEMENT_EFFECT handler called:', {
         phaseName,
         phaseText,
-        subtitle
+        firstPlayerId,
+        localPlayerId: gameStateManager.getLocalPlayerId(),
+        calculatedSubtitle: subtitle
       });
 
       const announcementId = `phaseannouncement-${Date.now()}`;

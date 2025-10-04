@@ -1102,6 +1102,14 @@ const App = () => {
     }
   }, [winner, turnPhase, currentPlayer]);
 
+  // --- 8.6 GUEST RENDER NOTIFICATION ---
+  // Notify GuestMessageQueueService when React has finished rendering (guest mode only)
+  useEffect(() => {
+    if (gameState.gameMode === 'guest') {
+      console.log('✅ [GUEST RENDER] Emitting render_complete event');
+      gameStateManager.emit('render_complete');
+    }
+  }, [gameState, gameStateManager]);
 
   /**
    * HANDLE RESET

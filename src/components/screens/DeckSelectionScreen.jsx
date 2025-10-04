@@ -196,6 +196,13 @@ function DeckSelectionScreen() {
     }
   };
 
+  // Notify GuestMessageQueueService when React has finished rendering (guest mode only)
+  useEffect(() => {
+    if (gameState.gameMode === 'guest') {
+      gameStateManager.emit('render_complete');
+    }
+  }, [gameState, gameStateManager]);
+
   // Check completion status directly from gameState.commitments
   const localPlayerId = getLocalPlayerId();
   const opponentPlayerId = getOpponentPlayerId();

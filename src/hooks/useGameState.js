@@ -21,7 +21,11 @@ export const useGameState = () => {
   // Subscribe to game state changes
   useEffect(() => {
     const unsubscribe = gameStateManager.subscribe((event) => {
-      setGameState(gameStateManager.getState());
+      // Don't trigger re-renders for render_complete events
+      // render_complete is just a notification for GuestMessageQueueService, not a state change
+      if (event.type !== 'render_complete') {
+        setGameState(gameStateManager.getState());
+      }
     });
 
     return unsubscribe;

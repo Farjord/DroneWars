@@ -925,10 +925,13 @@ class GameFlowManager {
 
     // Update GameStateManager with new phase via ActionProcessor
     if (this.actionProcessor && this.gameStateManager) {
-      // Use ActionProcessor for phase transition
-      await this.actionProcessor.processPhaseTransition({
-        newPhase: newPhase,
-        resetPassInfo: true  // Reset pass info for new phases
+      // Use ActionProcessor for phase transition (through queueAction to ensure broadcast to guest)
+      await this.actionProcessor.queueAction({
+        type: 'phaseTransition',
+        payload: {
+          newPhase: newPhase,
+          resetPassInfo: true  // Reset pass info for new phases
+        }
       });
 
       // Apply game stage, round number, and phase-specific data directly
