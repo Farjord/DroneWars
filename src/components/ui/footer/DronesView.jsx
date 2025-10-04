@@ -49,17 +49,18 @@ function DronesView({
           const isUpgradeTarget = selectedCard?.type === 'Upgrade' && validCardTargets.some(t => t.id === drone.name);
 
           return (
-            <DroneCard
-              key={index}
-              drone={drone}
-              onClick={handleToggleDroneSelection}
-              isSelected={selectedDrone && selectedDrone.name === drone.name}
-              isSelectable={(turnPhase === 'deployment' && isMyTurn() && !passInfo[`${getLocalPlayerId()}Passed`] && canAfford && !mandatoryAction) || isUpgradeTarget}
-              deployedCount={localPlayerState.deployedDroneCounts[drone.name] || 0}
-              appliedUpgrades={localPlayerState.appliedUpgrades[drone.name] || []}
-              isUpgradeTarget={isUpgradeTarget}
-              onViewUpgrades={(d, upgrades) => setViewUpgradesModal({ droneName: d.name, upgrades })}
-            />
+            <div key={index} className={styles.compactDroneWrapper}>
+              <DroneCard
+                drone={drone}
+                onClick={handleToggleDroneSelection}
+                isSelected={selectedDrone && selectedDrone.name === drone.name}
+                isSelectable={(turnPhase === 'deployment' && isMyTurn() && !passInfo[`${getLocalPlayerId()}Passed`] && canAfford && !mandatoryAction) || isUpgradeTarget}
+                deployedCount={localPlayerState.deployedDroneCounts[drone.name] || 0}
+                appliedUpgrades={localPlayerState.appliedUpgrades[drone.name] || []}
+                isUpgradeTarget={isUpgradeTarget}
+                onViewUpgrades={(d, upgrades) => setViewUpgradesModal({ droneName: d.name, upgrades })}
+              />
+            </div>
           );
         })}
       </div>

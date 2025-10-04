@@ -26,7 +26,7 @@ const ResourceBadge = ({ icon: Icon, value, max, iconColor, isPlayer }) => {
       }}
     >
       <div 
-        className={`${bgGradient} px-4 py-2 flex items-center gap-2`}
+        className={`${bgGradient} px-3 py-1 flex items-center gap-2`}
         style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }}
       >
         <Icon size={18} className={iconColor} />
@@ -88,9 +88,9 @@ function GameHeader({
   }, []);
 
   return (
-    <header className="w-full flex justify-between items-start mb-2 flex-shrink-0 px-5 pt-4">
+    <header className="w-full flex justify-between items-start mb-2 flex-shrink-0 px-5 pt-2">
       {/* Opponent Resources */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
         <h2 
           className="text-xl font-bold uppercase tracking-wider flex items-center gap-2"
           style={{
@@ -108,7 +108,7 @@ function GameHeader({
             <span className="text-base font-semibold text-red-400">(Passed)</span>
           )}
         </h2>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <ResourceBadge 
             icon={Bolt} 
             value={opponentPlayerState.energy} 
@@ -215,7 +215,7 @@ function GameHeader({
                 }}
               >
                 <div
-                  className="px-6 py-2 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                  className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
                   style={{
                     clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
                     color: passInfo[`${getLocalPlayerId()}Passed`] ? '#9ca3af' : '#fca5a5'
@@ -230,7 +230,7 @@ function GameHeader({
       </div>
 
       {/* Player Resources */}
-      <div className="flex flex-col gap-3 items-end">
+      <div className="flex flex-col gap-1.5 items-end">
         <h2 
           className="text-xl font-bold uppercase tracking-wider flex items-center gap-2"
           style={{
@@ -248,7 +248,7 @@ function GameHeader({
             <span className="text-base font-semibold text-red-400">(Passed)</span>
           )}
         </h2>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <ResourceBadge 
             icon={Bolt} 
             value={localPlayerState.energy} 
@@ -304,7 +304,7 @@ function GameHeader({
             aria-label="Reset Game"
           >
             <div 
-              className="bg-pink-700 hover:bg-pink-600 p-2 transition-colors"
+              className="bg-pink-700 hover:bg-pink-600 p-1.5 transition-colors"
               style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }}
             >
               <RotateCcw size={20} className="text-white" />
@@ -319,7 +319,7 @@ function GameHeader({
               aria-label="Settings"
             >
               <div 
-                className="bg-slate-700 hover:bg-slate-600 p-2 transition-colors flex items-center gap-1"
+                className="bg-slate-700 hover:bg-slate-600 p-1.5 transition-colors flex items-center gap-1"
                 style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }}
               >
                 <Settings size={20} className="text-white" />

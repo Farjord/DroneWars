@@ -3,12 +3,19 @@
    ========================================
    Consistent styling for GameFooter component and its views
    Uses Tailwind @apply directive for utility class composition
+   
+   COMPRESSED VERSION: Max height 300px total (including tabs)
+   - Tabs: ~34px
+   - Content: 260px fixed height
+   - Total: ~294px
 */
 
 /* ===== CONTAINER STYLES ===== */
 
 .footer {
   @apply w-full flex flex-col items-center flex-shrink-0;
+  container-type: inline-size;
+  container-name: gameFooter;
 }
 
 .tabContainer {
@@ -20,17 +27,22 @@
 }
 
 .contentOpen {
-  @apply max-h-[500px] opacity-100 p-4;
+  height: clamp(240px, 15cqw, 400px);
+  @apply opacity-100;
 }
 
 .contentClosed {
-  @apply max-h-0 opacity-0;
+  @apply h-0 opacity-0;
+}
+
+.contentWrapper {
+  @apply w-full h-full p-2;
 }
 
 /* ===== TAB BUTTON STYLES ===== */
 
 .tabButton {
-  @apply px-8 py-2 rounded-t-lg font-bold transition-colors;
+  @apply px-6 py-1 rounded-t-lg font-bold transition-colors text-sm;
 }
 
 .tabButtonActive {
@@ -42,7 +54,7 @@
 }
 
 .tabIcon {
-  @apply flex items-center gap-2;
+  @apply flex items-center gap-1;
 }
 
 /* ===== MULTI-SELECT UI ===== */
@@ -58,47 +70,53 @@
 /* ===== HAND VIEW STYLES ===== */
 
 .handContainer {
-  @apply flex flex-row justify-between w-full items-center;
+  @apply flex flex-row justify-between w-full items-center h-full;
 }
 
 .cardPile {
-  @apply flex flex-col items-center w-32 min-w-32;
+  @apply flex flex-col items-center justify-center w-36 min-w-36;
 }
 
 .deckCard {
-  @apply w-24 h-32 bg-indigo-900/50 rounded-lg border-2 border-purple-500
+  width: clamp(128px, 6.5cqw, 160px);
+  height: clamp(176px, 9cqw, 220px);
+  @apply bg-indigo-900/50 rounded-lg border-2 border-purple-500
          flex items-center justify-center shadow-md cursor-pointer
          hover:bg-indigo-800/50 transition-colors duration-200;
 }
 
 .deckCardText {
-  @apply font-bold text-sm text-white;
+  font-size: clamp(20px, 1cqw, 24px);
+  @apply font-bold text-white;
 }
 
 .discardCard {
-  @apply w-24 h-32 bg-gray-900/80 rounded-lg border-2 border-gray-700
+  width: clamp(128px, 6.5cqw, 160px);
+  height: clamp(176px, 9cqw, 220px);
+  @apply bg-gray-900/80 rounded-lg border-2 border-gray-700
          flex items-center justify-center shadow-md cursor-pointer
          hover:bg-gray-800/80 transition-colors duration-200;
 }
 
 .discardCardText {
-  @apply font-bold text-sm text-gray-400;
+  font-size: clamp(20px, 1cqw, 24px);
+  @apply font-bold text-gray-400;
 }
 
 .pileLabel {
-  @apply mt-2 text-xs text-gray-400 font-semibold;
+  @apply mt-1 text-[10px] text-gray-400 font-semibold;
 }
 
 .handSection {
-  @apply flex flex-col items-center flex-grow min-w-0;
+  @apply flex flex-col items-center justify-center flex-grow;
 }
 
 .handHeader {
-  @apply flex items-center gap-4 mb-2;
+  @apply flex items-center gap-4 mb-1;
 }
 
 .handTitle {
-  @apply text-lg font-semibold;
+  @apply text-sm font-semibold;
 }
 
 .handTitleOverLimit {
@@ -110,11 +128,12 @@
 }
 
 .mandatoryDiscardWarning {
-  @apply text-yellow-400 font-bold mb-2;
+  @apply text-yellow-400 font-bold mb-1 text-xs;
 }
 
 .handCardsContainer {
-  @apply relative flex justify-center items-center h-[350px];
+  @apply relative flex justify-center items-center;
+  height: 220px;
 }
 
 .handCardsWrapper {
@@ -122,11 +141,29 @@
 }
 
 .handCardsWrapperGap {
-  @apply gap-2;
+  @apply gap-1.5;
 }
 
+/* Card wrapper with responsive scaling for compressed footer */
 .cardWrapper {
   @apply transition-all duration-300 ease-in-out;
+  transform: scale(0.9);
+  transform-origin: center center;
+  margin: 30px -10px -15px -10px;
+}
+
+@container gameFooter (min-width: 2560px) {
+  .cardWrapper {
+    transform: scale(0.95);
+    margin: 8px -6px -10px -6px;
+  }
+}
+
+@container gameFooter (min-width: 3440px) {
+  .cardWrapper {
+    transform: scale(1.0);
+    margin: 10px -3px -5px -3px;
+  }
 }
 
 /* Optional Discard Controls */
@@ -135,49 +172,70 @@
 }
 
 .optionalDiscardCounter {
-  @apply text-sm text-gray-400 mb-2;
+  @apply text-xs text-gray-400 mb-1;
 }
 
 .finishDiscardButton {
-  @apply mt-4 text-white font-bold py-2 px-4 rounded-full transition-colors duration-200
+  @apply mt-2 text-white font-bold py-1 px-3 text-xs rounded-full transition-colors duration-200
          bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/20;
 }
 
 /* ===== DRONE VIEW STYLES ===== */
 
 .droneContainer {
-  @apply flex flex-col items-center mb-4 w-full;
+  @apply flex flex-col items-center justify-center w-full h-full;
 }
 
 .droneGrid {
-  @apply flex flex-wrap justify-center gap-4;
+  @apply flex flex-wrap justify-center gap-3;
+}
+
+/* Compact drone card wrapper - scales down DroneCard component with responsive sizing */
+.compactDroneWrapper {
+  transform: scale(0.8);
+  transform-origin: center center;
+  margin: -20px -20px -40px -20px;
+}
+
+@container gameFooter (min-width: 2560px) {
+  .compactDroneWrapper {
+    transform: scale(0.9);
+    margin: -12px -12px -24px -12px;
+  }
+}
+
+@container gameFooter (min-width: 3440px) {
+  .compactDroneWrapper {
+    transform: scale(1.0);
+    margin: -5px -5px -15px -5px;
+  }
 }
 
 /* ===== LOG VIEW STYLES ===== */
 
 .logContainer {
-  @apply flex flex-col items-center w-full h-full max-h-[350px];
+  @apply flex flex-col items-center w-full h-full;
 }
 
 .logHeader {
-  @apply flex justify-between items-center w-full mb-2 px-4;
+  @apply flex justify-between items-center w-full mb-1 px-2;
 }
 
 .logTitle {
-  @apply text-lg font-semibold text-white;
+  @apply text-sm font-semibold text-white;
 }
 
 .downloadButton {
-  @apply bg-purple-600 text-white font-bold py-2 px-4 rounded-full
+  @apply bg-purple-600 text-white font-bold py-1 px-3 text-xs rounded-full
          hover:bg-purple-700 transition-colors;
 }
 
 .logTableWrapper {
-  @apply w-full flex-grow bg-black/30 rounded-lg p-2 overflow-y-auto;
+  @apply w-full flex-grow bg-black/30 rounded-lg p-1 overflow-y-auto;
 }
 
 .logTable {
-  @apply w-full text-left text-sm;
+  @apply w-full text-left text-xs;
 }
 
 .logTableHeader {
@@ -185,11 +243,11 @@
 }
 
 .logTableHeaderCell {
-  @apply p-2;
+  @apply p-1.5;
 }
 
 .logTableDebugHeader {
-  @apply p-2 text-xs text-gray-500;
+  @apply p-1.5 text-[10px] text-gray-500;
 }
 
 .logTableRow {
@@ -197,35 +255,35 @@
 }
 
 .logTableCell {
-  @apply p-2;
+  @apply p-1.5;
 }
 
 .logTableCellBold {
-  @apply p-2 font-bold;
+  @apply p-1.5 font-bold;
 }
 
 .logTableCellGray {
-  @apply p-2 text-gray-500;
+  @apply p-1.5 text-gray-500;
 }
 
 .logTableCellCyan {
-  @apply p-2 text-cyan-300;
+  @apply p-1.5 text-cyan-300;
 }
 
 .logTableCellYellow {
-  @apply p-2 text-yellow-300;
+  @apply p-1.5 text-yellow-300;
 }
 
 .logTableCellGrayText {
-  @apply p-2 text-gray-400;
+  @apply p-1.5 text-gray-400;
 }
 
 .logTableCellDebug {
-  @apply p-2 text-xs text-gray-500;
+  @apply p-1.5 text-[10px] text-gray-500;
 }
 
 .logTableCellCenter {
-  @apply p-2 text-center;
+  @apply p-1.5 text-center;
 }
 
 .aiDecisionButton {
@@ -235,17 +293,17 @@
 /* ===== COMMON BUTTON STYLES ===== */
 
 .buttonPrimary {
-  @apply bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4
+  @apply bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 px-3 text-xs
          rounded-full transition-colors duration-200;
 }
 
 .buttonDanger {
-  @apply bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4
+  @apply bg-pink-600 hover:bg-pink-700 text-white font-bold py-1 px-3 text-xs
          rounded-full transition-colors duration-200;
 }
 
 .buttonSuccess {
-  @apply bg-green-600 hover:bg-green-500 text-white font-bold py-2 px-4
+  @apply bg-green-600 hover:bg-green-500 text-white font-bold py-1 px-3 text-xs
          rounded-full transition-colors duration-200;
 }
 

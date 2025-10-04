@@ -57,15 +57,15 @@ const SpaceBackground = () => {
     const resizeCanvas = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      
+
       stars.forEach(star => {
         star.x = Math.random() * canvas.width;
-        star.y = Math.random() * canvas.height;
+        star.y = Math.random() * (canvas.height * 0.75);
       });
-      
+
       nebulae.forEach(nebula => {
         nebula.x = Math.random() * canvas.width;
-        nebula.y = Math.random() * canvas.height;
+        nebula.y = Math.random() * (canvas.height * 0.75);
       });
     };
     

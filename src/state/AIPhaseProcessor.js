@@ -788,6 +788,11 @@ class AIPhaseProcessor {
       return;
     }
 
+    // Don't process if game has ended
+    if (state.winner || state.gameStage === 'gameOver') {
+      return;
+    }
+
     // Only trigger for sequential phases where AI needs to act
     const sequentialPhases = ['deployment', 'action'];
     if (!sequentialPhases.includes(state.turnPhase)) {

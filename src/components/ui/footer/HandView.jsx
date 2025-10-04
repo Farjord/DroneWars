@@ -82,9 +82,6 @@ function HandView({
       </div>
 
       <div className={styles.handSection}>
-        <div className={styles.handHeader}>
-          <h3 className={`${styles.handTitle} ${localPlayerState.hand.length > localPlayerEffectiveStats.totals.handLimit ? styles.handTitleOverLimit : styles.handTitleNormal}`}>Your Hand ({localPlayerState.hand.length}/{localPlayerEffectiveStats.totals.handLimit})</h3>
-        </div>
         {mandatoryAction?.type === 'discard' && mandatoryAction.fromAbility && (
           <p className={styles.mandatoryDiscardWarning}>You must discard {mandatoryAction.count} card(s).</p>
         )}
@@ -123,7 +120,8 @@ function HandView({
                 >
                   <ActionCard
                     card={card}
-                    isPlayable={
+                     isSelected={selectedCard?.instanceId === card.instanceId}
+                     isPlayable={
                       (turnPhase === 'action' &&
                         isMyTurn() &&
                         !passInfo[`${getLocalPlayerId()}Passed`] &&

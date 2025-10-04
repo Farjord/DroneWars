@@ -156,17 +156,17 @@ const DroneCard = ({
           </div>
 
           {/* Abilities Section */}
-          <div className="mx-2 mt-auto mb-2 max-h-40 bg-black/60 backdrop-blur-sm border border-cyan-800/70 p-2 flex flex-col space-y-2 overflow-y-auto rounded-md">
+          <div className="mx-2 mt-auto mb-2 max-h-48 bg-black/60 backdrop-blur-sm border border-cyan-800/70 p-2 flex flex-col space-y-2 overflow-y-auto rounded-md">
             {abilities && abilities.length > 0 ? (
               abilities.map((ability, index) => (
                 <div key={index}>
-                  <h4 className="text-xs text-purple-400 tracking-wider font-bold">{ability.name}</h4>
-                  <p className="text-gray-400 text-xs leading-tight font-exo">{ability.description}</p>
+                  <h4 className="text-sm text-purple-400 tracking-wider font-bold">{ability.name}</h4>
+                  <p className="text-gray-400 text-sm leading-tight font-exo">{ability.description}</p>
                 </div>
               ))
             ) : (
               <div className="flex items-center justify-center h-full">
-                <p className="text-xs text-cyan-700 italic opacity-70">[ No Abilities ]</p>
+                <p className="text-sm text-cyan-700 italic opacity-70">[ No Abilities ]</p>
               </div>
             )}
           </div>

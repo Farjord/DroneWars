@@ -157,14 +157,14 @@ const DroneLanesDisplay = ({
                              (multiSelectState && validCardTargets.some(t => t.id === lane && t.owner === owner));
 
         const isInteractivePlayerLane = isPlayer && (turnPhase === 'deployment' || turnPhase === 'action');
-        const baseBorderColor = isPlayer ? 'border-cyan-400' : 'border-pink-500';
+        const baseBackgroundColor = isPlayer ? 'bg-cyan-400/10' : 'bg-pink-500/10';
 
         return (
           <div
             key={lane}
             onClick={(e) => onLaneClick(e, lane, isPlayer)}
-            className={`flex-1 rounded-lg border-2 transition-all duration-200 p-2
-              ${isTargetable ? 'border-purple-500 bg-purple-900/40 ring-2 ring-purple-400 animate-pulse' : `${baseBorderColor} bg-transparent`}
+            className={`flex-1 rounded-lg transition-all duration-200 p-2
+              ${isTargetable ? 'bg-purple-900/40 ring-2 ring-purple-400 animate-pulse' : baseBackgroundColor}
               ${isInteractivePlayerLane ? 'cursor-pointer hover:bg-cyan-900/20' : ''}
             `}
           >
