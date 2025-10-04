@@ -77,7 +77,7 @@ function MenuScreen() {
             WebkitTextFillColor: 'transparent',
             textShadow: '0 0 20px rgba(0, 255, 136, 0.3)'
           }}>
-            DRONE WARS
+            EREMOS
           </h1>
 
           <div style={{
@@ -86,7 +86,7 @@ function MenuScreen() {
             textAlign: 'center',
             color: '#cccccc'
           }}>
-            Strategic Combat in the Digital Arena
+            the wilderness left when civilization departs
           </div>
 
           <button

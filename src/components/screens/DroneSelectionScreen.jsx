@@ -10,6 +10,7 @@ import { useGameState } from '../../hooks/useGameState.js';
 import DroneCard from '../ui/DroneCard.jsx';
 import { advanceDroneSelectionTrio } from '../../utils/droneSelectionUtils.js';
 import gameStateManager from '../../state/GameStateManager.js';
+import p2pManager from '../../network/P2PManager.js';
 
 /**
  * WAITING FOR OPPONENT SCREEN COMPONENT
@@ -64,45 +65,6 @@ function DroneSelectionScreen() {
   // Local state for trio management (initialized from global state)
   const [currentTrio, setCurrentTrio] = useState(droneSelectionTrio);
   const [remainingPool, setRemainingPool] = useState(droneSelectionPool);
-  const [localPhaseCompletion, setLocalPhaseCompletion] = useState({
-    droneSelection: false
-  });
-  const [opponentPhaseCompletion, setOpponentPhaseCompletion] = useState({
-    droneSelection: false
-  });
-
-  // Event listener for phase completion from PhaseManager
-  useEffect(() => {
-    const handlePhaseManagerEvent = (event) => {
-      const { type, phase, playerId } = event.detail || event;
-
-      console.log(`🔔 DroneSelectionScreen received PhaseManager event: ${type}`, { phase, playerId });
-
-      if (phase !== 'droneSelection') return;
-
-      if (type === 'playerCompleted') {
-        const isLocalPlayer = playerId === getLocalPlayerId();
-
-        if (isLocalPlayer) {
-          setLocalPhaseCompletion(prev => ({ ...prev, droneSelection: true }));
-        } else if (isMultiplayer()) {
-          setOpponentPhaseCompletion(prev => ({ ...prev, droneSelection: true }));
-        }
-      } else if (type === 'phaseCompleted') {
-        // Clear temporary UI state when phase completes
-        setTempSelectedDrones([]);
-        setLocalPhaseCompletion(prev => ({ ...prev, droneSelection: false }));
-        setOpponentPhaseCompletion(prev => ({ ...prev, droneSelection: false }));
-      }
-    };
-
-    // Listen for PhaseManager events
-    window.addEventListener('phaseManagerEvent', handlePhaseManagerEvent);
-
-    return () => {
-      window.removeEventListener('phaseManagerEvent', handlePhaseManagerEvent);
-    };
-  }, [getLocalPlayerId, isMultiplayer]);
 
   /**
    * HANDLE CHOOSE DRONE FOR SELECTION
@@ -145,15 +107,31 @@ function DroneSelectionScreen() {
     console.log('🔧 handleContinueDroneSelection called with:', tempSelectedDrones.length, 'drones');
 
     const localPlayerId = getLocalPlayerId();
+    const payload = {
+      playerId: localPlayerId,
+      phase: 'droneSelection',
+      actionData: { drones: tempSelectedDrones }
+    };
 
-    // Use the action processor with promise handling
+    // DEBUG LOGGING
+    console.log('🔍 [DRONE SELECTION] Submitting commitment:', {
+      gameMode: gameState.gameMode,
+      playerId: localPlayerId,
+      droneCount: tempSelectedDrones.length,
+      commitmentsBefore: gameState.commitments?.droneSelection
+    });
+
+    // Guest mode: Send action to host
+    if (gameState.gameMode === 'guest') {
+      console.log('[GUEST] Sending drone selection commitment to host');
+      p2pManager.sendActionToHost('commitment', payload);
+      return;
+    }
+
+    // Host/Local mode: Process action locally
     gameStateManager.actionProcessor.queueAction({
       type: 'commitment',
-      payload: {
-        playerId: localPlayerId,
-        phase: 'droneSelection',
-        actionData: { drones: tempSelectedDrones }
-      }
+      payload: payload
     }).then(submissionResult => {
       if (!submissionResult.success) {
         console.error('❌ Drone selection submission failed:', submissionResult.error);
@@ -173,16 +151,29 @@ function DroneSelectionScreen() {
     // - AI completion in single-player mode
   };
 
-  // Check if local player has completed drone selection via PhaseManager
-  const localPlayerCompleted = localPhaseCompletion.droneSelection;
+  // Check completion status directly from gameState.commitments
+  const localPlayerId = getLocalPlayerId();
+  const opponentPlayerId = getOpponentPlayerId();
+  const localPlayerCompleted = gameState.commitments?.droneSelection?.[localPlayerId]?.completed || false;
+  const opponentCompleted = gameState.commitments?.droneSelection?.[opponentPlayerId]?.completed || false;
 
-  if (isMultiplayer() && localPlayerCompleted && !opponentPhaseCompletion.droneSelection) {
-    // Get drone names from ActionProcessor commitments or fallback to GameState
-    const commitmentStatus = gameStateManager.actionProcessor.getPhaseCommitmentStatus('droneSelection');
-    const localDrones = commitmentStatus.commitments?.player1?.drones ||
-                       localPlayerState.activeDronePool ||
-                       tempSelectedDrones;
+  // DEBUG LOGGING - Remove after fixing multiplayer issue
+  console.log('🔍 [DRONE SELECTION] Render check:', {
+    gameMode: gameState.gameMode,
+    isMultiplayer: isMultiplayer(),
+    localPlayerId,
+    opponentPlayerId,
+    localPlayerCompleted,
+    opponentCompleted,
+    fullCommitmentsObject: gameState.commitments?.droneSelection,
+    turnPhase,
+    willShowWaiting: isMultiplayer() && localPlayerCompleted && !opponentCompleted
+  });
 
+  // Show waiting screen in multiplayer when local player done but opponent still selecting
+  if (isMultiplayer() && localPlayerCompleted && !opponentCompleted) {
+    // Get drone names from commitments
+    const localDrones = gameState.commitments?.droneSelection?.[localPlayerId]?.drones || tempSelectedDrones;
     const localDroneNames = localDrones.length > 0 ?
       localDrones.map(d => d.name).join(', ') :
       'Selection complete';

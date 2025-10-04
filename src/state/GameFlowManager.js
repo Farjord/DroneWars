@@ -169,6 +169,13 @@ class GameFlowManager {
    * @param {string} startingPhase - Initial phase to start with
    */
   async startGameFlow(startingPhase = 'droneSelection') {
+    // Guard: Guest mode does not run game flow logic
+    const gameMode = this.gameStateManager.get('gameMode');
+    if (gameMode === 'guest') {
+      console.log('🔒 Guest mode: Skipping game flow logic (waiting for host state)');
+      return;
+    }
+
     console.log(`🚀 GameFlowManager starting game flow with phase: ${startingPhase}`);
 
     this.currentPhase = startingPhase;
@@ -212,6 +219,12 @@ class GameFlowManager {
    * @param {Object} data - Phase completion data
    */
   async onSimultaneousPhaseComplete(phase, data) {
+    // Guard: Guest mode does not handle phase completions
+    const gameMode = this.gameStateManager.get('gameMode');
+    if (gameMode === 'guest') {
+      return;
+    }
+
     console.log(`✅ GameFlowManager: Simultaneous phase '${phase}' completed`, data);
 
     // Apply commitments to permanent game state before transitioning
@@ -249,6 +262,11 @@ class GameFlowManager {
    * @param {string} eventType - Type of state change
    */
   checkSequentialPhaseCompletion(state, eventType) {
+    // Guard: Guest mode does not check phase completions
+    if (state.gameMode === 'guest') {
+      return;
+    }
+
     // Only check on passInfo changes
     if (eventType !== 'PASS_INFO_SET') {
       return;
@@ -277,6 +295,10 @@ class GameFlowManager {
    * @param {string} eventType - Type of state change event
    */
   checkSimultaneousPhaseCompletion(state, eventType) {
+    // Guard: Guest mode does not check phase completions
+    if (state.gameMode === 'guest') {
+      return;
+    }
     // Only check on commitment changes - ignore all other state updates
     if (eventType !== 'COMMITMENT_UPDATE' || !state.commitments) {
       return;
@@ -565,12 +587,18 @@ class GameFlowManager {
         deploymentBudget: this.roundNumber === 1 ? 0 : player2EffectiveStats.totals.deploymentBudget
       };
 
+      // Calculate shields to allocate from Power Cell stats (round 2+ only)
+      const shieldsToAllocate = this.roundNumber >= 2 ? player1EffectiveStats.totals.shieldsPerTurn : 0;
+      const opponentShieldsToAllocate = this.roundNumber >= 2 ? player2EffectiveStats.totals.shieldsPerTurn : 0;
+
       // Update player states via ActionProcessor
       await this.actionProcessor.queueAction({
         type: 'energyReset',
         payload: {
           player1: updatedPlayer1,
-          player2: updatedPlayer2
+          player2: updatedPlayer2,
+          shieldsToAllocate,
+          opponentShieldsToAllocate
         }
       });
 
@@ -745,9 +773,13 @@ class GameFlowManager {
    * @returns {boolean} True if any player has unallocated shields
    */
   anyPlayerHasShieldsToAllocate(gameState) {
-    // Check if players have unallocated shields
-    // For now, return false until we implement shield allocation
-    return false;
+    // Shield allocation phase starts from round 2 onwards
+    if (gameState.roundNumber < 2) {
+      return false;
+    }
+
+    // Check if either player has shields available to allocate
+    return gameState.shieldsToAllocate > 0 || gameState.opponentShieldsToAllocate > 0;
   }
 
   /**

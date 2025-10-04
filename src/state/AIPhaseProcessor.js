@@ -779,6 +779,65 @@ class AIPhaseProcessor {
   }
 
   /**
+   * Execute AI shield allocation - distributes shields evenly across all placed sections
+   * @param {Object} gameState - Current game state
+   * @returns {Promise<void>} Shield allocation complete
+   */
+  async executeShieldAllocationTurn(gameState) {
+    console.log('🤖 AIPhaseProcessor.executeShieldAllocationTurn starting...');
+
+    if (!this.actionProcessor) {
+      throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
+    }
+
+    const aiState = gameState.player2;
+    const aiPlacedSections = gameState.opponentPlacedSections;
+
+    // Get total shields available to allocate
+    const shieldsToAllocate = gameState.opponentShieldsToAllocate || 0;
+
+    if (shieldsToAllocate === 0) {
+      console.log('🤖 AI has no shields to allocate');
+      return;
+    }
+
+    // Get list of all placed sections
+    const placedSectionNames = aiPlacedSections.map(section => section.name);
+
+    if (placedSectionNames.length === 0) {
+      console.log('🤖 AI has no placed sections to allocate shields to');
+      return;
+    }
+
+    // Distribute shields evenly across all sections
+    let remainingShields = shieldsToAllocate;
+    let currentSectionIndex = 0;
+
+    console.log(`🤖 AI distributing ${shieldsToAllocate} shields evenly across ${placedSectionNames.length} sections`);
+
+    // Distribute one shield at a time in round-robin fashion for even distribution
+    while (remainingShields > 0) {
+      const sectionName = placedSectionNames[currentSectionIndex];
+
+      // Add shield to current section via ActionProcessor
+      await this.actionProcessor.queueAction({
+        type: 'addShield',
+        payload: {
+          sectionName,
+          playerId: 'player2'
+        }
+      });
+
+      remainingShields--;
+      currentSectionIndex = (currentSectionIndex + 1) % placedSectionNames.length;
+
+      console.log(`🤖 AI allocated shield to ${sectionName}, ${remainingShields} remaining`);
+    }
+
+    console.log('✅ AI shield allocation complete');
+  }
+
+  /**
    * Check if AI should take a turn based on current game state
    * @param {Object} state - Current game state
    */

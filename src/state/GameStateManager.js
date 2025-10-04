@@ -24,8 +24,6 @@ class GameStateManager {
       appState: 'menu', // 'menu', 'inGame', 'gameOver'
 
       // --- MULTIPLAYER STATE ---
-      isHost: false,
-      isGuest: false,
       isConnected: false,
       opponentId: null,
       gameMode: 'local', // 'local', 'host', 'guest'
@@ -103,8 +101,14 @@ class GameStateManager {
         case 'multiplayer_mode_change':
           this.setMultiplayerMode(event.data.mode, event.data.isHost);
           break;
+        case 'state_update_received':
+          // Guest receiving state update from host
+          if (this.state.gameMode === 'guest') {
+            this.applyHostState(event.data.state, event.data.animations);
+          }
+          break;
         case 'state_sync_requested':
-          // Send current state for initial sync
+          // Send current state for initial sync (deprecated, kept for compatibility)
           const currentState = this.getState();
           p2pManager.sendData({
             type: 'GAME_STATE_SYNC',
@@ -116,6 +120,49 @@ class GameStateManager {
     });
 
     this.p2pIntegrationSetup = true;
+  }
+
+  /**
+   * Apply state update from host (guest only)
+   * Guest is a thin client that receives authoritative state from host
+   * @param {Object} hostState - Complete game state from host
+   * @param {Array} animations - Animation events to execute (optional)
+   */
+  applyHostState(hostState, animations = []) {
+    if (this.state.gameMode !== 'guest') {
+      console.warn('⚠️ applyHostState should only be called in guest mode');
+      return;
+    }
+
+    console.log('[GUEST STATE UPDATE] Applying state from host:', {
+      turnPhase: hostState.turnPhase,
+      currentPlayer: hostState.currentPlayer,
+      roundNumber: hostState.roundNumber,
+      hasAnimations: animations.length > 0,
+      animationCount: animations.length
+    });
+
+    // Preserve guest's local gameMode (guest must know it's the guest)
+    const localGameMode = this.state.gameMode;
+
+    // Guest directly applies host's authoritative state without validation
+    // No game logic execution on guest side
+    this.state = { ...hostState };
+
+    // Restore guest's gameMode so it knows which player it controls
+    this.state.gameMode = localGameMode;
+
+    // Emit state change for UI updates
+    this.emit('HOST_STATE_UPDATE', { hostState });
+
+    // Execute animations if provided (guest perspective is automatically correct)
+    if (animations && animations.length > 0 && this.actionProcessor?.animationManager) {
+      console.log('🎬 [GUEST ANIMATIONS] Executing animations received from host:', {
+        animationCount: animations.length,
+        animations: animations.map(a => a.animationName)
+      });
+      this.actionProcessor.animationManager.executeAnimations(animations);
+    }
   }
 
   // --- EVENT SYSTEM ---
@@ -959,8 +1006,6 @@ class GameStateManager {
   setMultiplayerMode(mode, isHost = false) {
     this.setState({
       gameMode: mode,
-      isHost: isHost && mode !== 'local',
-      isGuest: !isHost && mode !== 'local',
     }, 'MULTIPLAYER_MODE_SET');
   }
 

@@ -52,6 +52,7 @@ function GameHeader({
   passInfo,
   firstPlayerOfRound,
   shieldsToAllocate,
+  opponentShieldsToAllocate,
   shieldsToRemove,
   shieldsToAdd,
   reallocationPhase,
@@ -64,6 +65,12 @@ function GameHeader({
   isMultiplayer,
   handlePlayerPass,
   handleReset,
+  handleResetShields,
+  handleConfirmShields,
+  handleCancelReallocation,
+  handleResetReallocation,
+  handleContinueToAddPhase,
+  handleConfirmReallocation,
   mandatoryAction,
   multiSelectState,
   AI_HAND_DEBUG_MODE,
@@ -149,7 +156,7 @@ function GameHeader({
       {/* Center Phase and Turn Indicator */}
       <div className="text-center flex flex-col items-center gap-2">
         {/* Phase Display */}
-        <h2 
+        <h2
           className="text-xl font-bold uppercase tracking-widest"
           style={{
             backgroundImage: 'linear-gradient(45deg, #6b7280, #9ca3af)',
@@ -159,10 +166,25 @@ function GameHeader({
           }}
         >
           {getPhaseDisplayName(turnPhase)}
+          {turnPhase === 'allocateShields' && (
+            <span className="text-base font-semibold text-cyan-300 ml-2">
+              ({shieldsToAllocate} shields to assign)
+            </span>
+          )}
+          {reallocationPhase === 'removing' && (
+            <span className="text-base font-semibold text-orange-300 ml-2">
+              ({shieldsToRemove} shields to remove)
+            </span>
+          )}
+          {reallocationPhase === 'adding' && (
+            <span className="text-base font-semibold text-green-300 ml-2">
+              ({shieldsToAdd} shields to add)
+            </span>
+          )}
         </h2>
 
-        {/* Turn Indicator - Only show during deployment/action phases */}
-        {(turnPhase === 'deployment' || turnPhase === 'action') && (
+        {/* Turn Indicator - Show during deployment/action phases or reallocation */}
+        {(turnPhase === 'deployment' || turnPhase === 'action' || reallocationPhase) && (
           <div className="flex items-center gap-3">
             {isMyTurn() ? (
               <div className="flex items-center gap-2">
@@ -201,16 +223,16 @@ function GameHeader({
               </div>
             )}
 
-            {/* Pass Button */}
-            {isMyTurn() && !mandatoryAction && !multiSelectState && (
+            {/* Pass Button - Hide during reallocation */}
+            {isMyTurn() && !mandatoryAction && !multiSelectState && !reallocationPhase && (
               <button
                 onClick={handlePlayerPass}
                 disabled={passInfo[`${getLocalPlayerId()}Passed`]}
                 className="relative p-[1px] transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{
                   clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                  backgroundImage: passInfo[`${getLocalPlayerId()}Passed`] 
-                    ? 'linear-gradient(45deg, rgba(75, 85, 99, 0.6), rgba(107, 114, 128, 0.6))' 
+                  backgroundImage: passInfo[`${getLocalPlayerId()}Passed`]
+                    ? 'linear-gradient(45deg, rgba(75, 85, 99, 0.6), rgba(107, 114, 128, 0.6))'
                     : 'linear-gradient(45deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8))'
                 }}
               >
@@ -225,6 +247,173 @@ function GameHeader({
                 </div>
               </button>
             )}
+
+            {/* Shield Reallocation Controls - Removing Phase */}
+            {reallocationPhase === 'removing' && (
+              <>
+                <button
+                  onClick={handleCancelReallocation}
+                  className="relative p-[1px] transition-all hover:scale-105"
+                  style={{
+                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                    backgroundImage: 'linear-gradient(45deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8))'
+                  }}
+                >
+                  <div
+                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                      color: '#fca5a5'
+                    }}
+                  >
+                    Cancel
+                  </div>
+                </button>
+
+                <button
+                  onClick={handleResetReallocation}
+                  className="relative p-[1px] transition-all hover:scale-105"
+                  style={{
+                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                    backgroundImage: 'linear-gradient(45deg, rgba(234, 179, 8, 0.8), rgba(202, 138, 4, 0.8))'
+                  }}
+                >
+                  <div
+                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                      color: '#fde047'
+                    }}
+                  >
+                    Reset
+                  </div>
+                </button>
+
+                <button
+                  onClick={handleContinueToAddPhase}
+                  className="relative p-[1px] transition-all hover:scale-105"
+                  style={{
+                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                    backgroundImage: 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
+                  }}
+                >
+                  <div
+                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                      color: '#86efac'
+                    }}
+                  >
+                    Continue
+                  </div>
+                </button>
+              </>
+            )}
+
+            {/* Shield Reallocation Controls - Adding Phase */}
+            {reallocationPhase === 'adding' && (
+              <>
+                <button
+                  onClick={handleCancelReallocation}
+                  className="relative p-[1px] transition-all hover:scale-105"
+                  style={{
+                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                    backgroundImage: 'linear-gradient(45deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8))'
+                  }}
+                >
+                  <div
+                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                      color: '#fca5a5'
+                    }}
+                  >
+                    Cancel
+                  </div>
+                </button>
+
+                <button
+                  onClick={handleResetReallocation}
+                  className="relative p-[1px] transition-all hover:scale-105"
+                  style={{
+                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                    backgroundImage: 'linear-gradient(45deg, rgba(234, 179, 8, 0.8), rgba(202, 138, 4, 0.8))'
+                  }}
+                >
+                  <div
+                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                      color: '#fde047'
+                    }}
+                  >
+                    Reset
+                  </div>
+                </button>
+
+                <button
+                  onClick={handleConfirmReallocation}
+                  className="relative p-[1px] transition-all hover:scale-105"
+                  style={{
+                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                    backgroundImage: 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
+                  }}
+                >
+                  <div
+                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                      color: '#86efac'
+                    }}
+                  >
+                    Confirm
+                  </div>
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Shield Allocation Controls - Show during allocateShields phase */}
+        {turnPhase === 'allocateShields' && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleResetShields}
+              className="relative p-[1px] transition-all hover:scale-105"
+              style={{
+                clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                backgroundImage: 'linear-gradient(45deg, rgba(234, 179, 8, 0.8), rgba(202, 138, 4, 0.8))'
+              }}
+            >
+              <div
+                className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                style={{
+                  clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                  color: '#fde047'
+                }}
+              >
+                Reset
+              </div>
+            </button>
+
+            <button
+              onClick={handleConfirmShields}
+              className="relative p-[1px] transition-all hover:scale-105"
+              style={{
+                clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                backgroundImage: 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
+              }}
+            >
+              <div
+                className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                style={{
+                  clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                  color: '#86efac'
+                }}
+              >
+                Confirm
+              </div>
+            </button>
           </div>
         )}
       </div>

@@ -4,12 +4,14 @@
 // AI selection and multiplayer setup
 // Clean separation from game logic - no game state access
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useGameState } from '../hooks/useGameState.js';
 import aiPersonalities from '../data/aiData.js';
 import fullDroneCollection from '../data/droneData.js';
 import aiPhaseProcessor from '../state/AIPhaseProcessor.js';
 import gameStateManager from '../state/GameStateManager.js';
+import MultiplayerLobby from '../MultiplayerLobby.jsx';
+import p2pManager from '../network/P2PManager.js';
 
 /**
  * LobbyScreen - AI selection and multiplayer setup
@@ -20,7 +22,15 @@ function LobbyScreen() {
   const [selectedAI, setSelectedAI] = useState(null);
 
   const isSinglePlayer = gameState.gameMode === 'local';
-  const isMultiplayer = gameState.gameMode === 'multiplayer';
+  const isMultiplayer = gameState.gameMode !== 'local'; // Matches 'multiplayer', 'host', and 'guest' modes
+
+  // Setup P2P integration when entering multiplayer mode
+  useEffect(() => {
+    if (isMultiplayer) {
+      console.log('🔌 Setting up P2P integration for multiplayer');
+      gameStateManager.setupP2PIntegration(p2pManager);
+    }
+  }, [isMultiplayer]);
 
   const handleBackToMenu = () => {
     console.log('🔙 Returning to main menu');
@@ -64,15 +74,23 @@ function LobbyScreen() {
           aiPersonality: selectedAI
         }
       );
-    } else if (isMultiplayer) {
-      console.log('🎮 Starting multiplayer game');
-
-      // Start multiplayer game
-      gameStateManager.startGame('multiplayer',
-        { name: 'Player 1' },
-        { name: 'Player 2' }
-      );
     }
+  };
+
+  const handleMultiplayerGameStart = () => {
+    console.log('🎮 Starting multiplayer game after connection');
+
+    // Determine game mode based on P2P role
+    const isHost = p2pManager.isHost;
+    const gameMode = isHost ? 'host' : 'guest';
+
+    console.log(`🎮 Multiplayer mode: ${gameMode}`);
+
+    // Start the game with appropriate mode
+    gameStateManager.startGame(gameMode,
+      { name: isHost ? 'Host Player' : 'Guest Player' },
+      { name: isHost ? 'Guest Player' : 'Host Player' }
+    );
   };
 
   return (
@@ -166,86 +184,74 @@ function LobbyScreen() {
 
       {/* Multiplayer Setup */}
       {isMultiplayer && (
-        <div style={{
-          textAlign: 'center',
-          marginBottom: '2rem'
-        }}>
-          <div style={{
-            fontSize: '1.2rem',
-            color: '#cccccc',
-            marginBottom: '1rem'
-          }}>
-            Multiplayer game ready to start
-          </div>
-          <div style={{
-            fontSize: '1rem',
-            color: '#888888'
-          }}>
-            Both players will customize their decks and drones in-game
-          </div>
-        </div>
+        <MultiplayerLobby
+          onGameStart={handleMultiplayerGameStart}
+          onBack={handleBackToMenu}
+        />
       )}
 
-      {/* Action Buttons */}
-      <div style={{
-        display: 'flex',
-        gap: '1rem',
-        marginTop: '1rem'
-      }}>
-        <button
-          onClick={handleBackToMenu}
-          style={{
-            fontSize: '1rem',
-            padding: '12px 24px',
-            backgroundColor: 'transparent',
-            color: '#cccccc',
-            border: '2px solid #cccccc',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            transition: 'all 0.3s ease'
-          }}
-          onMouseOver={(e) => {
-            e.target.style.backgroundColor = '#cccccc';
-            e.target.style.color = '#1a1a1a';
-          }}
-          onMouseOut={(e) => {
-            e.target.style.backgroundColor = 'transparent';
-            e.target.style.color = '#cccccc';
-          }}
-        >
-          BACK TO MENU
-        </button>
+      {/* Action Buttons - Only show for single player */}
+      {isSinglePlayer && (
+        <div style={{
+          display: 'flex',
+          gap: '1rem',
+          marginTop: '1rem'
+        }}>
+          <button
+            onClick={handleBackToMenu}
+            style={{
+              fontSize: '1rem',
+              padding: '12px 24px',
+              backgroundColor: 'transparent',
+              color: '#cccccc',
+              border: '2px solid #cccccc',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = '#cccccc';
+              e.target.style.color = '#1a1a1a';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = 'transparent';
+              e.target.style.color = '#cccccc';
+            }}
+          >
+            BACK TO MENU
+          </button>
 
-        <button
-          onClick={handleStartGame}
-          disabled={isSinglePlayer && !selectedAI}
-          style={{
-            fontSize: '1.2rem',
-            padding: '12px 30px',
-            backgroundColor: (isSinglePlayer && !selectedAI) ? '#444444' : '#00ff88',
-            color: (isSinglePlayer && !selectedAI) ? '#888888' : '#000000',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: (isSinglePlayer && !selectedAI) ? 'not-allowed' : 'pointer',
-            transition: 'all 0.3s ease',
-            opacity: (isSinglePlayer && !selectedAI) ? 0.5 : 1
-          }}
-          onMouseOver={(e) => {
-            if (!(isSinglePlayer && !selectedAI)) {
-              e.target.style.backgroundColor = '#00cc6a';
-              e.target.style.transform = 'translateY(-2px)';
-            }
-          }}
-          onMouseOut={(e) => {
-            if (!(isSinglePlayer && !selectedAI)) {
-              e.target.style.backgroundColor = '#00ff88';
-              e.target.style.transform = 'translateY(0)';
-            }
-          }}
-        >
-          {isSinglePlayer ? 'START GAME' : 'START MULTIPLAYER'}
-        </button>
-      </div>
+          <button
+            onClick={handleStartGame}
+            disabled={!selectedAI}
+            style={{
+              fontSize: '1.2rem',
+              padding: '12px 30px',
+              backgroundColor: !selectedAI ? '#444444' : '#00ff88',
+              color: !selectedAI ? '#888888' : '#000000',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: !selectedAI ? 'not-allowed' : 'pointer',
+              transition: 'all 0.3s ease',
+              opacity: !selectedAI ? 0.5 : 1
+            }}
+            onMouseOver={(e) => {
+              if (selectedAI) {
+                e.target.style.backgroundColor = '#00cc6a';
+                e.target.style.transform = 'translateY(-2px)';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (selectedAI) {
+                e.target.style.backgroundColor = '#00ff88';
+                e.target.style.transform = 'translateY(0)';
+              }
+            }}
+          >
+            START GAME
+          </button>
+        </div>
+      )}
     </div>
   );
 }

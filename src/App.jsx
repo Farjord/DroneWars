@@ -58,6 +58,7 @@ import { gameEngine } from './logic/gameLogic.js';
 // --- 1.6 MANAGER/STATE IMPORTS ---
 import gameFlowManager from './state/GameFlowManager.js';
 import aiPhaseProcessor from './state/AIPhaseProcessor.js';
+import p2pManager from './network/P2PManager.js';
 // ActionProcessor is created internally by GameStateManager
 
 // --- 1.7 UTILITY IMPORTS ---
@@ -195,6 +196,7 @@ const App = () => {
   const [shieldsToAdd, setShieldsToAdd] = useState(0);
   const [shieldsToRemove, setShieldsToRemove] = useState(0);
   const [originalShieldAllocation, setOriginalShieldAllocation] = useState(null);
+  const [postRemovalShieldAllocation, setPostRemovalShieldAllocation] = useState(null); // For 'adding' phase reset
   const [initialShieldAllocation, setInitialShieldAllocation] = useState(null); // For shield allocation reset
   const [reallocationAbility, setReallocationAbility] = useState(null);
 
@@ -343,6 +345,7 @@ const App = () => {
     winner,
     unplacedSections,
     shieldsToAllocate,
+    opponentShieldsToAllocate,
     gameLog,
     placedSections
   } = gameState;
@@ -468,6 +471,26 @@ const App = () => {
   // All handlers use useCallback for performance optimization.
   // Event handlers coordinate between UI actions and manager layer.
 
+  // --- 6.0 GUEST ACTION ROUTING ---
+  // Wrapper for processAction that routes guest actions to host
+  // ========================================
+
+  /**
+   * Process action with guest mode routing
+   * Guest sends actions to host, host/local process normally
+   */
+  const processActionWithGuestRouting = useCallback(async (type, payload) => {
+    // Guest mode: Send action to host instead of processing locally
+    if (gameState.gameMode === 'guest') {
+      console.log('[GUEST] Sending action to host:', type, payload);
+      p2pManager.sendActionToHost(type, payload);
+      return { success: true, isGuest: true };
+    }
+
+    // Host/Local mode: Process action normally
+    return await processAction(type, payload);
+  }, [gameState.gameMode, processAction]);
+
   // --- 6.1 MULTIPLAYER PHASE SYNCHRONIZATION ---
   // Handlers for coordinating game phases in multiplayer mode
   // ========================================
@@ -498,20 +521,41 @@ const App = () => {
       // The turn ends only if the card doesn't grant another action.
       if (aiCardPlayReport && !aiCardPlayReport.card.effect.goAgain) {
           // Use ActionProcessor for turn transition instead of direct endTurn call
-          await processAction('turnTransition', {
+          await processActionWithGuestRouting('turnTransition', {
               newPlayer: getLocalPlayerId(),
               reason: 'aiCardReportClosed'
           });
       } else if (aiCardPlayReport && aiCardPlayReport.card.effect.goAgain && !winner) {
            // If AI can go again and game hasn't ended, the AI's turn continues.
            // Use ActionProcessor for player transition instead of direct setCurrentPlayer call
-           await processAction('turnTransition', {
+           await processActionWithGuestRouting('turnTransition', {
                newPlayer: getOpponentPlayerId(),
                reason: 'aiGoAgain'
            });
       }
       setAiCardPlayReport(null);
   }, [processAction, getLocalPlayerId, getOpponentPlayerId, aiCardPlayReport, winner]);
+
+  /**
+   * Handle reset shields button - removes all allocated shields
+   */
+  const handleResetShields = useCallback(async () => {
+    await processActionWithGuestRouting('resetShields', {
+      playerId: getLocalPlayerId()
+    });
+  }, [processActionWithGuestRouting, getLocalPlayerId]);
+
+  /**
+   * Handle confirm shields button - commits allocation
+   */
+  const handleConfirmShields = useCallback(async () => {
+    // Commit allocation via ActionProcessor
+    await processActionWithGuestRouting('commitment', {
+      playerId: getLocalPlayerId(),
+      phase: 'allocateShields',
+      actionData: { committed: true }
+    });
+  }, [processActionWithGuestRouting, getLocalPlayerId]);
 
   // ========================================
   // SECTION 7: GAME LOGIC FUNCTIONS
@@ -587,7 +631,7 @@ const App = () => {
         await new Promise(resolve => setTimeout(resolve, 250));
 
         // Process attack through ActionProcessor (ActionProcessor handles state updates)
-        const result = await processAction('attack', {
+        const result = await processActionWithGuestRouting('attack', {
             attackDetails: attackDetails
         });
 
@@ -624,9 +668,9 @@ const App = () => {
   const resolveAbility = useCallback(async (ability, userDrone, targetDrone) => {
     try {
       // Process ability through ActionProcessor
-      const result = await processAction('ability', {
+      const result = await processActionWithGuestRouting('ability', {
         droneId: userDrone.id,
-        abilityIndex: userDrone.abilities.indexOf(ability),
+        abilityIndex: userDrone.abilities.findIndex(a => a.name === ability.name),
         targetId: targetDrone?.id || null
       });
 
@@ -649,7 +693,7 @@ const App = () => {
    */
   const resolveShipAbility = useCallback(async (ability, sectionName, target) => {
     // Use ActionProcessor instead of direct gameEngine call
-    const result = await processAction('shipAbility', {
+    const result = await processActionWithGuestRouting('shipAbility', {
       ability: ability,
       sectionName: sectionName,
       targetId: target?.id || null,
@@ -722,7 +766,7 @@ const App = () => {
     }
 
     // Use ActionProcessor instead of direct gameEngine call
-    const result = await processAction('cardPlay', {
+    const result = await processActionWithGuestRouting('cardPlay', {
       card: card,
       targetId: target?.id || null,
       playerId: actingPlayerId
@@ -851,7 +895,7 @@ const App = () => {
    * @param {string} toLane - Destination lane ID
    */
   const resolveMultiMove = useCallback(async (card, dronesToMove, fromLane, toLane) => {
-    await processAction('movementCompletion', {
+    await processActionWithGuestRouting('movementCompletion', {
       card,
       movementType: 'multi_move',
       drones: dronesToMove,
@@ -875,7 +919,7 @@ const App = () => {
    * @param {string} toLane - Destination lane ID
    */
   const resolveSingleMove = useCallback(async (card, droneToMove, fromLane, toLane) => {
-    await processAction('movementCompletion', {
+    await processActionWithGuestRouting('movementCompletion', {
       card,
       movementType: 'single_move',
       drones: [droneToMove],
@@ -1093,14 +1137,14 @@ const App = () => {
     const { turnPhase } = gameState;
 
     if (turnPhase === 'allocateShields') {
-      // Round start shield allocation - routed to SimultaneousActionManager
-      await processAction('allocateShield', {
+      // Round start shield allocation - uses ActionProcessor addShield action
+      await processActionWithGuestRouting('addShield', {
         sectionName: sectionName,
         playerId: getLocalPlayerId()
       });
     } else {
       // Action phase shield reallocation - uses ActionProcessor directly
-      await processAction('reallocateShields', {
+      await processActionWithGuestRouting('reallocateShields', {
         action: 'add',
         sectionName: sectionName,
         playerId: getLocalPlayerId()
@@ -1121,7 +1165,7 @@ const App = () => {
     if (section.allocatedShields <= 0) return;
 
     // Use ActionProcessor for shield reallocation
-    const result = await processAction('reallocateShields', {
+    const result = await processActionWithGuestRouting('reallocateShields', {
       action: 'remove',
       sectionName: sectionName,
       playerId: getLocalPlayerId()
@@ -1143,7 +1187,7 @@ const App = () => {
     if (shieldsToAdd <= 0) return;
 
     // Use ActionProcessor for shield reallocation (validation handled there)
-    const result = await processAction('reallocateShields', {
+    const result = await processActionWithGuestRouting('reallocateShields', {
       action: 'add',
       sectionName: sectionName,
       playerId: getLocalPlayerId()
@@ -1157,28 +1201,43 @@ const App = () => {
   /**
    * HANDLE CONTINUE TO ADD PHASE
    * Transitions from shield removal to shield addition phase during reallocation.
+   * Saves current shield state for 'adding' phase reset functionality.
    */
   const handleContinueToAddPhase = () => {
+    // Save current shield state as the baseline for 'adding' phase resets
+    setPostRemovalShieldAllocation(JSON.parse(JSON.stringify(localPlayerState.shipSections)));
     setReallocationPhase('adding');
   };
 
   /**
    * HANDLE RESET REALLOCATION
-   * Resets shield reallocation back to starting state.
-   * Restores original shield distribution and counters.
+   * Resets shield reallocation to the start of the current phase.
+   * - During 'removing': Restores original shields (pre-reallocation)
+   * - During 'adding': Restores post-removal state (after removal, before addition)
    */
   const handleResetReallocation = async () => {
-    // Restore original shields using ActionProcessor
-    await processAction('reallocateShields', {
-      action: 'restore',
-      originalShipSections: originalShieldAllocation,
-      playerId: getLocalPlayerId()
-    });
+    if (reallocationPhase === 'removing') {
+      // Reset to original pre-reallocation state
+      await processActionWithGuestRouting('reallocateShields', {
+        action: 'restore',
+        originalShipSections: originalShieldAllocation,
+        playerId: getLocalPlayerId()
+      });
 
-    // Reset counters
-    setShieldsToRemove(reallocationAbility.ability.effect.value.maxShields);
-    setShieldsToAdd(0);
-    setReallocationPhase('removing');
+      // Reset counters to initial values
+      setShieldsToRemove(reallocationAbility.ability.effect.value.maxShields);
+      setShieldsToAdd(0);
+    } else if (reallocationPhase === 'adding') {
+      // Reset to post-removal state (before any shields were added)
+      await processActionWithGuestRouting('reallocateShields', {
+        action: 'restore',
+        originalShipSections: postRemovalShieldAllocation,
+        playerId: getLocalPlayerId()
+      });
+
+      // Reset shields to add counter (restore full amount)
+      setShieldsToAdd(shieldsToRemove + shieldsToAdd);
+    }
   };
 
   /**
@@ -1188,7 +1247,7 @@ const App = () => {
    */
   const handleCancelReallocation = async () => {
     // Restore original shields using ActionProcessor
-    await processAction('reallocateShields', {
+    await processActionWithGuestRouting('reallocateShields', {
       action: 'restore',
       originalShipSections: originalShieldAllocation,
       playerId: getLocalPlayerId()
@@ -1199,6 +1258,7 @@ const App = () => {
     setShieldsToRemove(0);
     setShieldsToAdd(0);
     setOriginalShieldAllocation(null);
+    setPostRemovalShieldAllocation(null);
     setReallocationAbility(null);
   };
 
@@ -1225,7 +1285,7 @@ const App = () => {
     console.log('🎯 App.jsx: Acknowledging deployment complete');
 
     const localPlayerId = getLocalPlayerId();
-    const result = await processAction('acknowledgeDeploymentComplete', { playerId: localPlayerId });
+    const result = await processActionWithGuestRouting('acknowledgeDeploymentComplete', { playerId: localPlayerId });
 
     if (result.success) {
       setShowDeploymentCompleteModal(false);
@@ -1269,7 +1329,7 @@ const App = () => {
    */
   const handleResetShieldAllocation = async () => {
     // Use ActionProcessor for all shield resets - routes to appropriate manager
-    await processAction('resetShieldAllocation', {
+    await processActionWithGuestRouting('resetShieldAllocation', {
       playerId: getLocalPlayerId()
     });
   };
@@ -1281,7 +1341,7 @@ const App = () => {
    */
   const handleEndAllocation = async () => {
     // Use ActionProcessor for all shield allocation endings - routes to appropriate manager
-    await processAction('endShieldAllocation', {
+    await processActionWithGuestRouting('endShieldAllocation', {
       playerId: getLocalPlayerId()
     });
   };
@@ -1309,7 +1369,7 @@ const App = () => {
     } else if (phase === 'action') {
       // Action phase shield reallocation - sequential phase processing
       console.log(`🛡️ Routing to action phase shield handling (sequential)`);
-      processAction(actionType, payload);
+      processActionWithGuestRouting(actionType, payload);
     } else {
       console.warn(`⚠️ Shield action ${actionType} not valid for phase ${phase}`);
     }
@@ -1387,7 +1447,7 @@ const App = () => {
 
     if (isSequential) {
       // Sequential phases: use ActionProcessor for serialized execution
-      return await processAction(actionType, payload);
+      return await processActionWithGuestRouting(actionType, payload);
     } else {
       // Simultaneous phases: use direct updates for parallel execution
       return handleSimultaneousAction(actionType, payload);
@@ -1586,7 +1646,7 @@ const App = () => {
   const executeDeployment = async (lane) => {
     try {
       // Use ActionProcessor for deployment
-      const result = await processAction('deployment', {
+      const result = await processActionWithGuestRouting('deployment', {
         droneData: selectedDrone,
         laneId: lane,
         playerId: getLocalPlayerId(),
@@ -1641,7 +1701,7 @@ const App = () => {
   const handlePlayerPass = async () => {
     if (passInfo[`${getLocalPlayerId()}Passed`]) return;
 
-    await processAction('playerPass', {
+    await processActionWithGuestRouting('playerPass', {
       playerId: getLocalPlayerId(),
       playerName: localPlayerState.name,
       turnPhase: turnPhase,
@@ -2091,7 +2151,7 @@ const App = () => {
     const currentMandatoryAction = mandatoryAction;
 
     // Use ActionProcessor for proper state management (ActionProcessor handles logging)
-    await processAction('optionalDiscard', {
+    await processActionWithGuestRouting('optionalDiscard', {
         playerId: getLocalPlayerId(),
         cardsToDiscard: [card],
         isMandatory: true
@@ -2122,7 +2182,7 @@ const App = () => {
    */
   const handleRoundStartDiscard = async (card) => {
     // Use ActionProcessor for proper state management (ActionProcessor handles logging)
-    await processAction('optionalDiscard', {
+    await processActionWithGuestRouting('optionalDiscard', {
       playerId: getLocalPlayerId(),
       cardsToDiscard: [card],
       isMandatory: false
@@ -2147,7 +2207,7 @@ const App = () => {
     setOptionalDiscardCount(0);
 
     // Commit completion of optionalDiscard phase
-    await processAction('commitment', {
+    await processActionWithGuestRouting('commitment', {
       playerId: getLocalPlayerId(),
       phase: 'optionalDiscard',
       actionData: { completed: true }
@@ -2168,72 +2228,57 @@ const App = () => {
 
   /**
    * HANDLE CONFIRM MANDATORY DESTROY
-   * Processes confirmed mandatory drone destruction.
-   * Handles both player and AI compliance checking.
+   * Processes confirmed mandatory drone destruction during mandatoryDroneRemoval phase.
+   * Uses ActionProcessor architecture for proper multiplayer synchronization.
+   * Handles both player destruction and AI opponent compliance checking.
    * @param {Object} drone - The drone being destroyed
-   *
-   * TECHNICAL DEBT: This function violates architecture by:
-   * - Using direct gameEngine calls instead of GameDataService/ActionProcessor
-   * - Direct state manipulation instead of using processAction('destroyDrone', ...)
-   * - Complex business logic in UI layer
-   *
-   * REASON FOR KEEPING: No 'destroyDrone' action exists in ActionProcessor yet.
-   * This handles critical mandatoryDroneRemoval phase functionality.
-   *
-   * TODO: Create ActionProcessor.processDestroyDrone() method to handle:
-   * - Lane detection, drone removal, onDestroy effects, aura updates
-   * - Both local and opponent destruction logic
-   * - Proper state updates through GameStateManager
    */
-  const handleConfirmMandatoryDestroy = (drone) => {
-   const lane = gameEngine.getLaneOfDrone(drone.id, localPlayerState);
-   if (lane) {
-       // Create proper immutable copy of the nested dronesOnBoard object
-       let newPlayerState = {
-           ...localPlayerState,
-           dronesOnBoard: { ...localPlayerState.dronesOnBoard }
-       };
-
-       // Remove drone from the specific lane
-       newPlayerState.dronesOnBoard[lane] = newPlayerState.dronesOnBoard[lane].filter(d => d.id !== drone.id);
-
-       // Apply destruction updates (like deployedDroneCounts)
-       const onDestroyUpdates = gameEngine.onDroneDestroyed(newPlayerState, drone);
-       Object.assign(newPlayerState, onDestroyUpdates);
-
-       // Update auras
-       newPlayerState.dronesOnBoard = gameEngine.updateAuras(newPlayerState, getOpponentPlayerState(), getPlacedSectionsForEngine());
-
-       updatePlayerState(getLocalPlayerId(), newPlayerState);
-   }
-
-   setMandatoryAction(prev => {
-        const newCount = prev.count - 1;
-        if (newCount <= 0) {
-            const p2IsOver = totalOpponentPlayerDrones > opponentPlayerEffectiveStats.totals.cpuLimit;
-            if (p2IsOver) {
-               let newOpponentPlayer = {...opponentPlayerState};
-                    let dronesToDestroyCount = Object.values(opponentPlayerState.dronesOnBoard).flat().length - getEffectiveShipStats(opponentPlayerState, opponentPlacedSections).totals.cpuLimit;
-                    for (let i = 0; i < dronesToDestroyCount; i++) {
-                        const allDrones = Object.entries(newOpponentPlayer.dronesOnBoard).flatMap(([lane, drones]) => drones.map(d => ({...d, lane})));
-                        if (allDrones.length === 0) break;
-
-                        const lowestClass = Math.min(...allDrones.map(d => d.class));
-                        const candidates = allDrones.filter(d => d.class === lowestClass);
-                        const droneToDestroy = candidates[Math.floor(Math.random() * candidates.length)];
-
-                        newOpponentPlayer.dronesOnBoard[droneToDestroy.lane] = newOpponentPlayer.dronesOnBoard[droneToDestroy.lane].filter(d => d.id !== droneToDestroy.id);
-                        const onDestroyUpdates = gameEngine.onDroneDestroyed(newOpponentPlayer, droneToDestroy);
-                        Object.assign(newOpponentPlayer, onDestroyUpdates);
-                    }
-                    newOpponentPlayer.dronesOnBoard = gameEngine.updateAuras(newOpponentPlayer, getLocalPlayerState(), getPlacedSectionsForEngine());
-                    updatePlayerState(getOpponentPlayerId(), newOpponentPlayer);
-            }
-            return null;
-        }
-        return { ...prev, count: newCount };
+  const handleConfirmMandatoryDestroy = async (drone) => {
+    // Use ActionProcessor to handle destruction (supports multiplayer routing)
+    const result = await processActionWithGuestRouting('destroyDrone', {
+      droneId: drone.id,
+      playerId: getLocalPlayerId()
     });
-   setConfirmationModal(null);
+
+    if (!result.success) {
+      console.error('Failed to destroy drone:', result.error);
+      return;
+    }
+
+    setMandatoryAction(prev => {
+      const newCount = prev.count - 1;
+      if (newCount <= 0) {
+        // Check if opponent (AI in single-player) also needs to destroy drones
+        const p2IsOver = totalOpponentPlayerDrones > opponentPlayerEffectiveStats.totals.cpuLimit;
+        if (p2IsOver && gameState.gameMode === 'local') {
+          // In single-player mode, handle AI opponent destruction
+          const dronesToDestroyCount = Object.values(opponentPlayerState.dronesOnBoard).flat().length -
+                                       getEffectiveShipStats(opponentPlayerState, opponentPlacedSections).totals.cpuLimit;
+
+          // Destroy AI drones one by one using ActionProcessor
+          for (let i = 0; i < dronesToDestroyCount; i++) {
+            const allDrones = Object.entries(opponentPlayerState.dronesOnBoard)
+              .flatMap(([lane, drones]) => drones.map(d => ({...d, lane})));
+
+            if (allDrones.length === 0) break;
+
+            const lowestClass = Math.min(...allDrones.map(d => d.class));
+            const candidates = allDrones.filter(d => d.class === lowestClass);
+            const droneToDestroy = candidates[Math.floor(Math.random() * candidates.length)];
+
+            // Use ActionProcessor for AI drone destruction too
+            processActionWithGuestRouting('destroyDrone', {
+              droneId: droneToDestroy.id,
+              playerId: getOpponentPlayerId()
+            });
+          }
+        }
+        // In multiplayer mode, opponent handles their own mandatory destruction
+        return null;
+      }
+      return { ...prev, count: newCount };
+    });
+    setConfirmationModal(null);
   };
 
 
@@ -2377,6 +2422,7 @@ const App = () => {
         passInfo={passInfo}
         firstPlayerOfRound={firstPlayerOfRound}
         shieldsToAllocate={shieldsToAllocate}
+        opponentShieldsToAllocate={opponentShieldsToAllocate}
         shieldsToRemove={shieldsToRemove}
         shieldsToAdd={shieldsToAdd}
         reallocationPhase={reallocationPhase}
@@ -2389,6 +2435,12 @@ const App = () => {
         isMultiplayer={isMultiplayer}
         handlePlayerPass={handlePlayerPass}
         handleReset={handleReset}
+        handleResetShields={handleResetShields}
+        handleConfirmShields={handleConfirmShields}
+        handleCancelReallocation={handleCancelReallocation}
+        handleResetReallocation={handleResetReallocation}
+        handleContinueToAddPhase={handleContinueToAddPhase}
+        handleConfirmReallocation={handleConfirmReallocation}
         mandatoryAction={mandatoryAction}
         multiSelectState={multiSelectState}
         AI_HAND_DEBUG_MODE={AI_HAND_DEBUG_MODE}
@@ -2502,7 +2554,7 @@ const App = () => {
         show={!!waitingForPlayerPhase}
         phase={waitingForPlayerPhase}
         opponentName={opponentPlayerState.name}
-        roomCode={null} // TODO: MULTIPLAYER FEATURE - Connect to actual room code when multiplayer is implemented
+        roomCode={p2pManager.roomCode}
       />
       <DeploymentConfirmationModal
         deploymentConfirmation={deploymentConfirmation}
@@ -2523,7 +2575,7 @@ const App = () => {
           if (!moveConfirmation) return;
           const { drone, from, to } = moveConfirmation;
 
-          await processAction('move', {
+          await processActionWithGuestRouting('move', {
             droneId: drone.id,
             fromLane: from,
             toLane: to,
@@ -2701,11 +2753,11 @@ const App = () => {
 
       {/* Waiting Overlay for multiplayer */}
       <WaitingOverlay
-        isVisible={false} // TODO: MULTIPLAYER FEATURE - Implement proper waiting logic
+        isVisible={false} // NOTE: Currently disabled - using transparent overlay instead (see lines 2406-2415)
         currentPlayer={currentPlayer}
         gameMode={gameState.gameMode}
-        roomCode={null} // TODO: MULTIPLAYER FEATURE - Connect to actual room code
-        lastAction={null} // TODO: MULTIPLAYER FEATURE - Connect to last action
+        roomCode={p2pManager.roomCode}
+        lastAction={null} // NOTE: lastAction not tracked in current implementation
         localPlayerState={localPlayerState}
         opponentPlayerState={opponentPlayerState}
         getLocalPlayerId={getLocalPlayerId}

@@ -1,19 +1,11 @@
 // ========================================
-// LOG VIEW COMPONENT
+// LOG VIEW COMPONENT - CLEAN VERSION
 // ========================================
 // Game log display with table format and CSV download
-// Part of GameFooter component refactoring
 
 import React from 'react';
 import styles from '../GameFooter.module.css';
 
-/**
- * LogView - Displays game log with download functionality
- * @param {Object} props - Component props
- * @param {Array} props.gameLog - Game log entries
- * @param {Function} props.downloadLogAsCSV - Download log as CSV
- * @param {Function} props.setAiDecisionLogToShow - Set AI decision log
- */
 function LogView({
   gameLog,
   downloadLogAsCSV,
@@ -23,13 +15,11 @@ function LogView({
     <div className={styles.logContainer}>
       <div className={styles.logHeader}>
         <h3 className={styles.logTitle}>Game Log</h3>
-        <button
-          onClick={downloadLogAsCSV}
-          className={styles.downloadButton}
-        >
+        <button onClick={downloadLogAsCSV} className={styles.downloadButton}>
           Download CSV
         </button>
       </div>
+      
       <div className={styles.logTableWrapper}>
         <table className={styles.logTable}>
           <thead className={styles.logTableHeader}>
@@ -49,7 +39,9 @@ function LogView({
             {gameLog.map((entry, index) => (
               <tr key={index} className={styles.logTableRow}>
                 <td className={styles.logTableCellBold}>{entry.round}</td>
-                <td className={styles.logTableCellGray}>{new Date(entry.timestamp).toLocaleTimeString('en-GB', { timeZone: 'UTC' })}</td>
+                <td className={styles.logTableCellGray}>
+                  {new Date(entry.timestamp).toLocaleTimeString('en-GB', { timeZone: 'UTC' })}
+                </td>
                 <td className={styles.logTableCellCyan}>{entry.player}</td>
                 <td className={styles.logTableCellYellow}>{entry.actionType}</td>
                 <td className={styles.logTableCell}>{entry.source}</td>

@@ -10,6 +10,7 @@ import { WaitingForOpponentScreen } from './DroneSelectionScreen.jsx';
 import ShipSection from '../ui/ShipSection.jsx';
 import { gameEngine } from '../../logic/gameLogic.js';
 import gameStateManager from '../../state/GameStateManager.js';
+import p2pManager from '../../network/P2PManager.js';
 
 /**
  * SHIP PLACEMENT SCREEN COMPONENT
@@ -20,11 +21,11 @@ function ShipPlacementScreen() {
   const {
     gameState,
     getLocalPlayerId,
+    getOpponentPlayerId,
     isMultiplayer,
     getLocalPlayerState,
     getLocalPlacedSections,
-    updateGameState,
-    setModalContent
+    updateGameState
   } = useGameState();
 
   const { turnPhase, unplacedSections } = gameState;
@@ -37,45 +38,6 @@ function ShipPlacementScreen() {
   // Local placement state (initialized from global state)
   const [localPlacedSections, setLocalPlacedSections] = useState(initialPlacedSections || [null, null, null]);
   const [localUnplacedSections, setLocalUnplacedSections] = useState(unplacedSections || ['bridge', 'powerCell', 'droneControlHub']);
-
-  const [localPhaseCompletion, setLocalPhaseCompletion] = useState({
-    placement: false
-  });
-  const [opponentPhaseCompletion, setOpponentPhaseCompletion] = useState({
-    placement: false
-  });
-
-  // Event listener for phase completion from PhaseManager
-  useEffect(() => {
-    const handlePhaseManagerEvent = (event) => {
-      const { type, phase, playerId } = event.detail || event;
-
-      console.log(`🔔 ShipPlacementScreen received PhaseManager event: ${type}`, { phase, playerId });
-
-      if (phase !== 'placement') return;
-
-      if (type === 'playerCompleted') {
-        const isLocalPlayer = playerId === getLocalPlayerId();
-
-        if (isLocalPlayer) {
-          setLocalPhaseCompletion(prev => ({ ...prev, placement: true }));
-        } else if (isMultiplayer()) {
-          setOpponentPhaseCompletion(prev => ({ ...prev, placement: true }));
-        }
-      } else if (type === 'phaseCompleted') {
-        // Clear phase completion tracking when phase completes
-        setLocalPhaseCompletion(prev => ({ ...prev, placement: false }));
-        setOpponentPhaseCompletion(prev => ({ ...prev, placement: false }));
-      }
-    };
-
-    // Listen for PhaseManager events
-    window.addEventListener('phaseManagerEvent', handlePhaseManagerEvent);
-
-    return () => {
-      window.removeEventListener('phaseManagerEvent', handlePhaseManagerEvent);
-    };
-  }, [getLocalPlayerId, isMultiplayer]);
 
   /**
    * HANDLE SELECT SECTION FOR PLACEMENT
@@ -167,63 +129,68 @@ function ShipPlacementScreen() {
     // Validate that all sections are placed
     const hasEmptySections = localPlacedSections.some(section => section === null || section === undefined);
     if (hasEmptySections) {
-      setModalContent({
-        title: 'Incomplete Placement',
-        text: 'All ship sections must be placed before confirming placement.',
-        onClose: () => setModalContent(null),
-        isBlocking: false
-      });
+      console.warn('⚠️ Cannot confirm placement: All ship sections must be placed');
+      // TODO: Add error UI handling if needed
       return;
     }
 
     console.log(`🔧 Submitting placement to PhaseManager:`, localPlacedSections);
 
-    // Submit placement to ActionProcessor
+    const payload = {
+      phase: 'placement',
+      playerId: getLocalPlayerId(),
+      actionData: { placedSections: localPlacedSections }
+    };
+
+    // Guest mode: Send action to host
+    if (gameState.gameMode === 'guest') {
+      console.log('[GUEST] Sending ship placement commitment to host');
+      p2pManager.sendActionToHost('commitment', payload);
+      return;
+    }
+
+    // Host/Local mode: Submit placement to ActionProcessor
     try {
-      const submissionResult = await gameStateManager.actionProcessor.processCommitment({
-        phase: 'placement',
-        playerId: getLocalPlayerId(),
-        actionData: { placedSections: localPlacedSections }
-      });
+      const submissionResult = await gameStateManager.actionProcessor.processCommitment(payload);
 
       if (!submissionResult.success) {
         console.error('❌ Placement submission failed:', submissionResult.error);
-        setModalContent({
-          title: 'Placement Error',
-          text: submissionResult.error,
-          onClose: () => setModalContent(null),
-          isBlocking: false
-        });
+        // TODO: Add error UI handling if needed
         return;
       }
 
       console.log('✅ Placement submitted to PhaseManager');
 
-      // Show waiting message if in multiplayer and not both players complete
-      if (isMultiplayer() && !submissionResult.data.bothComplete) {
-        setModalContent({
-          title: 'Placement Confirmed',
-          text: 'Your ship placement has been confirmed. Waiting for opponent to complete their placement...',
-          onClose: () => setModalContent(null),
-          isBlocking: false
-        });
-      }
+      // Waiting screen will be shown automatically if in multiplayer and opponent not complete
+      // No modal needed - WaitingForOpponentScreen component handles this
 
     } catch (error) {
       console.error('❌ Error submitting placement:', error);
-      setModalContent({
-        title: 'Placement Error',
-        text: 'An error occurred while submitting placement. Please try again.',
-        onClose: () => setModalContent(null),
-        isBlocking: false
-      });
+      // TODO: Add error UI handling if needed
     }
   };
 
-  // Check completion status
-  const localPlayerCompletedPlacement = localPlacedSections && localPlacedSections.length === 3 && localPlacedSections.every(section => section !== null);
+  // Check completion status directly from gameState.commitments
+  const localPlayerId = getLocalPlayerId();
+  const opponentPlayerId = getOpponentPlayerId();
+  const localPlayerCompleted = gameState.commitments?.placement?.[localPlayerId]?.completed || false;
+  const opponentCompleted = gameState.commitments?.placement?.[opponentPlayerId]?.completed || false;
 
-  if (isMultiplayer() && localPhaseCompletion.placement && !opponentPhaseCompletion.placement) {
+  // DEBUG LOGGING - Remove after fixing multiplayer issue
+  console.log('🔍 [SHIP PLACEMENT] Render check:', {
+    gameMode: gameState.gameMode,
+    isMultiplayer: isMultiplayer(),
+    localPlayerId,
+    opponentPlayerId,
+    localPlayerCompleted,
+    opponentCompleted,
+    fullCommitmentsObject: gameState.commitments?.placement,
+    turnPhase,
+    willShowWaiting: isMultiplayer() && localPlayerCompleted && !opponentCompleted
+  });
+
+  // Show waiting screen in multiplayer when local player done but opponent still selecting
+  if (isMultiplayer() && localPlayerCompleted && !opponentCompleted) {
     const localSectionNames = localPlacedSections.map((section, index) => section ? section.name : 'Empty').join(', ');
     return (
       <WaitingForOpponentScreen

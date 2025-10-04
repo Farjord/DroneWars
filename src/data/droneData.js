@@ -1,6 +1,3 @@
-import { Shield, Bomb, Wrench, ShieldCheck, ChevronUp, Sword, ChevronRight, Target, Skull } from 'lucide-react';
-
-
 // --- DATA ---
 const fullDroneCollection = [
   { name: 'Scout Drone', class: 1, limit: 3, attack: 1, hull: 1, shields: 1, speed: 5, image: '/img/Scout.png', abilities: [],  upgradeSlots: 2 },
@@ -19,7 +16,6 @@ const fullDroneCollection = [
         name: 'Guardian Protocol',
         description: 'The ship section in this lane cannot be targeted by attacks while this drone is active.',
         type: 'PASSIVE',
-        icon: Shield,
         effect: { type: 'GRANT_KEYWORD', keyword: 'GUARDIAN' },
     }],
     upgradeSlots: 2 
@@ -33,11 +29,10 @@ const fullDroneCollection = [
     shields: 1, 
     speed: 1, 
     image: '/img/Bomber.png', 
-    abilities: [{ 
+    abilities: [{
         name: 'Tachyon Warhead',
         description: 'Deals +5 damage when attacking an enemy ship section.',
         type: 'PASSIVE',
-        icon: Bomb,
         effect: { type: 'BONUS_DAMAGE_VS_SHIP', value: 4 }
         }],
     upgradeSlots: 2 
@@ -50,7 +45,6 @@ const fullDroneCollection = [
         name: 'Hull Repair',
         description: 'Pay 1 Energy and exhaust to restore 3 hull to a damaged friendly drone in the same lane.',
         type: 'ACTIVE',
-        icon: Wrench,
         targeting: {
             type: 'DRONE',
             affinity: 'FRIENDLY',
@@ -64,19 +58,12 @@ const fullDroneCollection = [
   },
 { 
     name: 'Interceptor', 
-    class: 3, limit: 3, attack: 1, hull: 4, shields: 0, speed: 2, 
+    class: 3, limit: 3, attack: 1, hull: 4, shields: 0, speed: 6, 
     image: '/img/Interceptor.png',
     abilities: [{
-        name: 'Vigilant',
-        description: 'Can always intercept attacks in this lane, regardless of speed.',
-        type: 'PASSIVE',
-        icon: ShieldCheck,
-        effect: { type: 'GRANT_KEYWORD', keyword: 'ALWAYS_INTERCEPTS' }
-    }, {
         name: 'Defender',
         description: 'Does not exhaust when intercepting.',
         type: 'PASSIVE',
-        icon: Shield,
         effect: { type: 'GRANT_KEYWORD', keyword: 'DEFENDER' }
         }],
     upgradeSlots: 2 
@@ -89,7 +76,6 @@ const fullDroneCollection = [
         name: 'Shield Harmonizer',
         description: 'Other friendly drones in this lane gain +1 max shields.',
         type: 'PASSIVE',
-        icon: Shield,
         scope: 'FRIENDLY_IN_LANE',
         effect: { type: 'MODIFY_STAT', stat: 'shields', value: 1 }
         }],
@@ -108,7 +94,6 @@ const fullDroneCollection = [
       name: 'Self-Destruct',
       description: 'This drone is destroyed after it attacks.',
       type: 'PASSIVE',
-      icon: Skull,
       effect: { type: 'AFTER_ATTACK', subEffect: { type: 'DESTROY_SELF' } }
       }],
   upgradeSlots: 2 
@@ -122,7 +107,6 @@ const fullDroneCollection = [
         name: 'Long-Range Shot',
         description: 'Pay 1 Energy and exhaust to deal 4 damage to an enemy drone in any lane.',
         type: 'ACTIVE',
-        icon: Target,
         targeting: {
             type: 'DRONE',
             affinity: 'ENEMY',
@@ -163,11 +147,10 @@ const fullDroneCollection = [
         name: 'Vengeance Protocol',
         description: 'Gains +3 attack if the friendly ship section in this lane has taken hull damage.',
         type: 'PASSIVE',
-        icon: Sword,
         effect: {
             type: 'CONDITIONAL_MODIFY_STAT',
             mod: { stat: 'attack', value: 3 },
-            condition: { 
+            condition: {
                 type: 'SHIP_SECTION_HULL_DAMAGED',
                 location: 'SAME_LANE'
             }
@@ -188,7 +171,6 @@ const fullDroneCollection = [
         name: 'Veteran Instincts',
         description: 'Gains +1 attack permanently after it attacks.',
         type: 'PASSIVE',
-        icon: ChevronUp,
         effect: { type: 'AFTER_ATTACK', subEffect: { type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1, type: 'permanent' } } }
         }],
     upgradeSlots: 2 
@@ -206,7 +188,6 @@ const fullDroneCollection = [
         name: 'Retribution',
         description: 'Gains +1 attack for each of your damaged or critical ship sections.',
         type: 'PASSIVE',
-        icon: Sword,
         effect: {
             type: 'CONDITIONAL_MODIFY_STAT_SCALING',
             mod: { stat: 'attack', value: 1 },
@@ -230,7 +211,6 @@ const fullDroneCollection = [
         name: 'Flanking',
         description: 'Gains +1 attack and +2 speed while in an outer lane (Lane 1 or Lane 3).',
         type: 'PASSIVE',
-        icon: ChevronRight,
         effect: {
             type: 'FLANKING_BONUS',
             mods: [
@@ -255,7 +235,6 @@ const fullDroneCollection = [
         description: 'After this drone moves, permanently gain +1 Attack and +1 Speed.',
         type: 'TRIGGERED',
         trigger: 'ON_MOVE',
-        icon: ChevronRight,
         effects: [
             { type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1, type: 'permanent' } },
             { type: 'PERMANENT_STAT_MOD', mod: { stat: 'speed', value: 1, type: 'permanent' } }
@@ -271,7 +250,6 @@ const fullDroneCollection = [
         name: 'Nano Repair Swarm',
         description: 'Pay 1 Energy and exhaust to restore 1 hull to all damaged friendly drones in the same lane.',
         type: 'ACTIVE',
-        icon: Wrench,
         targeting: {
             type: 'LANE',
             affinity: 'FRIENDLY',

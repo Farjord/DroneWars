@@ -147,9 +147,9 @@
 /* Card wrapper with responsive scaling for compressed footer */
 .cardWrapper {
   @apply transition-all duration-300 ease-in-out;
-  transform: scale(0.9);
+  transform: scale(1.0);
   transform-origin: center center;
-  margin: 30px -10px -15px -10px;
+  margin: 50px 0 -5px 0;
 }
 
 @container gameFooter (min-width: 2560px) {

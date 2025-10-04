@@ -14,7 +14,6 @@ import LobbyScreen from './screens/LobbyScreen.jsx';
 import DroneSelectionScreen from './components/screens/DroneSelectionScreen.jsx';
 import DeckSelectionScreen from './components/screens/DeckSelectionScreen.jsx';
 import ShipPlacementScreen from './components/screens/ShipPlacementScreen.jsx';
-import DeckBuilder from './DeckBuilder.jsx';
 import App from './App.jsx';
 
 /**
@@ -42,8 +41,14 @@ function AppRouter() {
   // Note: SimultaneousActionManager functionality moved to ActionProcessor
   // Note: AIPhaseProcessor is initialized in LobbyScreen when player starts single-player game
 
-  // Initialize GameFlowManager with all managers
+  // Initialize GameFlowManager with all managers (ONLY for host/local, NOT for guest)
   useEffect(() => {
+    // Guest mode skips all manager initialization - guest is a thin client
+    if (gameState.gameMode === 'guest') {
+      console.log('🔄 Guest mode detected - skipping manager initialization');
+      return;
+    }
+
     if (!gameFlowInitialized.current) {
       gameFlowManager.initialize(
         gameStateManager,
@@ -56,7 +61,7 @@ function AppRouter() {
       gameStateManager.setGameFlowManager(gameFlowManager);
 
       gameFlowInitialized.current = true;
-      console.log('🔄 GameFlowManager initialized in AppRouter');
+      console.log('🔄 GameFlowManager initialized in AppRouter (host/local mode)');
     } else {
       console.log('🔄 GameFlowManager already initialized, skipping...');
     }
@@ -73,7 +78,7 @@ function AppRouter() {
         color: '#ffffff',
         fontFamily: 'Arial, sans-serif'
       }}>
-        <div>Loading Drone Wars...</div>
+        <div>Loading EREMOS...</div>
       </div>
     );
   }
@@ -94,9 +99,6 @@ function AppRouter() {
 
         case 'deckSelection':
           return <DeckSelectionScreen />;
-
-        case 'deckBuilding':
-          return <DeckBuilder />;
 
         case 'placement':
           return <ShipPlacementScreen />;

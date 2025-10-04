@@ -159,35 +159,79 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
     }
   };
 
+  // Debug logging
+  console.log('🎮 MultiplayerLobby rendering - mode:', mode, 'connectionStatus:', connectionStatus);
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
-      <div className="bg-slate-900 rounded-2xl border-2 border-purple-500 p-8 shadow-2xl shadow-purple-500/20 w-full max-w-md">
+    <div style={{
+      maxWidth: '500px',
+      width: '100%',
+      margin: '0 auto'
+    }}>
+      <div className="bg-slate-900 rounded-2xl border-2 border-purple-500 p-8 shadow-2xl shadow-purple-500/20"
+        style={{
+          backgroundColor: 'rgba(15, 23, 42, 0.95)',
+          borderColor: '#a855f7',
+          boxShadow: '0 20px 50px rgba(168, 85, 247, 0.2)'
+        }}>
 
         {/* Header */}
-        <div className="text-center mb-6">
-          <h2 className="text-3xl font-bold text-white mb-2 flex items-center justify-center gap-2">
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{
+            fontSize: '1.5rem',
+            fontWeight: 'bold',
+            color: '#ffffff',
+            marginBottom: '0.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem'
+          }}>
             <Users className="w-8 h-8 text-purple-400" />
-            Multiplayer
-          </h2>
-          <div className="mb-4">
+            Multiplayer Lobby
+          </h3>
+          <div style={{ marginBottom: '1rem' }}>
             {renderConnectionStatus()}
           </div>
         </div>
 
         {/* Error Display */}
         {error && (
-          <div className="bg-red-900/50 border border-red-500 rounded-lg p-3 mb-4">
-            <p className="text-red-300 text-sm">{error}</p>
+          <div style={{
+            backgroundColor: 'rgba(127, 29, 29, 0.5)',
+            border: '1px solid #ef4444',
+            borderRadius: '0.5rem',
+            padding: '0.75rem',
+            marginBottom: '1rem'
+          }}>
+            <p style={{ color: '#fca5a5', fontSize: '0.875rem' }}>{error}</p>
           </div>
         )}
 
         {/* Mode-specific content */}
         {mode === 'menu' && (
-          <div className="space-y-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <button
               onClick={handleHostGame}
               disabled={isLoading}
-              className="w-full bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+              style={{
+                width: '100%',
+                backgroundColor: isLoading ? '#4b5563' : '#9333ea',
+                color: '#ffffff',
+                fontWeight: 'bold',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '0.5rem',
+                border: 'none',
+                cursor: isLoading ? 'not-allowed' : 'pointer',
+                transition: 'background-color 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                fontSize: '1rem'
+              }}
+              onMouseOver={(e) => !isLoading && (e.target.style.backgroundColor = '#7c3aed')}
+              onMouseOut={(e) => !isLoading && (e.target.style.backgroundColor = '#9333ea')}
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -197,21 +241,48 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
               Host Game
             </button>
 
-            <div className="text-center text-gray-400 text-sm">or</div>
+            <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>or</div>
 
-            <div className="space-y-2">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <input
                 type="text"
                 placeholder="Enter 6-digit room code"
                 value={inputRoomCode}
                 onChange={(e) => setInputRoomCode(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
-                className="w-full bg-slate-800 border border-gray-600 rounded-lg px-4 py-3 text-white text-center text-lg tracking-widest"
+                style={{
+                  width: '100%',
+                  backgroundColor: '#1e293b',
+                  border: '1px solid #4b5563',
+                  borderRadius: '0.5rem',
+                  padding: '0.75rem 1rem',
+                  color: '#ffffff',
+                  textAlign: 'center',
+                  fontSize: '1.125rem',
+                  letterSpacing: '0.1em'
+                }}
                 maxLength={6}
               />
               <button
                 onClick={handleJoinGame}
                 disabled={isLoading || inputRoomCode.length !== 6}
-                className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2"
+                style={{
+                  width: '100%',
+                  backgroundColor: (isLoading || inputRoomCode.length !== 6) ? '#4b5563' : '#0891b2',
+                  color: '#ffffff',
+                  fontWeight: 'bold',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '0.5rem',
+                  border: 'none',
+                  cursor: (isLoading || inputRoomCode.length !== 6) ? 'not-allowed' : 'pointer',
+                  transition: 'background-color 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  fontSize: '1rem'
+                }}
+                onMouseOver={(e) => !(isLoading || inputRoomCode.length !== 6) && (e.target.style.backgroundColor = '#0e7490')}
+                onMouseOut={(e) => !(isLoading || inputRoomCode.length !== 6) && (e.target.style.backgroundColor = '#0891b2')}
               >
                 {isLoading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -225,22 +296,39 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
         )}
 
         {mode === 'waiting' && (
-          <div className="text-center space-y-4">
-            <div className="bg-slate-800 rounded-lg p-4">
-              <p className="text-gray-300 mb-2">Share this room code:</p>
-              <div className="flex items-center justify-center gap-2">
-                <code className="text-2xl font-mono text-white bg-slate-700 px-4 py-2 rounded">
+          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ backgroundColor: '#1e293b', borderRadius: '0.5rem', padding: '1rem' }}>
+              <p style={{ color: '#d1d5db', marginBottom: '0.5rem' }}>Share this room code:</p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                <code style={{
+                  fontSize: '1.5rem',
+                  fontFamily: 'monospace',
+                  color: '#ffffff',
+                  backgroundColor: '#334155',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '0.25rem'
+                }}>
                   {roomCode}
                 </code>
                 <button
                   onClick={handleCopyRoomCode}
-                  className="bg-purple-600 hover:bg-purple-700 text-white p-2 rounded transition-colors"
+                  style={{
+                    backgroundColor: '#9333ea',
+                    color: '#ffffff',
+                    padding: '0.5rem',
+                    borderRadius: '0.25rem',
+                    border: 'none',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseOver={(e) => e.target.style.backgroundColor = '#7c3aed'}
+                  onMouseOut={(e) => e.target.style.backgroundColor = '#9333ea'}
                 >
                   {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                 </button>
               </div>
             </div>
-            <div className="flex items-center justify-center gap-2 text-yellow-400">
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', color: '#facc15' }}>
               <Loader2 className="w-5 h-5 animate-spin" />
               <span>Waiting for opponent to join...</span>
             </div>
@@ -248,20 +336,38 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
         )}
 
         {mode === 'connected' && (
-          <div className="text-center space-y-4">
-            <div className="bg-green-900/50 border border-green-500 rounded-lg p-4">
-              <p className="text-green-300">
+          <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{
+              backgroundColor: 'rgba(20, 83, 45, 0.5)',
+              border: '1px solid #22c55e',
+              borderRadius: '0.5rem',
+              padding: '1rem'
+            }}>
+              <p style={{ color: '#86efac' }}>
                 ✅ Connected to opponent!
               </p>
               {roomCode && (
-                <p className="text-gray-400 text-sm mt-1">
+                <p style={{ color: '#9ca3af', fontSize: '0.875rem', marginTop: '0.25rem' }}>
                   Room: {roomCode}
                 </p>
               )}
             </div>
             <button
               onClick={handleStartGame}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+              style={{
+                width: '100%',
+                backgroundColor: '#16a34a',
+                color: '#ffffff',
+                fontWeight: 'bold',
+                padding: '0.75rem 1.5rem',
+                borderRadius: '0.5rem',
+                border: 'none',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s',
+                fontSize: '1rem'
+              }}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#15803d'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#16a34a'}
             >
               Start Game
             </button>
@@ -269,19 +375,32 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
         )}
 
         {(mode === 'host' || mode === 'join') && isLoading && (
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-purple-400 mx-auto mb-4" />
-            <p className="text-gray-300">
+          <div style={{ textAlign: 'center' }}>
+            <Loader2 className="w-8 h-8 animate-spin text-purple-400" style={{ margin: '0 auto 1rem auto', color: '#c084fc' }} />
+            <p style={{ color: '#d1d5db' }}>
               {mode === 'host' ? 'Creating room...' : 'Joining room...'}
             </p>
           </div>
         )}
 
         {/* Footer */}
-        <div className="mt-6 pt-4 border-t border-gray-700">
+        <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #374151' }}>
           <button
             onClick={handleBack}
-            className="w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+            style={{
+              width: '100%',
+              backgroundColor: '#4b5563',
+              color: '#ffffff',
+              fontWeight: 'bold',
+              padding: '0.5rem 1rem',
+              borderRadius: '0.5rem',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'background-color 0.2s',
+              fontSize: '1rem'
+            }}
+            onMouseOver={(e) => e.target.style.backgroundColor = '#374151'}
+            onMouseOut={(e) => e.target.style.backgroundColor = '#4b5563'}
           >
             {connectionStatus !== 'disconnected' ? 'Disconnect & Back' : 'Back'}
           </button>

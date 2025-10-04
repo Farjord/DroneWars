@@ -1,8 +1,8 @@
 // ========================================
-// DRONE CARD COMPONENT
+// DRONE CARD COMPONENT - CLEAN VERSION
 // ========================================
-// Renders individual drone cards with stats, abilities, and deployment info
-// Supports upgrade system, selection states, and interactive targeting
+// Base size: 240px × 320px (default footer size)
+// Accepts optional scale prop for enlargement in modals
 
 import React, { useMemo } from 'react';
 import { Sword, Rocket, Bolt } from 'lucide-react';
@@ -11,17 +11,16 @@ import ScalingText from './ScalingText.jsx';
 
 /**
  * DRONE CARD COMPONENT
- * Renders a drone card with stats, abilities, and deployment information.
- * Supports upgrades, selection states, and interactive elements.
- * @param {Object} drone - Drone data object
- * @param {Function} onClick - Callback when card is clicked
- * @param {boolean} isSelectable - Whether the card can be selected
- * @param {boolean} isSelected - Whether the card is currently selected
- * @param {number} deployedCount - Number of this drone type deployed
- * @param {boolean} ignoreDeployLimit - Whether to ignore deployment limits
- * @param {Array} appliedUpgrades - Array of applied upgrade objects
- * @param {boolean} isUpgradeTarget - Whether this card is targeted for upgrade
- * @param {Function} onViewUpgrades - Callback to view applied upgrades
+ * @param {Object} drone - Drone data
+ * @param {Function} onClick - Click handler
+ * @param {boolean} isSelectable - Whether card can be selected
+ * @param {boolean} isSelected - Whether card is selected
+ * @param {number} deployedCount - Number deployed
+ * @param {boolean} ignoreDeployLimit - Ignore limit
+ * @param {Array} appliedUpgrades - Applied upgrades
+ * @param {boolean} isUpgradeTarget - Is upgrade target
+ * @param {Function} onViewUpgrades - View upgrades handler
+ * @param {number} scale - Optional scale multiplier (default: 1.0)
  */
 const DroneCard = ({
   drone,
@@ -32,7 +31,8 @@ const DroneCard = ({
   ignoreDeployLimit = false,
   appliedUpgrades = [],
   isUpgradeTarget = false,
-  onViewUpgrades
+  onViewUpgrades,
+  scale = 1.0
 }) => {
   // Calculate effective limit with upgrades
   let effectiveLimit = drone.limit;
@@ -43,7 +43,7 @@ const DroneCard = ({
   const atLimit = deployedCount >= effectiveLimit;
   const isInteractive = isSelectable && (!atLimit || ignoreDeployLimit);
 
-  // Calculate effective stats and determine colors
+  // Calculate effective stats
   const effectiveCardStats = useMemo(() => {
     const stats = { attack: drone.attack, speed: drone.speed, cost: drone.class };
     appliedUpgrades.forEach(upg => {
@@ -58,7 +58,7 @@ const DroneCard = ({
 
   const deploymentCost = effectiveCardStats.cost;
 
-  // Color calculations for stat changes
+  // Color calculations
   const isAttackBuffed = effectiveCardStats.attack > drone.attack;
   const isAttackDebuffed = effectiveCardStats.attack < drone.attack;
   const attackTextColor = isAttackBuffed ? 'text-green-400' : isAttackDebuffed ? 'text-red-400' : 'text-white';
@@ -76,23 +76,30 @@ const DroneCard = ({
 
   const { name, image, hull, shields, abilities } = drone;
 
+  // Apply scale transform if provided
+  const scaleStyle = scale !== 1.0 ? {
+    transform: `scale(${scale})`,
+    transformOrigin: 'center center'
+  } : {};
+
   return (
     <div
       onClick={isInteractive ? () => onClick(drone) : undefined}
       className={`
-        w-60 h-[320px] rounded-lg p-[2px] relative group
+        w-[225px] h-[275px] rounded-lg p-[2px] relative group
         transition-all duration-200
         ${isInteractive ? 'cursor-pointer' : 'cursor-not-allowed'}
         ${isSelected ? 'bg-cyan-400' : 'bg-cyan-800/80'}
         ${!isInteractive ? 'opacity-60' : ''}
         ${isUpgradeTarget ? 'ring-4 ring-purple-500 animate-pulse' : ''}
       `}
-      style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)' }}
+      style={{
+        clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)',
+        ...scaleStyle
+      }}
     >
       <div
-        className={`
-          w-full h-full relative flex flex-col font-orbitron text-cyan-300 overflow-hidden
-        `}
+        className="w-full h-full relative flex flex-col font-orbitron text-cyan-300 overflow-hidden"
         style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)' }}
       >
         {/* Background Image */}
@@ -108,7 +115,6 @@ const DroneCard = ({
 
           {/* Stats Section */}
           <div className="flex justify-between items-center px-2 flex-shrink-0 mt-2 h-12">
-            {/* Attack Hexagon */}
             <div className="w-10 h-12">
               <CardStatHexagon
                 value={effectiveCardStats.attack}
@@ -119,7 +125,6 @@ const DroneCard = ({
               />
             </div>
 
-            {/* Center Hull and Shields */}
             <div className="flex flex-col items-center gap-1">
               <div className="flex w-full justify-center gap-1.5 min-h-[12px]">
                 {shields > 0 && Array.from({ length: shields }).map((_, i) => (
@@ -143,7 +148,6 @@ const DroneCard = ({
               </div>
             </div>
 
-            {/* Speed Hexagon */}
             <div className="w-12 h-12">
               <CardStatHexagon
                 value={effectiveCardStats.speed}
@@ -181,11 +185,10 @@ const DroneCard = ({
               </div>
             </div>
 
-            {/* Upgrade Counter */}
             {drone.upgradeSlots > 0 && (
               <button
                 onClick={(e) => {
-                  e.stopPropagation(); // Prevents the main card onClick from firing
+                  e.stopPropagation();
                   if (onViewUpgrades) onViewUpgrades(drone, appliedUpgrades);
                 }}
                 className="flex flex-col items-center cursor-pointer group"

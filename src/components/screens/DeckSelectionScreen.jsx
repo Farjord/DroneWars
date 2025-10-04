@@ -10,6 +10,9 @@ import { WaitingForOpponentScreen } from './DroneSelectionScreen.jsx';
 import { gameEngine, startingDecklist } from '../../logic/gameLogic.js';
 import gameFlowManager from '../../state/GameFlowManager.js';
 import gameStateManager from '../../state/GameStateManager.js';
+import p2pManager from '../../network/P2PManager.js';
+import DeckBuilder from '../../DeckBuilder.jsx';
+import fullCardCollection from '../../data/cardData.js';
 
 /**
  * DECK SELECTION SCREEN COMPONENT
@@ -20,6 +23,7 @@ function DeckSelectionScreen() {
   const {
     gameState,
     getLocalPlayerId,
+    getOpponentPlayerId,
     isMultiplayer,
     getLocalPlayerState,
     getOpponentPlayerState,
@@ -30,45 +34,9 @@ function DeckSelectionScreen() {
   const localPlayerState = getLocalPlayerState();
   const opponentPlayerState = getOpponentPlayerState();
 
-  // Local state for phase completion tracking
-  const [localPhaseCompletion, setLocalPhaseCompletion] = useState({
-    deckSelection: false
-  });
-  const [opponentPhaseCompletion, setOpponentPhaseCompletion] = useState({
-    deckSelection: false
-  });
-
-  // Event listener for phase completion from PhaseManager
-  useEffect(() => {
-    const handlePhaseManagerEvent = (event) => {
-      const { type, phase, playerId } = event.detail || event;
-
-      console.log(`🔔 DeckSelectionScreen received PhaseManager event: ${type}`, { phase, playerId });
-
-      if (phase !== 'deckSelection') return;
-
-      if (type === 'playerCompleted') {
-        const isLocalPlayer = playerId === getLocalPlayerId();
-
-        if (isLocalPlayer) {
-          setLocalPhaseCompletion(prev => ({ ...prev, deckSelection: true }));
-        } else if (isMultiplayer()) {
-          setOpponentPhaseCompletion(prev => ({ ...prev, deckSelection: true }));
-        }
-      } else if (type === 'phaseCompleted') {
-        // Clear phase completion tracking when phase completes
-        setLocalPhaseCompletion(prev => ({ ...prev, deckSelection: false }));
-        setOpponentPhaseCompletion(prev => ({ ...prev, deckSelection: false }));
-      }
-    };
-
-    // Listen for PhaseManager events
-    window.addEventListener('phaseManagerEvent', handlePhaseManagerEvent);
-
-    return () => {
-      window.removeEventListener('phaseManagerEvent', handlePhaseManagerEvent);
-    };
-  }, [getLocalPlayerId, isMultiplayer]);
+  // Local state for deck building UI
+  const [showDeckBuilder, setShowDeckBuilder] = useState(false);
+  const [customDeck, setCustomDeck] = useState({});
 
   /**
    * HANDLE DECK CHOICE
@@ -86,12 +54,21 @@ function DeckSelectionScreen() {
       const localPlayerId = getLocalPlayerId();
       const standardDeck = gameEngine.buildDeckFromList(startingDecklist);
 
-      // Use ActionProcessor to submit deck selection commitment
-      const submissionResult = await gameStateManager.actionProcessor.processCommitment({
+      const payload = {
         phase: 'deckSelection',
         playerId: localPlayerId,
         actionData: { deck: standardDeck }
-      });
+      };
+
+      // Guest mode: Send action to host
+      if (gameState.gameMode === 'guest') {
+        console.log('[GUEST] Sending deck selection commitment to host');
+        p2pManager.sendActionToHost('commitment', payload);
+        return;
+      }
+
+      // Host/Local mode: Process action locally
+      const submissionResult = await gameStateManager.actionProcessor.processCommitment(payload);
 
       if (!submissionResult.success) {
         console.error('❌ Deck selection submission failed:', submissionResult.error);
@@ -109,29 +86,156 @@ function DeckSelectionScreen() {
       }, 'handleDeckChoice');
 
     } else if (choice === 'custom') {
-      console.log('🔧 Transitioning to deck building phase');
+      console.log('🔧 Opening custom deck builder');
 
-      // Transition to deck building phase through GameFlowManager
-      gameFlowManager.transitionToPhase('deckBuilding');
+      // Show deck builder UI (stay in deckSelection phase)
+      setShowDeckBuilder(true);
     }
   };
 
-  // Check completion status
-  const localPlayerHasDeck = localPlayerState.deck && localPlayerState.deck.length > 0;
+  /**
+   * HANDLE DECK CHANGE
+   * Updates the custom deck being built
+   */
+  const handleDeckChange = (cardId, quantity) => {
+    setCustomDeck(prev => ({
+      ...prev,
+      [cardId]: quantity
+    }));
+  };
 
-  console.log('Deck selection render check:', {
+  /**
+   * HANDLE CONFIRM DECK
+   * Submits the custom deck as a commitment
+   */
+  const handleConfirmDeck = async () => {
+    console.log('🔧 Confirming custom deck:', customDeck);
+
+    // Build deck array from deck object
+    const deckArray = [];
+    Object.entries(customDeck).forEach(([cardId, quantity]) => {
+      for (let i = 0; i < quantity; i++) {
+        const card = fullCardCollection.find(c => c.id === cardId);
+        if (card) {
+          deckArray.push(card);
+        }
+      }
+    });
+
+    // Shuffle the deck for random card draw order (same as standard deck)
+    const shuffledDeck = deckArray.sort(() => 0.5 - Math.random());
+    console.log(`🔀 Custom deck shuffled: ${shuffledDeck.length} cards`);
+
+    const localPlayerId = getLocalPlayerId();
+    const payload = {
+      phase: 'deckSelection',
+      playerId: localPlayerId,
+      actionData: { deck: shuffledDeck }
+    };
+
+    // Guest mode: Send action to host
+    if (gameState.gameMode === 'guest') {
+      console.log('[GUEST] Sending custom deck commitment to host');
+      p2pManager.sendActionToHost('commitment', payload);
+      setShowDeckBuilder(false);
+      return;
+    }
+
+    // Host/Local mode: Process action locally
+    const submissionResult = await gameStateManager.actionProcessor.processCommitment(payload);
+
+    if (!submissionResult.success) {
+      console.error('❌ Custom deck submission failed:', submissionResult.error);
+      return;
+    }
+
+    console.log('✅ Custom deck submitted to PhaseManager');
+
+    addLogEntry({
+      player: 'SYSTEM',
+      actionType: 'DECK_SELECTION',
+      source: 'Player Setup',
+      target: 'N/A',
+      outcome: 'Player selected a Custom Deck.'
+    }, 'handleConfirmDeck');
+
+    setShowDeckBuilder(false);
+  };
+
+  /**
+   * HANDLE IMPORT DECK
+   * Imports a deck from a deck code
+   */
+  const handleImportDeck = (deckCode) => {
+    try {
+      const importedDeck = {};
+      const pairs = deckCode.split(',');
+
+      for (const pair of pairs) {
+        const [cardId, quantity] = pair.split(':');
+        const qty = parseInt(quantity, 10);
+
+        if (!cardId || isNaN(qty)) {
+          return { success: false, message: 'Invalid deck code format.' };
+        }
+
+        // Verify card exists
+        const card = fullCardCollection.find(c => c.id === cardId);
+        if (!card) {
+          return { success: false, message: `Card ${cardId} not found.` };
+        }
+
+        importedDeck[cardId] = qty;
+      }
+
+      setCustomDeck(importedDeck);
+      return { success: true };
+    } catch (error) {
+      console.error('Error importing deck:', error);
+      return { success: false, message: 'Failed to parse deck code.' };
+    }
+  };
+
+  // Check completion status directly from gameState.commitments
+  const localPlayerId = getLocalPlayerId();
+  const opponentPlayerId = getOpponentPlayerId();
+  const localPlayerCompleted = gameState.commitments?.deckSelection?.[localPlayerId]?.completed || false;
+  const opponentCompleted = gameState.commitments?.deckSelection?.[opponentPlayerId]?.completed || false;
+
+  // DEBUG LOGGING - Remove after fixing multiplayer issue
+  console.log('🔍 [DECK SELECTION] Render check:', {
+    gameMode: gameState.gameMode,
     isMultiplayer: isMultiplayer(),
-    localPlayerHasDeck,
-    opponentPhaseCompletion_deckSelection: opponentPhaseCompletion.deckSelection,
+    localPlayerId,
+    opponentPlayerId,
+    localPlayerCompleted,
+    opponentCompleted,
+    fullCommitmentsObject: gameState.commitments?.deckSelection,
     turnPhase,
-    localPlayerDeckLength: localPlayerState.deck?.length
+    localPlayerDeckLength: localPlayerState.deck?.length,
+    willShowWaiting: isMultiplayer() && localPlayerCompleted && !opponentCompleted
   });
 
-  if (isMultiplayer() && localPlayerHasDeck && !opponentPhaseCompletion.deckSelection) {
+  // Show waiting screen in multiplayer when local player done but opponent still selecting
+  if (isMultiplayer() && localPlayerCompleted && !opponentCompleted) {
     return (
       <WaitingForOpponentScreen
         phase="deckSelection"
         localPlayerStatus="You have selected your deck and are ready to begin."
+      />
+    );
+  }
+
+  // Show deck builder if custom deck option selected
+  if (showDeckBuilder) {
+    return (
+      <DeckBuilder
+        selectedDrones={localPlayerState.dronePool}
+        fullCardCollection={fullCardCollection}
+        deck={customDeck}
+        onDeckChange={handleDeckChange}
+        onConfirmDeck={handleConfirmDeck}
+        onImportDeck={handleImportDeck}
       />
     );
   }

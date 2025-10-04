@@ -42,7 +42,7 @@ class ActionProcessor {
     this.gameStateManager = gameStateManager;
     this.gameDataService = GameDataService.getInstance(gameStateManager);
     this.animationManager = null;
-
+    this.pendingAnimationsForBroadcast = []; // Track animations for guest broadcasting
 
     // Wrapper function for game logic compatibility
     this.effectiveStatsWrapper = (drone, lane) => {
@@ -193,19 +193,6 @@ setAnimationManager(animationManager) {
       throw new Error(`Action ${type} is currently locked`);
     }
 
-    // Send to peer BEFORE processing locally (unless this is a network action)
-    if (!isNetworkAction && this.p2pManager && this.p2pManager.isConnected) {
-      const gameMode = this.gameStateManager.get('gameMode');
-      if (gameMode !== 'local') {
-        console.log(`[P2P ACTION] Sending action to peer:`, { type, payload });
-        this.p2pManager.sendData({
-          type: 'ACTION',
-          action: { type, payload },
-          timestamp: Date.now()
-        });
-      }
-    }
-
     // Set lock for this action type
     this.actionLocks[type] = true;
 
@@ -271,10 +258,25 @@ setAnimationManager(animationManager) {
         case 'energyReset':
           return await this.processEnergyReset(payload);
 
+        case 'destroyDrone':
+          return await this.processDestroyDrone(payload);
+
+        case 'addShield':
+          return await this.processAddShield(payload);
+
+        case 'resetShields':
+          return await this.processResetShields(payload);
+
         default:
           throw new Error(`Unknown action type: ${type}`);
       }
     } finally {
+      // Broadcast state to guest after action completes (host only)
+      // Skip if this is already a network action to prevent infinite loops
+      if (!isNetworkAction) {
+        this.broadcastStateToGuest();
+      }
+
       // Always release the lock
       this.actionLocks[type] = false;
     }
@@ -407,13 +409,9 @@ setAnimationManager(animationManager) {
       hasAnimationManager: !!this.animationManager
     });
 
-    if (this.animationManager) {
-      console.log('🎬 [AI ANIMATION DEBUG] Calling animationManager.executeAnimations()');
-      await this.animationManager.executeAnimations(animations);
-      console.log('🎬 [AI ANIMATION DEBUG] executeAnimations() completed');
-    } else {
-      console.warn('⚠️ [AI ANIMATION DEBUG] No animationManager available!');
-    }
+    console.log('🎬 [AI ANIMATION DEBUG] Calling executeAndCaptureAnimations()');
+    await this.executeAndCaptureAnimations(animations);
+    console.log('🎬 [AI ANIMATION DEBUG] executeAndCaptureAnimations() completed');
 
     // Update game state with results
     this.gameStateManager.setPlayerStates(
@@ -530,7 +528,7 @@ setAnimationManager(animationManager) {
     });
 
     // Check if targetId is a lane (for lane-targeted abilities)
-    if (targetId && targetId.startsWith('lane') && !targetDrone) {
+    if (targetId && typeof targetId === 'string' && targetId.startsWith('lane') && !targetDrone) {
       // Create a lane target object for lane-targeted abilities
       targetDrone = { id: targetId };
     }
@@ -570,9 +568,7 @@ setAnimationManager(animationManager) {
     }));
 
     // Execute animations if any exist
-    if (this.animationManager && animations.length > 0) {
-      await this.animationManager.executeAnimations(animations);
-    }
+    await this.executeAndCaptureAnimations(animations);
 
     // Update game state with results
     this.gameStateManager.setPlayerStates(
@@ -658,9 +654,7 @@ setAnimationManager(animationManager) {
       await new Promise(resolve => setTimeout(resolve, 50));
 
       // PHASE 3: Execute teleport animation and reveal drone partway through
-      const animationPromise = this.animationManager && animations.length > 0 ?
-        this.animationManager.executeAnimations(animations) :
-        Promise.resolve();
+      const animationPromise = this.executeAndCaptureAnimations(animations);
 
       // Get reveal timing from animation config
       const teleportConfig = this.animationManager?.animations?.TELEPORT_IN || { duration: 600, config: { revealAt: 0.7 } };
@@ -772,9 +766,7 @@ setAnimationManager(animationManager) {
     }));
 
     // Execute animations if any exist
-    if (this.animationManager && animations.length > 0) {
-      await this.animationManager.executeAnimations(animations);
-    }
+    await this.executeAndCaptureAnimations(animations);
 
     // Update game state with results
     this.gameStateManager.setPlayerStates(
@@ -923,9 +915,7 @@ setAnimationManager(animationManager) {
     }));
 
     // Execute animations if any exist
-    if (this.animationManager && animations.length > 0) {
-      await this.animationManager.executeAnimations(animations);
-    }
+    await this.executeAndCaptureAnimations(animations);
 
     // Update game state with results
     this.gameStateManager.setPlayerStates(
@@ -1143,7 +1133,7 @@ setAnimationManager(animationManager) {
       };
 
       // Execute phase announcement (blocks gameplay during display)
-      await this.animationManager.executeAnimations([phaseAnnouncementEvent]);
+      await this.executeAndCaptureAnimations([phaseAnnouncementEvent]);
 
       console.log(`🎬 [PHASE ANNOUNCEMENT] Announcement complete for: ${newPhase}`);
     }
@@ -1596,6 +1586,89 @@ setAnimationManager(animationManager) {
   }
 
   /**
+   * Process action from guest client (host only)
+   * Host receives guest actions and processes them authoritatively
+   * @param {Object} action - Action from guest {type, payload}
+   */
+  async processGuestAction(action) {
+    const gameMode = this.gameStateManager.get('gameMode');
+
+    if (gameMode !== 'host') {
+      console.warn('⚠️ processGuestAction should only be called by host');
+      return;
+    }
+
+    console.log('[HOST] Processing guest action:', action);
+
+    // Process the action normally on host side
+    const result = await this.queueAction({
+      type: action.type,
+      payload: action.payload,
+      isNetworkAction: true // Prevent re-broadcasting to guest
+    });
+
+    // After processing, broadcast updated state to guest
+    this.broadcastStateToGuest();
+
+    return result;
+  }
+
+  /**
+   * Execute animations and capture them for broadcasting to guest
+   * @param {Array} animations - Animation events to execute
+   */
+  async executeAndCaptureAnimations(animations) {
+    if (!animations || animations.length === 0) {
+      return;
+    }
+
+    // Capture animations for guest broadcasting (host only)
+    const gameMode = this.gameStateManager.get('gameMode');
+    if (gameMode === 'host') {
+      this.pendingAnimationsForBroadcast.push(...animations);
+    }
+
+    // Execute animations
+    if (this.animationManager) {
+      await this.animationManager.executeAnimations(animations);
+    }
+  }
+
+  /**
+   * Get and clear pending animations for broadcasting
+   * @returns {Array} Pending animations
+   */
+  getAndClearPendingAnimations() {
+    const animations = [...this.pendingAnimationsForBroadcast];
+    this.pendingAnimationsForBroadcast = [];
+    return animations;
+  }
+
+  /**
+   * Broadcast current game state to guest (host only)
+   * Called after every action that changes game state
+   */
+  broadcastStateToGuest() {
+    const gameMode = this.gameStateManager.get('gameMode');
+
+    if (gameMode !== 'host') {
+      return; // Only host broadcasts state
+    }
+
+    if (this.p2pManager && this.p2pManager.isConnected) {
+      const currentState = this.gameStateManager.getState();
+      const animations = this.getAndClearPendingAnimations();
+
+      console.log('📡 [ANIMATION BROADCAST] Sending state with animations:', {
+        animationCount: animations.length,
+        animations: animations.map(a => a.animationName)
+      });
+
+      this.p2pManager.broadcastState(currentState, animations);
+    }
+  }
+
+  /**
    * Process player pass action
    */
   async processPlayerPass(payload) {
@@ -1887,6 +1960,13 @@ setAnimationManager(animationManager) {
 
     console.log(`🤝 ActionProcessor: Processing ${phase} commitment for ${playerId}`);
 
+    // Guest guard: Guests should not process commitments locally
+    const gameMode = this.gameStateManager.get('gameMode');
+    if (gameMode === 'guest') {
+      console.warn('⚠️ Guest attempted processCommitment - should send to host instead');
+      return { success: false, error: 'Guest cannot process commitments locally' };
+    }
+
     // Get current state
     const currentState = this.gameStateManager.getState();
 
@@ -2013,13 +2093,15 @@ setAnimationManager(animationManager) {
           break;
 
         case 'allocateShields':
-          // AI shield allocation when implemented
+          // AI executes shield allocation
+          await aiPhaseProcessor.executeShieldAllocationTurn(currentState);
+          // After AI finishes allocating, commit the phase
           await this.queueAction({
             type: 'commitment',
             payload: {
               playerId: 'player2',
               phase: 'allocateShields',
-              actionData: { shieldAllocation: [] }
+              actionData: { committed: true }
             }
           });
           break;
@@ -2222,18 +2304,205 @@ setAnimationManager(animationManager) {
    * @returns {Object} Energy reset result
    */
   async processEnergyReset(payload) {
-    const { player1, player2 } = payload;
+    const { player1, player2, shieldsToAllocate, opponentShieldsToAllocate } = payload;
 
     console.log('⚡ ActionProcessor: Processing energy reset');
 
     // Update player states using setPlayerStates
     this.gameStateManager.setPlayerStates(player1, player2);
 
+    // Update shields to allocate if provided (round 2+ only)
+    if (shieldsToAllocate !== undefined) {
+      this.gameStateManager.setState({ shieldsToAllocate });
+    }
+    if (opponentShieldsToAllocate !== undefined) {
+      this.gameStateManager.setState({ opponentShieldsToAllocate });
+    }
+
+    console.log(`✅ Energy reset complete - Shields to allocate: ${shieldsToAllocate || 0}, ${opponentShieldsToAllocate || 0}`);
+
     return {
       success: true,
       message: 'Energy reset completed',
       player1,
-      player2
+      player2,
+      shieldsToAllocate,
+      opponentShieldsToAllocate
+    };
+  }
+
+  /**
+   * Process drone destruction
+   * Handles mandatoryDroneRemoval phase and other drone destruction scenarios
+   * @param {Object} payload - { droneId, playerId }
+   * @returns {Object} Destruction result
+   */
+  async processDestroyDrone(payload) {
+    const { droneId, playerId } = payload;
+
+    console.log(`💥 ActionProcessor: Processing drone destruction for ${playerId}, drone ${droneId}`);
+
+    // Guest guard: Guests should send actions to host, not process locally
+    const gameMode = this.gameStateManager.get('gameMode');
+    if (gameMode === 'guest') {
+      console.warn('⚠️ Guest attempted processDestroyDrone - should send to host instead');
+      return { success: false, error: 'Guest cannot destroy drones locally' };
+    }
+
+    // Get current player state
+    const currentState = this.gameStateManager.getState();
+    const playerState = currentState[playerId];
+
+    if (!playerState) {
+      return { success: false, error: `Player ${playerId} not found` };
+    }
+
+    // Find drone lane
+    const lane = gameEngine.getLaneOfDrone(droneId, playerState);
+    if (!lane) {
+      return { success: false, error: `Drone ${droneId} not found on board` };
+    }
+
+    // Find the actual drone object
+    const drone = playerState.dronesOnBoard[lane].find(d => d.id === droneId);
+    if (!drone) {
+      return { success: false, error: `Drone ${droneId} not found in lane ${lane}` };
+    }
+
+    // Create immutable copy of player state
+    let newPlayerState = {
+      ...playerState,
+      dronesOnBoard: { ...playerState.dronesOnBoard }
+    };
+
+    // Remove drone from lane
+    newPlayerState.dronesOnBoard[lane] = newPlayerState.dronesOnBoard[lane].filter(d => d.id !== droneId);
+
+    // Apply destruction updates (like deployedDroneCounts)
+    const onDestroyUpdates = gameEngine.onDroneDestroyed(newPlayerState, drone);
+    Object.assign(newPlayerState, onDestroyUpdates);
+
+    // Get opponent state and placed sections for aura updates
+    const opponentPlayerId = playerId === 'player1' ? 'player2' : 'player1';
+    const opponentPlayerState = currentState[opponentPlayerId];
+    const placedSections = {
+      player1: currentState.placedSections,
+      player2: currentState.opponentPlacedSections
+    };
+
+    // Update auras
+    newPlayerState.dronesOnBoard = gameEngine.updateAuras(newPlayerState, opponentPlayerState, placedSections);
+
+    // Update GameStateManager with new player state
+    this.gameStateManager.updatePlayerState(playerId, newPlayerState);
+
+    console.log(`✅ Drone ${droneId} destroyed successfully from ${lane}`);
+
+    return {
+      success: true,
+      message: `Drone destroyed from ${lane}`,
+      droneId,
+      lane,
+      droneName: drone.name
+    };
+  }
+
+  /**
+   * Process adding a shield during allocation phase
+   * @param {Object} payload - { sectionName, playerId }
+   * @returns {Object} Shield addition result
+   */
+  async processAddShield(payload) {
+    const { sectionName, playerId } = payload;
+
+    console.log(`🛡️ ActionProcessor: Processing shield addition for ${playerId}, section ${sectionName}`);
+
+    // Guest guard: Guests should send actions to host
+    const gameMode = this.gameStateManager.get('gameMode');
+    if (gameMode === 'guest') {
+      console.warn('⚠️ Guest attempted processAddShield - should send to host instead');
+      return { success: false, error: 'Guest cannot add shields locally' };
+    }
+
+    // Get current game state
+    const currentState = this.gameStateManager.getState();
+
+    // Determine which shieldsToAllocate to use
+    const shieldsToAllocateKey = playerId === 'player1' ? 'shieldsToAllocate' : 'opponentShieldsToAllocate';
+
+    // Process shield allocation via game engine
+    const result = gameEngine.processShieldAllocation(
+      { ...currentState, shieldsToAllocate: currentState[shieldsToAllocateKey] },
+      playerId,
+      sectionName
+    );
+
+    if (!result.success) {
+      console.warn(`⚠️ Shield allocation failed: ${result.error}`);
+      return result;
+    }
+
+    // Update player state
+    this.gameStateManager.updatePlayerState(playerId, result.newPlayerState);
+
+    // Update shields to allocate count
+    this.gameStateManager.setState({
+      [shieldsToAllocateKey]: result.newShieldsToAllocate
+    });
+
+    console.log(`✅ Shield added to ${sectionName}, ${result.newShieldsToAllocate} shields remaining`);
+
+    return {
+      success: true,
+      message: `Shield added to ${sectionName}`,
+      sectionName,
+      shieldsRemaining: result.newShieldsToAllocate
+    };
+  }
+
+  /**
+   * Process shield allocation reset
+   * @param {Object} payload - { playerId }
+   * @returns {Object} Shield reset result
+   */
+  async processResetShields(payload) {
+    const { playerId } = payload;
+
+    console.log(`🔄 ActionProcessor: Processing shield allocation reset for ${playerId}`);
+
+    // Guest guard: Guests should send actions to host
+    const gameMode = this.gameStateManager.get('gameMode');
+    if (gameMode === 'guest') {
+      console.warn('⚠️ Guest attempted processResetShields - should send to host instead');
+      return { success: false, error: 'Guest cannot reset shields locally' };
+    }
+
+    // Get current game state
+    const currentState = this.gameStateManager.getState();
+
+    // Process shield reset via game engine
+    const result = gameEngine.processResetShieldAllocation(currentState, playerId);
+
+    if (!result.success) {
+      console.warn(`⚠️ Shield reset failed: ${result.error}`);
+      return result;
+    }
+
+    // Update player state
+    this.gameStateManager.updatePlayerState(playerId, result.newPlayerState);
+
+    // Update shields to allocate count
+    const shieldsToAllocateKey = playerId === 'player1' ? 'shieldsToAllocate' : 'opponentShieldsToAllocate';
+    this.gameStateManager.setState({
+      [shieldsToAllocateKey]: result.newShieldsToAllocate
+    });
+
+    console.log(`✅ Shield allocation reset, ${result.newShieldsToAllocate} shields available`);
+
+    return {
+      success: true,
+      message: 'Shield allocation reset',
+      shieldsToAllocate: result.newShieldsToAllocate
     };
   }
 

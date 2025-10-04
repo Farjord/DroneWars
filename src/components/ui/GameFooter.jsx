@@ -1,8 +1,8 @@
 // ========================================
-// GAME FOOTER COMPONENT
+// GAME FOOTER COMPONENT - CLEAN VERSION
 // ========================================
-// Footer section with tabbed interface for Hand, Drones, and Log
-// Extracted from App.jsx for better component organization
+// Simplified responsive design using media queries
+// Cards display at natural size - no transform scaling
 
 import React from 'react';
 import { ChevronUp } from 'lucide-react';
@@ -12,8 +12,9 @@ import LogView from './footer/LogView.jsx';
 import styles from './GameFooter.module.css';
 
 /**
- * GameFooter - Footer with tabbed interface for hand cards, drone pool, and game log
- * Responsive height: starts at ~274px total at 1920px (including tabs), scales up on larger screens
+ * GameFooter - Tabbed interface for hand cards, drone pool, and game log
+ * Baseline (1920px): ~254px total height
+ * Scales up on larger screens via media queries
  */
 function GameFooter({
   localPlayerState,
@@ -54,6 +55,7 @@ function GameFooter({
 }) {
   return (
     <footer className={styles.footer}>
+      {/* Tab Buttons */}
       <div className={styles.tabContainer}>
         <button
           onClick={() => handleFooterButtonClick('hand')}
@@ -98,10 +100,12 @@ function GameFooter({
         </button>
       </div>
 
+      {/* Content Container */}
       <div className={`${styles.contentContainer} ${
         isFooterOpen ? styles.contentOpen : styles.contentClosed
       }`}>
         <div className={styles.contentWrapper}>
+          {/* Multi-select Overlay */}
           {multiSelectState && (
             <div className={styles.multiSelectOverlay}>
               <span className={styles.multiSelectText}>
@@ -141,6 +145,7 @@ function GameFooter({
             </div>
           )}
 
+          {/* View Content */}
           {footerView === 'hand' && (
             <div className={styles.viewContent}>
               <HandView
@@ -169,6 +174,7 @@ function GameFooter({
               />
             </div>
           )}
+
           {footerView === 'drones' && (
             <div className={styles.viewContent}>
               <DronesView
@@ -188,6 +194,7 @@ function GameFooter({
               />
             </div>
           )}
+
           {footerView === 'log' && (
             <div className={styles.viewContent}>
               <LogView

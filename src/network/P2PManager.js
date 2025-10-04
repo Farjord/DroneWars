@@ -192,7 +192,31 @@ class P2PManager {
       console.log('Received P2P data:', data);
 
       switch (data.type) {
+        case 'STATE_UPDATE':
+          // Host sending full state update to guest
+          // Emit to GameStateManager for direct application
+          console.log('[P2P GUEST] Received state update with animations:', {
+            hasAnimations: data.animations && data.animations.length > 0,
+            animationCount: data.animations?.length || 0
+          });
+          this.emit('state_update_received', {
+            state: data.state,
+            animations: data.animations || []
+          });
+          break;
+
+        case 'GUEST_ACTION':
+          // Guest sending action request to host
+          // Route through ActionProcessor for processing
+          if (this.actionProcessor) {
+            await this.actionProcessor.processGuestAction(data.action);
+          } else {
+            console.error('ActionProcessor not set - cannot process guest action');
+          }
+          break;
+
         case 'ACTION':
+          // Legacy action sync (backwards compatibility)
           // Route actions through ActionProcessor
           if (this.actionProcessor) {
             await this.actionProcessor.processNetworkAction(data);
@@ -238,6 +262,66 @@ class P2PManager {
       }
     } else {
       console.warn('Attempted to send data but no connection available');
+    }
+  }
+
+  /**
+   * Broadcast game state to peer (host → guest)
+   * @param {Object} state - Complete game state to broadcast
+   * @param {Array} animations - Animation events to send to guest (optional)
+   */
+  broadcastState(state, animations = []) {
+    if (!this.isHost) {
+      console.warn('Only host can broadcast state');
+      return;
+    }
+
+    if (this.connection && this.isConnected) {
+      try {
+        this.connection.send({
+          type: 'STATE_UPDATE',
+          state: state,
+          animations: animations,
+          timestamp: Date.now()
+        });
+        console.log('[P2P HOST] Broadcasted state update to guest', {
+          hasAnimations: animations.length > 0,
+          animationCount: animations.length
+        });
+      } catch (error) {
+        console.error('Failed to broadcast state:', error);
+        this.emit('send_error', { error: error.message });
+      }
+    } else {
+      console.warn('Cannot broadcast state - no connection available');
+    }
+  }
+
+  /**
+   * Send action to host (guest → host)
+   * @param {string} actionType - Type of action
+   * @param {Object} payload - Action payload
+   */
+  sendActionToHost(actionType, payload) {
+    if (this.isHost) {
+      console.warn('Host should not send actions to itself');
+      return;
+    }
+
+    if (this.connection && this.isConnected) {
+      try {
+        this.connection.send({
+          type: 'GUEST_ACTION',
+          action: { type: actionType, payload },
+          timestamp: Date.now()
+        });
+        console.log('[P2P GUEST] Sent action to host:', actionType);
+      } catch (error) {
+        console.error('Failed to send action to host:', error);
+        this.emit('send_error', { error: error.message });
+      }
+    } else {
+      console.warn('Cannot send action - no connection to host');
     }
   }
 
