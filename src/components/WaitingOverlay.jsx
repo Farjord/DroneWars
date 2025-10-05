@@ -5,6 +5,7 @@
 // Shows turn status with shimmer gradient text
 
 import React from 'react';
+import MorphingBackground from './ui/AngularBandsBackground.jsx';
 
 const WaitingOverlay = ({ isVisible, currentPlayer, gameMode, roomCode, lastAction, localPlayerState, opponentPlayerState, getLocalPlayerId }) => {
   if (!isVisible) return null;
@@ -13,8 +14,9 @@ const WaitingOverlay = ({ isVisible, currentPlayer, gameMode, roomCode, lastActi
 
   return (
     <div className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+      <MorphingBackground />
       <h1
-        className="text-6xl font-orbitron font-black uppercase tracking-widest text-center phase-announcement-shine"
+        className="text-6xl font-orbitron font-black uppercase tracking-widest text-center phase-announcement-shine relative z-10"
         style={{
           background: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
           backgroundSize: '200% auto',

@@ -1,37 +1,22 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import ActionCard from './components/ui/ActionCard.jsx';
 
-
-// (The CardDetailPopup component remains the same as before)
+// Card detail popup using the actual ActionCard component
 const CardDetailPopup = ({ card, onClose }) => {
   if (!card) return null;
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="w-52 h-72 rounded-lg p-1 bg-purple-800/80 transform scale-150" onClick={e => e.stopPropagation()}>
-        <div className="w-full h-full bg-slate-900 flex flex-col font-orbitron text-purple-300 overflow-hidden rounded-md">
-          <div className="text-center py-1 px-2 bg-purple-900/50 flex justify-between items-center">
-            <span className="font-bold text-sm uppercase tracking-wider truncate">{card.name}</span>
-            <div className="flex items-center bg-slate-800/70 px-2 py-0.5 rounded-full">
-              <Bolt size={12} className="text-yellow-300" />
-              <span className="text-white font-bold text-sm ml-1">{card.cost}</span>
-            </div>
-          </div>
-          <div className="p-1">
-            <div className="relative h-24">
-              <img src={card.image} alt={card.name} className="w-full h-full object-cover rounded" />
-              <div className="absolute inset-0 border border-purple-400/50 rounded"></div>
-            </div>
-          </div>
-          <div className="flex-grow mx-2 my-1 bg-black/50 border border-purple-800/70 p-2 flex flex-col min-h-0">
-            <div className="flex-grow relative font-exo font-normal text-purple-200">
-              <p className="text-sm leading-tight text-center">{card.description}</p>
-            </div>
-          </div>
-          <div className="text-center text-xs py-1 bg-purple-900/50 uppercase font-semibold tracking-widest">
-            {card.type} Card
-          </div>
-        </div>
+      <div onClick={e => e.stopPropagation()}>
+        <ActionCard
+          card={card}
+          onClick={() => {}}
+          isPlayable={true}
+          isSelected={false}
+          isMandatoryTarget={false}
+          scale={1.5}
+        />
       </div>
     </div>
   );
@@ -414,10 +399,10 @@ const DeckBuilder = ({
         />
         <div className="flex justify-end gap-4 mt-4">
           <span className="text-green-400 self-center">{copySuccess}</span>
-          <button onClick={copyToClipboard} className="flex items-center gap-2 bg-cyan-600 text-white font-bold py-2 px-4 rounded hover:bg-cyan-700">
+          <button onClick={copyToClipboard} className="btn-confirm flex items-center gap-2">
             <Copy size={16} /> Copy to Clipboard
           </button>
-          <button onClick={() => setShowExportModal(false)} className="flex items-center gap-2 bg-pink-600 text-white font-bold py-2 px-4 rounded hover:bg-pink-700">
+          <button onClick={() => setShowExportModal(false)} className="btn-cancel flex items-center gap-2">
             <X size={16} /> Close
           </button>
         </div>
@@ -453,8 +438,8 @@ const DeckBuilder = ({
           />
           {error && <p className="text-red-500 mt-2">{error}</p>}
           <div className="flex justify-end gap-4 mt-4">
-            <button onClick={() => setShowImportModal(false)} className="bg-gray-600 text-white font-bold py-2 px-4 rounded hover:bg-gray-700">Cancel</button>
-            <button onClick={handleImport} className="bg-purple-600 text-white font-bold py-2 px-4 rounded hover:bg-purple-700">Load Deck</button>
+            <button onClick={() => setShowImportModal(false)} className="btn-cancel">Cancel</button>
+            <button onClick={handleImport} className="btn-confirm">Load Deck</button>
           </div>
         </div>
       </div>
@@ -472,10 +457,10 @@ const DeckBuilder = ({
         <h1 className="text-3xl font-orbitron font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">Deck Builder</h1>
         {/* --- NEW: Import/Export Buttons --- */}
         <div className="flex gap-4 ml-8">
-          <button onClick={() => setShowImportModal(true)} className="flex items-center gap-2 bg-slate-700 text-white font-bold py-2 px-4 rounded hover:bg-slate-600">
+          <button onClick={() => setShowImportModal(true)} className="btn-utility flex items-center gap-2">
             <Upload size={16} /> Import
           </button>
-          <button onClick={() => setShowExportModal(true)} className="flex items-center gap-2 bg-slate-700 text-white font-bold py-2 px-4 rounded hover:bg-slate-600">
+          <button onClick={() => setShowExportModal(true)} className="btn-utility flex items-center gap-2">
             <Download size={16} /> Export
           </button>
         </div>
@@ -484,13 +469,10 @@ const DeckBuilder = ({
       <div className="flex-grow flex gap-6 min-h-0">
 
         {/* Left Side: Available Cards Collection */}
-        <div className="w-2/3 flex flex-col bg-slate-900/50 rounded-lg p-4 border border-gray-700">
+        <div className="w-2/3 flex flex-col bg-slate-900/50 rounded-lg p-4 border border-gray-700 ml-[5px]">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-orbitron">Available Cards</h2>
-            <button
-              onClick={resetFilters}
-              className="bg-gray-600 hover:bg-gray-500 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm"
-            >
+            <button onClick={resetFilters} className="btn-reset">
               Reset Filters
             </button>
           </div>
@@ -605,15 +587,12 @@ const DeckBuilder = ({
         </div>
 
         {/* Right Side: Your Deck */}
-        <div className="w-1/3 flex flex-col bg-slate-900/50 rounded-lg p-4 border border-gray-700">
+        <div className="w-1/3 flex flex-col bg-slate-900/50 rounded-lg p-4 border border-gray-700 h-[calc(100vh-89px)] mr-[5px]">
           <div className="flex justify-between items-center mb-4">
             <h2 className={`text-xl font-orbitron transition-colors ${isDeckValid ? 'text-green-400' : 'text-white'}`}>
               Your Deck ({cardCount}/40)
             </h2>
-            <button
-              onClick={resetDeck}
-              className="bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm"
-            >
+            <button onClick={resetDeck} className="btn-reset">
               Reset Deck
             </button>
           </div>
@@ -753,7 +732,7 @@ const DeckBuilder = ({
             </div>
           )}
 
-                    <button onClick={onConfirmDeck} disabled={!isDeckValid} className="w-full p-4 mt-4 text-lg font-bold font-orbitron rounded-lg bg-purple-600 text-white transition-all duration-300 disabled:bg-gray-600 disabled:text-gray-400 disabled:cursor-not-allowed enabled:hover:bg-purple-500">Confirm Deck</button>
+                    <button onClick={onConfirmDeck} disabled={!isDeckValid} className="btn-confirm w-full p-4 mt-4 text-lg font-bold font-orbitron">Confirm Deck</button>
         </div>
       </div>
      </div>

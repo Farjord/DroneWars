@@ -74,7 +74,7 @@
 }
 
 .cardPile {
-  @apply flex flex-col items-center justify-center w-36 min-w-36;
+  @apply flex flex-col items-center justify-start w-36 min-w-36 self-start pt-4;
 }
 
 .deckCard {

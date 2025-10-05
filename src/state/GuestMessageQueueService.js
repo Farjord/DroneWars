@@ -123,7 +123,17 @@ class GuestMessageQueueService {
       animationCount: animations?.length || 0
     });
 
-    const hasAnimations = animations && animations.length > 0;
+    // Check if we have recent optimistic actions (client-side prediction)
+    const hasOptimisticActions = this.gameStateManager.hasRecentOptimisticActions();
+
+    // Skip animations if we processed this optimistically (already played animations)
+    const shouldSkipAnimations = hasOptimisticActions && animations && animations.length > 0;
+
+    if (shouldSkipAnimations) {
+      console.log('🔮 [GUEST QUEUE] Skipping animations - already played optimistically');
+    }
+
+    const hasAnimations = animations && animations.length > 0 && !shouldSkipAnimations;
 
     // Step 1: Setup render promise BEFORE applying state (prevents race condition)
     // Only create promise if animations are present - optimization for state-only updates

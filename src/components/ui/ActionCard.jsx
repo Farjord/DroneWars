@@ -105,7 +105,7 @@ const ActionCard = ({
             
             <div className="w-4 flex items-center justify-center">
               {goAgain && (
-                <RefreshCw size={14} className="text-cyan-400" />
+                <RefreshCw size={14} className="text-cyan-400" style={{ marginLeft: '-20px' }} />
               )}
             </div>
           </div>

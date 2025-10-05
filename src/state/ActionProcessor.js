@@ -1691,6 +1691,18 @@ setAnimationManager(animationManager) {
       outcome: `Passed during ${turnPhase} phase.`
     }, 'playerPass');
 
+    // Add pass notification animation
+    const animations = [{
+      animationName: 'PASS_NOTIFICATION',
+      payload: {
+        passingPlayerId: playerId
+      }
+    }];
+
+    if (this.animationManager) {
+      await this.animationManager.executeAnimations(animations);
+    }
+
     // Calculate pass info updates
     const opponentPassKey = `${opponentPlayerId}Passed`;
     const localPassKey = `${playerId}Passed`;
@@ -1730,15 +1742,7 @@ setAnimationManager(animationManager) {
       console.log('[PLAYER PASS DEBUG] Both players passed - GameFlowManager will handle phase transition');
     }
 
-    // Sync to P2P if multiplayer
-    if (this.p2pManager && this.p2pManager.isConnected) {
-      this.p2pManager.sendAction('playerPass', {
-        playerId,
-        playerName,
-        turnPhase,
-        passInfo: newPassInfo
-      });
-    }
+    // Note: State broadcasting handled by queueAction's finally block via broadcastStateToGuest()
 
     return {
       success: true,
@@ -1776,13 +1780,7 @@ setAnimationManager(animationManager) {
       outcome: `${aiPersonality} deployed ship sections: ${placement.join(', ')}`
     }, 'aiShipPlacement');
 
-    // Sync to P2P if multiplayer (though this shouldn't happen for AI placement)
-    if (this.p2pManager && this.p2pManager.isConnected) {
-      this.p2pManager.sendAction('aiShipPlacement', {
-        placement,
-        aiPersonality
-      });
-    }
+    // Note: State broadcasting handled by queueAction's finally block via broadcastStateToGuest()
 
     return {
       success: true,

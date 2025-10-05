@@ -3,7 +3,7 @@ import AnimationManager from '../state/AnimationManager.js';
 import FlashEffect from '../components/animations/FlashEffect.jsx';
 import CardVisualEffect from '../components/animations/CardVisualEffect.jsx';
 
-export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects) {
+export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications) {
   useEffect(() => {
     const localPlayerState = getLocalPlayerState();
     const opponentPlayerState = getOpponentPlayerState();
@@ -312,6 +312,29 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       }]);
     });
 
+    animationManager.registerVisualHandler('PASS_NOTIFICATION_EFFECT', (payload) => {
+      const { passingPlayerId, onComplete } = payload;
+
+      console.log('⏸️ [PASS NOTIFICATION DEBUG] PASS_NOTIFICATION_EFFECT handler called:', {
+        passingPlayerId
+      });
+
+      // Determine if this is the local player or opponent
+      const localPlayerId = gameStateManager.getLocalPlayerId();
+      const isLocalPlayer = passingPlayerId === localPlayerId;
+
+      const notificationId = `passnotif-${Date.now()}`;
+
+      setPassNotifications(prev => [...prev, {
+        id: notificationId,
+        label: isLocalPlayer ? 'You Passed' : 'Opponent Passed',
+        onComplete: () => {
+          setPassNotifications(prev => prev.filter(n => n.id !== notificationId));
+          onComplete?.();
+        }
+      }]);
+    });
+
     animationManager.registerVisualHandler('SHAKE_EFFECT', (payload) => {
       const { targetId, config, onComplete } = payload;
       const targetEl = droneRefs.current[targetId];
@@ -374,5 +397,5 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     gameStateManager.actionProcessor.setAnimationManager(animationManager);
     
     return unsubscribe;
-}, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects]);
+}, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications]);
 }

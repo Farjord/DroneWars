@@ -214,24 +214,8 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
             <button
               onClick={handleHostGame}
               disabled={isLoading}
-              style={{
-                width: '100%',
-                backgroundColor: isLoading ? '#4b5563' : '#9333ea',
-                color: '#ffffff',
-                fontWeight: 'bold',
-                padding: '0.75rem 1.5rem',
-                borderRadius: '0.5rem',
-                border: 'none',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
-                transition: 'background-color 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-                fontSize: '1rem'
-              }}
-              onMouseOver={(e) => !isLoading && (e.target.style.backgroundColor = '#7c3aed')}
-              onMouseOut={(e) => !isLoading && (e.target.style.backgroundColor = '#9333ea')}
+              className="btn-continue"
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -265,24 +249,8 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
               <button
                 onClick={handleJoinGame}
                 disabled={isLoading || inputRoomCode.length !== 6}
-                style={{
-                  width: '100%',
-                  backgroundColor: (isLoading || inputRoomCode.length !== 6) ? '#4b5563' : '#0891b2',
-                  color: '#ffffff',
-                  fontWeight: 'bold',
-                  padding: '0.75rem 1.5rem',
-                  borderRadius: '0.5rem',
-                  border: 'none',
-                  cursor: (isLoading || inputRoomCode.length !== 6) ? 'not-allowed' : 'pointer',
-                  transition: 'background-color 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem',
-                  fontSize: '1rem'
-                }}
-                onMouseOver={(e) => !(isLoading || inputRoomCode.length !== 6) && (e.target.style.backgroundColor = '#0e7490')}
-                onMouseOut={(e) => !(isLoading || inputRoomCode.length !== 6) && (e.target.style.backgroundColor = '#0891b2')}
+                className="btn-confirm"
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
               >
                 {isLoading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -352,23 +320,7 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
                 </p>
               )}
             </div>
-            <button
-              onClick={handleStartGame}
-              style={{
-                width: '100%',
-                backgroundColor: '#16a34a',
-                color: '#ffffff',
-                fontWeight: 'bold',
-                padding: '0.75rem 1.5rem',
-                borderRadius: '0.5rem',
-                border: 'none',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s',
-                fontSize: '1rem'
-              }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#15803d'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#16a34a'}
-            >
+            <button onClick={handleStartGame} className="btn-continue" style={{ width: '100%' }}>
               Start Game
             </button>
           </div>
@@ -385,23 +337,7 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
 
         {/* Footer */}
         <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #374151' }}>
-          <button
-            onClick={handleBack}
-            style={{
-              width: '100%',
-              backgroundColor: '#4b5563',
-              color: '#ffffff',
-              fontWeight: 'bold',
-              padding: '0.5rem 1rem',
-              borderRadius: '0.5rem',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'background-color 0.2s',
-              fontSize: '1rem'
-            }}
-            onMouseOver={(e) => e.target.style.backgroundColor = '#374151'}
-            onMouseOut={(e) => e.target.style.backgroundColor = '#4b5563'}
-          >
+          <button onClick={handleBack} className="btn-cancel" style={{ width: '100%' }}>
             {connectionStatus !== 'disconnected' ? 'Disconnect & Back' : 'Back'}
           </button>
         </div>

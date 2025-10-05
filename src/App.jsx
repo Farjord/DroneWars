@@ -70,6 +70,7 @@ import FlyingDrone from './components/animations/FlyingDrone.jsx';
 import FlashEffect from './components/animations/FlashEffect.jsx';
 import CardVisualEffect from './components/animations/CardVisualEffect.jsx';
 import CardRevealOverlay from './components/animations/CardRevealOverlay.jsx';
+import PassNotificationOverlay from './components/animations/PassNotificationOverlay.jsx';
 import PhaseAnnouncementOverlay from './components/animations/PhaseAnnouncementOverlay.jsx';
 import LaserEffect from './components/animations/LaserEffect.jsx';
 import TeleportEffect from './components/animations/TeleportEffect.jsx';
@@ -134,6 +135,7 @@ const App = () => {
   const [phaseAnnouncements, setPhaseAnnouncements] = useState([]);
   const [laserEffects, setLaserEffects] = useState([]);
   const [teleportEffects, setTeleportEffects] = useState([]);
+  const [passNotifications, setPassNotifications] = useState([]);
   const [animationBlocking, setAnimationBlocking] = useState(false);
   const [modalContent, setModalContent] = useState(null);
   const [deploymentConfirmation, setDeploymentConfirmation] = useState(null);
@@ -235,7 +237,8 @@ const App = () => {
   setCardReveals,
   setPhaseAnnouncements,
   setLaserEffects,
-  setTeleportEffects
+  setTeleportEffects,
+  setPassNotifications
 );
   // Refs for async operations (defined after gameState destructuring)
 
@@ -480,16 +483,27 @@ const App = () => {
    * Guest sends actions to host, host/local process normally
    */
   const processActionWithGuestRouting = useCallback(async (type, payload) => {
-    // Guest mode: Send action to host instead of processing locally
+    // Guest mode: Process locally for instant feedback AND send to host for authority
     if (gameState.gameMode === 'guest') {
-      console.log('[GUEST] Sending action to host:', type, payload);
+      console.log('[GUEST] Processing action locally (optimistic) and sending to host:', type, payload);
+
+      // Track this optimistic action for animation deduplication
+      gameStateManager.trackOptimisticAction(type, payload);
+
+      // Process action locally first for instant visual feedback (client-side prediction)
+      const localResult = await processAction(type, payload);
+
+      // Send to host for authoritative processing (parallel, non-blocking)
+      // Host will broadcast authoritative state which will reconcile via applyHostState
       p2pManager.sendActionToHost(type, payload);
-      return { success: true, isGuest: true };
+
+      // Return local result immediately so UI updates instantly
+      return localResult;
     }
 
     // Host/Local mode: Process action normally
     return await processAction(type, payload);
-  }, [gameState.gameMode, processAction]);
+  }, [gameState.gameMode, processAction, p2pManager, gameStateManager]);
 
   // --- 6.1 MULTIPLAYER PHASE SYNCHRONIZATION ---
   // Handlers for coordinating game phases in multiplayer mode
@@ -2382,6 +2396,13 @@ const App = () => {
         phaseText={announcement.phaseText}
         subtitle={announcement.subtitle}
         onComplete={announcement.onComplete}
+      />
+    ))}
+    {passNotifications.map(notification => (
+      <PassNotificationOverlay
+        key={notification.id}
+        label={notification.label}
+        onComplete={notification.onComplete}
       />
     ))}
     {laserEffects.map(laser => (

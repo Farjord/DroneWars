@@ -197,7 +197,7 @@ function DroneSelectionScreen() {
   const isSelectionComplete = tempSelectedDrones.length === 5;
 
   return (
-    <div className="h-screen bg-gray-950 text-white font-sans overflow-hidden flex flex-col bg-gradient-to-br from-gray-900 via-indigo-950 to-black relative">
+    <div className="h-screen text-white font-sans overflow-hidden flex flex-col bg-gradient-to-br from-gray-900/30 via-indigo-950/30 to-black/30 relative">
       <style>
         {`
           .hexagon { clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
@@ -206,94 +206,92 @@ function DroneSelectionScreen() {
           .font-exo { font-family: 'Exo', sans-serif; }
         `}
       </style>
-      <div className="flex flex-col items-center w-full p-4">
-      <h2 className="text-3xl font-bold mb-2 text-white text-center">
-        Choose Your Drones
-      </h2>
+      
+      {/* Content Wrapper */}
+      <div className="flex flex-col items-center w-full p-4 relative z-10">
+        <h2 className="text-3xl font-bold mb-2 text-white text-center">
+          Choose Your Drones
+        </h2>
 
-      {/* Progress indicator */}
-      <div className="flex items-center gap-2 mb-6">
-        {[...Array(5)].map((_, index) => (
-          <div
-            key={index}
-            className={`w-3 h-3 rounded-full ${
-              index < tempSelectedDrones.length
-                ? 'bg-green-500'
-                : 'bg-gray-600'
-            }`}
-          />
-        ))}
-        <span className="ml-2 text-gray-400">
-          {tempSelectedDrones.length}/5 drones selected
-        </span>
-      </div>
+        {/* Progress indicator */}
+        <div className="flex items-center gap-2 mb-6">
+          {[...Array(5)].map((_, index) => (
+            <div
+              key={index}
+              className={`w-3 h-3 rounded-full ${
+                index < tempSelectedDrones.length
+                  ? 'bg-green-500'
+                  : 'bg-gray-600'
+              }`}
+            />
+          ))}
+          <span className="ml-2 text-gray-400">
+            {tempSelectedDrones.length}/5 drones selected
+          </span>
+        </div>
 
-      {/* Trio selection or completion message */}
-      {!isSelectionComplete ? (
-        <>
-          <p className="text-center text-gray-400 mb-6">
-            Choice {tempSelectedDrones.length + 1} of 5: Select one drone from the three options below to add to your Active Drone Pool.
-          </p>
+        {/* Trio selection or completion message */}
+        {!isSelectionComplete ? (
+          <>
+            <p className="text-center text-gray-400 mb-6">
+              Choice {tempSelectedDrones.length + 1} of 5: Select one drone from the three options below to add to your Active Drone Pool.
+            </p>
 
-          {currentTrio && currentTrio.length > 0 && (
-            <div className="flex flex-wrap justify-center gap-6 mb-8">
-              {currentTrio.map((drone, index) => (
+            {currentTrio && currentTrio.length > 0 && (
+              <div className="flex flex-wrap justify-center gap-6 mb-8">
+                {currentTrio.map((drone, index) => (
+                  <DroneCard
+                    key={drone.name || index}
+                    drone={drone}
+                    onClick={() => handleChooseDroneForSelection(drone)}
+                    isSelectable={true}
+                    deployedCount={0}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="text-center mb-8">
+            <div className="bg-green-900/30 border border-green-500 rounded-lg p-4 mb-4">
+              <p className="text-green-400 font-bold mb-2">✅ Selection Complete!</p>
+              <p className="text-gray-300">All 5 drones have been selected. Ready to proceed to deck selection.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Continue button - always present but with different states */}
+        <button
+          onClick={handleContinueDroneSelection}
+          disabled={!isSelectionComplete}
+          className="btn-continue mb-8"
+        >
+          {isSelectionComplete ? 'Continue to Deck Selection' : `Continue (${tempSelectedDrones.length}/5)`}
+        </button>
+
+        {/* Selected drones display */}
+        <div className="w-full mt-4 pt-8 border-t border-gray-700">
+          <h3 className="text-2xl font-bold text-white text-center mb-4">
+            Your Selection ({tempSelectedDrones.length}/5)
+            {isSelectionComplete && <span className="text-green-400 ml-2">✓</span>}
+          </h3>
+
+          {tempSelectedDrones.length > 0 ? (
+            <div className="flex flex-wrap justify-center gap-6">
+              {tempSelectedDrones.map((drone, index) => (
                 <DroneCard
-                  key={drone.name || index}
+                  key={index}
                   drone={drone}
-                  onClick={() => handleChooseDroneForSelection(drone)}
-                  isSelectable={true}
+                  isSelectable={false}
                   deployedCount={0}
                 />
               ))}
             </div>
+          ) : (
+            <p className="text-center text-gray-500">No drones selected yet.</p>
           )}
-        </>
-      ) : (
-        <div className="text-center mb-8">
-          <div className="bg-green-900/30 border border-green-500 rounded-lg p-4 mb-4">
-            <p className="text-green-400 font-bold mb-2">✅ Selection Complete!</p>
-            <p className="text-gray-300">All 5 drones have been selected. Ready to proceed to deck selection.</p>
-          </div>
         </div>
-      )}
-
-      {/* Continue button - always present but with different states */}
-      <button
-        onClick={handleContinueDroneSelection}
-        disabled={!isSelectionComplete}
-        className={`px-8 py-3 font-bold rounded-lg transition-all mb-8 ${
-          isSelectionComplete
-            ? 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-600/25 hover:shadow-green-500/30 transform hover:scale-105'
-            : 'bg-gray-700 text-gray-500 cursor-not-allowed'
-        }`}
-      >
-        {isSelectionComplete ? 'Continue to Deck Selection' : `Continue (${tempSelectedDrones.length}/5)`}
-      </button>
-
-      {/* Selected drones display */}
-      <div className="w-full mt-4 pt-8 border-t border-gray-700">
-        <h3 className="text-2xl font-bold text-white text-center mb-4">
-          Your Selection ({tempSelectedDrones.length}/5)
-          {isSelectionComplete && <span className="text-green-400 ml-2">✓</span>}
-        </h3>
-
-        {tempSelectedDrones.length > 0 ? (
-          <div className="flex flex-wrap justify-center gap-6">
-            {tempSelectedDrones.map((drone, index) => (
-              <DroneCard
-                key={index}
-                drone={drone}
-                isSelectable={false}
-                deployedCount={0}
-              />
-            ))}
-          </div>
-        ) : (
-          <p className="text-center text-gray-500">No drones selected yet.</p>
-        )}
       </div>
-    </div>
     </div>
   );
 }

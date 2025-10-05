@@ -3038,7 +3038,7 @@ const resolveShipRecallEffect = (effect, sectionName, target, playerStates, plac
 };
 
 const resolveAttack = (attackDetails, playerStates, placedSections, logCallback, explosionCallback, hitAnimationCallback) => {
-    const { attacker, target, targetType, interceptor, attackingPlayer, abilityDamage, goAgain, damageType, lane } = attackDetails;
+    const { attacker, target, targetType, interceptor, attackingPlayer, abilityDamage, goAgain, damageType, lane, aiContext } = attackDetails;
     const isAbilityOrCard = abilityDamage !== undefined;
 
     const finalTarget = interceptor || target;
@@ -3224,7 +3224,7 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
             source: sourceForLog,
             target: targetForLog,
             outcome: outcome
-        });
+        }, 'resolveAttack', aiContext);
     }
 
     // Create updated player states

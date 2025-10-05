@@ -59,162 +59,88 @@ function MenuScreen() {
       justifyContent: 'center',
       alignItems: 'center',
       height: '100vh',
-      backgroundColor: '#1a1a1a',
       color: '#ffffff',
       fontFamily: 'Arial, sans-serif',
       padding: '20px',
-      boxSizing: 'border-box'
+      boxSizing: 'border-box',
+      position: 'relative'
     }}>
-      {!showModeSelection ? (
-        // Main title screen
-        <>
-          <h1 style={{
-            fontSize: '4rem',
-            marginBottom: '2rem',
-            textAlign: 'center',
-            background: 'linear-gradient(45deg, #00ff88, #0088ff)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            textShadow: '0 0 20px rgba(0, 255, 136, 0.3)'
-          }}>
-            EREMOS
-          </h1>
+      {/* Content Wrapper */}
+      <div style={{ 
+        position: 'relative', 
+        zIndex: 10, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%'
+      }}>
+        {!showModeSelection ? (
+          // Main title screen
+          <>
+            <h1 style={{
+              fontSize: '4rem',
+              marginBottom: '2rem',
+              textAlign: 'center',
+              background: 'linear-gradient(45deg, #00ff88, #0088ff)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              textShadow: '0 0 20px rgba(0, 255, 136, 0.3)'
+            }}>
+              EREMOS
+            </h1>
 
-          <div style={{
-            fontSize: '1.2rem',
-            marginBottom: '3rem',
-            textAlign: 'center',
-            color: '#cccccc'
-          }}>
-            the wilderness left when civilization departs
-          </div>
+            <div style={{
+              fontSize: '1.2rem',
+              marginBottom: '3rem',
+              textAlign: 'center',
+              color: '#cccccc'
+            }}>
+              the wilderness left when civilization departs
+            </div>
 
-          <button
-            onClick={handleShowModes}
-            style={{
-              fontSize: '1.5rem',
-              padding: '15px 40px',
-              backgroundColor: '#0088ff',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              boxShadow: '0 4px 15px rgba(0, 136, 255, 0.3)'
-            }}
-            onMouseOver={(e) => {
-              e.target.style.backgroundColor = '#0066cc';
-              e.target.style.transform = 'translateY(-2px)';
-            }}
-            onMouseOut={(e) => {
-              e.target.style.backgroundColor = '#0088ff';
-              e.target.style.transform = 'translateY(0)';
-            }}
-          >
-            START GAME
-          </button>
-        </>
-      ) : (
-        // Game mode selection
-        <>
-          <h2 style={{
-            fontSize: '2.5rem',
-            marginBottom: '3rem',
-            textAlign: 'center',
-            color: '#ffffff'
-          }}>
-            SELECT GAME MODE
-          </h2>
-
-          <div style={{
-            display: 'flex',
-            gap: '2rem',
-            marginBottom: '2rem'
-          }}>
-            <button
-              onClick={handleSinglePlayer}
-              style={{
-                fontSize: '1.3rem',
-                padding: '20px 30px',
-                backgroundColor: '#00ff88',
-                color: '#000000',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                minWidth: '200px',
-                transition: 'all 0.3s ease',
-                boxShadow: '0 4px 15px rgba(0, 255, 136, 0.3)'
-              }}
-              onMouseOver={(e) => {
-                e.target.style.backgroundColor = '#00cc6a';
-                e.target.style.transform = 'translateY(-2px)';
-              }}
-              onMouseOut={(e) => {
-                e.target.style.backgroundColor = '#00ff88';
-                e.target.style.transform = 'translateY(0)';
-              }}
-            >
-              SINGLE PLAYER
-              <div style={{ fontSize: '0.9rem', marginTop: '5px', opacity: 0.8 }}>
-                vs AI Opponent
-              </div>
+            <button onClick={handleShowModes} className="btn-continue">
+              START GAME
             </button>
+          </>
+        ) : (
+          // Game mode selection
+          <>
+            <h2 style={{
+              fontSize: '2.5rem',
+              marginBottom: '3rem',
+              textAlign: 'center',
+              color: '#ffffff'
+            }}>
+              SELECT GAME MODE
+            </h2>
 
-            <button
-              onClick={handleMultiplayer}
-              style={{
-                fontSize: '1.3rem',
-                padding: '20px 30px',
-                backgroundColor: '#ff6b35',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                minWidth: '200px',
-                transition: 'all 0.3s ease',
-                boxShadow: '0 4px 15px rgba(255, 107, 53, 0.3)'
-              }}
-              onMouseOver={(e) => {
-                e.target.style.backgroundColor = '#e55a2b';
-                e.target.style.transform = 'translateY(-2px)';
-              }}
-              onMouseOut={(e) => {
-                e.target.style.backgroundColor = '#ff6b35';
-                e.target.style.transform = 'translateY(0)';
-              }}
-            >
-              MULTIPLAYER
-              <div style={{ fontSize: '0.9rem', marginTop: '5px', opacity: 0.8 }}>
-                vs Human Player
-              </div>
+            <div style={{
+              display: 'flex',
+              gap: '2rem',
+              marginBottom: '2rem'
+            }}>
+              <button onClick={handleSinglePlayer} className="btn-continue" style={{ minWidth: '200px', fontSize: '1.1rem', padding: '16px 30px' }}>
+                SINGLE PLAYER
+                <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
+                  vs AI Opponent
+                </div>
+              </button>
+
+              <button onClick={handleMultiplayer} className="btn-continue" style={{ minWidth: '200px', fontSize: '1.1rem', padding: '16px 30px' }}>
+                MULTIPLAYER
+                <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
+                  vs Human Player
+                </div>
+              </button>
+            </div>
+
+            <button onClick={handleBack} className="btn-cancel">
+              BACK
             </button>
-          </div>
-
-          <button
-            onClick={handleBack}
-            style={{
-              fontSize: '1rem',
-              padding: '10px 20px',
-              backgroundColor: 'transparent',
-              color: '#cccccc',
-              border: '2px solid #cccccc',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease'
-            }}
-            onMouseOver={(e) => {
-              e.target.style.backgroundColor = '#cccccc';
-              e.target.style.color = '#1a1a1a';
-            }}
-            onMouseOut={(e) => {
-              e.target.style.backgroundColor = 'transparent';
-              e.target.style.color = '#cccccc';
-            }}
-          >
-            BACK
-          </button>
-        </>
-      )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

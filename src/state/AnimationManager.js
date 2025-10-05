@@ -33,6 +33,13 @@ class AnimationManager {
         config: { }
       },
 
+      // Player notifications
+      PASS_NOTIFICATION: {
+        duration: 1000,  // 1 second notification
+        type: 'PASS_NOTIFICATION_EFFECT',
+        config: { }
+      },
+
       // Phase announcements
       PHASE_ANNOUNCEMENT: {
         duration: 1500,  // 1.5 second phase announcement

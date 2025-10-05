@@ -218,7 +218,7 @@ function ShipPlacementScreen() {
   });
 
   return (
-    <div className="h-screen bg-gray-950 text-white font-sans overflow-hidden flex flex-col bg-gradient-to-br from-gray-900 via-indigo-950 to-black relative">
+    <div className="h-screen text-white font-sans overflow-hidden flex flex-col bg-gradient-to-br from-gray-900/30 via-indigo-950/30 to-black/30 relative">
       <style>
         {`
           .hexagon { clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
@@ -314,7 +314,7 @@ function ShipPlacementScreen() {
           handleConfirmPlacement();
         }}
         disabled={!allPlaced}
-        className="mt-12 bg-green-600 text-white font-bold py-3 px-8 rounded-full text-lg transition-all duration-300 disabled:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed enabled:hover:bg-green-500 shadow-lg"
+        className="btn-confirm mt-12 text-lg"
       >
         Confirm Layout
       </button>

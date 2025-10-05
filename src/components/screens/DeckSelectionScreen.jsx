@@ -248,7 +248,7 @@ function DeckSelectionScreen() {
   }
 
   return (
-    <div className="h-screen bg-gray-950 text-white font-sans overflow-hidden flex flex-col bg-gradient-to-br from-gray-900 via-indigo-950 to-black relative">
+    <div className="h-screen text-white font-sans overflow-hidden flex flex-col bg-gradient-to-br from-gray-900/30 via-indigo-950/30 to-black/30 relative">
       <style>
         {`
           .hexagon { clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
@@ -257,32 +257,34 @@ function DeckSelectionScreen() {
           .font-exo { font-family: 'Exo', sans-serif; }
         `}
       </style>
-      <div className="flex flex-col items-center justify-center h-full">
-      <h1 className="text-3xl font-orbitron font-bold text-white mb-2">Select Your Deck</h1>
-      <p className="text-gray-400 mb-8">Choose a pre-defined deck or build your own.</p>
-      <div className="flex flex-wrap justify-center gap-8">
-        <div
-          onClick={() => handleDeckChoice('standard')}
-          className="w-72 bg-gray-900 border-2 border-cyan-500/50 rounded-lg p-6 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:border-cyan-500 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20"
-        >
-          <h2 className="text-2xl font-orbitron font-bold text-cyan-400 mb-3">Use Standard Deck</h2>
-          <p className="font-exo text-gray-300 flex-grow">Play with the balanced, pre-built starter deck.</p>
-          <button className="mt-6 bg-cyan-600 text-white font-bold px-6 py-2 rounded-full hover:bg-cyan-700 transition-colors duration-200">
-            Select
-          </button>
-        </div>
-        <div
-          onClick={() => handleDeckChoice('custom')}
-          className="w-72 bg-gray-900 border-2 border-purple-500/50 rounded-lg p-6 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:border-purple-500 hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/20"
-        >
-          <h2 className="text-2xl font-orbitron font-bold text-purple-400 mb-3">Build Custom Deck</h2>
-          <p className="font-exo text-gray-300 flex-grow">Create your own deck from your card collection.</p>
-          <button className="mt-6 btn-continue">
-            Select
-          </button>
+      
+      {/* Content Wrapper */}
+      <div className="flex flex-col items-center justify-center h-full relative z-10">
+        <h1 className="text-3xl font-orbitron font-bold text-white mb-2">Select Your Deck</h1>
+        <p className="text-gray-400 mb-8">Choose a pre-defined deck or build your own.</p>
+        <div className="flex flex-wrap justify-center gap-8">
+          <div
+            onClick={() => handleDeckChoice('standard')}
+            className="w-72 bg-gray-900 border-2 border-cyan-500/50 rounded-lg p-6 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:border-cyan-500 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20"
+          >
+            <h2 className="text-2xl font-orbitron font-bold text-cyan-400 mb-3">Use Standard Deck</h2>
+            <p className="font-exo text-gray-300 flex-grow">Play with the balanced, pre-built starter deck.</p>
+            <button className="btn-confirm mt-6">
+              Select
+            </button>
+          </div>
+          <div
+            onClick={() => handleDeckChoice('custom')}
+            className="w-72 bg-gray-900 border-2 border-purple-500/50 rounded-lg p-6 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:border-purple-500 hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/20"
+          >
+            <h2 className="text-2xl font-orbitron font-bold text-purple-400 mb-3">Build Custom Deck</h2>
+            <p className="font-exo text-gray-300 flex-grow">Create your own deck from your card collection.</p>
+            <button className="mt-6 btn-continue">
+              Select
+            </button>
+          </div>
         </div>
       </div>
-    </div>
     </div>
   );
 }

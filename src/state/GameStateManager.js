@@ -19,6 +19,10 @@ class GameStateManager {
     // Event listeners for state changes
     this.listeners = new Set();
 
+    // Optimistic action tracking for client-side prediction (guest mode)
+    this.optimisticActions = [];
+    this.optimisticActionTimeout = 2000; // Clear after 2 seconds
+
     // Core application state (minimal until game starts)
     this.state = {
       // --- APPLICATION STATE ---
@@ -1190,6 +1194,44 @@ class GameStateManager {
     }
 
     return result;
+  }
+
+  /**
+   * Track optimistic action for client-side prediction (guest mode)
+   * Used to deduplicate animations when host sends authoritative state back
+   */
+  trackOptimisticAction(actionType, payload) {
+    const action = {
+      type: actionType,
+      payload: payload,
+      timestamp: Date.now(),
+      id: `${actionType}-${Date.now()}-${Math.random()}`
+    };
+
+    this.optimisticActions.push(action);
+    console.log('🔮 [OPTIMISTIC] Tracked action:', actionType, 'Total tracked:', this.optimisticActions.length);
+
+    // Auto-clear after timeout
+    setTimeout(() => {
+      this.optimisticActions = this.optimisticActions.filter(a => a.id !== action.id);
+      console.log('🧹 [OPTIMISTIC] Cleared old action:', actionType, 'Remaining:', this.optimisticActions.length);
+    }, this.optimisticActionTimeout);
+  }
+
+  /**
+   * Check if we have recent optimistic actions
+   * Used by GuestMessageQueueService to skip duplicate animations
+   */
+  hasRecentOptimisticActions() {
+    return this.optimisticActions.length > 0;
+  }
+
+  /**
+   * Clear all optimistic actions
+   */
+  clearOptimisticActions() {
+    console.log('🧹 [OPTIMISTIC] Clearing all actions');
+    this.optimisticActions = [];
   }
 
   /**

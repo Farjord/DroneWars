@@ -137,21 +137,10 @@ const CardSelectionModal = ({ isOpen, onClose, onConfirm, selectionData }) => {
         </div>
 
         <div className="flex justify-center gap-4 mt-6">
-          <button
-            onClick={handleClose}
-            className="bg-gray-600 text-white font-bold py-3 px-8 rounded-full hover:bg-gray-700 transition-colors"
-          >
+          <button onClick={handleClose} className="btn-cancel">
             Cancel
           </button>
-          <button
-            onClick={handleConfirm}
-            disabled={!canConfirm}
-            className={`font-bold py-3 px-8 rounded-full transition-colors ${
-              canConfirm
-                ? 'bg-green-600 text-white hover:bg-green-700'
-                : 'bg-gray-500 text-gray-300 cursor-not-allowed'
-            }`}
-          >
+          <button onClick={handleConfirm} disabled={!canConfirm} className="btn-confirm">
             Confirm Selection
           </button>
         </div>

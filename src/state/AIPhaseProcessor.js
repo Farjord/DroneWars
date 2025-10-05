@@ -873,17 +873,39 @@ class AIPhaseProcessor {
     // Clear any existing timer and schedule new turn
     clearTimeout(this.turnTimer);
     this.turnTimer = setTimeout(() => {
-      this.executeTurn(state);
+      this.executeTurn();  // No state parameter - will fetch fresh state
     }, 1500); // 1.5 second delay
   }
 
   /**
    * Execute AI turn for the current phase
-   * @param {Object} state - Current game state
+   * Always fetches fresh state to avoid stale state issues
    */
-  async executeTurn(state) {
+  async executeTurn() {
     if (this.isProcessing) {
       console.log('⚠️ AIPhaseProcessor: Already processing a turn, skipping');
+      return;
+    }
+
+    // Fetch fresh state - never trust captured state from delayed callbacks
+    const state = this.gameStateManager.getState();
+
+    // Validate it's still AI's turn (state may have changed during delay)
+    if (state.currentPlayer !== 'player2') {
+      console.log('⚠️ AIPhaseProcessor: Turn changed before execution, cancelling AI turn');
+      return;
+    }
+
+    // Validate AI hasn't passed
+    if (state.passInfo && state.passInfo.player2Passed) {
+      console.log('⚠️ AIPhaseProcessor: AI has already passed, cancelling turn');
+      return;
+    }
+
+    // Validate phase is still sequential
+    const sequentialPhases = ['deployment', 'action'];
+    if (!sequentialPhases.includes(state.turnPhase)) {
+      console.log('⚠️ AIPhaseProcessor: Phase changed to non-sequential, cancelling turn');
       return;
     }
 

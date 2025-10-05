@@ -15,6 +15,7 @@ import DroneSelectionScreen from './components/screens/DroneSelectionScreen.jsx'
 import DeckSelectionScreen from './components/screens/DeckSelectionScreen.jsx';
 import ShipPlacementScreen from './components/screens/ShipPlacementScreen.jsx';
 import App from './App.jsx';
+import MorphingBackground from './components/ui/AngularBandsBackground.jsx';
 
 /**
  * AppRouter - Routes between different screens based on application state
@@ -83,38 +84,66 @@ function AppRouter() {
     );
   }
 
+  // Determine if we should show the morphing background
+  // Hide it only when showing the main game (App.jsx) which uses SpaceBackground
+  // Show it for menu, lobby, and all pre-game selection screens
+  const shouldShowMorphingBackground = !(
+    gameState.appState === 'inGame' &&
+    !['droneSelection', 'placement'].includes(gameState.turnPhase)
+  );
+
   // Route based on application state and game phase
+  let currentScreen;
   switch (gameState.appState) {
     case 'menu':
-      return <MenuScreen />;
+      currentScreen = <MenuScreen />;
+      break;
 
     case 'lobby':
-      return <LobbyScreen />;
+      currentScreen = <LobbyScreen />;
+      break;
 
     case 'inGame':
       // Route based on game phase when in game
       switch (gameState.turnPhase) {
         case 'droneSelection':
-          return <DroneSelectionScreen />;
+          currentScreen = <DroneSelectionScreen />;
+          break;
 
         case 'deckSelection':
-          return <DeckSelectionScreen />;
+          currentScreen = <DeckSelectionScreen />;
+          break;
 
         case 'placement':
-          return <ShipPlacementScreen />;
+          currentScreen = <ShipPlacementScreen />;
+          break;
 
         case 'gameInitializing':
-          return <App />; // Mount early for event subscriptions
+          currentScreen = <App />; // Mount early for event subscriptions
+          break;
 
         // All other phases (action, deployment, etc.) use the main game board
         default:
-          return <App />;
+          currentScreen = <App />;
       }
+      break;
 
     default:
       console.warn('Unknown app state:', gameState.appState, 'defaulting to menu');
-      return <MenuScreen />;
+      currentScreen = <MenuScreen />;
   }
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      backgroundColor: 'rgba(2, 6, 23, 1)',
+      overflow: 'auto'
+    }}>
+      {shouldShowMorphingBackground && <MorphingBackground />}
+      {currentScreen}
+    </div>
+  );
 }
 
 export default AppRouter;
