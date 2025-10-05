@@ -37,7 +37,7 @@
   /* Single-element buttons with all styling in CSS */
 
   /* Base angular button styles */
-  .btn-confirm, .btn-continue, .btn-cancel, .btn-pass, .btn-reset, .btn-utility {
+  .btn-confirm, .btn-continue, .btn-cancel, .btn-pass, .btn-reset, .btn-utility, .btn-info {
     @apply relative;
     isolation: isolate; /* Creates stacking context for pseudo-element */
     padding: 8px 24px;
@@ -52,7 +52,7 @@
   }
 
   /* Pseudo-element creates dark background inside gradient border */
-  .btn-confirm::before, .btn-continue::before, .btn-cancel::before, .btn-pass::before, .btn-reset::before, .btn-utility::before {
+  .btn-confirm::before, .btn-continue::before, .btn-cancel::before, .btn-pass::before, .btn-reset::before, .btn-utility::before, .btn-info::before {
     content: '';
     position: absolute;
     inset: 1px;
@@ -64,20 +64,20 @@
   /* Hover effect - scale up */
   .btn-confirm:hover:not(:disabled), .btn-continue:hover:not(:disabled),
   .btn-cancel:hover:not(:disabled), .btn-pass:hover:not(:disabled),
-  .btn-reset:hover:not(:disabled), .btn-utility:hover:not(:disabled) {
+  .btn-reset:hover:not(:disabled), .btn-utility:hover:not(:disabled), .btn-info:hover:not(:disabled) {
     transform: scale(1.05);
   }
 
   /* Active/pressed effect - scale down slightly */
   .btn-confirm:active:not(:disabled), .btn-continue:active:not(:disabled),
   .btn-cancel:active:not(:disabled), .btn-pass:active:not(:disabled),
-  .btn-reset:active:not(:disabled), .btn-utility:active:not(:disabled) {
+  .btn-reset:active:not(:disabled), .btn-utility:active:not(:disabled), .btn-info:active:not(:disabled) {
     transform: scale(0.98);
   }
 
   /* Disabled state */
   .btn-confirm:disabled, .btn-continue:disabled, .btn-cancel:disabled,
-  .btn-pass:disabled, .btn-reset:disabled, .btn-utility:disabled {
+  .btn-pass:disabled, .btn-reset:disabled, .btn-utility:disabled, .btn-info:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
@@ -116,6 +116,12 @@
   .btn-utility {
     background: linear-gradient(45deg, rgba(51, 65, 85, 0.8), rgba(71, 85, 105, 0.8));
     color: #cbd5e1;
+  }
+
+  /* Info buttons - Cyan gradient for informational toggles */
+  .btn-info {
+    background: linear-gradient(45deg, rgba(6, 182, 212, 0.8), rgba(34, 211, 238, 0.8));
+    color: #ffffff;
   }
 }
 

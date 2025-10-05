@@ -1,7 +1,10 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp } from 'lucide-react';
+import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp, Sword, Rocket, Shield, Grid } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import ActionCard from './components/ui/ActionCard.jsx';
+import DroneCard from './components/ui/DroneCard.jsx';
+import ViewDeckModal from './components/modals/ViewDeckModal.jsx';
+import fullDroneCollection from './data/droneData.js';
 
 // Card detail popup using the actual ActionCard component
 const CardDetailPopup = ({ card, onClose }) => {
@@ -22,18 +25,46 @@ const CardDetailPopup = ({ card, onClose }) => {
   );
 };
 
+// Drone detail popup using the actual DroneCard component
+const DroneDetailPopup = ({ drone, onClose }) => {
+  if (!drone) return null;
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={onClose}>
+      <div onClick={e => e.stopPropagation()}>
+        <DroneCard
+          drone={drone}
+          onClick={() => {}}
+          isSelectable={false}
+          isSelected={false}
+          deployedCount={0}
+          ignoreDeployLimit={true}
+          appliedUpgrades={[]}
+          scale={1.5}
+        />
+      </div>
+    </div>
+  );
+};
+
 
 const DeckBuilder = ({
   selectedDrones,
   fullCardCollection,
   deck,
   onDeckChange,
+  onDronesChange,
   onConfirmDeck,
   onImportDeck
 }) => {
   const [detailedCard, setDetailedCard] = useState(null);
+  const [detailedDrone, setDetailedDrone] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showViewDeckModal, setShowViewDeckModal] = useState(false);
+
+  // Panel view toggles
+  const [leftPanelView, setLeftPanelView] = useState('cards'); // 'cards' or 'drones'
+  const [rightPanelView, setRightPanelView] = useState('deck'); // 'deck' or 'drones'
 
   const [filters, setFilters] = useState({
     cost: { min: 0, max: 99 }, // Temporary values
@@ -46,6 +77,13 @@ const DeckBuilder = ({
   const abilityFilterRef = useRef(null);
   
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
+
+  // Drone-specific filters and sort
+  const [droneFilters, setDroneFilters] = useState({
+    abilities: []
+  });
+  const [droneSortConfig, setDroneSortConfig] = useState({ key: 'name', direction: 'ascending' });
+
   const [activeChartView, setActiveChartView] = useState('cost');
   const [isStatsVisible, setIsStatsVisible] = useState(true);
 
@@ -143,6 +181,37 @@ const DeckBuilder = ({
     });
   }, [fullCardCollection]);
 
+  // --- Memoize a processed drone collection with keywords for efficient filtering/sorting ---
+  const processedDroneCollection = useMemo(() => {
+    return fullDroneCollection.map(drone => {
+      const keywords = [];
+
+      // Extract ability names as keywords
+      if (drone.abilities && drone.abilities.length > 0) {
+        drone.abilities.forEach(ability => {
+          if (ability.name) keywords.push(ability.name);
+
+          // Add ability type keywords
+          if (ability.type) {
+            keywords.push(ability.type === 'ACTIVE' ? 'Active' : ability.type === 'PASSIVE' ? 'Passive' : 'Triggered');
+          }
+
+          // Add effect type keywords
+          if (ability.effect?.keyword) {
+            keywords.push(ability.effect.keyword);
+          }
+        });
+      }
+
+      // Concatenate all ability descriptions (without ability names)
+      const description = drone.abilities && drone.abilities.length > 0
+        ? drone.abilities.map(a => a.description).join(' | ')
+        : 'No abilities';
+
+      return { ...drone, keywords, description };
+    });
+  }, []);
+
   const filterOptions = useMemo(() => {
     const costs = new Set();
     const targets = new Set();
@@ -162,6 +231,17 @@ const DeckBuilder = ({
         abilities: Array.from(abilities).sort(),
     };
   }, [processedCardCollection]);
+
+  const droneFilterOptions = useMemo(() => {
+    const abilities = new Set();
+    processedDroneCollection.forEach(drone => {
+      drone.keywords.forEach(k => abilities.add(k));
+    });
+
+    return {
+      abilities: Array.from(abilities).sort()
+    };
+  }, [processedDroneCollection]);
 
   // This effect initializes the cost filter range once the options are calculated
   useEffect(() => {
@@ -203,6 +283,28 @@ const DeckBuilder = ({
 
   const isDeckValid = cardCount >= 40;
 
+  // --- Drone counts and display list ---
+  const { droneCount, droneListForDisplay } = useMemo(() => {
+    let total = 0;
+    const displayList = [];
+
+    Object.entries(selectedDrones || {}).forEach(([droneName, quantity]) => {
+      if (quantity > 0) {
+        total += quantity;
+        const drone = processedDroneCollection.find(d => d.name === droneName);
+        if (drone) {
+          displayList.push({ ...drone, quantity });
+        }
+      }
+    });
+
+    displayList.sort((a, b) => a.name.localeCompare(b.name));
+
+    return { droneCount: total, droneListForDisplay: displayList };
+  }, [selectedDrones, processedDroneCollection]);
+
+  const isDronesValid = droneCount === 10;
+
   // --- NEW: Define colors for the Pie Chart ---
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943', '#A45D5D', '#8C5DA4'];
 
@@ -235,7 +337,81 @@ const DeckBuilder = ({
     return { barChartData, pieChartData };
   }, [deckListForDisplay]);
 
+  // --- Drone statistics for charts ---
+  const droneStats = useMemo(() => {
+    const createDistribution = (statName) => {
+      const distribution = {};
+      droneListForDisplay.forEach(drone => {
+        const value = drone[statName] || 0;
+        distribution[value] = (distribution[value] || 0) + drone.quantity;
+      });
+      return Object.entries(distribution)
+        .map(([value, count]) => ({ name: `${value}`, count }))
+        .sort((a, b) => parseInt(a.name) - parseInt(b.name));
+    };
 
+    const costData = createDistribution('class'); // 'class' is the cost field in drones
+    const attackData = createDistribution('attack');
+    const speedData = createDistribution('speed');
+    const shieldsData = createDistribution('shields');
+    const hullData = createDistribution('hull');
+    const limitData = createDistribution('limit');
+    const upgradesData = createDistribution('upgradeSlots');
+
+    // Ability distribution (pie chart)
+    const abilityDistribution = {};
+    droneListForDisplay.forEach(drone => {
+      if (drone.keywords) {
+        drone.keywords.forEach(keyword => {
+          abilityDistribution[keyword] = (abilityDistribution[keyword] || 0) + drone.quantity;
+        });
+      }
+    });
+    const abilityData = Object.entries(abilityDistribution)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+
+    return {
+      costData,
+      attackData,
+      speedData,
+      shieldsData,
+      hullData,
+      limitData,
+      upgradesData,
+      abilityData
+    };
+  }, [droneListForDisplay]);
+
+  // --- Process data for ViewDeckModal ---
+  const viewDeckData = useMemo(() => {
+    // Process drones: filter selected drones (quantity > 0)
+    const selectedDronesList = [];
+    Object.entries(selectedDrones || {}).forEach(([droneName, quantity]) => {
+      if (quantity > 0) {
+        const drone = processedDroneCollection.find(d => d.name === droneName);
+        if (drone) {
+          selectedDronesList.push(drone);
+        }
+      }
+    });
+
+    // Process cards: convert deck object to {card, quantity} array
+    const deckCardsList = [];
+    Object.entries(deck).forEach(([cardId, quantity]) => {
+      if (quantity > 0) {
+        const card = processedCardCollection.find(c => c.id === cardId);
+        if (card) {
+          deckCardsList.push({ card, quantity });
+        }
+      }
+    });
+
+    return {
+      drones: selectedDronesList,
+      cards: deckCardsList
+    };
+  }, [selectedDrones, deck, processedDroneCollection, processedCardCollection]);
 
  // --- NEW: Memoize the filtered and sorted list for display ---
   const filteredAndSortedCards = useMemo(() => {
@@ -293,6 +469,46 @@ const DeckBuilder = ({
     return sortableItems;
   }, [processedCardCollection, filters, sortConfig]);
 
+  // --- Filtered and sorted drones list ---
+  const filteredAndSortedDrones = useMemo(() => {
+    let sortableItems = [...processedDroneCollection]
+      .filter(drone => {
+        // Abilities filter (must have ALL selected abilities)
+        if (droneFilters.abilities.length > 0) {
+          return droneFilters.abilities.every(ability => drone.keywords.includes(ability));
+        }
+        return true;
+      });
+
+    // Sort logic
+    if (droneSortConfig.key !== null) {
+      sortableItems.sort((a, b) => {
+        const aVal = a[droneSortConfig.key];
+        const bVal = b[droneSortConfig.key];
+
+        // Handle null/undefined values
+        if (aVal == null && bVal == null) return 0;
+        if (aVal == null) return 1;
+        if (bVal == null) return -1;
+
+        // Convert to string for consistent comparison
+        const aStr = String(aVal).toLowerCase();
+        const bStr = String(bVal).toLowerCase();
+
+        if (aStr < bStr) {
+          return droneSortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aStr > bStr) {
+          return droneSortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        // Secondary sort by name for stability
+        return a.name.localeCompare(b.name);
+      });
+    }
+
+    return sortableItems;
+  }, [processedDroneCollection, droneFilters, droneSortConfig]);
+
   // --- NEW: Handler for sorting ---
   const requestSort = (key) => {
     let direction = 'ascending';
@@ -300,6 +516,14 @@ const DeckBuilder = ({
       direction = 'descending';
     }
     setSortConfig({ key, direction });
+  };
+
+  const requestDroneSort = (key) => {
+    let direction = 'ascending';
+    if (droneSortConfig.key === key && droneSortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setDroneSortConfig({ key, direction });
   };
 
   const handleFilterChange = (filterType, value) => {
@@ -315,6 +539,15 @@ const DeckBuilder = ({
     });
   };
 
+  const handleDroneAbilityToggle = (ability) => {
+    setDroneFilters(prev => {
+      const abilities = prev.abilities.includes(ability)
+        ? prev.abilities.filter(a => a !== ability)
+        : [...prev.abilities, ability];
+      return { ...prev, abilities };
+    });
+  };
+
   const resetFilters = () => {
     setFilters({
       cost: { min: filterOptions.minCost, max: filterOptions.maxCost },
@@ -326,6 +559,12 @@ const DeckBuilder = ({
     setIsAbilityDropdownOpen(false);
   };
 
+  const resetDroneFilters = () => {
+    setDroneFilters({
+      abilities: []
+    });
+  };
+
   const resetDeck = () => {
     // Clear all cards from the deck by setting each to 0
     Object.keys(deck).forEach(cardId => {
@@ -334,7 +573,16 @@ const DeckBuilder = ({
       }
     });
   };
-  
+
+  const resetDrones = () => {
+    // Clear all drones from the selection by setting each to 0
+    Object.keys(selectedDrones || {}).forEach(droneName => {
+      if (selectedDrones[droneName] > 0) {
+        onDronesChange(droneName, 0);
+      }
+    });
+  };
+
   // Effect to close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -376,7 +624,11 @@ const DeckBuilder = ({
     const ExportModal = () => {
     const [copySuccess, setCopySuccess] = useState('');
     const textAreaRef = useRef(null);
-    const deckCode = useMemo(() => Object.entries(deck).map(([id, q]) => `${id}:${q}`).join(','), [deck]);
+    const deckCode = useMemo(() => {
+      const cardsStr = Object.entries(deck).map(([id, q]) => `${id}:${q}`).join(',');
+      const dronesStr = Object.entries(selectedDrones || {}).map(([name, q]) => `${name}:${q}`).join(',');
+      return `cards:${cardsStr}|drones:${dronesStr}`;
+    }, [deck, selectedDrones]);
 
     const copyToClipboard = () => {
       textAreaRef.current.select();
@@ -389,8 +641,8 @@ const DeckBuilder = ({
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowExportModal(false)}>
       {/* This is the re-added content panel div */}
       <div className="bg-gray-900 rounded-2xl border-2 border-purple-500 p-8 w-full max-w-2xl" onClick={e => e.stopPropagation()}>
-        <h2 className="text-xl font-orbitron mb-4">Export Deck Code</h2> {/* Corrected font size */}
-        <p className="text-gray-400 mb-4">Copy the code below to save or share your deck.</p>
+        <h2 className="text-xl font-orbitron mb-4">Export Deck Code</h2>
+        <p className="text-gray-400 mb-4">Copy the code below to save or share your deck and drones.</p>
         <textarea
           ref={textAreaRef}
           readOnly
@@ -429,12 +681,12 @@ const DeckBuilder = ({
       <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowImportModal(false)}>
         <div className="bg-gray-900 rounded-2xl border-2 border-purple-500 p-8 w-full max-w-2xl" onClick={e => e.stopPropagation()}>
           <h2 className="text-xl font-orbitron mb-4">Import Deck Code</h2>
-          <p className="text-gray-400 mb-4">Paste a deck code below to load it into the builder.</p>
+          <p className="text-gray-400 mb-4">Paste a deck code below to load both cards and drones into the builder.</p>
           <textarea
             value={deckCode}
             onChange={(e) => setDeckCode(e.target.value)}
             className="w-full h-32 p-2 bg-gray-800 border border-gray-600 rounded text-gray-300 font-mono"
-            placeholder="CARD001:4,CARD002:2,..."
+            placeholder="cards:CARD001:4,CARD002:2|drones:Scout Drone:1,Heavy Fighter:1"
           />
           {error && <p className="text-red-500 mt-2">{error}</p>}
           <div className="flex justify-end gap-4 mt-4">
@@ -448,10 +700,18 @@ const DeckBuilder = ({
 
 
   return (
-    <div className="w-full h-full flex flex-col text-white font-exo mt-8 text-sm">
+    <div className="w-full flex flex-col text-white font-exo mt-8 text-sm">
       {detailedCard && <CardDetailPopup card={detailedCard} onClose={() => setDetailedCard(null)} />}
+      {detailedDrone && <DroneDetailPopup drone={detailedDrone} onClose={() => setDetailedDrone(null)} />}
       {showExportModal && <ExportModal />}
       {showImportModal && <ImportModal />}
+      <ViewDeckModal
+        isOpen={showViewDeckModal}
+        onClose={() => setShowViewDeckModal(false)}
+        title="Your Deck & Drones"
+        drones={viewDeckData.drones}
+        cards={viewDeckData.cards}
+      />
 
       <div className="flex justify-center items-center mb-4">
         <h1 className="text-3xl font-orbitron font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">Deck Builder</h1>
@@ -466,17 +726,50 @@ const DeckBuilder = ({
         </div>
       </div>
       
-      <div className="flex-grow flex gap-6 min-h-0">
+      <div className="flex-grow flex gap-6 min-h-0 mb-[10px]">
 
-        {/* Left Side: Available Cards Collection */}
-        <div className="w-2/3 flex flex-col bg-slate-900/50 rounded-lg p-4 border border-gray-700 ml-[5px]">
+        {/* Left Side: Available Items */}
+        <div className="w-2/3 flex flex-col bg-slate-900/50 rounded-lg p-4 border border-gray-700 h-[calc(100vh-99px)] ml-[10px]">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-orbitron">Available Cards</h2>
-            <button onClick={resetFilters} className="btn-reset">
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setLeftPanelView('cards');
+                  setRightPanelView('deck');
+                }}
+                className={`btn-utility ${leftPanelView === 'cards' ? 'opacity-100' : 'opacity-60'}`}
+              >
+                Cards
+              </button>
+              <button
+                onClick={() => {
+                  setLeftPanelView('drones');
+                  setRightPanelView('drones');
+                }}
+                className={`btn-utility ${leftPanelView === 'drones' ? 'opacity-100' : 'opacity-60'}`}
+              >
+                Drones
+              </button>
+              <button
+                onClick={() => setShowViewDeckModal(true)}
+                className="btn-utility flex items-center gap-2"
+              >
+                <Grid size={16} />
+                View All
+              </button>
+            </div>
+            <button
+              onClick={leftPanelView === 'cards' ? resetFilters : resetDroneFilters}
+              className="btn-reset"
+            >
               Reset Filters
             </button>
           </div>
-          {/* --- NEW: Filter Input --- */}
+
+          {/* CARDS VIEW */}
+          {leftPanelView === 'cards' && (
+          <>
+          {/* --- Filter Input --- */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             {/* Cost Range Filter */}
             <div className="filter-select flex flex-col justify-center">
@@ -584,18 +877,109 @@ const DeckBuilder = ({
               </tbody>
             </table>
           </div>
+          </>
+          )}
+
+          {/* DRONES VIEW */}
+          {leftPanelView === 'drones' && (
+          <>
+          {/* --- Drone Filter Input --- */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+            {/* Ability Multi-Select Filter */}
+            <div className="relative" ref={abilityFilterRef}>
+              <button onClick={() => setIsAbilityDropdownOpen(!isAbilityDropdownOpen)} className="filter-select w-full text-left h-full">
+                {droneFilters.abilities.length === 0 ? 'Select Abilities' : `${droneFilters.abilities.length} Abilities Selected`}
+              </button>
+              {isAbilityDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 bg-slate-800 border border-gray-600 mt-1 rounded-md z-10 max-h-60 overflow-y-auto">
+                  {droneFilterOptions.abilities.map(ability => (
+                    <label key={ability} className="flex items-center p-2 hover:bg-slate-700 cursor-pointer">
+                      <input type="checkbox" checked={droneFilters.abilities.includes(ability)} onChange={() => handleDroneAbilityToggle(ability)} className="mr-2" />
+                      {ability}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex-grow overflow-y-auto pr-2">
+            <table className="w-full text-left deck-builder-table">
+              <thead>
+                <tr>
+                  <th>Info</th>
+                  <th><button onClick={() => requestDroneSort('name')} className={`w-full text-left transition-colors underline cursor-pointer ${droneSortConfig.key === 'name' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Name{droneSortConfig.key === 'name' && (droneSortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
+                  <th><button onClick={() => requestDroneSort('class')} className={`w-full text-left transition-colors underline cursor-pointer ${droneSortConfig.key === 'class' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Cost{droneSortConfig.key === 'class' && (droneSortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
+                  <th><button onClick={() => requestDroneSort('attack')} className={`w-full text-left transition-colors underline cursor-pointer ${droneSortConfig.key === 'attack' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Attack{droneSortConfig.key === 'attack' && (droneSortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
+                  <th><button onClick={() => requestDroneSort('speed')} className={`w-full text-left transition-colors underline cursor-pointer ${droneSortConfig.key === 'speed' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Speed{droneSortConfig.key === 'speed' && (droneSortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
+                  <th><button onClick={() => requestDroneSort('shields')} className={`w-full text-left transition-colors underline cursor-pointer ${droneSortConfig.key === 'shields' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Shields{droneSortConfig.key === 'shields' && (droneSortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
+                  <th><button onClick={() => requestDroneSort('hull')} className={`w-full text-left transition-colors underline cursor-pointer ${droneSortConfig.key === 'hull' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Hull{droneSortConfig.key === 'hull' && (droneSortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
+                  <th>Abilities</th>
+                  <th>Description</th>
+                  <th><button onClick={() => requestDroneSort('limit')} className={`w-full text-left transition-colors underline cursor-pointer ${droneSortConfig.key === 'limit' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Limit{droneSortConfig.key === 'limit' && (droneSortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
+                  <th><button onClick={() => requestDroneSort('upgradeSlots')} className={`w-full text-left transition-colors underline cursor-pointer ${droneSortConfig.key === 'upgradeSlots' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Upgrades{droneSortConfig.key === 'upgradeSlots' && (droneSortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
+                  <th>Quantity</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAndSortedDrones.map((drone, index) => {
+                  const currentQuantity = (selectedDrones && selectedDrones[drone.name]) || 0;
+
+                  return (
+                    <tr key={`${drone.name}-${index}`}>
+                      <td><button onClick={() => setDetailedDrone(drone)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
+                      <td className="font-bold">{drone.name}</td>
+                      <td>{drone.class}</td>
+                      <td>{drone.attack}</td>
+                      <td>{drone.speed}</td>
+                      <td>{drone.shields}</td>
+                      <td>{drone.hull}</td>
+                      <td><div className="flex flex-wrap gap-2">{drone.keywords.map(k => <span key={k} className="ability-chip">{k}</span>)}</div></td>
+                      <td className="text-xs text-gray-400">{drone.description}</td>
+                      <td>{drone.limit}</td>
+                      <td>{drone.upgradeSlots}</td>
+                      <td>
+                        <div className="quantity-buttons">
+                          <button onClick={() => onDronesChange(drone.name, 0)} className={`quantity-btn ${currentQuantity === 0 ? 'selected' : ''}`}>0</button>
+                          <button onClick={() => onDronesChange(drone.name, 1)} className={`quantity-btn ${currentQuantity === 1 ? 'selected' : ''}`}>1</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          </>
+          )}
         </div>
 
-        {/* Right Side: Your Deck */}
-        <div className="w-1/3 flex flex-col bg-slate-900/50 rounded-lg p-4 border border-gray-700 h-[calc(100vh-89px)] mr-[5px]">
+        {/* Right Side: Your Items */}
+        <div className="w-1/3 flex flex-col bg-slate-900/50 rounded-lg p-4 border border-gray-700 h-[calc(100vh-99px)] mr-[10px]">
           <div className="flex justify-between items-center mb-4">
-            <h2 className={`text-xl font-orbitron transition-colors ${isDeckValid ? 'text-green-400' : 'text-white'}`}>
-              Your Deck ({cardCount}/40)
-            </h2>
-            <button onClick={resetDeck} className="btn-reset">
-              Reset Deck
+            <div className="flex gap-2">
+              <button
+                onClick={() => setRightPanelView('deck')}
+                className={`btn-utility ${rightPanelView === 'deck' ? 'opacity-100' : 'opacity-60'}`}
+              >
+                Your Deck ({cardCount}/40)
+              </button>
+              <button
+                onClick={() => setRightPanelView('drones')}
+                className={`btn-utility ${rightPanelView === 'drones' ? 'opacity-100' : 'opacity-60'}`}
+              >
+                Your Drones ({droneCount}/10)
+              </button>
+            </div>
+            <button
+              onClick={rightPanelView === 'deck' ? resetDeck : resetDrones}
+              className="btn-reset"
+            >
+              Reset {rightPanelView === 'deck' ? 'Deck' : 'Drones'}
             </button>
           </div>
+
+          {/* DECK LIST VIEW */}
+          {rightPanelView === 'deck' && (
           <div className="flex-grow overflow-y-auto pr-2 deck-list">
             {deckListForDisplay.length > 0 ? (
               deckListForDisplay.map(card => {
@@ -634,27 +1018,70 @@ const DeckBuilder = ({
               <p className="text-gray-500 italic">Your deck is empty. Add cards from the left.</p>
             )}
           </div>
+          )}
 
-{/* --- NEW: Deck Statistics Section --- */}
-          {cardCount > 0 && (
+          {/* DRONE LIST VIEW */}
+          {rightPanelView === 'drones' && (
+          <div className="flex-grow overflow-y-auto pr-2 deck-list">
+            {droneListForDisplay.length > 0 ? (
+              droneListForDisplay.map(drone => {
+                return (
+                  <div key={drone.name} className="deck-list-item">
+                    {/* Eye icon to view drone details */}
+                    <button
+                      onClick={() => setDetailedDrone(drone)}
+                      className="p-1 text-gray-400 hover:text-white flex-shrink-0 mr-3"
+                      title="View Drone Details"
+                    >
+                      <Eye size={18} />
+                    </button>
+                    <span className="flex-grow truncate" title={drone.name}>{drone.name}</span>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <button
+                        onClick={() => onDronesChange(drone.name, 0)}
+                        className="deck-edit-btn"
+                      >
+                        -
+                      </button>
+                      <span className="font-bold w-8 text-center">x {drone.quantity}</span>
+                      <button
+                        onClick={() => onDronesChange(drone.name, 1)}
+                        disabled={droneCount >= 10}
+                        className="deck-edit-btn"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-gray-500 italic">Your drone pool is empty. Add drones from the left.</p>
+            )}
+          </div>
+          )}
+
+{/* --- Statistics Section --- */}
+          {/* DECK STATISTICS */}
+          {rightPanelView === 'deck' && cardCount > 0 && (
             <div className="mt-4 pt-4 border-t-2 border-slate-700">
-              <button 
-                onClick={() => setIsStatsVisible(!isStatsVisible)} 
+              <button
+                onClick={() => setIsStatsVisible(!isStatsVisible)}
                 className="w-full flex justify-center items-center gap-2 text-lg font-orbitron mb-2 text-center text-cyan-300 hover:text-cyan-200 transition-colors"
               >
                 Deck Statistics
                 <ChevronUp size={20} className={`transition-transform duration-300 ${isStatsVisible ? 'rotate-0' : 'rotate-180'}`} />
               </button>
-              
+
               <div className={`transition-all ease-in-out duration-500 overflow-hidden ${isStatsVisible ? 'max-h-[320px] opacity-100' : 'max-h-0 opacity-0'}`}>
                 <div className="flex justify-center gap-2 mb-2">
-                  <button onClick={() => setActiveChartView('cost')} className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${activeChartView === 'cost' ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-gray-300 hover:bg-slate-600'}`}>
+                  <button onClick={() => setActiveChartView('cost')} className={`btn-info text-xs ${activeChartView === 'cost' ? 'opacity-100' : 'opacity-60'}`}>
                     Cost
                   </button>
-                  <button onClick={() => setActiveChartView('type')} className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${activeChartView === 'type' ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-gray-300 hover:bg-slate-600'}`}>
+                  <button onClick={() => setActiveChartView('type')} className={`btn-info text-xs ${activeChartView === 'type' ? 'opacity-100' : 'opacity-60'}`}>
                     Type
                   </button>
-                  <button onClick={() => setActiveChartView('ability')} className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${activeChartView === 'ability' ? 'bg-cyan-500 text-white' : 'bg-slate-700 text-gray-300 hover:bg-slate-600'}`}>
+                  <button onClick={() => setActiveChartView('ability')} className={`btn-info text-xs ${activeChartView === 'ability' ? 'opacity-100' : 'opacity-60'}`}>
                     Abilities
                   </button>
                 </div>
@@ -732,7 +1159,156 @@ const DeckBuilder = ({
             </div>
           )}
 
-                    <button onClick={onConfirmDeck} disabled={!isDeckValid} className="btn-confirm w-full p-4 mt-4 text-lg font-bold font-orbitron">Confirm Deck</button>
+          {/* DRONE STATISTICS */}
+          {rightPanelView === 'drones' && droneCount > 0 && (
+            <div className="mt-4 pt-4 border-t-2 border-slate-700">
+              <button
+                onClick={() => setIsStatsVisible(!isStatsVisible)}
+                className="w-full flex justify-center items-center gap-2 text-lg font-orbitron mb-2 text-center text-cyan-300 hover:text-cyan-200 transition-colors"
+              >
+                Drone Statistics
+                <ChevronUp size={20} className={`transition-transform duration-300 ${isStatsVisible ? 'rotate-0' : 'rotate-180'}`} />
+              </button>
+
+              <div className={`transition-all ease-in-out duration-500 overflow-hidden ${isStatsVisible ? 'max-h-[320px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                <div className="flex justify-center gap-2 mb-2 flex-wrap">
+                  <button onClick={() => setActiveChartView('cost')} className={`btn-info text-xs ${activeChartView === 'cost' ? 'opacity-100' : 'opacity-60'}`}>Cost</button>
+                  <button onClick={() => setActiveChartView('attack')} className={`btn-info text-xs ${activeChartView === 'attack' ? 'opacity-100' : 'opacity-60'}`}>Attack</button>
+                  <button onClick={() => setActiveChartView('speed')} className={`btn-info text-xs ${activeChartView === 'speed' ? 'opacity-100' : 'opacity-60'}`}>Speed</button>
+                  <button onClick={() => setActiveChartView('shields')} className={`btn-info text-xs ${activeChartView === 'shields' ? 'opacity-100' : 'opacity-60'}`}>Shields</button>
+                  <button onClick={() => setActiveChartView('hull')} className={`btn-info text-xs ${activeChartView === 'hull' ? 'opacity-100' : 'opacity-60'}`}>Hull</button>
+                  <button onClick={() => setActiveChartView('limit')} className={`btn-info text-xs ${activeChartView === 'limit' ? 'opacity-100' : 'opacity-60'}`}>Limit</button>
+                  <button onClick={() => setActiveChartView('upgrades')} className={`btn-info text-xs ${activeChartView === 'upgrades' ? 'opacity-100' : 'opacity-60'}`}>Upgrades</button>
+                  <button onClick={() => setActiveChartView('ability')} className={`btn-info text-xs ${activeChartView === 'ability' ? 'opacity-100' : 'opacity-60'}`}>Abilities</button>
+                </div>
+                <div className="text-xs" style={{ height: '280px' }}>
+                  {activeChartView === 'cost' && (
+                    <div className="w-full h-full flex flex-col items-center">
+                      <h4 className="font-semibold mb-1">Drone Cost Distribution</h4>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={droneStats.costData} margin={{ top: 5, right: 20, left: -15, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
+                          <XAxis dataKey="name" tick={{ fill: '#A0AEC0' }} interval={0} />
+                          <YAxis allowDecimals={false} tick={{ fill: '#A0AEC0' }} />
+                          <Tooltip cursor={{fill: 'rgba(128, 90, 213, 0.2)'}} contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
+                          <Bar dataKey="count" fill="#8884d8" name="Drone Count" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                  {activeChartView === 'attack' && (
+                    <div className="w-full h-full flex flex-col items-center">
+                      <h4 className="font-semibold mb-1">Attack Distribution</h4>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={droneStats.attackData} margin={{ top: 5, right: 20, left: -15, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
+                          <XAxis dataKey="name" tick={{ fill: '#A0AEC0' }} interval={0} />
+                          <YAxis allowDecimals={false} tick={{ fill: '#A0AEC0' }} />
+                          <Tooltip cursor={{fill: 'rgba(128, 90, 213, 0.2)'}} contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
+                          <Bar dataKey="count" fill="#ef4444" name="Drone Count" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                  {activeChartView === 'speed' && (
+                    <div className="w-full h-full flex flex-col items-center">
+                      <h4 className="font-semibold mb-1">Speed Distribution</h4>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={droneStats.speedData} margin={{ top: 5, right: 20, left: -15, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
+                          <XAxis dataKey="name" tick={{ fill: '#A0AEC0' }} interval={0} />
+                          <YAxis allowDecimals={false} tick={{ fill: '#A0AEC0' }} />
+                          <Tooltip cursor={{fill: 'rgba(128, 90, 213, 0.2)'}} contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
+                          <Bar dataKey="count" fill="#3b82f6" name="Drone Count" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                  {activeChartView === 'shields' && (
+                    <div className="w-full h-full flex flex-col items-center">
+                      <h4 className="font-semibold mb-1">Shield Distribution</h4>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={droneStats.shieldsData} margin={{ top: 5, right: 20, left: -15, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
+                          <XAxis dataKey="name" tick={{ fill: '#A0AEC0' }} interval={0} />
+                          <YAxis allowDecimals={false} tick={{ fill: '#A0AEC0' }} />
+                          <Tooltip cursor={{fill: 'rgba(128, 90, 213, 0.2)'}} contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
+                          <Bar dataKey="count" fill="#06b6d4" name="Drone Count" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                  {activeChartView === 'hull' && (
+                    <div className="w-full h-full flex flex-col items-center">
+                      <h4 className="font-semibold mb-1">Hull Distribution</h4>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={droneStats.hullData} margin={{ top: 5, right: 20, left: -15, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
+                          <XAxis dataKey="name" tick={{ fill: '#A0AEC0' }} interval={0} />
+                          <YAxis allowDecimals={false} tick={{ fill: '#A0AEC0' }} />
+                          <Tooltip cursor={{fill: 'rgba(128, 90, 213, 0.2)'}} contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
+                          <Bar dataKey="count" fill="#22c55e" name="Drone Count" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                  {activeChartView === 'limit' && (
+                    <div className="w-full h-full flex flex-col items-center">
+                      <h4 className="font-semibold mb-1">Deployment Limit Distribution</h4>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={droneStats.limitData} margin={{ top: 5, right: 20, left: -15, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
+                          <XAxis dataKey="name" tick={{ fill: '#A0AEC0' }} interval={0} />
+                          <YAxis allowDecimals={false} tick={{ fill: '#A0AEC0' }} />
+                          <Tooltip cursor={{fill: 'rgba(128, 90, 213, 0.2)'}} contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
+                          <Bar dataKey="count" fill="#f59e0b" name="Drone Count" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                  {activeChartView === 'upgrades' && (
+                    <div className="w-full h-full flex flex-col items-center">
+                      <h4 className="font-semibold mb-1">Upgrade Slots Distribution</h4>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={droneStats.upgradesData} margin={{ top: 5, right: 20, left: -15, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
+                          <XAxis dataKey="name" tick={{ fill: '#A0AEC0' }} interval={0} />
+                          <YAxis allowDecimals={false} tick={{ fill: '#A0AEC0' }} />
+                          <Tooltip cursor={{fill: 'rgba(128, 90, 213, 0.2)'}} contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
+                          <Bar dataKey="count" fill="#a855f7" name="Drone Count" />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                  {activeChartView === 'ability' && (
+                    <div className="w-full h-full flex flex-col items-center">
+                      <h4 className="font-semibold mb-1">Ability Breakdown</h4>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
+                          <Pie
+                            data={droneStats.abilityData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                            outerRadius={60}
+                            dataKey="value"
+                          >
+                            {droneStats.abilityData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+                    <button onClick={onConfirmDeck} disabled={!isDeckValid || !isDronesValid} className="btn-confirm w-full p-4 mt-4 text-lg font-bold font-orbitron">Confirm Deck & Drones</button>
         </div>
       </div>
      </div>

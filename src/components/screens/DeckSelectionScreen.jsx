@@ -37,6 +37,7 @@ function DeckSelectionScreen() {
   // Local state for deck building UI
   const [showDeckBuilder, setShowDeckBuilder] = useState(false);
   const [customDeck, setCustomDeck] = useState({});
+  const [selectedDrones, setSelectedDrones] = useState({});
 
   /**
    * HANDLE DECK CHOICE
@@ -105,6 +106,17 @@ function DeckSelectionScreen() {
   };
 
   /**
+   * HANDLE DRONES CHANGE
+   * Updates the selected drones
+   */
+  const handleDronesChange = (droneName, quantity) => {
+    setSelectedDrones(prev => ({
+      ...prev,
+      [droneName]: quantity
+    }));
+  };
+
+  /**
    * HANDLE CONFIRM DECK
    * Submits the custom deck as a commitment
    */
@@ -164,31 +176,57 @@ function DeckSelectionScreen() {
 
   /**
    * HANDLE IMPORT DECK
-   * Imports a deck from a deck code
+   * Imports a deck from a deck code (format: cards:CARD001:4,CARD002:2|drones:Scout Drone:1,Heavy Fighter:1)
    */
   const handleImportDeck = (deckCode) => {
     try {
       const importedDeck = {};
-      const pairs = deckCode.split(',');
+      const importedDrones = {};
 
-      for (const pair of pairs) {
-        const [cardId, quantity] = pair.split(':');
-        const qty = parseInt(quantity, 10);
+      // Split into cards and drones sections
+      const sections = deckCode.split('|');
 
-        if (!cardId || isNaN(qty)) {
-          return { success: false, message: 'Invalid deck code format.' };
+      for (const section of sections) {
+        const [type, ...data] = section.split(':');
+        const dataStr = data.join(':'); // Rejoin in case drone names have colons
+
+        if (type === 'cards') {
+          const pairs = dataStr.split(',');
+          for (const pair of pairs) {
+            const [cardId, quantity] = pair.split(':');
+            const qty = parseInt(quantity, 10);
+
+            if (!cardId || isNaN(qty)) {
+              return { success: false, message: 'Invalid card format in deck code.' };
+            }
+
+            // Verify card exists
+            const card = fullCardCollection.find(c => c.id === cardId);
+            if (!card) {
+              return { success: false, message: `Card ${cardId} not found.` };
+            }
+
+            importedDeck[cardId] = qty;
+          }
+        } else if (type === 'drones') {
+          const pairs = dataStr.split(',');
+          for (const pair of pairs) {
+            const parts = pair.split(':');
+            const quantity = parts.pop(); // Last element is quantity
+            const droneName = parts.join(':'); // Everything else is the drone name
+            const qty = parseInt(quantity, 10);
+
+            if (!droneName || isNaN(qty)) {
+              return { success: false, message: 'Invalid drone format in deck code.' };
+            }
+
+            importedDrones[droneName] = qty;
+          }
         }
-
-        // Verify card exists
-        const card = fullCardCollection.find(c => c.id === cardId);
-        if (!card) {
-          return { success: false, message: `Card ${cardId} not found.` };
-        }
-
-        importedDeck[cardId] = qty;
       }
 
       setCustomDeck(importedDeck);
+      setSelectedDrones(importedDrones);
       return { success: true };
     } catch (error) {
       console.error('Error importing deck:', error);
@@ -237,10 +275,11 @@ function DeckSelectionScreen() {
   if (showDeckBuilder) {
     return (
       <DeckBuilder
-        selectedDrones={localPlayerState.dronePool}
+        selectedDrones={selectedDrones}
         fullCardCollection={fullCardCollection}
         deck={customDeck}
         onDeckChange={handleDeckChange}
+        onDronesChange={handleDronesChange}
         onConfirmDeck={handleConfirmDeck}
         onImportDeck={handleImportDeck}
       />
