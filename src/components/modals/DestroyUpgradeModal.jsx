@@ -59,14 +59,14 @@ const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
           <div className="flex justify-center gap-4 mt-6">
               <button
                   onClick={onCancel}
-                  className="bg-gray-600 text-white font-bold py-2 px-6 rounded-full hover:bg-gray-700 transition-colors"
+                  className="btn-cancel"
               >
                   Cancel
               </button>
               <button
                   onClick={() => onConfirm(card, selectedUpgrade)}
                   disabled={!selectedUpgrade}
-                  className="bg-red-600 text-white font-bold py-2 px-6 rounded-full transition-colors disabled:bg-gray-600 disabled:cursor-not-allowed enabled:hover:bg-red-700"
+                  className="btn-confirm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                   Destroy Upgrade
               </button>

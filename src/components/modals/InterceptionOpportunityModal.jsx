@@ -164,9 +164,9 @@ const InterceptionOpportunityModal = ({
 
           {/* Buttons */}
           <div className="flex justify-center gap-6 pt-4">
-            <button 
+            <button
               onClick={onDecline}
-              className="w-40 py-3 border-2 border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-200 rounded uppercase text-sm tracking-wider font-semibold transition-all"
+              className="btn-cancel"
             >
               Decline
             </button>

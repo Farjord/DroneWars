@@ -43,7 +43,8 @@ class ActionProcessor {
     this.gameStateManager = gameStateManager;
     this.gameDataService = GameDataService.getInstance(gameStateManager);
     this.animationManager = null;
-    this.pendingAnimationsForBroadcast = []; // Track animations for guest broadcasting
+    this.pendingActionAnimations = []; // Track action animations for guest broadcasting
+    this.pendingSystemAnimations = []; // Track system animations for guest broadcasting
 
     // Wrapper function for game logic compatibility
     this.effectiveStatsWrapper = (drone, lane) => {
@@ -1139,7 +1140,8 @@ setAnimationManager(animationManager) {
       };
 
       // Execute phase announcement (blocks gameplay during display)
-      await this.executeAndCaptureAnimations([phaseAnnouncementEvent]);
+      // Mark as system animation so guests always see it (never deduplicated)
+      await this.executeAndCaptureAnimations([phaseAnnouncementEvent], true);
 
       debugLog('PHASE_TRANSITIONS', `🎬 [PHASE ANNOUNCEMENT] Announcement complete for: ${newPhase}`);
     }
@@ -1622,8 +1624,9 @@ setAnimationManager(animationManager) {
   /**
    * Execute animations and capture them for broadcasting to guest
    * @param {Array} animations - Animation events to execute
+   * @param {boolean} isSystemAnimation - True for system animations (phase announcements), false for action animations
    */
-  async executeAndCaptureAnimations(animations) {
+  async executeAndCaptureAnimations(animations, isSystemAnimation = false) {
     if (!animations || animations.length === 0) {
       return;
     }
@@ -1631,7 +1634,11 @@ setAnimationManager(animationManager) {
     // Capture animations for guest broadcasting (host only)
     const gameMode = this.gameStateManager.get('gameMode');
     if (gameMode === 'host') {
-      this.pendingAnimationsForBroadcast.push(...animations);
+      if (isSystemAnimation) {
+        this.pendingSystemAnimations.push(...animations);
+      } else {
+        this.pendingActionAnimations.push(...animations);
+      }
     }
 
     // Execute animations with source tracking
@@ -1642,12 +1649,22 @@ setAnimationManager(animationManager) {
   }
 
   /**
-   * Get and clear pending animations for broadcasting
-   * @returns {Array} Pending animations
+   * Get and clear pending action animations for broadcasting
+   * @returns {Array} Pending action animations
    */
-  getAndClearPendingAnimations() {
-    const animations = [...this.pendingAnimationsForBroadcast];
-    this.pendingAnimationsForBroadcast = [];
+  getAndClearPendingActionAnimations() {
+    const animations = [...this.pendingActionAnimations];
+    this.pendingActionAnimations = [];
+    return animations;
+  }
+
+  /**
+   * Get and clear pending system animations for broadcasting
+   * @returns {Array} Pending system animations
+   */
+  getAndClearPendingSystemAnimations() {
+    const animations = [...this.pendingSystemAnimations];
+    this.pendingSystemAnimations = [];
     return animations;
   }
 
@@ -1664,14 +1681,17 @@ setAnimationManager(animationManager) {
 
     if (this.p2pManager && this.p2pManager.isConnected) {
       const currentState = this.gameStateManager.getState();
-      const animations = this.getAndClearPendingAnimations();
+      const actionAnimations = this.getAndClearPendingActionAnimations();
+      const systemAnimations = this.getAndClearPendingSystemAnimations();
 
       debugLog('STATE_SYNC', '📡 [ANIMATION BROADCAST] Sending state with animations:', {
-        animationCount: animations.length,
-        animations: animations.map(a => a.animationName)
+        actionAnimationCount: actionAnimations.length,
+        systemAnimationCount: systemAnimations.length,
+        actionAnimations: actionAnimations.map(a => a.animationName),
+        systemAnimations: systemAnimations.map(a => a.animationName)
       });
 
-      this.p2pManager.broadcastState(currentState, animations);
+      this.p2pManager.broadcastState(currentState, actionAnimations, systemAnimations);
     }
   }
 

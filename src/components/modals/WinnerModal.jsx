@@ -85,13 +85,13 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
         <div className="flex gap-6 z-20">
           <button
             onClick={handleViewBoard}
-            className="px-8 py-4 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-xl rounded-lg transition-colors shadow-lg shadow-cyan-500/50"
+            className="btn-continue text-xl px-8 py-4"
           >
             View Board
           </button>
           <button
             onClick={handleExitToMenu}
-            className="px-8 py-4 bg-gray-600 hover:bg-gray-700 text-white font-bold text-xl rounded-lg transition-colors shadow-lg"
+            className="btn-cancel text-xl px-8 py-4"
           >
             Exit to Menu
           </button>

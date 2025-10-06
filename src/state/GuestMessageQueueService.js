@@ -118,37 +118,46 @@ class GuestMessageQueueService {
    *
    * Performance: State-only updates skip render wait for instant application
    */
-  async processStateUpdate({ state, animations }) {
+  async processStateUpdate({ state, actionAnimations, systemAnimations }) {
     debugLog('STATE_SYNC', '📊 [GUEST QUEUE] Processing state update:', {
       turnPhase: state?.turnPhase,
-      hasAnimations: animations?.length > 0,
-      animationCount: animations?.length || 0
+      hasActionAnimations: actionAnimations?.length > 0,
+      hasSystemAnimations: systemAnimations?.length > 0,
+      actionAnimationCount: actionAnimations?.length || 0,
+      systemAnimationCount: systemAnimations?.length || 0
     });
 
     // Check if we have recent optimistic actions (client-side prediction)
     const hasOptimisticActions = this.gameStateManager.hasRecentOptimisticActions();
     const optimisticCount = this.gameStateManager.optimisticActions?.length || 0;
 
-    // Skip animations if we processed this optimistically (already played animations)
-    const shouldSkipAnimations = hasOptimisticActions && animations && animations.length > 0;
-
-    debugLog('ANIMATIONS', '🔍 [GUEST QUEUE] Animation skip decision:', {
-      hasOptimisticActions,
-      optimisticActionsCount: optimisticCount,
-      incomingAnimationCount: animations?.length || 0,
-      willSkipAnimations: shouldSkipAnimations,
-      reasoning: shouldSkipAnimations
-        ? 'Already played locally (optimistic)'
-        : !animations?.length
-          ? 'No animations in update'
-          : 'No optimistic actions, will play animations'
-    });
-
-    if (shouldSkipAnimations) {
-      debugLog('ANIMATIONS', '⏭️ [GUEST QUEUE] SKIPPING animations - already played optimistically');
+    // Smart filtering: Skip action animations if optimistic, always keep system animations
+    let filteredActionAnimations = actionAnimations || [];
+    if (hasOptimisticActions && actionAnimations && actionAnimations.length > 0) {
+      debugLog('ANIMATIONS', '⏭️ [GUEST QUEUE] SKIPPING action animations - already played optimistically');
+      filteredActionAnimations = [];
     }
 
-    const hasAnimations = animations && animations.length > 0 && !shouldSkipAnimations;
+    // System animations always play (phase announcements, etc.)
+    const systemAnimationsToPlay = systemAnimations || [];
+
+    // Combine animations to execute
+    const animationsToPlay = [...filteredActionAnimations, ...systemAnimationsToPlay];
+
+    debugLog('ANIMATIONS', '🔍 [GUEST QUEUE] Animation filtering decision:', {
+      hasOptimisticActions,
+      optimisticActionsCount: optimisticCount,
+      incomingActionCount: actionAnimations?.length || 0,
+      incomingSystemCount: systemAnimations?.length || 0,
+      skippedActionCount: (actionAnimations?.length || 0) - filteredActionAnimations.length,
+      systemAnimationsKept: systemAnimationsToPlay.length,
+      totalToPlay: animationsToPlay.length,
+      reasoning: hasOptimisticActions
+        ? 'Filtered action animations (optimistic), kept system animations'
+        : 'Playing all animations (no optimistic actions)'
+    });
+
+    const hasAnimations = animationsToPlay.length > 0;
 
     // Step 1: Setup render promise BEFORE applying state (prevents race condition)
     // Only create promise if animations are present - optimization for state-only updates
@@ -171,7 +180,7 @@ class GuestMessageQueueService {
       // Step 4: Execute animations
       if (this.gameStateManager.actionProcessor?.animationManager) {
         debugLog('ANIMATIONS', '🎬 [GUEST QUEUE] Executing animations from HOST response...');
-        await this.gameStateManager.actionProcessor.animationManager.executeAnimations(animations, 'HOST_RESPONSE');
+        await this.gameStateManager.actionProcessor.animationManager.executeAnimations(animationsToPlay, 'HOST_RESPONSE');
         debugLog('ANIMATIONS', '✅ [GUEST QUEUE] Host response animations complete');
       }
     } else {

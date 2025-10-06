@@ -183,6 +183,16 @@ function GameHeader({
               ({shieldsToAdd} shields to add)
             </span>
           )}
+          {turnPhase === 'mandatoryDiscard' && mandatoryAction?.type === 'discard' && (
+            <span className="text-base font-semibold text-orange-300 ml-2">
+              ({mandatoryAction.count} {mandatoryAction.count === 1 ? 'card' : 'cards'} to discard)
+            </span>
+          )}
+          {turnPhase === 'optionalDiscard' && (
+            <span className="text-base font-semibold text-yellow-300 ml-2">
+              ({localPlayerEffectiveStats.totals.discardLimit - optionalDiscardCount} {(localPlayerEffectiveStats.totals.discardLimit - optionalDiscardCount) === 1 ? 'card' : 'cards'} to discard)
+            </span>
+          )}
         </h2>
 
         {/* Turn Indicator - Show during deployment/action phases or reallocation */}
@@ -422,7 +432,7 @@ function GameHeader({
         {/* Optional Discard Controls - Show during optionalDiscard phase */}
         {turnPhase === 'optionalDiscard' && (
           <button onClick={handleRoundStartDraw} className="btn-confirm">
-            Finish Discarding ({localPlayerEffectiveStats.totals.discardLimit - optionalDiscardCount})
+            Confirm
           </button>
         )}
       </div>

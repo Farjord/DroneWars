@@ -555,7 +555,8 @@ class GameFlowManager {
         };
 
         // Execute second announcement (blocks gameplay during display)
-        await this.animationManager.executeAnimations([secondAnnouncementEvent], 'PHASE_ANNOUNCEMENT');
+        // Use ActionProcessor to capture for guest broadcasting, mark as system animation
+        await this.actionProcessor.executeAndCaptureAnimations([secondAnnouncementEvent], true);
         debugLog('PHASE_TRANSITIONS', '🎬 [FIRST PLAYER] Second announcement complete');
       }
 

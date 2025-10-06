@@ -197,12 +197,15 @@ class P2PManager {
           // Host sending full state update to guest
           // Emit to GameStateManager for direct application
           debugLog('MULTIPLAYER', '[P2P GUEST] Received state update with animations:', {
-            hasAnimations: data.animations && data.animations.length > 0,
-            animationCount: data.animations?.length || 0
+            hasActionAnimations: data.actionAnimations && data.actionAnimations.length > 0,
+            hasSystemAnimations: data.systemAnimations && data.systemAnimations.length > 0,
+            actionAnimationCount: data.actionAnimations?.length || 0,
+            systemAnimationCount: data.systemAnimations?.length || 0
           });
           this.emit('state_update_received', {
             state: data.state,
-            animations: data.animations || []
+            actionAnimations: data.actionAnimations || [],
+            systemAnimations: data.systemAnimations || []
           });
           break;
 
@@ -269,9 +272,10 @@ class P2PManager {
   /**
    * Broadcast game state to peer (host → guest)
    * @param {Object} state - Complete game state to broadcast
-   * @param {Array} animations - Animation events to send to guest (optional)
+   * @param {Array} actionAnimations - Player action animations to send to guest (optional)
+   * @param {Array} systemAnimations - System animations to send to guest (optional)
    */
-  broadcastState(state, animations = []) {
+  broadcastState(state, actionAnimations = [], systemAnimations = []) {
     if (!this.isHost) {
       console.warn('Only host can broadcast state');
       return;
@@ -288,12 +292,14 @@ class P2PManager {
         this.connection.send({
           type: 'STATE_UPDATE',
           state: state,
-          animations: animations,
+          actionAnimations: actionAnimations,
+          systemAnimations: systemAnimations,
           timestamp: Date.now()
         });
         debugLog('MULTIPLAYER', '[P2P HOST] Broadcasted state update to guest', {
-          hasAnimations: animations.length > 0,
-          animationCount: animations.length
+          hasAnimations: (actionAnimations.length + systemAnimations.length) > 0,
+          actionAnimationCount: actionAnimations.length,
+          systemAnimationCount: systemAnimations.length
         });
       } catch (error) {
         console.error('Failed to broadcast state:', error);

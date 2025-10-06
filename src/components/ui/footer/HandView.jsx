@@ -77,12 +77,6 @@ function HandView({
 
       {/* Hand Section */}
       <div className={styles.handSection}>
-        {mandatoryAction?.type === 'discard' && mandatoryAction.fromAbility && (
-          <p className={styles.mandatoryDiscardWarning}>
-            You must discard {mandatoryAction.count} card(s).
-          </p>
-        )}
-        
         <div
           className={styles.handCardsContainer}
           style={applyFanEffect ? { width: `${targetHandWidthPx}px` } : {}}

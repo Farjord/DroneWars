@@ -30,13 +30,13 @@ const ConfirmationModal = ({ confirmationModal, show }) => {
         <div className="flex justify-center gap-4 mt-6">
           <button
             onClick={confirmationModal.onCancel}
-            className="bg-gray-600 text-white font-bold py-2 px-6 rounded-full hover:bg-gray-700 transition-colors"
+            className="btn-cancel"
           >
             Cancel
           </button>
           <button
             onClick={confirmationModal.onConfirm}
-            className="bg-red-600 text-white font-bold py-2 px-6 rounded-full hover:bg-red-700 transition-colors"
+            className="btn-confirm"
           >
             Confirm
           </button>

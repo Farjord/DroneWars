@@ -601,15 +601,18 @@ const App = () => {
       fullResult: result
     });
 
-    // Guest mode: Always show waiting since we don't know opponent status yet
-    // Host/local mode: Only show if opponent hasn't completed
-    if (gameState.gameMode === 'guest' || (result.data && !result.data.bothPlayersComplete)) {
-      debugLog('COMMITMENTS', '✋ Setting waiting overlay for allocateShields');
+    // Unified logic: Check opponent commitment status directly from state
+    const commitments = gameState.commitments || {};
+    const phaseCommitments = commitments.allocateShields || {};
+    const opponentCommitted = phaseCommitments[getOpponentPlayerId()]?.completed;
+
+    if (!opponentCommitted) {
+      debugLog('COMMITMENTS', '✋ Opponent not committed yet, showing waiting overlay');
       setWaitingForPlayerPhase('allocateShields');
     } else {
-      debugLog('COMMITMENTS', '✅ Both players complete, not showing waiting overlay');
+      debugLog('COMMITMENTS', '✅ Both players complete, no waiting overlay');
     }
-  }, [processActionWithGuestRouting, getLocalPlayerId]);
+  }, [processActionWithGuestRouting, getLocalPlayerId, gameState.commitments, getOpponentPlayerId]);
 
   // ========================================
   // SECTION 7: GAME LOGIC FUNCTIONS
@@ -2409,10 +2412,16 @@ const App = () => {
       actionData: { completed: true }
     });
 
-    // Guest mode: Always show waiting since we don't know opponent status yet
-    // Host/local mode: Only show if opponent hasn't completed
-    if (gameState.gameMode === 'guest' || (result.data && !result.data.bothPlayersComplete)) {
+    // Unified logic: Check opponent commitment status directly from state
+    const commitments = gameState.commitments || {};
+    const phaseCommitments = commitments.optionalDiscard || {};
+    const opponentCommitted = phaseCommitments[getOpponentPlayerId()]?.completed;
+
+    if (!opponentCommitted) {
+      debugLog('PHASE_TRANSITIONS', '✋ Opponent not committed yet, showing waiting overlay');
       setWaitingForPlayerPhase('optionalDiscard');
+    } else {
+      debugLog('PHASE_TRANSITIONS', '✅ Both players complete, no waiting overlay');
     }
   };
 
@@ -2677,20 +2686,6 @@ const App = () => {
         setShowAiHandModal={setShowAiHandModal}
         onShowDebugModal={() => setShowDebugModal(true)}
       />
-
-      {/* Transparent Overlay - Blocks interaction during opponent's turn */}
-      {!isMyTurn() && (turnPhase === 'deployment' || turnPhase === 'action') && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'transparent',
-            zIndex: 40,
-            cursor: 'not-allowed'
-          }}
-          onClick={(e) => e.stopPropagation()}
-        />
-      )}
 
       <GameBattlefield
         localPlayerState={localPlayerState}
