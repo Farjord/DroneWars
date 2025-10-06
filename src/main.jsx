@@ -1,3 +1,6 @@
+// Initialize debug logger FIRST to set up console filtering
+import './utils/debugLogger.js';
+
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import AppRouter from './AppRouter.jsx'

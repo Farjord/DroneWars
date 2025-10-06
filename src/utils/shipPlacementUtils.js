@@ -4,6 +4,8 @@
 // Standalone utility functions for ship placement phase logic
 // Handles initialization and management of ship section placement data
 
+import { debugLog } from './debugLogger.js';
+
 /**
  * Initialize ship placement data for the beginning of a game
  * @returns {Object} Object containing placement state data
@@ -12,8 +14,8 @@ export const initializeShipPlacement = () => {
   // Standard ship sections available for placement
   const availableSections = ['bridge', 'powerCell', 'droneControlHub'];
 
-  console.log(`🚢 Initialized ship placement: ${availableSections.length} sections available`);
-  console.log(`🎯 Available sections: ${availableSections.join(', ')}`);
+  debugLog('PLACEMENT', `🚢 Initialized ship placement: ${availableSections.length} sections available`);
+  debugLog('PLACEMENT', `🎯 Available sections: ${availableSections.join(', ')}`);
 
   return {
     unplacedSections: [...availableSections],
@@ -27,7 +29,7 @@ export const initializeShipPlacement = () => {
  * @returns {Object} Object containing reset placement state
  */
 export const resetPlacementState = () => {
-  console.log('🔄 Resetting ship placement state');
+  debugLog('PLACEMENT', '🔄 Resetting ship placement state');
   return initializeShipPlacement();
 };
 

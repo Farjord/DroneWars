@@ -5,6 +5,8 @@
 // Ensures proper render timing and animation completion
 // Prevents race conditions and message loss on guest side
 
+import { debugLog } from '../utils/debugLogger.js';
+
 class GuestMessageQueueService {
   constructor(gameStateManager) {
     this.gameStateManager = gameStateManager;
@@ -20,13 +22,13 @@ class GuestMessageQueueService {
    * @param {Object} p2pManager - P2P manager instance
    */
   initialize(p2pManager) {
-    console.log('🎯 [GUEST QUEUE] Initializing GuestMessageQueueService');
+    debugLog('MULTIPLAYER', '🎯 [GUEST QUEUE] Initializing GuestMessageQueueService');
 
     // Subscribe to state update messages from host (filter for queuing)
     // Other events (setup, control) are handled directly by GameStateManager
     p2pManager.subscribe((event) => {
       if (event.type === 'state_update_received') {
-        console.log('📥 [GUEST QUEUE] Received state update, queuing for processing');
+        debugLog('MULTIPLAYER', '📥 [GUEST QUEUE] Received state update, queuing for processing');
         this.enqueueMessage(event);
       }
       // Setup events like 'multiplayer_mode_change' and 'joined_room' handled elsewhere
@@ -35,7 +37,7 @@ class GuestMessageQueueService {
     // Subscribe to render complete events from App.jsx
     this.gameStateManager.subscribe((event) => {
       if (event.type === 'render_complete') {
-        console.log('✅ [GUEST QUEUE] Render complete received');
+        debugLog('STATE_SYNC', '✅ [GUEST QUEUE] Render complete received');
         if (this.renderCompleteResolve) {
           this.renderCompleteResolve();
           this.renderCompleteResolve = null;
@@ -50,7 +52,7 @@ class GuestMessageQueueService {
    * @param {Object} message - P2P message from host
    */
   enqueueMessage(message) {
-    console.log('📝 [GUEST QUEUE] Enqueuing message:', {
+    debugLog('MULTIPLAYER', '📝 [GUEST QUEUE] Enqueuing message:', {
       type: message.type,
       queueLength: this.messageQueue.length + 1
     });
@@ -65,16 +67,16 @@ class GuestMessageQueueService {
    */
   async processQueue() {
     if (this.isProcessing) {
-      console.log('⏸️ [GUEST QUEUE] Already processing, queue length:', this.messageQueue.length);
+      debugLog('MULTIPLAYER', '⏸️ [GUEST QUEUE] Already processing, queue length:', this.messageQueue.length);
       return;
     }
 
     this.isProcessing = true;
-    console.log('▶️ [GUEST QUEUE] Starting queue processing');
+    debugLog('MULTIPLAYER', '▶️ [GUEST QUEUE] Starting queue processing');
 
     while (this.messageQueue.length > 0) {
       const message = this.messageQueue.shift();
-      console.log('🔄 [GUEST QUEUE] Processing message:', {
+      debugLog('MULTIPLAYER', '🔄 [GUEST QUEUE] Processing message:', {
         type: message.type,
         remaining: this.messageQueue.length
       });
@@ -83,7 +85,7 @@ class GuestMessageQueueService {
     }
 
     this.isProcessing = false;
-    console.log('⏹️ [GUEST QUEUE] Queue processing complete');
+    debugLog('MULTIPLAYER', '⏹️ [GUEST QUEUE] Queue processing complete');
   }
 
   /**
@@ -117,7 +119,7 @@ class GuestMessageQueueService {
    * Performance: State-only updates skip render wait for instant application
    */
   async processStateUpdate({ state, animations }) {
-    console.log('📊 [GUEST QUEUE] Processing state update:', {
+    debugLog('STATE_SYNC', '📊 [GUEST QUEUE] Processing state update:', {
       turnPhase: state?.turnPhase,
       hasAnimations: animations?.length > 0,
       animationCount: animations?.length || 0
@@ -125,12 +127,25 @@ class GuestMessageQueueService {
 
     // Check if we have recent optimistic actions (client-side prediction)
     const hasOptimisticActions = this.gameStateManager.hasRecentOptimisticActions();
+    const optimisticCount = this.gameStateManager.optimisticActions?.length || 0;
 
     // Skip animations if we processed this optimistically (already played animations)
     const shouldSkipAnimations = hasOptimisticActions && animations && animations.length > 0;
 
+    debugLog('ANIMATIONS', '🔍 [GUEST QUEUE] Animation skip decision:', {
+      hasOptimisticActions,
+      optimisticActionsCount: optimisticCount,
+      incomingAnimationCount: animations?.length || 0,
+      willSkipAnimations: shouldSkipAnimations,
+      reasoning: shouldSkipAnimations
+        ? 'Already played locally (optimistic)'
+        : !animations?.length
+          ? 'No animations in update'
+          : 'No optimistic actions, will play animations'
+    });
+
     if (shouldSkipAnimations) {
-      console.log('🔮 [GUEST QUEUE] Skipping animations - already played optimistically');
+      debugLog('ANIMATIONS', '⏭️ [GUEST QUEUE] SKIPPING animations - already played optimistically');
     }
 
     const hasAnimations = animations && animations.length > 0 && !shouldSkipAnimations;
@@ -139,31 +154,31 @@ class GuestMessageQueueService {
     // Only create promise if animations are present - optimization for state-only updates
     let renderPromise = null;
     if (hasAnimations) {
-      console.log('🔧 [GUEST QUEUE] Setting up render listener for animations...');
+      debugLog('STATE_SYNC', '🔧 [GUEST QUEUE] Setting up render listener for animations...');
       renderPromise = this.waitForRender();
     }
 
     // Step 2: Apply state (this will trigger React re-render)
-    console.log('📝 [GUEST QUEUE] Applying state...');
+    debugLog('STATE_SYNC', '📝 [GUEST QUEUE] Applying state...');
     this.gameStateManager.applyHostState(state);
 
     // Step 3: Wait for React to render (only if animations are present)
     if (hasAnimations && renderPromise) {
-      console.log('⏳ [GUEST QUEUE] Waiting for React render before animations...');
+      debugLog('STATE_SYNC', '⏳ [GUEST QUEUE] Waiting for React render before animations...');
       await renderPromise;
-      console.log('✅ [GUEST QUEUE] React render complete');
+      debugLog('STATE_SYNC', '✅ [GUEST QUEUE] React render complete');
 
       // Step 4: Execute animations
       if (this.gameStateManager.actionProcessor?.animationManager) {
-        console.log('🎬 [GUEST QUEUE] Executing animations...');
-        await this.gameStateManager.actionProcessor.animationManager.executeAnimations(animations);
-        console.log('✅ [GUEST QUEUE] Animations complete');
+        debugLog('ANIMATIONS', '🎬 [GUEST QUEUE] Executing animations from HOST response...');
+        await this.gameStateManager.actionProcessor.animationManager.executeAnimations(animations, 'HOST_RESPONSE');
+        debugLog('ANIMATIONS', '✅ [GUEST QUEUE] Host response animations complete');
       }
     } else {
-      console.log('⚡ [GUEST QUEUE] No animations - state applied immediately without render wait');
+      debugLog('STATE_SYNC', '⚡ [GUEST QUEUE] No animations - state applied immediately without render wait');
     }
 
-    console.log('✅ [GUEST QUEUE] State update processing complete');
+    debugLog('STATE_SYNC', '✅ [GUEST QUEUE] State update processing complete');
   }
 
   /**

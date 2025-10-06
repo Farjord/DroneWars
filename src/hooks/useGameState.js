@@ -8,6 +8,7 @@ import { useState, useEffect, useCallback } from 'react';
 import gameStateManager from '../state/GameStateManager.js';
 import p2pManager from '../network/P2PManager.js';
 import { isSimultaneousPhase, isSequentialPhase } from '../utils/gameUtils.js';
+import { debugLog } from '../utils/debugLogger.js';
 
 export const useGameState = () => {
   const [gameState, setGameState] = useState(gameStateManager.getState());
@@ -162,7 +163,7 @@ export const useGameState = () => {
     const currentPhase = gameState.turnPhase;
     const isSequential = isSequentialPhase(currentPhase);
 
-    console.log(`🔀 useGameState.routeAction: ${actionType} in phase ${currentPhase} (${isSequential ? 'sequential' : 'simultaneous'})`);
+    debugLog('STATE_SYNC', `🔀 useGameState.routeAction: ${actionType} in phase ${currentPhase} (${isSequential ? 'sequential' : 'simultaneous'})`);
 
     if (isSequential) {
       // Sequential phases: use ActionProcessor for serialized execution

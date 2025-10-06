@@ -4,12 +4,15 @@
 // Standalone utility functions for drone selection phase logic
 // Handles initialization and management of drone selection data
 
+import { debugLog } from './debugLogger.js';
+
 /**
  * Initialize drone selection data for the beginning of a game
  * @param {Array} droneCollection - Full collection of available drones
+ * @param {number} initialSize - Number of drones in initial selection (default: 3)
  * @returns {Object} Object containing droneSelectionTrio and droneSelectionPool
  */
-export const initializeDroneSelection = (droneCollection) => {
+export const initializeDroneSelection = (droneCollection, initialSize = 3) => {
   if (!droneCollection || droneCollection.length === 0) {
     throw new Error('droneCollection must be a non-empty array');
   }
@@ -17,14 +20,14 @@ export const initializeDroneSelection = (droneCollection) => {
   // Create a shuffled copy of the drone collection
   const shuffledDrones = [...droneCollection].sort(() => 0.5 - Math.random());
 
-  // First 3 drones become the initial trio for selection
-  const trio = shuffledDrones.slice(0, 3);
+  // First N drones become the initial selection
+  const trio = shuffledDrones.slice(0, initialSize);
 
-  // Remaining drones go into the pool for future trios
-  const pool = shuffledDrones.slice(3);
+  // Remaining drones go into the pool for future selections
+  const pool = shuffledDrones.slice(initialSize);
 
-  console.log(`🎲 Initialized drone selection: ${trio.length} in trio, ${pool.length} in pool`);
-  console.log(`🎯 Initial trio: ${trio.map(d => d.name).join(', ')}`);
+  debugLog('DRONE_SELECTION', `🎲 Initialized drone selection: ${trio.length} in initial selection, ${pool.length} in pool`);
+  debugLog('DRONE_SELECTION', `🎯 Initial selection: ${trio.map(d => d.name).join(', ')}`);
 
   return {
     droneSelectionTrio: trio,
@@ -51,8 +54,8 @@ export const advanceDroneSelectionTrio = (currentPool, trioSize = 3) => {
   const newTrio = currentPool.slice(0, trioSize);
   const remainingPool = currentPool.slice(trioSize);
 
-  console.log(`🔄 Advanced drone trio: ${newTrio.map(d => d.name).join(', ')}`);
-  console.log(`📦 Remaining in pool: ${remainingPool.length} drones`);
+  debugLog('DRONE_SELECTION', `🔄 Advanced drone trio: ${newTrio.map(d => d.name).join(', ')}`);
+  debugLog('DRONE_SELECTION', `📦 Remaining in pool: ${remainingPool.length} drones`);
 
   return {
     droneSelectionTrio: newTrio,

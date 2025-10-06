@@ -11,6 +11,7 @@ import DroneCard from '../ui/DroneCard.jsx';
 import { advanceDroneSelectionTrio } from '../../utils/droneSelectionUtils.js';
 import gameStateManager from '../../state/GameStateManager.js';
 import p2pManager from '../../network/P2PManager.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * WAITING FOR OPPONENT SCREEN COMPONENT
@@ -56,15 +57,37 @@ function DroneSelectionScreen() {
     getLocalPlayerState
   } = useGameState();
 
-  const { droneSelectionPool, droneSelectionTrio, turnPhase } = gameState;
+  const { turnPhase } = gameState;
   const localPlayerState = getLocalPlayerState();
+  const localPlayerId = getLocalPlayerId();
+
+  // Get player-specific drone selection data
+  const propertyNameTrio = `${localPlayerId}DroneSelectionTrio`;
+  const propertyNamePool = `${localPlayerId}DroneSelectionPool`;
+  const droneSelectionTrio = gameState[propertyNameTrio];
+  const droneSelectionPool = gameState[propertyNamePool];
+
+  debugLog('DRONE_SELECTION', 'DroneSelectionScreen render:', {
+    localPlayerId,
+    propertyNameTrio,
+    propertyNamePool,
+    hasTrio: !!droneSelectionTrio,
+    hasPool: !!droneSelectionPool,
+    trioLength: droneSelectionTrio?.length,
+    poolLength: droneSelectionPool?.length,
+    trioData: droneSelectionTrio?.map(d => d.name),
+    // Also check what's in the other player's data
+    player1Trio: gameState.player1DroneSelectionTrio?.map(d => d.name),
+    player2Trio: gameState.player2DroneSelectionTrio?.map(d => d.name),
+    gameMode: gameState.gameMode
+  });
 
   // Local state for drone selection process
   const [tempSelectedDrones, setTempSelectedDrones] = useState([]);
 
-  // Local state for trio management (initialized from global state)
-  const [currentTrio, setCurrentTrio] = useState(droneSelectionTrio);
-  const [remainingPool, setRemainingPool] = useState(droneSelectionPool);
+  // Local state for trio management (initialized from player-specific state)
+  const [currentTrio, setCurrentTrio] = useState(droneSelectionTrio || []);
+  const [remainingPool, setRemainingPool] = useState(droneSelectionPool || []);
 
   /**
    * HANDLE CHOOSE DRONE FOR SELECTION
@@ -76,22 +99,22 @@ function DroneSelectionScreen() {
     // Only handle during drone selection phase
     if (turnPhase !== 'droneSelection') return;
 
-    console.log('🔧 handleChooseDroneForSelection called with:', chosenDrone.name);
+    debugLog('DRONE_SELECTION', '🔧 handleChooseDroneForSelection called with:', chosenDrone.name);
 
     const newSelection = [...tempSelectedDrones, chosenDrone];
     setTempSelectedDrones(newSelection);
 
     if (newSelection.length < 5) {
-      // Continue selection process - advance to next trio using local state
-      const nextTrioData = advanceDroneSelectionTrio(remainingPool);
+      // Continue selection process - advance to next pair (2 at a time) using local state
+      const nextTrioData = advanceDroneSelectionTrio(remainingPool, 2);
 
       // Update local state only - no GameStateManager updates
       setCurrentTrio(nextTrioData.droneSelectionTrio);
       setRemainingPool(nextTrioData.droneSelectionPool);
 
-      console.log('🔧 Advanced to next trio locally, selected:', newSelection.length, 'of 5 drones');
+      debugLog('DRONE_SELECTION', '🔧 Advanced to next pair locally, selected:', newSelection.length, 'of 5 drones');
     } else {
-      console.log('🔧 All 5 drones selected, waiting for Continue button click');
+      debugLog('DRONE_SELECTION', '🔧 All 5 drones selected, waiting for Continue button click');
     }
   };
 
@@ -104,7 +127,7 @@ function DroneSelectionScreen() {
     // Only handle during drone selection phase
     if (turnPhase !== 'droneSelection') return;
 
-    console.log('🔧 handleContinueDroneSelection called with:', tempSelectedDrones.length, 'drones');
+    debugLog('DRONE_SELECTION', '🔧 handleContinueDroneSelection called with:', tempSelectedDrones.length, 'drones');
 
     const localPlayerId = getLocalPlayerId();
     const payload = {
@@ -114,7 +137,7 @@ function DroneSelectionScreen() {
     };
 
     // DEBUG LOGGING
-    console.log('🔍 [DRONE SELECTION] Submitting commitment:', {
+    debugLog('DRONE_SELECTION', 'Submitting commitment:', {
       gameMode: gameState.gameMode,
       playerId: localPlayerId,
       droneCount: tempSelectedDrones.length,
@@ -123,7 +146,7 @@ function DroneSelectionScreen() {
 
     // Guest mode: Send action to host
     if (gameState.gameMode === 'guest') {
-      console.log('[GUEST] Sending drone selection commitment to host');
+      debugLog('DRONE_SELECTION', '[GUEST] Sending drone selection commitment to host');
       p2pManager.sendActionToHost('commitment', payload);
       return;
     }
@@ -137,12 +160,12 @@ function DroneSelectionScreen() {
         console.error('❌ Drone selection submission failed:', submissionResult.error);
         return;
       }
-      console.log('✅ Drone selection submitted successfully');
+      debugLog('DRONE_SELECTION', '✅ Drone selection submitted successfully');
     }).catch(error => {
       console.error('❌ Drone selection submission error:', error);
     });
 
-    console.log('✅ Drone selection submitted to PhaseManager');
+    debugLog('DRONE_SELECTION', '✅ Drone selection submitted to PhaseManager');
 
     // PhaseManager will handle:
     // - GameStateManager updates when both players complete
@@ -150,6 +173,18 @@ function DroneSelectionScreen() {
     // - Phase transition logic
     // - AI completion in single-player mode
   };
+
+  // Reinitialize local state if drone selection data changes (handles late arrival from network)
+  useEffect(() => {
+    if (droneSelectionTrio && droneSelectionTrio.length > 0 && currentTrio.length === 0) {
+      setCurrentTrio(droneSelectionTrio);
+      debugLog('DRONE_SELECTION', '🔄 Updated currentTrio from gameState after data arrival');
+    }
+    if (droneSelectionPool && droneSelectionPool.length > 0 && remainingPool.length === 0) {
+      setRemainingPool(droneSelectionPool);
+      debugLog('DRONE_SELECTION', '🔄 Updated remainingPool from gameState after data arrival');
+    }
+  }, [droneSelectionTrio, droneSelectionPool]);
 
   // Notify GuestMessageQueueService when React has finished rendering (guest mode only)
   useEffect(() => {
@@ -159,13 +194,12 @@ function DroneSelectionScreen() {
   }, [gameState, gameStateManager]);
 
   // Check completion status directly from gameState.commitments
-  const localPlayerId = getLocalPlayerId();
   const opponentPlayerId = getOpponentPlayerId();
   const localPlayerCompleted = gameState.commitments?.droneSelection?.[localPlayerId]?.completed || false;
   const opponentCompleted = gameState.commitments?.droneSelection?.[opponentPlayerId]?.completed || false;
 
-  // DEBUG LOGGING - Remove after fixing multiplayer issue
-  console.log('🔍 [DRONE SELECTION] Render check:', {
+  // DEBUG LOGGING
+  debugLog('DRONE_SELECTION', 'Render check:', {
     gameMode: gameState.gameMode,
     isMultiplayer: isMultiplayer(),
     localPlayerId,
@@ -210,8 +244,9 @@ function DroneSelectionScreen() {
       {/* Content Wrapper */}
       <div className="flex flex-col items-center w-full p-4 relative z-10">
         <h2 className="text-3xl font-bold mb-2 text-white text-center">
-          Choose Your Drones
+          Select Your Active Drone Pool
         </h2>
+        <p className="text-gray-400 text-sm mb-4">Choosing 5 drones from your deck of 10</p>
 
         {/* Progress indicator */}
         <div className="flex items-center gap-2 mb-6">
@@ -230,11 +265,11 @@ function DroneSelectionScreen() {
           </span>
         </div>
 
-        {/* Trio selection or completion message */}
+        {/* Pair selection or completion message */}
         {!isSelectionComplete ? (
           <>
             <p className="text-center text-gray-400 mb-6">
-              Choice {tempSelectedDrones.length + 1} of 5: Select one drone from the three options below to add to your Active Drone Pool.
+              Choice {tempSelectedDrones.length + 1} of 5: Select one drone from the two options below for your Active Drone Pool.
             </p>
 
             {currentTrio && currentTrio.length > 0 && (
@@ -255,7 +290,7 @@ function DroneSelectionScreen() {
           <div className="text-center mb-8">
             <div className="bg-green-900/30 border border-green-500 rounded-lg p-4 mb-4">
               <p className="text-green-400 font-bold mb-2">✅ Selection Complete!</p>
-              <p className="text-gray-300">All 5 drones have been selected. Ready to proceed to deck selection.</p>
+              <p className="text-gray-300">All 5 drones have been selected for your Active Pool. Ready to proceed to ship placement.</p>
             </div>
           </div>
         )}
@@ -266,7 +301,7 @@ function DroneSelectionScreen() {
           disabled={!isSelectionComplete}
           className="btn-continue mb-8"
         >
-          {isSelectionComplete ? 'Continue to Deck Selection' : `Continue (${tempSelectedDrones.length}/5)`}
+          {isSelectionComplete ? 'Continue to Ship Placement' : `Continue (${tempSelectedDrones.length}/5)`}
         </button>
 
         {/* Selected drones display */}

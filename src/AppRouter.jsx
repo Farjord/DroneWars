@@ -16,6 +16,7 @@ import DeckSelectionScreen from './components/screens/DeckSelectionScreen.jsx';
 import ShipPlacementScreen from './components/screens/ShipPlacementScreen.jsx';
 import App from './App.jsx';
 import MorphingBackground from './components/ui/AngularBandsBackground.jsx';
+import { debugLog } from './utils/debugLogger.js';
 
 /**
  * AppRouter - Routes between different screens based on application state
@@ -46,7 +47,7 @@ function AppRouter() {
   useEffect(() => {
     // Guest mode skips all manager initialization - guest is a thin client
     if (gameState.gameMode === 'guest') {
-      console.log('🔄 Guest mode detected - skipping manager initialization');
+      debugLog('PHASE_TRANSITIONS', '🔄 Guest mode detected - skipping manager initialization');
       return;
     }
 
@@ -62,9 +63,9 @@ function AppRouter() {
       gameStateManager.setGameFlowManager(gameFlowManager);
 
       gameFlowInitialized.current = true;
-      console.log('🔄 GameFlowManager initialized in AppRouter (host/local mode)');
+      debugLog('PHASE_TRANSITIONS', '🔄 GameFlowManager initialized in AppRouter (host/local mode)');
     } else {
-      console.log('🔄 GameFlowManager already initialized, skipping...');
+      debugLog('PHASE_TRANSITIONS', '🔄 GameFlowManager already initialized, skipping...');
     }
   }, [gameState.gameMode]);
 

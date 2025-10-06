@@ -2,6 +2,8 @@
 // Card visuals play before damage feedback for proper sequencing
 // Migrated from hardcoded sequences on 2025-01-XX
 
+import { debugLog } from '../utils/debugLogger.js';
+
 class AnimationManager {
   constructor(gameStateManager) {
     this.gameStateManager = gameStateManager;
@@ -87,27 +89,29 @@ class AnimationManager {
     this.visualHandlers.set(type, handler);
   }
 
-  async executeAnimations(effects) {
-    console.log('[ANIMATION EVENTS] AnimationManager executing:', effects);
+  async executeAnimations(effects, source = 'unknown') {
+    const gameMode = this.gameStateManager?.getState()?.gameMode;
 
-    effects.forEach((effect, index) => {
-      console.log(`[ANIMATION EVENTS] Animation ${index + 1}:`, {
-        name: effect.animationName,
-        type: this.animations[effect.animationName]?.type,
-        duration: this.animations[effect.animationName]?.duration,
-        payload: effect.payload
-      });
-    });
-
-    console.log('🎬 [AI ANIMATION DEBUG] AnimationManager.executeAnimations() called:', {
+    debugLog('ANIMATIONS', '🎬 [EXECUTE] AnimationManager.executeAnimations() START:', {
+      source,
+      gameMode,
       effectCount: effects?.length || 0,
       effects: effects?.map(e => e.animationName)
     });
 
+    effects.forEach((effect, index) => {
+      debugLog('ANIMATIONS', `  🎬 [EXECUTE] Animation ${index + 1}/${effects.length}: ${effect.animationName}`, {
+        type: this.animations[effect.animationName]?.type,
+        duration: this.animations[effect.animationName]?.duration
+      });
+    });
+
     if (!effects || effects.length === 0) {
-      console.log('🎬 [AI ANIMATION DEBUG] No effects to execute, returning early');
+      debugLog('ANIMATIONS', '⏭️ [EXECUTE] No effects to execute, returning early');
       return;
     }
+
+    debugLog('ANIMATIONS', `🚨 [EXECUTE] PLAYING ${effects.length} ANIMATION(S) - Source: ${source} - Mode: ${gameMode}`);
     this.setBlocking(true);
 
     try {
@@ -127,7 +131,7 @@ class AnimationManager {
             i++;
           }
 
-          console.log('🎬 [ANIMATION DEBUG] Playing damage effects in parallel:', damageGroup.map(e => e.animationName));
+          debugLog('ANIMATIONS', '🎬 [ANIMATION DEBUG] Playing damage effects in parallel:', damageGroup.map(e => e.animationName));
 
           // Play all damage effects in parallel
           await Promise.all(damageGroup.map(async (dmgEffect) => {
@@ -153,10 +157,10 @@ class AnimationManager {
             });
           }));
 
-          console.log('🎬 [ANIMATION DEBUG] All damage effects completed');
+          debugLog('ANIMATIONS', '🎬 [ANIMATION DEBUG] All damage effects completed');
         } else {
           // Sequential animation (DRONE_ATTACK_START, DRONE_RETURN, CARD_VISUAL, etc.)
-          console.log('🎬 [ANIMATION DEBUG] Processing sequential effect:', effect.animationName);
+          debugLog('ANIMATIONS', '🎬 [ANIMATION DEBUG] Processing sequential effect:', effect.animationName);
 
           const animDef = this.animations[effect.animationName];
           if (!animDef) {
@@ -181,7 +185,7 @@ class AnimationManager {
             setTimeout(resolve, animDef.duration);
           });
 
-          console.log('🎬 [ANIMATION DEBUG] Animation completed:', effect.animationName);
+          debugLog('ANIMATIONS', '🎬 [ANIMATION DEBUG] Animation completed:', effect.animationName);
           i++;
         }
       }
@@ -190,12 +194,12 @@ class AnimationManager {
       await new Promise(resolve => setTimeout(resolve, 200));
 
       this.setBlocking(false);
-      console.log('🎬 [AI ANIMATION DEBUG] All animations completed, blocking released');
+      debugLog('ANIMATIONS', '🎬 [AI ANIMATION DEBUG] All animations completed, blocking released');
     }
   }
 
   setBlocking(blocking) {
-    console.log(`🔒 [ANIMATION BLOCKING] Setting blocking to: ${blocking}`);
+    debugLog('ANIMATIONS', `🔒 [ANIMATION BLOCKING] Setting blocking to: ${blocking}`);
     this.isBlocking = blocking;
     this.gameStateManager.emit('animationStateChange', { blocking });
   }

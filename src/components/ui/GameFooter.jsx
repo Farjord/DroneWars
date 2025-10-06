@@ -10,6 +10,7 @@ import HandView from './footer/HandView.jsx';
 import DronesView from './footer/DronesView.jsx';
 import LogView from './footer/LogView.jsx';
 import styles from './GameFooter.module.css';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * GameFooter - Tabbed interface for hand cards, drone pool, and game log
@@ -17,6 +18,7 @@ import styles from './GameFooter.module.css';
  * Scales up on larger screens via media queries
  */
 function GameFooter({
+  gameMode,
   localPlayerState,
   localPlayerEffectiveStats,
   sortedLocalActivePool,
@@ -129,7 +131,7 @@ function GameFooter({
                   onClick={(e) => {
                     e.stopPropagation();
                     if (multiSelectState.selectedDrones.length > 0) {
-                      console.log('Confirm drones clicked');
+                      debugLog('HAND_VIEW', 'Confirm drones clicked');
                     }
                   }}
                   disabled={multiSelectState.selectedDrones.length === 0}
@@ -149,6 +151,7 @@ function GameFooter({
           {footerView === 'hand' && (
             <div className={styles.viewContent}>
               <HandView
+                gameMode={gameMode}
                 localPlayerState={localPlayerState}
                 localPlayerEffectiveStats={localPlayerEffectiveStats}
                 selectedCard={selectedCard}

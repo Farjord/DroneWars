@@ -16,7 +16,11 @@
       "Read(//c/Drone-Wars-Game/drone-wars-Game/src/state/**)",
       "Bash(find:*)",
       "Bash(dir:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(for:*)",
+      "Bash(do echo -n \"$file: \")",
+      "Bash(grep:*)",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

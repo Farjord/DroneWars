@@ -5,6 +5,7 @@
 // Provides warnings about incorrect routing between simultaneous and sequential phases
 
 import { isSimultaneousPhase, isSequentialPhase } from './gameUtils.js';
+import { debugLog } from './debugLogger.js';
 
 /**
  * Validate if an action is appropriate for the current phase
@@ -16,11 +17,11 @@ export const validatePhaseAction = (phase, actionType) => {
   // Special case: Shield actions have dual context
   if (actionType === 'allocateShield' || actionType === 'resetShieldAllocation' || actionType === 'endShieldAllocation') {
     if (phase === 'allocateShields') {
-      console.log(`✅ Shield action ${actionType} correctly routed for round start (simultaneous)`);
+      debugLog('PHASE_TRANSITIONS', `✅ Shield action ${actionType} correctly routed for round start (simultaneous)`);
       return 'simultaneous';
     }
     if (phase === 'action' && actionType === 'reallocateShields') {
-      console.log(`✅ Shield reallocation correctly routed for action phase (sequential)`);
+      debugLog('PHASE_TRANSITIONS', `✅ Shield reallocation correctly routed for action phase (sequential)`);
       return 'sequential';
     }
     if (phase === 'action' && actionType !== 'reallocateShields') {
@@ -85,12 +86,12 @@ export const validatePhaseAction = (phase, actionType) => {
 
   // Validate appropriate actions for current phase
   if (isSimultaneousPhase(phase) && simultaneousActions.includes(actionType)) {
-    console.debug(`✅ Simultaneous action ${actionType} valid for phase ${phase}`);
+    debugLog('PHASE_TRANSITIONS', `✅ Simultaneous action ${actionType} valid for phase ${phase}`);
     return 'simultaneous';
   }
 
   if (isSequentialPhase(phase) && sequentialActions.includes(actionType)) {
-    console.debug(`✅ Sequential action ${actionType} valid for phase ${phase}`);
+    debugLog('PHASE_TRANSITIONS', `✅ Sequential action ${actionType} valid for phase ${phase}`);
     return 'sequential';
   }
 
@@ -245,19 +246,18 @@ export const logPhaseValidation = (phase, actionType) => {
   const routing = getRoutingRecommendation(phase, actionType);
   const validActions = getValidActionsForPhase(phase);
 
-  console.group(`🔍 Phase Validation: ${actionType} in ${phase}`);
-  console.log('Validation Result:', validation);
-  console.log('Phase Type:', isSimultaneousPhase(phase) ? 'Simultaneous' : 'Sequential');
-  console.log('Recommended Method:', routing.recommendation.method);
-  console.log('Valid Actions for Phase:', validActions);
+  debugLog('PHASE_TRANSITIONS', `🔍 Phase Validation: ${actionType} in ${phase}`, {
+    validationResult: validation,
+    phaseType: isSimultaneousPhase(phase) ? 'Simultaneous' : 'Sequential',
+    recommendedMethod: routing.recommendation.method,
+    validActionsForPhase: validActions
+  });
 
   if (validation === 'error') {
     console.warn('⚠️ Invalid Action/Phase Combination');
-    console.log('Explanation:', routing.recommendation.explanation);
-    console.log('Example:', routing.recommendation.example);
+    debugLog('PHASE_TRANSITIONS', 'Explanation:', routing.recommendation.explanation);
+    debugLog('PHASE_TRANSITIONS', 'Example:', routing.recommendation.example);
   }
-
-  console.groupEnd();
 };
 
 /**

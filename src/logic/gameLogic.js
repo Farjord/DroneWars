@@ -17,6 +17,7 @@ import fullDroneCollection from '../data/droneData.js';
 import fullCardCollection from '../data/cardData.js';
 import shipSectionData from '../data/shipData.js';
 import { calculateEffectiveStats, calculateEffectiveShipStats, getShipStatus } from './statsCalculator.js';
+import { debugLog } from '../utils/debugLogger.js';
 
 // ========================================
 // DECK AND CARD MANAGEMENT
@@ -33,19 +34,33 @@ export const startingDecklist = [
     { id: 'CARD009', quantity: 2 }, // Target Lock
     { id: 'CARD007', quantity: 2 }, // Emergency Patch
     { id: 'CARD012', quantity: 2 }, // Armor-Piercing Shot
-    
+
     // Core Tactical & Synergy Cards (Multiple Copies)
     { id: 'CARD005', quantity: 4 }, // Adrenaline Rush
     { id: 'CARD006', quantity: 2 }, // Nanobot Repair
     { id: 'CARD015', quantity: 2 }, // Streamline
     { id: 'CARD008', quantity: 2 }, // Shield Recharge
     { id: 'CARD001', quantity: 2 }, // Laser Blast
-    
+
     // Resource & Consistency (Max Copies)
     { id: 'CARD002', quantity: 4 }, // System Reboot
     { id: 'CARD003', quantity: 4 }, // Out Think
     { id: 'CARD004', quantity: 4 }, // Energy Surge
     { id: 'CARD016', quantity: 4 }, // Static Field
+];
+
+// Standard AI drone selection (10 drones for deck)
+export const startingDroneList = [
+  'Scout Drone',
+  'Standard Fighter',
+  'Heavy Fighter',
+  'Guardian Drone',
+  'Bomber',
+  'Repair Drone',
+  'Interceptor',
+  'Aegis Drone',
+  'Kamikaze Drone',
+  'Swarm Drone'
 ];
 
 const buildDeckFromList = (decklist) => {
@@ -281,6 +296,7 @@ const getValidTargets = (actingPlayerId, source, definition, player1, player2) =
             }
         });
     }
+
     return targets;
   };
 
@@ -1453,7 +1469,14 @@ const drawToHandLimit = (playerState, handLimit) => {
                 break;
             }
         }
-        newHand.push(newDeck.pop());
+        const drawnCard = newDeck.pop();
+        newHand.push(drawnCard);
+        debugLog('CARDS', `📥 Card drawn to hand: ${drawnCard.name}`, {
+            id: drawnCard.id,
+            instanceId: drawnCard.instanceId,
+            hasInstanceId: drawnCard.instanceId !== undefined,
+            playerName: playerState.name
+        });
     }
 
     return { ...playerState, deck: newDeck, hand: newHand, discardPile: newDiscard };
@@ -1866,7 +1889,7 @@ const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSecti
         allAnimationEvents.push(...result.animationEvents);
     }
 
-    console.log('[ANIMATION EVENTS] resolveCardPlay emitted:', allAnimationEvents);
+    debugLog('CARDS', '[ANIMATION EVENTS] resolveCardPlay emitted:', allAnimationEvents);
 
     // If no card selection is needed, complete the card play immediately
     if (!result.needsCardSelection) {
@@ -2138,8 +2161,8 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
         const targetPlayerState = playerStates[targetPlayer];
         const dronesInLane = targetPlayerState.dronesOnBoard[laneId] || [];
 
-        console.log(`[DEBUG] Filtered damage - ${actingPlayerId} targeting ${targetPlayer} ${laneId}`);
-        console.log(`[DEBUG] Drones in ${targetPlayer} ${laneId}:`, dronesInLane.map(d => `${d.name}(${d.id}) [${d.hull}hp, ${d.speed}spd]`));
+        debugLog('COMBAT', `[DEBUG] Filtered damage - ${actingPlayerId} targeting ${targetPlayer} ${laneId}`);
+        debugLog('COMBAT', `[DEBUG] Drones in ${targetPlayer} ${laneId}:`, dronesInLane.map(d => `${d.name}(${d.id}) [${d.hull}hp, ${d.speed}spd]`));
 
         const { stat, comparison, value } = effect.filter;
 
@@ -2164,10 +2187,10 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
                 meetsCondition = true;
             }
 
-            console.log(`[DEBUG] ${droneInLane.name} ${stat}=${droneInLane[stat]} ${comparison} ${value} = ${meetsCondition}`);
+            debugLog('COMBAT', `[DEBUG] ${droneInLane.name} ${stat}=${droneInLane[stat]} ${comparison} ${value} = ${meetsCondition}`);
 
             if (meetsCondition) {
-                console.log(`[DEBUG] Applying ${effect.value} damage to ${droneInLane.name}`);
+                debugLog('COMBAT', `[DEBUG] Applying ${effect.value} damage to ${droneInLane.name}`);
 
                 // Apply damage directly using snapshot stats
                 const totalShields = droneInLane.currentShields || 0;
@@ -2185,7 +2208,7 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
 
                 // Remove destroyed drones
                 if (droneInLane.hull <= 0) {
-                    console.log(`[DEBUG] ${droneInLane.name} destroyed`);
+                    debugLog('COMBAT', `[DEBUG] ${droneInLane.name} destroyed`);
                     updatedDronesInLane.splice(i, 1);
                 }
             }
@@ -2263,7 +2286,7 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
         const targetLane = getLaneOfDrone(target.id, targetPlayerState);
 
         if (targetLane) {
-            console.log(`[DEBUG] Single target damage - ${actingPlayerId} targeting ${target.name} with ${effect.value} damage`);
+            debugLog('COMBAT', `[DEBUG] Single target damage - ${actingPlayerId} targeting ${target.name} with ${effect.value} damage`);
 
             // Create snapshot state for consistent damage calculation
             const newPlayerStates = {
@@ -2289,11 +2312,11 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
 
                 // Apply hull damage
                 targetDrone.hull -= remainingDamage;
-                console.log(`[DEBUG] Applied ${remainingDamage} hull damage to ${targetDrone.name} (${targetDrone.hull} hull remaining)`);
+                debugLog('COMBAT', `[DEBUG] Applied ${remainingDamage} hull damage to ${targetDrone.name} (${targetDrone.hull} hull remaining)`);
 
                 // Remove destroyed drone
                 if (targetDrone.hull <= 0) {
-                    console.log(`[DEBUG] ${targetDrone.name} destroyed`);
+                    debugLog('COMBAT', `[DEBUG] ${targetDrone.name} destroyed`);
                     const droneIndex = dronesInLane.findIndex(d => d.id === target.id);
                     if (droneIndex >= 0) {
                         dronesInLane.splice(droneIndex, 1);
@@ -3210,7 +3233,7 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
       }
     }
 
-    console.log('[ANIMATION EVENTS] resolveAttack emitted:', animationEvents);
+    debugLog('COMBAT', '[ANIMATION EVENTS] resolveAttack emitted:', animationEvents);
 
     // Log the attack
     const laneForLog = attackerLane || (lane ? lane.replace('lane', 'Lane ') : null);
@@ -3713,6 +3736,7 @@ export const gameEngine = {
   // --- Core State Management ---
   initialPlayerState,
   buildDeckFromList,
+  createCard,
   getEffectiveSectionMaxShields,
   getShipStatus,
   onDroneDestroyed,

@@ -11,6 +11,7 @@ import ShipSection from '../ui/ShipSection.jsx';
 import { gameEngine } from '../../logic/gameLogic.js';
 import gameStateManager from '../../state/GameStateManager.js';
 import p2pManager from '../../network/P2PManager.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * SHIP PLACEMENT SCREEN COMPONENT
@@ -50,7 +51,7 @@ function ShipPlacementScreen() {
     // Only handle during placement phase
     if (turnPhase !== 'placement') return;
 
-    console.log('🔧 handleSelectSectionForPlacement called with:', sectionName, 'gameMode:', gameState.gameMode);
+    debugLog('PLACEMENT', '🔧 handleSelectSectionForPlacement called with:', sectionName, 'gameMode:', gameState.gameMode);
 
     // If clicking a section in the top "unplaced" row
     if (localUnplacedSections.includes(sectionName)) {
@@ -81,7 +82,7 @@ function ShipPlacementScreen() {
     // Only handle during placement phase
     if (turnPhase !== 'placement') return;
 
-    console.log('🔧 handleLaneSelectForPlacement called with lane:', laneIndex, 'gameMode:', gameState.gameMode);
+    debugLog('PLACEMENT', '🔧 handleLaneSelectForPlacement called with lane:', laneIndex, 'gameMode:', gameState.gameMode);
 
     if (selectedSectionForPlacement) {
       // If the lane is occupied, swap with the selected section
@@ -124,7 +125,7 @@ function ShipPlacementScreen() {
     // Only handle during placement phase
     if (turnPhase !== 'placement') return;
 
-    console.log(`🔧 handleConfirmPlacement called`);
+    debugLog('PLACEMENT', `🔧 handleConfirmPlacement called`);
 
     // Validate that all sections are placed
     const hasEmptySections = localPlacedSections.some(section => section === null || section === undefined);
@@ -134,7 +135,7 @@ function ShipPlacementScreen() {
       return;
     }
 
-    console.log(`🔧 Submitting placement to PhaseManager:`, localPlacedSections);
+    debugLog('PLACEMENT', `🔧 Submitting placement to PhaseManager:`, localPlacedSections);
 
     const payload = {
       phase: 'placement',
@@ -144,7 +145,7 @@ function ShipPlacementScreen() {
 
     // Guest mode: Send action to host
     if (gameState.gameMode === 'guest') {
-      console.log('[GUEST] Sending ship placement commitment to host');
+      debugLog('PLACEMENT', '[GUEST] Sending ship placement commitment to host');
       p2pManager.sendActionToHost('commitment', payload);
       return;
     }
@@ -159,7 +160,7 @@ function ShipPlacementScreen() {
         return;
       }
 
-      console.log('✅ Placement submitted to PhaseManager');
+      debugLog('PLACEMENT', '✅ Placement submitted to PhaseManager');
 
       // Waiting screen will be shown automatically if in multiplayer and opponent not complete
       // No modal needed - WaitingForOpponentScreen component handles this
@@ -184,7 +185,7 @@ function ShipPlacementScreen() {
   const opponentCompleted = gameState.commitments?.placement?.[opponentPlayerId]?.completed || false;
 
   // DEBUG LOGGING - Remove after fixing multiplayer issue
-  console.log('🔍 [SHIP PLACEMENT] Render check:', {
+  debugLog('PLACEMENT', '🔍 [SHIP PLACEMENT] Render check:', {
     gameMode: gameState.gameMode,
     isMultiplayer: isMultiplayer(),
     localPlayerId,
@@ -210,7 +211,7 @@ function ShipPlacementScreen() {
   // Render the placement interface
   const allPlaced = localPlacedSections.every(section => section !== null);
 
-  console.log(`🔥 ShipPlacementScreen rendered:`, {
+  debugLog('PLACEMENT', `🔥 ShipPlacementScreen rendered:`, {
     allPlaced,
     placed: localPlacedSections,
     unplaced: unplacedSections,
@@ -310,7 +311,7 @@ function ShipPlacementScreen() {
 
       <button
         onClick={() => {
-          console.log(`🔥 Confirm Layout button clicked! allPlaced: ${allPlaced}`);
+          debugLog('PLACEMENT', `🔥 Confirm Layout button clicked! allPlaced: ${allPlaced}`);
           handleConfirmPlacement();
         }}
         disabled={!allPlaced}

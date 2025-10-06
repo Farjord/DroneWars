@@ -12,6 +12,7 @@ import aiPhaseProcessor from '../state/AIPhaseProcessor.js';
 import gameStateManager from '../state/GameStateManager.js';
 import MultiplayerLobby from '../MultiplayerLobby.jsx';
 import p2pManager from '../network/P2PManager.js';
+import { debugLog } from '../utils/debugLogger.js';
 
 /**
  * LobbyScreen - AI selection and multiplayer setup
@@ -27,24 +28,48 @@ function LobbyScreen() {
   // Setup P2P integration when entering multiplayer mode
   useEffect(() => {
     if (isMultiplayer) {
-      console.log('🔌 Setting up P2P integration for multiplayer');
+      debugLog('PHASE_TRANSITIONS', '🔌 Setting up P2P integration for multiplayer');
       gameStateManager.setupP2PIntegration(p2pManager);
     }
   }, [isMultiplayer]);
 
   const handleBackToMenu = () => {
-    console.log('🔙 Returning to main menu');
+    debugLog('PHASE_TRANSITIONS', '🔙 Returning to main menu');
     gameStateManager.setState({ appState: 'menu', gameMode: 'local' });
   };
 
   const handleSelectAI = (ai) => {
-    console.log('🤖 Selected AI:', ai.name);
+    debugLog('PHASE_TRANSITIONS', '🤖 Selected AI:', ai.name);
     setSelectedAI(ai);
   };
 
   const handleStartGame = () => {
     if (isSinglePlayer && selectedAI) {
-      console.log('🎮 Starting single player game with AI:', selectedAI.name);
+      debugLog('PHASE_TRANSITIONS', '🎮 Starting single player game with AI:', selectedAI.name);
+
+      // Validate AI drone pool has minimum required drones
+      if (!selectedAI.dronePool || !Array.isArray(selectedAI.dronePool)) {
+        const errorMsg = `Cannot start game: AI '${selectedAI.name}' has invalid dronePool configuration.`;
+        console.error('❌', errorMsg);
+        alert(errorMsg);
+        return;
+      }
+
+      if (selectedAI.dronePool.length < 5) {
+        const errorMsg = `Cannot start game: AI '${selectedAI.name}' has only ${selectedAI.dronePool.length} drones. Minimum 5 drones required.`;
+        console.error('❌', errorMsg);
+        alert(errorMsg);
+        return;
+      }
+
+      if (selectedAI.dronePool.length > 10) {
+        const errorMsg = `Cannot start game: AI '${selectedAI.name}' has ${selectedAI.dronePool.length} drones. Maximum 10 drones allowed.`;
+        console.error('❌', errorMsg);
+        alert(errorMsg);
+        return;
+      }
+
+      debugLog('PHASE_TRANSITIONS', `✅ AI drone pool validated: ${selectedAI.dronePool.length} drones`);
 
       // Set up AI drone configuration
       const aiDrones = fullDroneCollection.filter(d => selectedAI.dronePool.includes(d.name));
@@ -61,7 +86,7 @@ function LobbyScreen() {
         gameStateManager.actionProcessor,
         gameStateManager
       );
-      console.log('🤖 AIPhaseProcessor initialized for single-player with:', selectedAI.name);
+      debugLog('PHASE_TRANSITIONS', '🤖 AIPhaseProcessor initialized for single-player with:', selectedAI.name);
 
       // Start the game with selected AI
       gameStateManager.startGame('local',
@@ -78,13 +103,13 @@ function LobbyScreen() {
   };
 
   const handleMultiplayerGameStart = () => {
-    console.log('🎮 Starting multiplayer game after connection');
+    debugLog('PHASE_TRANSITIONS', '🎮 Starting multiplayer game after connection');
 
     // Determine game mode based on P2P role
     const isHost = p2pManager.isHost;
     const gameMode = isHost ? 'host' : 'guest';
 
-    console.log(`🎮 Multiplayer mode: ${gameMode}`);
+    debugLog('PHASE_TRANSITIONS', `🎮 Multiplayer mode: ${gameMode}`);
 
     // Start the game with appropriate mode
     gameStateManager.startGame(gameMode,

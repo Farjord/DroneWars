@@ -4,6 +4,8 @@
 // Simple but effective caching layer for expensive game calculations
 // Provides performance improvements for repeated calculateEffectiveStats calls
 
+import { debugLog } from '../utils/debugLogger.js';
+
 /**
  * GameDataCache - Caching implementation for game data calculations
  *
@@ -23,7 +25,7 @@ class GameDataCache {
       totalRequests: 0
     };
 
-    console.log('💾 GameDataCache initialized');
+    debugLog('STATE_SYNC', '💾 GameDataCache initialized');
   }
 
   /**
@@ -105,7 +107,7 @@ class GameDataCache {
     this.stats.invalidations++;
 
     if (previousSize > 0) {
-      console.log(`💾 Cache invalidated: ${previousSize} entries cleared`);
+      debugLog('STATE_SYNC', `💾 Cache invalidated: ${previousSize} entries cleared`);
     }
   }
 
@@ -126,7 +128,7 @@ class GameDataCache {
     keysToDelete.forEach(key => this.cache.delete(key));
 
     if (keysToDelete.length > 0) {
-      console.log(`💾 Cache invalidated: ${keysToDelete.length} ${type} entries cleared`);
+      debugLog('STATE_SYNC', `💾 Cache invalidated: ${keysToDelete.length} ${type} entries cleared`);
     }
   }
 

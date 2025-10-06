@@ -71,6 +71,8 @@ function GameHeader({
   handleResetReallocation,
   handleContinueToAddPhase,
   handleConfirmReallocation,
+  handleRoundStartDraw,
+  optionalDiscardCount,
   mandatoryAction,
   multiSelectState,
   AI_HAND_DEBUG_MODE,
@@ -415,6 +417,13 @@ function GameHeader({
               </div>
             </button>
           </div>
+        )}
+
+        {/* Optional Discard Controls - Show during optionalDiscard phase */}
+        {turnPhase === 'optionalDiscard' && (
+          <button onClick={handleRoundStartDraw} className="btn-confirm">
+            Finish Discarding ({localPlayerEffectiveStats.totals.discardLimit - optionalDiscardCount})
+          </button>
         )}
       </div>
 

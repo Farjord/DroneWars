@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { useGameState } from '../hooks/useGameState.js';
 import GameDataService from '../services/GameDataService.js';
+import { debugLog } from '../utils/debugLogger.js';
 
 /**
  * MenuScreen - Main menu for selecting game mode
@@ -19,7 +20,7 @@ function MenuScreen() {
   // Cleanup effect: Ensure clean slate when MenuScreen mounts
   // This handles hot reload scenarios and ensures no stale data from previous games
   useEffect(() => {
-    console.log('🏠 MenuScreen mounted - ensuring clean state');
+    debugLog('PHASE_TRANSITIONS', '🏠 MenuScreen mounted - ensuring clean state');
 
     // Clear GameDataService singleton and cache
     GameDataService.reset();
@@ -29,17 +30,17 @@ function MenuScreen() {
       gameStateManager.actionProcessor.clearQueue();
     }
 
-    console.log('✅ MenuScreen: State cleaned up');
+    debugLog('PHASE_TRANSITIONS', '✅ MenuScreen: State cleaned up');
   }, [gameStateManager]);
 
   const handleSinglePlayer = () => {
-    console.log('🎮 Selected: Single Player');
+    debugLog('PHASE_TRANSITIONS', '🎮 Selected: Single Player');
     // Transition to lobby for AI selection
     gameStateManager.setState({ appState: 'lobby', gameMode: 'local' });
   };
 
   const handleMultiplayer = () => {
-    console.log('🎮 Selected: Multiplayer');
+    debugLog('PHASE_TRANSITIONS', '🎮 Selected: Multiplayer');
     // Transition to lobby for multiplayer setup
     gameStateManager.setState({ appState: 'lobby', gameMode: 'multiplayer' });
   };

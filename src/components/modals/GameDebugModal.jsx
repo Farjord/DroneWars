@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { X, Copy } from 'lucide-react';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * GameDebugModal - Two-tab debug view for game state
@@ -22,7 +23,7 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
 
   const copyToClipboard = (data, label) => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2))
-      .then(() => console.log(`${label} copied to clipboard`))
+      .then(() => debugLog('STATE_SYNC', `${label} copied to clipboard`))
       .catch(err => console.error('Failed to copy:', err));
   };
 

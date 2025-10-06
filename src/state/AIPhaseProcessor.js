@@ -5,6 +5,7 @@
 // Provides instant AI decisions for SimultaneousActionManager commitment system
 
 import GameDataService from '../services/GameDataService.js';
+import { debugLog } from '../utils/debugLogger.js';
 
 /**
  * AIPhaseProcessor - Handles AI completion of simultaneous phases
@@ -36,7 +37,7 @@ class AIPhaseProcessor {
   initialize(aiPersonalities, dronePool, currentPersonality, actionProcessor = null, gameStateManager = null) {
     // Check if already initialized
     if (this.isInitialized) {
-      console.log('🤖 AIPhaseProcessor already initialized, skipping...');
+      debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor already initialized, skipping...');
       return;
     }
 
@@ -71,73 +72,84 @@ class AIPhaseProcessor {
 
     this.isInitialized = true;
 
-    console.log('🤖 AIPhaseProcessor initialized with personality:', currentPersonality?.name || 'Default');
+    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor initialized with personality:', currentPersonality?.name || 'Default');
     if (actionProcessor) {
-      console.log('🔗 AIPhaseProcessor connected to ActionProcessor for execution');
+      debugLog('AI_DECISIONS', '🔗 AIPhaseProcessor connected to ActionProcessor for execution');
     }
     if (gameStateManager) {
-      console.log('🔗 AIPhaseProcessor subscribed to GameStateManager for self-triggering');
+      debugLog('AI_DECISIONS', '🔗 AIPhaseProcessor subscribed to GameStateManager for self-triggering');
     }
   }
 
   /**
    * Process AI drone selection for droneSelection phase
-   * @param {Object} aiPersonality - Optional AI personality override
+   * NEW FLOW: Selects 5 drones from AI's deck of 10 drones
+   * @param {Object} aiPersonality - Optional AI personality override (future use)
    * @returns {Promise<Array>} Array of 5 selected drone objects
    */
   async processDroneSelection(aiPersonality = null) {
-    const personality = aiPersonality || this.currentAIPersonality;
+    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.processDroneSelection starting (selecting 5 from deck)...');
 
-    console.log('🤖 AIPhaseProcessor.processDroneSelection starting...');
+    // Get AI's deck drones from commitments (set during deckSelection phase)
+    const gameState = this.gameStateManager.getState();
+    const commitments = gameState.commitments;
+    const deckCommitments = commitments?.deckSelection;
 
-    // Use personality's drone pool if available, otherwise use general pool
-    let availableDrones = [];
-    if (personality && personality.dronePool && personality.dronePool.length > 0) {
-      // Map personality drone names to full drone objects from the collection
-      availableDrones = personality.dronePool.map(droneName => {
-        const droneObject = this.dronePool?.find(drone => drone.name === droneName);
-        if (!droneObject) {
-          console.warn(`⚠️ AI personality references unknown drone: ${droneName}`);
-        }
-        return droneObject;
-      }).filter(drone => drone); // Remove any undefined entries
-
-      console.log(`🎯 Using ${personality.name} personality drone pool: ${availableDrones.length} drones mapped from ${personality.dronePool.length} names`);
-
-      // Log mapped drone names for verification
-      const mappedNames = availableDrones.map(d => d.name).join(', ');
-      console.log(`🎯 Mapped drones: ${mappedNames}`);
-    } else {
-      // Fallback to general drone pool
-      availableDrones = this.dronePool ? [...this.dronePool] : [];
-      console.log(`🎯 Using general drone pool: ${availableDrones.length} drones`);
+    if (!deckCommitments || !deckCommitments.player2) {
+      throw new Error('AI deck commitment not found - deckSelection phase must complete first');
     }
+
+    // Extract the AI's deck drones (5-10 drones allowed)
+    const deckDroneNames = deckCommitments.player2.drones || [];
+    debugLog('AI_DECISIONS', `🎲 AI deck contains ${deckDroneNames.length} drones:`, deckDroneNames.join(', '));
+
+    if (deckDroneNames.length < 5 || deckDroneNames.length > 10) {
+      throw new Error(`AI deck must have 5-10 drones, found ${deckDroneNames.length}`);
+    }
+
+    // Map drone names to full drone objects
+    const availableDrones = this.extractDronesFromDeck(deckDroneNames);
 
     if (availableDrones.length < 5) {
-      console.error('❌ Not enough drones available for AI selection:', availableDrones.length);
-
-      // Enhanced error reporting for debugging
-      if (personality && personality.dronePool) {
-        const missingDrones = personality.dronePool.filter(droneName =>
-          !this.dronePool?.find(drone => drone.name === droneName)
-        );
-        if (missingDrones.length > 0) {
-          console.error(`❌ Missing drones from collection: ${missingDrones.join(', ')}`);
-        }
-        console.error(`❌ Available from personality: ${availableDrones.map(d => d.name).join(', ')}`);
-        console.error(`❌ Expected from personality: ${personality.dronePool.join(', ')}`);
-      }
-
-      throw new Error(`Insufficient drones for AI selection: ${availableDrones.length} available, need 5`);
+      console.error('❌ Failed to extract minimum required drones from deck');
+      throw new Error(`Only extracted ${availableDrones.length} drones from AI deck (minimum 5 required)`);
     }
 
-    // AI Selection Algorithm: Pick 5 drones using personality preferences
-    const selectedDrones = this.selectDronesForAI(availableDrones, personality);
+    // Randomly select 5 drones from available pool (works for 5-10 drones)
+    const selectedDrones = this.randomlySelectDrones(availableDrones, 5);
 
     const selectedNames = selectedDrones.map(d => d.name).join(', ');
-    console.log(`🤖 AI selected drones: ${selectedNames}`);
+    debugLog('AI_DECISIONS', `🤖 AI randomly selected 5 drones from ${availableDrones.length} available: ${selectedNames}`);
 
     return selectedDrones;
+  }
+
+  /**
+   * Extract drone objects from drone names array
+   * @param {Array} droneNames - Array of drone names
+   * @returns {Array} Array of drone objects
+   */
+  extractDronesFromDeck(droneNames) {
+    const drones = droneNames.map(name => {
+      const drone = this.dronePool?.find(d => d.name === name);
+      if (!drone) {
+        console.warn(`⚠️ Drone "${name}" not found in drone collection`);
+      }
+      return drone;
+    }).filter(Boolean); // Remove undefined entries
+
+    return drones;
+  }
+
+  /**
+   * Randomly select N drones from available pool
+   * @param {Array} availableDrones - Pool of drones to select from
+   * @param {number} count - Number of drones to select
+   * @returns {Array} Array of randomly selected drones
+   */
+  randomlySelectDrones(availableDrones, count) {
+    const shuffled = [...availableDrones].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, count);
   }
 
   /**
@@ -159,7 +171,7 @@ class AIPhaseProcessor {
       const preferredCount = Math.min(3, preferredAvailable.length);
       selected = preferredAvailable.slice(0, preferredCount);
 
-      console.log(`🎯 AI selected ${selected.length} preferred drones:`,
+      debugLog('AI_DECISIONS', `🎯 AI selected ${selected.length} preferred drones:`,
         selected.map(d => d.name).join(', '));
     }
 
@@ -230,7 +242,7 @@ class AIPhaseProcessor {
       selected.push(remaining.splice(selectedIndex, 1)[0]);
     }
 
-    console.log(`🎯 AI balanced selection (${count}):`,
+    debugLog('AI_DECISIONS', `🎯 AI balanced selection (${count}):`,
       selected.map(d => d.name).join(', '));
 
     return selected;
@@ -238,33 +250,60 @@ class AIPhaseProcessor {
 
   /**
    * Process AI deck selection for deckSelection phase
+   * NEW FLOW: Returns both deck (40 cards) and drones (10 drones)
    * @param {Object} aiPersonality - Optional AI personality override
-   * @returns {Promise<Array>} Array of selected deck cards
+   * @returns {Promise<Object>} Object with { deck: Array, drones: Array }
    */
   async processDeckSelection(aiPersonality = null) {
     const personality = aiPersonality || this.currentAIPersonality;
 
-    console.log('🤖 AIPhaseProcessor.processDeckSelection starting...');
+    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.processDeckSelection starting (selecting 40 cards + drones)...');
 
-    // Use personality's deck if available, otherwise use standard deck
+    // Select cards for deck
     let selectedDeck = [];
     if (personality && personality.decklist && personality.decklist.length > 0) {
       // Use AI's custom decklist from personality
-      console.log(`🎯 Using ${personality.name} personality decklist`);
+      debugLog('AI_DECISIONS', `🎯 Using ${personality.name} personality decklist`);
 
       // Import the game engine to build the deck
       const { gameEngine } = await import('../logic/gameLogic.js');
       selectedDeck = gameEngine.buildDeckFromList(personality.decklist);
     } else {
       // Fallback to standard deck
-      console.log(`🎯 Using standard deck as fallback`);
+      debugLog('AI_DECISIONS', `🎯 Using standard deck as fallback`);
 
       const { gameEngine, startingDecklist } = await import('../logic/gameLogic.js');
       selectedDeck = gameEngine.buildDeckFromList(startingDecklist);
     }
 
-    console.log(`✅ AI selected deck with ${selectedDeck.length} cards`);
-    return selectedDeck;
+    // Select drones from personality's dronePool (5-10 drones allowed)
+    let selectedDrones = [];
+    if (personality && personality.dronePool && Array.isArray(personality.dronePool)) {
+      // Use AI's dronePool from personality
+      selectedDrones = [...personality.dronePool]; // Copy the personality's drone list
+      debugLog('AI_DECISIONS', `🎯 Using ${personality.name} personality dronePool: ${selectedDrones.length} drones`);
+
+      // Validate drone count
+      if (selectedDrones.length < 5) {
+        throw new Error(`AI personality '${personality.name}' has only ${selectedDrones.length} drones in dronePool. Minimum 5 required.`);
+      }
+      if (selectedDrones.length > 10) {
+        throw new Error(`AI personality '${personality.name}' has ${selectedDrones.length} drones in dronePool. Maximum 10 allowed.`);
+      }
+    } else {
+      // Fallback to standard drone list if personality doesn't have dronePool
+      debugLog('AI_DECISIONS', `⚠️ Personality missing dronePool, using standard drone list as fallback`);
+      const { startingDroneList } = await import('../logic/gameLogic.js');
+      selectedDrones = [...startingDroneList];
+    }
+
+    debugLog('AI_DECISIONS', `✅ AI selected deck: ${selectedDeck.length} cards + ${selectedDrones.length} drones`);
+    debugLog('AI_DECISIONS', `🎲 AI drones: ${selectedDrones.join(', ')}`);
+
+    return {
+      deck: selectedDeck,
+      drones: selectedDrones
+    };
   }
 
   /**
@@ -275,18 +314,18 @@ class AIPhaseProcessor {
   async processPlacement(aiPersonality = null) {
     const personality = aiPersonality || this.currentAIPersonality;
 
-    console.log('🤖 AIPhaseProcessor.processPlacement starting...');
+    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.processPlacement starting...');
 
     // Get available ship sections for AI
     const availableSections = ['bridge', 'powerCell', 'droneControlHub'];
 
-    console.log(`🎯 AI placing ${availableSections.length} ship sections`);
+    debugLog('AI_DECISIONS', `🎯 AI placing ${availableSections.length} ship sections`);
 
     // AI Placement Strategy: Simple but effective
     const placedSections = this.selectSectionsForPlacement(availableSections, personality);
 
     const placementNames = placedSections.join(', ');
-    console.log(`🤖 AI placement completed: ${placementNames}`);
+    debugLog('AI_DECISIONS', `🤖 AI placement completed: ${placementNames}`);
 
     return placedSections;
   }
@@ -305,19 +344,19 @@ class AIPhaseProcessor {
       if (personality.aggression > 0.7) {
         // Aggressive AI: Weapons in front, Bridge protected
         const placement = this.arrangeAggressivePlacement(sections);
-        console.log('🎯 AI using aggressive placement strategy');
+        debugLog('AI_DECISIONS', '🎯 AI using aggressive placement strategy');
         return placement;
       } else if (personality.economy > 0.7) {
         // Economic AI: Cargo Bay priority, efficient layout
         const placement = this.arrangeEconomicPlacement(sections);
-        console.log('🎯 AI using economic placement strategy');
+        debugLog('AI_DECISIONS', '🎯 AI using economic placement strategy');
         return placement;
       }
     }
 
     // Default balanced placement: Bridge in middle, balanced defense
     const placement = this.arrangeBalancedPlacement(sections);
-    console.log('🎯 AI using balanced placement strategy');
+    debugLog('AI_DECISIONS', '🎯 AI using balanced placement strategy');
     return placement;
   }
 
@@ -411,7 +450,7 @@ class AIPhaseProcessor {
    * @returns {Promise<Object>} Execution result
    */
   async executeDeploymentTurn(gameState) {
-    console.log('🤖 AIPhaseProcessor.executeDeploymentTurn starting...');
+    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.executeDeploymentTurn starting...');
 
     // Check if AI should pass
     if (this.shouldPass(gameState, 'deployment')) {
@@ -452,7 +491,7 @@ class AIPhaseProcessor {
       }
     });
 
-    console.log('🤖 AIPhaseProcessor executing deployment decision:', aiDecision);
+    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor executing deployment decision:', aiDecision);
 
     // Execute the decision directly through ActionProcessor
     if (aiDecision.type === 'pass') {
@@ -497,7 +536,7 @@ class AIPhaseProcessor {
    * @returns {Promise<Object>} Execution result
    */
   async executeActionTurn(gameState) {
-    console.log('🤖 AIPhaseProcessor.executeActionTurn starting...');
+    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.executeActionTurn starting...');
 
     // Check if AI should pass
     if (this.shouldPass(gameState, 'action')) {
@@ -538,7 +577,7 @@ class AIPhaseProcessor {
       }
     });
 
-    console.log('🤖 AIPhaseProcessor executing action decision:', aiDecision);
+    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor executing action decision:', aiDecision);
 
     // Execute the decision directly through ActionProcessor
     if (aiDecision.type === 'pass') {
@@ -572,7 +611,7 @@ class AIPhaseProcessor {
    * @returns {Promise<Object>} Execution result with updated player state
    */
   async executeOptionalDiscardTurn(gameState) {
-    console.log('🤖 AIPhaseProcessor.executeOptionalDiscardTurn starting...');
+    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.executeOptionalDiscardTurn starting...');
 
     if (!this.actionProcessor) {
       throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
@@ -584,7 +623,7 @@ class AIPhaseProcessor {
 
     // Early return if AI has no cards
     if (!aiState.hand || aiState.hand.length === 0) {
-      console.log('🤖 AI has no cards, auto-completing optional discard');
+      debugLog('AI_DECISIONS', '🤖 AI has no cards, auto-completing optional discard');
       return {
         type: 'optionalDiscard',
         cardsToDiscard: [],
@@ -611,7 +650,7 @@ class AIPhaseProcessor {
         discardPile: [...updatedAiState.discardPile, ...cardsToDiscard]
       };
 
-      console.log(`🤖 AI discarding ${excessCards} excess cards to meet hand limit of ${handLimit}`);
+      debugLog('AI_DECISIONS', `🤖 AI discarding ${excessCards} excess cards to meet hand limit of ${handLimit}`);
     }
 
     // Draw cards to hand limit using gameLogic function
@@ -619,7 +658,7 @@ class AIPhaseProcessor {
 
     const cardsDrawn = updatedAiState.hand.length - (aiState.hand.length - cardsToDiscard.length);
     if (cardsDrawn > 0) {
-      console.log(`🤖 AI drew ${cardsDrawn} cards to reach hand limit`);
+      debugLog('AI_DECISIONS', `🤖 AI drew ${cardsDrawn} cards to reach hand limit`);
     }
 
     return {
@@ -636,7 +675,7 @@ class AIPhaseProcessor {
    * @returns {Promise<Object>} Execution result with cards to discard
    */
   async executeMandatoryDiscardTurn(gameState) {
-    console.log('🤖 AIPhaseProcessor.executeMandatoryDiscardTurn starting...');
+    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.executeMandatoryDiscardTurn starting...');
 
     if (!this.actionProcessor) {
       throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
@@ -651,7 +690,7 @@ class AIPhaseProcessor {
 
     // Early return if AI is already at or below hand limit
     if (!aiState.hand || aiState.hand.length <= handLimit) {
-      console.log('🤖 AI already at/below hand limit, auto-completing mandatory discard');
+      debugLog('AI_DECISIONS', '🤖 AI already at/below hand limit, auto-completing mandatory discard');
       return {
         type: 'mandatoryDiscard',
         cardsToDiscard: [],
@@ -668,7 +707,7 @@ class AIPhaseProcessor {
     const sortedHand = [...aiState.hand].sort((a, b) => b.cost - a.cost);
     cardsToDiscard = sortedHand.slice(0, excessCards);
 
-    console.log(`🤖 AI discarding ${cardsToDiscard.length} excess cards to meet hand limit`);
+    debugLog('AI_DECISIONS', `🤖 AI discarding ${cardsToDiscard.length} excess cards to meet hand limit`);
 
     return {
       type: 'mandatoryDiscard',
@@ -684,7 +723,7 @@ class AIPhaseProcessor {
    * @returns {Promise<Object>} Execution result with drones to remove
    */
   async executeMandatoryDroneRemovalTurn(gameState) {
-    console.log('🤖 AIPhaseProcessor.executeMandatoryDroneRemovalTurn starting...');
+    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.executeMandatoryDroneRemovalTurn starting...');
 
     if (!this.actionProcessor) {
       throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
@@ -702,7 +741,7 @@ class AIPhaseProcessor {
 
     // Early return if AI is already at or below drone limit
     if (totalDrones <= droneLimit) {
-      console.log('🤖 AI already at/below drone limit, auto-completing mandatory drone removal');
+      debugLog('AI_DECISIONS', '🤖 AI already at/below drone limit, auto-completing mandatory drone removal');
       return {
         type: 'mandatoryDroneRemoval',
         dronesToRemove: [],
@@ -732,7 +771,7 @@ class AIPhaseProcessor {
 
     dronesToRemove = allDrones.slice(0, excessDrones);
 
-    console.log(`🤖 AI removing ${dronesToRemove.length} excess drones to meet drone limit`);
+    debugLog('AI_DECISIONS', `🤖 AI removing ${dronesToRemove.length} excess drones to meet drone limit`);
 
     return {
       type: 'mandatoryDroneRemoval',
@@ -753,7 +792,7 @@ class AIPhaseProcessor {
 
     // If AI has already passed, return true
     if (gameState.passInfo && gameState.passInfo[aiPassKey]) {
-      console.log('🤖 AI has already passed');
+      debugLog('AI_DECISIONS', '🤖 AI has already passed');
       return true;
     }
 
@@ -768,7 +807,7 @@ class AIPhaseProcessor {
    * @returns {Promise<Object>} Pass execution result
    */
   async executePass(phase) {
-    console.log(`🏳️ AIPhaseProcessor: Returning pass decision for ${phase} phase`);
+    debugLog('AI_DECISIONS', `🏳️ AIPhaseProcessor: Returning pass decision for ${phase} phase`);
 
     // Return the pass decision for ActionProcessor to execute
     return {
@@ -784,7 +823,7 @@ class AIPhaseProcessor {
    * @returns {Promise<void>} Shield allocation complete
    */
   async executeShieldAllocationTurn(gameState) {
-    console.log('🤖 AIPhaseProcessor.executeShieldAllocationTurn starting...');
+    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.executeShieldAllocationTurn starting...');
 
     if (!this.actionProcessor) {
       throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
@@ -797,7 +836,7 @@ class AIPhaseProcessor {
     const shieldsToAllocate = gameState.opponentShieldsToAllocate || 0;
 
     if (shieldsToAllocate === 0) {
-      console.log('🤖 AI has no shields to allocate');
+      debugLog('AI_DECISIONS', '🤖 AI has no shields to allocate');
       return;
     }
 
@@ -805,7 +844,7 @@ class AIPhaseProcessor {
     const placedSectionNames = aiPlacedSections.map(section => section.name);
 
     if (placedSectionNames.length === 0) {
-      console.log('🤖 AI has no placed sections to allocate shields to');
+      debugLog('AI_DECISIONS', '🤖 AI has no placed sections to allocate shields to');
       return;
     }
 
@@ -813,7 +852,7 @@ class AIPhaseProcessor {
     let remainingShields = shieldsToAllocate;
     let currentSectionIndex = 0;
 
-    console.log(`🤖 AI distributing ${shieldsToAllocate} shields evenly across ${placedSectionNames.length} sections`);
+    debugLog('AI_DECISIONS', `🤖 AI distributing ${shieldsToAllocate} shields evenly across ${placedSectionNames.length} sections`);
 
     // Distribute one shield at a time in round-robin fashion for even distribution
     while (remainingShields > 0) {
@@ -831,10 +870,10 @@ class AIPhaseProcessor {
       remainingShields--;
       currentSectionIndex = (currentSectionIndex + 1) % placedSectionNames.length;
 
-      console.log(`🤖 AI allocated shield to ${sectionName}, ${remainingShields} remaining`);
+      debugLog('AI_DECISIONS', `🤖 AI allocated shield to ${sectionName}, ${remainingShields} remaining`);
     }
 
-    console.log('✅ AI shield allocation complete');
+    debugLog('AI_DECISIONS', '✅ AI shield allocation complete');
   }
 
   /**
@@ -868,7 +907,7 @@ class AIPhaseProcessor {
       return;
     }
 
-    console.log(`⏰ AIPhaseProcessor: Scheduling AI turn for ${state.turnPhase} phase`);
+    debugLog('AI_DECISIONS', `⏰ AIPhaseProcessor: Scheduling AI turn for ${state.turnPhase} phase`);
 
     // Clear any existing timer and schedule new turn
     clearTimeout(this.turnTimer);
@@ -883,7 +922,7 @@ class AIPhaseProcessor {
    */
   async executeTurn() {
     if (this.isProcessing) {
-      console.log('⚠️ AIPhaseProcessor: Already processing a turn, skipping');
+      debugLog('AI_DECISIONS', '⚠️ AIPhaseProcessor: Already processing a turn, skipping');
       return;
     }
 
@@ -892,27 +931,27 @@ class AIPhaseProcessor {
 
     // Validate it's still AI's turn (state may have changed during delay)
     if (state.currentPlayer !== 'player2') {
-      console.log('⚠️ AIPhaseProcessor: Turn changed before execution, cancelling AI turn');
+      debugLog('AI_DECISIONS', '⚠️ AIPhaseProcessor: Turn changed before execution, cancelling AI turn');
       return;
     }
 
     // Validate AI hasn't passed
     if (state.passInfo && state.passInfo.player2Passed) {
-      console.log('⚠️ AIPhaseProcessor: AI has already passed, cancelling turn');
+      debugLog('AI_DECISIONS', '⚠️ AIPhaseProcessor: AI has already passed, cancelling turn');
       return;
     }
 
     // Validate phase is still sequential
     const sequentialPhases = ['deployment', 'action'];
     if (!sequentialPhases.includes(state.turnPhase)) {
-      console.log('⚠️ AIPhaseProcessor: Phase changed to non-sequential, cancelling turn');
+      debugLog('AI_DECISIONS', '⚠️ AIPhaseProcessor: Phase changed to non-sequential, cancelling turn');
       return;
     }
 
     this.isProcessing = true;
 
     try {
-      console.log(`🤖 AIPhaseProcessor: Executing AI turn for ${state.turnPhase} phase`);
+      debugLog('AI_DECISIONS', `🤖 AIPhaseProcessor: Executing AI turn for ${state.turnPhase} phase`);
 
       let result;
       if (state.turnPhase === 'deployment') {
@@ -926,7 +965,7 @@ class AIPhaseProcessor {
 
       // Check if result indicates human interception decision needed
       if (result?.needsInterceptionDecision) {
-        console.log('🛡️ AIPhaseProcessor: AI attack needs human interception decision, pausing turn loop');
+        debugLog('AI_DECISIONS', '🛡️ AIPhaseProcessor: AI attack needs human interception decision, pausing turn loop');
 
         // ActionProcessor already set interceptionPending state, just pause AI turn loop
         // Turn will resume after interception is resolved (state cleared)
@@ -942,7 +981,7 @@ class AIPhaseProcessor {
         // AI should continue if:
         // 1. Human has passed but AI hasn't, OR
         // 2. AI played a goAgain card and still has the turn
-        console.log('🔄 AIPhaseProcessor: AI continues taking turns (either human passed or goAgain card played)');
+        debugLog('AI_DECISIONS', '🔄 AIPhaseProcessor: AI continues taking turns (either human passed or goAgain card played)');
         // Schedule another turn
         setTimeout(() => {
           this.checkForAITurn(currentState);
@@ -969,7 +1008,7 @@ class AIPhaseProcessor {
       throw new Error('AIPhaseProcessor not initialized');
     }
 
-    console.log('🤖 AIPhaseProcessor.makeInterceptionDecision called:', {
+    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.makeInterceptionDecision called:', {
       interceptorCount: interceptors?.length || 0,
       target: attackDetails.target?.name
     });
@@ -979,7 +1018,7 @@ class AIPhaseProcessor {
     // Delegate to aiLogic for decision
     const result = aiBrain.makeInterceptionDecision(interceptors, attackDetails.target);
 
-    console.log('🤖 AI interception decision:', {
+    debugLog('AI_DECISIONS', '🤖 AI interception decision:', {
       willIntercept: !!result.interceptor,
       interceptorName: result.interceptor?.name
     });

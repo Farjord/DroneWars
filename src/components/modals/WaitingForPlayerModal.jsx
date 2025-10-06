@@ -23,6 +23,8 @@ const WaitingForPlayerModal = ({ show, phase, opponentName = 'Opponent', roomCod
         return 'Waiting for Opponent';
       case 'mandatoryDiscard':
         return 'Opponent Discarding';
+      case 'optionalDiscard':
+        return 'Opponent Discarding Cards';
       case 'allocateShields':
         return 'Opponent Allocating Shields';
       case 'mandatoryDroneRemoval':
@@ -35,7 +37,7 @@ const WaitingForPlayerModal = ({ show, phase, opponentName = 'Opponent', roomCod
   };
 
   return (
-    <div className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm flex items-center justify-center pointer-events-none">
+    <div className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-sm flex items-center justify-center pointer-events-auto">
       <h1
         className="text-6xl font-orbitron font-black uppercase tracking-widest text-center phase-announcement-shine"
         style={{

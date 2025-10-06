@@ -63,6 +63,7 @@ import p2pManager from './network/P2PManager.js';
 
 // --- 1.7 UTILITY IMPORTS ---
 import { getElementCenter } from './utils/gameUtils.js';
+import { debugLog } from './utils/debugLogger.js';
 
 // --- 1.8 ANIMATION IMPORTS ---
 import AnimationManager from './state/AnimationManager.js';
@@ -216,6 +217,7 @@ const App = () => {
   const sectionRefs = useRef({});
   const gameAreaRef = useRef(null);
   const isResolvingAttackRef = useRef(false);
+  const previousPhaseRef = useRef(null); // Track previous turnPhase for guest phase detection
 
   // --- 3.4 HOOKS DEPENDENT ON REFS ---
   // These hooks require refs as parameters and must be called after ref initialization.
@@ -261,7 +263,7 @@ const App = () => {
     );
 
 
-    console.log('🔧 GameFlowManager initialized');
+    debugLog('PHASE_TRANSITIONS', '🔧 GameFlowManager initialized');
   }, []); // Run once on component mount
 
   // SequentialPhaseManager removed - phase completion now handled by GameFlowManager via state monitoring
@@ -270,59 +272,57 @@ const App = () => {
 
   // PhaseManager event listeners
   useEffect(() => {
+    // Only subscribe to GameFlowManager on host/local - guest uses state-watching (Section 8.7)
+    if (gameState.gameMode === 'guest') return;
+
     const handlePhaseEvent = (event) => {
       const { type, phase, playerId, data } = event;
 
-      console.log(`🔔 App.jsx received PhaseManager event: ${type}`, { phase, playerId });
+      debugLog('PHASE_TRANSITIONS', `🔔 App.jsx received PhaseManager event: ${type}`, { phase, playerId });
+
+      if (type === 'bothPlayersComplete') {
+        // Handle both players completing a simultaneous phase
+        const { phase: completedPhase } = event;
+        debugLog('PHASE_TRANSITIONS', `🎯 Both players completed phase: ${completedPhase}`);
+
+        // Clear waiting overlay immediately when both players complete
+        if (waitingForPlayerPhase === completedPhase) {
+          debugLog('PHASE_TRANSITIONS', `✅ Clearing waiting overlay immediately for completed phase: ${completedPhase}`);
+          setWaitingForPlayerPhase(null);
+        }
+      }
 
       if (type === 'phaseTransition') {
         // Handle phase transitions from GameFlowManager
         const { newPhase, previousPhase, firstPlayerResult } = event;
-        console.log(`🔄 App.jsx handling phase transition: ${previousPhase} → ${newPhase}`);
+        debugLog('PHASE_TRANSITIONS', `🔄 App.jsx handling phase transition: ${previousPhase} → ${newPhase}`);
 
         // Clear waiting modal when transitioning away from the waiting phase
+        debugLog('PHASE_TRANSITIONS', `🔍 Waiting overlay check: waitingForPlayerPhase="${waitingForPlayerPhase}", previousPhase="${previousPhase}", match=${waitingForPlayerPhase === previousPhase}`);
         if (waitingForPlayerPhase === previousPhase) {
+          debugLog('PHASE_TRANSITIONS', `✅ Clearing waiting overlay for phase: ${previousPhase}`);
           setWaitingForPlayerPhase(null);
+        } else if (waitingForPlayerPhase) {
+          debugLog('PHASE_TRANSITIONS', `⚠️ Waiting overlay NOT cleared: waiting for "${waitingForPlayerPhase}" but transition is from "${previousPhase}"`);
         }
 
         // First player determination is now handled automatically by GameFlowManager
 
         // Handle deployment complete phase
         if (newPhase === 'deploymentComplete') {
-          console.log('🎯 Deployment complete phase started, showing modal');
+          debugLog('PHASE_TRANSITIONS', '🎯 Deployment complete phase started, showing modal');
           setShowDeploymentCompleteModal(true);
         }
-
-      } else if (type === 'phaseComplete') {
-        // Handle simultaneous phase completion
-        console.log(`🎯 App.jsx handling phase completion: ${phase}`);
-
-        // Clear waiting state when phase completes
-        if (waitingForPlayerPhase === phase) {
-          setWaitingForPlayerPhase(null);
-        }
-
-        // Handle specific phase completions
-        if (phase === 'determineFirstPlayer') {
-          // Both players have acknowledged first player determination
-          console.log('✅ Both players acknowledged first player determination');
-        }
-
-        if (phase === 'deploymentComplete') {
-          // Both players have acknowledged deployment complete
-          console.log('✅ Both players acknowledged deployment complete');
-        }
-
       }
     };
 
-    // Subscribe to game flow manager for phase events
+    // Subscribe to game flow manager for phase events (host/local only)
     const unsubscribeGameFlow = gameFlowManager.subscribe(handlePhaseEvent);
 
     return () => {
       unsubscribeGameFlow();
     };
-  }, [isMultiplayer, getLocalPlayerId, setModalContent, waitingForPlayerPhase]);
+  }, [isMultiplayer, getLocalPlayerId, setModalContent, waitingForPlayerPhase, gameState.gameMode]);
 
   // ========================================
   // SECTION 5: COMPUTED VALUES & MEMOIZATION
@@ -421,10 +421,10 @@ const App = () => {
 
     // Listen for phase completion messages from opponent
     const handleP2PData = (event) => {
-      console.log('🔥 P2P Event received in App:', event);
+      debugLog('MULTIPLAYER', '🔥 P2P Event received in App:', event);
       if (event.type === 'PHASE_COMPLETED') {
         const { phase } = event.data || event; // Handle both event.data and direct event
-        console.log(`🔥 Opponent completed phase: ${phase}`);
+        debugLog('MULTIPLAYER', `🔥 Opponent completed phase: ${phase}`);
       }
     };
 
@@ -478,20 +478,43 @@ const App = () => {
   // Wrapper for processAction that routes guest actions to host
   // ========================================
 
+  // Actions that require host-side processing and cannot be optimistically processed by guest
+  // These actions have guest guards in ActionProcessor that prevent local processing
+  const HOST_ONLY_ACTIONS = ['commitment', 'destroyDrone', 'addShield', 'resetShields'];
+
   /**
    * Process action with guest mode routing
    * Guest sends actions to host, host/local process normally
    */
   const processActionWithGuestRouting = useCallback(async (type, payload) => {
-    // Guest mode: Process locally for instant feedback AND send to host for authority
+    // Guest mode: Route actions to host
     if (gameState.gameMode === 'guest') {
-      console.log('[GUEST] Processing action locally (optimistic) and sending to host:', type, payload);
+      const isHostOnly = HOST_ONLY_ACTIONS.includes(type);
+
+      if (isHostOnly) {
+        // Host-only actions: ONLY send to host, do NOT process locally
+        // These actions require both players' state and have guest guards in ActionProcessor
+        debugLog('MULTIPLAYER', '🔒 [GUEST HOST-ONLY] Sending action to host (no local processing):', type);
+        p2pManager.sendActionToHost(type, payload);
+
+        // Return success - actual state will arrive via host broadcast
+        return { success: true, hostProcessing: true };
+      }
+
+      // Optimistic actions: Process locally for instant feedback AND send to host
+      debugLog('MULTIPLAYER', '🔮 [GUEST OPTIMISTIC] Processing action locally and sending to host:', type);
 
       // Track this optimistic action for animation deduplication
       gameStateManager.trackOptimisticAction(type, payload);
+      debugLog('ANIMATIONS', '🔮 [GUEST OPTIMISTIC] Tracked action for deduplication:', {
+        type,
+        totalTracked: gameStateManager.optimisticActions?.length || 0
+      });
 
       // Process action locally first for instant visual feedback (client-side prediction)
+      debugLog('ANIMATIONS', '🎬 [GUEST OPTIMISTIC] About to process action locally (will generate animations)');
       const localResult = await processAction(type, payload);
+      debugLog('ANIMATIONS', '✅ [GUEST OPTIMISTIC] Local processing complete (animations should have played)');
 
       // Send to host for authoritative processing (parallel, non-blocking)
       // Host will broadcast authoritative state which will reconcile via applyHostState
@@ -513,7 +536,7 @@ const App = () => {
    * Send phase completion message to opponent
    */
   const sendPhaseCompletion = useCallback((phase) => {
-    console.log(`🔥 sendPhaseCompletion called for phase: ${phase}`);
+    debugLog('MULTIPLAYER', `🔥 sendPhaseCompletion called for phase: ${phase}`);
 
 
     if (isMultiplayer()) {
@@ -521,11 +544,11 @@ const App = () => {
         type: 'PHASE_COMPLETED',
         data: { phase }
       };
-      console.log(`🔥 Sending phase completion message:`, message);
+      debugLog('MULTIPLAYER', `🔥 Sending phase completion message:`, message);
       p2pManager.sendData(message);
-      console.log(`🔥 Sent phase completion: ${phase}`);
+      debugLog('MULTIPLAYER', `🔥 Sent phase completion: ${phase}`);
     } else {
-      console.log(`🔥 Not multiplayer, skipping network send`);
+      debugLog('MULTIPLAYER', `🔥 Not multiplayer, skipping network send`);
     }
   }, [isMultiplayer, p2pManager]);
 
@@ -563,12 +586,29 @@ const App = () => {
    * Handle confirm shields button - commits allocation
    */
   const handleConfirmShields = useCallback(async () => {
+    debugLog('COMMITMENTS', '🏁 handleConfirmShields called');
+
     // Commit allocation via ActionProcessor
-    await processActionWithGuestRouting('commitment', {
+    const result = await processActionWithGuestRouting('commitment', {
       playerId: getLocalPlayerId(),
       phase: 'allocateShields',
       actionData: { committed: true }
     });
+
+    debugLog('COMMITMENTS', '🏁 Shield allocation commitment result:', {
+      hasData: !!result.data,
+      bothPlayersComplete: result.data?.bothPlayersComplete,
+      fullResult: result
+    });
+
+    // Guest mode: Always show waiting since we don't know opponent status yet
+    // Host/local mode: Only show if opponent hasn't completed
+    if (gameState.gameMode === 'guest' || (result.data && !result.data.bothPlayersComplete)) {
+      debugLog('COMMITMENTS', '✋ Setting waiting overlay for allocateShields');
+      setWaitingForPlayerPhase('allocateShields');
+    } else {
+      debugLog('COMMITMENTS', '✅ Both players complete, not showing waiting overlay');
+    }
   }, [processActionWithGuestRouting, getLocalPlayerId]);
 
   // ========================================
@@ -651,7 +691,7 @@ const App = () => {
 
         // Check if interception decision is needed from human defender
         if (result?.needsInterceptionDecision) {
-            console.log('🛡️ [APP] Interception decision needed, showing modal...');
+            debugLog('COMBAT', '🛡️ [APP] Interception decision needed, showing modal...');
             setPlayerInterceptionChoice(result.interceptionData);
             isResolvingAttackRef.current = false; // Allow interception modal to re-trigger attack
             return; // Stop processing until human makes decision
@@ -1110,7 +1150,7 @@ const App = () => {
     // Reset attack flag on turn changes or game reset
     if (winner) {
       if (isResolvingAttackRef.current) {
-        console.log('[DEFENSIVE CLEANUP] Resetting stuck attack flag due to game state change');
+        debugLog('COMBAT', '[DEFENSIVE CLEANUP] Resetting stuck attack flag due to game state change');
         isResolvingAttackRef.current = false;
       }
     }
@@ -1120,10 +1160,69 @@ const App = () => {
   // Notify GuestMessageQueueService when React has finished rendering (guest mode only)
   useEffect(() => {
     if (gameState.gameMode === 'guest') {
-      console.log('✅ [GUEST RENDER] Emitting render_complete event');
+      debugLog('STATE_SYNC', '✅ [GUEST RENDER] Emitting render_complete event');
       gameStateManager.emit('render_complete');
     }
   }, [gameState, gameStateManager]);
+
+  // --- 8.7 GUEST PHASE TRANSITION DETECTION ---
+  // Guest watches turnPhase changes and synthesizes phaseTransition events locally
+  // This allows guest to clear waiting modals and show deployment complete modal
+  // Works by leveraging existing state sync from ActionProcessor broadcasts
+  useEffect(() => {
+    // Only run on guest - host gets real events from GameFlowManager
+    if (gameState.gameMode !== 'guest') return;
+
+    // Track previous phase to detect actual changes
+    const previousPhase = previousPhaseRef.current;
+
+    // On first mount, just record current phase
+    if (previousPhase === null) {
+      previousPhaseRef.current = turnPhase;
+      return;
+    }
+
+    // Detect actual phase change
+    if (previousPhase !== turnPhase) {
+      debugLog('PHASE_TRANSITIONS', `👁️ Guest detected phase change: ${previousPhase} → ${turnPhase}`);
+
+      // Synthesize phaseTransition event with same structure as GameFlowManager
+      const syntheticEvent = {
+        type: 'phaseTransition',
+        newPhase: turnPhase,
+        previousPhase: previousPhase,
+        gameStage: gameState.gameStage,
+        roundNumber: gameState.roundNumber,
+        firstPlayerResult: null
+      };
+
+      // Call same handler that host uses for UI updates
+      const handlePhaseEvent = (event) => {
+        const { type } = event;
+
+        if (type === 'phaseTransition') {
+          const { newPhase, previousPhase } = event;
+          debugLog('PHASE_TRANSITIONS', `🔄 Guest handling synthetic phase transition: ${previousPhase} → ${newPhase}`);
+
+          // Clear waiting modal when transitioning away from the waiting phase
+          if (waitingForPlayerPhase === previousPhase) {
+            setWaitingForPlayerPhase(null);
+          }
+
+          // Handle deployment complete phase
+          if (newPhase === 'deploymentComplete') {
+            debugLog('PHASE_TRANSITIONS', '🎯 Deployment complete phase started, showing modal');
+            setShowDeploymentCompleteModal(true);
+          }
+        }
+      };
+
+      handlePhaseEvent(syntheticEvent);
+
+      // Update ref for next change
+      previousPhaseRef.current = turnPhase;
+    }
+  }, [turnPhase, gameState.gameStage, gameState.roundNumber, gameState.gameMode, waitingForPlayerPhase]);
 
   /**
    * HANDLE RESET
@@ -1304,7 +1403,7 @@ const App = () => {
    * Triggers waiting state if opponent hasn't acknowledged yet.
    */
   const handleDeploymentCompleteAcknowledgment = async () => {
-    console.log('🎯 App.jsx: Acknowledging deployment complete');
+    debugLog('PHASE_TRANSITIONS', '🎯 App.jsx: Acknowledging deployment complete');
 
     const localPlayerId = getLocalPlayerId();
     const result = await processActionWithGuestRouting('acknowledgeDeploymentComplete', { playerId: localPlayerId });
@@ -1362,10 +1461,29 @@ const App = () => {
    * Routes to appropriate manager based on current phase.
    */
   const handleEndAllocation = async () => {
+    debugLog('COMMITMENTS', '🏁 handleEndAllocation called');
+
     // Use ActionProcessor for all shield allocation endings - routes to appropriate manager
-    await processActionWithGuestRouting('endShieldAllocation', {
+    const result = await processActionWithGuestRouting('endShieldAllocation', {
       playerId: getLocalPlayerId()
     });
+
+    debugLog('COMMITMENTS', '🏁 endShieldAllocation result:', {
+      hasData: !!result.data,
+      bothPlayersComplete: result.data?.bothPlayersComplete,
+      fullResult: result
+    });
+
+    // Show waiting modal if opponent hasn't finished yet
+    if (result.data && !result.data.bothPlayersComplete) {
+      debugLog('COMMITMENTS', '✋ Setting waiting overlay for allocateShields phase');
+      setWaitingForPlayerPhase('allocateShields');
+    } else {
+      debugLog('COMMITMENTS', '✅ Both players complete or no data, not showing waiting overlay', {
+        hasData: !!result.data,
+        bothComplete: result.data?.bothPlayersComplete
+      });
+    }
   };
 
   // ========================================
@@ -1382,15 +1500,15 @@ const App = () => {
   const handleShieldAction = (actionType, payload) => {
     const phase = gameState.turnPhase;
 
-    console.log(`🛡️ handleShieldAction: ${actionType} in phase ${phase}`);
+    debugLog('ENERGY', `🛡️ handleShieldAction: ${actionType} in phase ${phase}`);
 
     if (phase === 'allocateShields') {
       // Round start shield allocation - simultaneous phase processing
-      console.log(`🛡️ Routing to round start shield handling (simultaneous)`);
+      debugLog('ENERGY', `🛡️ Routing to round start shield handling (simultaneous)`);
       handleRoundStartShieldAction(actionType, payload);
     } else if (phase === 'action') {
       // Action phase shield reallocation - sequential phase processing
-      console.log(`🛡️ Routing to action phase shield handling (sequential)`);
+      debugLog('ENERGY', `🛡️ Routing to action phase shield handling (sequential)`);
       processActionWithGuestRouting(actionType, payload);
     } else {
       console.warn(`⚠️ Shield action ${actionType} not valid for phase ${phase}`);
@@ -1404,7 +1522,7 @@ const App = () => {
    * @param {string} actionType - The shield action type
    * @param {Object} payload - Action payload data
    */
-  const handleRoundStartShieldAction = (actionType, payload) => {
+  const handleRoundStartShieldAction = async (actionType, payload) => {
     const { turnPhase } = gameState;
 
     // Validate we're in the correct phase
@@ -1413,7 +1531,7 @@ const App = () => {
       return;
     }
 
-    console.log(`🛡️⚡ Processing round start shield action: ${actionType}`);
+    debugLog('ENERGY', `🛡️⚡ Processing round start shield action: ${actionType}`);
 
     try {
       switch (actionType) {
@@ -1426,11 +1544,11 @@ const App = () => {
           break;
 
         case 'resetShieldAllocation':
-          handleResetShieldAllocation();
+          await handleResetShieldAllocation();
           break;
 
         case 'endShieldAllocation':
-          handleEndAllocation();
+          await handleEndAllocation();
           break;
 
         default:
@@ -1460,11 +1578,11 @@ const App = () => {
     // TODO: FUTURE WORK - Could get phase type from GameFlowManager.getPhaseType() when available
     const isSequential = ['deployment', 'action'].includes(phase);
 
-    console.log(`[PHASE ROUTING] ${actionType} in ${phase} → ${isSequential ? 'ActionProcessor' : 'Direct Update'}`);
+    debugLog('PHASE_TRANSITIONS', `[PHASE ROUTING] ${actionType} in ${phase} → ${isSequential ? 'ActionProcessor' : 'Direct Update'}`);
 
     // Special case for shield actions
     if (actionType.includes('Shield') || actionType.includes('shield')) {
-      console.log(`[SHIELD ROUTING] ${actionType} in ${phase} → ${phase === 'allocateShields' ? 'Round Start (Simultaneous)' : 'Action Phase (Sequential)'}`);
+      debugLog('ENERGY', `[SHIELD ROUTING] ${actionType} in ${phase} → ${phase === 'allocateShields' ? 'Round Start (Simultaneous)' : 'Action Phase (Sequential)'}`);
     }
 
     if (isSequential) {
@@ -1487,7 +1605,7 @@ const App = () => {
   const handleSimultaneousAction = (actionType, payload) => {
     const { turnPhase } = gameState;
 
-    console.log(`⚡ handleSimultaneousAction: ${actionType} in ${turnPhase} phase`);
+    debugLog('PHASE_TRANSITIONS', `⚡ handleSimultaneousAction: ${actionType} in ${turnPhase} phase`);
 
     try {
       // Route based on action type and current phase
@@ -1541,7 +1659,7 @@ const App = () => {
    */
   const waitForBothPlayersComplete = async (phase) => {
     return new Promise((resolve, reject) => {
-      console.log(`⏳ Waiting for both players to complete ${phase} phase`);
+      debugLog('PHASE_TRANSITIONS', `⏳ Waiting for both players to complete ${phase} phase`);
 
       // Set up timeout for safety (30 seconds max wait)
       const timeout = setTimeout(() => {
@@ -1552,7 +1670,7 @@ const App = () => {
       const checkCompletion = () => {
         if (!isMultiplayer()) {
           // Single player mode - AI completion handled by SimultaneousActionManager
-          console.log(`🤖 Single player mode: AI completion delegated to SimultaneousActionManager for ${phase}`);
+          debugLog('PHASE_TRANSITIONS', `🤖 Single player mode: AI completion delegated to SimultaneousActionManager for ${phase}`);
           clearTimeout(timeout);
           resolve();
           return;
@@ -1560,14 +1678,14 @@ const App = () => {
 
         // Multiplayer mode - check if both players are ready
         if (areBothPlayersReady(phase)) {
-          console.log(`✅ Both players completed ${phase} phase`);
+          debugLog('PHASE_TRANSITIONS', `✅ Both players completed ${phase} phase`);
           clearTimeout(timeout);
           resolve();
           return;
         }
 
         // Not ready yet - continue waiting
-        console.log(`⏳ Still waiting for ${phase} completion`);
+        debugLog('PHASE_TRANSITIONS', `⏳ Still waiting for ${phase} completion`);
       };
 
       // Initial check
@@ -1579,7 +1697,7 @@ const App = () => {
           if (areBothPlayersReady(phase)) {
             clearInterval(checkInterval);
             clearTimeout(timeout);
-            console.log(`✅ Both players completed ${phase} phase`);
+            debugLog('PHASE_TRANSITIONS', `✅ Both players completed ${phase} phase`);
             resolve();
           }
         }, 1000); // Check every second
@@ -1836,11 +1954,11 @@ const App = () => {
    */
   const handleTokenClick = (e, token, isPlayer) => {
       e.stopPropagation();
-      console.log(`--- handleTokenClick triggered for ${token.name} (isPlayer: ${isPlayer}) ---`);
+      debugLog('COMBAT', `--- handleTokenClick triggered for ${token.name} (isPlayer: ${isPlayer}) ---`);
 
       // NEW: Prioritize multi-move selection
       if (multiSelectState && multiSelectState.phase === 'select_drones' && isPlayer) {
-          console.log("Action: Multi-move drone selection.");
+          debugLog('COMBAT', "Action: Multi-move drone selection.");
           const { selectedDrones, maxSelection } = multiSelectState;
           const isAlreadySelected = selectedDrones.some(d => d.id === token.id);
           if (isAlreadySelected) {
@@ -1853,25 +1971,25 @@ const App = () => {
 
       // 1. Handle targeting for an active card or ability
       if (validAbilityTargets.some(t => t.id === token.id) || validCardTargets.some(t => t.id === token.id)) {
-          console.log("Action: Targeting for an active card/ability.");
+          debugLog('COMBAT', "Action: Targeting for an active card/ability.");
           handleTargetClick(token, 'drone', isPlayer);
           return;
       }
 
       // 2. Handle standard attack logic directly
       if (turnPhase === 'action' && isMyTurn() && selectedDrone && !selectedDrone.isExhausted && !isPlayer) {
-          console.log("Action: Attempting a standard attack.");
-          console.log("Attacker selected:", selectedDrone.name, `(ID: ${selectedDrone.id})`);
-          console.log("Target clicked:", token.name, `(ID: ${token.id})`);
+          debugLog('COMBAT', "Action: Attempting a standard attack.");
+          debugLog('COMBAT', "Attacker selected:", selectedDrone.name, `(ID: ${selectedDrone.id})`);
+          debugLog('COMBAT', "Target clicked:", token.name, `(ID: ${token.id})`);
 
           const [attackerLane] = Object.entries(localPlayerState.dronesOnBoard).find(([_, drones]) => drones.some(d => d.id === selectedDrone.id)) || [];
           const [targetLane] = Object.entries(opponentPlayerState.dronesOnBoard).find(([_, drones]) => drones.some(d => d.id === token.id)) || [];
           
-          console.log("Calculated Attacker Lane:", attackerLane);
-          console.log("Calculated Target Lane:", targetLane);
+          debugLog('COMBAT', "Calculated Attacker Lane:", attackerLane);
+          debugLog('COMBAT', "Calculated Target Lane:", targetLane);
 
           if (attackerLane && targetLane && attackerLane === targetLane) {
-              console.log("SUCCESS: Lanes match. Checking for Guardian...");
+              debugLog('COMBAT', "SUCCESS: Lanes match. Checking for Guardian...");
               const opponentDronesInLane = opponentPlayerState.dronesOnBoard[targetLane];
               const hasGuardian = opponentDronesInLane.some(drone => {
                   const effectiveStats = getEffectiveStats(drone, targetLane);
@@ -1879,10 +1997,10 @@ const App = () => {
               });
 
               if (hasGuardian) {
-                  console.log("FAILURE: Target is protected by a Guardian drone.");
+                  debugLog('COMBAT', "FAILURE: Target is protected by a Guardian drone.");
                   setModalContent({ title: "Invalid Target", text: "This lane is protected by a Guardian drone. You must destroy it before targeting other drones.", isBlocking: true });
               } else {
-                  console.log("SUCCESS: No Guardian. Processing attack...");
+                  debugLog('COMBAT', "SUCCESS: No Guardian. Processing attack...");
                   const attackDetails = { attacker: selectedDrone, target: token, targetType: 'drone', lane: attackerLane, attackingPlayer: getLocalPlayerId() };
 
                   // ActionProcessor will handle interception check
@@ -1890,7 +2008,7 @@ const App = () => {
                   setSelectedDrone(null);
               }
           } else {
-              console.log("FAILURE: Lanes do not match or could not be found.");
+              debugLog('COMBAT', "FAILURE: Lanes do not match or could not be found.");
               setModalContent({ title: "Invalid Target", text: "You can only attack targets in the same lane.", isBlocking: true });
           }
           return;
@@ -1898,7 +2016,7 @@ const App = () => {
 
       // 3. Handle multi-move drone selection
       if (multiSelectState && multiSelectState.phase === 'select_drones' && isPlayer) {
-          console.log("Action: Multi-move drone selection.");
+          debugLog('COMBAT', "Action: Multi-move drone selection.");
           const { selectedDrones, maxSelection } = multiSelectState;
           const isAlreadySelected = selectedDrones.some(d => d.id === token.id);
           if (isAlreadySelected) {
@@ -1912,7 +2030,7 @@ const App = () => {
       // 4. Handle mandatory destruction
 
       if (mandatoryAction?.type === 'destroy' && isPlayer) {
-          console.log("Action: Mandatory destruction.");
+          debugLog('COMBAT', "Action: Mandatory destruction.");
           setConfirmationModal({
               type: 'destroy', target: token,
               onConfirm: () => handleConfirmMandatoryDestroy(token), onCancel: () => setConfirmationModal(null),
@@ -1924,14 +2042,14 @@ const App = () => {
       // 5. Handle selecting/deselecting one of your own drones
       if (isPlayer && turnPhase === 'action' && isMyTurn() && !passInfo[`${getLocalPlayerId()}Passed`]) {
           if (token.isExhausted) {
-              console.log("Action prevented: Drone is exhausted.");
+              debugLog('COMBAT', "Action prevented: Drone is exhausted.");
               return;
           }
           if (selectedDrone?.id === token.id) {
-              console.log("Action: Deselecting drone", token.name);
+              debugLog('COMBAT', "Action: Deselecting drone", token.name);
               setSelectedDrone(null);
           } else {
-              console.log("Action: Selecting drone", token.name);
+              debugLog('COMBAT', "Action: Selecting drone", token.name);
               setSelectedDrone(token);
               cancelAbilityMode();
               cancelCardSelection();
@@ -1940,7 +2058,7 @@ const App = () => {
       }
 
       // 6. Fallback: show drone details
-      console.log("Action: Fallback - showing drone details.");
+      debugLog('COMBAT', "Action: Fallback - showing drone details.");
       setDetailedDrone(token);
   };
   
@@ -1977,16 +2095,16 @@ const App = () => {
 
       // Handle standard ship section attacks
       if (turnPhase === 'action' && isMyTurn() && selectedDrone && !selectedDrone.isExhausted && !isPlayer && targetType === 'section') {
-          console.log("Action: Attempting ship section attack.");
-          console.log("Attacker selected:", selectedDrone.name, `(ID: ${selectedDrone.id})`);
-          console.log("Target clicked:", target.name, `(Type: ${targetType})`);
+          debugLog('COMBAT', "Action: Attempting ship section attack.");
+          debugLog('COMBAT', "Attacker selected:", selectedDrone.name, `(ID: ${selectedDrone.id})`);
+          debugLog('COMBAT', "Target clicked:", target.name, `(Type: ${targetType})`);
 
           const [attackerLane] = Object.entries(localPlayerState.dronesOnBoard).find(([_, drones]) => drones.some(d => d.id === selectedDrone.id)) || [];
 
-          console.log("Calculated Attacker Lane:", attackerLane);
+          debugLog('COMBAT', "Calculated Attacker Lane:", attackerLane);
 
           if (attackerLane) {
-              console.log("SUCCESS: Found attacker lane. Checking for Guardian...");
+              debugLog('COMBAT', "SUCCESS: Found attacker lane. Checking for Guardian...");
               const opponentDronesInLane = opponentPlayerState.dronesOnBoard[attackerLane];
               const hasGuardian = opponentDronesInLane && opponentDronesInLane.some(drone => {
                   const effectiveStats = getEffectiveStats(drone, attackerLane);
@@ -1994,10 +2112,10 @@ const App = () => {
               });
 
               if (hasGuardian) {
-                  console.log("FAILURE: Ship section is protected by a Guardian drone.");
+                  debugLog('COMBAT', "FAILURE: Ship section is protected by a Guardian drone.");
                   setModalContent({ title: "Invalid Target", text: "This lane is protected by a Guardian drone. You must destroy it before targeting the ship section.", isBlocking: true });
               } else {
-                  console.log("SUCCESS: No Guardian. Processing attack...");
+                  debugLog('COMBAT', "SUCCESS: No Guardian. Processing attack...");
                   const attackDetails = { attacker: selectedDrone, target: target, targetType: 'section', lane: attackerLane, attackingPlayer: getLocalPlayerId() };
 
                   // ActionProcessor will handle interception check
@@ -2005,7 +2123,7 @@ const App = () => {
                   setSelectedDrone(null);
               }
           } else {
-              console.log("FAILURE: Could not determine attacker lane.");
+              debugLog('COMBAT', "FAILURE: Could not determine attacker lane.");
               setModalContent({ title: "Invalid Attack", text: "Could not determine the attacking drone's lane.", isBlocking: true });
           }
           return;
@@ -2111,13 +2229,53 @@ const App = () => {
    * @param {Object} card - The card being clicked
    */
   const handleCardClick = async (card) => {
-    if (turnPhase !== 'action' || !isMyTurn() || passInfo[`${getLocalPlayerId()}Passed`]) return;
+    const localPlayerId = getLocalPlayerId();
+    const myTurn = isMyTurn();
+    const playerPassed = passInfo[`${localPlayerId}Passed`];
+
+    debugLog('CARD_PLAY', `🎯 handleCardClick called: ${card.name}`, {
+      cardId: card.id,
+      cardCost: card.cost,
+      gameMode: gameState.gameMode,
+      localPlayerId,
+      turnPhase,
+      isMyTurn: myTurn,
+      playerPassed,
+      playerEnergy: localPlayerState.energy,
+      hasEnoughEnergy: localPlayerState.energy >= card.cost
+    });
+
+    if (turnPhase !== 'action') {
+      debugLog('CARD_PLAY', `🚫 Card click rejected - wrong phase: ${turnPhase}`, { card: card.name });
+      return;
+    }
+
+    if (!myTurn) {
+      debugLog('CARD_PLAY', `🚫 Card click rejected - not player's turn`, {
+        card: card.name,
+        localPlayerId,
+        currentPlayer: gameState.currentPlayer
+      });
+      return;
+    }
+
+    if (playerPassed) {
+      debugLog('CARD_PLAY', `🚫 Card click rejected - player has passed`, { card: card.name });
+      return;
+    }
+
     if (localPlayerState.energy < card.cost) {
+      debugLog('CARD_PLAY', `🚫 Card click rejected - not enough energy`, {
+        card: card.name,
+        cardCost: card.cost,
+        playerEnergy: localPlayerState.energy
+      });
       return;
     }
 
     // Movement cards are now handled through resolveCardPlay -> needsCardSelection flow
     if (card.effect.type === 'MULTI_MOVE' || card.effect.type === 'SINGLE_MOVE') {
+      debugLog('CARD_PLAY', `✅ Movement card - processing: ${card.name}`, { effectType: card.effect.type });
       if (multiSelectState && multiSelectState.card.instanceId === card.instanceId) {
         cancelCardSelection();
       } else {
@@ -2128,17 +2286,22 @@ const App = () => {
     }
 
     if (selectedCard?.instanceId === card.instanceId) {
+      debugLog('CARD_PLAY', `✅ Card deselected: ${card.name}`);
       cancelCardSelection();
     } else if (card.name === 'System Sabotage') {
+        debugLog('CARD_PLAY', `✅ System Sabotage card - getting targets`, { card: card.name });
         // TODO: TECHNICAL DEBT - getValidTargets gets valid targets for special cards - required for card targeting UI
         const validTargets = gameEngine.getValidTargets(getLocalPlayerId(), null, card, localPlayerState, opponentPlayerState);
+        debugLog('CARD_PLAY', `✅ System Sabotage targets found: ${validTargets.length}`, { targets: validTargets });
         setDestroyUpgradeModal({ card, targets: validTargets, opponentState: opponentPlayerState });
         setSelectedCard(null);
         setAbilityMode(null);
         setSelectedDrone(null);
     } else if (card.type === 'Upgrade') {
+        debugLog('CARD_PLAY', `✅ Upgrade card - getting targets: ${card.name}`);
         // TODO: TECHNICAL DEBT - getValidTargets gets valid targets for upgrade cards - required for upgrade targeting UI
         const validTargets = gameEngine.getValidTargets(getLocalPlayerId(), null, card, localPlayerState, opponentPlayerState);
+        debugLog('CARD_PLAY', `✅ Upgrade targets found: ${validTargets.length}`, { targets: validTargets });
         if (validTargets.length > 0) {
             setUpgradeSelectionModal({ card, targets: validTargets });
             setSelectedCard(null);
@@ -2149,11 +2312,13 @@ const App = () => {
         }
     } else {
         if (!card.targeting) {
+            debugLog('CARD_PLAY', `✅ Non-targeted card - showing confirmation: ${card.name}`);
             setCardConfirmation({ card, target: null });
             setSelectedCard(null);
             setAbilityMode(null);
             setSelectedDrone(null);
         } else {
+            debugLog('CARD_PLAY', `✅ Targeted card - waiting for target selection: ${card.name}`, { targeting: card.targeting });
             setSelectedCard(card);
             setSelectedDrone(null);
             setAbilityMode(null);
@@ -2187,8 +2352,17 @@ const App = () => {
     if (newCount <= 0) {
         setMandatoryAction(null);
         if (!currentMandatoryAction.fromAbility) {
-            // Mandatory discard completed, let game flow continue naturally
-            // The GameFlowManager will handle the transition to the next phase
+            // Mandatory discard completed - commit the phase and check if opponent is done
+            const result = await processActionWithGuestRouting('commitment', {
+                playerId: getLocalPlayerId(),
+                phase: 'mandatoryDiscard',
+                actionData: { completed: true }
+            });
+
+            // Show waiting modal if opponent hasn't finished yet
+            if (result.data && !result.data.bothPlayersComplete) {
+                setWaitingForPlayerPhase('mandatoryDiscard');
+            }
         }
     } else {
         // If more discards are needed, just update the count
@@ -2223,17 +2397,23 @@ const App = () => {
    * Resets the optional discard count for the next round.
    */
   const handleRoundStartDraw = async () => {
-    console.log('[OPTIONAL DISCARD] Player completing optional discard phase');
+    debugLog('PHASE_TRANSITIONS', '[OPTIONAL DISCARD] Player completing optional discard phase');
 
     // Reset discard count for next round
     setOptionalDiscardCount(0);
 
     // Commit completion of optionalDiscard phase
-    await processActionWithGuestRouting('commitment', {
+    const result = await processActionWithGuestRouting('commitment', {
       playerId: getLocalPlayerId(),
       phase: 'optionalDiscard',
       actionData: { completed: true }
     });
+
+    // Guest mode: Always show waiting since we don't know opponent status yet
+    // Host/local mode: Only show if opponent hasn't completed
+    if (gameState.gameMode === 'guest' || (result.data && !result.data.bothPlayersComplete)) {
+      setWaitingForPlayerPhase('optionalDiscard');
+    }
   };
 
   /**
@@ -2244,7 +2424,7 @@ const App = () => {
    */
   const checkBothPlayersHandLimitComplete = () => {
     const commitmentStatus = gameStateManager.actionProcessor?.getPhaseCommitmentStatus('optionalDiscard');
-    console.log('[OPTIONAL DISCARD] Commitment status:', commitmentStatus);
+    debugLog('PHASE_TRANSITIONS', '[OPTIONAL DISCARD] Commitment status:', commitmentStatus);
     return commitmentStatus?.bothComplete || false;
   };
 
@@ -2256,6 +2436,9 @@ const App = () => {
    * @param {Object} drone - The drone being destroyed
    */
   const handleConfirmMandatoryDestroy = async (drone) => {
+    // Capture current mandatory action state before updates
+    const currentMandatoryAction = mandatoryAction;
+
     // Use ActionProcessor to handle destruction (supports multiplayer routing)
     const result = await processActionWithGuestRouting('destroyDrone', {
       droneId: drone.id,
@@ -2267,39 +2450,55 @@ const App = () => {
       return;
     }
 
-    setMandatoryAction(prev => {
-      const newCount = prev.count - 1;
-      if (newCount <= 0) {
-        // Check if opponent (AI in single-player) also needs to destroy drones
-        const p2IsOver = totalOpponentPlayerDrones > opponentPlayerEffectiveStats.totals.cpuLimit;
-        if (p2IsOver && gameState.gameMode === 'local') {
-          // In single-player mode, handle AI opponent destruction
-          const dronesToDestroyCount = Object.values(opponentPlayerState.dronesOnBoard).flat().length -
-                                       getEffectiveShipStats(opponentPlayerState, opponentPlacedSections).totals.cpuLimit;
+    // Calculate new count
+    const newCount = currentMandatoryAction.count - 1;
 
-          // Destroy AI drones one by one using ActionProcessor
-          for (let i = 0; i < dronesToDestroyCount; i++) {
-            const allDrones = Object.entries(opponentPlayerState.dronesOnBoard)
-              .flatMap(([lane, drones]) => drones.map(d => ({...d, lane})));
+    if (newCount <= 0) {
+      // Check if opponent (AI in single-player) also needs to destroy drones
+      const p2IsOver = totalOpponentPlayerDrones > opponentPlayerEffectiveStats.totals.cpuLimit;
+      if (p2IsOver && gameState.gameMode === 'local') {
+        // In single-player mode, handle AI opponent destruction
+        const dronesToDestroyCount = Object.values(opponentPlayerState.dronesOnBoard).flat().length -
+                                     getEffectiveShipStats(opponentPlayerState, opponentPlacedSections).totals.cpuLimit;
 
-            if (allDrones.length === 0) break;
+        // Destroy AI drones one by one using ActionProcessor
+        for (let i = 0; i < dronesToDestroyCount; i++) {
+          const allDrones = Object.entries(opponentPlayerState.dronesOnBoard)
+            .flatMap(([lane, drones]) => drones.map(d => ({...d, lane})));
 
-            const lowestClass = Math.min(...allDrones.map(d => d.class));
-            const candidates = allDrones.filter(d => d.class === lowestClass);
-            const droneToDestroy = candidates[Math.floor(Math.random() * candidates.length)];
+          if (allDrones.length === 0) break;
 
-            // Use ActionProcessor for AI drone destruction too
-            processActionWithGuestRouting('destroyDrone', {
-              droneId: droneToDestroy.id,
-              playerId: getOpponentPlayerId()
-            });
-          }
+          const lowestClass = Math.min(...allDrones.map(d => d.class));
+          const candidates = allDrones.filter(d => d.class === lowestClass);
+          const droneToDestroy = candidates[Math.floor(Math.random() * candidates.length)];
+
+          // Use ActionProcessor for AI drone destruction too
+          await processActionWithGuestRouting('destroyDrone', {
+            droneId: droneToDestroy.id,
+            playerId: getOpponentPlayerId()
+          });
         }
-        // In multiplayer mode, opponent handles their own mandatory destruction
-        return null;
       }
-      return { ...prev, count: newCount };
-    });
+
+      // Clear mandatory action
+      setMandatoryAction(null);
+
+      // Commit the mandatoryDroneRemoval phase and check if opponent is done
+      const commitResult = await processActionWithGuestRouting('commitment', {
+        playerId: getLocalPlayerId(),
+        phase: 'mandatoryDroneRemoval',
+        actionData: { completed: true }
+      });
+
+      // Show waiting modal if opponent hasn't finished yet
+      if (commitResult.data && !commitResult.data.bothPlayersComplete) {
+        setWaitingForPlayerPhase('mandatoryDroneRemoval');
+      }
+    } else {
+      // If more drones need to be destroyed, update the count
+      setMandatoryAction(prev => ({ ...prev, count: newCount }));
+    }
+
     setConfirmationModal(null);
   };
 
@@ -2433,7 +2632,7 @@ const App = () => {
           left: 0,
           right: 0,
           bottom: 0,
-          zIndex: 10000,
+          zIndex: 99999,
           cursor: 'not-allowed',
           pointerEvents: 'all',
           backgroundColor: 'transparent'
@@ -2470,6 +2669,8 @@ const App = () => {
         handleResetReallocation={handleResetReallocation}
         handleContinueToAddPhase={handleContinueToAddPhase}
         handleConfirmReallocation={handleConfirmReallocation}
+        handleRoundStartDraw={handleRoundStartDraw}
+        optionalDiscardCount={optionalDiscardCount}
         mandatoryAction={mandatoryAction}
         multiSelectState={multiSelectState}
         AI_HAND_DEBUG_MODE={AI_HAND_DEBUG_MODE}
@@ -2528,6 +2729,7 @@ const App = () => {
       />
 
       <GameFooter
+        gameMode={gameState.gameMode}
         localPlayerState={localPlayerState}
         localPlayerEffectiveStats={localPlayerEffectiveStats}
         sortedLocalActivePool={sortedLocalActivePool}

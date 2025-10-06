@@ -7,12 +7,13 @@
 import React, { useState, useEffect } from 'react';
 import { useGameState } from '../../hooks/useGameState.js';
 import { WaitingForOpponentScreen } from './DroneSelectionScreen.jsx';
-import { gameEngine, startingDecklist } from '../../logic/gameLogic.js';
+import { gameEngine, startingDecklist, startingDroneList } from '../../logic/gameLogic.js';
 import gameFlowManager from '../../state/GameFlowManager.js';
 import gameStateManager from '../../state/GameStateManager.js';
 import p2pManager from '../../network/P2PManager.js';
 import DeckBuilder from '../../DeckBuilder.jsx';
 import fullCardCollection from '../../data/cardData.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * DECK SELECTION SCREEN COMPONENT
@@ -48,22 +49,39 @@ function DeckSelectionScreen() {
     // Only handle during deck selection phase
     if (turnPhase !== 'deckSelection') return;
 
-    console.log('🔧 handleDeckChoice called with:', choice);
+    debugLog('DECK_SELECTION', '🔧 handleDeckChoice called with:', choice);
 
     if (choice === 'standard') {
       // Build the standard deck for the local player
       const localPlayerId = getLocalPlayerId();
       const standardDeck = gameEngine.buildDeckFromList(startingDecklist);
+      const standardDrones = [...startingDroneList]; // 10 standard drones
+
+      // Validate standard drone list has exactly 10 drones
+      if (standardDrones.length !== 10) {
+        console.error(`❌ Standard drone list has ${standardDrones.length} drones, expected 10`);
+        addLogEntry({
+          player: 'SYSTEM',
+          actionType: 'ERROR',
+          source: 'Deck Validation',
+          target: 'N/A',
+          outcome: `Invalid standard drone list: ${standardDrones.length} drones instead of 10.`
+        }, 'handleDeckChoice');
+        return;
+      }
 
       const payload = {
         phase: 'deckSelection',
         playerId: localPlayerId,
-        actionData: { deck: standardDeck }
+        actionData: {
+          deck: standardDeck,
+          drones: standardDrones
+        }
       };
 
       // Guest mode: Send action to host
       if (gameState.gameMode === 'guest') {
-        console.log('[GUEST] Sending deck selection commitment to host');
+        debugLog('DECK_SELECTION', '[GUEST] Sending deck selection commitment to host');
         p2pManager.sendActionToHost('commitment', payload);
         return;
       }
@@ -76,7 +94,7 @@ function DeckSelectionScreen() {
         return;
       }
 
-      console.log('✅ Standard deck selection submitted to PhaseManager');
+      debugLog('DECK_SELECTION', '✅ Standard deck selection submitted to PhaseManager');
 
       addLogEntry({
         player: 'SYSTEM',
@@ -87,7 +105,7 @@ function DeckSelectionScreen() {
       }, 'handleDeckChoice');
 
     } else if (choice === 'custom') {
-      console.log('🔧 Opening custom deck builder');
+      debugLog('DECK_SELECTION', '🔧 Opening custom deck builder');
 
       // Show deck builder UI (stay in deckSelection phase)
       setShowDeckBuilder(true);
@@ -121,33 +139,52 @@ function DeckSelectionScreen() {
    * Submits the custom deck as a commitment
    */
   const handleConfirmDeck = async () => {
-    console.log('🔧 Confirming custom deck:', customDeck);
+    debugLog('DECK_SELECTION', '🔧 Confirming custom deck:', customDeck);
 
-    // Build deck array from deck object
+    // Build deck array from deck object with unique instanceId for each card
     const deckArray = [];
+    let instanceCounter = 0;
     Object.entries(customDeck).forEach(([cardId, quantity]) => {
       for (let i = 0; i < quantity; i++) {
-        const card = fullCardCollection.find(c => c.id === cardId);
-        if (card) {
-          deckArray.push(card);
+        const cardTemplate = fullCardCollection.find(c => c.id === cardId);
+        if (cardTemplate) {
+          // Use createCard helper to assign unique instanceId (same as buildDeckFromList)
+          deckArray.push(gameEngine.createCard(cardTemplate, `card-${Date.now()}-${instanceCounter++}`));
         }
       }
     });
 
     // Shuffle the deck for random card draw order (same as standard deck)
     const shuffledDeck = deckArray.sort(() => 0.5 - Math.random());
-    console.log(`🔀 Custom deck shuffled: ${shuffledDeck.length} cards`);
+    debugLog('DECK_SELECTION', `🔀 Custom deck shuffled: ${shuffledDeck.length} cards`, {
+      sampleCard: shuffledDeck[0],
+      sampleInstanceId: shuffledDeck[0]?.instanceId,
+      hasInstanceId: shuffledDeck[0]?.instanceId !== undefined
+    });
+
+    // Extract selected drone names from selectedDrones state
+    const droneNames = [];
+    Object.entries(selectedDrones).forEach(([droneName, quantity]) => {
+      if (quantity > 0) {
+        droneNames.push(droneName);
+      }
+    });
+
+    debugLog('DECK_SELECTION', `🎲 Custom deck includes ${droneNames.length} drones:`, droneNames.join(', '));
 
     const localPlayerId = getLocalPlayerId();
     const payload = {
       phase: 'deckSelection',
       playerId: localPlayerId,
-      actionData: { deck: shuffledDeck }
+      actionData: {
+        deck: shuffledDeck,
+        drones: droneNames
+      }
     };
 
     // Guest mode: Send action to host
     if (gameState.gameMode === 'guest') {
-      console.log('[GUEST] Sending custom deck commitment to host');
+      debugLog('DECK_SELECTION', '[GUEST] Sending custom deck commitment to host');
       p2pManager.sendActionToHost('commitment', payload);
       setShowDeckBuilder(false);
       return;
@@ -161,7 +198,7 @@ function DeckSelectionScreen() {
       return;
     }
 
-    console.log('✅ Custom deck submitted to PhaseManager');
+    debugLog('DECK_SELECTION', '✅ Custom deck submitted to PhaseManager');
 
     addLogEntry({
       player: 'SYSTEM',
@@ -248,7 +285,7 @@ function DeckSelectionScreen() {
   const opponentCompleted = gameState.commitments?.deckSelection?.[opponentPlayerId]?.completed || false;
 
   // DEBUG LOGGING - Remove after fixing multiplayer issue
-  console.log('🔍 [DECK SELECTION] Render check:', {
+  debugLog('DECK_SELECTION', '🔍 [DECK SELECTION] Render check:', {
     gameMode: gameState.gameMode,
     isMultiplayer: isMultiplayer(),
     localPlayerId,

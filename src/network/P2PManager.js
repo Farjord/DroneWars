@@ -5,6 +5,7 @@
 // Manages room creation, joining, and command synchronization
 
 import Peer from 'peerjs';
+import { debugLog } from '../utils/debugLogger.js';
 
 class P2PManager {
   constructor() {
@@ -68,14 +69,14 @@ class P2PManager {
 
       return new Promise((resolve, reject) => {
         this.peer.on('open', (id) => {
-          console.log('Host peer opened with ID:', id);
+          debugLog('MULTIPLAYER', 'Host peer opened with ID:', id);
           this.emit('multiplayer_mode_change', { mode: 'host', isHost: true });
           this.emit('room_created', { roomCode: this.roomCode });
           resolve(this.roomCode);
         });
 
         this.peer.on('connection', (conn) => {
-          console.log('Guest connected:', conn.peer);
+          debugLog('MULTIPLAYER', 'Guest connected:', conn.peer);
           this.connection = conn;
           this.setupConnection();
         });
@@ -114,14 +115,14 @@ class P2PManager {
 
       return new Promise((resolve, reject) => {
         this.peer.on('open', (id) => {
-          console.log('Guest peer opened with ID:', id);
+          debugLog('MULTIPLAYER', 'Guest peer opened with ID:', id);
 
           // Connect to host
           this.connection = this.peer.connect(roomCode);
           this.setupConnection();
 
           this.connection.on('open', () => {
-            console.log('Connected to host');
+            debugLog('MULTIPLAYER', 'Connected to host');
             this.emit('multiplayer_mode_change', { mode: 'guest', isHost: false });
             this.emit('joined_room', { roomCode });
             resolve();
@@ -165,7 +166,7 @@ class P2PManager {
         isHost: this.isHost,
         roomCode: this.roomCode
       });
-      console.log('P2P connection established');
+      debugLog('MULTIPLAYER', 'P2P connection established');
     });
 
     this.connection.on('data', (data) => {
@@ -175,7 +176,7 @@ class P2PManager {
     this.connection.on('close', () => {
       this.isConnected = false;
       this.emit('disconnected', {});
-      console.log('P2P connection closed');
+      debugLog('MULTIPLAYER', 'P2P connection closed');
     });
 
     this.connection.on('error', (error) => {
@@ -189,13 +190,13 @@ class P2PManager {
    */
   async handleReceivedData(data) {
     try {
-      console.log('Received P2P data:', data);
+      debugLog('MULTIPLAYER', 'Received P2P data:', data);
 
       switch (data.type) {
         case 'STATE_UPDATE':
           // Host sending full state update to guest
           // Emit to GameStateManager for direct application
-          console.log('[P2P GUEST] Received state update with animations:', {
+          debugLog('MULTIPLAYER', '[P2P GUEST] Received state update with animations:', {
             hasAnimations: data.animations && data.animations.length > 0,
             animationCount: data.animations?.length || 0
           });
@@ -278,13 +279,19 @@ class P2PManager {
 
     if (this.connection && this.isConnected) {
       try {
+        debugLog('MULTIPLAYER', '[P2P HOST] Broadcasting state - checking player2 hand:', {
+          player2HandSize: state.player2?.hand?.length || 0,
+          sampleCard: state.player2?.hand?.[0] || null,
+          sampleInstanceId: state.player2?.hand?.[0]?.instanceId
+        });
+
         this.connection.send({
           type: 'STATE_UPDATE',
           state: state,
           animations: animations,
           timestamp: Date.now()
         });
-        console.log('[P2P HOST] Broadcasted state update to guest', {
+        debugLog('MULTIPLAYER', '[P2P HOST] Broadcasted state update to guest', {
           hasAnimations: animations.length > 0,
           animationCount: animations.length
         });
@@ -315,7 +322,7 @@ class P2PManager {
           action: { type: actionType, payload },
           timestamp: Date.now()
         });
-        console.log('[P2P GUEST] Sent action to host:', actionType);
+        debugLog('MULTIPLAYER', '[P2P GUEST] Sent action to host:', actionType);
       } catch (error) {
         console.error('Failed to send action to host:', error);
         this.emit('send_error', { error: error.message });
@@ -334,7 +341,7 @@ class P2PManager {
 
     if (state) {
       // Log received state sync but don't apply directly
-      console.log('Received state sync (not applied):', state);
+      debugLog('MULTIPLAYER', 'Received state sync (not applied):', state);
       this.emit('state_sync_received', { state });
     } else {
       // Send current state for initial sync only - emit event to get state

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import AnimationManager from '../state/AnimationManager.js';
 import FlashEffect from '../components/animations/FlashEffect.jsx';
 import CardVisualEffect from '../components/animations/CardVisualEffect.jsx';
+import { debugLog } from '../utils/debugLogger.js';
 
 export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications) {
   useEffect(() => {
@@ -44,7 +45,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         return;
       }
 
-      console.log('🔫 [LASER DEBUG] DRONE_FLY handler called:', {
+      debugLog('ANIMATIONS', '🔫 [LASER DEBUG] DRONE_FLY handler called:', {
         droneId,
         sourcePlayer,
         sourceLane,
@@ -73,7 +74,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         return;
       }
 
-      console.log('✅ [LASER DEBUG] Creating laser effect with attack:', attackValue);
+      debugLog('ANIMATIONS', '✅ [LASER DEBUG] Creating laser effect with attack:', attackValue);
 
       const startPos = getElementCenter(droneEl, gameAreaRef.current);
       const endPos = getElementCenter(targetEl, gameAreaRef.current);
@@ -259,7 +260,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     animationManager.registerVisualHandler('CARD_REVEAL_EFFECT', (payload) => {
       const { cardData, actingPlayerId, onComplete } = payload;
 
-      console.log('🃏 [CARD REVEAL DEBUG] CARD_REVEAL_EFFECT handler called:', {
+      debugLog('ANIMATIONS', '🃏 [CARD REVEAL DEBUG] CARD_REVEAL_EFFECT handler called:', {
         cardName: cardData?.name,
         actingPlayerId
       });
@@ -281,8 +282,12 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       }]);
     });
 
-    animationManager.registerVisualHandler('PHASE_ANNOUNCEMENT_EFFECT', (payload) => {
+    animationManager.registerVisualHandler('PHASE_ANNOUNCEMENT_EFFECT', async (payload) => {
       const { phaseText, phaseName, firstPlayerId, onComplete } = payload;
+
+      // Add brief delay to provide visual breathing room between overlay clearing and announcement
+      // Waiting overlays now clear immediately via 'bothPlayersComplete' event
+      await new Promise(resolve => setTimeout(resolve, 300));
 
       // Calculate subtitle from local player's perspective
       let subtitle = null;
@@ -291,7 +296,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         subtitle = firstPlayerId === localPlayerId ? 'You Go First' : 'Opponent Goes First';
       }
 
-      console.log('📢 [PHASE ANNOUNCEMENT DEBUG] PHASE_ANNOUNCEMENT_EFFECT handler called:', {
+      debugLog('ANIMATIONS', '📢 [PHASE ANNOUNCEMENT DEBUG] PHASE_ANNOUNCEMENT_EFFECT handler called:', {
         phaseName,
         phaseText,
         firstPlayerId,
@@ -315,7 +320,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     animationManager.registerVisualHandler('PASS_NOTIFICATION_EFFECT', (payload) => {
       const { passingPlayerId, onComplete } = payload;
 
-      console.log('⏸️ [PASS NOTIFICATION DEBUG] PASS_NOTIFICATION_EFFECT handler called:', {
+      debugLog('ANIMATIONS', '⏸️ [PASS NOTIFICATION DEBUG] PASS_NOTIFICATION_EFFECT handler called:', {
         passingPlayerId
       });
 
@@ -353,7 +358,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     animationManager.registerVisualHandler('TELEPORT_EFFECT', (payload) => {
       const { targetId, laneId, playerId, onComplete } = payload;
 
-      console.log('✨ [TELEPORT DEBUG] TELEPORT_EFFECT handler called:', { targetId, laneId, playerId });
+      debugLog('ANIMATIONS', '✨ [TELEPORT DEBUG] TELEPORT_EFFECT handler called:', { targetId, laneId, playerId });
 
       // The drone should now exist as an invisible placeholder - get its exact position
       const droneEl = droneRefs.current[targetId];
@@ -366,7 +371,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
 
       // Get the exact center position of the invisible placeholder drone
       const referencePos = getElementCenter(droneEl, gameAreaRef.current);
-      console.log('✨ [TELEPORT DEBUG] Using exact drone placeholder position:', referencePos);
+      debugLog('ANIMATIONS', '✨ [TELEPORT DEBUG] Using exact drone placeholder position:', referencePos);
 
       // Determine color based on local player perspective
       const localPlayerId = gameStateManager.getLocalPlayerId();
@@ -390,7 +395,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
 
     const unsubscribe = gameStateManager.subscribe((event) => {
       if (event.type === 'animationStateChange') {
-        setAnimationBlocking(event.blocking);
+        setAnimationBlocking(event.payload.blocking);
       }
     });
     

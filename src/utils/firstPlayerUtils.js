@@ -4,6 +4,8 @@
 // Standalone utility functions for first player determination logic
 // Handles first player selection based on turn number and previous round data
 
+import { debugLog } from './debugLogger.js';
+
 /**
  * Determine who goes first this round
  * @param {number} turn - Current turn number
@@ -12,27 +14,27 @@
  * @returns {string} Player ID who goes first ('player1' or 'player2')
  */
 export const determineFirstPlayer = (turn, firstPlayerOverride, firstPasserOfPreviousRound) => {
-  console.log(`🎯 Determining first player for turn ${turn}`, {
+  debugLog('PHASE_TRANSITIONS', `🎯 Determining first player for turn ${turn}`, {
     firstPlayerOverride,
     firstPasserOfPreviousRound
   });
 
   // Check for override first
   if (firstPlayerOverride) {
-    console.log(`✅ Using first player override: ${firstPlayerOverride}`);
+    debugLog('PHASE_TRANSITIONS', `✅ Using first player override: ${firstPlayerOverride}`);
     return firstPlayerOverride;
   }
 
   // First turn - random selection
   if (turn === 1) {
     const randomFirstPlayer = Math.random() < 0.5 ? 'player1' : 'player2';
-    console.log(`🎲 Turn 1: Random first player selected: ${randomFirstPlayer}`);
+    debugLog('PHASE_TRANSITIONS', `🎲 Turn 1: Random first player selected: ${randomFirstPlayer}`);
     return randomFirstPlayer;
   }
 
   // Subsequent turns - first passer from previous round goes first
   const firstPlayer = firstPasserOfPreviousRound || 'player1';
-  console.log(`📋 Turn ${turn}: First passer from previous round goes first: ${firstPlayer}`);
+  debugLog('PHASE_TRANSITIONS', `📋 Turn ${turn}: First passer from previous round goes first: ${firstPlayer}`);
   return firstPlayer;
 };
 
@@ -61,7 +63,7 @@ export const getFirstPlayerReasonText = (turn, firstPlayerOverride, firstPasserO
  * @returns {Object} Updated game state and effects
  */
 export const processFirstPlayerDetermination = (gameState) => {
-  console.log('🎯 Processing first player determination');
+  debugLog('PHASE_TRANSITIONS', '🎯 Processing first player determination');
 
   const firstPlayer = determineFirstPlayer(
     gameState.turn,
@@ -101,7 +103,7 @@ export const processFirstPlayerDetermination = (gameState) => {
     }
   };
 
-  console.log('✅ First player determination completed:', result);
+  debugLog('PHASE_TRANSITIONS', '✅ First player determination completed:', result);
   return result;
 };
 

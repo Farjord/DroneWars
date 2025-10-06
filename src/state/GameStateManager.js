@@ -10,18 +10,19 @@ import GameDataService from '../services/GameDataService.js';
 import GuestMessageQueueService from './GuestMessageQueueService.js';
 import fullDroneCollection from '../data/droneData.js';
 import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
+import { debugLog } from '../utils/debugLogger.js';
 // PhaseManager dependency removed - using direct phase checks
 
 class GameStateManager {
   constructor() {
-    console.log('🔄 GAMESTATE INITIALIZATION: Creating new GameStateManager instance');
+    debugLog('STATE_SYNC', '🔄 GAMESTATE INITIALIZATION: Creating new GameStateManager instance');
 
     // Event listeners for state changes
     this.listeners = new Set();
 
     // Optimistic action tracking for client-side prediction (guest mode)
     this.optimisticActions = [];
-    this.optimisticActionTimeout = 2000; // Clear after 2 seconds
+    this.optimisticActionTimeout = 5000; // Clear after 5 seconds (covers longest animation sequences + network latency)
 
     // Core application state (minimal until game starts)
     this.state = {
@@ -74,10 +75,10 @@ class GameStateManager {
     this.p2pIntegrationSetup = false;
 
     // Log initial application state
-    console.log('🔄 GAMESTATE INITIALIZATION: GameStateManager created');
-    console.log('📱 App State:', this.state.appState);
-    console.log('🎮 Game Active:', this.state.gameActive);
-    console.log('✅ GAMESTATE INITIALIZATION: GameStateManager ready (no game active)');
+    debugLog('STATE_SYNC', '🔄 GAMESTATE INITIALIZATION: GameStateManager created');
+    debugLog('STATE_SYNC', '📱 App State:', this.state.appState);
+    debugLog('STATE_SYNC', '🎮 Game Active:', this.state.gameActive);
+    debugLog('STATE_SYNC', '✅ GAMESTATE INITIALIZATION: GameStateManager ready (no game active)');
   }
 
   // --- MANAGER REFERENCES ---
@@ -111,7 +112,7 @@ class GameStateManager {
 
           // Initialize guest queue service when becoming guest
           if (event.data.mode === 'guest' && !this.guestQueueService) {
-            console.log('🎯 [GUEST QUEUE] Initializing service for guest mode');
+            debugLog('STATE_SYNC', '🎯 [GUEST QUEUE] Initializing service for guest mode');
             this.guestQueueService = new GuestMessageQueueService(this);
             this.guestQueueService.initialize(p2pManager);
           }
@@ -157,10 +158,17 @@ class GameStateManager {
       return;
     }
 
-    console.log('[GUEST STATE UPDATE] Applying state from host:', {
+    debugLog('STATE_SYNC', '[GUEST STATE UPDATE] Applying state from host:', {
       turnPhase: hostState.turnPhase,
       currentPlayer: hostState.currentPlayer,
       roundNumber: hostState.roundNumber
+    });
+
+    debugLog('STATE_SYNC', '[GUEST] Received player2 hand from host:', {
+      handSize: hostState.player2?.hand?.length || 0,
+      sampleCard: hostState.player2?.hand?.[0] || null,
+      sampleInstanceId: hostState.player2?.hand?.[0]?.instanceId,
+      hasInstanceId: hostState.player2?.hand?.[0]?.instanceId !== undefined
     });
 
     // Preserve guest's local gameMode (guest must know it's the guest)
@@ -172,6 +180,13 @@ class GameStateManager {
 
     // Restore guest's gameMode so it knows which player it controls
     this.state.gameMode = localGameMode;
+
+    debugLog('STATE_SYNC', '[GUEST] After applying state - player2 hand check:', {
+      handSize: this.state.player2?.hand?.length || 0,
+      sampleCard: this.state.player2?.hand?.[0] || null,
+      sampleInstanceId: this.state.player2?.hand?.[0]?.instanceId,
+      hasInstanceId: this.state.player2?.hand?.[0]?.instanceId !== undefined
+    });
 
     // Emit state change for UI updates (triggers React re-render)
     this.emit('HOST_STATE_UPDATE', { hostState });
@@ -253,7 +268,7 @@ class GameStateManager {
     const updateKeys = Object.keys(updates);
     const caller = `${callerInfo.primaryCaller} in ${callerInfo.primaryFile}`;
 
-    console.log(`🔍 GAMESTATE CHANGE [${eventType}] from ${caller}:`, {
+    debugLog('STATE_SYNC', `🔍 GAMESTATE CHANGE [${eventType}] from ${caller}:`, {
       changedKeys: updateKeys,
       allUpdates: updates,
       architectureViolation: isAppJsxCaller && !isLegitimateCall
@@ -271,7 +286,7 @@ class GameStateManager {
         const oldValue = prevState[key];
         const newValue = updates[key];
         if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
-          console.log(`🔍 STATE CHANGE: ${key}`, {
+          debugLog('STATE_SYNC', `🔍 STATE CHANGE: ${key}`, {
             before: oldValue,
             after: newValue,
             caller: caller,
@@ -380,10 +395,10 @@ class GameStateManager {
    */
   validateTurnPhaseTransition(fromPhase, toPhase) {
     const validTransitions = {
-      null: ['droneSelection', 'preGame'],
-      'preGame': ['droneSelection', 'deckSelection'],
-      'droneSelection': ['deckSelection'],
-      'deckSelection': ['placement'],
+      null: ['deckSelection', 'preGame'],
+      'preGame': ['deckSelection', 'droneSelection'],
+      'deckSelection': ['droneSelection'],
+      'droneSelection': ['placement'],
       'placement': ['gameInitializing'],
       'gameInitializing': ['determineFirstPlayer'],
       'energyReset': ['mandatoryDiscard', 'optionalDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
@@ -421,7 +436,7 @@ class GameStateManager {
     }
 
     // First check if GameFlowManager is currently processing an automatic phase
-    console.log('🔍 Checking automatic phase flag:', {
+    debugLog('STATE_SYNC', '🔍 Checking automatic phase flag:', {
       hasGameFlowManager: !!this.gameFlowManager,
       isProcessingAutomaticPhase: this.gameFlowManager?.isProcessingAutomaticPhase,
       currentPhase: prevState.turnPhase,
@@ -429,7 +444,7 @@ class GameStateManager {
     });
 
     if (this.gameFlowManager && this.gameFlowManager.isProcessingAutomaticPhase) {
-      console.log('✅ Skipping validation - automatic phase processing active');
+      debugLog('STATE_SYNC', '✅ Skipping validation - automatic phase processing active');
       return; // Skip validation during automatic phase processing
     }
 
@@ -556,7 +571,7 @@ class GameStateManager {
         const oldPlayer = prevState[playerId];
         const newPlayer = updates[playerId];
 
-        console.log(`🚨 PLAYER STATE CHANGE [${playerId}] [${eventType}] from ${caller}:`);
+        debugLog('STATE_SYNC', `🚨 PLAYER STATE CHANGE [${playerId}] [${eventType}] from ${caller}:`);
 
         // Critical properties that commonly cause AI issues
         const criticalProps = ['energy', 'activeDronePool', 'hand', 'deck', 'dronesOnBoard', 'deploymentBudget', 'initialDeploymentBudget'];
@@ -568,7 +583,7 @@ class GameStateManager {
           if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
             // Special formatting for different property types
             if (prop === 'energy' || prop === 'deploymentBudget' || prop === 'initialDeploymentBudget') {
-              console.log(`  💰 ${prop}: ${oldValue} → ${newValue}`);
+              debugLog('STATE_SYNC', `  💰 ${prop}: ${oldValue} → ${newValue}`);
               if (newValue === undefined || newValue === null || isNaN(newValue)) {
                 console.error(`  🚨 WARNING: ${prop} became ${newValue}!`);
               }
@@ -599,38 +614,38 @@ class GameStateManager {
                 newNames = 'undefined';
               }
 
-              console.log(`  🤖 ${prop}: [${oldCount} drones] → [${newCount} drones]`);
-              console.log(`    Old drones: ${oldNames}`);
-              console.log(`    New drones: ${newNames}`);
+              debugLog('STATE_SYNC', `  🤖 ${prop}: [${oldCount} drones] → [${newCount} drones]`);
+              debugLog('STATE_SYNC', `    Old drones: ${oldNames}`);
+              debugLog('STATE_SYNC', `    New drones: ${newNames}`);
 
               // Additional debug info if there's an issue
               if (newNames.includes('ERROR') || newNames === 'undefined') {
-                console.log(`    🔍 Debug newValue:`, newValue);
+                debugLog('STATE_SYNC', `    🔍 Debug newValue:`, newValue);
                 if (Array.isArray(newValue) && newValue.length > 0) {
-                  console.log(`    🔍 First drone object:`, newValue[0]);
+                  debugLog('STATE_SYNC', `    🔍 First drone object:`, newValue[0]);
                 }
               }
 
               // Track source of activeDronePool updates for debugging
               if (oldCount !== newCount || oldNames !== newNames) {
                 const stack = new Error().stack?.split('\n').slice(1, 4).join('\n') || 'No stack trace';
-                console.log(`    📍 Update source:\n${stack}`);
+                debugLog('STATE_SYNC', `    📍 Update source:\n${stack}`);
               }
             } else if (prop === 'hand' || prop === 'deck') {
               const oldCount = Array.isArray(oldValue) ? oldValue.length : 'undefined';
               const newCount = Array.isArray(newValue) ? newValue.length : 'undefined';
-              console.log(`  🃏 ${prop}: [${oldCount} cards] → [${newCount} cards]`);
+              debugLog('STATE_SYNC', `  🃏 ${prop}: [${oldCount} cards] → [${newCount} cards]`);
             } else if (prop === 'dronesOnBoard') {
               const oldLaneCounts = oldValue ? `L1:${oldValue.lane1?.length || 0} L2:${oldValue.lane2?.length || 0} L3:${oldValue.lane3?.length || 0}` : 'undefined';
               const newLaneCounts = newValue ? `L1:${newValue.lane1?.length || 0} L2:${newValue.lane2?.length || 0} L3:${newValue.lane3?.length || 0}` : 'undefined';
-              console.log(`  🛸 ${prop}: ${oldLaneCounts} → ${newLaneCounts}`);
+              debugLog('STATE_SYNC', `  🛸 ${prop}: ${oldLaneCounts} → ${newLaneCounts}`);
             } else {
-              console.log(`  📝 ${prop}:`, { before: oldValue, after: newValue });
+              debugLog('STATE_SYNC', `  📝 ${prop}:`, { before: oldValue, after: newValue });
             }
           }
         });
 
-        console.log(`🔍 Full ${playerId} state:`, newPlayer);
+        debugLog('STATE_SYNC', `🔍 Full ${playerId} state:`, newPlayer);
       }
     });
   }
@@ -866,7 +881,7 @@ class GameStateManager {
    * Reset game to initial state
    */
   reset() {
-    console.log('🔄 GAME RESET: Resetting game state and clearing caches');
+    debugLog('STATE_SYNC', '🔄 GAME RESET: Resetting game state and clearing caches');
 
     const initialState = {
       turnPhase: 'preGame',
@@ -899,7 +914,7 @@ class GameStateManager {
     // Clear ActionProcessor queue to prevent stale actions
     this.actionProcessor.clearQueue();
 
-    console.log('✅ GAME RESET: State, cache, and queue cleared');
+    debugLog('STATE_SYNC', '✅ GAME RESET: State, cache, and queue cleared');
   }
 
   /**
@@ -909,7 +924,7 @@ class GameStateManager {
    * @param {Object} player2Config - Player 2 configuration
    */
   startGame(gameMode = 'local', player1Config = {}, player2Config = {}) {
-    console.log('🎮 GAME START: Initializing new game session');
+    debugLog('STATE_SYNC', '🎮 GAME START: Initializing new game session');
 
     const gameState = {
       // Activate game
@@ -918,7 +933,7 @@ class GameStateManager {
       gameMode: gameMode,
 
       // Initialize game flow
-      turnPhase: 'droneSelection',
+      turnPhase: 'deckSelection',
       turn: 1,
       currentPlayer: null,
       firstPlayerOfRound: null,
@@ -952,33 +967,32 @@ class GameStateManager {
 
       // --- COMMITMENTS (for simultaneous phases) ---
       commitments: {},
-    };
 
-    // Initialize drone selection data for the droneSelection phase
-    const droneSelectionData = initializeDroneSelection(fullDroneCollection);
-    gameState.droneSelectionPool = droneSelectionData.droneSelectionPool;
-    gameState.droneSelectionTrio = droneSelectionData.droneSelectionTrio;
+      // Drone selection data (will be initialized by GameFlowManager when transitioning to droneSelection)
+      droneSelectionPool: [],
+      droneSelectionTrio: [],
+    };
 
     this.setState(gameState, 'GAME_STARTED');
 
-    console.log('👤 Player 1 Created:', {
+    debugLog('STATE_SYNC', '👤 Player 1 Created:', {
       name: gameState.player1.name,
       energy: gameState.player1.energy,
       deckCount: gameState.player1.deck?.length || 0
     });
-    console.log('👤 Player 2 Created:', {
+    debugLog('STATE_SYNC', '👤 Player 2 Created:', {
       name: gameState.player2.name,
       energy: gameState.player2.energy,
       deckCount: gameState.player2.deck?.length || 0
     });
-    console.log('✅ GAME START: Game session initialized successfully');
+    debugLog('STATE_SYNC', '✅ GAME START: Game session initialized successfully');
   }
 
   /**
    * End current game session - return to menu state
    */
   endGame() {
-    console.log('🎮 GAME END: Ending current game session and clearing caches');
+    debugLog('STATE_SYNC', '🎮 GAME END: Ending current game session and clearing caches');
 
     this.setState({
       appState: 'menu',
@@ -1011,7 +1025,7 @@ class GameStateManager {
     // Clear ActionProcessor queue to prevent stale actions
     this.actionProcessor.clearQueue();
 
-    console.log('✅ GAME END: Returned to menu state, cache and queue cleared');
+    debugLog('STATE_SYNC', '✅ GAME END: Returned to menu state, cache and queue cleared');
   }
 
   /**
@@ -1185,7 +1199,7 @@ class GameStateManager {
 
     // Only debug during placement phase when there's actual data
     if (this.state.turnPhase === 'placement' && result.some(s => s !== null)) {
-      console.log('🔍 [DEBUG] GameStateManager.getOpponentPlacedSections:', {
+      debugLog('STATE_SYNC', '🔍 [DEBUG] GameStateManager.getOpponentPlacedSections:', {
         gameMode: this.state.gameMode,
         result,
         rawOpponentPlacedSections: this.state.opponentPlacedSections,
@@ -1209,12 +1223,12 @@ class GameStateManager {
     };
 
     this.optimisticActions.push(action);
-    console.log('🔮 [OPTIMISTIC] Tracked action:', actionType, 'Total tracked:', this.optimisticActions.length);
+    debugLog('STATE_SYNC', '🔮 [OPTIMISTIC] Tracked action:', actionType, 'Total tracked:', this.optimisticActions.length);
 
     // Auto-clear after timeout
     setTimeout(() => {
       this.optimisticActions = this.optimisticActions.filter(a => a.id !== action.id);
-      console.log('🧹 [OPTIMISTIC] Cleared old action:', actionType, 'Remaining:', this.optimisticActions.length);
+      debugLog('STATE_SYNC', '🧹 [OPTIMISTIC] Cleared old action:', actionType, 'Remaining:', this.optimisticActions.length);
     }, this.optimisticActionTimeout);
   }
 
@@ -1230,7 +1244,7 @@ class GameStateManager {
    * Clear all optimistic actions
    */
   clearOptimisticActions() {
-    console.log('🧹 [OPTIMISTIC] Clearing all actions');
+    debugLog('STATE_SYNC', '🧹 [OPTIMISTIC] Clearing all actions');
     this.optimisticActions = [];
   }
 

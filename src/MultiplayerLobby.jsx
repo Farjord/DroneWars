@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { Wifi, WifiOff, Copy, Check, Users, GamepadIcon, Loader2 } from 'lucide-react';
 import p2pManager from './network/P2PManager.js';
+import { debugLog } from './utils/debugLogger.js';
 
 const MultiplayerLobby = ({ onGameStart, onBack }) => {
   const [mode, setMode] = useState('menu'); // 'menu', 'host', 'join', 'waiting', 'connected'
@@ -20,7 +21,7 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
   useEffect(() => {
     // Subscribe to P2P events
     const unsubscribe = p2pManager.subscribe((event) => {
-      console.log('P2P Event:', event);
+      debugLog('MULTIPLAYER', 'P2P Event:', event);
 
       switch (event.type) {
         case 'room_created':
@@ -72,7 +73,7 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
 
     try {
       const code = await p2pManager.hostGame();
-      console.log('Room created with code:', code);
+      debugLog('MULTIPLAYER', 'Room created with code:', code);
     } catch (error) {
       console.error('Failed to host game:', error);
       setError(error.message);
@@ -160,7 +161,7 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
   };
 
   // Debug logging
-  console.log('🎮 MultiplayerLobby rendering - mode:', mode, 'connectionStatus:', connectionStatus);
+  debugLog('MULTIPLAYER', '🎮 MultiplayerLobby rendering - mode:', mode, 'connectionStatus:', connectionStatus);
 
   return (
     <div style={{

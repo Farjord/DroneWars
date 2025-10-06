@@ -7,6 +7,7 @@
 import React from 'react';
 import ShipSection from './ShipSection.jsx';
 import { useGameData } from '../../hooks/useGameData.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * SHIP SECTIONS DISPLAY COMPONENT
@@ -63,7 +64,7 @@ const ShipSectionsDisplay = ({
       {[0, 1, 2].map((laneIndex) => {
         const sectionName = placedSections[laneIndex];
         if (!sectionName) {
-          console.log(`🚨 [DEBUG] Lane ${laneIndex} rendering EMPTY div - no hover possible:`, {
+          debugLog('STATE_SYNC', `Lane ${laneIndex} rendering EMPTY div - no hover possible:`, {
             sectionName,
             sectionNameType: typeof sectionName,
             sectionNameValue: JSON.stringify(sectionName),

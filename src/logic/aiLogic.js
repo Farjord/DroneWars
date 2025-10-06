@@ -1,5 +1,6 @@
 import fullDroneCollection from '../data/droneData.js';
 import GameDataService from '../services/GameDataService.js';
+import { debugLog } from '../utils/debugLogger.js';
 
  const calculateLaneScore = (laneId, player2State, player1State, allSections, getShipStatus, gameDataService) => {
  const aiDronesInLane = player2State.dronesOnBoard[laneId] || [];
@@ -54,7 +55,7 @@ const handleOpponentTurn = ({ player1, player2, turn, placedSections, opponentPl
     const sortedHandByCost = [...player2.hand].sort((a, b) => b.cost - a.cost);
     const reservedEnergy = sortedHandByCost[0]?.cost || 0;
 
-    console.log('[AI ENERGY DEBUG] Deployment energy management:', {
+    debugLog('AI_DECISIONS', '[AI ENERGY DEBUG] Deployment energy management:', {
       currentEnergy: player2.energy,
       reservedEnergy: reservedEnergy,
       cardsInHand: player2.hand.map(card => ({ name: card.name, cost: card.cost })),
@@ -97,9 +98,9 @@ const currentLaneScores = {
         if (energyAfterDeployment < reservedEnergy) {
           isAffordable = false;
           reason = `Reserves energy for cards (needs ${reservedEnergy})`;
-          console.log(`[AI ENERGY DEBUG] ${drone.name} rejected: energy after deployment (${energyAfterDeployment}) < reserved (${reservedEnergy})`);
+          debugLog('AI_DECISIONS', `[AI ENERGY DEBUG] ${drone.name} rejected: energy after deployment (${energyAfterDeployment}) < reserved (${reservedEnergy})`);
         } else {
-          console.log(`[AI ENERGY DEBUG] ${drone.name} affordable: energy after deployment (${energyAfterDeployment}) >= reserved (${reservedEnergy})`);
+          debugLog('AI_DECISIONS', `[AI ENERGY DEBUG] ${drone.name} affordable: energy after deployment (${energyAfterDeployment}) >= reserved (${reservedEnergy})`);
         }
       }
 

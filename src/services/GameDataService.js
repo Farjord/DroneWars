@@ -7,6 +7,7 @@
 
 import { calculateEffectiveStats, calculateEffectiveShipStats } from '../logic/statsCalculator.js';
 import gameDataCache from './gameDataCache.js';
+import { debugLog } from '../utils/debugLogger.js';
 
 /**
  * GameDataService - Centralized computation layer for game data
@@ -41,7 +42,7 @@ class GameDataService {
       GameDataService.instance.stateSubscriptionCleanup();
     }
     GameDataService.instance = null;
-    console.log('🎯 GameDataService singleton reset');
+    debugLog('STATE_SYNC', '🎯 GameDataService singleton reset');
   }
 
   constructor(gameStateManager) {
@@ -59,7 +60,7 @@ class GameDataService {
       this.cache.invalidateAll();
     });
 
-    console.log('🎯 GameDataService initialized');
+    debugLog('STATE_SYNC', '🎯 GameDataService initialized');
   }
 
   /**

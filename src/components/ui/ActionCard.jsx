@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { Bolt, RefreshCw } from 'lucide-react';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * ACTION CARD COMPONENT
@@ -37,8 +38,22 @@ const ActionCard = ({
     <div
       onClick={(e) => {
         e.stopPropagation();
+
+        debugLog('CARD_PLAY', `🖱️ ActionCard clicked: ${card.name}`, {
+          cardId: card.id,
+          cardName: card.name,
+          isPlayable,
+          isMandatoryTarget,
+          willCallOnClick: isPlayable || isMandatoryTarget
+        });
+
         if (isPlayable || isMandatoryTarget) {
           onClick(card);
+        } else {
+          debugLog('CARD_PLAY', `🚫 Card click blocked - not playable: ${card.name}`, {
+            isPlayable,
+            isMandatoryTarget
+          });
         }
       }}
       className={`

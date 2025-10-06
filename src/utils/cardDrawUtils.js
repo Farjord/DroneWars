@@ -5,6 +5,7 @@
 // Handles automatic card drawing, hand limits, and deck management
 
 import GameDataService from '../services/GameDataService.js';
+import { debugLog } from './debugLogger.js';
 
 /**
  * Calculate the hand limit for a player based on their ship section stats
@@ -17,7 +18,7 @@ export const calculateHandLimit = (playerState, shipStats) => {
   // Ship stats should include 'Draw' property for hand limit
   const baseHandLimit = shipStats?.totals?.Draw || 5; // Default to 5 if not specified
 
-  console.log(`📋 Calculated hand limit: ${baseHandLimit} for player ${playerState.name}`);
+  debugLog('CARDS', `📋 Calculated hand limit: ${baseHandLimit} for player ${playerState.name}`);
   return baseHandLimit;
 };
 
@@ -41,7 +42,7 @@ export const reshuffleDiscardIntoDeck = (playerState) => {
   // Reshuffle discard pile into deck
   const shuffledDeck = [...playerState.discardPile].sort(() => 0.5 - Math.random());
 
-  console.log(`🔄 ${playerState.name} reshuffled ${shuffledDeck.length} cards from discard pile into deck`);
+  debugLog('CARDS', `🔄 ${playerState.name} reshuffled ${shuffledDeck.length} cards from discard pile into deck`);
 
   return {
     ...playerState,
@@ -80,7 +81,7 @@ export const drawCardsForPlayer = (playerState, cardCount) => {
   const remainingDeck = updatedPlayer.deck.slice(actualDrawCount);
   const newHand = [...updatedPlayer.hand, ...drawnCards];
 
-  console.log(`🃏 ${playerState.name} drew ${actualDrawCount} cards: ${drawnCards.map(c => c.name).join(', ')}`);
+  debugLog('CARDS', `🃏 ${playerState.name} drew ${actualDrawCount} cards: ${drawnCards.map(c => c.name).join(', ')}`);
 
   return {
     ...updatedPlayer,
@@ -126,7 +127,7 @@ export const validateDrawOperation = (playerState, cardCount) => {
  * @returns {Object} Updated game state after drawing
  */
 export const performAutomaticDraw = (gameState, gameStateManager = null) => {
-  console.log('🃏 Starting automatic draw phase for both players');
+  debugLog('CARDS', '🃏 Starting automatic draw phase for both players');
 
   // Create GameDataService instance for effective stats calculation
   let gameDataService = null;
@@ -146,7 +147,7 @@ export const performAutomaticDraw = (gameState, gameStateManager = null) => {
     try {
       const player1EffectiveStats = gameDataService.getEffectiveShipStats(gameState.player1, gameState.placedSections);
       player1HandLimit = player1EffectiveStats.totals.handLimit;
-      console.log(`📊 Player 1 effective hand limit: ${player1HandLimit} (with placed sections: ${gameState.placedSections.join(', ')})`);
+      debugLog('CARDS', `📊 Player 1 effective hand limit: ${player1HandLimit} (with placed sections: ${gameState.placedSections.join(', ')})`);
     } catch (error) {
       console.warn('⚠️ Failed to calculate Player 1 effective stats, using default hand limit:', error);
     }
@@ -167,7 +168,7 @@ export const performAutomaticDraw = (gameState, gameStateManager = null) => {
       console.warn(`Player 1 draw validation failed: ${validation1.message}`);
     }
   } else {
-    console.log(`🃏 Player 1 already at hand limit (${gameState.player1.hand.length}/${player1HandLimit})`);
+    debugLog('CARDS', `🃏 Player 1 already at hand limit (${gameState.player1.hand.length}/${player1HandLimit})`);
   }
 
   // Process player2 - calculate hand limit using effective ship stats
@@ -176,7 +177,7 @@ export const performAutomaticDraw = (gameState, gameStateManager = null) => {
     try {
       const player2EffectiveStats = gameDataService.getEffectiveShipStats(gameState.player2, gameState.opponentPlacedSections);
       player2HandLimit = player2EffectiveStats.totals.handLimit;
-      console.log(`📊 Player 2 effective hand limit: ${player2HandLimit} (with placed sections: ${gameState.opponentPlacedSections.join(', ')})`);
+      debugLog('CARDS', `📊 Player 2 effective hand limit: ${player2HandLimit} (with placed sections: ${gameState.opponentPlacedSections.join(', ')})`);
     } catch (error) {
       console.warn('⚠️ Failed to calculate Player 2 effective stats, using default hand limit:', error);
     }
@@ -197,10 +198,10 @@ export const performAutomaticDraw = (gameState, gameStateManager = null) => {
       console.warn(`Player 2 draw validation failed: ${validation2.message}`);
     }
   } else {
-    console.log(`🃏 Player 2 already at hand limit (${gameState.player2.hand.length}/${player2HandLimit})`);
+    debugLog('CARDS', `🃏 Player 2 already at hand limit (${gameState.player2.hand.length}/${player2HandLimit})`);
   }
 
-  console.log('✅ Automatic draw phase completed');
+  debugLog('CARDS', '✅ Automatic draw phase completed');
 
   return {
     player1: updatedGameState.player1,
@@ -219,7 +220,7 @@ export const calculateCardsToDraw = (playerState, handLimit) => {
   const currentHandSize = playerState.hand.length;
   const cardsToDraw = Math.max(0, handLimit - currentHandSize);
 
-  console.log(`📊 ${playerState.name}: ${currentHandSize}/${handLimit} cards, needs ${cardsToDraw} more`);
+  debugLog('CARDS', `📊 ${playerState.name}: ${currentHandSize}/${handLimit} cards, needs ${cardsToDraw} more`);
 
   return cardsToDraw;
 };
