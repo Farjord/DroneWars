@@ -29,6 +29,11 @@ class AnimationManager {
         type: 'CARD_REVEAL_EFFECT',
         config: { }
       },
+      SHIP_ABILITY_REVEAL: {
+        duration: 1000,  // 1 second reveal
+        type: 'SHIP_ABILITY_REVEAL_EFFECT',
+        config: { }
+      },
       CARD_VISUAL: {
         duration: 5000,  // Very long for testing visibility
         type: 'CARD_VISUAL_EFFECT',
@@ -54,6 +59,11 @@ class AnimationManager {
         duration: 600,
         type: 'TELEPORT_EFFECT',
         config: { revealAt: 0.7 } // Reveal drone at 70% of animation for smooth overlap
+      },
+      TELEPORT_OUT: {
+        duration: 600,
+        type: 'TELEPORT_EFFECT',
+        config: { } // Recall animation - drone disappears after effect
       },
 
       // Damage feedback

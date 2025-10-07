@@ -44,6 +44,7 @@ import DroneAbilityConfirmationModal from './components/modals/DroneAbilityConfi
 import ShipAbilityConfirmationModal from './components/modals/ShipAbilityConfirmationModal.jsx';
 import AIHandDebugModal from './components/modals/AIHandDebugModal.jsx';
 import GameDebugModal from './components/modals/GameDebugModal.jsx';
+import OpponentDronesModal from './components/modals/OpponentDronesModal.jsx';
 
 // --- 1.4 HOOK IMPORTS ---
 import { useGameState } from './hooks/useGameState';
@@ -71,6 +72,7 @@ import FlyingDrone from './components/animations/FlyingDrone.jsx';
 import FlashEffect from './components/animations/FlashEffect.jsx';
 import CardVisualEffect from './components/animations/CardVisualEffect.jsx';
 import CardRevealOverlay from './components/animations/CardRevealOverlay.jsx';
+import ShipAbilityRevealOverlay from './components/animations/ShipAbilityRevealOverlay.jsx';
 import PassNotificationOverlay from './components/animations/PassNotificationOverlay.jsx';
 import PhaseAnnouncementOverlay from './components/animations/PhaseAnnouncementOverlay.jsx';
 import LaserEffect from './components/animations/LaserEffect.jsx';
@@ -133,6 +135,7 @@ const App = () => {
   const [flashEffects, setFlashEffects] = useState([]);
   const [cardVisuals, setCardVisuals] = useState([]);
   const [cardReveals, setCardReveals] = useState([]);
+  const [shipAbilityReveals, setShipAbilityReveals] = useState([]);
   const [phaseAnnouncements, setPhaseAnnouncements] = useState([]);
   const [laserEffects, setLaserEffects] = useState([]);
   const [teleportEffects, setTeleportEffects] = useState([]);
@@ -148,6 +151,7 @@ const App = () => {
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [isViewDeckModalOpen, setIsViewDeckModalOpen] = useState(false);
   const [isViewDiscardModalOpen, setIsViewDiscardModalOpen] = useState(false);
+  const [showOpponentDronesModal, setShowOpponentDronesModal] = useState(false);
 
   // Player selection and targeting state
   const [selectedDrone, setSelectedDrone] = useState(null);
@@ -237,6 +241,7 @@ const App = () => {
   setFlashEffects,
   setCardVisuals,
   setCardReveals,
+  setShipAbilityReveals,
   setPhaseAnnouncements,
   setLaserEffects,
   setTeleportEffects,
@@ -449,6 +454,11 @@ const App = () => {
     return opponentPlayerState ? Object.values(opponentPlayerState.dronesOnBoard).flat().length : 0;
   }, [opponentPlayerState?.dronesOnBoard]);
 
+  // Opponent's selected drone cards (from drone selection phase)
+  const opponentSelectedDrones = useMemo(() => {
+    return gameState.commitments?.droneSelection?.[getOpponentPlayerId()]?.drones || [];
+  }, [gameState.commitments?.droneSelection, getOpponentPlayerId]);
+
   // Sorted drone pool for deployment interface
   const sortedLocalActivePool = useMemo(() => {
     return [...localPlayerState.activeDronePool].sort((a, b) => {
@@ -581,6 +591,13 @@ const App = () => {
       playerId: getLocalPlayerId()
     });
   }, [processActionWithGuestRouting, getLocalPlayerId]);
+
+  /**
+   * Handle showing opponent's selected drones modal
+   */
+  const handleShowOpponentDrones = useCallback(() => {
+    setShowOpponentDronesModal(true);
+  }, []);
 
   /**
    * Handle confirm shields button - commits allocation
@@ -2366,6 +2383,12 @@ const App = () => {
             if (result.data && !result.data.bothPlayersComplete) {
                 setWaitingForPlayerPhase('mandatoryDiscard');
             }
+        } else {
+            // Ability-triggered discard completed - end turn
+            const currentPlayerId = getLocalPlayerId();
+            await processActionWithGuestRouting('turnTransition', {
+                newPlayer: currentPlayerId === 'player1' ? 'player2' : 'player1'
+            });
         }
     } else {
         // If more discards are needed, just update the count
@@ -2598,6 +2621,14 @@ const App = () => {
         onComplete={reveal.onComplete}
       />
     ))}
+    {shipAbilityReveals.map(reveal => (
+      <ShipAbilityRevealOverlay
+        key={reveal.id}
+        abilityName={reveal.abilityName}
+        label={reveal.label}
+        onComplete={reveal.onComplete}
+      />
+    ))}
     {phaseAnnouncements.map(announcement => (
       <PhaseAnnouncementOverlay
         key={announcement.id}
@@ -2685,6 +2716,7 @@ const App = () => {
         AI_HAND_DEBUG_MODE={AI_HAND_DEBUG_MODE}
         setShowAiHandModal={setShowAiHandModal}
         onShowDebugModal={() => setShowDebugModal(true)}
+        onShowOpponentDrones={handleShowOpponentDrones}
       />
 
       <GameBattlefield
@@ -2935,6 +2967,12 @@ const App = () => {
         show={showAiHandModal}
         debugMode={AI_HAND_DEBUG_MODE}
         onClose={() => setShowAiHandModal(false)}
+      />
+
+      <OpponentDronesModal
+        isOpen={showOpponentDronesModal}
+        onClose={() => setShowOpponentDronesModal(false)}
+        drones={opponentSelectedDrones}
       />
 
       <GameDebugModal

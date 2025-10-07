@@ -3,11 +3,11 @@
    ========================================
    Consistent styling for GameFooter component and its views
    Uses Tailwind @apply directive for utility class composition
-   
+
    COMPRESSED VERSION: Max height 300px total (including tabs)
-   - Tabs: ~34px
+   - Tabs: ~25px
    - Content: 260px fixed height
-   - Total: ~294px
+   - Total: ~285px
 */
 
 /* ===== CONTAINER STYLES ===== */
@@ -42,7 +42,7 @@
 /* ===== TAB BUTTON STYLES ===== */
 
 .tabButton {
-  @apply px-6 py-1 rounded-t-lg font-bold transition-colors text-sm;
+  @apply px-6 py-0.5 rounded-t-lg font-bold transition-colors text-xs;
 }
 
 .tabButtonActive {

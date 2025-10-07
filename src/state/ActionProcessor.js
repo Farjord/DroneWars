@@ -304,7 +304,7 @@ setAnimationManager(animationManager) {
     // Check for interception opportunity BEFORE resolving attack
     let finalAttackDetails = { ...attackDetails };
 
-    if (!attackDetails.interceptor) {
+    if (attackDetails.interceptor === undefined) {
       const interceptionResult = gameEngine.calculateAiInterception(
         attackDetails,
         { player1: currentState.player1, player2: currentState.player2 },
@@ -908,7 +908,8 @@ setAnimationManager(animationManager) {
       targetId,
       playerStates,
       placedSections,
-      callbacks
+      callbacks,
+      playerId
     );
 
     // Collect animation events
@@ -2074,13 +2075,14 @@ setAnimationManager(animationManager) {
 
         case 'deckSelection':
           aiResult = await aiPhaseProcessor.processDeckSelection();
-          // aiResult now contains { deck, drones }
+          // aiResult now contains { deck, drones, shipComponents }
           await this.processCommitment({
             playerId: 'player2',
             phase: 'deckSelection',
             actionData: {
               deck: aiResult.deck,
-              drones: aiResult.drones
+              drones: aiResult.drones,
+              shipComponents: aiResult.shipComponents
             }
           });
           break;
@@ -2217,12 +2219,13 @@ setAnimationManager(animationManager) {
         break;
 
       case 'deckSelection':
-        // Apply deck selections to player states (both cards and drones)
+        // Apply deck selections to player states (cards, drones, and ship components)
         if (phaseCommitments.player1?.deck) {
           stateUpdates.player1 = {
             ...currentState.player1,
             deck: phaseCommitments.player1.deck,
             deckDronePool: phaseCommitments.player1.drones || [],  // Store 10 deck drones
+            selectedShipComponents: phaseCommitments.player1.shipComponents || {},  // Store ship component selections
             discard: []
           };
         }
@@ -2231,10 +2234,11 @@ setAnimationManager(animationManager) {
             ...currentState.player2,
             deck: phaseCommitments.player2.deck,
             deckDronePool: phaseCommitments.player2.drones || [],  // Store 10 deck drones
+            selectedShipComponents: phaseCommitments.player2.shipComponents || {},  // Store ship component selections
             discard: []
           };
         }
-        debugLog('COMMITMENTS', '✅ Applied deck selections (cards + drones) to player states');
+        debugLog('COMMITMENTS', '✅ Applied deck selections (cards + drones + ship components) to player states');
         break;
 
       case 'placement':

@@ -319,6 +319,7 @@ function DroneSelectionScreen() {
                   drone={drone}
                   isSelectable={false}
                   deployedCount={0}
+                  isViewOnly={true}
                 />
               ))}
             </div>

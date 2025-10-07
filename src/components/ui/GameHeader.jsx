@@ -77,7 +77,8 @@ function GameHeader({
   multiSelectState,
   AI_HAND_DEBUG_MODE,
   setShowAiHandModal,
-  onShowDebugModal
+  onShowDebugModal,
+  onShowOpponentDrones
 }) {
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const dropdownRef = useRef(null);
@@ -100,8 +101,8 @@ function GameHeader({
     <header className="w-full flex justify-between items-start mb-2 flex-shrink-0 px-5 pt-2">
       {/* Opponent Resources */}
       <div className="flex flex-col gap-1.5">
-        <h2 
-          className="text-xl font-bold uppercase tracking-wider flex items-center gap-2"
+        <h2
+          className="text-base font-bold uppercase tracking-wider flex items-center gap-2"
           style={{
             backgroundImage: 'linear-gradient(45deg, #ec4899, #f472b6)',
             WebkitBackgroundClip: 'text',
@@ -145,13 +146,18 @@ function GameHeader({
               isPlayer={false}
             />
           )}
-          <ResourceBadge 
-            icon={Cpu} 
-            value={totalOpponentPlayerDrones} 
-            max={opponentPlayerEffectiveStats.totals.cpuLimit}
-            iconColor="text-cyan-400"
-            isPlayer={false}
-          />
+          <div
+            onClick={() => setTimeout(() => onShowOpponentDrones(), 100)}
+            className="cursor-pointer hover:scale-105 transition-transform"
+          >
+            <ResourceBadge
+              icon={Cpu}
+              value={totalOpponentPlayerDrones}
+              max={opponentPlayerEffectiveStats.totals.cpuLimit}
+              iconColor="text-cyan-400"
+              isPlayer={false}
+            />
+          </div>
         </div>
       </div>
 
@@ -159,7 +165,7 @@ function GameHeader({
       <div className="text-center flex flex-col items-center gap-2">
         {/* Phase Display */}
         <h2
-          className="text-xl font-bold uppercase tracking-widest"
+          className="text-base font-bold uppercase tracking-widest"
           style={{
             backgroundImage: 'linear-gradient(45deg, #6b7280, #9ca3af)',
             WebkitBackgroundClip: 'text',
@@ -439,8 +445,8 @@ function GameHeader({
 
       {/* Player Resources */}
       <div className="flex flex-col gap-1.5 items-end">
-        <h2 
-          className="text-xl font-bold uppercase tracking-wider flex items-center gap-2"
+        <h2
+          className="text-base font-bold uppercase tracking-wider flex items-center gap-2"
           style={{
             backgroundImage: 'linear-gradient(45deg, #00ff88, #0088ff)',
             WebkitBackgroundClip: 'text',

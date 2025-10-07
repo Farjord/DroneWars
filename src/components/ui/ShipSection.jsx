@@ -18,12 +18,7 @@ const ShipAbilityIcon = ({ onClick, ability, isUsable, isSelected }) => (
   <button
     onClick={onClick}
     disabled={!isUsable}
-    className={`absolute w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center border-2 border-black/50 z-20 transition-all duration-200 ${isUsable ? 'hover:bg-purple-500' : 'bg-gray-700 opacity-60 cursor-not-allowed'} ${isSelected ? 'ring-2 ring-yellow-300 scale-110' : ''}`}
-    style={{
-      top: '50%',
-      right: '-0.875rem',
-      transform: 'translateY(-50%)'
-    }}
+    className={`w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center border-2 border-black/50 z-20 transition-all duration-200 flex-shrink-0 ${isUsable ? 'hover:bg-purple-500' : 'bg-gray-700 opacity-60 cursor-not-allowed'} ${isSelected ? 'ring-2 ring-yellow-300 scale-110' : ''}`}
     title={`${ability.name} - Cost: ${ability.cost.energy} Energy`}
   >
     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-300">
@@ -165,10 +160,28 @@ const ShipSection = ({
 
       <div className="relative z-10 flex flex-col items-center p-2 h-full">
           <div className="flex items-center justify-between w-full mb-2">
-            <p className="font-bold text-lg text-white">{sectionName}</p>
-            <div className={`flex items-center gap-1 font-semibold text-xs px-2 py-0.5 rounded-full ${sectionStatus === 'healthy' ? 'bg-green-500/20 text-green-300' : sectionStatus === 'damaged' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-red-500/20 text-red-300'}`}>
-              {sectionStatus.charAt(0).toUpperCase() + sectionStatus.slice(1)}
+            {/* Left side: Name + Status inline */}
+            <div className="flex items-center gap-2">
+              <p className="font-bold text-lg text-white">{stats.name || sectionName}</p>
+              <div className={`flex items-center gap-1 font-semibold text-xs px-2 py-0.5 rounded-full ${sectionStatus === 'healthy' ? 'bg-green-500/20 text-green-300' : sectionStatus === 'damaged' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-red-500/20 text-red-300'}`}>
+                {sectionStatus.charAt(0).toUpperCase() + sectionStatus.slice(1)}
+              </div>
             </div>
+
+            {/* Right side: Ability button */}
+            {isPlayer && stats.ability && (
+              <ShipAbilityIcon
+                ability={stats.ability}
+                isUsable={
+                  turnPhase === 'action' &&
+                  isMyTurn() &&
+                  !passInfo[`${getLocalPlayerId()}Passed`] &&
+                  localPlayerState.energy >= stats.ability.cost.energy
+                }
+                isSelected={shipAbilityMode?.ability.id === stats.ability.id}
+                onClick={(e) => onAbilityClick(e, {...stats, name: section}, stats.ability)}
+              />
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-2 w-full items-center mt-auto">
@@ -216,23 +229,10 @@ const ShipSection = ({
             </div>
 
             <div className="flex flex-col items-center justify-center h-full pl-4 text-center">
-              {isPlayer && stats.ability && (
+              {stats.ability && (
                 <>
-                  <div className="relative w-full mb-1">
-                    <h4 className="font-bold text-sm text-purple-300 leading-tight">{stats.ability.name}</h4>
-                    <ShipAbilityIcon
-                      ability={stats.ability}
-                      isUsable={
-                        turnPhase === 'action' &&
-                        isMyTurn() &&
-                        !passInfo[`${getLocalPlayerId()}Passed`] &&
-                        localPlayerState.energy >= stats.ability.cost.energy
-                      }
-                      isSelected={shipAbilityMode?.ability.id === stats.ability.id}
-                      onClick={(e) => onAbilityClick(e, {name: section, ...stats}, stats.ability)}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400 leading-tight">{stats.ability.description}</p>
+                  <h4 className="font-bold text-sm text-purple-300 leading-tight mb-1">{stats.ability.name}</h4>
+                  <p className="text-xs text-white leading-tight">{stats.ability.description}</p>
                 </>
               )}
             </div>

@@ -21,6 +21,7 @@ import ScalingText from './ScalingText.jsx';
  * @param {boolean} isUpgradeTarget - Is upgrade target
  * @param {Function} onViewUpgrades - View upgrades handler
  * @param {number} scale - Optional scale multiplier (default: 1.0)
+ * @param {boolean} isViewOnly - Display only mode (no opacity reduction)
  */
 const DroneCard = ({
   drone,
@@ -32,7 +33,8 @@ const DroneCard = ({
   appliedUpgrades = [],
   isUpgradeTarget = false,
   onViewUpgrades,
-  scale = 1.0
+  scale = 1.0,
+  isViewOnly = false
 }) => {
   // Calculate effective limit with upgrades
   let effectiveLimit = drone.limit;
@@ -88,9 +90,9 @@ const DroneCard = ({
       className={`
         w-[225px] h-[275px] rounded-lg p-[2px] relative group
         transition-all duration-200
-        ${isInteractive ? 'cursor-pointer' : 'cursor-not-allowed'}
+        ${isInteractive ? 'cursor-pointer' : isViewOnly ? 'cursor-default' : 'cursor-not-allowed'}
         ${isSelected ? 'bg-cyan-400' : 'bg-cyan-800/80'}
-        ${!isInteractive ? 'opacity-60' : ''}
+        ${!isInteractive && !isViewOnly ? 'opacity-60' : ''}
         ${isUpgradeTarget ? 'ring-4 ring-purple-500 animate-pulse' : ''}
       `}
       style={{

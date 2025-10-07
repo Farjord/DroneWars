@@ -300,9 +300,17 @@ class AIPhaseProcessor {
     debugLog('AI_DECISIONS', `✅ AI selected deck: ${selectedDeck.length} cards + ${selectedDrones.length} drones`);
     debugLog('AI_DECISIONS', `🎲 AI drones: ${selectedDrones.join(', ')}`);
 
+    // Default ship components for AI (standard layout)
+    const shipComponents = {
+      'BRIDGE_001': 'l',
+      'POWERCELL_001': 'm',
+      'DRONECONTROL_001': 'r'
+    };
+
     return {
       deck: selectedDeck,
-      drones: selectedDrones
+      drones: selectedDrones,
+      shipComponents: shipComponents
     };
   }
 

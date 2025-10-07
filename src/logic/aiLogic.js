@@ -259,7 +259,7 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
         });
 
         if (!hasGuardian) {
-            const shipTarget = { id: sectionName, name: sectionName, ...player1.shipSections[sectionName], owner: 'player1' };
+            const shipTarget = { ...player1.shipSections[sectionName], id: sectionName, name: sectionName, owner: 'player1' };
             possibleActions.push({ type: 'attack', attacker, target: shipTarget, targetType: 'section', score: 0 });
         }
       }

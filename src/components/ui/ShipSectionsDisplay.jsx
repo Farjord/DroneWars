@@ -110,7 +110,7 @@ const ShipSectionsDisplay = ({
                 if (isInteractive && onSectionClick) { // Specifically for shield allocation
                   onSectionClick(sectionName);
                 } else if (onTargetClick) { // For attacks and card/ability targeting
-                  onTargetClick({ id: sectionName, name: sectionName, ...sectionStats }, 'section', isPlayer);
+                  onTargetClick({ ...sectionStats, id: sectionName, name: sectionName }, 'section', isPlayer);
                 }
               }}
               onAbilityClick={onAbilityClick}
@@ -118,7 +118,7 @@ const ShipSectionsDisplay = ({
               isCardTarget={isCardTarget}
               isInMiddleLane={laneIndex === 1}
               isHovered={hoveredTarget?.type === 'section' && hoveredTarget?.target.name === sectionName && hoveredTarget?.isOpponent === !isPlayer}
-              onMouseEnter={() => !isPlayer && setHoveredTarget({ target: { name: sectionName, ...sectionStats }, type: 'section', isOpponent: true })}
+              onMouseEnter={() => !isPlayer && setHoveredTarget({ target: { ...sectionStats, name: sectionName }, type: 'section', isOpponent: true })}
               onMouseLeave={() => !isPlayer && setHoveredTarget(null)}
               reallocationState={reallocationState}
               gameEngine={gameEngine}

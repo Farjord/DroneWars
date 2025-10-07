@@ -12,6 +12,7 @@ import { gameEngine } from '../../logic/gameLogic.js';
 import gameStateManager from '../../state/GameStateManager.js';
 import p2pManager from '../../network/P2PManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { shipComponentCollection } from '../../data/shipData.js';
 
 /**
  * SHIP PLACEMENT SCREEN COMPONENT
@@ -36,9 +37,52 @@ function ShipPlacementScreen() {
   // Local state for ship placement process
   const [selectedSectionForPlacement, setSelectedSectionForPlacement] = useState(null);
 
-  // Local placement state (initialized from global state)
-  const [localPlacedSections, setLocalPlacedSections] = useState(initialPlacedSections || [null, null, null]);
-  const [localUnplacedSections, setLocalUnplacedSections] = useState(unplacedSections || ['bridge', 'powerCell', 'droneControlHub']);
+  // Helper function to pre-populate placement from deck selection
+  const getInitialPlacement = () => {
+    const selectedShipComponents = localPlayerState.selectedShipComponents;
+
+    if (!selectedShipComponents || Object.keys(selectedShipComponents).length === 0) {
+      // No ship components selected, use default empty placement
+      return {
+        placed: initialPlacedSections || [null, null, null],
+        unplaced: unplacedSections || ['bridge', 'powerCell', 'droneControlHub']
+      };
+    }
+
+    // Convert ship component IDs and lanes to placed sections
+    const placed = [null, null, null]; // [left, middle, right]
+    const unplaced = [];
+
+    // Map lane codes to indices
+    const laneMap = { 'l': 0, 'm': 1, 'r': 2 };
+
+    // Process selected ship components
+    Object.entries(selectedShipComponents).forEach(([componentId, lane]) => {
+      if (lane) {
+        const component = shipComponentCollection.find(c => c.id === componentId);
+        if (component && component.key) {
+          const laneIndex = laneMap[lane];
+          placed[laneIndex] = component.key; // Use the legacy key (bridge, powerCell, droneControlHub)
+        }
+      }
+    });
+
+    // Add any unplaced sections to the unplaced list
+    const allSections = ['bridge', 'powerCell', 'droneControlHub'];
+    allSections.forEach(section => {
+      if (!placed.includes(section)) {
+        unplaced.push(section);
+      }
+    });
+
+    return { placed, unplaced };
+  };
+
+  const initialState = getInitialPlacement();
+
+  // Local placement state (initialized from deck selection or default)
+  const [localPlacedSections, setLocalPlacedSections] = useState(initialState.placed);
+  const [localUnplacedSections, setLocalUnplacedSections] = useState(initialState.unplaced);
 
   /**
    * HANDLE SELECT SECTION FOR PLACEMENT
@@ -233,42 +277,23 @@ function ShipPlacementScreen() {
         Configure Your Ship Layout
       </h2>
       <p className="text-center text-gray-400 mb-8">
-        Select a section, then click an empty lane to place it. You can also click a placed section to pick it up again.
-        The ship section placed in the centre lane will gain a bonus to its stats.
+        {localUnplacedSections.length > 0
+          ? 'Select a section, then click an empty lane to place it. You can also click a placed section to pick it up again.'
+          : 'Your ship components are pre-configured. You can rearrange them by clicking a section to pick it up.'
+        }
+        {' '}The ship section placed in the centre lane will gain a bonus to its stats.
       </p>
 
       {/* This container holds both rows of ship sections */}
       <div className="flex flex-col items-center w-full space-y-4">
-        {/* Unplaced Sections Row */}
-        <div className="flex w-full justify-between gap-8">
-          {['bridge', 'powerCell', 'droneControlHub'].map(sectionName => (
-            <div key={sectionName} className="flex-1 min-w-0 h-[190px]">
-              {localUnplacedSections.includes(sectionName) && (
-                <div
-                  onClick={() => handleSelectSectionForPlacement(sectionName)}
-                  className={`h-full transition-all duration-300 rounded-xl ${selectedSectionForPlacement === sectionName ? 'scale-105 ring-4 ring-cyan-400' : 'opacity-70 hover:opacity-100 cursor-pointer'}`}
-                >
-                  <ShipSection
-                    section={sectionName}
-                    stats={localPlayerState.shipSections[sectionName]}
-                    effectiveStatsForDisplay={localPlayerState.shipSections[sectionName].stats.healthy}
-                    isPlayer={true}
-                    isInteractive={true}
-                    gameEngine={gameEngine}
-                    turnPhase={turnPhase}
-                    isMyTurn={() => true}
-                    passInfo={{}}
-                    getLocalPlayerId={getLocalPlayerId}
-                    localPlayerState={localPlayerState}
-                    shipAbilityMode={null}
-                  />
-                </div>
-              )}
-            </div>
-          ))}
+        {/* Section Header - Placement Lanes */}
+        <div className="w-full text-center mb-2">
+          <h3 className="text-xl font-orbitron text-cyan-400">
+            Your Ship Layout
+          </h3>
         </div>
 
-        {/* Placed Sections Row */}
+        {/* Placed Sections Row (Top) - The three lanes */}
         <div className="flex w-full justify-between gap-8">
           {[0, 1, 2].map(laneIndex => {
             const placedSectionName = localPlacedSections[laneIndex];
@@ -306,6 +331,44 @@ function ShipPlacementScreen() {
               </div>
             );
           })}
+        </div>
+
+        {/* Section Header - Unplaced Sections (only show if sections exist) */}
+        {localUnplacedSections.length > 0 && (
+          <div className="w-full text-center mt-6 mb-2">
+            <h3 className="text-lg font-orbitron text-gray-400">
+              Available Sections
+            </h3>
+          </div>
+        )}
+
+        {/* Unplaced Sections Row (Bottom) - Picked up sections */}
+        <div className="flex w-full justify-between gap-8">
+          {['bridge', 'powerCell', 'droneControlHub'].map(sectionName => (
+            <div key={sectionName} className="flex-1 min-w-0 h-[190px]">
+              {localUnplacedSections.includes(sectionName) && (
+                <div
+                  onClick={() => handleSelectSectionForPlacement(sectionName)}
+                  className={`h-full transition-all duration-300 rounded-xl ${selectedSectionForPlacement === sectionName ? 'scale-105 ring-4 ring-cyan-400' : 'opacity-70 hover:opacity-100 cursor-pointer'}`}
+                >
+                  <ShipSection
+                    section={sectionName}
+                    stats={localPlayerState.shipSections[sectionName]}
+                    effectiveStatsForDisplay={localPlayerState.shipSections[sectionName].stats.healthy}
+                    isPlayer={true}
+                    isInteractive={true}
+                    gameEngine={gameEngine}
+                    turnPhase={turnPhase}
+                    isMyTurn={() => true}
+                    passInfo={{}}
+                    getLocalPlayerId={getLocalPlayerId}
+                    localPlayerState={localPlayerState}
+                    shipAbilityMode={null}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 

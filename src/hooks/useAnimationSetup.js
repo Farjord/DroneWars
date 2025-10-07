@@ -4,7 +4,7 @@ import FlashEffect from '../components/animations/FlashEffect.jsx';
 import CardVisualEffect from '../components/animations/CardVisualEffect.jsx';
 import { debugLog } from '../utils/debugLogger.js';
 
-export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications) {
+export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications) {
   useEffect(() => {
     const localPlayerState = getLocalPlayerState();
     const opponentPlayerState = getOpponentPlayerState();
@@ -280,6 +280,37 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
           onComplete?.();
         }
       }]);
+    });
+
+    animationManager.registerVisualHandler('SHIP_ABILITY_REVEAL_EFFECT', (payload) => {
+      const { abilityName, actingPlayerId, onComplete } = payload;
+
+      debugLog('ANIMATIONS', '🚀 [SHIP ABILITY REVEAL DEBUG] SHIP_ABILITY_REVEAL_EFFECT handler called:', {
+        abilityName,
+        actingPlayerId
+      });
+
+      // Determine if this is the local player or opponent
+      const localPlayerId = gameStateManager.getLocalPlayerId();
+      const isLocalPlayer = actingPlayerId === localPlayerId;
+
+      // Only show to opponent
+      if (!isLocalPlayer) {
+        const revealId = `shipability-${Date.now()}`;
+
+        setShipAbilityReveals(prev => [...prev, {
+          id: revealId,
+          abilityName: abilityName,
+          label: 'Opponent Used',
+          onComplete: () => {
+            setShipAbilityReveals(prev => prev.filter(r => r.id !== revealId));
+            onComplete?.();
+          }
+        }]);
+      } else {
+        // Local player doesn't see overlay, just complete immediately
+        onComplete?.();
+      }
     });
 
     animationManager.registerVisualHandler('PHASE_ANNOUNCEMENT_EFFECT', async (payload) => {

@@ -68,7 +68,7 @@ function GameFooter({
           }`}
         >
           <span className={styles.tabIcon}>
-            {isFooterOpen && footerView === 'hand' && <ChevronUp size={16} />}
+            {isFooterOpen && footerView === 'hand' && <ChevronUp size={14} />}
             Hand ({localPlayerState.hand.length}/{localPlayerEffectiveStats.totals.handLimit})
           </span>
         </button>
@@ -82,7 +82,7 @@ function GameFooter({
           }`}
         >
           <span className={styles.tabIcon}>
-            {isFooterOpen && footerView === 'drones' && <ChevronUp size={16} />}
+            {isFooterOpen && footerView === 'drones' && <ChevronUp size={14} />}
             Drones
           </span>
         </button>
@@ -96,7 +96,7 @@ function GameFooter({
           }`}
         >
           <span className={styles.tabIcon}>
-            {isFooterOpen && footerView === 'log' && <ChevronUp size={16} />}
+            {isFooterOpen && footerView === 'log' && <ChevronUp size={14} />}
             Log ({gameLog.length})
           </span>
         </button>

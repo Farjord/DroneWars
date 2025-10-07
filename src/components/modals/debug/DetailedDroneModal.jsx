@@ -32,7 +32,7 @@ const DetailedDroneModal = ({ isOpen, drone, onClose }) => {
           {drone.name}
         </h2>
         <div className="flex justify-center">
-          <DroneCard drone={drone} isSelectable={false} deployedCount={0} />
+          <DroneCard drone={drone} isSelectable={false} deployedCount={0} isViewOnly={true} />
         </div>
       </div>
     </div>

@@ -4,7 +4,10 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import ActionCard from './components/ui/ActionCard.jsx';
 import DroneCard from './components/ui/DroneCard.jsx';
 import ViewDeckModal from './components/modals/ViewDeckModal.jsx';
+import ShipSection from './components/ui/ShipSection.jsx';
 import fullDroneCollection from './data/droneData.js';
+import { shipComponentCollection } from './data/shipData.js';
+import { gameEngine } from './logic/gameLogic.js';
 
 // Card detail popup using the actual ActionCard component
 const CardDetailPopup = ({ card, onClose }) => {
@@ -40,7 +43,121 @@ const DroneDetailPopup = ({ drone, onClose }) => {
           ignoreDeployLimit={true}
           appliedUpgrades={[]}
           scale={1.5}
+          isViewOnly={true}
         />
+      </div>
+    </div>
+  );
+};
+
+// Ship component detail popup showing the component in all three lane positions
+const ShipComponentDetailPopup = ({ component, onClose }) => {
+  if (!component) return null;
+
+  // Helper function to calculate middle lane bonus stats
+  const calculateMiddleLaneBonusStats = (comp, applyBonus) => {
+    const baseStats = comp.stats.healthy;
+    const bonus = comp.middleLaneBonus || {};
+    const effectiveStats = {};
+
+    Object.keys(baseStats).forEach(stat => {
+      effectiveStats[stat] = baseStats[stat] + (applyBonus ? (bonus[stat] || 0) : 0);
+    });
+
+    return effectiveStats;
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div
+        className="bg-gray-900 rounded-2xl border-2 border-cyan-500 p-8 shadow-2xl shadow-cyan-500/20 max-w-6xl w-[95vw]"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-3xl font-orbitron font-bold text-cyan-400 mb-2">
+              {component.name}
+            </h2>
+            <p className="text-gray-400 text-sm">{component.description}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            <X size={32} />
+          </button>
+        </div>
+
+        {/* Lane Comparison */}
+        <div className="mb-4 text-center">
+          <p className="text-yellow-400 font-semibold text-sm">
+            Compare standard lane stats with middle lane bonus stats. The middle lane provides enhanced performance!
+          </p>
+        </div>
+
+        {/* Two Columns showing standard and bonus lanes */}
+        <div className="grid grid-cols-2 gap-8">
+          {/* Left/Right Lane */}
+          <div>
+            <h3 className="text-center font-orbitron text-lg text-gray-300 mb-3">
+              LEFT / RIGHT LANE
+            </h3>
+            <div className="h-[250px]">
+              <ShipSection
+                section={component.key}
+                stats={component}
+                effectiveStatsForDisplay={calculateMiddleLaneBonusStats(component, false)}
+                isPlayer={true}
+                isInMiddleLane={false}
+                gameEngine={gameEngine}
+                isInteractive={false}
+                turnPhase="placement"
+                isMyTurn={() => false}
+                passInfo={{}}
+                getLocalPlayerId={() => 'player1'}
+                localPlayerState={{}}
+                shipAbilityMode={null}
+              />
+            </div>
+          </div>
+
+          {/* Middle Lane (Bonus) */}
+          <div className="relative">
+            <div className="absolute -top-2 -left-2 -right-2 -bottom-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-xl animate-pulse"></div>
+            <div className="relative">
+              <h3 className="text-center font-orbitron text-lg text-yellow-400 mb-3 font-bold">
+                MIDDLE LANE (BONUS)
+              </h3>
+              <div className="h-[250px]">
+                <ShipSection
+                  section={component.key}
+                  stats={component}
+                  effectiveStatsForDisplay={calculateMiddleLaneBonusStats(component, true)}
+                  isPlayer={true}
+                  isInMiddleLane={true}
+                  gameEngine={gameEngine}
+                  isInteractive={false}
+                  turnPhase="placement"
+                  isMyTurn={() => false}
+                  passInfo={{}}
+                  getLocalPlayerId={() => 'player1'}
+                  localPlayerState={{}}
+                  shipAbilityMode={null}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Ability Info */}
+        {component.ability && (
+          <div className="mt-6 p-4 bg-purple-900/30 rounded-lg border border-purple-500/50">
+            <h4 className="font-orbitron text-purple-400 font-bold mb-2">Ship Ability: {component.ability.name}</h4>
+            <p className="text-gray-300 text-sm mb-2">{component.ability.description}</p>
+            <p className="text-gray-400 text-xs">Cost: {component.ability.cost.energy} Energy</p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -53,18 +170,21 @@ const DeckBuilder = ({
   deck,
   onDeckChange,
   onDronesChange,
+  selectedShipComponents,
+  onShipComponentsChange,
   onConfirmDeck,
   onImportDeck
 }) => {
   const [detailedCard, setDetailedCard] = useState(null);
   const [detailedDrone, setDetailedDrone] = useState(null);
+  const [detailedShipComponent, setDetailedShipComponent] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showViewDeckModal, setShowViewDeckModal] = useState(false);
 
   // Panel view toggles
-  const [leftPanelView, setLeftPanelView] = useState('cards'); // 'cards' or 'drones'
-  const [rightPanelView, setRightPanelView] = useState('deck'); // 'deck' or 'drones'
+  const [leftPanelView, setLeftPanelView] = useState('cards'); // 'cards', 'drones', or 'ship'
+  const [rightPanelView, setRightPanelView] = useState('deck'); // 'deck', 'drones', or 'ship'
 
   const [filters, setFilters] = useState({
     cost: { min: 0, max: 99 }, // Temporary values
@@ -304,6 +424,36 @@ const DeckBuilder = ({
   }, [selectedDrones, processedDroneCollection]);
 
   const isDronesValid = droneCount === 10;
+
+  // --- Ship component counts and validation ---
+  const { shipComponentCount, shipComponentsValid } = useMemo(() => {
+    const components = selectedShipComponents || {};
+    const count = Object.keys(components).filter(key => components[key]).length;
+
+    // Check that we have one of each type
+    const hasBridge = Object.keys(components).some(key => {
+      const comp = shipComponentCollection.find(c => c.id === key);
+      return comp && comp.type === 'Bridge' && components[key];
+    });
+    const hasPowerCell = Object.keys(components).some(key => {
+      const comp = shipComponentCollection.find(c => c.id === key);
+      return comp && comp.type === 'Power Cell' && components[key];
+    });
+    const hasDroneControl = Object.keys(components).some(key => {
+      const comp = shipComponentCollection.find(c => c.id === key);
+      return comp && comp.type === 'Drone Control Hub' && components[key];
+    });
+
+    // Check that all components have lane assignments and no conflicts
+    const lanes = Object.values(components).filter(l => l);
+    const uniqueLanes = new Set(lanes);
+    const allAssigned = lanes.length === 3;
+    const noConflicts = uniqueLanes.size === 3;
+
+    const isValid = hasBridge && hasPowerCell && hasDroneControl && allAssigned && noConflicts;
+
+    return { shipComponentCount: count, shipComponentsValid: isValid };
+  }, [selectedShipComponents]);
 
   // --- NEW: Define colors for the Pie Chart ---
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943', '#A45D5D', '#8C5DA4'];
@@ -627,8 +777,12 @@ const DeckBuilder = ({
     const deckCode = useMemo(() => {
       const cardsStr = Object.entries(deck).map(([id, q]) => `${id}:${q}`).join(',');
       const dronesStr = Object.entries(selectedDrones || {}).map(([name, q]) => `${name}:${q}`).join(',');
-      return `cards:${cardsStr}|drones:${dronesStr}`;
-    }, [deck, selectedDrones]);
+      const shipStr = Object.entries(selectedShipComponents || {})
+        .filter(([id, lane]) => lane)
+        .map(([id, lane]) => `${id}:${lane}`)
+        .join(',');
+      return `cards:${cardsStr}|drones:${dronesStr}|ship:${shipStr}`;
+    }, [deck, selectedDrones, selectedShipComponents]);
 
     const copyToClipboard = () => {
       textAreaRef.current.select();
@@ -703,6 +857,7 @@ const DeckBuilder = ({
     <div className="w-full flex flex-col text-white font-exo mt-8 text-sm">
       {detailedCard && <CardDetailPopup card={detailedCard} onClose={() => setDetailedCard(null)} />}
       {detailedDrone && <DroneDetailPopup drone={detailedDrone} onClose={() => setDetailedDrone(null)} />}
+      {detailedShipComponent && <ShipComponentDetailPopup component={detailedShipComponent} onClose={() => setDetailedShipComponent(null)} />}
       {showExportModal && <ExportModal />}
       {showImportModal && <ImportModal />}
       <ViewDeckModal
@@ -711,6 +866,7 @@ const DeckBuilder = ({
         title="Your Deck & Drones"
         drones={viewDeckData.drones}
         cards={viewDeckData.cards}
+        shipComponents={selectedShipComponents || {}}
       />
 
       <div className="flex justify-center items-center mb-4">
@@ -749,6 +905,15 @@ const DeckBuilder = ({
                 className={`btn-utility ${leftPanelView === 'drones' ? 'opacity-100' : 'opacity-60'}`}
               >
                 Drones
+              </button>
+              <button
+                onClick={() => {
+                  setLeftPanelView('ship');
+                  setRightPanelView('ship');
+                }}
+                className={`btn-utility ${leftPanelView === 'ship' ? 'opacity-100' : 'opacity-60'}`}
+              >
+                Ship Components
               </button>
               <button
                 onClick={() => setShowViewDeckModal(true)}
@@ -951,30 +1116,178 @@ const DeckBuilder = ({
           </div>
           </>
           )}
+
+          {/* SHIP COMPONENTS VIEW */}
+          {leftPanelView === 'ship' && (
+          <>
+          <div className="flex-grow overflow-y-auto pr-2">
+            <table className="w-full text-left deck-builder-table">
+              <thead>
+                <tr>
+                  <th>Info</th>
+                  <th>Type</th>
+                  <th>Name</th>
+                  <th>Description</th>
+                  <th>Lane</th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* Group by type */}
+                {/* Bridge Section */}
+                <tr className="bg-cyan-900/20">
+                  <td colSpan="5" className="font-bold text-cyan-400 text-sm py-2">BRIDGE</td>
+                </tr>
+                {shipComponentCollection.filter(comp => comp.type === 'Bridge').map((component, index) => {
+                  const selectedLane = selectedShipComponents?.[component.id] || null;
+                  // Check which lanes are occupied by other components
+                  const occupiedLanes = Object.entries(selectedShipComponents || {})
+                    .filter(([id, lane]) => id !== component.id && lane)
+                    .map(([id, lane]) => lane);
+
+                  return (
+                    <tr key={`${component.id}-${index}`}>
+                      <td><button onClick={() => setDetailedShipComponent(component)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
+                      <td className="font-semibold text-cyan-400">{component.type}</td>
+                      <td className="font-bold">{component.name}</td>
+                      <td className="text-xs text-gray-400">{component.description}</td>
+                      <td>
+                        <div className="flex gap-2">
+                          {['l', 'm', 'r'].map(lane => (
+                            <button
+                              key={lane}
+                              onClick={() => onShipComponentsChange(component.id, selectedLane === lane ? null : lane)}
+                              disabled={occupiedLanes.includes(lane) && selectedLane !== lane}
+                              className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                                selectedLane === lane
+                                  ? 'bg-cyan-500 text-white'
+                                  : occupiedLanes.includes(lane)
+                                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                  : 'bg-gray-700 text-gray-300 hover:bg-cyan-600 hover:text-white'
+                              }`}
+                            >
+                              {lane.toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {/* Power Cell Section */}
+                <tr className="bg-purple-900/20">
+                  <td colSpan="5" className="font-bold text-purple-400 text-sm py-2">POWER CELL</td>
+                </tr>
+                {shipComponentCollection.filter(comp => comp.type === 'Power Cell').map((component, index) => {
+                  const selectedLane = selectedShipComponents?.[component.id] || null;
+                  const occupiedLanes = Object.entries(selectedShipComponents || {})
+                    .filter(([id, lane]) => id !== component.id && lane)
+                    .map(([id, lane]) => lane);
+
+                  return (
+                    <tr key={`${component.id}-${index}`}>
+                      <td><button onClick={() => setDetailedShipComponent(component)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
+                      <td className="font-semibold text-purple-400">{component.type}</td>
+                      <td className="font-bold">{component.name}</td>
+                      <td className="text-xs text-gray-400">{component.description}</td>
+                      <td>
+                        <div className="flex gap-2">
+                          {['l', 'm', 'r'].map(lane => (
+                            <button
+                              key={lane}
+                              onClick={() => onShipComponentsChange(component.id, selectedLane === lane ? null : lane)}
+                              disabled={occupiedLanes.includes(lane) && selectedLane !== lane}
+                              className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                                selectedLane === lane
+                                  ? 'bg-purple-500 text-white'
+                                  : occupiedLanes.includes(lane)
+                                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                  : 'bg-gray-700 text-gray-300 hover:bg-purple-600 hover:text-white'
+                              }`}
+                            >
+                              {lane.toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {/* Drone Control Hub Section */}
+                <tr className="bg-pink-900/20">
+                  <td colSpan="5" className="font-bold text-pink-400 text-sm py-2">DRONE CONTROL HUB</td>
+                </tr>
+                {shipComponentCollection.filter(comp => comp.type === 'Drone Control Hub').map((component, index) => {
+                  const selectedLane = selectedShipComponents?.[component.id] || null;
+                  const occupiedLanes = Object.entries(selectedShipComponents || {})
+                    .filter(([id, lane]) => id !== component.id && lane)
+                    .map(([id, lane]) => lane);
+
+                  return (
+                    <tr key={`${component.id}-${index}`}>
+                      <td><button onClick={() => setDetailedShipComponent(component)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
+                      <td className="font-semibold text-pink-400">{component.type}</td>
+                      <td className="font-bold">{component.name}</td>
+                      <td className="text-xs text-gray-400">{component.description}</td>
+                      <td>
+                        <div className="flex gap-2">
+                          {['l', 'm', 'r'].map(lane => (
+                            <button
+                              key={lane}
+                              onClick={() => onShipComponentsChange(component.id, selectedLane === lane ? null : lane)}
+                              disabled={occupiedLanes.includes(lane) && selectedLane !== lane}
+                              className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                                selectedLane === lane
+                                  ? 'bg-pink-500 text-white'
+                                  : occupiedLanes.includes(lane)
+                                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                  : 'bg-gray-700 text-gray-300 hover:bg-pink-600 hover:text-white'
+                              }`}
+                            >
+                              {lane.toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          </>
+          )}
         </div>
 
         {/* Right Side: Your Items */}
         <div className="w-1/3 flex flex-col bg-slate-900/50 rounded-lg p-4 border border-gray-700 h-[calc(100vh-99px)] mr-[10px]">
           <div className="flex justify-between items-center mb-4">
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setRightPanelView('deck')}
                 className={`btn-utility ${rightPanelView === 'deck' ? 'opacity-100' : 'opacity-60'}`}
               >
-                Your Deck ({cardCount}/40)
+                Deck ({cardCount}/40)
               </button>
               <button
                 onClick={() => setRightPanelView('drones')}
                 className={`btn-utility ${rightPanelView === 'drones' ? 'opacity-100' : 'opacity-60'}`}
               >
-                Your Drones ({droneCount}/10)
+                Drones ({droneCount}/10)
+              </button>
+              <button
+                onClick={() => setRightPanelView('ship')}
+                className={`btn-utility ${rightPanelView === 'ship' ? 'opacity-100' : 'opacity-60'}`}
+              >
+                Ship ({shipComponentCount}/3)
               </button>
             </div>
             <button
-              onClick={rightPanelView === 'deck' ? resetDeck : resetDrones}
+              onClick={rightPanelView === 'deck' ? resetDeck : rightPanelView === 'drones' ? resetDrones : () => onShipComponentsChange(null, null)}
               className="btn-reset"
             >
-              Reset {rightPanelView === 'deck' ? 'Deck' : 'Drones'}
+              Reset
             </button>
           </div>
 
@@ -1058,6 +1371,79 @@ const DeckBuilder = ({
             ) : (
               <p className="text-gray-500 italic">Your drone pool is empty. Add drones from the left.</p>
             )}
+          </div>
+          )}
+
+          {/* SHIP COMPONENTS VIEW */}
+          {rightPanelView === 'ship' && (
+          <div className="flex-grow overflow-y-auto pr-2">
+            <div className="flex flex-col gap-4">
+              {/* Display ship layout */}
+              <div className="grid grid-cols-3 gap-4">
+                {['l', 'm', 'r'].map((lane, index) => {
+                  const componentEntry = Object.entries(selectedShipComponents || {}).find(([id, l]) => l === lane);
+                  const component = componentEntry ? shipComponentCollection.find(c => c.id === componentEntry[0]) : null;
+
+                  return (
+                    <div key={lane} className={`p-4 rounded-lg border-2 ${component ? 'border-cyan-500 bg-cyan-900/10' : 'border-dashed border-gray-600 bg-gray-800/30'}`}>
+                      <div className="text-center mb-2">
+                        <span className="font-bold text-sm text-cyan-400">
+                          {index === 1 ? 'MIDDLE (Bonus)' : index === 0 ? 'LEFT' : 'RIGHT'}
+                        </span>
+                      </div>
+                      {component ? (
+                        <div className="text-center">
+                          <div className="text-xs text-gray-400 mb-1">{component.type}</div>
+                          <div className="font-bold text-white mb-2">{component.name}</div>
+                          <div className="text-xs text-gray-500 mb-2">{component.description}</div>
+                          {index === 1 && (
+                            <div className="text-xs text-cyan-300 font-semibold">
+                              + Bonus Stats
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-center text-gray-500 italic text-xs py-4">
+                          No component
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* List view of selected components */}
+              {shipComponentCount > 0 && (
+                <div className="mt-4">
+                  <h4 className="text-sm font-bold text-gray-400 mb-2">Selected Components</h4>
+                  <div className="deck-list">
+                    {Object.entries(selectedShipComponents || {})
+                      .filter(([id, lane]) => lane)
+                      .map(([id, lane]) => {
+                        const component = shipComponentCollection.find(c => c.id === id);
+                        if (!component) return null;
+
+                        return (
+                          <div key={id} className="deck-list-item">
+                            <span className="flex-grow truncate" title={component.name}>
+                              {component.name} ({component.type})
+                            </span>
+                            <span className="font-bold text-cyan-400">
+                              Lane: {lane.toUpperCase()}
+                            </span>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
+              {shipComponentCount === 0 && (
+                <p className="text-gray-500 italic text-center py-8">
+                  No ship components selected. Select components from the left.
+                </p>
+              )}
+            </div>
           </div>
           )}
 
@@ -1308,7 +1694,14 @@ const DeckBuilder = ({
             </div>
           )}
 
-                    <button onClick={onConfirmDeck} disabled={!isDeckValid || !isDronesValid} className="btn-confirm w-full p-4 mt-4 text-lg font-bold font-orbitron">Confirm Deck & Drones</button>
+                    <button
+                      onClick={onConfirmDeck}
+                      disabled={!isDeckValid || !isDronesValid || !shipComponentsValid}
+                      className="btn-confirm w-full p-4 mt-4 text-lg font-bold font-orbitron"
+                      title={!shipComponentsValid ? 'You must select all 3 ship components with lanes assigned' : ''}
+                    >
+                      Confirm Deck, Drones & Ship
+                    </button>
         </div>
       </div>
      </div>

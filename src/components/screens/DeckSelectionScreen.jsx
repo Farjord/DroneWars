@@ -39,6 +39,7 @@ function DeckSelectionScreen() {
   const [showDeckBuilder, setShowDeckBuilder] = useState(false);
   const [customDeck, setCustomDeck] = useState({});
   const [selectedDrones, setSelectedDrones] = useState({});
+  const [selectedShipComponents, setSelectedShipComponents] = useState({});
 
   /**
    * HANDLE DECK CHOICE
@@ -70,12 +71,20 @@ function DeckSelectionScreen() {
         return;
       }
 
+      // Default ship components for standard deck
+      const standardShipComponents = {
+        'BRIDGE_001': 'l',
+        'POWERCELL_001': 'm',
+        'DRONECONTROL_001': 'r'
+      };
+
       const payload = {
         phase: 'deckSelection',
         playerId: localPlayerId,
         actionData: {
           deck: standardDeck,
-          drones: standardDrones
+          drones: standardDrones,
+          shipComponents: standardShipComponents
         }
       };
 
@@ -135,6 +144,23 @@ function DeckSelectionScreen() {
   };
 
   /**
+   * HANDLE SHIP COMPONENTS CHANGE
+   * Updates the selected ship components with lane assignments
+   */
+  const handleShipComponentsChange = (componentId, lane) => {
+    if (componentId === null && lane === null) {
+      // Reset all ship components
+      setSelectedShipComponents({});
+      return;
+    }
+
+    setSelectedShipComponents(prev => ({
+      ...prev,
+      [componentId]: lane
+    }));
+  };
+
+  /**
    * HANDLE CONFIRM DECK
    * Submits the custom deck as a commitment
    */
@@ -178,7 +204,8 @@ function DeckSelectionScreen() {
       playerId: localPlayerId,
       actionData: {
         deck: shuffledDeck,
-        drones: droneNames
+        drones: droneNames,
+        shipComponents: selectedShipComponents
       }
     };
 
@@ -213,14 +240,15 @@ function DeckSelectionScreen() {
 
   /**
    * HANDLE IMPORT DECK
-   * Imports a deck from a deck code (format: cards:CARD001:4,CARD002:2|drones:Scout Drone:1,Heavy Fighter:1)
+   * Imports a deck from a deck code (format: cards:CARD001:4,CARD002:2|drones:Scout Drone:1,Heavy Fighter:1|ship:BRIDGE_001:l,POWERCELL_001:m,DRONECONTROL_001:r)
    */
   const handleImportDeck = (deckCode) => {
     try {
       const importedDeck = {};
       const importedDrones = {};
+      const importedShipComponents = {};
 
-      // Split into cards and drones sections
+      // Split into cards, drones, and ship sections
       const sections = deckCode.split('|');
 
       for (const section of sections) {
@@ -259,11 +287,23 @@ function DeckSelectionScreen() {
 
             importedDrones[droneName] = qty;
           }
+        } else if (type === 'ship') {
+          const pairs = dataStr.split(',');
+          for (const pair of pairs) {
+            const [componentId, lane] = pair.split(':');
+
+            if (!componentId || !lane || !['l', 'm', 'r'].includes(lane)) {
+              return { success: false, message: 'Invalid ship component format in deck code.' };
+            }
+
+            importedShipComponents[componentId] = lane;
+          }
         }
       }
 
       setCustomDeck(importedDeck);
       setSelectedDrones(importedDrones);
+      setSelectedShipComponents(importedShipComponents);
       return { success: true };
     } catch (error) {
       console.error('Error importing deck:', error);
@@ -317,6 +357,8 @@ function DeckSelectionScreen() {
         deck={customDeck}
         onDeckChange={handleDeckChange}
         onDronesChange={handleDronesChange}
+        selectedShipComponents={selectedShipComponents}
+        onShipComponentsChange={handleShipComponentsChange}
         onConfirmDeck={handleConfirmDeck}
         onImportDeck={handleImportDeck}
       />

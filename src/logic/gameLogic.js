@@ -243,7 +243,7 @@ const getValidTargets = (actingPlayerId, source, definition, player1, player2) =
     
     const processPlayerSections = (playerState, playerType) => {
         Object.keys(playerState.shipSections).forEach(sectionName => {
-            targets.push({ id: sectionName, owner: playerType, ...playerState.shipSections[sectionName] });
+            targets.push({ ...playerState.shipSections[sectionName], id: sectionName, name: sectionName, owner: playerType });
         });
     };
 
@@ -814,9 +814,10 @@ const resolveAbility = (ability, userDrone, targetDrone, playerStates, placedSec
     };
 };
 
-const resolveShipAbility = (ability, sectionName, target, playerStates, placedSections, logCallback, resolveAttackCallback) => {
+const resolveShipAbility = (ability, sectionName, target, playerStates, placedSections, callbacks, playerId) => {
+    const { logCallback, resolveAttackCallback } = callbacks || {};
     const { cost, effect } = ability;
-    const actingPlayerState = playerStates.player1;
+    const actingPlayerState = playerStates[playerId];
 
     // Log the ability
     if (logCallback) {
@@ -829,6 +830,14 @@ const resolveShipAbility = (ability, sectionName, target, playerStates, placedSe
         });
     }
 
+    // Add animation events for opponent notification
+    const animationEvents = [{
+        type: 'SHIP_ABILITY_REVEAL',
+        abilityName: ability.name,
+        sectionName: sectionName,
+        actingPlayerId: playerId
+    }];
+
     // Create updated player state
     const newPlayerStates = {
         player1: JSON.parse(JSON.stringify(playerStates.player1)),
@@ -836,7 +845,7 @@ const resolveShipAbility = (ability, sectionName, target, playerStates, placedSe
     };
 
     // Pay energy cost
-    newPlayerStates.player1.energy -= cost.energy;
+    newPlayerStates[playerId].energy -= cost.energy;
 
     // Use modular handler for ship ability effects
     if (effect.type === 'REALLOCATE_SHIELDS') {
@@ -845,25 +854,25 @@ const resolveShipAbility = (ability, sectionName, target, playerStates, placedSe
             newPlayerStates,
             shouldEndTurn: false,
             requiresShieldReallocation: true,
-            animationEvents: []
+            animationEvents
         };
     } else {
         // Handle other ship ability effects using modular handler
-        const effectResult = resolveShipAbilityEffect(effect, sectionName, target, newPlayerStates, placedSections, { resolveAttackCallback });
+        const effectResult = resolveShipAbilityEffect(effect, sectionName, target, newPlayerStates, placedSections, { resolveAttackCallback }, playerId);
 
         // Update states from effect result
         newPlayerStates.player1 = effectResult.newPlayerStates.player1;
         newPlayerStates.player2 = effectResult.newPlayerStates.player2;
 
-        // Collect animation events
-        const animationEvents = effectResult.animationEvents || [];
+        // Collect animation events from effect result
+        animationEvents.push(...(effectResult.animationEvents || []));
 
         // Handle special return cases
         if (effectResult.needsDiscardSelection) {
             return {
                 newPlayerStates,
                 shouldEndTurn: false,
-                mandatoryAction: { type: 'discard', player: 'player1', count: effectResult.needsDiscardSelection, fromAbility: true },
+                mandatoryAction: { type: 'discard', player: playerId, count: effectResult.needsDiscardSelection, fromAbility: true },
                 animationEvents
             };
         }
@@ -878,7 +887,7 @@ const resolveShipAbility = (ability, sectionName, target, playerStates, placedSe
     return {
         newPlayerStates,
         shouldEndTurn: true,
-        animationEvents: []
+        animationEvents
     };
 };
 
@@ -3024,33 +3033,70 @@ const resolveDroneAbilityEffect = (effect, userDrone, targetDrone, playerStates,
     }
 };
 
-const resolveShipAbilityEffect = (effect, sectionName, target, playerStates, placedSections, callbacks) => {
+const resolveShipAbilityEffect = (effect, sectionName, target, playerStates, placedSections, callbacks, playerId) => {
     const shipSource = { name: sectionName };
 
     switch (effect.type) {
         case 'DAMAGE':
-            return resolveUnifiedDamageEffect(effect, shipSource, target, 'player1', playerStates, placedSections, callbacks);
+            return resolveUnifiedDamageEffect(effect, shipSource, target, playerId, playerStates, placedSections, callbacks);
         case 'RECALL_DRONE':
-            return resolveShipRecallEffect(effect, sectionName, target, playerStates, placedSections, callbacks);
+            return resolveShipRecallEffect(effect, sectionName, target, playerStates, placedSections, callbacks, playerId);
         case 'DRAW_THEN_DISCARD':
-            return resolveUnifiedDrawEffect(effect, shipSource, target, 'player1', playerStates, placedSections, callbacks);
+            return resolveUnifiedDrawEffect(effect, shipSource, target, playerId, playerStates, placedSections, callbacks);
         default:
             console.warn(`Unknown ship ability effect type: ${effect.type}`);
             return { newPlayerStates: playerStates, additionalEffects: [], animationEvents: [] };
     }
 };
 
-const resolveShipRecallEffect = (effect, sectionName, target, playerStates, placedSections, callbacks) => {
+const resolveShipRecallEffect = (effect, sectionName, target, playerStates, placedSections, callbacks, playerId) => {
     const newPlayerStates = {
         player1: JSON.parse(JSON.stringify(playerStates.player1)),
         player2: JSON.parse(JSON.stringify(playerStates.player2))
     };
 
-    const lane = getLaneOfDrone(target.id, newPlayerStates.player1);
+    // Determine opponent for aura updates
+    const opponentId = playerId === 'player1' ? 'player2' : 'player1';
+
+    // target is the drone ID string (e.g., "SCOUT_001")
+    const lane = getLaneOfDrone(target, newPlayerStates[playerId]);
     if (lane) {
-        newPlayerStates.player1.dronesOnBoard[lane] = newPlayerStates.player1.dronesOnBoard[lane].filter(d => d.id !== target.id);
-        Object.assign(newPlayerStates.player1, onDroneRecalled(newPlayerStates.player1, target));
-        newPlayerStates.player1.dronesOnBoard = updateAuras(newPlayerStates.player1, newPlayerStates.player2, placedSections);
+        // Find the actual drone object
+        const droneToRecall = newPlayerStates[playerId].dronesOnBoard[lane].find(d => d.id === target);
+
+        if (!droneToRecall) {
+            console.warn('⚠️ [RECALL DEBUG] Drone not found in lane:', target, 'lane:', lane);
+            return {
+                newPlayerStates,
+                additionalEffects: [],
+                animationEvents: []
+            };
+        }
+
+        // Remove drone from board
+        newPlayerStates[playerId].dronesOnBoard[lane] = newPlayerStates[playerId].dronesOnBoard[lane].filter(d => d.id !== target);
+
+        // Update deployed drone count (increment available drones)
+        // onDroneRecalled expects drone object with .name property
+        Object.assign(newPlayerStates[playerId], onDroneRecalled(newPlayerStates[playerId], droneToRecall));
+
+        // Update auras with correct player order
+        newPlayerStates[playerId].dronesOnBoard = updateAuras(newPlayerStates[playerId], newPlayerStates[opponentId], placedSections);
+
+        // Create recall animation event
+        const animationEvents = [{
+            type: 'TELEPORT_OUT',
+            targetId: target,
+            laneId: lane,
+            playerId: playerId,
+            timestamp: Date.now()
+        }];
+
+        return {
+            newPlayerStates,
+            additionalEffects: [],
+            animationEvents
+        };
     }
 
     return {
