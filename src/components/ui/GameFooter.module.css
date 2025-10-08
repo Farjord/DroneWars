@@ -27,7 +27,7 @@
 }
 
 .contentOpen {
-  height: clamp(240px, 15cqw, 400px);
+  height: clamp(215px, 12.5cqw, 450px);
   @apply opacity-100;
 }
 
@@ -78,8 +78,8 @@
 }
 
 .deckCard {
-  width: clamp(128px, 6.5cqw, 160px);
-  height: clamp(176px, 9cqw, 220px);
+  width: clamp(105px, 5.3cqw, 131px);
+  height: clamp(144px, 7.4cqw, 180px);
   @apply bg-indigo-900/50 rounded-lg border-2 border-purple-500
          flex items-center justify-center shadow-md cursor-pointer
          hover:bg-indigo-800/50 transition-colors duration-200;
@@ -91,8 +91,8 @@
 }
 
 .discardCard {
-  width: clamp(128px, 6.5cqw, 160px);
-  height: clamp(176px, 9cqw, 220px);
+  width: clamp(105px, 5.3cqw, 131px);
+  height: clamp(144px, 7.4cqw, 180px);
   @apply bg-gray-900/80 rounded-lg border-2 border-gray-700
          flex items-center justify-center shadow-md cursor-pointer
          hover:bg-gray-800/80 transition-colors duration-200;
@@ -133,7 +133,7 @@
 
 .handCardsContainer {
   @apply relative flex justify-center items-center;
-  height: 220px;
+  height: clamp(170px, 8.9vw, 230px);
 }
 
 .handCardsWrapper {
@@ -144,26 +144,10 @@
   @apply gap-1.5;
 }
 
-/* Card wrapper with responsive scaling for compressed footer */
+/* Card wrapper - uses natural clamp() scaling from card components */
 .cardWrapper {
   @apply transition-all duration-300 ease-in-out;
-  transform: scale(1.0);
-  transform-origin: center center;
-  margin: 50px 0 -5px 0;
-}
-
-@container gameFooter (min-width: 2560px) {
-  .cardWrapper {
-    transform: scale(0.95);
-    margin: 8px -6px -10px -6px;
-  }
-}
-
-@container gameFooter (min-width: 3440px) {
-  .cardWrapper {
-    transform: scale(1.0);
-    margin: 10px -3px -5px -3px;
-  }
+  margin: clamp(50px, 2.6vw, 68px) 0 -5px 0;
 }
 
 /* ===== DRONE VIEW STYLES ===== */
@@ -176,25 +160,9 @@
   @apply flex flex-wrap justify-center gap-3;
 }
 
-/* Compact drone card wrapper - scales down DroneCard component with responsive sizing */
+/* Compact drone card wrapper - uses natural clamp() scaling from card components */
 .compactDroneWrapper {
-  transform: scale(0.8);
-  transform-origin: center center;
   margin: -20px -20px -40px -20px;
-}
-
-@container gameFooter (min-width: 2560px) {
-  .compactDroneWrapper {
-    transform: scale(0.9);
-    margin: -12px -12px -24px -12px;
-  }
-}
-
-@container gameFooter (min-width: 3440px) {
-  .compactDroneWrapper {
-    transform: scale(1.0);
-    margin: -5px -5px -15px -5px;
-  }
 }
 
 /* ===== LOG VIEW STYLES ===== */

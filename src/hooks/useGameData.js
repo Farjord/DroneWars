@@ -4,7 +4,7 @@
 // React hook for accessing GameDataService with automatic state updates
 // Provides clean API for components to access computed game data
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import GameDataService from '../services/GameDataService.js';
 import { useGameState } from './useGameState.js';
 
@@ -47,39 +47,40 @@ export const useGameData = () => {
   }, [gameDataService]);
 
   // Convenience methods that wrap GameDataService functionality
-  const getEffectiveStats = (drone, lane) => {
+  // Memoized with useCallback to prevent infinite loops in useEffect dependencies
+  const getEffectiveStats = useCallback((drone, lane) => {
     if (!gameDataService) return { attack: 0, speed: 0, hull: 0, maxShields: 0, cost: 0, baseAttack: 0, baseSpeed: 0, baseCost: 0, keywords: new Set() };
     return gameDataService.getEffectiveStats(drone, lane);
-  };
+  }, [gameDataService]);
 
-  const getLaneData = (lane) => {
+  const getLaneData = useCallback((lane) => {
     if (!gameDataService) return { lane, localDrones: [], opponentDrones: [], hasGuardian: false };
     return gameDataService.getLaneData(lane);
-  };
+  }, [gameDataService]);
 
-  const hasGuardianInLane = (lane, drones = null) => {
+  const hasGuardianInLane = useCallback((lane, drones = null) => {
     if (!gameDataService) return false;
     return gameDataService.hasGuardianInLane(lane, drones);
-  };
+  }, [gameDataService]);
 
-  const getPlacedSections = () => {
+  const getPlacedSections = useCallback(() => {
     if (!gameDataService) return {};
     return gameDataService.getPlacedSectionsForEngine();
-  };
+  }, [gameDataService]);
 
-  const getEffectiveShipStats = (playerState, placedSections = []) => {
+  const getEffectiveShipStats = useCallback((playerState, placedSections = []) => {
     if (!gameDataService) return {
       totals: { handLimit: 0, discardLimit: 0, energyPerTurn: 0, maxEnergy: 0, shieldsPerTurn: 0, initialDeployment: 0, deploymentBudget: 0, cpuLimit: 0 },
       bySection: {}
     };
     return gameDataService.getEffectiveShipStats(playerState, placedSections);
-  };
+  }, [gameDataService]);
 
-  const clearCache = () => {
+  const clearCache = useCallback(() => {
     if (gameDataService) {
       gameDataService.clearCache();
     }
-  };
+  }, [gameDataService]);
 
   return {
     // Core service instance

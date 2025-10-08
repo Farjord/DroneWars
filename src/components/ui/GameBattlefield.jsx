@@ -27,6 +27,7 @@ import DroneLanesDisplay from './DroneLanesDisplay.jsx';
  * @param {Object} props.selectedDrone - Currently selected drone
  * @param {Array} props.recentlyHitDrones - Recently hit drones array
  * @param {Array} props.potentialInterceptors - Potential interceptor drones
+ * @param {Array} props.potentialGuardians - Potential guardian drones blocking attacks
  * @param {Object} props.droneRefs - Drone reference objects
  * @param {boolean} props.mandatoryAction - Whether there's a mandatory action
  * @param {Object} props.gameEngine - Game engine instance
@@ -61,6 +62,7 @@ function GameBattlefield({
   selectedDrone,
   recentlyHitDrones,
   potentialInterceptors,
+  potentialGuardians,
   droneRefs,
   sectionRefs,
   mandatoryAction,
@@ -128,6 +130,7 @@ function GameBattlefield({
           selectedDrone={selectedDrone}
           recentlyHitDrones={recentlyHitDrones}
           potentialInterceptors={potentialInterceptors}
+          potentialGuardians={potentialGuardians}
           droneRefs={droneRefs}
           mandatoryAction={mandatoryAction}
           setHoveredTarget={setHoveredTarget}
@@ -158,6 +161,7 @@ function GameBattlefield({
           selectedDrone={selectedDrone}
           recentlyHitDrones={recentlyHitDrones}
           potentialInterceptors={potentialInterceptors}
+          potentialGuardians={potentialGuardians}
           droneRefs={droneRefs}
           mandatoryAction={mandatoryAction}
           setHoveredTarget={setHoveredTarget}

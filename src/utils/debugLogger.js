@@ -19,6 +19,7 @@ const DEBUG_CONFIG = {
 
   // Category-specific toggles
   categories: {
+    DEPLOYMENT: false,          // Drone deployment tracking
     DRONE_SELECTION: false,     // Drone selection phase and data
     DECK_SELECTION: false,      // Deck selection phase
     PLACEMENT: false,           // Ship placement phase

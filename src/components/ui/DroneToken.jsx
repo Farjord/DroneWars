@@ -51,6 +51,7 @@ const AbilityIcon = ({ onClick }) => (
  * @param {boolean} isSelectedForMove - Whether drone is selected for movement
  * @param {boolean} isHit - Whether drone was recently hit (for animation)
  * @param {boolean} isPotentialInterceptor - Whether drone can intercept current attack
+ * @param {boolean} isPotentialGuardian - Whether drone has GUARDIAN and is blocking attacks in this lane
  * @param {Function} onMouseEnter - Mouse enter event handler
  * @param {Function} onMouseLeave - Mouse leave event handler
  * @param {string} lane - Lane identifier for stats calculation
@@ -69,6 +70,7 @@ const DroneToken = ({
   isSelectedForMove,
   isHit,
   isPotentialInterceptor,
+  isPotentialGuardian,
   onMouseEnter,
   onMouseLeave,
   lane,
@@ -130,7 +132,7 @@ const DroneToken = ({
       className={`relative w-[90px] h-[135px] transition-all duration-200 ${exhaustEffect} ${hitEffect} ${selectedEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${enableFloatAnimation ? 'drone-float' : ''}`}
     >
       {/* Main Token Body */}
-      <div className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden`}>
+      <div className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden ${isPotentialGuardian ? 'guardian-glow' : ''}`}>
         <img src={drone.image} alt={drone.name} className="absolute inset-0 w-full h-full object-cover"/>
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative z-10 h-full">

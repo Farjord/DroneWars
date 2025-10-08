@@ -201,45 +201,46 @@ function GameHeader({
           )}
         </h2>
 
-        {/* Turn Indicator - Show during deployment/action phases or reallocation */}
-        {(turnPhase === 'deployment' || turnPhase === 'action' || reallocationPhase) && (
-          <div className="flex items-center gap-3">
-            {isMyTurn() ? (
-              <div className="flex items-center gap-2">
-                <span
-                  className="text-3xl font-orbitron font-black uppercase tracking-widest"
-                  style={{
-                    backgroundImage: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
-                    backgroundSize: '200% auto',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                    textShadow: '0 0 30px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 136, 255, 0.3)',
-                    filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))'
-                  }}
-                >
-                  Your Turn
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span
-                  className="text-3xl font-orbitron font-black uppercase tracking-widest phase-announcement-shine animate-pulse"
-                  style={{
-                    backgroundImage: 'linear-gradient(45deg, #ec4899, #f472b6, #ec4899)',
-                    backgroundSize: '200% auto',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                    textShadow: '0 0 30px rgba(236, 72, 153, 0.5), 0 0 60px rgba(244, 114, 182, 0.3)',
-                    filter: 'drop-shadow(0 0 20px rgba(236, 72, 153, 0.4))',
-                    animation: 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite'
-                  }}
-                >
-                  {isMultiplayer() ? "Opponent's Turn" : "AI Thinking"}
-                </span>
-              </div>
-            )}
+        {/* Turn Indicator - Always show */}
+        <div className="flex items-center gap-3">
+          {(turnPhase === 'deployment' || turnPhase === 'action' || reallocationPhase) ? (
+            <>
+              {isMyTurn() ? (
+                <div className="flex items-center gap-2">
+                  <span
+                    className="text-3xl font-orbitron font-black uppercase tracking-widest"
+                    style={{
+                      backgroundImage: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
+                      backgroundSize: '200% auto',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                      textShadow: '0 0 30px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 136, 255, 0.3)',
+                      filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))'
+                    }}
+                  >
+                    Your Turn
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span
+                    className="text-3xl font-orbitron font-black uppercase tracking-widest phase-announcement-shine animate-pulse"
+                    style={{
+                      backgroundImage: 'linear-gradient(45deg, #ec4899, #f472b6, #ec4899)',
+                      backgroundSize: '200% auto',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                      textShadow: '0 0 30px rgba(236, 72, 153, 0.5), 0 0 60px rgba(244, 114, 182, 0.3)',
+                      filter: 'drop-shadow(0 0 20px rgba(236, 72, 153, 0.4))',
+                      animation: 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                    }}
+                  >
+                    {isMultiplayer() ? "Opponent's Turn" : "AI Thinking"}
+                  </span>
+                </div>
+              )}
 
             {/* Pass Button - Hide during reallocation */}
             {isMyTurn() && !mandatoryAction && !multiSelectState && !reallocationPhase && (
@@ -389,8 +390,27 @@ function GameHeader({
                 </button>
               </>
             )}
-          </div>
-        )}
+            </>
+          ) : (
+            // Initialising phase - show in "Your Turn" colors for both players
+            <div className="flex items-center gap-2">
+              <span
+                className="text-3xl font-orbitron font-black uppercase tracking-widest"
+                style={{
+                  backgroundImage: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
+                  backgroundSize: '200% auto',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                  textShadow: '0 0 30px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 136, 255, 0.3)',
+                  filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))'
+                }}
+              >
+                Initialising
+              </span>
+            </div>
+          )}
+        </div>
 
         {/* Shield Allocation Controls - Show during allocateShields phase */}
         {turnPhase === 'allocateShields' && (

@@ -603,6 +603,15 @@ setAnimationManager(animationManager) {
   async processDeployment(payload) {
     const { droneData, laneId, playerId, turn } = payload;
 
+    debugLog('DEPLOYMENT', '📥 ActionProcessor.processDeployment: Received payload:', {
+      droneDataName: droneData?.name,
+      droneDataType: typeof droneData,
+      droneDataKeys: droneData ? Object.keys(droneData) : 'null',
+      laneId,
+      playerId,
+      turn
+    });
+
     const currentState = this.gameStateManager.getState();
     const playerState = currentState[playerId];
     const opponentId = playerId === 'player1' ? 'player2' : 'player1';
@@ -864,6 +873,19 @@ setAnimationManager(animationManager) {
         newPlayerStates.player2
       );
     }
+
+    // Execute CARD_REVEAL animation now that movement is complete
+    const cardRevealAnimation = [{
+      animationName: 'CARD_REVEAL',
+      payload: {
+        cardId: card.id,
+        cardName: card.name,
+        cardData: card,
+        actingPlayerId: playerId,
+        timestamp: Date.now()
+      }
+    }];
+    await this.executeAndCaptureAnimations(cardRevealAnimation);
 
     // Handle automatic turn transition if needed
     if (result.shouldEndTurn) {
@@ -1821,7 +1843,7 @@ setAnimationManager(animationManager) {
    * Process optional discard action
    */
   async processOptionalDiscard(payload) {
-    const { playerId, cardsToDiscard, isMandatory = false } = payload;
+    const { playerId, cardsToDiscard, isMandatory = false, abilityMetadata = null } = payload;
     const currentState = this.gameStateManager.getState();
 
     debugLog('CARDS', `[OPTIONAL DISCARD DEBUG] Processing ${isMandatory ? 'mandatory' : 'optional'} discard for ${playerId}:`, cardsToDiscard);
@@ -1859,6 +1881,20 @@ setAnimationManager(animationManager) {
     });
 
     debugLog('CARDS', `[OPTIONAL DISCARD DEBUG] Discarded ${cardsToDiscard.length} cards for ${playerId}`);
+
+    // If this was the final discard for an ability, execute the SHIP_ABILITY_REVEAL animation
+    if (abilityMetadata) {
+      debugLog('CARDS', `[OPTIONAL DISCARD DEBUG] Final ability discard - executing SHIP_ABILITY_REVEAL animation`, abilityMetadata);
+      const abilityRevealAnimation = [{
+        animationName: 'SHIP_ABILITY_REVEAL',
+        payload: {
+          abilityName: abilityMetadata.abilityName,
+          sectionName: abilityMetadata.sectionName,
+          actingPlayerId: abilityMetadata.actingPlayerId
+        }
+      }];
+      await this.executeAndCaptureAnimations(abilityRevealAnimation);
+    }
 
     return {
       success: true,

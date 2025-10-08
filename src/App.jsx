@@ -162,6 +162,7 @@ const App = () => {
   const [interceptionModal, setInterceptionModal] = useState(null);
   const [playerInterceptionChoice, setPlayerInterceptionChoice] = useState(null);
   const [potentialInterceptors, setPotentialInterceptors] = useState([]);
+  const [potentialGuardians, setPotentialGuardians] = useState([]);
   const [showOpponentDecidingModal, setShowOpponentDecidingModal] = useState(false); // For attacker waiting on defender
   const [interceptedBadge, setInterceptedBadge] = useState(null); // { droneId, timestamp }
 
@@ -683,6 +684,42 @@ const App = () => {
     setMultiSelectState(null);
   };
 
+  /**
+   * CANCEL ALL ACTIONS
+   * Master cancellation function that clears ALL active action states.
+   * Called when starting a new action to ensure only one action is in progress at a time.
+   * Provides consistent UX where initiating any action cancels all other pending actions.
+   */
+  const cancelAllActions = () => {
+    // Cancel attack selection
+    if (selectedDrone) setSelectedDrone(null);
+
+    // Cancel ability modes
+    if (abilityMode) {
+      setAbilityMode(null);
+    }
+    if (shipAbilityMode) {
+      setShipAbilityMode(null);
+    }
+
+    // Cancel card selection
+    if (selectedCard || multiSelectState) {
+      setSelectedCard(null);
+      setMultiSelectState(null);
+    }
+
+    // Cancel shield reallocation (async but non-blocking)
+    if (reallocationPhase) {
+      handleCancelReallocation();
+    }
+
+    // Cancel confirmation modals
+    if (abilityConfirmation) setAbilityConfirmation(null);
+    if (shipAbilityConfirmation) setShipAbilityConfirmation(null);
+    if (cardConfirmation) setCardConfirmation(null);
+    if (deploymentConfirmation) setDeploymentConfirmation(null);
+  };
+
   // --- 7.2 COMBAT RESOLUTION ---
 
   /**
@@ -1082,6 +1119,33 @@ const App = () => {
         setPotentialInterceptors([]);
     }
 }, [selectedDrone, turnPhase, localPlayerState, opponentPlayerState, gameEngine, localPlacedSections, opponentPlacedSections]);
+
+  // --- 8.5 GUARDIAN HIGHLIGHTING ---
+  // Calculate potential guardian blockers when drone is selected
+  // Highlights opponent drones with GUARDIAN keyword in the same lane
+  useEffect(() => {
+    if (turnPhase === 'action' && selectedDrone && !selectedDrone.isExhausted) {
+      // Find which lane the selected drone is in
+      const [attackerLane] = Object.entries(localPlayerState.dronesOnBoard)
+        .find(([_, drones]) => drones.some(d => d.id === selectedDrone.id)) || [];
+
+      if (attackerLane) {
+        // Find all opponent drones in that lane with GUARDIAN keyword
+        const opponentDronesInLane = opponentPlayerState.dronesOnBoard[attackerLane] || [];
+        const guardians = opponentDronesInLane
+          .filter(drone => {
+            const effectiveStats = getEffectiveStats(drone, attackerLane);
+            return effectiveStats.keywords.has('GUARDIAN');
+          })
+          .map(drone => drone.id);
+        setPotentialGuardians(guardians);
+      } else {
+        setPotentialGuardians([]);
+      }
+    } else {
+      setPotentialGuardians([]);
+    }
+  }, [selectedDrone, turnPhase, localPlayerState, opponentPlayerState, getEffectiveStats]);
 
   // Monitor unified interceptionPending state for both AI and human defenders
   useEffect(() => {
@@ -1803,11 +1867,20 @@ const App = () => {
    * Handles deployment through proper action processing pipeline.
    * @param {string} lane - The lane to deploy the drone to
    */
-  const executeDeployment = async (lane) => {
+  const executeDeployment = async (lane, droneToDeployed = selectedDrone) => {
+    const drone = droneToDeployed; // Use parameter, fallback to state
     try {
+      debugLog('DEPLOYMENT', '🎯 App.jsx: Deploying drone:', {
+        droneName: drone?.name,
+        droneObject: drone,
+        lane,
+        playerId: getLocalPlayerId(),
+        turn
+      });
+
       // Use ActionProcessor for deployment
       const result = await processActionWithGuestRouting('deployment', {
-        droneData: selectedDrone,
+        droneData: drone,
         laneId: lane,
         playerId: getLocalPlayerId(),
         turn: turn
@@ -1833,6 +1906,8 @@ const App = () => {
   const handleDeployDrone = (lane) => {
     if (!selectedDrone || currentPlayer !== getLocalPlayerId() || passInfo[getLocalPlayerId() + 'Passed']) return;
 
+    cancelAllActions(); // Cancel all other actions before deploying drone
+
     // For turn 1, we need cost information for confirmation modal
     if (turn === 1) {
       // TODO: UI VALIDATION - validateDeployment used for UI validation before deployment - appropriate for UI layer
@@ -1843,7 +1918,7 @@ const App = () => {
       }
       const { budgetCost, energyCost } = validationResult;
       if (energyCost > 0) {
-        setDeploymentConfirmation({ lane, budgetCost, energyCost });
+        setDeploymentConfirmation({ lane, budgetCost, energyCost, drone: selectedDrone });
         return;
       }
     }
@@ -1860,6 +1935,8 @@ const App = () => {
    */
   const handlePlayerPass = async () => {
     if (passInfo[`${getLocalPlayerId()}Passed`]) return;
+
+    cancelAllActions(); // Cancel all other actions before passing
 
     await processActionWithGuestRouting('playerPass', {
       playerId: getLocalPlayerId(),
@@ -1912,9 +1989,9 @@ const App = () => {
     if (abilityMode && abilityMode.drone.id === drone.id) {
        cancelAbilityMode();
     } else {
+       cancelAllActions(); // Cancel all other actions before starting ability targeting
        setAbilityMode({ drone, ability });
        setSelectedDrone(drone);
-       cancelCardSelection();
     }
   };
   
@@ -1944,6 +2021,7 @@ const App = () => {
         // Special handling for shield reallocation
         if (ability.effect.type === 'REALLOCATE_SHIELDS') {
             // Start reallocation mode without energy deduction
+            cancelAllActions(); // Cancel all other actions before starting reallocation
             setReallocationPhase('removing');
             setShieldsToRemove(ability.effect.value.maxShields);
             setShieldsToAdd(0);
@@ -1951,15 +2029,13 @@ const App = () => {
             setReallocationAbility({ ability, sectionName: section.name });
         } else {
             // Other non-targeted abilities resolve immediately
+            cancelAllActions(); // Cancel all other actions before starting ship ability confirmation
             setShipAbilityConfirmation({ ability, sectionName: section.name, target: null });
         }
     } else {
             // Otherwise, enter targeting mode for the new ability.
+            cancelAllActions(); // Cancel all other actions before starting ship ability targeting
             setShipAbilityMode({ sectionName: section.name, ability });
-            // Clear other selections to avoid conflicts.
-            setSelectedDrone(null);
-            cancelAbilityMode();
-            cancelCardSelection();
         }
     }
 };
@@ -2009,24 +2085,12 @@ const App = () => {
           debugLog('COMBAT', "Calculated Target Lane:", targetLane);
 
           if (attackerLane && targetLane && attackerLane === targetLane) {
-              debugLog('COMBAT', "SUCCESS: Lanes match. Checking for Guardian...");
-              const opponentDronesInLane = opponentPlayerState.dronesOnBoard[targetLane];
-              const hasGuardian = opponentDronesInLane.some(drone => {
-                  const effectiveStats = getEffectiveStats(drone, targetLane);
-                  return effectiveStats.keywords.has('GUARDIAN');
-              });
+              debugLog('COMBAT', "SUCCESS: Lanes match. Processing attack...");
+              const attackDetails = { attacker: selectedDrone, target: token, targetType: 'drone', lane: attackerLane, attackingPlayer: getLocalPlayerId() };
 
-              if (hasGuardian) {
-                  debugLog('COMBAT', "FAILURE: Target is protected by a Guardian drone.");
-                  setModalContent({ title: "Invalid Target", text: "This lane is protected by a Guardian drone. You must destroy it before targeting other drones.", isBlocking: true });
-              } else {
-                  debugLog('COMBAT', "SUCCESS: No Guardian. Processing attack...");
-                  const attackDetails = { attacker: selectedDrone, target: token, targetType: 'drone', lane: attackerLane, attackingPlayer: getLocalPlayerId() };
-
-                  // ActionProcessor will handle interception check
-                  resolveAttack(attackDetails);
-                  setSelectedDrone(null);
-              }
+              // ActionProcessor will handle interception check
+              resolveAttack(attackDetails);
+              setSelectedDrone(null);
           } else {
               debugLog('COMBAT', "FAILURE: Lanes do not match or could not be found.");
               setModalContent({ title: "Invalid Target", text: "You can only attack targets in the same lane.", isBlocking: true });
@@ -2070,9 +2134,8 @@ const App = () => {
               setSelectedDrone(null);
           } else {
               debugLog('COMBAT', "Action: Selecting drone", token.name);
+              cancelAllActions(); // Cancel all other actions before selecting drone
               setSelectedDrone(token);
-              cancelAbilityMode();
-              cancelCardSelection();
           }
           return;
       }
@@ -2128,7 +2191,7 @@ const App = () => {
               const opponentDronesInLane = opponentPlayerState.dronesOnBoard[attackerLane];
               const hasGuardian = opponentDronesInLane && opponentDronesInLane.some(drone => {
                   const effectiveStats = getEffectiveStats(drone, attackerLane);
-                  return effectiveStats.keywords.has('GUARDIAN');
+                  return effectiveStats.keywords.has('GUARDIAN') && !drone.isExhausted;
               });
 
               if (hasGuardian) {
@@ -2299,6 +2362,7 @@ const App = () => {
       if (multiSelectState && multiSelectState.card.instanceId === card.instanceId) {
         cancelCardSelection();
       } else {
+        cancelAllActions(); // Cancel all other actions before starting movement card
         // Immediately process card play (no target needed for movement cards)
         await resolveCardPlay(card, null, getLocalPlayerId());
       }
@@ -2313,35 +2377,28 @@ const App = () => {
         // TODO: TECHNICAL DEBT - getValidTargets gets valid targets for special cards - required for card targeting UI
         const validTargets = gameEngine.getValidTargets(getLocalPlayerId(), null, card, localPlayerState, opponentPlayerState);
         debugLog('CARD_PLAY', `✅ System Sabotage targets found: ${validTargets.length}`, { targets: validTargets });
+        cancelAllActions(); // Cancel all other actions before starting System Sabotage
         setDestroyUpgradeModal({ card, targets: validTargets, opponentState: opponentPlayerState });
-        setSelectedCard(null);
-        setAbilityMode(null);
-        setSelectedDrone(null);
     } else if (card.type === 'Upgrade') {
         debugLog('CARD_PLAY', `✅ Upgrade card - getting targets: ${card.name}`);
         // TODO: TECHNICAL DEBT - getValidTargets gets valid targets for upgrade cards - required for upgrade targeting UI
         const validTargets = gameEngine.getValidTargets(getLocalPlayerId(), null, card, localPlayerState, opponentPlayerState);
         debugLog('CARD_PLAY', `✅ Upgrade targets found: ${validTargets.length}`, { targets: validTargets });
         if (validTargets.length > 0) {
+            cancelAllActions(); // Cancel all other actions before starting upgrade selection
             setUpgradeSelectionModal({ card, targets: validTargets });
-            setSelectedCard(null);
-            setAbilityMode(null);
-            setSelectedDrone(null);
         } else {
             setModalContent({ title: "No Valid Targets", text: `There are no drone types that can accept the '${card.name}' upgrade right now.`, isBlocking: true });
         }
     } else {
         if (!card.targeting) {
             debugLog('CARD_PLAY', `✅ Non-targeted card - showing confirmation: ${card.name}`);
+            cancelAllActions(); // Cancel all other actions before starting card confirmation
             setCardConfirmation({ card, target: null });
-            setSelectedCard(null);
-            setAbilityMode(null);
-            setSelectedDrone(null);
         } else {
             debugLog('CARD_PLAY', `✅ Targeted card - waiting for target selection: ${card.name}`, { targeting: card.targeting });
+            cancelAllActions(); // Cancel all other actions before starting targeted card
             setSelectedCard(card);
-            setSelectedDrone(null);
-            setAbilityMode(null);
         }
     }
   };
@@ -2357,19 +2414,34 @@ const App = () => {
     // Capture the current state before any updates
     const currentMandatoryAction = mandatoryAction;
 
-    // Use ActionProcessor for proper state management (ActionProcessor handles logging)
-    await processActionWithGuestRouting('optionalDiscard', {
+    // Determine if this is the last discard
+    const newCount = currentMandatoryAction.count - 1;
+    const isLastDiscard = newCount <= 0;
+
+    // Prepare payload for discard action
+    const discardPayload = {
         playerId: getLocalPlayerId(),
         cardsToDiscard: [card],
         isMandatory: true
-    });
+    };
+
+    // If this is the last discard from an ability, include metadata for animation
+    if (isLastDiscard && currentMandatoryAction.fromAbility && currentMandatoryAction.abilityName) {
+        discardPayload.abilityMetadata = {
+            abilityName: currentMandatoryAction.abilityName,
+            sectionName: currentMandatoryAction.sectionName,
+            actingPlayerId: currentMandatoryAction.actingPlayerId
+        };
+    }
+
+    // Process discard action (ActionProcessor handles logging and animations)
+    await processActionWithGuestRouting('optionalDiscard', discardPayload);
 
     // Clear the confirmation modal immediately
     setConfirmationModal(null);
 
     // Decide the next action based on the state we captured
-    const newCount = currentMandatoryAction.count - 1;
-    if (newCount <= 0) {
+    if (isLastDiscard) {
         setMandatoryAction(null);
         if (!currentMandatoryAction.fromAbility) {
             // Mandatory discard completed - commit the phase and check if opponent is done
@@ -2384,7 +2456,8 @@ const App = () => {
                 setWaitingForPlayerPhase('mandatoryDiscard');
             }
         } else {
-            // Ability-triggered discard completed - end turn
+            // Ability-triggered discard completed - animation already processed above
+            // End turn
             const currentPlayerId = getLocalPlayerId();
             await processActionWithGuestRouting('turnTransition', {
                 newPlayer: currentPlayerId === 'player1' ? 'player2' : 'player1'
@@ -2736,6 +2809,7 @@ const App = () => {
         selectedDrone={selectedDrone}
         recentlyHitDrones={recentlyHitDrones}
         potentialInterceptors={potentialInterceptors}
+        potentialGuardians={potentialGuardians}
         droneRefs={droneRefs}
         sectionRefs={sectionRefs}
         mandatoryAction={mandatoryAction}
@@ -2820,9 +2894,9 @@ const App = () => {
         onCancel={() => setDeploymentConfirmation(null)}
         onConfirm={async () => {
           if (!deploymentConfirmation) return;
-          const { lane } = deploymentConfirmation;
+          const { lane, drone } = deploymentConfirmation;
           setDeploymentConfirmation(null);
-          await executeDeployment(lane);
+          await executeDeployment(lane, drone);
         }}
       />
       <MoveConfirmationModal

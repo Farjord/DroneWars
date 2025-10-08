@@ -20,7 +20,8 @@
       "Bash(for:*)",
       "Bash(do echo -n \"$file: \")",
       "Bash(grep:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

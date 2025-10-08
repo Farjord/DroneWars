@@ -27,6 +27,7 @@ import { useGameData } from '../../hooks/useGameData.js';
  * @param {Object} multiSelectState - Multi-select state
  * @param {Array} recentlyHitDrones - Recently hit drone IDs
  * @param {Array} potentialInterceptors - Potential interceptor drone IDs
+ * @param {Array} potentialGuardians - Potential guardian drone IDs
  * @param {Object} droneRefs - Drone DOM references
  * @param {Object} mandatoryAction - Mandatory action state
  * @param {Array} validAbilityTargets - Valid ability targets
@@ -50,6 +51,7 @@ const renderDronesOnBoard = (
   multiSelectState,
   recentlyHitDrones,
   potentialInterceptors,
+  potentialGuardians,
   droneRefs,
   mandatoryAction,
   validAbilityTargets,
@@ -72,6 +74,7 @@ const renderDronesOnBoard = (
               isSelectedForMove={multiSelectState?.phase === 'select_drones' && multiSelectState.selectedDrones.some(d => d.id === drone.id)}
               isHit={recentlyHitDrones.includes(drone.id)}
               isPotentialInterceptor={potentialInterceptors.includes(drone.id)}
+              isPotentialGuardian={potentialGuardians.includes(drone.id)}
               droneRefs={droneRefs}
               mandatoryAction={mandatoryAction}
               localPlayerState={localPlayerState}
@@ -113,6 +116,7 @@ const renderDronesOnBoard = (
  * @param {Object} selectedDrone - Currently selected drone
  * @param {Array} recentlyHitDrones - Recently hit drone IDs
  * @param {Array} potentialInterceptors - Potential interceptor drone IDs
+ * @param {Array} potentialGuardians - Potential guardian drone IDs
  * @param {Object} droneRefs - Drone DOM references
  * @param {Object} mandatoryAction - Mandatory action state
  * @param {Function} setHoveredTarget - Function to set hovered target
@@ -141,6 +145,7 @@ const DroneLanesDisplay = ({
   selectedDrone,
   recentlyHitDrones,
   potentialInterceptors,
+  potentialGuardians,
   droneRefs,
   mandatoryAction,
   setHoveredTarget,
@@ -184,6 +189,7 @@ const DroneLanesDisplay = ({
               multiSelectState,
               recentlyHitDrones,
               potentialInterceptors,
+              potentialGuardians,
               droneRefs,
               mandatoryAction,
               validAbilityTargets,

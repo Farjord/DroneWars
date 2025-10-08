@@ -461,11 +461,23 @@ const checkWinCondition = (opponentPlayerState) => {
 // ========================================
 
 const validateDeployment = (player, drone, turn, totalPlayerDrones, playerEffectiveStats) => {
+    debugLog('DEPLOYMENT', '🔍 validateDeployment: Entry params:', {
+      droneName: drone?.name,
+      droneType: typeof drone,
+      droneKeys: drone ? Object.keys(drone) : 'null',
+      fullDroneCollectionLength: fullDroneCollection.length
+    });
+
     if (totalPlayerDrones >= playerEffectiveStats.totals.cpuLimit) {
       return { isValid: false, reason: "CPU Limit Reached", message: "You cannot deploy more drones than your CPU Control Value." };
     }
 
+    debugLog('DEPLOYMENT', '🔍 validateDeployment: About to find baseDroneInfo for:', drone?.name);
     const baseDroneInfo = fullDroneCollection.find(d => d.name === drone.name);
+    debugLog('DEPLOYMENT', '🔍 validateDeployment: Found baseDroneInfo:', {
+      found: !!baseDroneInfo,
+      droneInfo: baseDroneInfo
+    });
     const upgrades = player.appliedUpgrades[drone.name] || [];
     let effectiveLimit = baseDroneInfo.limit;
     upgrades.forEach(upgrade => {
@@ -869,11 +881,21 @@ const resolveShipAbility = (ability, sectionName, target, playerStates, placedSe
 
         // Handle special return cases
         if (effectResult.needsDiscardSelection) {
+            // Don't show "Opponent Used..." popup until after mandatory discard is complete
+            // Store ability info for later animation emission
             return {
                 newPlayerStates,
                 shouldEndTurn: false,
-                mandatoryAction: { type: 'discard', player: playerId, count: effectResult.needsDiscardSelection, fromAbility: true },
-                animationEvents
+                mandatoryAction: {
+                    type: 'discard',
+                    player: playerId,
+                    count: effectResult.needsDiscardSelection,
+                    fromAbility: true,
+                    abilityName: ability.name,  // Store for animation after discard
+                    sectionName: sectionName,   // Store for animation after discard
+                    actingPlayerId: playerId    // Store for animation after discard
+                },
+                animationEvents: []  // Suppress SHIP_ABILITY_REVEAL until discard completes
             };
         }
 
@@ -1796,15 +1818,18 @@ const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSecti
     // Start with card visual event if card has one
     const allAnimationEvents = [];
 
-    // Add card reveal event FIRST (shows "You Played" / "Opponent Played" overlay)
-    allAnimationEvents.push({
-        type: 'CARD_REVEAL',
-        cardId: card.id,
-        cardName: card.name,
-        cardData: card,  // Full card object for rendering
-        actingPlayerId: actingPlayerId,
-        timestamp: Date.now()
-    });
+    // Only add CARD_REVEAL animation if the card doesn't need additional selection
+    // For cards requiring selection (MULTI_MOVE, SINGLE_MOVE, SEARCH_AND_DRAW), animation will be added after selection completes
+    if (!result.needsCardSelection) {
+        allAnimationEvents.push({
+            type: 'CARD_REVEAL',
+            cardId: card.id,
+            cardName: card.name,
+            cardData: card,  // Full card object for rendering
+            actingPlayerId: actingPlayerId,
+            timestamp: Date.now()
+        });
+    }
 
     // Add card visual event second (plays before damage feedback)
     if (card.visualEffect && target) {

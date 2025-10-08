@@ -88,7 +88,7 @@ const DroneCard = ({
     <div
       onClick={isInteractive ? () => onClick(drone) : undefined}
       className={`
-        w-[225px] h-[275px] rounded-lg p-[2px] relative group
+        rounded-lg p-[2px] relative group
         transition-all duration-200
         ${isInteractive ? 'cursor-pointer' : isViewOnly ? 'cursor-default' : 'cursor-not-allowed'}
         ${isSelected ? 'bg-cyan-400' : 'bg-cyan-800/80'}
@@ -96,6 +96,8 @@ const DroneCard = ({
         ${isUpgradeTarget ? 'ring-4 ring-purple-500 animate-pulse' : ''}
       `}
       style={{
+        width: 'clamp(184px, 9.6vw, 250px)',
+        height: 'clamp(225px, 11.7vw, 305px)',
         clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)',
         ...scaleStyle
       }}
@@ -112,12 +114,12 @@ const DroneCard = ({
         <div className="relative z-10 flex flex-col h-full">
           {/* Header */}
           <div className="text-center py-1 px-3 bg-black/40 flex-shrink-0 h-8 flex items-center justify-center">
-            <ScalingText text={name} className="font-orbitron text-sm uppercase tracking-widest whitespace-nowrap text-white" />
+            <ScalingText text={name} className="font-orbitron text-xs uppercase tracking-widest whitespace-nowrap text-white" />
           </div>
 
           {/* Stats Section */}
           <div className="flex justify-between items-center px-2 flex-shrink-0 mt-2 h-12">
-            <div className="w-10 h-12">
+            <div className="w-8 h-10">
               <CardStatHexagon
                 value={effectiveCardStats.attack}
                 isFlat={false}
@@ -133,8 +135,8 @@ const DroneCard = ({
                   <svg
                     key={`shield-${i}`}
                     xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
+                    width="13"
+                    height="13"
                     viewBox="0 0 24 24"
                     fill="currentColor"
                     className="text-cyan-300"
@@ -145,12 +147,12 @@ const DroneCard = ({
               </div>
               <div className="flex w-full justify-center gap-1">
                 {Array.from({ length: hull }).map((_, i) => (
-                  <div key={`hull-${i}`} className="h-3 w-3 rounded-sm bg-green-500 border border-black/50"></div>
+                  <div key={`hull-${i}`} className="h-2.5 w-2.5 rounded-sm bg-green-500 border border-black/50"></div>
                 ))}
               </div>
             </div>
 
-            <div className="w-12 h-12">
+            <div className="w-10 h-10">
               <CardStatHexagon
                 value={effectiveCardStats.speed}
                 isFlat={true}
@@ -166,13 +168,13 @@ const DroneCard = ({
             {abilities && abilities.length > 0 ? (
               abilities.map((ability, index) => (
                 <div key={index}>
-                  <h4 className="text-sm text-purple-400 tracking-wider font-bold">{ability.name}</h4>
-                  <p className="text-gray-400 text-sm leading-tight font-exo">{ability.description}</p>
+                  <h4 className="text-[10px] text-purple-400 tracking-wider font-bold">{ability.name}</h4>
+                  <p className="text-gray-400 text-[10px] leading-tight font-exo">{ability.description}</p>
                 </div>
               ))
             ) : (
               <div className="flex items-center justify-center h-full">
-                <p className="text-sm text-cyan-700 italic opacity-70">[ No Abilities ]</p>
+                <p className="text-[10px] text-cyan-700 italic opacity-70">[ No Abilities ]</p>
               </div>
             )}
           </div>
@@ -180,10 +182,10 @@ const DroneCard = ({
           {/* Footer */}
           <div className="grid grid-cols-3 items-center p-1 border-t border-cyan-800/70 flex-shrink-0 h-12">
             <div className="flex flex-col items-center">
-              <span className="text-[10px] text-gray-400">Cost</span>
+              <span className="text-[8px] text-gray-400">Cost</span>
               <div className="flex items-center">
-                <Bolt size={14} className="text-yellow-300"/>
-                <span className={`font-bold text-base ml-1 ${costTextColor}`}>{deploymentCost}</span>
+                <Bolt size={11} className="text-yellow-300"/>
+                <span className={`font-bold text-sm ml-1 ${costTextColor}`}>{deploymentCost}</span>
               </div>
             </div>
 
@@ -195,9 +197,9 @@ const DroneCard = ({
                 }}
                 className="flex flex-col items-center cursor-pointer group"
               >
-                <span className="text-[10px] text-gray-400 group-hover:text-white transition-colors">Upgrades</span>
+                <span className="text-[8px] text-gray-400 group-hover:text-white transition-colors">Upgrades</span>
                 <div className="flex items-center">
-                  <span className="font-bold text-base text-purple-400">
+                  <span className="font-bold text-sm text-purple-400">
                     {appliedUpgrades.length}/{drone.upgradeSlots}
                   </span>
                 </div>
@@ -205,9 +207,9 @@ const DroneCard = ({
             )}
 
             <div className="flex flex-col items-center">
-              <span className="text-[10px] text-gray-400">Deployed</span>
+              <span className="text-[8px] text-gray-400">Deployed</span>
               <div className="flex items-center">
-                <span className={`font-bold text-base ${atLimit ? 'text-pink-500' : limitTextColor}`}>
+                <span className={`font-bold text-sm ${atLimit ? 'text-pink-500' : limitTextColor}`}>
                   {deployedCount}/{effectiveLimit}
                 </span>
               </div>

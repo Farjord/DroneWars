@@ -177,6 +177,30 @@
   animation: pulse-glow 2s infinite ease-in-out;
 }
 
+/* Guardian glow animation for drones with GUARDIAN keyword */
+@keyframes guardian-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px 2px rgba(0, 191, 255, 0.6),
+                0 0 16px 4px rgba(0, 150, 255, 0.4);
+  }
+  25% {
+    box-shadow: 0 0 10px 3px rgba(255, 255, 255, 0.8),
+                0 0 20px 5px rgba(0, 191, 255, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 12px 3px rgba(0, 191, 255, 1),
+                0 0 24px 6px rgba(0, 150, 255, 0.8);
+  }
+  75% {
+    box-shadow: 0 0 10px 3px rgba(255, 255, 255, 0.8),
+                0 0 20px 5px rgba(0, 191, 255, 0.6);
+  }
+}
+
+.guardian-glow {
+  animation: guardian-pulse 2s infinite ease-in-out;
+}
+
 /* Shake animation for hit effects */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
