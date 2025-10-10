@@ -116,7 +116,7 @@ const MorphingBackground = () => {
   }, [bands.length]);
 
   return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none">
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" style={{ zIndex: -1 }}>
       {bands.map(band => (
         <MorphingBand key={band.id} id={band.id} properties={band.properties} />
       ))}

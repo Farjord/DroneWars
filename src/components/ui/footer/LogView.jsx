@@ -5,6 +5,7 @@
 
 import React from 'react';
 import styles from '../GameFooter.module.css';
+import DEV_CONFIG from '../../../config/devConfig.js';
 
 function LogView({
   gameLog,
@@ -31,8 +32,12 @@ function LogView({
               <th className={styles.logTableHeaderCell}>Source</th>
               <th className={styles.logTableHeaderCell}>Target</th>
               <th className={styles.logTableHeaderCell}>Outcome</th>
-              <th className={styles.logTableDebugHeader}>Debug Source</th>
-              <th className={styles.logTableHeaderCell}></th>
+              {DEV_CONFIG.features.logDebugSource && (
+                <th className={styles.logTableDebugHeader}>Debug Source</th>
+              )}
+              {DEV_CONFIG.features.aiDecisionDrillDown && (
+                <th className={styles.logTableHeaderCell}></th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -47,18 +52,22 @@ function LogView({
                 <td className={styles.logTableCell}>{entry.source}</td>
                 <td className={styles.logTableCell}>{entry.target}</td>
                 <td className={styles.logTableCellGrayText}>{entry.outcome}</td>
-                <td className={styles.logTableCellDebug}>{entry.debugSource}</td>
-                <td className={styles.logTableCellCenter}>
-                  {entry.aiDecisionContext && (
-                    <button
-                      onClick={() => setAiDecisionLogToShow(entry.aiDecisionContext)}
-                      className={styles.aiDecisionButton}
-                      title="Show AI Decision Logic"
-                    >
-                      ℹ️
-                    </button>
-                  )}
-                </td>
+                {DEV_CONFIG.features.logDebugSource && (
+                  <td className={styles.logTableCellDebug}>{entry.debugSource}</td>
+                )}
+                {DEV_CONFIG.features.aiDecisionDrillDown && (
+                  <td className={styles.logTableCellCenter}>
+                    {entry.aiDecisionContext && (
+                      <button
+                        onClick={() => setAiDecisionLogToShow(entry.aiDecisionContext)}
+                        className={styles.aiDecisionButton}
+                        title="Show AI Decision Logic"
+                      >
+                        ℹ️
+                      </button>
+                    )}
+                  </td>
+                )}
               </tr>
             )).reverse()}
           </tbody>

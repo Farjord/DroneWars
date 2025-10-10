@@ -60,7 +60,10 @@ const renderDronesOnBoard = (
   interceptedBadge
 ) => {
   return (
-    <div className="flex flex-wrap gap-8 pt-2 min-h-[100px] justify-center items-center">
+    <div
+      className="flex flex-wrap gap-8 justify-center items-center"
+      style={{ minHeight: 'clamp(130px, 6.77vw, 175px)', paddingTop: '2px' }}
+    >
      {drones.map((drone) => {
           return (
               <DroneToken
@@ -154,7 +157,10 @@ const DroneLanesDisplay = ({
   // Use GameDataService for computed data
   const { getEffectiveStats } = useGameData();
   return (
-    <div className="flex w-full justify-between gap-8 min-h-[160px]">
+    <div
+      className="flex w-full justify-between gap-8"
+      style={{ minHeight: 'clamp(140px, 7.292vw, 190px)' }}
+    >
       {['lane1', 'lane2', 'lane3'].map((lane) => {
         const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
         const isTargetable = (abilityMode && validAbilityTargets.some(t => t.id === lane && t.owner === owner)) ||

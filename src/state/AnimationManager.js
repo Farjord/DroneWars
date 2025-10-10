@@ -91,6 +91,11 @@ class AnimationManager {
         duration: 2000,
         type: 'SHAKE_EFFECT',
         config: { intensity: 10 }
+      },
+      HEAL_EFFECT: {
+        duration: 1400,
+        type: 'HEAL_EFFECT',
+        config: {}
       }
     };
   }
@@ -126,7 +131,7 @@ class AnimationManager {
 
     try {
       // Group animations by type for proper sequencing
-      const damageEffects = ['SHIELD_DAMAGE', 'HULL_DAMAGE', 'DRONE_DESTROYED', 'SECTION_DESTROYED', 'SECTION_DAMAGED'];
+      const damageEffects = ['SHIELD_DAMAGE', 'HULL_DAMAGE', 'DRONE_DESTROYED', 'SECTION_DESTROYED', 'SECTION_DAMAGED', 'HEAL_EFFECT'];
 
       let i = 0;
       while (i < effects.length) {

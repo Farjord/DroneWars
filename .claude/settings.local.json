@@ -21,7 +21,8 @@
       "Bash(do echo -n \"$file: \")",
       "Bash(grep:*)",
       "Bash(done)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []

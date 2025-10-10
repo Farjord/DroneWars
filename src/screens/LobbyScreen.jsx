@@ -8,11 +8,14 @@ import { useState, useEffect } from 'react';
 import { useGameState } from '../hooks/useGameState.js';
 import aiPersonalities from '../data/aiData.js';
 import fullDroneCollection from '../data/droneData.js';
+import fullCardCollection from '../data/cardData.js';
+import { shipComponentCollection } from '../data/shipData.js';
 import aiPhaseProcessor from '../state/AIPhaseProcessor.js';
 import gameStateManager from '../state/GameStateManager.js';
 import MultiplayerLobby from '../MultiplayerLobby.jsx';
 import p2pManager from '../network/P2PManager.js';
 import { debugLog } from '../utils/debugLogger.js';
+import ViewDeckModal from '../components/modals/ViewDeckModal.jsx';
 
 /**
  * LobbyScreen - AI selection and multiplayer setup
@@ -21,6 +24,8 @@ import { debugLog } from '../utils/debugLogger.js';
 function LobbyScreen() {
   const { gameState, gameStateManager } = useGameState();
   const [selectedAI, setSelectedAI] = useState(null);
+  const [deckModalOpen, setDeckModalOpen] = useState(false);
+  const [deckModalAI, setDeckModalAI] = useState(null);
 
   const isSinglePlayer = gameState.gameMode === 'local';
   const isMultiplayer = gameState.gameMode !== 'local'; // Matches 'multiplayer', 'host', and 'guest' modes
@@ -118,97 +123,225 @@ function LobbyScreen() {
     );
   };
 
+  const handleViewDeck = (ai) => {
+    debugLog('LOBBY', '📋 Opening deck view for AI:', ai.name);
+    setDeckModalAI(ai);
+    setDeckModalOpen(true);
+  };
+
+  const prepareAIDeckData = (ai) => {
+    if (!ai) return { drones: [], cards: [], shipComponents: {} };
+
+    // Convert drone pool names to full drone objects
+    const drones = fullDroneCollection.filter(d => ai.dronePool.includes(d.name));
+
+    // Convert decklist to card objects with quantities
+    const cards = ai.decklist
+      .filter(entry => entry.quantity > 0)
+      .map(entry => ({
+        card: fullCardCollection.find(c => c.id === entry.id),
+        quantity: entry.quantity
+      }))
+      .filter(item => item.card); // Filter out any cards that weren't found
+
+    // Convert ship placement to shipComponents format
+    // placement is [left, middle, right]
+    // Need to map to component IDs and lanes
+    const shipComponents = {};
+    const laneMap = ['l', 'm', 'r'];
+
+    ai.shipDeployment.placement.forEach((sectionKey, index) => {
+      const component = shipComponentCollection.find(c => c.key === sectionKey);
+      if (component) {
+        shipComponents[component.id] = laneMap[index];
+      }
+    });
+
+    return { drones, cards, shipComponents };
+  };
+
   return (
-    <div style={{
+    <div className="body-font" style={{
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'center',
+      justifyContent: 'flex-start',
       alignItems: 'center',
       minHeight: '100vh',
       color: '#ffffff',
-      fontFamily: 'Arial, sans-serif',
-      padding: '20px',
+      padding: '60px 20px 20px 20px',
       boxSizing: 'border-box',
       position: 'relative'
     }}>
       {/* Content Wrapper - sits on top of background */}
-      <div style={{ 
-        position: 'relative', 
-        zIndex: 10, 
-        display: 'flex', 
-        flexDirection: 'column', 
-        alignItems: 'center', 
-        width: '100%' 
+      <div style={{
+        position: 'relative',
+        zIndex: 10,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        width: '100%'
       }}>
-        {/* Header */}
-        <h2 style={{
-          fontSize: '2.5rem',
-          marginBottom: '2rem',
-          textAlign: 'center',
-          color: '#ffffff'
-        }}>
-          {isSinglePlayer ? 'SELECT AI OPPONENT' : 'MULTIPLAYER SETUP'}
-        </h2>
+        {/* Header - Defeat-styled title for single player */}
+        {isSinglePlayer ? (
+          <div style={{
+            position: 'relative',
+            display: 'inline-block',
+            marginBottom: '2rem'
+          }}>
+            {/* RGB Split - Red Channel (cancel button red) */}
+            <h2
+              aria-hidden="true"
+              className="heading-font"
+              style={{
+                position: 'absolute',
+                fontSize: '3.5rem',
+                margin: 0,
+                textAlign: 'center',
+                color: '#ef4444',
+                mixBlendMode: 'screen',
+                pointerEvents: 'none',
+                left: 0,
+                top: 0,
+                zIndex: 0,
+                fontWeight: 'bold'
+              }}
+            >
+              SELECT OPPONENT
+            </h2>
+
+            {/* RGB Split - Orange Channel */}
+            <h2
+              aria-hidden="true"
+              className="heading-font"
+              style={{
+                position: 'absolute',
+                fontSize: '3.5rem',
+                margin: 0,
+                textAlign: 'center',
+                color: '#ff9944',
+                mixBlendMode: 'screen',
+                pointerEvents: 'none',
+                left: 0,
+                top: 0,
+                zIndex: 0,
+                fontWeight: 'bold'
+              }}
+            >
+              SELECT OPPONENT
+            </h2>
+
+            {/* Main Title */}
+            <h2
+              className="defeat-glow heading-font"
+              style={{
+                fontSize: '3.5rem',
+                margin: 0,
+                textAlign: 'center',
+                background: 'linear-gradient(90deg, #dc2626, #ef4444, #fca5a5, #ffffff, #fca5a5, #ef4444, #dc2626)',
+                backgroundSize: '300% auto',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text',
+                filter: 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.3))',
+                position: 'relative',
+                zIndex: 1,
+                fontWeight: 'bold'
+              }}
+            >
+              SELECT OPPONENT
+            </h2>
+          </div>
+        ) : (
+          <h2 className="body-font" style={{
+            fontSize: '2.5rem',
+            marginBottom: '2rem',
+            textAlign: 'center',
+            color: '#ffffff'
+          }}>
+            MULTIPLAYER SETUP
+          </h2>
+        )}
 
         {/* Single Player - AI Selection */}
         {isSinglePlayer && (
           <div style={{
-            maxWidth: '800px',
+            maxWidth: '600px',
             width: '100%',
             marginBottom: '2rem'
           }}>
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-              gap: '1rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1.5rem',
               marginBottom: '2rem'
             }}>
               {aiPersonalities.map((ai) => (
                 <div
                   key={ai.name}
+                  className={`ai-opponent-card ${selectedAI?.name === ai.name ? 'selected' : ''}`}
                   onClick={() => handleSelectAI(ai)}
-                  style={{
-                    padding: '20px',
-                    backgroundColor: selectedAI?.name === ai.name ? '#0088ff' : '#2a2a2a',
-                    border: `2px solid ${selectedAI?.name === ai.name ? '#00ff88' : '#444444'}`,
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                    textAlign: 'center'
-                  }}
-                  onMouseOver={(e) => {
-                    if (selectedAI?.name !== ai.name) {
-                      e.target.style.backgroundColor = '#333333';
-                      e.target.style.borderColor = '#666666';
-                    }
-                  }}
-                  onMouseOut={(e) => {
-                    if (selectedAI?.name !== ai.name) {
-                      e.target.style.backgroundColor = '#2a2a2a';
-                      e.target.style.borderColor = '#444444';
-                    }
-                  }}
                 >
-                  <h3 style={{
-                    margin: '0 0 10px 0',
-                    fontSize: '1.3rem',
-                    color: selectedAI?.name === ai.name ? '#ffffff' : '#00ff88'
-                  }}>
-                    {ai.name}
-                  </h3>
-                  <p style={{
-                    margin: '0 0 10px 0',
-                    fontSize: '0.9rem',
-                    color: '#cccccc',
-                    lineHeight: '1.4'
-                  }}>
-                    {ai.description}
-                  </p>
-                  <div style={{
-                    fontSize: '0.8rem',
-                    color: '#888888'
-                  }}>
-                    Difficulty: {ai.difficulty}
+                  {/* Background Image */}
+                  <div
+                    className="ai-opponent-card-bg"
+                    style={{ backgroundImage: `url(${ai.imagePath})` }}
+                  />
+
+                  {/* Gradient Overlay for text readability */}
+                  <div className="ai-opponent-card-overlay" />
+
+                  {/* Content */}
+                  <div className="ai-opponent-card-content">
+                    {/* Top: AI Name */}
+                    <div>
+                      <h3 className="body-font" style={{
+                        margin: '0 0 8px 0',
+                        fontSize: '1.8rem',
+                        fontWeight: 'bold',
+                        color: '#ffffff',
+                        textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+                        letterSpacing: '0.5px'
+                      }}>
+                        {ai.name}
+                      </h3>
+                      <p className="body-font" style={{
+                        margin: '0',
+                        fontSize: '1rem',
+                        color: '#dddddd',
+                        lineHeight: '1.4',
+                        textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+                      }}>
+                        {ai.description}
+                      </p>
+                    </div>
+
+                    {/* Bottom: Difficulty and View Deck button */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <div className="body-font" style={{
+                        fontSize: '0.9rem',
+                        fontWeight: 'bold',
+                        color: '#ffcc00',
+                        textShadow: '1px 1px 2px rgba(0,0,0,0.8)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '1px'
+                      }}>
+                        Difficulty: {ai.difficulty}
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewDeck(ai);
+                        }}
+                        className="btn-info"
+                      >
+                        View Deck
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -242,6 +375,19 @@ function LobbyScreen() {
         )}
       </div>
       {/* FIXED: Properly closed the wrapper div here */}
+
+      {/* View Deck Modal */}
+      {deckModalOpen && deckModalAI && (
+        <ViewDeckModal
+          isOpen={deckModalOpen}
+          onClose={() => {
+            setDeckModalOpen(false);
+            setDeckModalAI(null);
+          }}
+          title={`${deckModalAI.name} - Complete Loadout`}
+          {...prepareAIDeckData(deckModalAI)}
+        />
+      )}
     </div>
   );
 }

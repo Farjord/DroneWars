@@ -14,8 +14,11 @@ import LobbyScreen from './screens/LobbyScreen.jsx';
 import DroneSelectionScreen from './components/screens/DroneSelectionScreen.jsx';
 import DeckSelectionScreen from './components/screens/DeckSelectionScreen.jsx';
 import ShipPlacementScreen from './components/screens/ShipPlacementScreen.jsx';
+import ModalShowcaseScreen from './screens/ModalShowcaseScreen.jsx';
+import TestingSetupScreen from './screens/TestingSetupScreen.jsx';
 import App from './App.jsx';
 import MorphingBackground from './components/ui/AngularBandsBackground.jsx';
+import DEV_CONFIG from './config/devConfig.js';
 import { debugLog } from './utils/debugLogger.js';
 
 /**
@@ -69,6 +72,25 @@ function AppRouter() {
     }
   }, [gameState.gameMode]);
 
+  // Keyboard shortcut: Ctrl+M to toggle Modal Showcase (dev mode only)
+  useEffect(() => {
+    if (!DEV_CONFIG.features.modalShowcase) return;
+
+    const handleKeyPress = (e) => {
+      // Ctrl+M toggles modal showcase
+      if (e.ctrlKey && e.key === 'm') {
+        e.preventDefault();
+        const currentAppState = gameState.appState;
+        const newAppState = currentAppState === 'modalShowcase' ? 'menu' : 'modalShowcase';
+        gameStateManager.setState({ appState: newAppState });
+        debugLog('PHASE_TRANSITIONS', `🎨 Modal Showcase toggled: ${currentAppState} -> ${newAppState}`);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [gameState.appState]);
+
   if (isLoading) {
     return (
       <div style={{
@@ -102,6 +124,26 @@ function AppRouter() {
 
     case 'lobby':
       currentScreen = <LobbyScreen />;
+      break;
+
+    case 'modalShowcase':
+      // Dev-only modal showcase screen
+      if (DEV_CONFIG.features.modalShowcase) {
+        currentScreen = <ModalShowcaseScreen />;
+      } else {
+        // Fallback to menu if dev mode is disabled
+        currentScreen = <MenuScreen />;
+      }
+      break;
+
+    case 'testingSetup':
+      // Dev-only testing mode setup screen
+      if (DEV_CONFIG.features.testingMode) {
+        currentScreen = <TestingSetupScreen />;
+      } else {
+        // Fallback to menu if dev mode is disabled
+        currentScreen = <MenuScreen />;
+      }
       break;
 
     case 'inGame':

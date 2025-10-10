@@ -223,6 +223,9 @@ setAnimationManager(animationManager) {
         case 'movementCompletion':
           return await this.processMovementCompletion(payload);
 
+        case 'searchAndDrawCompletion':
+          return await this.processSearchAndDrawCompletion(payload);
+
         case 'shipAbility':
           return await this.processShipAbility(payload);
 
@@ -728,20 +731,19 @@ setAnimationManager(animationManager) {
       }
 
       // If not found in drones, check ship sections
+      // Ship sections are indexed by name ('bridge', 'powerCell', 'droneControlHub')
       if (!target) {
         for (const pid of ['player1', 'player2']) {
           const sections = playerStates[pid].shipSections;
-          for (const sectionName in sections) {
-            if (sections[sectionName].id === targetId) {
-              target = {
-                ...sections[sectionName],
-                name: sectionName,
-                owner: pid
-              };
-              break;
-            }
+          // Direct lookup by section name (targetId is the section name like 'bridge')
+          if (sections[targetId]) {
+            target = {
+              ...sections[targetId],
+              name: targetId,
+              owner: pid
+            };
+            break; // Found it, exit loop
           }
-          if (target) break;
         }
       }
 
@@ -807,12 +809,19 @@ setAnimationManager(animationManager) {
   /**
    * Process movement card completion (SINGLE_MOVE or MULTI_MOVE)
    * Called after user has selected drones and destination in UI
+   * Card costs are paid here (not during initial card play)
    */
   async processMovementCompletion(payload) {
     const { card, movementType, drones, fromLane, toLane, playerId } = payload;
 
     const currentState = this.gameStateManager.getState();
-    const playerStates = { player1: currentState.player1, player2: currentState.player2 };
+
+    // Pay card costs now (they weren't paid when the movement selection started)
+    const playerStates = gameEngine.payCardCosts(card, playerId, {
+      player1: currentState.player1,
+      player2: currentState.player2
+    });
+
     const placedSections = {
       player1: currentState.placedSections,
       player2: currentState.opponentPlacedSections
@@ -898,6 +907,89 @@ setAnimationManager(animationManager) {
     return {
       success: true,
       shouldEndTurn: result.shouldEndTurn
+    };
+  }
+
+  /**
+   * Process SEARCH_AND_DRAW card completion after player modal selection
+   * Handles Equipment Cache, Strategic Planning, and other search cards
+   * Card costs are paid here (not during initial card play)
+   * @param {Object} payload - { card, selectedCards, selectionData, playerId }
+   */
+  async processSearchAndDrawCompletion(payload) {
+    const { card, selectedCards, selectionData, playerId } = payload;
+
+    const currentState = this.gameStateManager.getState();
+    const { searchedCards, remainingDeck, discardPile, shuffleAfter } = selectionData;
+
+    // Pay card costs now (they weren't paid when the modal opened)
+    const statesAfterCosts = gameEngine.payCardCosts(card, playerId, {
+      player1: currentState.player1,
+      player2: currentState.player2
+    });
+
+    // Calculate unselected cards
+    const unselectedCards = searchedCards.filter(searchCard => {
+      const cardId = searchCard.instanceId || `${searchCard.id}-${searchCard.name}`;
+      return !selectedCards.some(selected => {
+        const selectedId = selected.instanceId || `${selected.id}-${selected.name}`;
+        return selectedId === cardId;
+      });
+    });
+
+    const actingPlayerState = statesAfterCosts[playerId];
+
+    // Build new hand and deck
+    const newHand = [...actingPlayerState.hand, ...selectedCards];
+    let newDeck = [...remainingDeck, ...unselectedCards];
+
+    if (shuffleAfter) {
+      newDeck = newDeck.sort(() => 0.5 - Math.random());
+    }
+
+    const updatedPlayerState = {
+      ...actingPlayerState,
+      deck: newDeck,
+      hand: newHand,
+      discardPile: discardPile
+    };
+
+    // Merge with other player's state
+    const currentStates = {
+      player1: playerId === 'player1' ? updatedPlayerState : statesAfterCosts.player1,
+      player2: playerId === 'player2' ? updatedPlayerState : statesAfterCosts.player2
+    };
+
+    // Call finishCardPlay to discard card and determine turn ending
+    const completion = gameEngine.finishCardPlay(card, playerId, currentStates);
+
+    // Log through ActionProcessor (proper pattern)
+    this.gameStateManager.addLogEntry({
+      player: actingPlayerState.name,
+      actionType: 'CARD_SELECTION',
+      source: card.name,
+      target: `Selected ${selectedCards.length} cards`,
+      outcome: `Drew: ${selectedCards.map(c => c.name).join(', ')}`
+    }, 'processSearchAndDrawCompletion');
+
+    // Update state through ActionProcessor (proper pattern)
+    this.gameStateManager.setPlayerStates(
+      completion.newPlayerStates.player1,
+      completion.newPlayerStates.player2
+    );
+
+    // Handle turn transition if needed
+    if (completion.shouldEndTurn) {
+      const updatedState = this.gameStateManager.getState();
+      await this.processTurnTransition({
+        newPlayer: updatedState.currentPlayer === 'player1' ? 'player2' : 'player1'
+      });
+    }
+
+    return {
+      success: true,
+      shouldEndTurn: completion.shouldEndTurn,
+      newPlayerStates: completion.newPlayerStates
     };
   }
 
@@ -2134,6 +2226,23 @@ setAnimationManager(animationManager) {
 
         case 'mandatoryDiscard':
           aiResult = await aiPhaseProcessor.executeMandatoryDiscardTurn(currentState);
+
+          // Actually discard the cards from AI hand
+          if (aiResult.cardsToDiscard.length > 0) {
+            const aiState = currentState.player2;
+            const newHand = aiState.hand.filter(card =>
+              !aiResult.cardsToDiscard.some(discardCard => card.instanceId === discardCard.instanceId)
+            );
+            const newDiscardPile = [...aiState.discardPile, ...aiResult.cardsToDiscard];
+
+            this.gameStateManager.updatePlayerState('player2', {
+              hand: newHand,
+              discardPile: newDiscardPile
+            });
+
+            debugLog('COMMITMENTS', `🤖 AI discarded ${aiResult.cardsToDiscard.length} cards for mandatory discard`);
+          }
+
           await this.processCommitment({
             playerId: 'player2',
             phase: 'mandatoryDiscard',
@@ -2163,6 +2272,18 @@ setAnimationManager(animationManager) {
 
         case 'mandatoryDroneRemoval':
           aiResult = await aiPhaseProcessor.executeMandatoryDroneRemovalTurn(currentState);
+
+          // Actually remove the drones from AI board
+          if (aiResult.dronesToRemove.length > 0) {
+            for (const droneToRemove of aiResult.dronesToRemove) {
+              await this.processDestroyDrone({
+                droneId: droneToRemove.id,
+                playerId: 'player2'
+              });
+            }
+            debugLog('COMMITMENTS', `🤖 AI removed ${aiResult.dronesToRemove.length} drones for mandatory drone removal`);
+          }
+
           await this.processCommitment({
             playerId: 'player2',
             phase: 'mandatoryDroneRemoval',

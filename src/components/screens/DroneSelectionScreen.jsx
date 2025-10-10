@@ -243,29 +243,11 @@ function DroneSelectionScreen() {
       
       {/* Content Wrapper */}
       <div className="flex flex-col items-center w-full p-4 relative z-10">
-        <h2 className="text-3xl font-bold mb-2 text-white text-center">
+        <h2 className="text-3xl font-bold mb-8 text-white text-center">
           Select Your Active Drone Pool
         </h2>
-        <p className="text-gray-400 text-sm mb-4">Choosing 5 drones from your deck of 10</p>
 
-        {/* Progress indicator */}
-        <div className="flex items-center gap-2 mb-6">
-          {[...Array(5)].map((_, index) => (
-            <div
-              key={index}
-              className={`w-3 h-3 rounded-full ${
-                index < tempSelectedDrones.length
-                  ? 'bg-green-500'
-                  : 'bg-gray-600'
-              }`}
-            />
-          ))}
-          <span className="ml-2 text-gray-400">
-            {tempSelectedDrones.length}/5 drones selected
-          </span>
-        </div>
-
-        {/* Pair selection or completion message */}
+        {/* Pair selection */}
         {!isSelectionComplete ? (
           <>
             <p className="text-center text-gray-400 mb-6">
@@ -286,23 +268,17 @@ function DroneSelectionScreen() {
               </div>
             )}
           </>
-        ) : (
-          <div className="text-center mb-8">
-            <div className="bg-green-900/30 border border-green-500 rounded-lg p-4 mb-4">
-              <p className="text-green-400 font-bold mb-2">✅ Selection Complete!</p>
-              <p className="text-gray-300">All 5 drones have been selected for your Active Pool. Ready to proceed to ship placement.</p>
-            </div>
-          </div>
-        )}
+        ) : null}
 
-        {/* Continue button - always present but with different states */}
-        <button
-          onClick={handleContinueDroneSelection}
-          disabled={!isSelectionComplete}
-          className="btn-continue mb-8"
-        >
-          {isSelectionComplete ? 'Continue to Ship Placement' : `Continue (${tempSelectedDrones.length}/5)`}
-        </button>
+        {/* Continue button - only show when selection complete */}
+        {isSelectionComplete && (
+          <button
+            onClick={handleContinueDroneSelection}
+            className="btn-continue mb-8"
+          >
+            Continue to Ship Placement
+          </button>
+        )}
 
         {/* Selected drones display */}
         <div className="w-full mt-4 pt-8 border-t border-gray-700">

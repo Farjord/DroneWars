@@ -133,7 +133,7 @@ function HandView({
                 } else if (index > hoveredIndex) {
                   transformClass = 'transform translate-x-12';
                 } else {
-                  transformClass = 'transform -translate-y-8 scale-105';
+                  transformClass = '';
                   style.zIndex = 50;
                 }
               }

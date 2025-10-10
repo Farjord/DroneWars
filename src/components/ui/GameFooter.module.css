@@ -27,7 +27,7 @@
 }
 
 .contentOpen {
-  height: clamp(215px, 12.5cqw, 450px);
+  height: 290px;
   @apply opacity-100;
 }
 
@@ -133,7 +133,7 @@
 
 .handCardsContainer {
   @apply relative flex justify-center items-center;
-  height: clamp(170px, 8.9vw, 230px);
+  height: 280px;
 }
 
 .handCardsWrapper {
@@ -147,7 +147,7 @@
 /* Card wrapper - uses natural clamp() scaling from card components */
 .cardWrapper {
   @apply transition-all duration-300 ease-in-out;
-  margin: clamp(50px, 2.6vw, 68px) 0 -5px 0;
+  margin: 0;
 }
 
 /* ===== DRONE VIEW STYLES ===== */

@@ -7,6 +7,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown } from 'lucide-react';
 import { getPhaseDisplayName } from '../../utils/gameUtils.js';
+import DEV_CONFIG from '../../config/devConfig.js';
 
 /**
  * Resource Badge Component - Angular styled resource display
@@ -64,7 +65,7 @@ function GameHeader({
   currentPlayer,
   isMultiplayer,
   handlePlayerPass,
-  handleReset,
+  handleExitGame,
   handleResetShields,
   handleConfirmShields,
   handleCancelReallocation,
@@ -78,7 +79,8 @@ function GameHeader({
   AI_HAND_DEBUG_MODE,
   setShowAiHandModal,
   onShowDebugModal,
-  onShowOpponentDrones
+  onShowOpponentDrones,
+  testMode
 }) {
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const dropdownRef = useRef(null);
@@ -99,6 +101,30 @@ function GameHeader({
 
   return (
     <header className="w-full flex justify-between items-start mb-2 flex-shrink-0 px-5 pt-2">
+      {/* Test Mode Indicator */}
+      {testMode && (
+        <div
+          className="body-font"
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            padding: '8px 16px',
+            backgroundColor: 'rgba(255, 165, 0, 0.2)',
+            border: '2px solid #ff9800',
+            borderRadius: '8px',
+            color: '#ffb74d',
+            fontWeight: 'bold',
+            fontSize: '0.9rem',
+            zIndex: 1000,
+            boxShadow: '0 0 20px rgba(255, 152, 0, 0.4)',
+            backdropFilter: 'blur(4px)'
+          }}
+        >
+          🧪 TESTING MODE
+        </div>
+      )}
+
       {/* Opponent Resources */}
       <div className="flex flex-col gap-1.5">
         <h2
@@ -393,74 +419,76 @@ function GameHeader({
             </>
           ) : (
             // Initialising phase - show in "Your Turn" colors for both players
-            <div className="flex items-center gap-2">
-              <span
-                className="text-3xl font-orbitron font-black uppercase tracking-widest"
-                style={{
-                  backgroundImage: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
-                  backgroundSize: '200% auto',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                  textShadow: '0 0 30px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 136, 255, 0.3)',
-                  filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))'
-                }}
-              >
-                Initialising
-              </span>
-            </div>
+            <>
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-3xl font-orbitron font-black uppercase tracking-widest"
+                  style={{
+                    backgroundImage: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
+                    backgroundSize: '200% auto',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    textShadow: '0 0 30px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 136, 255, 0.3)',
+                    filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))'
+                  }}
+                >
+                  Initialising
+                </span>
+              </div>
+
+              {/* Shield Allocation Controls - Show during allocateShields phase */}
+              {turnPhase === 'allocateShields' && (
+                <>
+                  <button
+                    onClick={handleResetShields}
+                    className="relative p-[1px] transition-all hover:scale-105"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                      backgroundImage: 'linear-gradient(45deg, rgba(234, 179, 8, 0.8), rgba(202, 138, 4, 0.8))'
+                    }}
+                  >
+                    <div
+                      className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                      style={{
+                        clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                        color: '#fde047'
+                      }}
+                    >
+                      Reset
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={handleConfirmShields}
+                    className="relative p-[1px] transition-all hover:scale-105"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                      backgroundImage: 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
+                    }}
+                  >
+                    <div
+                      className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                      style={{
+                        clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                        color: '#86efac'
+                      }}
+                    >
+                      Confirm
+                    </div>
+                  </button>
+                </>
+              )}
+
+              {/* Optional Discard Controls - Show during optionalDiscard phase */}
+              {turnPhase === 'optionalDiscard' && (
+                <button onClick={handleRoundStartDraw} className="btn-confirm">
+                  Confirm
+                </button>
+              )}
+            </>
           )}
         </div>
-
-        {/* Shield Allocation Controls - Show during allocateShields phase */}
-        {turnPhase === 'allocateShields' && (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleResetShields}
-              className="relative p-[1px] transition-all hover:scale-105"
-              style={{
-                clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                backgroundImage: 'linear-gradient(45deg, rgba(234, 179, 8, 0.8), rgba(202, 138, 4, 0.8))'
-              }}
-            >
-              <div
-                className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                style={{
-                  clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                  color: '#fde047'
-                }}
-              >
-                Reset
-              </div>
-            </button>
-
-            <button
-              onClick={handleConfirmShields}
-              className="relative p-[1px] transition-all hover:scale-105"
-              style={{
-                clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                backgroundImage: 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
-              }}
-            >
-              <div
-                className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                style={{
-                  clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                  color: '#86efac'
-                }}
-              >
-                Confirm
-              </div>
-            </button>
-          </div>
-        )}
-
-        {/* Optional Discard Controls - Show during optionalDiscard phase */}
-        {turnPhase === 'optionalDiscard' && (
-          <button onClick={handleRoundStartDraw} className="btn-confirm">
-            Confirm
-          </button>
-        )}
       </div>
 
       {/* Player Resources */}
@@ -529,22 +557,8 @@ function GameHeader({
               isPlayer={true}
             />
           )}
-          
-          {/* Action Buttons */}
-          <button 
-            onClick={handleReset}
-            className="relative p-[2px] bg-gradient-to-br from-pink-400 to-pink-600"
-            style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }}
-            aria-label="Reset Game"
-          >
-            <div 
-              className="bg-pink-700 hover:bg-pink-600 p-1.5 transition-colors"
-              style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }}
-            >
-              <RotateCcw size={20} className="text-white" />
-            </div>
-          </button>
-          
+
+          {/* Settings Dropdown */}
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
@@ -563,15 +577,27 @@ function GameHeader({
 
             {showSettingsDropdown && (
               <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50">
+                {DEV_CONFIG.features.debugView && (
+                  <button
+                    onClick={() => {
+                      onShowDebugModal && onShowDebugModal();
+                      setShowSettingsDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center gap-2 border-b border-gray-700"
+                  >
+                    <Settings size={16} />
+                    Debug View
+                  </button>
+                )}
                 <button
                   onClick={() => {
-                    onShowDebugModal && onShowDebugModal();
+                    handleExitGame();
                     setShowSettingsDropdown(false);
                   }}
-                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors rounded-lg flex items-center gap-2"
+                  className={`w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors ${DEV_CONFIG.features.debugView ? 'rounded-b-lg' : 'rounded-lg'} flex items-center gap-2`}
                 >
-                  <Settings size={16} />
-                  Debug View
+                  <RotateCcw size={16} />
+                  Exit
                 </button>
               </div>
             )}

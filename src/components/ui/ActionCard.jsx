@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { Bolt, RefreshCw } from 'lucide-react';
+import ScalingText from './ScalingText.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 
 /**
@@ -65,8 +66,8 @@ const ActionCard = ({
         ${isMandatoryTarget ? 'ring-4 ring-red-500 animate-pulse' : ''}
       `}
       style={{
-        width: 'clamp(184px, 9.6vw, 250px)',
-        height: 'clamp(225px, 11.7vw, 305px)',
+        width: '240px',
+        height: '275px',
         clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)',
         ...scaleStyle
       }}
@@ -82,20 +83,18 @@ const ActionCard = ({
         <div className="relative z-10 flex flex-col h-full">
           {/* Header with Cost */}
           <div className="grid grid-cols-[1fr_auto] gap-2 items-center py-1 px-3 bg-black/40 flex-shrink-0 h-8">
-            <div className="overflow-hidden text-center min-w-0">
-              <span className="font-orbitron text-xs uppercase tracking-widest text-white inline-block truncate max-w-full">
-                {name}
-              </span>
+            <div className="text-center min-w-0">
+              <ScalingText text={name} className="font-orbitron text-sm uppercase tracking-widest whitespace-nowrap text-white" />
             </div>
             <div className="flex items-center bg-slate-800/70 px-2 py-0.5 rounded-full flex-shrink-0">
-              <Bolt size={10} className="text-yellow-300" />
-              <span className="text-white font-bold text-xs ml-1">{cost}</span>
+              <Bolt size={14} className="text-yellow-300" />
+              <span className="text-white font-bold text-sm ml-1">{cost}</span>
             </div>
           </div>
 
           {/* Image Section - REDUCED SIZE */}
           <div className="p-1 flex-shrink-0">
-            <div className="relative h-[65px] rounded border border-purple-400/50 overflow-hidden">
+            <div className="relative h-[80px] rounded border border-purple-400/50 overflow-hidden">
               <img
                 src={image}
                 alt={name}
@@ -107,7 +106,7 @@ const ActionCard = ({
 
           {/* Description Section - MAXIMIZED SIZE */}
           <div className="mx-1 mb-1 flex-grow bg-black/60 backdrop-blur-sm border border-purple-800/70 p-2 overflow-y-auto rounded-md">
-            <p className="text-xs text-gray-400 leading-tight text-center font-exo font-normal">{description}</p>
+            <p className="text-sm text-white leading-tight text-center font-exo font-normal">{description}</p>
           </div>
 
           {/* Footer - REDUCED HEIGHT */}
@@ -115,14 +114,14 @@ const ActionCard = ({
             <div className="w-4"></div>
 
             <div className="flex items-center justify-center">
-              <span className="text-[8px] text-purple-400 uppercase tracking-widest font-semibold">
+              <span className="text-[10px] text-purple-400 uppercase tracking-widest font-semibold">
                 {type} Card
               </span>
             </div>
 
             <div className="w-4 flex items-center justify-center">
               {goAgain && (
-                <RefreshCw size={11} className="text-cyan-400" style={{ marginLeft: '-20px' }} />
+                <RefreshCw size={14} className="text-cyan-400" style={{ marginLeft: '-20px' }} />
               )}
             </div>
           </div>

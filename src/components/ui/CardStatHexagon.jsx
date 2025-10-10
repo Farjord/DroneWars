@@ -20,8 +20,8 @@ const CardStatHexagon = ({ value, isFlat, icon: Icon, iconColor, textColor = 'te
   <div className={`${isFlat ? 'hexagon-flat' : 'hexagon'} w-full h-full bg-black/60 flex items-center justify-center p-0.5`}>
     <div className={`${isFlat ? 'hexagon-flat' : 'hexagon'} w-full h-full bg-slate-900/80 flex items-center justify-center`}>
       <div className={`flex items-center justify-center gap-1 font-bold ${textColor}`}>
-        {Icon && <Icon size={10} className={iconColor} />}
-        <span className="font-orbitron text-sm">{value}</span>
+        {Icon && <Icon size={14} className={iconColor} />}
+        <span className="font-orbitron text-base">{value}</span>
       </div>
     </div>
   </div>

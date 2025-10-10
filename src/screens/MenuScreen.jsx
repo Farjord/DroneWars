@@ -4,9 +4,10 @@
 // Main menu for game mode selection
 // Clean separation from game logic - no player state access
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useGameState } from '../hooks/useGameState.js';
 import GameDataService from '../services/GameDataService.js';
+import DEV_CONFIG from '../config/devConfig.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 /**
@@ -15,7 +16,27 @@ import { debugLog } from '../utils/debugLogger.js';
  */
 function MenuScreen() {
   const { gameStateManager } = useGameState();
-  const [showModeSelection, setShowModeSelection] = useState(false);
+
+  // Single animation trigger state - all effects trigger together
+  const [animationKey, setAnimationKey] = useState(0);
+
+  // Random animation triggers (20-40 second intervals) - all effects trigger together
+  useEffect(() => {
+    const scheduleAllGlitches = () => {
+      const delay = 20000 + Math.random() * 20000; // 20-40 seconds
+      const timeout = setTimeout(() => {
+        setAnimationKey(prev => prev + 1);
+        scheduleAllGlitches();
+      }, delay);
+      return timeout;
+    };
+
+    const timeout = scheduleAllGlitches();
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, []);
 
   // Cleanup effect: Ensure clean slate when MenuScreen mounts
   // This handles hot reload scenarios and ensures no stale data from previous games
@@ -28,6 +49,11 @@ function MenuScreen() {
     // Clear ActionProcessor queue
     if (gameStateManager?.actionProcessor) {
       gameStateManager.actionProcessor.clearQueue();
+    }
+
+    // Reset GameFlowManager as failsafe
+    if (gameStateManager?.gameFlowManager) {
+      gameStateManager.gameFlowManager.reset();
     }
 
     debugLog('PHASE_TRANSITIONS', '✅ MenuScreen: State cleaned up');
@@ -45,102 +71,165 @@ function MenuScreen() {
     gameStateManager.setState({ appState: 'lobby', gameMode: 'multiplayer' });
   };
 
-  const handleShowModes = () => {
-    setShowModeSelection(true);
-  };
-
-  const handleBack = () => {
-    setShowModeSelection(false);
-  };
-
   return (
-    <div style={{
+    <div className="body-font" style={{
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'center',
+      justifyContent: 'flex-start',
       alignItems: 'center',
-      height: '100vh',
+      minHeight: '100vh',
       color: '#ffffff',
-      fontFamily: 'Arial, sans-serif',
-      padding: '20px',
+      padding: '60px 20px 20px 20px',
       boxSizing: 'border-box',
       position: 'relative'
     }}>
       {/* Content Wrapper */}
-      <div style={{ 
-        position: 'relative', 
-        zIndex: 10, 
-        display: 'flex', 
-        flexDirection: 'column', 
+      <div style={{
+        position: 'relative',
+        zIndex: 10,
+        display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
         width: '100%'
       }}>
-        {!showModeSelection ? (
-          // Main title screen
-          <>
-            <h1 style={{
+        {/* EREMOS Title with layered glitch effects */}
+        <div style={{
+          position: 'relative',
+          display: 'inline-block',
+          marginBottom: '2rem'
+        }}>
+          {/* RGB Split - Red Channel */}
+          <h1
+            key={`rgb-red-${animationKey}`}
+            className="menu-rgb-split-red heading-font"
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
               fontSize: '4rem',
-              marginBottom: '2rem',
+              margin: 0,
               textAlign: 'center',
-              background: 'linear-gradient(45deg, #00ff88, #0088ff)',
+              color: '#ff0000',
+              mixBlendMode: 'screen',
+              pointerEvents: 'none',
+              left: 0,
+              top: 0,
+              zIndex: 0
+            }}
+          >
+            EREMOS
+          </h1>
+
+          {/* RGB Split - Blue Channel */}
+          <h1
+            key={`rgb-blue-${animationKey}`}
+            className="menu-rgb-split-blue heading-font"
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              fontSize: '4rem',
+              margin: 0,
+              textAlign: 'center',
+              color: '#00ffff',
+              mixBlendMode: 'screen',
+              pointerEvents: 'none',
+              left: 0,
+              top: 0,
+              zIndex: 0
+            }}
+          >
+            EREMOS
+          </h1>
+
+          {/* Main Title */}
+          <h1
+            key={`title-${animationKey}`}
+            className="menu-gradient-cycle menu-title-glitch-distort menu-title-opacity-glitch animate-pulse heading-font"
+            style={{
+              fontSize: '4rem',
+              margin: 0,
+              textAlign: 'center',
+              background: 'linear-gradient(90deg, #00ff88, #00d4aa, #00a0cc, #0088ff, #00aaff, #00ffff, #00d4aa, #00ff88)',
+              backgroundSize: '300% auto',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
-              textShadow: '0 0 20px rgba(0, 255, 136, 0.3)'
-            }}>
-              EREMOS
-            </h1>
+              backgroundClip: 'text',
+              filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))',
+              textShadow: '0 0 20px rgba(0, 255, 136, 0.4), 0 0 40px rgba(0, 136, 255, 0.3)',
+              position: 'relative',
+              zIndex: 1
+            }}
+          >
+            EREMOS
+          </h1>
+        </div>
 
-            <div style={{
-              fontSize: '1.2rem',
-              marginBottom: '3rem',
-              textAlign: 'center',
-              color: '#cccccc'
-            }}>
-              the wilderness left when civilization departs
+        {/* Subtitle */}
+        <div style={{
+          fontSize: '1.2rem',
+          marginBottom: '3rem',
+          textAlign: 'center',
+          color: '#cccccc'
+        }}>
+          the wilderness left when civilization departs
+        </div>
+
+        {/* Game mode buttons - vertically aligned */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1.5rem',
+          alignItems: 'center'
+        }}>
+          <button onClick={handleSinglePlayer} className="btn-continue" style={{ minWidth: '250px', fontSize: '1.1rem', padding: '16px 30px' }}>
+            SINGLE PLAYER
+            <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
+              vs AI Opponent
             </div>
+          </button>
 
-            <button onClick={handleShowModes} className="btn-continue">
-              START GAME
-            </button>
-          </>
-        ) : (
-          // Game mode selection
-          <>
-            <h2 style={{
-              fontSize: '2.5rem',
-              marginBottom: '3rem',
-              textAlign: 'center',
-              color: '#ffffff'
-            }}>
-              SELECT GAME MODE
-            </h2>
-
-            <div style={{
-              display: 'flex',
-              gap: '2rem',
-              marginBottom: '2rem'
-            }}>
-              <button onClick={handleSinglePlayer} className="btn-continue" style={{ minWidth: '200px', fontSize: '1.1rem', padding: '16px 30px' }}>
-                SINGLE PLAYER
-                <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
-                  vs AI Opponent
-                </div>
-              </button>
-
-              <button onClick={handleMultiplayer} className="btn-continue" style={{ minWidth: '200px', fontSize: '1.1rem', padding: '16px 30px' }}>
-                MULTIPLAYER
-                <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
-                  vs Human Player
-                </div>
-              </button>
+          <button onClick={handleMultiplayer} className="btn-continue" style={{ minWidth: '250px', fontSize: '1.1rem', padding: '16px 30px' }}>
+            MULTIPLAYER
+            <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
+              vs Human Player
             </div>
+          </button>
 
-            <button onClick={handleBack} className="btn-cancel">
-              BACK
+          {DEV_CONFIG.features.modalShowcase && (
+            <button
+              onClick={() => gameStateManager.setState({ appState: 'modalShowcase' })}
+              className="btn-continue"
+              style={{
+                minWidth: '250px',
+                fontSize: '1.1rem',
+                padding: '16px 30px',
+                backgroundColor: '#6a0dad',
+                borderColor: '#9932cc'
+              }}
+            >
+              MODAL SHOWCASE
+              <div className="body-font" style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
+                Dev Preview Tool
+              </div>
             </button>
-          </>
-        )}
+          )}
+
+          {DEV_CONFIG.features.testingMode && (
+            <button
+              onClick={() => gameStateManager.setState({ appState: 'testingSetup' })}
+              className="btn-utility"
+              style={{
+                minWidth: '250px',
+                fontSize: '1.1rem',
+                padding: '16px 30px'
+              }}
+            >
+              TESTING MODE
+              <div className="body-font" style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
+                Dev Scenario Setup
+              </div>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

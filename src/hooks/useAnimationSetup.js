@@ -4,7 +4,7 @@ import FlashEffect from '../components/animations/FlashEffect.jsx';
 import CardVisualEffect from '../components/animations/CardVisualEffect.jsx';
 import { debugLog } from '../utils/debugLogger.js';
 
-export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications) {
+export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications) {
   useEffect(() => {
     const localPlayerState = getLocalPlayerState();
     const opponentPlayerState = getOpponentPlayerState();
@@ -151,6 +151,56 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
           onComplete?.();
         }
       }]);
+    });
+
+    animationManager.registerVisualHandler('HEAL_EFFECT', (payload) => {
+      const { targetId, targetPlayer, targetLane, targetType, healAmount, onComplete } = payload;
+
+      debugLog('ANIMATIONS', '💚 [HEAL DEBUG] HEAL_EFFECT handler called with payload:', {
+        targetId,
+        targetPlayer,
+        targetLane,
+        targetType,
+        healAmount,
+        rawPayload: payload  // Log full payload to verify structure
+      });
+
+      // Use logical position mapper to get DOM element
+      const targetEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, targetType);
+
+      if (!targetEl) {
+        console.warn('⚠️ [HEAL DEBUG] Target element not found:', {
+          targetId,
+          targetPlayer,
+          targetLane,
+          targetType,
+          droneRefsKeys: Object.keys(droneRefs.current),  // Log available drone refs
+          sectionRefsKeys: Object.keys(sectionRefs.current)  // Log available section refs
+        });
+        onComplete?.();
+        return;
+      }
+
+      // Calculate position from target element
+      const targetRect = targetEl.getBoundingClientRect();
+      const healId = `heal-${targetId}-${Date.now()}`;
+
+      setHealEffects(prev => [...prev, {
+        id: healId,
+        position: {
+          left: targetRect.left,
+          top: targetRect.top,
+          width: targetRect.width,
+          height: targetRect.height
+        },
+        healAmount: healAmount,
+        onComplete: () => {
+          setHealEffects(prev => prev.filter(h => h.id !== healId));
+          onComplete?.();
+        }
+      }]);
+
+      debugLog('ANIMATIONS', '✅ [HEAL DEBUG] Heal effect created:', healId);
     });
 
     animationManager.registerVisualHandler('CARD_VISUAL_EFFECT', (payload) => {
@@ -431,7 +481,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     });
     
     gameStateManager.actionProcessor.setAnimationManager(animationManager);
-    
+
     return unsubscribe;
-}, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications]);
+}, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications]);
 }

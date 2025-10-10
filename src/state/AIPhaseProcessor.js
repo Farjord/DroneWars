@@ -82,6 +82,32 @@ class AIPhaseProcessor {
   }
 
   /**
+   * Cleanup AI processor resources
+   * Clears timers and unsubscribes from state changes
+   */
+  cleanup() {
+    debugLog('AI_DECISIONS', '🧹 AIPhaseProcessor: Cleaning up resources');
+
+    // Clear any pending AI turn timer
+    if (this.turnTimer) {
+      clearTimeout(this.turnTimer);
+      this.turnTimer = null;
+    }
+
+    // Unsubscribe from game state changes
+    if (this.stateSubscriptionCleanup) {
+      this.stateSubscriptionCleanup();
+      this.stateSubscriptionCleanup = null;
+    }
+
+    // Reset processing state
+    this.isProcessing = false;
+    this.isInitialized = false;
+
+    debugLog('AI_DECISIONS', '✅ AIPhaseProcessor: Cleanup complete');
+  }
+
+  /**
    * Process AI drone selection for droneSelection phase
    * NEW FLOW: Selects 5 drones from AI's deck of 10 drones
    * @param {Object} aiPersonality - Optional AI personality override (future use)
@@ -711,9 +737,24 @@ class AIPhaseProcessor {
     const excessCards = aiState.hand.length - handLimit;
     let cardsToDiscard = [];
 
-    // Simple AI logic: discard highest cost cards first to save energy
-    const sortedHand = [...aiState.hand].sort((a, b) => b.cost - a.cost);
-    cardsToDiscard = sortedHand.slice(0, excessCards);
+    // AI logic: discard lowest cost cards first, randomize within same cost
+    // Group cards by cost
+    const cardsByCost = aiState.hand.reduce((acc, card) => {
+      if (!acc[card.cost]) acc[card.cost] = [];
+      acc[card.cost].push(card);
+      return acc;
+    }, {});
+
+    // Sort costs (lowest first)
+    const sortedCosts = Object.keys(cardsByCost).map(Number).sort((a, b) => a - b);
+
+    // Randomly shuffle within each cost group, then select from lowest costs
+    for (const cost of sortedCosts) {
+      const shuffled = [...cardsByCost[cost]].sort(() => 0.5 - Math.random());
+      cardsToDiscard.push(...shuffled);
+      if (cardsToDiscard.length >= excessCards) break;
+    }
+    cardsToDiscard = cardsToDiscard.slice(0, excessCards);
 
     debugLog('AI_DECISIONS', `🤖 AI discarding ${cardsToDiscard.length} excess cards to meet hand limit`);
 
@@ -762,19 +803,40 @@ class AIPhaseProcessor {
     const excessDrones = totalDrones - droneLimit;
     let dronesToRemove = [];
 
-    // Simple AI logic: remove weakest drones first
+    // AI logic: remove lowest class (CPU cost) drones from strongest lanes
+    // Calculate lane scores (AI power - opponent power)
+    const opponentState = gameState.player1;
+    const calculateLanePower = (drones, lane) => {
+      return drones.reduce((sum, drone) => {
+        const stats = this.gameDataService.getEffectiveStats(drone, lane);
+        return sum + (stats.attack || 0) + (stats.hull || 0);
+      }, 0);
+    };
+
+    const laneScores = {
+      lane1: calculateLanePower(aiState.dronesOnBoard.lane1 || [], 'lane1') -
+             calculateLanePower(opponentState.dronesOnBoard.lane1 || [], 'lane1'),
+      lane2: calculateLanePower(aiState.dronesOnBoard.lane2 || [], 'lane2') -
+             calculateLanePower(opponentState.dronesOnBoard.lane2 || [], 'lane2'),
+      lane3: calculateLanePower(aiState.dronesOnBoard.lane3 || [], 'lane3') -
+             calculateLanePower(opponentState.dronesOnBoard.lane3 || [], 'lane3')
+    };
+
+    // Collect all drones with their lane score
     const allDrones = [];
     Object.entries(aiState.dronesOnBoard || {}).forEach(([lane, drones]) => {
       drones.forEach(drone => {
-        allDrones.push({ ...drone, lane });
+        allDrones.push({ ...drone, lane, laneScore: laneScores[lane] });
       });
     });
 
-    // Sort by effective power (lowest first)
+    // Sort by lane score (highest first), then by class (lowest first)
+    // This removes cheap drones from winning lanes, preserving expensive drones and protecting losing lanes
     allDrones.sort((a, b) => {
-      const aStats = this.gameDataService.getEffectiveStats(a, a.lane);
-      const bStats = this.gameDataService.getEffectiveStats(b, b.lane);
-      return aStats.power - bStats.power;
+      if (b.laneScore !== a.laneScore) {
+        return b.laneScore - a.laneScore; // Highest lane score first
+      }
+      return a.class - b.class; // Lowest class (CPU cost) first
     });
 
     dronesToRemove = allDrones.slice(0, excessDrones);

@@ -284,15 +284,21 @@ function ShipPlacementScreen() {
         {' '}The ship section placed in the centre lane will gain a bonus to its stats.
       </p>
 
+      {/* Confirm button - only show when all sections are placed */}
+      {allPlaced && (
+        <button
+          onClick={() => {
+            debugLog('PLACEMENT', `🔥 Confirm Layout button clicked! allPlaced: ${allPlaced}`);
+            handleConfirmPlacement();
+          }}
+          className="btn-confirm text-lg mb-6"
+        >
+          Confirm Layout
+        </button>
+      )}
+
       {/* This container holds both rows of ship sections */}
       <div className="flex flex-col items-center w-full space-y-4">
-        {/* Section Header - Placement Lanes */}
-        <div className="w-full text-center mb-2">
-          <h3 className="text-xl font-orbitron text-cyan-400">
-            Your Ship Layout
-          </h3>
-        </div>
-
         {/* Placed Sections Row (Top) - The three lanes */}
         <div className="flex w-full justify-between gap-8">
           {[0, 1, 2].map(laneIndex => {
@@ -371,17 +377,6 @@ function ShipPlacementScreen() {
           ))}
         </div>
       </div>
-
-      <button
-        onClick={() => {
-          debugLog('PLACEMENT', `🔥 Confirm Layout button clicked! allPlaced: ${allPlaced}`);
-          handleConfirmPlacement();
-        }}
-        disabled={!allPlaced}
-        className="btn-confirm mt-12 text-lg"
-      >
-        Confirm Layout
-      </button>
     </div>
     </div>
   );

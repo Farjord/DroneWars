@@ -129,7 +129,11 @@ const DroneToken = ({
     <div ref={el => droneRefs.current[drone.id] = el}
       onClick={(e) => onClick && onClick(e, drone, isPlayer)}
       onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}
-      className={`relative w-[90px] h-[135px] transition-all duration-200 ${exhaustEffect} ${hitEffect} ${selectedEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${enableFloatAnimation ? 'drone-float' : ''}`}
+      className={`relative transition-all duration-200 ${exhaustEffect} ${hitEffect} ${selectedEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${enableFloatAnimation ? 'drone-float' : ''}`}
+      style={{
+        width: 'clamp(85px, 4.427vw, 115px)',
+        height: 'clamp(115px, 5.99vw, 156px)'
+      }}
     >
       {/* Main Token Body */}
       <div className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden ${isPotentialGuardian ? 'guardian-glow' : ''}`}>

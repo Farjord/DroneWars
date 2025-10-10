@@ -72,7 +72,16 @@ const ShipSectionsDisplay = ({
             entirePlacedSections: placedSections,
             playerShipSections: player?.shipSections ? Object.keys(player.shipSections) : 'NO_SHIP_SECTIONS'
           });
-          return <div key={laneIndex} className="flex-1 min-w-0 h-full bg-black/20 rounded-lg border-2 border-dashed border-gray-700"></div>;
+          return (
+            <div
+              key={laneIndex}
+              className="bg-black/20 rounded-lg border-2 border-dashed border-gray-700"
+              style={{
+                width: 'clamp(600px, 31.25vw, 810px)',
+                height: 'clamp(120px, 6.25vw, 162px)'
+              }}
+            ></div>
+          );
         }
 
         const sectionStats = player.shipSections[sectionName];
@@ -99,7 +108,13 @@ const ShipSectionsDisplay = ({
         }
 
         return (
-          <div key={laneIndex} className="flex-1 min-w-0 max-h-[120px]">
+          <div
+            key={laneIndex}
+            style={{
+              width: 'clamp(600px, 31.25vw, 810px)',
+              height: 'clamp(120px, 6.25vw, 162px)'
+            }}
+          >
             <ShipSection
               section={sectionName}
               stats={sectionStats}

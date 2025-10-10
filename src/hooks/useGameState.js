@@ -129,6 +129,10 @@ export const useGameState = () => {
     gameStateManager.reset();
   }, []);
 
+  const endGame = useCallback(() => {
+    gameStateManager.endGame();
+  }, []);
+
   const setWinner = useCallback((winnerId) => {
     gameStateManager.setWinner(winnerId);
   }, []);
@@ -209,6 +213,7 @@ export const useGameState = () => {
     updatePassInfo,
     addLogEntry,
     resetGame,
+    endGame,
     setWinner,
 
     // Action processing

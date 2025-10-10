@@ -1809,8 +1809,16 @@ const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSecti
         });
     }
 
-    // Pay card costs first
-    let currentStates = payCardCosts(card, actingPlayerId, playerStates);
+    // Check if this card will need player selection (human player only)
+    // For these cards, costs will be paid after selection in the completion handler
+    const willNeedSelection = actingPlayerId === 'player1' && (
+        card.effect.type === 'SEARCH_AND_DRAW' ||
+        card.effect.type === 'SINGLE_MOVE' ||
+        card.effect.type === 'MULTI_MOVE'
+    );
+
+    // Pay card costs first (unless card needs selection - costs will be paid after selection)
+    let currentStates = willNeedSelection ? playerStates : payCardCosts(card, actingPlayerId, playerStates);
 
     // Resolve the effect(s)
     const result = resolveCardEffect(card.effect, target, actingPlayerId, currentStates, placedSections, callbacks, card);
@@ -1937,9 +1945,10 @@ const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSecti
         };
     }
 
-    // If card selection is needed, return current state and defer completion
+    // If card selection is needed, return original state without costs paid
+    // Costs will be paid in the completion handler after selection
     return {
-        newPlayerStates: currentStates, // Use currentStates (with card costs paid) but card not discarded yet
+        newPlayerStates: playerStates, // Original state - costs will be paid after selection
         shouldEndTurn: false, // Turn ending will be handled in finishCardPlay after selection
         additionalEffects: result.additionalEffects || [],
         animationEvents: allAnimationEvents,
@@ -2031,7 +2040,7 @@ const resolveSingleEffect = (effect, target, actingPlayerId, playerStates, place
         case 'HEAL_HULL':
             return resolveUnifiedHealEffect(effect, null, target, actingPlayerId, playerStates, placedSections, callbacks);
         case 'HEAL_SHIELDS':
-            return resolveHealShieldsEffect(effect, target, actingPlayerId, playerStates, callbacks);
+            return resolveHealShieldsEffect(effect, target, actingPlayerId, playerStates, callbacks, placedSections);
         case 'DAMAGE':
             return resolveUnifiedDamageEffect(effect, null, target, actingPlayerId, playerStates, placedSections, callbacks, card);
         case 'DESTROY':
@@ -2156,27 +2165,101 @@ const resolveHealHullEffect = (effect, target, actingPlayerId, playerStates, cal
     };
 };
 
-const resolveHealShieldsEffect = (effect, target, actingPlayerId, playerStates, callbacks) => {
+const resolveHealShieldsEffect = (effect, target, actingPlayerId, playerStates, callbacks, placedSections) => {
     const newPlayerStates = {
         player1: JSON.parse(JSON.stringify(playerStates.player1)),
         player2: JSON.parse(JSON.stringify(playerStates.player2))
     };
 
-    const targetPlayerState = newPlayerStates[target.owner || actingPlayerId];
+    const animationEvents = [];
 
-    // Find the target drone and heal its shields
-    for (const lane in targetPlayerState.dronesOnBoard) {
-        const droneIndex = targetPlayerState.dronesOnBoard[lane].findIndex(d => d.id === target.id);
-        if (droneIndex !== -1) {
-            const drone = targetPlayerState.dronesOnBoard[lane][droneIndex];
-            drone.currentShields = Math.min(drone.currentMaxShields || drone.shields, drone.currentShields + effect.value);
-            break;
+    // Check if target is a lane (e.g., lane1, lane2, lane3)
+    if (target.id && target.id.startsWith('lane')) {
+        // Lane target - heal ALL drones in the lane
+        const laneId = target.id;
+        const targetPlayerId = target.owner || actingPlayerId;
+        const targetPlayerState = newPlayerStates[targetPlayerId];
+        const opponentPlayerId = targetPlayerId === 'player1' ? 'player2' : 'player1';
+        const opponentState = newPlayerStates[opponentPlayerId];
+        const sections = placedSections?.[targetPlayerId] || [];
+
+        const dronesInLane = targetPlayerState.dronesOnBoard[laneId] || [];
+
+        debugLog('COMBAT', `[HEAL_SHIELDS] Healing all drones in ${targetPlayerId} ${laneId} (${dronesInLane.length} drones)`);
+
+        // Heal each drone in the lane
+        dronesInLane.forEach(drone => {
+            // Calculate effective stats to get proper maxShields with lane bonuses
+            const effectiveStats = calculateEffectiveStats(drone, laneId, targetPlayerState, opponentState, sections);
+            const maxShields = effectiveStats.maxShields;
+
+            const oldShields = drone.currentShields || 0;
+            // Apply shield healing if not at max
+            if (oldShields < maxShields) {
+                drone.currentShields = Math.min(maxShields, oldShields + effect.value);
+            }
+
+            debugLog('COMBAT', `[HEAL_SHIELDS] ${drone.name}: ${oldShields} → ${drone.currentShields} (max: ${maxShields})`);
+
+            // Always emit heal animation based on effect value (not actual heal amount)
+            // This provides visual feedback even if target is at full shields
+            animationEvents.push({
+                type: 'HEAL_EFFECT',
+                targetId: drone.id,
+                targetPlayer: targetPlayerId,
+                targetLane: laneId,
+                targetType: 'drone',
+                healAmount: effect.value,
+                config: {},
+                onComplete: null
+            });
+        });
+    } else {
+        // Single drone target - heal specific drone
+        const targetPlayerState = newPlayerStates[target.owner || actingPlayerId];
+        const targetPlayerId = target.owner || actingPlayerId;
+        const opponentPlayerId = targetPlayerId === 'player1' ? 'player2' : 'player1';
+        const opponentState = newPlayerStates[opponentPlayerId];
+        const sections = placedSections?.[targetPlayerId] || [];
+
+        // Find the target drone and heal its shields
+        for (const lane in targetPlayerState.dronesOnBoard) {
+            const droneIndex = targetPlayerState.dronesOnBoard[lane].findIndex(d => d.id === target.id);
+            if (droneIndex !== -1) {
+                const drone = targetPlayerState.dronesOnBoard[lane][droneIndex];
+
+                // Calculate effective stats to get proper maxShields with lane bonuses
+                const effectiveStats = calculateEffectiveStats(drone, lane, targetPlayerState, opponentState, sections);
+                const maxShields = effectiveStats.maxShields;
+
+                const oldShields = drone.currentShields || 0;
+
+                // Apply shield healing if not at max
+                if (oldShields < maxShields) {
+                    drone.currentShields = Math.min(maxShields, oldShields + effect.value);
+                    debugLog('COMBAT', `[HEAL_SHIELDS] ${drone.name} in ${lane}: ${oldShields} → ${drone.currentShields} (max: ${maxShields})`);
+                }
+
+                // Always emit heal animation based on effect value (not actual heal amount)
+                animationEvents.push({
+                    type: 'HEAL_EFFECT',
+                    targetId: target.id,
+                    targetPlayer: targetPlayerId,
+                    targetLane: lane,
+                    targetType: 'drone',
+                    healAmount: effect.value,
+                    config: {},
+                    onComplete: null
+                });
+                break;
+            }
         }
     }
 
     return {
         newPlayerStates,
-        additionalEffects: []
+        additionalEffects: [],
+        animationEvents
     };
 };
 
@@ -2666,6 +2749,7 @@ const resolveUnifiedHealEffect = (effect, source, target, actingPlayerId, player
         player2: JSON.parse(JSON.stringify(playerStates.player2))
     };
 
+    const animationEvents = [];
     const targetPlayerId = actingPlayerId || 'player1';
 
     if (effect.scope === 'LANE') {
@@ -2673,8 +2757,24 @@ const resolveUnifiedHealEffect = (effect, source, target, actingPlayerId, player
         if (newPlayerStates[targetPlayerId].dronesOnBoard[targetLaneId]) {
             newPlayerStates[targetPlayerId].dronesOnBoard[targetLaneId].forEach(droneInLane => {
                 const baseDrone = fullDroneCollection.find(d => d.name === droneInLane.name);
-                if (baseDrone && droneInLane.hull < baseDrone.hull) {
-                    droneInLane.hull = Math.min(baseDrone.hull, droneInLane.hull + effect.value);
+                if (baseDrone) {
+                    // Apply healing if drone is damaged
+                    if (droneInLane.hull < baseDrone.hull) {
+                        droneInLane.hull = Math.min(baseDrone.hull, droneInLane.hull + effect.value);
+                    }
+
+                    // Always emit heal animation based on effect value (not actual heal amount)
+                    // This provides visual feedback even if target is at full health
+                    animationEvents.push({
+                        type: 'HEAL_EFFECT',
+                        targetId: droneInLane.id,
+                        targetPlayer: targetPlayerId,
+                        targetLane: targetLaneId,
+                        targetType: 'drone',
+                        healAmount: effect.value,
+                        config: {},
+                        onComplete: null
+                    });
                 }
             });
         }
@@ -2688,7 +2788,24 @@ const resolveUnifiedHealEffect = (effect, source, target, actingPlayerId, player
             if (targetLaneId) {
                 const droneIndex = newPlayerStates[targetPlayerId].dronesOnBoard[targetLaneId].findIndex(d => d.id === target.id);
                 if (droneIndex !== -1) {
-                    newPlayerStates[targetPlayerId].dronesOnBoard[targetLaneId][droneIndex].hull = Math.min(baseTarget.hull, newPlayerStates[targetPlayerId].dronesOnBoard[targetLaneId][droneIndex].hull + effect.value);
+                    const drone = newPlayerStates[targetPlayerId].dronesOnBoard[targetLaneId][droneIndex];
+                    // Apply healing if drone is damaged
+                    if (drone.hull < baseTarget.hull) {
+                        drone.hull = Math.min(baseTarget.hull, drone.hull + effect.value);
+                    }
+
+                    // Always emit heal animation based on effect value (not actual heal amount)
+                    // This provides visual feedback even if target is at full health
+                    animationEvents.push({
+                        type: 'HEAL_EFFECT',
+                        targetId: target.id,
+                        targetPlayer: targetPlayerId,
+                        targetLane: targetLaneId,
+                        targetType: 'drone',
+                        healAmount: effect.value,
+                        config: {},
+                        onComplete: null
+                    });
                 }
             }
         } else if (target.name && newPlayerStates[targetPlayerId].shipSections[target.name]) {
@@ -2698,15 +2815,31 @@ const resolveUnifiedHealEffect = (effect, source, target, actingPlayerId, player
             const baseSection = sections.find(s => s.name === target.name);
 
             if (baseSection) {
-                // Cap healing at section's max hull
-                section.hull = Math.min(baseSection.maxHull, section.hull + effect.value);
+                // Apply healing if ship section is damaged
+                if (section.hull < baseSection.maxHull) {
+                    section.hull = Math.min(baseSection.maxHull, section.hull + effect.value);
+                }
+
+                // Always emit heal animation based on effect value (not actual heal amount)
+                // This provides visual feedback even if target is at full health
+                animationEvents.push({
+                    type: 'HEAL_EFFECT',
+                    targetId: target.name,
+                    targetPlayer: targetPlayerId,
+                    targetLane: null,
+                    targetType: 'section',
+                    healAmount: effect.value,
+                    config: {},
+                    onComplete: null
+                });
             }
         }
     }
 
     return {
         newPlayerStates,
-        additionalEffects: []
+        additionalEffects: [],
+        animationEvents
     };
 };
 
@@ -3843,6 +3976,7 @@ export const gameEngine = {
   resolveShipAbility,
   executeDeployment,
   resolveCardPlay,
+  payCardCosts,
   finishCardPlay,
   resolveMultiMove,
   resolveSingleMove,

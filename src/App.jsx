@@ -37,7 +37,6 @@ import AIDecisionLogModal from './components/modals/AIDecisionLogModal.jsx';
 import DeploymentConfirmationModal from './components/modals/DeploymentConfirmationModal.jsx';
 import MoveConfirmationModal from './components/modals/MoveConfirmationModal.jsx';
 import InterceptionOpportunityModal from './components/modals/InterceptionOpportunityModal.jsx';
-import AttackInterceptedModal from './components/modals/AttackInterceptedModal.jsx';
 import OpponentDecidingInterceptionModal from './components/modals/OpponentDecidingInterceptionModal.jsx';
 import CardConfirmationModal from './components/modals/CardConfirmationModal.jsx';
 import DroneAbilityConfirmationModal from './components/modals/DroneAbilityConfirmationModal.jsx';
@@ -65,11 +64,13 @@ import p2pManager from './network/P2PManager.js';
 // --- 1.7 UTILITY IMPORTS ---
 import { getElementCenter } from './utils/gameUtils.js';
 import { debugLog } from './utils/debugLogger.js';
+import DEV_CONFIG from './config/devConfig.js';
 
 // --- 1.8 ANIMATION IMPORTS ---
 import AnimationManager from './state/AnimationManager.js';
 import FlyingDrone from './components/animations/FlyingDrone.jsx';
 import FlashEffect from './components/animations/FlashEffect.jsx';
+import HealEffect from './components/animations/HealEffect.jsx';
 import CardVisualEffect from './components/animations/CardVisualEffect.jsx';
 import CardRevealOverlay from './components/animations/CardRevealOverlay.jsx';
 import ShipAbilityRevealOverlay from './components/animations/ShipAbilityRevealOverlay.jsx';
@@ -106,6 +107,7 @@ const App = () => {
     setFirstPasserOfPreviousRound,
     addLogEntry,
     resetGame,
+    endGame,
     setWinner,
 
     // Action processing
@@ -125,7 +127,7 @@ const App = () => {
   // Grouped by functionality: modal state, targeting state, game state, UI state.
   // This centralization makes state management more maintainable and predictable.
   // Debug and development flags
-  const AI_HAND_DEBUG_MODE = true; // Set to false to disable clicking to see the AI's hand
+  const AI_HAND_DEBUG_MODE = DEV_CONFIG.features.aiHandDebug; // Controlled by DEV_CONFIG
   const RACE_CONDITION_DEBUG = true; // Set to false to disable race condition monitoring
 
   // Modal state
@@ -133,6 +135,7 @@ const App = () => {
   const [showDebugModal, setShowDebugModal] = useState(false);
   const [flyingDrones, setFlyingDrones] = useState([]);
   const [flashEffects, setFlashEffects] = useState([]);
+  const [healEffects, setHealEffects] = useState([]);
   const [cardVisuals, setCardVisuals] = useState([]);
   const [cardReveals, setCardReveals] = useState([]);
   const [shipAbilityReveals, setShipAbilityReveals] = useState([]);
@@ -159,7 +162,6 @@ const App = () => {
   const [hoveredCardId, setHoveredCardId] = useState(null);
 
   // Combat and attack state
-  const [interceptionModal, setInterceptionModal] = useState(null);
   const [playerInterceptionChoice, setPlayerInterceptionChoice] = useState(null);
   const [potentialInterceptors, setPotentialInterceptors] = useState([]);
   const [potentialGuardians, setPotentialGuardians] = useState([]);
@@ -240,6 +242,7 @@ const App = () => {
   setFlyingDrones,
   setAnimationBlocking,
   setFlashEffects,
+  setHealEffects,
   setCardVisuals,
   setCardReveals,
   setShipAbilityReveals,
@@ -356,7 +359,8 @@ const App = () => {
     shieldsToAllocate,
     opponentShieldsToAllocate,
     gameLog,
-    placedSections
+    placedSections,
+    testMode
   } = gameState;
 
   // --- 3.5 STATE AND REFS DEPENDENT ON GAMESTATE ---
@@ -899,9 +903,9 @@ const App = () => {
         // Handle other card selections (like SEARCH_AND_DRAW) with modal
         setCardSelectionModal({
             ...result.needsCardSelection,
-            onConfirm: (selectedCards) => {
-                // Handle the card selection, passing the updated player states that include energy costs
-                handleCardSelection(selectedCards, result.needsCardSelection, card, target, actingPlayerId, aiContext, result.newPlayerStates);
+            onConfirm: async (selectedCards) => {
+                // Handle the card selection - costs will be paid in completion handler
+                await handleCardSelection(selectedCards, result.needsCardSelection, card, target, actingPlayerId, aiContext, null);
                 setCardSelectionModal(null);
             },
             onCancel: () => {
@@ -931,69 +935,24 @@ const App = () => {
   /**
    * HANDLE CARD SELECTION
    * Processes the result of a card selection modal (e.g., SEARCH_AND_DRAW).
-   * Updates deck state and applies the selected cards to the player's hand.
+   * Delegates to ActionProcessor to maintain proper architecture.
    */
-  const handleCardSelection = useCallback((selectedCards, selectionData, originalCard, target, actingPlayerId, aiContext, playerStatesWithEnergyCosts = null) => {
-    const { searchedCards, remainingDeck, discardPile, shuffleAfter } = selectionData;
-    const unselectedCards = searchedCards.filter(card => {
-      const cardIdentifier = card.instanceId || `${card.id}-${card.name}`;
-      return !selectedCards.some(selected => {
-        const selectedIdentifier = selected.instanceId || `${selected.id}-${selected.name}`;
-        return selectedIdentifier === cardIdentifier;
-      });
+  const handleCardSelection = useCallback(async (selectedCards, selectionData, originalCard, target, actingPlayerId, aiContext, playerStatesWithEnergyCosts = null) => {
+    // Delegate to ActionProcessor (proper architecture)
+    await processAction('searchAndDrawCompletion', {
+      card: originalCard,
+      selectedCards,
+      selectionData,
+      playerId: actingPlayerId,
+      playerStatesWithEnergyCosts
     });
 
-    // Create updated player states
-    // Use the player states that include energy costs if provided, otherwise fall back to current React state
-    const basePlayerStates = playerStatesWithEnergyCosts || { player1: localPlayerState, player2: opponentPlayerState };
-    const currentPlayer = actingPlayerId === getLocalPlayerId() ? basePlayerStates[getLocalPlayerId()] : basePlayerStates[getOpponentPlayerId()];
-    const newHand = [...currentPlayer.hand, ...selectedCards];
-
-    // Return unselected cards to top of deck in original order
-    let newDeck = [...remainingDeck, ...unselectedCards];
-
-    // Shuffle if required
-    if (shuffleAfter) {
-      newDeck = newDeck.sort(() => 0.5 - Math.random());
-    }
-
-    const updatedPlayer = {
-      ...currentPlayer,
-      deck: newDeck,
-      hand: newHand,
-      discardPile: discardPile
-    };
-
-    // Log the final selection
-    addLogEntry({
-      player: currentPlayer.name,
-      actionType: 'CARD_SELECTION',
-      source: originalCard.name,
-      target: `Selected ${selectedCards.length} cards`,
-      outcome: `Drew: ${selectedCards.map(c => c.name).join(', ')}`
-    }, 'handleCardSelection', actingPlayerId === getOpponentPlayerId() ? aiContext : null);
-
-    // Complete the card play by discarding the card and handling turn ending
-    // Merge current player states (which have energy costs applied) with selection updates
-    const currentStates = {
-      [getLocalPlayerId()]: actingPlayerId === getLocalPlayerId() ? { ...currentPlayer, deck: updatedPlayer.deck, hand: updatedPlayer.hand, discardPile: updatedPlayer.discardPile } : basePlayerStates[getLocalPlayerId()],
-      [getOpponentPlayerId()]: actingPlayerId === getOpponentPlayerId() ? { ...currentPlayer, deck: updatedPlayer.deck, hand: updatedPlayer.hand, discardPile: updatedPlayer.discardPile } : basePlayerStates[getOpponentPlayerId()]
-    };
-
-    // TODO: TECHNICAL DEBT - finishCardPlay completes card resolution after modal selection - critical game flow function
-    const completion = gameEngine.finishCardPlay(originalCard, actingPlayerId, currentStates);
-
-    // Apply final state updates through GameStateManager directly
-    gameStateManager.setPlayerStates(completion.newPlayerStates.player1, completion.newPlayerStates.player2);
-
-    // Handle UI cleanup
+    // UI cleanup only
     if (actingPlayerId === getLocalPlayerId()) {
       cancelCardSelection();
       setCardConfirmation(null);
     }
-
-
-  }, [localPlayerState, opponentPlayerState, addLogEntry]);
+  }, [processAction, getLocalPlayerId, cancelCardSelection]);
 
   // --- 7.7 MOVEMENT RESOLUTION ---
 
@@ -1330,6 +1289,37 @@ const App = () => {
    setValidCardTargets([]);
    setCardConfirmation(null);
    setShowWinnerModal(false);
+  };
+
+  /**
+   * HANDLE EXIT GAME
+   * Exits the current game and returns to the menu screen.
+   * Properly cleans up all running services, timers, and subscriptions.
+   */
+  const handleExitGame = () => {
+    // Clean up AI processor (clear timer and unsubscribe)
+    if (gameState.gameMode === 'local') {
+      aiPhaseProcessor.cleanup();
+    }
+
+    // End game and return to menu (also cleans up GameDataService and ActionProcessor)
+    endGame();
+
+    // Reset attack flag to prevent stuck state
+    isResolvingAttackRef.current = false;
+
+    // Reset UI-only state
+    setSelectedDrone(null);
+    setModalContent(null);
+    setAbilityMode(null);
+    setValidAbilityTargets([]);
+    setMandatoryAction(null);
+    setShowMandatoryActionModal(false);
+    setConfirmationModal(null);
+    setSelectedCard(null);
+    setValidCardTargets([]);
+    setCardConfirmation(null);
+    setShowWinnerModal(false);
   };
 
   /**
@@ -2676,6 +2666,14 @@ const App = () => {
         onComplete={flash.onComplete}
       />
     ))}
+    {healEffects.map(heal => (
+      <HealEffect
+        key={heal.id}
+        position={heal.position}
+        healAmount={heal.healAmount}
+        onComplete={heal.onComplete}
+      />
+    ))}
     {cardVisuals.map(visual => (
       <CardVisualEffect
         key={visual.id}
@@ -2775,7 +2773,7 @@ const App = () => {
         currentPlayer={currentPlayer}
         isMultiplayer={isMultiplayer}
         handlePlayerPass={handlePlayerPass}
-        handleReset={handleReset}
+        handleExitGame={handleExitGame}
         handleResetShields={handleResetShields}
         handleConfirmShields={handleConfirmShields}
         handleCancelReallocation={handleCancelReallocation}
@@ -2790,6 +2788,7 @@ const App = () => {
         setShowAiHandModal={setShowAiHandModal}
         onShowDebugModal={() => setShowDebugModal(true)}
         onShowOpponentDrones={handleShowOpponentDrones}
+        testMode={testMode}
       />
 
       <GameBattlefield
@@ -2918,12 +2917,7 @@ const App = () => {
           setSelectedDrone(null);
         }}
       />
-      <AttackInterceptedModal
-        interceptionModal={interceptionModal}
-        show={!!interceptionModal}
-        onClose={interceptionModal?.onClose}
-      />
-                    
+
       <InterceptionOpportunityModal
         choiceData={playerInterceptionChoice}
         show={!!playerInterceptionChoice}
@@ -3080,6 +3074,7 @@ const App = () => {
         onClose={cardSelectionModal?.onCancel || (() => setCardSelectionModal(null))}
         onConfirm={cardSelectionModal?.onConfirm || (() => {})}
         selectionData={cardSelectionModal}
+        mandatory={true}
       />
       <ShipAbilityConfirmationModal
         shipAbilityConfirmation={shipAbilityConfirmation}

@@ -23,18 +23,18 @@ const DEBUG_CONFIG = {
     DRONE_SELECTION: false,     // Drone selection phase and data
     DECK_SELECTION: false,      // Deck selection phase
     PLACEMENT: false,           // Ship placement phase
-    PHASE_TRANSITIONS: true,    // Game phase transitions and flow
+    PHASE_TRANSITIONS: false,   // Game phase transitions and flow
     AI_DECISIONS: false,        // AI decision making
-    MULTIPLAYER: true,           // Network sync and multiplayer
+    MULTIPLAYER: false,         // Network sync and multiplayer
     ANIMATIONS: true,           // Animation system
-    COMMITMENTS: true,          // Simultaneous phase commitments
-    COMBAT: false,              // Combat resolution
-    PASS_LOGIC: true,           // Pass handling
-    STATE_SYNC: true,            // State synchronization
+    COMMITMENTS: false,         // Simultaneous phase commitments
+    COMBAT: true,               // Combat resolution
+    PASS_LOGIC: false,          // Pass handling
+    STATE_SYNC: false,          // State synchronization
     ENERGY: false,              // Energy management
-    CARDS: false,                // Card play and effects
-    HAND_VIEW: false,            // Hand display and card interaction
-    CARD_PLAY: false,            // Card playability and clicking
+    CARDS: true,                // Card play and effects
+    HAND_VIEW: false,           // Hand display and card interaction
+    CARD_PLAY: false,           // Card playability and clicking
   }
 };
 

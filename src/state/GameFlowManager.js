@@ -1085,6 +1085,7 @@ class GameFlowManager {
     this.currentPhase = 'preGame';
     this.gameStage = 'preGame';
     this.roundNumber = 0;
+    this.isProcessingAutomaticPhase = false;
 
     this.emit('gameReset', {});
   }

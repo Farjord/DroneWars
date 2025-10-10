@@ -34,6 +34,9 @@ class GameStateManager {
       opponentId: null,
       gameMode: 'local', // 'local', 'host', 'guest'
 
+      // --- TESTING MODE ---
+      testMode: false, // Indicates if this is a test game (bypasses normal flow)
+
       // --- GAME STATE (null until game starts) ---
       gameActive: false,
       turnPhase: null,
@@ -394,6 +397,11 @@ class GameStateManager {
    * Validate turn phase transitions
    */
   validateTurnPhaseTransition(fromPhase, toPhase) {
+    // Skip validation for test mode - allows direct state initialization
+    if (this.state.testMode) {
+      return;
+    }
+
     const validTransitions = {
       null: ['deckSelection', 'preGame'],
       'preGame': ['deckSelection', 'droneSelection'],
@@ -997,6 +1005,7 @@ class GameStateManager {
     this.setState({
       appState: 'menu',
       gameActive: false,
+      testMode: false, // Clear test mode flag
       turnPhase: null,
       turn: null,
       currentPlayer: null,
@@ -1025,7 +1034,36 @@ class GameStateManager {
     // Clear ActionProcessor queue to prevent stale actions
     this.actionProcessor.clearQueue();
 
-    debugLog('STATE_SYNC', '✅ GAME END: Returned to menu state, cache and queue cleared');
+    // Reset GameFlowManager to clear phase state
+    if (this.gameFlowManager) {
+      this.gameFlowManager.reset();
+    }
+
+    debugLog('STATE_SYNC', '✅ GAME END: Returned to menu state, all singletons cleared');
+  }
+
+  /**
+   * Initialize test mode game - bypasses normal game flow
+   * @param {Object} testConfig - Test configuration from testGameInitializer
+   * @returns {boolean} Success status
+   */
+  initializeTestMode(testConfig) {
+    debugLog('STATE_SYNC', '🧪 TEST MODE: Initializing test game from GameStateManager');
+
+    // Import testGameInitializer dynamically to avoid circular dependencies
+    import('../services/testGameInitializer.js').then(module => {
+      const success = module.initializeTestGame(testConfig, this);
+
+      if (success) {
+        debugLog('STATE_SYNC', '✅ TEST MODE: Test game initialized successfully');
+      } else {
+        debugLog('STATE_SYNC', '❌ TEST MODE: Test game initialization failed');
+      }
+    }).catch(error => {
+      console.error('❌ TEST MODE: Error importing testGameInitializer:', error);
+    });
+
+    return true; // Return immediately, actual initialization happens asynchronously
   }
 
   /**
