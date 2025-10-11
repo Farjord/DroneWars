@@ -14,7 +14,7 @@ const shipComponentCollection = [
       critical: { 'Draw': 4, 'Discard': 1 },
     },
     middleLaneBonus: { 'Draw': 1, 'Discard': 1 },
-    image: '/img/Bridge.png',
+    image: '/DroneWars/img/Bridge.png',
     ability: {
       id: 'ABILITY_SHIP_01',
       name: 'Recalculate',
@@ -39,7 +39,7 @@ const shipComponentCollection = [
       critical: { 'Energy Per Turn': 9, 'Max Energy': 9, 'Shields Per Turn': 1 },
     },
     middleLaneBonus: { 'Energy Per Turn': 2, 'Max Energy': 2, 'Shields Per Turn': 1 },
-    image: '/img/Power_Cell.png',
+    image: '/DroneWars/img/Power_Cell.png',
     ability: {
       id: 'ABILITY_SHIP_02',
       name: 'Reallocate Shields',
@@ -64,7 +64,7 @@ const shipComponentCollection = [
       critical: { 'Initial Deployment': 4, 'CPU Control Value': 8, 'Deployment Budget': 2 },
     },
     middleLaneBonus: {'Initial Deployment': 2, 'Deployment Budget': 2, 'CPU Control Value': 2 },
-    image: '/img/Drone_Control_Hub.png',
+    image: '/DroneWars/img/Drone_Control_Hub.png',
     ability: {
       id: 'ABILITY_SHIP_03',
       name: 'Recall',

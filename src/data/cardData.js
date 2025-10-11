@@ -6,7 +6,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 3,
-    image: '/cards/LaserBlast.png',
+    image: '/DroneWars/cards/LaserBlast.png',
     description: 'Deal 3 damage to any drone.',
     visualEffect: {
       type: 'LASER_BLAST',
@@ -30,7 +30,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 2,
-    image: '/cards/LaserBlast.png',
+    image: '/DroneWars/cards/LaserBlast.png',
     description: 'Deal 4 damage to any drone.',
     visualEffect: {
       type: 'LASER_BLAST',
@@ -54,7 +54,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: '/cards/Reboot.png',
+    image: '/DroneWars/cards/Reboot.png',
     description: 'Draw 2 cards from your deck. Go again.',
     // No targeting key is needed for this card
     effect: {
@@ -70,7 +70,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 2,
-    image: '/cards/Reboot.png',
+    image: '/DroneWars/cards/Reboot.png',
     description: 'Draw 3 cards from your deck Go again.',
     // No targeting key is needed for this card
     effect: {
@@ -86,7 +86,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: '/cards/OutThink.png',
+    image: '/DroneWars/cards/OutThink.png',
     description: 'Draw 1 card.',
     // No targeting is needed
     effect: {
@@ -101,7 +101,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 0,
-    image: '/cards/EnergySurge.png',
+    image: '/DroneWars/cards/EnergySurge.png',
     description: 'Gain 2 Energy. Go again',
     // No targeting is needed for this effect
     effect: {
@@ -117,7 +117,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 0,
-    image: '/cards/EnergySurge.png',
+    image: '/DroneWars/cards/EnergySurge.png',
     description: 'Gain 3 Energy. Go again.',
     // No targeting is needed for this effect
     effect: {
@@ -133,7 +133,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 2,
-    image: '/cards/AdrenalineRush.png',
+    image: '/DroneWars/cards/AdrenalineRush.png',
     description: 'Ready an exhausted friendly drone.',
     targeting: {
       type: 'DRONE',
@@ -152,7 +152,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 3,
-    image: '/cards/AdrenalineRush.png',
+    image: '/DroneWars/cards/AdrenalineRush.png',
     description: 'Ready an exhausted friendly drone. Go again',
     targeting: {
       type: 'DRONE',
@@ -172,7 +172,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: '/cards/NanobotRepair.png',
+    image: '/DroneWars/cards/NanobotRepair.png',
     description: 'Restore 3 hull to a friendly drone. Cannot exceed its maximum hull. Go again.',
     targeting: {
       type: 'DRONE',
@@ -192,7 +192,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 3,
-    image: '/cards/EmergencyPatch.png',
+    image: '/DroneWars/cards/EmergencyPatch.png',
     description: 'Restore 4 hull to one of your ship sections.',
     targeting: {
       type: 'SHIP_SECTION',
@@ -210,7 +210,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 3,
-    image: '/cards/EmergencyPatch.png',
+    image: '/DroneWars/cards/EmergencyPatch.png',
     description: 'Restore 5 hull to one of your ship sections.',
     targeting: {
       type: 'SHIP_SECTION',
@@ -228,7 +228,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: '/cards/ShieldRecharge.png',
+    image: '/DroneWars/cards/ShieldRecharge.png',
     description: 'Restore 2 shield to all friendly drones in a target lane. Go again.',
     targeting: {
       type: 'LANE', // New targeting type
@@ -248,7 +248,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 5, // High cost for a powerful effect
-    image: '/cards/TargetLock.png',
+    image: '/DroneWars/cards/TargetLock.png',
     description: 'Destroy a single target drone.',
     targeting: {
       type: 'DRONE',
@@ -269,7 +269,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 4,
-    image: '/cards/ShriekerMissiles.png',
+    image: '/DroneWars/cards/ShriekerMissiles.png',
     description: 'Destroy all enemy drones with a speed of 5 or higher in a selected lane.',
     targeting: {
       type: 'LANE',
@@ -290,7 +290,7 @@ const fullCardCollection = [
     maxInDeck: 2,
     type: 'Action',
     cost: 7, // Increased cost to reflect its power
-    image: '/cards/Nuke.png',
+    image: '/DroneWars/cards/Nuke.png',
     description: 'Destroy ALL drones in a selected lane (both sides).',
     visualEffect: {
       type: 'NUKE_BLAST',
@@ -313,7 +313,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 4,
-    image: '/cards/PiercingShot.png',
+    image: '/DroneWars/cards/PiercingShot.png',
     description: 'Deal 2 piercing damage to any drone. (Piercing damage ignores shields).',
     visualEffect: {
       type: 'LASER_BLAST',
@@ -337,7 +337,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 3,
-    image: '/cards/PiercingShot.png',
+    image: '/DroneWars/cards/PiercingShot.png',
     description: 'Deal 2 piercing damage to any drone. (Piercing damage ignores shields).',
     visualEffect: {
       type: 'LASER_BLAST',
@@ -362,7 +362,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 3,
-    image: '/cards/SidewinderMissiles.png',
+    image: '/DroneWars/cards/SidewinderMissiles.png',
     description: 'Deal 2 damage to all enemy drones with a speed of 3 or Less in a selected lane.',
     visualEffect: {
       type: 'ENERGY_WAVE',
@@ -386,7 +386,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 0,
-    image: '/cards/Overcharge.png',
+    image: '/DroneWars/cards/Overcharge.png',
     description: 'Give a friendly drone +2 attack until the end of the turn.',
     targeting: {
       type: 'DRONE',
@@ -405,7 +405,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 2,
-    image: '/cards/Streamline.png',
+    image: '/DroneWars/cards/Streamline.png',
     description: 'Give all friendly drones in a line a permanent +1 speed bonus. Go again.',
     targeting: {
       type: 'LANE',
@@ -425,7 +425,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: '/cards/StaticField.png',
+    image: '/DroneWars/cards/StaticField.png',
     description: 'Give an enemy drone -2 attack until the end of the turn. Go again.',
     targeting: {
       type: 'DRONE',
@@ -445,7 +445,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: '/cards/Boosters.png',
+    image: '/DroneWars/cards/Boosters.png',
     description: 'Give a friendly drone +2 speed until the end of the turn.',
     targeting: {
       type: 'DRONE',
@@ -464,7 +464,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: '/cards/DesperateMeasures.png',
+    image: '/DroneWars/cards/DesperateMeasures.png',
     description: 'Draw 1 card and gain 1 Energy. Repeat this effect for each of your damaged or critical ship sections.',
     effect: {
       type: 'REPEATING_EFFECT',
@@ -480,7 +480,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: '/cards/Reposition.png',
+    image: '/DroneWars/cards/Reposition.png',
     description: 'Select a lane. Move up to 3 friendly drones from that lane to another. The moved drones are not exhausted.',
     effect: {
       type: 'MULTI_MOVE',
@@ -497,7 +497,7 @@ const fullCardCollection = [
     maxInDeck: 2,
     type: 'Upgrade', // New card type
     cost: 3,
-    image: '/cards/SlimlineBodywork.png',
+    image: '/DroneWars/cards/SlimlineBodywork.png',
     description: 'Permanently increase the deployment limit of a target drone type by 1. Go again.',
     targeting: {
       type: 'DRONE_CARD' // New targeting type for drone cards in your active pool
@@ -516,7 +516,7 @@ const fullCardCollection = [
     maxInDeck: 2,
     type: 'Upgrade',
     cost: 3,
-    image: '/cards/OverclockedThrusters.png',
+    image: '/DroneWars/cards/OverclockedThrusters.png',
     description: 'Permanently grant all drones of a target type +1 Speed.',
     targeting: {
       type: 'DRONE_CARD'
@@ -535,7 +535,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: '/cards/SystemSabotage.png',
+    image: '/DroneWars/cards/SystemSabotage.png',
     description: 'Destroy a single applied Upgrade on an enemy drone type.',
     targeting: {
       type: 'APPLIED_UPGRADE', // New targeting for an active upgrade
@@ -553,7 +553,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 1,
-    image: '/cards/Maneuver.png',
+    image: '/DroneWars/cards/Maneuver.png',
     description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move. Go again.',
     effect: {
       type: 'SINGLE_MOVE',
@@ -568,7 +568,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 0,
-    image: '/cards/Maneuver.png',
+    image: '/DroneWars/cards/Maneuver.png',
     description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move. Go again.',
     effect: {
       type: 'SINGLE_MOVE',
@@ -584,7 +584,7 @@ const fullCardCollection = [
     maxInDeck: 2,
     type: 'Upgrade',
     cost: 5,
-    image: '/cards/CombatEnhancement.png',
+    image: '/DroneWars/cards/CombatEnhancement.png',
     description: 'Permanently increase the attack of all drones of a target type by 1.',
     targeting: {
       type: 'DRONE_CARD'
@@ -602,7 +602,7 @@ const fullCardCollection = [
     maxInDeck: 2,
     type: 'Upgrade',
     cost: 4,
-    image: '/cards/ShieldAmplifier.png',
+    image: '/DroneWars/cards/ShieldAmplifier.png',
     description: 'Permanently increase the shields of all drones of a target type by 1.',
     targeting: {
       type: 'DRONE_CARD'
@@ -620,7 +620,7 @@ const fullCardCollection = [
     maxInDeck: 1,
     type: 'Upgrade',
     cost: 6,
-    image: '/cards/PiercingRounds.png',
+    image: '/DroneWars/cards/PiercingRounds.png',
     description: 'Permanently grant all drones of a target type the Piercing keyword.',
     targeting: {
       type: 'DRONE_CARD'
@@ -646,7 +646,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 2,
-    image: '/cards/StrategicPlanning.png',
+    image: '/DroneWars/cards/StrategicPlanning.png',
     description: 'Look at the top 5 cards of your deck and draw 1. Shuffle your deck.',
     effect: {
         type: 'SEARCH_AND_DRAW',
@@ -664,7 +664,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 4,
-    image: '/cards/EquipmentCache.png',
+    image: '/DroneWars/cards/EquipmentCache.png',
     description: 'Search your deck for an Upgrade card and add it to your hand. Shuffle your deck.',
     effect: {
         type: 'SEARCH_AND_DRAW',
@@ -685,7 +685,7 @@ const fullCardCollection = [
     maxInDeck: 2,
     type: 'Upgrade',
     cost: 4,
-    image: '/cards/EfficiencyModule.png',
+    image: '/DroneWars/cards/EfficiencyModule.png',
     description: 'Permanently reduce the deployment cost of all drones of a target type by 1.',
     targeting: {
       type: 'DRONE_CARD'
@@ -705,7 +705,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     type: 'Action',
     cost: 3,
-    image: '/cards/DeployJammers.png',
+    image: '/DroneWars/cards/DeployJammers.png',
     description: 'Create a Jammer drone token in each of your lanes. (Jammer: 0/1, Speed 1. Opponent card effects can only target Jammer drones.)',
     effect: {
       type: 'CREATE_TOKENS',

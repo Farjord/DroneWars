@@ -3,7 +3,7 @@ const aiPersonalities = [
     name: 'TEST AI',
     description: 'Used for test scenarios.',
     difficulty: 'Easy',
-    imagePath: '/AI/TEST.png',
+    imagePath: '/DroneWars/AI/TEST.png',
     // The specific 5 drones this AI will use.
     dronePool: [
       'Heavy Fighter',
@@ -45,7 +45,7 @@ const aiPersonalities = [
     name: 'Manticore - Class II Gunship',
     description: 'Focuses on overwhelming firepower and direct damage to drones and ship sections.',
     difficulty: 'Normal',
-    imagePath: '/AI/Manticore.png',
+    imagePath: '/DroneWars/AI/Manticore.png',
     // The specific 5 drones this AI will use.
     dronePool: [
       'Heavy Fighter',
