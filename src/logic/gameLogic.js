@@ -488,17 +488,10 @@ const checkWinCondition = (opponentPlayerState) => {
     if (!opponentPlayerState || !opponentPlayerState.shipSections) {
       return false;
     }
-    
+
     const sectionStatuses = Object.values(opponentPlayerState.shipSections).map(
       (section) => getShipStatus(section)
     );
-
-    const criticalCount = sectionStatuses.filter(
-      (status) => status === 'critical'
-    ).length;
-    if (criticalCount >= 2) {
-      return true;
-    }
 
     const damagedOrWorseCount = sectionStatuses.filter(
       (status) => status === 'damaged' || status === 'critical'

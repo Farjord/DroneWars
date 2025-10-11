@@ -4,6 +4,7 @@
 // Modal that allows player to choose whether to intercept an incoming attack
 
 import React from 'react';
+import { X } from 'lucide-react';
 import DroneToken from '../ui/DroneToken.jsx';
 import ShipSection from '../ui/ShipSection.jsx';
 
@@ -46,31 +47,18 @@ const InterceptionOpportunityModal = ({
   const { attacker, target, targetType, lane } = attackDetails;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/30 backdrop-blur-md" />
-      
-      <div className="relative p-[2px] bg-gradient-to-br from-cyan-400 to-blue-500 max-w-4xl w-full" 
-           style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%)' }}>
-        <div className="bg-gray-900/95 p-8" 
-             style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0 100%)' }}>
-          
-          {/* Title */}
-          <h1
-            className="text-4xl font-bold uppercase tracking-[0.3em] text-center mb-2"
-            style={{
-              background: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
-              backgroundSize: '200% auto',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              textShadow: '0 0 30px rgba(0, 255, 136, 0.5)'
-            }}
-          >
-            Interception!
-          </h1>
-          
-          <p className="text-center text-cyan-300/60 uppercase text-sm tracking-widest mb-8">
-            Combat in {lane?.replace('lane', 'Lane ') || 'Unknown Lane'}
-          </p>
+    <div className="modal-overlay">
+      <div className="modal-container modal-container-xl">
+        <button onClick={onDecline} className="modal-close">
+          <X size={24} />
+        </button>
+
+        {/* Title */}
+        <h2 className="modal-title">Interception!</h2>
+
+        <p className="modal-text mb-6">
+          Combat in {lane?.replace('lane', 'Lane ') || 'Unknown Lane'}
+        </p>
 
           {/* Combat Preview */}
           <div className="mb-6 py-8">
@@ -125,21 +113,11 @@ const InterceptionOpportunityModal = ({
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="h-px w-full bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent mb-4" />
-
           {/* Interceptors Section */}
-          <h3 
-            className="text-center text-2xl font-bold uppercase tracking-wider mb-1"
-            style={{
-              background: 'linear-gradient(45deg, #00ff88, #0088ff)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent'
-            }}
-          >
+          <h3 className="modal-title text-2xl mt-6 mb-2">
             Choose Interceptor
           </h3>
-          <p className="text-center text-cyan-300/50 text-sm mb-4">
+          <p className="modal-text text-sm mb-4">
             Select a drone to intercept the attack
           </p>
 
@@ -162,18 +140,14 @@ const InterceptionOpportunityModal = ({
             ))}
           </div>
 
-          {/* Buttons */}
-          <div className="flex justify-center gap-6 pt-4">
-            <button
-              onClick={onDecline}
-              className="btn-cancel"
-            >
-              Decline
-            </button>
-          </div>
-
-          {/* Bottom divider */}
-          <div className="h-px w-80 mx-auto mt-8 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
+        {/* Buttons */}
+        <div className="flex justify-center gap-6 pt-4">
+          <button
+            onClick={onDecline}
+            className="btn-cancel"
+          >
+            Decline
+          </button>
         </div>
       </div>
     </div>
