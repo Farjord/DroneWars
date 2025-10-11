@@ -270,6 +270,7 @@ const fullDroneCollection = [
     speed: 1,
     image: '/img/Jammer.png',
     selectable: false, // Cannot be selected in deck builder or drone selection
+    maxPerLane: 1, // Only one Jammer allowed per lane
     abilities: [{
         name: 'Jammer',
         description: 'While this drone is in a lane, opponent card effects can only target this drone.',

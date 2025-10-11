@@ -5,7 +5,7 @@
 // Extracted from App.jsx for better component organization
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown } from 'lucide-react';
+import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen } from 'lucide-react';
 import { getPhaseDisplayName } from '../../utils/gameUtils.js';
 import DEV_CONFIG from '../../config/devConfig.js';
 
@@ -80,6 +80,7 @@ function GameHeader({
   setShowAiHandModal,
   onShowDebugModal,
   onShowOpponentDrones,
+  onShowGlossary,
   testMode
 }) {
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
@@ -591,10 +592,20 @@ function GameHeader({
                 )}
                 <button
                   onClick={() => {
+                    onShowGlossary && onShowGlossary();
+                    setShowSettingsDropdown(false);
+                  }}
+                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center gap-2 border-b border-gray-700"
+                >
+                  <BookOpen size={16} />
+                  Mechanics Glossary
+                </button>
+                <button
+                  onClick={() => {
                     handleExitGame();
                     setShowSettingsDropdown(false);
                   }}
-                  className={`w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors ${DEV_CONFIG.features.debugView ? 'rounded-b-lg' : 'rounded-lg'} flex items-center gap-2`}
+                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors rounded-b-lg flex items-center gap-2"
                 >
                   <RotateCcw size={16} />
                   Exit

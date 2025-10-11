@@ -44,6 +44,7 @@ import ShipAbilityConfirmationModal from './components/modals/ShipAbilityConfirm
 import AIHandDebugModal from './components/modals/AIHandDebugModal.jsx';
 import GameDebugModal from './components/modals/GameDebugModal.jsx';
 import OpponentDronesModal from './components/modals/OpponentDronesModal.jsx';
+import GlossaryModal from './components/modals/GlossaryModal.jsx';
 
 // --- 1.4 HOOK IMPORTS ---
 import { useGameState } from './hooks/useGameState';
@@ -133,6 +134,7 @@ const App = () => {
   // Modal state
   const [showAiHandModal, setShowAiHandModal] = useState(false);
   const [showDebugModal, setShowDebugModal] = useState(false);
+  const [showGlossaryModal, setShowGlossaryModal] = useState(false);
   const [flyingDrones, setFlyingDrones] = useState([]);
   const [flashEffects, setFlashEffects] = useState([]);
   const [healEffects, setHealEffects] = useState([]);
@@ -2822,6 +2824,7 @@ const App = () => {
         setShowAiHandModal={setShowAiHandModal}
         onShowDebugModal={() => setShowDebugModal(true)}
         onShowOpponentDrones={handleShowOpponentDrones}
+        onShowGlossary={() => setShowGlossaryModal(true)}
         testMode={testMode}
       />
 
@@ -3083,6 +3086,10 @@ const App = () => {
         gameStateManager={gameStateManager}
         gameDataService={gameDataService}
       />
+
+      {showGlossaryModal && (
+        <GlossaryModal onClose={() => setShowGlossaryModal(false)} />
+      )}
 
       {/* Renders the modal for viewing the deck */}
       <CardViewerModal 

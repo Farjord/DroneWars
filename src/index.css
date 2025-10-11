@@ -1068,17 +1068,17 @@
 .card-border-rotate-purple {
   background: linear-gradient(
     90deg,
-    rgba(192, 132, 252, 0.15) 0%,   /* purple-400 very dim */
-    rgba(192, 132, 252, 0.25) 10%,  /* purple-400 subtle */
-    rgba(147, 51, 234, 0.3) 20%,    /* purple-600 gentle peak */
-    rgba(126, 34, 206, 0.35) 30%,   /* purple-700 soft deep */
-    rgba(147, 51, 234, 0.3) 40%,    /* purple-600 gentle peak */
-    rgba(192, 132, 252, 0.25) 50%,  /* purple-400 subtle */
-    rgba(192, 132, 252, 0.15) 60%,  /* purple-400 very dim */
-    rgba(107, 33, 168, 0.2) 70%,    /* purple-800 subtle darker */
-    rgba(107, 33, 168, 0.25) 80%,   /* purple-800 gentle */
-    rgba(107, 33, 168, 0.2) 90%,    /* purple-800 subtle darker */
-    rgba(192, 132, 252, 0.15) 100%  /* purple-400 very dim (loops) */
+    rgba(147, 51, 234, 1.0) 0%,   /* purple-600 */
+    rgba(147, 51, 234, 1.0) 10%,  /* purple-600 */
+    rgba(147, 51, 234, 1.0) 20%,    /* purple-600 peak */
+    rgba(107, 33, 168, 1.0) 30%,   /* purple-800 darker */
+    rgba(147, 51, 234, 1.0) 40%,    /* purple-600 peak */
+    rgba(147, 51, 234, 1.0) 50%,  /* purple-600 */
+    rgba(147, 51, 234, 1.0) 60%,  /* purple-600 */
+    rgba(59, 7, 100, 1.0) 70%,    /* purple-950 darkest */
+    rgba(59, 7, 100, 1.0) 80%,   /* purple-950 darkest */
+    rgba(59, 7, 100, 1.0) 90%,    /* purple-950 darkest */
+    rgba(147, 51, 234, 1.0) 100%  /* purple-600 (loops) */
   );
   background-size: 400% 100%;
   animation: cardBorderRotatePurple 15s linear infinite;
@@ -1088,15 +1088,15 @@
 .card-border-shimmer-silver {
   background: linear-gradient(
     135deg,
-    rgba(148, 163, 184, 0.3) 0%,      /* slate-400 dim */
-    rgba(148, 163, 184, 0.3) 10%,     /* slate-400 dim */
-    rgba(148, 163, 184, 0.35) 15%,    /* slate-400 subtle rise */
-    rgba(203, 213, 225, 0.45) 20%,    /* slate-300 shimmer start */
-    rgba(241, 245, 249, 0.55) 25%,    /* slate-100 bright reflection */
-    rgba(203, 213, 225, 0.45) 30%,    /* slate-300 shimmer end */
-    rgba(148, 163, 184, 0.35) 35%,    /* slate-400 subtle fall */
-    rgba(148, 163, 184, 0.3) 40%,     /* slate-400 dim */
-    rgba(148, 163, 184, 0.3) 100%     /* slate-400 dim (rest) */
+    rgba(148, 163, 184, 1.0) 0%,      /* slate-400 */
+    rgba(148, 163, 184, 1.0) 10%,     /* slate-400 */
+    rgba(148, 163, 184, 1.0) 15%,    /* slate-400 rise */
+    rgba(203, 213, 225, 1.0) 20%,    /* slate-300 shimmer start */
+    rgba(241, 245, 249, 1.0) 25%,    /* slate-100 bright reflection */
+    rgba(203, 213, 225, 1.0) 30%,    /* slate-300 shimmer end */
+    rgba(148, 163, 184, 1.0) 35%,    /* slate-400 fall */
+    rgba(148, 163, 184, 1.0) 40%,     /* slate-400 */
+    rgba(148, 163, 184, 1.0) 100%     /* slate-400 (rest) */
   );
   background-size: 400% 400%;
   animation: cardBorderShimmerSilver 12s linear infinite;

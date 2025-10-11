@@ -186,6 +186,13 @@ const getLaneOfDrone = (droneId, playerState) => {
     return null;
 };
 
+const countDroneTypeInLane = (playerState, droneName, laneId) => {
+    if (!playerState.dronesOnBoard[laneId]) {
+        return 0;
+    }
+    return playerState.dronesOnBoard[laneId].filter(d => d.name === droneName).length;
+};
+
 // ========================================
 // TARGETING AND VALIDATION SYSTEM
 // ========================================
@@ -507,7 +514,7 @@ const checkWinCondition = (opponentPlayerState) => {
 // DEPLOYMENT AND VALIDATION SYSTEM
 // ========================================
 
-const validateDeployment = (player, drone, turn, totalPlayerDrones, playerEffectiveStats) => {
+const validateDeployment = (player, drone, turn, totalPlayerDrones, playerEffectiveStats, targetLane = null) => {
     debugLog('DEPLOYMENT', '🔍 validateDeployment: Entry params:', {
       droneName: drone?.name,
       droneType: typeof drone,
@@ -535,6 +542,18 @@ const validateDeployment = (player, drone, turn, totalPlayerDrones, playerEffect
 
     if ((player.deployedDroneCounts[drone.name] || 0) >= effectiveLimit) {
       return { isValid: false, reason: "Deployment Limit Reached", message: `The deployment limit for ${drone.name} is currently ${effectiveLimit}.` };
+    }
+
+    // Check maxPerLane restriction if applicable
+    if (baseDroneInfo.maxPerLane && targetLane) {
+        const currentCountInLane = countDroneTypeInLane(player, drone.name, targetLane);
+        if (currentCountInLane >= baseDroneInfo.maxPerLane) {
+            return {
+                isValid: false,
+                reason: "Max Per Lane Reached",
+                message: `Only ${baseDroneInfo.maxPerLane} ${drone.name}${baseDroneInfo.maxPerLane > 1 ? 's' : ''} allowed per lane.`
+            };
+        }
     }
 
     const droneCost = drone.class;
@@ -961,7 +980,7 @@ const resolveShipAbility = (ability, sectionName, target, playerStates, placedSe
 };
 
 const executeDeployment = (drone, lane, turn, playerState, opponentState, placedSections, logCallback, playerId) => {
-    const validation = validateDeployment(playerState, drone, turn, Object.values(playerState.dronesOnBoard).flat().length, calculateEffectiveShipStats(playerState, placedSections.player1 || placedSections));
+    const validation = validateDeployment(playerState, drone, turn, Object.values(playerState.dronesOnBoard).flat().length, calculateEffectiveShipStats(playerState, placedSections.player1 || placedSections), lane);
 
     if (!validation.isValid) {
         return {
@@ -1703,6 +1722,36 @@ const resolveMultiMove = (card, dronesToMove, fromLane, toLane, playerState, opp
     const { cost, effect } = card;
     const { logCallback, applyOnMoveEffectsCallback, updateAurasCallback } = callbacks;
 
+    // Check maxPerLane restriction for each drone type being moved
+    const droneTypeCount = {};
+    dronesToMove.forEach(drone => {
+        droneTypeCount[drone.name] = (droneTypeCount[drone.name] || 0) + 1;
+    });
+
+    for (const [droneName, movingCount] of Object.entries(droneTypeCount)) {
+        const baseDrone = fullDroneCollection.find(d => d.name === droneName);
+        if (baseDrone && baseDrone.maxPerLane) {
+            const currentCountInTargetLane = countDroneTypeInLane(playerState, droneName, toLane);
+            const currentCountInSourceLane = countDroneTypeInLane(playerState, droneName, fromLane);
+
+            // If same lane, we're just repositioning, so subtract the moving count
+            const isSameLane = fromLane === toLane;
+            const futureCount = isSameLane
+                ? currentCountInTargetLane  // Moving within same lane doesn't change count
+                : currentCountInTargetLane + movingCount;
+
+            if (futureCount > baseDrone.maxPerLane) {
+                return {
+                    newPlayerState: playerState,
+                    shouldEndTurn: false,
+                    error: `Only ${baseDrone.maxPerLane} ${droneName}${baseDrone.maxPerLane > 1 ? 's' : ''} allowed per lane. Cannot move ${movingCount} to ${toLane}.`,
+                    shouldCancelCardSelection: true,
+                    shouldClearMultiSelectState: true
+                };
+            }
+        }
+    }
+
     let tempState = JSON.parse(JSON.stringify(playerState));
     tempState.energy -= cost;
     tempState.hand = tempState.hand.filter(c => c.instanceId !== card.instanceId);
@@ -1744,6 +1793,26 @@ const resolveMultiMove = (card, dronesToMove, fromLane, toLane, playerState, opp
 const resolveSingleMove = (card, droneToMove, fromLane, toLane, playerState, opponentState, placedSections, callbacks) => {
     const { cost, effect } = card;
     const { logCallback, applyOnMoveEffectsCallback, updateAurasCallback } = callbacks;
+
+    // Check maxPerLane restriction before moving
+    const baseDrone = fullDroneCollection.find(d => d.name === droneToMove.name);
+    if (baseDrone && baseDrone.maxPerLane) {
+        // Don't count the drone being moved if it's in the destination lane (though unlikely)
+        const currentCountInTargetLane = countDroneTypeInLane(playerState, droneToMove.name, toLane);
+        // Account for if drone is already in the toLane and we're moving it within same lane
+        const isSameLane = fromLane === toLane;
+        const effectiveCount = isSameLane ? currentCountInTargetLane - 1 : currentCountInTargetLane;
+
+        if (effectiveCount >= baseDrone.maxPerLane) {
+            return {
+                newPlayerState: playerState,
+                shouldEndTurn: false,
+                error: `Only ${baseDrone.maxPerLane} ${droneToMove.name}${baseDrone.maxPerLane > 1 ? 's' : ''} allowed per lane.`,
+                shouldCancelCardSelection: true,
+                shouldClearMultiSelectState: true
+            };
+        }
+    }
 
     let tempState = JSON.parse(JSON.stringify(playerState));
     tempState.energy -= cost;
@@ -3251,6 +3320,21 @@ const resolveCreateTokensEffect = (effect, target, actingPlayerId, playerStates,
 
     // Create tokens in specified lanes
     effect.locations.forEach(laneId => {
+        // Check maxPerLane restriction before creating token
+        if (baseDrone.maxPerLane) {
+            const currentCountInLane = countDroneTypeInLane(actingPlayerState, baseDrone.name, laneId);
+            if (currentCountInLane >= baseDrone.maxPerLane) {
+                // Skip this lane - already at max
+                if (callbacks && typeof callbacks === 'function') {
+                    callbacks({
+                        action: `${actingPlayerState.name} could not create ${effect.tokenName} token in ${laneId} (max per lane: ${baseDrone.maxPerLane})`,
+                        player: actingPlayerState.name
+                    });
+                }
+                return; // Skip to next lane
+            }
+        }
+
         // Create unique token instance with all necessary properties
         const tokenDrone = {
             ...baseDrone,

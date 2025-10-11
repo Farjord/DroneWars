@@ -9,6 +9,8 @@ import { useGameState } from '../hooks/useGameState.js';
 import GameDataService from '../services/GameDataService.js';
 import DEV_CONFIG from '../config/devConfig.js';
 import { debugLog } from '../utils/debugLogger.js';
+import GlossaryModal from '../components/modals/GlossaryModal.jsx';
+import ScalingText from '../components/ui/ScalingText.jsx';
 
 /**
  * MenuScreen - Main menu for selecting game mode
@@ -19,6 +21,7 @@ function MenuScreen() {
 
   // Single animation trigger state - all effects trigger together
   const [animationKey, setAnimationKey] = useState(0);
+  const [showGlossary, setShowGlossary] = useState(false);
 
   // Random animation triggers (20-40 second intervals) - all effects trigger together
   useEffect(() => {
@@ -180,64 +183,78 @@ function MenuScreen() {
           gap: '1.5rem',
           alignItems: 'center'
         }}>
-          <button onClick={handleSinglePlayer} className="btn-continue" style={{ minWidth: '250px', fontSize: '1.1rem', padding: '16px 30px' }}>
-            SINGLE PLAYER
+          <button onClick={handleSinglePlayer} className="btn-continue" style={{ width: '250px', fontSize: '1.1rem', padding: '16px 30px' }}>
+            <ScalingText text="SINGLE PLAYER" className="uppercase tracking-wider font-semibold" />
             <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
               vs AI Opponent
             </div>
           </button>
 
-          <button onClick={handleMultiplayer} className="btn-continue" style={{ minWidth: '250px', fontSize: '1.1rem', padding: '16px 30px' }}>
-            MULTIPLAYER
+          <button onClick={handleMultiplayer} className="btn-continue" style={{ width: '250px', fontSize: '1.1rem', padding: '16px 30px' }}>
+            <ScalingText text="MULTIPLAYER" className="uppercase tracking-wider font-semibold" />
             <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
               vs Human Player
             </div>
           </button>
 
-          <button onClick={() => gameStateManager.setState({ appState: 'deckBuilder' })} className="btn-continue" style={{ minWidth: '250px', fontSize: '1.1rem', padding: '16px 30px' }}>
-            DECK BUILDER
+          {DEV_CONFIG.features.testingMode && (
+            <button
+              onClick={() => gameStateManager.setState({ appState: 'testingSetup' })}
+              className="btn-reset"
+              style={{
+                width: '250px',
+                fontSize: '1.1rem',
+                padding: '16px 30px'
+              }}
+            >
+              <ScalingText text="TESTING MODE" className="uppercase tracking-wider font-semibold" />
+              <div className="body-font" style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
+                Dev Scenario Setup
+              </div>
+            </button>
+          )}
+
+          <button onClick={() => gameStateManager.setState({ appState: 'deckBuilder' })} className="btn-continue" style={{ width: '250px', fontSize: '1.1rem', padding: '16px 30px' }}>
+            <ScalingText text="DECK BUILDER" className="uppercase tracking-wider font-semibold" />
             <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
               Build Your Deck
+            </div>
+          </button>
+
+          <button
+            onClick={() => setShowGlossary(true)}
+            className="btn-info"
+            style={{ width: '250px', fontSize: '1.1rem', padding: '16px 30px' }}
+          >
+            <ScalingText text="MECHANICS GLOSSARY" className="uppercase tracking-wider font-semibold" />
+            <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
+              Developer Reference
             </div>
           </button>
 
           {DEV_CONFIG.features.modalShowcase && (
             <button
               onClick={() => gameStateManager.setState({ appState: 'modalShowcase' })}
-              className="btn-continue"
+              className="btn-info"
               style={{
-                minWidth: '250px',
+                width: '250px',
                 fontSize: '1.1rem',
-                padding: '16px 30px',
-                backgroundColor: '#6a0dad',
-                borderColor: '#9932cc'
+                padding: '16px 30px'
               }}
             >
-              MODAL SHOWCASE
+              <ScalingText text="MODAL SHOWCASE" className="uppercase tracking-wider font-semibold" />
               <div className="body-font" style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
                 Dev Preview Tool
               </div>
             </button>
           )}
-
-          {DEV_CONFIG.features.testingMode && (
-            <button
-              onClick={() => gameStateManager.setState({ appState: 'testingSetup' })}
-              className="btn-utility"
-              style={{
-                minWidth: '250px',
-                fontSize: '1.1rem',
-                padding: '16px 30px'
-              }}
-            >
-              TESTING MODE
-              <div className="body-font" style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
-                Dev Scenario Setup
-              </div>
-            </button>
-          )}
         </div>
       </div>
+
+      {/* Glossary Modal */}
+      {showGlossary && (
+        <GlossaryModal onClose={() => setShowGlossary(false)} />
+      )}
     </div>
   );
 }

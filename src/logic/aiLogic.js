@@ -38,6 +38,18 @@ const getJammerDronesInLane = (playerState, lane) => {
   return (playerState.dronesOnBoard[lane] || []).filter(hasJammerKeyword);
 };
 
+/**
+ * Count drones of a specific type in a lane
+ * @param {Object} playerState - Player state to check
+ * @param {string} droneName - Name of drone type
+ * @param {string} laneId - Lane to check
+ * @returns {number} Count of drones with matching name
+ */
+const countDroneTypeInLane = (playerState, droneName, laneId) => {
+  if (!playerState.dronesOnBoard[laneId]) return 0;
+  return playerState.dronesOnBoard[laneId].filter(d => d.name === droneName).length;
+};
+
 // ========================================
 // LANE SCORING
 // ========================================
@@ -157,8 +169,26 @@ const currentLaneScores = {
       }
 
       for (const laneId of lanes) {
-        const tempAiState = JSON.parse(JSON.stringify(player2));
         const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
+
+        // Check maxPerLane restriction
+        if (baseDrone.maxPerLane) {
+          const currentCount = countDroneTypeInLane(player2, drone.name, laneId);
+          if (currentCount >= baseDrone.maxPerLane) {
+            // Skip this lane - already at max
+            possibleDeployments.push({
+              drone,
+              laneId,
+              score: -999,
+              instigator: drone.name,
+              targetName: laneId,
+              logic: [`Max per lane reached (${currentCount}/${baseDrone.maxPerLane})`]
+            });
+            continue; // Skip to next lane
+          }
+        }
+
+        const tempAiState = JSON.parse(JSON.stringify(player2));
         tempAiState.dronesOnBoard[laneId].push({ ...baseDrone, id: 'temp' });
 
         const projectedScore = calculateLaneScore(laneId, tempAiState, player1, allSections, getShipStatus, gameDataService);
@@ -310,6 +340,17 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
       [fromLaneIndex - 1, fromLaneIndex + 1].forEach(toLaneIndex => {
         if (toLaneIndex >= 1 && toLaneIndex <= 3) {
           const toLane = `lane${toLaneIndex}`;
+
+          // Check maxPerLane restriction
+          const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
+          if (baseDrone && baseDrone.maxPerLane) {
+            const currentCountInTarget = countDroneTypeInLane(player2, drone.name, toLane);
+            if (currentCountInTarget >= baseDrone.maxPerLane) {
+              // Skip this move - would violate maxPerLane
+              return;
+            }
+          }
+
           possibleActions.push({ type: 'move', drone, fromLane: drone.lane, toLane, score: 0 });
         }
       });
@@ -480,23 +521,36 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
               action.logic.push(`(Repeats: ${repeatCount} * 25) - (Card Cost: ${card.cost} * 4)`);
             }
             else if (card.effect.type === 'CREATE_TOKENS') {
-              // Deploy Jammers evaluation - always positive, scales with CPU value
+              // Deploy Jammers evaluation - scales with both CPU value and available lanes
               const allFriendlyDrones = Object.values(player2.dronesOnBoard).flat();
               const totalCPUValue = allFriendlyDrones.reduce((sum, d) => sum + (d.class || 0), 0);
               const highValueDrones = allFriendlyDrones.filter(d => d.class >= 3).length;
 
-              // Base score: always positive (AI never sees this as bad)
-              const baseScore = 30;
-              const cpuValueBonus = totalCPUValue * 5;
-              const highValueBonus = highValueDrones * 15;
-              const costPenalty = card.cost * 4;
+              // Count available lanes (lanes without Jammers)
+              const lanes = ['lane1', 'lane2', 'lane3'];
+              const availableLanes = lanes.filter(laneId => !hasJammerInLane(player2, laneId)).length;
+              const scalingFactor = availableLanes / 3;
 
-              score = baseScore + cpuValueBonus + highValueBonus - costPenalty;
+              // If no lanes available, card has no value
+              if (availableLanes === 0) {
+                score = -999;
+                action.logic.push('❌ No available lanes (all have Jammers)');
+              } else {
+                // Base score: always positive (AI never sees this as bad)
+                const baseScore = 30;
+                const cpuValueBonus = totalCPUValue * 5;
+                const highValueBonus = highValueDrones * 15;
+                const costPenalty = card.cost * 4;
 
-              action.logic.push(`Base Value: ${baseScore}`);
-              action.logic.push(`CPU Protection: ${cpuValueBonus} (${totalCPUValue} total CPU)`);
-              action.logic.push(`High-Value Drones: ${highValueBonus} (${highValueDrones} drones)`);
-              action.logic.push(`Cost: -${costPenalty}`);
+                const unscaledScore = baseScore + cpuValueBonus + highValueBonus - costPenalty;
+                score = unscaledScore * scalingFactor;
+
+                action.logic.push(`Base Value: ${baseScore}`);
+                action.logic.push(`CPU Protection: ${cpuValueBonus} (${totalCPUValue} total CPU)`);
+                action.logic.push(`High-Value Drones: ${highValueBonus} (${highValueDrones} drones)`);
+                action.logic.push(`Cost: -${costPenalty}`);
+                action.logic.push(`Available Lanes: ${availableLanes}/3 (${(scalingFactor * 100).toFixed(0)}% value)`);
+              }
             }
             else if (card.effect.type === 'MODIFY_STAT') {
               const { mod } = card.effect;
