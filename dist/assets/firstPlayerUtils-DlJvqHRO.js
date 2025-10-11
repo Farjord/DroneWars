@@ -1,1 +1,0 @@
-const n=(e,r,t)=>r||(e===1?Math.random()<.5?"player1":"player2":t||"player1"),i=(e,r,t)=>r?"First player was set by game effect.":e===1?"The first player is determined randomly for the first round.":`The first player is ${t?"the player who passed first last round":"determined by previous round results"}.`;export{n as determineFirstPlayer,i as getFirstPlayerReasonText};

@@ -261,7 +261,16 @@ const currentLaneScores = {
     const bestActions = possibleDeployments.filter(d => d.score === topScore);
     const chosenAction = bestActions[Math.floor(Math.random() * bestActions.length)];
     chosenAction.isChosen = true;
-    
+
+    // Log the deployment decision
+    addLogEntry({
+      player: player2.name,
+      actionType: 'DEPLOY',
+      source: chosenAction.drone.name,
+      target: chosenAction.laneId,
+      outcome: `Deployed ${chosenAction.drone.name} to ${chosenAction.laneId} (Score: ${chosenAction.score.toFixed(0)})`
+    }, 'aiDeployment', possibleDeployments);
+
     return {
       type: 'deploy',
       payload: {
@@ -849,7 +858,44 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
     const chosenAction = positiveActionPool[Math.floor(Math.random() * positiveActionPool.length)];
 
     chosenAction.isChosen = true;
-    
+
+    // Log the action decision
+    let actionType, source, target, outcome;
+
+    switch (chosenAction.type) {
+      case 'play_card':
+        actionType = 'PLAY_CARD';
+        source = chosenAction.card.name;
+        target = chosenAction.target?.name || chosenAction.target?.id || 'N/A';
+        outcome = `Played ${source} targeting ${target} (Score: ${chosenAction.score.toFixed(0)})`;
+        break;
+      case 'attack':
+        actionType = 'ATTACK';
+        source = chosenAction.attacker.name;
+        target = chosenAction.target.name || chosenAction.target.id;
+        outcome = `${source} attacked ${target} (Score: ${chosenAction.score.toFixed(0)})`;
+        break;
+      case 'move':
+        actionType = 'MOVE';
+        source = chosenAction.drone.name;
+        target = `${chosenAction.fromLane} → ${chosenAction.toLane}`;
+        outcome = `Moved ${source} from ${chosenAction.fromLane} to ${chosenAction.toLane} (Score: ${chosenAction.score.toFixed(0)})`;
+        break;
+      default:
+        actionType = 'UNKNOWN';
+        source = 'N/A';
+        target = 'N/A';
+        outcome = 'Unknown action type';
+    }
+
+    addLogEntry({
+      player: player2.name,
+      actionType,
+      source,
+      target,
+      outcome
+    }, 'aiAction', possibleActions);
+
     return { type: 'action', payload: chosenAction, logContext: possibleActions };
 };
 
