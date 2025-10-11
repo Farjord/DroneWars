@@ -894,6 +894,7 @@ class AIPhaseProcessor {
    */
   async executeShieldAllocationTurn(gameState) {
     debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.executeShieldAllocationTurn starting...');
+    debugLog('SHIELD_CLICKS', '🤖 [AI SHIELD ALLOC] Starting AI shield allocation');
 
     if (!this.actionProcessor) {
       throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
@@ -905,16 +906,21 @@ class AIPhaseProcessor {
     // Get total shields available to allocate
     const shieldsToAllocate = gameState.opponentShieldsToAllocate || 0;
 
+    debugLog('SHIELD_CLICKS', `🤖 [AI SHIELD ALLOC] AI has ${shieldsToAllocate} shields to allocate`);
+
     if (shieldsToAllocate === 0) {
       debugLog('AI_DECISIONS', '🤖 AI has no shields to allocate');
+      debugLog('SHIELD_CLICKS', '🤖 [AI SHIELD ALLOC] Early return - no shields');
       return;
     }
 
     // Get list of all placed sections
-    const placedSectionNames = aiPlacedSections.map(section => section.name);
+    // Note: aiPlacedSections is already an array of section name strings like ['powerCell', 'bridge', 'droneControlHub']
+    debugLog('SHIELD_CLICKS', `🤖 [AI SHIELD ALLOC] AI placed sections:`, aiPlacedSections);
 
-    if (placedSectionNames.length === 0) {
+    if (aiPlacedSections.length === 0) {
       debugLog('AI_DECISIONS', '🤖 AI has no placed sections to allocate shields to');
+      debugLog('SHIELD_CLICKS', '🤖 [AI SHIELD ALLOC] Early return - no sections');
       return;
     }
 
@@ -922,28 +928,31 @@ class AIPhaseProcessor {
     let remainingShields = shieldsToAllocate;
     let currentSectionIndex = 0;
 
-    debugLog('AI_DECISIONS', `🤖 AI distributing ${shieldsToAllocate} shields evenly across ${placedSectionNames.length} sections`);
+    debugLog('AI_DECISIONS', `🤖 AI distributing ${shieldsToAllocate} shields evenly across ${aiPlacedSections.length} sections`);
+    debugLog('SHIELD_CLICKS', `🤖 [AI SHIELD ALLOC] Starting distribution loop: ${remainingShields} shields to distribute`);
 
     // Distribute one shield at a time in round-robin fashion for even distribution
     while (remainingShields > 0) {
-      const sectionName = placedSectionNames[currentSectionIndex];
+      const sectionName = aiPlacedSections[currentSectionIndex];
+
+      debugLog('SHIELD_CLICKS', `🤖 [AI SHIELD ALLOC] Loop iteration: ${remainingShields} remaining, adding to ${sectionName}`);
 
       // Add shield to current section via ActionProcessor
-      await this.actionProcessor.queueAction({
-        type: 'addShield',
-        payload: {
-          sectionName,
-          playerId: 'player2'
-        }
+      // Use direct call instead of queueAction to avoid deadlock (we're already inside a queued action)
+      await this.actionProcessor.processAddShield({
+        sectionName,
+        playerId: 'player2'
       });
 
       remainingShields--;
-      currentSectionIndex = (currentSectionIndex + 1) % placedSectionNames.length;
+      currentSectionIndex = (currentSectionIndex + 1) % aiPlacedSections.length;
 
       debugLog('AI_DECISIONS', `🤖 AI allocated shield to ${sectionName}, ${remainingShields} remaining`);
+      debugLog('SHIELD_CLICKS', `🤖 [AI SHIELD ALLOC] Shield added, now ${remainingShields} remaining`);
     }
 
     debugLog('AI_DECISIONS', '✅ AI shield allocation complete');
+    debugLog('SHIELD_CLICKS', '✅ [AI SHIELD ALLOC] AI shield allocation complete - exiting');
   }
 
   /**

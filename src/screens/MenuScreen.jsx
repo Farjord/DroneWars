@@ -194,6 +194,13 @@ function MenuScreen() {
             </div>
           </button>
 
+          <button onClick={() => gameStateManager.setState({ appState: 'deckBuilder' })} className="btn-continue" style={{ minWidth: '250px', fontSize: '1.1rem', padding: '16px 30px' }}>
+            DECK BUILDER
+            <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
+              Build Your Deck
+            </div>
+          </button>
+
           {DEV_CONFIG.features.modalShowcase && (
             <button
               onClick={() => gameStateManager.setState({ appState: 'modalShowcase' })}

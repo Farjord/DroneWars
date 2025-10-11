@@ -122,9 +122,20 @@ const ShipSectionsDisplay = ({
               isPlayer={isPlayer}
               isOpponent={!isPlayer}
               onClick={() => {
+                debugLog('SHIELD_CLICKS', `🖱️ ShipSection clicked: ${sectionName}`, {
+                  isInteractive,
+                  hasOnSectionClick: !!onSectionClick,
+                  hasOnTargetClick: !!onTargetClick,
+                  isPlayer,
+                  turnPhase,
+                  willCallOnSectionClick: isInteractive && onSectionClick,
+                  willCallOnTargetClick: !isInteractive && onTargetClick
+                });
                 if (isInteractive && onSectionClick) { // Specifically for shield allocation
+                  debugLog('SHIELD_CLICKS', `✅ Calling onSectionClick for ${sectionName}`);
                   onSectionClick(sectionName);
                 } else if (onTargetClick) { // For attacks and card/ability targeting
+                  debugLog('SHIELD_CLICKS', `🎯 Calling onTargetClick for ${sectionName}`);
                   onTargetClick({ ...sectionStats, id: sectionName, name: sectionName }, 'section', isPlayer);
                 }
               }}

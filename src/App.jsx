@@ -609,6 +609,7 @@ const App = () => {
    */
   const handleConfirmShields = useCallback(async () => {
     debugLog('COMMITMENTS', '🏁 handleConfirmShields called');
+    debugLog('SHIELD_CLICKS', '🔵 Confirm Shields button clicked');
 
     // Commit allocation via ActionProcessor
     const result = await processActionWithGuestRouting('commitment', {
@@ -622,17 +623,26 @@ const App = () => {
       bothPlayersComplete: result.data?.bothPlayersComplete,
       fullResult: result
     });
+    debugLog('SHIELD_CLICKS', '📥 Commitment result:', result);
 
     // Unified logic: Check opponent commitment status directly from state
     const commitments = gameState.commitments || {};
     const phaseCommitments = commitments.allocateShields || {};
     const opponentCommitted = phaseCommitments[getOpponentPlayerId()]?.completed;
 
+    debugLog('SHIELD_CLICKS', '🔍 Checking opponent commitment:', {
+      hasCommitments: !!commitments,
+      hasPhaseCommitments: !!phaseCommitments,
+      opponentCommitted
+    });
+
     if (!opponentCommitted) {
       debugLog('COMMITMENTS', '✋ Opponent not committed yet, showing waiting overlay');
+      debugLog('SHIELD_CLICKS', '⏳ Setting waiting overlay');
       setWaitingForPlayerPhase('allocateShields');
     } else {
       debugLog('COMMITMENTS', '✅ Both players complete, no waiting overlay');
+      debugLog('SHIELD_CLICKS', '✅ Both players committed, proceeding');
     }
   }, [processActionWithGuestRouting, getLocalPlayerId, gameState.commitments, getOpponentPlayerId]);
 
@@ -1331,13 +1341,24 @@ const App = () => {
   const handleAllocateShield = async (sectionName) => {
     const { turnPhase } = gameState;
 
+    debugLog('SHIELD_CLICKS', `🟢 handleAllocateShield called`, {
+      sectionName,
+      turnPhase,
+      localPlayerId: getLocalPlayerId(),
+      shieldsToAllocate,
+      currentPhaseMatch: turnPhase === 'allocateShields'
+    });
+
     if (turnPhase === 'allocateShields') {
+      debugLog('SHIELD_CLICKS', `📤 Calling processActionWithGuestRouting('addShield')`);
       // Round start shield allocation - uses ActionProcessor addShield action
-      await processActionWithGuestRouting('addShield', {
+      const result = await processActionWithGuestRouting('addShield', {
         sectionName: sectionName,
         playerId: getLocalPlayerId()
       });
+      debugLog('SHIELD_CLICKS', `📥 addShield result:`, result);
     } else {
+      debugLog('SHIELD_CLICKS', `🔄 Using reallocation path instead`);
       // Action phase shield reallocation - uses ActionProcessor directly
       await processActionWithGuestRouting('reallocateShields', {
         action: 'add',
@@ -1501,8 +1522,18 @@ const App = () => {
    * @param {string} sectionName - Name of the clicked ship section
    */
   const handleShipSectionClick = (sectionName) => {
+    debugLog('SHIELD_CLICKS', `🔵 handleShipSectionClick called`, {
+      sectionName,
+      turnPhase,
+      reallocationPhase,
+      shieldsToAllocate,
+      willHandleReallocation: !!reallocationPhase,
+      willHandleAllocation: turnPhase === 'allocateShields'
+    });
+
     // Handle shield reallocation if active
     if (reallocationPhase) {
+      debugLog('SHIELD_CLICKS', `🔄 Routing to reallocation handler (${reallocationPhase})`);
       if (reallocationPhase === 'removing') {
         handleRemoveShield(sectionName);
       } else if (reallocationPhase === 'adding') {
@@ -1513,7 +1544,10 @@ const App = () => {
 
     // Handle normal shield allocation during allocateShields phase
     if (turnPhase === 'allocateShields') {
+      debugLog('SHIELD_CLICKS', `🛡️ Routing to handleAllocateShield`);
       handleAllocateShield(sectionName);
+    } else {
+      debugLog('SHIELD_CLICKS', `⚠️ Click ignored - not in allocateShields phase or reallocation mode`);
     }
   };
   

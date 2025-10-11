@@ -198,45 +198,92 @@ const getValidTargets = (actingPlayerId, source, definition, player1, player2) =
     const isAbility = !isCard;
 
     const { type, affinity, location, custom } = definition.targeting;
-    
+
     let userLane = null;
     if (isAbility) {
         // Check if the source is a drone on the board to determine its lane
         const isDroneSource = Object.values(actingPlayerState.dronesOnBoard).flat().some(d => d.id === source.id);
-        
+
         if (isDroneSource) {
             userLane = getLaneOfDrone(source.id, actingPlayerState);
             // If it's a drone ability but we can't find its lane, something is wrong.
             if (!userLane) return [];
         }
-        // If it's not a drone source (e.g., a ship ability), userLane remains null, 
+        // If it's not a drone source (e.g., a ship ability), userLane remains null,
         // which is correct for abilities that can target ANY_LANE.
     }
+
+    // Helper function to check if a drone has the Jammer keyword
+    const hasJammerKeyword = (drone) => {
+        return drone.abilities?.some(ability =>
+            ability.effect?.type === 'GRANT_KEYWORD' &&
+            ability.effect?.keyword === 'JAMMER'
+        );
+    };
+
+    // Helper function to check if a lane has any Jammer drones
+    const hasJammerInLane = (playerState, lane) => {
+        return (playerState.dronesOnBoard[lane] || []).some(hasJammerKeyword);
+    };
+
+    // Helper function to get only Jammer drones from a lane
+    const getJammerDronesInLane = (playerState, lane) => {
+        return (playerState.dronesOnBoard[lane] || []).filter(hasJammerKeyword);
+    };
       const processPlayerDrones = (playerState, playerType) => {
+      // Check if this is an opponent's card effect targeting
+      const isOpponentTargeting = (actingPlayerId !== playerType) && isCard;
+
       Object.entries(playerState.dronesOnBoard).forEach(([lane, drones]) => {
         let isValidLocation = false;
         if (location === 'ANY_LANE') isValidLocation = true;
         if (isAbility && location === 'SAME_LANE') isValidLocation = lane === userLane;
-        
-        if (isValidLocation) {
-          drones.forEach(targetDrone => {
-            let meetsCustomCriteria = true;
-            if (custom?.includes('DAMAGED_HULL')) {
-              const baseDrone = fullDroneCollection.find(d => d.name === targetDrone.name);
-              if (!baseDrone || targetDrone.hull >= baseDrone.hull) {
-                meetsCustomCriteria = false;
-              }
-            }
-            if (custom?.includes('EXHAUSTED')) {
-                if (!targetDrone.isExhausted) {
-                    meetsCustomCriteria = false;
-                }
-            }
 
-            if (meetsCustomCriteria) {
-              targets.push({ ...targetDrone, lane, owner: playerType });
-            }
-          });
+        if (isValidLocation) {
+          // If opponent is targeting with a card effect, check for Jammer
+          if (isOpponentTargeting && hasJammerInLane(playerState, lane)) {
+            // Only allow targeting Jammer drones - opponent card effects are forced to target Jammers
+            const jammers = getJammerDronesInLane(playerState, lane);
+            jammers.forEach(targetDrone => {
+              let meetsCustomCriteria = true;
+              // Apply custom criteria checks
+              if (custom?.includes('DAMAGED_HULL')) {
+                const baseDrone = fullDroneCollection.find(d => d.name === targetDrone.name);
+                if (!baseDrone || targetDrone.hull >= baseDrone.hull) {
+                  meetsCustomCriteria = false;
+                }
+              }
+              if (custom?.includes('EXHAUSTED')) {
+                if (!targetDrone.isExhausted) {
+                  meetsCustomCriteria = false;
+                }
+              }
+
+              if (meetsCustomCriteria) {
+                targets.push({ ...targetDrone, lane, owner: playerType });
+              }
+            });
+          } else {
+            // Normal targeting (no Jammer interference or not a card effect)
+            drones.forEach(targetDrone => {
+              let meetsCustomCriteria = true;
+              if (custom?.includes('DAMAGED_HULL')) {
+                const baseDrone = fullDroneCollection.find(d => d.name === targetDrone.name);
+                if (!baseDrone || targetDrone.hull >= baseDrone.hull) {
+                  meetsCustomCriteria = false;
+                }
+              }
+              if (custom?.includes('EXHAUSTED')) {
+                if (!targetDrone.isExhausted) {
+                  meetsCustomCriteria = false;
+                }
+              }
+
+              if (meetsCustomCriteria) {
+                targets.push({ ...targetDrone, lane, owner: playerType });
+              }
+            });
+          }
         }
       });
     };
@@ -2054,6 +2101,8 @@ const resolveSingleEffect = (effect, target, actingPlayerId, playerStates, place
         case 'SINGLE_MOVE':
         case 'MULTI_MOVE':
             return resolveMovementEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card);
+        case 'CREATE_TOKENS':
+            return resolveCreateTokensEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card);
         default:
             console.warn(`Unknown effect type: ${effect.type}`);
             return { newPlayerStates: playerStates, additionalEffects: [] };
@@ -3175,6 +3224,75 @@ const resolveMovementEffect = (effect, target, actingPlayerId, playerStates, pla
             additionalEffects: []
         };
     }
+};
+
+/**
+ * Handles CREATE_TOKENS effect - creates token drones on the battlefield
+ * Tokens are created directly on the board without needing CPU limit
+ */
+const resolveCreateTokensEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card) => {
+    const newPlayerStates = {
+        player1: JSON.parse(JSON.stringify(playerStates.player1)),
+        player2: JSON.parse(JSON.stringify(playerStates.player2))
+    };
+
+    const actingPlayerState = newPlayerStates[actingPlayerId];
+    const baseDrone = fullDroneCollection.find(d => d.name === effect.tokenName);
+    const animationEvents = [];
+
+    if (!baseDrone) {
+        console.error(`Token drone ${effect.tokenName} not found in drone collection`);
+        return {
+            newPlayerStates,
+            additionalEffects: [],
+            animationEvents: []
+        };
+    }
+
+    // Create tokens in specified lanes
+    effect.locations.forEach(laneId => {
+        // Create unique token instance with all necessary properties
+        const tokenDrone = {
+            ...baseDrone,
+            id: `${effect.tokenName}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            name: baseDrone.name,
+            attack: baseDrone.attack,
+            hull: baseDrone.hull,
+            shields: baseDrone.shields,
+            speed: baseDrone.speed,
+            currentShields: baseDrone.shields,
+            currentMaxShields: baseDrone.shields,
+            isExhausted: false,
+            isToken: true, // Mark as token for identification
+            abilities: baseDrone.abilities ? JSON.parse(JSON.stringify(baseDrone.abilities)) : []
+        };
+
+        // Add to the specified lane
+        actingPlayerState.dronesOnBoard[laneId].push(tokenDrone);
+
+        // Add teleport animation for the token appearing
+        animationEvents.push({
+            type: 'TELEPORT',
+            targetId: tokenDrone.id,
+            targetPlayer: actingPlayerId,
+            targetLane: laneId,
+            timestamp: Date.now()
+        });
+
+        // Log token creation
+        if (callbacks && typeof callbacks === 'function') {
+            callbacks({
+                action: `${actingPlayerState.name} created a ${effect.tokenName} token in ${laneId}`,
+                player: actingPlayerState.name
+            });
+        }
+    });
+
+    return {
+        newPlayerStates,
+        additionalEffects: [],
+        animationEvents
+    };
 };
 
 // Specialized handlers for unique effects

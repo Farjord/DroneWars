@@ -243,9 +243,9 @@ const fullDroneCollection = [
     upgradeSlots: 2 
   },
   {
-    name: 'Nano Repair Drone', 
-    class: 1, limit: 2, attack: 0, hull: 1, shields: 3, speed: 2, 
-    image: '/img/NanoRepair.png', 
+    name: 'Nano Repair Drone',
+    class: 1, limit: 2, attack: 0, hull: 1, shields: 3, speed: 2,
+    image: '/img/NanoRepair.png',
     abilities: [{
         name: 'Nano Repair Swarm',
         description: 'Pay 1 Energy and exhaust to restore 1 hull to all damaged friendly drones in the same lane.',
@@ -258,9 +258,27 @@ const fullDroneCollection = [
         effect: { type: 'HEAL', value: 1, scope: 'LANE' },
         cost: { energy: 1, exhausts: true }
          }],
-    upgradeSlots: 2 
+    upgradeSlots: 2
   },
-  
+  {
+    name: 'Jammer',
+    class: 0,
+    limit: 999, // Not selectable, so limit doesn't matter
+    attack: 0,
+    hull: 1,
+    shields: 0,
+    speed: 1,
+    image: '/img/Jammer.png',
+    selectable: false, // Cannot be selected in deck builder or drone selection
+    abilities: [{
+        name: 'Jammer',
+        description: 'While this drone is in a lane, opponent card effects can only target this drone.',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'JAMMER' }
+    }],
+    upgradeSlots: 0
+  },
+
 ];
 
 export default fullDroneCollection;

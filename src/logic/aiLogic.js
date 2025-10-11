@@ -2,6 +2,46 @@ import fullDroneCollection from '../data/droneData.js';
 import GameDataService from '../services/GameDataService.js';
 import { debugLog } from '../utils/debugLogger.js';
 
+// ========================================
+// JAMMER DETECTION HELPERS
+// ========================================
+
+/**
+ * Check if a drone has the Jammer keyword
+ * @param {Object} drone - The drone to check
+ * @returns {boolean} True if drone has Jammer ability
+ */
+const hasJammerKeyword = (drone) => {
+  return drone.abilities?.some(ability =>
+    ability.effect?.type === 'GRANT_KEYWORD' &&
+    ability.effect?.keyword === 'JAMMER'
+  );
+};
+
+/**
+ * Check if a lane has any Jammer drones
+ * @param {Object} playerState - Player state to check
+ * @param {string} lane - Lane ID to check
+ * @returns {boolean} True if lane contains at least one Jammer
+ */
+const hasJammerInLane = (playerState, lane) => {
+  return (playerState.dronesOnBoard[lane] || []).some(hasJammerKeyword);
+};
+
+/**
+ * Get all Jammer drones from a specific lane
+ * @param {Object} playerState - Player state to check
+ * @param {string} lane - Lane ID to check
+ * @returns {Array} Array of Jammer drones in the lane
+ */
+const getJammerDronesInLane = (playerState, lane) => {
+  return (playerState.dronesOnBoard[lane] || []).filter(hasJammerKeyword);
+};
+
+// ========================================
+// LANE SCORING
+// ========================================
+
  const calculateLaneScore = (laneId, player2State, player1State, allSections, getShipStatus, gameDataService) => {
  const aiDronesInLane = player2State.dronesOnBoard[laneId] || [];
  const humanDronesInLane = player1State.dronesOnBoard[laneId] || [];
@@ -439,6 +479,25 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
               score = (repeatCount * 25) - (card.cost * 4);
               action.logic.push(`(Repeats: ${repeatCount} * 25) - (Card Cost: ${card.cost} * 4)`);
             }
+            else if (card.effect.type === 'CREATE_TOKENS') {
+              // Deploy Jammers evaluation - always positive, scales with CPU value
+              const allFriendlyDrones = Object.values(player2.dronesOnBoard).flat();
+              const totalCPUValue = allFriendlyDrones.reduce((sum, d) => sum + (d.class || 0), 0);
+              const highValueDrones = allFriendlyDrones.filter(d => d.class >= 3).length;
+
+              // Base score: always positive (AI never sees this as bad)
+              const baseScore = 30;
+              const cpuValueBonus = totalCPUValue * 5;
+              const highValueBonus = highValueDrones * 15;
+              const costPenalty = card.cost * 4;
+
+              score = baseScore + cpuValueBonus + highValueBonus - costPenalty;
+
+              action.logic.push(`Base Value: ${baseScore}`);
+              action.logic.push(`CPU Protection: ${cpuValueBonus} (${totalCPUValue} total CPU)`);
+              action.logic.push(`High-Value Drones: ${highValueBonus} (${highValueDrones} drones)`);
+              action.logic.push(`Cost: -${costPenalty}`);
+            }
             else if (card.effect.type === 'MODIFY_STAT') {
               const { mod } = card.effect;
               const { target } = action;
@@ -667,6 +726,59 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
 
         default:
           break;
+      }
+    });
+
+    // ========================================
+    // JAMMER ADJUSTMENT PASS
+    // ========================================
+    // Apply Jammer blocking and removal bonuses after normal scoring
+    // Multi-pass approach: identify blocked plays, then boost Jammer removal by blocked value
+
+    // Step 1: Identify lanes with Jammers and calculate blocked card values
+    const jammerBlockedValue = {
+      lane1: 0,
+      lane2: 0,
+      lane3: 0
+    };
+
+    possibleActions.forEach(action => {
+      if (action.type === 'play_card' && action.target?.owner === 'player1') {
+        const targetLane = getLaneOfDrone(action.target.id, player1);
+        if (targetLane && hasJammerInLane(player1, targetLane)) {
+          const isTargetJammer = hasJammerKeyword(action.target);
+
+          if (!isTargetJammer) {
+            // This card play is blocked - mark it and accumulate its value
+            jammerBlockedValue[targetLane] += action.score > 0 ? action.score : 0;
+            action.score = -999;
+            action.logic.push('❌ BLOCKED BY JAMMER');
+          }
+        }
+      }
+    });
+
+    // Step 2: Apply Jammer removal bonuses to attacks
+    possibleActions.forEach(action => {
+      if (action.type === 'attack' &&
+          action.targetType === 'drone' &&
+          hasJammerKeyword(action.target)) {
+
+        const targetLane = action.attacker.lane;
+        const blockedValue = jammerBlockedValue[targetLane];
+
+        if (blockedValue > 0) {
+          action.score += blockedValue;
+          action.logic.push(`Jammer Removal: +${blockedValue.toFixed(0)} (unblocks cards)`);
+        }
+
+        // Efficiency bonus: prefer low-attack drones for Jammer removal
+        const effectiveAttacker = gameDataService.getEffectiveStats(action.attacker, targetLane);
+        if (effectiveAttacker.attack <= 2 && blockedValue > 0) {
+          const efficiencyBonus = 30;
+          action.score += efficiencyBonus;
+          action.logic.push(`Efficient Trade: +${efficiencyBonus}`);
+        }
       }
     });
 

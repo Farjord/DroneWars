@@ -779,7 +779,7 @@ setAnimationManager(animationManager) {
       animationName: event.type,
       payload: {
         ...event,  // Pass ALL properties from event (sourcePlayer, sourceLane, targetPlayer, etc.)
-        droneId: event.sourceId  // Add alias for backwards compatibility
+        droneId: event.sourceId || event.targetId  // Support both source and target based animations
       }
     }));
 
@@ -2151,24 +2151,33 @@ setAnimationManager(animationManager) {
     // For single-player mode, auto-complete AI commitment immediately (not async)
     if (playerId === 'player1' && currentState.gameMode === 'local' && !bothComplete) {
       debugLog('COMMITMENTS', '🤖 Single-player mode: Auto-completing AI commitment immediately');
+      debugLog('SHIELD_CLICKS', '🤖 About to call handleAICommitment for AI auto-commit');
       // Trigger AI auto-completion through AIPhaseProcessor
       if (aiPhaseProcessor) {
         try {
+          debugLog('SHIELD_CLICKS', '⏳ Calling handleAICommitment...');
           await this.handleAICommitment(phase, currentState);
           // After AI commits, both should be complete
           debugLog('COMMITMENTS', '✅ AI commitment completed successfully');
+          debugLog('SHIELD_CLICKS', '✅ handleAICommitment returned successfully');
 
           // Recalculate bothComplete from fresh state after AI auto-commit
           const freshState = this.gameStateManager.getState();
           bothComplete = freshState.commitments[phase].player1.completed &&
                         freshState.commitments[phase].player2.completed;
           debugLog('COMMITMENTS', `🔄 Recalculated bothComplete after AI commit: ${bothComplete}`);
+          debugLog('SHIELD_CLICKS', `🔄 Both players complete: ${bothComplete}`);
         } catch (error) {
           console.error('❌ AI commitment error:', error);
+          debugLog('SHIELD_CLICKS', '❌ Error during AI commitment:', error);
           throw error; // Propagate error so player knows something went wrong
         }
+      } else {
+        debugLog('SHIELD_CLICKS', '⚠️ aiPhaseProcessor not available!');
       }
     }
+
+    debugLog('SHIELD_CLICKS', '🏁 processCommitment about to return', { success: true, bothComplete });
 
     return {
       success: true,
@@ -2260,14 +2269,17 @@ setAnimationManager(animationManager) {
           break;
 
         case 'allocateShields':
+          debugLog('SHIELD_CLICKS', '🤖 [HANDLE AI] About to call executeShieldAllocationTurn');
           // AI executes shield allocation
           await aiPhaseProcessor.executeShieldAllocationTurn(currentState);
+          debugLog('SHIELD_CLICKS', '🤖 [HANDLE AI] executeShieldAllocationTurn completed, now committing');
           // After AI finishes allocating, commit the phase
           await this.processCommitment({
             playerId: 'player2',
             phase: 'allocateShields',
             actionData: { committed: true }
           });
+          debugLog('SHIELD_CLICKS', '🤖 [HANDLE AI] AI commitment complete');
           break;
 
         case 'mandatoryDroneRemoval':

@@ -1,7 +1,7 @@
 // ========================================
 // DRONE CARD COMPONENT - CLEAN VERSION
 // ========================================
-// Base size: 240px × 320px (default footer size)
+// Base size: 225px × 275px (default footer size)
 // Accepts optional scale prop for enlargement in modals
 
 import React, { useMemo } from 'react';
@@ -88,7 +88,7 @@ const DroneCard = ({
     <div
       onClick={isInteractive ? () => onClick(drone) : undefined}
       className={`
-        rounded-lg p-[2px] relative group
+        rounded-lg p-[4px] relative group
         transition-all duration-200
         ${isInteractive ? 'cursor-pointer' : isViewOnly ? 'cursor-default' : 'cursor-not-allowed'}
         ${isSelected ? 'bg-cyan-400' : 'bg-cyan-800/80'}
@@ -96,7 +96,7 @@ const DroneCard = ({
         ${isUpgradeTarget ? 'ring-4 ring-purple-500 animate-pulse' : ''}
       `}
       style={{
-        width: '240px',
+        width: '225px',
         height: '275px',
         clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)',
         ...scaleStyle

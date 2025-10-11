@@ -7,6 +7,7 @@
 import React from 'react';
 import ShipSectionsDisplay from './ShipSectionsDisplay.jsx';
 import DroneLanesDisplay from './DroneLanesDisplay.jsx';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * GameBattlefield - Main game battlefield displaying ships and drone lanes
@@ -81,6 +82,9 @@ function GameBattlefield({
   setHoveredTarget,
   interceptedBadge
 }) {
+  // Calculate isInteractive for player ship sections
+  const playerShipInteractive = turnPhase === 'allocateShields' || reallocationPhase;
+
   return (
     <main className="flex-grow min-h-0 w-full flex flex-col items-center overflow-y-auto px-5 pb-4">
       {/* All pre-game phases now handled by AppRouter - only active gameplay here */}
@@ -176,7 +180,7 @@ function GameBattlefield({
           onSectionClick={handleShipSectionClick}
           onAbilityClick={handleShipAbilityClick}
           onTargetClick={handleTargetClick}
-          isInteractive={turnPhase === 'allocateShields' || reallocationPhase}
+          isInteractive={playerShipInteractive}
           selectedCard={selectedCard}
           validCardTargets={validCardTargets}
           reallocationPhase={reallocationPhase}

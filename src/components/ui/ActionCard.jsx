@@ -1,7 +1,7 @@
 // ========================================
 // ACTION CARD COMPONENT - CLEAN VERSION
 // ========================================
-// Base size: 240px × 320px (default footer size)
+// Base size: 225px × 275px (default footer size)
 // Accepts optional scale prop for enlargement in modals
 
 import React from 'react';
@@ -18,16 +18,17 @@ import { debugLog } from '../../utils/debugLogger.js';
  * @param {boolean} isMandatoryTarget - Whether card is mandatory target
  * @param {number} scale - Optional scale multiplier (default: 1.0)
  */
-const ActionCard = ({ 
-  card, 
-  onClick, 
-  isPlayable, 
-  isSelected, 
+const ActionCard = ({
+  card,
+  onClick,
+  isPlayable,
+  isSelected,
   isMandatoryTarget,
-  scale = 1.0 
+  scale = 1.0
 }) => {
   const { name, cost, image, description, type, effect } = card;
   const goAgain = effect?.goAgain;
+  const isEnhanced = card.id?.includes('_ENHANCED');
 
   // Apply scale transform if provided
   const scaleStyle = scale !== 1.0 ? {
@@ -58,15 +59,15 @@ const ActionCard = ({
         }
       }}
       className={`
-        rounded-lg p-[2px] relative group
+        rounded-lg p-[4px] relative group
         transition-all duration-200
         ${isPlayable || isMandatoryTarget ? 'cursor-pointer' : 'cursor-not-allowed'}
-        ${isSelected ? 'bg-purple-400' : 'bg-purple-800/80'}
+        ${isEnhanced ? 'card-border-shimmer-silver' : 'card-border-rotate-purple'}
         ${!isPlayable && !isMandatoryTarget ? 'opacity-60' : ''}
         ${isMandatoryTarget ? 'ring-4 ring-red-500 animate-pulse' : ''}
       `}
       style={{
-        width: '240px',
+        width: '225px',
         height: '275px',
         clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)',
         ...scaleStyle
@@ -94,7 +95,9 @@ const ActionCard = ({
 
           {/* Image Section - REDUCED SIZE */}
           <div className="p-1 flex-shrink-0">
-            <div className="relative h-[80px] rounded border border-purple-400/50 overflow-hidden">
+            <div className={`relative h-[80px] rounded border overflow-hidden ${
+              isEnhanced ? 'border-slate-400/50' : 'border-purple-400/50'
+            }`}>
               <img
                 src={image}
                 alt={name}
@@ -105,16 +108,22 @@ const ActionCard = ({
           </div>
 
           {/* Description Section - MAXIMIZED SIZE */}
-          <div className="mx-1 mb-1 flex-grow bg-black/60 backdrop-blur-sm border border-purple-800/70 p-2 overflow-y-auto rounded-md">
+          <div className={`mx-1 mb-1 flex-grow bg-black/60 backdrop-blur-sm border p-2 overflow-y-auto rounded-md ${
+            isEnhanced ? 'border-slate-600/70' : 'border-purple-800/70'
+          }`}>
             <p className="text-sm text-white leading-tight text-center font-exo font-normal">{description}</p>
           </div>
 
           {/* Footer - REDUCED HEIGHT */}
-          <div className="grid grid-cols-[auto_1fr_auto] gap-2 items-center px-2 border-t border-purple-800/70 flex-shrink-0 h-6 mt-auto">
+          <div className={`grid grid-cols-[auto_1fr_auto] gap-2 items-center px-2 border-t flex-shrink-0 h-6 mt-auto ${
+            isEnhanced ? 'border-slate-600/70' : 'border-purple-800/70'
+          }`}>
             <div className="w-4"></div>
 
             <div className="flex items-center justify-center">
-              <span className="text-[10px] text-purple-400 uppercase tracking-widest font-semibold">
+              <span className={`text-[10px] uppercase tracking-widest font-semibold ${
+                isEnhanced ? 'text-slate-400' : 'text-purple-400'
+              }`}>
                 {type} Card
               </span>
             </div>

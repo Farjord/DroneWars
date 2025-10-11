@@ -17,8 +17,11 @@ export const initializeDroneSelection = (droneCollection, initialSize = 3) => {
     throw new Error('droneCollection must be a non-empty array');
   }
 
-  // Create a shuffled copy of the drone collection
-  const shuffledDrones = [...droneCollection].sort(() => 0.5 - Math.random());
+  // Filter out non-selectable drones (tokens like Jammer)
+  const selectableDrones = droneCollection.filter(drone => drone.selectable !== false);
+
+  // Create a shuffled copy of the selectable drone collection
+  const shuffledDrones = [...selectableDrones].sort(() => 0.5 - Math.random());
 
   // First N drones become the initial selection
   const trio = shuffledDrones.slice(0, initialSize);

@@ -130,7 +130,7 @@
     position: relative;
     height: 220px;
     overflow: hidden;
-    border: 3px solid #ef4444;
+    border: 3px solid #BB2F33;
     clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
     transition: all 0.3s ease;
     cursor: pointer;
@@ -152,12 +152,13 @@
     background-size: cover;
     background-position: center;
     filter: brightness(0.85);
-    transition: filter 0.3s ease;
+    transition: filter 0.3s ease, transform 0.3s ease;
     z-index: -2;
   }
 
   .ai-opponent-card.selected .ai-opponent-card-bg {
     filter: brightness(1.0);
+    transform: scale(1.30);
   }
 
   .ai-opponent-card-overlay {
@@ -1040,4 +1041,63 @@
 
 .menu-rgb-split-blue {
   animation: menuRGBSplitBlue 1s ease-in-out 1;
+}
+
+/* Action Card Border Animations */
+/* Rotating gradient for purple cards - Subtle and slow */
+@keyframes cardBorderRotatePurple {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 400% 50%;
+  }
+}
+
+/* Shimmer travel for silver cards - Metal reflecting sun */
+@keyframes cardBorderShimmerSilver {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 400% 400%;
+  }
+}
+
+/* Utility class for rotating purple border - Subtle and slow */
+.card-border-rotate-purple {
+  background: linear-gradient(
+    90deg,
+    rgba(192, 132, 252, 0.15) 0%,   /* purple-400 very dim */
+    rgba(192, 132, 252, 0.25) 10%,  /* purple-400 subtle */
+    rgba(147, 51, 234, 0.3) 20%,    /* purple-600 gentle peak */
+    rgba(126, 34, 206, 0.35) 30%,   /* purple-700 soft deep */
+    rgba(147, 51, 234, 0.3) 40%,    /* purple-600 gentle peak */
+    rgba(192, 132, 252, 0.25) 50%,  /* purple-400 subtle */
+    rgba(192, 132, 252, 0.15) 60%,  /* purple-400 very dim */
+    rgba(107, 33, 168, 0.2) 70%,    /* purple-800 subtle darker */
+    rgba(107, 33, 168, 0.25) 80%,   /* purple-800 gentle */
+    rgba(107, 33, 168, 0.2) 90%,    /* purple-800 subtle darker */
+    rgba(192, 132, 252, 0.15) 100%  /* purple-400 very dim (loops) */
+  );
+  background-size: 400% 100%;
+  animation: cardBorderRotatePurple 15s linear infinite;
+}
+
+/* Utility class for shimmering silver border - Diagonal shimmer suggesting clockwise motion */
+.card-border-shimmer-silver {
+  background: linear-gradient(
+    135deg,
+    rgba(148, 163, 184, 0.3) 0%,      /* slate-400 dim */
+    rgba(148, 163, 184, 0.3) 10%,     /* slate-400 dim */
+    rgba(148, 163, 184, 0.35) 15%,    /* slate-400 subtle rise */
+    rgba(203, 213, 225, 0.45) 20%,    /* slate-300 shimmer start */
+    rgba(241, 245, 249, 0.55) 25%,    /* slate-100 bright reflection */
+    rgba(203, 213, 225, 0.45) 30%,    /* slate-300 shimmer end */
+    rgba(148, 163, 184, 0.35) 35%,    /* slate-400 subtle fall */
+    rgba(148, 163, 184, 0.3) 40%,     /* slate-400 dim */
+    rgba(148, 163, 184, 0.3) 100%     /* slate-400 dim (rest) */
+  );
+  background-size: 400% 400%;
+  animation: cardBorderShimmerSilver 12s linear infinite;
 }

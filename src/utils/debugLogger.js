@@ -11,7 +11,7 @@ import { FastForward } from "lucide-react";
  */
 const DEBUG_CONFIG = {
   // Master switch - set to false to disable ALL debug logging
-  enabled: true,
+  enabled: false,
 
   // Filter out all non-debugLog console.log messages
   // When true, only messages from debugLog() will appear in console
@@ -26,15 +26,16 @@ const DEBUG_CONFIG = {
     PHASE_TRANSITIONS: false,   // Game phase transitions and flow
     AI_DECISIONS: false,        // AI decision making
     MULTIPLAYER: false,         // Network sync and multiplayer
-    ANIMATIONS: true,           // Animation system
-    COMMITMENTS: false,         // Simultaneous phase commitments
-    COMBAT: true,               // Combat resolution
+    ANIMATIONS: false,          // Animation system
+    COMMITMENTS: false,          // Simultaneous phase commitments
+    COMBAT: false,              // Combat resolution
     PASS_LOGIC: false,          // Pass handling
     STATE_SYNC: false,          // State synchronization
-    ENERGY: false,              // Energy management
-    CARDS: true,                // Card play and effects
+    ENERGY: false,               // Energy management (shield allocation)
+    CARDS: false,               // Card play and effects
     HAND_VIEW: false,           // Hand display and card interaction
     CARD_PLAY: false,           // Card playability and clicking
+    SHIELD_CLICKS: false,        // Shield allocation click tracking
   }
 };
 

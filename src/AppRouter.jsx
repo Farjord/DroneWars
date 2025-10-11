@@ -16,6 +16,7 @@ import DeckSelectionScreen from './components/screens/DeckSelectionScreen.jsx';
 import ShipPlacementScreen from './components/screens/ShipPlacementScreen.jsx';
 import ModalShowcaseScreen from './screens/ModalShowcaseScreen.jsx';
 import TestingSetupScreen from './screens/TestingSetupScreen.jsx';
+import StandaloneDeckBuilder from './screens/StandaloneDeckBuilder.jsx';
 import App from './App.jsx';
 import MorphingBackground from './components/ui/AngularBandsBackground.jsx';
 import DEV_CONFIG from './config/devConfig.js';
@@ -124,6 +125,10 @@ function AppRouter() {
 
     case 'lobby':
       currentScreen = <LobbyScreen />;
+      break;
+
+    case 'deckBuilder':
+      currentScreen = <StandaloneDeckBuilder />;
       break;
 
     case 'modalShowcase':

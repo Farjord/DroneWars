@@ -695,6 +695,24 @@ const fullCardCollection = [
       mod: { stat: 'cost', value: -1 }
     },
     maxApplications: 1
+},
+
+// --- NEW: TOKEN CREATION CARD ---
+{
+    id: 'CARD030',
+    baseCardId: 'CARD030',
+    name: 'Deploy Jammers',
+    maxInDeck: 4,
+    type: 'Action',
+    cost: 3,
+    image: '/cards/DeployJammers.png',
+    description: 'Create a Jammer drone token in each of your lanes. (Jammer: 0/1, Speed 1. Opponent card effects can only target Jammer drones.)',
+    effect: {
+      type: 'CREATE_TOKENS',
+      tokenName: 'Jammer',
+      locations: ['lane1', 'lane2', 'lane3'],
+      ignoresCPULimit: true
+    }
 }
 ];
 

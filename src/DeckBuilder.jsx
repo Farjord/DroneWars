@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp, Sword, Rocket, Shield, Grid } from 'lucide-react';
+import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp, Sword, Rocket, Shield, Grid, ArrowLeft, LayoutGrid, List } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import ActionCard from './components/ui/ActionCard.jsx';
 import DroneCard from './components/ui/DroneCard.jsx';
@@ -173,7 +173,8 @@ const DeckBuilder = ({
   selectedShipComponents,
   onShipComponentsChange,
   onConfirmDeck,
-  onImportDeck
+  onImportDeck,
+  onBack
 }) => {
   const [detailedCard, setDetailedCard] = useState(null);
   const [detailedDrone, setDetailedDrone] = useState(null);
@@ -206,6 +207,10 @@ const DeckBuilder = ({
 
   const [activeChartView, setActiveChartView] = useState('cost');
   const [isStatsVisible, setIsStatsVisible] = useState(true);
+
+  // View mode toggles for cards and drones (table or grid)
+  const [cardsViewMode, setCardsViewMode] = useState('table'); // 'table' or 'grid'
+  const [dronesViewMode, setDronesViewMode] = useState('table'); // 'table' or 'grid'
 
   // --- Memoize a processed card collection with keywords for efficient filtering/sorting ---
   const processedCardCollection = useMemo(() => {
@@ -303,7 +308,9 @@ const DeckBuilder = ({
 
   // --- Memoize a processed drone collection with keywords for efficient filtering/sorting ---
   const processedDroneCollection = useMemo(() => {
-    return fullDroneCollection.map(drone => {
+    return fullDroneCollection
+      .filter(drone => drone.selectable !== false) // Filter out non-selectable drones (tokens)
+      .map(drone => {
       const keywords = [];
 
       // Extract ability names as keywords
@@ -870,15 +877,14 @@ const DeckBuilder = ({
       />
 
       <div className="flex justify-center items-center mb-4">
-        <h1 className="text-3xl font-orbitron font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">Deck Builder</h1>
-        {/* --- NEW: Import/Export Buttons --- */}
-        <div className="flex gap-4 ml-8">
-          <button onClick={() => setShowImportModal(true)} className="btn-utility flex items-center gap-2">
-            <Upload size={16} /> Import
-          </button>
-          <button onClick={() => setShowExportModal(true)} className="btn-utility flex items-center gap-2">
-            <Download size={16} /> Export
-          </button>
+        {/* Center: Title + Back button grouped together */}
+        <div className="flex items-center gap-4">
+          <h1 className="text-3xl font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">Deck Builder</h1>
+          {onBack && (
+            <button onClick={onBack} className="btn-cancel flex items-center gap-2">
+              <ArrowLeft size={16} /> Back
+            </button>
+          )}
         </div>
       </div>
       
@@ -920,21 +926,73 @@ const DeckBuilder = ({
                 className="btn-utility flex items-center gap-2"
               >
                 <Grid size={16} />
-                View All
+                View Deck
+              </button>
+              <button
+                onClick={() => setShowImportModal(true)}
+                className="btn-utility flex items-center gap-2"
+              >
+                <Upload size={16} />
+                Import
+              </button>
+              <button
+                onClick={() => setShowExportModal(true)}
+                className="btn-utility flex items-center gap-2"
+              >
+                <Download size={16} />
+                Export
               </button>
             </div>
-            <button
-              onClick={leftPanelView === 'cards' ? resetFilters : resetDroneFilters}
-              className="btn-reset"
-            >
-              Reset Filters
-            </button>
+            <div className="flex gap-2 items-center">
+              {leftPanelView === 'cards' && (
+                <>
+                  <button
+                    onClick={() => setCardsViewMode('table')}
+                    className={`btn-utility p-2 ${cardsViewMode === 'table' ? 'opacity-100' : 'opacity-60'}`}
+                    title="Table View"
+                  >
+                    <List size={18} />
+                  </button>
+                  <button
+                    onClick={() => setCardsViewMode('grid')}
+                    className={`btn-utility p-2 ${cardsViewMode === 'grid' ? 'opacity-100' : 'opacity-60'}`}
+                    title="Grid View"
+                  >
+                    <LayoutGrid size={18} />
+                  </button>
+                </>
+              )}
+              {leftPanelView === 'drones' && (
+                <>
+                  <button
+                    onClick={() => setDronesViewMode('table')}
+                    className={`btn-utility p-2 ${dronesViewMode === 'table' ? 'opacity-100' : 'opacity-60'}`}
+                    title="Table View"
+                  >
+                    <List size={18} />
+                  </button>
+                  <button
+                    onClick={() => setDronesViewMode('grid')}
+                    className={`btn-utility p-2 ${dronesViewMode === 'grid' ? 'opacity-100' : 'opacity-60'}`}
+                    title="Grid View"
+                  >
+                    <LayoutGrid size={18} />
+                  </button>
+                </>
+              )}
+              <button
+                onClick={leftPanelView === 'cards' ? resetFilters : resetDroneFilters}
+                className="btn-reset"
+              >
+                Reset Filters
+              </button>
+            </div>
           </div>
 
           {/* CARDS VIEW */}
           {leftPanelView === 'cards' && (
           <>
-          {/* --- Filter Input --- */}
+          {/* --- Filter Input (shown in both table and grid view) --- */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             {/* Cost Range Filter */}
             <div className="filter-select flex flex-col justify-center">
@@ -996,6 +1054,9 @@ const DeckBuilder = ({
                 </label>
             </div>
           </div>
+
+          {/* TABLE VIEW */}
+          {cardsViewMode === 'table' && (
           <div className="flex-grow overflow-y-auto pr-2">
             <table className="w-full text-left deck-builder-table">
               {/* --- MODIFIED: Sortable Headers --- */}
@@ -1016,7 +1077,7 @@ const DeckBuilder = ({
                   const currentCountForThisVariant = deck[card.id] || 0;
                   const totalCountForBaseCard = baseCardCounts[card.baseCardId] || 0;
                   const maxInDeck = card.maxInDeck;
-                  
+
                   return (
                     <tr key={`${card.id}-${index}`} className={card.type === 'Upgrade' ? 'bg-purple-900/10' : ''}>
                       <td><button onClick={() => setDetailedCard(card)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
@@ -1042,13 +1103,69 @@ const DeckBuilder = ({
               </tbody>
             </table>
           </div>
+          )}
+
+          {/* GRID VIEW */}
+          {cardsViewMode === 'grid' && (
+          <div className="flex-grow overflow-y-auto pr-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredAndSortedCards.map((card, index) => {
+                const currentCountForThisVariant = deck[card.id] || 0;
+                const totalCountForBaseCard = baseCardCounts[card.baseCardId] || 0;
+                const maxInDeck = card.maxInDeck;
+                const remainingForBase = maxInDeck - (totalCountForBaseCard - currentCountForThisVariant);
+                const isAtMax = remainingForBase <= currentCountForThisVariant;
+
+                return (
+                  <div key={`${card.id}-${index}`} className="flex flex-col items-center gap-2">
+                    {/* Card Component */}
+                    <ActionCard
+                      card={card}
+                      onClick={() => setDetailedCard(card)}
+                      isPlayable={true}
+                      isSelected={false}
+                      isMandatoryTarget={false}
+                      scale={1.0}
+                    />
+                    {/* Quantity Controls */}
+                    <div className="flex items-center gap-2 bg-slate-800/70 px-3 py-1 rounded-lg border border-gray-600">
+                      <button
+                        onClick={() => currentCountForThisVariant > 0 && onDeckChange(card.id, currentCountForThisVariant - 1)}
+                        className={`text-lg font-bold px-2 rounded transition-all ${
+                          currentCountForThisVariant === 0
+                            ? 'opacity-50 cursor-not-allowed text-gray-500'
+                            : 'text-cyan-400 hover:text-cyan-300 hover:bg-slate-700'
+                        }`}
+                      >
+                        -
+                      </button>
+                      <span className="font-bold text-base min-w-[50px] text-center">
+                        {currentCountForThisVariant}/{maxInDeck}
+                      </span>
+                      <button
+                        onClick={() => !isAtMax && onDeckChange(card.id, currentCountForThisVariant + 1)}
+                        className={`text-lg font-bold px-2 rounded transition-all ${
+                          isAtMax
+                            ? 'opacity-50 cursor-not-allowed text-gray-500'
+                            : 'text-cyan-400 hover:text-cyan-300 hover:bg-slate-700'
+                        }`}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          )}
           </>
           )}
 
           {/* DRONES VIEW */}
           {leftPanelView === 'drones' && (
           <>
-          {/* --- Drone Filter Input --- */}
+          {/* --- Drone Filter Input (shown in both table and grid view) --- */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             {/* Ability Multi-Select Filter */}
             <div className="relative" ref={abilityFilterRef}>
@@ -1067,6 +1184,9 @@ const DeckBuilder = ({
               )}
             </div>
           </div>
+
+          {/* TABLE VIEW */}
+          {dronesViewMode === 'table' && (
           <div className="flex-grow overflow-y-auto pr-2">
             <table className="w-full text-left deck-builder-table">
               <thead>
@@ -1114,6 +1234,63 @@ const DeckBuilder = ({
               </tbody>
             </table>
           </div>
+          )}
+
+          {/* GRID VIEW */}
+          {dronesViewMode === 'grid' && (
+          <div className="flex-grow overflow-y-auto pr-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredAndSortedDrones.map((drone, index) => {
+                const currentQuantity = (selectedDrones && selectedDrones[drone.name]) || 0;
+                const maxQuantity = 1; // Drones can only be selected 0 or 1 times
+                const isAtMax = currentQuantity >= maxQuantity;
+
+                return (
+                  <div key={`${drone.name}-${index}`} className="flex flex-col items-center gap-2">
+                    {/* Drone Card Component */}
+                    <DroneCard
+                      drone={drone}
+                      onClick={() => setDetailedDrone(drone)}
+                      isSelectable={false}
+                      isSelected={false}
+                      deployedCount={0}
+                      ignoreDeployLimit={true}
+                      appliedUpgrades={[]}
+                      scale={1.0}
+                      isViewOnly={true}
+                    />
+                    {/* Quantity Controls */}
+                    <div className="flex items-center gap-2 bg-slate-800/70 px-3 py-1 rounded-lg border border-gray-600">
+                      <button
+                        onClick={() => currentQuantity > 0 && onDronesChange(drone.name, currentQuantity - 1)}
+                        className={`text-lg font-bold px-2 rounded transition-all ${
+                          currentQuantity === 0
+                            ? 'opacity-50 cursor-not-allowed text-gray-500'
+                            : 'text-cyan-400 hover:text-cyan-300 hover:bg-slate-700'
+                        }`}
+                      >
+                        -
+                      </button>
+                      <span className="font-bold text-base min-w-[50px] text-center">
+                        {currentQuantity}/{maxQuantity}
+                      </span>
+                      <button
+                        onClick={() => !isAtMax && onDronesChange(drone.name, currentQuantity + 1)}
+                        className={`text-lg font-bold px-2 rounded transition-all ${
+                          isAtMax
+                            ? 'opacity-50 cursor-not-allowed text-gray-500'
+                            : 'text-cyan-400 hover:text-cyan-300 hover:bg-slate-700'
+                        }`}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          )}
           </>
           )}
 
