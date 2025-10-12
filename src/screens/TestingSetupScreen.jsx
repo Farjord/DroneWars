@@ -5,13 +5,15 @@
 // Set up exact game state for testing purposes
 
 import React, { useState } from 'react';
+import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { useGameState } from '../hooks/useGameState.js';
 import fullDroneCollection from '../data/droneData.js';
 import fullCardCollection from '../data/cardData.js';
 import { initializeTestGame, createDefaultTestConfig } from '../services/testGameInitializer.js';
+import { startingDecklist } from '../logic/gameLogic.js';
 import { debugLog } from '../utils/debugLogger.js';
 import DroneSelectionModal from '../components/modals/DroneSelectionModal.jsx';
-import CardSelectionModal from '../components/modals/CardSelectionModal.jsx';
+import DeckBuildingModal from '../components/modals/DeckBuildingModal.jsx';
 
 /**
  * TestingSetupScreen - Configure test scenarios
@@ -160,6 +162,15 @@ function TestingSetupScreen() {
     updatePlayerConfig(player, 'handCards', []);
   };
 
+  // Helper to convert handCards array to composition object for modal
+  const convertHandArrayToComposition = (handCards) => {
+    const composition = {};
+    handCards.forEach(cardId => {
+      composition[cardId] = (composition[cardId] || 0) + 1;
+    });
+    return composition;
+  };
+
   // Open import deck modal for a player
   const handleOpenImportDeck = (player) => {
     setShowImportModal(player);
@@ -234,9 +245,9 @@ function TestingSetupScreen() {
     }
   };
 
-  // Copy drone selection, lane assignments, and deck from other player
-  const handleCopyFromOtherPlayer = (toPlayer) => {
-    const fromPlayer = toPlayer === 'player1' ? 'player2' : 'player1';
+  // Copy complete player configuration to other player
+  const handleCopyToOtherPlayer = (fromPlayer) => {
+    const toPlayer = fromPlayer === 'player1' ? 'player2' : 'player1';
     const fromConfig = config[fromPlayer];
 
     // Deep copy drones with new IDs for the target player
@@ -262,12 +273,40 @@ function TestingSetupScreen() {
     // Copy deck composition
     const copiedDeck = { ...fromConfig.deckComposition };
 
-    // Update selected drones, lane assignments, and deck composition
+    // Copy hand cards
+    const copiedHandCards = [...fromConfig.handCards];
+
+    // Copy resources
+    const copiedEnergy = fromConfig.energy;
+    const copiedDeploymentBudget = fromConfig.deploymentBudget;
+    const copiedInitialDeploymentBudget = fromConfig.initialDeploymentBudget;
+
+    // Copy ship sections
+    const copiedShipSections = [...fromConfig.shipSections];
+
+    // Update all player configuration
     updatePlayerConfig(toPlayer, 'selectedDrones', copiedDrones);
     updatePlayerConfig(toPlayer, 'laneAssignments', copiedLanes);
     updatePlayerConfig(toPlayer, 'deckComposition', copiedDeck);
+    updatePlayerConfig(toPlayer, 'handCards', copiedHandCards);
+    updatePlayerConfig(toPlayer, 'energy', copiedEnergy);
+    updatePlayerConfig(toPlayer, 'deploymentBudget', copiedDeploymentBudget);
+    updatePlayerConfig(toPlayer, 'initialDeploymentBudget', copiedInitialDeploymentBudget);
+    updatePlayerConfig(toPlayer, 'shipSections', copiedShipSections);
 
-    debugLog('TESTING', `📋 Copied configuration from ${fromPlayer} to ${toPlayer} (drones, lanes, and deck)`);
+    debugLog('TESTING', `📋 Copied complete configuration from ${fromPlayer} to ${toPlayer}`);
+  };
+
+  // Set player's deck to standard deck
+  const handleSetStandardDeck = (player) => {
+    // Convert startingDecklist array to deckComposition object format
+    const deckComposition = {};
+    startingDecklist.forEach(item => {
+      deckComposition[item.id] = item.quantity;
+    });
+
+    updatePlayerConfig(player, 'deckComposition', deckComposition);
+    debugLog('TESTING', `📋 Set standard deck for ${player}`);
   };
 
   return (
@@ -319,7 +358,8 @@ function TestingSetupScreen() {
           onOpenHandCardSelection={() => handleOpenHandCardSelection('player1')}
           onClearHandCards={() => handleClearHandCards('player1')}
           onOpenImportDeck={() => handleOpenImportDeck('player1')}
-          onCopyFromOtherPlayer={() => handleCopyFromOtherPlayer('player1')}
+          onCopyToOtherPlayer={() => handleCopyToOtherPlayer('player1')}
+          onSetStandardDeck={() => handleSetStandardDeck('player1')}
         />
 
         {/* Player 2 Config */}
@@ -335,7 +375,8 @@ function TestingSetupScreen() {
           onOpenHandCardSelection={() => handleOpenHandCardSelection('player2')}
           onClearHandCards={() => handleClearHandCards('player2')}
           onOpenImportDeck={() => handleOpenImportDeck('player2')}
-          onCopyFromOtherPlayer={() => handleCopyFromOtherPlayer('player2')}
+          onCopyToOtherPlayer={() => handleCopyToOtherPlayer('player2')}
+          onSetStandardDeck={() => handleSetStandardDeck('player2')}
         />
       </div>
 
@@ -422,41 +463,43 @@ function TestingSetupScreen() {
         title="Select Drones for Player 2"
       />
 
-      {/* Card Selection Modals */}
-      <CardSelectionModal
+      {/* Deck Building Modals */}
+      <DeckBuildingModal
         isOpen={showCardModal === 'player1'}
         onClose={() => setShowCardModal(null)}
         onConfirm={(selectedCards) => handleCardSelectionConfirm('player1', selectedCards)}
         initialSelection={config.player1.deckComposition}
         allCards={fullCardCollection}
-        title="Select Cards for Player 1"
+        title="Build Deck for Player 1"
+        minCards={40}
       />
 
-      <CardSelectionModal
+      <DeckBuildingModal
         isOpen={showCardModal === 'player2'}
         onClose={() => setShowCardModal(null)}
         onConfirm={(selectedCards) => handleCardSelectionConfirm('player2', selectedCards)}
         initialSelection={config.player2.deckComposition}
         allCards={fullCardCollection}
-        title="Select Cards for Player 2"
+        title="Build Deck for Player 2"
+        minCards={40}
       />
 
       {/* Hand Card Selection Modals */}
-      <CardSelectionModal
+      <DeckBuildingModal
         isOpen={showHandCardModal === 'player1'}
         onClose={() => setShowHandCardModal(null)}
         onConfirm={(selectedCards) => handleHandCardSelectionConfirm('player1', selectedCards)}
-        initialSelection={{}}
+        initialSelection={convertHandArrayToComposition(config.player1.handCards)}
         allCards={fullCardCollection}
         title="Select Starting Hand for Player 1"
         minCards={0}
       />
 
-      <CardSelectionModal
+      <DeckBuildingModal
         isOpen={showHandCardModal === 'player2'}
         onClose={() => setShowHandCardModal(null)}
         onConfirm={(selectedCards) => handleHandCardSelectionConfirm('player2', selectedCards)}
-        initialSelection={{}}
+        initialSelection={convertHandArrayToComposition(config.player2.handCards)}
         allCards={fullCardCollection}
         title="Select Starting Hand for Player 2"
         minCards={0}
@@ -494,7 +537,8 @@ function PlayerConfigPanel({
   onOpenHandCardSelection,
   onClearHandCards,
   onOpenImportDeck,
-  onCopyFromOtherPlayer
+  onCopyToOtherPlayer,
+  onSetStandardDeck
 }) {
   const otherPlayerLabel = player === 'player1' ? 'Player 2' : 'Player 1';
   const totalCards = Object.values(config.deckComposition || {}).reduce((sum, qty) => sum + qty, 0);
@@ -529,7 +573,7 @@ function PlayerConfigPanel({
             📥 Import Deck
           </button>
           <button
-            onClick={onCopyFromOtherPlayer}
+            onClick={onCopyToOtherPlayer}
             className="btn-utility"
             style={{
               padding: '6px 12px',
@@ -539,7 +583,9 @@ function PlayerConfigPanel({
               gap: '4px'
             }}
           >
-            📋 Copy from {otherPlayerLabel}
+            {player === 'player2' && <ArrowLeft size={14} />}
+            📋 Copy to {otherPlayerLabel}
+            {player === 'player1' && <ArrowRight size={14} />}
           </button>
         </div>
       </div>
@@ -564,6 +610,18 @@ function PlayerConfigPanel({
         >
           <span>🃏</span>
           <span>SELECT CARDS ({totalCards} total, {Object.keys(config.deckComposition || {}).length} unique)</span>
+        </button>
+        <button
+          onClick={onSetStandardDeck}
+          className="btn-utility"
+          style={{
+            width: '100%',
+            padding: '8px',
+            fontSize: '0.9rem',
+            marginTop: '8px'
+          }}
+        >
+          Set Standard Deck
         </button>
       </div>
 

@@ -273,7 +273,7 @@ const fullDroneCollection = [
     maxPerLane: 1, // Only one Jammer allowed per lane
     abilities: [{
         name: 'Jammer',
-        description: 'While this drone is in a lane, opponent card effects can only target this drone.',
+        description: 'While this drone is ready in a lane, opponent card effects can only target this drone.',
         type: 'PASSIVE',
         effect: { type: 'GRANT_KEYWORD', keyword: 'JAMMER' }
     }],

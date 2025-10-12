@@ -124,7 +124,7 @@ export const keywordDescriptions = {
 
   'GUARDIAN': 'While this drone is active in a lane, the ship section in that lane cannot be directly targeted by attacks. Enemies must destroy the Guardian first.',
 
-  'JAMMER': 'While this drone is in a lane, opponent card effects can only target this drone. Provides protection for other units in the same lane.'
+  'JAMMER': 'While this drone is ready in a lane, opponent card effects can only target this drone. Provides protection for other units in the same lane. Effect is disabled when exhausted.'
 };
 
 // ========================================

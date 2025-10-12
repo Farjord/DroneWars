@@ -107,46 +107,6 @@ function GameFooter({
         isFooterOpen ? styles.contentOpen : styles.contentClosed
       }`}>
         <div className={styles.contentWrapper}>
-          {/* Multi-select Overlay */}
-          {multiSelectState && (
-            <div className={styles.multiSelectOverlay}>
-              <span className={styles.multiSelectText}>
-                {multiSelectState.phase === 'select_source_lane' && 'Reposition: Select a source lane'}
-                {multiSelectState.phase === 'select_drones' && `Select Drones (${multiSelectState.selectedDrones.length} / ${multiSelectState.maxSelection})`}
-                {multiSelectState.phase === 'select_destination_lane' && 'Reposition: Select a destination lane'}
-              </span>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  cancelCardSelection();
-                }}
-                className={styles.buttonDanger}
-              >
-                Cancel
-              </button>
-
-              {multiSelectState.phase === 'select_drones' && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (multiSelectState.selectedDrones.length > 0) {
-                      debugLog('HAND_VIEW', 'Confirm drones clicked');
-                    }
-                  }}
-                  disabled={multiSelectState.selectedDrones.length === 0}
-                  className={`${styles.buttonSuccess} ${
-                    multiSelectState.selectedDrones.length === 0
-                      ? styles.buttonDisabled
-                      : ''
-                  }`}
-                >
-                  Confirm Drones
-                </button>
-              )}
-            </div>
-          )}
-
           {/* View Content */}
           {footerView === 'hand' && (
             <div className={styles.viewContent}>

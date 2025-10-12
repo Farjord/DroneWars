@@ -32,6 +32,66 @@ function initializeDroneForLane(droneTemplate) {
 }
 
 /**
+ * Apply passive abilities to initialized drones
+ * Calculates effective shields based on passive abilities from other drones in the same lane
+ * (e.g., Aegis Drone's Shield Harmonizer gives +1 max shields to other friendly drones)
+ * @param {Object} dronesOnBoard - Initialized drones on board { lane1: [], lane2: [], lane3: [] }
+ * @returns {Object} Updated drones on board with passive abilities applied
+ */
+function applyPassiveAbilitiesToInitializedDrones(dronesOnBoard) {
+  const updatedDronesOnBoard = {
+    lane1: [...dronesOnBoard.lane1],
+    lane2: [...dronesOnBoard.lane2],
+    lane3: [...dronesOnBoard.lane3]
+  };
+
+  // Process each lane
+  Object.keys(updatedDronesOnBoard).forEach(laneKey => {
+    const lane = updatedDronesOnBoard[laneKey];
+
+    // For each drone in the lane
+    lane.forEach((drone, droneIndex) => {
+      let shieldBonus = 0;
+
+      // Check OTHER drones in the same lane for passive abilities
+      lane.forEach((otherDrone, otherIndex) => {
+        if (droneIndex === otherIndex) return; // Skip self
+
+        // Find the base drone data to get abilities
+        const otherBaseDrone = fullDroneCollection.find(d => d.name === otherDrone.name);
+        if (!otherBaseDrone || !otherBaseDrone.abilities) return;
+
+        // Check for FRIENDLY_IN_LANE MODIFY_STAT passive abilities
+        otherBaseDrone.abilities.forEach(ability => {
+          if (
+            ability.type === 'PASSIVE' &&
+            ability.scope === 'FRIENDLY_IN_LANE' &&
+            ability.effect.type === 'MODIFY_STAT' &&
+            ability.effect.stat === 'shields'
+          ) {
+            shieldBonus += ability.effect.value;
+          }
+        });
+      });
+
+      // Apply shield bonus if any
+      if (shieldBonus > 0) {
+        const baseShields = drone.currentMaxShields;
+        const effectiveMaxShields = baseShields + shieldBonus;
+
+        // Update drone with effective shields (full health)
+        drone.currentMaxShields = effectiveMaxShields;
+        drone.currentShields = effectiveMaxShields;
+
+        debugLog('TESTING', `🛡️ Applied passive shield bonus to ${drone.name} in ${laneKey}: ${baseShields} → ${effectiveMaxShields} (bonus: +${shieldBonus})`);
+      }
+    });
+  });
+
+  return updatedDronesOnBoard;
+}
+
+/**
  * Initialize a test game with custom configuration
  * @param {Object} config - Test game configuration
  * @param {Object} gameStateManager - GameStateManager instance
@@ -183,11 +243,15 @@ function createPlayerStateFromConfig(playerConfig, playerName) {
 
   // Initialize drones on board with proper runtime properties
   const laneAssignments = playerConfig.laneAssignments || { lane1: [], lane2: [], lane3: [] };
-  const initializedDronesOnBoard = {
+  let initializedDronesOnBoard = {
     lane1: laneAssignments.lane1.map(drone => initializeDroneForLane(drone)),
     lane2: laneAssignments.lane2.map(drone => initializeDroneForLane(drone)),
     lane3: laneAssignments.lane3.map(drone => initializeDroneForLane(drone))
   };
+
+  // Apply passive abilities to drones (e.g., Aegis Shield Harmonizer)
+  // This ensures drones start with full health shields accounting for bonuses
+  initializedDronesOnBoard = applyPassiveAbilitiesToInitializedDrones(initializedDronesOnBoard);
 
   // Build hand from handCards configuration OR auto-draw to hand limit
   let hand = [];
@@ -244,9 +308,9 @@ function createPlayerStateFromConfig(playerConfig, playerName) {
   const playerState = {
     name: playerName,
     shipSections: shipSections,
-    energy: playerConfig.energy || 10,
-    initialDeploymentBudget: playerConfig.initialDeploymentBudget || 10,
-    deploymentBudget: playerConfig.deploymentBudget || 10,
+    energy: playerConfig.energy ?? 10,
+    initialDeploymentBudget: playerConfig.initialDeploymentBudget ?? 10,
+    deploymentBudget: playerConfig.deploymentBudget ?? 10,
     hand: hand,
     deck: deck,
     discardPile: [],

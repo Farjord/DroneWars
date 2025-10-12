@@ -100,29 +100,6 @@ function HandView({
                 optionalDiscardCount < localPlayerEffectiveStats.totals.discardLimit;
               const cardIsPlayable = isActionPhasePlayable || isOptionalDiscardPlayable;
 
-              // Debug each card - instanceId diagnostic
-              debugLog('CARD_PLAY', `Card ${index}: ${card.name}`, {
-                instanceId: card.instanceId,
-                hasInstanceId: card.instanceId !== undefined,
-                instanceIdType: typeof card.instanceId,
-                id: card.id,
-                cost: card.cost,
-                targeting: card.targeting,
-                hasEnoughEnergy,
-                hasValidTargets,
-                isActionPhasePlayable,
-                isOptionalDiscardPlayable,
-                finalIsPlayable: cardIsPlayable,
-                cardKeys: Object.keys(card),  // Show all properties
-                conditions: {
-                  turnPhase,
-                  isMyTurn: myTurn,
-                  playerPassed,
-                  energy: localPlayerState.energy,
-                  cardCost: card.cost
-                }
-              });
-
               let transformClass = '';
               let style = { zIndex: index };
 
@@ -154,6 +131,7 @@ function HandView({
                   <ActionCard
                     card={card}
                     isSelected={selectedCard?.instanceId === card.instanceId}
+                    isDimmed={selectedCard && selectedCard.instanceId !== card.instanceId}
                     isPlayable={cardIsPlayable}
                     isMandatoryTarget={mandatoryAction?.type === 'discard'}
                     onClick={

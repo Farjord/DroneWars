@@ -15,6 +15,7 @@ import { debugLog } from '../../utils/debugLogger.js';
  * @param {Function} onClick - Click handler
  * @param {boolean} isPlayable - Whether card can be played
  * @param {boolean} isSelected - Whether card is selected
+ * @param {boolean} isDimmed - Whether card should be greyscale (when another card is selected)
  * @param {boolean} isMandatoryTarget - Whether card is mandatory target
  * @param {number} scale - Optional scale multiplier (default: 1.0)
  */
@@ -23,6 +24,7 @@ const ActionCard = ({
   onClick,
   isPlayable,
   isSelected,
+  isDimmed,
   isMandatoryTarget,
   scale = 1.0
 }) => {
@@ -63,8 +65,9 @@ const ActionCard = ({
         transition-all duration-200
         ${isPlayable || isMandatoryTarget ? 'cursor-pointer' : 'cursor-not-allowed'}
         ${isEnhanced ? 'card-border-shimmer-silver' : 'card-border-rotate-purple'}
-        ${!isPlayable && !isMandatoryTarget ? 'opacity-60' : ''}
+        ${!isPlayable && !isMandatoryTarget ? 'saturate-50' : ''}
         ${isMandatoryTarget ? 'ring-4 ring-red-500 animate-pulse' : ''}
+        ${isDimmed ? 'grayscale' : ''}
       `}
       style={{
         width: '225px',

@@ -5,8 +5,9 @@
 // Extracted from App.jsx for better component organization
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen } from 'lucide-react';
+import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain } from 'lucide-react';
 import { getPhaseDisplayName } from '../../utils/gameUtils.js';
+import { debugLog } from '../../utils/debugLogger.js';
 import DEV_CONFIG from '../../config/devConfig.js';
 
 /**
@@ -81,7 +82,10 @@ function GameHeader({
   onShowDebugModal,
   onShowOpponentDrones,
   onShowGlossary,
-  testMode
+  onShowAIStrategy,
+  testMode,
+  handleCancelMultiMove,
+  handleConfirmMultiMoveDrones
 }) {
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const dropdownRef = useRef(null);
@@ -221,9 +225,30 @@ function GameHeader({
               ({mandatoryAction.count} {mandatoryAction.count === 1 ? 'card' : 'cards'} to discard)
             </span>
           )}
+          {turnPhase === 'mandatoryDroneRemoval' && mandatoryAction?.type === 'destroy' && (
+            <span className="text-base font-semibold text-orange-300 ml-2">
+              ({mandatoryAction.count} {mandatoryAction.count === 1 ? 'drone' : 'drones'} to remove)
+            </span>
+          )}
           {turnPhase === 'optionalDiscard' && (
             <span className="text-base font-semibold text-yellow-300 ml-2">
               ({localPlayerEffectiveStats.totals.discardLimit - optionalDiscardCount} {(localPlayerEffectiveStats.totals.discardLimit - optionalDiscardCount) === 1 ? 'card' : 'cards'} to discard)
+            </span>
+          )}
+          {/* MULTI_MOVE Status Text */}
+          {multiSelectState?.phase === 'select_source_lane' && (
+            <span className="text-base font-semibold text-cyan-300 ml-2">
+              (Select source lane)
+            </span>
+          )}
+          {multiSelectState?.phase === 'select_drones' && (
+            <span className="text-base font-semibold text-cyan-300 ml-2">
+              ({multiSelectState.selectedDrones.length} / {multiSelectState.maxDrones} drones selected)
+            </span>
+          )}
+          {multiSelectState?.phase === 'select_destination_lane' && (
+            <span className="text-base font-semibold text-green-300 ml-2">
+              (Select destination lane)
             </span>
           )}
         </h2>
@@ -417,6 +442,67 @@ function GameHeader({
                 </button>
               </>
             )}
+
+            {/* MULTI_MOVE Controls */}
+            {multiSelectState && (
+              <>
+                {/* Cancel button - visible for ALL phases */}
+                <button
+                  onClick={handleCancelMultiMove}
+                  className="relative p-[1px] transition-all hover:scale-105"
+                  style={{
+                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                    backgroundImage: 'linear-gradient(45deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8))'
+                  }}
+                >
+                  <div
+                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                      color: '#fca5a5'
+                    }}
+                  >
+                    Cancel
+                  </div>
+                </button>
+
+                {/* Confirm button - only during select_drones phase */}
+                {multiSelectState.phase === 'select_drones' && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent click from bubbling to game area div
+                      debugLog('BUTTON_CLICKS', '🖱️ CONFIRM DRONES button clicked', {
+                        timestamp: performance.now(),
+                        selectedDrones: multiSelectState.selectedDrones.length,
+                        sourceLane: multiSelectState.sourceLane
+                      });
+                      handleConfirmMultiMoveDrones();
+                      debugLog('BUTTON_CLICKS', '✅ handleConfirmMultiMoveDrones returned', {
+                        timestamp: performance.now()
+                      });
+                    }}
+                    disabled={multiSelectState.selectedDrones.length === 0}
+                    className="relative p-[1px] transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                      backgroundImage: multiSelectState.selectedDrones.length === 0
+                        ? 'linear-gradient(45deg, rgba(75, 85, 99, 0.6), rgba(107, 114, 128, 0.6))'
+                        : 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
+                    }}
+                  >
+                    <div
+                      className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                      style={{
+                        clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                        color: multiSelectState.selectedDrones.length === 0 ? '#9ca3af' : '#86efac'
+                      }}
+                    >
+                      Confirm Drones
+                    </div>
+                  </button>
+                )}
+              </>
+            )}
             </>
           ) : (
             // Initialising phase - show in "Your Turn" colors for both players
@@ -599,6 +685,16 @@ function GameHeader({
                 >
                   <BookOpen size={16} />
                   Mechanics Glossary
+                </button>
+                <button
+                  onClick={() => {
+                    onShowAIStrategy && onShowAIStrategy();
+                    setShowSettingsDropdown(false);
+                  }}
+                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center gap-2 border-b border-gray-700"
+                >
+                  <Brain size={16} />
+                  AI Strategy Guide
                 </button>
                 <button
                   onClick={() => {

@@ -228,14 +228,18 @@ const getValidTargets = (actingPlayerId, source, definition, player1, player2) =
         );
     };
 
-    // Helper function to check if a lane has any Jammer drones
+    // Helper function to check if a lane has any ready Jammer drones
     const hasJammerInLane = (playerState, lane) => {
-        return (playerState.dronesOnBoard[lane] || []).some(hasJammerKeyword);
+        return (playerState.dronesOnBoard[lane] || []).some(drone =>
+            hasJammerKeyword(drone) && !drone.isExhausted
+        );
     };
 
-    // Helper function to get only Jammer drones from a lane
+    // Helper function to get only ready Jammer drones from a lane
     const getJammerDronesInLane = (playerState, lane) => {
-        return (playerState.dronesOnBoard[lane] || []).filter(hasJammerKeyword);
+        return (playerState.dronesOnBoard[lane] || []).filter(drone =>
+            hasJammerKeyword(drone) && !drone.isExhausted
+        );
     };
       const processPlayerDrones = (playerState, playerType) => {
       // Check if this is an opponent's card effect targeting

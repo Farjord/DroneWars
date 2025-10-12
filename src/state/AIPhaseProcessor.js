@@ -783,7 +783,7 @@ class AIPhaseProcessor {
 
     // Calculate effective drone limit
     const effectiveStats = this.gameDataService.getEffectiveShipStats(aiState, opponentPlacedSections);
-    const droneLimit = effectiveStats.totals.droneLimit;
+    const droneLimit = effectiveStats.totals.cpuLimit;
 
     // Count total drones on board
     const totalDrones = Object.values(aiState.dronesOnBoard || {}).flat().length;

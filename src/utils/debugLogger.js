@@ -11,7 +11,7 @@ import { FastForward } from "lucide-react";
  */
 const DEBUG_CONFIG = {
   // Master switch - set to false to disable ALL debug logging
-  enabled: false,
+  enabled: true,
 
   // Filter out all non-debugLog console.log messages
   // When true, only messages from debugLog() will appear in console
@@ -34,8 +34,9 @@ const DEBUG_CONFIG = {
     ENERGY: false,               // Energy management (shield allocation)
     CARDS: false,               // Card play and effects
     HAND_VIEW: false,           // Hand display and card interaction
-    CARD_PLAY: false,           // Card playability and clicking
+    CARD_PLAY: true,            // Card playability and clicking
     SHIELD_CLICKS: false,        // Shield allocation click tracking
+    BUTTON_CLICKS: true,        // Button click tracking and effects
   }
 };
 

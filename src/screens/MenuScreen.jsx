@@ -10,6 +10,7 @@ import GameDataService from '../services/GameDataService.js';
 import DEV_CONFIG from '../config/devConfig.js';
 import { debugLog } from '../utils/debugLogger.js';
 import GlossaryModal from '../components/modals/GlossaryModal.jsx';
+import AIStrategyModal from '../components/modals/AIStrategyModal.jsx';
 import ScalingText from '../components/ui/ScalingText.jsx';
 
 /**
@@ -22,6 +23,7 @@ function MenuScreen() {
   // Single animation trigger state - all effects trigger together
   const [animationKey, setAnimationKey] = useState(0);
   const [showGlossary, setShowGlossary] = useState(false);
+  const [showAIStrategy, setShowAIStrategy] = useState(false);
 
   // Random animation triggers (20-40 second intervals) - all effects trigger together
   useEffect(() => {
@@ -232,6 +234,17 @@ function MenuScreen() {
             </div>
           </button>
 
+          <button
+            onClick={() => setShowAIStrategy(true)}
+            className="btn-info"
+            style={{ width: '250px', fontSize: '1.1rem', padding: '16px 30px' }}
+          >
+            <ScalingText text="AI STRATEGY GUIDE" className="uppercase tracking-wider font-semibold" />
+            <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
+              Understanding AI Decisions
+            </div>
+          </button>
+
           {DEV_CONFIG.features.modalShowcase && (
             <button
               onClick={() => gameStateManager.setState({ appState: 'modalShowcase' })}
@@ -254,6 +267,11 @@ function MenuScreen() {
       {/* Glossary Modal */}
       {showGlossary && (
         <GlossaryModal onClose={() => setShowGlossary(false)} />
+      )}
+
+      {/* AI Strategy Modal */}
+      {showAIStrategy && (
+        <AIStrategyModal onClose={() => setShowAIStrategy(false)} />
       )}
     </div>
   );

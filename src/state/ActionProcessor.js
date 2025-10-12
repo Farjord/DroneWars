@@ -760,7 +760,9 @@ setAnimationManager(animationManager) {
       resolveAttackCallback: async (attackPayload) => {
         // Recursively handle attack through action processor
         return await this.processAttack(attackPayload);
-      }
+      },
+      applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects,
+      updateAurasCallback: gameEngine.updateAuras
     };
 
     const result = gameEngine.resolveCardPlay(

@@ -39,6 +39,10 @@
   @apply w-full h-full p-2;
 }
 
+.viewContent {
+  @apply w-full h-full;
+}
+
 /* ===== TAB BUTTON STYLES ===== */
 
 .tabButton {

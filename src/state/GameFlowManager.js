@@ -865,7 +865,7 @@ class GameFlowManager {
     // Check player1
     const player1DronesCount = Object.values(gameState.player1.dronesOnBoard || {}).flat().length;
     const player1Stats = this.gameDataService.getEffectiveShipStats(gameState.player1, gameState.placedSections);
-    const player1DroneLimit = player1Stats.totals.droneLimit;
+    const player1DroneLimit = player1Stats.totals.cpuLimit;
 
     if (player1DronesCount > player1DroneLimit) {
       return true;
@@ -874,7 +874,7 @@ class GameFlowManager {
     // Check player2
     const player2DronesCount = Object.values(gameState.player2.dronesOnBoard || {}).flat().length;
     const player2Stats = this.gameDataService.getEffectiveShipStats(gameState.player2, gameState.opponentPlacedSections);
-    const player2DroneLimit = player2Stats.totals.droneLimit;
+    const player2DroneLimit = player2Stats.totals.cpuLimit;
 
     if (player2DronesCount > player2DroneLimit) {
       return true;

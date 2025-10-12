@@ -45,6 +45,7 @@ import AIHandDebugModal from './components/modals/AIHandDebugModal.jsx';
 import GameDebugModal from './components/modals/GameDebugModal.jsx';
 import OpponentDronesModal from './components/modals/OpponentDronesModal.jsx';
 import GlossaryModal from './components/modals/GlossaryModal.jsx';
+import AIStrategyModal from './components/modals/AIStrategyModal.jsx';
 
 // --- 1.4 HOOK IMPORTS ---
 import { useGameState } from './hooks/useGameState';
@@ -135,6 +136,7 @@ const App = () => {
   const [showAiHandModal, setShowAiHandModal] = useState(false);
   const [showDebugModal, setShowDebugModal] = useState(false);
   const [showGlossaryModal, setShowGlossaryModal] = useState(false);
+  const [showAIStrategyModal, setShowAIStrategyModal] = useState(false);
   const [flyingDrones, setFlyingDrones] = useState([]);
   const [flashEffects, setFlashEffects] = useState([]);
   const [healEffects, setHealEffects] = useState([]);
@@ -190,7 +192,24 @@ const App = () => {
   const [validCardTargets, setValidCardTargets] = useState([]); // [id1, id2, ...]
   const [cardConfirmation, setCardConfirmation] = useState(null); // { card, target }
   const [abilityConfirmation, setAbilityConfirmation] = useState(null);
-  const [multiSelectState, setMultiSelectState] = useState(null); // To manage multi-step card effects
+
+  // Multi-select state with logged setter for debugging
+  const [multiSelectStateRaw, setMultiSelectStateRaw] = useState(null); // To manage multi-step card effects
+  const multiSelectState = multiSelectStateRaw;
+  const setMultiSelectState = useCallback((value) => {
+    const timestamp = performance.now();
+    const isFunction = typeof value === 'function';
+
+    debugLog('BUTTON_CLICKS', '🔴 setMultiSelectState CALLED', {
+      timestamp,
+      valueType: typeof value,
+      isUpdaterFunction: isFunction,
+      directValue: isFunction ? 'UPDATER_FUNCTION' : value,
+      callStack: new Error().stack.split('\n').slice(2, 4).join('\n')
+    });
+
+    setMultiSelectStateRaw(value);
+  }, []);
 
   // Upgrade system state
   const [destroyUpgradeModal, setDestroyUpgradeModal] = useState(null); // For targeting specific upgrades to destroy
@@ -648,6 +667,57 @@ const App = () => {
     }
   }, [processActionWithGuestRouting, getLocalPlayerId, gameState.commitments, getOpponentPlayerId]);
 
+  /**
+   * HANDLE CANCEL MULTI MOVE
+   * Cancels multi-move card selection and clears state
+   */
+  const handleCancelMultiMove = useCallback(() => {
+    setMultiSelectState(null);
+    setValidCardTargets([]);
+    setSelectedCard(null);
+  }, []);
+
+  /**
+   * HANDLE CONFIRM MULTI MOVE DRONES
+   * Transitions from drone selection to destination lane selection
+   */
+  const handleConfirmMultiMoveDrones = useCallback(() => {
+    debugLog('CARD_PLAY', '🔵 MULTI_MOVE: handleConfirmMultiMoveDrones called', { timestamp: performance.now() });
+    debugLog('CARD_PLAY', '   Current multiSelectState:', multiSelectState);
+
+    if (!multiSelectState) {
+      debugLog('CARD_PLAY', '   ❌ Early return: multiSelectState is null/undefined');
+      return;
+    }
+
+    if (multiSelectState.selectedDrones.length === 0) {
+      debugLog('CARD_PLAY', '   ❌ Early return: No drones selected');
+      return;
+    }
+
+    debugLog('CARD_PLAY', '   ✅ Validation passed. Selected drones:', multiSelectState.selectedDrones.length);
+
+    // Calculate valid destination lanes (all lanes except source)
+    const validDestinations = ['lane1', 'lane2', 'lane3']
+      .filter(laneId => laneId !== multiSelectState.sourceLane)
+      .map(laneId => ({ id: laneId, owner: getLocalPlayerId() }));
+
+    debugLog('CARD_PLAY', '   📍 Calculated validDestinations:', validDestinations);
+    debugLog('BUTTON_CLICKS', '   🔄 About to call setValidCardTargets (manual)', { timestamp: performance.now(), validDestinations });
+    setValidCardTargets(validDestinations);
+    debugLog('BUTTON_CLICKS', '   ✅ setValidCardTargets (manual) returned', { timestamp: performance.now() });
+
+    debugLog('BUTTON_CLICKS', '   🔄 About to call setMultiSelectState', { timestamp: performance.now() });
+    setMultiSelectState(prev => {
+      const newState = { ...prev, phase: 'select_destination_lane' };
+      debugLog('CARD_PLAY', '   ✅ New multiSelectState:', newState);
+      return newState;
+    });
+    debugLog('BUTTON_CLICKS', '   ✅ setMultiSelectState returned', { timestamp: performance.now() });
+
+    debugLog('CARD_PLAY', '   ✅ handleConfirmMultiMoveDrones completed', { timestamp: performance.now() });
+  }, [multiSelectState, getLocalPlayerId]);
+
   // ========================================
   // SECTION 7: GAME LOGIC FUNCTIONS
   // ========================================
@@ -659,6 +729,15 @@ const App = () => {
 
   // TODO: TECHNICAL DEBT - calculateAllValidTargets needed for multi-select targeting UI - no GameDataService equivalent
   useEffect(() => {
+    debugLog('BUTTON_CLICKS', '⚡ useEffect triggered - calculateAllValidTargets', {
+      timestamp: performance.now(),
+      multiSelectStatePhase: multiSelectState?.phase,
+      multiSelectStateExists: !!multiSelectState,
+      selectedCard: selectedCard?.name,
+      abilityMode: !!abilityMode,
+      shipAbilityMode: !!shipAbilityMode
+    });
+
     const { validAbilityTargets, validCardTargets } = gameEngine.calculateAllValidTargets(
       abilityMode,
       shipAbilityMode,
@@ -668,8 +747,24 @@ const App = () => {
       opponentPlayerState
     );
 
+    debugLog('BUTTON_CLICKS', '📊 calculateAllValidTargets returned', {
+      timestamp: performance.now(),
+      validAbilityTargets: validAbilityTargets,
+      validCardTargets: validCardTargets,
+      validCardTargetsCount: validCardTargets.length
+    });
+
+    debugLog('BUTTON_CLICKS', '🔄 About to call setValidCardTargets', {
+      timestamp: performance.now(),
+      newValue: validCardTargets
+    });
+
     setValidAbilityTargets(validAbilityTargets);
     setValidCardTargets(validCardTargets);
+
+    debugLog('BUTTON_CLICKS', '✅ setValidCardTargets completed', {
+      timestamp: performance.now()
+    });
 
     // Clear conflicting selections
     if (abilityMode) {
@@ -903,11 +998,20 @@ const App = () => {
     if (result.needsCardSelection) {
         // Handle movement cards differently - use multiSelectState instead of modal
         if (result.needsCardSelection.type === 'single_move' || result.needsCardSelection.type === 'multi_move') {
+            // For SINGLE_MOVE, highlight all friendly drones as valid targets
+            if (result.needsCardSelection.type === 'single_move') {
+                const friendlyDrones = Object.values(localPlayerState.dronesOnBoard)
+                    .flat()
+                    .map(drone => ({ id: drone.id, type: 'drone', owner: getLocalPlayerId() }));
+                setValidCardTargets(friendlyDrones);
+            }
+
             setMultiSelectState({
                 card: result.needsCardSelection.card,
                 phase: result.needsCardSelection.phase,
                 selectedDrones: [],
-                sourceLane: null
+                sourceLane: null,
+                maxDrones: result.needsCardSelection.maxDrones
             });
             return; // Don't process other effects yet
         }
@@ -1278,6 +1382,53 @@ const App = () => {
       previousPhaseRef.current = turnPhase;
     }
   }, [turnPhase, gameState.gameStage, gameState.roundNumber, gameState.gameMode, waitingForPlayerPhase]);
+
+  // --- 8.8 MANDATORY ACTION INITIALIZATION ---
+  // Initialize mandatoryAction when entering mandatory discard/drone removal phases
+  // Calculates excess cards/drones and sets up UI for user action
+  useEffect(() => {
+    const localPlayerId = getLocalPlayerId();
+
+    if (turnPhase === 'mandatoryDiscard') {
+      // Calculate excess cards
+      const handCount = localPlayerState.hand.length;
+      const handLimit = localPlayerEffectiveStats.totals.handLimit;
+      const excessCards = handCount - handLimit;
+
+      if (excessCards > 0) {
+        debugLog('PHASE_TRANSITIONS', `🗑️ Mandatory discard required: ${excessCards} cards (hand: ${handCount}, limit: ${handLimit})`);
+        setMandatoryAction({
+          type: 'discard',
+          player: localPlayerId,
+          count: excessCards
+        });
+        // Ensure footer is open and showing hand
+        setFooterView('hand');
+        setIsFooterOpen(true);
+      }
+    } else if (turnPhase === 'mandatoryDroneRemoval') {
+      // Calculate excess drones
+      const totalDrones = Object.values(localPlayerState.dronesOnBoard).flat().length;
+      const droneLimit = localPlayerEffectiveStats.totals.cpuLimit;
+      const excessDrones = totalDrones - droneLimit;
+
+      if (excessDrones > 0) {
+        debugLog('PHASE_TRANSITIONS', `💀 Mandatory drone removal required: ${excessDrones} drones (total: ${totalDrones}, limit: ${droneLimit})`);
+        setMandatoryAction({
+          type: 'destroy',
+          player: localPlayerId,
+          count: excessDrones
+        });
+      }
+    } else {
+      // Clear mandatoryAction when leaving mandatory phases
+      // (unless it was set by an ability, indicated by fromAbility property)
+      if (mandatoryAction && !mandatoryAction.fromAbility) {
+        debugLog('PHASE_TRANSITIONS', `✅ Clearing mandatoryAction (left mandatory phase)`);
+        setMandatoryAction(null);
+      }
+    }
+  }, [turnPhase, localPlayerState.hand, localPlayerState.dronesOnBoard, localPlayerEffectiveStats, getLocalPlayerId, mandatoryAction]);
 
   /**
    * HANDLE RESET
@@ -2081,17 +2232,61 @@ const App = () => {
       // NEW: Prioritize multi-move selection
       if (multiSelectState && multiSelectState.phase === 'select_drones' && isPlayer) {
           debugLog('COMBAT', "Action: Multi-move drone selection.");
-          const { selectedDrones, maxSelection } = multiSelectState;
+          const { selectedDrones, maxDrones } = multiSelectState;
           const isAlreadySelected = selectedDrones.some(d => d.id === token.id);
           if (isAlreadySelected) {
               setMultiSelectState(prev => ({ ...prev, selectedDrones: prev.selectedDrones.filter(d => d.id !== token.id) }));
-          } else if (selectedDrones.length < maxSelection) {
+          } else if (selectedDrones.length < maxDrones) {
               setMultiSelectState(prev => ({ ...prev, selectedDrones: [...prev.selectedDrones, token] }));
           }
           return;
       }
 
-      // 1. Handle targeting for an active card or ability
+      // 1. Handle single-move drone selection (SINGLE_MOVE cards like Maneuver)
+      // IMPORTANT: This must come BEFORE generic validCardTargets check to prevent interception
+      if (multiSelectState && multiSelectState.phase === 'select_drone' && isPlayer) {
+          // Check if this drone is a valid target
+          if (!validCardTargets.some(t => t.id === token.id)) {
+              debugLog('COMBAT', "Action prevented: Drone is not a valid target for movement.");
+              return;
+          }
+
+          debugLog('COMBAT', "Action: Single-move drone selection.");
+
+          // Find the drone's current lane
+          const droneLane = Object.entries(localPlayerState.dronesOnBoard).find(([_, drones]) =>
+              drones.some(d => d.id === token.id)
+          )?.[0];
+
+          if (droneLane) {
+              // Calculate adjacent lanes
+              const currentLaneIndex = parseInt(droneLane.replace('lane', ''));
+              const adjacentLanes = [];
+
+              if (currentLaneIndex > 1) {
+                  adjacentLanes.push({ id: `lane${currentLaneIndex - 1}`, owner: getLocalPlayerId() });
+              }
+              if (currentLaneIndex < 3) {
+                  adjacentLanes.push({ id: `lane${currentLaneIndex + 1}`, owner: getLocalPlayerId() });
+              }
+
+              debugLog('COMBAT', `Selected drone ${token.name} from ${droneLane}, valid destinations:`, adjacentLanes);
+
+              // Set valid targets to highlight available lanes
+              setValidCardTargets(adjacentLanes);
+
+              // Update multiSelectState with selected drone and transition to destination selection
+              setMultiSelectState(prev => ({
+                  ...prev,
+                  selectedDrone: token,
+                  sourceLane: droneLane,
+                  phase: 'select_destination'
+              }));
+          }
+          return;
+      }
+
+      // 2. Handle targeting for an active card or ability
       if (validAbilityTargets.some(t => t.id === token.id) || validCardTargets.some(t => t.id === token.id)) {
           debugLog('COMBAT', "Action: Targeting for an active card/ability.");
           handleTargetClick(token, 'drone', isPlayer);
@@ -2127,11 +2322,11 @@ const App = () => {
       // 3. Handle multi-move drone selection
       if (multiSelectState && multiSelectState.phase === 'select_drones' && isPlayer) {
           debugLog('COMBAT', "Action: Multi-move drone selection.");
-          const { selectedDrones, maxSelection } = multiSelectState;
+          const { selectedDrones, maxDrones } = multiSelectState;
           const isAlreadySelected = selectedDrones.some(d => d.id === token.id);
           if (isAlreadySelected) {
               setMultiSelectState(prev => ({ ...prev, selectedDrones: prev.selectedDrones.filter(d => d.id !== token.id) }));
-          } else if (selectedDrones.length < maxSelection) {
+          } else if (selectedDrones.length < maxDrones) {
               setMultiSelectState(prev => ({ ...prev, selectedDrones: [...prev.selectedDrones, token] }));
           }
           return;
@@ -2257,6 +2452,14 @@ const App = () => {
     // Stop the click from bubbling up to the main game area div
     e.stopPropagation();
 
+    // Debug logging for MULTI_MOVE
+    if (multiSelectState) {
+      debugLog('CARD_PLAY', '🔵 MULTI_MOVE: handleLaneClick called');
+      debugLog('CARD_PLAY', '   Lane:', lane, '| isPlayer:', isPlayer);
+      debugLog('CARD_PLAY', '   multiSelectState:', multiSelectState);
+      debugLog('CARD_PLAY', '   validCardTargets:', validCardTargets);
+    }
+
     // --- 9.1 HANDLE ABILITY TARGETING ---
     if (abilityMode && abilityMode.ability.targeting.type === 'LANE') {
         const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
@@ -2272,13 +2475,23 @@ const App = () => {
 
     if (multiSelectState && isPlayer && validCardTargets.some(t => t.id === lane)) {
         const { phase, sourceLane, selectedDrones } = multiSelectState;
-        
+
+        debugLog('CARD_PLAY', '🔵 MULTI_MOVE: Lane clicked during multiSelectState');
+        debugLog('CARD_PLAY', '   Phase:', phase);
+        debugLog('CARD_PLAY', '   Lane:', lane);
+        debugLog('CARD_PLAY', '   Source lane:', sourceLane);
+        debugLog('CARD_PLAY', '   Selected drones:', selectedDrones?.length);
+
         if (phase === 'select_source_lane') {
+            debugLog('CARD_PLAY', '   ✅ Transitioning to select_drones phase with source lane:', lane);
             setMultiSelectState(prev => ({ ...prev, phase: 'select_drones', sourceLane: lane }));
             return;
         }
 
         if (phase === 'select_destination_lane') {
+            debugLog('CARD_PLAY', '   ✅ Destination lane selected, calling resolveMultiMove');
+            debugLog('CARD_PLAY', '   Card:', multiSelectState.card?.name);
+            debugLog('CARD_PLAY', '   From lane:', sourceLane, '→ To lane:', lane);
             resolveMultiMove(multiSelectState.card, selectedDrones, sourceLane, lane);
             return;
         }
@@ -2286,12 +2499,13 @@ const App = () => {
 
     if (multiSelectState && multiSelectState.card.effect.type === 'SINGLE_MOVE' && multiSelectState.phase === 'select_destination' && isPlayer) {
         if (validCardTargets.some(t => t.id === lane)) {
-            resolveSingleMove(
-                multiSelectState.card,
-                multiSelectState.selectedDrone,
-                multiSelectState.sourceLane,
-                lane
-            );
+            // Show confirmation modal instead of immediately executing
+            setMoveConfirmation({
+                drone: multiSelectState.selectedDrone,
+                from: multiSelectState.sourceLane,
+                to: lane,
+                card: multiSelectState.card  // Include card for movement via card
+            });
         }
         return;
     }
@@ -2389,6 +2603,7 @@ const App = () => {
         cancelCardSelection();
       } else {
         cancelAllActions(); // Cancel all other actions before starting movement card
+        setSelectedCard(card); // Keep card selected for greyscale effect on other cards
         // Immediately process card play (no target needed for movement cards)
         await resolveCardPlay(card, null, getLocalPlayerId());
       }
@@ -2825,7 +3040,10 @@ const App = () => {
         onShowDebugModal={() => setShowDebugModal(true)}
         onShowOpponentDrones={handleShowOpponentDrones}
         onShowGlossary={() => setShowGlossaryModal(true)}
+        onShowAIStrategy={() => setShowAIStrategyModal(true)}
         testMode={testMode}
+        handleCancelMultiMove={handleCancelMultiMove}
+        handleConfirmMultiMoveDrones={handleConfirmMultiMoveDrones}
       />
 
       <GameBattlefield
@@ -2941,17 +3159,23 @@ const App = () => {
         onCancel={() => setMoveConfirmation(null)}
         onConfirm={async () => {
           if (!moveConfirmation) return;
-          const { drone, from, to } = moveConfirmation;
+          const { drone, from, to, card } = moveConfirmation;
 
-          await processActionWithGuestRouting('move', {
-            droneId: drone.id,
-            fromLane: from,
-            toLane: to,
-            playerId: getLocalPlayerId()
-          });
+          if (card) {
+            // Card-based movement (Maneuver, etc.)
+            await resolveSingleMove(card, drone, from, to);
+          } else {
+            // Normal drone movement (no card)
+            await processActionWithGuestRouting('move', {
+              droneId: drone.id,
+              fromLane: from,
+              toLane: to,
+              playerId: getLocalPlayerId()
+            });
+            setSelectedDrone(null);
+          }
 
           setMoveConfirmation(null);
-          setSelectedDrone(null);
         }}
       />
 
@@ -3089,6 +3313,10 @@ const App = () => {
 
       {showGlossaryModal && (
         <GlossaryModal onClose={() => setShowGlossaryModal(false)} />
+      )}
+
+      {showAIStrategyModal && (
+        <AIStrategyModal onClose={() => setShowAIStrategyModal(false)} />
       )}
 
       {/* Renders the modal for viewing the deck */}
