@@ -122,6 +122,67 @@ const analyzeInterceptionInLane = (laneId, player1, player2, gameDataService) =>
   };
 };
 
+/**
+ * Calculate total threats that a defensive interceptor is keeping in check
+ *
+ * CRITICAL: This calculates the ship threat potential of ALL enemy drones that would
+ * become free to attack if this defensive interceptor exhausts by attacking.
+ *
+ * @param {Object} attacker - The AI drone considering attacking
+ * @param {string} laneId - Lane ID where the attacker is located
+ * @param {Object} player1 - Enemy player state
+ * @param {Object} gameDataService - GameDataService instance for stat calculations
+ * @returns {Object} - { totalThreatDamage: number, totalImpact: number, threatsKeptInCheck: Array }
+ */
+const calculateThreatsKeptInCheck = (attacker, laneId, player1, gameDataService) => {
+  const attackerSpeed = gameDataService.getEffectiveStats(attacker, laneId).speed || 0;
+  const enemyDrones = player1.dronesOnBoard[laneId] || [];
+  const enemyReadyDrones = enemyDrones.filter(d => !d.isExhausted);
+
+  const threatsKeptInCheck = [];
+  let totalThreatDamage = 0;
+  let totalImpact = 0;
+
+  // Find all enemy drones slower than this attacker (threats being kept in check)
+  enemyReadyDrones.forEach(enemy => {
+    const enemyStats = gameDataService.getEffectiveStats(enemy, laneId);
+    const enemySpeed = enemyStats.speed || 0;
+
+    // If this attacker is faster, it's keeping this enemy in check
+    if (attackerSpeed > enemySpeed) {
+      // Calculate ship threat potential (includes BONUS_DAMAGE_VS_SHIP)
+      let shipThreatDamage = enemyStats.attack || 0;
+
+      const baseEnemy = fullDroneCollection.find(d => d.name === enemy.name);
+      const bonusDamageAbility = baseEnemy?.abilities?.find(a =>
+        a.type === 'PASSIVE' && a.effect?.type === 'BONUS_DAMAGE_VS_SHIP'
+      );
+      if (bonusDamageAbility) {
+        shipThreatDamage += bonusDamageAbility.effect.value;
+      }
+
+      // Calculate impact using the same formula as calculateDroneImpact
+      const impact = calculateDroneImpact(enemy, laneId, gameDataService);
+
+      threatsKeptInCheck.push({
+        name: enemy.name,
+        shipThreatDamage,
+        impact,
+        speed: enemySpeed
+      });
+
+      totalThreatDamage += shipThreatDamage;
+      totalImpact += impact;
+    }
+  });
+
+  return {
+    totalThreatDamage,
+    totalImpact,
+    threatsKeptInCheck
+  };
+};
+
 // ========================================
 // LANE SCORING
 // ========================================
@@ -1340,80 +1401,79 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
 
     // Step 2: Apply interception-based score adjustments
     possibleActions.forEach(action => {
-      if (action.type === 'attack' && action.targetType === 'section') {
-        // Ship attacks - check if attacker can be intercepted or is unchecked
+      if (action.type === 'attack') {
         const attackerLane = action.attacker.lane;
         const analysis = interceptionAnalysis[attackerLane];
         const attackerId = action.attacker.id;
 
-        if (analysis.aiSlowAttackers.includes(attackerId)) {
-          // This attacker can be intercepted - risky ship attack
-          const interceptionRisk = -80;
-          action.score += interceptionRisk;
-          action.logic.push(`⚠️ Interception Risk: ${interceptionRisk}`);
-        }
-
-        if (analysis.aiUncheckedThreats.includes(attackerId)) {
-          // This attacker is too fast to intercept - unchecked threat bonus
-          const uncheckedBonus = 100;
-          action.score += uncheckedBonus;
-          action.logic.push(`✅ Unchecked Threat: +${uncheckedBonus}`);
-        }
-      }
-
-      if (action.type === 'attack' && action.targetType === 'drone') {
-        // Drone attacks - check if we're using a defensive interceptor or targeting an enemy interceptor
-        const attackerLane = action.attacker.lane;
-        const analysis = interceptionAnalysis[attackerLane];
-        const attackerId = action.attacker.id;
-        const targetId = action.target.id;
-
-        // Penalty for using defensive interceptors offensively (scaled by threat level)
+        // === DEFENSIVE INTERCEPTOR PENALTY (APPLIES TO ALL ATTACKS) ===
+        // Check if this attacker is keeping threats in check
         if (analysis.aiDefensiveInterceptors.includes(attackerId)) {
-          // Find the highest attack value among enemies this interceptor can defend against
-          const interceptorSpeed = gameDataService.getEffectiveStats(action.attacker, attackerLane).speed || 0;
-          const enemyDrones = player1.dronesOnBoard[attackerLane] || [];
-          const enemyReadyDrones = enemyDrones.filter(d => !d.isExhausted);
+          const threatsData = calculateThreatsKeptInCheck(
+            action.attacker,
+            attackerLane,
+            player1,
+            gameDataService
+          );
 
-          const threatsDefendedAgainst = enemyReadyDrones.filter(enemy => {
-            const enemySpeed = gameDataService.getEffectiveStats(enemy, attackerLane).speed || 0;
-            return interceptorSpeed > enemySpeed; // Can intercept this enemy
-          });
+          if (threatsData.threatsKeptInCheck.length > 0) {
+            // Calculate impact-based penalty
+            // Use impact instead of just damage for more consistent decision-making
+            const defensivePenalty = threatsData.totalImpact * -12;
 
-          const maxThreatAttack = threatsDefendedAgainst.length > 0
-            ? Math.max(...threatsDefendedAgainst.map(e =>
-                gameDataService.getEffectiveStats(e, attackerLane).attack || 0
-              ))
-            : 0;
-
-          // Scale penalty based on threat level: 1 ATK → 0, 2 ATK → -10, 3 ATK → -40, 4+ ATK → -120
-          let defensivePenalty = 0;
-          if (maxThreatAttack >= 4) defensivePenalty = -120;
-          else if (maxThreatAttack === 3) defensivePenalty = -40;
-          else if (maxThreatAttack === 2) defensivePenalty = -10;
-          // maxThreatAttack === 1 → stays 0
-
-          if (defensivePenalty < 0) {
             action.score += defensivePenalty;
-            action.logic.push(`🛡️ Defensive Asset (vs ${maxThreatAttack} ATK): ${defensivePenalty}`);
+
+            // Build detailed logic message
+            const threatNames = threatsData.threatsKeptInCheck
+              .map(t => `${t.name} (${t.shipThreatDamage} ship dmg)`)
+              .join(', ');
+
+            action.logic.push(
+              `🛡️ Defensive Role: Keeping ${threatsData.threatsKeptInCheck.length} threats in check [${threatNames}]`
+            );
+            action.logic.push(
+              `⚠️ Defensive Penalty: ${defensivePenalty.toFixed(0)} (${threatsData.totalThreatDamage} total ship dmg, ${threatsData.totalImpact.toFixed(0)} impact)`
+            );
           }
         }
 
-        // Bonus for removing enemy interceptors (frees up our attacks)
-        if (analysis.enemyInterceptors.includes(targetId)) {
-          // Calculate value of attacks that would be unblocked by removing this interceptor
-          const unblockedValue = possibleActions
-            .filter(a =>
-              a.type === 'attack' &&
-              a.targetType === 'section' &&
-              a.attacker.lane === attackerLane &&
-              analysis.aiSlowAttackers.includes(a.attacker.id)
-            )
-            .reduce((sum, a) => sum + Math.max(0, a.score + 80), 0); // Add back the penalty we applied
+        // === SHIP ATTACK SPECIFIC ADJUSTMENTS ===
+        if (action.targetType === 'section') {
+          if (analysis.aiSlowAttackers.includes(attackerId)) {
+            // This attacker can be intercepted - risky ship attack
+            const interceptionRisk = -80;
+            action.score += interceptionRisk;
+            action.logic.push(`⚠️ Interception Risk: ${interceptionRisk}`);
+          }
 
-          if (unblockedValue > 0) {
-            action.score += unblockedValue;
-            action.logic.push(`🎯 Interceptor Removal: +${unblockedValue.toFixed(0)}`);
+          if (analysis.aiUncheckedThreats.includes(attackerId)) {
+            // This attacker is too fast to intercept - unchecked threat bonus
+            const uncheckedBonus = 100;
+            action.score += uncheckedBonus;
+            action.logic.push(`✅ Unchecked Threat: +${uncheckedBonus}`);
+          }
+        }
+
+        // === DRONE ATTACK SPECIFIC ADJUSTMENTS ===
+        if (action.targetType === 'drone') {
+          const targetId = action.target.id;
+
+          // Bonus for removing enemy interceptors (frees up our attacks)
+          if (analysis.enemyInterceptors.includes(targetId)) {
+            // Calculate value of attacks that would be unblocked by removing this interceptor
+            const unblockedValue = possibleActions
+              .filter(a =>
+                a.type === 'attack' &&
+                a.targetType === 'section' &&
+                a.attacker.lane === attackerLane &&
+                analysis.aiSlowAttackers.includes(a.attacker.id)
+              )
+              .reduce((sum, a) => sum + Math.max(0, a.score + 80), 0); // Add back the penalty we applied
+
+            if (unblockedValue > 0) {
+              action.score += unblockedValue;
+              action.logic.push(`🎯 Interceptor Removal: +${unblockedValue.toFixed(0)}`);
+            }
           }
         }
       }
@@ -1638,7 +1698,8 @@ const makeInterceptionDecision = (potentialInterceptors, target, attackDetails, 
     opportunityCostData = analyzeRemainingThreats(attackDetails, potentialInterceptors, gameDataService, gameStateManager);
   }
 
-  // Sort interceptors: DEFENDER first (they don't exhaust), then by class (lowest first)
+  // Sort interceptors: DEFENDER first (they don't exhaust), then by least impact
+  // This ensures we sacrifice lowest-value drones first
   const sortedInterceptors = [...potentialInterceptors].sort((a, b) => {
     const aHasDefender = hasDefenderKeyword(a);
     const bHasDefender = hasDefenderKeyword(b);
@@ -1647,10 +1708,11 @@ const makeInterceptionDecision = (potentialInterceptors, target, attackDetails, 
     if (aHasDefender && !bHasDefender) return -1;
     if (!aHasDefender && bHasDefender) return 1;
 
-    // Among same DEFENDER status, sort by class (lowest first)
-    const classA = a.class ?? Infinity;
-    const classB = b.class ?? Infinity;
-    return classA - classB;
+    // Among same DEFENDER status, sort by impact (lowest first)
+    // Use calculateDroneImpact to get consistent value measurement
+    const impactA = calculateDroneImpact(a, attackDetails.lane, gameDataService);
+    const impactB = calculateDroneImpact(b, attackDetails.lane, gameDataService);
+    return impactA - impactB; // Ascending - sacrifice least valuable first
   });
 
   for (const interceptor of sortedInterceptors) {
@@ -1718,9 +1780,8 @@ const makeInterceptionDecision = (potentialInterceptors, target, attackDetails, 
       const gameState = gameStateManager.getState();
       const player2 = gameState.player2; // AI player
       const laneIndex = parseInt(attackDetails.lane.slice(-1)) - 1;
-      const gameState2 = gameStateManager.getState();
-      const placedSections = gameState2.placedSections; // Player1's sections
-      const sectionName = placedSections[laneIndex];
+      const opponentPlacedSections = gameState.opponentPlacedSections; // Player2's (AI) sections
+      const sectionName = opponentPlacedSections[laneIndex];
 
       if (sectionName && player2.shipSections[sectionName]) {
         const targetSection = player2.shipSections[sectionName];

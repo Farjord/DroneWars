@@ -517,7 +517,7 @@ class GameStateManager {
 
     // Also allow GameFlowManager to update phase-related fields
     const isPhaseTransitionUpdate = criticalUpdates.every(update =>
-      ['turnPhase', 'gameStage', 'roundNumber', 'firstPlayerOfRound'].includes(update)
+      ['turnPhase', 'gameStage', 'roundNumber', 'turn', 'firstPlayerOfRound'].includes(update)
     );
 
     if (isGameFlowManagerUpdate && (isPlayerStateUpdate || isPhaseTransitionUpdate)) {

@@ -109,13 +109,77 @@ export function initializeTestGame(config, gameStateManager) {
   }
 
   try {
-    // Create player states from configuration
-    const player1State = createPlayerStateFromConfig(config.player1, 'Player 1');
-    const player2State = createPlayerStateFromConfig(config.player2, 'Player 2');
-
-    // Build placement data
+    // Build placement data first (needed for stats calculation)
     const placedSections = config.player1.shipSections || ['bridge', 'powerCell', 'droneControlHub'];
     const opponentPlacedSections = config.player2.shipSections || ['bridge', 'powerCell', 'droneControlHub'];
+    const roundNumber = config.roundNumber || 1;
+
+    // Calculate resource values based on round number
+    // Round 1: Use config overrides or defaults (for testing flexibility)
+    // Round 2+: Calculate from ship stats (match normal gameplay)
+    let player1Resources, player2Resources;
+    let shieldsToAllocate = 0;
+    let opponentShieldsToAllocate = 0;
+
+    if (roundNumber === 1) {
+      // Round 1: Use config values or defaults
+      player1Resources = {
+        energy: config.player1.energy ?? 10,
+        initialDeploymentBudget: config.player1.initialDeploymentBudget ?? 10,
+        deploymentBudget: 0
+      };
+      player2Resources = {
+        energy: config.player2.energy ?? 10,
+        initialDeploymentBudget: config.player2.initialDeploymentBudget ?? 10,
+        deploymentBudget: 0
+      };
+      // No shields in round 1
+      shieldsToAllocate = 0;
+      opponentShieldsToAllocate = 0;
+    } else {
+      // Round 2+: Calculate from ship stats
+      // Create temporary player states with just ship sections for stats calculation
+      const tempPlayer1 = {
+        shipSections: {
+          bridge: JSON.parse(JSON.stringify(shipSectionData.bridge)),
+          powerCell: JSON.parse(JSON.stringify(shipSectionData.powerCell)),
+          droneControlHub: JSON.parse(JSON.stringify(shipSectionData.droneControlHub))
+        }
+      };
+      const tempPlayer2 = {
+        shipSections: {
+          bridge: JSON.parse(JSON.stringify(shipSectionData.bridge)),
+          powerCell: JSON.parse(JSON.stringify(shipSectionData.powerCell)),
+          droneControlHub: JSON.parse(JSON.stringify(shipSectionData.droneControlHub))
+        }
+      };
+
+      const player1EffectiveStats = calculateEffectiveShipStats(tempPlayer1, placedSections);
+      const player2EffectiveStats = calculateEffectiveShipStats(tempPlayer2, opponentPlacedSections);
+
+      player1Resources = {
+        energy: player1EffectiveStats.totals.energyPerTurn,
+        initialDeploymentBudget: 0,
+        deploymentBudget: player1EffectiveStats.totals.deploymentBudget
+      };
+      player2Resources = {
+        energy: player2EffectiveStats.totals.energyPerTurn,
+        initialDeploymentBudget: 0,
+        deploymentBudget: player2EffectiveStats.totals.deploymentBudget
+      };
+
+      // Calculate shields for round 2+
+      shieldsToAllocate = player1EffectiveStats.totals.shieldsPerTurn;
+      opponentShieldsToAllocate = player2EffectiveStats.totals.shieldsPerTurn;
+
+      debugLog('TESTING', `🔧 Round ${roundNumber}: Calculated resources from ship stats`);
+      debugLog('TESTING', `  Player 1: ${player1Resources.energy} energy, ${player1Resources.deploymentBudget} deployment, ${shieldsToAllocate} shields`);
+      debugLog('TESTING', `  Player 2: ${player2Resources.energy} energy, ${player2Resources.deploymentBudget} deployment, ${opponentShieldsToAllocate} shields`);
+    }
+
+    // Create player states from configuration with calculated resources
+    const player1State = createPlayerStateFromConfig(config.player1, 'Player 1', player1Resources);
+    const player2State = createPlayerStateFromConfig(config.player2, 'Player 2', player2Resources);
 
     // Create complete game state
     const testGameState = {
@@ -152,7 +216,8 @@ export function initializeTestGame(config, gameStateManager) {
       unplacedSections: [],
 
       // Other game state
-      shieldsToAllocate: 0,
+      shieldsToAllocate: shieldsToAllocate,
+      opponentShieldsToAllocate: opponentShieldsToAllocate,
       winner: null,
       gameLog: [{
         type: 'system',
@@ -212,9 +277,10 @@ export function initializeTestGame(config, gameStateManager) {
  * Create a player state object from test configuration
  * @param {Object} playerConfig - Player configuration
  * @param {string} playerName - Player name
+ * @param {Object} calculatedResources - Pre-calculated resource values { energy, initialDeploymentBudget, deploymentBudget }
  * @returns {Object} Player state object
  */
-function createPlayerStateFromConfig(playerConfig, playerName) {
+function createPlayerStateFromConfig(playerConfig, playerName, calculatedResources = {}) {
   // Create deep copies of ship sections to avoid mutations
   // shipSectionData contains the template objects from shipData.js
   const shipSections = {
@@ -308,12 +374,13 @@ function createPlayerStateFromConfig(playerConfig, playerName) {
   }
 
   // Create base player state
+  // Use calculated resources if provided, otherwise fall back to config or defaults
   const playerState = {
     name: playerName,
     shipSections: shipSections,
-    energy: playerConfig.energy ?? 10,
-    initialDeploymentBudget: playerConfig.initialDeploymentBudget ?? 10,
-    deploymentBudget: playerConfig.deploymentBudget ?? 10,
+    energy: calculatedResources.energy ?? (playerConfig.energy ?? 10),
+    initialDeploymentBudget: calculatedResources.initialDeploymentBudget ?? (playerConfig.initialDeploymentBudget ?? 10),
+    deploymentBudget: calculatedResources.deploymentBudget ?? (playerConfig.deploymentBudget ?? 10),
     hand: hand,
     deck: deck,
     discardPile: [],
