@@ -172,6 +172,31 @@ const analyzeInterceptionInLane = (laneId, player1, player2, gameDataService) =>
   return baseScore + speedScore + healthModifier;
 };
 
+// ========================================
+// DRONE IMPACT CALCULATION
+// ========================================
+
+/**
+ * Calculate combat impact score for a drone
+ * Uses same weights as calculateLaneScore: Attack (4x) > Class (2x) > Durability (0.5x)
+ * This provides a consistent measure of a drone's value across all AI decisions
+ *
+ * @param {Object} drone - The drone to evaluate
+ * @param {string} lane - Lane ID for effective stat calculation
+ * @param {Object} gameDataService - GameDataService instance for stat calculations
+ * @returns {number} Impact score representing drone's overall game value
+ */
+const calculateDroneImpact = (drone, lane, gameDataService) => {
+  const stats = gameDataService.getEffectiveStats(drone, lane);
+
+  // Use same weights as calculateLaneScore for consistency
+  const attackValue = ((stats.attack || 0) + (stats.potentialShipDamage || 0)) * 4;
+  const classValue = (drone.class || 0) * 2;
+  const durabilityValue = ((drone.hull || 0) + (drone.currentShields || 0)) * 0.5;
+
+  return attackValue + classValue + durabilityValue;
+};
+
 const handleOpponentTurn = ({ player1, player2, turn, placedSections, opponentPlacedSections, getShipStatus, gameStateManager, addLogEntry }) => {
     // Create GameDataService instance for centralized data computation
     const gameDataService = GameDataService.getInstance(gameStateManager);
@@ -602,9 +627,131 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
             }
           }
           else if (card.effect.type === 'READY_DRONE') {
-            const readyValue = target.class * 12;
-            score = readyValue;
-            action.logic.push(`✅ Ready Drone: +${readyValue} (Class ${target.class})`);
+            // Enhanced READY_DRONE scoring: Evaluate actual impact of readying this drone
+            // Instead of simple class-based scoring, calculate what the drone can DO when ready
+            const targetLane = getLaneOfDrone(target.id, player2);
+
+            if (!targetLane) {
+              // Drone not found on board - should not happen but handle gracefully
+              score = -999;
+              action.logic.push('❌ Target not found on board');
+            } else {
+              const effectiveTarget = gameDataService.getEffectiveStats(target, targetLane);
+              const baseDrone = fullDroneCollection.find(d => d.name === target.name);
+              let totalScore = 0;
+
+              // === OFFENSIVE POTENTIAL ===
+              // Calculate value from attacking ships or drones
+              const effectiveAttack = Math.max(0, effectiveTarget.attack);
+              const laneIndex = parseInt(targetLane.slice(-1)) - 1;
+              const enemySectionName = placedSections[laneIndex];
+
+              // Check for ship attack opportunity
+              let shipAttackValue = 0;
+              if (enemySectionName && player1.shipSections[enemySectionName].hull > 0) {
+                // Check if GUARDIAN blocks ship attacks
+                const enemyDronesInLane = player1.dronesOnBoard[targetLane] || [];
+                const hasGuardian = enemyDronesInLane.some(drone => {
+                  const effectiveStats = gameDataService.getEffectiveStats(drone, targetLane);
+                  return effectiveStats.keywords.has('GUARDIAN');
+                });
+
+                if (!hasGuardian) {
+                  // Ship attack is available
+                  let shipDamage = effectiveAttack;
+
+                  // Add BONUS_DAMAGE_VS_SHIP if present
+                  const bonusDamageAbility = baseDrone?.abilities?.find(a =>
+                    a.type === 'PASSIVE' && a.effect?.type === 'BONUS_DAMAGE_VS_SHIP'
+                  );
+                  if (bonusDamageAbility) {
+                    shipDamage += bonusDamageAbility.effect.value;
+                  }
+
+                  shipAttackValue = shipDamage * 8; // Same multiplier as attack scoring
+                  action.logic.push(`✅ Ship Attack: +${shipAttackValue} (${shipDamage} dmg)`);
+                }
+              }
+
+              // Count enemy drone targets
+              const enemyDronesCount = (player1.dronesOnBoard[targetLane] || []).length;
+              let droneAttackValue = 0;
+              if (enemyDronesCount > 0 && effectiveAttack > 0) {
+                droneAttackValue = effectiveAttack * 8 * enemyDronesCount;
+                action.logic.push(`✅ Drone Attacks: +${droneAttackValue} (${effectiveAttack} ATK × ${enemyDronesCount} targets)`);
+              }
+
+              totalScore += shipAttackValue + droneAttackValue;
+
+              // === DEFENSIVE POTENTIAL ===
+              // Calculate interception capability
+              const effectiveSpeed = effectiveTarget.speed || 0;
+              const enemyDronesInLane = player1.dronesOnBoard[targetLane] || [];
+              const enemyReadyDrones = enemyDronesInLane.filter(d => !d.isExhausted);
+
+              // Count threats this drone can intercept
+              const threatsCanBlock = enemyReadyDrones.filter(enemy => {
+                const enemyStats = gameDataService.getEffectiveStats(enemy, targetLane);
+                const enemySpeed = enemyStats.speed || 0;
+                return effectiveSpeed > enemySpeed;
+              });
+
+              if (threatsCanBlock.length > 0) {
+                const interceptionValue = threatsCanBlock.length * 20;
+                totalScore += interceptionValue;
+                action.logic.push(`🛡️ Interception: +${interceptionValue} (${threatsCanBlock.length} threats)`);
+              }
+
+              // === KEYWORD BONUSES ===
+              const keywords = effectiveTarget.keywords || new Set();
+
+              // DEFENDER: Can intercept without exhausting
+              if (keywords.has('DEFENDER')) {
+                const defenderBonus = 40;
+                totalScore += defenderBonus;
+                action.logic.push(`⭐ DEFENDER: +${defenderBonus}`);
+              }
+
+              // GUARDIAN: Blocks ship attacks
+              if (keywords.has('GUARDIAN')) {
+                const guardianBonus = 30;
+                totalScore += guardianBonus;
+                action.logic.push(`⭐ GUARDIAN: +${guardianBonus}`);
+              }
+
+              // === LANE IMPACT ANALYSIS ===
+              // Calculate how much this drone being ready improves the lane
+              const currentLaneScore = calculateLaneScore(targetLane, player2, player1, allSections, getShipStatus, gameDataService);
+
+              // Simulate drone as ready
+              const tempAiState = JSON.parse(JSON.stringify(player2));
+              const droneInLane = tempAiState.dronesOnBoard[targetLane].find(d => d.id === target.id);
+              if (droneInLane) {
+                droneInLane.isExhausted = false;
+              }
+
+              const projectedLaneScore = calculateLaneScore(targetLane, tempAiState, player1, allSections, getShipStatus, gameDataService);
+              const laneImpact = (projectedLaneScore - currentLaneScore) * 1.5; // Weight lane impact
+
+              if (laneImpact > 0) {
+                totalScore += laneImpact;
+                action.logic.push(`📊 Lane Impact: +${laneImpact.toFixed(0)}`);
+
+                // Lane flip bonus
+                if (currentLaneScore < 0 && projectedLaneScore >= 0) {
+                  const flipBonus = 30;
+                  totalScore += flipBonus;
+                  action.logic.push(`🔄 Lane Flip: +${flipBonus}`);
+                }
+              }
+
+              // === COST PENALTY ===
+              const costPenalty = card.cost * 4;
+              totalScore -= costPenalty;
+              action.logic.push(`⚠️ Cost: -${costPenalty}`);
+
+              score = totalScore;
+            }
           } else if (card.effect.type === 'GAIN_ENERGY') {
             const projectedEnergy = player2.energy - card.cost + card.effect.value;
             action.logic.push(`📊 Projected Energy: ${projectedEnergy}`);
@@ -898,6 +1045,21 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
               const bonus = effectiveTarget.currentShields * 8;
               score += bonus;
               action.logic.push(`✅ Piercing Damage: +${bonus}`);
+            }
+
+            // GUARDIAN PROTECTION CHECK
+            // Heavily penalize attacking with Guardians when opponent has ready drones
+            // Guardian ability only works when ready - attacking exhausts and disables protection
+            const isGuardian = effectiveAttacker.keywords.has('GUARDIAN');
+            if (isGuardian) {
+              const enemyDronesInLane = player1.dronesOnBoard[attacker.lane] || [];
+              const enemyReadyDrones = enemyDronesInLane.filter(d => !d.isExhausted);
+
+              if (enemyReadyDrones.length > 0) {
+                const guardianPenalty = -200;
+                score += guardianPenalty;
+                action.logic.push(`🛡️ Guardian Protection Risk: ${guardianPenalty} (${enemyReadyDrones.length} ready enemies)`);
+              }
             }
 
             // Lane score analysis for drone attacks
@@ -1311,37 +1473,357 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
     return { type: 'action', payload: chosenAction, logContext: possibleActions };
 };
 
+// ========================================
+// INTERCEPTION DECISION HELPERS
+// ========================================
+
 /**
- * AI Interception Decision
+ * Check if a drone has the DEFENDER keyword
+ * DEFENDER drones don't exhaust when intercepting, allowing multiple interceptions
+ * @param {Object} drone - The drone to check
+ * @returns {boolean} True if drone has DEFENDER keyword
+ */
+const hasDefenderKeyword = (drone) => {
+  const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
+  return baseDrone?.abilities?.some(ability =>
+    ability.effect?.type === 'GRANT_KEYWORD' &&
+    ability.effect?.keyword === 'DEFENDER'
+  ) || false;
+};
+
+/**
+ * Analyze remaining threats in the lane to evaluate opportunity cost
+ * Helps AI decide if it should save interceptor for bigger threats
+ * @param {Object} attackDetails - Current attack context (attacker, target, targetType, lane)
+ * @param {Array} potentialInterceptors - Available interceptors
+ * @param {Object} gameDataService - GameDataService instance
+ * @param {Object} gameStateManager - GameStateManager for accessing player states
+ * @returns {Object} - { remainingThreats: Array, maxBlockableThreat: number, totalRemaining: number }
+ */
+const analyzeRemainingThreats = (attackDetails, potentialInterceptors, gameDataService, gameStateManager) => {
+  const remainingThreats = [];
+  const gameState = gameStateManager.getState();
+  const player1 = gameState.player1; // Human player (attacker's owner)
+  const lane = attackDetails.lane;
+
+  // Get all enemy drones in this lane (excluding current attacker)
+  const enemyDronesInLane = player1.dronesOnBoard[lane] || [];
+  const readyEnemyDrones = enemyDronesInLane.filter(d =>
+    !d.isExhausted && d.id !== attackDetails.attacker.id
+  );
+
+  // Calculate threat value for each remaining ready drone
+  // Note: We calculate ship threat potential (includes BONUS_DAMAGE_VS_SHIP) because
+  // these threats will likely attack the ship, not intercept other drones
+  readyEnemyDrones.forEach(drone => {
+    const effectiveStats = gameDataService.getEffectiveStats(drone, lane);
+    let shipThreatPotential = effectiveStats.attack || 1;
+
+    // Add BONUS_DAMAGE_VS_SHIP - correct for opportunity cost analysis
+    // We're evaluating "how dangerous is this threat to our ship if it attacks?"
+    const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
+    const bonusDamageAbility = baseDrone?.abilities?.find(a =>
+      a.type === 'PASSIVE' && a.effect?.type === 'BONUS_DAMAGE_VS_SHIP'
+    );
+    if (bonusDamageAbility) {
+      shipThreatPotential += bonusDamageAbility.effect.value;
+    }
+
+    // Check if any of our interceptors can block this threat
+    const canBeBlocked = potentialInterceptors.some(interceptor => {
+      const interceptorStats = gameDataService.getEffectiveStats(interceptor, lane);
+      const interceptorSpeed = interceptorStats.speed || 0;
+      const droneSpeed = effectiveStats.speed || 0;
+      return interceptorSpeed > droneSpeed;
+    });
+
+    remainingThreats.push({
+      drone,
+      threatDamage: shipThreatPotential, // Ship attack potential (includes bonus)
+      canBeBlocked,
+      speed: effectiveStats.speed || 0
+    });
+  });
+
+  // Find max blockable threat (ship attack potential)
+  const blockableThreats = remainingThreats.filter(t => t.canBeBlocked);
+  const maxBlockableThreat = blockableThreats.length > 0
+    ? Math.max(...blockableThreats.map(t => t.threatDamage))
+    : 0;
+
+  const totalRemaining = remainingThreats.reduce((sum, t) => sum + t.threatDamage, 0);
+
+  debugLog('AI_DECISIONS', `🔍 [OPPORTUNITY COST] Remaining threats in ${lane}:`, {
+    totalThreats: remainingThreats.length,
+    blockableThreats: blockableThreats.length,
+    maxBlockableThreat,
+    totalRemaining
+  });
+
+  return { remainingThreats, maxBlockableThreat, totalRemaining };
+};
+
+/**
+ * AI Interception Decision (Enhanced)
  * Decides whether to intercept an incoming attack and which interceptor to use
- * Logic extracted from App.jsx to maintain architecture separation
+ *
+ * ENHANCEMENTS:
+ * 1. Survivability-based decisions (hull + shields vs damage)
+ * 2. Opportunity cost analysis (scan for bigger threats)
+ * 3. DEFENDER keyword handling (no exhaustion, no opportunity cost)
  *
  * @param {Array} potentialInterceptors - Drones that can intercept (pre-filtered for speed/keywords)
- * @param {Object} target - The drone being attacked
- * @returns {Object} - { interceptor: drone | null }
+ * @param {Object} target - The attacker drone
+ * @param {Object} attackDetails - Full attack context (attacker, target, targetType, lane)
+ * @param {Object} gameDataService - GameDataService instance for stat calculations
+ * @param {Object} gameStateManager - GameStateManager for accessing game state
+ * @returns {Object} - { interceptor: drone | null, decisionContext: Array }
  */
-const makeInterceptionDecision = (potentialInterceptors, target) => {
+const makeInterceptionDecision = (potentialInterceptors, target, attackDetails, gameDataService, gameStateManager) => {
+  // Build decision context for Action Log
+  const decisionContext = [];
+
   if (!potentialInterceptors || potentialInterceptors.length === 0) {
-    return { interceptor: null };
+    // No interceptors available
+    decisionContext.push({
+      instigator: 'N/A',
+      targetName: target.name,
+      score: -999,
+      logic: ['No interceptors available'],
+      isChosen: false
+    });
+    return { interceptor: null, decisionContext };
   }
 
-  // Sort interceptors by class (lowest first)
+  // Calculate damage values - CRITICAL: Separate interceptor damage from ship threat
+  // baseAttackDamage: What the interceptor actually takes when stepping in (no BONUS_DAMAGE_VS_SHIP)
+  // shipThreatDamage: What the ship would take if not intercepted (includes BONUS_DAMAGE_VS_SHIP)
+  let baseAttackDamage = 1; // Default - what interceptor takes
+  let shipThreatDamage = 1; // Default - what ship would take
+  const targetClass = target.class ?? Infinity;
+
+  if (attackDetails && gameDataService) {
+    try {
+      const effectiveAttacker = gameDataService.getEffectiveStats(target, attackDetails.lane);
+      baseAttackDamage = effectiveAttacker.attack || 1;
+
+      // For ship attacks, calculate prevented damage (includes bonus)
+      // For drone attacks, both values are the same (no bonus applies)
+      if (attackDetails.targetType === 'section') {
+        shipThreatDamage = baseAttackDamage; // Start with base attack
+
+        // Add BONUS_DAMAGE_VS_SHIP to ship threat (what we're preventing)
+        const baseDrone = fullDroneCollection.find(d => d.name === target.name);
+        const bonusDamageAbility = baseDrone?.abilities.find(a =>
+          a.type === 'PASSIVE' && a.effect?.type === 'BONUS_DAMAGE_VS_SHIP'
+        );
+        if (bonusDamageAbility) {
+          shipThreatDamage += bonusDamageAbility.effect.value;
+        }
+
+        debugLog('AI_DECISIONS', `🛡️ [INTERCEPTION THREAT] ${target.name} attacking ship: interceptor takes ${baseAttackDamage} dmg, prevents ${shipThreatDamage} dmg to ship (class ${targetClass})`);
+      } else {
+        // Drone attack - no bonus damage
+        shipThreatDamage = baseAttackDamage;
+        debugLog('AI_DECISIONS', `🛡️ [INTERCEPTION THREAT] ${target.name} attacking drone: ${baseAttackDamage} dmg (class ${targetClass})`);
+      }
+    } catch (err) {
+      debugLog('AI_DECISIONS', '⚠️ [INTERCEPTION] Failed to calculate threat, using default');
+    }
+  }
+
+  // Analyze remaining threats for opportunity cost (only if gameStateManager provided)
+  let opportunityCostData = null;
+  if (gameStateManager) {
+    opportunityCostData = analyzeRemainingThreats(attackDetails, potentialInterceptors, gameDataService, gameStateManager);
+  }
+
+  // Sort interceptors: DEFENDER first (they don't exhaust), then by class (lowest first)
   const sortedInterceptors = [...potentialInterceptors].sort((a, b) => {
+    const aHasDefender = hasDefenderKeyword(a);
+    const bHasDefender = hasDefenderKeyword(b);
+
+    // DEFENDER drones always come first
+    if (aHasDefender && !bHasDefender) return -1;
+    if (!aHasDefender && bHasDefender) return 1;
+
+    // Among same DEFENDER status, sort by class (lowest first)
     const classA = a.class ?? Infinity;
     const classB = b.class ?? Infinity;
     return classA - classB;
   });
 
-  // Choose the lowest-class interceptor if it has a lower class than the target
-  const bestInterceptor = sortedInterceptors[0];
-  const targetClass = target.class ?? Infinity;
-  const interceptorClass = bestInterceptor.class ?? Infinity;
+  for (const interceptor of sortedInterceptors) {
+    const interceptorClass = interceptor.class ?? Infinity;
+    const hasDefender = hasDefenderKeyword(interceptor);
+    const logic = [];
+    let score = 0;
+    let shouldIntercept = false;
 
-  if (targetClass === undefined || interceptorClass < targetClass) {
-    return { interceptor: bestInterceptor };
+    // Calculate survivability using BASE attack damage (what interceptor actually takes)
+    const durability = (interceptor.hull || 0) + (interceptor.currentShields || 0);
+    const survives = durability > baseAttackDamage;
+    const damageTaken = Math.min(baseAttackDamage, durability);
+    const damageRatio = durability > 0 ? damageTaken / durability : 1;
+
+    // Add basic info to logic
+    // For ship attacks, show both values clearly
+    if (attackDetails.targetType === 'section') {
+      logic.push(`Interceptor takes: ${baseAttackDamage} dmg (base attack)`);
+      logic.push(`Prevents ship damage: ${shipThreatDamage} dmg (attack + bonus)`);
+      logic.push(`Attacker: ${target.name} (class ${targetClass})`);
+    } else {
+      logic.push(`Threat: ${baseAttackDamage} dmg (Attacker class ${targetClass})`);
+    }
+    logic.push(`Interceptor: ${interceptor.name} (class ${interceptorClass})`);
+    logic.push(`Durability: ${durability} (${interceptor.hull}H + ${interceptor.currentShields}S)`);
+    logic.push(`Survivability: ${survives ? '✅ SURVIVES' : '❌ DIES'} (${damageTaken} dmg, ${(damageRatio * 100).toFixed(0)}%)`);
+
+    if (hasDefender) {
+      logic.push(`⭐ DEFENDER: No exhaustion penalty`);
+    }
+
+    // === OPPORTUNITY COST CHECK (skip for DEFENDER drones) ===
+    if (!hasDefender && opportunityCostData && opportunityCostData.maxBlockableThreat > 0) {
+      // Check if there's a bigger threat worth saving interceptor for
+      // Compare ship threats (includes bonus damage) for opportunity cost
+      if (opportunityCostData.maxBlockableThreat > shipThreatDamage * 1.5) {
+        score = -999;
+        shouldIntercept = false;
+        logic.push(`❌ Opportunity Cost: Save for bigger threat (${opportunityCostData.maxBlockableThreat} dmg > ${(shipThreatDamage * 1.5).toFixed(1)} dmg)`);
+
+        decisionContext.push({
+          instigator: interceptor.name,
+          targetName: target.name,
+          score,
+          logic,
+          isChosen: false
+        });
+        continue; // Skip this interceptor
+      } else {
+        logic.push(`✅ Opportunity Cost: No bigger threats (max ${opportunityCostData.maxBlockableThreat} dmg)`);
+      }
+    }
+
+    // === IMPACT-BASED DECISIONS ===
+    // Calculate impacts for attacker and interceptor to make nuanced trade decisions
+    const attackerImpact = calculateDroneImpact(target, attackDetails.lane, gameDataService);
+    const interceptorImpact = calculateDroneImpact(interceptor, attackDetails.lane, gameDataService);
+
+    // Calculate what we're protecting
+    let protectionValue = 0;
+
+    if (attackDetails.targetType === 'section') {
+      // Protecting ship - distinguish HULL vs SHIELD damage
+      const gameState = gameStateManager.getState();
+      const player2 = gameState.player2; // AI player
+      const laneIndex = parseInt(attackDetails.lane.slice(-1)) - 1;
+      const gameState2 = gameStateManager.getState();
+      const placedSections = gameState2.placedSections; // Player1's sections
+      const sectionName = placedSections[laneIndex];
+
+      if (sectionName && player2.shipSections[sectionName]) {
+        const targetSection = player2.shipSections[sectionName];
+
+        if (targetSection.allocatedShields > 0) {
+          // Attacking shields - lower protection value
+          protectionValue = shipThreatDamage * 5;
+          logic.push(`🛡️ Protecting: Shields (value ${protectionValue.toFixed(0)})`);
+        } else {
+          // Attacking HULL - HIGH protection value (losing drones is better than hull damage)
+          protectionValue = shipThreatDamage * 15;
+          logic.push(`🛡️ Protecting: HULL (value ${protectionValue.toFixed(0)})`);
+        }
+      } else {
+        // Fallback if section data not available
+        protectionValue = shipThreatDamage * 10;
+        logic.push(`🛡️ Protecting: Ship (value ${protectionValue.toFixed(0)})`);
+      }
+    } else {
+      // Protecting another drone - use drone's impact value
+      protectionValue = attackerImpact; // The value of the drone being attacked
+      logic.push(`🛡️ Protecting: Drone (value ${protectionValue.toFixed(0)})`);
+    }
+
+    logic.push(`⚖️ Impact: Attacker ${attackerImpact.toFixed(0)} vs Interceptor ${interceptorImpact.toFixed(0)}`);
+
+    // === DECISION LOGIC BASED ON SURVIVABILITY AND IMPACT ===
+    if (survives) {
+      // Interceptor survives - evaluate if worth the damage
+      const impactRatio = interceptorImpact / attackerImpact;
+
+      if (impactRatio < 0.3) {
+        // Low-impact interceptor vs high-impact attacker - GREAT trade
+        shouldIntercept = true;
+        score = hasDefender ? 110 : 90;
+        logic.push(`✅ Excellent: Low impact defender (ratio ${impactRatio.toFixed(2)})`);
+      } else if (impactRatio < 0.7) {
+        // Reasonable trade - good interception
+        shouldIntercept = true;
+        score = hasDefender ? 90 : 70;
+        logic.push(`✅ Good: Defender impact favorable (ratio ${impactRatio.toFixed(2)})`);
+      } else if (protectionValue > interceptorImpact * 1.5) {
+        // High impact interceptor, but protecting something valuable
+        shouldIntercept = true;
+        score = hasDefender ? 70 : 50;
+        logic.push(`✅ Protective: Saving ${protectionValue.toFixed(0)} value vs ${interceptorImpact.toFixed(0)} cost`);
+      } else {
+        // Not worth it - high impact interceptor for low value protection
+        shouldIntercept = false;
+        score = -999;
+        logic.push(`❌ Poor value: Defender ${interceptorImpact.toFixed(0)} vs protection ${protectionValue.toFixed(0)}`);
+      }
+    } else {
+      // Interceptor dies - sacrifice trade analysis
+      const sacrificeRatio = protectionValue / interceptorImpact;
+
+      if (sacrificeRatio > 2.0) {
+        // Losing low-impact defender to save high-value target - GREAT sacrifice
+        shouldIntercept = true;
+        score = hasDefender ? 80 : 60; // DEFENDER doesn't actually die
+        logic.push(`✅ Excellent sacrifice: Lose ${interceptorImpact.toFixed(0)} to save ${protectionValue.toFixed(0)} (ratio ${sacrificeRatio.toFixed(2)})`);
+      } else if (sacrificeRatio > 1.3) {
+        // Reasonable sacrifice trade
+        shouldIntercept = true;
+        score = hasDefender ? 70 : 45;
+        logic.push(`✅ Good sacrifice: Lose ${interceptorImpact.toFixed(0)} to save ${protectionValue.toFixed(0)} (ratio ${sacrificeRatio.toFixed(2)})`);
+      } else {
+        // Bad trade - losing too much impact
+        shouldIntercept = false;
+        score = -999;
+        logic.push(`❌ Poor sacrifice: Lose ${interceptorImpact.toFixed(0)} to save only ${protectionValue.toFixed(0)} (ratio ${sacrificeRatio.toFixed(2)})`);
+      }
+    }
+
+    // DEFENDER bonus: Add extra score for DEFENDER drones
+    if (hasDefender && shouldIntercept) {
+      score += 20;
+      logic.push(`⭐ DEFENDER bonus: +20`);
+    }
+
+    decisionContext.push({
+      instigator: interceptor.name,
+      targetName: target.name,
+      score,
+      logic,
+      isChosen: false // Will be set later for chosen interceptor
+    });
+
+    // Choose first valid interceptor (already sorted by DEFENDER first, then class)
+    if (shouldIntercept && !decisionContext.some(d => d.isChosen)) {
+      decisionContext[decisionContext.length - 1].isChosen = true;
+      debugLog('AI_DECISIONS', `🛡️ [INTERCEPTION] INTERCEPT with ${interceptor.name}${hasDefender ? ' (DEFENDER)' : ''} - Score: ${score}`);
+      return { interceptor, decisionContext };
+    }
   }
 
-  return { interceptor: null };
+  // No valid interceptor found
+  if (attackDetails.targetType === 'section') {
+    debugLog('AI_DECISIONS', `🛡️ [INTERCEPTION] DECLINE - No valid interceptor for ${target.name} (ship threat ${shipThreatDamage} dmg, interceptor would take ${baseAttackDamage} dmg)`);
+  } else {
+    debugLog('AI_DECISIONS', `🛡️ [INTERCEPTION] DECLINE - No valid interceptor for ${target.name} (threat ${baseAttackDamage} dmg)`);
+  }
+  return { interceptor: null, decisionContext };
 };
 
 export const aiBrain = {

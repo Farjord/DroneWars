@@ -2231,6 +2231,12 @@ const App = () => {
 
       // NEW: Prioritize multi-move selection
       if (multiSelectState && multiSelectState.phase === 'select_drones' && isPlayer) {
+          // Validate drone is a valid target (includes exhaustion check + any future filters)
+          if (!validCardTargets.some(t => t.id === token.id)) {
+              debugLog('COMBAT', "Action prevented: Drone is not a valid target for movement.");
+              return;
+          }
+
           debugLog('COMBAT', "Action: Multi-move drone selection.");
           const { selectedDrones, maxDrones } = multiSelectState;
           const isAlreadySelected = selectedDrones.some(d => d.id === token.id);
@@ -2321,6 +2327,12 @@ const App = () => {
 
       // 3. Handle multi-move drone selection
       if (multiSelectState && multiSelectState.phase === 'select_drones' && isPlayer) {
+          // Validate drone is a valid target (includes exhaustion check + any future filters)
+          if (!validCardTargets.some(t => t.id === token.id)) {
+              debugLog('COMBAT', "Action prevented: Drone is not a valid target for movement.");
+              return;
+          }
+
           debugLog('COMBAT', "Action: Multi-move drone selection.");
           const { selectedDrones, maxDrones } = multiSelectState;
           const isAlreadySelected = selectedDrones.some(d => d.id === token.id);
@@ -3148,9 +3160,16 @@ const App = () => {
         onCancel={() => setDeploymentConfirmation(null)}
         onConfirm={async () => {
           if (!deploymentConfirmation) return;
+          // Store data before closing modal
           const { lane, drone } = deploymentConfirmation;
+
+          // Close modal immediately
           setDeploymentConfirmation(null);
-          await executeDeployment(lane, drone);
+
+          // Wait for modal to unmount before playing animations
+          setTimeout(async () => {
+            await executeDeployment(lane, drone);
+          }, 400);
         }}
       />
       <MoveConfirmationModal
@@ -3159,23 +3178,28 @@ const App = () => {
         onCancel={() => setMoveConfirmation(null)}
         onConfirm={async () => {
           if (!moveConfirmation) return;
+          // Store data before closing modal
           const { drone, from, to, card } = moveConfirmation;
 
-          if (card) {
-            // Card-based movement (Maneuver, etc.)
-            await resolveSingleMove(card, drone, from, to);
-          } else {
-            // Normal drone movement (no card)
-            await processActionWithGuestRouting('move', {
-              droneId: drone.id,
-              fromLane: from,
-              toLane: to,
-              playerId: getLocalPlayerId()
-            });
-            setSelectedDrone(null);
-          }
-
+          // Close modal immediately
           setMoveConfirmation(null);
+
+          // Wait for modal to unmount before playing animations
+          setTimeout(async () => {
+            if (card) {
+              // Card-based movement (Maneuver, etc.)
+              await resolveSingleMove(card, drone, from, to);
+            } else {
+              // Normal drone movement (no card)
+              await processActionWithGuestRouting('move', {
+                droneId: drone.id,
+                fromLane: from,
+                toLane: to,
+                playerId: getLocalPlayerId()
+              });
+              setSelectedDrone(null);
+            }
+          }, 400);
         }}
       />
 
@@ -3284,8 +3308,18 @@ const App = () => {
         show={!!abilityConfirmation}
         onCancel={() => setAbilityConfirmation(null)}
         onConfirm={() => {
-          resolveAbility(abilityConfirmation.ability, abilityConfirmation.drone, abilityConfirmation.target);
+          // Store data before closing modal
+          const ability = abilityConfirmation.ability;
+          const drone = abilityConfirmation.drone;
+          const target = abilityConfirmation.target;
+
+          // Close modal immediately
           setAbilityConfirmation(null);
+
+          // Wait for modal to unmount before playing animations
+          setTimeout(() => {
+            resolveAbility(ability, drone, target);
+          }, 400);
         }}
       />
 
@@ -3349,7 +3383,20 @@ const App = () => {
         shipAbilityConfirmation={shipAbilityConfirmation}
         show={!!shipAbilityConfirmation}
         onCancel={() => setShipAbilityConfirmation(null)}
-        onConfirm={async () => await resolveShipAbility(shipAbilityConfirmation.ability, shipAbilityConfirmation.sectionName, shipAbilityConfirmation.target)}
+        onConfirm={async () => {
+          // Store data before closing modal
+          const ability = shipAbilityConfirmation.ability;
+          const sectionName = shipAbilityConfirmation.sectionName;
+          const target = shipAbilityConfirmation.target;
+
+          // Close modal immediately
+          setShipAbilityConfirmation(null);
+
+          // Wait for modal to unmount before playing animations
+          setTimeout(async () => {
+            await resolveShipAbility(ability, sectionName, target);
+          }, 400);
+        }}
       />
 
 

@@ -203,7 +203,12 @@ class GameFlowManager {
 
       // Apply phase data (gameStage and roundNumber already initialized in GameStateManager)
       if (Object.keys(phaseData).length > 0) {
-        this.gameStateManager.setState(phaseData, 'GAME_INITIALIZATION', 'phaseInitialization');
+        try {
+          this.gameStateManager._updateContext = 'GameFlowManager';
+          this.gameStateManager.setState(phaseData, 'GAME_INITIALIZATION', 'phaseInitialization');
+        } finally {
+          this.gameStateManager._updateContext = null;
+        }
       }
     }
 
@@ -283,7 +288,12 @@ class GameFlowManager {
       }
 
       if (Object.keys(stateUpdates).length > 0) {
-        this.gameStateManager.setState(stateUpdates, 'COMMITMENT_APPLICATION', `${phase}_completion`);
+        try {
+          this.gameStateManager._updateContext = 'GameFlowManager';
+          this.gameStateManager.setState(stateUpdates, 'COMMITMENT_APPLICATION', `${phase}_completion`);
+        } finally {
+          this.gameStateManager._updateContext = null;
+        }
         debugLog('PHASE_TRANSITIONS', `📋 GameFlowManager: Applied ${phase} commitments to game state`);
       }
     }
@@ -960,10 +970,15 @@ class GameFlowManager {
       if (this.roundNumber === 0) {
         this.roundNumber = 1;
         // Update gameState with initial round number
-        this.gameStateManager.setState({
-          roundNumber: 1,
-          turn: 1
-        });
+        try {
+          this.gameStateManager._updateContext = 'GameFlowManager';
+          this.gameStateManager.setState({
+            roundNumber: 1,
+            turn: 1
+          });
+        } finally {
+          this.gameStateManager._updateContext = null;
+        }
       }
     }
 
@@ -995,11 +1010,16 @@ class GameFlowManager {
 
       // Apply game stage, round number, and phase-specific data directly
       // These are GameFlowManager-specific metadata not handled by standard phase transitions
-      this.gameStateManager.setState({
-        gameStage: this.gameStage,
-        roundNumber: this.roundNumber,
-        ...phaseData
-      }, 'PHASE_TRANSITION', 'gameFlowManagerMetadata');
+      try {
+        this.gameStateManager._updateContext = 'GameFlowManager';
+        this.gameStateManager.setState({
+          gameStage: this.gameStage,
+          roundNumber: this.roundNumber,
+          ...phaseData
+        }, 'PHASE_TRANSITION', 'gameFlowManagerMetadata');
+      } finally {
+        this.gameStateManager._updateContext = null;
+      }
     }
 
     // Handle automatic phases directly
@@ -1017,6 +1037,86 @@ class GameFlowManager {
       roundNumber: this.roundNumber,
       firstPlayerResult
     });
+
+    // Auto-complete commitments for players who don't need to act (single-player mandatory phases)
+    if (this.isSimultaneousPhase(newPhase)) {
+      await this.autoCompleteUnnecessaryCommitments(newPhase);
+    }
+  }
+
+  /**
+   * Auto-complete commitments for players who don't need to act in mandatory phases
+   * @param {string} phase - The phase to check
+   */
+  async autoCompleteUnnecessaryCommitments(phase) {
+    // Only handle mandatory simultaneous phases
+    const mandatoryPhases = ['mandatoryDiscard', 'mandatoryDroneRemoval', 'allocateShields'];
+    if (!mandatoryPhases.includes(phase)) {
+      return;
+    }
+
+    // Only for single-player mode
+    const gameMode = this.gameStateManager.get('gameMode');
+    if (gameMode !== 'local') {
+      return;
+    }
+
+    const gameState = this.gameStateManager.getState();
+
+    // Check which players need to act
+    let player1NeedsToAct = false;
+    let player2NeedsToAct = false;
+
+    if (phase === 'mandatoryDiscard') {
+      const player1HandCount = gameState.player1.hand?.length || 0;
+      const player1Stats = this.gameDataService.getEffectiveShipStats(gameState.player1, gameState.placedSections);
+      player1NeedsToAct = player1HandCount > player1Stats.totals.handLimit;
+
+      const player2HandCount = gameState.player2.hand?.length || 0;
+      const player2Stats = this.gameDataService.getEffectiveShipStats(gameState.player2, gameState.opponentPlacedSections);
+      player2NeedsToAct = player2HandCount > player2Stats.totals.handLimit;
+    } else if (phase === 'mandatoryDroneRemoval') {
+      const player1DronesCount = Object.values(gameState.player1.dronesOnBoard || {}).flat().length;
+      const player1Stats = this.gameDataService.getEffectiveShipStats(gameState.player1, gameState.placedSections);
+      player1NeedsToAct = player1DronesCount > player1Stats.totals.cpuLimit;
+
+      const player2DronesCount = Object.values(gameState.player2.dronesOnBoard || {}).flat().length;
+      const player2Stats = this.gameDataService.getEffectiveShipStats(gameState.player2, gameState.opponentPlacedSections);
+      player2NeedsToAct = player2DronesCount > player2Stats.totals.cpuLimit;
+    } else if (phase === 'allocateShields') {
+      player1NeedsToAct = (gameState.shieldsToAllocate || 0) > 0;
+      player2NeedsToAct = (gameState.opponentShieldsToAllocate || 0) > 0;
+    }
+
+    debugLog('COMMITMENTS', `🔍 Auto-completion check for ${phase}:`, {
+      player1NeedsToAct,
+      player2NeedsToAct
+    });
+
+    // Auto-commit for players who don't need to act
+    if (!player1NeedsToAct) {
+      debugLog('COMMITMENTS', `✅ Player1 doesn't need to act in ${phase}, auto-committing`);
+      await this.actionProcessor.processCommitment({
+        playerId: 'player1',
+        phase: phase,
+        actionData: { autoCompleted: true }
+      });
+    }
+
+    if (!player2NeedsToAct) {
+      debugLog('COMMITMENTS', `✅ Player2 doesn't need to act in ${phase}, auto-committing`);
+      await this.actionProcessor.processCommitment({
+        playerId: 'player2',
+        phase: phase,
+        actionData: { autoCompleted: true }
+      });
+    }
+
+    // If AI needs to act but human doesn't, trigger AI
+    if (player2NeedsToAct && !player1NeedsToAct) {
+      debugLog('COMMITMENTS', `🤖 Triggering AI commitment for ${phase}`);
+      await this.actionProcessor.handleAICommitment(phase, gameState);
+    }
   }
 
   /**
@@ -1027,10 +1127,15 @@ class GameFlowManager {
     debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Starting round ${this.roundNumber}`);
 
     // Update gameState with new round number (and turn for backwards compatibility)
-    this.gameStateManager.setState({
-      roundNumber: this.roundNumber,
-      turn: this.roundNumber
-    }, 'ROUND_START', 'gameFlowManagerMetadata');
+    try {
+      this.gameStateManager._updateContext = 'GameFlowManager';
+      this.gameStateManager.setState({
+        roundNumber: this.roundNumber,
+        turn: this.roundNumber
+      }, 'ROUND_START', 'gameFlowManagerMetadata');
+    } finally {
+      this.gameStateManager._updateContext = null;
+    }
 
     // Find first required phase in new round
     const firstRequiredPhase = this.ROUND_PHASES.find(phase => this.isPhaseRequired(phase));
@@ -1064,10 +1169,15 @@ class GameFlowManager {
       });
 
       // Set game stage and winner directly for game-level metadata
-      this.gameStateManager.setState({
-        gameStage: 'gameOver',
-        winner: winnerId
-      }, 'GAME_ENDED', 'gameEndMetadata');
+      try {
+        this.gameStateManager._updateContext = 'GameFlowManager';
+        this.gameStateManager.setState({
+          gameStage: 'gameOver',
+          winner: winnerId
+        }, 'GAME_ENDED', 'gameEndMetadata');
+      } finally {
+        this.gameStateManager._updateContext = null;
+      }
     }
 
     this.emit('gameEnded', {

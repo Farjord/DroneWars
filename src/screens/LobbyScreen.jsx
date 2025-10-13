@@ -93,6 +93,9 @@ function LobbyScreen() {
       );
       debugLog('PHASE_TRANSITIONS', '🤖 AIPhaseProcessor initialized for single-player with:', selectedAI.name);
 
+      // Give ActionProcessor reference to AIPhaseProcessor for interception
+      gameStateManager.actionProcessor.setAIPhaseProcessor(aiPhaseProcessor);
+
       // Start the game with selected AI
       gameStateManager.startGame('local',
         { name: 'Player 1' },

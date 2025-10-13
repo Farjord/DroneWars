@@ -54,6 +54,7 @@ class ActionProcessor {
     this.actionQueue = [];
     this.isProcessing = false;
     this.p2pManager = null;
+    this.aiPhaseProcessor = null; // Reference to AIPhaseProcessor for AI interception decisions
     this.actionLocks = {
       attack: false,
       ability: false,
@@ -81,6 +82,15 @@ class ActionProcessor {
    */
   setP2PManager(p2pManager) {
     this.p2pManager = p2pManager;
+  }
+
+  /**
+   * Set AIPhaseProcessor reference for AI interception decisions
+   * @param {Object} aiPhaseProcessor - AIPhaseProcessor instance
+   */
+  setAIPhaseProcessor(aiPhaseProcessor) {
+    this.aiPhaseProcessor = aiPhaseProcessor;
+    debugLog('AI_DECISIONS', '🔗 ActionProcessor: AIPhaseProcessor reference set');
   }
 
   /**
@@ -318,15 +328,20 @@ setAnimationManager(animationManager) {
         const defendingPlayerId = attackDetails.attackingPlayer === 'player1' ? 'player2' : 'player1';
 
         // Set unified interception pending state (shows "opponent deciding" modal to attacker)
-        this.gameStateManager.setState({
-          interceptionPending: {
-            attackDetails,
-            defendingPlayerId,
-            attackingPlayerId: attackDetails.attackingPlayer,
-            interceptors: interceptionResult.interceptors,
-            timestamp: Date.now()
-          }
-        });
+        try {
+          this.gameStateManager._updateContext = 'ActionProcessor';
+          this.gameStateManager.setState({
+            interceptionPending: {
+              attackDetails,
+              defendingPlayerId,
+              attackingPlayerId: attackDetails.attackingPlayer,
+              interceptors: interceptionResult.interceptors,
+              timestamp: Date.now()
+            }
+          });
+        } finally {
+          this.gameStateManager._updateContext = null;
+        }
 
         // AI Defender - wait then decide automatically
         if (defendingPlayerId === 'player2' && currentState.gameMode === 'local') {
@@ -336,6 +351,11 @@ setAnimationManager(animationManager) {
           await new Promise(resolve => setTimeout(resolve, 1000));
 
           // AI makes decision
+          debugLog('COMBAT', '🔍 [INTERCEPTION] Checking aiPhaseProcessor:', {
+            hasAIPhaseProcessor: !!this.aiPhaseProcessor,
+            aiPhaseProcessorType: this.aiPhaseProcessor?.constructor?.name || 'undefined'
+          });
+
           if (this.aiPhaseProcessor) {
             const decision = await this.aiPhaseProcessor.makeInterceptionDecision(
               interceptionResult.interceptors,
@@ -349,18 +369,28 @@ setAnimationManager(animationManager) {
               finalAttackDetails.interceptor = decision.interceptor;
 
               // Emit interception result for badge display
-              this.gameStateManager.setState({
-                lastInterception: {
-                  interceptor: decision.interceptor,
-                  originalTarget: attackDetails.target,
-                  timestamp: Date.now()
-                }
-              });
+              try {
+                this.gameStateManager._updateContext = 'ActionProcessor';
+                this.gameStateManager.setState({
+                  lastInterception: {
+                    interceptor: decision.interceptor,
+                    originalTarget: attackDetails.target,
+                    timestamp: Date.now()
+                  }
+                });
+              } finally {
+                this.gameStateManager._updateContext = null;
+              }
             }
           }
 
           // Complete interception (clears state, closes modal)
-          this.gameStateManager.setState({ interceptionPending: null });
+          try {
+            this.gameStateManager._updateContext = 'ActionProcessor';
+            this.gameStateManager.setState({ interceptionPending: null });
+          } finally {
+            this.gameStateManager._updateContext = null;
+          }
 
           // Continue with attack
         }
@@ -432,7 +462,12 @@ setAnimationManager(animationManager) {
     // Clear interceptionPending state after attack completes (closes "opponent deciding" modal)
     if (currentState.interceptionPending) {
       debugLog('COMBAT', '🛡️ [INTERCEPTION] Clearing interceptionPending after attack completed');
-      this.gameStateManager.setState({ interceptionPending: null });
+      try {
+        this.gameStateManager._updateContext = 'ActionProcessor';
+        this.gameStateManager.setState({ interceptionPending: null });
+      } finally {
+        this.gameStateManager._updateContext = null;
+      }
     }
 
     // Check for win conditions after attack
@@ -456,6 +491,8 @@ setAnimationManager(animationManager) {
 
     const currentState = this.gameStateManager.getState();
     const playerState = currentState[playerId];
+    const opponentPlayerId = playerId === 'player1' ? 'player2' : 'player1';
+    const opponentPlayerState = currentState[opponentPlayerId];
 
     if (!playerState) {
       throw new Error(`Player ${playerId} not found`);
@@ -469,17 +506,38 @@ setAnimationManager(animationManager) {
 
     const drone = playerState.dronesOnBoard[fromLane][droneIndex];
 
-    // Create new drones state with drone moved
-    const newDronesOnBoard = {
-      ...playerState.dronesOnBoard,
-      [fromLane]: playerState.dronesOnBoard[fromLane].filter(d => d.id !== droneId),
-      [toLane]: [...playerState.dronesOnBoard[toLane], { ...drone, isExhausted: true }]
+    // Create a copy of the entire player state for processing
+    let newPlayerState = JSON.parse(JSON.stringify(playerState));
+
+    // Move the drone
+    const movedDrone = { ...drone, isExhausted: true };
+    newPlayerState.dronesOnBoard[fromLane] = newPlayerState.dronesOnBoard[fromLane].filter(d => d.id !== droneId);
+    newPlayerState.dronesOnBoard[toLane].push(movedDrone);
+
+    // Get placed sections for updateAuras
+    const placedSections = {
+      player1: currentState.placedSections,
+      player2: currentState.opponentPlacedSections
     };
 
-    // Update player state
-    this.gameStateManager.updatePlayerState(playerId, {
-      dronesOnBoard: newDronesOnBoard
-    });
+    // Apply ON_MOVE effects (e.g., Phase Jumper's Phase Shift)
+    const { newState: stateAfterMoveEffects } = gameEngine.applyOnMoveEffects(
+      newPlayerState,
+      movedDrone,
+      fromLane,
+      toLane,
+      (entry) => this.gameStateManager.addLogEntry(entry)
+    );
+
+    // Update auras after movement
+    stateAfterMoveEffects.dronesOnBoard = gameEngine.updateAuras(
+      stateAfterMoveEffects,
+      opponentPlayerState,
+      placedSections
+    );
+
+    // Update player state with the processed state
+    this.gameStateManager.updatePlayerState(playerId, stateAfterMoveEffects);
 
     // Log the move
     this.gameStateManager.addLogEntry({
@@ -747,6 +805,15 @@ setAnimationManager(animationManager) {
         }
       }
 
+      // If still not found, check activeDronePool for upgrade card targets
+      if (!target) {
+        const actingPlayerState = playerStates[playerId];
+        const poolDrone = actingPlayerState.activeDronePool?.find(d => d.name === targetId);
+        if (poolDrone) {
+          target = { ...poolDrone, id: poolDrone.name, owner: playerId };
+        }
+      }
+
       // If still not found, check if it's a lane target
       if (!target && targetId && targetId.startsWith('lane')) {
         target = { id: targetId };
@@ -771,7 +838,8 @@ setAnimationManager(animationManager) {
       playerId,
       playerStates,
       placedSections,
-      callbacks
+      callbacks,
+      this.gameStateManager.getLocalPlayerId()
     );
 
     debugLog('CARDS', '[ANIMATION EVENTS] Card play events:', result.animationEvents);
@@ -1207,7 +1275,12 @@ setAnimationManager(animationManager) {
 
     // Apply the phase change and any phase-specific updates
     stateUpdates.turnPhase = newPhase;
-    this.gameStateManager.setState(stateUpdates);
+    try {
+      this.gameStateManager._updateContext = 'ActionProcessor';
+      this.gameStateManager.setState(stateUpdates);
+    } finally {
+      this.gameStateManager._updateContext = null;
+    }
 
     // Reset commitments for the new phase (clean slate)
     // Only clear the new phase's commitments, preserve old phase commitments for reference
@@ -1322,18 +1395,23 @@ setAnimationManager(animationManager) {
     );
 
     // Apply all round start changes
-    this.gameStateManager.setState({
-      turn: newTurn,
-      turnPhase: newPhase,
-      currentPlayer: determinedFirstPlayer,
-      firstPlayerOfRound: determinedFirstPlayer,
-      firstPasserOfPreviousRound: currentState.passInfo.firstPasser,
-      passInfo: {
-        firstPasser: null,
-        player1Passed: false,
-        player2Passed: false
-      }
-    });
+    try {
+      this.gameStateManager._updateContext = 'ActionProcessor';
+      this.gameStateManager.setState({
+        turn: newTurn,
+        turnPhase: newPhase,
+        currentPlayer: determinedFirstPlayer,
+        firstPlayerOfRound: determinedFirstPlayer,
+        firstPasserOfPreviousRound: currentState.passInfo.firstPasser,
+        passInfo: {
+          firstPasser: null,
+          player1Passed: false,
+          player2Passed: false
+        }
+      });
+    } finally {
+      this.gameStateManager._updateContext = null;
+    }
 
     // Update player states
     this.gameStateManager.setPlayerStates(newPlayer1State, newPlayer2State);
@@ -1859,8 +1937,13 @@ setAnimationManager(animationManager) {
 
     debugLog('PASS_LOGIC', '[PLAYER PASS DEBUG] Updating pass info:', newPassInfo);
 
-    // Update pass info through GameStateManager
-    this.gameStateManager.setPassInfo(newPassInfo, 'ActionProcessor');
+    // Update pass info through GameStateManager with proper context
+    try {
+      this.gameStateManager._updateContext = 'ActionProcessor';
+      this.gameStateManager.setState({ passInfo: newPassInfo }, 'PASS_INFO_SET');
+    } finally {
+      this.gameStateManager._updateContext = null;
+    }
 
     // Handle turn switching when one player passes but the other hasn't
     // ActionProcessor owns currentPlayer per ARCHITECTURE_REFACTOR.md
@@ -1878,9 +1961,14 @@ setAnimationManager(animationManager) {
 
       if (nextPlayer) {
         debugLog('PASS_LOGIC', `[PLAYER PASS DEBUG] Switching turn to ${nextPlayer} (opponent hasn't passed)`);
-        this.gameStateManager.setState({
-          currentPlayer: nextPlayer
-        }, 'TURN_SWITCH', 'playerPass');
+        try {
+          this.gameStateManager._updateContext = 'ActionProcessor';
+          this.gameStateManager.setState({
+            currentPlayer: nextPlayer
+          }, 'TURN_SWITCH', 'playerPass');
+        } finally {
+          this.gameStateManager._updateContext = null;
+        }
       }
     } else {
       debugLog('PASS_LOGIC', '[PLAYER PASS DEBUG] Both players passed - GameFlowManager will handle phase transition');
@@ -1907,9 +1995,14 @@ setAnimationManager(animationManager) {
 
     // Update opponent placed sections through GameStateManager
     console.error('🔥 CRITICAL - Setting opponentPlacedSections to:', placement);
-    this.gameStateManager.setState({
-      opponentPlacedSections: placement
-    }, 'aiShipPlacement');
+    try {
+      this.gameStateManager._updateContext = 'ActionProcessor';
+      this.gameStateManager.setState({
+        opponentPlacedSections: placement
+      }, 'aiShipPlacement');
+    } finally {
+      this.gameStateManager._updateContext = null;
+    }
 
     // Verify it was set correctly
     const newState = this.gameStateManager.getState();
@@ -2023,10 +2116,15 @@ setAnimationManager(animationManager) {
     );
 
     // Update state with first player information
-    this.gameStateManager.setState({
-      currentPlayer: firstPlayer,
-      firstPlayerOfRound: firstPlayer
-    });
+    try {
+      this.gameStateManager._updateContext = 'ActionProcessor';
+      this.gameStateManager.setState({
+        currentPlayer: firstPlayer,
+        firstPlayerOfRound: firstPlayer
+      });
+    } finally {
+      this.gameStateManager._updateContext = null;
+    }
 
     debugLog('PHASE_TRANSITIONS', `✅ First player determination complete: ${firstPlayer}`);
 
@@ -2100,9 +2198,14 @@ setAnimationManager(animationManager) {
       debugLog('COMMITMENTS', '🔄 Cleared all phase commitments');
     }
 
-    this.gameStateManager.setState({
-      commitments: currentState.commitments
-    });
+    try {
+      this.gameStateManager._updateContext = 'ActionProcessor';
+      this.gameStateManager.setState({
+        commitments: currentState.commitments
+      });
+    } finally {
+      this.gameStateManager._updateContext = null;
+    }
   }
 
   /**
@@ -2140,9 +2243,14 @@ setAnimationManager(animationManager) {
     };
 
     // Update the state with specific event type for commitment changes
-    this.gameStateManager.setState({
-      commitments: currentState.commitments
-    }, 'COMMITMENT_UPDATE');
+    try {
+      this.gameStateManager._updateContext = 'ActionProcessor';
+      this.gameStateManager.setState({
+        commitments: currentState.commitments
+      }, 'COMMITMENT_UPDATE');
+    } finally {
+      this.gameStateManager._updateContext = null;
+    }
 
     // Check if both players have committed
     let bothComplete = currentState.commitments[phase].player1.completed &&
@@ -2437,6 +2545,11 @@ setAnimationManager(animationManager) {
         debugLog('COMMITMENTS', '✅ Discard commitments (handled via card actions)');
         break;
 
+      case 'mandatoryDroneRemoval':
+        // Drone removal handled via processDestroyDrone during commitment
+        debugLog('COMMITMENTS', '✅ Mandatory drone removal (handled via processDestroyDrone)');
+        break;
+
       case 'allocateShields':
         // Shield allocation handled separately
         debugLog('COMMITMENTS', '✅ Shield allocation (handled separately)');
@@ -2445,11 +2558,6 @@ setAnimationManager(animationManager) {
       case 'deploymentComplete':
         // Acknowledgment-only phase, no state changes needed
         debugLog('COMMITMENTS', '✅ Deployment complete acknowledgments (no state changes)');
-        break;
-
-      case 'determineFirstPlayer':
-        // First player determination handled by GameFlowManager
-        debugLog('COMMITMENTS', '✅ First player determination (handled by GameFlowManager)');
         break;
 
       default:
@@ -2470,10 +2578,15 @@ setAnimationManager(animationManager) {
     debugLog('CARDS', '🃏 ActionProcessor: Processing automatic draw');
 
     // Update player states with draw results
-    this.gameStateManager.setState({
-      player1,
-      player2
-    });
+    try {
+      this.gameStateManager._updateContext = 'ActionProcessor';
+      this.gameStateManager.setState({
+        player1,
+        player2
+      });
+    } finally {
+      this.gameStateManager._updateContext = null;
+    }
 
     return {
       success: true,
@@ -2498,10 +2611,20 @@ setAnimationManager(animationManager) {
 
     // Update shields to allocate if provided (round 2+ only)
     if (shieldsToAllocate !== undefined) {
-      this.gameStateManager.setState({ shieldsToAllocate });
+      try {
+        this.gameStateManager._updateContext = 'ActionProcessor';
+        this.gameStateManager.setState({ shieldsToAllocate });
+      } finally {
+        this.gameStateManager._updateContext = null;
+      }
     }
     if (opponentShieldsToAllocate !== undefined) {
-      this.gameStateManager.setState({ opponentShieldsToAllocate });
+      try {
+        this.gameStateManager._updateContext = 'ActionProcessor';
+        this.gameStateManager.setState({ opponentShieldsToAllocate });
+      } finally {
+        this.gameStateManager._updateContext = null;
+      }
     }
 
     debugLog('ENERGY', `✅ Energy reset complete - Shields to allocate: ${shieldsToAllocate || 0}, ${opponentShieldsToAllocate || 0}`);
@@ -2631,9 +2754,14 @@ setAnimationManager(animationManager) {
     this.gameStateManager.updatePlayerState(playerId, result.newPlayerState);
 
     // Update shields to allocate count
-    this.gameStateManager.setState({
-      [shieldsToAllocateKey]: result.newShieldsToAllocate
-    });
+    try {
+      this.gameStateManager._updateContext = 'ActionProcessor';
+      this.gameStateManager.setState({
+        [shieldsToAllocateKey]: result.newShieldsToAllocate
+      });
+    } finally {
+      this.gameStateManager._updateContext = null;
+    }
 
     debugLog('ENERGY', `✅ Shield added to ${sectionName}, ${result.newShieldsToAllocate} shields remaining`);
 
@@ -2678,9 +2806,14 @@ setAnimationManager(animationManager) {
 
     // Update shields to allocate count
     const shieldsToAllocateKey = playerId === 'player1' ? 'shieldsToAllocate' : 'opponentShieldsToAllocate';
-    this.gameStateManager.setState({
-      [shieldsToAllocateKey]: result.newShieldsToAllocate
-    });
+    try {
+      this.gameStateManager._updateContext = 'ActionProcessor';
+      this.gameStateManager.setState({
+        [shieldsToAllocateKey]: result.newShieldsToAllocate
+      });
+    } finally {
+      this.gameStateManager._updateContext = null;
+    }
 
     debugLog('ENERGY', `✅ Shield allocation reset, ${result.newShieldsToAllocate} shields available`);
 

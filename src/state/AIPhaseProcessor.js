@@ -1089,18 +1089,60 @@ class AIPhaseProcessor {
 
     debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.makeInterceptionDecision called:', {
       interceptorCount: interceptors?.length || 0,
-      target: attackDetails.target?.name
+      target: attackDetails.target?.name,
+      attacker: attackDetails.attacker?.name,
+      targetType: attackDetails.targetType
     });
 
     const { aiBrain } = await import('../logic/aiLogic.js');
 
-    // Delegate to aiLogic for decision
-    const result = aiBrain.makeInterceptionDecision(interceptors, attackDetails.target);
+    // Delegate to aiLogic for decision with full attack context, gameDataService, and gameStateManager
+    const result = aiBrain.makeInterceptionDecision(
+      interceptors,
+      attackDetails.attacker,  // The attacker drone (was incorrectly labeled as target before)
+      attackDetails,           // Full attack context
+      this.gameDataService,    // GameDataService for stat calculations
+      this.gameStateManager    // GameStateManager for opportunity cost analysis
+    );
 
     debugLog('AI_DECISIONS', '🤖 AI interception decision:', {
       willIntercept: !!result.interceptor,
       interceptorName: result.interceptor?.name
     });
+
+    // Log interception decision to Action Log with Decision Matrix
+    debugLog('AI_DECISIONS', '📝 [INTERCEPTION LOG] Preparing log entry:', {
+      hasGameStateManager: !!this.gameStateManager,
+      willIntercept: !!result.interceptor,
+      decisionContextLength: result.decisionContext?.length || 0,
+      attackerName: attackDetails.attacker?.name,
+      targetType: attackDetails.targetType,
+      targetName: attackDetails.target?.name || attackDetails.target?.id
+    });
+
+    if (this.gameStateManager) {
+      const targetName = attackDetails.targetType === 'section'
+        ? attackDetails.target.name || attackDetails.target.id
+        : attackDetails.target.name;
+
+      const logEntry = {
+        player: 'AI Player',
+        actionType: result.interceptor ? 'INTERCEPT' : 'DECLINE_INTERCEPT',
+        source: attackDetails.attacker.name,
+        target: result.interceptor ? result.interceptor.name : targetName,
+        outcome: result.interceptor
+          ? `Intercepted ${attackDetails.attacker.name} attacking ${targetName} with ${result.interceptor.name}`
+          : `Declined to intercept ${attackDetails.attacker.name} attacking ${targetName}`
+      };
+
+      debugLog('AI_DECISIONS', '📋 [INTERCEPTION LOG] Log entry data:', logEntry);
+
+      this.gameStateManager.addLogEntry(logEntry, 'aiInterception', result.decisionContext);
+
+      debugLog('AI_DECISIONS', '✅ [INTERCEPTION LOG] Log entry added successfully');
+    } else {
+      debugLog('AI_DECISIONS', '❌ [INTERCEPTION LOG] gameStateManager is null/undefined - cannot add log entry!');
+    }
 
     return result;
   }

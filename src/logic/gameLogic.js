@@ -1880,7 +1880,7 @@ const calculateRepeatCount = (condition, playerState) => {
     return repeatCount;
 };
 
-const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSections, callbacks) => {
+const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSections, callbacks, localPlayerId = 'player1') => {
     const { logCallback, explosionCallback, hitAnimationCallback, resolveAttackCallback } = callbacks;
 
     // Generate outcome message for logging
@@ -1922,9 +1922,9 @@ const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSecti
         });
     }
 
-    // Check if this card will need player selection (human player only)
+    // Check if this card will need player selection (local human player only)
     // For these cards, costs will be paid after selection in the completion handler
-    const willNeedSelection = actingPlayerId === 'player1' && (
+    const willNeedSelection = actingPlayerId === localPlayerId && (
         card.effect.type === 'SEARCH_AND_DRAW' ||
         card.effect.type === 'SINGLE_MOVE' ||
         card.effect.type === 'MULTI_MOVE'
@@ -1934,7 +1934,7 @@ const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSecti
     let currentStates = willNeedSelection ? playerStates : payCardCosts(card, actingPlayerId, playerStates);
 
     // Resolve the effect(s)
-    const result = resolveCardEffect(card.effect, target, actingPlayerId, currentStates, placedSections, callbacks, card);
+    const result = resolveCardEffect(card.effect, target, actingPlayerId, currentStates, placedSections, callbacks, card, localPlayerId);
 
     // Start with card visual event if card has one
     const allAnimationEvents = [];
@@ -2104,17 +2104,17 @@ const finishCardPlay = (card, actingPlayerId, playerStates) => {
     };
 };
 
-const resolveCardEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null) => {
+const resolveCardEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null, localPlayerId = 'player1') => {
     if (effect.effects) {
         // Multi-effect card (like REPEATING_EFFECT)
-        return resolveMultiEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card);
+        return resolveMultiEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card, localPlayerId);
     } else {
         // Single effect card
-        return resolveSingleEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card);
+        return resolveSingleEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card, localPlayerId);
     }
 };
 
-const resolveMultiEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null) => {
+const resolveMultiEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null, localPlayerId = 'player1') => {
     let currentStates = playerStates;
     let allAdditionalEffects = [];
 
@@ -2125,7 +2125,7 @@ const resolveMultiEffect = (effect, target, actingPlayerId, playerStates, placed
         // Execute each sub-effect, repeatCount times
         for (let i = 0; i < repeatCount; i++) {
             for (const subEffect of effect.effects) {
-                const result = resolveSingleEffect(subEffect, target, actingPlayerId, currentStates, placedSections, callbacks, card);
+                const result = resolveSingleEffect(subEffect, target, actingPlayerId, currentStates, placedSections, callbacks, card, localPlayerId);
                 currentStates = result.newPlayerStates;
                 if (result.additionalEffects) {
                     allAdditionalEffects.push(...result.additionalEffects);
@@ -2140,12 +2140,12 @@ const resolveMultiEffect = (effect, target, actingPlayerId, playerStates, placed
     };
 };
 
-const resolveSingleEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null) => {
+const resolveSingleEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null, localPlayerId = 'player1') => {
     switch (effect.type) {
         case 'DRAW':
             return resolveUnifiedDrawEffect(effect, null, target, actingPlayerId, playerStates, placedSections, callbacks);
         case 'SEARCH_AND_DRAW':
-            return resolveSearchAndDrawEffect(effect, null, target, actingPlayerId, playerStates, placedSections, callbacks);
+            return resolveSearchAndDrawEffect(effect, null, target, actingPlayerId, playerStates, placedSections, callbacks, localPlayerId);
         case 'GAIN_ENERGY':
             return resolveEnergyEffect(effect, actingPlayerId, playerStates, placedSections, callbacks);
         case 'READY_DRONE':
@@ -2166,7 +2166,7 @@ const resolveSingleEffect = (effect, target, actingPlayerId, playerStates, place
             return resolveDestroyUpgradeEffect(effect, target, actingPlayerId, playerStates, callbacks);
         case 'SINGLE_MOVE':
         case 'MULTI_MOVE':
-            return resolveMovementEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card);
+            return resolveMovementEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card, localPlayerId);
         case 'CREATE_TOKENS':
             return resolveCreateTokensEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card);
         default:
@@ -3100,7 +3100,7 @@ const cardMatchesFilter = (card, filter) => {
     return true;
 };
 
-const resolveSearchAndDrawEffect = (effect, source, target, actingPlayerId, playerStates, placedSections, callbacks) => {
+const resolveSearchAndDrawEffect = (effect, source, target, actingPlayerId, playerStates, placedSections, callbacks, localPlayerId = 'player1') => {
     const newPlayerStates = {
         player1: JSON.parse(JSON.stringify(playerStates.player1)),
         player2: JSON.parse(JSON.stringify(playerStates.player2))
@@ -3144,8 +3144,8 @@ const resolveSearchAndDrawEffect = (effect, source, target, actingPlayerId, play
         remainingDeck = newDeck.slice(0, -effect.searchCount);
     }
 
-    // For AI players, automatically select the best cards
-    if (targetPlayerId === 'player2') {
+    // For non-local players (AI), automatically select the best cards
+    if (targetPlayerId !== localPlayerId) {
         const selectedCards = selectBestCardsForAI(searchedCards, effect.drawCount, newPlayerStates, placedSections);
         const unselectedCards = searchedCards.filter(card => !selectedCards.includes(card));
 
@@ -3172,7 +3172,7 @@ const resolveSearchAndDrawEffect = (effect, source, target, actingPlayerId, play
             additionalEffects: []
         };
     } else {
-        // For human players, return data for modal selection
+        // For local human player, return data for modal selection
         return {
             newPlayerStates: playerStates, // Don't change state yet
             additionalEffects: [],
@@ -3244,9 +3244,9 @@ const evaluateCardForAI = (card, aiState, humanState, placedSections) => {
  * For human players: Returns needsCardSelection for UI interaction
  * For AI players: Auto-executes optimal movement
  */
-const resolveMovementEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card) => {
-    // For human players (player1), return needsCardSelection to trigger UI flow
-    if (actingPlayerId === 'player1') {
+const resolveMovementEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card, localPlayerId = 'player1') => {
+    // For local human player, return needsCardSelection to trigger UI flow
+    if (actingPlayerId === localPlayerId) {
         return {
             newPlayerStates: playerStates, // State unchanged until movement selected
             additionalEffects: [],
@@ -4145,6 +4145,10 @@ const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSelectState
             validCardTargets = calculateUpgradeTargets(selectedCard, player1);
         } else if (selectedCard.effect.type === 'MULTI_MOVE') {
             validCardTargets = calculateMultiMoveTargets(multiSelectState, player1);
+        } else if (selectedCard.effect.type === 'SINGLE_MOVE') {
+            // SINGLE_MOVE cards use multiSelectState for targeting
+            // If multiSelectState not set yet, return empty (will be set by needsCardSelection flow)
+            validCardTargets = multiSelectState ? calculateMultiSelectTargets(multiSelectState, player1) : [];
         } else {
             validCardTargets = getValidTargets('player1', null, selectedCard, player1, player2);
         }

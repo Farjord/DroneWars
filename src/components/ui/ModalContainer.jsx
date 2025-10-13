@@ -43,8 +43,18 @@ const ModalContainer = ({
         <DestroyUpgradeModal
           selectionData={destroyUpgradeModal}
           onConfirm={async (card, target) => {
-            await resolveCardPlay(card, target, getLocalPlayerId());
+            // Store data before closing modal
+            const storedCard = card;
+            const storedTarget = target;
+            const playerId = getLocalPlayerId();
+
+            // Close modal immediately
             setDestroyUpgradeModal(null);
+
+            // Wait for modal to unmount before playing animations
+            setTimeout(async () => {
+              await resolveCardPlay(storedCard, storedTarget, playerId);
+            }, 400);
           }}
           onCancel={() => {
             setDestroyUpgradeModal(null);
@@ -58,8 +68,18 @@ const ModalContainer = ({
         <UpgradeSelectionModal
           selectionData={upgradeSelectionModal}
           onConfirm={async (card, target) => {
-            await resolveCardPlay(card, target, getLocalPlayerId());
+            // Store data before closing modal
+            const storedCard = card;
+            const storedTarget = target;
+            const playerId = getLocalPlayerId();
+
+            // Close modal immediately
             setUpgradeSelectionModal(null);
+
+            // Wait for modal to unmount before playing animations
+            setTimeout(async () => {
+              await resolveCardPlay(storedCard, storedTarget, playerId);
+            }, 400);
           }}
           onCancel={() => {
             setUpgradeSelectionModal(null);

@@ -77,6 +77,9 @@ class GameStateManager {
     // P2P integration will be set up lazily when needed
     this.p2pIntegrationSetup = false;
 
+    // Context flag for production-safe validation (avoids minification breaking stack traces)
+    this._updateContext = null;
+
     // Log initial application state
     debugLog('STATE_SYNC', '🔄 GAMESTATE INITIALIZATION: GameStateManager created');
     debugLog('STATE_SYNC', '📱 App State:', this.state.appState);
@@ -314,8 +317,9 @@ class GameStateManager {
    */
   validateStateUpdate(updates, prevState, context = null) {
     // Get the current call stack to see if this update is coming from ActionProcessor
+    // Use context flag first (production-safe) then fall back to stack trace (dev-only)
     const stack = new Error().stack;
-    const isFromActionProcessor = stack && stack.includes('ActionProcessor');
+    const isFromActionProcessor = this._updateContext === 'ActionProcessor' || (stack && stack.includes('ActionProcessor'));
 
     // Check for concurrent action processing - only warn about external updates
     // ActionProcessor is allowed to update state during action processing
@@ -326,7 +330,8 @@ class GameStateManager {
         const hasDangerousUpdate = dangerousUpdates.some(key => key in updates);
 
         // Check if this is a legitimate phase transition from GameFlowManager
-        const isFromGameFlowManager = stack && stack.includes('GameFlowManager');
+        // Use context flag first (production-safe) then fall back to stack trace (dev-only)
+        const isFromGameFlowManager = this._updateContext === 'GameFlowManager' || (stack && stack.includes('GameFlowManager'));
         const isPhaseTransition = context === 'phaseTransition' || (updates.turnPhase && isFromGameFlowManager);
 
         // Only warn about truly problematic external updates, not legitimate manager flows
@@ -502,7 +507,8 @@ class GameStateManager {
     );
 
     // Allow GameFlowManager to update player states during automatic phases
-    const isGameFlowManagerUpdate = stack && stack.includes('GameFlowManager');
+    // Use context flag first (production-safe) then fall back to stack trace (dev-only)
+    const isGameFlowManagerUpdate = this._updateContext === 'GameFlowManager' || (stack && stack.includes('GameFlowManager'));
     const isAutomaticPhaseUpdate = ['energyReset', 'draw', 'determineFirstPlayer'].includes(prevState.turnPhase) ||
                                     ['deployment', 'action'].includes(prevState.turnPhase); // After automatic phases
     const isPlayerStateUpdate = criticalUpdates.every(update =>
@@ -828,9 +834,10 @@ class GameStateManager {
     if (updateKeys.length === 0) return;
 
     // Manager identification from stack
-    const isGameFlowManager = stack.includes('GameFlowManager');
-    const isSequentialPhaseManager = stack.includes('SequentialPhaseManager');
-    const isActionProcessor = stack.includes('ActionProcessor');
+    // Use context flag first (production-safe) then fall back to stack trace (dev-only)
+    const isGameFlowManager = this._updateContext === 'GameFlowManager' || stack.includes('GameFlowManager');
+    const isSequentialPhaseManager = this._updateContext === 'SequentialPhaseManager' || stack.includes('SequentialPhaseManager');
+    const isActionProcessor = this._updateContext === 'ActionProcessor' || stack.includes('ActionProcessor');
 
     // Define ownership boundaries
     const ownershipRules = {

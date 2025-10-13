@@ -194,6 +194,9 @@ export function initializeTestGame(config, gameStateManager) {
     );
     debugLog('TESTING', '🤖 TEST MODE: AIPhaseProcessor initialized with:', defaultAI.name);
 
+    // Give ActionProcessor reference to AIPhaseProcessor for interception
+    gameStateManager.actionProcessor.setAIPhaseProcessor(aiPhaseProcessor);
+
     debugLog('TESTING', '✅ TEST MODE: Game state initialized successfully');
     debugLog('TESTING', '🎮 TEST MODE: Starting at action phase with first player:', config.firstPlayer);
 

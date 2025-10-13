@@ -175,9 +175,10 @@ class GameDataService {
     if (!drone || !playerState) return false;
 
     // Check if drone is in any of the player's lanes
+    // Only use ID for matching - name fallback causes cross-player contamination
     for (const lane of ['lane1', 'lane2', 'lane3']) {
       const dronesInLane = playerState.dronesOnBoard[lane] || [];
-      if (dronesInLane.some(d => d.id === drone.id || d.name === drone.name)) {
+      if (dronesInLane.some(d => d.id === drone.id)) {
         return true;
       }
     }
