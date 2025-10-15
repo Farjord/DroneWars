@@ -12,8 +12,6 @@ class GuestMessageQueueService {
     this.gameStateManager = gameStateManager;
     this.messageQueue = [];
     this.isProcessing = false;
-    this.renderCompletePromise = null;
-    this.renderCompleteResolve = null;
   }
 
   /**
@@ -32,18 +30,6 @@ class GuestMessageQueueService {
         this.enqueueMessage(event);
       }
       // Setup events like 'multiplayer_mode_change' and 'joined_room' handled elsewhere
-    });
-
-    // Subscribe to render complete events from App.jsx
-    this.gameStateManager.subscribe((event) => {
-      if (event.type === 'render_complete') {
-        debugLog('STATE_SYNC', '✅ [GUEST QUEUE] Render complete received');
-        if (this.renderCompleteResolve) {
-          this.renderCompleteResolve();
-          this.renderCompleteResolve = null;
-          this.renderCompletePromise = null;
-        }
-      }
     });
   }
 
@@ -109,14 +95,14 @@ class GuestMessageQueueService {
   }
 
   /**
-   * Process state update with proper timing
-   * 1. Setup render listener FIRST (only if animations present)
-   * 2. Apply state
-   * 3. Wait for React render (only if animations present - performance optimization)
-   * 4. Execute animations (if present)
-   * 5. Complete
+   * Process state update with animation timing
    *
-   * Performance: State-only updates skip render wait for instant application
+   * Flow:
+   * 1. Play animations using Guest's CURRENT state (entities still in DOM)
+   * 2. Apply Host's state update (entities removed)
+   * 3. React re-renders (entities removed from DOM)
+   *
+   * This order matches Host's flow: animate during processing, then update state.
    */
   async processStateUpdate({ state, actionAnimations, systemAnimations }) {
     debugLog('STATE_SYNC', '📊 [GUEST QUEUE] Processing state update:', {
@@ -159,52 +145,32 @@ class GuestMessageQueueService {
 
     const hasAnimations = animationsToPlay.length > 0;
 
-    // Step 1: Setup render promise BEFORE applying state (prevents race condition)
-    // Only create promise if animations are present - optimization for state-only updates
-    let renderPromise = null;
+    // CRITICAL FIX: Play animations BEFORE applying state
+    //
+    // Why this order is necessary:
+    // - Host processes actions and creates animations while entities still exist in Host's state
+    // - Host then broadcasts post-processed state (entities already removed) + animation list
+    // - Guest receives this and must play animations using Guest's CURRENT state (entities still in DOM)
+    // - Then Guest applies the new state (which removes entities from DOM)
+    //
+    // Wrong order (old code):
+    //   Apply state → React renders (removes drones) → Try to animate → Can't find DOM elements ❌
+    //
+    // Correct order (matches Host's flow):
+    //   Animate using current state → Apply new state → React renders ✅
     if (hasAnimations) {
-      debugLog('STATE_SYNC', '🔧 [GUEST QUEUE] Setting up render listener for animations...');
-      renderPromise = this.waitForRender();
+      if (this.gameStateManager.actionProcessor?.animationManager) {
+        debugLog('ANIMATIONS', '🎬 [GUEST QUEUE] Playing animations BEFORE state update (entities still in DOM)...');
+        await this.gameStateManager.actionProcessor.animationManager.executeAnimations(animationsToPlay, 'HOST_RESPONSE');
+        debugLog('ANIMATIONS', '✅ [GUEST QUEUE] Animations complete, now applying state update');
+      }
     }
 
-    // Step 2: Apply state (this will trigger React re-render)
-    debugLog('STATE_SYNC', '📝 [GUEST QUEUE] Applying state...');
+    // Apply state after animations (entities can now be safely removed from DOM)
+    debugLog('STATE_SYNC', '📝 [GUEST QUEUE] Applying state update...');
     this.gameStateManager.applyHostState(state);
 
-    // Step 3: Wait for React to render (only if animations are present)
-    if (hasAnimations && renderPromise) {
-      debugLog('STATE_SYNC', '⏳ [GUEST QUEUE] Waiting for React render before animations...');
-      await renderPromise;
-      debugLog('STATE_SYNC', '✅ [GUEST QUEUE] React render complete');
-
-      // Step 4: Execute animations
-      if (this.gameStateManager.actionProcessor?.animationManager) {
-        debugLog('ANIMATIONS', '🎬 [GUEST QUEUE] Executing animations from HOST response...');
-        await this.gameStateManager.actionProcessor.animationManager.executeAnimations(animationsToPlay, 'HOST_RESPONSE');
-        debugLog('ANIMATIONS', '✅ [GUEST QUEUE] Host response animations complete');
-      }
-    } else {
-      debugLog('STATE_SYNC', '⚡ [GUEST QUEUE] No animations - state applied immediately without render wait');
-    }
-
     debugLog('STATE_SYNC', '✅ [GUEST QUEUE] State update processing complete');
-  }
-
-  /**
-   * Wait for React render to complete
-   * Creates promise that resolves when 'render_complete' event received
-   */
-  async waitForRender() {
-    if (this.renderCompletePromise) {
-      // Already waiting for render
-      return this.renderCompletePromise;
-    }
-
-    this.renderCompletePromise = new Promise((resolve) => {
-      this.renderCompleteResolve = resolve;
-    });
-
-    return this.renderCompletePromise;
   }
 
   /**
@@ -214,8 +180,7 @@ class GuestMessageQueueService {
   getStatus() {
     return {
       queueLength: this.messageQueue.length,
-      isProcessing: this.isProcessing,
-      waitingForRender: !!this.renderCompletePromise
+      isProcessing: this.isProcessing
     };
   }
 }

@@ -7,6 +7,30 @@ const fullCardCollection = [
     type: 'Action',
     cost: 3,
     image: '/DroneWars/cards/LaserBlast.png',
+    description: 'Deal 2 damage to any drone.',
+    visualEffect: {
+      type: 'LASER_BLAST',
+      duration: 600
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ANY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 2
+    },
+   },
+
+  {
+    id: 'CARD001_ENHANCED',
+    baseCardId: 'CARD001', // Links to the standard Laser Blast
+    name: 'Laser Blast+',
+    maxInDeck: 4,
+    type: 'Action',
+    cost: 3,
+    image: '/DroneWars/cards/LaserBlast.png',
     description: 'Deal 3 damage to any drone.',
     visualEffect: {
       type: 'LASER_BLAST',
@@ -20,30 +44,6 @@ const fullCardCollection = [
     effect: {
       type: 'DAMAGE',
       value: 3
-    },
-   },
-
-  {
-    id: 'CARD001_ENHANCED',
-    baseCardId: 'CARD001', // Links to the standard Laser Blast
-    name: 'Laser Blast+',
-    maxInDeck: 4,
-    type: 'Action',
-    cost: 2,
-    image: '/DroneWars/cards/LaserBlast.png',
-    description: 'Deal 4 damage to any drone.',
-    visualEffect: {
-      type: 'LASER_BLAST',
-      duration: 600
-    },
-    targeting: {
-      type: 'DRONE',
-      affinity: 'ANY',
-      location: 'ANY_LANE'
-    },
-    effect: {
-      type: 'DAMAGE',
-      value: 4
     }
   },
 
@@ -53,7 +53,7 @@ const fullCardCollection = [
     name: 'System Reboot',
     maxInDeck: 4,
     type: 'Action',
-    cost: 1,
+    cost: 2,
     image: '/DroneWars/cards/Reboot.png',
     description: 'Draw 2 cards from your deck. Go again.',
     // No targeting key is needed for this card
@@ -100,7 +100,7 @@ const fullCardCollection = [
     name: 'Energy Surge',
     maxInDeck: 4,
     type: 'Action',
-    cost: 0,
+    cost: 1,
     image: '/DroneWars/cards/EnergySurge.png',
     description: 'Gain 2 Energy. Go again',
     // No targeting is needed for this effect
@@ -116,7 +116,7 @@ const fullCardCollection = [
     name: 'Energy Surge+',
     maxInDeck: 4,
     type: 'Action',
-    cost: 0,
+    cost: 1,
     image: '/DroneWars/cards/EnergySurge.png',
     description: 'Gain 3 Energy. Go again.',
     // No targeting is needed for this effect
@@ -245,9 +245,9 @@ const fullCardCollection = [
     id: 'CARD009',
     baseCardId: 'CARD009',
     name: 'Target Lock',
-    maxInDeck: 4,
+    maxInDeck: 2,
     type: 'Action',
-    cost: 5, // High cost for a powerful effect
+    cost: 6, // High cost for a powerful effect
     image: '/DroneWars/cards/TargetLock.png',
     description: 'Destroy a single target drone.',
     targeting: {
@@ -266,9 +266,9 @@ const fullCardCollection = [
     id: 'CARD010',
     baseCardId: 'CARD010',
     name: 'Shrieker Missiles',
-    maxInDeck: 4,
+    maxInDeck: 2,
     type: 'Action',
-    cost: 4,
+    cost: 5,
     image: '/DroneWars/cards/ShriekerMissiles.png',
     description: 'Destroy all enemy drones with a speed of 5 or higher in a selected lane.',
     targeting: {
@@ -289,7 +289,7 @@ const fullCardCollection = [
     name: 'Nuke',
     maxInDeck: 2,
     type: 'Action',
-    cost: 7, // Increased cost to reflect its power
+    cost: 8, // Increased cost to reflect its power
     image: '/DroneWars/cards/Nuke.png',
     description: 'Destroy ALL drones in a selected lane (both sides).',
     visualEffect: {
@@ -385,7 +385,7 @@ const fullCardCollection = [
     name: 'Overcharge',
     maxInDeck: 4,
     type: 'Action',
-    cost: 0,
+    cost: 1,
     image: '/DroneWars/cards/Overcharge.png',
     description: 'Give a friendly drone +2 attack until the end of the turn.',
     targeting: {
@@ -424,7 +424,7 @@ const fullCardCollection = [
     name: 'Static Field',
     maxInDeck: 4,
     type: 'Action',
-    cost: 1,
+    cost: 2,
     image: '/DroneWars/cards/StaticField.png',
     description: 'Give an enemy drone -2 attack until the end of the turn. Go again.',
     targeting: {
@@ -638,7 +638,7 @@ const fullCardCollection = [
     },
     maxApplications: 1
 },
-// --- NEW: SEARCH AND DRAW CARD ---
+
 {
     id: 'CARD025',
     baseCardId: 'CARD025',
@@ -704,7 +704,7 @@ const fullCardCollection = [
     name: 'Deploy Jammers',
     maxInDeck: 4,
     type: 'Action',
-    cost: 3,
+    cost: 5,
     image: '/DroneWars/cards/DeployJammers.png',
     description: 'Create a Jammer drone token in each of your lanes. (Jammer: 0/1, Speed 1. Opponent card effects can only target Jammer drones.)',
     effect: {

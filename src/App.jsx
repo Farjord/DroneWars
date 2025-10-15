@@ -1316,13 +1316,9 @@ const App = () => {
   }, [winner, turnPhase, currentPlayer]);
 
   // --- 8.6 GUEST RENDER NOTIFICATION ---
-  // Notify GuestMessageQueueService when React has finished rendering (guest mode only)
-  useEffect(() => {
-    if (gameState.gameMode === 'guest') {
-      debugLog('STATE_SYNC', '✅ [GUEST RENDER] Emitting render_complete event');
-      gameStateManager.emit('render_complete');
-    }
-  }, [gameState, gameStateManager]);
+  // Note: Guest render notification removed - no longer needed after animation timing fix
+  // Animations now play BEFORE state updates (while entities still exist in DOM)
+  // See GuestMessageQueueService.js for details
 
   // --- 8.7 GUEST PHASE TRANSITION DETECTION ---
   // Guest watches turnPhase changes and synthesizes phaseTransition events locally
