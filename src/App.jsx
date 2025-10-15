@@ -859,10 +859,22 @@ const App = () => {
 
         // Check if interception decision is needed from human defender
         if (result?.needsInterceptionDecision) {
-            debugLog('COMBAT', '🛡️ [APP] Interception decision needed, showing modal...');
-            setPlayerInterceptionChoice(result.interceptionData);
-            isResolvingAttackRef.current = false; // Allow interception modal to re-trigger attack
-            return; // Stop processing until human makes decision
+            debugLog('COMBAT', '🛡️ [APP] Interception decision needed, checking if local player is defender...');
+
+            // Only show modal if local player is the defender
+            const attackingPlayerId = result.interceptionData.attackDetails.attackingPlayer;
+            const defendingPlayerId = attackingPlayerId === 'player1' ? 'player2' : 'player1';
+            const localPlayerId = getLocalPlayerId();
+
+            if (defendingPlayerId === localPlayerId) {
+                debugLog('COMBAT', '🛡️ [APP] Local player is defender, showing interception modal');
+                setPlayerInterceptionChoice(result.interceptionData);
+                isResolvingAttackRef.current = false; // Allow interception modal to re-trigger attack
+                return; // Stop processing until human makes decision
+            } else {
+                debugLog('COMBAT', '🛡️ [APP] Local player is attacker, not showing interception modal');
+                // Attacker will see "opponent deciding" modal via interceptionPending state
+            }
         }
 
         // All animations now handled by AnimationManager through ActionProcessor

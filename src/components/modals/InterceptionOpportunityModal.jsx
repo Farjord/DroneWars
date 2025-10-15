@@ -48,7 +48,7 @@ const InterceptionOpportunityModal = ({
 
   return (
     <div className="modal-overlay">
-      <div className="modal-container modal-container-xl">
+      <div className="modal-container modal-container-xxl">
         <button onClick={onDecline} className="modal-close">
           <X size={24} />
         </button>
