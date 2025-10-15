@@ -59,16 +59,50 @@ class P2PManager {
    */
   async hostGame() {
     try {
+      const startTime = Date.now();
+
+      // Check WebRTC support
+      debugLog('P2P_CONNECTION', '🔍 Checking browser WebRTC support', {
+        RTCPeerConnection: !!window.RTCPeerConnection,
+        RTCDataChannel: !!window.RTCDataChannel,
+        navigator_onLine: navigator.onLine
+      });
+
       this.isHost = true;
       this.roomCode = this.generateRoomCode();
 
+      debugLog('P2P_CONNECTION', '🎲 Generated room code:', this.roomCode);
+
       // Create peer with room code as ID
+      debugLog('P2P_CONNECTION', '🔧 Creating PeerJS peer instance...', {
+        roomCode: this.roomCode,
+        config: { debug: 2 }
+      });
+
       this.peer = new Peer(this.roomCode, {
         debug: 2, // Enable debug logging
       });
 
+      debugLog('P2P_CONNECTION', '✅ Peer constructor completed, waiting for "open" event...', {
+        peerExists: !!this.peer,
+        peerDestroyed: this.peer?.destroyed,
+        peerDisconnected: this.peer?.disconnected
+      });
+
       return new Promise((resolve, reject) => {
         this.peer.on('open', (id) => {
+          const elapsedMs = Date.now() - startTime;
+          debugLog('P2P_CONNECTION', '🟢 Peer "open" event fired!', {
+            peerId: id,
+            roomCode: this.roomCode,
+            elapsedMs,
+            peerState: {
+              open: this.peer.open,
+              destroyed: this.peer.destroyed,
+              disconnected: this.peer.disconnected
+            }
+          });
+
           debugLog('MULTIPLAYER', 'Host peer opened with ID:', id);
           this.emit('multiplayer_mode_change', { mode: 'host', isHost: true });
           this.emit('room_created', { roomCode: this.roomCode });
@@ -76,25 +110,66 @@ class P2PManager {
         });
 
         this.peer.on('connection', (conn) => {
+          debugLog('P2P_CONNECTION', '🤝 Guest connection received', {
+            guestPeerId: conn.peer,
+            connectionType: conn.type
+          });
           debugLog('MULTIPLAYER', 'Guest connected:', conn.peer);
           this.connection = conn;
           this.setupConnection();
         });
 
         this.peer.on('error', (error) => {
+          const elapsedMs = Date.now() - startTime;
+          debugLog('P2P_CONNECTION', '🔴 Peer error event fired', {
+            error: error,
+            errorType: error?.type,
+            errorMessage: error?.message,
+            elapsedMs,
+            peerState: {
+              open: this.peer?.open,
+              destroyed: this.peer?.destroyed,
+              disconnected: this.peer?.disconnected,
+              id: this.peer?.id
+            }
+          });
           console.error('Peer error:', error);
           this.emit('connection_error', { error: error.message });
           reject(error);
         });
 
+        this.peer.on('close', () => {
+          debugLog('P2P_CONNECTION', '🚪 Peer "close" event fired');
+        });
+
+        this.peer.on('disconnected', () => {
+          debugLog('P2P_CONNECTION', '⚠️ Peer "disconnected" event fired');
+        });
+
         // Timeout after 30 seconds
         setTimeout(() => {
           if (!this.peer || !this.peer.open) {
+            const elapsedMs = Date.now() - startTime;
+            debugLog('P2P_CONNECTION', '⏰ Timeout reached (30s) - peer never opened', {
+              elapsedMs,
+              peerExists: !!this.peer,
+              peerState: this.peer ? {
+                open: this.peer.open,
+                destroyed: this.peer.destroyed,
+                disconnected: this.peer.disconnected,
+                id: this.peer.id
+              } : null
+            });
             reject(new Error('Failed to create room - timeout'));
           }
         }, 30000);
       });
     } catch (error) {
+      debugLog('P2P_CONNECTION', '❌ Exception caught in hostGame()', {
+        error: error,
+        errorMessage: error?.message,
+        errorStack: error?.stack
+      });
       console.error('Failed to host game:', error);
       throw error;
     }
@@ -105,23 +180,48 @@ class P2PManager {
    */
   async joinGame(roomCode) {
     try {
+      const startTime = Date.now();
+
+      debugLog('P2P_CONNECTION', '🔍 Attempting to join room', {
+        roomCode,
+        RTCPeerConnection: !!window.RTCPeerConnection,
+        navigator_onLine: navigator.onLine
+      });
+
       this.isHost = false;
       this.roomCode = roomCode;
 
       // Create peer with random ID
+      debugLog('P2P_CONNECTION', '🔧 Creating guest peer instance...');
+
       this.peer = new Peer({
         debug: 2, // Enable debug logging
       });
 
+      debugLog('P2P_CONNECTION', '✅ Guest peer constructor completed, waiting for "open" event...');
+
       return new Promise((resolve, reject) => {
         this.peer.on('open', (id) => {
+          const elapsedMs = Date.now() - startTime;
+          debugLog('P2P_CONNECTION', '🟢 Guest peer "open" event fired!', {
+            guestPeerId: id,
+            targetRoomCode: roomCode,
+            elapsedMs
+          });
+
           debugLog('MULTIPLAYER', 'Guest peer opened with ID:', id);
 
           // Connect to host
+          debugLog('P2P_CONNECTION', '🔗 Attempting to connect to host...', { roomCode });
           this.connection = this.peer.connect(roomCode);
           this.setupConnection();
 
           this.connection.on('open', () => {
+            const totalElapsedMs = Date.now() - startTime;
+            debugLog('P2P_CONNECTION', '✅ Connection to host established!', {
+              totalElapsedMs,
+              roomCode
+            });
             debugLog('MULTIPLAYER', 'Connected to host');
             this.emit('multiplayer_mode_change', { mode: 'guest', isHost: false });
             this.emit('joined_room', { roomCode });
@@ -129,6 +229,10 @@ class P2PManager {
           });
 
           this.connection.on('error', (error) => {
+            debugLog('P2P_CONNECTION', '🔴 Connection error', {
+              error,
+              errorMessage: error?.message
+            });
             console.error('Connection error:', error);
             this.emit('connection_error', { error: error.message });
             reject(error);
@@ -136,6 +240,13 @@ class P2PManager {
         });
 
         this.peer.on('error', (error) => {
+          const elapsedMs = Date.now() - startTime;
+          debugLog('P2P_CONNECTION', '🔴 Guest peer error event fired', {
+            error: error,
+            errorType: error?.type,
+            errorMessage: error?.message,
+            elapsedMs
+          });
           console.error('Peer error:', error);
           this.emit('connection_error', { error: error.message });
           reject(error);
@@ -144,11 +255,21 @@ class P2PManager {
         // Timeout after 30 seconds
         setTimeout(() => {
           if (!this.isConnected) {
+            const elapsedMs = Date.now() - startTime;
+            debugLog('P2P_CONNECTION', '⏰ Guest timeout reached (30s)', {
+              elapsedMs,
+              isConnected: this.isConnected,
+              peerOpen: this.peer?.open
+            });
             reject(new Error('Failed to join room - timeout'));
           }
         }, 30000);
       });
     } catch (error) {
+      debugLog('P2P_CONNECTION', '❌ Exception caught in joinGame()', {
+        error: error,
+        errorMessage: error?.message
+      });
       console.error('Failed to join game:', error);
       throw error;
     }

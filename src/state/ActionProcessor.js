@@ -287,6 +287,9 @@ setAnimationManager(animationManager) {
         case 'resetShields':
           return await this.processResetShields(payload);
 
+        case 'debugAddCardsToHand':
+          return await this.processDebugAddCardsToHand(payload);
+
         default:
           throw new Error(`Unknown action type: ${type}`);
       }
@@ -839,7 +842,8 @@ setAnimationManager(animationManager) {
       playerStates,
       placedSections,
       callbacks,
-      this.gameStateManager.getLocalPlayerId()
+      this.gameStateManager.getLocalPlayerId(),
+      currentState.gameMode
     );
 
     debugLog('CARDS', '[ANIMATION EVENTS] Card play events:', result.animationEvents);
@@ -1047,6 +1051,19 @@ setAnimationManager(animationManager) {
       completion.newPlayerStates.player1,
       completion.newPlayerStates.player2
     );
+
+    // Execute CARD_REVEAL animation now that card selection is complete
+    const cardRevealAnimation = [{
+      animationName: 'CARD_REVEAL',
+      payload: {
+        cardId: card.id,
+        cardName: card.name,
+        cardData: card,
+        actingPlayerId: playerId,
+        timestamp: Date.now()
+      }
+    }];
+    await this.executeAndCaptureAnimations(cardRevealAnimation);
 
     // Handle turn transition if needed
     if (completion.shouldEndTurn) {
@@ -2712,6 +2729,46 @@ setAnimationManager(animationManager) {
       droneId,
       lane,
       droneName: drone.name
+    };
+  }
+
+  /**
+   * Process adding cards to a player's hand (DEBUG FEATURE)
+   * @param {Object} payload - { playerId, cardInstances }
+   * @returns {Object} Result of adding cards
+   */
+  async processDebugAddCardsToHand(payload) {
+    const { playerId, cardInstances } = payload;
+
+    debugLog('DEBUG_TOOLS', `🎴 ActionProcessor: Adding ${cardInstances.length} cards to ${playerId}'s hand`);
+
+    // Guest guard: Guests should send actions to host
+    const gameMode = this.gameStateManager.get('gameMode');
+    if (gameMode === 'guest') {
+      console.warn('⚠️ Guest attempted processDebugAddCardsToHand - should send to host instead');
+      return { success: false, error: 'Guest cannot add cards locally' };
+    }
+
+    // Get current player state
+    const currentState = this.gameStateManager.getState();
+    const playerState = currentState[playerId];
+
+    if (!playerState) {
+      return { success: false, error: `Player ${playerId} not found` };
+    }
+
+    // Create updated hand
+    const updatedHand = [...playerState.hand, ...cardInstances];
+
+    // Update GameStateManager with new hand
+    this.gameStateManager.updatePlayerState(playerId, { hand: updatedHand });
+
+    debugLog('DEBUG_TOOLS', `✅ Cards added successfully. New hand size: ${updatedHand.length}`);
+
+    return {
+      success: true,
+      message: `Added ${cardInstances.length} cards to hand`,
+      newHandSize: updatedHand.length
     };
   }
 

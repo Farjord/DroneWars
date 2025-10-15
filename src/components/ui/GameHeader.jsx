@@ -5,7 +5,7 @@
 // Extracted from App.jsx for better component organization
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain } from 'lucide-react';
+import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain, Plus } from 'lucide-react';
 import { getPhaseDisplayName } from '../../utils/gameUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import DEV_CONFIG from '../../config/devConfig.js';
@@ -83,6 +83,7 @@ function GameHeader({
   onShowOpponentDrones,
   onShowGlossary,
   onShowAIStrategy,
+  onShowAddCardModal,
   testMode,
   handleCancelMultiMove,
   handleConfirmMultiMoveDrones
@@ -674,6 +675,18 @@ function GameHeader({
                   >
                     <Settings size={16} />
                     Debug View
+                  </button>
+                )}
+                {DEV_CONFIG.features.addCardToHand && (
+                  <button
+                    onClick={() => {
+                      onShowAddCardModal && onShowAddCardModal();
+                      setShowSettingsDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center gap-2 border-b border-gray-700"
+                  >
+                    <Plus size={16} />
+                    Add Card to Hand
                   </button>
                 )}
                 <button

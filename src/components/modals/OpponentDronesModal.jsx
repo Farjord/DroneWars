@@ -10,8 +10,9 @@ import DroneCard from '../ui/DroneCard.jsx';
  * @param {boolean} isOpen - Whether modal is visible
  * @param {function} onClose - Close handler
  * @param {Array} drones - Array of drone objects to display
+ * @param {Object} appliedUpgrades - Applied upgrades object keyed by drone name
  */
-const OpponentDronesModal = ({ isOpen, onClose, drones = [] }) => {
+const OpponentDronesModal = ({ isOpen, onClose, drones = [], appliedUpgrades = {} }) => {
   if (!isOpen) return null;
 
   // Sort drones by cost (class field)
@@ -57,7 +58,7 @@ const OpponentDronesModal = ({ isOpen, onClose, drones = [] }) => {
                         isSelectable={false}
                         isSelected={false}
                         deployedCount={0}
-                        appliedUpgrades={[]}
+                        appliedUpgrades={appliedUpgrades[drone.name] || []}
                         isViewOnly={true}
                       />
                     </div>

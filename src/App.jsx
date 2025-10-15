@@ -46,6 +46,7 @@ import GameDebugModal from './components/modals/GameDebugModal.jsx';
 import OpponentDronesModal from './components/modals/OpponentDronesModal.jsx';
 import GlossaryModal from './components/modals/GlossaryModal.jsx';
 import AIStrategyModal from './components/modals/AIStrategyModal.jsx';
+import AddCardToHandModal from './components/modals/AddCardToHandModal.jsx';
 
 // --- 1.4 HOOK IMPORTS ---
 import { useGameState } from './hooks/useGameState';
@@ -137,6 +138,7 @@ const App = () => {
   const [showDebugModal, setShowDebugModal] = useState(false);
   const [showGlossaryModal, setShowGlossaryModal] = useState(false);
   const [showAIStrategyModal, setShowAIStrategyModal] = useState(false);
+  const [showAddCardModal, setShowAddCardModal] = useState(false);
   const [flyingDrones, setFlyingDrones] = useState([]);
   const [flashEffects, setFlashEffects] = useState([]);
   const [healEffects, setHealEffects] = useState([]);
@@ -503,6 +505,35 @@ const App = () => {
     );
   }, [localPlayerState.shipSections, localPlacedSections, gameDataService]);
 
+  // --- 5.5 PHASE-BASED MANDATORY ACTION DERIVED STATE ---
+  // Derive UI state for mandatory discard/removal phases directly from phase + commitments
+  // This eliminates timing issues with mandatoryAction state for phase-based actions
+  // Note: mandatoryAction state is still used for ability-based mandatory actions
+
+  const isInMandatoryDiscardPhase = turnPhase === 'mandatoryDiscard';
+  const isInMandatoryRemovalPhase = turnPhase === 'mandatoryDroneRemoval';
+
+  // Only call getLocalPlayerId() when in mandatory phases to avoid early initialization issues
+  // This prevents calling it during gameInitializing phase when App.jsx mounts early
+  const localPlayerId = (isInMandatoryDiscardPhase || isInMandatoryRemovalPhase)
+    ? getLocalPlayerId()
+    : null;
+
+  const hasCommittedDiscard = localPlayerId && gameState.commitments?.mandatoryDiscard?.[localPlayerId];
+  const hasCommittedRemoval = localPlayerId && gameState.commitments?.mandatoryDroneRemoval?.[localPlayerId];
+
+  // Calculate excess on-the-fly
+  const excessCards = localPlayerState && localPlayerEffectiveStats
+    ? localPlayerState.hand.length - localPlayerEffectiveStats.totals.handLimit
+    : 0;
+  const excessDrones = localPlayerState && localPlayerEffectiveStats
+    ? totalLocalPlayerDrones - localPlayerEffectiveStats.totals.cpuLimit
+    : 0;
+
+  // UI flags for mandatory actions
+  const shouldShowDiscardUI = isInMandatoryDiscardPhase && !hasCommittedDiscard && excessCards > 0;
+  const shouldShowRemovalUI = isInMandatoryRemovalPhase && !hasCommittedRemoval && excessDrones > 0;
+
   // ========================================
   // SECTION 6: EVENT HANDLERS
   // ========================================
@@ -607,7 +638,7 @@ const App = () => {
            });
       }
       setAiCardPlayReport(null);
-  }, [processAction, getLocalPlayerId, getOpponentPlayerId, aiCardPlayReport, winner]);
+  }, [processActionWithGuestRouting, getLocalPlayerId, getOpponentPlayerId, aiCardPlayReport, winner]);
 
   /**
    * Handle reset shields button - removes all allocated shields
@@ -726,52 +757,6 @@ const App = () => {
   // All game logic is delegated to gameEngine for clean separation of concerns.
 
   // --- 7.1 PHASE TRANSITION FUNCTIONS ---
-
-  // TODO: TECHNICAL DEBT - calculateAllValidTargets needed for multi-select targeting UI - no GameDataService equivalent
-  useEffect(() => {
-    debugLog('BUTTON_CLICKS', '⚡ useEffect triggered - calculateAllValidTargets', {
-      timestamp: performance.now(),
-      multiSelectStatePhase: multiSelectState?.phase,
-      multiSelectStateExists: !!multiSelectState,
-      selectedCard: selectedCard?.name,
-      abilityMode: !!abilityMode,
-      shipAbilityMode: !!shipAbilityMode
-    });
-
-    const { validAbilityTargets, validCardTargets } = gameEngine.calculateAllValidTargets(
-      abilityMode,
-      shipAbilityMode,
-      multiSelectState,
-      selectedCard,
-      localPlayerState,
-      opponentPlayerState
-    );
-
-    debugLog('BUTTON_CLICKS', '📊 calculateAllValidTargets returned', {
-      timestamp: performance.now(),
-      validAbilityTargets: validAbilityTargets,
-      validCardTargets: validCardTargets,
-      validCardTargetsCount: validCardTargets.length
-    });
-
-    debugLog('BUTTON_CLICKS', '🔄 About to call setValidCardTargets', {
-      timestamp: performance.now(),
-      newValue: validCardTargets
-    });
-
-    setValidAbilityTargets(validAbilityTargets);
-    setValidCardTargets(validCardTargets);
-
-    debugLog('BUTTON_CLICKS', '✅ setValidCardTargets completed', {
-      timestamp: performance.now()
-    });
-
-    // Clear conflicting selections
-    if (abilityMode) {
-      setSelectedCard(null);
-      setShipAbilityMode(null);
-    }
-  }, [abilityMode, shipAbilityMode, selectedCard, localPlayerState, opponentPlayerState, multiSelectState]);
 
   /**
    * CANCEL ABILITY MODE
@@ -913,7 +898,7 @@ const App = () => {
       console.error('Error in resolveAbility:', error);
       cancelAbilityMode();
     }
-  }, [processAction, getLocalPlayerId]);
+  }, [processActionWithGuestRouting, getLocalPlayerId]);
 
   // --- 7.4 SHIP ABILITY RESOLUTION ---
 
@@ -956,7 +941,7 @@ const App = () => {
     setShipAbilityConfirmation(null);
 
     return result;
-}, [processAction, getLocalPlayerId]);
+}, [processActionWithGuestRouting, getLocalPlayerId]);
 
   // --- 7.5 CARD RESOLUTION ---
 
@@ -1056,7 +1041,7 @@ const App = () => {
 
 
     return result;
-}, [processAction, getLocalPlayerId, localPlayerState, opponentPlayerState]);
+}, [processActionWithGuestRouting, getLocalPlayerId, localPlayerState, opponentPlayerState]);
 
   // --- 7.6 CARD SELECTION HANDLING ---
 
@@ -1067,7 +1052,7 @@ const App = () => {
    */
   const handleCardSelection = useCallback(async (selectedCards, selectionData, originalCard, target, actingPlayerId, aiContext, playerStatesWithEnergyCosts = null) => {
     // Delegate to ActionProcessor (proper architecture)
-    await processAction('searchAndDrawCompletion', {
+    await processActionWithGuestRouting('searchAndDrawCompletion', {
       card: originalCard,
       selectedCards,
       selectionData,
@@ -1080,7 +1065,7 @@ const App = () => {
       cancelCardSelection();
       setCardConfirmation(null);
     }
-  }, [processAction, getLocalPlayerId, cancelCardSelection]);
+  }, [processActionWithGuestRouting, getLocalPlayerId, cancelCardSelection]);
 
   // --- 7.7 MOVEMENT RESOLUTION ---
 
@@ -1105,7 +1090,7 @@ const App = () => {
     // Clean up UI state
     setMultiSelectState(null);
     cancelCardSelection();
-  }, [processAction, getLocalPlayerId]);
+  }, [processActionWithGuestRouting, getLocalPlayerId]);
 
 
   /**
@@ -1129,7 +1114,7 @@ const App = () => {
     // Clean up UI state
     setMultiSelectState(null);
     cancelCardSelection();
-  }, [processAction, getLocalPlayerId]);
+  }, [processActionWithGuestRouting, getLocalPlayerId]);
 
 
 
@@ -1169,7 +1154,8 @@ const App = () => {
       multiSelectState,
       selectedCard,
       localPlayerState,
-      opponentPlayerState
+      opponentPlayerState,
+      getLocalPlayerId()
     );
 
     setValidAbilityTargets(validAbilityTargets);
@@ -1391,52 +1377,42 @@ const App = () => {
     }
   }, [turnPhase, gameState.gameStage, gameState.roundNumber, gameState.gameMode, waitingForPlayerPhase]);
 
-  // --- 8.8 MANDATORY ACTION INITIALIZATION ---
-  // Initialize mandatoryAction when entering mandatory discard/drone removal phases
-  // Calculates excess cards/drones and sets up UI for user action
+  // --- 8.8 GUEST RENDER COMPLETION FOR ANIMATIONS ---
+  // Signal to GuestMessageQueueService that React has finished rendering
+  // This ensures animations (like teleport effects) have valid DOM elements to target
+  // Same pattern used in DroneSelectionScreen, DeckSelectionScreen, and ShipPlacementScreen
   useEffect(() => {
-    const localPlayerId = getLocalPlayerId();
-
-    if (turnPhase === 'mandatoryDiscard') {
-      // Calculate excess cards
-      const handCount = localPlayerState.hand.length;
-      const handLimit = localPlayerEffectiveStats.totals.handLimit;
-      const excessCards = handCount - handLimit;
-
-      if (excessCards > 0) {
-        debugLog('PHASE_TRANSITIONS', `🗑️ Mandatory discard required: ${excessCards} cards (hand: ${handCount}, limit: ${handLimit})`);
-        setMandatoryAction({
-          type: 'discard',
-          player: localPlayerId,
-          count: excessCards
-        });
-        // Ensure footer is open and showing hand
-        setFooterView('hand');
-        setIsFooterOpen(true);
-      }
-    } else if (turnPhase === 'mandatoryDroneRemoval') {
-      // Calculate excess drones
-      const totalDrones = Object.values(localPlayerState.dronesOnBoard).flat().length;
-      const droneLimit = localPlayerEffectiveStats.totals.cpuLimit;
-      const excessDrones = totalDrones - droneLimit;
-
-      if (excessDrones > 0) {
-        debugLog('PHASE_TRANSITIONS', `💀 Mandatory drone removal required: ${excessDrones} drones (total: ${totalDrones}, limit: ${droneLimit})`);
-        setMandatoryAction({
-          type: 'destroy',
-          player: localPlayerId,
-          count: excessDrones
-        });
-      }
-    } else {
-      // Clear mandatoryAction when leaving mandatory phases
-      // (unless it was set by an ability, indicated by fromAbility property)
-      if (mandatoryAction && !mandatoryAction.fromAbility) {
-        debugLog('PHASE_TRANSITIONS', `✅ Clearing mandatoryAction (left mandatory phase)`);
-        setMandatoryAction(null);
-      }
+    if (gameState.gameMode === 'guest') {
+      gameStateManager.emit('render_complete');
     }
-  }, [turnPhase, localPlayerState.hand, localPlayerState.dronesOnBoard, localPlayerEffectiveStats, getLocalPlayerId, mandatoryAction]);
+  }, [gameState, gameStateManager]);
+
+  // --- 8.9 MANDATORY ACTION INITIALIZATION ---
+  // Manage ability-based mandatory action clearing and UI state for mandatory phases
+  // Note: Phase-based mandatory actions now derive UI state from turnPhase + commitments (see Section 5.5)
+  useEffect(() => {
+    const prevPhase = previousPhaseRef.current;
+    const enteredMandatoryDiscard = turnPhase === 'mandatoryDiscard' && prevPhase !== 'mandatoryDiscard';
+
+    // Open footer and set view to hand when first entering mandatoryDiscard phase
+    if (enteredMandatoryDiscard) {
+      setFooterView('hand');
+      setIsFooterOpen(true);
+    }
+
+    // Clear ability-based mandatoryAction when transitioning FROM a mandatory phase TO a non-mandatory phase
+    // This only affects ability-triggered mandatory actions (e.g., "discard 2 cards" from ship ability)
+    const wasInMandatoryPhase = prevPhase === 'mandatoryDiscard' || prevPhase === 'mandatoryDroneRemoval';
+    const isInMandatoryPhase = turnPhase === 'mandatoryDiscard' || turnPhase === 'mandatoryDroneRemoval';
+
+    if (wasInMandatoryPhase && !isInMandatoryPhase && mandatoryAction && mandatoryAction.fromAbility) {
+      debugLog('PHASE_TRANSITIONS', `✅ Clearing ability-based mandatoryAction (transitioned from ${prevPhase} to ${turnPhase})`);
+      setMandatoryAction(null);
+    }
+
+    // Update ref for next comparison
+    previousPhaseRef.current = turnPhase;
+  }, [turnPhase, mandatoryAction]);
 
   /**
    * HANDLE RESET
@@ -1491,6 +1467,44 @@ const App = () => {
     setValidCardTargets([]);
     setCardConfirmation(null);
     setShowWinnerModal(false);
+  };
+
+  /**
+   * HANDLE OPEN ADD CARD MODAL (DEBUG)
+   * Opens the debug modal for adding cards to hands
+   */
+  const handleOpenAddCardModal = () => {
+    setShowAddCardModal(true);
+  };
+
+  /**
+   * HANDLE ADD CARDS TO HAND (DEBUG)
+   * Adds selected cards to a player's hand
+   * @param {Object} data - {playerId, selectedCards}
+   */
+  const handleAddCardsToHand = async ({ playerId, selectedCards }) => {
+    debugLog('DEBUG_TOOLS', '🎴 Adding cards to hand', { playerId, selectedCards });
+
+    // Convert selectedCards composition to array of card instances
+    const cardInstances = [];
+    Object.entries(selectedCards).forEach(([cardId, quantity]) => {
+      const cardTemplate = fullCardCollection.find(c => c.id === cardId);
+      if (!cardTemplate) {
+        console.error(`Card template not found for ID: ${cardId}`);
+        return;
+      }
+
+      for (let i = 0; i < quantity; i++) {
+        // Create unique instance ID
+        const instanceId = `${playerId}-${cardId}-${Date.now()}-${Math.random()}`;
+        cardInstances.push({ ...cardTemplate, instanceId });
+      }
+    });
+
+    // Route through ActionProcessor instead of direct state update
+    await processActionWithGuestRouting('debugAddCardsToHand', { playerId, cardInstances });
+
+    debugLog('DEBUG_TOOLS', '✅ Cards added through ActionProcessor');
   };
 
   /**
@@ -2273,18 +2287,21 @@ const App = () => {
           )?.[0];
 
           if (droneLane) {
+              const localId = getLocalPlayerId();
+              debugLog('MOVEMENT_LANES', `Drone selected from ${droneLane}, localPlayerId: ${localId}`);
+
               // Calculate adjacent lanes
               const currentLaneIndex = parseInt(droneLane.replace('lane', ''));
               const adjacentLanes = [];
 
               if (currentLaneIndex > 1) {
-                  adjacentLanes.push({ id: `lane${currentLaneIndex - 1}`, owner: getLocalPlayerId() });
+                  adjacentLanes.push({ id: `lane${currentLaneIndex - 1}`, owner: localId, type: 'lane' });
               }
               if (currentLaneIndex < 3) {
-                  adjacentLanes.push({ id: `lane${currentLaneIndex + 1}`, owner: getLocalPlayerId() });
+                  adjacentLanes.push({ id: `lane${currentLaneIndex + 1}`, owner: localId, type: 'lane' });
               }
 
-              debugLog('COMBAT', `Selected drone ${token.name} from ${droneLane}, valid destinations:`, adjacentLanes);
+              debugLog('MOVEMENT_LANES', `Adjacent lanes with owner:`, adjacentLanes);
 
               // Set valid targets to highlight available lanes
               setValidCardTargets(adjacentLanes);
@@ -2352,9 +2369,9 @@ const App = () => {
           return;
       }
 
-      // 4. Handle mandatory destruction
+      // 4. Handle mandatory destruction (phase-based or ability-based)
 
-      if (mandatoryAction?.type === 'destroy' && isPlayer) {
+      if ((shouldShowRemovalUI || mandatoryAction?.type === 'destroy') && isPlayer) {
           debugLog('COMBAT', "Action: Mandatory destruction.");
           setConfirmationModal({
               type: 'destroy', target: token,
@@ -2616,16 +2633,47 @@ const App = () => {
       return;
     }
 
-    // Movement cards are now handled through resolveCardPlay -> needsCardSelection flow
+    // Movement cards - Set up UI state directly (don't call ActionProcessor until selection complete)
     if (card.effect.type === 'MULTI_MOVE' || card.effect.type === 'SINGLE_MOVE') {
-      debugLog('CARD_PLAY', `✅ Movement card - processing: ${card.name}`, { effectType: card.effect.type });
+      debugLog('CARD_PLAY', `✅ Movement card - setting up UI: ${card.name}`, { effectType: card.effect.type });
       if (multiSelectState && multiSelectState.card.instanceId === card.instanceId) {
         cancelCardSelection();
       } else {
         cancelAllActions(); // Cancel all other actions before starting movement card
         setSelectedCard(card); // Keep card selected for greyscale effect on other cards
-        // Immediately process card play (no target needed for movement cards)
-        await resolveCardPlay(card, null, getLocalPlayerId());
+
+        // Set up UI state directly (like abilities do) - don't send action until selection complete
+        if (card.effect.type === 'SINGLE_MOVE') {
+          debugLog('MOVEMENT_LANES', `SINGLE_MOVE card clicked: ${card.name}`);
+          debugLog('MOVEMENT_LANES', `gameMode: ${gameState.gameMode}, localPlayerId: ${getLocalPlayerId()}`);
+
+          // For SINGLE_MOVE, highlight all friendly non-exhausted drones as valid targets
+          const friendlyDrones = Object.values(localPlayerState.dronesOnBoard)
+            .flat()
+            .filter(drone => !drone.isExhausted)
+            .map(drone => ({ id: drone.id, type: 'drone', owner: getLocalPlayerId() }));
+
+          debugLog('MOVEMENT_LANES', `Valid drone targets:`, friendlyDrones);
+          setValidCardTargets(friendlyDrones);
+
+          setMultiSelectState({
+            card: card,
+            phase: 'select_drone',
+            selectedDrones: [],
+            sourceLane: null,
+            maxDrones: 1
+          });
+        } else { // MULTI_MOVE
+          setMultiSelectState({
+            card: card,
+            phase: 'select_source_lane',
+            selectedDrones: [],
+            sourceLane: null,
+            maxDrones: card.effect.count || 3
+          });
+        }
+
+        // Action will be sent when selection is complete (in resolveMultiMove/resolveSingleMove)
       }
       return;
     }
@@ -2672,11 +2720,12 @@ const App = () => {
    * @param {Object} card - The card being discarded
    */
   const handleConfirmMandatoryDiscard = async (card) => {
-    // Capture the current state before any updates
-    const currentMandatoryAction = mandatoryAction;
+    // Determine if this is phase-based or ability-based mandatory discard
+    const isAbilityBased = mandatoryAction?.fromAbility;
+    const currentCount = isAbilityBased ? mandatoryAction.count : excessCards;
 
     // Determine if this is the last discard
-    const newCount = currentMandatoryAction.count - 1;
+    const newCount = currentCount - 1;
     const isLastDiscard = newCount <= 0;
 
     // Prepare payload for discard action
@@ -2687,11 +2736,11 @@ const App = () => {
     };
 
     // If this is the last discard from an ability, include metadata for animation
-    if (isLastDiscard && currentMandatoryAction.fromAbility && currentMandatoryAction.abilityName) {
+    if (isLastDiscard && isAbilityBased && mandatoryAction.abilityName) {
         discardPayload.abilityMetadata = {
-            abilityName: currentMandatoryAction.abilityName,
-            sectionName: currentMandatoryAction.sectionName,
-            actingPlayerId: currentMandatoryAction.actingPlayerId
+            abilityName: mandatoryAction.abilityName,
+            sectionName: mandatoryAction.sectionName,
+            actingPlayerId: mandatoryAction.actingPlayerId
         };
     }
 
@@ -2701,11 +2750,19 @@ const App = () => {
     // Clear the confirmation modal immediately
     setConfirmationModal(null);
 
-    // Decide the next action based on the state we captured
+    // Decide the next action based on the type
     if (isLastDiscard) {
-        setMandatoryAction(null);
-        if (!currentMandatoryAction.fromAbility) {
-            // Mandatory discard completed - commit the phase and check if opponent is done
+        if (isAbilityBased) {
+            // Clear ability-based mandatoryAction
+            setMandatoryAction(null);
+
+            // Ability-triggered discard completed - end turn
+            const currentPlayerId = getLocalPlayerId();
+            await processActionWithGuestRouting('turnTransition', {
+                newPlayer: currentPlayerId === 'player1' ? 'player2' : 'player1'
+            });
+        } else {
+            // Phase-based mandatory discard completed - commit the phase
             const result = await processActionWithGuestRouting('commitment', {
                 playerId: getLocalPlayerId(),
                 phase: 'mandatoryDiscard',
@@ -2713,20 +2770,23 @@ const App = () => {
             });
 
             // Show waiting modal if opponent hasn't finished yet
+            debugLog('COMMITMENTS', '🔍 Checking waiting overlay for mandatoryDiscard:', {
+                hasResultData: !!result.data,
+                bothPlayersComplete: result.data?.bothPlayersComplete,
+                willShowWaiting: result.data && !result.data.bothPlayersComplete
+            });
+
             if (result.data && !result.data.bothPlayersComplete) {
                 setWaitingForPlayerPhase('mandatoryDiscard');
             }
-        } else {
-            // Ability-triggered discard completed - animation already processed above
-            // End turn
-            const currentPlayerId = getLocalPlayerId();
-            await processActionWithGuestRouting('turnTransition', {
-                newPlayer: currentPlayerId === 'player1' ? 'player2' : 'player1'
-            });
         }
     } else {
-        // If more discards are needed, just update the count
-        setMandatoryAction(prev => ({ ...prev, count: newCount }));
+        // More discards needed
+        if (isAbilityBased) {
+            // Update ability-based mandatoryAction count
+            setMandatoryAction(prev => ({ ...prev, count: newCount }));
+        }
+        // For phase-based, count is derived from excessCards, no need to update anything
     }
   };
 
@@ -2802,8 +2862,9 @@ const App = () => {
    * @param {Object} drone - The drone being destroyed
    */
   const handleConfirmMandatoryDestroy = async (drone) => {
-    // Capture current mandatory action state before updates
-    const currentMandatoryAction = mandatoryAction;
+    // Determine if this is phase-based or ability-based mandatory removal
+    const isAbilityBased = mandatoryAction?.fromAbility;
+    const currentCount = isAbilityBased ? mandatoryAction.count : excessDrones;
 
     // Use ActionProcessor to handle destruction (supports multiplayer routing)
     const result = await processActionWithGuestRouting('destroyDrone', {
@@ -2817,7 +2878,7 @@ const App = () => {
     }
 
     // Calculate new count
-    const newCount = currentMandatoryAction.count - 1;
+    const newCount = currentCount - 1;
 
     if (newCount <= 0) {
       // Check if opponent (AI in single-player) also needs to destroy drones
@@ -2846,23 +2907,31 @@ const App = () => {
         }
       }
 
-      // Clear mandatory action
-      setMandatoryAction(null);
+      if (isAbilityBased) {
+        // Clear ability-based mandatoryAction
+        setMandatoryAction(null);
+        // For ability-based, might need additional logic here (end turn, etc.)
+        // Currently there are no abilities that force drone destruction, so this path is unused
+      } else {
+        // Phase-based mandatory removal completed - commit the phase
+        const commitResult = await processActionWithGuestRouting('commitment', {
+          playerId: getLocalPlayerId(),
+          phase: 'mandatoryDroneRemoval',
+          actionData: { completed: true }
+        });
 
-      // Commit the mandatoryDroneRemoval phase and check if opponent is done
-      const commitResult = await processActionWithGuestRouting('commitment', {
-        playerId: getLocalPlayerId(),
-        phase: 'mandatoryDroneRemoval',
-        actionData: { completed: true }
-      });
-
-      // Show waiting modal if opponent hasn't finished yet
-      if (commitResult.data && !commitResult.data.bothPlayersComplete) {
-        setWaitingForPlayerPhase('mandatoryDroneRemoval');
+        // Show waiting modal if opponent hasn't finished yet
+        if (commitResult.data && !commitResult.data.bothPlayersComplete) {
+          setWaitingForPlayerPhase('mandatoryDroneRemoval');
+        }
       }
     } else {
-      // If more drones need to be destroyed, update the count
-      setMandatoryAction(prev => ({ ...prev, count: newCount }));
+      // More drones need to be destroyed
+      if (isAbilityBased) {
+        // Update ability-based mandatoryAction count
+        setMandatoryAction(prev => ({ ...prev, count: newCount }));
+      }
+      // For phase-based, count is derived from excessDrones, no need to update anything
     }
 
     setConfirmationModal(null);
@@ -3061,6 +3130,7 @@ const App = () => {
         onShowOpponentDrones={handleShowOpponentDrones}
         onShowGlossary={() => setShowGlossaryModal(true)}
         onShowAIStrategy={() => setShowAIStrategyModal(true)}
+        onShowAddCardModal={handleOpenAddCardModal}
         testMode={testMode}
         handleCancelMultiMove={handleCancelMultiMove}
         handleConfirmMultiMoveDrones={handleConfirmMultiMoveDrones}
@@ -3114,7 +3184,15 @@ const App = () => {
         multiSelectState={multiSelectState}
         selectedCard={selectedCard}
         turnPhase={turnPhase}
-        mandatoryAction={mandatoryAction}
+        mandatoryAction={
+          mandatoryAction?.fromAbility
+            ? mandatoryAction  // Use ability-based mandatoryAction
+            : shouldShowDiscardUI
+              ? { type: 'discard', count: excessCards }
+              : shouldShowRemovalUI
+                ? { type: 'destroy', count: excessDrones }
+                : null
+        }
         handleFooterButtonClick={handleFooterButtonClick}
         handleCardClick={handleCardClick}
         cancelCardSelection={cancelCardSelection}
@@ -3269,9 +3347,17 @@ const App = () => {
       />
 
       <MandatoryActionModal
-        mandatoryAction={mandatoryAction}
+        mandatoryAction={
+          mandatoryAction?.fromAbility
+            ? mandatoryAction  // Use ability-based mandatoryAction
+            : shouldShowDiscardUI
+              ? { type: 'discard', count: excessCards }
+              : shouldShowRemovalUI
+                ? { type: 'destroy', count: excessDrones }
+                : null
+        }
         effectiveStats={localPlayerEffectiveStats}
-        show={mandatoryAction && showMandatoryActionModal}
+        show={(shouldShowDiscardUI || shouldShowRemovalUI || mandatoryAction?.fromAbility) && showMandatoryActionModal}
         onClose={() => setShowMandatoryActionModal(false)}
       />
       <ConfirmationModal
@@ -3344,6 +3430,7 @@ const App = () => {
         isOpen={showOpponentDronesModal}
         onClose={() => setShowOpponentDronesModal(false)}
         drones={opponentSelectedDrones}
+        appliedUpgrades={opponentPlayerState.appliedUpgrades}
       />
 
       <GameDebugModal
@@ -3360,6 +3447,13 @@ const App = () => {
       {showAIStrategyModal && (
         <AIStrategyModal onClose={() => setShowAIStrategyModal(false)} />
       )}
+
+      <AddCardToHandModal
+        isOpen={showAddCardModal}
+        onClose={() => setShowAddCardModal(false)}
+        onConfirm={handleAddCardsToHand}
+        gameMode={gameState.gameMode}
+      />
 
       {/* Renders the modal for viewing the deck */}
       <CardViewerModal 

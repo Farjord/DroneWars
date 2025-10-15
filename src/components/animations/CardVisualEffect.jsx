@@ -67,13 +67,13 @@ const LaserBlastEffect = ({ startPos, endPos, duration }) => {
 };
 
 // Energy wave sub-component (placeholder - customize as needed)
-const EnergyWaveEffect = ({ startPos, duration }) => {
+const EnergyWaveEffect = ({ endPos, duration }) => {
   return (
     <div
       style={{
         position: 'fixed',
-        left: startPos.x - 20,
-        top: startPos.y - 20,
+        left: endPos.x - 20,
+        top: endPos.y - 20,
         width: '40px',
         height: '40px',
         borderRadius: '50%',

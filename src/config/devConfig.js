@@ -36,7 +36,12 @@ export const DEV_CONFIG = {
     // Testing Mode screen for quick scenario setup
     // Bypass normal game flow and start directly at action phase
     // Configure exact drones, cards, resources, and game state
-    testingMode: DEV_MODE
+    testingMode: DEV_MODE,
+
+    // Add Card to Hand button in game header settings dropdown
+    // Allows adding cards to either player's hand during gameplay
+    // Useful for testing specific card interactions and game states
+    addCardToHand: DEV_MODE
   }
 };
 

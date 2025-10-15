@@ -24,19 +24,21 @@ const DEBUG_CONFIG = {
     DECK_SELECTION: false,      // Deck selection phase
     PLACEMENT: false,           // Ship placement phase
     PHASE_TRANSITIONS: false,   // Game phase transitions and flow
-    AI_DECISIONS: true,         // AI decision making (ENABLED for interception logging)
+    AI_DECISIONS: false,        // AI decision making (DISABLED for clean logs)
     MULTIPLAYER: false,         // Network sync and multiplayer
+    P2P_CONNECTION: true,      // PeerJS connection diagnostics
     ANIMATIONS: false,          // Animation system
-    COMMITMENTS: false,          // Simultaneous phase commitments
-    COMBAT: true,               // Combat resolution (ENABLED for interception flow)
+    COMMITMENTS: false,         // Simultaneous phase commitments
+    COMBAT: false,              // Combat resolution (DISABLED for clean logs)
     PASS_LOGIC: false,          // Pass handling
     STATE_SYNC: false,          // State synchronization
-    ENERGY: false,               // Energy management (shield allocation)
+    ENERGY: false,              // Energy management (shield allocation)
     CARDS: false,               // Card play and effects
     HAND_VIEW: false,           // Hand display and card interaction
     CARD_PLAY: false,           // Card playability and clicking (DISABLED for clean logs)
-    SHIELD_CLICKS: false,        // Shield allocation click tracking
+    SHIELD_CLICKS: false,       // Shield allocation click tracking
     BUTTON_CLICKS: false,       // Button click tracking and effects (DISABLED for clean logs)
+    MOVEMENT_LANES: false,       // Movement card lane highlighting diagnostics
   }
 };
 

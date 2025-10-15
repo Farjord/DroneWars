@@ -886,6 +886,13 @@ class GameFlowManager {
     const player2Stats = this.gameDataService.getEffectiveShipStats(gameState.player2, gameState.opponentPlacedSections);
     const player2DroneLimit = player2Stats.totals.cpuLimit;
 
+    debugLog('PHASE_TRANSITIONS', '🔍 Checking player2 drone limit:', {
+      player2DronesCount,
+      player2DroneLimit,
+      exceeds: player2DronesCount > player2DroneLimit,
+      opponentPlacedSections: gameState.opponentPlacedSections
+    });
+
     if (player2DronesCount > player2DroneLimit) {
       return true;
     }
@@ -1055,13 +1062,9 @@ class GameFlowManager {
       return;
     }
 
-    // Only for single-player mode
-    const gameMode = this.gameStateManager.get('gameMode');
-    if (gameMode !== 'local') {
-      return;
-    }
-
     const gameState = this.gameStateManager.getState();
+    const isSinglePlayer = gameState.gameMode === 'local';
+    const localPlayerId = this.gameStateManager.getLocalPlayerId();
 
     // Check which players need to act
     let player1NeedsToAct = false;
@@ -1090,30 +1093,39 @@ class GameFlowManager {
 
     debugLog('COMMITMENTS', `🔍 Auto-completion check for ${phase}:`, {
       player1NeedsToAct,
-      player2NeedsToAct
+      player2NeedsToAct,
+      isSinglePlayer,
+      localPlayerId
     });
 
     // Auto-commit for players who don't need to act
+    // In multiplayer: Only auto-commit for local player
+    // In single-player: Auto-commit for both players (including AI)
+
     if (!player1NeedsToAct) {
-      debugLog('COMMITMENTS', `✅ Player1 doesn't need to act in ${phase}, auto-committing`);
-      await this.actionProcessor.processCommitment({
-        playerId: 'player1',
-        phase: phase,
-        actionData: { autoCompleted: true }
-      });
+      if (isSinglePlayer || localPlayerId === 'player1') {
+        debugLog('COMMITMENTS', `✅ Player1 doesn't need to act in ${phase}, auto-committing`);
+        await this.actionProcessor.processCommitment({
+          playerId: 'player1',
+          phase: phase,
+          actionData: { autoCompleted: true }
+        });
+      }
     }
 
     if (!player2NeedsToAct) {
-      debugLog('COMMITMENTS', `✅ Player2 doesn't need to act in ${phase}, auto-committing`);
-      await this.actionProcessor.processCommitment({
-        playerId: 'player2',
-        phase: phase,
-        actionData: { autoCompleted: true }
-      });
+      if (isSinglePlayer || localPlayerId === 'player2') {
+        debugLog('COMMITMENTS', `✅ Player2 doesn't need to act in ${phase}, auto-committing`);
+        await this.actionProcessor.processCommitment({
+          playerId: 'player2',
+          phase: phase,
+          actionData: { autoCompleted: true }
+        });
+      }
     }
 
-    // If AI needs to act but human doesn't, trigger AI
-    if (player2NeedsToAct && !player1NeedsToAct) {
+    // If AI needs to act but human doesn't, trigger AI (single-player only)
+    if (isSinglePlayer && player2NeedsToAct && !player1NeedsToAct) {
       debugLog('COMMITMENTS', `🤖 Triggering AI commitment for ${phase}`);
       await this.actionProcessor.handleAICommitment(phase, gameState);
     }
@@ -1123,15 +1135,22 @@ class GameFlowManager {
    * Start a new round (loop back to beginning of round phases)
    */
   async startNewRound() {
-    this.roundNumber++;
-    debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Starting round ${this.roundNumber}`);
+    // Capture first passer from the round that just ended BEFORE incrementing round number
+    const currentGameState = this.gameStateManager.getState();
+    const firstPasserFromPreviousRound = currentGameState.passInfo?.firstPasser || null;
 
-    // Update gameState with new round number (and turn for backwards compatibility)
+    this.roundNumber++;
+    debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Starting round ${this.roundNumber}`, {
+      firstPasserFromPreviousRound
+    });
+
+    // Update gameState with new round number and first passer from previous round
     try {
       this.gameStateManager._updateContext = 'GameFlowManager';
       this.gameStateManager.setState({
         roundNumber: this.roundNumber,
-        turn: this.roundNumber
+        turn: this.roundNumber,
+        firstPasserOfPreviousRound: firstPasserFromPreviousRound
       }, 'ROUND_START', 'gameFlowManagerMetadata');
     } finally {
       this.gameStateManager._updateContext = null;

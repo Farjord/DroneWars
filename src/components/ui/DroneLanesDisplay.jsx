@@ -7,6 +7,7 @@
 import React from 'react';
 import DroneToken from './DroneToken.jsx';
 import { useGameData } from '../../hooks/useGameData.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * RENDER DRONES ON BOARD
@@ -166,6 +167,13 @@ const DroneLanesDisplay = ({
         const isTargetable = (abilityMode && validAbilityTargets.some(t => t.id === lane && t.owner === owner)) ||
                              (selectedCard && validCardTargets.some(t => t.id === lane && t.owner === owner)) ||
                              (multiSelectState && validCardTargets.some(t => t.id === lane && t.owner === owner));
+
+        // Debug logging for movement lanes
+        if (multiSelectState && validCardTargets.length > 0) {
+          debugLog('MOVEMENT_LANES', `Lane ${lane}: isPlayer=${isPlayer}, owner=${owner}, isTargetable=${isTargetable}`, {
+            validTargetsForThisLane: validCardTargets.filter(t => t.id === lane)
+          });
+        }
 
         const isInteractivePlayerLane = isPlayer && (turnPhase === 'deployment' || turnPhase === 'action');
         const baseBackgroundColor = isPlayer ? 'bg-cyan-400/10' : 'bg-pink-500/10';

@@ -348,9 +348,9 @@ const getValidTargets = (actingPlayerId, source, definition, player1, player2) =
         const targetPlayerState = affinity === 'ENEMY' ? opponentPlayerState : actingPlayerState;
         const targetPlayerId = affinity === 'ENEMY' ? (actingPlayerId === 'player1' ? 'player2' : 'player1') : actingPlayerId;
 
-        Object.values(targetPlayerState.dronesOnBoard).flat().forEach(droneOnBoard => {
-            if ((targetPlayerState.appliedUpgrades[droneOnBoard.name] || []).length > 0) {
-                targets.push({ ...droneOnBoard, owner: targetPlayerId });
+        targetPlayerState.activeDronePool.forEach(droneCard => {
+            if ((targetPlayerState.appliedUpgrades[droneCard.name] || []).length > 0) {
+                targets.push({ ...droneCard, id: droneCard.name, owner: targetPlayerId });
             }
         });
     }
@@ -1880,7 +1880,7 @@ const calculateRepeatCount = (condition, playerState) => {
     return repeatCount;
 };
 
-const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSections, callbacks, localPlayerId = 'player1') => {
+const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSections, callbacks, localPlayerId = 'player1', gameMode = 'local') => {
     const { logCallback, explosionCallback, hitAnimationCallback, resolveAttackCallback } = callbacks;
 
     // Generate outcome message for logging
@@ -1934,7 +1934,7 @@ const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSecti
     let currentStates = willNeedSelection ? playerStates : payCardCosts(card, actingPlayerId, playerStates);
 
     // Resolve the effect(s)
-    const result = resolveCardEffect(card.effect, target, actingPlayerId, currentStates, placedSections, callbacks, card, localPlayerId);
+    const result = resolveCardEffect(card.effect, target, actingPlayerId, currentStates, placedSections, callbacks, card, localPlayerId, gameMode);
 
     // Start with card visual event if card has one
     const allAnimationEvents = [];
@@ -2104,17 +2104,17 @@ const finishCardPlay = (card, actingPlayerId, playerStates) => {
     };
 };
 
-const resolveCardEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null, localPlayerId = 'player1') => {
+const resolveCardEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null, localPlayerId = 'player1', gameMode = 'local') => {
     if (effect.effects) {
         // Multi-effect card (like REPEATING_EFFECT)
-        return resolveMultiEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card, localPlayerId);
+        return resolveMultiEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card, localPlayerId, gameMode);
     } else {
         // Single effect card
-        return resolveSingleEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card, localPlayerId);
+        return resolveSingleEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card, localPlayerId, gameMode);
     }
 };
 
-const resolveMultiEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null, localPlayerId = 'player1') => {
+const resolveMultiEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null, localPlayerId = 'player1', gameMode = 'local') => {
     let currentStates = playerStates;
     let allAdditionalEffects = [];
 
@@ -2125,7 +2125,7 @@ const resolveMultiEffect = (effect, target, actingPlayerId, playerStates, placed
         // Execute each sub-effect, repeatCount times
         for (let i = 0; i < repeatCount; i++) {
             for (const subEffect of effect.effects) {
-                const result = resolveSingleEffect(subEffect, target, actingPlayerId, currentStates, placedSections, callbacks, card, localPlayerId);
+                const result = resolveSingleEffect(subEffect, target, actingPlayerId, currentStates, placedSections, callbacks, card, localPlayerId, gameMode);
                 currentStates = result.newPlayerStates;
                 if (result.additionalEffects) {
                     allAdditionalEffects.push(...result.additionalEffects);
@@ -2140,12 +2140,12 @@ const resolveMultiEffect = (effect, target, actingPlayerId, playerStates, placed
     };
 };
 
-const resolveSingleEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null, localPlayerId = 'player1') => {
+const resolveSingleEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null, localPlayerId = 'player1', gameMode = 'local') => {
     switch (effect.type) {
         case 'DRAW':
             return resolveUnifiedDrawEffect(effect, null, target, actingPlayerId, playerStates, placedSections, callbacks);
         case 'SEARCH_AND_DRAW':
-            return resolveSearchAndDrawEffect(effect, null, target, actingPlayerId, playerStates, placedSections, callbacks, localPlayerId);
+            return resolveSearchAndDrawEffect(effect, null, target, actingPlayerId, playerStates, placedSections, callbacks, localPlayerId, gameMode);
         case 'GAIN_ENERGY':
             return resolveEnergyEffect(effect, actingPlayerId, playerStates, placedSections, callbacks);
         case 'READY_DRONE':
@@ -2166,7 +2166,7 @@ const resolveSingleEffect = (effect, target, actingPlayerId, playerStates, place
             return resolveDestroyUpgradeEffect(effect, target, actingPlayerId, playerStates, callbacks);
         case 'SINGLE_MOVE':
         case 'MULTI_MOVE':
-            return resolveMovementEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card, localPlayerId);
+            return resolveMovementEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card, localPlayerId, gameMode);
         case 'CREATE_TOKENS':
             return resolveCreateTokensEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card);
         default:
@@ -3100,7 +3100,7 @@ const cardMatchesFilter = (card, filter) => {
     return true;
 };
 
-const resolveSearchAndDrawEffect = (effect, source, target, actingPlayerId, playerStates, placedSections, callbacks, localPlayerId = 'player1') => {
+const resolveSearchAndDrawEffect = (effect, source, target, actingPlayerId, playerStates, placedSections, callbacks, localPlayerId = 'player1', gameMode = 'local') => {
     const newPlayerStates = {
         player1: JSON.parse(JSON.stringify(playerStates.player1)),
         player2: JSON.parse(JSON.stringify(playerStates.player2))
@@ -3144,8 +3144,13 @@ const resolveSearchAndDrawEffect = (effect, source, target, actingPlayerId, play
         remainingDeck = newDeck.slice(0, -effect.searchCount);
     }
 
-    // For non-local players (AI), automatically select the best cards
-    if (targetPlayerId !== localPlayerId) {
+    // Determine if this is an AI player
+    // In single-player (gameMode === 'local'), only player2 is AI
+    // In multiplayer, both players are human and need card selection UI
+    const isAI = gameMode === 'local' && targetPlayerId === 'player2';
+
+    // For AI players (single-player player2 only), automatically select the best cards
+    if (isAI) {
         const selectedCards = selectBestCardsForAI(searchedCards, effect.drawCount, newPlayerStates, placedSections);
         const unselectedCards = searchedCards.filter(card => !selectedCards.includes(card));
 
@@ -3172,7 +3177,7 @@ const resolveSearchAndDrawEffect = (effect, source, target, actingPlayerId, play
             additionalEffects: []
         };
     } else {
-        // For local human player, return data for modal selection
+        // For human players (local or remote), return data for modal selection
         return {
             newPlayerStates: playerStates, // Don't change state yet
             additionalEffects: [],
@@ -3244,9 +3249,14 @@ const evaluateCardForAI = (card, aiState, humanState, placedSections) => {
  * For human players: Returns needsCardSelection for UI interaction
  * For AI players: Auto-executes optimal movement
  */
-const resolveMovementEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card, localPlayerId = 'player1') => {
-    // For local human player, return needsCardSelection to trigger UI flow
-    if (actingPlayerId === localPlayerId) {
+const resolveMovementEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card, localPlayerId = 'player1', gameMode = 'local') => {
+    // Determine if this is an AI player
+    // In single-player (gameMode === 'local'), only player2 is AI
+    // In multiplayer, both players are human and need card selection UI
+    const isAI = gameMode === 'local' && actingPlayerId === 'player2';
+
+    // For human players (local or remote), return needsCardSelection to trigger UI flow
+    if (!isAI) {
         return {
             newPlayerStates: playerStates, // State unchanged until movement selected
             additionalEffects: [],
@@ -3264,7 +3274,7 @@ const resolveMovementEffect = (effect, target, actingPlayerId, playerStates, pla
         };
     }
 
-    // For AI players (player2), auto-execute optimal movement
+    // For AI players (single-player player2 only), auto-execute optimal movement
     const opponentPlayerId = actingPlayerId === 'player1' ? 'player2' : 'player1';
 
     // Find best movement opportunity for AI
@@ -4038,7 +4048,7 @@ const processDiscardPhase = (playerState, discardCount, cardsToDiscard = null) =
 // TARGETING LOGIC FUNCTIONS
 // ========================================
 
-const calculateMultiSelectTargets = (multiSelectState, playerState) => {
+const calculateMultiSelectTargets = (multiSelectState, playerState, localPlayerId) => {
     const { phase, sourceLane, card } = multiSelectState;
     let targets = [];
 
@@ -4047,7 +4057,7 @@ const calculateMultiSelectTargets = (multiSelectState, playerState) => {
             // Target all friendly, non-exhausted drones
             Object.values(playerState.dronesOnBoard).flat().forEach(drone => {
                 if (!drone.isExhausted) {
-                    targets.push({ ...drone, owner: 'player1' });
+                    targets.push({ ...drone, owner: localPlayerId });
                 }
             });
         } else if (phase === 'select_destination') {
@@ -4057,7 +4067,7 @@ const calculateMultiSelectTargets = (multiSelectState, playerState) => {
                 const targetLaneIndex = parseInt(laneId.replace('lane', ''), 10);
                 const isAdjacent = Math.abs(sourceLaneIndex - targetLaneIndex) === 1;
                 if (isAdjacent) {
-                    targets.push({ id: laneId, owner: 'player1' });
+                    targets.push({ id: laneId, owner: localPlayerId });
                 }
             });
         }
@@ -4065,7 +4075,7 @@ const calculateMultiSelectTargets = (multiSelectState, playerState) => {
         // Target friendly lanes that have at least one drone
         ['lane1', 'lane2', 'lane3'].forEach(laneId => {
             if (playerState.dronesOnBoard[laneId].length > 0) {
-                targets.push({ id: laneId, owner: 'player1' });
+                targets.push({ id: laneId, owner: localPlayerId });
             }
         });
     } else if (phase === 'select_drones') {
@@ -4073,7 +4083,7 @@ const calculateMultiSelectTargets = (multiSelectState, playerState) => {
         playerState.dronesOnBoard[sourceLane]
             .filter(drone => !drone.isExhausted)
             .forEach(drone => {
-                targets.push({ ...drone, owner: 'player1' });
+                targets.push({ ...drone, owner: localPlayerId });
             });
     } else if (phase === 'select_destination_lane') {
         // Target ADJACENT friendly lanes
@@ -4082,7 +4092,7 @@ const calculateMultiSelectTargets = (multiSelectState, playerState) => {
             const targetLaneIndex = parseInt(laneId.replace('lane', ''), 10);
             const isAdjacent = Math.abs(sourceLaneIndex - targetLaneIndex) === 1;
             if (isAdjacent) {
-                targets.push({ id: laneId, owner: 'player1' });
+                targets.push({ id: laneId, owner: localPlayerId });
             }
         });
     }
@@ -4105,24 +4115,24 @@ const calculateUpgradeTargets = (selectedCard, playerState) => {
     }).filter(Boolean); // Remove nulls
 };
 
-const calculateMultiMoveTargets = (multiSelectState, playerState) => {
+const calculateMultiMoveTargets = (multiSelectState, playerState, localPlayerId) => {
     let targets = [];
     const { phase, sourceLane } = multiSelectState || { phase: 'select_source_lane' };
 
     if (phase === 'select_source_lane') {
         ['lane1', 'lane2', 'lane3'].forEach(laneId => {
             if (playerState.dronesOnBoard[laneId].length > 0) {
-                targets.push({ id: laneId, owner: 'player1' });
+                targets.push({ id: laneId, owner: localPlayerId });
             }
         });
     } else if (phase === 'select_drones') {
         playerState.dronesOnBoard[sourceLane]?.forEach(drone => {
-            targets.push({ ...drone, owner: 'player1' });
+            targets.push({ ...drone, owner: localPlayerId });
         });
     } else if (phase === 'select_destination_lane') {
         ['lane1', 'lane2', 'lane3'].forEach(laneId => {
             if (laneId !== sourceLane) {
-                targets.push({ id: laneId, owner: 'player1' });
+                targets.push({ id: laneId, owner: localPlayerId });
             }
         });
     }
@@ -4130,27 +4140,27 @@ const calculateMultiMoveTargets = (multiSelectState, playerState) => {
     return targets;
 };
 
-const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSelectState, selectedCard, player1, player2) => {
+const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSelectState, selectedCard, player1, player2, localPlayerId) => {
     let validAbilityTargets = [];
     let validCardTargets = [];
 
     if (abilityMode) {
-        validAbilityTargets = getValidTargets('player1', abilityMode.drone, abilityMode.ability, player1, player2);
+        validAbilityTargets = getValidTargets(localPlayerId, abilityMode.drone, abilityMode.ability, player1, player2);
     } else if (shipAbilityMode) {
-        validAbilityTargets = getValidTargets('player1', { id: shipAbilityMode.sectionName }, shipAbilityMode.ability, player1, player2);
+        validAbilityTargets = getValidTargets(localPlayerId, { id: shipAbilityMode.sectionName }, shipAbilityMode.ability, player1, player2);
     } else if (multiSelectState) {
-        validCardTargets = calculateMultiSelectTargets(multiSelectState, player1);
+        validCardTargets = calculateMultiSelectTargets(multiSelectState, player1, localPlayerId);
     } else if (selectedCard) {
         if (selectedCard.type === 'Upgrade') {
             validCardTargets = calculateUpgradeTargets(selectedCard, player1);
         } else if (selectedCard.effect.type === 'MULTI_MOVE') {
-            validCardTargets = calculateMultiMoveTargets(multiSelectState, player1);
+            validCardTargets = calculateMultiMoveTargets(multiSelectState, player1, localPlayerId);
         } else if (selectedCard.effect.type === 'SINGLE_MOVE') {
             // SINGLE_MOVE cards use multiSelectState for targeting
             // If multiSelectState not set yet, return empty (will be set by needsCardSelection flow)
-            validCardTargets = multiSelectState ? calculateMultiSelectTargets(multiSelectState, player1) : [];
+            validCardTargets = multiSelectState ? calculateMultiSelectTargets(multiSelectState, player1, localPlayerId) : [];
         } else {
-            validCardTargets = getValidTargets('player1', null, selectedCard, player1, player2);
+            validCardTargets = getValidTargets(localPlayerId, null, selectedCard, player1, player2);
         }
     }
 
