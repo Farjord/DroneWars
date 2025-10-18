@@ -269,6 +269,16 @@ const getValidTargets = (actingPlayerId, source, definition, player1, player2) =
                   meetsCustomCriteria = false;
                 }
               }
+              if (custom?.includes('MARKED')) {
+                if (!targetDrone.isMarked) {
+                  meetsCustomCriteria = false;
+                }
+              }
+              if (custom?.includes('NOT_MARKED')) {
+                if (targetDrone.isMarked) {
+                  meetsCustomCriteria = false;
+                }
+              }
 
               if (meetsCustomCriteria) {
                 targets.push({ ...targetDrone, lane, owner: playerType });
@@ -286,6 +296,16 @@ const getValidTargets = (actingPlayerId, source, definition, player1, player2) =
               }
               if (custom?.includes('EXHAUSTED')) {
                 if (!targetDrone.isExhausted) {
+                  meetsCustomCriteria = false;
+                }
+              }
+              if (custom?.includes('MARKED')) {
+                if (!targetDrone.isMarked) {
+                  meetsCustomCriteria = false;
+                }
+              }
+              if (custom?.includes('NOT_MARKED')) {
+                if (targetDrone.isMarked) {
                   meetsCustomCriteria = false;
                 }
               }
@@ -1018,6 +1038,7 @@ const executeDeployment = (drone, lane, turn, playerState, opponentState, placed
         currentMaxShields: effectiveStats.maxShields,
         hull: drone.hull,
         isExhausted: false,
+        isMarked: false,
     };
 
     // Update the player state
@@ -1156,6 +1177,7 @@ const executeAiDeployment = (droneToDeploy, targetLane, turn, playerState, oppon
         currentMaxShields: droneToDeploy.shields,
         hull: droneToDeploy.hull,
         isExhausted: false,
+        isMarked: false,
     };
 
     // Create updated player state
@@ -3480,6 +3502,8 @@ const resolveShipAbilityEffect = (effect, sectionName, target, playerStates, pla
             return resolveShipRecallEffect(effect, sectionName, target, playerStates, placedSections, callbacks, playerId);
         case 'DRAW_THEN_DISCARD':
             return resolveUnifiedDrawEffect(effect, shipSource, target, playerId, playerStates, placedSections, callbacks);
+        case 'MARK_DRONE':
+            return resolveMarkDroneEffect(effect, sectionName, target, playerStates, placedSections, callbacks, playerId);
         default:
             console.warn(`Unknown ship ability effect type: ${effect.type}`);
             return { newPlayerStates: playerStates, additionalEffects: [], animationEvents: [] };
@@ -3534,6 +3558,38 @@ const resolveShipRecallEffect = (effect, sectionName, target, playerStates, plac
             additionalEffects: [],
             animationEvents
         };
+    }
+
+    return {
+        newPlayerStates,
+        additionalEffects: [],
+        animationEvents: []
+    };
+};
+
+const resolveMarkDroneEffect = (effect, sectionName, target, playerStates, placedSections, callbacks, playerId) => {
+    const newPlayerStates = {
+        player1: JSON.parse(JSON.stringify(playerStates.player1)),
+        player2: JSON.parse(JSON.stringify(playerStates.player2))
+    };
+
+    // Determine opponent (target will be an enemy drone)
+    const opponentId = playerId === 'player1' ? 'player2' : 'player1';
+
+    // Find the drone in opponent's lanes
+    let droneFound = false;
+    for (const lane in newPlayerStates[opponentId].dronesOnBoard) {
+        const droneIndex = newPlayerStates[opponentId].dronesOnBoard[lane].findIndex(d => d.id === target);
+        if (droneIndex !== -1) {
+            // Mark the drone
+            newPlayerStates[opponentId].dronesOnBoard[lane][droneIndex].isMarked = true;
+            droneFound = true;
+            break;
+        }
+    }
+
+    if (!droneFound) {
+        console.warn('⚠️ [MARK_DRONE] Drone not found:', target);
     }
 
     return {

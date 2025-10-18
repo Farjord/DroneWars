@@ -26,6 +26,36 @@ const shipComponentCollection = [
   },
 
   {
+    id: 'BRIDGE_002',
+    type: 'Bridge',
+    name: 'Tactical Command Bridge',
+    key: 'tacticalBridge',
+    hull: 10, maxHull: 10, shields: 3, allocatedShields: 3,
+    description: 'Advanced command center with targeting capabilities.',
+    thresholds: { damaged: 5, critical: 0 },
+    stats: {
+      healthy: { 'Draw': 5, 'Discard': 3 },
+      damaged: { 'Draw': 5, 'Discard': 2 },
+      critical: { 'Draw': 4, 'Discard': 1 },
+    },
+    middleLaneBonus: { 'Draw': 1, 'Discard': 1 },
+    image: '/DroneWars/img/Bridge.png',
+    ability: {
+      id: 'ABILITY_SHIP_04',
+      name: 'Target Lock',
+      description: 'Mark target enemy drone.',
+      cost: { energy: 2 },
+      targeting: {
+        type: 'DRONE',
+        affinity: 'ENEMY',
+        location: 'ANY_LANE',
+        custom: ['NOT_MARKED']
+      },
+      effect: { type: 'MARK_DRONE' }
+    }
+  },
+
+  {
     id: 'POWERCELL_001',
     type: 'Power Cell',
     name: 'Standard Power Cell',
@@ -79,6 +109,7 @@ const shipComponentCollection = [
 // Legacy object format for backward compatibility with existing code
 const shipSections = {
   bridge: shipComponentCollection.find(c => c.key === 'bridge'),
+  tacticalBridge: shipComponentCollection.find(c => c.key === 'tacticalBridge'),
   powerCell: shipComponentCollection.find(c => c.key === 'powerCell'),
   droneControlHub: shipComponentCollection.find(c => c.key === 'droneControlHub')
 };

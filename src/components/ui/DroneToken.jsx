@@ -8,6 +8,7 @@ import React, { useMemo } from 'react';
 import fullDroneCollection from '../../data/droneData.js';
 import { useGameData } from '../../hooks/useGameData.js';
 import InterceptedBadge from './InterceptedBadge.jsx';
+import TargetLockIcon from './TargetLockIcon.jsx';
 
 /**
  * STAT HEXAGON COMPONENT
@@ -126,15 +127,21 @@ const DroneToken = ({
   const teleportingEffect = drone.isTeleporting ? 'opacity-0 pointer-events-none' : '';
 
   return (
-    <div ref={el => droneRefs.current[drone.id] = el}
+    <div
+      ref={el => droneRefs.current[drone.id] = el}
       onClick={(e) => onClick && onClick(e, drone, isPlayer)}
-      onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}
-      className={`relative transition-all duration-200 ${exhaustEffect} ${hitEffect} ${selectedEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${enableFloatAnimation ? 'drone-float' : ''}`}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      className="relative"
       style={{
         width: 'clamp(85px, 4.427vw, 115px)',
         height: 'clamp(115px, 5.99vw, 156px)'
       }}
     >
+      {/* Animation Container - moves with all visual effects */}
+      <div className={`w-full h-full transition-all duration-200 ${hitEffect} ${selectedEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${enableFloatAnimation ? 'drone-float' : ''}`}>
+        {/* Grayscale Container - only applies exhausted effect */}
+        <div className={`w-full h-full relative ${exhaustEffect}`}>
       {/* Main Token Body */}
       <div className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden ${isPotentialGuardian ? 'guardian-glow' : ''}`}>
         <img src={drone.image} alt={drone.name} className="absolute inset-0 w-full h-full object-cover"/>
@@ -185,6 +192,32 @@ const DroneToken = ({
           timestamp={interceptedBadge.timestamp}
         />
       )}
+        </div>
+        {/* End Grayscale Container */}
+
+        {/* Marked Indicator - Inside animation container, outside grayscale container */}
+        {drone.isMarked && (
+          <div
+            className="absolute top-5 left-[-14px] z-30 pointer-events-none"
+            style={{
+              animation: 'targetGlow 2s ease-in-out infinite',
+            }}
+          >
+            <TargetLockIcon size={24} />
+            <style>{`
+              @keyframes targetGlow {
+                0%, 100% {
+                  filter: brightness(1) drop-shadow(0 0 2px rgba(239, 68, 68, 0.8));
+                }
+                50% {
+                  filter: brightness(1.5) drop-shadow(0 0 8px rgba(239, 68, 68, 1));
+                }
+              }
+            `}</style>
+          </div>
+        )}
+      </div>
+      {/* End Animation Container */}
     </div>
   );
 };
