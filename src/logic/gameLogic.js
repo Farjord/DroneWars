@@ -2192,7 +2192,7 @@ const resolveSingleEffect = (effect, target, actingPlayerId, playerStates, place
         case 'CREATE_TOKENS':
             return resolveCreateTokensEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card);
         case 'OVERFLOW_DAMAGE':
-            return resolveOverflowDamageEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks);
+            return resolveOverflowDamageEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card);
         case 'SPLASH_DAMAGE':
             return resolveSplashDamageEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks);
         default:
@@ -3496,7 +3496,7 @@ const resolveCreateTokensEffect = (effect, target, actingPlayerId, playerStates,
  * @param {Object} callbacks - Logging and animation callbacks
  * @returns {Object} Updated states and animation events
  */
-const resolveOverflowDamageEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks) => {
+const resolveOverflowDamageEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card) => {
     const newPlayerStates = {
         player1: JSON.parse(JSON.stringify(playerStates.player1)),
         player2: JSON.parse(JSON.stringify(playerStates.player2))
@@ -3602,19 +3602,318 @@ const resolveOverflowDamageEffect = (effect, target, actingPlayerId, playerState
         }
     }
 
-    // Add overflow projectile animation event (includes damage details for callback)
+    // Build animation sequence with precise timing
+    const sequenceAnimations = [];
+    const PROJECTILE_DURATION = 1200;
+
+    // Calculate impact timing based on overflow status (matches OverflowProjectile.jsx logic)
+    // Component uses: phaseDuration = hasOverflow ? duration / 3 : duration / 2
+    const hasOverflowDamage = overflowDamage > 0;
+    const DRONE_IMPACT_TIME = hasOverflowDamage
+        ? PROJECTILE_DURATION / 3  // 400ms - projectile travels faster with overflow
+        : PROJECTILE_DURATION / 2; // 600ms - projectile travels slower without overflow
+    const SHIP_IMPACT_TIME = PROJECTILE_DURATION; // 1200ms - only relevant if overflow occurs
+
+    // DEBUG: Log timing values
+    debugLog('ANIMATIONS', '⏱️ [OVERFLOW TIMING] Calculated timing values:', {
+        overflowDamage,
+        hasOverflowDamage,
+        DRONE_IMPACT_TIME,
+        SHIP_IMPACT_TIME,
+        droneDestroyed,
+        shieldDamage,
+        hullDamage
+    });
+
+    // Check if this is a Railgun card - use different animation
+    const isRailgunCard = card && card.id === 'CARD031';
+
+    if (isRailgunCard) {
+        // RAILGUN ANIMATION SEQUENCE
+        const TURRET_SHOOT_TIME = 1600; // Turret shoots at 1600ms
+
+        // Calculate rotation angle (will be calculated in useAnimationSetup, but pass placeholder)
+        // Actual rotation calculated client-side based on DOM positions
+
+        // Animation 1: Railgun turret (deploy → charge → shoot → retract)
+        sequenceAnimations.push({
+            type: 'RAILGUN_TURRET',
+            startAt: 0,
+            duration: 2700,
+            payload: {
+                sourcePlayer: actingPlayerId,
+                sourceLane: targetLane,
+                targetId: target.id,
+                targetPlayer: opponentId,
+                targetLane: targetLane
+            }
+        });
+
+        // Animation 2: Railgun beam (instant when turret shoots)
+        // Beam positions will be calculated client-side based on DOM elements
+        sequenceAnimations.push({
+            type: 'RAILGUN_BEAM',
+            startAt: TURRET_SHOOT_TIME,
+            duration: 1000,
+            payload: {
+                sourcePlayer: actingPlayerId,
+                sourceLane: targetLane,
+                targetId: target.id,
+                targetPlayer: opponentId,
+                targetLane: targetLane,
+                hasOverflow: overflowDamage > 0,
+                attackValue: 8
+            }
+        });
+
+        // Damage effects trigger when beam appears
+        const DAMAGE_TIME = TURRET_SHOOT_TIME;
+
+        // Animation 3: Drone damage (when beam hits)
+        if (!isPiercing && shieldDamage > 0) {
+            debugLog('ANIMATIONS', `⏱️ [RAILGUN] Adding SHIELD_DAMAGE at: ${DAMAGE_TIME}ms`);
+            sequenceAnimations.push({
+                type: 'SHIELD_DAMAGE',
+                startAt: DAMAGE_TIME,
+                duration: 2000,
+                payload: {
+                    targetId: target.id,
+                    targetPlayer: opponentId,
+                    targetLane: targetLane,
+                    targetType: 'drone'
+                }
+            });
+        }
+
+        if (droneDestroyed) {
+            debugLog('ANIMATIONS', `⏱️ [RAILGUN] Adding DRONE_DESTROYED at: ${DAMAGE_TIME}ms`);
+            sequenceAnimations.push({
+                type: 'DRONE_DESTROYED',
+                startAt: DAMAGE_TIME,
+                duration: 2000,
+                payload: {
+                    targetId: target.id,
+                    targetPlayer: opponentId,
+                    targetLane: targetLane,
+                    targetType: 'drone'
+                }
+            });
+        } else if (hullDamage > 0) {
+            debugLog('ANIMATIONS', `⏱️ [RAILGUN] Adding HULL_DAMAGE at: ${DAMAGE_TIME}ms`);
+            sequenceAnimations.push({
+                type: 'HULL_DAMAGE',
+                startAt: DAMAGE_TIME,
+                duration: 2000,
+                payload: {
+                    targetId: target.id,
+                    targetPlayer: opponentId,
+                    targetLane: targetLane,
+                    targetType: 'drone'
+                }
+            });
+        }
+
+        // Ship section damage (if overflow, same time as beam hits)
+        if (overflowDamage > 0) {
+            const laneIndex = targetLane === 'lane1' ? 0 : targetLane === 'lane2' ? 1 : 2;
+            const sectionArray = placedSections[opponentId];
+            const sectionKey = sectionArray[laneIndex];
+
+            debugLog('ANIMATIONS', `⏱️ [RAILGUN] Overflow damage detected:`, {
+                overflowDamage,
+                targetLane,
+                laneIndex,
+                opponentId,
+                sectionKey,
+                sectionArray
+            });
+
+            if (sectionKey && newPlayerStates[opponentId].shipSections[sectionKey]) {
+                const shipSection = newPlayerStates[opponentId].shipSections[sectionKey];
+                const sectionDestroyed = shipSection.hull <= 0;
+
+                if (!isPiercing && shipSection.allocatedShields > 0) {
+                    debugLog('ANIMATIONS', `⏱️ [RAILGUN] Adding SHIELD_DAMAGE (section) at: ${DAMAGE_TIME}ms for ${sectionKey}`);
+                    sequenceAnimations.push({
+                        type: 'SHIELD_DAMAGE',
+                        startAt: DAMAGE_TIME,
+                        duration: 2000,
+                        payload: {
+                            targetId: sectionKey,
+                            targetPlayer: opponentId,
+                            targetLane: targetLane,
+                            targetType: 'section'
+                        }
+                    });
+                }
+
+                if (sectionDestroyed) {
+                    debugLog('ANIMATIONS', `⏱️ [RAILGUN] Adding SECTION_DESTROYED at: ${DAMAGE_TIME}ms for ${sectionKey}`);
+                    sequenceAnimations.push({
+                        type: 'SECTION_DESTROYED',
+                        startAt: DAMAGE_TIME,
+                        duration: 2000,
+                        payload: {
+                            targetId: sectionKey,
+                            targetPlayer: opponentId,
+                            targetLane: targetLane,
+                            targetType: 'section'
+                        }
+                    });
+                } else {
+                    debugLog('ANIMATIONS', `⏱️ [RAILGUN] Adding SECTION_DAMAGED at: ${DAMAGE_TIME}ms for ${sectionKey}`);
+                    sequenceAnimations.push({
+                        type: 'SECTION_DAMAGED',
+                        startAt: DAMAGE_TIME,
+                        duration: 2000,
+                        payload: {
+                            targetId: sectionKey,
+                            targetPlayer: opponentId,
+                            targetLane: targetLane,
+                            targetType: 'section'
+                        }
+                    });
+                }
+            } else {
+                debugLog('ANIMATIONS', `⚠️ [RAILGUN] Ship section not found for overflow damage:`, {
+                    sectionKey,
+                    opponentId,
+                    targetLane,
+                    sectionArray,
+                    hasShipSection: !!newPlayerStates[opponentId].shipSections[sectionKey]
+                });
+            }
+        }
+    } else {
+        // OVERFLOW PROJECTILE ANIMATION SEQUENCE (existing animation)
+        // Animation 1: Overflow projectile (visual motion)
+        sequenceAnimations.push({
+            type: 'OVERFLOW_PROJECTILE',
+            startAt: 0,
+            duration: PROJECTILE_DURATION,
+            payload: {
+                sourcePlayer: actingPlayerId,
+                targetId: target.id,
+                targetLane: targetLane,
+                targetPlayer: opponentId,
+                hasOverflow: overflowDamage > 0,
+                isPiercing: isPiercing
+            }
+        });
+
+    // Animation 2: Drone damage effects (when projectile hits drone)
+    if (!isPiercing && shieldDamage > 0) {
+        debugLog('ANIMATIONS', `⏱️ [OVERFLOW TIMING] Adding SHIELD_DAMAGE at: ${DRONE_IMPACT_TIME}ms`);
+        sequenceAnimations.push({
+            type: 'SHIELD_DAMAGE',
+            startAt: DRONE_IMPACT_TIME,
+            duration: 2000,
+            payload: {
+                targetId: target.id,
+                targetPlayer: opponentId,
+                targetLane: targetLane,
+                targetType: 'drone'
+            }
+        });
+    }
+
+    if (droneDestroyed) {
+        debugLog('ANIMATIONS', `⏱️ [OVERFLOW TIMING] Adding DRONE_DESTROYED at: ${DRONE_IMPACT_TIME}ms`);
+        sequenceAnimations.push({
+            type: 'DRONE_DESTROYED',
+            startAt: DRONE_IMPACT_TIME,
+            duration: 2000,
+            payload: {
+                targetId: target.id,
+                targetPlayer: opponentId,
+                targetLane: targetLane,
+                targetType: 'drone'
+            }
+        });
+    } else if (hullDamage > 0) {
+        debugLog('ANIMATIONS', `⏱️ [OVERFLOW TIMING] Adding HULL_DAMAGE at: ${DRONE_IMPACT_TIME}ms`);
+        sequenceAnimations.push({
+            type: 'HULL_DAMAGE',
+            startAt: DRONE_IMPACT_TIME,
+            duration: 2000,
+            payload: {
+                targetId: target.id,
+                targetPlayer: opponentId,
+                targetLane: targetLane,
+                targetType: 'drone'
+            }
+        });
+    }
+
+    // Animation 3: Ship section damage effects (if overflow, when projectile hits ship at T+1200ms)
+    if (overflowDamage > 0) {
+        const laneIndex = targetLane === 'lane1' ? 0 : targetLane === 'lane2' ? 1 : 2;
+        const sectionArray = placedSections[opponentId];
+        const sectionKey = sectionArray[laneIndex];
+
+        if (sectionKey && newPlayerStates[opponentId].shipSections[sectionKey]) {
+            const shipSection = newPlayerStates[opponentId].shipSections[sectionKey];
+            const sectionDestroyed = shipSection.hull <= 0;
+
+            // Shield damage for ship section (if non-piercing and shields were hit)
+            if (!isPiercing && shipSection.allocatedShields > 0) {
+                sequenceAnimations.push({
+                    type: 'SHIELD_DAMAGE',
+                    startAt: SHIP_IMPACT_TIME,
+                    duration: 2000,
+                    payload: {
+                        targetId: sectionKey,
+                        targetPlayer: opponentId,
+                        targetLane: targetLane,
+                        targetType: 'section'
+                    }
+                });
+            }
+
+            // Destruction or damage animation for ship section
+            if (sectionDestroyed) {
+                sequenceAnimations.push({
+                    type: 'SECTION_DESTROYED',
+                    startAt: SHIP_IMPACT_TIME,
+                    duration: 2000,
+                    payload: {
+                        targetId: sectionKey,
+                        targetPlayer: opponentId,
+                        targetLane: targetLane,
+                        targetType: 'section'
+                    }
+                });
+            } else {
+                sequenceAnimations.push({
+                    type: 'SECTION_DAMAGED',
+                    startAt: SHIP_IMPACT_TIME,
+                    duration: 2000,
+                    payload: {
+                        targetId: sectionKey,
+                        targetPlayer: opponentId,
+                        targetLane: targetLane,
+                        targetType: 'section'
+                    }
+                });
+            }
+        }
+    }
+    } // End of OVERFLOW/RAILGUN conditional
+
+    // DEBUG: Log what we're about to push
+    debugLog('ANIMATIONS', '⏱️ [OVERFLOW TIMING] Built sequence array:', {
+        sequenceAnimationsLength: sequenceAnimations.length,
+        sequenceAnimations: sequenceAnimations.map(a => ({
+            type: a.type,
+            startAt: a.startAt,
+            duration: a.duration
+        }))
+    });
+
+    // Push the complete animation sequence
     animationEvents.push({
-        type: 'OVERFLOW_PROJECTILE',
-        sourcePlayer: actingPlayerId,
-        targetId: target.id,
-        targetLane: targetLane,
-        targetPlayer: opponentId,
-        totalDamage: totalDamage,
-        overflowDamage: overflowDamage,
-        droneDestroyed: droneDestroyed,
-        isPiercing: isPiercing,
-        shieldDamage: shieldDamage,
-        hullDamage: hullDamage,
+        type: 'ANIMATION_SEQUENCE',
+        animations: sequenceAnimations,
         timestamp: Date.now()
     });
 

@@ -11,6 +11,13 @@ class AnimationManager {
     this.visualHandlers = new Map();
 
     this.animations = {
+      // Animation sequence meta-type
+      ANIMATION_SEQUENCE: {
+        duration: 0,  // Duration determined by child animations
+        type: 'ANIMATION_SEQUENCE',
+        config: {}
+      },
+
       // Attack animations
       DRONE_ATTACK_START: {
         duration: 500,  // Laser effect duration
@@ -35,7 +42,7 @@ class AnimationManager {
         config: { }
       },
       CARD_VISUAL: {
-        duration: 5000,  // Very long for testing visibility
+        duration: 2000,  // 2 second card visual effect
         type: 'CARD_VISUAL_EFFECT',
         config: { }
       },
@@ -89,8 +96,8 @@ class AnimationManager {
       },
       SECTION_DAMAGED: {
         duration: 2000,
-        type: 'SHAKE_EFFECT',
-        config: { intensity: 10 }
+        type: 'EXPLOSION_EFFECT',
+        config: { size: 'small' }
       },
       HEAL_EFFECT: {
         duration: 1400,
@@ -106,6 +113,17 @@ class AnimationManager {
       SPLASH_EFFECT: {
         duration: 1000,
         type: 'SPLASH_EFFECT',
+        config: {}
+      },
+      // Railgun animations
+      RAILGUN_TURRET: {
+        duration: 2700,  // Full turret cycle (deploy → build → charge → shoot → retract)
+        type: 'RAILGUN_TURRET',
+        config: {}
+      },
+      RAILGUN_BEAM: {
+        duration: 1000,  // Beam fade duration
+        type: 'RAILGUN_BEAM',
         config: {}
       }
     };
@@ -148,8 +166,63 @@ class AnimationManager {
       while (i < effects.length) {
         const effect = effects[i];
 
+        // Check if this is an animation sequence with precise timing
+        if (effect.animationName === 'ANIMATION_SEQUENCE') {
+          // DEBUG: Log what we received
+          debugLog('ANIMATIONS', '⏱️ [SEQUENCE DEBUG] Received effect object:', {
+            hasPayload: !!effect.payload,
+            payloadKeys: effect.payload ? Object.keys(effect.payload) : [],
+            hasAnimations: !!effect.payload?.animations,
+            animationsLength: effect.payload?.animations?.length || 0,
+            fullPayload: effect.payload
+          });
+
+          debugLog('ANIMATIONS', '🎬 [SEQUENCE] Processing animation sequence', {
+            animationCount: effect.payload?.animations?.length || 0,
+            animations: effect.payload?.animations?.map(a => ({ type: a.type, startAt: a.startAt })) || []
+          });
+
+          const sequenceAnimations = effect.payload?.animations || [];
+
+          // Execute all animations in the sequence with their specified timing
+          await Promise.all(sequenceAnimations.map(async (seqAnim) => {
+            return new Promise(resolve => {
+              // Schedule animation to start at its specified time
+              setTimeout(async () => {
+                const animDef = this.animations[seqAnim.type];
+                if (!animDef) {
+                  console.warn(`❌ [SEQUENCE] Unknown animation type: ${seqAnim.type}`);
+                  resolve();
+                  return;
+                }
+
+                const handler = this.visualHandlers.get(animDef.type);
+                if (!handler) {
+                  console.warn(`❌ [SEQUENCE] No visual handler for: ${animDef.type}`);
+                  resolve();
+                  return;
+                }
+
+                debugLog('ANIMATIONS', `🎬 [SEQUENCE] Starting animation at T+${seqAnim.startAt}ms:`, seqAnim.type);
+
+                // Execute the animation
+                handler({
+                  ...seqAnim.payload,
+                  config: animDef.config,
+                  onComplete: resolve
+                });
+
+                // Safety timeout in case onComplete never fires
+                setTimeout(resolve, seqAnim.duration || animDef.duration);
+              }, seqAnim.startAt || 0);
+            });
+          }));
+
+          debugLog('ANIMATIONS', '🎬 [SEQUENCE] All sequence animations completed');
+          i++;
+        }
         // Check if this is a damage effect that should be grouped
-        if (damageEffects.includes(effect.animationName)) {
+        else if (damageEffects.includes(effect.animationName)) {
           // Collect all consecutive damage effects
           const damageGroup = [];
           while (i < effects.length && damageEffects.includes(effects[i].animationName)) {

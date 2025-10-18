@@ -83,6 +83,8 @@ import LaserEffect from './components/animations/LaserEffect.jsx';
 import TeleportEffect from './components/animations/TeleportEffect.jsx';
 import OverflowProjectile from './components/animations/OverflowProjectile.jsx';
 import SplashEffect from './components/animations/SplashEffect.jsx';
+import RailgunTurret from './components/animations/RailgunTurret.jsx';
+import RailgunBeam from './components/animations/RailgunBeam.jsx';
 // ========================================
 // SECTION 2: MAIN COMPONENT DECLARATION
 // ========================================
@@ -152,6 +154,8 @@ const App = () => {
   const [teleportEffects, setTeleportEffects] = useState([]);
   const [overflowProjectiles, setOverflowProjectiles] = useState([]);
   const [splashEffects, setSplashEffects] = useState([]);
+  const [railgunTurrets, setRailgunTurrets] = useState([]);
+  const [railgunBeams, setRailgunBeams] = useState([]);
   const [passNotifications, setPassNotifications] = useState([]);
   const [animationBlocking, setAnimationBlocking] = useState(false);
   const [modalContent, setModalContent] = useState(null);
@@ -278,7 +282,9 @@ const App = () => {
   setTeleportEffects,
   setPassNotifications,
   setOverflowProjectiles,
-  setSplashEffects
+  setSplashEffects,
+  setRailgunTurrets,
+  setRailgunBeams
 );
   // Refs for async operations (defined after gameState destructuring)
 
@@ -2736,14 +2742,22 @@ const App = () => {
     } else if (card.name === 'System Sabotage') {
         debugLog('CARD_PLAY', `✅ System Sabotage card - getting targets`, { card: card.name });
         // TODO: TECHNICAL DEBT - getValidTargets gets valid targets for special cards - required for card targeting UI
-        const validTargets = gameEngine.getValidTargets(getLocalPlayerId(), null, card, localPlayerState, opponentPlayerState);
+        // Ensure player states are always passed in correct order (player1, player2)
+        const localPlayerId = getLocalPlayerId();
+        const player1State = localPlayerId === 'player1' ? localPlayerState : opponentPlayerState;
+        const player2State = localPlayerId === 'player1' ? opponentPlayerState : localPlayerState;
+        const validTargets = gameEngine.getValidTargets(localPlayerId, null, card, player1State, player2State);
         debugLog('CARD_PLAY', `✅ System Sabotage targets found: ${validTargets.length}`, { targets: validTargets });
         cancelAllActions(); // Cancel all other actions before starting System Sabotage
         setDestroyUpgradeModal({ card, targets: validTargets, opponentState: opponentPlayerState });
     } else if (card.type === 'Upgrade') {
         debugLog('CARD_PLAY', `✅ Upgrade card - getting targets: ${card.name}`);
         // TODO: TECHNICAL DEBT - getValidTargets gets valid targets for upgrade cards - required for upgrade targeting UI
-        const validTargets = gameEngine.getValidTargets(getLocalPlayerId(), null, card, localPlayerState, opponentPlayerState);
+        // Ensure player states are always passed in correct order (player1, player2)
+        const localPlayerId = getLocalPlayerId();
+        const player1State = localPlayerId === 'player1' ? localPlayerState : opponentPlayerState;
+        const player2State = localPlayerId === 'player1' ? opponentPlayerState : localPlayerState;
+        const validTargets = gameEngine.getValidTargets(localPlayerId, null, card, player1State, player2State);
         debugLog('CARD_PLAY', `✅ Upgrade targets found: ${validTargets.length}`, { targets: validTargets });
         if (validTargets.length > 0) {
             cancelAllActions(); // Cancel all other actions before starting upgrade selection
@@ -3145,6 +3159,34 @@ const App = () => {
         centerPos={splash.centerPos}
         duration={splash.duration}
         onComplete={splash.onComplete}
+      />
+    ))}
+    {railgunTurrets.map(turret => (
+      <div
+        key={turret.id}
+        style={{
+          position: 'fixed',
+          left: turret.position.x,
+          top: turret.position.y,
+          transform: 'translate(-50%, -50%)',
+          pointerEvents: 'none',
+          zIndex: 9999
+        }}
+      >
+        <RailgunTurret
+          rotation={turret.rotation}
+          onComplete={turret.onComplete}
+        />
+      </div>
+    ))}
+    {railgunBeams.map(beam => (
+      <RailgunBeam
+        key={beam.id}
+        startPos={beam.startPos}
+        endPos={beam.endPos}
+        attackValue={beam.attackValue}
+        duration={beam.duration}
+        onComplete={beam.onComplete}
       />
     ))}
     {animationBlocking && (

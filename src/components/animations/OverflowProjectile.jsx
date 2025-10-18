@@ -5,7 +5,6 @@
 // Shows energy ball traveling from source → drone → ship section (if overflow)
 
 import React, { useState, useEffect } from 'react';
-import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * OVERFLOW PROJECTILE COMPONENT
@@ -17,7 +16,6 @@ import { debugLog } from '../../utils/debugLogger.js';
  * @param {boolean} hasOverflow - Whether overflow damage occurred
  * @param {boolean} isPiercing - Whether damage is piercing (affects color)
  * @param {number} duration - Total duration in milliseconds (default: 1200)
- * @param {Function} onDroneImpact - Callback when projectile hits drone
  * @param {Function} onComplete - Callback when animation completes
  */
 const OverflowProjectile = ({
@@ -27,7 +25,6 @@ const OverflowProjectile = ({
   hasOverflow = false,
   isPiercing = false,
   duration = 1200,
-  onDroneImpact,
   onComplete
 }) => {
   const [phase, setPhase] = useState('travel-to-drone'); // 'travel-to-drone' | 'impact-drone' | 'travel-to-ship' | 'complete'
@@ -40,15 +37,6 @@ const OverflowProjectile = ({
     const travelTimer1 = setTimeout(() => {
       setPosition(dronePos);
       setPhase('impact-drone');
-
-      // Trigger damage animations on impact
-      debugLog('ANIMATIONS', '🎯 [OVERFLOW] Projectile hit drone, triggering onDroneImpact callback', {
-        hasCallback: !!onDroneImpact,
-        hasOverflow,
-        isPiercing
-      });
-
-      onDroneImpact?.();
     }, phaseDuration);
 
     // Phase 2: Impact at drone (brief pause)
@@ -80,7 +68,7 @@ const OverflowProjectile = ({
       if (travelTimer2) clearTimeout(travelTimer2);
       clearTimeout(completeTimer);
     };
-  }, [startPos, dronePos, shipPos, hasOverflow, duration, onDroneImpact, onComplete]);
+  }, [startPos, dronePos, shipPos, hasOverflow, duration, onComplete]);
 
   // Color based on piercing property
   const color = isPiercing ? 'cyan' : 'orange';

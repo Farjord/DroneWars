@@ -4,7 +4,7 @@ import FlashEffect from '../components/animations/FlashEffect.jsx';
 import CardVisualEffect from '../components/animations/CardVisualEffect.jsx';
 import { debugLog } from '../utils/debugLogger.js';
 
-export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setOverflowProjectiles, setSplashEffects) {
+export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setOverflowProjectiles, setSplashEffects, setRailgunTurrets, setRailgunBeams) {
   useEffect(() => {
     const localPlayerState = getLocalPlayerState();
     const opponentPlayerState = getOpponentPlayerState();
@@ -478,17 +478,15 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     });
 
     animationManager.registerVisualHandler('OVERFLOW_PROJECTILE', (payload) => {
-      const { sourcePlayer, targetId, targetLane, targetPlayer, overflowDamage, droneDestroyed, isPiercing, shieldDamage, hullDamage, onComplete } = payload;
+      const { sourcePlayer, targetId, targetLane, targetPlayer, hasOverflow, isPiercing, onComplete } = payload;
 
-      debugLog('ANIMATIONS', '⚡ [OVERFLOW DEBUG] OVERFLOW_PROJECTILE handler called:', {
+      debugLog('ANIMATIONS', '⚡ [OVERFLOW] OVERFLOW_PROJECTILE handler called:', {
         sourcePlayer,
         targetId,
         targetLane,
         targetPlayer,
-        overflowDamage,
-        droneDestroyed,
-        shieldDamage,
-        hullDamage
+        hasOverflow,
+        isPiercing
       });
 
       // Calculate source position based on attacker's perspective
@@ -520,93 +518,39 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
 
       // Get ship section position (if overflow occurred)
       let shipPos = null;
-      const hasOverflow = droneDestroyed && overflowDamage > 0;
 
       if (hasOverflow) {
-        // Find which ship section is in this lane
         const gameState = gameStateManager.getState();
         const localPlayerId = gameStateManager.getLocalPlayerId();
-
-        debugLog('ANIMATIONS', '⚡ [OVERFLOW] Game state inspection:', {
-          targetPlayer,
-          targetLane,
-          localPlayerId,
-          'player1.placedSections': gameState.placedSections,
-          'player2.opponentPlacedSections': gameState.opponentPlacedSections,
-          'player1.shipSections': gameState.player1?.shipSections,
-          'player2.shipSections': gameState.player2?.shipSections
-        });
 
         // Use perspective-relative lookup: local vs opponent
         const placedSections = targetPlayer === localPlayerId
           ? gameState.placedSections
           : gameState.opponentPlacedSections;
 
-        debugLog('ANIMATIONS', '⚡ [OVERFLOW] Selected placedSections:', {
-          targetPlayer,
-          placedSections,
-          isArray: Array.isArray(placedSections),
-          length: placedSections?.length
-        });
-
         // Convert lane name to array index (lane1 = 0, lane2 = 1, lane3 = 2)
         const laneIndex = parseInt(targetLane.replace('lane', '')) - 1;
         const sectionKey = placedSections?.[laneIndex];
 
-        if (!sectionKey) {
-          console.warn('⚠️ [OVERFLOW DEBUG] No ship section at lane index:', {
-            targetLane,
-            laneIndex,
-            placedSections
-          });
-        } else {
-          debugLog('ANIMATIONS', '⚡ [OVERFLOW] Found section key in lane:', {
-            targetLane,
-            laneIndex,
-            sectionKey
-          });
-
-          // Get the full section object from shipSections (use perspective-relative lookup)
-          const playerState = targetPlayer === localPlayerId
-            ? gameState[localPlayerId]
-            : gameState[localPlayerId === 'player1' ? 'player2' : 'player1'];
-          const sectionData = playerState?.shipSections?.[sectionKey];
-
-          if (!sectionData) {
-            console.warn('⚠️ [OVERFLOW DEBUG] Section data not found in shipSections:', {
-              sectionKey,
-              availableKeys: playerState?.shipSections ? Object.keys(playerState.shipSections) : []
-            });
-          } else {
-            debugLog('ANIMATIONS', '⚡ [OVERFLOW] Found section data:', {
-              sectionKey,
-              sectionType: sectionData.type
-            });
-
-            const sectionEl = getElementFromLogicalPosition(targetPlayer, targetLane, sectionKey, 'section');
-
-            if (!sectionEl) {
-              console.warn('⚠️ [OVERFLOW DEBUG] Ship section DOM element not found:', {
-                sectionType: sectionData.type,
-                targetPlayer,
-                targetLane
-              });
-            } else {
-              shipPos = getElementCenter(sectionEl, gameAreaRef.current);
-
-              if (!shipPos) {
-                console.warn('⚠️ [OVERFLOW DEBUG] getElementCenter returned null:', {
-                  hasGameAreaRef: !!gameAreaRef.current
-                });
-              } else {
-                debugLog('ANIMATIONS', '✅ [OVERFLOW] Successfully got ship position:', shipPos);
-              }
-            }
+        if (sectionKey) {
+          const sectionEl = getElementFromLogicalPosition(targetPlayer, targetLane, sectionKey, 'section');
+          if (sectionEl) {
+            shipPos = getElementCenter(sectionEl, gameAreaRef.current);
+            debugLog('ANIMATIONS', '✅ [OVERFLOW] Got ship position for overflow:', { sectionKey, shipPos });
           }
         }
       }
 
       const projectileId = `overflow-${targetId}-${Date.now()}`;
+
+      // DEBUG: Log projectile timing calculation
+      const calculatedPhaseDuration = hasOverflow ? 1200 / 3 : 1200 / 2;
+      debugLog('ANIMATIONS', '⏱️ [OVERFLOW TIMING] Creating projectile with:', {
+        hasOverflow,
+        duration: 1200,
+        calculatedPhaseDuration,
+        expectedImpactTime: calculatedPhaseDuration
+      });
 
       setOverflowProjectiles(prev => [...prev, {
         id: projectileId,
@@ -616,72 +560,6 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         hasOverflow: hasOverflow,
         isPiercing: isPiercing,
         duration: 1200,
-        onDroneImpact: () => {
-          debugLog('ANIMATIONS', '🎯 [OVERFLOW] onDroneImpact callback fired!', {
-            droneDestroyed,
-            isPiercing,
-            shieldDamage,
-            hullDamage,
-            targetId,
-            targetPlayer
-          });
-
-          try {
-            // Trigger damage animations when projectile hits drone
-            const damageAnimations = [];
-
-            // Shield damage animation (if non-piercing and shields were hit)
-            if (!isPiercing && shieldDamage > 0) {
-              damageAnimations.push({
-                animationName: 'SHIELD_DAMAGE',
-                payload: {
-                  targetId: targetId,
-                  targetPlayer: targetPlayer,
-                  targetLane: targetLane,
-                  targetType: 'drone'
-                }
-              });
-            }
-
-            // Destruction or hull damage animation
-            if (droneDestroyed) {
-              damageAnimations.push({
-                animationName: 'DRONE_DESTROYED',
-                payload: {
-                  targetId: targetId,
-                  targetPlayer: targetPlayer,
-                  targetLane: targetLane,
-                  targetType: 'drone'
-                }
-              });
-            } else if (hullDamage > 0) {
-              damageAnimations.push({
-                animationName: 'HULL_DAMAGE',
-                payload: {
-                  targetId: targetId,
-                  targetPlayer: targetPlayer,
-                  targetLane: targetLane,
-                  targetType: 'drone'
-                }
-              });
-            }
-
-            debugLog('ANIMATIONS', '🎯 [OVERFLOW] Built damage animations array', {
-              count: damageAnimations.length,
-              animations: damageAnimations.map(a => a.animationName)
-            });
-
-            // Execute damage animations
-            if (damageAnimations.length > 0) {
-              debugLog('ANIMATIONS', '🎯 [OVERFLOW] Calling animationManager.executeAnimations()');
-              animationManager.executeAnimations(damageAnimations, 'OVERFLOW_IMPACT');
-            } else {
-              debugLog('ANIMATIONS', '🎯 [OVERFLOW] No damage animations to execute');
-            }
-          } catch (error) {
-            console.error('❌ [OVERFLOW] Error in onDroneImpact callback:', error);
-          }
-        },
         onComplete: () => {
           setOverflowProjectiles(prev => prev.filter(p => p.id !== projectileId));
           onComplete?.();
@@ -720,6 +598,170 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       }]);
     });
 
+    animationManager.registerVisualHandler('RAILGUN_TURRET', (payload) => {
+      const { sourcePlayer, sourceLane, targetId, targetPlayer, targetLane, onComplete } = payload;
+
+      debugLog('ANIMATIONS', '🔫 [RAILGUN] RAILGUN_TURRET handler called:', {
+        sourcePlayer,
+        sourceLane,
+        targetPlayer,
+        targetLane
+      });
+
+      // Get ship section position in the source lane
+      const gameState = gameStateManager.getState();
+      const localPlayerId = gameStateManager.getLocalPlayerId();
+      const placedSections = sourcePlayer === localPlayerId
+        ? gameState.placedSections
+        : gameState.opponentPlacedSections;
+
+      const laneIndex = parseInt(sourceLane.replace('lane', '')) - 1;
+      const sectionKey = placedSections?.[laneIndex];
+
+      if (!sectionKey) {
+        onComplete?.();
+        return;
+      }
+
+      const sectionEl = getElementFromLogicalPosition(sourcePlayer, sourceLane, sectionKey, 'section');
+      if (!sectionEl) {
+        onComplete?.();
+        return;
+      }
+
+      const sectionRect = sectionEl.getBoundingClientRect();
+      const turretPos = {
+        x: sectionRect.left + sectionRect.width / 2,
+        y: sectionRect.top
+      };
+
+      // Calculate rotation angle towards target drone
+      let rotation = -90; // Default: pointing up
+
+      // Get target drone position to calculate angle
+      const droneEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, 'drone');
+      if (droneEl) {
+        const droneCenter = getElementCenter(droneEl, gameAreaRef.current);
+        const dx = droneCenter.x - turretPos.x;
+        const dy = droneCenter.y - turretPos.y;
+        // atan2 gives angle from east, subtract 90 to adjust for turret pointing up by default
+        rotation = Math.atan2(dy, dx) * (180 / Math.PI) - 90;
+
+        debugLog('ANIMATIONS', '🔫 [RAILGUN] Calculated turret rotation:', {
+          turretPos,
+          droneCenter,
+          rotation
+        });
+      }
+
+      const turretId = `railgun-turret-${Date.now()}`;
+
+      setRailgunTurrets(prev => [...prev, {
+        id: turretId,
+        position: turretPos,
+        rotation: rotation,
+        onComplete: () => {
+          setRailgunTurrets(prev => prev.filter(t => t.id !== turretId));
+          onComplete?.();
+        }
+      }]);
+    });
+
+    animationManager.registerVisualHandler('RAILGUN_BEAM', (payload) => {
+      const { sourcePlayer, sourceLane, targetId, targetPlayer, targetLane, hasOverflow, attackValue, onComplete } = payload;
+
+      debugLog('ANIMATIONS', '⚡ [RAILGUN] RAILGUN_BEAM handler called:', {
+        sourcePlayer,
+        sourceLane,
+        targetId,
+        targetPlayer,
+        hasOverflow,
+        attackValue
+      });
+
+      // Get turret position (top-center of ship section)
+      const gameState = gameStateManager.getState();
+      const localPlayerId = gameStateManager.getLocalPlayerId();
+      const sourcePlacedSections = sourcePlayer === localPlayerId
+        ? gameState.placedSections
+        : gameState.opponentPlacedSections;
+
+      const sourceLaneIndex = parseInt(sourceLane.replace('lane', '')) - 1;
+      const sourceSectionKey = sourcePlacedSections?.[sourceLaneIndex];
+
+      let turretPos = null;
+      if (sourceSectionKey) {
+        const sourceSectionEl = getElementFromLogicalPosition(sourcePlayer, sourceLane, sourceSectionKey, 'section');
+        if (sourceSectionEl) {
+          turretPos = getElementCenter(sourceSectionEl, gameAreaRef.current);
+        }
+      }
+
+      // Get drone center position
+      const droneEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, 'drone');
+      let droneCenter = null;
+      if (droneEl) {
+        droneCenter = getElementCenter(droneEl, gameAreaRef.current);
+      }
+
+      if (!turretPos || !droneCenter) {
+        debugLog('ANIMATIONS', '❌ [RAILGUN] Missing turret or drone position, aborting beam');
+        onComplete?.();
+        return;
+      }
+
+      // Calculate gun tip position (gun extends ~25px from turret center towards target)
+      const dx = droneCenter.x - turretPos.x;
+      const dy = droneCenter.y - turretPos.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      const gunLength = 25; // Approximate half of scaled gun height (50px / 2)
+
+      // Offset turret position towards drone by gun length to get gun tip
+      const gunTipPos = {
+        x: turretPos.x + (dx / distance) * gunLength,
+        y: turretPos.y + (dy / distance) * gunLength
+      };
+
+      debugLog('ANIMATIONS', '🔫 [RAILGUN] Gun tip offset calculated:', {
+        turretCenter: turretPos,
+        gunTip: gunTipPos,
+        offset: gunLength
+      });
+
+      // Calculate end position
+      let endPos = droneCenter;
+
+      if (hasOverflow) {
+        // Extend the beam further in the same direction (reuse dx, dy, distance from gun tip calculation)
+        const extensionDistance = 200; // Extend by 200px beyond drone
+
+        endPos = {
+          x: gunTipPos.x + (dx / distance) * (distance + extensionDistance),
+          y: gunTipPos.y + (dy / distance) * (distance + extensionDistance)
+        };
+
+        debugLog('ANIMATIONS', '⚡ [RAILGUN] Overflow detected, extending beam:', {
+          droneCenter,
+          endPos,
+          extensionDistance
+        });
+      }
+
+      const beamId = `railgun-beam-${Date.now()}`;
+
+      setRailgunBeams(prev => [...prev, {
+        id: beamId,
+        startPos: gunTipPos,
+        endPos: endPos,
+        attackValue: attackValue || 8,
+        duration: 1000,
+        onComplete: () => {
+          setRailgunBeams(prev => prev.filter(b => b.id !== beamId));
+          onComplete?.();
+        }
+      }]);
+    });
+
     const unsubscribe = gameStateManager.subscribe((event) => {
       if (event.type === 'animationStateChange') {
         setAnimationBlocking(event.payload.blocking);
@@ -729,5 +771,5 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     gameStateManager.actionProcessor.setAnimationManager(animationManager);
 
     return unsubscribe;
-}, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setOverflowProjectiles, setSplashEffects]);
+}, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setOverflowProjectiles, setSplashEffects, setRailgunTurrets, setRailgunBeams]);
 }

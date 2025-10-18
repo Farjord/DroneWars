@@ -89,8 +89,11 @@ function HandView({
 
               // Check card playability conditions
               const hasEnoughEnergy = localPlayerState.energy >= card.cost;
+              // Ensure player states are always passed in correct order (player1, player2)
+              const player1State = localPlayerId === 'player1' ? localPlayerState : opponentPlayerState;
+              const player2State = localPlayerId === 'player1' ? opponentPlayerState : localPlayerState;
               const hasValidTargets = !card.targeting ||
-                gameEngine.getValidTargets(localPlayerId, null, card, localPlayerState, opponentPlayerState).length > 0;
+                gameEngine.getValidTargets(localPlayerId, null, card, player1State, player2State).length > 0;
               const isActionPhasePlayable = turnPhase === 'action' &&
                 myTurn &&
                 !playerPassed &&
