@@ -96,6 +96,17 @@ class AnimationManager {
         duration: 1400,
         type: 'HEAL_EFFECT',
         config: {}
+      },
+      // Ordnance effect animations
+      OVERFLOW_PROJECTILE: {
+        duration: 1200,
+        type: 'OVERFLOW_PROJECTILE',
+        config: {}
+      },
+      SPLASH_EFFECT: {
+        duration: 1000,
+        type: 'SPLASH_EFFECT',
+        config: {}
       }
     };
   }

@@ -161,8 +161,8 @@ const ActionCard = ({
           </div>
 
           {/* Description Section - MAXIMIZED SIZE */}
-          <div className={`mx-1 mb-1 flex-grow bg-black/60 backdrop-blur-sm border p-2 overflow-y-auto rounded-md ${colors.descBorder}`}>
-            <p className="text-sm text-white leading-tight text-center font-exo font-normal">{description}</p>
+          <div className={`mx-1 mb-1 flex-grow bg-black/60 backdrop-blur-sm border p-2 rounded-md ${colors.descBorder}`}>
+            <ScalingText text={description} className="text-sm text-white leading-tight text-center font-exo font-normal" />
           </div>
 
           {/* Footer - REDUCED HEIGHT */}

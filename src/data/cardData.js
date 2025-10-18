@@ -713,6 +713,64 @@ const fullCardCollection = [
       locations: ['lane1', 'lane2', 'lane3'],
       ignoresCPULimit: true
     }
+},
+
+// --- NEW: OVERFLOW ORDNANCE CARD ---
+{
+    id: 'CARD031',
+    baseCardId: 'CARD031',
+    name: 'Railgun Strike',
+    maxInDeck: 2,
+    type: 'Ordnance',
+    cost: 5,
+    image: '/DroneWars/cards/RailgunStrike.png',
+    description: 'Deal 2 piercing damage to target drone. Excess damage overflows to the ship section in that lane. If target is marked, deal 4 piercing damage instead.',
+    visualEffect: {
+      type: 'OVERFLOW_PROJECTILE',
+      duration: 1200
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'OVERFLOW_DAMAGE',
+      baseDamage: 2,
+      isPiercing: true,
+      markedBonus: 2
+    }
+},
+
+// --- NEW: SPLASH ORDNANCE CARD ---
+{
+    id: 'CARD032',
+    baseCardId: 'CARD032',
+    name: 'Barrage',
+    maxInDeck: 4,
+    type: 'Ordnance',
+    cost: 4,
+    image: '/DroneWars/cards/Barrage.png',
+    description: 'Deal 1 damage to target drone and all drones adjacent to it in the same lane (splash). If you control 3 or more drones in target lane, deal 2 damage instead.',
+    visualEffect: {
+      type: 'SPLASH_EFFECT',
+      duration: 1000
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'SPLASH_DAMAGE',
+      primaryDamage: 1,
+      splashDamage: 1,
+      conditional: {
+        type: 'FRIENDLY_COUNT_IN_LANE',
+        threshold: 3,
+        bonusDamage: 1
+      }
+    }
 }
 ];
 

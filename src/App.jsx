@@ -81,6 +81,8 @@ import PassNotificationOverlay from './components/animations/PassNotificationOve
 import PhaseAnnouncementOverlay from './components/animations/PhaseAnnouncementOverlay.jsx';
 import LaserEffect from './components/animations/LaserEffect.jsx';
 import TeleportEffect from './components/animations/TeleportEffect.jsx';
+import OverflowProjectile from './components/animations/OverflowProjectile.jsx';
+import SplashEffect from './components/animations/SplashEffect.jsx';
 // ========================================
 // SECTION 2: MAIN COMPONENT DECLARATION
 // ========================================
@@ -148,6 +150,8 @@ const App = () => {
   const [phaseAnnouncements, setPhaseAnnouncements] = useState([]);
   const [laserEffects, setLaserEffects] = useState([]);
   const [teleportEffects, setTeleportEffects] = useState([]);
+  const [overflowProjectiles, setOverflowProjectiles] = useState([]);
+  const [splashEffects, setSplashEffects] = useState([]);
   const [passNotifications, setPassNotifications] = useState([]);
   const [animationBlocking, setAnimationBlocking] = useState(false);
   const [modalContent, setModalContent] = useState(null);
@@ -272,7 +276,9 @@ const App = () => {
   setPhaseAnnouncements,
   setLaserEffects,
   setTeleportEffects,
-  setPassNotifications
+  setPassNotifications,
+  setOverflowProjectiles,
+  setSplashEffects
 );
   // Refs for async operations (defined after gameState destructuring)
 
@@ -3119,6 +3125,26 @@ const App = () => {
         color={teleport.color}
         duration={teleport.duration}
         onComplete={teleport.onComplete}
+      />
+    ))}
+    {overflowProjectiles.map(projectile => (
+      <OverflowProjectile
+        key={projectile.id}
+        startPos={projectile.startPos}
+        dronePos={projectile.dronePos}
+        shipPos={projectile.shipPos}
+        hasOverflow={projectile.hasOverflow}
+        isPiercing={projectile.isPiercing}
+        duration={projectile.duration}
+        onComplete={projectile.onComplete}
+      />
+    ))}
+    {splashEffects.map(splash => (
+      <SplashEffect
+        key={splash.id}
+        centerPos={splash.centerPos}
+        duration={splash.duration}
+        onComplete={splash.onComplete}
       />
     ))}
     {animationBlocking && (

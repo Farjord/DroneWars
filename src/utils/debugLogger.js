@@ -27,7 +27,7 @@ const DEBUG_CONFIG = {
     AI_DECISIONS: false,        // AI decision making (DISABLED for clean logs)
     MULTIPLAYER: false,         // Network sync and multiplayer
     P2P_CONNECTION: true,      // PeerJS connection diagnostics
-    ANIMATIONS: false,          // Animation system
+    ANIMATIONS: true,          // Animation system
     COMMITMENTS: false,         // Simultaneous phase commitments
     COMBAT: false,              // Combat resolution (DISABLED for clean logs)
     PASS_LOGIC: false,          // Pass handling

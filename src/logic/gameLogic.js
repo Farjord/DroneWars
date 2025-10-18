@@ -2191,6 +2191,10 @@ const resolveSingleEffect = (effect, target, actingPlayerId, playerStates, place
             return resolveMovementEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card, localPlayerId, gameMode);
         case 'CREATE_TOKENS':
             return resolveCreateTokensEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card);
+        case 'OVERFLOW_DAMAGE':
+            return resolveOverflowDamageEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks);
+        case 'SPLASH_DAMAGE':
+            return resolveSplashDamageEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks);
         default:
             console.warn(`Unknown effect type: ${effect.type}`);
             return { newPlayerStates: playerStates, additionalEffects: [] };
@@ -3470,6 +3474,293 @@ const resolveCreateTokensEffect = (effect, target, actingPlayerId, playerStates,
             });
         }
     });
+
+    return {
+        newPlayerStates,
+        additionalEffects: [],
+        animationEvents
+    };
+};
+
+// === OVERFLOW AND SPLASH DAMAGE EFFECTS ===
+
+/**
+ * Resolve OVERFLOW damage effect
+ * Deals damage to primary target, then overflows excess damage to ship section in same lane
+ * Overflow inherits piercing property from source damage
+ * @param {Object} effect - Effect definition with baseDamage, isPiercing, markedBonus
+ * @param {Object} target - Primary drone target
+ * @param {string} actingPlayerId - Player ID causing the damage
+ * @param {Object} playerStates - Current game states
+ * @param {Object} placedSections - Ship section placements
+ * @param {Object} callbacks - Logging and animation callbacks
+ * @returns {Object} Updated states and animation events
+ */
+const resolveOverflowDamageEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks) => {
+    const newPlayerStates = {
+        player1: JSON.parse(JSON.stringify(playerStates.player1)),
+        player2: JSON.parse(JSON.stringify(playerStates.player2))
+    };
+
+    const { baseDamage, isPiercing, markedBonus = 0 } = effect;
+    const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+    const animationEvents = [];
+
+    // Find target drone
+    let targetDrone = null;
+    let targetLane = null;
+    for (const lane in newPlayerStates[opponentId].dronesOnBoard) {
+        const droneIndex = newPlayerStates[opponentId].dronesOnBoard[lane].findIndex(d => d.id === target.id);
+        if (droneIndex !== -1) {
+            targetDrone = newPlayerStates[opponentId].dronesOnBoard[lane][droneIndex];
+            targetLane = lane;
+            break;
+        }
+    }
+
+    if (!targetDrone || !targetLane) {
+        console.warn('OVERFLOW: Target drone not found');
+        return { newPlayerStates, additionalEffects: [], animationEvents: [] };
+    }
+
+    // Calculate total damage (including marked bonus)
+    const totalDamage = baseDamage + (targetDrone.isMarked ? markedBonus : 0);
+
+    // Calculate damage needed to destroy drone
+    let damageToKill;
+    if (isPiercing) {
+        damageToKill = targetDrone.hull;
+    } else {
+        damageToKill = targetDrone.currentShields + targetDrone.hull;
+    }
+
+    // Apply damage to drone
+    let shieldDamage = 0;
+    let hullDamage = 0;
+
+    if (isPiercing) {
+        // Piercing ignores shields
+        hullDamage = Math.min(totalDamage, targetDrone.hull);
+        targetDrone.hull -= hullDamage;
+    } else {
+        // Non-piercing: damage shields first
+        shieldDamage = Math.min(totalDamage, targetDrone.currentShields);
+        targetDrone.currentShields -= shieldDamage;
+        const remainingDamage = totalDamage - shieldDamage;
+        hullDamage = Math.min(remainingDamage, targetDrone.hull);
+        targetDrone.hull -= hullDamage;
+    }
+
+    const droneDestroyed = targetDrone.hull <= 0;
+
+    // Calculate overflow
+    let overflowDamage = 0;
+    if (droneDestroyed && totalDamage > damageToKill) {
+        overflowDamage = totalDamage - damageToKill;
+
+        // Get ship section in same lane
+        const laneIndex = targetLane === 'lane1' ? 0 : targetLane === 'lane2' ? 1 : 2;
+        const sectionArray = placedSections[opponentId];
+        const sectionName = sectionArray[laneIndex];
+
+        if (sectionName && newPlayerStates[opponentId].shipSections[sectionName]) {
+            const shipSection = newPlayerStates[opponentId].shipSections[sectionName];
+
+            // Apply overflow damage to ship section (inheriting piercing property)
+            if (isPiercing) {
+                // Piercing overflow bypasses ship shields
+                shipSection.hull -= overflowDamage;
+            } else {
+                // Non-piercing overflow must go through shields first
+                const shipShieldDamage = Math.min(overflowDamage, shipSection.allocatedShields);
+                shipSection.allocatedShields -= shipShieldDamage;
+                const shipRemainingDamage = overflowDamage - shipShieldDamage;
+                if (shipRemainingDamage > 0) {
+                    shipSection.hull -= shipRemainingDamage;
+                }
+            }
+
+            // Log overflow damage
+            if (callbacks?.logCallback) {
+                callbacks.logCallback({
+                    player: playerStates[actingPlayerId].name,
+                    actionType: 'OVERFLOW_DAMAGE',
+                    source: 'Ordnance Card',
+                    target: sectionName,
+                    outcome: `${overflowDamage} overflow damage to ${sectionName}`
+                });
+            }
+        }
+    }
+
+    // Remove destroyed drone
+    if (droneDestroyed) {
+        const laneArray = newPlayerStates[opponentId].dronesOnBoard[targetLane];
+        const droneIndex = laneArray.findIndex(d => d.id === target.id);
+        if (droneIndex !== -1) {
+            laneArray.splice(droneIndex, 1);
+        }
+    }
+
+    // Add overflow projectile animation event (includes damage details for callback)
+    animationEvents.push({
+        type: 'OVERFLOW_PROJECTILE',
+        sourcePlayer: actingPlayerId,
+        targetId: target.id,
+        targetLane: targetLane,
+        targetPlayer: opponentId,
+        totalDamage: totalDamage,
+        overflowDamage: overflowDamage,
+        droneDestroyed: droneDestroyed,
+        isPiercing: isPiercing,
+        shieldDamage: shieldDamage,
+        hullDamage: hullDamage,
+        timestamp: Date.now()
+    });
+
+    return {
+        newPlayerStates,
+        additionalEffects: [],
+        animationEvents
+    };
+};
+
+/**
+ * Resolve SPLASH damage effect
+ * Deals damage to primary target and adjacent drones in same lane (by array index)
+ * Splash damage respects shields (not piercing unless specifically stated)
+ * @param {Object} effect - Effect definition with primaryDamage, splashDamage, conditional
+ * @param {Object} target - Primary target drone
+ * @param {string} actingPlayerId - Player ID causing the damage
+ * @param {Object} playerStates - Current game states
+ * @param {Object} placedSections - Ship section placements
+ * @param {Object} callbacks - Logging and animation callbacks
+ * @returns {Object} Updated states and animation events
+ */
+const resolveSplashDamageEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks) => {
+    const newPlayerStates = {
+        player1: JSON.parse(JSON.stringify(playerStates.player1)),
+        player2: JSON.parse(JSON.stringify(playerStates.player2))
+    };
+
+    const { primaryDamage, splashDamage, conditional } = effect;
+    const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+    const animationEvents = [];
+
+    // Find target drone and lane
+    let targetLane = null;
+    let targetIndex = -1;
+    for (const lane in newPlayerStates[opponentId].dronesOnBoard) {
+        const index = newPlayerStates[opponentId].dronesOnBoard[lane].findIndex(d => d.id === target.id);
+        if (index !== -1) {
+            targetLane = lane;
+            targetIndex = index;
+            break;
+        }
+    }
+
+    if (targetLane === null || targetIndex === -1) {
+        console.warn('SPLASH: Target drone not found');
+        return { newPlayerStates, additionalEffects: [], animationEvents: [] };
+    }
+
+    const dronesInLane = newPlayerStates[opponentId].dronesOnBoard[targetLane];
+
+    // Check conditional for bonus damage
+    let bonusDamage = 0;
+    if (conditional?.type === 'FRIENDLY_COUNT_IN_LANE') {
+        const friendlyDronesInLane = newPlayerStates[actingPlayerId].dronesOnBoard[targetLane]?.length || 0;
+        if (friendlyDronesInLane >= conditional.threshold) {
+            bonusDamage = conditional.bonusDamage;
+        }
+    }
+
+    const finalPrimaryDamage = primaryDamage + bonusDamage;
+    const finalSplashDamage = splashDamage + bonusDamage;
+
+    // Helper function to apply damage (non-piercing, respects shields)
+    const applyDamage = (drone, damage) => {
+        const shieldDamage = Math.min(damage, drone.currentShields);
+        drone.currentShields -= shieldDamage;
+        const remainingDamage = damage - shieldDamage;
+        const hullDamage = Math.min(remainingDamage, drone.hull);
+        drone.hull -= hullDamage;
+        return drone.hull <= 0; // Return true if destroyed
+    };
+
+    // Track destroyed drones
+    const destroyedDrones = [];
+
+    // Apply primary damage to primary target
+    const primaryDestroyed = applyDamage(dronesInLane[targetIndex], finalPrimaryDamage);
+    if (primaryDestroyed) {
+        destroyedDrones.push(target.id);
+    }
+
+    // Calculate adjacent indices
+    const adjacentIndices = [];
+    if (targetIndex > 0) {
+        adjacentIndices.push(targetIndex - 1); // Left neighbor
+    }
+    if (targetIndex < dronesInLane.length - 1) {
+        adjacentIndices.push(targetIndex + 1); // Right neighbor
+    }
+
+    // Apply splash damage to adjacent drones
+    adjacentIndices.forEach(index => {
+        const adjacentDrone = dronesInLane[index];
+        const destroyed = applyDamage(adjacentDrone, finalSplashDamage);
+        if (destroyed) {
+            destroyedDrones.push(adjacentDrone.id);
+        }
+    });
+
+    // Remove all destroyed drones (iterate backwards to avoid index issues)
+    for (let i = dronesInLane.length - 1; i >= 0; i--) {
+        if (dronesInLane[i].hull <= 0) {
+            const droneId = dronesInLane[i].id;
+            dronesInLane.splice(i, 1);
+
+            // Trigger explosion animation
+            if (callbacks?.explosionCallback) {
+                callbacks.explosionCallback(droneId);
+            }
+        }
+    }
+
+    // Trigger hit animations for damaged but not destroyed drones
+    [targetIndex, ...adjacentIndices].forEach(index => {
+        if (index < dronesInLane.length) {
+            const drone = dronesInLane[index];
+            if (drone && drone.hull > 0 && callbacks?.hitAnimationCallback) {
+                callbacks.hitAnimationCallback(drone.id);
+            }
+        }
+    });
+
+    // Add splash animation event
+    animationEvents.push({
+        type: 'SPLASH_EFFECT',
+        primaryTargetId: target.id,
+        targetLane: targetLane,
+        targetPlayer: opponentId,
+        primaryIndex: targetIndex,
+        adjacentIndices: adjacentIndices,
+        primaryDamage: finalPrimaryDamage,
+        splashDamage: finalSplashDamage,
+        timestamp: Date.now()
+    });
+
+    // Log splash effect
+    if (callbacks?.logCallback) {
+        callbacks.logCallback({
+            player: playerStates[actingPlayerId].name,
+            actionType: 'SPLASH_DAMAGE',
+            source: 'Ordnance Card',
+            target: `${target.name} and ${adjacentIndices.length} adjacent drone(s)`,
+            outcome: `${finalPrimaryDamage} to primary, ${finalSplashDamage} splash damage`
+        });
+    }
 
     return {
         newPlayerStates,

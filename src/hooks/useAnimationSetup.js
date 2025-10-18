@@ -4,7 +4,7 @@ import FlashEffect from '../components/animations/FlashEffect.jsx';
 import CardVisualEffect from '../components/animations/CardVisualEffect.jsx';
 import { debugLog } from '../utils/debugLogger.js';
 
-export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications) {
+export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setOverflowProjectiles, setSplashEffects) {
   useEffect(() => {
     const localPlayerState = getLocalPlayerState();
     const opponentPlayerState = getOpponentPlayerState();
@@ -441,34 +441,280 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
 
       debugLog('ANIMATIONS', '✨ [TELEPORT DEBUG] TELEPORT_EFFECT handler called:', { targetId, laneId, playerId });
 
-      // The drone should now exist as an invisible placeholder - get its exact position
-      const droneEl = droneRefs.current[targetId];
+      // Use requestAnimationFrame to ensure React has finished rendering the drone element
+      requestAnimationFrame(() => {
+        // The drone should now exist as an invisible placeholder - get its exact position
+        const droneEl = droneRefs.current[targetId];
 
-      if (!droneEl) {
-        console.warn('⚠️ [TELEPORT DEBUG] Drone element not found - placeholder may not have rendered yet:', targetId);
+        if (!droneEl) {
+          console.warn('⚠️ [TELEPORT DEBUG] Drone element not found - placeholder may not have rendered yet:', targetId);
+          onComplete?.();
+          return;
+        }
+
+        // Get the exact center position of the invisible placeholder drone
+        const referencePos = getElementCenter(droneEl, gameAreaRef.current);
+        debugLog('ANIMATIONS', '✨ [TELEPORT DEBUG] Using exact drone placeholder position:', referencePos);
+
+        // Determine color based on local player perspective
+        const localPlayerId = gameStateManager.getLocalPlayerId();
+        const isLocalPlayer = playerId === localPlayerId;
+        const teleportColor = isLocalPlayer ? '#00ffff' : '#ec4899'; // Cyan for player, pink for opponent
+
+        const teleportId = `teleport-${targetId}-${Date.now()}`;
+
+        setTeleportEffects(prev => [...prev, {
+          id: teleportId,
+          top: referencePos.y,
+          left: referencePos.x,
+          color: teleportColor,
+          duration: 600,
+          onComplete: () => {
+            setTeleportEffects(prev => prev.filter(t => t.id !== teleportId));
+            onComplete?.();
+          }
+        }]);
+      });
+    });
+
+    animationManager.registerVisualHandler('OVERFLOW_PROJECTILE', (payload) => {
+      const { sourcePlayer, targetId, targetLane, targetPlayer, overflowDamage, droneDestroyed, isPiercing, shieldDamage, hullDamage, onComplete } = payload;
+
+      debugLog('ANIMATIONS', '⚡ [OVERFLOW DEBUG] OVERFLOW_PROJECTILE handler called:', {
+        sourcePlayer,
+        targetId,
+        targetLane,
+        targetPlayer,
+        overflowDamage,
+        droneDestroyed,
+        shieldDamage,
+        hullDamage
+      });
+
+      // Calculate source position based on attacker's perspective
+      const gameAreaRect = gameAreaRef.current?.getBoundingClientRect();
+      if (!gameAreaRect) {
         onComplete?.();
         return;
       }
 
-      // Get the exact center position of the invisible placeholder drone
-      const referencePos = getElementCenter(droneEl, gameAreaRef.current);
-      debugLog('ANIMATIONS', '✨ [TELEPORT DEBUG] Using exact drone placeholder position:', referencePos);
-
-      // Determine color based on local player perspective
       const localPlayerId = gameStateManager.getLocalPlayerId();
-      const isLocalPlayer = playerId === localPlayerId;
-      const teleportColor = isLocalPlayer ? '#00ffff' : '#ec4899'; // Cyan for player, pink for opponent
+      const isAttackerLocal = sourcePlayer === localPlayerId;
 
-      const teleportId = `teleport-${targetId}-${Date.now()}`;
+      const sourcePos = {
+        x: gameAreaRect.left + gameAreaRect.width / 2,
+        y: isAttackerLocal
+          ? gameAreaRect.bottom - 50  // Local player (attacker): bottom
+          : gameAreaRect.top + 50      // Opponent (attacker): top
+      };
 
-      setTeleportEffects(prev => [...prev, {
-        id: teleportId,
-        top: referencePos.y,
-        left: referencePos.x,
-        color: teleportColor,
-        duration: 600,
+      // Get drone position
+      const droneEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, 'drone');
+      if (!droneEl) {
+        console.warn('⚠️ [OVERFLOW DEBUG] Drone element not found:', targetId);
+        onComplete?.();
+        return;
+      }
+
+      const dronePos = getElementCenter(droneEl, gameAreaRef.current);
+
+      // Get ship section position (if overflow occurred)
+      let shipPos = null;
+      const hasOverflow = droneDestroyed && overflowDamage > 0;
+
+      if (hasOverflow) {
+        // Find which ship section is in this lane
+        const gameState = gameStateManager.getState();
+        const localPlayerId = gameStateManager.getLocalPlayerId();
+
+        debugLog('ANIMATIONS', '⚡ [OVERFLOW] Game state inspection:', {
+          targetPlayer,
+          targetLane,
+          localPlayerId,
+          'player1.placedSections': gameState.placedSections,
+          'player2.opponentPlacedSections': gameState.opponentPlacedSections,
+          'player1.shipSections': gameState.player1?.shipSections,
+          'player2.shipSections': gameState.player2?.shipSections
+        });
+
+        // Use perspective-relative lookup: local vs opponent
+        const placedSections = targetPlayer === localPlayerId
+          ? gameState.placedSections
+          : gameState.opponentPlacedSections;
+
+        debugLog('ANIMATIONS', '⚡ [OVERFLOW] Selected placedSections:', {
+          targetPlayer,
+          placedSections,
+          isArray: Array.isArray(placedSections),
+          length: placedSections?.length
+        });
+
+        // Convert lane name to array index (lane1 = 0, lane2 = 1, lane3 = 2)
+        const laneIndex = parseInt(targetLane.replace('lane', '')) - 1;
+        const sectionKey = placedSections?.[laneIndex];
+
+        if (!sectionKey) {
+          console.warn('⚠️ [OVERFLOW DEBUG] No ship section at lane index:', {
+            targetLane,
+            laneIndex,
+            placedSections
+          });
+        } else {
+          debugLog('ANIMATIONS', '⚡ [OVERFLOW] Found section key in lane:', {
+            targetLane,
+            laneIndex,
+            sectionKey
+          });
+
+          // Get the full section object from shipSections (use perspective-relative lookup)
+          const playerState = targetPlayer === localPlayerId
+            ? gameState[localPlayerId]
+            : gameState[localPlayerId === 'player1' ? 'player2' : 'player1'];
+          const sectionData = playerState?.shipSections?.[sectionKey];
+
+          if (!sectionData) {
+            console.warn('⚠️ [OVERFLOW DEBUG] Section data not found in shipSections:', {
+              sectionKey,
+              availableKeys: playerState?.shipSections ? Object.keys(playerState.shipSections) : []
+            });
+          } else {
+            debugLog('ANIMATIONS', '⚡ [OVERFLOW] Found section data:', {
+              sectionKey,
+              sectionType: sectionData.type
+            });
+
+            const sectionEl = getElementFromLogicalPosition(targetPlayer, targetLane, sectionKey, 'section');
+
+            if (!sectionEl) {
+              console.warn('⚠️ [OVERFLOW DEBUG] Ship section DOM element not found:', {
+                sectionType: sectionData.type,
+                targetPlayer,
+                targetLane
+              });
+            } else {
+              shipPos = getElementCenter(sectionEl, gameAreaRef.current);
+
+              if (!shipPos) {
+                console.warn('⚠️ [OVERFLOW DEBUG] getElementCenter returned null:', {
+                  hasGameAreaRef: !!gameAreaRef.current
+                });
+              } else {
+                debugLog('ANIMATIONS', '✅ [OVERFLOW] Successfully got ship position:', shipPos);
+              }
+            }
+          }
+        }
+      }
+
+      const projectileId = `overflow-${targetId}-${Date.now()}`;
+
+      setOverflowProjectiles(prev => [...prev, {
+        id: projectileId,
+        startPos: sourcePos,
+        dronePos: dronePos,
+        shipPos: shipPos,
+        hasOverflow: hasOverflow,
+        isPiercing: isPiercing,
+        duration: 1200,
+        onDroneImpact: () => {
+          debugLog('ANIMATIONS', '🎯 [OVERFLOW] onDroneImpact callback fired!', {
+            droneDestroyed,
+            isPiercing,
+            shieldDamage,
+            hullDamage,
+            targetId,
+            targetPlayer
+          });
+
+          try {
+            // Trigger damage animations when projectile hits drone
+            const damageAnimations = [];
+
+            // Shield damage animation (if non-piercing and shields were hit)
+            if (!isPiercing && shieldDamage > 0) {
+              damageAnimations.push({
+                animationName: 'SHIELD_DAMAGE',
+                payload: {
+                  targetId: targetId,
+                  targetPlayer: targetPlayer,
+                  targetLane: targetLane,
+                  targetType: 'drone'
+                }
+              });
+            }
+
+            // Destruction or hull damage animation
+            if (droneDestroyed) {
+              damageAnimations.push({
+                animationName: 'DRONE_DESTROYED',
+                payload: {
+                  targetId: targetId,
+                  targetPlayer: targetPlayer,
+                  targetLane: targetLane,
+                  targetType: 'drone'
+                }
+              });
+            } else if (hullDamage > 0) {
+              damageAnimations.push({
+                animationName: 'HULL_DAMAGE',
+                payload: {
+                  targetId: targetId,
+                  targetPlayer: targetPlayer,
+                  targetLane: targetLane,
+                  targetType: 'drone'
+                }
+              });
+            }
+
+            debugLog('ANIMATIONS', '🎯 [OVERFLOW] Built damage animations array', {
+              count: damageAnimations.length,
+              animations: damageAnimations.map(a => a.animationName)
+            });
+
+            // Execute damage animations
+            if (damageAnimations.length > 0) {
+              debugLog('ANIMATIONS', '🎯 [OVERFLOW] Calling animationManager.executeAnimations()');
+              animationManager.executeAnimations(damageAnimations, 'OVERFLOW_IMPACT');
+            } else {
+              debugLog('ANIMATIONS', '🎯 [OVERFLOW] No damage animations to execute');
+            }
+          } catch (error) {
+            console.error('❌ [OVERFLOW] Error in onDroneImpact callback:', error);
+          }
+        },
         onComplete: () => {
-          setTeleportEffects(prev => prev.filter(t => t.id !== teleportId));
+          setOverflowProjectiles(prev => prev.filter(p => p.id !== projectileId));
+          onComplete?.();
+        }
+      }]);
+    });
+
+    animationManager.registerVisualHandler('SPLASH_EFFECT', (payload) => {
+      const { primaryTargetId, targetLane, targetPlayer, onComplete } = payload;
+
+      debugLog('ANIMATIONS', '💥 [SPLASH DEBUG] SPLASH_EFFECT handler called:', {
+        primaryTargetId,
+        targetLane,
+        targetPlayer
+      });
+
+      // Get primary target position
+      const droneEl = getElementFromLogicalPosition(targetPlayer, targetLane, primaryTargetId, 'drone');
+      if (!droneEl) {
+        console.warn('⚠️ [SPLASH DEBUG] Primary target element not found:', primaryTargetId);
+        onComplete?.();
+        return;
+      }
+
+      const centerPos = getElementCenter(droneEl, gameAreaRef.current);
+      const splashId = `splash-${primaryTargetId}-${Date.now()}`;
+
+      setSplashEffects(prev => [...prev, {
+        id: splashId,
+        centerPos: centerPos,
+        duration: 1000,
+        onComplete: () => {
+          setSplashEffects(prev => prev.filter(s => s.id !== splashId));
           onComplete?.();
         }
       }]);
@@ -483,5 +729,5 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     gameStateManager.actionProcessor.setAnimationManager(animationManager);
 
     return unsubscribe;
-}, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications]);
+}, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setOverflowProjectiles, setSplashEffects]);
 }
