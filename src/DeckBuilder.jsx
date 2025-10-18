@@ -9,6 +9,37 @@ import fullDroneCollection from './data/droneData.js';
 import { shipComponentCollection } from './data/shipData.js';
 import { gameEngine } from './logic/gameLogic.js';
 
+// Helper functions to get type-based colors for table styling
+const getTypeBackgroundClass = (type) => {
+  switch (type) {
+    case 'Ordnance':
+      return 'bg-red-900/10';
+    case 'Tactic':
+      return 'bg-cyan-900/10';
+    case 'Support':
+      return 'bg-emerald-900/10';
+    case 'Upgrade':
+      return 'bg-purple-900/10';
+    default:
+      return '';
+  }
+};
+
+const getTypeTextClass = (type) => {
+  switch (type) {
+    case 'Ordnance':
+      return 'text-red-400';
+    case 'Tactic':
+      return 'text-cyan-400';
+    case 'Support':
+      return 'text-emerald-400';
+    case 'Upgrade':
+      return 'text-purple-400';
+    default:
+      return 'text-gray-400';
+  }
+};
+
 // Card detail popup using the actual ActionCard component
 const CardDetailPopup = ({ card, onClose }) => {
   if (!card) return null;
@@ -381,10 +412,11 @@ const DeckBuilder = ({
   }, [filterOptions.minCost, filterOptions.maxCost]);
 
   // --- MODIFIED: Memoize calculations for performance, now using processedCardCollection ---
-  const { cardCount, deckListForDisplay, baseCardCounts } = useMemo(() => {
+  const { cardCount, deckListForDisplay, baseCardCounts, typeCounts } = useMemo(() => {
     const counts = {};
+    const types = { Ordnance: 0, Tactic: 0, Support: 0, Upgrade: 0 };
     let total = 0;
-    
+
     // Iterate over the deck object, which is { cardId: quantity }
     Object.entries(deck).forEach(([cardId, quantity]) => {
       if (quantity > 0) {
@@ -393,6 +425,11 @@ const DeckBuilder = ({
         if (card) {
           const baseId = card.baseCardId;
           counts[baseId] = (counts[baseId] || 0) + quantity;
+
+          // Track type counts
+          if (card.type) {
+            types[card.type] = (types[card.type] || 0) + quantity;
+          }
         }
       }
     });
@@ -405,10 +442,19 @@ const DeckBuilder = ({
       })
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    return { cardCount: total, deckListForDisplay: displayList, baseCardCounts: counts };
+    return { cardCount: total, deckListForDisplay: displayList, baseCardCounts: counts, typeCounts: types };
   }, [deck, processedCardCollection]);
 
-  const isDeckValid = cardCount >= 40;
+  // Type limits based on design framework
+  const typeLimits = { Ordnance: 10, Tactic: 10, Support: 10, Upgrade: 6 };
+
+  // Validate type limits
+  const typeValid = Object.keys(typeLimits).every(
+    type => typeCounts[type] <= typeLimits[type]
+  );
+
+  // Deck is valid if it has exactly 30 cards and respects type limits
+  const isDeckValid = cardCount === 30 && typeValid;
 
   // --- Drone counts and display list ---
   const { droneCount, droneListForDisplay } = useMemo(() => {
@@ -1037,8 +1083,10 @@ const DeckBuilder = ({
             {/* Type Filter */}
             <select onChange={(e) => handleFilterChange('type', e.target.value)} value={filters.type} className="filter-select h-full">
                 <option value="all">All Types</option>
-                <option value="Action">Action Cards</option>
-                <option value="Upgrade">Upgrade Cards</option>
+                <option value="Ordnance">Ordnance</option>
+                <option value="Tactic">Tactic</option>
+                <option value="Support">Support</option>
+                <option value="Upgrade">Upgrade</option>
             </select>
 
             {/* Enhanced Cards Filter */}
@@ -1079,10 +1127,10 @@ const DeckBuilder = ({
                   const maxInDeck = card.maxInDeck;
 
                   return (
-                    <tr key={`${card.id}-${index}`} className={card.type === 'Upgrade' ? 'bg-purple-900/10' : ''}>
+                    <tr key={`${card.id}-${index}`} className={getTypeBackgroundClass(card.type)}>
                       <td><button onClick={() => setDetailedCard(card)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
                       <td className="font-bold">{card.name}</td>
-                      <td className={`font-semibold ${card.type === 'Upgrade' ? 'text-purple-400' : 'text-cyan-400'}`}>{card.type}</td>
+                      <td className={`font-semibold ${getTypeTextClass(card.type)}`}>{card.type}</td>
                       <td>{card.cost}</td>
                       <td className="text-xs text-gray-400">{card.description}</td>
                       <td><div className="flex flex-wrap gap-2">{card.keywords.map(k => <span key={k} className="ability-chip">{k}</span>)}</div></td>
@@ -1445,7 +1493,7 @@ const DeckBuilder = ({
                 onClick={() => setRightPanelView('deck')}
                 className={`btn-utility ${rightPanelView === 'deck' ? 'opacity-100' : 'opacity-60'}`}
               >
-                Deck ({cardCount}/40)
+                Deck ({cardCount}/30)
               </button>
               <button
                 onClick={() => setRightPanelView('drones')}
@@ -1508,6 +1556,38 @@ const DeckBuilder = ({
               <p className="text-gray-500 italic">Your deck is empty. Add cards from the left.</p>
             )}
           </div>
+          )}
+
+          {/* CARD TYPE COUNTS DISPLAY */}
+          {rightPanelView === 'deck' && cardCount > 0 && (
+            <div className="mt-3 p-3 bg-slate-800/50 rounded border border-slate-700">
+              <h3 className="text-sm font-orbitron text-cyan-300 mb-2">Card Types</h3>
+              <div className="space-y-1 text-xs">
+                {Object.entries(typeLimits).map(([type, limit]) => {
+                  const count = typeCounts[type] || 0;
+                  const isOverLimit = count > limit;
+                  const percentage = (count / limit) * 100;
+                  return (
+                    <div key={type} className="flex items-center gap-2">
+                      <span className={`w-20 ${isOverLimit ? 'text-red-400' : 'text-gray-300'}`}>
+                        {type}:
+                      </span>
+                      <div className="flex-grow bg-slate-700 rounded h-4 relative overflow-hidden">
+                        <div
+                          className={`h-full transition-all ${
+                            isOverLimit ? 'bg-red-500' : 'bg-cyan-500'
+                          }`}
+                          style={{ width: `${Math.min(percentage, 100)}%` }}
+                        />
+                        <span className="absolute inset-0 flex items-center justify-center text-white font-bold text-[10px]">
+                          {count}/{limit}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
 
           {/* DRONE LIST VIEW */}
@@ -1670,8 +1750,10 @@ const DeckBuilder = ({
                         <PieChart margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
                           <Pie
                             data={[
-                              { name: 'Action Cards', value: deckListForDisplay.filter(card => card.type === 'Action').reduce((sum, card) => sum + card.quantity, 0), color: '#22d3ee' },
-                              { name: 'Upgrade Cards', value: deckListForDisplay.filter(card => card.type === 'Upgrade').reduce((sum, card) => sum + card.quantity, 0), color: '#c084fc' }
+                              { name: 'Ordnance', value: deckListForDisplay.filter(card => card.type === 'Ordnance').reduce((sum, card) => sum + card.quantity, 0), color: '#ef4444' },
+                              { name: 'Tactic', value: deckListForDisplay.filter(card => card.type === 'Tactic').reduce((sum, card) => sum + card.quantity, 0), color: '#f59e0b' },
+                              { name: 'Support', value: deckListForDisplay.filter(card => card.type === 'Support').reduce((sum, card) => sum + card.quantity, 0), color: '#10b981' },
+                              { name: 'Upgrade', value: deckListForDisplay.filter(card => card.type === 'Upgrade').reduce((sum, card) => sum + card.quantity, 0), color: '#c084fc' }
                             ].filter(item => item.value > 0)}
                             cx="50%"
                             cy="50%"
@@ -1682,8 +1764,10 @@ const DeckBuilder = ({
                             dataKey="value"
                           >
                             {[
-                              { name: 'Action Cards', value: deckListForDisplay.filter(card => card.type === 'Action').reduce((sum, card) => sum + card.quantity, 0), color: '#22d3ee' },
-                              { name: 'Upgrade Cards', value: deckListForDisplay.filter(card => card.type === 'Upgrade').reduce((sum, card) => sum + card.quantity, 0), color: '#c084fc' }
+                              { name: 'Ordnance', value: deckListForDisplay.filter(card => card.type === 'Ordnance').reduce((sum, card) => sum + card.quantity, 0), color: '#ef4444' },
+                              { name: 'Tactic', value: deckListForDisplay.filter(card => card.type === 'Tactic').reduce((sum, card) => sum + card.quantity, 0), color: '#f59e0b' },
+                              { name: 'Support', value: deckListForDisplay.filter(card => card.type === 'Support').reduce((sum, card) => sum + card.quantity, 0), color: '#10b981' },
+                              { name: 'Upgrade', value: deckListForDisplay.filter(card => card.type === 'Upgrade').reduce((sum, card) => sum + card.quantity, 0), color: '#c084fc' }
                             ].filter(item => item.value > 0).map((entry, index) => (
                               <Cell key={`cell-${index}`} fill={entry.color} />
                             ))}

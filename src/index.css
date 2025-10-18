@@ -1085,6 +1085,66 @@
   animation: cardBorderRotatePurple 15s linear infinite;
 }
 
+/* Utility class for rotating red border (Ordnance) */
+.card-border-rotate-red {
+  background: linear-gradient(
+    90deg,
+    rgba(239, 68, 68, 1.0) 0%,   /* red-500 */
+    rgba(239, 68, 68, 1.0) 10%,
+    rgba(239, 68, 68, 1.0) 20%,
+    rgba(185, 28, 28, 1.0) 30%,  /* red-700 darker */
+    rgba(239, 68, 68, 1.0) 40%,
+    rgba(239, 68, 68, 1.0) 50%,
+    rgba(239, 68, 68, 1.0) 60%,
+    rgba(127, 29, 29, 1.0) 70%,  /* red-900 darkest */
+    rgba(127, 29, 29, 1.0) 80%,
+    rgba(127, 29, 29, 1.0) 90%,
+    rgba(239, 68, 68, 1.0) 100%
+  );
+  background-size: 400% 100%;
+  animation: cardBorderRotatePurple 15s linear infinite;
+}
+
+/* Utility class for rotating cyan border (Tactic) */
+.card-border-rotate-cyan {
+  background: linear-gradient(
+    90deg,
+    rgba(34, 211, 238, 1.0) 0%,   /* cyan-500 */
+    rgba(34, 211, 238, 1.0) 10%,
+    rgba(34, 211, 238, 1.0) 20%,
+    rgba(8, 145, 178, 1.0) 30%,   /* cyan-700 darker */
+    rgba(34, 211, 238, 1.0) 40%,
+    rgba(34, 211, 238, 1.0) 50%,
+    rgba(34, 211, 238, 1.0) 60%,
+    rgba(22, 78, 99, 1.0) 70%,    /* cyan-900 darkest */
+    rgba(22, 78, 99, 1.0) 80%,
+    rgba(22, 78, 99, 1.0) 90%,
+    rgba(34, 211, 238, 1.0) 100%
+  );
+  background-size: 400% 100%;
+  animation: cardBorderRotatePurple 15s linear infinite;
+}
+
+/* Utility class for rotating green border (Support) */
+.card-border-rotate-green {
+  background: linear-gradient(
+    90deg,
+    rgba(16, 185, 129, 1.0) 0%,   /* emerald-500 */
+    rgba(16, 185, 129, 1.0) 10%,
+    rgba(16, 185, 129, 1.0) 20%,
+    rgba(5, 150, 105, 1.0) 30%,   /* emerald-600 darker */
+    rgba(16, 185, 129, 1.0) 40%,
+    rgba(16, 185, 129, 1.0) 50%,
+    rgba(16, 185, 129, 1.0) 60%,
+    rgba(6, 78, 59, 1.0) 70%,     /* emerald-900 darkest */
+    rgba(6, 78, 59, 1.0) 80%,
+    rgba(6, 78, 59, 1.0) 90%,
+    rgba(16, 185, 129, 1.0) 100%
+  );
+  background-size: 400% 100%;
+  animation: cardBorderRotatePurple 15s linear infinite;
+}
+
 /* Utility class for shimmering silver border - Diagonal shimmer suggesting clockwise motion */
 .card-border-shimmer-silver {
   background: linear-gradient(

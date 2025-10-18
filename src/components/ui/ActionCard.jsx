@@ -9,6 +9,55 @@ import { Bolt, RefreshCw } from 'lucide-react';
 import ScalingText from './ScalingText.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 
+// Helper function to get type-based colors
+const getTypeColors = (type, isEnhanced) => {
+  if (isEnhanced) {
+    return {
+      border: 'card-border-shimmer-silver',
+      imageBorder: 'border-slate-400/50',
+      descBorder: 'border-slate-600/70',
+      footerBorder: 'border-slate-600/70',
+      typeText: 'text-slate-400'
+    };
+  }
+
+  switch (type) {
+    case 'Ordnance':
+      return {
+        border: 'card-border-rotate-red',
+        imageBorder: 'border-red-400/50',
+        descBorder: 'border-red-800/70',
+        footerBorder: 'border-red-800/70',
+        typeText: 'text-red-400'
+      };
+    case 'Tactic':
+      return {
+        border: 'card-border-rotate-cyan',
+        imageBorder: 'border-cyan-400/50',
+        descBorder: 'border-cyan-800/70',
+        footerBorder: 'border-cyan-800/70',
+        typeText: 'text-cyan-400'
+      };
+    case 'Support':
+      return {
+        border: 'card-border-rotate-green',
+        imageBorder: 'border-emerald-400/50',
+        descBorder: 'border-emerald-800/70',
+        footerBorder: 'border-emerald-800/70',
+        typeText: 'text-emerald-400'
+      };
+    case 'Upgrade':
+    default:
+      return {
+        border: 'card-border-rotate-purple',
+        imageBorder: 'border-purple-400/50',
+        descBorder: 'border-purple-800/70',
+        footerBorder: 'border-purple-800/70',
+        typeText: 'text-purple-400'
+      };
+  }
+};
+
 /**
  * ACTION CARD COMPONENT
  * @param {Object} card - Card data
@@ -31,6 +80,9 @@ const ActionCard = ({
   const { name, cost, image, description, type, effect } = card;
   const goAgain = effect?.goAgain;
   const isEnhanced = card.id?.includes('_ENHANCED');
+
+  // Get type-based colors
+  const colors = getTypeColors(type, isEnhanced);
 
   // Apply scale transform if provided
   const scaleStyle = scale !== 1.0 ? {
@@ -64,7 +116,7 @@ const ActionCard = ({
         rounded-lg p-[4px] relative group
         transition-all duration-200
         ${isPlayable || isMandatoryTarget ? 'cursor-pointer' : 'cursor-not-allowed'}
-        ${isEnhanced ? 'card-border-shimmer-silver' : 'card-border-rotate-purple'}
+        ${colors.border}
         ${!isPlayable && !isMandatoryTarget ? 'saturate-50' : ''}
         ${isMandatoryTarget ? 'ring-4 ring-red-500 animate-pulse' : ''}
         ${isDimmed ? 'grayscale' : ''}
@@ -98,9 +150,7 @@ const ActionCard = ({
 
           {/* Image Section - REDUCED SIZE */}
           <div className="p-1 flex-shrink-0">
-            <div className={`relative h-[80px] rounded border overflow-hidden ${
-              isEnhanced ? 'border-slate-400/50' : 'border-purple-400/50'
-            }`}>
+            <div className={`relative h-[80px] rounded border overflow-hidden ${colors.imageBorder}`}>
               <img
                 src={image}
                 alt={name}
@@ -111,22 +161,16 @@ const ActionCard = ({
           </div>
 
           {/* Description Section - MAXIMIZED SIZE */}
-          <div className={`mx-1 mb-1 flex-grow bg-black/60 backdrop-blur-sm border p-2 overflow-y-auto rounded-md ${
-            isEnhanced ? 'border-slate-600/70' : 'border-purple-800/70'
-          }`}>
+          <div className={`mx-1 mb-1 flex-grow bg-black/60 backdrop-blur-sm border p-2 overflow-y-auto rounded-md ${colors.descBorder}`}>
             <p className="text-sm text-white leading-tight text-center font-exo font-normal">{description}</p>
           </div>
 
           {/* Footer - REDUCED HEIGHT */}
-          <div className={`grid grid-cols-[auto_1fr_auto] gap-2 items-center px-2 border-t flex-shrink-0 h-6 mt-auto ${
-            isEnhanced ? 'border-slate-600/70' : 'border-purple-800/70'
-          }`}>
+          <div className={`grid grid-cols-[auto_1fr_auto] gap-2 items-center px-2 border-t flex-shrink-0 h-6 mt-auto ${colors.footerBorder}`}>
             <div className="w-4"></div>
 
             <div className="flex items-center justify-center">
-              <span className={`text-[10px] uppercase tracking-widest font-semibold ${
-                isEnhanced ? 'text-slate-400' : 'text-purple-400'
-              }`}>
+              <span className={`text-[10px] uppercase tracking-widest font-semibold ${colors.typeText}`}>
                 {type} Card
               </span>
             </div>
