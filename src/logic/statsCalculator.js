@@ -48,8 +48,14 @@ export const calculateEffectiveShipStats = (playerState, placedSections = []) =>
     }
 
     const sectionStats = {};
-    for (const sectionName in playerState.shipSections) {
+    // ONLY process ship sections that are in placedSections array
+    for (const sectionName of placedSections) {
+      // Skip null/empty entries
+      if (!sectionName) continue;
+
       const section = playerState.shipSections[sectionName];
+      if (!section) continue; // Skip if section not found
+
       const status = getShipStatus(section);
       const currentStats = { ...section.stats[status] };
       const laneIndex = placedSections.indexOf(sectionName);

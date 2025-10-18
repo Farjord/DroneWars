@@ -68,21 +68,18 @@ const ShipAbilityRevealOverlay = ({ abilityName, label, onComplete }) => {
           {label}
         </h2>
 
-        {/* Ability name with glowing border */}
-        <div
+        {/* Ability name with glowing effect */}
+        <p
           className={`
-            px-8 py-4 rounded-xl
-            bg-gradient-to-r from-purple-900/80 via-pink-900/80 to-purple-900/80
-            border-2 border-purple-400
-            shadow-[0_0_30px_rgba(168,85,247,0.6)]
+            text-6xl font-orbitron font-bold uppercase tracking-wider
+            text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-400
+            drop-shadow-[0_0_30px_rgba(34,211,238,0.9)]
             transition-all duration-300
             ${isVisible ? 'scale-100' : 'scale-90'}
           `}
         >
-          <p className="text-3xl font-bold text-white text-center">
-            {abilityName}
-          </p>
-        </div>
+          {abilityName}
+        </p>
 
         {/* Digital scan line effect */}
         <div

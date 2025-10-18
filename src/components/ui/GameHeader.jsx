@@ -76,6 +76,8 @@ function GameHeader({
   handleRoundStartDraw,
   optionalDiscardCount,
   mandatoryAction,
+  excessCards,
+  excessDrones,
   multiSelectState,
   AI_HAND_DEBUG_MODE,
   setShowAiHandModal,
@@ -221,14 +223,14 @@ function GameHeader({
               ({shieldsToAdd} shields to add)
             </span>
           )}
-          {turnPhase === 'mandatoryDiscard' && mandatoryAction?.type === 'discard' && (
+          {turnPhase === 'mandatoryDiscard' && (mandatoryAction?.type === 'discard' || excessCards > 0) && (
             <span className="text-base font-semibold text-orange-300 ml-2">
-              ({mandatoryAction.count} {mandatoryAction.count === 1 ? 'card' : 'cards'} to discard)
+              ({(mandatoryAction?.count || excessCards)} {(mandatoryAction?.count || excessCards) === 1 ? 'card' : 'cards'} to discard)
             </span>
           )}
-          {turnPhase === 'mandatoryDroneRemoval' && mandatoryAction?.type === 'destroy' && (
+          {turnPhase === 'mandatoryDroneRemoval' && (mandatoryAction?.type === 'destroy' || excessDrones > 0) && (
             <span className="text-base font-semibold text-orange-300 ml-2">
-              ({mandatoryAction.count} {mandatoryAction.count === 1 ? 'drone' : 'drones'} to remove)
+              ({(mandatoryAction?.count || excessDrones)} {(mandatoryAction?.count || excessDrones) === 1 ? 'drone' : 'drones'} to remove)
             </span>
           )}
           {turnPhase === 'optionalDiscard' && (

@@ -13,6 +13,7 @@ import gameStateManager from '../../state/GameStateManager.js';
 import p2pManager from '../../network/P2PManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { shipComponentCollection } from '../../data/shipData.js';
+import { calculateEffectiveShipStats } from '../../logic/statsCalculator.js';
 
 /**
  * SHIP PLACEMENT SCREEN COMPONENT
@@ -67,11 +68,11 @@ function ShipPlacementScreen() {
       }
     });
 
-    // Add any unplaced sections to the unplaced list
-    const allSections = ['bridge', 'powerCell', 'droneControlHub'];
-    allSections.forEach(section => {
-      if (!placed.includes(section)) {
-        unplaced.push(section);
+    // Add only SELECTED ship components that aren't placed yet to unplaced list
+    Object.entries(selectedShipComponents).forEach(([componentId, lane]) => {
+      const component = shipComponentCollection.find(c => c.id === componentId);
+      if (component && component.key && !placed.includes(component.key)) {
+        unplaced.push(component.key);
       }
     });
 
@@ -252,6 +253,20 @@ function ShipPlacementScreen() {
     );
   }
 
+  // Helper to calculate effective stats for a section in a specific lane
+  const getEffectiveStatsForSection = (sectionName, laneIndex) => {
+    if (!sectionName) return null;
+
+    // Calculate ship stats with current placement
+    const shipStats = calculateEffectiveShipStats(
+      localPlayerState,
+      localPlacedSections
+    );
+
+    // Return the stats for this specific section
+    return shipStats.bySection[sectionName];
+  };
+
   // Render the placement interface
   const allPlaced = localPlacedSections.every(section => section !== null);
 
@@ -315,7 +330,7 @@ function ShipPlacementScreen() {
                   <ShipSection
                     section={placedSectionName}
                     stats={localPlayerState.shipSections[placedSectionName]}
-                    effectiveStatsForDisplay={localPlayerState.shipSections[placedSectionName].stats.healthy}
+                    effectiveStatsForDisplay={getEffectiveStatsForSection(placedSectionName, laneIndex)}
                     isPlayer={true}
                     isInteractive={true}
                     isInMiddleLane={laneIndex === 1}
@@ -349,30 +364,28 @@ function ShipPlacementScreen() {
         )}
 
         {/* Unplaced Sections Row (Bottom) - Picked up sections */}
-        <div className="flex w-full justify-between gap-8">
-          {['bridge', 'powerCell', 'droneControlHub'].map(sectionName => (
-            <div key={sectionName} className="flex-1 min-w-0 h-[190px]">
-              {localUnplacedSections.includes(sectionName) && (
-                <div
-                  onClick={() => handleSelectSectionForPlacement(sectionName)}
-                  className={`h-full transition-all duration-300 rounded-xl ${selectedSectionForPlacement === sectionName ? 'scale-105 ring-4 ring-cyan-400' : 'opacity-70 hover:opacity-100 cursor-pointer'}`}
-                >
-                  <ShipSection
-                    section={sectionName}
-                    stats={localPlayerState.shipSections[sectionName]}
-                    effectiveStatsForDisplay={localPlayerState.shipSections[sectionName].stats.healthy}
-                    isPlayer={true}
-                    isInteractive={true}
-                    gameEngine={gameEngine}
-                    turnPhase={turnPhase}
-                    isMyTurn={() => true}
-                    passInfo={{}}
-                    getLocalPlayerId={getLocalPlayerId}
-                    localPlayerState={localPlayerState}
-                    shipAbilityMode={null}
-                  />
-                </div>
-              )}
+        <div className="flex w-full justify-center gap-8">
+          {localUnplacedSections.map(sectionName => (
+            <div key={sectionName} className="flex-shrink-0 w-[calc(33.333%-1.5rem)] h-[190px]">
+              <div
+                onClick={() => handleSelectSectionForPlacement(sectionName)}
+                className={`h-full transition-all duration-300 rounded-xl ${selectedSectionForPlacement === sectionName ? 'scale-105 ring-4 ring-cyan-400' : 'opacity-70 hover:opacity-100 cursor-pointer'}`}
+              >
+                <ShipSection
+                  section={sectionName}
+                  stats={localPlayerState.shipSections[sectionName]}
+                  effectiveStatsForDisplay={getEffectiveStatsForSection(sectionName, -1)}
+                  isPlayer={true}
+                  isInteractive={true}
+                  gameEngine={gameEngine}
+                  turnPhase={turnPhase}
+                  isMyTurn={() => true}
+                  passInfo={{}}
+                  getLocalPlayerId={getLocalPlayerId}
+                  localPlayerState={localPlayerState}
+                  shipAbilityMode={null}
+                />
+              </div>
             </div>
           ))}
         </div>

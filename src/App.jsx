@@ -1153,8 +1153,8 @@ const App = () => {
       shipAbilityMode,
       multiSelectState,
       selectedCard,
-      localPlayerState,
-      opponentPlayerState,
+      gameState.player1,
+      gameState.player2,
       getLocalPlayerId()
     );
 
@@ -1166,7 +1166,7 @@ const App = () => {
       setSelectedCard(null);
       setShipAbilityMode(null);
     }
-  }, [abilityMode, shipAbilityMode, selectedCard, localPlayerState, opponentPlayerState, multiSelectState]);
+  }, [abilityMode, shipAbilityMode, selectedCard, gameState.player1, gameState.player2, multiSelectState]);
 
   // --- 8.2 WIN CONDITION MONITORING ---
   // Win conditions are now checked automatically by ActionProcessor after attacks, abilities, and card plays
@@ -1393,10 +1393,17 @@ const App = () => {
   useEffect(() => {
     const prevPhase = previousPhaseRef.current;
     const enteredMandatoryDiscard = turnPhase === 'mandatoryDiscard' && prevPhase !== 'mandatoryDiscard';
+    const enteredMandatoryRemoval = turnPhase === 'mandatoryDroneRemoval' && prevPhase !== 'mandatoryDroneRemoval';
 
     // Open footer and set view to hand when first entering mandatoryDiscard phase
     if (enteredMandatoryDiscard) {
       setFooterView('hand');
+      setIsFooterOpen(true);
+    }
+
+    // Open footer and set view to drones when first entering mandatoryDroneRemoval phase
+    if (enteredMandatoryRemoval) {
+      setFooterView('drones');
       setIsFooterOpen(true);
     }
 
@@ -1413,6 +1420,45 @@ const App = () => {
     // Update ref for next comparison
     previousPhaseRef.current = turnPhase;
   }, [turnPhase, mandatoryAction]);
+
+  // --- 8.10 MANDATORY PHASE WAITING MODAL ---
+  // Monitor commitment status for mandatory phases and show waiting modal when appropriate
+  // Handles both scenarios: player has no excess (auto-commits) OR player finishes first
+  useEffect(() => {
+    // Only check in multiplayer
+    if (!isMultiplayer()) return;
+
+    const localPlayerId = getLocalPlayerId();
+    const opponentPlayerId = getOpponentPlayerId();
+
+    // Check mandatoryDiscard phase
+    if (turnPhase === 'mandatoryDiscard') {
+      const localCommitted = gameState.commitments?.mandatoryDiscard?.[localPlayerId]?.completed;
+      const opponentCommitted = gameState.commitments?.mandatoryDiscard?.[opponentPlayerId]?.completed;
+
+      if (localCommitted && !opponentCommitted) {
+        debugLog('COMMITMENTS', '✋ Local player committed but opponent has not - showing waiting modal for mandatoryDiscard');
+        setWaitingForPlayerPhase('mandatoryDiscard');
+      } else if (localCommitted && opponentCommitted && waitingForPlayerPhase === 'mandatoryDiscard') {
+        debugLog('COMMITMENTS', '✅ Both players committed - clearing waiting modal for mandatoryDiscard');
+        setWaitingForPlayerPhase(null);
+      }
+    }
+
+    // Check mandatoryDroneRemoval phase
+    if (turnPhase === 'mandatoryDroneRemoval') {
+      const localCommitted = gameState.commitments?.mandatoryDroneRemoval?.[localPlayerId]?.completed;
+      const opponentCommitted = gameState.commitments?.mandatoryDroneRemoval?.[opponentPlayerId]?.completed;
+
+      if (localCommitted && !opponentCommitted) {
+        debugLog('COMMITMENTS', '✋ Local player committed but opponent has not - showing waiting modal for mandatoryDroneRemoval');
+        setWaitingForPlayerPhase('mandatoryDroneRemoval');
+      } else if (localCommitted && opponentCommitted && waitingForPlayerPhase === 'mandatoryDroneRemoval') {
+        debugLog('COMMITMENTS', '✅ Both players committed - clearing waiting modal for mandatoryDroneRemoval');
+        setWaitingForPlayerPhase(null);
+      }
+    }
+  }, [turnPhase, gameState.commitments, isMultiplayer, getLocalPlayerId, getOpponentPlayerId, waitingForPlayerPhase]);
 
   /**
    * HANDLE RESET
@@ -3123,6 +3169,8 @@ const App = () => {
         handleRoundStartDraw={handleRoundStartDraw}
         optionalDiscardCount={optionalDiscardCount}
         mandatoryAction={mandatoryAction}
+        excessCards={excessCards}
+        excessDrones={excessDrones}
         multiSelectState={multiSelectState}
         AI_HAND_DEBUG_MODE={AI_HAND_DEBUG_MODE}
         setShowAiHandModal={setShowAiHandModal}
