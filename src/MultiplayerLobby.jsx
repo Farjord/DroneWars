@@ -321,9 +321,22 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
                 </p>
               )}
             </div>
-            <button onClick={handleStartGame} className="btn-continue" style={{ width: '100%' }}>
-              Start Game
-            </button>
+            {p2pManager.isHost ? (
+              <button onClick={handleStartGame} className="btn-continue" style={{ width: '100%' }}>
+                Start Game
+              </button>
+            ) : (
+              <div style={{
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                border: '1px solid #60a5fa',
+                borderRadius: '0.5rem',
+                padding: '1rem',
+                color: '#93c5fd'
+              }}>
+                <Loader2 className="w-5 h-5 animate-spin" style={{ margin: '0 auto 0.5rem auto', color: '#60a5fa' }} />
+                <p>Waiting for host to start game...</p>
+              </div>
+            )}
           </div>
         )}
 

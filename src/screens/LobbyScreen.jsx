@@ -124,6 +124,13 @@ function LobbyScreen() {
       { name: isHost ? 'Host Player' : 'Guest Player' },
       { name: isHost ? 'Guest Player' : 'Host Player' }
     );
+
+    // Host broadcasts initial game state to guest
+    if (isHost && p2pManager.isConnected) {
+      debugLog('PHASE_TRANSITIONS', '📡 Host broadcasting initial game state to guest');
+      const initialState = gameStateManager.getState();
+      p2pManager.broadcastState(initialState);
+    }
   };
 
   const handleViewDeck = (ai) => {
