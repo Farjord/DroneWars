@@ -137,41 +137,26 @@ class GuestMessageQueueService {
       systemAnimationCount: systemAnimations?.length || 0
     });
 
-    // Check if we have recent optimistic actions (client-side prediction)
-    const hasOptimisticActions = this.gameStateManager.hasRecentOptimisticActions();
-    const optimisticCount = this.gameStateManager.optimisticActions?.length || 0;
+    // Fine-grained animation filtering using OptimisticActionService
+    // Removes only duplicate animations that match tracked optimistic animations
+    const filtered = this.gameStateManager.filterAnimations(
+      actionAnimations || [],
+      systemAnimations || []
+    );
 
-    // Smart filtering: Skip action animations if optimistic, always keep system animations
-    let filteredActionAnimations = actionAnimations || [];
-    if (hasOptimisticActions && actionAnimations && actionAnimations.length > 0) {
-      debugLog('ANIMATIONS', '⏭️ [GUEST QUEUE] SKIPPING action animations - already played optimistically');
-      filteredActionAnimations = [];
-    }
-
-    // Clear optimistic actions now that we've used them for filtering
-    // This prevents old optimistic actions from incorrectly skipping future animations
-    if (hasOptimisticActions) {
-      debugLog('ANIMATIONS', '🧹 [GUEST QUEUE] Clearing optimistic actions after filtering');
-      this.gameStateManager.clearOptimisticActions();
-    }
-
-    // System animations always play (phase announcements, etc.)
-    const systemAnimationsToPlay = systemAnimations || [];
+    const filteredActionAnimations = filtered.actionAnimations;
+    const systemAnimationsToPlay = filtered.systemAnimations;
 
     // Combine animations to execute
     const animationsToPlay = [...filteredActionAnimations, ...systemAnimationsToPlay];
 
-    debugLog('ANIMATIONS', '🔍 [GUEST QUEUE] Animation filtering decision:', {
-      hasOptimisticActions,
-      optimisticActionsCount: optimisticCount,
+    debugLog('ANIMATIONS', '🔍 [GUEST QUEUE] Fine-grained animation filtering complete:', {
       incomingActionCount: actionAnimations?.length || 0,
       incomingSystemCount: systemAnimations?.length || 0,
-      skippedActionCount: (actionAnimations?.length || 0) - filteredActionAnimations.length,
-      systemAnimationsKept: systemAnimationsToPlay.length,
-      totalToPlay: animationsToPlay.length,
-      reasoning: hasOptimisticActions
-        ? 'Filtered action animations (optimistic), kept system animations'
-        : 'Playing all animations (no optimistic actions)'
+      filteredActionCount: filteredActionAnimations.length,
+      filteredSystemCount: systemAnimationsToPlay.length,
+      skippedCount: (actionAnimations?.length || 0) - filteredActionAnimations.length,
+      totalToPlay: animationsToPlay.length
     });
 
     const hasAnimations = animationsToPlay.length > 0;

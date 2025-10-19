@@ -132,6 +132,15 @@ class AnimationManager {
         timing: 'independent',  // Visual effect, doesn't need specific entities
         config: {}
       },
+      BARRAGE_IMPACT: {
+        duration: 600,  // Total duration for all impacts to complete
+        type: 'BARRAGE_IMPACT',
+        timing: 'independent',  // Visual effect, doesn't need specific entities
+        config: {
+          impactSize: 10,  // 10px x 10px impact flashes
+          impactDelay: 50  // 50ms between each impact (stagger)
+        }
+      },
       // Railgun animations
       RAILGUN_TURRET: {
         duration: 2700,  // Full turret cycle (deploy → build → charge → shoot → retract)

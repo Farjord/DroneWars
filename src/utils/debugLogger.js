@@ -26,8 +26,9 @@ const DEBUG_CONFIG = {
     PHASE_TRANSITIONS: false,   // Game phase transitions and flow
     AI_DECISIONS: false,        // AI decision making (DISABLED for clean logs)
     MULTIPLAYER: false,         // Network sync and multiplayer
-    P2P_CONNECTION: true,      // PeerJS connection diagnostics
-    ANIMATIONS: true,          // Animation system
+    P2P_CONNECTION: false,      // PeerJS connection diagnostics
+    ANIMATIONS: false,          // Animation system (DISABLED - use OPTIMISTIC for focused debugging)
+    OPTIMISTIC: true,           // Animation deduplication and matching logic
     COMMITMENTS: false,         // Simultaneous phase commitments
     COMBAT: false,              // Combat resolution (DISABLED for clean logs)
     PASS_LOGIC: false,          // Pass handling

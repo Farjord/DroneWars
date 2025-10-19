@@ -8,6 +8,7 @@ import { gameEngine, startingDecklist } from '../logic/gameLogic.js';
 import ActionProcessor from './ActionProcessor.js';
 import GameDataService from '../services/GameDataService.js';
 import GuestMessageQueueService from './GuestMessageQueueService.js';
+import OptimisticActionService from './OptimisticActionService.js';
 import fullDroneCollection from '../data/droneData.js';
 import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
@@ -21,8 +22,8 @@ class GameStateManager {
     this.listeners = new Set();
 
     // Optimistic action tracking for client-side prediction (guest mode)
-    this.optimisticActions = [];
-    this.optimisticActionTimeout = 5000; // Clear after 5 seconds (covers longest animation sequences + network latency)
+    // Uses fine-grained animation deduplication service
+    this.optimisticActionService = new OptimisticActionService();
 
     // Core application state (minimal until game starts)
     this.state = {
@@ -1256,41 +1257,39 @@ class GameStateManager {
   }
 
   /**
-   * Track optimistic action for client-side prediction (guest mode)
-   * Used to deduplicate animations when host sends authoritative state back
+   * Track optimistic animations for fine-grained deduplication (guest mode)
+   * Used to prevent duplicate animations when host echoes back guest's action
+   * @param {Object} animations - {actionAnimations: [], systemAnimations: []}
    */
-  trackOptimisticAction(actionType, payload) {
-    const action = {
-      type: actionType,
-      payload: payload,
-      timestamp: Date.now(),
-      id: `${actionType}-${Date.now()}-${Math.random()}`
-    };
-
-    this.optimisticActions.push(action);
-    debugLog('STATE_SYNC', '🔮 [OPTIMISTIC] Tracked action:', actionType, 'Total tracked:', this.optimisticActions.length);
-
-    // Auto-clear after timeout
-    setTimeout(() => {
-      this.optimisticActions = this.optimisticActions.filter(a => a.id !== action.id);
-      debugLog('STATE_SYNC', '🧹 [OPTIMISTIC] Cleared old action:', actionType, 'Remaining:', this.optimisticActions.length);
-    }, this.optimisticActionTimeout);
+  trackOptimisticAnimations(animations) {
+    this.optimisticActionService.trackAction(animations);
   }
 
   /**
-   * Check if we have recent optimistic actions
-   * Used by GuestMessageQueueService to skip duplicate animations
+   * Filter incoming animations to remove duplicates
+   * Used by GuestMessageQueueService when processing host responses
+   * @param {Array} actionAnimations - Action animations from host
+   * @param {Array} systemAnimations - System animations from host
+   * @returns {Object} - {actionAnimations: [], systemAnimations: []}
+   */
+  filterAnimations(actionAnimations, systemAnimations) {
+    return this.optimisticActionService.filterAnimations(actionAnimations, systemAnimations);
+  }
+
+  /**
+   * Check if we have tracked optimistic animations
+   * Used by GuestMessageQueueService to determine filtering strategy
    */
   hasRecentOptimisticActions() {
-    return this.optimisticActions.length > 0;
+    const status = this.optimisticActionService.getStatus();
+    return status.actionAnimationsTracked > 0 || status.systemAnimationsTracked > 0;
   }
 
   /**
-   * Clear all optimistic actions
+   * Clear all tracked optimistic animations
    */
   clearOptimisticActions() {
-    debugLog('STATE_SYNC', '🧹 [OPTIMISTIC] Clearing all actions');
-    this.optimisticActions = [];
+    this.optimisticActionService.clearTrackedAnimations();
   }
 
   /**

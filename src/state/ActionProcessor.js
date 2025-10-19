@@ -488,7 +488,14 @@ setAnimationManager(animationManager) {
       });
     }
 
-    return result;
+    // Return result with animations for optimistic action tracking
+    return {
+      ...result,
+      animations: {
+        actionAnimations: animations,
+        systemAnimations: []
+      }
+    };
   }
 
   /**
@@ -668,7 +675,14 @@ setAnimationManager(animationManager) {
       });
     }
 
-    return result;
+    // Return result with animations for optimistic action tracking
+    return {
+      ...result,
+      animations: {
+        actionAnimations: animations,
+        systemAnimations: []
+      }
+    };
   }
 
   /**
@@ -771,6 +785,15 @@ setAnimationManager(animationManager) {
       await this.processTurnTransition({
         newPlayer: playerId === 'player1' ? 'player2' : 'player1'
       });
+
+      // Return result with animations for optimistic action tracking
+      return {
+        ...result,
+        animations: {
+          actionAnimations: animations,
+          systemAnimations: []
+        }
+      };
     }
 
     return result;
@@ -840,8 +863,6 @@ setAnimationManager(animationManager) {
 
     const callbacks = {
       logCallback: (entry) => this.gameStateManager.addLogEntry(entry),
-      explosionCallback: () => {}, // UI effect - handled by App.jsx
-      hitAnimationCallback: () => {}, // UI effect - handled by App.jsx
       resolveAttackCallback: async (attackPayload) => {
         // Recursively handle attack through action processor
         return await this.processAttack(attackPayload);
@@ -897,7 +918,14 @@ setAnimationManager(animationManager) {
       });
     }
 
-    return result;
+    // Return result with animations for optimistic action tracking
+    return {
+      ...result,
+      animations: {
+        actionAnimations: animations,
+        systemAnimations: []
+      }
+    };
   }
 
   /**
@@ -986,7 +1014,7 @@ setAnimationManager(animationManager) {
         cardId: card.id,
         cardName: card.name,
         cardData: card,
-        actingPlayerId: playerId,
+        targetPlayer: playerId,  // Standardized field name
         timestamp: Date.now()
       }
     }];
@@ -1000,9 +1028,14 @@ setAnimationManager(animationManager) {
       });
     }
 
+    // Return result with animations for optimistic action tracking
     return {
       success: true,
-      shouldEndTurn: result.shouldEndTurn
+      shouldEndTurn: result.shouldEndTurn,
+      animations: {
+        actionAnimations: cardRevealAnimation,
+        systemAnimations: []
+      }
     };
   }
 
@@ -1075,13 +1108,15 @@ setAnimationManager(animationManager) {
     );
 
     // Execute CARD_REVEAL animation now that card selection is complete
+    const animDef = this.animationManager?.animations['CARD_REVEAL'];
     const cardRevealAnimation = [{
       animationName: 'CARD_REVEAL',
+      timing: animDef?.timing || 'independent',  // Include timing from definition
       payload: {
         cardId: card.id,
         cardName: card.name,
         cardData: card,
-        actingPlayerId: playerId,
+        targetPlayer: playerId,  // Standardized field name
         timestamp: Date.now()
       }
     }];
@@ -1095,10 +1130,15 @@ setAnimationManager(animationManager) {
       });
     }
 
+    // Return result with animations for optimistic action tracking
     return {
       success: true,
       shouldEndTurn: completion.shouldEndTurn,
-      newPlayerStates: completion.newPlayerStates
+      newPlayerStates: completion.newPlayerStates,
+      animations: {
+        actionAnimations: cardRevealAnimation,
+        systemAnimations: []
+      }
     };
   }
 
@@ -1117,8 +1157,6 @@ setAnimationManager(animationManager) {
 
     const callbacks = {
       logCallback: (entry) => this.gameStateManager.addLogEntry(entry),
-      explosionCallback: () => {}, // UI effect - handled by App.jsx
-      hitAnimationCallback: () => {}, // UI effect - handled by App.jsx
       resolveAttackCallback: async (attackPayload) => {
         // Recursively handle attack through action processor
         return await this.processAttack(attackPayload);
@@ -1137,13 +1175,18 @@ setAnimationManager(animationManager) {
 
     // Collect animation events
     // Spread all event properties to ensure logical position data flows through
-    const animations = (result.animationEvents || []).map(event => ({
-      animationName: event.type,
-      payload: {
-        ...event,  // Pass ALL properties from event (sourcePlayer, sourceLane, targetPlayer, etc.)
-        droneId: event.sourceId  // Add alias for backwards compatibility
-      }
-    }));
+    // Include timing property from AnimationManager for proper sequencing on guest side
+    const animations = (result.animationEvents || []).map(event => {
+      const animDef = this.animationManager?.animations[event.type];
+      return {
+        animationName: event.type,
+        timing: animDef?.timing || 'pre-state',  // Include timing from definition
+        payload: {
+          ...event,  // Pass ALL properties from event (sourcePlayer, sourceLane, targetPlayer, etc.)
+          droneId: event.sourceId  // Add alias for backwards compatibility
+        }
+      };
+    });
 
     // Execute animations if any exist
     await this.executeAndCaptureAnimations(animations);
@@ -1162,7 +1205,14 @@ setAnimationManager(animationManager) {
       });
     }
 
-    return result;
+    // Return result with animations for optimistic action tracking
+    return {
+      ...result,
+      animations: {
+        actionAnimations: animations,
+        systemAnimations: []
+      }
+    };
   }
 
   /**

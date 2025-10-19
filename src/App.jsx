@@ -83,6 +83,7 @@ import LaserEffect from './components/animations/LaserEffect.jsx';
 import TeleportEffect from './components/animations/TeleportEffect.jsx';
 import OverflowProjectile from './components/animations/OverflowProjectile.jsx';
 import SplashEffect from './components/animations/SplashEffect.jsx';
+import BarrageImpact from './components/animations/BarrageImpact.jsx';
 import RailgunTurret from './components/animations/RailgunTurret.jsx';
 import RailgunBeam from './components/animations/RailgunBeam.jsx';
 // ========================================
@@ -154,6 +155,7 @@ const App = () => {
   const [teleportEffects, setTeleportEffects] = useState([]);
   const [overflowProjectiles, setOverflowProjectiles] = useState([]);
   const [splashEffects, setSplashEffects] = useState([]);
+  const [barrageImpacts, setBarrageImpacts] = useState([]);
   const [railgunTurrets, setRailgunTurrets] = useState([]);
   const [railgunBeams, setRailgunBeams] = useState([]);
   const [passNotifications, setPassNotifications] = useState([]);
@@ -283,6 +285,7 @@ const App = () => {
   setPassNotifications,
   setOverflowProjectiles,
   setSplashEffects,
+  setBarrageImpacts,
   setRailgunTurrets,
   setRailgunBeams
 );
@@ -583,17 +586,23 @@ const App = () => {
       // Optimistic actions: Process locally for instant feedback AND send to host
       debugLog('MULTIPLAYER', '🔮 [GUEST OPTIMISTIC] Processing action locally and sending to host:', type);
 
-      // Track this optimistic action for animation deduplication
-      gameStateManager.trackOptimisticAction(type, payload);
-      debugLog('ANIMATIONS', '🔮 [GUEST OPTIMISTIC] Tracked action for deduplication:', {
-        type,
-        totalTracked: gameStateManager.optimisticActions?.length || 0
-      });
-
       // Process action locally first for instant visual feedback (client-side prediction)
       debugLog('ANIMATIONS', '🎬 [GUEST OPTIMISTIC] About to process action locally (will generate animations)');
       const localResult = await processAction(type, payload);
       debugLog('ANIMATIONS', '✅ [GUEST OPTIMISTIC] Local processing complete (animations should have played)');
+
+      // Track animations from this optimistic action for fine-grained deduplication
+      if (localResult.animations) {
+        gameStateManager.trackOptimisticAnimations(localResult.animations);
+        const status = gameStateManager.optimisticActionService.getStatus();
+        debugLog('OPTIMISTIC', '🔮 [SERVICE] Tracked optimistic animations:', {
+          type,
+          actionCount: localResult.animations.actionAnimations?.length || 0,
+          systemCount: localResult.animations.systemAnimations?.length || 0,
+          totalActionTracked: status.actionAnimationsTracked,
+          totalSystemTracked: status.systemAnimationsTracked
+        });
+      }
 
       // Send to host for authoritative processing (parallel, non-blocking)
       // Host will broadcast authoritative state which will reconcile via applyHostState
@@ -3159,6 +3168,17 @@ const App = () => {
         centerPos={splash.centerPos}
         duration={splash.duration}
         onComplete={splash.onComplete}
+      />
+    ))}
+    {barrageImpacts.map(impact => (
+      <BarrageImpact
+        key={impact.id}
+        position={impact.position}
+        size={impact.size}
+        delay={impact.delay}
+        onComplete={() => {
+          setBarrageImpacts(prev => prev.filter(i => i.id !== impact.id));
+        }}
       />
     ))}
     {railgunTurrets.map(turret => (

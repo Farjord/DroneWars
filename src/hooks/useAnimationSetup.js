@@ -4,7 +4,7 @@ import FlashEffect from '../components/animations/FlashEffect.jsx';
 import CardVisualEffect from '../components/animations/CardVisualEffect.jsx';
 import { debugLog } from '../utils/debugLogger.js';
 
-export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setOverflowProjectiles, setSplashEffects, setRailgunTurrets, setRailgunBeams) {
+export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setOverflowProjectiles, setSplashEffects, setBarrageImpacts, setRailgunTurrets, setRailgunBeams) {
   useEffect(() => {
     const localPlayerState = getLocalPlayerState();
     const opponentPlayerState = getOpponentPlayerState();
@@ -308,16 +308,16 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     });
 
     animationManager.registerVisualHandler('CARD_REVEAL_EFFECT', (payload) => {
-      const { cardData, actingPlayerId, onComplete } = payload;
+      const { cardData, targetPlayer, onComplete } = payload;
 
       debugLog('ANIMATIONS', '🃏 [CARD REVEAL DEBUG] CARD_REVEAL_EFFECT handler called:', {
         cardName: cardData?.name,
-        actingPlayerId
+        targetPlayer
       });
 
       // Determine if this is the local player or opponent
       const localPlayerId = gameStateManager.getLocalPlayerId();
-      const isLocalPlayer = actingPlayerId === localPlayerId;
+      const isLocalPlayer = targetPlayer === localPlayerId;
 
       const revealId = `cardreveal-${Date.now()}`;
 
@@ -437,9 +437,9 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     });
 
     animationManager.registerVisualHandler('TELEPORT_EFFECT', (payload) => {
-      const { targetId, laneId, playerId, onComplete } = payload;
+      const { targetId, targetLane, targetPlayer, onComplete } = payload;
 
-      debugLog('ANIMATIONS', '✨ [TELEPORT DEBUG] TELEPORT_EFFECT handler called:', { targetId, laneId, playerId });
+      debugLog('ANIMATIONS', '✨ [TELEPORT DEBUG] TELEPORT_EFFECT handler called:', { targetId, targetLane, targetPlayer });
 
       // Use requestAnimationFrame to ensure React has finished rendering the drone element
       requestAnimationFrame(() => {
@@ -458,7 +458,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
 
         // Determine color based on local player perspective
         const localPlayerId = gameStateManager.getLocalPlayerId();
-        const isLocalPlayer = playerId === localPlayerId;
+        const isLocalPlayer = targetPlayer === localPlayerId;
         const teleportColor = isLocalPlayer ? '#00ffff' : '#ec4899'; // Cyan for player, pink for opponent
 
         const teleportId = `teleport-${targetId}-${Date.now()}`;
@@ -596,6 +596,66 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
           onComplete?.();
         }
       }]);
+    });
+
+    animationManager.registerVisualHandler('BARRAGE_IMPACT', (payload) => {
+      const { targetId, targetPlayer, targetLane, impactCount, onComplete } = payload;
+
+      debugLog('ANIMATIONS', '🔫 [BARRAGE DEBUG] BARRAGE_IMPACT handler called:', {
+        targetId,
+        targetPlayer,
+        targetLane,
+        impactCount
+      });
+
+      // Get target drone position
+      const droneEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, 'drone');
+      if (!droneEl) {
+        console.warn('⚠️ [BARRAGE DEBUG] Target drone element not found:', targetId);
+        onComplete?.();
+        return;
+      }
+
+      const droneRect = droneEl.getBoundingClientRect();
+      const gameAreaRect = gameAreaRef.current?.getBoundingClientRect();
+
+      if (!gameAreaRect) {
+        onComplete?.();
+        return;
+      }
+
+      // Generate random impact positions over the drone
+      const impacts = [];
+      const impactSize = 10;
+      const impactDelay = 50; // 50ms between impacts
+
+      for (let i = 0; i < impactCount; i++) {
+        // Random position within drone bounds
+        const randomX = Math.random() * (droneRect.width - impactSize);
+        const randomY = Math.random() * (droneRect.height - impactSize);
+
+        impacts.push({
+          id: `barrage-${targetId}-${Date.now()}-${i}`,
+          position: {
+            left: droneRect.left - gameAreaRect.left + randomX,
+            top: droneRect.top - gameAreaRect.top + randomY
+          },
+          size: impactSize,
+          delay: i * impactDelay
+        });
+      }
+
+      // Add impacts to state
+      setBarrageImpacts(prev => [...prev, ...impacts]);
+
+      // Complete after all impacts finish
+      const totalDuration = impactCount * impactDelay + 250; // Last impact delay + flash duration
+      setTimeout(() => {
+        setBarrageImpacts(prev => prev.filter(impact =>
+          !impacts.find(i => i.id === impact.id)
+        ));
+        onComplete?.();
+      }, totalDuration);
     });
 
     animationManager.registerVisualHandler('RAILGUN_TURRET', (payload) => {
@@ -771,5 +831,5 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     gameStateManager.actionProcessor.setAnimationManager(animationManager);
 
     return unsubscribe;
-}, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setOverflowProjectiles, setSplashEffects, setRailgunTurrets, setRailgunBeams]);
+}, [getLocalPlayerState, getOpponentPlayerState, gameStateManager, triggerExplosion, droneRefs, sectionRefs, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setOverflowProjectiles, setSplashEffects, setBarrageImpacts, setRailgunTurrets, setRailgunBeams]);
 }

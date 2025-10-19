@@ -120,6 +120,7 @@ const initialPlayerState = (name, decklist) => {
         activeDronePool: [],
         dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
         deployedDroneCounts: {},
+        totalDronesDeployed: 0,  // Global deployment counter for deterministic IDs
         appliedUpgrades: {},
     };
 };
@@ -1029,10 +1030,14 @@ const executeDeployment = (drone, lane, turn, playerState, opponentState, placed
     const tempPlayerState = { ...newPlayerState, dronesOnBoard: tempDronesOnBoard };
     const effectiveStats = calculateEffectiveStats(drone, lane, tempPlayerState, opponentState, placedSections);
 
+    // Generate deterministic ID using deployment counter
+    const deploymentNumber = (newPlayerState.totalDronesDeployed || 0) + 1;
+    const droneId = `${playerId}_${drone.name}_${deploymentNumber.toString().padStart(4, '0')}`;
+
     // Create the new drone with proper stats
     const newDrone = {
         ...drone,
-        id: Date.now(),
+        id: droneId,  // Deterministic ID
         statMods: [],
         currentShields: effectiveStats.maxShields,
         currentMaxShields: effectiveStats.maxShields,
@@ -1047,6 +1052,9 @@ const executeDeployment = (drone, lane, turn, playerState, opponentState, placed
         ...newPlayerState.deployedDroneCounts,
         [drone.name]: (newPlayerState.deployedDroneCounts[drone.name] || 0) + 1
     };
+
+    // Increment total deployment counter for deterministic ID generation
+    newPlayerState.totalDronesDeployed = deploymentNumber;
 
     // Pay costs
     if (turn === 1) {
@@ -1063,8 +1071,8 @@ const executeDeployment = (drone, lane, turn, playerState, opponentState, placed
     const animationEvents = [{
         type: 'TELEPORT_IN',
         targetId: newDrone.id,
-        laneId: lane,
-        playerId: playerId,
+        targetLane: lane,
+        targetPlayer: playerId,
         timestamp: Date.now()
     }];
 
@@ -1903,7 +1911,7 @@ const calculateRepeatCount = (condition, playerState) => {
 };
 
 const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSections, callbacks, localPlayerId = 'player1', gameMode = 'local') => {
-    const { logCallback, explosionCallback, hitAnimationCallback, resolveAttackCallback } = callbacks;
+    const { logCallback, resolveAttackCallback } = callbacks;
 
     // Generate outcome message for logging
     const targetName = target ? (target.name || target.id) : 'N/A';
@@ -1969,7 +1977,7 @@ const resolveCardPlay = (card, target, actingPlayerId, playerStates, placedSecti
             cardId: card.id,
             cardName: card.name,
             cardData: card,  // Full card object for rendering
-            actingPlayerId: actingPlayerId,
+            targetPlayer: actingPlayerId,
             timestamp: Date.now()
         });
     }
@@ -2173,7 +2181,7 @@ const resolveSingleEffect = (effect, target, actingPlayerId, playerStates, place
         case 'READY_DRONE':
             return resolveReadyDroneEffect(effect, target, actingPlayerId, playerStates, callbacks);
         case 'HEAL_HULL':
-            return resolveUnifiedHealEffect(effect, null, target, actingPlayerId, playerStates, placedSections, callbacks);
+            return resolveUnifiedHealEffect(effect, null, target, actingPlayerId, playerStates, placedSections, callbacks, card);
         case 'HEAL_SHIELDS':
             return resolveHealShieldsEffect(effect, target, actingPlayerId, playerStates, callbacks, placedSections);
         case 'DAMAGE':
@@ -2404,7 +2412,7 @@ const resolveHealShieldsEffect = (effect, target, actingPlayerId, playerStates, 
     };
 };
 
-const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callbacks, cardTargeting = null) => {
+const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callbacks, cardTargeting = null, card = null) => {
     const { resolveAttackCallback } = callbacks;
 
     if (effect.scope === 'FILTERED' && target.id.startsWith('lane') && effect.filter) {
@@ -2502,6 +2510,7 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
                         targetPlayer: targetPlayer,
                         targetLane: laneId,
                         targetType: 'drone',
+                        sourceCardInstanceId: card?.instanceId,
                         amount: shieldDmg,
                         timestamp: Date.now()
                     });
@@ -2516,6 +2525,7 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
                         targetPlayer: targetPlayer,
                         targetLane: laneId,
                         targetType: 'drone',
+                        sourceCardInstanceId: card?.instanceId,
                         timestamp: Date.now()
                     });
                 } else if (remainingDmg > 0) {
@@ -2526,6 +2536,7 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
                         targetPlayer: targetPlayer,
                         targetLane: laneId,
                         targetType: 'drone',
+                        sourceCardInstanceId: card?.instanceId,
                         amount: remainingDmg,
                         timestamp: Date.now()
                     });
@@ -2592,6 +2603,7 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
                         targetPlayer: target.owner,
                         targetLane: targetLane,
                         targetType: 'drone',
+                        sourceCardInstanceId: card?.instanceId,
                         amount: shieldDamage,
                         timestamp: Date.now()
                     });
@@ -2605,6 +2617,7 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
                         targetPlayer: target.owner,
                         targetLane: targetLane,
                         targetType: 'drone',
+                        sourceCardInstanceId: card?.instanceId,
                         timestamp: Date.now()
                     });
                 } else if (remainingDamage > 0) {
@@ -2614,6 +2627,7 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
                         targetPlayer: target.owner,
                         targetLane: targetLane,
                         targetType: 'drone',
+                        sourceCardInstanceId: card?.instanceId,
                         amount: remainingDamage,
                         timestamp: Date.now()
                     });
@@ -2911,7 +2925,7 @@ const resolveUnifiedDamageEffect = (effect, source, target, actingPlayerId, play
 
     // Handle filtered damage (cards only)
     if (effect.scope === 'FILTERED' && target.id.startsWith('lane') && effect.filter) {
-        return resolveDamageEffect(effect, target, actingPlayerId, playerStates, callbacks, card?.targeting);
+        return resolveDamageEffect(effect, target, actingPlayerId, playerStates, callbacks, card?.targeting, card);
     }
 
     // Handle direct damage (all contexts)
@@ -2926,7 +2940,8 @@ const resolveUnifiedDamageEffect = (effect, source, target, actingPlayerId, play
             attackingPlayer: actingPlayerId || 'player1',
             abilityDamage: effect.value,
             lane: targetLane,
-            damageType: effect.damageType
+            damageType: effect.damageType,
+            sourceCardInstanceId: card?.instanceId  // Pass card instance ID for animation matching
         };
 
         // Call the attack resolution directly and return the updated states
@@ -2934,9 +2949,7 @@ const resolveUnifiedDamageEffect = (effect, source, target, actingPlayerId, play
             attackDetails,
             playerStates,
             placedSections,
-            callbacks.logCallback,
-            callbacks.explosionCallback,
-            callbacks.hitAnimationCallback
+            callbacks.logCallback
         );
 
         // FIXED: Return the properly updated states from the attack resolution
@@ -2954,7 +2967,7 @@ const resolveUnifiedDamageEffect = (effect, source, target, actingPlayerId, play
     };
 };
 
-const resolveUnifiedHealEffect = (effect, source, target, actingPlayerId, playerStates, placedSections, callbacks) => {
+const resolveUnifiedHealEffect = (effect, source, target, actingPlayerId, playerStates, placedSections, callbacks, card = null) => {
     const newPlayerStates = {
         player1: JSON.parse(JSON.stringify(playerStates.player1)),
         player2: JSON.parse(JSON.stringify(playerStates.player2))
@@ -2983,6 +2996,7 @@ const resolveUnifiedHealEffect = (effect, source, target, actingPlayerId, player
                         targetLane: targetLaneId,
                         targetType: 'drone',
                         healAmount: effect.value,
+                        sourceCardInstanceId: card?.instanceId,
                         config: {},
                         onComplete: null
                     });
@@ -3014,6 +3028,7 @@ const resolveUnifiedHealEffect = (effect, source, target, actingPlayerId, player
                         targetLane: targetLaneId,
                         targetType: 'drone',
                         healAmount: effect.value,
+                        sourceCardInstanceId: card?.instanceId,
                         config: {},
                         onComplete: null
                     });
@@ -3438,10 +3453,14 @@ const resolveCreateTokensEffect = (effect, target, actingPlayerId, playerStates,
             }
         }
 
+        // Generate deterministic ID using deployment counter
+        const deploymentNumber = (actingPlayerState.totalDronesDeployed || 0) + 1;
+        const tokenId = `${actingPlayerId}_${baseDrone.name}_${deploymentNumber.toString().padStart(4, '0')}`;
+
         // Create unique token instance with all necessary properties
         const tokenDrone = {
             ...baseDrone,
-            id: `${effect.tokenName}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            id: tokenId,  // Deterministic ID
             name: baseDrone.name,
             attack: baseDrone.attack,
             hull: baseDrone.hull,
@@ -3457,12 +3476,16 @@ const resolveCreateTokensEffect = (effect, target, actingPlayerId, playerStates,
         // Add to the specified lane
         actingPlayerState.dronesOnBoard[laneId].push(tokenDrone);
 
+        // Increment total deployment counter for deterministic ID generation
+        actingPlayerState.totalDronesDeployed = deploymentNumber;
+
         // Add teleport animation for the token appearing
         animationEvents.push({
             type: 'TELEPORT',
             targetId: tokenDrone.id,
             targetPlayer: actingPlayerId,
             targetLane: laneId,
+            sourceCardInstanceId: card?.instanceId,
             timestamp: Date.now()
         });
 
@@ -3986,23 +4009,31 @@ const resolveSplashDamageEffect = (effect, target, actingPlayerId, playerStates,
     const finalSplashDamage = splashDamage + bonusDamage;
 
     // Helper function to apply damage (non-piercing, respects shields)
+    // Returns damage breakdown for animation event generation
     const applyDamage = (drone, damage) => {
         const shieldDamage = Math.min(damage, drone.currentShields);
         drone.currentShields -= shieldDamage;
         const remainingDamage = damage - shieldDamage;
         const hullDamage = Math.min(remainingDamage, drone.hull);
         drone.hull -= hullDamage;
-        return drone.hull <= 0; // Return true if destroyed
+
+        return {
+            shieldDamage,
+            hullDamage,
+            destroyed: drone.hull <= 0
+        };
     };
 
-    // Track destroyed drones
-    const destroyedDrones = [];
+    // Track damage results for animation event generation
+    const damageResults = [];
 
     // Apply primary damage to primary target
-    const primaryDestroyed = applyDamage(dronesInLane[targetIndex], finalPrimaryDamage);
-    if (primaryDestroyed) {
-        destroyedDrones.push(target.id);
-    }
+    const primaryResult = applyDamage(dronesInLane[targetIndex], finalPrimaryDamage);
+    damageResults.push({
+        drone: dronesInLane[targetIndex],
+        droneId: target.id,
+        ...primaryResult
+    });
 
     // Calculate adjacent indices
     const adjacentIndices = [];
@@ -4016,16 +4047,55 @@ const resolveSplashDamageEffect = (effect, target, actingPlayerId, playerStates,
     // Apply splash damage to adjacent drones
     adjacentIndices.forEach(index => {
         const adjacentDrone = dronesInLane[index];
-        const destroyed = applyDamage(adjacentDrone, finalSplashDamage);
+        const result = applyDamage(adjacentDrone, finalSplashDamage);
+        damageResults.push({
+            drone: adjacentDrone,
+            droneId: adjacentDrone.id,
+            ...result
+        });
+    });
+
+    // Generate animation events for damage (before removing drones)
+    damageResults.forEach(({ droneId, shieldDamage, hullDamage, destroyed }) => {
+        // Shield damage animation
+        if (shieldDamage > 0) {
+            animationEvents.push({
+                type: 'SHIELD_DAMAGE',
+                targetId: droneId,
+                targetPlayer: opponentId,
+                targetLane: targetLane,
+                targetType: 'drone',
+                amount: shieldDamage,
+                timestamp: Date.now()
+            });
+        }
+
+        // Destruction or hull damage animation
         if (destroyed) {
-            destroyedDrones.push(adjacentDrone.id);
+            animationEvents.push({
+                type: 'DRONE_DESTROYED',
+                targetId: droneId,
+                targetPlayer: opponentId,
+                targetLane: targetLane,
+                targetType: 'drone',
+                timestamp: Date.now()
+            });
+        } else if (hullDamage > 0) {
+            animationEvents.push({
+                type: 'HULL_DAMAGE',
+                targetId: droneId,
+                targetPlayer: opponentId,
+                targetLane: targetLane,
+                targetType: 'drone',
+                amount: hullDamage,
+                timestamp: Date.now()
+            });
         }
     });
 
     // Remove all destroyed drones (iterate backwards to avoid index issues)
     for (let i = dronesInLane.length - 1; i >= 0; i--) {
         if (dronesInLane[i].hull <= 0) {
-            const droneId = dronesInLane[i].id;
             const destroyedDrone = dronesInLane[i];
 
             // Decrement deployed count
@@ -4036,35 +4106,23 @@ const resolveSplashDamageEffect = (effect, target, actingPlayerId, playerStates,
             };
 
             dronesInLane.splice(i, 1);
-
-            // Trigger explosion animation
-            if (callbacks?.explosionCallback) {
-                callbacks.explosionCallback(droneId);
-            }
         }
     }
 
-    // Trigger hit animations for damaged but not destroyed drones
-    [targetIndex, ...adjacentIndices].forEach(index => {
-        if (index < dronesInLane.length) {
-            const drone = dronesInLane[index];
-            if (drone && drone.hull > 0 && callbacks?.hitAnimationCallback) {
-                callbacks.hitAnimationCallback(drone.id);
-            }
+    // Generate barrage impact visuals for each affected drone
+    // Show multiple small "peppered shot" impacts scaling with damage
+    damageResults.forEach(({ droneId, shieldDamage, hullDamage }) => {
+        const totalDamage = shieldDamage + hullDamage;
+        if (totalDamage > 0) {
+            animationEvents.push({
+                type: 'BARRAGE_IMPACT',
+                targetId: droneId,
+                targetPlayer: opponentId,
+                targetLane: targetLane,
+                impactCount: totalDamage * 4,  // 4 impacts per damage (1 dmg = 4 hits, 2 dmg = 8 hits)
+                timestamp: Date.now()
+            });
         }
-    });
-
-    // Add splash animation event
-    animationEvents.push({
-        type: 'SPLASH_EFFECT',
-        primaryTargetId: target.id,
-        targetLane: targetLane,
-        targetPlayer: opponentId,
-        primaryIndex: targetIndex,
-        adjacentIndices: adjacentIndices,
-        primaryDamage: finalPrimaryDamage,
-        splashDamage: finalSplashDamage,
-        timestamp: Date.now()
     });
 
     // Log splash effect
@@ -4206,8 +4264,8 @@ const resolveMarkDroneEffect = (effect, sectionName, target, playerStates, place
     };
 };
 
-const resolveAttack = (attackDetails, playerStates, placedSections, logCallback, explosionCallback, hitAnimationCallback) => {
-    const { attacker, target, targetType, interceptor, attackingPlayer, abilityDamage, goAgain, damageType, lane, aiContext } = attackDetails;
+const resolveAttack = (attackDetails, playerStates, placedSections, logCallback) => {
+    const { attacker, target, targetType, interceptor, attackingPlayer, abilityDamage, goAgain, damageType, lane, aiContext, sourceCardInstanceId } = attackDetails;
     const isAbilityOrCard = abilityDamage !== undefined;
 
     const finalTarget = interceptor || target;
@@ -4311,6 +4369,7 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
         targetLane: finalTargetType === 'drone' ? getLaneOfDrone(finalTarget.id, defenderPlayerState) : null,
         targetType: finalTargetType,
         attackValue: effectiveAttacker ? effectiveAttacker.attack : 1,
+        sourceCardInstanceId,  // Include for card-triggered attacks
         timestamp: Date.now()
       });
     }
@@ -4324,6 +4383,7 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
         targetLane: finalTargetType === 'drone' ? getLaneOfDrone(finalTarget.id, defenderPlayerState) : null,
         targetType: finalTargetType,
         amount: shieldDamage,
+        sourceCardInstanceId,  // Include for card-triggered attacks
         timestamp: Date.now()
       };
       animationEvents.push(event);
@@ -4338,6 +4398,7 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
         targetPlayer: defendingPlayerId,
         targetLane: finalTargetType === 'drone' ? getLaneOfDrone(finalTarget.id, defenderPlayerState) : null,
         targetType: finalTargetType,
+        sourceCardInstanceId,  // Include for card-triggered attacks
         timestamp: Date.now()
       };
       animationEvents.push(event);
@@ -4351,6 +4412,7 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
           targetLane: finalTargetType === 'drone' ? getLaneOfDrone(finalTarget.id, defenderPlayerState) : null,
           targetType: finalTargetType,
           amount: hullDamage,
+          sourceCardInstanceId,  // Include for card-triggered attacks
           timestamp: Date.now()
         };
         animationEvents.push(event);
@@ -4363,6 +4425,7 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
           targetId: finalTarget.id,
           targetPlayer: defendingPlayerId,
           targetType: 'section',
+          sourceCardInstanceId,  // Include for card-triggered attacks
           timestamp: Date.now()
         });
       }
@@ -4374,6 +4437,7 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback,
           sourceId: attacker.id,
           sourcePlayer: attackingPlayerId,
           sourceLane: attackerLane,
+          sourceCardInstanceId,  // Include for card-triggered attacks (will be undefined for normal drone attacks)
           timestamp: Date.now()
         });
       }
