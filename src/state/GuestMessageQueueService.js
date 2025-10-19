@@ -145,30 +145,135 @@ class GuestMessageQueueService {
 
     const hasAnimations = animationsToPlay.length > 0;
 
-    // CRITICAL FIX: Play animations BEFORE applying state
+    // CRITICAL FIX: Split animations by timing requirements
     //
-    // Why this order is necessary:
-    // - Host processes actions and creates animations while entities still exist in Host's state
-    // - Host then broadcasts post-processed state (entities already removed) + animation list
-    // - Guest receives this and must play animations using Guest's CURRENT state (entities still in DOM)
-    // - Then Guest applies the new state (which removes entities from DOM)
+    // Animation categories:
+    // - PRE-STATE: Need existing entities (explosions, lasers, etc.) - play before state update
+    // - POST-STATE: Need new entities (teleport-in, spawns, etc.) - play after state update + render
+    // - INDEPENDENT: Don't need specific entities (card reveals, notifications) - play anytime
     //
-    // Wrong order (old code):
-    //   Apply state → React renders (removes drones) → Try to animate → Can't find DOM elements ❌
+    // Order:
+    // 1. PRE-STATE animations (with current state intact)
+    // 2. Apply state update
+    // 3. Wait for React render
+    // 4. POST-STATE animations (with new state rendered)
     //
-    // Correct order (matches Host's flow):
-    //   Animate using current state → Apply new state → React renders ✅
+    const preStateAnimations = [];
+    const postStateAnimations = [];
+    const independentAnimations = [];
+
     if (hasAnimations) {
-      if (this.gameStateManager.actionProcessor?.animationManager) {
-        debugLog('ANIMATIONS', '🎬 [GUEST QUEUE] Playing animations BEFORE state update (entities still in DOM)...');
-        await this.gameStateManager.actionProcessor.animationManager.executeAnimations(animationsToPlay, 'HOST_RESPONSE');
-        debugLog('ANIMATIONS', '✅ [GUEST QUEUE] Animations complete, now applying state update');
+      for (const animation of animationsToPlay) {
+        const timing = animation.timing || 'pre-state';  // Default to pre-state for safety
+
+        if (timing === 'post-state') {
+          postStateAnimations.push(animation);
+        } else if (timing === 'independent') {
+          independentAnimations.push(animation);
+        } else {
+          preStateAnimations.push(animation);
+        }
       }
+
+      debugLog('ANIMATIONS', '🔍 [GUEST QUEUE] Animation timing split:', {
+        preStateCount: preStateAnimations.length,
+        postStateCount: postStateAnimations.length,
+        independentCount: independentAnimations.length,
+        total: animationsToPlay.length
+      });
     }
 
-    // Apply state after animations (entities can now be safely removed from DOM)
-    debugLog('STATE_SYNC', '📝 [GUEST QUEUE] Applying state update...');
-    this.gameStateManager.applyHostState(state);
+    // Step 1: Play INDEPENDENT and PRE-STATE animations (current state still intact)
+    // IMPORTANT: Independent animations (card reveals, notifications) play FIRST for better UX
+    // Then pre-state animations (combat effects) play after player knows what's happening
+    const preAnimations = [...independentAnimations, ...preStateAnimations];
+    if (preAnimations.length > 0 && this.gameStateManager.actionProcessor?.animationManager) {
+      debugLog('ANIMATIONS', '🎬 [GUEST QUEUE] Playing INDEPENDENT + PRE-STATE animations (entities still in DOM)...');
+      await this.gameStateManager.actionProcessor.animationManager.executeAnimations(preAnimations, 'HOST_RESPONSE_PRE');
+      debugLog('ANIMATIONS', '✅ [GUEST QUEUE] INDEPENDENT + PRE-STATE animations complete');
+    }
+
+    // Step 2: Apply state update (with special handling for TELEPORT_IN animations)
+    // Check if we have TELEPORT_IN animations that need visibility management
+    const teleportAnimations = postStateAnimations.filter(anim => anim.animationName === 'TELEPORT_IN');
+    const hasTeleportAnimations = teleportAnimations.length > 0;
+
+    if (hasTeleportAnimations) {
+      debugLog('ANIMATIONS', '✨ [GUEST QUEUE] Detected TELEPORT_IN animations - managing drone visibility');
+
+      // Create modified state with isTeleporting flags for target drones
+      const modifiedState = { ...state };
+
+      teleportAnimations.forEach(anim => {
+        const { targetId, laneId, playerId } = anim.payload;
+        const playerKey = playerId; // 'player1' or 'player2'
+
+        if (modifiedState[playerKey] && modifiedState[playerKey].dronesOnBoard && modifiedState[playerKey].dronesOnBoard[laneId]) {
+          modifiedState[playerKey] = {
+            ...modifiedState[playerKey],
+            dronesOnBoard: {
+              ...modifiedState[playerKey].dronesOnBoard,
+              [laneId]: modifiedState[playerKey].dronesOnBoard[laneId].map(drone =>
+                drone.id === targetId ? { ...drone, isTeleporting: true } : drone
+              )
+            }
+          };
+        }
+      });
+
+      debugLog('STATE_SYNC', '📝 [GUEST QUEUE] Applying state with isTeleporting flags...');
+      this.gameStateManager.applyHostState(modifiedState);
+
+      // Wait for React to render invisible placeholder drones
+      debugLog('ANIMATIONS', '⏳ [GUEST QUEUE] Waiting for React to render invisible placeholder drones...');
+      await new Promise(resolve => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(resolve);
+        });
+      });
+      debugLog('ANIMATIONS', '✅ [GUEST QUEUE] Invisible placeholders rendered');
+
+      // Start playing POST-STATE animations
+      if (this.gameStateManager.actionProcessor?.animationManager) {
+        debugLog('ANIMATIONS', '🎬 [GUEST QUEUE] Playing POST-STATE animations with visibility management...');
+        const animationPromise = this.gameStateManager.actionProcessor.animationManager.executeAnimations(postStateAnimations, 'HOST_RESPONSE_POST');
+
+        // Schedule drone reveal at 70% of animation duration (matching host behavior)
+        const teleportConfig = this.gameStateManager.actionProcessor.animationManager?.animations?.TELEPORT_IN;
+        const revealDelay = (teleportConfig?.duration || 600) * (teleportConfig?.config?.revealAt || 0.7);
+
+        setTimeout(() => {
+          debugLog('ANIMATIONS', '✨ [GUEST QUEUE] Revealing drones at 70% of teleport animation...');
+          this.gameStateManager.applyHostState(state); // Apply original state without isTeleporting flags
+        }, revealDelay);
+
+        // Wait for animations to complete
+        await animationPromise;
+        debugLog('ANIMATIONS', '✅ [GUEST QUEUE] POST-STATE animations complete');
+      }
+    } else {
+      // No teleport animations - standard flow
+      debugLog('STATE_SYNC', '📝 [GUEST QUEUE] Applying state update...');
+      this.gameStateManager.applyHostState(state);
+
+      // Wait for React to render new state
+      if (postStateAnimations.length > 0) {
+        debugLog('ANIMATIONS', '⏳ [GUEST QUEUE] Waiting for React to render new state...');
+        await new Promise(resolve => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(resolve);
+          });
+        });
+        debugLog('ANIMATIONS', '✅ [GUEST QUEUE] React render complete');
+      }
+
+      // Play POST-STATE animations
+      if (postStateAnimations.length > 0 && this.gameStateManager.actionProcessor?.animationManager) {
+        debugLog('ANIMATIONS', '🎬 [GUEST QUEUE] Playing POST-STATE animations (new entities in DOM)...');
+        await this.gameStateManager.actionProcessor.animationManager.executeAnimations(postStateAnimations, 'HOST_RESPONSE_POST');
+        debugLog('ANIMATIONS', '✅ [GUEST QUEUE] POST-STATE animations complete');
+      }
+    }
 
     debugLog('STATE_SYNC', '✅ [GUEST QUEUE] State update processing complete');
   }

@@ -431,13 +431,18 @@ setAnimationManager(animationManager) {
 
     // Use animation events from gameEngine result
     // Spread all event properties to ensure logical position data flows through
-    const animations = (result.animationEvents || []).map(event => ({
-      animationName: event.type,
-      payload: {
-        ...event,  // Pass ALL properties from event (sourcePlayer, sourceLane, targetPlayer, etc.)
-        droneId: event.sourceId  // Add alias for backwards compatibility
-      }
-    }));
+    // Include timing property from AnimationManager for proper sequencing on guest side
+    const animations = (result.animationEvents || []).map(event => {
+      const animDef = this.animationManager?.animations[event.type];
+      return {
+        animationName: event.type,
+        timing: animDef?.timing || 'pre-state',  // Include timing from definition
+        payload: {
+          ...event,  // Pass ALL properties from event (sourcePlayer, sourceLane, targetPlayer, etc.)
+          droneId: event.sourceId  // Add alias for backwards compatibility
+        }
+      };
+    });
 
     debugLog('COMBAT', '[ANIMATION EVENTS] ActionProcessor received:', result.animationEvents);
     debugLog('COMBAT', '[ANIMATION EVENTS] Mapped to animations:', animations);
@@ -630,13 +635,18 @@ setAnimationManager(animationManager) {
 
     // Collect animation events
     // Spread all event properties to ensure logical position data flows through
-    const animations = (result.animationEvents || []).map(event => ({
-      animationName: event.type,
-      payload: {
-        ...event,  // Pass ALL properties from event (sourcePlayer, sourceLane, targetPlayer, etc.)
-        droneId: event.sourceId  // Add alias for backwards compatibility
-      }
-    }));
+    // Include timing property from AnimationManager for proper sequencing on guest side
+    const animations = (result.animationEvents || []).map(event => {
+      const animDef = this.animationManager?.animations[event.type];
+      return {
+        animationName: event.type,
+        timing: animDef?.timing || 'pre-state',  // Include timing from definition
+        payload: {
+          ...event,  // Pass ALL properties from event (sourcePlayer, sourceLane, targetPlayer, etc.)
+          droneId: event.sourceId  // Add alias for backwards compatibility
+        }
+      };
+    });
 
     // Execute animations if any exist
     await this.executeAndCaptureAnimations(animations);
@@ -705,13 +715,18 @@ setAnimationManager(animationManager) {
       const deployedDroneId = result.deployedDrone?.id || droneData.id;
 
       // Extract animation events from gameLogic result
-      const animations = (result.animationEvents || []).map(event => ({
-        animationName: event.type,
-        payload: {
-          ...event,
-          droneId: event.targetId
-        }
-      }));
+      // Include timing property from AnimationManager for proper sequencing on guest side
+      const animations = (result.animationEvents || []).map(event => {
+        const animDef = this.animationManager?.animations[event.type];
+        return {
+          animationName: event.type,
+          timing: animDef?.timing || 'pre-state',  // Include timing from definition
+          payload: {
+            ...event,
+            droneId: event.targetId
+          }
+        };
+      });
 
       // PHASE 1: Add drone with isTeleporting flag (invisible placeholder for animation)
       const stateWithTeleportingDrone = {
@@ -849,13 +864,18 @@ setAnimationManager(animationManager) {
     debugLog('CARDS', '[ANIMATION EVENTS] Card play events:', result.animationEvents);
 
     // Collect animation events
-    const animations = (result.animationEvents || []).map(event => ({
-      animationName: event.type,
-      payload: {
-        ...event,  // Pass ALL properties from event (sourcePlayer, sourceLane, targetPlayer, etc.)
-        droneId: event.sourceId || event.targetId  // Support both source and target based animations
-      }
-    }));
+    // Include timing property from AnimationManager for proper sequencing on guest side
+    const animations = (result.animationEvents || []).map(event => {
+      const animDef = this.animationManager?.animations[event.type];
+      return {
+        animationName: event.type,
+        timing: animDef?.timing || 'pre-state',  // Include timing from definition
+        payload: {
+          ...event,  // Pass ALL properties from event (sourcePlayer, sourceLane, targetPlayer, etc.)
+          droneId: event.sourceId || event.targetId  // Support both source and target based animations
+        }
+      };
+    });
 
     // Execute animations if any exist
     await this.executeAndCaptureAnimations(animations);
@@ -958,8 +978,10 @@ setAnimationManager(animationManager) {
     }
 
     // Execute CARD_REVEAL animation now that movement is complete
+    const animDef = this.animationManager?.animations['CARD_REVEAL'];
     const cardRevealAnimation = [{
       animationName: 'CARD_REVEAL',
+      timing: animDef?.timing || 'independent',  // Include timing from definition
       payload: {
         cardId: card.id,
         cardName: card.name,

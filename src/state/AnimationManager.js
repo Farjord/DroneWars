@@ -22,11 +22,13 @@ class AnimationManager {
       DRONE_ATTACK_START: {
         duration: 500,  // Laser effect duration
         type: 'DRONE_FLY',
+        timing: 'pre-state',  // Needs source drone to exist
         config: { trail: true, easing: 'easeInOut', isReturn: false }
       },
       DRONE_RETURN: {
         duration: 0,  // No visual, instant
         type: 'DRONE_FLY',
+        timing: 'pre-state',  // Needs source drone to exist
         config: { trail: false, easing: 'easeOut', isReturn: true }
       },
 
@@ -34,16 +36,19 @@ class AnimationManager {
       CARD_REVEAL: {
         duration: 1000,  // 1 second card reveal
         type: 'CARD_REVEAL_EFFECT',
+        timing: 'independent',  // Doesn't need specific entities
         config: { }
       },
       SHIP_ABILITY_REVEAL: {
         duration: 1000,  // 1 second reveal
         type: 'SHIP_ABILITY_REVEAL_EFFECT',
+        timing: 'independent',  // Doesn't need specific entities
         config: { }
       },
       CARD_VISUAL: {
         duration: 2000,  // 2 second card visual effect
         type: 'CARD_VISUAL_EFFECT',
+        timing: 'independent',  // Doesn't need specific entities
         config: { }
       },
 
@@ -51,6 +56,7 @@ class AnimationManager {
       PASS_NOTIFICATION: {
         duration: 1000,  // 1 second notification
         type: 'PASS_NOTIFICATION_EFFECT',
+        timing: 'independent',  // Doesn't need specific entities
         config: { }
       },
 
@@ -58,6 +64,7 @@ class AnimationManager {
       PHASE_ANNOUNCEMENT: {
         duration: 1500,  // 1.5 second phase announcement
         type: 'PHASE_ANNOUNCEMENT_EFFECT',
+        timing: 'independent',  // Doesn't need specific entities
         config: { }
       },
 
@@ -65,11 +72,13 @@ class AnimationManager {
       TELEPORT_IN: {
         duration: 600,
         type: 'TELEPORT_EFFECT',
+        timing: 'post-state',  // Needs NEW drone to exist in DOM (created by state update)
         config: { revealAt: 0.7 } // Reveal drone at 70% of animation for smooth overlap
       },
       TELEPORT_OUT: {
         duration: 600,
         type: 'TELEPORT_EFFECT',
+        timing: 'pre-state',  // Needs existing drone to teleport away
         config: { } // Recall animation - drone disappears after effect
       },
 
@@ -77,53 +86,63 @@ class AnimationManager {
       SHIELD_DAMAGE: {
         duration: 2000,
         type: 'FLASH_EFFECT',
+        timing: 'pre-state',  // Needs existing target to flash
         config: { color: '#00bcd4', intensity: 0.6 }
       },
       HULL_DAMAGE: {
         duration: 2000,
         type: 'EXPLOSION_EFFECT',
+        timing: 'pre-state',  // Needs existing target to explode
         config: { size: 'small' }
       },
       DRONE_DESTROYED: {
         duration: 2000,
         type: 'EXPLOSION_EFFECT',
+        timing: 'pre-state',  // Needs existing drone to explode
         config: { size: 'large' }
       },
       SECTION_DESTROYED: {
         duration: 2000,
         type: 'EXPLOSION_EFFECT',
+        timing: 'pre-state',  // Needs existing section to explode
         config: { size: 'large' }
       },
       SECTION_DAMAGED: {
         duration: 2000,
         type: 'EXPLOSION_EFFECT',
+        timing: 'pre-state',  // Needs existing section to show damage
         config: { size: 'small' }
       },
       HEAL_EFFECT: {
         duration: 1400,
         type: 'HEAL_EFFECT',
+        timing: 'pre-state',  // Needs existing target to heal
         config: {}
       },
       // Ordnance effect animations
       OVERFLOW_PROJECTILE: {
         duration: 1200,
         type: 'OVERFLOW_PROJECTILE',
+        timing: 'independent',  // Visual effect, doesn't need specific entities
         config: {}
       },
       SPLASH_EFFECT: {
         duration: 1000,
         type: 'SPLASH_EFFECT',
+        timing: 'independent',  // Visual effect, doesn't need specific entities
         config: {}
       },
       // Railgun animations
       RAILGUN_TURRET: {
         duration: 2700,  // Full turret cycle (deploy → build → charge → shoot → retract)
+        timing: 'pre-state',  // Needs existing ship section
         type: 'RAILGUN_TURRET',
         config: {}
       },
       RAILGUN_BEAM: {
         duration: 1000,  // Beam fade duration
         type: 'RAILGUN_BEAM',
+        timing: 'pre-state',  // Needs existing elements for beam endpoints
         config: {}
       }
     };
