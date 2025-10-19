@@ -3598,6 +3598,14 @@ const resolveOverflowDamageEffect = (effect, target, actingPlayerId, playerState
         const laneArray = newPlayerStates[opponentId].dronesOnBoard[targetLane];
         const droneIndex = laneArray.findIndex(d => d.id === target.id);
         if (droneIndex !== -1) {
+            // Decrement deployed count
+            const destroyedDrone = laneArray[droneIndex];
+            const updates = onDroneDestroyed(newPlayerStates[opponentId], destroyedDrone);
+            newPlayerStates[opponentId].deployedDroneCounts = {
+                ...(newPlayerStates[opponentId].deployedDroneCounts || {}),
+                ...updates.deployedDroneCounts
+            };
+
             laneArray.splice(droneIndex, 1);
         }
     }
@@ -4018,6 +4026,15 @@ const resolveSplashDamageEffect = (effect, target, actingPlayerId, playerStates,
     for (let i = dronesInLane.length - 1; i >= 0; i--) {
         if (dronesInLane[i].hull <= 0) {
             const droneId = dronesInLane[i].id;
+            const destroyedDrone = dronesInLane[i];
+
+            // Decrement deployed count
+            const updates = onDroneDestroyed(newPlayerStates[opponentId], destroyedDrone);
+            newPlayerStates[opponentId].deployedDroneCounts = {
+                ...(newPlayerStates[opponentId].deployedDroneCounts || {}),
+                ...updates.deployedDroneCounts
+            };
+
             dronesInLane.splice(i, 1);
 
             // Trigger explosion animation

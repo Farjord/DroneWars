@@ -129,6 +129,7 @@ const DroneToken = ({
   return (
     <div
       ref={el => droneRefs.current[drone.id] = el}
+      data-drone-id={drone.id}
       onClick={(e) => onClick && onClick(e, drone, isPlayer)}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}

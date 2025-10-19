@@ -7,6 +7,30 @@
 
 import { debugLog } from '../utils/debugLogger.js';
 
+/**
+ * Poll for drone element existence in DOM
+ * @param {number} droneId - The drone ID to wait for
+ * @param {number} maxAttempts - Maximum polling attempts (default: 20)
+ * @param {number} intervalMs - Polling interval in ms (default: 50)
+ * @returns {Promise<boolean>} - Resolves true if element found, false if timeout
+ */
+async function waitForDroneElement(droneId, maxAttempts = 20, intervalMs = 50) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    // Check if drone element exists in DOM by querying data attribute
+    const droneEl = document.querySelector(`[data-drone-id="${droneId}"]`);
+    if (droneEl) {
+      debugLog('ANIMATIONS', `✅ [ELEMENT POLL] Found drone element after ${attempt + 1} attempts (${(attempt + 1) * intervalMs}ms)`);
+      return true;
+    }
+
+    // Wait before next attempt
+    await new Promise(resolve => setTimeout(resolve, intervalMs));
+  }
+
+  debugLog('ANIMATIONS', `⚠️ [ELEMENT POLL] Drone element not found after ${maxAttempts} attempts (${maxAttempts * intervalMs}ms timeout)`);
+  return false;
+}
+
 class GuestMessageQueueService {
   constructor(gameStateManager) {
     this.gameStateManager = gameStateManager;
@@ -124,6 +148,13 @@ class GuestMessageQueueService {
       filteredActionAnimations = [];
     }
 
+    // Clear optimistic actions now that we've used them for filtering
+    // This prevents old optimistic actions from incorrectly skipping future animations
+    if (hasOptimisticActions) {
+      debugLog('ANIMATIONS', '🧹 [GUEST QUEUE] Clearing optimistic actions after filtering');
+      this.gameStateManager.clearOptimisticActions();
+    }
+
     // System animations always play (phase announcements, etc.)
     const systemAnimationsToPlay = systemAnimations || [];
 
@@ -224,14 +255,22 @@ class GuestMessageQueueService {
       debugLog('STATE_SYNC', '📝 [GUEST QUEUE] Applying state with isTeleporting flags...');
       this.gameStateManager.applyHostState(modifiedState);
 
-      // Wait for React to render invisible placeholder drones
-      debugLog('ANIMATIONS', '⏳ [GUEST QUEUE] Waiting for React to render invisible placeholder drones...');
-      await new Promise(resolve => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(resolve);
-        });
-      });
-      debugLog('ANIMATIONS', '✅ [GUEST QUEUE] Invisible placeholders rendered');
+      // Wait for React to render AND for drone elements to exist in DOM
+      debugLog('ANIMATIONS', '⏳ [GUEST QUEUE] Waiting for drone elements to render...');
+
+      // Extract drone IDs from teleport animations
+      const droneIds = teleportAnimations.map(anim => anim.payload.targetId);
+
+      // Poll for all drone elements to exist
+      const pollPromises = droneIds.map(droneId => waitForDroneElement(droneId));
+      const results = await Promise.all(pollPromises);
+
+      const allElementsFound = results.every(found => found);
+      if (!allElementsFound) {
+        debugLog('ANIMATIONS', '⚠️ [GUEST QUEUE] Some drone elements not found, animations may fail');
+      }
+
+      debugLog('ANIMATIONS', '✅ [GUEST QUEUE] Drone elements ready for animation');
 
       // Start playing POST-STATE animations
       if (this.gameStateManager.actionProcessor?.animationManager) {
