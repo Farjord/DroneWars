@@ -90,7 +90,14 @@ function DeckSelectionScreen() {
 
       // Guest mode: Send action to host
       if (gameState.gameMode === 'guest') {
-        debugLog('DECK_SELECTION', '[GUEST] Sending deck selection commitment to host');
+        debugLog('COMMITMENTS', '[GUEST] Sending deck selection commitment to host:', {
+          phase: payload.phase,
+          playerId: payload.playerId,
+          actionDataKeys: Object.keys(payload.actionData),
+          deckSize: payload.actionData.deck?.length,
+          dronesCount: payload.actionData.drones?.length,
+          shipComponentsCount: payload.actionData.shipComponents?.length
+        });
         p2pManager.sendActionToHost('commitment', payload);
         return;
       }
@@ -211,7 +218,14 @@ function DeckSelectionScreen() {
 
     // Guest mode: Send action to host
     if (gameState.gameMode === 'guest') {
-      debugLog('DECK_SELECTION', '[GUEST] Sending custom deck commitment to host');
+      debugLog('COMMITMENTS', '[GUEST] Sending custom deck commitment to host:', {
+        phase: payload.phase,
+        playerId: payload.playerId,
+        actionDataKeys: Object.keys(payload.actionData),
+        deckSize: payload.actionData.deck?.length,
+        dronesCount: payload.actionData.drones?.length,
+        shipComponentsCount: payload.actionData.shipComponents?.length
+      });
       p2pManager.sendActionToHost('commitment', payload);
       setShowDeckBuilder(false);
       return;

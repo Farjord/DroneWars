@@ -586,7 +586,12 @@ const App = () => {
       // Optimistic actions: Process locally for instant feedback AND send to host
       debugLog('MULTIPLAYER', '🔮 [GUEST OPTIMISTIC] Processing action locally and sending to host:', type);
 
-      // Process action locally first for instant visual feedback (client-side prediction)
+      // Send to host IMMEDIATELY for authoritative processing (zero delay)
+      // Host receives action while guest processes locally - parallel execution
+      debugLog('MULTIPLAYER', '📤 [GUEST OPTIMISTIC] Sending action to host immediately (before local processing):', type);
+      p2pManager.sendActionToHost(type, payload);
+
+      // Process action locally for instant visual feedback (client-side prediction)
       debugLog('ANIMATIONS', '🎬 [GUEST OPTIMISTIC] About to process action locally (will generate animations)');
       const localResult = await processAction(type, payload);
       debugLog('ANIMATIONS', '✅ [GUEST OPTIMISTIC] Local processing complete (animations should have played)');
@@ -603,10 +608,6 @@ const App = () => {
           totalSystemTracked: status.systemAnimationsTracked
         });
       }
-
-      // Send to host for authoritative processing (parallel, non-blocking)
-      // Host will broadcast authoritative state which will reconcile via applyHostState
-      p2pManager.sendActionToHost(type, payload);
 
       // Return local result immediately so UI updates instantly
       return localResult;
@@ -2674,6 +2675,11 @@ const App = () => {
 
     if (turnPhase !== 'action') {
       debugLog('CARD_PLAY', `🚫 Card click rejected - wrong phase: ${turnPhase}`, { card: card.name });
+      return;
+    }
+
+    if (isActionInProgress()) {
+      debugLog('CARD_PLAY', `🚫 Card click rejected - action already in progress`, { card: card.name });
       return;
     }
 

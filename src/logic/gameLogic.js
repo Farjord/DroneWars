@@ -3481,7 +3481,7 @@ const resolveCreateTokensEffect = (effect, target, actingPlayerId, playerStates,
 
         // Add teleport animation for the token appearing
         animationEvents.push({
-            type: 'TELEPORT',
+            type: 'TELEPORT_IN',  // Use TELEPORT_IN (not TELEPORT) to match AnimationManager definition
             targetId: tokenDrone.id,
             targetPlayer: actingPlayerId,
             targetLane: laneId,

@@ -165,6 +165,10 @@ class GameStateManager {
       return;
     }
 
+    // VALIDATION LOG: Verify state before/after application
+    const beforeFields = Object.keys(this.state).length;
+    debugLog('BROADCAST_TIMING', `📝 [GUEST APPLY] Before: ${beforeFields} fields | Incoming: ${Object.keys(hostState).length} fields | Phase: ${hostState.turnPhase} → ${this.state.turnPhase}`);
+
     debugLog('STATE_SYNC', '[GUEST STATE UPDATE] Applying state from host:', {
       turnPhase: hostState.turnPhase,
       currentPlayer: hostState.currentPlayer,
@@ -178,6 +182,24 @@ class GameStateManager {
       hasInstanceId: hostState.player2?.hand?.[0]?.instanceId !== undefined
     });
 
+    // Log commitment values if present
+    if (hostState.commitments && Object.keys(hostState.commitments).length > 0) {
+      debugLog('COMMITMENTS', '[GUEST] Received commitment values from host:', {
+        phases: Object.keys(hostState.commitments),
+        fullCommitments: hostState.commitments,
+        currentPhase: hostState.turnPhase
+      });
+
+      // Log specific commitment status for current phase
+      const currentPhaseCommitments = hostState.commitments[hostState.turnPhase];
+      if (currentPhaseCommitments) {
+        debugLog('COMMITMENTS', `[GUEST] Current phase (${hostState.turnPhase}) commitment status:`, {
+          player1Completed: currentPhaseCommitments.player1?.completed || false,
+          player2Completed: currentPhaseCommitments.player2?.completed || false
+        });
+      }
+    }
+
     // Preserve guest's local gameMode (guest must know it's the guest)
     const localGameMode = this.state.gameMode;
 
@@ -187,6 +209,18 @@ class GameStateManager {
 
     // Restore guest's gameMode so it knows which player it controls
     this.state.gameMode = localGameMode;
+
+    // VALIDATION LOG: Verify critical fields after application
+    const missing = [];
+    if (this.state.turnPhase === undefined) missing.push('turnPhase');
+    if (this.state.currentPlayer === undefined) missing.push('currentPlayer');
+    if (this.state.player1 === undefined) missing.push('player1');
+    if (this.state.player2 === undefined) missing.push('player2');
+    if (missing.length > 0) {
+      debugLog('BROADCAST_TIMING', `🚨 [GUEST APPLY] MISSING FIELDS: ${missing.join(', ')}`);
+    } else {
+      debugLog('BROADCAST_TIMING', `✅ [GUEST APPLY] State complete | After: ${Object.keys(this.state).length} fields`);
+    }
 
     debugLog('STATE_SYNC', '[GUEST] After applying state - player2 hand check:', {
       handSize: this.state.player2?.hand?.length || 0,

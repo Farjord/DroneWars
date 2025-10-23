@@ -115,8 +115,76 @@ class GameFlowManager {
       });
     }
 
+    // Subscribe to ActionProcessor for turn transition handling
+    if (this.actionProcessor) {
+      this.actionProcessor.subscribe((event) => {
+        if (event.type === 'action_completed') {
+          this.handleActionCompletion(event);
+        }
+      });
+    }
+
     // Note: Direct state monitoring replaces both SequentialPhaseManager and SimultaneousActionManager event subscriptions
     // GameFlowManager now directly detects when both sequential and simultaneous phases should complete
+    // ActionProcessor events handle turn transitions after individual actions
+  }
+
+  /**
+   * Handle action completion events from ActionProcessor
+   * Processes turn transitions based on shouldEndTurn flag
+   * @param {Object} event - Action completion event
+   */
+  async handleActionCompletion(event) {
+    const { actionType, result } = event;
+
+    // Guard: Guest mode doesn't handle turn transitions (host sends them)
+    const currentState = this.gameStateManager.getState();
+    if (currentState.gameMode === 'guest') {
+      return;
+    }
+
+    // Only process for sequential phases
+    const sequentialPhases = ['deployment', 'action'];
+    if (!sequentialPhases.includes(currentState.turnPhase)) {
+      return;
+    }
+
+    debugLog('PHASE_TRANSITIONS', `🎯 GameFlowManager: Action completed - ${actionType}`, {
+      shouldEndTurn: result?.shouldEndTurn,
+      currentPlayer: currentState.currentPlayer
+    });
+
+    // Check if action should end turn
+    if (result && result.shouldEndTurn) {
+      const updatedState = this.gameStateManager.getState();
+      const nextPlayer = updatedState.currentPlayer === 'player1' ? 'player2' : 'player1';
+
+      debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Processing turn transition to ${nextPlayer}`);
+
+      // Process turn transition via ActionProcessor
+      await this.actionProcessor.processTurnTransition({
+        newPlayer: nextPlayer
+      });
+
+      debugLog('PHASE_TRANSITIONS', `✅ GameFlowManager: Turn transition completed`);
+
+      // Broadcast state to guest AFTER turn transition completes (host only)
+      // This ensures guest receives complete state including new currentPlayer
+      if (currentState.gameMode === 'host' && this.actionProcessor.p2pManager) {
+        debugLog('BROADCAST_TIMING', `📡 [BROADCAST SOURCE] Turn transition → ${nextPlayer}`);
+        this.actionProcessor.broadcastStateToGuest();
+        debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted state after turn transition`);
+      }
+    } else {
+      debugLog('PHASE_TRANSITIONS', `⏭️ GameFlowManager: Action has goAgain, keeping same player`);
+
+      // Broadcast even for goAgain actions (action completed, just same player's turn)
+      if (currentState.gameMode === 'host' && this.actionProcessor.p2pManager) {
+        debugLog('BROADCAST_TIMING', `📡 [BROADCAST SOURCE] GoAgain action → same player`);
+        this.actionProcessor.broadcastStateToGuest();
+        debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted state after goAgain action`);
+      }
+    }
   }
 
   /**
@@ -306,10 +374,26 @@ class GameFlowManager {
       if (this.isSequentialPhase(nextPhase)) {
         debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Handover to sequential phase '${nextPhase}'`);
         this.initiateSequentialPhase(nextPhase);
+
+        // Broadcast state to guest AFTER phase transition completes (host only)
+        // This ensures guest receives the updated turnPhase immediately
+        if (gameMode === 'host' && this.actionProcessor.p2pManager) {
+          debugLog('BROADCAST_TIMING', `📡 [BROADCAST SOURCE] Phase: simultaneous→sequential → ${nextPhase}`);
+          this.actionProcessor.broadcastStateToGuest();
+          debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted state after simultaneous→sequential transition to ${nextPhase}`);
+        }
       } else {
         // Continue with normal simultaneous phase transition
         debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Continuing with simultaneous phase '${nextPhase}'`);
         await this.transitionToPhase(nextPhase);
+
+        // Broadcast state to guest AFTER phase transition completes (host only)
+        // This ensures guest receives the updated turnPhase immediately
+        if (gameMode === 'host' && this.actionProcessor.p2pManager) {
+          debugLog('BROADCAST_TIMING', `📡 [BROADCAST SOURCE] Phase: simultaneous→simultaneous → ${nextPhase}`);
+          this.actionProcessor.broadcastStateToGuest();
+          debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted state after phase transition to ${nextPhase}`);
+        }
       }
       // Note: Commitment cleanup handled by ActionProcessor.processPhaseTransition()
     } else {
@@ -467,6 +551,7 @@ class GameFlowManager {
       }
 
       // Handle phase transition while still in automatic processing mode
+      // Note: Each phase handler now broadcasts at optimal timing (after state update, before blocking animations)
       if (nextPhase) {
         debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Transitioning from automatic phase '${phase}' to '${nextPhase}'`);
         await this.transitionToPhase(nextPhase);
@@ -512,6 +597,15 @@ class GameFlowManager {
         }
       });
 
+      // Broadcast state to guest AFTER draw completes (host only)
+      // This ensures guest receives updated hands and deck states immediately
+      const gameMode = this.gameStateManager.get('gameMode');
+      if (gameMode === 'host' && this.actionProcessor.p2pManager) {
+        debugLog('BROADCAST_TIMING', `📡 [BROADCAST SOURCE] Automatic: draw`);
+        this.actionProcessor.broadcastStateToGuest();
+        debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted state after draw`);
+      }
+
       debugLog('PHASE_TRANSITIONS', '✅ Automatic draw phase completed, transitioning to next phase');
 
       // Emit completion event for draw phase
@@ -545,6 +639,15 @@ class GameFlowManager {
       const firstPlayerResult = await this.actionProcessor.processFirstPlayerDetermination();
       debugLog('PHASE_TRANSITIONS', '🎯 First player determination completed:', firstPlayerResult);
 
+      // Broadcast state to guest AFTER state update, BEFORE blocking animation (host only)
+      // This ensures guest receives state immediately and can start animations in sync with host
+      const gameMode = this.gameStateManager.get('gameMode');
+      if (gameMode === 'host' && this.actionProcessor.p2pManager) {
+        debugLog('BROADCAST_TIMING', `📡 [BROADCAST SOURCE] Automatic: firstPlayer`);
+        this.actionProcessor.broadcastStateToGuest();
+        debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted state after first player determination`);
+      }
+
       // The first announcement "DETERMINING FIRST PLAYER" is already shown by processPhaseTransition
       // Now show the second announcement with the result
 
@@ -566,7 +669,8 @@ class GameFlowManager {
 
         // Execute second announcement (blocks gameplay during display)
         // Use ActionProcessor to capture for guest broadcasting, mark as system animation
-        await this.actionProcessor.executeAndCaptureAnimations([secondAnnouncementEvent], true);
+        // waitForCompletion = true ensures gameplay pauses during announcement
+        await this.actionProcessor.executeAndCaptureAnimations([secondAnnouncementEvent], true, true);
         debugLog('PHASE_TRANSITIONS', '🎬 [FIRST PLAYER] Second announcement complete');
       }
 
@@ -668,6 +772,15 @@ class GameFlowManager {
           opponentShieldsToAllocate
         }
       });
+
+      // Broadcast state to guest AFTER energy reset completes (host only)
+      // This ensures guest receives updated energy and shields immediately
+      const gameMode = this.gameStateManager.get('gameMode');
+      if (gameMode === 'host' && this.actionProcessor.p2pManager) {
+        debugLog('BROADCAST_TIMING', `📡 [BROADCAST SOURCE] Automatic: energyReset`);
+        this.actionProcessor.broadcastStateToGuest();
+        debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted state after energy reset`);
+      }
 
       debugLog('PHASE_TRANSITIONS', `✅ Energy reset complete - Player 1: ${updatedPlayer1.energy} energy, Player 2: ${updatedPlayer2.energy} energy`);
 

@@ -190,7 +190,12 @@ function ShipPlacementScreen() {
 
     // Guest mode: Send action to host
     if (gameState.gameMode === 'guest') {
-      debugLog('PLACEMENT', '[GUEST] Sending ship placement commitment to host');
+      debugLog('COMMITMENTS', '[GUEST] Sending ship placement commitment to host:', {
+        phase: payload.phase,
+        playerId: payload.playerId,
+        actionDataKeys: Object.keys(payload.actionData),
+        placedSectionsCount: payload.actionData.placedSections?.length
+      });
       p2pManager.sendActionToHost('commitment', payload);
       return;
     }

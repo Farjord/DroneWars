@@ -45,6 +45,8 @@ class ActionProcessor {
     this.animationManager = null;
     this.pendingActionAnimations = []; // Track action animations for guest broadcasting
     this.pendingSystemAnimations = []; // Track system animations for guest broadcasting
+    this.pendingStateUpdate = null; // Track state update for AnimationManager callback
+    this.pendingFinalState = null; // Track final state for TELEPORT_IN reveal
 
     // Wrapper function for game logic compatibility
     this.effectiveStatsWrapper = (drone, lane) => {
@@ -73,7 +75,45 @@ class ActionProcessor {
       processFirstPlayerDetermination: false
     };
 
+    // Event listeners for action completion notifications
+    this.listeners = [];
+
+    // Track last action result for turn transition handling
+    this.lastActionResult = null;
+    this.lastActionType = null;
+
     debugLog('STATE_SYNC', '⚙️ ActionProcessor initialized');
+  }
+
+  /**
+   * Subscribe to ActionProcessor events
+   * @param {Function} listener - Event listener function
+   * @returns {Function} Unsubscribe function
+   */
+  subscribe(listener) {
+    this.listeners.push(listener);
+    return () => {
+      const index = this.listeners.indexOf(listener);
+      if (index > -1) {
+        this.listeners.splice(index, 1);
+      }
+    };
+  }
+
+  /**
+   * Emit events to all listeners
+   * @param {string} eventType - Type of event
+   * @param {Object} data - Event data
+   */
+  emit(eventType, data) {
+    debugLog('PHASE_TRANSITIONS', `🔔 ActionProcessor emitting: ${eventType}`, data);
+    this.listeners.forEach(listener => {
+      try {
+        listener({ type: eventType, ...data });
+      } catch (error) {
+        console.error('ActionProcessor listener error:', error);
+      }
+    });
   }
 
   /**
@@ -182,6 +222,23 @@ setAnimationManager(animationManager) {
       }
     }
 
+    // SEQUENTIAL PHASE TURN VALIDATION - Security: Verify acting player matches current player
+    // Sequential phases (deployment, action) are turn-based - only currentPlayer can act
+    const sequentialPhases = ['deployment', 'action'];
+    if (sequentialPhases.includes(currentState.turnPhase)) {
+      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'shipAbility', 'movementCompletion', 'searchAndDrawCompletion'];
+      if (playerActionTypes.includes(type)) {
+        // Determine which player is attempting this action
+        const actionPlayerId = payload.playerId || currentState.currentPlayer;
+
+        // Verify it's their turn (skip for network actions from host which are already validated)
+        if (actionPlayerId !== currentState.currentPlayer && !isNetworkAction) {
+          debugLog('PASS_LOGIC', `🚨 [SECURITY] Blocking ${type} action - ${actionPlayerId} attempted action but it's ${currentState.currentPlayer}'s turn`);
+          throw new Error(`Invalid action: ${actionPlayerId} attempted ${type} but it's ${currentState.currentPlayer}'s turn`);
+        }
+      }
+    }
+
     // Handle shield allocation actions via commitment system
     if (currentState.turnPhase === 'allocateShields') {
       if (type === 'allocateShield') {
@@ -213,95 +270,125 @@ setAnimationManager(animationManager) {
     // Set lock for this action type
     this.actionLocks[type] = true;
 
+    let result; // Capture result for event emission
     try {
       switch (type) {
         case 'attack':
-          return await this.processAttack(payload);
+          result = await this.processAttack(payload);
+          break;
 
         case 'ability':
-          return await this.processAbility(payload);
+          result = await this.processAbility(payload);
+          break;
 
         case 'move':
-          return await this.processMove(payload);
+          result = await this.processMove(payload);
+          break;
 
         case 'deployment':
-          return await this.processDeployment(payload);
+          result = await this.processDeployment(payload);
+          break;
 
         case 'cardPlay':
-          return await this.processCardPlay(payload);
+          result = await this.processCardPlay(payload);
+          break;
 
         case 'movementCompletion':
-          return await this.processMovementCompletion(payload);
+          result = await this.processMovementCompletion(payload);
+          break;
 
         case 'searchAndDrawCompletion':
-          return await this.processSearchAndDrawCompletion(payload);
+          result = await this.processSearchAndDrawCompletion(payload);
+          break;
 
         case 'shipAbility':
-          return await this.processShipAbility(payload);
+          result = await this.processShipAbility(payload);
+          break;
 
         case 'turnTransition':
-          return await this.processTurnTransition(payload);
+          result = await this.processTurnTransition(payload);
+          break;
 
         case 'phaseTransition':
-          return await this.processPhaseTransition(payload);
+          result = await this.processPhaseTransition(payload);
+          break;
 
         case 'roundStart':
-          return await this.processRoundStart(payload);
+          result = await this.processRoundStart(payload); break;
 
         case 'reallocateShields':
-          return await this.processReallocateShields(payload);
+          result = await this.processReallocateShields(payload); break;
 
         case 'aiAction':
-          return await this.processAiAction(payload);
+          result = await this.processAiAction(payload); break;
 
         case 'playerPass':
-          return await this.processPlayerPass(payload);
+          result = await this.processPlayerPass(payload); break;
 
         case 'aiShipPlacement':
-          return await this.processAiShipPlacement(payload);
+          result = await this.processAiShipPlacement(payload); break;
 
         case 'optionalDiscard':
-          return await this.processOptionalDiscard(payload);
+          result = await this.processOptionalDiscard(payload); break;
 
         case 'acknowledgeDeploymentComplete':
           return await this.acknowledgeDeploymentComplete(payload.playerId);
 
         case 'processFirstPlayerDetermination':
-          return await this.processFirstPlayerDetermination();
+          result = await this.processFirstPlayerDetermination(); break;
 
         case 'commitment':
-          return await this.processCommitment(payload);
+          result = await this.processCommitment(payload); break;
 
         case 'draw':
-          return await this.processDraw(payload);
+          result = await this.processDraw(payload); break;
 
         case 'energyReset':
-          return await this.processEnergyReset(payload);
+          result = await this.processEnergyReset(payload); break;
 
         case 'destroyDrone':
-          return await this.processDestroyDrone(payload);
+          result = await this.processDestroyDrone(payload); break;
 
         case 'addShield':
-          return await this.processAddShield(payload);
+          result = await this.processAddShield(payload); break;
 
         case 'resetShields':
-          return await this.processResetShields(payload);
+          result = await this.processResetShields(payload); break;
 
         case 'debugAddCardsToHand':
-          return await this.processDebugAddCardsToHand(payload);
+          result = await this.processDebugAddCardsToHand(payload); break;
 
         default:
           throw new Error(`Unknown action type: ${type}`);
       }
+
+      // Store result for event emission in finally block
+      this.lastActionResult = result;
+      this.lastActionType = type;
+
+      return result;
     } finally {
-      // Broadcast state to guest after action completes (host only)
-      // Skip if this is already a network action to prevent infinite loops
-      if (!isNetworkAction) {
-        this.broadcastStateToGuest();
+      // Emit action completed event for GameFlowManager
+      // Only emit for player actions that might need turn transitions
+      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'shipAbility', 'movementCompletion', 'searchAndDrawCompletion', 'aiTurn', 'playerPass'];
+      if (playerActionTypes.includes(type) && this.lastActionResult) {
+        this.emit('action_completed', {
+          actionType: type,  // Use 'actionType' to avoid collision with event.type
+          payload: payload,
+          result: this.lastActionResult
+        });
       }
+
+      // NOTE: Broadcast moved to GameFlowManager.handleActionCompletion()
+      // This ensures broadcast happens AFTER turn transitions complete
+      // Prevents desync where guest receives stale currentPlayer value
 
       // Always release the lock
       this.actionLocks[type] = false;
+
+      // Clear last action tracking
+      this.lastActionResult = null;
+      this.lastActionType = null;
     }
   }
 
@@ -457,15 +544,37 @@ setAnimationManager(animationManager) {
       hasAnimationManager: !!this.animationManager
     });
 
-    debugLog('COMBAT', '🎬 [AI ANIMATION DEBUG] Calling executeAndCaptureAnimations()');
-    await this.executeAndCaptureAnimations(animations);
-    debugLog('COMBAT', '🎬 [AI ANIMATION DEBUG] executeAndCaptureAnimations() completed');
+    // Capture animations for broadcasting (host only)
+    const gameMode = this.gameStateManager.get('gameMode');
+    if (gameMode === 'host' && animations.length > 0) {
+      this.pendingActionAnimations.push(...animations);
+    }
 
-    // Update game state with results
-    this.gameStateManager.setPlayerStates(
-      result.newPlayerStates.player1,
-      result.newPlayerStates.player2
+    // Prepare states for TELEPORT_IN animation timing
+    const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
+      animations,
+      result.newPlayerStates
     );
+
+    // Set pending states for Animation Manager
+    this.pendingStateUpdate = pendingStateUpdate;
+    this.pendingFinalState = pendingFinalState;
+
+    // HOST: Broadcast IMMEDIATELY (before execution starts)
+    // Guest receives execution plan with zero delay
+    if (gameMode === 'host') {
+      this.broadcastStateToGuest();
+    }
+
+    // Execute with proper timing (BOTH HOST and GUEST use same path)
+    // Animation Manager orchestrates: pre-state anims → state update → post-state anims
+    // This ensures entities exist in DOM before destruction animations play
+    try {
+      await this.animationManager.executeWithStateUpdate(animations, this);
+    } finally {
+      this.pendingStateUpdate = null;
+      this.pendingFinalState = null;
+    }
 
     // Clear interceptionPending state after attack completes (closes "opponent deciding" modal)
     if (currentState.interceptionPending) {
@@ -481,12 +590,8 @@ setAnimationManager(animationManager) {
     // Check for win conditions after attack
     this.checkWinCondition();
 
-    // Handle automatic turn transition if needed
-    if (result.attackResult && result.attackResult.shouldEndTurn) {
-      await this.processTurnTransition({
-        newPlayer: attackDetails.attackingPlayer === 'player1' ? 'player2' : 'player1'
-      });
-    }
+    // NOTE: Turn transitions now handled by GameFlowManager based on shouldEndTurn flag
+    // GameFlowManager monitors action completion and processes turn transitions after animations complete
 
     // Return result with animations for optimistic action tracking
     return {
@@ -565,13 +670,12 @@ setAnimationManager(animationManager) {
 
     debugLog('COMBAT', `✅ Moved ${drone.name} from ${fromLane} to ${toLane}`);
 
-    // Handle automatic turn transition (moves don't have goAgain)
-    await this.processTurnTransition({
-      newPlayer: playerId === 'player1' ? 'player2' : 'player1'
-    });
+    // NOTE: Turn transitions now handled by GameFlowManager
+    // Moves always end turn (no goAgain flag on movement)
 
     return {
       success: true,
+      shouldEndTurn: true, // Moves always end turn
       message: `${drone.name} moved from ${fromLane} to ${toLane}`,
       drone: drone,
       fromLane: fromLane,
@@ -655,25 +759,43 @@ setAnimationManager(animationManager) {
       };
     });
 
-    // Execute animations if any exist
-    await this.executeAndCaptureAnimations(animations);
+    // Capture animations for broadcasting (host only)
+    const gameMode = this.gameStateManager.get('gameMode');
+    if (gameMode === 'host' && animations.length > 0) {
+      this.pendingActionAnimations.push(...animations);
+    }
 
-    // Update game state with results
-    this.gameStateManager.setPlayerStates(
-      result.newPlayerStates.player1,
-      result.newPlayerStates.player2
+    // Prepare states for TELEPORT_IN animation timing
+    const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
+      animations,
+      result.newPlayerStates
     );
+
+    // Set pending states for Animation Manager
+    this.pendingStateUpdate = pendingStateUpdate;
+    this.pendingFinalState = pendingFinalState;
+
+    // HOST: Broadcast IMMEDIATELY (before execution starts)
+    // Guest receives execution plan with zero delay
+    if (gameMode === 'host') {
+      this.broadcastStateToGuest();
+    }
+
+    // Execute with proper timing (BOTH HOST and GUEST use same path)
+    // Animation Manager orchestrates: pre-state anims → state update → post-state anims
+    // This ensures entities exist in DOM before destruction animations play
+    try {
+      await this.animationManager.executeWithStateUpdate(animations, this);
+    } finally {
+      this.pendingStateUpdate = null;
+      this.pendingFinalState = null;
+    }
 
     // Check for win conditions after ability
     this.checkWinCondition();
 
-    // Handle automatic turn transition if needed
-    if (result.shouldEndTurn) {
-      const currentState = this.gameStateManager.getState();
-      await this.processTurnTransition({
-        newPlayer: currentState.currentPlayer === 'player1' ? 'player2' : 'player1'
-      });
-    }
+    // NOTE: Turn transitions now handled by GameFlowManager based on shouldEndTurn flag
+    // GameFlowManager processes turn transitions after ability animations complete
 
     // Return result with animations for optimistic action tracking
     return {
@@ -742,53 +864,53 @@ setAnimationManager(animationManager) {
         };
       });
 
-      // PHASE 1: Add drone with isTeleporting flag (invisible placeholder for animation)
-      const stateWithTeleportingDrone = {
-        ...result.newPlayerState,
-        dronesOnBoard: {
-          ...result.newPlayerState.dronesOnBoard,
-          [laneId]: result.newPlayerState.dronesOnBoard[laneId].map(d =>
-            d.id === deployedDroneId ? { ...d, isTeleporting: true } : d
-          )
-        }
-      };
-
-      if (playerId === 'player1') {
-        this.gameStateManager.updatePlayers(stateWithTeleportingDrone, {});
-      } else {
-        this.gameStateManager.updatePlayers({}, stateWithTeleportingDrone);
+      // Capture animations for broadcasting (host only)
+      const gameMode = this.gameStateManager.get('gameMode');
+      if (gameMode === 'host' && animations.length > 0) {
+        this.pendingActionAnimations.push(...animations);
       }
 
-      // PHASE 2: Wait briefly for React to render invisible placeholder
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Prepare states for TELEPORT_IN animation timing
+      const newPlayerStates = {
+        player1: playerId === 'player1' ? result.newPlayerState : currentState.player1,
+        player2: playerId === 'player2' ? result.newPlayerState : currentState.player2
+      };
 
-      // PHASE 3: Execute teleport animation and reveal drone partway through
-      const animationPromise = this.executeAndCaptureAnimations(animations);
+      const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
+        animations,
+        newPlayerStates
+      );
 
-      // Get reveal timing from animation config
-      const teleportConfig = this.animationManager?.animations?.TELEPORT_IN || { duration: 600, config: { revealAt: 0.7 } };
-      const revealDelay = teleportConfig.duration * (teleportConfig.config?.revealAt || 0.7);
+      // Set pending states for Animation Manager
+      this.pendingStateUpdate = pendingStateUpdate;
+      this.pendingFinalState = pendingFinalState;
 
-      // Reveal drone at configured percentage of animation for smooth overlap
-      setTimeout(() => {
-        if (playerId === 'player1') {
-          this.gameStateManager.updatePlayers(result.newPlayerState, {});
-        } else {
-          this.gameStateManager.updatePlayers({}, result.newPlayerState);
-        }
-      }, revealDelay);
+      // HOST: Broadcast IMMEDIATELY (before execution starts)
+      // Guest receives execution plan with zero delay
+      if (gameMode === 'host') {
+        this.broadcastStateToGuest();
+      }
 
-      // PHASE 4: Wait for animation to complete
-      await animationPromise;
+      // Execute with proper timing (BOTH HOST and GUEST use same path)
+      // TELEPORT_IN is post-state with mid-animation reveal:
+      // 1. pendingStateUpdate applies state with isTeleporting: true (invisible drone)
+      // 2. AnimationManager waits for React, starts animation
+      // 3. At 70%, AnimationManager calls revealTeleportedDrones()
+      // 4. revealTeleportedDrones applies pendingFinalState (visible drone)
+      try {
+        await this.animationManager.executeWithStateUpdate(animations, this);
+      } finally {
+        this.pendingStateUpdate = null;
+        this.pendingFinalState = null;
+      }
 
-      // Handle turn transition after successful deployment
-      await this.processTurnTransition({
-        newPlayer: playerId === 'player1' ? 'player2' : 'player1'
-      });
+      // NOTE: Turn transitions now handled by GameFlowManager
+      // Deployment always ends turn
 
       // Return result with animations for optimistic action tracking
       return {
         ...result,
+        shouldEndTurn: true, // Deployment always ends turn
         animations: {
           actionAnimations: animations,
           systemAnimations: []
@@ -898,25 +1020,43 @@ setAnimationManager(animationManager) {
       };
     });
 
-    // Execute animations if any exist
-    await this.executeAndCaptureAnimations(animations);
+    // Capture animations for broadcasting (host only)
+    const gameMode = this.gameStateManager.get('gameMode');
+    if (gameMode === 'host' && animations.length > 0) {
+      this.pendingActionAnimations.push(...animations);
+    }
 
-    // Update game state with results
-    this.gameStateManager.setPlayerStates(
-      result.newPlayerStates.player1,
-      result.newPlayerStates.player2
+    // Prepare states for TELEPORT_IN animation timing (e.g., token creation)
+    const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
+      animations,
+      result.newPlayerStates
     );
+
+    // Set pending states for Animation Manager
+    this.pendingStateUpdate = pendingStateUpdate;
+    this.pendingFinalState = pendingFinalState;
+
+    // HOST: Broadcast IMMEDIATELY (before execution starts)
+    // Guest receives execution plan with zero delay
+    if (gameMode === 'host') {
+      this.broadcastStateToGuest();
+    }
+
+    // Execute with proper timing (BOTH HOST and GUEST use same path)
+    // Animation Manager orchestrates: pre-state anims → state update → post-state anims
+    // For TELEPORT_IN animations (e.g., token creation), proper invisible→visible transition
+    try {
+      await this.animationManager.executeWithStateUpdate(animations, this);
+    } finally {
+      this.pendingStateUpdate = null;
+      this.pendingFinalState = null;
+    }
 
     // Check for win conditions after card play
     this.checkWinCondition();
 
-    // Handle automatic turn transition if needed
-    if (result.shouldEndTurn) {
-      const currentState = this.gameStateManager.getState();
-      await this.processTurnTransition({
-        newPlayer: currentState.currentPlayer === 'player1' ? 'player2' : 'player1'
-      });
-    }
+    // NOTE: Turn transitions now handled by GameFlowManager based on shouldEndTurn flag
+    // GameFlowManager processes turn transitions after card animations complete
 
     // Return result with animations for optimistic action tracking
     return {
@@ -1005,7 +1145,7 @@ setAnimationManager(animationManager) {
       );
     }
 
-    // Execute CARD_REVEAL animation now that movement is complete
+    // Execute CARD_REVEAL animation now that movement is complete (non-blocking)
     const animDef = this.animationManager?.animations['CARD_REVEAL'];
     const cardRevealAnimation = [{
       animationName: 'CARD_REVEAL',
@@ -1020,13 +1160,8 @@ setAnimationManager(animationManager) {
     }];
     await this.executeAndCaptureAnimations(cardRevealAnimation);
 
-    // Handle automatic turn transition if needed
-    if (result.shouldEndTurn) {
-      const updatedState = this.gameStateManager.getState();
-      await this.processTurnTransition({
-        newPlayer: updatedState.currentPlayer === 'player1' ? 'player2' : 'player1'
-      });
-    }
+    // NOTE: Turn transitions now handled by GameFlowManager based on shouldEndTurn flag
+    // GameFlowManager processes turn transitions after movement animations complete
 
     // Return result with animations for optimistic action tracking
     return {
@@ -1120,15 +1255,11 @@ setAnimationManager(animationManager) {
         timestamp: Date.now()
       }
     }];
+    // Execute animation and wait for completion to ensure proper sequencing
     await this.executeAndCaptureAnimations(cardRevealAnimation);
 
-    // Handle turn transition if needed
-    if (completion.shouldEndTurn) {
-      const updatedState = this.gameStateManager.getState();
-      await this.processTurnTransition({
-        newPlayer: updatedState.currentPlayer === 'player1' ? 'player2' : 'player1'
-      });
-    }
+    // NOTE: Turn transitions now handled by GameFlowManager based on shouldEndTurn flag
+    // GameFlowManager processes turn transitions after search card animations complete
 
     // Return result with animations for optimistic action tracking
     return {
@@ -1188,22 +1319,40 @@ setAnimationManager(animationManager) {
       };
     });
 
-    // Execute animations if any exist
-    await this.executeAndCaptureAnimations(animations);
+    // Capture animations for broadcasting (host only)
+    const gameMode = this.gameStateManager.get('gameMode');
+    if (gameMode === 'host' && animations.length > 0) {
+      this.pendingActionAnimations.push(...animations);
+    }
 
-    // Update game state with results
-    this.gameStateManager.setPlayerStates(
-      result.newPlayerStates.player1,
-      result.newPlayerStates.player2
+    // Prepare states for TELEPORT_IN animation timing (if ship abilities can spawn drones)
+    const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
+      animations,
+      result.newPlayerStates
     );
 
-    // Handle automatic turn transition if needed
-    if (result.shouldEndTurn) {
-      const currentState = this.gameStateManager.getState();
-      await this.processTurnTransition({
-        newPlayer: currentState.currentPlayer === 'player1' ? 'player2' : 'player1'
-      });
+    // Set pending states for Animation Manager
+    this.pendingStateUpdate = pendingStateUpdate;
+    this.pendingFinalState = pendingFinalState;
+
+    // HOST: Broadcast IMMEDIATELY (before execution starts)
+    // Guest receives execution plan with zero delay
+    if (gameMode === 'host') {
+      this.broadcastStateToGuest();
     }
+
+    // Execute with proper timing (BOTH HOST and GUEST use same path)
+    // Animation Manager orchestrates: pre-state anims → state update → post-state anims
+    // For TELEPORT_IN animations (if ship abilities can spawn drones), proper invisible→visible transition
+    try {
+      await this.animationManager.executeWithStateUpdate(animations, this);
+    } finally {
+      this.pendingStateUpdate = null;
+      this.pendingFinalState = null;
+    }
+
+    // NOTE: Turn transitions now handled by GameFlowManager based on shouldEndTurn flag
+    // GameFlowManager processes turn transitions after ship ability animations complete
 
     // Return result with animations for optimistic action tracking
     return {
@@ -1420,7 +1569,8 @@ setAnimationManager(animationManager) {
 
       // Execute phase announcement (blocks gameplay during display)
       // Mark as system animation so guests always see it (never deduplicated)
-      await this.executeAndCaptureAnimations([phaseAnnouncementEvent], true);
+      // waitForCompletion = true ensures gameplay pauses during announcement
+      await this.executeAndCaptureAnimations([phaseAnnouncementEvent], true, true);
 
       debugLog('PHASE_TRANSITIONS', `🎬 [PHASE ANNOUNCEMENT] Announcement complete for: ${newPhase}`);
     }
@@ -1741,16 +1891,9 @@ setAnimationManager(animationManager) {
 
         debugLog('DEPLOYMENT', `[AI DECISION DEBUG] Deployment result:`, deployResult);
 
-        // Handle turn transition for deployment
-        if (deployResult.success) {
-          debugLog('DEPLOYMENT', `[AI DECISION DEBUG] Deployment successful, transitioning turn`);
-          await this.processTurnTransition({
-            newPlayer: playerId === 'player1' ? 'player2' : 'player1'
-          });
-          debugLog('DEPLOYMENT', `[AI DECISION DEBUG] Turn transition complete`);
-        } else {
-          debugLog('DEPLOYMENT', `[AI DECISION DEBUG] Deployment failed, not transitioning turn`);
-        }
+        // NOTE: Turn transitions now handled by GameFlowManager
+        // deployResult already includes shouldEndTurn flag
+        debugLog('DEPLOYMENT', `[AI DECISION DEBUG] Deployment complete, shouldEndTurn: ${deployResult.shouldEndTurn}`);
 
         return deployResult;
 
@@ -1822,23 +1965,18 @@ setAnimationManager(animationManager) {
         const newPassInfo = this.gameStateManager.get('passInfo');
         debugLog('PASS_LOGIC', `[AI DECISION DEBUG] Pass info after update:`, newPassInfo);
 
-        // Check if both players have passed to end phase
-        if (newPassInfo.player1Passed && newPassInfo.player2Passed) {
-          debugLog('PASS_LOGIC', `[AI DECISION DEBUG] Both players passed, transitioning phase`);
-          if (currentState.turnPhase === 'deployment') {
-            await this.processPhaseTransition({ newPhase: 'action' });
-          } else if (currentState.turnPhase === 'action') {
-            await this.processPhaseTransition({ newPhase: 'roundEnd' });
-          }
-        } else {
-          debugLog('PASS_LOGIC', `[AI DECISION DEBUG] Only AI passed, switching to other player`);
-          // Switch to other player
-          await this.processTurnTransition({
-            newPlayer: playerId === 'player1' ? 'player2' : 'player1'
-          });
-        }
+        // NOTE: Turn and phase transitions now handled by GameFlowManager
+        // GameFlowManager monitors passInfo and handles:
+        // - Turn transitions when one player passes
+        // - Phase transitions when both players pass
+        const bothPlayersPassed = newPassInfo.player1Passed && newPassInfo.player2Passed;
+        debugLog('PASS_LOGIC', `[AI DECISION DEBUG] Both players passed: ${bothPlayersPassed}`);
 
-        return { success: true, action: 'pass' };
+        return {
+          success: true,
+          action: 'pass',
+          shouldEndTurn: !bothPlayersPassed // Pass ends turn unless both players passed (then phase ends)
+        };
 
       default:
         throw new Error(`Unknown AI action type: ${aiDecision.type}`);
@@ -1892,25 +2030,33 @@ setAnimationManager(animationManager) {
 
     debugLog('STATE_SYNC', '[HOST] Processing guest action:', action);
 
-    // Process the action normally on host side
-    const result = await this.queueAction({
+    // Process the action in background (non-blocking)
+    // Guest already played animations optimistically, so host doesn't need to block UI
+    // Broadcasting happens immediately after state calculation (before animations)
+    this.queueAction({
       type: action.type,
       payload: action.payload,
       isNetworkAction: true // Prevent re-broadcasting to guest
+    }).then((result) => {
+      debugLog('STATE_SYNC', '[HOST] Guest action processing complete:', action.type);
+      // Note: Broadcasting already happened inside action method via broadcastStateToGuest()
+      return result;
+    }).catch((error) => {
+      console.error('[HOST] Error processing guest action:', error);
     });
 
-    // After processing, broadcast updated state to guest
-    this.broadcastStateToGuest();
-
-    return result;
+    // Return immediately - host UI remains responsive
+    debugLog('STATE_SYNC', '[HOST] Guest action queued for background processing:', action.type);
+    return { success: true, processing: true };
   }
 
   /**
    * Execute animations and capture them for broadcasting to guest
    * @param {Array} animations - Animation events to execute
    * @param {boolean} isSystemAnimation - True for system animations (phase announcements), false for action animations
+   * @param {boolean} waitForCompletion - If true, awaits animation completion (blocking). Default: true for proper animation sequencing.
    */
-  async executeAndCaptureAnimations(animations, isSystemAnimation = false) {
+  async executeAndCaptureAnimations(animations, isSystemAnimation = false, waitForCompletion = true) {
     if (!animations || animations.length === 0) {
       return;
     }
@@ -1928,7 +2074,16 @@ setAnimationManager(animationManager) {
     // Execute animations with source tracking
     if (this.animationManager) {
       const source = gameMode === 'guest' ? 'GUEST_OPTIMISTIC' : gameMode === 'host' ? 'HOST_LOCAL' : 'LOCAL';
-      await this.animationManager.executeAnimations(animations, source);
+
+      if (waitForCompletion) {
+        // Blocking: Wait for animations to complete before continuing
+        await this.animationManager.executeAnimations(animations, source);
+      } else {
+        // Non-blocking: Execute animations in parallel without waiting
+        // This allows state updates and multiplayer broadcasting to happen immediately
+        // Return the promise for special cases that need to coordinate timing (e.g., teleport)
+        return this.animationManager.executeAnimations(animations, source);
+      }
     }
   }
 
@@ -1953,6 +2108,157 @@ setAnimationManager(animationManager) {
   }
 
   /**
+   * Prepare states for TELEPORT_IN animation timing
+   * Creates invisible state (with isTeleporting flags) and final visible state
+   * @param {Array} animations - Animations to check for TELEPORT_IN
+   * @param {Object} newPlayerStates - New player states from game logic (player1/player2 only)
+   * @returns {Object} { pendingStateUpdate, pendingFinalState }
+   */
+  prepareTeleportStates(animations, newPlayerStates) {
+    // Get current game state to preserve all properties
+    const currentState = this.gameStateManager.getState();
+
+    // Create complete state by merging player states with current game state
+    // This ensures ALL properties are included (turnPhase, currentPlayer, roundNumber, appState, etc.)
+    const completeNewState = {
+      ...currentState,           // All game-level properties
+      player1: newPlayerStates.player1,
+      player2: newPlayerStates.player2
+    };
+
+    const hasTeleportIn = animations.some(a => a.animationName === 'TELEPORT_IN');
+
+    if (!hasTeleportIn) {
+      // No TELEPORT_IN animations - return complete state
+      return {
+        pendingStateUpdate: completeNewState,
+        pendingFinalState: null
+      };
+    }
+
+    debugLog('ANIMATIONS', '🌀 [TELEPORT PREP] Detected TELEPORT_IN animations, preparing invisible drone state');
+
+    // Create modified state with isTeleporting flags for affected drones
+    const stateWithInvisibleDrones = this.addTeleportingFlags(completeNewState, animations);
+
+    return {
+      pendingStateUpdate: stateWithInvisibleDrones,  // Invisible drones (with isTeleporting)
+      pendingFinalState: completeNewState            // Visible drones (without isTeleporting)
+    };
+  }
+
+  /**
+   * Add isTeleporting flags to drones in TELEPORT_IN animations
+   * Creates modified state where teleporting drones are invisible (isTeleporting: true)
+   * @param {Object} newPlayerStates - Player states to modify
+   * @param {Array} animations - All animations being played
+   * @returns {Object} Modified player states with isTeleporting flags
+   */
+  addTeleportingFlags(newPlayerStates, animations) {
+    // Extract TELEPORT_IN animations and their target drones
+    const teleportAnimations = animations.filter(anim => anim.animationName === 'TELEPORT_IN');
+
+    if (teleportAnimations.length === 0) {
+      return newPlayerStates; // No changes needed
+    }
+
+    debugLog('ANIMATIONS', '🌀 [TELEPORT PREP] Adding isTeleporting flags to drones:', {
+      animationCount: teleportAnimations.length
+    });
+
+    // Create deep copy of states to modify
+    const modifiedStates = {
+      player1: JSON.parse(JSON.stringify(newPlayerStates.player1)),
+      player2: JSON.parse(JSON.stringify(newPlayerStates.player2))
+    };
+
+    // Add isTeleporting flag to each drone being teleported
+    teleportAnimations.forEach((anim, index) => {
+      const { targetPlayer, targetLane, targetId } = anim.payload || {};
+
+      if (!targetPlayer || !targetLane || !targetId) {
+        debugLog('ANIMATIONS', '⚠️ [TELEPORT PREP] Missing payload data in TELEPORT_IN animation:', anim);
+        return;
+      }
+
+      // Find and mark the drone as teleporting
+      const playerState = modifiedStates[targetPlayer];
+      const lane = playerState?.dronesOnBoard?.[targetLane];
+
+      if (lane && Array.isArray(lane)) {
+        const droneIndex = lane.findIndex(d => d.id === targetId);
+        if (droneIndex !== -1) {
+          lane[droneIndex].isTeleporting = true;
+          debugLog('ANIMATIONS', `🌀 [TELEPORT PREP ${index + 1}/${teleportAnimations.length}] Marked drone as invisible:`, {
+            targetPlayer,
+            targetLane,
+            targetId,
+            droneName: lane[droneIndex].name
+          });
+        } else {
+          debugLog('ANIMATIONS', '⚠️ [TELEPORT PREP] Drone not found in lane:', {
+            targetPlayer,
+            targetLane,
+            targetId
+          });
+        }
+      }
+    });
+
+    return modifiedStates;
+  }
+
+  /**
+   * Apply pending state update (called by AnimationManager during orchestration)
+   * Used by AnimationManager.executeWithStateUpdate() to apply state at correct timing
+   */
+  applyPendingStateUpdate() {
+    if (this.pendingStateUpdate) {
+      debugLog('ANIMATIONS', '📝 [STATE UPDATE] ActionProcessor applying pending state update');
+      this.gameStateManager.setPlayerStates(
+        this.pendingStateUpdate.player1,
+        this.pendingStateUpdate.player2
+      );
+    } else {
+      debugLog('ANIMATIONS', '⚠️ [STATE UPDATE] No pending state update to apply');
+    }
+  }
+
+  /**
+   * Get animation source for current game mode
+   * Used by AnimationManager.executeWithStateUpdate() for logging
+   * @returns {string} Animation source identifier
+   */
+  getAnimationSource() {
+    const gameMode = this.gameStateManager.get('gameMode');
+    return gameMode === 'guest' ? 'GUEST_OPTIMISTIC' :
+           gameMode === 'host' ? 'HOST_LOCAL' : 'LOCAL';
+  }
+
+  /**
+   * Reveal teleported drones mid-animation (called by AnimationManager)
+   * Removes isTeleporting flags to make drones visible at 70% of TELEPORT_IN animation
+   * @param {Array} teleportAnimations - TELEPORT_IN animations being played
+   */
+  revealTeleportedDrones(teleportAnimations) {
+    debugLog('ANIMATIONS', '✨ [TELEPORT REVEAL] ActionProcessor revealing teleported drones:', {
+      count: teleportAnimations.length,
+      hasPendingFinalState: !!this.pendingFinalState
+    });
+
+    if (this.pendingFinalState) {
+      // Apply final state without isTeleporting flags
+      this.gameStateManager.setPlayerStates(
+        this.pendingFinalState.player1,
+        this.pendingFinalState.player2
+      );
+      debugLog('ANIMATIONS', '✅ [TELEPORT REVEAL] Drones revealed');
+    } else {
+      debugLog('ANIMATIONS', '⚠️ [TELEPORT REVEAL] No pending final state to apply');
+    }
+  }
+
+  /**
    * Broadcast current game state to guest (host only)
    * Called after every action that changes game state
    */
@@ -1964,18 +2270,31 @@ setAnimationManager(animationManager) {
     }
 
     if (this.p2pManager && this.p2pManager.isConnected) {
-      const currentState = this.gameStateManager.getState();
+      // Use pendingFinalState (for TELEPORT_IN) or pendingStateUpdate (for other actions)
+      // Falls back to current state if neither is available
+      // Priority: finalState > pendingState > currentState
+      // - pendingFinalState: Final state after TELEPORT_IN reveal (no isTeleporting flags)
+      // - pendingStateUpdate: New state for normal actions or invisible state for TELEPORT_IN
+      // - currentState: Fallback for non-action broadcasts
+      const stateToBroadcast = this.pendingFinalState || this.pendingStateUpdate || this.gameStateManager.getState();
       const actionAnimations = this.getAndClearPendingActionAnimations();
       const systemAnimations = this.getAndClearPendingSystemAnimations();
+
+      // VALIDATION LOG: Verify state completeness before broadcast
+      const stateSource = this.pendingFinalState ? 'FINAL' : this.pendingStateUpdate ? 'PENDING' : 'CURRENT';
+      debugLog('BROADCAST_TIMING', `📡 [HOST BROADCAST] Source: ${stateSource} | Phase: ${stateToBroadcast.turnPhase} | Player: ${stateToBroadcast.currentPlayer} | Fields: ${Object.keys(stateToBroadcast).length} | Anims: ${actionAnimations.length + systemAnimations.length}`);
 
       debugLog('STATE_SYNC', '📡 [ANIMATION BROADCAST] Sending state with animations:', {
         actionAnimationCount: actionAnimations.length,
         systemAnimationCount: systemAnimations.length,
         actionAnimations: actionAnimations.map(a => a.animationName),
-        systemAnimations: systemAnimations.map(a => a.animationName)
+        systemAnimations: systemAnimations.map(a => a.animationName),
+        usingFinalState: !!this.pendingFinalState,
+        usingPendingState: !this.pendingFinalState && !!this.pendingStateUpdate,
+        usingCurrentState: !this.pendingFinalState && !this.pendingStateUpdate
       });
 
-      this.p2pManager.broadcastState(currentState, actionAnimations, systemAnimations);
+      this.p2pManager.broadcastState(stateToBroadcast, actionAnimations, systemAnimations);
     }
   }
 
@@ -2003,7 +2322,7 @@ setAnimationManager(animationManager) {
       outcome: `Passed during ${turnPhase} phase.`
     }, 'playerPass');
 
-    // Add pass notification animation
+    // Add pass notification animation (non-blocking for better multiplayer sync)
     const animations = [{
       animationName: 'PASS_NOTIFICATION',
       payload: {
@@ -2011,7 +2330,7 @@ setAnimationManager(animationManager) {
       }
     }];
 
-    // Use executeAndCaptureAnimations to ensure host broadcasts animation to guest
+    // Execute animation and wait for completion (prevents overlapping with subsequent phase announcements)
     await this.executeAndCaptureAnimations(animations);
 
     // Calculate pass info updates
@@ -2169,6 +2488,7 @@ setAnimationManager(animationManager) {
           actingPlayerId: abilityMetadata.actingPlayerId
         }
       }];
+      // Execute animation and wait for completion to ensure proper sequencing
       await this.executeAndCaptureAnimations(abilityRevealAnimation);
     }
 
@@ -2306,6 +2626,18 @@ setAnimationManager(animationManager) {
     const { playerId, phase, actionData } = payload;
 
     debugLog('COMMITMENTS', `🤝 ActionProcessor: Processing ${phase} commitment for ${playerId}`);
+    debugLog('COMMITMENTS', `📦 Full commitment payload:`, {
+      playerId,
+      phase,
+      actionDataKeys: actionData ? Object.keys(actionData) : [],
+      actionDataSummary: actionData ? {
+        selectedDrones: actionData.selectedDrones?.length,
+        deck: actionData.deck?.length,
+        drones: actionData.drones?.length,
+        shipComponents: actionData.shipComponents?.length,
+        placedSections: actionData.placedSections?.length
+      } : null
+    });
 
     // Guest guard: Guests should not process commitments locally
     const gameMode = this.gameStateManager.get('gameMode');
@@ -2346,6 +2678,21 @@ setAnimationManager(animationManager) {
                         currentState.commitments[phase].player2.completed;
 
     debugLog('COMMITMENTS', `✅ ${playerId} ${phase} committed, both complete: ${bothComplete}`);
+    debugLog('COMMITMENTS', `📊 Commitment state after update:`, {
+      phase,
+      player1Completed: currentState.commitments[phase].player1.completed,
+      player2Completed: currentState.commitments[phase].player2.completed,
+      bothComplete
+    });
+
+    // HOST: Broadcast commitment state to guest immediately
+    // This ensures guest sees their commitment status and can show waiting modal
+    // Must happen even when isNetworkAction=true (guest-initiated commitments)
+    if (gameMode === 'host') {
+      debugLog('COMMITMENTS', `📡 Broadcasting commitment state to guest for ${phase}`);
+      this.broadcastStateToGuest();
+      debugLog('COMMITMENTS', `✅ Commitment state broadcast complete`);
+    }
 
     // For single-player mode, auto-complete AI commitment immediately (not async)
     if (playerId === 'player1' && currentState.gameMode === 'local' && !bothComplete) {

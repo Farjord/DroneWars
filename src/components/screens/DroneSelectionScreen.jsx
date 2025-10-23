@@ -146,7 +146,12 @@ function DroneSelectionScreen() {
 
     // Guest mode: Send action to host
     if (gameState.gameMode === 'guest') {
-      debugLog('DRONE_SELECTION', '[GUEST] Sending drone selection commitment to host');
+      debugLog('COMMITMENTS', '[GUEST] Sending drone selection commitment to host:', {
+        phase: payload.phase,
+        playerId: payload.playerId,
+        actionDataKeys: Object.keys(payload.actionData),
+        selectedDronesCount: payload.actionData.selectedDrones?.length
+      });
       p2pManager.sendActionToHost('commitment', payload);
       return;
     }

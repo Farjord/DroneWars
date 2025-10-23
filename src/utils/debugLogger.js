@@ -23,23 +23,24 @@ const DEBUG_CONFIG = {
     DRONE_SELECTION: false,     // Drone selection phase and data
     DECK_SELECTION: false,      // Deck selection phase
     PLACEMENT: false,           // Ship placement phase
-    PHASE_TRANSITIONS: false,   // Game phase transitions and flow
-    AI_DECISIONS: false,        // AI decision making (DISABLED for clean logs)
-    MULTIPLAYER: false,         // Network sync and multiplayer
+    PHASE_TRANSITIONS: true,    // Game phase transitions and flow
+    AI_DECISIONS: false,        // AI decision making
+    MULTIPLAYER: true,          // Network sync and multiplayer
     P2P_CONNECTION: false,      // PeerJS connection diagnostics
-    ANIMATIONS: false,          // Animation system (DISABLED - use OPTIMISTIC for focused debugging)
-    OPTIMISTIC: true,           // Animation deduplication and matching logic
-    COMMITMENTS: false,         // Simultaneous phase commitments
-    COMBAT: false,              // Combat resolution (DISABLED for clean logs)
-    PASS_LOGIC: false,          // Pass handling
-    STATE_SYNC: false,          // State synchronization
+    ANIMATIONS: false,          // Animation system (DISABLED for clean logs)
+    OPTIMISTIC: false,          // Animation deduplication and matching logic (DISABLED for clean logs)
+    COMMITMENTS: false,         // Simultaneous phase commitments (DISABLED for clean logs)
+    COMBAT: false,              // Combat resolution
+    PASS_LOGIC: false,          // Pass handling (DISABLED for clean logs)
+    STATE_SYNC: true,           // State synchronization (ENABLED for multiplayer debugging)
+    BROADCAST_TIMING: true,     // Broadcast timing and state validation (ENABLED for sync debugging)
     ENERGY: false,              // Energy management (shield allocation)
-    CARDS: false,               // Card play and effects
+    CARDS: false,               // Card play and effects (DISABLED for clean logs)
     HAND_VIEW: false,           // Hand display and card interaction
-    CARD_PLAY: false,           // Card playability and clicking (DISABLED for clean logs)
+    CARD_PLAY: false,           // Card playability and clicking
     SHIELD_CLICKS: false,       // Shield allocation click tracking
-    BUTTON_CLICKS: false,       // Button click tracking and effects (DISABLED for clean logs)
-    MOVEMENT_LANES: false,       // Movement card lane highlighting diagnostics
+    BUTTON_CLICKS: false,       // Button click tracking and effects
+    MOVEMENT_LANES: false,      // Movement card lane highlighting diagnostics
   }
 };
 

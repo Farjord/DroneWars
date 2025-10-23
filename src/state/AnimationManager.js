@@ -161,6 +161,152 @@ class AnimationManager {
     this.visualHandlers.set(type, handler);
   }
 
+  /**
+   * Execute animations with state update at the correct timing
+   * Orchestrates: pre-state animations → state update → post-state animations
+   * @param {Array} animations - Animations to execute
+   * @param {Object} executor - Object with applyPendingStateUpdate() and getAnimationSource() methods
+   */
+  async executeWithStateUpdate(animations, executor) {
+    debugLog('ANIMATIONS', '🎬 [ORCHESTRATE] executeWithStateUpdate() START:', {
+      animationCount: animations?.length || 0,
+      executorType: executor.constructor.name
+    });
+
+    if (!animations || animations.length === 0) {
+      debugLog('ANIMATIONS', '⏭️ [ORCHESTRATE] No animations, applying state update only');
+      executor.applyPendingStateUpdate();
+      return;
+    }
+
+    // Split animations by timing requirements
+    const { preState, postState, independent } = this.splitByTiming(animations);
+
+    debugLog('ANIMATIONS', '🔍 [ORCHESTRATE] Animation timing split:', {
+      preStateCount: preState.length,
+      postStateCount: postState.length,
+      independentCount: independent.length,
+      total: animations.length
+    });
+
+    // 1. Play animations that need OLD state (entities still exist in DOM)
+    const preAnimations = [...independent, ...preState];
+    if (preAnimations.length > 0) {
+      debugLog('ANIMATIONS', '🎬 [ORCHESTRATE] Playing pre-state + independent animations...');
+      await this.executeAnimations(preAnimations, executor.getAnimationSource());
+      debugLog('ANIMATIONS', '✅ [ORCHESTRATE] Pre-state + independent animations complete');
+    }
+
+    // 2. Apply state update (executor updates GameStateManager)
+    debugLog('ANIMATIONS', '📝 [ORCHESTRATE] Applying state update via executor...');
+    executor.applyPendingStateUpdate();
+    debugLog('ANIMATIONS', '✅ [ORCHESTRATE] State update complete');
+
+    // 3. Wait for React to render new state (critical for post-state animations)
+    if (postState.length > 0) {
+      debugLog('ANIMATIONS', '⏳ [ORCHESTRATE] Waiting for React to render new state...');
+      await this.waitForReactRender();
+      debugLog('ANIMATIONS', '✅ [ORCHESTRATE] React render complete');
+    }
+
+    // 4. Separate TELEPORT_IN from other post-state animations (needs special handling)
+    const teleportAnimations = postState.filter(a => a.animationName === 'TELEPORT_IN');
+    const otherPostState = postState.filter(a => a.animationName !== 'TELEPORT_IN');
+
+    debugLog('ANIMATIONS', '🔍 [ORCHESTRATE] Post-state animation split:', {
+      teleportCount: teleportAnimations.length,
+      otherPostCount: otherPostState.length
+    });
+
+    // 5. Play non-teleport post-state animations normally
+    if (otherPostState.length > 0) {
+      debugLog('ANIMATIONS', '🎬 [ORCHESTRATE] Playing non-teleport post-state animations...');
+      await this.executeAnimations(otherPostState, executor.getAnimationSource());
+      debugLog('ANIMATIONS', '✅ [ORCHESTRATE] Non-teleport post-state animations complete');
+    }
+
+    // 6. Handle TELEPORT_IN with mid-animation reveal timing
+    if (teleportAnimations.length > 0) {
+      debugLog('ANIMATIONS', '✨ [ORCHESTRATE] Handling TELEPORT_IN animations with reveal timing...');
+      await this.executeTeleportAnimations(teleportAnimations, executor);
+      debugLog('ANIMATIONS', '✅ [ORCHESTRATE] TELEPORT_IN animations complete');
+    }
+
+    debugLog('ANIMATIONS', '🎬 [ORCHESTRATE] executeWithStateUpdate() COMPLETE');
+  }
+
+  /**
+   * Wait for React to render (double requestAnimationFrame for safety)
+   * @returns {Promise} Resolves after React has rendered
+   */
+  waitForReactRender() {
+    return new Promise(resolve => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(resolve);
+      });
+    });
+  }
+
+  /**
+   * Execute TELEPORT_IN animations with mid-animation reveal
+   * Drones start invisible (isTeleporting: true) and are revealed at 70% of animation
+   * @param {Array} animations - TELEPORT_IN animations to execute
+   * @param {Object} executor - Executor with revealTeleportedDrones method
+   */
+  async executeTeleportAnimations(animations, executor) {
+    debugLog('ANIMATIONS', '✨ [TELEPORT] Starting TELEPORT_IN animations:', {
+      count: animations.length,
+      droneIds: animations.map(a => a.payload?.targetId)
+    });
+
+    // Start animations (non-blocking)
+    const animationPromise = this.executeAnimations(animations, executor.getAnimationSource());
+
+    // Schedule mid-animation reveal at configured percentage (default 70%)
+    const config = this.animations.TELEPORT_IN;
+    const revealDelay = config.duration * (config.config?.revealAt || 0.7);
+
+    debugLog('ANIMATIONS', `✨ [TELEPORT] Scheduling drone reveal at ${revealDelay}ms (${(config.config?.revealAt || 0.7) * 100}% of ${config.duration}ms)`);
+
+    setTimeout(() => {
+      debugLog('ANIMATIONS', '✨ [TELEPORT] Revealing teleported drones...');
+      if (executor.revealTeleportedDrones) {
+        executor.revealTeleportedDrones(animations);
+      } else {
+        debugLog('ANIMATIONS', '⚠️ [TELEPORT] Executor does not support revealTeleportedDrones()');
+      }
+    }, revealDelay);
+
+    // Wait for animations to complete
+    await animationPromise;
+    debugLog('ANIMATIONS', '✨ [TELEPORT] All TELEPORT_IN animations completed');
+  }
+
+  /**
+   * Split animations by timing requirements (private helper)
+   * @param {Array} animations - Animations to split
+   * @returns {Object} { preState, postState, independent }
+   */
+  splitByTiming(animations) {
+    const preState = [];
+    const postState = [];
+    const independent = [];
+
+    animations.forEach(anim => {
+      const timing = anim.timing || 'pre-state'; // Default to pre-state for safety
+
+      if (timing === 'post-state') {
+        postState.push(anim);
+      } else if (timing === 'independent') {
+        independent.push(anim);
+      } else {
+        preState.push(anim);
+      }
+    });
+
+    return { preState, postState, independent };
+  }
+
   async executeAnimations(effects, source = 'unknown') {
     const gameMode = this.gameStateManager?.getState()?.gameMode;
 
