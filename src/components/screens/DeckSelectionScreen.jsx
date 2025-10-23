@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useGameState } from '../../hooks/useGameState.js';
-import { WaitingForOpponentScreen } from './DroneSelectionScreen.jsx';
+import { WaitingForOpponentScreen, SubmittingOverlay } from './DroneSelectionScreen.jsx';
 import { gameEngine, startingDecklist, startingDroneList } from '../../logic/gameLogic.js';
 import gameFlowManager from '../../state/GameFlowManager.js';
 import gameStateManager from '../../state/GameStateManager.js';
@@ -40,6 +40,9 @@ function DeckSelectionScreen() {
   const [customDeck, setCustomDeck] = useState({});
   const [selectedDrones, setSelectedDrones] = useState({});
   const [selectedShipComponents, setSelectedShipComponents] = useState({});
+
+  // UI state for guest submission feedback
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   /**
    * HANDLE DECK CHOICE
@@ -88,7 +91,7 @@ function DeckSelectionScreen() {
         }
       };
 
-      // Guest mode: Send action to host
+      // Guest mode: Send action to host with immediate UI feedback
       if (gameState.gameMode === 'guest') {
         debugLog('COMMITMENTS', '[GUEST] Sending deck selection commitment to host:', {
           phase: payload.phase,
@@ -98,6 +101,10 @@ function DeckSelectionScreen() {
           dronesCount: payload.actionData.drones?.length,
           shipComponentsCount: payload.actionData.shipComponents?.length
         });
+
+        // Set UI state immediately for visual feedback
+        setIsSubmitting(true);
+
         p2pManager.sendActionToHost('commitment', payload);
         return;
       }
@@ -216,7 +223,7 @@ function DeckSelectionScreen() {
       }
     };
 
-    // Guest mode: Send action to host
+    // Guest mode: Send action to host with immediate UI feedback
     if (gameState.gameMode === 'guest') {
       debugLog('COMMITMENTS', '[GUEST] Sending custom deck commitment to host:', {
         phase: payload.phase,
@@ -226,6 +233,10 @@ function DeckSelectionScreen() {
         dronesCount: payload.actionData.drones?.length,
         shipComponentsCount: payload.actionData.shipComponents?.length
       });
+
+      // Set UI state immediately for visual feedback
+      setIsSubmitting(true);
+
       p2pManager.sendActionToHost('commitment', payload);
       setShowDeckBuilder(false);
       return;
@@ -332,6 +343,17 @@ function DeckSelectionScreen() {
     }
   }, [gameState, gameStateManager]);
 
+  // Reset submitting state when host confirms commitment
+  useEffect(() => {
+    const localPlayerId = getLocalPlayerId();
+    const localPlayerCompleted = gameState.commitments?.deckSelection?.[localPlayerId]?.completed || false;
+
+    if (localPlayerCompleted && isSubmitting) {
+      debugLog('DECK_SELECTION', '✅ Host confirmed guest commitment, resetting isSubmitting');
+      setIsSubmitting(false);
+    }
+  }, [gameState.commitments, getLocalPlayerId, isSubmitting]);
+
   // Check completion status directly from gameState.commitments
   const localPlayerId = getLocalPlayerId();
   const opponentPlayerId = getOpponentPlayerId();
@@ -346,13 +368,22 @@ function DeckSelectionScreen() {
     opponentPlayerId,
     localPlayerCompleted,
     opponentCompleted,
+    isSubmitting,
     fullCommitmentsObject: gameState.commitments?.deckSelection,
     turnPhase,
     localPlayerDeckLength: localPlayerState.deck?.length,
+    willShowSubmitting: isSubmitting && !localPlayerCompleted,
     willShowWaiting: isMultiplayer() && localPlayerCompleted && !opponentCompleted
   });
 
-  // Show waiting screen in multiplayer when local player done but opponent still selecting
+  // UI STATE MACHINE: Show appropriate screen based on guest submission state
+
+  // State 1: SUBMITTING - Guest sent action, waiting for host confirmation
+  if (isSubmitting && !localPlayerCompleted) {
+    return <SubmittingOverlay />;
+  }
+
+  // State 2: WAITING - Guest confirmed, waiting for opponent to complete
   if (isMultiplayer() && localPlayerCompleted && !opponentCompleted) {
     return (
       <WaitingForOpponentScreen
@@ -361,6 +392,8 @@ function DeckSelectionScreen() {
       />
     );
   }
+
+  // State 3: SELECTING - Active selection interface (default)
 
   // Show deck builder if custom deck option selected
   if (showDeckBuilder) {

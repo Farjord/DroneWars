@@ -14,6 +14,27 @@ import p2pManager from '../../network/P2PManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
 /**
+ * SUBMITTING OVERLAY COMPONENT
+ * Displays feedback while guest's action is being sent to host and confirmed.
+ * Shows between clicking Continue and host confirming the commitment.
+ */
+export const SubmittingOverlay = () => {
+  return (
+    <div className="flex flex-col items-center justify-center h-full">
+      <div className="text-center p-8">
+        <Loader2 className="w-16 h-16 mx-auto text-cyan-400 animate-spin mb-6" />
+        <h2 className="text-3xl font-bold text-white mb-4">
+          Processing Your Selection
+        </h2>
+        <p className="text-gray-400 text-lg">
+          Sending your choices to the host...
+        </p>
+      </div>
+    </div>
+  );
+};
+
+/**
  * WAITING FOR OPPONENT SCREEN COMPONENT
  * Displays waiting screen when opponent is still making selections.
  * Shows loading indicator and current status.
@@ -89,6 +110,9 @@ function DroneSelectionScreen() {
   const [currentTrio, setCurrentTrio] = useState(droneSelectionTrio || []);
   const [remainingPool, setRemainingPool] = useState(droneSelectionPool || []);
 
+  // UI state for guest submission feedback
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   /**
    * HANDLE CHOOSE DRONE FOR SELECTION
    * Advances to next trio or completes selection when 5 drones chosen.
@@ -144,7 +168,7 @@ function DroneSelectionScreen() {
       commitmentsBefore: gameState.commitments?.droneSelection
     });
 
-    // Guest mode: Send action to host
+    // Guest mode: Send action to host with immediate UI feedback
     if (gameState.gameMode === 'guest') {
       debugLog('COMMITMENTS', '[GUEST] Sending drone selection commitment to host:', {
         phase: payload.phase,
@@ -152,6 +176,10 @@ function DroneSelectionScreen() {
         actionDataKeys: Object.keys(payload.actionData),
         selectedDronesCount: payload.actionData.selectedDrones?.length
       });
+
+      // Set UI state immediately for visual feedback
+      setIsSubmitting(true);
+
       p2pManager.sendActionToHost('commitment', payload);
       return;
     }
@@ -191,6 +219,17 @@ function DroneSelectionScreen() {
     }
   }, [droneSelectionTrio, droneSelectionPool]);
 
+  // Reset submitting state when host confirms commitment
+  useEffect(() => {
+    const opponentPlayerId = getOpponentPlayerId();
+    const localPlayerCompleted = gameState.commitments?.droneSelection?.[localPlayerId]?.completed || false;
+
+    if (localPlayerCompleted && isSubmitting) {
+      debugLog('DRONE_SELECTION', '✅ Host confirmed guest commitment, resetting isSubmitting');
+      setIsSubmitting(false);
+    }
+  }, [gameState.commitments, localPlayerId, isSubmitting, getOpponentPlayerId]);
+
   // Notify GuestMessageQueueService when React has finished rendering (guest mode only)
   useEffect(() => {
     if (gameState.gameMode === 'guest') {
@@ -211,12 +250,21 @@ function DroneSelectionScreen() {
     opponentPlayerId,
     localPlayerCompleted,
     opponentCompleted,
+    isSubmitting,
     fullCommitmentsObject: gameState.commitments?.droneSelection,
     turnPhase,
+    willShowSubmitting: isSubmitting && !localPlayerCompleted,
     willShowWaiting: isMultiplayer() && localPlayerCompleted && !opponentCompleted
   });
 
-  // Show waiting screen in multiplayer when local player done but opponent still selecting
+  // UI STATE MACHINE: Show appropriate screen based on guest submission state
+
+  // State 1: SUBMITTING - Guest sent action, waiting for host confirmation
+  if (isSubmitting && !localPlayerCompleted) {
+    return <SubmittingOverlay />;
+  }
+
+  // State 2: WAITING - Guest confirmed, waiting for opponent to complete
   if (isMultiplayer() && localPlayerCompleted && !opponentCompleted) {
     // Get drone names from commitments
     const localDrones = gameState.commitments?.droneSelection?.[localPlayerId]?.drones || tempSelectedDrones;
@@ -231,6 +279,8 @@ function DroneSelectionScreen() {
       />
     );
   }
+
+  // State 3: SELECTING - Active selection interface (default)
 
   // Show the main drone selection interface
   const isSelectionComplete = tempSelectedDrones.length === 5;

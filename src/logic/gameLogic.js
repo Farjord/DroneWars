@@ -4557,6 +4557,7 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback)
 
     return {
         newPlayerStates,
+        shouldEndTurn: !goAgain,
         attackResult: {
             attackerName: attacker && attacker.name ? attacker.name : 'Card Effect',
             lane: attackerLane || lane,
@@ -4568,8 +4569,7 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback)
             wasDestroyed,
             remainingShields,
             remainingHull,
-            outcome,
-            shouldEndTurn: !goAgain
+            outcome
         },
         animationEvents
     };

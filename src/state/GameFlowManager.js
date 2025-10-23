@@ -154,6 +154,41 @@ class GameFlowManager {
       currentPlayer: currentState.currentPlayer
     });
 
+    // CRITICAL: Synchronously check for both-passed condition BEFORE broadcasting
+    // This prevents race condition where guest receives wrong phase
+    if (actionType === 'playerPass') {
+      const updatedState = this.gameStateManager.getState();
+      const bothPassed = updatedState.passInfo?.player1Passed && updatedState.passInfo?.player2Passed;
+
+      debugLog('PASS_LOGIC', `🔍 Both-passed check after ${actionType}:`, {
+        player1Passed: updatedState.passInfo?.player1Passed,
+        player2Passed: updatedState.passInfo?.player2Passed,
+        bothPassed,
+        currentPhase: updatedState.turnPhase
+      });
+
+      if (bothPassed) {
+        debugLog('PHASE_TRANSITIONS', `✅ Both players passed, triggering phase transition synchronously`);
+
+        // Trigger phase transition synchronously BEFORE broadcasting
+        await this.onSequentialPhaseComplete(updatedState.turnPhase, {
+          reason: 'both_passed',
+          passInfo: updatedState.passInfo
+        });
+
+        debugLog('PHASE_TRANSITIONS', `✅ Phase transition completed, broadcasting updated state`);
+
+        // Broadcast state AFTER phase transition completes
+        // This ensures guest receives correct phase and all associated state updates
+        if (currentState.gameMode === 'host' && this.actionProcessor.p2pManager) {
+          debugLog('BROADCAST_TIMING', `📡 [BROADCAST SOURCE] Phase transition after both-passed`);
+          this.actionProcessor.broadcastStateToGuest();
+          debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted state after phase transition`);
+        }
+        return;
+      }
+    }
+
     // Check if action should end turn
     if (result && result.shouldEndTurn) {
       const updatedState = this.gameStateManager.getState();

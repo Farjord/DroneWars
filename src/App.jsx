@@ -1443,9 +1443,9 @@ const App = () => {
     previousPhaseRef.current = turnPhase;
   }, [turnPhase, mandatoryAction]);
 
-  // --- 8.10 MANDATORY PHASE WAITING MODAL ---
-  // Monitor commitment status for mandatory phases and show waiting modal when appropriate
-  // Handles both scenarios: player has no excess (auto-commits) OR player finishes first
+  // --- 8.10 SIMULTANEOUS PHASE WAITING MODAL ---
+  // Monitor commitment status for simultaneous phases and show waiting modal when appropriate
+  // Clears modal as soon as both players commit to prevent modal overlaying animations
   useEffect(() => {
     // Only check in multiplayer
     if (!isMultiplayer()) return;
@@ -1467,6 +1467,34 @@ const App = () => {
       }
     }
 
+    // Check optionalDiscard phase
+    if (turnPhase === 'optionalDiscard') {
+      const localCommitted = gameState.commitments?.optionalDiscard?.[localPlayerId]?.completed;
+      const opponentCommitted = gameState.commitments?.optionalDiscard?.[opponentPlayerId]?.completed;
+
+      if (localCommitted && !opponentCommitted) {
+        debugLog('COMMITMENTS', '✋ Local player committed but opponent has not - showing waiting modal for optionalDiscard');
+        setWaitingForPlayerPhase('optionalDiscard');
+      } else if (localCommitted && opponentCommitted && waitingForPlayerPhase === 'optionalDiscard') {
+        debugLog('COMMITMENTS', '✅ Both players committed - clearing waiting modal for optionalDiscard');
+        setWaitingForPlayerPhase(null);
+      }
+    }
+
+    // Check allocateShields phase
+    if (turnPhase === 'allocateShields') {
+      const localCommitted = gameState.commitments?.allocateShields?.[localPlayerId]?.completed;
+      const opponentCommitted = gameState.commitments?.allocateShields?.[opponentPlayerId]?.completed;
+
+      if (localCommitted && !opponentCommitted) {
+        debugLog('COMMITMENTS', '✋ Local player committed but opponent has not - showing waiting modal for allocateShields');
+        setWaitingForPlayerPhase('allocateShields');
+      } else if (localCommitted && opponentCommitted && waitingForPlayerPhase === 'allocateShields') {
+        debugLog('COMMITMENTS', '✅ Both players committed - clearing waiting modal for allocateShields');
+        setWaitingForPlayerPhase(null);
+      }
+    }
+
     // Check mandatoryDroneRemoval phase
     if (turnPhase === 'mandatoryDroneRemoval') {
       const localCommitted = gameState.commitments?.mandatoryDroneRemoval?.[localPlayerId]?.completed;
@@ -1477,6 +1505,20 @@ const App = () => {
         setWaitingForPlayerPhase('mandatoryDroneRemoval');
       } else if (localCommitted && opponentCommitted && waitingForPlayerPhase === 'mandatoryDroneRemoval') {
         debugLog('COMMITMENTS', '✅ Both players committed - clearing waiting modal for mandatoryDroneRemoval');
+        setWaitingForPlayerPhase(null);
+      }
+    }
+
+    // Check deploymentComplete phase
+    if (turnPhase === 'deploymentComplete') {
+      const localCommitted = gameState.commitments?.deploymentComplete?.[localPlayerId]?.completed;
+      const opponentCommitted = gameState.commitments?.deploymentComplete?.[opponentPlayerId]?.completed;
+
+      if (localCommitted && !opponentCommitted) {
+        debugLog('COMMITMENTS', '✋ Local player committed but opponent has not - showing waiting modal for deploymentComplete');
+        setWaitingForPlayerPhase('deploymentComplete');
+      } else if (localCommitted && opponentCommitted && waitingForPlayerPhase === 'deploymentComplete') {
+        debugLog('COMMITMENTS', '✅ Both players committed - clearing waiting modal for deploymentComplete');
         setWaitingForPlayerPhase(null);
       }
     }

@@ -2386,7 +2386,11 @@ setAnimationManager(animationManager) {
 
     return {
       success: true,
-      newPassInfo
+      newPassInfo,
+      animations: {
+        actionAnimations: animations,
+        systemAnimations: []
+      }
     };
   }
 

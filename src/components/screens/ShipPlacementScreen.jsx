@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useGameState } from '../../hooks/useGameState.js';
-import { WaitingForOpponentScreen } from './DroneSelectionScreen.jsx';
+import { WaitingForOpponentScreen, SubmittingOverlay } from './DroneSelectionScreen.jsx';
 import ShipSection from '../ui/ShipSection.jsx';
 import { gameEngine } from '../../logic/gameLogic.js';
 import gameStateManager from '../../state/GameStateManager.js';
@@ -37,6 +37,9 @@ function ShipPlacementScreen() {
 
   // Local state for ship placement process
   const [selectedSectionForPlacement, setSelectedSectionForPlacement] = useState(null);
+
+  // UI state for guest submission feedback
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Helper function to pre-populate placement from deck selection
   const getInitialPlacement = () => {
@@ -188,7 +191,7 @@ function ShipPlacementScreen() {
       actionData: { placedSections: localPlacedSections }
     };
 
-    // Guest mode: Send action to host
+    // Guest mode: Send action to host with immediate UI feedback
     if (gameState.gameMode === 'guest') {
       debugLog('COMMITMENTS', '[GUEST] Sending ship placement commitment to host:', {
         phase: payload.phase,
@@ -196,6 +199,10 @@ function ShipPlacementScreen() {
         actionDataKeys: Object.keys(payload.actionData),
         placedSectionsCount: payload.actionData.placedSections?.length
       });
+
+      // Set UI state immediately for visual feedback
+      setIsSubmitting(true);
+
       p2pManager.sendActionToHost('commitment', payload);
       return;
     }
@@ -228,6 +235,17 @@ function ShipPlacementScreen() {
     }
   }, [gameState, gameStateManager]);
 
+  // Reset submitting state when host confirms commitment
+  useEffect(() => {
+    const localPlayerId = getLocalPlayerId();
+    const localPlayerCompleted = gameState.commitments?.placement?.[localPlayerId]?.completed || false;
+
+    if (localPlayerCompleted && isSubmitting) {
+      debugLog('PLACEMENT', '✅ Host confirmed guest commitment, resetting isSubmitting');
+      setIsSubmitting(false);
+    }
+  }, [gameState.commitments, getLocalPlayerId, isSubmitting]);
+
   // Check completion status directly from gameState.commitments
   const localPlayerId = getLocalPlayerId();
   const opponentPlayerId = getOpponentPlayerId();
@@ -242,12 +260,21 @@ function ShipPlacementScreen() {
     opponentPlayerId,
     localPlayerCompleted,
     opponentCompleted,
+    isSubmitting,
     fullCommitmentsObject: gameState.commitments?.placement,
     turnPhase,
+    willShowSubmitting: isSubmitting && !localPlayerCompleted,
     willShowWaiting: isMultiplayer() && localPlayerCompleted && !opponentCompleted
   });
 
-  // Show waiting screen in multiplayer when local player done but opponent still selecting
+  // UI STATE MACHINE: Show appropriate screen based on guest submission state
+
+  // State 1: SUBMITTING - Guest sent action, waiting for host confirmation
+  if (isSubmitting && !localPlayerCompleted) {
+    return <SubmittingOverlay />;
+  }
+
+  // State 2: WAITING - Guest confirmed, waiting for opponent to complete
   if (isMultiplayer() && localPlayerCompleted && !opponentCompleted) {
     const localSectionNames = localPlacedSections.map((section, index) => section ? section.name : 'Empty').join(', ');
     return (
@@ -257,6 +284,26 @@ function ShipPlacementScreen() {
       />
     );
   }
+
+  // State 3: TRANSITIONING - Both players complete, automatic phase cascade starting
+  // This prevents the "black screen" during automatic phases (determineFirstPlayer → energyReset → draw)
+  if (isMultiplayer() && localPlayerCompleted && opponentCompleted && turnPhase === 'placement') {
+    return (
+      <div className="flex flex-col items-center justify-center h-full">
+        <div className="text-center p-8">
+          <div className="w-16 h-16 mx-auto mb-6 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+          <h2 className="text-3xl font-bold text-white mb-4">
+            Game Starting...
+          </h2>
+          <p className="text-gray-400 text-lg">
+            Preparing the battlefield
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // State 4: SELECTING - Active placement interface (default)
 
   // Helper to calculate effective stats for a section in a specific lane
   const getEffectiveStatsForSection = (sectionName, laneIndex) => {
