@@ -14,6 +14,7 @@ import p2pManager from '../../network/P2PManager.js';
 import DeckBuilder from '../../DeckBuilder.jsx';
 import fullCardCollection from '../../data/cardData.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import SeededRandom from '../../utils/seededRandom.js';
 
 /**
  * DECK SELECTION SCREEN COMPONENT
@@ -58,7 +59,7 @@ function DeckSelectionScreen() {
     if (choice === 'standard') {
       // Build the standard deck for the local player
       const localPlayerId = getLocalPlayerId();
-      const standardDeck = gameEngine.buildDeckFromList(startingDecklist);
+      const standardDeck = gameEngine.buildDeckFromList(startingDecklist, localPlayerId);
       const standardDrones = [...startingDroneList]; // 10 standard drones
 
       // Validate standard drone list has exactly 10 drones
@@ -194,9 +195,13 @@ function DeckSelectionScreen() {
       }
     });
 
-    // Shuffle the deck for random card draw order (same as standard deck)
-    const shuffledDeck = deckArray.sort(() => 0.5 - Math.random());
-    debugLog('DECK_SELECTION', `🔀 Custom deck shuffled: ${shuffledDeck.length} cards`, {
+    // Shuffle the deck for random card draw order using seeded RNG for multiplayer synchronization
+    // Use simple seed based on local player ID and timestamp
+    const localPlayerId = getLocalPlayerId();
+    const seed = localPlayerId === 'player1' ? 12345 : 67890;
+    const rng = new SeededRandom(seed);
+    const shuffledDeck = rng.shuffle(deckArray);
+    debugLog('DECK_SELECTION', `🔀 Custom deck shuffled: ${shuffledDeck.length} cards (deterministic)`, {
       sampleCard: shuffledDeck[0],
       sampleInstanceId: shuffledDeck[0]?.instanceId,
       hasInstanceId: shuffledDeck[0]?.instanceId !== undefined
@@ -212,7 +217,6 @@ function DeckSelectionScreen() {
 
     debugLog('DECK_SELECTION', `🎲 Custom deck includes ${droneNames.length} drones:`, droneNames.join(', '));
 
-    const localPlayerId = getLocalPlayerId();
     const payload = {
       phase: 'deckSelection',
       playerId: localPlayerId,

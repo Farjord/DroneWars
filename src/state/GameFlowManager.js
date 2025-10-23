@@ -69,6 +69,9 @@ class GameFlowManager {
     this.actionProcessor = actionProcessor;
     this.isMultiplayer = isMultiplayerFn;
 
+    // Store Guest mode flag for optimistic execution logic
+    this.isGuestMode = () => gameStateManager.get('gameMode') === 'guest';
+
     // Initialize GameDataService for phase requirement checks
     if (!this.gameDataService) {
       this.gameDataService = GameDataService.getInstance(gameStateManager);
@@ -567,6 +570,16 @@ class GameFlowManager {
   async processAutomaticPhase(phase, previousPhase) {
     debugLog('PHASE_TRANSITIONS', `🤖 GameFlowManager: Processing automatic phase '${phase}' from '${previousPhase}'`);
 
+    // GUEST MODE: Sync internal state from GameStateManager before processing
+    // Guest's GameFlowManager initializes with defaults but needs to match Host's gameStage/roundNumber
+    if (this.isGuestMode && this.isGuestMode()) {
+      const currentGameState = this.gameStateManager.getState();
+      this.gameStage = currentGameState.gameStage || 'preGame';
+      this.roundNumber = currentGameState.roundNumber || 0;
+
+      debugLog('OPTIMISTIC_EXECUTION', `🔄 [GUEST] Synced GameFlowManager state from GameStateManager: {gameStage: '${this.gameStage}', roundNumber: ${this.roundNumber}}`);
+    }
+
     // Set flag to indicate we're processing an automatic phase
     this.isProcessingAutomaticPhase = true;
 
@@ -597,7 +610,77 @@ class GameFlowManager {
     } finally {
       // Always clear the flag when automatic phase processing is complete
       this.isProcessingAutomaticPhase = false;
+
+      // GUEST OPTIMISTIC EXECUTION: Track animations for deduplication
+      // When Guest processes automatic phases locally, track animations so they're
+      // filtered out when Host broadcast arrives (same pattern as drone deployment)
+      if (this.isGuestMode && this.isGuestMode()) {
+        const actionAnims = this.actionProcessor.getAndClearPendingActionAnimations();
+        const systemAnims = this.actionProcessor.getAndClearPendingSystemAnimations();
+
+        if ((actionAnims && actionAnims.length > 0) || (systemAnims && systemAnims.length > 0)) {
+          const animations = {
+            actionAnimations: actionAnims || [],
+            systemAnimations: systemAnims || []
+          };
+
+          debugLog('OPTIMISTIC_EXECUTION', `🎬 [GUEST] Tracking ${animations.actionAnimations.length + animations.systemAnimations.length} animations for deduplication`);
+          this.gameStateManager.trackOptimisticAnimations(animations);
+        }
+      }
     }
+  }
+
+  /**
+   * Process placement completion and automatic phase cascade (Guest optimistic execution)
+   * Called when Guest knows both players have committed to placement
+   * Processes placement → gameInitializing → determineFirstPlayer → energyReset → (stop at next phase)
+   */
+  async processPlacementAndAutomaticCascade() {
+    debugLog('OPTIMISTIC_EXECUTION', '🚀 [GUEST] Processing placement completion + automatic cascade');
+
+    // 1. Apply placement commitments to game state
+    const commitments = this.gameStateManager.get('commitments');
+    const placementCommitments = commitments?.placement;
+
+    if (!placementCommitments?.player1?.completed || !placementCommitments?.player2?.completed) {
+      debugLog('OPTIMISTIC_EXECUTION', '⚠️ [GUEST] Cannot process cascade - not all players committed');
+      return;
+    }
+
+    // Apply placement data to state (same as Host does)
+    const stateUpdates = {
+      placedSections: placementCommitments.player1.actionData.placedSections,
+      opponentPlacedSections: placementCommitments.player2.actionData.placedSections
+    };
+
+    this.gameStateManager.setState(stateUpdates);
+    debugLog('OPTIMISTIC_EXECUTION', '✅ [GUEST] Applied placement commitments to state');
+
+    // 2. Process automatic phase cascade
+    let currentPhase = 'gameInitializing';
+    let prevPhase = 'placement';
+
+    while (true) {
+      if (!this.isAutomaticPhase(currentPhase)) {
+        debugLog('OPTIMISTIC_EXECUTION', `🛑 [GUEST] Cascade stopped at: ${currentPhase}`);
+        break;
+      }
+
+      debugLog('OPTIMISTIC_EXECUTION', `⚡ [GUEST] Cascade processing: ${currentPhase}`);
+      await this.processAutomaticPhase(currentPhase, prevPhase);
+
+      const nextPhase = this.getNextPhase(currentPhase);
+      if (!nextPhase) {
+        debugLog('OPTIMISTIC_EXECUTION', '✅ [GUEST] Cascade complete - no next phase');
+        break;
+      }
+
+      prevPhase = currentPhase;
+      currentPhase = nextPhase;
+    }
+
+    debugLog('OPTIMISTIC_EXECUTION', '✅ [GUEST] Placement + automatic cascade complete');
   }
 
 

@@ -47,14 +47,9 @@ function AppRouter() {
   // Note: SimultaneousActionManager functionality moved to ActionProcessor
   // Note: AIPhaseProcessor is initialized in LobbyScreen when player starts single-player game
 
-  // Initialize GameFlowManager with all managers (ONLY for host/local, NOT for guest)
+  // Initialize GameFlowManager with all managers (for host/local/guest)
+  // Guest needs GameFlowManager for optimistic automatic phase processing
   useEffect(() => {
-    // Guest mode skips all manager initialization - guest is a thin client
-    if (gameState.gameMode === 'guest') {
-      debugLog('PHASE_TRANSITIONS', '🔄 Guest mode detected - skipping manager initialization');
-      return;
-    }
-
     if (!gameFlowInitialized.current) {
       gameFlowManager.initialize(
         gameStateManager,
@@ -67,7 +62,8 @@ function AppRouter() {
       gameStateManager.setGameFlowManager(gameFlowManager);
 
       gameFlowInitialized.current = true;
-      debugLog('PHASE_TRANSITIONS', '🔄 GameFlowManager initialized in AppRouter (host/local mode)');
+      const modeLabel = gameState.gameMode === 'guest' ? 'guest mode (optimistic)' : 'host/local mode';
+      debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager initialized in AppRouter (${modeLabel})`);
     } else {
       debugLog('PHASE_TRANSITIONS', '🔄 GameFlowManager already initialized, skipping...');
     }

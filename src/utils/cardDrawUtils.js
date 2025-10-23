@@ -6,6 +6,7 @@
 
 import GameDataService from '../services/GameDataService.js';
 import { debugLog } from './debugLogger.js';
+import SeededRandom from './seededRandom.js';
 
 /**
  * Calculate the hand limit for a player based on their ship section stats
@@ -24,10 +25,13 @@ export const calculateHandLimit = (playerState, shipStats) => {
 
 /**
  * Reshuffle discard pile into deck when deck is empty
+ * Uses seeded RNG for deterministic multiplayer synchronization
  * @param {Object} playerState - Player's current state
+ * @param {Object} gameState - Full game state (for seeded RNG)
+ * @param {string} playerId - Player ID ('player1' or 'player2')
  * @returns {Object} Updated player state with reshuffled deck
  */
-export const reshuffleDiscardIntoDeck = (playerState) => {
+export const reshuffleDiscardIntoDeck = (playerState, gameState, playerId) => {
   if (playerState.deck.length > 0) {
     // Deck still has cards, no reshuffling needed
     return playerState;
@@ -39,10 +43,11 @@ export const reshuffleDiscardIntoDeck = (playerState) => {
     return playerState;
   }
 
-  // Reshuffle discard pile into deck
-  const shuffledDeck = [...playerState.discardPile].sort(() => 0.5 - Math.random());
+  // Use seeded RNG for deterministic shuffling
+  const rng = SeededRandom.forCardShuffle(gameState, playerId);
+  const shuffledDeck = rng.shuffle(playerState.discardPile);
 
-  debugLog('CARDS', `🔄 ${playerState.name} reshuffled ${shuffledDeck.length} cards from discard pile into deck`);
+  debugLog('CARDS', `🔄 ${playerState.name} reshuffled ${shuffledDeck.length} cards from discard pile into deck (deterministic)`);
 
   return {
     ...playerState,
@@ -55,17 +60,19 @@ export const reshuffleDiscardIntoDeck = (playerState) => {
  * Draw cards for a single player
  * @param {Object} playerState - Player's current state
  * @param {number} cardCount - Number of cards to draw
+ * @param {Object} gameState - Full game state (for seeded RNG)
+ * @param {string} playerId - Player ID ('player1' or 'player2')
  * @returns {Object} Updated player state with drawn cards
  */
-export const drawCardsForPlayer = (playerState, cardCount) => {
+export const drawCardsForPlayer = (playerState, cardCount, gameState, playerId) => {
   if (cardCount <= 0) {
     return playerState;
   }
 
   let updatedPlayer = { ...playerState };
 
-  // Reshuffle if needed
-  updatedPlayer = reshuffleDiscardIntoDeck(updatedPlayer);
+  // Reshuffle if needed (using seeded RNG)
+  updatedPlayer = reshuffleDiscardIntoDeck(updatedPlayer, gameState, playerId);
 
   // Calculate how many cards we can actually draw
   const availableCards = updatedPlayer.deck.length;
@@ -161,7 +168,7 @@ export const performAutomaticDraw = (gameState, gameStateManager = null) => {
     const validation1 = validateDrawOperation(gameState.player1, player1CardsToDraw);
     if (validation1.success) {
       const oldHandSize = gameState.player1.hand.length;
-      updatedGameState.player1 = drawCardsForPlayer(gameState.player1, player1CardsToDraw);
+      updatedGameState.player1 = drawCardsForPlayer(gameState.player1, player1CardsToDraw, gameState, 'player1');
       // Extract the newly drawn cards
       drawResults.player1.drawnCards = updatedGameState.player1.hand.slice(oldHandSize);
     } else {
@@ -191,7 +198,7 @@ export const performAutomaticDraw = (gameState, gameStateManager = null) => {
     const validation2 = validateDrawOperation(gameState.player2, player2CardsToDraw);
     if (validation2.success) {
       const oldHandSize = gameState.player2.hand.length;
-      updatedGameState.player2 = drawCardsForPlayer(gameState.player2, player2CardsToDraw);
+      updatedGameState.player2 = drawCardsForPlayer(gameState.player2, player2CardsToDraw, gameState, 'player2');
       // Extract the newly drawn cards
       drawResults.player2.drawnCards = updatedGameState.player2.hand.slice(oldHandSize);
     } else {

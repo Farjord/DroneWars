@@ -18,6 +18,7 @@ import fullCardCollection from '../data/cardData.js';
 import shipSectionData from '../data/shipData.js';
 import { calculateEffectiveStats, calculateEffectiveShipStats, getShipStatus } from './statsCalculator.js';
 import { debugLog } from '../utils/debugLogger.js';
+import SeededRandom from '../utils/seededRandom.js';
 
 // ========================================
 // DECK AND CARD MANAGEMENT
@@ -63,7 +64,7 @@ export const startingDroneList = [
   'Swarm Drone'
 ];
 
-const buildDeckFromList = (decklist) => {
+const buildDeckFromList = (decklist, playerId = 'player1') => {
   const deck = [];
   let instanceCounter = 0;
 
@@ -78,8 +79,11 @@ const buildDeckFromList = (decklist) => {
     }
   });
 
-  // Shuffle the final deck so the cards are in a random order
-  return deck.sort(() => 0.5 - Math.random());
+  // Shuffle the final deck using seeded RNG for deterministic multiplayer synchronization
+  // Use simple player-based seed so both clients get same shuffle for each player
+  const seed = playerId === 'player1' ? 12345 : 67890;
+  const rng = new SeededRandom(seed);
+  return rng.shuffle(deck);
 };
 
 // ========================================

@@ -1361,6 +1361,67 @@ const App = () => {
     if (previousPhase !== turnPhase) {
       debugLog('PHASE_TRANSITIONS', `👁️ Guest detected phase change: ${previousPhase} → ${turnPhase}`);
 
+      // OPTIMISTIC EXECUTION: Process automatic phase CASCADE
+      // When both players commit to placement, Guest processes all consecutive automatic phases at once
+      // This eliminates 3-4 second lag from waiting for sequential Host broadcasts
+
+      // Helper function to process automatic phase cascade
+      const processAutomaticPhaseCascade = async () => {
+        let currentPhase = 'gameInitializing';
+        let prevPhase = 'placement';
+
+        while (true) {
+          // Check if current phase is automatic
+          if (!gameFlowManager.isAutomaticPhase(currentPhase)) {
+            debugLog('OPTIMISTIC_EXECUTION', `🛑 [GUEST] Cascade stopped at non-automatic phase: ${currentPhase}`);
+            break;
+          }
+
+          // Process the automatic phase
+          debugLog('OPTIMISTIC_EXECUTION', `⚡ [GUEST] Cascade processing: ${currentPhase}`);
+          await gameFlowManager.processAutomaticPhase(currentPhase, prevPhase);
+
+          // Get next phase (respects isPhaseRequired for conditional phases)
+          const nextPhase = gameFlowManager.getNextPhase(currentPhase);
+
+          if (!nextPhase) {
+            debugLog('OPTIMISTIC_EXECUTION', `✅ [GUEST] Cascade complete - no next phase`);
+            break;
+          }
+
+          // Update for next iteration
+          prevPhase = currentPhase;
+          currentPhase = nextPhase;
+        }
+
+        debugLog('OPTIMISTIC_EXECUTION', `✅ [GUEST] Automatic phase cascade complete`);
+      };
+
+      // Trigger cascade when exiting placement (both players committed)
+      if (previousPhase === 'placement' && turnPhase === 'gameInitializing') {
+        debugLog('OPTIMISTIC_EXECUTION', `🚀 [GUEST] Both players committed! Processing automatic phase cascade`);
+
+        // Process cascade: gameInitializing → determineFirstPlayer → energyReset → (stop at first non-automatic phase)
+        processAutomaticPhaseCascade()
+          .catch(error => {
+            console.error('❌ [GUEST] Error during automatic phase cascade:', error);
+          });
+      }
+      // Fallback: Individual automatic phase processing (mid-cascade entry or edge cases)
+      else {
+        const automaticPhases = ['determineFirstPlayer', 'energyReset', 'draw'];
+        if (automaticPhases.includes(turnPhase)) {
+          debugLog('OPTIMISTIC_EXECUTION', `🚀 [GUEST] Processing individual automatic phase: ${turnPhase}`);
+
+          // Process automatic phase locally (same as Host does)
+          // Don't await - let it run in parallel with Host broadcasts
+          gameFlowManager.processAutomaticPhase(turnPhase, previousPhase)
+            .catch(error => {
+              console.error('❌ [GUEST] Error during optimistic automatic phase:', error);
+            });
+        }
+      }
+
       // Synthesize phaseTransition event with same structure as GameFlowManager
       const syntheticEvent = {
         type: 'phaseTransition',

@@ -10,6 +10,7 @@ import { WaitingForOpponentScreen, SubmittingOverlay } from './DroneSelectionScr
 import ShipSection from '../ui/ShipSection.jsx';
 import { gameEngine } from '../../logic/gameLogic.js';
 import gameStateManager from '../../state/GameStateManager.js';
+import gameFlowManager from '../../state/GameFlowManager.js';
 import p2pManager from '../../network/P2PManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { shipComponentCollection } from '../../data/shipData.js';
@@ -204,6 +205,22 @@ function ShipPlacementScreen() {
       setIsSubmitting(true);
 
       p2pManager.sendActionToHost('commitment', payload);
+
+      // OPTIMISTIC CASCADE: Check if Host already committed
+      const hostCommitted = gameState.commitments?.placement?.player1?.completed === true;
+      if (hostCommitted) {
+        debugLog('OPTIMISTIC_EXECUTION', '🚀 [GUEST] Host already committed! Triggering immediate cascade processing');
+
+        // Both players committed - process placement completion + automatic cascade
+        // Small delay to ensure commitment sent to Host first
+        setTimeout(() => {
+          gameFlowManager.processPlacementAndAutomaticCascade()
+            .catch(error => {
+              console.error('❌ [GUEST] Error during optimistic placement cascade:', error);
+            });
+        }, 10);
+      }
+
       return;
     }
 
