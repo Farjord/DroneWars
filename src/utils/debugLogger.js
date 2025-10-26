@@ -23,17 +23,18 @@ const DEBUG_CONFIG = {
     DRONE_SELECTION: false,     // Drone selection phase and data
     DECK_SELECTION: false,      // Deck selection phase
     PLACEMENT: false,           // Ship placement phase
-    PHASE_TRANSITIONS: true,    // Game phase transitions and flow
+    PLACEMENT_CASCADE: false,   // Placement optimistic cascade tracking (DISABLED - replaced by GUEST_CASCADE)
+    PHASE_TRANSITIONS: true,   // Game phase transitions and flow (DISABLED - too verbose)
     AI_DECISIONS: false,        // AI decision making
-    MULTIPLAYER: true,          // Network sync and multiplayer
+    MULTIPLAYER: false,         // Network sync and multiplayer (DISABLED - too verbose, critical errors use console.error)
     P2P_CONNECTION: false,      // PeerJS connection diagnostics
     ANIMATIONS: false,          // Animation system (DISABLED for clean logs)
-    OPTIMISTIC: false,          // Animation deduplication and matching logic (DISABLED for clean logs)
-    COMMITMENTS: false,         // Simultaneous phase commitments (DISABLED for clean logs)
+    OPTIMISTIC: false,          // Animation deduplication and matching logic (DISABLED - already debugged)
+    COMMITMENTS: false,         // Simultaneous phase commitments (DISABLED - too verbose)
     COMBAT: false,              // Combat resolution
-    PASS_LOGIC: false,          // Pass handling (DISABLED for clean logs)
-    STATE_SYNC: true,           // State synchronization (ENABLED for multiplayer debugging)
-    BROADCAST_TIMING: true,     // Broadcast timing and state validation (ENABLED for sync debugging)
+    PASS_LOGIC: true,           // Pass handling and pass notification debugging (ENABLED)
+    STATE_SYNC: false,          // State synchronization (DISABLED - too verbose)
+    BROADCAST_TIMING: false,    // Broadcast timing and state validation (DISABLED - too verbose)
     ENERGY: false,              // Energy management (shield allocation)
     CARDS: false,               // Card play and effects (DISABLED for clean logs)
     HAND_VIEW: false,           // Hand display and card interaction
@@ -41,6 +42,11 @@ const DEBUG_CONFIG = {
     SHIELD_CLICKS: false,       // Shield allocation click tracking
     BUTTON_CLICKS: false,       // Button click tracking and effects
     MOVEMENT_LANES: false,      // Movement card lane highlighting diagnostics
+    GUEST_CASCADE: true,        // Guest optimistic cascade flow (ENABLED for checkpoint testing)
+    CASCADE_LOOP: false,        // Cascade loop iteration details (DISABLED - already debugged)
+    VALIDATION: true,           // State validation and reconciliation (ENABLED for checkpoint testing)
+    TIMING: true,               // High-resolution timing milestones with timestamps (ENABLED for pass notification debugging)
+    SUBTITLE_CALC: false,       // Phase animation subtitle calculation (DISABLED - already debugged)
   }
 };
 
@@ -111,6 +117,83 @@ export { DEBUG_CONFIG };
 // Example usage:
 // import { debugLog } from './utils/debugLogger.js';
 // debugLog('DRONE_SELECTION', 'Deck commitments:', { player1: [...], player2: [...] });
+
+// ========================================
+// TIMING UTILITIES
+// ========================================
+// High-resolution timing functions for performance analysis
+
+/**
+ * Get absolute timestamp for cross-window timing comparison
+ * Uses Date.now() instead of performance.now() to enable comparison between host and guest windows
+ * @returns {number} Timestamp in milliseconds since Unix epoch (absolute time)
+ */
+export const getTimestamp = () => Date.now();
+
+/**
+ * Format elapsed time between two timestamps
+ * @param {number} startTime - Start timestamp from getTimestamp()
+ * @param {number} endTime - End timestamp from getTimestamp()
+ * @returns {string} Formatted elapsed time (e.g., "45ms")
+ */
+export const formatElapsed = (startTime, endTime) => {
+  return `${(endTime - startTime)}ms`;
+};
+
+/**
+ * Timing-specific debug log with automatic elapsed calculation
+ * @param {string} label - Timing milestone label (e.g., '[HOST] Broadcast sending')
+ * @param {Object} data - Additional data to log
+ * @param {number} startTime - Optional start time for elapsed calculation
+ * @param {string} context - Optional context/trigger information (e.g., 'after_action', 'phase_transition')
+ * @returns {number} Current timestamp for chaining
+ *
+ * @example
+ * // Start timing
+ * const startTime = timingLog('[GUEST] Processing started', { phase: 'action' });
+ * // ... do work ...
+ * // End timing (automatically calculates elapsed)
+ * timingLog('[GUEST] Processing complete', { phase: 'action' }, startTime);
+ *
+ * // With context
+ * timingLog('[HOST] Broadcast preparing', { phase: 'action' }, null, 'after_player_pass');
+ */
+export const timingLog = (label, data = {}, startTime = null, context = null) => {
+  const now = getTimestamp();
+  const elapsed = startTime ? ` (elapsed: ${formatElapsed(startTime, now)})` : '';
+  const contextStr = context ? ` [${context}]` : '';
+
+  debugLog('TIMING', `⏱️ ${label}${contextStr}${elapsed}`, {
+    timestamp: now.toString(),
+    ...data
+  });
+
+  return now;
+};
+
+/**
+ * Get current browser state for debugging rendering issues
+ * @returns {Object} Browser state information
+ */
+export const getBrowserState = () => {
+  return {
+    hasFocus: document.hasFocus(),
+    visibilityState: document.visibilityState,
+    hidden: document.hidden,
+    timestamp: getTimestamp()
+  };
+};
+
+/**
+ * Log browser state with timing information
+ * Useful for debugging rendering delays caused by tab visibility or focus issues
+ * @param {string} label - Context label for the log
+ */
+export const logBrowserState = (label) => {
+  const state = getBrowserState();
+  timingLog(`[BROWSER STATE] ${label}`, state);
+  return state;
+};
 
 // ========================================
 // CONSOLE FILTERING

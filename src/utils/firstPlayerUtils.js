@@ -5,15 +5,18 @@
 // Handles first player selection based on turn number and previous round data
 
 import { debugLog } from './debugLogger.js';
+import { SeededRandom } from './seededRandom.js';
 
 /**
  * Determine who goes first this round
- * @param {number} turn - Current turn number
- * @param {string|null} firstPlayerOverride - Override for first player (if any)
- * @param {string|null} firstPasserOfPreviousRound - Who passed first in previous round
+ * @param {Object} gameState - Current game state (used for seeded randomization)
  * @returns {string} Player ID who goes first ('player1' or 'player2')
  */
-export const determineFirstPlayer = (turn, firstPlayerOverride, firstPasserOfPreviousRound) => {
+export const determineFirstPlayer = (gameState) => {
+  const turn = gameState.turn;
+  const firstPlayerOverride = gameState.firstPlayerOverride;
+  const firstPasserOfPreviousRound = gameState.firstPasserOfPreviousRound;
+
   debugLog('PHASE_TRANSITIONS', `🎯 Determining first player for turn ${turn}`, {
     firstPlayerOverride,
     firstPasserOfPreviousRound
@@ -25,10 +28,15 @@ export const determineFirstPlayer = (turn, firstPlayerOverride, firstPasserOfPre
     return firstPlayerOverride;
   }
 
-  // First turn - random selection
+  // First turn - seeded random selection (ensures Host and Guest pick same player)
   if (turn === 1) {
-    const randomFirstPlayer = Math.random() < 0.5 ? 'player1' : 'player2';
-    debugLog('PHASE_TRANSITIONS', `🎲 Turn 1: Random first player selected: ${randomFirstPlayer}`);
+    const rng = SeededRandom.fromGameState(gameState);
+    const randomValue = rng.random();
+    const randomFirstPlayer = randomValue < 0.5 ? 'player1' : 'player2';
+    debugLog('PHASE_TRANSITIONS', `🎲 Turn 1: Seeded random first player selected: ${randomFirstPlayer}`, {
+      seedValue: randomValue,
+      gameMode: gameState.gameMode
+    });
     return randomFirstPlayer;
   }
 
@@ -40,12 +48,14 @@ export const determineFirstPlayer = (turn, firstPlayerOverride, firstPasserOfPre
 
 /**
  * Get the reason text for why a player was chosen to go first
- * @param {number} turn - Current turn number
- * @param {string|null} firstPlayerOverride - Override for first player (if any)
- * @param {string|null} firstPasserOfPreviousRound - Who passed first in previous round
+ * @param {Object} gameState - Current game state
  * @returns {string} Explanation text
  */
-export const getFirstPlayerReasonText = (turn, firstPlayerOverride, firstPasserOfPreviousRound) => {
+export const getFirstPlayerReasonText = (gameState) => {
+  const turn = gameState.turn;
+  const firstPlayerOverride = gameState.firstPlayerOverride;
+  const firstPasserOfPreviousRound = gameState.firstPasserOfPreviousRound;
+
   if (firstPlayerOverride) {
     return "First player was set by game effect.";
   }
@@ -65,17 +75,8 @@ export const getFirstPlayerReasonText = (turn, firstPlayerOverride, firstPasserO
 export const processFirstPlayerDetermination = (gameState) => {
   debugLog('PHASE_TRANSITIONS', '🎯 Processing first player determination');
 
-  const firstPlayer = determineFirstPlayer(
-    gameState.turn,
-    gameState.firstPlayerOverride,
-    gameState.firstPasserOfPreviousRound
-  );
-
-  const reasonText = getFirstPlayerReasonText(
-    gameState.turn,
-    gameState.firstPlayerOverride,
-    gameState.firstPasserOfPreviousRound
-  );
+  const firstPlayer = determineFirstPlayer(gameState);
+  const reasonText = getFirstPlayerReasonText(gameState);
 
   // Prepare state updates
   const stateUpdates = {

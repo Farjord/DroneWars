@@ -7,8 +7,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useGameState } from './hooks/useGameState.js';
 import gameStateManager from './state/GameStateManager.js';
-import gameFlowManager from './state/GameFlowManager.js';
+import GameFlowManager from './state/GameFlowManager.js';
+import PhaseAnimationQueue from './state/PhaseAnimationQueue.js';
 import aiPhaseProcessor from './state/AIPhaseProcessor.js';
+import ActionProcessor from './state/ActionProcessor.js';
 import MenuScreen from './screens/MenuScreen.jsx';
 import LobbyScreen from './screens/LobbyScreen.jsx';
 import DroneSelectionScreen from './components/screens/DroneSelectionScreen.jsx';
@@ -32,6 +34,18 @@ function AppRouter() {
   const { gameState } = useGameState();
   const [isLoading, setIsLoading] = useState(true);
 
+  // Initialize PhaseAnimationQueue (shared across all managers)
+  const phaseAnimationQueueRef = useRef(null);
+  if (!phaseAnimationQueueRef.current) {
+    phaseAnimationQueueRef.current = new PhaseAnimationQueue(gameStateManager);
+  }
+
+  // Initialize GameFlowManager singleton with PhaseAnimationQueue
+  const gameFlowManagerRef = useRef(null);
+  if (!gameFlowManagerRef.current) {
+    gameFlowManagerRef.current = new GameFlowManager(phaseAnimationQueueRef.current);
+  }
+
   // Initialization guard to prevent multiple GameFlowManager initializations
   const gameFlowInitialized = useRef(false);
 
@@ -51,7 +65,12 @@ function AppRouter() {
   // Guest needs GameFlowManager for optimistic automatic phase processing
   useEffect(() => {
     if (!gameFlowInitialized.current) {
-      gameFlowManager.initialize(
+      // Inject PhaseAnimationQueue into ActionProcessor
+      if (gameStateManager.actionProcessor && phaseAnimationQueueRef.current) {
+        gameStateManager.actionProcessor.phaseAnimationQueue = phaseAnimationQueueRef.current;
+      }
+
+      gameFlowManagerRef.current.initialize(
         gameStateManager,
         gameStateManager.actionProcessor, // Use ActionProcessor instance from GameStateManager
         () => gameState.gameMode !== 'local',
@@ -59,7 +78,7 @@ function AppRouter() {
       );
 
       // Set up reverse reference for automatic phase validation
-      gameStateManager.setGameFlowManager(gameFlowManager);
+      gameStateManager.setGameFlowManager(gameFlowManagerRef.current);
 
       gameFlowInitialized.current = true;
       const modeLabel = gameState.gameMode === 'guest' ? 'guest mode (optimistic)' : 'host/local mode';
@@ -163,12 +182,12 @@ function AppRouter() {
           break;
 
         case 'gameInitializing':
-          currentScreen = <App />; // Mount early for event subscriptions
+          currentScreen = <App phaseAnimationQueue={phaseAnimationQueueRef.current} />; // Mount early for event subscriptions
           break;
 
         // All other phases (action, deployment, etc.) use the main game board
         default:
-          currentScreen = <App />;
+          currentScreen = <App phaseAnimationQueue={phaseAnimationQueueRef.current} />;
       }
       break;
 

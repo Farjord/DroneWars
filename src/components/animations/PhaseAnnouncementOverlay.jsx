@@ -5,7 +5,8 @@
 // Shows phase name with Drone Wars gradient styling and shine effect
 // Auto-dismisses after 1.5 seconds
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { timingLog, getTimestamp } from '../../utils/debugLogger.js';
 
 /**
  * PhaseAnnouncementOverlay - Shows phase name during phase transitions
@@ -15,11 +16,65 @@ import React, { useState, useEffect } from 'react';
  */
 const PhaseAnnouncementOverlay = ({ phaseText, subtitle, onComplete }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const containerRef = useRef(null);
+  const mountTimeRef = useRef(null);
+
+  // Create unique performance mark ID for this instance
+  const markId = useRef(`phase-announcement-${Date.now()}`).current;
+
+  // Detect browser state on mount
+  if (!mountTimeRef.current) {
+    mountTimeRef.current = getTimestamp();
+    performance.mark(`${markId}-component-mount`);
+  }
+
+  const browserState = {
+    hasFocus: document.hasFocus(),
+    visibilityState: document.visibilityState,
+    hidden: document.hidden
+  };
+
+  timingLog('[MODAL COMPONENT] PhaseAnnouncementOverlay rendered', {
+    phaseText,
+    subtitle,
+    isVisible,
+    browserState,
+    blockingReason: 'component_function_executing'
+  });
 
   useEffect(() => {
+    performance.mark(`${markId}-useEffect-start`);
+
+    timingLog('[MODAL COMPONENT] useEffect triggered', {
+      phaseText,
+      browserState: {
+        hasFocus: document.hasFocus(),
+        visibilityState: document.visibilityState,
+        hidden: document.hidden
+      },
+      blockingReason: 'requesting_animation_frame'
+    });
+
     // Trigger fade-in immediately
     requestAnimationFrame(() => {
+      performance.mark(`${markId}-raf-callback`);
+
+      timingLog('[MODAL COMPONENT] requestAnimationFrame callback', {
+        phaseText,
+        blockingReason: 'setting_isVisible_true'
+      });
+
       setIsVisible(true);
+
+      // Schedule another rAF to detect when browser has actually painted
+      requestAnimationFrame(() => {
+        performance.mark(`${markId}-second-raf`);
+
+        timingLog('[MODAL COMPONENT] Second rAF (post-paint)', {
+          phaseText,
+          blockingReason: 'browser_should_have_painted'
+        });
+      });
     });
 
     // Auto-dismiss after 1.5 seconds
@@ -35,10 +90,64 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, onComplete }) => {
     }, 1500);
 
     return () => clearTimeout(displayTimer);
-  }, [onComplete]);
+  }, [onComplete, markId, phaseText]);
+
+  // Log when isVisible actually changes (React has applied the state update)
+  useEffect(() => {
+    if (isVisible) {
+      performance.mark(`${markId}-visible-true`);
+
+      // Measure timing from component mount to visible
+      try {
+        performance.measure(
+          `${markId}-mount-to-visible`,
+          `${markId}-component-mount`,
+          `${markId}-visible-true`
+        );
+
+        const measure = performance.getEntriesByName(`${markId}-mount-to-visible`)[0];
+
+        timingLog('[MODAL COMPONENT] Modal NOW VISIBLE', {
+          phaseText,
+          mountToVisibleMs: measure?.duration?.toFixed(2),
+          browserState: {
+            hasFocus: document.hasFocus(),
+            visibilityState: document.visibilityState,
+            hidden: document.hidden
+          },
+          blockingReason: 'none_modal_visible_on_screen'
+        });
+      } catch (e) {
+        timingLog('[MODAL COMPONENT] Modal NOW VISIBLE', {
+          phaseText,
+          measureError: e.message,
+          browserState: {
+            hasFocus: document.hasFocus(),
+            visibilityState: document.visibilityState,
+            hidden: document.hidden
+          },
+          blockingReason: 'none_modal_visible_on_screen'
+        });
+      }
+    }
+  }, [isVisible, phaseText, markId]);
+
+  // Ref callback to detect when DOM element is actually created
+  const handleContainerRef = (element) => {
+    if (element && !containerRef.current) {
+      performance.mark(`${markId}-dom-element-created`);
+      containerRef.current = element;
+
+      timingLog('[MODAL COMPONENT] DOM element created', {
+        phaseText,
+        blockingReason: 'element_in_dom_awaiting_paint'
+      });
+    }
+  };
 
   return (
     <div
+      ref={handleContainerRef}
       className={`
         fixed inset-0 z-[10000] flex items-center justify-center
         transition-all duration-300 pointer-events-none

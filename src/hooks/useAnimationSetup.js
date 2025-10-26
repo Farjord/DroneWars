@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import AnimationManager from '../state/AnimationManager.js';
 import FlashEffect from '../components/animations/FlashEffect.jsx';
 import CardVisualEffect from '../components/animations/CardVisualEffect.jsx';
-import { debugLog } from '../utils/debugLogger.js';
+import { debugLog, timingLog } from '../utils/debugLogger.js';
 
 export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setOverflowProjectiles, setSplashEffects, setBarrageImpacts, setRailgunTurrets, setRailgunBeams) {
   useEffect(() => {
@@ -366,9 +366,20 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     animationManager.registerVisualHandler('PHASE_ANNOUNCEMENT_EFFECT', async (payload) => {
       const { phaseText, phaseName, firstPlayerId, onComplete } = payload;
 
+      timingLog('[VISUAL HANDLER] PHASE_ANNOUNCEMENT handler called', {
+        phaseName,
+        phaseText,
+        blockingReason: 'waiting_for_breathing_room_delay'
+      });
+
       // Add brief delay to provide visual breathing room between overlay clearing and announcement
       // Waiting overlays now clear immediately via 'bothPlayersComplete' event
       await new Promise(resolve => setTimeout(resolve, 300));
+
+      timingLog('[VISUAL HANDLER] Breathing room complete', {
+        phaseName,
+        blockingReason: 'calculating_subtitle'
+      });
 
       // Calculate subtitle from local player's perspective
       let subtitle = null;
@@ -387,6 +398,12 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
 
       const announcementId = `phaseannouncement-${Date.now()}`;
 
+      timingLog('[VISUAL HANDLER] Setting React state', {
+        phaseName,
+        announcementId,
+        blockingReason: 'calling_setPhaseAnnouncements'
+      });
+
       setPhaseAnnouncements(prev => [...prev, {
         id: announcementId,
         phaseText: phaseText,
@@ -396,6 +413,11 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
           onComplete?.();
         }
       }]);
+
+      timingLog('[VISUAL HANDLER] React state set', {
+        phaseName,
+        blockingReason: 'waiting_for_react_render_then_animation_duration'
+      });
     });
 
     animationManager.registerVisualHandler('PASS_NOTIFICATION_EFFECT', (payload) => {

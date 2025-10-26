@@ -2,7 +2,7 @@
 // Card visuals play before damage feedback for proper sequencing
 // Migrated from hardcoded sequences on 2025-01-XX
 
-import { debugLog } from '../utils/debugLogger.js';
+import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 
 class AnimationManager {
   constructor(gameStateManager) {
@@ -168,6 +168,12 @@ class AnimationManager {
    * @param {Object} executor - Object with applyPendingStateUpdate() and getAnimationSource() methods
    */
   async executeWithStateUpdate(animations, executor) {
+    const executionStart = timingLog('[ANIM MGR] Execution started', {
+      totalCount: animations?.length || 0,
+      animNames: animations?.map(a => a.animationName).join(', ') || 'none',
+      source: executor.getAnimationSource?.() || 'unknown'
+    });
+
     debugLog('ANIMATIONS', '🎬 [ORCHESTRATE] executeWithStateUpdate() START:', {
       animationCount: animations?.length || 0,
       executorType: executor.constructor.name
@@ -176,6 +182,7 @@ class AnimationManager {
     if (!animations || animations.length === 0) {
       debugLog('ANIMATIONS', '⏭️ [ORCHESTRATE] No animations, applying state update only');
       executor.applyPendingStateUpdate();
+      timingLog('[ANIM MGR] Execution complete (no animations)', {}, executionStart);
       return;
     }
 
@@ -192,21 +199,40 @@ class AnimationManager {
     // 1. Play animations that need OLD state (entities still exist in DOM)
     const preAnimations = [...independent, ...preState];
     if (preAnimations.length > 0) {
+      const preStart = timingLog('[ANIM MGR] Pre-state animations', {
+        count: preAnimations.length,
+        names: preAnimations.map(a => a.animationName).join(', ')
+      });
+
       debugLog('ANIMATIONS', '🎬 [ORCHESTRATE] Playing pre-state + independent animations...');
       await this.executeAnimations(preAnimations, executor.getAnimationSource());
       debugLog('ANIMATIONS', '✅ [ORCHESTRATE] Pre-state + independent animations complete');
+
+      timingLog('[ANIM MGR] Pre-state complete', {
+        count: preAnimations.length
+      }, preStart);
     }
 
     // 2. Apply state update (executor updates GameStateManager)
+    const stateStart = timingLog('[ANIM MGR] State application', {
+      source: executor.getAnimationSource?.() || 'unknown'
+    });
+
     debugLog('ANIMATIONS', '📝 [ORCHESTRATE] Applying state update via executor...');
     executor.applyPendingStateUpdate();
     debugLog('ANIMATIONS', '✅ [ORCHESTRATE] State update complete');
 
+    timingLog('[ANIM MGR] State applied', {}, stateStart);
+
     // 3. Wait for React to render new state (critical for post-state animations)
     if (postState.length > 0) {
+      const renderStart = timingLog('[ANIM MGR] React render wait', {});
+
       debugLog('ANIMATIONS', '⏳ [ORCHESTRATE] Waiting for React to render new state...');
       await this.waitForReactRender();
       debugLog('ANIMATIONS', '✅ [ORCHESTRATE] React render complete');
+
+      timingLog('[ANIM MGR] React render complete', {}, renderStart);
     }
 
     // 4. Separate TELEPORT_IN from other post-state animations (needs special handling)
@@ -220,19 +246,40 @@ class AnimationManager {
 
     // 5. Play non-teleport post-state animations normally
     if (otherPostState.length > 0) {
+      const postStart = timingLog('[ANIM MGR] Post-state animations', {
+        count: otherPostState.length,
+        names: otherPostState.map(a => a.animationName).join(', ')
+      });
+
       debugLog('ANIMATIONS', '🎬 [ORCHESTRATE] Playing non-teleport post-state animations...');
       await this.executeAnimations(otherPostState, executor.getAnimationSource());
       debugLog('ANIMATIONS', '✅ [ORCHESTRATE] Non-teleport post-state animations complete');
+
+      timingLog('[ANIM MGR] Post-state complete', {
+        count: otherPostState.length
+      }, postStart);
     }
 
     // 6. Handle TELEPORT_IN with mid-animation reveal timing
     if (teleportAnimations.length > 0) {
+      const teleportStart = timingLog('[ANIM MGR] Teleport animations', {
+        count: teleportAnimations.length
+      });
+
       debugLog('ANIMATIONS', '✨ [ORCHESTRATE] Handling TELEPORT_IN animations with reveal timing...');
       await this.executeTeleportAnimations(teleportAnimations, executor);
       debugLog('ANIMATIONS', '✅ [ORCHESTRATE] TELEPORT_IN animations complete');
+
+      timingLog('[ANIM MGR] Teleport complete', {
+        count: teleportAnimations.length
+      }, teleportStart);
     }
 
     debugLog('ANIMATIONS', '🎬 [ORCHESTRATE] executeWithStateUpdate() COMPLETE');
+
+    timingLog('[ANIM MGR] Execution complete', {
+      totalCount: animations?.length || 0
+    }, executionStart);
   }
 
   /**
@@ -310,6 +357,14 @@ class AnimationManager {
   async executeAnimations(effects, source = 'unknown') {
     const gameMode = this.gameStateManager?.getState()?.gameMode;
 
+    timingLog('[ANIM MGR] executeAnimations called', {
+      source,
+      gameMode,
+      effectCount: effects?.length || 0,
+      effects: effects?.map(e => e.animationName).join(', '),
+      blockingReason: 'preparing_to_execute'
+    });
+
     debugLog('ANIMATIONS', '🎬 [EXECUTE] AnimationManager.executeAnimations() START:', {
       source,
       gameMode,
@@ -330,6 +385,11 @@ class AnimationManager {
     }
 
     debugLog('ANIMATIONS', `🚨 [EXECUTE] PLAYING ${effects.length} ANIMATION(S) - Source: ${source} - Mode: ${gameMode}`);
+
+    timingLog('[ANIM MGR] Setting blocking mode', {
+      blockingReason: 'preventing_other_animations'
+    });
+
     this.setBlocking(true);
 
     try {
@@ -449,6 +509,13 @@ class AnimationManager {
             continue;
           }
 
+          timingLog('[ANIM EXEC] Calling visual handler', {
+            name: effect.animationName,
+            type: animDef.type,
+            duration: animDef.duration,
+            blockingReason: 'triggering_react_component'
+          });
+
           await new Promise(resolve => {
             handler({
               ...effect.payload,
@@ -456,6 +523,11 @@ class AnimationManager {
               onComplete: resolve
             });
             setTimeout(resolve, animDef.duration);
+          });
+
+          timingLog('[ANIM EXEC] Animation complete', {
+            name: effect.animationName,
+            blockingReason: 'animation_finished'
           });
 
           debugLog('ANIMATIONS', '🎬 [ANIMATION DEBUG] Animation completed:', effect.animationName);

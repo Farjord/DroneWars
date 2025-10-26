@@ -5,7 +5,7 @@
 // Manages room creation, joining, and command synchronization
 
 import { joinRoom } from 'trystero/firebase';
-import { debugLog } from '../utils/debugLogger.js';
+import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 
 class P2PManager {
   constructor() {
@@ -81,6 +81,15 @@ class P2PManager {
     this.actions.stateUpdate = { send: sendStateUpdate, receive: receiveStateUpdate };
 
     receiveStateUpdate((data, peerId) => {
+      const receiveTime = Date.now();  // Use Date.now() for cross-window synchronization
+      const networkLatency = receiveTime - data.timestamp;
+
+      timingLog('[NETWORK] Guest received', {
+        phase: data.state?.turnPhase,
+        animCount: (data.actionAnimations?.length || 0) + (data.systemAnimations?.length || 0),
+        latency: `${networkLatency.toFixed(0)}ms`  // Use toFixed(0) since Date.now() returns integers
+      });
+
       debugLog('MULTIPLAYER', '[P2P GUEST] Received state update with animations:', {
         hasActionAnimations: data.actionAnimations && data.actionAnimations.length > 0,
         hasSystemAnimations: data.systemAnimations && data.systemAnimations.length > 0,
@@ -350,12 +359,18 @@ class P2PManager {
         sampleInstanceId: state.player2?.hand?.[0]?.instanceId
       });
 
+      const networkSendTime = Date.now();  // Use Date.now() for cross-window synchronization
       const stateData = {
         state: state,
         actionAnimations: actionAnimations,
         systemAnimations: systemAnimations,
-        timestamp: Date.now()
+        timestamp: networkSendTime  // Synchronized timestamp for accurate latency calculation
       };
+
+      timingLog('[NETWORK] Host sending', {
+        phase: state.turnPhase,
+        animCount: actionAnimations.length + systemAnimations.length
+      });
 
       this.actions.stateUpdate.send(stateData, this.currentPeerId);
 

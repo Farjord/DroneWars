@@ -67,7 +67,8 @@ class GameStateManager {
     };
 
     // Initialize action processor using singleton pattern
-    this.actionProcessor = ActionProcessor.getInstance(this);
+    // PhaseAnimationQueue will be injected later in AppRouter
+    this.actionProcessor = ActionProcessor.getInstance(this, null);
 
     // Game flow manager reference (set during initialization)
     this.gameFlowManager = null;
@@ -80,6 +81,20 @@ class GameStateManager {
 
     // Context flag for production-safe validation (avoids minification breaking stack traces)
     this._updateContext = null;
+
+    // --- CHECKPOINT PHASES (Guest Validation) ---
+    // Phases where guest stops and validates state with host
+    // Includes placement (guest validates both players complete before processing)
+    this.MILESTONE_PHASES = ['placement', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'];
+
+    // --- VALIDATION STATE (Guest) ---
+    // Tracks when guest is waiting for specific broadcast to validate optimistic state
+    this.validatingState = {
+      isValidating: false,
+      targetPhase: null,      // Phase we're expecting from host
+      guestState: null,       // Guest's optimistic state snapshot
+      timestamp: null         // When we started validating
+    };
 
     // Log initial application state
     debugLog('STATE_SYNC', '🔄 GAMESTATE INITIALIZATION: GameStateManager created');
@@ -151,6 +166,45 @@ class GameStateManager {
     });
 
     this.p2pIntegrationSetup = true;
+  }
+
+
+  /**
+   * Start validation mode - guest expects specific phase broadcast from host
+   * @param {string} targetPhase - Phase to validate against
+   * @param {Object} guestState - Guest's current optimistic state
+   */
+  startValidation(targetPhase, guestState) {
+    this.validatingState = {
+      isValidating: true,
+      targetPhase: targetPhase,
+      guestState: JSON.parse(JSON.stringify(guestState)), // Deep copy
+      timestamp: Date.now()
+    };
+
+    debugLog('VALIDATION', '🔍 [START VALIDATION] Waiting for host broadcast', {
+      targetPhase,
+      currentPhase: guestState.turnPhase
+    });
+  }
+
+  /**
+   * Check if incoming broadcast should trigger validation
+   * @param {string} incomingPhase - Phase from incoming broadcast
+   * @returns {boolean} True if this broadcast matches validation target
+   */
+  shouldValidateBroadcast(incomingPhase) {
+    return this.validatingState.isValidating &&
+           this.validatingState.targetPhase === incomingPhase;
+  }
+
+  /**
+   * Check if a phase is a milestone (requires user interaction)
+   * @param {string} phase - Phase to check
+   * @returns {boolean} True if milestone phase
+   */
+  isMilestonePhase(phase) {
+    return this.MILESTONE_PHASES.includes(phase);
   }
 
   /**
@@ -552,7 +606,7 @@ class GameStateManager {
 
     // Also allow GameFlowManager to update phase-related fields
     const isPhaseTransitionUpdate = criticalUpdates.every(update =>
-      ['turnPhase', 'gameStage', 'roundNumber', 'turn', 'firstPlayerOfRound'].includes(update)
+      ['turnPhase', 'gameStage', 'roundNumber', 'turn', 'firstPlayerOfRound', 'firstPasserOfPreviousRound'].includes(update)
     );
 
     if (isGameFlowManagerUpdate && (isPlayerStateUpdate || isPhaseTransitionUpdate)) {

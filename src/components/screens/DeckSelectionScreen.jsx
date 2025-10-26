@@ -8,7 +8,6 @@ import React, { useState, useEffect } from 'react';
 import { useGameState } from '../../hooks/useGameState.js';
 import { WaitingForOpponentScreen, SubmittingOverlay } from './DroneSelectionScreen.jsx';
 import { gameEngine, startingDecklist, startingDroneList } from '../../logic/gameLogic.js';
-import gameFlowManager from '../../state/GameFlowManager.js';
 import gameStateManager from '../../state/GameStateManager.js';
 import p2pManager from '../../network/P2PManager.js';
 import DeckBuilder from '../../DeckBuilder.jsx';

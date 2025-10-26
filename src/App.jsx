@@ -59,7 +59,7 @@ import fullCardCollection from './data/cardData.js';
 import { gameEngine } from './logic/gameLogic.js';
 
 // --- 1.6 MANAGER/STATE IMPORTS ---
-import gameFlowManager from './state/GameFlowManager.js';
+// Note: gameFlowManager is initialized in AppRouter and accessed via gameStateManager
 import aiPhaseProcessor from './state/AIPhaseProcessor.js';
 import p2pManager from './network/P2PManager.js';
 // ActionProcessor is created internally by GameStateManager
@@ -90,7 +90,7 @@ import RailgunBeam from './components/animations/RailgunBeam.jsx';
 // SECTION 2: MAIN COMPONENT DECLARATION
 // ========================================
 
-const App = () => {
+const App = ({ phaseAnimationQueue }) => {
   // ========================================
   // SECTION 3: HOOKS & STATE
   // ========================================
@@ -151,6 +151,8 @@ const App = () => {
   const [cardReveals, setCardReveals] = useState([]);
   const [shipAbilityReveals, setShipAbilityReveals] = useState([]);
   const [phaseAnnouncements, setPhaseAnnouncements] = useState([]);
+  const [currentPhaseAnimation, setCurrentPhaseAnimation] = useState(null); // Current animation from queue
+  const [isPhaseAnimationPlaying, setIsPhaseAnimationPlaying] = useState(false); // UI blocking state
   const [laserEffects, setLaserEffects] = useState([]);
   const [teleportEffects, setTeleportEffects] = useState([]);
   const [overflowProjectiles, setOverflowProjectiles] = useState([]);
@@ -258,6 +260,8 @@ const App = () => {
   const gameAreaRef = useRef(null);
   const isResolvingAttackRef = useRef(false);
   const previousPhaseRef = useRef(null); // Track previous turnPhase for guest phase detection
+  const roundStartCascadeTriggered = useRef(false); // Prevent duplicate round start cascade triggers
+  const deploymentToActionTriggered = useRef(false); // Prevent duplicate deployment → action triggers
 
   // --- 3.4 HOOKS DEPENDENT ON REFS ---
   // These hooks require refs as parameters and must be called after ref initialization.
@@ -299,21 +303,8 @@ const App = () => {
   // This follows the dependency injection pattern for clean architecture.
 
   // --- 4.1 MANAGER INITIALIZATION ---
-  // Initialize all game flow managers with proper dependency injection
-  useEffect(() => {
-    // Initialize GameFlowManager with managers and dependencies
-    gameFlowManager.initialize(
-      gameStateManager,
-      gameStateManager.actionProcessor, // Use ActionProcessor instance from GameStateManager
-      () => gameState.gameMode !== 'local',
-      aiPhaseProcessor // Add AIPhaseProcessor for SequentialPhaseManager
-    );
-
-
-    debugLog('PHASE_TRANSITIONS', '🔧 GameFlowManager initialized');
-  }, []); // Run once on component mount
-
-  // SequentialPhaseManager removed - phase completion now handled by GameFlowManager via state monitoring
+  // Note: GameFlowManager is initialized in AppRouter.jsx with PhaseAnimationQueue
+  // No initialization needed here - managers are already set up
 
   // --- 4.2 EVENT SUBSCRIPTIONS ---
 
@@ -364,7 +355,7 @@ const App = () => {
     };
 
     // Subscribe to game flow manager for phase events (host/local only)
-    const unsubscribeGameFlow = gameFlowManager.subscribe(handlePhaseEvent);
+    const unsubscribeGameFlow = gameStateManager.gameFlowManager?.subscribe(handlePhaseEvent);
 
     return () => {
       unsubscribeGameFlow();
@@ -560,9 +551,9 @@ const App = () => {
   // Wrapper for processAction that routes guest actions to host
   // ========================================
 
-  // Actions that require host-side processing and cannot be optimistically processed by guest
-  // These actions have guest guards in ActionProcessor that prevent local processing
-  const HOST_ONLY_ACTIONS = ['commitment', 'destroyDrone', 'addShield', 'resetShields'];
+  // ALL ACTIONS NOW OPTIMISTIC - Guest processes locally with animation tracking
+  // Host remains authoritative via validation at milestone phases
+  const HOST_ONLY_ACTIONS = [];
 
   /**
    * Process action with guest mode routing
@@ -1190,7 +1181,45 @@ const App = () => {
     }
   }, [abilityMode, shipAbilityMode, selectedCard, gameState.player1, gameState.player2, multiSelectState]);
 
-  // --- 8.2 WIN CONDITION MONITORING ---
+  // --- 8.2 PHASE ANIMATION QUEUE SUBSCRIPTION ---
+
+  // Subscribe to phase animation queue events for UI blocking and animation display
+  useEffect(() => {
+    if (!phaseAnimationQueue) return;
+
+    const handleAnimationStarted = (animation) => {
+      setCurrentPhaseAnimation(animation);
+      setPhaseAnnouncements([{
+        id: animation.id,
+        phaseText: animation.phaseText,
+        subtitle: animation.subtitle,
+        onComplete: () => {
+          // Animation completes after 1.8 seconds (1.5s display + 0.3s fade)
+        }
+      }]);
+    };
+
+    const handleAnimationEnded = (animation) => {
+      setPhaseAnnouncements([]);
+      setCurrentPhaseAnimation(null);
+    };
+
+    const handlePlaybackStateChanged = (isPlaying) => {
+      setIsPhaseAnimationPlaying(isPlaying);
+    };
+
+    const unsubAnimationStarted = phaseAnimationQueue.on('animationStarted', handleAnimationStarted);
+    const unsubAnimationEnded = phaseAnimationQueue.on('animationEnded', handleAnimationEnded);
+    const unsubPlaybackState = phaseAnimationQueue.on('playbackStateChanged', handlePlaybackStateChanged);
+
+    return () => {
+      unsubAnimationStarted();
+      unsubAnimationEnded();
+      unsubPlaybackState();
+    };
+  }, [phaseAnimationQueue]);
+
+  // --- 8.3 WIN CONDITION MONITORING ---
   // Win conditions are now checked automatically by ActionProcessor after attacks, abilities, and card plays
   // This effect shows the winner modal when a winner is detected
   useEffect(() => {
@@ -1361,66 +1390,10 @@ const App = () => {
     if (previousPhase !== turnPhase) {
       debugLog('PHASE_TRANSITIONS', `👁️ Guest detected phase change: ${previousPhase} → ${turnPhase}`);
 
-      // OPTIMISTIC EXECUTION: Process automatic phase CASCADE
-      // When both players commit to placement, Guest processes all consecutive automatic phases at once
-      // This eliminates 3-4 second lag from waiting for sequential Host broadcasts
-
-      // Helper function to process automatic phase cascade
-      const processAutomaticPhaseCascade = async () => {
-        let currentPhase = 'gameInitializing';
-        let prevPhase = 'placement';
-
-        while (true) {
-          // Check if current phase is automatic
-          if (!gameFlowManager.isAutomaticPhase(currentPhase)) {
-            debugLog('OPTIMISTIC_EXECUTION', `🛑 [GUEST] Cascade stopped at non-automatic phase: ${currentPhase}`);
-            break;
-          }
-
-          // Process the automatic phase
-          debugLog('OPTIMISTIC_EXECUTION', `⚡ [GUEST] Cascade processing: ${currentPhase}`);
-          await gameFlowManager.processAutomaticPhase(currentPhase, prevPhase);
-
-          // Get next phase (respects isPhaseRequired for conditional phases)
-          const nextPhase = gameFlowManager.getNextPhase(currentPhase);
-
-          if (!nextPhase) {
-            debugLog('OPTIMISTIC_EXECUTION', `✅ [GUEST] Cascade complete - no next phase`);
-            break;
-          }
-
-          // Update for next iteration
-          prevPhase = currentPhase;
-          currentPhase = nextPhase;
-        }
-
-        debugLog('OPTIMISTIC_EXECUTION', `✅ [GUEST] Automatic phase cascade complete`);
-      };
-
-      // Trigger cascade when exiting placement (both players committed)
-      if (previousPhase === 'placement' && turnPhase === 'gameInitializing') {
-        debugLog('OPTIMISTIC_EXECUTION', `🚀 [GUEST] Both players committed! Processing automatic phase cascade`);
-
-        // Process cascade: gameInitializing → determineFirstPlayer → energyReset → (stop at first non-automatic phase)
-        processAutomaticPhaseCascade()
-          .catch(error => {
-            console.error('❌ [GUEST] Error during automatic phase cascade:', error);
-          });
-      }
-      // Fallback: Individual automatic phase processing (mid-cascade entry or edge cases)
-      else {
-        const automaticPhases = ['determineFirstPlayer', 'energyReset', 'draw'];
-        if (automaticPhases.includes(turnPhase)) {
-          debugLog('OPTIMISTIC_EXECUTION', `🚀 [GUEST] Processing individual automatic phase: ${turnPhase}`);
-
-          // Process automatic phase locally (same as Host does)
-          // Don't await - let it run in parallel with Host broadcasts
-          gameFlowManager.processAutomaticPhase(turnPhase, previousPhase)
-            .catch(error => {
-              console.error('❌ [GUEST] Error during optimistic automatic phase:', error);
-            });
-        }
-      }
+      // NOTE: Guest optimistic processing and checkpoint validation is now handled entirely by:
+      // 1. GameFlowManager - for optimistic phase transitions
+      // 2. GuestMessageQueueService - for checkpoint validation
+      // App.jsx only responds to phase changes for UI updates (passive role)
 
       // Synthesize phaseTransition event with same structure as GameFlowManager
       const syntheticEvent = {
@@ -1458,7 +1431,7 @@ const App = () => {
       // Update ref for next change
       previousPhaseRef.current = turnPhase;
     }
-  }, [turnPhase, gameState.gameStage, gameState.roundNumber, gameState.gameMode, waitingForPlayerPhase]);
+  }, [turnPhase, gameState.gameStage, gameState.roundNumber, gameState.gameMode, waitingForPlayerPhase, passInfo]);
 
   // --- 8.8 GUEST RENDER COMPLETION FOR ANIMATIONS ---
   // Signal to GuestMessageQueueService that React has finished rendering
@@ -3739,9 +3712,23 @@ const App = () => {
           // Close modal immediately
           setShipAbilityConfirmation(null);
 
-          // Wait for modal to unmount before playing animations
+          // Wait for modal to unmount before completing ability
           setTimeout(async () => {
-            await resolveShipAbility(ability, sectionName, target);
+            // Use shipAbilityCompletion action (deducts energy and ends turn)
+            // This is for abilities that already executed their logic (like REALLOCATE_SHIELDS)
+            await processActionWithGuestRouting('shipAbilityCompletion', {
+              ability: ability,
+              sectionName: sectionName,
+              playerId: getLocalPlayerId()
+            });
+
+            // Clear reallocation UI state after ability completion
+            setReallocationPhase(null);
+            setShieldsToRemove(0);
+            setShieldsToAdd(0);
+            setOriginalShieldAllocation(null);
+            setPostRemovalShieldAllocation(null);
+            setReallocationAbility(null);
           }, 400);
         }}
       />

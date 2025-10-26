@@ -7,7 +7,7 @@
 import { gameEngine } from '../logic/gameLogic.js';
 import aiPhaseProcessor from './AIPhaseProcessor.js';
 import GameDataService from '../services/GameDataService.js';
-import { debugLog } from '../utils/debugLogger.js';
+import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 
 class ActionProcessor {
   // Singleton instance
@@ -16,11 +16,12 @@ class ActionProcessor {
   /**
    * Get singleton instance of ActionProcessor
    * @param {Object} gameStateManager - GameStateManager instance
+   * @param {Object} phaseAnimationQueue - PhaseAnimationQueue instance (optional)
    * @returns {ActionProcessor} Single shared instance
    */
-  static getInstance(gameStateManager) {
+  static getInstance(gameStateManager, phaseAnimationQueue = null) {
     if (!ActionProcessor.instance) {
-      ActionProcessor.instance = new ActionProcessor(gameStateManager);
+      ActionProcessor.instance = new ActionProcessor(gameStateManager, phaseAnimationQueue);
     }
     return ActionProcessor.instance;
   }
@@ -33,7 +34,7 @@ class ActionProcessor {
     debugLog('STATE_SYNC', '⚙️ ActionProcessor singleton reset');
   }
 
-  constructor(gameStateManager) {
+  constructor(gameStateManager, phaseAnimationQueue = null) {
     // Enforce singleton pattern
     if (ActionProcessor.instance) {
       console.warn('⚠️ ActionProcessor already exists. Use getInstance() instead of new ActionProcessor()');
@@ -43,6 +44,7 @@ class ActionProcessor {
     this.gameStateManager = gameStateManager;
     this.gameDataService = GameDataService.getInstance(gameStateManager);
     this.animationManager = null;
+    this.phaseAnimationQueue = phaseAnimationQueue; // For non-blocking phase announcements
     this.pendingActionAnimations = []; // Track action animations for guest broadcasting
     this.pendingSystemAnimations = []; // Track system animations for guest broadcasting
     this.pendingStateUpdate = null; // Track state update for AnimationManager callback
@@ -63,6 +65,7 @@ class ActionProcessor {
       deployment: false,
       cardPlay: false,
       shipAbility: false,
+      shipAbilityCompletion: false,
       turnTransition: false,
       phaseTransition: false,
       roundStart: false,
@@ -147,6 +150,13 @@ setAnimationManager(animationManager) {
    * @returns {Promise} Resolves when action is complete
    */
   async queueAction(action) {
+    // DEBUG: Prove queueAction is called
+    debugLog('PASS_LOGIC', `🟣 [QUEUE ACTION] Action queued`, {
+      type: action.type,
+      gameMode: this.gameStateManager?.getState()?.gameMode,
+      queueLength: this.actionQueue.length
+    });
+
     return new Promise((resolve, reject) => {
       this.actionQueue.push({
         ...action,
@@ -162,6 +172,13 @@ setAnimationManager(animationManager) {
    * Process the action queue serially
    */
   async processQueue() {
+    // DEBUG: Prove processQueue is called
+    debugLog('PASS_LOGIC', `🟠 [PROCESS QUEUE] Processing queue`, {
+      isProcessing: this.isProcessing,
+      queueLength: this.actionQueue.length,
+      gameMode: this.gameStateManager?.getState()?.gameMode
+    });
+
     if (this.isProcessing || this.actionQueue.length === 0) {
       return;
     }
@@ -196,6 +213,13 @@ setAnimationManager(animationManager) {
    */
   async processAction(action) {
     const { type, payload, isNetworkAction = false } = action;
+
+    // DEBUG: Prove processAction is called
+    debugLog('PASS_LOGIC', `🔵 [ACTION PROCESSOR] processAction called`, {
+      type,
+      isNetworkAction,
+      gameMode: this.gameStateManager?.getState()?.gameMode
+    });
 
     // Get current state for validation
     const currentState = this.gameStateManager.getState();
@@ -305,6 +329,10 @@ setAnimationManager(animationManager) {
           result = await this.processShipAbility(payload);
           break;
 
+        case 'shipAbilityCompletion':
+          result = await this.processShipAbilityCompletion(payload);
+          break;
+
         case 'turnTransition':
           result = await this.processTurnTransition(payload);
           break;
@@ -369,9 +397,26 @@ setAnimationManager(animationManager) {
       return result;
     } finally {
       // Emit action completed event for GameFlowManager
-      // Only emit for player actions that might need turn transitions
-      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'shipAbility', 'movementCompletion', 'searchAndDrawCompletion', 'aiTurn', 'playerPass'];
+      // Only emit for player actions that might need turn transitions or broadcasting
+      const playerActionTypes = ['attack', 'ability', 'move', 'deployment', 'cardPlay', 'shipAbility', 'shipAbilityCompletion', 'movementCompletion', 'searchAndDrawCompletion', 'aiTurn', 'playerPass', 'turnTransition'];
+
+      // DEBUG: Log finally block execution to diagnose why emission might not happen
+      debugLog('PASS_LOGIC', `🔧 [ACTION PROCESSOR] Finally block executing`, {
+        type,
+        isPlayerAction: playerActionTypes.includes(type),
+        hasResult: !!this.lastActionResult,
+        willEmit: playerActionTypes.includes(type) && !!this.lastActionResult,
+        gameMode: this.gameStateManager?.getState()?.gameMode
+      });
+
       if (playerActionTypes.includes(type) && this.lastActionResult) {
+        debugLog('PASS_LOGIC', `📢 [ACTION PROCESSOR] Emitting action_completed event`, {
+          actionType: type,
+          hasResult: !!this.lastActionResult,
+          gameMode: this.gameStateManager?.getState()?.gameMode,
+          willEmit: true
+        });
+
         this.emit('action_completed', {
           actionType: type,  // Use 'actionType' to avoid collision with event.type
           payload: payload,
@@ -1365,6 +1410,52 @@ setAnimationManager(animationManager) {
   }
 
   /**
+   * Process ship ability completion (after UI confirmation)
+   * Used for abilities that require multi-step UI interactions (e.g., shield reallocation)
+   * Deducts energy cost and ends turn without re-executing ability logic
+   */
+  async processShipAbilityCompletion(payload) {
+    const { ability, sectionName, playerId } = payload;
+
+    const currentState = this.gameStateManager.getState();
+    const playerState = currentState[playerId];
+
+    // Deduct energy cost
+    const newPlayerState = {
+      ...playerState,
+      energy: playerState.energy - ability.cost.energy
+    };
+
+    this.gameStateManager.updatePlayerState(playerId, newPlayerState);
+
+    // Log the ability completion
+    this.gameStateManager.addLogEntry({
+      player: playerState.name,
+      actionType: 'SHIP_ABILITY',
+      source: `${sectionName}'s ${ability.name}`,
+      target: 'N/A',
+      outcome: `Completed ${ability.name}.`
+    });
+
+    debugLog('ENERGY', `💰 Ship ability completion: ${ability.name} cost ${ability.cost.energy} energy`, {
+      playerId,
+      previousEnergy: playerState.energy,
+      newEnergy: newPlayerState.energy
+    });
+
+    // Return result indicating turn should end
+    return {
+      success: true,
+      shouldEndTurn: true,
+      newPlayerStates: {
+        player1: currentState.player1,
+        player2: currentState.player2,
+        [playerId]: newPlayerState
+      }
+    };
+  }
+
+  /**
    * Check for win conditions after state-changing actions
    * This method should be called after attacks, abilities, and card plays
    * that could destroy ship sections and end the game
@@ -1547,32 +1638,32 @@ setAnimationManager(animationManager) {
       action: 'ACTION PHASE'
     };
 
-    if (phaseTextMap[newPhase] && this.animationManager) {
-      debugLog('PHASE_TRANSITIONS', `🎬 [PHASE ANNOUNCEMENT] Showing announcement for: ${newPhase}`);
+    if (phaseTextMap[newPhase]) {
+      debugLog('PHASE_TRANSITIONS', `🎬 [PHASE ANNOUNCEMENT] Queueing announcement for: ${newPhase}`);
 
-      const payload = {
-        phaseText: phaseTextMap[newPhase],
-        phaseName: newPhase,
-        timestamp: Date.now()
-      };
+      const phaseText = phaseTextMap[newPhase];
 
-      // Add firstPlayerId for deployment and action phases
-      // Each client will calculate subtitle from their own perspective
-      if (newPhase === 'deployment' || newPhase === 'action') {
-        payload.firstPlayerId = currentState.firstPlayerOfRound;
+      // Queue animation for sequential playback (non-blocking)
+      // Note: Subtitle for deployment/action is calculated dynamically by PhaseAnimationQueue
+      // at playback time to ensure correct player context with fresh state
+      debugLog('PHASE_TRANSITIONS', `🎬 [PHASE ANNOUNCEMENT] Attempting to queue`, {
+        phase: newPhase,
+        hasQueue: !!this.phaseAnimationQueue,
+        gameMode: currentState.gameMode
+      });
+
+      if (this.phaseAnimationQueue) {
+        this.phaseAnimationQueue.queueAnimation(newPhase, phaseText, null);
+        debugLog('PHASE_TRANSITIONS', `✅ [PHASE ANNOUNCEMENT] Successfully queued: ${newPhase}`);
+      } else {
+        debugLog('PHASE_TRANSITIONS', `❌ [PHASE ANNOUNCEMENT] Queue not available for: ${newPhase}`);
       }
 
-      const phaseAnnouncementEvent = {
-        animationName: 'PHASE_ANNOUNCEMENT',
-        payload: payload
-      };
+      // Note: PHASE_ANNOUNCEMENT animations are NOT broadcast to guest
+      // Each client (host and guest) queues phase announcements locally based on their own phase processing
+      // This prevents duplicate announcements and maintains clean separation: host = state authority, guest = own presentation
 
-      // Execute phase announcement (blocks gameplay during display)
-      // Mark as system animation so guests always see it (never deduplicated)
-      // waitForCompletion = true ensures gameplay pauses during announcement
-      await this.executeAndCaptureAnimations([phaseAnnouncementEvent], true, true);
-
-      debugLog('PHASE_TRANSITIONS', `🎬 [PHASE ANNOUNCEMENT] Announcement complete for: ${newPhase}`);
+      debugLog('PHASE_TRANSITIONS', `🎬 [PHASE ANNOUNCEMENT] Animation queued for: ${newPhase}`);
     }
 
     debugLog('PHASE_TRANSITIONS', `[PHASE TRANSITION DEBUG] Phase transition complete: ${currentState.turnPhase} → ${newPhase}`);
@@ -2061,8 +2152,18 @@ setAnimationManager(animationManager) {
       return;
     }
 
-    // Capture animations for guest broadcasting (host only)
     const gameMode = this.gameStateManager.get('gameMode');
+
+    timingLog('[ANIM QUEUE] Animation requested', {
+      count: animations.length,
+      names: animations.map(a => a.animationName).join(', '),
+      waitForCompletion,
+      isSystemAnimation,
+      gameMode,
+      blockingReason: 'entering_queue'
+    });
+
+    // Capture animations for guest broadcasting (host only)
     if (gameMode === 'host') {
       if (isSystemAnimation) {
         this.pendingSystemAnimations.push(...animations);
@@ -2075,9 +2176,20 @@ setAnimationManager(animationManager) {
     if (this.animationManager) {
       const source = gameMode === 'guest' ? 'GUEST_OPTIMISTIC' : gameMode === 'host' ? 'HOST_LOCAL' : 'LOCAL';
 
+      timingLog('[ANIM QUEUE] Starting execution', {
+        names: animations.map(a => a.animationName).join(', '),
+        source,
+        blockingReason: 'none_executing_now'
+      });
+
       if (waitForCompletion) {
         // Blocking: Wait for animations to complete before continuing
         await this.animationManager.executeAnimations(animations, source);
+
+        timingLog('[ANIM QUEUE] Execution complete', {
+          names: animations.map(a => a.animationName).join(', '),
+          blockingReason: 'animations_finished'
+        });
       } else {
         // Non-blocking: Execute animations in parallel without waiting
         // This allows state updates and multiplayer broadcasting to happen immediately
@@ -2261,8 +2373,9 @@ setAnimationManager(animationManager) {
   /**
    * Broadcast current game state to guest (host only)
    * Called after every action that changes game state
+   * @param {string} trigger - Reason for broadcast (e.g., 'after_action', 'phase_transition')
    */
-  broadcastStateToGuest() {
+  broadcastStateToGuest(trigger = 'unknown') {
     const gameMode = this.gameStateManager.get('gameMode');
 
     if (gameMode !== 'host') {
@@ -2270,6 +2383,12 @@ setAnimationManager(animationManager) {
     }
 
     if (this.p2pManager && this.p2pManager.isConnected) {
+      const broadcastStartTime = timingLog('[HOST] Broadcast preparing', {
+        phase: this.gameStateManager.get('turnPhase'),
+        currentPlayer: this.gameStateManager.get('currentPlayer'),
+        trigger: trigger
+      });
+
       // Use pendingFinalState (for TELEPORT_IN) or pendingStateUpdate (for other actions)
       // Falls back to current state if neither is available
       // Priority: finalState > pendingState > currentState
@@ -2293,6 +2412,21 @@ setAnimationManager(animationManager) {
         usingPendingState: !this.pendingFinalState && !!this.pendingStateUpdate,
         usingCurrentState: !this.pendingFinalState && !this.pendingStateUpdate
       });
+
+      // Get animation names for logging
+      const allAnimNames = [
+        ...actionAnimations.map(a => a.animationName),
+        ...systemAnimations.map(a => a.animationName)
+      ];
+
+      timingLog('[HOST] Broadcast sending', {
+        phase: stateToBroadcast.turnPhase,
+        actionAnims: actionAnimations.length,
+        systemAnims: systemAnimations.length,
+        totalAnims: actionAnimations.length + systemAnimations.length,
+        trigger: trigger,
+        animNames: allAnimNames.length > 0 ? allAnimNames.join(', ') : 'none'
+      }, broadcastStartTime);
 
       this.p2pManager.broadcastState(stateToBroadcast, actionAnimations, systemAnimations);
     }
@@ -2322,16 +2456,30 @@ setAnimationManager(animationManager) {
       outcome: `Passed during ${turnPhase} phase.`
     }, 'playerPass');
 
-    // Add pass notification animation (non-blocking for better multiplayer sync)
-    const animations = [{
-      animationName: 'PASS_NOTIFICATION',
-      payload: {
-        passingPlayerId: playerId
-      }
-    }];
+    // Queue pass notification in PhaseAnimationQueue for sequential playback
+    // This ensures pass notifications play sequentially with phase announcements
+    // (PhaseAnimationQueue handles all game flow animations, AnimationManager handles action animations)
+    if (this.phaseAnimationQueue) {
+      const localPlayerId = this.gameStateManager.getLocalPlayerId();
+      const isLocalPlayer = playerId === localPlayerId;
+      const passText = isLocalPlayer ? 'YOU PASSED' : 'OPPONENT PASSED';
 
-    // Execute animation and wait for completion (prevents overlapping with subsequent phase announcements)
-    await this.executeAndCaptureAnimations(animations);
+      this.phaseAnimationQueue.queueAnimation('playerPass', passText, null);
+
+      debugLog('PASS_LOGIC', '[PLAYER PASS DEBUG] Queued pass notification in PhaseAnimationQueue:', {
+        playerId,
+        isLocalPlayer,
+        passText
+      });
+
+      // Start playback if not already playing
+      // If queue is already playing, this does nothing (PhaseAnimationQueue.startPlayback() guards against duplicate playback)
+      // If queue is idle, this starts playback of the pass notification
+      if (!this.phaseAnimationQueue.isPlaying()) {
+        this.phaseAnimationQueue.startPlayback();
+        debugLog('PASS_LOGIC', '[PLAYER PASS DEBUG] Started playback for pass notification');
+      }
+    }
 
     // Calculate pass info updates
     const opponentPassKey = `${opponentPlayerId}Passed`;
@@ -2383,12 +2531,13 @@ setAnimationManager(animationManager) {
     }
 
     // Note: State broadcasting handled by queueAction's finally block via broadcastStateToGuest()
+    // Pass notification is queued in PhaseAnimationQueue (not AnimationManager), so no animations to return
 
     return {
       success: true,
       newPassInfo,
       animations: {
-        actionAnimations: animations,
+        actionAnimations: [],
         systemAnimations: []
       }
     };
@@ -2515,18 +2664,9 @@ setAnimationManager(animationManager) {
     // Import first player utilities
     const { determineFirstPlayer, getFirstPlayerReasonText } = await import('../utils/firstPlayerUtils.js');
 
-    // Determine the first player
-    const firstPlayer = determineFirstPlayer(
-      currentState.turn,
-      currentState.firstPlayerOverride,
-      currentState.firstPasserOfPreviousRound
-    );
-
-    const reasonText = getFirstPlayerReasonText(
-      currentState.turn,
-      currentState.firstPlayerOverride,
-      currentState.firstPasserOfPreviousRound
-    );
+    // Determine the first player using seeded randomization
+    const firstPlayer = determineFirstPlayer(currentState);
+    const reasonText = getFirstPlayerReasonText(currentState);
 
     // Update state with first player information
     try {
@@ -2643,15 +2783,12 @@ setAnimationManager(animationManager) {
       } : null
     });
 
-    // Guest guard: Guests should not process commitments locally
-    const gameMode = this.gameStateManager.get('gameMode');
-    if (gameMode === 'guest') {
-      console.warn('⚠️ Guest attempted processCommitment - should send to host instead');
-      return { success: false, error: 'Guest cannot process commitments locally' };
-    }
+    // OPTIMISTIC PROCESSING: Guest now processes commitments locally
+    // Host remains authoritative via validation at milestone phases
 
     // Get current state
     const currentState = this.gameStateManager.getState();
+    const gameMode = currentState.gameMode;
 
     // Initialize commitments for this phase if not exists
     if (!currentState.commitments[phase]) {
@@ -3090,15 +3227,12 @@ setAnimationManager(animationManager) {
 
     debugLog('COMBAT', `💥 ActionProcessor: Processing drone destruction for ${playerId}, drone ${droneId}`);
 
-    // Guest guard: Guests should send actions to host, not process locally
-    const gameMode = this.gameStateManager.get('gameMode');
-    if (gameMode === 'guest') {
-      console.warn('⚠️ Guest attempted processDestroyDrone - should send to host instead');
-      return { success: false, error: 'Guest cannot destroy drones locally' };
-    }
+    // OPTIMISTIC PROCESSING: Guest now processes drone destruction locally
+    // Host remains authoritative via validation at milestone phases
 
     // Get current player state
     const currentState = this.gameStateManager.getState();
+    const gameMode = currentState.gameMode;
     const playerState = currentState[playerId];
 
     if (!playerState) {
@@ -3165,15 +3299,12 @@ setAnimationManager(animationManager) {
 
     debugLog('DEBUG_TOOLS', `🎴 ActionProcessor: Adding ${cardInstances.length} cards to ${playerId}'s hand`);
 
-    // Guest guard: Guests should send actions to host
-    const gameMode = this.gameStateManager.get('gameMode');
-    if (gameMode === 'guest') {
-      console.warn('⚠️ Guest attempted processDebugAddCardsToHand - should send to host instead');
-      return { success: false, error: 'Guest cannot add cards locally' };
-    }
+    // OPTIMISTIC PROCESSING: Guest now processes debug actions locally
+    // Host remains authoritative via validation at milestone phases
 
     // Get current player state
     const currentState = this.gameStateManager.getState();
+    const gameMode = currentState.gameMode;
     const playerState = currentState[playerId];
 
     if (!playerState) {
@@ -3205,15 +3336,12 @@ setAnimationManager(animationManager) {
 
     debugLog('ENERGY', `🛡️ ActionProcessor: Processing shield addition for ${playerId}, section ${sectionName}`);
 
-    // Guest guard: Guests should send actions to host
-    const gameMode = this.gameStateManager.get('gameMode');
-    if (gameMode === 'guest') {
-      console.warn('⚠️ Guest attempted processAddShield - should send to host instead');
-      return { success: false, error: 'Guest cannot add shields locally' };
-    }
+    // OPTIMISTIC PROCESSING: Guest now processes shield allocation locally
+    // Host remains authoritative via validation at milestone phases
 
     // Get current game state
     const currentState = this.gameStateManager.getState();
+    const gameMode = currentState.gameMode;
 
     // Determine which shieldsToAllocate to use
     const shieldsToAllocateKey = playerId === 'player1' ? 'shieldsToAllocate' : 'opponentShieldsToAllocate';
@@ -3263,15 +3391,12 @@ setAnimationManager(animationManager) {
 
     debugLog('ENERGY', `🔄 ActionProcessor: Processing shield allocation reset for ${playerId}`);
 
-    // Guest guard: Guests should send actions to host
-    const gameMode = this.gameStateManager.get('gameMode');
-    if (gameMode === 'guest') {
-      console.warn('⚠️ Guest attempted processResetShields - should send to host instead');
-      return { success: false, error: 'Guest cannot reset shields locally' };
-    }
+    // OPTIMISTIC PROCESSING: Guest now processes shield reset locally
+    // Host remains authoritative via validation at milestone phases
 
     // Get current game state
     const currentState = this.gameStateManager.getState();
+    const gameMode = currentState.gameMode;
 
     // Process shield reset via game engine
     const result = gameEngine.processResetShieldAllocation(currentState, playerId);

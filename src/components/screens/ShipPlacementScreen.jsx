@@ -10,7 +10,6 @@ import { WaitingForOpponentScreen, SubmittingOverlay } from './DroneSelectionScr
 import ShipSection from '../ui/ShipSection.jsx';
 import { gameEngine } from '../../logic/gameLogic.js';
 import gameStateManager from '../../state/GameStateManager.js';
-import gameFlowManager from '../../state/GameFlowManager.js';
 import p2pManager from '../../network/P2PManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { shipComponentCollection } from '../../data/shipData.js';
@@ -206,20 +205,29 @@ function ShipPlacementScreen() {
 
       p2pManager.sendActionToHost('commitment', payload);
 
-      // OPTIMISTIC CASCADE: Check if Host already committed
-      const hostCommitted = gameState.commitments?.placement?.player1?.completed === true;
-      if (hostCommitted) {
-        debugLog('OPTIMISTIC_EXECUTION', '🚀 [GUEST] Host already committed! Triggering immediate cascade processing');
+      // OPTIMISTIC UPDATE: Mark guest's own commitment locally before cascade check
+      // Guest is certain it just committed (user clicked button)
+      // Host will confirm this in broadcast milliseconds later
+      // Uses spread pattern to match ActionProcessor structure
+      gameStateManager.setState({
+        commitments: {
+          ...gameState.commitments,
+          placement: {
+            ...gameState.commitments.placement,
+            player2: {
+              completed: true,
+              ...payload.actionData  // Spread to match ActionProcessor pattern
+            }
+          }
+        }
+      });
 
-        // Both players committed - process placement completion + automatic cascade
-        // Small delay to ensure commitment sent to Host first
-        setTimeout(() => {
-          gameFlowManager.processPlacementAndAutomaticCascade()
-            .catch(error => {
-              console.error('❌ [GUEST] Error during optimistic placement cascade:', error);
-            });
-        }, 10);
-      }
+      debugLog('PLACEMENT_CASCADE', '✅ [GUEST CONFIRM] Optimistically updated local commitment state');
+      debugLog('PLACEMENT_CASCADE', '⏸️ [GUEST CONFIRM] Cascade will be triggered by useEffect watcher when host commits');
+
+      // NOTE: Cascade trigger moved to useEffect (lines 292-317)
+      // The useEffect watches for both players' commitments and triggers cascade automatically
+      // This handles both cases: guest commits first OR host commits first
 
       return;
     }
