@@ -119,7 +119,13 @@ class GameFlowManager {
       this.gameStateManager.subscribe((event) => {
         const { state, type: eventType } = event;
         this.checkSequentialPhaseCompletion(state, eventType);
-        this.checkSimultaneousPhaseCompletion(state, eventType);
+
+        // Guest mode: Only trigger checkpoint detection when receiving Host broadcast
+        // Guest waits for Host's authoritative state (including roundNumber) before starting cascade
+        // GuestMessageQueueService explicitly calls checkSimultaneousPhaseCompletion after applying Host state
+        if (state.gameMode !== 'guest') {
+          this.checkSimultaneousPhaseCompletion(state, eventType);
+        }
 
         // Guest-specific: Monitor state changes for opponent pass detection
         // When host passes, guest receives state update (not action execution)

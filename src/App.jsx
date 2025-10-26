@@ -3061,7 +3061,28 @@ const App = ({ phaseAnimationQueue }) => {
 
     if (!opponentCommitted) {
       debugLog('PHASE_TRANSITIONS', '✋ Opponent not committed yet, showing waiting overlay');
-      setWaitingForPlayerPhase('mandatoryDiscard');
+
+      // Wait for phase announcements to finish before showing waiting modal
+      // Check if announcements are queued OR currently playing
+      if (phaseAnimationQueue) {
+        const queueLength = phaseAnimationQueue.getQueueLength();
+        const isPlaying = phaseAnimationQueue.isPlaying();
+
+        if (queueLength > 0 || isPlaying) {
+          debugLog('PHASE_TRANSITIONS', '⏳ Waiting for announcement queue to complete before showing waiting modal', { queueLength, isPlaying });
+          const unsubscribe = phaseAnimationQueue.onComplete(() => {
+            setWaitingForPlayerPhase('mandatoryDiscard');
+            unsubscribe(); // Clean up listener
+            debugLog('PHASE_TRANSITIONS', '✅ Announcement queue complete, showing waiting modal');
+          });
+        } else {
+          // No queued announcements, show immediately
+          setWaitingForPlayerPhase('mandatoryDiscard');
+        }
+      } else {
+        // No animation queue available, show immediately
+        setWaitingForPlayerPhase('mandatoryDiscard');
+      }
     } else {
       debugLog('PHASE_TRANSITIONS', '✅ Both players complete, no waiting overlay');
     }
@@ -3089,7 +3110,28 @@ const App = ({ phaseAnimationQueue }) => {
 
     if (!opponentCommitted) {
       debugLog('PHASE_TRANSITIONS', '✋ Opponent not committed yet, showing waiting overlay');
-      setWaitingForPlayerPhase('mandatoryDroneRemoval');
+
+      // Wait for phase announcements to finish before showing waiting modal
+      // Check if announcements are queued OR currently playing
+      if (phaseAnimationQueue) {
+        const queueLength = phaseAnimationQueue.getQueueLength();
+        const isPlaying = phaseAnimationQueue.isPlaying();
+
+        if (queueLength > 0 || isPlaying) {
+          debugLog('PHASE_TRANSITIONS', '⏳ Waiting for announcement queue to complete before showing waiting modal', { queueLength, isPlaying });
+          const unsubscribe = phaseAnimationQueue.onComplete(() => {
+            setWaitingForPlayerPhase('mandatoryDroneRemoval');
+            unsubscribe(); // Clean up listener
+            debugLog('PHASE_TRANSITIONS', '✅ Announcement queue complete, showing waiting modal');
+          });
+        } else {
+          // No queued announcements, show immediately
+          setWaitingForPlayerPhase('mandatoryDroneRemoval');
+        }
+      } else {
+        // No animation queue available, show immediately
+        setWaitingForPlayerPhase('mandatoryDroneRemoval');
+      }
     } else {
       debugLog('PHASE_TRANSITIONS', '✅ Both players complete, no waiting overlay');
     }
