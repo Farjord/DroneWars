@@ -55,6 +55,13 @@ function GameFooter({
   opponentPlayerState,
   setAiDecisionLogToShow
 }) {
+  // Debug logging for mandatoryAction prop
+  debugLog('HAND_VIEW', '📦 GameFooter received mandatoryAction:', {
+    mandatoryAction,
+    turnPhase,
+    footerView
+  });
+
   return (
     <footer className={styles.footer}>
       {/* Tab Buttons */}

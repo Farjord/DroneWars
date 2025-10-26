@@ -150,7 +150,7 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, onComplete }) => {
       ref={handleContainerRef}
       className={`
         fixed inset-0 z-[10000] flex items-center justify-center
-        transition-all duration-300 pointer-events-none
+        transition-all duration-300
         ${isVisible ? 'opacity-100' : 'opacity-0'}
       `}
     >

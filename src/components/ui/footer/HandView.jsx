@@ -48,7 +48,9 @@ function HandView({
     handSize: localPlayerState.hand.length,
     energy: localPlayerState.energy,
     passInfo,
-    mandatoryAction
+    mandatoryAction,
+    mandatoryActionType: mandatoryAction?.type,
+    isMandatoryDiscard: mandatoryAction?.type === 'discard'
   });
 
   // Hand layout logic - simplified

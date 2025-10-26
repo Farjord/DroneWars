@@ -64,7 +64,7 @@ export const startingDroneList = [
   'Swarm Drone'
 ];
 
-const buildDeckFromList = (decklist, playerId = 'player1') => {
+const buildDeckFromList = (decklist, playerId = 'player1', gameSeed = null) => {
   const deck = [];
   let instanceCounter = 0;
 
@@ -79,10 +79,11 @@ const buildDeckFromList = (decklist, playerId = 'player1') => {
     }
   });
 
-  // Shuffle the final deck using seeded RNG for deterministic multiplayer synchronization
-  // Use simple player-based seed so both clients get same shuffle for each player
-  const seed = playerId === 'player1' ? 12345 : 67890;
-  const rng = new SeededRandom(seed);
+  // Shuffle the final deck using game seed for deterministic multiplayer synchronization
+  // Same game seed always produces same deck order
+  const seed = gameSeed || 12345; // Fallback for tests
+  const playerOffset = playerId === 'player1' ? 1 : 2;  // Unique offset per player
+  const rng = new SeededRandom(seed + playerOffset);
   return rng.shuffle(deck);
 };
 
@@ -109,7 +110,7 @@ const getEffectiveSectionMaxShields = (sectionName, playerState, placedSections)
 // PLAYER STATE INITIALIZATION
 // ========================================
 
-const initialPlayerState = (name, decklist) => {
+const initialPlayerState = (name, decklist, playerId = 'player1', gameSeed = null) => {
     const baseStats = calculateEffectiveShipStats({ shipSections: shipSectionData }, []).totals;
 
     return {
@@ -119,7 +120,7 @@ const initialPlayerState = (name, decklist) => {
         initialDeploymentBudget: baseStats.initialDeployment,
         deploymentBudget: 0,
         hand: [],
-        deck: buildDeckFromList(decklist),
+        deck: buildDeckFromList(decklist, playerId, gameSeed),
         discardPile: [],
         activeDronePool: [],
         dronesOnBoard: { lane1: [], lane2: [], lane3: [] },

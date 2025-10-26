@@ -293,13 +293,13 @@ class AIPhaseProcessor {
 
       // Import the game engine to build the deck
       const { gameEngine } = await import('../logic/gameLogic.js');
-      selectedDeck = gameEngine.buildDeckFromList(personality.decklist, 'player2');
+      selectedDeck = gameEngine.buildDeckFromList(personality.decklist, 'player2', gameState.gameSeed);
     } else {
       // Fallback to standard deck
       debugLog('AI_DECISIONS', `🎯 Using standard deck as fallback`);
 
       const { gameEngine, startingDecklist } = await import('../logic/gameLogic.js');
-      selectedDeck = gameEngine.buildDeckFromList(startingDecklist, 'player2');
+      selectedDeck = gameEngine.buildDeckFromList(startingDecklist, 'player2', gameState.gameSeed);
     }
 
     // Select drones from personality's dronePool (5-10 drones allowed)

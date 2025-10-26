@@ -32,21 +32,22 @@ const DEBUG_CONFIG = {
     OPTIMISTIC: false,          // Animation deduplication and matching logic (DISABLED - already debugged)
     COMMITMENTS: false,         // Simultaneous phase commitments (DISABLED - too verbose)
     COMBAT: false,              // Combat resolution
-    PASS_LOGIC: true,           // Pass handling and pass notification debugging (ENABLED)
+    PASS_LOGIC: false,           // Pass handling and pass notification debugging (ENABLED)
     STATE_SYNC: false,          // State synchronization (DISABLED - too verbose)
     BROADCAST_TIMING: false,    // Broadcast timing and state validation (DISABLED - too verbose)
     ENERGY: false,              // Energy management (shield allocation)
     CARDS: false,               // Card play and effects (DISABLED for clean logs)
-    HAND_VIEW: false,           // Hand display and card interaction
-    CARD_PLAY: false,           // Card playability and clicking
+    HAND_VIEW: false,            // Hand display and card interaction (ENABLED for mandatoryAction debugging)
+    CARD_PLAY: false,            // Card playability and clicking (ENABLED for mandatoryAction debugging)
     SHIELD_CLICKS: false,       // Shield allocation click tracking
     BUTTON_CLICKS: false,       // Button click tracking and effects
     MOVEMENT_LANES: false,      // Movement card lane highlighting diagnostics
-    GUEST_CASCADE: true,        // Guest optimistic cascade flow (ENABLED for checkpoint testing)
+    GUEST_CASCADE: false,        // Guest optimistic cascade flow (ENABLED for checkpoint testing)
     CASCADE_LOOP: false,        // Cascade loop iteration details (DISABLED - already debugged)
-    VALIDATION: true,           // State validation and reconciliation (ENABLED for checkpoint testing)
-    TIMING: true,               // High-resolution timing milestones with timestamps (ENABLED for pass notification debugging)
+    VALIDATION: false,           // State validation and reconciliation (ENABLED for checkpoint testing)
+    TIMING: false,               // High-resolution timing milestones with timestamps (ENABLED for pass notification debugging)
     SUBTITLE_CALC: false,       // Phase animation subtitle calculation (DISABLED - already debugged)
+    FIRST_PLAYER: false,        // First player determination and seeded random (DISABLED for clean logs)
   }
 };
 

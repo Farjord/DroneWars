@@ -1625,12 +1625,11 @@ setAnimationManager(animationManager) {
     }
 
     // Show phase announcement for round phases
+    // Note: Automatic phases (energyReset, draw) are excluded - only determineFirstPlayer shows as "INITIALISING ROUND"
     const phaseTextMap = {
-      determineFirstPlayer: 'DETERMINING FIRST PLAYER',
-      energyReset: 'ENERGY RESET',
+      determineFirstPlayer: 'INITIALISING ROUND',
       mandatoryDiscard: 'MANDATORY DISCARD PHASE',
       optionalDiscard: 'OPTIONAL DISCARD PHASE',
-      draw: 'DRAW PHASE',
       allocateShields: 'ALLOCATE SHIELDS',
       mandatoryDroneRemoval: 'REMOVE EXCESS DRONES',
       deployment: 'DEPLOYMENT PHASE',
@@ -2499,6 +2498,21 @@ setAnimationManager(animationManager) {
       this.gameStateManager.setState({ passInfo: newPassInfo }, 'PASS_INFO_SET');
     } finally {
       this.gameStateManager._updateContext = null;
+    }
+
+    // Increment turn counter ONLY for action phase passes
+    // Turn tracks individual player actions within a round (resets to 1 at round start)
+    if (turnPhase === 'action') {
+      const currentTurn = currentState.turn || 0;
+      try {
+        this.gameStateManager._updateContext = 'ActionProcessor';
+        this.gameStateManager.setState({
+          turn: currentTurn + 1
+        }, 'TURN_INCREMENT', 'playerPass');
+        debugLog('PASS_LOGIC', `[TURN INCREMENT] Turn incremented: ${currentTurn} → ${currentTurn + 1}`);
+      } finally {
+        this.gameStateManager._updateContext = null;
+      }
     }
 
     // Handle turn switching when one player passes but the other hasn't

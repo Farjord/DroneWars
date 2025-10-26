@@ -81,11 +81,13 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
 
   const renderRawStateTab = () => {
     const coreGameInfo = {
+      gameSeed: gameState.gameSeed,
       appState: gameState.appState,
       gameMode: gameState.gameMode,
       gameActive: gameState.gameActive,
       turnPhase: gameState.turnPhase,
       currentPlayer: gameState.currentPlayer,
+      roundNumber: gameState.roundNumber,
       turn: gameState.turn,
       firstPlayerOfRound: gameState.firstPlayerOfRound
     };

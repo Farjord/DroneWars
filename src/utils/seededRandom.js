@@ -95,31 +95,23 @@ export class SeededRandom {
 
   /**
    * Create SeededRandom for card shuffling operations
-   * Adds additional entropy from player-specific state
+   * Uses base game seed + unique offset for deterministic but varying shuffles
    *
    * @param {Object} gameState - Current game state
    * @param {string} playerId - Player performing shuffle ('player1' or 'player2')
    * @returns {SeededRandom} New seeded RNG instance
    */
   static forCardShuffle(gameState, playerId) {
+    const gameSeed = gameState.gameSeed || 12345; // Fallback for tests
     const playerState = gameState[playerId];
 
-    // Use player-specific state plus global state
-    const seedComponents = [
-      gameState.roundNumber || 1,
-      playerState?.deck?.length || 0,
-      playerState?.discardPile?.length || 0,
-      playerState?.hand?.length || 0,
-      // Add hash of first card in discard pile for additional entropy
-      playerState?.discardPile?.[0]?.id?.charCodeAt(0) || 0
-    ];
+    // Use game seed + unique offset based on game progress for determinism
+    // Each reshuffle in the same game gets a unique but deterministic seed
+    const playerOffset = playerId === 'player1' ? 1000 : 2000;
+    const roundOffset = (gameState.roundNumber || 1) * 100;
+    const deckLengthOffset = (playerState?.deck?.length || 0);
 
-    let seed = 0;
-    for (let i = 0; i < seedComponents.length; i++) {
-      seed = ((seed << 5) - seed + seedComponents[i]) | 0;
-    }
-
-    seed = Math.abs(seed);
+    const seed = gameSeed + playerOffset + roundOffset + deckLengthOffset;
     return new SeededRandom(seed);
   }
 }

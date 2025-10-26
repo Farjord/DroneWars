@@ -74,6 +74,8 @@ function GameHeader({
   handleContinueToAddPhase,
   handleConfirmReallocation,
   handleRoundStartDraw,
+  handleMandatoryDiscardContinue,
+  handleMandatoryDroneRemovalContinue,
   optionalDiscardCount,
   mandatoryAction,
   excessCards,
@@ -574,6 +576,56 @@ function GameHeader({
               {turnPhase === 'optionalDiscard' && (
                 <button onClick={handleRoundStartDraw} className="btn-confirm">
                   Confirm
+                </button>
+              )}
+
+              {/* Mandatory Discard Controls - Show during mandatoryDiscard phase */}
+              {turnPhase === 'mandatoryDiscard' && (
+                <button
+                  onClick={handleMandatoryDiscardContinue}
+                  disabled={excessCards > 0}
+                  className="relative p-[1px] transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                    backgroundImage: excessCards > 0
+                      ? 'linear-gradient(45deg, rgba(75, 85, 99, 0.6), rgba(107, 114, 128, 0.6))'
+                      : 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
+                  }}
+                >
+                  <div
+                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                      color: excessCards > 0 ? '#9ca3af' : '#86efac'
+                    }}
+                  >
+                    Continue
+                  </div>
+                </button>
+              )}
+
+              {/* Mandatory Drone Removal Controls - Show during mandatoryDroneRemoval phase */}
+              {turnPhase === 'mandatoryDroneRemoval' && (
+                <button
+                  onClick={handleMandatoryDroneRemovalContinue}
+                  disabled={excessDrones > 0}
+                  className="relative p-[1px] transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                    backgroundImage: excessDrones > 0
+                      ? 'linear-gradient(45deg, rgba(75, 85, 99, 0.6), rgba(107, 114, 128, 0.6))'
+                      : 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
+                  }}
+                >
+                  <div
+                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                      color: excessDrones > 0 ? '#9ca3af' : '#86efac'
+                    }}
+                  >
+                    Continue
+                  </div>
                 </button>
               )}
             </>

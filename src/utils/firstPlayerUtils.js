@@ -14,35 +14,43 @@ import { SeededRandom } from './seededRandom.js';
  */
 export const determineFirstPlayer = (gameState) => {
   const turn = gameState.turn;
+  const roundNumber = gameState.roundNumber;
   const firstPlayerOverride = gameState.firstPlayerOverride;
   const firstPasserOfPreviousRound = gameState.firstPasserOfPreviousRound;
 
-  debugLog('PHASE_TRANSITIONS', `🎯 Determining first player for turn ${turn}`, {
+  debugLog('FIRST_PLAYER', `🎯 Determining first player for round ${roundNumber}`, {
+    turn,
+    roundNumber,
     firstPlayerOverride,
-    firstPasserOfPreviousRound
+    firstPasserOfPreviousRound,
+    gameSeed: gameState.gameSeed
   });
 
   // Check for override first
   if (firstPlayerOverride) {
-    debugLog('PHASE_TRANSITIONS', `✅ Using first player override: ${firstPlayerOverride}`);
+    debugLog('FIRST_PLAYER', `✅ Using first player override: ${firstPlayerOverride}`);
     return firstPlayerOverride;
   }
 
-  // First turn - seeded random selection (ensures Host and Guest pick same player)
-  if (turn === 1) {
-    const rng = SeededRandom.fromGameState(gameState);
+  // First round - seeded random selection (ensures Host and Guest pick same player)
+  if (roundNumber === 1) {
+    const gameSeed = gameState.gameSeed || 12345; // Fallback for tests
+    const rng = new SeededRandom(gameSeed);  // Use base game seed directly for determinism
     const randomValue = rng.random();
     const randomFirstPlayer = randomValue < 0.5 ? 'player1' : 'player2';
-    debugLog('PHASE_TRANSITIONS', `🎲 Turn 1: Seeded random first player selected: ${randomFirstPlayer}`, {
-      seedValue: randomValue,
+    debugLog('FIRST_PLAYER', `🎲 Round 1: Seeded random first player determination`, {
+      gameSeed,
+      randomValue,
+      calculation: `${randomValue} < 0.5 ? 'player1' : 'player2'`,
+      result: randomFirstPlayer,
       gameMode: gameState.gameMode
     });
     return randomFirstPlayer;
   }
 
-  // Subsequent turns - first passer from previous round goes first
+  // Subsequent rounds - first passer from previous round goes first
   const firstPlayer = firstPasserOfPreviousRound || 'player1';
-  debugLog('PHASE_TRANSITIONS', `📋 Turn ${turn}: First passer from previous round goes first: ${firstPlayer}`);
+  debugLog('FIRST_PLAYER', `📋 Round ${roundNumber}: First passer from previous round goes first: ${firstPlayer}`);
   return firstPlayer;
 };
 
@@ -52,7 +60,7 @@ export const determineFirstPlayer = (gameState) => {
  * @returns {string} Explanation text
  */
 export const getFirstPlayerReasonText = (gameState) => {
-  const turn = gameState.turn;
+  const roundNumber = gameState.roundNumber;
   const firstPlayerOverride = gameState.firstPlayerOverride;
   const firstPasserOfPreviousRound = gameState.firstPasserOfPreviousRound;
 
@@ -60,7 +68,7 @@ export const getFirstPlayerReasonText = (gameState) => {
     return "First player was set by game effect.";
   }
 
-  if (turn === 1) {
+  if (roundNumber === 1) {
     return "The first player is determined randomly for the first round.";
   }
 
@@ -73,7 +81,7 @@ export const getFirstPlayerReasonText = (gameState) => {
  * @returns {Object} Updated game state and effects
  */
 export const processFirstPlayerDetermination = (gameState) => {
-  debugLog('PHASE_TRANSITIONS', '🎯 Processing first player determination');
+  debugLog('FIRST_PLAYER', '🎯 Processing first player determination');
 
   const firstPlayer = determineFirstPlayer(gameState);
   const reasonText = getFirstPlayerReasonText(gameState);
@@ -104,7 +112,7 @@ export const processFirstPlayerDetermination = (gameState) => {
     }
   };
 
-  debugLog('PHASE_TRANSITIONS', '✅ First player determination completed:', result);
+  debugLog('FIRST_PLAYER', '✅ First player determination completed:', result);
   return result;
 };
 

@@ -58,7 +58,7 @@ function DeckSelectionScreen() {
     if (choice === 'standard') {
       // Build the standard deck for the local player
       const localPlayerId = getLocalPlayerId();
-      const standardDeck = gameEngine.buildDeckFromList(startingDecklist, localPlayerId);
+      const standardDeck = gameEngine.buildDeckFromList(startingDecklist, localPlayerId, gameState.gameSeed);
       const standardDrones = [...startingDroneList]; // 10 standard drones
 
       // Validate standard drone list has exactly 10 drones

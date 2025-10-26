@@ -262,6 +262,8 @@ const App = ({ phaseAnimationQueue }) => {
   const previousPhaseRef = useRef(null); // Track previous turnPhase for guest phase detection
   const roundStartCascadeTriggered = useRef(false); // Prevent duplicate round start cascade triggers
   const deploymentToActionTriggered = useRef(false); // Prevent duplicate deployment → action triggers
+  const enteredMandatoryDiscardWithExcess = useRef(false); // Track if player entered mandatoryDiscard with excess cards
+  const enteredMandatoryRemovalWithExcess = useRef(false); // Track if player entered mandatoryDroneRemoval with excess drones
 
   // --- 3.4 HOOKS DEPENDENT ON REFS ---
   // These hooks require refs as parameters and must be called after ref initialization.
@@ -525,8 +527,8 @@ const App = ({ phaseAnimationQueue }) => {
     ? getLocalPlayerId()
     : null;
 
-  const hasCommittedDiscard = localPlayerId && gameState.commitments?.mandatoryDiscard?.[localPlayerId];
-  const hasCommittedRemoval = localPlayerId && gameState.commitments?.mandatoryDroneRemoval?.[localPlayerId];
+  const hasCommittedDiscard = localPlayerId && gameState.commitments?.mandatoryDiscard?.[localPlayerId]?.completed;
+  const hasCommittedRemoval = localPlayerId && gameState.commitments?.mandatoryDroneRemoval?.[localPlayerId]?.completed;
 
   // Calculate excess on-the-fly
   const excessCards = localPlayerState && localPlayerEffectiveStats
@@ -535,6 +537,17 @@ const App = ({ phaseAnimationQueue }) => {
   const excessDrones = localPlayerState && localPlayerEffectiveStats
     ? totalLocalPlayerDrones - localPlayerEffectiveStats.totals.cpuLimit
     : 0;
+
+  // Debug logging for mandatoryAction calculation
+  debugLog('HAND_VIEW', '🔍 mandatoryAction calculation:', {
+    turnPhase,
+    isInMandatoryDiscardPhase,
+    localPlayerId,
+    commitments: gameState.commitments,
+    hasCommittedDiscard,
+    excessCards,
+    willSetMandatoryAction: isInMandatoryDiscardPhase && !hasCommittedDiscard
+  });
 
   // UI flags for mandatory actions
   const shouldShowDiscardUI = isInMandatoryDiscardPhase && !hasCommittedDiscard && excessCards > 0;
@@ -1557,6 +1570,54 @@ const App = ({ phaseAnimationQueue }) => {
       }
     }
   }, [turnPhase, gameState.commitments, isMultiplayer, getLocalPlayerId, getOpponentPlayerId, waitingForPlayerPhase]);
+
+  // --- 8.11 TRACK INITIAL STATE FOR MANDATORY PHASES ---
+  // Capture whether player ENTERED phase with excess cards/drones
+  // This distinguishes between: (1) entered with no excess → auto-trigger Continue
+  //                        vs: (2) entered with excess, discarded down to 0 → require manual Continue
+  useEffect(() => {
+    if (turnPhase === 'mandatoryDiscard') {
+      enteredMandatoryDiscardWithExcess.current = excessCards > 0;
+      debugLog('PHASE_TRANSITIONS', '[MANDATORY DISCARD] Entered phase, tracking initial state:', { excessCards });
+    }
+  }, [turnPhase]);
+
+  useEffect(() => {
+    if (turnPhase === 'mandatoryDroneRemoval') {
+      enteredMandatoryRemovalWithExcess.current = excessDrones > 0;
+      debugLog('PHASE_TRANSITIONS', '[MANDATORY DRONE REMOVAL] Entered phase, tracking initial state:', { excessDrones });
+    }
+  }, [turnPhase]);
+
+  // --- 8.12 AUTO-TRIGGER MANDATORY DISCARD CONTINUE ---
+  // Automatically trigger continue ONLY when player ENTERED phase with no excess cards
+  // If player entered with excess and discarded down to 0, they must manually press Continue
+  useEffect(() => {
+    if (turnPhase === 'mandatoryDiscard' && excessCards === 0) {
+      const localPlayerId = getLocalPlayerId();
+      const alreadyCommitted = gameState.commitments?.mandatoryDiscard?.[localPlayerId]?.completed;
+
+      if (!alreadyCommitted && !enteredMandatoryDiscardWithExcess.current) {
+        debugLog('PHASE_TRANSITIONS', '[MANDATORY DISCARD] Auto-triggering continue (entered with no excess cards)');
+        handleMandatoryDiscardContinue();
+      }
+    }
+  }, [turnPhase, excessCards]);
+
+  // --- 8.13 AUTO-TRIGGER MANDATORY DRONE REMOVAL CONTINUE ---
+  // Automatically trigger continue ONLY when player ENTERED phase with no excess drones
+  // If player entered with excess and removed down to 0, they must manually press Continue
+  useEffect(() => {
+    if (turnPhase === 'mandatoryDroneRemoval' && excessDrones === 0) {
+      const localPlayerId = getLocalPlayerId();
+      const alreadyCommitted = gameState.commitments?.mandatoryDroneRemoval?.[localPlayerId]?.completed;
+
+      if (!alreadyCommitted && !enteredMandatoryRemovalWithExcess.current) {
+        debugLog('PHASE_TRANSITIONS', '[MANDATORY DRONE REMOVAL] Auto-triggering continue (entered with no excess drones)');
+        handleMandatoryDroneRemovalContinue();
+      }
+    }
+  }, [turnPhase, excessDrones]);
 
   /**
    * HANDLE RESET
@@ -2907,44 +2968,23 @@ const App = ({ phaseAnimationQueue }) => {
     // Clear the confirmation modal immediately
     setConfirmationModal(null);
 
-    // Decide the next action based on the type
-    if (isLastDiscard) {
-        if (isAbilityBased) {
-            // Clear ability-based mandatoryAction
-            setMandatoryAction(null);
+    // Handle ability-based completion (phase-based is handled by Continue button)
+    if (isLastDiscard && isAbilityBased) {
+        // Clear ability-based mandatoryAction
+        setMandatoryAction(null);
 
-            // Ability-triggered discard completed - end turn
-            const currentPlayerId = getLocalPlayerId();
-            await processActionWithGuestRouting('turnTransition', {
-                newPlayer: currentPlayerId === 'player1' ? 'player2' : 'player1'
-            });
-        } else {
-            // Phase-based mandatory discard completed - commit the phase
-            const result = await processActionWithGuestRouting('commitment', {
-                playerId: getLocalPlayerId(),
-                phase: 'mandatoryDiscard',
-                actionData: { completed: true }
-            });
-
-            // Show waiting modal if opponent hasn't finished yet
-            debugLog('COMMITMENTS', '🔍 Checking waiting overlay for mandatoryDiscard:', {
-                hasResultData: !!result.data,
-                bothPlayersComplete: result.data?.bothPlayersComplete,
-                willShowWaiting: result.data && !result.data.bothPlayersComplete
-            });
-
-            if (result.data && !result.data.bothPlayersComplete) {
-                setWaitingForPlayerPhase('mandatoryDiscard');
-            }
-        }
-    } else {
-        // More discards needed
-        if (isAbilityBased) {
-            // Update ability-based mandatoryAction count
-            setMandatoryAction(prev => ({ ...prev, count: newCount }));
-        }
-        // For phase-based, count is derived from excessCards, no need to update anything
+        // Ability-triggered discard completed - end turn
+        const currentPlayerId = getLocalPlayerId();
+        await processActionWithGuestRouting('turnTransition', {
+            newPlayer: currentPlayerId === 'player1' ? 'player2' : 'player1'
+        });
+    } else if (!isLastDiscard && isAbilityBased) {
+        // More discards needed for ability-based
+        // Update ability-based mandatoryAction count
+        setMandatoryAction(prev => ({ ...prev, count: newCount }));
     }
+    // Note: Phase-based mandatory discard completion is handled by Continue button
+    // For phase-based, count is derived from excessCards, no need to update anything
   };
 
   /**
@@ -2994,6 +3034,62 @@ const App = ({ phaseAnimationQueue }) => {
     if (!opponentCommitted) {
       debugLog('PHASE_TRANSITIONS', '✋ Opponent not committed yet, showing waiting overlay');
       setWaitingForPlayerPhase('optionalDiscard');
+    } else {
+      debugLog('PHASE_TRANSITIONS', '✅ Both players complete, no waiting overlay');
+    }
+  };
+
+  /**
+   * HANDLE MANDATORY DISCARD CONTINUE
+   * Completes the mandatoryDiscard phase by committing and transitioning to next phase.
+   * Called when player has finished all mandatory discards (or had none to begin with).
+   */
+  const handleMandatoryDiscardContinue = async () => {
+    debugLog('PHASE_TRANSITIONS', '[MANDATORY DISCARD] Player completing mandatory discard phase');
+
+    // Commit completion of mandatoryDiscard phase
+    const result = await processActionWithGuestRouting('commitment', {
+      playerId: getLocalPlayerId(),
+      phase: 'mandatoryDiscard',
+      actionData: { completed: true }
+    });
+
+    // Check opponent commitment status directly from state
+    const commitments = gameState.commitments || {};
+    const phaseCommitments = commitments.mandatoryDiscard || {};
+    const opponentCommitted = phaseCommitments[getOpponentPlayerId()]?.completed;
+
+    if (!opponentCommitted) {
+      debugLog('PHASE_TRANSITIONS', '✋ Opponent not committed yet, showing waiting overlay');
+      setWaitingForPlayerPhase('mandatoryDiscard');
+    } else {
+      debugLog('PHASE_TRANSITIONS', '✅ Both players complete, no waiting overlay');
+    }
+  };
+
+  /**
+   * HANDLE MANDATORY DRONE REMOVAL CONTINUE
+   * Completes the mandatoryDroneRemoval phase by committing and transitioning to next phase.
+   * Called when player has finished all mandatory drone removals (or had none to begin with).
+   */
+  const handleMandatoryDroneRemovalContinue = async () => {
+    debugLog('PHASE_TRANSITIONS', '[MANDATORY DRONE REMOVAL] Player completing mandatory drone removal phase');
+
+    // Commit completion of mandatoryDroneRemoval phase
+    const result = await processActionWithGuestRouting('commitment', {
+      playerId: getLocalPlayerId(),
+      phase: 'mandatoryDroneRemoval',
+      actionData: { completed: true }
+    });
+
+    // Check opponent commitment status directly from state
+    const commitments = gameState.commitments || {};
+    const phaseCommitments = commitments.mandatoryDroneRemoval || {};
+    const opponentCommitted = phaseCommitments[getOpponentPlayerId()]?.completed;
+
+    if (!opponentCommitted) {
+      debugLog('PHASE_TRANSITIONS', '✋ Opponent not committed yet, showing waiting overlay');
+      setWaitingForPlayerPhase('mandatoryDroneRemoval');
     } else {
       debugLog('PHASE_TRANSITIONS', '✅ Both players complete, no waiting overlay');
     }
@@ -3069,19 +3165,8 @@ const App = ({ phaseAnimationQueue }) => {
         setMandatoryAction(null);
         // For ability-based, might need additional logic here (end turn, etc.)
         // Currently there are no abilities that force drone destruction, so this path is unused
-      } else {
-        // Phase-based mandatory removal completed - commit the phase
-        const commitResult = await processActionWithGuestRouting('commitment', {
-          playerId: getLocalPlayerId(),
-          phase: 'mandatoryDroneRemoval',
-          actionData: { completed: true }
-        });
-
-        // Show waiting modal if opponent hasn't finished yet
-        if (commitResult.data && !commitResult.data.bothPlayersComplete) {
-          setWaitingForPlayerPhase('mandatoryDroneRemoval');
-        }
       }
+      // Note: Phase-based mandatory drone removal completion is handled by Continue button
     } else {
       // More drones need to be destroyed
       if (isAbilityBased) {
@@ -3337,6 +3422,8 @@ const App = ({ phaseAnimationQueue }) => {
         handleContinueToAddPhase={handleContinueToAddPhase}
         handleConfirmReallocation={handleConfirmReallocation}
         handleRoundStartDraw={handleRoundStartDraw}
+        handleMandatoryDiscardContinue={handleMandatoryDiscardContinue}
+        handleMandatoryDroneRemovalContinue={handleMandatoryDroneRemovalContinue}
         optionalDiscardCount={optionalDiscardCount}
         mandatoryAction={mandatoryAction}
         excessCards={excessCards}
@@ -3405,9 +3492,9 @@ const App = ({ phaseAnimationQueue }) => {
         mandatoryAction={
           mandatoryAction?.fromAbility
             ? mandatoryAction  // Use ability-based mandatoryAction
-            : shouldShowDiscardUI
+            : isInMandatoryDiscardPhase && !hasCommittedDiscard
               ? { type: 'discard', count: excessCards }
-              : shouldShowRemovalUI
+              : isInMandatoryRemovalPhase && !hasCommittedRemoval
                 ? { type: 'destroy', count: excessDrones }
                 : null
         }
@@ -3568,9 +3655,9 @@ const App = ({ phaseAnimationQueue }) => {
         mandatoryAction={
           mandatoryAction?.fromAbility
             ? mandatoryAction  // Use ability-based mandatoryAction
-            : shouldShowDiscardUI
+            : isInMandatoryDiscardPhase && !hasCommittedDiscard
               ? { type: 'discard', count: excessCards }
-              : shouldShowRemovalUI
+              : isInMandatoryRemovalPhase && !hasCommittedRemoval
                 ? { type: 'destroy', count: excessDrones }
                 : null
         }

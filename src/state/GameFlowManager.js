@@ -507,6 +507,21 @@ class GameFlowManager {
           potentialIssue: 'Guest may skip Host validation step'
         });
         await this.transitionToPhase(startPhase);
+
+        // Start animation playback after direct checkpoint jump
+        // Ensures Guest sees phase announcements for milestone transitions
+        if (this.phaseAnimationQueue) {
+          const queueLength = this.phaseAnimationQueue.getQueueLength();
+          if (queueLength > 0 && !this.phaseAnimationQueue.isPlaying()) {
+            debugLog('TIMING', `🎬 [GUEST] Starting animation playback after direct checkpoint jump: ${phase} → ${startPhase}`, {
+              queuedAnimations: queueLength,
+              from: phase,
+              to: startPhase
+            });
+            this.phaseAnimationQueue.startPlayback();
+          }
+        }
+
         return;
       }
 
@@ -638,6 +653,20 @@ class GameFlowManager {
           this.actionProcessor.broadcastStateToGuest();
           debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted state after phase transition to ${nextPhase}`);
         }
+
+        // Start animation playback after transitioning to another simultaneous phase
+        // This ensures queued phase announcements play before players can interact
+        if (this.phaseAnimationQueue) {
+          const queueLength = this.phaseAnimationQueue.getQueueLength();
+          if (queueLength > 0 && !this.phaseAnimationQueue.isPlaying()) {
+            debugLog('TIMING', `🎬 [${gameMode.toUpperCase()}] Starting animation playback after simultaneous→simultaneous transition`, {
+              queuedAnimations: queueLength,
+              phase: nextPhase,
+              gameMode
+            });
+            this.phaseAnimationQueue.startPlayback();
+          }
+        }
       }
       // Note: Commitment cleanup handled by ActionProcessor.processPhaseTransition()
     } else {
@@ -652,8 +681,9 @@ class GameFlowManager {
    * @param {string} eventType - Type of state change
    */
   checkSequentialPhaseCompletion(state, eventType) {
-    // Guard: Guest mode does not check phase completions
-    if (state.gameMode === 'guest') {
+    // Guard: Only local mode uses state monitoring for phase completion
+    // Host and Guest use explicit handling in passInfo subscription (lines 250, 267)
+    if (state.gameMode !== 'local') {
       return;
     }
 
@@ -1378,16 +1408,23 @@ class GameFlowManager {
     const player1Stats = this.gameDataService.getEffectiveShipStats(gameState.player1, gameState.placedSections);
     const player1HandLimit = player1Stats.totals.handLimit;
 
-    if (player1HandCount > player1HandLimit) {
-      return true;
-    }
-
     // Check player2
     const player2HandCount = gameState.player2.hand ? gameState.player2.hand.length : 0;
     const player2Stats = this.gameDataService.getEffectiveShipStats(gameState.player2, gameState.opponentPlacedSections);
     const player2HandLimit = player2Stats.totals.handLimit;
 
-    if (player2HandCount > player2HandLimit) {
+    const player1Exceeds = player1HandCount > player1HandLimit;
+    const player2Exceeds = player2HandCount > player2HandLimit;
+    const anyExceeds = player1Exceeds || player2Exceeds;
+
+    debugLog('PHASE_TRANSITIONS', `🃏 Hand limit check:`, {
+      gameMode: gameState.gameMode,
+      player1: { handCount: player1HandCount, handLimit: player1HandLimit, exceeds: player1Exceeds },
+      player2: { handCount: player2HandCount, handLimit: player2HandLimit, exceeds: player2Exceeds },
+      anyPlayerExceeds: anyExceeds
+    });
+
+    if (player1Exceeds || player2Exceeds) {
       return true;
     }
 
@@ -1693,7 +1730,8 @@ class GameFlowManager {
    */
   async autoCompleteUnnecessaryCommitments(phase) {
     // Only handle mandatory simultaneous phases
-    const mandatoryPhases = ['mandatoryDiscard', 'mandatoryDroneRemoval', 'allocateShields'];
+    // NOTE: mandatoryDiscard and mandatoryDroneRemoval excluded - use UI Continue button instead
+    const mandatoryPhases = ['allocateShields'];
     if (!mandatoryPhases.includes(phase)) {
       return;
     }
@@ -1706,23 +1744,7 @@ class GameFlowManager {
     let player1NeedsToAct = false;
     let player2NeedsToAct = false;
 
-    if (phase === 'mandatoryDiscard') {
-      const player1HandCount = gameState.player1.hand?.length || 0;
-      const player1Stats = this.gameDataService.getEffectiveShipStats(gameState.player1, gameState.placedSections);
-      player1NeedsToAct = player1HandCount > player1Stats.totals.handLimit;
-
-      const player2HandCount = gameState.player2.hand?.length || 0;
-      const player2Stats = this.gameDataService.getEffectiveShipStats(gameState.player2, gameState.opponentPlacedSections);
-      player2NeedsToAct = player2HandCount > player2Stats.totals.handLimit;
-    } else if (phase === 'mandatoryDroneRemoval') {
-      const player1DronesCount = Object.values(gameState.player1.dronesOnBoard || {}).flat().length;
-      const player1Stats = this.gameDataService.getEffectiveShipStats(gameState.player1, gameState.placedSections);
-      player1NeedsToAct = player1DronesCount > player1Stats.totals.cpuLimit;
-
-      const player2DronesCount = Object.values(gameState.player2.dronesOnBoard || {}).flat().length;
-      const player2Stats = this.gameDataService.getEffectiveShipStats(gameState.player2, gameState.opponentPlacedSections);
-      player2NeedsToAct = player2DronesCount > player2Stats.totals.cpuLimit;
-    } else if (phase === 'allocateShields') {
+    if (phase === 'allocateShields') {
       player1NeedsToAct = (gameState.shieldsToAllocate || 0) > 0;
       player2NeedsToAct = (gameState.opponentShieldsToAllocate || 0) > 0;
     }
@@ -1785,7 +1807,7 @@ class GameFlowManager {
       this.gameStateManager._updateContext = 'GameFlowManager';
       this.gameStateManager.setState({
         roundNumber: this.roundNumber,
-        turn: this.roundNumber,
+        turn: 1,  // Reset turn counter to 1 at start of each round (increments on action phase passes)
         firstPasserOfPreviousRound: firstPasserFromPreviousRound
       }, 'ROUND_START', 'gameFlowManagerMetadata');
     } finally {
