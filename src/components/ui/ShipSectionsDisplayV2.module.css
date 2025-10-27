@@ -34,7 +34,7 @@
 /* Section Overlays Container */
 .sectionOverlays {
   @apply relative z-10;
-  @apply flex items-center justify-center gap-8;
+  @apply flex items-center justify-between gap-8;
   @apply w-full px-4;
 }
 

@@ -7,7 +7,7 @@
 /* Section Box Container */
 .sectionBox {
   @apply relative rounded-lg border-2 transition-all duration-300;
-  @apply bg-black/70 backdrop-blur-sm;
+  @apply bg-black/25 backdrop-blur-sm;
   @apply flex flex-col items-center justify-between;
   @apply p-3 gap-2;
 
