@@ -5,7 +5,7 @@
 // Extracted from App.jsx for better component organization
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain, Plus } from 'lucide-react';
+import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain, Plus, Layout } from 'lucide-react';
 import { getPhaseDisplayName } from '../../utils/gameUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import DEV_CONFIG from '../../config/devConfig.js';
@@ -90,7 +90,9 @@ function GameHeader({
   onShowAddCardModal,
   testMode,
   handleCancelMultiMove,
-  handleConfirmMultiMoveDrones
+  handleConfirmMultiMoveDrones,
+  useNewBattlefield,
+  onToggleBattlefield
 }) {
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const dropdownRef = useRef(null);
@@ -731,6 +733,16 @@ function GameHeader({
                     Debug View
                   </button>
                 )}
+                <button
+                  onClick={() => {
+                    onToggleBattlefield && onToggleBattlefield();
+                    setShowSettingsDropdown(false);
+                  }}
+                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center gap-2 border-b border-gray-700"
+                >
+                  <Layout size={16} />
+                  {useNewBattlefield ? '✓ New Battlefield' : 'Classic Battlefield'}
+                </button>
                 {DEV_CONFIG.features.addCardToHand && (
                   <button
                     onClick={() => {

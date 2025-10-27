@@ -285,6 +285,9 @@ class AIPhaseProcessor {
 
     debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.processDeckSelection starting (selecting 40 cards + drones)...');
 
+    // Get current game state for accessing gameSeed
+    const gameState = this.gameStateManager.getState();
+
     // Select cards for deck
     let selectedDeck = [];
     if (personality && personality.decklist && personality.decklist.length > 0) {

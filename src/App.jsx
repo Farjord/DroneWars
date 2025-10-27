@@ -16,6 +16,7 @@ import SpaceBackground from './components/ui/SpaceBackground.jsx';
 import GamePhaseModal from './components/ui/GamePhaseModal.jsx';
 import GameHeader from './components/ui/GameHeader.jsx';
 import GameBattlefield from './components/ui/GameBattlefield.jsx';
+import GameBattlefieldV2 from './components/ui/GameBattlefieldV2.jsx';
 import GameFooter from './components/ui/GameFooter.jsx';
 import ModalContainer from './components/ui/ModalContainer.jsx';
 import TargetingArrow from './components/ui/TargetingArrow.jsx';
@@ -196,6 +197,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [recentlyHitDrones, setRecentlyHitDrones] = useState([]);
   const [arrowState, setArrowState] = useState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
   const [deck, setDeck] = useState({});
+  const [useNewBattlefield, setUseNewBattlefield] = useState(false); // Toggle between original and V2 battlefield
 
   // Ability and card interaction state
   const [abilityMode, setAbilityMode] = useState(null); // { drone, ability }
@@ -3481,44 +3483,86 @@ const App = ({ phaseAnimationQueue }) => {
         testMode={testMode}
         handleCancelMultiMove={handleCancelMultiMove}
         handleConfirmMultiMoveDrones={handleConfirmMultiMoveDrones}
+        useNewBattlefield={useNewBattlefield}
+        onToggleBattlefield={() => setUseNewBattlefield(!useNewBattlefield)}
       />
 
-      <GameBattlefield
-        localPlayerState={localPlayerState}
-        opponentPlayerState={opponentPlayerState}
-        localPlacedSections={localPlacedSections}
-        opponentPlacedSections={opponentPlacedSections}
-        selectedCard={selectedCard}
-        validCardTargets={validCardTargets}
-        abilityMode={abilityMode}
-        validAbilityTargets={validAbilityTargets}
-        multiSelectState={multiSelectState}
-        turnPhase={turnPhase}
-        reallocationPhase={reallocationPhase}
-        shipAbilityMode={shipAbilityMode}
-        hoveredTarget={hoveredTarget}
-        selectedDrone={selectedDrone}
-        recentlyHitDrones={recentlyHitDrones}
-        potentialInterceptors={potentialInterceptors}
-        potentialGuardians={potentialGuardians}
-        droneRefs={droneRefs}
-        sectionRefs={sectionRefs}
-        mandatoryAction={mandatoryAction}
-        gameEngine={gameEngine}
-        getLocalPlayerId={getLocalPlayerId}
-        getOpponentPlayerId={getOpponentPlayerId}
-        isMyTurn={isMyTurn}
-        getPlacedSectionsForEngine={getPlacedSectionsForEngine}
-        passInfo={passInfo}
-        handleTargetClick={handleTargetClick}
-        handleLaneClick={handleLaneClick}
-        handleShipSectionClick={handleShipSectionClick}
-        handleShipAbilityClick={handleShipAbilityClick}
-        handleTokenClick={handleTokenClick}
-        handleAbilityIconClick={handleAbilityIconClick}
-        setHoveredTarget={setHoveredTarget}
-        interceptedBadge={interceptedBadge}
-      />
+      {/* Battlefield Component Toggle - Switch between original and V2 */}
+      {useNewBattlefield ? (
+        <GameBattlefieldV2
+          localPlayerState={localPlayerState}
+          opponentPlayerState={opponentPlayerState}
+          localPlacedSections={localPlacedSections}
+          opponentPlacedSections={opponentPlacedSections}
+          selectedCard={selectedCard}
+          validCardTargets={validCardTargets}
+          abilityMode={abilityMode}
+          validAbilityTargets={validAbilityTargets}
+          multiSelectState={multiSelectState}
+          turnPhase={turnPhase}
+          reallocationPhase={reallocationPhase}
+          shipAbilityMode={shipAbilityMode}
+          hoveredTarget={hoveredTarget}
+          selectedDrone={selectedDrone}
+          recentlyHitDrones={recentlyHitDrones}
+          potentialInterceptors={potentialInterceptors}
+          potentialGuardians={potentialGuardians}
+          droneRefs={droneRefs}
+          sectionRefs={sectionRefs}
+          mandatoryAction={mandatoryAction}
+          gameEngine={gameEngine}
+          getLocalPlayerId={getLocalPlayerId}
+          getOpponentPlayerId={getOpponentPlayerId}
+          isMyTurn={isMyTurn}
+          getPlacedSectionsForEngine={getPlacedSectionsForEngine}
+          passInfo={passInfo}
+          handleTargetClick={handleTargetClick}
+          handleLaneClick={handleLaneClick}
+          handleShipSectionClick={handleShipSectionClick}
+          handleShipAbilityClick={handleShipAbilityClick}
+          handleTokenClick={handleTokenClick}
+          handleAbilityIconClick={handleAbilityIconClick}
+          setHoveredTarget={setHoveredTarget}
+          interceptedBadge={interceptedBadge}
+        />
+      ) : (
+        <GameBattlefield
+          localPlayerState={localPlayerState}
+          opponentPlayerState={opponentPlayerState}
+          localPlacedSections={localPlacedSections}
+          opponentPlacedSections={opponentPlacedSections}
+          selectedCard={selectedCard}
+          validCardTargets={validCardTargets}
+          abilityMode={abilityMode}
+          validAbilityTargets={validAbilityTargets}
+          multiSelectState={multiSelectState}
+          turnPhase={turnPhase}
+          reallocationPhase={reallocationPhase}
+          shipAbilityMode={shipAbilityMode}
+          hoveredTarget={hoveredTarget}
+          selectedDrone={selectedDrone}
+          recentlyHitDrones={recentlyHitDrones}
+          potentialInterceptors={potentialInterceptors}
+          potentialGuardians={potentialGuardians}
+          droneRefs={droneRefs}
+          sectionRefs={sectionRefs}
+          mandatoryAction={mandatoryAction}
+          gameEngine={gameEngine}
+          getLocalPlayerId={getLocalPlayerId}
+          getOpponentPlayerId={getOpponentPlayerId}
+          isMyTurn={isMyTurn}
+          getPlacedSectionsForEngine={getPlacedSectionsForEngine}
+          passInfo={passInfo}
+          handleTargetClick={handleTargetClick}
+          handleLaneClick={handleLaneClick}
+          handleShipSectionClick={handleShipSectionClick}
+          handleShipAbilityClick={handleShipAbilityClick}
+          handleTokenClick={handleTokenClick}
+          handleAbilityIconClick={handleAbilityIconClick}
+          setHoveredTarget={setHoveredTarget}
+          interceptedBadge={interceptedBadge}
+        />
+      )}
 
       <GameFooter
         gameMode={gameState.gameMode}
