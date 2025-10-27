@@ -71,17 +71,18 @@
 
 /* Header Section */
 .header {
-  @apply flex items-center justify-between w-full;
+  @apply flex items-center justify-center w-full relative;
 }
 
 .sectionName {
-  @apply text-white font-bold text-base leading-tight;
+  @apply text-white font-bold text-base leading-tight text-center;
 }
 
 /* Ability Icon */
 .abilityIcon {
   @apply w-8 h-8 rounded-full flex items-center justify-center;
   @apply border-2 border-black/50 transition-all duration-200 flex-shrink-0;
+  @apply absolute top-0 right-0;
 }
 
 .abilityUsable {
