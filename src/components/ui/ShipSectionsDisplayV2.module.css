@@ -1,0 +1,88 @@
+/* ========================================
+ * SHIP SECTIONS DISPLAY V2 - CSS MODULE
+ * ========================================
+ * Container styling for full-width ship with section overlays
+ */
+
+/* Ship Container */
+.shipContainer {
+  @apply relative w-full;
+  @apply flex items-center justify-center;
+
+  /* Responsive height maintaining aspect ratio */
+  min-height: clamp(120px, 10vh, 180px);
+  max-height: clamp(160px, 14vh, 220px);
+}
+
+/* Background Ship Image */
+.shipBackground {
+  @apply absolute inset-0 w-full h-full object-contain;
+  @apply pointer-events-none;
+  z-index: 0;
+}
+
+/* Player ship (normal orientation) */
+.playerShip .shipBackground {
+  /* No transform needed */
+}
+
+/* Opponent ship (flipped vertically) */
+.opponentShip .shipBackground {
+  @apply transform scale-y-[-1];
+}
+
+/* Section Overlays Container */
+.sectionOverlays {
+  @apply relative z-10;
+  @apply flex items-center justify-between gap-4;
+  @apply w-full px-4;
+}
+
+/* Empty Section Placeholder */
+.emptySection {
+  @apply bg-transparent;
+  @apply flex-1;
+
+  /* Match section box sizing for alignment */
+  min-width: clamp(180px, 15vw, 280px);
+  max-width: clamp(220px, 18vw, 320px);
+  min-height: clamp(100px, 8vh, 140px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1536px) {
+  .shipContainer {
+    min-height: clamp(100px, 9vh, 160px);
+    max-height: clamp(140px, 12vh, 200px);
+  }
+
+  .sectionOverlays {
+    @apply gap-3 px-3;
+  }
+}
+
+@media (max-width: 1024px) {
+  .shipContainer {
+    min-height: clamp(90px, 8vh, 140px);
+    max-height: clamp(120px, 11vh, 180px);
+  }
+
+  .sectionOverlays {
+    @apply gap-2 px-2;
+  }
+
+  .emptySection {
+    min-width: clamp(150px, 18vw, 240px);
+  }
+}
+
+@media (max-width: 768px) {
+  .shipContainer {
+    min-height: clamp(80px, 7vh, 120px);
+    max-height: clamp(100px, 10vh, 160px);
+  }
+
+  .sectionOverlays {
+    @apply gap-1 px-1;
+  }
+}

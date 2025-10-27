@@ -6,7 +6,7 @@
 // Original: GameBattlefield.jsx remains as fallback
 
 import React from 'react';
-import ShipSectionsDisplay from './ShipSectionsDisplay.jsx';
+import ShipSectionsDisplayV2 from './ShipSectionsDisplayV2.jsx';
 import DroneLanesDisplay from './DroneLanesDisplay.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 import styles from './GameBattlefieldV2.module.css';
@@ -59,7 +59,7 @@ function GameBattlefieldV2({
       {/* V2 UI: You can experiment with new layouts here */}
       <div className={styles.battlefieldContainer}>
         {/* Opponent Ship Sections */}
-        <ShipSectionsDisplay
+        <ShipSectionsDisplayV2
           player={opponentPlayerState}
           isPlayer={false}
           placedSections={opponentPlacedSections}
@@ -142,7 +142,7 @@ function GameBattlefieldV2({
         />
 
         {/* Player Ship Sections */}
-        <ShipSectionsDisplay
+        <ShipSectionsDisplayV2
           player={localPlayerState}
           isPlayer={true}
           placedSections={localPlacedSections}
