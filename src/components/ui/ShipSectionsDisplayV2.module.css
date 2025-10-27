@@ -12,23 +12,37 @@
   /* Responsive height maintaining aspect ratio */
   min-height: clamp(120px, 10vh, 180px);
   max-height: clamp(160px, 14vh, 220px);
+
+  /* Allow ship image to overflow vertically */
+  overflow: visible;
 }
 
 /* Background Ship Image */
 .shipBackground {
-  @apply absolute inset-0 w-full h-full object-contain;
-  @apply pointer-events-none;
+  @apply absolute pointer-events-none;
+  @apply object-contain;
   z-index: 0;
+
+  /* Horizontal: center image, span from center of left section to center of right section */
+  left: 50%;
+  transform: translateX(-50%);
+  width: 70%; /* Approximate span between section centers */
+
+  /* Height: allow natural aspect ratio, will overflow as needed */
+  height: auto;
+  max-height: none;
 }
 
-/* Player ship (normal orientation) */
+/* Player ship (normal orientation, overflow downward) */
 .playerShip .shipBackground {
-  /* No transform needed */
+  top: 0; /* Align top with container top */
+  transform: translateX(-50%); /* Keep horizontal centering */
 }
 
-/* Opponent ship (flipped vertically) */
+/* Opponent ship (flipped vertically, overflow upward) */
 .opponentShip .shipBackground {
-  @apply transform scale-y-[-1];
+  bottom: 0; /* Align bottom with container bottom */
+  transform: translateX(-50%) scaleY(-1); /* Horizontal center + vertical flip */
 }
 
 /* Section Overlays Container - matches lane structure */
