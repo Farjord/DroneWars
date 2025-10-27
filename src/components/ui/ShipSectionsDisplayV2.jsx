@@ -62,7 +62,7 @@ const ShipSectionsDisplayV2 = ({
   const playerEffectiveStats = getEffectiveShipStats(player, placedSections);
 
   // Determine ship image (future: could be player-specific)
-  const shipImageSrc = '/Ships/PlayerShip.png';
+  const shipImageSrc = '/DroneWars/Ships/PlayerShip.png';
 
   // Determine if opponent (for flipping)
   const isOpponent = !isPlayer;
