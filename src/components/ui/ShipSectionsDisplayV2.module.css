@@ -23,10 +23,10 @@
   @apply object-contain;
   z-index: 0;
 
-  /* Horizontal: center image, span from center of left section to center of right section */
+  /* Horizontal: center image, extends to ~80% through outer sections */
   left: 50%;
   transform: translateX(-50%);
-  width: 70%; /* Approximate span between section centers */
+  width: 85%; /* Extends to 80% through left and right sections */
 
   /* Height: allow natural aspect ratio, will overflow as needed */
   height: auto;
