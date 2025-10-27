@@ -91,7 +91,7 @@ const ShipSectionsDisplayV2 = ({
             return (
               <div
                 key={laneIndex}
-                className={styles.emptySection}
+                className={styles.laneContainer}
               >
                 {/* Empty placeholder */}
               </div>
@@ -148,28 +148,29 @@ const ShipSectionsDisplayV2 = ({
           const sectionRef = sectionRefs?.current?.[`${isPlayer ? 'player' : 'opponent'}-section-${sectionName}`];
 
           return (
-            <ShipSectionV2
-              key={laneIndex}
-              section={sectionName}
-              stats={sectionStats}
-              isPlayer={isPlayer}
-              onClick={handleSectionClick}
-              onAbilityClick={handleAbilityClick}
-              isInteractive={isInteractive}
-              isCardTarget={isCardTarget}
-              isInMiddleLane={isInMiddleLane}
-              reallocationState={reallocationState}
-              gameEngine={gameEngine}
-              turnPhase={turnPhase}
-              isMyTurn={isMyTurn}
-              passInfo={passInfo}
-              getLocalPlayerId={getLocalPlayerId}
-              localPlayerState={localPlayerState}
-              shipAbilityMode={shipAbilityMode}
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-              sectionRef={sectionRef}
-            />
+            <div key={laneIndex} className={styles.laneContainer}>
+              <ShipSectionV2
+                section={sectionName}
+                stats={sectionStats}
+                isPlayer={isPlayer}
+                onClick={handleSectionClick}
+                onAbilityClick={handleAbilityClick}
+                isInteractive={isInteractive}
+                isCardTarget={isCardTarget}
+                isInMiddleLane={isInMiddleLane}
+                reallocationState={reallocationState}
+                gameEngine={gameEngine}
+                turnPhase={turnPhase}
+                isMyTurn={isMyTurn}
+                passInfo={passInfo}
+                getLocalPlayerId={getLocalPlayerId}
+                localPlayerState={localPlayerState}
+                shipAbilityMode={shipAbilityMode}
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+                sectionRef={sectionRef}
+              />
+            </div>
           );
         })}
       </div>

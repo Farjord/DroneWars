@@ -31,22 +31,16 @@
   @apply transform scale-y-[-1];
 }
 
-/* Section Overlays Container */
+/* Section Overlays Container - matches lane structure */
 .sectionOverlays {
   @apply relative z-10;
-  @apply flex items-center justify-between gap-8;
-  @apply w-full px-4;
+  @apply flex w-full justify-between gap-8;
+  @apply px-4;
 }
 
-/* Empty Section Placeholder */
-.emptySection {
-  @apply bg-transparent;
-  @apply flex-1;
-
-  /* Match section box sizing for alignment */
-  min-width: clamp(180px, 15vw, 280px);
-  max-width: clamp(220px, 18vw, 320px);
-  min-height: clamp(100px, 8vh, 140px);
+/* Lane Container - matches drone lane flex-1 structure */
+.laneContainer {
+  @apply flex-1 flex items-center justify-center;
 }
 
 /* Responsive adjustments */
@@ -69,10 +63,6 @@
 
   .sectionOverlays {
     @apply gap-6 px-2;
-  }
-
-  .emptySection {
-    min-width: clamp(150px, 18vw, 240px);
   }
 }
 
