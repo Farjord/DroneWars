@@ -87,7 +87,9 @@ const ActionCard = ({
   // Apply scale transform if provided
   const scaleStyle = scale !== 1.0 ? {
     transform: `scale(${scale})`,
-    transformOrigin: 'center center'
+    transformOrigin: 'center center',
+    backfaceVisibility: 'hidden',
+    WebkitFontSmoothing: 'antialiased'
   } : {};
 
   return (
@@ -116,7 +118,7 @@ const ActionCard = ({
         rounded-lg p-[4px] relative group
         transition-all duration-200
         ${isPlayable || isMandatoryTarget ? 'cursor-pointer' : 'cursor-not-allowed'}
-        ${colors.border}
+        ${(isPlayable || isMandatoryTarget) ? colors.border : 'card-border-grey'}
         ${!isPlayable && !isMandatoryTarget ? 'saturate-50' : ''}
         ${isMandatoryTarget ? 'ring-4 ring-red-500 animate-pulse' : ''}
         ${isDimmed ? 'grayscale' : ''}
@@ -154,7 +156,7 @@ const ActionCard = ({
               <img
                 src={image}
                 alt={name}
-                className="w-full h-full object-cover object-center"
+                className={`w-full h-full object-cover object-center ${!isPlayable && !isMandatoryTarget ? 'grayscale' : ''}`}
                 style={{ objectFit: 'cover' }}
               />
             </div>

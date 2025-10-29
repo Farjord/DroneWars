@@ -99,8 +99,8 @@ const DroneToken = ({
   const nameBgColor = isPlayer ? 'bg-cyan-900' : 'bg-pink-950';
   const nameTextColor = isPlayer ? 'text-cyan-100' : 'text-pink-100';
   const statBgColor = isPlayer ? 'bg-cyan-900' : 'bg-pink-950';
-  const shieldColor = isPlayer ? 'text-cyan-400' : 'text-pink-500';
-  const emptyShieldColor = isPlayer ? 'text-cyan-300 opacity-50' : 'text-pink-400 opacity-60';
+  const shieldColor = drone.isExhausted ? 'text-white' : (isPlayer ? 'text-cyan-400' : 'text-pink-500');
+  const emptyShieldColor = drone.isExhausted ? 'text-gray-500' : (isPlayer ? 'text-cyan-300 opacity-50' : 'text-pink-400 opacity-60');
 
   const isAttackBuffed = effectiveStats.attack > effectiveStats.baseAttack;
   const isAttackDebuffed = effectiveStats.attack < effectiveStats.baseAttack;
@@ -159,8 +159,8 @@ const DroneToken = ({
             <div className="flex w-full justify-center gap-0.5">
               {Array.from({ length: baseDrone.hull }).map((_, i) => {
                 const isFullHull = i < drone.hull;
-                const fullHullColor = drone.isExhausted ? 'bg-green-800' : 'bg-green-500';
-                const damagedHullColor = 'bg-gray-400';
+                const fullHullColor = drone.isExhausted ? 'bg-white' : 'bg-green-500';
+                const damagedHullColor = drone.isExhausted ? 'bg-gray-500' : 'bg-gray-400';
                 return (
                   <div key={i} className={`h-2 w-2 rounded-sm ${isFullHull ? fullHullColor : damagedHullColor} border border-black/50`}></div>
                 );

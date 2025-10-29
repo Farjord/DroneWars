@@ -112,7 +112,7 @@ function GameFooter({
       {/* Content Container */}
       <div className={`${styles.contentContainer} ${
         isFooterOpen ? styles.contentOpen : styles.contentClosed
-      }`}>
+      } ${footerView === 'log' ? styles.contentContainerWithBg : ''}`}>
         <div className={styles.contentWrapper}>
           {/* View Content */}
           {footerView === 'hand' && (

@@ -1162,3 +1162,14 @@
   background-size: 400% 400%;
   animation: cardBorderShimmerSilver 12s linear infinite;
 }
+
+/* Utility class for grey border (unplayable cards) */
+.card-border-grey {
+  background: linear-gradient(
+    90deg,
+    rgba(107, 114, 128, 0.8) 0%,   /* gray-500 */
+    rgba(107, 114, 128, 0.8) 33%,
+    rgba(75, 85, 99, 0.8) 66%,     /* gray-600 */
+    rgba(107, 114, 128, 0.8) 100%
+  );
+}

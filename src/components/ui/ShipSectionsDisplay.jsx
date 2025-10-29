@@ -5,7 +5,7 @@
 // Handles shield allocation, abilities, and targeting states
 
 import React from 'react';
-import ShipSection from './ShipSection.jsx';
+import ShipSectionCompact from './ShipSectionCompact.jsx';
 import { useGameData } from '../../hooks/useGameData.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
@@ -19,6 +19,7 @@ import { debugLog } from '../../utils/debugLogger.js';
  * @param {Function} onSectionClick - Callback for shield allocation interactions
  * @param {Function} onAbilityClick - Callback for ship ability activation
  * @param {Function} onTargetClick - Callback for targeting interactions
+ * @param {Function} onViewFullCard - Callback to open modal with full card details
  * @param {boolean} isInteractive - Whether sections should be interactive
  * @param {Array} validCardTargets - Array of valid targets for current action
  * @param {string} reallocationPhase - Current shield reallocation state
@@ -39,6 +40,7 @@ const ShipSectionsDisplay = ({
   onSectionClick,
   onAbilityClick,
   onTargetClick,
+  onViewFullCard,
   isInteractive,
   validCardTargets,
   reallocationPhase,
@@ -77,8 +79,8 @@ const ShipSectionsDisplay = ({
               key={laneIndex}
               className="bg-black/20 rounded-lg border-2 border-dashed border-gray-700"
               style={{
-                width: 'clamp(600px, 31.25vw, 810px)',
-                height: 'clamp(120px, 6.25vw, 162px)'
+                width: 'clamp(640px, 31.25vw, 850px)',
+                height: 'clamp(152px, 6.25vw, 194px)'
               }}
             ></div>
           );
@@ -111,14 +113,13 @@ const ShipSectionsDisplay = ({
           <div
             key={laneIndex}
             style={{
-              width: 'clamp(600px, 31.25vw, 810px)',
-              height: 'clamp(120px, 6.25vw, 162px)'
+              width: 'clamp(640px, 31.25vw, 850px)',
+              height: 'clamp(152px, 6.25vw, 194px)'
             }}
           >
-            <ShipSection
+            <ShipSectionCompact
               section={sectionName}
               stats={sectionStats}
-              effectiveStatsForDisplay={playerEffectiveStats.bySection[sectionName]}
               isPlayer={isPlayer}
               isOpponent={!isPlayer}
               onClick={() => {
@@ -140,6 +141,17 @@ const ShipSectionsDisplay = ({
                 }
               }}
               onAbilityClick={onAbilityClick}
+              onViewFullCard={() => {
+                if (onViewFullCard) {
+                  onViewFullCard({
+                    sectionName,
+                    sectionStats,
+                    effectiveStats: playerEffectiveStats.bySection[sectionName],
+                    isInMiddleLane: laneIndex === 1,
+                    isPlayer
+                  });
+                }
+              }}
               isInteractive={isInteractive || (turnPhase === 'action' && isPlayer && sectionStats.ability && localPlayerState.energy >= sectionStats.ability.cost.energy)}
               isCardTarget={isCardTarget}
               isInMiddleLane={laneIndex === 1}

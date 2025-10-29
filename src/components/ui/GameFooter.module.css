@@ -4,10 +4,10 @@
    Consistent styling for GameFooter component and its views
    Uses Tailwind @apply directive for utility class composition
 
-   COMPRESSED VERSION: Max height 300px total (including tabs)
+   COMPRESSED VERSION: Max height 225px total (including tabs)
    - Tabs: ~25px
-   - Content: 260px fixed height
-   - Total: ~285px
+   - Content: 215px fixed height
+   - Total: ~210px
 */
 
 /* ===== CONTAINER STYLES ===== */
@@ -16,23 +16,31 @@
   @apply w-full flex flex-col items-center flex-shrink-0;
   container-type: inline-size;
   container-name: gameFooter;
+  position: relative;
+  z-index: 40;
 }
 
 .tabContainer {
-  @apply flex justify-center;
+  @apply flex justify-center gap-2;
 }
 
 .contentContainer {
-  @apply relative w-full bg-slate-800/80 backdrop-blur-sm transition-all duration-500 ease-in-out overflow-hidden;
+  @apply relative w-full transition-all duration-500 ease-in-out;
+  overflow: visible;
+}
+
+.contentContainerWithBg {
+  @apply bg-slate-800/80 backdrop-blur-sm;
 }
 
 .contentOpen {
-  height: 290px;
+  height: 215px;
   @apply opacity-100;
 }
 
 .contentClosed {
   @apply h-0 opacity-0;
+  pointer-events: none;
 }
 
 .contentWrapper {
@@ -46,7 +54,7 @@
 /* ===== TAB BUTTON STYLES ===== */
 
 .tabButton {
-  @apply px-6 py-0.5 rounded-t-lg font-bold transition-colors text-xs;
+  @apply px-6 py-1.5 rounded-full font-bold transition-colors text-xs;
 }
 
 .tabButtonActive {
@@ -74,7 +82,11 @@
 /* ===== HAND VIEW STYLES ===== */
 
 .handContainer {
-  @apply flex flex-row justify-between w-full items-center h-full;
+  @apply w-full h-full;
+  display: grid;
+  grid-template-columns: 144px minmax(0, 1fr) 144px;
+  gap: 16px;
+  align-items: center;
 }
 
 .cardPile {
@@ -136,37 +148,43 @@
 }
 
 .handCardsContainer {
-  @apply relative flex justify-center items-center;
-  height: 280px;
+  @apply relative flex justify-center items-start;
+  height: 205px;
+  padding-top: 5px;
+  overflow: visible;
 }
 
 .handCardsWrapper {
-  @apply flex justify-center items-center;
-}
-
-.handCardsWrapperGap {
-  @apply gap-1.5;
+  @apply flex justify-center items-end;
 }
 
 /* Card wrapper - uses natural clamp() scaling from card components */
 .cardWrapper {
-  @apply transition-all duration-300 ease-in-out;
   margin: 0;
+  position: relative;
 }
 
 /* ===== DRONE VIEW STYLES ===== */
 
 .droneContainer {
-  @apply flex flex-col items-center justify-center w-full h-full;
+  @apply flex flex-col items-center justify-start w-full h-full;
+  padding-top: 5px;
+  overflow: visible;
 }
 
 .droneGrid {
-  @apply flex flex-wrap justify-center gap-3;
+  @apply flex flex-wrap justify-center items-end;
+  overflow: visible;
 }
 
 /* Compact drone card wrapper - uses natural clamp() scaling from card components */
 .compactDroneWrapper {
   margin: -20px -20px -40px -20px;
+}
+
+/* Drone card wrapper for hover effects */
+.droneCardWrapper {
+  position: relative;
 }
 
 /* ===== LOG VIEW STYLES ===== */

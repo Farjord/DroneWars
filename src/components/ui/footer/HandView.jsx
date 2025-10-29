@@ -4,10 +4,11 @@
 // Cards display at natural size - no scaling
 // Simple responsive layout
 
-import React from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import ActionCard from '../ActionCard.jsx';
 import styles from '../GameFooter.module.css';
 import { debugLog } from '../../../utils/debugLogger.js';
+import { calculateCardFanRotation, getHoverTransform, getCardTransition, calculateCardArcOffset, CARD_FAN_CONFIG } from '../../../utils/cardAnimationUtils.js';
 
 function HandView({
   gameMode,
@@ -53,19 +54,38 @@ function HandView({
     isMandatoryDiscard: mandatoryAction?.type === 'discard'
   });
 
-  // Hand layout logic - simplified
-  const cardWidthPx = 225; // Natural card width
-  const gapPx = 12;
-  const maxCardsBeforeFan = 6;
-  const applyFanEffect = localPlayerState.hand.length > maxCardsBeforeFan;
-  const targetHandWidthPx = (maxCardsBeforeFan * cardWidthPx) + ((maxCardsBeforeFan - 1) * gapPx);
-  const numCards = localPlayerState.hand.length;
+  // Dynamic overlap calculation
+  const handSectionRef = useRef(null);
+  const [dynamicOverlap, setDynamicOverlap] = useState(CARD_FAN_CONFIG.cardOverlapPx);
 
-  let marginLeftPx = 0;
-  if (numCards > 1 && applyFanEffect) {
-    const spaceBetweenCards = (targetHandWidthPx - cardWidthPx) / (numCards - 1);
-    marginLeftPx = spaceBetweenCards - cardWidthPx;
-  }
+  useEffect(() => {
+    const calculateOverlap = () => {
+      if (!handSectionRef.current || localPlayerState.hand.length === 0) return;
+
+      const containerWidth = handSectionRef.current.offsetWidth;
+      const cardWidth = 225; // ActionCard base width
+      const handSize = localPlayerState.hand.length;
+
+      // Calculate total width needed with default overlap
+      const totalWidthWithDefaultOverlap = cardWidth + (handSize - 1) * (cardWidth + CARD_FAN_CONFIG.cardOverlapPx);
+
+      if (totalWidthWithDefaultOverlap > containerWidth) {
+        // Need more overlap - calculate how much
+        const availableWidthForOverlaps = containerWidth - cardWidth;
+        const neededOverlap = (availableWidthForOverlaps / (handSize - 1)) - cardWidth;
+        setDynamicOverlap(Math.min(neededOverlap, CARD_FAN_CONFIG.cardOverlapPx)); // Don't expand, only compress
+      } else {
+        // Use default overlap
+        setDynamicOverlap(CARD_FAN_CONFIG.cardOverlapPx);
+      }
+    };
+
+    calculateOverlap();
+    window.addEventListener('resize', calculateOverlap);
+    return () => window.removeEventListener('resize', calculateOverlap);
+  }, [localPlayerState.hand.length]);
+
+  // Hand layout logic - uses centralized card animation utilities
 
   return (
     <div className={styles.handContainer}>
@@ -78,17 +98,10 @@ function HandView({
       </div>
 
       {/* Hand Section */}
-      <div className={styles.handSection}>
-        <div
-          className={styles.handCardsContainer}
-          style={applyFanEffect ? { width: `${targetHandWidthPx}px` } : {}}
-        >
-          <div className={`${styles.handCardsWrapper} ${!applyFanEffect ? styles.handCardsWrapperGap : ''}`}>
+      <div ref={handSectionRef} className={styles.handSection}>
+        <div className={styles.handCardsContainer}>
+          <div className={styles.handCardsWrapper}>
             {localPlayerState.hand.map((card, index) => {
-              const hoveredIndex = hoveredCardId
-                ? localPlayerState.hand.findIndex(c => c.instanceId === hoveredCardId)
-                : -1;
-
               // Check card playability conditions
               const hasEnoughEnergy = localPlayerState.energy >= card.cost;
               // Ensure player states are always passed in correct order (player1, player2)
@@ -105,30 +118,26 @@ function HandView({
                 optionalDiscardCount < localPlayerEffectiveStats.totals.discardLimit;
               const cardIsPlayable = isActionPhasePlayable || isOptionalDiscardPlayable;
 
-              let transformClass = '';
-              let style = { zIndex: index };
+              const isHovered = hoveredCardId === card.instanceId;
 
-              // Apply hover effects for fan layout
-              if (applyFanEffect && hoveredIndex !== -1) {
-                if (index < hoveredIndex) {
-                  transformClass = 'transform -translate-x-12';
-                } else if (index > hoveredIndex) {
-                  transformClass = 'transform translate-x-12';
-                } else {
-                  transformClass = '';
-                  style.zIndex = 50;
-                }
-              }
+              // Calculate fan rotation and spacing using centralized utilities
+              const rotationDeg = calculateCardFanRotation(index, localPlayerState.hand.length);
+              const marginLeft = index === 0 ? 0 : dynamicOverlap; // Use dynamic overlap
+              const arcOffset = calculateCardArcOffset(rotationDeg, localPlayerState.hand.length);
 
-              // Apply fan spacing
-              if (applyFanEffect && index > 0) {
-                style.marginLeft = `${marginLeftPx}px`;
-              }
+              // Build style object
+              const style = {
+                zIndex: isHovered ? CARD_FAN_CONFIG.zIndex.hovered : CARD_FAN_CONFIG.zIndex.normal(index),
+                transform: isHovered ? getHoverTransform() : `translateY(${arcOffset}px) rotate(${rotationDeg}deg)`,
+                marginLeft: `${marginLeft}px`,
+                transformOrigin: CARD_FAN_CONFIG.transformOrigin,
+                transition: getCardTransition()
+              };
 
               return (
                 <div
                   key={card.instanceId || `${card.id}-${index}`}
-                  className={`${styles.cardWrapper} ${transformClass}`}
+                  className={styles.cardWrapper}
                   style={style}
                   onMouseEnter={() => setHoveredCardId(card.instanceId)}
                   onMouseLeave={() => setHoveredCardId(null)}
