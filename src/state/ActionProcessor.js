@@ -398,7 +398,7 @@ setAnimationManager(animationManager) {
     } finally {
       // Emit action completed event for GameFlowManager
       // Only emit for player actions that might need turn transitions or broadcasting
-      const playerActionTypes = ['attack', 'ability', 'move', 'deployment', 'cardPlay', 'shipAbility', 'shipAbilityCompletion', 'movementCompletion', 'searchAndDrawCompletion', 'aiTurn', 'playerPass', 'turnTransition'];
+      const playerActionTypes = ['attack', 'ability', 'move', 'deployment', 'cardPlay', 'shipAbility', 'shipAbilityCompletion', 'movementCompletion', 'searchAndDrawCompletion', 'aiAction', 'aiTurn', 'playerPass', 'turnTransition'];
 
       // DEBUG: Log finally block execution to diagnose why emission might not happen
       debugLog('PASS_LOGIC', `🔧 [ACTION PROCESSOR] Finally block executing`, {

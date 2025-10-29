@@ -1,2 +1,8 @@
- 
-nul 
+node_modules/
+dist/
+null
+
+# Environment variables (contains Firebase config)
+.env
+.env.local
+.env.*.local

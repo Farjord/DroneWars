@@ -1,0 +1,35 @@
+/* ========================================
+   FLOATING CARD CONTROLS CSS MODULE
+   ======================================== */
+
+/* Controls positioned below card fan at bottom-center */
+.controlsContainer {
+  position: fixed;
+  bottom: 15px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 400;
+  pointer-events: none;
+}
+
+.buttonGroup {
+  @apply flex gap-2;
+  pointer-events: auto;
+}
+
+.button {
+  @apply px-6 py-2 rounded-lg font-bold transition-colors text-sm;
+}
+
+.buttonActive {
+  @apply bg-slate-700 text-white;
+}
+
+.buttonInactive {
+  @apply bg-slate-900 hover:bg-slate-800 text-cyan-300;
+}
+
+.logButton {
+  @apply px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm
+         rounded-lg transition-colors;
+}

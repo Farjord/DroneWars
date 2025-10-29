@@ -44,6 +44,7 @@ import { debugLog } from '../../utils/debugLogger.js';
  * @param {Function} props.handleTokenClick - Handle token click
  * @param {Function} props.handleAbilityIconClick - Handle ability icon click
  * @param {Function} props.setHoveredTarget - Set hovered target
+ * @param {Function} props.onViewShipSection - Handle view ship section full card
  * @param {Object} props.interceptedBadge - Interception badge data ({ droneId, timestamp })
  */
 function GameBattlefield({
@@ -80,6 +81,7 @@ function GameBattlefield({
   handleTokenClick,
   handleAbilityIconClick,
   setHoveredTarget,
+  onViewShipSection,
   interceptedBadge
 }) {
   // Calculate isInteractive for player ship sections
@@ -95,6 +97,7 @@ function GameBattlefield({
           isPlayer={false}
           placedSections={opponentPlacedSections}
           onTargetClick={handleTargetClick}
+          onViewFullCard={onViewShipSection}
           isInteractive={false}
           selectedCard={selectedCard}
           validCardTargets={validCardTargets}
@@ -180,6 +183,7 @@ function GameBattlefield({
           onSectionClick={handleShipSectionClick}
           onAbilityClick={handleShipAbilityClick}
           onTargetClick={handleTargetClick}
+          onViewFullCard={onViewShipSection}
           isInteractive={playerShipInteractive}
           selectedCard={selectedCard}
           validCardTargets={validCardTargets}

@@ -160,7 +160,7 @@ const DroneLanesDisplay = ({
   return (
     <div
       className="flex w-full justify-between gap-8"
-      style={{ minHeight: 'clamp(140px, 7.292vw, 190px)' }}
+      style={{ minHeight: 'max(15.5vh, clamp(140px, 7.292vw, 190px))' }}
     >
       {['lane1', 'lane2', 'lane3'].map((lane) => {
         const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();

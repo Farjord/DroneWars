@@ -92,7 +92,6 @@ const DroneCard = ({
         transition-all duration-200
         ${isInteractive ? 'cursor-pointer' : isViewOnly ? 'cursor-default' : 'cursor-not-allowed'}
         ${isSelected ? 'bg-cyan-400' : 'bg-cyan-800/80'}
-        ${!isInteractive && !isViewOnly ? 'opacity-60' : ''}
         ${isUpgradeTarget ? 'ring-4 ring-purple-500 animate-pulse' : ''}
       `}
       style={{

@@ -1030,6 +1030,30 @@ class AIPhaseProcessor {
       return;
     }
 
+    // Check if animations are blocking AI actions
+    const phaseAnimationQueue = this.gameStateManager?.gameFlowManager?.phaseAnimationQueue;
+    const animationManager = this.actionProcessor?.animationManager;
+
+    // Block AI if phase announcements are playing
+    if (phaseAnimationQueue && phaseAnimationQueue.isPlaying()) {
+      debugLog('AI_DECISIONS', '⏸️ AIPhaseProcessor: Phase animation playing, rescheduling AI turn');
+      // Reschedule after animations complete
+      this.turnTimer = setTimeout(() => {
+        this.executeTurn();
+      }, 500); // Check again in 0.5s
+      return;
+    }
+
+    // Block AI if action animations are blocking
+    if (animationManager && animationManager.isBlocking) {
+      debugLog('AI_DECISIONS', '⏸️ AIPhaseProcessor: Action animation blocking, rescheduling AI turn');
+      // Reschedule after animations complete
+      this.turnTimer = setTimeout(() => {
+        this.executeTurn();
+      }, 500); // Check again in 0.5s
+      return;
+    }
+
     this.isProcessing = true;
 
     try {

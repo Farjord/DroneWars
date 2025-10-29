@@ -16,8 +16,11 @@ import SpaceBackground from './components/ui/SpaceBackground.jsx';
 import GamePhaseModal from './components/ui/GamePhaseModal.jsx';
 import GameHeader from './components/ui/GameHeader.jsx';
 import GameBattlefield from './components/ui/GameBattlefield.jsx';
-import GameBattlefieldV2 from './components/ui/GameBattlefieldV2.jsx';
 import GameFooter from './components/ui/GameFooter.jsx';
+import HandView from './components/ui/footer/HandView.jsx';
+import DronesView from './components/ui/footer/DronesView.jsx';
+import FloatingCardControls from './components/ui/FloatingCardControls.jsx';
+import LogModal from './components/modals/LogModal.jsx';
 import ModalContainer from './components/ui/ModalContainer.jsx';
 import TargetingArrow from './components/ui/TargetingArrow.jsx';
 import ExplosionEffect from './components/ui/ExplosionEffect.jsx';
@@ -35,6 +38,7 @@ import ConfirmationModal from './components/modals/ConfirmationModal.jsx';
 import MandatoryActionModal from './components/modals/MandatoryActionModal.jsx';
 import WinnerModal from './components/modals/WinnerModal.jsx';
 import AIDecisionLogModal from './components/modals/AIDecisionLogModal.jsx';
+import ViewShipSectionModal from './components/modals/ViewShipSectionModal.jsx';
 import DeploymentConfirmationModal from './components/modals/DeploymentConfirmationModal.jsx';
 import MoveConfirmationModal from './components/modals/MoveConfirmationModal.jsx';
 import InterceptionOpportunityModal from './components/modals/InterceptionOpportunityModal.jsx';
@@ -145,6 +149,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [showGlossaryModal, setShowGlossaryModal] = useState(false);
   const [showAIStrategyModal, setShowAIStrategyModal] = useState(false);
   const [showAddCardModal, setShowAddCardModal] = useState(false);
+  const [viewShipSectionModal, setViewShipSectionModal] = useState(null);
   const [flyingDrones, setFlyingDrones] = useState([]);
   const [flashEffects, setFlashEffects] = useState([]);
   const [healEffects, setHealEffects] = useState([]);
@@ -192,12 +197,12 @@ const App = ({ phaseAnimationQueue }) => {
   const [aiDecisionLogToShow, setAiDecisionLogToShow] = useState(null);
 
   // UI and visual effects state
-  const [footerView, setFooterView] = useState('drones');
-  const [isFooterOpen, setIsFooterOpen] = useState(true);
+  const [footerView, setFooterView] = useState('hand');
+  const [isFooterOpen, setIsFooterOpen] = useState(true); // For classic footer only
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [recentlyHitDrones, setRecentlyHitDrones] = useState([]);
   const [arrowState, setArrowState] = useState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
   const [deck, setDeck] = useState({});
-  const [useNewBattlefield, setUseNewBattlefield] = useState(false); // Toggle between original and V2 battlefield
 
   // Ability and card interaction state
   const [abilityMode, setAbilityMode] = useState(null); // { drone, ability }
@@ -648,6 +653,10 @@ const App = ({ phaseAnimationQueue }) => {
   }, [isMultiplayer, p2pManager]);
 
   // --- 6.2 UI EVENT HANDLERS ---
+
+  const handleViewShipSection = useCallback((sectionData) => {
+    setViewShipSectionModal(sectionData);
+  }, []);
 
   const handleCloseAiCardReport = useCallback(async () => {
       // The turn ends only if the card doesn't grant another action.
@@ -1147,20 +1156,30 @@ const App = ({ phaseAnimationQueue }) => {
 
 
   /**
-   * HANDLE FOOTER BUTTON CLICK
+   * HANDLE FOOTER VIEW TOGGLE
+   * Switches between hand and drones views in experimental footer.
+   * Footer is always visible, only view changes.
+   * @param {string} view - The footer view to display ('hand' or 'drones')
+   */
+  const handleFooterViewToggle = (view) => {
+    setFooterView(view);
+  };
+
+  /**
+   * HANDLE FOOTER BUTTON CLICK (Classic Footer Only)
    * Toggles footer panel visibility and switches between footer views.
-   * Controls hand, drones, and other bottom panel displays.
-   * @param {string} view - The footer view to display ('hand', 'drones', etc.)
+   * Used by the original non-experimental footer.
+   * @param {string} view - The footer view to display ('hand', 'drones', 'log')
    */
   const handleFooterButtonClick = (view) => {
     if (!isFooterOpen) {
-     setIsFooterOpen(true);
-     setFooterView(view);
+      setIsFooterOpen(true);
+      setFooterView(view);
     } else {
       if (footerView === view) {
-       setIsFooterOpen(false);
+        setIsFooterOpen(false);
       } else {
-       setFooterView(view);
+        setFooterView(view);
       }
     }
   };
@@ -3483,86 +3502,45 @@ const App = ({ phaseAnimationQueue }) => {
         testMode={testMode}
         handleCancelMultiMove={handleCancelMultiMove}
         handleConfirmMultiMoveDrones={handleConfirmMultiMoveDrones}
-        useNewBattlefield={useNewBattlefield}
-        onToggleBattlefield={() => setUseNewBattlefield(!useNewBattlefield)}
       />
 
-      {/* Battlefield Component Toggle - Switch between original and V2 */}
-      {useNewBattlefield ? (
-        <GameBattlefieldV2
-          localPlayerState={localPlayerState}
-          opponentPlayerState={opponentPlayerState}
-          localPlacedSections={localPlacedSections}
-          opponentPlacedSections={opponentPlacedSections}
-          selectedCard={selectedCard}
-          validCardTargets={validCardTargets}
-          abilityMode={abilityMode}
-          validAbilityTargets={validAbilityTargets}
-          multiSelectState={multiSelectState}
-          turnPhase={turnPhase}
-          reallocationPhase={reallocationPhase}
-          shipAbilityMode={shipAbilityMode}
-          hoveredTarget={hoveredTarget}
-          selectedDrone={selectedDrone}
-          recentlyHitDrones={recentlyHitDrones}
-          potentialInterceptors={potentialInterceptors}
-          potentialGuardians={potentialGuardians}
-          droneRefs={droneRefs}
-          sectionRefs={sectionRefs}
-          mandatoryAction={mandatoryAction}
-          gameEngine={gameEngine}
-          getLocalPlayerId={getLocalPlayerId}
-          getOpponentPlayerId={getOpponentPlayerId}
-          isMyTurn={isMyTurn}
-          getPlacedSectionsForEngine={getPlacedSectionsForEngine}
-          passInfo={passInfo}
-          handleTargetClick={handleTargetClick}
-          handleLaneClick={handleLaneClick}
-          handleShipSectionClick={handleShipSectionClick}
-          handleShipAbilityClick={handleShipAbilityClick}
-          handleTokenClick={handleTokenClick}
-          handleAbilityIconClick={handleAbilityIconClick}
-          setHoveredTarget={setHoveredTarget}
-          interceptedBadge={interceptedBadge}
-        />
-      ) : (
-        <GameBattlefield
-          localPlayerState={localPlayerState}
-          opponentPlayerState={opponentPlayerState}
-          localPlacedSections={localPlacedSections}
-          opponentPlacedSections={opponentPlacedSections}
-          selectedCard={selectedCard}
-          validCardTargets={validCardTargets}
-          abilityMode={abilityMode}
-          validAbilityTargets={validAbilityTargets}
-          multiSelectState={multiSelectState}
-          turnPhase={turnPhase}
-          reallocationPhase={reallocationPhase}
-          shipAbilityMode={shipAbilityMode}
-          hoveredTarget={hoveredTarget}
-          selectedDrone={selectedDrone}
-          recentlyHitDrones={recentlyHitDrones}
-          potentialInterceptors={potentialInterceptors}
-          potentialGuardians={potentialGuardians}
-          droneRefs={droneRefs}
-          sectionRefs={sectionRefs}
-          mandatoryAction={mandatoryAction}
-          gameEngine={gameEngine}
-          getLocalPlayerId={getLocalPlayerId}
-          getOpponentPlayerId={getOpponentPlayerId}
-          isMyTurn={isMyTurn}
-          getPlacedSectionsForEngine={getPlacedSectionsForEngine}
-          passInfo={passInfo}
-          handleTargetClick={handleTargetClick}
-          handleLaneClick={handleLaneClick}
-          handleShipSectionClick={handleShipSectionClick}
-          handleShipAbilityClick={handleShipAbilityClick}
-          handleTokenClick={handleTokenClick}
-          handleAbilityIconClick={handleAbilityIconClick}
-          setHoveredTarget={setHoveredTarget}
-          interceptedBadge={interceptedBadge}
-        />
-      )}
+      <GameBattlefield
+        localPlayerState={localPlayerState}
+        opponentPlayerState={opponentPlayerState}
+        localPlacedSections={localPlacedSections}
+        opponentPlacedSections={opponentPlacedSections}
+        selectedCard={selectedCard}
+        validCardTargets={validCardTargets}
+        abilityMode={abilityMode}
+        validAbilityTargets={validAbilityTargets}
+        multiSelectState={multiSelectState}
+        turnPhase={turnPhase}
+        reallocationPhase={reallocationPhase}
+        shipAbilityMode={shipAbilityMode}
+        hoveredTarget={hoveredTarget}
+        selectedDrone={selectedDrone}
+        recentlyHitDrones={recentlyHitDrones}
+        potentialInterceptors={potentialInterceptors}
+        potentialGuardians={potentialGuardians}
+        droneRefs={droneRefs}
+        sectionRefs={sectionRefs}
+        mandatoryAction={mandatoryAction}
+        gameEngine={gameEngine}
+        getLocalPlayerId={getLocalPlayerId}
+        getOpponentPlayerId={getOpponentPlayerId}
+        isMyTurn={isMyTurn}
+        getPlacedSectionsForEngine={getPlacedSectionsForEngine}
+        passInfo={passInfo}
+        handleTargetClick={handleTargetClick}
+        handleLaneClick={handleLaneClick}
+        handleShipSectionClick={handleShipSectionClick}
+        handleShipAbilityClick={handleShipAbilityClick}
+        handleTokenClick={handleTokenClick}
+        handleAbilityIconClick={handleAbilityIconClick}
+        setHoveredTarget={setHoveredTarget}
+        onViewShipSection={handleViewShipSection}
+        interceptedBadge={interceptedBadge}
+      />
 
       <GameFooter
         gameMode={gameState.gameMode}
@@ -3577,7 +3555,7 @@ const App = ({ phaseAnimationQueue }) => {
         turnPhase={turnPhase}
         mandatoryAction={
           mandatoryAction?.fromAbility
-            ? mandatoryAction  // Use ability-based mandatoryAction
+            ? mandatoryAction
             : isInMandatoryDiscardPhase && !hasCommittedDiscard
               ? { type: 'discard', count: excessCards }
               : isInMandatoryRemovalPhase && !hasCommittedRemoval
@@ -3612,6 +3590,13 @@ const App = ({ phaseAnimationQueue }) => {
       />
 
       {/* Modals are unaffected and remain at the end */}
+      <LogModal
+        isOpen={isLogModalOpen}
+        onClose={() => setIsLogModalOpen(false)}
+        gameLog={gameLog}
+        downloadLogAsCSV={downloadLogAsCSV}
+        setAiDecisionLogToShow={setAiDecisionLogToShow}
+      />
       {modalContent && <GamePhaseModal title={modalContent.title} text={modalContent.text} onClose={modalContent.onClose === null ? null : (modalContent.onClose || (() => setModalContent(null)))}>{modalContent.children}</GamePhaseModal>}
       <DeploymentCompleteModal
         show={showDeploymentCompleteModal}
@@ -3735,6 +3720,12 @@ const App = ({ phaseAnimationQueue }) => {
         localPlayerId={getLocalPlayerId()}
         show={winner && showWinnerModal}
         onClose={() => setShowWinnerModal(false)}
+      />
+
+      <ViewShipSectionModal
+        isOpen={!!viewShipSectionModal}
+        onClose={() => setViewShipSectionModal(null)}
+        data={viewShipSectionModal}
       />
 
       <MandatoryActionModal
