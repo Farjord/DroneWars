@@ -12,7 +12,8 @@ function LogModal({
   onClose,
   gameLog,
   downloadLogAsCSV,
-  setAiDecisionLogToShow
+  setAiDecisionLogToShow,
+  onCardInfoClick
 }) {
   if (!isOpen) return null;
 
@@ -73,7 +74,18 @@ function LogModal({
                   </td>
                   <td className="p-2 text-cyan-300">{entry.player}</td>
                   <td className="p-2 text-yellow-300">{entry.actionType}</td>
-                  <td className="p-2">{entry.source}</td>
+                  <td className="p-2">
+                    {entry.source}
+                    {entry.actionType === 'PLAY_CARD' && onCardInfoClick && (
+                      <button
+                        onClick={() => onCardInfoClick(entry.source)}
+                        className="ml-2 text-gray-400 hover:text-white"
+                        title="View Card Details"
+                      >
+                        ℹ️
+                      </button>
+                    )}
+                  </td>
                   <td className="p-2">{entry.target}</td>
                   <td className="p-2 text-gray-400">{entry.outcome}</td>
                   {DEV_CONFIG.features.logDebugSource && (

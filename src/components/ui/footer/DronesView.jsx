@@ -20,6 +20,7 @@ function DronesView({
   getLocalPlayerId,
   isMyTurn,
   turn,
+  roundNumber,
   passInfo,
   validCardTargets
 }) {
@@ -60,9 +61,9 @@ function DronesView({
     <div className={styles.droneContainer}>
       <div ref={droneGridRef} className={styles.droneGrid}>
         {sortedLocalActivePool.map((drone, index) => {
-          const totalResource = turn === 1
+          const totalResource = roundNumber === 1
             ? localPlayerState.initialDeploymentBudget + localPlayerState.energy
-            : localPlayerState.energy;
+            : localPlayerState.deploymentBudget + localPlayerState.energy;
           const canAfford = totalResource >= drone.class;
           const isUpgradeTarget = selectedCard?.type === 'Upgrade'
             && validCardTargets.some(t => t.id === drone.name);

@@ -916,9 +916,11 @@ setAnimationManager(animationManager) {
       }
 
       // Prepare states for TELEPORT_IN animation timing
+      // Handle ON_DEPLOY effects that may have modified opponent state
+      const opponentId = playerId === 'player1' ? 'player2' : 'player1';
       const newPlayerStates = {
-        player1: playerId === 'player1' ? result.newPlayerState : currentState.player1,
-        player2: playerId === 'player2' ? result.newPlayerState : currentState.player2
+        player1: playerId === 'player1' ? result.newPlayerState : (result.opponentState || currentState.player1),
+        player2: playerId === 'player2' ? result.newPlayerState : (result.opponentState || currentState.player2)
       };
 
       const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
@@ -3197,8 +3199,61 @@ setAnimationManager(animationManager) {
 
     debugLog('ENERGY', '⚡ ActionProcessor: Processing energy reset');
 
+    // DEBUG: Log what was received from GameFlowManager
+    debugLog('RESOURCE_RESET', `📥 [ACTIONPROCESSOR] Received energyReset payload`, {
+      player1: {
+        name: player1?.name,
+        energy: player1?.energy,
+        initialDeploymentBudget: player1?.initialDeploymentBudget,
+        deploymentBudget: player1?.deploymentBudget,
+        hasAllFields: {
+          energy: 'energy' in player1,
+          initialDeploymentBudget: 'initialDeploymentBudget' in player1,
+          deploymentBudget: 'deploymentBudget' in player1
+        }
+      },
+      player2: {
+        name: player2?.name,
+        energy: player2?.energy,
+        initialDeploymentBudget: player2?.initialDeploymentBudget,
+        deploymentBudget: player2?.deploymentBudget,
+        hasAllFields: {
+          energy: 'energy' in player2,
+          initialDeploymentBudget: 'initialDeploymentBudget' in player2,
+          deploymentBudget: 'deploymentBudget' in player2
+        }
+      }
+    });
+
     // Update player states using setPlayerStates
     this.gameStateManager.setPlayerStates(player1, player2);
+
+    // DEBUG: Log what's actually in the game state after setPlayerStates
+    const currentState = this.gameStateManager.getState();
+    debugLog('RESOURCE_RESET', `✅ [ACTIONPROCESSOR] Game state after setPlayerStates`, {
+      player1: {
+        name: currentState.player1?.name,
+        energy: currentState.player1?.energy,
+        initialDeploymentBudget: currentState.player1?.initialDeploymentBudget,
+        deploymentBudget: currentState.player1?.deploymentBudget,
+        hasAllFields: {
+          energy: 'energy' in currentState.player1,
+          initialDeploymentBudget: 'initialDeploymentBudget' in currentState.player1,
+          deploymentBudget: 'deploymentBudget' in currentState.player1
+        }
+      },
+      player2: {
+        name: currentState.player2?.name,
+        energy: currentState.player2?.energy,
+        initialDeploymentBudget: currentState.player2?.initialDeploymentBudget,
+        deploymentBudget: currentState.player2?.deploymentBudget,
+        hasAllFields: {
+          energy: 'energy' in currentState.player2,
+          initialDeploymentBudget: 'initialDeploymentBudget' in currentState.player2,
+          deploymentBudget: 'deploymentBudget' in currentState.player2
+        }
+      }
+    });
 
     // Update shields to allocate if provided (round 2+ only)
     if (shieldsToAllocate !== undefined) {

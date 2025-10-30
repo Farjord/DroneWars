@@ -49,11 +49,13 @@ function GameFooter({
   handleRoundStartDiscard,
   setConfirmationModal,
   turn,
+  roundNumber,
   passInfo,
   validCardTargets,
   gameEngine,
   opponentPlayerState,
-  setAiDecisionLogToShow
+  setAiDecisionLogToShow,
+  onCardInfoClick
 }) {
   // Debug logging for mandatoryAction prop
   debugLog('HAND_VIEW', '📦 GameFooter received mandatoryAction:', {
@@ -159,6 +161,7 @@ function GameFooter({
                 getLocalPlayerId={getLocalPlayerId}
                 isMyTurn={isMyTurn}
                 turn={turn}
+                roundNumber={roundNumber}
                 passInfo={passInfo}
                 validCardTargets={validCardTargets}
               />
@@ -171,6 +174,7 @@ function GameFooter({
                 gameLog={gameLog}
                 downloadLogAsCSV={downloadLogAsCSV}
                 setAiDecisionLogToShow={setAiDecisionLogToShow}
+                onCardInfoClick={onCardInfoClick}
               />
             </div>
           )}

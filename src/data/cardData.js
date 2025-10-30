@@ -5,9 +5,9 @@ const fullCardCollection = [
     name: 'Laser Blast',
     maxInDeck: 4,
     type: 'Ordnance',
-    cost: 3,
+    cost: 2,
     image: '/DroneWars/cards/LaserBlast.png',
-    description: 'Deal 2 damage to any drone.',
+    description: 'Deal 2 damage to target drone. If target is marked, deal 3 damage instead.',
     visualEffect: {
       type: 'LASER_BLAST',
       duration: 600
@@ -19,7 +19,8 @@ const fullCardCollection = [
     },
     effect: {
       type: 'DAMAGE',
-      value: 2
+      value: 2,
+      markedBonus: 1
     },
    },
 
@@ -240,24 +241,25 @@ const fullCardCollection = [
       goAgain: true
     }
   },
-  // Single-target destroy
+  // Single-target destroy (requires marked)
   {
     id: 'CARD009',
     baseCardId: 'CARD009',
     name: 'Target Lock',
     maxInDeck: 2,
     type: 'Ordnance',
-    cost: 6, // High cost for a powerful effect
+    cost: 3,
     image: '/DroneWars/cards/TargetLock.png',
-    description: 'Destroy a single target drone.',
+    description: 'Destroy target marked enemy drone.',
     targeting: {
       type: 'DRONE',
-      affinity: 'ANY',
-      location: 'ANY_LANE'
+      affinity: 'ENEMY',
+      location: 'ANY_LANE',
+      custom: ['MARKED']
     },
     effect: {
       type: 'DESTROY',
-      scope: 'SINGLE' // Our new 'scope' for single targets
+      scope: 'SINGLE'
     }
   },
 
@@ -527,13 +529,13 @@ const fullCardCollection = [
     },
     maxApplications: 2 // This can be stacked twice on the same drone type
 },
-// --- NEW: UPGRADE DESTRUCTION CARD ---
+// --- UPGRADE DESTRUCTION CARD (Tactic) ---
 {
     id: 'CARD022',
     baseCardId: 'CARD022',
     name: 'System Sabotage',
     maxInDeck: 4,
-    type: 'Ordnance',
+    type: 'Tactic',
     cost: 1,
     image: '/DroneWars/cards/SystemSabotage.png',
     description: 'Destroy a single applied Upgrade on an enemy drone type.',
@@ -770,6 +772,113 @@ const fullCardCollection = [
         threshold: 3,
         bonusDamage: 1
       }
+    }
+},
+
+// --- FINISHING VOLLEY (Destroy exhausted) ---
+{
+    id: 'CARD033',
+    baseCardId: 'CARD033',
+    name: 'Finishing Volley',
+    maxInDeck: 4,
+    type: 'Ordnance',
+    cost: 2,
+    image: '/DroneWars/cards/FinishingVolley.png',
+    description: 'Destroy target exhausted enemy drone.',
+    visualEffect: {
+      type: 'LASER_BLAST', // Placeholder - can be updated later
+      duration: 600
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE',
+      custom: ['EXHAUSTED']
+    },
+    effect: {
+      type: 'DESTROY',
+      scope: 'SINGLE'
+    }
+},
+
+// --- STRAFE RUN (Lane-wide damage) ---
+// TODO: Full multi-target UI support needed for original "up to 3 drones in different lanes" design
+{
+    id: 'CARD034',
+    baseCardId: 'CARD034',
+    name: 'Strafe Run',
+    maxInDeck: 4,
+    type: 'Ordnance',
+    cost: 3,  // Reduced cost due to simplified effect
+    image: '/DroneWars/cards/StrafeRun.png',
+    description: 'Deal 1 damage to up to 3 enemy drones in target lane (front to back).',
+    visualEffect: {
+      type: 'LASER_BLAST', // Placeholder - can be updated later
+      duration: 800
+    },
+    targeting: {
+      type: 'LANE',
+      affinity: 'ENEMY'
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 1,
+      scope: 'FILTERED',
+      maxTargets: 3,
+      filter: {
+        stat: 'hull',
+        comparison: 'GTE',
+        value: 0  // Any drone (all have hull >= 0)
+      }
+    }
+},
+
+// --- OVERWHELMING FORCE (Scaling damage) ---
+{
+    id: 'CARD035',
+    baseCardId: 'CARD035',
+    name: 'Overwhelming Force',
+    maxInDeck: 2,
+    type: 'Ordnance',
+    cost: 2,
+    image: '/DroneWars/cards/OverwhelmingForce.png',
+    description: 'Deal damage to target drone equal to the number of ready friendly drones in that lane.',
+    visualEffect: {
+      type: 'LASER_BLAST', // Placeholder - can be updated later
+      duration: 600
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'DAMAGE_SCALING',
+      source: 'READY_DRONES_IN_LANE'
+    }
+},
+
+// --- PURGE PROTOCOL (Mass marked destroy) ---
+{
+    id: 'CARD036',
+    baseCardId: 'CARD036',
+    name: 'Purge Protocol',
+    maxInDeck: 1,
+    type: 'Ordnance',
+    cost: 7,
+    image: '/DroneWars/cards/PurgeProtocol.png',
+    description: 'Destroy all marked enemy drones.',
+    visualEffect: {
+      type: 'NUKE_BLAST', // Placeholder - can be updated later
+      duration: 1000
+    },
+    targeting: {
+      type: 'ALL_MARKED',
+      affinity: 'ENEMY'
+    },
+    effect: {
+      type: 'DESTROY',
+      scope: 'ALL'
     }
 }
 ];

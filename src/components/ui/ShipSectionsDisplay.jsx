@@ -61,6 +61,9 @@ const ShipSectionsDisplay = ({
   // Calculate effective ship stats internally instead of receiving as prop
   const playerEffectiveStats = getEffectiveShipStats(player, placedSections);
 
+  // Determine if we're in targeting mode (prevents modal from opening during targeting)
+  const isTargetingMode = validCardTargets.length > 0;
+
   return (
     <div className="flex w-full justify-between gap-8">
       {[0, 1, 2].map((laneIndex) => {
@@ -122,6 +125,7 @@ const ShipSectionsDisplay = ({
               stats={sectionStats}
               isPlayer={isPlayer}
               isOpponent={!isPlayer}
+              isTargetingMode={isTargetingMode}
               onClick={() => {
                 debugLog('SHIELD_CLICKS', `🖱️ ShipSection clicked: ${sectionName}`, {
                   isInteractive,

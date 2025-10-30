@@ -13,6 +13,7 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 
 // --- 1.2 UI COMPONENT IMPORTS ---
 import SpaceBackground from './components/ui/SpaceBackground.jsx';
+import StaticBackground from './components/ui/StaticBackground.jsx';
 import GamePhaseModal from './components/ui/GamePhaseModal.jsx';
 import GameHeader from './components/ui/GameHeader.jsx';
 import GameBattlefield from './components/ui/GameBattlefield.jsx';
@@ -52,6 +53,7 @@ import OpponentDronesModal from './components/modals/OpponentDronesModal.jsx';
 import GlossaryModal from './components/modals/GlossaryModal.jsx';
 import AIStrategyModal from './components/modals/AIStrategyModal.jsx';
 import AddCardToHandModal from './components/modals/AddCardToHandModal.jsx';
+import CardDetailModal from './components/modals/CardDetailModal.jsx';
 
 // --- 1.4 HOOK IMPORTS ---
 import { useGameState } from './hooks/useGameState';
@@ -62,6 +64,7 @@ import { useAnimationSetup } from './hooks/useAnimationSetup';
 // --- 1.5 DATA/LOGIC IMPORTS ---
 import fullCardCollection from './data/cardData.js';
 import { gameEngine } from './logic/gameLogic.js';
+import { BACKGROUNDS, DEFAULT_BACKGROUND, getBackgroundById } from './config/backgrounds.js';
 
 // --- 1.6 MANAGER/STATE IMPORTS ---
 // Note: gameFlowManager is initialized in AppRouter and accessed via gameStateManager
@@ -172,6 +175,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [deploymentConfirmation, setDeploymentConfirmation] = useState(null);
   const [moveConfirmation, setMoveConfirmation] = useState(null);
   const [detailedDrone, setDetailedDrone] = useState(null);
+  const [cardToView, setCardToView] = useState(null);
   const [showDeploymentCompleteModal, setShowDeploymentCompleteModal] = useState(false);
   const [showRoundEndModal, setShowRoundEndModal] = useState(false);
   const [waitingForPlayerPhase, setWaitingForPlayerPhase] = useState(null); // Track which phase we're waiting for player acknowledgment
@@ -203,6 +207,11 @@ const App = ({ phaseAnimationQueue }) => {
   const [recentlyHitDrones, setRecentlyHitDrones] = useState([]);
   const [arrowState, setArrowState] = useState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
   const [deck, setDeck] = useState({});
+
+  // Background selection state - persisted to localStorage
+  const [selectedBackground, setSelectedBackground] = useState(() => {
+    return localStorage.getItem('gameBackground') || DEFAULT_BACKGROUND;
+  });
 
   // Ability and card interaction state
   const [abilityMode, setAbilityMode] = useState(null); // { drone, ability }
@@ -387,6 +396,7 @@ const App = ({ phaseAnimationQueue }) => {
   const {
     turnPhase,
     turn,
+    roundNumber,
     currentPlayer,
     firstPlayerOfRound,
     firstPasserOfPreviousRound,
@@ -653,6 +663,11 @@ const App = ({ phaseAnimationQueue }) => {
   }, [isMultiplayer, p2pManager]);
 
   // --- 6.2 UI EVENT HANDLERS ---
+
+  const handleBackgroundChange = useCallback((backgroundId) => {
+    setSelectedBackground(backgroundId);
+    localStorage.setItem('gameBackground', backgroundId);
+  }, []);
 
   const handleViewShipSection = useCallback((sectionData) => {
     setViewShipSectionModal(sectionData);
@@ -2308,7 +2323,7 @@ const App = ({ phaseAnimationQueue }) => {
         droneData: drone,
         laneId: lane,
         playerId: getLocalPlayerId(),
-        turn: turn
+        turn: roundNumber
       });
 
       if (result.success) {
@@ -2333,10 +2348,10 @@ const App = ({ phaseAnimationQueue }) => {
 
     cancelAllActions(); // Cancel all other actions before deploying drone
 
-    // For turn 1, we need cost information for confirmation modal
-    if (turn === 1) {
+    // For round 1, we need cost information for confirmation modal
+    if (roundNumber === 1) {
       // TODO: UI VALIDATION - validateDeployment used for UI validation before deployment - appropriate for UI layer
-      const validationResult = gameEngine.validateDeployment(localPlayerState, selectedDrone, turn, totalLocalPlayerDrones, localPlayerEffectiveStats);
+      const validationResult = gameEngine.validateDeployment(localPlayerState, selectedDrone, roundNumber, totalLocalPlayerDrones, localPlayerEffectiveStats);
       if (!validationResult.isValid) {
         setModalContent({ title: validationResult.reason, text: validationResult.message, isBlocking: true });
         return;
@@ -3279,6 +3294,20 @@ const App = ({ phaseAnimationQueue }) => {
       }
     };
 
+  /**
+   * Handle card info icon click from game log
+   * Looks up the full card data from card name and opens detail modal
+   * @param {string} cardName - The name of the card from the log entry
+   */
+  const handleCardInfoClick = (cardName) => {
+    const card = fullCardCollection.find(c => c.name === cardName);
+    if (card) {
+      setCardToView(card);
+    } else {
+      console.warn('Card not found in collection:', cardName);
+    }
+  };
+
   // ========================================
   // SECTION 9: RENDER
   // ========================================
@@ -3286,9 +3315,16 @@ const App = ({ phaseAnimationQueue }) => {
   // Uses extracted sub-components for maintainability and separation of concerns.
   // All UI state and event handlers are passed down as props for reactive updates.
 
+  // Get current background configuration
+  const currentBackground = getBackgroundById(selectedBackground);
+
   return (
     <div className="h-screen text-white font-sans overflow-hidden flex flex-col relative" ref={gameAreaRef} onClick={() => { cancelAbilityMode(); cancelCardSelection(); }}>
-     <SpaceBackground />
+     {currentBackground.type === 'animated' ? (
+       <SpaceBackground />
+     ) : (
+       <StaticBackground imagePath={currentBackground.path} />
+     )}
      <TargetingArrow visible={arrowState.visible} start={arrowState.start} end={arrowState.end} lineRef={arrowLineRef} />
      {explosions.map(exp => <ExplosionEffect key={exp.id} top={exp.top} left={exp.left} size={exp.size} />)}
      {flyingDrones.map(fd => (
@@ -3462,6 +3498,7 @@ const App = ({ phaseAnimationQueue }) => {
         opponentPlayerEffectiveStats={opponentPlayerEffectiveStats}
         turnPhase={turnPhase}
         turn={turn}
+        roundNumber={roundNumber}
         passInfo={passInfo}
         firstPlayerOfRound={firstPlayerOfRound}
         shieldsToAllocate={shieldsToAllocate}
@@ -3502,6 +3539,8 @@ const App = ({ phaseAnimationQueue }) => {
         testMode={testMode}
         handleCancelMultiMove={handleCancelMultiMove}
         handleConfirmMultiMoveDrones={handleConfirmMultiMoveDrones}
+        selectedBackground={selectedBackground}
+        onBackgroundChange={handleBackgroundChange}
       />
 
       <GameBattlefield
@@ -3578,11 +3617,13 @@ const App = ({ phaseAnimationQueue }) => {
         handleConfirmMandatoryDiscard={handleConfirmMandatoryDiscard}
         setConfirmationModal={setConfirmationModal}
         turn={turn}
+        roundNumber={roundNumber}
         passInfo={passInfo}
         validCardTargets={validCardTargets}
         gameEngine={gameEngine}
         opponentPlayerState={opponentPlayerState}
         setAiDecisionLogToShow={setAiDecisionLogToShow}
+        onCardInfoClick={handleCardInfoClick}
         optionalDiscardCount={optionalDiscardCount}
         handleRoundStartDraw={handleRoundStartDraw}
         handleRoundStartDiscard={handleRoundStartDiscard}
@@ -3596,6 +3637,7 @@ const App = ({ phaseAnimationQueue }) => {
         gameLog={gameLog}
         downloadLogAsCSV={downloadLogAsCSV}
         setAiDecisionLogToShow={setAiDecisionLogToShow}
+        onCardInfoClick={handleCardInfoClick}
       />
       {modalContent && <GamePhaseModal title={modalContent.title} text={modalContent.text} onClose={modalContent.onClose === null ? null : (modalContent.onClose || (() => setModalContent(null)))}>{modalContent.children}</GamePhaseModal>}
       <DeploymentCompleteModal
@@ -3707,6 +3749,7 @@ const App = ({ phaseAnimationQueue }) => {
         opponentName={opponentPlayerState?.name || 'Opponent'}
       />
       <DetailedDroneModal isOpen={!!detailedDrone} drone={detailedDrone} onClose={() => setDetailedDrone(null)} />
+      <CardDetailModal isOpen={!!cardToView} card={cardToView} onClose={() => setCardToView(null)} />
       {aiCardPlayReport && <AICardPlayReportModal report={aiCardPlayReport} onClose={() => setAiCardPlayReport(null)} />}
       <AIDecisionLogModal
         decisionLog={aiDecisionLogToShow}

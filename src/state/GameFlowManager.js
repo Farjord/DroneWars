@@ -1222,9 +1222,73 @@ class GameFlowManager {
         deploymentBudget: this.roundNumber === 1 ? 0 : player2EffectiveStats.totals.deploymentBudget
       };
 
+      debugLog('RESOURCE_RESET', `=== ROUND ${this.roundNumber} RESET: Energy & Deployment Budget ===`, {
+        roundNumber: this.roundNumber,
+        player1: {
+          name: currentGameState.player1.name,
+          placedSections: currentGameState.placedSections,
+          shipSectionKeys: Object.keys(currentGameState.player1.shipSections),
+          processedSections: Object.keys(player1EffectiveStats.bySection),
+          calculated: {
+            energyPerTurn: player1EffectiveStats.totals.energyPerTurn,
+            maxEnergy: player1EffectiveStats.totals.maxEnergy,
+            deploymentBudget: player1EffectiveStats.totals.deploymentBudget,
+            initialDeployment: player1EffectiveStats.totals.initialDeployment
+          },
+          willApply: {
+            energy: updatedPlayer1.energy,
+            initialDeploymentBudget: updatedPlayer1.initialDeploymentBudget,
+            deploymentBudget: updatedPlayer1.deploymentBudget
+          }
+        },
+        player2: {
+          name: currentGameState.player2.name,
+          placedSections: currentGameState.opponentPlacedSections,
+          shipSectionKeys: Object.keys(currentGameState.player2.shipSections),
+          processedSections: Object.keys(player2EffectiveStats.bySection),
+          calculated: {
+            energyPerTurn: player2EffectiveStats.totals.energyPerTurn,
+            maxEnergy: player2EffectiveStats.totals.maxEnergy,
+            deploymentBudget: player2EffectiveStats.totals.deploymentBudget,
+            initialDeployment: player2EffectiveStats.totals.initialDeployment
+          },
+          willApply: {
+            energy: updatedPlayer2.energy,
+            initialDeploymentBudget: updatedPlayer2.initialDeploymentBudget,
+            deploymentBudget: updatedPlayer2.deploymentBudget
+          }
+        }
+      });
+
       // Calculate shields to allocate from Power Cell stats (round 2+ only)
       const shieldsToAllocate = this.roundNumber >= 2 ? player1EffectiveStats.totals.shieldsPerTurn : 0;
       const opponentShieldsToAllocate = this.roundNumber >= 2 ? player2EffectiveStats.totals.shieldsPerTurn : 0;
+
+      // DEBUG: Log the actual payload being sent to ActionProcessor
+      debugLog('RESOURCE_RESET', `📤 [GAMEFLOWMANAGER] Sending energyReset payload to ActionProcessor`, {
+        player1: {
+          name: updatedPlayer1.name,
+          energy: updatedPlayer1.energy,
+          initialDeploymentBudget: updatedPlayer1.initialDeploymentBudget,
+          deploymentBudget: updatedPlayer1.deploymentBudget,
+          hasAllFields: {
+            energy: 'energy' in updatedPlayer1,
+            initialDeploymentBudget: 'initialDeploymentBudget' in updatedPlayer1,
+            deploymentBudget: 'deploymentBudget' in updatedPlayer1
+          }
+        },
+        player2: {
+          name: updatedPlayer2.name,
+          energy: updatedPlayer2.energy,
+          initialDeploymentBudget: updatedPlayer2.initialDeploymentBudget,
+          deploymentBudget: updatedPlayer2.deploymentBudget,
+          hasAllFields: {
+            energy: 'energy' in updatedPlayer2,
+            initialDeploymentBudget: 'initialDeploymentBudget' in updatedPlayer2,
+            deploymentBudget: 'deploymentBudget' in updatedPlayer2
+          }
+        }
+      });
 
       // Update player states via ActionProcessor
       await this.actionProcessor.queueAction({
@@ -1235,6 +1299,11 @@ class GameFlowManager {
           shieldsToAllocate,
           opponentShieldsToAllocate
         }
+      });
+
+      // DEBUG: Log after energy reset action completes, before phase transition
+      debugLog('RESOURCE_RESET', `⏭️ [GAMEFLOWMANAGER] Energy reset action complete, about to emit phaseTransition`, {
+        timestamp: Date.now()
       });
 
       // Broadcast state to guest AFTER energy reset completes (host only)
@@ -1255,6 +1324,12 @@ class GameFlowManager {
         gameStage: this.gameStage,
         roundNumber: this.roundNumber,
         automaticProcessed: true
+      });
+
+      // DEBUG: Log after phase transition emitted
+      debugLog('RESOURCE_RESET', `📢 [GAMEFLOWMANAGER] phaseTransition event emitted`, {
+        timestamp: Date.now(),
+        newPhase: 'energyReset'
       });
 
       // Return next phase for transition by processAutomaticPhase

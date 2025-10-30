@@ -24,7 +24,7 @@ const DEBUG_CONFIG = {
     DECK_SELECTION: false,      // Deck selection phase
     PLACEMENT: false,           // Ship placement phase
     PLACEMENT_CASCADE: false,   // Placement optimistic cascade tracking (DISABLED - replaced by GUEST_CASCADE)
-    PHASE_TRANSITIONS: true,   // Game phase transitions and flow (DISABLED - too verbose)
+    PHASE_TRANSITIONS: false,   // Game phase transitions and flow (DISABLED - too verbose)
     AI_DECISIONS: false,        // AI decision making
     MULTIPLAYER: false,         // Network sync and multiplayer (DISABLED - too verbose, critical errors use console.error)
     P2P_CONNECTION: false,      // PeerJS connection diagnostics
@@ -36,6 +36,7 @@ const DEBUG_CONFIG = {
     STATE_SYNC: false,          // State synchronization (DISABLED - too verbose)
     BROADCAST_TIMING: false,    // Broadcast timing and state validation (DISABLED - too verbose)
     ENERGY: false,              // Energy management (shield allocation)
+    RESOURCE_RESET: true,       // Energy and deployment budget reset between rounds (ENABLED for debugging)
     CARDS: false,               // Card play and effects (DISABLED for clean logs)
     HAND_VIEW: false,            // Hand display and card interaction (ENABLED for mandatoryAction debugging)
     CARD_PLAY: false,            // Card playability and clicking (ENABLED for mandatoryAction debugging)

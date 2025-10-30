@@ -550,7 +550,7 @@ class AIPhaseProcessor {
           droneData: aiDecision.payload.droneToDeploy,
           laneId: aiDecision.payload.targetLane,
           playerId: 'player2',
-          turn: gameState.turn
+          turn: gameState.roundNumber
         }
       });
 

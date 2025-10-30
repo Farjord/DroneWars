@@ -1219,6 +1219,15 @@ class GameStateManager {
       player1: newPlayer1,
       player2: newPlayer2
     }, 'PLAYER_STATES_SET');
+
+    // DEBUG: Log event emission timing
+    debugLog('RESOURCE_RESET', `🔔 [GAMESTATEMANAGER] PLAYER_STATES_SET event emitted`, {
+      timestamp: Date.now(),
+      player1Energy: newPlayer1.energy,
+      player1DeploymentBudget: newPlayer1.deploymentBudget,
+      player2Energy: newPlayer2.energy,
+      player2DeploymentBudget: newPlayer2.deploymentBudget
+    });
   }
 
   /**

@@ -72,6 +72,7 @@ const ShipSectionCompact = ({
   onMouseLeave,
   isCardTarget,
   isInMiddleLane,
+  isTargetingMode,
   reallocationState,
   gameEngine,
   turnPhase,
@@ -142,13 +143,12 @@ const ShipSectionCompact = ({
 
   // Handle clicks - shield allocation/targeting takes priority, then view full card
   const handleClick = (e) => {
-    // If this is an interactive click (shield allocation or targeting), handle that
+    // Handle interactive clicks (shield allocation or targeting)
     if (onClick) {
       onClick(e);
     }
-    // If not in interactive mode and onViewFullCard exists, open modal
-    // Don't open modal during shield reallocation or when targeting
-    if (!reallocationState && !isCardTarget && onViewFullCard) {
+    // Only open modal when NOT targeting, NOT reallocating, NOT allocating shields, and modal handler exists
+    if (!isTargetingMode && !reallocationState && turnPhase !== 'allocateShields' && onViewFullCard) {
       onViewFullCard();
     }
   };
@@ -171,38 +171,21 @@ const ShipSectionCompact = ({
     >
       <div className={`absolute inset-0 ${overlayColor}`}></div>
 
-      <div className="relative z-10 flex flex-col items-center justify-between p-3 h-full">
-        {/* Header with Type + Status + Ability Button */}
-        <div className="flex items-center justify-between w-full mb-2">
-          {/* Left side: Short Type + Status inline */}
-          <div className="flex items-center gap-2">
-            <p className="font-bold text-base text-white">{stats.type}</p>
-            <div className={`flex items-center gap-1 font-semibold text-xs px-2 py-0.5 rounded-full ${sectionStatus === 'healthy' ? 'bg-green-500/20 text-green-300' : sectionStatus === 'damaged' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-red-500/20 text-red-300'}`}>
-              {sectionStatus.charAt(0).toUpperCase() + sectionStatus.slice(1)}
-            </div>
+      {/* 3-Column Grid Layout: Left (empty) | Middle (content) | Right (ability) */}
+      <div className="relative z-10 grid grid-cols-[1fr_2fr_1fr] gap-2 h-full p-3">
+        {/* Left Section - Empty for spacing/balance */}
+        <div></div>
+
+        {/* Middle Section - Title, Status, Shields, Hull (all centered) */}
+        <div className="flex flex-col items-center justify-center gap-3 h-full">
+          {/* Title */}
+          <p className="font-orbitron text-lg uppercase tracking-widest text-white text-center">{stats.type}</p>
+
+          {/* Status Badge */}
+          <div className={`flex items-center gap-1 font-semibold text-xs px-2 py-0.5 rounded-full ${sectionStatus === 'healthy' ? 'bg-green-500/20 text-green-300' : sectionStatus === 'damaged' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-red-500/20 text-red-300'}`}>
+            {sectionStatus.charAt(0).toUpperCase() + sectionStatus.slice(1)}
           </div>
 
-          {/* Right side: Ability button */}
-          {isPlayer && stats.ability && (
-            <ShipAbilityIcon
-              ability={stats.ability}
-              isUsable={
-                turnPhase === 'action' &&
-                isMyTurn() &&
-                !passInfo[`${getLocalPlayerId()}Passed`] &&
-                localPlayerState.energy >= stats.ability.cost.energy
-              }
-              isSelected={shipAbilityMode?.ability.id === stats.ability.id}
-              onClick={(e) => {
-                e.stopPropagation();
-                onAbilityClick(e, {...stats, name: section}, stats.ability);
-              }}
-            />
-          )}
-        </div>
-
-        {/* Center: Shields and Hull (vertically stacked) */}
-        <div className="flex flex-col items-center gap-3 w-full flex-grow justify-center">
           {/* Shields */}
           <div className="flex gap-1 items-center">
             {Array(stats.shields).fill(0).map((_, i) => (
@@ -216,7 +199,7 @@ const ShipSectionCompact = ({
           </div>
 
           {/* Hull */}
-          <div className="flex w-full justify-center gap-1">
+          <div className="flex justify-center gap-1">
             {Array.from({ length: stats.maxHull }).map((_, i) => {
               const hullPoint = i + 1;
               const { critical, damaged } = stats.thresholds;
@@ -236,12 +219,28 @@ const ShipSectionCompact = ({
           </div>
         </div>
 
-        {/* Bottom: Ability Name */}
-        {stats.ability && (
-          <div className="flex flex-col items-center justify-center text-center w-full">
-            <p className="font-bold text-sm text-purple-300 leading-tight">{stats.ability.name}</p>
-          </div>
-        )}
+        {/* Right Section - Ability Button and Name (centered) */}
+        <div className="flex flex-col items-center justify-center gap-2 h-full">
+          {isPlayer && stats.ability && (
+            <>
+              <ShipAbilityIcon
+                ability={stats.ability}
+                isUsable={
+                  turnPhase === 'action' &&
+                  isMyTurn() &&
+                  !passInfo[`${getLocalPlayerId()}Passed`] &&
+                  localPlayerState.energy >= stats.ability.cost.energy
+                }
+                isSelected={shipAbilityMode?.ability.id === stats.ability.id}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAbilityClick(e, {...stats, name: section}, stats.ability);
+                }}
+              />
+              <p className="font-bold text-xs text-purple-300 leading-tight text-center">{stats.ability.name}</p>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

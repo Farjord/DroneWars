@@ -1,6 +1,6 @@
 // --- DATA ---
 const fullDroneCollection = [
-  { name: 'Scout Drone', class: 1, limit: 3, attack: 1, hull: 1, shields: 1, speed: 5, image: '/DroneWars/img/Scout.png', abilities: [],  upgradeSlots: 2 },
+  { name: 'Scout Drone', class: 1, limit: 3, attack: 1, hull: 1, shields: 1, speed: 6, image: '/DroneWars/img/Scout.png', abilities: [],  upgradeSlots: 2 },
   { name: 'Standard Fighter', class: 2, limit: 3, attack: 3, hull: 2, shields: 1, speed: 4, image: '/DroneWars/img/StandardFighter.png', abilities: [],  upgradeSlots: 2 },
   { name: 'Heavy Fighter', class: 3, limit: 2, attack: 4, hull: 4, shields: 1, speed: 3, image: '/DroneWars/img/HeavyFighter.png', abilities: [], upgradeSlots: 2 },
    { 
@@ -58,7 +58,7 @@ const fullDroneCollection = [
   },
 { 
     name: 'Interceptor', 
-    class: 3, limit: 3, attack: 1, hull: 4, shields: 0, speed: 6, 
+    class: 3, limit: 3, attack: 1, hull: 4, shields: 0, speed: 5, 
     image: '/DroneWars/img/Interceptor.png',
     abilities: [{
         name: 'Defender',
@@ -88,7 +88,7 @@ const fullDroneCollection = [
   attack: 3, 
   hull: 1, 
   shields: 0, 
-  speed: 3, 
+  speed: 2, 
   image: '/DroneWars/img/Kamikaze.png', 
   abilities: [{
       name: 'Self-Destruct',
@@ -278,6 +278,45 @@ const fullDroneCollection = [
         effect: { type: 'GRANT_KEYWORD', keyword: 'JAMMER' }
     }],
     upgradeSlots: 0
+  },
+  {
+    name: 'Scanner',
+    class: 1,
+    limit: 3,
+    attack: 1,
+    hull: 1,
+    shields: 0,
+    speed: 4,
+    image: '/DroneWars/img/Scanner.png',
+    abilities: [{
+        name: 'Target Scanner',
+        description: 'On deploy, mark a random enemy drone in the same lane.',
+        type: 'TRIGGERED',
+        trigger: 'ON_DEPLOY',
+        effect: { type: 'MARK_RANDOM_ENEMY', scope: 'SAME_LANE', filter: 'NOT_MARKED' }
+    }],
+    upgradeSlots: 2
+  },
+  {
+    name: 'Hunter',
+    class: 2,
+    limit: 3,
+    attack: 2,
+    hull: 1,
+    shields: 2,
+    speed: 3,
+    image: '/DroneWars/img/Hunter.png',
+    abilities: [{
+        name: 'Hunter Protocol',
+        description: 'Gains Piercing when attacking marked targets.',
+        type: 'PASSIVE',
+        effect: {
+            type: 'CONDITIONAL_KEYWORD',
+            keyword: 'PIERCING',
+            condition: { type: 'TARGET_IS_MARKED' }
+        }
+    }],
+    upgradeSlots: 2
   },
 
 ];

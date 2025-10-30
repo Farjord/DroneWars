@@ -266,6 +266,10 @@
   @apply text-gray-400 hover:text-white;
 }
 
+.cardInfoButton {
+  @apply ml-2 text-gray-400 hover:text-white transition-colors;
+}
+
 /* ===== COMMON BUTTON STYLES ===== */
 
 .buttonPrimary {

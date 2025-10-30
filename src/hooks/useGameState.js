@@ -22,6 +22,14 @@ export const useGameState = () => {
   // Subscribe to game state changes
   useEffect(() => {
     const unsubscribe = gameStateManager.subscribe((event) => {
+      // DEBUG: Log when hook receives events
+      if (event.type === 'PLAYER_STATES_SET') {
+        debugLog('RESOURCE_RESET', `👂 [USEGAMESTATE] Received PLAYER_STATES_SET event, calling setGameState`, {
+          timestamp: Date.now(),
+          eventType: event.type
+        });
+      }
+
       // Don't trigger re-renders for render_complete events
       // render_complete is just a notification for GuestMessageQueueService, not a state change
       if (event.type !== 'render_complete') {

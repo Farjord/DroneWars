@@ -5,10 +5,11 @@
 // Extracted from App.jsx for better component organization
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain, Plus, Layout } from 'lucide-react';
+import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain, Plus, Image, ChevronRight, Check } from 'lucide-react';
 import { getPhaseDisplayName } from '../../utils/gameUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import DEV_CONFIG from '../../config/devConfig.js';
+import { BACKGROUNDS } from '../../config/backgrounds.js';
 
 /**
  * Resource Badge Component - Angular styled resource display
@@ -51,6 +52,7 @@ function GameHeader({
   opponentPlayerEffectiveStats,
   turnPhase,
   turn,
+  roundNumber,
   passInfo,
   firstPlayerOfRound,
   shieldsToAllocate,
@@ -91,10 +93,11 @@ function GameHeader({
   testMode,
   handleCancelMultiMove,
   handleConfirmMultiMoveDrones,
-  useNewBattlefield,
-  onToggleBattlefield
+  selectedBackground,
+  onBackgroundChange
 }) {
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
+  const [showBackgroundSubmenu, setShowBackgroundSubmenu] = useState(false);
   const dropdownRef = useRef(null);
 
   // Close dropdown when clicking outside
@@ -177,9 +180,9 @@ function GameHeader({
             />
           </div>
           {turnPhase === 'deployment' && (
-            <ResourceBadge 
-              icon={Rocket} 
-              value={turn === 1 ? opponentPlayerState.initialDeploymentBudget : opponentPlayerState.deploymentBudget}
+            <ResourceBadge
+              icon={Rocket}
+              value={roundNumber === 1 ? opponentPlayerState.initialDeploymentBudget : opponentPlayerState.deploymentBudget}
               iconColor="text-purple-400"
               isPlayer={false}
             />
@@ -663,9 +666,9 @@ function GameHeader({
             isPlayer={true}
           />
           {turnPhase === 'deployment' && (
-            <ResourceBadge 
-              icon={Rocket} 
-              value={turn === 1 ? localPlayerState.initialDeploymentBudget : localPlayerState.deploymentBudget}
+            <ResourceBadge
+              icon={Rocket}
+              value={roundNumber === 1 ? localPlayerState.initialDeploymentBudget : localPlayerState.deploymentBudget}
               iconColor="text-purple-400"
               isPlayer={true}
             />
@@ -733,16 +736,47 @@ function GameHeader({
                     Debug View
                   </button>
                 )}
-                <button
-                  onClick={() => {
-                    onToggleBattlefield && onToggleBattlefield();
-                    setShowSettingsDropdown(false);
-                  }}
-                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center gap-2 border-b border-gray-700"
+
+                {/* Background Submenu */}
+                <div
+                  className="relative"
+                  onMouseEnter={() => setShowBackgroundSubmenu(true)}
+                  onMouseLeave={() => setShowBackgroundSubmenu(false)}
                 >
-                  <Layout size={16} />
-                  {useNewBattlefield ? '✓ New Battlefield' : 'Classic Battlefield'}
-                </button>
+                  <button
+                    className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center justify-between gap-2 border-b border-gray-700"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Image size={16} />
+                      Background
+                    </div>
+                    <ChevronRight size={16} />
+                  </button>
+
+                  {showBackgroundSubmenu && (
+                    <div className="absolute right-full top-0 mr-1 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50">
+                      {BACKGROUNDS.map((bg) => (
+                        <button
+                          key={bg.id}
+                          onClick={() => {
+                            onBackgroundChange && onBackgroundChange(bg.id);
+                            setShowSettingsDropdown(false);
+                            setShowBackgroundSubmenu(false);
+                          }}
+                          className={`w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center justify-between gap-2 ${
+                            bg.id === BACKGROUNDS[BACKGROUNDS.length - 1].id ? 'rounded-b-lg' : 'border-b border-gray-700'
+                          } ${
+                            bg.id === BACKGROUNDS[0].id ? 'rounded-t-lg' : ''
+                          }`}
+                        >
+                          <span>{bg.name}</span>
+                          {selectedBackground === bg.id && <Check size={16} className="text-green-400" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {DEV_CONFIG.features.addCardToHand && (
                   <button
                     onClick={() => {

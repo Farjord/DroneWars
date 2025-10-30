@@ -379,6 +379,28 @@ const getValidTargets = (actingPlayerId, source, definition, player1, player2) =
                 targets.push({ ...droneCard, id: droneCard.name, owner: targetPlayerId });
             }
         });
+    } else if (type === 'ALL_MARKED') {
+        // Find all marked drones (respecting affinity)
+        const targetPlayerState = affinity === 'ENEMY' ? opponentPlayerState : actingPlayerState;
+        const targetPlayerId = affinity === 'ENEMY' ? (actingPlayerId === 'player1' ? 'player2' : 'player1') : actingPlayerId;
+
+        Object.entries(targetPlayerState.dronesOnBoard).forEach(([lane, drones]) => {
+            drones.forEach(drone => {
+                if (drone.isMarked) {
+                    targets.push({ ...drone, lane, owner: targetPlayerId });
+                }
+            });
+        });
+    } else if (type === 'MULTI_DRONE') {
+        // Multi-drone targeting - returns all valid drones matching criteria
+        // UI will enforce the selection count and custom validation (e.g., DIFFERENT_LANES)
+        if (affinity === 'FRIENDLY' || affinity === 'ANY') {
+            processPlayerDrones(actingPlayerState, actingPlayerId);
+        }
+        if (affinity === 'ENEMY' || affinity === 'ANY') {
+            const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+            processPlayerDrones(opponentPlayerState, opponentId);
+        }
     }
 
     return targets;
@@ -1072,6 +1094,44 @@ const executeDeployment = (drone, lane, turn, playerState, opponentState, placed
     // Update auras
     newPlayerState.dronesOnBoard = updateAuras(newPlayerState, opponentState, placedSections);
 
+    // Process ON_DEPLOY triggers
+    let finalPlayerState = newPlayerState;
+    let finalOpponentState = opponentState;
+    const allAnimationEvents = [];
+
+    if (newDrone.abilities && newDrone.abilities.length > 0) {
+        for (const ability of newDrone.abilities) {
+            if (ability.type === 'TRIGGERED' && ability.trigger === 'ON_DEPLOY') {
+                // Construct playerStates object for effect resolution
+                const opponentId = playerId === 'player1' ? 'player2' : 'player1';
+                const currentPlayerStates = {
+                    [playerId]: finalPlayerState,
+                    [opponentId]: finalOpponentState
+                };
+
+                // Process the ON_DEPLOY effect
+                if (ability.effect.type === 'MARK_RANDOM_ENEMY') {
+                    const result = resolveMarkRandomEnemyEffect(
+                        ability.effect,
+                        lane,
+                        currentPlayerStates,
+                        placedSections,
+                        playerId
+                    );
+
+                    // Update states from result
+                    finalPlayerState = result.newPlayerStates[playerId];
+                    finalOpponentState = result.newPlayerStates[opponentId];
+
+                    // Collect animation events
+                    if (result.animationEvents && result.animationEvents.length > 0) {
+                        allAnimationEvents.push(...result.animationEvents);
+                    }
+                }
+            }
+        }
+    }
+
     // Create animation event for deployment
     const animationEvents = [{
         type: 'TELEPORT_IN',
@@ -1079,13 +1139,14 @@ const executeDeployment = (drone, lane, turn, playerState, opponentState, placed
         targetLane: lane,
         targetPlayer: playerId,
         timestamp: Date.now()
-    }];
+    }, ...allAnimationEvents];
 
     return {
         success: true,
-        newPlayerState,
+        newPlayerState: finalPlayerState,
         deployedDrone: newDrone,
-        animationEvents
+        animationEvents,
+        opponentState: finalOpponentState // Return updated opponent state
     };
 };
 
@@ -2191,6 +2252,8 @@ const resolveSingleEffect = (effect, target, actingPlayerId, playerStates, place
             return resolveHealShieldsEffect(effect, target, actingPlayerId, playerStates, callbacks, placedSections);
         case 'DAMAGE':
             return resolveUnifiedDamageEffect(effect, null, target, actingPlayerId, playerStates, placedSections, callbacks, card);
+        case 'DAMAGE_SCALING':
+            return resolveDamageScalingEffect(effect, target, actingPlayerId, playerStates, placedSections, callbacks, card);
         case 'DESTROY':
             return resolveDestroyEffect(effect, target, actingPlayerId, playerStates, callbacks, card);
         case 'MODIFY_STAT':
@@ -2446,8 +2509,11 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
         const updatedTargetPlayerState = newPlayerStates[targetPlayer];
         const updatedDronesInLane = updatedTargetPlayerState.dronesOnBoard[laneId] || [];
 
-        // Apply damage to all valid targets using snapshot stats
-        for (let i = updatedDronesInLane.length - 1; i >= 0; i--) {
+        // Apply damage to valid targets using snapshot stats (limited by maxTargets if specified)
+        const maxTargets = effect.maxTargets || updatedDronesInLane.length; // Default to all if not specified
+        let targetsProcessed = 0;
+
+        for (let i = updatedDronesInLane.length - 1; i >= 0 && targetsProcessed < maxTargets; i--) {
             const droneInLane = updatedDronesInLane[i];
             let meetsCondition = false;
 
@@ -2461,7 +2527,7 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
             debugLog('COMBAT', `[DEBUG] ${droneInLane.name} ${stat}=${droneInLane[stat]} ${comparison} ${value} = ${meetsCondition}`);
 
             if (meetsCondition) {
-                debugLog('COMBAT', `[DEBUG] Applying ${effect.value} damage to ${droneInLane.name}`);
+                debugLog('COMBAT', `[DEBUG] Applying ${effect.value} damage to ${droneInLane.name} (${targetsProcessed + 1}/${maxTargets})`);
 
                 // Apply damage directly using snapshot stats
                 const totalShields = droneInLane.currentShields || 0;
@@ -2482,6 +2548,8 @@ const resolveDamageEffect = (effect, target, actingPlayerId, playerStates, callb
                     debugLog('COMBAT', `[DEBUG] ${droneInLane.name} destroyed`);
                     updatedDronesInLane.splice(i, 1);
                 }
+
+                targetsProcessed++;
             }
         }
 
@@ -2938,12 +3006,19 @@ const resolveUnifiedDamageEffect = (effect, source, target, actingPlayerId, play
     const targetPlayerState = target.owner === 'player1' ? playerStates.player1 : playerStates.player2;
     const targetLane = getLaneOfDrone(target.id, targetPlayerState);
     if (targetLane && resolveAttackCallback) {
+        // Calculate damage value with markedBonus if applicable
+        let damageValue = effect.value;
+        if (effect.markedBonus && target.isMarked) {
+            damageValue += effect.markedBonus;
+            debugLog('COMBAT', `[DEBUG] Target is marked - applying bonus damage: ${effect.value} + ${effect.markedBonus} = ${damageValue}`);
+        }
+
         const attackDetails = {
             attacker: source,
             target: target,
             targetType: 'drone',
             attackingPlayer: actingPlayerId || 'player1',
-            abilityDamage: effect.value,
+            abilityDamage: damageValue,
             lane: targetLane,
             damageType: effect.damageType,
             sourceCardInstanceId: card?.instanceId  // Pass card instance ID for animation matching
@@ -2970,6 +3045,47 @@ const resolveUnifiedDamageEffect = (effect, source, target, actingPlayerId, play
         additionalEffects: [],
         animationEvents: []
     };
+};
+
+const resolveDamageScalingEffect = (effect, target, actingPlayerId, playerStates, placedSections, callbacks, card = null) => {
+    const { resolveAttackCallback } = callbacks;
+
+    // Calculate damage based on scaling source
+    let damageValue = 0;
+
+    if (effect.source === 'READY_DRONES_IN_LANE') {
+        // Count ready (non-exhausted) friendly drones in the same lane as the target
+        const targetPlayerState = target.owner === 'player1' ? playerStates.player1 : playerStates.player2;
+        const targetLane = getLaneOfDrone(target.id, targetPlayerState);
+
+        if (targetLane) {
+            const actingPlayerState = playerStates[actingPlayerId];
+            const dronesInLane = actingPlayerState.dronesOnBoard[targetLane] || [];
+            const readyDrones = dronesInLane.filter(d => !d.isExhausted);
+            damageValue = readyDrones.length;
+
+            debugLog('COMBAT', `[DEBUG] DAMAGE_SCALING - Counting ready drones in ${targetLane}: ${readyDrones.length} ready drones`);
+        }
+    }
+
+    // If no damage, return early
+    if (damageValue === 0) {
+        debugLog('COMBAT', `[DEBUG] DAMAGE_SCALING - No damage calculated, returning unchanged state`);
+        return {
+            newPlayerStates: playerStates,
+            additionalEffects: [],
+            animationEvents: []
+        };
+    }
+
+    // Apply the calculated damage using the unified damage effect
+    const scaledEffect = {
+        ...effect,
+        type: 'DAMAGE',
+        value: damageValue
+    };
+
+    return resolveUnifiedDamageEffect(scaledEffect, null, target, actingPlayerId, playerStates, placedSections, callbacks, card);
 };
 
 const resolveUnifiedHealEffect = (effect, source, target, actingPlayerId, playerStates, placedSections, callbacks, card = null) => {
@@ -4269,6 +4385,41 @@ const resolveMarkDroneEffect = (effect, sectionName, target, playerStates, place
     };
 };
 
+const resolveMarkRandomEnemyEffect = (effect, lane, playerStates, placedSections, playerId) => {
+    const newPlayerStates = {
+        player1: JSON.parse(JSON.stringify(playerStates.player1)),
+        player2: JSON.parse(JSON.stringify(playerStates.player2))
+    };
+
+    // Determine opponent
+    const opponentId = playerId === 'player1' ? 'player2' : 'player1';
+
+    // Get all enemy drones in the specified lane
+    const enemyDronesInLane = newPlayerStates[opponentId].dronesOnBoard[lane] || [];
+
+    // Filter to only unmarked drones
+    const validTargets = enemyDronesInLane.filter(drone => !drone.isMarked);
+
+    // If there are valid targets, randomly select one and mark it
+    if (validTargets.length > 0) {
+        const randomIndex = Math.floor(Math.random() * validTargets.length);
+        const targetDrone = validTargets[randomIndex];
+
+        // Find the drone in the lane array and mark it
+        const droneIndex = newPlayerStates[opponentId].dronesOnBoard[lane].findIndex(d => d.id === targetDrone.id);
+        if (droneIndex !== -1) {
+            newPlayerStates[opponentId].dronesOnBoard[lane][droneIndex].isMarked = true;
+        }
+    }
+    // If no valid targets, silently fail (no error needed as per requirements)
+
+    return {
+        newPlayerStates,
+        additionalEffects: [],
+        animationEvents: []
+    };
+};
+
 const resolveAttack = (attackDetails, playerStates, placedSections, logCallback) => {
     const { attacker, target, targetType, interceptor, attackingPlayer, abilityDamage, goAgain, damageType, lane, aiContext, sourceCardInstanceId } = attackDetails;
     const isAbilityOrCard = abilityDamage !== undefined;
@@ -4302,6 +4453,20 @@ const resolveAttack = (attackDetails, playerStates, placedSections, logCallback)
     let finalDamageType = damageType || (attacker ? attacker.damageType : undefined);
     if (effectiveAttacker && effectiveAttacker.keywords && effectiveAttacker.keywords.has('PIERCING')) {
         finalDamageType = 'PIERCING';
+    }
+
+    // Check for conditional piercing (e.g., Hunter drone vs marked targets)
+    if (attacker && attacker.abilities && finalTargetType === 'drone') {
+        const conditionalPiercingAbility = attacker.abilities.find(
+            ability => ability.type === 'PASSIVE' &&
+                      ability.effect?.type === 'CONDITIONAL_KEYWORD' &&
+                      ability.effect?.keyword === 'PIERCING' &&
+                      ability.effect?.condition?.type === 'TARGET_IS_MARKED'
+        );
+
+        if (conditionalPiercingAbility && finalTarget.isMarked) {
+            finalDamageType = 'PIERCING';
+        }
     }
 
     // Apply ship damage bonus for drones attacking sections

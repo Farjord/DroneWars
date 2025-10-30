@@ -10,7 +10,8 @@ import DEV_CONFIG from '../../../config/devConfig.js';
 function LogView({
   gameLog,
   downloadLogAsCSV,
-  setAiDecisionLogToShow
+  setAiDecisionLogToShow,
+  onCardInfoClick
 }) {
   return (
     <div className={styles.logContainer}>
@@ -49,7 +50,18 @@ function LogView({
                 </td>
                 <td className={styles.logTableCellCyan}>{entry.player}</td>
                 <td className={styles.logTableCellYellow}>{entry.actionType}</td>
-                <td className={styles.logTableCell}>{entry.source}</td>
+                <td className={styles.logTableCell}>
+                  {entry.source}
+                  {entry.actionType === 'PLAY_CARD' && onCardInfoClick && (
+                    <button
+                      onClick={() => onCardInfoClick(entry.source)}
+                      className={styles.cardInfoButton}
+                      title="View Card Details"
+                    >
+                      ℹ️
+                    </button>
+                  )}
+                </td>
                 <td className={styles.logTableCell}>{entry.target}</td>
                 <td className={styles.logTableCellGrayText}>{entry.outcome}</td>
                 {DEV_CONFIG.features.logDebugSource && (
