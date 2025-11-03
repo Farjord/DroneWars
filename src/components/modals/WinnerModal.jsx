@@ -5,7 +5,7 @@
 // Provides options to view final board or exit to menu
 
 import React from 'react';
-import gameStateManager from '../../state/GameStateManager.js';
+import gameStateManager from '../../managers/GameStateManager.js';
 
 /**
  * WINNER MODAL COMPONENT

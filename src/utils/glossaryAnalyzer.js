@@ -17,7 +17,7 @@ import {
   comparisonDescriptions,
   affinityDescriptions,
   locationDescriptions
-} from '../data/glossaryDescriptions.js';
+} from '../data/descriptions/glossaryDescriptions.js';
 import {
   effectPatterns,
   targetingPatterns,
@@ -26,7 +26,7 @@ import {
   keywordPatterns,
   scopePatterns,
   specialProperties
-} from '../data/codePatterns.js';
+} from '../data/descriptions/codePatternDescriptions.js';
 
 /**
  * Analyzes all effects from cards and drone abilities

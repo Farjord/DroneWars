@@ -1,285 +1,147 @@
-// ========================================
-// CARD SELECTION MODAL
-// ========================================
-// Modal for selecting cards for deck in testing mode
-// Displays all available cards with quantity selectors
-
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import ActionCard from '../ui/ActionCard.jsx';
 
-/**
- * CardSelectionModal - Select cards for deck
- * @param {boolean} isOpen - Whether modal is visible
- * @param {function} onClose - Close handler (cancel)
- * @param {function} onConfirm - Confirm handler (selectedCards) => void
- * @param {Object} initialSelection - Currently selected cards { "CARD001": 2, "CARD002": 3 }
- * @param {Array} allCards - Full card collection to choose from
- * @param {string} title - Modal title
- * @param {number} minCards - Minimum number of cards required (default: 40, set to 0 for no minimum)
- * @param {boolean} mandatory - If true, prevents dismissal (no cancel/close buttons) - for gameplay where cancellation breaks game state
- */
-const CardSelectionModal = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  initialSelection = {},
-  allCards = [],
-  title = "Select Cards",
-  minCards = 40,
-  mandatory = false
-}) => {
-  const [selectedCards, setSelectedCards] = useState({});
-  const [filters, setFilters] = useState({
-    cost: { min: 0, max: 20 },
-    type: 'all',
-    search: ''
-  });
+// Card component for displaying selectable cards
+const SelectableCard = ({ card, isSelected, onClick }) => (
+  <div
+    className={`w-52 h-72 rounded-lg p-1 cursor-pointer transition-all duration-200 ${
+      isSelected ? 'bg-green-500/60 shadow-lg shadow-green-500/30' : 'bg-purple-800/80 hover:bg-purple-700/80'
+    }`}
+    onClick={() => onClick(card)}
+  >
+    <div className="w-full h-full bg-slate-900 flex flex-col font-orbitron text-purple-300 overflow-hidden rounded-md">
+      <div className="text-center py-1 px-2 bg-purple-900/50 flex justify-between items-center">
+        <span className="font-bold text-sm uppercase tracking-wider truncate">{card.name}</span>
+        <div className="flex items-center bg-slate-800/70 px-2 py-0.5 rounded-full">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-300">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          <span className="text-white font-bold text-sm ml-1">{card.cost}</span>
+        </div>
+      </div>
+      <div className="p-1">
+        <div className="relative h-24">
+          <img src={card.image} alt={card.name} className="w-full h-full object-cover rounded" />
+          <div className="absolute inset-0 border border-purple-400/50 rounded"></div>
+          {isSelected && (
+            <div className="absolute inset-0 bg-green-500/20 border-2 border-green-400 rounded flex items-center justify-center">
+              <div className="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">
+                ✓
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="flex-grow mx-2 my-1 bg-black/50 border border-purple-800/70 p-2 flex flex-col min-h-0">
+        <div className="flex-grow relative font-exo font-normal text-purple-200">
+          <p className="text-sm leading-tight text-center">{card.description}</p>
+        </div>
+      </div>
+      <div className="text-center text-xs py-1 bg-purple-900/50 uppercase font-semibold tracking-widest">
+        {card.type} Card
+      </div>
+    </div>
+  </div>
+);
 
-  // Initialize selection from props
-  useEffect(() => {
-    if (isOpen) {
-      setSelectedCards({ ...initialSelection });
-    }
-  }, [isOpen, initialSelection]);
+const CardSelectionModal = ({ isOpen, onClose, onConfirm, selectionData }) => {
+  const [selectedCards, setSelectedCards] = useState([]);
 
-  // Calculate total card count (must be before early return to maintain hook order)
-  const totalCards = Object.values(selectedCards).reduce((sum, qty) => sum + qty, 0);
-  const isComplete = totalCards >= minCards;
-  const canConfirm = minCards === 0 ? true : isComplete; // No minimum = always can confirm
+  if (!isOpen || !selectionData) {
+    return null;
+  }
 
-  // Filter cards (useMemo must be called on every render)
-  const filteredCards = useMemo(() => {
-    return allCards.filter(card => {
-      // Cost filter
-      if (card.cost < filters.cost.min || card.cost > filters.cost.max) return false;
-      // Type filter
-      if (filters.type !== 'all' && card.type !== filters.type) return false;
-      // Search filter
-      if (filters.search && !card.name.toLowerCase().includes(filters.search.toLowerCase())) return false;
-      return true;
-    }).sort((a, b) => {
-      // Sort by cost, then name
-      if (a.cost !== b.cost) return a.cost - b.cost;
-      return a.name.localeCompare(b.name);
+  const { searchedCards, drawCount, type, filter } = selectionData;
+
+  const handleCardClick = (card) => {
+    setSelectedCards(prev => {
+      // Use instanceId if available, otherwise use a combination of id and name as fallback
+      const cardIdentifier = card.instanceId || `${card.id}-${card.name}`;
+      const isCurrentlySelected = prev.some(c => {
+        const existingIdentifier = c.instanceId || `${c.id}-${c.name}`;
+        return existingIdentifier === cardIdentifier;
+      });
+
+      if (isCurrentlySelected) {
+        // Deselect the card
+        return prev.filter(c => {
+          const existingIdentifier = c.instanceId || `${c.id}-${c.name}`;
+          return existingIdentifier !== cardIdentifier;
+        });
+      } else if (prev.length < drawCount) {
+        // Select the card if we haven't reached the limit
+        return [...prev, card];
+      } else {
+        // Replace the last selected card if at limit
+        return [...prev.slice(0, -1), card];
+      }
     });
-  }, [allCards, filters]);
-
-  // Early return AFTER all hooks
-  if (!isOpen) return null;
-
-  // Get quantity for a card
-  const getCardQuantity = (cardId) => {
-    return selectedCards[cardId] || 0;
-  };
-
-  // Update card quantity
-  const setCardQuantity = (cardId, quantity) => {
-    if (quantity <= 0) {
-      const newSelection = { ...selectedCards };
-      delete newSelection[cardId];
-      setSelectedCards(newSelection);
-    } else {
-      setSelectedCards(prev => ({ ...prev, [cardId]: quantity }));
-    }
   };
 
   const handleConfirm = () => {
-    if (canConfirm) {
+    if (selectedCards.length === drawCount) {
       onConfirm(selectedCards);
+      setSelectedCards([]);
     }
   };
 
+  const handleClose = () => {
+    setSelectedCards([]);
+    onClose();
+  };
+
+  const canConfirm = selectedCards.length === drawCount;
+
   return (
-    <div
-      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
-      onClick={mandatory ? undefined : onClose}
-    >
+    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4" onClick={handleClose}>
       <div
-        className="bg-gray-900 rounded-2xl border-2 border-cyan-500 p-8 shadow-2xl shadow-cyan-500/20 max-w-[1600px] max-h-[900px] w-[95vw] h-[90vh] flex flex-col"
+        className="bg-gray-900 rounded-2xl border-2 border-purple-500 p-8 shadow-2xl shadow-purple-500/20 w-full max-w-7xl relative flex flex-col h-[90vh]"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex justify-between items-center mb-4 flex-shrink-0">
-          <h2 className="text-3xl font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">
-            {title}
+        <button onClick={handleClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors z-10">
+          <X size={24} />
+        </button>
+
+        <div className="text-center mb-6">
+          <h2 className="text-3xl font-bold text-white mb-2">
+            {type === 'search_and_draw' ? 'Choose Cards to Draw' : 'Select Cards'}
           </h2>
-          {!mandatory && (
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              <X size={32} />
-            </button>
-          )}
-        </div>
-
-        {/* Card Counter & Filters */}
-        <div className="flex-shrink-0 mb-4">
-          <div className="flex justify-between items-center mb-4">
-            <div className={`text-3xl font-orbitron font-bold ${
-              isComplete ? 'text-green-400' : (minCards === 0 ? 'text-cyan-400' : 'text-yellow-400')
-            }`}>
-              {minCards === 0 ? (
-                `${totalCards} Cards Selected`
-              ) : (
-                `${totalCards} / ${minCards}+ Cards Selected`
-              )}
-            </div>
-            {!isComplete && minCards > 0 && (
-              <p className="text-gray-400 text-sm">
-                Minimum {minCards} cards required
-              </p>
-            )}
-            {minCards === 0 && (
-              <p className="text-gray-400 text-sm">
-                Select any number of cards
-              </p>
-            )}
-            {isComplete && minCards > 0 && (
-              <p className="text-green-400 text-sm">
-                ✓ Ready to confirm selection
-              </p>
-            )}
-          </div>
-
-          {/* Filters */}
-          <div className="grid grid-cols-4 gap-4">
-            {/* Search */}
-            <input
-              type="text"
-              placeholder="Search cards..."
-              value={filters.search}
-              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
-              className="px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white"
-            />
-
-            {/* Type Filter */}
-            <select
-              value={filters.type}
-              onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
-              className="px-3 py-2 bg-gray-800 border border-gray-600 rounded text-white"
-            >
-              <option value="all">All Types</option>
-              <option value="Action">Action Cards</option>
-              <option value="Upgrade">Upgrade Cards</option>
-            </select>
-
-            {/* Cost Range */}
-            <div className="col-span-2">
-              <label className="text-gray-400 text-sm mb-1 block">
-                Cost Range: {filters.cost.min} - {filters.cost.max}
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="range"
-                  min={0}
-                  max={20}
-                  value={filters.cost.min}
-                  onChange={(e) => setFilters(prev => ({
-                    ...prev,
-                    cost: { ...prev.cost, min: Math.min(parseInt(e.target.value), prev.cost.max) }
-                  }))}
-                  className="flex-1"
-                />
-                <input
-                  type="range"
-                  min={0}
-                  max={20}
-                  value={filters.cost.max}
-                  onChange={(e) => setFilters(prev => ({
-                    ...prev,
-                    cost: { ...prev.cost, max: Math.max(parseInt(e.target.value), prev.cost.min) }
-                  }))}
-                  className="flex-1"
-                />
-              </div>
-            </div>
+          <p className="text-gray-300 text-lg">
+            {filter ?
+              `Select ${drawCount} ${filter.type} card${drawCount > 1 ? 's' : ''} from ${searchedCards.length} found ${filter.type} cards` :
+              `Select ${drawCount} card${drawCount > 1 ? 's' : ''} from the top ${searchedCards.length} cards of your deck`
+            }
+          </p>
+          <div className="mt-2">
+            <span className={`text-lg font-bold ${canConfirm ? 'text-green-400' : 'text-yellow-400'}`}>
+              {selectedCards.length} of {drawCount} selected
+            </span>
           </div>
         </div>
 
-        {/* Scrollable Card Grid */}
-        <div className="overflow-y-auto flex-grow pr-4 mb-6">
-          <div className="max-w-[1400px] mx-auto">
-            <div className="flex flex-wrap gap-[10px] justify-center">
-              {filteredCards.map((card, index) => {
-                const quantity = getCardQuantity(card.id);
-                const maxQuantity = card.maxInDeck || 3;
-
-                return (
-                  <div
-                    key={`${card.id}-${index}`}
-                    className="relative flex flex-col items-center"
-                  >
-                    <div
-                      className={`transition-all duration-200 ${
-                        quantity > 0
-                          ? 'ring-2 ring-cyan-400 ring-offset-2 ring-offset-gray-900'
-                          : 'hover:ring-2 hover:ring-cyan-600'
-                      }`}
-                      style={{
-                        filter: quantity > 0 ? 'drop-shadow(0 0 10px rgba(34, 211, 238, 0.4))' : 'none'
-                      }}
-                    >
-                      <ActionCard
-                        card={card}
-                        onClick={() => {}}
-                        isPlayable={true}
-                        isSelected={quantity > 0}
-                        isMandatoryTarget={false}
-                        scale={0.7}
-                      />
-                    </div>
-
-                    {/* Quantity Selector */}
-                    <div className="mt-2 flex items-center gap-2 bg-gray-800 rounded px-3 py-1">
-                      {Array.from({ length: maxQuantity + 1 }).map((_, qty) => (
-                        <button
-                          key={qty}
-                          onClick={() => setCardQuantity(card.id, qty)}
-                          className={`px-3 py-1 rounded text-sm font-bold transition-all ${
-                            quantity === qty
-                              ? 'bg-cyan-500 text-white'
-                              : 'bg-gray-700 text-gray-300 hover:bg-cyan-600 hover:text-white'
-                          }`}
-                        >
-                          {qty}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+        <div className="flex-1 overflow-y-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 justify-items-center">
+            {searchedCards.map((card, index) => (
+              <SelectableCard
+                key={card.instanceId || `${card.id}-${index}`}
+                card={card}
+                isSelected={selectedCards.some(c => {
+                  const cardIdentifier = card.instanceId || `${card.id}-${card.name}`;
+                  const existingIdentifier = c.instanceId || `${c.id}-${c.name}`;
+                  return existingIdentifier === cardIdentifier;
+                })}
+                onClick={handleCardClick}
+              />
+            ))}
           </div>
         </div>
 
-        {/* Footer with action buttons */}
-        <div className="flex justify-center gap-4 flex-shrink-0">
-          {!mandatory && (
-            <button
-              onClick={onClose}
-              className="btn-cancel"
-              style={{
-                padding: '12px 32px',
-                fontSize: '1.1rem',
-                minWidth: '150px'
-              }}
-            >
-              Cancel
-            </button>
-          )}
-          <button
-            onClick={handleConfirm}
-            disabled={!canConfirm}
-            className={`btn-confirm ${!canConfirm ? 'opacity-50 cursor-not-allowed' : ''}`}
-            style={{
-              padding: '12px 32px',
-              fontSize: '1.1rem',
-              minWidth: '150px'
-            }}
-          >
-            {canConfirm ? 'Confirm Selection' : (minCards > 0 ? `Add ${minCards - totalCards} More Cards` : 'Confirm Selection')}
+        <div className="flex justify-center gap-4 mt-6">
+          <button onClick={handleClose} className="btn-cancel">
+            Cancel
+          </button>
+          <button onClick={handleConfirm} disabled={!canConfirm} className="btn-confirm">
+            Confirm Selection
           </button>
         </div>
       </div>

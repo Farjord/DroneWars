@@ -9,7 +9,7 @@ import { useGameState } from '../../hooks/useGameState.js';
 import { WaitingForOpponentScreen, SubmittingOverlay } from './DroneSelectionScreen.jsx';
 import ShipSection from '../ui/ShipSection.jsx';
 import { gameEngine } from '../../logic/gameLogic.js';
-import gameStateManager from '../../state/GameStateManager.js';
+import gameStateManager from '../../managers/GameStateManager.js';
 import p2pManager from '../../network/P2PManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { shipComponentCollection } from '../../data/shipData.js';

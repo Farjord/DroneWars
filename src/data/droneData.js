@@ -25,15 +25,15 @@ const fullDroneCollection = [
     class: 3, 
     limit: 3, 
     attack: 1,
-    hull: 2, 
-    shields: 1, 
+    hull: 3, 
+    shields: 2, 
     speed: 1, 
     image: '/DroneWars/img/Bomber.png', 
     abilities: [{
         name: 'Tachyon Warhead',
         description: 'Deals +5 damage when attacking an enemy ship section.',
         type: 'PASSIVE',
-        effect: { type: 'BONUS_DAMAGE_VS_SHIP', value: 4 }
+        effect: { type: 'BONUS_DAMAGE_VS_SHIP', value: 5 }
         }],
     upgradeSlots: 2 
   },
@@ -58,7 +58,7 @@ const fullDroneCollection = [
   },
 { 
     name: 'Interceptor', 
-    class: 3, limit: 3, attack: 1, hull: 4, shields: 0, speed: 5, 
+    class: 3, limit: 3, attack: 1, hull: 3, shields: 2, speed: 5, 
     image: '/DroneWars/img/Interceptor.png',
     abilities: [{
         name: 'Defender',
@@ -70,7 +70,7 @@ const fullDroneCollection = [
   },
   { 
     name: 'Aegis Drone', 
-    class: 3, limit: 2, attack: 1, hull: 2, shields: 2, speed: 2, 
+    class: 3, limit: 2, attack: 1, hull: 2, shields: 3, speed: 2, 
     image: '/DroneWars/img/Aegis.png',
     abilities: [{
         name: 'Shield Harmonizer',
@@ -101,7 +101,7 @@ const fullDroneCollection = [
   { name: 'Swarm Drone', class: 0, limit: 3, attack: 1, hull: 1, shields: 0, speed: 3, image: '/DroneWars/img/Swarm.png', abilities: [], upgradeSlots: 3 },
   { 
     name: 'Sniper Drone', 
-    class: 4, limit: 2, attack: 1, hull: 1, shields: 0, speed: 2, 
+    class: 2, limit: 2, attack: 1, hull: 2, shields: 1, speed: 2, 
     image: '/DroneWars/img/Sniper.png', 
     abilities: [{
         name: 'Long-Range Shot',
@@ -136,11 +136,11 @@ const fullDroneCollection = [
   },
   { 
     name: 'Avenger Drone', 
-    class: 1, 
+    class: 2, 
     limit: 2, 
     attack: 1, 
-    hull: 1, 
-    shields: 1, 
+    hull: 2, 
+    shields: 2, 
     speed: 3, 
     image: '/DroneWars/img/Avenger.png', 
     abilities: [{
@@ -182,7 +182,7 @@ const fullDroneCollection = [
     attack: 1,
     hull: 1,
     shields: 1,
-    speed: 3,
+    speed: 4,
     image: '/DroneWars/img/Vindicator.png',
     abilities: [{
         name: 'Retribution',

@@ -24,13 +24,13 @@ import FloatingCardControls from './components/ui/FloatingCardControls.jsx';
 import LogModal from './components/modals/LogModal.jsx';
 import ModalContainer from './components/ui/ModalContainer.jsx';
 import TargetingArrow from './components/ui/TargetingArrow.jsx';
-import ExplosionEffect from './components/ui/ExplosionEffect.jsx';
-import WaitingOverlay from './components/WaitingOverlay';
+import ExplosionEffect from './components/animations/ExplosionEffect.jsx';
+import WaitingOverlay from './components/ui/WaitingOverlay';
 import InterceptedBadge from './components/ui/InterceptedBadge.jsx';
 
 // --- 1.3 MODAL COMPONENT IMPORTS ---
-import CardViewerModal from './CardViewerModal';
-import CardSelectionModal from './CardSelectionModal';
+import CardViewerModal from './components/modals/CardViewerModal';
+import CardSelectionModal from './components/modals/CardSelectionModal';
 import AICardPlayReportModal from './components/modals/AICardPlayReportModal.jsx';
 import DetailedDroneModal from './components/modals/debug/DetailedDroneModal.jsx';
 import { DeploymentCompleteModal, RoundEndModal } from './components/modals/GamePhaseModals.jsx';
@@ -68,7 +68,7 @@ import { BACKGROUNDS, DEFAULT_BACKGROUND, getBackgroundById } from './config/bac
 
 // --- 1.6 MANAGER/STATE IMPORTS ---
 // Note: gameFlowManager is initialized in AppRouter and accessed via gameStateManager
-import aiPhaseProcessor from './state/AIPhaseProcessor.js';
+import aiPhaseProcessor from './managers/AIPhaseProcessor.js';
 import p2pManager from './network/P2PManager.js';
 // ActionProcessor is created internally by GameStateManager
 
@@ -78,7 +78,7 @@ import { debugLog } from './utils/debugLogger.js';
 import DEV_CONFIG from './config/devConfig.js';
 
 // --- 1.8 ANIMATION IMPORTS ---
-import AnimationManager from './state/AnimationManager.js';
+import AnimationManager from './managers/AnimationManager.js';
 import FlyingDrone from './components/animations/FlyingDrone.jsx';
 import FlashEffect from './components/animations/FlashEffect.jsx';
 import HealEffect from './components/animations/HealEffect.jsx';
@@ -3921,8 +3921,15 @@ const App = ({ phaseAnimationQueue }) => {
 
           // Wait for modal to unmount before completing ability
           setTimeout(async () => {
-            // Use shipAbilityCompletion action (deducts energy and ends turn)
-            // This is for abilities that already executed their logic (like REALLOCATE_SHIELDS)
+            // First execute the ability effect (e.g., marking target drone)
+            await processActionWithGuestRouting('shipAbility', {
+              ability: ability,
+              sectionName: sectionName,
+              targetId: target?.id || null,
+              playerId: getLocalPlayerId()
+            });
+
+            // Then complete the ability (deducts energy and ends turn)
             await processActionWithGuestRouting('shipAbilityCompletion', {
               ability: ability,
               sectionName: sectionName,

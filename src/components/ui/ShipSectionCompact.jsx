@@ -143,12 +143,11 @@ const ShipSectionCompact = ({
 
   // Handle clicks - shield allocation/targeting takes priority, then view full card
   const handleClick = (e) => {
-    // Handle interactive clicks (shield allocation or targeting)
-    if (onClick) {
-      onClick(e);
-    }
-    // Only open modal when NOT targeting, NOT reallocating, NOT allocating shields, and modal handler exists
-    if (!isTargetingMode && !reallocationState && turnPhase !== 'allocateShields' && onViewFullCard) {
+    // If onClick returns true it consumed the click (e.g., started targeting)
+    const consumed = onClick ? onClick(e) === true : false;
+
+    // Only open modal when NOT consumed, NOT targeting, NOT reallocating, NOT allocating shields, and modal handler exists
+    if (!consumed && !isTargetingMode && !reallocationState && turnPhase !== 'allocateShields' && onViewFullCard) {
       onViewFullCard();
     }
   };

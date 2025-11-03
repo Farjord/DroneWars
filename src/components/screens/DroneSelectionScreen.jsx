@@ -9,7 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState.js';
 import DroneCard from '../ui/DroneCard.jsx';
 import { advanceDroneSelectionTrio } from '../../utils/droneSelectionUtils.js';
-import gameStateManager from '../../state/GameStateManager.js';
+import gameStateManager from '../../managers/GameStateManager.js';
 import p2pManager from '../../network/P2PManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 

@@ -16,7 +16,7 @@ import {
   specialSystems,
   decisionExamples,
   playerTips
-} from '../../data/aiStrategyDescriptions.js';
+} from '../../data/descriptions/aiStrategyDescriptions.js';
 
 const AIStrategyModal = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState('overview');

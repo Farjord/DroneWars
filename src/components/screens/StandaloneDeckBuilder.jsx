@@ -5,10 +5,10 @@
 // Manages its own state and provides localStorage persistence
 
 import React, { useState, useEffect } from 'react';
-import DeckBuilder from '../DeckBuilder.jsx';
-import fullCardCollection from '../data/cardData.js';
-import fullDroneCollection from '../data/droneData.js';
-import gameStateManager from '../state/GameStateManager.js';
+import DeckBuilder from './DeckBuilder.jsx';
+import fullCardCollection from '../../data/cardData.js';
+import fullDroneCollection from '../../data/droneData.js';
+import gameStateManager from '../../managers/GameStateManager.js';
 
 /**
  * StandaloneDeckBuilder - Wrapper component for deck building from menu

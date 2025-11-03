@@ -5,34 +5,34 @@
 // Accessible via MenuScreen button or Ctrl+M keyboard shortcut
 
 import { useState, useEffect } from 'react';
-import gameStateManager from '../state/GameStateManager.js';
+import gameStateManager from '../../managers/GameStateManager.js';
 import { getMockPropsForModal, getModalsByCategory, MODAL_CATEGORIES } from './modalShowcaseHelpers.js';
 
 // Import all modal components
-import WinnerModal from '../components/modals/WinnerModal.jsx';
-import InterceptionOpportunityModal from '../components/modals/InterceptionOpportunityModal.jsx';
-import OpponentDecidingInterceptionModal from '../components/modals/OpponentDecidingInterceptionModal.jsx';
-import DeploymentConfirmationModal from '../components/modals/DeploymentConfirmationModal.jsx';
-import CardConfirmationModal from '../components/modals/CardConfirmationModal.jsx';
-import DroneAbilityConfirmationModal from '../components/modals/DroneAbilityConfirmationModal.jsx';
-import ShipAbilityConfirmationModal from '../components/modals/ShipAbilityConfirmationModal.jsx';
-import MoveConfirmationModal from '../components/modals/MoveConfirmationModal.jsx';
-import MandatoryActionModal from '../components/modals/MandatoryActionModal.jsx';
-import ConfirmationModal from '../components/modals/ConfirmationModal.jsx';
-import AICardPlayReportModal from '../components/modals/AICardPlayReportModal.jsx';
-import AIDecisionLogModal from '../components/modals/AIDecisionLogModal.jsx';
-import AIHandDebugModal from '../components/modals/AIHandDebugModal.jsx';
-import GameDebugModal from '../components/modals/GameDebugModal.jsx';
-import WaitingForPlayerModal from '../components/modals/WaitingForPlayerModal.jsx';
-import OpponentDronesModal from '../components/modals/OpponentDronesModal.jsx';
-import ViewUpgradesModal from '../components/modals/ViewUpgradesModal.jsx';
-import UpgradeSelectionModal from '../components/modals/UpgradeSelectionModal.jsx';
-import DestroyUpgradeModal from '../components/modals/DestroyUpgradeModal.jsx';
-import CardSelectionModal from '../CardSelectionModal.jsx';
-import CardViewerModal from '../CardViewerModal.jsx';
-import ViewDeckModal from '../components/modals/ViewDeckModal.jsx';
-import GamePhaseModal from '../components/ui/GamePhaseModal.jsx';
-import DetailedDroneModal from '../components/modals/debug/DetailedDroneModal.jsx';
+import WinnerModal from '../modals/WinnerModal.jsx';
+import InterceptionOpportunityModal from '../modals/InterceptionOpportunityModal.jsx';
+import OpponentDecidingInterceptionModal from '../modals/OpponentDecidingInterceptionModal.jsx';
+import DeploymentConfirmationModal from '../modals/DeploymentConfirmationModal.jsx';
+import CardConfirmationModal from '../modals/CardConfirmationModal.jsx';
+import DroneAbilityConfirmationModal from '../modals/DroneAbilityConfirmationModal.jsx';
+import ShipAbilityConfirmationModal from '../modals/ShipAbilityConfirmationModal.jsx';
+import MoveConfirmationModal from '../modals/MoveConfirmationModal.jsx';
+import MandatoryActionModal from '../modals/MandatoryActionModal.jsx';
+import ConfirmationModal from '../modals/ConfirmationModal.jsx';
+import AICardPlayReportModal from '../modals/AICardPlayReportModal.jsx';
+import AIDecisionLogModal from '../modals/AIDecisionLogModal.jsx';
+import AIHandDebugModal from '../modals/AIHandDebugModal.jsx';
+import GameDebugModal from '../modals/GameDebugModal.jsx';
+import WaitingForPlayerModal from '../modals/WaitingForPlayerModal.jsx';
+import OpponentDronesModal from '../modals/OpponentDronesModal.jsx';
+import ViewUpgradesModal from '../modals/ViewUpgradesModal.jsx';
+import UpgradeSelectionModal from '../modals/UpgradeSelectionModal.jsx';
+import DestroyUpgradeModal from '../modals/DestroyUpgradeModal.jsx';
+import CardSelectionModal from '../modals/CardSelectionModal.jsx';
+import CardViewerModal from '../modals/CardViewerModal.jsx';
+import ViewDeckModal from '../modals/ViewDeckModal.jsx';
+import GamePhaseModal from '../ui/GamePhaseModal.jsx';
+import DetailedDroneModal from '../modals/debug/DetailedDroneModal.jsx';
 
 /**
  * Modal Showcase Screen Component

@@ -6,8 +6,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Wifi, WifiOff, Copy, Check, Users, GamepadIcon, Loader2 } from 'lucide-react';
-import p2pManager from './network/P2PManager.js';
-import { debugLog } from './utils/debugLogger.js';
+import p2pManager from '../../network/P2PManager.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 const MultiplayerLobby = ({ onGameStart, onBack }) => {
   const [mode, setMode] = useState('menu'); // 'menu', 'host', 'join', 'waiting', 'connected'

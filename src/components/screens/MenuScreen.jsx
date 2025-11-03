@@ -5,13 +5,13 @@
 // Clean separation from game logic - no player state access
 
 import { useEffect, useState } from 'react';
-import { useGameState } from '../hooks/useGameState.js';
-import GameDataService from '../services/GameDataService.js';
-import DEV_CONFIG from '../config/devConfig.js';
-import { debugLog } from '../utils/debugLogger.js';
-import GlossaryModal from '../components/modals/GlossaryModal.jsx';
-import AIStrategyModal from '../components/modals/AIStrategyModal.jsx';
-import ScalingText from '../components/ui/ScalingText.jsx';
+import { useGameState } from '../../hooks/useGameState.js';
+import GameDataService from '../../services/GameDataService.js';
+import DEV_CONFIG from '../../config/devConfig.js';
+import { debugLog } from '../../utils/debugLogger.js';
+import GlossaryModal from '../modals/GlossaryModal.jsx';
+import AIStrategyModal from '../modals/AIStrategyModal.jsx';
+import ScalingText from '../ui/ScalingText.jsx';
 
 /**
  * MenuScreen - Main menu for selecting game mode

@@ -967,8 +967,8 @@ const resolveShipAbility = (ability, sectionName, target, playerStates, placedSe
         player2: JSON.parse(JSON.stringify(playerStates.player2))
     };
 
-    // Pay energy cost
-    newPlayerStates[playerId].energy -= cost.energy;
+    // NOTE: Energy cost is NOT deducted here - it's deducted in processShipAbilityCompletion
+    // This ensures energy is only paid when the action completes and the turn ends
 
     // Use modular handler for ship ability effects
     if (effect.type === 'REALLOCATE_SHIELDS') {

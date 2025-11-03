@@ -10,7 +10,7 @@ import shipSectionData from '../data/shipData.js';
 import fullCardCollection from '../data/cardData.js';
 import fullDroneCollection from '../data/droneData.js';
 import aiPersonalities from '../data/aiData.js';
-import aiPhaseProcessor from '../state/AIPhaseProcessor.js';
+import aiPhaseProcessor from '../managers/AIPhaseProcessor.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 /**

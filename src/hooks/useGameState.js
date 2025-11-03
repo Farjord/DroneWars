@@ -5,7 +5,7 @@
 // Provides reactive access to game state and multiplayer functionality
 
 import { useState, useEffect, useCallback } from 'react';
-import gameStateManager from '../state/GameStateManager.js';
+import gameStateManager from '../managers/GameStateManager.js';
 import p2pManager from '../network/P2PManager.js';
 import { isSimultaneousPhase, isSequentialPhase } from '../utils/gameUtils.js';
 import { debugLog } from '../utils/debugLogger.js';

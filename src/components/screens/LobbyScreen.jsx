@@ -5,17 +5,17 @@
 // Clean separation from game logic - no game state access
 
 import { useState, useEffect } from 'react';
-import { useGameState } from '../hooks/useGameState.js';
-import aiPersonalities from '../data/aiData.js';
-import fullDroneCollection from '../data/droneData.js';
-import fullCardCollection from '../data/cardData.js';
-import { shipComponentCollection } from '../data/shipData.js';
-import aiPhaseProcessor from '../state/AIPhaseProcessor.js';
-import gameStateManager from '../state/GameStateManager.js';
-import MultiplayerLobby from '../MultiplayerLobby.jsx';
-import p2pManager from '../network/P2PManager.js';
-import { debugLog } from '../utils/debugLogger.js';
-import ViewDeckModal from '../components/modals/ViewDeckModal.jsx';
+import { useGameState } from '../../hooks/useGameState.js';
+import aiPersonalities from '../../data/aiData.js';
+import fullDroneCollection from '../../data/droneData.js';
+import fullCardCollection from '../../data/cardData.js';
+import { shipComponentCollection } from '../../data/shipData.js';
+import aiPhaseProcessor from '../../managers/AIPhaseProcessor.js';
+import gameStateManager from '../../managers/GameStateManager.js';
+import MultiplayerLobby from './MultiplayerLobby.jsx';
+import p2pManager from '../../network/P2PManager.js';
+import { debugLog } from '../../utils/debugLogger.js';
+import ViewDeckModal from '../modals/ViewDeckModal.jsx';
 
 /**
  * LobbyScreen - AI selection and multiplayer setup

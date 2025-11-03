@@ -1,13 +1,13 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp, Sword, Rocket, Shield, Grid, ArrowLeft, LayoutGrid, List } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import ActionCard from './components/ui/ActionCard.jsx';
-import DroneCard from './components/ui/DroneCard.jsx';
-import ViewDeckModal from './components/modals/ViewDeckModal.jsx';
-import ShipSection from './components/ui/ShipSection.jsx';
-import fullDroneCollection from './data/droneData.js';
-import { shipComponentCollection } from './data/shipData.js';
-import { gameEngine } from './logic/gameLogic.js';
+import ActionCard from '../ui/ActionCard.jsx';
+import DroneCard from '../ui/DroneCard.jsx';
+import ViewDeckModal from '../modals/ViewDeckModal.jsx';
+import ShipSection from '../ui/ShipSection.jsx';
+import fullDroneCollection from '../../data/droneData.js';
+import { shipComponentCollection } from '../../data/shipData.js';
+import { gameEngine } from '../../logic/gameLogic.js';
 
 // Helper functions to get type-based colors for table styling
 const getTypeBackgroundClass = (type) => {

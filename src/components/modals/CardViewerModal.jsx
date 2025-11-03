@@ -1,6 +1,6 @@
 import React from 'react';
 import { X } from 'lucide-react';
-import ActionCard from './components/ui/ActionCard.jsx';
+import ActionCard from '../ui/ActionCard.jsx';
 
 // RENAMED COMPONENT and UPDATED PROPS
 const CardViewerModal = ({ isOpen, onClose, cards, title, shouldSort }) => {

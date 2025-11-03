@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import AnimationManager from '../state/AnimationManager.js';
+import AnimationManager from '../managers/AnimationManager.js';
 import FlashEffect from '../components/animations/FlashEffect.jsx';
 import CardVisualEffect from '../components/animations/CardVisualEffect.jsx';
 import { debugLog, timingLog } from '../utils/debugLogger.js';

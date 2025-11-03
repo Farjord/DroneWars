@@ -4,9 +4,9 @@
 // Mock data generators and modal configuration for the Modal Showcase feature
 // Provides realistic preview data for all modal components
 
-import fullDroneCollection from '../data/droneData.js';
-import fullCardCollection from '../data/cardData.js';
-import { gameEngine } from '../logic/gameLogic.js';
+import fullDroneCollection from '../../data/droneData.js';
+import fullCardCollection from '../../data/cardData.js';
+import { gameEngine } from '../../logic/gameLogic.js';
 
 // ========================================
 // MOCK DATA GENERATORS
