@@ -83,7 +83,7 @@ const ShipSectionsDisplay = ({
               className="bg-black/20 rounded-lg border-2 border-dashed border-gray-700"
               style={{
                 width: 'clamp(640px, 31.25vw, 850px)',
-                height: 'clamp(152px, 6.25vw, 194px)'
+                height: 'clamp(143px, 6.25vw, 184px)'
               }}
             ></div>
           );
@@ -91,7 +91,10 @@ const ShipSectionsDisplay = ({
 
         const sectionStats = player.shipSections[sectionName];
 
-        const isCardTarget = validCardTargets.some(t => t.id === sectionName);
+        // Derive the correct player ID for this ship sections display
+        const localPlayerId = getLocalPlayerId();
+        const currentPlayerId = isPlayer ? localPlayerId : (localPlayerId === 'player1' ? 'player2' : 'player1');
+        const isCardTarget = validCardTargets.some(t => t.id === sectionName && t.owner === currentPlayerId);
 
         // Determine shield reallocation visual state
         let reallocationState = null;
@@ -117,7 +120,7 @@ const ShipSectionsDisplay = ({
             key={laneIndex}
             style={{
               width: 'clamp(640px, 31.25vw, 850px)',
-              height: 'clamp(152px, 6.25vw, 194px)'
+              height: 'clamp(143px, 6.25vw, 184px)'
             }}
           >
             <ShipSectionCompact
@@ -139,10 +142,13 @@ const ShipSectionsDisplay = ({
                 if (isInteractive && onSectionClick) { // Specifically for shield allocation
                   debugLog('SHIELD_CLICKS', `✅ Calling onSectionClick for ${sectionName}`);
                   onSectionClick(sectionName);
-                } else if (onTargetClick) { // For attacks and card/ability targeting
+                  return true; // Click consumed for shield allocation
+                } else if (onTargetClick && isCardTarget) { // For attacks and card/ability targeting - only valid targets
                   debugLog('SHIELD_CLICKS', `🎯 Calling onTargetClick for ${sectionName}`);
                   onTargetClick({ ...sectionStats, id: sectionName, name: sectionName }, 'section', isPlayer);
+                  return true; // Click consumed for targeting
                 }
+                return false; // Click not consumed, allow modal to open
               }}
               onAbilityClick={onAbilityClick}
               onViewFullCard={() => {

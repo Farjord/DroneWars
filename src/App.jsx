@@ -64,6 +64,7 @@ import { useAnimationSetup } from './hooks/useAnimationSetup';
 // --- 1.5 DATA/LOGIC IMPORTS ---
 import fullCardCollection from './data/cardData.js';
 import { gameEngine } from './logic/gameLogic.js';
+import { calculatePotentialInterceptors } from './logic/combat/InterceptionProcessor.js';
 import { BACKGROUNDS, DEFAULT_BACKGROUND, getBackgroundById } from './config/backgrounds.js';
 
 // --- 1.6 MANAGER/STATE IMPORTS ---
@@ -75,6 +76,7 @@ import p2pManager from './network/P2PManager.js';
 // --- 1.7 UTILITY IMPORTS ---
 import { getElementCenter } from './utils/gameUtils.js';
 import { debugLog } from './utils/debugLogger.js';
+import { calculateAllValidTargets } from './utils/uiTargetingHelpers.js';
 import DEV_CONFIG from './config/devConfig.js';
 
 // --- 1.8 ANIMATION IMPORTS ---
@@ -280,6 +282,7 @@ const App = ({ phaseAnimationQueue }) => {
   const deploymentToActionTriggered = useRef(false); // Prevent duplicate deployment → action triggers
   const enteredMandatoryDiscardWithExcess = useRef(false); // Track if player entered mandatoryDiscard with excess cards
   const enteredMandatoryRemovalWithExcess = useRef(false); // Track if player entered mandatoryDroneRemoval with excess drones
+  const initialMandatoryDiscardHandSize = useRef(null); // Track initial hand size when entering mandatoryDiscard phase
 
   // --- 3.4 HOOKS DEPENDENT ON REFS ---
   // These hooks require refs as parameters and must be called after ref initialization.
@@ -553,6 +556,11 @@ const App = ({ phaseAnimationQueue }) => {
     : 0;
   const excessDrones = localPlayerState && localPlayerEffectiveStats
     ? totalLocalPlayerDrones - localPlayerEffectiveStats.totals.cpuLimit
+    : 0;
+
+  // Derive mandatoryDiscardsMade from actual hand size changes (syncs between host/guest)
+  const mandatoryDiscardsMade = (turnPhase === 'mandatoryDiscard' && initialMandatoryDiscardHandSize.current)
+    ? initialMandatoryDiscardHandSize.current - localPlayerState.hand.length
     : 0;
 
   // Debug logging for mandatoryAction calculation
@@ -1049,9 +1057,13 @@ const App = ({ phaseAnimationQueue }) => {
         if (result.needsCardSelection.type === 'single_move' || result.needsCardSelection.type === 'multi_move') {
             // For SINGLE_MOVE, highlight all friendly drones as valid targets
             if (result.needsCardSelection.type === 'single_move') {
-                const friendlyDrones = Object.values(localPlayerState.dronesOnBoard)
+                // Determine which player's drones should be selectable based on who is acting
+                const actingPlayerState = actingPlayerId === getLocalPlayerId()
+                    ? localPlayerState
+                    : opponentPlayerState;
+                const friendlyDrones = Object.values(actingPlayerState.dronesOnBoard)
                     .flat()
-                    .map(drone => ({ id: drone.id, type: 'drone', owner: getLocalPlayerId() }));
+                    .map(drone => ({ id: drone.id, type: 'drone', owner: actingPlayerId }));
                 setValidCardTargets(friendlyDrones);
             }
 
@@ -1060,7 +1072,8 @@ const App = ({ phaseAnimationQueue }) => {
                 phase: result.needsCardSelection.phase,
                 selectedDrones: [],
                 sourceLane: null,
-                maxDrones: result.needsCardSelection.maxDrones
+                maxDrones: result.needsCardSelection.maxDrones,
+                actingPlayerId: actingPlayerId
             });
             return; // Don't process other effects yet
         }
@@ -1210,7 +1223,25 @@ const App = ({ phaseAnimationQueue }) => {
 
   // TODO: TECHNICAL DEBT - calculateAllValidTargets needed for multi-select targeting UI - no GameDataService equivalent
   useEffect(() => {
-    const { validAbilityTargets, validCardTargets } = gameEngine.calculateAllValidTargets(
+    debugLog('TARGETING_PROCESSING', '🎯 TARGETING USEEFFECT TRIGGERED', {
+      selectedCard: selectedCard?.name || null,
+      selectedCardId: selectedCard?.id || null,
+      abilityMode: abilityMode?.drone?.name || null,
+      shipAbilityMode: shipAbilityMode?.sectionName || null,
+      multiSelectState: multiSelectState?.phase || null,
+      willSkipCalculation: !selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState
+    });
+
+    // Early return: Only calculate if actually in a targeting mode
+    if (!selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState) {
+      // No selection active - clear targeting and skip calculation
+      setValidAbilityTargets([]);
+      setValidCardTargets([]);
+      return;
+    }
+
+    // Only calculate when something is actually selected
+    const { validAbilityTargets, validCardTargets } = calculateAllValidTargets(
       abilityMode,
       shipAbilityMode,
       multiSelectState,
@@ -1228,7 +1259,7 @@ const App = ({ phaseAnimationQueue }) => {
       setSelectedCard(null);
       setShipAbilityMode(null);
     }
-  }, [abilityMode, shipAbilityMode, selectedCard, gameState.player1, gameState.player2, multiSelectState]);
+  }, [abilityMode, shipAbilityMode, selectedCard, multiSelectState]);
 
   // --- 8.2 PHASE ANIMATION QUEUE SUBSCRIPTION ---
 
@@ -1281,7 +1312,7 @@ const App = ({ phaseAnimationQueue }) => {
   // TODO: UI MONITORING - Interception monitoring is appropriate UI-only effect - calculates UI hints for user
   useEffect(() => {
     if (turnPhase === 'action') {
-        const potential = gameEngine.calculatePotentialInterceptors(
+        const potential = calculatePotentialInterceptors(
             selectedDrone,
             localPlayerState,
             opponentPlayerState,
@@ -1614,9 +1645,16 @@ const App = ({ phaseAnimationQueue }) => {
   useEffect(() => {
     if (turnPhase === 'mandatoryDiscard') {
       enteredMandatoryDiscardWithExcess.current = excessCards > 0;
-      debugLog('PHASE_TRANSITIONS', '[MANDATORY DISCARD] Entered phase, tracking initial state:', { excessCards });
+      initialMandatoryDiscardHandSize.current = localPlayerState.hand.length;
+      debugLog('PHASE_TRANSITIONS', '[MANDATORY DISCARD] Entered phase, tracking initial state:', {
+        excessCards,
+        initialHandSize: localPlayerState.hand.length
+      });
+    } else {
+      // Reset when leaving mandatoryDiscard phase
+      initialMandatoryDiscardHandSize.current = null;
     }
-  }, [turnPhase]);
+  }, [turnPhase, localPlayerState.hand.length]);
 
   useEffect(() => {
     if (turnPhase === 'mandatoryDroneRemoval') {
@@ -2522,24 +2560,27 @@ const App = ({ phaseAnimationQueue }) => {
 
           debugLog('COMBAT', "Action: Single-move drone selection.");
 
-          // Find the drone's current lane
-          const droneLane = Object.entries(localPlayerState.dronesOnBoard).find(([_, drones]) =>
+          // Find the drone's current lane - use the acting player's state
+          const actingPlayerId = multiSelectState.actingPlayerId || getLocalPlayerId();
+          const actingPlayerState = actingPlayerId === getLocalPlayerId()
+              ? localPlayerState
+              : opponentPlayerState;
+          const droneLane = Object.entries(actingPlayerState.dronesOnBoard).find(([_, drones]) =>
               drones.some(d => d.id === token.id)
           )?.[0];
 
           if (droneLane) {
-              const localId = getLocalPlayerId();
-              debugLog('MOVEMENT_LANES', `Drone selected from ${droneLane}, localPlayerId: ${localId}`);
+              debugLog('MOVEMENT_LANES', `Drone selected from ${droneLane}, actingPlayerId: ${actingPlayerId}`);
 
               // Calculate adjacent lanes
               const currentLaneIndex = parseInt(droneLane.replace('lane', ''));
               const adjacentLanes = [];
 
               if (currentLaneIndex > 1) {
-                  adjacentLanes.push({ id: `lane${currentLaneIndex - 1}`, owner: localId, type: 'lane' });
+                  adjacentLanes.push({ id: `lane${currentLaneIndex - 1}`, owner: actingPlayerId, type: 'lane' });
               }
               if (currentLaneIndex < 3) {
-                  adjacentLanes.push({ id: `lane${currentLaneIndex + 1}`, owner: localId, type: 'lane' });
+                  adjacentLanes.push({ id: `lane${currentLaneIndex + 1}`, owner: actingPlayerId, type: 'lane' });
               }
 
               debugLog('MOVEMENT_LANES', `Adjacent lanes with owner:`, adjacentLanes);
@@ -2907,7 +2948,8 @@ const App = ({ phaseAnimationQueue }) => {
             phase: 'select_drone',
             selectedDrones: [],
             sourceLane: null,
-            maxDrones: 1
+            maxDrones: 1,
+            actingPlayerId: getLocalPlayerId()
           });
         } else { // MULTI_MOVE
           setMultiSelectState({
@@ -2915,7 +2957,8 @@ const App = ({ phaseAnimationQueue }) => {
             phase: 'select_source_lane',
             selectedDrones: [],
             sourceLane: null,
-            maxDrones: card.effect.count || 3
+            maxDrones: card.effect.count || 3,
+            actingPlayerId: getLocalPlayerId()
           });
         }
 
@@ -2977,6 +3020,13 @@ const App = ({ phaseAnimationQueue }) => {
     // Determine if this is phase-based or ability-based mandatory discard
     const isAbilityBased = mandatoryAction?.fromAbility;
     const currentCount = isAbilityBased ? mandatoryAction.count : excessCards;
+
+    // For phase-based mandatory discards, check if we've already discarded enough
+    if (!isAbilityBased && excessCards <= 0) {
+      debugLog('DISCARD', '🚫 Cannot discard more cards - already at hand limit');
+      setConfirmationModal(null);
+      return;
+    }
 
     // Determine if this is the last discard
     const newCount = currentCount - 1;
@@ -3601,6 +3651,8 @@ const App = ({ phaseAnimationQueue }) => {
                 ? { type: 'destroy', count: excessDrones }
                 : null
         }
+        mandatoryDiscardsMade={mandatoryDiscardsMade}
+        excessCards={excessCards}
         handleFooterButtonClick={handleFooterButtonClick}
         handleCardClick={handleCardClick}
         cancelCardSelection={cancelCardSelection}

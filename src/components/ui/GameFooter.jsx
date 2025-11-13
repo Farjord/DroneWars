@@ -29,6 +29,8 @@ function GameFooter({
   selectedCard,
   turnPhase,
   mandatoryAction,
+  mandatoryDiscardsMade,
+  excessCards,
   handleFooterButtonClick,
   handleCardClick,
   cancelCardSelection,
@@ -126,6 +128,8 @@ function GameFooter({
                 selectedCard={selectedCard}
                 turnPhase={turnPhase}
                 mandatoryAction={mandatoryAction}
+                mandatoryDiscardsMade={mandatoryDiscardsMade}
+                excessCards={excessCards}
                 handleCardClick={handleCardClick}
                 getLocalPlayerId={getLocalPlayerId}
                 isMyTurn={isMyTurn}

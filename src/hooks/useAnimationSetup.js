@@ -204,7 +204,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
     });
 
     animationManager.registerVisualHandler('CARD_VISUAL_EFFECT', (payload) => {
-      const { visualType, sourcePlayer, targetId, targetPlayer, targetLane, targetType, duration, onComplete } = payload;
+      const { visualType, sourcePlayer, targetId, targetPlayer, targetLane, targetType, onComplete } = payload;
 
       // Calculate source position (player hand area)
       const gameAreaRect = gameAreaRef.current?.getBoundingClientRect();
@@ -299,7 +299,6 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         visualType: visualType || 'LASER_BLAST',
         startPos: { x: sourceX, y: sourceY },
         endPos: targetCenter,
-        duration: duration || 800,
         onComplete: () => {
           setCardVisuals(prev => prev.filter(v => v.id !== visualId));
           onComplete?.();

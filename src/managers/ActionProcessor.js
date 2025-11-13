@@ -5,6 +5,14 @@
 // All game actions must go through this processor to ensure serialization.
 
 import { gameEngine } from '../logic/gameLogic.js';
+import { resolveAttack } from '../logic/combat/AttackProcessor.js';
+import { calculatePotentialInterceptors, calculateAiInterception } from '../logic/combat/InterceptionProcessor.js';
+import MovementEffectProcessor from '../logic/effects/movement/MovementEffectProcessor.js';
+import DeploymentProcessor from '../logic/deployment/DeploymentProcessor.js';
+import RoundManager from '../logic/round/RoundManager.js';
+import ShieldManager from '../logic/shields/ShieldManager.js';
+import WinConditionChecker from '../logic/game/WinConditionChecker.js';
+import AbilityResolver from '../logic/abilities/AbilityResolver.js';
 import aiPhaseProcessor from './AIPhaseProcessor.js';
 import GameDataService from '../services/GameDataService.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
@@ -452,8 +460,9 @@ setAnimationManager(animationManager) {
     // Check for interception opportunity BEFORE resolving attack
     let finalAttackDetails = { ...attackDetails };
 
-    if (attackDetails.interceptor === undefined) {
-      const interceptionResult = gameEngine.calculateAiInterception(
+    // Only drone attacks can be intercepted - skip interception for card-based attacks
+    if (attackDetails.interceptor === undefined && !attackDetails.sourceCardInstanceId) {
+      const interceptionResult = calculateAiInterception(
         attackDetails,
         { player1: currentState.player1, player2: currentState.player2 },
         allPlacedSections
@@ -552,13 +561,11 @@ setAnimationManager(animationManager) {
     const triggerExplosion = () => {};
     const triggerHitAnimation = () => {};
 
-    const result = gameEngine.resolveAttack(
+    const result = resolveAttack(
       finalAttackDetails,
       { player1: currentState.player1, player2: currentState.player2 },
       allPlacedSections,
-      logCallback,
-      triggerExplosion,
-      triggerHitAnimation
+      logCallback
     );
 
     // Use animation events from gameEngine result
@@ -779,7 +786,7 @@ setAnimationManager(animationManager) {
       return await this.processAttack({ attackDetails });
     };
 
-    const result = gameEngine.resolveAbility(
+    const result = AbilityResolver.resolveAbility(
       ability,
       userDrone,
       targetDrone,
@@ -881,7 +888,9 @@ setAnimationManager(animationManager) {
       this.gameStateManager.addLogEntry(entry);
     };
 
-    const result = gameEngine.executeDeployment(
+    // Use DeploymentProcessor instead of gameEngine
+    const deploymentProcessor = new DeploymentProcessor();
+    const result = deploymentProcessor.executeDeployment(
       droneData,
       laneId,
       turn || currentState.turn,
@@ -1137,60 +1146,69 @@ setAnimationManager(animationManager) {
     };
 
     const callbacks = {
-      logCallback: (entry) => this.gameStateManager.addLogEntry(entry),
-      applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects,
-      updateAurasCallback: gameEngine.updateAuras
+      logCallback: (entry) => this.gameStateManager.addLogEntry(entry)
     };
+
+    // Create context for MovementEffectProcessor
+    const context = {
+      actingPlayerId: playerId,
+      playerStates: {
+        player1: JSON.parse(JSON.stringify(playerStates.player1)),
+        player2: JSON.parse(JSON.stringify(playerStates.player2))
+      },
+      card,
+      placedSections,
+      callbacks,
+      localPlayerId: playerId,
+      gameMode: currentState.gameMode || 'local'
+    };
+
+    const opponentPlayerId = playerId === 'player1' ? 'player2' : 'player1';
+    const movementProcessor = new MovementEffectProcessor();
 
     let result;
 
     if (movementType === 'single_move') {
       // Single drone movement
-      result = gameEngine.resolveSingleMove(
+      result = movementProcessor.executeSingleMove(
         card,
         drones[0], // Single drone
         fromLane,
         toLane,
-        playerStates[playerId],
-        playerStates[playerId === 'player1' ? 'player2' : 'player1'],
-        placedSections,
-        callbacks
-      );
-
-      // Update only the acting player's state
-      const newPlayerStates = {
-        ...playerStates,
-        [playerId]: result.newPlayerState
-      };
-
-      this.gameStateManager.setPlayerStates(
-        newPlayerStates.player1,
-        newPlayerStates.player2
+        playerId,
+        context.playerStates,
+        opponentPlayerId,
+        context
       );
     } else {
       // Multi-drone movement
-      result = gameEngine.resolveMultiMove(
+      result = movementProcessor.executeMultiMove(
         card,
         drones, // Array of drones
         fromLane,
         toLane,
-        playerStates[playerId],
-        playerStates[playerId === 'player1' ? 'player2' : 'player1'],
-        placedSections,
-        callbacks
-      );
-
-      // Update only the acting player's state
-      const newPlayerStates = {
-        ...playerStates,
-        [playerId]: result.newPlayerState
-      };
-
-      this.gameStateManager.setPlayerStates(
-        newPlayerStates.player1,
-        newPlayerStates.player2
+        playerId,
+        context.playerStates,
+        opponentPlayerId,
+        context
       );
     }
+
+    // Check for validation errors
+    if (result.error) {
+      return {
+        success: false,
+        error: result.error,
+        shouldCancelCardSelection: result.shouldCancelCardSelection,
+        shouldClearMultiSelectState: result.shouldClearMultiSelectState
+      };
+    }
+
+    // Update player states with movement result
+    this.gameStateManager.setPlayerStates(
+      result.newPlayerStates.player1,
+      result.newPlayerStates.player2
+    );
 
     // Execute CARD_REVEAL animation now that movement is complete (non-blocking)
     const animDef = this.animationManager?.animations['CARD_REVEAL'];
@@ -1341,7 +1359,7 @@ setAnimationManager(animationManager) {
       }
     };
 
-    const result = gameEngine.resolveShipAbility(
+    const result = AbilityResolver.resolveShipAbility(
       ability,
       sectionName,
       targetId,
@@ -1489,8 +1507,8 @@ setAnimationManager(animationManager) {
       }
     };
 
-    // Call game engine to check win condition
-    const result = gameEngine.checkGameStateForWinner(playerStates, callbacks);
+    // Call WinConditionChecker to check win condition
+    const result = WinConditionChecker.checkGameStateForWinner(playerStates, callbacks);
     return result;
   }
 
@@ -1691,12 +1709,13 @@ setAnimationManager(animationManager) {
 
     const currentState = this.gameStateManager.getState();
 
-    // Use gameLogic functions to calculate round start effects
-    const determinedFirstPlayer = firstPlayer || gameEngine.determineFirstPlayer(
-      newTurn,
-      currentState.firstPlayerOverride,
-      currentState.firstPasserOfPreviousRound
-    );
+    // Determine first player using firstPlayerUtils (handles seeded random for multiplayer)
+    const { determineFirstPlayer } = await import('../utils/firstPlayerUtils.js');
+    const determinedFirstPlayer = firstPlayer || determineFirstPlayer({
+      ...currentState,
+      turn: newTurn,
+      roundNumber: currentState.roundNumber || Math.floor((newTurn - 1) / 2) + 1
+    });
 
     // Calculate effective ship stats for both players
     const player1EffectiveStats = this.gameDataService.getEffectiveShipStats(
@@ -1709,7 +1728,7 @@ setAnimationManager(animationManager) {
     );
 
     // Calculate new player states for the round using computed stats
-    const newPlayer1State = gameEngine.calculateNewRoundPlayerState(
+    const newPlayer1State = RoundManager.calculateNewRoundPlayerState(
       currentState.player1,
       newTurn,
       player1EffectiveStats,
@@ -1717,7 +1736,7 @@ setAnimationManager(animationManager) {
       currentState.placedSections
     );
 
-    const newPlayer2State = gameEngine.calculateNewRoundPlayerState(
+    const newPlayer2State = RoundManager.calculateNewRoundPlayerState(
       currentState.player2,
       newTurn,
       player2EffectiveStats,
@@ -2228,6 +2247,12 @@ setAnimationManager(animationManager) {
    * @returns {Object} { pendingStateUpdate, pendingFinalState }
    */
   prepareTeleportStates(animations, newPlayerStates) {
+    // Guard against incomplete result structure from async operations
+    if (!newPlayerStates || !newPlayerStates.player1 || !newPlayerStates.player2) {
+      console.warn('[prepareTeleportStates] Incomplete newPlayerStates, skipping teleport preparation');
+      return { pendingStateUpdate: null, pendingFinalState: null };
+    }
+
     // Get current game state to preserve all properties
     const currentState = this.gameStateManager.getState();
 
@@ -2619,6 +2644,29 @@ setAnimationManager(animationManager) {
     const playerState = currentState[playerId];
     if (!playerState) {
       throw new Error(`Player ${playerId} not found`);
+    }
+
+    // Validate mandatory phase-based discards to prevent over-discarding
+    if (isMandatory && currentState.turnPhase === 'mandatoryDiscard' && !abilityMetadata) {
+      const handLimit = playerState.effectiveStats?.totals?.handLimit || 5;
+      const currentHandSize = playerState.hand.length;
+      const excessCards = currentHandSize - handLimit;
+
+      // Check if player is trying to discard more than they should
+      if (excessCards <= 0) {
+        debugLog('CARDS', `🚫 [VALIDATION] Player ${playerId} cannot discard - already at or below hand limit`, {
+          currentHandSize,
+          handLimit,
+          excessCards
+        });
+        throw new Error(`Cannot discard - already at hand limit (${handLimit})`);
+      }
+
+      // Only allow discarding one card at a time during mandatory discard
+      if (cardsToDiscard.length > 1) {
+        debugLog('CARDS', `🚫 [VALIDATION] Player ${playerId} cannot discard multiple cards at once during mandatory discard phase`);
+        throw new Error('Can only discard one card at a time during mandatory discard phase');
+      }
     }
 
     // Add log entry for each discarded card
@@ -3415,8 +3463,8 @@ setAnimationManager(animationManager) {
     // Determine which shieldsToAllocate to use
     const shieldsToAllocateKey = playerId === 'player1' ? 'shieldsToAllocate' : 'opponentShieldsToAllocate';
 
-    // Process shield allocation via game engine
-    const result = gameEngine.processShieldAllocation(
+    // Process shield allocation via ShieldManager
+    const result = ShieldManager.processShieldAllocation(
       { ...currentState, shieldsToAllocate: currentState[shieldsToAllocateKey] },
       playerId,
       sectionName
@@ -3467,8 +3515,8 @@ setAnimationManager(animationManager) {
     const currentState = this.gameStateManager.getState();
     const gameMode = currentState.gameMode;
 
-    // Process shield reset via game engine
-    const result = gameEngine.processResetShieldAllocation(currentState, playerId);
+    // Process shield reset via ShieldManager
+    const result = ShieldManager.processResetShieldAllocation(currentState, playerId);
 
     if (!result.success) {
       console.warn(`⚠️ Shield reset failed: ${result.error}`);

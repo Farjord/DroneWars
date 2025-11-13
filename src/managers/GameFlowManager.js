@@ -9,6 +9,7 @@ import { initializeShipPlacement } from '../utils/shipPlacementUtils.js';
 import fullDroneCollection from '../data/droneData.js';
 import GameDataService from '../services/GameDataService.js';
 import { gameEngine } from '../logic/gameLogic.js';
+import RoundManager from '../logic/round/RoundManager.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 
 /**
@@ -1194,12 +1195,12 @@ class GameFlowManager {
       };
 
       // Use readyDronesAndRestoreShields to properly reset drone states
-      const readiedPlayer1 = gameEngine.readyDronesAndRestoreShields(
+      const readiedPlayer1 = RoundManager.readyDronesAndRestoreShields(
         currentGameState.player1,
         currentGameState.player2,
         allPlacedSections  // Pass full structure with both players
       );
-      const readiedPlayer2 = gameEngine.readyDronesAndRestoreShields(
+      const readiedPlayer2 = RoundManager.readyDronesAndRestoreShields(
         currentGameState.player2,
         currentGameState.player1,
         allPlacedSections  // Pass full structure with both players

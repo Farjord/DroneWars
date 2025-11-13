@@ -598,6 +598,21 @@ class AIPhaseProcessor {
     // Import aiLogic to make action decision
     const { aiBrain } = await import('../logic/aiLogic.js');
     const { gameEngine } = await import('../logic/gameLogic.js');
+    const TargetingRouter = (await import('../logic/TargetingRouter.js')).default;
+
+    // Create targeting router instance for AI targeting
+    const targetingRouter = new TargetingRouter();
+
+    // Create getValidTargets wrapper for AI (maintains existing API)
+    const getValidTargets = (actingPlayerId, source, definition, player1, player2) => {
+      return targetingRouter.routeTargeting({
+        actingPlayerId,
+        source,
+        definition,
+        player1,
+        player2
+      });
+    };
 
     // Call aiLogic with proper game state format
     const aiDecision = aiBrain.handleOpponentAction({
@@ -607,7 +622,7 @@ class AIPhaseProcessor {
       opponentPlacedSections: gameState.opponentPlacedSections,
       getShipStatus: gameEngine.getShipStatus,
       getLaneOfDrone: gameEngine.getLaneOfDrone,
-      getValidTargets: gameEngine.getValidTargets,
+      getValidTargets,
       gameStateManager: this.gameStateManager,
       addLogEntry: (entry, debugSource, aiDecisionContext) => {
         this.gameStateManager?.addLogEntry(entry, debugSource, aiDecisionContext);

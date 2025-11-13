@@ -1660,7 +1660,7 @@ const makeInterceptionDecision = (potentialInterceptors, target, attackDetails, 
   // shipThreatDamage: What the ship would take if not intercepted (includes BONUS_DAMAGE_VS_SHIP)
   let baseAttackDamage = 1; // Default - what interceptor takes
   let shipThreatDamage = 1; // Default - what ship would take
-  const targetClass = target.class ?? Infinity;
+  const targetClass = target?.class ?? Infinity;
 
   if (attackDetails && gameDataService) {
     try {

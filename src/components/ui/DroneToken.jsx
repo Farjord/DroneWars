@@ -114,7 +114,7 @@ const DroneToken = ({
   const exhaustEffect = drone.isExhausted ? 'grayscale opacity-60' : '';
   const hitEffect = isHit ? 'animate-shake' : '';
   const selectedEffect = (isSelected || isSelectedForMove) ? 'scale-105 ring-2 ring-cyan-400 shadow-xl shadow-cyan-400/50' : '';
-  const actionTargetEffect = isActionTarget ? 'scale-105 ring-2 ring-purple-400 shadow-xl shadow-purple-500/50 animate-pulse' : '';
+  const actionTargetEffect = isActionTarget ? 'shadow-xl shadow-purple-500/50 animate-pulse' : '';
   const mandatoryDestroyEffect = mandatoryAction?.type === 'destroy' && isPlayer ? 'ring-2 ring-red-500 animate-pulse' : '';
 
   const isAbilityUsable = (ability) => {
@@ -139,10 +139,12 @@ const DroneToken = ({
         height: 'clamp(115px, 5.99vw, 156px)'
       }}
     >
-      {/* Animation Container - moves with all visual effects */}
-      <div className={`w-full h-full transition-all duration-200 ${hitEffect} ${selectedEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${enableFloatAnimation ? 'drone-float' : ''}`}>
-        {/* Grayscale Container - only applies exhausted effect */}
-        <div className={`w-full h-full relative ${exhaustEffect}`}>
+      {/* Float Animation Container - only handles floating motion */}
+      <div className={`w-full h-full ${enableFloatAnimation ? 'drone-float' : ''}`}>
+        {/* Targeting/Visual Effects Container - handles pulse, hit, selection, etc. */}
+        <div className={`w-full h-full transition-all duration-200 ${hitEffect} ${selectedEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect}`}>
+          {/* Grayscale Container - only applies exhausted effect */}
+          <div className={`w-full h-full relative ${exhaustEffect}`}>
       {/* Main Token Body */}
       <div className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden ${isPotentialGuardian ? 'guardian-glow' : ''}`}>
         <img src={drone.image} alt={drone.name} className="absolute inset-0 w-full h-full object-cover"/>
@@ -193,32 +195,34 @@ const DroneToken = ({
           timestamp={interceptedBadge.timestamp}
         />
       )}
-        </div>
-        {/* End Grayscale Container */}
-
-        {/* Marked Indicator - Inside animation container, outside grayscale container */}
-        {drone.isMarked && (
-          <div
-            className="absolute top-5 left-[-14px] z-30 pointer-events-none"
-            style={{
-              animation: 'targetGlow 2s ease-in-out infinite',
-            }}
-          >
-            <TargetLockIcon size={24} />
-            <style>{`
-              @keyframes targetGlow {
-                0%, 100% {
-                  filter: brightness(1) drop-shadow(0 0 2px rgba(239, 68, 68, 0.8));
-                }
-                50% {
-                  filter: brightness(1.5) drop-shadow(0 0 8px rgba(239, 68, 68, 1));
-                }
-              }
-            `}</style>
           </div>
-        )}
+          {/* End Grayscale Container */}
+
+          {/* Marked Indicator - Inside animation container, outside grayscale container */}
+          {drone.isMarked && (
+            <div
+              className="absolute top-5 left-[-14px] z-30 pointer-events-none"
+              style={{
+                animation: 'targetGlow 2s ease-in-out infinite',
+              }}
+            >
+              <TargetLockIcon size={24} />
+              <style>{`
+                @keyframes targetGlow {
+                  0%, 100% {
+                    filter: brightness(1) drop-shadow(0 0 2px rgba(239, 68, 68, 0.8));
+                  }
+                  50% {
+                    filter: brightness(1.5) drop-shadow(0 0 8px rgba(239, 68, 68, 1));
+                  }
+                }
+              `}</style>
+            </div>
+          )}
+        </div>
+        {/* End Targeting/Visual Effects Container */}
       </div>
-      {/* End Animation Container */}
+      {/* End Float Animation Container */}
     </div>
   );
 };

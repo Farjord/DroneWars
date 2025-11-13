@@ -1,0 +1,297 @@
+// ========================================
+// DESTROY EFFECT PROCESSOR
+// ========================================
+// Handles DESTROY effect type
+// Extracts destroy logic from gameLogic.js resolveDestroyEffect()
+// Supports multiple scopes: SINGLE, FILTERED, LANE, ALL
+//
+// REFACTORED: Animation logic extracted to animations/ builders
+
+import BaseEffectProcessor from '../BaseEffectProcessor.js';
+import { getLaneOfDrone } from '../../utils/gameEngineUtils.js';
+import { gameEngine } from '../../gameLogic.js';
+import { buildDefaultDestroyAnimation } from './animations/DefaultDestroyAnimation.js';
+import { buildNukeAnimation } from './animations/NukeAnimation.js';
+import { debugLog } from '../../../utils/debugLogger.js';
+
+/**
+ * Processor for DESTROY effect type
+ *
+ * Instantly removes drones from the battlefield with optional filtering.
+ * Supports:
+ * - Single drone targeting
+ * - Filtered targeting (destroy drones matching criteria in a lane)
+ * - Lane-wide targeting (destroy all drones in a lane from BOTH players)
+ * - Card-specific animation overrides (Nuke, Purge Protocol)
+ *
+ * @extends BaseEffectProcessor
+ */
+class DestroyEffectProcessor extends BaseEffectProcessor {
+  /**
+   * Process DESTROY effect
+   *
+   * @param {Object} effect - Effect definition { type: 'DESTROY', scope?, filter? }
+   * @param {Object} context - Effect context
+   * @param {string} context.actingPlayerId - Player performing the action
+   * @param {Object} context.playerStates - Current player states
+   * @param {Object} context.target - Target of the effect
+   * @param {Object} context.card - Source card (for animation routing)
+   * @returns {Object} Result { newPlayerStates, additionalEffects, animationEvents }
+   */
+  process(effect, context) {
+    this.logProcessStart(effect, context);
+
+    const { actingPlayerId, playerStates, target, card } = context;
+    const newPlayerStates = this.clonePlayerStates(playerStates);
+    const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+
+    const animationEvents = [];
+    const destroyedDrones = [];
+
+    // Route based on effect scope
+    if (effect.scope === 'FILTERED' && target.id && target.id.startsWith('lane') && effect.filter) {
+      // FILTERED scope: Destroy multiple drones in a lane based on criteria
+      const result = this.processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card);
+      destroyedDrones.push(...result.destroyedDrones);
+      animationEvents.push(...result.animationEvents);
+
+    } else if (effect.scope === 'LANE' && target.id) {
+      // LANE scope: Destroy all drones in a lane (BOTH sides - area effect like Nuke)
+      const result = this.processLaneDestroy(target, actingPlayerId, opponentId, newPlayerStates);
+      destroyedDrones.push(...result.destroyedDrones);
+      animationEvents.push(...result.animationEvents);
+
+    } else if (effect.scope === 'SINGLE' && target && target.owner !== actingPlayerId) {
+      // SINGLE scope: Destroy one specific drone
+      const result = this.processSingleDestroy(target, opponentId, newPlayerStates);
+      if (result.droneDestroyed) {
+        destroyedDrones.push(result.droneDestroyed);
+      }
+      animationEvents.push(...result.animationEvents);
+    }
+
+    // Route to appropriate animation builder based on card's visualEffect
+    if (destroyedDrones.length > 0) {
+      const visualType = card?.visualEffect?.type;
+
+      if (visualType === 'NUKE_BLAST') {
+        // Use Nuke-specific animation (large blast + individual explosions)
+        animationEvents.push(...buildNukeAnimation({
+          destroyedDrones,
+          targetPlayer: target.owner || opponentId,
+          targetLane: target.id,
+          card,
+          actingPlayerId
+        }));
+      } else if (animationEvents.length === 0) {
+        // Use default animation if no animations generated yet
+        animationEvents.push(...buildDefaultDestroyAnimation({
+          destroyedDrones,
+          targetPlayer: target.owner || opponentId,
+          targetLane: target.id
+        }));
+      }
+    }
+
+    const result = {
+      newPlayerStates,
+      additionalEffects: [],
+      animationEvents
+    };
+
+    this.logProcessComplete(effect, result, context);
+    return result;
+  }
+
+  /**
+   * Process FILTERED scope destruction (destroy drones matching criteria)
+   *
+   * @private
+   */
+  processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card) {
+    const laneId = target.id;
+    const affinity = card?.targeting?.affinity || effect.affinity;
+    const targetPlayer = affinity === 'ENEMY'
+      ? (actingPlayerId === 'player1' ? 'player2' : 'player1')
+      : actingPlayerId;
+    const targetPlayerState = newPlayerStates[targetPlayer];
+    const dronesInLane = targetPlayerState.dronesOnBoard[laneId] || [];
+
+    const { stat, comparison, value } = effect.filter;
+
+    debugLog('EFFECT_PROCESSING', `[DESTROY] Filtered destroy - ${actingPlayerId} targeting ${targetPlayer} ${laneId}`, {
+      filter: `${stat} ${comparison} ${value}`,
+      dronesInLane: dronesInLane.length
+    });
+
+    const destroyedDrones = [];
+    const animationEvents = [];
+
+    // Destroy all drones that match the filter criteria (reverse iteration for safe removal)
+    for (let i = dronesInLane.length - 1; i >= 0; i--) {
+      const droneInLane = dronesInLane[i];
+      let meetsCondition = false;
+
+      // Check if drone meets filter condition
+      switch (comparison) {
+        case 'GTE':
+          meetsCondition = droneInLane[stat] >= value;
+          break;
+        case 'LTE':
+          meetsCondition = droneInLane[stat] <= value;
+          break;
+        case 'EQ':
+          meetsCondition = droneInLane[stat] === value;
+          break;
+        case 'GT':
+          meetsCondition = droneInLane[stat] > value;
+          break;
+        case 'LT':
+          meetsCondition = droneInLane[stat] < value;
+          break;
+      }
+
+      debugLog('EFFECT_PROCESSING', `[DESTROY] ${droneInLane.name} ${stat}=${droneInLane[stat]} ${comparison} ${value} = ${meetsCondition}`);
+
+      if (meetsCondition) {
+        destroyedDrones.push(droneInLane);
+        debugLog('EFFECT_PROCESSING', `[DESTROY] ${droneInLane.name} marked for destruction`);
+
+        // Add destruction animation event
+        animationEvents.push({
+          type: 'DRONE_DESTROYED',
+          targetId: droneInLane.id,
+          targetPlayer: targetPlayer,
+          targetLane: laneId,
+          targetType: 'drone',
+          timestamp: Date.now()
+        });
+
+        // Update deployment counts
+        const updates = gameEngine.onDroneDestroyed(targetPlayerState, droneInLane);
+        targetPlayerState.deployedDroneCounts = {
+          ...(targetPlayerState.deployedDroneCounts || {}),
+          ...updates.deployedDroneCounts
+        };
+
+        // Remove drone from lane
+        dronesInLane.splice(i, 1);
+      }
+    }
+
+    debugLog('EFFECT_PROCESSING', `[DESTROY] Destroyed ${destroyedDrones.length} drones via filter`);
+
+    return { destroyedDrones, animationEvents };
+  }
+
+  /**
+   * Process LANE scope destruction (destroy all drones in lane, BOTH sides)
+   *
+   * @private
+   */
+  processLaneDestroy(target, actingPlayerId, opponentId, newPlayerStates) {
+    const laneId = target.id;
+    const destroyedDrones = [];
+    const animationEvents = [];
+
+    debugLog('EFFECT_PROCESSING', `[DESTROY] Lane-wide destroy in ${laneId} (BOTH sides)`);
+
+    // Destroy opponent's drones in this lane
+    const opponentDrones = newPlayerStates[opponentId].dronesOnBoard[laneId] || [];
+    opponentDrones.forEach(drone => {
+      destroyedDrones.push(drone);
+
+      // Add destruction animation event
+      animationEvents.push({
+        type: 'DRONE_DESTROYED',
+        targetId: drone.id,
+        targetPlayer: opponentId,
+        targetLane: laneId,
+        targetType: 'drone',
+        timestamp: Date.now()
+      });
+
+      // Update deployment counts
+      const updates = gameEngine.onDroneDestroyed(newPlayerStates[opponentId], drone);
+      newPlayerStates[opponentId].deployedDroneCounts = {
+        ...(newPlayerStates[opponentId].deployedDroneCounts || {}),
+        ...updates.deployedDroneCounts
+      };
+    });
+    newPlayerStates[opponentId].dronesOnBoard[laneId] = [];
+
+    // Destroy acting player's own drones in this lane (for area effect cards like Nuke)
+    const actingPlayerDrones = newPlayerStates[actingPlayerId].dronesOnBoard[laneId] || [];
+    actingPlayerDrones.forEach(drone => {
+      destroyedDrones.push(drone);
+
+      // Add destruction animation event
+      animationEvents.push({
+        type: 'DRONE_DESTROYED',
+        targetId: drone.id,
+        targetPlayer: actingPlayerId,
+        targetLane: laneId,
+        targetType: 'drone',
+        timestamp: Date.now()
+      });
+
+      // Update deployment counts
+      const updates = gameEngine.onDroneDestroyed(newPlayerStates[actingPlayerId], drone);
+      newPlayerStates[actingPlayerId].deployedDroneCounts = {
+        ...(newPlayerStates[actingPlayerId].deployedDroneCounts || {}),
+        ...updates.deployedDroneCounts
+      };
+    });
+    newPlayerStates[actingPlayerId].dronesOnBoard[laneId] = [];
+
+    debugLog('EFFECT_PROCESSING', `[DESTROY] Destroyed ${destroyedDrones.length} drones in lane ${laneId}`);
+
+    return { destroyedDrones, animationEvents };
+  }
+
+  /**
+   * Process SINGLE scope destruction (destroy one specific drone)
+   *
+   * @private
+   */
+  processSingleDestroy(target, opponentId, newPlayerStates) {
+    const targetPlayerState = newPlayerStates[opponentId];
+    const laneId = getLaneOfDrone(target.id, targetPlayerState);
+    const animationEvents = [];
+    let droneDestroyed = null;
+
+    if (laneId) {
+      const droneToDestroy = targetPlayerState.dronesOnBoard[laneId].find(d => d.id === target.id);
+
+      if (droneToDestroy) {
+        droneDestroyed = droneToDestroy;
+
+        debugLog('EFFECT_PROCESSING', `[DESTROY] Single drone destroy: ${droneToDestroy.name} in ${laneId}`);
+
+        // Add destruction animation event
+        animationEvents.push({
+          type: 'DRONE_DESTROYED',
+          targetId: droneToDestroy.id,
+          targetPlayer: opponentId,
+          targetLane: laneId,
+          targetType: 'drone',
+          timestamp: Date.now()
+        });
+
+        // Update deployment counts
+        const updates = gameEngine.onDroneDestroyed(targetPlayerState, droneToDestroy);
+        targetPlayerState.deployedDroneCounts = {
+          ...(targetPlayerState.deployedDroneCounts || {}),
+          ...updates.deployedDroneCounts
+        };
+
+        // Remove drone from lane
+        targetPlayerState.dronesOnBoard[laneId] = targetPlayerState.dronesOnBoard[laneId].filter(d => d.id !== target.id);
+      }
+    }
+
+    return { droneDestroyed, animationEvents };
+  }
+}
+
+export default DestroyEffectProcessor;

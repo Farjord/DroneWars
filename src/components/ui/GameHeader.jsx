@@ -206,12 +206,9 @@ function GameHeader({
       <div className="text-center flex flex-col items-center gap-2">
         {/* Phase Display */}
         <h2
-          className="text-base font-bold uppercase tracking-widest"
+          className="text-base font-bold uppercase tracking-widest text-white"
           style={{
-            backgroundImage: 'linear-gradient(45deg, #6b7280, #9ca3af)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text'
+            WebkitTextStroke: '1px black'
           }}
         >
           {getPhaseDisplayName(turnPhase)}
@@ -277,6 +274,7 @@ function GameHeader({
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                       backgroundClip: 'text',
+                      WebkitTextStroke: '1px black',
                       textShadow: '0 0 30px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 136, 255, 0.3)',
                       filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))'
                     }}
@@ -294,6 +292,7 @@ function GameHeader({
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                       backgroundClip: 'text',
+                      WebkitTextStroke: '1px black',
                       textShadow: '0 0 30px rgba(236, 72, 153, 0.5), 0 0 60px rgba(244, 114, 182, 0.3)',
                       filter: 'drop-shadow(0 0 20px rgba(236, 72, 153, 0.4))',
                       animation: 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite'
@@ -526,6 +525,7 @@ function GameHeader({
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text',
+                    WebkitTextStroke: '1px black',
                     textShadow: '0 0 30px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 136, 255, 0.3)',
                     filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))'
                   }}

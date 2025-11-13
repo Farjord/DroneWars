@@ -9,8 +9,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/LaserBlast.png',
     description: 'Deal 2 damage to target drone. If target is marked, deal 3 damage instead.',
     visualEffect: {
-      type: 'LASER_BLAST',
-      duration: 600
+      type: 'LASER_BLAST'
     },
     targeting: {
       type: 'DRONE',
@@ -34,8 +33,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/LaserBlast.png',
     description: 'Deal 3 damage to any drone.',
     visualEffect: {
-      type: 'LASER_BLAST',
-      duration: 600
+      type: 'LASER_BLAST'
     },
     targeting: {
       type: 'DRONE',
@@ -295,8 +293,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/Nuke.png',
     description: 'Destroy ALL drones in a selected lane (both sides).',
     visualEffect: {
-      type: 'NUKE_BLAST',
-      duration: 1200
+      type: 'NUKE_BLAST'
     },
     targeting: {
       type: 'LANE',
@@ -318,8 +315,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/PiercingShot.png',
     description: 'Deal 2 piercing damage to any drone. (Piercing damage ignores shields).',
     visualEffect: {
-      type: 'LASER_BLAST',
-      duration: 800
+      type: 'LASER_BLAST'
     },
     targeting: {
       type: 'DRONE',
@@ -342,8 +338,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/PiercingShot.png',
     description: 'Deal 2 piercing damage to any drone. (Piercing damage ignores shields).',
     visualEffect: {
-      type: 'LASER_BLAST',
-      duration: 800
+      type: 'LASER_BLAST'
     },
     targeting: {
       type: 'DRONE',
@@ -367,8 +362,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/SidewinderMissiles.png',
     description: 'Deal 2 damage to all enemy drones with a speed of 3 or Less in a selected lane.',
     visualEffect: {
-      type: 'ENERGY_WAVE',
-      duration: 800
+      type: 'ENERGY_WAVE'
     },
     targeting: {
       type: 'LANE',
@@ -727,8 +721,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/RailgunStrike.png',
     description: 'Deal 2 piercing damage to target drone. Excess damage overflows to the ship section in that lane. If target is marked, deal 4 piercing damage instead.',
     visualEffect: {
-      type: 'OVERFLOW_PROJECTILE',
-      duration: 1200
+      type: 'RAILGUN_ANIMATION'
     },
     targeting: {
       type: 'DRONE',
@@ -754,8 +747,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/Barrage.png',
     description: 'Deal 1 damage to target drone and all drones adjacent to it in the same lane (splash). If you control 3 or more drones in target lane, deal 2 damage instead.',
     visualEffect: {
-      type: 'SPLASH_EFFECT',
-      duration: 1000
+      type: 'SPLASH_EFFECT'
     },
     targeting: {
       type: 'DRONE',
@@ -785,8 +777,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/FinishingVolley.png',
     description: 'Destroy target exhausted enemy drone.',
     visualEffect: {
-      type: 'LASER_BLAST', // Placeholder - can be updated later
-      duration: 600
+      type: 'LASER_BLAST' // Placeholder - can be updated later
     },
     targeting: {
       type: 'DRONE',
@@ -812,8 +803,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/StrafeRun.png',
     description: 'Deal 1 damage to up to 3 enemy drones in target lane (front to back).',
     visualEffect: {
-      type: 'LASER_BLAST', // Placeholder - can be updated later
-      duration: 800
+      type: 'LASER_BLAST' // Placeholder - can be updated later
     },
     targeting: {
       type: 'LANE',
@@ -843,8 +833,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/OverwhelmingForce.png',
     description: 'Deal damage to target drone equal to the number of ready friendly drones in that lane.',
     visualEffect: {
-      type: 'LASER_BLAST', // Placeholder - can be updated later
-      duration: 600
+      type: 'LASER_BLAST' // Placeholder - can be updated later
     },
     targeting: {
       type: 'DRONE',
@@ -868,8 +857,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/PurgeProtocol.png',
     description: 'Destroy all marked enemy drones.',
     visualEffect: {
-      type: 'NUKE_BLAST', // Placeholder - can be updated later
-      duration: 1000
+      type: 'NUKE_BLAST' // Placeholder - can be updated later
     },
     targeting: {
       type: 'ALL_MARKED',

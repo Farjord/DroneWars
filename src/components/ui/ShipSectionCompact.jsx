@@ -99,7 +99,7 @@ const ShipSectionCompact = ({
   const overlayColor = sectionStatus === 'critical' ? 'bg-red-900/60' : sectionStatus === 'damaged' ? 'bg-yellow-900/50' : 'bg-black/60';
   let borderColor = sectionStatus === 'critical' ? 'border-red-500' : sectionStatus === 'damaged' ? 'border-yellow-500' : (isOpponent ? 'border-pink-500' : 'border-cyan-500');
   const shadowColor = isOpponent ? 'shadow-pink-500/20' : 'shadow-cyan-500/20';
-  const hoverEffect = isHovered ? 'scale-105 shadow-xl' : '';
+  const hoverEffect = isHovered ? 'shadow-xl' : '';
 
   // Override border color for shield reallocation states
   let reallocationEffect = '';
@@ -176,7 +176,7 @@ const ShipSectionCompact = ({
         <div></div>
 
         {/* Middle Section - Title, Status, Shields, Hull (all centered) */}
-        <div className="flex flex-col items-center justify-center gap-3 h-full">
+        <div className="flex flex-col items-center justify-center gap-2 h-full">
           {/* Title */}
           <p className="font-orbitron text-lg uppercase tracking-widest text-white text-center">{stats.type}</p>
 

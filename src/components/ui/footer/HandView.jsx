@@ -4,11 +4,15 @@
 // Cards display at natural size - no scaling
 // Simple responsive layout
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import ActionCard from '../ActionCard.jsx';
 import styles from '../GameFooter.module.css';
 import { debugLog } from '../../../utils/debugLogger.js';
 import { calculateCardFanRotation, getHoverTransform, getCardTransition, calculateCardArcOffset, CARD_FAN_CONFIG } from '../../../utils/cardAnimationUtils.js';
+import TargetingRouter from '../../../logic/TargetingRouter.js';
+
+// Initialize TargetingRouter for card targeting validation
+const targetingRouter = new TargetingRouter();
 
 function HandView({
   gameMode,
@@ -17,6 +21,8 @@ function HandView({
   selectedCard,
   turnPhase,
   mandatoryAction,
+  mandatoryDiscardsMade,
+  excessCards,
   handleCardClick,
   getLocalPlayerId,
   isMyTurn,
@@ -87,6 +93,39 @@ function HandView({
 
   // Hand layout logic - uses centralized card animation utilities
 
+  // Memoize valid targets calculation - this was causing massive performance issues
+  // Previously ran getValidTargets for EVERY card on EVERY render (5-7 cards × many renders = hundreds of calculations)
+  const cardValidTargetsMap = useMemo(() => {
+    const player1State = localPlayerId === 'player1' ? localPlayerState : opponentPlayerState;
+    const player2State = localPlayerId === 'player1' ? opponentPlayerState : localPlayerState;
+
+    const targetMap = new Map();
+    localPlayerState.hand.forEach(card => {
+      if (!card.targeting) {
+        targetMap.set(card.instanceId, true);
+      } else {
+        const hasTargets = targetingRouter.routeTargeting({
+          actingPlayerId: localPlayerId,
+          source: null,
+          definition: card,
+          player1: player1State,
+          player2: player2State
+        }).length > 0;
+        targetMap.set(card.instanceId, hasTargets);
+      }
+    });
+    return targetMap;
+  }, [
+    localPlayerState.hand.map(c => c.instanceId).join(','), // Hand composition
+    localPlayerId,
+    // Serialize drone IDs per lane - only changes when drones actually change
+    Object.values(localPlayerState.dronesOnBoard).flatMap(lane => lane.map(d => d.id)).join(','),
+    Object.values(opponentPlayerState.dronesOnBoard).flatMap(lane => lane.map(d => d.id)).join(','),
+    // Serialize ship section keys - only changes when sections change
+    Object.keys(localPlayerState.shipSections).sort().join(','),
+    Object.keys(opponentPlayerState.shipSections).sort().join(',')
+  ]);
+
   return (
     <div className={styles.handContainer}>
       {/* Discard Pile */}
@@ -104,11 +143,8 @@ function HandView({
             {localPlayerState.hand.map((card, index) => {
               // Check card playability conditions
               const hasEnoughEnergy = localPlayerState.energy >= card.cost;
-              // Ensure player states are always passed in correct order (player1, player2)
-              const player1State = localPlayerId === 'player1' ? localPlayerState : opponentPlayerState;
-              const player2State = localPlayerId === 'player1' ? opponentPlayerState : localPlayerState;
-              const hasValidTargets = !card.targeting ||
-                gameEngine.getValidTargets(localPlayerId, null, card, player1State, player2State).length > 0;
+              // Use memoized valid targets calculation instead of calling getValidTargets on every render
+              const hasValidTargets = cardValidTargetsMap.get(card.instanceId);
               const isActionPhasePlayable = turnPhase === 'action' &&
                 myTurn &&
                 !playerPassed &&
@@ -147,23 +183,30 @@ function HandView({
                     isSelected={selectedCard?.instanceId === card.instanceId}
                     isDimmed={selectedCard && selectedCard.instanceId !== card.instanceId}
                     isPlayable={cardIsPlayable}
-                    isMandatoryTarget={mandatoryAction?.type === 'discard'}
+                    isMandatoryTarget={mandatoryAction?.type === 'discard' && (!mandatoryAction.fromAbility ? excessCards > 0 : true)}
                     onClick={
                       mandatoryAction?.type === 'discard'
-                        ? (c) => setConfirmationModal({ 
-                            type: 'discard', 
-                            target: c, 
-                            onConfirm: () => handleConfirmMandatoryDiscard(c), 
-                            onCancel: () => setConfirmationModal(null), 
-                            text: `Are you sure you want to discard ${c.name}?` 
-                          })
+                        ? (c) => {
+                            // For phase-based mandatory discards, check if limit reached
+                            if (!mandatoryAction.fromAbility && excessCards <= 0) {
+                              debugLog('DISCARD', '🚫 Cannot discard - already at hand limit');
+                              return;
+                            }
+                            setConfirmationModal({
+                              type: 'discard',
+                              target: c,
+                              onConfirm: () => handleConfirmMandatoryDiscard(c),
+                              onCancel: () => setConfirmationModal(null),
+                              text: `Are you sure you want to discard ${c.name}?`
+                            });
+                          }
                         : turnPhase === 'optionalDiscard'
-                          ? (c) => setConfirmationModal({ 
-                              type: 'discard', 
-                              target: c, 
-                              onConfirm: () => handleRoundStartDiscard(c), 
-                              onCancel: () => setConfirmationModal(null), 
-                              text: `Are you sure you want to discard ${c.name}?` 
+                          ? (c) => setConfirmationModal({
+                              type: 'discard',
+                              target: c,
+                              onConfirm: () => handleRoundStartDiscard(c),
+                              onCancel: () => setConfirmationModal(null),
+                              text: `Are you sure you want to discard ${c.name}?`
                             })
                           : handleCardClick
                     }

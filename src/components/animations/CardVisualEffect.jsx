@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 
-const CardVisualEffect = ({ visualType, startPos, endPos, duration = 800, onComplete }) => {
+const CardVisualEffect = ({ visualType, startPos, endPos, onComplete }) => {
   const [isActive, setIsActive] = useState(false);
+  const ANIMATION_DURATION = 800; // Standardized duration for all card visual effects
 
   useEffect(() => {
     if (!startPos || !endPos) {
@@ -15,21 +16,21 @@ const CardVisualEffect = ({ visualType, startPos, endPos, duration = 800, onComp
     const timer = setTimeout(() => {
       setIsActive(false);
       onComplete?.();
-    }, duration);
+    }, ANIMATION_DURATION);
 
     return () => clearTimeout(timer);
-  }, [visualType, startPos, endPos, duration, onComplete]);
+  }, [visualType, startPos, endPos, onComplete]);
 
   if (!isActive || !startPos || !endPos) return null;
 
   // Render based on visual type
   switch (visualType) {
     case 'LASER_BLAST':
-      return <LaserBlastEffect startPos={startPos} endPos={endPos} duration={duration} />;
+      return <LaserBlastEffect startPos={startPos} endPos={endPos} duration={ANIMATION_DURATION} />;
     case 'ENERGY_WAVE':
-      return <EnergyWaveEffect startPos={startPos} endPos={endPos} duration={duration} />;
+      return <EnergyWaveEffect startPos={startPos} endPos={endPos} duration={ANIMATION_DURATION} />;
     case 'NUKE_BLAST':
-      return <NukeBlastEffect endPos={endPos} duration={duration} />;
+      return <NukeBlastEffect endPos={endPos} duration={ANIMATION_DURATION} />;
     default:
       return null;
   }

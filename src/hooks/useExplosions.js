@@ -4,7 +4,6 @@
 // Custom hook for managing explosion visual effects
 
 import { useState, useCallback } from 'react';
-import { gameEngine } from '../logic/gameLogic.js';
 import { getElementCenter } from '../utils/gameUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 
@@ -22,8 +21,13 @@ export const useExplosions = (droneRefs, gameAreaRef) => {
   const triggerExplosion = useCallback((targetId, capturedPosition = null, size = 'large') => {
     debugLog('ANIMATIONS', '🔥 [EXPLOSION] triggerExplosion called:', { targetId, capturedPosition, size });
 
-    // Create the explosion effect using the pure function
-    const explosionEffect = gameEngine.createExplosionEffect(targetId);
+    // Create the explosion effect descriptor (inlined from gameLogic.js)
+    const explosionEffect = {
+      type: 'EXPLOSION',
+      targetId,
+      duration: 1000,
+      timestamp: Date.now()
+    };
 
     // Use captured position if provided, otherwise try to get from DOM
     let pos = capturedPosition;

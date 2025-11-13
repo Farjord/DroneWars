@@ -28,16 +28,17 @@ const DEBUG_CONFIG = {
     AI_DECISIONS: false,        // AI decision making
     MULTIPLAYER: false,         // Network sync and multiplayer (DISABLED - too verbose, critical errors use console.error)
     P2P_CONNECTION: false,      // PeerJS connection diagnostics
-    ANIMATIONS: false,          // Animation system (DISABLED for clean logs)
+    ANIMATIONS: true,           // Animation system (ENABLED for Railgun investigation)
     OPTIMISTIC: false,          // Animation deduplication and matching logic (DISABLED - already debugged)
     COMMITMENTS: false,         // Simultaneous phase commitments (DISABLED - too verbose)
     COMBAT: false,              // Combat resolution
-    PASS_LOGIC: false,           // Pass handling and pass notification debugging (ENABLED)
+    PASS_LOGIC: false,           // Pass handling and pass notification debugging (DISABLED)
     STATE_SYNC: false,          // State synchronization (DISABLED - too verbose)
     BROADCAST_TIMING: false,    // Broadcast timing and state validation (DISABLED - too verbose)
     ENERGY: false,              // Energy management (shield allocation)
-    RESOURCE_RESET: true,       // Energy and deployment budget reset between rounds (ENABLED for debugging)
-    CARDS: false,               // Card play and effects (DISABLED for clean logs)
+    RESOURCE_RESET: false,       // Energy and deployment budget reset between rounds (DISABLED)
+    CARDS: true,                // Card play and effects (ENABLED for Railgun investigation)
+    RAILGUN_ANIMATION: true,    // Railgun-specific animation investigation (NEW)
     HAND_VIEW: false,            // Hand display and card interaction (ENABLED for mandatoryAction debugging)
     CARD_PLAY: false,            // Card playability and clicking (ENABLED for mandatoryAction debugging)
     SHIELD_CLICKS: false,       // Shield allocation click tracking
@@ -49,6 +50,16 @@ const DEBUG_CONFIG = {
     TIMING: false,               // High-resolution timing milestones with timestamps (ENABLED for pass notification debugging)
     SUBTITLE_CALC: false,       // Phase animation subtitle calculation (DISABLED - already debugged)
     FIRST_PLAYER: false,        // First player determination and seeded random (DISABLED for clean logs)
+
+    // Effect System Refactoring - Modular Processor Logging
+    EFFECT_ROUTING: true,       // Effect router decisions (which processor handles effect)
+    EFFECT_PROCESSING: true,    // Effect processor execution (DrawEffectProcessor, etc.)
+    EFFECT_FALLBACK: true,      // Effects falling back to monolithic switch (not yet extracted)
+
+    // Targeting System Refactoring - Modular Processor Logging
+    TARGETING_ROUTING: true,    // Targeting router decisions (DISABLED - Phase 2 complete and verified)
+    TARGETING_PROCESSING: true, // Targeting processor execution (DISABLED - Phase 2 complete and verified)
+    TARGETING_FALLBACK: true,   // Targeting falling back to monolithic function (DISABLED - no fallbacks expected)
   }
 };
 
