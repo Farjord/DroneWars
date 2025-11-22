@@ -24,23 +24,24 @@ const DEBUG_CONFIG = {
     DECK_SELECTION: false,      // Deck selection phase
     PLACEMENT: false,           // Ship placement phase
     PLACEMENT_CASCADE: false,   // Placement optimistic cascade tracking (DISABLED - replaced by GUEST_CASCADE)
-    PHASE_TRANSITIONS: false,   // Game phase transitions and flow (DISABLED - too verbose)
+    PHASE_TRANSITIONS: false,    // Game phase transitions and flow (ENABLED for ship ability debugging)
+    PHASE_MANAGER: false,        // Phase Manager state tracking and transitions (NEW - for refactor)
     AI_DECISIONS: false,        // AI decision making
-    MULTIPLAYER: false,         // Network sync and multiplayer (DISABLED - too verbose, critical errors use console.error)
+    MULTIPLAYER: false,          // Network sync and multiplayer (ENABLED for Phase 8 testing)
     P2P_CONNECTION: false,      // PeerJS connection diagnostics
-    ANIMATIONS: true,           // Animation system (ENABLED for Railgun investigation)
-    OPTIMISTIC: false,          // Animation deduplication and matching logic (DISABLED - already debugged)
-    COMMITMENTS: false,         // Simultaneous phase commitments (DISABLED - too verbose)
+    ANIMATIONS: false,           // Animation system (ENABLED for Railgun investigation)
+    OPTIMISTIC: false,           // Animation deduplication and matching logic (ENABLED for Phase 8 testing)
+    COMMITMENTS: false,          // Simultaneous phase commitments (ENABLED for Phase 8 testing)
     COMBAT: false,              // Combat resolution
-    PASS_LOGIC: false,           // Pass handling and pass notification debugging (DISABLED)
+    PASS_LOGIC: false,            // Pass handling and pass notification debugging (ENABLED for ship ability turn transition debugging)
     STATE_SYNC: false,          // State synchronization (DISABLED - too verbose)
     BROADCAST_TIMING: false,    // Broadcast timing and state validation (DISABLED - too verbose)
     ENERGY: false,              // Energy management (shield allocation)
-    RESOURCE_RESET: false,       // Energy and deployment budget reset between rounds (DISABLED)
-    CARDS: true,                // Card play and effects (ENABLED for Railgun investigation)
-    RAILGUN_ANIMATION: true,    // Railgun-specific animation investigation (NEW)
-    HAND_VIEW: false,            // Hand display and card interaction (ENABLED for mandatoryAction debugging)
-    CARD_PLAY: false,            // Card playability and clicking (ENABLED for mandatoryAction debugging)
+    RESOURCE_RESET: false,        // Energy and deployment budget reset between rounds (ENABLED for deployment budget debugging)
+    CARDS: false,                // Card play and effects (ENABLED for Railgun investigation)
+    RAILGUN_ANIMATION: false,    // Railgun-specific animation investigation (NEW)
+    HAND_VIEW: true,            // Hand display and card interaction (ENABLED for mandatoryAction debugging)
+    CARD_PLAY: true,             // Card playability and clicking (ENABLED for mandatoryAction debugging)
     SHIELD_CLICKS: false,       // Shield allocation click tracking
     BUTTON_CLICKS: false,       // Button click tracking and effects
     MOVEMENT_LANES: false,      // Movement card lane highlighting diagnostics
@@ -50,16 +51,17 @@ const DEBUG_CONFIG = {
     TIMING: false,               // High-resolution timing milestones with timestamps (ENABLED for pass notification debugging)
     SUBTITLE_CALC: false,       // Phase animation subtitle calculation (DISABLED - already debugged)
     FIRST_PLAYER: false,        // First player determination and seeded random (DISABLED for clean logs)
+    SHIP_ABILITY: true,         // Ship ability execution and turn ending (ENABLED for debugging Recalculate/Recall)
 
     // Effect System Refactoring - Modular Processor Logging
-    EFFECT_ROUTING: true,       // Effect router decisions (which processor handles effect)
-    EFFECT_PROCESSING: true,    // Effect processor execution (DrawEffectProcessor, etc.)
-    EFFECT_FALLBACK: true,      // Effects falling back to monolithic switch (not yet extracted)
+    EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)
+    EFFECT_PROCESSING: false,    // Effect processor execution (DrawEffectProcessor, etc.)
+    EFFECT_FALLBACK: false,      // Effects falling back to monolithic switch (not yet extracted)
 
     // Targeting System Refactoring - Modular Processor Logging
-    TARGETING_ROUTING: true,    // Targeting router decisions (DISABLED - Phase 2 complete and verified)
-    TARGETING_PROCESSING: true, // Targeting processor execution (DISABLED - Phase 2 complete and verified)
-    TARGETING_FALLBACK: true,   // Targeting falling back to monolithic function (DISABLED - no fallbacks expected)
+    TARGETING_ROUTING: false,    // Targeting router decisions (DISABLED - Phase 2 complete and verified)
+    TARGETING_PROCESSING: false, // Targeting processor execution (DISABLED - Phase 2 complete and verified)
+    TARGETING_FALLBACK: false,   // Targeting falling back to monolithic function (DISABLED - no fallbacks expected)
   }
 };
 

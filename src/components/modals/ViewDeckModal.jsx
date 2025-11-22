@@ -160,7 +160,8 @@ const ViewDeckModal = ({ isOpen, onClose, title, drones = [], cards = [], shipCo
                         onClick={() => {}}
                         isPlayable={true}
                         isSelected={false}
-                        isMandatoryTarget={false}
+                        mandatoryAction={null}
+                        excessCards={0}
                       />
                       {/* Quantity Badge */}
                       {item.quantity > 1 && (

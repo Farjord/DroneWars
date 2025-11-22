@@ -111,10 +111,10 @@ const DroneToken = ({
   const speedTextColor = isSpeedBuffed ? 'text-green-400' : isSpeedDebuffed ? 'text-red-400' : 'text-white';
 
   // --- State Effects ---
-  const exhaustEffect = drone.isExhausted ? 'grayscale opacity-60' : '';
+  const exhaustEffect = drone.isExhausted ? 'grayscale opacity-90' : '';
   const hitEffect = isHit ? 'animate-shake' : '';
   const selectedEffect = (isSelected || isSelectedForMove) ? 'scale-105 ring-2 ring-cyan-400 shadow-xl shadow-cyan-400/50' : '';
-  const actionTargetEffect = isActionTarget ? 'shadow-xl shadow-purple-500/50 animate-pulse' : '';
+  const actionTargetEffect = isActionTarget ? 'shadow-xl shadow-pink-500/95 animate-pulse' : '';
   const mandatoryDestroyEffect = mandatoryAction?.type === 'destroy' && isPlayer ? 'ring-2 ring-red-500 animate-pulse' : '';
 
   const isAbilityUsable = (ability) => {

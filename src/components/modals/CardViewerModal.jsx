@@ -37,7 +37,8 @@ const CardViewerModal = ({ isOpen, onClose, cards, title, shouldSort }) => {
                     onClick={() => {}}
                     isPlayable={true}
                     isSelected={false}
-                    isMandatoryTarget={false}
+                    mandatoryAction={null}
+                    excessCards={0}
                   />
                 </div>
               ))}

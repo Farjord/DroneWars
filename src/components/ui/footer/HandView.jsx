@@ -46,20 +46,6 @@ function HandView({
   const myTurn = isMyTurn();
   const playerPassed = passInfo[`${localPlayerId}Passed`];
 
-  debugLog('HAND_VIEW', 'HandView render:', {
-    gameMode,
-    localPlayerId,
-    turnPhase,
-    isMyTurn: myTurn,
-    playerPassed,
-    handSize: localPlayerState.hand.length,
-    energy: localPlayerState.energy,
-    passInfo,
-    mandatoryAction,
-    mandatoryActionType: mandatoryAction?.type,
-    isMandatoryDiscard: mandatoryAction?.type === 'discard'
-  });
-
   // Dynamic overlap calculation
   const handSectionRef = useRef(null);
   const [dynamicOverlap, setDynamicOverlap] = useState(CARD_FAN_CONFIG.cardOverlapPx);
@@ -173,9 +159,22 @@ function HandView({
               return (
                 <div
                   key={card.instanceId || `${card.id}-${index}`}
-                  className={styles.cardWrapper}
+                  className={`${styles.cardWrapper} ${mandatoryAction?.type === 'discard' ? 'animate-pulse' : ''}`}
                   style={style}
-                  onMouseEnter={() => setHoveredCardId(card.instanceId)}
+                  onMouseEnter={() => {
+                    setHoveredCardId(card.instanceId);
+                    // Debug logging on hover - shows this specific card's state
+                    debugLog('HAND_VIEW', `🎯 Card hover - ${card.name}:`, {
+                      cardName: card.name,
+                      mandatoryAction: mandatoryAction ? {
+                        type: mandatoryAction.type,
+                        fromAbility: mandatoryAction.fromAbility,
+                        count: mandatoryAction.count
+                      } : null,
+                      excessCards,
+                      isPlayable: cardIsPlayable
+                    });
+                  }}
                   onMouseLeave={() => setHoveredCardId(null)}
                 >
                   <ActionCard
@@ -183,7 +182,8 @@ function HandView({
                     isSelected={selectedCard?.instanceId === card.instanceId}
                     isDimmed={selectedCard && selectedCard.instanceId !== card.instanceId}
                     isPlayable={cardIsPlayable}
-                    isMandatoryTarget={mandatoryAction?.type === 'discard' && (!mandatoryAction.fromAbility ? excessCards > 0 : true)}
+                    mandatoryAction={mandatoryAction}
+                    excessCards={excessCards}
                     onClick={
                       mandatoryAction?.type === 'discard'
                         ? (c) => {

@@ -13,8 +13,13 @@ import RoundManager from '../logic/round/RoundManager.js';
 import ShieldManager from '../logic/shields/ShieldManager.js';
 import WinConditionChecker from '../logic/game/WinConditionChecker.js';
 import AbilityResolver from '../logic/abilities/AbilityResolver.js';
+import RecallAbilityProcessor from '../logic/abilities/ship/RecallAbilityProcessor.js';
+import TargetLockAbilityProcessor from '../logic/abilities/ship/TargetLockAbilityProcessor.js';
+import RecalculateAbilityProcessor from '../logic/abilities/ship/RecalculateAbilityProcessor.js';
+import ReallocateShieldsAbilityProcessor from '../logic/abilities/ship/ReallocateShieldsAbilityProcessor.js';
 import aiPhaseProcessor from './AIPhaseProcessor.js';
 import GameDataService from '../services/GameDataService.js';
+import PhaseManager from './PhaseManager.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 
 class ActionProcessor {
@@ -66,6 +71,7 @@ class ActionProcessor {
     this.actionQueue = [];
     this.isProcessing = false;
     this.p2pManager = null;
+    this.phaseManager = null; // Reference to PhaseManager for authoritative phase transitions
     this.aiPhaseProcessor = null; // Reference to AIPhaseProcessor for AI interception decisions
     this.actionLocks = {
       attack: false,
@@ -133,6 +139,15 @@ class ActionProcessor {
    */
   setP2PManager(p2pManager) {
     this.p2pManager = p2pManager;
+  }
+
+  /**
+   * Set PhaseManager reference for authoritative phase transitions
+   * @param {Object} phaseManager - PhaseManager instance
+   */
+  setPhaseManager(phaseManager) {
+    this.phaseManager = phaseManager;
+    debugLog('PHASE_MANAGER', '🔗 ActionProcessor: PhaseManager reference set');
   }
 
   /**
@@ -235,7 +250,7 @@ setAnimationManager(animationManager) {
     // PASS STATE VALIDATION - Prevent actions after players have passed
     if (currentState.passInfo) {
       // Actions that should be blocked if current player has passed
-      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'shipAbility'];
+      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'shipAbility', 'recallAbility', 'targetLockAbility', 'recalculateAbility', 'reallocateShieldsAbility'];
       if (playerActionTypes.includes(type)) {
         // Determine the current player for this action
         let actionPlayerId = payload.playerId || currentState.currentPlayer;
@@ -341,6 +356,30 @@ setAnimationManager(animationManager) {
           result = await this.processShipAbilityCompletion(payload);
           break;
 
+        case 'recallAbility':
+          result = await this.processRecallAbility(payload);
+          break;
+
+        case 'targetLockAbility':
+          result = await this.processTargetLockAbility(payload);
+          break;
+
+        case 'recalculateAbility':
+          result = await this.processRecalculateAbility(payload);
+          break;
+
+        case 'recalculateComplete':
+          result = await this.processRecalculateComplete(payload);
+          break;
+
+        case 'reallocateShieldsAbility':
+          result = await this.processReallocateShieldsAbility(payload);
+          break;
+
+        case 'reallocateShieldsComplete':
+          result = await this.processReallocateShieldsComplete(payload);
+          break;
+
         case 'turnTransition':
           result = await this.processTurnTransition(payload);
           break;
@@ -366,9 +405,6 @@ setAnimationManager(animationManager) {
 
         case 'optionalDiscard':
           result = await this.processOptionalDiscard(payload); break;
-
-        case 'acknowledgeDeploymentComplete':
-          return await this.acknowledgeDeploymentComplete(payload.playerId);
 
         case 'processFirstPlayerDetermination':
           result = await this.processFirstPlayerDetermination(); break;
@@ -406,7 +442,17 @@ setAnimationManager(animationManager) {
     } finally {
       // Emit action completed event for GameFlowManager
       // Only emit for player actions that might need turn transitions or broadcasting
-      const playerActionTypes = ['attack', 'ability', 'move', 'deployment', 'cardPlay', 'shipAbility', 'shipAbilityCompletion', 'movementCompletion', 'searchAndDrawCompletion', 'aiAction', 'aiTurn', 'playerPass', 'turnTransition'];
+      const playerActionTypes = [
+        'attack', 'ability', 'move', 'deployment', 'cardPlay',
+        'shipAbility', 'shipAbilityCompletion',
+        'movementCompletion', 'searchAndDrawCompletion',
+        'aiAction', 'aiTurn', 'playerPass', 'turnTransition',
+        // Ship abilities (single-step abilities and multi-step completions only)
+        'recallAbility',
+        'targetLockAbility',
+        'recalculateComplete',
+        'reallocateShieldsComplete'
+      ];
 
       // DEBUG: Log finally block execution to diagnose why emission might not happen
       debugLog('PASS_LOGIC', `🔧 [ACTION PROCESSOR] Finally block executing`, {
@@ -1476,6 +1522,127 @@ setAnimationManager(animationManager) {
   }
 
   /**
+   * Process Recall ship ability
+   * Single-action: Recall drone + deduct energy + end turn
+   */
+  async processRecallAbility(payload) {
+    const currentState = this.gameStateManager.getState();
+    const placedSections = payload.playerId === 'player1' ? currentState.placedSections : currentState.opponentPlacedSections;
+
+    const result = RecallAbilityProcessor.process(
+      payload,
+      { player1: currentState.player1, player2: currentState.player2 },
+      placedSections
+    );
+
+    if (result.newPlayerStates) {
+      this.gameStateManager.updatePlayerState('player1', result.newPlayerStates.player1);
+      this.gameStateManager.updatePlayerState('player2', result.newPlayerStates.player2);
+    }
+
+    return result;
+  }
+
+  /**
+   * Process Target Lock ship ability
+   * Single-action: Mark drone + deduct energy + end turn
+   */
+  async processTargetLockAbility(payload) {
+    const currentState = this.gameStateManager.getState();
+
+    const result = TargetLockAbilityProcessor.process(
+      payload,
+      { player1: currentState.player1, player2: currentState.player2 }
+    );
+
+    if (result.newPlayerStates) {
+      this.gameStateManager.updatePlayerState('player1', result.newPlayerStates.player1);
+      this.gameStateManager.updatePlayerState('player2', result.newPlayerStates.player2);
+    }
+
+    return result;
+  }
+
+  /**
+   * Process Recalculate ship ability
+   * Multi-step: Deduct energy + draw card, return mandatoryAction
+   */
+  async processRecalculateAbility(payload) {
+    const currentState = this.gameStateManager.getState();
+    const localPlayerId = this.gameStateManager.getLocalPlayerId();
+
+    const result = RecalculateAbilityProcessor.process(
+      payload,
+      { player1: currentState.player1, player2: currentState.player2 },
+      localPlayerId,
+      currentState.gameMode
+    );
+
+    if (result.newPlayerStates) {
+      this.gameStateManager.updatePlayerState('player1', result.newPlayerStates.player1);
+      this.gameStateManager.updatePlayerState('player2', result.newPlayerStates.player2);
+    }
+
+    return result;
+  }
+
+  /**
+   * Complete Recalculate ability after mandatory discard
+   */
+  async processRecalculateComplete(payload) {
+    const currentState = this.gameStateManager.getState();
+
+    const result = RecalculateAbilityProcessor.complete(
+      payload,
+      { player1: currentState.player1, player2: currentState.player2 }
+    );
+
+    // No state changes needed - discard already processed
+    return result;
+  }
+
+  /**
+   * Process Reallocate Shields ship ability actions
+   * Handles remove/add/restore actions during UI flow
+   */
+  async processReallocateShieldsAbility(payload) {
+    const currentState = this.gameStateManager.getState();
+
+    const result = ReallocateShieldsAbilityProcessor.process(
+      payload,
+      { player1: currentState.player1, player2: currentState.player2 },
+      currentState
+    );
+
+    if (result.newPlayerStates) {
+      this.gameStateManager.updatePlayerState('player1', result.newPlayerStates.player1);
+      this.gameStateManager.updatePlayerState('player2', result.newPlayerStates.player2);
+    }
+
+    return result;
+  }
+
+  /**
+   * Complete Reallocate Shields ability
+   * Deduct energy and end turn when confirmed
+   */
+  async processReallocateShieldsComplete(payload) {
+    const currentState = this.gameStateManager.getState();
+
+    const result = ReallocateShieldsAbilityProcessor.complete(
+      payload,
+      { player1: currentState.player1, player2: currentState.player2 }
+    );
+
+    if (result.newPlayerStates) {
+      this.gameStateManager.updatePlayerState('player1', result.newPlayerStates.player1);
+      this.gameStateManager.updatePlayerState('player2', result.newPlayerStates.player2);
+    }
+
+    return result;
+  }
+
+  /**
    * Check for win conditions after state-changing actions
    * This method should be called after attacks, abilities, and card plays
    * that could destroy ship sections and end the game
@@ -1573,7 +1740,7 @@ setAnimationManager(animationManager) {
    * Process phase transition action
    */
   async processPhaseTransition(payload) {
-    const { newPhase, resetPassInfo = true } = payload;
+    const { newPhase, resetPassInfo = true, guestAnnouncementOnly = false } = payload;
 
     const currentState = this.gameStateManager.getState();
 
@@ -1584,6 +1751,37 @@ setAnimationManager(animationManager) {
     }
 
     debugLog('PHASE_TRANSITIONS', `[PHASE TRANSITION DEBUG] Processing phase transition to: ${newPhase}`);
+
+    // If this is guest announcement only (pseudo-phase), queue announcement and return early
+    // This prevents state modification and validation warnings for announcement-only phases
+    if (guestAnnouncementOnly) {
+      const phaseTextMap = {
+        roundAnnouncement: 'ROUND',
+        roundInitialization: 'UPKEEP',
+        mandatoryDiscard: 'MANDATORY DISCARD PHASE',
+        optionalDiscard: 'OPTIONAL DISCARD PHASE',
+        allocateShields: 'ALLOCATE SHIELDS',
+        mandatoryDroneRemoval: 'REMOVE EXCESS DRONES',
+        deployment: 'DEPLOYMENT PHASE',
+        deploymentComplete: 'DEPLOYMENT COMPLETE',
+        action: 'ACTION PHASE',
+        actionComplete: 'ACTION PHASE COMPLETE'
+      };
+
+      if (phaseTextMap[newPhase] && this.phaseAnimationQueue) {
+        const phaseText = phaseTextMap[newPhase];
+        const subtitle = newPhase === 'roundInitialization'
+          ? 'Drawing Cards, Gaining Energy, Resetting Drones...'
+          : newPhase === 'actionComplete'
+          ? 'Transitioning to Next Round'
+          : null;
+
+        this.phaseAnimationQueue.queueAnimation(newPhase, phaseText, subtitle);
+        debugLog('PHASE_MANAGER', `✅ [GUEST] Announcement queued for pseudo-phase: ${newPhase}`);
+      }
+
+      return { success: true, message: 'Guest announcement queued' };
+    }
 
     // LOG PLACEMENT DATA BEFORE TRANSITION
     debugLog('PHASE_TRANSITIONS', `[PLACEMENT DATA DEBUG] BEFORE transition to ${newPhase}:`, {
@@ -1647,20 +1845,29 @@ setAnimationManager(animationManager) {
     // Show phase announcement for round phases
     // Note: Automatic phases (energyReset, draw) are excluded - only determineFirstPlayer shows as "INITIALISING ROUND"
     const phaseTextMap = {
-      determineFirstPlayer: 'INITIALISING ROUND',
+      roundAnnouncement: 'ROUND',  // Round number added dynamically at playback time
+      roundInitialization: 'UPKEEP',
       mandatoryDiscard: 'MANDATORY DISCARD PHASE',
       optionalDiscard: 'OPTIONAL DISCARD PHASE',
       allocateShields: 'ALLOCATE SHIELDS',
       mandatoryDroneRemoval: 'REMOVE EXCESS DRONES',
       deployment: 'DEPLOYMENT PHASE',
       deploymentComplete: 'DEPLOYMENT COMPLETE',
-      action: 'ACTION PHASE'
+      action: 'ACTION PHASE',
+      actionComplete: 'ACTION PHASE COMPLETE'
     };
 
     if (phaseTextMap[newPhase]) {
       debugLog('PHASE_TRANSITIONS', `🎬 [PHASE ANNOUNCEMENT] Queueing announcement for: ${newPhase}`);
 
       const phaseText = phaseTextMap[newPhase];
+
+      // Calculate subtitle for specific phases
+      const subtitle = newPhase === 'roundInitialization'
+        ? 'Drawing Cards, Gaining Energy, Resetting Drones...'
+        : newPhase === 'actionComplete'
+        ? 'Transitioning to Next Round'
+        : null;
 
       // Queue animation for sequential playback (non-blocking)
       // Note: Subtitle for deployment/action is calculated dynamically by PhaseAnimationQueue
@@ -1672,8 +1879,14 @@ setAnimationManager(animationManager) {
       });
 
       if (this.phaseAnimationQueue) {
-        this.phaseAnimationQueue.queueAnimation(newPhase, phaseText, null);
+        this.phaseAnimationQueue.queueAnimation(newPhase, phaseText, subtitle);
         debugLog('PHASE_TRANSITIONS', `✅ [PHASE ANNOUNCEMENT] Successfully queued: ${newPhase}`);
+
+        // Note: Playback is started explicitly by GameFlowManager after phase transitions complete
+        // This ensures App.jsx is mounted and subscribed before animations play
+        // Automatic startPlayback() was removed to fix race condition where first animation
+        // started before App.jsx listener was set up, causing lost events
+        debugLog('PHASE_TRANSITIONS', `🎬 [PHASE ANNOUNCEMENT] Animation queued for: ${newPhase}`);
       } else {
         debugLog('PHASE_TRANSITIONS', `❌ [PHASE ANNOUNCEMENT] Queue not available for: ${newPhase}`);
       }
@@ -2527,6 +2740,29 @@ setAnimationManager(animationManager) {
       this.gameStateManager._updateContext = null;
     }
 
+    // PHASE MANAGER INTEGRATION: Notify PhaseManager of pass action
+    const gameMode = this.gameStateManager.get('gameMode');
+    if (this.phaseManager) {
+      if (gameMode === 'host' && playerId === 'player1') {
+        // Host passed
+        this.phaseManager.notifyHostAction('pass', { phase: turnPhase });
+        debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: Host passed in ${turnPhase}`);
+      } else if (gameMode === 'host' && playerId === 'player2') {
+        // Guest passed (received via network on Host)
+        this.phaseManager.notifyGuestAction('pass', { phase: turnPhase });
+        debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: Guest passed in ${turnPhase} (via network)`);
+      } else if (gameMode === 'local') {
+        // Local mode: Notify for both players (AI or human)
+        if (playerId === 'player1') {
+          this.phaseManager.notifyHostAction('pass', { phase: turnPhase });
+        } else {
+          this.phaseManager.notifyGuestAction('pass', { phase: turnPhase });
+        }
+        debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: ${playerId} passed in ${turnPhase} (local mode)`);
+      }
+      // Note: Guest mode doesn't call processPlayerPass for local player (blocked by guards)
+    }
+
     // Increment turn counter ONLY for action phase passes
     // Turn tracks individual player actions within a round (resets to 1 at round start)
     if (turnPhase === 'action') {
@@ -2648,7 +2884,10 @@ setAnimationManager(animationManager) {
 
     // Validate mandatory phase-based discards to prevent over-discarding
     if (isMandatory && currentState.turnPhase === 'mandatoryDiscard' && !abilityMetadata) {
-      const handLimit = playerState.effectiveStats?.totals?.handLimit || 5;
+      // Calculate effective hand limit (accounts for critical damage, etc.)
+      const placedSections = playerId === 'player1' ? currentState.placedSections : currentState.opponentPlacedSections;
+      const effectiveStats = this.gameDataService.getEffectiveShipStats(playerState, placedSections);
+      const handLimit = effectiveStats.totals.handLimit;
       const currentHandSize = playerState.hand.length;
       const excessCards = currentHandSize - handLimit;
 
@@ -2754,22 +2993,6 @@ setAnimationManager(animationManager) {
   }
 
   /**
-   * Process deployment complete acknowledgment
-   * @param {string} playerId - Player acknowledging
-   * @returns {Object} Acknowledgment result
-   */
-  async acknowledgeDeploymentComplete(playerId) {
-    debugLog('COMMITMENTS', `🎯 ActionProcessor: Processing deployment complete acknowledgment for ${playerId}`);
-
-    // Use the new commitment system for acknowledgments
-    return await this.processCommitment({
-      playerId,
-      phase: 'deploymentComplete',
-      actionData: { acknowledged: true }
-    });
-  }
-
-  /**
    * Get phase commitment status
    * @param {string} phase - Phase name
    * @returns {Object|null} Commitment status
@@ -2868,14 +3091,67 @@ setAnimationManager(animationManager) {
       ...actionData
     };
 
+    // SPECIAL HANDLING: Apply shield allocations from commitment data
+    if (phase === 'allocateShields' && actionData.shieldAllocations) {
+      debugLog('SHIELD_CLICKS', `🛡️ Applying shield allocations for ${playerId}`, {
+        shieldAllocations: actionData.shieldAllocations
+      });
+
+      // Get player state
+      const playerState = currentState[playerId];
+
+      // Clear all current shield allocations for this player
+      Object.keys(playerState.shipSections).forEach(sectionName => {
+        playerState.shipSections[sectionName].allocatedShields = 0;
+      });
+
+      // Apply all shield allocations from the commitment
+      Object.entries(actionData.shieldAllocations).forEach(([sectionName, count]) => {
+        if (playerState.shipSections[sectionName]) {
+          playerState.shipSections[sectionName].allocatedShields = count;
+          debugLog('SHIELD_CLICKS', `✅ Allocated ${count} shields to ${sectionName}`);
+        }
+      });
+
+      // Reset shields to allocate counter to 0 (all allocated)
+      const shieldsKey = playerId === 'player1' ? 'shieldsToAllocate' : 'opponentShieldsToAllocate';
+      currentState[shieldsKey] = 0;
+    }
+
     // Update the state with specific event type for commitment changes
     try {
       this.gameStateManager._updateContext = 'ActionProcessor';
       this.gameStateManager.setState({
-        commitments: currentState.commitments
+        commitments: currentState.commitments,
+        player1: currentState.player1,
+        player2: currentState.player2,
+        shieldsToAllocate: currentState.shieldsToAllocate,
+        opponentShieldsToAllocate: currentState.opponentShieldsToAllocate
       }, 'COMMITMENT_UPDATE');
     } finally {
       this.gameStateManager._updateContext = null;
+    }
+
+    // PHASE MANAGER INTEGRATION: Notify PhaseManager of commitment
+    if (this.phaseManager) {
+      if (gameMode === 'host' && playerId === 'player1') {
+        // Host committed
+        this.phaseManager.notifyHostAction('commit', { phase });
+        debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: Host committed to ${phase}`);
+      } else if (gameMode === 'host' && playerId === 'player2') {
+        // Guest committed (received via network on Host)
+        this.phaseManager.notifyGuestAction('commit', { phase });
+        debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: Guest committed to ${phase} (via network)`);
+      } else if (gameMode === 'local') {
+        // Local mode: Notify for both players (AI or human)
+        if (playerId === 'player1') {
+          this.phaseManager.notifyHostAction('commit', { phase });
+        } else {
+          this.phaseManager.notifyGuestAction('commit', { phase });
+        }
+        debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: ${playerId} committed to ${phase} (local mode)`);
+      }
+      // Note: Guest mode doesn't call processCommitment for local player (blocked by guards)
     }
 
     // Check if both players have committed
@@ -3068,22 +3344,6 @@ setAnimationManager(animationManager) {
           });
           break;
 
-        case 'deploymentComplete':
-          // AI acknowledges deployment completion with 3-second delay for testing
-          debugLog('COMMITMENTS', '🤖 AI will acknowledge deployment complete after 3 second delay (for testing)');
-          await new Promise(resolve => {
-            setTimeout(async () => {
-              await this.processCommitment({
-                playerId: 'player2',
-                phase: 'deploymentComplete',
-                actionData: { acknowledged: true }
-              });
-              debugLog('COMMITMENTS', '🤖 AI acknowledged deployment complete');
-              resolve();
-            }, 3000);
-          });
-          break;
-
         default:
           console.warn(`⚠️ No AI handler for phase: ${phase}`);
       }
@@ -3196,11 +3456,6 @@ setAnimationManager(animationManager) {
         debugLog('COMMITMENTS', '✅ Shield allocation (handled separately)');
         break;
 
-      case 'deploymentComplete':
-        // Acknowledgment-only phase, no state changes needed
-        debugLog('COMMITMENTS', '✅ Deployment complete acknowledgments (no state changes)');
-        break;
-
       default:
         console.warn(`⚠️ No commitment application logic for phase: ${phase}`);
     }
@@ -3243,12 +3498,13 @@ setAnimationManager(animationManager) {
    * @returns {Object} Energy reset result
    */
   async processEnergyReset(payload) {
-    const { player1, player2, shieldsToAllocate, opponentShieldsToAllocate } = payload;
+    const { player1, player2, shieldsToAllocate, opponentShieldsToAllocate, roundNumber } = payload;
 
     debugLog('ENERGY', '⚡ ActionProcessor: Processing energy reset');
 
     // DEBUG: Log what was received from GameFlowManager
     debugLog('RESOURCE_RESET', `📥 [ACTIONPROCESSOR] Received energyReset payload`, {
+      roundNumber,
       player1: {
         name: player1?.name,
         energy: player1?.energy,
@@ -3273,12 +3529,18 @@ setAnimationManager(animationManager) {
       }
     });
 
-    // Update player states using setPlayerStates
-    this.gameStateManager.setPlayerStates(player1, player2);
+    // Update player states AND roundNumber atomically to prevent race condition
+    // This ensures React components receive both updates together
+    this.gameStateManager.setState({
+      player1,
+      player2,
+      ...(roundNumber !== undefined && { roundNumber })
+    }, 'PLAYER_STATES_SET');
 
-    // DEBUG: Log what's actually in the game state after setPlayerStates
+    // DEBUG: Log what's actually in the game state after setState
     const currentState = this.gameStateManager.getState();
-    debugLog('RESOURCE_RESET', `✅ [ACTIONPROCESSOR] Game state after setPlayerStates`, {
+    debugLog('RESOURCE_RESET', `✅ [ACTIONPROCESSOR] Game state after setState (atomic update)`, {
+      roundNumber: currentState.roundNumber,
       player1: {
         name: currentState.player1?.name,
         energy: currentState.player1?.energy,

@@ -33,7 +33,7 @@ import CardViewerModal from './components/modals/CardViewerModal';
 import CardSelectionModal from './components/modals/CardSelectionModal';
 import AICardPlayReportModal from './components/modals/AICardPlayReportModal.jsx';
 import DetailedDroneModal from './components/modals/debug/DetailedDroneModal.jsx';
-import { DeploymentCompleteModal, RoundEndModal } from './components/modals/GamePhaseModals.jsx';
+import { RoundEndModal } from './components/modals/GamePhaseModals.jsx';
 import WaitingForPlayerModal from './components/modals/WaitingForPlayerModal.jsx';
 import ConfirmationModal from './components/modals/ConfirmationModal.jsx';
 import MandatoryActionModal from './components/modals/MandatoryActionModal.jsx';
@@ -178,7 +178,6 @@ const App = ({ phaseAnimationQueue }) => {
   const [moveConfirmation, setMoveConfirmation] = useState(null);
   const [detailedDrone, setDetailedDrone] = useState(null);
   const [cardToView, setCardToView] = useState(null);
-  const [showDeploymentCompleteModal, setShowDeploymentCompleteModal] = useState(false);
   const [showRoundEndModal, setShowRoundEndModal] = useState(false);
   const [waitingForPlayerPhase, setWaitingForPlayerPhase] = useState(null); // Track which phase we're waiting for player acknowledgment
   const [showWinnerModal, setShowWinnerModal] = useState(false);
@@ -266,6 +265,10 @@ const App = ({ phaseAnimationQueue }) => {
   // Phase and turn tracking for modal management
   const [lastTurnPhase, setLastTurnPhase] = useState(null); // Track last phase to detect phase transitions
   const [optionalDiscardCount, setOptionalDiscardCount] = useState(0); // Track number of optional discards during optionalDiscard phase
+
+  // Pending shield allocation state (privacy: keep allocations local until confirmed)
+  const [pendingShieldAllocations, setPendingShieldAllocations] = useState({}); // { sectionName: count }
+  const [pendingShieldsRemaining, setPendingShieldsRemaining] = useState(null); // Remaining shields to allocate
 
 
   // --- 3.3 REFS ---
@@ -366,12 +369,6 @@ const App = ({ phaseAnimationQueue }) => {
         }
 
         // First player determination is now handled automatically by GameFlowManager
-
-        // Handle deployment complete phase
-        if (newPhase === 'deploymentComplete') {
-          debugLog('PHASE_TRANSITIONS', '🎯 Deployment complete phase started, showing modal');
-          setShowDeploymentCompleteModal(true);
-        }
       }
     };
 
@@ -494,6 +491,26 @@ const App = ({ phaseAnimationQueue }) => {
     return unsubscribe;
   }, [isMultiplayer, p2pManager]);
 
+  // Initialize pending shield allocations when entering allocateShields phase
+  useEffect(() => {
+    if (turnPhase === 'allocateShields' && shieldsToAllocate > 0) {
+      // Initialize pending state from current allocations
+      const currentAllocations = {};
+      if (localPlayerState?.shipSections) {
+        Object.entries(localPlayerState.shipSections).forEach(([sectionName, section]) => {
+          if (section.allocatedShields > 0) {
+            currentAllocations[sectionName] = section.allocatedShields;
+          }
+        });
+      }
+      setPendingShieldAllocations(currentAllocations);
+      setPendingShieldsRemaining(shieldsToAllocate);
+      debugLog('SHIELD_CLICKS', '🆕 Initialized pending shield allocations', {
+        currentAllocations,
+        shieldsToAllocate
+      });
+    }
+  }, [turnPhase, shieldsToAllocate, localPlayerState]);
 
   // addLogEntry is now provided by useGameState hook
 
@@ -563,16 +580,16 @@ const App = ({ phaseAnimationQueue }) => {
     ? initialMandatoryDiscardHandSize.current - localPlayerState.hand.length
     : 0;
 
-  // Debug logging for mandatoryAction calculation
-  debugLog('HAND_VIEW', '🔍 mandatoryAction calculation:', {
-    turnPhase,
-    isInMandatoryDiscardPhase,
-    localPlayerId,
-    commitments: gameState.commitments,
-    hasCommittedDiscard,
-    excessCards,
-    willSetMandatoryAction: isInMandatoryDiscardPhase && !hasCommittedDiscard
-  });
+  // DISABLED: Render-based logging causes excessive noise on every App render
+  // debugLog('HAND_VIEW', '🔍 mandatoryAction calculation:', {
+  //   turnPhase,
+  //   isInMandatoryDiscardPhase,
+  //   localPlayerId,
+  //   commitments: gameState.commitments,
+  //   hasCommittedDiscard,
+  //   excessCards,
+  //   willSetMandatoryAction: isInMandatoryDiscardPhase && !hasCommittedDiscard
+  // });
 
   // UI flags for mandatory actions
   const shouldShowDiscardUI = isInMandatoryDiscardPhase && !hasCommittedDiscard && excessCards > 0;
@@ -704,10 +721,14 @@ const App = ({ phaseAnimationQueue }) => {
    * Handle reset shields button - removes all allocated shields
    */
   const handleResetShields = useCallback(async () => {
-    await processActionWithGuestRouting('resetShields', {
-      playerId: getLocalPlayerId()
+    // Reset pending allocations to empty (all shields back to pool)
+    setPendingShieldAllocations({});
+    setPendingShieldsRemaining(shieldsToAllocate);
+
+    debugLog('SHIELD_CLICKS', '🔄 Reset pending shield allocations', {
+      shieldsToAllocate
     });
-  }, [processActionWithGuestRouting, getLocalPlayerId]);
+  }, [shieldsToAllocate]);
 
   /**
    * Handle showing opponent's selected drones modal
@@ -723,16 +744,20 @@ const App = ({ phaseAnimationQueue }) => {
     debugLog('COMMITMENTS', '🏁 handleConfirmShields called');
     debugLog('SHIELD_CLICKS', '🔵 Confirm Shields button clicked');
 
-    // Commit allocation via ActionProcessor
+    // Commit allocation via ActionProcessor with all pending allocations
     const result = await processActionWithGuestRouting('commitment', {
       playerId: getLocalPlayerId(),
       phase: 'allocateShields',
-      actionData: { committed: true }
+      actionData: {
+        committed: true,
+        shieldAllocations: pendingShieldAllocations  // Send all pending allocations at once
+      }
     });
 
     debugLog('COMMITMENTS', '🏁 Shield allocation commitment result:', {
       hasData: !!result.data,
       bothPlayersComplete: result.data?.bothPlayersComplete,
+      shieldAllocations: pendingShieldAllocations,
       fullResult: result
     });
     debugLog('SHIELD_CLICKS', '📥 Commitment result:', result);
@@ -756,7 +781,7 @@ const App = ({ phaseAnimationQueue }) => {
       debugLog('COMMITMENTS', '✅ Both players complete, no waiting overlay');
       debugLog('SHIELD_CLICKS', '✅ Both players committed, proceeding');
     }
-  }, [processActionWithGuestRouting, getLocalPlayerId, gameState.commitments, getOpponentPlayerId]);
+  }, [processActionWithGuestRouting, getLocalPlayerId, gameState.commitments, getOpponentPlayerId, pendingShieldAllocations]);
 
   /**
    * HANDLE CANCEL MULTI MOVE
@@ -995,6 +1020,13 @@ const App = ({ phaseAnimationQueue }) => {
         setShipAbilityConfirmation(null);
         return; // Shield reallocation modal will handle the rest
     }
+
+    // For standard abilities (like Recall), complete the ability to deduct energy and end turn
+    await processActionWithGuestRouting('shipAbilityCompletion', {
+        ability: ability,
+        sectionName: sectionName,
+        playerId: getLocalPlayerId()
+    });
 
     // Standard cleanup for completed abilities
     setShipAbilityMode(null);
@@ -1472,7 +1504,7 @@ const App = ({ phaseAnimationQueue }) => {
 
       // NOTE: Guest optimistic processing and checkpoint validation is now handled entirely by:
       // 1. GameFlowManager - for optimistic phase transitions
-      // 2. GuestMessageQueueService - for checkpoint validation
+      // 2. GuestMessageQueueService - for checkpoint validation and phase announcements
       // App.jsx only responds to phase changes for UI updates (passive role)
 
       // Synthesize phaseTransition event with same structure as GameFlowManager
@@ -1496,12 +1528,6 @@ const App = ({ phaseAnimationQueue }) => {
           // Clear waiting modal when transitioning away from the waiting phase
           if (waitingForPlayerPhase === previousPhase) {
             setWaitingForPlayerPhase(null);
-          }
-
-          // Handle deployment complete phase
-          if (newPhase === 'deploymentComplete') {
-            debugLog('PHASE_TRANSITIONS', '🎯 Deployment complete phase started, showing modal');
-            setShowDeploymentCompleteModal(true);
           }
         }
       };
@@ -1559,7 +1585,11 @@ const App = ({ phaseAnimationQueue }) => {
 
   // --- 8.10 SIMULTANEOUS PHASE WAITING MODAL ---
   // Monitor commitment status for simultaneous phases and show waiting modal when appropriate
-  // Clears modal as soon as both players commit to prevent modal overlaying animations
+  // Coordinates with phase animation queue to prevent race conditions:
+  // - If announcements are queued or playing, waits for them to complete before showing modal
+  // - If no announcements, shows modal immediately
+  // - Prevents UI conflicts where waiting modal overlays phase announcements
+  // Applied to: mandatoryDiscard, optionalDiscard, allocateShields, mandatoryDroneRemoval
   useEffect(() => {
     // Only check in multiplayer
     if (!isMultiplayer()) return;
@@ -1574,7 +1604,20 @@ const App = ({ phaseAnimationQueue }) => {
 
       if (localCommitted && !opponentCommitted) {
         debugLog('COMMITMENTS', '✋ Local player committed but opponent has not - showing waiting modal for mandatoryDiscard');
-        setWaitingForPlayerPhase('mandatoryDiscard');
+
+        // Wait for phase announcements to complete before showing waiting modal
+        if (phaseAnimationQueue && (phaseAnimationQueue.getQueueLength() > 0 || phaseAnimationQueue.isPlaying())) {
+          debugLog('PHASE_TRANSITIONS', '⏳ Waiting for announcement queue to complete before showing waiting modal', {
+            queueLength: phaseAnimationQueue.getQueueLength(),
+            isPlaying: phaseAnimationQueue.isPlaying()
+          });
+          const unsubscribe = phaseAnimationQueue.onComplete(() => {
+            setWaitingForPlayerPhase('mandatoryDiscard');
+            unsubscribe();
+          });
+        } else {
+          setWaitingForPlayerPhase('mandatoryDiscard');
+        }
       } else if (localCommitted && opponentCommitted && waitingForPlayerPhase === 'mandatoryDiscard') {
         debugLog('COMMITMENTS', '✅ Both players committed - clearing waiting modal for mandatoryDiscard');
         setWaitingForPlayerPhase(null);
@@ -1588,7 +1631,20 @@ const App = ({ phaseAnimationQueue }) => {
 
       if (localCommitted && !opponentCommitted) {
         debugLog('COMMITMENTS', '✋ Local player committed but opponent has not - showing waiting modal for optionalDiscard');
-        setWaitingForPlayerPhase('optionalDiscard');
+
+        // Wait for phase announcements to complete before showing waiting modal
+        if (phaseAnimationQueue && (phaseAnimationQueue.getQueueLength() > 0 || phaseAnimationQueue.isPlaying())) {
+          debugLog('PHASE_TRANSITIONS', '⏳ Waiting for announcement queue to complete before showing waiting modal', {
+            queueLength: phaseAnimationQueue.getQueueLength(),
+            isPlaying: phaseAnimationQueue.isPlaying()
+          });
+          const unsubscribe = phaseAnimationQueue.onComplete(() => {
+            setWaitingForPlayerPhase('optionalDiscard');
+            unsubscribe();
+          });
+        } else {
+          setWaitingForPlayerPhase('optionalDiscard');
+        }
       } else if (localCommitted && opponentCommitted && waitingForPlayerPhase === 'optionalDiscard') {
         debugLog('COMMITMENTS', '✅ Both players committed - clearing waiting modal for optionalDiscard');
         setWaitingForPlayerPhase(null);
@@ -1602,7 +1658,20 @@ const App = ({ phaseAnimationQueue }) => {
 
       if (localCommitted && !opponentCommitted) {
         debugLog('COMMITMENTS', '✋ Local player committed but opponent has not - showing waiting modal for allocateShields');
-        setWaitingForPlayerPhase('allocateShields');
+
+        // Wait for phase announcements to complete before showing waiting modal
+        if (phaseAnimationQueue && (phaseAnimationQueue.getQueueLength() > 0 || phaseAnimationQueue.isPlaying())) {
+          debugLog('PHASE_TRANSITIONS', '⏳ Waiting for announcement queue to complete before showing waiting modal', {
+            queueLength: phaseAnimationQueue.getQueueLength(),
+            isPlaying: phaseAnimationQueue.isPlaying()
+          });
+          const unsubscribe = phaseAnimationQueue.onComplete(() => {
+            setWaitingForPlayerPhase('allocateShields');
+            unsubscribe();
+          });
+        } else {
+          setWaitingForPlayerPhase('allocateShields');
+        }
       } else if (localCommitted && opponentCommitted && waitingForPlayerPhase === 'allocateShields') {
         debugLog('COMMITMENTS', '✅ Both players committed - clearing waiting modal for allocateShields');
         setWaitingForPlayerPhase(null);
@@ -1616,32 +1685,33 @@ const App = ({ phaseAnimationQueue }) => {
 
       if (localCommitted && !opponentCommitted) {
         debugLog('COMMITMENTS', '✋ Local player committed but opponent has not - showing waiting modal for mandatoryDroneRemoval');
-        setWaitingForPlayerPhase('mandatoryDroneRemoval');
+
+        // Wait for phase announcements to complete before showing waiting modal
+        if (phaseAnimationQueue && (phaseAnimationQueue.getQueueLength() > 0 || phaseAnimationQueue.isPlaying())) {
+          debugLog('PHASE_TRANSITIONS', '⏳ Waiting for announcement queue to complete before showing waiting modal', {
+            queueLength: phaseAnimationQueue.getQueueLength(),
+            isPlaying: phaseAnimationQueue.isPlaying()
+          });
+          const unsubscribe = phaseAnimationQueue.onComplete(() => {
+            setWaitingForPlayerPhase('mandatoryDroneRemoval');
+            unsubscribe();
+          });
+        } else {
+          setWaitingForPlayerPhase('mandatoryDroneRemoval');
+        }
       } else if (localCommitted && opponentCommitted && waitingForPlayerPhase === 'mandatoryDroneRemoval') {
         debugLog('COMMITMENTS', '✅ Both players committed - clearing waiting modal for mandatoryDroneRemoval');
-        setWaitingForPlayerPhase(null);
-      }
-    }
-
-    // Check deploymentComplete phase
-    if (turnPhase === 'deploymentComplete') {
-      const localCommitted = gameState.commitments?.deploymentComplete?.[localPlayerId]?.completed;
-      const opponentCommitted = gameState.commitments?.deploymentComplete?.[opponentPlayerId]?.completed;
-
-      if (localCommitted && !opponentCommitted) {
-        debugLog('COMMITMENTS', '✋ Local player committed but opponent has not - showing waiting modal for deploymentComplete');
-        setWaitingForPlayerPhase('deploymentComplete');
-      } else if (localCommitted && opponentCommitted && waitingForPlayerPhase === 'deploymentComplete') {
-        debugLog('COMMITMENTS', '✅ Both players committed - clearing waiting modal for deploymentComplete');
         setWaitingForPlayerPhase(null);
       }
     }
   }, [turnPhase, gameState.commitments, isMultiplayer, getLocalPlayerId, getOpponentPlayerId, waitingForPlayerPhase]);
 
   // --- 8.11 TRACK INITIAL STATE FOR MANDATORY PHASES ---
-  // Capture whether player ENTERED phase with excess cards/drones
-  // This distinguishes between: (1) entered with no excess → auto-trigger Continue
-  //                        vs: (2) entered with excess, discarded down to 0 → require manual Continue
+  // Capture whether player ENTERED phase with excess cards/drones.
+  // This enables smart auto-trigger behavior:
+  // - If entered with NO excess → auto-trigger Continue (nothing to do)
+  // - If entered WITH excess → require manual Continue (player took action)
+  // Prevents confusion where player completes required actions but phase doesn't advance automatically.
   useEffect(() => {
     if (turnPhase === 'mandatoryDiscard') {
       enteredMandatoryDiscardWithExcess.current = excessCards > 0;
@@ -1799,18 +1869,38 @@ const App = ({ phaseAnimationQueue }) => {
       sectionName,
       turnPhase,
       localPlayerId: getLocalPlayerId(),
-      shieldsToAllocate,
+      pendingShieldsRemaining,
       currentPhaseMatch: turnPhase === 'allocateShields'
     });
 
     if (turnPhase === 'allocateShields') {
-      debugLog('SHIELD_CLICKS', `📤 Calling processActionWithGuestRouting('addShield')`);
-      // Round start shield allocation - uses ActionProcessor addShield action
-      const result = await processActionWithGuestRouting('addShield', {
-        sectionName: sectionName,
-        playerId: getLocalPlayerId()
+      // Round start shield allocation - use pending state (privacy: don't send to opponent until confirmed)
+      if (pendingShieldsRemaining <= 0) {
+        debugLog('SHIELD_CLICKS', '❌ No shields remaining to allocate');
+        return;
+      }
+
+      // Check if section can accept more shields
+      const section = localPlayerState.shipSections[sectionName];
+      const maxShields = gameDataService.getEffectiveSectionMaxShields(sectionName, localPlayerState, localPlacedSections);
+      const currentPending = pendingShieldAllocations[sectionName] || 0;
+
+      if (currentPending >= maxShields) {
+        debugLog('SHIELD_CLICKS', `❌ Section ${sectionName} already at max shields (${maxShields})`);
+        return;
+      }
+
+      // Update pending state only (no network communication)
+      setPendingShieldAllocations(prev => ({
+        ...prev,
+        [sectionName]: currentPending + 1
+      }));
+      setPendingShieldsRemaining(prev => prev - 1);
+
+      debugLog('SHIELD_CLICKS', `✅ Added shield to ${sectionName} in pending state`, {
+        newPending: currentPending + 1,
+        remainingShields: pendingShieldsRemaining - 1
       });
-      debugLog('SHIELD_CLICKS', `📥 addShield result:`, result);
     } else {
       debugLog('SHIELD_CLICKS', `🔄 Using reallocation path instead`);
       // Action phase shield reallocation - uses ActionProcessor directly
@@ -1835,7 +1925,7 @@ const App = ({ phaseAnimationQueue }) => {
     if (section.allocatedShields <= 0) return;
 
     // Use ActionProcessor for shield reallocation
-    const result = await processActionWithGuestRouting('reallocateShields', {
+    const result = await processActionWithGuestRouting('reallocateShieldsAbility', {
       action: 'remove',
       sectionName: sectionName,
       playerId: getLocalPlayerId()
@@ -1857,7 +1947,7 @@ const App = ({ phaseAnimationQueue }) => {
     if (shieldsToAdd <= 0) return;
 
     // Use ActionProcessor for shield reallocation (validation handled there)
-    const result = await processActionWithGuestRouting('reallocateShields', {
+    const result = await processActionWithGuestRouting('reallocateShieldsAbility', {
       action: 'add',
       sectionName: sectionName,
       playerId: getLocalPlayerId()
@@ -1888,7 +1978,7 @@ const App = ({ phaseAnimationQueue }) => {
   const handleResetReallocation = async () => {
     if (reallocationPhase === 'removing') {
       // Reset to original pre-reallocation state
-      await processActionWithGuestRouting('reallocateShields', {
+      await processActionWithGuestRouting('reallocateShieldsAbility', {
         action: 'restore',
         originalShipSections: originalShieldAllocation,
         playerId: getLocalPlayerId()
@@ -1899,7 +1989,7 @@ const App = ({ phaseAnimationQueue }) => {
       setShieldsToAdd(0);
     } else if (reallocationPhase === 'adding') {
       // Reset to post-removal state (before any shields were added)
-      await processActionWithGuestRouting('reallocateShields', {
+      await processActionWithGuestRouting('reallocateShieldsAbility', {
         action: 'restore',
         originalShipSections: postRemovalShieldAllocation,
         playerId: getLocalPlayerId()
@@ -1917,7 +2007,7 @@ const App = ({ phaseAnimationQueue }) => {
    */
   const handleCancelReallocation = async () => {
     // Restore original shields using ActionProcessor
-    await processActionWithGuestRouting('reallocateShields', {
+    await processActionWithGuestRouting('reallocateShieldsAbility', {
       action: 'restore',
       originalShipSections: originalShieldAllocation,
       playerId: getLocalPlayerId()
@@ -1942,31 +2032,9 @@ const App = ({ phaseAnimationQueue }) => {
     setShipAbilityConfirmation({
       ability: reallocationAbility.ability,
       sectionName: reallocationAbility.sectionName,
-      target: null
+      target: null,
+      abilityType: 'reallocateShields'
     });
-  };
-
-  /**
-   * HANDLE DEPLOYMENT COMPLETE ACKNOWLEDGMENT
-   * Acknowledges deployment complete transition for the current player.
-   * Triggers waiting state if opponent hasn't acknowledged yet.
-   */
-  const handleDeploymentCompleteAcknowledgment = async () => {
-    debugLog('PHASE_TRANSITIONS', '🎯 App.jsx: Acknowledging deployment complete');
-
-    const localPlayerId = getLocalPlayerId();
-    const result = await processActionWithGuestRouting('acknowledgeDeploymentComplete', { playerId: localPlayerId });
-
-    if (result.success) {
-      setShowDeploymentCompleteModal(false);
-
-      // Check if we need to show waiting state using fresh state from result
-      const bothComplete = result.data?.bothPlayersComplete || false;
-      if (!bothComplete) {
-        // Show waiting state if opponent hasn't acknowledged (works for both single-player AI and multiplayer)
-        setWaitingForPlayerPhase('deploymentComplete');
-      }
-    }
   };
 
   /**
@@ -2494,26 +2562,36 @@ const App = ({ phaseAnimationQueue }) => {
     if (shipAbilityMode?.ability.id === ability.id) {
         setShipAbilityMode(null);
     } else {
-        // If the ability has no target, handle it appropriately.
-    if (!ability.targeting) {
-        // Special handling for shield reallocation
-        if (ability.effect.type === 'REALLOCATE_SHIELDS') {
+        // Route to specific ability handlers based on ability name
+        if (ability.name === 'Reallocate Shields') {
             // Start reallocation mode without energy deduction
-            cancelAllActions(); // Cancel all other actions before starting reallocation
+            cancelAllActions();
             setReallocationPhase('removing');
             setShieldsToRemove(ability.effect.value.maxShields);
             setShieldsToAdd(0);
             setOriginalShieldAllocation(JSON.parse(JSON.stringify(localPlayerState.shipSections)));
             setReallocationAbility({ ability, sectionName: section.name });
+        } else if (ability.name === 'Recalculate') {
+            // Non-targeted ability - show confirmation modal
+            cancelAllActions();
+            setShipAbilityConfirmation({ ability, sectionName: section.name, target: null, abilityType: 'recalculate' });
+        } else if (ability.name === 'Recall') {
+            // Targeted ability - enter targeting mode
+            cancelAllActions();
+            setShipAbilityMode({ sectionName: section.name, ability, abilityType: 'recall' });
+        } else if (ability.name === 'Target Lock') {
+            // Targeted ability - enter targeting mode
+            cancelAllActions();
+            setShipAbilityMode({ sectionName: section.name, ability, abilityType: 'targetLock' });
         } else {
-            // Other non-targeted abilities resolve immediately
-            cancelAllActions(); // Cancel all other actions before starting ship ability confirmation
-            setShipAbilityConfirmation({ ability, sectionName: section.name, target: null });
-        }
-    } else {
-            // Otherwise, enter targeting mode for the new ability.
-            cancelAllActions(); // Cancel all other actions before starting ship ability targeting
-            setShipAbilityMode({ sectionName: section.name, ability });
+            // Fallback for any future abilities
+            if (!ability.targeting) {
+                cancelAllActions();
+                setShipAbilityConfirmation({ ability, sectionName: section.name, target: null });
+            } else {
+                cancelAllActions();
+                setShipAbilityMode({ sectionName: section.name, ability });
+            }
         }
     }
 };
@@ -2727,6 +2805,22 @@ const App = ({ phaseAnimationQueue }) => {
           debugLog('COMBAT', "Calculated Attacker Lane:", attackerLane);
 
           if (attackerLane) {
+              // Validate that the target ship section is in the same lane as the attacking drone
+              const targetLaneIndex = opponentPlacedSections.indexOf(target.name);
+              const targetLane = targetLaneIndex !== -1 ? `lane${targetLaneIndex + 1}` : null;
+
+              debugLog('COMBAT', "Target section lane:", targetLane, "Attacker lane:", attackerLane);
+
+              if (targetLane !== attackerLane) {
+                  debugLog('COMBAT', "FAILURE: Drone and ship section are not in the same lane.");
+                  setModalContent({
+                      title: "Invalid Target",
+                      text: `Your drone can only attack the ship section in its lane.`,
+                      isBlocking: true
+                  });
+                  return;
+              }
+
               debugLog('COMBAT', "SUCCESS: Found attacker lane. Checking for Guardian...");
               const opponentDronesInLane = opponentPlayerState.dronesOnBoard[attackerLane];
               const hasGuardian = opponentDronesInLane && opponentDronesInLane.some(drone => {
@@ -3059,10 +3153,9 @@ const App = ({ phaseAnimationQueue }) => {
         // Clear ability-based mandatoryAction
         setMandatoryAction(null);
 
-        // Ability-triggered discard completed - end turn
-        const currentPlayerId = getLocalPlayerId();
-        await processActionWithGuestRouting('turnTransition', {
-            newPlayer: currentPlayerId === 'player1' ? 'player2' : 'player1'
+        // Complete the Recalculate ability (ends turn)
+        await processActionWithGuestRouting('recalculateComplete', {
+            playerId: mandatoryAction.actingPlayerId
         });
     } else if (!isLastDiscard && isAbilityBased) {
         // More discards needed for ability-based
@@ -3553,6 +3646,8 @@ const App = ({ phaseAnimationQueue }) => {
         firstPlayerOfRound={firstPlayerOfRound}
         shieldsToAllocate={shieldsToAllocate}
         opponentShieldsToAllocate={opponentShieldsToAllocate}
+        pendingShieldAllocations={pendingShieldAllocations}
+        pendingShieldsRemaining={pendingShieldsRemaining}
         shieldsToRemove={shieldsToRemove}
         shieldsToAdd={shieldsToAdd}
         reallocationPhase={reallocationPhase}
@@ -3605,6 +3700,7 @@ const App = ({ phaseAnimationQueue }) => {
         multiSelectState={multiSelectState}
         turnPhase={turnPhase}
         reallocationPhase={reallocationPhase}
+        pendingShieldAllocations={pendingShieldAllocations}
         shipAbilityMode={shipAbilityMode}
         hoveredTarget={hoveredTarget}
         selectedDrone={selectedDrone}
@@ -3692,14 +3788,6 @@ const App = ({ phaseAnimationQueue }) => {
         onCardInfoClick={handleCardInfoClick}
       />
       {modalContent && <GamePhaseModal title={modalContent.title} text={modalContent.text} onClose={modalContent.onClose === null ? null : (modalContent.onClose || (() => setModalContent(null)))}>{modalContent.children}</GamePhaseModal>}
-      <DeploymentCompleteModal
-        show={showDeploymentCompleteModal}
-        firstPlayerOfRound={firstPlayerOfRound}
-        localPlayerId={getLocalPlayerId()}
-        localPlayerName={localPlayerState.name}
-        opponentPlayerName={opponentPlayerState.name}
-        onContinue={handleDeploymentCompleteAcknowledgment}
-      />
       <RoundEndModal
         show={showRoundEndModal}
         onContinue={() => setShowRoundEndModal(false)}
@@ -3967,26 +4055,57 @@ const App = ({ phaseAnimationQueue }) => {
           const ability = shipAbilityConfirmation.ability;
           const sectionName = shipAbilityConfirmation.sectionName;
           const target = shipAbilityConfirmation.target;
+          const abilityType = shipAbilityConfirmation.abilityType;
 
           // Close modal immediately
           setShipAbilityConfirmation(null);
 
-          // Wait for modal to unmount before completing ability
+          // Wait for modal to unmount before resolving ability
           setTimeout(async () => {
-            // First execute the ability effect (e.g., marking target drone)
-            await processActionWithGuestRouting('shipAbility', {
-              ability: ability,
-              sectionName: sectionName,
-              targetId: target?.id || null,
-              playerId: getLocalPlayerId()
-            });
+            // Route to specific action type based on ability
+            if (abilityType === 'recall' || ability.name === 'Recall') {
+              const result = await processActionWithGuestRouting('recallAbility', {
+                targetId: target?.id || null,
+                sectionName: sectionName,
+                playerId: getLocalPlayerId()
+              });
+              debugLog('SHIP_ABILITY', `Recall ability completed:`, result);
+            } else if (abilityType === 'targetLock' || ability.name === 'Target Lock') {
+              const result = await processActionWithGuestRouting('targetLockAbility', {
+                targetId: target?.id || null,
+                sectionName: sectionName,
+                playerId: getLocalPlayerId()
+              });
+              debugLog('SHIP_ABILITY', `Target Lock ability completed:`, result);
+            } else if (abilityType === 'recalculate' || ability.name === 'Recalculate') {
+              const result = await processActionWithGuestRouting('recalculateAbility', {
+                sectionName: sectionName,
+                playerId: getLocalPlayerId()
+              });
 
-            // Then complete the ability (deducts energy and ends turn)
-            await processActionWithGuestRouting('shipAbilityCompletion', {
-              ability: ability,
-              sectionName: sectionName,
-              playerId: getLocalPlayerId()
-            });
+              // Handle mandatoryAction for discard
+              if (result.mandatoryAction) {
+                setMandatoryAction(result.mandatoryAction);
+                setFooterView('hand');
+                setIsFooterOpen(true);
+              }
+
+              debugLog('SHIP_ABILITY', `Recalculate ability completed:`, result);
+            } else if (abilityType === 'reallocateShields' || ability.name === 'Reallocate Shields') {
+              const result = await processActionWithGuestRouting('reallocateShieldsComplete', {
+                playerId: getLocalPlayerId()
+              });
+
+              // Clear reallocation UI state
+              setReallocationPhase(null);
+              setShieldsToRemove(0);
+              setShieldsToAdd(0);
+              setOriginalShieldAllocation(null);
+              setPostRemovalShieldAllocation(null);
+              setReallocationAbility(null);
+
+              debugLog('SHIP_ABILITY', `Reallocate Shields ability completed:`, result);
+            }
 
             // Clear reallocation UI state after ability completion
             setReallocationPhase(null);

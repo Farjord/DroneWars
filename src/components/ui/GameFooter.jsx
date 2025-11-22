@@ -59,12 +59,12 @@ function GameFooter({
   setAiDecisionLogToShow,
   onCardInfoClick
 }) {
-  // Debug logging for mandatoryAction prop
-  debugLog('HAND_VIEW', '📦 GameFooter received mandatoryAction:', {
-    mandatoryAction,
-    turnPhase,
-    footerView
-  });
+  // DISABLED: Render-based logging causes excessive noise on every GameFooter render
+  // debugLog('HAND_VIEW', '📦 GameFooter received mandatoryAction:', {
+  //   mandatoryAction,
+  //   turnPhase,
+  //   footerView
+  // });
 
   return (
     <footer className={styles.footer}>

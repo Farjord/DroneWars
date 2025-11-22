@@ -43,7 +43,9 @@ const ShipSectionsDisplay = ({
   onViewFullCard,
   isInteractive,
   validCardTargets,
+  selectedDrone,
   reallocationPhase,
+  pendingShieldAllocations,
   gameEngine,
   turnPhase,
   isMyTurn,
@@ -62,7 +64,9 @@ const ShipSectionsDisplay = ({
   const playerEffectiveStats = getEffectiveShipStats(player, placedSections);
 
   // Determine if we're in targeting mode (prevents modal from opening during targeting)
-  const isTargetingMode = validCardTargets.length > 0;
+  // Card-based attacks: validCardTargets.length > 0
+  // Standard drone attacks: selectedDrone exists AND this is opponent ship (!isPlayer)
+  const isTargetingMode = validCardTargets.length > 0 || (selectedDrone && !isPlayer);
 
   return (
     <div className="flex w-full justify-between gap-8">
@@ -91,6 +95,14 @@ const ShipSectionsDisplay = ({
 
         const sectionStats = player.shipSections[sectionName];
 
+        // Use pending shields during allocateShields phase (privacy: show local allocations only)
+        const displayStats = (turnPhase === 'allocateShields' && isPlayer && pendingShieldAllocations)
+          ? {
+              ...sectionStats,
+              allocatedShields: pendingShieldAllocations[sectionName] || 0
+            }
+          : sectionStats;
+
         // Derive the correct player ID for this ship sections display
         const localPlayerId = getLocalPlayerId();
         const currentPlayerId = isPlayer ? localPlayerId : (localPlayerId === 'player1' ? 'player2' : 'player1');
@@ -100,14 +112,14 @@ const ShipSectionsDisplay = ({
         let reallocationState = null;
         if (reallocationPhase && isPlayer) {
           if (reallocationPhase === 'removing') {
-            if (sectionStats.allocatedShields > 0) {
+            if (displayStats.allocatedShields > 0) {
               reallocationState = 'can-remove';
             } else {
               reallocationState = 'cannot-remove';
             }
           } else if (reallocationPhase === 'adding') {
             const effectiveMaxShields = gameEngine.getEffectiveSectionMaxShields(sectionName, player, placedSections);
-            if (sectionStats.allocatedShields < effectiveMaxShields) {
+            if (displayStats.allocatedShields < effectiveMaxShields) {
               reallocationState = 'can-add';
             } else {
               reallocationState = 'cannot-add';
@@ -125,7 +137,7 @@ const ShipSectionsDisplay = ({
           >
             <ShipSectionCompact
               section={sectionName}
-              stats={sectionStats}
+              stats={displayStats}
               isPlayer={isPlayer}
               isOpponent={!isPlayer}
               isTargetingMode={isTargetingMode}
@@ -143,7 +155,7 @@ const ShipSectionsDisplay = ({
                   debugLog('SHIELD_CLICKS', `✅ Calling onSectionClick for ${sectionName}`);
                   onSectionClick(sectionName);
                   return true; // Click consumed for shield allocation
-                } else if (onTargetClick && isCardTarget) { // For attacks and card/ability targeting - only valid targets
+                } else if (onTargetClick && (isCardTarget || (selectedDrone && !isPlayer))) { // For attacks and card/ability targeting
                   debugLog('SHIELD_CLICKS', `🎯 Calling onTargetClick for ${sectionName}`);
                   onTargetClick({ ...sectionStats, id: sectionName, name: sectionName }, 'section', isPlayer);
                   return true; // Click consumed for targeting

@@ -29,8 +29,6 @@ const WaitingForPlayerModal = ({ show, phase, opponentName = 'Opponent', roomCod
         return 'Opponent Allocating Shields';
       case 'mandatoryDroneRemoval':
         return 'Opponent Removing Drones';
-      case 'deploymentComplete':
-        return 'Waiting for Opponent';
       default:
         return 'Waiting for Opponent';
     }

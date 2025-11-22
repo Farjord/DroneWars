@@ -136,7 +136,8 @@ class GameStateManager {
           // Initialize guest queue service when becoming guest
           if (event.data.mode === 'guest' && !this.guestQueueService) {
             debugLog('STATE_SYNC', '🎯 [GUEST QUEUE] Initializing service for guest mode');
-            this.guestQueueService = new GuestMessageQueueService(this);
+            const phaseAnimationQueue = this.actionProcessor?.phaseAnimationQueue || null;
+            this.guestQueueService = new GuestMessageQueueService(this, phaseAnimationQueue);
             this.guestQueueService.initialize(p2pManager);
           }
           break;
@@ -502,8 +503,10 @@ class GameStateManager {
       'preGame': ['deckSelection', 'droneSelection'],
       'deckSelection': ['droneSelection'],
       'droneSelection': ['placement'],
-      'placement': ['gameInitializing'],
+      'placement': ['gameInitializing', 'roundInitialization', 'roundAnnouncement'],  // Added roundAnnouncement for Round 1
       'gameInitializing': ['determineFirstPlayer'],
+      'roundInitialization': ['mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
+      'roundAnnouncement': ['roundInitialization', 'deployment'],  // Pseudo-phase: can go to roundInitialization or directly to deployment
       'energyReset': ['mandatoryDiscard', 'optionalDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
       'initialDraw': ['mandatoryDiscard', 'optionalDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
       'mandatoryDiscard': ['optionalDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'],
@@ -512,9 +515,9 @@ class GameStateManager {
       'determineFirstPlayer': ['energyReset'],
       'allocateShields': ['mandatoryDroneRemoval', 'deployment'],
       'mandatoryDroneRemoval': ['deployment'],
-      'deployment': ['action', 'deploymentComplete', 'roundEnd'],
-      'deploymentComplete': ['action'],
-      'action': ['deployment', 'roundEnd', 'determineFirstPlayer', 'gameEnd'],
+      'deployment': ['action', 'roundEnd'],
+      'action': ['deployment', 'roundEnd', 'determineFirstPlayer', 'gameEnd', 'actionComplete'],  // Added actionComplete
+      'actionComplete': ['roundAnnouncement'],  // Pseudo-phase: always goes to roundAnnouncement (new round)
       'roundEnd': ['determineFirstPlayer', 'deployment', 'gameEnd'],
       'gameEnd': []
     };
@@ -558,7 +561,7 @@ class GameStateManager {
     }
 
     // Skip validation during automatic phases - GameFlowManager handles these directly
-    const automaticPhases = ['energyReset', 'draw', 'determineFirstPlayer'];
+    const automaticPhases = ['energyReset', 'draw', 'determineFirstPlayer', 'roundInitialization'];
     if (automaticPhases.includes(prevState.turnPhase) || automaticPhases.includes(updates.turnPhase)) {
       return;
     }

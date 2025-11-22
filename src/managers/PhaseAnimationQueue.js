@@ -89,6 +89,20 @@ class PhaseAnimationQueue {
     // Get next animation
     this.currentAnimation = this.queue.shift();
 
+    // Calculate dynamic round number for round announcements
+    // This ensures correct round number using fresh state at playback time
+    if (this.currentAnimation.phaseName === 'roundAnnouncement' && this.gameStateManager) {
+      const currentState = this.gameStateManager.getState();
+      const roundNumber = currentState.roundNumber || 1;
+      this.currentAnimation.phaseText = `ROUND ${roundNumber}`;
+
+      debugLog('SUBTITLE_CALC', `✅ Calculated round announcement text: "ROUND ${roundNumber}"`, {
+        roundNumber,
+        originalText: 'ROUND',
+        calculatedText: this.currentAnimation.phaseText
+      });
+    }
+
     // Calculate subtitle dynamically for deployment/action phases
     // This ensures correct "You Go First" vs "Opponent Goes First" using fresh state
     if ((this.currentAnimation.phaseName === 'deployment' || this.currentAnimation.phaseName === 'action') && this.gameStateManager) {

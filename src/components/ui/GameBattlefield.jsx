@@ -59,6 +59,7 @@ function GameBattlefield({
   multiSelectState,
   turnPhase,
   reallocationPhase,
+  pendingShieldAllocations,
   shipAbilityMode,
   hoveredTarget,
   selectedDrone,
@@ -101,6 +102,7 @@ function GameBattlefield({
           isInteractive={false}
           selectedCard={selectedCard}
           validCardTargets={validCardTargets}
+          selectedDrone={selectedDrone}
           gameEngine={gameEngine}
           turnPhase={turnPhase}
           isMyTurn={isMyTurn}
@@ -188,6 +190,7 @@ function GameBattlefield({
           selectedCard={selectedCard}
           validCardTargets={validCardTargets}
           reallocationPhase={reallocationPhase}
+          pendingShieldAllocations={pendingShieldAllocations}
           gameEngine={gameEngine}
           turnPhase={turnPhase}
           isMyTurn={isMyTurn}

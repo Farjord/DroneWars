@@ -8,28 +8,17 @@
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 
 class GuestMessageQueueService {
-  constructor(gameStateManager) {
+  constructor(gameStateManager, phaseAnimationQueue = null) {
     this.gameStateManager = gameStateManager;
+    this.phaseAnimationQueue = phaseAnimationQueue; // For guest phase announcements
     this.messageQueue = [];
     this.isProcessing = false;
     this.pendingHostState = null; // Track state update for AnimationManager callback (with isTeleporting for TELEPORT_IN)
     this.pendingFinalHostState = null; // Track final state for TELEPORT_IN reveal (without isTeleporting)
 
-    // CHECKPOINT PHASE MATRIX
-    // Defines valid host phases when guest is at each checkpoint
-    // Accounts for auto-skipped phases and phase progression after bothComplete
-    this.ALLOWED_HOST_PHASES = {
-      // Pre-game checkpoints
-      'placement': ['placement', 'gameInitializing', 'determineFirstPlayer', 'energyReset', 'draw', 'deployment'],
-
-      // Round loop checkpoints
-      'optionalDiscard': ['optionalDiscard', 'draw', 'allocateShields'],
-      'allocateShields': ['allocateShields', 'mandatoryDroneRemoval', 'deployment'],
-      'mandatoryDiscard': ['mandatoryDiscard', 'optionalDiscard', 'draw'],
-      'mandatoryDroneRemoval': ['mandatoryDroneRemoval', 'deployment'],
-      'deployment': ['deployment', 'action'],  // Sequential phase (both players at same phase)
-      'action': ['action', 'determineFirstPlayer']  // Sequential phase transitions to new round
-    };
+    // PHASE MANAGER INTEGRATION (Phase 6):
+    // Complex validation logic removed. Guest now trusts PhaseManager's authoritative broadcasts.
+    // PhaseManager ensures consistent state, so Guest no longer needs to validate phase transitions.
   }
 
   /**
@@ -49,36 +38,9 @@ class GuestMessageQueueService {
         phase: this.pendingHostState.turnPhase
       }, applyStartTime);
 
-      // SIMULTANEOUS CHECKPOINT CASCADE: Trigger cascade processing if both players complete
-      if (this.triggerSimultaneousCascade) {
-        this.triggerSimultaneousCascade = false; // Reset flag
-        const cascadePhase = this.simultaneousCascadePhase;
-        debugLog('VALIDATION', `🎯 [${cascadePhase.toUpperCase()} CHECKPOINT] Triggering cascade processing (after animations)`);
-
-        // Get GameFlowManager and trigger cascade through onSimultaneousPhaseComplete
-        const gameFlowManager = this.gameStateManager.gameFlowManager;
-        if (gameFlowManager) {
-          const currentState = this.gameStateManager.getState();
-          const phaseCommitments = currentState.commitments?.[cascadePhase];
-          await gameFlowManager.onSimultaneousPhaseComplete(cascadePhase, phaseCommitments);
-        } else {
-          console.error(`❌ [${cascadePhase.toUpperCase()} CHECKPOINT] GameFlowManager not available`);
-        }
-      }
-
-      // BOTH-PASS CASCADE: Trigger automatic cascade if both-pass transition landed on automatic phase
-      if (this.triggerBothPassCascade) {
-        this.triggerBothPassCascade = false; // Reset flag
-        debugLog('VALIDATION', `🎯 [BOTH-PASS CASCADE] Triggering cascade from: ${this.bothPassStartPhase}`);
-
-        // Get GameFlowManager and trigger cascade processing
-        const gameFlowManager = this.gameStateManager.gameFlowManager;
-        if (gameFlowManager) {
-          await gameFlowManager.processAutomaticPhasesUntilCheckpoint(this.bothPassStartPhase);
-        } else {
-          console.error('❌ [BOTH-PASS CASCADE] GameFlowManager not available');
-        }
-      }
+      // PHASE MANAGER INTEGRATION (Phase 6):
+      // Cascade triggering removed. Guest no longer processes cascades optimistically.
+      // PhaseManager handles all phase transitions, Guest just applies the authoritative state.
     } else {
       debugLog('ANIMATIONS', '⚠️ [STATE UPDATE] No pending host state to apply');
     }
@@ -461,6 +423,24 @@ class GuestMessageQueueService {
     this.isProcessing = false;
     debugLog('MULTIPLAYER', '⏹️ [GUEST QUEUE] Queue processing complete');
     timingLog('[GUEST QUEUE] Processing finished', {}, queueStartTime);
+
+    // Start animation playback after all messages processed
+    // Add small delay to allow React to render and App.jsx to subscribe to events
+    // This is necessary because setState() is asynchronous - we call setState() during queue
+    // processing, but React hasn't re-rendered yet. Without this delay, the first animation
+    // event fires before App.jsx's useEffect runs and creates event subscriptions.
+    // 50ms provides comfortable buffer (3x typical 16ms render time) while remaining imperceptible.
+    if (this.phaseAnimationQueue && !this.phaseAnimationQueue.isPlaying()) {
+      const queueLength = this.phaseAnimationQueue.getQueueLength();
+      if (queueLength > 0) {
+        debugLog('TIMING', `🎬 [GUEST] Scheduling animation playback after React render (50ms delay)`, {
+          queuedAnimations: queueLength
+        });
+        setTimeout(() => {
+          this.phaseAnimationQueue.startPlayback();
+        }, 50);
+      }
+    }
   }
 
   /**
@@ -537,219 +517,181 @@ class GuestMessageQueueService {
       return; // Don't process as normal broadcast
     }
 
-    // VALIDATION LOGIC: Guest processes broadcasts in different scenarios
+    // PHASE MANAGER INTEGRATION (Phase 6): SIMPLIFIED VALIDATION
+    // Guest now trusts PhaseManager's authoritative broadcasts unconditionally.
+    // Complex validation logic removed - PhaseManager prevents race conditions and ensures consistency.
+
     const guestPhase = this.gameStateManager.getState().turnPhase;
     const hostPhase = state.turnPhase;
 
-    // PRE-GAME PHASES: Always accept broadcasts to enable initial game start
-    // Includes: null → deckSelection → droneSelection
-    // NOTE: 'placement' is NOT a pre-game phase - it's a simultaneous phase that triggers
-    // optimistic processing when both players complete (handled by GameFlowManager)
-    const preGamePhases = [null, 'deckSelection', 'droneSelection'];
-    const isPreGame = preGamePhases.includes(guestPhase);
-
-    // BOTH-PASS TRANSITION: Accept phase-mismatched broadcasts during sequential transitions
-    // Both players process both-pass optimistically (GameFlowManager lines 246-255), creating temporary phase mismatch
-    // Example: Guest passes first in deployment → waits. Host passes → transitions to action → broadcasts action state.
-    // Guest needs to accept this "action" broadcast even though still at deployment.
-    //
-    // KEY: Check guest's LOCAL passInfo, not broadcast's passInfo (which gets reset during phase transition)
-    // Only accept if guest has LOCALLY passed - prevents accepting transitions before guest is ready
-    const sequentialPhases = ['deployment', 'action'];
-    const localState = this.gameStateManager.getState();
-    const guestHasPassedLocally = localState.passInfo?.player2Passed || false;
-
-    // Round start phases that can follow ACTION phase after both-pass
-    const roundStartPhases = ['determineFirstPlayer', 'energyReset', 'mandatoryDiscard', 'optionalDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval'];
-
-    const bothInSequentialPhases = sequentialPhases.includes(guestPhase) && sequentialPhases.includes(hostPhase);
-    const isActionToRoundStart = guestPhase === 'action' && roundStartPhases.includes(hostPhase);
-
-    const isValidSequentialTransition =
-      (guestPhase === 'deployment' && hostPhase === 'action') ||  // Guest passed first in deployment, host transitioned to action
-      (guestPhase === 'action' && hostPhase === 'deployment') ||  // Host passed first in deployment, guest transitioned to action
-      isActionToRoundStart;                                        // Guest passed first in action, host transitioned to new round
-
-    const isBothPassBroadcast = guestHasPassedLocally && (bothInSequentialPhases || isActionToRoundStart) && isValidSequentialTransition;
-
-    // Debug log to diagnose why both-pass broadcasts aren't matching
-    debugLog('VALIDATION', `🔍 [BOTH-PASS CHECK]`, {
+    debugLog('PHASE_MANAGER', `📥 [GUEST] Accepting PhaseManager broadcast`, {
       guestPhase,
       hostPhase,
-      broadcastPassInfo: state.passInfo,
-      localPassInfo: localState.passInfo,
-      guestHasPassedLocally,
-      bothInSequentialPhases,
-      isActionToRoundStart,
-      isValidSequentialTransition,
-      finalResult: isBothPassBroadcast
+      reason: 'PhaseManager is authoritative - no validation needed'
     });
 
-    // SEQUENTIAL PHASES: Accept broadcasts when BOTH players in SAME sequential phase
-    // During deployment and action phases, guest must receive every host action (deploy, attack, pass, etc.)
-    // But ONLY when both are in the same phase - prevents state regression when host is behind
-    const bothInSameSequentialPhase =
-      sequentialPhases.includes(guestPhase) &&
-      guestPhase === hostPhase; // Must be same phase to prevent regression
+    // Queue phase announcement for guest UI feedback
+    // This ensures guest sees ROUND X, UPKEEP, DEPLOYMENT, etc. announcements
+    // Matches host behavior (ActionProcessor.processPhaseTransition lines 1660-1712)
+    const phaseTextMap = {
+      roundAnnouncement: 'ROUND',
+      roundInitialization: 'UPKEEP',
+      mandatoryDiscard: 'MANDATORY DISCARD PHASE',
+      optionalDiscard: 'OPTIONAL DISCARD PHASE',
+      allocateShields: 'ALLOCATE SHIELDS',
+      mandatoryDroneRemoval: 'REMOVE EXCESS DRONES',
+      deployment: 'DEPLOYMENT PHASE',
+      deploymentComplete: 'DEPLOYMENT COMPLETE',
+      action: 'ACTION PHASE',
+      actionComplete: 'ACTION PHASE COMPLETE'
+    };
 
-    if (isPreGame) {
-      debugLog('VALIDATION', `✅ [GUEST] Accepting pre-game broadcast`, {
-        guestPhase: guestPhase || 'null',
-        hostPhase,
-        reason: 'Pre-game initialization'
-      });
-      // Continue to state processing below
-    } else if (isBothPassBroadcast) {
-      debugLog('VALIDATION', `✅ [GUEST] Accepting both-pass transition broadcast`, {
-        guestPhase,
-        hostPhase,
-        passInfo: state.passInfo,
-        reason: 'Both players passed - accepting phase transition despite phase mismatch'
-      });
+    // Queue phase announcements based on transition patterns
+    // Guest must infer pseudo-phases (actionComplete, roundAnnouncement) from state transitions
+    // because host doesn't broadcast pseudo-phases, only real phase changes
+    if (this.phaseAnimationQueue && guestPhase !== hostPhase) {
 
-      const phaseAnimationQueue = this.gameStateManager.gameFlowManager?.phaseAnimationQueue;
+      // PATTERN 1: Leaving action phase → Queue ACTION COMPLETE + ROUND announcements
+      // This happens when transitioning from end of one round to start of next round
+      if (guestPhase === 'action' && hostPhase !== 'action' && phaseTextMap[hostPhase]) {
+        debugLog('PHASE_TRANSITIONS', `🎬 [GUEST] Detected round transition (action → ${hostPhase}), queueing: actionComplete, roundAnnouncement`);
 
-      if (phaseAnimationQueue) {
-        // Queue OPPONENT PASSED notification FIRST
-        // Both-pass transition occurred AND guest has passed locally → opponent must have passed too
-        phaseAnimationQueue.queueAnimation('playerPass', 'OPPONENT PASSED', null);
-        debugLog('VALIDATION', `🎬 [GUEST] Queued OPPONENT PASSED notification (deduced from both-pass transition)`);
+        // Check if guest already passed (if so, opponent must have also passed to trigger round end)
+        // For round to progress from action phase, BOTH players must pass
+        const guestState = this.gameStateManager.getState();
+        const localPlayerId = this.gameStateManager.getLocalPlayerId();
+        const localPassKey = `${localPlayerId}Passed`;
 
-        // Then queue phase announcement for the new phase
-        // Guest needs this because it doesn't call processPhaseTransition directly
-        // Host queues announcements during processPhaseTransition, guest must queue locally
-        if (hostPhase !== guestPhase) {
-          const phaseTextMap = {
-            'action': 'ACTION PHASE',
-            'deployment': 'DEPLOYMENT PHASE',
-            'determineFirstPlayer': 'DETERMINING FIRST PLAYER',
-            'energyReset': 'ENERGY RESET',
-            'draw': 'DRAW PHASE'
-          };
+        if (guestState.passInfo?.[localPassKey]) {
+          // Guest already passed, and phase is transitioning to next round
+          // This means opponent also passed (otherwise round wouldn't progress)
 
-          if (phaseTextMap[hostPhase]) {
-            phaseAnimationQueue.queueAnimation(hostPhase, phaseTextMap[hostPhase], null);
-            debugLog('VALIDATION', `🎬 [GUEST] Queued phase announcement for: ${hostPhase}`);
+          // Only queue OPPONENT PASSED if guest was the FIRST to pass
+          // If opponent passed first, guest already knew - don't show redundant announcement
+          if (guestState.passInfo.firstPasser === localPlayerId) {
+            // Queue OPPONENT PASSED before other announcements
+            this.phaseAnimationQueue.queueAnimation(
+              'playerPass',
+              'OPPONENT PASSED',
+              null
+            );
+            debugLog('PASS_LOGIC', `📋 [GUEST] Queued OPPONENT PASSED (inferred from round transition after local pass)`);
           }
         }
 
-        // Start playback immediately if not already playing
-        const queueLength = phaseAnimationQueue.getQueueLength();
-        if (queueLength > 0 && !phaseAnimationQueue.isPlaying()) {
-          debugLog('VALIDATION', `🎬 [GUEST] Starting playback for both-pass transition announcements`);
-          phaseAnimationQueue.startPlayback();
+        // Queue ACTION PHASE COMPLETE (pseudo-phase)
+        this.phaseAnimationQueue.queueAnimation(
+          'actionComplete',
+          'ACTION PHASE COMPLETE',
+          'Transitioning to Next Round'
+        );
+
+        // Queue ROUND announcement (pseudo-phase, round number calculated at playback)
+        this.phaseAnimationQueue.queueAnimation(
+          'roundAnnouncement',
+          'ROUND',
+          null
+        );
+
+        debugLog('PHASE_TRANSITIONS', `✅ [GUEST] Queued round transition announcements`);
+      }
+
+      // PATTERN 2: Leaving placement → roundInitialization (Round 1 only)
+      // This happens at game start when transitioning to Round 1
+      else if (guestPhase === 'placement' && hostPhase === 'roundInitialization') {
+        debugLog('PHASE_TRANSITIONS', `🎬 [GUEST] Detected Round 1 start (placement → roundInitialization), queueing: roundAnnouncement`);
+
+        // Queue ROUND 1 announcement (pseudo-phase)
+        this.phaseAnimationQueue.queueAnimation(
+          'roundAnnouncement',
+          'ROUND',
+          null
+        );
+
+        debugLog('PHASE_TRANSITIONS', `✅ [GUEST] Queued Round 1 announcement`);
+      }
+
+      // PATTERN 2.5: Leaving deployment → action
+      // This happens when both players complete deployment (pass)
+      else if (guestPhase === 'deployment' && hostPhase === 'action') {
+        debugLog('PHASE_TRANSITIONS', `🎬 [GUEST] Detected deployment complete (deployment → action)`);
+
+        // Check if guest already passed (if so, opponent must have also passed to end deployment)
+        // For deployment to end, BOTH players must pass
+        const guestState = this.gameStateManager.getState();
+        const localPlayerId = this.gameStateManager.getLocalPlayerId();
+        const localPassKey = `${localPlayerId}Passed`;
+
+        if (guestState.passInfo?.[localPassKey]) {
+          // Guest already passed, and phase is transitioning to action
+          // This means opponent also passed (otherwise deployment wouldn't end)
+
+          // Only queue OPPONENT PASSED if guest was the FIRST to pass
+          // If opponent passed first, guest already knew - don't show redundant announcement
+          if (guestState.passInfo.firstPasser === localPlayerId) {
+            // Queue OPPONENT PASSED before DEPLOYMENT COMPLETE announcement
+            this.phaseAnimationQueue.queueAnimation(
+              'playerPass',
+              'OPPONENT PASSED',
+              null
+            );
+            debugLog('PASS_LOGIC', `📋 [GUEST] Queued OPPONENT PASSED (inferred from deployment → action transition after local pass)`);
+          }
         }
+
+        // Queue DEPLOYMENT COMPLETE announcement (pseudo-phase)
+        this.phaseAnimationQueue.queueAnimation(
+          'deploymentComplete',
+          'DEPLOYMENT COMPLETE',
+          null
+        );
+        debugLog('PHASE_TRANSITIONS', `📋 [GUEST] Queued DEPLOYMENT COMPLETE announcement`);
+
+        debugLog('PHASE_TRANSITIONS', `✅ [GUEST] Queued deployment completion announcements`);
       }
 
-      // Check if both-pass transition lands on an AUTOMATIC phase
-      // If yes, set flag to trigger cascade after applying host state
-      const automaticPhases = ['gameInitializing', 'energyReset', 'draw', 'determineFirstPlayer'];
-      if (automaticPhases.includes(hostPhase)) {
-        this.triggerBothPassCascade = true;
-        this.bothPassStartPhase = hostPhase;
-        debugLog('VALIDATION', `🎯 [BOTH-PASS CASCADE] Will trigger cascade from: ${hostPhase}`);
+      // PATTERN 3: All phase transitions → Queue actual phase announcement
+      // Queue announcement for the actual phase we're transitioning to
+      if (phaseTextMap[hostPhase]) {
+        debugLog('PHASE_TRANSITIONS', `🎬 [GUEST] Queueing announcement for: ${hostPhase}`);
+
+        const phaseText = phaseTextMap[hostPhase];
+
+        // Calculate subtitle for specific phases (matches ActionProcessor logic)
+        const subtitle = hostPhase === 'roundInitialization'
+          ? 'Drawing Cards, Gaining Energy, Resetting Drones...'
+          : hostPhase === 'actionComplete'
+          ? 'Transitioning to Next Round'
+          : null;
+
+        this.phaseAnimationQueue.queueAnimation(hostPhase, phaseText, subtitle);
+        debugLog('PHASE_TRANSITIONS', `✅ [GUEST] Successfully queued announcement: ${hostPhase}`);
       }
 
-      // Continue to state processing below
-    } else if (bothInSameSequentialPhase) {
-      debugLog('VALIDATION', `✅ [GUEST] Accepting sequential phase broadcast`, {
-        guestPhase,
-        hostPhase,
-        reason: 'Both in same sequential phase - host authoritative for actions'
-      });
-      // Continue to state processing below
-    } else {
-      // IN-GAME CHECKPOINT VALIDATION: Only process at matching checkpoints
-      // This applies during automatic phase cascades (determineFirstPlayer, energyReset, draw, etc.)
-      const isCheckpoint = this.gameStateManager.isMilestonePhase(guestPhase);
-
-      // If Guest is NOT at a checkpoint, ignore all broadcasts
-      if (!isCheckpoint) {
-        debugLog('VALIDATION', `⏭️ [GUEST] Ignoring broadcast - not at checkpoint`, {
-          guestPhase,
-          hostPhase,
-          reason: 'Between checkpoints during automatic cascade'
-        });
-        return;
-      }
-
-      // If Guest IS at checkpoint, check if host phase is in allowed list
-      const allowedPhases = this.ALLOWED_HOST_PHASES[guestPhase] || [guestPhase];
-      if (!allowedPhases.includes(hostPhase)) {
-        debugLog('VALIDATION', `⏸️ [GUEST] Host phase not in allowed list for checkpoint`, {
-          guestPhase,
-          hostPhase,
-          allowedPhases,
-          waiting: `Guest at ${guestPhase}, host at ${hostPhase}`
-        });
-        return;
-      }
-
-      // Host phase is allowed for this checkpoint - VALIDATE!
-      debugLog('VALIDATION', `✅ [GUEST] Checkpoint match - validating state`, {
-        checkpointPhase: guestPhase,
-        hostPhase,
-        allowedPhases
-      });
+      // Note: Playback is started explicitly after queue processing completes
+      // This ensures App.jsx is mounted and subscribed before animations play
+      // Same approach as host (GameFlowManager starts playback after cascade completes)
     }
 
-    // Preserve guest-specific identity fields before applying host state
+    // PHASE MANAGER INTEGRATION (Phase 6): SIMPLIFIED STATE APPLICATION
+    // Preserve only essential guest identity, trust PhaseManager for everything else
+
     const currentGuestState = this.gameStateManager.getState();
     const preservedFields = {
       gameMode: currentGuestState.gameMode,  // Must stay 'guest'
     };
 
-    // SIMULTANEOUS CHECKPOINT: Check if both players complete, trigger cascade processing
-    // This handles ALL simultaneous phases (placement, optionalDiscard, allocateShields, etc.)
-    const gameFlowManager = this.gameStateManager.gameFlowManager;
-    if (gameFlowManager && gameFlowManager.isSimultaneousPhase(guestPhase)) {
-      const phaseCommitments = state.commitments?.[guestPhase];
-      const bothComplete = phaseCommitments?.player1?.completed && phaseCommitments?.player2?.completed;
-
-      if (bothComplete) {
-        // SIMULTANEOUS CASCADE: Also preserve turnPhase when cascade will be triggered
-        // This prevents Guest from jumping to Host's advanced phase before processing cascade
-        preservedFields.turnPhase = currentGuestState.turnPhase;
-        debugLog('VALIDATION', '🔒 [CASCADE] Preserving guest phase for cascade processing', {
-          guestPhase: currentGuestState.turnPhase,
-          hostPhase: state.turnPhase,
-          reason: 'Guest will process cascade and queue announcements before accepting host phase'
-        });
-      }
-    }
-
     // Merge host state with preserved guest identity
     state = {
-      ...state,           // Copy all authoritative game state from host
+      ...state,           // Copy all authoritative game state from host (PhaseManager controlled)
       ...preservedFields  // Overwrite with preserved guest identity
     };
 
-    debugLog('VALIDATION', '🔄 [CHECKPOINT VALIDATION] Preserving guest identity', {
-      preservedGameMode: preservedFields.gameMode,
-      hostGameMode: state.gameMode,
-      checkpointPhase: guestPhase,
-      preservedPhase: preservedFields.turnPhase || 'none'
+    debugLog('PHASE_MANAGER', '✅ [GUEST] Applying PhaseManager state', {
+      guestPhase,
+      hostPhase: state.turnPhase,
+      preservedGameMode: preservedFields.gameMode
     });
-
-    // Re-check both complete after potential phase preservation
-    if (gameFlowManager && gameFlowManager.isSimultaneousPhase(guestPhase)) {
-      const phaseCommitments = state.commitments?.[guestPhase];
-      const bothComplete = phaseCommitments?.player1?.completed && phaseCommitments?.player2?.completed;
-
-      debugLog('VALIDATION', `🔍 [${guestPhase.toUpperCase()} CHECKPOINT] Checking completion status`, {
-        phase: guestPhase,
-        player1Complete: phaseCommitments?.player1?.completed,
-        player2Complete: phaseCommitments?.player2?.completed,
-        bothComplete
-      });
-
-      if (bothComplete) {
-        debugLog('VALIDATION', `🚀 [${guestPhase.toUpperCase()} CHECKPOINT] Both complete - will trigger cascade after state applied`);
-        // Set flag to trigger cascade after state application
-        this.triggerSimultaneousCascade = true;
-        this.simultaneousCascadePhase = guestPhase;
-      }
-    }
 
     // Filter duplicate animations (optimistic action deduplication)
     // This is GuestMessageQueueService's unique responsibility

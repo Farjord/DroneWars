@@ -65,7 +65,8 @@ const getTypeColors = (type, isEnhanced) => {
  * @param {boolean} isPlayable - Whether card can be played
  * @param {boolean} isSelected - Whether card is selected
  * @param {boolean} isDimmed - Whether card should be greyscale (when another card is selected)
- * @param {boolean} isMandatoryTarget - Whether card is mandatory target
+ * @param {Object} mandatoryAction - Mandatory action object (for discard/destroy highlighting)
+ * @param {number} excessCards - Number of excess cards (for phase-based discard)
  * @param {number} scale - Optional scale multiplier (default: 1.0)
  */
 const ActionCard = ({
@@ -74,12 +75,17 @@ const ActionCard = ({
   isPlayable,
   isSelected,
   isDimmed,
-  isMandatoryTarget,
+  mandatoryAction = null,
+  excessCards = 0,
   scale = 1.0
 }) => {
   const { name, cost, image, description, type, effect } = card;
   const goAgain = effect?.goAgain;
   const isEnhanced = card.id?.includes('_ENHANCED');
+
+  // Calculate if this card is a mandatory target for discard/destroy
+  const isMandatoryTarget = mandatoryAction?.type === 'discard' &&
+    (!mandatoryAction.fromAbility ? excessCards > 0 : true);
 
   // Get type-based colors
   const colors = getTypeColors(type, isEnhanced);
@@ -91,6 +97,15 @@ const ActionCard = ({
     backfaceVisibility: 'hidden',
     WebkitFontSmoothing: 'antialiased'
   } : {};
+
+  // Debug logging for ALL renders to diagnose re-rendering issue
+  debugLog('CARD_PLAY', `🎨 ActionCard rendering - ${card.name}:`, {
+    cardName: card.name,
+    isPlayable,
+    isMandatoryTarget,
+    hasExpectedClasses: isMandatoryTarget,
+    timestamp: Date.now()
+  });
 
   return (
     <div
@@ -120,7 +135,6 @@ const ActionCard = ({
         ${isPlayable || isMandatoryTarget ? 'cursor-pointer' : 'cursor-not-allowed'}
         ${(isPlayable || isMandatoryTarget) ? colors.border : 'card-border-grey'}
         ${!isPlayable && !isMandatoryTarget ? 'saturate-50' : ''}
-        ${isMandatoryTarget ? 'ring-4 ring-red-500 animate-pulse' : ''}
         ${isDimmed ? 'grayscale' : ''}
       `}
       style={{

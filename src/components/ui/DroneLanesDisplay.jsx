@@ -183,7 +183,7 @@ const DroneLanesDisplay = ({
             key={lane}
             onClick={(e) => onLaneClick(e, lane, isPlayer)}
             className={`flex-1 rounded-lg transition-all duration-200 p-2
-              ${isTargetable ? 'bg-purple-900/40 ring-2 ring-purple-400 animate-pulse' : baseBackgroundColor}
+              ${isTargetable ? 'bg-cyan-800/40 ring-2 ring-cyan-400/30 animate-pulse' : baseBackgroundColor}
               ${isInteractivePlayerLane ? 'cursor-pointer hover:bg-cyan-900/20' : ''}
             `}
           >

@@ -183,7 +183,7 @@ class AbilityResolver {
       // Handle special return cases
       if (effectResult.needsDiscardSelection) {
         // Don't show "Opponent Used..." popup until after mandatory discard is complete
-        // Store ability info for later animation emission
+        // Store ability info for later animation emission and completion
         return {
           newPlayerStates,
           shouldEndTurn: false,
@@ -192,9 +192,10 @@ class AbilityResolver {
             player: playerId,
             count: effectResult.needsDiscardSelection,
             fromAbility: true,
+            ability: ability,           // Store full ability object for completion
             abilityName: ability.name,  // Store for animation after discard
-            sectionName: sectionName,   // Store for animation after discard
-            actingPlayerId: playerId    // Store for animation after discard
+            sectionName: sectionName,   // Store for animation and completion
+            actingPlayerId: playerId    // Store for animation and completion
           },
           animationEvents: []  // Suppress SHIP_ABILITY_REVEAL until discard completes
         };

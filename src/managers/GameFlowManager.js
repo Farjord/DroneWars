@@ -10,6 +10,7 @@ import fullDroneCollection from '../data/droneData.js';
 import GameDataService from '../services/GameDataService.js';
 import { gameEngine } from '../logic/gameLogic.js';
 import RoundManager from '../logic/round/RoundManager.js';
+import PhaseManager from './PhaseManager.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 
 /**
@@ -23,13 +24,13 @@ class GameFlowManager {
     GameFlowManager.instance = this;
 
     // Game flow phase definitions
-    this.PRE_GAME_PHASES = ['deckSelection', 'droneSelection', 'placement', 'gameInitializing'];
-    this.ROUND_PHASES = ['determineFirstPlayer', 'energyReset', 'mandatoryDiscard', 'optionalDiscard', 'draw', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'deploymentComplete', 'action'];
+    this.PRE_GAME_PHASES = ['deckSelection', 'droneSelection', 'placement', 'roundInitialization'];
+    this.ROUND_PHASES = ['mandatoryDiscard', 'optionalDiscard', 'roundInitialization', 'allocateShields', 'mandatoryDroneRemoval', 'deployment', 'action'];
 
     // Phase type classification
-    this.SIMULTANEOUS_PHASES = ['droneSelection', 'deckSelection', 'placement', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval', 'deploymentComplete'];
+    this.SIMULTANEOUS_PHASES = ['droneSelection', 'deckSelection', 'placement', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval'];
     this.SEQUENTIAL_PHASES = ['deployment', 'action'];
-    this.AUTOMATIC_PHASES = ['gameInitializing', 'energyReset', 'draw', 'determineFirstPlayer']; // Automatic phases handled directly by GameFlowManager
+    this.AUTOMATIC_PHASES = ['roundInitialization']; // Automatic phase handled directly by GameFlowManager
 
     // Current game state
     this.currentPhase = 'preGame';
@@ -47,6 +48,7 @@ class GameFlowManager {
     this.phaseAnimationQueue = phaseAnimationQueue; // For non-blocking phase announcements
     this.isMultiplayer = false;
     this.gameDataService = null;
+    this.phaseManager = null; // Phase Manager instance (initialized later)
 
     // Initialization guard
     this.isInitialized = false;
@@ -74,6 +76,16 @@ class GameFlowManager {
 
     // Store Guest mode flag for optimistic execution logic
     this.isGuestMode = () => gameStateManager.get('gameMode') === 'guest';
+
+    // Initialize PhaseManager for authoritative phase transitions
+    const gameMode = gameStateManager.get('gameMode') || 'local';
+    this.phaseManager = new PhaseManager(gameStateManager, gameMode);
+    debugLog('PHASE_MANAGER', `✅ PhaseManager initialized in GameFlowManager (mode: ${gameMode})`);
+
+    // Inject PhaseManager into ActionProcessor
+    if (actionProcessor && this.phaseManager) {
+      actionProcessor.setPhaseManager(this.phaseManager);
+    }
 
     // Initialize GameDataService for phase requirement checks
     if (!this.gameDataService) {
@@ -250,25 +262,16 @@ class GameFlowManager {
           }
         }
 
-        // Guest handles phase transitions optimistically (same as Host)
-        // This ensures Guest queues phase announcements locally without waiting for Host broadcast
-        if (bothPassed) {
-          debugLog('PASS_LOGIC', `✅ [GUEST] Both players passed - processing phase transition optimistically`);
-          await this.onSequentialPhaseComplete(updatedState.turnPhase, {
-            reason: 'both_passed',
-            passInfo: updatedState.passInfo
-          });
-          // Note: Guest doesn't broadcast, but processes transition and queues announcement locally
-          return;
-        }
-
-        // Single player pass - just play notification and wait
+        // PHASE MANAGER INTEGRATION: Guest now waits for Host's PhaseManager broadcast
+        // Guest shows immediate UI feedback (animations) but doesn't transition phases
+        debugLog('PHASE_MANAGER', `✅ [GUEST] Pass processed, waiting for Host's PhaseManager broadcast`);
         return;
       }
 
-      // Host mode: Handle both phase transitions and playback
+      // Host and Local modes: Handle both phase transitions and playback
+      // Guest mode was already filtered out above (line 235)
       if (bothPassed) {
-        debugLog('PHASE_TRANSITIONS', `✅ Both players passed, triggering phase transition synchronously`);
+        debugLog('PHASE_TRANSITIONS', `✅ [${currentState.gameMode.toUpperCase()}] Both players passed, triggering phase transition synchronously`);
 
         // Trigger phase transition synchronously BEFORE broadcasting
         await this.onSequentialPhaseComplete(updatedState.turnPhase, {
@@ -289,10 +292,11 @@ class GameFlowManager {
       } else {
         // Single player passed - start PhaseAnimationQueue playback for pass notification
         // (Pass notification was queued by ActionProcessor.processPlayerPass)
+        // This handles both Host and Local modes
         if (this.phaseAnimationQueue) {
           const queueLength = this.phaseAnimationQueue.getQueueLength();
           if (queueLength > 0 && !this.phaseAnimationQueue.isPlaying()) {
-            debugLog('TIMING', `🎬 [HOST] Starting pass notification playback`, {
+            debugLog('TIMING', `🎬 [${currentState.gameMode.toUpperCase()}] Starting pass notification playback`, {
               queuedAnimations: queueLength
             });
             this.phaseAnimationQueue.startPlayback();
@@ -393,7 +397,7 @@ class GameFlowManager {
     return {
       currentPhase: this.currentPhase,
       gameStage: this.gameStage,
-      roundNumber: this.roundNumber,
+      roundNumber: this.gameStateManager.get('roundNumber'),
       isPreGame: this.gameStage === 'preGame',
       isRoundLoop: this.gameStage === 'roundLoop',
       isGameOver: this.gameStage === 'gameOver'
@@ -462,82 +466,11 @@ class GameFlowManager {
   async onSimultaneousPhaseComplete(phase, data) {
     const gameMode = this.gameStateManager.get('gameMode');
 
-    // GUEST MODE: Trigger optimistic processing after ANY simultaneous checkpoint completes
-    // This allows guest to process automatic phases (draw, energyReset, etc.) until next checkpoint
+    // PHASE MANAGER INTEGRATION: Guest guard - Guest cannot trigger phase completion
+    // Guest waits for PhaseManager broadcasts from Host
     if (gameMode === 'guest') {
-      debugLog('GUEST_CASCADE', `🎯 [GUEST] ${phase} complete - triggering optimistic processing`);
-
-      // Determine start phase for cascade based on which phase just completed
-      let startPhase;
-      if (phase === 'placement') {
-        // Placement is special - starts from gameInitializing (initial game setup)
-        startPhase = 'gameInitializing';
-      } else {
-        // For other simultaneous phases, get the NEXT phase and start from there
-        // (e.g., optionalDiscard → draw, allocateShields → mandatoryDroneRemoval)
-        startPhase = this.getNextPhase(phase);
-
-        debugLog('GUEST_CASCADE', `🔍 [GUEST] Completed checkpoint: ${phase}, next phase: ${startPhase}`, {
-          completedCheckpoint: phase,
-          nextPhase: startPhase,
-          reason: 'Determining cascade behavior based on next phase type'
-        });
-
-        if (!startPhase) {
-          // Same logic as Host's onSequentialPhaseComplete (line 738-741)
-          // End of action phase - start new round
-          if (phase === 'action') {
-            debugLog('GUEST_CASCADE', `🔄 [GUEST] Action phase complete, starting new round`);
-            await this.startNewRound();
-            return;
-          }
-          console.error(`❌ [GUEST] No next phase found after ${phase}`);
-          return;
-        }
-      }
-
-      // Check if next phase is already a checkpoint (e.g., allocateShields → deployment when mandatoryDroneRemoval skipped)
-      // If so, just transition to it directly instead of starting a cascade
-      const isNextPhaseCheckpoint = this.gameStateManager.isMilestonePhase(startPhase);
-
-      debugLog('GUEST_CASCADE', `🔍 [GUEST] Checking next phase type`, {
-        nextPhase: startPhase,
-        isCheckpoint: isNextPhaseCheckpoint,
-        behavior: isNextPhaseCheckpoint ? 'DIRECT_TRANSITION' : 'CASCADE_PROCESSING'
-      });
-
-      if (isNextPhaseCheckpoint) {
-        debugLog('GUEST_CASCADE', `⚠️ [GUEST] DIRECT CHECKPOINT JUMP: ${phase} → ${startPhase}`, {
-          from: phase,
-          to: startPhase,
-          warning: 'Skipping validation, jumping directly to next checkpoint',
-          potentialIssue: 'Guest may skip Host validation step'
-        });
-        await this.transitionToPhase(startPhase);
-
-        // Start animation playback after direct checkpoint jump
-        // Ensures Guest sees phase announcements for milestone transitions
-        if (this.phaseAnimationQueue) {
-          const queueLength = this.phaseAnimationQueue.getQueueLength();
-          if (queueLength > 0 && !this.phaseAnimationQueue.isPlaying()) {
-            debugLog('TIMING', `🎬 [GUEST] Starting animation playback after direct checkpoint jump: ${phase} → ${startPhase}`, {
-              queuedAnimations: queueLength,
-              from: phase,
-              to: startPhase
-            });
-            this.phaseAnimationQueue.startPlayback();
-          }
-        }
-
-        return;
-      }
-
-      // Next phase is automatic - process cascade until next checkpoint
-      debugLog('GUEST_CASCADE', `🔄 [GUEST] Starting cascade from phase: ${startPhase}`, {
-        startPhase,
-        behavior: 'Will process automatic phases until next checkpoint'
-      });
-      await this.processAutomaticPhasesUntilCheckpoint(startPhase);
+      debugLog('PHASE_MANAGER', `🚫 Guest attempted to complete simultaneous phase ${phase} - BLOCKED`);
+      debugLog('PHASE_MANAGER', `✅ Guest will wait for Host's PhaseManager broadcast instead`);
       return;
     }
 
@@ -617,6 +550,24 @@ class GameFlowManager {
       debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted placement completion state before automatic cascade`);
     }
 
+    // Queue ROUND announcement if transitioning from placement to first round phase (Round 1)
+    // This ensures ROUND shows immediately before round phases begin
+    if (phase === 'placement') {
+      const nextPhase = this.getNextPhase(phase);
+      // Check if next phase is any round phase (entering round loop)
+      if (nextPhase && this.ROUND_PHASES.includes(nextPhase)) {
+        debugLog('PHASE_MANAGER', `🎯 Queueing ROUND announcement before transitioning to first round phase: ${nextPhase}`);
+
+        await this.actionProcessor.processPhaseTransition({
+          newPhase: 'roundAnnouncement',
+          resetPassInfo: false,
+          guestAnnouncementOnly: gameMode === 'guest'
+        });
+
+        debugLog('PHASE_MANAGER', `✅ ROUND announcement queued before first round phase: ${nextPhase}`);
+      }
+    }
+
     // Determine next phase based on current game stage
     const nextPhase = this.getNextPhase(phase);
 
@@ -686,13 +637,13 @@ class GameFlowManager {
    * Check if sequential phases should complete based on state changes
    * @param {Object} state - Current game state
    * @param {string} eventType - Type of state change
+   * @deprecated This method is no longer used. All modes (Host, Local, Guest) now use explicit handling in handleActionCompletion
    */
   checkSequentialPhaseCompletion(state, eventType) {
-    // Guard: Only local mode uses state monitoring for phase completion
-    // Host and Guest use explicit handling in passInfo subscription (lines 250, 267)
-    if (state.gameMode !== 'local') {
-      return;
-    }
+    // Guard: State monitoring disabled for all modes to prevent duplicate announcements
+    // All modes now use explicit handling in handleActionCompletion (line ~272)
+    // Local and Host use the explicit bothPassed handler; Guest is reactive only
+    return;
 
     // Only check on passInfo changes
     if (eventType !== 'PASS_INFO_SET') {
@@ -772,15 +723,39 @@ class GameFlowManager {
   async onSequentialPhaseComplete(phase, data) {
     debugLog('PHASE_TRANSITIONS', `✅ GameFlowManager: Sequential phase '${phase}' completed`, data);
 
+    // PHASE MANAGER INTEGRATION: Guest guard - Guest cannot trigger phase completion
+    // Guest waits for PhaseManager broadcasts from Host
+    const gameMode = this.gameStateManager.get('gameMode');
+    if (gameMode === 'guest') {
+      debugLog('PHASE_MANAGER', `🚫 Guest attempted to complete sequential phase ${phase} - BLOCKED`);
+      return;
+    }
+
     // GameFlowManager orchestrates ALL phase transitions
     // Determine next phase based on current game stage
     const nextPhase = this.getNextPhase(phase);
 
     if (nextPhase) {
+      // Queue DEPLOYMENT COMPLETE announcement when transitioning from deployment to action
+      if (phase === 'deployment' && nextPhase === 'action') {
+        await this.actionProcessor.processPhaseTransition({
+          newPhase: 'deploymentComplete',
+          resetPassInfo: false,
+          guestAnnouncementOnly: true  // Always pseudo-phase (announcement-only)
+        });
+      }
+
       await this.transitionToPhase(nextPhase);
     } else {
       // End of action phase - start new round
       if (phase === 'action') {
+        // Queue ACTION PHASE COMPLETE announcement before starting new round
+        await this.actionProcessor.processPhaseTransition({
+          newPhase: 'actionComplete',
+          resetPassInfo: false,
+          guestAnnouncementOnly: true  // Always pseudo-phase (announcement-only)
+        });
+
         await this.startNewRound();
       }
     }
@@ -929,18 +904,9 @@ class GameFlowManager {
     let nextPhase = null;
 
     // Route to appropriate phase handler
-    if (phase === 'gameInitializing') {
-      debugLog('CASCADE_LOOP', `   ↳ Calling processGameInitializingPhase()`);
-      nextPhase = await this.processGameInitializingPhase(previousPhase);
-    } else if (phase === 'energyReset') {
-      debugLog('CASCADE_LOOP', `   ↳ Calling processAutomaticEnergyResetPhase()`);
-      nextPhase = await this.processAutomaticEnergyResetPhase(previousPhase);
-    } else if (phase === 'draw') {
-      debugLog('CASCADE_LOOP', `   ↳ Calling processAutomaticDrawPhase()`);
-      nextPhase = await this.processAutomaticDrawPhase(previousPhase);
-    } else if (phase === 'determineFirstPlayer') {
-      debugLog('CASCADE_LOOP', `   ↳ Calling processAutomaticFirstPlayerPhase()`);
-      nextPhase = await this.processAutomaticFirstPlayerPhase(previousPhase);
+    if (phase === 'roundInitialization') {
+      debugLog('PHASE_MANAGER', `   ↳ Calling processRoundInitialization()`);
+      nextPhase = await this.processRoundInitialization(previousPhase);
     } else {
       console.warn(`⚠️ No handler for automatic phase: ${phase}`);
     }
@@ -957,10 +923,10 @@ class GameFlowManager {
 
   /**
    * Process automatic phases until reaching a checkpoint (Guest optimistic processing)
-   * Used after placement completes to process: gameInitializing → determineFirstPlayer → energyReset → draw → deployment
+   * Used after placement completes to process: roundInitialization → first required round phase
    * Stops at first milestone phase (checkpoint) for validation with host
    *
-   * @param {string} startPhase - Phase to start processing from (typically 'gameInitializing')
+   * @param {string} startPhase - Phase to start processing from (typically 'roundInitialization')
    */
   async processAutomaticPhasesUntilCheckpoint(startPhase) {
     debugLog('GUEST_CASCADE', `🚀 [GUEST OPTIMISTIC] Starting automatic processing from: ${startPhase}`);
@@ -1025,6 +991,194 @@ class GameFlowManager {
   }
 
   /**
+   * Process the roundInitialization phase
+   * Combines: gameInitializing → determineFirstPlayer → energyReset → draw
+   * This atomic phase handles all round setup in one transition
+   * @param {string} previousPhase - The phase we're transitioning from (should be 'placement')
+   */
+  async processRoundInitialization(previousPhase) {
+    debugLog('PHASE_MANAGER', '🎯 GameFlowManager: Processing roundInitialization phase (atomic round setup)');
+
+    try {
+      // NOTE: ROUND announcement is now queued BEFORE entering this phase
+      // (either in onSimultaneousPhaseComplete for Round 1, or in startNewRound for Round 2+)
+      // This ensures ROUND shows immediately without waiting for UPKEEP to finish
+
+      const currentState = this.gameStateManager.getState();
+      const gameMode = this.gameStateManager.get('gameMode');
+
+      // ========================================
+      // STEP 1: Game Stage Transition & Round Number Initialization
+      // ========================================
+      // Transition to roundLoop game stage (first time only)
+      if (this.gameStage !== 'roundLoop') {
+        this.gameStage = 'roundLoop';
+        debugLog('PHASE_MANAGER', '✅ Game stage transitioned to roundLoop');
+      }
+
+      // Initialize Round 1 (only happens once, first time entering roundInitialization from placement)
+      // Reuse currentState from earlier (no state changes between line 1024 and here)
+      if (currentState.roundNumber === 0) {
+        this.gameStateManager.setState({
+          roundNumber: 1,
+          turn: 1
+        });
+        debugLog('PHASE_MANAGER', '✅ Round number initialized to 1 (first gameplay round)');
+      }
+
+      // ========================================
+      // STEP 2: Determine First Player
+      // ========================================
+      debugLog('PHASE_MANAGER', '🎯 Step 2: Determining first player');
+      const firstPlayerResult = await this.actionProcessor.processFirstPlayerDetermination();
+      debugLog('PHASE_MANAGER', '✅ First player determination completed:', firstPlayerResult);
+
+      // ========================================
+      // STEP 3: Energy & Resource Reset
+      // ========================================
+      debugLog('PHASE_MANAGER', '⚡ Step 3: Resetting energy and resources');
+
+      const currentGameState = this.gameStateManager.getState();
+
+      // Calculate effective ship stats for both players
+      const GameDataService = (await import('../services/GameDataService.js')).default;
+      const gameDataService = GameDataService.getInstance(this.gameStateManager);
+
+      const player1EffectiveStats = gameDataService.getEffectiveShipStats(
+        currentGameState.player1,
+        currentGameState.placedSections
+      );
+      const player2EffectiveStats = gameDataService.getEffectiveShipStats(
+        currentGameState.player2,
+        currentGameState.opponentPlacedSections
+      );
+
+      // Ready drones (unexhaust, restore shields, remove temporary mods)
+      const allPlacedSections = {
+        player1: currentGameState.placedSections,
+        player2: currentGameState.opponentPlacedSections
+      };
+
+      const readiedPlayer1 = RoundManager.readyDronesAndRestoreShields(
+        currentGameState.player1,
+        currentGameState.player2,
+        allPlacedSections
+      );
+      const readiedPlayer2 = RoundManager.readyDronesAndRestoreShields(
+        currentGameState.player2,
+        currentGameState.player1,
+        allPlacedSections
+      );
+
+      // Apply energy and deployment budgets
+      // Round 1: initialDeploymentBudget, Round 2+: deploymentBudget
+      const currentRoundNumber = this.gameStateManager.get('roundNumber');
+
+      debugLog('RESOURCE_RESET', `🔍 [DIAGNOSTIC] Pre-deployment budget calculation`, {
+        currentRoundNumber,
+        isRound1: currentRoundNumber === 1,
+        player1InitialDeploymentStat: player1EffectiveStats.totals.initialDeployment,
+        player2InitialDeploymentStat: player2EffectiveStats.totals.initialDeployment,
+        player1DeploymentBudgetStat: player1EffectiveStats.totals.deploymentBudget,
+        player2DeploymentBudgetStat: player2EffectiveStats.totals.deploymentBudget
+      });
+
+      const updatedPlayer1 = {
+        ...readiedPlayer1,
+        energy: player1EffectiveStats.totals.energyPerTurn,
+        initialDeploymentBudget: currentRoundNumber === 1 ? player1EffectiveStats.totals.initialDeployment : 0,
+        deploymentBudget: currentRoundNumber === 1 ? 0 : player1EffectiveStats.totals.deploymentBudget
+      };
+
+      const updatedPlayer2 = {
+        ...readiedPlayer2,
+        energy: player2EffectiveStats.totals.energyPerTurn,
+        initialDeploymentBudget: currentRoundNumber === 1 ? player2EffectiveStats.totals.initialDeployment : 0,
+        deploymentBudget: currentRoundNumber === 1 ? 0 : player2EffectiveStats.totals.deploymentBudget
+      };
+
+      debugLog('PHASE_MANAGER', `✅ Energy reset complete - Round ${currentRoundNumber}`, {
+        player1: {
+          energy: updatedPlayer1.energy,
+          initialDeploymentBudget: updatedPlayer1.initialDeploymentBudget,
+          deploymentBudget: updatedPlayer1.deploymentBudget
+        },
+        player2: {
+          energy: updatedPlayer2.energy,
+          initialDeploymentBudget: updatedPlayer2.initialDeploymentBudget,
+          deploymentBudget: updatedPlayer2.deploymentBudget
+        }
+      });
+
+      // Calculate shields to allocate (Round 2+ only)
+      const shieldsToAllocate = currentRoundNumber >= 2 ? player1EffectiveStats.totals.shieldsPerTurn : 0;
+      const opponentShieldsToAllocate = currentRoundNumber >= 2 ? player2EffectiveStats.totals.shieldsPerTurn : 0;
+
+      // Update player states via ActionProcessor
+      // Include roundNumber to ensure atomic update (prevents race condition with UI)
+      await this.actionProcessor.queueAction({
+        type: 'energyReset',
+        payload: {
+          player1: updatedPlayer1,
+          player2: updatedPlayer2,
+          shieldsToAllocate,
+          opponentShieldsToAllocate,
+          roundNumber: currentRoundNumber
+        }
+      });
+
+      // ========================================
+      // STEP 4: Card Draw
+      // ========================================
+      debugLog('PHASE_MANAGER', '🃏 Step 4: Drawing cards');
+
+      // Get FRESH state after energy reset to avoid overwriting energy/deployment budget updates
+      const updatedGameState = this.gameStateManager.getState();
+      const { performAutomaticDraw } = await import('../utils/cardDrawUtils.js');
+      const drawResult = performAutomaticDraw(updatedGameState, this.gameStateManager);
+
+      // Update game state with draw results via ActionProcessor
+      await this.actionProcessor.queueAction({
+        type: 'draw',
+        payload: {
+          player1: drawResult.player1,
+          player2: drawResult.player2
+        }
+      });
+
+      debugLog('PHASE_MANAGER', '✅ Card draw complete');
+
+      // ========================================
+      // FINAL: Emit Event & Broadcast
+      // ========================================
+      // Emit single phaseTransition event for roundInitialization
+      this.emit('phaseTransition', {
+        newPhase: 'roundInitialization',
+        previousPhase: previousPhase,
+        gameStage: this.gameStage,
+        roundNumber: currentRoundNumber,
+        automaticProcessed: true
+      });
+
+      // Broadcast state to guest ONCE after all updates complete (host only)
+      // Reuse gameMode from earlier (line 1026) - no state changes between
+      if (gameMode === 'host' && this.actionProcessor.p2pManager) {
+        debugLog('PHASE_MANAGER', `📡 Broadcasting state after roundInitialization`);
+        this.actionProcessor.broadcastStateToGuest();
+      }
+
+      // Return next phase
+      const nextPhase = this.getNextPhase('roundInitialization');
+      debugLog('PHASE_MANAGER', `✅ roundInitialization complete, next phase: ${nextPhase}`);
+      return nextPhase;
+
+    } catch (error) {
+      console.error('❌ Error during roundInitialization phase:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Process the automatic draw phase
    * @param {string} previousPhase - The phase we're transitioning from
    */
@@ -1071,7 +1225,7 @@ class GameFlowManager {
         newPhase: 'draw',
         previousPhase: previousPhase,
         gameStage: this.gameStage,
-        roundNumber: this.roundNumber,
+        roundNumber: this.gameStateManager.get('roundNumber'),
         automaticProcessed: true
       });
 
@@ -1106,45 +1260,12 @@ class GameFlowManager {
         debugLog('MULTIPLAYER', `📡 GameFlowManager: Broadcasted state after first player determination`);
       }
 
-      // The first announcement "DETERMINING FIRST PLAYER" is already shown by processPhaseTransition
-      // Now queue the second announcement with the result
-
-      if (firstPlayerResult.stateUpdates) {
-        const localPlayerId = this.gameStateManager.getLocalPlayerId();
-        const firstPlayer = firstPlayerResult.stateUpdates.firstPlayerOfRound;
-        const isLocalPlayerFirst = firstPlayer === localPlayerId;
-
-        const announcementText = isLocalPlayerFirst ? 'YOU ARE FIRST PLAYER' : 'OPPONENT IS FIRST PLAYER';
-
-        // Queue animation for sequential playback (non-blocking)
-        if (this.phaseAnimationQueue) {
-          this.phaseAnimationQueue.queueAnimation('firstPlayerResult', announcementText);
-        }
-
-        // For host: capture animation for broadcasting
-        if (this.gameStateManager.get('gameMode') === 'host' && this.actionProcessor.animationManager) {
-          const secondAnnouncementEvent = {
-            animationName: 'PHASE_ANNOUNCEMENT',
-            payload: {
-              phaseText: announcementText,
-              phaseName: 'firstPlayerResult',
-              timestamp: Date.now()
-            }
-          };
-
-          // Capture for broadcasting (don't execute)
-          this.actionProcessor.pendingSystemAnimations.push(secondAnnouncementEvent);
-        }
-
-        debugLog('PHASE_TRANSITIONS', '🎬 [FIRST PLAYER] Result announcement queued');
-      }
-
       // Emit completion event for first player phase
       this.emit('phaseTransition', {
         newPhase: 'determineFirstPlayer',
         previousPhase: previousPhase,
         gameStage: this.gameStage,
-        roundNumber: this.roundNumber,
+        roundNumber: this.gameStateManager.get('roundNumber'),
         automaticProcessed: true
       });
 
@@ -1209,22 +1330,24 @@ class GameFlowManager {
       // Apply energy and deployment budget on top of readied states
       // Round 1: Use initialDeploymentBudget (includes first lane bonus)
       // Round 2+: Use deploymentBudget (ongoing resource from ship sections)
+      // Use gameState.roundNumber as source of truth (not this.roundNumber)
+      const currentRoundNumber = this.gameStateManager.get('roundNumber');
       const updatedPlayer1 = {
         ...readiedPlayer1,
         energy: player1EffectiveStats.totals.energyPerTurn,
-        initialDeploymentBudget: this.roundNumber === 1 ? player1EffectiveStats.totals.initialDeployment : 0,
-        deploymentBudget: this.roundNumber === 1 ? 0 : player1EffectiveStats.totals.deploymentBudget
+        initialDeploymentBudget: currentRoundNumber === 1 ? player1EffectiveStats.totals.initialDeployment : 0,
+        deploymentBudget: currentRoundNumber === 1 ? 0 : player1EffectiveStats.totals.deploymentBudget
       };
 
       const updatedPlayer2 = {
         ...readiedPlayer2,
         energy: player2EffectiveStats.totals.energyPerTurn,
-        initialDeploymentBudget: this.roundNumber === 1 ? player2EffectiveStats.totals.initialDeployment : 0,
-        deploymentBudget: this.roundNumber === 1 ? 0 : player2EffectiveStats.totals.deploymentBudget
+        initialDeploymentBudget: currentRoundNumber === 1 ? player2EffectiveStats.totals.initialDeployment : 0,
+        deploymentBudget: currentRoundNumber === 1 ? 0 : player2EffectiveStats.totals.deploymentBudget
       };
 
-      debugLog('RESOURCE_RESET', `=== ROUND ${this.roundNumber} RESET: Energy & Deployment Budget ===`, {
-        roundNumber: this.roundNumber,
+      debugLog('RESOURCE_RESET', `=== ROUND ${currentRoundNumber} RESET: Energy & Deployment Budget ===`, {
+        roundNumber: currentRoundNumber,
         player1: {
           name: currentGameState.player1.name,
           placedSections: currentGameState.placedSections,
@@ -1262,8 +1385,8 @@ class GameFlowManager {
       });
 
       // Calculate shields to allocate from Power Cell stats (round 2+ only)
-      const shieldsToAllocate = this.roundNumber >= 2 ? player1EffectiveStats.totals.shieldsPerTurn : 0;
-      const opponentShieldsToAllocate = this.roundNumber >= 2 ? player2EffectiveStats.totals.shieldsPerTurn : 0;
+      const shieldsToAllocate = currentRoundNumber >= 2 ? player1EffectiveStats.totals.shieldsPerTurn : 0;
+      const opponentShieldsToAllocate = currentRoundNumber >= 2 ? player2EffectiveStats.totals.shieldsPerTurn : 0;
 
       // DEBUG: Log the actual payload being sent to ActionProcessor
       debugLog('RESOURCE_RESET', `📤 [GAMEFLOWMANAGER] Sending energyReset payload to ActionProcessor`, {
@@ -1292,13 +1415,15 @@ class GameFlowManager {
       });
 
       // Update player states via ActionProcessor
+      // Include roundNumber to ensure atomic update (prevents race condition with UI)
       await this.actionProcessor.queueAction({
         type: 'energyReset',
         payload: {
           player1: updatedPlayer1,
           player2: updatedPlayer2,
           shieldsToAllocate,
-          opponentShieldsToAllocate
+          opponentShieldsToAllocate,
+          roundNumber: currentRoundNumber
         }
       });
 
@@ -1323,7 +1448,7 @@ class GameFlowManager {
         newPhase: 'energyReset',
         previousPhase: previousPhase,
         gameStage: this.gameStage,
-        roundNumber: this.roundNumber,
+        roundNumber: this.gameStateManager.get('roundNumber'),
         automaticProcessed: true
       });
 
@@ -1357,7 +1482,7 @@ class GameFlowManager {
         newPhase: 'gameInitializing',
         previousPhase: previousPhase,
         gameStage: this.gameStage,
-        roundNumber: this.roundNumber
+        roundNumber: this.gameStateManager.get('roundNumber')
       });
 
       // Brief delay to allow App.jsx to mount and subscribe to events
@@ -1386,10 +1511,11 @@ class GameFlowManager {
       return this.PRE_GAME_PHASES[currentIndex + 1];
     }
 
-    // Pre-game complete, transition to round loop
-    if (currentPhase === 'gameInitializing') {
-      // Start the first round with first player determination
-      return 'determineFirstPlayer'; // Start with first player determination
+    // roundInitialization complete, transition to round loop
+    if (currentPhase === 'roundInitialization') {
+      // After roundInitialization, find first required round phase
+      // Start with mandatoryDiscard (first phase in ROUND_PHASES)
+      return this.getNextRequiredPhase('roundInitialization');
     }
 
     return null;
@@ -1449,25 +1575,36 @@ class GameFlowManager {
     const gameState = this.gameStateManager.getState();
 
     switch(phase) {
-      case 'energyReset':
-        return true; // Always required - automatic phase
+      case 'roundInitialization':
+        // Round 1: runs via PRE_GAME_PHASES (after placement)
+        // Round 2+: runs via ROUND_PHASES (after optionalDiscard)
+        // Skip when encountered in ROUND_PHASES during Round 1 to avoid running twice
+        if (gameState.roundNumber === 1) {
+          return false; // Already ran via PRE_GAME_PHASES
+        }
+        return true; // Run in Round 2+ via ROUND_PHASES
       case 'mandatoryDiscard':
+        // Required when any player's hand count exceeds their effective hand limit
+        // Checked after draw phases (roundInitialization, optionalDiscard)
         return this.anyPlayerExceedsHandLimit(gameState);
       case 'optionalDiscard':
-        return this.anyPlayerHasCards(gameState); // Only required if players have cards
-      case 'draw':
-        return true; // Always required - automatic phase
-      case 'determineFirstPlayer':
-        return true; // Always required for round start
+        // Skip in Round 1 - cards already drawn in roundInitialization
+        // Round 2+: Only required if players have cards to optionally discard
+        if (gameState.roundNumber === 1) {
+          return false;
+        }
+        return this.anyPlayerHasCards(gameState);
       case 'allocateShields':
+        // Required when any player has unallocated shields
+        // Skipped in Round 1 (no shields to allocate yet)
         return this.anyPlayerHasShieldsToAllocate(gameState);
       case 'mandatoryDroneRemoval':
+        // Required when any player exceeds their maximum drone limit
+        // Checked after phases where drones can be deployed
         return this.anyPlayerExceedsDroneLimit(gameState);
       case 'deployment':
       case 'action':
         return true; // Always required
-      case 'deploymentComplete':
-        return false; // This phase was removed but may still be in legacy phase list
       default:
         return true; // Default to required for unknown phases
     }
@@ -1530,9 +1667,9 @@ class GameFlowManager {
       opponentShieldsToAllocate: gameState.opponentShieldsToAllocate
     });
 
-    // Shield allocation phase starts from round 2 onwards
-    if (gameState.roundNumber < 2) {
-      debugLog('PHASE_TRANSITIONS', `🛡️ [SHIELD CHECK] Round ${gameState.roundNumber} < 2 - skipping shields phase`);
+    // Shield allocation phase starts from Round 2 onwards (skip Round 1)
+    if (gameState.roundNumber === 1) {
+      debugLog('PHASE_TRANSITIONS', `🛡️ [SHIELD CHECK] Round ${gameState.roundNumber} is first round - skipping shields phase`);
       return false;
     }
 
@@ -1647,7 +1784,7 @@ class GameFlowManager {
       this.actionProcessor.processPhaseTransition({
         newPhase: phase,
         gameStage: this.gameStage,
-        roundNumber: this.roundNumber
+        roundNumber: this.gameStateManager.get('roundNumber')
       });
     } else {
       console.warn('⚠️ ActionProcessor or GameStateManager not available for sequential phase initiation');
@@ -1658,7 +1795,7 @@ class GameFlowManager {
       newPhase: phase,
       previousPhase,
       gameStage: this.gameStage,
-      roundNumber: this.roundNumber,
+      roundNumber: this.gameStateManager.get('roundNumber'),
       handoverType: 'simultaneous-to-sequential'
     });
   }
@@ -1671,6 +1808,27 @@ class GameFlowManager {
     const previousPhase = this.currentPhase;
     const gameMode = this.gameStateManager.get('gameMode');
 
+    // PHASE MANAGER INTEGRATION: Guest cannot call transitionToPhase directly
+    // Guest waits for PhaseManager broadcasts from Host
+    if (gameMode === 'guest') {
+      debugLog('PHASE_MANAGER', `🎬 [GUEST] Queueing announcement for ${newPhase} (state transition blocked)`);
+
+      // Guest cannot transition state, but CAN queue announcements for UI feedback
+      // Call ActionProcessor to queue announcement, then return before state transition
+      if (this.actionProcessor && this.gameStateManager) {
+        await this.actionProcessor.queueAction({
+          type: 'phaseTransition',
+          payload: {
+            newPhase: newPhase,
+            resetPassInfo: false,
+            guestAnnouncementOnly: true  // Flag to skip state changes
+          }
+        });
+      }
+
+      return; // Block state transition (authority stays with Host)
+    }
+
     // Guard against redundant transitions
     if (newPhase === previousPhase) {
       timingLog('[PHASE] Redundant transition blocked', {
@@ -1680,6 +1838,17 @@ class GameFlowManager {
       });
       debugLog('PHASE_TRANSITIONS', `⚠️ Blocked redundant transition: already in ${newPhase}`);
       return;
+    }
+
+    // PHASE MANAGER INTEGRATION: Let PhaseManager handle the authoritative transition
+    // PhaseManager updates its internal phase state and handles broadcasting
+    if (this.phaseManager) {
+      const phaseManagerSuccess = this.phaseManager.transitionToPhase(newPhase);
+      if (!phaseManagerSuccess) {
+        debugLog('PHASE_MANAGER', `❌ PhaseManager rejected transition to ${newPhase}`);
+        return;
+      }
+      debugLog('PHASE_MANAGER', `✅ PhaseManager accepted transition to ${newPhase}`);
     }
 
     const transitionStartTime = timingLog('[PHASE] Transition started', {
@@ -1692,21 +1861,9 @@ class GameFlowManager {
     this.currentPhase = newPhase;
 
     // Handle special phase transitions
+    // Note: roundNumber is now initialized in processRoundInitialization(), not here
     if (this.ROUND_PHASES.includes(newPhase) && this.gameStage !== 'roundLoop') {
       this.gameStage = 'roundLoop';
-      if (this.roundNumber === 0) {
-        this.roundNumber = 1;
-        // Update gameState with initial round number
-        try {
-          this.gameStateManager._updateContext = 'GameFlowManager';
-          this.gameStateManager.setState({
-            roundNumber: 1,
-            turn: 1
-          });
-        } finally {
-          this.gameStateManager._updateContext = null;
-        }
-      }
     }
 
     debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Transitioning from '${previousPhase}' to '${newPhase}' (${this.gameStage})`);
@@ -1741,7 +1898,7 @@ class GameFlowManager {
         this.gameStateManager._updateContext = 'GameFlowManager';
         this.gameStateManager.setState({
           gameStage: this.gameStage,
-          roundNumber: this.roundNumber,
+          roundNumber: this.gameStateManager.get('roundNumber'),  // Use gameState as source of truth
           ...phaseData
         }, 'PHASE_TRANSITION', 'gameFlowManagerMetadata');
       } finally {
@@ -1767,7 +1924,7 @@ class GameFlowManager {
       newPhase,
       previousPhase,
       gameStage: this.gameStage,
-      roundNumber: this.roundNumber,
+      roundNumber: this.gameStateManager.get('roundNumber'),
       firstPlayerResult
     });
 
@@ -1879,8 +2036,14 @@ class GameFlowManager {
     const currentGameState = this.gameStateManager.getState();
     const firstPasserFromPreviousRound = currentGameState.passInfo?.firstPasser || null;
 
-    this.roundNumber++;
-    debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Starting round ${this.roundNumber}`, {
+    // Read current round number from GameStateManager (source of truth) and increment
+    const currentRound = this.gameStateManager.get('roundNumber');
+    const nextRound = currentRound + 1;
+    this.roundNumber = nextRound; // Sync local copy with source of truth
+
+    debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Starting round ${nextRound}`, {
+      currentRound,
+      nextRound,
       firstPasserFromPreviousRound
     });
 
@@ -1888,13 +2051,26 @@ class GameFlowManager {
     try {
       this.gameStateManager._updateContext = 'GameFlowManager';
       this.gameStateManager.setState({
-        roundNumber: this.roundNumber,
+        roundNumber: nextRound,
         turn: 1,  // Reset turn counter to 1 at start of each round (increments on action phase passes)
         firstPasserOfPreviousRound: firstPasserFromPreviousRound
       }, 'ROUND_START', 'gameFlowManagerMetadata');
     } finally {
       this.gameStateManager._updateContext = null;
     }
+
+    // Queue ROUND announcement before transitioning to first phase of new round
+    // This ensures ROUND shows immediately, not after other announcements
+    const gameMode = this.gameStateManager.get('gameMode');
+    debugLog('PHASE_MANAGER', `🎯 Queueing ROUND ${nextRound} announcement before starting round phases`);
+
+    await this.actionProcessor.processPhaseTransition({
+      newPhase: 'roundAnnouncement',
+      resetPassInfo: false,
+      guestAnnouncementOnly: gameMode === 'guest'
+    });
+
+    debugLog('PHASE_MANAGER', `✅ ROUND ${nextRound} announcement queued`);
 
     // Find first required phase in new round
     const firstRequiredPhase = this.ROUND_PHASES.find(phase => this.isPhaseRequired(phase));
@@ -1941,7 +2117,7 @@ class GameFlowManager {
 
     this.emit('gameEnded', {
       winnerId,
-      finalRound: this.roundNumber
+      finalRound: this.gameStateManager.get('roundNumber')
     });
   }
 
@@ -1967,7 +2143,7 @@ class GameFlowManager {
     return {
       currentPhase: this.currentPhase,
       gameStage: this.gameStage,
-      roundNumber: this.roundNumber,
+      roundNumber: this.gameStateManager.get('roundNumber'),
       preGamePhases: this.PRE_GAME_PHASES,
       roundPhases: this.ROUND_PHASES,
       systemsConnected: {

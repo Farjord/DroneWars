@@ -57,6 +57,8 @@ function GameHeader({
   firstPlayerOfRound,
   shieldsToAllocate,
   opponentShieldsToAllocate,
+  pendingShieldAllocations,
+  pendingShieldsRemaining,
   shieldsToRemove,
   shieldsToAdd,
   reallocationPhase,
@@ -214,7 +216,7 @@ function GameHeader({
           {getPhaseDisplayName(turnPhase)}
           {turnPhase === 'allocateShields' && (
             <span className="text-base font-semibold text-cyan-300 ml-2">
-              ({shieldsToAllocate} shields to assign)
+              ({pendingShieldsRemaining !== null ? pendingShieldsRemaining : shieldsToAllocate} shields to assign)
             </span>
           )}
           {reallocationPhase === 'removing' && (
@@ -227,7 +229,7 @@ function GameHeader({
               ({shieldsToAdd} shields to add)
             </span>
           )}
-          {turnPhase === 'mandatoryDiscard' && (mandatoryAction?.type === 'discard' || excessCards > 0) && (
+          {(turnPhase === 'mandatoryDiscard' || mandatoryAction?.type === 'discard') && (mandatoryAction?.type === 'discard' || excessCards > 0) && (
             <span className="text-base font-semibold text-orange-300 ml-2">
               ({(mandatoryAction?.count || excessCards)} {(mandatoryAction?.count || excessCards) === 1 ? 'card' : 'cards'} to discard)
             </span>
@@ -579,8 +581,23 @@ function GameHeader({
 
               {/* Optional Discard Controls - Show during optionalDiscard phase */}
               {turnPhase === 'optionalDiscard' && (
-                <button onClick={handleRoundStartDraw} className="btn-confirm">
-                  Confirm
+                <button
+                  onClick={handleRoundStartDraw}
+                  className="relative p-[1px] transition-all hover:scale-105"
+                  style={{
+                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                    backgroundImage: 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
+                  }}
+                >
+                  <div
+                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                      color: '#86efac'
+                    }}
+                  >
+                    Confirm
+                  </div>
                 </button>
               )}
 
@@ -665,6 +682,16 @@ function GameHeader({
             iconColor="text-yellow-300"
             isPlayer={true}
           />
+          {turnPhase === 'deployment' && (() => {
+            debugLog('RESOURCE_RESET', '🎨 [GAMEHEADER] Deployment badge rendering', {
+              roundNumber,
+              isRound1: roundNumber === 1,
+              localPlayerState_initialDeploymentBudget: localPlayerState?.initialDeploymentBudget,
+              localPlayerState_deploymentBudget: localPlayerState?.deploymentBudget,
+              calculatedValue: roundNumber === 1 ? localPlayerState?.initialDeploymentBudget : localPlayerState?.deploymentBudget
+            });
+            return null;
+          })()}
           {turnPhase === 'deployment' && (
             <ResourceBadge
               icon={Rocket}
@@ -681,9 +708,9 @@ function GameHeader({
             isPlayer={true}
           />
           {turnPhase === 'allocateShields' && (
-            <ResourceBadge 
-              icon={ShieldCheck} 
-              value={shieldsToAllocate}
+            <ResourceBadge
+              icon={ShieldCheck}
+              value={pendingShieldsRemaining !== null ? pendingShieldsRemaining : shieldsToAllocate}
               iconColor="text-cyan-300"
               isPlayer={true}
             />

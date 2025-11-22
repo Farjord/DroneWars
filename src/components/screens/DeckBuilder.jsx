@@ -51,7 +51,8 @@ const CardDetailPopup = ({ card, onClose }) => {
           onClick={() => {}}
           isPlayable={true}
           isSelected={false}
-          isMandatoryTarget={false}
+          mandatoryAction={null}
+          excessCards={0}
           scale={1.5}
         />
       </div>
@@ -1172,7 +1173,8 @@ const DeckBuilder = ({
                       onClick={() => setDetailedCard(card)}
                       isPlayable={true}
                       isSelected={false}
-                      isMandatoryTarget={false}
+                      mandatoryAction={null}
+                      excessCards={0}
                       scale={1.0}
                     />
                     {/* Quantity Controls */}
