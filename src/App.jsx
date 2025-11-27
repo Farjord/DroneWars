@@ -65,6 +65,7 @@ import { useAnimationSetup } from './hooks/useAnimationSetup';
 import fullCardCollection from './data/cardData.js';
 import { gameEngine } from './logic/gameLogic.js';
 import { calculatePotentialInterceptors } from './logic/combat/InterceptionProcessor.js';
+import TargetingRouter from './logic/TargetingRouter.js';
 import { BACKGROUNDS, DEFAULT_BACKGROUND, getBackgroundById } from './config/backgrounds.js';
 
 // --- 1.6 MANAGER/STATE IMPORTS ---
@@ -96,6 +97,10 @@ import SplashEffect from './components/animations/SplashEffect.jsx';
 import BarrageImpact from './components/animations/BarrageImpact.jsx';
 import RailgunTurret from './components/animations/RailgunTurret.jsx';
 import RailgunBeam from './components/animations/RailgunBeam.jsx';
+
+// Initialize TargetingRouter for card targeting validation
+const targetingRouter = new TargetingRouter();
+
 // ========================================
 // SECTION 2: MAIN COMPONENT DECLARATION
 // ========================================
@@ -3071,7 +3076,13 @@ const App = ({ phaseAnimationQueue }) => {
         const localPlayerId = getLocalPlayerId();
         const player1State = localPlayerId === 'player1' ? localPlayerState : opponentPlayerState;
         const player2State = localPlayerId === 'player1' ? opponentPlayerState : localPlayerState;
-        const validTargets = gameEngine.getValidTargets(localPlayerId, null, card, player1State, player2State);
+        const validTargets = targetingRouter.routeTargeting({
+          actingPlayerId: localPlayerId,
+          source: null,
+          definition: card,
+          player1: player1State,
+          player2: player2State
+        });
         debugLog('CARD_PLAY', `✅ System Sabotage targets found: ${validTargets.length}`, { targets: validTargets });
         cancelAllActions(); // Cancel all other actions before starting System Sabotage
         setDestroyUpgradeModal({ card, targets: validTargets, opponentState: opponentPlayerState });
@@ -3082,7 +3093,13 @@ const App = ({ phaseAnimationQueue }) => {
         const localPlayerId = getLocalPlayerId();
         const player1State = localPlayerId === 'player1' ? localPlayerState : opponentPlayerState;
         const player2State = localPlayerId === 'player1' ? opponentPlayerState : localPlayerState;
-        const validTargets = gameEngine.getValidTargets(localPlayerId, null, card, player1State, player2State);
+        const validTargets = targetingRouter.routeTargeting({
+          actingPlayerId: localPlayerId,
+          source: null,
+          definition: card,
+          player1: player1State,
+          player2: player2State
+        });
         debugLog('CARD_PLAY', `✅ Upgrade targets found: ${validTargets.length}`, { targets: validTargets });
         if (validTargets.length > 0) {
             cancelAllActions(); // Cancel all other actions before starting upgrade selection

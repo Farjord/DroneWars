@@ -69,12 +69,39 @@ class GameDataService {
    *
    * @param {Object} drone - Drone object with name, stats, etc.
    * @param {string} lane - Lane identifier (lane1, lane2, lane3)
+   * @param {Object} options - Optional overrides for AI evaluation scenarios
+   * @param {Object} options.playerState - Override player state (for temp/evaluation states)
+   * @param {Object} options.opponentState - Override opponent state
+   * @param {Object} options.placedSections - Override placed sections
    * @returns {Object} Effective stats with attack, speed, hull, shields, etc.
    */
-  getEffectiveStats(drone, lane) {
+  getEffectiveStats(drone, lane, options = {}) {
     if (!drone || !lane) {
       return { attack: 0, speed: 0, hull: 0, maxShields: 0, cost: 0, baseAttack: 0, baseSpeed: 0, baseCost: 0, keywords: new Set() };
     }
+
+    // Extract overrides from options
+    const { playerState: overridePlayerState, opponentState: overrideOpponentState, placedSections: overridePlacedSections } = options;
+
+    let playerState, opponentState, placedSections;
+
+    // If overrides are provided, use them directly (for AI evaluation scenarios)
+    if (overridePlayerState && overrideOpponentState) {
+      playerState = overridePlayerState;
+      opponentState = overrideOpponentState;
+      placedSections = overridePlacedSections || this.getPlacedSectionsForEngine();
+
+      // Calculate effective stats WITHOUT caching (temp states shouldn't be cached)
+      return calculateEffectiveStats(
+        drone,
+        lane,
+        playerState,
+        opponentState,
+        placedSections
+      );
+    }
+
+    // Normal path: use live game state with caching
 
     // Generate cache key
     const cacheKey = this.cache.generateKey('effectiveStats', drone.id || drone.name, lane);
@@ -94,12 +121,12 @@ class GameDataService {
     const opponentPlayerState = gameState[opponentPlayerId];
 
     // Get placed sections for engine
-    const placedSections = this.getPlacedSectionsForEngine();
+    placedSections = this.getPlacedSectionsForEngine();
 
     // Determine which player owns this drone
     const isDroneOwnedByLocal = this.isDroneOwnedByPlayer(drone, localPlayerState);
-    const playerState = isDroneOwnedByLocal ? localPlayerState : opponentPlayerState;
-    const opponentState = isDroneOwnedByLocal ? opponentPlayerState : localPlayerState;
+    playerState = isDroneOwnedByLocal ? localPlayerState : opponentPlayerState;
+    opponentState = isDroneOwnedByLocal ? opponentPlayerState : localPlayerState;
 
     // Calculate effective stats using game engine
     const effectiveStats = calculateEffectiveStats(

@@ -329,12 +329,23 @@ class AIPhaseProcessor {
     debugLog('AI_DECISIONS', `✅ AI selected deck: ${selectedDeck.length} cards + ${selectedDrones.length} drones`);
     debugLog('AI_DECISIONS', `🎲 AI drones: ${selectedDrones.join(', ')}`);
 
-    // Default ship components for AI (standard layout)
-    const shipComponents = {
-      'BRIDGE_001': 'l',
-      'POWERCELL_001': 'm',
-      'DRONECONTROL_001': 'r'
-    };
+    // Convert AI's placement array to shipComponents format
+    // placement array is [lane0, lane1, lane2] with legacy keys -> { key: 'l'/'m'/'r' }
+    const laneMap = ['l', 'm', 'r']; // lane0=left, lane1=middle, lane2=right
+    const shipComponents = {};
+
+    if (personality?.shipDeployment?.placement) {
+      personality.shipDeployment.placement.forEach((key, index) => {
+        shipComponents[key] = laneMap[index];
+      });
+      debugLog('AI_DECISIONS', `🎯 Using ${personality.name} ship placement:`, shipComponents);
+    } else {
+      // Fallback to default layout if personality doesn't have placement
+      shipComponents['bridge'] = 'l';
+      shipComponents['powerCell'] = 'm';
+      shipComponents['droneControlHub'] = 'r';
+      debugLog('AI_DECISIONS', `⚠️ No ship placement in personality, using default layout`);
+    }
 
     return {
       deck: selectedDeck,
@@ -346,140 +357,34 @@ class AIPhaseProcessor {
   /**
    * Process AI ship placement for placement phase
    * @param {Object} aiPersonality - Optional AI personality override
-   * @returns {Promise<Array>} Array of placed ship sections (5 elements)
+   * @returns {Promise<Array>} Array of placed ship section keys [lane0, lane1, lane2]
    */
   async processPlacement(aiPersonality = null) {
     const personality = aiPersonality || this.currentAIPersonality;
 
     debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.processPlacement starting...');
 
-    // Get available ship sections for AI
-    const availableSections = ['bridge', 'powerCell', 'droneControlHub'];
+    // Use AI personality's defined placement array (contains legacy keys)
+    let placedSections;
 
-    debugLog('AI_DECISIONS', `🎯 AI placing ${availableSections.length} ship sections`);
+    if (personality?.shipDeployment?.placement) {
+      placedSections = [...personality.shipDeployment.placement]; // [lane0, lane1, lane2]
+      debugLog('AI_DECISIONS', `🎯 Using ${personality.name} defined placement: ${placedSections.join(', ')}`);
+      debugLog('AI_DECISIONS', `📋 Strategy: ${personality.shipDeployment.strategy} - ${personality.shipDeployment.reasoning}`);
+    } else {
+      // Fallback to default placement if personality doesn't have placement
+      placedSections = ['bridge', 'powerCell', 'droneControlHub'];
+      debugLog('AI_DECISIONS', `⚠️ No ship placement in personality, using default: ${placedSections.join(', ')}`);
+    }
 
-    // AI Placement Strategy: Simple but effective
-    const placedSections = this.selectSectionsForPlacement(availableSections, personality);
-
-    const placementNames = placedSections.join(', ');
-    debugLog('AI_DECISIONS', `🤖 AI placement completed: ${placementNames}`);
+    debugLog('AI_DECISIONS', `🤖 AI placement completed: ${placedSections.join(', ')}`);
 
     return placedSections;
   }
 
-  /**
-   * Select ship section placement for AI based on personality preferences
-   * @param {Array} availableSections - Available ship sections to place
-   * @param {Object} personality - AI personality with preferences
-   * @returns {Array} Array of 5 placed sections in lane order
-   */
-  selectSectionsForPlacement(availableSections, personality) {
-    const sections = [...availableSections];
-
-    // AI placement strategies based on personality
-    if (personality) {
-      if (personality.aggression > 0.7) {
-        // Aggressive AI: Weapons in front, Bridge protected
-        const placement = this.arrangeAggressivePlacement(sections);
-        debugLog('AI_DECISIONS', '🎯 AI using aggressive placement strategy');
-        return placement;
-      } else if (personality.economy > 0.7) {
-        // Economic AI: Cargo Bay priority, efficient layout
-        const placement = this.arrangeEconomicPlacement(sections);
-        debugLog('AI_DECISIONS', '🎯 AI using economic placement strategy');
-        return placement;
-      }
-    }
-
-    // Default balanced placement: Bridge in middle, balanced defense
-    const placement = this.arrangeBalancedPlacement(sections);
-    debugLog('AI_DECISIONS', '🎯 AI using balanced placement strategy');
-    return placement;
-  }
-
-  /**
-   * Arrange sections for aggressive AI (droneControlHub forward for offensive)
-   */
-  arrangeAggressivePlacement(sections) {
-    const placement = new Array(3).fill(null);
-    const remaining = [...sections];
-
-    // Priority order: droneControlHub front (offensive), bridge middle, powerCell back
-    const priorities = ['droneControlHub', 'bridge', 'powerCell'];
-    const positions = [0, 1, 2]; // drone control front, bridge middle, power back
-
-    for (let i = 0; i < priorities.length && i < remaining.length; i++) {
-      const sectionIndex = remaining.findIndex(s => s === priorities[i]);
-      if (sectionIndex !== -1) {
-        placement[positions[i]] = remaining.splice(sectionIndex, 1)[0];
-      }
-    }
-
-    // Fill remaining positions
-    for (let i = 0; i < placement.length; i++) {
-      if (!placement[i] && remaining.length > 0) {
-        placement[i] = remaining.shift();
-      }
-    }
-
-    return placement;
-  }
-
-  /**
-   * Arrange sections for economic AI (powerCell in center for bonus)
-   */
-  arrangeEconomicPlacement(sections) {
-    const placement = new Array(3).fill(null);
-    const remaining = [...sections];
-
-    // Priority: powerCell center for energy bonus, bridge protected, droneControlHub front
-    const priorities = ['powerCell', 'bridge', 'droneControlHub'];
-    const positions = [1, 2, 0]; // power center, bridge back, drone control front
-
-    for (let i = 0; i < priorities.length && i < remaining.length; i++) {
-      const sectionIndex = remaining.findIndex(s => s === priorities[i]);
-      if (sectionIndex !== -1) {
-        placement[positions[i]] = remaining.splice(sectionIndex, 1)[0];
-      }
-    }
-
-    // Fill remaining positions
-    for (let i = 0; i < placement.length; i++) {
-      if (!placement[i] && remaining.length > 0) {
-        placement[i] = remaining.shift();
-      }
-    }
-
-    return placement;
-  }
-
-  /**
-   * Arrange sections for balanced AI (bridge center for bonus)
-   */
-  arrangeBalancedPlacement(sections) {
-    const placement = new Array(3).fill(null);
-    const remaining = [...sections];
-
-    // Balanced: bridge center for bonus, powerCell and droneControlHub on sides
-    const priorities = ['bridge', 'powerCell', 'droneControlHub'];
-    const positions = [1, 0, 2]; // bridge center, power left, drone control right
-
-    for (let i = 0; i < priorities.length && i < remaining.length; i++) {
-      const sectionIndex = remaining.findIndex(s => s === priorities[i]);
-      if (sectionIndex !== -1) {
-        placement[positions[i]] = remaining.splice(sectionIndex, 1)[0];
-      }
-    }
-
-    // Fill remaining positions
-    for (let i = 0; i < placement.length; i++) {
-      if (!placement[i] && remaining.length > 0) {
-        placement[i] = remaining.shift();
-      }
-    }
-
-    return placement;
-  }
+  // REMOVED: Legacy hard-coded placement strategy methods (selectSectionsForPlacement,
+  // arrangeAggressivePlacement, arrangeEconomicPlacement, arrangeBalancedPlacement)
+  // All AIs now use their defined shipDeployment.placement arrays with legacy keys
 
   /**
    * Execute AI turn for deployment phase

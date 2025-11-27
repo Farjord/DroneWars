@@ -76,6 +76,11 @@ function MenuScreen() {
     gameStateManager.setState({ appState: 'lobby', gameMode: 'multiplayer' });
   };
 
+  const handleIntoTheEremos = () => {
+    debugLog('PHASE_TRANSITIONS', '🚀 Selected: Into The Eremos');
+    gameStateManager.setState({ appState: 'eremosEntry' });
+  };
+
   return (
     <div className="body-font" style={{
       display: 'flex',
@@ -185,6 +190,18 @@ function MenuScreen() {
           gap: '1.5rem',
           alignItems: 'center'
         }}>
+          {/* Into The Eremos - Top of menu */}
+          <button
+            onClick={handleIntoTheEremos}
+            className="btn-continue"
+            style={{ width: '250px', fontSize: '1.1rem', padding: '16px 30px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
+          >
+            <ScalingText text="INTO THE EREMOS" className="uppercase tracking-wider font-semibold" />
+            <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
+              Roguelike Campaign
+            </div>
+          </button>
+
           <button onClick={handleSinglePlayer} className="btn-continue" style={{ width: '250px', fontSize: '1.1rem', padding: '16px 30px' }}>
             <ScalingText text="SINGLE PLAYER" className="uppercase tracking-wider font-semibold" />
             <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>

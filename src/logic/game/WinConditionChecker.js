@@ -58,14 +58,14 @@ class WinConditionChecker {
    *
    * @param {Object} playerStates - { player1: playerState, player2: playerState }
    * @param {Object} callbacks - Callback functions { logCallback, setWinnerCallback, showWinnerModalCallback }
-   * @returns {string|null} Winner ('Player 1', 'Player 2', or null if no winner yet)
+   * @returns {string|null} Winner ('player1', 'player2', or null if no winner yet)
    */
   checkGameStateForWinner(playerStates, callbacks) {
     const { logCallback, setWinnerCallback, showWinnerModalCallback } = callbacks;
 
     // Check if Player 1 has met the win condition against Player 2
     if (this.checkWinCondition(playerStates.player2)) {
-      setWinnerCallback('Player 1');
+      setWinnerCallback('player1');
       showWinnerModalCallback(true);
       logCallback({
         player: 'SYSTEM',
@@ -74,12 +74,12 @@ class WinConditionChecker {
         target: 'N/A',
         outcome: 'Player 1 wins!'
       }, 'winConditionCheck');
-      return 'Player 1';
+      return 'player1';
     }
 
     // Check if Player 2 has met the win condition against Player 1
     if (this.checkWinCondition(playerStates.player1)) {
-      setWinnerCallback('Player 2');
+      setWinnerCallback('player2');
       showWinnerModalCallback(true);
       logCallback({
         player: 'SYSTEM',
@@ -88,7 +88,7 @@ class WinConditionChecker {
         target: 'N/A',
         outcome: `${playerStates.player2.name} wins!`
       }, 'winConditionCheck');
-      return 'Player 2';
+      return 'player2';
     }
 
     return null; // No winner yet

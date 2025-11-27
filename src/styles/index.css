@@ -1,0 +1,402 @@
+/* ========================================
+   DRONE WARS - MAIN STYLESHEET
+   Central import file for all styles
+   ======================================== */
+
+/* === ALL IMPORTS FIRST (CSS requirement) === */
+@import './theme.css';           /* CSS custom properties first */
+@import './typography.css';      /* Fonts and text styles */
+@import './buttons.css';         /* Button system */
+@import './panels.css';          /* Panel/card system */
+@import './status.css';          /* Status indicators */
+@import './modals.css';          /* Modal styles */
+@import './animations.css';      /* Keyframes and animations */
+@import './utilities.css';       /* Layout helpers */
+
+/* === TAILWIND (after imports) === */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   GAME-SPECIFIC STYLES
+   (Styles specific to game components that
+   weren't extracted to shared files)
+   ======================================== */
+
+/* === AI OPPONENT CARD === */
+@layer components {
+  .ai-opponent-card {
+    position: relative;
+    height: 220px;
+    overflow: hidden;
+    border: 3px solid #BB2F33;
+    clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    isolation: isolate;
+  }
+
+  .ai-opponent-card:hover {
+    transform: scale(1.02);
+  }
+
+  .ai-opponent-card.selected {
+    border-color: #ef4444;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+  }
+
+  .ai-opponent-card-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    filter: brightness(0.85);
+    transition: filter 0.3s ease, transform 0.3s ease;
+    z-index: -2;
+  }
+
+  .ai-opponent-card.selected .ai-opponent-card-bg {
+    filter: brightness(1.0);
+    transform: scale(1.30);
+  }
+
+  .ai-opponent-card-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.4) 100%);
+    z-index: -1;
+  }
+
+  .ai-opponent-card-content {
+    position: relative;
+    height: 100%;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    z-index: 1;
+  }
+}
+
+/* === GAME BOARD STYLES === */
+.lane-background {
+  background-image: url('/img/Space_Background.png');
+  background-position: center center;
+  background-repeat: no-repeat;
+}
+
+/* === DECK BUILDER STYLES === */
+.deck-builder-table {
+  border-collapse: collapse;
+}
+
+.deck-builder-table th,
+.deck-builder-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(71, 85, 105, 0.5);
+  vertical-align: middle;
+}
+
+.deck-builder-table th {
+  font-family: 'Orbitron', sans-serif;
+  color: #67e8f9;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+}
+
+.deck-builder-table tr:last-child td {
+  border-bottom: none;
+}
+
+.ability-chip {
+  background-color: rgba(168, 85, 247, 0.2);
+  color: #d8b4fe;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  border: 1px solid rgba(168, 85, 247, 0.5);
+}
+
+.deck-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deck-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: rgba(0,0,0,0.2);
+  padding: 8px 12px;
+  border-radius: 4px;
+}
+
+.filter-select {
+  background-color: #1f2937;
+  border: 1px solid #4b5563;
+  color: #d1d5db;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  width: 100%;
+  font-size: 0.875rem;
+}
+
+/* === MENU TITLE ANIMATIONS === */
+@keyframes menuTitleShine {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes menuGradientCycle {
+  0% { background-position: 0% center; }
+  100% { background-position: 300% center; }
+}
+
+@keyframes menuTitleGlitchDistort {
+  0% { transform: translateX(0); }
+  1% { transform: translateX(-2px); }
+  2% { transform: translateX(2px); }
+  3% { transform: translateX(-1px); }
+  4% { transform: translateX(0); }
+  5% { transform: translateX(-2px); }
+  6% { transform: translateX(2px); }
+  7% { transform: translateX(-1px); }
+  8% { transform: translateX(0); }
+  9% { transform: translateX(-2px); }
+  10% { transform: translateX(2px); }
+  11% { transform: translateX(-1px); }
+  12% { transform: translateX(0); }
+  13% { transform: translateX(-2px); }
+  14% { transform: translateX(2px); }
+  15% { transform: translateX(-1px); }
+  16% { transform: translateX(0); }
+  17% { transform: translateX(-2px); }
+  18% { transform: translateX(2px); }
+  19% { transform: translateX(-1px); }
+  20% { transform: translateX(0); }
+  21% { transform: translateX(-2px); }
+  22% { transform: translateX(2px); }
+  23% { transform: translateX(-1px); }
+  24% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  26% { transform: translateX(2px); }
+  27% { transform: translateX(-1px); }
+  28% { transform: translateX(0); }
+  29% { transform: translateX(-2px); }
+  30% { transform: translateX(2px); }
+  31% { transform: translateX(-1px); }
+  32% { transform: translateX(0); }
+  33% { transform: translateX(-2px); }
+  34% { transform: translateX(2px); }
+  35% { transform: translateX(-1px); }
+  36% { transform: translateX(0); }
+  37% { transform: translateX(-2px); }
+  38% { transform: translateX(2px); }
+  39% { transform: translateX(-1px); }
+  40% { transform: translateX(0); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes menuTitleOpacityGlitch {
+  0% { opacity: 1; }
+  5% { opacity: 0.8; }
+  10% { opacity: 1; }
+  15% { opacity: 0.9; }
+  20% { opacity: 1; }
+  25% { opacity: 0.85; }
+  30% { opacity: 1; }
+  35% { opacity: 0.95; }
+  40% { opacity: 1; }
+  45% { opacity: 0.8; }
+  50% { opacity: 1; }
+  55% { opacity: 0.9; }
+  60% { opacity: 1; }
+  65% { opacity: 0.85; }
+  70% { opacity: 1; }
+  75% { opacity: 0.95; }
+  80% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+@keyframes menuScanlineSlow {
+  0% { top: 0; opacity: 0; }
+  5% { opacity: 0.5; }
+  80% { top: 100%; opacity: 0.5; }
+  90% { top: 110%; opacity: 0; }
+  100% { top: 110%; opacity: 0; }
+}
+
+@keyframes menuRGBSplitRed {
+  0% { transform: translateX(0); opacity: 0; }
+  5% { transform: translateX(3px); opacity: 0.8; }
+  15% { transform: translateX(-2px); opacity: 0.7; }
+  25% { transform: translateX(3px); opacity: 0.8; }
+  35% { transform: translateX(-3px); opacity: 0.7; }
+  45% { transform: translateX(2px); opacity: 0.8; }
+  55% { transform: translateX(-2px); opacity: 0.7; }
+  65% { transform: translateX(3px); opacity: 0.8; }
+  75% { transform: translateX(-3px); opacity: 0.7; }
+  85% { transform: translateX(2px); opacity: 0.8; }
+  95% { transform: translateX(-1px); opacity: 0.6; }
+  100% { transform: translateX(0); opacity: 0; }
+}
+
+@keyframes menuRGBSplitBlue {
+  0% { transform: translateX(0); opacity: 0; }
+  5% { transform: translateX(-3px); opacity: 0.8; }
+  15% { transform: translateX(2px); opacity: 0.7; }
+  25% { transform: translateX(-3px); opacity: 0.8; }
+  35% { transform: translateX(3px); opacity: 0.7; }
+  45% { transform: translateX(-2px); opacity: 0.8; }
+  55% { transform: translateX(2px); opacity: 0.7; }
+  65% { transform: translateX(-3px); opacity: 0.8; }
+  75% { transform: translateX(3px); opacity: 0.7; }
+  85% { transform: translateX(-2px); opacity: 0.8; }
+  95% { transform: translateX(1px); opacity: 0.6; }
+  100% { transform: translateX(0); opacity: 0; }
+}
+
+.menu-title-shine {
+  animation: menuTitleShine 8s linear infinite;
+}
+
+.menu-gradient-cycle {
+  animation: menuGradientCycle 6s linear infinite;
+}
+
+.menu-title-glitch-distort {
+  animation: menuTitleGlitchDistort 1.5s ease-in-out 1;
+}
+
+.menu-title-opacity-glitch {
+  animation: menuTitleOpacityGlitch 1.5s ease-in-out 1;
+}
+
+.menu-scanline-slow {
+  animation: menuScanlineSlow 3s linear 1;
+}
+
+.menu-rgb-split-red {
+  animation: menuRGBSplitRed 1s ease-in-out 1;
+}
+
+.menu-rgb-split-blue {
+  animation: menuRGBSplitBlue 1s ease-in-out 1;
+}
+
+/* === CARD BORDER ANIMATIONS === */
+@keyframes cardBorderRotatePurple {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 400% 50%; }
+}
+
+@keyframes cardBorderShimmerSilver {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 400% 400%; }
+}
+
+.card-border-rotate-purple {
+  background: linear-gradient(
+    90deg,
+    rgba(147, 51, 234, 1.0) 0%,
+    rgba(147, 51, 234, 1.0) 10%,
+    rgba(147, 51, 234, 1.0) 20%,
+    rgba(107, 33, 168, 1.0) 30%,
+    rgba(147, 51, 234, 1.0) 40%,
+    rgba(147, 51, 234, 1.0) 50%,
+    rgba(147, 51, 234, 1.0) 60%,
+    rgba(59, 7, 100, 1.0) 70%,
+    rgba(59, 7, 100, 1.0) 80%,
+    rgba(59, 7, 100, 1.0) 90%,
+    rgba(147, 51, 234, 1.0) 100%
+  );
+  background-size: 400% 100%;
+  animation: cardBorderRotatePurple 15s linear infinite;
+}
+
+.card-border-rotate-red {
+  background: linear-gradient(
+    90deg,
+    rgba(239, 68, 68, 1.0) 0%,
+    rgba(239, 68, 68, 1.0) 10%,
+    rgba(239, 68, 68, 1.0) 20%,
+    rgba(185, 28, 28, 1.0) 30%,
+    rgba(239, 68, 68, 1.0) 40%,
+    rgba(239, 68, 68, 1.0) 50%,
+    rgba(239, 68, 68, 1.0) 60%,
+    rgba(127, 29, 29, 1.0) 70%,
+    rgba(127, 29, 29, 1.0) 80%,
+    rgba(127, 29, 29, 1.0) 90%,
+    rgba(239, 68, 68, 1.0) 100%
+  );
+  background-size: 400% 100%;
+  animation: cardBorderRotatePurple 15s linear infinite;
+}
+
+.card-border-rotate-cyan {
+  background: linear-gradient(
+    90deg,
+    rgba(34, 211, 238, 1.0) 0%,
+    rgba(34, 211, 238, 1.0) 10%,
+    rgba(34, 211, 238, 1.0) 20%,
+    rgba(8, 145, 178, 1.0) 30%,
+    rgba(34, 211, 238, 1.0) 40%,
+    rgba(34, 211, 238, 1.0) 50%,
+    rgba(34, 211, 238, 1.0) 60%,
+    rgba(22, 78, 99, 1.0) 70%,
+    rgba(22, 78, 99, 1.0) 80%,
+    rgba(22, 78, 99, 1.0) 90%,
+    rgba(34, 211, 238, 1.0) 100%
+  );
+  background-size: 400% 100%;
+  animation: cardBorderRotatePurple 15s linear infinite;
+}
+
+.card-border-rotate-green {
+  background: linear-gradient(
+    90deg,
+    rgba(16, 185, 129, 1.0) 0%,
+    rgba(16, 185, 129, 1.0) 10%,
+    rgba(16, 185, 129, 1.0) 20%,
+    rgba(5, 150, 105, 1.0) 30%,
+    rgba(16, 185, 129, 1.0) 40%,
+    rgba(16, 185, 129, 1.0) 50%,
+    rgba(16, 185, 129, 1.0) 60%,
+    rgba(6, 78, 59, 1.0) 70%,
+    rgba(6, 78, 59, 1.0) 80%,
+    rgba(6, 78, 59, 1.0) 90%,
+    rgba(16, 185, 129, 1.0) 100%
+  );
+  background-size: 400% 100%;
+  animation: cardBorderRotatePurple 15s linear infinite;
+}
+
+.card-border-shimmer-silver {
+  background: linear-gradient(
+    135deg,
+    rgba(148, 163, 184, 1.0) 0%,
+    rgba(148, 163, 184, 1.0) 10%,
+    rgba(148, 163, 184, 1.0) 15%,
+    rgba(203, 213, 225, 1.0) 20%,
+    rgba(241, 245, 249, 1.0) 25%,
+    rgba(203, 213, 225, 1.0) 30%,
+    rgba(148, 163, 184, 1.0) 35%,
+    rgba(148, 163, 184, 1.0) 40%,
+    rgba(148, 163, 184, 1.0) 100%
+  );
+  background-size: 400% 400%;
+  animation: cardBorderShimmerSilver 12s linear infinite;
+}
+
+.card-border-grey {
+  background: linear-gradient(
+    90deg,
+    rgba(107, 114, 128, 0.8) 0%,
+    rgba(107, 114, 128, 0.8) 33%,
+    rgba(75, 85, 99, 0.8) 66%,
+    rgba(107, 114, 128, 0.8) 100%
+  );
+}

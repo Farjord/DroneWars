@@ -1007,6 +1007,16 @@ class GameFlowManager {
       const currentState = this.gameStateManager.getState();
       const gameMode = this.gameStateManager.get('gameMode');
 
+      // DIAGNOSTIC: Log deck sizes at entry for single-player debugging
+      debugLog('EXTRACTION', '🔍 processRoundInitialization entry - state check:', {
+        player1DeckSize: currentState.player1?.deck?.length || 0,
+        player1HandSize: currentState.player1?.hand?.length || 0,
+        player2DeckSize: currentState.player2?.deck?.length || 0,
+        player2HandSize: currentState.player2?.hand?.length || 0,
+        gameMode: gameMode,
+        roundNumber: currentState.roundNumber
+      });
+
       // ========================================
       // STEP 1: Game Stage Transition & Round Number Initialization
       // ========================================
@@ -1134,8 +1144,22 @@ class GameFlowManager {
 
       // Get FRESH state after energy reset to avoid overwriting energy/deployment budget updates
       const updatedGameState = this.gameStateManager.getState();
+
+      // DIAGNOSTIC: Log deck sizes after energyReset
+      debugLog('EXTRACTION', '🔍 After energyReset - state check:', {
+        player1DeckSize: updatedGameState.player1?.deck?.length || 0,
+        player1HandSize: updatedGameState.player1?.hand?.length || 0
+      });
+
       const { performAutomaticDraw } = await import('../utils/cardDrawUtils.js');
       const drawResult = performAutomaticDraw(updatedGameState, this.gameStateManager);
+
+      // DIAGNOSTIC: Log draw results
+      debugLog('EXTRACTION', '🔍 After performAutomaticDraw:', {
+        player1DeckSize: drawResult.player1?.deck?.length || 0,
+        player1HandSize: drawResult.player1?.hand?.length || 0,
+        drawnCards: drawResult.drawResults?.player1?.drawnCards?.map(c => c?.name) || []
+      });
 
       // Update game state with draw results via ActionProcessor
       await this.actionProcessor.queueAction({

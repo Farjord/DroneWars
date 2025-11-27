@@ -1,0 +1,173 @@
+/* ========================================
+   DETECTION METER STYLES
+   Sci-Fi Data Screen Aesthetic
+   ======================================== */
+
+.detection-meter {
+  background: transparent;
+  border: none;
+  padding: 0;
+  min-width: 100%;
+  font-family: 'Exo', sans-serif;
+}
+
+/* SVG icon base styling */
+.svg-icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.icon-safe { color: #10b981; }
+.icon-warning { color: #f59e0b; }
+.icon-critical { color: #ef4444; }
+
+/* Header */
+.meter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.meter-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(6, 182, 212, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.meter-value {
+  font-size: 16px;
+  font-weight: 700;
+  transition: color 0.3s ease;
+  font-family: 'Exo', monospace;
+}
+
+/* Progress bar */
+.meter-bar-container {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  background: rgba(17, 24, 39, 0.8);
+  border-radius: 1px;
+  overflow: visible;
+  margin-bottom: 10px;
+  border: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+.meter-bar-fill {
+  height: 100%;
+  transition: width 0.5s ease, background-color 0.3s ease;
+  border-radius: 0;
+  box-shadow: 0 0 10px currentColor;
+  position: relative;
+}
+
+/* Glow effect at the end of the bar */
+.meter-bar-fill::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -2px;
+  bottom: -2px;
+  width: 4px;
+  background: inherit;
+  box-shadow: 0 0 12px currentColor, 0 0 20px currentColor;
+}
+
+/* Threshold markers */
+.meter-threshold-marker {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  background: rgba(6, 182, 212, 0.5);
+  transform: translateX(-0.5px);
+}
+
+.meter-threshold-marker::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 5px;
+  height: 5px;
+  background: rgba(6, 182, 212, 0.3);
+  border-radius: 50%;
+}
+
+/* Threshold label */
+.meter-threshold {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: color 0.3s ease;
+}
+
+.meter-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.meter-threshold-text {
+  flex: 1;
+}
+
+/* Warning message */
+.meter-warning {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.08) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-left: 3px solid rgba(239, 68, 68, 0.8);
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fca5a5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Color classes */
+.meter-low {
+  color: #10b981;
+  background-color: #10b981;
+}
+
+.meter-medium {
+  color: #f59e0b;
+  background-color: #f59e0b;
+}
+
+.meter-high {
+  color: #ef4444;
+  background-color: #ef4444;
+}
+
+/* Ensure text elements don't have colored backgrounds */
+.meter-value.meter-low,
+.meter-value.meter-medium,
+.meter-value.meter-high,
+.meter-threshold.meter-low,
+.meter-threshold.meter-medium,
+.meter-threshold.meter-high {
+  background-color: transparent;
+}

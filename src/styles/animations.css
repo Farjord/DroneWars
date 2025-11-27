@@ -1,0 +1,421 @@
+/* ========================================
+   ANIMATIONS
+   Shared keyframes and animation utilities
+   ======================================== */
+
+/* === PULSE ANIMATIONS === */
+
+/* Generic glow pulse */
+@keyframes pulse-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 2px rgba(255, 255, 0, 0.7))
+            drop-shadow(0 0 3px rgba(255, 0, 0, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 4px rgba(255, 255, 0, 1))
+            drop-shadow(0 0 7px rgba(255, 0, 0, 0.8));
+  }
+}
+
+/* Guardian shield pulse */
+@keyframes guardian-pulse {
+  0%, 100% {
+    box-shadow: 0 0 8px 2px rgba(0, 191, 255, 0.6),
+                0 0 16px 4px rgba(0, 150, 255, 0.4);
+  }
+  25% {
+    box-shadow: 0 0 10px 3px rgba(255, 255, 255, 0.8),
+                0 0 20px 5px rgba(0, 191, 255, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 12px 3px rgba(0, 191, 255, 1),
+                0 0 24px 6px rgba(0, 150, 255, 0.8);
+  }
+  75% {
+    box-shadow: 0 0 10px 3px rgba(255, 255, 255, 0.8),
+                0 0 20px 5px rgba(0, 191, 255, 0.6);
+  }
+}
+
+.interceptor-glow {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+
+.guardian-glow {
+  animation: guardian-pulse 2s infinite ease-in-out;
+}
+
+/* === SHAKE ANIMATIONS === */
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+@keyframes shake-damage {
+  0%, 100% { transform: translateX(0) rotate(0deg); }
+  10% { transform: translateX(-8px) rotate(-1deg); }
+  20% { transform: translateX(8px) rotate(1deg); }
+  30% { transform: translateX(-6px) rotate(-1deg); }
+  40% { transform: translateX(6px) rotate(1deg); }
+  50% { transform: translateX(-4px) rotate(-0.5deg); }
+  60% { transform: translateX(4px) rotate(0.5deg); }
+  70% { transform: translateX(-2px) rotate(0deg); }
+  80% { transform: translateX(2px) rotate(0deg); }
+  90% { transform: translateX(-1px) rotate(0deg); }
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.animate-shake-damage {
+  animation: shake-damage 0.5s ease-in-out;
+  filter: brightness(1.3) saturate(1.5);
+}
+
+/* === FLOAT/SWAY ANIMATIONS === */
+
+@keyframes subtleSway {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  25% { transform: translateY(-2px) rotate(0.5deg); }
+  75% { transform: translateY(-2px) rotate(-0.5deg); }
+}
+
+.drone-float {
+  animation: subtleSway 5s ease-in-out infinite;
+}
+
+/* === EXPLOSION ANIMATIONS === */
+
+@keyframes explode {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}
+
+.explosion {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  background-image: radial-gradient(circle, rgba(255,159,64,1) 0%, rgba(255,87,34,0.8) 40%, rgba(255,255,255,0) 70%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  animation: explode 1s ease-out forwards;
+  pointer-events: none;
+  z-index: 50;
+}
+
+/* === LASER/EFFECT ANIMATIONS === */
+
+@keyframes laserFade {
+  0% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes laserPulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.5); }
+}
+
+@keyframes energyPulse {
+  0% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(2); opacity: 0.5; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
+/* === NUKE ANIMATIONS === */
+
+@keyframes nukeExpand {
+  0% { transform: scale(0.1); opacity: 1; }
+  50% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+
+@keyframes nukeFlash {
+  0% { opacity: 0.8; transform: scale(0.5); }
+  10% { opacity: 1; transform: scale(1); }
+  40% { opacity: 0.6; transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+@keyframes explosionParticle {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--tx), var(--ty)) scale(0.5);
+  }
+}
+
+/* === TELEPORT ANIMATIONS === */
+
+@keyframes teleportExpand {
+  0% { width: 20px; height: 20px; opacity: 1; }
+  100% { width: 120px; height: 180px; opacity: 0; }
+}
+
+@keyframes teleportRing {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes teleportParticle {
+  0% {
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateX(80px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateX(0px) scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes teleportGlow {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  50% { opacity: 1; transform: translate(-50%, -50%) scale(1.5); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* === CARD REVEAL ANIMATIONS === */
+
+@keyframes cardRevealLabelShow {
+  0% { transform: translateY(-20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes cardRevealDissolve {
+  0% { opacity: 1; filter: brightness(1); }
+  50% { opacity: 0.7; filter: brightness(1.5) saturate(1.5); }
+  100% { opacity: 0; filter: brightness(2) saturate(2); transform: scale(0.95); }
+}
+
+@keyframes cardRevealScanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.card-reveal-label-show {
+  animation: cardRevealLabelShow 0.3s ease-out forwards;
+}
+
+.card-reveal-dissolve {
+  animation: cardRevealDissolve 0.3s ease-out forwards;
+}
+
+.card-reveal-scanline-active {
+  animation: cardRevealScanline 1.5s linear infinite;
+}
+
+/* === PHASE ANNOUNCEMENT ANIMATIONS === */
+
+@keyframes phaseAnnouncementShine {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes phaseAnnouncementScanline {
+  0% { top: -10%; }
+  100% { top: 110%; }
+}
+
+.phase-announcement-text {
+  position: relative;
+}
+
+.phase-announcement-shine {
+  animation: phaseAnnouncementShine 2s linear infinite;
+}
+
+.phase-announcement-scanline-active {
+  animation: phaseAnnouncementScanline 2s linear infinite;
+}
+
+/* === GAME END ANIMATIONS === */
+
+@keyframes defeatGlow {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(255, 50, 50, 0.8),
+                 0 0 40px rgba(255, 50, 50, 0.6),
+                 0 0 60px rgba(255, 50, 50, 0.4);
+  }
+  50% {
+    text-shadow: 0 0 30px rgba(255, 50, 50, 1),
+                 0 0 60px rgba(255, 50, 50, 0.8),
+                 0 0 90px rgba(255, 50, 50, 0.6);
+  }
+}
+
+@keyframes screenFlicker {
+  0%, 100% { opacity: 1; }
+  10% { opacity: 0.8; }
+  20% { opacity: 1; }
+  30% { opacity: 0.9; }
+  40% { opacity: 1; }
+  50% { opacity: 0.85; }
+  60% { opacity: 1; }
+  70% { opacity: 0.9; }
+  80% { opacity: 1; }
+  90% { opacity: 0.95; }
+}
+
+@keyframes scanlineShutdown {
+  0% { top: -100%; opacity: 1; }
+  80% { opacity: 0.8; }
+  100% { top: 100%; opacity: 0; }
+}
+
+@keyframes screenDistort {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  50% { transform: translateX(2px); }
+  75% { transform: translateX(-1px); }
+}
+
+.defeat-glow {
+  animation: defeatGlow 2s ease-in-out infinite;
+}
+
+.screen-flicker {
+  animation: screenFlicker 0.3s ease-in-out infinite;
+}
+
+.scanline-shutdown {
+  animation: scanlineShutdown 4s ease-out forwards;
+}
+
+.screen-distort {
+  animation: screenDistort 0.1s ease-in-out infinite;
+}
+
+/* === HEAL EFFECT ANIMATIONS === */
+
+@keyframes healFloat {
+  0% { transform: translate(var(--start-x), var(--start-y)); opacity: 0; }
+  10% { opacity: 1; }
+  80% { opacity: 0.8; }
+  100% { transform: translate(var(--start-x), calc(var(--start-y) - var(--float-distance))); opacity: 0; }
+}
+
+@keyframes healPulse {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  20% { opacity: 0.8; }
+  50% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.6; }
+  100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+}
+
+@keyframes healSparkle {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  25% { transform: scale(1.3); opacity: 0.7; }
+  50% { transform: scale(0.8); opacity: 1; }
+  75% { transform: scale(1.2); opacity: 0.7; }
+}
+
+/* === GENERIC UTILITY ANIMATIONS === */
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-bounce {
+  animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(-25%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+  50% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out forwards;
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* === HANGAR MAP OVERLAY ANIMATIONS === */
+
+@keyframes scanlines {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 100%; }
+}
+
+@keyframes radarSweep {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Active hex sector pulsing glow */
+@keyframes hexPulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Radar ping expanding from active hexes */
+@keyframes hexRadarPing {
+  0% {
+    r: 20;
+    opacity: 0.7;
+    stroke-width: 3;
+  }
+  100% {
+    r: 60;
+    opacity: 0;
+    stroke-width: 1;
+  }
+}
+

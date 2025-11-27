@@ -155,16 +155,13 @@ function LobbyScreen() {
       .filter(item => item.card); // Filter out any cards that weren't found
 
     // Convert ship placement to shipComponents format
-    // placement is [left, middle, right]
-    // Need to map to component IDs and lanes
+    // placement is [lane0, lane1, lane2] with legacy keys
     const shipComponents = {};
-    const laneMap = ['l', 'm', 'r'];
+    const laneMap = ['l', 'm', 'r']; // lane0=left, lane1=middle, lane2=right
 
-    ai.shipDeployment.placement.forEach((sectionKey, index) => {
-      const component = shipComponentCollection.find(c => c.key === sectionKey);
-      if (component) {
-        shipComponents[component.id] = laneMap[index];
-      }
+    ai.shipDeployment.placement.forEach((key, index) => {
+      // placement array contains legacy keys directly (e.g., 'bridge', 'powerCell')
+      shipComponents[key] = laneMap[index];
     });
 
     return { drones, cards, shipComponents };
@@ -285,7 +282,7 @@ function LobbyScreen() {
               gap: '1.5rem',
               marginBottom: '2rem'
             }}>
-              {aiPersonalities.map((ai) => (
+              {aiPersonalities.filter(ai => ai.modes && ai.modes.includes('vs')).map((ai) => (
                 <div
                   key={ai.name}
                   className={`ai-opponent-card ${selectedAI?.name === ai.name ? 'selected' : ''}`}

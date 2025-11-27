@@ -40,8 +40,8 @@ const DEBUG_CONFIG = {
     RESOURCE_RESET: false,        // Energy and deployment budget reset between rounds (ENABLED for deployment budget debugging)
     CARDS: false,                // Card play and effects (ENABLED for Railgun investigation)
     RAILGUN_ANIMATION: false,    // Railgun-specific animation investigation (NEW)
-    HAND_VIEW: true,            // Hand display and card interaction (ENABLED for mandatoryAction debugging)
-    CARD_PLAY: true,             // Card playability and clicking (ENABLED for mandatoryAction debugging)
+    HAND_VIEW: false,            // Hand display and card interaction (ENABLED for mandatoryAction debugging)
+    CARD_PLAY: false,             // Card playability and clicking (ENABLED for mandatoryAction debugging)
     SHIELD_CLICKS: false,       // Shield allocation click tracking
     BUTTON_CLICKS: false,       // Button click tracking and effects
     MOVEMENT_LANES: false,      // Movement card lane highlighting diagnostics
@@ -52,6 +52,8 @@ const DEBUG_CONFIG = {
     SUBTITLE_CALC: false,       // Phase animation subtitle calculation (DISABLED - already debugged)
     FIRST_PLAYER: false,        // First player determination and seeded random (DISABLED for clean logs)
     SHIP_ABILITY: true,         // Ship ability execution and turn ending (ENABLED for debugging Recalculate/Recall)
+    EXTRACTION: true,           // Single-player extraction mode (hangar, tactical map, deployment)
+    ENCOUNTER: true,            // Random encounter rolls and combat triggers (ENABLED for verification)
 
     // Effect System Refactoring - Modular Processor Logging
     EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)

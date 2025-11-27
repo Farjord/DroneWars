@@ -5,6 +5,7 @@ const shipComponentCollection = [
     type: 'Bridge',
     name: 'Standard Command Bridge',
     key: 'bridge', // Legacy key for backward compatibility
+    rarity: 'Common',
     hull: 10, maxHull: 10, shields: 3, allocatedShields: 3,
     description: 'The command center of your ship.',
     thresholds: { damaged: 5, critical: 0 },
@@ -30,6 +31,7 @@ const shipComponentCollection = [
     type: 'Bridge',
     name: 'Tactical Command Bridge',
     key: 'tacticalBridge',
+    rarity: 'Uncommon',
     hull: 10, maxHull: 10, shields: 3, allocatedShields: 3,
     description: 'Advanced command center with targeting capabilities.',
     thresholds: { damaged: 5, critical: 0 },
@@ -60,6 +62,7 @@ const shipComponentCollection = [
     type: 'Power Cell',
     name: 'Standard Power Cell',
     key: 'powerCell', // Legacy key for backward compatibility
+    rarity: 'Common',
     hull: 10, maxHull: 10, shields: 3, allocatedShields: 3,
     description: 'Generates energy to power your abilities.',
     thresholds: { damaged: 5, critical: 0 },
@@ -85,6 +88,7 @@ const shipComponentCollection = [
     type: 'Drone Control Hub',
     name: 'Standard Drone Control Hub',
     key: 'droneControlHub', // Legacy key for backward compatibility
+    rarity: 'Common',
     hull: 10, maxHull: 10, shields: 3, allocatedShields: 3,
     description: 'Controls your drone fleet.',
     thresholds: { damaged: 5, critical: 0 },

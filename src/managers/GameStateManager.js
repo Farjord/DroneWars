@@ -12,6 +12,11 @@ import OptimisticActionService from './OptimisticActionService.js';
 import fullDroneCollection from '../data/droneData.js';
 import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
+import { createNewSave } from '../data/saveGameSchema.js';
+import { generateMapData } from '../utils/mapGenerator.js';
+import CombatOutcomeProcessor from '../logic/singlePlayer/CombatOutcomeProcessor.js';
+import { shipComponentCollection } from '../data/shipData.js';
+import fullCardCollection from '../data/cardData.js';
 // PhaseManager dependency removed - using direct phase checks
 
 class GameStateManager {
@@ -65,6 +70,15 @@ class GameStateManager {
 
       // --- COMMITMENTS (for simultaneous phases) ---
       commitments: {},
+
+      // --- SINGLE-PLAYER STATE (Extraction Mode) ---
+      singlePlayerProfile: null,         // Player profile data
+      singlePlayerInventory: {},         // Card inventory (master quantities)
+      singlePlayerDroneInstances: [],    // Drone instances with damage tracking
+      singlePlayerShipComponentInstances: [],  // Ship component instances with hull tracking
+      singlePlayerDiscoveredCards: [],   // Card discovery states (owned/discovered/undiscovered)
+      singlePlayerShipSlots: [],         // 6 ship slots
+      currentRunState: null,             // Active run state or null
     };
 
     // Initialize action processor using singleton pattern
@@ -1439,8 +1453,21 @@ class GameStateManager {
 
   /**
    * Set winner
+   * For single-player extraction mode, processes combat outcome (victory/defeat)
    */
   setWinner(winnerId) {
+    // Check if this is single-player extraction mode combat
+    const currentState = this.getState();
+    if (currentState.gameMode === 'singlePlayer' && currentState.currentRunState) {
+      debugLog('SP_COMBAT', `Single-player combat ended. Winner: ${winnerId}`);
+
+      // Just set winner - WinnerModal will handle transition via button click
+      // CombatOutcomeProcessor.processCombatEnd() is called from WinnerModal
+      this.setState({ winner: winnerId }, 'GAME_ENDED');
+      return;
+    }
+
+    // Standard multiplayer/local mode
     this.setState({ winner: winnerId }, 'GAME_ENDED');
   }
 
@@ -1478,6 +1505,349 @@ class GameStateManager {
    */
   clearActionQueue() {
     this.actionProcessor.clearQueue();
+  }
+
+  // ========================================
+  // SINGLE-PLAYER (EXTRACTION MODE) METHODS
+  // ========================================
+
+  /**
+   * Create new single-player profile
+   * Initializes a new save with default values
+   */
+  createNewSinglePlayerProfile() {
+    const newSave = createNewSave();
+    this.loadSinglePlayerSave(newSave);
+    console.log('New single-player profile created');
+  }
+
+  /**
+   * Load single-player save
+   * @param {Object} saveData - Save data to load
+   */
+  loadSinglePlayerSave(saveData) {
+    this.setState({
+      singlePlayerProfile: saveData.playerProfile,
+      singlePlayerInventory: saveData.inventory,
+      singlePlayerDroneInstances: saveData.droneInstances,
+      singlePlayerShipComponentInstances: saveData.shipComponentInstances,
+      singlePlayerDiscoveredCards: saveData.discoveredCards,
+      singlePlayerShipSlots: saveData.shipSlots,
+      currentRunState: saveData.currentRunState,
+    });
+
+    console.log('Single-player save loaded');
+  }
+
+  /**
+   * Get current save data for serialization
+   * @returns {Object} Save data
+   */
+  getSaveData() {
+    return {
+      playerProfile: this.state.singlePlayerProfile,
+      inventory: this.state.singlePlayerInventory,
+      droneInstances: this.state.singlePlayerDroneInstances,
+      shipComponentInstances: this.state.singlePlayerShipComponentInstances,
+      discoveredCards: this.state.singlePlayerDiscoveredCards,
+      shipSlots: this.state.singlePlayerShipSlots,
+      currentRunState: this.state.currentRunState,
+    };
+  }
+
+  /**
+   * Update card discovery state
+   * @param {string} cardId - Card ID
+   * @param {string} newState - New state: 'owned' | 'discovered' | 'undiscovered'
+   */
+  updateCardDiscoveryState(cardId, newState) {
+    const validStates = ['owned', 'discovered', 'undiscovered'];
+    if (!validStates.includes(newState)) {
+      throw new Error(`Invalid discovery state: ${newState}`);
+    }
+
+    const discoveredCards = [...this.state.singlePlayerDiscoveredCards];
+    const index = discoveredCards.findIndex(entry => entry.cardId === cardId);
+
+    if (index >= 0) {
+      discoveredCards[index] = { ...discoveredCards[index], state: newState };
+    } else {
+      // Add new entry if card doesn't exist
+      discoveredCards.push({ cardId, state: newState });
+    }
+
+    this.setState({ singlePlayerDiscoveredCards: discoveredCards });
+    console.log(`Card ${cardId} discovery state updated to ${newState}`);
+  }
+
+  /**
+   * Add card to discovered cards when unlocked from pack
+   * @param {string} cardId - Card ID
+   */
+  addDiscoveredCard(cardId) {
+    this.updateCardDiscoveryState(cardId, 'discovered');
+  }
+
+  /**
+   * Add card to inventory (from loot, crafting, etc.)
+   * @param {string} cardId - Card ID
+   * @param {number} quantity - Quantity to add (default 1)
+   */
+  addToInventory(cardId, quantity = 1) {
+    const newInventory = {
+      ...this.state.singlePlayerInventory,
+      [cardId]: (this.state.singlePlayerInventory[cardId] || 0) + quantity
+    };
+
+    this.setState({ singlePlayerInventory: newInventory });
+
+    // Also mark as owned in discovery
+    this.updateCardDiscoveryState(cardId, 'owned');
+
+    console.log(`Added ${quantity}x ${cardId} to inventory`);
+  }
+
+  /**
+   * Add ship component instance
+   * @param {Object} instance - Component instance { instanceId, componentId, shipSlotId, currentHull, maxHull }
+   */
+  addShipComponentInstance(instance) {
+    const instances = [...this.state.singlePlayerShipComponentInstances];
+    instances.push(instance);
+    this.setState({ singlePlayerShipComponentInstances: instances });
+    console.log('Ship component instance added:', instance);
+  }
+
+  /**
+   * Update ship component hull
+   * @param {string} instanceId - Instance ID
+   * @param {number} newHull - New hull value
+   */
+  updateShipComponentHull(instanceId, newHull) {
+    const instances = [...this.state.singlePlayerShipComponentInstances];
+    const index = instances.findIndex(inst => inst.instanceId === instanceId);
+
+    if (index >= 0) {
+      instances[index] = { ...instances[index], currentHull: newHull };
+      this.setState({ singlePlayerShipComponentInstances: instances });
+      console.log(`Ship component ${instanceId} hull updated to ${newHull}`);
+    } else {
+      console.warn(`Ship component instance ${instanceId} not found`);
+    }
+  }
+
+  /**
+   * Get ship component instance
+   * @param {string} instanceId - Instance ID
+   * @returns {Object|null} Component instance or null if not found
+   */
+  getShipComponentInstance(instanceId) {
+    return this.state.singlePlayerShipComponentInstances.find(inst => inst.instanceId === instanceId) || null;
+  }
+
+  /**
+   * Start extraction run
+   * @param {number} shipSlotId - Ship slot ID to use (0-5)
+   * @param {number} mapTier - Map tier (1-3)
+   * @param {number} entryGateId - Selected entry gate ID (0-indexed)
+   * @param {Object} preGeneratedMap - Optional pre-generated map data from Hangar preview
+   */
+  startRun(shipSlotId, mapTier, entryGateId = 0, preGeneratedMap = null) {
+    const shipSlot = this.state.singlePlayerShipSlots.find(s => s.id === shipSlotId);
+    if (!shipSlot) {
+      throw new Error('Invalid ship slot ID');
+    }
+
+    if (shipSlot.status !== 'active') {
+      throw new Error(`Ship slot ${shipSlotId} is not active (status: ${shipSlot.status})`);
+    }
+
+    // Use pre-generated map if provided (from Hangar preview), otherwise generate new
+    let mapData;
+    if (preGeneratedMap && preGeneratedMap.hexes) {
+      mapData = preGeneratedMap;
+    } else {
+      // Fallback: Generate map using deterministic seed
+      const seed = Date.now(); // TODO: Use profile-based seed for reproducibility
+      const mapType = 'GENERIC'; // TODO: Support map type selection in Phase 4+
+      mapData = generateMapData(seed, mapTier, mapType);
+    }
+
+    // Set player starting position to selected entry gate
+    const startingGate = mapData.gates[entryGateId] || mapData.gates[0];
+
+    // Build per-section hull tracking from ship slot components
+    const runShipSections = {};
+    let totalHull = 0;
+    let maxHull = 0;
+
+    if (shipSlot?.shipComponents) {
+      Object.entries(shipSlot.shipComponents).forEach(([componentId, lane]) => {
+        const component = shipComponentCollection.find(c => c.id === componentId);
+        if (component) {
+          // Create section with full hull
+          runShipSections[component.type] = {
+            id: componentId,
+            name: component.name,
+            type: component.type,
+            hull: component.hull,
+            maxHull: component.maxHull || component.hull,
+            lane: lane
+          };
+          totalHull += component.hull;
+          maxHull += component.maxHull || component.hull;
+        }
+      });
+    }
+
+    // Fallback to default sections if no components defined
+    if (Object.keys(runShipSections).length === 0) {
+      runShipSections.bridge = { type: 'bridge', hull: 10, maxHull: 10, lane: 1 };
+      runShipSections.powerCell = { type: 'powerCell', hull: 10, maxHull: 10, lane: 2 };
+      runShipSections.droneControlHub = { type: 'droneControlHub', hull: 10, maxHull: 10, lane: 3 };
+      totalHull = 30;
+      maxHull = 30;
+    }
+
+    const runState = {
+      shipSlotId,
+      mapTier,
+      detection: mapData.baseDetection || 0,  // Use map's starting detection
+      playerPosition: startingGate,
+      // Track insertion gate separately (gates[0] = entry, gates[1+] = extraction)
+      insertionGate: { q: startingGate.q, r: startingGate.r },
+      collectedLoot: [],
+      creditsEarned: 0,
+      mapData,
+      // Per-section hull tracking for damage persistence across combats
+      shipSections: runShipSections,
+      currentHull: totalHull,
+      maxHull: maxHull,
+
+      // Run statistics tracking
+      runStartTime: Date.now(),
+      hexesMoved: 0,
+      hexesExplored: [{ q: startingGate.q, r: startingGate.r }], // Start with insertion gate
+      poisVisited: [],
+      combatsWon: 0,
+      combatsLost: 0,
+      damageDealtToEnemies: 0,
+    };
+
+    this.setState({
+      currentRunState: runState,
+      appState: 'tacticalMap'
+    });
+    console.log('Run started:', runState);
+    console.log('Map generated:', mapData.name, `(${mapData.poiCount} PoIs, ${mapData.gateCount} gates)`);
+  }
+
+  /**
+   * End extraction run
+   * @param {boolean} success - True if successful extraction, false if MIA
+   */
+  endRun(success = true) {
+    const runState = this.state.currentRunState;
+    if (!runState) {
+      console.warn('No active run to end');
+      return;
+    }
+
+    // Generate run summary BEFORE clearing state
+    const hexesExploredCount = runState.hexesExplored?.length || 0;
+    const totalHexes = runState.mapData?.hexes?.length || 1;
+    const runDuration = Date.now() - (runState.runStartTime || Date.now());
+
+    // Get full card data for collected cards
+    const cardsCollected = (runState.collectedLoot || [])
+      .filter(item => item.type === 'card')
+      .map(item => {
+        const fullCard = fullCardCollection.find(c => c.id === item.cardId);
+        return fullCard ? { ...fullCard, source: item.source } : null;
+      })
+      .filter(Boolean);
+
+    const lastRunSummary = {
+      success,
+      mapName: runState.mapData?.name || 'Unknown Sector',
+      mapTier: runState.mapTier || 1,
+
+      // Movement & Exploration
+      hexesMoved: runState.hexesMoved || 0,
+      hexesExplored: hexesExploredCount,
+      totalHexes,
+      mapCompletionPercent: ((hexesExploredCount / totalHexes) * 100).toFixed(1),
+
+      // POIs & Loot
+      poisVisited: runState.poisVisited?.length || 0,
+      totalPois: runState.mapData?.poiCount || 0,
+      cardsCollected, // Full card objects for display
+      creditsEarned: runState.creditsEarned || 0,
+
+      // Combat
+      combatsWon: runState.combatsWon || 0,
+      combatsLost: runState.combatsLost || 0,
+      damageDealtToEnemies: runState.damageDealtToEnemies || 0,
+
+      // Ship Status
+      hullDamageTaken: (runState.maxHull || 0) - (runState.currentHull || 0),
+      finalHull: runState.currentHull || 0,
+      maxHull: runState.maxHull || 0,
+
+      // Time
+      runDuration,
+
+      // Detection
+      finalDetection: runState.detection || 0,
+    };
+
+    console.log('Run summary generated:', lastRunSummary);
+
+    if (success) {
+      // Transfer loot to inventory
+      runState.collectedLoot.forEach(item => {
+        if (item.type === 'card') {
+          const cardId = item.cardId;
+          this.state.singlePlayerInventory[cardId] =
+            (this.state.singlePlayerInventory[cardId] || 0) + 1;
+        } else if (item.type === 'blueprint') {
+          // Add to unlocked blueprints
+          const blueprintId = item.blueprintId;
+          if (!this.state.singlePlayerProfile.unlockedBlueprints.includes(blueprintId)) {
+            this.state.singlePlayerProfile.unlockedBlueprints.push(blueprintId);
+          }
+        }
+      });
+
+      // Add credits
+      this.state.singlePlayerProfile.credits += runState.creditsEarned;
+
+      // Update statistics
+      this.state.singlePlayerProfile.stats.runsCompleted++;
+      this.state.singlePlayerProfile.stats.totalCreditsEarned += runState.creditsEarned;
+
+      console.log('Run ended successfully - loot transferred');
+    } else {
+      // MIA: Wipe loot, mark slot
+      const shipSlot = this.state.singlePlayerShipSlots.find(
+        s => s.id === runState.shipSlotId
+      );
+      // Slot 0 (Starter Deck) never goes MIA - player just loses loot
+      if (shipSlot && shipSlot.id !== 0) {
+        shipSlot.status = 'mia';
+      }
+
+      // Update statistics
+      this.state.singlePlayerProfile.stats.runsLost++;
+
+      console.log('Run ended - MIA protocol triggered');
+    }
+
+    // Clear run state and set summary for display at hangar
+    this.setState({
+      currentRunState: null,
+      lastRunSummary
+    });
   }
 }
 

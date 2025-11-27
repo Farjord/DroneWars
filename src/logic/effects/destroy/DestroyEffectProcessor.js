@@ -10,6 +10,7 @@
 import BaseEffectProcessor from '../BaseEffectProcessor.js';
 import { getLaneOfDrone } from '../../utils/gameEngineUtils.js';
 import { gameEngine } from '../../gameLogic.js';
+import { calculateEffectiveStats } from '../../statsCalculator.js';
 import { buildDefaultDestroyAnimation } from './animations/DefaultDestroyAnimation.js';
 import { buildNukeAnimation } from './animations/NukeAnimation.js';
 import { debugLog } from '../../../utils/debugLogger.js';
@@ -41,7 +42,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
   process(effect, context) {
     this.logProcessStart(effect, context);
 
-    const { actingPlayerId, playerStates, target, card } = context;
+    const { actingPlayerId, playerStates, target, card, placedSections } = context;
     const newPlayerStates = this.clonePlayerStates(playerStates);
     const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
 
@@ -51,7 +52,7 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     // Route based on effect scope
     if (effect.scope === 'FILTERED' && target.id && target.id.startsWith('lane') && effect.filter) {
       // FILTERED scope: Destroy multiple drones in a lane based on criteria
-      const result = this.processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card);
+      const result = this.processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card, placedSections);
       destroyedDrones.push(...result.destroyedDrones);
       animationEvents.push(...result.animationEvents);
 
@@ -108,13 +109,14 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
    *
    * @private
    */
-  processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card) {
+  processFilteredDestroy(effect, target, actingPlayerId, newPlayerStates, card, placedSections) {
     const laneId = target.id;
     const affinity = card?.targeting?.affinity || effect.affinity;
     const targetPlayer = affinity === 'ENEMY'
       ? (actingPlayerId === 'player1' ? 'player2' : 'player1')
       : actingPlayerId;
     const targetPlayerState = newPlayerStates[targetPlayer];
+    const actingPlayerState = newPlayerStates[actingPlayerId];
     const dronesInLane = targetPlayerState.dronesOnBoard[laneId] || [];
 
     const { stat, comparison, value } = effect.filter;
@@ -132,26 +134,36 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
       const droneInLane = dronesInLane[i];
       let meetsCondition = false;
 
-      // Check if drone meets filter condition
+      // Calculate effective stats to include upgrades, auras, and ability modifiers
+      const effectiveStats = calculateEffectiveStats(
+        droneInLane,
+        laneId,
+        targetPlayerState,
+        actingPlayerState,
+        placedSections || {}
+      );
+      const effectiveStatValue = effectiveStats[stat] !== undefined ? effectiveStats[stat] : droneInLane[stat];
+
+      // Check if drone meets filter condition using effective stats
       switch (comparison) {
         case 'GTE':
-          meetsCondition = droneInLane[stat] >= value;
+          meetsCondition = effectiveStatValue >= value;
           break;
         case 'LTE':
-          meetsCondition = droneInLane[stat] <= value;
+          meetsCondition = effectiveStatValue <= value;
           break;
         case 'EQ':
-          meetsCondition = droneInLane[stat] === value;
+          meetsCondition = effectiveStatValue === value;
           break;
         case 'GT':
-          meetsCondition = droneInLane[stat] > value;
+          meetsCondition = effectiveStatValue > value;
           break;
         case 'LT':
-          meetsCondition = droneInLane[stat] < value;
+          meetsCondition = effectiveStatValue < value;
           break;
       }
 
-      debugLog('EFFECT_PROCESSING', `[DESTROY] ${droneInLane.name} ${stat}=${droneInLane[stat]} ${comparison} ${value} = ${meetsCondition}`);
+      debugLog('EFFECT_PROCESSING', `[DESTROY] ${droneInLane.name} ${stat}=${effectiveStatValue} (base: ${droneInLane[stat]}) ${comparison} ${value} = ${meetsCondition}`);
 
       if (meetsCondition) {
         destroyedDrones.push(droneInLane);

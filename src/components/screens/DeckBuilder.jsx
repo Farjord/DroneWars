@@ -447,15 +447,15 @@ const DeckBuilder = ({
   }, [deck, processedCardCollection]);
 
   // Type limits based on design framework
-  const typeLimits = { Ordnance: 10, Tactic: 10, Support: 10, Upgrade: 6 };
+  const typeLimits = { Ordnance: 15, Tactic: 15, Support: 15, Upgrade: 10 };
 
   // Validate type limits
   const typeValid = Object.keys(typeLimits).every(
     type => typeCounts[type] <= typeLimits[type]
   );
 
-  // Deck is valid if it has exactly 30 cards and respects type limits
-  const isDeckValid = cardCount === 30 && typeValid;
+  // Deck is valid if it has exactly 40 cards and respects type limits
+  const isDeckValid = cardCount === 40 && typeValid;
 
   // --- Drone counts and display list ---
   const { droneCount, droneListForDisplay } = useMemo(() => {
@@ -1495,7 +1495,7 @@ const DeckBuilder = ({
                 onClick={() => setRightPanelView('deck')}
                 className={`btn-utility ${rightPanelView === 'deck' ? 'opacity-100' : 'opacity-60'}`}
               >
-                Deck ({cardCount}/30)
+                Deck ({cardCount}/40)
               </button>
               <button
                 onClick={() => setRightPanelView('drones')}

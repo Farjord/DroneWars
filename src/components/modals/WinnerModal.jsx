@@ -3,21 +3,33 @@
 // ========================================
 // Modal that displays when the game ends, showing victory or defeat message
 // Provides options to view final board or exit to menu
+// For single-player extraction mode, provides button to collect salvage loot
 
-import React from 'react';
+import React, { useState } from 'react';
 import gameStateManager from '../../managers/GameStateManager.js';
+import CombatOutcomeProcessor from '../../logic/singlePlayer/CombatOutcomeProcessor.js';
+import LootRevealModal from './LootRevealModal.jsx';
 
 /**
  * WINNER MODAL COMPONENT
  * Shows dramatic victory or defeat animation when the game ends.
  * Provides buttons to view final board or exit to menu.
+ * For single-player extraction mode:
+ *   - Victory: Shows "Collect Salvage" which opens LootRevealModal
+ *   - Defeat: Shows "Return to Hangar"
  * @param {string} winner - ID of the winning player
  * @param {string} localPlayerId - ID of the local player
  * @param {boolean} show - Whether to show the modal
  * @param {Function} onClose - Callback when modal is closed (view board)
  */
 const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
+  const [lootToReveal, setLootToReveal] = useState(null);
   const isVictory = winner === localPlayerId;
+
+  // Check if this is single-player extraction mode
+  // Note: gameMode is 'local' during extraction combat (for AI compatibility), so check singlePlayerEncounter instead
+  const gameState = gameStateManager.getState();
+  const isSinglePlayerExtraction = gameState.singlePlayerEncounter && gameState.currentRunState;
 
   if (!show) return null;
 
@@ -27,6 +39,36 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
 
   const handleExitToMenu = () => {
     gameStateManager.setState({ appState: 'menu' });
+  };
+
+  /**
+   * Handle collecting salvage after victory
+   * Processes combat outcome and shows loot reveal modal
+   */
+  const handleCollectSalvage = () => {
+    // Process combat outcome - returns loot for reveal
+    const result = CombatOutcomeProcessor.processCombatEnd(gameStateManager.getState());
+    if (result.success && result.outcome === 'victory' && result.loot) {
+      setLootToReveal(result.loot);
+    }
+  };
+
+  /**
+   * Handle defeat - return to hangar
+   */
+  const handleDefeatContinue = () => {
+    // Process combat outcome (will transition to hangar)
+    CombatOutcomeProcessor.processCombatEnd(gameStateManager.getState());
+  };
+
+  /**
+   * Handle loot collection complete
+   * Called when user has revealed all cards and clicked Continue
+   */
+  const handleLootCollected = (loot) => {
+    // Finalize loot and return to tactical map
+    CombatOutcomeProcessor.finalizeLootCollection(loot);
+    setLootToReveal(null);
   };
 
   return (
@@ -83,20 +125,61 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
 
         {/* Action Buttons */}
         <div className="flex gap-6 z-20">
-          <button
-            onClick={handleViewBoard}
-            className="btn-continue text-xl px-8 py-4"
-          >
-            View Board
-          </button>
-          <button
-            onClick={handleExitToMenu}
-            className="btn-cancel text-xl px-8 py-4"
-          >
-            Exit to Menu
-          </button>
+          {isSinglePlayerExtraction ? (
+            // Single-player extraction mode buttons
+            <>
+              <button
+                onClick={handleViewBoard}
+                className="btn-secondary text-xl px-8 py-4"
+              >
+                View Board
+              </button>
+              {isVictory ? (
+                <button
+                  onClick={handleCollectSalvage}
+                  className="btn-continue text-xl px-8 py-4"
+                  style={{
+                    background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
+                    boxShadow: '0 4px 15px rgba(139, 92, 246, 0.4)'
+                  }}
+                >
+                  Collect Salvage
+                </button>
+              ) : (
+                <button
+                  onClick={handleDefeatContinue}
+                  className="btn-cancel text-xl px-8 py-4"
+                >
+                  Return to Hangar
+                </button>
+              )}
+            </>
+          ) : (
+            // Standard multiplayer/skirmish buttons
+            <>
+              <button
+                onClick={handleViewBoard}
+                className="btn-continue text-xl px-8 py-4"
+              >
+                View Board
+              </button>
+              <button
+                onClick={handleExitToMenu}
+                className="btn-cancel text-xl px-8 py-4"
+              >
+                Exit to Menu
+              </button>
+            </>
+          )}
         </div>
       </div>
+
+      {/* Loot Reveal Modal - shown after clicking Collect Salvage */}
+      <LootRevealModal
+        loot={lootToReveal}
+        onCollect={handleLootCollected}
+        show={!!lootToReveal}
+      />
     </div>
   );
 };

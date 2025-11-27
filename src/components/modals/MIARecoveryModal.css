@@ -1,0 +1,460 @@
+/* ========================================
+   MIA RECOVERY MODAL STYLES
+   Danger Theme with Recovery/Scrap Options
+   ======================================== */
+
+/* Overlay */
+.mia-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  backdrop-filter: blur(4px);
+  animation: miaFadeIn 0.2s ease-out;
+}
+
+@keyframes miaFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Modal Content */
+.mia-modal-content {
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(10, 15, 28, 0.98) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 0;
+  position: relative;
+  box-shadow:
+    0 0 40px rgba(239, 68, 68, 0.2),
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(239, 68, 68, 0.1);
+  font-family: 'Exo', sans-serif;
+}
+
+/* Corner brackets */
+.mia-modal-content::before,
+.mia-modal-content::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+}
+
+.mia-modal-content::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid rgba(239, 68, 68, 0.7);
+  border-left: 2px solid rgba(239, 68, 68, 0.7);
+}
+
+.mia-modal-content::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid rgba(239, 68, 68, 0.7);
+  border-right: 2px solid rgba(239, 68, 68, 0.7);
+}
+
+/* ========================================
+   HEADER
+   ======================================== */
+
+.mia-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(239, 68, 68, 0.2);
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.1) 0%, transparent 100%);
+}
+
+.mia-header-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #ef4444;
+  animation: miaPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes miaPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.mia-header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mia-header-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ef4444;
+  margin: 0 0 2px 0;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.mia-header-subtitle {
+  font-size: 13px;
+  color: rgba(229, 231, 235, 0.7);
+  margin: 0;
+  letter-spacing: 0.5px;
+}
+
+/* ========================================
+   STATUS INFO
+   ======================================== */
+
+.mia-status-info {
+  padding: 16px 20px;
+  background: rgba(239, 68, 68, 0.05);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.1);
+}
+
+.mia-status-info p {
+  font-size: 13px;
+  color: rgba(229, 231, 235, 0.8);
+  margin: 0 0 6px 0;
+  line-height: 1.5;
+}
+
+.mia-status-info p:last-child {
+  margin-bottom: 0;
+}
+
+/* ========================================
+   OPTIONS CONTAINER
+   ======================================== */
+
+.mia-options-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+}
+
+/* Option Card */
+.mia-option-card {
+  background: rgba(17, 24, 39, 0.6);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 6px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.mia-option-card.danger {
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.mia-option-card.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.mia-option-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.mia-option-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e5e7eb;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.mia-option-cost {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.mia-option-cost.free {
+  color: #10b981;
+}
+
+/* Benefits list (recover) */
+.mia-option-details {
+  margin-bottom: 12px;
+}
+
+.mia-benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(229, 231, 235, 0.8);
+  margin: 6px 0;
+}
+
+.mia-benefit-icon {
+  color: #10b981;
+  flex-shrink: 0;
+}
+
+/* Consequences list (scrap) */
+.mia-option-details.warning .mia-consequence-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(239, 68, 68, 0.9);
+  margin: 6px 0;
+}
+
+.mia-consequence-icon {
+  color: #ef4444;
+  flex-shrink: 0;
+}
+
+/* Balance display */
+.mia-option-balance {
+  font-size: 12px;
+  color: rgba(229, 231, 235, 0.6);
+  margin-bottom: 12px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.mia-option-balance .sufficient {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.mia-option-balance .insufficient {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* Cards preview (scrap) */
+.mia-cards-preview {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.mia-cards-preview-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(239, 68, 68, 0.8);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 8px 0;
+}
+
+.mia-cards-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mia-card-item {
+  font-size: 11px;
+  color: rgba(229, 231, 235, 0.7);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+
+.mia-card-item.more {
+  color: rgba(239, 68, 68, 0.7);
+  font-style: italic;
+}
+
+/* ========================================
+   CONFIRMATION SECTION
+   ======================================== */
+
+.mia-confirm-section {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 4px;
+  padding: 12px;
+  text-align: center;
+}
+
+.mia-confirm-section.danger {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+.mia-confirm-section p {
+  font-size: 13px;
+  color: rgba(229, 231, 235, 0.9);
+  margin: 0 0 10px 0;
+}
+
+.mia-confirm-warning {
+  color: #ef4444 !important;
+  font-weight: 600;
+}
+
+.mia-confirm-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* ========================================
+   BUTTONS
+   ======================================== */
+
+.mia-btn {
+  font-family: 'Exo', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.mia-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Recover button (green) */
+.mia-btn-recover {
+  width: 100%;
+  background: linear-gradient(180deg, #059669 0%, #047857 100%);
+  border: 1px solid rgba(16, 185, 129, 0.6);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+}
+
+.mia-btn-recover:hover:not(:disabled) {
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+}
+
+/* Scrap button (red) */
+.mia-btn-scrap {
+  width: 100%;
+  background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.mia-btn-scrap:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* Confirm buttons */
+.mia-btn-confirm {
+  background: linear-gradient(180deg, #059669 0%, #047857 100%);
+  color: #fff;
+  padding: 8px 16px;
+}
+
+.mia-btn-confirm-danger {
+  background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
+  color: #fff;
+  padding: 8px 16px;
+}
+
+.mia-btn-cancel-small {
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: rgba(229, 231, 235, 0.7);
+  padding: 8px 16px;
+}
+
+.mia-btn-cancel-small:hover {
+  background: rgba(148, 163, 184, 0.1);
+  border-color: rgba(148, 163, 184, 0.5);
+}
+
+/* Close button */
+.mia-btn-close {
+  background: transparent;
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  color: rgba(6, 182, 212, 0.9);
+  min-width: 120px;
+}
+
+.mia-btn-close:hover {
+  background: rgba(6, 182, 212, 0.1);
+  border-color: rgba(6, 182, 212, 0.6);
+  color: #06b6d4;
+}
+
+/* ========================================
+   IMMUTABLE NOTICE
+   ======================================== */
+
+.mia-immutable-notice {
+  padding: 12px 20px;
+  background: rgba(234, 179, 8, 0.1);
+  border-top: 1px solid rgba(234, 179, 8, 0.2);
+  text-align: center;
+}
+
+.mia-immutable-notice span {
+  font-size: 12px;
+  color: #eab308;
+}
+
+/* ========================================
+   ACTIONS
+   ======================================== */
+
+.mia-modal-actions {
+  padding: 16px 20px;
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 480px) {
+  .mia-modal-content {
+    width: 95%;
+    max-width: none;
+  }
+
+  .mia-option-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .mia-confirm-buttons {
+    flex-direction: column;
+  }
+
+  .mia-confirm-buttons .mia-btn {
+    width: 100%;
+  }
+}

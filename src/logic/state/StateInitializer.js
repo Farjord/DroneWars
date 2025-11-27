@@ -8,33 +8,15 @@ import fullCardCollection from '../../data/cardData.js';
 import shipSectionData from '../../data/shipData.js';
 import { calculateEffectiveShipStats } from '../statsCalculator.js';
 import SeededRandom from '../../utils/seededRandom.js';
+import { starterDeck } from '../../data/playerDeckData.js';
 
 // ========================================
 // DEFAULT GAME CONFIGURATIONS
 // ========================================
 
 // Standard starting deck (40 cards)
-export const startingDecklist = [
-    // Powerful "Silver Bullet" Cards (Limited Copies)
-    { id: 'CARD018', quantity: 4 }, // Desperate Measures
-    { id: 'CARD019', quantity: 2 }, // Reposition
-    { id: 'CARD009', quantity: 2 }, // Target Lock
-    { id: 'CARD007', quantity: 2 }, // Emergency Patch
-    { id: 'CARD012', quantity: 2 }, // Armor-Piercing Shot
-
-    // Core Tactical & Synergy Cards (Multiple Copies)
-    { id: 'CARD005', quantity: 4 }, // Adrenaline Rush
-    { id: 'CARD006', quantity: 2 }, // Nanobot Repair
-    { id: 'CARD015', quantity: 2 }, // Streamline
-    { id: 'CARD008', quantity: 2 }, // Shield Recharge
-    { id: 'CARD001', quantity: 2 }, // Laser Blast
-
-    // Resource & Consistency (Max Copies)
-    { id: 'CARD002', quantity: 4 }, // System Reboot
-    { id: 'CARD003', quantity: 4 }, // Out Think
-    { id: 'CARD004', quantity: 4 }, // Energy Surge
-    { id: 'CARD016', quantity: 4 }, // Static Field
-];
+// Imported from playerDeckData.js for consistency with Extraction Mode
+export const startingDecklist = starterDeck.decklist;
 
 // Standard AI drone selection (10 drones for deck)
 export const startingDroneList = [

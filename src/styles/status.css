@@ -1,0 +1,258 @@
+/* ========================================
+   STATUS
+   Status indicators, colors, and meters
+   ======================================== */
+
+/* === STATUS VALUE COLORS === */
+.value-safe,
+.status-safe {
+  color: var(--color-status-safe);
+}
+
+.value-warning,
+.status-warning {
+  color: var(--color-status-warning);
+}
+
+.value-critical,
+.status-critical {
+  color: var(--color-status-critical);
+  animation: critical-pulse 1s ease-in-out infinite;
+}
+
+/* === STAT VALUE VARIANTS === */
+.stat-value-safe {
+  color: var(--color-status-safe);
+}
+
+.stat-value-warning {
+  color: var(--color-status-warning);
+}
+
+.stat-value-critical {
+  color: var(--color-status-critical);
+  animation: critical-pulse 1s ease-in-out infinite;
+}
+
+.stat-value-cost {
+  color: var(--color-status-warning);
+}
+
+.stat-value-encounter {
+  color: var(--color-status-critical);
+}
+
+/* === CRITICAL PULSE ANIMATION === */
+@keyframes critical-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* === SVG ICON COLORS === */
+.svg-icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.icon-player { color: var(--color-player); }
+.icon-opponent { color: var(--color-opponent); }
+.icon-safe { color: var(--color-status-safe); }
+.icon-warning { color: var(--color-status-warning); }
+.icon-critical { color: var(--color-status-critical); }
+.icon-muted { color: var(--color-text-dim); }
+
+/* Game-specific icon colors */
+.icon-poi { color: #f59e0b; }
+.icon-gate { color: #3b82f6; }
+.icon-hex { color: #6b7280; }
+.icon-current { color: #10b981; }
+.icon-radar { color: var(--color-player); opacity: 0.6; }
+.icon-start { color: #10b981; }
+.icon-check { color: var(--color-player); }
+.icon-caution { color: #f59e0b; }
+
+/* === PROGRESS METER === */
+.meter {
+  position: relative;
+  height: 8px;
+  background: rgba(17, 24, 39, 0.8);
+  border-radius: var(--border-radius-sm);
+  overflow: hidden;
+  border: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+.meter-fill {
+  height: 100%;
+  border-radius: var(--border-radius-sm);
+  transition: width var(--transition-normal), background var(--transition-normal);
+}
+
+/* Meter color variants */
+.meter-fill--safe {
+  background: linear-gradient(90deg, var(--color-status-safe) 0%, rgba(16, 185, 129, 0.8) 100%);
+  box-shadow: 0 0 8px var(--color-status-safe-dim);
+}
+
+.meter-fill--warning {
+  background: linear-gradient(90deg, var(--color-status-warning) 0%, rgba(245, 158, 11, 0.8) 100%);
+  box-shadow: 0 0 8px var(--color-status-warning-dim);
+}
+
+.meter-fill--critical {
+  background: linear-gradient(90deg, var(--color-status-critical) 0%, rgba(239, 68, 68, 0.8) 100%);
+  box-shadow: 0 0 8px var(--color-status-critical-dim);
+  animation: meter-critical-glow 1s ease-in-out infinite;
+}
+
+.meter-fill--player {
+  background: linear-gradient(90deg, var(--color-player) 0%, rgba(6, 182, 212, 0.8) 100%);
+  box-shadow: 0 0 8px var(--color-player-glow);
+}
+
+@keyframes meter-critical-glow {
+  0%, 100% { box-shadow: 0 0 8px var(--color-status-critical-dim); }
+  50% { box-shadow: 0 0 16px var(--color-status-critical-dim); }
+}
+
+/* === METER WITH LABEL === */
+.meter-labeled {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meter-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.meter-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.meter-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* === THRESHOLD MARKERS === */
+.meter-thresholds {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+}
+
+.meter-threshold {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.meter-threshold--warning {
+  background: var(--color-status-warning);
+  opacity: 0.5;
+}
+
+.meter-threshold--critical {
+  background: var(--color-status-critical);
+  opacity: 0.5;
+}
+
+/* === BADGE INDICATORS === */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge--safe {
+  background: var(--color-status-safe-subtle);
+  color: var(--color-status-safe);
+  border: 1px solid var(--color-status-safe-dim);
+}
+
+.badge--warning {
+  background: var(--color-status-warning-subtle);
+  color: var(--color-status-warning);
+  border: 1px solid var(--color-status-warning-dim);
+}
+
+.badge--critical {
+  background: var(--color-status-critical-subtle);
+  color: var(--color-status-critical);
+  border: 1px solid var(--color-status-critical-dim);
+}
+
+.badge--player {
+  background: var(--color-player-subtle);
+  color: var(--color-player);
+  border: 1px solid var(--color-player-dim);
+}
+
+.badge--accent {
+  background: var(--color-accent-subtle);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent-dim);
+}
+
+/* === NUMBERED BADGE === */
+.badge-number {
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, var(--color-player) 0%, rgba(8, 145, 178, 1) 100%);
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--color-text-primary);
+  flex-shrink: 0;
+  box-shadow: 0 0 8px var(--color-player-glow);
+}
+
+/* === INLINE STATUS INDICATOR === */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot--safe {
+  background: var(--color-status-safe);
+  box-shadow: 0 0 4px var(--color-status-safe);
+}
+
+.status-dot--warning {
+  background: var(--color-status-warning);
+  box-shadow: 0 0 4px var(--color-status-warning);
+}
+
+.status-dot--critical {
+  background: var(--color-status-critical);
+  box-shadow: 0 0 4px var(--color-status-critical);
+  animation: critical-pulse 1s ease-in-out infinite;
+}
+
+.status-dot--player {
+  background: var(--color-player);
+  box-shadow: 0 0 4px var(--color-player);
+}

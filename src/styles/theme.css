@@ -1,0 +1,114 @@
+/* ========================================
+   THEME - CSS Custom Properties
+   Semantic naming for easy theming
+   ======================================== */
+
+:root {
+  /* === SEMANTIC ROLE COLORS === */
+
+  /* Player/friendly elements (currently cyan) */
+  --color-player: rgb(6 182 212);
+  --color-player-bright: rgb(34 211 238);
+  --color-player-dim: rgba(6, 182, 212, 0.4);
+  --color-player-subtle: rgba(6, 182, 212, 0.15);
+  --color-player-glow: rgba(6, 182, 212, 0.3);
+
+  /* Opponent/enemy elements (currently red) */
+  --color-opponent: rgb(239 68 68);
+  --color-opponent-bright: rgb(252 165 165);
+  --color-opponent-dim: rgba(239, 68, 68, 0.4);
+  --color-opponent-subtle: rgba(239, 68, 68, 0.15);
+  --color-opponent-glow: rgba(239, 68, 68, 0.3);
+
+  /* Neutral/system accent (currently purple) */
+  --color-accent: rgb(139 92 246);
+  --color-accent-bright: rgb(167 139 250);
+  --color-accent-dim: rgba(139, 92, 246, 0.4);
+  --color-accent-subtle: rgba(139, 92, 246, 0.15);
+
+  /* === STATUS COLORS === */
+  --color-status-safe: #10b981;
+  --color-status-safe-dim: rgba(16, 185, 129, 0.4);
+  --color-status-safe-subtle: rgba(16, 185, 129, 0.1);
+
+  --color-status-warning: #f59e0b;
+  --color-status-warning-dim: rgba(245, 158, 11, 0.4);
+  --color-status-warning-subtle: rgba(245, 158, 11, 0.15);
+
+  --color-status-critical: #ef4444;
+  --color-status-critical-dim: rgba(239, 68, 68, 0.4);
+  --color-status-critical-subtle: rgba(239, 68, 68, 0.15);
+
+  /* === BACKGROUND COLORS === */
+  --color-bg-primary: rgb(2 6 23);
+  --color-bg-elevated: rgb(17 24 39);
+  --color-bg-panel: rgba(17, 24, 39, 0.98);
+  --color-bg-panel-dark: rgba(10, 15, 28, 0.98);
+  --color-bg-panel-hover: rgba(31, 41, 55, 0.9);
+
+  /* === TEXT COLORS === */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #e5e7eb;
+  --color-text-muted: #9ca3af;
+  --color-text-dim: #6b7280;
+
+  /* === RESOURCE COLORS (game-specific) === */
+  --color-resource-shields: rgb(103 232 249);
+  --color-resource-energy: rgb(253 224 71);
+  --color-resource-deployment: rgb(196 181 253);
+  --color-resource-hull-healthy: rgb(74 222 128);
+  --color-resource-hull-damaged: rgb(239 68 68);
+
+  /* === BORDERS === */
+  --border-panel: 1px solid var(--color-player-dim);
+  --border-panel-strong: 2px solid rgba(6, 182, 212, 0.6);
+  --border-radius-sm: 2px;
+  --border-radius-md: 4px;
+  --border-radius-lg: 8px;
+
+  /* === SHADOWS === */
+  --shadow-panel: 0 4px 20px rgba(0, 0, 0, 0.5);
+  --shadow-panel-elevated: 0 8px 30px rgba(0, 0, 0, 0.6);
+  --shadow-glow-player: 0 0 20px var(--color-player-glow);
+  --shadow-glow-opponent: 0 0 20px var(--color-opponent-glow);
+  --shadow-inset-player: inset 2px 0 20px rgba(6, 182, 212, 0.05);
+
+  /* === SPACING === */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+
+  /* === FONT FAMILIES === */
+  --font-heading: 'Orbitron', sans-serif;
+  --font-body: 'Exo', sans-serif;
+
+  /* === TRANSITIONS === */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.2s ease;
+  --transition-slow: 0.3s ease;
+
+  /* === Z-INDEX LAYERS === */
+  --z-base: 1;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-fixed: 300;
+  --z-modal-backdrop: 400;
+  --z-modal: 500;
+  --z-popover: 600;
+  --z-tooltip: 700;
+
+  /* ========================================
+     LEGACY VARIABLES (for backward compatibility)
+     These map to the new semantic names
+     ======================================== */
+  --color-background: var(--color-bg-primary);
+  --color-primary: rgb(59 130 246);
+  /* Note: --color-accent already defined above with new value */
+  --color-hull-healthy: var(--color-resource-hull-healthy);
+  --color-hull-damaged: var(--color-resource-hull-damaged);
+  --color-shields: var(--color-resource-shields);
+  --color-energy: var(--color-resource-energy);
+  --color-deployment: var(--color-resource-deployment);
+}

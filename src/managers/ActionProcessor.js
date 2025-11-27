@@ -1250,10 +1250,19 @@ setAnimationManager(animationManager) {
       };
     }
 
-    // Update player states with movement result
+    // Get current states after movement for finishCardPlay
+    const currentStates = {
+      player1: result.newPlayerStates.player1,
+      player2: result.newPlayerStates.player2
+    };
+
+    // Call finishCardPlay to discard card and determine turn ending
+    const completion = gameEngine.finishCardPlay(card, playerId, currentStates);
+
+    // Update state with card removed from hand and added to discard
     this.gameStateManager.setPlayerStates(
-      result.newPlayerStates.player1,
-      result.newPlayerStates.player2
+      completion.newPlayerStates.player1,
+      completion.newPlayerStates.player2
     );
 
     // Execute CARD_REVEAL animation now that movement is complete (non-blocking)
@@ -1277,7 +1286,8 @@ setAnimationManager(animationManager) {
     // Return result with animations for optimistic action tracking
     return {
       success: true,
-      shouldEndTurn: result.shouldEndTurn,
+      shouldEndTurn: completion.shouldEndTurn,
+      newPlayerStates: completion.newPlayerStates,
       animations: {
         actionAnimations: cardRevealAnimation,
         systemAnimations: []

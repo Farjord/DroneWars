@@ -1,0 +1,65 @@
+/* ========================================
+   MODALS
+   Modal overlay and container styles
+   ======================================== */
+
+/* Modal Overlay - Dark background that covers screen */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+}
+
+/* Modal Container - The modal box itself */
+.modal-container {
+  background-color: #111827;
+  border-radius: 1rem;
+  border: 2px solid #a855f7;
+  padding: 2rem;
+  box-shadow: 0 25px 50px -12px rgba(168, 85, 247, 0.2);
+  width: 100%;
+  position: relative;
+}
+
+/* Size variants */
+.modal-container-sm { max-width: 28rem; }
+.modal-container-md { max-width: 32rem; }
+.modal-container-lg { max-width: 36rem; }
+.modal-container-xl { max-width: 42rem; }
+.modal-container-xxl { max-width: 56rem; }
+
+/* Modal Title */
+.modal-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  background: linear-gradient(to right, #ec4899, #22d3ee);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+/* Modal Text */
+.modal-text {
+  text-align: center;
+  color: #9ca3af;
+}
+
+/* Modal Close Button */
+.modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  color: #9ca3af;
+  transition: color 0.15s;
+}
+
+.modal-close:hover {
+  color: white;
+}

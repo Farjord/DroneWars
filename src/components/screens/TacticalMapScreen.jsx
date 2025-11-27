@@ -1,0 +1,1056 @@
+// ========================================
+// TACTICAL MAP SCREEN
+// ========================================
+// Main screen for in-run hex map navigation (Exploring the Eremos mode)
+// Orchestrates hex grid rendering, player movement, encounters, and extraction
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import HexGridRenderer from '../ui/HexGridRenderer.jsx';
+import TacticalMapHUD from '../ui/TacticalMapHUD.jsx';
+import HexInfoPanel from '../ui/HexInfoPanel.jsx';
+import POIEncounterModal from '../modals/POIEncounterModal.jsx';
+import LoadingEncounterScreen from '../ui/LoadingEncounterScreen.jsx';
+import RunInventoryModal from '../modals/RunInventoryModal.jsx';
+import LootRevealModal from '../modals/LootRevealModal.jsx';
+import AbandonRunModal from '../modals/AbandonRunModal.jsx';
+import ExtractionSummaryModal from '../modals/ExtractionSummaryModal.jsx';
+import MovementController from '../../logic/map/MovementController.js';
+import lootGenerator from '../../logic/loot/LootGenerator.js';
+import DetectionManager from '../../logic/detection/DetectionManager.js';
+import EncounterController from '../../logic/encounters/EncounterController.js';
+import SinglePlayerCombatInitializer from '../../logic/singlePlayer/SinglePlayerCombatInitializer.js';
+import ExtractionController from '../../logic/singlePlayer/ExtractionController.js';
+import aiPersonalities from '../../data/aiData.js';
+import gameStateManager from '../../managers/GameStateManager.js';
+import { shipComponentCollection } from '../../data/shipData.js';
+import { mapTiers } from '../../data/mapData.js';
+import './TacticalMapScreen.css';
+
+/**
+ * Build ship sections array with hull data for each component
+ * Priority order for hull values:
+ * 1. currentRunState.shipSections (live run damage)
+ * 2. singlePlayerShipComponentInstances (persistent slot damage)
+ * 3. Base component data (fresh/default)
+ */
+function buildShipSections(shipSlot, slotId, shipComponentInstances, runShipSections) {
+  const sections = [];
+
+  // If we have run-state ship sections, use those (contains live damage from combat)
+  if (runShipSections && Object.keys(runShipSections).length > 0) {
+    for (const [sectionType, sectionData] of Object.entries(runShipSections)) {
+      sections.push({
+        id: sectionData.id || sectionType,
+        name: sectionData.name || sectionType,
+        type: sectionData.type || sectionType,
+        hull: sectionData.hull ?? 10,
+        maxHull: sectionData.maxHull ?? 10,
+        lane: sectionData.lane ?? 1
+      });
+    }
+    return sections;
+  }
+
+  // Fallback: build from ship slot components
+  const componentEntries = Object.entries(shipSlot.shipComponents || {});
+
+  for (const [componentId, lane] of componentEntries) {
+    const componentData = shipComponentCollection.find(c => c.id === componentId);
+    if (!componentData) continue;
+
+    let currentHull = componentData.hull;
+    let maxHull = componentData.maxHull;
+
+    // For slots 1-5, check instances for damage
+    if (slotId !== 0) {
+      const instance = shipComponentInstances.find(
+        i => i.id === componentId && i.assignedToSlot === slotId
+      );
+      if (instance) {
+        currentHull = instance.currentHull;
+        maxHull = instance.maxHull;
+      }
+    }
+
+    sections.push({
+      id: componentId,
+      name: componentData.name,
+      type: componentData.type,
+      hull: currentHull,
+      maxHull: maxHull,
+      lane: lane
+    });
+  }
+
+  return sections;
+}
+
+/**
+ * TacticalMapScreen - Main screen for tactical map navigation
+ *
+ * Features:
+ * - Hex grid rendering with player position
+ * - Click-to-move with path preview
+ * - Movement confirmation modal
+ * - Detection tracking
+ * - Extraction at gates
+ * - PoI encounters (Phase 6)
+ *
+ * Flow:
+ * 1. Player clicks hex → Path preview shown
+ * 2. Waypoint modal opens → Show cost
+ * 3. Player confirms → Execute movement
+ * 4. Arrival triggers → PoI encounter or extraction
+ */
+function TacticalMapScreen() {
+  const [gameState, setGameState] = useState(gameStateManager.getState());
+
+  // Waypoint journey planning state
+  const [waypoints, setWaypoints] = useState([]);           // Array of waypoint objects
+  const [inspectedHex, setInspectedHex] = useState(null);   // Hex being viewed (null = Waypoint List view)
+
+  // Movement execution state
+  const [isMoving, setIsMoving] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [currentWaypointIndex, setCurrentWaypointIndex] = useState(0);
+  const [currentHexIndex, setCurrentHexIndex] = useState(0);  // Current hex within waypoint path
+
+  // POI Encounter state
+  const [currentEncounter, setCurrentEncounter] = useState(null);
+  const [showPOIModal, setShowPOIModal] = useState(false);
+
+  // Loading Encounter screen state (for combat transitions)
+  const [showLoadingEncounter, setShowLoadingEncounter] = useState(false);
+  const [loadingEncounterData, setLoadingEncounterData] = useState(null);
+
+  // Inventory modal state
+  const [showInventory, setShowInventory] = useState(false);
+
+  // POI loot reveal state
+  const [poiLootToReveal, setPoiLootToReveal] = useState(null);
+  const [pendingLootEncounter, setPendingLootEncounter] = useState(null);
+
+  // Extraction/Abandon modal state
+  const [showAbandonModal, setShowAbandonModal] = useState(false);
+  const [showExtractionModal, setShowExtractionModal] = useState(false);
+  const [extractionSummary, setExtractionSummary] = useState(null);
+
+  // Ref to track pause state in async movement loop
+  const isPausedRef = useRef(false);
+  const shouldStopMovement = useRef(false);
+  const totalWaypointsRef = useRef(0);
+
+  // Ref to resolve encounter promise (allows async waiting in movement loop)
+  const encounterResolveRef = useRef(null);
+
+  // Ref to track initial mount (skip safety redirect on first render)
+  const isInitialMount = useRef(true);
+
+  // Movement animation speed (ms per hex)
+  // Split into scan + move for dramatic effect
+  const SCAN_DELAY = 500;   // Time to show scan animation
+  const MOVE_DELAY = 400;   // Time after moving to next hex
+  const TOTAL_MOVEMENT_DELAY = SCAN_DELAY + MOVE_DELAY;
+
+  // Movement warning state (for "ENEMY THREAT SCAN ACTIVE" overlay)
+  const [isScanningHex, setIsScanningHex] = useState(false);
+
+  // Subscribe to game state updates
+  useEffect(() => {
+    const unsubscribe = gameStateManager.subscribe(() => {
+      setGameState(gameStateManager.getState());
+    });
+    return unsubscribe;
+  }, []);
+
+  const { currentRunState, singlePlayerShipSlots, singlePlayerShipComponentInstances } = gameState;
+
+  // Safety check - redirect to hangar if no active run
+  // Skip on initial mount to avoid race condition with state propagation
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
+    if (!currentRunState || !currentRunState.mapData) {
+      console.warn('[TacticalMap] No active run detected, returning to hangar');
+      gameStateManager.setState({ appState: 'hangar' });
+    }
+  }, [currentRunState]);
+
+  // ========================================
+  // HOOKS MUST BE BEFORE EARLY RETURNS
+  // React requires hooks to be called in the same order every render
+  // ========================================
+
+  /**
+   * Helper to wait with pause support
+   * Returns true if should continue, false if should stop
+   */
+  const waitWithPauseSupport = useCallback(async (ms) => {
+    const startTime = Date.now();
+    const endTime = startTime + ms;
+
+    while (Date.now() < endTime) {
+      // Check if we should stop
+      if (shouldStopMovement.current) {
+        return false;
+      }
+
+      // If paused, wait until unpaused
+      while (isPausedRef.current) {
+        if (shouldStopMovement.current) return false;
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      // Small sleep to prevent busy-waiting
+      await new Promise(resolve => setTimeout(resolve, Math.min(50, endTime - Date.now())));
+    }
+
+    return !shouldStopMovement.current;
+  }, []);
+
+  /**
+   * Move player to a single hex and update state
+   * Uses zone-based detection cost
+   * IMPORTANT: Updates detection AND position in single atomic setState to avoid race condition
+   * Also tracks hexesMoved and hexesExplored for run summary
+   */
+  const moveToSingleHex = useCallback((hex, tierConfig, mapRadius) => {
+    const currentState = gameStateManager.getState();
+    const { currentRunState: runState } = currentState;
+
+    // Calculate zone-based detection cost for this hex
+    const hexCost = DetectionManager.getHexDetectionCost(hex, tierConfig, mapRadius);
+    const newDetection = Math.min(100, runState.detection + hexCost);
+
+    // Track exploration - add hex to explored list if not already there
+    const hexesExplored = runState.hexesExplored || [];
+    const alreadyExplored = hexesExplored.some(h => h.q === hex.q && h.r === hex.r);
+    const updatedHexesExplored = alreadyExplored
+      ? hexesExplored
+      : [...hexesExplored, { q: hex.q, r: hex.r }];
+
+    // Update detection, position, and tracking stats in single setState
+    gameStateManager.setState({
+      currentRunState: {
+        ...runState,
+        detection: newDetection,
+        playerPosition: { q: hex.q, r: hex.r },
+        hexesMoved: (runState.hexesMoved || 0) + 1,
+        hexesExplored: updatedHexesExplored
+      }
+    });
+
+    console.log(`[TacticalMap] Moved to hex (${hex.q}, ${hex.r}) - Zone: ${hex.zone} - Detection: ${runState.detection.toFixed(1)}% -> ${newDetection.toFixed(1)}% (+${hexCost.toFixed(1)}%)`);
+
+    // Check for MIA trigger
+    if (newDetection >= 100) {
+      DetectionManager.triggerMIA();
+    }
+
+    return hexCost;
+  }, []);
+
+  /**
+   * Commence journey - start moving through waypoints hex-by-hex
+   * Uses zone-based detection costs and checks for random encounters
+   */
+  const handleCommenceJourney = useCallback(async () => {
+    if (waypoints.length === 0) return;
+
+    console.log('[TacticalMap] Commencing journey with', waypoints.length, 'waypoints');
+    totalWaypointsRef.current = waypoints.length;
+    setIsMoving(true);
+    setIsPaused(false);
+    isPausedRef.current = false;
+    shouldStopMovement.current = false;
+    setCurrentWaypointIndex(0);
+    setCurrentHexIndex(0);  // Reset hex index
+    setIsScanningHex(true);  // Start scan overlay for entire journey
+
+    const currentState = gameStateManager.getState();
+    const { currentRunState: runState } = currentState;
+    const tierConfig = mapTiers[runState.mapData.tier - 1];
+    const mapRadius = runState.mapData.radius;
+
+    // Process each waypoint
+    for (let wpIndex = 0; wpIndex < waypoints.length; wpIndex++) {
+      if (shouldStopMovement.current) break;
+
+      setCurrentWaypointIndex(wpIndex);
+      setCurrentHexIndex(0);  // Reset hex index for new waypoint
+      const waypoint = waypoints[wpIndex];
+      const path = waypoint.pathFromPrev;
+
+      if (!path || path.length < 2) continue;
+
+      console.log(`[TacticalMap] Moving to waypoint ${wpIndex + 1}: ${path.length - 1} hexes`);
+
+      // Move through each hex in the path (skip first hex - that's current position)
+      for (let hexIndex = 1; hexIndex < path.length; hexIndex++) {
+        if (shouldStopMovement.current) break;
+
+        // Update hex index BEFORE the scan/move so UI shows NEXT hex info
+        setCurrentHexIndex(hexIndex);
+        const targetHex = path[hexIndex];
+
+        // Phase 1: Scan delay (warning overlay stays active throughout journey)
+        const shouldContinueScan = await waitWithPauseSupport(SCAN_DELAY);
+        if (!shouldContinueScan) break;
+
+        // Phase 2: Move to hex (zone-based detection cost)
+        moveToSingleHex(targetHex, tierConfig, mapRadius);
+
+        // Phase 3: Check for random encounter on this hex
+        const encounterResult = EncounterController.checkMovementEncounter(targetHex, tierConfig);
+
+        if (encounterResult) {
+          // Pause movement and show encounter modal
+          console.log('[TacticalMap] Random encounter triggered on hex!');
+          setCurrentEncounter(encounterResult);
+          setShowPOIModal(true);
+
+          // Wait for encounter to be resolved
+          await new Promise(resolve => {
+            encounterResolveRef.current = resolve;
+          });
+
+          if (shouldStopMovement.current) break;
+        }
+
+        // Complete movement animation
+        const shouldContinueMove = await waitWithPauseSupport(MOVE_DELAY);
+        if (!shouldContinueMove) break;
+      }
+
+      if (shouldStopMovement.current) break;
+
+      // Arrived at waypoint - handle arrival
+      const arrivedHex = waypoint.hex;
+      console.log(`[TacticalMap] Arrived at waypoint ${wpIndex + 1}: ${arrivedHex.type}`);
+
+      if (arrivedHex.type === 'poi') {
+        console.log('[TacticalMap] PoI encounter triggered');
+
+        // Get encounter result from controller
+        const encounter = EncounterController.handlePOIArrival(arrivedHex, tierConfig);
+        setCurrentEncounter(encounter);
+        setShowPOIModal(true);
+
+        // Wait for encounter to be resolved (player clicks proceed)
+        await new Promise(resolve => {
+          encounterResolveRef.current = resolve;
+        });
+
+        // Check if movement was cancelled while waiting
+        if (shouldStopMovement.current) break;
+      } else if (arrivedHex.type === 'gate') {
+        console.log('[TacticalMap] Arrived at gate - extraction available');
+        // Gate extraction handled via HUD Extract button
+      }
+
+      // Brief pause at waypoint before continuing to next
+      if (wpIndex < waypoints.length - 1) {
+        const shouldContinue = await waitWithPauseSupport(500);
+        if (!shouldContinue) break;
+      }
+    }
+
+    // Journey complete - clear waypoints and reset state
+    console.log('[TacticalMap] Journey complete');
+    setWaypoints([]);
+    setIsMoving(false);
+    setIsPaused(false);
+    isPausedRef.current = false;
+    setIsScanningHex(false);
+    setCurrentWaypointIndex(0);
+    setCurrentHexIndex(0);
+  }, [waypoints, waitWithPauseSupport, moveToSingleHex, SCAN_DELAY, MOVE_DELAY]);
+
+  /**
+   * Toggle pause/resume during movement
+   */
+  const handleTogglePause = useCallback(() => {
+    setIsPaused(prev => {
+      const newValue = !prev;
+      isPausedRef.current = newValue;
+      console.log(`[TacticalMap] Movement ${newValue ? 'paused' : 'resumed'}`);
+      return newValue;
+    });
+  }, []);
+
+  /**
+   * Stop movement completely (cancel journey)
+   */
+  const handleStopMovement = useCallback(() => {
+    console.log('[TacticalMap] Movement cancelled');
+    shouldStopMovement.current = true;
+    isPausedRef.current = false;
+    setIsScanningHex(false);  // Turn off scan overlay immediately
+  }, []);
+
+  /**
+   * Handle POI encounter - called when player proceeds from modal
+   */
+  const handleEncounterProceed = useCallback(() => {
+    if (!currentEncounter) return;
+
+    console.log('[TacticalMap] Encounter proceed clicked');
+    console.log('[TacticalMap] Encounter outcome:', currentEncounter.outcome);
+
+    // Check if this encounter triggers combat
+    if (currentEncounter.outcome === 'combat') {
+      console.log('[TacticalMap] Combat encounter - showing loading screen');
+
+      // Find AI personality info for the loading screen
+      const aiId = currentEncounter.aiId || 'Rogue Scout Pattern';
+      const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
+
+      // Set up loading encounter data
+      setLoadingEncounterData({
+        aiName: aiPersonality?.name || 'Unknown Hostile',
+        difficulty: aiPersonality?.difficulty || 'Medium',
+        threatLevel: currentEncounter.threatLevel || 'medium',
+        isAmbush: currentEncounter.isAmbush || false
+      });
+
+      // Close POI modal and show loading screen
+      setShowPOIModal(false);
+      setShowLoadingEncounter(true);
+
+      // Stop movement
+      shouldStopMovement.current = true;
+      setIsScanningHex(false);
+      setIsMoving(false);
+
+      return;
+    }
+
+    // For loot outcome - generate loot and show reveal modal
+    if (currentEncounter.outcome === 'loot') {
+      console.log('[TacticalMap] Loot encounter - generating loot');
+
+      // Get pack type from POI reward (default to MIXED_PACK)
+      const packType = currentEncounter.reward?.rewardType || 'MIXED_PACK';
+      const tier = currentRunState?.mapData?.tier || 1;
+
+      // Generate loot using LootGenerator
+      const loot = lootGenerator.openPack(packType, tier);
+      console.log('[TacticalMap] Generated loot:', loot);
+
+      // Store encounter for later completion (need to add detection after loot collected)
+      setPendingLootEncounter(currentEncounter);
+
+      // Show loot reveal modal
+      setPoiLootToReveal(loot);
+
+      // Close POI modal but don't complete encounter yet
+      setShowPOIModal(false);
+      setCurrentEncounter(null);
+
+      return;
+    }
+
+    // Fallback: Complete the encounter (adds detection, awards credits)
+    EncounterController.completeEncounter(currentEncounter);
+
+    // Clear encounter state
+    setCurrentEncounter(null);
+    setShowPOIModal(false);
+
+    // Resume movement by resolving the waiting promise
+    if (encounterResolveRef.current) {
+      encounterResolveRef.current();
+      encounterResolveRef.current = null;
+    }
+  }, [currentEncounter, currentRunState]);
+
+  /**
+   * Handle closing POI modal without proceeding
+   */
+  const handleEncounterClose = useCallback(() => {
+    // For now, closing is same as proceeding
+    // Later could add "flee" option with different consequences
+    handleEncounterProceed();
+  }, [handleEncounterProceed]);
+
+  /**
+   * Handle loading encounter complete - actually start combat
+   */
+  const handleLoadingEncounterComplete = useCallback(async () => {
+    console.log('[TacticalMap] Loading complete - initializing combat');
+
+    const currentState = gameStateManager.getState();
+    const runState = currentState.currentRunState;
+
+    // Get AI from the encounter
+    const aiId = currentEncounter?.aiId || 'Rogue Scout Pattern';
+
+    // Initialize combat
+    const success = await SinglePlayerCombatInitializer.initiateCombat(aiId, runState);
+
+    if (!success) {
+      console.error('[TacticalMap] Failed to initialize combat');
+      // Fall back to map
+      setShowLoadingEncounter(false);
+      setLoadingEncounterData(null);
+      setCurrentEncounter(null);
+    }
+
+    // GameStateManager will handle the transition to inGame state
+    // The appState change will unmount this component
+  }, [currentEncounter]);
+
+  /**
+   * Handle extraction - check for blockade and complete run
+   */
+  const handleExtract = useCallback(() => {
+    console.log('[TacticalMap] Extraction initiated');
+
+    // Stop any ongoing movement
+    shouldStopMovement.current = true;
+    setIsMoving(false);
+    setIsScanningHex(false);
+
+    const currentState = gameStateManager.getState();
+    const runState = currentState.currentRunState;
+
+    if (!runState) {
+      console.warn('[TacticalMap] No run state for extraction');
+      return;
+    }
+
+    // Check for blockade encounter
+    const extractionResult = ExtractionController.initiateExtraction(runState);
+
+    if (extractionResult.action === 'combat') {
+      // Blockade! Combat encounter
+      console.log('[TacticalMap] Blockade triggered! Combat with:', extractionResult.aiId);
+
+      // Find AI personality info for the loading screen
+      const aiPersonality = aiPersonalities.find(ai => ai.name === extractionResult.aiId) || aiPersonalities[0];
+
+      // Set up loading encounter data
+      setLoadingEncounterData({
+        aiName: aiPersonality?.name || 'Blockade Fleet',
+        difficulty: aiPersonality?.difficulty || 'Hard',
+        threatLevel: 'high',
+        isAmbush: false,
+        isBlockade: true
+      });
+
+      // Show loading screen (will transition to combat)
+      setShowLoadingEncounter(true);
+
+      // Store encounter for combat handling
+      setCurrentEncounter({
+        outcome: 'combat',
+        aiId: extractionResult.aiId,
+        isBlockade: true
+      });
+
+    } else {
+      // Safe extraction - complete the run
+      console.log('[TacticalMap] Safe extraction - completing run');
+      const summary = ExtractionController.completeExtraction(runState);
+      setExtractionSummary(summary);
+      setShowExtractionModal(true);
+    }
+  }, []);
+
+  /**
+   * Handle abandon run button click - show confirmation modal
+   */
+  const handleAbandon = useCallback(() => {
+    console.log('[TacticalMap] Abandon run requested');
+    setShowAbandonModal(true);
+  }, []);
+
+  /**
+   * Handle abandon confirmation - trigger MIA
+   */
+  const handleConfirmAbandon = useCallback(() => {
+    console.log('[TacticalMap] Abandon confirmed - triggering MIA');
+
+    // Stop any ongoing movement
+    shouldStopMovement.current = true;
+    setIsMoving(false);
+    setIsScanningHex(false);
+
+    // Close modal and trigger MIA
+    setShowAbandonModal(false);
+    ExtractionController.abandonRun();
+  }, []);
+
+  /**
+   * Handle extraction summary continue - return to hangar
+   */
+  const handleExtractionContinue = useCallback(() => {
+    console.log('[TacticalMap] Extraction summary acknowledged');
+    setShowExtractionModal(false);
+    setExtractionSummary(null);
+    gameStateManager.setState({ appState: 'hangar' });
+  }, []);
+
+  /**
+   * Handle POI loot collection - called when player reveals all cards and clicks Continue
+   */
+  const handlePOILootCollected = useCallback((loot) => {
+    console.log('[TacticalMap] POI loot collected:', loot);
+
+    const currentState = gameStateManager.getState();
+    const runState = currentState.currentRunState;
+
+    if (!runState) {
+      console.warn('[TacticalMap] No run state for loot collection');
+      return;
+    }
+
+    // Add loot cards to collectedLoot
+    const newCardLoot = (loot.cards || []).map(card => ({
+      type: 'card',
+      cardId: card.cardId,
+      cardName: card.cardName,
+      rarity: card.rarity,
+      source: 'poi_loot'
+    }));
+
+    // Add credits
+    if (loot.credits > 0) {
+      newCardLoot.push({
+        type: 'credits',
+        amount: loot.credits,
+        source: 'poi_loot'
+      });
+    }
+
+    const updatedLoot = [...(runState?.collectedLoot || []), ...newCardLoot];
+    const newCredits = (runState?.creditsEarned || 0) + (loot.credits || 0);
+
+    // Update run state
+    gameStateManager.setState({
+      currentRunState: {
+        ...runState,
+        collectedLoot: updatedLoot,
+        creditsEarned: newCredits
+      }
+    });
+
+    // Add detection for looting (from pending encounter)
+    if (pendingLootEncounter) {
+      const threatIncrease = pendingLootEncounter.poi?.poiData?.threatIncrease || 10;
+      DetectionManager.addDetection(threatIncrease, `Looting ${pendingLootEncounter.poi?.poiData?.name || 'PoI'}`);
+    }
+
+    // Clear loot state
+    setPoiLootToReveal(null);
+    setPendingLootEncounter(null);
+
+    // Resume movement by resolving the waiting promise
+    if (encounterResolveRef.current) {
+      encounterResolveRef.current();
+      encounterResolveRef.current = null;
+    }
+
+    console.log('[TacticalMap] POI loot finalized, resuming movement');
+  }, [pendingLootEncounter]);
+
+  // ========================================
+  // EARLY RETURNS (safe now - all hooks above)
+  // ========================================
+
+  // Don't render if no run state (will redirect above)
+  if (!currentRunState || !currentRunState.mapData) {
+    return (
+      <div className="tactical-map-loading">
+        <p>No active run. Returning to hangar...</p>
+      </div>
+    );
+  }
+
+  const { mapData, playerPosition, detection } = currentRunState;
+  const shipSlot = singlePlayerShipSlots.find(s => s.id === currentRunState.shipSlotId);
+  const tierConfig = mapTiers[mapData.tier - 1];
+
+  // Safety check - ensure ship slot exists
+  if (!shipSlot) {
+    console.error('[TacticalMap] Ship slot not found:', currentRunState.shipSlotId);
+    return (
+      <div className="tactical-map-error">
+        <p>Error: Ship slot not found. Returning to hangar...</p>
+      </div>
+    );
+  }
+
+  // Build ship sections with hull data for HUD display
+  // Priority: currentRunState.shipSections (live damage) > shipComponentInstances > base data
+  const shipSections = buildShipSections(
+    shipSlot,
+    currentRunState.shipSlotId,
+    singlePlayerShipComponentInstances || [],
+    currentRunState.shipSections
+  );
+
+  // Calculate preview path for inspected hex (shown before adding as waypoint)
+  const getPreviewPath = () => {
+    if (!inspectedHex || isMoving) return null;
+    // Don't show preview for current position
+    if (inspectedHex.q === playerPosition.q && inspectedHex.r === playerPosition.r) return null;
+    // Don't show preview if already a waypoint
+    if (waypoints.some(w => w.hex.q === inspectedHex.q && w.hex.r === inspectedHex.r)) return null;
+
+    const startPosition = waypoints.length > 0
+      ? waypoints[waypoints.length - 1].hex
+      : playerPosition;
+
+    return MovementController.calculatePath(startPosition, inspectedHex, mapData.hexes);
+  };
+
+  const previewPath = getPreviewPath();
+
+  // ========================================
+  // WAYPOINT MANAGEMENT
+  // ========================================
+
+  /**
+   * Check if a hex is already a waypoint
+   */
+  const isWaypoint = (hex) =>
+    waypoints.some(w => w.hex.q === hex.q && w.hex.r === hex.r);
+
+  /**
+   * Get the last position in the journey (last waypoint or player position)
+   */
+  const getLastJourneyPosition = () =>
+    waypoints.length > 0 ? waypoints[waypoints.length - 1].hex : playerPosition;
+
+  /**
+   * Get cumulative detection at end of current journey
+   */
+  const getJourneyEndDetection = () =>
+    waypoints.length > 0 ? waypoints[waypoints.length - 1].cumulativeDetection : detection;
+
+  /**
+   * Get cumulative encounter risk at end of current journey (0-100)
+   * Returns 0 if no waypoints (fresh start)
+   */
+  const getJourneyEndEncounterRisk = () =>
+    waypoints.length > 0 ? waypoints[waypoints.length - 1].cumulativeEncounterRisk : 0;
+
+  /**
+   * Add a waypoint to the end of the journey
+   */
+  const addWaypoint = (hex) => {
+    console.log('[TacticalMap] addWaypoint called with hex:', hex);
+    console.log('[TacticalMap] hex q:', hex?.q, 'r:', hex?.r);
+
+    const lastPosition = getLastJourneyPosition();
+    console.log('[TacticalMap] lastPosition:', lastPosition);
+
+    // Calculate path from last position to new waypoint
+    const path = MovementController.calculatePath(lastPosition, hex, mapData.hexes);
+    console.log('[TacticalMap] calculated path:', path);
+
+    if (!path) {
+      console.warn('[TacticalMap] No path available to waypoint');
+      return false;
+    }
+
+    // Calculate detection costs (using zone-based rates)
+    let segmentCost = MovementController.calculateDetectionCost(path, tierConfig, mapData.radius);
+    // Add looting threat if waypoint is a POI (POI-specific or fallback)
+    if (hex.type === 'poi') {
+      segmentCost += hex.poiData?.threatIncrease || tierConfig.detectionTriggers.looting;
+    }
+    const prevDetection = getJourneyEndDetection();
+    const cumulativeDetection = prevDetection + segmentCost;
+
+    // Calculate encounter risk for this segment
+    const segmentEncounterRisk = MovementController.calculateEncounterRisk(path, tierConfig, mapData);
+
+    // Calculate cumulative encounter risk using probability formula:
+    // P(at least one in journey) = 1 - P(none in all segments)
+    // P(none) = P(none in prev) × P(none in this segment)
+    const prevPNoEncounter = (100 - getJourneyEndEncounterRisk()) / 100;
+    const segmentPNoEncounter = (100 - segmentEncounterRisk) / 100;
+    const cumulativeEncounterRisk = (1 - (prevPNoEncounter * segmentPNoEncounter)) * 100;
+
+    console.log(`[TacticalMap] Adding waypoint: +${segmentCost.toFixed(1)}% detection → ${cumulativeDetection.toFixed(1)}%`);
+    console.log(`[TacticalMap] Encounter risk: ${segmentEncounterRisk.toFixed(1)}% segment → ${cumulativeEncounterRisk.toFixed(1)}% cumulative`);
+
+    setWaypoints([...waypoints, {
+      hex,
+      pathFromPrev: path,
+      segmentCost,
+      cumulativeDetection,
+      segmentEncounterRisk,
+      cumulativeEncounterRisk
+    }]);
+
+    return true;
+  };
+
+  /**
+   * Remove a waypoint and recalculate subsequent paths
+   */
+  const removeWaypoint = (index) => {
+    console.log(`[TacticalMap] Removing waypoint ${index + 1}`);
+
+    const newWaypoints = [...waypoints];
+    newWaypoints.splice(index, 1);
+
+    // Recalculate paths and detection from the removed index onward
+    recalculateWaypoints(newWaypoints, index);
+  };
+
+  /**
+   * Recalculate paths, cumulative detection, and encounter risk from a given index
+   */
+  const recalculateWaypoints = (waypointList, fromIndex) => {
+    if (waypointList.length === 0) {
+      setWaypoints([]);
+      return;
+    }
+
+    const recalculated = [...waypointList];
+
+    for (let i = fromIndex; i < recalculated.length; i++) {
+      const prevPosition = i === 0 ? playerPosition : recalculated[i - 1].hex;
+      const prevDetection = i === 0 ? detection : recalculated[i - 1].cumulativeDetection;
+      const prevEncounterRisk = i === 0 ? 0 : recalculated[i - 1].cumulativeEncounterRisk;
+
+      const path = MovementController.calculatePath(prevPosition, recalculated[i].hex, mapData.hexes);
+
+      if (path) {
+        // Calculate detection cost
+        let segmentCost = MovementController.calculateDetectionCost(path, tierConfig, mapData.radius);
+        // Add looting threat if waypoint is a POI (POI-specific or fallback)
+        if (recalculated[i].hex.type === 'poi') {
+          segmentCost += recalculated[i].hex.poiData?.threatIncrease || tierConfig.detectionTriggers.looting;
+        }
+
+        // Calculate encounter risk for this segment
+        const segmentEncounterRisk = MovementController.calculateEncounterRisk(path, tierConfig, mapData);
+
+        // Calculate cumulative encounter risk
+        const prevPNoEncounter = (100 - prevEncounterRisk) / 100;
+        const segmentPNoEncounter = (100 - segmentEncounterRisk) / 100;
+        const cumulativeEncounterRisk = (1 - (prevPNoEncounter * segmentPNoEncounter)) * 100;
+
+        recalculated[i] = {
+          ...recalculated[i],
+          pathFromPrev: path,
+          segmentCost,
+          cumulativeDetection: prevDetection + segmentCost,
+          segmentEncounterRisk,
+          cumulativeEncounterRisk
+        };
+      } else {
+        // Path broken - remove this and all subsequent waypoints
+        console.warn(`[TacticalMap] Path broken at waypoint ${i + 1}, removing subsequent`);
+        setWaypoints(recalculated.slice(0, i));
+        return;
+      }
+    }
+
+    setWaypoints(recalculated);
+  };
+
+  /**
+   * Clear all waypoints
+   */
+  const clearAllWaypoints = () => {
+    console.log('[TacticalMap] Clearing all waypoints');
+    setWaypoints([]);
+  };
+
+  // ========================================
+  // HEX INTERACTION
+  // ========================================
+
+  /**
+   * Handle hex click - open Hex Info view
+   */
+  const handleHexClick = (hex) => {
+    if (isMoving) return; // Can't inspect while moving
+    setInspectedHex(hex);
+  };
+
+  /**
+   * Handle waypoint click in list - open Hex Info view for that waypoint
+   */
+  const handleWaypointClick = (waypointIndex) => {
+    setInspectedHex(waypoints[waypointIndex].hex);
+  };
+
+  /**
+   * Close Hex Info view, return to Waypoint List
+   */
+  const handleBackToJourney = () => {
+    setInspectedHex(null);
+  };
+
+  /**
+   * Add or remove waypoint (called from Hex Info view)
+   */
+  const handleToggleWaypoint = (hex) => {
+    console.log('[TacticalMap] handleToggleWaypoint called with hex:', hex);
+
+    if (isWaypoint(hex)) {
+      const index = waypoints.findIndex(w => w.hex.q === hex.q && w.hex.r === hex.r);
+      console.log('[TacticalMap] Removing waypoint at index:', index);
+      removeWaypoint(index);
+    } else {
+      console.log('[TacticalMap] Adding new waypoint');
+      const success = addWaypoint(hex);
+      console.log('[TacticalMap] addWaypoint result:', success);
+    }
+    // Return to waypoint list after action
+    setInspectedHex(null);
+  };
+
+  /**
+   * Handle inventory view - show RunInventoryModal
+   */
+  const handleInventory = () => {
+    console.log('[TacticalMap] Opening inventory modal');
+    setShowInventory(true);
+  };
+
+  /**
+   * Handle closing inventory modal
+   */
+  const handleCloseInventory = () => {
+    setShowInventory(false);
+  };
+
+  return (
+    <div className="tactical-map-screen">
+      {/* Warning overlay during scanning */}
+      {isScanningHex && (
+        <div className="threat-scan-overlay">
+          <div className="threat-scan-text">ENEMY THREAT SCAN ACTIVE</div>
+        </div>
+      )}
+
+      {/* Background hex grid */}
+      <HexGridRenderer
+        mapData={mapData}
+        playerPosition={playerPosition}
+        onHexClick={handleHexClick}
+        waypoints={waypoints}
+        currentWaypointIndex={isMoving ? currentWaypointIndex : null}
+        previewPath={previewPath}
+        isScanning={isScanningHex}
+        insertionGate={currentRunState.insertionGate}
+      />
+
+      {/* HUD Overlay */}
+      <TacticalMapHUD
+        currentRunState={currentRunState}
+        shipSections={shipSections}
+        onExtractClick={handleExtract}
+        onAbandonClick={handleAbandon}
+        onInventoryClick={handleInventory}
+      />
+
+      {/* Hex Info Panel (right side) - Two views: Waypoint List or Hex Info */}
+      <HexInfoPanel
+        // Journey state
+        waypoints={waypoints}
+        currentDetection={currentRunState.detection}
+        playerPosition={playerPosition}
+        mapData={mapData}
+
+        // View state
+        inspectedHex={inspectedHex}
+
+        // Waypoint List actions
+        onWaypointClick={handleWaypointClick}
+        onCommence={handleCommenceJourney}
+        onClearAll={clearAllWaypoints}
+
+        // Hex Info actions
+        onBackToJourney={handleBackToJourney}
+        onToggleWaypoint={handleToggleWaypoint}
+        isWaypointFn={isWaypoint}
+
+        // Movement state
+        isMoving={isMoving}
+        isPaused={isPaused}
+        onCancel={handleStopMovement}
+        currentWaypointIndex={currentWaypointIndex}
+        currentHexIndex={currentHexIndex}
+        totalWaypoints={isMoving ? totalWaypointsRef.current : waypoints.length}
+        onTogglePause={handleTogglePause}
+
+        // Tier config for encounter/threat calculations
+        tierConfig={tierConfig}
+        mapRadius={mapData.radius}
+      />
+
+      {/* POI Encounter Modal */}
+      {showPOIModal && currentEncounter && (
+        <POIEncounterModal
+          encounter={currentEncounter}
+          onProceed={handleEncounterProceed}
+          onClose={handleEncounterClose}
+        />
+      )}
+
+      {/* Loading Encounter Screen (combat transition) */}
+      {showLoadingEncounter && loadingEncounterData && (
+        <LoadingEncounterScreen
+          encounterData={loadingEncounterData}
+          onComplete={handleLoadingEncounterComplete}
+        />
+      )}
+
+      {/* Run Inventory Modal */}
+      {showInventory && (
+        <RunInventoryModal
+          currentRunState={currentRunState}
+          onClose={handleCloseInventory}
+        />
+      )}
+
+      {/* POI Loot Reveal Modal */}
+      {poiLootToReveal && (
+        <LootRevealModal
+          loot={poiLootToReveal}
+          onCollect={handlePOILootCollected}
+          show={true}
+        />
+      )}
+
+      {/* Abandon Run Confirmation Modal */}
+      <AbandonRunModal
+        show={showAbandonModal}
+        onCancel={() => setShowAbandonModal(false)}
+        onConfirm={handleConfirmAbandon}
+        lootCount={currentRunState?.collectedLoot?.length || 0}
+        creditsEarned={currentRunState?.creditsEarned || 0}
+      />
+
+      {/* Extraction Summary Modal */}
+      <ExtractionSummaryModal
+        show={showExtractionModal}
+        summary={extractionSummary}
+        onContinue={handleExtractionContinue}
+      />
+
+      {/* Debug info (dev mode only) */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="tactical-map-debug">
+          <p>Tier: {mapData.tier} | PoIs: {mapData.poiCount}</p>
+          <p>Position: ({playerPosition.q}, {playerPosition.r})</p>
+          <p>Detection: {detection.toFixed(1)}%</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default TacticalMapScreen;

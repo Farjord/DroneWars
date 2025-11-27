@@ -1,0 +1,384 @@
+/* ========================================
+   LOOT REVEAL MODAL STYLES
+   Matches TacticalMapScreen aesthetic
+   ======================================== */
+
+.loot-reveal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.loot-reveal-modal {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 2px solid rgba(139, 92, 246, 0.5);
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow:
+    0 0 40px rgba(139, 92, 246, 0.2),
+    0 0 80px rgba(0, 0, 0, 0.5);
+}
+
+/* Header */
+.loot-reveal-header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.loot-reveal-title {
+  font-family: 'Exo', sans-serif;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  color: #fff;
+  margin: 0 0 8px 0;
+  text-shadow:
+    0 0 10px rgba(139, 92, 246, 0.8),
+    0 0 20px rgba(139, 92, 246, 0.4);
+}
+
+.loot-reveal-subtitle {
+  font-family: 'Exo', sans-serif;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+  letter-spacing: 1px;
+}
+
+/* Card Grid */
+.loot-card-grid {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+/* Card Container - sized for full ActionCard (225x275px) */
+.loot-card-container {
+  width: 225px;
+  height: 275px;
+  perspective: 1000px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.loot-card-container:hover:not(.revealed) {
+  transform: scale(1.05);
+}
+
+.loot-card-container.revealed {
+  cursor: default;
+}
+
+/* Flipper (3D flip animation) */
+.loot-card-flipper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.6s ease;
+}
+
+.loot-card-container.revealed .loot-card-flipper {
+  transform: rotateY(180deg);
+}
+
+/* Card Back (face-down) */
+.loot-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.4),
+    0 0 20px var(--rarity-color, #808080);
+  animation: cardGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes cardGlow {
+  from {
+    box-shadow:
+      0 4px 20px rgba(0, 0, 0, 0.4),
+      0 0 15px var(--rarity-color, #808080);
+  }
+  to {
+    box-shadow:
+      0 4px 20px rgba(0, 0, 0, 0.4),
+      0 0 30px var(--rarity-color, #808080);
+  }
+}
+
+.card-back-pattern {
+  width: 80px;
+  height: 80px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.card-back-icon {
+  font-size: 48px;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.card-back-rarity {
+  font-family: 'Exo', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Card Front (revealed) - Contains full ActionCard */
+.loot-card-front {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  transform: rotateY(180deg);
+  border-radius: 8px;
+  overflow: visible;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Fallback for unknown cards */
+.card-info-fallback {
+  padding: 16px;
+  text-align: center;
+  background: linear-gradient(135deg, #2a2a3e 0%, #1a1a2e 100%);
+  border: 2px solid var(--rarity-color, #808080);
+  border-radius: 8px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.card-image-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.card-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.card-info {
+  padding: 8px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.card-name {
+  font-family: 'Exo', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-rarity-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-family: 'Exo', sans-serif;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Credits Display */
+.loot-credits {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 12px 24px;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  border-radius: 8px;
+}
+
+.credits-icon {
+  font-size: 24px;
+  color: #22c55e;
+}
+
+.credits-amount {
+  font-family: 'Exo', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  color: #22c55e;
+  letter-spacing: 1px;
+}
+
+/* Blueprint (rare drop) */
+.loot-blueprint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 16px 24px;
+  background: rgba(234, 179, 8, 0.1);
+  border: 2px solid rgba(234, 179, 8, 0.6);
+  border-radius: 8px;
+  animation: blueprintGlow 1s ease-in-out infinite alternate;
+}
+
+@keyframes blueprintGlow {
+  from {
+    box-shadow: 0 0 10px rgba(234, 179, 8, 0.3);
+  }
+  to {
+    box-shadow: 0 0 25px rgba(234, 179, 8, 0.6);
+  }
+}
+
+.blueprint-icon {
+  font-size: 28px;
+  color: #eab308;
+}
+
+.blueprint-text {
+  font-family: 'Exo', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #eab308;
+  letter-spacing: 2px;
+}
+
+.blueprint-name {
+  font-family: 'Exo', sans-serif;
+  font-size: 14px;
+  color: rgba(234, 179, 8, 0.8);
+}
+
+/* Action Buttons */
+.loot-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.loot-btn {
+  font-family: 'Exo', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+.loot-btn-primary {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+}
+
+.loot-btn-primary:hover:not(.disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.5);
+}
+
+.loot-btn-primary.disabled {
+  background: #4a4a5a;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.loot-btn-secondary {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.loot-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .loot-reveal-modal {
+    padding: 20px;
+    margin: 16px;
+  }
+
+  .loot-reveal-title {
+    font-size: 24px;
+    letter-spacing: 2px;
+  }
+
+  .loot-card-container {
+    width: 100px;
+    height: 150px;
+  }
+
+  .card-back-pattern {
+    width: 50px;
+    height: 50px;
+  }
+
+  .card-back-icon {
+    font-size: 32px;
+  }
+
+  .card-name {
+    font-size: 10px;
+  }
+
+  .loot-btn {
+    padding: 10px 16px;
+    font-size: 12px;
+  }
+}

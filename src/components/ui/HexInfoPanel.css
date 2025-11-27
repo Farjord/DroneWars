@@ -1,0 +1,728 @@
+/* ========================================
+   HEX INFO PANEL STYLES
+   Sci-Fi Data Screen Aesthetic
+   ======================================== */
+
+.hex-info-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 320px;
+  height: 100vh;
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(10, 15, 28, 0.98) 100%);
+  border-left: 2px solid rgba(6, 182, 212, 0.6);
+  display: flex;
+  flex-direction: column;
+  z-index: 150;
+  font-family: 'Exo', sans-serif;
+  box-shadow:
+    -4px 0 20px rgba(0, 0, 0, 0.5),
+    inset 2px 0 20px rgba(6, 182, 212, 0.05);
+}
+
+/* Corner bracket decorations */
+.hex-info-panel::before,
+.hex-info-panel::after {
+  content: '';
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  border-color: rgba(6, 182, 212, 0.4);
+  border-style: solid;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.hex-info-panel::before {
+  top: 8px;
+  left: 8px;
+  border-width: 2px 0 0 2px;
+}
+
+.hex-info-panel::after {
+  bottom: 8px;
+  right: 8px;
+  border-width: 0 2px 2px 0;
+}
+
+/* SVG icon base styling */
+.svg-icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.icon-poi { color: #f59e0b; }
+.icon-gate { color: #3b82f6; }
+.icon-hex { color: #6b7280; }
+.icon-current { color: #10b981; }
+.icon-radar { color: #06b6d4; opacity: 0.6; }
+.icon-start { color: #10b981; }
+.icon-check { color: #06b6d4; }
+.icon-warning { color: #ef4444; }
+.icon-caution { color: #f59e0b; }
+.icon-critical { color: #ef4444; }
+
+/* ========================================
+   HEADER
+   ======================================== */
+
+.hex-info-header {
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid rgba(6, 182, 212, 0.2);
+  background: linear-gradient(180deg, rgba(31, 41, 55, 0.9) 0%, rgba(17, 24, 39, 0.9) 100%);
+  position: relative;
+}
+
+/* Header decorative underline */
+.hex-info-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(6, 182, 212, 0.6) 0%, rgba(6, 182, 212, 0.1) 100%);
+}
+
+.hex-info-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #06b6d4;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+}
+
+/* ========================================
+   DETECTION METER (moved from HUD)
+   ======================================== */
+
+.hex-info-detection {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(6, 182, 212, 0.15);
+  background: rgba(17, 24, 39, 0.6);
+}
+
+/* ========================================
+   CONTENT AREA
+   ======================================== */
+
+.hex-info-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  background: linear-gradient(180deg, transparent 0%, rgba(6, 182, 212, 0.02) 100%);
+}
+
+/* Scrollbar styling */
+.hex-info-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.hex-info-content::-webkit-scrollbar-track {
+  background: rgba(17, 24, 39, 0.5);
+}
+
+.hex-info-content::-webkit-scrollbar-thumb {
+  background: rgba(6, 182, 212, 0.3);
+  border-radius: 2px;
+}
+
+.hex-info-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(6, 182, 212, 0.5);
+}
+
+/* Empty state */
+.hex-info-empty,
+.hex-info-current {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 32px 16px;
+  color: #6b7280;
+}
+
+.empty-icon,
+.current-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.empty-text,
+.current-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #9ca3af;
+  margin: 0 0 8px 0;
+}
+
+.empty-hint,
+.current-hint {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Selected hex content */
+.hex-info-selected {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Target info */
+.hex-target {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: linear-gradient(135deg, rgba(31, 41, 55, 0.9) 0%, rgba(17, 24, 39, 0.9) 100%);
+  border-radius: 2px;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  position: relative;
+}
+
+/* Angular corner accent */
+.hex-target::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 12px;
+  height: 12px;
+  border-top: 2px solid rgba(6, 182, 212, 0.5);
+  border-left: 2px solid rgba(6, 182, 212, 0.5);
+}
+
+.hex-target-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hex-target-details {
+  flex: 1;
+  min-width: 0; /* Allow text truncation */
+}
+
+.hex-target-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 2px;
+}
+
+.hex-target-sublabel {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* POI-specific target styling with image */
+.hex-target-poi {
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.hex-target-image {
+  width: 25%;
+  min-width: 70px;
+  aspect-ratio: 1;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
+}
+
+.hex-target-poi .hex-target-details {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.hex-target-name {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-shadow: 0 0 10px currentColor;
+}
+
+.hex-target-description {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+/* Loot info */
+.hex-loot-info {
+  padding: 10px 12px;
+  background: rgba(31, 41, 55, 0.6);
+  border-radius: 6px;
+  border-left: 3px solid;
+}
+
+.loot-type {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e5e7eb;
+  margin-bottom: 2px;
+}
+
+.loot-desc {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* Stats */
+.hex-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hex-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: rgba(17, 24, 39, 0.6);
+  border-radius: 2px;
+  border-left: 2px solid rgba(6, 182, 212, 0.3);
+  transition: border-color 0.2s ease;
+}
+
+.hex-stat:hover {
+  border-left-color: rgba(6, 182, 212, 0.6);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.stat-value-cost {
+  color: #f59e0b;
+}
+
+.stat-value-encounter {
+  color: #ef4444;
+}
+
+/* Total row styling */
+.hex-stat-total {
+  margin-top: 4px;
+  border-left: 2px solid rgba(6, 182, 212, 0.6);
+  background: linear-gradient(90deg, rgba(6, 182, 212, 0.1) 0%, rgba(17, 24, 39, 0.6) 100%);
+}
+
+.hex-stat-total .stat-label {
+  color: #06b6d4;
+  font-weight: 500;
+}
+
+.value-safe {
+  color: #10b981;
+}
+
+.value-warning {
+  color: #f59e0b;
+}
+
+.value-critical {
+  color: #ef4444;
+  animation: critical-pulse 1s ease-in-out infinite;
+}
+
+@keyframes critical-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* Warnings */
+.hex-warning,
+.hex-caution {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 2px;
+  position: relative;
+}
+
+.hex-warning {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.08) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-left: 3px solid rgba(239, 68, 68, 0.8);
+}
+
+.hex-caution {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.08) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-left: 3px solid rgba(245, 158, 11, 0.8);
+}
+
+.warning-icon,
+.caution-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+
+.warning-text {
+  font-size: 12px;
+  color: #fca5a5;
+  line-height: 1.4;
+}
+
+.caution-text {
+  font-size: 12px;
+  color: #fcd34d;
+  line-height: 1.4;
+}
+
+/* ========================================
+   ACTIONS
+   ======================================== */
+
+.hex-info-actions {
+  padding: 16px;
+  border-top: 1px solid rgba(6, 182, 212, 0.2);
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.9) 0%, rgba(10, 15, 28, 0.95) 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+}
+
+/* Top accent line */
+.hex-info-actions::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 16px;
+  right: 16px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(6, 182, 212, 0.1) 0%, rgba(6, 182, 212, 0.4) 50%, rgba(6, 182, 212, 0.1) 100%);
+}
+
+.hex-action-link {
+  background: none;
+  border: none;
+  color: rgba(6, 182, 212, 0.7);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 6px;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+.hex-action-link:hover {
+  color: #06b6d4;
+  text-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
+}
+
+/* ========================================
+   BACK BUTTON HEADER
+   ======================================== */
+
+.hex-info-header-back {
+  padding: 12px 16px;
+}
+
+.back-button {
+  background: none;
+  border: none;
+  color: #06b6d4;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 0.2s ease;
+}
+
+.back-button:hover {
+  color: #22d3ee;
+}
+
+/* ========================================
+   WAYPOINT LIST
+   ======================================== */
+
+.waypoint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.waypoint-start {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.1) 0%, rgba(17, 24, 39, 0.6) 100%);
+  border-radius: 2px;
+  border-left: 3px solid #10b981;
+  position: relative;
+}
+
+.waypoint-start-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.waypoint-start-text {
+  flex: 1;
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.waypoint-start-detection {
+  font-size: 12px;
+  color: #10b981;
+  font-weight: 600;
+  font-family: 'Exo', monospace;
+}
+
+.waypoint-item {
+  padding: 10px 12px;
+  background: linear-gradient(90deg, rgba(6, 182, 212, 0.08) 0%, rgba(17, 24, 39, 0.7) 100%);
+  border-radius: 2px;
+  border-left: 3px solid rgba(6, 182, 212, 0.6);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.waypoint-item:hover {
+  background: linear-gradient(90deg, rgba(6, 182, 212, 0.15) 0%, rgba(17, 24, 39, 0.8) 100%);
+  border-left-color: #06b6d4;
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.1);
+}
+
+.waypoint-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.waypoint-number {
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: bold;
+  color: #fff;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
+}
+
+.waypoint-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.waypoint-name {
+  flex: 1;
+  font-size: 12px;
+  color: #e5e7eb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.waypoint-cost {
+  font-size: 11px;
+  color: #f59e0b;
+  font-weight: 500;
+}
+
+.waypoint-item-footer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding-left: 28px;
+}
+
+.waypoint-cumulative {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.waypoint-encounter {
+  font-size: 11px;
+  font-weight: 500;
+  color: #ef4444;
+  margin-left: auto;
+}
+
+.waypoint-warning-icon {
+  font-size: 12px;
+}
+
+/* ========================================
+   WAYPOINT BADGE (in Hex Info view)
+   ======================================== */
+
+.hex-info-waypoint-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.12) 0%, rgba(6, 182, 212, 0.05) 100%);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: 2px;
+  border-left: 3px solid rgba(6, 182, 212, 0.8);
+}
+
+.waypoint-badge-icon {
+  width: 20px;
+  height: 20px;
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+}
+
+.waypoint-badge-text {
+  font-size: 12px;
+  color: #22d3ee;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* ========================================
+   MOVEMENT PROGRESS
+   ======================================== */
+
+.movement-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.movement-waypoint-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.movement-waypoint-label {
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.movement-waypoint-counter {
+  font-size: 28px;
+  font-weight: 700;
+  color: #06b6d4;
+}
+
+.movement-status {
+  font-size: 14px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+/* Next hex info during movement */
+.next-hex-info {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(17, 24, 39, 0.7);
+  border-radius: 4px;
+  border-left: 2px solid rgba(6, 182, 212, 0.5);
+  text-align: left;
+}
+
+.next-hex-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: #06b6d4;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.next-hex-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.next-hex-stat .stat-label {
+  color: #9ca3af;
+}
+
+.next-hex-stat .stat-value {
+  font-weight: 600;
+  color: #fff;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 768px) {
+  .hex-info-panel {
+    width: 280px;
+  }
+}
+
+@media (max-width: 480px) {
+  .hex-info-panel {
+    width: 100%;
+    height: auto;
+    max-height: 50vh;
+    top: auto;
+    bottom: 0;
+    border-left: none;
+    border-top: 1px solid rgba(75, 85, 99, 0.5);
+    border-radius: 16px 16px 0 0;
+  }
+
+  .hex-info-content {
+    max-height: 200px;
+  }
+}

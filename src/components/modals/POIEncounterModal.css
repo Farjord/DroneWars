@@ -1,0 +1,374 @@
+/* ========================================
+   POI ENCOUNTER MODAL STYLES
+   Sci-Fi Data Screen Aesthetic
+   ======================================== */
+
+/* Overlay */
+.poi-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+/* Modal Content */
+.poi-modal-content {
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(10, 15, 28, 0.98) 100%);
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  border-radius: 4px;
+  width: 90%;
+  max-width: 420px;
+  padding: 0;
+  position: relative;
+  box-shadow:
+    0 0 40px rgba(6, 182, 212, 0.15),
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(6, 182, 212, 0.1);
+  font-family: 'Exo', sans-serif;
+}
+
+/* Corner brackets */
+.poi-modal-content::before,
+.poi-modal-content::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+}
+
+.poi-modal-content::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid rgba(6, 182, 212, 0.7);
+  border-left: 2px solid rgba(6, 182, 212, 0.7);
+}
+
+.poi-modal-content::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid rgba(6, 182, 212, 0.7);
+  border-right: 2px solid rgba(6, 182, 212, 0.7);
+}
+
+/* ========================================
+   HEADER
+   ======================================== */
+
+.poi-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(6, 182, 212, 0.2);
+  background: linear-gradient(180deg, rgba(6, 182, 212, 0.08) 0%, transparent 100%);
+}
+
+.poi-header-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.poi-header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.poi-header-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #e5e7eb;
+  margin: 0 0 2px 0;
+  letter-spacing: 0.5px;
+}
+
+.poi-header-subtitle {
+  font-size: 12px;
+  color: rgba(6, 182, 212, 0.7);
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.poi-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: 2px;
+  color: rgba(6, 182, 212, 0.7);
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.poi-modal-close:hover {
+  background: rgba(6, 182, 212, 0.1);
+  border-color: rgba(6, 182, 212, 0.5);
+  color: #06b6d4;
+}
+
+/* ========================================
+   FLAVOUR TEXT
+   ======================================== */
+
+.poi-flavour {
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(6, 182, 212, 0.15);
+}
+
+.poi-flavour-text {
+  font-size: 13px;
+  font-style: italic;
+  color: rgba(156, 163, 175, 0.9);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ========================================
+   SECURITY SCAN RESULT
+   ======================================== */
+
+.poi-scan-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  margin: 0;
+  border-bottom: 1px solid rgba(6, 182, 212, 0.15);
+}
+
+.poi-scan-combat {
+  background: linear-gradient(90deg, rgba(239, 68, 68, 0.15) 0%, transparent 100%);
+  border-left: 3px solid #ef4444;
+}
+
+.poi-scan-safe {
+  background: linear-gradient(90deg, rgba(16, 185, 129, 0.15) 0%, transparent 100%);
+  border-left: 3px solid #10b981;
+}
+
+.poi-scan-icon {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-combat {
+  color: #ef4444;
+  animation: pulse-combat 1.5s ease-in-out infinite;
+}
+
+.icon-safe {
+  color: #10b981;
+}
+
+@keyframes pulse-combat {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.poi-scan-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.poi-scan-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(6, 182, 212, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.poi-scan-outcome {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.poi-scan-combat .poi-scan-outcome {
+  color: #ef4444;
+}
+
+.poi-scan-safe .poi-scan-outcome {
+  color: #10b981;
+}
+
+/* ========================================
+   COMBAT WARNING
+   ======================================== */
+
+.poi-combat-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: rgba(239, 68, 68, 0.08);
+  border-bottom: 1px solid rgba(6, 182, 212, 0.15);
+}
+
+.icon-warning {
+  color: #f59e0b;
+  flex-shrink: 0;
+}
+
+.poi-warning-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.poi-warning-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(245, 158, 11, 0.8);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.poi-warning-text {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ========================================
+   STATS GRID
+   ======================================== */
+
+.poi-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  gap: 1px;
+  padding: 1px;
+  background: rgba(6, 182, 212, 0.1);
+  border-bottom: 1px solid rgba(6, 182, 212, 0.15);
+}
+
+.poi-stat {
+  background: rgba(17, 24, 39, 0.9);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.poi-stat-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(6, 182, 212, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.poi-stat-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e5e7eb;
+  font-family: 'Exo', monospace;
+}
+
+.poi-stat-positive {
+  color: #10b981;
+}
+
+.poi-stat-warning {
+  color: #f59e0b;
+}
+
+.poi-stat-credits {
+  color: #fbbf24;
+}
+
+/* ========================================
+   REWARD TYPE
+   ======================================== */
+
+.poi-reward-type {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(6, 182, 212, 0.15);
+}
+
+.poi-reward-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(6, 182, 212, 0.6);
+  text-transform: uppercase;
+}
+
+.poi-reward-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: #60a5fa;
+  text-transform: capitalize;
+}
+
+/* ========================================
+   ACTIONS
+   ======================================== */
+
+.poi-modal-actions {
+  padding: 16px 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.poi-modal-actions button {
+  min-width: 180px;
+}
+
+/* ========================================
+   STUB NOTICE
+   ======================================== */
+
+.poi-stub-notice {
+  font-size: 10px;
+  color: rgba(156, 163, 175, 0.5);
+  text-align: center;
+  padding: 0 20px 12px;
+  margin: 0;
+  font-style: italic;
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+
+@media (max-width: 480px) {
+  .poi-modal-content {
+    width: 95%;
+    max-width: none;
+  }
+
+  .poi-modal-header {
+    padding: 12px 16px;
+  }
+
+  .poi-header-title {
+    font-size: 16px;
+  }
+
+  .poi-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

@@ -1,0 +1,317 @@
+/* ========================================
+   RUN INVENTORY MODAL STYLES
+   Shows cards collected during extraction run
+   ======================================== */
+
+.run-inventory-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.run-inventory-modal {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 2px solid rgba(6, 182, 212, 0.5);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 700px;
+  width: 90%;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow:
+    0 0 40px rgba(6, 182, 212, 0.2),
+    0 0 80px rgba(0, 0, 0, 0.5);
+}
+
+/* Header */
+.run-inventory-header {
+  position: relative;
+  text-align: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.run-inventory-title {
+  font-family: 'Exo', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #fff;
+  margin: 0 0 8px 0;
+  text-shadow:
+    0 0 10px rgba(6, 182, 212, 0.6),
+    0 0 20px rgba(6, 182, 212, 0.3);
+}
+
+.run-inventory-subtitle {
+  font-family: 'Exo', sans-serif;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+
+.run-inventory-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 28px;
+  cursor: pointer;
+  transition: color 0.2s;
+  line-height: 1;
+}
+
+.run-inventory-close:hover {
+  color: #fff;
+}
+
+/* Stats Bar */
+.run-inventory-stats {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stat-item.credits {
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.stat-item.blueprints {
+  border-color: rgba(234, 179, 8, 0.4);
+}
+
+.run-inventory-stats .stat-value {
+  font-family: 'Exo', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.run-inventory-stats .stat-item.credits .stat-value {
+  color: #22c55e;
+}
+
+.run-inventory-stats .stat-item.blueprints .stat-value {
+  color: #eab308;
+}
+
+.run-inventory-stats .stat-label {
+  font-family: 'Exo', sans-serif;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Empty State */
+.run-inventory-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.run-inventory-empty p {
+  margin: 0;
+  font-family: 'Exo', sans-serif;
+}
+
+.run-inventory-empty .empty-hint {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+/* Cards Section */
+.run-inventory-cards {
+  margin-bottom: 20px;
+}
+
+.rarity-section {
+  margin-bottom: 16px;
+}
+
+.rarity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-left: 3px solid;
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.rarity-name {
+  font-family: 'Exo', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.rarity-count {
+  font-family: 'Exo', sans-serif;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.cards-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-start;
+}
+
+.inventory-card-wrapper {
+  /* Wrapper for full-size ActionCard (225x275px) */
+  flex-shrink: 0;
+}
+
+.inventory-card-fallback {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 225px;
+  height: 275px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.inventory-card-fallback .card-name {
+  font-family: 'Exo', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 4px 0;
+}
+
+.inventory-card-fallback .card-type {
+  font-family: 'Exo', sans-serif;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0;
+}
+
+/* Blueprints Section */
+.blueprints-section {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: rgba(234, 179, 8, 0.05);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  border-radius: 8px;
+}
+
+.blueprints-title {
+  font-family: 'Exo', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #eab308;
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.blueprints-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.blueprint-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(234, 179, 8, 0.1);
+  border-radius: 4px;
+}
+
+.blueprint-icon {
+  color: #eab308;
+  font-size: 16px;
+}
+
+.blueprint-name {
+  font-family: 'Exo', sans-serif;
+  font-size: 12px;
+  color: rgba(234, 179, 8, 0.9);
+}
+
+/* Close Button */
+.run-inventory-btn {
+  display: block;
+  width: 100%;
+  font-family: 'Exo', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 12px 24px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(6, 182, 212, 0.3);
+  transition: all 0.2s ease;
+}
+
+.run-inventory-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(6, 182, 212, 0.4);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .run-inventory-modal {
+    padding: 16px;
+    margin: 12px;
+  }
+
+  .run-inventory-title {
+    font-size: 20px;
+  }
+
+  .run-inventory-stats {
+    gap: 12px;
+  }
+
+  .stat-item {
+    padding: 8px 14px;
+  }
+
+  .stat-value {
+    font-size: 18px;
+  }
+
+  .cards-grid {
+    justify-content: center;
+  }
+}

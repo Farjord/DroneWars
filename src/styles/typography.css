@@ -1,0 +1,128 @@
+/* ========================================
+   TYPOGRAPHY
+   Font families, sizes, and text utilities
+   ======================================== */
+
+/* === FONT IMPORTS === */
+@import url('https://fonts.googleapis.com/css2?family=Exo:wght@400;500;600;700&family=Orbitron:wght@400;500;600;700;900&display=swap');
+
+/* === FONT FAMILY UTILITIES === */
+.font-orbitron { font-family: 'Orbitron', sans-serif; }
+.font-exo { font-family: 'Exo', sans-serif; }
+.heading-font { font-family: var(--font-heading); }
+.body-font { font-family: var(--font-body); }
+
+/* === TEXT SIZE UTILITIES === */
+.text-xs { font-size: 10px; }
+.text-sm { font-size: 12px; }
+.text-base { font-size: 14px; }
+.text-lg { font-size: 16px; }
+.text-xl { font-size: 18px; }
+.text-2xl { font-size: 24px; }
+.text-3xl { font-size: 32px; }
+.text-4xl { font-size: 48px; }
+
+/* === SEMANTIC TEXT STYLES === */
+
+/* Labels - small descriptive text */
+.text-label {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+/* Values - data display */
+.text-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* Section titles */
+.text-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-player);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+/* Panel titles */
+.text-panel-title {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Subtle hint text */
+.text-hint {
+  font-size: 11px;
+  color: var(--color-text-dim);
+  line-height: 1.4;
+}
+
+/* Monospace for numbers/codes */
+.text-mono {
+  font-family: 'Exo', monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* === TEXT DECORATION === */
+.text-glow-player {
+  text-shadow: 0 0 10px var(--color-player-glow);
+}
+
+.text-glow-opponent {
+  text-shadow: 0 0 10px var(--color-opponent-glow);
+}
+
+.text-glow-status-safe {
+  text-shadow: 0 0 10px var(--color-status-safe-dim);
+}
+
+/* === TEXT TRANSFORMS === */
+.uppercase { text-transform: uppercase; }
+.lowercase { text-transform: lowercase; }
+.capitalize { text-transform: capitalize; }
+
+/* === LETTER SPACING === */
+.tracking-tight { letter-spacing: -0.025em; }
+.tracking-normal { letter-spacing: 0; }
+.tracking-wide { letter-spacing: 0.05em; }
+.tracking-wider { letter-spacing: 0.1em; }
+.tracking-widest { letter-spacing: 0.2em; }
+
+/* === LINE HEIGHT === */
+.leading-none { line-height: 1; }
+.leading-tight { line-height: 1.25; }
+.leading-normal { line-height: 1.5; }
+.leading-relaxed { line-height: 1.625; }
+
+/* === TEXT ALIGNMENT === */
+.text-left { text-align: left; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+/* === TEXT OVERFLOW === */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
