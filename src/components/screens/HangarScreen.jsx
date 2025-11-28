@@ -8,14 +8,25 @@ import BlueprintsModal from '../modals/BlueprintsModal';
 import ReplicatorModal from '../modals/ReplicatorModal';
 import RunSummaryModal from '../modals/RunSummaryModal';
 import MIARecoveryModal from '../modals/MIARecoveryModal';
+import ConfirmationModal from '../modals/ConfirmationModal';
 import { generateMapData } from '../../utils/mapGenerator';
 import { RARITY_COLORS } from '../../data/cardData';
 import { getMapType, getMapBackground } from '../../logic/extraction/mapExtraction';
 import { debugLog } from '../../utils/debugLogger.js';
+import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js';
 import { SeededRandom } from '../../utils/seededRandom.js';
+import { Plus, Minus, RotateCcw, ChevronRight, Star, Trash2, AlertTriangle } from 'lucide-react';
 
 // Background image for the map area
 const eremosBackground = new URL('/Eremos/Eremos.jpg', import.meta.url).href;
+
+// Hangar button images
+const hangarImages = {
+  inventory: new URL('/Hanger/Inventory.png', import.meta.url).href,
+  replicator: new URL('/Hanger/Replicator.png', import.meta.url).href,
+  blueprints: new URL('/Hanger/Blueprints.png', import.meta.url).href,
+  repairBay: new URL('/Hanger/RepairBay.png', import.meta.url).href
+};
 
 /**
  * HangarScreen Component
@@ -35,9 +46,20 @@ const HangarScreen = () => {
   const [selectedMap, setSelectedMap] = useState(null);
   const [selectedCoordinate, setSelectedCoordinate] = useState(null);
   const [selectedMiaSlot, setSelectedMiaSlot] = useState(null);
+  const [newDeckOption, setNewDeckOption] = useState(null); // 'empty', 'copyFromSlot0', or null
+  const [deleteConfirmation, setDeleteConfirmation] = useState(null); // { slotId, slotName }
+  const [hoveredButton, setHoveredButton] = useState(null); // Track hovered image button
+
+  // Pan/Zoom state for map area
+  const [zoom, setZoom] = useState(1.5);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   // Ref for map container to get dimensions
   const mapContainerRef = useRef(null);
+  const transformRef = useRef(null);
+  const panRef = useRef({ x: 0, y: 0 }); // Track pan during drag without re-renders
 
   // Extract single-player state
   const {
@@ -51,8 +73,8 @@ const HangarScreen = () => {
   } = gameState;
 
   // Fixed grid dimensions - always the same regardless of screen size
-  const GRID_COLS = 16;  // A-P
-  const GRID_ROWS = 8;   // 1-8
+  const GRID_COLS = 26;  // A-Z
+  const GRID_ROWS = 18;  // 1-18
 
   /**
    * Convert col/row to coordinate string (e.g., "A-1", "H-4", "P-8")
@@ -64,7 +86,7 @@ const HangarScreen = () => {
 
   /**
    * Generate hex grid with fixed dimensions and integrated map icons
-   * Grid is always 16x8, hex size scales to fit container
+   * Grid is always 26x18, hex size scales to fit container
    */
   const generateHexGrid = (containerWidth, containerHeight, gameSeed, activeCount = 6) => {
     // Calculate hex size to fit width (primary constraint)
@@ -208,6 +230,167 @@ const HangarScreen = () => {
   }, [hexGridData]);
 
   /**
+   * Attach wheel listener with { passive: false } to allow preventDefault
+   * This fixes the "Unable to preventDefault inside passive event listener" error
+   */
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setZoom(prevZoom => {
+        const newZoom = Math.min(3, Math.max(1.2, prevZoom + delta));
+        // Also update pan using functional update
+        setPan(p => {
+          if (!mapContainerRef.current || newZoom <= 1) return { x: 0, y: 0 };
+          const { width, height } = mapContainerRef.current.getBoundingClientRect();
+          const maxPanX = (width * (newZoom - 1)) / 2;
+          const maxPanY = (height * (newZoom - 1)) / 2;
+          return {
+            x: Math.max(-maxPanX, Math.min(maxPanX, p.x)),
+            y: Math.max(-maxPanY, Math.min(maxPanY, p.y))
+          };
+        });
+        return newZoom;
+      });
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  // Keep panRef in sync when pan state changes from non-drag sources
+  useEffect(() => {
+    panRef.current = pan;
+  }, [pan]);
+
+  /**
+   * Pan/Zoom helper functions
+   */
+  const clampPan = (panX, panY, zoomLevel) => {
+    if (!mapContainerRef.current || zoomLevel <= 1) return { x: 0, y: 0 };
+    const { width, height } = mapContainerRef.current.getBoundingClientRect();
+    const maxPanX = (width * (zoomLevel - 1)) / 2;
+    const maxPanY = (height * (zoomLevel - 1)) / 2;
+    return {
+      x: Math.max(-maxPanX, Math.min(maxPanX, panX)),
+      y: Math.max(-maxPanY, Math.min(maxPanY, panY))
+    };
+  };
+
+  const handleMapMouseDown = (e) => {
+    if (e.button === 0) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    }
+  };
+
+  const handleMapMouseMove = (e) => {
+    if (isDragging && transformRef.current) {
+      const newX = e.clientX - dragStart.x;
+      const newY = e.clientY - dragStart.y;
+      const clamped = clampPan(newX, newY, zoom);
+      // Direct DOM update - bypasses React re-render for smooth panning
+      transformRef.current.style.transform =
+        `scale(${zoom}) translate(${clamped.x / zoom}px, ${clamped.y / zoom}px)`;
+      panRef.current = clamped; // Store for sync on mouse up
+    }
+  };
+
+  const handleMapMouseUp = () => {
+    if (isDragging) {
+      setPan(panRef.current); // Sync final position to state
+    }
+    setIsDragging(false);
+  };
+
+  const handleResetView = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+    panRef.current = { x: 0, y: 0 };
+  };
+
+  /**
+   * Off-screen POI detection for direction arrows
+   */
+  const getOffScreenPOIs = () => {
+    if (!hexGridData || !mapContainerRef.current || zoom <= 1) return [];
+
+    const container = mapContainerRef.current.getBoundingClientRect();
+    const { width, height } = container;
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    const offScreen = [];
+    const padding = 50; // POI must be this far off-screen to show arrow
+
+    hexGridData.allCells.filter(cell => cell.isActive).forEach(cell => {
+      const cellCenterX = cell.x + hexGridData.hexWidth / 2;
+      const cellCenterY = cell.y + hexGridData.hexHeight / 2;
+
+      // Calculate screen position of this POI
+      // Transform: scale(zoom) translate(pan.x/zoom, pan.y/zoom) with origin at center
+      const screenX = (cellCenterX - centerX) * zoom + centerX + pan.x;
+      const screenY = (cellCenterY - centerY) * zoom + centerY + pan.y;
+
+      // Check if POI is off-screen (with padding)
+      const isOffScreen =
+        screenX < -padding ||
+        screenX > width + padding ||
+        screenY < -padding ||
+        screenY > height + padding;
+
+      if (isOffScreen) {
+        // Calculate angle from screen center to POI's screen position
+        const dx = screenX - centerX;
+        const dy = screenY - centerY;
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+        offScreen.push({
+          cell,
+          angle,
+          screenX,
+          screenY
+        });
+      }
+    });
+
+    return offScreen;
+  };
+
+  /**
+   * Calculate arrow position at screen edge pointing toward off-screen POI
+   */
+  const getArrowEdgePosition = (angle, containerWidth, containerHeight) => {
+    const radians = angle * (Math.PI / 180);
+    const padding = 40;
+    const halfW = containerWidth / 2 - padding;
+    const halfH = containerHeight / 2 - padding;
+
+    // Calculate intersection point with screen edge
+    const tanAngle = Math.tan(radians);
+    let x, y;
+
+    // Check if intersection is with left/right edge or top/bottom edge
+    if (Math.abs(Math.cos(radians)) * halfH > Math.abs(Math.sin(radians)) * halfW) {
+      // Intersects left or right edge
+      x = Math.cos(radians) > 0 ? halfW : -halfW;
+      y = x * tanAngle;
+    } else {
+      // Intersects top or bottom edge
+      y = Math.sin(radians) > 0 ? halfH : -halfH;
+      x = y / tanAngle;
+    }
+
+    return {
+      left: containerWidth / 2 + x - 12,
+      top: containerHeight / 2 + y - 12
+    };
+  };
+
+  /**
    * Event Handlers
    */
 
@@ -216,7 +399,7 @@ const HangarScreen = () => {
     setSidebarMode(mode);
   };
 
-  // Ship slot click
+  // Ship slot click - show new deck prompt for empty slots
   const handleSlotClick = (slot) => {
     if (slot.status === 'mia') {
       // Open MIA recovery modal
@@ -226,11 +409,11 @@ const HangarScreen = () => {
     }
 
     if (slot.status === 'empty') {
+      // Show new deck prompt
       setSelectedSlotId(slot.id);
-      setActiveModal('deckEditor');
+      setActiveModal('newDeckPrompt');
     } else if (slot.status === 'active') {
-      // TODO: Future - Set as default ship
-      // For now, just show ship details or do nothing
+      // Could show ship details in future
       console.log('Clicked active ship slot:', slot.id);
     }
   };
@@ -239,6 +422,57 @@ const HangarScreen = () => {
   const handleCloseMiaModal = () => {
     setSelectedMiaSlot(null);
     setActiveModal(null);
+  };
+
+  // Toggle default ship slot (star)
+  const handleStarToggle = (slotId, e) => {
+    e.stopPropagation();
+    gameStateManager.setState({
+      singlePlayerProfile: {
+        ...singlePlayerProfile,
+        defaultShipSlotId: singlePlayerProfile?.defaultShipSlotId === slotId ? null : slotId
+      }
+    });
+  };
+
+  // Open delete confirmation
+  const handleDeleteClick = (slot, e) => {
+    e.stopPropagation();
+    setDeleteConfirmation({ slotId: slot.id, slotName: slot.name || `Slot ${slot.id}` });
+  };
+
+  // Confirm delete
+  const handleDeleteConfirm = () => {
+    if (deleteConfirmation) {
+      gameStateManager.deleteShipSlot(deleteConfirmation.slotId);
+    }
+    setDeleteConfirmation(null);
+  };
+
+  // Cancel delete
+  const handleDeleteCancel = () => {
+    setDeleteConfirmation(null);
+  };
+
+  // Handle new deck option selection
+  const handleNewDeckOption = (option) => {
+    if (option === 'empty') {
+      // Navigate to deck builder with empty deck
+      gameStateManager.setState({
+        appState: 'deckBuilder',
+        deckBuilderSlotId: selectedSlotId,
+        deckBuilderCopyFrom: null
+      });
+    } else if (option === 'copyFromSlot0') {
+      // Navigate to deck builder copying from slot 0
+      gameStateManager.setState({
+        appState: 'deckBuilder',
+        deckBuilderSlotId: selectedSlotId,
+        deckBuilderCopyFrom: 0
+      });
+    }
+    setActiveModal(null);
+    setSelectedSlotId(null);
   };
 
   // Action button clicks
@@ -289,8 +523,17 @@ const HangarScreen = () => {
 
     debugLog('EXTRACTION', '✅ Map found', { mapName: map.name, tier: map.tier });
 
-    // For MVP: Auto-select first active ship slot
-    const activeSlot = singlePlayerShipSlots.find(slot => slot.status === 'active');
+    // Use default ship slot if set, otherwise first active slot
+    const defaultSlotId = singlePlayerProfile?.defaultShipSlotId;
+    let activeSlot = defaultSlotId
+      ? singlePlayerShipSlots.find(slot => slot.id === defaultSlotId && slot.status === 'active')
+      : null;
+
+    // Fallback to first active slot if default not set or not active
+    if (!activeSlot) {
+      activeSlot = singlePlayerShipSlots.find(slot => slot.status === 'active');
+    }
+
     if (!activeSlot) {
       debugLog('EXTRACTION', '❌ No active ship available', {
         totalSlots: singlePlayerShipSlots.length,
@@ -381,46 +624,37 @@ const HangarScreen = () => {
     }}>
       {/* Header Section */}
       <header style={{
-        background: 'linear-gradient(135deg, rgba(88, 28, 135, 0.9) 0%, rgba(6, 182, 212, 0.7) 100%)',
-        height: '80px',
+        background: 'rgba(17, 24, 39, 0.95)',
+        height: '60px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '0 2rem',
-        boxShadow: 'var(--shadow-panel)',
-        borderBottom: '2px solid var(--color-accent-dim)',
+        borderBottom: '1px solid rgba(6, 182, 212, 0.3)',
         zIndex: 10
       }}>
-        {/* Left: Back Button */}
-        <button
-          onClick={() => gameStateManager.setState({ appState: 'menu' })}
-          className="btn-utility"
-          style={{ padding: '10px 20px', fontSize: '0.9rem' }}
-        >
-          ← BACK
-        </button>
-
-        {/* Center: Title */}
-        <h1 className="text-panel-title" style={{
-          fontSize: '2rem',
-          textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
+        {/* Left: Title */}
+        <h1 style={{
+          fontSize: '1.5rem',
+          color: '#e5e7eb',
           letterSpacing: '0.1em'
         }}>HANGAR</h1>
 
-        {/* Right: Credits & Tokens */}
-        <div className="flex gap-8 text-value">
-          <div>
-            <span className="text-label">CREDITS: </span>
-            <span style={{ color: 'var(--color-resource-energy)' }}>{singlePlayerProfile?.credits || 0}</span>
-          </div>
-          <div>
-            <span className="text-label">TOKENS: </span>
-            <span style={{ color: 'var(--color-accent-bright)' }}>{singlePlayerProfile?.securityTokens || 0}</span>
-          </div>
-          <div>
-            <span className="text-label">MAP KEYS: </span>
-            <span style={{ color: 'var(--color-player-bright)' }}>0</span>
-          </div>
+        {/* Right: Stats */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {[
+            { label: 'CREDITS', value: singlePlayerProfile?.credits || 0, color: '#fbbf24' },
+            { label: 'TOKENS', value: singlePlayerProfile?.securityTokens || 0, color: '#06b6d4' },
+            { label: 'MAP KEYS', value: 0, color: '#60a5fa' },
+            { label: 'RUNS', value: singlePlayerProfile?.totalRuns || 0, color: '#e5e7eb' },
+            { label: 'VICTORIES', value: singlePlayerProfile?.victories || 0, color: '#22c55e' },
+            { label: 'MAX TIER', value: singlePlayerProfile?.maxTierReached || 1, color: '#a855f7' }
+          ].map(({ label, value, color }) => (
+            <div key={label} className="dw-stat-box" style={{ minWidth: '70px', padding: '6px 10px' }}>
+              <span className="dw-stat-box-label">{label}</span>
+              <span className="dw-stat-box-value" style={{ color }}>{value}</span>
+            </div>
+          ))}
         </div>
       </header>
 
@@ -437,14 +671,29 @@ const HangarScreen = () => {
           className="panel"
           style={{
             position: 'relative',
-            padding: '2rem',
             overflow: 'hidden',
             borderRadius: 0,
+            cursor: isDragging ? 'grabbing' : 'grab'
+          }}
+          onMouseDown={handleMapMouseDown}
+          onMouseMove={handleMapMouseMove}
+          onMouseUp={handleMapMouseUp}
+          onMouseLeave={handleMapMouseUp}
+        >
+          {/* Transformable container for pan/zoom */}
+          <div
+            ref={transformRef}
+            style={{
+            width: '100%',
+            height: '100%',
+            transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
+            transformOrigin: 'center center',
             backgroundImage: `url('${eremosBackground}')`,
             backgroundSize: 'cover',
-            backgroundPosition: 'center'
-          }}
-        >
+            backgroundPosition: 'center',
+            cursor: isDragging ? 'grabbing' : 'grab',
+            transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+          }}>
           {/* SVG Hex Grid - integrated grid and map icons */}
           {hexGridData && (
             <svg
@@ -558,6 +807,8 @@ const HangarScreen = () => {
               })}
             </svg>
           )}
+          </div>
+          {/* End transformable container */}
 
           {/* Vignette Effect */}
           <div style={{
@@ -567,28 +818,86 @@ const HangarScreen = () => {
             pointerEvents: 'none',
             zIndex: 3
           }} />
+
+          {/* Zoom Controls - small buttons at bottom-left corner */}
+          <div style={{
+            position: 'absolute',
+            bottom: '20px',
+            left: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+            zIndex: 10
+          }}>
+            <button
+              className="dw-btn dw-btn-secondary"
+              onClick={() => setZoom(z => Math.min(3, z + 0.2))}
+              style={{ padding: '8px 12px' }}
+            >
+              <Plus size={18} />
+            </button>
+            <button
+              className="dw-btn dw-btn-secondary"
+              onClick={() => setZoom(z => Math.max(1, z - 0.2))}
+              style={{ padding: '8px 12px' }}
+            >
+              <Minus size={18} />
+            </button>
+            <button
+              className="dw-btn dw-btn-secondary"
+              onClick={handleResetView}
+              style={{ padding: '8px 12px' }}
+            >
+              <RotateCcw size={18} />
+            </button>
+          </div>
+
+          {/* POI Direction Arrows */}
+          {hexGridData && mapContainerRef.current && zoom > 1 && (() => {
+            const container = mapContainerRef.current.getBoundingClientRect();
+            const offScreenPOIs = getOffScreenPOIs();
+            return offScreenPOIs.map((poi, i) => {
+              const pos = getArrowEdgePosition(poi.angle, container.width, container.height);
+              return (
+                <div
+                  key={i}
+                  style={{
+                    position: 'absolute',
+                    left: pos.left,
+                    top: pos.top,
+                    transform: `rotate(${poi.angle}deg)`,
+                    zIndex: 8,
+                    pointerEvents: 'none',
+                    animation: 'poiArrowPulse 1.5s ease-in-out infinite'
+                  }}
+                >
+                  <ChevronRight size={36} color="#06b6d4" strokeWidth={3} />
+                </div>
+              );
+            });
+          })()}
         </div>
 
         {/* Right Sidebar */}
-        <div className="panel flex flex-col p-6" style={{
+        <div className="flex flex-col p-6" style={{
           borderRadius: 0,
-          borderLeft: '2px solid var(--color-accent-dim)',
-          boxShadow: '-4px 0 6px rgba(0, 0, 0, 0.3)',
+          borderLeft: '2px solid rgba(6, 182, 212, 0.3)',
+          background: 'rgba(0, 0, 0, 0.4)',
           gap: '1rem'
         }}>
           {/* Toggle Buttons */}
           <div className="flex gap-2" style={{ marginBottom: '0.5rem' }}>
             <button
               onClick={() => handleModeToggle('options')}
-              className={sidebarMode === 'options' ? 'btn-confirm' : 'btn-utility'}
-              style={{ flex: 1, padding: '12px', fontSize: '0.85rem', fontWeight: 'bold' }}
+              className={`dw-btn ${sidebarMode === 'options' ? 'dw-btn-confirm' : 'dw-btn-secondary'}`}
+              style={{ flex: 1 }}
             >
               OPTIONS
             </button>
             <button
               onClick={() => handleModeToggle('ships')}
-              className={sidebarMode === 'ships' ? 'btn-confirm' : 'btn-utility'}
-              style={{ flex: 1, padding: '12px', fontSize: '0.85rem', fontWeight: 'bold' }}
+              className={`dw-btn ${sidebarMode === 'ships' ? 'dw-btn-confirm' : 'dw-btn-secondary'}`}
+              style={{ flex: 1 }}
             >
               SHIPS
             </button>
@@ -597,71 +906,141 @@ const HangarScreen = () => {
           {/* Dynamic Panel */}
           <div className="flex flex-col panel-scrollable" style={{ flex: 1, gap: '0.75rem' }}>
             {sidebarMode === 'options' ? (
-              // Options Mode: Action Buttons
+              // Options Mode: Image Buttons (stacked vertically, filling space)
               <>
-                <button
-                  onClick={() => handleActionClick('inventory')}
-                  className="btn-info w-full"
-                  style={{ padding: '14px', fontSize: '0.95rem' }}
-                >
-                  INVENTORY
-                </button>
-                <button
-                  onClick={() => handleActionClick('replicator')}
-                  className="btn-info w-full"
-                  style={{ padding: '14px', fontSize: '0.95rem' }}
-                >
-                  REPLICATOR
-                </button>
-                <button
-                  onClick={() => handleActionClick('blueprints')}
-                  className="btn-info w-full"
-                  style={{ padding: '14px', fontSize: '0.95rem' }}
-                >
-                  BLUEPRINTS
-                </button>
-                <button
-                  onClick={() => handleActionClick('repairBay')}
-                  className="btn-info w-full"
-                  style={{ padding: '14px', fontSize: '0.95rem' }}
-                >
-                  REPAIR BAY
-                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '8px' }}>
+                  {[
+                    { key: 'inventory', label: 'INVENTORY', image: hangarImages.inventory },
+                    { key: 'replicator', label: 'REPLICATOR', image: hangarImages.replicator },
+                    { key: 'blueprints', label: 'BLUEPRINTS', image: hangarImages.blueprints },
+                    { key: 'repairBay', label: 'REPAIR BAY', image: hangarImages.repairBay }
+                  ].map(({ key, label, image }) => {
+                    const isHovered = hoveredButton === key;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleActionClick(key)}
+                        onMouseEnter={() => setHoveredButton(key)}
+                        onMouseLeave={() => setHoveredButton(null)}
+                        style={{
+                          backgroundImage: `url('${image}')`,
+                          backgroundPosition: 'center',
+                          backgroundSize: isHovered ? '115%' : '100%',
+                          flex: 1,
+                          minHeight: '100px',
+                          border: '1px solid rgba(6, 182, 212, 0.4)',
+                          borderRadius: '2px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'flex-end',
+                          padding: 0,
+                          cursor: 'pointer',
+                          overflow: 'hidden',
+                          transition: 'background-size 0.3s ease'
+                        }}
+                      >
+                        {/* Full-width dark strip at bottom */}
+                        <div style={{
+                          width: '100%',
+                          background: 'rgba(0, 0, 0, 0.7)',
+                          padding: '8px 12px',
+                          textAlign: 'center'
+                        }}>
+                          <span style={{
+                            fontSize: '1.1rem',
+                            fontWeight: 'bold',
+                            color: '#fff'
+                          }}>{label}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
                 <button
                   onClick={() => handleActionClick('saveLoad')}
-                  className="btn-info w-full"
-                  style={{ padding: '14px', fontSize: '0.95rem' }}
+                  className="dw-btn dw-btn-secondary dw-btn--full"
                 >
                   SAVE / LOAD
                 </button>
                 <button
                   onClick={() => handleActionClick('exit')}
-                  className="btn-reset w-full"
-                  style={{ padding: '14px', fontSize: '0.95rem', marginTop: 'auto' }}
+                  className="dw-btn dw-btn-danger dw-btn--full"
+                  style={{ marginTop: 'auto' }}
                 >
                   EXIT
                 </button>
               </>
             ) : (
-              // Ships Mode: Ship Slot Buttons
+              // Ships Mode: Ship Cards with star toggle and delete
               <>
-                {singlePlayerShipSlots.map((slot) => (
-                  <button
-                    key={slot.id}
-                    onClick={() => handleSlotClick(slot)}
-                    className={`w-full ${slot.status === 'mia' ? 'btn-cancel' : 'btn-info'}`}
-                    style={{
-                      padding: '14px',
-                      fontSize: '0.95rem',
-                      opacity: slot.status === 'mia' ? 0.8 : 1
-                    }}
-                  >
-                    SLOT {slot.id}
-                    <div className="body-font" style={{ fontSize: '0.75rem', marginTop: '4px', opacity: 0.8 }}>
-                      {slot.status === 'active' ? slot.name : slot.status.toUpperCase()}
+                {singlePlayerShipSlots.map((slot) => {
+                  const isDefault = singlePlayerProfile?.defaultShipSlotId === slot.id;
+                  const validation = slot.status === 'active' ? validateDeckForDeployment(slot, singlePlayerDroneInstances) : null;
+                  const isValid = validation?.isValid ?? true;
+
+                  return (
+                    <div
+                      key={slot.id}
+                      onClick={() => handleSlotClick(slot)}
+                      style={{
+                        background: slot.status === 'mia' ? 'rgba(239, 68, 68, 0.2)' :
+                                   slot.status === 'empty' ? 'rgba(75, 85, 99, 0.3)' :
+                                   'rgba(6, 182, 212, 0.15)',
+                        border: `2px solid ${isDefault ? '#fbbf24' : slot.status === 'mia' ? '#ef4444' : 'var(--color-accent-dim)'}`,
+                        borderRadius: '8px',
+                        padding: '12px',
+                        cursor: 'pointer',
+                        position: 'relative'
+                      }}
+                    >
+                      {/* Top row: Star + Name + Delete */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        {slot.status === 'active' && (
+                          <button
+                            onClick={(e) => handleStarToggle(slot.id, e)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                          >
+                            <Star
+                              size={20}
+                              fill={isDefault ? '#fbbf24' : 'none'}
+                              color={isDefault ? '#fbbf24' : '#6b7280'}
+                            />
+                          </button>
+                        )}
+                        <span style={{
+                          flex: 1,
+                          fontWeight: 'bold',
+                          color: slot.status === 'mia' ? '#ef4444' : 'var(--color-accent-bright)'
+                        }}>
+                          {slot.status === 'active' ? slot.name : slot.status === 'empty' ? 'EMPTY SLOT' : 'MIA'}
+                        </span>
+                        {slot.status === 'active' && slot.id !== 0 && (
+                          <button
+                            onClick={(e) => handleDeleteClick(slot, e)}
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                          >
+                            <Trash2 size={18} color="#ef4444" />
+                          </button>
+                        )}
+                        {!isValid && (
+                          <AlertTriangle size={18} color="#f59e0b" title={validation?.errors?.join(', ')} />
+                        )}
+                      </div>
+
+                      {/* Status info */}
+                      {slot.status === 'active' && (
+                        <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                          {slot.deckCardInstanceIds?.length || 0} cards
+                        </div>
+                      )}
+                      {slot.status === 'empty' && (
+                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                          Click to create deck
+                        </div>
+                      )}
                     </div>
-                  </button>
-                ))}
+                  );
+                })}
               </>
             )}
           </div>
@@ -723,6 +1102,57 @@ const HangarScreen = () => {
         <MIARecoveryModal
           shipSlot={selectedMiaSlot}
           onClose={handleCloseMiaModal}
+        />
+      )}
+
+      {/* New Deck Prompt Modal */}
+      {activeModal === 'newDeckPrompt' && (
+        <div className="dw-modal-overlay" onClick={closeAllModals}>
+          <div className="dw-modal-content dw-modal--sm dw-modal--action" onClick={e => e.stopPropagation()}>
+            <div className="dw-modal-header">
+              <div className="dw-modal-header-info">
+                <h2 className="dw-modal-header-title">Create New Deck</h2>
+              </div>
+            </div>
+            <div className="dw-modal-body">
+              <p className="dw-modal-text">How would you like to start your new deck?</p>
+            </div>
+            <div className="dw-modal-actions" style={{ flexDirection: 'column', gap: '0.75rem' }}>
+              <button
+                onClick={() => handleNewDeckOption('empty')}
+                className="dw-btn dw-btn-confirm dw-btn--full"
+              >
+                Start Empty
+              </button>
+              {singlePlayerShipSlots[0]?.status === 'active' && (
+                <button
+                  onClick={() => handleNewDeckOption('copyFromSlot0')}
+                  className="dw-btn dw-btn-secondary dw-btn--full"
+                >
+                  Copy from {singlePlayerShipSlots[0]?.name || 'Slot 0'}
+                </button>
+              )}
+              <button
+                onClick={closeAllModals}
+                className="dw-btn dw-btn-cancel dw-btn--full"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Deck Confirmation Modal */}
+      {deleteConfirmation && (
+        <ConfirmationModal
+          confirmationModal={{
+            type: 'delete',
+            text: `Delete "${deleteConfirmation.slotName}"? All non-starter cards will be returned to your inventory.`,
+            onConfirm: handleDeleteConfirm,
+            onCancel: handleDeleteCancel
+          }}
+          show={true}
         />
       )}
     </div>

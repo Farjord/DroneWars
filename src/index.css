@@ -258,6 +258,25 @@
   animation: guardian-pulse 2s infinite ease-in-out;
 }
 
+/* POI arrow pulse for off-screen indicators */
+@keyframes poiArrowPulse {
+  0%, 100% {
+    opacity: 0.6;
+    filter: drop-shadow(0 0 4px rgba(6, 182, 212, 0.6));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 10px rgba(6, 182, 212, 1)) drop-shadow(0 0 20px rgba(6, 182, 212, 0.5));
+  }
+}
+
+/* Hangar image button hover effect */
+.hangar-image-btn:hover {
+  transform: scale(1.03);
+  border-color: rgba(6, 182, 212, 0.7) !important;
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.4);
+}
+
 /* Shake animation for hit effects */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }

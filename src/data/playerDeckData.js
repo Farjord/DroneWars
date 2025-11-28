@@ -12,20 +12,25 @@ export const starterDeck = {
 
   // 40 Asset Cards - Exactly as defined in StateInitializer.js
   decklist: [
-    { id: 'CARD018', quantity: 4 },  // Desperate Measures
-    { id: 'CARD019', quantity: 2 },  // Reposition
-    { id: 'CARD009', quantity: 2 },  // Target Lock
-    { id: 'CARD007', quantity: 2 },  // Emergency Patch
-    { id: 'CARD012', quantity: 2 },  // Armor-Piercing Shot
-    { id: 'CARD005', quantity: 4 },  // Adrenaline Rush
-    { id: 'CARD006', quantity: 2 },  // Nanobot Repair
-    { id: 'CARD015', quantity: 2 },  // Streamline
-    { id: 'CARD008', quantity: 2 },  // Shield Recharge
-    { id: 'CARD001', quantity: 2 },  // Laser Blast
-    { id: 'CARD002', quantity: 4 },  // System Reboot
-    { id: 'CARD003', quantity: 4 },  // Out Think
-    { id: 'CARD004', quantity: 4 },  // Energy Surge
-    { id: 'CARD016', quantity: 4 },  // Static Field
+    { id: 'CARD001', quantity: 4 }, 
+    { id: 'CARD010', quantity: 2 },  
+    { id: 'CARD013', quantity: 2 },  
+    { id: 'CARD005', quantity: 2 },  
+    { id: 'CARD023', quantity: 2 },  
+    { id: 'CARD014', quantity: 2 },  
+    { id: 'CARD016', quantity: 2 },  
+    { id: 'CARD018', quantity: 2 },  
+    { id: 'CARD007', quantity: 2 },  
+    { id: 'CARD003', quantity: 4 },  
+    { id: 'CARD033', quantity: 2 },  
+    { id: 'CARD035', quantity: 2 },  
+    { id: 'CARD002', quantity: 2 },  
+    { id: 'CARD006', quantity: 2 },  
+    { id: 'CARD028', quantity: 2 },  
+    { id: 'CARD027', quantity: 1 },  
+    { id: 'CARD029', quantity: 2 },  
+    { id: 'CARD019', quantity: 2 },  
+    { id: 'CARD020', quantity: 1 }, 
   ],
   // Total: 4+2+2+2+2+4+2+2+2+2+4+4+4+4 = 40 cards ✓
 
