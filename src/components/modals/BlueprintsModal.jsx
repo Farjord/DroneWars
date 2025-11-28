@@ -1,4 +1,10 @@
+// ========================================
+// BLUEPRINTS MODAL COMPONENT
+// ========================================
+// View/craft from unlocked blueprints
+
 import React, { useState, useMemo } from 'react';
+import { Layers, Lock } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
 import droneData from '../../data/droneData';
 import { shipComponentCollection } from '../../data/shipData';
@@ -22,10 +28,11 @@ const BlueprintsModal = ({ onClose }) => {
   const [selectedTab, setSelectedTab] = useState('Drones');
   const [feedback, setFeedback] = useState(null);
 
+  // Fallbacks for showcase mode where game state may be empty
   const {
     singlePlayerProfile,
-    singlePlayerInventory,
-  } = gameState;
+    singlePlayerInventory = {},
+  } = gameState || {};
 
   const credits = singlePlayerProfile?.credits || 0;
   const unlockedBlueprints = singlePlayerProfile?.unlockedBlueprints || [];
@@ -132,148 +139,165 @@ const BlueprintsModal = ({ onClose }) => {
   };
 
   const currentBlueprints = selectedTab === 'Drones' ? droneBlueprints : shipBlueprints;
+  const tabs = ['Drones', 'Ships'];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-gray-800 p-8 rounded-lg max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="dw-modal-overlay" onClick={onClose}>
+      <div className="dw-modal-content dw-modal--xl dw-modal--action" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-white">Blueprints</h2>
-            <p className="text-sm text-gray-400">
-              {stats.unlocked} / {stats.total} unlocked
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Layers size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">Blueprints</h2>
+            <p className="dw-modal-header-subtitle">{stats.unlocked} / {stats.total} unlocked</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="dw-modal-body">
+          {/* Credits Display */}
+          <div className="dw-modal-credits">
+            <span className="dw-modal-credits-label">Available Credits</span>
+            <span className="dw-modal-credits-value">{credits}</span>
+          </div>
+
+          {/* Feedback Message */}
+          {feedback && (
+            <div className={`dw-modal-feedback dw-modal-feedback--${feedback.type}`}>
+              {feedback.message}
+            </div>
+          )}
+
+          {/* Tab Navigation */}
+          <div className="dw-modal-tabs">
+            {tabs.map(tab => (
+              <button
+                key={tab}
+                onClick={() => setSelectedTab(tab)}
+                className={`dw-modal-tab ${selectedTab === tab ? 'dw-modal-tab--active' : ''}`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          {/* Blueprints Grid */}
+          <div className="dw-modal-scroll" style={{ maxHeight: '400px' }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+              gap: '12px'
+            }}>
+              {currentBlueprints.map(blueprint => {
+                const canAfford = credits >= blueprint.craftCost;
+
+                return (
+                  <div
+                    key={blueprint.id}
+                    className={`dw-blueprint-card ${!blueprint.isUnlocked ? 'dw-blueprint-card--locked' : ''}`}
+                    style={{
+                      padding: '12px',
+                      borderRadius: '4px'
+                    }}
+                  >
+                    <div className="dw-blueprint-card-scanline" />
+                    <div className="dw-blueprint-card-inner">
+                      {/* Locked View */}
+                      {!blueprint.isUnlocked ? (
+                        <div style={{ textAlign: 'center', padding: '16px 0', position: 'relative', zIndex: 1 }}>
+                          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+                            <Lock size={32} style={{ color: 'var(--modal-text-muted)' }} />
+                          </div>
+                          <div style={{
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            color: getRarityColor(blueprint.rarity),
+                            marginBottom: '4px'
+                          }}>
+                            {blueprint.rarity}
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'var(--modal-text-muted)' }}>Locked</div>
+                        </div>
+                      ) : (
+                        <div style={{ position: 'relative', zIndex: 1 }}>
+                          {/* Blueprint Name */}
+                          <div style={{
+                            fontSize: '13px',
+                            fontWeight: '600',
+                            color: '#fff',
+                            marginBottom: '6px'
+                          }}>
+                            {blueprint.name}
+                          </div>
+
+                          {/* Type/Rarity */}
+                          <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)', marginBottom: '4px' }}>
+                            {blueprint.type}
+                          </div>
+                          <div style={{
+                            fontSize: '11px',
+                            fontWeight: '600',
+                            color: getRarityColor(blueprint.rarity),
+                            marginBottom: '8px'
+                          }}>
+                            {blueprint.rarity}
+                          </div>
+
+                          {/* Owned Count */}
+                          {blueprint.owned > 0 && (
+                            <div style={{
+                              fontSize: '12px',
+                              color: 'var(--modal-success)',
+                              marginBottom: '6px'
+                            }}>
+                              Owned: {blueprint.owned}
+                            </div>
+                          )}
+
+                          {/* Craft Cost */}
+                          <div style={{
+                            fontSize: '12px',
+                            color: 'var(--modal-text-secondary)',
+                            marginBottom: '10px'
+                          }}>
+                            Cost: <span style={{ color: '#fbbf24', fontWeight: '600' }}>{blueprint.craftCost}</span>
+                          </div>
+
+                          {/* Craft Button */}
+                          <button
+                            className={`dw-btn dw-btn-confirm dw-btn--full ${!canAfford ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            style={{ padding: '6px 12px', fontSize: '12px' }}
+                            onClick={() => handleCraft(blueprint)}
+                            disabled={!canAfford}
+                          >
+                            Craft
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Info Box */}
+          <div className="dw-modal-info-box" style={{ marginTop: '16px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--modal-text-primary)', margin: 0 }}>
+              <strong style={{ color: 'var(--modal-theme)' }}>Craft Costs:</strong>{' '}
+              Common {CRAFT_COSTS.Common}, Uncommon {CRAFT_COSTS.Uncommon}, Rare {CRAFT_COSTS.Rare}, Mythic {CRAFT_COSTS.Mythic} credits
             </p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white text-2xl"
-          >
-            ×
+        </div>
+
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+            Close
           </button>
         </div>
-
-        {/* Credits Display */}
-        <div className="mb-4 p-3 bg-gray-900 rounded">
-          <span className="text-gray-400">Available Credits: </span>
-          <span className="text-yellow-400 font-bold text-lg">{credits}</span>
-        </div>
-
-        {/* Feedback Message */}
-        {feedback && (
-          <div className={`
-            p-3 rounded mb-4
-            ${feedback.type === 'success' ? 'bg-green-900 bg-opacity-30 border border-green-700 text-green-200' : ''}
-            ${feedback.type === 'error' ? 'bg-red-900 bg-opacity-30 border border-red-700 text-red-200' : ''}
-          `}>
-            {feedback.message}
-          </div>
-        )}
-
-        {/* Tab Navigation */}
-        <div className="flex gap-2 mb-6">
-          {['Drones', 'Ships'].map(tab => (
-            <button
-              key={tab}
-              onClick={() => setSelectedTab(tab)}
-              className={`
-                px-4 py-2 rounded font-bold transition-colors
-                ${selectedTab === tab
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }
-              `}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        {/* Blueprints Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {currentBlueprints.map(blueprint => {
-            const canAfford = credits >= blueprint.craftCost;
-
-            return (
-              <div
-                key={blueprint.id}
-                className={`
-                  p-4 bg-gray-900 rounded-lg border-2 transition-all
-                  ${blueprint.isUnlocked
-                    ? 'border-gray-700'
-                    : 'border-gray-800 opacity-60'
-                  }
-                `}
-              >
-                {/* Locked View */}
-                {!blueprint.isUnlocked ? (
-                  <div className="text-center py-6">
-                    <div className="text-4xl mb-2">🔒</div>
-                    <div className="text-xs font-bold mb-1"
-                      style={{ color: getRarityColor(blueprint.rarity) }}>
-                      {blueprint.rarity}
-                    </div>
-                    <div className="text-xs text-gray-500">Locked</div>
-                  </div>
-                ) : (
-                  <>
-                    {/* Blueprint Name */}
-                    <div className="font-bold text-white mb-2">{blueprint.name}</div>
-
-                    {/* Type/Rarity */}
-                    <div className="text-xs text-gray-400 mb-1">{blueprint.type}</div>
-                    <div className="text-xs font-bold mb-3"
-                      style={{ color: getRarityColor(blueprint.rarity) }}>
-                      {blueprint.rarity}
-                    </div>
-
-                    {/* Owned Count */}
-                    {blueprint.owned > 0 && (
-                      <div className="mb-2 text-sm text-green-400">
-                        Owned: {blueprint.owned}
-                      </div>
-                    )}
-
-                    {/* Craft Cost */}
-                    <div className="mb-3 text-sm text-gray-400">
-                      Cost: <span className="text-yellow-400 font-bold">{blueprint.craftCost}</span>
-                    </div>
-
-                    {/* Craft Button */}
-                    <button
-                      onClick={() => handleCraft(blueprint)}
-                      disabled={!canAfford}
-                      className={`
-                        w-full px-3 py-2 rounded font-bold text-sm transition-colors
-                        ${canAfford
-                          ? 'bg-blue-600 hover:bg-blue-500'
-                          : 'bg-gray-600 cursor-not-allowed opacity-50'
-                        }
-                      `}
-                    >
-                      Craft
-                    </button>
-                  </>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Info Box */}
-        <div className="mt-6 p-4 bg-blue-900 bg-opacity-30 border border-blue-700 rounded">
-          <p className="text-sm text-blue-200">
-            <strong>Craft Costs:</strong> Common {CRAFT_COSTS.Common}, Uncommon {CRAFT_COSTS.Uncommon},
-            Rare {CRAFT_COSTS.Rare}, Mythic {CRAFT_COSTS.Mythic} credits
-          </p>
-        </div>
-
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="w-full mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded transition-colors"
-        >
-          Close
-        </button>
       </div>
     </div>
   );

@@ -98,61 +98,15 @@
   transform: rotateY(180deg);
 }
 
-/* Card Back (face-down) */
+/* Card Back (face-down) - positioning only, visual from HiddenCard component */
 .loot-card-back {
   position: absolute;
   width: 100%;
   height: 100%;
   backface-visibility: hidden;
+  /* Override HiddenCard fixed dimensions to fill container */
+  clip-path: none;
   border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.4),
-    0 0 20px var(--rarity-color, #808080);
-  animation: cardGlow 2s ease-in-out infinite alternate;
-}
-
-@keyframes cardGlow {
-  from {
-    box-shadow:
-      0 4px 20px rgba(0, 0, 0, 0.4),
-      0 0 15px var(--rarity-color, #808080);
-  }
-  to {
-    box-shadow:
-      0 4px 20px rgba(0, 0, 0, 0.4),
-      0 0 30px var(--rarity-color, #808080);
-  }
-}
-
-.card-back-pattern {
-  width: 80px;
-  height: 80px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.card-back-icon {
-  font-size: 48px;
-  font-weight: bold;
-  color: rgba(255, 255, 255, 0.8);
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-}
-
-.card-back-rarity {
-  font-family: 'Exo', sans-serif;
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
-  text-transform: uppercase;
-  letter-spacing: 1px;
 }
 
 /* Card Front (revealed) - Contains full ActionCard */
@@ -364,13 +318,18 @@
     height: 150px;
   }
 
-  .card-back-pattern {
-    width: 50px;
-    height: 50px;
+  /* HiddenCard scales with container */
+  .loot-card-back .dw-hidden-card__pattern {
+    width: 40px;
+    height: 40px;
   }
 
-  .card-back-icon {
-    font-size: 32px;
+  .loot-card-back .dw-hidden-card__icon {
+    font-size: 24px;
+  }
+
+  .loot-card-back .dw-hidden-card__rarity {
+    font-size: 9px;
   }
 
   .card-name {

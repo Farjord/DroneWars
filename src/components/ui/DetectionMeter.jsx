@@ -89,12 +89,6 @@ function DetectionMeter({ detection }) {
         <div className="meter-threshold-marker" style={{ left: '80%' }} />
       </div>
 
-      {/* Threshold label */}
-      <div className={`meter-threshold ${getColorClass()}`}>
-        <span className="meter-icon">{getWarningIcon()}</span>
-        <span className="meter-threshold-text">{getThresholdLabel()}</span>
-      </div>
-
       {/* Warning message for critical threshold */}
       {detection >= 80 && (
         <div className="meter-warning">

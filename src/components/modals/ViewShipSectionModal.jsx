@@ -81,7 +81,10 @@ const ViewShipSectionModal = ({ isOpen, onClose, data }) => {
               isInMiddleLane={isInMiddleLane}
               reallocationState={null}
               gameEngine={{ getShipStatus: (stats) => {
-                // Simple status calculation for display
+                // Simple status calculation for display (defensive for showcase mode)
+                if (!stats?.thresholds || stats.hull === undefined || stats.maxHull === undefined) {
+                  return 'healthy'; // Default to healthy if missing data
+                }
                 const hullPercent = stats.hull / stats.maxHull;
                 if (hullPercent <= stats.thresholds.critical / stats.maxHull) return 'critical';
                 if (hullPercent <= stats.thresholds.damaged / stats.maxHull) return 'damaged';

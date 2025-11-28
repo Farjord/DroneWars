@@ -187,7 +187,7 @@ function MapPreviewRenderer({ hexes, gates, pois, radius, selectedGateId, onGate
               dominantBaseline="middle"
               fill="#fff"
             >
-              {gates.find(g => g.q === hex.q && g.r === hex.r)?.gateId + 1}
+              {(gates.find(g => g.q === hex.q && g.r === hex.r)?.gateId ?? 0) + 1}
             </text>
           </g>
         )}

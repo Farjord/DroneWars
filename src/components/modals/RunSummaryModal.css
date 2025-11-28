@@ -33,6 +33,13 @@
   position: relative;
   font-family: 'Exo', sans-serif;
   animation: runSummarySlideIn 0.3s ease-out;
+  /* Hide scrollbars visually */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.run-summary-modal::-webkit-scrollbar {
+  display: none;
 }
 
 .run-summary-modal.success {

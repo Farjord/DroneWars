@@ -104,9 +104,13 @@ function HandView({
   }, [
     localPlayerState.hand.map(c => c.instanceId).join(','), // Hand composition
     localPlayerId,
-    // Serialize drone IDs per lane - only changes when drones actually change
-    Object.values(localPlayerState.dronesOnBoard).flatMap(lane => lane.map(d => d.id)).join(','),
-    Object.values(opponentPlayerState.dronesOnBoard).flatMap(lane => lane.map(d => d.id)).join(','),
+    // Serialize drone IDs AND state flags that affect targeting (isExhausted, isMarked)
+    Object.values(localPlayerState.dronesOnBoard).flatMap(lane =>
+      lane.map(d => `${d.id}:${d.isExhausted}:${d.isMarked}`)
+    ).join(','),
+    Object.values(opponentPlayerState.dronesOnBoard).flatMap(lane =>
+      lane.map(d => `${d.id}:${d.isExhausted}:${d.isMarked}`)
+    ).join(','),
     // Serialize ship section keys - only changes when sections change
     Object.keys(localPlayerState.shipSections).sort().join(','),
     Object.keys(opponentPlayerState.shipSections).sort().join(',')

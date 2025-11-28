@@ -1,0 +1,1054 @@
+/* ========================================
+   MODAL BASE SYSTEM
+   Clean, reusable modal styles with theming
+   Single source of truth for all modal styling
+   ======================================== */
+
+/* ========================================
+   CSS VARIABLES
+   ======================================== */
+:root {
+  /* Background */
+  --modal-bg: linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(10, 15, 28, 0.98) 100%);
+
+  /* Danger Theme (Red) */
+  --modal-danger: #ef4444;
+  --modal-danger-light: rgba(239, 68, 68, 0.7);
+  --modal-danger-border: rgba(239, 68, 68, 0.4);
+  --modal-danger-glow: rgba(239, 68, 68, 0.15);
+  --modal-danger-bg: rgba(239, 68, 68, 0.08);
+
+  /* Action Theme (Cyan) */
+  --modal-action: #06b6d4;
+  --modal-action-light: rgba(6, 182, 212, 0.7);
+  --modal-action-border: rgba(6, 182, 212, 0.4);
+  --modal-action-glow: rgba(6, 182, 212, 0.15);
+  --modal-action-bg: rgba(6, 182, 212, 0.08);
+
+  /* Success Theme (Green) - for loot/victory */
+  --modal-success: #22c55e;
+  --modal-success-light: rgba(34, 197, 94, 0.7);
+  --modal-success-border: rgba(34, 197, 94, 0.4);
+  --modal-success-glow: rgba(34, 197, 94, 0.15);
+  --modal-success-bg: rgba(34, 197, 94, 0.08);
+
+  /* Text Colors */
+  --modal-text-primary: rgba(229, 231, 235, 0.9);
+  --modal-text-secondary: rgba(156, 163, 175, 1);
+  --modal-text-muted: rgba(107, 114, 128, 1);
+
+  /* Generic Border (for internal dividers, not themed) */
+  --modal-border: rgba(75, 85, 99, 0.5);
+}
+
+/* ========================================
+   OVERLAY
+   ======================================== */
+.dw-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  backdrop-filter: blur(4px);
+  animation: dw-modal-fadeIn 0.2s ease-out;
+  padding: 1rem;
+}
+
+@keyframes dw-modal-fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ========================================
+   CONTENT CONTAINER
+   ======================================== */
+.dw-modal-content {
+  background: var(--modal-bg);
+  border: 1px solid var(--modal-theme-border, var(--modal-action-border));
+  border-radius: 4px;
+  width: 90%;
+  padding: 0;
+  position: relative;
+  box-shadow:
+    0 0 40px var(--modal-theme-glow, var(--modal-action-glow)),
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 var(--modal-theme-glow, var(--modal-action-glow));
+  font-family: 'Exo', sans-serif;
+  max-height: 90vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Hide scrollbars visually */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.dw-modal-content::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* Corner Brackets */
+.dw-modal-content::before,
+.dw-modal-content::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.dw-modal-content::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--modal-theme-light, var(--modal-action-light));
+  border-left: 2px solid var(--modal-theme-light, var(--modal-action-light));
+}
+
+.dw-modal-content::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid var(--modal-theme-light, var(--modal-action-light));
+  border-right: 2px solid var(--modal-theme-light, var(--modal-action-light));
+}
+
+/* ========================================
+   SIZE VARIANTS
+   ======================================== */
+.dw-modal--sm { max-width: 380px; }
+.dw-modal--md { max-width: 480px; }
+.dw-modal--lg { max-width: 600px; }
+.dw-modal--xl { max-width: 900px; }  /* Increased for two-column layouts */
+.dw-modal--xxl { max-width: 1100px; }
+
+/* ========================================
+   THEME MODIFIERS
+   ======================================== */
+
+/* Danger Theme (Red) */
+.dw-modal--danger {
+  --modal-theme: var(--modal-danger);
+  --modal-theme-light: var(--modal-danger-light);
+  --modal-theme-border: var(--modal-danger-border);
+  --modal-theme-glow: var(--modal-danger-glow);
+  --modal-theme-bg: var(--modal-danger-bg);
+}
+
+/* Action Theme (Cyan) - Default */
+.dw-modal--action {
+  --modal-theme: var(--modal-action);
+  --modal-theme-light: var(--modal-action-light);
+  --modal-theme-border: var(--modal-action-border);
+  --modal-theme-glow: var(--modal-action-glow);
+  --modal-theme-bg: var(--modal-action-bg);
+}
+
+/* Success Theme (Green) */
+.dw-modal--success {
+  --modal-theme: var(--modal-success);
+  --modal-theme-light: var(--modal-success-light);
+  --modal-theme-border: var(--modal-success-border);
+  --modal-theme-glow: var(--modal-success-glow);
+  --modal-theme-bg: var(--modal-success-bg);
+}
+
+/* ========================================
+   HEADER SECTION
+   ======================================== */
+.dw-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--modal-theme-border, var(--modal-action-border));
+  background: linear-gradient(180deg, var(--modal-theme-bg, var(--modal-action-bg)) 0%, transparent 100%);
+}
+
+.dw-modal-header-icon {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--modal-theme, var(--modal-action));
+}
+
+.dw-modal-header-icon--pulse {
+  animation: dw-modal-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes dw-modal-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.dw-modal-header-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.dw-modal-header-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--modal-theme, var(--modal-action));
+  margin: 0 0 2px 0;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.dw-modal-header-subtitle {
+  font-size: 12px;
+  color: var(--modal-theme-light, var(--modal-action-light));
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Close button in header */
+.dw-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: var(--modal-text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+  z-index: 2;
+}
+
+.dw-modal-close:hover {
+  color: #fff;
+}
+
+/* ========================================
+   BODY SECTION
+   ======================================== */
+.dw-modal-body {
+  padding: 20px;
+}
+
+.dw-modal-body--compact {
+  padding: 16px 20px;
+}
+
+/* Text styles */
+.dw-modal-text {
+  font-size: 14px;
+  color: var(--modal-text-primary);
+  line-height: 1.6;
+  margin: 0 0 16px 0;
+  text-align: center;
+}
+
+.dw-modal-text--left {
+  text-align: left;
+}
+
+/* Info/Warning Box */
+.dw-modal-info-box {
+  background: var(--modal-theme-bg, var(--modal-action-bg));
+  border: 1px solid var(--modal-theme-border, var(--modal-action-border));
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.dw-modal-info-box:last-child {
+  margin-bottom: 0;
+}
+
+.dw-modal-info-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--modal-theme, var(--modal-action));
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 8px 0;
+}
+
+.dw-modal-info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--modal-text-primary);
+  margin: 6px 0;
+}
+
+.dw-modal-info-icon {
+  color: var(--modal-theme, var(--modal-action));
+  flex-shrink: 0;
+}
+
+/* Section dividers */
+.dw-modal-divider {
+  height: 1px;
+  background: var(--modal-theme-border, var(--modal-action-border));
+  margin: 16px 0;
+}
+
+/* ========================================
+   ACTIONS SECTION
+   ======================================== */
+.dw-modal-actions {
+  padding: 16px 20px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  border-top: 1px solid var(--modal-theme-border, var(--modal-action-border));
+}
+
+.dw-modal-actions--spread {
+  justify-content: space-between;
+}
+
+.dw-modal-actions--right {
+  justify-content: flex-end;
+}
+
+/* ========================================
+   BUTTONS
+   ======================================== */
+.dw-btn {
+  font-family: 'Exo', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition: all 0.2s ease;
+  min-width: 120px;
+  text-align: center;
+}
+
+.dw-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Cancel Button - Transparent with cyan border */
+.dw-btn-cancel {
+  background: transparent;
+  border: 1px solid var(--modal-action-border);
+  color: var(--modal-action-light);
+}
+
+.dw-btn-cancel:hover:not(:disabled) {
+  background: var(--modal-action-bg);
+  border-color: var(--modal-action-light);
+  color: var(--modal-action);
+}
+
+/* Confirm Button - Cyan gradient */
+.dw-btn-confirm {
+  background: linear-gradient(180deg, #0891b2 0%, #0e7490 100%);
+  border: 1px solid var(--modal-action-light);
+  color: #fff;
+  box-shadow: 0 2px 8px var(--modal-action-glow);
+}
+
+.dw-btn-confirm:hover:not(:disabled) {
+  background: linear-gradient(180deg, #06b6d4 0%, #0891b2 100%);
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
+}
+
+/* Danger Button - Red gradient */
+.dw-btn-danger {
+  background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
+  border: 1px solid var(--modal-danger-light);
+  color: #fff;
+  box-shadow: 0 2px 8px var(--modal-danger-glow);
+}
+
+.dw-btn-danger:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* Success Button - Green gradient */
+.dw-btn-success {
+  background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
+  border: 1px solid var(--modal-success-light);
+  color: #fff;
+  box-shadow: 0 2px 8px var(--modal-success-glow);
+}
+
+.dw-btn-success:hover:not(:disabled) {
+  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+}
+
+/* Secondary Button - Subtle */
+.dw-btn-secondary {
+  background: rgba(55, 65, 81, 0.5);
+  border: 1px solid rgba(75, 85, 99, 0.5);
+  color: var(--modal-text-secondary);
+}
+
+.dw-btn-secondary:hover:not(:disabled) {
+  background: rgba(75, 85, 99, 0.5);
+  border-color: rgba(107, 114, 128, 0.5);
+  color: var(--modal-text-primary);
+}
+
+/* Full width button */
+.dw-btn--full {
+  width: 100%;
+}
+
+/* ========================================
+   GRID LAYOUTS
+   ======================================== */
+.dw-modal-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.dw-modal-grid--2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.dw-modal-grid--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* Stat box for grids */
+.dw-modal-stat {
+  padding: 12px;
+  background: rgba(17, 24, 39, 0.5);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.dw-modal-stat-label {
+  font-size: 11px;
+  color: var(--modal-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.dw-modal-stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.dw-modal-stat-value--danger {
+  color: var(--modal-danger);
+}
+
+.dw-modal-stat-value--action {
+  color: var(--modal-action);
+}
+
+.dw-modal-stat-value--success {
+  color: var(--modal-success);
+}
+
+/* ========================================
+   SCROLLABLE CONTENT
+   ======================================== */
+.dw-modal-scroll {
+  overflow-y: auto;
+  padding-right: 8px;
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(6, 182, 212, 0.6) rgba(0, 0, 0, 0.2);
+}
+
+/* Webkit scrollbar (Chrome, Safari, Edge) */
+.dw-modal-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.dw-modal-scroll::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.dw-modal-scroll::-webkit-scrollbar-thumb {
+  background: rgba(6, 182, 212, 0.6);
+  border-radius: 3px;
+}
+
+.dw-modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(6, 182, 212, 0.8);
+}
+
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+@media (max-width: 640px) {
+  .dw-modal-content {
+    width: 95%;
+    max-width: none !important;
+  }
+
+  .dw-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .dw-btn {
+    width: 100%;
+  }
+
+  .dw-modal-grid--2,
+  .dw-modal-grid--3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ========================================
+   OPTION CARDS (for multi-choice modals)
+   ======================================== */
+.dw-modal-options {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.dw-modal-option {
+  background: rgba(17, 24, 39, 0.6);
+  border: 1px solid var(--modal-theme-border, var(--modal-action-border));
+  border-radius: 6px;
+  padding: 16px;
+  transition: all 0.2s ease;
+}
+
+.dw-modal-option--success {
+  border-color: var(--modal-success-border);
+}
+
+.dw-modal-option--danger {
+  border-color: var(--modal-danger-border);
+}
+
+.dw-modal-option--disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.dw-modal-option-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.dw-modal-option-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e5e7eb;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dw-modal-option-cost {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+.dw-modal-option-cost--free {
+  color: var(--modal-success);
+}
+
+/* Benefit/consequence lists */
+.dw-modal-benefit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--modal-text-primary);
+  margin: 6px 0;
+}
+
+.dw-modal-benefit-icon {
+  color: var(--modal-success);
+  flex-shrink: 0;
+}
+
+.dw-modal-consequence {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(239, 68, 68, 0.9);
+  margin: 6px 0;
+}
+
+.dw-modal-consequence-icon {
+  color: var(--modal-danger);
+  flex-shrink: 0;
+}
+
+/* Balance display */
+.dw-modal-balance {
+  font-size: 12px;
+  color: var(--modal-text-secondary);
+  margin-bottom: 12px;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.dw-modal-balance--sufficient {
+  color: var(--modal-success);
+  font-weight: 600;
+}
+
+.dw-modal-balance--insufficient {
+  color: var(--modal-danger);
+  font-weight: 600;
+}
+
+/* Confirmation inline section */
+.dw-modal-confirm-inline {
+  background: var(--modal-theme-bg, var(--modal-action-bg));
+  border: 1px solid var(--modal-theme-border, var(--modal-action-border));
+  border-radius: 4px;
+  padding: 12px;
+  text-align: center;
+}
+
+.dw-modal-confirm-inline p {
+  font-size: 13px;
+  color: var(--modal-text-primary);
+  margin: 0 0 10px 0;
+}
+
+.dw-modal-confirm-inline--danger {
+  background: var(--modal-danger-bg);
+  border-color: var(--modal-danger-border);
+}
+
+.dw-modal-confirm-inline--danger p {
+  color: var(--modal-danger);
+  font-weight: 600;
+}
+
+.dw-modal-confirm-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* Item preview box */
+.dw-modal-preview {
+  background: var(--modal-theme-bg, var(--modal-action-bg));
+  border: 1px solid var(--modal-theme-border, var(--modal-action-border));
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.dw-modal-preview-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--modal-theme, var(--modal-action));
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 8px 0;
+}
+
+.dw-modal-preview-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dw-modal-preview-item {
+  font-size: 11px;
+  color: var(--modal-text-primary);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 8px;
+  border-radius: 3px;
+}
+
+.dw-modal-preview-item--more {
+  color: var(--modal-theme, var(--modal-action));
+  font-style: italic;
+}
+
+/* Notice bar */
+.dw-modal-notice {
+  padding: 12px 20px;
+  background: rgba(234, 179, 8, 0.1);
+  border-top: 1px solid rgba(234, 179, 8, 0.2);
+  text-align: center;
+  font-size: 12px;
+  color: #eab308;
+}
+
+/* ========================================
+   SPECIAL STATES
+   ======================================== */
+
+/* Loading state */
+.dw-modal-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: var(--modal-text-secondary);
+}
+
+/* Empty state */
+.dw-modal-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--modal-text-muted);
+}
+
+.dw-modal-empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.dw-modal-empty-text {
+  font-size: 14px;
+}
+
+/* ========================================
+   4-COLUMN GRID (for Inventory rarity stats)
+   ======================================== */
+.dw-modal-grid--4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 640px) {
+  .dw-modal-grid--4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ========================================
+   TAB NAVIGATION
+   ======================================== */
+.dw-modal-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid var(--modal-theme-border, var(--modal-action-border));
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.dw-modal-tab {
+  padding: 8px 16px;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--modal-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Exo', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.dw-modal-tab:hover {
+  background: var(--modal-theme-bg, var(--modal-action-bg));
+  color: var(--modal-text-primary);
+}
+
+.dw-modal-tab--active {
+  background: var(--modal-theme-bg, var(--modal-action-bg));
+  border-color: var(--modal-theme-border, var(--modal-action-border));
+  color: var(--modal-theme, var(--modal-action));
+  font-weight: 600;
+}
+
+/* ========================================
+   CREDITS DISPLAY BOX
+   ======================================== */
+.dw-modal-credits {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(17, 24, 39, 0.5);
+  border: 1px solid var(--modal-theme-border, var(--modal-action-border));
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.dw-modal-credits-label {
+  font-size: 13px;
+  color: var(--modal-text-secondary);
+}
+
+.dw-modal-credits-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fbbf24;
+}
+
+/* ========================================
+   FEEDBACK MESSAGES
+   ======================================== */
+.dw-modal-feedback {
+  padding: 12px 16px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.dw-modal-feedback--success {
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #86efac;
+}
+
+.dw-modal-feedback--error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.dw-modal-feedback--info {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+}
+
+/* ========================================
+   WARNING BOX
+   ======================================== */
+.dw-modal-warning {
+  padding: 12px 16px;
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.dw-modal-warning p {
+  font-size: 13px;
+  color: #fde047;
+  margin: 0;
+}
+
+.dw-modal-warning strong {
+  color: #facc15;
+}
+
+/* ========================================
+   FOOTER NOTE
+   ======================================== */
+.dw-modal-footer {
+  padding: 12px 20px;
+  border-top: 1px solid var(--modal-theme-border, var(--modal-action-border));
+  text-align: center;
+  font-size: 12px;
+  color: var(--modal-text-muted);
+}
+
+/* ========================================
+   BLUEPRINT CARD STYLING
+   Technical schematic aesthetic
+   ======================================== */
+.dw-blueprint-card {
+  position: relative;
+  background:
+    /* Grid pattern */
+    linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px),
+    /* Base gradient */
+    linear-gradient(180deg, rgba(8, 145, 178, 0.08) 0%, rgba(17, 24, 39, 0.95) 100%);
+  background-size:
+    20px 20px,
+    20px 20px,
+    100% 100%;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  overflow: hidden;
+}
+
+/* Corner brackets */
+.dw-blueprint-card::before,
+.dw-blueprint-card::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.dw-blueprint-card::before {
+  top: 0;
+  left: 0;
+  border-top: 2px solid rgba(6, 182, 212, 0.6);
+  border-left: 2px solid rgba(6, 182, 212, 0.6);
+}
+
+.dw-blueprint-card::after {
+  bottom: 0;
+  right: 0;
+  border-bottom: 2px solid rgba(6, 182, 212, 0.6);
+  border-right: 2px solid rgba(6, 182, 212, 0.6);
+}
+
+/* Additional corners via inner wrapper */
+.dw-blueprint-card-inner {
+  position: relative;
+  height: 100%;
+}
+
+.dw-blueprint-card-inner::before,
+.dw-blueprint-card-inner::after {
+  content: '';
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.dw-blueprint-card-inner::before {
+  top: 0;
+  right: 0;
+  border-top: 2px solid rgba(6, 182, 212, 0.6);
+  border-right: 2px solid rgba(6, 182, 212, 0.6);
+}
+
+.dw-blueprint-card-inner::after {
+  bottom: 0;
+  left: 0;
+  border-bottom: 2px solid rgba(6, 182, 212, 0.6);
+  border-left: 2px solid rgba(6, 182, 212, 0.6);
+}
+
+/* Scan line effect */
+.dw-blueprint-card-scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(6, 182, 212, 0.02) 2px,
+    rgba(6, 182, 212, 0.02) 4px
+  );
+  z-index: 0;
+}
+
+/* Locked state */
+.dw-blueprint-card--locked {
+  background:
+    linear-gradient(rgba(75, 85, 99, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(75, 85, 99, 0.05) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(55, 65, 81, 0.3) 0%, rgba(17, 24, 39, 0.95) 100%);
+  background-size:
+    20px 20px,
+    20px 20px,
+    100% 100%;
+  border-color: rgba(75, 85, 99, 0.4);
+}
+
+.dw-blueprint-card--locked::before,
+.dw-blueprint-card--locked::after {
+  border-color: rgba(75, 85, 99, 0.5);
+}
+
+.dw-blueprint-card--locked .dw-blueprint-card-inner::before,
+.dw-blueprint-card--locked .dw-blueprint-card-inner::after {
+  border-color: rgba(75, 85, 99, 0.5);
+}
+
+.dw-blueprint-card--locked .dw-blueprint-card-scanline {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(75, 85, 99, 0.03) 2px,
+    rgba(75, 85, 99, 0.03) 4px
+  );
+}
+
+/* Hover state for unlocked cards */
+.dw-blueprint-card:not(.dw-blueprint-card--locked):hover {
+  border-color: rgba(6, 182, 212, 0.6);
+  box-shadow:
+    0 0 20px rgba(6, 182, 212, 0.15),
+    inset 0 0 30px rgba(6, 182, 212, 0.05);
+}
+
+.dw-blueprint-card:not(.dw-blueprint-card--locked):hover::before,
+.dw-blueprint-card:not(.dw-blueprint-card--locked):hover::after {
+  border-color: rgba(6, 182, 212, 0.8);
+}
+
+.dw-blueprint-card:not(.dw-blueprint-card--locked):hover .dw-blueprint-card-inner::before,
+.dw-blueprint-card:not(.dw-blueprint-card--locked):hover .dw-blueprint-card-inner::after {
+  border-color: rgba(6, 182, 212, 0.8);
+}
+
+/* ========================================
+   STAT BOX - Reusable labeled value display
+   ======================================== */
+
+.dw-stat-box {
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 28, 0.95) 100%);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: 2px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 85px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(6, 182, 212, 0.1);
+  position: relative;
+}
+
+/* Angular corner accent */
+.dw-stat-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  border-top: 1px solid rgba(6, 182, 212, 0.5);
+  border-left: 1px solid rgba(6, 182, 212, 0.5);
+}
+
+.dw-stat-box-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(6, 182, 212, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dw-stat-box-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e5e7eb;
+}
+
+/* Color variants */
+.dw-stat-box-value--credits { color: #fbbf24; }
+.dw-stat-box-value--cyan { color: #06b6d4; }
+.dw-stat-box-value--blue { color: #60a5fa; }

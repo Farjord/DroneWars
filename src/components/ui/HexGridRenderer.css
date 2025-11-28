@@ -3,13 +3,16 @@
    ======================================== */
 
 .hex-grid-container {
+  position: absolute;
+  left: 0;
+  top: 0;
   width: calc(100% - 320px); /* Reserve space for right panel (320px) */
   height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
-  background: rgb(2, 6, 23);
+  background: transparent;
   font-family: 'Exo', sans-serif;
 }
 
@@ -101,6 +104,12 @@
   }
 }
 
+/* Looted POI - greyed out, no glow animation */
+.hex-poi-looted {
+  filter: grayscale(70%) brightness(0.6);
+  opacity: 0.7;
+}
+
 /* Icons */
 .hex-icon {
   pointer-events: none;
@@ -143,6 +152,23 @@
   }
 }
 
+/* Zoom Controls */
+.tactical-zoom-controls {
+  position: absolute;
+  bottom: 16px;
+  left: 180px; /* Position after map info box */
+  display: flex;
+  gap: 8px;
+  z-index: 200;
+  pointer-events: auto;
+}
+
+.tactical-zoom-controls button {
+  padding: 8px 12px;
+  pointer-events: auto;
+  cursor: pointer;
+}
+
 /* Responsive sizing */
 @media (max-width: 768px) {
   .hex-grid-container {
@@ -153,11 +179,20 @@
     max-width: 100vw;
     max-height: calc(100vh - 200px); /* Account for HUD */
   }
+
+  .tactical-zoom-controls {
+    left: 150px; /* Adjust for smaller map info box */
+  }
 }
 
 @media (max-width: 480px) {
   .hex-grid-container {
     width: 100%; /* Panel moves to bottom on mobile */
     height: calc(100% - 50vh); /* Account for bottom panel */
+  }
+
+  .tactical-zoom-controls {
+    left: 130px;
+    bottom: calc(50vh + 16px); /* Above the bottom panel */
   }
 }

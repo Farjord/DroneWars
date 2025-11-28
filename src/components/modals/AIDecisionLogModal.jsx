@@ -4,7 +4,7 @@
 // Modal that displays AI decision matrix with scores and logic breakdown
 
 import React from 'react';
-import { X } from 'lucide-react';
+import { Brain } from 'lucide-react';
 
 /**
  * AI DECISION LOG MODAL COMPONENT
@@ -39,45 +39,67 @@ const AIDecisionLogModal = ({ decisionLog, show, onClose, getLocalPlayerId }) =>
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-container max-w-7xl">
-        {onClose && (
-          <button onClick={onClose} className="modal-close">
-            <X size={24} />
-          </button>
-        )}
-        <h2 className="modal-title">AI Decision Matrix</h2>
-        <p className="modal-text">
-          This log shows all actions the AI considered for its turn, the score it assigned, and the logic behind that score.
-        </p>
-        <div className="mt-4 max-h-[60vh] overflow-y-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="sticky top-0 bg-slate-800">
-              <tr>
-                <th className="p-2">Type</th>
-                <th className="p-2">Instigator</th>
-                <th className="p-2">Target</th>
-                <th className="p-2 w-1/3">Logic Breakdown</th>
-                <th className="p-2">Score</th>
-                <th className="p-2">Chosen</th>
-              </tr>
-            </thead>
-            <tbody>
-              {decisionLog.sort((a,b) => b.score - a.score).map((action, index) => (
-                <tr key={index} className={`border-b border-gray-700/50 ${action.isChosen ? 'bg-purple-900/50' : 'hover:bg-slate-700/50'}`}>
-                  <td className="p-2 capitalize">{action.type ? action.type.replace('_', ' ') : 'Deploy'}</td>
-                  <td className="p-2 text-purple-300">{action.instigator}</td>
-                  <td className="p-2 text-cyan-300">{formatTarget(action)}</td>
-                  <td className="p-2 text-gray-400 text-xs">{action.logic.join(' -> ')}</td>
-                  <td className="p-2 font-bold text-lg">{action.score}</td>
-                  <td className="p-2 text-center">{action.isChosen && <span className="text-yellow-400">✔</span>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="dw-modal-overlay" onClick={onClose}>
+      <div
+        className="dw-modal-content dw-modal--xxl dw-modal--action"
+        style={{ maxWidth: '1400px', width: '95vw', height: '85vh', display: 'flex', flexDirection: 'column' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Brain size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">AI Decision Matrix</h2>
+            <p className="dw-modal-header-subtitle">{decisionLog.length} actions evaluated</p>
+          </div>
         </div>
-        <div className="flex justify-center mt-6">
-          <button onClick={onClose} className="btn-continue">
+
+        {/* Body */}
+        <div className="dw-modal-body" style={{ flex: 1, overflow: 'hidden', padding: '16px' }}>
+          <p className="dw-modal-text" style={{ marginBottom: '12px' }}>
+            This log shows all actions the AI considered for its turn, the score it assigned, and the logic behind that score.
+          </p>
+          <div style={{ height: 'calc(100% - 40px)', overflowY: 'auto', borderRadius: '8px', border: '1px solid var(--modal-border)' }}>
+            <table style={{ width: '100%', textAlign: 'left', fontSize: '14px', borderCollapse: 'collapse' }}>
+              <thead style={{ position: 'sticky', top: 0, background: 'var(--modal-surface)' }}>
+                <tr>
+                  <th style={{ padding: '12px', borderBottom: '1px solid var(--modal-border)', color: 'var(--modal-text-secondary)' }}>Type</th>
+                  <th style={{ padding: '12px', borderBottom: '1px solid var(--modal-border)', color: 'var(--modal-text-secondary)' }}>Instigator</th>
+                  <th style={{ padding: '12px', borderBottom: '1px solid var(--modal-border)', color: 'var(--modal-text-secondary)' }}>Target</th>
+                  <th style={{ padding: '12px', borderBottom: '1px solid var(--modal-border)', color: 'var(--modal-text-secondary)', width: '35%' }}>Logic Breakdown</th>
+                  <th style={{ padding: '12px', borderBottom: '1px solid var(--modal-border)', color: 'var(--modal-text-secondary)' }}>Score</th>
+                  <th style={{ padding: '12px', borderBottom: '1px solid var(--modal-border)', color: 'var(--modal-text-secondary)', textAlign: 'center' }}>Chosen</th>
+                </tr>
+              </thead>
+              <tbody>
+                {decisionLog.sort((a,b) => b.score - a.score).map((action, index) => (
+                  <tr
+                    key={index}
+                    style={{
+                      borderBottom: '1px solid var(--modal-border)',
+                      background: action.isChosen ? 'rgba(168, 85, 247, 0.2)' : 'transparent'
+                    }}
+                  >
+                    <td style={{ padding: '10px 12px', textTransform: 'capitalize', color: 'var(--modal-text-primary)' }}>
+                      {action.type ? action.type.replace('_', ' ') : 'Deploy'}
+                    </td>
+                    <td style={{ padding: '10px 12px', color: '#c084fc' }}>{action.instigator}</td>
+                    <td style={{ padding: '10px 12px', color: 'var(--modal-theme)' }}>{formatTarget(action)}</td>
+                    <td style={{ padding: '10px 12px', color: 'var(--modal-text-secondary)', fontSize: '12px' }}>{action.logic.join(' → ')}</td>
+                    <td style={{ padding: '10px 12px', fontWeight: 'bold', fontSize: '16px', color: 'var(--modal-text-primary)' }}>{action.score}</td>
+                    <td style={{ padding: '10px 12px', textAlign: 'center' }}>{action.isChosen && <span style={{ color: '#facc15' }}>✔</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
             Close
           </button>
         </div>

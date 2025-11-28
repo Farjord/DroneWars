@@ -13,6 +13,68 @@ import GlossaryModal from '../modals/GlossaryModal.jsx';
 import AIStrategyModal from '../modals/AIStrategyModal.jsx';
 import ScalingText from '../ui/ScalingText.jsx';
 
+// Menu button images
+const menuImages = {
+  eremos: new URL('/Menu/Eremos.png', import.meta.url).href,
+  vsAI: new URL('/Menu/VSAI.png', import.meta.url).href,
+  vsMultiplayer: new URL('/Menu/VSMultiplayer.png', import.meta.url).href,
+  deckBuilder: new URL('/Menu/Deck.png', import.meta.url).href,
+  testingMode: new URL('/Menu/Train.png', import.meta.url).href
+};
+
+// ImageButton component for artwork-backed buttons with hover zoom effect
+const ImageButton = ({ image, label, subtitle, onClick, style }) => (
+  <button
+    onClick={onClick}
+    style={{
+      minHeight: '120px',
+      padding: 0,
+      display: 'flex',
+      alignItems: 'flex-end',
+      justifyContent: 'stretch',
+      backgroundImage: `url('${image}')`,
+      backgroundSize: '100%',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      transition: 'background-size 0.3s ease, box-shadow 0.3s ease',
+      overflow: 'hidden',
+      cursor: 'pointer',
+      border: '1px solid rgba(255, 255, 255, 0.15)',
+      borderRadius: '4px',
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.2)',
+      ...style
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.backgroundSize = '115%';
+      e.currentTarget.style.boxShadow = '0 6px 30px rgba(0, 0, 0, 0.7), 0 0 2px rgba(255, 255, 255, 0.3)';
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.backgroundSize = '100%';
+      e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.2)';
+    }}
+  >
+    <span style={{
+      width: '100%',
+      fontSize: '1.1rem',
+      fontWeight: 'bold',
+      textShadow: '0 2px 4px rgba(0,0,0,0.9)',
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      padding: '12px 16px',
+      textAlign: 'center',
+      letterSpacing: '0.05em',
+      color: '#ffffff',
+      textTransform: 'uppercase'
+    }}>
+      {label}
+      {subtitle && (
+        <div style={{ fontSize: '0.75rem', marginTop: '4px', opacity: 0.8, fontWeight: 'normal' }}>
+          {subtitle}
+        </div>
+      )}
+    </span>
+  </button>
+);
+
 /**
  * MenuScreen - Main menu for selecting game mode
  * No access to game state or player data - pure menu functionality
@@ -183,101 +245,87 @@ function MenuScreen() {
           the wilderness left when civilization departs
         </div>
 
-        {/* Game mode buttons - vertically aligned */}
+        {/* Game mode buttons - multi-row layout */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
           gap: '1.5rem',
-          alignItems: 'center'
+          width: '100%',
+          maxWidth: '900px'
         }}>
-          {/* Into The Eremos - Top of menu */}
-          <button
-            onClick={handleIntoTheEremos}
-            className="btn-continue"
-            style={{ width: '250px', fontSize: '1.1rem', padding: '16px 30px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
-          >
-            <ScalingText text="INTO THE EREMOS" className="uppercase tracking-wider font-semibold" />
-            <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
-              Roguelike Campaign
-            </div>
-          </button>
+          {/* Row 1: Main game modes - 3 large artwork buttons */}
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <ImageButton
+              image={menuImages.eremos}
+              label="Into the Eremos"
+              subtitle="Roguelike Campaign"
+              onClick={handleIntoTheEremos}
+              style={{ flex: 1, minHeight: '280px' }}
+            />
+            <ImageButton
+              image={menuImages.vsAI}
+              label="VS Single Player"
+              subtitle="vs AI Opponent"
+              onClick={handleSinglePlayer}
+              style={{ flex: 1, minHeight: '280px' }}
+            />
+            <ImageButton
+              image={menuImages.vsMultiplayer}
+              label="VS Multiplayer"
+              subtitle="vs Human Player"
+              onClick={handleMultiplayer}
+              style={{ flex: 1, minHeight: '280px' }}
+            />
+          </div>
 
-          <button onClick={handleSinglePlayer} className="btn-continue" style={{ width: '250px', fontSize: '1.1rem', padding: '16px 30px' }}>
-            <ScalingText text="SINGLE PLAYER" className="uppercase tracking-wider font-semibold" />
-            <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
-              vs AI Opponent
-            </div>
-          </button>
+          {/* Row 2: Secondary modes - artwork buttons, centered */}
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+            <ImageButton
+              image={menuImages.deckBuilder}
+              label="Deck Builder"
+              subtitle="Build Your Deck"
+              onClick={() => gameStateManager.setState({ appState: 'deckBuilder' })}
+              style={{ flex: '0 1 calc(33.333% - 0.5rem)', minHeight: '280px' }}
+            />
+            {DEV_CONFIG.features.testingMode && (
+              <ImageButton
+                image={menuImages.testingMode}
+                label="Testing Mode"
+                subtitle="Dev Scenario Setup"
+                onClick={() => gameStateManager.setState({ appState: 'testingSetup' })}
+                style={{ flex: '0 1 calc(33.333% - 0.5rem)', minHeight: '280px' }}
+              />
+            )}
+          </div>
 
-          <button onClick={handleMultiplayer} className="btn-continue" style={{ width: '250px', fontSize: '1.1rem', padding: '16px 30px' }}>
-            <ScalingText text="MULTIPLAYER" className="uppercase tracking-wider font-semibold" />
-            <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
-              vs Human Player
-            </div>
-          </button>
-
-          {DEV_CONFIG.features.testingMode && (
+          {/* Row 3: Info/utility buttons - standard gradient buttons */}
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
             <button
-              onClick={() => gameStateManager.setState({ appState: 'testingSetup' })}
-              className="btn-reset"
-              style={{
-                width: '250px',
-                fontSize: '1.1rem',
-                padding: '16px 30px'
-              }}
-            >
-              <ScalingText text="TESTING MODE" className="uppercase tracking-wider font-semibold" />
-              <div className="body-font" style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
-                Dev Scenario Setup
-              </div>
-            </button>
-          )}
-
-          <button onClick={() => gameStateManager.setState({ appState: 'deckBuilder' })} className="btn-continue" style={{ width: '250px', fontSize: '1.1rem', padding: '16px 30px' }}>
-            <ScalingText text="DECK BUILDER" className="uppercase tracking-wider font-semibold" />
-            <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
-              Build Your Deck
-            </div>
-          </button>
-
-          <button
-            onClick={() => setShowGlossary(true)}
-            className="btn-info"
-            style={{ width: '250px', fontSize: '1.1rem', padding: '16px 30px' }}
-          >
-            <ScalingText text="MECHANICS GLOSSARY" className="uppercase tracking-wider font-semibold" />
-            <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
-              Developer Reference
-            </div>
-          </button>
-
-          <button
-            onClick={() => setShowAIStrategy(true)}
-            className="btn-info"
-            style={{ width: '250px', fontSize: '1.1rem', padding: '16px 30px' }}
-          >
-            <ScalingText text="AI STRATEGY GUIDE" className="uppercase tracking-wider font-semibold" />
-            <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
-              Understanding AI Decisions
-            </div>
-          </button>
-
-          {DEV_CONFIG.features.modalShowcase && (
-            <button
-              onClick={() => gameStateManager.setState({ appState: 'modalShowcase' })}
+              onClick={() => setShowGlossary(true)}
               className="btn-info"
-              style={{
-                width: '250px',
-                fontSize: '1.1rem',
-                padding: '16px 30px'
-              }}
+              style={{ flex: 1, maxWidth: '250px', fontSize: '1rem', padding: '12px 20px' }}
             >
-              <ScalingText text="MODAL SHOWCASE" className="uppercase tracking-wider font-semibold" />
-              <div className="body-font" style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
-                Dev Preview Tool
-              </div>
+              <ScalingText text="MECHANICS GLOSSARY" className="uppercase tracking-wider font-semibold" />
             </button>
-          )}
+
+            <button
+              onClick={() => setShowAIStrategy(true)}
+              className="btn-info"
+              style={{ flex: 1, maxWidth: '250px', fontSize: '1rem', padding: '12px 20px' }}
+            >
+              <ScalingText text="AI STRATEGY GUIDE" className="uppercase tracking-wider font-semibold" />
+            </button>
+
+            {DEV_CONFIG.features.modalShowcase && (
+              <button
+                onClick={() => gameStateManager.setState({ appState: 'modalShowcase' })}
+                className="btn-info"
+                style={{ flex: 1, maxWidth: '250px', fontSize: '1rem', padding: '12px 20px' }}
+              >
+                <ScalingText text="MODAL SHOWCASE" className="uppercase tracking-wider font-semibold" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

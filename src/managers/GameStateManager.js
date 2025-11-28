@@ -12,7 +12,7 @@ import OptimisticActionService from './OptimisticActionService.js';
 import fullDroneCollection from '../data/droneData.js';
 import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
-import { createNewSave } from '../data/saveGameSchema.js';
+import { createNewSave, starterPoolCards, starterPoolDroneNames } from '../data/saveGameSchema.js';
 import { generateMapData } from '../utils/mapGenerator.js';
 import CombatOutcomeProcessor from '../logic/singlePlayer/CombatOutcomeProcessor.js';
 import { shipComponentCollection } from '../data/shipData.js';
@@ -79,6 +79,10 @@ class GameStateManager {
       singlePlayerDiscoveredCards: [],   // Card discovery states (owned/discovered/undiscovered)
       singlePlayerShipSlots: [],         // 6 ship slots
       currentRunState: null,             // Active run state or null
+
+      // --- EXTRACTION DECK BUILDER NAVIGATION ---
+      extractionDeckSlotId: null,        // Slot ID being edited (0-5) or null
+      extractionNewDeckOption: null,     // 'empty' | 'copyFromSlot0' | null
     };
 
     // Initialize action processor using singleton pattern
@@ -1645,6 +1649,205 @@ class GameStateManager {
     return this.state.singlePlayerShipComponentInstances.find(inst => inst.instanceId === instanceId) || null;
   }
 
+  // ========================================
+  // DECK MANAGEMENT METHODS
+  // ========================================
+
+  /**
+   * Set default ship slot for deployment
+   * @param {number} slotId - Slot ID (0-5)
+   */
+  setDefaultShipSlot(slotId) {
+    if (slotId < 0 || slotId > 5) {
+      throw new Error('Invalid slot ID: must be 0-5');
+    }
+
+    const slot = this.state.singlePlayerShipSlots.find(s => s.id === slotId);
+    if (!slot || slot.status !== 'active') {
+      throw new Error(`Slot ${slotId} is not active`);
+    }
+
+    const updatedProfile = {
+      ...this.state.singlePlayerProfile,
+      defaultShipSlotId: slotId
+    };
+
+    this.setState({ singlePlayerProfile: updatedProfile });
+    console.log(`Default ship slot set to ${slotId}`);
+  }
+
+  /**
+   * Save deck data to a ship slot
+   * @param {number} slotId - Slot ID (1-5, cannot modify 0)
+   * @param {Object} deckData - { name, decklist, drones, shipComponents }
+   */
+  saveShipSlotDeck(slotId, deckData) {
+    if (slotId === 0) {
+      throw new Error('Cannot modify Slot 0 (immutable starter deck)');
+    }
+
+    const { name, decklist, drones, shipComponents } = deckData;
+    const slots = [...this.state.singlePlayerShipSlots];
+    const slotIndex = slots.findIndex(s => s.id === slotId);
+
+    if (slotIndex === -1) {
+      throw new Error(`Slot ${slotId} not found`);
+    }
+
+    // Clear old instances for this slot
+    this.clearSlotInstances(slotId);
+
+    slots[slotIndex] = {
+      ...slots[slotIndex],
+      name: name || `Ship ${slotId}`,
+      decklist,
+      drones,
+      shipComponents,
+      status: 'active'
+    };
+
+    this.setState({ singlePlayerShipSlots: slots });
+    console.log(`Deck saved to slot ${slotId}:`, deckData);
+  }
+
+  /**
+   * Delete deck from a ship slot, return cards to inventory
+   * @param {number} slotId - Slot ID (1-5, cannot delete 0)
+   */
+  deleteShipSlotDeck(slotId) {
+    if (slotId === 0) {
+      throw new Error('Cannot delete Slot 0 (immutable starter deck)');
+    }
+
+    const slots = [...this.state.singlePlayerShipSlots];
+    const slotIndex = slots.findIndex(s => s.id === slotId);
+
+    if (slotIndex === -1) {
+      throw new Error(`Slot ${slotId} not found`);
+    }
+
+    const slot = slots[slotIndex];
+    if (slot.status !== 'active') {
+      throw new Error(`Slot ${slotId} is not active`);
+    }
+
+    // Return non-starter-pool cards to inventory
+    const newInventory = { ...this.state.singlePlayerInventory };
+    (slot.decklist || []).forEach(card => {
+      if (!starterPoolCards.includes(card.id)) {
+        newInventory[card.id] = (newInventory[card.id] || 0) + card.quantity;
+      }
+    });
+
+    // Clear instances for this slot
+    this.clearSlotInstances(slotId);
+
+    // Reset slot to empty state
+    slots[slotIndex] = {
+      id: slotId,
+      name: `Ship Slot ${slotId}`,
+      status: 'empty',
+      isImmutable: false,
+      decklist: [],
+      drones: [],
+      shipComponents: {}
+    };
+
+    // If this was the default slot, reset to 0
+    let updatedProfile = this.state.singlePlayerProfile;
+    if (updatedProfile.defaultShipSlotId === slotId) {
+      updatedProfile = { ...updatedProfile, defaultShipSlotId: 0 };
+    }
+
+    this.setState({
+      singlePlayerShipSlots: slots,
+      singlePlayerInventory: newInventory,
+      singlePlayerProfile: updatedProfile
+    });
+
+    console.log(`Deck deleted from slot ${slotId}, cards returned to inventory`);
+  }
+
+  /**
+   * Clear drone and component instances for a slot
+   * @param {number} slotId - Slot ID
+   */
+  clearSlotInstances(slotId) {
+    const droneInstances = this.state.singlePlayerDroneInstances.filter(
+      i => i.shipSlotId !== slotId
+    );
+    const componentInstances = this.state.singlePlayerShipComponentInstances.filter(
+      i => i.shipSlotId !== slotId
+    );
+
+    this.setState({
+      singlePlayerDroneInstances: droneInstances,
+      singlePlayerShipComponentInstances: componentInstances
+    });
+  }
+
+  /**
+   * Create a drone instance for tracking damage
+   * Only for non-starter-pool drones
+   * @param {string} droneName - Name of the drone
+   * @param {number} slotId - Ship slot ID
+   * @returns {string|null} Instance ID or null if starter pool drone
+   */
+  createDroneInstance(droneName, slotId) {
+    // Starter pool drones don't need instances (never damaged)
+    if (starterPoolDroneNames.includes(droneName)) {
+      return null;
+    }
+
+    const instanceId = `DRONE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const instance = {
+      instanceId,
+      droneName,
+      shipSlotId: slotId,
+      isDamaged: false
+    };
+
+    const instances = [...this.state.singlePlayerDroneInstances, instance];
+    this.setState({ singlePlayerDroneInstances: instances });
+
+    console.log(`Created drone instance: ${instanceId} for ${droneName}`);
+    return instanceId;
+  }
+
+  /**
+   * Create a ship component instance for tracking hull damage
+   * Only for non-starter-pool components
+   * @param {string} componentId - Component ID
+   * @param {number} slotId - Ship slot ID
+   * @returns {string|null} Instance ID or null if starter pool component
+   */
+  createComponentInstance(componentId, slotId) {
+    // Starter pool components don't need instances (never damaged)
+    if (starterPoolCards.includes(componentId)) {
+      return null;
+    }
+
+    const component = shipComponentCollection.find(c => c.id === componentId);
+    if (!component) {
+      throw new Error(`Component ${componentId} not found`);
+    }
+
+    const instanceId = `COMP_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const instance = {
+      instanceId,
+      componentId,
+      shipSlotId: slotId,
+      currentHull: component.hull,
+      maxHull: component.maxHull || component.hull
+    };
+
+    const instances = [...this.state.singlePlayerShipComponentInstances, instance];
+    this.setState({ singlePlayerShipComponentInstances: instances });
+
+    console.log(`Created component instance: ${instanceId} for ${componentId}`);
+    return instanceId;
+  }
+
   /**
    * Start extraction run
    * @param {number} shipSlotId - Ship slot ID to use (0-5)
@@ -1729,6 +1932,7 @@ class GameStateManager {
       hexesMoved: 0,
       hexesExplored: [{ q: startingGate.q, r: startingGate.r }], // Start with insertion gate
       poisVisited: [],
+      lootedPOIs: [],  // Track POIs that have been looted (prevents re-looting)
       combatsWon: 0,
       combatsLost: 0,
       damageDealtToEnemies: 0,
@@ -1825,6 +2029,12 @@ class GameStateManager {
       // Update statistics
       this.state.singlePlayerProfile.stats.runsCompleted++;
       this.state.singlePlayerProfile.stats.totalCreditsEarned += runState.creditsEarned;
+
+      // Track highest tier completed
+      const currentTier = runState.mapTier || 1;
+      if (currentTier > (this.state.singlePlayerProfile.stats.highestTierCompleted || 0)) {
+        this.state.singlePlayerProfile.stats.highestTierCompleted = currentTier;
+      }
 
       console.log('Run ended successfully - loot transferred');
     } else {

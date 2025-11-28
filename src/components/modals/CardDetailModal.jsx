@@ -3,10 +3,9 @@
 // ========================================
 // Shows detailed view of a specific action card.
 // Used for viewing card details from the game log.
-// Follows the same pattern as DetailedDroneModal.
 
 import React from 'react';
-import { X } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import ActionCard from '../ui/ActionCard.jsx';
 
 /**
@@ -20,25 +19,37 @@ const CardDetailModal = ({ isOpen, card, onClose }) => {
   if (!isOpen || !card) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-2xl border-2 border-purple-500 p-8 shadow-2xl shadow-purple-500/20 w-full max-w-lg relative">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
-        >
-          <X size={24} />
-        </button>
-        <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-cyan-400 text-center mb-4">
-          {card.name}
-        </h2>
-        <div className="flex justify-center">
-          <ActionCard
-            card={card}
-            onClick={() => {}}
-            isPlayable={true}
-            isSelected={false}
-            scale={1.2}
-          />
+    <div className="dw-modal-overlay" onClick={onClose}>
+      <div className="dw-modal-content dw-modal--md dw-modal--action" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <FileText size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">{card.name}</h2>
+            <p className="dw-modal-header-subtitle">{card.type} Card</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="dw-modal-body">
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <ActionCard
+              card={card}
+              onClick={() => {}}
+              isPlayable={true}
+              isSelected={false}
+              scale={1.1}
+            />
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
     </div>

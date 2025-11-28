@@ -8,7 +8,65 @@ import { useState, useRef } from 'react';
 import { useGameState } from '../../hooks/useGameState.js';
 import SaveGameService from '../../services/SaveGameService.js';
 import { debugLog } from '../../utils/debugLogger.js';
-import ScalingText from '../ui/ScalingText.jsx';
+
+// Eremos entry button images
+const eremosImages = {
+  newGame: new URL('/Menu/NewGame.png', import.meta.url).href,
+  loadGame: new URL('/Menu/LoadGame.png', import.meta.url).href
+};
+
+// ImageButton component for artwork-backed buttons with hover zoom effect
+const ImageButton = ({ image, label, subtitle, onClick, style }) => (
+  <button
+    onClick={onClick}
+    style={{
+      minHeight: '120px',
+      padding: 0,
+      display: 'flex',
+      alignItems: 'flex-end',
+      justifyContent: 'stretch',
+      backgroundImage: `url('${image}')`,
+      backgroundSize: '100%',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      transition: 'background-size 0.3s ease, box-shadow 0.3s ease',
+      overflow: 'hidden',
+      cursor: 'pointer',
+      border: '1px solid rgba(255, 255, 255, 0.15)',
+      borderRadius: '4px',
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.2)',
+      ...style
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.backgroundSize = '115%';
+      e.currentTarget.style.boxShadow = '0 6px 30px rgba(0, 0, 0, 0.7), 0 0 2px rgba(255, 255, 255, 0.3)';
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.backgroundSize = '100%';
+      e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.2)';
+    }}
+  >
+    <span style={{
+      width: '100%',
+      fontSize: '1.1rem',
+      fontWeight: 'bold',
+      textShadow: '0 2px 4px rgba(0,0,0,0.9)',
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      padding: '12px 16px',
+      textAlign: 'center',
+      letterSpacing: '0.05em',
+      color: '#ffffff',
+      textTransform: 'uppercase'
+    }}>
+      {label}
+      {subtitle && (
+        <div style={{ fontSize: '0.75rem', marginTop: '4px', opacity: 0.8, fontWeight: 'normal' }}>
+          {subtitle}
+        </div>
+      )}
+    </span>
+  </button>
+);
 
 function EremosEntryScreen() {
   const { gameStateManager } = useGameState();
@@ -62,91 +120,78 @@ function EremosEntryScreen() {
     <div className="body-font" style={{
       display: 'flex',
       flexDirection: 'column',
-      justifyContent: 'center',
+      justifyContent: 'flex-start',
       alignItems: 'center',
       minHeight: '100vh',
       color: '#ffffff',
-      padding: '40px 20px',
+      padding: '60px 20px 20px 20px',
       boxSizing: 'border-box',
       position: 'relative'
     }}>
       {/* Content */}
       <div style={{
+        position: 'relative',
+        zIndex: 10,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        maxWidth: '500px',
-        textAlign: 'center'
+        width: '100%'
       }}>
         {/* Title */}
         <h1
           className="heading-font"
           style={{
-            fontSize: '3rem',
-            margin: '0 0 1rem 0',
+            fontSize: '4rem',
+            margin: 0,
+            marginBottom: '2rem',
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
             filter: 'drop-shadow(0 0 20px rgba(102, 126, 234, 0.4))',
-            letterSpacing: '2px'
+            letterSpacing: '2px',
+            textAlign: 'center'
           }}
         >
           INTO THE EREMOS
         </h1>
 
         {/* Subtitle */}
-        <p style={{
-          fontSize: '1.1rem',
-          color: '#a0aec0',
+        <div style={{
+          fontSize: '1.2rem',
           marginBottom: '3rem',
-          lineHeight: 1.6
+          textAlign: 'center',
+          color: '#cccccc'
         }}>
           Venture into the wilderness. Deploy your ship, navigate the tactical map,
           fight or flee, and extract with your loot.
-        </p>
+        </div>
 
         {/* Buttons */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: '1rem',
+          gap: '1.5rem',
           width: '100%',
-          maxWidth: '280px'
+          maxWidth: '900px'
         }}>
-          {/* New Game */}
-          <button
-            onClick={handleNewGame}
-            className="btn-continue"
-            style={{
-              width: '100%',
-              fontSize: '1.1rem',
-              padding: '16px 30px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-            }}
-          >
-            <ScalingText text="NEW GAME" className="uppercase tracking-wider font-semibold" />
-            <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
-              Start a fresh campaign
-            </div>
-          </button>
-
-          {/* Load Game - opens file picker */}
-          <button
-            onClick={handleLoadClick}
-            className="btn-continue"
-            style={{
-              width: '100%',
-              fontSize: '1.1rem',
-              padding: '16px 30px',
-              background: 'linear-gradient(135deg, #48bb78 0%, #38a169 100%)'
-            }}
-          >
-            <ScalingText text="LOAD GAME" className="uppercase tracking-wider font-semibold" />
-            <div style={{ fontSize: '0.75rem', marginTop: '5px', opacity: 0.8 }}>
-              Load a saved campaign
-            </div>
-          </button>
+          {/* New Game & Load Game - side by side */}
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+            <ImageButton
+              image={eremosImages.newGame}
+              label="New Game"
+              subtitle="Start a fresh campaign"
+              onClick={handleNewGame}
+              style={{ flex: '0 1 calc(33.333% - 0.5rem)', minHeight: '280px' }}
+            />
+            <ImageButton
+              image={eremosImages.loadGame}
+              label="Load Game"
+              subtitle="Load a saved campaign"
+              onClick={handleLoadClick}
+              style={{ flex: '0 1 calc(33.333% - 0.5rem)', minHeight: '280px' }}
+            />
+          </div>
 
           {/* Hidden file input for load */}
           <input
@@ -173,18 +218,18 @@ function EremosEntryScreen() {
           )}
 
           {/* Back */}
-          <button
-            onClick={handleBack}
-            className="btn-reset"
-            style={{
-              width: '100%',
-              fontSize: '1rem',
-              padding: '12px 24px',
-              marginTop: '1rem'
-            }}
-          >
-            Back to Menu
-          </button>
+          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
+            <button
+              onClick={handleBack}
+              className="btn-reset"
+              style={{
+                fontSize: '1rem',
+                padding: '12px 24px'
+              }}
+            >
+              Back to Menu
+            </button>
+          </div>
         </div>
 
       </div>

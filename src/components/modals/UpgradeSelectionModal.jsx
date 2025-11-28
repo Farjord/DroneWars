@@ -5,7 +5,7 @@
 // Shows available targets with visual selection feedback
 
 import React, { useState } from 'react';
-import GamePhaseModal from '../ui/GamePhaseModal.jsx';
+import { Wrench } from 'lucide-react';
 import ActionCard from '../ui/ActionCard.jsx';
 
 /**
@@ -21,49 +21,73 @@ const UpgradeSelectionModal = ({ selectionData, onConfirm, onCancel }) => {
   const [selectedTarget, setSelectedTarget] = useState(null);
 
   return (
-      <GamePhaseModal
-          title={`Apply Upgrade: ${card.name}`}
-          text="Select a drone type from your active pool to apply this permanent upgrade to."
-          onClose={onCancel}
-          maxWidthClass="max-w-4xl"
-      >
-          <div className="flex justify-center my-4">
-              <ActionCard card={card} isPlayable={false} />
+    <div className="dw-modal-overlay" onClick={onCancel}>
+      <div className="dw-modal-content dw-modal--lg dw-modal--action" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Wrench size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">Apply Upgrade</h2>
+            <p className="dw-modal-header-subtitle">{card.name}</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="dw-modal-body">
+          {/* Card Preview */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+            <ActionCard card={card} isPlayable={false} scale={0.85} />
           </div>
 
-          <div className="my-4 p-4 bg-black/20 rounded-lg max-h-64 overflow-y-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {targets.map(drone => (
-                      <div
-                          key={drone.id}
-                          onClick={() => setSelectedTarget(drone)}
-                          className={`p-3 rounded-lg border-2 transition-all cursor-pointer flex items-center gap-4
-                              ${selectedTarget?.id === drone.id ? 'bg-purple-700 border-purple-400' : 'bg-slate-800 border-slate-600 hover:bg-slate-700'}
-                          `}
-                      >
-                          <img src={drone.image} alt={drone.name} className="w-12 h-12 rounded-md object-cover" />
-                          <span className="font-semibold text-white">{drone.name}</span>
-                      </div>
-                  ))}
-              </div>
-          </div>
+          <p className="dw-modal-text" style={{ textAlign: 'center', marginBottom: '16px' }}>
+            Select a drone type to apply this upgrade:
+          </p>
 
-          <div className="flex justify-center gap-4 mt-6">
-              <button
-                  onClick={onCancel}
-                  className="btn-cancel"
-              >
-                  Cancel
-              </button>
-              <button
-                  onClick={() => onConfirm(card, selectedTarget)}
-                  disabled={!selectedTarget}
-                  className="btn-confirm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                  Confirm Upgrade
-              </button>
+          {/* Target Selection */}
+          <div className="dw-modal-scroll" style={{ maxHeight: '200px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '12px' }}>
+              {targets.map(drone => (
+                <div
+                  key={drone.id}
+                  onClick={() => setSelectedTarget(drone)}
+                  style={{
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: `2px solid ${selectedTarget?.id === drone.id ? 'var(--modal-theme)' : 'var(--modal-border)'}`,
+                    background: selectedTarget?.id === drone.id ? 'var(--modal-theme-bg)' : 'var(--modal-surface)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <img src={drone.image} alt={drone.name} style={{ width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover' }} />
+                  <span style={{ fontWeight: '600', color: 'var(--modal-text-primary)' }}>{drone.name}</span>
+                </div>
+              ))}
+            </div>
           </div>
-      </GamePhaseModal>
+        </div>
+
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-cancel" onClick={onCancel}>
+            Cancel
+          </button>
+          <button
+            className="dw-btn dw-btn-confirm"
+            onClick={() => onConfirm(card, selectedTarget)}
+            disabled={!selectedTarget}
+            style={{ opacity: selectedTarget ? 1 : 0.5, cursor: selectedTarget ? 'pointer' : 'not-allowed' }}
+          >
+            Confirm Upgrade
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

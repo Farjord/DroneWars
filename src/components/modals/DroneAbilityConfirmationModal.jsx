@@ -4,7 +4,7 @@
 // Modal that confirms drone ability usage with energy cost and target
 
 import React from 'react';
-import { X } from 'lucide-react';
+import { Crosshair, Zap } from 'lucide-react';
 
 /**
  * DRONE ABILITY CONFIRMATION MODAL COMPONENT
@@ -21,22 +21,43 @@ const DroneAbilityConfirmationModal = ({ abilityConfirmation, show, onCancel, on
   const targetDisplayName = `Lane ${target.id.slice(-1)}`;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-container modal-container-md">
-        {onCancel && (
-          <button onClick={onCancel} className="modal-close">
-            <X size={24} />
-          </button>
-        )}
-        <h2 className="modal-title">Confirm Ability: {ability.name}</h2>
-        <p className="modal-text">
-          Use {drone.name}'s ability on {targetDisplayName}? This will cost {ability.cost.energy || 0} energy and exhaust the drone.
-        </p>
-        <div className="flex justify-center gap-4 mt-6">
-          <button onClick={onCancel} className="btn-cancel">
+    <div className="dw-modal-overlay" onClick={onCancel}>
+      <div className="dw-modal-content dw-modal--sm dw-modal--action" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Crosshair size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">{ability.name}</h2>
+            <p className="dw-modal-header-subtitle">{drone.name}</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="dw-modal-body">
+          <p className="dw-modal-text">
+            Use this ability on {targetDisplayName}?
+          </p>
+
+          <div className="dw-modal-info-box">
+            <div className="dw-modal-info-item">
+              <span className="dw-modal-info-icon"><Zap size={16} /></span>
+              <span>Energy Cost: <strong>{ability.cost.energy || 0}</strong></span>
+            </div>
+            <div className="dw-modal-info-item">
+              <span className="dw-modal-info-icon"><Crosshair size={16} /></span>
+              <span>Drone will be <strong>exhausted</strong></span>
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-cancel" onClick={onCancel}>
             Cancel
           </button>
-          <button onClick={onConfirm} className="btn-confirm">
+          <button className="dw-btn dw-btn-confirm" onClick={onConfirm}>
             Confirm
           </button>
         </div>

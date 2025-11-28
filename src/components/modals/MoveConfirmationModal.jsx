@@ -4,7 +4,7 @@
 // Modal that confirms drone movement actions
 
 import React from 'react';
-import { X } from 'lucide-react';
+import { Move, ArrowRight } from 'lucide-react';
 
 /**
  * MOVE CONFIRMATION MODAL COMPONENT
@@ -20,23 +20,41 @@ const MoveConfirmationModal = ({ moveConfirmation, show, onCancel, onConfirm }) 
   const { drone, from, to } = moveConfirmation;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-container modal-container-md">
-        {onCancel && (
-          <button onClick={onCancel} className="modal-close">
-            <X size={24} />
-          </button>
-        )}
-        <h2 className="modal-title">Confirm Move</h2>
-        <p className="modal-text">
-          Move {drone.name} from {from} to {to}? The drone will be exhausted.
-        </p>
-        <div className="flex justify-center gap-4 mt-6">
-          <button onClick={onCancel} className="btn-cancel">
+    <div className="dw-modal-overlay" onClick={onCancel}>
+      <div className="dw-modal-content dw-modal--sm dw-modal--action" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Move size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">Move Drone</h2>
+            <p className="dw-modal-header-subtitle">{drone.name}</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="dw-modal-body">
+          <div className="dw-modal-info-box">
+            <div className="dw-modal-info-item" style={{ justifyContent: 'center', gap: '12px' }}>
+              <span style={{ fontWeight: 'bold' }}>{from}</span>
+              <ArrowRight size={20} />
+              <span style={{ fontWeight: 'bold' }}>{to}</span>
+            </div>
+          </div>
+
+          <p className="dw-modal-text" style={{ marginTop: '12px', fontSize: '13px', opacity: 0.8 }}>
+            The drone will be exhausted after moving.
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-cancel" onClick={onCancel}>
             Cancel
           </button>
-          <button onClick={onConfirm} className="btn-confirm">
-            Confirm
+          <button className="dw-btn dw-btn-confirm" onClick={onConfirm}>
+            Move
           </button>
         </div>
       </div>

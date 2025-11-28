@@ -5,8 +5,8 @@
 // Shows the card that was played and any target information
 
 import React from 'react';
+import { Bot } from 'lucide-react';
 import ActionCard from '../ui/ActionCard.jsx';
-import GamePhaseModal from '../ui/GamePhaseModal.jsx';
 
 /**
  * AI CARD PLAY REPORT MODAL
@@ -19,28 +19,49 @@ const AICardPlayReportModal = ({ report, onClose }) => {
 
   const { card, targetName, targetLane } = report;
 
+  // Build target description
+  const targetDescription = targetName
+    ? `${targetName}${targetLane ? ` in ${targetLane}` : ''}`
+    : null;
+
   return (
-    <GamePhaseModal title="AI Action: Card Played" text="" onClose={onClose}>
-      <div className="flex flex-col items-center gap-4 mt-4">
-        <p className="text-center text-lg text-gray-300">
-          The opponent played <strong className="text-purple-400">{card.name}</strong>
-          {targetName && (
-            <> on <strong className="text-cyan-400">{targetName}</strong>
-            {targetLane && <> in <strong className="text-yellow-400">{targetLane}</strong></>}
-            </>
-          )}!
-        </p>
-        {/* Display the card that was played */}
-        <div className="transform scale-75">
-          <ActionCard card={card} isPlayable={false} />
+    <div className="dw-modal-overlay" onClick={onClose}>
+      <div className="dw-modal-content dw-modal--lg dw-modal--action" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Bot size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">AI Action: Card Played</h2>
+            <p className="dw-modal-header-subtitle">{card.name}{targetDescription && ` → ${targetDescription}`}</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="dw-modal-body">
+          {/* Card Display */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+            <ActionCard card={card} isPlayable={false} scale={0.85} />
+          </div>
+
+          {targetDescription && (
+            <div className="dw-modal-info-box">
+              <p className="dw-modal-text" style={{ textAlign: 'center', margin: 0 }}>
+                Target: <strong style={{ color: 'var(--modal-theme)' }}>{targetDescription}</strong>
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-confirm" onClick={onClose}>
+            Continue
+          </button>
         </div>
       </div>
-      <div className="flex justify-center mt-6">
-        <button onClick={onClose} className="btn-continue">
-          Continue
-        </button>
-      </div>
-    </GamePhaseModal>
+    </div>
   );
 };
 

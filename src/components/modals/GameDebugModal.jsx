@@ -4,7 +4,7 @@
 // Modal for debugging game state - shows raw state and calculated stats
 
 import React, { useState } from 'react';
-import { X, Copy } from 'lucide-react';
+import { Terminal, Copy } from 'lucide-react';
 import { debugLog } from '../../utils/debugLogger.js';
 
 /**
@@ -45,32 +45,43 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
   };
 
   const renderObjectTable = (obj, title, colorClass = '') => (
-    <div className={`mb-6 ${colorClass}`}>
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-lg font-bold text-white">{title}</h3>
+    <div style={{ marginBottom: '24px', paddingLeft: colorClass ? '16px' : '0', borderLeft: colorClass ? `4px solid ${colorClass}` : 'none' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 'bold', color: 'var(--modal-text-primary)', margin: 0 }}>{title}</h3>
         <button
           onClick={() => copyToClipboard(obj, title)}
-          className="flex items-center gap-1 text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            fontSize: '12px',
+            background: 'var(--modal-surface)',
+            border: '1px solid var(--modal-border)',
+            borderRadius: '4px',
+            padding: '4px 8px',
+            color: 'var(--modal-text-secondary)',
+            cursor: 'pointer'
+          }}
         >
           <Copy size={12} />
           Copy
         </button>
       </div>
-      <div className="bg-gray-900 rounded border overflow-auto max-h-96">
-        <table className="w-full text-sm">
+      <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', border: '1px solid var(--modal-border)', overflow: 'auto', maxHeight: '300px' }}>
+        <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse' }}>
           <thead>
-            <tr className="bg-gray-800">
-              <th className="text-left p-2 border-b">Property</th>
-              <th className="text-left p-2 border-b">Value</th>
-              <th className="text-left p-2 border-b">Type</th>
+            <tr style={{ background: 'var(--modal-surface)' }}>
+              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid var(--modal-border)', color: 'var(--modal-text-secondary)' }}>Property</th>
+              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid var(--modal-border)', color: 'var(--modal-text-secondary)' }}>Value</th>
+              <th style={{ textAlign: 'left', padding: '8px', borderBottom: '1px solid var(--modal-border)', color: 'var(--modal-text-secondary)' }}>Type</th>
             </tr>
           </thead>
           <tbody>
             {Object.entries(obj).map(([key, value], index) => (
-              <tr key={key} className={index % 2 === 0 ? 'bg-gray-900' : 'bg-gray-800'}>
-                <td className="p-2 border-b font-mono text-yellow-300">{key}</td>
-                <td className="p-2 border-b font-mono text-gray-300">{formatValue(value)}</td>
-                <td className="p-2 border-b text-gray-500">{typeof value === 'object' && value !== null ? (Array.isArray(value) ? 'array' : 'object') : typeof value}</td>
+              <tr key={key} style={{ background: index % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)' }}>
+                <td style={{ padding: '8px', borderBottom: '1px solid var(--modal-border)', fontFamily: 'monospace', color: '#facc15' }}>{key}</td>
+                <td style={{ padding: '8px', borderBottom: '1px solid var(--modal-border)', fontFamily: 'monospace', color: 'var(--modal-text-secondary)' }}>{formatValue(value)}</td>
+                <td style={{ padding: '8px', borderBottom: '1px solid var(--modal-border)', color: 'var(--modal-text-secondary)', opacity: 0.7 }}>{typeof value === 'object' && value !== null ? (Array.isArray(value) ? 'array' : 'object') : typeof value}</td>
               </tr>
             ))}
           </tbody>
@@ -93,12 +104,12 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
     };
 
     return (
-      <div className="p-4 space-y-6">
+      <div style={{ padding: '16px' }}>
         {renderObjectTable(coreGameInfo, 'Core Game Info')}
-        {renderObjectTable(gameState.player1, 'Player 1 State', 'border-l-4 border-cyan-500 pl-4')}
-        {renderObjectTable(gameState.player2, 'Player 2 State', 'border-l-4 border-pink-500 pl-4')}
-        {renderObjectTable({ placedSections: gameState.placedSections }, 'Player 1 Placed Sections', 'border-l-4 border-cyan-500 pl-4')}
-        {renderObjectTable({ opponentPlacedSections: gameState.opponentPlacedSections }, 'Player 2 Placed Sections', 'border-l-4 border-pink-500 pl-4')}
+        {renderObjectTable(gameState.player1, 'Player 1 State', '#22d3ee')}
+        {renderObjectTable(gameState.player2, 'Player 2 State', '#ec4899')}
+        {renderObjectTable({ placedSections: gameState.placedSections }, 'Player 1 Placed Sections', '#22d3ee')}
+        {renderObjectTable({ opponentPlacedSections: gameState.opponentPlacedSections }, 'Player 2 Placed Sections', '#ec4899')}
         {gameState.passInfo && renderObjectTable(gameState.passInfo, 'Pass Information')}
       </div>
     );
@@ -107,7 +118,7 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
   const renderCalculatedStatsTab = () => {
     if (!gameDataService) {
       return (
-        <div className="p-4 text-center text-red-400">
+        <div style={{ padding: '16px', textAlign: 'center', color: '#f87171' }}>
           GameDataService not available
         </div>
       );
@@ -142,17 +153,17 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
       } : { note: 'Cache statistics not available' };
 
       return (
-        <div className="p-4 space-y-6">
-          {renderObjectTable(player1ShipStats, 'Player 1 Effective Ship Stats', 'border-l-4 border-cyan-500 pl-4')}
-          {renderObjectTable(player2ShipStats, 'Player 2 Effective Ship Stats', 'border-l-4 border-pink-500 pl-4')}
-          {renderObjectTable(player1DroneStats, 'Player 1 Effective Drone Stats', 'border-l-4 border-cyan-500 pl-4')}
-          {renderObjectTable(player2DroneStats, 'Player 2 Effective Drone Stats', 'border-l-4 border-pink-500 pl-4')}
+        <div style={{ padding: '16px' }}>
+          {renderObjectTable(player1ShipStats, 'Player 1 Effective Ship Stats', '#22d3ee')}
+          {renderObjectTable(player2ShipStats, 'Player 2 Effective Ship Stats', '#ec4899')}
+          {renderObjectTable(player1DroneStats, 'Player 1 Effective Drone Stats', '#22d3ee')}
+          {renderObjectTable(player2DroneStats, 'Player 2 Effective Drone Stats', '#ec4899')}
           {renderObjectTable(cacheStats, 'GameDataService Cache Statistics')}
         </div>
       );
     } catch (error) {
       return (
-        <div className="p-4 text-center text-red-400">
+        <div style={{ padding: '16px', textAlign: 'center', color: '#f87171' }}>
           Error loading calculated stats: {error.message}
         </div>
       );
@@ -160,48 +171,65 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-container" style={{ maxWidth: '90vw', maxHeight: '90vh', width: '1200px' }}>
-        <button onClick={onClose} className="modal-close">
-          <X size={24} />
-        </button>
-
-        <h2 className="modal-title">Game Debug View</h2>
+    <div className="dw-modal-overlay" onClick={onClose}>
+      <div
+        className="dw-modal-content dw-modal--xxl dw-modal--action"
+        style={{ maxWidth: '1200px', width: '95vw', height: '90vh', display: 'flex', flexDirection: 'column' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Terminal size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">Game Debug View</h2>
+            <p className="dw-modal-header-subtitle">Raw state and calculated stats</p>
+          </div>
+        </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-gray-700 mb-4">
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--modal-border)', padding: '0 16px' }}>
           <button
             onClick={() => setActiveTab('raw')}
-            className={`px-6 py-3 font-medium transition-colors ${
-              activeTab === 'raw'
-                ? 'text-cyan-400 border-b-2 border-cyan-400 bg-gray-800'
-                : 'text-gray-400 hover:text-gray-200'
-            }`}
+            style={{
+              padding: '12px 24px',
+              fontWeight: '500',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === 'raw' ? '2px solid var(--modal-theme)' : '2px solid transparent',
+              color: activeTab === 'raw' ? 'var(--modal-theme)' : 'var(--modal-text-secondary)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
           >
             Raw State
           </button>
           <button
             onClick={() => setActiveTab('calculated')}
-            className={`px-6 py-3 font-medium transition-colors ${
-              activeTab === 'calculated'
-                ? 'text-cyan-400 border-b-2 border-cyan-400 bg-gray-800'
-                : 'text-gray-400 hover:text-gray-200'
-            }`}
+            style={{
+              padding: '12px 24px',
+              fontWeight: '500',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === 'calculated' ? '2px solid var(--modal-theme)' : '2px solid transparent',
+              color: activeTab === 'calculated' ? 'var(--modal-theme)' : 'var(--modal-text-secondary)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
           >
             Calculated Stats
           </button>
         </div>
 
         {/* Tab Content */}
-        <div className="overflow-auto" style={{ maxHeight: 'calc(90vh - 200px)' }}>
+        <div className="dw-modal-body" style={{ flex: 1, overflow: 'auto', padding: 0 }}>
           {activeTab === 'raw' ? renderRawStateTab() : renderCalculatedStatsTab()}
         </div>
 
-        <div className="flex justify-center mt-6">
-          <button
-            onClick={onClose}
-            className="bg-gray-600 text-white font-bold py-2 px-6 rounded-full hover:bg-gray-700 transition-colors"
-          >
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
             Close
           </button>
         </div>

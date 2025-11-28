@@ -4,7 +4,7 @@
 // Modal that displays confirmation dialogs for destructive actions
 
 import React from 'react';
-import { X } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 
 /**
  * CONFIRMATION MODAL COMPONENT
@@ -15,28 +15,39 @@ import { X } from 'lucide-react';
 const ConfirmationModal = ({ confirmationModal, show }) => {
   if (!show || !confirmationModal) return null;
 
-  const title = `Confirm ${confirmationModal.type === 'discard' ? 'Discard' : 'Destruction'}`;
+  const title = confirmationModal.type === 'discard' ? 'Confirm Discard' : 'Confirm Destruction';
+  const subtitle = confirmationModal.type === 'discard' ? 'This action cannot be undone' : 'Permanent action';
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-container modal-container-md">
-        {confirmationModal.onCancel && (
-          <button onClick={confirmationModal.onCancel} className="modal-close">
-            <X size={24} />
-          </button>
-        )}
-        <h2 className="modal-title">{title}</h2>
-        <p className="modal-text">{confirmationModal.text}</p>
-        <div className="flex justify-center gap-4 mt-6">
+    <div className="dw-modal-overlay">
+      <div className="dw-modal-content dw-modal--sm dw-modal--danger">
+        {/* Header */}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon dw-modal-header-icon--pulse">
+            <AlertTriangle size={32} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">{title}</h2>
+            <p className="dw-modal-header-subtitle">{subtitle}</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="dw-modal-body">
+          <p className="dw-modal-text">{confirmationModal.text}</p>
+        </div>
+
+        {/* Actions */}
+        <div className="dw-modal-actions">
           <button
             onClick={confirmationModal.onCancel}
-            className="btn-cancel"
+            className="dw-btn dw-btn-cancel"
           >
             Cancel
           </button>
           <button
             onClick={confirmationModal.onConfirm}
-            className="btn-confirm"
+            className="dw-btn dw-btn-danger"
           >
             Confirm
           </button>

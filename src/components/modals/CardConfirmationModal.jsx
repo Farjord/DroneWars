@@ -4,7 +4,8 @@
 // Modal that confirms action card usage with energy cost and target
 
 import React from 'react';
-import { X } from 'lucide-react';
+import { Zap } from 'lucide-react';
+import ActionCard from '../ui/ActionCard.jsx';
 
 /**
  * CARD CONFIRMATION MODAL COMPONENT
@@ -35,22 +36,38 @@ const CardConfirmationModal = ({ cardConfirmation, show, onCancel, onConfirm }) 
   }
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-container modal-container-md">
-        {onCancel && (
-          <button onClick={onCancel} className="modal-close">
-            <X size={24} />
-          </button>
-        )}
-        <h2 className="modal-title">Confirm Action: {card.name}</h2>
-        <p className="modal-text">
-          Use {card.name}{targetDisplayName ? ` on ${targetDisplayName}` : ''}? This will cost {card.cost} energy.
-        </p>
-        <div className="flex justify-center gap-4 mt-6">
-          <button onClick={onCancel} className="btn-cancel">
+    <div className="dw-modal-overlay" onClick={onCancel}>
+      <div className="dw-modal-content dw-modal--md dw-modal--action" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Zap size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">Confirm Action</h2>
+            <p className="dw-modal-header-subtitle">{targetDisplayName ? `Target: ${targetDisplayName}` : 'No target required'}</p>
+          </div>
+        </div>
+
+        {/* Body - Card Display */}
+        <div className="dw-modal-body">
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <ActionCard
+              card={card}
+              onClick={() => {}}
+              isPlayable={true}
+              isSelected={false}
+              scale={0.9}
+            />
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-cancel" onClick={onCancel}>
             Cancel
           </button>
-          <button onClick={onConfirm} className="btn-confirm">
+          <button className="dw-btn dw-btn-confirm" onClick={onConfirm}>
             Confirm
           </button>
         </div>

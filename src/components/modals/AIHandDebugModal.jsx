@@ -4,7 +4,7 @@
 // Modal that displays the opponent's hand for debug purposes
 
 import React from 'react';
-import { X } from 'lucide-react';
+import { Bug } from 'lucide-react';
 import ActionCard from '../ui/ActionCard.jsx';
 
 /**
@@ -19,32 +19,51 @@ const AIHandDebugModal = ({ opponentPlayerState, show, debugMode, onClose }) => 
   if (!show || !debugMode || !opponentPlayerState) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-container max-w-6xl">
-        {onClose && (
-          <button onClick={onClose} className="modal-close">
-            <X size={24} />
-          </button>
-        )}
-        <h2 className="modal-title">Opponent's Hand (Debug View)</h2>
-        <p className="modal-text">
-          The opponent is holding {opponentPlayerState.hand.length} card(s). This view is for debug purposes only.
-        </p>
-        <div className="flex flex-nowrap items-center gap-4 my-4 p-4 overflow-x-auto bg-black/20 rounded">
+    <div className="dw-modal-overlay" onClick={onClose}>
+      <div
+        className="dw-modal-content dw-modal--xxl dw-modal--action"
+        style={{ maxWidth: '1200px', width: '95vw' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Bug size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">Opponent's Hand (Debug)</h2>
+            <p className="dw-modal-header-subtitle">{opponentPlayerState.hand.length} card{opponentPlayerState.hand.length !== 1 ? 's' : ''} in hand</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="dw-modal-body">
+          <div className="dw-modal-info-box" style={{ marginBottom: '16px' }}>
+            <p className="dw-modal-text" style={{ margin: 0, textAlign: 'center' }}>
+              This view is for <strong>debug purposes only</strong>.
+            </p>
+          </div>
+
           {opponentPlayerState.hand.length > 0 ? (
-            opponentPlayerState.hand.map(card => (
-              <ActionCard
-                key={card.instanceId}
-                card={card}
-                isPlayable={false}
-              />
-            ))
+            <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '16px', justifyContent: 'center', overflowX: 'auto', padding: '8px' }}>
+              {opponentPlayerState.hand.map(card => (
+                <ActionCard
+                  key={card.instanceId}
+                  card={card}
+                  isPlayable={false}
+                />
+              ))}
+            </div>
           ) : (
-            <p className="text-gray-500 italic">The opponent's hand is empty.</p>
+            <div className="dw-modal-info-box" style={{ textAlign: 'center', padding: '40px' }}>
+              <p style={{ color: 'var(--modal-text-secondary)', fontStyle: 'italic', margin: 0 }}>The opponent's hand is empty.</p>
+            </div>
           )}
         </div>
-        <div className="flex justify-center mt-6">
-          <button onClick={onClose} className="btn-continue">
+
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
             Close
           </button>
         </div>

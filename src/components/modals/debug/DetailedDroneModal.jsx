@@ -3,10 +3,9 @@
 // ========================================
 // Shows detailed view of a specific drone card.
 // Used for viewing drone stats, abilities, and image.
-// Extracted from App.jsx for better component organization.
 
 import React from 'react';
-import { X } from 'lucide-react';
+import { Cpu } from 'lucide-react';
 import DroneCard from '../../ui/DroneCard.jsx';
 
 /**
@@ -20,19 +19,31 @@ const DetailedDroneModal = ({ isOpen, drone, onClose }) => {
   if (!isOpen || !drone) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-2xl border-2 border-purple-500 p-8 shadow-2xl shadow-purple-500/20 w-full max-w-lg relative">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
-        >
-          <X size={24} />
-        </button>
-        <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-cyan-400 text-center mb-4">
-          {drone.name}
-        </h2>
-        <div className="flex justify-center">
-          <DroneCard drone={drone} isSelectable={false} deployedCount={0} isViewOnly={true} />
+    <div className="dw-modal-overlay" onClick={onClose}>
+      <div className="dw-modal-content dw-modal--md dw-modal--action" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Cpu size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">{drone.name}</h2>
+            <p className="dw-modal-header-subtitle">Class {drone.class} Drone</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="dw-modal-body">
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <DroneCard drone={drone} isSelectable={false} deployedCount={0} isViewOnly={true} />
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+            Close
+          </button>
         </div>
       </div>
     </div>

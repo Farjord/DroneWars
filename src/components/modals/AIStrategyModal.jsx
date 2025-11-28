@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from 'react';
+import { Brain } from 'lucide-react';
 import {
   aiOverview,
   emojiLegend,
@@ -661,17 +662,17 @@ const AIStrategyModal = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-lg shadow-2xl border-2 border-cyan-500 w-full max-w-6xl max-h-[90vh] flex flex-col">
+    <div className="dw-modal-overlay" onClick={onClose}>
+      <div className="dw-modal-content dw-modal--xxl dw-modal--action" onClick={e => e.stopPropagation()} style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
-        <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-cyan-400">AI Strategy Guide</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white text-2xl font-bold px-3"
-          >
-            ×
-          </button>
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Brain size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">AI Strategy</h2>
+            <p className="dw-modal-header-subtitle">Decision-Making Guide</p>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -694,12 +695,12 @@ const AIStrategyModal = ({ onClose }) => {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 dw-modal-scroll">
           {renderContent()}
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-700 text-center text-sm text-gray-500">
+        <div className="dw-modal-footer">
           Understanding AI behavior helps you make better strategic decisions.
         </div>
       </div>

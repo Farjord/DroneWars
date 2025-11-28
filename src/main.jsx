@@ -5,6 +5,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import AppRouter from './AppRouter.jsx'
 import './styles/index.css'
+import './styles/modal-base.css'  // After Tailwind for proper cascade priority
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

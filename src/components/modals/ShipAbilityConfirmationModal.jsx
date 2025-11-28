@@ -4,7 +4,7 @@
 // Modal that confirms ship ability usage with energy cost and target
 
 import React from 'react';
-import { X } from 'lucide-react';
+import { Ship, Zap } from 'lucide-react';
 
 /**
  * SHIP ABILITY CONFIRMATION MODAL COMPONENT
@@ -25,22 +25,39 @@ const ShipAbilityConfirmationModal = ({ shipAbilityConfirmation, show, onCancel,
   }
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-container modal-container-md">
-        {onCancel && (
-          <button onClick={onCancel} className="modal-close">
-            <X size={24} />
-          </button>
-        )}
-        <h2 className="modal-title">Confirm Ability: {ability.name}</h2>
-        <p className="modal-text">
-          Use {sectionDisplayName}'s ability{target ? ` on ${targetDisplayName}` : ''}? This will cost {ability.cost.energy} energy.
-        </p>
-        <div className="flex justify-center gap-4 mt-6">
-          <button onClick={onCancel} className="btn-cancel">
+    <div className="dw-modal-overlay" onClick={onCancel}>
+      <div className="dw-modal-content dw-modal--sm dw-modal--action" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Ship size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">{ability.name}</h2>
+            <p className="dw-modal-header-subtitle">{sectionDisplayName}</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="dw-modal-body">
+          <p className="dw-modal-text">
+            Use this ability{target ? ` on ${targetDisplayName}` : ''}?
+          </p>
+
+          <div className="dw-modal-info-box">
+            <div className="dw-modal-info-item">
+              <span className="dw-modal-info-icon"><Zap size={16} /></span>
+              <span>Energy Cost: <strong>{ability.cost.energy}</strong></span>
+            </div>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-cancel" onClick={onCancel}>
             Cancel
           </button>
-          <button onClick={onConfirm} className="btn-confirm">
+          <button className="dw-btn dw-btn-confirm" onClick={onConfirm}>
             Confirm
           </button>
         </div>

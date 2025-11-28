@@ -19,6 +19,7 @@ import ShipPlacementScreen from './components/screens/ShipPlacementScreen.jsx';
 import ModalShowcaseScreen from './components/screens/ModalShowcaseScreen.jsx';
 import TestingSetupScreen from './components/screens/TestingSetupScreen.jsx';
 import StandaloneDeckBuilder from './components/screens/StandaloneDeckBuilder.jsx';
+import ExtractionDeckBuilder from './components/screens/ExtractionDeckBuilder.jsx';
 import HangarScreen from './components/screens/HangarScreen.jsx';
 import TacticalMapScreen from './components/screens/TacticalMapScreen.jsx';
 import EremosEntryScreen from './components/screens/EremosEntryScreen.jsx';
@@ -155,6 +156,10 @@ function AppRouter() {
 
     case 'hangar':
       currentScreen = <HangarScreen />;
+      break;
+
+    case 'extractionDeckBuilder':
+      currentScreen = <ExtractionDeckBuilder />;
       break;
 
     case 'tacticalMap':

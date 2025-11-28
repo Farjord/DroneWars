@@ -5,7 +5,7 @@
 // Groups upgrades by drone type for easy navigation
 
 import React, { useState } from 'react';
-import GamePhaseModal from '../ui/GamePhaseModal.jsx';
+import { Zap } from 'lucide-react';
 
 /**
  * DESTROY UPGRADE MODAL COMPONENT
@@ -17,61 +17,85 @@ import GamePhaseModal from '../ui/GamePhaseModal.jsx';
  */
 const DestroyUpgradeModal = ({ selectionData, onConfirm, onCancel }) => {
   const { card, targets: upgradedDrones, opponentState } = selectionData;
-  const [selectedUpgrade, setSelectedUpgrade] = useState(null); // e.g., { droneName: 'Scout Drone', instanceId: '...' }
+  const [selectedUpgrade, setSelectedUpgrade] = useState(null);
 
   return (
-      <GamePhaseModal
-          title={`System Sabotage`}
-          text="Select an enemy upgrade to destroy. The upgrade will be permanently removed."
-          onClose={onCancel}
-          maxWidthClass="max-w-4xl"
-      >
-          <div className="my-4 p-2 bg-black/20 rounded-lg max-h-[60vh] overflow-y-auto space-y-4">
-              {upgradedDrones.length > 0 ? (
-                  upgradedDrones.map(drone => {
-                      const upgradesOnThisDrone = opponentState.appliedUpgrades[drone.name] || [];
-                      return (
-                          <div key={drone.id} className="bg-slate-800/70 p-3 rounded-lg border border-pink-500/50">
-                              <h4 className="font-bold text-pink-300 mb-2">Enemy: {drone.name}</h4>
-                              <div className="space-y-2">
-                                  {upgradesOnThisDrone.map(upgrade => (
-                                      <div
-                                          key={upgrade.instanceId}
-                                          onClick={() => setSelectedUpgrade({ droneName: drone.name, instanceId: upgrade.instanceId })}
-                                          className={`p-2 rounded-md border-2 transition-all cursor-pointer
-                                              ${selectedUpgrade?.instanceId === upgrade.instanceId
-                                                  ? 'bg-red-700 border-red-400'
-                                                  : 'bg-slate-900/50 border-slate-600 hover:bg-slate-700'}`
-                                          }
-                                      >
-                                          <p className="font-semibold text-white">{upgrade.name}</p>
-                                      </div>
-                                  ))}
-                              </div>
-                          </div>
-                      );
-                  })
-              ) : (
-                  <p className="text-center text-gray-500 italic">The opponent has no active upgrades to destroy.</p>
-              )}
+    <div className="dw-modal-overlay">
+      <div className="dw-modal-content dw-modal--lg dw-modal--danger">
+        {/* Header */}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon dw-modal-header-icon--pulse">
+            <Zap size={32} />
           </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">System Sabotage</h2>
+            <p className="dw-modal-header-subtitle">Target enemy systems</p>
+          </div>
+        </div>
 
-          <div className="flex justify-center gap-4 mt-6">
-              <button
-                  onClick={onCancel}
-                  className="btn-cancel"
-              >
-                  Cancel
-              </button>
-              <button
-                  onClick={() => onConfirm(card, selectedUpgrade)}
-                  disabled={!selectedUpgrade}
-                  className="btn-confirm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                  Destroy Upgrade
-              </button>
+        {/* Body */}
+        <div className="dw-modal-body">
+          <p className="dw-modal-text dw-modal-text--left" style={{ marginBottom: '16px' }}>
+            Select an enemy upgrade to destroy. The upgrade will be permanently removed.
+          </p>
+
+          <div className="dw-modal-scroll" style={{ maxHeight: '300px' }}>
+            {upgradedDrones.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {upgradedDrones.map(drone => {
+                  const upgradesOnThisDrone = opponentState.appliedUpgrades[drone.name] || [];
+                  return (
+                    <div key={drone.id} className="dw-modal-info-box">
+                      <p className="dw-modal-info-title">Enemy: {drone.name}</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {upgradesOnThisDrone.map(upgrade => (
+                          <div
+                            key={upgrade.instanceId}
+                            onClick={() => setSelectedUpgrade({ droneName: drone.name, instanceId: upgrade.instanceId })}
+                            style={{
+                              padding: '10px 12px',
+                              borderRadius: '4px',
+                              border: selectedUpgrade?.instanceId === upgrade.instanceId
+                                ? '2px solid var(--modal-danger)'
+                                : '1px solid rgba(75, 85, 99, 0.5)',
+                              background: selectedUpgrade?.instanceId === upgrade.instanceId
+                                ? 'rgba(239, 68, 68, 0.2)'
+                                : 'rgba(17, 24, 39, 0.5)',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease'
+                            }}
+                          >
+                            <p style={{ fontWeight: 600, color: '#fff', margin: 0 }}>{upgrade.name}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="dw-modal-empty">
+                <p className="dw-modal-empty-text">The opponent has no active upgrades to destroy.</p>
+              </div>
+            )}
           </div>
-      </GamePhaseModal>
+        </div>
+
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button onClick={onCancel} className="dw-btn dw-btn-cancel">
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm(card, selectedUpgrade)}
+            disabled={!selectedUpgrade}
+            className="dw-btn dw-btn-danger"
+          >
+            Destroy Upgrade
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

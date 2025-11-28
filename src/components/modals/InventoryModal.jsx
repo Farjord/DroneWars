@@ -1,7 +1,15 @@
+// ========================================
+// INVENTORY MODAL COMPONENT
+// ========================================
+// Full card glossary (owned + unowned) with collection progress
+
 import React, { useState, useMemo } from 'react';
+import { Package } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
 import fullCardCollection from '../../data/cardData';
 import { RARITY_COLORS } from '../../data/cardData';
+import HiddenCard from '../ui/HiddenCard';
+import ActionCard from '../ui/ActionCard';
 
 /**
  * InventoryModal Component
@@ -12,11 +20,12 @@ const InventoryModal = ({ onClose }) => {
   const [selectedTab, setSelectedTab] = useState('All');
   const [selectedCard, setSelectedCard] = useState(null);
 
+  // Fallbacks for showcase mode where game state may be empty
   const {
-    singlePlayerInventory,
-    singlePlayerDiscoveredCards,
-    singlePlayerShipSlots,
-  } = gameState;
+    singlePlayerInventory = {},
+    singlePlayerDiscoveredCards = [],
+    singlePlayerShipSlots = [],
+  } = gameState || {};
 
   /**
    * Extract cards from Ship Slot 0 (immutable starter deck)
@@ -108,15 +117,16 @@ const InventoryModal = ({ onClose }) => {
 
   /**
    * Get card visual style based on discovery state
+   * Note: ActionCard handles grayscale via isPlayable prop
    */
   const getCardStyle = (card) => {
     if (card.discoveryState === 'undiscovered') {
-      return 'opacity-50 grayscale cursor-default';
+      return { opacity: 0.5, cursor: 'default' };
     }
     if (card.discoveryState === 'discovered') {
-      return 'opacity-70 grayscale cursor-pointer hover:opacity-80';
+      return { opacity: 0.7, cursor: 'pointer' };
     }
-    return 'cursor-pointer hover:scale-105 transition-transform';
+    return { cursor: 'pointer' };
   };
 
   /**
@@ -138,187 +148,247 @@ const InventoryModal = ({ onClose }) => {
   const tabs = ['All', 'Ordnance', 'Tactic', 'Support', 'Upgrade'];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-gray-800 p-8 rounded-lg max-w-7xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="dw-modal-overlay" onClick={onClose}>
+      <div className="dw-modal-content dw-modal--action" onClick={e => e.stopPropagation()} style={{ maxWidth: '1150px', width: '95%' }}>
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-white">Inventory</h2>
-            <p className="text-sm text-gray-400">
-              {collectionStats.owned} / {collectionStats.total} cards owned
-            </p>
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Package size={28} />
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white text-2xl"
-          >
-            ×
-          </button>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">Inventory</h2>
+            <p className="dw-modal-header-subtitle">{collectionStats.owned} / {collectionStats.total} cards owned</p>
+          </div>
         </div>
 
-        {/* Collection Stats */}
-        <div className="grid grid-cols-4 gap-3 mb-6">
-          {Object.entries(collectionStats.byRarity).map(([rarity, stats]) => (
-            <div
-              key={rarity}
-              className="p-3 bg-gray-900 rounded border"
-              style={{ borderColor: getRarityColor(rarity) }}
-            >
-              <div className="text-sm text-gray-400">{rarity}</div>
-              <div className="text-lg font-bold" style={{ color: getRarityColor(rarity) }}>
-                {stats.owned} / {stats.total}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="flex gap-2 mb-6 border-b border-gray-700">
-          {tabs.map(tab => (
-            <button
-              key={tab}
-              onClick={() => setSelectedTab(tab)}
-              className={`
-                px-4 py-2 font-bold transition-colors
-                ${selectedTab === tab
-                  ? 'text-blue-400 border-b-2 border-blue-400'
-                  : 'text-gray-400 hover:text-gray-200'
-                }
-              `}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        {/* Cards Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 mb-6">
-          {filteredCards.map(card => (
-            <div
-              key={card.id}
-              onClick={() => handleCardClick(card)}
-              className={`relative p-3 bg-gray-900 rounded-lg border-2 ${getCardStyle(card)}`}
-              style={{
-                borderColor: card.discoveryState === 'owned'
-                  ? getRarityColor(card.rarity)
-                  : '#4B5563'
-              }}
-            >
-              {/* Undiscovered Placeholder */}
-              {card.discoveryState === 'undiscovered' ? (
-                <div className="text-center py-6">
-                  <div className="text-4xl mb-2">???</div>
-                  <div className="text-xs text-gray-500">{card.rarity}</div>
+        {/* Body */}
+        <div className="dw-modal-body">
+          {/* Collection Stats Grid */}
+          <div className="dw-modal-grid dw-modal-grid--4" style={{ marginBottom: '16px' }}>
+            {Object.entries(collectionStats.byRarity).map(([rarity, stats]) => (
+              <div
+                key={rarity}
+                className="dw-modal-stat"
+                style={{ borderLeft: `3px solid ${getRarityColor(rarity)}` }}
+              >
+                <div className="dw-modal-stat-label">{rarity}</div>
+                <div className="dw-modal-stat-value" style={{ color: getRarityColor(rarity) }}>
+                  {stats.owned} / {stats.total}
                 </div>
-              ) : (
-                <>
-                  {/* Card Name */}
-                  <div className="font-bold text-sm text-white mb-1 line-clamp-2">
-                    {card.name}
-                  </div>
+              </div>
+            ))}
+          </div>
 
-                  {/* Card Type */}
-                  <div className="text-xs text-gray-400 mb-2">{card.type}</div>
+          {/* Tab Navigation */}
+          <div className="dw-modal-tabs">
+            {tabs.map(tab => (
+              <button
+                key={tab}
+                onClick={() => setSelectedTab(tab)}
+                className={`dw-modal-tab ${selectedTab === tab ? 'dw-modal-tab--active' : ''}`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
 
-                  {/* Cost */}
-                  <div className="text-xs text-blue-400 mb-2">
-                    Cost: {card.cost}
-                  </div>
+          {/* Cards Grid */}
+          <div className="dw-modal-scroll" style={{ maxHeight: '550px' }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+              gap: '10px',
+              justifyItems: 'center'
+            }}>
+              {filteredCards.map(card => {
+                const textColor = card.isFromSlot0
+                  ? 'var(--modal-action)'
+                  : card.discoveryState === 'discovered'
+                    ? 'var(--modal-text-muted)'
+                    : 'var(--modal-success)';
 
-                  {/* Rarity Badge */}
+                return (
                   <div
-                    className="text-xs font-bold mb-2"
-                    style={{ color: getRarityColor(card.rarity) }}
+                    key={card.id}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      background: 'rgba(0, 0, 0, 0.35)',
+                      borderRadius: '4px',
+                      padding: '16px',
+                      paddingBottom: '10px',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+                    }}
                   >
-                    {card.rarity}
+                    {card.discoveryState === 'undiscovered' ? (
+                      /* Undiscovered - Use HiddenCard component (scaled to match ActionCard) */
+                      <>
+                        <div
+                          style={{
+                            width: '162px',
+                            height: '198px',
+                            overflow: 'visible'
+                          }}
+                        >
+                          <div style={{
+                            transform: 'scale(0.72)',
+                            transformOrigin: 'top left'
+                          }}>
+                            <HiddenCard
+                              rarity={card.rarity}
+                              size="full"
+                              style={{ opacity: 0.8 }}
+                            />
+                          </div>
+                        </div>
+                        {/* Rarity label for hidden cards */}
+                        <div
+                          style={{
+                            marginTop: '8px',
+                            padding: '4px 0',
+                            color: getRarityColor(card.rarity),
+                            fontWeight: '600',
+                            fontSize: '15px',
+                            textAlign: 'center'
+                          }}
+                        >
+                          {card.rarity}
+                        </div>
+                      </>
+                    ) : (
+                      /* Owned/Discovered - Show full ActionCard (scaled down) */
+                      <>
+                        <div
+                          onClick={() => handleCardClick(card)}
+                          style={{
+                            width: '162px',
+                            height: '198px',
+                            overflow: 'visible',
+                            cursor: 'pointer',
+                            ...getCardStyle(card)
+                          }}
+                        >
+                          <div style={{
+                            transform: 'scale(0.72)',
+                            transformOrigin: 'top left'
+                          }}>
+                            <ActionCard card={card} isPlayable={card.discoveryState === 'owned'} />
+                          </div>
+                        </div>
+
+                        {/* Quantity Bar */}
+                        <div
+                          style={{
+                            marginTop: '8px',
+                            padding: '4px 0',
+                            color: textColor,
+                            fontWeight: '600',
+                            fontSize: '15px',
+                            textAlign: 'center'
+                          }}
+                        >
+                          {card.isFromSlot0 ? (
+                            <>Starter Card - ∞</>
+                          ) : card.discoveryState === 'discovered' ? (
+                            <>Not Owned</>
+                          ) : (
+                            <>×{card.quantity} Owned</>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
-
-                  {/* Quantity Badge */}
-                  {card.discoveryState === 'owned' && (
-                    <div className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold ${
-                      card.quantity === Infinity ? 'bg-blue-600' : 'bg-green-600'
-                    }`}>
-                      {card.quantity === Infinity ? '∞' : `×${card.quantity}`}
-                    </div>
-                  )}
-
-                  {/* "0 owned" for discovered cards */}
-                  {card.discoveryState === 'discovered' && (
-                    <div className="absolute top-2 right-2 px-2 py-1 bg-gray-600 rounded-full text-xs">
-                      0 owned
-                    </div>
-                  )}
-                </>
-              )}
+                );
+              })}
             </div>
-          ))}
+          </div>
         </div>
 
         {/* Card Detail Popup */}
         {selectedCard && (
-          <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
-            <div className="bg-gray-800 p-6 rounded-lg max-w-md w-full border-2"
-              style={{ borderColor: getRarityColor(selectedCard.rarity) }}>
-              {/* Card Name */}
-              <h3 className="text-2xl font-bold text-white mb-2">{selectedCard.name}</h3>
-
-              {/* Meta Info */}
-              <div className="flex gap-4 mb-4 text-sm">
-                <div>
-                  <span className="text-gray-400">Type: </span>
-                  <span className="text-white">{selectedCard.type}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Cost: </span>
-                  <span className="text-blue-400">{selectedCard.cost}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Rarity: </span>
-                  <span style={{ color: getRarityColor(selectedCard.rarity) }}>
-                    {selectedCard.rarity}
-                  </span>
+          <div className="dw-modal-overlay" onClick={() => setSelectedCard(null)} style={{ zIndex: 1200 }}>
+            <div
+              className="dw-modal-content dw-modal--lg dw-modal--action"
+              onClick={e => e.stopPropagation()}
+              style={{ borderColor: getRarityColor(selectedCard.rarity) }}
+            >
+              {/* Header */}
+              <div className="dw-modal-header">
+                <div className="dw-modal-header-info">
+                  <h2 className="dw-modal-header-title">{selectedCard.name}</h2>
+                  <p className="dw-modal-header-subtitle">{selectedCard.type} Card</p>
                 </div>
               </div>
 
-              {/* Quantity */}
-              {selectedCard.discoveryState === 'owned' && (
-                <div className={`mb-4 p-2 bg-opacity-30 border rounded ${
-                  selectedCard.quantity === Infinity
-                    ? 'bg-blue-900 border-blue-700'
-                    : 'bg-green-900 border-green-700'
-                }`}>
-                  <span className={selectedCard.quantity === Infinity ? 'text-blue-200' : 'text-green-200'}>
-                    Owned: {selectedCard.quantity === Infinity ? '∞' : selectedCard.quantity}
-                    {selectedCard.isFromSlot0 && (
-                      <span className="ml-2 text-xs">(Starter Deck)</span>
+              {/* Body */}
+              <div className="dw-modal-body">
+                {/* Card Display + Info Layout */}
+                <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+                  {/* ActionCard Display */}
+                  <div style={{ flexShrink: 0 }}>
+                    <ActionCard card={selectedCard} />
+                  </div>
+
+                  {/* Card Info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Meta Info */}
+                    <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', fontSize: '13px' }}>
+                      <div>
+                        <span style={{ color: 'var(--modal-text-secondary)' }}>Cost: </span>
+                        <span style={{ color: 'var(--modal-action)', fontWeight: '600' }}>{selectedCard.cost}</span>
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--modal-text-secondary)' }}>Rarity: </span>
+                        <span style={{ color: getRarityColor(selectedCard.rarity), fontWeight: '600' }}>
+                          {selectedCard.rarity}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Quantity */}
+                    {selectedCard.discoveryState === 'owned' && (
+                      <div className="dw-modal-info-box" style={{
+                        background: selectedCard.quantity === Infinity ? 'rgba(6, 182, 212, 0.1)' : 'rgba(34, 197, 94, 0.1)',
+                        borderColor: selectedCard.quantity === Infinity ? 'rgba(6, 182, 212, 0.3)' : 'rgba(34, 197, 94, 0.3)'
+                      }}>
+                        <span style={{ color: selectedCard.quantity === Infinity ? 'var(--modal-action)' : 'var(--modal-success)' }}>
+                          Owned: {selectedCard.quantity === Infinity ? '∞' : selectedCard.quantity}
+                          {selectedCard.isFromSlot0 && (
+                            <span style={{ marginLeft: '8px', fontSize: '11px', color: 'var(--modal-text-secondary)' }}>
+                              (Starter Deck)
+                            </span>
+                          )}
+                        </span>
+                      </div>
                     )}
-                  </span>
-                </div>
-              )}
 
-              {/* Description */}
-              <div className="mb-4 p-3 bg-gray-900 rounded">
-                <p className="text-gray-300 text-sm">{selectedCard.description}</p>
+                    {/* Description */}
+                    <div className="dw-modal-info-box">
+                      <p style={{ fontSize: '13px', color: 'var(--modal-text-primary)', margin: 0, lineHeight: 1.5 }}>
+                        {selectedCard.description}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Close Button */}
-              <button
-                onClick={() => setSelectedCard(null)}
-                className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded transition-colors"
-              >
-                Close
-              </button>
+              {/* Actions */}
+              <div className="dw-modal-actions">
+                <button className="dw-btn dw-btn-cancel" onClick={() => setSelectedCard(null)}>
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded transition-colors"
-        >
-          Close
-        </button>
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );

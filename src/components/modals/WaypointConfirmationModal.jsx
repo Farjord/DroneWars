@@ -5,26 +5,12 @@
 // Shows path cost and detection impact
 
 import React from 'react';
+import { Navigation } from 'lucide-react';
 import MovementController from '../../logic/map/MovementController.js';
 import { mapTiers } from '../../data/mapData.js';
-import './WaypointConfirmationModal.css';
 
 /**
  * WaypointConfirmationModal - Confirm movement to target hex
- *
- * Displays:
- * - Target hex information
- * - Path distance
- * - Detection cost
- * - New detection value
- * - Warning if move would trigger MIA
- *
- * @param {Object} targetHex - Target hex object
- * @param {Object} currentPosition - Current player position
- * @param {Object} mapData - Map data
- * @param {number} currentDetection - Current detection percentage
- * @param {Function} onConfirm - Callback for confirmed movement
- * @param {Function} onCancel - Callback for cancelled movement
  */
 function WaypointConfirmationModal({
   targetHex,
@@ -46,24 +32,12 @@ function WaypointConfirmationModal({
 
   const { valid, path, cost, newDetection, distance, reason } = preview;
 
-  /**
-   * Get target hex type label
-   * @returns {string} Human-readable label
-   */
   const getTargetLabel = () => {
-    if (targetHex.type === 'poi') {
-      return `📦 Point of Interest`;
-    } else if (targetHex.type === 'gate') {
-      return `🚪 Extraction Gate`;
-    } else {
-      return `Empty Hex`;
-    }
+    if (targetHex.type === 'poi') return 'Point of Interest';
+    if (targetHex.type === 'gate') return 'Extraction Gate';
+    return 'Empty Hex';
   };
 
-  /**
-   * Get PoI type detail if applicable
-   * @returns {string|null} PoI type or null
-   */
   const getPoiDetail = () => {
     if (targetHex.type === 'poi' && targetHex.poiData) {
       return targetHex.poiData.name || targetHex.poiType;
@@ -71,92 +45,84 @@ function WaypointConfirmationModal({
     return null;
   };
 
-  /**
-   * Get detection color class
-   * @returns {string} CSS class
-   */
-  const getDetectionColorClass = () => {
-    if (newDetection < 50) return 'value-safe';
-    if (newDetection < 80) return 'value-warning';
-    return 'value-critical';
+  const getDetectionColor = () => {
+    if (newDetection < 50) return 'var(--modal-success)';
+    if (newDetection < 80) return '#eab308';
+    return 'var(--modal-danger)';
   };
 
   return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="modal-container modal-container-md waypoint-modal-content" onClick={(e) => e.stopPropagation()}>
+    <div className="dw-modal-overlay" onClick={onCancel}>
+      <div className="dw-modal-content dw-modal--sm dw-modal--action" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className="modal-header">
-          <h2 className="heading-font text-xl font-bold text-white">Confirm Movement</h2>
-          <button className="modal-close" onClick={onCancel}>✕</button>
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Navigation size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">Confirm Movement</h2>
+            <p className="dw-modal-header-subtitle">{getTargetLabel()}</p>
+          </div>
         </div>
 
-        {/* Target info */}
-        <div className="waypoint-info">
-          <div className="waypoint-target">
-            <span className="waypoint-target-icon">{targetHex.type === 'poi' ? '📦' : targetHex.type === 'gate' ? '🚪' : '⬡'}</span>
-            <div className="waypoint-target-details">
-              <div className="waypoint-target-label">{getTargetLabel()}</div>
-              {getPoiDetail() && (
-                <div className="waypoint-target-sublabel">{getPoiDetail()}</div>
-              )}
-            </div>
-          </div>
+        {/* Body */}
+        <div className="dw-modal-body">
+          {/* Target detail */}
+          {getPoiDetail() && (
+            <p className="dw-modal-text" style={{ marginBottom: '12px' }}>
+              {getPoiDetail()}
+            </p>
+          )}
 
           {/* Movement stats */}
-          <div className="waypoint-stats">
-            <div className="waypoint-stat">
-              <span className="stat-label">Distance</span>
-              <span className="stat-value">{distance} hexes</span>
+          <div className="dw-modal-grid dw-modal-grid--2">
+            <div className="dw-modal-stat">
+              <div className="dw-modal-stat-label">Distance</div>
+              <div className="dw-modal-stat-value">{distance} hex</div>
             </div>
-
-            <div className="waypoint-stat">
-              <span className="stat-label">Threat Cost</span>
-              <span className="stat-value stat-value-cost">+{cost.toFixed(1)}%</span>
+            <div className="dw-modal-stat">
+              <div className="dw-modal-stat-label">Threat Cost</div>
+              <div className="dw-modal-stat-value" style={{ color: 'var(--modal-danger)' }}>+{cost.toFixed(1)}%</div>
             </div>
-
-            <div className="waypoint-stat">
-              <span className="stat-label">Current Threat</span>
-              <span className="stat-value">{currentDetection.toFixed(1)}%</span>
+            <div className="dw-modal-stat">
+              <div className="dw-modal-stat-label">Current</div>
+              <div className="dw-modal-stat-value">{currentDetection.toFixed(1)}%</div>
             </div>
-
-            <div className="waypoint-stat">
-              <span className="stat-label">New Threat</span>
-              <span className={`stat-value ${getDetectionColorClass()}`}>
+            <div className="dw-modal-stat">
+              <div className="dw-modal-stat-label">New Threat</div>
+              <div className="dw-modal-stat-value" style={{ color: getDetectionColor() }}>
                 {newDetection.toFixed(1)}%
-              </span>
+              </div>
             </div>
           </div>
+
+          {/* Warning message if invalid */}
+          {!valid && (
+            <div className="dw-modal-info-box" style={{ marginTop: '16px', '--modal-theme': 'var(--modal-danger)', '--modal-theme-bg': 'var(--modal-danger-bg)', '--modal-theme-border': 'var(--modal-danger-border)' }}>
+              <p className="dw-modal-info-title">Cannot Move</p>
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--modal-text-primary)' }}>{reason}</p>
+            </div>
+          )}
+
+          {/* Warning for high detection */}
+          {valid && newDetection >= 80 && (
+            <div className="dw-modal-info-box" style={{ marginTop: '16px', '--modal-theme': '#eab308', '--modal-theme-bg': 'rgba(234, 179, 8, 0.08)', '--modal-theme-border': 'rgba(234, 179, 8, 0.4)' }}>
+              <p className="dw-modal-info-title" style={{ color: '#eab308' }}>Critical Threat</p>
+              <p style={{ margin: 0, fontSize: '13px', color: 'var(--modal-text-primary)' }}>
+                Risk of MIA if mission continues.
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Warning message if invalid */}
-        {!valid && (
-          <div className="waypoint-warning">
-            <span className="warning-icon">⚠</span>
-            <span className="warning-text">{reason}</span>
-          </div>
-        )}
-
-        {/* Warning for high detection */}
-        {valid && newDetection >= 80 && (
-          <div className="waypoint-caution">
-            <span className="caution-icon">⚠</span>
-            <span className="caution-text">
-              Critical threat level! Risk of MIA if mission continues.
-            </span>
-          </div>
-        )}
-
         {/* Actions */}
-        <div className="modal-actions">
-          <button
-            onClick={onCancel}
-            className="btn-utility"
-          >
+        <div className="dw-modal-actions">
+          <button onClick={onCancel} className="dw-btn dw-btn-cancel">
             Cancel
           </button>
           <button
             onClick={() => onConfirm(targetHex, path)}
-            className="btn-confirm"
+            className="dw-btn dw-btn-confirm"
             disabled={!valid}
           >
             Move

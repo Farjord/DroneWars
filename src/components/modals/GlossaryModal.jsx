@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import { BookOpen } from 'lucide-react';
 import { generateCompleteGlossary, generateMechanicsSummary } from '../../utils/glossaryAnalyzer';
 
 const GlossaryModal = ({ onClose }) => {
@@ -64,7 +65,7 @@ const GlossaryModal = ({ onClose }) => {
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-gray-400 font-semibold mb-2">Effect Types ({summary.effectTypesList.length}):</p>
-            <div className="text-gray-300 space-y-1 max-h-96 overflow-y-auto pr-2">
+            <div className="text-gray-300 space-y-1 max-h-96 overflow-y-auto pr-2 dw-modal-scroll">
               {summary.effectTypesList.map(type => (
                 <div key={type}>• {type}</div>
               ))}
@@ -72,7 +73,7 @@ const GlossaryModal = ({ onClose }) => {
           </div>
           <div>
             <p className="text-gray-400 font-semibold mb-2">Targeting Types ({summary.targetingTypesList.length}):</p>
-            <div className="text-gray-300 space-y-1 max-h-96 overflow-y-auto pr-2">
+            <div className="text-gray-300 space-y-1 max-h-96 overflow-y-auto pr-2 dw-modal-scroll">
               {summary.targetingTypesList.map(type => (
                 <div key={type}>• {type}</div>
               ))}
@@ -801,17 +802,17 @@ const GlossaryModal = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 rounded-lg shadow-2xl border-2 border-cyan-500 w-full max-w-6xl max-h-[90vh] flex flex-col">
+    <div className="dw-modal-overlay" onClick={onClose}>
+      <div className="dw-modal-content dw-modal--xxl dw-modal--action" onClick={e => e.stopPropagation()} style={{ maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
-        <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-          <h2 className="text-2xl font-bold text-cyan-400">Game Mechanics Glossary</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white text-2xl font-bold px-3"
-          >
-            ×
-          </button>
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <BookOpen size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">Glossary</h2>
+            <p className="dw-modal-header-subtitle">Game Mechanics Reference</p>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -834,12 +835,12 @@ const GlossaryModal = ({ onClose }) => {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-6 dw-modal-scroll">
           {renderContent()}
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-700 text-center text-sm text-gray-500">
+        <div className="dw-modal-footer">
           This glossary is automatically generated from game data. All mechanics are extracted dynamically.
         </div>
       </div>

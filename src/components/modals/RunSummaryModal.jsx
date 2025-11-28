@@ -6,7 +6,7 @@
 
 import fullCardCollection from '../../data/cardData.js';
 import ActionCard from '../ui/ActionCard.jsx';
-import './RunSummaryModal.css';
+import { CheckCircle, XCircle } from 'lucide-react';
 
 function RunSummaryModal({ summary, onClose }) {
   if (!summary) return null;
@@ -41,13 +41,13 @@ function RunSummaryModal({ summary, onClose }) {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Get hull status class
-  const getHullStatusClass = () => {
-    if (!maxHull || maxHull === 0) return '';
+  // Get hull color based on percentage
+  const getHullColor = () => {
+    if (!maxHull || maxHull === 0) return 'var(--modal-text-primary)';
     const hullPercent = (finalHull / maxHull) * 100;
-    if (hullPercent <= 25) return 'critical';
-    if (hullPercent <= 50) return 'warning';
-    return '';
+    if (hullPercent <= 25) return 'var(--modal-danger)';
+    if (hullPercent <= 50) return '#eab308';
+    return 'var(--modal-success)';
   };
 
   // Get full card data for rendering
@@ -56,106 +56,123 @@ function RunSummaryModal({ summary, onClose }) {
     return fullCard || card;
   });
 
+  const themeClass = success ? 'dw-modal--success' : 'dw-modal--danger';
+
   return (
-    <div className={`run-summary-overlay ${success ? 'success' : 'failure'}`}>
-      <div className={`run-summary-modal ${success ? 'success' : 'failure'}`}>
+    <div className="dw-modal-overlay">
+      <div
+        className={`dw-modal-content dw-modal--xxl ${themeClass}`}
+        style={{ maxWidth: '1000px', width: '95vw', height: '90vh', display: 'flex', flexDirection: 'column' }}
+        onClick={e => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="run-summary-header">
-          <div className="run-summary-header-icon">
-            {success ? '✓' : '✕'}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon" style={{ color: success ? 'var(--modal-success)' : 'var(--modal-danger)' }}>
+            {success ? <CheckCircle size={32} /> : <XCircle size={32} />}
           </div>
-          <div className="run-summary-header-info">
-            <h2 className="run-summary-title">
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">
               {success ? 'EXTRACTION SUCCESSFUL' : 'MISSION FAILED'}
             </h2>
-            <p className="run-summary-subtitle">
+            <p className="dw-modal-header-subtitle">
               {mapName || 'Unknown Sector'} (Tier {mapTier || 1})
             </p>
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="run-summary-stats-container">
-          {/* Exploration Column */}
-          <div className="run-summary-stats-column">
-            <h3 className="stats-column-header">EXPLORATION</h3>
-            <div className="run-summary-stat">
-              <span className="stat-label">Hexes Moved</span>
-              <span className="stat-value">{hexesMoved || 0}</span>
-            </div>
-            <div className="run-summary-stat">
-              <span className="stat-label">Map Explored</span>
-              <span className="stat-value">{mapCompletionPercent || 0}%</span>
-            </div>
-            <div className="run-summary-stat">
-              <span className="stat-label">POIs Visited</span>
-              <span className="stat-value">{poisVisited || 0}/{totalPois || 0}</span>
-            </div>
-          </div>
-
-          {/* Combat Column */}
-          <div className="run-summary-stats-column">
-            <h3 className="stats-column-header">COMBAT</h3>
-            <div className="run-summary-stat">
-              <span className="stat-label">Combats Won</span>
-              <span className="stat-value combat-won">{combatsWon || 0}</span>
-            </div>
-            <div className="run-summary-stat">
-              <span className="stat-label">Combats Lost</span>
-              <span className="stat-value combat-lost">{combatsLost || 0}</span>
-            </div>
-            <div className="run-summary-stat">
-              <span className="stat-label">Damage Dealt</span>
-              <span className="stat-value">{damageDealtToEnemies || 0}</span>
-            </div>
-          </div>
-
-          {/* Ship Status Column */}
-          <div className="run-summary-stats-column">
-            <h3 className="stats-column-header">SHIP STATUS</h3>
-            <div className="run-summary-stat">
-              <span className="stat-label">Hull Damage</span>
-              <span className={`stat-value ${getHullStatusClass()}`}>{hullDamageTaken || 0}</span>
-            </div>
-            <div className="run-summary-stat">
-              <span className="stat-label">Final Hull</span>
-              <span className={`stat-value ${getHullStatusClass()}`}>{finalHull || 0}/{maxHull || 0}</span>
-            </div>
-            <div className="run-summary-stat">
-              <span className="stat-label">Run Time</span>
-              <span className="stat-value">{formatDuration(runDuration || 0)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Credits Earned */}
-        <div className="run-summary-credits">
-          <span className="credits-label">CREDITS EARNED</span>
-          <span className="credits-value">{creditsEarned || 0}</span>
-        </div>
-
-        {/* Cards Section */}
-        <div className="run-summary-cards-section">
-          <h3 className="cards-section-header">
-            CARDS ACQUIRED ({cards.length})
-          </h3>
-          <div className="cards-scroll-container">
-            {cards.length > 0 ? (
-              cards.map((card, idx) => (
-                <div key={idx} className="card-wrapper">
-                  <ActionCard card={card} />
+        {/* Body */}
+        <div className="dw-modal-body" style={{ flex: 1, overflow: 'auto', padding: '20px' }}>
+          {/* Stats Grid - 3 columns */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '24px' }}>
+            {/* Exploration Column */}
+            <div style={{ background: 'var(--modal-surface)', borderRadius: '8px', padding: '16px', border: '1px solid var(--modal-border)' }}>
+              <h3 style={{ fontSize: '12px', fontWeight: 700, color: 'var(--modal-theme)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Exploration</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--modal-text-secondary)', fontSize: '13px' }}>Hexes Moved</span>
+                  <span style={{ color: 'var(--modal-text-primary)', fontWeight: 600 }}>{hexesMoved || 0}</span>
                 </div>
-              ))
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--modal-text-secondary)', fontSize: '13px' }}>Map Explored</span>
+                  <span style={{ color: 'var(--modal-text-primary)', fontWeight: 600 }}>{mapCompletionPercent || 0}%</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--modal-text-secondary)', fontSize: '13px' }}>POIs Visited</span>
+                  <span style={{ color: 'var(--modal-text-primary)', fontWeight: 600 }}>{poisVisited || 0}/{totalPois || 0}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Combat Column */}
+            <div style={{ background: 'var(--modal-surface)', borderRadius: '8px', padding: '16px', border: '1px solid var(--modal-border)' }}>
+              <h3 style={{ fontSize: '12px', fontWeight: 700, color: 'var(--modal-theme)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Combat</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--modal-text-secondary)', fontSize: '13px' }}>Combats Won</span>
+                  <span style={{ color: 'var(--modal-success)', fontWeight: 600 }}>{combatsWon || 0}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--modal-text-secondary)', fontSize: '13px' }}>Combats Lost</span>
+                  <span style={{ color: 'var(--modal-danger)', fontWeight: 600 }}>{combatsLost || 0}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--modal-text-secondary)', fontSize: '13px' }}>Damage Dealt</span>
+                  <span style={{ color: 'var(--modal-text-primary)', fontWeight: 600 }}>{damageDealtToEnemies || 0}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Ship Status Column */}
+            <div style={{ background: 'var(--modal-surface)', borderRadius: '8px', padding: '16px', border: '1px solid var(--modal-border)' }}>
+              <h3 style={{ fontSize: '12px', fontWeight: 700, color: 'var(--modal-theme)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Ship Status</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--modal-text-secondary)', fontSize: '13px' }}>Hull Damage</span>
+                  <span style={{ color: getHullColor(), fontWeight: 600 }}>{hullDamageTaken || 0}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--modal-text-secondary)', fontSize: '13px' }}>Final Hull</span>
+                  <span style={{ color: getHullColor(), fontWeight: 600 }}>{finalHull || 0}/{maxHull || 0}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--modal-text-secondary)', fontSize: '13px' }}>Run Time</span>
+                  <span style={{ color: 'var(--modal-text-primary)', fontWeight: 600 }}>{formatDuration(runDuration || 0)}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Credits Earned */}
+          <div className="dw-modal-info-box" style={{ marginBottom: '24px', textAlign: 'center' }}>
+            <p style={{ margin: 0, fontSize: '12px', color: 'var(--modal-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Credits Earned</p>
+            <p style={{ margin: '4px 0 0', fontSize: '32px', fontWeight: 700, color: '#eab308' }}>{creditsEarned || 0}</p>
+          </div>
+
+          {/* Cards Section */}
+          <div>
+            <h3 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--modal-theme)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              Cards Acquired ({cards.length})
+            </h3>
+            {cards.length > 0 ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }}>
+                {cards.map((card, idx) => (
+                  <div key={idx}>
+                    <ActionCard card={card} />
+                  </div>
+                ))}
+              </div>
             ) : (
-              <p className="no-cards-message">No cards acquired this run</p>
+              <div className="dw-modal-info-box" style={{ textAlign: 'center', padding: '32px' }}>
+                <p style={{ margin: 0, color: 'var(--modal-text-secondary)', fontStyle: 'italic' }}>No cards acquired this run</p>
+              </div>
             )}
           </div>
         </div>
 
-        {/* Continue Button */}
-        <div className="run-summary-actions">
+        {/* Actions */}
+        <div className="dw-modal-actions">
           <button
-            className={`run-summary-btn ${success ? 'success' : 'failure'}`}
+            className={success ? 'dw-btn dw-btn-success dw-btn--full' : 'dw-btn dw-btn-danger dw-btn--full'}
             onClick={onClose}
           >
             CONTINUE

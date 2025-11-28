@@ -4,9 +4,19 @@
 // SVG-based hex grid renderer for Exploring the Eremos tactical map
 // Renders hexes, PoIs, gates, player position, and highlighted paths
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { axialToPixel } from '../../utils/hexGrid.js';
+import { Plus, Minus, RotateCcw } from 'lucide-react';
 import './HexGridRenderer.css';
+
+// Available tactical background images
+const tacticalBackgrounds = [
+  new URL('/Tactical/Tactical1.jpg', import.meta.url).href,
+  new URL('/Tactical/Tactical2.jpg', import.meta.url).href,
+  new URL('/Tactical/Tactical3.jpg', import.meta.url).href,
+  new URL('/Tactical/Tactical4.jpg', import.meta.url).href,
+  new URL('/Tactical/Tactical15.jpg', import.meta.url).href,
+];
 
 /**
  * Calculate dynamic hex size based on viewport and map radius
@@ -46,12 +56,26 @@ const calculateHexSize = (mapRadius, viewportWidth, viewportHeight) => {
  * @param {number|null} currentWaypointIndex - Index of waypoint being traveled to (during movement)
  * @param {Object} insertionGate - Coordinates of insertion gate {q, r} (cannot extract from here)
  */
-function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], currentWaypointIndex = null, previewPath = null, isScanning = false, insertionGate = null }) {
+function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], currentWaypointIndex = null, previewPath = null, isScanning = false, insertionGate = null, lootedPOIs = [] }) {
   // Track viewport dimensions for dynamic sizing
   const [viewportSize, setViewportSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight
   });
+
+  // Pan/Zoom state
+  const [zoom, setZoom] = useState(1.4);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const containerRef = useRef(null);
+  const transformRef = useRef(null);
+  const panRef = useRef({ x: 0, y: 0 }); // Track pan during drag without re-renders
+
+  // Random background selected on mount
+  const [backgroundImage] = useState(() =>
+    tacticalBackgrounds[Math.floor(Math.random() * tacticalBackgrounds.length)]
+  );
 
   // Update viewport size on resize
   useEffect(() => {
@@ -65,6 +89,83 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Attach wheel listener with { passive: false } to allow preventDefault
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setZoom(prevZoom => {
+        const newZoom = Math.min(3, Math.max(1, prevZoom + delta));
+        setPan(p => {
+          if (!containerRef.current || newZoom <= 1) return { x: 0, y: 0 };
+          const { width, height } = containerRef.current.getBoundingClientRect();
+          const maxPanX = (width * (newZoom - 1)) / 2;
+          const maxPanY = (height * (newZoom - 1)) / 2;
+          return {
+            x: Math.max(-maxPanX, Math.min(maxPanX, p.x)),
+            y: Math.max(-maxPanY, Math.min(maxPanY, p.y))
+          };
+        });
+        return newZoom;
+      });
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, []);
+
+  // Pan/Zoom handlers
+  const clampPan = (panX, panY, zoomLevel) => {
+    if (!containerRef.current || zoomLevel <= 1) return { x: 0, y: 0 };
+    const { width, height } = containerRef.current.getBoundingClientRect();
+    const maxPanX = (width * (zoomLevel - 1)) / 2;
+    const maxPanY = (height * (zoomLevel - 1)) / 2;
+    return {
+      x: Math.max(-maxPanX, Math.min(maxPanX, panX)),
+      y: Math.max(-maxPanY, Math.min(maxPanY, panY))
+    };
+  };
+
+  const handleMouseDown = (e) => {
+    if (e.button === 0) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+    }
+  };
+
+  const handleMouseMove = (e) => {
+    if (isDragging && transformRef.current) {
+      const newX = e.clientX - dragStart.x;
+      const newY = e.clientY - dragStart.y;
+      const clamped = clampPan(newX, newY, zoom);
+      // Direct DOM update - bypasses React re-render for smooth panning
+      transformRef.current.style.transform =
+        `scale(${zoom}) translate(${clamped.x / zoom}px, ${clamped.y / zoom}px)`;
+      panRef.current = clamped; // Store for sync on mouse up
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (isDragging) {
+      setPan(panRef.current); // Sync final position to state
+    }
+    setIsDragging(false);
+  };
+
+  const handleResetView = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+    panRef.current = { x: 0, y: 0 };
+  };
+
+  // Keep panRef in sync when pan state changes from non-drag sources
+  useEffect(() => {
+    panRef.current = pan;
+  }, [pan]);
 
   // Calculate dynamic hex size based on viewport and map radius
   const hexSize = calculateHexSize(mapData.radius, viewportSize.width, viewportSize.height);
@@ -108,24 +209,39 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
   };
 
   /**
+   * Check if a POI hex has been looted (rewards claimed)
+   * @param {Object} hex - Hex to check
+   * @returns {boolean} Is looted POI
+   */
+  const isLootedPOI = (hex) => {
+    if (hex.type !== 'poi') return false;
+    return lootedPOIs.some(p => p.q === hex.q && p.r === hex.r);
+  };
+
+  /**
    * Get fill color/pattern based on hex type and zone
    * @param {Object} hex - Hex object
    * @returns {string} CSS color or pattern URL
    */
   const getHexFill = (hex) => {
-    // POIs use image pattern if available
+    // POIs use image pattern if available (greyscale applied via CSS for looted POIs)
     if (hex.type === 'poi' && hex.poiData?.image) {
       // Create unique pattern ID from hex coordinates
       const patternId = `poi-img-${hex.q}-${hex.r}`;
       return `url(#${patternId})`;
     }
 
-    // Gate types: Insertion (orange/yellow) vs Extraction (blue/cyan)
+    // Looted POIs without image get grey fill
+    if (hex.type === 'poi' && isLootedPOI(hex)) {
+      return 'rgba(75, 85, 99, 0.6)';  // Grey for looted POIs without image
+    }
+
+    // Gate types: Insertion (orange) vs Extraction (blue) - solid colors
     if (hex.type === 'gate') {
       if (isInsertionGate(hex)) {
-        return 'rgba(245, 158, 11, 0.25)'; // Orange/amber tint for insertion gate
+        return 'rgb(180, 100, 20)'; // Solid dark orange for insertion gate
       }
-      return 'rgba(59, 130, 246, 0.25)'; // Blue tint for extraction gates
+      return 'rgb(40, 80, 160)'; // Solid dark blue for extraction gates
     }
 
     if (hex.type === 'poi') return 'rgba(245, 158, 11, 0.2)'; // Amber tint for PoIs (fallback)
@@ -223,6 +339,11 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
     // Confirmed path hexes get green
     if (isOnPath(hex)) return '#10b981'; // Green for confirmed path
 
+    // Looted POIs get grey stroke
+    if (hex.type === 'poi' && isLootedPOI(hex)) {
+      return 'rgba(107, 114, 128, 0.6)';  // Grey stroke for looted POIs
+    }
+
     // All other hexes use unified cyan - more vibrant
     if (hex.type === 'gate') {
       if (isInsertionGate(hex)) {
@@ -255,17 +376,20 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
     const highlighted = isHighlighted(hex);
     const isPlayer = isPlayerHex(hex);
     const isPOI = hex.type === 'poi';
+    const isLooted = isPOI && isLootedPOI(hex);
     const isGate = hex.type === 'gate';
     const isInsertion = isInsertionGate(hex);
     const isExtraction = isExtractionGate(hex);
 
     // Build gate class name
     const gateClass = isInsertion ? 'hex-insertion-glow' : (isExtraction ? 'hex-extraction-glow' : '');
+    // POI class: looted POIs get dimmed styling, active POIs get glow
+    const poiClass = isPOI ? (isLooted ? 'hex-poi-looted' : 'hex-poi-glow') : '';
 
     return (
       <g
         key={`${hex.q},${hex.r}`}
-        className={`hex-group ${isPOI ? 'hex-poi-glow' : ''} ${isGate ? `hex-gate-glow ${gateClass}` : ''}`}
+        className={`hex-group ${poiClass} ${isGate ? `hex-gate-glow ${gateClass}` : ''}`}
         onClick={() => onHexClick && onHexClick(hex)}
       >
         {/* Hex background */}
@@ -319,6 +443,53 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
             >
               {getWaypointNumber(hex)}
             </text>
+          </g>
+        )}
+
+        {/* Gate symbols - simple white arrows with labels */}
+        {isGate && !isPlayer && (
+          <g style={{ pointerEvents: 'none' }}>
+            {isInsertion ? (
+              // Insertion gate: Arrow pointing DOWN (entering the map)
+              <>
+                <path
+                  d={`M ${x} ${y - hexSize * 0.1} L ${x - hexSize * 0.2} ${y + hexSize * 0.2} L ${x - hexSize * 0.08} ${y + hexSize * 0.2} L ${x - hexSize * 0.08} ${y + hexSize * 0.45} L ${x + hexSize * 0.08} ${y + hexSize * 0.45} L ${x + hexSize * 0.08} ${y + hexSize * 0.2} L ${x + hexSize * 0.2} ${y + hexSize * 0.2} Z`}
+                  fill="#ffffff"
+                  opacity="0.9"
+                />
+                <text
+                  x={x}
+                  y={y - hexSize * 0.35}
+                  fontSize={hexSize * 0.22}
+                  fontWeight="bold"
+                  textAnchor="middle"
+                  fill="#ffffff"
+                  opacity="0.9"
+                >
+                  ENTRY
+                </text>
+              </>
+            ) : (
+              // Extraction gate: Arrow pointing UP (exiting the map)
+              <>
+                <path
+                  d={`M ${x} ${y + hexSize * 0.1} L ${x - hexSize * 0.2} ${y - hexSize * 0.2} L ${x - hexSize * 0.08} ${y - hexSize * 0.2} L ${x - hexSize * 0.08} ${y - hexSize * 0.45} L ${x + hexSize * 0.08} ${y - hexSize * 0.45} L ${x + hexSize * 0.08} ${y - hexSize * 0.2} L ${x + hexSize * 0.2} ${y - hexSize * 0.2} Z`}
+                  fill="#ffffff"
+                  opacity="0.9"
+                />
+                <text
+                  x={x}
+                  y={y + hexSize * 0.5}
+                  fontSize={hexSize * 0.22}
+                  fontWeight="bold"
+                  textAnchor="middle"
+                  fill="#ffffff"
+                  opacity="0.9"
+                >
+                  EXIT
+                </text>
+              </>
+            )}
           </g>
         )}
 
@@ -388,54 +559,114 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
   const viewBox = `${-viewBoxSize} ${-viewBoxSize} ${viewBoxSize * 2} ${viewBoxSize * 2}`;
 
   return (
-    <div className="hex-grid-container">
-      <svg
-        viewBox={viewBox}
-        className="hex-grid-svg"
-        preserveAspectRatio="xMidYMid meet"
-      >
-        {/* SVG Definitions - patterns, gradients, etc. */}
-        <defs>
-          {/* Grid cross-hatching pattern for tactical data-screen aesthetic */}
-          <pattern
-            id="hex-grid-pattern"
-            width="10"
-            height="10"
-            patternUnits="userSpaceOnUse"
-          >
-            <path
-              d="M 10 0 L 0 10 M 0 0 L 10 10"
-              stroke="rgba(6, 182, 212, 0.08)"
-              strokeWidth="0.5"
-              fill="none"
-            />
-          </pattern>
-
-          {/* POI image patterns */}
-          {poiPatterns.map(poi => (
+    <div
+      ref={containerRef}
+      className="hex-grid-container"
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+    >
+      {/* Transformable container for pan/zoom */}
+      <div
+        ref={transformRef}
+        style={{
+        width: '100%',
+        height: '100%',
+        transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
+        transformOrigin: 'center center',
+        backgroundImage: `url('${backgroundImage}')`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        cursor: isDragging ? 'grabbing' : 'grab',
+        transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+      }}>
+        <svg
+          viewBox={viewBox}
+          className="hex-grid-svg"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          {/* SVG Definitions - patterns, gradients, etc. */}
+          <defs>
+            {/* Grid cross-hatching pattern for tactical data-screen aesthetic */}
             <pattern
-              key={poi.id}
-              id={poi.id}
-              patternUnits="objectBoundingBox"
-              patternContentUnits="objectBoundingBox"
-              width="1"
-              height="1"
+              id="hex-grid-pattern"
+              width="10"
+              height="10"
+              patternUnits="userSpaceOnUse"
             >
-              <image
-                href={poi.image}
-                x="0"
-                y="0"
-                width="1"
-                height="1"
-                preserveAspectRatio="xMidYMid slice"
+              <path
+                d="M 10 0 L 0 10 M 0 0 L 10 10"
+                stroke="rgba(6, 182, 212, 0.08)"
+                strokeWidth="0.5"
+                fill="none"
               />
             </pattern>
-          ))}
-        </defs>
 
-        {/* Render all hexes */}
-        {mapData.hexes.map(renderHex)}
-      </svg>
+            {/* POI image patterns */}
+            {poiPatterns.map(poi => (
+              <pattern
+                key={poi.id}
+                id={poi.id}
+                patternUnits="objectBoundingBox"
+                patternContentUnits="objectBoundingBox"
+                width="1"
+                height="1"
+              >
+                <image
+                  href={poi.image}
+                  x="0"
+                  y="0"
+                  width="1"
+                  height="1"
+                  preserveAspectRatio="xMidYMid slice"
+                />
+              </pattern>
+            ))}
+          </defs>
+
+          {/* Render all hexes */}
+          {mapData.hexes.map(renderHex)}
+        </svg>
+      </div>
+
+      {/* Zoom Controls */}
+      <div
+        className="tactical-zoom-controls"
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          className="dw-btn dw-btn-secondary"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            setZoom(z => Math.min(3, z + 0.2));
+          }}
+        >
+          <Plus size={18} />
+        </button>
+        <button
+          className="dw-btn dw-btn-secondary"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            setZoom(z => Math.max(1, z - 0.2));
+          }}
+        >
+          <Minus size={18} />
+        </button>
+        <button
+          className="dw-btn dw-btn-secondary"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleResetView();
+          }}
+        >
+          <RotateCcw size={18} />
+        </button>
+      </div>
     </div>
   );
 }

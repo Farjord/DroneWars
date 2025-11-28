@@ -1,4 +1,10 @@
+// ========================================
+// SAVE/LOAD MODAL COMPONENT
+// ========================================
+// Handles save file download/upload for single-player mode
+
 import React, { useState, useRef } from 'react';
+import { Save } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
 import SaveGameService from '../../services/SaveGameService';
 
@@ -8,7 +14,7 @@ import SaveGameService from '../../services/SaveGameService';
  */
 const SaveLoadModal = ({ onClose }) => {
   const { gameState, gameStateManager } = useGameState();
-  const [feedback, setFeedback] = useState(null); // { type: 'success'|'error', message: string }
+  const [feedback, setFeedback] = useState(null); // { type: 'success'|'error'|'info', message: string }
   const fileInputRef = useRef(null);
 
   /**
@@ -16,6 +22,11 @@ const SaveLoadModal = ({ onClose }) => {
    */
   const handleDownload = () => {
     try {
+      // Guard for showcase mode where gameStateManager may not be available
+      if (!gameStateManager?.getSaveData) {
+        setFeedback({ type: 'error', message: 'Save not available in preview mode' });
+        return;
+      }
       // Get current save data from GameStateManager
       const saveData = gameStateManager.getSaveData();
 
@@ -57,6 +68,11 @@ const SaveLoadModal = ({ onClose }) => {
       // Load and deserialize using SaveGameService
       const gameStateData = await SaveGameService.load(file);
 
+      // Guard for showcase mode
+      if (!gameStateManager?.loadSinglePlayerSave) {
+        setFeedback({ type: 'error', message: 'Load not available in preview mode' });
+        return;
+      }
       // Load into GameStateManager
       gameStateManager.loadSinglePlayerSave(gameStateData);
 
@@ -85,46 +101,40 @@ const SaveLoadModal = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-gray-800 p-8 rounded-lg max-w-md w-full">
+    <div className="dw-modal-overlay" onClick={onClose}>
+      <div className="dw-modal-content dw-modal--md dw-modal--action" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white">Save / Load</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white text-2xl"
-          >
-            ×
-          </button>
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Save size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">Save / Load</h2>
+            <p className="dw-modal-header-subtitle">Manage your game progress</p>
+          </div>
         </div>
 
-        {/* Content */}
-        <div className="space-y-4 mb-6">
+        {/* Body */}
+        <div className="dw-modal-body">
           {/* Download Save Button */}
-          <div>
-            <button
-              onClick={handleDownload}
-              className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-bold transition-colors"
-            >
+          <div style={{ marginBottom: '16px' }}>
+            <button className="dw-btn dw-btn-confirm dw-btn--full" onClick={handleDownload}>
               Download Save File
             </button>
-            <p className="mt-2 text-sm text-gray-400">
+            <p style={{ marginTop: '8px', fontSize: '12px', color: 'var(--modal-text-secondary)' }}>
               Save your progress to a file on your computer
             </p>
           </div>
 
           {/* Divider */}
-          <div className="border-t border-gray-600"></div>
+          <div className="dw-modal-divider" />
 
           {/* Upload Save Button */}
-          <div>
-            <button
-              onClick={handleUploadClick}
-              className="w-full px-4 py-3 bg-green-600 hover:bg-green-500 rounded-lg font-bold transition-colors"
-            >
+          <div style={{ marginBottom: '16px' }}>
+            <button className="dw-btn dw-btn-success dw-btn--full" onClick={handleUploadClick}>
               Load Save File
             </button>
-            <p className="mt-2 text-sm text-gray-400">
+            <p style={{ marginTop: '8px', fontSize: '12px', color: 'var(--modal-text-secondary)' }}>
               Load a previously saved game from a file
             </p>
 
@@ -134,37 +144,31 @@ const SaveLoadModal = ({ onClose }) => {
               type="file"
               accept=".json"
               onChange={handleUpload}
-              className="hidden"
+              style={{ display: 'none' }}
             />
           </div>
 
           {/* Warning */}
-          <div className="p-3 bg-yellow-900 bg-opacity-30 border border-yellow-700 rounded">
-            <p className="text-sm text-yellow-200">
+          <div className="dw-modal-warning">
+            <p>
               <strong>Warning:</strong> Loading a save file will overwrite your current progress.
             </p>
           </div>
+
+          {/* Feedback Message */}
+          {feedback && (
+            <div className={`dw-modal-feedback dw-modal-feedback--${feedback.type}`}>
+              {feedback.message}
+            </div>
+          )}
         </div>
 
-        {/* Feedback Message */}
-        {feedback && (
-          <div className={`
-            p-3 rounded mb-4
-            ${feedback.type === 'success' ? 'bg-green-900 bg-opacity-30 border border-green-700 text-green-200' : ''}
-            ${feedback.type === 'error' ? 'bg-red-900 bg-opacity-30 border border-red-700 text-red-200' : ''}
-            ${feedback.type === 'info' ? 'bg-blue-900 bg-opacity-30 border border-blue-700 text-blue-200' : ''}
-          `}>
-            {feedback.message}
-          </div>
-        )}
-
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded transition-colors"
-        >
-          Close
-        </button>
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );

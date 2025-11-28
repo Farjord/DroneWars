@@ -8,37 +8,7 @@ import React, { useState } from 'react';
 import { useGameState } from '../../hooks/useGameState';
 import miaRecoveryService from '../../logic/singlePlayer/MIARecoveryService.js';
 import fullCardCollection from '../../data/cardData.js';
-import './MIARecoveryModal.css';
-
-// Warning/Alert icon
-const IconAlert = ({ size = 36 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-    <path d="M12 8V12M12 16H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-  </svg>
-);
-
-// Checkmark icon
-const IconCheck = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path d="M20 6L9 17L4 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-// X icon
-const IconX = ({ size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-// Credits icon
-const IconCredits = ({ size = 20 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-    <path d="M12 6V18M8 10H16M8 14H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-  </svg>
-);
+import { AlertCircle, Check, X, Coins } from 'lucide-react';
 
 /**
  * MIARecoveryModal - Recovery options for MIA ships
@@ -52,7 +22,7 @@ function MIARecoveryModal({ shipSlot, onClose }) {
 
   if (!shipSlot || shipSlot.status !== 'mia') return null;
 
-  const profile = gameState.singlePlayerProfile;
+  const profile = gameState.singlePlayerProfile || { credits: 500 };
   const salvageCost = miaRecoveryService.getSalvageCost();
   const canAfford = profile.credits >= salvageCost;
 
@@ -101,151 +71,157 @@ function MIARecoveryModal({ shipSlot, onClose }) {
   };
 
   return (
-    <div className="mia-modal-overlay" onClick={onClose}>
-      <div className="mia-modal-content" onClick={e => e.stopPropagation()}>
+    <div className="dw-modal-overlay" onClick={onClose}>
+      <div className="dw-modal-content dw-modal--md dw-modal--danger" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="mia-modal-header">
-          <div className="mia-header-icon">
-            <IconAlert size={36} />
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon dw-modal-header-icon--pulse">
+            <AlertCircle size={32} />
           </div>
-          <div className="mia-header-info">
-            <h2 className="mia-header-title">Ship MIA</h2>
-            <p className="mia-header-subtitle">Slot {shipSlot.id}: {shipSlot.name}</p>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">Ship MIA</h2>
+            <p className="dw-modal-header-subtitle">Slot {shipSlot.id}: {shipSlot.name}</p>
           </div>
         </div>
 
         {/* Status Info */}
-        <div className="mia-status-info">
-          <p>This ship failed to return from its last deployment.</p>
-          <p>The deck is locked until recovered or scrapped.</p>
-        </div>
-
-        {/* Recovery Options */}
-        <div className="mia-options-container">
-          {/* Option 1: Pay Salvage */}
-          <div className={`mia-option-card ${!canAfford ? 'disabled' : ''}`}>
-            <div className="mia-option-header">
-              <h3 className="mia-option-title">Pay Salvage Fee</h3>
-              <div className="mia-option-cost">
-                <IconCredits size={18} />
-                <span>{salvageCost}</span>
-              </div>
-            </div>
-
-            <div className="mia-option-details">
-              <div className="mia-benefit-item">
-                <span className="mia-benefit-icon"><IconCheck size={14} /></span>
-                <span>Recover ship and all systems</span>
-              </div>
-              <div className="mia-benefit-item">
-                <span className="mia-benefit-icon"><IconCheck size={14} /></span>
-                <span>Fully repair all drones</span>
-              </div>
-              <div className="mia-benefit-item">
-                <span className="mia-benefit-icon"><IconCheck size={14} /></span>
-                <span>Keep all cards in deck</span>
-              </div>
-            </div>
-
-            <div className="mia-option-balance">
-              Your credits: <span className={canAfford ? 'sufficient' : 'insufficient'}>{profile.credits}</span>
-            </div>
-
-            {confirmMode !== 'recover' ? (
-              <button
-                className="mia-btn mia-btn-recover"
-                onClick={() => setConfirmMode('recover')}
-                disabled={!canAfford}
-              >
-                {canAfford ? 'Pay Salvage' : 'Insufficient Credits'}
-              </button>
-            ) : (
-              <div className="mia-confirm-section">
-                <p>Confirm recovery for {salvageCost} credits?</p>
-                <div className="mia-confirm-buttons">
-                  <button className="mia-btn mia-btn-confirm" onClick={handleRecover}>
-                    Confirm
-                  </button>
-                  <button className="mia-btn mia-btn-cancel-small" onClick={() => setConfirmMode(null)}>
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
+        <div className="dw-modal-body dw-modal-body--compact">
+          <div className="dw-modal-info-box">
+            <p style={{ fontSize: '13px', color: 'var(--modal-text-primary)', margin: '0 0 6px 0', lineHeight: 1.5 }}>
+              This ship failed to return from its last deployment.
+            </p>
+            <p style={{ fontSize: '13px', color: 'var(--modal-text-primary)', margin: 0, lineHeight: 1.5 }}>
+              The deck is locked until recovered or scrapped.
+            </p>
           </div>
 
-          {/* Option 2: Scrap Ship */}
-          <div className={`mia-option-card danger ${shipSlot.isImmutable ? 'disabled' : ''}`}>
-            <div className="mia-option-header">
-              <h3 className="mia-option-title">Scrap Ship</h3>
-              <div className="mia-option-cost free">FREE</div>
-            </div>
-
-            <div className="mia-option-details warning">
-              <div className="mia-consequence-item">
-                <span className="mia-consequence-icon"><IconX size={14} /></span>
-                <span>Permanently delete deck</span>
-              </div>
-              <div className="mia-consequence-item">
-                <span className="mia-consequence-icon"><IconX size={14} /></span>
-                <span>Lose {totalCards} cards from inventory</span>
-              </div>
-              <div className="mia-consequence-item">
-                <span className="mia-consequence-icon"><IconX size={14} /></span>
-                <span>Cannot be undone</span>
-              </div>
-            </div>
-
-            {totalCards > 0 && (
-              <div className="mia-cards-preview">
-                <p className="mia-cards-preview-title">Cards to be removed:</p>
-                <div className="mia-cards-list">
-                  {cardTypes.slice(0, 5).map(card => (
-                    <span key={card.id} className="mia-card-item">
-                      {card.quantity}x {card.name}
-                    </span>
-                  ))}
-                  {cardTypes.length > 5 && (
-                    <span className="mia-card-item more">+{cardTypes.length - 5} more types</span>
-                  )}
+          {/* Recovery Options */}
+          <div className="dw-modal-options">
+            {/* Option 1: Pay Salvage */}
+            <div className={`dw-modal-option dw-modal-option--success ${!canAfford ? 'dw-modal-option--disabled' : ''}`}>
+              <div className="dw-modal-option-header">
+                <h3 className="dw-modal-option-title">Pay Salvage Fee</h3>
+                <div className="dw-modal-option-cost">
+                  <Coins size={18} />
+                  <span>{salvageCost}</span>
                 </div>
               </div>
-            )}
 
-            {confirmMode !== 'scrap' ? (
-              <button
-                className="mia-btn mia-btn-scrap"
-                onClick={() => setConfirmMode('scrap')}
-                disabled={shipSlot.isImmutable}
-              >
-                {shipSlot.isImmutable ? 'Cannot Scrap Starter' : 'Scrap Ship'}
-              </button>
-            ) : (
-              <div className="mia-confirm-section danger">
-                <p className="mia-confirm-warning">This will permanently delete the deck!</p>
-                <div className="mia-confirm-buttons">
-                  <button className="mia-btn mia-btn-confirm-danger" onClick={handleScrap}>
-                    Confirm Scrap
-                  </button>
-                  <button className="mia-btn mia-btn-cancel-small" onClick={() => setConfirmMode(null)}>
-                    Cancel
-                  </button>
+              <div style={{ marginBottom: '12px' }}>
+                <div className="dw-modal-benefit">
+                  <span className="dw-modal-benefit-icon"><Check size={14} /></span>
+                  <span>Recover ship and all systems</span>
+                </div>
+                <div className="dw-modal-benefit">
+                  <span className="dw-modal-benefit-icon"><Check size={14} /></span>
+                  <span>Fully repair all drones</span>
+                </div>
+                <div className="dw-modal-benefit">
+                  <span className="dw-modal-benefit-icon"><Check size={14} /></span>
+                  <span>Keep all cards in deck</span>
                 </div>
               </div>
-            )}
+
+              <div className="dw-modal-balance">
+                Your credits: <span className={canAfford ? 'dw-modal-balance--sufficient' : 'dw-modal-balance--insufficient'}>{profile.credits}</span>
+              </div>
+
+              {confirmMode !== 'recover' ? (
+                <button
+                  className="dw-btn dw-btn-success dw-btn--full"
+                  onClick={() => setConfirmMode('recover')}
+                  disabled={!canAfford}
+                >
+                  {canAfford ? 'Pay Salvage' : 'Insufficient Credits'}
+                </button>
+              ) : (
+                <div className="dw-modal-confirm-inline">
+                  <p>Confirm recovery for {salvageCost} credits?</p>
+                  <div className="dw-modal-confirm-buttons">
+                    <button className="dw-btn dw-btn-success" onClick={handleRecover}>
+                      Confirm
+                    </button>
+                    <button className="dw-btn dw-btn-secondary" onClick={() => setConfirmMode(null)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Option 2: Scrap Ship */}
+            <div className={`dw-modal-option dw-modal-option--danger ${shipSlot.isImmutable ? 'dw-modal-option--disabled' : ''}`}>
+              <div className="dw-modal-option-header">
+                <h3 className="dw-modal-option-title">Scrap Ship</h3>
+                <div className="dw-modal-option-cost dw-modal-option-cost--free">FREE</div>
+              </div>
+
+              <div style={{ marginBottom: '12px' }}>
+                <div className="dw-modal-consequence">
+                  <span className="dw-modal-consequence-icon"><X size={14} /></span>
+                  <span>Permanently delete deck</span>
+                </div>
+                <div className="dw-modal-consequence">
+                  <span className="dw-modal-consequence-icon"><X size={14} /></span>
+                  <span>Lose {totalCards} cards from inventory</span>
+                </div>
+                <div className="dw-modal-consequence">
+                  <span className="dw-modal-consequence-icon"><X size={14} /></span>
+                  <span>Cannot be undone</span>
+                </div>
+              </div>
+
+              {totalCards > 0 && (
+                <div className="dw-modal-preview" style={{ '--modal-theme': 'var(--modal-danger)', '--modal-theme-bg': 'var(--modal-danger-bg)', '--modal-theme-border': 'var(--modal-danger-border)' }}>
+                  <p className="dw-modal-preview-title">Cards to be removed:</p>
+                  <div className="dw-modal-preview-items">
+                    {cardTypes.slice(0, 5).map(card => (
+                      <span key={card.id} className="dw-modal-preview-item">
+                        {card.quantity}x {card.name}
+                      </span>
+                    ))}
+                    {cardTypes.length > 5 && (
+                      <span className="dw-modal-preview-item dw-modal-preview-item--more">+{cardTypes.length - 5} more</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {confirmMode !== 'scrap' ? (
+                <button
+                  className="dw-btn dw-btn-danger dw-btn--full"
+                  onClick={() => setConfirmMode('scrap')}
+                  disabled={shipSlot.isImmutable}
+                >
+                  {shipSlot.isImmutable ? 'Cannot Scrap Starter' : 'Scrap Ship'}
+                </button>
+              ) : (
+                <div className="dw-modal-confirm-inline dw-modal-confirm-inline--danger">
+                  <p>This will permanently delete the deck!</p>
+                  <div className="dw-modal-confirm-buttons">
+                    <button className="dw-btn dw-btn-danger" onClick={handleScrap}>
+                      Confirm Scrap
+                    </button>
+                    <button className="dw-btn dw-btn-secondary" onClick={() => setConfirmMode(null)}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Immutable Warning */}
         {shipSlot.isImmutable && (
-          <div className="mia-immutable-notice">
-            <span>Starter deck cannot be scrapped (only recovered)</span>
+          <div className="dw-modal-notice">
+            Starter deck cannot be scrapped (only recovered)
           </div>
         )}
 
         {/* Close Button */}
-        <div className="mia-modal-actions">
-          <button className="mia-btn mia-btn-close" onClick={onClose}>
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
             Close
           </button>
         </div>

@@ -160,15 +160,18 @@ export const getMockGameState = () => {
 // ========================================
 
 export const MODAL_CATEGORIES = {
-  all: { name: 'All', count: 23 },
+  all: { name: 'All', count: 44 },
+  extraction: { name: 'Extraction', count: 8 },
+  danger: { name: 'Danger', count: 2 },
   confirmation: { name: 'Confirmation', count: 5 },
   interception: { name: 'Interception', count: 2 },
-  gamePhase: { name: 'Game Phase', count: 3 },
+  gamePhase: { name: 'Game Phase', count: 5 },
   aiDebug: { name: 'AI Debug', count: 3 },
   playerActions: { name: 'Player Actions', count: 3 },
   upgrades: { name: 'Upgrades', count: 3 },
-  utility: { name: 'Utility', count: 3 },
-  debug: { name: 'Debug', count: 2 }
+  utility: { name: 'Utility', count: 7 },
+  debug: { name: 'Debug', count: 3 },
+  hangar: { name: 'Hangar', count: 5 }
 };
 
 // ========================================
@@ -314,6 +317,15 @@ export const getMockPropsForModal = (modalName) => {
         onClose: () => console.log('View board')
       }
     },
+    'WinnerModal (Defeat)': {
+      category: 'gamePhase',
+      props: {
+        show: true,
+        winner: 'player2',
+        localPlayerId: 'player1',
+        onClose: () => console.log('View board')
+      }
+    },
     'WaitingForPlayerModal': {
       category: 'gamePhase',
       props: {
@@ -338,9 +350,11 @@ export const getMockPropsForModal = (modalName) => {
     'AICardPlayReportModal': {
       category: 'aiDebug',
       props: {
-        show: true,
-        card: getMockCard('Energy Surge'),
-        result: { success: true, energyGained: 2 },
+        report: {
+          card: getMockCard('Energy Surge'),
+          targetName: 'Scout Drone',
+          targetLane: 'Lane 1'
+        },
         onClose: () => console.log('Modal closed')
       }
     },
@@ -348,13 +362,27 @@ export const getMockPropsForModal = (modalName) => {
       category: 'aiDebug',
       props: {
         show: true,
-        aiDecisionContext: {
-          phase: 'action',
-          decision: 'attack',
-          reasoning: 'Target has low health and no shields',
-          alternatives: ['pass', 'ability', 'card'],
-          scores: { attack: 85, ability: 60, card: 45, pass: 20 }
-        },
+        decisionLog: [
+          {
+            type: 'attack',
+            instigator: 'Heavy Fighter',
+            targetName: 'Enemy Drone',
+            attacker: { lane: 'lane1' },
+            target: { name: 'ScoutDrone', id: 'drone1', owner: 'ai' },
+            score: 85,
+            logic: ['Target has low health', 'No shields', 'High damage potential'],
+            isChosen: true
+          },
+          {
+            type: 'deploy',
+            instigator: 'Scout Drone',
+            targetName: 'Lane 2',
+            score: 60,
+            logic: ['Empty lane', 'Strategic positioning'],
+            isChosen: false
+          }
+        ],
+        getLocalPlayerId: () => 'player1',
         onClose: () => console.log('Modal closed')
       }
     },
@@ -362,7 +390,8 @@ export const getMockPropsForModal = (modalName) => {
       category: 'aiDebug',
       props: {
         show: true,
-        aiHand: getMockCards(5),
+        debugMode: true,
+        opponentPlayerState: { hand: getMockCards(5) },
         onClose: () => console.log('Modal closed')
       }
     },
@@ -389,18 +418,20 @@ export const getMockPropsForModal = (modalName) => {
       category: 'playerActions',
       props: {
         show: true,
-        title: 'Confirm Action',
-        message: 'Are you sure you want to pass this phase?',
-        onConfirm: () => console.log('Confirmed'),
-        onCancel: () => console.log('Cancelled')
+        confirmationModal: {
+          type: 'discard',
+          text: 'Are you sure you want to discard this card? This action cannot be undone.',
+          onConfirm: () => console.log('Confirmed'),
+          onCancel: () => console.log('Cancelled')
+        }
       }
     },
     'OpponentDronesModal': {
       category: 'playerActions',
       props: {
-        show: true,
+        isOpen: true,
         drones: getMockDrones(5),
-        lane: 'lane2',
+        appliedUpgrades: {},
         onClose: () => console.log('Modal closed')
       }
     },
@@ -480,17 +511,20 @@ export const getMockPropsForModal = (modalName) => {
       props: {
         isOpen: true,
         cards: getMockCards(5),
-        title: 'Your Deck',
-        shouldSort: true,
+        allCards: getMockCards(12),
+        title: 'Remaining Cards in Deck',
+        groupByType: true,
         onClose: () => console.log('Modal closed')
       }
     },
     'ViewDeckModal': {
       category: 'utility',
       props: {
-        show: true,
-        deck: getMockCards(20),
-        discardPile: getMockCards(5),
+        isOpen: true,
+        title: "Player's Deck",
+        drones: getMockDrones(5),
+        cards: getMockCards(10).map(card => ({ card, quantity: 2 })),
+        shipComponents: {},
         onClose: () => console.log('Modal closed')
       }
     },
@@ -502,24 +536,300 @@ export const getMockPropsForModal = (modalName) => {
       category: 'debug',
       props: {
         show: true,
-        gameState: mockGameState,
+        gameStateManager: {
+          getState: () => mockGameState,
+          getLocalPlayerId: () => 'player1'
+        },
+        gameDataService: null,
         onClose: () => console.log('Modal closed')
       }
     },
     'DetailedDroneModal': {
       category: 'debug',
       props: {
-        show: true,
+        isOpen: true,
         drone: getMockDrone('Heavy Fighter'),
-        lane: 'lane2',
-        effectiveStats: {
-          attack: 4,
-          hull: 4,
-          shields: 1,
-          speed: 3,
-          power: 11
-        },
         onClose: () => console.log('Modal closed')
+      }
+    },
+
+    // ========================================
+    // EXTRACTION / INTO THE EREMOS MODALS
+    // ========================================
+    'AbandonRunModal': {
+      category: 'danger',
+      props: {
+        show: true,
+        lootCount: 5,
+        creditsEarned: 250,
+        onCancel: () => console.log('Abandon cancelled'),
+        onConfirm: () => console.log('Abandon confirmed')
+      }
+    },
+    'MIARecoveryModal': {
+      category: 'danger',
+      props: {
+        shipSlot: {
+          id: 1,
+          name: 'Ship Slot 1',
+          status: 'mia',
+          drones: [getMockDrone('Scout Drone'), getMockDrone('Heavy Fighter')],
+          shipComponents: { left: 'comp1', middle: 'comp2', right: 'comp3' }
+        },
+        onClose: () => console.log('MIA Recovery closed')
+      }
+    },
+    'MapOverviewModal': {
+      category: 'extraction',
+      props: {
+        selectedSlotId: 1,
+        selectedMap: {
+          name: 'Sector A-1',
+          tier: 1,
+          radius: 3,
+          hexes: [
+            { q: 0, r: 0, type: 'empty' },
+            { q: 1, r: 0, type: 'poi' },
+            { q: -1, r: 1, type: 'gate' }
+          ],
+          gates: [{ id: 0, q: -1, r: 1 }],
+          pois: [{ id: 'poi1', q: 1, r: 0, type: 'Ordnance' }],
+          poiTypeBreakdown: { Ordnance: 2, Support: 1, Tactic: 1, Upgrade: 1 },
+          poiCount: 5,
+          gateCount: 3,
+          baseDetection: 15,
+          baseEncounterChance: 5
+        },
+        selectedCoordinate: 'A-1',
+        activeSectors: [{ coordinate: 'A-1' }, { coordinate: 'B-2' }],
+        onNavigate: (coord) => console.log('Navigate to:', coord),
+        onDeploy: (slotId, map, gateId) => console.log('Deploy:', slotId, map.name, gateId),
+        onClose: () => console.log('Map Overview closed')
+      }
+    },
+    'WaypointConfirmationModal': {
+      category: 'extraction',
+      props: {
+        targetHex: { q: 1, r: 0, type: 'poi' },
+        currentPosition: { q: 0, r: 0 },
+        mapData: {
+          tier: 1,
+          hexes: [
+            { q: 0, r: 0, type: 'empty' },
+            { q: 1, r: 0, type: 'poi' }
+          ]
+        },
+        currentDetection: 15,
+        onConfirm: () => console.log('Movement confirmed'),
+        onCancel: () => console.log('Movement cancelled')
+      }
+    },
+    'POIEncounterModal': {
+      category: 'extraction',
+      props: {
+        encounter: {
+          poi: {
+            poiData: {
+              name: 'Ordnance Cache',
+              description: 'Military supplies detected',
+              color: '#ef4444',
+              flavourText: 'Sensors detecting military-grade hardware signatures...'
+            }
+          },
+          outcome: 'combat',
+          aiId: 'rogue_interceptor',
+          reward: {
+            credits: 50,
+            rewardType: 'ordnance_cards',
+            cards: getMockCards(2)
+          },
+          detection: 10,
+          threatLevel: 'medium'
+        },
+        onProceed: () => console.log('POI encounter proceed'),
+        onClose: () => console.log('POI encounter closed')
+      }
+    },
+    'LootRevealModal': {
+      category: 'extraction',
+      props: {
+        show: true,
+        loot: {
+          cards: [
+            { cardId: 'CARD001', rarity: 'Common', cardName: 'Laser Blast', cardType: 'Ordnance' },
+            { cardId: 'CARD002', rarity: 'Common', cardName: 'Shield Boost', cardType: 'Support' },
+            { cardId: 'CARD003', rarity: 'Uncommon', cardName: 'Energy Surge', cardType: 'Tactic' },
+            { cardId: 'CARD007', rarity: 'Rare', cardName: 'Overcharge', cardType: 'Tactic' },
+            { cardId: 'CARD020', rarity: 'Mythic', cardName: 'Slimline Bodywork', cardType: 'Upgrade' }
+          ],
+          credits: 150,
+          blueprint: null
+        },
+        onCollect: () => console.log('Loot collected')
+      }
+    },
+    'RunInventoryModal': {
+      category: 'extraction',
+      props: {
+        currentRunState: {
+          collectedLoot: [getMockCard('Laser Blast'), getMockCard('Energy Surge')],
+          creditsEarned: 150,
+          poisVisited: 3,
+          currentDetection: 25
+        },
+        onClose: () => console.log('Run Inventory closed')
+      }
+    },
+    'ExtractionSummaryModal': {
+      category: 'extraction',
+      props: {
+        show: true,
+        summary: {
+          success: true,
+          lootCollected: [getMockCard('Laser Blast'), getMockCard('Energy Surge')],
+          creditsEarned: 250,
+          poisVisited: 5,
+          totalPois: 8,
+          detectionAtExtraction: 45,
+          combatsWon: 2,
+          combatsLost: 0
+        },
+        onContinue: () => console.log('Continue after extraction')
+      }
+    },
+    'RunSummaryModal': {
+      category: 'extraction',
+      props: {
+        summary: {
+          success: true,
+          mapName: 'Sector A-1',
+          mapTier: 1,
+          hexesMoved: 15,
+          hexesExplored: 12,
+          totalHexes: 25,
+          mapCompletionPercent: 48,
+          poisVisited: 5,
+          totalPois: 8,
+          cardsCollected: [{ cardId: 'CARD001' }, { cardId: 'CARD002' }],
+          creditsEarned: 250,
+          combatsWon: 2,
+          combatsLost: 0,
+          damageDealtToEnemies: 24,
+          hullDamageTaken: 8,
+          finalHull: 12,
+          maxHull: 20,
+          runDuration: 180000,
+          finalDetection: 45
+        },
+        onClose: () => console.log('Run Summary closed')
+      }
+    },
+
+    // ========================================
+    // UTILITY MODALS (Additional)
+    // ========================================
+    'CardDetailModal': {
+      category: 'utility',
+      props: {
+        isOpen: true,
+        card: getMockCard('Energy Surge'),
+        onClose: () => console.log('Card detail closed')
+      }
+    },
+    'GlossaryModal': {
+      category: 'utility',
+      props: {
+        onClose: () => console.log('Glossary closed')
+      }
+    },
+    'AIStrategyModal': {
+      category: 'utility',
+      props: {
+        onClose: () => console.log('AI Strategy closed')
+      }
+    },
+    'ViewShipSectionModal': {
+      category: 'utility',
+      props: {
+        isOpen: true,
+        onClose: () => console.log('Ship section closed'),
+        data: {
+          sectionName: 'bridge',
+          sectionStats: {
+            name: 'Standard Bridge',
+            stats: { healthy: { hull: 8, shields: 2 } },
+            description: 'The command center of your ship. Houses critical navigation and communication systems.',
+            ability: {
+              id: 'bridge-ability',
+              name: 'Emergency Protocols',
+              description: 'Draw 2 cards from your deck.',
+              cost: { energy: 2 }
+            },
+            middleLaneBonus: { hull: 2, shields: 1 },
+            // Stats needed by ShipSection component
+            hull: 8,
+            maxHull: 10,
+            shields: 2,
+            allocatedShields: 2,
+            thresholds: { critical: 3, damaged: 6 },
+            image: ''
+          },
+          // Only renderable values (no objects)
+          effectiveStats: {
+            hull: 8,
+            shields: 2
+          },
+          isInMiddleLane: true,
+          isPlayer: true
+        }
+      }
+    },
+    'LogModal': {
+      category: 'debug',
+      props: {
+        isOpen: true,
+        onClose: () => console.log('Log closed'),
+        gameLog: [
+          { turn: 1, phase: 'deploy', action: 'Player deployed Scout Drone to Lane 1' },
+          { turn: 1, phase: 'action', action: 'AI played Energy Surge' },
+          { turn: 2, phase: 'combat', action: 'Scout Drone attacked AI Bridge for 2 damage' }
+        ],
+        downloadLogAsCSV: () => console.log('Download CSV'),
+        setAiDecisionLogToShow: () => {},
+        onCardInfoClick: () => {}
+      }
+    },
+    // ========================================
+    // HANGAR MODALS
+    // ========================================
+    'SaveLoadModal': {
+      category: 'hangar',
+      props: {
+        onClose: () => console.log('SaveLoad closed')
+      }
+    },
+    'InventoryModal': {
+      category: 'hangar',
+      props: {
+        onClose: () => console.log('Inventory closed')
+      }
+    },
+    'BlueprintsModal': {
+      category: 'hangar',
+      props: {
+        onClose: () => console.log('Blueprints closed')
+      }
+    },
+    'RepairBayModal': {
+      category: 'hangar',
+      props: {
+        onClose: () => console.log('Repair Bay closed')
+      }
+    },
+    'ReplicatorModal': {
+      category: 'hangar',
+      props: {
+        onClose: () => console.log('Replicator closed')
       }
     }
   };
@@ -532,17 +842,40 @@ export const getMockPropsForModal = (modalName) => {
  * @returns {Object} Object with category keys and array of modal names
  */
 export const getModalsByCategory = () => {
-  const allConfigs = Object.keys(getMockPropsForModal.name ? {} : {});
-
   return {
     all: [
+      // Extraction modals
+      'MapOverviewModal', 'WaypointConfirmationModal', 'POIEncounterModal',
+      'LootRevealModal', 'RunInventoryModal', 'ExtractionSummaryModal', 'RunSummaryModal',
+      // Danger modals
+      'AbandonRunModal', 'MIARecoveryModal',
+      // Confirmation modals
       'DeploymentConfirmationModal', 'CardConfirmationModal', 'DroneAbilityConfirmationModal',
-      'ShipAbilityConfirmationModal', 'MoveConfirmationModal', 'InterceptionOpportunityModal',
-      'OpponentDecidingInterceptionModal', 'WinnerModal',
-      'WaitingForPlayerModal', 'GamePhaseModal', 'AICardPlayReportModal',
-      'AIDecisionLogModal', 'AIHandDebugModal', 'MandatoryActionModal', 'ConfirmationModal',
-      'OpponentDronesModal', 'ViewUpgradesModal', 'UpgradeSelectionModal', 'DestroyUpgradeModal',
-      'CardSelectionModal', 'CardViewerModal', 'ViewDeckModal', 'GameDebugModal', 'DetailedDroneModal'
+      'ShipAbilityConfirmationModal', 'MoveConfirmationModal',
+      // Interception modals
+      'InterceptionOpportunityModal', 'OpponentDecidingInterceptionModal',
+      // Game phase modals
+      'WinnerModal', 'WinnerModal (Defeat)', 'WaitingForPlayerModal', 'GamePhaseModal',
+      // AI debug modals
+      'AICardPlayReportModal', 'AIDecisionLogModal', 'AIHandDebugModal',
+      // Player action modals
+      'MandatoryActionModal', 'ConfirmationModal', 'OpponentDronesModal',
+      // Upgrade modals
+      'ViewUpgradesModal', 'UpgradeSelectionModal', 'DestroyUpgradeModal',
+      // Utility modals
+      'CardSelectionModal', 'CardViewerModal', 'ViewDeckModal',
+      'CardDetailModal', 'GlossaryModal', 'AIStrategyModal', 'ViewShipSectionModal',
+      // Debug modals
+      'GameDebugModal', 'DetailedDroneModal', 'LogModal',
+      // Hangar modals
+      'SaveLoadModal', 'InventoryModal', 'BlueprintsModal', 'RepairBayModal', 'ReplicatorModal'
+    ],
+    extraction: [
+      'MapOverviewModal', 'WaypointConfirmationModal', 'POIEncounterModal',
+      'LootRevealModal', 'RunInventoryModal', 'ExtractionSummaryModal', 'RunSummaryModal'
+    ],
+    danger: [
+      'AbandonRunModal', 'MIARecoveryModal'
     ],
     confirmation: [
       'DeploymentConfirmationModal', 'CardConfirmationModal', 'DroneAbilityConfirmationModal',
@@ -552,7 +885,7 @@ export const getModalsByCategory = () => {
       'InterceptionOpportunityModal', 'OpponentDecidingInterceptionModal'
     ],
     gamePhase: [
-      'WinnerModal', 'WaitingForPlayerModal', 'GamePhaseModal'
+      'WinnerModal', 'WinnerModal (Defeat)', 'WaitingForPlayerModal', 'GamePhaseModal'
     ],
     aiDebug: [
       'AICardPlayReportModal', 'AIDecisionLogModal', 'AIHandDebugModal'
@@ -564,10 +897,14 @@ export const getModalsByCategory = () => {
       'ViewUpgradesModal', 'UpgradeSelectionModal', 'DestroyUpgradeModal'
     ],
     utility: [
-      'CardSelectionModal', 'CardViewerModal', 'ViewDeckModal'
+      'CardSelectionModal', 'CardViewerModal', 'ViewDeckModal',
+      'CardDetailModal', 'GlossaryModal', 'AIStrategyModal', 'ViewShipSectionModal'
     ],
     debug: [
-      'GameDebugModal', 'DetailedDroneModal'
+      'GameDebugModal', 'DetailedDroneModal', 'LogModal'
+    ],
+    hangar: [
+      'SaveLoadModal', 'InventoryModal', 'BlueprintsModal', 'RepairBayModal', 'ReplicatorModal'
     ]
   };
 };

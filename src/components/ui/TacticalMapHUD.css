@@ -191,8 +191,8 @@
 .hud-bottom {
   position: absolute;
   bottom: 16px;
-  left: 16px;
-  right: 16px;
+  left: 320px; /* Clear space for map info + zoom controls on left */
+  right: 336px; /* Account for right panel (320px) + margin */
   display: flex;
   justify-content: center;
 }
@@ -227,8 +227,8 @@
 
   .hud-bottom {
     bottom: 8px;
-    left: 8px;
-    right: 8px;
+    left: 280px; /* Clear space for map info + zoom controls on left */
+    right: 296px; /* Account for smaller panel (280px) + margin */
   }
 
   .hud-stat {
@@ -248,6 +248,12 @@
 @media (max-width: 480px) {
   .hud-stats-group {
     gap: 8px;
+  }
+
+  .hud-bottom {
+    left: 16px; /* Full width on mobile */
+    right: 16px; /* Panel moves to bottom on mobile, so no right offset needed */
+    bottom: calc(50vh + 16px); /* Above the bottom panel */
   }
 
   .hud-actions-group {

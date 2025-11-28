@@ -33,7 +33,6 @@ import CardViewerModal from './components/modals/CardViewerModal';
 import CardSelectionModal from './components/modals/CardSelectionModal';
 import AICardPlayReportModal from './components/modals/AICardPlayReportModal.jsx';
 import DetailedDroneModal from './components/modals/debug/DetailedDroneModal.jsx';
-import { RoundEndModal } from './components/modals/GamePhaseModals.jsx';
 import WaitingForPlayerModal from './components/modals/WaitingForPlayerModal.jsx';
 import ConfirmationModal from './components/modals/ConfirmationModal.jsx';
 import MandatoryActionModal from './components/modals/MandatoryActionModal.jsx';
@@ -183,7 +182,6 @@ const App = ({ phaseAnimationQueue }) => {
   const [moveConfirmation, setMoveConfirmation] = useState(null);
   const [detailedDrone, setDetailedDrone] = useState(null);
   const [cardToView, setCardToView] = useState(null);
-  const [showRoundEndModal, setShowRoundEndModal] = useState(false);
   const [waitingForPlayerPhase, setWaitingForPlayerPhase] = useState(null); // Track which phase we're waiting for player acknowledgment
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [isViewDeckModalOpen, setIsViewDeckModalOpen] = useState(false);
@@ -3805,10 +3803,6 @@ const App = ({ phaseAnimationQueue }) => {
         onCardInfoClick={handleCardInfoClick}
       />
       {modalContent && <GamePhaseModal title={modalContent.title} text={modalContent.text} onClose={modalContent.onClose === null ? null : (modalContent.onClose || (() => setModalContent(null)))}>{modalContent.children}</GamePhaseModal>}
-      <RoundEndModal
-        show={showRoundEndModal}
-        onContinue={() => setShowRoundEndModal(false)}
-      />
       <WaitingForPlayerModal
         show={!!waitingForPlayerPhase}
         phase={waitingForPlayerPhase}
@@ -4038,12 +4032,13 @@ const App = ({ phaseAnimationQueue }) => {
       />
 
       {/* Renders the modal for viewing the deck */}
-      <CardViewerModal 
-        isOpen={isViewDeckModalOpen} 
-        onClose={() => setIsViewDeckModalOpen(false)} 
+      <CardViewerModal
+        isOpen={isViewDeckModalOpen}
+        onClose={() => setIsViewDeckModalOpen(false)}
         cards={localPlayerState.deck}
+        allCards={[...localPlayerState.deck, ...localPlayerState.hand, ...localPlayerState.discardPile]}
         title="Remaining Cards in Deck"
-        shouldSort={true}
+        groupByType={true}
       />
 
       {/* Renders the modal for viewing the discard pile */}

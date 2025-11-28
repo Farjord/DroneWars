@@ -69,30 +69,31 @@
   }
 }
 
-/* Debug info (dev mode only) */
-.tactical-map-debug {
+/* Map info display (left side of bottom bar, before zoom controls) */
+.tactical-map-info {
   position: fixed;
-  bottom: 80px;
+  bottom: 16px;
   left: 16px;
-  background: rgba(0, 0, 0, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 28, 0.95) 100%);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: 2px;
   padding: 8px 12px;
-  color: #fff;
-  font-family: 'Courier New', monospace;
+  color: #e5e7eb;
+  font-family: 'Exo', sans-serif;
   font-size: 11px;
   z-index: 200;
   pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-.tactical-map-debug p {
+.tactical-map-info p {
   margin: 2px 0;
 }
 
 /* Responsive */
 @media (max-width: 768px) {
-  .tactical-map-debug {
-    bottom: 60px;
+  .tactical-map-info {
+    bottom: 16px;
     left: 8px;
     font-size: 10px;
   }

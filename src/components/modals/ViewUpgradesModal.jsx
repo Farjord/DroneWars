@@ -5,7 +5,7 @@
 // Shows upgrade details in a scrollable list format
 
 import React from 'react';
-import GamePhaseModal from '../ui/GamePhaseModal.jsx';
+import { Wrench } from 'lucide-react';
 
 /**
  * VIEW UPGRADES MODAL COMPONENT
@@ -18,32 +18,51 @@ const ViewUpgradesModal = ({ modalData, onClose }) => {
   const { droneName, upgrades } = modalData;
 
   return (
-      <GamePhaseModal
-          title={`Applied Upgrades: ${droneName}`}
-          text="The following permanent upgrades have been applied to this drone type."
-          onClose={onClose}
-      >
-          <div className="my-4 p-2 bg-black/20 rounded-lg max-h-80 overflow-y-auto space-y-3">
-              {upgrades.length > 0 ? (
-                  upgrades.map(upgrade => (
-                      <div key={upgrade.instanceId} className="bg-slate-800/70 p-3 rounded-lg border border-purple-500/50">
-                          <h4 className="font-bold text-purple-300">{upgrade.name}</h4>
-                          <p className="text-sm text-gray-400 mt-1">{upgrade.description}</p>
-                      </div>
-                  ))
-              ) : (
-                  <p className="text-center text-gray-500 italic">No upgrades applied.</p>
-              )}
+    <div className="dw-modal-overlay" onClick={onClose}>
+      <div className="dw-modal-content dw-modal--md dw-modal--action" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Wrench size={28} />
           </div>
-          <div className="flex justify-center mt-6">
-              <button
-                  onClick={onClose}
-                  className="btn-continue"
-              >
-                  Close
-              </button>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">Applied Upgrades</h2>
+            <p className="dw-modal-header-subtitle">{droneName}</p>
           </div>
-      </GamePhaseModal>
+        </div>
+
+        {/* Body */}
+        <div className="dw-modal-body">
+          <p className="dw-modal-text" style={{ marginBottom: '16px' }}>
+            Permanent upgrades applied to this drone type:
+          </p>
+
+          <div className="dw-modal-scroll" style={{ maxHeight: '300px' }}>
+            {upgrades.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {upgrades.map(upgrade => (
+                  <div key={upgrade.instanceId} className="dw-modal-info-box" style={{ margin: 0 }}>
+                    <h4 style={{ fontWeight: 'bold', color: 'var(--modal-theme)', marginBottom: '4px' }}>{upgrade.name}</h4>
+                    <p style={{ fontSize: '13px', color: 'var(--modal-text-secondary)' }}>{upgrade.description}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="dw-modal-info-box" style={{ textAlign: 'center' }}>
+                <p style={{ color: 'var(--modal-text-secondary)', fontStyle: 'italic' }}>No upgrades applied.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
   );
 };
 

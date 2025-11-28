@@ -5,6 +5,7 @@
 // Accessible via MenuScreen button or Ctrl+M keyboard shortcut
 
 import { useState, useEffect } from 'react';
+import { Layers } from 'lucide-react';
 import gameStateManager from '../../managers/GameStateManager.js';
 import { getMockPropsForModal, getModalsByCategory, MODAL_CATEGORIES } from './modalShowcaseHelpers.js';
 
@@ -33,6 +34,31 @@ import CardViewerModal from '../modals/CardViewerModal.jsx';
 import ViewDeckModal from '../modals/ViewDeckModal.jsx';
 import GamePhaseModal from '../ui/GamePhaseModal.jsx';
 import DetailedDroneModal from '../modals/debug/DetailedDroneModal.jsx';
+
+// Extraction / Into the Eremos modals
+import AbandonRunModal from '../modals/AbandonRunModal.jsx';
+import MapOverviewModal from '../modals/MapOverviewModal.jsx';
+import WaypointConfirmationModal from '../modals/WaypointConfirmationModal.jsx';
+import POIEncounterModal from '../modals/POIEncounterModal.jsx';
+import LootRevealModal from '../modals/LootRevealModal.jsx';
+import RunInventoryModal from '../modals/RunInventoryModal.jsx';
+import ExtractionSummaryModal from '../modals/ExtractionSummaryModal.jsx';
+import RunSummaryModal from '../modals/RunSummaryModal.jsx';
+import MIARecoveryModal from '../modals/MIARecoveryModal.jsx';
+
+// Utility modals
+import CardDetailModal from '../modals/CardDetailModal.jsx';
+import GlossaryModal from '../modals/GlossaryModal.jsx';
+import AIStrategyModal from '../modals/AIStrategyModal.jsx';
+import ViewShipSectionModal from '../modals/ViewShipSectionModal.jsx';
+import LogModal from '../modals/LogModal.jsx';
+
+// Hangar modals
+import SaveLoadModal from '../modals/SaveLoadModal.jsx';
+import InventoryModal from '../modals/InventoryModal.jsx';
+import BlueprintsModal from '../modals/BlueprintsModal.jsx';
+import RepairBayModal from '../modals/RepairBayModal.jsx';
+import ReplicatorModal from '../modals/ReplicatorModal.jsx';
 
 /**
  * Modal Showcase Screen Component
@@ -118,6 +144,7 @@ function ModalShowcaseScreen() {
     // Map modal names to components
     const modalComponents = {
       WinnerModal,
+      'WinnerModal (Defeat)': WinnerModal,
       InterceptionOpportunityModal,
       OpponentDecidingInterceptionModal,
       DeploymentConfirmationModal,
@@ -140,7 +167,29 @@ function ModalShowcaseScreen() {
       CardViewerModal,
       ViewDeckModal,
       GamePhaseModal,
-      DetailedDroneModal
+      DetailedDroneModal,
+      // Extraction / Into the Eremos modals
+      AbandonRunModal,
+      MapOverviewModal,
+      WaypointConfirmationModal,
+      POIEncounterModal,
+      LootRevealModal,
+      RunInventoryModal,
+      ExtractionSummaryModal,
+      RunSummaryModal,
+      MIARecoveryModal,
+      // Utility modals
+      CardDetailModal,
+      GlossaryModal,
+      AIStrategyModal,
+      ViewShipSectionModal,
+      LogModal,
+      // Hangar modals
+      SaveLoadModal,
+      InventoryModal,
+      BlueprintsModal,
+      RepairBayModal,
+      ReplicatorModal
     };
 
     const ModalComponent = modalComponents[selectedModal];
@@ -153,53 +202,38 @@ function ModalShowcaseScreen() {
   };
 
   return (
-    <div style={{
+    <div className="body-font" style={{
       position: 'fixed',
       inset: 0,
       backgroundColor: 'rgba(2, 6, 23, 1)',
-      overflow: 'auto',
-      padding: '40px 20px'
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+      padding: '60px 20px 20px 20px'
     }}>
       {/* Header */}
       <div style={{
         maxWidth: '1400px',
+        width: '100%',
         margin: '0 auto',
-        marginBottom: '30px'
+        marginBottom: '24px',
+        flexShrink: 0
       }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '20px'
-        }}>
-          <h1 style={{
-            fontSize: '2.5rem',
-            fontWeight: 'bold',
-            background: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
-            backgroundSize: '200% auto',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-            textShadow: '0 0 20px rgba(0, 255, 136, 0.4)'
-          }}>
-            MODAL SHOWCASE
-          </h1>
+        <div className="flex items-center gap-4 mb-4">
+          <div className="bg-cyan-500/20 p-3 rounded-lg">
+            <Layers size={28} className="text-cyan-400" />
+          </div>
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-cyan-400">Modal Showcase</h1>
+            <p className="text-gray-400">Dev Preview Tool</p>
+          </div>
           <button
             onClick={handleCloseShowcase}
-            className="btn-cancel"
-            style={{ fontSize: '1rem' }}
+            className="btn-reset"
           >
-            Close Showcase
+            Back to Menu
           </button>
         </div>
-
-        <p style={{
-          color: '#cccccc',
-          fontSize: '1rem',
-          marginBottom: '30px'
-        }}>
-          Preview all modal components with realistic mock data. Press ESC to close modal preview, Ctrl+M to toggle showcase.
-        </p>
 
         {/* Search Bar */}
         <input
@@ -207,86 +241,54 @@ function ModalShowcaseScreen() {
           placeholder="Search modals..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          style={{
-            width: '100%',
-            padding: '12px 20px',
-            fontSize: '1rem',
-            backgroundColor: '#1a1a1a',
-            border: '2px solid #333',
-            borderRadius: '8px',
-            color: '#ffffff',
-            outline: 'none',
-            transition: 'border-color 0.3s'
-          }}
-          onFocus={(e) => e.target.style.borderColor = '#00ff88'}
-          onBlur={(e) => e.target.style.borderColor = '#333'}
+          className="w-full p-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:border-cyan-500 focus:outline-none transition-colors"
         />
       </div>
 
       {/* Category Tabs */}
       <div style={{
         maxWidth: '1400px',
+        width: '100%',
         margin: '0 auto',
-        marginBottom: '30px'
+        marginBottom: '24px',
+        flexShrink: 0
       }}>
-        <div style={{
-          display: 'flex',
-          gap: '10px',
-          flexWrap: 'wrap'
-        }}>
-          {Object.entries(MODAL_CATEGORIES).map(([key, { name, count }]) => (
-            <button
-              key={key}
-              onClick={() => setActiveCategory(key)}
-              style={{
-                padding: '10px 20px',
-                fontSize: '0.9rem',
-                fontWeight: activeCategory === key ? 'bold' : 'normal',
-                backgroundColor: activeCategory === key ? '#0088ff' : '#2a2a2a',
-                color: activeCategory === key ? '#ffffff' : '#cccccc',
-                border: `2px solid ${activeCategory === key ? '#00ff88' : '#444'}`,
-                borderRadius: '8px',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseOver={(e) => {
-                if (activeCategory !== key) {
-                  e.target.style.backgroundColor = '#333';
-                  e.target.style.borderColor = '#666';
-                }
-              }}
-              onMouseOut={(e) => {
-                if (activeCategory !== key) {
-                  e.target.style.backgroundColor = '#2a2a2a';
-                  e.target.style.borderColor = '#444';
-                }
-              }}
-            >
-              {name} ({count})
-            </button>
-          ))}
+        <div className="border-b border-gray-700">
+          <div className="flex space-x-1 overflow-x-auto">
+            {Object.entries(MODAL_CATEGORIES).map(([key, { name, count }]) => (
+              <button
+                key={key}
+                onClick={() => setActiveCategory(key)}
+                className={`px-4 py-2 font-semibold whitespace-nowrap transition-colors ${
+                  activeCategory === key
+                    ? 'text-cyan-400 border-b-2 border-cyan-400'
+                    : 'text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                {name} ({count})
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Modal Grid */}
-      <div style={{
-        maxWidth: '1400px',
-        margin: '0 auto'
-      }}>
+      {/* Modal Grid - scrollable */}
+      <div
+        className="dw-modal-scroll"
+        style={{
+          maxWidth: '1400px',
+          width: '100%',
+          margin: '0 auto',
+          flex: 1,
+          minHeight: 0
+        }}
+      >
         {filteredModals.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            padding: '60px 20px',
-            color: '#666'
-          }}>
-            <p style={{ fontSize: '1.2rem' }}>No modals found matching "{searchQuery}"</p>
+          <div className="text-center py-16 text-gray-500">
+            <p className="text-lg">No modals found matching "{searchQuery}"</p>
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: '20px'
-          }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredModals.map((modalName) => {
               const mockConfig = getMockPropsForModal(modalName);
               const category = mockConfig?.category || 'unknown';
@@ -295,50 +297,15 @@ function ModalShowcaseScreen() {
                 <button
                   key={modalName}
                   onClick={() => handleModalClick(modalName)}
-                  style={{
-                    padding: '20px',
-                    backgroundColor: '#2a2a2a',
-                    border: '2px solid #444',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'all 0.3s ease',
-                    position: 'relative'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = '#333';
-                    e.currentTarget.style.borderColor = '#00ff88';
-                    e.currentTarget.style.transform = 'translateY(-4px)';
-                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 255, 136, 0.2)';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = '#2a2a2a';
-                    e.currentTarget.style.borderColor = '#444';
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
+                  className="p-5 bg-gray-800 border border-gray-700 rounded-lg cursor-pointer text-left transition-all hover:bg-gray-700 hover:border-cyan-500 hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/20"
                 >
-                  <div style={{
-                    fontSize: '0.75rem',
-                    color: '#888',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    marginBottom: '8px'
-                  }}>
+                  <div className="text-xs text-gray-500 uppercase tracking-wider mb-2">
                     {category}
                   </div>
-                  <div style={{
-                    fontSize: '1.1rem',
-                    fontWeight: 'bold',
-                    color: '#00ff88',
-                    marginBottom: '4px'
-                  }}>
+                  <div className="text-lg font-bold text-cyan-400 mb-1">
                     {modalName.replace(/Modal$/, '')}
                   </div>
-                  <div style={{
-                    fontSize: '0.85rem',
-                    color: '#999'
-                  }}>
+                  <div className="text-sm text-gray-400">
                     Click to preview
                   </div>
                 </button>
@@ -352,28 +319,27 @@ function ModalShowcaseScreen() {
       {renderSelectedModal()}
 
       {/* Help Text */}
-      <div style={{
-        maxWidth: '1400px',
-        margin: '40px auto 0',
-        padding: '20px',
-        backgroundColor: '#1a1a1a',
-        border: '1px solid #333',
-        borderRadius: '8px',
-        fontSize: '0.9rem',
-        color: '#888'
-      }}>
-        <div style={{ marginBottom: '10px', fontWeight: 'bold', color: '#00ff88' }}>
+      <div
+        style={{
+          maxWidth: '1400px',
+          width: '100%',
+          margin: '0 auto',
+          flexShrink: 0
+        }}
+        className="mt-6 p-4 bg-gray-800/50 border border-gray-700 rounded-lg text-sm text-gray-400"
+      >
+        <div className="mb-2 font-bold text-cyan-400">
           Keyboard Shortcuts:
         </div>
-        <ul style={{ margin: 0, paddingLeft: '20px' }}>
-          <li style={{ marginBottom: '5px' }}>
-            <strong style={{ color: '#ccc' }}>ESC:</strong> Close modal preview
+        <ul className="m-0 pl-5 list-disc">
+          <li className="mb-1">
+            <strong className="text-gray-300">ESC:</strong> Close modal preview
           </li>
-          <li style={{ marginBottom: '5px' }}>
-            <strong style={{ color: '#ccc' }}>Ctrl+M:</strong> Toggle Modal Showcase from anywhere
+          <li className="mb-1">
+            <strong className="text-gray-300">Ctrl+M:</strong> Toggle Modal Showcase from anywhere
           </li>
         </ul>
-        <div style={{ marginTop: '15px', fontStyle: 'italic' }}>
+        <div className="mt-3 italic text-gray-500">
           All modal interactions are logged to console. Buttons will close the preview instead of performing actual actions.
         </div>
       </div>

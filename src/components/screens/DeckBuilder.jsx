@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp, Sword, Rocket, Shield, Grid, ArrowLeft, LayoutGrid, List } from 'lucide-react';
+import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp, Sword, Rocket, Shield, Grid, ArrowLeft, LayoutGrid, List, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import ActionCard from '../ui/ActionCard.jsx';
 import DroneCard from '../ui/DroneCard.jsx';
@@ -206,7 +206,19 @@ const DeckBuilder = ({
   onShipComponentsChange,
   onConfirmDeck,
   onImportDeck,
-  onBack
+  onBack,
+  // Extraction mode props
+  maxDrones = 10,              // 5 for extraction, 10 for multiplayer
+  droneInstances = [],         // For damage display (yellow triangle)
+  componentInstances = [],     // For hull display (health bar)
+  readOnly = false,            // For Slot 0 view-only mode
+  allowInvalidSave = false,    // Allow save with invalid deck
+  mode = 'multiplayer',        // 'multiplayer' | 'extraction'
+  onSaveInvalid,               // Callback for saving invalid deck
+  deckName = '',               // Current deck name (extraction mode)
+  onDeckNameChange,            // Callback for name change
+  availableDrones = null,      // Filtered drone collection (extraction mode)
+  availableComponents = null   // Filtered component collection (extraction mode)
 }) => {
   const [detailedCard, setDetailedCard] = useState(null);
   const [detailedDrone, setDetailedDrone] = useState(null);
@@ -340,7 +352,9 @@ const DeckBuilder = ({
 
   // --- Memoize a processed drone collection with keywords for efficient filtering/sorting ---
   const processedDroneCollection = useMemo(() => {
-    return fullDroneCollection
+    // Use availableDrones if provided (extraction mode), otherwise use full collection
+    const droneSource = availableDrones || fullDroneCollection;
+    return droneSource
       .filter(drone => drone.selectable !== false) // Filter out non-selectable drones (tokens)
       .map(drone => {
       const keywords = [];
@@ -369,7 +383,12 @@ const DeckBuilder = ({
 
       return { ...drone, keywords, description };
     });
-  }, []);
+  }, [availableDrones]);
+
+  // --- Use availableComponents if provided, otherwise use full collection ---
+  const activeComponentCollection = useMemo(() => {
+    return availableComponents || shipComponentCollection;
+  }, [availableComponents]);
 
   const filterOptions = useMemo(() => {
     const costs = new Set();
@@ -477,7 +496,7 @@ const DeckBuilder = ({
     return { droneCount: total, droneListForDisplay: displayList };
   }, [selectedDrones, processedDroneCollection]);
 
-  const isDronesValid = droneCount === 10;
+  const isDronesValid = droneCount === maxDrones;
 
   // --- Ship component counts and validation ---
   const { shipComponentCount, shipComponentsValid } = useMemo(() => {
@@ -486,15 +505,15 @@ const DeckBuilder = ({
 
     // Check that we have one of each type
     const hasBridge = Object.keys(components).some(key => {
-      const comp = shipComponentCollection.find(c => c.id === key);
+      const comp = activeComponentCollection.find(c => c.id === key);
       return comp && comp.type === 'Bridge' && components[key];
     });
     const hasPowerCell = Object.keys(components).some(key => {
-      const comp = shipComponentCollection.find(c => c.id === key);
+      const comp = activeComponentCollection.find(c => c.id === key);
       return comp && comp.type === 'Power Cell' && components[key];
     });
     const hasDroneControl = Object.keys(components).some(key => {
-      const comp = shipComponentCollection.find(c => c.id === key);
+      const comp = activeComponentCollection.find(c => c.id === key);
       return comp && comp.type === 'Drone Control Hub' && components[key];
     });
 
@@ -507,7 +526,7 @@ const DeckBuilder = ({
     const isValid = hasBridge && hasPowerCell && hasDroneControl && allAssigned && noConflicts;
 
     return { shipComponentCount: count, shipComponentsValid: isValid };
-  }, [selectedShipComponents]);
+  }, [selectedShipComponents, activeComponentCollection]);
 
   // --- NEW: Define colors for the Pie Chart ---
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943', '#A45D5D', '#8C5DA4'];
@@ -923,16 +942,33 @@ const DeckBuilder = ({
         shipComponents={selectedShipComponents || {}}
       />
 
-      <div className="flex justify-center items-center mb-4">
-        {/* Center: Title + Back button grouped together */}
-        <div className="flex items-center gap-4">
-          <h1 className="text-3xl font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">Deck Builder</h1>
+      <div className="flex justify-between items-center mb-4 px-4">
+        {/* Left: Back button */}
+        <div className="w-32">
           {onBack && (
             <button onClick={onBack} className="btn-cancel flex items-center gap-2">
               <ArrowLeft size={16} /> Back
             </button>
           )}
         </div>
+
+        {/* Center: Title or Deck Name Input */}
+        {mode === 'extraction' && onDeckNameChange && !readOnly ? (
+          <input
+            type="text"
+            value={deckName}
+            onChange={(e) => onDeckNameChange(e.target.value)}
+            className="bg-slate-700 border border-cyan-500/50 rounded px-4 py-2 text-white font-orbitron text-xl text-center w-80 focus:outline-none focus:border-cyan-400"
+            placeholder="Enter deck name..."
+          />
+        ) : (
+          <h1 className="text-3xl font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500">
+            {mode === 'extraction' && readOnly ? 'Starter Deck (Read-Only)' : 'Deck Builder'}
+          </h1>
+        )}
+
+        {/* Right: Spacer to balance layout */}
+        <div className="w-32" />
       </div>
       
       <div className="flex-grow flex gap-6 min-h-0 mb-[10px]">
@@ -1106,7 +1142,7 @@ const DeckBuilder = ({
 
           {/* TABLE VIEW */}
           {cardsViewMode === 'table' && (
-          <div className="flex-grow overflow-y-auto pr-2">
+          <div className="flex-grow overflow-y-auto pr-2 dw-modal-scroll">
             <table className="w-full text-left deck-builder-table">
               {/* --- MODIFIED: Sortable Headers --- */}
               <thead>
@@ -1156,7 +1192,7 @@ const DeckBuilder = ({
 
           {/* GRID VIEW */}
           {cardsViewMode === 'grid' && (
-          <div className="flex-grow overflow-y-auto pr-2">
+          <div className="flex-grow overflow-y-auto pr-2 dw-modal-scroll">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredAndSortedCards.map((card, index) => {
                 const currentCountForThisVariant = deck[card.id] || 0;
@@ -1180,9 +1216,10 @@ const DeckBuilder = ({
                     {/* Quantity Controls */}
                     <div className="flex items-center gap-2 bg-slate-800/70 px-3 py-1 rounded-lg border border-gray-600">
                       <button
-                        onClick={() => currentCountForThisVariant > 0 && onDeckChange(card.id, currentCountForThisVariant - 1)}
+                        onClick={() => !readOnly && currentCountForThisVariant > 0 && onDeckChange(card.id, currentCountForThisVariant - 1)}
+                        disabled={readOnly}
                         className={`text-lg font-bold px-2 rounded transition-all ${
-                          currentCountForThisVariant === 0
+                          readOnly || currentCountForThisVariant === 0
                             ? 'opacity-50 cursor-not-allowed text-gray-500'
                             : 'text-cyan-400 hover:text-cyan-300 hover:bg-slate-700'
                         }`}
@@ -1193,9 +1230,10 @@ const DeckBuilder = ({
                         {currentCountForThisVariant}/{maxInDeck}
                       </span>
                       <button
-                        onClick={() => !isAtMax && onDeckChange(card.id, currentCountForThisVariant + 1)}
+                        onClick={() => !readOnly && !isAtMax && onDeckChange(card.id, currentCountForThisVariant + 1)}
+                        disabled={readOnly}
                         className={`text-lg font-bold px-2 rounded transition-all ${
-                          isAtMax
+                          readOnly || isAtMax
                             ? 'opacity-50 cursor-not-allowed text-gray-500'
                             : 'text-cyan-400 hover:text-cyan-300 hover:bg-slate-700'
                         }`}
@@ -1237,7 +1275,7 @@ const DeckBuilder = ({
 
           {/* TABLE VIEW */}
           {dronesViewMode === 'table' && (
-          <div className="flex-grow overflow-y-auto pr-2">
+          <div className="flex-grow overflow-y-auto pr-2 dw-modal-scroll">
             <table className="w-full text-left deck-builder-table">
               <thead>
                 <tr>
@@ -1274,8 +1312,8 @@ const DeckBuilder = ({
                       <td>{drone.upgradeSlots}</td>
                       <td>
                         <div className="quantity-buttons">
-                          <button onClick={() => onDronesChange(drone.name, 0)} className={`quantity-btn ${currentQuantity === 0 ? 'selected' : ''}`}>0</button>
-                          <button onClick={() => onDronesChange(drone.name, 1)} className={`quantity-btn ${currentQuantity === 1 ? 'selected' : ''}`}>1</button>
+                          <button onClick={() => !readOnly && onDronesChange(drone.name, 0)} disabled={readOnly} className={`quantity-btn ${currentQuantity === 0 ? 'selected' : ''} ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}>0</button>
+                          <button onClick={() => !readOnly && onDronesChange(drone.name, 1)} disabled={readOnly} className={`quantity-btn ${currentQuantity === 1 ? 'selected' : ''} ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}>1</button>
                         </div>
                       </td>
                     </tr>
@@ -1288,7 +1326,7 @@ const DeckBuilder = ({
 
           {/* GRID VIEW */}
           {dronesViewMode === 'grid' && (
-          <div className="flex-grow overflow-y-auto pr-2">
+          <div className="flex-grow overflow-y-auto pr-2 dw-modal-scroll">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredAndSortedDrones.map((drone, index) => {
                 const currentQuantity = (selectedDrones && selectedDrones[drone.name]) || 0;
@@ -1312,9 +1350,10 @@ const DeckBuilder = ({
                     {/* Quantity Controls */}
                     <div className="flex items-center gap-2 bg-slate-800/70 px-3 py-1 rounded-lg border border-gray-600">
                       <button
-                        onClick={() => currentQuantity > 0 && onDronesChange(drone.name, currentQuantity - 1)}
+                        onClick={() => !readOnly && currentQuantity > 0 && onDronesChange(drone.name, currentQuantity - 1)}
+                        disabled={readOnly}
                         className={`text-lg font-bold px-2 rounded transition-all ${
-                          currentQuantity === 0
+                          readOnly || currentQuantity === 0
                             ? 'opacity-50 cursor-not-allowed text-gray-500'
                             : 'text-cyan-400 hover:text-cyan-300 hover:bg-slate-700'
                         }`}
@@ -1325,9 +1364,10 @@ const DeckBuilder = ({
                         {currentQuantity}/{maxQuantity}
                       </span>
                       <button
-                        onClick={() => !isAtMax && onDronesChange(drone.name, currentQuantity + 1)}
+                        onClick={() => !readOnly && !isAtMax && onDronesChange(drone.name, currentQuantity + 1)}
+                        disabled={readOnly}
                         className={`text-lg font-bold px-2 rounded transition-all ${
-                          isAtMax
+                          readOnly || isAtMax
                             ? 'opacity-50 cursor-not-allowed text-gray-500'
                             : 'text-cyan-400 hover:text-cyan-300 hover:bg-slate-700'
                         }`}
@@ -1347,7 +1387,7 @@ const DeckBuilder = ({
           {/* SHIP COMPONENTS VIEW */}
           {leftPanelView === 'ship' && (
           <>
-          <div className="flex-grow overflow-y-auto pr-2">
+          <div className="flex-grow overflow-y-auto pr-2 dw-modal-scroll">
             <table className="w-full text-left deck-builder-table">
               <thead>
                 <tr>
@@ -1364,7 +1404,7 @@ const DeckBuilder = ({
                 <tr className="bg-cyan-900/20">
                   <td colSpan="5" className="font-bold text-cyan-400 text-sm py-2">BRIDGE</td>
                 </tr>
-                {shipComponentCollection.filter(comp => comp.type === 'Bridge').map((component, index) => {
+                {activeComponentCollection.filter(comp => comp.type === 'Bridge').map((component, index) => {
                   const selectedLane = selectedShipComponents?.[component.id] || null;
                   // Check which lanes are occupied by other components
                   const occupiedLanes = Object.entries(selectedShipComponents || {})
@@ -1382,12 +1422,12 @@ const DeckBuilder = ({
                           {['l', 'm', 'r'].map(lane => (
                             <button
                               key={lane}
-                              onClick={() => onShipComponentsChange(component.id, selectedLane === lane ? null : lane)}
-                              disabled={occupiedLanes.includes(lane) && selectedLane !== lane}
+                              onClick={() => !readOnly && onShipComponentsChange(component.id, selectedLane === lane ? null : lane)}
+                              disabled={readOnly || (occupiedLanes.includes(lane) && selectedLane !== lane)}
                               className={`px-3 py-1 rounded text-xs font-bold transition-all ${
                                 selectedLane === lane
                                   ? 'bg-cyan-500 text-white'
-                                  : occupiedLanes.includes(lane)
+                                  : readOnly || occupiedLanes.includes(lane)
                                   ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
                                   : 'bg-gray-700 text-gray-300 hover:bg-cyan-600 hover:text-white'
                               }`}
@@ -1405,7 +1445,7 @@ const DeckBuilder = ({
                 <tr className="bg-purple-900/20">
                   <td colSpan="5" className="font-bold text-purple-400 text-sm py-2">POWER CELL</td>
                 </tr>
-                {shipComponentCollection.filter(comp => comp.type === 'Power Cell').map((component, index) => {
+                {activeComponentCollection.filter(comp => comp.type === 'Power Cell').map((component, index) => {
                   const selectedLane = selectedShipComponents?.[component.id] || null;
                   const occupiedLanes = Object.entries(selectedShipComponents || {})
                     .filter(([id, lane]) => id !== component.id && lane)
@@ -1422,12 +1462,12 @@ const DeckBuilder = ({
                           {['l', 'm', 'r'].map(lane => (
                             <button
                               key={lane}
-                              onClick={() => onShipComponentsChange(component.id, selectedLane === lane ? null : lane)}
-                              disabled={occupiedLanes.includes(lane) && selectedLane !== lane}
+                              onClick={() => !readOnly && onShipComponentsChange(component.id, selectedLane === lane ? null : lane)}
+                              disabled={readOnly || (occupiedLanes.includes(lane) && selectedLane !== lane)}
                               className={`px-3 py-1 rounded text-xs font-bold transition-all ${
                                 selectedLane === lane
                                   ? 'bg-purple-500 text-white'
-                                  : occupiedLanes.includes(lane)
+                                  : readOnly || occupiedLanes.includes(lane)
                                   ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
                                   : 'bg-gray-700 text-gray-300 hover:bg-purple-600 hover:text-white'
                               }`}
@@ -1445,7 +1485,7 @@ const DeckBuilder = ({
                 <tr className="bg-pink-900/20">
                   <td colSpan="5" className="font-bold text-pink-400 text-sm py-2">DRONE CONTROL HUB</td>
                 </tr>
-                {shipComponentCollection.filter(comp => comp.type === 'Drone Control Hub').map((component, index) => {
+                {activeComponentCollection.filter(comp => comp.type === 'Drone Control Hub').map((component, index) => {
                   const selectedLane = selectedShipComponents?.[component.id] || null;
                   const occupiedLanes = Object.entries(selectedShipComponents || {})
                     .filter(([id, lane]) => id !== component.id && lane)
@@ -1462,12 +1502,12 @@ const DeckBuilder = ({
                           {['l', 'm', 'r'].map(lane => (
                             <button
                               key={lane}
-                              onClick={() => onShipComponentsChange(component.id, selectedLane === lane ? null : lane)}
-                              disabled={occupiedLanes.includes(lane) && selectedLane !== lane}
+                              onClick={() => !readOnly && onShipComponentsChange(component.id, selectedLane === lane ? null : lane)}
+                              disabled={readOnly || (occupiedLanes.includes(lane) && selectedLane !== lane)}
                               className={`px-3 py-1 rounded text-xs font-bold transition-all ${
                                 selectedLane === lane
                                   ? 'bg-pink-500 text-white'
-                                  : occupiedLanes.includes(lane)
+                                  : readOnly || occupiedLanes.includes(lane)
                                   ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
                                   : 'bg-gray-700 text-gray-300 hover:bg-pink-600 hover:text-white'
                               }`}
@@ -1501,7 +1541,7 @@ const DeckBuilder = ({
                 onClick={() => setRightPanelView('drones')}
                 className={`btn-utility ${rightPanelView === 'drones' ? 'opacity-100' : 'opacity-60'}`}
               >
-                Drones ({droneCount}/10)
+                Drones ({droneCount}/{maxDrones})
               </button>
               <button
                 onClick={() => setRightPanelView('ship')}
@@ -1511,8 +1551,9 @@ const DeckBuilder = ({
               </button>
             </div>
             <button
-              onClick={rightPanelView === 'deck' ? resetDeck : rightPanelView === 'drones' ? resetDrones : () => onShipComponentsChange(null, null)}
-              className="btn-reset"
+              onClick={readOnly ? undefined : (rightPanelView === 'deck' ? resetDeck : rightPanelView === 'drones' ? resetDrones : () => onShipComponentsChange(null, null))}
+              disabled={readOnly}
+              className={`btn-reset ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               Reset
             </button>
@@ -1520,7 +1561,7 @@ const DeckBuilder = ({
 
           {/* DECK LIST VIEW */}
           {rightPanelView === 'deck' && (
-          <div className="flex-grow overflow-y-auto pr-2 deck-list">
+          <div className="flex-grow overflow-y-auto pr-2 deck-list dw-modal-scroll">
             {deckListForDisplay.length > 0 ? (
               deckListForDisplay.map(card => {
                 const isAtMax = baseCardCounts[card.baseCardId] >= card.maxInDeck;
@@ -1537,16 +1578,17 @@ const DeckBuilder = ({
                     <span className="flex-grow truncate" title={card.name}>{card.name}</span>
                     <div className="flex items-center gap-3 flex-shrink-0">
                       <button
-                        onClick={() => onDeckChange(card.id, card.quantity - 1)}
-                        className="deck-edit-btn"
+                        onClick={() => !readOnly && onDeckChange(card.id, card.quantity - 1)}
+                        disabled={readOnly}
+                        className={`deck-edit-btn ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         -
                       </button>
                       <span className="font-bold w-8 text-center">x {card.quantity}</span>
                       <button
-                        onClick={() => onDeckChange(card.id, card.quantity + 1)}
-                        disabled={isAtMax}
-                        className="deck-edit-btn"
+                        onClick={() => !readOnly && onDeckChange(card.id, card.quantity + 1)}
+                        disabled={readOnly || isAtMax}
+                        className={`deck-edit-btn ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
                       >
                         +
                       </button>
@@ -1594,11 +1636,19 @@ const DeckBuilder = ({
 
           {/* DRONE LIST VIEW */}
           {rightPanelView === 'drones' && (
-          <div className="flex-grow overflow-y-auto pr-2 deck-list">
+          <div className="flex-grow overflow-y-auto pr-2 deck-list dw-modal-scroll">
             {droneListForDisplay.length > 0 ? (
               droneListForDisplay.map(drone => {
+                // Check for damage indicator (extraction mode only)
+                const droneInstance = droneInstances.find(i => i.droneName === drone.name);
+                const isDamaged = drone.hasDamagedInstance || droneInstance?.isDamaged;
+
                 return (
-                  <div key={drone.name} className="deck-list-item">
+                  <div key={drone.name} className={`deck-list-item ${isDamaged ? 'bg-yellow-900/20 border-l-2 border-yellow-500' : ''}`}>
+                    {/* Damage indicator */}
+                    {isDamaged && (
+                      <AlertTriangle size={16} className="text-yellow-400 flex-shrink-0 mr-2" title="Damaged - Cannot deploy until repaired" />
+                    )}
                     {/* Eye icon to view drone details */}
                     <button
                       onClick={() => setDetailedDrone(drone)}
@@ -1611,6 +1661,7 @@ const DeckBuilder = ({
                     <div className="flex items-center gap-3 flex-shrink-0">
                       <button
                         onClick={() => onDronesChange(drone.name, 0)}
+                        disabled={readOnly}
                         className="deck-edit-btn"
                       >
                         -
@@ -1618,7 +1669,7 @@ const DeckBuilder = ({
                       <span className="font-bold w-8 text-center">x {drone.quantity}</span>
                       <button
                         onClick={() => onDronesChange(drone.name, 1)}
-                        disabled={droneCount >= 10}
+                        disabled={readOnly || droneCount >= maxDrones}
                         className="deck-edit-btn"
                       >
                         +
@@ -1635,13 +1686,13 @@ const DeckBuilder = ({
 
           {/* SHIP COMPONENTS VIEW */}
           {rightPanelView === 'ship' && (
-          <div className="flex-grow overflow-y-auto pr-2">
+          <div className="flex-grow overflow-y-auto pr-2 dw-modal-scroll">
             <div className="flex flex-col gap-4">
               {/* Display ship layout */}
               <div className="grid grid-cols-3 gap-4">
                 {['l', 'm', 'r'].map((lane, index) => {
                   const componentEntry = Object.entries(selectedShipComponents || {}).find(([id, l]) => l === lane);
-                  const component = componentEntry ? shipComponentCollection.find(c => c.id === componentEntry[0]) : null;
+                  const component = componentEntry ? activeComponentCollection.find(c => c.id === componentEntry[0]) : null;
 
                   return (
                     <div key={lane} className={`p-4 rounded-lg border-2 ${component ? 'border-cyan-500 bg-cyan-900/10' : 'border-dashed border-gray-600 bg-gray-800/30'}`}>
@@ -1660,6 +1711,34 @@ const DeckBuilder = ({
                               + Bonus Stats
                             </div>
                           )}
+                          {/* Hull display for extraction mode */}
+                          {mode === 'extraction' && componentInstances.length > 0 && (() => {
+                            const inst = componentInstances.find(i => i.componentId === componentEntry[0]);
+                            if (inst) {
+                              const hullPercent = (inst.currentHull / inst.maxHull) * 100;
+                              const isDamaged = inst.currentHull < inst.maxHull;
+                              return (
+                                <div className="mt-2 p-2 bg-gray-800/50 rounded">
+                                  <div className="text-xs text-gray-400 mb-1">Hull</div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex-grow bg-gray-700 rounded h-2 overflow-hidden">
+                                      <div
+                                        className={`h-full transition-all ${hullPercent < 50 ? 'bg-red-500' : 'bg-green-500'}`}
+                                        style={{ width: `${hullPercent}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-xs font-bold">{inst.currentHull}/{inst.maxHull}</span>
+                                  </div>
+                                  {isDamaged && (
+                                    <div className="text-xs text-yellow-400 mt-1 flex items-center gap-1">
+                                      <AlertTriangle size={12} /> Repair Needed
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       ) : (
                         <div className="text-center text-gray-500 italic text-xs py-4">
@@ -1679,7 +1758,7 @@ const DeckBuilder = ({
                     {Object.entries(selectedShipComponents || {})
                       .filter(([id, lane]) => lane)
                       .map(([id, lane]) => {
-                        const component = shipComponentCollection.find(c => c.id === id);
+                        const component = activeComponentCollection.find(c => c.id === id);
                         if (!component) return null;
 
                         return (
@@ -1957,14 +2036,53 @@ const DeckBuilder = ({
             </div>
           )}
 
-                    <button
-                      onClick={onConfirmDeck}
-                      disabled={!isDeckValid || !isDronesValid || !shipComponentsValid}
-                      className="btn-confirm w-full p-4 mt-4 text-lg font-bold font-orbitron"
-                      title={!shipComponentsValid ? 'You must select all 3 ship components with lanes assigned' : ''}
-                    >
-                      Confirm Deck, Drones & Ship
-                    </button>
+                    {/* Save/Confirm Button - hidden in readOnly mode */}
+                    {!readOnly && (
+                      <>
+                        {allowInvalidSave ? (
+                          // Extraction mode: can save incomplete, but with warning
+                          <button
+                            onClick={isDeckValid && isDronesValid && shipComponentsValid ? onConfirmDeck : onSaveInvalid}
+                            className={`w-full p-4 mt-4 text-lg font-bold font-orbitron ${
+                              isDeckValid && isDronesValid && shipComponentsValid
+                                ? 'btn-confirm'
+                                : 'bg-yellow-600 hover:bg-yellow-500 text-black'
+                            }`}
+                            title={!shipComponentsValid ? 'You must select all 3 ship components with lanes assigned' : ''}
+                          >
+                            {isDeckValid && isDronesValid && shipComponentsValid
+                              ? 'Save Deck'
+                              : 'Save Incomplete Deck'}
+                          </button>
+                        ) : (
+                          // Multiplayer mode: must be complete
+                          <button
+                            onClick={onConfirmDeck}
+                            disabled={!isDeckValid || !isDronesValid || !shipComponentsValid}
+                            className="btn-confirm w-full p-4 mt-4 text-lg font-bold font-orbitron disabled:opacity-50"
+                            title={!shipComponentsValid ? 'You must select all 3 ship components with lanes assigned' : ''}
+                          >
+                            Confirm Deck, Drones & Ship
+                          </button>
+                        )}
+                        {/* Validation warnings for extraction mode */}
+                        {allowInvalidSave && (!isDeckValid || !isDronesValid || !shipComponentsValid) && (
+                          <div className="mt-2 p-2 bg-yellow-900/30 border border-yellow-500/50 rounded text-xs text-yellow-300">
+                            <div className="flex items-center gap-1 font-semibold mb-1">
+                              <AlertTriangle size={14} /> Deck Incomplete - Cannot Deploy
+                            </div>
+                            {!isDeckValid && <div>Need 40 cards (have {Object.values(deck || {}).reduce((sum, qty) => sum + qty, 0)})</div>}
+                            {!isDronesValid && <div>Need {maxDrones} drones (have {droneCount})</div>}
+                            {!shipComponentsValid && <div>Need 3 ship components with unique lanes</div>}
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {readOnly && (
+                      <div className="text-center text-gray-500 italic mt-4 p-4 bg-gray-800/50 rounded">
+                        Viewing Starter Deck (Read Only)
+                      </div>
+                    )}
         </div>
       </div>
      </div>

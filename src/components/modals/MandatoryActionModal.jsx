@@ -4,7 +4,7 @@
 // Modal that displays when players must perform mandatory actions (discard/destroy)
 
 import React from 'react';
-import { X } from 'lucide-react';
+import { AlertTriangle, Hand, Cpu } from 'lucide-react';
 
 /**
  * MANDATORY ACTION MODAL COMPONENT
@@ -19,20 +19,51 @@ const MandatoryActionModal = ({ mandatoryAction, effectiveStats, show, onClose }
 
   const isDiscard = mandatoryAction.type === 'discard';
   const title = isDiscard ? "Hand Limit Exceeded" : "CPU Limit Exceeded";
-  const text = isDiscard
-    ? `Your hand limit is now ${effectiveStats.handLimit}. Please select ${mandatoryAction.count} card(s) to discard.`
-    : `Your drone limit is now ${effectiveStats.cpuLimit}. Please select ${mandatoryAction.count} drone(s) to destroy.`;
+  const limit = isDiscard ? effectiveStats.handLimit : effectiveStats.cpuLimit;
+  const Icon = isDiscard ? Hand : Cpu;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-container modal-container-md">
+    <div className="dw-modal-overlay" onClick={onClose}>
+      <div className="dw-modal-content dw-modal--sm dw-modal--danger" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon dw-modal-header-icon--pulse">
+            <AlertTriangle size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">{title}</h2>
+            <p className="dw-modal-header-subtitle">Action Required</p>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="dw-modal-body">
+          <div className="dw-modal-info-box">
+            <div className="dw-modal-info-item">
+              <span className="dw-modal-info-icon"><Icon size={16} /></span>
+              <span>Current Limit: <strong>{limit}</strong></span>
+            </div>
+            <div className="dw-modal-info-item">
+              <span className="dw-modal-info-icon"><AlertTriangle size={16} /></span>
+              <span>Must {isDiscard ? 'discard' : 'destroy'}: <strong>{mandatoryAction.count}</strong></span>
+            </div>
+          </div>
+
+          <p className="dw-modal-text" style={{ marginTop: '12px' }}>
+            {isDiscard
+              ? 'Select cards from your hand to discard.'
+              : 'Select drones on the battlefield to destroy.'}
+          </p>
+        </div>
+
+        {/* Actions - only show close if handler provided */}
         {onClose && (
-          <button onClick={onClose} className="modal-close">
-            <X size={24} />
-          </button>
+          <div className="dw-modal-actions">
+            <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+              Got It
+            </button>
+          </div>
         )}
-        <h2 className="modal-title">{title}</h2>
-        <p className="modal-text">{text}</p>
       </div>
     </div>
   );

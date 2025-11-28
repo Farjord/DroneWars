@@ -332,20 +332,30 @@ function TacticalMapScreen() {
       console.log(`[TacticalMap] Arrived at waypoint ${wpIndex + 1}: ${arrivedHex.type}`);
 
       if (arrivedHex.type === 'poi') {
-        console.log('[TacticalMap] PoI encounter triggered');
+        // Check if POI has already been looted
+        const currentState = gameStateManager.getState();
+        const lootedPOIs = currentState.currentRunState?.lootedPOIs || [];
+        const alreadyLooted = lootedPOIs.some(p => p.q === arrivedHex.q && p.r === arrivedHex.r);
 
-        // Get encounter result from controller
-        const encounter = EncounterController.handlePOIArrival(arrivedHex, tierConfig);
-        setCurrentEncounter(encounter);
-        setShowPOIModal(true);
+        if (alreadyLooted) {
+          console.log(`[TacticalMap] PoI at (${arrivedHex.q}, ${arrivedHex.r}) already looted, skipping encounter`);
+          // Skip encounter and continue to next waypoint
+        } else {
+          console.log('[TacticalMap] PoI encounter triggered');
 
-        // Wait for encounter to be resolved (player clicks proceed)
-        await new Promise(resolve => {
-          encounterResolveRef.current = resolve;
-        });
+          // Get encounter result from controller
+          const encounter = EncounterController.handlePOIArrival(arrivedHex, tierConfig);
+          setCurrentEncounter(encounter);
+          setShowPOIModal(true);
 
-        // Check if movement was cancelled while waiting
-        if (shouldStopMovement.current) break;
+          // Wait for encounter to be resolved (player clicks proceed)
+          await new Promise(resolve => {
+            encounterResolveRef.current = resolve;
+          });
+
+          // Check if movement was cancelled while waiting
+          if (shouldStopMovement.current) break;
+        }
       } else if (arrivedHex.type === 'gate') {
         console.log('[TacticalMap] Arrived at gate - extraction available');
         // Gate extraction handled via HUD Extract button
@@ -629,12 +639,22 @@ function TacticalMapScreen() {
     const updatedLoot = [...(runState?.collectedLoot || []), ...newCardLoot];
     const newCredits = (runState?.creditsEarned || 0) + (loot.credits || 0);
 
+    // Mark POI as looted (prevents re-looting)
+    const lootedPOIs = runState.lootedPOIs || [];
+    const poiCoords = pendingLootEncounter?.poi
+      ? { q: pendingLootEncounter.poi.q, r: pendingLootEncounter.poi.r }
+      : null;
+    const updatedLootedPOIs = poiCoords
+      ? [...lootedPOIs, poiCoords]
+      : lootedPOIs;
+
     // Update run state
     gameStateManager.setState({
       currentRunState: {
         ...runState,
         collectedLoot: updatedLoot,
-        creditsEarned: newCredits
+        creditsEarned: newCredits,
+        lootedPOIs: updatedLootedPOIs
       }
     });
 
@@ -642,6 +662,7 @@ function TacticalMapScreen() {
     if (pendingLootEncounter) {
       const threatIncrease = pendingLootEncounter.poi?.poiData?.threatIncrease || 10;
       DetectionManager.addDetection(threatIncrease, `Looting ${pendingLootEncounter.poi?.poiData?.name || 'PoI'}`);
+      console.log(`[TacticalMap] POI marked as looted: (${poiCoords?.q}, ${poiCoords?.r})`);
     }
 
     // Clear loot state
@@ -945,6 +966,7 @@ function TacticalMapScreen() {
         previewPath={previewPath}
         isScanning={isScanningHex}
         insertionGate={currentRunState.insertionGate}
+        lootedPOIs={currentRunState.lootedPOIs || []}
       />
 
       {/* HUD Overlay */}
@@ -989,6 +1011,9 @@ function TacticalMapScreen() {
         // Tier config for encounter/threat calculations
         tierConfig={tierConfig}
         mapRadius={mapData.radius}
+
+        // Looted POI tracking
+        lootedPOIs={currentRunState.lootedPOIs || []}
       />
 
       {/* POI Encounter Modal */}
@@ -1041,14 +1066,12 @@ function TacticalMapScreen() {
         onContinue={handleExtractionContinue}
       />
 
-      {/* Debug info (dev mode only) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="tactical-map-debug">
-          <p>Tier: {mapData.tier} | PoIs: {mapData.poiCount}</p>
-          <p>Position: ({playerPosition.q}, {playerPosition.r})</p>
-          <p>Detection: {detection.toFixed(1)}%</p>
-        </div>
-      )}
+      {/* Map info display */}
+      <div className="tactical-map-info">
+        <p>Tier: {mapData.tier} | PoIs: {mapData.poiCount}</p>
+        <p>Position: ({playerPosition.q}, {playerPosition.r})</p>
+        <p>Detection: {detection.toFixed(1)}%</p>
+      </div>
     </div>
   );
 }

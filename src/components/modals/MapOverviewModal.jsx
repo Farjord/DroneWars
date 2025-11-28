@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useGameState } from '../../hooks/useGameState';
 import { debugLog } from '../../utils/debugLogger.js';
+import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js';
 import MapPreviewRenderer from '../ui/MapPreviewRenderer';
+import { Map, AlertTriangle, XCircle } from 'lucide-react';
 
 /**
  * MapOverviewModal Component
@@ -11,6 +13,7 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
   const { gameState } = useGameState();
   const [validationError, setValidationError] = useState(null);
   const [selectedGateId, setSelectedGateId] = useState(0); // Default to first gate
+  const [currentSlotId, setCurrentSlotId] = useState(selectedSlotId); // Track selected ship slot
 
   // Find current index in sorted sectors for navigation
   const currentIndex = activeSectors.findIndex(s => s.coordinate === selectedCoordinate);
@@ -34,6 +37,37 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
     singlePlayerProfile,
   } = gameState;
 
+  // Compute all active slots with validity info
+  const allActiveSlots = useMemo(() => {
+    if (!singlePlayerShipSlots) return [];
+
+    return singlePlayerShipSlots
+      .filter(slot => slot.status === 'active')
+      .map(slot => {
+        // Convert slot data to validation format
+        const deckObj = {};
+        (slot.decklist || []).forEach(card => {
+          deckObj[card.id] = card.quantity;
+        });
+        const dronesObj = {};
+        (slot.drones || []).forEach(d => {
+          dronesObj[d.name] = 1;
+        });
+
+        const validation = validateDeckForDeployment(deckObj, dronesObj, slot.shipComponents);
+        return { ...slot, isValid: validation.valid };
+      });
+  }, [singlePlayerShipSlots]);
+
+  // Check if the currently selected slot is invalid
+  const isCurrentSlotInvalid = useMemo(() => {
+    const current = allActiveSlots.find(s => s.id === currentSlotId);
+    return current && !current.isValid;
+  }, [allActiveSlots, currentSlotId]);
+
+  // Get current slot details for display
+  const currentSlot = singlePlayerShipSlots?.find(s => s.id === currentSlotId);
+
   // Defensive: Guard against null props
   if (selectedSlotId == null || selectedMap == null) {
     debugLog('EXTRACTION', '❌ MapOverviewModal rendered with null props!', {
@@ -46,18 +80,27 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
     console.error('[MapOverviewModal] Cannot render: null props', { selectedSlotId, selectedMap });
 
     return (
-      <div className="modal-overlay">
-        <div className="modal-container modal-container-sm">
-          <h2 className="modal-title text-red-400 mb-4">Error Loading Map</h2>
-          <p className="modal-text mb-4">
-            Unable to load map details. Please try again.
-          </p>
-          <button
-            onClick={onClose}
-            className="btn-cancel w-full"
-          >
-            Close
-          </button>
+      <div className="dw-modal-overlay" onClick={onClose}>
+        <div className="dw-modal-content dw-modal--sm dw-modal--danger" onClick={e => e.stopPropagation()}>
+          <div className="dw-modal-header">
+            <div className="dw-modal-header-icon">
+              <AlertTriangle size={28} />
+            </div>
+            <div className="dw-modal-header-info">
+              <h2 className="dw-modal-header-title">Error Loading Map</h2>
+              <p className="dw-modal-header-subtitle">Unable to load map details</p>
+            </div>
+          </div>
+          <div className="dw-modal-body">
+            <p className="dw-modal-text">
+              Please try again or select a different sector.
+            </p>
+          </div>
+          <div className="dw-modal-actions">
+            <button onClick={onClose} className="dw-btn dw-btn-cancel dw-btn--full">
+              Close
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -72,24 +115,38 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
 
   /**
    * Validate deployment readiness
-   * Checks: all components have hull > 0, no damaged drones, sufficient credits
+   * Checks: deck validity, all components have hull > 0, no damaged drones, sufficient credits
    */
   const validateDeployment = () => {
-    const slot = singlePlayerShipSlots.find(s => s.id === selectedSlotId);
+    const slot = singlePlayerShipSlots.find(s => s.id === currentSlotId);
     if (!slot || slot.status !== 'active') {
       return { valid: false, error: 'Invalid ship slot' };
     }
 
-    // Check ship components
+    // Check deck validity (40 cards, 5 drones, 3 components)
+    const deckObj = {};
+    (slot.decklist || []).forEach(card => {
+      deckObj[card.id] = card.quantity;
+    });
+    const dronesObj = {};
+    (slot.drones || []).forEach(d => {
+      dronesObj[d.name] = 1;
+    });
+    const deckValidation = validateDeckForDeployment(deckObj, dronesObj, slot.shipComponents);
+    if (!deckValidation.valid) {
+      return { valid: false, error: deckValidation.errors[0] };
+    }
+
+    // Check ship components for damage
     const components = slot.shipComponents;
     if (components) {
       for (const lane of ['left', 'middle', 'right']) {
         const compId = components[lane];
         if (compId) {
           // For slot 0, no instances exist (always full hull)
-          if (selectedSlotId !== 0) {
+          if (currentSlotId !== 0) {
             const instance = singlePlayerShipComponentInstances.find(
-              i => i.componentId === compId && i.shipSlotId === selectedSlotId
+              i => i.componentId === compId && i.shipSlotId === currentSlotId
             );
             if (instance && instance.currentHull <= 0) {
               return { valid: false, error: `Damaged ship component: ${compId}. Repair before deploying.` };
@@ -99,14 +156,14 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
       }
     }
 
-    // Check drones
+    // Check drones for damage
     if (slot.drones && slot.drones.length > 0) {
       for (const drone of slot.drones) {
         // For slot 0, drones never damaged
-        if (selectedSlotId !== 0) {
+        if (currentSlotId !== 0) {
           const droneId = drone.id || drone.name; // Handle both formats
           const instance = singlePlayerDroneInstances.find(
-            i => (i.droneId === droneId || i.droneName === droneId) && i.shipSlotId === selectedSlotId
+            i => (i.droneId === droneId || i.droneName === droneId) && i.shipSlotId === currentSlotId
           );
           if (instance && instance.currentHull <= 0) {
             return { valid: false, error: `Damaged drone: ${droneId}. Repair before deploying.` };
@@ -129,10 +186,10 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
    */
   const handleDeployClick = () => {
     debugLog('EXTRACTION', '🎯 Deploy button clicked in modal', {
-      selectedSlotId,
+      currentSlotId,
       selectedMapName: selectedMap?.name,
       selectedGateId,
-      hasSlotId: selectedSlotId != null,
+      hasSlotId: currentSlotId != null,
       hasMap: selectedMap != null
     });
 
@@ -146,22 +203,22 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
     }
 
     debugLog('EXTRACTION', '✅ Validation passed, calling onDeploy', {
-      slotId: selectedSlotId,
+      slotId: currentSlotId,
       mapName: selectedMap.name,
       entryGateId: selectedGateId
     });
 
     setValidationError(null);
-    onDeploy(selectedSlotId, selectedMap, selectedGateId); // Pass gate ID
+    onDeploy(currentSlotId, selectedMap, selectedGateId); // Pass gate ID
   };
 
   /**
-   * Get difficulty color
+   * Get difficulty color - returns actual color values for inline styles
    */
   const getDifficultyColor = () => {
-    if (selectedMap.tier === 1) return 'text-green-400';
-    if (selectedMap.tier === 2) return 'text-yellow-400';
-    return 'text-red-400';
+    if (selectedMap.tier === 1) return '#22c55e';  // green
+    if (selectedMap.tier === 2) return '#eab308';  // yellow
+    return '#ef4444';  // red
   };
 
   // Use actual POI breakdown from map data
@@ -171,206 +228,230 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
   const entryCost = selectedMap.entryCost || 0;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-container" style={{
-        maxWidth: '850px',
-        width: '90vw',
-        maxHeight: '90vh',
-        overflowY: 'auto',
-        position: 'relative'
-      }}>
+    <div className="dw-modal-overlay" onClick={onClose}>
+      <div className="dw-modal-content dw-modal--xl dw-modal--action" onClick={e => e.stopPropagation()}>
         {/* Header with Navigation */}
-        <div className="flex justify-between items-center mb-4">
+        <div className="dw-modal-header">
           <button
             onClick={handlePrev}
-            className="btn-utility px-3 py-2"
+            className="dw-btn dw-btn-secondary"
             disabled={activeSectors.length <= 1}
+            style={{ marginRight: '12px' }}
           >
             ← Prev
           </button>
 
-          <div className="text-center flex-1">
-            <h2 className="heading-font text-2xl font-bold text-white">Sector {selectedCoordinate}</h2>
-            <p className="body-font text-sm text-gray-400">Ship Slot {selectedSlotId} | Tier {selectedMap.tier}</p>
+          <div className="dw-modal-header-info" style={{ flex: 1, textAlign: 'center' }}>
+            <h2 className="dw-modal-header-title">Sector {selectedCoordinate}</h2>
+            <p className="dw-modal-header-subtitle">
+              {currentSlot ? (currentSlot.id === 0 ? 'Starter Deck' : (currentSlot.name || `Slot ${currentSlotId}`)) : 'No Ship'} | Tier {selectedMap.tier}
+            </p>
           </div>
 
           <button
             onClick={handleNext}
-            className="btn-utility px-3 py-2"
+            className="dw-btn dw-btn-secondary"
             disabled={activeSectors.length <= 1}
+            style={{ marginLeft: '12px' }}
           >
             Next →
           </button>
         </div>
 
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="modal-close"
-          style={{ position: 'absolute', top: '1rem', right: '1rem' }}
-        >
-          ×
-        </button>
-
-        {/* Two-Column Layout */}
-        <div className="flex gap-6 mb-6">
-          {/* Left Column: Map Preview */}
-          <div className="flex flex-col">
-            {/* Map Preview */}
-            {selectedMap.hexes ? (
-              <MapPreviewRenderer
-                hexes={selectedMap.hexes}
-                gates={selectedMap.gates || []}
-                pois={selectedMap.pois || []}
-                radius={selectedMap.radius || 5}
-                selectedGateId={selectedGateId}
-                onGateSelect={setSelectedGateId}
-              />
-            ) : (
-              <div style={{
-                width: '400px',
-                height: '400px',
-                backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                borderRadius: '8px',
-                border: '1px solid rgba(6, 182, 212, 0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <div className="text-center text-gray-500">
-                  <div className="text-4xl mb-2">🗺️</div>
-                  <p>Map data loading...</p>
+        {/* Body - Two Column Grid Layout */}
+        <div className="dw-modal-body">
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'auto 1fr',
+            gridTemplateRows: '1fr auto',
+            gap: '16px 24px'
+          }}>
+            {/* Row 1, Col 1: Map (aligned to bottom of cell) */}
+            <div style={{ gridRow: 1, gridColumn: 1, display: 'flex', alignItems: 'flex-end' }}>
+              {selectedMap.hexes ? (
+                <MapPreviewRenderer
+                  hexes={selectedMap.hexes}
+                  gates={selectedMap.gates || []}
+                  pois={selectedMap.pois || []}
+                  radius={selectedMap.radius || 5}
+                  selectedGateId={selectedGateId}
+                  onGateSelect={setSelectedGateId}
+                />
+              ) : (
+                <div style={{
+                  width: '400px',
+                  height: '400px',
+                  backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                  borderRadius: '6px',
+                  border: '1px solid var(--modal-action-border)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <div style={{ textAlign: 'center', color: 'var(--modal-text-muted)' }}>
+                    <Map size={48} style={{ marginBottom: '8px', opacity: 0.5 }} />
+                    <p>Map data loading...</p>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Gate Selection Info */}
-            <div className="mt-3 p-3 bg-gray-900 rounded border border-gray-700">
-              <p className="text-sm text-gray-400 mb-1 flex items-center gap-2">
-                Click a gate
-                <svg width="16" height="16" viewBox="-8 -8 16 16" style={{ display: 'inline-block' }}>
-                  <polygon
-                    points="0,-6 6,0 0,6 -6,0"
-                    fill="#3b82f6"
-                    stroke="#fff"
-                    strokeWidth="1"
-                  />
-                </svg>
-                on the map to select entry point
-              </p>
-              <p className="text-cyan-400 font-bold">
-                ▶ Entry Point: Gate {selectedGateId + 1}
-              </p>
-            </div>
-          </div>
-
-          {/* Right Column: Sector Intel */}
-          <div className="flex-1 flex flex-col gap-4">
-            {/* Section Header */}
-            <div className="border-b border-gray-700 pb-2">
-              <h3 className="heading-font text-lg font-bold text-cyan-400">SECTOR INTEL</h3>
+              )}
             </div>
 
-            {/* Basic Stats */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="p-3 bg-gray-900 rounded">
-                <div className="text-xs text-gray-400 mb-1">Difficulty</div>
-                <div className={`text-lg font-bold ${getDifficultyColor()}`}>
-                  Tier {selectedMap.tier}
-                </div>
+            {/* Row 1, Col 2: Intel content */}
+            <div style={{ gridRow: 1, gridColumn: 2, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Section Header */}
+              <div style={{ borderBottom: '1px solid var(--modal-border)', paddingBottom: '8px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--modal-action)', margin: 0 }}>SECTOR INTEL</h3>
               </div>
-              <div className="p-3 bg-gray-900 rounded">
-                <div className="text-xs text-gray-400 mb-1">Total POIs</div>
-                <div className="text-lg font-bold text-white">{totalPOIs}</div>
-              </div>
-              <div className="p-3 bg-gray-900 rounded">
-                <div className="text-xs text-gray-400 mb-1">Gates</div>
-                <div className="text-lg font-bold text-blue-400">{gateCount}</div>
-              </div>
-            </div>
 
-            {/* POI Breakdown */}
-            <div className="p-4 bg-gray-900 rounded">
-              <div className="text-sm text-gray-400 mb-3 border-b border-gray-700 pb-2">POI BREAKDOWN</div>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-300">Ordnance:</span>
-                  <span className="text-red-400 font-bold">{poiBreakdown.Ordnance || 0}</span>
+              {/* Basic Stats */}
+              <div className="dw-modal-grid dw-modal-grid--3">
+                <div className="dw-modal-stat">
+                  <div className="dw-modal-stat-label">Difficulty</div>
+                  <div className="dw-modal-stat-value" style={{ color: getDifficultyColor() }}>
+                    Tier {selectedMap.tier}
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-300">Support:</span>
-                  <span className="text-blue-400 font-bold">{poiBreakdown.Support || 0}</span>
+                <div className="dw-modal-stat">
+                  <div className="dw-modal-stat-label">Total POIs</div>
+                  <div className="dw-modal-stat-value">{totalPOIs}</div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-300">Tactic:</span>
-                  <span className="text-orange-400 font-bold">{poiBreakdown.Tactic || 0}</span>
+                <div className="dw-modal-stat">
+                  <div className="dw-modal-stat-label">Gates</div>
+                  <div className="dw-modal-stat-value" style={{ color: '#3b82f6' }}>{gateCount}</div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-300">Upgrade:</span>
-                  <span className="text-purple-400 font-bold">{poiBreakdown.Upgrade || 0}</span>
+              </div>
+
+              {/* POI Breakdown */}
+              <div className="dw-modal-info-box">
+                <p className="dw-modal-info-title" style={{ borderBottom: '1px solid var(--modal-border)', paddingBottom: '8px', marginBottom: '12px' }}>POI BREAKDOWN</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--modal-text-secondary)' }}>Ordnance:</span>
+                    <span style={{ color: 'var(--modal-danger)', fontWeight: 600 }}>{poiBreakdown.Ordnance || 0}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--modal-text-secondary)' }}>Support:</span>
+                    <span style={{ color: '#3b82f6', fontWeight: 600 }}>{poiBreakdown.Support || 0}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--modal-text-secondary)' }}>Tactic:</span>
+                    <span style={{ color: '#f97316', fontWeight: 600 }}>{poiBreakdown.Tactic || 0}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--modal-text-secondary)' }}>Upgrade:</span>
+                    <span style={{ color: '#a855f7', fontWeight: 600 }}>{poiBreakdown.Upgrade || 0}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detection & Encounter */}
+              <div className="dw-modal-grid dw-modal-grid--2">
+                <div className="dw-modal-stat">
+                  <div className="dw-modal-stat-label">Starting Detection</div>
+                  <div className="dw-modal-stat-value" style={{ color: (selectedMap.baseDetection || 0) > 10 ? '#f97316' : 'var(--modal-success)' }}>
+                    {selectedMap.baseDetection || 0}%
+                  </div>
+                </div>
+                <div className="dw-modal-stat">
+                  <div className="dw-modal-stat-label">Encounter Risk</div>
+                  <div className="dw-modal-stat-value" style={{ color: (selectedMap.baseEncounterChance || 5) > 5 ? '#f97316' : 'var(--modal-success)' }}>
+                    {selectedMap.baseEncounterChance || 5}%
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Detection & Encounter */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-gray-900 rounded">
-                <div className="text-xs text-gray-400 mb-1">Starting Detection</div>
-                <div className={`text-lg font-bold ${(selectedMap.baseDetection || 0) > 10 ? 'text-orange-400' : 'text-green-400'}`}>
-                  {selectedMap.baseDetection || 0}%
-                </div>
-              </div>
-              <div className="p-3 bg-gray-900 rounded">
-                <div className="text-xs text-gray-400 mb-1">Encounter Risk</div>
-                <div className={`text-lg font-bold ${(selectedMap.baseEncounterChance || 5) > 5 ? 'text-orange-400' : 'text-green-400'}`}>
-                  {selectedMap.baseEncounterChance || 5}%
-                </div>
+            {/* Row 2, Col 1: Gate Selection Info */}
+            <div style={{ gridRow: 2, gridColumn: 1, display: 'flex' }}>
+              <div className="dw-modal-info-box" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <p style={{ fontSize: '13px', color: 'var(--modal-text-secondary)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  Click a gate
+                  <svg width="16" height="16" viewBox="-8 -8 16 16" style={{ display: 'inline-block' }}>
+                    <polygon
+                      points="0,-6 6,0 0,6 -6,0"
+                      fill="#3b82f6"
+                      stroke="#fff"
+                      strokeWidth="1"
+                    />
+                  </svg>
+                  on the map to select entry point
+                </p>
+                <p style={{ color: 'var(--modal-action)', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <svg width="16" height="16" viewBox="-8 -8 16 16" style={{ display: 'inline-block' }}>
+                    <polygon
+                      points="0,-6 6,0 0,6 -6,0"
+                      fill="#22c55e"
+                      stroke="#fff"
+                      strokeWidth="1"
+                    />
+                  </svg>
+                  Entry Point: Gate {selectedGateId + 1}
+                </p>
               </div>
             </div>
 
-            {/* Detection Warning */}
-            {(selectedMap.baseDetection || 0) > 10 && (
-              <div className="p-3 bg-orange-900 bg-opacity-30 border border-orange-700 rounded">
-                <div className="flex items-start gap-2">
-                  <span className="text-xl">⚠️</span>
-                  <div>
-                    <div className="text-orange-200 font-bold text-sm">Elevated Detection</div>
-                    <p className="text-xs text-orange-300">
-                      High POI density means you start with {selectedMap.baseDetection}% detection
+            {/* Row 2, Col 2: Ship Selection + Validation Error */}
+            <div style={{ gridRow: 2, gridColumn: 2, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Ship Selection Dropdown */}
+              <div className="dw-modal-info-box">
+                <p className="dw-modal-info-title" style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  DEPLOY SHIP
+                  {isCurrentSlotInvalid && (
+                    <span style={{ color: '#f97316', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <AlertTriangle size={14} />
+                      CURRENT SHIP IS INVALID
+                    </span>
+                  )}
+                </p>
+                {allActiveSlots.length > 0 ? (
+                  <select
+                    value={currentSlotId}
+                    onChange={(e) => setCurrentSlotId(Number(e.target.value))}
+                    className="w-full bg-slate-700 border border-cyan-500/50 rounded px-3 py-2 text-white font-orbitron focus:outline-none focus:border-cyan-400"
+                  >
+                    {allActiveSlots.map(slot => (
+                      <option key={slot.id} value={slot.id}>
+                        {!slot.isValid ? '⚠ ' : ''}{slot.id === 0 ? 'Starter Deck' : (slot.name || `Ship Slot ${slot.id}`)}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div style={{ color: 'var(--modal-danger)', fontSize: '13px' }}>
+                    <p style={{ margin: 0 }}>No ships available.</p>
+                    <p style={{ margin: '4px 0 0 0', color: 'var(--modal-text-secondary)' }}>
+                      Create a ship in the Hangar first.
                     </p>
                   </div>
-                </div>
+                )}
               </div>
-            )}
 
-            {/* Validation Error */}
-            {validationError && (
-              <div className="p-3 bg-red-900 bg-opacity-30 border border-red-700 rounded">
-                <div className="flex items-start gap-2">
-                  <span className="text-xl">❌</span>
-                  <div>
-                    <div className="text-red-200 font-bold text-sm">Cannot Deploy</div>
-                    <p className="text-xs text-red-300">{validationError}</p>
+              {/* Validation Error */}
+              {validationError && (
+                <div className="dw-modal-info-box" style={{ '--modal-theme': 'var(--modal-danger)', '--modal-theme-bg': 'var(--modal-danger-bg)', '--modal-theme-border': 'var(--modal-danger-border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <XCircle size={18} style={{ color: 'var(--modal-danger)', flexShrink: 0 }} />
+                    <div>
+                      <p className="dw-modal-info-title">Cannot Deploy</p>
+                      <p style={{ margin: 0, fontSize: '13px', color: 'var(--modal-text-primary)' }}>{validationError}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-4">
-          <button
-            onClick={onClose}
-            className="btn-utility flex-1 py-3"
-          >
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button onClick={onClose} className="dw-btn dw-btn-cancel">
             Back
           </button>
           <button
             onClick={handleDeployClick}
-            className="btn-confirm flex-1 py-3"
+            className="dw-btn dw-btn-confirm"
+            disabled={allActiveSlots.length === 0 || isCurrentSlotInvalid}
           >
-            Deploy →
+            Deploy
           </button>
         </div>
       </div>

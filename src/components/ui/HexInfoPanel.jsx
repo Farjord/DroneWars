@@ -119,7 +119,10 @@ function HexInfoPanel({
 
   // Tier config for calculations
   tierConfig: passedTierConfig,
-  mapRadius = 5
+  mapRadius = 5,
+
+  // Looted POI tracking
+  lootedPOIs = []
 }) {
   // Use passed tierConfig if available, otherwise compute from mapData
   const tierConfig = passedTierConfig || (mapData ? mapTiers[mapData.tier - 1] : null);
@@ -179,6 +182,12 @@ function HexInfoPanel({
     return 'value-critical';
   };
 
+  // Check if a POI has been looted
+  const isLootedPOI = (hex) => {
+    if (!hex || hex.type !== 'poi') return false;
+    return lootedPOIs.some(p => p.q === hex.q && p.r === hex.r);
+  };
+
   // Get movement preview for inspected hex
   const getHexPreview = () => {
     if (!inspectedHex || !mapData || !tierConfig) return null;
@@ -233,30 +242,46 @@ function HexInfoPanel({
               </span>
             </div>
             <p className="movement-status">
-              {isPaused ? 'Journey paused' : 'Traveling to waypoint...'}
+              {isPaused ? 'Paused' : 'Traveling to waypoint...'}
             </p>
 
-            {/* Next hex info during movement */}
+            {/* Upcoming hexes during movement */}
             {(() => {
               const currentWaypoint = waypoints[currentWaypointIndex];
               const path = currentWaypoint?.pathFromPrev || [];
-              const nextHex = currentHexIndex < path.length ? path[currentHexIndex] : null;
 
-              if (!nextHex || !tierConfig) return null;
+              // Get next 4 hexes from current position
+              const upcomingHexes = [];
+              for (let i = 0; i < 4 && (currentHexIndex + i) < path.length; i++) {
+                const hex = path[currentHexIndex + i];
+                if (hex && tierConfig) {
+                  upcomingHexes.push({
+                    hex,
+                    index: i,
+                    encounterChance: MovementController.getHexEncounterChance(hex, tierConfig, mapData),
+                    threatIncrease: DetectionManager.getHexDetectionCost(hex, tierConfig, mapRadius)
+                  });
+                }
+              }
 
-              const nextEncounterChance = MovementController.getHexEncounterChance(nextHex, tierConfig, mapData);
-              const nextThreatIncrease = DetectionManager.getHexDetectionCost(nextHex, tierConfig, mapRadius);
+              if (upcomingHexes.length === 0) return null;
 
               return (
-                <div className="next-hex-info">
-                  <div className="next-hex-header">Next Hex</div>
-                  <div className="next-hex-stat">
-                    <span className="stat-label">Encounter Risk</span>
-                    <span className="stat-value">{nextEncounterChance}%</span>
-                  </div>
-                  <div className="next-hex-stat">
-                    <span className="stat-label">Threat Increase</span>
-                    <span className="stat-value stat-value-cost">+{nextThreatIncrease.toFixed(1)}%</span>
+                <div className="upcoming-hexes">
+                  <div className="upcoming-hexes-header">Upcoming</div>
+                  <div className="upcoming-hexes-list">
+                    {upcomingHexes.map((item, idx) => (
+                      <div
+                        key={`${item.hex.q},${item.hex.r}`}
+                        className={`upcoming-hex-item ${idx === 0 ? 'upcoming-hex-current' : ''}`}
+                      >
+                        <span className="upcoming-hex-number">{idx + 1}</span>
+                        <div className="upcoming-hex-stats">
+                          <span className="upcoming-hex-risk">{item.encounterChance}%</span>
+                          <span className="upcoming-hex-threat">+{item.threatIncrease.toFixed(1)}%</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               );
@@ -276,7 +301,7 @@ function HexInfoPanel({
               onClick={onCancel}
               className="hex-action-link"
             >
-              Cancel Journey
+              Cancel
             </button>
           )}
         </div>
@@ -294,7 +319,7 @@ function HexInfoPanel({
         {/* Back button header */}
         <div className="hex-info-header hex-info-header-back">
           <button onClick={onBackToJourney} className="back-button">
-            ← Back to Journey
+            ← Back
           </button>
         </div>
 
@@ -344,12 +369,21 @@ function HexInfoPanel({
                 </div>
               )}
 
-              {/* Loot info for PoIs */}
-              {getLootSummary(inspectedHex) && (
-                <div className="hex-loot-info" style={{ borderLeftColor: getLootSummary(inspectedHex).color }}>
-                  <div className="loot-type">{getLootSummary(inspectedHex).type}</div>
-                  <div className="loot-desc">{getLootSummary(inspectedHex).description}</div>
-                </div>
+              {/* Loot info for PoIs - show "Claimed" if already looted */}
+              {inspectedHex?.type === 'poi' && (
+                isLootedPOI(inspectedHex) ? (
+                  <div className="hex-loot-claimed">
+                    <span className="claimed-icon"><IconCheck size={16} className="icon-claimed" /></span>
+                    <span className="claimed-text">Rewards Claimed</span>
+                  </div>
+                ) : (
+                  getLootSummary(inspectedHex) && (
+                    <div className="hex-loot-info" style={{ borderLeftColor: getLootSummary(inspectedHex).color }}>
+                      <div className="loot-type">{getLootSummary(inspectedHex).type}</div>
+                      <div className="loot-desc">{getLootSummary(inspectedHex).description}</div>
+                    </div>
+                  )
+                )
               )}
 
               {/* Movement stats (if not already a waypoint) */}
@@ -411,7 +445,7 @@ function HexInfoPanel({
               {isAlreadyWaypoint && (
                 <div className="hex-info-waypoint-badge">
                   <span className="waypoint-badge-icon"><IconCheck size={14} className="icon-check" /></span>
-                  <span className="waypoint-badge-text">Already in journey</span>
+                  <span className="waypoint-badge-text">Already a waypoint</span>
                 </div>
               )}
 
@@ -449,7 +483,7 @@ function HexInfoPanel({
               className={isAlreadyWaypoint ? 'btn-cancel w-full' : 'btn-info w-full'}
               disabled={!isAlreadyWaypoint && preview && !preview.valid}
             >
-              {isAlreadyWaypoint ? 'Remove Waypoint' : 'Add to Journey'}
+              {isAlreadyWaypoint ? 'Remove Waypoint' : 'Add Waypoint'}
             </button>
           )}
         </div>
@@ -464,7 +498,7 @@ function HexInfoPanel({
   return (
     <div className="hex-info-panel">
       <div className="hex-info-header">
-        <h2 className="hex-info-title">Journey Plan</h2>
+        <h2 className="hex-info-title">Waypoints</h2>
       </div>
 
       <div className="hex-info-detection">
@@ -527,7 +561,7 @@ function HexInfoPanel({
               onClick={onCommence}
               className="btn-confirm w-full"
             >
-              Commence Journey
+              Commence
             </button>
             <button
               onClick={onClearAll}

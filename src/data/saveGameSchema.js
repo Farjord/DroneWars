@@ -40,6 +40,9 @@ export const defaultPlayerProfile = {
   // Single seed for entire single-player game (deterministic map generation)
   gameSeed: Date.now(),
 
+  // Default ship slot for deployment (0-5)
+  defaultShipSlotId: 0,
+
   // Statistics (optional for MVP)
   stats: {
     runsCompleted: 0,
@@ -47,6 +50,7 @@ export const defaultPlayerProfile = {
     totalCreditsEarned: 0,
     totalCombatsWon: 0,
     totalCombatsLost: 0,
+    highestTierCompleted: 0,
   }
 };
 
