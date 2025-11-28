@@ -280,6 +280,37 @@ const HangarScreen = () => {
     };
   };
 
+  /**
+   * Zoom and pan to center on a specific sector
+   */
+  const zoomToSector = (coordinate) => {
+    const cell = hexGridData?.allCells.find(c => c.coordinate === coordinate);
+    if (!cell || !mapContainerRef.current) return;
+
+    const container = mapContainerRef.current.getBoundingClientRect();
+    const targetZoom = 2; // Zoom level when focusing on a sector
+
+    // Calculate center of the cell
+    const cellCenterX = cell.x + hexGridData.hexWidth / 2;
+    const cellCenterY = cell.y + hexGridData.hexHeight / 2;
+
+    // Calculate pan needed to center this cell
+    // The transform origin is center, so we need to offset from container center
+    const containerCenterX = container.width / 2;
+    const containerCenterY = container.height / 2;
+
+    // Pan = (containerCenter - cellCenter) at the target zoom level
+    const panX = (containerCenterX - cellCenterX) * targetZoom;
+    const panY = (containerCenterY - cellCenterY) * targetZoom;
+
+    // Clamp pan values
+    const clamped = clampPan(panX, panY, targetZoom);
+
+    setZoom(targetZoom);
+    setPan(clamped);
+    panRef.current = clamped;
+  };
+
   const handleMapMouseDown = (e) => {
     if (e.button === 0) {
       setIsDragging(true);
@@ -399,7 +430,7 @@ const HangarScreen = () => {
     setSidebarMode(mode);
   };
 
-  // Ship slot click - show new deck prompt for empty slots
+  // Ship slot click - opens deck editor
   const handleSlotClick = (slot) => {
     if (slot.status === 'mia') {
       // Open MIA recovery modal
@@ -409,12 +440,16 @@ const HangarScreen = () => {
     }
 
     if (slot.status === 'empty') {
-      // Show new deck prompt
+      // Show new deck prompt modal
       setSelectedSlotId(slot.id);
       setActiveModal('newDeckPrompt');
     } else if (slot.status === 'active') {
-      // Could show ship details in future
-      console.log('Clicked active ship slot:', slot.id);
+      // Navigate to deck editor screen (read-only for slot 0)
+      gameStateManager.setState({
+        appState: 'extractionDeckBuilder',
+        extractionDeckSlotId: slot.id,
+        extractionNewDeckOption: null
+      });
     }
   };
 
@@ -424,29 +459,30 @@ const HangarScreen = () => {
     setActiveModal(null);
   };
 
-  // Toggle default ship slot (star)
-  const handleStarToggle = (slotId, e) => {
-    e.stopPropagation();
-    gameStateManager.setState({
-      singlePlayerProfile: {
-        ...singlePlayerProfile,
-        defaultShipSlotId: singlePlayerProfile?.defaultShipSlotId === slotId ? null : slotId
-      }
+  // Handle star toggle (set as default ship)
+  const handleStarToggle = (e, slotId) => {
+    e.stopPropagation(); // Prevent slot click
+    const currentDefault = singlePlayerProfile?.defaultShipSlotId ?? 0;
+    // Toggle: if already default, set to slot 0; otherwise set this slot as default
+    const newDefault = currentDefault === slotId ? 0 : slotId;
+    gameStateManager.setDefaultShipSlot(newDefault);
+  };
+
+  // Handle delete click
+  const handleDeleteClick = (e, slot) => {
+    e.stopPropagation(); // Prevent slot click
+    setDeleteConfirmation({
+      slotId: slot.id,
+      slotName: slot.name || `Ship Slot ${slot.id}`
     });
   };
 
-  // Open delete confirmation
-  const handleDeleteClick = (slot, e) => {
-    e.stopPropagation();
-    setDeleteConfirmation({ slotId: slot.id, slotName: slot.name || `Slot ${slot.id}` });
-  };
-
-  // Confirm delete
+  // Handle delete confirmation
   const handleDeleteConfirm = () => {
     if (deleteConfirmation) {
-      gameStateManager.deleteShipSlot(deleteConfirmation.slotId);
+      gameStateManager.deleteShipSlotDeck(deleteConfirmation.slotId);
+      setDeleteConfirmation(null);
     }
-    setDeleteConfirmation(null);
   };
 
   // Cancel delete
@@ -454,25 +490,14 @@ const HangarScreen = () => {
     setDeleteConfirmation(null);
   };
 
-  // Handle new deck option selection
+  // Handle new deck option selection - navigate to deck editor
   const handleNewDeckOption = (option) => {
-    if (option === 'empty') {
-      // Navigate to deck builder with empty deck
-      gameStateManager.setState({
-        appState: 'deckBuilder',
-        deckBuilderSlotId: selectedSlotId,
-        deckBuilderCopyFrom: null
-      });
-    } else if (option === 'copyFromSlot0') {
-      // Navigate to deck builder copying from slot 0
-      gameStateManager.setState({
-        appState: 'deckBuilder',
-        deckBuilderSlotId: selectedSlotId,
-        deckBuilderCopyFrom: 0
-      });
-    }
     setActiveModal(null);
-    setSelectedSlotId(null);
+    gameStateManager.setState({
+      appState: 'extractionDeckBuilder',
+      extractionDeckSlotId: selectedSlotId,
+      extractionNewDeckOption: option
+    });
   };
 
   // Action button clicks
@@ -522,6 +547,9 @@ const HangarScreen = () => {
     }
 
     debugLog('EXTRACTION', '✅ Map found', { mapName: map.name, tier: map.tier });
+
+    // Zoom to the clicked sector
+    zoomToSector(coordinate);
 
     // Use default ship slot if set, otherwise first active slot
     const defaultSlotId = singlePlayerProfile?.defaultShipSlotId;
@@ -605,6 +633,7 @@ const HangarScreen = () => {
     if (sector) {
       setSelectedCoordinate(coordinate);
       setSelectedMap(generatedMaps[sector.mapIndex]);
+      zoomToSector(coordinate); // Also zoom/pan the hangar map
     }
   };
 
@@ -684,16 +713,29 @@ const HangarScreen = () => {
           <div
             ref={transformRef}
             style={{
+            position: 'relative',
             width: '100%',
             height: '100%',
             transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
             transformOrigin: 'center center',
-            backgroundImage: `url('${eremosBackground}')`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
             cursor: isDragging ? 'grabbing' : 'grab',
             transition: isDragging ? 'none' : 'transform 0.1s ease-out'
           }}>
+          {/* Background image element - uses img for better quality scaling */}
+          <img
+            src={eremosBackground}
+            alt=""
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center',
+              pointerEvents: 'none',
+              zIndex: 0
+            }}
+          />
           {/* SVG Hex Grid - integrated grid and map icons */}
           {hexGridData && (
             <svg
@@ -975,67 +1017,104 @@ const HangarScreen = () => {
               <>
                 {singlePlayerShipSlots.map((slot) => {
                   const isDefault = singlePlayerProfile?.defaultShipSlotId === slot.id;
-                  const validation = slot.status === 'active' ? validateDeckForDeployment(slot, singlePlayerDroneInstances) : null;
-                  const isValid = validation?.isValid ?? true;
+                  const isSlot0 = slot.id === 0;
+                  const isActive = slot.status === 'active';
+                  const isEmpty = slot.status === 'empty';
+                  const isMia = slot.status === 'mia';
+
+                  // Get card/drone counts for active slots
+                  const cardCount = isActive ? (slot.decklist || []).reduce((sum, c) => sum + c.quantity, 0) : 0;
+                  const droneCount = isActive ? (slot.drones || []).length : 0;
+
+                  // Check if deck is valid (for active slots)
+                  const isValidDeck = isActive ? (() => {
+                    const deckObj = {};
+                    (slot.decklist || []).forEach(card => {
+                      deckObj[card.id] = card.quantity;
+                    });
+                    const dronesObj = {};
+                    (slot.drones || []).forEach(d => {
+                      dronesObj[d.name] = 1;
+                    });
+                    const validation = validateDeckForDeployment(deckObj, dronesObj, slot.shipComponents);
+                    return validation.valid;
+                  })() : true;
 
                   return (
                     <div
                       key={slot.id}
+                      className={`relative rounded-lg border-2 transition-all cursor-pointer ${
+                        isMia
+                          ? 'border-red-500 bg-red-900/20'
+                          : isEmpty
+                          ? 'border-dashed border-gray-600 bg-gray-800/30 hover:border-gray-500'
+                          : isDefault
+                          ? 'border-yellow-400 bg-cyan-900/30'
+                          : 'border-cyan-500 bg-cyan-900/20 hover:border-cyan-400'
+                      }`}
                       onClick={() => handleSlotClick(slot)}
-                      style={{
-                        background: slot.status === 'mia' ? 'rgba(239, 68, 68, 0.2)' :
-                                   slot.status === 'empty' ? 'rgba(75, 85, 99, 0.3)' :
-                                   'rgba(6, 182, 212, 0.15)',
-                        border: `2px solid ${isDefault ? '#fbbf24' : slot.status === 'mia' ? '#ef4444' : 'var(--color-accent-dim)'}`,
-                        borderRadius: '8px',
-                        padding: '12px',
-                        cursor: 'pointer',
-                        position: 'relative'
-                      }}
+                      style={{ padding: '12px' }}
                     >
-                      {/* Top row: Star + Name + Delete */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                        {slot.status === 'active' && (
-                          <button
-                            onClick={(e) => handleStarToggle(slot.id, e)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                          >
-                            <Star
-                              size={20}
-                              fill={isDefault ? '#fbbf24' : 'none'}
-                              color={isDefault ? '#fbbf24' : '#6b7280'}
-                            />
-                          </button>
-                        )}
-                        <span style={{
-                          flex: 1,
-                          fontWeight: 'bold',
-                          color: slot.status === 'mia' ? '#ef4444' : 'var(--color-accent-bright)'
-                        }}>
-                          {slot.status === 'active' ? slot.name : slot.status === 'empty' ? 'EMPTY SLOT' : 'MIA'}
+                      {/* Header Row: Slot name/id + Star + Delete */}
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`font-orbitron text-sm flex items-center gap-1 ${isMia ? 'text-red-400' : 'text-cyan-400'}`}>
+                          {isSlot0 ? 'STARTER' : `SLOT ${slot.id}`}
+                          {isActive && !isValidDeck && (
+                            <AlertTriangle size={14} className="text-orange-400" />
+                          )}
                         </span>
-                        {slot.status === 'active' && slot.id !== 0 && (
-                          <button
-                            onClick={(e) => handleDeleteClick(slot, e)}
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                          >
-                            <Trash2 size={18} color="#ef4444" />
-                          </button>
-                        )}
-                        {!isValid && (
-                          <AlertTriangle size={18} color="#f59e0b" title={validation?.errors?.join(', ')} />
-                        )}
+                        <div className="flex items-center gap-1">
+                          {/* Star button (only for active slots) */}
+                          {isActive && (
+                            <button
+                              onClick={(e) => handleStarToggle(e, slot.id)}
+                              className={`p-1 rounded transition-colors ${
+                                isDefault
+                                  ? 'text-yellow-400 hover:text-yellow-300'
+                                  : 'text-gray-500 hover:text-gray-400'
+                              }`}
+                              title={isDefault ? 'Default ship for deployment' : 'Set as default'}
+                            >
+                              <Star size={16} fill={isDefault ? 'currentColor' : 'none'} />
+                            </button>
+                          )}
+                          {/* Delete button (not for slot 0 or empty slots) */}
+                          {isActive && !isSlot0 && (
+                            <button
+                              onClick={(e) => handleDeleteClick(e, slot)}
+                              className="p-1 rounded text-gray-500 hover:text-red-400 transition-colors"
+                              title="Delete deck"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </div>
                       </div>
 
-                      {/* Status info */}
-                      {slot.status === 'active' && (
-                        <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                          {slot.deckCardInstanceIds?.length || 0} cards
+                      {/* Deck Name */}
+                      <div className="font-medium text-white text-sm truncate">
+                        {isActive ? (slot.name || 'Unnamed Deck') : isMia ? 'MIA' : 'Empty Slot'}
+                      </div>
+
+                      {/* Stats for active slots */}
+                      {isActive && (
+                        <div className={`text-xs mt-1 ${isValidDeck ? 'text-gray-400' : 'text-orange-400'}`}>
+                          {cardCount}/40 cards • {droneCount}/5 drones
+                          {!isValidDeck && ' (incomplete)'}
                         </div>
                       )}
-                      {slot.status === 'empty' && (
-                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                          Click to create deck
+
+                      {/* MIA indicator */}
+                      {isMia && (
+                        <div className="text-xs text-red-400 mt-1">
+                          Click to recover
+                        </div>
+                      )}
+
+                      {/* Empty slot indicator */}
+                      {isEmpty && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Click to create
                         </div>
                       )}
                     </div>
