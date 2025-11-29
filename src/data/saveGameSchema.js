@@ -93,6 +93,16 @@ export const defaultShipComponentInstances = [];
 export const defaultDiscoveredCards = [];
 
 /**
+ * Default quick deployments - empty at start
+ * Deck-agnostic deployment templates for turn 1
+ * Format: { id, name, createdAt, droneRoster: string[], placements: { droneName, lane }[] }
+ * - droneRoster: 5 unique drone names this deployment is designed for
+ * - placements: which drones to deploy in which lanes (0=left, 1=middle, 2=right)
+ * Maximum 5 quick deployments allowed
+ */
+export const defaultQuickDeployments = [];
+
+/**
  * Create default ship slot
  * @param {number} id - Slot ID (0-5)
  * @returns {Object} Ship slot configuration
@@ -150,6 +160,7 @@ export function createNewSave() {
     shipComponentInstances: [],  // Empty at start
     discoveredCards: JSON.parse(JSON.stringify(defaultDiscoveredCards)),
     shipSlots: defaultShipSlots.map(slot => JSON.parse(JSON.stringify(slot))),
+    quickDeployments: [],  // Empty at start - deck-agnostic deployment templates
     currentRunState: null,
   };
 }
@@ -224,6 +235,42 @@ export function validateSaveFile(saveData) {
     }
   }
 
+  // Check quick deployments structure (optional - may not exist in older saves)
+  if (saveData.quickDeployments !== undefined) {
+    if (!Array.isArray(saveData.quickDeployments)) {
+      errors.push('quickDeployments must be an array');
+    } else if (saveData.quickDeployments.length > 5) {
+      errors.push('quickDeployments cannot exceed 5 entries');
+    } else {
+      // Validate each quick deployment has required fields
+      for (const qd of saveData.quickDeployments) {
+        if (!qd.id || typeof qd.id !== 'string') {
+          errors.push('quickDeployment entry missing or invalid id');
+          break;
+        }
+        if (!qd.name || typeof qd.name !== 'string') {
+          errors.push('quickDeployment entry missing or invalid name');
+          break;
+        }
+        if (!Array.isArray(qd.droneRoster) || qd.droneRoster.length !== 5) {
+          errors.push('quickDeployment droneRoster must be array of 5 drones');
+          break;
+        }
+        if (!Array.isArray(qd.placements)) {
+          errors.push('quickDeployment placements must be an array');
+          break;
+        }
+        // Validate placements
+        for (const p of qd.placements) {
+          if (!p.droneName || typeof p.lane !== 'number' || p.lane < 0 || p.lane > 2) {
+            errors.push('quickDeployment placement invalid (needs droneName and lane 0-2)');
+            break;
+          }
+        }
+      }
+    }
+  }
+
   return {
     valid: errors.length === 0,
     errors
@@ -237,6 +284,7 @@ export default {
   defaultDroneInstances,
   defaultShipComponentInstances,
   defaultDiscoveredCards,
+  defaultQuickDeployments,
   defaultShipSlots,
   starterPoolCards,
   starterPoolDroneNames,

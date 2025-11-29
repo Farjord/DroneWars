@@ -9,6 +9,7 @@ import ReplicatorModal from '../modals/ReplicatorModal';
 import RunSummaryModal from '../modals/RunSummaryModal';
 import MIARecoveryModal from '../modals/MIARecoveryModal';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import QuickDeployManager from '../quickDeploy/QuickDeployManager';
 import { generateMapData } from '../../utils/mapGenerator';
 import { RARITY_COLORS } from '../../data/cardData';
 import { getMapType, getMapBackground } from '../../logic/extraction/mapExtraction';
@@ -587,11 +588,12 @@ const HangarScreen = () => {
   };
 
   // Deploy handler
-  const handleDeploy = (slotId, map, entryGateId = 0) => {
+  const handleDeploy = (slotId, map, entryGateId = 0, quickDeploy = null) => {
     debugLog('EXTRACTION', '🚀 handleDeploy called', {
       slotId,
       mapName: map?.name,
       entryGateId,
+      quickDeploy: quickDeploy?.name || 'standard',
       hasSlotId: slotId != null,
       hasMap: map != null
     });
@@ -612,10 +614,11 @@ const HangarScreen = () => {
       slotId,
       mapName: map.name,
       tier: map.tier,
-      entryGateId
+      entryGateId,
+      quickDeploy: quickDeploy?.name || 'standard'
     });
 
-    gameStateManager.startRun(slotId, map.tier, entryGateId, map);
+    gameStateManager.startRun(slotId, map.tier, entryGateId, map, quickDeploy);
     closeAllModals();
   };
 
@@ -1120,6 +1123,15 @@ const HangarScreen = () => {
                     </div>
                   );
                 })}
+
+                {/* Quick Deployments Button */}
+                <button
+                  onClick={() => setActiveModal('quickDeploy')}
+                  className="dw-btn dw-btn-secondary dw-btn--full"
+                  style={{ marginTop: '0.5rem' }}
+                >
+                  QUICK DEPLOYMENTS
+                </button>
               </>
             )}
           </div>
@@ -1132,6 +1144,7 @@ const HangarScreen = () => {
       {activeModal === 'inventory' && <InventoryModal onClose={closeAllModals} />}
       {activeModal === 'blueprints' && <BlueprintsModal onClose={closeAllModals} />}
       {activeModal === 'replicator' && <ReplicatorModal onClose={closeAllModals} />}
+      {activeModal === 'quickDeploy' && <QuickDeployManager onClose={closeAllModals} />}
 
       {activeModal === 'mapOverview' && (() => {
         debugLog('EXTRACTION', '🖼️ Rendering MapOverviewModal', {

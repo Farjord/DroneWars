@@ -191,7 +191,10 @@ class SinglePlayerCombatInitializer {
           aiId: aiId,
           aiName: aiPersonality.name,
           startingHull: currentRunState?.currentHull || 30
-        }
+        },
+
+        // Quick deploy template (if selected in hangar)
+        pendingQuickDeploy: currentRunState?.pendingQuickDeploy || null
       };
 
       // 8. Apply state to GameStateManager

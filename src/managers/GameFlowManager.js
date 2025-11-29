@@ -1627,6 +1627,13 @@ class GameFlowManager {
         // Checked after phases where drones can be deployed
         return this.anyPlayerExceedsDroneLimit(gameState);
       case 'deployment':
+        // Check for pending quick deploy - if present, execute silently and skip deployment phase
+        if (gameState.pendingQuickDeploy && gameState.roundNumber === 1) {
+          // Execute quick deploy asynchronously (non-blocking)
+          this.executeQuickDeploy(gameState.pendingQuickDeploy);
+          return false; // Skip deployment phase
+        }
+        return true; // Normal deployment required
       case 'action':
         return true; // Always required
       default:
@@ -2199,6 +2206,105 @@ class GameFlowManager {
 
     debugLog('PHASE_TRANSITIONS', `📦 Extracted ${drones.length} drones from deck: ${drones.map(d => d.name).join(', ')}`);
     return drones;
+  }
+
+  /**
+   * Execute quick deploy - deploy player's drones silently and trigger AI response
+   * Called from isPhaseRequired when pendingQuickDeploy exists
+   * @param {Object} quickDeploy - Quick deploy template with placements array
+   */
+  async executeQuickDeploy(quickDeploy) {
+    debugLog('QUICK_DEPLOY', '⚡ Executing quick deploy:', quickDeploy.name);
+
+    try {
+      const currentState = this.gameStateManager.getState();
+      const { default: DeploymentProcessor } = await import('../logic/deployment/DeploymentProcessor.js');
+      const deploymentProcessor = new DeploymentProcessor();
+
+      // Get player state and opponent state
+      let playerState = JSON.parse(JSON.stringify(currentState.player1));
+      let opponentState = JSON.parse(JSON.stringify(currentState.player2));
+      const placedSections = {
+        player1: currentState.placedSections,
+        player2: currentState.opponentPlacedSections
+      };
+
+      // Map lane indices (0, 1, 2) to lane IDs (lane1, lane2, lane3)
+      const laneIdMap = { 0: 'lane1', 1: 'lane2', 2: 'lane3' };
+
+      // Execute player deployments silently (no animations)
+      for (const placement of quickDeploy.placements) {
+        const droneData = fullDroneCollection.find(d => d.name === placement.droneName);
+        if (!droneData) {
+          console.warn(`[Quick Deploy] Drone not found: ${placement.droneName}`);
+          continue;
+        }
+
+        const laneId = laneIdMap[placement.lane];
+        const turn = 1; // Quick deploy is always turn 1
+
+        debugLog('QUICK_DEPLOY', `  Deploying ${droneData.name} to ${laneId}`);
+
+        const result = deploymentProcessor.executeDeployment(
+          droneData,
+          laneId,
+          turn,
+          playerState,
+          opponentState,
+          placedSections,
+          null, // No log callback for silent deployment
+          'player1'
+        );
+
+        if (result.success) {
+          playerState = result.newPlayerState;
+          if (result.opponentState) {
+            opponentState = result.opponentState;
+          }
+          debugLog('QUICK_DEPLOY', `  ✅ Deployed ${droneData.name} successfully`);
+        } else {
+          console.warn(`[Quick Deploy] Failed to deploy ${droneData.name}: ${result.error}`);
+        }
+      }
+
+      // Update player state
+      this.gameStateManager.setState({
+        player1: playerState,
+        pendingQuickDeploy: null // Clear the pending quick deploy
+      });
+
+      debugLog('QUICK_DEPLOY', '✅ Player quick deploy complete, triggering AI response');
+
+      // Trigger AI deployment response
+      // AI will deploy reactively based on what player deployed
+      if (this.actionProcessor && this.actionProcessor.aiPhaseProcessor) {
+        const aiProcessor = this.actionProcessor.aiPhaseProcessor;
+        if (aiProcessor.handleQuickDeployResponse) {
+          await aiProcessor.handleQuickDeployResponse();
+        } else {
+          // Fallback: Use standard opponent turn handling
+          debugLog('QUICK_DEPLOY', 'AI handleQuickDeployResponse not available, using standard deployment');
+          await this.actionProcessor.handleOpponentTurn();
+        }
+      }
+
+      // Clear pending quick deploy from run state as well
+      const runState = this.gameStateManager.get('currentRunState');
+      if (runState && runState.pendingQuickDeploy) {
+        this.gameStateManager.setState({
+          currentRunState: {
+            ...runState,
+            pendingQuickDeploy: null
+          }
+        });
+      }
+
+      debugLog('QUICK_DEPLOY', '✅ Quick deploy execution complete');
+    } catch (error) {
+      console.error('[Quick Deploy] Error during execution:', error);
+      // Clear pending quick deploy on error to prevent infinite loop
+      this.gameStateManager.setState({ pendingQuickDeploy: null });
+    }
   }
 }
 

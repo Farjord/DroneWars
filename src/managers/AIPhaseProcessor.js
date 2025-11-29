@@ -1106,8 +1106,106 @@ class AIPhaseProcessor {
       deployment: true, // ✅ implemented
       action: true, // ✅ implemented
       interception: true, // ✅ implemented
-      version: '1.3.0'
+      quickDeployResponse: true, // ✅ implemented
+      version: '1.4.0'
     };
+  }
+
+  /**
+   * Handle AI reactive deployment in response to player's quick deploy
+   * Executes all AI deployments silently (no animations) until AI passes
+   * Called from GameFlowManager.executeQuickDeploy after player placements
+   */
+  async handleQuickDeployResponse() {
+    debugLog('QUICK_DEPLOY', '🤖 AI responding to quick deploy...');
+
+    if (!this.gameStateManager) {
+      console.error('[AI Quick Deploy] GameStateManager not available');
+      return;
+    }
+
+    // Import required modules
+    const { aiBrain } = await import('../logic/aiLogic.js');
+    const { gameEngine } = await import('../logic/gameLogic.js');
+    const { default: DeploymentProcessor } = await import('../logic/deployment/DeploymentProcessor.js');
+    const deploymentProcessor = new DeploymentProcessor();
+
+    let deploymentCount = 0;
+    const maxDeployments = 10; // Safety limit to prevent infinite loops
+
+    while (deploymentCount < maxDeployments) {
+      const gameState = this.gameStateManager.getState();
+
+      // Check if AI should pass
+      if (this.shouldPass(gameState, 'deployment')) {
+        debugLog('QUICK_DEPLOY', '🤖 AI passes (shouldPass returned true)');
+        break;
+      }
+
+      // Get AI deployment decision
+      const aiDecision = aiBrain.handleOpponentTurn({
+        player1: gameState.player1,
+        player2: gameState.player2,
+        turn: gameState.turn,
+        placedSections: gameState.placedSections,
+        opponentPlacedSections: gameState.opponentPlacedSections,
+        getShipStatus: gameEngine.getShipStatus,
+        calculateEffectiveShipStats: this.effectiveShipStatsWrapper,
+        gameStateManager: this.gameStateManager,
+        addLogEntry: () => {} // Silent - no log entries
+      });
+
+      debugLog('QUICK_DEPLOY', '🤖 AI decision:', aiDecision?.type);
+
+      if (aiDecision.type === 'pass') {
+        debugLog('QUICK_DEPLOY', '🤖 AI decides to pass');
+        break;
+      }
+
+      if (aiDecision.type === 'deploy') {
+        const { droneToDeploy, targetLane } = aiDecision.payload;
+
+        debugLog('QUICK_DEPLOY', `🤖 AI deploying ${droneToDeploy?.name} to ${targetLane}`);
+
+        // Get current states
+        let player2State = JSON.parse(JSON.stringify(gameState.player2));
+        const player1State = gameState.player1;
+        const placedSections = {
+          player1: gameState.placedSections,
+          player2: gameState.opponentPlacedSections
+        };
+
+        // Execute deployment silently
+        const result = deploymentProcessor.executeDeployment(
+          droneToDeploy,
+          targetLane,
+          gameState.roundNumber || 1,
+          player2State,
+          player1State,
+          placedSections,
+          null, // No log callback for silent deployment
+          'player2'
+        );
+
+        if (result.success) {
+          // Update game state with new AI state
+          this.gameStateManager.setState({
+            player2: result.newPlayerState
+          });
+          deploymentCount++;
+          debugLog('QUICK_DEPLOY', `🤖 AI deployed ${droneToDeploy?.name} successfully (${deploymentCount} total)`);
+        } else {
+          debugLog('QUICK_DEPLOY', `🤖 AI deployment failed: ${result.error}`);
+          break;
+        }
+      } else {
+        // Unknown decision type
+        debugLog('QUICK_DEPLOY', `🤖 Unknown AI decision type: ${aiDecision.type}`);
+        break;
+      }
+    }
+
+    debugLog('QUICK_DEPLOY', `🤖 AI quick deploy response complete (${deploymentCount} drones deployed)`);
   }
 }
 

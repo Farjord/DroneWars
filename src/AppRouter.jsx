@@ -23,6 +23,7 @@ import ExtractionDeckBuilder from './components/screens/ExtractionDeckBuilder.js
 import HangarScreen from './components/screens/HangarScreen.jsx';
 import TacticalMapScreen from './components/screens/TacticalMapScreen.jsx';
 import EremosEntryScreen from './components/screens/EremosEntryScreen.jsx';
+import QuickDeployEditorScreen from './components/screens/QuickDeployEditorScreen.jsx';
 import App from './App.jsx';
 import MorphingBackground from './components/ui/AngularBandsBackground.jsx';
 import DEV_CONFIG from './config/devConfig.js';
@@ -164,6 +165,10 @@ function AppRouter() {
 
     case 'tacticalMap':
       currentScreen = <TacticalMapScreen />;
+      break;
+
+    case 'quickDeployEditor':
+      currentScreen = <QuickDeployEditorScreen />;
       break;
 
     case 'modalShowcase':

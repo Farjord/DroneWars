@@ -1857,8 +1857,9 @@ class GameStateManager {
    * @param {number} mapTier - Map tier (1-3)
    * @param {number} entryGateId - Selected entry gate ID (0-indexed)
    * @param {Object} preGeneratedMap - Optional pre-generated map data from Hangar preview
+   * @param {Object} quickDeploy - Optional quick deploy template to use for first combat
    */
-  startRun(shipSlotId, mapTier, entryGateId = 0, preGeneratedMap = null) {
+  startRun(shipSlotId, mapTier, entryGateId = 0, preGeneratedMap = null, quickDeploy = null) {
     const shipSlot = this.state.singlePlayerShipSlots.find(s => s.id === shipSlotId);
     if (!shipSlot) {
       throw new Error('Invalid ship slot ID');
@@ -1939,6 +1940,9 @@ class GameStateManager {
       combatsWon: 0,
       combatsLost: 0,
       damageDealtToEnemies: 0,
+
+      // Quick deploy for first combat (consumed after use)
+      pendingQuickDeploy: quickDeploy || null,
     };
 
     this.setState({

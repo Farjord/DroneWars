@@ -7,6 +7,7 @@
 import React, { useMemo } from 'react';
 import fullDroneCollection from '../../data/droneData.js';
 import { useGameData } from '../../hooks/useGameData.js';
+import { useEditorStats } from '../../contexts/EditorStatsContext.jsx';
 import InterceptedBadge from './InterceptedBadge.jsx';
 import TargetLockIcon from './TargetLockIcon.jsx';
 
@@ -85,11 +86,14 @@ const DroneToken = ({
 }) => {
   // Get GameDataService for direct effective stats calculation
   const { getEffectiveStats } = useGameData();
+  const editorStats = useEditorStats();
 
   const baseDrone = useMemo(() => fullDroneCollection.find(d => d.name === drone.name), [drone.name]);
 
-  // Calculate effective stats internally instead of receiving as prop
-  const effectiveStats = getEffectiveStats(drone, lane);
+  // Use editor context if available, otherwise fetch from global state
+  const effectiveStats = editorStats
+    ? editorStats.getEffectiveStats(drone, lane)
+    : getEffectiveStats(drone, lane);
   const { maxShields } = effectiveStats;
   const currentShields = drone.currentShields ?? maxShields;
   const activeAbilities = baseDrone.abilities.filter(a => a.type === 'ACTIVE');
