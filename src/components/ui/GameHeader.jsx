@@ -12,26 +12,35 @@ import DEV_CONFIG from '../../config/devConfig.js';
 import { BACKGROUNDS } from '../../config/backgrounds.js';
 
 /**
- * Resource Badge Component - Angular styled resource display
+ * Resource Badge Component - Information panel styled resource display
+ * Matches the dw-stat-box aesthetic with angular corner accent
  */
 const ResourceBadge = ({ icon: Icon, value, max, iconColor, isPlayer }) => {
-  const borderGradient = isPlayer 
-    ? 'from-cyan-400/30 via-blue-400/30 to-blue-500/30' 
-    : 'from-pink-400/30 via-pink-500/30 to-pink-600/30';
-  
-  const bgGradient = 'bg-gradient-to-br from-gray-900/95 to-gray-800/95';
-  
+  // Theme colors - cyan for player, red for opponent
+  const borderColor = isPlayer ? 'rgba(6, 182, 212, 0.3)' : 'rgba(239, 68, 68, 0.3)';
+  const accentColor = isPlayer ? 'rgba(6, 182, 212, 0.5)' : 'rgba(239, 68, 68, 0.5)';
+  const glowColor = isPlayer ? 'rgba(6, 182, 212, 0.1)' : 'rgba(239, 68, 68, 0.1)';
+
   return (
-    <div 
-      className={`relative p-[1px] bg-gradient-to-br ${borderGradient}`}
-      style={{ 
+    <div
+      className="relative"
+      style={{
+        background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 28, 0.95) 100%)',
+        border: `1px solid ${borderColor}`,
+        borderRadius: '2px',
+        boxShadow: `0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 ${glowColor}`,
         clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)'
       }}
     >
-      <div 
-        className={`${bgGradient} px-3 py-1 flex items-center gap-2`}
-        style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }}
-      >
+      {/* Angular corner accent */}
+      <div
+        className="absolute top-0 left-0 w-2 h-2 z-10 pointer-events-none"
+        style={{
+          borderTop: `1px solid ${accentColor}`,
+          borderLeft: `1px solid ${accentColor}`
+        }}
+      />
+      <div className="px-3 py-1 flex items-center gap-2">
         <Icon size={18} className={iconColor} />
         <span className="font-bold text-base text-white whitespace-nowrap">
           {value}
@@ -147,7 +156,7 @@ function GameHeader({
         <h2
           className="text-base font-bold uppercase tracking-wider flex items-center gap-2"
           style={{
-            backgroundImage: 'linear-gradient(45deg, #ec4899, #f472b6)',
+            backgroundImage: 'linear-gradient(45deg, #ef4444, #f87171)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text'
@@ -289,14 +298,14 @@ function GameHeader({
                   <span
                     className="text-3xl font-orbitron font-black uppercase tracking-widest phase-announcement-shine animate-pulse"
                     style={{
-                      backgroundImage: 'linear-gradient(45deg, #ec4899, #f472b6, #ec4899)',
+                      backgroundImage: 'linear-gradient(45deg, #ef4444, #f87171, #ef4444)',
                       backgroundSize: '200% auto',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                       backgroundClip: 'text',
                       WebkitTextStroke: '1px black',
-                      textShadow: '0 0 30px rgba(236, 72, 153, 0.5), 0 0 60px rgba(244, 114, 182, 0.3)',
-                      filter: 'drop-shadow(0 0 20px rgba(236, 72, 153, 0.4))',
+                      textShadow: '0 0 30px rgba(239, 68, 68, 0.5), 0 0 60px rgba(248, 113, 113, 0.3)',
+                      filter: 'drop-shadow(0 0 20px rgba(239, 68, 68, 0.4))',
                       animation: 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite'
                     }}
                   >

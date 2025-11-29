@@ -86,7 +86,7 @@ const ShipSectionCompact = ({
   if (isPlaceholder) {
     return (
       <div
-        className="bg-black/30 rounded-lg border-2 border-dashed border-purple-500/50 flex items-center justify-center text-purple-300/70 p-4 min-h-[160px] h-full transition-colors duration-300 cursor-pointer hover:border-purple-500 hover:text-purple-300"
+        className="bg-black/30 rounded-sm border-2 border-dashed border-purple-500/50 flex items-center justify-center text-purple-300/70 p-4 min-h-[160px] h-full transition-colors duration-300 cursor-pointer hover:border-purple-500 hover:text-purple-300"
         onClick={onClick}
       >
         <span className="text-center">Click to place section</span>
@@ -97,8 +97,8 @@ const ShipSectionCompact = ({
   const sectionStatus = gameEngine.getShipStatus(stats);
 
   const overlayColor = sectionStatus === 'critical' ? 'bg-red-900/60' : sectionStatus === 'damaged' ? 'bg-yellow-900/50' : 'bg-black/60';
-  let borderColor = sectionStatus === 'critical' ? 'border-red-500' : sectionStatus === 'damaged' ? 'border-yellow-500' : (isOpponent ? 'border-pink-500' : 'border-cyan-500');
-  const shadowColor = isOpponent ? 'shadow-pink-500/20' : 'shadow-cyan-500/20';
+  let borderColor = sectionStatus === 'critical' ? 'border-red-500' : sectionStatus === 'damaged' ? 'border-yellow-500' : (isOpponent ? 'border-red-500' : 'border-cyan-500');
+  const shadowColor = isOpponent ? 'shadow-red-500/20' : 'shadow-cyan-500/20';
   const hoverEffect = isHovered ? 'shadow-xl' : '';
 
   // Override border color for shield reallocation states
@@ -152,11 +152,23 @@ const ShipSectionCompact = ({
     }
   };
 
+  // Determine the accent color for the corner based on current state
+  const getAccentColor = () => {
+    if (reallocationState) {
+      if (reallocationState.includes('orange')) return 'rgba(251, 146, 60, 0.7)';
+      if (reallocationState.includes('green')) return 'rgba(74, 222, 128, 0.7)';
+      return 'rgba(107, 114, 128, 0.5)';
+    }
+    if (sectionStatus === 'critical') return 'rgba(239, 68, 68, 0.7)';
+    if (sectionStatus === 'damaged') return 'rgba(234, 179, 8, 0.7)';
+    return isOpponent ? 'rgba(239, 68, 68, 0.5)' : 'rgba(6, 182, 212, 0.5)';
+  };
+
   return (
     <div
       ref={sectionRef}
       className={`
-        relative rounded-xl shadow-lg ${shadowColor} border-2 h-full
+        relative rounded-sm shadow-lg ${shadowColor} border-2 h-full
         transition-all duration-300 overflow-hidden cursor-pointer
         ${borderColor}
         ${hoverEffect}
@@ -168,6 +180,14 @@ const ShipSectionCompact = ({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
+      {/* Angular corner accent */}
+      <div
+        className="absolute top-0 left-0 w-3 h-3 z-20 pointer-events-none"
+        style={{
+          borderTop: `2px solid ${getAccentColor()}`,
+          borderLeft: `2px solid ${getAccentColor()}`
+        }}
+      />
       <div className={`absolute inset-0 ${overlayColor}`}></div>
 
       {/* 3-Column Grid Layout: Left (empty) | Middle (content) | Right (ability) */}

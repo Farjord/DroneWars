@@ -95,12 +95,12 @@ const DroneToken = ({
   const activeAbilities = baseDrone.abilities.filter(a => a.type === 'ACTIVE');
 
   // --- Dynamic Class Calculation ---
-  const borderColor = isPlayer ? 'border-cyan-400' : 'border-pink-500';
-  const nameBgColor = isPlayer ? 'bg-cyan-900' : 'bg-pink-950';
-  const nameTextColor = isPlayer ? 'text-cyan-100' : 'text-pink-100';
-  const statBgColor = isPlayer ? 'bg-cyan-900' : 'bg-pink-950';
-  const shieldColor = drone.isExhausted ? 'text-white' : (isPlayer ? 'text-cyan-400' : 'text-pink-500');
-  const emptyShieldColor = drone.isExhausted ? 'text-gray-500' : (isPlayer ? 'text-cyan-300 opacity-50' : 'text-pink-400 opacity-60');
+  const borderColor = isPlayer ? 'border-cyan-400' : 'border-red-500';
+  const nameBgColor = isPlayer ? 'bg-cyan-900' : 'bg-red-950';
+  const nameTextColor = isPlayer ? 'text-cyan-100' : 'text-red-100';
+  const statBgColor = isPlayer ? 'bg-cyan-900' : 'bg-red-950';
+  const shieldColor = drone.isExhausted ? 'text-white' : (isPlayer ? 'text-cyan-400' : 'text-red-500');
+  const emptyShieldColor = drone.isExhausted ? 'text-gray-500' : (isPlayer ? 'text-cyan-300 opacity-50' : 'text-red-400 opacity-60');
 
   const isAttackBuffed = effectiveStats.attack > effectiveStats.baseAttack;
   const isAttackDebuffed = effectiveStats.attack < effectiveStats.baseAttack;
@@ -114,7 +114,7 @@ const DroneToken = ({
   const exhaustEffect = drone.isExhausted ? 'grayscale opacity-90' : '';
   const hitEffect = isHit ? 'animate-shake' : '';
   const selectedEffect = (isSelected || isSelectedForMove) ? 'scale-105 ring-2 ring-cyan-400 shadow-xl shadow-cyan-400/50' : '';
-  const actionTargetEffect = isActionTarget ? 'shadow-xl shadow-pink-500/95 animate-pulse' : '';
+  const actionTargetEffect = isActionTarget ? 'shadow-xl shadow-red-500/95 animate-pulse' : '';
   const mandatoryDestroyEffect = mandatoryAction?.type === 'destroy' && isPlayer ? 'ring-2 ring-red-500 animate-pulse' : '';
 
   const isAbilityUsable = (ability) => {

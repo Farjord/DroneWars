@@ -44,7 +44,7 @@ const ViewShipSectionModal = ({ isOpen, onClose, data }) => {
         {/* Header */}
         <div className="flex justify-between items-center mb-6 flex-shrink-0">
           <div>
-            <h2 className="text-3xl font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-cyan-400">
+            <h2 className="text-3xl font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-cyan-400">
               {sectionStats.name || displayName}
             </h2>
             {isInMiddleLane && (

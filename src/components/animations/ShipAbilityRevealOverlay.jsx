@@ -60,7 +60,7 @@ const ShipAbilityRevealOverlay = ({ abilityName, label, onComplete }) => {
         <h2
           className={`
             text-5xl font-orbitron font-bold uppercase tracking-wider
-            text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-purple-400
+            text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-red-400 to-purple-400
             animate-pulse
             drop-shadow-[0_0_20px_rgba(168,85,247,0.8)]
           `}

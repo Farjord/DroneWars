@@ -66,7 +66,7 @@ const InterceptionOpportunityModal = ({
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '16px 0' }}>
             <div className="flex items-start justify-center gap-8">
               <div className="flex flex-col items-center gap-2">
-                <div className="text-xs uppercase tracking-widest text-pink-400/60">Attacker</div>
+                <div className="text-xs uppercase tracking-widest text-red-400/60">Attacker</div>
                 <DroneToken
                   drone={attacker}
                   isPlayer={false}

@@ -105,10 +105,10 @@ function AddCardToHandModal({ isOpen, onClose, onConfirm, gameMode }) {
               {/* Opponent Tab */}
               <button
                 onClick={() => handleOpenCardSelection('opponent')}
-                className="flex flex-col items-center gap-3 p-6 bg-gradient-to-br from-pink-900/40 to-red-900/40 hover:from-pink-800/50 hover:to-red-800/50 border-2 border-pink-500/50 hover:border-pink-400 rounded-lg transition-all"
+                className="flex flex-col items-center gap-3 p-6 bg-gradient-to-br from-red-900/40 to-red-900/40 hover:from-red-800/50 hover:to-red-800/50 border-2 border-red-500/50 hover:border-red-400 rounded-lg transition-all"
               >
                 <div className="text-4xl">🤖</div>
-                <div className="text-lg font-bold text-pink-400">
+                <div className="text-lg font-bold text-red-400">
                   {getOpponentPlayerLabel()}
                 </div>
                 <div className="text-sm text-gray-400">

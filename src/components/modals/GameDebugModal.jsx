@@ -107,9 +107,9 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
       <div style={{ padding: '16px' }}>
         {renderObjectTable(coreGameInfo, 'Core Game Info')}
         {renderObjectTable(gameState.player1, 'Player 1 State', '#22d3ee')}
-        {renderObjectTable(gameState.player2, 'Player 2 State', '#ec4899')}
+        {renderObjectTable(gameState.player2, 'Player 2 State', '#ef4444')}
         {renderObjectTable({ placedSections: gameState.placedSections }, 'Player 1 Placed Sections', '#22d3ee')}
-        {renderObjectTable({ opponentPlacedSections: gameState.opponentPlacedSections }, 'Player 2 Placed Sections', '#ec4899')}
+        {renderObjectTable({ opponentPlacedSections: gameState.opponentPlacedSections }, 'Player 2 Placed Sections', '#ef4444')}
         {gameState.passInfo && renderObjectTable(gameState.passInfo, 'Pass Information')}
       </div>
     );
@@ -155,9 +155,9 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
       return (
         <div style={{ padding: '16px' }}>
           {renderObjectTable(player1ShipStats, 'Player 1 Effective Ship Stats', '#22d3ee')}
-          {renderObjectTable(player2ShipStats, 'Player 2 Effective Ship Stats', '#ec4899')}
+          {renderObjectTable(player2ShipStats, 'Player 2 Effective Ship Stats', '#ef4444')}
           {renderObjectTable(player1DroneStats, 'Player 1 Effective Drone Stats', '#22d3ee')}
-          {renderObjectTable(player2DroneStats, 'Player 2 Effective Drone Stats', '#ec4899')}
+          {renderObjectTable(player2DroneStats, 'Player 2 Effective Drone Stats', '#ef4444')}
           {renderObjectTable(cacheStats, 'GameDataService Cache Statistics')}
         </div>
       );

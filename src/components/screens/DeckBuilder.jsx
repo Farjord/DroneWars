@@ -1482,8 +1482,8 @@ const DeckBuilder = ({
                 })}
 
                 {/* Drone Control Hub Section */}
-                <tr className="bg-pink-900/20">
-                  <td colSpan="5" className="font-bold text-pink-400 text-sm py-2">DRONE CONTROL HUB</td>
+                <tr className="bg-red-900/20">
+                  <td colSpan="5" className="font-bold text-red-400 text-sm py-2">DRONE CONTROL HUB</td>
                 </tr>
                 {activeComponentCollection.filter(comp => comp.type === 'Drone Control Hub').map((component, index) => {
                   const selectedLane = selectedShipComponents?.[component.id] || null;
@@ -1494,7 +1494,7 @@ const DeckBuilder = ({
                   return (
                     <tr key={`${component.id}-${index}`}>
                       <td><button onClick={() => setDetailedShipComponent(component)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
-                      <td className="font-semibold text-pink-400">{component.type}</td>
+                      <td className="font-semibold text-red-400">{component.type}</td>
                       <td className="font-bold">{component.name}</td>
                       <td className="text-xs text-gray-400">{component.description}</td>
                       <td>
@@ -1506,10 +1506,10 @@ const DeckBuilder = ({
                               disabled={readOnly || (occupiedLanes.includes(lane) && selectedLane !== lane)}
                               className={`px-3 py-1 rounded text-xs font-bold transition-all ${
                                 selectedLane === lane
-                                  ? 'bg-pink-500 text-white'
+                                  ? 'bg-red-500 text-white'
                                   : readOnly || occupiedLanes.includes(lane)
                                   ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                                  : 'bg-gray-700 text-gray-300 hover:bg-pink-600 hover:text-white'
+                                  : 'bg-gray-700 text-gray-300 hover:bg-red-600 hover:text-white'
                               }`}
                             >
                               {lane.toUpperCase()}

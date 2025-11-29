@@ -208,7 +208,7 @@ const DroneCard = ({
             <div className="flex flex-col items-center">
               <span className="text-[10px] text-gray-400">Deployed</span>
               <div className="flex items-center">
-                <span className={`font-bold text-base ${atLimit ? 'text-pink-500' : limitTextColor}`}>
+                <span className={`font-bold text-base ${atLimit ? 'text-red-500' : limitTextColor}`}>
                   {deployedCount}/{effectiveLimit}
                 </span>
               </div>

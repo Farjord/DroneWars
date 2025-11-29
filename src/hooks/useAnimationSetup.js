@@ -480,7 +480,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         // Determine color based on local player perspective
         const localPlayerId = gameStateManager.getLocalPlayerId();
         const isLocalPlayer = targetPlayer === localPlayerId;
-        const teleportColor = isLocalPlayer ? '#00ffff' : '#ec4899'; // Cyan for player, pink for opponent
+        const teleportColor = isLocalPlayer ? '#00ffff' : '#ef4444'; // Cyan for player, red for opponent
 
         const teleportId = `teleport-${targetId}-${Date.now()}`;
 

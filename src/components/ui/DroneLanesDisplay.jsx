@@ -176,7 +176,7 @@ const DroneLanesDisplay = ({
         }
 
         const isInteractivePlayerLane = isPlayer && (turnPhase === 'deployment' || turnPhase === 'action');
-        const baseBackgroundColor = isPlayer ? 'bg-cyan-400/10' : 'bg-pink-500/10';
+        const baseBackgroundColor = isPlayer ? 'bg-cyan-400/10' : 'bg-red-500/10';
 
         return (
           <div
