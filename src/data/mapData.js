@@ -60,6 +60,23 @@ export const mapTiers = [
       core: 10        // +10%
     },
 
+    // Zone-based POI loot rewards (risk vs reward)
+    // Higher risk zones (core) give better rewards
+    zoneRewardWeights: {
+      perimeter: {
+        cardCountWeights: { 1: 80, 2: 15, 3: 5 },    // 80% chance of 1 card
+        creditsMultiplier: 0.6                        // 60% of base credits
+      },
+      mid: {
+        cardCountWeights: { 1: 35, 2: 50, 3: 15 },   // 50% chance of 2 cards
+        creditsMultiplier: 1.0                        // 100% of base credits
+      },
+      core: {
+        cardCountWeights: { 1: 15, 2: 40, 3: 45 },   // 45% chance of 3 cards
+        creditsMultiplier: 1.5                        // 150% of base credits
+      }
+    },
+
     // Starting detection ranges (by POI count thresholds)
     // Detection meter starts at this value instead of 0
     startingDetection: [

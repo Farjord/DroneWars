@@ -16,10 +16,12 @@ class LootGenerator {
    * Open a loot pack and generate cards + credits
    * @param {string} packType - Pack type (ORDNANCE_PACK, SUPPORT_PACK, etc.)
    * @param {number} tier - Map tier (1, 2, or 3) affects rarity weights
+   * @param {string} zone - Map zone (core, mid, perimeter) affects card count weights
+   * @param {Object} tierConfig - Tier configuration with zoneRewardWeights
    * @param {number} seed - Random seed for deterministic results
    * @returns {Object} { cards: [...], credits: number }
    */
-  openPack(packType, tier = 1, seed = Date.now()) {
+  openPack(packType, tier = 1, zone = null, tierConfig = null, seed = Date.now()) {
     const config = packTypes[packType];
     if (!config) {
       console.warn(`Unknown pack type: ${packType}`);
@@ -33,9 +35,12 @@ class LootGenerator {
     const rarityWeights = config.rarityWeights[tierKey] || config.rarityWeights.tier1;
     const allowedRarities = Object.keys(rarityWeights).filter(r => rarityWeights[r] > 0);
 
-    // Roll card count (from config min/max)
+    // Get zone-based reward weights (if available)
+    const zoneWeights = zone && tierConfig?.zoneRewardWeights?.[zone];
+
+    // Roll card count - use zone-weighted if available, otherwise uniform
     const { min, max } = config.cardCount;
-    const cardCount = min + Math.floor(rng.random() * (max - min + 1));
+    const cardCount = this._rollWeightedCardCount(min, max, zoneWeights?.cardCountWeights, rng);
 
     const cards = [];
     for (let i = 0; i < cardCount; i++) {
@@ -60,11 +65,42 @@ class LootGenerator {
     const rarityOrder = { Common: 0, Uncommon: 1, Rare: 2, Mythic: 3 };
     cards.sort((a, b) => (rarityOrder[a.rarity] || 0) - (rarityOrder[b.rarity] || 0));
 
-    // Roll credits (from config range)
+    // Roll credits (from config range) and apply zone multiplier
     const { min: cMin, max: cMax } = config.creditsRange;
-    const credits = cMin + Math.floor(rng.random() * (cMax - cMin + 1));
+    const baseCredits = cMin + Math.floor(rng.random() * (cMax - cMin + 1));
+    const creditsMultiplier = zoneWeights?.creditsMultiplier || 1.0;
+    const credits = Math.round(baseCredits * creditsMultiplier);
 
     return { cards, credits };
+  }
+
+  /**
+   * Roll card count with zone-based weighting
+   * @param {number} min - Minimum card count
+   * @param {number} max - Maximum card count
+   * @param {Object} weights - { 1: 80, 2: 15, 3: 5 } weights for each count
+   * @param {Object} rng - Random number generator
+   * @returns {number} Card count
+   */
+  _rollWeightedCardCount(min, max, weights, rng) {
+    // If no weights provided, use uniform distribution
+    if (!weights) {
+      return min + Math.floor(rng.random() * (max - min + 1));
+    }
+
+    // Build weighted options for valid card counts
+    const roll = rng.random() * 100;
+    let cumulative = 0;
+
+    for (let count = min; count <= max; count++) {
+      cumulative += (weights[count] || 0);
+      if (roll < cumulative) {
+        return count;
+      }
+    }
+
+    // Fallback to max if weights don't sum to 100
+    return max;
   }
 
   /**

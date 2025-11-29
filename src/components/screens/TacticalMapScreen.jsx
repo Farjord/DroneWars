@@ -446,9 +446,13 @@ function TacticalMapScreen() {
       const packType = currentEncounter.reward?.rewardType || 'MIXED_PACK';
       const tier = currentRunState?.mapData?.tier || 1;
 
-      // Generate loot using LootGenerator
-      const loot = lootGenerator.openPack(packType, tier);
-      console.log('[TacticalMap] Generated loot:', loot);
+      // Get zone for reward weighting (core zones give better rewards)
+      const zone = currentEncounter.poi?.zone || 'mid';
+      const tierConfig = currentRunState?.mapData ? mapTiers[currentRunState.mapData.tier - 1] : null;
+
+      // Generate loot using LootGenerator with zone-based weighting
+      const loot = lootGenerator.openPack(packType, tier, zone, tierConfig);
+      console.log('[TacticalMap] Generated loot:', { zone, loot });
 
       // Store encounter for later completion (need to add detection after loot collected)
       setPendingLootEncounter(currentEncounter);

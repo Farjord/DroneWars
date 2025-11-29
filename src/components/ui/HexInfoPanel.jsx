@@ -182,6 +182,16 @@ function HexInfoPanel({
     return 'value-critical';
   };
 
+  // Get reward quality label based on zone (for risk/reward indication)
+  const getRewardQualityLabel = (zone) => {
+    switch (zone) {
+      case 'core': return { text: 'High Value', color: '#f59e0b' };
+      case 'mid': return { text: 'Standard', color: '#06b6d4' };
+      case 'perimeter': return { text: 'Low Value', color: '#6b7280' };
+      default: return { text: 'Standard', color: '#06b6d4' };
+    }
+  };
+
   // Check if a POI has been looted
   const isLootedPOI = (hex) => {
     if (!hex || hex.type !== 'poi') return false;
@@ -377,12 +387,21 @@ function HexInfoPanel({
                     <span className="claimed-text">Rewards Claimed</span>
                   </div>
                 ) : (
-                  getLootSummary(inspectedHex) && (
-                    <div className="hex-loot-info" style={{ borderLeftColor: getLootSummary(inspectedHex).color }}>
-                      <div className="loot-type">{getLootSummary(inspectedHex).type}</div>
-                      <div className="loot-desc">{getLootSummary(inspectedHex).description}</div>
-                    </div>
-                  )
+                  getLootSummary(inspectedHex) && (() => {
+                    const lootSummary = getLootSummary(inspectedHex);
+                    const qualityLabel = getRewardQualityLabel(inspectedHex.zone);
+                    return (
+                      <div className="hex-loot-info" style={{ borderLeftColor: lootSummary.color }}>
+                        <div className="loot-type">
+                          {lootSummary.type}
+                          <span className="loot-quality" style={{ color: qualityLabel.color }}>
+                            {' · '}{qualityLabel.text}
+                          </span>
+                        </div>
+                        <div className="loot-desc">{lootSummary.description}</div>
+                      </div>
+                    );
+                  })()
                 )
               )}
 
