@@ -209,7 +209,12 @@ class MovementController {
    */
   getHexEncounterChance(hex, tierConfig, mapData = null) {
     if (hex.type === 'poi') {
-      return hex.poiData?.encounterChance || 15;
+      // POI encounter chance = POI's own value + zone-based value
+      const poiChance = hex.poiData?.encounterChance || 15;
+      const zoneChance = (mapData?.encounterByZone && hex.zone)
+        ? (mapData.encounterByZone[hex.zone] || 0)
+        : 0;
+      return poiChance + zoneChance;
     }
     if (hex.type === 'gate') {
       return tierConfig?.encounterChance?.gate || 0;

@@ -388,12 +388,14 @@ function HexInfoPanel({
 
               {/* Movement stats (if not already a waypoint) */}
               {preview && !isAlreadyWaypoint && (() => {
-                // Calculate looting threat for POIs
+                // Single-hex stats (raw values for this hex only)
+                const hexEncounterChance = MovementController.getHexEncounterChance(inspectedHex, tierConfig, mapData);
+                const hexThreatIncrease = DetectionManager.getHexDetectionCost(inspectedHex, tierConfig, mapRadius);
                 const lootingThreat = inspectedHex.type === 'poi'
                   ? (inspectedHex.poiData?.threatIncrease || tierConfig?.detectionTriggers?.looting || 10)
                   : 0;
 
-                // Calculate encounter risk for this segment using probability formula
+                // Calculate segment encounter risk for the path (for journey totals)
                 const segmentEncounterRisk = preview.path
                   ? MovementController.calculateEncounterRisk(preview.path, tierConfig, mapData)
                   : 0;
@@ -407,37 +409,52 @@ function HexInfoPanel({
                 const segmentPNoEncounter = (100 - segmentEncounterRisk) / 100;
                 const cumulativeEncounterRisk = (1 - (prevPNoEncounter * segmentPNoEncounter)) * 100;
 
+                const totalDetectionAfterMove = preview.newDetection + lootingThreat;
+
                 return (
-                  <div className="hex-stats">
-                    <div className="hex-stat">
-                      <span className="stat-label">Distance</span>
-                      <span className="stat-value">{preview.distance} hexes</span>
-                    </div>
-                    <div className="hex-stat">
-                      <span className="stat-label">Move Encounter Risk</span>
-                      <span className="stat-value">{segmentEncounterRisk.toFixed(1)}%</span>
-                    </div>
-                    <div className="hex-stat">
-                      <span className="stat-label">Journey Encounter Risk</span>
-                      <span className="stat-value stat-value-encounter">{cumulativeEncounterRisk.toFixed(1)}%</span>
-                    </div>
-                    <div className="hex-stat">
-                      <span className="stat-label">Travel Threat</span>
-                      <span className="stat-value stat-value-cost">+{preview.cost.toFixed(1)}%</span>
-                    </div>
-                    {inspectedHex.type === 'poi' && (
-                      <div className="hex-stat">
-                        <span className="stat-label">Looting Threat</span>
-                        <span className="stat-value stat-value-cost">+{lootingThreat.toFixed(1)}%</span>
+                  <>
+                    {/* SELECTED HEX Section - Raw per-hex stats only */}
+                    <div className="hex-stats-section">
+                      <div className="hex-stats-section-header">Selected Hex</div>
+                      <div className="hex-stats">
+                        <div className="hex-stat">
+                          <span className="stat-label">Distance</span>
+                          <span className="stat-value">{preview.distance} hexes</span>
+                        </div>
+                        <div className="hex-stat">
+                          <span className="stat-label">Encounter Chance</span>
+                          <span className="stat-value">{hexEncounterChance}%</span>
+                        </div>
+                        <div className="hex-stat">
+                          <span className="stat-label">Threat Increase</span>
+                          <span className="stat-value stat-value-cost">+{hexThreatIncrease.toFixed(1)}%</span>
+                        </div>
+                        {inspectedHex.type === 'poi' && (
+                          <div className="hex-stat">
+                            <span className="stat-label">Looting Threat</span>
+                            <span className="stat-value stat-value-cost">+{lootingThreat.toFixed(1)}%</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    <div className="hex-stat hex-stat-total">
-                      <span className="stat-label">After Move</span>
-                      <span className={`stat-value ${getDetectionColorClass(preview.newDetection + lootingThreat)}`}>
-                        {(preview.newDetection + lootingThreat).toFixed(1)}%
-                      </span>
                     </div>
-                  </div>
+
+                    {/* PROPOSED JOURNEY Section - Cumulative totals */}
+                    <div className="hex-stats-section">
+                      <div className="hex-stats-section-header">Proposed Journey</div>
+                      <div className="hex-stats">
+                        <div className="hex-stat">
+                          <span className="stat-label">Journey Encounter Risk</span>
+                          <span className="stat-value stat-value-encounter">⚔ {cumulativeEncounterRisk.toFixed(1)}%</span>
+                        </div>
+                        <div className="hex-stat hex-stat-total">
+                          <span className="stat-label">After Move</span>
+                          <span className={`stat-value ${getDetectionColorClass(totalDetectionAfterMove)}`}>
+                            → {totalDetectionAfterMove.toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </>
                 );
               })()}
 
