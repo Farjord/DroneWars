@@ -12,7 +12,7 @@ import { gameEngine } from '../../logic/gameLogic.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import p2pManager from '../../network/P2PManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
-import { shipComponentCollection } from '../../data/shipData.js';
+import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { calculateEffectiveShipStats } from '../../logic/statsCalculator.js';
 
 /**

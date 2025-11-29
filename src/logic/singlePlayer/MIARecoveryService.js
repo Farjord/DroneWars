@@ -8,6 +8,7 @@ import gameStateManager from '../../managers/GameStateManager.js';
 import creditManager from '../economy/CreditManager.js';
 import { ECONOMY } from '../../data/economyData.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { starterPoolShipIds } from '../../data/saveGameSchema.js';
 
 class MIARecoveryService {
 
@@ -106,6 +107,17 @@ class MIARecoveryService {
       });
     }
 
+    // Remove ship from inventory (if not starter pool)
+    if (shipSlot.shipId && !starterPoolShipIds.includes(shipSlot.shipId)) {
+      if (inventory[shipSlot.shipId] && inventory[shipSlot.shipId] > 0) {
+        inventory[shipSlot.shipId] -= 1;
+        debugLog('MIA', `Removed ship ${shipSlot.shipId} from inventory`);
+        if (inventory[shipSlot.shipId] <= 0) {
+          delete inventory[shipSlot.shipId];
+        }
+      }
+    }
+
     // Reset slot to empty state
     const slotName = shipSlot.name;
     shipSlot.status = 'empty';
@@ -113,6 +125,7 @@ class MIARecoveryService {
     shipSlot.decklist = [];
     shipSlot.drones = [];
     shipSlot.shipComponents = {};
+    shipSlot.shipId = null;
 
     // Update state
     gameStateManager.setState({

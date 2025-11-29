@@ -3,10 +3,12 @@ import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp, Sword, Rocket, Shield,
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import ActionCard from '../ui/ActionCard.jsx';
 import DroneCard from '../ui/DroneCard.jsx';
+import ShipCard from '../ui/ShipCard.jsx';
 import ViewDeckModal from '../modals/ViewDeckModal.jsx';
 import ShipSection from '../ui/ShipSection.jsx';
 import fullDroneCollection from '../../data/droneData.js';
-import { shipComponentCollection } from '../../data/shipData.js';
+import { shipComponentCollection } from '../../data/shipSectionData.js';
+import { getAllShips, getDefaultShip } from '../../data/shipData.js';
 import { gameEngine } from '../../logic/gameLogic.js';
 
 // Helper functions to get type-based colors for table styling
@@ -204,6 +206,8 @@ const DeckBuilder = ({
   onDronesChange,
   selectedShipComponents,
   onShipComponentsChange,
+  selectedShip = null,         // Selected ship card (null = use default)
+  onShipChange,                // Callback when ship selection changes
   onConfirmDeck,
   onImportDeck,
   onBack,
@@ -218,8 +222,13 @@ const DeckBuilder = ({
   deckName = '',               // Current deck name (extraction mode)
   onDeckNameChange,            // Callback for name change
   availableDrones = null,      // Filtered drone collection (extraction mode)
-  availableComponents = null   // Filtered component collection (extraction mode)
+  availableComponents = null,  // Filtered component collection (extraction mode)
+  availableShips = null        // Filtered ship collection (extraction mode)
 }) => {
+  // Use provided ship or default
+  const activeShip = selectedShip || getDefaultShip();
+  // In extraction mode, use filtered ships; otherwise show all
+  const allShips = availableShips || getAllShips();
   const [detailedCard, setDetailedCard] = useState(null);
   const [detailedDrone, setDetailedDrone] = useState(null);
   const [detailedShipComponent, setDetailedShipComponent] = useState(null);
@@ -228,8 +237,8 @@ const DeckBuilder = ({
   const [showViewDeckModal, setShowViewDeckModal] = useState(false);
 
   // Panel view toggles
-  const [leftPanelView, setLeftPanelView] = useState('cards'); // 'cards', 'drones', or 'ship'
-  const [rightPanelView, setRightPanelView] = useState('deck'); // 'deck', 'drones', or 'ship'
+  const [leftPanelView, setLeftPanelView] = useState('shipCard'); // 'shipCard', 'cards', 'drones', or 'ship'
+  const [rightPanelView, setRightPanelView] = useState('shipCard'); // 'shipCard', 'deck', 'drones', or 'ship'
 
   const [filters, setFilters] = useState({
     cost: { min: 0, max: 99 }, // Temporary values
@@ -465,16 +474,22 @@ const DeckBuilder = ({
     return { cardCount: total, deckListForDisplay: displayList, baseCardCounts: counts, typeCounts: types };
   }, [deck, processedCardCollection]);
 
-  // Type limits based on design framework
-  const typeLimits = { Ordnance: 15, Tactic: 15, Support: 15, Upgrade: 10 };
+  // Type limits derived from selected ship card
+  const typeLimits = {
+    Ordnance: activeShip?.deckLimits?.ordnanceLimit ?? 15,
+    Tactic: activeShip?.deckLimits?.tacticLimit ?? 15,
+    Support: activeShip?.deckLimits?.supportLimit ?? 15,
+    Upgrade: activeShip?.deckLimits?.upgradeLimit ?? 10
+  };
+  const totalCardLimit = activeShip?.deckLimits?.totalCards ?? 40;
 
   // Validate type limits
   const typeValid = Object.keys(typeLimits).every(
     type => typeCounts[type] <= typeLimits[type]
   );
 
-  // Deck is valid if it has exactly 40 cards and respects type limits
-  const isDeckValid = cardCount === 40 && typeValid;
+  // Deck is valid if it has exactly the required card count and respects type limits
+  const isDeckValid = cardCount === totalCardLimit && typeValid;
 
   // --- Drone counts and display list ---
   const { droneCount, droneListForDisplay } = useMemo(() => {
@@ -979,6 +994,15 @@ const DeckBuilder = ({
             <div className="flex gap-2">
               <button
                 onClick={() => {
+                  setLeftPanelView('shipCard');
+                  setRightPanelView('shipCard');
+                }}
+                className={`btn-utility ${leftPanelView === 'shipCard' ? 'opacity-100' : 'opacity-60'}`}
+              >
+                Ship
+              </button>
+              <button
+                onClick={() => {
                   setLeftPanelView('cards');
                   setRightPanelView('deck');
                 }}
@@ -1002,7 +1026,7 @@ const DeckBuilder = ({
                 }}
                 className={`btn-utility ${leftPanelView === 'ship' ? 'opacity-100' : 'opacity-60'}`}
               >
-                Ship Components
+                Ship Sections
               </button>
               <button
                 onClick={() => setShowViewDeckModal(true)}
@@ -1071,6 +1095,30 @@ const DeckBuilder = ({
               </button>
             </div>
           </div>
+
+          {/* SHIP CARD VIEW */}
+          {leftPanelView === 'shipCard' && (
+            <div className="flex-1 overflow-y-auto custom-scrollbar">
+              <div className="mb-4 p-4 bg-slate-800/50 rounded-lg border border-cyan-700/50">
+                <h3 className="text-lg font-orbitron text-cyan-400 mb-2">Select Your Ship</h3>
+                <p className="text-sm text-gray-400">
+                  Choose a ship to define your deck composition limits. Each ship has different hull, shields, and thresholds,
+                  as well as unique deck building constraints.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-4 justify-center">
+                {allShips.map(ship => (
+                  <ShipCard
+                    key={ship.id}
+                    ship={ship}
+                    onClick={() => onShipChange && onShipChange(ship)}
+                    isSelectable={!readOnly && !!onShipChange}
+                    isSelected={activeShip?.id === ship.id}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* CARDS VIEW */}
           {leftPanelView === 'cards' && (
@@ -1532,10 +1580,16 @@ const DeckBuilder = ({
           <div className="flex justify-between items-center mb-4">
             <div className="flex gap-2 flex-wrap">
               <button
+                onClick={() => setRightPanelView('shipCard')}
+                className={`btn-utility ${rightPanelView === 'shipCard' ? 'opacity-100' : 'opacity-60'}`}
+              >
+                Ship
+              </button>
+              <button
                 onClick={() => setRightPanelView('deck')}
                 className={`btn-utility ${rightPanelView === 'deck' ? 'opacity-100' : 'opacity-60'}`}
               >
-                Deck ({cardCount}/40)
+                Deck ({cardCount}/{totalCardLimit})
               </button>
               <button
                 onClick={() => setRightPanelView('drones')}
@@ -1547,7 +1601,7 @@ const DeckBuilder = ({
                 onClick={() => setRightPanelView('ship')}
                 className={`btn-utility ${rightPanelView === 'ship' ? 'opacity-100' : 'opacity-60'}`}
               >
-                Ship ({shipComponentCount}/3)
+                Components ({shipComponentCount}/3)
               </button>
             </div>
             <button
@@ -1558,6 +1612,51 @@ const DeckBuilder = ({
               Reset
             </button>
           </div>
+
+          {/* SELECTED SHIP VIEW */}
+          {rightPanelView === 'shipCard' && (
+            <div className="flex-grow overflow-y-auto pr-2 dw-modal-scroll">
+              {activeShip ? (
+                <div className="flex flex-col items-center">
+                  <ShipCard
+                    ship={activeShip}
+                    onClick={() => {}}
+                    isSelectable={false}
+                    isSelected={true}
+                  />
+                  <div className="mt-4 p-4 bg-slate-800/50 rounded-lg border border-cyan-700/50 w-full">
+                    <h4 className="text-sm font-orbitron text-cyan-400 mb-2">Deck Limits</h4>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-400">Total Cards:</span>
+                        <span className="text-white font-bold">{activeShip.deckLimits.totalCards}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-red-400">Ordnance:</span>
+                        <span className="text-white font-bold">{activeShip.deckLimits.ordnanceLimit}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-cyan-400">Tactic:</span>
+                        <span className="text-white font-bold">{activeShip.deckLimits.tacticLimit}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-emerald-400">Support:</span>
+                        <span className="text-white font-bold">{activeShip.deckLimits.supportLimit}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-purple-400">Upgrade:</span>
+                        <span className="text-white font-bold">{activeShip.deckLimits.upgradeLimit}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center text-gray-500 italic">
+                  No ship selected. Go to the Ship tab to select one.
+                </div>
+              )}
+            </div>
+          )}
 
           {/* DECK LIST VIEW */}
           {rightPanelView === 'deck' && (
@@ -2071,7 +2170,7 @@ const DeckBuilder = ({
                             <div className="flex items-center gap-1 font-semibold mb-1">
                               <AlertTriangle size={14} /> Deck Incomplete - Cannot Deploy
                             </div>
-                            {!isDeckValid && <div>Need 40 cards (have {Object.values(deck || {}).reduce((sum, qty) => sum + qty, 0)})</div>}
+                            {!isDeckValid && <div>Need {totalCardLimit} cards (have {Object.values(deck || {}).reduce((sum, qty) => sum + qty, 0)})</div>}
                             {!isDronesValid && <div>Need {maxDrones} drones (have {droneCount})</div>}
                             {!shipComponentsValid && <div>Need 3 ship components with unique lanes</div>}
                           </div>

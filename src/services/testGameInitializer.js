@@ -6,7 +6,7 @@
 
 import { gameEngine } from '../logic/gameLogic.js';
 import { calculateEffectiveShipStats } from '../logic/statsCalculator.js';
-import shipSectionData from '../data/shipData.js';
+import shipSectionData from '../data/shipSectionData.js';
 import fullCardCollection from '../data/cardData.js';
 import fullDroneCollection from '../data/droneData.js';
 import aiPersonalities from '../data/aiData.js';

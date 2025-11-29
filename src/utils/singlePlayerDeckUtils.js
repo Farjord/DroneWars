@@ -5,8 +5,9 @@
 
 import fullCardCollection from '../data/cardData.js';
 import fullDroneCollection from '../data/droneData.js';
-import { shipComponentCollection } from '../data/shipData.js';
-import { starterPoolCards, starterPoolDroneNames } from '../data/saveGameSchema.js';
+import { shipComponentCollection } from '../data/shipSectionData.js';
+import { getAllShips } from '../data/shipData.js';
+import { starterPoolCards, starterPoolDroneNames, starterPoolShipIds } from '../data/saveGameSchema.js';
 
 /**
  * Calculate available cards for a specific ship slot
@@ -169,6 +170,50 @@ export function calculateAvailableComponents(targetSlotId, shipSlots, componentI
 }
 
 /**
+ * Calculate available ships for deck building
+ * Starter pool ships are unlimited; crafted ships are limited by inventory and slot usage
+ *
+ * @param {number} targetSlotId - The slot being edited
+ * @param {Array} shipSlots - All ship slots
+ * @param {Object} inventory - Player inventory { shipId: quantity }
+ * @returns {Array} Ships with availableCount and isStarterPool flags
+ */
+export function calculateAvailableShips(targetSlotId, shipSlots, inventory) {
+  const allShips = getAllShips();
+
+  // Count ships used in OTHER active slots (not target, not slot 0)
+  const usedShips = {};
+  shipSlots.forEach(slot => {
+    if (slot.id !== targetSlotId && slot.id !== 0 && slot.status === 'active') {
+      if (slot.shipId) {
+        usedShips[slot.shipId] = (usedShips[slot.shipId] || 0) + 1;
+      }
+    }
+  });
+
+  return allShips.map(ship => {
+    const isStarterPool = starterPoolShipIds.includes(ship.id);
+    let availableCount;
+
+    if (isStarterPool) {
+      // Starter pool: unlimited availability
+      availableCount = 99;
+    } else {
+      // Inventory: owned minus used elsewhere
+      const owned = inventory[ship.id] || 0;
+      const usedElsewhere = usedShips[ship.id] || 0;
+      availableCount = Math.max(0, owned - usedElsewhere);
+    }
+
+    return {
+      ...ship,
+      availableCount,
+      isStarterPool
+    };
+  }).filter(ship => ship.availableCount > 0);
+}
+
+/**
  * Validate deck for deployment readiness
  *
  * @param {Object} deck - Card deck { cardId: quantity }
@@ -270,6 +315,7 @@ export default {
   calculateAvailableCards,
   calculateAvailableDrones,
   calculateAvailableComponents,
+  calculateAvailableShips,
   validateDeckForDeployment,
   getDeckStatistics
 };

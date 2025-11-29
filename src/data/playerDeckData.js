@@ -9,6 +9,7 @@ export const starterDeck = {
   name: 'Standard Loadout',
   description: 'A balanced configuration designed for reconnaissance operations in The Shallows. Emphasizes versatility and survivability.',
   isImmutable: true,  // Cannot be edited (for Slot 0 in Extraction Mode)
+  shipId: 'SHIP_001', // Default ship card
 
   // 40 Asset Cards - Exactly as defined in StateInitializer.js
   decklist: [

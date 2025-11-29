@@ -3,7 +3,7 @@ import { BookOpen, AlertTriangle } from 'lucide-react';
 import DroneCard from '../ui/DroneCard.jsx';
 import ActionCard from '../ui/ActionCard.jsx';
 import ShipSection from '../ui/ShipSection.jsx';
-import { shipComponentCollection } from '../../data/shipData.js';
+import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { gameEngine } from '../../logic/gameLogic.js';
 
 /**

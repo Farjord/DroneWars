@@ -28,6 +28,41 @@ export const getShipStatus = (section) => {
 };
 
 // ========================================
+// SHIP SECTION BASE STATS CALCULATION
+// ========================================
+
+/**
+ * Calculate the effective base stats for a ship section
+ * Combines Ship Card baselines with Section modifiers
+ *
+ * @param {Object} shipCard - Ship card with baseHull, baseShields, baseThresholds
+ * @param {Object} sectionTemplate - Section template with modifiers
+ * @returns {Object} Computed stats { hull, maxHull, shields, thresholds }
+ */
+export const calculateSectionBaseStats = (shipCard, sectionTemplate) => {
+  // Handle legacy sections without modifiers (default to 0)
+  const hullMod = sectionTemplate.hullModifier ?? 0;
+  const shieldsMod = sectionTemplate.shieldsModifier ?? 0;
+  const thresholdMods = sectionTemplate.thresholdModifiers ?? { damaged: 0, critical: 0 };
+
+  // Calculate final values, ensuring minimums
+  const finalHull = Math.max(1, shipCard.baseHull + hullMod);
+  const finalShields = Math.max(0, shipCard.baseShields + shieldsMod);
+  const finalThresholds = {
+    damaged: Math.max(0, shipCard.baseThresholds.damaged + thresholdMods.damaged),
+    critical: Math.max(0, shipCard.baseThresholds.critical + thresholdMods.critical)
+  };
+
+  return {
+    hull: finalHull,
+    maxHull: finalHull,
+    shields: finalShields,
+    allocatedShields: finalShields,
+    thresholds: finalThresholds
+  };
+};
+
+// ========================================
 // SHIP STATS CALCULATION
 // ========================================
 

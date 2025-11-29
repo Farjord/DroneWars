@@ -15,7 +15,7 @@ import { debugLog } from '../utils/debugLogger.js';
 import { createNewSave, starterPoolCards, starterPoolDroneNames } from '../data/saveGameSchema.js';
 import { generateMapData } from '../utils/mapGenerator.js';
 import CombatOutcomeProcessor from '../logic/singlePlayer/CombatOutcomeProcessor.js';
-import { shipComponentCollection } from '../data/shipData.js';
+import { shipComponentCollection } from '../data/shipSectionData.js';
 import fullCardCollection from '../data/cardData.js';
 // PhaseManager dependency removed - using direct phase checks
 
@@ -1081,7 +1081,8 @@ class GameStateManager {
           player1Config.name || 'Player 1',
           player1Config.decklist || startingDecklist,
           'player1',
-          gameSeed  // Use same seed for both players
+          gameSeed,  // Use same seed for both players
+          player1Config.shipId || null  // Ship card ID (null = default)
         ),
         ...player1Config
       },
@@ -1090,7 +1091,8 @@ class GameStateManager {
           player2Config.name || 'Player 2',
           player2Config.decklist || startingDecklist,
           'player2',
-          gameSeed  // Use same seed for both players
+          gameSeed,  // Use same seed for both players
+          player2Config.shipId || null  // Ship card ID (null = default)
         ),
         ...player2Config
       },
@@ -1679,14 +1681,14 @@ class GameStateManager {
   /**
    * Save deck data to a ship slot
    * @param {number} slotId - Slot ID (1-5, cannot modify 0)
-   * @param {Object} deckData - { name, decklist, drones, shipComponents }
+   * @param {Object} deckData - { name, decklist, drones, shipComponents, shipId }
    */
   saveShipSlotDeck(slotId, deckData) {
     if (slotId === 0) {
       throw new Error('Cannot modify Slot 0 (immutable starter deck)');
     }
 
-    const { name, decklist, drones, shipComponents } = deckData;
+    const { name, decklist, drones, shipComponents, shipId } = deckData;
     const slots = [...this.state.singlePlayerShipSlots];
     const slotIndex = slots.findIndex(s => s.id === slotId);
 
@@ -1703,6 +1705,7 @@ class GameStateManager {
       decklist,
       drones,
       shipComponents,
+      shipId: shipId || null,
       status: 'active'
     };
 

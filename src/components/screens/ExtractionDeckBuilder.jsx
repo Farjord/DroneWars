@@ -10,8 +10,10 @@ import { useGameState } from '../../hooks/useGameState';
 import {
   calculateAvailableCards,
   calculateAvailableDrones,
-  calculateAvailableComponents
+  calculateAvailableComponents,
+  calculateAvailableShips
 } from '../../utils/singlePlayerDeckUtils.js';
+import { getShipById, getDefaultShip } from '../../data/shipData.js';
 
 /**
  * ExtractionDeckBuilder
@@ -25,6 +27,7 @@ const ExtractionDeckBuilder = () => {
     singlePlayerShipSlots,
     singlePlayerDroneInstances,
     singlePlayerShipComponentInstances,
+    singlePlayerProfile,
     extractionDeckSlotId,
     extractionNewDeckOption
   } = gameState;
@@ -43,6 +46,7 @@ const ExtractionDeckBuilder = () => {
   const [deck, setDeck] = useState({});
   const [selectedDrones, setSelectedDrones] = useState({});
   const [selectedShipComponents, setSelectedShipComponents] = useState({});
+  const [selectedShip, setSelectedShip] = useState(null);
 
   // Initialize state based on slot data or newDeckOption
   useEffect(() => {
@@ -68,6 +72,10 @@ const ExtractionDeckBuilder = () => {
 
           // Copy ship components
           setSelectedShipComponents({ ...starterSlot.shipComponents });
+
+          // Copy ship card
+          const shipCard = getShipById(starterSlot.shipId) || getDefaultShip();
+          setSelectedShip(shipCard);
         }
         setDeckName('New Ship');
       } else {
@@ -75,6 +83,7 @@ const ExtractionDeckBuilder = () => {
         setDeck({});
         setSelectedDrones({});
         setSelectedShipComponents({});
+        setSelectedShip(getDefaultShip());
         setDeckName('New Ship');
       }
     } else if (slot) {
@@ -97,6 +106,10 @@ const ExtractionDeckBuilder = () => {
 
       // Copy ship components
       setSelectedShipComponents({ ...slot.shipComponents });
+
+      // Load ship card
+      const shipCard = getShipById(slot.shipId) || getDefaultShip();
+      setSelectedShip(shipCard);
     }
   }, [slotId, newDeckOption, slot, singlePlayerShipSlots, isNewDeck]);
 
@@ -124,6 +137,15 @@ const ExtractionDeckBuilder = () => {
       singlePlayerShipComponentInstances || []
     );
   }, [slotId, singlePlayerShipSlots, singlePlayerShipComponentInstances]);
+
+  // Calculate available ships (filtered by inventory and slot usage)
+  const availableShips = useMemo(() => {
+    return calculateAvailableShips(
+      slotId,
+      singlePlayerShipSlots || [],
+      singlePlayerInventory || {}
+    );
+  }, [slotId, singlePlayerShipSlots, singlePlayerInventory]);
 
   // Get drone instances for damage display
   const droneInstances = useMemo(() => {
@@ -172,6 +194,12 @@ const ExtractionDeckBuilder = () => {
     }));
   };
 
+  // Handle ship card change
+  const handleShipChange = (ship) => {
+    if (isReadOnly) return;
+    setSelectedShip(ship);
+  };
+
   // Navigate back to hangar
   const navigateBack = () => {
     gameStateManager.setState({
@@ -201,7 +229,8 @@ const ExtractionDeckBuilder = () => {
       name: deckName || `Ship Slot ${slotId}`,
       decklist,
       drones,
-      shipComponents: selectedShipComponents
+      shipComponents: selectedShipComponents,
+      shipId: selectedShip?.id || null
     };
 
     // Save using GameStateManager
@@ -262,9 +291,13 @@ const ExtractionDeckBuilder = () => {
           componentInstances={componentInstances}
           deckName={deckName}
           onDeckNameChange={setDeckName}
-          // Pass available drones/components collections for filtering
+          // Pass available drones/components/ships collections for filtering
           availableDrones={availableDrones}
           availableComponents={availableComponents}
+          availableShips={availableShips}
+          // Ship card selection
+          selectedShip={selectedShip}
+          onShipChange={handleShipChange}
         />
       </div>
     </div>

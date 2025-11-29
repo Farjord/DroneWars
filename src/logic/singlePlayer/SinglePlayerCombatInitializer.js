@@ -6,8 +6,9 @@
 // GameFlowManager.processRoundInitialization() handles energy, draw, etc.
 
 import { gameEngine } from '../gameLogic.js';
-import { calculateEffectiveShipStats } from '../statsCalculator.js';
-import shipSectionData from '../../data/shipData.js';
+import { calculateEffectiveShipStats, calculateSectionBaseStats } from '../statsCalculator.js';
+import shipSectionData from '../../data/shipSectionData.js';
+import { getShipById, getDefaultShip } from '../../data/shipData.js';
 import fullCardCollection from '../../data/cardData.js';
 import fullDroneCollection from '../../data/droneData.js';
 import aiPersonalities from '../../data/aiData.js';
@@ -292,37 +293,38 @@ class SinglePlayerCombatInitializer {
    * @returns {Object} Player state object
    */
   buildPlayerState(shipSlot, runState) {
-    // Create ship sections - use run state hull values if available (preserves damage across combats)
-    let shipSections;
+    // Get ship card from slot or use default
+    const shipCard = getShipById(shipSlot?.shipId) || getDefaultShip();
+    debugLog('SP_COMBAT', 'Using ship card:', shipCard.id, shipCard.name);
+
+    // Create ship sections using ship card system
+    const shipSections = {};
+    for (const key in shipSectionData) {
+      const sectionTemplate = shipSectionData[key];
+      if (sectionTemplate) {
+        // Calculate base stats from ship card + section modifiers
+        const baseStats = calculateSectionBaseStats(shipCard, sectionTemplate);
+
+        // Preserve hull damage from run state if available
+        const savedHull = runState?.shipSections?.[key]?.hull;
+
+        shipSections[key] = {
+          ...JSON.parse(JSON.stringify(sectionTemplate)),
+          hull: savedHull ?? baseStats.hull,
+          maxHull: baseStats.maxHull,
+          shields: baseStats.shields,
+          allocatedShields: baseStats.allocatedShields,
+          thresholds: baseStats.thresholds
+        };
+      }
+    }
 
     if (runState?.shipSections) {
-      // Load hull values from run state (may be damaged from previous combat)
-      shipSections = {
-        bridge: {
-          ...JSON.parse(JSON.stringify(shipSectionData.bridge)),
-          hull: runState.shipSections.bridge?.hull ?? shipSectionData.bridge.hull
-        },
-        powerCell: {
-          ...JSON.parse(JSON.stringify(shipSectionData.powerCell)),
-          hull: runState.shipSections.powerCell?.hull ?? shipSectionData.powerCell.hull
-        },
-        droneControlHub: {
-          ...JSON.parse(JSON.stringify(shipSectionData.droneControlHub)),
-          hull: runState.shipSections.droneControlHub?.hull ?? shipSectionData.droneControlHub.hull
-        }
-      };
       debugLog('SP_COMBAT', 'Loaded hull from run state:', {
-        bridge: shipSections.bridge.hull,
-        powerCell: shipSections.powerCell.hull,
-        droneControlHub: shipSections.droneControlHub.hull
+        bridge: shipSections.bridge?.hull,
+        powerCell: shipSections.powerCell?.hull,
+        droneControlHub: shipSections.droneControlHub?.hull
       });
-    } else {
-      // First combat or no run state - use fresh sections
-      shipSections = {
-        bridge: JSON.parse(JSON.stringify(shipSectionData.bridge)),
-        powerCell: JSON.parse(JSON.stringify(shipSectionData.powerCell)),
-        droneControlHub: JSON.parse(JSON.stringify(shipSectionData.droneControlHub))
-      };
     }
 
     // Build deck from ship slot decklist or use default
@@ -404,12 +406,27 @@ class SinglePlayerCombatInitializer {
    * @returns {Object} AI player state object
    */
   buildAIState(aiPersonality) {
-    // Create ship sections
-    const shipSections = {
-      bridge: JSON.parse(JSON.stringify(shipSectionData.bridge)),
-      powerCell: JSON.parse(JSON.stringify(shipSectionData.powerCell)),
-      droneControlHub: JSON.parse(JSON.stringify(shipSectionData.droneControlHub))
-    };
+    // Get ship card from AI personality or use default
+    const shipCard = getShipById(aiPersonality.shipId) || getDefaultShip();
+    debugLog('SP_COMBAT', 'AI using ship card:', shipCard.id, shipCard.name);
+
+    // Create ship sections using ship card system
+    const shipSections = {};
+    for (const key in shipSectionData) {
+      const sectionTemplate = shipSectionData[key];
+      if (sectionTemplate) {
+        // Calculate base stats from ship card + section modifiers
+        const baseStats = calculateSectionBaseStats(shipCard, sectionTemplate);
+        shipSections[key] = {
+          ...JSON.parse(JSON.stringify(sectionTemplate)),
+          hull: baseStats.hull,
+          maxHull: baseStats.maxHull,
+          shields: baseStats.shields,
+          allocatedShields: baseStats.allocatedShields,
+          thresholds: baseStats.thresholds
+        };
+      }
+    }
 
     // Build deck from AI decklist
     let deck = [];

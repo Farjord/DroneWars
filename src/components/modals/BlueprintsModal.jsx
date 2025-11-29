@@ -7,9 +7,11 @@ import React, { useState, useMemo } from 'react';
 import { Layers, Lock } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
 import droneData from '../../data/droneData';
-import { shipComponentCollection } from '../../data/shipData';
+import { shipComponentCollection } from '../../data/shipSectionData';
+import { getAllShips } from '../../data/shipData';
 import { RARITY_COLORS } from '../../data/cardData';
 import { starterDeck } from '../../data/playerDeckData';
+import { starterPoolShipIds } from '../../data/saveGameSchema';
 
 /**
  * Starter deck items that should NOT appear as blueprints
@@ -17,6 +19,7 @@ import { starterDeck } from '../../data/playerDeckData';
  */
 const STARTER_DRONE_NAMES = new Set(starterDeck.drones.map(d => d.name));
 const STARTER_COMPONENT_IDS = new Set(Object.keys(starterDeck.shipComponents));
+const STARTER_SHIP_IDS = new Set(starterPoolShipIds);
 
 /**
  * BlueprintsModal Component
@@ -77,15 +80,47 @@ const BlueprintsModal = ({ onClose }) => {
   }, [unlockedBlueprints, singlePlayerInventory]);
 
   /**
+   * Get filtered ship card blueprints (excluding starter ship)
+   * Ships now work like drones - tracked in inventory with quantities
+   */
+  const shipCardBlueprints = useMemo(() => {
+    return getAllShips()
+      .filter(ship => !STARTER_SHIP_IDS.has(ship.id)) // Exclude starter ship
+      .map(ship => {
+        const owned = singlePlayerInventory[ship.id] || 0;
+        return {
+          ...ship,
+          isUnlocked: owned > 0, // For stats: "owned" counts as unlocked
+          craftCost: CRAFT_COSTS[ship.rarity] || 600, // Ships default to Rare cost
+          owned,
+        };
+      });
+  }, [singlePlayerInventory]);
+
+  /**
    * Get collection stats
    */
   const stats = useMemo(() => {
-    const current = selectedTab === 'Drones' ? droneBlueprints : shipBlueprints;
+    let current;
+    if (selectedTab === 'Drones') {
+      current = droneBlueprints;
+    } else if (selectedTab === 'Ships') {
+      current = shipBlueprints;
+    } else {
+      current = shipCardBlueprints;
+    }
     return {
       unlocked: current.filter(b => b.isUnlocked).length,
       total: current.length,
     };
-  }, [selectedTab, droneBlueprints, shipBlueprints]);
+  }, [selectedTab, droneBlueprints, shipBlueprints, shipCardBlueprints]);
+
+  /**
+   * Check if blueprint is a ship card
+   */
+  const isShipCard = (blueprint) => {
+    return blueprint.id?.startsWith('SHIP_');
+  };
 
   /**
    * Handle craft button click
@@ -108,7 +143,7 @@ const BlueprintsModal = ({ onClose }) => {
       credits: singlePlayerProfile.credits - craftCost
     };
 
-    // Add to inventory
+    // All items (ships, drones, components) are added to inventory
     const newInventory = {
       ...singlePlayerInventory,
       [blueprint.id]: (singlePlayerInventory[blueprint.id] || 0) + 1
@@ -119,8 +154,10 @@ const BlueprintsModal = ({ onClose }) => {
       singlePlayerInventory: newInventory,
     });
 
-    // Update card discovery state to 'owned' if not already
-    gameStateManager.updateCardDiscoveryState(blueprint.id, 'owned');
+    // Update card discovery state to 'owned' if not already (for drones/components)
+    if (!isShipCard(blueprint)) {
+      gameStateManager.updateCardDiscoveryState(blueprint.id, 'owned');
+    }
 
     setFeedback({
       type: 'success',
@@ -138,8 +175,12 @@ const BlueprintsModal = ({ onClose }) => {
     return RARITY_COLORS[rarity] || '#808080';
   };
 
-  const currentBlueprints = selectedTab === 'Drones' ? droneBlueprints : shipBlueprints;
-  const tabs = ['Drones', 'Ships'];
+  const currentBlueprints = selectedTab === 'Drones'
+    ? droneBlueprints
+    : selectedTab === 'Ships'
+      ? shipBlueprints
+      : shipCardBlueprints;
+  const tabs = ['Drones', 'Ships', 'Ship Cards'];
 
   return (
     <div className="dw-modal-overlay" onClick={onClose}>
@@ -232,10 +273,16 @@ const BlueprintsModal = ({ onClose }) => {
                             {blueprint.name}
                           </div>
 
-                          {/* Type/Rarity */}
-                          <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)', marginBottom: '4px' }}>
-                            {blueprint.type}
-                          </div>
+                          {/* Type/Stats/Rarity */}
+                          {isShipCard(blueprint) ? (
+                            <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)', marginBottom: '4px' }}>
+                              Hull: {blueprint.baseHull} | Shields: {blueprint.baseShields}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)', marginBottom: '4px' }}>
+                              {blueprint.type}
+                            </div>
+                          )}
                           <div style={{
                             fontSize: '11px',
                             fontWeight: '600',
@@ -245,8 +292,8 @@ const BlueprintsModal = ({ onClose }) => {
                             {blueprint.rarity}
                           </div>
 
-                          {/* Owned Count */}
-                          {blueprint.owned > 0 && (
+                          {/* Owned Count - not shown for ship cards */}
+                          {blueprint.owned > 0 && !isShipCard(blueprint) && (
                             <div style={{
                               fontSize: '12px',
                               color: 'var(--modal-success)',
@@ -256,24 +303,40 @@ const BlueprintsModal = ({ onClose }) => {
                             </div>
                           )}
 
-                          {/* Craft Cost */}
-                          <div style={{
-                            fontSize: '12px',
-                            color: 'var(--modal-text-secondary)',
-                            marginBottom: '10px'
-                          }}>
-                            Cost: <span style={{ color: '#fbbf24', fontWeight: '600' }}>{blueprint.craftCost}</span>
-                          </div>
+                          {/* Ship Card Status - show Unlocked instead of Owned */}
+                          {isShipCard(blueprint) && blueprint.isUnlocked && (
+                            <div style={{
+                              fontSize: '12px',
+                              color: 'var(--modal-success)',
+                              marginBottom: '6px',
+                              fontWeight: '600'
+                            }}>
+                              ✓ Unlocked
+                            </div>
+                          )}
 
-                          {/* Craft Button */}
-                          <button
-                            className={`dw-btn dw-btn-confirm dw-btn--full ${!canAfford ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            style={{ padding: '6px 12px', fontSize: '12px' }}
-                            onClick={() => handleCraft(blueprint)}
-                            disabled={!canAfford}
-                          >
-                            Craft
-                          </button>
+                          {/* Craft Cost - only show if can still craft */}
+                          {(!isShipCard(blueprint) || !blueprint.isUnlocked) && (
+                            <div style={{
+                              fontSize: '12px',
+                              color: 'var(--modal-text-secondary)',
+                              marginBottom: '10px'
+                            }}>
+                              Cost: <span style={{ color: '#fbbf24', fontWeight: '600' }}>{blueprint.craftCost}</span>
+                            </div>
+                          )}
+
+                          {/* Craft/Unlock Button - not shown for already-unlocked ship cards */}
+                          {(!isShipCard(blueprint) || !blueprint.isUnlocked) && (
+                            <button
+                              className={`dw-btn dw-btn-confirm dw-btn--full ${!canAfford ? 'opacity-50 cursor-not-allowed' : ''}`}
+                              style={{ padding: '6px 12px', fontSize: '12px' }}
+                              onClick={() => handleCraft(blueprint)}
+                              disabled={!canAfford}
+                            >
+                              {isShipCard(blueprint) ? 'Unlock' : 'Craft'}
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

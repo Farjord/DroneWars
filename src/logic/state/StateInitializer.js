@@ -5,8 +5,9 @@
 // Extracted from gameLogic.js Phase 9.1
 
 import fullCardCollection from '../../data/cardData.js';
-import shipSectionData from '../../data/shipData.js';
-import { calculateEffectiveShipStats } from '../statsCalculator.js';
+import shipSectionData, { shipComponentCollection } from '../../data/shipSectionData.js';
+import { getShipById, getDefaultShip } from '../../data/shipData.js';
+import { calculateEffectiveShipStats, calculateSectionBaseStats } from '../statsCalculator.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import { starterDeck } from '../../data/playerDeckData.js';
 
@@ -96,7 +97,8 @@ class StateInitializer {
    * Create initial player state
    *
    * Initializes a player with:
-   * - Ship sections with full configuration
+   * - Ship card configuration (baseline stats)
+   * - Ship sections with computed hull/shields/thresholds
    * - Shuffled deck built from decklist
    * - Empty hand, discard pile, and battlefield
    * - Base deployment budget (calculated from ship stats)
@@ -105,16 +107,39 @@ class StateInitializer {
    * @param {Array} decklist - Deck configuration (array of {id, quantity})
    * @param {string} playerId - 'player1' or 'player2'
    * @param {number|null} gameSeed - Seed for deterministic deck shuffling
+   * @param {string|null} shipId - Ship card ID (optional, defaults to SHIP_001)
    * @returns {Object} Initial player state object
    */
-  initialPlayerState(name, decklist, playerId = 'player1', gameSeed = null) {
-    const baseStats = calculateEffectiveShipStats({ shipSections: shipSectionData }, []).totals;
+  initialPlayerState(name, decklist, playerId = 'player1', gameSeed = null, shipId = null) {
+    // Get ship card (default if not specified)
+    const shipCard = shipId ? getShipById(shipId) : getDefaultShip();
+
+    // Build ship sections with computed base stats from Ship Card + Section modifiers
+    const computedShipSections = {};
+    for (const key in shipSectionData) {
+      const sectionTemplate = shipSectionData[key];
+      if (sectionTemplate) {
+        const baseStats = calculateSectionBaseStats(shipCard, sectionTemplate);
+        computedShipSections[key] = {
+          ...sectionTemplate,
+          // Computed values from Ship + Section
+          hull: baseStats.hull,
+          maxHull: baseStats.maxHull,
+          shields: baseStats.shields,
+          allocatedShields: baseStats.allocatedShields,
+          thresholds: baseStats.thresholds
+        };
+      }
+    }
+
+    const effectiveStats = calculateEffectiveShipStats({ shipSections: computedShipSections }, []).totals;
 
     return {
         name: name,
-        shipSections: shipSectionData,
+        shipId: shipCard.id,  // Track which ship is in use
+        shipSections: computedShipSections,
         energy: 0, // Energy will be set correctly during round start with actual placed sections
-        initialDeploymentBudget: baseStats.initialDeployment,
+        initialDeploymentBudget: effectiveStats.initialDeployment,
         deploymentBudget: 0,
         hand: [],
         deck: this.buildDeckFromList(decklist, playerId, gameSeed),

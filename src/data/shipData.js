@@ -1,122 +1,136 @@
-// Ship component collection - card-like format for deck selection
-const shipComponentCollection = [
+// ========================================
+// SHIP CARD DATA
+// ========================================
+// Ship cards define baseline stats for the player's vessel.
+// Ship Sections provide modifiers to these baselines.
+// Final values: Ship.base + Section.modifier
+
+const shipCollection = [
   {
-    id: 'BRIDGE_001',
-    type: 'Bridge',
-    name: 'Standard Command Bridge',
-    key: 'bridge', // Legacy key for backward compatibility
+    id: 'SHIP_001',
+    name: 'Reconnaissance Corvette',
     rarity: 'Common',
-    hull: 10, maxHull: 10, shields: 3, allocatedShields: 3,
-    description: 'The command center of your ship.',
-    thresholds: { damaged: 5, critical: 0 },
-    stats: {
-      healthy: { 'Draw': 5, 'Discard': 3 },
-      damaged: { 'Draw': 5, 'Discard': 2 },
-      critical: { 'Draw': 4, 'Discard': 1 },
+    faction: null,
+    description: 'A balanced ship designed for reconnaissance operations. Well-suited for any strategy.',
+    image: '/DroneWars/img/ships/corvette.png',
+
+    // BASELINE COMBAT VALUES
+    // These are the default values for all ship sections
+    baseHull: 10,
+    baseShields: 3,
+    baseThresholds: {
+      damaged: 5,
+      critical: 0
     },
-    middleLaneBonus: { 'Draw': 1, 'Discard': 1 },
-    image: '/DroneWars/img/Bridge.png',
-    ability: {
-      id: 'ABILITY_SHIP_01',
-      name: 'Recalculate',
-      description: 'Draw a card, then discard a card.',
-      cost: { energy: 1 },
-      targeting: null,
-      effect: { type: 'DRAW_THEN_DISCARD', value: { draw: 1, discard: 1 } }
-    }
+
+    // DECK COMPOSITION LIMITS
+    // Controls how many cards of each type can be in the deck
+    deckLimits: {
+      totalCards: 40,
+      ordnanceLimit: 15,
+      tacticLimit: 15,
+      supportLimit: 15,
+      upgradeLimit: 10
+    },
+
+    // FUTURE PROPERTIES (not yet implemented)
+    factionCardAllowances: {},
+    shipBonus: null,
+    shipAbility: null
   },
 
   {
-    id: 'BRIDGE_002',
-    type: 'Bridge',
-    name: 'Tactical Command Bridge',
-    key: 'tacticalBridge',
+    id: 'SHIP_002',
+    name: 'Heavy Assault Carrier',
     rarity: 'Uncommon',
-    hull: 10, maxHull: 10, shields: 3, allocatedShields: 3,
-    description: 'Advanced command center with targeting capabilities.',
-    thresholds: { damaged: 5, critical: 0 },
-    stats: {
-      healthy: { 'Draw': 5, 'Discard': 3 },
-      damaged: { 'Draw': 5, 'Discard': 2 },
-      critical: { 'Draw': 4, 'Discard': 1 },
+    faction: null,
+    description: 'A heavily armored vessel optimized for direct assault. High durability with focus on damage-dealing cards.',
+    image: '/DroneWars/img/ships/carrier.png',
+
+    // BASELINE COMBAT VALUES
+    baseHull: 12,
+    baseShields: 2,
+    baseThresholds: {
+      damaged: 6,
+      critical: 2
     },
-    middleLaneBonus: { 'Draw': 1, 'Discard': 1 },
-    image: '/DroneWars/img/Bridge.png',
-    ability: {
-      id: 'ABILITY_SHIP_04',
-      name: 'Target Lock',
-      description: 'Mark target enemy drone.',
-      cost: { energy: 2 },
-      targeting: {
-        type: 'DRONE',
-        affinity: 'ENEMY',
-        location: 'ANY_LANE',
-        custom: ['NOT_MARKED']
-      },
-      effect: { type: 'MARK_DRONE' }
-    }
+
+    // DECK COMPOSITION LIMITS
+    deckLimits: {
+      totalCards: 40,
+      ordnanceLimit: 20,
+      tacticLimit: 10,
+      supportLimit: 15,
+      upgradeLimit: 5
+    },
+
+    // FUTURE PROPERTIES
+    factionCardAllowances: {},
+    shipBonus: null,
+    shipAbility: null
   },
 
   {
-    id: 'POWERCELL_001',
-    type: 'Power Cell',
-    name: 'Standard Power Cell',
-    key: 'powerCell', // Legacy key for backward compatibility
+    id: 'SHIP_003',
+    name: 'Scout',
     rarity: 'Common',
-    hull: 10, maxHull: 10, shields: 3, allocatedShields: 3,
-    description: 'Generates energy to power your abilities.',
-    thresholds: { damaged: 5, critical: 0 },
-    stats: {
-      healthy: { 'Energy Per Turn': 10, 'Max Energy': 10, 'Shields Per Turn': 3 },
-      damaged: { 'Energy Per Turn': 10, 'Max Energy': 10, 'Shields Per Turn': 2 },
-      critical: { 'Energy Per Turn': 9, 'Max Energy': 9, 'Shields Per Turn': 1 },
-    },
-    middleLaneBonus: { 'Energy Per Turn': 2, 'Max Energy': 2, 'Shields Per Turn': 1 },
-    image: '/DroneWars/img/Power_Cell.png',
-    ability: {
-      id: 'ABILITY_SHIP_02',
-      name: 'Reallocate Shields',
-      description: 'Take up to 2 shields from your ship sections and redeploy them elsewhere.',
-      cost: { energy: 1 },
-      targeting: null,
-      effect: { type: 'REALLOCATE_SHIELDS', value: { maxShields: 2 } }
-    }
-  },
+    faction: null,
+    description: 'Leightweight reconnocence craft.',
+    image: '/DroneWars/img/ships/scout.png',
 
-  {
-    id: 'DRONECONTROL_001',
-    type: 'Drone Control Hub',
-    name: 'Standard Drone Control Hub',
-    key: 'droneControlHub', // Legacy key for backward compatibility
-    rarity: 'Common',
-    hull: 10, maxHull: 10, shields: 3, allocatedShields: 3,
-    description: 'Controls your drone fleet.',
-    thresholds: { damaged: 5, critical: 0 },
-    stats: {
-      healthy: { 'Initial Deployment': 6, 'CPU Control Value': 10, 'Deployment Budget': 3 },
-      damaged: { 'Initial Deployment': 5, 'CPU Control Value': 10, 'Deployment Budget': 2 },
-      critical: { 'Initial Deployment': 4, 'CPU Control Value': 8, 'Deployment Budget': 2 },
+    // BASELINE COMBAT VALUES
+    baseHull: 6,
+    baseShields: 2,
+    baseThresholds: {
+      damaged: 3,
+      critical: 0
     },
-    middleLaneBonus: {'Initial Deployment': 2, 'Deployment Budget': 2, 'CPU Control Value': 2 },
-    image: '/DroneWars/img/Drone_Control_Hub.png',
-    ability: {
-      id: 'ABILITY_SHIP_03',
-      name: 'Recall',
-      description: 'Return a friendly drone from any lane to your active pool.',
-      cost: { energy: 1 },
-      targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
-      effect: { type: 'RECALL_DRONE', value: 1 }
-    }
+
+    // DECK COMPOSITION LIMITS
+    deckLimits: {
+      totalCards: 40,
+      ordnanceLimit: 15,
+      tacticLimit: 15,
+      supportLimit: 15,
+      upgradeLimit: 5
+    },
+
+    // FUTURE PROPERTIES
+    factionCardAllowances: {},
+    shipBonus: null,
+    shipAbility: null
   }
+
 ];
 
-// Legacy object format for backward compatibility with existing code
-const shipSections = {
-  bridge: shipComponentCollection.find(c => c.key === 'bridge'),
-  tacticalBridge: shipComponentCollection.find(c => c.key === 'tacticalBridge'),
-  powerCell: shipComponentCollection.find(c => c.key === 'powerCell'),
-  droneControlHub: shipComponentCollection.find(c => c.key === 'droneControlHub')
-};
+// ========================================
+// HELPER FUNCTIONS
+// ========================================
 
-export { shipComponentCollection };
-export default shipSections;
+/**
+ * Get a ship card by its ID
+ * @param {string} shipId - The ship ID (e.g., 'SHIP_001')
+ * @returns {Object|null} The ship card or null if not found
+ */
+export const getShipById = (shipId) =>
+  shipCollection.find(ship => ship.id === shipId) || null;
+
+/**
+ * Get all available ship cards
+ * @returns {Array} Array of all ship cards
+ */
+export const getAllShips = () => shipCollection;
+
+/**
+ * The default ship ID used for backward compatibility
+ */
+export const DEFAULT_SHIP_ID = 'SHIP_001';
+
+/**
+ * Get the default ship card
+ * @returns {Object} The default ship card (Reconnaissance Corvette)
+ */
+export const getDefaultShip = () => getShipById(DEFAULT_SHIP_ID);
+
+export { shipCollection };
+export default shipCollection;

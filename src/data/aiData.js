@@ -4,6 +4,7 @@ const aiPersonalities = [
     description: 'Used for test scenarios.',
     difficulty: 'Easy',
     modes: ['vs'],  // VS Mode only
+    shipId: 'SHIP_003',
     imagePath: '/DroneWars/AI/TEST.png',
     // The specific 5 drones this AI will use.
     dronePool: [
@@ -47,6 +48,7 @@ const aiPersonalities = [
     description: 'Focuses on overwhelming firepower and direct damage to drones and ship sections.',
     difficulty: 'Normal',
     modes: ['vs'],  // VS Mode only
+    shipId: 'SHIP_001',
     imagePath: '/DroneWars/AI/Manticore.png',
     // The specific 5 drones this AI will use.
     dronePool: [
@@ -94,6 +96,7 @@ const aiPersonalities = [
     description: 'Defensive scout with minimal aggression',
     difficulty: 'Easy',
     modes: ['extraction'],  // Extraction Mode only
+    shipId: 'SHIP_003',
     imagePath: '/DroneWars/AI/Scout.png',
     dronePool: [
       'Scout Drone',
@@ -128,6 +131,7 @@ const aiPersonalities = [
     description: 'Balanced combat AI',
     difficulty: 'Easy',
     modes: ['extraction'],
+    shipId: 'SHIP_003',
     imagePath: '/DroneWars/AI/Patrol.png',
     dronePool: [
       'Standard Fighter',
@@ -163,6 +167,7 @@ const aiPersonalities = [
     description: 'Aggressive with heavy firepower',
     difficulty: 'Medium',
     modes: ['extraction'],
+    shipId: 'SHIP_001',
     imagePath: '/DroneWars/AI/Cruiser.png',
     dronePool: [
       'Heavy Fighter',
@@ -197,6 +202,7 @@ const aiPersonalities = [
     description: 'Fast and aggressive interceptor',
     difficulty: 'Medium',
     modes: ['extraction'],
+    shipId: 'SHIP_001',
     imagePath: '/DroneWars/AI/Hunter.png',
     dronePool: [
       'Interceptor',
@@ -232,6 +238,7 @@ const aiPersonalities = [
     description: 'Overwhelming force, heavy defenses',
     difficulty: 'Hard',
     modes: ['extraction'],
+    shipId: 'SHIP_001',
     imagePath: '/DroneWars/AI/Blockade.png',
     dronePool: [
       'Heavy Fighter',

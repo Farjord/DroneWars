@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import DeckBuilder from './DeckBuilder.jsx';
 import fullCardCollection from '../../data/cardData.js';
 import fullDroneCollection from '../../data/droneData.js';
+import { getShipById, getDefaultShip } from '../../data/shipData.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 
 /**
@@ -19,6 +20,7 @@ function StandaloneDeckBuilder() {
   const [deck, setDeck] = useState({});
   const [selectedDrones, setSelectedDrones] = useState({});
   const [selectedShipComponents, setSelectedShipComponents] = useState({});
+  const [selectedShip, setSelectedShip] = useState(getDefaultShip());
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   // Load saved deck from localStorage on mount
@@ -27,6 +29,7 @@ function StandaloneDeckBuilder() {
       const savedDeck = localStorage.getItem('customDeck');
       const savedDrones = localStorage.getItem('customDrones');
       const savedShipComponents = localStorage.getItem('customShipComponents');
+      const savedShipId = localStorage.getItem('customShipId');
 
       if (savedDeck) {
         setDeck(JSON.parse(savedDeck));
@@ -36,6 +39,12 @@ function StandaloneDeckBuilder() {
       }
       if (savedShipComponents) {
         setSelectedShipComponents(JSON.parse(savedShipComponents));
+      }
+      if (savedShipId) {
+        const ship = getShipById(savedShipId);
+        if (ship) {
+          setSelectedShip(ship);
+        }
       }
     } catch (error) {
       console.error('Error loading saved deck:', error);
@@ -79,6 +88,13 @@ function StandaloneDeckBuilder() {
   };
 
   /**
+   * Handle ship change - update selected ship card
+   */
+  const handleShipChange = (ship) => {
+    setSelectedShip(ship);
+  };
+
+  /**
    * Handle confirm deck - save to localStorage
    */
   const handleConfirmDeck = () => {
@@ -87,6 +103,7 @@ function StandaloneDeckBuilder() {
       localStorage.setItem('customDeck', JSON.stringify(deck));
       localStorage.setItem('customDrones', JSON.stringify(selectedDrones));
       localStorage.setItem('customShipComponents', JSON.stringify(selectedShipComponents));
+      localStorage.setItem('customShipId', selectedShip?.id || 'SHIP_001');
 
       // Show success message
       setShowSuccessMessage(true);
@@ -222,6 +239,8 @@ function StandaloneDeckBuilder() {
         onDronesChange={handleDronesChange}
         selectedShipComponents={selectedShipComponents}
         onShipComponentsChange={handleShipComponentsChange}
+        selectedShip={selectedShip}
+        onShipChange={handleShipChange}
         onConfirmDeck={handleConfirmDeck}
         onImportDeck={handleImportDeck}
         onBack={handleBack}

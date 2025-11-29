@@ -22,7 +22,7 @@ import SinglePlayerCombatInitializer from '../../logic/singlePlayer/SinglePlayer
 import ExtractionController from '../../logic/singlePlayer/ExtractionController.js';
 import aiPersonalities from '../../data/aiData.js';
 import gameStateManager from '../../managers/GameStateManager.js';
-import { shipComponentCollection } from '../../data/shipData.js';
+import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { mapTiers } from '../../data/mapData.js';
 import './TacticalMapScreen.css';
 

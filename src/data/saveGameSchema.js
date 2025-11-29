@@ -23,6 +23,12 @@ export const starterPoolCards = [
 export const starterPoolDroneNames = starterDeck.drones.map(d => d.name);
 
 /**
+ * Starter pool ship - ship card from starter deck
+ * Available in all 6 slots without needing to unlock
+ */
+export const starterPoolShipIds = [starterDeck.shipId];
+
+/**
  * Default player profile (new game)
  */
 export const defaultPlayerProfile = {
@@ -99,6 +105,7 @@ export function createDefaultShipSlot(id) {
       name: 'Starter Deck',
       status: 'active',
       isImmutable: true,
+      shipId: starterDeck.shipId,
 
       // Use starter deck configuration
       decklist: JSON.parse(JSON.stringify(starterDeck.decklist)),
@@ -112,6 +119,7 @@ export function createDefaultShipSlot(id) {
       name: `Ship Slot ${id}`,
       status: 'empty',
       isImmutable: false,
+      shipId: null,
 
       decklist: [],
       drones: [],
@@ -232,6 +240,7 @@ export default {
   defaultShipSlots,
   starterPoolCards,
   starterPoolDroneNames,
+  starterPoolShipIds,
   createDefaultShipSlot,
   createNewSave,
   validateSaveFile,
