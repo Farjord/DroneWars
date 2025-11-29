@@ -99,11 +99,11 @@ const aiPersonalities = [
     shipId: 'SHIP_003',
     imagePath: '/DroneWars/AI/Scout.png',
     dronePool: [
-      'Scout Drone',
+      'Swarm Drone',
       'Scout Drone',
       'Standard Fighter',
       'Interceptor',
-      'Guardian Drone'
+      'Vindicator Drone'
     ],
     shipDeployment: {
       strategy: 'defensive',
@@ -116,7 +116,7 @@ const aiPersonalities = [
       { id: 'CARD003', quantity: 4 },   // Out Think
       { id: 'CARD004', quantity: 4 },   // Energy Surge
       { id: 'CARD005', quantity: 3 },   // Adrenaline Rush
-      { id: 'CARD007', quantity: 4 },   // Emergency Patch
+      { id: 'CARD017', quantity: 4 },   // Boosters
       { id: 'CARD008', quantity: 3 },   // Shield Recharge
       { id: 'CARD009', quantity: 2 },   // Target Lock
       { id: 'CARD015', quantity: 3 },   // Streamline
@@ -134,10 +134,10 @@ const aiPersonalities = [
     shipId: 'SHIP_003',
     imagePath: '/DroneWars/AI/Patrol.png',
     dronePool: [
-      'Standard Fighter',
+      'Scout Drone',
       'Standard Fighter',
       'Heavy Fighter',
-      'Guardian Drone',
+      'Kamakaze Drone',
       'Interceptor'
     ],
     shipDeployment: {
@@ -152,7 +152,7 @@ const aiPersonalities = [
       { id: 'CARD004', quantity: 4 },   // Energy Surge
       { id: 'CARD005', quantity: 4 },   // Adrenaline Rush
       { id: 'CARD006', quantity: 2 },   // Nanobot Repair
-      { id: 'CARD007', quantity: 3 },   // Emergency Patch
+      { id: 'CARD014', quantity: 3 },   // Overcharge
       { id: 'CARD008', quantity: 3 },   // Shield Recharge
       { id: 'CARD009', quantity: 2 },   // Target Lock
       { id: 'CARD012', quantity: 3 },   // Armor-Piercing Shot

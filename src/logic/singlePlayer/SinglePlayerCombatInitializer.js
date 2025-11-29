@@ -32,11 +32,13 @@ class SinglePlayerCombatInitializer {
    * Initialize combat for a single-player encounter
    * @param {string} aiId - AI personality ID/name from threat table
    * @param {Object} currentRunState - Current run state from GameStateManager
+   * @param {string|null} quickDeployId - Optional quick deploy ID for auto-deployment
    * @returns {boolean} Success status
    */
-  async initiateCombat(aiId, currentRunState) {
+  async initiateCombat(aiId, currentRunState, quickDeployId = null) {
     debugLog('SP_COMBAT', '=== Initiating Single Player Combat ===');
     debugLog('SP_COMBAT', 'AI ID:', aiId);
+    debugLog('SP_COMBAT', 'Quick Deploy ID:', quickDeployId);
     debugLog('SP_COMBAT', 'Current Run State:', currentRunState);
 
     try {
@@ -193,8 +195,8 @@ class SinglePlayerCombatInitializer {
           startingHull: currentRunState?.currentHull || 30
         },
 
-        // Quick deploy template (if selected in hangar)
-        pendingQuickDeploy: currentRunState?.pendingQuickDeploy || null
+        // Quick deploy ID (if selected at POI encounter modal)
+        pendingQuickDeploy: quickDeployId || currentRunState?.pendingQuickDeploy || null
       };
 
       // 8. Apply state to GameStateManager
@@ -214,6 +216,8 @@ class SinglePlayerCombatInitializer {
       // 9. Queue ROUND 1 announcement for UI display
       const actionProcessor = gameStateManager.actionProcessor;
       if (actionProcessor?.phaseAnimationQueue) {
+        // DIAGNOSTIC: Track SP_INIT round announcement
+        debugLog('PHASE_FLOW', '📢 SP_INIT queuing ROUND 1 announcement');
         actionProcessor.phaseAnimationQueue.queueAnimation('roundAnnouncement', 'ROUND', null);
         debugLog('SP_COMBAT', 'Queued ROUND 1 announcement for display');
       }

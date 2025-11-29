@@ -9,6 +9,7 @@ import HexGridRenderer from '../ui/HexGridRenderer.jsx';
 import TacticalMapHUD from '../ui/TacticalMapHUD.jsx';
 import HexInfoPanel from '../ui/HexInfoPanel.jsx';
 import POIEncounterModal from '../modals/POIEncounterModal.jsx';
+import QuickDeploySelectionModal from '../modals/QuickDeploySelectionModal.jsx';
 import LoadingEncounterScreen from '../ui/LoadingEncounterScreen.jsx';
 import RunInventoryModal from '../modals/RunInventoryModal.jsx';
 import LootRevealModal from '../modals/LootRevealModal.jsx';
@@ -24,6 +25,10 @@ import aiPersonalities from '../../data/aiData.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { mapTiers } from '../../data/mapData.js';
+import { getValidDeploymentsForDeck } from '../../logic/quickDeploy/QuickDeployValidator.js';
+import { getAllShips } from '../../data/shipData.js';
+import { calculateSectionBaseStats } from '../../logic/statsCalculator.js';
+import { debugLog } from '../../utils/debugLogger.js';
 import './TacticalMapScreen.css';
 
 /**
@@ -119,6 +124,10 @@ function TacticalMapScreen() {
   const [currentEncounter, setCurrentEncounter] = useState(null);
   const [showPOIModal, setShowPOIModal] = useState(false);
 
+  // Quick Deploy selection state
+  const [showQuickDeploySelection, setShowQuickDeploySelection] = useState(false);
+  const [selectedQuickDeploy, setSelectedQuickDeploy] = useState(null);
+
   // Loading Encounter screen state (for combat transitions)
   const [showLoadingEncounter, setShowLoadingEncounter] = useState(false);
   const [loadingEncounterData, setLoadingEncounterData] = useState(null);
@@ -163,7 +172,75 @@ function TacticalMapScreen() {
     return unsubscribe;
   }, []);
 
-  const { currentRunState, singlePlayerShipSlots, singlePlayerShipComponentInstances } = gameState;
+  const { currentRunState, singlePlayerShipSlots, singlePlayerShipComponentInstances, quickDeployments } = gameState;
+
+  // Calculate valid quick deployments for current ship slot
+  const validQuickDeployments = React.useMemo(() => {
+    debugLog('QUICK_DEPLOY', '=== Validation Start ===');
+    debugLog('QUICK_DEPLOY', 'quickDeployments count:', quickDeployments?.length);
+    debugLog('QUICK_DEPLOY', 'shipSlotId:', currentRunState?.shipSlotId);
+
+    if (!quickDeployments || !singlePlayerShipSlots || currentRunState?.shipSlotId == null) {
+      debugLog('QUICK_DEPLOY', 'Early return - missing data', {
+        hasQuickDeployments: !!quickDeployments,
+        hasShipSlots: !!singlePlayerShipSlots,
+        shipSlotId: currentRunState?.shipSlotId
+      });
+      return [];
+    }
+
+    const currentSlot = singlePlayerShipSlots.find(s => s.id === currentRunState.shipSlotId);
+    debugLog('QUICK_DEPLOY', 'currentSlot found:', { found: !!currentSlot, status: currentSlot?.status });
+
+    if (!currentSlot || currentSlot.status !== 'active') {
+      debugLog('QUICK_DEPLOY', 'Early return - slot not found or not active');
+      return [];
+    }
+
+    debugLog('QUICK_DEPLOY', 'slot drones:', currentSlot?.drones?.map(d => d.name));
+
+    // Get ship card for stats calculation
+    const shipCard = getAllShips().find(s => s.id === currentSlot.shipId);
+    debugLog('QUICK_DEPLOY', 'shipCard found:', { found: !!shipCard, shipId: currentSlot.shipId });
+
+    if (!shipCard) {
+      debugLog('QUICK_DEPLOY', 'Early return - ship card not found');
+      return [];
+    }
+
+    // Convert shipComponents { sectionId: lane } to ordered array [left, middle, right]
+    const shipComponentsObj = currentSlot.shipComponents || {};
+    const laneOrder = { 'l': 0, 'm': 1, 'r': 2 };
+    const placedSections = Object.entries(shipComponentsObj)
+      .sort((a, b) => laneOrder[a[1]] - laneOrder[b[1]])
+      .map(([sectionId]) => sectionId);
+
+    debugLog('QUICK_DEPLOY', 'placedSections:', placedSections);
+
+    // Build proper ship sections with hull/thresholds
+    const shipSections = {};
+    for (const sectionId of placedSections) {
+      const sectionTemplate = shipComponentCollection.find(c => c.id === sectionId);
+      if (sectionTemplate) {
+        const baseStats = calculateSectionBaseStats(shipCard, sectionTemplate);
+        shipSections[sectionId] = {
+          ...JSON.parse(JSON.stringify(sectionTemplate)),
+          hull: baseStats.hull,
+          maxHull: baseStats.maxHull,
+          thresholds: baseStats.thresholds
+        };
+      }
+    }
+
+    debugLog('QUICK_DEPLOY', 'shipSections built:', Object.keys(shipSections));
+    debugLog('QUICK_DEPLOY', '=== Calling validator ===');
+
+    const mockPlayerState = { shipSections };
+    const result = getValidDeploymentsForDeck(quickDeployments, currentSlot, mockPlayerState, placedSections);
+
+    debugLog('QUICK_DEPLOY', 'Valid deployments returned:', result.length);
+    return result;
+  }, [quickDeployments, singlePlayerShipSlots, currentRunState?.shipSlotId]);
 
   // Safety check - redirect to hangar if no active run
   // Skip on initial mount to avoid race condition with state propagation
@@ -491,6 +568,44 @@ function TacticalMapScreen() {
   }, [handleEncounterProceed]);
 
   /**
+   * Handle POI encounter with quick deploy - similar to handleEncounterProceed but with quick deploy
+   */
+  const handleEncounterProceedWithQuickDeploy = useCallback((deployment) => {
+    if (!currentEncounter) return;
+
+    console.log('[TacticalMap] Quick deploy selected:', deployment.name);
+
+    // Only combat encounters use quick deploy
+    if (currentEncounter.outcome === 'combat') {
+      console.log('[TacticalMap] Combat encounter with quick deploy - showing loading screen');
+
+      // Find AI personality info for the loading screen
+      const aiId = currentEncounter.aiId || 'Rogue Scout Pattern';
+      const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
+
+      // Set up loading encounter data with quick deploy info
+      setLoadingEncounterData({
+        aiName: aiPersonality?.name || 'Unknown Hostile',
+        difficulty: aiPersonality?.difficulty || 'Medium',
+        threatLevel: currentEncounter.threatLevel || 'medium',
+        isAmbush: currentEncounter.isAmbush || false,
+        quickDeployId: deployment.id  // Pass the quick deploy ID
+      });
+
+      // Store selected quick deploy
+      setSelectedQuickDeploy(deployment);
+
+      // Show loading screen
+      setShowLoadingEncounter(true);
+
+      // Stop movement
+      shouldStopMovement.current = true;
+      setIsScanningHex(false);
+      setIsMoving(false);
+    }
+  }, [currentEncounter]);
+
+  /**
    * Handle loading encounter complete - actually start combat
    */
   const handleLoadingEncounterComplete = useCallback(async () => {
@@ -502,8 +617,12 @@ function TacticalMapScreen() {
     // Get AI from the encounter
     const aiId = currentEncounter?.aiId || 'Rogue Scout Pattern';
 
-    // Initialize combat
-    const success = await SinglePlayerCombatInitializer.initiateCombat(aiId, runState);
+    // Get quick deploy ID from loading data (if user selected quick deploy)
+    const quickDeployId = loadingEncounterData?.quickDeployId || null;
+    console.log('[TacticalMap] Quick deploy ID:', quickDeployId);
+
+    // Initialize combat with optional quick deploy
+    const success = await SinglePlayerCombatInitializer.initiateCombat(aiId, runState, quickDeployId);
 
     if (!success) {
       console.error('[TacticalMap] Failed to initialize combat');
@@ -515,7 +634,7 @@ function TacticalMapScreen() {
 
     // GameStateManager will handle the transition to inGame state
     // The appState change will unmount this component
-  }, [currentEncounter]);
+  }, [currentEncounter, loadingEncounterData]);
 
   /**
    * Handle extraction - check for blockade and complete run
@@ -1025,7 +1144,29 @@ function TacticalMapScreen() {
         <POIEncounterModal
           encounter={currentEncounter}
           onProceed={handleEncounterProceed}
+          onQuickDeploy={() => {
+            setShowPOIModal(false);
+            setShowQuickDeploySelection(true);
+          }}
+          validQuickDeployments={validQuickDeployments}
           onClose={handleEncounterClose}
+        />
+      )}
+
+      {/* Quick Deploy Selection Modal */}
+      {showQuickDeploySelection && currentEncounter && (
+        <QuickDeploySelectionModal
+          validQuickDeployments={validQuickDeployments}
+          onSelect={(deployment) => {
+            setSelectedQuickDeploy(deployment);
+            setShowQuickDeploySelection(false);
+            // Proceed to combat with selected quick deploy
+            handleEncounterProceedWithQuickDeploy(deployment);
+          }}
+          onBack={() => {
+            setShowQuickDeploySelection(false);
+            setShowPOIModal(true);
+          }}
         />
       )}
 

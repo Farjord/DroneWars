@@ -53,6 +53,7 @@ import GlossaryModal from './components/modals/GlossaryModal.jsx';
 import AIStrategyModal from './components/modals/AIStrategyModal.jsx';
 import AddCardToHandModal from './components/modals/AddCardToHandModal.jsx';
 import CardDetailModal from './components/modals/CardDetailModal.jsx';
+import AbandonRunModal from './components/modals/AbandonRunModal.jsx';
 
 // --- 1.4 HOOK IMPORTS ---
 import { useGameState } from './hooks/useGameState';
@@ -65,6 +66,7 @@ import fullCardCollection from './data/cardData.js';
 import { gameEngine } from './logic/gameLogic.js';
 import { calculatePotentialInterceptors } from './logic/combat/InterceptionProcessor.js';
 import TargetingRouter from './logic/TargetingRouter.js';
+import ExtractionController from './logic/singlePlayer/ExtractionController.js';
 import { BACKGROUNDS, DEFAULT_BACKGROUND, getBackgroundById } from './config/backgrounds.js';
 
 // --- 1.6 MANAGER/STATE IMPORTS ---
@@ -158,6 +160,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [showGlossaryModal, setShowGlossaryModal] = useState(false);
   const [showAIStrategyModal, setShowAIStrategyModal] = useState(false);
   const [showAddCardModal, setShowAddCardModal] = useState(false);
+  const [showAbandonRunModal, setShowAbandonRunModal] = useState(false);
   const [viewShipSectionModal, setViewShipSectionModal] = useState(null);
   const [flyingDrones, setFlyingDrones] = useState([]);
   const [flashEffects, setFlashEffects] = useState([]);
@@ -1793,9 +1796,19 @@ const App = ({ phaseAnimationQueue }) => {
   /**
    * HANDLE EXIT GAME
    * Exits the current game and returns to the menu screen.
+   * In Extract mode (single-player run), shows abandon run confirmation first.
    * Properly cleans up all running services, timers, and subscriptions.
    */
   const handleExitGame = () => {
+    // Check if in Extract mode (single-player run active)
+    const currentRunState = gameStateManager.get('currentRunState');
+    if (currentRunState) {
+      // In Extract mode - show abandon run confirmation instead of exiting
+      setShowAbandonRunModal(true);
+      return;
+    }
+
+    // Not in Extract mode - exit normally
     // Clean up AI processor (clear timer and unsubscribe)
     if (gameState.gameMode === 'local') {
       aiPhaseProcessor.cleanup();
@@ -1819,6 +1832,16 @@ const App = ({ phaseAnimationQueue }) => {
     setValidCardTargets([]);
     setCardConfirmation(null);
     setShowWinnerModal(false);
+  };
+
+  /**
+   * HANDLE CONFIRM ABANDON RUN
+   * Called when user confirms abandoning their run in Extract mode.
+   * Uses ExtractionController to abandon the run and return to hangar.
+   */
+  const handleConfirmAbandonRun = () => {
+    setShowAbandonRunModal(false);
+    ExtractionController.abandonRun(); // Goes to hangar, not main menu
   };
 
   /**
@@ -3914,6 +3937,14 @@ const App = ({ phaseAnimationQueue }) => {
         localPlayerId={getLocalPlayerId()}
         show={winner && showWinnerModal}
         onClose={() => setShowWinnerModal(false)}
+      />
+
+      <AbandonRunModal
+        show={showAbandonRunModal}
+        onCancel={() => setShowAbandonRunModal(false)}
+        onConfirm={handleConfirmAbandonRun}
+        lootCount={gameState.currentRunState?.runInventory?.length || 0}
+        creditsEarned={0}
       />
 
       <ViewShipSectionModal

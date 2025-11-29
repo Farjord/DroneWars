@@ -1,13 +1,9 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useGameState } from '../../hooks/useGameState';
 import { debugLog } from '../../utils/debugLogger.js';
 import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js';
 import MapPreviewRenderer from '../ui/MapPreviewRenderer';
-import { Map, AlertTriangle, XCircle, Zap } from 'lucide-react';
-import { getValidDeploymentsForDeck, calculateTotalCost } from '../../logic/quickDeploy/QuickDeployValidator';
-import shipSectionData from '../../data/shipSectionData';
-import { getAllShips } from '../../data/shipData';
-import { calculateSectionBaseStats } from '../../logic/statsCalculator';
+import { Map, AlertTriangle, XCircle } from 'lucide-react';
 
 /**
  * MapOverviewModal Component
@@ -18,7 +14,6 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
   const [validationError, setValidationError] = useState(null);
   const [selectedGateId, setSelectedGateId] = useState(0); // Default to first gate
   const [currentSlotId, setCurrentSlotId] = useState(selectedSlotId); // Track selected ship slot
-  const [selectedQuickDeploy, setSelectedQuickDeploy] = useState(null); // null = standard, or quickDeploy ID
 
   // Find current index in sorted sectors for navigation
   const currentIndex = activeSectors.findIndex(s => s.coordinate === selectedCoordinate);
@@ -40,7 +35,6 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
     singlePlayerShipComponentInstances,
     singlePlayerDroneInstances,
     singlePlayerProfile,
-    quickDeployments,
   } = gameState;
 
   // Compute all active slots with validity info
@@ -70,45 +64,6 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
     const current = allActiveSlots.find(s => s.id === currentSlotId);
     return current && !current.isValid;
   }, [allActiveSlots, currentSlotId]);
-
-  // Get valid quick deployments for current slot
-  const validQuickDeployments = useMemo(() => {
-    if (!quickDeployments || !singlePlayerShipSlots) return [];
-
-    const currentSlot = singlePlayerShipSlots.find(s => s.id === currentSlotId);
-    if (!currentSlot || currentSlot.status !== 'active') return [];
-
-    // Get ship card for stats calculation
-    const shipCard = getAllShips().find(s => s.id === currentSlot.shipId);
-    if (!shipCard) return [];
-
-    // Get placed sections for validation
-    const placedSections = Object.keys(currentSlot.shipComponents || {});
-
-    // Build proper ship sections with hull/thresholds (like SinglePlayerCombatInitializer)
-    const shipSections = {};
-    for (const sectionId of placedSections) {
-      const sectionTemplate = shipSectionData[sectionId];
-      if (sectionTemplate) {
-        const baseStats = calculateSectionBaseStats(shipCard, sectionTemplate);
-        shipSections[sectionId] = {
-          ...JSON.parse(JSON.stringify(sectionTemplate)),
-          hull: baseStats.hull,
-          maxHull: baseStats.maxHull,
-          thresholds: baseStats.thresholds
-        };
-      }
-    }
-
-    const mockPlayerState = { shipSections };
-
-    return getValidDeploymentsForDeck(quickDeployments, currentSlot, mockPlayerState, placedSections);
-  }, [quickDeployments, singlePlayerShipSlots, currentSlotId]);
-
-  // Reset quick deploy selection when slot changes
-  useEffect(() => {
-    setSelectedQuickDeploy(null);
-  }, [currentSlotId]);
 
   // Get current slot details for display
   const currentSlot = singlePlayerShipSlots?.find(s => s.id === currentSlotId);
@@ -247,20 +202,14 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
       return;
     }
 
-    // Get the selected quick deploy data if one is selected
-    const quickDeployData = selectedQuickDeploy
-      ? validQuickDeployments.find(qd => qd.id === selectedQuickDeploy)
-      : null;
-
     debugLog('EXTRACTION', '✅ Validation passed, calling onDeploy', {
       slotId: currentSlotId,
       mapName: selectedMap.name,
-      entryGateId: selectedGateId,
-      quickDeploy: quickDeployData ? quickDeployData.name : 'standard'
+      entryGateId: selectedGateId
     });
 
     setValidationError(null);
-    onDeploy(currentSlotId, selectedMap, selectedGateId, quickDeployData); // Pass gate ID and quick deploy
+    onDeploy(currentSlotId, selectedMap, selectedGateId); // Pass gate ID
   };
 
   /**
@@ -475,124 +424,6 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                   </div>
                 )}
               </div>
-
-              {/* Quick Deploy Selection */}
-              {!isCurrentSlotInvalid && (
-                <div className="dw-modal-info-box">
-                  <p className="dw-modal-info-title" style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Zap size={14} />
-                    DEPLOYMENT MODE
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {/* Standard Deployment Option */}
-                    <label
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '10px',
-                        padding: '10px 12px',
-                        background: selectedQuickDeploy === null
-                          ? 'rgba(6, 182, 212, 0.15)'
-                          : 'rgba(17, 24, 39, 0.4)',
-                        border: `1px solid ${selectedQuickDeploy === null ? '#06b6d4' : 'rgba(100,100,100,0.3)'}`,
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="deploymentMode"
-                        checked={selectedQuickDeploy === null}
-                        onChange={() => setSelectedQuickDeploy(null)}
-                        style={{ marginTop: '2px' }}
-                      />
-                      <div>
-                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff' }}>
-                          Standard Deployment
-                        </div>
-                        <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)' }}>
-                          Manual deployment phase
-                        </div>
-                      </div>
-                    </label>
-
-                    {/* Quick Deploy Options */}
-                    {validQuickDeployments.map(qd => (
-                      <label
-                        key={qd.id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'flex-start',
-                          gap: '10px',
-                          padding: '10px 12px',
-                          background: selectedQuickDeploy === qd.id
-                            ? 'rgba(6, 182, 212, 0.15)'
-                            : 'rgba(17, 24, 39, 0.4)',
-                          border: `1px solid ${selectedQuickDeploy === qd.id ? '#06b6d4' : 'rgba(100,100,100,0.3)'}`,
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        <input
-                          type="radio"
-                          name="deploymentMode"
-                          checked={selectedQuickDeploy === qd.id}
-                          onChange={() => setSelectedQuickDeploy(qd.id)}
-                          style={{ marginTop: '2px' }}
-                        />
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '13px', fontWeight: '600', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <Zap size={12} style={{ color: '#fbbf24' }} />
-                            {qd.name}
-                          </div>
-                          <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)', marginTop: '2px' }}>
-                            {qd.placements.length} drone{qd.placements.length !== 1 ? 's' : ''} •{' '}
-                            <span style={{ color: '#fbbf24' }}>{calculateTotalCost(qd.placements)} cost</span>
-                          </div>
-                          {/* Lane preview */}
-                          <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
-                            {[0, 1, 2].map(lane => {
-                              const dronesInLane = qd.placements.filter(p => p.lane === lane);
-                              return (
-                                <div
-                                  key={lane}
-                                  style={{
-                                    flex: 1,
-                                    padding: '2px 4px',
-                                    background: 'rgba(6, 182, 212, 0.1)',
-                                    border: '1px solid rgba(6, 182, 212, 0.3)',
-                                    borderRadius: '2px',
-                                    fontSize: '9px',
-                                    textAlign: 'center',
-                                    color: dronesInLane.length > 0 ? '#06b6d4' : 'rgba(255,255,255,0.3)'
-                                  }}
-                                >
-                                  {dronesInLane.length > 0 ? dronesInLane.map(d => d.droneName.split(' ')[0]).join(', ') : '-'}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </label>
-                    ))}
-
-                    {/* No quick deploys message */}
-                    {validQuickDeployments.length === 0 && (
-                      <div style={{
-                        fontSize: '11px',
-                        color: 'var(--modal-text-muted)',
-                        padding: '8px 0',
-                        textAlign: 'center'
-                      }}>
-                        No quick deployments available for this deck.
-                        Create one from the Hangar.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
 
               {/* Validation Error */}
               {validationError && (

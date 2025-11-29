@@ -367,15 +367,16 @@ class GameStateManager {
     const callerInfo = this.extractCallerInfo(stackLines);
 
     // Check for architecture violations - App.jsx should NEVER directly update GameStateManager
-    // However, App.jsx can call ActionProcessor/PhaseManager which then update GameStateManager
+    // However, App.jsx can call ActionProcessor/PhaseManager/ExtractionController which then update GameStateManager
     const isAppJsxCaller = stackLines.some(line => line.includes('App.jsx'));
     const isViaActionProcessor = stackLines.some(line => line.includes('ActionProcessor'));
     const isViaPhaseManager = stackLines.some(line => line.includes('PhaseManager'));
-    const isLegitimateCall = isViaActionProcessor || isViaPhaseManager;
+    const isViaExtractionController = stackLines.some(line => line.includes('ExtractionController'));
+    const isLegitimateCall = isViaActionProcessor || isViaPhaseManager || isViaExtractionController;
 
     if (isAppJsxCaller && !isLegitimateCall) {
       console.error('🚨 ARCHITECTURE VIOLATION: App.jsx is directly updating GameStateManager!');
-      console.error('📋 App.jsx should only call ActionProcessor or PhaseManager methods');
+      console.error('📋 App.jsx should only call ActionProcessor, PhaseManager, or ExtractionController methods');
       console.error('🔍 Stack trace:', stack);
     }
 

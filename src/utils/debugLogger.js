@@ -51,9 +51,11 @@ const DEBUG_CONFIG = {
     TIMING: false,               // High-resolution timing milestones with timestamps (ENABLED for pass notification debugging)
     SUBTITLE_CALC: false,       // Phase animation subtitle calculation (DISABLED - already debugged)
     FIRST_PLAYER: false,        // First player determination and seeded random (DISABLED for clean logs)
-    SHIP_ABILITY: true,         // Ship ability execution and turn ending (ENABLED for debugging Recalculate/Recall)
-    EXTRACTION: true,           // Single-player extraction mode (hangar, tactical map, deployment)
-    ENCOUNTER: true,            // Random encounter rolls and combat triggers (ENABLED for verification)
+    SHIP_ABILITY: false,        // Ship ability execution and turn ending
+    EXTRACTION: false,          // Single-player extraction mode (hangar, tactical map, deployment)
+    ENCOUNTER: false,           // Random encounter rolls and combat triggers
+    QUICK_DEPLOY: true,         // Quick deployment validation and selection (ENABLED for phase chaos investigation)
+    PHASE_FLOW: true,           // Phase transitions and announcements (ENABLED for phase chaos investigation)
 
     // Effect System Refactoring - Modular Processor Logging
     EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)

@@ -5,7 +5,7 @@
 // Shows encounter outcome (combat vs loot) and reward preview
 
 import React from 'react';
-import { Target, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Target, CheckCircle, AlertTriangle, Zap, Shield } from 'lucide-react';
 
 // Diamond/Cube icon for POIs (custom SVG)
 const IconPOI = ({ size = 32 }) => (
@@ -19,10 +19,12 @@ const IconPOI = ({ size = 32 }) => (
  * POIEncounterModal - Display POI encounter outcome
  *
  * @param {Object} encounter - Encounter result from EncounterController
- * @param {Function} onProceed - Callback when player proceeds (engages or salvages)
+ * @param {Function} onProceed - Callback when player proceeds (engages or salvages) - standard deployment
+ * @param {Function} onQuickDeploy - Callback when player chooses quick deployment
+ * @param {Array} validQuickDeployments - Array of valid quick deployments for current slot
  * @param {Function} onClose - Callback to close modal
  */
-function POIEncounterModal({ encounter, onProceed, onClose }) {
+function POIEncounterModal({ encounter, onProceed, onQuickDeploy, validQuickDeployments = [], onClose }) {
   if (!encounter) return null;
 
   const { poi, outcome, aiId, reward, detection, threatLevel } = encounter;
@@ -132,12 +134,35 @@ function POIEncounterModal({ encounter, onProceed, onClose }) {
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button
-            onClick={onProceed}
-            className={isCombat ? 'dw-btn dw-btn-danger dw-btn--full' : 'dw-btn dw-btn-confirm dw-btn--full'}
-          >
-            {isCombat ? 'Engage Hostiles' : 'Salvage Location'}
-          </button>
+          {isCombat && validQuickDeployments.length > 0 ? (
+            /* Combat with valid quick deployments - show two options */
+            <div style={{ display: 'flex', gap: '12px', width: '100%' }}>
+              <button
+                onClick={onProceed}
+                className="dw-btn dw-btn-secondary"
+                style={{ flex: 1 }}
+              >
+                <Shield size={16} style={{ marginRight: '6px' }} />
+                Standard Deploy
+              </button>
+              <button
+                onClick={onQuickDeploy}
+                className="dw-btn dw-btn-danger"
+                style={{ flex: 1 }}
+              >
+                <Zap size={16} style={{ marginRight: '6px' }} />
+                Quick Deploy
+              </button>
+            </div>
+          ) : (
+            /* No quick deployments or loot - single button */
+            <button
+              onClick={onProceed}
+              className={isCombat ? 'dw-btn dw-btn-danger dw-btn--full' : 'dw-btn dw-btn-confirm dw-btn--full'}
+            >
+              {isCombat ? 'Engage Hostiles' : 'Salvage Location'}
+            </button>
+          )}
         </div>
       </div>
     </div>

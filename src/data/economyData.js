@@ -26,10 +26,10 @@ export const ECONOMY = {
 
   // Card replication costs by rarity
   REPLICATION_COSTS: {
-    Common: 50,
-    Uncommon: 150,
-    Rare: 400,
-    Mythic: 1000
+    Common: 100,
+    Uncommon: 250,
+    Rare: 600,
+    Mythic: 1500
   },
 
   // ========================================
@@ -44,7 +44,7 @@ export const ECONOMY = {
   // ========================================
 
   // Credits player starts with on new game
-  STARTING_CREDITS: 1000,
+  STARTING_CREDITS: 0,
 
   // ========================================
   // FUTURE: Map entry costs, blueprint crafting, etc.

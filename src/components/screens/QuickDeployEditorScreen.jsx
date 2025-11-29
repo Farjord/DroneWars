@@ -9,8 +9,10 @@ import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
 import fullDroneCollection from '../../data/droneData';
 import { starterPoolDroneNames } from '../../data/saveGameSchema';
-import { calculateTotalCost, getDroneByName } from '../../logic/quickDeploy/QuickDeployValidator';
-import { calculateEffectiveStats } from '../../logic/statsCalculator';
+import { calculateTotalCost, getDroneByName, validateAgainstDeck } from '../../logic/quickDeploy/QuickDeployValidator';
+import { calculateEffectiveStats, calculateSectionBaseStats } from '../../logic/statsCalculator';
+import { shipComponentCollection } from '../../data/shipSectionData';
+import { getAllShips } from '../../data/shipData';
 import QuickDeployService from '../../logic/quickDeploy/QuickDeployService';
 import DroneLanesDisplay from '../ui/DroneLanesDisplay';
 import DroneCard from '../ui/DroneCard';
@@ -121,6 +123,60 @@ const QuickDeployEditorScreen = () => {
       { player1: [], player2: [] }  // no ship sections in editor
     )
   }), [mockPlayerState, emptyOpponentState]);
+
+  // Get ship slots for validation
+  const shipSlots = gameState.singlePlayerShipSlots || [];
+
+  // Validate current deployment against all active slots
+  const slotValidation = useMemo(() => {
+    const currentDeployment = {
+      droneRoster,
+      placements
+    };
+
+    return shipSlots.map(slot => {
+      if (slot.status !== 'active' || !slot.drones || slot.drones.length === 0) {
+        return { slot, valid: false, reasons: [{ type: 'inactive', message: 'Slot not active or empty' }] };
+      }
+
+      const shipCard = getAllShips().find(s => s.id === slot.shipId);
+      if (!shipCard) {
+        return { slot, valid: false, reasons: [{ type: 'no_ship', message: 'No ship found' }] };
+      }
+
+      // Convert shipComponents { sectionId: lane } to ordered array [left, middle, right]
+      const shipComponentsObj = slot.shipComponents || {};
+      const laneOrder = { 'l': 0, 'm': 1, 'r': 2 };
+      const placedSections = Object.entries(shipComponentsObj)
+        .sort((a, b) => laneOrder[a[1]] - laneOrder[b[1]])
+        .map(([sectionId]) => sectionId);
+
+      // Build proper ship sections with hull/thresholds
+      const shipSections = {};
+      for (const sectionId of placedSections) {
+        const sectionTemplate = shipComponentCollection.find(c => c.id === sectionId);
+        if (sectionTemplate) {
+          const baseStats = calculateSectionBaseStats(shipCard, sectionTemplate);
+          shipSections[sectionId] = {
+            ...JSON.parse(JSON.stringify(sectionTemplate)),
+            hull: baseStats.hull,
+            maxHull: baseStats.maxHull,
+            thresholds: baseStats.thresholds
+          };
+        }
+      }
+
+      const mockPlayerStateForValidation = { shipSections };
+      const result = validateAgainstDeck(currentDeployment, slot, mockPlayerStateForValidation, placedSections);
+
+      return {
+        slot,
+        name: slot.name || `Slot ${slot.id}`,
+        valid: result.valid,
+        reasons: result.reasons
+      };
+    }).filter(v => v.slot.status === 'active' && v.slot.drones?.length > 0);
+  }, [droneRoster, placements, shipSlots]);
 
   // Handle selecting a drone from the roster for placement
   const handleSelectDrone = (drone) => {
@@ -338,6 +394,40 @@ const QuickDeployEditorScreen = () => {
           <span style={{ fontSize: '12px', color: '#ef4444' }}>
             {errors.join(' • ')}
           </span>
+        </div>
+      )}
+
+      {/* Slot Compatibility Section */}
+      {slotValidation.length > 0 && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          padding: '10px 14px',
+          background: 'rgba(0, 0, 0, 0.2)',
+          borderBottom: '1px solid rgba(6, 182, 212, 0.2)',
+          flexWrap: 'wrap'
+        }}>
+          <span style={{ fontSize: '12px', color: 'var(--modal-text-secondary)' }}>
+            Slot Compatibility:
+          </span>
+          {slotValidation.map(v => (
+            <div
+              key={v.slot.id}
+              title={!v.valid ? v.reasons.map(r => r.message).join(', ') : 'Compatible'}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                background: v.valid ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.15)',
+                border: `1px solid ${v.valid ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.3)'}`,
+                color: v.valid ? '#22c55e' : '#ef4444',
+                cursor: !v.valid ? 'help' : 'default'
+              }}
+            >
+              {v.name} {v.valid ? '\u2713' : '\u2717'}
+            </div>
+          ))}
         </div>
       )}
 

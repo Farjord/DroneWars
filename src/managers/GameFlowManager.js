@@ -1627,11 +1627,24 @@ class GameFlowManager {
         // Checked after phases where drones can be deployed
         return this.anyPlayerExceedsDroneLimit(gameState);
       case 'deployment':
+        // DIAGNOSTIC: Track every call to isPhaseRequired(deployment)
+        debugLog('PHASE_FLOW', '🔍 isPhaseRequired(deployment) called', {
+          caller: new Error().stack?.split('\n')[2]?.trim(),
+          pendingQuickDeploy: gameState.pendingQuickDeploy,
+          roundNumber: gameState.roundNumber
+        });
         // Check for pending quick deploy - if present, execute silently and skip deployment phase
         if (gameState.pendingQuickDeploy && gameState.roundNumber === 1) {
-          // Execute quick deploy asynchronously (non-blocking)
-          this.executeQuickDeploy(gameState.pendingQuickDeploy);
-          return false; // Skip deployment phase
+          debugLog('PHASE_FLOW', '⚡ Quick deploy detected, will execute and skip deployment');
+          // Look up the full quick deploy object by ID
+          const quickDeploy = gameState.quickDeployments?.find(qd => qd.id === gameState.pendingQuickDeploy);
+          if (quickDeploy) {
+            // Execute quick deploy asynchronously (non-blocking)
+            this.executeQuickDeploy(quickDeploy);
+            return false; // Skip deployment phase
+          } else {
+            console.warn('[Quick Deploy] Quick deploy not found for ID:', gameState.pendingQuickDeploy);
+          }
         }
         return true; // Normal deployment required
       case 'action':
@@ -1838,6 +1851,15 @@ class GameFlowManager {
   async transitionToPhase(newPhase, trigger = 'unknown') {
     const previousPhase = this.currentPhase;
     const gameMode = this.gameStateManager.get('gameMode');
+
+    // DIAGNOSTIC: Track all phase transitions
+    debugLog('PHASE_FLOW', '📍 transitionToPhase called', {
+      newPhase,
+      previousPhase,
+      trigger,
+      gameMode,
+      gameStage: this.gameStage
+    });
 
     // PHASE MANAGER INTEGRATION: Guest cannot call transitionToPhase directly
     // Guest waits for PhaseManager broadcasts from Host
@@ -2093,6 +2115,8 @@ class GameFlowManager {
     // Queue ROUND announcement before transitioning to first phase of new round
     // This ensures ROUND shows immediately, not after other announcements
     const gameMode = this.gameStateManager.get('gameMode');
+    // DIAGNOSTIC: Track round announcement queueing
+    debugLog('PHASE_FLOW', '📢 startNewRound queuing ROUND announcement', { roundNumber: nextRound });
     debugLog('PHASE_MANAGER', `🎯 Queueing ROUND ${nextRound} announcement before starting round phases`);
 
     await this.actionProcessor.processPhaseTransition({
@@ -2214,6 +2238,12 @@ class GameFlowManager {
    * @param {Object} quickDeploy - Quick deploy template with placements array
    */
   async executeQuickDeploy(quickDeploy) {
+    // DIAGNOSTIC: Track every entry to executeQuickDeploy
+    debugLog('PHASE_FLOW', '🚀 executeQuickDeploy ENTERED', {
+      quickDeployName: quickDeploy?.name,
+      quickDeployId: quickDeploy?.id,
+      timestamp: Date.now()
+    });
     debugLog('QUICK_DEPLOY', '⚡ Executing quick deploy:', quickDeploy.name);
 
     try {

@@ -9,7 +9,7 @@ import { Zap, Plus, Edit2, Trash2 } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
 import QuickDeployService, { MAX_QUICK_DEPLOYMENTS } from '../../logic/quickDeploy/QuickDeployService';
 import { calculateTotalCost, validateAgainstDeck } from '../../logic/quickDeploy/QuickDeployValidator';
-import shipSectionData from '../../data/shipSectionData';
+import { shipComponentCollection } from '../../data/shipSectionData';
 import { getAllShips } from '../../data/shipData';
 import { calculateSectionBaseStats } from '../../logic/statsCalculator';
 
@@ -43,13 +43,17 @@ const QuickDeployManager = ({ onClose }) => {
         const shipCard = getAllShips().find(s => s.id === slot.shipId);
         if (!shipCard) return;
 
-        // Get placed sections for the slot
-        const placedSections = Object.keys(slot.shipComponents || {});
+        // Convert shipComponents { sectionId: lane } to ordered array [left, middle, right]
+        const shipComponentsObj = slot.shipComponents || {};
+        const laneOrder = { 'l': 0, 'm': 1, 'r': 2 };
+        const placedSections = Object.entries(shipComponentsObj)
+          .sort((a, b) => laneOrder[a[1]] - laneOrder[b[1]])
+          .map(([sectionId]) => sectionId);
 
         // Build proper ship sections with hull/thresholds
         const shipSections = {};
         for (const sectionId of placedSections) {
-          const sectionTemplate = shipSectionData[sectionId];
+          const sectionTemplate = shipComponentCollection.find(c => c.id === sectionId);
           if (sectionTemplate) {
             const baseStats = calculateSectionBaseStats(shipCard, sectionTemplate);
             shipSections[sectionId] = {

@@ -5,6 +5,7 @@
 
 import fullDroneCollection from '../../data/droneData.js';
 import { calculateEffectiveShipStats } from '../statsCalculator.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * Get drone data by name
@@ -51,9 +52,13 @@ const arraysHaveSameElements = (arr1, arr2) => {
 export const validateAgainstDeck = (quickDeploy, deck, playerState, placedSections) => {
   const reasons = [];
 
+  debugLog('QUICK_DEPLOY', `Validating "${quickDeploy.name}" against deck`);
+
   // 1. Roster Match - Check if deck has exactly the same 5 drones
   const deckDrones = deck.drones.map(d => d.name);
   const qDrones = quickDeploy.droneRoster;
+
+  debugLog('QUICK_DEPLOY', 'Roster check:', { deckDrones, quickDeployRoster: qDrones });
 
   if (!arraysHaveSameElements(deckDrones, qDrones)) {
     const missing = qDrones.filter(d => !deckDrones.includes(d));
@@ -71,6 +76,15 @@ export const validateAgainstDeck = (quickDeploy, deck, playerState, placedSectio
   const totalCost = calculateTotalCost(quickDeploy.placements);
   const stats = calculateEffectiveShipStats(playerState, placedSections);
   const availableBudget = stats.totals.initialDeployment + stats.totals.energyPerTurn;
+
+  debugLog('QUICK_DEPLOY', 'Stats check:', {
+    totalCost,
+    availableBudget,
+    initialDeployment: stats.totals.initialDeployment,
+    energyPerTurn: stats.totals.energyPerTurn,
+    cpuLimit: stats.totals.cpuLimit,
+    placementCount: quickDeploy.placements.length
+  });
 
   if (totalCost > availableBudget) {
     reasons.push({
@@ -124,18 +138,6 @@ export const validateAgainstDeck = (quickDeploy, deck, playerState, placedSectio
     }
   }
 
-  // 5. Check for duplicate drone placements (each drone type can only be placed once)
-  const placedDroneNames = quickDeploy.placements.map(p => p.droneName);
-  const uniquePlaced = new Set(placedDroneNames);
-  if (placedDroneNames.length !== uniquePlaced.size) {
-    const duplicates = placedDroneNames.filter((d, i) => placedDroneNames.indexOf(d) !== i);
-    reasons.push({
-      type: 'duplicate_placement',
-      message: `Drone placed multiple times: ${[...new Set(duplicates)].join(', ')}`,
-      details: { duplicates: [...new Set(duplicates)] }
-    });
-  }
-
   return {
     valid: reasons.length === 0,
     reasons
@@ -151,16 +153,24 @@ export const validateAgainstDeck = (quickDeploy, deck, playerState, placedSectio
  * @returns {Array} Valid quick deployments with validation results
  */
 export const getValidDeploymentsForDeck = (allDeployments, deck, playerState, placedSections) => {
+  debugLog('QUICK_DEPLOY', '=== getValidDeploymentsForDeck ===');
+  debugLog('QUICK_DEPLOY', 'Total deployments to check:', allDeployments?.length);
+  debugLog('QUICK_DEPLOY', 'Deck drones:', deck?.drones?.map(d => d.name));
+
   if (!allDeployments || !Array.isArray(allDeployments)) {
+    debugLog('QUICK_DEPLOY', 'No deployments array - returning empty');
     return [];
   }
 
-  return allDeployments
-    .map(qd => ({
-      ...qd,
-      validation: validateAgainstDeck(qd, deck, playerState, placedSections)
-    }))
-    .filter(qd => qd.validation.valid);
+  const results = allDeployments.map(qd => {
+    const validation = validateAgainstDeck(qd, deck, playerState, placedSections);
+    debugLog('QUICK_DEPLOY', `"${qd.name}": valid=${validation.valid}`, validation.reasons);
+    return { ...qd, validation };
+  });
+
+  const validResults = results.filter(qd => qd.validation.valid);
+  debugLog('QUICK_DEPLOY', `Returning ${validResults.length} valid deployments out of ${results.length}`);
+  return validResults;
 };
 
 /**

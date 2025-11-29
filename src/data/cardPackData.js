@@ -104,7 +104,7 @@ export const packTypes = {
       tier2: { Common: 60, Uncommon: 35, Rare: 5 },
       tier3: { Common: 40, Uncommon: 45, Rare: 13, Mythic: 2 }
     },
-    cardCount: { min: 1, max: 3 },
+    cardCount: { min: 1, max: 1 },
     creditsRange: { min: 10, max: 100 },
     color: '#aa44ff',
   },
