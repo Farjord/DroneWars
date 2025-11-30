@@ -11,6 +11,7 @@ import MIARecoveryModal from '../modals/MIARecoveryModal';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import QuickDeployManager from '../quickDeploy/QuickDeployManager';
 import ReputationTrack from '../ui/ReputationTrack';
+import ReputationProgressModal from '../modals/ReputationProgressModal';
 import ReputationRewardModal from '../modals/ReputationRewardModal';
 import ReputationService from '../../logic/reputation/ReputationService';
 import { generateMapData } from '../../utils/mapGenerator';
@@ -21,7 +22,7 @@ import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js'
 import { SeededRandom } from '../../utils/seededRandom.js';
 import { ECONOMY } from '../../data/economyData.js';
 import { starterDeck } from '../../data/playerDeckData.js';
-import { Plus, Minus, RotateCcw, ChevronRight, Star, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Minus, RotateCcw, ChevronRight, Star, Trash2, AlertTriangle, Cpu } from 'lucide-react';
 
 // Background image for the map area
 const eremosBackground = new URL('/Eremos/Eremos.jpg', import.meta.url).href;
@@ -56,6 +57,7 @@ const HangarScreen = () => {
   const [deleteConfirmation, setDeleteConfirmation] = useState(null); // { slotId, slotName }
   const [copyStarterConfirmation, setCopyStarterConfirmation] = useState(false); // Show copy starter deck confirmation
   const [hoveredButton, setHoveredButton] = useState(null); // Track hovered image button
+  const [showReputationProgress, setShowReputationProgress] = useState(false); // Show reputation progress modal
   const [showReputationRewards, setShowReputationRewards] = useState(false); // Show reputation reward modal
 
   // Pan/Zoom state for map area
@@ -763,12 +765,13 @@ const HangarScreen = () => {
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {[
             { label: 'CREDITS', value: singlePlayerProfile?.credits || 0, color: '#fbbf24' },
+            { label: 'AI CORES', value: singlePlayerProfile?.aiCores || 0, color: '#f97316', icon: Cpu },
             { label: 'TOKENS', value: singlePlayerProfile?.securityTokens || 0, color: '#06b6d4' },
             { label: 'MAP KEYS', value: 0, color: '#60a5fa' },
             { label: 'RUNS', value: singlePlayerProfile?.totalRuns || 0, color: '#e5e7eb' },
             { label: 'VICTORIES', value: singlePlayerProfile?.victories || 0, color: '#22c55e' },
             { label: 'MAX TIER', value: singlePlayerProfile?.maxTierReached || 1, color: '#a855f7' }
-          ].map(({ label, value, color }) => (
+          ].map(({ label, value, color, icon: Icon }) => (
             <div key={label} className="dw-stat-box" style={{ minWidth: '70px', padding: '6px 10px' }}>
               <span className="dw-stat-box-label">{label}</span>
               <span className="dw-stat-box-value" style={{ color }}>{value}</span>
@@ -788,7 +791,7 @@ const HangarScreen = () => {
                 requiredForNext={repData.requiredForNext}
                 unclaimedCount={unclaimed.length}
                 isMaxLevel={repData.isMaxLevel}
-                onClick={() => setShowReputationRewards(true)}
+                onClick={() => setShowReputationProgress(true)}
               />
             );
           })()}
@@ -1469,6 +1472,17 @@ const HangarScreen = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Reputation Progress Modal */}
+      {showReputationProgress && (
+        <ReputationProgressModal
+          onClose={() => setShowReputationProgress(false)}
+          onClaimRewards={() => {
+            setShowReputationProgress(false);
+            setShowReputationRewards(true);
+          }}
+        />
       )}
 
       {/* Reputation Reward Modal */}

@@ -9,7 +9,7 @@ import { RARITY_COLORS } from '../../data/cardPackData.js';
 import fullCardCollection from '../../data/cardData.js';
 import ActionCard from '../ui/ActionCard.jsx';
 import HiddenCard from '../ui/HiddenCard.jsx';
-import { Gift, X, Star, Shield } from 'lucide-react';
+import { Gift, X, Star, Shield, Cpu } from 'lucide-react';
 import './LootRevealModal.css'; // Keep for card flip animations
 
 function LootRevealModal({ loot, onCollect, show }) {
@@ -25,7 +25,7 @@ function LootRevealModal({ loot, onCollect, show }) {
 
   if (!show || !loot) return null;
 
-  const { cards = [], credits = 0, blueprint, token } = loot;
+  const { cards = [], credits = 0, aiCores = 0, blueprint, token } = loot;
   const allRevealed = revealedCards.size >= cards.length || cards.length === 0;
 
   const handleCardClick = (index) => {
@@ -110,6 +110,27 @@ function LootRevealModal({ loot, onCollect, show }) {
             <div className="dw-modal-info-box" style={{ marginTop: '16px', textAlign: 'center' }}>
               <p style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#eab308' }}>
                 +{credits} Credits
+              </p>
+            </div>
+          )}
+
+          {/* AI Cores Display */}
+          {aiCores > 0 && (
+            <div className="dw-modal-info-box" style={{
+              marginTop: '12px',
+              textAlign: 'center',
+              '--modal-theme': '#f97316',
+              '--modal-theme-bg': 'rgba(249, 115, 22, 0.08)',
+              '--modal-theme-border': 'rgba(249, 115, 22, 0.4)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <Cpu size={20} style={{ color: '#f97316' }} />
+                <span style={{ color: '#f97316', fontWeight: 700, fontSize: '18px' }}>
+                  +{aiCores} AI Core{aiCores > 1 ? 's' : ''}
+                </span>
+              </div>
+              <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--modal-text-secondary)' }}>
+                Used for blueprint crafting
               </p>
             </div>
           )}

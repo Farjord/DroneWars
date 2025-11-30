@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { CheckCircle, AlertTriangle, Star, X, Award, TrendingUp } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Star, X, Award, TrendingUp, Cpu } from 'lucide-react';
 
 /**
  * ExtractionSummaryModal - Shows extraction results
@@ -21,6 +21,7 @@ function ExtractionSummaryModal({ show, summary, onContinue }) {
     cardsAcquired = 0,
     blueprintsAcquired = 0,
     creditsEarned = 0,
+    aiCoresEarned = 0,
     dronesDamaged = [],
     finalHull = 0,
     maxHull = 0,
@@ -71,6 +72,16 @@ function ExtractionSummaryModal({ show, summary, onContinue }) {
               <div className="dw-modal-stat-label">Credits Earned</div>
               <div className="dw-modal-stat-value" style={{ color: '#eab308' }}>
                 +{creditsEarned}
+              </div>
+            </div>
+
+            <div className="dw-modal-stat">
+              <div className="dw-modal-stat-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Cpu size={14} style={{ color: '#f97316' }} />
+                AI Cores Earned
+              </div>
+              <div className="dw-modal-stat-value" style={{ color: '#f97316' }}>
+                +{aiCoresEarned}
               </div>
             </div>
 

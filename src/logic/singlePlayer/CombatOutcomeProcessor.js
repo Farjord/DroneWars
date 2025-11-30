@@ -126,7 +126,7 @@ class CombatOutcomeProcessor {
   /**
    * Finalize loot collection after user has revealed cards
    * Called from LootRevealModal's onCollect callback
-   * @param {Object} loot - The loot object { cards, credits, blueprint }
+   * @param {Object} loot - The loot object { cards, credits, aiCores, blueprint }
    */
   finalizeLootCollection(loot) {
     debugLog('SP_COMBAT', '=== Finalizing Loot Collection ===');
@@ -153,6 +153,15 @@ class CombatOutcomeProcessor {
       });
     }
 
+    // Add AI Cores as a loot item (from defeating AI enemies)
+    if (loot.aiCores > 0) {
+      newCardLoot.push({
+        type: 'aiCores',
+        amount: loot.aiCores,
+        source: 'combat_salvage'
+      });
+    }
+
     // Add blueprint if present (supports both legacy card blueprints and drone blueprints)
     if (loot.blueprint) {
       const blueprintLoot = {
@@ -175,7 +184,8 @@ class CombatOutcomeProcessor {
     const updatedRunState = {
       ...currentRunState,
       collectedLoot: [...existingLoot, ...newCardLoot],
-      creditsEarned: (currentRunState.creditsEarned || 0) + (loot.credits || 0)
+      creditsEarned: (currentRunState.creditsEarned || 0) + (loot.credits || 0),
+      aiCoresEarned: (currentRunState.aiCoresEarned || 0) + (loot.aiCores || 0)
     };
 
     // Return to tactical map with FULL combat state cleanup

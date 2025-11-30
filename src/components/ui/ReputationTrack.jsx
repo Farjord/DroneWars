@@ -1,14 +1,14 @@
 // ========================================
 // REPUTATION TRACK
 // ========================================
-// Progress bar showing reputation level and progress to next level
-// Displays notification badge when unclaimed rewards are available
+// Displays reputation level and progress using dw-stat-box styling
+// Matches visual consistency with other hangar header stats
 
 import React from 'react';
-import './ReputationTrack.css';
 
 /**
  * ReputationTrack - Displays reputation progress and level
+ * Uses dw-stat-box styling with purple theme variant
  *
  * @param {Object} props
  * @param {number} props.current - Current reputation points
@@ -22,7 +22,7 @@ import './ReputationTrack.css';
  */
 function ReputationTrack({
   current = 0,
-  level = 1,
+  level = 0,
   progress = 0,
   currentInLevel = 0,
   requiredForNext = 0,
@@ -41,40 +41,43 @@ function ReputationTrack({
     return num.toLocaleString();
   };
 
+  // Progress text
+  const progressText = isMaxLevel
+    ? 'MAX'
+    : `${formatNumber(currentInLevel)}/${formatNumber(requiredForNext)}`;
+
   return (
     <div
-      className={`reputation-track ${hasUnclaimed ? 'has-rewards' : ''}`}
-      onClick={hasUnclaimed ? onClick : undefined}
-      style={{ cursor: hasUnclaimed ? 'pointer' : 'default' }}
-      title={hasUnclaimed ? 'Click to claim rewards!' : `${formatNumber(current)} reputation`}
+      className={`dw-stat-box dw-stat-box--reputation ${hasUnclaimed ? 'has-rewards' : ''}`}
+      onClick={onClick}
+      style={{ minWidth: '180px', padding: '6px 10px', cursor: 'pointer' }}
+      title={hasUnclaimed ? `Click to claim ${unclaimedCount} reward(s)!` : 'Click to view reputation progress'}
     >
-      {/* Label */}
-      <div className="reputation-label">REPUTATION</div>
+      {/* Label - matches other stat boxes */}
+      <span className="dw-stat-box-label">REPUTATION</span>
 
-      {/* Level badge */}
-      <div className="reputation-level">
-        <span className="level-number">{level}</span>
-      </div>
+      {/* Value row: Level + Progress bar */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {/* Level display */}
+        <span className="dw-stat-box-value" style={{ color: '#a855f7', whiteSpace: 'nowrap' }}>
+          Lv.{level}
+        </span>
 
-      {/* Progress bar */}
-      <div className="reputation-bar-container">
-        <div
-          className="reputation-bar-fill"
-          style={{ width: `${progressPercent}%` }}
-        />
-        {/* Progress text */}
-        <div className="reputation-bar-text">
-          {isMaxLevel ? (
-            'MAX'
-          ) : (
-            `${formatNumber(currentInLevel)} / ${formatNumber(requiredForNext)}`
-          )}
+        {/* Progress bar */}
+        <div className="reputation-progress">
+          <div
+            className="reputation-progress-fill"
+            style={{ width: `${progressPercent}%` }}
+          />
+          <span className="reputation-progress-text">
+            {progressText}
+          </span>
         </div>
       </div>
 
       {/* Notification badge for unclaimed rewards */}
       {hasUnclaimed && (
-        <div className="reputation-notification">
+        <div className="dw-notification-badge">
           {unclaimedCount}
         </div>
       )}

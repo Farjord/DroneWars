@@ -4,7 +4,7 @@
 // View/craft from unlocked blueprints
 
 import React, { useState, useMemo } from 'react';
-import { Layers, Lock } from 'lucide-react';
+import { Layers, Lock, Cpu } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
 import droneData from '../../data/droneData';
 import { shipComponentCollection } from '../../data/shipSectionData';
@@ -13,6 +13,7 @@ import { RARITY_COLORS } from '../../data/cardData';
 import { starterDeck } from '../../data/playerDeckData';
 import { starterPoolShipIds } from '../../data/saveGameSchema';
 import { ECONOMY } from '../../data/economyData';
+import { getAICoresCost } from '../../data/aiCoresData';
 
 /**
  * Starter deck items - now INCLUDED in blueprints with special costs
@@ -39,6 +40,7 @@ const BlueprintsModal = ({ onClose }) => {
   } = gameState || {};
 
   const credits = singlePlayerProfile?.credits || 0;
+  const aiCores = singlePlayerProfile?.aiCores || 0;
   const unlockedBlueprints = singlePlayerProfile?.unlockedBlueprints || [];
 
   /**
@@ -64,6 +66,7 @@ const BlueprintsModal = ({ onClose }) => {
           isUnlocked: isStarterItem || unlockedBlueprints.includes(drone.name), // Starter items always unlocked
           isStarterItem,
           craftCost: costTable[drone.rarity] || 100,
+          aiCoresCost: getAICoresCost(drone.rarity),
           owned: singlePlayerInventory[drone.name] || 0,
         };
       });
@@ -82,6 +85,7 @@ const BlueprintsModal = ({ onClose }) => {
           isUnlocked: isStarterItem || unlockedBlueprints.includes(component.id), // Starter items always unlocked
           isStarterItem,
           craftCost: costTable[component.rarity] || 100,
+          aiCoresCost: getAICoresCost(component.rarity),
           owned: singlePlayerInventory[component.id] || 0,
         };
       });
@@ -102,6 +106,7 @@ const BlueprintsModal = ({ onClose }) => {
           isUnlocked: isStarterItem || owned > 0, // Starter items always unlocked; for regular: "owned" counts as unlocked
           isStarterItem,
           craftCost: costTable[ship.rarity] || 600, // Ships default to Rare cost
+          aiCoresCost: getAICoresCost(ship.rarity || 'Rare'),
           owned,
         };
       });
@@ -137,6 +142,7 @@ const BlueprintsModal = ({ onClose }) => {
    */
   const handleCraft = (blueprint) => {
     const craftCost = blueprint.craftCost;
+    const aiCoresCost = blueprint.aiCoresCost;
 
     // Check if player has enough credits
     if (credits < craftCost) {
@@ -147,10 +153,20 @@ const BlueprintsModal = ({ onClose }) => {
       return;
     }
 
-    // Deduct credits
+    // Check if player has enough AI Cores
+    if (aiCores < aiCoresCost) {
+      setFeedback({
+        type: 'error',
+        message: `Insufficient AI Cores. Need ${aiCoresCost}, have ${aiCores}`
+      });
+      return;
+    }
+
+    // Deduct credits and AI Cores
     const newProfile = {
       ...singlePlayerProfile,
-      credits: singlePlayerProfile.credits - craftCost
+      credits: singlePlayerProfile.credits - craftCost,
+      aiCores: singlePlayerProfile.aiCores - aiCoresCost
     };
 
     // All items (ships, drones, components) are added to inventory
@@ -171,7 +187,7 @@ const BlueprintsModal = ({ onClose }) => {
 
     setFeedback({
       type: 'success',
-      message: `Crafted ${blueprint.name} for ${craftCost} credits`
+      message: `Crafted ${blueprint.name} for ${craftCost} credits + ${aiCoresCost} AI Core${aiCoresCost > 1 ? 's' : ''}`
     });
 
     // Clear feedback after 2 seconds
@@ -208,10 +224,24 @@ const BlueprintsModal = ({ onClose }) => {
 
         {/* Body */}
         <div className="dw-modal-body">
-          {/* Credits Display */}
-          <div className="dw-modal-credits">
-            <span className="dw-modal-credits-label">Available Credits</span>
-            <span className="dw-modal-credits-value">{credits}</span>
+          {/* Currency Display */}
+          <div style={{ display: 'flex', gap: '16px', marginBottom: '12px' }}>
+            <div className="dw-modal-credits" style={{ flex: 1, marginBottom: 0 }}>
+              <span className="dw-modal-credits-label">Credits</span>
+              <span className="dw-modal-credits-value">{credits}</span>
+            </div>
+            <div className="dw-modal-credits" style={{
+              flex: 1,
+              marginBottom: 0,
+              '--modal-theme': '#f97316',
+              '--modal-theme-bg': 'rgba(249, 115, 22, 0.08)'
+            }}>
+              <span className="dw-modal-credits-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Cpu size={14} style={{ color: '#f97316' }} />
+                AI Cores
+              </span>
+              <span className="dw-modal-credits-value" style={{ color: '#f97316' }}>{aiCores}</span>
+            </div>
           </div>
 
           {/* Feedback Message */}
@@ -242,7 +272,9 @@ const BlueprintsModal = ({ onClose }) => {
               gap: '12px'
             }}>
               {currentBlueprints.map(blueprint => {
-                const canAfford = credits >= blueprint.craftCost;
+                const canAffordCredits = credits >= blueprint.craftCost;
+                const canAffordCores = aiCores >= blueprint.aiCoresCost;
+                const canAfford = canAffordCredits && canAffordCores;
 
                 return (
                   <div
@@ -348,7 +380,19 @@ const BlueprintsModal = ({ onClose }) => {
                               color: 'var(--modal-text-secondary)',
                               marginBottom: '10px'
                             }}>
-                              Cost: <span style={{ color: '#fbbf24', fontWeight: '600' }}>{blueprint.craftCost}</span>
+                              <div>
+                                <span style={{ color: canAffordCredits ? '#fbbf24' : '#ef4444', fontWeight: '600' }}>
+                                  {blueprint.craftCost}
+                                </span>
+                                <span style={{ color: 'var(--modal-text-muted)', marginLeft: '4px' }}>credits</span>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                                <Cpu size={12} style={{ color: canAffordCores ? '#f97316' : '#ef4444' }} />
+                                <span style={{ color: canAffordCores ? '#f97316' : '#ef4444', fontWeight: '600' }}>
+                                  {blueprint.aiCoresCost}
+                                </span>
+                                <span style={{ color: 'var(--modal-text-muted)' }}>AI Core{blueprint.aiCoresCost > 1 ? 's' : ''}</span>
+                              </div>
                             </div>
                           )}
 
@@ -375,12 +419,15 @@ const BlueprintsModal = ({ onClose }) => {
           {/* Info Box */}
           <div className="dw-modal-info-box" style={{ marginTop: '16px' }}>
             <p style={{ fontSize: '12px', color: 'var(--modal-text-primary)', margin: 0, marginBottom: '4px' }}>
-              <strong style={{ color: 'var(--modal-theme)' }}>Regular Costs:</strong>{' '}
+              <strong style={{ color: 'var(--modal-theme)' }}>Credit Costs:</strong>{' '}
               Common {CRAFT_COSTS.Common}, Uncommon {CRAFT_COSTS.Uncommon}, Rare {CRAFT_COSTS.Rare}, Mythic {CRAFT_COSTS.Mythic}
             </p>
-            <p style={{ fontSize: '12px', color: 'var(--modal-text-primary)', margin: 0 }}>
-              <strong style={{ color: '#3b82f6' }}>Starter Costs:</strong>{' '}
-              Common {STARTER_COSTS.Common}, Uncommon {STARTER_COSTS.Uncommon}, Rare {STARTER_COSTS.Rare}, Mythic {STARTER_COSTS.Mythic}
+            <p style={{ fontSize: '12px', color: 'var(--modal-text-primary)', margin: 0, marginBottom: '4px' }}>
+              <strong style={{ color: '#f97316' }}>AI Cores Costs:</strong>{' '}
+              Common 1, Uncommon 2, Rare 3, Mythic 5
+            </p>
+            <p style={{ fontSize: '11px', color: 'var(--modal-text-secondary)', margin: 0 }}>
+              AI Cores drop from defeating AI enemies in combat
             </p>
           </div>
         </div>

@@ -40,6 +40,7 @@ export const defaultPlayerProfile = {
   // Currency
   credits: ECONOMY.STARTING_CREDITS,
   securityTokens: 0,
+  aiCores: 0,  // Currency from defeating AI enemies, required for blueprint crafting
 
   // Progression - empty at start
   unlockedBlueprints: [],
@@ -63,7 +64,7 @@ export const defaultPlayerProfile = {
   // Reputation system - rewards players for risking custom loadouts
   reputation: {
     current: 0,             // Current reputation points
-    level: 1,               // Current level (starts at 1)
+    level: 0,               // Current level (starts at 0)
     unclaimedRewards: [],   // Array of level numbers with unclaimed rewards
   },
 };

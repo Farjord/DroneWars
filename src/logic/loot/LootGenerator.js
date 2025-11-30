@@ -8,6 +8,7 @@ import packTypes from '../../data/cardPackData.js';
 import fullCardCollection from '../../data/cardData.js';
 import fullDroneCollection from '../../data/droneData.js';
 import { starterDeck } from '../../data/playerDeckData.js';
+import { calculateAICoresDrop } from '../../data/aiCoresData.js';
 
 // Starter card IDs to exclude (players have infinite copies)
 const STARTER_CARD_IDS = new Set(starterDeck.decklist.map(entry => entry.id));
@@ -226,9 +227,10 @@ class LootGenerator {
    * Generate salvage loot from combat (uses enemy deck)
    * Different from pack opening - takes random cards from defeated enemy
    * @param {Array} enemyDeck - Enemy's deck (card instances)
-   * @returns {Object} { cards: [...], credits: number }
+   * @param {number} tier - Map tier (1, 2, or 3) for AI Cores drop calculation
+   * @returns {Object} { cards: [...], credits: number, aiCores: number }
    */
-  generateCombatSalvage(enemyDeck) {
+  generateCombatSalvage(enemyDeck, tier = 1) {
     const cards = [];
     const numCards = 1 + Math.floor(Math.random() * 3); // 1-3 cards
 
@@ -278,6 +280,9 @@ class LootGenerator {
     // Credits from combat: 50-100
     const credits = 50 + Math.floor(Math.random() * 51);
 
+    // AI Cores from combat: tier-based drops (encourages combat)
+    const aiCores = calculateAICoresDrop(tier);
+
     // 1% chance for blueprint (rare drop)
     let blueprint = null;
     if (Math.random() < 0.01) {
@@ -289,7 +294,7 @@ class LootGenerator {
       };
     }
 
-    return { cards, credits, blueprint };
+    return { cards, credits, aiCores, blueprint };
   }
 
   /**

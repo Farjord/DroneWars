@@ -2014,6 +2014,7 @@ class GameStateManager {
       totalPois: runState.mapData?.poiCount || 0,
       cardsCollected, // Full card objects for display
       creditsEarned: runState.creditsEarned || 0,
+      aiCoresEarned: runState.aiCoresEarned || 0,
 
       // Combat
       combatsWon: runState.combatsWon || 0,
@@ -2052,6 +2053,10 @@ class GameStateManager {
 
       // Add credits
       this.state.singlePlayerProfile.credits += runState.creditsEarned;
+
+      // Add AI Cores earned from combat
+      this.state.singlePlayerProfile.aiCores =
+        (this.state.singlePlayerProfile.aiCores || 0) + (runState.aiCoresEarned || 0);
 
       // Update statistics
       this.state.singlePlayerProfile.stats.runsCompleted++;

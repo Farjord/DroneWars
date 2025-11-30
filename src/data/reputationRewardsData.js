@@ -4,109 +4,115 @@
  * Defines level thresholds and rewards for the reputation system.
  * Players unlock rewards as they accumulate reputation from runs.
  *
+ * Players start at Level 0 and work towards Level 1, etc.
+ *
  * Reward types:
  * - { type: 'pack', packType: 'ORDNANCE_PACK', tier: 1 } - Card pack reward
- * - null - No reward for this level (typically level 1)
+ * - null - No reward for this level (level 0 starting point)
  */
 
 export const REPUTATION_LEVELS = [
-  // Level 1 - Starting level, no reward
+  // Level 0 - Starting level, no reward
   {
-    level: 1,
+    level: 0,
     threshold: 0,
     reward: null,
   },
 
-  // Level 2 - First milestone
+  // Level 1 - First milestone
   {
-    level: 2,
+    level: 1,
     threshold: 5000,
     reward: { type: 'pack', packType: 'ORDNANCE_PACK', tier: 1 },
+  },
+
+  // Level 2
+  {
+    level: 2,
+    threshold: 12000,
+    reward: { type: 'pack', packType: 'SUPPORT_PACK', tier: 1 },
   },
 
   // Level 3
   {
     level: 3,
-    threshold: 12000,
-    reward: { type: 'pack', packType: 'SUPPORT_PACK', tier: 1 },
+    threshold: 22000,
+    reward: { type: 'pack', packType: 'TACTICAL_PACK', tier: 2 },
   },
 
   // Level 4
   {
     level: 4,
-    threshold: 22000,
-    reward: { type: 'pack', packType: 'TACTICAL_PACK', tier: 2 },
+    threshold: 35000,
+    reward: { type: 'pack', packType: 'ORDNANCE_PACK', tier: 2 },
   },
 
   // Level 5
   {
     level: 5,
-    threshold: 35000,
-    reward: { type: 'pack', packType: 'ORDNANCE_PACK', tier: 2 },
+    threshold: 52000,
+    reward: { type: 'pack', packType: 'UPGRADE_PACK', tier: 2 },
   },
 
   // Level 6
   {
     level: 6,
-    threshold: 52000,
-    reward: { type: 'pack', packType: 'UPGRADE_PACK', tier: 2 },
+    threshold: 75000,
+    reward: { type: 'pack', packType: 'ORDNANCE_PACK', tier: 3 },
   },
 
   // Level 7
   {
     level: 7,
-    threshold: 75000,
-    reward: { type: 'pack', packType: 'ORDNANCE_PACK', tier: 3 },
+    threshold: 100000,
+    reward: { type: 'pack', packType: 'SUPPORT_PACK', tier: 3 },
   },
 
   // Level 8
   {
     level: 8,
-    threshold: 100000,
-    reward: { type: 'pack', packType: 'SUPPORT_PACK', tier: 3 },
+    threshold: 130000,
+    reward: { type: 'pack', packType: 'TACTICAL_PACK', tier: 3 },
   },
 
   // Level 9
   {
     level: 9,
-    threshold: 130000,
-    reward: { type: 'pack', packType: 'TACTICAL_PACK', tier: 3 },
+    threshold: 165000,
+    reward: { type: 'pack', packType: 'UPGRADE_PACK', tier: 3 },
   },
 
   // Level 10
   {
     level: 10,
-    threshold: 165000,
-    reward: { type: 'pack', packType: 'UPGRADE_PACK', tier: 3 },
-  },
-
-  // Level 11+
-  {
-    level: 11,
     threshold: 205000,
     reward: { type: 'pack', packType: 'ORDNANCE_PACK', tier: 3 },
   },
 
+  // Level 11
   {
-    level: 12,
+    level: 11,
     threshold: 250000,
     reward: { type: 'pack', packType: 'SUPPORT_PACK', tier: 3 },
   },
 
+  // Level 12
   {
-    level: 13,
+    level: 12,
     threshold: 300000,
     reward: { type: 'pack', packType: 'TACTICAL_PACK', tier: 3 },
   },
 
+  // Level 13
   {
-    level: 14,
+    level: 13,
     threshold: 355000,
     reward: { type: 'pack', packType: 'UPGRADE_PACK', tier: 3 },
   },
 
+  // Level 14
   {
-    level: 15,
+    level: 14,
     threshold: 415000,
     reward: { type: 'pack', packType: 'ORDNANCE_PACK', tier: 3 },
   },
@@ -165,8 +171,8 @@ export function getNewlyUnlockedLevels(oldRep, newRep) {
   const unlockedLevels = [];
 
   for (const levelData of REPUTATION_LEVELS) {
-    // Skip level 1 (no reward) and levels already passed
-    if (levelData.level === 1 || levelData.threshold <= oldRep) {
+    // Skip level 0 (no reward) and levels already passed
+    if (levelData.level === 0 || levelData.threshold <= oldRep) {
       continue;
     }
 

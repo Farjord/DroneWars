@@ -1052,3 +1052,124 @@
 .dw-stat-box-value--credits { color: #fbbf24; }
 .dw-stat-box-value--cyan { color: #06b6d4; }
 .dw-stat-box-value--blue { color: #60a5fa; }
+.dw-stat-box-value--purple { color: #a855f7; }
+
+/* Reputation stat box - purple theme variant */
+.dw-stat-box--reputation {
+  border-color: rgba(168, 85, 247, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(168, 85, 247, 0.1);
+}
+.dw-stat-box--reputation::before {
+  border-top-color: rgba(168, 85, 247, 0.5);
+  border-left-color: rgba(168, 85, 247, 0.5);
+}
+.dw-stat-box--reputation .dw-stat-box-label {
+  color: rgba(168, 85, 247, 0.7);
+}
+.dw-stat-box--reputation.has-rewards {
+  border-color: #a855f7;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+  cursor: pointer;
+}
+.dw-stat-box--reputation.has-rewards:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 12px rgba(168, 85, 247, 0.5);
+}
+
+/* Reputation progress bar */
+.reputation-progress {
+  flex: 1;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 2px;
+  position: relative;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  min-width: 60px;
+}
+.reputation-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #a855f7 0%, #c084fc 100%);
+  border-radius: 1px;
+  transition: width 0.3s ease-out;
+}
+.reputation-progress-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Notification badge */
+.dw-notification-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #ef4444;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  animation: badge-bounce 0.5s ease infinite alternate;
+}
+
+@keyframes badge-bounce {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.1); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 8px rgba(168, 85, 247, 0.3); }
+  50% { box-shadow: 0 0 16px rgba(168, 85, 247, 0.5); }
+}
+
+/* ========================================
+   Card Pack Badge
+   ======================================== */
+
+.card-pack-badge {
+  padding: 6px 10px;
+  background: rgba(31, 41, 55, 0.6);
+  border-radius: 4px;
+  border-left: 3px solid;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.card-pack-badge .pack-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-pack-badge .pack-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.card-pack-badge .pack-tier {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.card-pack-badge .pack-desc {
+  font-size: 10px;
+  color: #9ca3af;
+}
