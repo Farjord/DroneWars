@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { CheckCircle, AlertTriangle, Star, X } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Star, X, Award, TrendingUp } from 'lucide-react';
 
 /**
  * ExtractionSummaryModal - Shows extraction results
@@ -24,8 +24,15 @@ function ExtractionSummaryModal({ show, summary, onContinue }) {
     dronesDamaged = [],
     finalHull = 0,
     maxHull = 0,
-    hullPercent = 100
+    hullPercent = 100,
+    reputation = null
   } = summary;
+
+  // Reputation display helpers
+  const repGained = reputation?.repGained || 0;
+  const leveledUp = reputation?.leveledUp || false;
+  const newLevel = reputation?.newLevel || 1;
+  const isStarterDeck = reputation?.isStarterDeck || false;
 
   // Hull color
   const getHullColor = () => {
@@ -81,6 +88,49 @@ function ExtractionSummaryModal({ show, summary, onContinue }) {
               </div>
             </div>
           </div>
+
+          {/* Reputation Gained */}
+          {reputation && (
+            <div className="dw-modal-info-box" style={{
+              marginTop: '16px',
+              '--modal-theme': '#a855f7',
+              '--modal-theme-bg': 'rgba(168, 85, 247, 0.08)',
+              '--modal-theme-border': 'rgba(168, 85, 247, 0.4)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Award size={24} style={{ color: '#a855f7' }} />
+                <div style={{ flex: 1 }}>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--modal-text-secondary)' }}>
+                    Reputation Earned
+                  </p>
+                  <p style={{ margin: 0, fontWeight: 700, color: '#a855f7', fontSize: '18px' }}>
+                    {isStarterDeck ? (
+                      <span style={{ color: 'var(--modal-text-muted)', fontWeight: 400, fontSize: '14px' }}>
+                        None (Starter Deck)
+                      </span>
+                    ) : (
+                      `+${repGained.toLocaleString()}`
+                    )}
+                  </p>
+                </div>
+                {leveledUp && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    background: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+                    borderRadius: '6px',
+                  }}>
+                    <TrendingUp size={16} style={{ color: 'white' }} />
+                    <span style={{ color: 'white', fontWeight: 700, fontSize: '13px' }}>
+                      Level {newLevel}!
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Blueprint Acquired (rare) */}
           {blueprintsAcquired > 0 && (

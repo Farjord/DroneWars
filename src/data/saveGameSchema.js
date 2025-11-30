@@ -58,7 +58,14 @@ export const defaultPlayerProfile = {
     totalCombatsWon: 0,
     totalCombatsLost: 0,
     highestTierCompleted: 0,
-  }
+  },
+
+  // Reputation system - rewards players for risking custom loadouts
+  reputation: {
+    current: 0,             // Current reputation points
+    level: 1,               // Current level (starts at 1)
+    unclaimedRewards: [],   // Array of level numbers with unclaimed rewards
+  },
 };
 
 /**

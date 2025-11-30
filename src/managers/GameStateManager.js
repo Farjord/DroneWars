@@ -17,6 +17,7 @@ import { generateMapData } from '../utils/mapGenerator.js';
 import CombatOutcomeProcessor from '../logic/singlePlayer/CombatOutcomeProcessor.js';
 import { shipComponentCollection } from '../data/shipSectionData.js';
 import fullCardCollection from '../data/cardData.js';
+import ReputationService from '../logic/reputation/ReputationService.js';
 // PhaseManager dependency removed - using direct phase checks
 
 class GameStateManager {
@@ -2078,6 +2079,34 @@ class GameStateManager {
 
       console.log('Run ended - MIA protocol triggered');
     }
+
+    // Award reputation based on loadout value
+    const shipSlot = this.state.singlePlayerShipSlots.find(
+      s => s.id === runState.shipSlotId
+    );
+    const reputationResult = ReputationService.awardReputation(
+      shipSlot,
+      runState.mapTier || 1,
+      success
+    );
+
+    // Add reputation info to run summary
+    lastRunSummary.reputation = {
+      repGained: reputationResult.repGained || 0,
+      previousRep: reputationResult.previousRep || 0,
+      newRep: reputationResult.newRep || 0,
+      previousLevel: reputationResult.previousLevel || 1,
+      newLevel: reputationResult.newLevel || 1,
+      leveledUp: reputationResult.leveledUp || false,
+      levelsGained: reputationResult.levelsGained || 0,
+      newRewards: reputationResult.newRewards || [],
+      loadoutValue: reputationResult.loadout?.totalValue || 0,
+      isStarterDeck: reputationResult.loadout?.isStarterDeck || false,
+      wasCapped: reputationResult.wasCapped || false,
+      tierCap: reputationResult.tierCap || 0,
+    };
+
+    console.log('Reputation awarded:', lastRunSummary.reputation);
 
     // Clear run state and set summary for display at hangar
     this.setState({

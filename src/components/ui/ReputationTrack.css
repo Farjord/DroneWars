@@ -1,0 +1,149 @@
+/* ========================================
+   REPUTATION TRACK STYLES
+   ======================================== */
+
+.reputation-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(31, 31, 31, 0.9);
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: 4px;
+  position: relative;
+  transition: all 0.2s ease;
+  min-width: 160px;
+}
+
+.reputation-track:hover {
+  border-color: rgba(168, 85, 247, 0.5);
+}
+
+.reputation-track.has-rewards {
+  border-color: #a855f7;
+  box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+  animation: pulse-glow 2s infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(168, 85, 247, 0.5);
+  }
+}
+
+/* Label */
+.reputation-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  position: absolute;
+  top: 2px;
+  left: 8px;
+}
+
+/* Level badge */
+.reputation-level {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.reputation-level .level-number {
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Progress bar container */
+.reputation-bar-container {
+  flex: 1;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+  margin-top: 8px;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+/* Progress bar fill */
+.reputation-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #a855f7 0%, #c084fc 100%);
+  border-radius: 2px;
+  transition: width 0.5s ease-out;
+  position: relative;
+}
+
+.reputation-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, transparent 100%);
+}
+
+/* Progress text */
+.reputation-bar-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 10px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+
+/* Notification badge */
+.reputation-notification {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  background: #ef4444;
+  border-radius: 9px;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  animation: bounce 0.5s ease infinite alternate;
+}
+
+@keyframes bounce {
+  0% {
+    transform: scale(1);
+  }
+  100% {
+    transform: scale(1.1);
+  }
+}
+
+/* Hover state when clickable */
+.reputation-track.has-rewards:hover {
+  cursor: pointer;
+  transform: translateY(-1px);
+}
+
+.reputation-track.has-rewards:hover .reputation-notification {
+  background: #f87171;
+}

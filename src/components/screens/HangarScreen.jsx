@@ -10,6 +10,9 @@ import RunSummaryModal from '../modals/RunSummaryModal';
 import MIARecoveryModal from '../modals/MIARecoveryModal';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import QuickDeployManager from '../quickDeploy/QuickDeployManager';
+import ReputationTrack from '../ui/ReputationTrack';
+import ReputationRewardModal from '../modals/ReputationRewardModal';
+import ReputationService from '../../logic/reputation/ReputationService';
 import { generateMapData } from '../../utils/mapGenerator';
 import { RARITY_COLORS } from '../../data/cardData';
 import { getMapType, getMapBackground } from '../../logic/extraction/mapExtraction';
@@ -53,6 +56,7 @@ const HangarScreen = () => {
   const [deleteConfirmation, setDeleteConfirmation] = useState(null); // { slotId, slotName }
   const [copyStarterConfirmation, setCopyStarterConfirmation] = useState(false); // Show copy starter deck confirmation
   const [hoveredButton, setHoveredButton] = useState(null); // Track hovered image button
+  const [showReputationRewards, setShowReputationRewards] = useState(false); // Show reputation reward modal
 
   // Pan/Zoom state for map area
   const [zoom, setZoom] = useState(1.5);
@@ -756,7 +760,7 @@ const HangarScreen = () => {
         }}>HANGAR</h1>
 
         {/* Right: Stats */}
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           {[
             { label: 'CREDITS', value: singlePlayerProfile?.credits || 0, color: '#fbbf24' },
             { label: 'TOKENS', value: singlePlayerProfile?.securityTokens || 0, color: '#06b6d4' },
@@ -770,6 +774,24 @@ const HangarScreen = () => {
               <span className="dw-stat-box-value" style={{ color }}>{value}</span>
             </div>
           ))}
+
+          {/* Reputation Track */}
+          {(() => {
+            const repData = ReputationService.getLevelData();
+            const unclaimed = ReputationService.getUnclaimedRewards();
+            return (
+              <ReputationTrack
+                current={repData.currentRep}
+                level={repData.level}
+                progress={repData.progress}
+                currentInLevel={repData.currentInLevel}
+                requiredForNext={repData.requiredForNext}
+                unclaimedCount={unclaimed.length}
+                isMaxLevel={repData.isMaxLevel}
+                onClick={() => setShowReputationRewards(true)}
+              />
+            );
+          })()}
         </div>
       </header>
 
@@ -783,12 +805,18 @@ const HangarScreen = () => {
         {/* Central Map Area */}
         <div
           ref={mapContainerRef}
-          className="panel"
           style={{
             position: 'relative',
             overflow: 'hidden',
-            borderRadius: 0,
-            cursor: isDragging ? 'grabbing' : 'grab'
+            cursor: isDragging ? 'grabbing' : 'grab',
+            // Enhanced monitor-style border
+            border: '2px solid rgba(6, 182, 212, 0.6)',
+            boxShadow: `
+              inset 0 0 30px rgba(0, 0, 0, 0.8),
+              0 0 20px rgba(6, 182, 212, 0.3),
+              0 0 40px rgba(6, 182, 212, 0.1)
+            `,
+            borderRadius: '4px'
           }}
           onMouseDown={handleMapMouseDown}
           onMouseMove={handleMapMouseMove}
@@ -947,13 +975,51 @@ const HangarScreen = () => {
           </div>
           {/* End transformable container */}
 
-          {/* Vignette Effect */}
+          {/* Vignette Layer 1: Deep corner shadows */}
           <div style={{
             position: 'absolute',
             inset: 0,
-            background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.6) 100%)',
+            background: 'radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,0.95) 100%)',
             pointerEvents: 'none',
             zIndex: 3
+          }} />
+
+          {/* Vignette Layer 2: Top/bottom edge tints */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: `linear-gradient(to bottom,
+              rgba(6, 182, 212, 0.03) 0%,
+              transparent 3%,
+              transparent 97%,
+              rgba(6, 182, 212, 0.03) 100%
+            )`,
+            pointerEvents: 'none',
+            zIndex: 4
+          }} />
+
+          {/* Vignette Layer 3: Inner frame shadow */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            boxShadow: 'inset 0 0 100px rgba(0,0,0,0.7)',
+            pointerEvents: 'none',
+            zIndex: 5
+          }} />
+
+          {/* CRT Scanline Effect */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: `repeating-linear-gradient(
+              0deg,
+              transparent,
+              transparent 1.5px,
+              rgba(0, 0, 0, 0.06) 1.5px,
+              rgba(0, 0, 0, 0.06) 3px
+            )`,
+            pointerEvents: 'none',
+            zIndex: 6
           }} />
 
           {/* Zoom Controls - small buttons at bottom-left corner */}
@@ -1121,6 +1187,9 @@ const HangarScreen = () => {
                   const cardCount = isActive ? (slot.decklist || []).reduce((sum, c) => sum + c.quantity, 0) : 0;
                   const droneCount = isActive ? (slot.drones || []).length : 0;
 
+                  // Get loadout value for reputation display
+                  const loadoutValueData = isActive ? ReputationService.getLoadoutValue(slot) : null;
+
                   // Check if deck is valid (for active slots)
                   const isValidDeck = isActive ? (() => {
                     const deckObj = {};
@@ -1196,6 +1265,15 @@ const HangarScreen = () => {
                         <div className={`text-xs mt-1 ${isValidDeck ? 'text-gray-400' : 'text-orange-400'}`}>
                           {cardCount}/40 cards • {droneCount}/5 drones
                           {!isValidDeck && ' (incomplete)'}
+                        </div>
+                      )}
+
+                      {/* Loadout value for reputation */}
+                      {isActive && (
+                        <div style={{ fontSize: '11px', color: '#a855f7', marginTop: '4px' }}>
+                          {loadoutValueData?.isStarterDeck
+                            ? 'Loadout Value: None (Starter)'
+                            : `Loadout Value: ${loadoutValueData?.totalValue?.toLocaleString() || 0}`}
                         </div>
                       )}
 
@@ -1391,6 +1469,13 @@ const HangarScreen = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Reputation Reward Modal */}
+      {showReputationRewards && (
+        <ReputationRewardModal
+          onClose={() => setShowReputationRewards(false)}
+        />
       )}
     </div>
   );
