@@ -8,6 +8,7 @@ import gameStateManager from '../../managers/GameStateManager.js';
 import DroneDamageProcessor from './DroneDamageProcessor.js';
 import DetectionManager from '../detection/DetectionManager.js';
 import { mapTiers } from '../../data/mapData.js';
+import { ECONOMY } from '../../data/economyData.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
 /**
@@ -91,20 +92,53 @@ class ExtractionController {
   /**
    * Complete successful extraction
    * Processes drone damage, transfers loot, updates profile
+   * For Slot 0 (starter deck): enforces extraction limit
+   *
    * @param {Object} currentRunState - Current run state
-   * @returns {Object} Extraction summary for modal display
+   * @param {Array|null} selectedLoot - Optional: pre-selected loot items (for limit enforcement)
+   * @returns {Object} Extraction summary for modal display, or { action: 'selectLoot' } if over limit
    */
-  completeExtraction(currentRunState) {
+  completeExtraction(currentRunState, selectedLoot = null) {
     const state = gameStateManager.getState();
     const shipSlot = state.singlePlayerShipSlots?.find(
       s => s.id === currentRunState.shipSlotId
     );
 
+    // Check extraction limit for Slot 0 (starter deck)
+    const isStarterDeck = currentRunState.shipSlotId === 0;
+    const extractionLimit = ECONOMY.STARTER_DECK_EXTRACTION_LIMIT || 3;
+    const lootCount = currentRunState.collectedLoot.length;
+
+    if (isStarterDeck && lootCount > extractionLimit && selectedLoot === null) {
+      // Over limit - need player to select which loot to keep
+      debugLog('EXTRACTION', `Loot exceeds limit (${lootCount}/${extractionLimit}), selection required`);
+      return {
+        action: 'selectLoot',
+        limit: extractionLimit,
+        collectedLoot: currentRunState.collectedLoot
+      };
+    }
+
+    // Determine which loot to transfer
+    const lootToTransfer = selectedLoot || currentRunState.collectedLoot;
+
     debugLog('EXTRACTION', 'Completing extraction', {
-      lootCount: currentRunState.collectedLoot.length,
+      lootCount: lootToTransfer.length,
       credits: currentRunState.creditsEarned,
-      hull: `${currentRunState.currentHull}/${currentRunState.maxHull}`
+      hull: `${currentRunState.currentHull}/${currentRunState.maxHull}`,
+      isStarterDeck,
+      selectedLoot: selectedLoot ? 'yes' : 'no'
     });
+
+    // Update runState with filtered loot before endRun processes it
+    if (selectedLoot) {
+      gameStateManager.setState({
+        currentRunState: {
+          ...currentRunState,
+          collectedLoot: selectedLoot
+        }
+      });
+    }
 
     // 1. Process drone damage (if hull < 50%)
     let dronesDamaged = [];
@@ -115,15 +149,16 @@ class ExtractionController {
     // 2. Build summary before endRun clears state
     const summary = {
       success: true,
-      cardsAcquired: currentRunState.collectedLoot.filter(i => i.type === 'card').length,
-      blueprintsAcquired: currentRunState.collectedLoot.filter(i => i.type === 'blueprint').length,
+      cardsAcquired: lootToTransfer.filter(i => i.type === 'card').length,
+      blueprintsAcquired: lootToTransfer.filter(i => i.type === 'blueprint').length,
       creditsEarned: currentRunState.creditsEarned,
       dronesDamaged,
       finalHull: currentRunState.currentHull,
       maxHull: currentRunState.maxHull,
       hullPercent: currentRunState.maxHull > 0
         ? ((currentRunState.currentHull / currentRunState.maxHull) * 100).toFixed(0)
-        : 100
+        : 100,
+      itemsDiscarded: selectedLoot ? lootCount - selectedLoot.length : 0
     };
 
     // 3. End run with success (transfers loot, adds credits)
@@ -152,11 +187,12 @@ class ExtractionController {
    * Handle post-blockade extraction
    * Called after winning a blockade combat
    * @param {Object} currentRunState - Current run state
+   * @param {Array|null} selectedLoot - Optional: pre-selected loot items (for limit enforcement)
    * @returns {Object} Extraction summary
    */
-  completePostBlockadeExtraction(currentRunState) {
+  completePostBlockadeExtraction(currentRunState, selectedLoot = null) {
     debugLog('EXTRACTION', 'Post-blockade extraction');
-    return this.completeExtraction(currentRunState);
+    return this.completeExtraction(currentRunState, selectedLoot);
   }
 }
 

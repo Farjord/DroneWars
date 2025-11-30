@@ -34,11 +34,11 @@ export function calculateAvailableCards(targetSlotId, shipSlots, inventory) {
     let availableQuantity;
     const isStarterPool = starterPoolCards.includes(card.id);
 
-    if (isStarterPool) {
-      // Starter pool: unlimited availability (use a large number for UI)
+    if (isStarterPool && targetSlotId === 0) {
+      // Starter pool: unlimited availability ONLY when editing Slot 0
       availableQuantity = 99;
     } else {
-      // Inventory: owned minus used elsewhere
+      // For Slots 1-5 (or non-starter cards): check inventory
       const owned = inventory[card.id] || 0;
       const usedElsewhere = usedCards[card.id] || 0;
       availableQuantity = Math.max(0, owned - usedElsewhere);
@@ -87,11 +87,11 @@ export function calculateAvailableDrones(targetSlotId, shipSlots, droneInstances
       const isStarterPool = starterPoolDroneNames.includes(drone.name);
       let availableCount;
 
-      if (isStarterPool) {
-        // Starter pool: unlimited availability
+      if (isStarterPool && targetSlotId === 0) {
+        // Starter pool: unlimited availability ONLY when editing Slot 0
         availableCount = 99;
       } else {
-        // Acquired: count instances minus used elsewhere
+        // For Slots 1-5 (or non-starter drones): check instances
         const ownedInstances = instancesByName[drone.name]?.length || 0;
         const usedElsewhere = usedDrones[drone.name] || 0;
         availableCount = Math.max(0, ownedInstances - usedElsewhere);
@@ -143,11 +143,11 @@ export function calculateAvailableComponents(targetSlotId, shipSlots, componentI
     const isStarterPool = starterPoolCards.includes(component.id);
     let availableCount;
 
-    if (isStarterPool) {
-      // Starter pool: unlimited availability
+    if (isStarterPool && targetSlotId === 0) {
+      // Starter pool: unlimited availability ONLY when editing Slot 0
       availableCount = 99;
     } else {
-      // Acquired: count instances minus used elsewhere
+      // For Slots 1-5 (or non-starter components): check instances
       const ownedInstances = instancesById[component.id]?.length || 0;
       const usedElsewhere = usedComponents[component.id] || 0;
       availableCount = Math.max(0, ownedInstances - usedElsewhere);
@@ -195,11 +195,11 @@ export function calculateAvailableShips(targetSlotId, shipSlots, inventory) {
     const isStarterPool = starterPoolShipIds.includes(ship.id);
     let availableCount;
 
-    if (isStarterPool) {
-      // Starter pool: unlimited availability
+    if (isStarterPool && targetSlotId === 0) {
+      // Starter pool: unlimited availability ONLY when editing Slot 0
       availableCount = 99;
     } else {
-      // Inventory: owned minus used elsewhere
+      // For Slots 1-5 (or non-starter ships): check inventory
       const owned = inventory[ship.id] || 0;
       const usedElsewhere = usedShips[ship.id] || 0;
       availableCount = Math.max(0, owned - usedElsewhere);

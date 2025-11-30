@@ -5,6 +5,7 @@
 // Provides quick access to inventory and extraction
 
 import React from 'react';
+import { ECONOMY } from '../../data/economyData.js';
 import './TacticalMapHUD.css';
 
 // ========================================
@@ -60,7 +61,12 @@ function TacticalMapHUD({
   onAbandonClick,
   onInventoryClick
 }) {
-  const { creditsEarned, collectedLoot, playerPosition, insertionGate, mapData } = currentRunState;
+  const { creditsEarned, collectedLoot, playerPosition, insertionGate, mapData, shipSlotId } = currentRunState;
+
+  // Extraction limit for Slot 0 (starter deck)
+  const isStarterDeck = shipSlotId === 0;
+  const extractionLimit = ECONOMY.STARTER_DECK_EXTRACTION_LIMIT || 3;
+  const isOverLimit = isStarterDeck && collectedLoot.length > extractionLimit;
 
   // Check if player is at insertion gate
   const isAtInsertionGate = insertionGate &&
@@ -132,6 +138,19 @@ function TacticalMapHUD({
               {collectedLoot.length}
             </span>
           </div>
+
+          {/* Extraction Limit (only for Slot 0) */}
+          {isStarterDeck && (
+            <>
+              <div className="hud-stat-separator" />
+              <div className="hud-stat" title="Starter deck extraction limit">
+                <span className="stat-label">Extract Limit</span>
+                <span className={`stat-value ${isOverLimit ? 'stat-value-warning' : 'stat-value-healthy'}`}>
+                  {Math.min(collectedLoot.length, extractionLimit)}/{extractionLimit}
+                </span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

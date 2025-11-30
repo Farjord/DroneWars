@@ -47,7 +47,37 @@ export const ECONOMY = {
   STARTING_CREDITS: 0,
 
   // ========================================
-  // FUTURE: Map entry costs, blueprint crafting, etc.
+  // STARTER DECK LIMITS
+  // ========================================
+
+  // Max loot items player can extract with when using Slot 0 (starter deck)
+  STARTER_DECK_EXTRACTION_LIMIT: 3,
+
+  // ========================================
+  // STARTER ITEM COSTS
+  // ========================================
+
+  // Cost to replicate starter deck cards (discounted from regular)
+  STARTER_REPLICATION_COSTS: {
+    Common: 75,
+    Uncommon: 175,
+    Rare: 450,
+    Mythic: 1100
+  },
+
+  // Cost to craft starter drones/components from Blueprints
+  STARTER_BLUEPRINT_COSTS: {
+    Common: 75,
+    Uncommon: 175,
+    Rare: 450,
+    Mythic: 1100
+  },
+
+  // Flat fee to copy entire starter deck (all cards, drones, components, ship)
+  STARTER_DECK_COPY_COST: 500,
+
+  // ========================================
+  // FUTURE: Map entry costs, etc.
   // ========================================
 };
 

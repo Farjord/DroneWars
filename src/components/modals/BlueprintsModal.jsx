@@ -12,9 +12,10 @@ import { getAllShips } from '../../data/shipData';
 import { RARITY_COLORS } from '../../data/cardData';
 import { starterDeck } from '../../data/playerDeckData';
 import { starterPoolShipIds } from '../../data/saveGameSchema';
+import { ECONOMY } from '../../data/economyData';
 
 /**
- * Starter deck items that should NOT appear as blueprints
+ * Starter deck items - now INCLUDED in blueprints with special costs
  * Dynamically extracted from starterDeck - updates automatically if starter deck changes
  */
 const STARTER_DRONE_NAMES = new Set(starterDeck.drones.map(d => d.name));
@@ -41,61 +42,70 @@ const BlueprintsModal = ({ onClose }) => {
   const unlockedBlueprints = singlePlayerProfile?.unlockedBlueprints || [];
 
   /**
-   * Craft cost by rarity
+   * Craft cost by rarity (regular and starter)
+   * Uses centralized values from economyData.js
    */
-  const CRAFT_COSTS = {
-    Common: 100,
-    Uncommon: 250,
-    Rare: 600,
-    Mythic: 1500,
-  };
+  const CRAFT_COSTS = ECONOMY.REPLICATION_COSTS;
+
+  const STARTER_COSTS = ECONOMY.STARTER_BLUEPRINT_COSTS || CRAFT_COSTS;
 
   /**
-   * Get filtered drone blueprints (excluding starter drones)
+   * Get drone blueprints (including starter drones with special costs)
    */
   const droneBlueprints = useMemo(() => {
     return droneData
-      .filter(drone => !STARTER_DRONE_NAMES.has(drone.name)) // Exclude starter drones
-      .map(drone => ({
-        ...drone,
-        id: drone.name, // Drones use name as ID
-        isUnlocked: unlockedBlueprints.includes(drone.name),
-        craftCost: CRAFT_COSTS[drone.rarity] || 100,
-        owned: singlePlayerInventory[drone.name] || 0,
-      }));
-  }, [unlockedBlueprints, singlePlayerInventory]);
+      .filter(drone => drone.selectable !== false)
+      .map(drone => {
+        const isStarterItem = STARTER_DRONE_NAMES.has(drone.name);
+        const costTable = isStarterItem ? STARTER_COSTS : CRAFT_COSTS;
+        return {
+          ...drone,
+          id: drone.name, // Drones use name as ID
+          isUnlocked: isStarterItem || unlockedBlueprints.includes(drone.name), // Starter items always unlocked
+          isStarterItem,
+          craftCost: costTable[drone.rarity] || 100,
+          owned: singlePlayerInventory[drone.name] || 0,
+        };
+      });
+  }, [unlockedBlueprints, singlePlayerInventory, STARTER_COSTS]);
 
   /**
-   * Get filtered ship component blueprints (excluding starter components)
+   * Get ship component blueprints (including starter components with special costs)
    */
   const shipBlueprints = useMemo(() => {
     return shipComponentCollection
-      .filter(component => !STARTER_COMPONENT_IDS.has(component.id)) // Exclude starter components
-      .map(component => ({
-        ...component,
-        isUnlocked: unlockedBlueprints.includes(component.id),
-        craftCost: CRAFT_COSTS[component.rarity] || 100,
-        owned: singlePlayerInventory[component.id] || 0,
-      }));
-  }, [unlockedBlueprints, singlePlayerInventory]);
+      .map(component => {
+        const isStarterItem = STARTER_COMPONENT_IDS.has(component.id);
+        const costTable = isStarterItem ? STARTER_COSTS : CRAFT_COSTS;
+        return {
+          ...component,
+          isUnlocked: isStarterItem || unlockedBlueprints.includes(component.id), // Starter items always unlocked
+          isStarterItem,
+          craftCost: costTable[component.rarity] || 100,
+          owned: singlePlayerInventory[component.id] || 0,
+        };
+      });
+  }, [unlockedBlueprints, singlePlayerInventory, STARTER_COSTS]);
 
   /**
-   * Get filtered ship card blueprints (excluding starter ship)
+   * Get ship card blueprints (including starter ship with special cost)
    * Ships now work like drones - tracked in inventory with quantities
    */
   const shipCardBlueprints = useMemo(() => {
     return getAllShips()
-      .filter(ship => !STARTER_SHIP_IDS.has(ship.id)) // Exclude starter ship
       .map(ship => {
+        const isStarterItem = STARTER_SHIP_IDS.has(ship.id);
+        const costTable = isStarterItem ? STARTER_COSTS : CRAFT_COSTS;
         const owned = singlePlayerInventory[ship.id] || 0;
         return {
           ...ship,
-          isUnlocked: owned > 0, // For stats: "owned" counts as unlocked
-          craftCost: CRAFT_COSTS[ship.rarity] || 600, // Ships default to Rare cost
+          isUnlocked: isStarterItem || owned > 0, // Starter items always unlocked; for regular: "owned" counts as unlocked
+          isStarterItem,
+          craftCost: costTable[ship.rarity] || 600, // Ships default to Rare cost
           owned,
         };
       });
-  }, [singlePlayerInventory]);
+  }, [singlePlayerInventory, STARTER_COSTS]);
 
   /**
    * Get collection stats
@@ -263,6 +273,22 @@ const BlueprintsModal = ({ onClose }) => {
                         </div>
                       ) : (
                         <div style={{ position: 'relative', zIndex: 1 }}>
+                          {/* Starter Badge */}
+                          {blueprint.isStarterItem && (
+                            <div style={{
+                              fontSize: '10px',
+                              fontWeight: '600',
+                              color: '#fff',
+                              background: 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)',
+                              padding: '2px 6px',
+                              borderRadius: '4px',
+                              marginBottom: '6px',
+                              display: 'inline-block'
+                            }}>
+                              STARTER
+                            </div>
+                          )}
+
                           {/* Blueprint Name */}
                           <div style={{
                             fontSize: '13px',
@@ -348,9 +374,13 @@ const BlueprintsModal = ({ onClose }) => {
 
           {/* Info Box */}
           <div className="dw-modal-info-box" style={{ marginTop: '16px' }}>
+            <p style={{ fontSize: '12px', color: 'var(--modal-text-primary)', margin: 0, marginBottom: '4px' }}>
+              <strong style={{ color: 'var(--modal-theme)' }}>Regular Costs:</strong>{' '}
+              Common {CRAFT_COSTS.Common}, Uncommon {CRAFT_COSTS.Uncommon}, Rare {CRAFT_COSTS.Rare}, Mythic {CRAFT_COSTS.Mythic}
+            </p>
             <p style={{ fontSize: '12px', color: 'var(--modal-text-primary)', margin: 0 }}>
-              <strong style={{ color: 'var(--modal-theme)' }}>Craft Costs:</strong>{' '}
-              Common {CRAFT_COSTS.Common}, Uncommon {CRAFT_COSTS.Uncommon}, Rare {CRAFT_COSTS.Rare}, Mythic {CRAFT_COSTS.Mythic} credits
+              <strong style={{ color: '#3b82f6' }}>Starter Costs:</strong>{' '}
+              Common {STARTER_COSTS.Common}, Uncommon {STARTER_COSTS.Uncommon}, Rare {STARTER_COSTS.Rare}, Mythic {STARTER_COSTS.Mythic}
             </p>
           </div>
         </div>

@@ -6,6 +6,7 @@
 
 import { starterDeck } from './playerDeckData.js';
 import fullCardCollection from './cardData.js';
+import { ECONOMY } from './economyData.js';
 
 export const SAVE_VERSION = '1.0';
 
@@ -37,7 +38,7 @@ export const defaultPlayerProfile = {
   lastPlayedAt: Date.now(),
 
   // Currency
-  credits: 1000,
+  credits: ECONOMY.STARTING_CREDITS,
   securityTokens: 0,
 
   // Progression - empty at start

@@ -15,6 +15,7 @@ import RunInventoryModal from '../modals/RunInventoryModal.jsx';
 import LootRevealModal from '../modals/LootRevealModal.jsx';
 import AbandonRunModal from '../modals/AbandonRunModal.jsx';
 import ExtractionSummaryModal from '../modals/ExtractionSummaryModal.jsx';
+import ExtractionLootSelectionModal from '../modals/ExtractionLootSelectionModal.jsx';
 import MovementController from '../../logic/map/MovementController.js';
 import lootGenerator from '../../logic/loot/LootGenerator.js';
 import DetectionManager from '../../logic/detection/DetectionManager.js';
@@ -143,6 +144,10 @@ function TacticalMapScreen() {
   const [showAbandonModal, setShowAbandonModal] = useState(false);
   const [showExtractionModal, setShowExtractionModal] = useState(false);
   const [extractionSummary, setExtractionSummary] = useState(null);
+
+  // Loot selection modal state (for Slot 0 extraction limit)
+  const [showLootSelectionModal, setShowLootSelectionModal] = useState(false);
+  const [pendingLootSelection, setPendingLootSelection] = useState(null);
 
   // Ref to track pause state in async movement loop
   const isPausedRef = useRef(false);
@@ -687,9 +692,21 @@ function TacticalMapScreen() {
     } else {
       // Safe extraction - complete the run
       console.log('[TacticalMap] Safe extraction - completing run');
-      const summary = ExtractionController.completeExtraction(runState);
-      setExtractionSummary(summary);
-      setShowExtractionModal(true);
+      const result = ExtractionController.completeExtraction(runState);
+
+      // Check if loot selection is needed (Slot 0 over extraction limit)
+      if (result.action === 'selectLoot') {
+        console.log('[TacticalMap] Loot selection required:', result.limit, 'max from', result.collectedLoot.length);
+        setPendingLootSelection({
+          collectedLoot: result.collectedLoot,
+          limit: result.limit
+        });
+        setShowLootSelectionModal(true);
+      } else {
+        // Normal extraction complete
+        setExtractionSummary(result);
+        setShowExtractionModal(true);
+      }
     }
   }, []);
 
@@ -725,6 +742,26 @@ function TacticalMapScreen() {
     setShowExtractionModal(false);
     setExtractionSummary(null);
     gameStateManager.setState({ appState: 'hangar' });
+  }, []);
+
+  /**
+   * Handle loot selection confirmation - complete extraction with selected items
+   */
+  const handleLootSelectionConfirm = useCallback((selectedLoot) => {
+    console.log('[TacticalMap] Loot selection confirmed:', selectedLoot.length, 'items');
+
+    setShowLootSelectionModal(false);
+    setPendingLootSelection(null);
+
+    // Get current run state and complete extraction with selected loot
+    const currentState = gameStateManager.getState();
+    const runState = currentState.currentRunState;
+
+    if (runState) {
+      const summary = ExtractionController.completeExtraction(runState, selectedLoot);
+      setExtractionSummary(summary);
+      setShowExtractionModal(true);
+    }
   }, []);
 
   /**
@@ -1209,6 +1246,15 @@ function TacticalMapScreen() {
         show={showExtractionModal}
         summary={extractionSummary}
         onContinue={handleExtractionContinue}
+      />
+
+      {/* Loot Selection Modal (for Slot 0 extraction limit) */}
+      <ExtractionLootSelectionModal
+        isOpen={showLootSelectionModal}
+        collectedLoot={pendingLootSelection?.collectedLoot || []}
+        limit={pendingLootSelection?.limit || 3}
+        onConfirm={handleLootSelectionConfirm}
+        onCancel={() => handleLootSelectionConfirm([])}
       />
 
       {/* Map info display */}

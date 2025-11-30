@@ -2,8 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { useGameState } from '../../hooks/useGameState';
 import { debugLog } from '../../utils/debugLogger.js';
 import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js';
+import { ECONOMY } from '../../data/economyData.js';
 import MapPreviewRenderer from '../ui/MapPreviewRenderer';
-import { Map, AlertTriangle, XCircle } from 'lucide-react';
+import { Map, AlertTriangle, XCircle, Info } from 'lucide-react';
 
 /**
  * MapOverviewModal Component
@@ -424,6 +425,25 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                   </div>
                 )}
               </div>
+
+              {/* Extraction Limit Warning (Slot 0 only) */}
+              {currentSlotId === 0 && (
+                <div className="dw-modal-info-box" style={{
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  borderColor: 'rgba(245, 158, 11, 0.3)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                    <Info size={18} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} />
+                    <div>
+                      <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#f59e0b' }}>Extraction Limit</p>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: 'var(--modal-text-secondary)' }}>
+                        Starter Deck can only extract with <strong style={{ color: '#f59e0b' }}>{ECONOMY.STARTER_DECK_EXTRACTION_LIMIT || 3}</strong> loot items.
+                        Items collected beyond this limit must be selected at extraction.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Validation Error */}
               {validationError && (

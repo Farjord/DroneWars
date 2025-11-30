@@ -16,6 +16,8 @@ import { getMapType, getMapBackground } from '../../logic/extraction/mapExtracti
 import { debugLog } from '../../utils/debugLogger.js';
 import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js';
 import { SeededRandom } from '../../utils/seededRandom.js';
+import { ECONOMY } from '../../data/economyData.js';
+import { starterDeck } from '../../data/playerDeckData.js';
 import { Plus, Minus, RotateCcw, ChevronRight, Star, Trash2, AlertTriangle } from 'lucide-react';
 
 // Background image for the map area
@@ -49,6 +51,7 @@ const HangarScreen = () => {
   const [selectedMiaSlot, setSelectedMiaSlot] = useState(null);
   const [newDeckOption, setNewDeckOption] = useState(null); // 'empty', 'copyFromSlot0', or null
   const [deleteConfirmation, setDeleteConfirmation] = useState(null); // { slotId, slotName }
+  const [copyStarterConfirmation, setCopyStarterConfirmation] = useState(false); // Show copy starter deck confirmation
   const [hoveredButton, setHoveredButton] = useState(null); // Track hovered image button
 
   // Pan/Zoom state for map area
@@ -493,12 +496,92 @@ const HangarScreen = () => {
 
   // Handle new deck option selection - navigate to deck editor
   const handleNewDeckOption = (option) => {
-    setActiveModal(null);
+    if (option === 'copyFromSlot0') {
+      // Show confirmation modal for copy from starter deck
+      setActiveModal(null);
+      setCopyStarterConfirmation(true);
+    } else {
+      setActiveModal(null);
+      gameStateManager.setState({
+        appState: 'extractionDeckBuilder',
+        extractionDeckSlotId: selectedSlotId,
+        extractionNewDeckOption: option
+      });
+    }
+  };
+
+  // Handle confirm copy from starter deck - pay cost and create inventory copies
+  const handleConfirmCopyStarter = () => {
+    const cost = ECONOMY.STARTER_DECK_COPY_COST || 500;
+    const credits = singlePlayerProfile?.credits || 0;
+
+    if (credits < cost) {
+      setCopyStarterConfirmation(false);
+      return;
+    }
+
+    // Deduct credits
+    const newProfile = {
+      ...singlePlayerProfile,
+      credits: singlePlayerProfile.credits - cost
+    };
+
+    // Add starter deck cards to inventory
+    const newInventory = { ...singlePlayerInventory };
+    (starterDeck.decklist || []).forEach(card => {
+      newInventory[card.id] = (newInventory[card.id] || 0) + card.quantity;
+    });
+
+    // Add starter ship to inventory
+    if (starterDeck.shipId) {
+      newInventory[starterDeck.shipId] = (newInventory[starterDeck.shipId] || 0) + 1;
+    }
+
+    // Add starter drones as instances
+    const newDroneInstances = [...(singlePlayerDroneInstances || [])];
+    (starterDeck.drones || []).forEach(drone => {
+      newDroneInstances.push({
+        id: `DRONE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        droneName: drone.name,
+        isDamaged: false,
+        isMIA: false
+      });
+    });
+
+    // Add starter components as instances
+    const newComponentInstances = [...(singlePlayerShipComponentInstances || [])];
+    Object.keys(starterDeck.shipComponents || {}).forEach(compId => {
+      // Get max hull from component data (simplified - just use 10 as default)
+      newComponentInstances.push({
+        id: `COMP_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        componentId: compId,
+        currentHull: 10,
+        maxHull: 10
+      });
+    });
+
+    // Update state
+    gameStateManager.setState({
+      singlePlayerProfile: newProfile,
+      singlePlayerInventory: newInventory,
+      singlePlayerDroneInstances: newDroneInstances,
+      singlePlayerShipComponentInstances: newComponentInstances
+    });
+
+    // Close confirmation and navigate to deck builder
+    setCopyStarterConfirmation(false);
     gameStateManager.setState({
       appState: 'extractionDeckBuilder',
       extractionDeckSlotId: selectedSlotId,
-      extractionNewDeckOption: option
+      extractionNewDeckOption: 'copyFromSlot0'
     });
+
+    debugLog('HANGAR', `Copied starter deck for ${cost} credits`);
+  };
+
+  // Handle cancel copy starter
+  const handleCancelCopyStarter = () => {
+    setCopyStarterConfirmation(false);
   };
 
   // Action button clicks
@@ -1216,14 +1299,20 @@ const HangarScreen = () => {
               >
                 Start Empty
               </button>
-              {singlePlayerShipSlots[0]?.status === 'active' && (
-                <button
-                  onClick={() => handleNewDeckOption('copyFromSlot0')}
-                  className="dw-btn dw-btn-secondary dw-btn--full"
-                >
-                  Copy from {singlePlayerShipSlots[0]?.name || 'Slot 0'}
-                </button>
-              )}
+              {singlePlayerShipSlots[0]?.status === 'active' && (() => {
+                const copyCost = ECONOMY.STARTER_DECK_COPY_COST || 500;
+                const canAffordCopy = (singlePlayerProfile?.credits || 0) >= copyCost;
+                return (
+                  <button
+                    onClick={() => handleNewDeckOption('copyFromSlot0')}
+                    className={`dw-btn dw-btn-secondary dw-btn--full ${!canAffordCopy ? 'opacity-50' : ''}`}
+                    disabled={!canAffordCopy}
+                    title={!canAffordCopy ? `Not enough credits (need ${copyCost})` : undefined}
+                  >
+                    Copy from {singlePlayerShipSlots[0]?.name || 'Starter Deck'} ({copyCost} credits)
+                  </button>
+                );
+              })()}
               <button
                 onClick={closeAllModals}
                 className="dw-btn dw-btn-cancel dw-btn--full"
@@ -1246,6 +1335,53 @@ const HangarScreen = () => {
           }}
           show={true}
         />
+      )}
+
+      {/* Copy Starter Deck Confirmation Modal */}
+      {copyStarterConfirmation && (
+        <div className="dw-modal-overlay" onClick={handleCancelCopyStarter}>
+          <div className="dw-modal-content dw-modal--sm dw-modal--action" onClick={e => e.stopPropagation()}>
+            <div className="dw-modal-header">
+              <div className="dw-modal-header-info">
+                <h2 className="dw-modal-header-title">Copy Starter Deck</h2>
+              </div>
+            </div>
+            <div className="dw-modal-body">
+              <p className="dw-modal-text" style={{ marginBottom: '12px' }}>
+                This will create owned copies of all starter deck items in your inventory:
+              </p>
+              <ul style={{ fontSize: '12px', color: 'var(--modal-text-secondary)', marginBottom: '12px', paddingLeft: '20px' }}>
+                <li>{starterDeck.decklist?.reduce((sum, c) => sum + c.quantity, 0) || 40} cards</li>
+                <li>{starterDeck.drones?.length || 5} drones</li>
+                <li>{Object.keys(starterDeck.shipComponents || {}).length || 3} ship components</li>
+                <li>1 ship</li>
+              </ul>
+              <div className="dw-modal-credits" style={{ marginBottom: 0 }}>
+                <span className="dw-modal-credits-label">Cost</span>
+                <span className="dw-modal-credits-value" style={{ color: '#fbbf24' }}>
+                  {ECONOMY.STARTER_DECK_COPY_COST || 500} credits
+                </span>
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)', marginTop: '8px' }}>
+                Your balance: {singlePlayerProfile?.credits || 0} credits
+              </div>
+            </div>
+            <div className="dw-modal-actions">
+              <button
+                onClick={handleCancelCopyStarter}
+                className="dw-btn dw-btn-cancel"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmCopyStarter}
+                className="dw-btn dw-btn-confirm"
+              >
+                Confirm Purchase
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
