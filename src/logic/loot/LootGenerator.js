@@ -6,6 +6,7 @@
 
 import packTypes from '../../data/cardPackData.js';
 import fullCardCollection from '../../data/cardData.js';
+import fullDroneCollection from '../../data/droneData.js';
 import { starterDeck } from '../../data/playerDeckData.js';
 
 // Starter card IDs to exclude (players have infinite copies)
@@ -289,6 +290,60 @@ class LootGenerator {
     }
 
     return { cards, credits, blueprint };
+  }
+
+  /**
+   * Generate a drone blueprint based on reward type and tier
+   * Uses drone's actual rarity for selection, not class
+   * @param {string} rewardType - DRONE_BLUEPRINT_LIGHT/FIGHTER/HEAVY
+   * @param {number} tier - Map tier (1, 2, or 3)
+   * @returns {Object} Blueprint object { type: 'blueprint', blueprintId, blueprintType: 'drone', droneData }
+   */
+  generateDroneBlueprint(rewardType, tier = 1) {
+    // Map reward type to drone classes (determines WHICH drones are in the pool)
+    const classMap = {
+      'DRONE_BLUEPRINT_LIGHT': [0, 1],
+      'DRONE_BLUEPRINT_FIGHTER': [2],
+      'DRONE_BLUEPRINT_HEAVY': [3]
+    };
+
+    const allowedClasses = classMap[rewardType] || [1, 2];
+
+    // Tier-based rarity weights - determines WHICH RARITY to select
+    const rarityWeights = {
+      tier1: { Common: 90, Uncommon: 10, Rare: 0 },
+      tier2: { Common: 60, Uncommon: 35, Rare: 5 },
+      tier3: { Common: 40, Uncommon: 45, Rare: 15 }
+    };
+
+    const weights = rarityWeights[`tier${tier}`] || rarityWeights.tier1;
+    const rng = this.createRNG(Date.now());
+    const targetRarity = this.rollRarity(weights, rng);
+
+    // Filter drones by CLASS first, then by RARITY
+    const eligibleDrones = fullDroneCollection.filter(d =>
+      allowedClasses.includes(d.class) &&
+      (d.rarity || 'Common') === targetRarity &&
+      d.selectable !== false
+    );
+
+    // Fallback: any drone in allowed classes with any rarity if no exact match
+    const pool = eligibleDrones.length > 0
+      ? eligibleDrones
+      : fullDroneCollection.filter(d => allowedClasses.includes(d.class) && d.selectable !== false);
+
+    if (pool.length === 0) return null;
+
+    const drone = pool[Math.floor(rng.random() * pool.length)];
+
+    return {
+      type: 'blueprint',
+      blueprintId: drone.name,
+      blueprintType: 'drone',
+      rarity: drone.rarity || 'Common',
+      droneData: drone,
+      source: 'drone_blueprint_poi'
+    };
   }
 }
 

@@ -853,6 +853,15 @@ const HangarScreen = () => {
                   const centerX = hexWidth / 2;
                   const centerY = hexHeight / 2;
 
+                  // Determine sector color: red for token-required maps, cyan for normal
+                  const requiresToken = map?.requiresToken;
+                  const sectorColor = requiresToken ? '#ef4444' : '#06b6d4';
+                  const sectorColorRgba = requiresToken ? 'rgba(239,68,68,0.15)' : 'rgba(6,182,212,0.15)';
+                  const sectorColorFaint = requiresToken ? 'rgba(239,68,68,0.5)' : 'rgba(6,182,212,0.5)';
+                  const pulseAnimation = requiresToken
+                    ? 'hexDangerPulse 1.5s ease-in-out infinite'
+                    : 'hexPulse 2s ease-in-out infinite';
+
                   return (
                     <g
                       key={i}
@@ -864,11 +873,11 @@ const HangarScreen = () => {
                       <path
                         d={hexPath}
                         fill="none"
-                        stroke="#06b6d4"
+                        stroke={sectorColor}
                         strokeWidth="10"
                         style={{
                           filter: 'blur(6px)',
-                          animation: 'hexPulse 2s ease-in-out infinite',
+                          animation: pulseAnimation,
                           animationDelay: `${cell.mapIndex * 0.3}s`
                         }}
                       />
@@ -879,7 +888,7 @@ const HangarScreen = () => {
                         cy={centerY}
                         r="20"
                         fill="none"
-                        stroke="#06b6d4"
+                        stroke={sectorColor}
                         strokeWidth="2"
                         style={{
                           animation: 'hexRadarPing 4s ease-out infinite',
@@ -887,11 +896,11 @@ const HangarScreen = () => {
                         }}
                       />
 
-                      {/* Outer hex - vibrant cyan border */}
+                      {/* Outer hex - vibrant border */}
                       <path
                         d={hexPath}
-                        fill="rgba(6,182,212,0.15)"
-                        stroke="#06b6d4"
+                        fill={sectorColorRgba}
+                        stroke={sectorColor}
                         strokeWidth="3"
                         filter="url(#hexGlow)"
                       />
@@ -900,7 +909,7 @@ const HangarScreen = () => {
                       <path
                         d={`M${hexWidth/2},4 L${hexWidth-4},${hexHeight*0.25+2} L${hexWidth-4},${hexHeight*0.75-2} L${hexWidth/2},${hexHeight-4} L4,${hexHeight*0.75-2} L4,${hexHeight*0.25+2} Z`}
                         fill="rgba(17,24,39,0.9)"
-                        stroke="rgba(6,182,212,0.5)"
+                        stroke={sectorColorFaint}
                         strokeWidth="1"
                       />
 
@@ -910,7 +919,7 @@ const HangarScreen = () => {
                         y={centerY}
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        fill="#06b6d4"
+                        fill={sectorColor}
                         fontSize={Math.max(10, hexWidth * 0.16)}
                         fontWeight="bold"
                         style={{ pointerEvents: 'none' }}

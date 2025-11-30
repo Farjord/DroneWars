@@ -10,6 +10,8 @@
 @import './panels.css';          /* Panel/card system */
 @import './status.css';          /* Status indicators */
 @import './modals.css';          /* Modal styles */
+@import './modal-base.css';      /* New unified modal system */
+@import './deck-builder.css';    /* Deck builder specific styles */
 @import './animations.css';      /* Keyframes and animations */
 @import './utilities.css';       /* Layout helpers */
 

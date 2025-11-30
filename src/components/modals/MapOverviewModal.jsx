@@ -4,7 +4,7 @@ import { debugLog } from '../../utils/debugLogger.js';
 import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js';
 import { ECONOMY } from '../../data/economyData.js';
 import MapPreviewRenderer from '../ui/MapPreviewRenderer';
-import { Map, AlertTriangle, XCircle, Info } from 'lucide-react';
+import { Map, AlertTriangle, XCircle, Info, Star, Shield } from 'lucide-react';
 
 /**
  * MapOverviewModal Component
@@ -179,6 +179,15 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
       return { valid: false, error: `Insufficient credits. Need ${entryCost}, have ${singlePlayerProfile.credits}` };
     }
 
+    // Check token cost for maps with token-required PoIs
+    if (selectedMap.requiresToken) {
+      const tokenCost = 1;
+      const playerTokens = singlePlayerProfile.securityTokens || 0;
+      if (playerTokens < tokenCost) {
+        return { valid: false, error: `Requires 1 Security Token. You have ${playerTokens}.` };
+      }
+    }
+
     return { valid: true };
   };
 
@@ -342,8 +351,49 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                     <span style={{ color: 'var(--modal-text-secondary)' }}>Upgrade:</span>
                     <span style={{ color: '#a855f7', fontWeight: 600 }}>{poiBreakdown.Upgrade || 0}</span>
                   </div>
+
+                  {/* Drone Blueprint Highlight */}
+                  {(selectedMap.hasDroneBlueprints || (poiBreakdown.Drone || 0) > 0) && (
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      marginTop: '8px',
+                      backgroundColor: 'rgba(168, 85, 247, 0.15)',
+                      border: '1px solid rgba(168, 85, 247, 0.4)',
+                      borderRadius: '4px'
+                    }}>
+                      <span style={{ color: '#a855f7', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Star size={14} /> Drone Blueprints:
+                      </span>
+                      <span style={{ color: '#a855f7', fontWeight: 700 }}>
+                        {selectedMap.dronePoiCount || poiBreakdown.Drone || 0}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* Token Cost for Token-Required Maps */}
+              {selectedMap?.requiresToken && (
+                <div className="dw-modal-info-box" style={{
+                  backgroundColor: 'rgba(6, 182, 212, 0.08)',
+                  border: '1px solid rgba(6, 182, 212, 0.4)'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Shield size={18} style={{ color: '#06b6d4' }} />
+                      <span style={{ color: '#06b6d4', fontWeight: 600 }}>Entry Requires: 1 Security Token</span>
+                    </div>
+                    <span style={{
+                      color: (singlePlayerProfile?.securityTokens || 0) >= 1 ? '#22c55e' : '#ef4444',
+                      fontWeight: 700
+                    }}>
+                      You have: {singlePlayerProfile?.securityTokens || 0}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Detection & Encounter */}
               <div className="dw-modal-grid dw-modal-grid--2">

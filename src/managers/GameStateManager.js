@@ -1881,6 +1881,24 @@ class GameStateManager {
       mapData = generateMapData(seed, mapTier, mapType);
     }
 
+    // Deduct security token if map requires it
+    if (mapData.requiresToken) {
+      const currentTokens = this.state.playerProfile?.securityTokens || 0;
+      if (currentTokens < 1) {
+        console.error('[GameStateManager] Cannot start run - insufficient tokens');
+        return;
+      }
+
+      // Deduct token
+      this.setState({
+        playerProfile: {
+          ...this.state.playerProfile,
+          securityTokens: currentTokens - 1
+        }
+      });
+      console.log(`[GameStateManager] Deducted 1 security token. Remaining: ${currentTokens - 1}`);
+    }
+
     // Set player starting position to selected entry gate
     const startingGate = mapData.gates[entryGateId] || mapData.gates[0];
 

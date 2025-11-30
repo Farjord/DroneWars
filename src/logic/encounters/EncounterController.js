@@ -131,6 +131,25 @@ class EncounterController {
       }
     }
 
+    // For drone blueprint PoIs with pre-determined guardian, always combat
+    if (poi.poiData?.guardianAI) {
+      debugLog('ENCOUNTER', 'Drone blueprint POI - guaranteed combat with guardian', {
+        guardian: poi.poiData.guardianAI.name
+      });
+
+      const reward = this.calculateReward(poi, 'combat');
+
+      return {
+        poi,
+        outcome: 'combat',
+        aiId: poi.poiData.guardianAI.id,  // Use pre-determined guardian
+        reward,
+        detection,
+        threatLevel: DetectionManager.getThreshold(),
+        isGuaranteedCombat: true  // Flag for UI
+      };
+    }
+
     // Roll for ambush
     const outcome = this.checkPOIEncounter(poi, detection);
 

@@ -405,6 +405,19 @@
   }
 }
 
+/* Danger hex pulse for drone blueprint maps - faster, more intense */
+@keyframes hexDangerPulse {
+  0%, 100% {
+    opacity: 0.6;
+    filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6));
+  }
+  50% {
+    opacity: 1;
+    filter: drop-shadow(0 0 16px rgba(239, 68, 68, 1))
+            drop-shadow(0 0 24px rgba(239, 68, 68, 0.5));
+  }
+}
+
 /* Radar ping expanding from active hexes */
 @keyframes hexRadarPing {
   0% {

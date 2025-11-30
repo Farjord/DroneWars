@@ -9,7 +9,7 @@ import { RARITY_COLORS } from '../../data/cardPackData.js';
 import fullCardCollection from '../../data/cardData.js';
 import ActionCard from '../ui/ActionCard.jsx';
 import HiddenCard from '../ui/HiddenCard.jsx';
-import { Gift, X, Star } from 'lucide-react';
+import { Gift, X, Star, Shield } from 'lucide-react';
 import './LootRevealModal.css'; // Keep for card flip animations
 
 function LootRevealModal({ loot, onCollect, show }) {
@@ -25,8 +25,8 @@ function LootRevealModal({ loot, onCollect, show }) {
 
   if (!show || !loot) return null;
 
-  const { cards = [], credits = 0, blueprint } = loot;
-  const allRevealed = revealedCards.size >= cards.length;
+  const { cards = [], credits = 0, blueprint, token } = loot;
+  const allRevealed = revealedCards.size >= cards.length || cards.length === 0;
 
   const handleCardClick = (index) => {
     if (revealedCards.has(index) || isAnimating) return;
@@ -114,14 +114,68 @@ function LootRevealModal({ loot, onCollect, show }) {
             </div>
           )}
 
-          {/* Blueprint (rare drop) */}
+          {/* Token Display */}
+          {token && (
+            <div className="dw-modal-info-box" style={{
+              marginTop: '12px',
+              textAlign: 'center',
+              '--modal-theme': '#06b6d4',
+              '--modal-theme-bg': 'rgba(6, 182, 212, 0.08)',
+              '--modal-theme-border': 'rgba(6, 182, 212, 0.4)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <Shield size={20} style={{ color: '#06b6d4' }} />
+                <span style={{ color: '#06b6d4', fontWeight: 700, fontSize: '18px' }}>
+                  +{token.amount} Security Token{token.amount > 1 ? 's' : ''}
+                </span>
+              </div>
+              <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--modal-text-secondary)' }}>
+                Used for special transactions
+              </p>
+            </div>
+          )}
+
+          {/* Blueprint (rare drop or drone blueprint) */}
           {blueprint && (
-            <div className="dw-modal-info-box" style={{ marginTop: '12px', '--modal-theme': '#a855f7', '--modal-theme-bg': 'rgba(168, 85, 247, 0.08)', '--modal-theme-border': 'rgba(168, 85, 247, 0.4)' }}>
+            <div className="dw-modal-info-box" style={{
+              marginTop: '12px',
+              '--modal-theme': '#a855f7',
+              '--modal-theme-bg': 'rgba(168, 85, 247, 0.08)',
+              '--modal-theme-border': 'rgba(168, 85, 247, 0.4)'
+            }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
                 <Star size={20} style={{ color: '#a855f7' }} />
-                <span style={{ color: '#a855f7', fontWeight: 700 }}>BLUEPRINT ACQUIRED!</span>
+                <span style={{ color: '#a855f7', fontWeight: 700 }}>
+                  {blueprint.blueprintType === 'drone' ? 'DRONE BLUEPRINT ACQUIRED!' : 'BLUEPRINT ACQUIRED!'}
+                </span>
               </div>
-              <p style={{ margin: '4px 0 0', textAlign: 'center', color: 'var(--modal-text-primary)' }}>{blueprint.blueprintId}</p>
+              <p style={{ margin: '8px 0 0', textAlign: 'center', color: 'var(--modal-text-primary)', fontSize: '16px', fontWeight: 600 }}>
+                {blueprint.blueprintId}
+                {blueprint.rarity && (
+                  <span style={{
+                    marginLeft: '8px',
+                    color: RARITY_COLORS[blueprint.rarity] || RARITY_COLORS.Common,
+                    fontSize: '14px'
+                  }}>
+                    ({blueprint.rarity})
+                  </span>
+                )}
+              </p>
+              {/* Drone stats preview */}
+              {blueprint.droneData && (
+                <div style={{
+                  marginTop: '12px',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '16px',
+                  fontSize: '13px',
+                  color: 'var(--modal-text-secondary)'
+                }}>
+                  <span><strong style={{ color: '#ef4444' }}>ATK:</strong> {blueprint.droneData.attack}</span>
+                  <span><strong style={{ color: '#3b82f6' }}>HULL:</strong> {blueprint.droneData.hull}</span>
+                  <span><strong style={{ color: '#22c55e' }}>SPD:</strong> {blueprint.droneData.speed}</span>
+                </div>
+              )}
             </div>
           )}
         </div>

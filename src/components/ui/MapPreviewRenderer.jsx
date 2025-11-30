@@ -44,6 +44,13 @@ function MapPreviewRenderer({ hexes, gates, pois, radius, selectedGateId, onGate
   };
 
   /**
+   * Check if hex is a drone blueprint PoI
+   */
+  const isDroneBlueprintPoi = (hex) => {
+    return hex.type === 'poi' && hex.poiData?.rewardType?.startsWith('DRONE_BLUEPRINT_');
+  };
+
+  /**
    * Get fill color based on hex type and zone
    */
   const getHexFill = (hex) => {
@@ -56,9 +63,12 @@ function MapPreviewRenderer({ hexes, gates, pois, radius, selectedGateId, onGate
       return 'rgba(59, 130, 246, 0.25)'; // Blue for unselected gates
     }
 
-    // POIs - generic amber (don't reveal type)
+    // POIs - red for drone blueprints, amber for others
     if (hex.type === 'poi') {
-      return 'rgba(245, 158, 11, 0.25)';
+      if (isDroneBlueprintPoi(hex)) {
+        return 'rgba(239, 68, 68, 0.35)'; // Red for drone blueprint PoIs
+      }
+      return 'rgba(245, 158, 11, 0.25)'; // Amber for regular PoIs
     }
 
     // Zone-based coloring for empty hexes
@@ -82,7 +92,10 @@ function MapPreviewRenderer({ hexes, gates, pois, radius, selectedGateId, onGate
       return '#3b82f6'; // Blue for unselected
     }
     if (hex.type === 'poi') {
-      return '#f59e0b'; // Amber for POIs
+      if (isDroneBlueprintPoi(hex)) {
+        return '#ef4444'; // Red for drone blueprint PoIs
+      }
+      return '#f59e0b'; // Amber for regular POIs
     }
     return 'rgba(6, 182, 212, 0.4)'; // Dim cyan for empty
   };
@@ -192,41 +205,47 @@ function MapPreviewRenderer({ hexes, gates, pois, radius, selectedGateId, onGate
           </g>
         )}
 
-        {/* POI indicator - generic marker (no type info) */}
-        {isPOI && (
-          <g>
-            {/* Outer glow ring */}
-            <circle
-              cx={x}
-              cy={y}
-              r={hexSize * 0.35}
-              fill="none"
-              stroke="#f59e0b"
-              strokeWidth="1.5"
-              opacity="0.5"
-            />
-            {/* Inner marker */}
-            <circle
-              cx={x}
-              cy={y}
-              r={hexSize * 0.2}
-              fill="#f59e0b"
-              opacity="0.8"
-            />
-            {/* Question mark - unknown POI */}
-            <text
-              x={x}
-              y={y + 1}
-              fontSize={hexSize * 0.25}
-              fontWeight="bold"
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fill="#1f2937"
-            >
-              ?
-            </text>
-          </g>
-        )}
+        {/* POI indicator - red for drone blueprints, amber for others */}
+        {isPOI && (() => {
+          const isDroneBlueprint = isDroneBlueprintPoi(hex);
+          const poiColor = isDroneBlueprint ? '#ef4444' : '#f59e0b';
+          const poiSymbol = isDroneBlueprint ? '!' : '?';  // Warning for drone blueprints
+
+          return (
+            <g>
+              {/* Outer glow ring */}
+              <circle
+                cx={x}
+                cy={y}
+                r={hexSize * 0.35}
+                fill="none"
+                stroke={poiColor}
+                strokeWidth="1.5"
+                opacity="0.5"
+              />
+              {/* Inner marker */}
+              <circle
+                cx={x}
+                cy={y}
+                r={hexSize * 0.2}
+                fill={poiColor}
+                opacity="0.8"
+              />
+              {/* Symbol - ! for drone blueprints, ? for others */}
+              <text
+                x={x}
+                y={y + 1}
+                fontSize={hexSize * 0.25}
+                fontWeight="bold"
+                textAnchor="middle"
+                dominantBaseline="middle"
+                fill="#1f2937"
+              >
+                {poiSymbol}
+              </text>
+            </g>
+          );
+        })()}
       </g>
     );
   };

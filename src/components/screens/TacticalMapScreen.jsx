@@ -532,9 +532,26 @@ function TacticalMapScreen() {
       const zone = currentEncounter.poi?.zone || 'mid';
       const tierConfig = currentRunState?.mapData ? mapTiers[currentRunState.mapData.tier - 1] : null;
 
-      // Generate loot using LootGenerator with zone-based weighting
-      const loot = lootGenerator.openPack(packType, tier, zone, tierConfig);
-      console.log('[TacticalMap] Generated loot:', { zone, loot });
+      // Handle special reward types that don't use pack system
+      let loot;
+      if (packType === 'TOKEN_REWARD') {
+        // Token reward - guaranteed 1 security token + small credits
+        loot = {
+          cards: [],
+          credits: 50 + Math.floor(Math.random() * 51),  // 50-100 bonus credits
+          token: {
+            type: 'token',
+            tokenType: 'security',
+            amount: 1,
+            source: 'contraband_cache'
+          }
+        };
+        console.log('[TacticalMap] Generated token reward:', loot);
+      } else {
+        // Generate loot using LootGenerator with zone-based weighting
+        loot = lootGenerator.openPack(packType, tier, zone, tierConfig);
+        console.log('[TacticalMap] Generated loot:', { zone, loot });
+      }
 
       // Store encounter for later completion (need to add detection after loot collected)
       setPendingLootEncounter(currentEncounter);
@@ -796,8 +813,31 @@ function TacticalMapScreen() {
       });
     }
 
+    // Add token to loot record (for display in run summary)
+    if (loot.token) {
+      newCardLoot.push({
+        type: 'token',
+        tokenType: loot.token.tokenType,
+        amount: loot.token.amount,
+        source: 'poi_loot'
+      });
+    }
+
     const updatedLoot = [...(runState?.collectedLoot || []), ...newCardLoot];
     const newCredits = (runState?.creditsEarned || 0) + (loot.credits || 0);
+
+    // Handle token collection - save to player profile (persistent across runs)
+    if (loot.token) {
+      const saveData = gameStateManager.getState();
+      const currentTokens = saveData.playerProfile?.securityTokens || 0;
+      gameStateManager.setState({
+        playerProfile: {
+          ...saveData.playerProfile,
+          securityTokens: currentTokens + loot.token.amount
+        }
+      });
+      console.log(`[TacticalMap] Security token collected! Total: ${currentTokens + loot.token.amount}`);
+    }
 
     // Mark POI as looted (prevents re-looting)
     const lootedPOIs = runState.lootedPOIs || [];

@@ -97,11 +97,21 @@ export const calculateUpgradeTargets = (selectedCard, playerState) => {
     return playerState.activeDronePool.map(drone => {
         const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
         const applied = playerState.appliedUpgrades[drone.name] || [];
-        const alreadyHasThisUpgrade = applied.filter(upg => upg.id === selectedCard.id).length;
+
+        // Calculate total slots used by summing each upgrade's slot cost
+        const usedSlots = applied.reduce((sum, upg) => sum + (upg.slots || 1), 0);
+
+        // Get the slot cost of the upgrade card being played
+        const cardSlotCost = selectedCard.slots || 1;
+
+        // Check how many times THIS specific upgrade has been applied
+        const alreadyHasThisUpgrade = applied.filter(upg => upg.cardId === selectedCard.id).length;
         const maxApps = selectedCard.maxApplications === undefined ? 1 : selectedCard.maxApplications;
 
-        // A drone is a valid target if its slots aren't full AND it hasn't hit the limit for this specific upgrade
-        if (baseDrone && applied.length < baseDrone.upgradeSlots && alreadyHasThisUpgrade < maxApps) {
+        // A drone is a valid target if:
+        // 1. It has enough slots for this card's slot cost
+        // 2. This upgrade hasn't hit its per-upgrade limit
+        if (baseDrone && usedSlots + cardSlotCost <= baseDrone.upgradeSlots && alreadyHasThisUpgrade < maxApps) {
             return { ...drone, id: drone.name }; // Use name as ID for targeting
         }
         return null;

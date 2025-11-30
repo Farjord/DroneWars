@@ -208,19 +208,19 @@ const fullCardCollection = [
     id: 'CARD007',
     baseCardId: 'CARD007',
     name: 'Emergency Patch',
-    maxInDeck: 4,
+    maxInDeck: 1,
     rarity: 'Common',
     type: 'Support',
-    cost: 3,
+    cost: 2,
     image: '/DroneWars/cards/EmergencyPatch.png',
-    description: 'Restore 4 hull to one of your ship sections.',
+    description: 'Restore 2 hull to one of your ship sections.',
     targeting: {
       type: 'SHIP_SECTION',
       affinity: 'FRIENDLY'
     },
     effect: {
       type: 'HEAL_HULL',
-      value: 4
+      value: 2
     }
   },
     {
@@ -230,16 +230,16 @@ const fullCardCollection = [
     maxInDeck: 4,
     rarity: 'Uncommon',
     type: 'Support',
-    cost: 3,
+    cost: 4,
     image: '/DroneWars/cards/EmergencyPatch.png',
-    description: 'Restore 5 hull to one of your ship sections.',
+    description: 'Restore 4 hull to one of your ship sections.',
     targeting: {
       type: 'SHIP_SECTION',
       affinity: 'FRIENDLY'
     },
     effect: {
       type: 'HEAL_HULL',
-      value: 5
+      value: 4
     }
   },
   {
@@ -253,7 +253,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/ShieldRecharge.png',
     description: 'Restore 2 shield to all friendly drones in a target lane. Go again.',
     targeting: {
-      type: 'LANE', // New targeting type
+      type: 'LANE',
       affinity: 'FRIENDLY'
     },
     effect: {
@@ -285,7 +285,6 @@ const fullCardCollection = [
     }
   },
 
-  // Filtered-target destroy
   {
     id: 'CARD010',
     baseCardId: 'CARD010',
@@ -298,16 +297,15 @@ const fullCardCollection = [
     description: 'Destroy all enemy drones with a speed of 5 or higher in a selected lane.',
     targeting: {
       type: 'LANE',
-      affinity: 'ENEMY' // This card can only target enemy lanes
+      affinity: 'ENEMY'
     },
     effect: {
       type: 'DESTROY',
-      scope: 'FILTERED', // Our new 'scope' for conditional effects
+      scope: 'FILTERED',
       filter: { stat: 'speed', comparison: 'GTE', value: 5 }
     }
   },
 
-  // NUKE card
   {
     id: 'CARD011',
     baseCardId: 'CARD011',
@@ -315,7 +313,7 @@ const fullCardCollection = [
     maxInDeck: 2,
     rarity: 'Rare',
     type: 'Ordnance',
-    cost: 8, // Increased cost to reflect its power
+    cost: 8,
     image: '/DroneWars/cards/Nuke.png',
     description: 'Destroy ALL drones in a selected lane (both sides).',
     visualEffect: {
@@ -327,10 +325,10 @@ const fullCardCollection = [
     },
     effect: {
       type: 'DESTROY',
-      scope: 'LANE' // This scope remains the same
+      scope: 'LANE'
     }
   },
-// Piercing Attack Card
+
     {
     id: 'CARD012',
     baseCardId: 'CARD012',
@@ -352,7 +350,7 @@ const fullCardCollection = [
     effect: {
       type: 'DAMAGE',
       value: 2,
-      damageType: 'PIERCING' // This new property defines the damage type
+      damageType: 'PIERCING'
     }
   },
       {
@@ -376,7 +374,7 @@ const fullCardCollection = [
     effect: {
       type: 'DAMAGE',
       value: 2,
-      damageType: 'PIERCING' // This new property defines the damage type
+      damageType: 'PIERCING'
     }
   },
 
@@ -395,12 +393,12 @@ const fullCardCollection = [
     },
     targeting: {
       type: 'LANE',
-      affinity: 'ENEMY' // This card can only target enemy lanes
+      affinity: 'ENEMY'
     },
     effect: {
       type: 'DAMAGE',
       value: 2,
-      scope: 'FILTERED', // Our new 'scope' for conditional effects
+      scope: 'FILTERED', 
        filter: { stat: 'speed', comparison: 'LTE', value: 3 }
     }
   },
@@ -529,17 +527,18 @@ const fullCardCollection = [
     rarity: 'Uncommon',
     type: 'Upgrade',
     cost: 3,
+    slots: 1,
     image: '/DroneWars/cards/SlimlineBodywork.png',
     description: 'Permanently increase the deployment limit of a target drone type by 1. Go again.',
     targeting: {
-      type: 'DRONE_CARD' // New targeting type for drone cards in your active pool
+      type: 'DRONE_CARD'
     },
     effect: {
       type: 'MODIFY_DRONE_BASE',
       mod: { stat: 'limit', value: 1 },
       goAgain: true
     },
-    maxApplications: 1 // This upgrade can only be applied once per drone type
+    maxApplications: 1
 },
 {
     id: 'CARD021',
@@ -549,6 +548,7 @@ const fullCardCollection = [
     rarity: 'Uncommon',
     type: 'Upgrade',
     cost: 3,
+    slots: 1,
     image: '/DroneWars/cards/OverclockedThrusters.png',
     description: 'Permanently grant all drones of a target type +1 Speed.',
     targeting: {
@@ -558,9 +558,9 @@ const fullCardCollection = [
       type: 'MODIFY_DRONE_BASE',
       mod: { stat: 'speed', value: 1 },
     },
-    maxApplications: 2 // This can be stacked twice on the same drone type
+    maxApplications: 2
 },
-// --- UPGRADE DESTRUCTION CARD (Tactic) ---
+
 {
     id: 'CARD022',
     baseCardId: 'CARD022',
@@ -572,7 +572,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/SystemSabotage.png',
     description: 'Destroy a single applied Upgrade on an enemy drone type.',
     targeting: {
-      type: 'APPLIED_UPGRADE', // New targeting for an active upgrade
+      type: 'APPLIED_UPGRADE', 
       affinity: 'ENEMY'
     },
     effect: {
@@ -611,7 +611,7 @@ const fullCardCollection = [
       goAgain: true
     }
 },
-// --- NEW: UPGRADE CARDS ---
+
 {
     id: 'CARD028',
     baseCardId: 'CARD028',
@@ -620,6 +620,7 @@ const fullCardCollection = [
     rarity: 'Uncommon',
     type: 'Upgrade',
     cost: 5,
+    slots: 1,
     image: '/DroneWars/cards/CombatEnhancement.png',
     description: 'Permanently increase the attack of all drones of a target type by 1.',
     targeting: {
@@ -639,6 +640,7 @@ const fullCardCollection = [
     rarity: 'Uncommon',
     type: 'Upgrade',
     cost: 4,
+    slots: 1,
     image: '/DroneWars/cards/ShieldAmplifier.png',
     description: 'Permanently increase the shields of all drones of a target type by 1.',
     targeting: {
@@ -658,6 +660,7 @@ const fullCardCollection = [
     rarity: 'Mythic',
     type: 'Upgrade',
     cost: 6,
+    slots: 2,
     image: '/DroneWars/cards/PiercingRounds.png',
     description: 'Permanently grant all drones of a target type the Piercing keyword.',
     targeting: {
@@ -695,7 +698,6 @@ const fullCardCollection = [
     }
 },
 
-// --- NEW: FILTERED SEARCH CARD ---
 {
     id: 'CARD026',
     baseCardId: 'CARD026',
@@ -708,7 +710,7 @@ const fullCardCollection = [
     description: 'Search your deck for an Upgrade card and add it to your hand. Shuffle your deck.',
     effect: {
         type: 'SEARCH_AND_DRAW',
-        searchCount: 999, // Search entire deck
+        searchCount: 999, 
         drawCount: 1,
         shuffleAfter: true,
         filter: {
@@ -717,7 +719,7 @@ const fullCardCollection = [
     }
 },
 
-// --- NEW: COST-REDUCING UPGRADE CARD ---
+
 {
     id: 'CARD027',
     baseCardId: 'CARD027',
@@ -726,6 +728,7 @@ const fullCardCollection = [
     rarity: 'Uncommon',
     type: 'Upgrade',
     cost: 4,
+    slots: 1,
     image: '/DroneWars/cards/EfficiencyModule.png',
     description: 'Permanently reduce the deployment cost of all drones of a target type by 1.',
     targeting: {
@@ -738,7 +741,6 @@ const fullCardCollection = [
     maxApplications: 1
 },
 
-// --- NEW: TOKEN CREATION CARD ---
 {
     id: 'CARD030',
     baseCardId: 'CARD030',
@@ -757,7 +759,6 @@ const fullCardCollection = [
     }
 },
 
-// --- NEW: OVERFLOW ORDNANCE CARD ---
 {
     id: 'CARD031',
     baseCardId: 'CARD031',
@@ -784,7 +785,6 @@ const fullCardCollection = [
     }
 },
 
-// --- NEW: SPLASH ORDNANCE CARD ---
 {
     id: 'CARD032',
     baseCardId: 'CARD032',
@@ -815,7 +815,6 @@ const fullCardCollection = [
     }
 },
 
-// --- FINISHING VOLLEY (Destroy exhausted) ---
 {
     id: 'CARD033',
     baseCardId: 'CARD033',
@@ -827,7 +826,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/FinishingVolley.png',
     description: 'Destroy target exhausted enemy drone.',
     visualEffect: {
-      type: 'LASER_BLAST' // Placeholder - can be updated later
+      type: 'LASER_BLAST'
     },
     targeting: {
       type: 'DRONE',
@@ -841,8 +840,6 @@ const fullCardCollection = [
     }
 },
 
-// --- STRAFE RUN (Lane-wide damage) ---
-// TODO: Full multi-target UI support needed for original "up to 3 drones in different lanes" design
 {
     id: 'CARD034',
     baseCardId: 'CARD034',
@@ -854,7 +851,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/StrafeRun.png',
     description: 'Deal 1 damage to up to 3 enemy drones in target lane (front to back).',
     visualEffect: {
-      type: 'LASER_BLAST' // Placeholder - can be updated later
+      type: 'LASER_BLAST' 
     },
     targeting: {
       type: 'LANE',
@@ -868,12 +865,11 @@ const fullCardCollection = [
       filter: {
         stat: 'hull',
         comparison: 'GTE',
-        value: 0  // Any drone (all have hull >= 0)
+        value: 0 
       }
     }
 },
 
-// --- OVERWHELMING FORCE (Scaling damage) ---
 {
     id: 'CARD035',
     baseCardId: 'CARD035',
@@ -885,7 +881,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/OverwhelmingForce.png',
     description: 'Deal damage to target drone equal to the number of ready friendly drones in that lane.',
     visualEffect: {
-      type: 'LASER_BLAST' // Placeholder - can be updated later
+      type: 'LASER_BLAST' 
     },
     targeting: {
       type: 'DRONE',
@@ -898,7 +894,6 @@ const fullCardCollection = [
     }
 },
 
-// --- PURGE PROTOCOL (Mass marked destroy) ---
 {
     id: 'CARD036',
     baseCardId: 'CARD036',
@@ -910,7 +905,7 @@ const fullCardCollection = [
     image: '/DroneWars/cards/PurgeProtocol.png',
     description: 'Destroy all marked enemy drones.',
     visualEffect: {
-      type: 'NUKE_BLAST' // Placeholder - can be updated later
+      type: 'NUKE_BLAST'
     },
     targeting: {
       type: 'ALL_MARKED',
@@ -919,6 +914,46 @@ const fullCardCollection = [
     effect: {
       type: 'DESTROY',
       scope: 'ALL'
+    }
+},
+
+{
+    id: 'CARD037',
+    baseCardId: 'CARD037',
+    name: 'Shield Boost',
+    maxInDeck: 4,
+    rarity: 'Common',
+    type: 'Support',
+    cost: 1,
+    image: '/DroneWars/cards/ShieldBoost.png',
+    description: 'Restore up to 2 shields to a friendly ship section.',
+    targeting: {
+      type: 'SHIP_SECTION',
+      affinity: 'FRIENDLY'
+    },
+    effect: {
+      type: 'RESTORE_SECTION_SHIELDS',
+      value: 2
+    }
+},
+{
+    id: 'CARD037_ENHANCED',
+    baseCardId: 'CARD037',
+    name: 'Shield Boost+',
+    maxInDeck: 4,
+    rarity: 'Uncommon',
+    type: 'Support',
+    cost: 1,
+    image: '/DroneWars/cards/ShieldBoost.png',
+    description: 'Restore up to 2 shields to a friendly ship section. Go again.',
+    targeting: {
+      type: 'SHIP_SECTION',
+      affinity: 'FRIENDLY'
+    },
+    effect: {
+      type: 'RESTORE_SECTION_SHIELDS',
+      value: 2,
+      goAgain: true
     }
 }
 ];

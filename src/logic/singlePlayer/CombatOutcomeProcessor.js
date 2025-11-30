@@ -86,7 +86,18 @@ class CombatOutcomeProcessor {
     const salvageLoot = lootGenerator.generateCombatSalvage(enemyDeck, enemyTier);
     debugLog('SP_COMBAT', 'Generated salvage loot:', salvageLoot);
 
-    // 3. Update run state with hull (but NOT loot yet - that happens after reveal)
+    // 3. Check for drone blueprint POI reward
+    const rewardType = encounterInfo?.reward?.rewardType;
+    if (rewardType?.startsWith('DRONE_BLUEPRINT_')) {
+      debugLog('SP_COMBAT', 'Drone blueprint POI - generating blueprint:', rewardType);
+      const droneBlueprint = lootGenerator.generateDroneBlueprint(rewardType, enemyTier);
+      if (droneBlueprint) {
+        salvageLoot.blueprint = droneBlueprint;
+        debugLog('SP_COMBAT', 'Drone blueprint generated:', droneBlueprint);
+      }
+    }
+
+    // 4. Update run state with hull (but NOT loot yet - that happens after reveal)
     const updatedRunState = {
       ...currentRunState,
       shipSections: updatedShipSections,
@@ -94,7 +105,7 @@ class CombatOutcomeProcessor {
       combatsWon: (currentRunState.combatsWon || 0) + 1
     };
 
-    // 4. Store pending loot and enter loot reveal state
+    // 5. Store pending loot and enter loot reveal state
     // Do NOT return to tactical map yet - WinnerModal will show "Collect Salvage" button
     gameStateManager.setState({
       currentRunState: updatedRunState,
@@ -142,13 +153,22 @@ class CombatOutcomeProcessor {
       });
     }
 
-    // Add blueprint if present
+    // Add blueprint if present (supports both legacy card blueprints and drone blueprints)
     if (loot.blueprint) {
-      newCardLoot.push({
+      const blueprintLoot = {
         type: 'blueprint',
         blueprintId: loot.blueprint.blueprintId,
-        source: 'combat_salvage_rare'
-      });
+        source: loot.blueprint.source || 'combat_salvage_rare'
+      };
+
+      // Add drone-specific fields if present
+      if (loot.blueprint.blueprintType === 'drone') {
+        blueprintLoot.blueprintType = 'drone';
+        blueprintLoot.rarity = loot.blueprint.rarity;
+        blueprintLoot.droneData = loot.blueprint.droneData;
+      }
+
+      newCardLoot.push(blueprintLoot);
     }
 
     // Update run state with collected loot

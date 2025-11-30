@@ -12,6 +12,7 @@ import GainEnergyEffectProcessor from './effects/energy/GainEnergyEffectProcesso
 import ReadyDroneEffectProcessor from './effects/state/ReadyDroneEffectProcessor.js';
 import HullHealProcessor from './effects/healing/HullHealProcessor.js';
 import ShieldHealProcessor from './effects/healing/ShieldHealProcessor.js';
+import ShipShieldRestoreProcessor from './effects/healing/ShipShieldRestoreProcessor.js';
 import DamageEffectProcessor from './effects/damage/DamageEffectProcessor.js';
 import DestroyEffectProcessor from './effects/destroy/DestroyEffectProcessor.js';
 import ModifyStatEffectProcessor from './effects/stat_modification/ModifyStatEffectProcessor.js';
@@ -54,6 +55,7 @@ class EffectRouter {
       // Phase 3: Healing effects
       HEAL_HULL: new HullHealProcessor(),
       HEAL_SHIELDS: new ShieldHealProcessor(),
+      RESTORE_SECTION_SHIELDS: new ShipShieldRestoreProcessor(),
       // Phase 4: Damage effects (all handled by DamageEffectProcessor)
       DAMAGE: damageProcessor,
       DAMAGE_SCALING: damageProcessor,

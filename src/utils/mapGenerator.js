@@ -4,6 +4,7 @@ import { SeededRandom } from './seededRandom.js';
 import { hexesInRadius, getZone, axialDistance } from './hexGrid.js';
 import { getRandomPoIType } from '../logic/extraction/poiUtils.js';
 import PathValidator from '../logic/map/PathValidator.js';
+import aiPersonalities from '../data/aiData.js';
 
 /**
  * Get starting detection value from tier config based on POI count
@@ -120,8 +121,21 @@ function generateAttempt(tierConfig, mapType, rng, seed) {
     poiTypeBreakdown[cardType] = (poiTypeBreakdown[cardType] || 0) + 1;
   }
 
+  // Track drone blueprint PoIs for map overview highlighting
+  const dronePoiCount = pois.filter(p => p.poiData.rewardType?.startsWith('DRONE_BLUEPRINT_')).length;
+  const hasDroneBlueprints = dronePoiCount > 0;
+
+  // Track if map requires security token for entry (any PoI with requiresToken flag)
+  const requiresToken = pois.some(p => p.poiData.requiresToken === true);
+
   // Calculate map variance values
-  const baseDetection = getStartingDetection(pois.length, tierConfig, rng);
+  const rawBaseDetection = getStartingDetection(pois.length, tierConfig, rng);
+
+  // Add detection increase from drone blueprint PoIs (cumulative, capped at 50%)
+  const dronePoiDetectionBonus = pois.reduce((sum, poi) => {
+    return sum + (poi.poiData.baseDetectionIncrease || 0);
+  }, 0);
+  const baseDetection = Math.min(rawBaseDetection + dronePoiDetectionBonus, 50);
   const baseEncounterChance = getBaseEncounterChance(tierConfig, rng);
 
   // Build zone encounter chances from base + modifiers
@@ -163,7 +177,14 @@ function generateAttempt(tierConfig, mapType, rng, seed) {
       event: poiTypeBreakdown.Tactic || 0,
       boss: poiTypeBreakdown.Upgrade || 0
     },
-    difficulty: tierConfig.name
+    difficulty: tierConfig.name,
+
+    // Drone blueprint PoI tracking for map overview highlighting
+    hasDroneBlueprints,
+    dronePoiCount,
+
+    // Token entry requirement (true if any PoI requires token)
+    requiresToken
   };
 }
 
@@ -237,10 +258,10 @@ function placePOIs(hexes, tierConfig, mapType, gates, rng) {
   const midCount = Math.floor(poiCount * tierConfig.poiDistribution.mid);
   const perimeterCount = poiCount - coreCount - midCount;
 
-  // Place PoIs in each zone
-  placeInZone(coreHexes, coreCount, pois, gates, tierConfig, rng);
-  placeInZone(midHexes, midCount, pois, gates, tierConfig, rng);
-  placeInZone(perimeterHexes, perimeterCount, pois, gates, tierConfig, rng);
+  // Place PoIs in each zone (pass zone name for coreOnly PoI filtering)
+  placeInZone(coreHexes, coreCount, pois, gates, tierConfig, rng, 'core');
+  placeInZone(midHexes, midCount, pois, gates, tierConfig, rng, 'mid');
+  placeInZone(perimeterHexes, perimeterCount, pois, gates, tierConfig, rng, 'perimeter');
 
   return pois;
 }
@@ -253,8 +274,9 @@ function placePOIs(hexes, tierConfig, mapType, gates, rng) {
  * @param {Array<Object>} gates - Gate hexes
  * @param {Object} tierConfig - Tier configuration
  * @param {SeededRandom} rng - Random number generator
+ * @param {string} zoneName - Zone name ('core', 'mid', 'perimeter')
  */
-function placeInZone(hexes, count, pois, gates, tierConfig, rng) {
+function placeInZone(hexes, count, pois, gates, tierConfig, rng, zoneName) {
   // Shuffle hexes deterministically
   const shuffled = rng.shuffle(hexes);
 
@@ -282,14 +304,32 @@ function placeInZone(hexes, count, pois, gates, tierConfig, rng) {
     const allowTwin = rng.random() < tierConfig.twinNodeChance;
     if (tooCloseToPOI && !allowTwin) continue;
 
-    // Select PoI type using weighted random
-    const poiType = getRandomPoIType(tierConfig.tier, () => rng.random());
+    // Select PoI type using weighted random, passing zone for coreOnly filtering
+    const poiType = getRandomPoIType(tierConfig.tier, () => rng.random(), zoneName);
+
+    // Clone poiType to avoid mutating original data
+    const poiData = { ...poiType };
+
+    // For drone blueprint PoIs, assign pre-determined guardian AI
+    if (poiData.rewardType?.startsWith('DRONE_BLUEPRINT_')) {
+      // Select guardian from tier's threat tables (use 'high' for strong enemy)
+      const threatTable = tierConfig.threatTables?.high || tierConfig.threatTables?.medium || ['Rogue Scout Pattern'];
+      const guardianAIName = threatTable[Math.floor(rng.random() * threatTable.length)];
+
+      // Look up AI data for full information
+      const guardianAI = aiPersonalities.find(ai => ai.name === guardianAIName);
+
+      poiData.guardianAI = {
+        id: guardianAIName,
+        name: guardianAI?.name || guardianAIName
+      };
+    }
 
     // Place PoI
     hex.type = 'poi';
     hex.poiId = pois.length;
-    hex.poiType = poiType.id;
-    hex.poiData = poiType;
+    hex.poiType = poiData.id;
+    hex.poiData = poiData;
     pois.push(hex);
     placedInZone++; // Increment count for this zone
   }
@@ -307,6 +347,9 @@ function mapRewardTypeToCardType(rewardType) {
     'SUPPORT_PACK': 'Support',
     'UPGRADE_PACK': 'Upgrade',
     'BLUEPRINT_GUARANTEED': 'Upgrade',
+    'DRONE_BLUEPRINT_LIGHT': 'Drone',
+    'DRONE_BLUEPRINT_FIGHTER': 'Drone',
+    'DRONE_BLUEPRINT_HEAVY': 'Drone',
     'CREDITS': 'Support',
     'TOKEN_CHANCE': 'Support'
   };

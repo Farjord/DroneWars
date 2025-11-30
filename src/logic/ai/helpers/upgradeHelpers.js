@@ -82,6 +82,7 @@ export const getRemainingDeploymentCapacity = (playerState, droneName) => {
 
 /**
  * Get count of upgrade slots remaining for a drone type
+ * Accounts for variable slot costs per upgrade
  * @param {Object} playerState - Player state to check
  * @param {string} droneName - Name of drone type
  * @returns {number} Available upgrade slots
@@ -90,8 +91,9 @@ export const getRemainingUpgradeSlots = (playerState, droneName) => {
   const baseDrone = fullDroneCollection.find(d => d.name === droneName);
   if (!baseDrone) return 0;
 
-  const appliedCount = (playerState.appliedUpgrades?.[droneName] || []).length;
-  return Math.max(0, baseDrone.upgradeSlots - appliedCount);
+  const applied = playerState.appliedUpgrades?.[droneName] || [];
+  const usedSlots = applied.reduce((sum, upg) => sum + (upg.slots || 1), 0);
+  return Math.max(0, baseDrone.upgradeSlots - usedSlots);
 };
 
 /**

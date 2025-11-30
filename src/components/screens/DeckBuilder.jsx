@@ -102,74 +102,45 @@ const ShipComponentDetailPopup = ({ component, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={onClose}>
+    <div className="dw-modal-overlay" onClick={onClose}>
       <div
-        className="bg-gray-900 rounded-2xl border-2 border-cyan-500 p-8 shadow-2xl shadow-cyan-500/20 max-w-6xl w-[95vw]"
+        className="dw-modal-content dw-modal--xxl dw-modal--action"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-3xl font-orbitron font-bold text-cyan-400 mb-2">
-              {component.name}
-            </h2>
-            <p className="text-gray-400 text-sm">{component.description}</p>
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-info" style={{ flex: 1 }}>
+            <h2 className="dw-modal-header-title">{component.name}</h2>
+            <p className="dw-modal-header-subtitle">{component.description}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            <X size={32} />
+          <button onClick={onClose} className="dw-modal-close">
+            <X size={24} />
           </button>
         </div>
 
-        {/* Lane Comparison */}
-        <div className="mb-4 text-center">
-          <p className="text-yellow-400 font-semibold text-sm">
-            Compare standard lane stats with middle lane bonus stats. The middle lane provides enhanced performance!
-          </p>
-        </div>
-
-        {/* Two Columns showing standard and bonus lanes */}
-        <div className="grid grid-cols-2 gap-8">
-          {/* Left/Right Lane */}
-          <div>
-            <h3 className="text-center font-orbitron text-lg text-gray-300 mb-3">
-              LEFT / RIGHT LANE
-            </h3>
-            <div className="h-[250px]">
-              <ShipSection
-                section={component.key}
-                stats={component}
-                effectiveStatsForDisplay={calculateMiddleLaneBonusStats(component, false)}
-                isPlayer={true}
-                isInMiddleLane={false}
-                gameEngine={gameEngine}
-                isInteractive={false}
-                turnPhase="placement"
-                isMyTurn={() => false}
-                passInfo={{}}
-                getLocalPlayerId={() => 'player1'}
-                localPlayerState={{}}
-                shipAbilityMode={null}
-              />
-            </div>
+        {/* Body */}
+        <div className="dw-modal-body">
+          {/* Lane Comparison Notice */}
+          <div className="dw-modal-info-box" style={{ marginBottom: '20px', textAlign: 'center', '--modal-theme': '#eab308', '--modal-theme-bg': 'rgba(234, 179, 8, 0.08)', '--modal-theme-border': 'rgba(234, 179, 8, 0.3)' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: '#fde047', fontWeight: 600 }}>
+              Compare standard lane stats with middle lane bonus stats. The middle lane provides enhanced performance!
+            </p>
           </div>
 
-          {/* Middle Lane (Bonus) */}
-          <div className="relative">
-            <div className="absolute -top-2 -left-2 -right-2 -bottom-2 bg-gradient-to-r from-yellow-500/20 to-orange-500/20 rounded-xl animate-pulse"></div>
-            <div className="relative">
-              <h3 className="text-center font-orbitron text-lg text-yellow-400 mb-3 font-bold">
-                MIDDLE LANE (BONUS)
+          {/* Two Columns showing standard and bonus lanes */}
+          <div className="grid grid-cols-2 gap-8">
+            {/* Left/Right Lane */}
+            <div>
+              <h3 className="text-center font-orbitron text-lg mb-3" style={{ color: 'var(--modal-text-secondary)' }}>
+                LEFT / RIGHT LANE
               </h3>
               <div className="h-[250px]">
                 <ShipSection
                   section={component.key}
                   stats={component}
-                  effectiveStatsForDisplay={calculateMiddleLaneBonusStats(component, true)}
+                  effectiveStatsForDisplay={calculateMiddleLaneBonusStats(component, false)}
                   isPlayer={true}
-                  isInMiddleLane={true}
+                  isInMiddleLane={false}
                   gameEngine={gameEngine}
                   isInteractive={false}
                   turnPhase="placement"
@@ -181,17 +152,57 @@ const ShipComponentDetailPopup = ({ component, onClose }) => {
                 />
               </div>
             </div>
+
+            {/* Middle Lane (Bonus) */}
+            <div className="relative">
+              <div className="absolute -top-2 -left-2 -right-2 -bottom-2 rounded-lg animate-pulse" style={{ background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.15) 0%, rgba(249, 115, 22, 0.15) 100%)' }}></div>
+              <div className="relative">
+                <h3 className="text-center font-orbitron text-lg mb-3 font-bold" style={{ color: '#eab308' }}>
+                  MIDDLE LANE (BONUS)
+                </h3>
+                <div className="h-[250px]">
+                  <ShipSection
+                    section={component.key}
+                    stats={component}
+                    effectiveStatsForDisplay={calculateMiddleLaneBonusStats(component, true)}
+                    isPlayer={true}
+                    isInMiddleLane={true}
+                    gameEngine={gameEngine}
+                    isInteractive={false}
+                    turnPhase="placement"
+                    isMyTurn={() => false}
+                    passInfo={{}}
+                    getLocalPlayerId={() => 'player1'}
+                    localPlayerState={{}}
+                    shipAbilityMode={null}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* Ability Info */}
+          {component.ability && (
+            <div className="dw-modal-info-box" style={{ marginTop: '20px', '--modal-theme': '#a855f7', '--modal-theme-bg': 'rgba(168, 85, 247, 0.1)', '--modal-theme-border': 'rgba(168, 85, 247, 0.4)' }}>
+              <h4 style={{ margin: '0 0 8px 0', fontFamily: 'Orbitron, sans-serif', color: '#a855f7', fontWeight: 700 }}>
+                Ship Ability: {component.ability.name}
+              </h4>
+              <p style={{ margin: '0 0 6px 0', fontSize: '13px', color: 'var(--modal-text-primary)' }}>
+                {component.ability.description}
+              </p>
+              <p style={{ margin: 0, fontSize: '12px', color: 'var(--modal-text-secondary)' }}>
+                Cost: {component.ability.cost.energy} Energy
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Ability Info */}
-        {component.ability && (
-          <div className="mt-6 p-4 bg-purple-900/30 rounded-lg border border-purple-500/50">
-            <h4 className="font-orbitron text-purple-400 font-bold mb-2">Ship Ability: {component.ability.name}</h4>
-            <p className="text-gray-300 text-sm mb-2">{component.ability.description}</p>
-            <p className="text-gray-400 text-xs">Cost: {component.ability.cost.energy} Energy</p>
-          </div>
-        )}
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button onClick={onClose} className="dw-btn dw-btn-cancel">
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -880,31 +891,60 @@ const DeckBuilder = ({
     };
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowExportModal(false)}>
-      {/* This is the re-added content panel div */}
-      <div className="bg-gray-900 rounded-2xl border-2 border-purple-500 p-8 w-full max-w-2xl" onClick={e => e.stopPropagation()}>
-        <h2 className="text-xl font-orbitron mb-4">Export Deck Code</h2>
-        <p className="text-gray-400 mb-4">Copy the code below to save or share your deck and drones.</p>
-        <textarea
-          ref={textAreaRef}
-          readOnly
-          value={deckCode}
-          className="w-full h-32 p-2 bg-gray-800 border border-gray-600 rounded text-gray-300 font-mono"
-        />
-        <div className="flex justify-end gap-4 mt-4">
-          <span className="text-green-400 self-center">{copySuccess}</span>
-          <button onClick={copyToClipboard} className="btn-confirm flex items-center gap-2">
-            <Copy size={16} /> Copy to Clipboard
+    <div className="dw-modal-overlay" onClick={() => setShowExportModal(false)}>
+      <div className="dw-modal-content dw-modal--lg dw-modal--action" onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Download size={28} />
+          </div>
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">Export Deck Code</h2>
+            <p className="dw-modal-header-subtitle">Save or share your configuration</p>
+          </div>
+          <button onClick={() => setShowExportModal(false)} className="dw-modal-close">
+            <X size={20} />
           </button>
-          <button onClick={() => setShowExportModal(false)} className="btn-cancel flex items-center gap-2">
-            <X size={16} /> Close
+        </div>
+
+        {/* Body */}
+        <div className="dw-modal-body">
+          <p className="dw-modal-text dw-modal-text--left">
+            Copy the code below to save or share your deck and drones.
+          </p>
+          <textarea
+            ref={textAreaRef}
+            readOnly
+            value={deckCode}
+            className="w-full h-32 p-3 rounded font-mono text-sm"
+            style={{
+              background: 'rgba(17, 24, 39, 0.8)',
+              border: '1px solid var(--modal-action-border)',
+              color: 'var(--modal-text-primary)',
+              resize: 'none'
+            }}
+          />
+          {copySuccess && (
+            <div className="dw-modal-feedback dw-modal-feedback--success" style={{ marginTop: '12px' }}>
+              {copySuccess}
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button onClick={() => setShowExportModal(false)} className="dw-btn dw-btn-cancel">
+            Close
+          </button>
+          <button onClick={copyToClipboard} className="dw-btn dw-btn-confirm" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Copy size={16} /> Copy to Clipboard
           </button>
         </div>
       </div>
     </div>
   );
   };
-  
+
   const ImportModal = () => {
     const [deckCode, setDeckCode] = useState('');
     const [error, setError] = useState('');
@@ -920,20 +960,54 @@ const DeckBuilder = ({
     };
 
     return (
-      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50" onClick={() => setShowImportModal(false)}>
-        <div className="bg-gray-900 rounded-2xl border-2 border-purple-500 p-8 w-full max-w-2xl" onClick={e => e.stopPropagation()}>
-          <h2 className="text-xl font-orbitron mb-4">Import Deck Code</h2>
-          <p className="text-gray-400 mb-4">Paste a deck code below to load both cards and drones into the builder.</p>
-          <textarea
-            value={deckCode}
-            onChange={(e) => setDeckCode(e.target.value)}
-            className="w-full h-32 p-2 bg-gray-800 border border-gray-600 rounded text-gray-300 font-mono"
-            placeholder="cards:CARD001:4,CARD002:2|drones:Scout Drone:1,Heavy Fighter:1"
-          />
-          {error && <p className="text-red-500 mt-2">{error}</p>}
-          <div className="flex justify-end gap-4 mt-4">
-            <button onClick={() => setShowImportModal(false)} className="btn-cancel">Cancel</button>
-            <button onClick={handleImport} className="btn-confirm">Load Deck</button>
+      <div className="dw-modal-overlay" onClick={() => setShowImportModal(false)}>
+        <div className="dw-modal-content dw-modal--lg dw-modal--action" onClick={e => e.stopPropagation()}>
+          {/* Header */}
+          <div className="dw-modal-header">
+            <div className="dw-modal-header-icon">
+              <Upload size={28} />
+            </div>
+            <div className="dw-modal-header-info">
+              <h2 className="dw-modal-header-title">Import Deck Code</h2>
+              <p className="dw-modal-header-subtitle">Load a saved configuration</p>
+            </div>
+            <button onClick={() => setShowImportModal(false)} className="dw-modal-close">
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="dw-modal-body">
+            <p className="dw-modal-text dw-modal-text--left">
+              Paste a deck code below to load both cards and drones into the builder.
+            </p>
+            <textarea
+              value={deckCode}
+              onChange={(e) => setDeckCode(e.target.value)}
+              className="w-full h-32 p-3 rounded font-mono text-sm"
+              style={{
+                background: 'rgba(17, 24, 39, 0.8)',
+                border: '1px solid var(--modal-action-border)',
+                color: 'var(--modal-text-primary)',
+                resize: 'none'
+              }}
+              placeholder="cards:CARD001:4,CARD002:2|drones:Scout Drone:1,Heavy Fighter:1"
+            />
+            {error && (
+              <div className="dw-modal-feedback dw-modal-feedback--error" style={{ marginTop: '12px' }}>
+                {error}
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="dw-modal-actions">
+            <button onClick={() => setShowImportModal(false)} className="dw-btn dw-btn-cancel">
+              Cancel
+            </button>
+            <button onClick={handleImport} className="dw-btn dw-btn-confirm">
+              Load Deck
+            </button>
           </div>
         </div>
       </div>
@@ -989,15 +1063,16 @@ const DeckBuilder = ({
       <div className="flex-grow flex gap-6 min-h-0 mb-[10px]">
 
         {/* Left Side: Available Items */}
-        <div className="w-2/3 flex flex-col bg-slate-900/50 rounded-lg p-4 border border-gray-700 h-[calc(100vh-99px)] ml-[10px]">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex gap-2">
+        <div className="w-2/3 flex flex-col dw-panel h-[calc(100vh-99px)] ml-[10px]">
+          <div className="dw-panel-header">
+            {/* Main navigation tabs */}
+            <div className="dw-modal-tabs" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 0 }}>
               <button
                 onClick={() => {
                   setLeftPanelView('shipCard');
                   setRightPanelView('shipCard');
                 }}
-                className={`btn-utility ${leftPanelView === 'shipCard' ? 'opacity-100' : 'opacity-60'}`}
+                className={`dw-modal-tab ${leftPanelView === 'shipCard' ? 'dw-modal-tab--active' : ''}`}
               >
                 Ship
               </button>
@@ -1006,7 +1081,7 @@ const DeckBuilder = ({
                   setLeftPanelView('cards');
                   setRightPanelView('deck');
                 }}
-                className={`btn-utility ${leftPanelView === 'cards' ? 'opacity-100' : 'opacity-60'}`}
+                className={`dw-modal-tab ${leftPanelView === 'cards' ? 'dw-modal-tab--active' : ''}`}
               >
                 Cards
               </button>
@@ -1015,7 +1090,7 @@ const DeckBuilder = ({
                   setLeftPanelView('drones');
                   setRightPanelView('drones');
                 }}
-                className={`btn-utility ${leftPanelView === 'drones' ? 'opacity-100' : 'opacity-60'}`}
+                className={`dw-modal-tab ${leftPanelView === 'drones' ? 'dw-modal-tab--active' : ''}`}
               >
                 Drones
               </button>
@@ -1024,48 +1099,55 @@ const DeckBuilder = ({
                   setLeftPanelView('ship');
                   setRightPanelView('ship');
                 }}
-                className={`btn-utility ${leftPanelView === 'ship' ? 'opacity-100' : 'opacity-60'}`}
+                className={`dw-modal-tab ${leftPanelView === 'ship' ? 'dw-modal-tab--active' : ''}`}
               >
                 Ship Sections
               </button>
+              {/* Utility buttons */}
               <button
                 onClick={() => setShowViewDeckModal(true)}
-                className="btn-utility flex items-center gap-2"
+                className="dw-modal-tab"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                <Grid size={16} />
+                <Grid size={14} />
                 View Deck
               </button>
               <button
                 onClick={() => setShowImportModal(true)}
-                className="btn-utility flex items-center gap-2"
+                className="dw-modal-tab"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                <Upload size={16} />
+                <Upload size={14} />
                 Import
               </button>
               <button
                 onClick={() => setShowExportModal(true)}
-                className="btn-utility flex items-center gap-2"
+                className="dw-modal-tab"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
               >
-                <Download size={16} />
+                <Download size={14} />
                 Export
               </button>
             </div>
+            {/* View mode and filter controls */}
             <div className="flex gap-2 items-center">
               {leftPanelView === 'cards' && (
                 <>
                   <button
                     onClick={() => setCardsViewMode('table')}
-                    className={`btn-utility p-2 ${cardsViewMode === 'table' ? 'opacity-100' : 'opacity-60'}`}
+                    className={`dw-modal-tab ${cardsViewMode === 'table' ? 'dw-modal-tab--active' : ''}`}
                     title="Table View"
+                    style={{ padding: '6px 10px' }}
                   >
-                    <List size={18} />
+                    <List size={16} />
                   </button>
                   <button
                     onClick={() => setCardsViewMode('grid')}
-                    className={`btn-utility p-2 ${cardsViewMode === 'grid' ? 'opacity-100' : 'opacity-60'}`}
+                    className={`dw-modal-tab ${cardsViewMode === 'grid' ? 'dw-modal-tab--active' : ''}`}
                     title="Grid View"
+                    style={{ padding: '6px 10px' }}
                   >
-                    <LayoutGrid size={18} />
+                    <LayoutGrid size={16} />
                   </button>
                 </>
               )}
@@ -1073,17 +1155,19 @@ const DeckBuilder = ({
                 <>
                   <button
                     onClick={() => setDronesViewMode('table')}
-                    className={`btn-utility p-2 ${dronesViewMode === 'table' ? 'opacity-100' : 'opacity-60'}`}
+                    className={`dw-modal-tab ${dronesViewMode === 'table' ? 'dw-modal-tab--active' : ''}`}
                     title="Table View"
+                    style={{ padding: '6px 10px' }}
                   >
-                    <List size={18} />
+                    <List size={16} />
                   </button>
                   <button
                     onClick={() => setDronesViewMode('grid')}
-                    className={`btn-utility p-2 ${dronesViewMode === 'grid' ? 'opacity-100' : 'opacity-60'}`}
+                    className={`dw-modal-tab ${dronesViewMode === 'grid' ? 'dw-modal-tab--active' : ''}`}
                     title="Grid View"
+                    style={{ padding: '6px 10px' }}
                   >
-                    <LayoutGrid size={18} />
+                    <LayoutGrid size={16} />
                   </button>
                 </>
               )}
@@ -1126,16 +1210,15 @@ const DeckBuilder = ({
           {/* --- Filter Input (shown in both table and grid view) --- */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             {/* Cost Range Filter */}
-            <div className="filter-select flex flex-col justify-center">
-                <label className="text-center text-gray-400 mb-1">Cost Range: {filters.cost.min} - {filters.cost.max}</label>
-                <div className="flex gap-2">
+            <div className="dw-filter-select flex flex-col justify-center">
+                <label className="dw-filter-label">Cost Range: {filters.cost.min} - {filters.cost.max}</label>
+                <div className="dw-filter-range">
                     <input
                         type="range"
                         min={filterOptions.minCost}
                         max={filterOptions.maxCost}
                         value={filters.cost.min}
                         onChange={(e) => handleFilterChange('cost', { ...filters.cost, min: Math.min(parseInt(e.target.value), filters.cost.max) })}
-                        className="w-1/2"
                     />
                     <input
                         type="range"
@@ -1143,21 +1226,20 @@ const DeckBuilder = ({
                         max={filterOptions.maxCost}
                         value={filters.cost.max}
                         onChange={(e) => handleFilterChange('cost', { ...filters.cost, max: Math.max(parseInt(e.target.value), filters.cost.min) })}
-                        className="w-1/2"
                     />
                 </div>
             </div>
-            
+
             {/* Ability Multi-Select Filter */}
             <div className="relative" ref={abilityFilterRef}>
-                <button onClick={() => setIsAbilityDropdownOpen(!isAbilityDropdownOpen)} className="filter-select w-full text-left h-full">
+                <button onClick={() => setIsAbilityDropdownOpen(!isAbilityDropdownOpen)} className="dw-filter-select w-full text-left h-full">
                     {filters.abilities.length === 0 ? 'Select Abilities' : `${filters.abilities.length} Abilities Selected`}
                 </button>
                 {isAbilityDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 bg-slate-800 border border-gray-600 mt-1 rounded-md z-10 max-h-60 overflow-y-auto">
+                    <div className="dw-filter-dropdown">
                         {filterOptions.abilities.map(ability => (
-                            <label key={ability} className="flex items-center p-2 hover:bg-slate-700 cursor-pointer">
-                                <input type="checkbox" checked={filters.abilities.includes(ability)} onChange={() => handleAbilityToggle(ability)} className="mr-2" />
+                            <label key={ability} className="dw-filter-dropdown-item">
+                                <input type="checkbox" checked={filters.abilities.includes(ability)} onChange={() => handleAbilityToggle(ability)} />
                                 {ability}
                             </label>
                         ))}
@@ -1166,7 +1248,7 @@ const DeckBuilder = ({
             </div>
 
             {/* Type Filter */}
-            <select onChange={(e) => handleFilterChange('type', e.target.value)} value={filters.type} className="filter-select h-full">
+            <select onChange={(e) => handleFilterChange('type', e.target.value)} value={filters.type} className="dw-filter-select h-full">
                 <option value="all">All Types</option>
                 <option value="Ordnance">Ordnance</option>
                 <option value="Tactic">Tactic</option>
@@ -1175,15 +1257,14 @@ const DeckBuilder = ({
             </select>
 
             {/* Enhanced Cards Filter */}
-            <div className="filter-select flex items-center justify-center h-full">
-                <label className="flex items-center cursor-pointer">
+            <div className="dw-filter-select flex items-center justify-center h-full">
+                <label className="dw-filter-checkbox">
                     <input
                         type="checkbox"
                         checked={filters.hideEnhanced}
                         onChange={(e) => handleFilterChange('hideEnhanced', e.target.checked)}
-                        className="mr-2"
                     />
-                    <span className="text-gray-300">Hide Enhanced Cards</span>
+                    <span>Hide Enhanced Cards</span>
                 </label>
             </div>
           </div>
@@ -1262,29 +1343,21 @@ const DeckBuilder = ({
                       scale={1.0}
                     />
                     {/* Quantity Controls */}
-                    <div className="flex items-center gap-2 bg-slate-800/70 px-3 py-1 rounded-lg border border-gray-600">
+                    <div className="dw-quantity-control">
                       <button
                         onClick={() => !readOnly && currentCountForThisVariant > 0 && onDeckChange(card.id, currentCountForThisVariant - 1)}
-                        disabled={readOnly}
-                        className={`text-lg font-bold px-2 rounded transition-all ${
-                          readOnly || currentCountForThisVariant === 0
-                            ? 'opacity-50 cursor-not-allowed text-gray-500'
-                            : 'text-cyan-400 hover:text-cyan-300 hover:bg-slate-700'
-                        }`}
+                        disabled={readOnly || currentCountForThisVariant === 0}
+                        className="dw-quantity-btn"
                       >
                         -
                       </button>
-                      <span className="font-bold text-base min-w-[50px] text-center">
+                      <span className="dw-quantity-value">
                         {currentCountForThisVariant}/{maxInDeck}
                       </span>
                       <button
                         onClick={() => !readOnly && !isAtMax && onDeckChange(card.id, currentCountForThisVariant + 1)}
-                        disabled={readOnly}
-                        className={`text-lg font-bold px-2 rounded transition-all ${
-                          readOnly || isAtMax
-                            ? 'opacity-50 cursor-not-allowed text-gray-500'
-                            : 'text-cyan-400 hover:text-cyan-300 hover:bg-slate-700'
-                        }`}
+                        disabled={readOnly || isAtMax}
+                        className="dw-quantity-btn"
                       >
                         +
                       </button>
@@ -1305,14 +1378,14 @@ const DeckBuilder = ({
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             {/* Ability Multi-Select Filter */}
             <div className="relative" ref={abilityFilterRef}>
-              <button onClick={() => setIsAbilityDropdownOpen(!isAbilityDropdownOpen)} className="filter-select w-full text-left h-full">
+              <button onClick={() => setIsAbilityDropdownOpen(!isAbilityDropdownOpen)} className="dw-filter-select w-full text-left h-full">
                 {droneFilters.abilities.length === 0 ? 'Select Abilities' : `${droneFilters.abilities.length} Abilities Selected`}
               </button>
               {isAbilityDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 bg-slate-800 border border-gray-600 mt-1 rounded-md z-10 max-h-60 overflow-y-auto">
+                <div className="dw-filter-dropdown">
                   {droneFilterOptions.abilities.map(ability => (
-                    <label key={ability} className="flex items-center p-2 hover:bg-slate-700 cursor-pointer">
-                      <input type="checkbox" checked={droneFilters.abilities.includes(ability)} onChange={() => handleDroneAbilityToggle(ability)} className="mr-2" />
+                    <label key={ability} className="dw-filter-dropdown-item">
+                      <input type="checkbox" checked={droneFilters.abilities.includes(ability)} onChange={() => handleDroneAbilityToggle(ability)} />
                       {ability}
                     </label>
                   ))}
@@ -1396,29 +1469,21 @@ const DeckBuilder = ({
                       isViewOnly={true}
                     />
                     {/* Quantity Controls */}
-                    <div className="flex items-center gap-2 bg-slate-800/70 px-3 py-1 rounded-lg border border-gray-600">
+                    <div className="dw-quantity-control">
                       <button
                         onClick={() => !readOnly && currentQuantity > 0 && onDronesChange(drone.name, currentQuantity - 1)}
-                        disabled={readOnly}
-                        className={`text-lg font-bold px-2 rounded transition-all ${
-                          readOnly || currentQuantity === 0
-                            ? 'opacity-50 cursor-not-allowed text-gray-500'
-                            : 'text-cyan-400 hover:text-cyan-300 hover:bg-slate-700'
-                        }`}
+                        disabled={readOnly || currentQuantity === 0}
+                        className="dw-quantity-btn"
                       >
                         -
                       </button>
-                      <span className="font-bold text-base min-w-[50px] text-center">
+                      <span className="dw-quantity-value">
                         {currentQuantity}/{maxQuantity}
                       </span>
                       <button
                         onClick={() => !readOnly && !isAtMax && onDronesChange(drone.name, currentQuantity + 1)}
-                        disabled={readOnly}
-                        className={`text-lg font-bold px-2 rounded transition-all ${
-                          readOnly || isAtMax
-                            ? 'opacity-50 cursor-not-allowed text-gray-500'
-                            : 'text-cyan-400 hover:text-cyan-300 hover:bg-slate-700'
-                        }`}
+                        disabled={readOnly || isAtMax}
+                        className="dw-quantity-btn"
                       >
                         +
                       </button>
@@ -1576,30 +1641,30 @@ const DeckBuilder = ({
         </div>
 
         {/* Right Side: Your Items */}
-        <div className="w-1/3 flex flex-col bg-slate-900/50 rounded-lg p-4 border border-gray-700 h-[calc(100vh-99px)] mr-[10px]">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex gap-2 flex-wrap">
+        <div className="w-1/3 flex flex-col dw-panel h-[calc(100vh-99px)] mr-[10px]">
+          <div className="dw-panel-header">
+            <div className="dw-modal-tabs" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 0, flexWrap: 'wrap' }}>
               <button
                 onClick={() => setRightPanelView('shipCard')}
-                className={`btn-utility ${rightPanelView === 'shipCard' ? 'opacity-100' : 'opacity-60'}`}
+                className={`dw-modal-tab ${rightPanelView === 'shipCard' ? 'dw-modal-tab--active' : ''}`}
               >
                 Ship
               </button>
               <button
                 onClick={() => setRightPanelView('deck')}
-                className={`btn-utility ${rightPanelView === 'deck' ? 'opacity-100' : 'opacity-60'}`}
+                className={`dw-modal-tab ${rightPanelView === 'deck' ? 'dw-modal-tab--active' : ''}`}
               >
                 Deck ({cardCount}/{totalCardLimit})
               </button>
               <button
                 onClick={() => setRightPanelView('drones')}
-                className={`btn-utility ${rightPanelView === 'drones' ? 'opacity-100' : 'opacity-60'}`}
+                className={`dw-modal-tab ${rightPanelView === 'drones' ? 'dw-modal-tab--active' : ''}`}
               >
                 Drones ({droneCount}/{maxDrones})
               </button>
               <button
                 onClick={() => setRightPanelView('ship')}
-                className={`btn-utility ${rightPanelView === 'ship' ? 'opacity-100' : 'opacity-60'}`}
+                className={`dw-modal-tab ${rightPanelView === 'ship' ? 'dw-modal-tab--active' : ''}`}
               >
                 Components ({shipComponentCount}/3)
               </button>
@@ -1624,34 +1689,34 @@ const DeckBuilder = ({
                     isSelectable={false}
                     isSelected={true}
                   />
-                  <div className="mt-4 p-4 bg-slate-800/50 rounded-lg border border-cyan-700/50 w-full">
-                    <h4 className="text-sm font-orbitron text-cyan-400 mb-2">Deck Limits</h4>
+                  <div className="dw-info-box mt-4 w-full">
+                    <h4 className="dw-info-box-title">Deck Limits</h4>
                     <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-400">Total Cards:</span>
-                        <span className="text-white font-bold">{activeShip.deckLimits.totalCards}</span>
+                      <div className="dw-info-row">
+                        <span className="dw-info-row-label">Total Cards:</span>
+                        <span className="dw-info-row-value">{activeShip.deckLimits.totalCards}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-red-400">Ordnance:</span>
-                        <span className="text-white font-bold">{activeShip.deckLimits.ordnanceLimit}</span>
+                      <div className="dw-info-row">
+                        <span className="dw-info-row-label dw-info-row-label--ordnance">Ordnance:</span>
+                        <span className="dw-info-row-value">{activeShip.deckLimits.ordnanceLimit}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-cyan-400">Tactic:</span>
-                        <span className="text-white font-bold">{activeShip.deckLimits.tacticLimit}</span>
+                      <div className="dw-info-row">
+                        <span className="dw-info-row-label dw-info-row-label--tactic">Tactic:</span>
+                        <span className="dw-info-row-value">{activeShip.deckLimits.tacticLimit}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-emerald-400">Support:</span>
-                        <span className="text-white font-bold">{activeShip.deckLimits.supportLimit}</span>
+                      <div className="dw-info-row">
+                        <span className="dw-info-row-label dw-info-row-label--support">Support:</span>
+                        <span className="dw-info-row-value">{activeShip.deckLimits.supportLimit}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-purple-400">Upgrade:</span>
-                        <span className="text-white font-bold">{activeShip.deckLimits.upgradeLimit}</span>
+                      <div className="dw-info-row">
+                        <span className="dw-info-row-label dw-info-row-label--upgrade">Upgrade:</span>
+                        <span className="dw-info-row-value">{activeShip.deckLimits.upgradeLimit}</span>
                       </div>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-center text-gray-500 italic">
+                <div className="dw-empty-state">
                   No ship selected. Go to the Ship tab to select one.
                 </div>
               )}
@@ -1703,26 +1768,25 @@ const DeckBuilder = ({
 
           {/* CARD TYPE COUNTS DISPLAY */}
           {rightPanelView === 'deck' && cardCount > 0 && (
-            <div className="mt-3 p-3 bg-slate-800/50 rounded border border-slate-700">
-              <h3 className="text-sm font-orbitron text-cyan-300 mb-2">Card Types</h3>
-              <div className="space-y-1 text-xs">
+            <div className="dw-type-stats">
+              <h3 className="dw-type-stats-title">Card Types</h3>
+              <div className="space-y-1">
                 {Object.entries(typeLimits).map(([type, limit]) => {
                   const count = typeCounts[type] || 0;
                   const isOverLimit = count > limit;
                   const percentage = (count / limit) * 100;
+                  const typeClass = type.toLowerCase();
                   return (
-                    <div key={type} className="flex items-center gap-2">
-                      <span className={`w-20 ${isOverLimit ? 'text-red-400' : 'text-gray-300'}`}>
+                    <div key={type} className="dw-type-stats-row">
+                      <span className={`dw-type-stats-label ${isOverLimit ? 'dw-type-stats-label--danger' : `dw-type-stats-label--${typeClass}`}`}>
                         {type}:
                       </span>
-                      <div className="flex-grow bg-slate-700 rounded h-4 relative overflow-hidden">
+                      <div className="dw-progress-bar">
                         <div
-                          className={`h-full transition-all ${
-                            isOverLimit ? 'bg-red-500' : 'bg-cyan-500'
-                          }`}
+                          className={`dw-progress-bar-fill ${isOverLimit ? 'dw-progress-bar-fill--danger' : 'dw-progress-bar-fill--action'}`}
                           style={{ width: `${Math.min(percentage, 100)}%` }}
                         />
-                        <span className="absolute inset-0 flex items-center justify-center text-white font-bold text-[10px]">
+                        <span className="dw-progress-bar-label">
                           {count}/{limit}
                         </span>
                       </div>
@@ -1887,24 +1951,24 @@ const DeckBuilder = ({
 {/* --- Statistics Section --- */}
           {/* DECK STATISTICS */}
           {rightPanelView === 'deck' && cardCount > 0 && (
-            <div className="mt-4 pt-4 border-t-2 border-slate-700">
+            <div className="dw-stats-section">
               <button
                 onClick={() => setIsStatsVisible(!isStatsVisible)}
-                className="w-full flex justify-center items-center gap-2 text-lg font-orbitron mb-2 text-center text-cyan-300 hover:text-cyan-200 transition-colors"
+                className="dw-stats-toggle"
               >
                 Deck Statistics
-                <ChevronUp size={20} className={`transition-transform duration-300 ${isStatsVisible ? 'rotate-0' : 'rotate-180'}`} />
+                <ChevronUp size={18} className={`dw-stats-toggle-icon ${!isStatsVisible ? 'dw-stats-toggle-icon--collapsed' : ''}`} />
               </button>
 
-              <div className={`transition-all ease-in-out duration-500 overflow-hidden ${isStatsVisible ? 'max-h-[320px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                <div className="flex justify-center gap-2 mb-2">
-                  <button onClick={() => setActiveChartView('cost')} className={`btn-info text-xs ${activeChartView === 'cost' ? 'opacity-100' : 'opacity-60'}`}>
+              <div className={`dw-stats-content ${isStatsVisible ? 'dw-stats-content--visible' : 'dw-stats-content--hidden'}`}>
+                <div className="dw-modal-tabs" style={{ justifyContent: 'center', borderBottom: 'none', marginBottom: '8px', paddingBottom: '8px' }}>
+                  <button onClick={() => setActiveChartView('cost')} className={`dw-modal-tab ${activeChartView === 'cost' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '12px', padding: '6px 12px' }}>
                     Cost
                   </button>
-                  <button onClick={() => setActiveChartView('type')} className={`btn-info text-xs ${activeChartView === 'type' ? 'opacity-100' : 'opacity-60'}`}>
+                  <button onClick={() => setActiveChartView('type')} className={`dw-modal-tab ${activeChartView === 'type' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '12px', padding: '6px 12px' }}>
                     Type
                   </button>
-                  <button onClick={() => setActiveChartView('ability')} className={`btn-info text-xs ${activeChartView === 'ability' ? 'opacity-100' : 'opacity-60'}`}>
+                  <button onClick={() => setActiveChartView('ability')} className={`dw-modal-tab ${activeChartView === 'ability' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '12px', padding: '6px 12px' }}>
                     Abilities
                   </button>
                 </div>
@@ -1988,25 +2052,25 @@ const DeckBuilder = ({
 
           {/* DRONE STATISTICS */}
           {rightPanelView === 'drones' && droneCount > 0 && (
-            <div className="mt-4 pt-4 border-t-2 border-slate-700">
+            <div className="dw-stats-section">
               <button
                 onClick={() => setIsStatsVisible(!isStatsVisible)}
-                className="w-full flex justify-center items-center gap-2 text-lg font-orbitron mb-2 text-center text-cyan-300 hover:text-cyan-200 transition-colors"
+                className="dw-stats-toggle"
               >
                 Drone Statistics
-                <ChevronUp size={20} className={`transition-transform duration-300 ${isStatsVisible ? 'rotate-0' : 'rotate-180'}`} />
+                <ChevronUp size={18} className={`dw-stats-toggle-icon ${!isStatsVisible ? 'dw-stats-toggle-icon--collapsed' : ''}`} />
               </button>
 
-              <div className={`transition-all ease-in-out duration-500 overflow-hidden ${isStatsVisible ? 'max-h-[320px] opacity-100' : 'max-h-0 opacity-0'}`}>
-                <div className="flex justify-center gap-2 mb-2 flex-wrap">
-                  <button onClick={() => setActiveChartView('cost')} className={`btn-info text-xs ${activeChartView === 'cost' ? 'opacity-100' : 'opacity-60'}`}>Cost</button>
-                  <button onClick={() => setActiveChartView('attack')} className={`btn-info text-xs ${activeChartView === 'attack' ? 'opacity-100' : 'opacity-60'}`}>Attack</button>
-                  <button onClick={() => setActiveChartView('speed')} className={`btn-info text-xs ${activeChartView === 'speed' ? 'opacity-100' : 'opacity-60'}`}>Speed</button>
-                  <button onClick={() => setActiveChartView('shields')} className={`btn-info text-xs ${activeChartView === 'shields' ? 'opacity-100' : 'opacity-60'}`}>Shields</button>
-                  <button onClick={() => setActiveChartView('hull')} className={`btn-info text-xs ${activeChartView === 'hull' ? 'opacity-100' : 'opacity-60'}`}>Hull</button>
-                  <button onClick={() => setActiveChartView('limit')} className={`btn-info text-xs ${activeChartView === 'limit' ? 'opacity-100' : 'opacity-60'}`}>Limit</button>
-                  <button onClick={() => setActiveChartView('upgrades')} className={`btn-info text-xs ${activeChartView === 'upgrades' ? 'opacity-100' : 'opacity-60'}`}>Upgrades</button>
-                  <button onClick={() => setActiveChartView('ability')} className={`btn-info text-xs ${activeChartView === 'ability' ? 'opacity-100' : 'opacity-60'}`}>Abilities</button>
+              <div className={`dw-stats-content ${isStatsVisible ? 'dw-stats-content--visible' : 'dw-stats-content--hidden'}`}>
+                <div className="dw-modal-tabs" style={{ justifyContent: 'center', borderBottom: 'none', marginBottom: '8px', paddingBottom: '8px', flexWrap: 'wrap' }}>
+                  <button onClick={() => setActiveChartView('cost')} className={`dw-modal-tab ${activeChartView === 'cost' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Cost</button>
+                  <button onClick={() => setActiveChartView('attack')} className={`dw-modal-tab ${activeChartView === 'attack' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Attack</button>
+                  <button onClick={() => setActiveChartView('speed')} className={`dw-modal-tab ${activeChartView === 'speed' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Speed</button>
+                  <button onClick={() => setActiveChartView('shields')} className={`dw-modal-tab ${activeChartView === 'shields' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Shields</button>
+                  <button onClick={() => setActiveChartView('hull')} className={`dw-modal-tab ${activeChartView === 'hull' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Hull</button>
+                  <button onClick={() => setActiveChartView('limit')} className={`dw-modal-tab ${activeChartView === 'limit' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Limit</button>
+                  <button onClick={() => setActiveChartView('upgrades')} className={`dw-modal-tab ${activeChartView === 'upgrades' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Upgrades</button>
+                  <button onClick={() => setActiveChartView('ability')} className={`dw-modal-tab ${activeChartView === 'ability' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Abilities</button>
                 </div>
                 <div className="text-xs" style={{ height: '280px' }}>
                   {activeChartView === 'cost' && (

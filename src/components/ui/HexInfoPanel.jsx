@@ -157,9 +157,20 @@ function HexInfoPanel({
 
     const rewardType = hex.poiData.rewardType;
 
+    // Handle standard card packs
     if (packTypes[rewardType]) {
       const pack = packTypes[rewardType];
-      const cardType = pack.guaranteedTypes[0].toLowerCase();
+
+      // Special case for CREDITS_PACK (no cards, just credits)
+      if (pack.cardCount.max === 0) {
+        return {
+          type: pack.name,
+          description: `${pack.creditsRange.min}-${pack.creditsRange.max} credits`,
+          color: pack.color
+        };
+      }
+
+      const cardType = pack.guaranteedTypes[0]?.toLowerCase() || 'mixed';
       return {
         type: pack.name,
         description: `${pack.cardCount.min}-${pack.cardCount.max} ${cardType} cards + credits`,
@@ -167,10 +178,12 @@ function HexInfoPanel({
       };
     }
 
+    // Handle special non-pack reward types
     const specialRewards = {
-      BLUEPRINT_GUARANTEED: { type: 'Blueprint Cache', description: 'Guaranteed rare upgrade', color: '#ff44aa' },
-      CREDITS: { type: 'Credit Terminal', description: 'Currency reward', color: '#44ff88' },
-      TOKEN_CHANCE: { type: 'Token Cache', description: 'Chance at special tokens', color: '#ffff44' }
+      DRONE_BLUEPRINT_LIGHT: { type: 'Scout Drone Blueprint', description: 'Light drone schematic', color: '#4ade80' },
+      DRONE_BLUEPRINT_FIGHTER: { type: 'Fighter Drone Blueprint', description: 'Combat drone schematic', color: '#f97316' },
+      DRONE_BLUEPRINT_HEAVY: { type: 'Heavy Drone Blueprint', description: 'Heavy drone schematic', color: '#ef4444' },
+      TOKEN_REWARD: { type: 'Security Token', description: 'Guaranteed token + credits', color: '#06b6d4' }
     };
 
     return specialRewards[rewardType] || null;
@@ -287,8 +300,8 @@ function HexInfoPanel({
                       >
                         <span className="upcoming-hex-number">{idx + 1}</span>
                         <div className="upcoming-hex-stats">
-                          <span className="upcoming-hex-risk">{item.encounterChance}%</span>
-                          <span className="upcoming-hex-threat">+{item.threatIncrease.toFixed(1)}%</span>
+                          <span className="upcoming-hex-risk">⚔ {item.encounterChance}%</span>
+                          <span className="upcoming-hex-threat">Threat: +{item.threatIncrease.toFixed(1)}%</span>
                         </div>
                       </div>
                     ))}
@@ -403,6 +416,24 @@ function HexInfoPanel({
                     );
                   })()
                 )
+              )}
+
+              {/* Guaranteed Combat Warning for drone blueprint PoIs */}
+              {inspectedHex?.type === 'poi' &&
+               inspectedHex.poiData?.encounterChance === 100 &&
+               !isLootedPOI(inspectedHex) && (
+                <div className="hex-guaranteed-combat">
+                  <div className="guaranteed-combat-header">
+                    <span className="guaranteed-combat-icon">⚔</span>
+                    <span className="guaranteed-combat-text">GUARANTEED COMBAT</span>
+                  </div>
+                  {inspectedHex.poiData?.guardianAI && (
+                    <div className="guaranteed-combat-enemy">
+                      <span className="enemy-label">Guarded by: </span>
+                      <span className="enemy-name">{inspectedHex.poiData.guardianAI.name}</span>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Movement stats (if not already a waypoint) */}

@@ -5,7 +5,7 @@
 // Accepts optional scale prop for enlargement in modals
 
 import React from 'react';
-import { Bolt, RefreshCw } from 'lucide-react';
+import { Bolt, RefreshCw, Cpu } from 'lucide-react';
 import ScalingText from './ScalingText.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 
@@ -183,7 +183,14 @@ const ActionCard = ({
 
           {/* Footer - REDUCED HEIGHT */}
           <div className={`grid grid-cols-[auto_1fr_auto] gap-2 items-center px-2 border-t flex-shrink-0 h-6 mt-auto ${colors.footerBorder}`}>
-            <div className="w-4"></div>
+            <div className="w-8 flex items-center justify-start">
+              {type === 'Upgrade' && card.slots && (
+                <div className="flex items-center gap-0.5" title={`Uses ${card.slots} upgrade slot${card.slots > 1 ? 's' : ''}`}>
+                  <Cpu size={12} className="text-purple-400" />
+                  <span className="text-[10px] text-purple-400 font-bold">{card.slots}</span>
+                </div>
+              )}
+            </div>
 
             <div className="flex items-center justify-center">
               <span className={`text-[10px] uppercase tracking-widest font-semibold ${colors.typeText}`}>

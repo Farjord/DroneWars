@@ -49,16 +49,22 @@ class DroneCardTargetingProcessor extends BaseTargetingProcessor {
       // Get upgrades already applied to this drone
       const applied = actingPlayerState.appliedUpgrades[drone.name] || [];
 
+      // Calculate total slots used by summing each upgrade's slot cost
+      const usedSlots = applied.reduce((sum, upg) => sum + (upg.slots || 1), 0);
+
+      // Get the slot cost of the upgrade card being played
+      const cardSlotCost = definition.slots || 1;
+
       // Check how many times THIS specific upgrade has been applied
-      const alreadyHasThisUpgrade = applied.filter(upg => upg.id === definition.id).length;
+      const alreadyHasThisUpgrade = applied.filter(upg => upg.cardId === definition.id).length;
 
       // Get max applications limit (defaults to 1 if not specified)
       const maxApps = definition.maxApplications === undefined ? 1 : definition.maxApplications;
 
       // Drone is valid if:
-      // 1. It has available upgrade slots (applied.length < baseDrone.upgradeSlots)
+      // 1. It has enough available upgrade slots for this card's slot cost
       // 2. This upgrade hasn't been applied too many times (alreadyHasThisUpgrade < maxApps)
-      if (applied.length < baseDrone.upgradeSlots && alreadyHasThisUpgrade < maxApps) {
+      if (usedSlots + cardSlotCost <= baseDrone.upgradeSlots && alreadyHasThisUpgrade < maxApps) {
         targets.push({
           ...drone,
           id: drone.name,

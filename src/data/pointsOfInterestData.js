@@ -62,25 +62,12 @@ export const poiTypes = [
   },
 
   {
-    id: 'POI_COMMAND',
-    name: 'Fleet Command Relay',
-    description: 'Abandoned command center',
-    encounterChance: 10,
-    threatIncrease: 25,
-    rewardType: 'BLUEPRINT_GUARANTEED',
-    image: '/DroneWars/poi/fleet_command.jpg',
-    color: '#ff44aa',
-    isBoss: true,
-    flavourText: 'Capital-class systems detected. Strategic data vault sealed but breachable.',
-  },
-
-  {
     id: 'POI_FINANCIAL',
     name: 'Sector Financial Ledger',
     description: 'Banking network terminal',
     encounterChance: 5,
     threatIncrease: 5,
-    rewardType: 'CREDITS',
+    rewardType: 'CREDITS_PACK',
     image: '/DroneWars/poi/financial_ledger.jpg',
     color: '#44ff88',
     flavourText: 'Transaction logs corrupted. Credit vouchers extractable from backup nodes.',
@@ -92,10 +79,59 @@ export const poiTypes = [
     description: 'Smuggler cache',
     encounterChance: 18,
     threatIncrease: 15,
-    rewardType: 'TOKEN_CHANCE',
+    rewardType: 'TOKEN_REWARD',
     image: '/DroneWars/poi/contraband_cache.jpg',
     color: '#ffff44',
     flavourText: 'Encrypted cargo manifest. Security bypass codes may be recoverable.',
+  },
+
+  // Drone Blueprint PoIs - Guaranteed combat, core zone only, rare spawn
+  {
+    id: 'POI_DRONE_LIGHT',
+    name: 'Drone Reconnaissance Outpost',
+    description: 'Scout drone production facility',
+    encounterChance: 100,  // Guaranteed combat
+    threatIncrease: 15,
+    rewardType: 'DRONE_BLUEPRINT_LIGHT',
+    image: '/DroneWars/poi/drone_light.png',
+    color: '#4ade80',
+    flavourText: 'Automated scout drone assembly detected. Facility defenses active.',
+    coreOnly: true,    // Only spawns in core zone
+    weight: 0.1,       // Rare spawn (10% of normal)
+    baseDetectionIncrease: 10,  // +10% starting detection when this PoI is on map
+    requiresToken: true,  // Map entry requires security token
+  },
+
+  {
+    id: 'POI_DRONE_FIGHTER',
+    name: 'Drone Combat Bay',
+    description: 'Fighter drone manufacturing complex',
+    encounterChance: 100,
+    threatIncrease: 18,
+    rewardType: 'DRONE_BLUEPRINT_FIGHTER',
+    image: '/DroneWars/poi/drone_fighter.png',
+    color: '#f97316',
+    flavourText: 'Combat drone schematics stored in central database. Heavy resistance expected.',
+    coreOnly: true,
+    weight: 0.1,
+    baseDetectionIncrease: 12,  // +12% starting detection when this PoI is on map
+    requiresToken: true,  // Map entry requires security token
+  },
+
+  {
+    id: 'POI_DRONE_HEAVY',
+    name: 'Drone Weapons Foundry',
+    description: 'Heavy drone forge facility',
+    encounterChance: 100,
+    threatIncrease: 22,
+    rewardType: 'DRONE_BLUEPRINT_HEAVY',
+    image: '/DroneWars/poi/drone_heavy.png',
+    color: '#ef4444',
+    flavourText: 'Advanced weapons manufacturing. High-value blueprints. Maximum security protocols.',
+    coreOnly: true,
+    weight: 0.1,
+    baseDetectionIncrease: 15,  // +15% starting detection when this PoI is on map
+    requiresToken: true,  // Map entry requires security token
   }
 ];
 

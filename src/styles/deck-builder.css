@@ -1,0 +1,498 @@
+/* ========================================
+   DECK BUILDER STYLES
+   Extensions to modal-base.css for deck builder
+   ======================================== */
+
+/* ========================================
+   PANEL CONTAINERS
+   Main left/right panels with corner brackets
+   ======================================== */
+.dw-panel {
+  background: var(--modal-bg);
+  border: 1px solid var(--modal-action-border);
+  border-radius: 4px;
+  position: relative;
+  box-shadow:
+    0 0 20px var(--modal-action-glow),
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 var(--modal-action-glow);
+  padding: 16px;
+}
+
+/* Corner brackets */
+.dw-panel::before,
+.dw-panel::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.dw-panel::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--modal-action-light);
+  border-left: 2px solid var(--modal-action-light);
+}
+
+.dw-panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 2px solid var(--modal-action-light);
+  border-right: 2px solid var(--modal-action-light);
+}
+
+/* Panel header area */
+.dw-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--modal-action-border);
+}
+
+/* ========================================
+   FILTER CONTROLS
+   Enhanced select and dropdown styling
+   ======================================== */
+.dw-filter-select {
+  background: rgba(17, 24, 39, 0.8);
+  border: 1px solid var(--modal-action-border);
+  color: var(--modal-text-primary);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-family: 'Exo', sans-serif;
+  font-size: 13px;
+  width: 100%;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+
+.dw-filter-select:hover {
+  border-color: var(--modal-action-light);
+}
+
+.dw-filter-select:focus {
+  outline: none;
+  border-color: var(--modal-action);
+  box-shadow: 0 0 8px var(--modal-action-glow);
+}
+
+/* Filter dropdown menu */
+.dw-filter-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(17, 24, 39, 0.98);
+  border: 1px solid var(--modal-action-border);
+  border-radius: 4px;
+  margin-top: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 20;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.dw-filter-dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  font-size: 13px;
+  color: var(--modal-text-primary);
+}
+
+.dw-filter-dropdown-item:hover {
+  background: var(--modal-action-bg);
+}
+
+.dw-filter-dropdown-item input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: var(--modal-action);
+}
+
+/* Filter label */
+.dw-filter-label {
+  font-size: 12px;
+  color: var(--modal-text-secondary);
+  text-align: center;
+  margin-bottom: 4px;
+}
+
+/* Range slider container */
+.dw-filter-range {
+  display: flex;
+  gap: 8px;
+}
+
+.dw-filter-range input[type="range"] {
+  flex: 1;
+  accent-color: var(--modal-action);
+}
+
+/* Checkbox filter */
+.dw-filter-checkbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--modal-text-primary);
+}
+
+.dw-filter-checkbox input[type="checkbox"] {
+  accent-color: var(--modal-action);
+}
+
+/* ========================================
+   PROGRESS BARS
+   Card type limit indicators
+   ======================================== */
+.dw-progress-bar {
+  flex: 1;
+  background: rgba(51, 65, 81, 0.5);
+  border-radius: 4px;
+  height: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.dw-progress-bar-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+  border-radius: 4px;
+}
+
+.dw-progress-bar-fill--action {
+  background: linear-gradient(90deg, var(--modal-action) 0%, rgba(6, 182, 212, 0.7) 100%);
+}
+
+.dw-progress-bar-fill--danger {
+  background: linear-gradient(90deg, var(--modal-danger) 0%, rgba(239, 68, 68, 0.7) 100%);
+}
+
+.dw-progress-bar-fill--success {
+  background: linear-gradient(90deg, var(--modal-success) 0%, rgba(34, 197, 94, 0.7) 100%);
+}
+
+.dw-progress-bar-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* ========================================
+   QUANTITY CONTROLS
+   Grid view +/- controls
+   ======================================== */
+.dw-quantity-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(17, 24, 39, 0.7);
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--modal-border);
+}
+
+.dw-quantity-btn {
+  font-size: 18px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 4px;
+  color: var(--modal-action);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.dw-quantity-btn:hover:not(:disabled) {
+  background: var(--modal-action-bg);
+  color: var(--modal-action-light);
+}
+
+.dw-quantity-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: var(--modal-text-muted);
+}
+
+.dw-quantity-value {
+  font-weight: 700;
+  font-size: 14px;
+  min-width: 50px;
+  text-align: center;
+  color: var(--modal-text-primary);
+}
+
+/* ========================================
+   DECK INFO BOX
+   Ship limits and stats display
+   ======================================== */
+.dw-info-box {
+  background: rgba(17, 24, 39, 0.5);
+  border: 1px solid var(--modal-action-border);
+  border-radius: 4px;
+  padding: 12px 16px;
+}
+
+.dw-info-box-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--modal-action);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.dw-info-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  padding: 4px 0;
+}
+
+.dw-info-row-label {
+  color: var(--modal-text-secondary);
+}
+
+.dw-info-row-value {
+  font-weight: 700;
+  color: #fff;
+}
+
+/* Color variants for type labels */
+.dw-info-row-label--ordnance { color: #ef4444; }
+.dw-info-row-label--tactic { color: #06b6d4; }
+.dw-info-row-label--support { color: #10b981; }
+.dw-info-row-label--upgrade { color: #a855f7; }
+
+/* ========================================
+   CARD TYPE STATS BOX
+   Progress bar section
+   ======================================== */
+.dw-type-stats {
+  background: rgba(17, 24, 39, 0.5);
+  border: 1px solid var(--modal-border);
+  border-radius: 4px;
+  padding: 12px;
+  margin-top: 12px;
+}
+
+.dw-type-stats-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--modal-action);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.dw-type-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.dw-type-stats-row:last-child {
+  margin-bottom: 0;
+}
+
+.dw-type-stats-label {
+  width: 80px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.dw-type-stats-label--ordnance { color: #ef4444; }
+.dw-type-stats-label--tactic { color: #06b6d4; }
+.dw-type-stats-label--support { color: #10b981; }
+.dw-type-stats-label--upgrade { color: #a855f7; }
+.dw-type-stats-label--danger { color: #ef4444; }
+
+/* ========================================
+   STATISTICS SECTION
+   Collapsible charts area
+   ======================================== */
+.dw-stats-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 2px solid var(--modal-border);
+}
+
+.dw-stats-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: var(--modal-action);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px;
+  transition: color 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.dw-stats-toggle:hover {
+  color: var(--modal-action-light);
+}
+
+.dw-stats-toggle-icon {
+  transition: transform 0.3s ease;
+}
+
+.dw-stats-toggle-icon--collapsed {
+  transform: rotate(180deg);
+}
+
+.dw-stats-content {
+  overflow: hidden;
+  transition: max-height 0.5s ease, opacity 0.5s ease;
+}
+
+.dw-stats-content--visible {
+  max-height: 320px;
+  opacity: 1;
+}
+
+.dw-stats-content--hidden {
+  max-height: 0;
+  opacity: 0;
+}
+
+/* ========================================
+   SHIP COMPONENT SLOTS
+   Lane layout display
+   ======================================== */
+.dw-ship-slot {
+  padding: 16px;
+  border-radius: 4px;
+  border: 2px solid var(--modal-border);
+  background: rgba(17, 24, 39, 0.3);
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.dw-ship-slot--empty {
+  border-style: dashed;
+  border-color: rgba(75, 85, 99, 0.5);
+}
+
+.dw-ship-slot--filled {
+  border-color: var(--modal-action-border);
+  background: var(--modal-action-bg);
+}
+
+.dw-ship-slot--middle {
+  border-color: rgba(234, 179, 8, 0.4);
+  background: rgba(234, 179, 8, 0.05);
+}
+
+.dw-ship-slot-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.dw-ship-slot-label--middle {
+  color: #eab308;
+}
+
+.dw-ship-slot-label--side {
+  color: var(--modal-action);
+}
+
+/* ========================================
+   LANE BUTTONS
+   Component lane selection
+   ======================================== */
+.dw-lane-btn {
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid var(--modal-border);
+  background: rgba(55, 65, 81, 0.5);
+  color: var(--modal-text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+}
+
+.dw-lane-btn:hover:not(:disabled) {
+  background: var(--modal-action-bg);
+  border-color: var(--modal-action-border);
+  color: var(--modal-action);
+}
+
+.dw-lane-btn--selected {
+  background: var(--modal-action);
+  border-color: var(--modal-action);
+  color: #fff;
+}
+
+.dw-lane-btn--selected-cyan {
+  background: #0891b2;
+  border-color: var(--modal-action-light);
+  color: #fff;
+}
+
+.dw-lane-btn--selected-purple {
+  background: #7c3aed;
+  border-color: rgba(167, 139, 250, 0.7);
+  color: #fff;
+}
+
+.dw-lane-btn--selected-red {
+  background: #dc2626;
+  border-color: rgba(239, 68, 68, 0.7);
+  color: #fff;
+}
+
+.dw-lane-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ========================================
+   EMPTY STATES
+   Placeholder text styling
+   ======================================== */
+.dw-empty-state {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--modal-text-muted);
+  font-style: italic;
+  font-size: 13px;
+}
+
+/* ========================================
+   SCROLLBAR OVERRIDE FOR DECK BUILDER
+   Ensure consistent scrollbar styling
+   ======================================== */
+.dw-panel .dw-modal-scroll {
+  padding-right: 8px;
+}

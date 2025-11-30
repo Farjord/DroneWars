@@ -43,19 +43,23 @@ class ModifyDroneBaseEffectProcessor extends BaseEffectProcessor {
   process(effect, context) {
     this.logProcessStart(effect, context);
 
-    const { actingPlayerId, playerStates, target } = context;
+    const { actingPlayerId, playerStates, target, card } = context;
     const newPlayerStates = this.clonePlayerStates(playerStates);
     const actingPlayerState = newPlayerStates[actingPlayerId];
     const droneName = target.name;
 
     debugLog('EFFECT_PROCESSING', `[MODIFY_DRONE_BASE] ${actingPlayerId} applying upgrade to ${droneName}`, {
       mod: effect.mod,
+      cardSlots: card?.slots,
       existingUpgrades: actingPlayerState.appliedUpgrades[droneName]?.length || 0
     });
 
     // Generate unique instance ID for this upgrade (needed for DESTROY_UPGRADE targeting)
+    // Store card ID and slots for tracking and validation
     const newUpgrade = {
       instanceId: `upgrade-${Date.now()}-${Math.random()}`,
+      cardId: card?.id,
+      slots: card?.slots || 1,
       mod: effect.mod
     };
 

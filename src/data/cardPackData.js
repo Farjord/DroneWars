@@ -94,10 +94,10 @@ export const packTypes = {
     description: 'Permanent system enhancements',
     guaranteedTypes: ['Upgrade'],
     additionalCardWeights: {
-      Upgrade: 70,
-      Ordnance: 10,
-      Support: 10,
-      Tactic: 10
+      Upgrade: 100,
+      Ordnance: 0,
+      Support: 0,
+      Tactic: 0
     },
     rarityWeights: {
       tier1: { Common: 90, Uncommon: 10 },
@@ -107,6 +107,21 @@ export const packTypes = {
     cardCount: { min: 1, max: 1 },
     creditsRange: { min: 10, max: 100 },
     color: '#aa44ff',
+  },
+
+  CREDITS_PACK: {
+    name: 'Credit Cache',
+    description: 'Financial data extraction',
+    guaranteedTypes: [],
+    additionalCardWeights: {},
+    rarityWeights: {
+      tier1: {},
+      tier2: {},
+      tier3: {}
+    },
+    cardCount: { min: 0, max: 0 },
+    creditsRange: { min: 300, max: 600 },
+    color: '#44ff88',
   },
 };
 
