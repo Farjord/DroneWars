@@ -100,6 +100,12 @@ export const mapTiers = [
     backgroundColor: '#1a1a2e',
     gridColor: '#16213e',
     dangerZoneColor: '#ff4444',
+
+    // Hangar grid placement zone (normalized distance from center, 0-1)
+    gridZone: {
+      minDistance: 0.5,  // Outer ring with margin at edges
+      maxDistance: 0.85
+    },
   }
 ];
 
@@ -127,6 +133,7 @@ export const mapTiers = [
   backgroundColor: '#0f0f1e',
   gridColor: '#0a0a1e',
   dangerZoneColor: '#ff2222',
+  gridZone: { minDistance: 0.4, maxDistance: 0.7 },  // Middle ring
 },
 {
   tier: 3,
@@ -150,6 +157,7 @@ export const mapTiers = [
   backgroundColor: '#050510',
   gridColor: '#020208',
   dangerZoneColor: '#ff0000',
+  gridZone: { minDistance: 0.0, maxDistance: 0.4 },  // Center
 }
 */
 

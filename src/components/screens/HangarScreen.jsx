@@ -14,7 +14,9 @@ import ReputationTrack from '../ui/ReputationTrack';
 import ReputationProgressModal from '../modals/ReputationProgressModal';
 import ReputationRewardModal from '../modals/ReputationRewardModal';
 import ReputationService from '../../logic/reputation/ReputationService';
+import NewsTicker from '../ui/NewsTicker';
 import { generateMapData } from '../../utils/mapGenerator';
+import { mapTiers } from '../../data/mapData';
 import { RARITY_COLORS } from '../../data/cardData';
 import { getMapType, getMapBackground } from '../../logic/extraction/mapExtraction';
 import { debugLog } from '../../utils/debugLogger.js';
@@ -59,6 +61,19 @@ const HangarScreen = () => {
   const [hoveredButton, setHoveredButton] = useState(null); // Track hovered image button
   const [showReputationProgress, setShowReputationProgress] = useState(false); // Show reputation progress modal
   const [showReputationRewards, setShowReputationRewards] = useState(false); // Show reputation reward modal
+
+  // Compute maps with correct grid coordinates for the news ticker
+  const mapsWithCoordinates = useMemo(() => {
+    if (!hexGridData || generatedMaps.length === 0) return generatedMaps;
+
+    return generatedMaps.map((map, index) => {
+      const cell = hexGridData.allCells.find(c => c.mapIndex === index);
+      if (cell) {
+        return { ...map, name: `Sector ${cell.coordinate}` };
+      }
+      return map;
+    });
+  }, [hexGridData, generatedMaps]);
 
   // Pan/Zoom state for map area
   const [zoom, setZoom] = useState(1.5);
@@ -114,6 +129,10 @@ const HangarScreen = () => {
     const offsetX = (containerWidth - gridWidth) / 2;
     const offsetY = (containerHeight - gridHeight) / 2;
 
+    // Calculate grid center for distance calculations
+    const centerCol = GRID_COLS / 2;
+    const centerRow = GRID_ROWS / 2;
+
     const allCells = [];
 
     for (let row = 0; row < GRID_ROWS; row++) {
@@ -121,6 +140,12 @@ const HangarScreen = () => {
       const xOffset = isOddRow ? hexWidth / 2 : 0;
 
       for (let col = 0; col < GRID_COLS; col++) {
+        // Calculate normalized distance from center (0 = center, 1 = edge)
+        const distanceFromCenter = Math.sqrt(
+          Math.pow((col - centerCol) / (GRID_COLS / 2), 2) +
+          Math.pow((row - centerRow) / (GRID_ROWS / 2), 2)
+        );
+
         allCells.push({
           col,
           row,
@@ -128,7 +153,8 @@ const HangarScreen = () => {
           x: offsetX + col * hexWidth + xOffset,
           y: offsetY + row * verticalSpacing,
           isActive: false,
-          mapIndex: null
+          mapIndex: null,
+          distanceFromCenter
         });
       }
     }
@@ -140,9 +166,20 @@ const HangarScreen = () => {
       cell.row >= 1 && cell.row < GRID_ROWS - 1
     );
 
+    // Get tier zone config (currently tier 1)
+    const tier = 1;
+    const tierConfig = mapTiers.find(t => t.tier === tier);
+    const gridZone = tierConfig?.gridZone || { minDistance: 0, maxDistance: 1 };
+
+    // Filter to cells within the tier's grid zone
+    const zoneCells = validCells.filter(cell =>
+      cell.distanceFromCenter >= gridZone.minDistance &&
+      cell.distanceFromCenter <= gridZone.maxDistance
+    );
+
     // Use seeded random for deterministic placement
     const rng = new SeededRandom(gameSeed || 12345);
-    const shuffled = rng.shuffle(validCells);
+    const shuffled = rng.shuffle(zoneCells.length > 0 ? zoneCells : validCells);
     const selected = [];
 
     for (const cell of shuffled) {
@@ -826,6 +863,9 @@ const HangarScreen = () => {
           onMouseUp={handleMapMouseUp}
           onMouseLeave={handleMapMouseUp}
         >
+          {/* News Ticker - sector intel feed (only render when hexGridData is ready for stable data) */}
+          {hexGridData && <NewsTicker maps={mapsWithCoordinates} />}
+
           {/* Transformable container for pan/zoom */}
           <div
             ref={transformRef}
@@ -839,7 +879,7 @@ const HangarScreen = () => {
             transition: isDragging ? 'none' : 'transform 0.1s ease-out'
           }}>
           {/* Background image element - uses img for better quality scaling */}
-          <img
+           <img
             src={eremosBackground}
             alt=""
             style={{
@@ -950,12 +990,15 @@ const HangarScreen = () => {
                         y={centerY}
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        fill={sectorColor}
+                        fill="#ffffff"
                         fontSize={Math.max(10, hexWidth * 0.16)}
                         fontWeight="bold"
-                        style={{ pointerEvents: 'none' }}
+                        style={{
+                          pointerEvents: 'none',
+                          textShadow: '0 0 4px rgba(0,0,0,0.8), 0 1px 2px rgba(0,0,0,0.9)'
+                        }}
                       >
-                        Sector {cell.coordinate}
+                        SECTOR {cell.coordinate}
                       </text>
                     </g>
                   );

@@ -1,0 +1,177 @@
+/**
+ * News Ticker Styles
+ * Scrolling ticker component for the Hangar screen
+ */
+
+.news-ticker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 32px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.85) 100%);
+  border-bottom: 1px solid #06b6d4;
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.3), inset 0 -1px 0 rgba(6, 182, 212, 0.2);
+  overflow: hidden;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+}
+
+/* Left label */
+.news-ticker__label {
+  flex-shrink: 0;
+  padding: 0 12px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  background: linear-gradient(90deg, rgba(6, 182, 212, 0.3) 0%, rgba(6, 182, 212, 0.1) 100%);
+  border-right: 1px solid rgba(6, 182, 212, 0.5);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #06b6d4;
+  text-shadow: 0 0 8px rgba(6, 182, 212, 0.8);
+}
+
+/* Scrolling container */
+.news-ticker__scroll-container {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    black 5%,
+    black 95%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    black 5%,
+    black 95%,
+    transparent 100%
+  );
+}
+
+/* Scrolling content wrapper */
+.news-ticker__content {
+  display: flex;
+  gap: 3rem;
+  white-space: nowrap;
+  animation: ticker-scroll var(--ticker-duration, 30s) linear infinite;
+}
+
+/* Pause on hover */
+.news-ticker:hover .news-ticker__content {
+  animation-play-state: paused;
+}
+
+/* Individual message */
+.news-ticker__message {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 12px;
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 0.5px;
+}
+
+/* Message prefix (for alerts, priority) */
+.news-ticker__message-prefix {
+  font-weight: 700;
+}
+
+/* Message text colors by type */
+.news-ticker__message--info {
+  color: #06b6d4;
+}
+
+.news-ticker__message--warning {
+  color: #eab308;
+  text-shadow: 0 0 6px rgba(234, 179, 8, 0.5);
+}
+
+.news-ticker__message--danger {
+  color: #ef4444;
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+  animation: danger-pulse 1.5s ease-in-out infinite;
+}
+
+.news-ticker__message--priority {
+  color: #f97316;
+  text-shadow: 0 0 8px rgba(249, 115, 22, 0.6);
+  font-weight: 600;
+}
+
+.news-ticker__message--rumor {
+  color: #a855f7;
+  font-style: italic;
+  text-shadow: 0 0 6px rgba(168, 85, 247, 0.5);
+}
+
+/* Divider between messages */
+.news-ticker__divider {
+  color: rgba(6, 182, 212, 0.4);
+  font-size: 10px;
+  padding: 0 1rem;
+  user-select: none;
+}
+
+/* Scrolling animation - uses CSS variable for pixel-based scroll distance */
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(var(--scroll-distance, -50%));
+  }
+}
+
+/* Danger pulse animation */
+@keyframes danger-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Scanline effect overlay */
+.news-ticker::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 4px
+  );
+  pointer-events: none;
+}
+
+/* Glowing top edge */
+.news-ticker::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(6, 182, 212, 0.5) 20%,
+    rgba(6, 182, 212, 0.8) 50%,
+    rgba(6, 182, 212, 0.5) 80%,
+    transparent 100%
+  );
+}

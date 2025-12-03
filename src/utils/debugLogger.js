@@ -56,6 +56,7 @@ const DEBUG_CONFIG = {
     ENCOUNTER: false,           // Random encounter rolls and combat triggers
     QUICK_DEPLOY: true,         // Quick deployment validation and selection (ENABLED for phase chaos investigation)
     PHASE_FLOW: true,           // Phase transitions and announcements (ENABLED for phase chaos investigation)
+    TICKER: true,              // News ticker message generation and data flow
 
     // Effect System Refactoring - Modular Processor Logging
     EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)

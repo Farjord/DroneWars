@@ -113,6 +113,11 @@ const currentLaneScores = {
       for (const laneId of lanes) {
         const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
 
+        // Log if drone not found - crash is intentional to catch data issues
+        if (!baseDrone) {
+          console.error(`[AI] FATAL: Drone "${drone.name}" not found in fullDroneCollection. Check aiData.js for typos.`);
+        }
+
         // Check maxPerLane restriction
         if (baseDrone.maxPerLane) {
           const currentCount = countDroneTypeInLane(player2, drone.name, laneId);

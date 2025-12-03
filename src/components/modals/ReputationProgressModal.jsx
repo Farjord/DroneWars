@@ -22,17 +22,6 @@ function ReputationProgressModal({ onClose, onClaimRewards }) {
     return num.toLocaleString();
   };
 
-  // Get pack display info
-  const getPackInfo = (reward) => {
-    if (!reward || reward.type !== 'pack') return null;
-    const pack = packTypes[reward.packType];
-    return pack ? {
-      name: pack.name,
-      color: pack.color,
-      tier: reward.tier
-    } : null;
-  };
-
   // Determine level state
   const getLevelState = (level) => {
     if (unclaimedLevels.has(level.level)) {
@@ -119,7 +108,6 @@ function ReputationProgressModal({ onClose, onClaimRewards }) {
               return state !== 'completed' && state !== 'current';
             }).map((level, index) => {
               const state = getLevelState(level);
-              const packInfo = getPackInfo(level.reward);
               const isUnclaimed = state === 'unclaimed';
               const isUpcoming = state === 'upcoming';
               // First non-unclaimed level is the target (what player is working towards)
@@ -219,37 +207,16 @@ function ReputationProgressModal({ onClose, onClaimRewards }) {
 
                   {/* Reward */}
                   <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    fontSize: '12px',
-                    color: (isUpcoming && !isTarget) ? '#555' : 'var(--modal-text-secondary)',
+                    opacity: (isUpcoming && !isTarget) ? 0.5 : 1,
                   }}>
-                    {level.reward === null ? (
-                      <span style={{ fontStyle: 'italic', opacity: 0.7 }}>—</span>
-                    ) : packInfo ? (
-                      <>
-                        <Gift size={14} style={{ color: (isUpcoming && !isTarget) ? '#555' : packInfo.color }} />
-                        <span style={{
-                          maxWidth: '100px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}>
-                          {packInfo.name}
-                        </span>
-                        <span style={{
-                          fontSize: '10px',
-                          padding: '1px 4px',
-                          borderRadius: '3px',
-                          background: (isUpcoming && !isTarget) ? 'rgba(128,128,128,0.2)' : 'rgba(168, 85, 247, 0.2)',
-                          color: (isUpcoming && !isTarget) ? '#555' : '#a855f7',
-                        }}>
-                          T{packInfo.tier}
-                        </span>
-                      </>
+                    {level.reward && level.reward.type === 'pack' ? (
+                      <CardPackBadge
+                        packType={level.reward.packType}
+                        tier={level.reward.tier}
+                        compact={true}
+                      />
                     ) : (
-                      <span>Unknown Reward</span>
+                      <span style={{ fontStyle: 'italic', opacity: 0.7, fontSize: '12px', color: 'var(--modal-text-secondary)' }}>—</span>
                     )}
                   </div>
                 </div>
