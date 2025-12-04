@@ -59,6 +59,7 @@ const DEBUG_CONFIG = {
     PHASE_FLOW: false,           // Phase transitions and announcements (ENABLED for phase chaos investigation)
     TICKER: false,              // News ticker message generation and data flow
     AI_DEPLOYMENT: true,        // AI deployment decisions, validation, and execution loop tracing
+    CARD_SIZING: true,           // Card wrapper and sizing debugging
 
     // Effect System Refactoring - Modular Processor Logging
     EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)

@@ -90,7 +90,7 @@
 }
 
 .cardPile {
-  @apply flex flex-col items-center justify-start w-36 min-w-36 self-start pt-4;
+  @apply flex flex-col items-center justify-start w-36 min-w-36;
 }
 
 .deckCard {
@@ -120,8 +120,8 @@
 }
 
 .discardPileContainer {
-  width: clamp(125px, 6.4cqw, 155px);
-  height: clamp(165px, 8.4cqw, 200px);
+  width: clamp(115px, 5.8cqw, 140px);
+  height: clamp(155px, 7.9cqw, 190px);
   @apply relative flex items-center justify-center;
 }
 
@@ -129,6 +129,7 @@
   @apply relative;
   width: clamp(115px, 5.8cqw, 140px);
   height: clamp(155px, 7.9cqw, 190px);
+  overflow: hidden;
 }
 
 .discardCountBadge {

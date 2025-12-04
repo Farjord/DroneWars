@@ -9,8 +9,8 @@ const fullDroneCollection = [
     limit: 2,
     rarity: 'Common', 
     attack: 1, 
-    hull: 5, 
-    shields: 1, 
+    hull: 3, 
+    shields: 0, 
     speed: 1, 
     image: '/DroneWars/img/Guardian.png', 
     abilities: [{
@@ -60,7 +60,7 @@ const fullDroneCollection = [
   },
 {
     name: 'Interceptor',
-    class: 3, limit: 3, rarity: 'Uncommon', attack: 1, hull: 3, shields: 2, speed: 5, 
+    class: 3, limit: 3, rarity: 'Uncommon', attack: 1, hull: 1, shields: 3, speed: 5, 
     image: '/DroneWars/img/Interceptor.png',
     abilities: [{
         name: 'Defender',

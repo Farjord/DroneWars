@@ -6,6 +6,7 @@
 
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import ActionCard from '../ActionCard.jsx';
+import CardBackPlaceholder from '../CardBackPlaceholder.jsx';
 import styles from '../GameFooter.module.css';
 import { debugLog } from '../../../utils/debugLogger.js';
 import { calculateCardFanRotation, getHoverTransform, getCardTransition, calculateCardArcOffset, CARD_FAN_CONFIG } from '../../../utils/cardAnimationUtils.js';
@@ -48,6 +49,34 @@ function HandView({
   // Dynamic overlap calculation
   const handSectionRef = useRef(null);
   const [dynamicOverlap, setDynamicOverlap] = useState(CARD_FAN_CONFIG.cardOverlapPx);
+
+  // Refs for card sizing debugging
+  const discardWrapperRef = useRef(null);
+  const deckWrapperRef = useRef(null);
+
+  // Log actual DOM dimensions for debugging
+  useEffect(() => {
+    if (discardWrapperRef.current) {
+      const rect = discardWrapperRef.current.getBoundingClientRect();
+      const child = discardWrapperRef.current.firstChild;
+      const childRect = child?.getBoundingClientRect();
+
+      debugLog('CARD_SIZING', '📐 Discard wrapper dimensions:', {
+        wrapper: { width: rect.width, height: rect.height, top: rect.top, bottom: rect.bottom },
+        card: childRect ? { width: childRect.width, height: childRect.height } : 'no child'
+      });
+    }
+    if (deckWrapperRef.current) {
+      const rect = deckWrapperRef.current.getBoundingClientRect();
+      const child = deckWrapperRef.current.firstChild;
+      const childRect = child?.getBoundingClientRect();
+
+      debugLog('CARD_SIZING', '📐 Deck wrapper dimensions:', {
+        wrapper: { width: rect.width, height: rect.height, top: rect.top, bottom: rect.bottom },
+        card: childRect ? { width: childRect.width, height: childRect.height } : 'no child'
+      });
+    }
+  }, []);
 
   useEffect(() => {
     const calculateOverlap = () => {
@@ -116,50 +145,19 @@ function HandView({
   ]);
 
   return (
-    <div className={styles.handContainer}>
-      {/* Discard Pile - Stacked Cards */}
+    <div className={styles.handContainer} style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+      {/* Discard Pile */}
       <div className={styles.cardPile}>
-        <div
-          onClick={() => setIsViewDiscardModalOpen(true)}
-          className={styles.discardPileContainer}
-          style={{ cursor: 'pointer' }}
-        >
-          {localPlayerState.discardPile.length === 0 ? (
-            <div className={styles.discardCard}>
-              <p className={styles.discardCardText}>0</p>
-            </div>
-          ) : (
-            <div className={styles.discardStackWrapper}>
-              {/* Show last 3 cards, oldest first (bottom), newest last (top) */}
-              {localPlayerState.discardPile.slice(-3).map((card, index, arr) => {
-                const offset = (arr.length - 1 - index) * 6; // Older cards offset more
-                const rotation = (index - 1) * 2; // Slight rotation variance
-                return (
-                  <div
-                    key={card.instanceId || `discard-${index}`}
-                    style={{
-                      position: 'absolute',
-                      top: offset,
-                      left: offset,
-                      zIndex: index + 1, // Newer cards on top
-                      transform: `rotate(${rotation}deg)`,
-                      pointerEvents: 'none'
-                    }}
-                  >
-                    <ActionCard card={card} scale={0.5} isPlayable={false} onClick={() => {}} />
-                  </div>
-                );
-              })}
-              {/* Count badge if more than 3 cards */}
-              {localPlayerState.discardPile.length > 3 && (
-                <div className={styles.discardCountBadge}>
-                  {localPlayerState.discardPile.length}
-                </div>
-              )}
-            </div>
-          )}
+        <div ref={discardWrapperRef} style={{ width: '150px', height: '183.5px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
+          <CardBackPlaceholder
+            scale={0.667}
+            variant="discard"
+            onClick={() => setIsViewDiscardModalOpen(true)}
+          />
         </div>
-        <p className={styles.pileLabel}>Discard Pile</p>
+        <p className={styles.pileLabel}>
+          Discard <span style={{ color: '#9ca3af', fontWeight: 'bold' }}>({localPlayerState.discardPile.length})</span>
+        </p>
       </div>
 
       {/* Hand Section */}
@@ -258,134 +256,15 @@ function HandView({
         </div>
       </div>
 
-      {/* Deck Pile - Card Back Design */}
+      {/* Deck Pile */}
       <div className={styles.cardPile}>
-        <div
-          onClick={() => setIsViewDeckModalOpen(true)}
-          className={styles.deckCardBack}
-          style={{
-            width: 'clamp(115px, 5.8cqw, 140px)',
-            height: 'clamp(155px, 7.9cqw, 190px)',
-            clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%)',
-            background: 'linear-gradient(135deg, #0a1628 0%, #0e2a4a 25%, #0c1929 50%, #0a2540 75%, #061018 100%)',
-            border: '2px solid rgba(6, 182, 212, 0.6)',
-            boxShadow: '0 0 20px rgba(6, 182, 212, 0.4), inset 0 0 40px rgba(6, 182, 212, 0.15)',
-            cursor: 'pointer',
-            position: 'relative',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            overflow: 'hidden'
-          }}
-        >
-          {/* Background circuit pattern */}
-          <svg
-            width="100%"
-            height="100%"
-            viewBox="0 0 100 130"
-            preserveAspectRatio="xMidYMid slice"
-            style={{ position: 'absolute', top: 0, left: 0, opacity: 0.12 }}
-          >
-            {/* Horizontal circuit lines */}
-            <line x1="0" y1="25" x2="100" y2="25" stroke="#22d3ee" strokeWidth="0.5" />
-            <line x1="0" y1="65" x2="100" y2="65" stroke="#22d3ee" strokeWidth="0.5" />
-            <line x1="0" y1="105" x2="100" y2="105" stroke="#22d3ee" strokeWidth="0.5" />
-            {/* Vertical circuit lines */}
-            <line x1="20" y1="0" x2="20" y2="130" stroke="#22d3ee" strokeWidth="0.5" />
-            <line x1="50" y1="0" x2="50" y2="130" stroke="#22d3ee" strokeWidth="0.5" />
-            <line x1="80" y1="0" x2="80" y2="130" stroke="#22d3ee" strokeWidth="0.5" />
-            {/* Circuit nodes */}
-            <circle cx="20" cy="25" r="2" fill="#06b6d4" opacity="0.6" />
-            <circle cx="80" cy="25" r="2" fill="#06b6d4" opacity="0.6" />
-            <circle cx="50" cy="65" r="3" fill="#22d3ee" opacity="0.8" />
-            <circle cx="20" cy="105" r="2" fill="#06b6d4" opacity="0.6" />
-            <circle cx="80" cy="105" r="2" fill="#06b6d4" opacity="0.6" />
-          </svg>
-
-          {/* Corner accents - top left */}
-          <div style={{
-            position: 'absolute', top: '4px', left: '4px',
-            width: '16px', height: '16px',
-            borderTop: '2px solid rgba(34, 211, 238, 0.7)',
-            borderLeft: '2px solid rgba(34, 211, 238, 0.7)'
-          }} />
-          {/* Corner accents - top right */}
-          <div style={{
-            position: 'absolute', top: '4px', right: '4px',
-            width: '16px', height: '16px',
-            borderTop: '2px solid rgba(34, 211, 238, 0.7)',
-            borderRight: '2px solid rgba(34, 211, 238, 0.7)'
-          }} />
-          {/* Corner accents - bottom left */}
-          <div style={{
-            position: 'absolute', bottom: '4px', left: '4px',
-            width: '16px', height: '16px',
-            borderBottom: '2px solid rgba(34, 211, 238, 0.7)',
-            borderLeft: '2px solid rgba(34, 211, 238, 0.7)'
-          }} />
-
-          {/* Layered hexagon pattern - outer */}
-          <svg
-            width="70"
-            height="80"
-            viewBox="0 0 100 115"
-            style={{ position: 'relative', zIndex: 1 }}
-          >
-            {/* Outermost hexagon - faint */}
-            <polygon
-              points="50,2 95,27 95,88 50,113 5,88 5,27"
-              fill="none"
-              stroke="rgba(34, 211, 238, 0.2)"
-              strokeWidth="1"
-            />
-            {/* Middle hexagon */}
-            <polygon
-              points="50,12 85,32 85,83 50,103 15,83 15,32"
-              fill="none"
-              stroke="rgba(6, 182, 212, 0.35)"
-              strokeWidth="1.5"
-            />
-            {/* Inner hexagon - brighter */}
-            <polygon
-              points="50,22 75,37 75,78 50,93 25,78 25,37"
-              fill="none"
-              stroke="rgba(34, 211, 238, 0.5)"
-              strokeWidth="2"
-            />
-            {/* Center hexagon - brightest */}
-            <polygon
-              points="50,35 62,43 62,72 50,80 38,72 38,43"
-              fill="rgba(6, 182, 212, 0.15)"
-              stroke="rgba(34, 211, 238, 0.7)"
-              strokeWidth="1.5"
-            />
-            {/* Central dot */}
-            <circle cx="50" cy="57.5" r="4" fill="rgba(34, 211, 238, 0.6)" />
-            <circle cx="50" cy="57.5" r="2" fill="rgba(255, 255, 255, 0.8)" />
-
-            {/* Decorative lines radiating from center */}
-            <line x1="50" y1="35" x2="50" y2="22" stroke="rgba(34, 211, 238, 0.4)" strokeWidth="1" />
-            <line x1="62" y1="43" x2="75" y2="37" stroke="rgba(34, 211, 238, 0.4)" strokeWidth="1" />
-            <line x1="62" y1="72" x2="75" y2="78" stroke="rgba(34, 211, 238, 0.4)" strokeWidth="1" />
-            <line x1="50" y1="80" x2="50" y2="93" stroke="rgba(34, 211, 238, 0.4)" strokeWidth="1" />
-            <line x1="38" y1="72" x2="25" y2="78" stroke="rgba(34, 211, 238, 0.4)" strokeWidth="1" />
-            <line x1="38" y1="43" x2="25" y2="37" stroke="rgba(34, 211, 238, 0.4)" strokeWidth="1" />
-          </svg>
-
-          {/* Glow effect overlay */}
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '60px',
-            height: '60px',
-            borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(34, 211, 238, 0.15) 0%, transparent 70%)',
-            pointerEvents: 'none'
-          }} />
+        <div ref={deckWrapperRef} style={{ width: '150px', height: '183.5px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
+          <CardBackPlaceholder
+            scale={0.667}
+            variant="deck"
+            onClick={() => setIsViewDeckModalOpen(true)}
+          />
         </div>
-        {/* Deck count - below the card */}
         <p className={styles.pileLabel}>
           Deck <span style={{ color: '#22d3ee', fontWeight: 'bold' }}>({localPlayerState.deck.length})</span>
         </p>
