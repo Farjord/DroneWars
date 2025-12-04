@@ -14,6 +14,7 @@ import DeckBuilder from './DeckBuilder.jsx';
 import fullCardCollection from '../../data/cardData.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
+import ConfirmationModal from '../modals/ConfirmationModal.jsx';
 
 /**
  * DECK SELECTION SCREEN COMPONENT
@@ -43,6 +44,9 @@ function DeckSelectionScreen() {
 
   // UI state for guest submission feedback
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Exit confirmation state
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   /**
    * HANDLE DECK CHOICE
@@ -425,34 +429,138 @@ function DeckSelectionScreen() {
           .font-exo { font-family: 'Exo', sans-serif; }
         `}
       </style>
-      
+
+      {/* Exit Button - Top Left */}
+      <button
+        onClick={() => setShowExitConfirm(true)}
+        className="absolute top-4 left-4 z-20 btn-cancel px-4 py-2"
+      >
+        ✕ Exit
+      </button>
+
       {/* Content Wrapper */}
-      <div className="flex flex-col items-center justify-center h-full relative z-10">
-        <h1 className="text-3xl font-orbitron font-bold text-white mb-2">Select Your Deck</h1>
+      <div className="flex flex-col items-center w-full pt-8 px-4 relative z-10">
+        {/* Header with hex decorations */}
+        <div className="relative mb-2">
+          {/* Background hex decorations - positioned behind text */}
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+            {/* Upper-left hex */}
+            <svg
+              className="absolute opacity-15"
+              style={{ transform: 'translate(-100px, -15px)' }}
+              width="60" height="69" viewBox="0 0 80 92"
+            >
+              <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="rgba(6, 182, 212, 0.08)" stroke="#06b6d4" strokeWidth="1" />
+            </svg>
+            {/* Lower-right hex */}
+            <svg
+              className="absolute opacity-12"
+              style={{ transform: 'translate(90px, 10px)' }}
+              width="50" height="58" viewBox="0 0 80 92"
+            >
+              <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="rgba(6, 182, 212, 0.06)" stroke="#22d3ee" strokeWidth="0.8" />
+            </svg>
+            {/* Small right hex */}
+            <svg
+              className="absolute opacity-10"
+              style={{ transform: 'translate(140px, -8px)' }}
+              width="35" height="40" viewBox="0 0 80 92"
+            >
+              <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="none" stroke="#67e8f9" strokeWidth="0.5" />
+            </svg>
+          </div>
+          <h1
+            className="text-3xl font-orbitron font-bold text-center phase-announcement-shine relative z-10"
+            style={{
+              background: 'linear-gradient(90deg, #06b6d4, #22d3ee, #ffffff, #22d3ee, #06b6d4)',
+              backgroundSize: '300% auto',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              filter: 'drop-shadow(0 0 10px rgba(6, 182, 212, 0.4))'
+            }}
+          >
+            Select Your Deck
+          </h1>
+        </div>
         <p className="text-gray-400 mb-8">Choose a pre-defined deck or build your own.</p>
         <div className="flex flex-wrap justify-center gap-8">
+          {/* Standard Deck Option */}
           <div
             onClick={() => handleDeckChoice('standard')}
-            className="w-72 bg-gray-900 border-2 border-cyan-500/50 rounded-lg p-6 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:border-cyan-500 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20"
+            className="relative w-80 cursor-pointer transition-all duration-300 hover:scale-105"
+            style={{
+              background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 28, 0.95) 100%)',
+              border: '1px solid rgba(6, 182, 212, 0.4)',
+              clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(6, 182, 212, 0.1)'
+            }}
           >
-            <h2 className="text-2xl font-orbitron font-bold text-cyan-400 mb-3">Use Standard Deck</h2>
-            <p className="font-exo text-gray-300 flex-grow">Play with the balanced, pre-built starter deck.</p>
-            <button className="btn-confirm mt-6">
-              Select
-            </button>
+            {/* Angular corner accent */}
+            <div
+              className="absolute top-0 left-0 w-3 h-3 z-10 pointer-events-none"
+              style={{
+                borderTop: '2px solid rgba(6, 182, 212, 0.6)',
+                borderLeft: '2px solid rgba(6, 182, 212, 0.6)'
+              }}
+            />
+            <div className="p-6 flex flex-col items-center text-center">
+              <h2 className="text-2xl font-orbitron font-bold text-cyan-400 mb-3">Use Standard Deck</h2>
+              <p className="font-exo text-gray-300 flex-grow mb-6">Play with the balanced, pre-built starter deck.</p>
+              <button className="btn-confirm">
+                Select
+              </button>
+            </div>
           </div>
+
+          {/* Custom Deck Option */}
           <div
             onClick={() => handleDeckChoice('custom')}
-            className="w-72 bg-gray-900 border-2 border-purple-500/50 rounded-lg p-6 flex flex-col items-center text-center cursor-pointer transition-all duration-300 hover:border-purple-500 hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/20"
+            className="relative w-80 cursor-pointer transition-all duration-300 hover:scale-105"
+            style={{
+              background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 28, 0.95) 100%)',
+              border: '1px solid rgba(147, 51, 234, 0.4)',
+              clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%)',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(147, 51, 234, 0.1)'
+            }}
           >
-            <h2 className="text-2xl font-orbitron font-bold text-purple-400 mb-3">Build Custom Deck</h2>
-            <p className="font-exo text-gray-300 flex-grow">Create your own deck from your card collection.</p>
-            <button className="mt-6 btn-continue">
-              Select
-            </button>
+            {/* Angular corner accent */}
+            <div
+              className="absolute top-0 left-0 w-3 h-3 z-10 pointer-events-none"
+              style={{
+                borderTop: '2px solid rgba(147, 51, 234, 0.6)',
+                borderLeft: '2px solid rgba(147, 51, 234, 0.6)'
+              }}
+            />
+            <div className="p-6 flex flex-col items-center text-center">
+              <h2 className="text-2xl font-orbitron font-bold text-purple-400 mb-3">Build Custom Deck</h2>
+              <p className="font-exo text-gray-300 flex-grow mb-6">Create your own deck from your card collection.</p>
+              <button className="btn-continue">
+                Select
+              </button>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Exit Confirmation Modal */}
+      {showExitConfirm && (
+        <ConfirmationModal
+          show={true}
+          confirmationModal={{
+            type: 'danger',
+            text: 'Are you sure you want to exit? Your progress will be lost.',
+            onConfirm: () => {
+              // Disconnect from multiplayer if applicable
+              if (isMultiplayer()) {
+                p2pManager.disconnect();
+              }
+              gameStateManager.setState({ appState: 'menu' });
+            },
+            onCancel: () => setShowExitConfirm(false)
+          }}
+        />
+      )}
     </div>
   );
 }

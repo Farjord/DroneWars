@@ -5,7 +5,7 @@
 // Accepts optional scale prop for enlargement in modals
 
 import React, { useMemo } from 'react';
-import { Sword, Rocket, Bolt } from 'lucide-react';
+import { Crosshair, Gauge, Power } from 'lucide-react';
 import CardStatHexagon from './CardStatHexagon.jsx';
 import ScalingText from './ScalingText.jsx';
 
@@ -122,7 +122,7 @@ const DroneCard = ({
               <CardStatHexagon
                 value={effectiveCardStats.attack}
                 isFlat={false}
-                icon={Sword}
+                icon={Crosshair}
                 iconColor="text-red-400"
                 textColor={attackTextColor}
               />
@@ -138,15 +138,16 @@ const DroneCard = ({
                     height="16"
                     viewBox="0 0 24 24"
                     fill="currentColor"
+                    fillOpacity="0.6"
                     className="text-cyan-300"
                   >
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="black" strokeWidth="1.5"></path>
+                    <path d="M12,0 L24,6 L24,18 L12,24 L0,18 L0,6 Z" stroke="currentColor" strokeWidth="1.5"></path>
                   </svg>
                 ))}
               </div>
               <div className="flex w-full justify-center gap-1">
                 {Array.from({ length: hull }).map((_, i) => (
-                  <div key={`hull-${i}`} className="h-3 w-3 rounded-sm bg-green-500 border border-black/50"></div>
+                  <div key={`hull-${i}`} className="h-3 w-3 rounded-sm bg-cyan-400 border border-black/50"></div>
                 ))}
               </div>
             </div>
@@ -155,7 +156,7 @@ const DroneCard = ({
               <CardStatHexagon
                 value={effectiveCardStats.speed}
                 isFlat={true}
-                icon={Rocket}
+                icon={Gauge}
                 iconColor="text-blue-400"
                 textColor={speedTextColor}
               />
@@ -183,7 +184,7 @@ const DroneCard = ({
             <div className="flex flex-col items-center">
               <span className="text-[10px] text-gray-400">Cost</span>
               <div className="flex items-center">
-                <Bolt size={14} className="text-yellow-300"/>
+                <Power size={14} className="text-yellow-300"/>
                 <span className={`font-bold text-base ml-1 ${costTextColor}`}>{deploymentCost}</span>
               </div>
             </div>

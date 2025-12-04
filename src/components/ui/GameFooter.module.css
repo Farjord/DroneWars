@@ -119,6 +119,37 @@
   @apply font-bold text-gray-400;
 }
 
+.discardPileContainer {
+  width: clamp(125px, 6.4cqw, 155px);
+  height: clamp(165px, 8.4cqw, 200px);
+  @apply relative flex items-center justify-center;
+}
+
+.discardStackWrapper {
+  @apply relative;
+  width: clamp(115px, 5.8cqw, 140px);
+  height: clamp(155px, 7.9cqw, 190px);
+}
+
+.discardCountBadge {
+  @apply absolute font-bold text-white text-xs;
+  top: -8px;
+  right: -8px;
+  background: linear-gradient(135deg, rgba(107, 114, 128, 0.9), rgba(75, 85, 99, 0.9));
+  border: 1px solid rgba(156, 163, 175, 0.5);
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.deckCardBack {
+  @apply transition-all duration-200 hover:scale-105;
+}
+
 .pileLabel {
   @apply mt-1 text-[10px] text-gray-400 font-semibold;
 }
@@ -198,7 +229,8 @@
 }
 
 .logTitle {
-  @apply text-sm font-semibold text-white;
+  @apply text-sm font-bold text-white tracking-wider;
+  font-family: 'Orbitron', sans-serif;
 }
 
 .downloadButton {

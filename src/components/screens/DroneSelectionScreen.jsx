@@ -12,6 +12,7 @@ import { advanceDroneSelectionTrio } from '../../utils/droneSelectionUtils.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import p2pManager from '../../network/P2PManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import ConfirmationModal from '../modals/ConfirmationModal.jsx';
 
 /**
  * SUBMITTING OVERLAY COMPONENT
@@ -112,6 +113,9 @@ function DroneSelectionScreen() {
 
   // UI state for guest submission feedback
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Exit confirmation state
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   /**
    * HANDLE CHOOSE DRONE FOR SELECTION
@@ -295,12 +299,70 @@ function DroneSelectionScreen() {
           .font-exo { font-family: 'Exo', sans-serif; }
         `}
       </style>
-      
+
+      {/* Exit Button - Top Left */}
+      <button
+        onClick={() => setShowExitConfirm(true)}
+        className="absolute top-4 left-4 z-20 btn-cancel px-4 py-2"
+      >
+        ✕ Exit
+      </button>
+
       {/* Content Wrapper */}
       <div className="flex flex-col items-center w-full p-4 relative z-10">
-        <h2 className="text-3xl font-bold mb-8 text-white text-center">
-          Select Your Active Drone Pool
-        </h2>
+        {/* Header with hex decorations */}
+        <div className="relative mb-4">
+          {/* Background hex decorations - positioned behind text */}
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+            {/* Upper-left hex */}
+            <svg
+              className="absolute opacity-15"
+              style={{ transform: 'translate(-130px, -15px)' }}
+              width="60" height="69" viewBox="0 0 80 92"
+            >
+              <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="rgba(6, 182, 212, 0.08)" stroke="#06b6d4" strokeWidth="1" />
+            </svg>
+            {/* Lower-right hex */}
+            <svg
+              className="absolute opacity-12"
+              style={{ transform: 'translate(120px, 10px)' }}
+              width="50" height="58" viewBox="0 0 80 92"
+            >
+              <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="rgba(6, 182, 212, 0.06)" stroke="#22d3ee" strokeWidth="0.8" />
+            </svg>
+            {/* Small right hex */}
+            <svg
+              className="absolute opacity-10"
+              style={{ transform: 'translate(170px, -8px)' }}
+              width="35" height="40" viewBox="0 0 80 92"
+            >
+              <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="none" stroke="#67e8f9" strokeWidth="0.5" />
+            </svg>
+          </div>
+          <h2
+            className="text-3xl font-orbitron font-bold text-center phase-announcement-shine relative z-10"
+            style={{
+              background: 'linear-gradient(90deg, #06b6d4, #22d3ee, #ffffff, #22d3ee, #06b6d4)',
+              backgroundSize: '300% auto',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              filter: 'drop-shadow(0 0 10px rgba(6, 182, 212, 0.4))'
+            }}
+          >
+            Select Your Active Drone Pool
+          </h2>
+        </div>
+
+        {/* Continue button - positioned at top center when selection complete */}
+        {isSelectionComplete && (
+          <button
+            onClick={handleContinueDroneSelection}
+            className="btn-confirm mb-6"
+          >
+            Continue to Ship Placement →
+          </button>
+        )}
 
         {/* Pair selection */}
         {!isSelectionComplete ? (
@@ -324,16 +386,6 @@ function DroneSelectionScreen() {
             )}
           </>
         ) : null}
-
-        {/* Continue button - only show when selection complete */}
-        {isSelectionComplete && (
-          <button
-            onClick={handleContinueDroneSelection}
-            className="btn-continue mb-8"
-          >
-            Continue to Ship Placement
-          </button>
-        )}
 
         {/* Selected drones display */}
         <div className="w-full mt-4 pt-8 border-t border-gray-700">
@@ -359,6 +411,25 @@ function DroneSelectionScreen() {
           )}
         </div>
       </div>
+
+      {/* Exit Confirmation Modal */}
+      {showExitConfirm && (
+        <ConfirmationModal
+          show={true}
+          confirmationModal={{
+            type: 'danger',
+            text: 'Are you sure you want to exit? Your progress will be lost.',
+            onConfirm: () => {
+              // Disconnect from multiplayer if applicable
+              if (isMultiplayer()) {
+                p2pManager.disconnect();
+              }
+              gameStateManager.setState({ appState: 'menu' });
+            },
+            onCancel: () => setShowExitConfirm(false)
+          }}
+        />
+      )}
     </div>
   );
 }

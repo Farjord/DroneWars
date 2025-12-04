@@ -160,12 +160,12 @@ export const getMockGameState = () => {
 // ========================================
 
 export const MODAL_CATEGORIES = {
-  all: { name: 'All', count: 44 },
+  all: { name: 'All', count: 47 },
   extraction: { name: 'Extraction', count: 8 },
   danger: { name: 'Danger', count: 2 },
   confirmation: { name: 'Confirmation', count: 5 },
   interception: { name: 'Interception', count: 2 },
-  gamePhase: { name: 'Game Phase', count: 5 },
+  gamePhase: { name: 'Game Phase', count: 8 },
   aiDebug: { name: 'AI Debug', count: 3 },
   playerActions: { name: 'Player Actions', count: 3 },
   upgrades: { name: 'Upgrades', count: 3 },
@@ -341,6 +341,30 @@ export const getMockPropsForModal = (modalName) => {
         text: 'Deploy drones to lanes using your deployment budget',
         onClose: () => console.log('Modal closed'),
         children: null
+      }
+    },
+    'PhaseAnnouncementOverlay': {
+      category: 'gamePhase',
+      props: {
+        phaseText: 'DEPLOYMENT PHASE',
+        subtitle: 'You Go First',
+        onComplete: () => console.log('Phase announcement complete')
+      }
+    },
+    'PhaseAnnouncementOverlay (Action)': {
+      category: 'gamePhase',
+      props: {
+        phaseText: 'ACTION PHASE',
+        subtitle: 'Your Turn',
+        onComplete: () => console.log('Phase announcement complete')
+      }
+    },
+    'PhaseAnnouncementOverlay (Combat)': {
+      category: 'gamePhase',
+      props: {
+        phaseText: 'COMBAT PHASE',
+        subtitle: null,
+        onComplete: () => console.log('Phase announcement complete')
       }
     },
 
@@ -856,6 +880,7 @@ export const getModalsByCategory = () => {
       'InterceptionOpportunityModal', 'OpponentDecidingInterceptionModal',
       // Game phase modals
       'WinnerModal', 'WinnerModal (Defeat)', 'WaitingForPlayerModal', 'GamePhaseModal',
+      'PhaseAnnouncementOverlay', 'PhaseAnnouncementOverlay (Action)', 'PhaseAnnouncementOverlay (Combat)',
       // AI debug modals
       'AICardPlayReportModal', 'AIDecisionLogModal', 'AIHandDebugModal',
       // Player action modals
@@ -885,7 +910,8 @@ export const getModalsByCategory = () => {
       'InterceptionOpportunityModal', 'OpponentDecidingInterceptionModal'
     ],
     gamePhase: [
-      'WinnerModal', 'WinnerModal (Defeat)', 'WaitingForPlayerModal', 'GamePhaseModal'
+      'WinnerModal', 'WinnerModal (Defeat)', 'WaitingForPlayerModal', 'GamePhaseModal',
+      'PhaseAnnouncementOverlay', 'PhaseAnnouncementOverlay (Action)', 'PhaseAnnouncementOverlay (Combat)'
     ],
     aiDebug: [
       'AICardPlayReportModal', 'AIDecisionLogModal', 'AIHandDebugModal'

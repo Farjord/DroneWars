@@ -5,7 +5,7 @@
 // Shows complete card as seen in ShipPlacementScreen
 
 import React from 'react';
-import { X } from 'lucide-react';
+import { Cpu, X } from 'lucide-react';
 import ShipSection from '../ui/ShipSection.jsx';
 
 /**
@@ -33,91 +33,79 @@ const ViewShipSectionModal = ({ isOpen, onClose, data }) => {
     : sectionName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
 
   return (
-    <div
-      className="fixed inset-0 bg-black/80 flex items-center justify-center z-[1000] p-4"
-      onClick={onClose}
-    >
-      <div
-        className="bg-gray-900 rounded-2xl border-2 border-purple-500 p-8 shadow-2xl shadow-purple-500/20 max-w-[900px] w-[90vw] flex flex-col"
-        onClick={e => e.stopPropagation()}
-      >
+    <div className="dw-modal-overlay" onClick={onClose}>
+      <div className="dw-modal-content dw-modal--xl dw-modal--action" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="flex justify-between items-center mb-6 flex-shrink-0">
-          <div>
-            <h2 className="text-3xl font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-cyan-400">
-              {sectionStats.name || displayName}
-            </h2>
-            {isInMiddleLane && (
-              <p className="text-sm text-yellow-400 font-bold mt-1">
-                ⭐ Middle Lane - Bonus Stats Active
-              </p>
-            )}
+        <div className="dw-modal-header">
+          <div className="dw-modal-header-icon">
+            <Cpu size={28} />
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            <X size={32} />
+          <div className="dw-modal-header-info">
+            <h2 className="dw-modal-header-title">{sectionStats.name || displayName}</h2>
+            <p className="dw-modal-header-subtitle">
+              {isInMiddleLane ? 'Middle Lane - Bonus Active' : 'Ship Section'}
+            </p>
+          </div>
+          <button className="dw-modal-close" onClick={onClose}>
+            <X size={20} />
           </button>
         </div>
 
-        {/* Full Card Display */}
-        <div className="flex justify-center items-center">
-          <div style={{ width: '600px', height: '160px' }}>
-            <ShipSection
-              section={sectionName}
-              stats={sectionStats}
-              effectiveStatsForDisplay={effectiveStats}
-              isPlayer={isPlayer}
-              isPlaceholder={false}
-              onClick={() => {}} // No-op - modal display only
-              onAbilityClick={() => {}} // No-op - modal display only
-              isInteractive={false}
-              isOpponent={!isPlayer}
-              isHovered={false}
-              onMouseEnter={() => {}}
-              onMouseLeave={() => {}}
-              isCardTarget={false}
-              isInMiddleLane={isInMiddleLane}
-              reallocationState={null}
-              gameEngine={{ getShipStatus: (stats) => {
-                // Simple status calculation for display (defensive for showcase mode)
-                if (!stats?.thresholds || stats.hull === undefined || stats.maxHull === undefined) {
-                  return 'healthy'; // Default to healthy if missing data
-                }
-                const hullPercent = stats.hull / stats.maxHull;
-                if (hullPercent <= stats.thresholds.critical / stats.maxHull) return 'critical';
-                if (hullPercent <= stats.thresholds.damaged / stats.maxHull) return 'damaged';
-                return 'healthy';
-              }}}
-              turnPhase="action"
-              isMyTurn={() => false}
-              passInfo={{}}
-              getLocalPlayerId={() => 'player1'}
-              localPlayerState={{ energy: 0 }}
-              shipAbilityMode={null}
-            />
+        {/* Body */}
+        <div className="dw-modal-body">
+          {/* Ship Section Card Display */}
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <div style={{ width: '600px', height: '160px' }}>
+              <ShipSection
+                section={sectionName}
+                stats={sectionStats}
+                effectiveStatsForDisplay={effectiveStats}
+                isPlayer={isPlayer}
+                isPlaceholder={false}
+                onClick={() => {}} // No-op - modal display only
+                onAbilityClick={() => {}} // No-op - modal display only
+                isInteractive={false}
+                isOpponent={!isPlayer}
+                isHovered={false}
+                onMouseEnter={() => {}}
+                onMouseLeave={() => {}}
+                isCardTarget={false}
+                isInMiddleLane={isInMiddleLane}
+                reallocationState={null}
+                gameEngine={{ getShipStatus: (stats) => {
+                  // Simple status calculation for display (defensive for showcase mode)
+                  if (!stats?.thresholds || stats.hull === undefined || stats.maxHull === undefined) {
+                    return 'healthy'; // Default to healthy if missing data
+                  }
+                  const hullPercent = stats.hull / stats.maxHull;
+                  if (hullPercent <= stats.thresholds.critical / stats.maxHull) return 'critical';
+                  if (hullPercent <= stats.thresholds.damaged / stats.maxHull) return 'damaged';
+                  return 'healthy';
+                }}}
+                turnPhase="action"
+                isMyTurn={() => false}
+                passInfo={{}}
+                getLocalPlayerId={() => 'player1'}
+                localPlayerState={{ energy: 0 }}
+                shipAbilityMode={null}
+              />
+            </div>
           </div>
-        </div>
 
-        {/* Additional Info */}
-        <div className="mt-6 space-y-3">
           {/* Description */}
           {sectionStats.description && (
-            <div className="bg-black/40 p-4 rounded-lg">
-              <h3 className="text-lg font-bold text-cyan-400 mb-2">Description</h3>
-              <p className="text-gray-300">{sectionStats.description}</p>
+            <div className="dw-modal-info-box" style={{ marginTop: '1.5rem' }}>
+              <h3 className="dw-modal-info-title">Description</h3>
+              <p className="dw-modal-text dw-modal-text--left">{sectionStats.description}</p>
             </div>
           )}
 
           {/* Ability Details */}
           {sectionStats.ability && (
-            <div className="bg-black/40 p-4 rounded-lg">
-              <h3 className="text-lg font-bold text-purple-400 mb-2">
-                Ability: {sectionStats.ability.name}
-              </h3>
-              <p className="text-gray-300 mb-2">{sectionStats.ability.description}</p>
-              <p className="text-sm text-yellow-400">
+            <div className="dw-modal-info-box">
+              <h3 className="dw-modal-info-title">Ability: {sectionStats.ability.name}</h3>
+              <p className="dw-modal-text dw-modal-text--left">{sectionStats.ability.description}</p>
+              <p className="dw-modal-text dw-modal-text--left" style={{ color: 'var(--modal-action)', marginTop: '0.5rem' }}>
                 Cost: {sectionStats.ability.cost.energy} Energy
               </p>
             </div>
@@ -125,11 +113,11 @@ const ViewShipSectionModal = ({ isOpen, onClose, data }) => {
 
           {/* Middle Lane Bonus Info */}
           {isInMiddleLane && sectionStats.middleLaneBonus && (
-            <div className="bg-yellow-900/20 border border-yellow-500/50 p-4 rounded-lg">
-              <h3 className="text-lg font-bold text-yellow-400 mb-2">Middle Lane Bonus</h3>
-              <div className="flex gap-4 text-sm">
+            <div className="dw-modal-info-box">
+              <h3 className="dw-modal-info-title">Middle Lane Bonus</h3>
+              <div style={{ display: 'flex', gap: '1rem' }}>
                 {Object.entries(sectionStats.middleLaneBonus).map(([stat, bonus]) => (
-                  <span key={stat} className="text-green-400 font-bold">
+                  <span key={stat} className="dw-modal-stat-value--success">
                     +{bonus} {stat}
                   </span>
                 ))}
@@ -138,12 +126,9 @@ const ViewShipSectionModal = ({ isOpen, onClose, data }) => {
           )}
         </div>
 
-        {/* Close Button */}
-        <div className="mt-6 flex justify-center">
-          <button
-            onClick={onClose}
-            className="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg transition-colors"
-          >
+        {/* Actions */}
+        <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-confirm dw-btn--full" onClick={onClose}>
             Close
           </button>
         </div>

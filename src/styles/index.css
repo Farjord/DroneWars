@@ -289,6 +289,29 @@
   animation: menuRGBSplitBlue 1s ease-in-out 1;
 }
 
+/* Menu Hex Pulse Animation - triggers with title glitch effects */
+@keyframes menuHexPulse {
+  0% {
+    filter: drop-shadow(0 0 0px rgba(6, 182, 212, 0));
+  }
+  15% {
+    filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.8)) drop-shadow(0 0 15px rgba(34, 211, 238, 0.5));
+  }
+  30% {
+    filter: drop-shadow(0 0 12px rgba(6, 182, 212, 1)) drop-shadow(0 0 20px rgba(255, 255, 255, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 6px rgba(6, 182, 212, 0.6)) drop-shadow(0 0 12px rgba(34, 211, 238, 0.3));
+  }
+  100% {
+    filter: drop-shadow(0 0 0px rgba(6, 182, 212, 0));
+  }
+}
+
+.menu-hex-pulse {
+  animation: menuHexPulse 1.2s ease-out 1;
+}
+
 /* === CARD BORDER ANIMATIONS === */
 @keyframes cardBorderRotatePurple {
   0% { background-position: 0% 50%; }

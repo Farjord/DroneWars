@@ -14,6 +14,7 @@ import p2pManager from '../../network/P2PManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { calculateEffectiveShipStats } from '../../logic/statsCalculator.js';
+import ConfirmationModal from '../modals/ConfirmationModal.jsx';
 
 /**
  * SHIP PLACEMENT SCREEN COMPONENT
@@ -40,6 +41,9 @@ function ShipPlacementScreen() {
 
   // UI state for guest submission feedback
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Exit confirmation state
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
 
   // Helper function to pre-populate placement from deck selection
   const getInitialPlacement = () => {
@@ -364,11 +368,60 @@ function ShipPlacementScreen() {
           .font-exo { font-family: 'Exo', sans-serif; }
         `}
       </style>
+
+      {/* Exit Button - Top Left */}
+      <button
+        onClick={() => setShowExitConfirm(true)}
+        className="absolute top-4 left-4 z-20 btn-cancel px-4 py-2"
+      >
+        ✕ Exit
+      </button>
+
       <div className="flex flex-col items-center w-full h-full justify-start pt-8 px-4">
-      <h2 className="text-3xl font-bold mb-2 text-white text-center font-orbitron">
-        Configure Your Ship Layout
-      </h2>
-      <p className="text-center text-gray-400 mb-8">
+        {/* Header with hex decorations */}
+        <div className="relative mb-2">
+          {/* Background hex decorations - positioned behind text */}
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+            {/* Upper-left hex */}
+            <svg
+              className="absolute opacity-15"
+              style={{ transform: 'translate(-130px, -15px)' }}
+              width="60" height="69" viewBox="0 0 80 92"
+            >
+              <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="rgba(6, 182, 212, 0.08)" stroke="#06b6d4" strokeWidth="1" />
+            </svg>
+            {/* Lower-right hex */}
+            <svg
+              className="absolute opacity-12"
+              style={{ transform: 'translate(120px, 10px)' }}
+              width="50" height="58" viewBox="0 0 80 92"
+            >
+              <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="rgba(6, 182, 212, 0.06)" stroke="#22d3ee" strokeWidth="0.8" />
+            </svg>
+            {/* Small right hex */}
+            <svg
+              className="absolute opacity-10"
+              style={{ transform: 'translate(170px, -8px)' }}
+              width="35" height="40" viewBox="0 0 80 92"
+            >
+              <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="none" stroke="#67e8f9" strokeWidth="0.5" />
+            </svg>
+          </div>
+          <h2
+            className="text-3xl font-orbitron font-bold text-center phase-announcement-shine relative z-10"
+            style={{
+              background: 'linear-gradient(90deg, #06b6d4, #22d3ee, #ffffff, #22d3ee, #06b6d4)',
+              backgroundSize: '300% auto',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              filter: 'drop-shadow(0 0 10px rgba(6, 182, 212, 0.4))'
+            }}
+          >
+            Configure Your Ship Layout
+          </h2>
+        </div>
+      <p className="text-center text-gray-400 mb-6">
         {localUnplacedSections.length > 0
           ? 'Select a section, then click an empty lane to place it. You can also click a placed section to pick it up again.'
           : 'Your ship components are pre-configured. You can rearrange them by clicking a section to pick it up.'
@@ -468,6 +521,25 @@ function ShipPlacementScreen() {
         </div>
       </div>
     </div>
+
+      {/* Exit Confirmation Modal */}
+      {showExitConfirm && (
+        <ConfirmationModal
+          show={true}
+          confirmationModal={{
+            type: 'danger',
+            text: 'Are you sure you want to exit? Your progress will be lost.',
+            onConfirm: () => {
+              // Disconnect from multiplayer if applicable
+              if (isMultiplayer()) {
+                p2pManager.disconnect();
+              }
+              gameStateManager.setState({ appState: 'menu' });
+            },
+            onCancel: () => setShowExitConfirm(false)
+          }}
+        />
+      )}
     </div>
   );
 }

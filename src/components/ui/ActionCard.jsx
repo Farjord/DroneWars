@@ -5,7 +5,7 @@
 // Accepts optional scale prop for enlargement in modals
 
 import React from 'react';
-import { Bolt, RefreshCw, Cpu } from 'lucide-react';
+import { Power, RefreshCw, Cpu } from 'lucide-react';
 import ScalingText from './ScalingText.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 
@@ -159,7 +159,7 @@ const ActionCard = ({
               <ScalingText text={name} className="font-orbitron text-sm uppercase tracking-widest whitespace-nowrap text-white" />
             </div>
             <div className="flex items-center bg-slate-800/70 px-2 py-0.5 rounded-full flex-shrink-0">
-              <Bolt size={14} className="text-yellow-300" />
+              <Power size={14} className="text-yellow-300" />
               <span className="text-white font-bold text-sm ml-1">{cost}</span>
             </div>
           </div>

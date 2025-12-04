@@ -73,7 +73,29 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-[10000] bg-black/80 backdrop-blur-sm flex items-center justify-center">
-      <div className="flex flex-col items-center gap-12">
+      {/* Decorative hex background elements */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Top-left hex cluster */}
+        <svg className="absolute top-16 left-16 opacity-20" width="120" height="138" viewBox="0 0 80 92">
+          <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="none" stroke={isVictory ? '#00ff88' : '#ff3232'} strokeWidth="1" />
+          <polygon points="40,12 68,29 68,63 40,80 12,63 12,29" fill={isVictory ? 'rgba(0, 255, 136, 0.05)' : 'rgba(255, 50, 50, 0.05)'} stroke={isVictory ? '#00ff88' : '#ff3232'} strokeWidth="0.5" />
+        </svg>
+        {/* Top-right hex cluster */}
+        <svg className="absolute top-24 right-24 opacity-15" width="80" height="92" viewBox="0 0 80 92">
+          <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="none" stroke={isVictory ? '#00ff88' : '#ff3232'} strokeWidth="1" />
+        </svg>
+        {/* Bottom-left hex */}
+        <svg className="absolute bottom-24 left-32 opacity-15" width="60" height="69" viewBox="0 0 80 92">
+          <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="none" stroke={isVictory ? '#00ff88' : '#ff3232'} strokeWidth="1" />
+        </svg>
+        {/* Bottom-right hex cluster */}
+        <svg className="absolute bottom-16 right-16 opacity-20" width="100" height="115" viewBox="0 0 80 92">
+          <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="none" stroke={isVictory ? '#00ff88' : '#ff3232'} strokeWidth="1" />
+          <polygon points="40,12 68,29 68,63 40,80 12,63 12,29" fill={isVictory ? 'rgba(0, 255, 136, 0.05)' : 'rgba(255, 50, 50, 0.05)'} stroke={isVictory ? '#00ff88' : '#ff3232'} strokeWidth="0.5" />
+        </svg>
+      </div>
+
+      <div className="flex flex-col items-center gap-12 relative z-10">
         {isVictory ? (
           // Victory Screen - Green shimmer gradient
           <h1

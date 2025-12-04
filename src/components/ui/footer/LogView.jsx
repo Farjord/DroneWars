@@ -17,7 +17,7 @@ function LogView({
     <div className={styles.logContainer}>
       <div className={styles.logHeader}>
         <h3 className={styles.logTitle}>Game Log</h3>
-        <button onClick={downloadLogAsCSV} className={styles.downloadButton}>
+        <button onClick={downloadLogAsCSV} className="btn-reset text-xs py-1 px-3">
           Download CSV
         </button>
       </div>

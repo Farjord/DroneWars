@@ -170,6 +170,45 @@ function MenuScreen() {
           display: 'inline-block',
           marginBottom: '2rem'
         }}>
+          {/* Background hex decorations - positioned behind text */}
+          <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {/* Upper-left hex - larger */}
+            <svg
+              key={`hex1-${animationKey}`}
+              className="menu-hex-pulse"
+              style={{ position: 'absolute', transform: 'translate(-70px, -25px)', opacity: 0.2, animationDelay: '0s' }}
+              width="80" height="92" viewBox="0 0 80 92"
+            >
+              <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="rgba(6, 182, 212, 0.08)" stroke="#06b6d4" strokeWidth="1" />
+            </svg>
+            {/* Lower-right hex - medium */}
+            <svg
+              key={`hex2-${animationKey}`}
+              className="menu-hex-pulse"
+              style={{ position: 'absolute', transform: 'translate(60px, 20px)', opacity: 0.15, animationDelay: '0.15s' }}
+              width="60" height="69" viewBox="0 0 80 92"
+            >
+              <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="rgba(6, 182, 212, 0.06)" stroke="#22d3ee" strokeWidth="0.8" />
+            </svg>
+            {/* Center-right small hex */}
+            <svg
+              key={`hex3-${animationKey}`}
+              className="menu-hex-pulse"
+              style={{ position: 'absolute', transform: 'translate(100px, -5px)', opacity: 0.1, animationDelay: '0.3s' }}
+              width="40" height="46" viewBox="0 0 80 92"
+            >
+              <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="rgba(6, 182, 212, 0.05)" stroke="#67e8f9" strokeWidth="0.5" />
+            </svg>
+            {/* Upper-right tiny hex */}
+            <svg
+              key={`hex4-${animationKey}`}
+              className="menu-hex-pulse"
+              style={{ position: 'absolute', transform: 'translate(40px, -35px)', opacity: 0.12, animationDelay: '0.1s' }}
+              width="35" height="40" viewBox="0 0 80 92"
+            >
+              <polygon points="40,0 80,23 80,69 40,92 0,69 0,23" fill="none" stroke="#22d3ee" strokeWidth="0.6" />
+            </svg>
+          </div>
           {/* RGB Split - Red Channel */}
           <h1
             key={`rgb-red-${animationKey}`}
@@ -220,29 +259,19 @@ function MenuScreen() {
               fontSize: '4rem',
               margin: 0,
               textAlign: 'center',
-              background: 'linear-gradient(90deg, #00ff88, #00d4aa, #00a0cc, #0088ff, #00aaff, #00ffff, #00d4aa, #00ff88)',
+              background: 'linear-gradient(90deg, #06b6d4, #22d3ee, #ffffff, #22d3ee, #06b6d4)',
               backgroundSize: '300% auto',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text',
-              filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))',
-              textShadow: '0 0 20px rgba(0, 255, 136, 0.4), 0 0 40px rgba(0, 136, 255, 0.3)',
+              filter: 'drop-shadow(0 0 20px rgba(6, 182, 212, 0.5))',
+              textShadow: '0 0 20px rgba(6, 182, 212, 0.5), 0 0 40px rgba(34, 211, 238, 0.3)',
               position: 'relative',
               zIndex: 1
             }}
           >
-            EREMOS
+            INTO THE EREMOS
           </h1>
-        </div>
-
-        {/* Subtitle */}
-        <div style={{
-          fontSize: '1.2rem',
-          marginBottom: '3rem',
-          textAlign: 'center',
-          color: '#cccccc'
-        }}>
-          the wilderness left when civilization departs
         </div>
 
         {/* Game mode buttons - multi-row layout */}

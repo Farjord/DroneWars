@@ -126,6 +126,18 @@ const renderDronesOnBoard = (
  * @param {Function} setHoveredTarget - Function to set hovered target
  * @param {Object} interceptedBadge - Interception badge data ({ droneId, timestamp })
  */
+// Hex grid SVG patterns for lane backgrounds
+const createHexGridPattern = (strokeColor) => {
+  // Flat-topped hexagon grid pattern that tiles seamlessly
+  const svg = `<svg width="56" height="32" xmlns="http://www.w3.org/2000/svg">
+    <path d="M14,0 L42,0 L56,16 L42,32 L14,32 L0,16 Z" fill="none" stroke="${strokeColor}" stroke-width="0.5" opacity="0.2"/>
+  </svg>`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+};
+
+const cyanHexGrid = createHexGridPattern('#06b6d4');
+const redHexGrid = createHexGridPattern('#ef4444');
+
 const DroneLanesDisplay = ({
   player,
   isPlayer,
@@ -186,6 +198,10 @@ const DroneLanesDisplay = ({
               ${isTargetable ? 'bg-cyan-800/40 ring-2 ring-cyan-400/30 animate-pulse' : baseBackgroundColor}
               ${isInteractivePlayerLane ? 'cursor-pointer hover:bg-cyan-900/20' : ''}
             `}
+            style={{
+              backgroundImage: isPlayer ? cyanHexGrid : redHexGrid,
+              backgroundSize: '56px 32px'
+            }}
           >
             {renderDronesOnBoard(
               player.dronesOnBoard[lane],

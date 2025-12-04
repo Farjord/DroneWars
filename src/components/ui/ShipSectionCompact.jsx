@@ -19,13 +19,11 @@ const ShipAbilityIcon = ({ onClick, ability, isUsable, isSelected }) => (
   <button
     onClick={onClick}
     disabled={!isUsable}
-    className={`w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center border-2 border-black/50 z-20 transition-all duration-200 flex-shrink-0 ${isUsable ? 'hover:bg-purple-500' : 'bg-gray-700 opacity-60 cursor-not-allowed'} ${isSelected ? 'ring-2 ring-yellow-300 scale-110' : ''}`}
+    className={`w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center border-2 z-20 transition-all duration-200 flex-shrink-0 ${isUsable ? 'border-cyan-400 hover:border-cyan-300 hover:shadow-lg hover:shadow-cyan-400/50' : 'bg-slate-900 border-gray-600 opacity-60 cursor-not-allowed'} ${isSelected ? 'ring-2 ring-cyan-300 scale-110' : ''}`}
     title={`${ability.name} - Cost: ${ability.cost.energy} Energy`}
   >
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-300">
-      <circle cx="12" cy="12" r="10"></circle>
-      <circle cx="12" cy="12" r="6"></circle>
-      <circle cx="12" cy="12" r="2"></circle>
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={isUsable ? 'text-cyan-400' : 'text-gray-500'}>
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
     </svg>
   </button>
 );
@@ -201,19 +199,16 @@ const ShipSectionCompact = ({
           <p className="font-orbitron text-lg uppercase tracking-widest text-white text-center">{stats.type}</p>
 
           {/* Status Badge */}
-          <div className={`flex items-center gap-1 font-semibold text-xs px-2 py-0.5 rounded-full ${sectionStatus === 'healthy' ? 'bg-green-500/20 text-green-300' : sectionStatus === 'damaged' ? 'bg-yellow-500/20 text-yellow-300' : 'bg-red-500/20 text-red-300'}`}>
+          <div className={`flex items-center gap-1 font-semibold text-xs px-2 py-0.5 rounded-full ${sectionStatus === 'healthy' ? 'bg-cyan-500/20 text-cyan-300' : sectionStatus === 'damaged' ? 'bg-cyan-700/20 text-cyan-500' : 'bg-red-500/20 text-red-300'}`}>
             {sectionStatus.charAt(0).toUpperCase() + sectionStatus.slice(1)}
           </div>
 
           {/* Shields */}
           <div className="flex gap-1 items-center">
             {Array(stats.shields).fill(0).map((_, i) => (
-              <div key={i}>
-                {i < stats.allocatedShields
-                  ? <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="text-cyan-300"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="black" strokeWidth="1.5"></path></svg>
-                  : <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="black" strokeWidth="1.5"></path></svg>
-                }
-              </div>
+              i < stats.allocatedShields
+                ? <svg key={i} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" fillOpacity="0.6" className="text-cyan-300"><path d="M12,0 L24,6 L24,18 L12,24 L0,18 L0,6 Z" stroke="currentColor" strokeWidth="1.5"></path></svg>
+                : <svg key={i} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-600"><path d="M12,0 L24,6 L24,18 L12,24 L0,18 L0,6 Z" stroke="currentColor" strokeWidth="1.5"></path></svg>
             ))}
           </div>
 
@@ -226,9 +221,9 @@ const ShipSectionCompact = ({
               if (hullPoint <= critical) {
                 thresholdColor = 'bg-red-500';
               } else if (hullPoint <= damaged) {
-                thresholdColor = 'bg-orange-500';
+                thresholdColor = 'bg-cyan-600';
               } else {
-                thresholdColor = 'bg-green-500';
+                thresholdColor = 'bg-cyan-400';
               }
               const isFilled = i < stats.hull;
               return (
@@ -256,7 +251,7 @@ const ShipSectionCompact = ({
                   onAbilityClick(e, {...stats, name: section}, stats.ability);
                 }}
               />
-              <p className="font-bold text-xs text-purple-300 leading-tight text-center">{stats.ability.name}</p>
+              <p className="font-bold text-xs text-purple-400 leading-tight text-center">{stats.ability.name}</p>
             </>
           )}
         </div>

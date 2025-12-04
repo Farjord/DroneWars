@@ -240,7 +240,7 @@
 }
 
 .phase-announcement-shine {
-  animation: phaseAnnouncementShine 2s linear infinite;
+  animation: phaseAnnouncementShine 8s linear infinite;
 }
 
 .phase-announcement-scanline-active {

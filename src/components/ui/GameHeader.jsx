@@ -5,7 +5,7 @@
 // Extracted from App.jsx for better component organization
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bolt, Hand, Rocket, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain, Plus, Image, ChevronRight, Check } from 'lucide-react';
+import { Power, Files, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain, Plus, Image, ChevronRight, Check } from 'lucide-react';
 import { getPhaseDisplayName } from '../../utils/gameUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import DEV_CONFIG from '../../config/devConfig.js';
@@ -171,9 +171,9 @@ function GameHeader({
           )}
         </h2>
         <div className="flex items-center gap-2">
-          <ResourceBadge 
-            icon={Bolt} 
-            value={opponentPlayerState.energy} 
+          <ResourceBadge
+            icon={Power}
+            value={opponentPlayerState.energy}
             max={opponentPlayerEffectiveStats.totals.maxEnergy}
             iconColor="text-yellow-300"
             isPlayer={false}
@@ -182,17 +182,17 @@ function GameHeader({
             onClick={() => AI_HAND_DEBUG_MODE && setTimeout(() => setShowAiHandModal(true), 100)}
             className={AI_HAND_DEBUG_MODE ? 'cursor-pointer' : ''}
           >
-            <ResourceBadge 
-              icon={Hand} 
-              value={opponentPlayerState.hand.length} 
+            <ResourceBadge
+              icon={Files}
+              value={opponentPlayerState.hand.length}
               max={opponentPlayerEffectiveStats.totals.handLimit}
-              iconColor="text-gray-400"
+              iconColor="text-cyan-300"
               isPlayer={false}
             />
           </div>
           {turnPhase === 'deployment' && (
             <ResourceBadge
-              icon={Rocket}
+              icon={Plus}
               value={roundNumber === 1 ? opponentPlayerState.initialDeploymentBudget : opponentPlayerState.deploymentBudget}
               iconColor="text-purple-400"
               isPlayer={false}
@@ -278,16 +278,16 @@ function GameHeader({
               {isMyTurn() ? (
                 <div className="flex items-center gap-2">
                   <span
-                    className="text-3xl font-orbitron font-black uppercase tracking-widest"
+                    className="text-3xl font-orbitron font-black uppercase tracking-widest phase-announcement-shine"
                     style={{
-                      backgroundImage: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
-                      backgroundSize: '200% auto',
+                      backgroundImage: 'linear-gradient(45deg, #06b6d4, #22d3ee, #ffffff, #22d3ee, #06b6d4)',
+                      backgroundSize: '300% auto',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                       backgroundClip: 'text',
                       WebkitTextStroke: '1px black',
-                      textShadow: '0 0 30px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 136, 255, 0.3)',
-                      filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))'
+                      textShadow: '0 0 30px rgba(6, 182, 212, 0.5), 0 0 60px rgba(34, 211, 238, 0.3)',
+                      filter: 'drop-shadow(0 0 20px rgba(6, 182, 212, 0.4))'
                     }}
                   >
                     Your Turn
@@ -525,20 +525,20 @@ function GameHeader({
             )}
             </>
           ) : (
-            // Initialising phase - show in "Your Turn" colors for both players
+            // Initialising phase - show in cyan/white colors for both players
             <>
               <div className="flex items-center gap-2">
                 <span
-                  className="text-3xl font-orbitron font-black uppercase tracking-widest"
+                  className="text-3xl font-orbitron font-black uppercase tracking-widest phase-announcement-shine"
                   style={{
-                    backgroundImage: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
-                    backgroundSize: '200% auto',
+                    backgroundImage: 'linear-gradient(45deg, #06b6d4, #22d3ee, #ffffff, #22d3ee, #06b6d4)',
+                    backgroundSize: '300% auto',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text',
                     WebkitTextStroke: '1px black',
-                    textShadow: '0 0 30px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 136, 255, 0.3)',
-                    filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))'
+                    textShadow: '0 0 30px rgba(6, 182, 212, 0.5), 0 0 60px rgba(34, 211, 238, 0.3)',
+                    filter: 'drop-shadow(0 0 20px rgba(6, 182, 212, 0.4))'
                   }}
                 >
                   Initialising
@@ -667,9 +667,10 @@ function GameHeader({
       {/* Player Resources */}
       <div className="flex flex-col gap-1.5 items-end">
         <h2
-          className="text-base font-bold uppercase tracking-wider flex items-center gap-2"
+          className="text-base font-bold uppercase tracking-wider flex items-center gap-2 phase-announcement-shine"
           style={{
-            backgroundImage: 'linear-gradient(45deg, #00ff88, #0088ff)',
+            backgroundImage: 'linear-gradient(45deg, #06b6d4, #22d3ee, #ffffff, #22d3ee, #06b6d4)',
+            backgroundSize: '300% auto',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text'
@@ -684,9 +685,9 @@ function GameHeader({
           )}
         </h2>
         <div className="flex items-center gap-2">
-          <ResourceBadge 
-            icon={Bolt} 
-            value={localPlayerState.energy} 
+          <ResourceBadge
+            icon={Power}
+            value={localPlayerState.energy}
             max={localPlayerEffectiveStats.totals.maxEnergy}
             iconColor="text-yellow-300"
             isPlayer={true}
@@ -703,7 +704,7 @@ function GameHeader({
           })()}
           {turnPhase === 'deployment' && (
             <ResourceBadge
-              icon={Rocket}
+              icon={Plus}
               value={roundNumber === 1 ? localPlayerState.initialDeploymentBudget : localPlayerState.deploymentBudget}
               iconColor="text-purple-400"
               isPlayer={true}
@@ -745,16 +746,27 @@ function GameHeader({
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
-              className="relative p-[2px] bg-gradient-to-br from-gray-500 to-gray-700"
-              style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }}
+              className="relative"
+              style={{
+                background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 28, 0.95) 100%)',
+                border: '1px solid rgba(6, 182, 212, 0.3)',
+                borderRadius: '2px',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(6, 182, 212, 0.1)',
+                clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)'
+              }}
               aria-label="Settings"
             >
-              <div 
-                className="bg-slate-700 hover:bg-slate-600 p-1.5 transition-colors flex items-center gap-1"
-                style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)' }}
-              >
-                <Settings size={20} className="text-white" />
-                <ChevronDown size={16} className="text-white" />
+              {/* Angular corner accent */}
+              <div
+                className="absolute top-0 left-0 w-2 h-2 z-10 pointer-events-none"
+                style={{
+                  borderTop: '1px solid rgba(6, 182, 212, 0.5)',
+                  borderLeft: '1px solid rgba(6, 182, 212, 0.5)'
+                }}
+              />
+              <div className="px-2 py-1.5 flex items-center gap-1">
+                <Settings size={20} className="text-cyan-400" />
+                <ChevronDown size={16} className="text-cyan-400" />
               </div>
             </button>
 
@@ -790,7 +802,7 @@ function GameHeader({
                   </button>
 
                   {showBackgroundSubmenu && (
-                    <div className="absolute right-full top-0 mr-1 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50">
+                    <div className="absolute right-full top-0 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50">
                       {BACKGROUNDS.map((bg) => (
                         <button
                           key={bg.id}

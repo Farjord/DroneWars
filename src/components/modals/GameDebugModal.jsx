@@ -4,7 +4,7 @@
 // Modal for debugging game state - shows raw state and calculated stats
 
 import React, { useState } from 'react';
-import { Terminal, Copy } from 'lucide-react';
+import { Terminal, Copy, Download } from 'lucide-react';
 import { debugLog } from '../../utils/debugLogger.js';
 
 /**
@@ -25,6 +25,26 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
     navigator.clipboard.writeText(JSON.stringify(data, null, 2))
       .then(() => debugLog('STATE_SYNC', `${label} copied to clipboard`))
       .catch(err => console.error('Failed to copy:', err));
+  };
+
+  const downloadGameState = () => {
+    const stateExport = {
+      exportedAt: new Date().toISOString(),
+      gameState: gameState,
+      localPlayerId: localPlayerId
+    };
+
+    const jsContent = `// Drone Wars Game State Export\n// Exported: ${stateExport.exportedAt}\n\nconst gameStateExport = ${JSON.stringify(stateExport, null, 2)};\n\nexport default gameStateExport;\n`;
+
+    const blob = new Blob([jsContent], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `drone-wars-state-${new Date().toISOString().replace(/[:.]/g, '-')}.js`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const formatValue = (value) => {
@@ -223,12 +243,16 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
         </div>
 
         {/* Tab Content */}
-        <div className="dw-modal-body" style={{ flex: 1, overflow: 'auto', padding: 0 }}>
+        <div className="dw-modal-body dw-modal-scroll" style={{ flex: 1, overflow: 'auto', padding: 0 }}>
           {activeTab === 'raw' ? renderRawStateTab() : renderCalculatedStatsTab()}
         </div>
 
         {/* Actions */}
         <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-primary" onClick={downloadGameState}>
+            <Download size={16} style={{ marginRight: '6px' }} />
+            Download State
+          </button>
           <button className="dw-btn dw-btn-cancel" onClick={onClose}>
             Close
           </button>

@@ -33,6 +33,7 @@ import CardSelectionModal from '../modals/CardSelectionModal.jsx';
 import CardViewerModal from '../modals/CardViewerModal.jsx';
 import ViewDeckModal from '../modals/ViewDeckModal.jsx';
 import GamePhaseModal from '../ui/GamePhaseModal.jsx';
+import PhaseAnnouncementOverlay from '../animations/PhaseAnnouncementOverlay.jsx';
 import DetailedDroneModal from '../modals/debug/DetailedDroneModal.jsx';
 
 // Extraction / Into the Eremos modals
@@ -167,6 +168,9 @@ function ModalShowcaseScreen() {
       CardViewerModal,
       ViewDeckModal,
       GamePhaseModal,
+      PhaseAnnouncementOverlay,
+      'PhaseAnnouncementOverlay (Action)': PhaseAnnouncementOverlay,
+      'PhaseAnnouncementOverlay (Combat)': PhaseAnnouncementOverlay,
       DetailedDroneModal,
       // Extraction / Into the Eremos modals
       AbandonRunModal,
@@ -254,7 +258,7 @@ function ModalShowcaseScreen() {
         flexShrink: 0
       }}>
         <div className="border-b border-gray-700">
-          <div className="flex space-x-1 overflow-x-auto">
+          <div className="flex space-x-1 dw-modal-scroll-x">
             {Object.entries(MODAL_CATEGORIES).map(([key, { name, count }]) => (
               <button
                 key={key}

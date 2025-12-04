@@ -68,9 +68,9 @@ const ShipSlotCard = ({
     if (shipSlot.status === 'empty') return 'bg-gray-500';
 
     const hullPercentage = calculateOverallHullPercentage();
-    if (hullPercentage > 75) return 'bg-green-500';
-    if (hullPercentage > 40) return 'bg-yellow-500';
-    return 'bg-orange-500';
+    if (hullPercentage > 75) return 'bg-cyan-400';
+    if (hullPercentage > 40) return 'bg-cyan-600';
+    return 'bg-red-500';
   };
 
   /**
@@ -121,9 +121,9 @@ const ShipSlotCard = ({
             : 100;
 
           const hullColor = hullPercentage > 75
-            ? 'bg-green-500'
+            ? 'bg-cyan-400'
             : hullPercentage > 40
-            ? 'bg-yellow-500'
+            ? 'bg-cyan-600'
             : 'bg-red-500';
 
           return (
@@ -184,8 +184,8 @@ const ShipSlotCard = ({
         {shipSlot.status === 'active' && (
           <div className="text-gray-400">
             Hull: <span className={`font-bold ${
-              hullPercentage > 75 ? 'text-green-400' :
-              hullPercentage > 40 ? 'text-yellow-400' :
+              hullPercentage > 75 ? 'text-cyan-400' :
+              hullPercentage > 40 ? 'text-cyan-500' :
               'text-red-400'
             }`}>{hullPercentage}%</span>
           </div>

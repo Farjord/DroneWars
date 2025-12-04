@@ -19,8 +19,8 @@ import TargetLockIcon from './TargetLockIcon.jsx';
  * @param {string} bgColor - Background color class
  * @param {string} textColor - Text color class
  */
-const StatHexagon = ({ value, isFlat, bgColor, textColor }) => (
-  <div className={`${isFlat ? 'hexagon-flat' : 'hexagon'} w-full h-full bg-black flex items-center justify-center`}>
+const StatHexagon = ({ value, isFlat, bgColor, textColor, borderColor = 'bg-black' }) => (
+  <div className={`${isFlat ? 'hexagon-flat' : 'hexagon'} w-full h-full ${borderColor} flex items-center justify-center`}>
     <div className={`${isFlat ? 'hexagon-flat' : 'hexagon'} w-[calc(100%-2px)] h-[calc(100%-2px)] ${bgColor} flex items-center justify-center text-xs font-bold font-orbitron ${textColor}`}>
       {value}
     </div>
@@ -33,11 +33,9 @@ const StatHexagon = ({ value, isFlat, bgColor, textColor }) => (
  * @param {Function} onClick - Callback when ability button is clicked
  */
 const AbilityIcon = ({ onClick }) => (
-  <button onClick={onClick} className="absolute top-5 -right-3.5 w-7 h-7 bg-purple-600 rounded-full flex items-center justify-center border-2 border-black/50 z-20 hover:bg-purple-500 transition-colors">
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-300">
-      <circle cx="12" cy="12" r="10"></circle>
-      <circle cx="12" cy="12" r="6"></circle>
-      <circle cx="12" cy="12" r="2"></circle>
+  <button onClick={onClick} className="absolute top-5 -right-3.5 w-7 h-7 bg-slate-800 rounded-full flex items-center justify-center border border-cyan-400 z-20 hover:border-cyan-300 hover:shadow-lg hover:shadow-cyan-400/50 transition-all">
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
+      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
     </svg>
   </button>
 );
@@ -103,8 +101,8 @@ const DroneToken = ({
   const nameBgColor = isPlayer ? 'bg-cyan-900' : 'bg-red-950';
   const nameTextColor = isPlayer ? 'text-cyan-100' : 'text-red-100';
   const statBgColor = isPlayer ? 'bg-cyan-900' : 'bg-red-950';
-  const shieldColor = drone.isExhausted ? 'text-white' : (isPlayer ? 'text-cyan-400' : 'text-red-500');
-  const emptyShieldColor = drone.isExhausted ? 'text-gray-500' : (isPlayer ? 'text-cyan-300 opacity-50' : 'text-red-400 opacity-60');
+  const shieldColor = drone.isExhausted ? 'text-white' : 'text-cyan-200';
+  const emptyShieldColor = drone.isExhausted ? 'text-gray-500' : 'text-cyan-200 opacity-50';
 
   const isAttackBuffed = effectiveStats.attack > effectiveStats.baseAttack;
   const isAttackDebuffed = effectiveStats.attack < effectiveStats.baseAttack;
@@ -158,14 +156,14 @@ const DroneToken = ({
             <div className="flex w-full justify-center gap-1 min-h-[12px]">
               {Array.from({ length: maxShields }).map((_, i) => (
                 i < currentShields
-                  ? <svg key={i} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className={shieldColor}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="black" strokeWidth="1.5"></path></svg>
-                  : <svg key={i} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={emptyShieldColor}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="black" strokeWidth="1.5"></path></svg>
+                  ? <svg key={i} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#22d3ee"><path d="M12,0 L24,6 L24,18 L12,24 L0,18 L0,6 Z" stroke="rgba(0,0,0,0.5)" strokeWidth="2"></path></svg>
+                  : <svg key={i} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={emptyShieldColor}><path d="M12,0 L24,6 L24,18 L12,24 L0,18 L0,6 Z"></path></svg>
               ))}
             </div>
             <div className="flex w-full justify-center gap-0.5">
               {Array.from({ length: baseDrone.hull }).map((_, i) => {
                 const isFullHull = i < drone.hull;
-                const fullHullColor = drone.isExhausted ? 'bg-white' : 'bg-green-500';
+                const fullHullColor = drone.isExhausted ? 'bg-white' : 'bg-cyan-400';
                 const damagedHullColor = drone.isExhausted ? 'bg-gray-500' : 'bg-gray-400';
                 return (
                   <div key={i} className={`h-2 w-2 rounded-sm ${isFullHull ? fullHullColor : damagedHullColor} border border-black/50`}></div>
@@ -181,10 +179,10 @@ const DroneToken = ({
 
       {/* Overlapping Hexagons */}
       <div className="absolute -top-3 left-[-14px] w-6 h-7 z-20">
-          <StatHexagon value={effectiveStats.attack} isFlat={false} bgColor={statBgColor} textColor={attackTextColor} />
+          <StatHexagon value={effectiveStats.attack} isFlat={false} bgColor={statBgColor} textColor={attackTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
       </div>
       <div className={`absolute -top-3 right-[-14px] w-7 h-7 z-20 ${isPotentialInterceptor ? 'interceptor-glow' : ''}`}>
-          <StatHexagon value={effectiveStats.speed} isFlat={true} bgColor={statBgColor} textColor={speedTextColor} />
+          <StatHexagon value={effectiveStats.speed} isFlat={true} bgColor={statBgColor} textColor={speedTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
       </div>
 
       {/* Overlapping Ability Icon */}

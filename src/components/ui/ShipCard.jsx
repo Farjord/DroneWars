@@ -6,7 +6,7 @@
 // Base size: 225px × 275px
 
 import React from 'react';
-import { Shield, Heart, Crosshair, Layers } from 'lucide-react';
+import { HardDrive, Crosshair, Layers } from 'lucide-react';
 import ScalingText from './ScalingText.jsx';
 
 /**
@@ -95,14 +95,14 @@ const ShipCard = ({
           <div className="flex justify-around items-center px-2 py-3 flex-shrink-0 bg-black/30 mt-1">
             {/* Hull */}
             <div className="flex flex-col items-center">
-              <Heart size={20} className="text-green-500 mb-1" />
+              <HardDrive size={20} className="text-cyan-400 mb-1" />
               <span className="text-white font-bold text-lg">{baseHull}</span>
               <span className="text-[9px] text-gray-400">HULL</span>
             </div>
 
             {/* Shields */}
             <div className="flex flex-col items-center">
-              <Shield size={20} className="text-cyan-400 mb-1" />
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor" fillOpacity="0.6" className="text-cyan-400 mb-1"><path d="M12,0 L24,6 L24,18 L12,24 L0,18 L0,6 Z" stroke="currentColor" strokeWidth="1.5"></path></svg>
               <span className="text-white font-bold text-lg">{baseShields}</span>
               <span className="text-[9px] text-gray-400">SHIELDS</span>
             </div>

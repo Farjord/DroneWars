@@ -165,6 +165,58 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, onComplete }) => {
           ${isVisible ? 'scale-100 translate-y-0' : 'scale-90 translate-y-4'}
         `}
       >
+        {/* Background hex decorations - positioned behind text */}
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+          {/* Upper-left hex - larger */}
+          <svg
+            className={`absolute -translate-x-28 -translate-y-10 transition-all duration-500 ${isVisible ? 'opacity-20' : 'opacity-0'}`}
+            width="100" height="115" viewBox="0 0 80 92"
+          >
+            <polygon
+              points="40,0 80,23 80,69 40,92 0,69 0,23"
+              fill="rgba(6, 182, 212, 0.08)"
+              stroke="#06b6d4"
+              strokeWidth="1"
+            />
+          </svg>
+          {/* Lower-right hex - medium */}
+          <svg
+            className={`absolute translate-x-24 translate-y-8 transition-all duration-500 ${isVisible ? 'opacity-15' : 'opacity-0'}`}
+            width="80" height="92" viewBox="0 0 80 92"
+          >
+            <polygon
+              points="40,0 80,23 80,69 40,92 0,69 0,23"
+              fill="rgba(6, 182, 212, 0.06)"
+              stroke="#22d3ee"
+              strokeWidth="0.8"
+            />
+          </svg>
+          {/* Center-right small hex */}
+          <svg
+            className={`absolute translate-x-44 -translate-y-2 transition-all duration-500 ${isVisible ? 'opacity-10' : 'opacity-0'}`}
+            width="50" height="58" viewBox="0 0 80 92"
+          >
+            <polygon
+              points="40,0 80,23 80,69 40,92 0,69 0,23"
+              fill="rgba(6, 182, 212, 0.05)"
+              stroke="#67e8f9"
+              strokeWidth="0.5"
+            />
+          </svg>
+          {/* Upper-right tiny hex */}
+          <svg
+            className={`absolute translate-x-16 -translate-y-14 transition-all duration-500 ${isVisible ? 'opacity-12' : 'opacity-0'}`}
+            width="40" height="46" viewBox="0 0 80 92"
+          >
+            <polygon
+              points="40,0 80,23 80,69 40,92 0,69 0,23"
+              fill="none"
+              stroke="#22d3ee"
+              strokeWidth="0.6"
+            />
+          </svg>
+        </div>
+
         {/* Phase text with gradient and glow */}
         <h1
           className={`
@@ -173,13 +225,13 @@ const PhaseAnnouncementOverlay = ({ phaseText, subtitle, onComplete }) => {
             ${isVisible ? 'phase-announcement-shine' : ''}
           `}
           style={{
-            background: 'linear-gradient(45deg, #00ff88, #0088ff, #00ff88)',
-            backgroundSize: '200% auto',
+            background: 'linear-gradient(90deg, #06b6d4, #22d3ee, #ffffff, #22d3ee, #06b6d4)',
+            backgroundSize: '300% auto',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
-            textShadow: '0 0 30px rgba(0, 255, 136, 0.5), 0 0 60px rgba(0, 136, 255, 0.3)',
-            filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))'
+            textShadow: '0 0 30px rgba(6, 182, 212, 0.5), 0 0 60px rgba(34, 211, 238, 0.3)',
+            filter: 'drop-shadow(0 0 20px rgba(6, 182, 212, 0.4))'
           }}
         >
           {phaseText}
