@@ -49,14 +49,16 @@ const DEBUG_CONFIG = {
     CASCADE_LOOP: false,        // Cascade loop iteration details (DISABLED - already debugged)
     VALIDATION: false,           // State validation and reconciliation (ENABLED for checkpoint testing)
     TIMING: false,               // High-resolution timing milestones with timestamps (ENABLED for pass notification debugging)
+    ANNOUNCE_TRACE: true,       // Announcement queueing and playback tracing - shows exact source of each announcement
     SUBTITLE_CALC: false,       // Phase animation subtitle calculation (DISABLED - already debugged)
     FIRST_PLAYER: false,        // First player determination and seeded random (DISABLED for clean logs)
     SHIP_ABILITY: false,        // Ship ability execution and turn ending
     EXTRACTION: false,          // Single-player extraction mode (hangar, tactical map, deployment)
     ENCOUNTER: false,           // Random encounter rolls and combat triggers
-    QUICK_DEPLOY: true,         // Quick deployment validation and selection (ENABLED for phase chaos investigation)
-    PHASE_FLOW: true,           // Phase transitions and announcements (ENABLED for phase chaos investigation)
-    TICKER: true,              // News ticker message generation and data flow
+    QUICK_DEPLOY: false,         // Quick deployment validation and selection (ENABLED for phase chaos investigation)
+    PHASE_FLOW: false,           // Phase transitions and announcements (ENABLED for phase chaos investigation)
+    TICKER: false,              // News ticker message generation and data flow
+    AI_DEPLOYMENT: true,        // AI deployment decisions, validation, and execution loop tracing
 
     // Effect System Refactoring - Modular Processor Logging
     EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)

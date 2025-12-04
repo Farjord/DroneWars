@@ -208,8 +208,25 @@ const currentLaneScores = {
     }
 
     const topScore = possibleDeployments.length > 0 ? Math.max(...possibleDeployments.map(a => a.score)) : -1;
-    
+
+    // AI_DEPLOYMENT logging for bug investigation
+    debugLog('AI_DEPLOYMENT', `🧠 AI evaluated options`, {
+      possibleDeploymentCount: possibleDeployments.length,
+      topScore,
+      passThreshold: 5,
+      willDeploy: topScore >= 5,
+      topOptions: possibleDeployments
+        .filter(d => d.score === topScore)
+        .slice(0, 3)
+        .map(d => ({ drone: d.drone?.name, lane: d.laneId, score: d.score }))
+    });
+
     if (topScore < 5) {
+      debugLog('AI_DEPLOYMENT', `🤖 AI decides to PASS`, {
+        reason: 'No high-impact plays (topScore < 5)',
+        topScore,
+        evaluatedCount: possibleDeployments.length
+      });
       addLogEntry({ player: player2.name, actionType: 'PASS', source: 'N/A', target: 'N/A', outcome: `Passed during deployment phase (no high-impact plays).` }, 'aiDeploymentPass', possibleDeployments);
       return { type: 'pass' };
     }
@@ -217,6 +234,14 @@ const currentLaneScores = {
     const bestActions = possibleDeployments.filter(d => d.score === topScore);
     const chosenAction = bestActions[Math.floor(Math.random() * bestActions.length)];
     chosenAction.isChosen = true;
+
+    debugLog('AI_DEPLOYMENT', `🤖 AI decides to DEPLOY`, {
+      droneName: chosenAction.drone?.name,
+      droneClass: chosenAction.drone?.class,
+      targetLane: chosenAction.laneId,
+      score: chosenAction.score,
+      tiedOptions: bestActions.length
+    });
 
     // Log the deployment decision
     addLogEntry({

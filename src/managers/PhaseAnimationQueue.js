@@ -21,47 +21,75 @@ class PhaseAnimationQueue {
    * @param {string} phaseName - Internal phase name (e.g., 'determineFirstPlayer')
    * @param {string} phaseText - Display text (e.g., 'DETERMINING FIRST PLAYER')
    * @param {string} subtitle - Optional subtitle text
+   * @param {string} source - Source identifier for tracing (e.g., 'AP:host_transition:1892')
    */
-  queueAnimation(phaseName, phaseText, subtitle = null) {
+  queueAnimation(phaseName, phaseText, subtitle = null, source = 'unknown') {
+    // DEDUPLICATION: Check if same phaseName is currently playing
+    // This prevents the same announcement from playing twice in a row
+    if (this.currentAnimation && this.currentAnimation.phaseName === phaseName) {
+      debugLog('ANNOUNCE_TRACE', `⛔ DEDUP: ${phaseName} blocked - already playing`, {
+        source,
+        playingFrom: this.currentAnimation.source,
+        phaseText
+      });
+      return; // Don't queue same phase that's already playing
+    }
+
+    // DEDUPLICATION: Check if same phaseName already exists in queue
+    const existingIndex = this.queue.findIndex(a => a.phaseName === phaseName);
+    if (existingIndex !== -1) {
+      // Update existing animation with new text (in case it changed)
+      const existingSource = this.queue[existingIndex].source;
+      this.queue[existingIndex].phaseText = phaseText;
+      if (subtitle !== null) {
+        this.queue[existingIndex].subtitle = subtitle;
+      }
+
+      debugLog('ANNOUNCE_TRACE', `⛔ DEDUP: ${phaseName} blocked - already in queue`, {
+        newSource: source,
+        existingSource,
+        queuePosition: existingIndex
+      });
+      return; // Don't add duplicate
+    }
+
     const animation = {
       id: `phase-anim-${Date.now()}-${Math.random()}`,
       phaseName,
       phaseText,
       subtitle,
-      queuedAt: Date.now(),
-      stackTrace: new Error().stack // Capture call stack for debugging!
+      source,
+      queuedAt: Date.now()
     };
 
     this.queue.push(animation);
 
-    debugLog('TIMING', `📋 [ANIMATION QUEUE] Animation queued WITH STACK TRACE`, {
-      phaseName,
+    debugLog('ANNOUNCE_TRACE', `📋 QUEUE: ${phaseName} from ${source}`, {
       phaseText,
       queueLength: this.queue.length,
-      isPlaying: this.isPlayingAnimations,
-      timestamp: Date.now(),
-      stackTrace: animation.stackTrace.split('\n').slice(0, 6).join('\n') // First 6 lines of stack
+      isPlaying: this.isPlayingAnimations
     });
   }
 
   /**
    * Start playing queued animations sequentially
    * Non-blocking - returns immediately, animations play in background
+   * @param {string} source - Source identifier for tracing
    */
-  startPlayback() {
+  startPlayback(source = 'unknown') {
     if (this.isPlayingAnimations) {
-      debugLog('TIMING', '⚠️ [ANIMATION QUEUE] Already playing, ignoring startPlayback()');
+      debugLog('ANNOUNCE_TRACE', `⚠️ PLAYBACK: Already playing, ignoring call from ${source}`);
       return;
     }
 
     if (this.queue.length === 0) {
-      debugLog('TIMING', '📋 [ANIMATION QUEUE] No animations to play');
+      debugLog('ANNOUNCE_TRACE', `⚠️ PLAYBACK: No animations to play (from ${source})`);
       return;
     }
 
-    timingLog('[ANIMATION QUEUE] Starting playback', {
+    debugLog('ANNOUNCE_TRACE', `▶️ PLAYBACK: Started from ${source}`, {
       queueLength: this.queue.length,
-      animations: this.queue.map(a => a.phaseText).join(' → ')
+      animations: this.queue.map(a => `${a.phaseName}[${a.source}]`).join(' → ')
     });
 
     this.isPlayingAnimations = true;
@@ -130,9 +158,16 @@ class PhaseAnimationQueue {
       }
     }
 
+    debugLog('ANNOUNCE_TRACE', `🎬 PLAYING: ${this.currentAnimation.phaseName} from ${this.currentAnimation.source}`, {
+      phaseText: this.currentAnimation.phaseText,
+      subtitle: this.currentAnimation.subtitle || 'none',
+      remaining: this.queue.length
+    });
+
     const startTime = timingLog('[ANIMATION QUEUE] Playing animation', {
       phaseName: this.currentAnimation.phaseName,
       phaseText: this.currentAnimation.phaseText,
+      source: this.currentAnimation.source,
       subtitle: this.currentAnimation.subtitle || 'none',
       queuedFor: Date.now() - this.currentAnimation.queuedAt,
       remaining: this.queue.length
@@ -143,6 +178,13 @@ class PhaseAnimationQueue {
 
     // Wait for animation duration (1500ms display + 300ms fade out)
     await new Promise(resolve => setTimeout(resolve, 1800));
+
+    // SAFETY CHECK: If clear() was called during the await, abort gracefully
+    // This prevents crash when currentAnimation is null
+    if (!this.currentAnimation) {
+      debugLog('ANNOUNCE_TRACE', '⚠️ ABORTED: clear() was called during playback');
+      return;
+    }
 
     timingLog('[ANIMATION QUEUE] Animation complete', {
       phaseName: this.currentAnimation.phaseName,

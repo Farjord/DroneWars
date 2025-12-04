@@ -289,9 +289,8 @@ const App = ({ phaseAnimationQueue }) => {
   const previousPhaseRef = useRef(null); // Track previous turnPhase for guest phase detection
   const roundStartCascadeTriggered = useRef(false); // Prevent duplicate round start cascade triggers
   const deploymentToActionTriggered = useRef(false); // Prevent duplicate deployment → action triggers
-  const enteredMandatoryDiscardWithExcess = useRef(false); // Track if player entered mandatoryDiscard with excess cards
-  const enteredMandatoryRemovalWithExcess = useRef(false); // Track if player entered mandatoryDroneRemoval with excess drones
-  const initialMandatoryDiscardHandSize = useRef(null); // Track initial hand size when entering mandatoryDiscard phase
+  // NOTE: enteredMandatoryDiscardWithExcess and enteredMandatoryRemovalWithExcess refs REMOVED
+  // Auto-completion for mandatory phases is now handled consistently by GameFlowManager.autoCompleteUnnecessaryCommitments()
 
   // --- 3.4 HOOKS DEPENDENT ON REFS ---
   // These hooks require refs as parameters and must be called after ref initialization.
@@ -490,12 +489,18 @@ const App = ({ phaseAnimationQueue }) => {
         const { phase } = event.data || event; // Handle both event.data and direct event
         debugLog('MULTIPLAYER', `🔥 Opponent completed phase: ${phase}`);
       }
+      // Host-only: Handle sync requests from guest
+      if (event.type === 'sync_requested' && gameStateManager.isHost()) {
+        debugLog('MULTIPLAYER', '🔄 Guest requested full state sync - sending response');
+        const currentState = gameStateManager.getState();
+        p2pManager.sendFullSyncResponse(currentState);
+      }
     };
 
     // Subscribe to P2P data events
     const unsubscribe = p2pManager.subscribe(handleP2PData);
     return unsubscribe;
-  }, [isMultiplayer, p2pManager]);
+  }, [isMultiplayer, p2pManager, gameStateManager]);
 
   // Initialize pending shield allocations when entering allocateShields phase
   useEffect(() => {
@@ -579,11 +584,6 @@ const App = ({ phaseAnimationQueue }) => {
     : 0;
   const excessDrones = localPlayerState && localPlayerEffectiveStats
     ? totalLocalPlayerDrones - localPlayerEffectiveStats.totals.cpuLimit
-    : 0;
-
-  // Derive mandatoryDiscardsMade from actual hand size changes (syncs between host/guest)
-  const mandatoryDiscardsMade = (turnPhase === 'mandatoryDiscard' && initialMandatoryDiscardHandSize.current)
-    ? initialMandatoryDiscardHandSize.current - localPlayerState.hand.length
     : 0;
 
   // DISABLED: Render-based logging causes excessive noise on every App render
@@ -1712,62 +1712,19 @@ const App = ({ phaseAnimationQueue }) => {
     }
   }, [turnPhase, gameState.commitments, isMultiplayer, getLocalPlayerId, getOpponentPlayerId, waitingForPlayerPhase]);
 
-  // --- 8.11 TRACK INITIAL STATE FOR MANDATORY PHASES ---
-  // Capture whether player ENTERED phase with excess cards/drones.
-  // This enables smart auto-trigger behavior:
-  // - If entered with NO excess → auto-trigger Continue (nothing to do)
-  // - If entered WITH excess → require manual Continue (player took action)
-  // Prevents confusion where player completes required actions but phase doesn't advance automatically.
-  useEffect(() => {
-    if (turnPhase === 'mandatoryDiscard') {
-      enteredMandatoryDiscardWithExcess.current = excessCards > 0;
-      initialMandatoryDiscardHandSize.current = localPlayerState.hand.length;
-      debugLog('PHASE_TRANSITIONS', '[MANDATORY DISCARD] Entered phase, tracking initial state:', {
-        excessCards,
-        initialHandSize: localPlayerState.hand.length
-      });
-    } else {
-      // Reset when leaving mandatoryDiscard phase
-      initialMandatoryDiscardHandSize.current = null;
-    }
-  }, [turnPhase, localPlayerState.hand.length]);
-
-  useEffect(() => {
-    if (turnPhase === 'mandatoryDroneRemoval') {
-      enteredMandatoryRemovalWithExcess.current = excessDrones > 0;
-      debugLog('PHASE_TRANSITIONS', '[MANDATORY DRONE REMOVAL] Entered phase, tracking initial state:', { excessDrones });
-    }
-  }, [turnPhase]);
-
-  // --- 8.12 AUTO-TRIGGER MANDATORY DISCARD CONTINUE ---
-  // Automatically trigger continue ONLY when player ENTERED phase with no excess cards
-  // If player entered with excess and discarded down to 0, they must manually press Continue
-  useEffect(() => {
-    if (turnPhase === 'mandatoryDiscard' && excessCards === 0) {
-      const localPlayerId = getLocalPlayerId();
-      const alreadyCommitted = gameState.commitments?.mandatoryDiscard?.[localPlayerId]?.completed;
-
-      if (!alreadyCommitted && !enteredMandatoryDiscardWithExcess.current) {
-        debugLog('PHASE_TRANSITIONS', '[MANDATORY DISCARD] Auto-triggering continue (entered with no excess cards)');
-        handleMandatoryDiscardContinue();
-      }
-    }
-  }, [turnPhase, excessCards]);
-
-  // --- 8.13 AUTO-TRIGGER MANDATORY DRONE REMOVAL CONTINUE ---
-  // Automatically trigger continue ONLY when player ENTERED phase with no excess drones
-  // If player entered with excess and removed down to 0, they must manually press Continue
-  useEffect(() => {
-    if (turnPhase === 'mandatoryDroneRemoval' && excessDrones === 0) {
-      const localPlayerId = getLocalPlayerId();
-      const alreadyCommitted = gameState.commitments?.mandatoryDroneRemoval?.[localPlayerId]?.completed;
-
-      if (!alreadyCommitted && !enteredMandatoryRemovalWithExcess.current) {
-        debugLog('PHASE_TRANSITIONS', '[MANDATORY DRONE REMOVAL] Auto-triggering continue (entered with no excess drones)');
-        handleMandatoryDroneRemovalContinue();
-      }
-    }
-  }, [turnPhase, excessDrones]);
+  // --- 8.11-8.13 REMOVED: AUTO-TRIGGER FOR MANDATORY PHASES ---
+  // Previous implementation used client-side useEffects to auto-trigger Continue when player
+  // entered mandatoryDiscard or mandatoryDroneRemoval with no excess cards/drones.
+  //
+  // This has been CONSOLIDATED into GameFlowManager.autoCompleteUnnecessaryCommitments()
+  // which now handles ALL mandatory simultaneous phases (allocateShields, mandatoryDiscard,
+  // mandatoryDroneRemoval) consistently on the server-side.
+  //
+  // Benefits:
+  // - Single source of truth for auto-completion logic
+  // - No race conditions between client-side useEffect dependencies
+  // - Consistent handling across all game modes (local, host, guest)
+  // - Proper integration with AI auto-commit for single-player mode
 
   /**
    * HANDLE RESET
@@ -3785,7 +3742,6 @@ const App = ({ phaseAnimationQueue }) => {
                 ? { type: 'destroy', count: excessDrones }
                 : null
         }
-        mandatoryDiscardsMade={mandatoryDiscardsMade}
         excessCards={excessCards}
         handleFooterButtonClick={handleFooterButtonClick}
         handleCardClick={handleCardClick}

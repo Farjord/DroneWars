@@ -61,8 +61,25 @@ class DeploymentProcessor {
       fullDroneCollectionLength: fullDroneCollection.length
     });
 
+    // AI_DEPLOYMENT logging for bug investigation
+    debugLog('AI_DEPLOYMENT', `🔍 Validating deployment`, {
+      droneName: drone?.name,
+      targetLane,
+      turn,
+      totalPlayerDrones,
+      cpuLimit: playerEffectiveStats?.totals?.cpuLimit,
+      playerEnergy: player?.energy,
+      playerBudget: turn === 1 ? player?.initialDeploymentBudget : player?.deploymentBudget,
+      budgetType: turn === 1 ? 'initialDeploymentBudget' : 'deploymentBudget'
+    });
+
     // Check CPU limit
     if (totalPlayerDrones >= playerEffectiveStats.totals.cpuLimit) {
+      debugLog('AI_DEPLOYMENT', `⛔ Validation FAILED: CPU Limit Reached`, {
+        droneName: drone?.name,
+        totalPlayerDrones,
+        cpuLimit: playerEffectiveStats.totals.cpuLimit
+      });
       return {
         isValid: false,
         reason: "CPU Limit Reached",
@@ -88,6 +105,11 @@ class DeploymentProcessor {
     });
 
     if ((player.deployedDroneCounts[drone.name] || 0) >= effectiveLimit) {
+      debugLog('AI_DEPLOYMENT', `⛔ Validation FAILED: Deployment Limit Reached`, {
+        droneName: drone?.name,
+        deployed: player.deployedDroneCounts[drone.name] || 0,
+        effectiveLimit
+      });
       return {
         isValid: false,
         reason: "Deployment Limit Reached",
@@ -99,6 +121,12 @@ class DeploymentProcessor {
     if (baseDroneInfo.maxPerLane && targetLane) {
       const currentCountInLane = this.countDroneTypeInLane(player, drone.name, targetLane);
       if (currentCountInLane >= baseDroneInfo.maxPerLane) {
+        debugLog('AI_DEPLOYMENT', `⛔ Validation FAILED: Max Per Lane Reached`, {
+          droneName: drone?.name,
+          targetLane,
+          currentCountInLane,
+          maxPerLane: baseDroneInfo.maxPerLane
+        });
         return {
           isValid: false,
           reason: "Max Per Lane Reached",
@@ -122,12 +150,29 @@ class DeploymentProcessor {
 
     // Check energy availability
     if (player.energy < energyCost) {
+      debugLog('AI_DEPLOYMENT', `⛔ Validation FAILED: Not Enough Energy`, {
+        droneName: drone?.name,
+        energyCost,
+        playerEnergy: player.energy,
+        budgetCost,
+        droneCost: drone.class,
+        turn,
+        budgetUsed: turn === 1 ? player.initialDeploymentBudget : player.deploymentBudget
+      });
       return {
         isValid: false,
         reason: "Not Enough Energy",
         message: `This action requires ${energyCost} energy, but you only have ${player.energy}.`
       };
     }
+
+    debugLog('AI_DEPLOYMENT', `✅ Validation passed`, {
+      droneName: drone?.name,
+      targetLane,
+      budgetCost,
+      energyCost,
+      turn
+    });
 
     return { isValid: true, budgetCost, energyCost };
   }

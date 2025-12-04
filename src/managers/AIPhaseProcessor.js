@@ -435,6 +435,18 @@ class AIPhaseProcessor {
 
     debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor executing deployment decision:', aiDecision);
 
+    // AI_DEPLOYMENT logging for bug investigation
+    debugLog('AI_DEPLOYMENT', `🤖 AI decision made`, {
+      decisionType: aiDecision.type,
+      droneName: aiDecision.payload?.droneToDeploy?.name,
+      targetLane: aiDecision.payload?.targetLane,
+      score: aiDecision.score,
+      turnUsed: gameState.roundNumber,
+      actualTurn: gameState.turn,
+      player2Energy: gameState.player2?.energy,
+      player2Budget: gameState.player2?.deploymentBudget
+    });
+
     // Execute the decision directly through ActionProcessor
     if (aiDecision.type === 'pass') {
       await this.actionProcessor.queueAction({
@@ -461,11 +473,38 @@ class AIPhaseProcessor {
 
       // End turn after successful deployment (same as human players do)
       if (result.success) {
+        debugLog('AI_DEPLOYMENT', `✅ Deployment executed`, {
+          droneName: aiDecision.payload?.droneToDeploy?.name,
+          targetLane: aiDecision.payload?.targetLane
+        });
         await this.actionProcessor.queueAction({
           type: 'turnTransition',
           payload: {
             newPlayer: 'player1',
             reason: 'deploymentCompleted'
+          }
+        });
+      } else {
+        debugLog('AI_DEPLOYMENT', `❌ Deployment FAILED`, {
+          droneName: aiDecision.payload?.droneToDeploy?.name,
+          targetLane: aiDecision.payload?.targetLane,
+          error: result.error,
+          reason: result.reason,
+          turnUsed: gameState.roundNumber,
+          actualTurn: gameState.turn
+        });
+
+        // BUG FIX: When deployment fails (e.g., CPU limit reached), pass the turn
+        // to prevent infinite loop where AI keeps trying to deploy the same drone
+        debugLog('AI_DEPLOYMENT', `🔄 Deployment failed - forcing AI to pass turn to prevent infinite loop`);
+        await this.actionProcessor.queueAction({
+          type: 'playerPass',
+          payload: {
+            playerId: 'player2',
+            playerName: 'AI Player',
+            turnPhase: 'deployment',
+            passInfo: gameState.passInfo,
+            opponentPlayerId: 'player1'
           }
         });
       }
@@ -1157,6 +1196,18 @@ class AIPhaseProcessor {
 
       debugLog('QUICK_DEPLOY', '🤖 AI decision:', aiDecision?.type);
 
+      // AI_DEPLOYMENT logging for loop iteration tracking
+      debugLog('AI_DEPLOYMENT', `🔄 Quick deploy iteration ${deploymentCount + 1}/${maxDeployments}`, {
+        aiDecisionType: aiDecision.type,
+        droneName: aiDecision.payload?.droneToDeploy?.name,
+        targetLane: aiDecision.payload?.targetLane,
+        turnUsed: gameState.roundNumber,
+        actualTurn: gameState.turn,
+        player2Energy: gameState.player2?.energy,
+        player2Budget: gameState.player2?.deploymentBudget,
+        player2InitialBudget: gameState.player2?.initialDeploymentBudget
+      });
+
       if (aiDecision.type === 'pass') {
         debugLog('QUICK_DEPLOY', '🤖 AI decides to pass');
         break;
@@ -1194,8 +1245,31 @@ class AIPhaseProcessor {
           });
           deploymentCount++;
           debugLog('QUICK_DEPLOY', `🤖 AI deployed ${droneToDeploy?.name} successfully (${deploymentCount} total)`);
+          debugLog('AI_DEPLOYMENT', `✅ Quick deploy success`, {
+            droneName: droneToDeploy?.name,
+            targetLane,
+            deploymentCount,
+            newEnergy: result.newPlayerState?.energy,
+            newBudget: result.newPlayerState?.deploymentBudget
+          });
         } else {
           debugLog('QUICK_DEPLOY', `🤖 AI deployment failed: ${result.error}`);
+          debugLog('AI_DEPLOYMENT', `❌ Quick deploy FAILED - breaking loop`, {
+            iteration: deploymentCount,
+            droneName: droneToDeploy?.name,
+            targetLane,
+            error: result.error,
+            reason: result.reason,
+            turnUsedInCall: gameState.roundNumber || 1,
+            actualTurn: gameState.turn,
+            stateSnapshot: {
+              energy: player2State.energy,
+              budget: player2State.deploymentBudget,
+              initialBudget: player2State.initialDeploymentBudget,
+              cpuUsed: Object.values(player2State.dronesOnBoard || {}).flat().length,
+              cpuLimit: player2State.shipStats?.cpuLimit
+            }
+          });
           break;
         }
       } else {

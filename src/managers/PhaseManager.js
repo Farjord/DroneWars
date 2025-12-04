@@ -17,6 +17,21 @@
 import { debugLog } from '../utils/debugLogger.js';
 
 class PhaseManager {
+  // Valid phase names - transitions to invalid phases will be rejected
+  static VALID_PHASES = [
+    'deckSelection', 'droneSelection', 'placement', 'roundInitialization',
+    'mandatoryDiscard', 'optionalDiscard', 'allocateShields',
+    'mandatoryDroneRemoval', 'deployment', 'action', 'determineFirstPlayer'
+  ];
+
+  // Sequential phases: players take turns passing
+  static SEQUENTIAL_PHASES = ['deployment', 'action'];
+
+  // Simultaneous phases: both players commit at once
+  static SIMULTANEOUS_PHASES = [
+    'placement', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields',
+    'mandatoryDroneRemoval', 'droneSelection', 'deckSelection', 'determineFirstPlayer'
+  ];
   constructor(gameStateManager, gameMode = 'local') {
     this.gameStateManager = gameStateManager;
     this.gameMode = gameMode;
@@ -60,12 +75,39 @@ class PhaseManager {
   }
 
   /**
+   * Validate that action type is appropriate for current phase
+   * @param {string} actionType - 'pass' or 'commit'
+   * @returns {boolean} True if action is valid for current phase
+   */
+  validateActionForPhase(actionType) {
+    const currentPhase = this.phaseState.turnPhase;
+
+    if (actionType === 'pass' && !PhaseManager.SEQUENTIAL_PHASES.includes(currentPhase)) {
+      debugLog('PHASE_MANAGER', `🚫 Pass action invalid for simultaneous phase: ${currentPhase}`);
+      console.warn(`PhaseManager: Pass action invalid for phase: ${currentPhase}`);
+      return false;
+    }
+    if (actionType === 'commit' && !PhaseManager.SIMULTANEOUS_PHASES.includes(currentPhase)) {
+      debugLog('PHASE_MANAGER', `🚫 Commit action invalid for sequential phase: ${currentPhase}`);
+      console.warn(`PhaseManager: Commit action invalid for phase: ${currentPhase}`);
+      return false;
+    }
+    return true;
+  }
+
+  /**
    * Notify Phase Manager that Host performed an action
    * @param {string} actionType - 'pass' or 'commit'
    * @param {object} data - Action data
+   * @returns {boolean} True if action was valid and processed
    */
   notifyHostAction(actionType, data) {
     debugLog('PHASE_MANAGER', `📥 Host action: ${actionType}`, data);
+
+    // Validate action type for current phase
+    if (!this.validateActionForPhase(actionType)) {
+      return false;
+    }
 
     if (actionType === 'pass') {
       this.hostLocalState.passInfo.passed = true;
@@ -95,9 +137,15 @@ class PhaseManager {
    * Notify Phase Manager that Guest performed an action (received via network)
    * @param {string} actionType - 'pass' or 'commit'
    * @param {object} data - Action data
+   * @returns {boolean} True if action was valid and processed
    */
   notifyGuestAction(actionType, data) {
     debugLog('PHASE_MANAGER', `📥 Guest action: ${actionType}`, data);
+
+    // Validate action type for current phase
+    if (!this.validateActionForPhase(actionType)) {
+      return false;
+    }
 
     if (actionType === 'pass') {
       this.guestLocalState.passInfo.passed = true;
@@ -179,6 +227,13 @@ class PhaseManager {
    * @returns {boolean} Success
    */
   transitionToPhase(newPhase) {
+    // Guard: Validate phase name
+    if (!PhaseManager.VALID_PHASES.includes(newPhase)) {
+      debugLog('PHASE_MANAGER', `🚫 Invalid phase name: ${newPhase}`);
+      console.error(`PhaseManager: Invalid phase name: ${newPhase}`);
+      return false;
+    }
+
     // Guard: Guest cannot transition
     if (this.gameMode === 'guest') {
       debugLog('PHASE_MANAGER', `🚫 Guest attempted to transition to ${newPhase} - BLOCKED`);
@@ -201,8 +256,8 @@ class PhaseManager {
       // Update phase state
       this.phaseState.turnPhase = newPhase;
 
-      // Reset phase-specific state
-      this.resetPhaseState();
+      // Reset phase-specific state for the phase we're leaving
+      this.resetPhaseState(oldPhase);
 
       // Record transition history
       this.transitionHistory.push({
@@ -237,22 +292,32 @@ class PhaseManager {
 
   /**
    * Reset phase-specific state after transition
+   * @param {string} phaseToReset - The phase we're leaving (to reset its commitments)
    */
-  resetPhaseState() {
-    // Clear pass info
+  resetPhaseState(phaseToReset) {
+    // Clear pass info (preserving firstPasser for turn order determination)
+    const preservedFirstPasser = this.hostLocalState.passInfo.firstPasser;
+
     this.hostLocalState.passInfo = {
       passed: false,
-      firstPasser: null
+      firstPasser: preservedFirstPasser
     };
     this.guestLocalState.passInfo = {
       passed: false,
-      firstPasser: null
+      firstPasser: preservedFirstPasser
     };
 
-    // Note: Commitments are cleared per-phase, not all at once
-    // They remain for history/reference until overwritten
+    // CRITICAL: Reset commitments for the phase we just LEFT, not the phase we entered
+    // Without this, checkReadyToTransition() will incorrectly detect
+    // old commitments when a simultaneous phase runs again in subsequent rounds
+    if (phaseToReset && this.hostLocalState.commitments[phaseToReset]) {
+      this.hostLocalState.commitments[phaseToReset] = { completed: false };
+    }
+    if (phaseToReset && this.guestLocalState.commitments[phaseToReset]) {
+      this.guestLocalState.commitments[phaseToReset] = { completed: false };
+    }
 
-    debugLog('PHASE_MANAGER', `🧹 Phase state reset (passInfo cleared)`);
+    debugLog('PHASE_MANAGER', `🧹 Phase state reset (passInfo and commitments cleared for ${phaseToReset || 'no phase'})`);
   }
 
   /**
@@ -347,11 +412,12 @@ class PhaseManager {
   /**
    * Apply master phase state (Guest receives Host broadcast)
    * @param {object} masterPhaseState - Authoritative state from Host
+   * @returns {boolean} True if applied, false if blocked
    */
   applyMasterState(masterPhaseState) {
     if (this.gameMode !== 'guest') {
       debugLog('PHASE_MANAGER', `⚠️ Only guest should apply master state`);
-      return;
+      return false;
     }
 
     debugLog('PHASE_MANAGER', `📥 Guest applying master phase state:`, masterPhaseState);
@@ -359,7 +425,17 @@ class PhaseManager {
     // Accept Host's phase state as authoritative
     this.phaseState = { ...masterPhaseState };
 
+    // CRITICAL: Sync firstPasser if included in broadcast
+    // Guest needs this to determine turn order in next round
+    // Guest cannot independently track firstPasser when host passes first
+    if (masterPhaseState.passInfo?.firstPasser) {
+      this.hostLocalState.passInfo.firstPasser = masterPhaseState.passInfo.firstPasser;
+      this.guestLocalState.passInfo.firstPasser = masterPhaseState.passInfo.firstPasser;
+      debugLog('PHASE_MANAGER', `✅ Synced firstPasser: ${masterPhaseState.passInfo.firstPasser}`);
+    }
+
     debugLog('PHASE_MANAGER', `✅ Guest phase state updated to: ${this.phaseState.turnPhase}`);
+    return true;
   }
 }
 

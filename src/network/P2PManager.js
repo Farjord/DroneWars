@@ -21,12 +21,16 @@ class P2PManager {
       stateUpdate: null,
       guestAction: null,
       ping: null,
-      phaseCompleted: null
+      phaseCompleted: null,
+      syncRequest: null  // For resync requests (guest → host)
     };
 
     // Track connected peers
     this.peers = new Set();
     this.currentPeerId = null; // The other peer's ID
+
+    // Broadcast sequence counter for message ordering
+    this.broadcastSequence = 0;
 
     // Firebase configuration
     this.firebaseConfig = {
@@ -87,7 +91,8 @@ class P2PManager {
       timingLog('[NETWORK] Guest received', {
         phase: data.state?.turnPhase,
         animCount: (data.actionAnimations?.length || 0) + (data.systemAnimations?.length || 0),
-        latency: `${networkLatency.toFixed(0)}ms`  // Use toFixed(0) since Date.now() returns integers
+        latency: `${networkLatency.toFixed(0)}ms`,  // Use toFixed(0) since Date.now() returns integers
+        isFullSync: data.isFullSync || false
       });
 
       debugLog('MULTIPLAYER', '[P2P GUEST] Received state update with animations:', {
@@ -95,13 +100,17 @@ class P2PManager {
         hasSystemAnimations: data.systemAnimations && data.systemAnimations.length > 0,
         actionAnimationCount: data.actionAnimations?.length || 0,
         systemAnimationCount: data.systemAnimations?.length || 0,
+        sequenceId: data.sequenceId,
+        isFullSync: data.isFullSync || false,
         fromPeer: peerId
       });
 
       this.emit('state_update_received', {
         state: data.state,
         actionAnimations: data.actionAnimations || [],
-        systemAnimations: data.systemAnimations || []
+        systemAnimations: data.systemAnimations || [],
+        sequenceId: data.sequenceId,
+        isFullSync: data.isFullSync || false
       });
     });
 
@@ -138,6 +147,19 @@ class P2PManager {
 
     receivePhaseCompleted((data, peerId) => {
       this.emit('PHASE_COMPLETED', data);
+    });
+
+    // SYNC_REQ action (guest → host) for requesting full state resync
+    const [sendSyncRequest, receiveSyncRequest] = this.room.makeAction('SYNC_REQ');
+    this.actions.syncRequest = { send: sendSyncRequest, receive: receiveSyncRequest };
+
+    receiveSyncRequest((data, peerId) => {
+      debugLog('MULTIPLAYER', '[P2P HOST] Received sync request from guest');
+
+      // Only host responds to sync requests
+      if (this.isHost) {
+        this.emit('sync_requested', { peerId, requestId: data.requestId });
+      }
     });
   }
 
@@ -359,8 +381,12 @@ class P2PManager {
         sampleInstanceId: state.player2?.hand?.[0]?.instanceId
       });
 
+      // Increment sequence for each broadcast
+      this.broadcastSequence++;
+
       const networkSendTime = Date.now();  // Use Date.now() for cross-window synchronization
       const stateData = {
+        sequenceId: this.broadcastSequence,  // For message ordering on guest side
         state: state,
         actionAnimations: actionAnimations,
         systemAnimations: systemAnimations,
@@ -416,6 +442,74 @@ class P2PManager {
   }
 
   /**
+   * Request full state sync from host (guest only)
+   * Called when guest detects too many out-of-order messages
+   */
+  requestFullSync() {
+    if (this.isHost) {
+      console.warn('Host should not request sync from itself');
+      return;
+    }
+
+    if (!this.isConnected || !this.currentPeerId) {
+      console.warn('Cannot request sync - no connection to host');
+      return;
+    }
+
+    try {
+      const requestData = {
+        requestId: Date.now(),
+        reason: 'out_of_order_messages'
+      };
+
+      this.actions.syncRequest.send(requestData, this.currentPeerId);
+      debugLog('MULTIPLAYER', '[P2P GUEST] Requested full state sync from host');
+    } catch (error) {
+      console.error('Failed to request sync:', error);
+      this.emit('send_error', { error: error.message });
+    }
+  }
+
+  /**
+   * Send full sync response to guest (host only)
+   * @param {Object} state - Complete game state
+   * @param {number} sequenceId - Current sequence number
+   */
+  sendFullSyncResponse(state, sequenceId) {
+    if (!this.isHost) {
+      console.warn('Only host can send sync response');
+      return;
+    }
+
+    if (!this.isConnected || !this.currentPeerId) {
+      console.warn('Cannot send sync response - no connection available');
+      return;
+    }
+
+    try {
+      // Update sequence to match what we're sending
+      this.broadcastSequence = sequenceId || this.broadcastSequence;
+
+      const stateData = {
+        sequenceId: this.broadcastSequence,
+        state: state,
+        actionAnimations: [],
+        systemAnimations: [],
+        timestamp: Date.now(),
+        isFullSync: true  // Flag to indicate this is a resync response
+      };
+
+      this.actions.stateUpdate.send(stateData, this.currentPeerId);
+      debugLog('MULTIPLAYER', '[P2P HOST] Sent full sync response to guest', {
+        sequenceId: this.broadcastSequence
+      });
+    } catch (error) {
+      console.error('Failed to send sync response:', error);
+      this.emit('send_error', { error: error.message });
+    }
+  }
+
+  /**
    * Sync game state with peer (deprecated - use ActionProcessor for state changes)
    */
   syncGameState(state = null) {
@@ -457,7 +551,8 @@ class P2PManager {
       stateUpdate: null,
       guestAction: null,
       ping: null,
-      phaseCompleted: null
+      phaseCompleted: null,
+      syncRequest: null
     };
 
     this.peers.clear();

@@ -21,7 +21,6 @@ function HandView({
   selectedCard,
   turnPhase,
   mandatoryAction,
-  mandatoryDiscardsMade,
   excessCards,
   handleCardClick,
   getLocalPlayerId,

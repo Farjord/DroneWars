@@ -16,9 +16,54 @@ class GuestMessageQueueService {
     this.pendingHostState = null; // Track state update for AnimationManager callback (with isTeleporting for TELEPORT_IN)
     this.pendingFinalHostState = null; // Track final state for TELEPORT_IN reveal (without isTeleporting)
 
+    // Sequence tracking for message ordering
+    this.lastProcessedSequence = 0;
+    this.pendingOutOfOrderMessages = new Map(); // sequenceId -> message
+    this.PENDING_THRESHOLD = 3; // Trigger resync after this many pending messages
+    this.isResyncing = false;
+
+    // P2PManager reference (set via setP2PManager)
+    this.p2pManager = null;
+
+    // Event listeners for resync events
+    this.listeners = new Set();
+
     // PHASE MANAGER INTEGRATION (Phase 6):
     // Complex validation logic removed. Guest now trusts PhaseManager's authoritative broadcasts.
     // PhaseManager ensures consistent state, so Guest no longer needs to validate phase transitions.
+  }
+
+  /**
+   * Set P2PManager reference for requesting resyncs
+   * @param {Object} p2pManager - P2PManager instance
+   */
+  setP2PManager(p2pManager) {
+    this.p2pManager = p2pManager;
+  }
+
+  /**
+   * Subscribe to queue events (resync_started, resync_completed)
+   * @param {Function} listener - Event handler function
+   * @returns {Function} Unsubscribe function
+   */
+  subscribe(listener) {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  /**
+   * Emit event to listeners
+   * @param {string} type - Event type
+   * @param {Object} data - Event data
+   */
+  emit(type, data = {}) {
+    this.listeners.forEach(listener => {
+      try {
+        listener({ type, data });
+      } catch (error) {
+        console.error('Error in GuestMessageQueueService listener:', error);
+      }
+    });
   }
 
   /**
@@ -355,15 +400,52 @@ class GuestMessageQueueService {
 
   /**
    * Add message to queue and start processing
+   * Handles sequence tracking for out-of-order message detection
    * @param {Object} message - P2P message from host
    */
   enqueueMessage(message) {
     const queueEntryTime = getTimestamp();
+    const sequenceId = message.data?.sequenceId;
+    const isFullSync = message.data?.isFullSync;
 
     debugLog('MULTIPLAYER', '📝 [GUEST QUEUE] Enqueuing message:', {
       type: message.type,
+      sequenceId: sequenceId,
+      isFullSync: isFullSync || false,
+      lastProcessed: this.lastProcessedSequence,
       queueLength: this.messageQueue.length + 1
     });
+
+    // Handle full sync response (from resync request)
+    if (isFullSync) {
+      debugLog('MULTIPLAYER', '🔄 [GUEST QUEUE] Received full sync response');
+      this.handleResyncResponse({
+        state: message.data?.state,
+        sequenceId: sequenceId
+      });
+      return; // Don't add to normal queue
+    }
+
+    // Handle sequence tracking for state updates
+    if (sequenceId !== undefined && message.type === 'state_update_received') {
+      // Check for out-of-order message (gap in sequence)
+      if (sequenceId > this.lastProcessedSequence + 1) {
+        // Out of order - queue it for later
+        this.pendingOutOfOrderMessages.set(sequenceId, { ...message, queueEntryTime });
+        debugLog('MULTIPLAYER', `⏸️ [GUEST QUEUE] Out-of-order message seq=${sequenceId}, waiting for seq=${this.lastProcessedSequence + 1}`, {
+          pendingCount: this.pendingOutOfOrderMessages.size
+        });
+
+        // Check if we need to trigger resync
+        if (this.pendingOutOfOrderMessages.size > this.PENDING_THRESHOLD) {
+          this.triggerResync();
+        }
+        return; // Don't add to normal queue yet
+      }
+
+      // Update sequence tracking for in-order messages
+      this.lastProcessedSequence = sequenceId;
+    }
 
     // Add timestamp for queue wait time calculation
     const messageWithTimestamp = {
@@ -373,12 +455,94 @@ class GuestMessageQueueService {
 
     timingLog('[GUEST QUEUE] Message enqueued', {
       type: message.type,
+      sequenceId: sequenceId,
       phase: message.data?.state?.turnPhase,
       queueLength: this.messageQueue.length + 1
     });
 
     this.messageQueue.push(messageWithTimestamp);
     this.processQueue();
+
+    // After processing, check if we can now process pending out-of-order messages
+    this.processPendingMessages();
+  }
+
+  /**
+   * Process any pending out-of-order messages that are now in sequence
+   */
+  processPendingMessages() {
+    let nextSeq = this.lastProcessedSequence + 1;
+
+    while (this.pendingOutOfOrderMessages.has(nextSeq)) {
+      const message = this.pendingOutOfOrderMessages.get(nextSeq);
+      this.pendingOutOfOrderMessages.delete(nextSeq);
+
+      debugLog('MULTIPLAYER', `✅ [GUEST QUEUE] Processing previously pending message seq=${nextSeq}`);
+
+      this.messageQueue.push(message);
+      this.lastProcessedSequence = nextSeq;
+      nextSeq++;
+    }
+
+    // Continue processing queue if we added messages
+    if (this.messageQueue.length > 0 && !this.isProcessing) {
+      this.processQueue();
+    }
+  }
+
+  /**
+   * Trigger a full state resync when too many messages are pending
+   * This indicates likely network issues or lost messages
+   */
+  triggerResync() {
+    if (this.isResyncing) {
+      debugLog('MULTIPLAYER', '⏸️ [GUEST QUEUE] Resync already in progress');
+      return;
+    }
+
+    this.isResyncing = true;
+    debugLog('MULTIPLAYER', '🔄 [GUEST QUEUE] Triggering full state resync - too many pending messages', {
+      pendingCount: this.pendingOutOfOrderMessages.size,
+      threshold: this.PENDING_THRESHOLD
+    });
+
+    // Clear pending queue - we'll get fresh state
+    this.pendingOutOfOrderMessages.clear();
+    this.messageQueue = [];
+
+    // Request full state from host
+    if (this.p2pManager) {
+      this.p2pManager.requestFullSync();
+    } else {
+      console.warn('GuestMessageQueueService: Cannot request resync - no P2PManager reference');
+    }
+
+    // Emit event for UI (show "Syncing..." indicator)
+    this.emit('resync_started', {});
+  }
+
+  /**
+   * Handle full state resync response from host
+   * @param {Object} fullState - Complete state from host
+   */
+  handleResyncResponse(fullState) {
+    debugLog('MULTIPLAYER', '✅ [GUEST QUEUE] Received resync response', {
+      sequenceId: fullState.sequenceId,
+      phase: fullState.state?.turnPhase
+    });
+
+    // Apply full state
+    if (fullState.state) {
+      this.gameStateManager.applyHostState(fullState.state);
+    }
+
+    // Update sequence tracking
+    if (fullState.sequenceId !== undefined) {
+      this.lastProcessedSequence = fullState.sequenceId;
+    }
+
+    this.isResyncing = false;
+    this.emit('resync_completed', {});
   }
 
   /**
@@ -437,7 +601,7 @@ class GuestMessageQueueService {
           queuedAnimations: queueLength
         });
         setTimeout(() => {
-          this.phaseAnimationQueue.startPlayback();
+          this.phaseAnimationQueue.startPlayback('GMQS:after_process:604');
         }, 50);
       }
     }
@@ -573,7 +737,8 @@ class GuestMessageQueueService {
             this.phaseAnimationQueue.queueAnimation(
               'playerPass',
               'OPPONENT PASSED',
-              null
+              null,
+              'GMQS:pattern1_pass:737'
             );
             debugLog('PASS_LOGIC', `📋 [GUEST] Queued OPPONENT PASSED (inferred from round transition after local pass)`);
           }
@@ -583,14 +748,16 @@ class GuestMessageQueueService {
         this.phaseAnimationQueue.queueAnimation(
           'actionComplete',
           'ACTION PHASE COMPLETE',
-          'Transitioning to Next Round'
+          'Transitioning to Next Round',
+          'GMQS:pattern1_actionComplete:747'
         );
 
         // Queue ROUND announcement (pseudo-phase, round number calculated at playback)
         this.phaseAnimationQueue.queueAnimation(
           'roundAnnouncement',
           'ROUND',
-          null
+          null,
+          'GMQS:pattern1_round:754'
         );
 
         debugLog('PHASE_TRANSITIONS', `✅ [GUEST] Queued round transition announcements`);
@@ -605,7 +772,8 @@ class GuestMessageQueueService {
         this.phaseAnimationQueue.queueAnimation(
           'roundAnnouncement',
           'ROUND',
-          null
+          null,
+          'GMQS:pattern2_round:769'
         );
 
         debugLog('PHASE_TRANSITIONS', `✅ [GUEST] Queued Round 1 announcement`);
@@ -633,7 +801,8 @@ class GuestMessageQueueService {
             this.phaseAnimationQueue.queueAnimation(
               'playerPass',
               'OPPONENT PASSED',
-              null
+              null,
+              'GMQS:pattern2.5_pass:797'
             );
             debugLog('PASS_LOGIC', `📋 [GUEST] Queued OPPONENT PASSED (inferred from deployment → action transition after local pass)`);
           }
@@ -643,7 +812,8 @@ class GuestMessageQueueService {
         this.phaseAnimationQueue.queueAnimation(
           'deploymentComplete',
           'DEPLOYMENT COMPLETE',
-          null
+          null,
+          'GMQS:pattern2.5_deploy:807'
         );
         debugLog('PHASE_TRANSITIONS', `📋 [GUEST] Queued DEPLOYMENT COMPLETE announcement`);
 
@@ -664,7 +834,7 @@ class GuestMessageQueueService {
           ? 'Transitioning to Next Round'
           : null;
 
-        this.phaseAnimationQueue.queueAnimation(hostPhase, phaseText, subtitle);
+        this.phaseAnimationQueue.queueAnimation(hostPhase, phaseText, subtitle, 'GMQS:pattern3_generic:831');
         debugLog('PHASE_TRANSITIONS', `✅ [GUEST] Successfully queued announcement: ${hostPhase}`);
       }
 

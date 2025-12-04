@@ -1786,7 +1786,7 @@ setAnimationManager(animationManager) {
           ? 'Transitioning to Next Round'
           : null;
 
-        this.phaseAnimationQueue.queueAnimation(newPhase, phaseText, subtitle);
+        this.phaseAnimationQueue.queueAnimation(newPhase, phaseText, subtitle, 'AP:guest_pseudo:1789');
         debugLog('PHASE_MANAGER', `✅ [GUEST] Announcement queued for pseudo-phase: ${newPhase}`);
       }
 
@@ -1889,7 +1889,7 @@ setAnimationManager(animationManager) {
       });
 
       if (this.phaseAnimationQueue) {
-        this.phaseAnimationQueue.queueAnimation(newPhase, phaseText, subtitle);
+        this.phaseAnimationQueue.queueAnimation(newPhase, phaseText, subtitle, 'AP:host_transition:1892');
         debugLog('PHASE_TRANSITIONS', `✅ [PHASE ANNOUNCEMENT] Successfully queued: ${newPhase}`);
 
         // Note: Playback is started explicitly by GameFlowManager after phase transitions complete
@@ -2713,7 +2713,7 @@ setAnimationManager(animationManager) {
       const isLocalPlayer = playerId === localPlayerId;
       const passText = isLocalPlayer ? 'YOU PASSED' : 'OPPONENT PASSED';
 
-      this.phaseAnimationQueue.queueAnimation('playerPass', passText, null);
+      this.phaseAnimationQueue.queueAnimation('playerPass', passText, null, 'AP:playerPass:2716');
 
       debugLog('PASS_LOGIC', '[PLAYER PASS DEBUG] Queued pass notification in PhaseAnimationQueue:', {
         playerId,
@@ -2725,7 +2725,7 @@ setAnimationManager(animationManager) {
       // If queue is already playing, this does nothing (PhaseAnimationQueue.startPlayback() guards against duplicate playback)
       // If queue is idle, this starts playback of the pass notification
       if (!this.phaseAnimationQueue.isPlaying()) {
-        this.phaseAnimationQueue.startPlayback();
+        this.phaseAnimationQueue.startPlayback('AP:after_pass:2728');
         debugLog('PASS_LOGIC', '[PLAYER PASS DEBUG] Started playback for pass notification');
       }
     }

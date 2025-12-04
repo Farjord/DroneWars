@@ -161,13 +161,13 @@ class GameFlowManager {
 
             // Queue opponent pass notification
             if (this.phaseAnimationQueue) {
-              this.phaseAnimationQueue.queueAnimation('playerPass', 'OPPONENT PASSED', null);
+              this.phaseAnimationQueue.queueAnimation('playerPass', 'OPPONENT PASSED', null, 'GFM:opponent_detected:164');
 
               debugLog('PASS_LOGIC', '📋 [GUEST] Queued OPPONENT PASSED animation from state detection');
 
               // Trigger playback if not already playing
               if (!this.phaseAnimationQueue.isPlaying()) {
-                this.phaseAnimationQueue.startPlayback();
+                this.phaseAnimationQueue.startPlayback('GFM:opponent_detected:170');
                 debugLog('PASS_LOGIC', '🎬 [GUEST] Started playback for OPPONENT PASSED');
               }
             }
@@ -253,7 +253,7 @@ class GameFlowManager {
                 ? 'Starting playback despite bothPassed=true (optimistic processing race condition fixed)'
                 : 'Starting playback for single player pass'
             });
-            this.phaseAnimationQueue.startPlayback();
+            this.phaseAnimationQueue.startPlayback('GFM:guest_pass:256');
           } else {
             debugLog('PASS_LOGIC', `ℹ️ [GUEST] No playback needed`, {
               queueLength,
@@ -299,7 +299,7 @@ class GameFlowManager {
             debugLog('TIMING', `🎬 [${currentState.gameMode.toUpperCase()}] Starting pass notification playback`, {
               queuedAnimations: queueLength
             });
-            this.phaseAnimationQueue.startPlayback();
+            this.phaseAnimationQueue.startPlayback('GFM:host_pass:302');
           }
         }
       }
@@ -596,7 +596,7 @@ class GameFlowManager {
               phase: nextPhase,
               gameMode
             });
-            this.phaseAnimationQueue.startPlayback();
+            this.phaseAnimationQueue.startPlayback('GFM:sim_to_seq:599');
           }
         }
       } else {
@@ -622,7 +622,7 @@ class GameFlowManager {
               phase: nextPhase,
               gameMode
             });
-            this.phaseAnimationQueue.startPlayback();
+            this.phaseAnimationQueue.startPlayback('GFM:sim_to_sim:625');
           }
         }
       }
@@ -877,7 +877,7 @@ class GameFlowManager {
             finalPhase: currentPhase,
             gameMode: currentState.gameMode
           });
-          this.phaseAnimationQueue.startPlayback();
+          this.phaseAnimationQueue.startPlayback('GFM:auto_cascade:880');
         }
       }
     }
@@ -984,7 +984,7 @@ class GameFlowManager {
             queuedAnimations: queueLength,
             note: 'Guest will see all phase announcements while waiting at checkpoint'
           });
-          this.phaseAnimationQueue.startPlayback();
+          this.phaseAnimationQueue.startPlayback('GFM:guest_cascade:987');
         }
       }
     }
@@ -1782,6 +1782,58 @@ class GameFlowManager {
   }
 
   /**
+   * Check if a SPECIFIC player exceeds their hand limit
+   * Used for asymmetric auto-completion (one player needs action, other doesn't)
+   * @param {string} playerId - 'player1' or 'player2'
+   * @param {Object} gameState - Current game state
+   * @returns {boolean} True if this specific player exceeds their hand limit
+   */
+  playerExceedsHandLimit(playerId, gameState) {
+    if (!this.gameDataService) {
+      console.warn('⚠️ GameDataService not initialized for hand limit check');
+      return false;
+    }
+
+    const player = gameState[playerId];
+    if (!player) return false;
+
+    const handCount = player.hand ? player.hand.length : 0;
+    const placedSections = playerId === 'player1'
+      ? gameState.placedSections
+      : gameState.opponentPlacedSections;
+    const stats = this.gameDataService.getEffectiveShipStats(player, placedSections);
+    const handLimit = stats.totals.handLimit;
+
+    return handCount > handLimit;
+  }
+
+  /**
+   * Check if a SPECIFIC player exceeds their drone limit
+   * Used for asymmetric auto-completion (one player needs action, other doesn't)
+   * @param {string} playerId - 'player1' or 'player2'
+   * @param {Object} gameState - Current game state
+   * @returns {boolean} True if this specific player exceeds their drone limit
+   */
+  playerExceedsDroneLimit(playerId, gameState) {
+    if (!this.gameDataService) {
+      console.warn('⚠️ GameDataService not initialized for drone limit check');
+      return false;
+    }
+
+    const player = gameState[playerId];
+    if (!player) return false;
+
+    const droneCount = Object.values(player.dronesOnBoard || {}).flat().length;
+    const placedSections = playerId === 'player1'
+      ? gameState.placedSections
+      : gameState.opponentPlacedSections;
+    const stats = this.gameDataService.getEffectiveShipStats(player, placedSections);
+    const droneLimit = stats.totals.cpuLimit;
+
+    return droneCount > droneLimit;
+  }
+
+  /**
    * Check if a phase is a simultaneous phase
    * @param {string} phase - Phase name to check
    * @returns {boolean} True if phase is simultaneous
@@ -2005,7 +2057,7 @@ class GameFlowManager {
           phase: newPhase,
           gameMode: currentState.gameMode
         });
-        this.phaseAnimationQueue.startPlayback();
+        this.phaseAnimationQueue.startPlayback('GFM:seq_transition:2060');
       }
     }
 
@@ -2018,12 +2070,12 @@ class GameFlowManager {
 
   /**
    * Auto-complete commitments for players who don't need to act in mandatory phases
+   * This handles asymmetric scenarios where one player needs action but the other doesn't.
    * @param {string} phase - The phase to check
    */
   async autoCompleteUnnecessaryCommitments(phase) {
-    // Only handle mandatory simultaneous phases
-    // NOTE: mandatoryDiscard and mandatoryDroneRemoval excluded - use UI Continue button instead
-    const mandatoryPhases = ['allocateShields'];
+    // Handle all mandatory simultaneous phases consistently
+    const mandatoryPhases = ['allocateShields', 'mandatoryDiscard', 'mandatoryDroneRemoval'];
     if (!mandatoryPhases.includes(phase)) {
       return;
     }
@@ -2032,13 +2084,23 @@ class GameFlowManager {
     const isSinglePlayer = gameState.gameMode === 'local';
     const localPlayerId = this.gameStateManager.getLocalPlayerId();
 
-    // Check which players need to act
+    // Check which players need to act based on the phase
     let player1NeedsToAct = false;
     let player2NeedsToAct = false;
 
-    if (phase === 'allocateShields') {
-      player1NeedsToAct = (gameState.shieldsToAllocate || 0) > 0;
-      player2NeedsToAct = (gameState.opponentShieldsToAllocate || 0) > 0;
+    switch (phase) {
+      case 'allocateShields':
+        player1NeedsToAct = (gameState.shieldsToAllocate || 0) > 0;
+        player2NeedsToAct = (gameState.opponentShieldsToAllocate || 0) > 0;
+        break;
+      case 'mandatoryDiscard':
+        player1NeedsToAct = this.playerExceedsHandLimit('player1', gameState);
+        player2NeedsToAct = this.playerExceedsHandLimit('player2', gameState);
+        break;
+      case 'mandatoryDroneRemoval':
+        player1NeedsToAct = this.playerExceedsDroneLimit('player1', gameState);
+        player2NeedsToAct = this.playerExceedsDroneLimit('player2', gameState);
+        break;
     }
 
     debugLog('COMMITMENTS', `🔍 Auto-completion check for ${phase}:`, {
