@@ -140,6 +140,7 @@ const ActionCard = ({
       style={{
         width: '225px',
         height: '275px',
+        flexShrink: 0,
         clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)',
         ...scaleStyle
       }}

@@ -166,6 +166,8 @@ function GameFooter({
                 roundNumber={roundNumber}
                 passInfo={passInfo}
                 validCardTargets={validCardTargets}
+                setIsViewDiscardModalOpen={setIsViewDiscardModalOpen}
+                setIsViewDeckModalOpen={setIsViewDeckModalOpen}
               />
             </div>
           )}

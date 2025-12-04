@@ -140,6 +140,9 @@ function TacticalMapScreen() {
   const [poiLootToReveal, setPoiLootToReveal] = useState(null);
   const [pendingLootEncounter, setPendingLootEncounter] = useState(null);
 
+  // Post-combat PoI loot state (for resuming journey after combat + loot)
+  const [pendingResumeWaypoints, setPendingResumeWaypoints] = useState(null);
+
   // Extraction/Abandon modal state
   const [showAbandonModal, setShowAbandonModal] = useState(false);
   const [showExtractionModal, setShowExtractionModal] = useState(false);
@@ -176,6 +179,49 @@ function TacticalMapScreen() {
     });
     return unsubscribe;
   }, []);
+
+  // Check for pending PoI loot after returning from combat
+  // This handles the case where player won combat at a PoI and should now loot it
+  useEffect(() => {
+    const currentState = gameStateManager.getState();
+    const runState = currentState.currentRunState;
+
+    if (runState?.pendingPOICombat) {
+      console.log('[TacticalMap] Pending PoI loot detected after combat:', runState.pendingPOICombat);
+
+      const { packType, q, r, poiName, remainingWaypoints } = runState.pendingPOICombat;
+      const tier = runState.mapData?.tier || 1;
+      const tierConfig = mapTiers[tier - 1];
+
+      // Find the hex to get zone for loot generation
+      const hex = runState.mapData?.hexes?.find(h => h.q === q && h.r === r);
+      const zone = hex?.zone || 'mid';
+
+      // Generate PoI loot
+      const poiLoot = lootGenerator.openPack(packType, tier, zone, tierConfig);
+      console.log('[TacticalMap] Generated PoI loot after combat:', poiLoot);
+
+      // Set up for loot modal display
+      setPendingLootEncounter({
+        poi: { q, r, poiData: { name: poiName, threatIncrease: 10 } }
+      });
+      setPoiLootToReveal(poiLoot);
+
+      // Store remaining waypoints for journey resumption after loot
+      if (remainingWaypoints?.length > 0) {
+        console.log('[TacticalMap] Storing remaining waypoints for resumption:', remainingWaypoints.length);
+        setPendingResumeWaypoints(remainingWaypoints);
+      }
+
+      // Clear pendingPOICombat from run state (loot generation done)
+      gameStateManager.setState({
+        currentRunState: {
+          ...runState,
+          pendingPOICombat: null
+        }
+      });
+    }
+  }, []); // Run once on mount
 
   const { currentRunState, singlePlayerShipSlots, singlePlayerShipComponentInstances, quickDeployments } = gameState;
 
@@ -636,6 +682,32 @@ function TacticalMapScreen() {
     const currentState = gameStateManager.getState();
     const runState = currentState.currentRunState;
 
+    // Store pending PoI combat info for post-combat loot
+    // This allows the player to loot the PoI after winning combat
+    if (currentEncounter?.poi) {
+      // Capture remaining waypoints (for journey resumption after loot)
+      const remainingWps = waypoints.slice(currentWaypointIndex + 1);
+
+      console.log('[TacticalMap] Storing pendingPOICombat for post-combat loot:', {
+        poi: { q: currentEncounter.poi.q, r: currentEncounter.poi.r },
+        packType: currentEncounter.reward?.rewardType || 'MIXED_PACK',
+        remainingWaypoints: remainingWps.length
+      });
+
+      gameStateManager.setState({
+        currentRunState: {
+          ...runState,
+          pendingPOICombat: {
+            q: currentEncounter.poi.q,
+            r: currentEncounter.poi.r,
+            packType: currentEncounter.reward?.rewardType || 'MIXED_PACK',
+            poiName: currentEncounter.poi.poiData?.name || 'Unknown Location',
+            remainingWaypoints: remainingWps
+          }
+        }
+      });
+    }
+
     // Get AI from the encounter
     const aiId = currentEncounter?.aiId || 'Rogue Scout Pattern';
 
@@ -643,8 +715,11 @@ function TacticalMapScreen() {
     const quickDeployId = loadingEncounterData?.quickDeployId || null;
     console.log('[TacticalMap] Quick deploy ID:', quickDeployId);
 
+    // Re-fetch runState after potential update above
+    const updatedRunState = gameStateManager.getState().currentRunState;
+
     // Initialize combat with optional quick deploy
-    const success = await SinglePlayerCombatInitializer.initiateCombat(aiId, runState, quickDeployId);
+    const success = await SinglePlayerCombatInitializer.initiateCombat(aiId, updatedRunState, quickDeployId);
 
     if (!success) {
       console.error('[TacticalMap] Failed to initialize combat');
@@ -656,7 +731,7 @@ function TacticalMapScreen() {
 
     // GameStateManager will handle the transition to inGame state
     // The appState change will unmount this component
-  }, [currentEncounter, loadingEncounterData]);
+  }, [currentEncounter, loadingEncounterData, waypoints, currentWaypointIndex]);
 
   /**
    * Handle extraction - check for blockade and complete run
@@ -869,14 +944,23 @@ function TacticalMapScreen() {
     setPoiLootToReveal(null);
     setPendingLootEncounter(null);
 
-    // Resume movement by resolving the waiting promise
+    // Resume movement by resolving the waiting promise (normal flow)
     if (encounterResolveRef.current) {
       encounterResolveRef.current();
       encounterResolveRef.current = null;
     }
 
+    // Resume journey with remaining waypoints (post-combat flow)
+    // This happens when player won combat at a PoI and just collected PoI loot
+    if (pendingResumeWaypoints?.length > 0) {
+      console.log('[TacticalMap] Resuming journey with remaining waypoints:', pendingResumeWaypoints.length);
+      setWaypoints(pendingResumeWaypoints);
+      setPendingResumeWaypoints(null);
+      // Movement will start via the executeMovement useEffect that watches waypoints
+    }
+
     console.log('[TacticalMap] POI loot finalized, resuming movement');
-  }, [pendingLootEncounter]);
+  }, [pendingLootEncounter, pendingResumeWaypoints]);
 
   // ========================================
   // EARLY RETURNS (safe now - all hooks above)

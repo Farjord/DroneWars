@@ -44,6 +44,7 @@ import POIEncounterModal from '../modals/POIEncounterModal.jsx';
 import LootRevealModal from '../modals/LootRevealModal.jsx';
 import RunInventoryModal from '../modals/RunInventoryModal.jsx';
 import ExtractionSummaryModal from '../modals/ExtractionSummaryModal.jsx';
+import ExtractionLootSelectionModal from '../modals/ExtractionLootSelectionModal.jsx';
 import RunSummaryModal from '../modals/RunSummaryModal.jsx';
 import MIARecoveryModal from '../modals/MIARecoveryModal.jsx';
 
@@ -180,6 +181,7 @@ function ModalShowcaseScreen() {
       LootRevealModal,
       RunInventoryModal,
       ExtractionSummaryModal,
+      ExtractionLootSelectionModal,
       RunSummaryModal,
       MIARecoveryModal,
       // Utility modals

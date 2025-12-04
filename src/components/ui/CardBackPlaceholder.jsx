@@ -4,7 +4,7 @@
 // Matches ActionCard base dimensions (225×275px)
 // Used for deck and empty discard pile display
 
-import React from 'react';
+import React, { useState } from 'react';
 
 // Color schemes for different variants
 const getColors = (variant) => {
@@ -15,6 +15,8 @@ const getColors = (variant) => {
         border: 'rgba(156, 163, 175, 0.6)',
         glow: 'rgba(156, 163, 175, 0.3)',
         glowInner: 'rgba(156, 163, 175, 0.1)',
+        hoverGlow: 'rgba(156, 163, 175, 0.8)',
+        hoverBorder: 'rgba(209, 213, 219, 0.9)',
         accent: 'rgba(156, 163, 175, 0.7)',
         accentMid: 'rgba(107, 114, 128, 0.35)',
         accentBright: 'rgba(156, 163, 175, 0.5)',
@@ -33,6 +35,8 @@ const getColors = (variant) => {
         border: 'rgba(6, 182, 212, 0.6)',
         glow: 'rgba(6, 182, 212, 0.4)',
         glowInner: 'rgba(6, 182, 212, 0.15)',
+        hoverGlow: 'rgba(34, 211, 238, 0.8)',
+        hoverBorder: 'rgba(34, 211, 238, 0.9)',
         accent: 'rgba(34, 211, 238, 0.7)',
         accentMid: 'rgba(6, 182, 212, 0.35)',
         accentBright: 'rgba(34, 211, 238, 0.5)',
@@ -50,34 +54,46 @@ const getColors = (variant) => {
 function CardBackPlaceholder({
   scale = 1,
   variant = 'deck',
-  onClick = () => {}
+  onClick = () => {},
+  isHovered: externalHovered = null  // Optional external hover control
 }) {
+  const [internalHovered, setInternalHovered] = useState(false);
+  const isHovered = externalHovered !== null ? externalHovered : internalHovered;
   const colors = getColors(variant);
 
   // Use transform: scale() like ActionCard does
   // This ensures same layout space is occupied
-  const scaleStyle = scale !== 1.0 ? {
-    transform: `scale(${scale})`,
+  // Only apply hover scale if using internal hover (not controlled externally by wrapper)
+  const hoverScale = (externalHovered === null && isHovered) ? 1.05 : 1;
+  const scaleStyle = {
+    transform: `scale(${scale * hoverScale})`,
     transformOrigin: 'center center'
-  } : {};
+  };
 
   return (
     <div
       onClick={onClick}
+      onMouseEnter={() => setInternalHovered(true)}
+      onMouseLeave={() => setInternalHovered(false)}
       style={{
         width: '225px',
         height: '275px',
         flexShrink: 0,
         clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%)',
         background: colors.background,
-        border: `2px solid ${colors.border}`,
-        boxShadow: `0 0 20px ${colors.glow}, inset 0 0 40px ${colors.glowInner}`,
+        border: isHovered
+          ? `4px solid ${colors.hoverBorder}`
+          : `4px solid ${colors.border}`,
+        boxShadow: isHovered
+          ? `0 0 25px ${colors.hoverGlow}, 0 0 40px ${colors.hoverGlow}`
+          : `0 0 20px ${colors.glow}, inset 0 0 40px ${colors.glowInner}`,
         cursor: 'pointer',
         position: 'relative',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
+        transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease',
         ...scaleStyle
       }}
     >

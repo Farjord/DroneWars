@@ -748,6 +748,22 @@ export const getMockPropsForModal = (modalName) => {
         onClose: () => console.log('Run Summary closed')
       }
     },
+    'ExtractionLootSelectionModal': {
+      category: 'extraction',
+      props: {
+        isOpen: true,
+        collectedLoot: [
+          { type: 'card', cardId: 'fighter_drone_card', cardName: 'Standard Fighter', rarity: 'Common' },
+          { type: 'card', cardId: 'guardian_drone_card', cardName: 'Guardian Drone', rarity: 'Uncommon' },
+          { type: 'card', cardId: 'energy_surge_card', cardName: 'Energy Surge', rarity: 'Rare' },
+          { type: 'drone', id: 'scout_drone', name: 'Scout Drone', rarity: 'Common' },
+          { type: 'blueprint', blueprintId: 'heavy_fighter_blueprint', rarity: 'Rare' }
+        ],
+        limit: 3,
+        onConfirm: (selected) => console.log('Selected loot:', selected),
+        onCancel: () => console.log('Discarded all loot')
+      }
+    },
 
     // ========================================
     // UTILITY MODALS (Additional)
@@ -871,6 +887,7 @@ export const getModalsByCategory = () => {
       // Extraction modals
       'MapOverviewModal', 'WaypointConfirmationModal', 'POIEncounterModal',
       'LootRevealModal', 'RunInventoryModal', 'ExtractionSummaryModal', 'RunSummaryModal',
+      'ExtractionLootSelectionModal',
       // Danger modals
       'AbandonRunModal', 'MIARecoveryModal',
       // Confirmation modals
@@ -897,7 +914,8 @@ export const getModalsByCategory = () => {
     ],
     extraction: [
       'MapOverviewModal', 'WaypointConfirmationModal', 'POIEncounterModal',
-      'LootRevealModal', 'RunInventoryModal', 'ExtractionSummaryModal', 'RunSummaryModal'
+      'LootRevealModal', 'RunInventoryModal', 'ExtractionSummaryModal', 'RunSummaryModal',
+      'ExtractionLootSelectionModal'
     ],
     danger: [
       'AbandonRunModal', 'MIARecoveryModal'

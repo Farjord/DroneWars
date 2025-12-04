@@ -50,6 +50,9 @@ function HandView({
   const handSectionRef = useRef(null);
   const [dynamicOverlap, setDynamicOverlap] = useState(CARD_FAN_CONFIG.cardOverlapPx);
 
+  // Hover state for discard pile (applies to both CardBackPlaceholder and ActionCard)
+  const [discardHovered, setDiscardHovered] = useState(false);
+
   // Refs for card sizing debugging
   const discardWrapperRef = useRef(null);
   const deckWrapperRef = useRef(null);
@@ -148,12 +151,34 @@ function HandView({
     <div className={styles.handContainer} style={{ paddingLeft: '16px', paddingRight: '16px' }}>
       {/* Discard Pile */}
       <div className={styles.cardPile}>
-        <div ref={discardWrapperRef} style={{ width: '150px', height: '183.5px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'visible' }}>
-          <CardBackPlaceholder
-            scale={0.667}
-            variant="discard"
-            onClick={() => setIsViewDiscardModalOpen(true)}
-          />
+        <div
+          ref={discardWrapperRef}
+          onClick={() => setIsViewDiscardModalOpen(true)}
+          onMouseEnter={() => setDiscardHovered(true)}
+          onMouseLeave={() => setDiscardHovered(false)}
+          style={{
+            width: '150px',
+            height: '183.5px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'visible',
+            cursor: 'pointer',
+            transform: discardHovered ? 'scale(1.05)' : 'scale(1)',
+            transition: 'transform 0.2s ease'
+          }}
+        >
+          {localPlayerState.discardPile.length > 0 ? (
+            <div style={{ pointerEvents: 'none' }}>
+              <ActionCard
+                card={localPlayerState.discardPile[localPlayerState.discardPile.length - 1]}
+                scale={0.667}
+                isPlayable={false}
+              />
+            </div>
+          ) : (
+            <CardBackPlaceholder scale={0.667} variant="discard" isHovered={discardHovered} />
+          )}
         </div>
         <p className={styles.pileLabel}>
           Discard <span style={{ color: '#9ca3af', fontWeight: 'bold' }}>({localPlayerState.discardPile.length})</span>
