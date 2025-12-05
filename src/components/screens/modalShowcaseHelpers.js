@@ -704,23 +704,6 @@ export const getMockPropsForModal = (modalName) => {
         onClose: () => console.log('Run Inventory closed')
       }
     },
-    'ExtractionSummaryModal': {
-      category: 'extraction',
-      props: {
-        show: true,
-        summary: {
-          success: true,
-          lootCollected: [getMockCard('Laser Blast'), getMockCard('Energy Surge')],
-          creditsEarned: 250,
-          poisVisited: 5,
-          totalPois: 8,
-          detectionAtExtraction: 45,
-          combatsWon: 2,
-          combatsLost: 0
-        },
-        onContinue: () => console.log('Continue after extraction')
-      }
-    },
     'RunSummaryModal': {
       category: 'extraction',
       props: {
@@ -753,11 +736,15 @@ export const getMockPropsForModal = (modalName) => {
       props: {
         isOpen: true,
         collectedLoot: [
-          { type: 'card', cardId: 'fighter_drone_card', cardName: 'Standard Fighter', rarity: 'Common' },
-          { type: 'card', cardId: 'guardian_drone_card', cardName: 'Guardian Drone', rarity: 'Uncommon' },
-          { type: 'card', cardId: 'energy_surge_card', cardName: 'Energy Surge', rarity: 'Rare' },
-          { type: 'drone', id: 'scout_drone', name: 'Scout Drone', rarity: 'Common' },
-          { type: 'blueprint', blueprintId: 'heavy_fighter_blueprint', rarity: 'Rare' }
+          // Action cards with real IDs from cardData.js
+          { type: 'card', id: 'CARD001' },  // Laser Blast
+          { type: 'card', id: 'CARD007' },  // Overcharge (Rare)
+          { type: 'card', id: 'CARD003' },  // Shield Boost
+          // Blueprint showing drone card with real drone name
+          { type: 'blueprint', id: 'Heavy Fighter', droneName: 'Heavy Fighter' },
+          // Resource types
+          { type: 'credits', amount: 150 },
+          { type: 'aiCores', amount: 2 }
         ],
         limit: 3,
         onConfirm: (selected) => console.log('Selected loot:', selected),
@@ -886,8 +873,7 @@ export const getModalsByCategory = () => {
     all: [
       // Extraction modals
       'MapOverviewModal', 'WaypointConfirmationModal', 'POIEncounterModal',
-      'LootRevealModal', 'RunInventoryModal', 'ExtractionSummaryModal', 'RunSummaryModal',
-      'ExtractionLootSelectionModal',
+      'LootRevealModal', 'RunInventoryModal', 'RunSummaryModal', 'ExtractionLootSelectionModal',
       // Danger modals
       'AbandonRunModal', 'MIARecoveryModal',
       // Confirmation modals
@@ -914,8 +900,7 @@ export const getModalsByCategory = () => {
     ],
     extraction: [
       'MapOverviewModal', 'WaypointConfirmationModal', 'POIEncounterModal',
-      'LootRevealModal', 'RunInventoryModal', 'ExtractionSummaryModal', 'RunSummaryModal',
-      'ExtractionLootSelectionModal'
+      'LootRevealModal', 'RunInventoryModal', 'RunSummaryModal', 'ExtractionLootSelectionModal'
     ],
     danger: [
       'AbandonRunModal', 'MIARecoveryModal'

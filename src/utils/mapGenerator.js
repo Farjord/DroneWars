@@ -350,9 +350,9 @@ function mapRewardTypeToCardType(rewardType) {
     'DRONE_BLUEPRINT_LIGHT': 'Drone',
     'DRONE_BLUEPRINT_FIGHTER': 'Drone',
     'DRONE_BLUEPRINT_HEAVY': 'Drone',
-    'CREDITS': 'Support',
-    'TOKEN_CHANCE': 'Support'
+    'CREDITS_PACK': 'Resource',
+    'TOKEN_REWARD': 'Resource'
   };
 
-  return mapping[rewardType] || 'Support';
+  return mapping[rewardType] || 'Unknown';
 }

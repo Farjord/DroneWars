@@ -341,15 +341,19 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--modal-text-secondary)' }}>Support:</span>
-                    <span style={{ color: '#3b82f6', fontWeight: 600 }}>{poiBreakdown.Support || 0}</span>
+                    <span style={{ color: '#22c55e', fontWeight: 600 }}>{poiBreakdown.Support || 0}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--modal-text-secondary)' }}>Tactic:</span>
-                    <span style={{ color: '#f97316', fontWeight: 600 }}>{poiBreakdown.Tactic || 0}</span>
+                    <span style={{ color: '#3b82f6', fontWeight: 600 }}>{poiBreakdown.Tactic || 0}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--modal-text-secondary)' }}>Upgrade:</span>
                     <span style={{ color: '#a855f7', fontWeight: 600 }}>{poiBreakdown.Upgrade || 0}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--modal-text-secondary)' }}>Resource:</span>
+                    <span style={{ color: '#f97316', fontWeight: 600 }}>{poiBreakdown.Resource || 0}</span>
                   </div>
 
                   {/* Drone Blueprint Highlight */}

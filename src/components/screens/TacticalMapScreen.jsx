@@ -14,7 +14,6 @@ import LoadingEncounterScreen from '../ui/LoadingEncounterScreen.jsx';
 import RunInventoryModal from '../modals/RunInventoryModal.jsx';
 import LootRevealModal from '../modals/LootRevealModal.jsx';
 import AbandonRunModal from '../modals/AbandonRunModal.jsx';
-import ExtractionSummaryModal from '../modals/ExtractionSummaryModal.jsx';
 import ExtractionLootSelectionModal from '../modals/ExtractionLootSelectionModal.jsx';
 import MovementController from '../../logic/map/MovementController.js';
 import lootGenerator from '../../logic/loot/LootGenerator.js';
@@ -145,8 +144,6 @@ function TacticalMapScreen() {
 
   // Extraction/Abandon modal state
   const [showAbandonModal, setShowAbandonModal] = useState(false);
-  const [showExtractionModal, setShowExtractionModal] = useState(false);
-  const [extractionSummary, setExtractionSummary] = useState(null);
 
   // Loot selection modal state (for Slot 0 extraction limit)
   const [showLootSelectionModal, setShowLootSelectionModal] = useState(false);
@@ -795,9 +792,9 @@ function TacticalMapScreen() {
         });
         setShowLootSelectionModal(true);
       } else {
-        // Normal extraction complete
-        setExtractionSummary(result);
-        setShowExtractionModal(true);
+        // Normal extraction complete - go directly to hangar (RunSummaryModal shows there)
+        console.log('[TacticalMap] Extraction complete - returning to hangar');
+        gameStateManager.setState({ appState: 'hangar' });
       }
     }
   }, []);
@@ -827,16 +824,6 @@ function TacticalMapScreen() {
   }, []);
 
   /**
-   * Handle extraction summary continue - return to hangar
-   */
-  const handleExtractionContinue = useCallback(() => {
-    console.log('[TacticalMap] Extraction summary acknowledged');
-    setShowExtractionModal(false);
-    setExtractionSummary(null);
-    gameStateManager.setState({ appState: 'hangar' });
-  }, []);
-
-  /**
    * Handle loot selection confirmation - complete extraction with selected items
    */
   const handleLootSelectionConfirm = useCallback((selectedLoot) => {
@@ -850,9 +837,9 @@ function TacticalMapScreen() {
     const runState = currentState.currentRunState;
 
     if (runState) {
-      const summary = ExtractionController.completeExtraction(runState, selectedLoot);
-      setExtractionSummary(summary);
-      setShowExtractionModal(true);
+      ExtractionController.completeExtraction(runState, selectedLoot);
+      // Go directly to hangar (RunSummaryModal shows there)
+      gameStateManager.setState({ appState: 'hangar' });
     }
   }, []);
 
@@ -1363,13 +1350,6 @@ function TacticalMapScreen() {
         onConfirm={handleConfirmAbandon}
         lootCount={currentRunState?.collectedLoot?.length || 0}
         creditsEarned={currentRunState?.creditsEarned || 0}
-      />
-
-      {/* Extraction Summary Modal */}
-      <ExtractionSummaryModal
-        show={showExtractionModal}
-        summary={extractionSummary}
-        onContinue={handleExtractionContinue}
       />
 
       {/* Loot Selection Modal (for Slot 0 extraction limit) */}
