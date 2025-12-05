@@ -253,6 +253,9 @@ const DeckBuilder = ({
   const [leftPanelView, setLeftPanelView] = useState('shipCard'); // 'shipCard', 'cards', 'drones', or 'ship'
   const [rightPanelView, setRightPanelView] = useState('shipCard'); // 'shipCard', 'deck', 'drones', or 'ship'
 
+  // Mobile responsive: which panel is visible on small screens
+  const [mobileActivePanel, setMobileActivePanel] = useState('left'); // 'left' or 'right'
+
   const [filters, setFilters] = useState({
     cost: { min: 0, max: 99 }, // Temporary values
     target: 'all',
@@ -1057,10 +1060,34 @@ const DeckBuilder = ({
         <div className="w-32" />
       </div>
       
-      <div className="flex-grow flex gap-6 min-h-0 mb-[10px]">
+      {/* Mobile Panel Toggle - visible only on small screens */}
+      <div className="flex lg:hidden mb-2 mx-[10px] rounded-lg overflow-hidden border border-cyan-500/30">
+        <button
+          className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
+            mobileActivePanel === 'left'
+              ? 'bg-cyan-600 text-white'
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+          }`}
+          onClick={() => setMobileActivePanel('left')}
+        >
+          Available
+        </button>
+        <button
+          className={`flex-1 py-2 px-4 text-sm font-medium transition-colors ${
+            mobileActivePanel === 'right'
+              ? 'bg-cyan-600 text-white'
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+          }`}
+          onClick={() => setMobileActivePanel('right')}
+        >
+          Your Deck
+        </button>
+      </div>
+
+      <div className="flex-grow flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-0 mb-[10px]">
 
         {/* Left Side: Available Items */}
-        <div className="w-2/3 flex flex-col dw-panel h-[calc(100vh-99px)] ml-[10px]">
+        <div className={`w-full lg:w-2/3 ${mobileActivePanel === 'right' ? 'hidden lg:flex' : 'flex'} flex-col dw-panel h-[calc(100vh-140px)] lg:h-[calc(100vh-99px)] mx-[10px] lg:ml-[10px] lg:mr-0`}>
           <div className="dw-panel-header">
             {/* Main navigation tabs */}
             <div className="dw-modal-tabs" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 0 }}>
@@ -1075,12 +1102,12 @@ const DeckBuilder = ({
               </button>
               <button
                 onClick={() => {
-                  setLeftPanelView('cards');
-                  setRightPanelView('deck');
+                  setLeftPanelView('ship');
+                  setRightPanelView('ship');
                 }}
-                className={`dw-modal-tab ${leftPanelView === 'cards' ? 'dw-modal-tab--active' : ''}`}
+                className={`dw-modal-tab ${leftPanelView === 'ship' ? 'dw-modal-tab--active' : ''}`}
               >
-                Cards
+                Ship Sections
               </button>
               <button
                 onClick={() => {
@@ -1093,12 +1120,12 @@ const DeckBuilder = ({
               </button>
               <button
                 onClick={() => {
-                  setLeftPanelView('ship');
-                  setRightPanelView('ship');
+                  setLeftPanelView('cards');
+                  setRightPanelView('deck');
                 }}
-                className={`dw-modal-tab ${leftPanelView === 'ship' ? 'dw-modal-tab--active' : ''}`}
+                className={`dw-modal-tab ${leftPanelView === 'cards' ? 'dw-modal-tab--active' : ''}`}
               >
-                Ship Sections
+                Cards
               </button>
               {/* Utility buttons */}
               <button
@@ -1306,7 +1333,7 @@ const DeckBuilder = ({
                             const isSelected = i === currentCountForThisVariant;
                             const remainingForBase = maxInDeck - (totalCountForBaseCard - currentCountForThisVariant);
                             const isDisabled = i > remainingForBase;
-                            return (<button key={i} onClick={() => onDeckChange(card.id, i)} className={`quantity-btn ${isSelected ? 'selected' : ''}`} disabled={isDisabled}>{i}</button>);
+                            return (<button key={i} onClick={() => !readOnly && onDeckChange(card.id, i)} className={`quantity-btn ${isSelected ? 'selected' : ''} ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={readOnly || isDisabled}>{i}</button>);
                           })}
                         </div>
                       </td>
@@ -1346,7 +1373,7 @@ const DeckBuilder = ({
                       <button
                         onClick={() => !readOnly && currentCountForThisVariant > 0 && onDeckChange(card.id, currentCountForThisVariant - 1)}
                         disabled={readOnly || currentCountForThisVariant === 0}
-                        className="dw-quantity-btn"
+                        className={`dw-quantity-btn ${readOnly ? 'opacity-50' : ''}`}
                       >
                         -
                       </button>
@@ -1356,7 +1383,7 @@ const DeckBuilder = ({
                       <button
                         onClick={() => !readOnly && !isAtMax && onDeckChange(card.id, currentCountForThisVariant + 1)}
                         disabled={readOnly || isAtMax}
-                        className="dw-quantity-btn"
+                        className={`dw-quantity-btn ${readOnly ? 'opacity-50' : ''}`}
                       >
                         +
                       </button>
@@ -1474,7 +1501,7 @@ const DeckBuilder = ({
                       <button
                         onClick={() => !readOnly && currentQuantity > 0 && onDronesChange(drone.name, currentQuantity - 1)}
                         disabled={readOnly || currentQuantity === 0}
-                        className="dw-quantity-btn"
+                        className={`dw-quantity-btn ${readOnly ? 'opacity-50' : ''}`}
                       >
                         -
                       </button>
@@ -1484,7 +1511,7 @@ const DeckBuilder = ({
                       <button
                         onClick={() => !readOnly && !isAtMax && onDronesChange(drone.name, currentQuantity + 1)}
                         disabled={readOnly || isAtMax}
-                        className="dw-quantity-btn"
+                        className={`dw-quantity-btn ${readOnly ? 'opacity-50' : ''}`}
                       >
                         +
                       </button>
@@ -1538,7 +1565,7 @@ const DeckBuilder = ({
                               key={lane}
                               onClick={() => !readOnly && onShipComponentsChange(component.id, selectedLane === lane ? null : lane)}
                               disabled={readOnly || (occupiedLanes.includes(lane) && selectedLane !== lane)}
-                              className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                              className={`px-3 py-1 rounded text-xs font-bold transition-all ${readOnly ? 'opacity-50' : ''} ${
                                 selectedLane === lane
                                   ? 'bg-cyan-500 text-white'
                                   : readOnly || occupiedLanes.includes(lane)
@@ -1578,7 +1605,7 @@ const DeckBuilder = ({
                               key={lane}
                               onClick={() => !readOnly && onShipComponentsChange(component.id, selectedLane === lane ? null : lane)}
                               disabled={readOnly || (occupiedLanes.includes(lane) && selectedLane !== lane)}
-                              className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                              className={`px-3 py-1 rounded text-xs font-bold transition-all ${readOnly ? 'opacity-50' : ''} ${
                                 selectedLane === lane
                                   ? 'bg-purple-500 text-white'
                                   : readOnly || occupiedLanes.includes(lane)
@@ -1618,7 +1645,7 @@ const DeckBuilder = ({
                               key={lane}
                               onClick={() => !readOnly && onShipComponentsChange(component.id, selectedLane === lane ? null : lane)}
                               disabled={readOnly || (occupiedLanes.includes(lane) && selectedLane !== lane)}
-                              className={`px-3 py-1 rounded text-xs font-bold transition-all ${
+                              className={`px-3 py-1 rounded text-xs font-bold transition-all ${readOnly ? 'opacity-50' : ''} ${
                                 selectedLane === lane
                                   ? 'bg-red-500 text-white'
                                   : readOnly || occupiedLanes.includes(lane)
@@ -1642,7 +1669,7 @@ const DeckBuilder = ({
         </div>
 
         {/* Right Side: Your Items */}
-        <div className="w-1/3 flex flex-col dw-panel h-[calc(100vh-99px)] mr-[10px]">
+        <div className={`w-full lg:w-1/3 ${mobileActivePanel === 'left' ? 'hidden lg:flex' : 'flex'} flex-col dw-panel h-[calc(100vh-140px)] lg:h-[calc(100vh-99px)] mx-[10px] lg:mr-[10px] lg:ml-0`}>
           <div className="dw-panel-header">
             <div className="dw-modal-tabs" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 0, flexWrap: 'wrap' }}>
               <button
@@ -1853,7 +1880,7 @@ const DeckBuilder = ({
           <div className="flex-grow overflow-y-auto pr-2 dw-modal-scroll">
             <div className="flex flex-col gap-4">
               {/* Display ship layout */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {['l', 'm', 'r'].map((lane, index) => {
                   const componentEntry = Object.entries(selectedShipComponents || {}).find(([id, l]) => l === lane);
                   const component = componentEntry ? activeComponentCollection.find(c => c.id === componentEntry[0]) : null;
@@ -1973,7 +2000,7 @@ const DeckBuilder = ({
                     Abilities
                   </button>
                 </div>
-                <div className="text-xs" style={{ height: '280px' }}>
+                <div className="text-xs h-48 sm:h-56 lg:h-72">
                   {activeChartView === 'cost' && (
                     <div className="w-full h-full flex flex-col items-center">
                       <h4 className="font-semibold mb-1">Card Cost Distribution</h4>
@@ -2073,7 +2100,7 @@ const DeckBuilder = ({
                   <button onClick={() => setActiveChartView('upgrades')} className={`dw-modal-tab ${activeChartView === 'upgrades' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Upgrades</button>
                   <button onClick={() => setActiveChartView('ability')} className={`dw-modal-tab ${activeChartView === 'ability' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Abilities</button>
                 </div>
-                <div className="text-xs" style={{ height: '280px' }}>
+                <div className="text-xs h-48 sm:h-56 lg:h-72">
                   {activeChartView === 'cost' && (
                     <div className="w-full h-full flex flex-col items-center">
                       <h4 className="font-semibold mb-1">Drone Cost Distribution</h4>

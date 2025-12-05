@@ -2,7 +2,7 @@
 const fullDroneCollection = [
   { name: 'Scout Drone', class: 1, limit: 3, rarity: 'Common', attack: 1, hull: 1, shields: 1, speed: 6, image: '/DroneWars/img/Scout.png', abilities: [],  upgradeSlots: 2 },
   { name: 'Standard Fighter', class: 2, limit: 3, rarity: 'Common', attack: 3, hull: 2, shields: 1, speed: 4, image: '/DroneWars/img/StandardFighter.png', abilities: [],  upgradeSlots: 2 },
-  { name: 'Heavy Fighter', class: 3, limit: 2, rarity: 'Uncommon', attack: 4, hull: 4, shields: 1, speed: 3, image: '/DroneWars/img/HeavyFighter.png', abilities: [], upgradeSlots: 2 },
+  { name: 'Heavy Fighter', class: 3, limit: 2, rarity: 'Common', attack: 4, hull: 4, shields: 1, speed: 3, image: '/DroneWars/img/HeavyFighter.png', abilities: [], upgradeSlots: 1 },
    {
     name: 'Guardian Drone',
     class: 3,
@@ -19,7 +19,7 @@ const fullDroneCollection = [
         type: 'PASSIVE',
         effect: { type: 'GRANT_KEYWORD', keyword: 'GUARDIAN' },
     }],
-    upgradeSlots: 2 
+    upgradeSlots: 1 
   },
     {
     name: 'Bomber',

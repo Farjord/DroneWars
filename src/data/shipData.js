@@ -16,10 +16,10 @@ const shipCollection = [
 
     // BASELINE COMBAT VALUES
     // These are the default values for all ship sections
-    baseHull: 10,
+    baseHull: 8,
     baseShields: 3,
     baseThresholds: {
-      damaged: 5,
+      damaged: 4,
       critical: 0
     },
 
@@ -51,7 +51,7 @@ const shipCollection = [
     baseHull: 12,
     baseShields: 2,
     baseThresholds: {
-      damaged: 6,
+      damaged: 5,
       critical: 2
     },
 
@@ -79,7 +79,7 @@ const shipCollection = [
     image: '/DroneWars/img/ships/scout.png',
 
     // BASELINE COMBAT VALUES
-    baseHull: 6,
+    baseHull: 5,
     baseShields: 2,
     baseThresholds: {
       damaged: 3,

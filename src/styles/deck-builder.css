@@ -496,3 +496,157 @@
 .dw-panel .dw-modal-scroll {
   padding-right: 8px;
 }
+
+/* ========================================
+   RESPONSIVE MEDIA QUERIES
+   Mobile and tablet adjustments
+   ======================================== */
+
+/* Tablet adjustments (768px - 1023px) */
+@media (max-width: 1023px) {
+  .dw-panel {
+    padding: 12px;
+  }
+
+  .dw-panel-header {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .dw-modal-tabs {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .dw-modal-tab {
+    font-size: 11px;
+    padding: 6px 10px;
+  }
+
+  .dw-quantity-control {
+    padding: 4px 8px;
+    gap: 4px;
+  }
+
+  .dw-quantity-btn {
+    font-size: 16px;
+    padding: 3px 8px;
+  }
+
+  .dw-quantity-value {
+    min-width: 40px;
+    font-size: 13px;
+  }
+
+  .dw-filter-range {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+/* Mobile adjustments (< 768px) */
+@media (max-width: 767px) {
+  .dw-panel {
+    border-radius: 0;
+    margin: 0;
+    padding: 10px;
+  }
+
+  /* Remove corner brackets on mobile */
+  .dw-panel::before,
+  .dw-panel::after {
+    display: none;
+  }
+
+  .dw-panel-header {
+    flex-direction: column;
+    align-items: stretch;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+  }
+
+  .dw-modal-tabs {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .dw-modal-tab {
+    font-size: 10px;
+    padding: 6px 8px;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dw-filter-select {
+    font-size: 14px;
+    padding: 10px 12px;
+  }
+
+  .dw-info-box {
+    padding: 10px 12px;
+  }
+
+  .dw-type-stats {
+    padding: 10px;
+  }
+
+  .dw-type-stats-label {
+    width: 70px;
+    font-size: 11px;
+  }
+
+  .dw-ship-slot {
+    padding: 12px;
+  }
+
+  .dw-empty-state {
+    padding: 24px 12px;
+    font-size: 12px;
+  }
+
+  /* Increase touch targets */
+  .dw-quantity-btn {
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 18px;
+  }
+
+  .dw-lane-btn {
+    min-height: 44px;
+    padding: 8px 16px;
+  }
+}
+
+/* Small mobile adjustments (< 480px) */
+@media (max-width: 479px) {
+  .dw-panel {
+    padding: 8px;
+  }
+
+  .dw-modal-tab {
+    font-size: 9px;
+    padding: 5px 6px;
+  }
+
+  .dw-info-row {
+    font-size: 12px;
+  }
+
+  .dw-type-stats-label {
+    width: 60px;
+    font-size: 10px;
+  }
+
+  .dw-progress-bar {
+    height: 14px;
+  }
+
+  .dw-progress-bar-label {
+    font-size: 9px;
+  }
+}
