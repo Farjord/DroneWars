@@ -15,6 +15,7 @@ import fullCardCollection from '../../data/cardData.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import ConfirmationModal from '../modals/ConfirmationModal.jsx';
+import { updateDeckState, updateDroneState } from '../../utils/deckStateUtils.js';
 
 /**
  * DECK SELECTION SCREEN COMPONENT
@@ -142,23 +143,19 @@ function DeckSelectionScreen() {
   /**
    * HANDLE DECK CHANGE
    * Updates the custom deck being built
+   * Removes entry when quantity is 0 (fixes export bug)
    */
   const handleDeckChange = (cardId, quantity) => {
-    setCustomDeck(prev => ({
-      ...prev,
-      [cardId]: quantity
-    }));
+    setCustomDeck(prev => updateDeckState(prev, cardId, quantity));
   };
 
   /**
    * HANDLE DRONES CHANGE
    * Updates the selected drones
+   * Removes entry when quantity is 0 (fixes export bug)
    */
   const handleDronesChange = (droneName, quantity) => {
-    setSelectedDrones(prev => ({
-      ...prev,
-      [droneName]: quantity
-    }));
+    setSelectedDrones(prev => updateDroneState(prev, droneName, quantity));
   };
 
   /**

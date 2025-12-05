@@ -17,9 +17,10 @@ import ShieldManager from '../../shields/ShieldManager.js';
  * 4. Player adds the removed shields to sections
  * 5. Player clicks Confirm → Deduct energy + end turn
  *
- * This is a multi-step processor with UI phases:
- * - process() - Handles remove/add/restore actions during UI flow
- * - complete() - Deducts energy and ends turn when confirmed
+ * STATE MANAGEMENT (matches round start shield allocation pattern):
+ * - process() validates actions and returns pending changes WITHOUT modifying game state
+ * - complete() applies all pending changes to game state and deducts energy
+ * - Reset simply clears local pending state (no game state restore needed)
  */
 class ReallocateShieldsAbilityProcessor {
   /**
@@ -79,6 +80,7 @@ class ReallocateShieldsAbilityProcessor {
 
   /**
    * Handle shield removal action
+   * NOTE: Does NOT modify game state - returns pending change for local tracking
    */
   handleRemoveAction(playerState, sectionName, placedSections, newPlayerStates) {
     // Validate removal
@@ -92,21 +94,22 @@ class ReallocateShieldsAbilityProcessor {
       };
     }
 
-    // Remove shield
-    playerState.shipSections[sectionName].allocatedShields -= 1;
-
-    debugLog('SHIP_ABILITY', `➖ Shield removed from ${sectionName} (now ${playerState.shipSections[sectionName].allocatedShields})`);
+    // DON'T modify state - return pending change for local tracking
+    // State will be updated only when complete() is called
+    debugLog('SHIP_ABILITY', `➖ Pending removal from ${sectionName} (current: ${playerState.shipSections[sectionName].allocatedShields})`);
 
     return {
       success: true,
       action: 'remove',
       sectionName,
-      newPlayerStates
+      pendingChange: { sectionName, delta: -1 },
+      newPlayerStates  // Unchanged from input
     };
   }
 
   /**
    * Handle shield addition action
+   * NOTE: Does NOT modify game state - returns pending change for local tracking
    */
   handleAddAction(playerState, sectionName, placedSections, newPlayerStates) {
     // Validate addition
@@ -120,55 +123,52 @@ class ReallocateShieldsAbilityProcessor {
       };
     }
 
-    // Add shield
-    playerState.shipSections[sectionName].allocatedShields += 1;
-
-    debugLog('SHIP_ABILITY', `➕ Shield added to ${sectionName} (now ${playerState.shipSections[sectionName].allocatedShields})`);
+    // DON'T modify state - return pending change for local tracking
+    // State will be updated only when complete() is called
+    debugLog('SHIP_ABILITY', `➕ Pending addition to ${sectionName} (current: ${playerState.shipSections[sectionName].allocatedShields})`);
 
     return {
       success: true,
       action: 'add',
       sectionName,
-      newPlayerStates
+      pendingChange: { sectionName, delta: +1 },
+      newPlayerStates  // Unchanged from input
     };
   }
 
   /**
    * Handle restore to original state action
+   * NOTE: Since we no longer modify game state during remove/add, this just signals
+   * that the caller should clear their local pending state. Game state is already
+   * at the original values.
    */
   handleRestoreAction(playerState, originalShipSections, newPlayerStates) {
-    if (!originalShipSections) {
-      return {
-        success: false,
-        error: 'No original ship sections provided for restore'
-      };
-    }
-
-    // Restore original shield configuration
-    playerState.shipSections = JSON.parse(JSON.stringify(originalShipSections));
-
-    debugLog('SHIP_ABILITY', `🔄 Shield allocation restored to original state`);
+    // No need to restore game state - it was never modified
+    // The caller will clear their local pending changes
+    debugLog('SHIP_ABILITY', `🔄 Reset requested - caller should clear local pending state`);
 
     return {
       success: true,
       action: 'restore',
-      newPlayerStates
+      newPlayerStates  // Unchanged - game state already at original
     };
   }
 
   /**
    * Complete the Reallocate Shields ability
    * Called when player confirms the reallocation
+   * This is where ALL pending shield changes are applied to game state
    *
    * @param {Object} payload - Completion payload
    * @param {string} payload.playerId - Player ID
-   * @param {Object} playerStates - Current game state after reallocation
+   * @param {Object} payload.pendingChanges - Map of sectionName → delta (e.g., { bridge: -1, powerCell: +1 })
+   * @param {Object} playerStates - Current game state (unchanged during editing)
    * @returns {Object} { newPlayerStates, shouldEndTurn: true }
    */
   complete(payload, playerStates) {
-    const { playerId } = payload;
+    const { playerId, pendingChanges } = payload;
 
-    debugLog('SHIP_ABILITY', `✅ ReallocateShieldsAbilityProcessor: Complete for ${playerId}`);
+    debugLog('SHIP_ABILITY', `✅ ReallocateShieldsAbilityProcessor: Complete for ${playerId}`, { pendingChanges });
 
     // Deep clone player states
     const newPlayerStates = {
@@ -177,6 +177,17 @@ class ReallocateShieldsAbilityProcessor {
     };
 
     const playerState = newPlayerStates[playerId];
+
+    // Apply all pending shield changes NOW
+    if (pendingChanges) {
+      Object.entries(pendingChanges).forEach(([sectionName, delta]) => {
+        if (playerState.shipSections[sectionName]) {
+          const oldValue = playerState.shipSections[sectionName].allocatedShields;
+          playerState.shipSections[sectionName].allocatedShields += delta;
+          debugLog('SHIP_ABILITY', `🛡️ Applied: ${sectionName} ${oldValue} → ${playerState.shipSections[sectionName].allocatedShields}`);
+        }
+      });
+    }
 
     // Deduct energy cost (1 energy)
     if (playerState.energy < 1) {

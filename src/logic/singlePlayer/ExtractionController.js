@@ -174,13 +174,41 @@ class ExtractionController {
    * Player loses all collected loot, deck marked as MIA
    */
   abandonRun() {
+    debugLog('SP_COMBAT', '=== ABANDON RUN START ===');
+    debugLog('SP_COMBAT', 'Current state before abandon:', {
+      appState: gameStateManager.get('appState'),
+      turnPhase: gameStateManager.get('turnPhase'),
+      gameActive: gameStateManager.get('gameActive'),
+      gameStage: gameStateManager.get('gameStage'),
+      roundNumber: gameStateManager.get('roundNumber'),
+      hasPlayer1: !!gameStateManager.get('player1'),
+      hasPlayer2: !!gameStateManager.get('player2'),
+      hasCurrentRunState: !!gameStateManager.get('currentRunState')
+    });
     debugLog('EXTRACTION', 'Run abandoned - MIA triggered');
+
+    // If abandoning mid-combat, reset game state first
+    if (gameStateManager.get('appState') === 'inGame') {
+      debugLog('SP_COMBAT', 'Abandoning mid-combat - resetting game state');
+      gameStateManager.resetGameState();
+    }
 
     // End run as failure (MIA)
     gameStateManager.endRun(false);
 
+    debugLog('SP_COMBAT', 'State after endRun():', {
+      appState: gameStateManager.get('appState'),
+      turnPhase: gameStateManager.get('turnPhase'),
+      gameActive: gameStateManager.get('gameActive'),
+      hasCurrentRunState: !!gameStateManager.get('currentRunState')
+    });
+
     // Return to hangar
     gameStateManager.setState({ appState: 'hangar' });
+
+    debugLog('SP_COMBAT', '=== ABANDON RUN COMPLETE ===', {
+      finalAppState: gameStateManager.get('appState')
+    });
   }
 
   /**

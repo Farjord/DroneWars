@@ -611,12 +611,25 @@ const HangarScreen = () => {
       singlePlayerShipComponentInstances: newComponentInstances
     });
 
-    // Close confirmation and navigate to deck builder
+    // IMMEDIATELY create the deck - deck exists as soon as credits are paid
+    // This ensures deck persists even if user exits deck builder without saving
+    const deckData = {
+      name: `Ship ${selectedSlotId}`,
+      decklist: starterDeck.decklist.map(card => ({ id: card.id, quantity: card.quantity })),
+      drones: starterDeck.drones.map(drone => ({ name: drone.name })),
+      shipComponents: { ...starterDeck.shipComponents },
+      shipId: starterDeck.shipId
+    };
+    gameStateManager.saveShipSlotDeck(selectedSlotId, deckData);
+
+    debugLog('HANGAR', `Created deck in slot ${selectedSlotId} immediately`);
+
+    // Close confirmation and navigate to deck builder for optional editing
     setCopyStarterConfirmation(false);
     gameStateManager.setState({
       appState: 'extractionDeckBuilder',
       extractionDeckSlotId: selectedSlotId,
-      extractionNewDeckOption: 'copyFromSlot0'
+      extractionNewDeckOption: null  // Deck already exists - editing mode
     });
 
     debugLog('HANGAR', `Copied starter deck for ${cost} credits`);

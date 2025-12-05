@@ -10,7 +10,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 vi.mock('../../managers/GameStateManager.js', () => ({
   default: {
     getState: vi.fn(),
-    setState: vi.fn()
+    setState: vi.fn(),
+    endRun: vi.fn(),
+    resetGameState: vi.fn()
   }
 }))
 
@@ -20,13 +22,30 @@ vi.mock('../../utils/debugLogger.js', () => ({
 
 vi.mock('../loot/LootGenerator.js', () => ({
   default: {
-    generateCombatSalvage: vi.fn()
+    generateCombatSalvage: vi.fn(() => ({
+      cards: [],
+      credits: 0,
+      aiCores: 0,
+      blueprint: null
+    })),
+    generateDroneBlueprint: vi.fn()
+  }
+}))
+
+vi.mock('./ExtractionController.js', () => ({
+  default: {
+    completePostBlockadeExtraction: vi.fn(() => ({
+      success: true,
+      cardsAcquired: 0,
+      creditsEarned: 0
+    }))
   }
 }))
 
 // Import after mocks are set up
 import CombatOutcomeProcessor from './CombatOutcomeProcessor.js'
 import gameStateManager from '../../managers/GameStateManager.js'
+import ExtractionController from './ExtractionController.js'
 
 describe('CombatOutcomeProcessor', () => {
   beforeEach(() => {
@@ -182,6 +201,242 @@ describe('CombatOutcomeProcessor', () => {
 
       // pendingPOICombat preserved
       expect(setStateCall.currentRunState.pendingPOICombat).toBeDefined()
+    })
+  })
+
+  describe('finalizeLootCollection - game state cleanup with resetGameState', () => {
+    /**
+     * REFACTOR TEST: finalizeLootCollection should use resetGameState()
+     * instead of inline setState with many individual fields.
+     *
+     * Current behavior: Uses inline setState with ~20 fields listed
+     * Expected behavior: Calls resetGameState() then setState for app-specific fields
+     *
+     * This test will FAIL until refactored.
+     */
+    it('should call resetGameState() when finalizing loot collection', () => {
+      // SETUP: Simulate victory with pending loot
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: {
+          shipSlotId: 0,
+          collectedLoot: [],
+          creditsEarned: 0,
+          aiCoresEarned: 0
+        }
+      })
+
+      const loot = {
+        cards: [{ cardId: 'card1', cardName: 'Test Card', rarity: 'common' }],
+        credits: 100,
+        aiCores: 1,
+        blueprint: null
+      }
+
+      // ACT: Finalize loot collection
+      CombatOutcomeProcessor.finalizeLootCollection(loot)
+
+      // ASSERT: resetGameState should be called for centralized cleanup
+      expect(gameStateManager.resetGameState).toHaveBeenCalled()
+    })
+  })
+
+  describe('processDefeat - game state cleanup with resetGameState', () => {
+    /**
+     * REFACTOR TEST: processDefeat should use resetGameState()
+     * instead of inline setState with many individual fields.
+     *
+     * Current behavior: Uses inline setState with ~20 fields listed
+     * Expected behavior: Calls resetGameState() then setState for app-specific fields
+     *
+     * This test will FAIL until refactored.
+     */
+    it('should call resetGameState() when processing defeat', () => {
+      // SETUP: Simulate defeat state
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: {
+          shipSlotId: 0,
+          combatsLost: 0
+        }
+      })
+
+      const gameState = {
+        winner: 'player2',
+        player1: { name: 'Player', shipSections: {} },
+        player2: { name: 'AI', shipSections: {} }
+      }
+
+      const encounterInfo = { enemyId: 'test-enemy', tier: 1 }
+
+      // ACT: Process defeat
+      CombatOutcomeProcessor.processDefeat(gameState, encounterInfo)
+
+      // ASSERT: endRun should be called for MIA processing
+      expect(gameStateManager.endRun).toHaveBeenCalledWith(false)
+
+      // ASSERT: resetGameState should be called for centralized cleanup
+      expect(gameStateManager.resetGameState).toHaveBeenCalled()
+    })
+
+    it('should NOT duplicate field clearing that resetGameState handles', () => {
+      // SETUP
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: { shipSlotId: 0 }
+      })
+
+      const gameState = {
+        winner: 'player2',
+        player1: { shipSections: {} },
+        player2: { shipSections: {} }
+      }
+
+      // ACT
+      CombatOutcomeProcessor.processDefeat(gameState, {})
+
+      // ASSERT: The setState call should NOT include fields that resetGameState handles
+      // This ensures we're using the centralized cleanup instead of duplicating
+      const setStateCalls = gameStateManager.setState.mock.calls
+
+      // Find the call that sets appState (the final cleanup call)
+      const cleanupCall = setStateCalls.find(call =>
+        call[0].appState === 'hangar'
+      )
+
+      if (cleanupCall) {
+        // These fields should NOT be in the cleanup setState - resetGameState handles them
+        expect(cleanupCall[0].player1).toBeUndefined()
+        expect(cleanupCall[0].player2).toBeUndefined()
+        expect(cleanupCall[0].turnPhase).toBeUndefined()
+        expect(cleanupCall[0].gameStage).toBeUndefined()
+        expect(cleanupCall[0].winner).toBeUndefined()
+      }
+    })
+  })
+
+  describe('processCombatEnd - routing', () => {
+    it('should route to processVictory when player1 wins', () => {
+      // SETUP
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: { shipSlotId: 0 }
+      })
+
+      const gameState = {
+        winner: 'player1',
+        player1: { shipSections: {} },
+        player2: { deck: [] },
+        singlePlayerEncounter: { tier: 1 }
+      }
+
+      // ACT
+      const result = CombatOutcomeProcessor.processCombatEnd(gameState)
+
+      // ASSERT: Should return victory outcome
+      expect(result.outcome).toBe('victory')
+    })
+
+    it('should route to processDefeat when player2 wins', () => {
+      // SETUP
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: { shipSlotId: 0 }
+      })
+
+      const gameState = {
+        winner: 'player2',
+        player1: { shipSections: {} },
+        player2: { shipSections: {} },
+        singlePlayerEncounter: {}
+      }
+
+      // ACT
+      const result = CombatOutcomeProcessor.processCombatEnd(gameState)
+
+      // ASSERT: Should return defeat outcome
+      expect(result.outcome).toBe('defeat')
+    })
+  })
+
+  describe('finalizeLootCollection - Blockade Extraction Victory', () => {
+    /**
+     * BUG FIX TESTS: When player wins a blockade combat during extraction,
+     * they should immediately extract (go to hangar), NOT return to tactical map.
+     *
+     * Current behavior: Always returns to tacticalMap after combat
+     * Expected behavior: Check isBlockade flag and complete extraction if true
+     *
+     * These tests will FAIL until the bug is fixed.
+     */
+
+    it('should call ExtractionController.completePostBlockadeExtraction for blockade victory', () => {
+      // EXPLANATION: After winning a blockade encounter, the player should
+      // automatically complete extraction without having to click Extract again.
+      // This prevents them from triggering another encounter chance.
+
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: {
+          collectedLoot: [],
+          creditsEarned: 0,
+          aiCoresEarned: 0
+        },
+        singlePlayerEncounter: { isBlockade: true }
+      })
+
+      const combatLoot = { cards: [], credits: 0, aiCores: 0 }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT: Extraction should be completed automatically
+      expect(ExtractionController.completePostBlockadeExtraction).toHaveBeenCalled()
+    })
+
+    it('should set appState to hangar after blockade victory (not tacticalMap)', () => {
+      // EXPLANATION: After blockade victory, player goes directly to hangar
+      // (run completed), not back to tactical map.
+
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: {
+          collectedLoot: [],
+          creditsEarned: 0,
+          aiCoresEarned: 0
+        },
+        singlePlayerEncounter: { isBlockade: true }
+      })
+
+      const combatLoot = { cards: [], credits: 0, aiCores: 0 }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT: appState should be 'hangar', not 'tacticalMap'
+      const setStateCalls = gameStateManager.setState.mock.calls
+      const finalCall = setStateCalls[setStateCalls.length - 1][0]
+      expect(finalCall.appState).toBe('hangar')
+    })
+
+    it('should return to tacticalMap for regular POI combat (not blockade)', () => {
+      // EXPLANATION: Regular combat (at POIs, random ambushes) should still
+      // return to tactical map so player can continue their journey.
+
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: {
+          collectedLoot: [],
+          creditsEarned: 0,
+          aiCoresEarned: 0
+        },
+        singlePlayerEncounter: { isBlockade: false }
+      })
+
+      const combatLoot = { cards: [], credits: 0, aiCores: 0 }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT: Extraction should NOT be triggered
+      expect(ExtractionController.completePostBlockadeExtraction).not.toHaveBeenCalled()
+
+      // ASSERT: Should return to tacticalMap
+      const setStateCalls = gameStateManager.setState.mock.calls
+      const finalCall = setStateCalls[setStateCalls.length - 1][0]
+      expect(finalCall.appState).toBe('tacticalMap')
     })
   })
 })

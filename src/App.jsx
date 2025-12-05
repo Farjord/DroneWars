@@ -267,6 +267,8 @@ const App = ({ phaseAnimationQueue }) => {
   const [postRemovalShieldAllocation, setPostRemovalShieldAllocation] = useState(null); // For 'adding' phase reset
   const [initialShieldAllocation, setInitialShieldAllocation] = useState(null); // For shield allocation reset
   const [reallocationAbility, setReallocationAbility] = useState(null);
+  const [pendingShieldChanges, setPendingShieldChanges] = useState({}); // Tracks pending shield changes: { sectionName: delta }
+  const [postRemovalPendingChanges, setPostRemovalPendingChanges] = useState({}); // Snapshot of pending changes after removal phase
 
   // Phase and turn tracking for modal management
   const [lastTurnPhase, setLastTurnPhase] = useState(null); // Track last phase to detect phase transitions
@@ -1905,9 +1907,12 @@ const App = ({ phaseAnimationQueue }) => {
     if (shieldsToRemove <= 0) return;
 
     const section = localPlayerState.shipSections[sectionName];
-    if (section.allocatedShields <= 0) return;
+    // Check current allocated shields MINUS any pending removals
+    const currentPendingDelta = pendingShieldChanges[sectionName] || 0;
+    const effectiveAllocated = section.allocatedShields + currentPendingDelta;
+    if (effectiveAllocated <= 0) return;
 
-    // Use ActionProcessor for shield reallocation
+    // Validate with ActionProcessor (doesn't modify game state)
     const result = await processActionWithGuestRouting('reallocateShieldsAbility', {
       action: 'remove',
       sectionName: sectionName,
@@ -1915,6 +1920,11 @@ const App = ({ phaseAnimationQueue }) => {
     });
 
     if (result.success) {
+      // Track pending change locally (game state unchanged)
+      setPendingShieldChanges(prev => ({
+        ...prev,
+        [sectionName]: (prev[sectionName] || 0) - 1
+      }));
       setShieldsToRemove(prev => prev - 1);
       setShieldsToAdd(prev => prev + 1);
     }
@@ -1929,7 +1939,7 @@ const App = ({ phaseAnimationQueue }) => {
   const handleAddShield = async (sectionName) => {
     if (shieldsToAdd <= 0) return;
 
-    // Use ActionProcessor for shield reallocation (validation handled there)
+    // Validate with ActionProcessor (doesn't modify game state)
     const result = await processActionWithGuestRouting('reallocateShieldsAbility', {
       action: 'add',
       sectionName: sectionName,
@@ -1937,6 +1947,11 @@ const App = ({ phaseAnimationQueue }) => {
     });
 
     if (result.success) {
+      // Track pending change locally (game state unchanged)
+      setPendingShieldChanges(prev => ({
+        ...prev,
+        [sectionName]: (prev[sectionName] || 0) + 1
+      }));
       setShieldsToAdd(prev => prev - 1);
     }
   };
@@ -1944,57 +1959,51 @@ const App = ({ phaseAnimationQueue }) => {
   /**
    * HANDLE CONTINUE TO ADD PHASE
    * Transitions from shield removal to shield addition phase during reallocation.
-   * Saves current shield state for 'adding' phase reset functionality.
+   * Saves current pending changes for 'adding' phase reset functionality.
    */
   const handleContinueToAddPhase = () => {
-    // Save current shield state as the baseline for 'adding' phase resets
-    setPostRemovalShieldAllocation(JSON.parse(JSON.stringify(localPlayerState.shipSections)));
+    // Save current pending changes as the baseline for 'adding' phase resets
+    setPostRemovalPendingChanges({ ...pendingShieldChanges });
     setReallocationPhase('adding');
   };
 
   /**
    * HANDLE RESET REALLOCATION
    * Resets shield reallocation to the start of the current phase.
-   * - During 'removing': Restores original shields (pre-reallocation)
-   * - During 'adding': Restores post-removal state (after removal, before addition)
+   * - During 'removing': Clears all pending changes (game state never modified)
+   * - During 'adding': Restores to post-removal pending changes (before any additions)
    */
-  const handleResetReallocation = async () => {
+  const handleResetReallocation = () => {
     if (reallocationPhase === 'removing') {
-      // Reset to original pre-reallocation state
-      await processActionWithGuestRouting('reallocateShieldsAbility', {
-        action: 'restore',
-        originalShipSections: originalShieldAllocation,
-        playerId: getLocalPlayerId()
-      });
+      // Clear all pending changes (game state was never modified)
+      setPendingShieldChanges({});
 
       // Reset counters to initial values
       setShieldsToRemove(reallocationAbility.ability.effect.value.maxShields);
       setShieldsToAdd(0);
     } else if (reallocationPhase === 'adding') {
-      // Reset to post-removal state (before any shields were added)
-      await processActionWithGuestRouting('reallocateShieldsAbility', {
-        action: 'restore',
-        originalShipSections: postRemovalShieldAllocation,
-        playerId: getLocalPlayerId()
-      });
+      // Restore to post-removal pending changes (remove only addition changes)
+      setPendingShieldChanges({ ...postRemovalPendingChanges });
+
+      // Calculate how many shields were removed (sum of negative deltas)
+      const removedCount = Object.values(postRemovalPendingChanges)
+        .filter(delta => delta < 0)
+        .reduce((sum, delta) => sum + Math.abs(delta), 0);
 
       // Reset shields to add counter (restore full amount)
-      setShieldsToAdd(shieldsToRemove + shieldsToAdd);
+      setShieldsToAdd(removedCount);
     }
   };
 
   /**
    * HANDLE CANCEL REALLOCATION
-   * Cancels shield reallocation and restores original state.
-   * Clears all reallocation UI state.
+   * Cancels shield reallocation and clears all pending changes.
+   * Game state was never modified during editing, so no restore needed.
    */
-  const handleCancelReallocation = async () => {
-    // Restore original shields using ActionProcessor
-    await processActionWithGuestRouting('reallocateShieldsAbility', {
-      action: 'restore',
-      originalShipSections: originalShieldAllocation,
-      playerId: getLocalPlayerId()
-    });
+  const handleCancelReallocation = () => {
+    // Clear all pending changes (game state was never modified)
+    setPendingShieldChanges({});
+    setPostRemovalPendingChanges({});
 
     // Clear reallocation state
     setReallocationPhase(null);
@@ -4091,17 +4100,21 @@ const App = ({ phaseAnimationQueue }) => {
 
               debugLog('SHIP_ABILITY', `Recalculate ability completed:`, result);
             } else if (abilityType === 'reallocateShields' || ability.name === 'Reallocate Shields') {
+              // Pass pending changes to complete() - this is where game state is actually modified
               const result = await processActionWithGuestRouting('reallocateShieldsComplete', {
-                playerId: getLocalPlayerId()
+                playerId: getLocalPlayerId(),
+                pendingChanges: pendingShieldChanges
               });
 
-              // Clear reallocation UI state
+              // Clear reallocation UI state including pending changes
               setReallocationPhase(null);
               setShieldsToRemove(0);
               setShieldsToAdd(0);
               setOriginalShieldAllocation(null);
               setPostRemovalShieldAllocation(null);
               setReallocationAbility(null);
+              setPendingShieldChanges({});
+              setPostRemovalPendingChanges({});
 
               debugLog('SHIP_ABILITY', `Reallocate Shields ability completed:`, result);
             }
@@ -4113,6 +4126,8 @@ const App = ({ phaseAnimationQueue }) => {
             setOriginalShieldAllocation(null);
             setPostRemovalShieldAllocation(null);
             setReallocationAbility(null);
+            setPendingShieldChanges({});
+            setPostRemovalPendingChanges({});
           }, 400);
         }}
       />

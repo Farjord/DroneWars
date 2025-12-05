@@ -10,6 +10,7 @@ import fullCardCollection from '../../data/cardData.js';
 import fullDroneCollection from '../../data/droneData.js';
 import { getShipById, getDefaultShip } from '../../data/shipData.js';
 import gameStateManager from '../../managers/GameStateManager.js';
+import { updateDeckState, updateDroneState } from '../../utils/deckStateUtils.js';
 
 /**
  * StandaloneDeckBuilder - Wrapper component for deck building from menu
@@ -53,22 +54,18 @@ function StandaloneDeckBuilder() {
 
   /**
    * Handle deck change - update card quantities
+   * Removes entry when quantity is 0 (fixes export bug)
    */
   const handleDeckChange = (cardId, quantity) => {
-    setDeck(prev => ({
-      ...prev,
-      [cardId]: quantity
-    }));
+    setDeck(prev => updateDeckState(prev, cardId, quantity));
   };
 
   /**
    * Handle drones change - update drone quantities
+   * Removes entry when quantity is 0 (fixes export bug)
    */
   const handleDronesChange = (droneName, quantity) => {
-    setSelectedDrones(prev => ({
-      ...prev,
-      [droneName]: quantity
-    }));
+    setSelectedDrones(prev => updateDroneState(prev, droneName, quantity));
   };
 
   /**

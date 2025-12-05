@@ -1974,13 +1974,76 @@ class GameStateManager {
   }
 
   /**
+   * Reset game state to pre-game defaults
+   * Used when abandoning mid-combat or exiting games to ensure clean state
+   * This is the SINGLE SOURCE OF TRUTH for combat state cleanup
+   */
+  resetGameState() {
+    debugLog('SP_COMBAT', '=== RESET GAME STATE ===');
+    this.setState({
+      // Game flow state
+      gameActive: false,
+      turnPhase: null,
+      gameStage: 'preGame',
+      roundNumber: 0,
+      turn: 1,
+      currentPlayer: 'player1',
+      firstPlayerOfRound: null,
+      firstPasserOfPreviousRound: null,
+
+      // Player states
+      player1: null,
+      player2: null,
+
+      // Pass state
+      passInfo: {
+        firstPasser: null,
+        player1Passed: false,
+        player2Passed: false
+      },
+
+      // Combat state
+      attackInProgress: null,
+      lastCombatResult: null,
+      winner: null,
+      singlePlayerEncounter: null,
+
+      // UI state - ship placement
+      placedSections: [],
+      opponentPlacedSections: [],
+      unplacedSections: [],
+
+      // UI state - game
+      gameLog: [],
+      commitments: {},
+      shieldsToAllocate: 0,
+      opponentShieldsToAllocate: 0,
+
+      // Drone selection state
+      droneSelectionPool: [],
+      droneSelectionTrio: []
+    });
+  }
+
+  /**
    * End extraction run
    * @param {boolean} success - True if successful extraction, false if MIA
    */
   endRun(success = true) {
+    debugLog('SP_COMBAT', '=== END RUN CALLED ===', {
+      success,
+      currentAppState: this.state.appState,
+      currentTurnPhase: this.state.turnPhase,
+      currentGameActive: this.state.gameActive,
+      currentGameStage: this.state.gameStage,
+      hasPlayer1: !!this.state.player1,
+      hasPlayer2: !!this.state.player2
+    });
+
     const runState = this.state.currentRunState;
     if (!runState) {
       console.warn('No active run to end');
+      debugLog('SP_COMBAT', 'WARNING: No active run to end');
       return;
     }
 
@@ -2117,6 +2180,15 @@ class GameStateManager {
     this.setState({
       currentRunState: null,
       lastRunSummary
+    });
+
+    debugLog('SP_COMBAT', '=== END RUN COMPLETE ===', {
+      clearedRunState: this.state.currentRunState === null,
+      // Note: game state (player1, player2, gameActive) is NOT cleared by endRun
+      gameActiveStillSet: this.state.gameActive,
+      turnPhaseStillSet: this.state.turnPhase,
+      hasPlayer1StillSet: !!this.state.player1,
+      hasPlayer2StillSet: !!this.state.player2
     });
   }
 }

@@ -36,14 +36,14 @@ const fullCardCollection = [
 
   {
     id: 'CARD001_ENHANCED',
-    baseCardId: 'CARD001', // Links to the standard Laser Blast
+    baseCardId: 'CARD001',
     name: 'Laser Blast+',
     maxInDeck: 4,
     rarity: 'Uncommon',
     type: 'Ordnance',
-    cost: 3,
+    cost: 2,
     image: '/DroneWars/cards/LaserBlast.png',
-    description: 'Deal 3 damage to any drone.',
+    description: 'Deal 2 damage to target drone. If target is marked, deal 4 damage instead.',
     visualEffect: {
       type: 'LASER_BLAST'
     },
@@ -54,7 +54,8 @@ const fullCardCollection = [
     },
     effect: {
       type: 'DAMAGE',
-      value: 3
+      value: 2,
+      markedBonus: 2
     }
   },
 
@@ -84,7 +85,7 @@ const fullCardCollection = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/Reboot.png',
-    description: 'Draw 3 cards from your deck Go again.',
+    description: 'Draw 3 cards from your deck. Go again.',
     // No targeting key is needed for this card
     effect: {
       type: 'DRAW',
@@ -171,7 +172,7 @@ const fullCardCollection = [
     type: 'Tactic',
     cost: 3,
     image: '/DroneWars/cards/AdrenalineRush.png',
-    description: 'Ready an exhausted friendly drone. Go again',
+    description: 'Ready an exhausted friendly drone. Go again.',
     targeting: {
       type: 'DRONE',
       affinity: 'FRIENDLY',
@@ -208,19 +209,19 @@ const fullCardCollection = [
     id: 'CARD007',
     baseCardId: 'CARD007',
     name: 'Emergency Patch',
-    maxInDeck: 1,
+    maxInDeck: 2,
     rarity: 'Common',
     type: 'Support',
-    cost: 2,
+    cost: 1,
     image: '/DroneWars/cards/EmergencyPatch.png',
-    description: 'Restore 2 hull to one of your ship sections.',
+    description: 'Restore 1 hull to one of your ship sections.',
     targeting: {
       type: 'SHIP_SECTION',
       affinity: 'FRIENDLY'
     },
     effect: {
       type: 'HEAL_HULL',
-      value: 2
+      value: 1
     }
   },
     {
@@ -267,7 +268,7 @@ const fullCardCollection = [
     id: 'CARD009',
     baseCardId: 'CARD009',
     name: 'Target Lock',
-    maxInDeck: 2,
+    maxInDeck: 4,
     rarity: 'Common',
     type: 'Ordnance',
     cost: 3,
@@ -334,7 +335,7 @@ const fullCardCollection = [
     baseCardId: 'CARD012',
     name: 'Piercing Shot',
     maxInDeck: 2,
-    rarity: 'Uncommon',
+    rarity: 'Common',
     type: 'Ordnance',
     cost: 4,
     image: '/DroneWars/cards/PiercingShot.png',
@@ -358,7 +359,7 @@ const fullCardCollection = [
     baseCardId: 'CARD012',
     name: 'Piercing Shot+',
     maxInDeck: 2,
-    rarity: 'Rare',
+    rarity: 'Uncommon',
     type: 'Ordnance',
     cost: 3,
     image: '/DroneWars/cards/PiercingShot.png',
@@ -524,7 +525,7 @@ const fullCardCollection = [
     baseCardId: 'CARD020',
     name: 'Slimline Bodywork',
     maxInDeck: 2,
-    rarity: 'Uncommon',
+    rarity: 'Common',
     type: 'Upgrade',
     cost: 3,
     slots: 1,
@@ -545,7 +546,7 @@ const fullCardCollection = [
     baseCardId: 'CARD021',
     name: 'Overclocked Thrusters',
     maxInDeck: 2,
-    rarity: 'Uncommon',
+    rarity: 'Common',
     type: 'Upgrade',
     cost: 3,
     slots: 1,
@@ -617,7 +618,7 @@ const fullCardCollection = [
     baseCardId: 'CARD028',
     name: 'Combat Enhancement',
     maxInDeck: 2,
-    rarity: 'Uncommon',
+    rarity: 'Common',
     type: 'Upgrade',
     cost: 5,
     slots: 1,
@@ -657,7 +658,7 @@ const fullCardCollection = [
     baseCardId: 'CARD024',
     name: 'Piercing Rounds',
     maxInDeck: 1,
-    rarity: 'Mythic',
+    rarity: 'Rare',
     type: 'Upgrade',
     cost: 6,
     slots: 2,
@@ -819,8 +820,8 @@ const fullCardCollection = [
     id: 'CARD033',
     baseCardId: 'CARD033',
     name: 'Finishing Volley',
-    maxInDeck: 2,
-    rarity: 'Uncommon',
+    maxInDeck: 4,
+    rarity: 'Common',
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/FinishingVolley.png',
@@ -844,7 +845,7 @@ const fullCardCollection = [
     id: 'CARD034',
     baseCardId: 'CARD034',
     name: 'Strafe Run',
-    maxInDeck: 2,
+    maxInDeck: 4,
     rarity: 'Uncommon',
     type: 'Ordnance',
     cost: 3,
@@ -875,7 +876,7 @@ const fullCardCollection = [
     baseCardId: 'CARD035',
     name: 'Overwhelming Force',
     maxInDeck: 2,
-    rarity: 'Rare',
+    rarity: 'Uncommon',
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/OverwhelmingForce.png',
@@ -955,7 +956,78 @@ const fullCardCollection = [
       value: 2,
       goAgain: true
     }
-}
+},
+
+  {
+    id: 'CARD038',
+    baseCardId: 'CARD038',
+    name: 'Particle Whip',
+    maxInDeck: 4,
+    rarity: 'Common',
+    type: 'Ordnance',
+    cost: 1,
+    image: '/DroneWars/cards/ParticleWhip.png',
+    description: 'Deal 1 damage to target drone. Go Again.',
+    visualEffect: {
+      type: 'LASER_BLAST'
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ANY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 1,
+      goAgain: true
+    },
+  },
+    {
+    id: 'CARD039',
+    baseCardId: 'CARD039',
+    name: 'Thermal Lance',
+    maxInDeck: 4,
+    rarity: 'Common',
+    type: 'Ordnance',
+    cost: 2,
+    image: '/DroneWars/cards/ThermalLance.png',
+    description: 'Deal 2 damage to target drone.',
+    visualEffect: {
+      type: 'LASER_BLAST'
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ANY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 2,
+    },
+   },
+    {
+    id: 'CARD039_ENHANCED',
+    baseCardId: 'CARD039',
+    name: 'Thermal Lance+',
+    maxInDeck: 4,
+    rarity: 'Uncommon',
+    type: 'Ordnance',
+    cost: 3,
+    image: '/DroneWars/cards/ThermalLance.png',
+    description: 'Deal 3 damage to target drone.',
+    visualEffect: {
+      type: 'LASER_BLAST'
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ANY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 3,
+    },
+   },
 ];
 
 

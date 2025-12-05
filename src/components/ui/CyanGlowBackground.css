@@ -1,0 +1,46 @@
+/* ========================================
+   CYAN GLOW BACKGROUND STYLES
+   ======================================== */
+
+.cyan-glow-container {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, #020617 0%, #0f172a 50%, #020617 100%);
+}
+
+/* Animated pulsating cyan glow */
+.cyan-glow-background {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(6, 182, 212, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(34, 211, 238, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(14, 165, 233, 0.05) 0%, transparent 70%);
+  animation: cyanGlowPulse 4s ease-in-out infinite;
+}
+
+@keyframes cyanGlowPulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* Subtle twinkling star effect */
+.cyan-glow-stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 30% 60%, rgba(255, 255, 255, 0.2), transparent),
+    radial-gradient(1px 1px at 50% 10%, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1px 1px at 70% 40%, rgba(255, 255, 255, 0.2), transparent),
+    radial-gradient(1px 1px at 90% 80%, rgba(255, 255, 255, 0.3), transparent),
+    radial-gradient(1px 1px at 15% 85%, rgba(255, 255, 255, 0.2), transparent),
+    radial-gradient(1px 1px at 85% 15%, rgba(255, 255, 255, 0.3), transparent);
+  animation: starsTwinkle 3s ease-in-out infinite;
+}
+
+@keyframes starsTwinkle {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}

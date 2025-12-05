@@ -60,6 +60,8 @@ const DEBUG_CONFIG = {
     TICKER: false,              // News ticker message generation and data flow
     AI_DEPLOYMENT: true,        // AI deployment decisions, validation, and execution loop tracing
     CARD_SIZING: true,           // Card wrapper and sizing debugging
+    ASSET_PRELOAD: true,         // Asset preloading and splash screen timing
+    SP_COMBAT: true,              // Single-player combat init, abandon, and state transitions
 
     // Effect System Refactoring - Modular Processor Logging
     EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)

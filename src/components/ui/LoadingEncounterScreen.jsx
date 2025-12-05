@@ -56,7 +56,7 @@ function LoadingEncounterScreen({ encounterData, onComplete }) {
       case 'low': return { color: '#10b981', label: 'LOW THREAT' };
       case 'medium': return { color: '#f59e0b', label: 'MEDIUM THREAT' };
       case 'high': return { color: '#ef4444', label: 'HIGH THREAT' };
-      default: return { color: '#06b6d4', label: 'UNKNOWN' };
+      default: return { color: '#ef4444', label: 'HOSTILE CONTACT' };
     }
   };
 
@@ -75,12 +75,27 @@ function LoadingEncounterScreen({ encounterData, onComplete }) {
     }
   };
 
+  /**
+   * Get status message based on progress
+   */
+  const getStatusMessage = () => {
+    if (progress < 25) return 'Detecting hostile signatures...';
+    if (progress < 50) return 'Analyzing threat patterns...';
+    if (progress < 75) return 'Preparing combat systems...';
+    if (progress < 100) return 'Weapons online...';
+    return 'ENGAGING!';
+  };
+
   return (
     <div className={`loading-encounter-overlay ${fadeOut ? 'fade-out' : ''}`}>
+      {/* Animated background effects */}
+      <div className="encounter-background" />
+      <div className="encounter-stars" />
+
       <div className="loading-encounter-content">
         {/* Warning Icon */}
         <div className="encounter-warning-icon">
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+          <svg width="72" height="72" viewBox="0 0 24 24" fill="none">
             <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" />
             <circle cx="12" cy="12" r="6" stroke="currentColor" strokeWidth="1" opacity="0.5" />
             <circle cx="12" cy="12" r="2" fill="currentColor" />
@@ -116,20 +131,26 @@ function LoadingEncounterScreen({ encounterData, onComplete }) {
           {threat.label}
         </div>
 
-        {/* Loading Bar */}
-        <div className="encounter-loading-bar">
-          <div
-            className="encounter-loading-progress"
-            style={{ width: `${progress}%` }}
-          />
+        {/* Progress Container */}
+        <div className="encounter-progress-container">
+          {/* Loading Bar */}
+          <div className="encounter-loading-bar">
+            <div
+              className="encounter-loading-progress"
+              style={{ width: `${progress}%` }}
+            />
+            <div className="encounter-loading-glow" />
+          </div>
+
+          {/* Progress Percentage */}
+          <div className="encounter-progress-text">
+            {progress}%
+          </div>
         </div>
 
         {/* Status Text */}
         <p className="encounter-status">
-          {progress < 30 && 'Detecting hostile signatures...'}
-          {progress >= 30 && progress < 60 && 'Analyzing threat patterns...'}
-          {progress >= 60 && progress < 90 && 'Preparing combat systems...'}
-          {progress >= 90 && 'Engaging!'}
+          {getStatusMessage()}
         </p>
       </div>
     </div>

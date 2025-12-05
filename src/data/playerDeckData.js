@@ -9,7 +9,7 @@ export const starterDeck = {
   name: 'Standard Loadout',
   description: 'A balanced configuration designed for reconnaissance operations in The Shallows. Emphasizes versatility and survivability.',
   isImmutable: true,  // Cannot be edited (for Slot 0 in Extraction Mode)
-  shipId: 'SHIP_001', // Default ship card
+  shipId: 'SHIP_003', // Default ship card
 
   // 40 Asset Cards - Exactly as defined in StateInitializer.js
   decklist: [
@@ -41,13 +41,13 @@ export const starterDeck = {
     { name: 'Standard Fighter', isDamaged: false },
     { name: 'Heavy Fighter', isDamaged: false },
     { name: 'Guardian Drone', isDamaged: false },
-    { name: 'Repair Drone', isDamaged: false },
+    { name: 'Scanner', isDamaged: false },
   ],
 
   // Ship components (standard layout)
   shipComponents: {
-    'BRIDGE_001': 'l',        // Left lane
-    'POWERCELL_001': 'm',     // Middle lane
+    'POWERCELL_001': 'l',        // Left lane
+    'BRIDGE_002': 'm',     // Middle lane
     'DRONECONTROL_001': 'r'   // Right lane
   }
 };

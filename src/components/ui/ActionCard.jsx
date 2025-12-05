@@ -7,6 +7,7 @@
 import React from 'react';
 import { Power, RefreshCw, Cpu } from 'lucide-react';
 import ScalingText from './ScalingText.jsx';
+import RaritySymbol from './RaritySymbol.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 
 // Helper function to get type-based colors
@@ -178,27 +179,34 @@ const ActionCard = ({
           </div>
 
           {/* Description Section - MAXIMIZED SIZE */}
-          <div className={`mx-1 mb-1 flex-grow bg-black/60 backdrop-blur-sm border p-2 rounded-md ${colors.descBorder}`}>
-            <ScalingText text={description} className="text-sm text-white leading-tight text-center font-exo font-normal" />
+          <div className={`mx-1 mb-1 flex-grow bg-black/60 backdrop-blur-sm border p-2 rounded-md flex flex-col ${colors.descBorder}`}>
+            <div className="flex-grow">
+              <ScalingText text={description} className="text-sm text-white leading-tight text-center font-exo font-normal" />
+            </div>
+            {/* Slot Cost - moved from footer */}
+            {type === 'Upgrade' && card.slots && (
+              <div className="mt-auto pt-1 border-t border-slate-700/50 flex items-center justify-center gap-1">
+                <Cpu size={12} className="text-purple-400" />
+                <span className="text-[10px] text-purple-400 font-bold">Slot Cost: {card.slots}</span>
+              </div>
+            )}
           </div>
 
           {/* Footer - REDUCED HEIGHT */}
           <div className={`grid grid-cols-[auto_1fr_auto] gap-2 items-center px-2 border-t flex-shrink-0 h-6 mt-auto ${colors.footerBorder}`}>
+            {/* Left: Rarity Symbol */}
             <div className="w-8 flex items-center justify-start">
-              {type === 'Upgrade' && card.slots && (
-                <div className="flex items-center gap-0.5" title={`Uses ${card.slots} upgrade slot${card.slots > 1 ? 's' : ''}`}>
-                  <Cpu size={12} className="text-purple-400" />
-                  <span className="text-[10px] text-purple-400 font-bold">{card.slots}</span>
-                </div>
-              )}
+              <RaritySymbol rarity={card.rarity || 'Common'} size={14} />
             </div>
 
+            {/* Center: Type Label */}
             <div className="flex items-center justify-center">
               <span className={`text-[10px] uppercase tracking-widest font-semibold ${colors.typeText}`}>
                 {type} Card
               </span>
             </div>
 
+            {/* Right: Go Again Indicator */}
             <div className="w-4 flex items-center justify-center">
               {goAgain && (
                 <RefreshCw size={14} className="text-cyan-400" style={{ marginLeft: '-20px' }} />

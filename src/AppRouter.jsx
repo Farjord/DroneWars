@@ -25,7 +25,9 @@ import TacticalMapScreen from './components/screens/TacticalMapScreen.jsx';
 import EremosEntryScreen from './components/screens/EremosEntryScreen.jsx';
 import QuickDeployEditorScreen from './components/screens/QuickDeployEditorScreen.jsx';
 import App from './App.jsx';
-import MorphingBackground from './components/ui/AngularBandsBackground.jsx';
+import CyanGlowBackground from './components/ui/CyanGlowBackground.jsx';
+import SplashLoadingScreen from './components/ui/SplashLoadingScreen.jsx';
+import assetPreloader from './services/AssetPreloader.js';
 import DEV_CONFIG from './config/devConfig.js';
 import { debugLog } from './utils/debugLogger.js';
 
@@ -38,6 +40,7 @@ import { debugLog } from './utils/debugLogger.js';
 function AppRouter() {
   const { gameState } = useGameState();
   const [isLoading, setIsLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(null);
 
   // Initialize PhaseAnimationQueue (shared across all managers)
   const phaseAnimationQueueRef = useRef(null);
@@ -54,13 +57,73 @@ function AppRouter() {
   // Initialization guard to prevent multiple GameFlowManager initializations
   const gameFlowInitialized = useRef(false);
 
+  // Asset preloading effect
   useEffect(() => {
-    // Brief loading to ensure GameStateManager is fully initialized
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 100);
+    let dismissed = false;  // Guard against React StrictMode double-execution
+    let dismissTimer = null;
 
-    return () => clearTimeout(timer);
+    const preloadAssets = async () => {
+      const MIN_DISPLAY_TIME = 2000; // 2 seconds minimum
+      const startTime = Date.now();
+
+      debugLog('ASSET_PRELOAD', '🚀 Preload effect started', {
+        isComplete: assetPreloader.isComplete(),
+        startTime
+      });
+
+      // Create minimum delay promise (ALWAYS runs)
+      const minDelayPromise = new Promise(resolve =>
+        setTimeout(() => {
+          debugLog('ASSET_PRELOAD', '⏱️ Minimum delay timer completed (2s)');
+          resolve();
+        }, MIN_DISPLAY_TIME)
+      );
+
+      // Only load if not already complete
+      if (!assetPreloader.isComplete()) {
+        debugLog('ASSET_PRELOAD', '📦 Starting asset loading...');
+
+        const loadPromise = assetPreloader.loadAll((progress) => {
+          setLoadProgress(progress);
+        }).catch(error => {
+          console.error('Asset preload error:', error);
+        });
+
+        debugLog('ASSET_PRELOAD', '⏳ Waiting for Promise.all [loading + minDelay]...');
+        await Promise.all([loadPromise, minDelayPromise]);
+        debugLog('ASSET_PRELOAD', '✅ Promise.all resolved');
+      } else {
+        debugLog('ASSET_PRELOAD', '⚡ Assets already loaded, waiting minimum delay only...');
+        await minDelayPromise;
+        debugLog('ASSET_PRELOAD', '✅ Minimum delay completed');
+      }
+
+      // Guard against setting state after cleanup (StrictMode re-run)
+      if (dismissed) {
+        debugLog('ASSET_PRELOAD', '⚠️ Effect was cleaned up, aborting dismiss');
+        return;
+      }
+
+      const elapsed = Date.now() - startTime;
+      debugLog('ASSET_PRELOAD', '🏁 Preload complete, scheduling dismiss', { elapsed });
+
+      // Brief additional delay to show 100% state
+      dismissTimer = setTimeout(() => {
+        if (!dismissed) {
+          debugLog('ASSET_PRELOAD', '👋 Dismissing splash screen');
+          setIsLoading(false);
+        }
+      }, 200);
+    };
+
+    preloadAssets();
+
+    // Cleanup: prevent double-dismiss on StrictMode re-run
+    return () => {
+      debugLog('ASSET_PRELOAD', '🧹 Cleanup: marking dismissed');
+      dismissed = true;
+      if (dismissTimer) clearTimeout(dismissTimer);
+    };
   }, []);
 
   // Note: SimultaneousActionManager functionality moved to ActionProcessor
@@ -114,24 +177,17 @@ function AppRouter() {
 
   if (isLoading) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        backgroundColor: '#1a1a1a',
-        color: '#ffffff',
-        fontFamily: 'Arial, sans-serif'
-      }}>
-        <div>Loading EREMOS...</div>
-      </div>
+      <SplashLoadingScreen
+        progress={loadProgress}
+        onComplete={() => setIsLoading(false)}
+      />
     );
   }
 
-  // Determine if we should show the morphing background
+  // Determine if we should show the cyan glow background
   // Hide it only when showing the main game (App.jsx) which uses SpaceBackground
   // Show it for menu, lobby, and all pre-game selection screens
-  const shouldShowMorphingBackground = !(
+  const shouldShowCyanGlowBackground = !(
     gameState.appState === 'inGame' &&
     !['droneSelection', 'placement'].includes(gameState.turnPhase)
   );
@@ -228,7 +284,7 @@ function AppRouter() {
       backgroundColor: 'rgba(2, 6, 23, 1)',
       overflow: 'auto'
     }}>
-      {shouldShowMorphingBackground && <MorphingBackground />}
+      {shouldShowCyanGlowBackground && <CyanGlowBackground />}
       {currentScreen}
     </div>
   );

@@ -8,6 +8,7 @@ import React, { useMemo } from 'react';
 import { Crosshair, Gauge, Power } from 'lucide-react';
 import CardStatHexagon from './CardStatHexagon.jsx';
 import ScalingText from './ScalingText.jsx';
+import RaritySymbol from './RaritySymbol.jsx';
 
 /**
  * DRONE CARD COMPONENT
@@ -112,7 +113,8 @@ const DroneCard = ({
         {/* Content Wrapper */}
         <div className="relative z-10 flex flex-col h-full">
           {/* Header */}
-          <div className="text-center py-1 px-3 bg-black/40 flex-shrink-0 h-8 flex items-center justify-center">
+          <div className="py-1 px-3 bg-black/40 flex-shrink-0 h-8 flex items-center justify-center gap-2">
+            <RaritySymbol rarity={drone.rarity || 'Common'} size={14} />
             <ScalingText text={name} className="font-orbitron text-sm uppercase tracking-widest whitespace-nowrap text-white" />
           </div>
 

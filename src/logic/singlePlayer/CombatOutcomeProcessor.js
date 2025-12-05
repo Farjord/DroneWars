@@ -7,6 +7,7 @@
 import gameStateManager from '../../managers/GameStateManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import lootGenerator from '../loot/LootGenerator.js';
+import ExtractionController from './ExtractionController.js';
 
 /**
  * CombatOutcomeProcessor
@@ -188,38 +189,36 @@ class CombatOutcomeProcessor {
       aiCoresEarned: (currentRunState.aiCoresEarned || 0) + (loot.aiCores || 0)
     };
 
-    // Return to tactical map with FULL combat state cleanup
-    gameStateManager.setState({
-      appState: 'tacticalMap',
-      gameActive: false,
-      currentRunState: updatedRunState,
-      pendingLoot: null,  // Clear pending loot
+    // Check if this was a blockade encounter (extraction interception) BEFORE clearing state
+    const encounter = gameStateManager.getState().singlePlayerEncounter;
+    const isBlockade = encounter?.isBlockade;
 
-      // Clear ALL combat state (prevents contamination of subsequent combats)
-      winner: null,
-      singlePlayerEncounter: null,
-      player1: null,
-      player2: null,
-      turnPhase: null,
-      currentPlayer: null,
-      turn: null,
-      roundNumber: null,
-      gameStage: null,
-      passInfo: null,
-      firstPlayerOfRound: null,
-      firstPasserOfPreviousRound: null,
-      placedSections: [],
-      opponentPlacedSections: [],
-      unplacedSections: [],
-      gameLog: [],
-      commitments: {},
-      shieldsToAllocate: 0,
-      opponentShieldsToAllocate: 0,
-      droneSelectionPool: [],
-      droneSelectionTrio: []
-    });
+    // Clear ALL combat state using centralized cleanup
+    gameStateManager.resetGameState();
 
-    debugLog('SP_COMBAT', '=== Returned to Tactical Map (loot collected) ===');
+    if (isBlockade) {
+      // Blockade victory - complete extraction immediately
+      // Player should go directly to hangar, not back to tactical map
+      debugLog('SP_COMBAT', '=== Blockade Victory - Completing Extraction ===');
+      ExtractionController.completePostBlockadeExtraction(updatedRunState);
+
+      // Clear pending loot and ensure we're in hangar
+      gameStateManager.setState({
+        appState: 'hangar',
+        pendingLoot: null
+      });
+
+      debugLog('SP_COMBAT', '=== Returned to Hangar (blockade extraction complete) ===');
+    } else {
+      // Regular POI/ambush combat - return to tactical map
+      gameStateManager.setState({
+        appState: 'tacticalMap',
+        currentRunState: updatedRunState,
+        pendingLoot: null  // Clear pending loot
+      });
+
+      debugLog('SP_COMBAT', '=== Returned to Tactical Map (loot collected) ===');
+    }
   }
 
   /**
@@ -249,33 +248,12 @@ class CombatOutcomeProcessor {
     // 2. End run as failure (this generates summary and marks MIA)
     gameStateManager.endRun(false);
 
-    // 3. Clear combat state and set appState (endRun doesn't set appState)
-    gameStateManager.setState({
-      appState: 'hangar',
-      gameActive: false,
+    // 3. Clear ALL combat state using centralized cleanup
+    gameStateManager.resetGameState();
 
-      // Clear ALL combat state (prevents contamination of subsequent combats)
-      winner: null,
-      singlePlayerEncounter: null,
-      player1: null,
-      player2: null,
-      turnPhase: null,
-      currentPlayer: null,
-      turn: null,
-      roundNumber: null,
-      gameStage: null,
-      passInfo: null,
-      firstPlayerOfRound: null,
-      firstPasserOfPreviousRound: null,
-      placedSections: [],
-      opponentPlacedSections: [],
-      unplacedSections: [],
-      gameLog: [],
-      commitments: {},
-      shieldsToAllocate: 0,
-      opponentShieldsToAllocate: 0,
-      droneSelectionPool: [],
-      droneSelectionTrio: []
+    // 4. Set appState to hangar (endRun and resetGameState don't set appState)
+    gameStateManager.setState({
+      appState: 'hangar'
     });
 
     debugLog('SP_COMBAT', '=== Returned to Hangar (MIA, combat state cleared) ===');

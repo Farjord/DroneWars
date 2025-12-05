@@ -39,6 +39,29 @@ class SinglePlayerCombatInitializer {
     debugLog('SP_COMBAT', '=== Initiating Single Player Combat ===');
     debugLog('SP_COMBAT', 'AI ID:', aiId);
     debugLog('SP_COMBAT', 'Quick Deploy ID:', quickDeployId);
+
+    // Check for residual state from previous combat (potential bug source)
+    const preExistingState = {
+      appState: gameStateManager.get('appState'),
+      turnPhase: gameStateManager.get('turnPhase'),
+      gameActive: gameStateManager.get('gameActive'),
+      gameStage: gameStateManager.get('gameStage'),
+      roundNumber: gameStateManager.get('roundNumber'),
+      hasPlayer1: !!gameStateManager.get('player1'),
+      hasPlayer2: !!gameStateManager.get('player2'),
+      player1DeckSize: gameStateManager.get('player1')?.deck?.length || 0,
+      player2DeckSize: gameStateManager.get('player2')?.deck?.length || 0
+    };
+    debugLog('SP_COMBAT', 'Pre-existing game state (check for residual):', preExistingState);
+
+    // Flag potential issues
+    if (preExistingState.gameActive) {
+      debugLog('SP_COMBAT', '⚠️ WARNING: gameActive is true before combat init - possible residual state!');
+    }
+    if (preExistingState.hasPlayer1 || preExistingState.hasPlayer2) {
+      debugLog('SP_COMBAT', '⚠️ WARNING: Player states exist before combat init - possible residual state!');
+    }
+
     debugLog('SP_COMBAT', 'Current Run State:', currentRunState);
 
     try {

@@ -227,7 +227,7 @@ function MenuScreen() {
               zIndex: 0
             }}
           >
-            EREMOS
+            INTO THE EREMOS
           </h1>
 
           {/* RGB Split - Blue Channel */}
@@ -248,7 +248,7 @@ function MenuScreen() {
               zIndex: 0
             }}
           >
-            EREMOS
+            INTO THE EREMOS
           </h1>
 
           {/* Main Title */}
@@ -293,14 +293,14 @@ function MenuScreen() {
             />
             <ImageButton
               image={menuImages.vsAI}
-              label="VS Single Player"
+              label="VS Mode: Single Player"
               subtitle="vs AI Opponent"
               onClick={handleSinglePlayer}
               style={{ flex: 1, minHeight: '280px' }}
             />
             <ImageButton
               image={menuImages.vsMultiplayer}
-              label="VS Multiplayer"
+              label="VS Mode: Multiplayer"
               subtitle="vs Human Player"
               onClick={handleMultiplayer}
               style={{ flex: 1, minHeight: '280px' }}

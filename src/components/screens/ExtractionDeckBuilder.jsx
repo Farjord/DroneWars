@@ -14,6 +14,7 @@ import {
   calculateAvailableShips
 } from '../../utils/singlePlayerDeckUtils.js';
 import { getShipById, getDefaultShip } from '../../data/shipData.js';
+import { updateDeckState, updateDroneState } from '../../utils/deckStateUtils.js';
 
 /**
  * ExtractionDeckBuilder
@@ -161,22 +162,16 @@ const ExtractionDeckBuilder = () => {
     ) || [];
   }, [singlePlayerShipComponentInstances, selectedShipComponents]);
 
-  // Handle deck change
+  // Handle deck change - removes entry when quantity is 0
   const handleDeckChange = (cardId, quantity) => {
     if (isReadOnly) return;
-    setDeck(prev => ({
-      ...prev,
-      [cardId]: quantity
-    }));
+    setDeck(prev => updateDeckState(prev, cardId, quantity));
   };
 
-  // Handle drones change
+  // Handle drones change - removes entry when quantity is 0
   const handleDronesChange = (droneName, quantity) => {
     if (isReadOnly) return;
-    setSelectedDrones(prev => ({
-      ...prev,
-      [droneName]: quantity
-    }));
+    setSelectedDrones(prev => updateDroneState(prev, droneName, quantity));
   };
 
   // Handle ship components change

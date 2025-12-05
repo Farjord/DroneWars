@@ -10,6 +10,8 @@ import fullDroneCollection from '../../data/droneData.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { getAllShips, getDefaultShip } from '../../data/shipData.js';
 import { gameEngine } from '../../logic/gameLogic.js';
+import { RARITY_COLORS } from '../../data/cardData.js';
+import { generateDeckCode } from '../../utils/deckExportUtils.js';
 
 // Helper functions to get type-based colors for table styling
 const getTypeBackgroundClass = (type) => {
@@ -873,14 +875,9 @@ const DeckBuilder = ({
     const ExportModal = () => {
     const [copySuccess, setCopySuccess] = useState('');
     const textAreaRef = useRef(null);
+    // Use utility function with defensive filtering (excludes quantity 0)
     const deckCode = useMemo(() => {
-      const cardsStr = Object.entries(deck).map(([id, q]) => `${id}:${q}`).join(',');
-      const dronesStr = Object.entries(selectedDrones || {}).map(([name, q]) => `${name}:${q}`).join(',');
-      const shipStr = Object.entries(selectedShipComponents || {})
-        .filter(([id, lane]) => lane)
-        .map(([id, lane]) => `${id}:${lane}`)
-        .join(',');
-      return `cards:${cardsStr}|drones:${dronesStr}|ship:${shipStr}`;
+      return generateDeckCode(deck, selectedDrones, selectedShipComponents);
     }, [deck, selectedDrones, selectedShipComponents]);
 
     const copyToClipboard = () => {
@@ -1279,6 +1276,7 @@ const DeckBuilder = ({
                   <th>Info</th>
                   <th><button onClick={() => requestSort('name')} className={`w-full text-left transition-colors underline cursor-pointer ${sortConfig.key === 'name' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Name{sortConfig.key === 'name' && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
                   <th><button onClick={() => requestSort('type')} className={`w-full text-left transition-colors underline cursor-pointer ${sortConfig.key === 'type' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Type{sortConfig.key === 'type' && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
+                  <th><button onClick={() => requestSort('rarity')} className={`w-full text-left transition-colors underline cursor-pointer ${sortConfig.key === 'rarity' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Rarity{sortConfig.key === 'rarity' && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
                   <th><button onClick={() => requestSort('cost')} className={`w-full text-left transition-colors underline cursor-pointer ${sortConfig.key === 'cost' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Cost{sortConfig.key === 'cost' && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
                   <th><button onClick={() => requestSort('description')} className={`w-full text-left transition-colors underline cursor-pointer ${sortConfig.key === 'description' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Description{sortConfig.key === 'description' && (sortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
                   <th>Abilities</th>
@@ -1297,6 +1295,7 @@ const DeckBuilder = ({
                       <td><button onClick={() => setDetailedCard(card)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
                       <td className="font-bold">{card.name}</td>
                       <td className={`font-semibold ${getTypeTextClass(card.type)}`}>{card.type}</td>
+                      <td style={{ color: RARITY_COLORS[card.rarity] || '#808080' }}>{card.rarity}</td>
                       <td>{card.cost}</td>
                       <td className="text-xs text-gray-400">{card.description}</td>
                       <td><div className="flex flex-wrap gap-2">{card.keywords.map(k => <span key={k} className="ability-chip">{k}</span>)}</div></td>
@@ -1402,6 +1401,7 @@ const DeckBuilder = ({
                 <tr>
                   <th>Info</th>
                   <th><button onClick={() => requestDroneSort('name')} className={`w-full text-left transition-colors underline cursor-pointer ${droneSortConfig.key === 'name' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Name{droneSortConfig.key === 'name' && (droneSortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
+                  <th><button onClick={() => requestDroneSort('rarity')} className={`w-full text-left transition-colors underline cursor-pointer ${droneSortConfig.key === 'rarity' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Rarity{droneSortConfig.key === 'rarity' && (droneSortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
                   <th><button onClick={() => requestDroneSort('class')} className={`w-full text-left transition-colors underline cursor-pointer ${droneSortConfig.key === 'class' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Cost{droneSortConfig.key === 'class' && (droneSortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
                   <th><button onClick={() => requestDroneSort('attack')} className={`w-full text-left transition-colors underline cursor-pointer ${droneSortConfig.key === 'attack' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Attack{droneSortConfig.key === 'attack' && (droneSortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
                   <th><button onClick={() => requestDroneSort('speed')} className={`w-full text-left transition-colors underline cursor-pointer ${droneSortConfig.key === 'speed' ? 'text-cyan-400' : 'hover:text-cyan-400'}`}>Speed{droneSortConfig.key === 'speed' && (droneSortConfig.direction === 'ascending' ? ' ▲' : ' ▼')}</button></th>
@@ -1422,6 +1422,7 @@ const DeckBuilder = ({
                     <tr key={`${drone.name}-${index}`}>
                       <td><button onClick={() => setDetailedDrone(drone)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
                       <td className="font-bold">{drone.name}</td>
+                      <td style={{ color: RARITY_COLORS[drone.rarity] || '#808080' }}>{drone.rarity}</td>
                       <td>{drone.class}</td>
                       <td>{drone.attack}</td>
                       <td>{drone.speed}</td>

@@ -38,6 +38,8 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
   };
 
   const handleExitToMenu = () => {
+    // Reset game state first to clear all combat state (player1, player2, etc.)
+    gameStateManager.resetGameState();
     gameStateManager.setState({ appState: 'menu' });
   };
 

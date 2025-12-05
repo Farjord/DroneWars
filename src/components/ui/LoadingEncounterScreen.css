@@ -1,14 +1,12 @@
 /* ========================================
    LOADING ENCOUNTER SCREEN STYLES
+   Warning-themed transition screen for combat encounters
    ======================================== */
 
 .loading-encounter-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(180deg, #0a0f1a 0%, #111827 50%, #0a0f1a 100%);
+  inset: 0;
+  background: linear-gradient(180deg, #0a0f1a 0%, #1a0a0a 50%, #0a0f1a 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -21,21 +19,49 @@
 }
 
 @keyframes encounterFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes encounterFadeOut {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Animated warning background gradient */
+.encounter-background {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(239, 68, 68, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(249, 115, 22, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(239, 68, 68, 0.08) 0%, transparent 70%);
+  animation: warningPulse 2s ease-in-out infinite;
+}
+
+@keyframes warningPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Subtle star effect */
+.encounter-stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255, 200, 200, 0.3), transparent),
+    radial-gradient(1px 1px at 30% 60%, rgba(255, 255, 255, 0.2), transparent),
+    radial-gradient(1px 1px at 50% 10%, rgba(255, 180, 180, 0.4), transparent),
+    radial-gradient(1px 1px at 70% 40%, rgba(255, 255, 255, 0.2), transparent),
+    radial-gradient(1px 1px at 90% 80%, rgba(255, 200, 200, 0.3), transparent),
+    radial-gradient(1px 1px at 15% 85%, rgba(255, 255, 255, 0.2), transparent),
+    radial-gradient(1px 1px at 85% 15%, rgba(255, 180, 180, 0.3), transparent);
+  animation: starsTwinkle 3s ease-in-out infinite;
+}
+
+@keyframes starsTwinkle {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
 }
 
 .loading-encounter-content {
@@ -45,42 +71,65 @@
   gap: 24px;
   padding: 48px;
   text-align: center;
+  z-index: 1;
+  position: relative;
 }
 
 /* Warning Icon */
 .encounter-warning-icon {
   color: #ef4444;
-  animation: pulseIcon 1s ease-in-out infinite;
+  animation: pulseIcon 0.8s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.6));
 }
 
 @keyframes pulseIcon {
   0%, 100% {
     opacity: 1;
     transform: scale(1);
+    filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.6));
   }
   50% {
-    opacity: 0.7;
-    transform: scale(1.1);
+    opacity: 0.8;
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 40px rgba(239, 68, 68, 0.9));
   }
 }
 
 /* Main Title */
 .encounter-title {
-  font-size: 48px;
+  font-family: 'Orbitron', 'Segoe UI', sans-serif;
+  font-size: 3.5rem;
   font-weight: 700;
-  color: #ef4444;
-  letter-spacing: 8px;
   margin: 0;
-  text-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
-  animation: titlePulse 1.5s ease-in-out infinite;
+  background: linear-gradient(
+    90deg,
+    #ef4444 0%,
+    #f87171 20%,
+    #fca5a5 40%,
+    #f97316 60%,
+    #f87171 80%,
+    #ef4444 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 30px rgba(239, 68, 68, 0.6));
+  animation: titleGradient 2s linear infinite, titlePulse 1s ease-in-out infinite;
+  letter-spacing: 0.15em;
+}
+
+@keyframes titleGradient {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
 }
 
 @keyframes titlePulse {
   0%, 100% {
-    text-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
+    filter: drop-shadow(0 0 30px rgba(239, 68, 68, 0.6));
   }
   50% {
-    text-shadow: 0 0 50px rgba(239, 68, 68, 0.8);
+    filter: drop-shadow(0 0 50px rgba(239, 68, 68, 0.9));
   }
 }
 
@@ -110,35 +159,77 @@
 
 /* Threat Level */
 .encounter-threat {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 4px;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+}
+
+/* Progress Container */
+.encounter-progress-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
 }
 
 /* Loading Bar */
 .encounter-loading-bar {
-  width: 300px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
+  width: 340px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
   overflow: hidden;
-  margin-top: 16px;
+  position: relative;
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .encounter-loading-progress {
   height: 100%;
-  background: linear-gradient(90deg, #ef4444 0%, #f97316 100%);
-  border-radius: 2px;
+  background: linear-gradient(90deg, #dc2626 0%, #ef4444 40%, #f97316 100%);
+  border-radius: 3px;
   transition: width 0.1s linear;
+  position: relative;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+}
+
+.encounter-loading-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(252, 165, 165, 0.5) 50%,
+    transparent 100%
+  );
+  animation: progressGlow 1.2s ease-in-out infinite;
+}
+
+@keyframes progressGlow {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+/* Progress Percentage */
+.encounter-progress-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #f87171;
+  text-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
 }
 
 /* Status Text */
 .encounter-status {
-  font-size: 14px;
+  font-size: 0.9rem;
   color: #9ca3af;
   margin: 0;
-  min-height: 20px;
-  letter-spacing: 1px;
+  min-height: 24px;
+  letter-spacing: 0.1em;
 }
 
 /* Responsive */
@@ -149,8 +240,8 @@
   }
 
   .encounter-title {
-    font-size: 32px;
-    letter-spacing: 4px;
+    font-size: 2.2rem;
+    letter-spacing: 0.08em;
   }
 
   .encounter-ai-name {
@@ -158,6 +249,10 @@
   }
 
   .encounter-loading-bar {
-    width: 250px;
+    width: 260px;
+  }
+
+  .encounter-progress-text {
+    font-size: 1.4rem;
   }
 }
