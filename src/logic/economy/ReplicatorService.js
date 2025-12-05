@@ -64,8 +64,8 @@ class ReplicatorService {
 
   /**
    * Check if a card can be replicated
-   * - For starter cards: always available (no ownership required)
-   * - For regular cards: must own at least 1 copy
+   * - Starter cards: CANNOT be replicated (they are infinite by default)
+   * - Regular cards: must own at least 1 copy
    * @param {string} cardId - The card ID
    * @returns {{ canReplicate: boolean, reason?: string, isStarterCard?: boolean }}
    */
@@ -74,12 +74,14 @@ class ReplicatorService {
     const inventory = state.singlePlayerInventory || {};
     const isStarter = this.isStarterCard(cardId);
 
-    // Starter cards are always available to replicate (no ownership required)
+    // Starter cards cannot be replicated - they are always available in unlimited quantities
+    if (isStarter) {
+      return { canReplicate: false, reason: 'Starter cards cannot be replicated' };
+    }
+
     // Regular cards require ownership
-    if (!isStarter) {
-      if (!inventory[cardId] || inventory[cardId] <= 0) {
-        return { canReplicate: false, reason: 'Card not owned' };
-      }
+    if (!inventory[cardId] || inventory[cardId] <= 0) {
+      return { canReplicate: false, reason: 'Card not owned' };
     }
 
     // Check if can afford
@@ -88,12 +90,12 @@ class ReplicatorService {
       return { canReplicate: false, reason: `Insufficient credits (need ${cost})` };
     }
 
-    return { canReplicate: true, isStarterCard: isStarter };
+    return { canReplicate: true, isStarterCard: false };
   }
 
   /**
    * Get all cards that can be replicated
-   * Includes: starter cards (always available) + owned regular cards
+   * Only includes owned regular cards - starter cards are excluded (they are infinite)
    * @returns {Array} Array of { card, quantity, replicationCost, isStarterCard }
    */
   getReplicatableCards() {
@@ -101,21 +103,21 @@ class ReplicatorService {
     const inventory = state.singlePlayerInventory || {};
 
     // Build list of replicatable cards
-    // Include: starter cards (always) + owned regular cards
+    // Exclude starter cards (they are infinite and don't need replication)
+    // Only include owned non-starter cards
     return fullCardCollection
       .filter(card => {
         const isStarter = this.isStarterCard(card.id);
         const quantity = inventory[card.id] || 0;
-        // Starter cards are always available; regular cards need ownership
-        return isStarter || quantity > 0;
+        // Starter cards are excluded; only owned non-starter cards can be replicated
+        return !isStarter && quantity > 0;
       })
       .map(card => {
-        const isStarter = this.isStarterCard(card.id);
         return {
           card,
           quantity: inventory[card.id] || 0,
           replicationCost: this.getReplicationCost(card.id),
-          isStarterCard: isStarter
+          isStarterCard: false
         };
       });
   }

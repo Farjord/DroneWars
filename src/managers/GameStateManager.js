@@ -1820,6 +1820,36 @@ class GameStateManager {
   }
 
   /**
+   * Update drone instance damage state
+   * @param {string} instanceId - Instance ID
+   * @param {boolean} isDamaged - New damage state
+   */
+  updateDroneInstance(instanceId, isDamaged) {
+    const instances = [...this.state.singlePlayerDroneInstances];
+    const index = instances.findIndex(inst => inst.instanceId === instanceId);
+
+    if (index >= 0) {
+      instances[index] = { ...instances[index], isDamaged };
+      this.setState({ singlePlayerDroneInstances: instances });
+      console.log(`Drone instance ${instanceId} damage updated to ${isDamaged}`);
+    } else {
+      console.warn(`Drone instance ${instanceId} not found`);
+    }
+  }
+
+  /**
+   * Find drone instance by slot ID and drone name
+   * @param {number} slotId - Ship slot ID
+   * @param {string} droneName - Drone name
+   * @returns {Object|null} Drone instance or null if not found
+   */
+  findDroneInstance(slotId, droneName) {
+    return this.state.singlePlayerDroneInstances.find(
+      inst => inst.shipSlotId === slotId && inst.droneName === droneName
+    ) || null;
+  }
+
+  /**
    * Create a ship component instance for tracking hull damage
    * Only for non-starter-pool components
    * @param {string} componentId - Component ID

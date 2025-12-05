@@ -58,6 +58,7 @@ const HangarScreen = () => {
   const [newDeckOption, setNewDeckOption] = useState(null); // 'empty', 'copyFromSlot0', or null
   const [deleteConfirmation, setDeleteConfirmation] = useState(null); // { slotId, slotName }
   const [copyStarterConfirmation, setCopyStarterConfirmation] = useState(false); // Show copy starter deck confirmation
+  const [emptyDeckConfirmation, setEmptyDeckConfirmation] = useState(false); // Show empty deck creation confirmation
   const [hoveredButton, setHoveredButton] = useState(null); // Track hovered image button
   const [showReputationProgress, setShowReputationProgress] = useState(false); // Show reputation progress modal
   const [showReputationRewards, setShowReputationRewards] = useState(false); // Show reputation reward modal
@@ -537,19 +538,15 @@ const HangarScreen = () => {
     setDeleteConfirmation(null);
   };
 
-  // Handle new deck option selection - navigate to deck editor
+  // Handle new deck option selection - show confirmation modal for both options
   const handleNewDeckOption = (option) => {
+    setActiveModal(null);
     if (option === 'copyFromSlot0') {
       // Show confirmation modal for copy from starter deck
-      setActiveModal(null);
       setCopyStarterConfirmation(true);
-    } else {
-      setActiveModal(null);
-      gameStateManager.setState({
-        appState: 'extractionDeckBuilder',
-        extractionDeckSlotId: selectedSlotId,
-        extractionNewDeckOption: option
-      });
+    } else if (option === 'empty') {
+      // Show confirmation modal for empty deck (costs 500 credits)
+      setEmptyDeckConfirmation(true);
     }
   };
 
@@ -638,6 +635,53 @@ const HangarScreen = () => {
   // Handle cancel copy starter
   const handleCancelCopyStarter = () => {
     setCopyStarterConfirmation(false);
+  };
+
+  // Handle confirm empty deck creation - pay cost and create empty deck
+  const handleConfirmEmptyDeck = () => {
+    const cost = ECONOMY.STARTER_DECK_COPY_COST || 500;
+    const credits = singlePlayerProfile?.credits || 0;
+
+    if (credits < cost) {
+      setEmptyDeckConfirmation(false);
+      return;
+    }
+
+    // Deduct credits
+    const newProfile = {
+      ...singlePlayerProfile,
+      credits: singlePlayerProfile.credits - cost
+    };
+
+    // Update state with credit deduction
+    gameStateManager.setState({
+      singlePlayerProfile: newProfile
+    });
+
+    // IMMEDIATELY create the empty deck - deck exists as soon as credits are paid
+    const deckData = {
+      name: `Ship ${selectedSlotId}`,
+      decklist: [],
+      drones: [],
+      shipComponents: {},
+      shipId: null
+    };
+    gameStateManager.saveShipSlotDeck(selectedSlotId, deckData);
+
+    debugLog('HANGAR', `Created empty deck in slot ${selectedSlotId} for ${cost} credits`);
+
+    // Close confirmation and navigate to deck builder
+    setEmptyDeckConfirmation(false);
+    gameStateManager.setState({
+      appState: 'extractionDeckBuilder',
+      extractionDeckSlotId: selectedSlotId,
+      extractionNewDeckOption: null  // Deck already exists - editing mode
+    });
+  };
+
+  // Handle cancel empty deck creation
+  const handleCancelEmptyDeck = () => {
+    setEmptyDeckConfirmation(false);
   };
 
   // Action button clicks
@@ -1439,12 +1483,20 @@ const HangarScreen = () => {
               <p className="dw-modal-text">How would you like to start your new deck?</p>
             </div>
             <div className="dw-modal-actions" style={{ flexDirection: 'column', gap: '0.75rem' }}>
-              <button
-                onClick={() => handleNewDeckOption('empty')}
-                className="dw-btn dw-btn-confirm dw-btn--full"
-              >
-                Start Empty
-              </button>
+              {(() => {
+                const deckCost = ECONOMY.STARTER_DECK_COPY_COST || 500;
+                const canAffordEmpty = (singlePlayerProfile?.credits || 0) >= deckCost;
+                return (
+                  <button
+                    onClick={() => handleNewDeckOption('empty')}
+                    className={`dw-btn dw-btn-confirm dw-btn--full ${!canAffordEmpty ? 'opacity-50' : ''}`}
+                    disabled={!canAffordEmpty}
+                    title={!canAffordEmpty ? `Not enough credits (need ${deckCost})` : undefined}
+                  >
+                    Start Empty ({deckCost} credits)
+                  </button>
+                );
+              })()}
               {singlePlayerShipSlots[0]?.status === 'active' && (() => {
                 const copyCost = ECONOMY.STARTER_DECK_COPY_COST || 500;
                 const canAffordCopy = (singlePlayerProfile?.credits || 0) >= copyCost;
@@ -1521,6 +1573,50 @@ const HangarScreen = () => {
               </button>
               <button
                 onClick={handleConfirmCopyStarter}
+                className="dw-btn dw-btn-confirm"
+              >
+                Confirm Purchase
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Empty Deck Creation Confirmation Modal */}
+      {emptyDeckConfirmation && (
+        <div className="dw-modal-overlay" onClick={handleCancelEmptyDeck}>
+          <div className="dw-modal-content dw-modal--sm dw-modal--action" onClick={e => e.stopPropagation()}>
+            <div className="dw-modal-header">
+              <div className="dw-modal-header-info">
+                <h2 className="dw-modal-header-title">Create Empty Deck</h2>
+              </div>
+            </div>
+            <div className="dw-modal-body">
+              <p className="dw-modal-text" style={{ marginBottom: '12px' }}>
+                This will create a new empty deck slot that you can customize with any cards.
+              </p>
+              <p className="dw-modal-text" style={{ fontSize: '12px', color: 'var(--modal-text-secondary)', marginBottom: '12px' }}>
+                Starter cards are always available in unlimited quantities for deck building.
+              </p>
+              <div className="dw-modal-credits" style={{ marginBottom: 0 }}>
+                <span className="dw-modal-credits-label">Cost</span>
+                <span className="dw-modal-credits-value" style={{ color: '#fbbf24' }}>
+                  {ECONOMY.STARTER_DECK_COPY_COST || 500} credits
+                </span>
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)', marginTop: '8px' }}>
+                Your balance: {singlePlayerProfile?.credits || 0} credits
+              </div>
+            </div>
+            <div className="dw-modal-actions">
+              <button
+                onClick={handleCancelEmptyDeck}
+                className="dw-btn dw-btn-cancel"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmEmptyDeck}
                 className="dw-btn dw-btn-confirm"
               >
                 Confirm Purchase

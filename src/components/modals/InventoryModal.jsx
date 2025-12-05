@@ -12,7 +12,12 @@ import fullDroneCollection from '../../data/droneData';
 import { shipComponentCollection } from '../../data/shipSectionData';
 import { shipCollection } from '../../data/shipData';
 import HiddenCard from '../ui/HiddenCard';
+import HiddenShipCard from '../ui/HiddenShipCard';
+import HiddenShipSectionCard from '../ui/HiddenShipSectionCard';
 import ActionCard from '../ui/ActionCard';
+import DroneCard from '../ui/DroneCard';
+import ShipCard from '../ui/ShipCard';
+import ShipSectionCard from '../ui/ShipSectionCard';
 
 /**
  * InventoryModal Component
@@ -522,91 +527,101 @@ const InventoryModal = ({ onClose }) => {
             <div className="dw-modal-scroll" style={{ maxHeight: '550px' }}>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                gap: '12px'
+                gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+                gap: '10px',
+                justifyItems: 'center'
               }}>
                 {enrichedDrones.map(drone => {
-                  if (drone.discoveryState === 'undiscovered') {
-                    // Placeholder for undiscovered drone
-                    return (
-                      <div
-                        key={drone.name || drone.id}
-                        className="dw-modal-info-box"
-                        style={{
-                          marginBottom: 0,
-                          opacity: 0.4,
-                          borderColor: 'var(--modal-border)'
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                          <div>
-                            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--modal-text-muted)' }}>???</div>
-                            <div style={{ fontSize: '11px', color: 'var(--modal-text-muted)' }}>Class ?</div>
-                          </div>
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: 600,
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            background: getRarityColor(drone.rarity),
-                            color: '#fff'
-                          }}>
-                            {drone.rarity}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '12px', color: 'var(--modal-text-muted)', marginTop: '8px' }}>
-                          Undiscovered Drone
-                        </div>
-                      </div>
-                    );
-                  }
+                  const textColor = drone.isStarterDrone
+                    ? 'var(--modal-action)'
+                    : 'var(--modal-success)';
 
-                  // Owned drone - show full details
                   return (
                     <div
                       key={drone.name || drone.id}
-                      className="dw-modal-info-box"
                       style={{
-                        marginBottom: 0,
-                        borderColor: getRarityColor(drone.rarity)
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        background: 'rgba(0, 0, 0, 0.35)',
+                        borderRadius: '4px',
+                        padding: '16px',
+                        paddingBottom: '10px',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                        <div>
-                          <div style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>{drone.name}</div>
-                          <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)' }}>Class {drone.class}</div>
-                        </div>
-                        <span style={{
-                          fontSize: '10px',
-                          fontWeight: 600,
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          background: getRarityColor(drone.rarity),
-                          color: '#fff'
-                        }}>
-                          {drone.rarity}
-                        </span>
-                      </div>
+                      {drone.discoveryState === 'undiscovered' ? (
+                        /* Undiscovered - Use HiddenCard placeholder */
+                        <>
+                          <div
+                            style={{
+                              width: '162px',
+                              height: '198px',
+                              overflow: 'visible'
+                            }}
+                          >
+                            <div style={{
+                              transform: 'scale(0.72)',
+                              transformOrigin: 'top left'
+                            }}>
+                              <HiddenCard
+                                rarity={drone.rarity}
+                                size="full"
+                                style={{ opacity: 0.8 }}
+                              />
+                            </div>
+                          </div>
+                          {/* Rarity label for hidden cards */}
+                          <div
+                            style={{
+                              marginTop: '8px',
+                              padding: '4px 0',
+                              color: getRarityColor(drone.rarity),
+                              fontWeight: '600',
+                              fontSize: '15px',
+                              textAlign: 'center'
+                            }}
+                          >
+                            {drone.rarity}
+                          </div>
+                        </>
+                      ) : (
+                        /* Owned - Show full DroneCard (scaled down) */
+                        <>
+                          <div
+                            style={{
+                              width: '162px',
+                              height: '198px',
+                              overflow: 'visible'
+                            }}
+                          >
+                            <div style={{
+                              transform: 'scale(0.72)',
+                              transformOrigin: 'top left'
+                            }}>
+                              <DroneCard drone={drone} isViewOnly={true} />
+                            </div>
+                          </div>
 
-                      {/* Stats */}
-                      <div style={{ display: 'flex', gap: '12px', fontSize: '12px', marginBottom: '8px' }}>
-                        <span><span style={{ color: 'var(--modal-text-secondary)' }}>HP:</span> {drone.hull}</span>
-                        <span><span style={{ color: 'var(--modal-text-secondary)' }}>ATK:</span> {drone.attack}</span>
-                        <span><span style={{ color: 'var(--modal-text-secondary)' }}>DEF:</span> {drone.defense}</span>
-                      </div>
-
-                      {/* Ownership */}
-                      <div style={{
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        color: drone.isStarterDrone ? 'var(--modal-action)' : 'var(--modal-success)'
-                      }}>
-                        {drone.isStarterDrone ? (
-                          'Starter Drone - ∞'
-                        ) : (
-                          `×${drone.ownedCount} in Inventory`
-                        )}
-                      </div>
+                          {/* Ownership Label */}
+                          <div
+                            style={{
+                              marginTop: '8px',
+                              padding: '4px 0',
+                              color: textColor,
+                              fontWeight: '600',
+                              fontSize: '15px',
+                              textAlign: 'center'
+                            }}
+                          >
+                            {drone.isStarterDrone ? (
+                              <>Starter Drone - ∞</>
+                            ) : (
+                              <>×{drone.ownedCount} in Inventory</>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                   );
                 })}
@@ -625,83 +640,101 @@ const InventoryModal = ({ onClose }) => {
               ) : (
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                  gap: '12px'
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+                  gap: '10px',
+                  justifyItems: 'center'
                 }}>
                   {enrichedShips.map(ship => {
-                    if (ship.discoveryState === 'undiscovered') {
-                      // Placeholder for undiscovered ship
-                      return (
-                        <div
-                          key={ship.id}
-                          className="dw-modal-info-box"
-                          style={{
-                            marginBottom: 0,
-                            opacity: 0.4,
-                            borderColor: 'var(--modal-border)'
-                          }}
-                        >
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                            <div>
-                              <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--modal-text-muted)' }}>???</div>
-                              <div style={{ fontSize: '11px', color: 'var(--modal-text-muted)' }}>Unknown Class</div>
-                            </div>
-                          </div>
-                          <div style={{ fontSize: '12px', color: 'var(--modal-text-muted)', marginTop: '8px' }}>
-                            Undiscovered Ship
-                          </div>
-                        </div>
-                      );
-                    }
+                    const textColor = ship.isStarterShip
+                      ? 'var(--modal-action)'
+                      : 'var(--modal-success)';
 
-                    // Owned ship - show full details
                     return (
                       <div
                         key={ship.id}
-                        className="dw-modal-info-box"
                         style={{
-                          marginBottom: 0,
-                          borderColor: 'var(--modal-action)'
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          background: 'rgba(0, 0, 0, 0.35)',
+                          borderRadius: '4px',
+                          padding: '16px',
+                          paddingBottom: '10px',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
                         }}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                          <div>
-                            <div style={{ fontSize: '15px', fontWeight: 600, color: '#fff' }}>{ship.name}</div>
-                            <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)' }}>{ship.class || 'Standard'}</div>
-                          </div>
-                          {ship.isStarterShip && (
-                            <span style={{
-                              fontSize: '10px',
-                              fontWeight: 600,
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              background: 'var(--modal-action)',
-                              color: '#fff'
-                            }}>
-                              STARTER
-                            </span>
-                          )}
-                        </div>
+                        {ship.discoveryState === 'undiscovered' ? (
+                          /* Undiscovered - Use HiddenShipCard placeholder */
+                          <>
+                            <div
+                              style={{
+                                width: '162px',
+                                height: '198px',
+                                overflow: 'visible'
+                              }}
+                            >
+                              <div style={{
+                                transform: 'scale(0.72)',
+                                transformOrigin: 'top left'
+                              }}>
+                                <HiddenShipCard
+                                  rarity={ship.rarity || 'Common'}
+                                  size="full"
+                                  style={{ opacity: 0.8 }}
+                                />
+                              </div>
+                            </div>
+                            {/* Rarity label for hidden cards */}
+                            <div
+                              style={{
+                                marginTop: '8px',
+                                padding: '4px 0',
+                                color: getRarityColor(ship.rarity || 'Common'),
+                                fontWeight: '600',
+                                fontSize: '15px',
+                                textAlign: 'center'
+                              }}
+                            >
+                              {ship.rarity || 'Common'}
+                            </div>
+                          </>
+                        ) : (
+                          /* Owned - Show full ShipCard (scaled down) */
+                          <>
+                            <div
+                              style={{
+                                width: '162px',
+                                height: '198px',
+                                overflow: 'visible'
+                              }}
+                            >
+                              <div style={{
+                                transform: 'scale(0.72)',
+                                transformOrigin: 'top left'
+                              }}>
+                                <ShipCard ship={ship} isSelectable={false} />
+                              </div>
+                            </div>
 
-                        {/* Description */}
-                        {ship.description && (
-                          <div style={{ fontSize: '12px', color: 'var(--modal-text-secondary)', marginBottom: '8px' }}>
-                            {ship.description}
-                          </div>
+                            {/* Ownership Label */}
+                            <div
+                              style={{
+                                marginTop: '8px',
+                                padding: '4px 0',
+                                color: textColor,
+                                fontWeight: '600',
+                                fontSize: '15px',
+                                textAlign: 'center'
+                              }}
+                            >
+                              {ship.isStarterShip ? (
+                                <>Starter Ship - ∞</>
+                              ) : (
+                                <>×{ship.ownedCount} Owned</>
+                              )}
+                            </div>
+                          </>
                         )}
-
-                        {/* Ownership */}
-                        <div style={{
-                          fontSize: '12px',
-                          fontWeight: 600,
-                          color: ship.isStarterShip ? 'var(--modal-action)' : 'var(--modal-success)'
-                        }}>
-                          {ship.isStarterShip ? (
-                            'Starter Ship - ∞'
-                          ) : (
-                            `×${ship.ownedCount} Owned`
-                          )}
-                        </div>
                       </div>
                     );
                   })}
@@ -715,97 +748,101 @@ const InventoryModal = ({ onClose }) => {
             <div className="dw-modal-scroll" style={{ maxHeight: '550px' }}>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                gap: '12px'
+                gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+                gap: '10px',
+                justifyItems: 'center'
               }}>
                 {enrichedComponents.map(comp => {
-                  if (comp.discoveryState === 'undiscovered') {
-                    // Placeholder for undiscovered component
-                    return (
-                      <div
-                        key={comp.id}
-                        className="dw-modal-info-box"
-                        style={{
-                          marginBottom: 0,
-                          opacity: 0.4,
-                          borderColor: 'var(--modal-border)'
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                          <div>
-                            <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--modal-text-muted)' }}>???</div>
-                            <div style={{ fontSize: '11px', color: 'var(--modal-text-muted)' }}>Unknown Type</div>
-                          </div>
-                          <span style={{
-                            fontSize: '10px',
-                            fontWeight: 600,
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            background: getRarityColor(comp.rarity),
-                            color: '#fff'
-                          }}>
-                            {comp.rarity}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '12px', color: 'var(--modal-text-muted)', marginTop: '8px' }}>
-                          Undiscovered Section
-                        </div>
-                      </div>
-                    );
-                  }
+                  const textColor = comp.isStarterComponent
+                    ? 'var(--modal-action)'
+                    : 'var(--modal-success)';
 
-                  // Owned component - show full details
                   return (
                     <div
                       key={comp.id}
-                      className="dw-modal-info-box"
                       style={{
-                        marginBottom: 0,
-                        borderColor: getRarityColor(comp.rarity)
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        background: 'rgba(0, 0, 0, 0.35)',
+                        borderRadius: '4px',
+                        padding: '16px',
+                        paddingBottom: '10px',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
                       }}
                     >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                        <div>
-                          <div style={{ fontSize: '14px', fontWeight: 600, color: '#fff' }}>{comp.name}</div>
-                          <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)' }}>{comp.type}</div>
-                        </div>
-                        <span style={{
-                          fontSize: '10px',
-                          fontWeight: 600,
-                          padding: '2px 6px',
-                          borderRadius: '4px',
-                          background: getRarityColor(comp.rarity),
-                          color: '#fff'
-                        }}>
-                          {comp.rarity}
-                        </span>
-                      </div>
+                      {comp.discoveryState === 'undiscovered' ? (
+                        /* Undiscovered - Use HiddenShipSectionCard placeholder */
+                        <>
+                          <div
+                            style={{
+                              width: '162px',
+                              height: '198px',
+                              overflow: 'visible'
+                            }}
+                          >
+                            <div style={{
+                              transform: 'scale(0.72)',
+                              transformOrigin: 'top left'
+                            }}>
+                              <HiddenShipSectionCard
+                                rarity={comp.rarity}
+                                size="full"
+                                style={{ opacity: 0.8 }}
+                              />
+                            </div>
+                          </div>
+                          {/* Rarity label for hidden cards */}
+                          <div
+                            style={{
+                              marginTop: '8px',
+                              padding: '4px 0',
+                              color: getRarityColor(comp.rarity),
+                              fontWeight: '600',
+                              fontSize: '15px',
+                              textAlign: 'center'
+                            }}
+                          >
+                            {comp.rarity}
+                          </div>
+                        </>
+                      ) : (
+                        /* Owned - Show full ShipSectionCard (scaled down) */
+                        <>
+                          <div
+                            style={{
+                              width: '162px',
+                              height: '198px',
+                              overflow: 'visible'
+                            }}
+                          >
+                            <div style={{
+                              transform: 'scale(0.72)',
+                              transformOrigin: 'top left'
+                            }}>
+                              <ShipSectionCard section={comp} isSelectable={false} />
+                            </div>
+                          </div>
 
-                      {/* Stats */}
-                      <div style={{ display: 'flex', gap: '12px', fontSize: '12px', marginBottom: '8px' }}>
-                        <span><span style={{ color: 'var(--modal-text-secondary)' }}>Hull:</span> {comp.hull || comp.maxHull}</span>
-                        {comp.cardSlots && <span><span style={{ color: 'var(--modal-text-secondary)' }}>Slots:</span> {comp.cardSlots}</span>}
-                      </div>
-
-                      {/* Ability if present */}
-                      {comp.ability && (
-                        <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)', marginBottom: '8px', fontStyle: 'italic' }}>
-                          <strong style={{ color: 'var(--modal-action)' }}>{comp.ability.name}:</strong> {comp.ability.description}
-                        </div>
+                          {/* Ownership Label */}
+                          <div
+                            style={{
+                              marginTop: '8px',
+                              padding: '4px 0',
+                              color: textColor,
+                              fontWeight: '600',
+                              fontSize: '15px',
+                              textAlign: 'center'
+                            }}
+                          >
+                            {comp.isStarterComponent ? (
+                              <>Starter Section - ∞</>
+                            ) : (
+                              <>×{comp.ownedCount} in Inventory</>
+                            )}
+                          </div>
+                        </>
                       )}
-
-                      {/* Ownership */}
-                      <div style={{
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        color: comp.isStarterComponent ? 'var(--modal-action)' : 'var(--modal-success)'
-                      }}>
-                        {comp.isStarterComponent ? (
-                          'Starter Section - ∞'
-                        ) : (
-                          `×${comp.ownedCount} in Inventory`
-                        )}
-                      </div>
                     </div>
                   );
                 })}

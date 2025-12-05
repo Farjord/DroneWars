@@ -90,9 +90,33 @@ class ExtractionController {
   }
 
   /**
+   * Calculate extraction limit based on damaged ship sections
+   * Base limit (3) is reduced by 1 for each damaged section
+   *
+   * @param {Object} currentRunState - Current run state with shipSections
+   * @returns {number} Extraction limit (0 to base limit)
+   */
+  calculateExtractionLimit(currentRunState) {
+    const baseLimit = ECONOMY.STARTER_DECK_EXTRACTION_LIMIT || 3;
+    const shipSections = currentRunState.shipSections || {};
+
+    // Count damaged sections (hull <= threshold.damaged)
+    let damagedCount = 0;
+    Object.values(shipSections).forEach(section => {
+      const threshold = section.thresholds?.damaged ?? 5; // Default threshold if not defined
+      if (section.hull <= threshold) {
+        damagedCount++;
+      }
+    });
+
+    // Reduce limit by damaged count, minimum 0
+    return Math.max(0, baseLimit - damagedCount);
+  }
+
+  /**
    * Complete successful extraction
    * Processes drone damage, transfers loot, updates profile
-   * For Slot 0 (starter deck): enforces extraction limit
+   * For Slot 0 (starter deck): enforces extraction limit based on damage
    *
    * @param {Object} currentRunState - Current run state
    * @param {Array|null} selectedLoot - Optional: pre-selected loot items (for limit enforcement)
@@ -104,9 +128,9 @@ class ExtractionController {
       s => s.id === currentRunState.shipSlotId
     );
 
-    // Check extraction limit for Slot 0 (starter deck)
+    // Check extraction limit for Slot 0 (starter deck) - dynamic based on damage
     const isStarterDeck = currentRunState.shipSlotId === 0;
-    const extractionLimit = ECONOMY.STARTER_DECK_EXTRACTION_LIMIT || 3;
+    const extractionLimit = this.calculateExtractionLimit(currentRunState);
     const lootCount = currentRunState.collectedLoot.length;
 
     if (isStarterDeck && lootCount > extractionLimit && selectedLoot === null) {
