@@ -716,7 +716,13 @@ function TacticalMapScreen() {
     const updatedRunState = gameStateManager.getState().currentRunState;
 
     // Initialize combat with optional quick deploy
-    const success = await SinglePlayerCombatInitializer.initiateCombat(aiId, updatedRunState, quickDeployId);
+    // Pass isBlockade flag so post-combat can auto-extract on blockade victory
+    const success = await SinglePlayerCombatInitializer.initiateCombat(
+      aiId,
+      updatedRunState,
+      quickDeployId,
+      currentEncounter?.isBlockade || false
+    );
 
     if (!success) {
       console.error('[TacticalMap] Failed to initialize combat');

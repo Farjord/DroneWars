@@ -5,6 +5,7 @@
 // Extracted from gameLogic.js Phase 9.11 (Final Cleanup)
 
 import EffectRouter from '../EffectRouter.js';
+import ConditionalEffectProcessor from '../effects/conditional/ConditionalEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
 /**
@@ -24,6 +25,7 @@ import { debugLog } from '../../utils/debugLogger.js';
 class CardPlayManager {
   constructor() {
     this.effectRouter = new EffectRouter();
+    this.conditionalProcessor = new ConditionalEffectProcessor();
   }
 
   /**
@@ -125,8 +127,73 @@ class CardPlayManager {
     // Pay card costs first (unless card needs selection - costs will be paid after selection)
     let currentStates = willNeedSelection ? playerStates : this.payCardCosts(card, actingPlayerId, playerStates);
 
-    // Resolve the effect(s)
-    const result = this.resolveCardEffect(card.effect, target, actingPlayerId, currentStates, placedSections, callbacks, card, localPlayerId, gameMode);
+    // Build context for conditional processing
+    const conditionalContext = {
+      target,
+      actingPlayerId,
+      playerStates: currentStates,
+      placedSections,
+      callbacks,
+      card
+    };
+
+    // Process PRE conditionals (before primary effect)
+    let effectToResolve = card.effect;
+    let preAdditionalEffects = [];
+
+    if (card.conditionalEffects && card.conditionalEffects.length > 0) {
+      const preResult = this.conditionalProcessor.processPreConditionals(
+        card.conditionalEffects,
+        card.effect,
+        conditionalContext
+      );
+      effectToResolve = preResult.modifiedEffect; // May have BONUS_DAMAGE applied
+      currentStates = preResult.newPlayerStates;
+      preAdditionalEffects = preResult.additionalEffects || [];
+
+      debugLog('EFFECT_PROCESSING', '[CardPlayManager] PRE conditionals processed', {
+        originalValue: card.effect?.value,
+        modifiedValue: effectToResolve?.value,
+        additionalEffectsQueued: preAdditionalEffects.length
+      });
+    }
+
+    // Resolve the primary effect (with PRE modifications applied)
+    const result = this.resolveCardEffect(effectToResolve, target, actingPlayerId, currentStates, placedSections, callbacks, card, localPlayerId, gameMode);
+
+    // Process POST conditionals (after primary effect)
+    let postAdditionalEffects = [];
+    let dynamicGoAgain = false;
+
+    if (card.conditionalEffects && card.conditionalEffects.length > 0) {
+      const postContext = {
+        ...conditionalContext,
+        playerStates: result.newPlayerStates
+      };
+
+      const postResult = this.conditionalProcessor.processPostConditionals(
+        card.conditionalEffects,
+        postContext,
+        result.effectResult || null
+      );
+
+      result.newPlayerStates = postResult.newPlayerStates;
+      postAdditionalEffects = postResult.additionalEffects || [];
+      dynamicGoAgain = postResult.grantsGoAgain || false;
+
+      debugLog('EFFECT_PROCESSING', '[CardPlayManager] POST conditionals processed', {
+        wasDestroyed: result.effectResult?.wasDestroyed,
+        additionalEffectsQueued: postAdditionalEffects.length,
+        grantsGoAgain: dynamicGoAgain
+      });
+    }
+
+    // Merge all additional effects (from PRE, primary, and POST)
+    const allAdditionalEffects = [
+      ...preAdditionalEffects,
+      ...(result.additionalEffects || []),
+      ...postAdditionalEffects
+    ];
 
     // Start with card visual event if card has one
     const allAnimationEvents = [];
@@ -238,11 +305,11 @@ class CardPlayManager {
 
     // If no card selection is needed, complete the card play immediately
     if (!result.needsCardSelection) {
-      const completion = this.finishCardPlay(card, actingPlayerId, result.newPlayerStates);
+      const completion = this.finishCardPlay(card, actingPlayerId, result.newPlayerStates, dynamicGoAgain);
       return {
         newPlayerStates: completion.newPlayerStates,
         shouldEndTurn: completion.shouldEndTurn,
-        additionalEffects: result.additionalEffects || [],
+        additionalEffects: allAdditionalEffects,
         animationEvents: allAnimationEvents,
         needsCardSelection: false
       };
@@ -253,7 +320,7 @@ class CardPlayManager {
     return {
       newPlayerStates: playerStates, // Original state - costs will be paid after selection
       shouldEndTurn: false, // Turn ending will be handled in finishCardPlay after selection
-      additionalEffects: result.additionalEffects || [],
+      additionalEffects: allAdditionalEffects,
       animationEvents: allAnimationEvents,
       needsCardSelection: result.needsCardSelection // Pass through card selection requirements
     };
@@ -270,9 +337,10 @@ class CardPlayManager {
    * @param {Object} card - Card that was played
    * @param {string} actingPlayerId - 'player1' or 'player2'
    * @param {Object} playerStates - { player1, player2 }
+   * @param {boolean} dynamicGoAgain - Go again granted by POST conditional effects
    * @returns {Object} { newPlayerStates, shouldEndTurn }
    */
-  finishCardPlay(card, actingPlayerId, playerStates) {
+  finishCardPlay(card, actingPlayerId, playerStates, dynamicGoAgain = false) {
     const newPlayerStates = {
       player1: JSON.parse(JSON.stringify(playerStates.player1)),
       player2: JSON.parse(JSON.stringify(playerStates.player2))
@@ -285,7 +353,9 @@ class CardPlayManager {
     actingPlayerState.discardPile.push(card);
 
     // Determine if turn should end
-    const shouldEndTurn = !card.effect.goAgain;
+    // Static goAgain from card definition OR dynamic goAgain from POST conditional
+    const hasGoAgain = card.effect?.goAgain || dynamicGoAgain;
+    const shouldEndTurn = !hasGoAgain;
 
     return {
       newPlayerStates,

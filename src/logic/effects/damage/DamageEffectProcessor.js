@@ -232,14 +232,29 @@ class DamageEffectProcessor extends BaseEffectProcessor {
         placedSections
       );
 
+      // Build effectResult for POST conditional evaluation
+      const effectResult = {
+        wasDestroyed: attackResult.attackResult?.wasDestroyed || false,
+        damageDealt: {
+          shield: attackResult.attackResult?.shieldDamage || 0,
+          hull: attackResult.attackResult?.hullDamage || 0
+        },
+        targetId: target.id
+      };
+
       return {
         newPlayerStates: attackResult.newPlayerStates,
         additionalEffects: attackResult.afterAttackEffects || [],
-        animationEvents: attackResult.animationEvents || []
+        animationEvents: attackResult.animationEvents || [],
+        effectResult
       };
     }
 
-    return this.createResult(playerStates, []);
+    // No target found - return null effectResult
+    return {
+      ...this.createResult(playerStates, []),
+      effectResult: null
+    };
   }
 
   /**

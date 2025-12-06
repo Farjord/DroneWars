@@ -34,9 +34,10 @@ class SinglePlayerCombatInitializer {
    * @param {string} aiId - AI personality ID/name from threat table
    * @param {Object} currentRunState - Current run state from GameStateManager
    * @param {string|null} quickDeployId - Optional quick deploy ID for auto-deployment
+   * @param {boolean} isBlockade - Whether this is a blockade encounter (triggers auto-extraction on victory)
    * @returns {boolean} Success status
    */
-  async initiateCombat(aiId, currentRunState, quickDeployId = null) {
+  async initiateCombat(aiId, currentRunState, quickDeployId = null, isBlockade = false) {
     debugLog('SP_COMBAT', '=== Initiating Single Player Combat ===');
     debugLog('SP_COMBAT', 'AI ID:', aiId);
     debugLog('SP_COMBAT', 'Quick Deploy ID:', quickDeployId);
@@ -217,7 +218,8 @@ class SinglePlayerCombatInitializer {
           aiId: aiId,
           aiName: aiPersonality.name,
           aiDifficulty: aiPersonality.difficulty,  // For AI Cores drop chance calculation
-          startingHull: currentRunState?.currentHull || 30
+          startingHull: currentRunState?.currentHull || 30,
+          isBlockade: isBlockade  // For auto-extraction after blockade victory
         },
 
         // Quick deploy ID (if selected at POI encounter modal)
@@ -418,6 +420,7 @@ class SinglePlayerCombatInitializer {
 
     return {
       name: 'Player',
+      shipId: shipCard.id,
       shipSections: shipSections,
       energy: 0,
       initialDeploymentBudget: 10,
@@ -488,6 +491,7 @@ class SinglePlayerCombatInitializer {
 
     return {
       name: aiPersonality.name,
+      shipId: shipCard.id,
       shipSections: shipSections,
       energy: 0,
       initialDeploymentBudget: 10,

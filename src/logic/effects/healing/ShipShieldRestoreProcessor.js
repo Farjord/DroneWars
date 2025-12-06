@@ -61,9 +61,19 @@ class ShipShieldRestoreProcessor extends BaseEffectProcessor {
     }
 
     // Determine the correct placed sections array for the target player
-    const targetPlacedSections = targetPlayerId === 'player1'
-      ? placedSections
-      : (opponentPlacedSections || placedSections);
+    // Handle both placedSections formats:
+    // - Object format from ActionProcessor: { player1: [...], player2: [...] }
+    // - Array format from direct calls: [...] with separate opponentPlacedSections
+    let targetPlacedSections;
+    if (placedSections && placedSections.player1 && placedSections.player2) {
+      // Object format - extract correct array based on target player
+      targetPlacedSections = placedSections[targetPlayerId];
+    } else {
+      // Array format - use legacy behavior
+      targetPlacedSections = targetPlayerId === 'player1'
+        ? placedSections
+        : (opponentPlacedSections || placedSections);
+    }
 
     // Get effective maximum shields (includes middle lane bonus)
     const effectiveMaxShields = ShieldManager.getEffectiveSectionMaxShields(

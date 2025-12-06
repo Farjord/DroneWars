@@ -1028,6 +1028,180 @@ const fullCardCollection = [
       value: 3,
     },
    },
+
+  // ========================================
+  // CONDITIONAL EFFECT CARDS
+  // ========================================
+  // Cards demonstrating the modular conditional effects system
+
+  // POST timing: Draw on Destroy
+  {
+    id: 'CARD050',
+    baseCardId: 'CARD050',
+    name: 'Scavenger Shot',
+    maxInDeck: 4,
+    rarity: 'Uncommon',
+    type: 'Ordnance',
+    cost: 2,
+    image: '/DroneWars/cards/ScavengerShot.png',
+    description: 'Deal 2 damage to target drone. If it is destroyed, draw a card.',
+    visualEffect: {
+      type: 'LASER_BLAST'
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 2
+    },
+    conditionalEffects: [{
+      id: 'draw-on-destroy',
+      timing: 'POST',
+      condition: { type: 'ON_DESTROY' },
+      grantedEffect: { type: 'DRAW', value: 1 }
+    }]
+  },
+
+  // PRE timing: Bonus Damage on Low Hull
+  {
+    id: 'CARD051',
+    baseCardId: 'CARD051',
+    name: 'Finishing Blow',
+    maxInDeck: 4,
+    rarity: 'Rare',
+    type: 'Ordnance',
+    cost: 3,
+    image: '/DroneWars/cards/FinishingBlow.png',
+    description: 'Deal 2 damage to target drone. If its hull is 2 or less, deal 4 damage instead.',
+    visualEffect: {
+      type: 'LASER_BLAST'
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 2
+    },
+    conditionalEffects: [{
+      id: 'execute-bonus',
+      timing: 'PRE',
+      condition: { type: 'TARGET_STAT_LTE', stat: 'hull', value: 2 },
+      grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
+    }]
+  },
+
+  // Multiple Conditionals: PRE and POST
+  {
+    id: 'CARD052',
+    baseCardId: 'CARD052',
+    name: 'Opportunist Strike',
+    maxInDeck: 4,
+    rarity: 'Rare',
+    type: 'Ordnance',
+    cost: 4,
+    image: '/DroneWars/cards/OpportunistStrike.png',
+    description: 'Deal 2 damage. +2 if target is marked. If destroyed, gain 2 energy and go again.',
+    visualEffect: {
+      type: 'LASER_BLAST'
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 2
+    },
+    conditionalEffects: [
+      {
+        id: 'marked-bonus',
+        timing: 'PRE',
+        condition: { type: 'TARGET_IS_MARKED' },
+        grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
+      },
+      {
+        id: 'energy-on-destroy',
+        timing: 'POST',
+        condition: { type: 'ON_DESTROY' },
+        grantedEffect: { type: 'GAIN_ENERGY', value: 2 }
+      },
+      {
+        id: 'goagain-on-destroy',
+        timing: 'POST',
+        condition: { type: 'ON_DESTROY' },
+        grantedEffect: { type: 'GO_AGAIN' }
+      }
+    ]
+  },
+
+  // Conditional Destroy
+  {
+    id: 'CARD053',
+    baseCardId: 'CARD053',
+    name: 'Executioner',
+    maxInDeck: 4,
+    rarity: 'Uncommon',
+    type: 'Ordnance',
+    cost: 2,
+    image: '/DroneWars/cards/Executioner.png',
+    description: 'Destroy target enemy drone if its hull is less than 2.',
+    visualEffect: {
+      type: 'LASER_BLAST'
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 0
+    },
+    conditionalEffects: [{
+      id: 'execute-weak',
+      timing: 'PRE',
+      condition: { type: 'TARGET_STAT_LT', stat: 'hull', value: 2 },
+      grantedEffect: { type: 'DESTROY', scope: 'SINGLE' }
+    }]
+  },
+
+  // POST timing: Energy on Damage
+  {
+    id: 'CARD054',
+    baseCardId: 'CARD054',
+    name: 'Energy Leech',
+    maxInDeck: 4,
+    rarity: 'Common',
+    type: 'Ordnance',
+    cost: 2,
+    image: '/DroneWars/cards/EnergyLeech.png',
+    description: 'Deal 1 damage to target drone. If damage is dealt, gain 3 energy.',
+    visualEffect: {
+      type: 'LASER_BLAST'
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 1
+    },
+    conditionalEffects: [{
+      id: 'energy-on-damage',
+      timing: 'POST',
+      condition: { type: 'ON_DAMAGE' },
+      grantedEffect: { type: 'GAIN_ENERGY', value: 3 }
+    }]
+  }
 ];
 
 
