@@ -7,6 +7,7 @@
 import gameStateManager from '../../managers/GameStateManager.js';
 import DetectionManager from '../detection/DetectionManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import SeededRandom from '../../utils/seededRandom.js';
 
 /**
  * EncounterController - Singleton manager for POI encounters
@@ -38,7 +39,9 @@ class EncounterController {
    * @returns {'combat' | 'loot'} Encounter outcome
    */
   checkPOIEncounter(poi, detection) {
-    const roll = Math.random() * 100;
+    const gameState = gameStateManager.getState();
+    const rng = SeededRandom.fromGameState(gameState || {});
+    const roll = rng.random() * 100;
     const baseSecurity = poi.poiData?.baseSecurity || 15;
     const threshold = baseSecurity + detection;
 
@@ -70,8 +73,10 @@ class EncounterController {
     // Get threat table for level
     const table = tierConfig.threatTables?.[level] || ['AI_SCOUT_1'];
 
-    // Random selection from table
-    const aiId = table[Math.floor(Math.random() * table.length)];
+    // Random selection from table using seeded RNG
+    const gameState = gameStateManager.getState();
+    const rng = SeededRandom.fromGameState(gameState || {});
+    const aiId = rng.select(table);
 
     debugLog('ENCOUNTER', 'AI selection', { level, detection: detection.toFixed(2), aiId });
 
@@ -89,8 +94,10 @@ class EncounterController {
     // Base credits depend on outcome
     const baseCredits = outcome === 'combat' ? 100 : 50;
 
-    // Add random bonus (0-49)
-    const bonusCredits = Math.floor(Math.random() * 50);
+    // Add random bonus (0-49) using seeded RNG
+    const gameState = gameStateManager.getState();
+    const rng = SeededRandom.fromGameState(gameState || {});
+    const bonusCredits = rng.randomInt(0, 50);
 
     const reward = {
       credits: baseCredits + bonusCredits,
@@ -227,7 +234,9 @@ class EncounterController {
    * @returns {'blockade' | 'safe'} Extraction outcome
    */
   checkExtractionEncounter(detection) {
-    const roll = Math.random() * 100;
+    const gameState = gameStateManager.getState();
+    const rng = SeededRandom.fromGameState(gameState || {});
+    const roll = rng.random() * 100;
     const outcome = roll < detection ? 'blockade' : 'safe';
 
     debugLog('ENCOUNTER', 'Extraction check', {
@@ -283,7 +292,8 @@ class EncounterController {
 
     // Get encounter chance based on hex type and zone
     const encounterChance = this.getEncounterChance(hex, tierConfig, mapData);
-    const roll = Math.random() * 100;
+    const rng = SeededRandom.fromGameState(gameState || {});
+    const roll = rng.random() * 100;
 
     debugLog('ENCOUNTER', 'Movement encounter check', {
       hexType: hex.type,
@@ -315,7 +325,7 @@ class EncounterController {
         outcome: 'combat',
         aiId,
         reward: {
-          credits: Math.floor(50 + Math.random() * 50), // 50-100 credits for combat victory
+          credits: 50 + rng.randomInt(0, 51), // 50-100 credits for combat victory
           rewardType: hex.type === 'poi' ? hex.poiData?.rewardType : 'CREDITS',
           poiName: hex.type === 'poi' ? hex.poiData?.name : 'Intercept'
         },

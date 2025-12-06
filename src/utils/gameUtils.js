@@ -4,14 +4,18 @@
 // Pure utility functions for common game operations
 // These functions don't depend on React state or specific component context
 
+import SeededRandom from './seededRandom.js';
+
 /**
  * Get random selection of drones from a collection
  * @param {Array} collection - The collection to select from
  * @param {number} count - Number of items to select
+ * @param {Object} rng - Optional seeded RNG (uses SeededRandom if not provided)
  * @returns {Array} Randomly selected items
  */
-export const getRandomDrones = (collection, count) => {
-  const shuffled = [...collection].sort(() => 0.5 - Math.random());
+export const getRandomDrones = (collection, count, rng = null) => {
+  const seededRng = rng || new SeededRandom(Date.now());
+  const shuffled = seededRng.shuffle(collection);
   return shuffled.slice(0, count);
 };
 
@@ -64,15 +68,12 @@ export const getPhaseDisplayName = (phase) => {
 /**
  * Shuffle an array using Fisher-Yates algorithm
  * @param {Array} array - Array to shuffle
+ * @param {Object} rng - Optional seeded RNG (uses SeededRandom if not provided)
  * @returns {Array} New shuffled array
  */
-export const shuffleArray = (array) => {
-  const result = [...array];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
+export const shuffleArray = (array, rng = null) => {
+  const seededRng = rng || new SeededRandom(Date.now());
+  return seededRng.shuffle(array);
 };
 
 /**

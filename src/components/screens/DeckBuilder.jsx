@@ -10,6 +10,7 @@ import fullDroneCollection from '../../data/droneData.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { getAllShips, getDefaultShip } from '../../data/shipData.js';
 import { gameEngine } from '../../logic/gameLogic.js';
+import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js';
 import { RARITY_COLORS } from '../../data/cardData.js';
 import { generateDeckCode } from '../../utils/deckExportUtils.js';
 
@@ -87,8 +88,11 @@ const DroneDetailPopup = ({ drone, onClose }) => {
 };
 
 // Ship component detail popup showing the component in all three lane positions
-const ShipComponentDetailPopup = ({ component, onClose }) => {
+const ShipComponentDetailPopup = ({ component, onClose, ship }) => {
   if (!component) return null;
+
+  // Resolve ship-specific image for the section
+  const resolvedComponent = resolveShipSectionStats(component, ship);
 
   // Helper function to calculate middle lane bonus stats
   const calculateMiddleLaneBonusStats = (comp, applyBonus) => {
@@ -139,7 +143,7 @@ const ShipComponentDetailPopup = ({ component, onClose }) => {
               <div className="h-[250px]">
                 <ShipSection
                   section={component.key}
-                  stats={component}
+                  stats={resolvedComponent}
                   effectiveStatsForDisplay={calculateMiddleLaneBonusStats(component, false)}
                   isPlayer={true}
                   isInMiddleLane={false}
@@ -165,7 +169,7 @@ const ShipComponentDetailPopup = ({ component, onClose }) => {
                 <div className="h-[250px]">
                   <ShipSection
                     section={component.key}
-                    stats={component}
+                    stats={resolvedComponent}
                     effectiveStatsForDisplay={calculateMiddleLaneBonusStats(component, true)}
                     isPlayer={true}
                     isInMiddleLane={true}
@@ -1019,7 +1023,7 @@ const DeckBuilder = ({
     <div className="w-full flex flex-col text-white font-exo mt-8 text-sm">
       {detailedCard && <CardDetailPopup card={detailedCard} onClose={() => setDetailedCard(null)} />}
       {detailedDrone && <DroneDetailPopup drone={detailedDrone} onClose={() => setDetailedDrone(null)} />}
-      {detailedShipComponent && <ShipComponentDetailPopup component={detailedShipComponent} onClose={() => setDetailedShipComponent(null)} />}
+      {detailedShipComponent && <ShipComponentDetailPopup component={detailedShipComponent} onClose={() => setDetailedShipComponent(null)} ship={activeShip} />}
       {showExportModal && <ExportModal />}
       {showImportModal && <ImportModal />}
       <ViewDeckModal
@@ -1029,6 +1033,7 @@ const DeckBuilder = ({
         drones={viewDeckData.drones}
         cards={viewDeckData.cards}
         shipComponents={selectedShipComponents || {}}
+        ship={activeShip}
       />
 
       <div className="flex justify-between items-center mb-4 px-4">
@@ -1206,7 +1211,7 @@ const DeckBuilder = ({
 
           {/* SHIP CARD VIEW */}
           {leftPanelView === 'shipCard' && (
-            <div className="flex-1 overflow-y-auto custom-scrollbar">
+            <div className="flex-1 overflow-y-auto dw-modal-scroll">
               <div className="mb-4 p-4 bg-slate-800/50 rounded-lg border border-cyan-700/50">
                 <h3 className="text-lg font-orbitron text-cyan-400 mb-2">Select Your Ship</h3>
                 <p className="text-sm text-gray-400">
@@ -1214,7 +1219,7 @@ const DeckBuilder = ({
                   as well as unique deck building constraints.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-4 justify-center">
+              <div className="flex flex-col gap-4 px-2">
                 {allShips.map(ship => (
                   <ShipCard
                     key={ship.id}
@@ -1322,7 +1327,7 @@ const DeckBuilder = ({
                       <td><button onClick={() => setDetailedCard(card)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
                       <td className="font-bold">{card.name}</td>
                       <td className={`font-semibold ${getTypeTextClass(card.type)}`}>{card.type}</td>
-                      <td style={{ color: RARITY_COLORS[card.rarity] || '#808080' }}>{card.rarity}</td>
+                      <td style={{ color: (mode === 'extraction' && card.isStarterPool) ? '#06b6d4' : (RARITY_COLORS[card.rarity] || '#808080') }}>{(mode === 'extraction' && card.isStarterPool) ? 'Starter' : card.rarity}</td>
                       <td>{card.cost}</td>
                       <td className="text-xs text-gray-400">{card.description}</td>
                       <td><div className="flex flex-wrap gap-2">{card.keywords.map(k => <span key={k} className="ability-chip">{k}</span>)}</div></td>
@@ -1449,7 +1454,7 @@ const DeckBuilder = ({
                     <tr key={`${drone.name}-${index}`}>
                       <td><button onClick={() => setDetailedDrone(drone)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
                       <td className="font-bold">{drone.name}</td>
-                      <td style={{ color: RARITY_COLORS[drone.rarity] || '#808080' }}>{drone.rarity}</td>
+                      <td style={{ color: (mode === 'extraction' && drone.isStarterPool) ? '#06b6d4' : (RARITY_COLORS[drone.rarity] || '#808080') }}>{(mode === 'extraction' && drone.isStarterPool) ? 'Starter' : drone.rarity}</td>
                       <td>{drone.class}</td>
                       <td>{drone.attack}</td>
                       <td>{drone.speed}</td>
@@ -1535,6 +1540,7 @@ const DeckBuilder = ({
                   <th>Info</th>
                   <th>Type</th>
                   <th>Name</th>
+                  <th>Rarity</th>
                   <th>Description</th>
                   <th>Lane</th>
                 </tr>
@@ -1543,7 +1549,7 @@ const DeckBuilder = ({
                 {/* Group by type */}
                 {/* Bridge Section */}
                 <tr className="bg-cyan-900/20">
-                  <td colSpan="5" className="font-bold text-cyan-400 text-sm py-2">BRIDGE</td>
+                  <td colSpan="6" className="font-bold text-cyan-400 text-sm py-2">BRIDGE</td>
                 </tr>
                 {activeComponentCollection.filter(comp => comp.type === 'Bridge').map((component, index) => {
                   const selectedLane = selectedShipComponents?.[component.id] || null;
@@ -1557,6 +1563,7 @@ const DeckBuilder = ({
                       <td><button onClick={() => setDetailedShipComponent(component)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
                       <td className="font-semibold text-cyan-400">{component.type}</td>
                       <td className="font-bold">{component.name}</td>
+                      <td style={{ color: (mode === 'extraction' && component.isStarterPool) ? '#06b6d4' : (RARITY_COLORS[component.rarity] || '#808080') }}>{(mode === 'extraction' && component.isStarterPool) ? 'Starter' : component.rarity}</td>
                       <td className="text-xs text-gray-400">{component.description}</td>
                       <td>
                         <div className="flex gap-2">
@@ -1584,7 +1591,7 @@ const DeckBuilder = ({
 
                 {/* Power Cell Section */}
                 <tr className="bg-purple-900/20">
-                  <td colSpan="5" className="font-bold text-purple-400 text-sm py-2">POWER CELL</td>
+                  <td colSpan="6" className="font-bold text-purple-400 text-sm py-2">POWER CELL</td>
                 </tr>
                 {activeComponentCollection.filter(comp => comp.type === 'Power Cell').map((component, index) => {
                   const selectedLane = selectedShipComponents?.[component.id] || null;
@@ -1597,6 +1604,7 @@ const DeckBuilder = ({
                       <td><button onClick={() => setDetailedShipComponent(component)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
                       <td className="font-semibold text-purple-400">{component.type}</td>
                       <td className="font-bold">{component.name}</td>
+                      <td style={{ color: (mode === 'extraction' && component.isStarterPool) ? '#06b6d4' : (RARITY_COLORS[component.rarity] || '#808080') }}>{(mode === 'extraction' && component.isStarterPool) ? 'Starter' : component.rarity}</td>
                       <td className="text-xs text-gray-400">{component.description}</td>
                       <td>
                         <div className="flex gap-2">
@@ -1624,7 +1632,7 @@ const DeckBuilder = ({
 
                 {/* Drone Control Hub Section */}
                 <tr className="bg-red-900/20">
-                  <td colSpan="5" className="font-bold text-red-400 text-sm py-2">DRONE CONTROL HUB</td>
+                  <td colSpan="6" className="font-bold text-red-400 text-sm py-2">DRONE CONTROL HUB</td>
                 </tr>
                 {activeComponentCollection.filter(comp => comp.type === 'Drone Control Hub').map((component, index) => {
                   const selectedLane = selectedShipComponents?.[component.id] || null;
@@ -1637,6 +1645,7 @@ const DeckBuilder = ({
                       <td><button onClick={() => setDetailedShipComponent(component)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
                       <td className="font-semibold text-red-400">{component.type}</td>
                       <td className="font-bold">{component.name}</td>
+                      <td style={{ color: (mode === 'extraction' && component.isStarterPool) ? '#06b6d4' : (RARITY_COLORS[component.rarity] || '#808080') }}>{(mode === 'extraction' && component.isStarterPool) ? 'Starter' : component.rarity}</td>
                       <td className="text-xs text-gray-400">{component.description}</td>
                       <td>
                         <div className="flex gap-2">
@@ -1715,7 +1724,8 @@ const DeckBuilder = ({
                     ship={activeShip}
                     onClick={() => {}}
                     isSelectable={false}
-                    isSelected={true}
+                    isSelected={false}
+                    scale={0.75}
                   />
                   <div className="dw-info-box mt-4 w-full">
                     <h4 className="dw-info-box-title">Deck Limits</h4>

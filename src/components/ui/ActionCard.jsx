@@ -9,54 +9,14 @@ import { Power, RefreshCw, Cpu } from 'lucide-react';
 import ScalingText from './ScalingText.jsx';
 import RaritySymbol from './RaritySymbol.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
+import { getCardBorderClasses, getTypeInnerColors } from '../../utils/cardBorderUtils.js';
 
-// Helper function to get type-based colors
-const getTypeColors = (type, isEnhanced) => {
-  if (isEnhanced) {
-    return {
-      border: 'card-border-shimmer-silver',
-      imageBorder: 'border-slate-400/50',
-      descBorder: 'border-slate-600/70',
-      footerBorder: 'border-slate-600/70',
-      typeText: 'text-slate-400'
-    };
-  }
-
-  switch (type) {
-    case 'Ordnance':
-      return {
-        border: 'card-border-rotate-red',
-        imageBorder: 'border-red-400/50',
-        descBorder: 'border-red-800/70',
-        footerBorder: 'border-red-800/70',
-        typeText: 'text-red-400'
-      };
-    case 'Tactic':
-      return {
-        border: 'card-border-rotate-cyan',
-        imageBorder: 'border-cyan-400/50',
-        descBorder: 'border-cyan-800/70',
-        footerBorder: 'border-cyan-800/70',
-        typeText: 'text-cyan-400'
-      };
-    case 'Support':
-      return {
-        border: 'card-border-rotate-green',
-        imageBorder: 'border-emerald-400/50',
-        descBorder: 'border-emerald-800/70',
-        footerBorder: 'border-emerald-800/70',
-        typeText: 'text-emerald-400'
-      };
-    case 'Upgrade':
-    default:
-      return {
-        border: 'card-border-rotate-purple',
-        imageBorder: 'border-purple-400/50',
-        descBorder: 'border-purple-800/70',
-        footerBorder: 'border-purple-800/70',
-        typeText: 'text-purple-400'
-      };
-  }
+// Helper function to get type-based colors with rarity-based border
+const getTypeColors = (type, rarity, isDisabled) => {
+  return {
+    border: getCardBorderClasses(type, rarity, isDisabled),
+    ...getTypeInnerColors(type)
+  };
 };
 
 /**
@@ -80,16 +40,18 @@ const ActionCard = ({
   excessCards = 0,
   scale = 1.0
 }) => {
-  const { name, cost, image, description, type, effect } = card;
+  const { name, cost, image, description, type, effect, rarity } = card;
   const goAgain = effect?.goAgain;
-  const isEnhanced = card.id?.includes('_ENHANCED');
 
   // Calculate if this card is a mandatory target for discard/destroy
   const isMandatoryTarget = mandatoryAction?.type === 'discard' &&
     (!mandatoryAction.fromAbility ? excessCards > 0 : true);
 
-  // Get type-based colors
-  const colors = getTypeColors(type, isEnhanced);
+  // Determine if card is disabled (not playable and not a mandatory target)
+  const isDisabled = !isPlayable && !isMandatoryTarget;
+
+  // Get type-based colors with rarity-based border effects
+  const colors = getTypeColors(type, rarity, isDisabled);
 
   // Apply scale transform if provided
   const scaleStyle = scale !== 1.0 ? {
@@ -134,8 +96,8 @@ const ActionCard = ({
         rounded-lg p-[4px] relative group
         transition-all duration-200
         ${isPlayable || isMandatoryTarget ? 'cursor-pointer' : 'cursor-not-allowed'}
-        ${(isPlayable || isMandatoryTarget) ? colors.border : 'card-border-grey'}
-        ${!isPlayable && !isMandatoryTarget ? 'saturate-50' : ''}
+        ${colors.border}
+        ${isDisabled ? 'saturate-50' : ''}
         ${isDimmed ? 'grayscale' : ''}
       `}
       style={{

@@ -9,6 +9,7 @@ import { Crosshair, Gauge, Power } from 'lucide-react';
 import CardStatHexagon from './CardStatHexagon.jsx';
 import ScalingText from './ScalingText.jsx';
 import RaritySymbol from './RaritySymbol.jsx';
+import { getCardBorderClasses } from '../../utils/cardBorderUtils.js';
 
 /**
  * DRONE CARD COMPONENT
@@ -85,6 +86,10 @@ const DroneCard = ({
     transformOrigin: 'center center'
   } : {};
 
+  // Get rarity-based border classes (Drones use Tactic/cyan color)
+  const isDisabled = !isInteractive && !isViewOnly;
+  const borderClasses = getCardBorderClasses('Tactic', drone.rarity, isDisabled);
+
   return (
     <div
       onClick={isInteractive ? () => onClick(drone) : undefined}
@@ -92,8 +97,9 @@ const DroneCard = ({
         rounded-lg p-[4px] relative group
         transition-all duration-200
         ${isInteractive ? 'cursor-pointer' : isViewOnly ? 'cursor-default' : 'cursor-not-allowed'}
-        ${isSelected ? 'bg-cyan-400' : 'bg-cyan-800/80'}
+        ${isSelected ? 'bg-cyan-400 ring-2 ring-cyan-300' : borderClasses}
         ${isUpgradeTarget ? 'ring-4 ring-purple-500 animate-pulse' : ''}
+        ${isDisabled ? 'saturate-50' : ''}
       `}
       style={{
         width: '225px',

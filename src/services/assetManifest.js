@@ -11,6 +11,11 @@ import { poiTypes } from '../data/pointsOfInterestData.js';
 import aiPersonalities from '../data/aiData.js';
 import { BACKGROUNDS } from '../config/backgrounds.js';
 import { shipCollection } from '../data/shipData.js';
+import {
+  SHIP_FOLDER_NAMES,
+  SECTION_FILE_NAMES,
+  FALLBACK_PATHS
+} from '../utils/shipSectionImageResolver.js';
 
 /**
  * Extract unique, non-null values from an array of objects
@@ -39,6 +44,18 @@ const shipImages = extractUniquePaths(shipCollection, 'image');
 const backgroundImages = BACKGROUNDS
   .filter(bg => bg.type === 'static' && bg.path)
   .map(bg => bg.path);
+
+// Generate ship-specific section images dynamically from resolver mappings
+// This ensures new ships added to SHIP_FOLDER_NAMES are automatically preloaded
+const dynamicShipSectionImages = SHIP_FOLDER_NAMES.flatMap(ship =>
+  SECTION_FILE_NAMES.map(section => `/DroneWars/Ships/${ship}/${section}.png`)
+);
+
+// Add fallback images for sections
+const fallbackSectionImages = Object.values(FALLBACK_PATHS);
+
+// Combined ship section images (ship-specific + fallbacks)
+const allShipSectionImages = [...dynamicShipSectionImages, ...fallbackSectionImages];
 
 // Static assets not referenced in data files
 // These are manually listed based on public folder contents
@@ -80,6 +97,7 @@ export const assetManifest = {
   drones: droneImages,
   cards: cardImages,
   shipSections: shipSectionImages,
+  shipSectionImages: allShipSectionImages,
   pointsOfInterest: poiImages,
   aiPortraits: aiImages,
   backgrounds: backgroundImages,
@@ -118,6 +136,7 @@ export const CATEGORY_LABELS = {
   drones: 'Drone Assets',
   cards: 'Card Artwork',
   shipSections: 'Ship Components',
+  shipSectionImages: 'Ship Section Images',
   pointsOfInterest: 'Locations',
   aiPortraits: 'AI Profiles',
   backgrounds: 'Backgrounds',

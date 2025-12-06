@@ -7,17 +7,14 @@
 import { getAllGenerators } from './generators';
 import { TICKER_CONFIG } from './tickerConfig';
 import { debugLog } from '../../utils/debugLogger.js';
+import SeededRandom from '../../utils/seededRandom.js';
 
 /**
- * Shuffles an array using Fisher-Yates algorithm
+ * Shuffles an array using SeededRandom for deterministic shuffling
  */
 function shuffleArray(array) {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
+  const rng = new SeededRandom(Date.now());
+  return rng.shuffle(array);
 }
 
 /**

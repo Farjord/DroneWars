@@ -6,6 +6,7 @@
 
 import { calculateEffectiveStats } from '../statsCalculator.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import SeededRandom from '../../utils/seededRandom.js';
 
 /**
  * RoundManager
@@ -90,9 +91,10 @@ class RoundManager {
    *
    * @param {Object} playerState - Player state object
    * @param {number} handLimit - Maximum hand size
+   * @param {Object} gameState - Optional game state for seeded shuffling
    * @returns {Object} Updated player state with drawn cards
    */
-  drawToHandLimit(playerState, handLimit) {
+  drawToHandLimit(playerState, handLimit, gameState = null) {
     let newDeck = [...playerState.deck];
     let newHand = [...playerState.hand];
     let newDiscard = [...playerState.discardPile];
@@ -100,7 +102,11 @@ class RoundManager {
     while (newHand.length < handLimit) {
       if (newDeck.length === 0) {
         if (newDiscard.length > 0) {
-          newDeck = [...newDiscard].sort(() => 0.5 - Math.random());
+          // Use seeded RNG for deterministic shuffling
+          const rng = gameState
+            ? SeededRandom.fromGameState(gameState)
+            : new SeededRandom(playerState.deck?.length + playerState.hand?.length + playerState.discardPile?.length);
+          newDeck = rng.shuffle(newDiscard);
           newDiscard = [];
         } else {
           break;

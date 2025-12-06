@@ -228,16 +228,19 @@ class LootGenerator {
    * Different from pack opening - takes random cards from defeated enemy
    * @param {Array} enemyDeck - Enemy's deck (card instances)
    * @param {number} tier - Map tier (1, 2, or 3) for AI Cores drop calculation
+   * @param {string} aiDifficulty - AI difficulty ('Easy', 'Normal', 'Medium', 'Hard') for drop chance
+   * @param {number} seed - Random seed for deterministic results (defaults to Date.now())
    * @returns {Object} { cards: [...], credits: number, aiCores: number }
    */
-  generateCombatSalvage(enemyDeck, tier = 1) {
+  generateCombatSalvage(enemyDeck, tier = 1, aiDifficulty = null, seed = Date.now()) {
+    const rng = this.createRNG(seed);
     const cards = [];
-    const numCards = 1 + Math.floor(Math.random() * 3); // 1-3 cards
+    const numCards = 1 + Math.floor(rng.random() * 3); // 1-3 cards
 
     if (enemyDeck && enemyDeck.length > 0) {
       // Filter out starter cards, then shuffle and take random cards
       const eligibleCards = enemyDeck.filter(c => !STARTER_CARD_IDS.has(c.id));
-      const shuffled = [...eligibleCards].sort(() => 0.5 - Math.random());
+      const shuffled = [...eligibleCards].sort(() => 0.5 - rng.random());
 
       for (let i = 0; i < numCards && i < shuffled.length; i++) {
         const card = shuffled[i];
@@ -261,7 +264,7 @@ class LootGenerator {
       );
 
       for (let i = 0; i < numCards && commonCards.length > 0; i++) {
-        const randomCard = commonCards[Math.floor(Math.random() * commonCards.length)];
+        const randomCard = commonCards[Math.floor(rng.random() * commonCards.length)];
         cards.push({
           type: 'card',
           cardId: randomCard.id,
@@ -278,18 +281,18 @@ class LootGenerator {
     cards.sort((a, b) => (rarityOrder[a.rarity] || 0) - (rarityOrder[b.rarity] || 0));
 
     // Credits from combat: 50-100
-    const credits = 50 + Math.floor(Math.random() * 51);
+    const credits = 50 + Math.floor(rng.random() * 51);
 
-    // AI Cores from combat: tier-based drops (encourages combat)
-    const aiCores = calculateAICoresDrop(tier);
+    // AI Cores from combat: probabilistic drops based on AI difficulty (uses seeded RNG)
+    const aiCores = calculateAICoresDrop(tier, aiDifficulty, rng);
 
     // 1% chance for blueprint (rare drop)
     let blueprint = null;
-    if (Math.random() < 0.01) {
+    if (rng.random() < 0.01) {
       const blueprints = ['BLUEPRINT_GUNSHIP', 'BLUEPRINT_SCOUT', 'BLUEPRINT_FRIGATE'];
       blueprint = {
         type: 'blueprint',
-        blueprintId: blueprints[Math.floor(Math.random() * blueprints.length)],
+        blueprintId: blueprints[Math.floor(rng.random() * blueprints.length)],
         source: 'combat_salvage_rare'
       };
     }

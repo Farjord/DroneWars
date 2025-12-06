@@ -20,9 +20,10 @@ class SaveGameService {
    * @param {Array} discoveredCards - Card discovery states
    * @param {Array} shipSlots - Ship slots (6 total)
    * @param {Object|null} currentRunState - Current run state or null
+   * @param {Array} quickDeployments - Quick deploy templates (max 5)
    * @returns {Object} Save data object
    */
-  serialize(playerProfile, inventory, droneInstances, shipComponentInstances, discoveredCards, shipSlots, currentRunState = null) {
+  serialize(playerProfile, inventory, droneInstances, shipComponentInstances, discoveredCards, shipSlots, currentRunState = null, quickDeployments = []) {
     const saveData = {
       saveVersion: SAVE_VERSION,
       savedAt: Date.now(),
@@ -36,6 +37,7 @@ class SaveGameService {
       discoveredCards: JSON.parse(JSON.stringify(discoveredCards)),  // Deep copy
       shipSlots: JSON.parse(JSON.stringify(shipSlots)),  // Deep copy
       currentRunState: currentRunState ? JSON.parse(JSON.stringify(currentRunState)) : null,
+      quickDeployments: JSON.parse(JSON.stringify(quickDeployments || [])),  // Deep copy
     };
 
     return saveData;
@@ -67,6 +69,7 @@ class SaveGameService {
       discoveredCards: saveData.discoveredCards,
       shipSlots: saveData.shipSlots,
       currentRunState: null,  // Always null on load (MIA if was active)
+      quickDeployments: saveData.quickDeployments || [],  // Backwards compat default
     };
   }
 

@@ -6,6 +6,7 @@
 
 import GameDataService from '../services/GameDataService.js';
 import { debugLog } from '../utils/debugLogger.js';
+import SeededRandom from '../utils/seededRandom.js';
 
 /**
  * AIPhaseProcessor - Handles AI completion of simultaneous phases
@@ -174,7 +175,9 @@ class AIPhaseProcessor {
    * @returns {Array} Array of randomly selected drones
    */
   randomlySelectDrones(availableDrones, count) {
-    const shuffled = [...availableDrones].sort(() => 0.5 - Math.random());
+    const gameState = this.gameStateManager?.getState();
+    const rng = SeededRandom.fromGameState(gameState || {});
+    const shuffled = rng.shuffle(availableDrones);
     return shuffled.slice(0, count);
   }
 
@@ -212,8 +215,10 @@ class AIPhaseProcessor {
     }
 
     // Strategy 3: Random fallback if still not enough
+    const gameState = this.gameStateManager?.getState();
+    const rng = SeededRandom.fromGameState(gameState || {});
     while (selected.length < 5 && remaining.length > 0) {
-      const randomIndex = Math.floor(Math.random() * remaining.length);
+      const randomIndex = rng.randomInt(0, remaining.length);
       const drone = remaining.splice(randomIndex, 1)[0];
       selected.push(drone);
     }
@@ -235,6 +240,8 @@ class AIPhaseProcessor {
   selectBalancedDrones(availableDrones, count, personality) {
     const selected = [];
     const remaining = [...availableDrones];
+    const gameState = this.gameStateManager?.getState();
+    const rng = SeededRandom.fromGameState(gameState || {});
 
     // Sort by a combination of cost and capabilities for balanced selection
     remaining.sort((a, b) => {
@@ -262,7 +269,7 @@ class AIPhaseProcessor {
       } else {
         // Balanced selection with some randomness
         const topChoices = Math.min(3, remaining.length);
-        selectedIndex = Math.floor(Math.random() * topChoices);
+        selectedIndex = rng.randomInt(0, topChoices);
       }
 
       selected.push(remaining.splice(selectedIndex, 1)[0]);
@@ -711,8 +718,9 @@ class AIPhaseProcessor {
     const sortedCosts = Object.keys(cardsByCost).map(Number).sort((a, b) => a - b);
 
     // Randomly shuffle within each cost group, then select from lowest costs
+    const rng = SeededRandom.fromGameState(gameState);
     for (const cost of sortedCosts) {
-      const shuffled = [...cardsByCost[cost]].sort(() => 0.5 - Math.random());
+      const shuffled = rng.shuffle(cardsByCost[cost]);
       cardsToDiscard.push(...shuffled);
       if (cardsToDiscard.length >= excessCards) break;
     }

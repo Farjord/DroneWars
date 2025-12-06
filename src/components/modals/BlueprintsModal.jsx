@@ -16,7 +16,7 @@ import { ECONOMY } from '../../data/economyData';
 import { getAICoresCost } from '../../data/aiCoresData';
 
 /**
- * Starter deck items - now INCLUDED in blueprints with special costs
+ * Starter deck items - EXCLUDED from blueprints (they're infinitely available)
  * Dynamically extracted from starterDeck - updates automatically if starter deck changes
  */
 const STARTER_DRONE_NAMES = new Set(starterDeck.drones.map(d => d.name));
@@ -44,73 +44,65 @@ const BlueprintsModal = ({ onClose }) => {
   const unlockedBlueprints = singlePlayerProfile?.unlockedBlueprints || [];
 
   /**
-   * Craft cost by rarity (regular and starter)
+   * Craft cost by rarity
    * Uses centralized values from economyData.js
    */
   const CRAFT_COSTS = ECONOMY.REPLICATION_COSTS;
 
-  const STARTER_COSTS = ECONOMY.STARTER_BLUEPRINT_COSTS || CRAFT_COSTS;
-
   /**
-   * Get drone blueprints (including starter drones with special costs)
+   * Get drone blueprints (excluding starter drones - they're infinitely available)
    */
   const droneBlueprints = useMemo(() => {
     return droneData
       .filter(drone => drone.selectable !== false)
+      .filter(drone => !STARTER_DRONE_NAMES.has(drone.name)) // Exclude starter drones
       .map(drone => {
-        const isStarterItem = STARTER_DRONE_NAMES.has(drone.name);
-        const costTable = isStarterItem ? STARTER_COSTS : CRAFT_COSTS;
         return {
           ...drone,
           id: drone.name, // Drones use name as ID
-          isUnlocked: isStarterItem || unlockedBlueprints.includes(drone.name), // Starter items always unlocked
-          isStarterItem,
-          craftCost: costTable[drone.rarity] || 100,
+          isUnlocked: unlockedBlueprints.includes(drone.name),
+          craftCost: CRAFT_COSTS[drone.rarity] || 100,
           aiCoresCost: getAICoresCost(drone.rarity),
           owned: singlePlayerInventory[drone.name] || 0,
         };
       });
-  }, [unlockedBlueprints, singlePlayerInventory, STARTER_COSTS]);
+  }, [unlockedBlueprints, singlePlayerInventory]);
 
   /**
-   * Get ship component blueprints (including starter components with special costs)
+   * Get ship component blueprints (excluding starter components - they're infinitely available)
    */
   const shipBlueprints = useMemo(() => {
     return shipComponentCollection
+      .filter(component => !STARTER_COMPONENT_IDS.has(component.id)) // Exclude starter components
       .map(component => {
-        const isStarterItem = STARTER_COMPONENT_IDS.has(component.id);
-        const costTable = isStarterItem ? STARTER_COSTS : CRAFT_COSTS;
         return {
           ...component,
-          isUnlocked: isStarterItem || unlockedBlueprints.includes(component.id), // Starter items always unlocked
-          isStarterItem,
-          craftCost: costTable[component.rarity] || 100,
+          isUnlocked: unlockedBlueprints.includes(component.id),
+          craftCost: CRAFT_COSTS[component.rarity] || 100,
           aiCoresCost: getAICoresCost(component.rarity),
           owned: singlePlayerInventory[component.id] || 0,
         };
       });
-  }, [unlockedBlueprints, singlePlayerInventory, STARTER_COSTS]);
+  }, [unlockedBlueprints, singlePlayerInventory]);
 
   /**
-   * Get ship card blueprints (including starter ship with special cost)
+   * Get ship card blueprints (excluding starter ship - it's infinitely available)
    * Ships now work like drones - tracked in inventory with quantities
    */
   const shipCardBlueprints = useMemo(() => {
     return getAllShips()
+      .filter(ship => !STARTER_SHIP_IDS.has(ship.id)) // Exclude starter ship
       .map(ship => {
-        const isStarterItem = STARTER_SHIP_IDS.has(ship.id);
-        const costTable = isStarterItem ? STARTER_COSTS : CRAFT_COSTS;
         const owned = singlePlayerInventory[ship.id] || 0;
         return {
           ...ship,
-          isUnlocked: isStarterItem || owned > 0, // Starter items always unlocked; for regular: "owned" counts as unlocked
-          isStarterItem,
-          craftCost: costTable[ship.rarity] || 600, // Ships default to Rare cost
+          isUnlocked: owned > 0, // "owned" counts as unlocked
+          craftCost: CRAFT_COSTS[ship.rarity] || 600, // Ships default to Rare cost
           aiCoresCost: getAICoresCost(ship.rarity || 'Rare'),
           owned,
         };
       });
-  }, [singlePlayerInventory, STARTER_COSTS]);
+  }, [singlePlayerInventory]);
 
   /**
    * Get collection stats
@@ -305,22 +297,6 @@ const BlueprintsModal = ({ onClose }) => {
                         </div>
                       ) : (
                         <div style={{ position: 'relative', zIndex: 1 }}>
-                          {/* Starter Badge */}
-                          {blueprint.isStarterItem && (
-                            <div style={{
-                              fontSize: '10px',
-                              fontWeight: '600',
-                              color: '#fff',
-                              background: 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)',
-                              padding: '2px 6px',
-                              borderRadius: '4px',
-                              marginBottom: '6px',
-                              display: 'inline-block'
-                            }}>
-                              STARTER
-                            </div>
-                          )}
-
                           {/* Blueprint Name */}
                           <div style={{
                             fontSize: '13px',

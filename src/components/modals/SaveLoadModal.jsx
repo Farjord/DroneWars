@@ -38,7 +38,8 @@ const SaveLoadModal = ({ onClose }) => {
         saveData.shipComponentInstances,
         saveData.discoveredCards,
         saveData.shipSlots,
-        saveData.currentRunState
+        saveData.currentRunState,
+        saveData.quickDeployments
       );
 
       // Download file

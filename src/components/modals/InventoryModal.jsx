@@ -139,17 +139,12 @@ const InventoryModal = ({ onClose }) => {
 
   /**
    * Get Slot 0 ship components for reference (starter components)
+   * The keys of shipComponents ARE the component IDs (e.g., 'BRIDGE_001': 'm')
    */
   const slot0Components = useMemo(() => {
     const slot0 = singlePlayerShipSlots?.find(slot => slot.id === 0);
     if (!slot0 || !slot0.shipComponents) return [];
-    const comps = [];
-    for (const lane of ['left', 'middle', 'right']) {
-      if (slot0.shipComponents[lane]) {
-        comps.push(slot0.shipComponents[lane]);
-      }
-    }
-    return comps;
+    return Object.keys(slot0.shipComponents);
   }, [singlePlayerShipSlots]);
 
   /**

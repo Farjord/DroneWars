@@ -9,6 +9,7 @@ import React from 'react';
 import { HardDrive, Cpu, Zap, Command } from 'lucide-react';
 import ScalingText from './ScalingText.jsx';
 import RaritySymbol from './RaritySymbol.jsx';
+import { getCardBorderClasses } from '../../utils/cardBorderUtils.js';
 
 /**
  * SHIP SECTION CARD COMPONENT
@@ -65,12 +66,19 @@ const ShipSectionCard = ({
     Mythic: 'text-purple-400'
   };
 
-  const rarityBorder = {
-    Common: 'border-gray-500/50',
-    Uncommon: 'border-green-500/50',
-    Rare: 'border-blue-500/50',
-    Mythic: 'border-purple-500/50'
+  // Map section types to card types for border color
+  const getSectionTypeForBorder = (sectionType) => {
+    switch (sectionType) {
+      case 'Bridge': return 'Tactic';           // Cyan
+      case 'Power Cell': return 'Ordnance';     // Red
+      case 'Drone Control Hub': return 'Support'; // Green
+      default: return 'Tactic';
+    }
   };
+
+  // Get rarity-based border classes
+  const isDisabled = !isInteractive;
+  const borderClasses = getCardBorderClasses(getSectionTypeForBorder(type), rarity, isDisabled);
 
   return (
     <div
@@ -79,7 +87,8 @@ const ShipSectionCard = ({
         rounded-lg p-[4px] relative group
         transition-all duration-200
         ${isInteractive ? 'cursor-pointer hover:scale-105' : ''}
-        ${isSelected ? 'bg-cyan-400 ring-2 ring-cyan-300' : `bg-slate-700/80 ${rarityBorder[rarity] || ''}`}
+        ${isSelected ? 'bg-cyan-400 ring-2 ring-cyan-300' : borderClasses}
+        ${isDisabled ? 'saturate-50' : ''}
       `}
       style={{
         width: '225px',

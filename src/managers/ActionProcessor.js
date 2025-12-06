@@ -21,6 +21,7 @@ import aiPhaseProcessor from './AIPhaseProcessor.js';
 import GameDataService from '../services/GameDataService.js';
 import PhaseManager from './PhaseManager.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
+import SeededRandom from '../utils/seededRandom.js';
 
 class ActionProcessor {
   // Singleton instance
@@ -1329,7 +1330,9 @@ setAnimationManager(animationManager) {
     let newDeck = [...remainingDeck, ...unselectedCards];
 
     if (shuffleAfter) {
-      newDeck = newDeck.sort(() => 0.5 - Math.random());
+      const gameState = this.gameStateManager.getState();
+      const rng = SeededRandom.fromGameState(gameState);
+      newDeck = rng.shuffle(newDeck);
     }
 
     const updatedPlayerState = {

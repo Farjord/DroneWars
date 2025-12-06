@@ -80,6 +80,7 @@ import { getElementCenter } from './utils/gameUtils.js';
 import { debugLog } from './utils/debugLogger.js';
 import { calculateAllValidTargets } from './utils/uiTargetingHelpers.js';
 import DEV_CONFIG from './config/devConfig.js';
+import SeededRandom from './utils/seededRandom.js';
 
 // --- 1.8 ANIMATION IMPORTS ---
 import AnimationManager from './managers/AnimationManager.js';
@@ -3375,7 +3376,8 @@ const App = ({ phaseAnimationQueue }) => {
 
           const lowestClass = Math.min(...allDrones.map(d => d.class));
           const candidates = allDrones.filter(d => d.class === lowestClass);
-          const droneToDestroy = candidates[Math.floor(Math.random() * candidates.length)];
+          const rng = SeededRandom.fromGameState(gameState);
+          const droneToDestroy = rng.select(candidates);
 
           // Use ActionProcessor for AI drone destruction too
           await processActionWithGuestRouting('destroyDrone', {

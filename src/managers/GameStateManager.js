@@ -80,6 +80,7 @@ class GameStateManager {
       singlePlayerDiscoveredCards: [],   // Card discovery states (owned/discovered/undiscovered)
       singlePlayerShipSlots: [],         // 6 ship slots
       currentRunState: null,             // Active run state or null
+      quickDeployments: [],              // Quick deploy templates (max 5)
 
       // --- EXTRACTION DECK BUILDER NAVIGATION ---
       extractionDeckSlotId: null,        // Slot ID being edited (0-5) or null
@@ -1542,6 +1543,7 @@ class GameStateManager {
       singlePlayerDiscoveredCards: saveData.discoveredCards,
       singlePlayerShipSlots: saveData.shipSlots,
       currentRunState: saveData.currentRunState,
+      quickDeployments: saveData.quickDeployments || [],  // Backwards compat default
     });
 
     console.log('Single-player save loaded');
@@ -1560,6 +1562,7 @@ class GameStateManager {
       discoveredCards: this.state.singlePlayerDiscoveredCards,
       shipSlots: this.state.singlePlayerShipSlots,
       currentRunState: this.state.currentRunState,
+      quickDeployments: this.state.quickDeployments || [],
     };
   }
 

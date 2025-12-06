@@ -15,6 +15,7 @@ import aiPersonalities from '../../data/aiData.js';
 import aiPhaseProcessor from '../../managers/AIPhaseProcessor.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import SeededRandom from '../../utils/seededRandom.js';
 
 /**
  * SinglePlayerCombatInitializer
@@ -215,6 +216,7 @@ class SinglePlayerCombatInitializer {
         singlePlayerEncounter: {
           aiId: aiId,
           aiName: aiPersonality.name,
+          aiDifficulty: aiPersonality.difficulty,  // For AI Cores drop chance calculation
           startingHull: currentRunState?.currentHull || 30
         },
 
@@ -403,8 +405,9 @@ class SinglePlayerCombatInitializer {
       debugLog('EXTRACTION', '❌ Collection card IDs:', fullCardCollection?.slice(0, 5).map(c => c.id) || []);
     }
 
-    // Shuffle deck
-    deck = deck.sort(() => 0.5 - Math.random());
+    // Shuffle deck using seeded RNG for determinism
+    const rng = new SeededRandom(Date.now());
+    deck = rng.shuffle(deck);
 
     // Get drone pool from ship slot or use default
     const droneNames = shipSlot?.activeDronePool || this.getDefaultDronePool();
@@ -473,8 +476,9 @@ class SinglePlayerCombatInitializer {
       });
     }
 
-    // Shuffle deck
-    deck = deck.sort(() => 0.5 - Math.random());
+    // Shuffle deck using seeded RNG for determinism
+    const rng = new SeededRandom(Date.now() + 1); // Offset to get different sequence from player
+    deck = rng.shuffle(deck);
 
     // Get drone pool from AI
     const activeDronePool = (aiPersonality.dronePool || []).map(name => {

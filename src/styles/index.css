@@ -312,110 +312,7 @@
   animation: menuHexPulse 1.2s ease-out 1;
 }
 
-/* === CARD BORDER ANIMATIONS === */
-@keyframes cardBorderRotatePurple {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 400% 50%; }
-}
-
-@keyframes cardBorderShimmerSilver {
-  0% { background-position: 0% 0%; }
-  100% { background-position: 400% 400%; }
-}
-
-.card-border-rotate-purple {
-  background: linear-gradient(
-    90deg,
-    rgba(147, 51, 234, 1.0) 0%,
-    rgba(147, 51, 234, 1.0) 10%,
-    rgba(147, 51, 234, 1.0) 20%,
-    rgba(107, 33, 168, 1.0) 30%,
-    rgba(147, 51, 234, 1.0) 40%,
-    rgba(147, 51, 234, 1.0) 50%,
-    rgba(147, 51, 234, 1.0) 60%,
-    rgba(59, 7, 100, 1.0) 70%,
-    rgba(59, 7, 100, 1.0) 80%,
-    rgba(59, 7, 100, 1.0) 90%,
-    rgba(147, 51, 234, 1.0) 100%
-  );
-  background-size: 400% 100%;
-  animation: cardBorderRotatePurple 15s linear infinite;
-}
-
-.card-border-rotate-red {
-  background: linear-gradient(
-    90deg,
-    rgba(239, 68, 68, 1.0) 0%,
-    rgba(239, 68, 68, 1.0) 10%,
-    rgba(239, 68, 68, 1.0) 20%,
-    rgba(185, 28, 28, 1.0) 30%,
-    rgba(239, 68, 68, 1.0) 40%,
-    rgba(239, 68, 68, 1.0) 50%,
-    rgba(239, 68, 68, 1.0) 60%,
-    rgba(127, 29, 29, 1.0) 70%,
-    rgba(127, 29, 29, 1.0) 80%,
-    rgba(127, 29, 29, 1.0) 90%,
-    rgba(239, 68, 68, 1.0) 100%
-  );
-  background-size: 400% 100%;
-  animation: cardBorderRotatePurple 15s linear infinite;
-}
-
-.card-border-rotate-cyan {
-  background: linear-gradient(
-    90deg,
-    rgba(34, 211, 238, 1.0) 0%,
-    rgba(34, 211, 238, 1.0) 10%,
-    rgba(34, 211, 238, 1.0) 20%,
-    rgba(8, 145, 178, 1.0) 30%,
-    rgba(34, 211, 238, 1.0) 40%,
-    rgba(34, 211, 238, 1.0) 50%,
-    rgba(34, 211, 238, 1.0) 60%,
-    rgba(22, 78, 99, 1.0) 70%,
-    rgba(22, 78, 99, 1.0) 80%,
-    rgba(22, 78, 99, 1.0) 90%,
-    rgba(34, 211, 238, 1.0) 100%
-  );
-  background-size: 400% 100%;
-  animation: cardBorderRotatePurple 15s linear infinite;
-}
-
-.card-border-rotate-green {
-  background: linear-gradient(
-    90deg,
-    rgba(16, 185, 129, 1.0) 0%,
-    rgba(16, 185, 129, 1.0) 10%,
-    rgba(16, 185, 129, 1.0) 20%,
-    rgba(5, 150, 105, 1.0) 30%,
-    rgba(16, 185, 129, 1.0) 40%,
-    rgba(16, 185, 129, 1.0) 50%,
-    rgba(16, 185, 129, 1.0) 60%,
-    rgba(6, 78, 59, 1.0) 70%,
-    rgba(6, 78, 59, 1.0) 80%,
-    rgba(6, 78, 59, 1.0) 90%,
-    rgba(16, 185, 129, 1.0) 100%
-  );
-  background-size: 400% 100%;
-  animation: cardBorderRotatePurple 15s linear infinite;
-}
-
-.card-border-shimmer-silver {
-  background: linear-gradient(
-    135deg,
-    rgba(148, 163, 184, 1.0) 0%,
-    rgba(148, 163, 184, 1.0) 10%,
-    rgba(148, 163, 184, 1.0) 15%,
-    rgba(203, 213, 225, 1.0) 20%,
-    rgba(241, 245, 249, 1.0) 25%,
-    rgba(203, 213, 225, 1.0) 30%,
-    rgba(148, 163, 184, 1.0) 35%,
-    rgba(148, 163, 184, 1.0) 40%,
-    rgba(148, 163, 184, 1.0) 100%
-  );
-  background-size: 400% 400%;
-  animation: cardBorderShimmerSilver 12s linear infinite;
-}
-
+/* === LEGACY CARD BORDER (kept for compatibility) === */
 .card-border-grey {
   background: linear-gradient(
     90deg,
@@ -424,4 +321,470 @@
     rgba(75, 85, 99, 0.8) 66%,
     rgba(107, 114, 128, 0.8) 100%
   );
+}
+
+/* ========================================
+   CARD BORDER RARITY SYSTEM
+   TYPE determines COLOR, RARITY determines EFFECTS
+
+   How it works:
+   - Outer div has 4px padding and animated background
+   - Inner content div covers the background
+   - Only the 4px border zone shows the animated background
+   - NO pseudo-elements needed!
+   ======================================== */
+
+/* === RARITY KEYFRAMES === */
+
+/* Slow rotating gradient for Uncommon (15s - gentle wave) */
+@keyframes cardBorderRotate {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 400% 50%; }
+}
+
+/* Gentle breathing glow pulse for Rare (4s - slow, elegant) */
+@keyframes cardBorderGlowPulse {
+  0%, 100% {
+    filter: brightness(1);
+    box-shadow: 0 0 8px currentColor;
+  }
+  50% {
+    filter: brightness(1.15);
+    box-shadow: 0 0 16px currentColor;
+  }
+}
+
+/* Metallic sheen sweep for Mythic (single diagonal sweep across border) */
+@keyframes cardBorderMetallicSheen {
+  0% { background-position: 200% 0%; }
+  100% { background-position: -100% 0%; }
+}
+
+/* === ANIMATION DELAY VARIANTS (for randomization) === */
+.card-delay-0 { animation-delay: 0s; }
+.card-delay-1 { animation-delay: -3.75s; }
+.card-delay-2 { animation-delay: -7.5s; }
+.card-delay-3 { animation-delay: -11.25s; }
+
+/* === COMMON RARITY (Static gradient with subtle highlight) === */
+
+.card-border-ordnance-common {
+  background: linear-gradient(
+    90deg,
+    var(--card-ordnance-primary) 0%,
+    var(--card-ordnance-secondary) 50%,
+    var(--card-ordnance-primary) 100%
+  );
+}
+
+.card-border-tactic-common {
+  background: linear-gradient(
+    90deg,
+    var(--card-tactic-primary) 0%,
+    var(--card-tactic-secondary) 50%,
+    var(--card-tactic-primary) 100%
+  );
+}
+
+.card-border-support-common {
+  background: linear-gradient(
+    90deg,
+    var(--card-support-primary) 0%,
+    var(--card-support-secondary) 50%,
+    var(--card-support-primary) 100%
+  );
+}
+
+.card-border-upgrade-common {
+  background: linear-gradient(
+    90deg,
+    var(--card-upgrade-primary) 0%,
+    var(--card-upgrade-secondary) 50%,
+    var(--card-upgrade-primary) 100%
+  );
+}
+
+/* === UNCOMMON RARITY (Rotating gradient 15s + visible glow) === */
+
+.card-border-ordnance-uncommon {
+  background: linear-gradient(
+    90deg,
+    var(--card-ordnance-primary) 0%,
+    rgba(255, 140, 140, 0.85) 20%,
+    var(--card-ordnance-secondary) 40%,
+    var(--card-ordnance-primary) 50%,
+    var(--card-ordnance-secondary) 60%,
+    rgba(255, 140, 140, 0.85) 80%,
+    var(--card-ordnance-primary) 100%
+  );
+  background-size: 400% 100%;
+  box-shadow: 0 0 10px var(--card-ordnance-glow-dim);
+  animation: cardBorderRotate 15s linear infinite;
+}
+
+.card-border-tactic-uncommon {
+  background: linear-gradient(
+    90deg,
+    var(--card-tactic-primary) 0%,
+    rgba(140, 255, 255, 0.85) 20%,
+    var(--card-tactic-secondary) 40%,
+    var(--card-tactic-primary) 50%,
+    var(--card-tactic-secondary) 60%,
+    rgba(140, 255, 255, 0.85) 80%,
+    var(--card-tactic-primary) 100%
+  );
+  background-size: 400% 100%;
+  box-shadow: 0 0 10px var(--card-tactic-glow-dim);
+  animation: cardBorderRotate 15s linear infinite;
+}
+
+.card-border-support-uncommon {
+  background: linear-gradient(
+    90deg,
+    var(--card-support-primary) 0%,
+    rgba(140, 255, 180, 0.85) 20%,
+    var(--card-support-secondary) 40%,
+    var(--card-support-primary) 50%,
+    var(--card-support-secondary) 60%,
+    rgba(140, 255, 180, 0.85) 80%,
+    var(--card-support-primary) 100%
+  );
+  background-size: 400% 100%;
+  box-shadow: 0 0 10px var(--card-support-glow-dim);
+  animation: cardBorderRotate 15s linear infinite;
+}
+
+.card-border-upgrade-uncommon {
+  background: linear-gradient(
+    90deg,
+    var(--card-upgrade-primary) 0%,
+    rgba(200, 160, 255, 0.85) 20%,
+    var(--card-upgrade-secondary) 40%,
+    var(--card-upgrade-primary) 50%,
+    var(--card-upgrade-secondary) 60%,
+    rgba(200, 160, 255, 0.85) 80%,
+    var(--card-upgrade-primary) 100%
+  );
+  background-size: 400% 100%;
+  box-shadow: 0 0 10px var(--card-upgrade-glow-dim);
+  animation: cardBorderRotate 15s linear infinite;
+}
+
+/* === RARE RARITY (Gentle breathing glow - no rotation, just pulsing glow) === */
+
+.card-border-ordnance-rare {
+  background: linear-gradient(
+    90deg,
+    var(--card-ordnance-primary) 0%,
+    var(--card-ordnance-secondary) 30%,
+    rgba(255, 180, 180, 0.9) 50%,
+    var(--card-ordnance-secondary) 70%,
+    var(--card-ordnance-primary) 100%
+  );
+  color: var(--card-ordnance-glow);
+  box-shadow: 0 0 10px var(--card-ordnance-glow);
+  animation: cardBorderGlowPulse 4s ease-in-out infinite;
+}
+
+.card-border-tactic-rare {
+  background: linear-gradient(
+    90deg,
+    var(--card-tactic-primary) 0%,
+    var(--card-tactic-secondary) 30%,
+    rgba(180, 255, 255, 0.9) 50%,
+    var(--card-tactic-secondary) 70%,
+    var(--card-tactic-primary) 100%
+  );
+  color: var(--card-tactic-glow);
+  box-shadow: 0 0 10px var(--card-tactic-glow);
+  animation: cardBorderGlowPulse 4s ease-in-out infinite;
+}
+
+.card-border-support-rare {
+  background: linear-gradient(
+    90deg,
+    var(--card-support-primary) 0%,
+    var(--card-support-secondary) 30%,
+    rgba(180, 255, 200, 0.9) 50%,
+    var(--card-support-secondary) 70%,
+    var(--card-support-primary) 100%
+  );
+  color: var(--card-support-glow);
+  box-shadow: 0 0 10px var(--card-support-glow);
+  animation: cardBorderGlowPulse 4s ease-in-out infinite;
+}
+
+.card-border-upgrade-rare {
+  background: linear-gradient(
+    90deg,
+    var(--card-upgrade-primary) 0%,
+    var(--card-upgrade-secondary) 30%,
+    rgba(220, 180, 255, 0.9) 50%,
+    var(--card-upgrade-secondary) 70%,
+    var(--card-upgrade-primary) 100%
+  );
+  color: var(--card-upgrade-glow);
+  box-shadow: 0 0 10px var(--card-upgrade-glow);
+  animation: cardBorderGlowPulse 4s ease-in-out infinite;
+}
+
+/* === MYTHIC RARITY (Metallic sheen sweep + strong glow spill) === */
+
+.card-border-ordnance-mythic {
+  background: linear-gradient(
+    90deg,
+    var(--card-ordnance-primary) 0%,
+    var(--card-ordnance-primary) 40%,
+    rgba(255, 255, 255, 0.7) 50%,
+    var(--card-ordnance-primary) 60%,
+    var(--card-ordnance-primary) 100%
+  );
+  background-size: 300% 100%;
+  box-shadow:
+    0 0 16px var(--card-ordnance-glow),
+    0 0 32px var(--card-ordnance-glow),
+    0 0 48px var(--card-ordnance-glow-dim);
+  animation: cardBorderMetallicSheen 10s linear infinite;
+}
+
+.card-border-tactic-mythic {
+  background: linear-gradient(
+    90deg,
+    var(--card-tactic-primary) 0%,
+    var(--card-tactic-primary) 40%,
+    rgba(255, 255, 255, 0.7) 50%,
+    var(--card-tactic-primary) 60%,
+    var(--card-tactic-primary) 100%
+  );
+  background-size: 300% 100%;
+  box-shadow:
+    0 0 16px var(--card-tactic-glow),
+    0 0 32px var(--card-tactic-glow),
+    0 0 48px var(--card-tactic-glow-dim);
+  animation: cardBorderMetallicSheen 10s linear infinite;
+}
+
+.card-border-support-mythic {
+  background: linear-gradient(
+    90deg,
+    var(--card-support-primary) 0%,
+    var(--card-support-primary) 40%,
+    rgba(255, 255, 255, 0.7) 50%,
+    var(--card-support-primary) 60%,
+    var(--card-support-primary) 100%
+  );
+  background-size: 300% 100%;
+  box-shadow:
+    0 0 16px var(--card-support-glow),
+    0 0 32px var(--card-support-glow),
+    0 0 48px var(--card-support-glow-dim);
+  animation: cardBorderMetallicSheen 10s linear infinite;
+}
+
+.card-border-upgrade-mythic {
+  background: linear-gradient(
+    90deg,
+    var(--card-upgrade-primary) 0%,
+    var(--card-upgrade-primary) 40%,
+    rgba(255, 255, 255, 0.7) 50%,
+    var(--card-upgrade-primary) 60%,
+    var(--card-upgrade-primary) 100%
+  );
+  background-size: 300% 100%;
+  box-shadow:
+    0 0 16px var(--card-upgrade-glow),
+    0 0 32px var(--card-upgrade-glow),
+    0 0 48px var(--card-upgrade-glow-dim);
+  animation: cardBorderMetallicSheen 10s linear infinite;
+}
+
+/* === DISABLED STATE === */
+.card-border-disabled {
+  background: linear-gradient(
+    90deg,
+    var(--card-disabled-primary) 0%,
+    var(--card-disabled-secondary) 50%,
+    var(--card-disabled-primary) 100%
+  );
+  box-shadow: none;
+  animation: none;
+}
+
+/* ========================================
+   SHIP CARD HORIZONTAL LAYOUT
+   Large format ship cards for deck builder
+   ======================================== */
+
+/* Ship Card Container */
+.ship-card-horizontal {
+  display: flex;
+  width: calc(100% - 1rem);
+  max-width: 800px;
+  min-height: 260px;
+  margin: 0 auto;
+  padding: 8px; /* Increased from 4px for more breathing room */
+  border-radius: 0.5rem; /* 8px - matches rounded-lg */
+  overflow: hidden; /* Ensure children don't overflow rounded corners */
+  transition: all 0.2s ease;
+  position: relative;
+  /* Dark box shadow for depth */
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.6),
+    0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.ship-card-horizontal:hover {
+  transform: scale(1.01);
+}
+
+.ship-card-horizontal.ship-card-selected {
+  transform: scale(1.02);
+  box-shadow:
+    0 0 20px rgba(6, 182, 212, 0.6),
+    0 0 40px rgba(6, 182, 212, 0.3),
+    0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+/* Ship Image Section */
+.ship-card-image-section {
+  width: 250px;
+  height: 250px;
+  flex-shrink: 0;
+  overflow: hidden;
+  /* Dark background matching content area */
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(10, 15, 28, 0.98) 100%);
+  /* Cyan border like other sections */
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  /* All corners rounded */
+  border-radius: 6px;
+  padding: 8px; /* More margin around image */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ship-card-image-section img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+/* Ship Content Area - Panel/Modal gradient background */
+.ship-card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between; /* Push header to top, deck to bottom */
+  height: 250px;
+  min-height: 250px;
+  padding: 0 0.5rem; /* No top/bottom padding for alignment */
+  gap: 0; /* Children manage own spacing */
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(10, 15, 28, 0.98) 100%);
+  /* Round right corners only to match container */
+  border-radius: 0 6px 6px 0;
+  position: relative;
+}
+
+/* Ship Header Row - Matches ship-card-section styling */
+.ship-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.375rem 0.5rem;
+  margin: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  border-radius: 6px;
+}
+
+/* Ship Middle Section (2 columns) */
+.ship-card-middle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.375rem;
+  flex: 1;
+  padding: 0.25rem 0;
+}
+
+/* Ship Stats Column */
+.ship-card-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* Ship Abilities Column */
+.ship-card-abilities {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+/* Ship Deck Composition Bars */
+.ship-card-deck-bars {
+  margin-top: auto;
+  padding: 0.375rem;
+}
+
+/* Ship Card Section - ActionCard-style inner box */
+.ship-card-section {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  border-radius: 6px;
+  padding: 0.375rem;
+}
+
+/* === SHIP BORDER RARITY SYSTEM === */
+/* Dark-themed borders for impact, with subtle rarity accents */
+
+.ship-border-common {
+  background: #000000;
+}
+
+.ship-border-uncommon {
+  background: #000000;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.3);
+}
+
+.ship-border-rare {
+  background: #000000;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+}
+
+.ship-border-mythic {
+  background: #000000;
+  box-shadow:
+    0 0 12px rgba(168, 85, 247, 0.4),
+    0 0 24px rgba(168, 85, 247, 0.2);
+}
+
+.ship-border-selected {
+  background: #000000;
+  box-shadow: 0 0 16px rgba(6, 182, 212, 0.6);
+}
+
+/* === PERFORMANCE: Reduced Motion === */
+@media (prefers-reduced-motion: reduce) {
+  .card-border-ordnance-uncommon,
+  .card-border-tactic-uncommon,
+  .card-border-support-uncommon,
+  .card-border-upgrade-uncommon,
+  .card-border-ordnance-rare,
+  .card-border-tactic-rare,
+  .card-border-support-rare,
+  .card-border-upgrade-rare,
+  .card-border-ordnance-mythic,
+  .card-border-tactic-mythic,
+  .card-border-support-mythic,
+  .card-border-upgrade-mythic,
+  .ship-border-uncommon,
+  .ship-border-rare,
+  .ship-border-mythic {
+    animation: none;
+  }
 }

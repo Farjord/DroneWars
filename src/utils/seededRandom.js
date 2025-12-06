@@ -60,6 +60,35 @@ export class SeededRandom {
   }
 
   /**
+   * Select a random element from an array
+   * @param {Array} array - Array to select from
+   * @returns {*} Random element, or undefined if empty
+   */
+  select(array) {
+    if (!array || array.length === 0) return undefined;
+    return array[this.randomInt(0, array.length)];
+  }
+
+  /**
+   * Check if a percentage roll succeeds
+   * @param {number} chance - Success chance as percentage (0-100)
+   * @returns {boolean} True if roll succeeds
+   */
+  chance(chance) {
+    return this.random() * 100 < chance;
+  }
+
+  /**
+   * Generate random integer in range [min, max] (both inclusive)
+   * @param {number} min - Minimum value (inclusive)
+   * @param {number} max - Maximum value (inclusive)
+   * @returns {number} Random integer
+   */
+  randomIntInclusive(min, max) {
+    return Math.floor(this.random() * (max - min + 1)) + min;
+  }
+
+  /**
    * Create SeededRandom from game state properties
    * Uses deterministic properties to generate same seed on Host and Guest
    *

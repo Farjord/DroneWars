@@ -5,14 +5,16 @@
 // Handles initialization and management of drone selection data
 
 import { debugLog } from './debugLogger.js';
+import SeededRandom from './seededRandom.js';
 
 /**
  * Initialize drone selection data for the beginning of a game
  * @param {Array} droneCollection - Full collection of available drones
  * @param {number} initialSize - Number of drones in initial selection (default: 3)
+ * @param {Object} rng - Optional seeded RNG (uses SeededRandom if not provided)
  * @returns {Object} Object containing droneSelectionTrio and droneSelectionPool
  */
-export const initializeDroneSelection = (droneCollection, initialSize = 3) => {
+export const initializeDroneSelection = (droneCollection, initialSize = 3, rng = null) => {
   if (!droneCollection || droneCollection.length === 0) {
     throw new Error('droneCollection must be a non-empty array');
   }
@@ -20,8 +22,9 @@ export const initializeDroneSelection = (droneCollection, initialSize = 3) => {
   // Filter out non-selectable drones (tokens like Jammer)
   const selectableDrones = droneCollection.filter(drone => drone.selectable !== false);
 
-  // Create a shuffled copy of the selectable drone collection
-  const shuffledDrones = [...selectableDrones].sort(() => 0.5 - Math.random());
+  // Create a shuffled copy of the selectable drone collection using seeded RNG
+  const seededRng = rng || new SeededRandom(Date.now());
+  const shuffledDrones = seededRng.shuffle(selectableDrones);
 
   // First N drones become the initial selection
   const trio = shuffledDrones.slice(0, initialSize);

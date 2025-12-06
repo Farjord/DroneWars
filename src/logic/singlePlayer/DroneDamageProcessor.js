@@ -8,6 +8,7 @@
 
 import { debugLog } from '../../utils/debugLogger.js';
 import gameStateManager from '../../managers/GameStateManager.js';
+import SeededRandom from '../../utils/seededRandom.js';
 
 /**
  * DroneDamageProcessor - Processes drone damage on extraction
@@ -53,9 +54,10 @@ class DroneDamageProcessor {
       return [];
     }
 
-    // Damage one random operational drone
-    const randomIndex = Math.floor(Math.random() * operationalDrones.length);
-    const droneToDAMAGE = operationalDrones[randomIndex];
+    // Damage one random operational drone using seeded RNG
+    const gameState = gameStateManager.getState();
+    const rng = SeededRandom.fromGameState(gameState || {});
+    const droneToDAMAGE = rng.select(operationalDrones);
 
     // Find and update the drone in the original array (for display)
     const originalDrone = drones.find(d => d.id === droneToDAMAGE.id || d.name === droneToDAMAGE.name);

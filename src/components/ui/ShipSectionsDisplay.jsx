@@ -8,6 +8,7 @@ import React from 'react';
 import ShipSectionCompact from './ShipSectionCompact.jsx';
 import { useGameData } from '../../hooks/useGameData.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js';
 
 /**
  * SHIP SECTIONS DISPLAY COMPONENT
@@ -95,13 +96,16 @@ const ShipSectionsDisplay = ({
 
         const sectionStats = player.shipSections[sectionName];
 
+        // Resolve ship-specific image for the section based on player's ship
+        const resolvedSectionStats = resolveShipSectionStats(sectionStats, player.shipId);
+
         // Use pending shields during allocateShields phase (privacy: show local allocations only)
         const displayStats = (turnPhase === 'allocateShields' && isPlayer && pendingShieldAllocations)
           ? {
-              ...sectionStats,
+              ...resolvedSectionStats,
               allocatedShields: pendingShieldAllocations[sectionName] || 0
             }
-          : sectionStats;
+          : resolvedSectionStats;
 
         // Derive the correct player ID for this ship sections display
         const localPlayerId = getLocalPlayerId();
@@ -167,7 +171,7 @@ const ShipSectionsDisplay = ({
                 if (onViewFullCard) {
                   onViewFullCard({
                     sectionName,
-                    sectionStats,
+                    sectionStats: resolvedSectionStats,
                     effectiveStats: playerEffectiveStats.bySection[sectionName],
                     isInMiddleLane: laneIndex === 1,
                     isPlayer

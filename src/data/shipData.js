@@ -12,7 +12,7 @@ const shipCollection = [
     rarity: 'Common',
     faction: null,
     description: 'A balanced ship designed for reconnaissance operations. Well-suited for any strategy.',
-    image: '/DroneWars/img/ships/corvette.png',
+    image: '/DroneWars/Ships/corvette.png',
 
     // BASELINE COMBAT VALUES
     // These are the default values for all ship sections
@@ -45,7 +45,7 @@ const shipCollection = [
     rarity: 'Uncommon',
     faction: null,
     description: 'A heavily armored vessel optimized for direct assault. High durability with focus on damage-dealing cards.',
-    image: '/DroneWars/img/ships/carrier.png',
+    image: '/DroneWars/Ships/carrier.png',
 
     // BASELINE COMBAT VALUES
     baseHull: 12,
@@ -76,7 +76,7 @@ const shipCollection = [
     rarity: 'Common',
     faction: null,
     description: 'Leightweight reconnocence craft.',
-    image: '/DroneWars/img/ships/scout.png',
+    image: '/DroneWars/Ships/Scout.png',
 
     // BASELINE COMBAT VALUES
     baseHull: 5,

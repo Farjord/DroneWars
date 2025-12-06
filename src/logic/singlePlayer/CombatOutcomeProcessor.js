@@ -84,7 +84,8 @@ class CombatOutcomeProcessor {
     // 2. Generate salvage loot using LootGenerator
     const enemyDeck = gameState.player2?.deck || [];
     const enemyTier = encounterInfo?.tier || 1;
-    const salvageLoot = lootGenerator.generateCombatSalvage(enemyDeck, enemyTier);
+    const aiDifficulty = encounterInfo?.aiDifficulty || null;
+    const salvageLoot = lootGenerator.generateCombatSalvage(enemyDeck, enemyTier, aiDifficulty);
     debugLog('SP_COMBAT', 'Generated salvage loot:', salvageLoot);
 
     // 3. Check for drone blueprint POI reward
