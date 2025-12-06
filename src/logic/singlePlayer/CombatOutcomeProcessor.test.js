@@ -357,18 +357,19 @@ describe('CombatOutcomeProcessor', () => {
   describe('finalizeLootCollection - Blockade Extraction Victory', () => {
     /**
      * BUG FIX TESTS: When player wins a blockade combat during extraction,
-     * they should immediately extract (go to hangar), NOT return to tactical map.
+     * they should return to tactical map with pendingBlockadeExtraction flag.
+     * TacticalMapScreen will then handle the extraction flow (including
+     * loot selection modal and run summary).
      *
-     * Current behavior: Always returns to tacticalMap after combat
-     * Expected behavior: Check isBlockade flag and complete extraction if true
-     *
-     * These tests will FAIL until the bug is fixed.
+     * This approach reuses the existing extraction flow rather than
+     * duplicating it in finalizeLootCollection.
      */
 
-    it('should call ExtractionController.completePostBlockadeExtraction for blockade victory', () => {
-      // EXPLANATION: After winning a blockade encounter, the player should
-      // automatically complete extraction without having to click Extract again.
-      // This prevents them from triggering another encounter chance.
+    it('should set pendingBlockadeExtraction flag for blockade victory', () => {
+      // EXPLANATION: After winning a blockade encounter, we return to tactical
+      // map with a flag. TacticalMapScreen detects this flag and triggers
+      // extraction automatically, which properly handles loot selection and
+      // run summary.
 
       gameStateManager.getState.mockReturnValue({
         currentRunState: {
@@ -384,32 +385,33 @@ describe('CombatOutcomeProcessor', () => {
       // ACT
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
 
-      // ASSERT: Extraction should be completed automatically
-      expect(ExtractionController.completePostBlockadeExtraction).toHaveBeenCalled()
-    })
-
-    it('should set appState to hangar after blockade victory (not tacticalMap)', () => {
-      // EXPLANATION: After blockade victory, player goes directly to hangar
-      // (run completed), not back to tactical map.
-
-      gameStateManager.getState.mockReturnValue({
-        currentRunState: {
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0
-        },
-        singlePlayerEncounter: { isBlockade: true }
-      })
-
-      const combatLoot = { cards: [], credits: 0, aiCores: 0 }
-
-      // ACT
-      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
-
-      // ASSERT: appState should be 'hangar', not 'tacticalMap'
+      // ASSERT: Should go to tactical map with pendingBlockadeExtraction flag
       const setStateCalls = gameStateManager.setState.mock.calls
       const finalCall = setStateCalls[setStateCalls.length - 1][0]
-      expect(finalCall.appState).toBe('hangar')
+      expect(finalCall.appState).toBe('tacticalMap')
+      expect(finalCall.currentRunState.pendingBlockadeExtraction).toBe(true)
+    })
+
+    it('should NOT call completePostBlockadeExtraction directly (TacticalMapScreen handles it)', () => {
+      // EXPLANATION: Extraction is now handled by TacticalMapScreen via the
+      // pendingBlockadeExtraction flag, not directly in finalizeLootCollection.
+
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: {
+          collectedLoot: [],
+          creditsEarned: 0,
+          aiCoresEarned: 0
+        },
+        singlePlayerEncounter: { isBlockade: true }
+      })
+
+      const combatLoot = { cards: [], credits: 0, aiCores: 0 }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT: Should NOT call extraction directly
+      expect(ExtractionController.completePostBlockadeExtraction).not.toHaveBeenCalled()
     })
 
     it('should return to tacticalMap for regular POI combat (not blockade)', () => {
@@ -433,10 +435,45 @@ describe('CombatOutcomeProcessor', () => {
       // ASSERT: Extraction should NOT be triggered
       expect(ExtractionController.completePostBlockadeExtraction).not.toHaveBeenCalled()
 
-      // ASSERT: Should return to tacticalMap
+      // ASSERT: Should return to tacticalMap without pendingBlockadeExtraction
       const setStateCalls = gameStateManager.setState.mock.calls
       const finalCall = setStateCalls[setStateCalls.length - 1][0]
       expect(finalCall.appState).toBe('tacticalMap')
+      expect(finalCall.currentRunState.pendingBlockadeExtraction).toBeUndefined()
+    })
+
+    it('should include combat salvage loot in currentRunState for blockade extraction', () => {
+      // EXPLANATION: The combat salvage loot must be included in currentRunState
+      // so that when TacticalMapScreen calls handleExtract, the loot is available.
+
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: {
+          collectedLoot: [
+            { type: 'card', cardId: 'EXISTING', cardName: 'Old Card', rarity: 'Common' }
+          ],
+          creditsEarned: 50,
+          aiCoresEarned: 1
+        },
+        singlePlayerEncounter: { isBlockade: true }
+      })
+
+      const combatLoot = {
+        cards: [{ cardId: 'NEW_CARD', cardName: 'Combat Salvage', rarity: 'Rare' }],
+        credits: 100,
+        aiCores: 2
+      }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT: currentRunState should include both existing and new loot
+      const setStateCalls = gameStateManager.setState.mock.calls
+      const finalCall = setStateCalls[setStateCalls.length - 1][0]
+
+      // Should have 2 existing + 1 new card + 1 credits + 1 aiCores = 4 items total
+      expect(finalCall.currentRunState.collectedLoot.length).toBe(4)
+      expect(finalCall.currentRunState.creditsEarned).toBe(150) // 50 + 100
+      expect(finalCall.currentRunState.aiCoresEarned).toBe(3) // 1 + 2
     })
   })
 })

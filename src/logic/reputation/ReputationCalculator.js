@@ -15,6 +15,7 @@ import fullCardCollection from '../../data/cardData.js';
 import { shipCollection, getShipById } from '../../data/shipData.js';
 import fullDroneCollection from '../../data/droneData.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
+import { starterPoolCards, starterPoolDroneNames, starterPoolShipIds } from '../../data/saveGameSchema.js';
 
 /**
  * Get blueprint cost for a given rarity
@@ -36,6 +37,9 @@ export function calculateCardValue(decklist) {
   let totalValue = 0;
 
   for (const entry of decklist) {
+    // Skip starter pool cards - they don't contribute to loadout value
+    if (starterPoolCards.includes(entry.id)) continue;
+
     const card = fullCardCollection.find(c => c.id === entry.id);
     if (card) {
       const cost = getBlueprintCost(card.rarity);
@@ -54,6 +58,9 @@ export function calculateCardValue(decklist) {
 export function calculateShipValue(shipId) {
   if (!shipId) return 0;
 
+  // Starter pool ships don't contribute to loadout value
+  if (starterPoolShipIds.includes(shipId)) return 0;
+
   const ship = getShipById(shipId);
   if (!ship) return 0;
 
@@ -71,6 +78,9 @@ export function calculateDroneValue(drones) {
   let totalValue = 0;
 
   for (const drone of drones) {
+    // Skip starter pool drones - they don't contribute to loadout value
+    if (starterPoolDroneNames.includes(drone.name)) continue;
+
     const droneData = fullDroneCollection.find(d => d.name === drone.name);
     if (droneData) {
       totalValue += getBlueprintCost(droneData.rarity);
@@ -91,6 +101,9 @@ export function calculateComponentValue(shipComponents) {
   let totalValue = 0;
 
   for (const componentId of Object.keys(shipComponents)) {
+    // Skip starter pool components - they don't contribute to loadout value
+    if (starterPoolCards.includes(componentId)) continue;
+
     const component = shipComponentCollection.find(c => c.id === componentId);
     if (component) {
       totalValue += getBlueprintCost(component.rarity);

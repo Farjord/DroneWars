@@ -298,6 +298,12 @@ class MovementEffectProcessor extends BaseEffectProcessor {
 
     return {
       newPlayerStates,
+      effectResult: {
+        movedDrones: [movedDrone],
+        fromLane,
+        toLane,
+        wasSuccessful: true
+      },
       shouldEndTurn: !card.effect.goAgain, // Respect goAgain property
       shouldCancelCardSelection: true,
       shouldClearMultiSelectState: true
@@ -392,6 +398,12 @@ class MovementEffectProcessor extends BaseEffectProcessor {
 
     return {
       newPlayerStates,
+      effectResult: {
+        movedDrones,
+        fromLane,
+        toLane,
+        wasSuccessful: true
+      },
       shouldEndTurn: true,
       shouldCancelCardSelection: true,
       shouldClearMultiSelectState: true

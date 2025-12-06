@@ -612,7 +612,70 @@ const fullCardCollection = [
       goAgain: true
     }
 },
-
+// ========================================
+// MOVEMENT CARDS WITH CONDITIONALS
+// ========================================
+{
+    id: 'CARD060',
+    baseCardId: 'CARD060',
+    name: 'Swift Maneuver',
+    maxInDeck: 2,
+    rarity: 'Common',
+    type: 'Tactic',
+    cost: 1,
+    image: '/DroneWars/cards/SwiftManeuver.png',
+    description: 'Move a friendly drone to an adjacent lane. If its speed is 5 or higher, go again.',
+    effect: {
+      type: 'SINGLE_MOVE'
+    },
+    conditionalEffects: [{
+      id: 'fast-goagain',
+      timing: 'POST',
+      condition: { type: 'TARGET_STAT_GTE', stat: 'speed', value: 5 },
+      grantedEffect: { type: 'GO_AGAIN' }
+    }]
+},
+{
+    id: 'CARD061',
+    baseCardId: 'CARD061',
+    name: 'Tactical Shift',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Tactic',
+    cost: 2,
+    image: '/DroneWars/cards/TacticalShift.png',
+    description: 'Move a friendly drone to an adjacent lane without exhausting it. If the opponent has more drones in that lane, draw a card.',
+    effect: {
+      type: 'SINGLE_MOVE',
+      properties: ['DO_NOT_EXHAUST']
+    },
+    conditionalEffects: [{
+      id: 'contested-draw',
+      timing: 'POST',
+      condition: { type: 'OPPONENT_HAS_MORE_IN_LANE', lane: 'DESTINATION', count: 'TOTAL' },
+      grantedEffect: { type: 'DRAW', value: 1 }
+    }]
+},
+{
+    id: 'CARD062',
+    baseCardId: 'CARD062',
+    name: 'Assault Reposition',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Tactic',
+    cost: 2,
+    image: '/DroneWars/cards/AssaultReposition.png',
+    description: 'Move a friendly drone to an adjacent lane. If its attack is less than 4, give it +1 attack.',
+    effect: {
+      type: 'SINGLE_MOVE'
+    },
+    conditionalEffects: [{
+      id: 'attack-buff',
+      timing: 'POST',
+      condition: { type: 'TARGET_STAT_LTE', stat: 'attack', value: 3 },
+      grantedEffect: { type: 'MODIFY_STAT', stat: 'attack', value: 1 }
+    }]
+},
 {
     id: 'CARD028',
     baseCardId: 'CARD028',

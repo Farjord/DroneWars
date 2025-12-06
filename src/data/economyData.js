@@ -74,7 +74,7 @@ export const ECONOMY = {
   },
 
   // Flat fee to copy entire starter deck (all cards, drones, components, ship)
-  STARTER_DECK_COPY_COST: 500,
+  STARTER_DECK_COPY_COST: 100,
 
   // ========================================
   // FUTURE: Map entry costs, etc.

@@ -1,0 +1,264 @@
+/* ========================================
+   FAILED RUN LOADING SCREEN STYLES
+   Warning-themed transition screen for failed runs (MIA)
+   ======================================== */
+
+.failed-run-overlay {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, #0a0f1a 0%, #1a0a0a 50%, #0a0f1a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: failedRunFadeIn 0.3s ease-out;
+}
+
+.failed-run-overlay.fade-out {
+  animation: failedRunFadeOut 0.3s ease-in forwards;
+}
+
+@keyframes failedRunFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes failedRunFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Animated warning background gradient */
+.failed-run-background {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(239, 68, 68, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(249, 115, 22, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(239, 68, 68, 0.08) 0%, transparent 70%);
+  animation: warningPulseFailed 2s ease-in-out infinite;
+}
+
+@keyframes warningPulseFailed {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Static/noise effect */
+.failed-run-static {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255, 100, 100, 0.3), transparent),
+    radial-gradient(1px 1px at 30% 60%, rgba(255, 150, 150, 0.2), transparent),
+    radial-gradient(1px 1px at 50% 10%, rgba(255, 80, 80, 0.4), transparent),
+    radial-gradient(1px 1px at 70% 40%, rgba(255, 120, 120, 0.2), transparent),
+    radial-gradient(1px 1px at 90% 80%, rgba(255, 100, 100, 0.3), transparent),
+    radial-gradient(1px 1px at 15% 85%, rgba(255, 150, 150, 0.2), transparent),
+    radial-gradient(1px 1px at 85% 15%, rgba(255, 80, 80, 0.3), transparent);
+  animation: staticFlicker 0.15s steps(3) infinite;
+}
+
+@keyframes staticFlicker {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.5; }
+}
+
+.failed-run-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 48px;
+  text-align: center;
+  z-index: 1;
+  position: relative;
+}
+
+/* Warning Icon */
+.failed-run-icon {
+  color: #ef4444;
+  animation: pulseIconDanger 0.6s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.6));
+}
+
+@keyframes pulseIconDanger {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: drop-shadow(0 0 20px rgba(239, 68, 68, 0.6));
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 40px rgba(239, 68, 68, 0.9));
+  }
+}
+
+/* Main Title */
+.failed-run-title {
+  font-family: 'Orbitron', 'Segoe UI', sans-serif;
+  font-size: 3.5rem;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(
+    90deg,
+    #ef4444 0%,
+    #f87171 20%,
+    #fca5a5 40%,
+    #f97316 60%,
+    #f87171 80%,
+    #ef4444 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 30px rgba(239, 68, 68, 0.6));
+  animation: titleGradientFailed 2s linear infinite, titlePulseFailed 0.8s ease-in-out infinite;
+  letter-spacing: 0.15em;
+}
+
+@keyframes titleGradientFailed {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes titlePulseFailed {
+  0%, 100% {
+    filter: drop-shadow(0 0 30px rgba(239, 68, 68, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 50px rgba(239, 68, 68, 0.9));
+  }
+}
+
+/* Subtitle */
+.failed-run-subtitle {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  color: #f87171;
+  animation: subtitleBlink 1s ease-in-out infinite;
+}
+
+@keyframes subtitleBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Progress Container */
+.failed-run-progress-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+/* Loading Bar */
+.failed-run-loading-bar {
+  width: 340px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.failed-run-loading-progress {
+  height: 100%;
+  background: linear-gradient(90deg, #dc2626 0%, #ef4444 40%, #f97316 100%);
+  border-radius: 3px;
+  transition: width 0.1s linear;
+  position: relative;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+}
+
+.failed-run-loading-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(252, 165, 165, 0.5) 50%,
+    transparent 100%
+  );
+  animation: progressGlowFailed 1.2s ease-in-out infinite;
+}
+
+@keyframes progressGlowFailed {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+/* Progress Percentage */
+.failed-run-progress-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #f87171;
+  text-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
+}
+
+/* Status Text */
+.failed-run-status {
+  font-size: 0.9rem;
+  color: #9ca3af;
+  margin: 0;
+  min-height: 24px;
+  letter-spacing: 0.1em;
+}
+
+/* Final MIA Status */
+.failed-run-final-status {
+  font-family: 'Orbitron', 'Segoe UI', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ef4444;
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 30px rgba(239, 68, 68, 0.8);
+  animation: finalStatusPulse 0.5s ease-in-out infinite;
+  margin-top: 8px;
+}
+
+@keyframes finalStatusPulse {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 30px rgba(239, 68, 68, 0.8);
+  }
+  50% {
+    opacity: 0.8;
+    text-shadow: 0 0 50px rgba(239, 68, 68, 1);
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .failed-run-content {
+    padding: 24px;
+    gap: 16px;
+  }
+
+  .failed-run-title {
+    font-size: 2.2rem;
+    letter-spacing: 0.08em;
+  }
+
+  .failed-run-loading-bar {
+    width: 260px;
+  }
+
+  .failed-run-progress-text {
+    font-size: 1.4rem;
+  }
+
+  .failed-run-final-status {
+    font-size: 1.2rem;
+  }
+}

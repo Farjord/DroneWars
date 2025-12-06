@@ -63,19 +63,18 @@ describe('ExtractionController', () => {
     it('should clear game state when abandoning mid-combat', () => {
       // SETUP: Simulate being in mid-combat
       // This is the state when player clicks "Abandon" during a game
-      gameStateManager.get.mockImplementation((key) => {
-        const midCombatState = {
-          appState: 'inGame',
-          turnPhase: 'deployment',
-          gameActive: true,
-          gameStage: 'roundLoop',
-          roundNumber: 1,
-          player1: { name: 'Player', deck: [], hand: [] },
-          player2: { name: 'AI', deck: [], hand: [] },
-          currentRunState: { shipSlotId: 0 }
-        }
-        return midCombatState[key]
-      })
+      const midCombatState = {
+        appState: 'inGame',
+        turnPhase: 'deployment',
+        gameActive: true,
+        gameStage: 'roundLoop',
+        roundNumber: 1,
+        player1: { name: 'Player', deck: [], hand: [] },
+        player2: { name: 'AI', deck: [], hand: [] },
+        currentRunState: { shipSlotId: 0 }
+      }
+      gameStateManager.get.mockImplementation((key) => midCombatState[key])
+      gameStateManager.getState.mockReturnValue(midCombatState)
 
       // ACT: Abandon the run
       ExtractionController.abandonRun()
@@ -92,19 +91,18 @@ describe('ExtractionController', () => {
      */
     it('should NOT call resetGameState when abandoning from tactical map (not mid-combat)', () => {
       // SETUP: Simulate being on tactical map (not in combat)
-      gameStateManager.get.mockImplementation((key) => {
-        const tacticalMapState = {
-          appState: 'tacticalMap',
-          turnPhase: null,
-          gameActive: false,
-          gameStage: 'preGame',
-          roundNumber: 0,
-          player1: null,
-          player2: null,
-          currentRunState: { shipSlotId: 0 }
-        }
-        return tacticalMapState[key]
-      })
+      const tacticalMapState = {
+        appState: 'tacticalMap',
+        turnPhase: null,
+        gameActive: false,
+        gameStage: 'preGame',
+        roundNumber: 0,
+        player1: null,
+        player2: null,
+        currentRunState: { shipSlotId: 0 }
+      }
+      gameStateManager.get.mockImplementation((key) => tacticalMapState[key])
+      gameStateManager.getState.mockReturnValue(tacticalMapState)
 
       // ACT: Abandon the run
       ExtractionController.abandonRun()
@@ -115,11 +113,12 @@ describe('ExtractionController', () => {
       // ASSERT: endRun should still be called
       expect(gameStateManager.endRun).toHaveBeenCalledWith(false)
 
-      // ASSERT: appState should go to hangar
-      const hangarCall = gameStateManager.setState.mock.calls.find(
-        call => call[0].appState === 'hangar'
+      // ASSERT: showFailedRunScreen should be set (loading screen before hangar)
+      const failedRunCall = gameStateManager.setState.mock.calls.find(
+        call => call[0].showFailedRunScreen === true
       )
-      expect(hangarCall).toBeDefined()
+      expect(failedRunCall).toBeDefined()
+      expect(failedRunCall[0].failedRunType).toBe('abandon')
     })
   })
 

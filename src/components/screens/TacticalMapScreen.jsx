@@ -11,6 +11,7 @@ import HexInfoPanel from '../ui/HexInfoPanel.jsx';
 import POIEncounterModal from '../modals/POIEncounterModal.jsx';
 import QuickDeploySelectionModal from '../modals/QuickDeploySelectionModal.jsx';
 import LoadingEncounterScreen from '../ui/LoadingEncounterScreen.jsx';
+import ExtractionLoadingScreen from '../ui/ExtractionLoadingScreen.jsx';
 import RunInventoryModal from '../modals/RunInventoryModal.jsx';
 import LootRevealModal from '../modals/LootRevealModal.jsx';
 import AbandonRunModal from '../modals/AbandonRunModal.jsx';
@@ -132,6 +133,11 @@ function TacticalMapScreen() {
   const [showLoadingEncounter, setShowLoadingEncounter] = useState(false);
   const [loadingEncounterData, setLoadingEncounterData] = useState(null);
 
+  // Extraction loading screen state (for extraction transitions)
+  const [showExtractionScreen, setShowExtractionScreen] = useState(false);
+  const [extractionScreenData, setExtractionScreenData] = useState(null);
+  const pendingExtractionRef = useRef(null); // Stores result for after animation
+
   // Inventory modal state
   const [showInventory, setShowInventory] = useState(false);
 
@@ -217,6 +223,58 @@ function TacticalMapScreen() {
           pendingPOICombat: null
         }
       });
+    }
+  }, []); // Run once on mount
+
+  // Track if we need to auto-extract after blockade victory
+  const pendingBlockadeExtractionRef = useRef(false);
+
+  // Check for pending blockade extraction on mount
+  // This handles returning from blockade combat - triggers extraction automatically
+  useEffect(() => {
+    const runState = gameStateManager.getState().currentRunState;
+    if (runState?.pendingBlockadeExtraction) {
+      console.log('[TacticalMap] Pending blockade extraction detected - will auto-extract');
+      pendingBlockadeExtractionRef.current = true;
+
+      // Clear the flag
+      gameStateManager.setState({
+        currentRunState: {
+          ...runState,
+          pendingBlockadeExtraction: undefined
+        }
+      });
+    }
+  }, []); // Run once on mount
+
+  // Effect to trigger extraction after flag is detected (separate to avoid calling handleExtract during render)
+  useEffect(() => {
+    if (pendingBlockadeExtractionRef.current) {
+      pendingBlockadeExtractionRef.current = false;
+      // Small delay to ensure state is updated
+      const timer = setTimeout(() => {
+        console.log('[TacticalMap] Triggering auto-extraction after blockade victory');
+        // Call the extraction handler directly - it will handle loot selection and run summary
+        const currentState = gameStateManager.getState();
+        const runState = currentState.currentRunState;
+        if (runState) {
+          const result = ExtractionController.completeExtraction(runState);
+
+          // Prepare extraction screen data
+          setExtractionScreenData({
+            creditsEarned: runState.creditsEarned || 0,
+            cardsCollected: runState.collectedLoot?.filter(l => l.type === 'card').length || 0,
+            aiCoresEarned: runState.aiCoresEarned || 0
+          });
+
+          // Store the result for after animation
+          pendingExtractionRef.current = result;
+
+          // Show extraction loading screen
+          setShowExtractionScreen(true);
+        }
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, []); // Run once on mount
 
@@ -789,19 +847,42 @@ function TacticalMapScreen() {
       console.log('[TacticalMap] Safe extraction - completing run');
       const result = ExtractionController.completeExtraction(runState);
 
-      // Check if loot selection is needed (Slot 0 over extraction limit)
-      if (result.action === 'selectLoot') {
-        console.log('[TacticalMap] Loot selection required:', result.limit, 'max from', result.collectedLoot.length);
-        setPendingLootSelection({
-          collectedLoot: result.collectedLoot,
-          limit: result.limit
-        });
-        setShowLootSelectionModal(true);
-      } else {
-        // Normal extraction complete - go directly to hangar (RunSummaryModal shows there)
-        console.log('[TacticalMap] Extraction complete - returning to hangar');
-        gameStateManager.setState({ appState: 'hangar' });
-      }
+      // Prepare extraction screen data
+      setExtractionScreenData({
+        creditsEarned: runState.creditsEarned || 0,
+        cardsCollected: runState.collectedLoot?.filter(l => l.type === 'card').length || 0,
+        aiCoresEarned: runState.aiCoresEarned || 0
+      });
+
+      // Store the result for after animation
+      pendingExtractionRef.current = result;
+
+      // Show extraction loading screen
+      setShowExtractionScreen(true);
+    }
+  }, []);
+
+  /**
+   * Handle extraction loading screen complete - proceed to loot selection or hangar
+   */
+  const handleExtractionScreenComplete = useCallback(() => {
+    setShowExtractionScreen(false);
+    setExtractionScreenData(null);
+
+    const result = pendingExtractionRef.current;
+    pendingExtractionRef.current = null;
+
+    if (result?.action === 'selectLoot') {
+      console.log('[TacticalMap] Loot selection required:', result.limit, 'max from', result.collectedLoot.length);
+      setPendingLootSelection({
+        collectedLoot: result.collectedLoot,
+        limit: result.limit
+      });
+      setShowLootSelectionModal(true);
+    } else {
+      // Normal extraction complete - go directly to hangar (RunSummaryModal shows there)
+      console.log('[TacticalMap] Extraction complete - returning to hangar');
+      gameStateManager.setState({ appState: 'hangar' });
     }
   }, []);
 
@@ -1244,6 +1325,8 @@ function TacticalMapScreen() {
         isScanning={isScanningHex}
         insertionGate={currentRunState.insertionGate}
         lootedPOIs={currentRunState.lootedPOIs || []}
+        shipId={shipSlot.shipId || 'SHIP_001'}
+        currentHexIndex={currentHexIndex}
       />
 
       {/* HUD Overlay */}
@@ -1329,6 +1412,14 @@ function TacticalMapScreen() {
         <LoadingEncounterScreen
           encounterData={loadingEncounterData}
           onComplete={handleLoadingEncounterComplete}
+        />
+      )}
+
+      {/* Extraction Loading Screen (extraction transition) */}
+      {showExtractionScreen && (
+        <ExtractionLoadingScreen
+          extractionData={extractionScreenData}
+          onComplete={handleExtractionScreenComplete}
         />
       )}
 

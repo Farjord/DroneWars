@@ -120,12 +120,19 @@ class DetectionManager {
   triggerMIA() {
     console.warn('[Detection] 100% reached - MIA TRIGGERED');
 
-    // Phase 10: Full MIA system implementation
-    // For now, just end the run as failed
+    // Get isStarterDeck BEFORE endRun clears the run state
+    const runState = gameStateManager.getState().currentRunState;
+    const isStarterDeck = runState?.shipSlotId === 0;
+
+    // End the run as failed
     gameStateManager.endRun(false);
 
-    // Navigate back to hangar
-    gameStateManager.setState({ appState: 'hangar' });
+    // Show failed run loading screen (will transition to hangar on complete)
+    gameStateManager.setState({
+      showFailedRunScreen: true,
+      failedRunType: 'detection',
+      failedRunIsStarterDeck: isStarterDeck
+    });
   }
 
   /**

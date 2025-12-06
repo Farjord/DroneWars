@@ -162,10 +162,13 @@ class CardPlayManager {
     const result = this.resolveCardEffect(effectToResolve, target, actingPlayerId, currentStates, placedSections, callbacks, card, localPlayerId, gameMode);
 
     // Process POST conditionals (after primary effect)
+    // Skip for movement cards - POST conditionals are processed in processMovementCompletion
+    // after the player selects which drone to move
     let postAdditionalEffects = [];
     let dynamicGoAgain = false;
+    const isMovementCard = card.effect?.type === 'SINGLE_MOVE' || card.effect?.type === 'MULTI_MOVE';
 
-    if (card.conditionalEffects && card.conditionalEffects.length > 0) {
+    if (!isMovementCard && card.conditionalEffects && card.conditionalEffects.length > 0) {
       const postContext = {
         ...conditionalContext,
         playerStates: result.newPlayerStates

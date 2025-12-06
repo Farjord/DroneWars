@@ -8,6 +8,8 @@ import { gameEngine } from '../logic/gameLogic.js';
 import { resolveAttack } from '../logic/combat/AttackProcessor.js';
 import { calculatePotentialInterceptors, calculateAiInterception } from '../logic/combat/InterceptionProcessor.js';
 import MovementEffectProcessor from '../logic/effects/movement/MovementEffectProcessor.js';
+import ConditionalEffectProcessor from '../logic/effects/conditional/ConditionalEffectProcessor.js';
+import EffectRouter from '../logic/EffectRouter.js';
 import DeploymentProcessor from '../logic/deployment/DeploymentProcessor.js';
 import RoundManager from '../logic/round/RoundManager.js';
 import ShieldManager from '../logic/shields/ShieldManager.js';
@@ -1251,14 +1253,72 @@ setAnimationManager(animationManager) {
       };
     }
 
-    // Get current states after movement for finishCardPlay
+    // Process POST conditionals for movement cards
+    // The moved drone(s) become the target for condition evaluation
+    let dynamicGoAgain = false;
+    let postStates = result.newPlayerStates;
+
+    if (card.conditionalEffects && card.conditionalEffects.length > 0) {
+      const conditionalProcessor = new ConditionalEffectProcessor();
+      const effectRouter = new EffectRouter();
+
+      // Use the first moved drone as the target for condition evaluation
+      // For multi-move, conditions are evaluated against the first drone
+      const movedDrone = result.effectResult?.movedDrones?.[0] || drones[0];
+
+      // Build context with moved drone as target
+      const postContext = {
+        target: movedDrone,
+        actingPlayerId: playerId,
+        playerStates: result.newPlayerStates,
+        placedSections,
+        callbacks,
+        card
+      };
+
+      const postResult = conditionalProcessor.processPostConditionals(
+        card.conditionalEffects,
+        postContext,
+        result.effectResult
+      );
+
+      // Handle GO_AGAIN
+      if (postResult.grantsGoAgain) {
+        dynamicGoAgain = true;
+      }
+
+      // Route additional effects through EffectRouter
+      let currentStatesForEffects = postResult.newPlayerStates;
+      for (const effect of postResult.additionalEffects || []) {
+        const effectContext = {
+          ...postContext,
+          playerStates: currentStatesForEffects,
+          target: movedDrone
+        };
+        const effectResult = effectRouter.routeEffect(effect, effectContext);
+        if (effectResult?.newPlayerStates) {
+          currentStatesForEffects = effectResult.newPlayerStates;
+        }
+      }
+
+      postStates = currentStatesForEffects;
+
+      debugLog('EFFECT_PROCESSING', '[ActionProcessor] Movement POST conditionals processed', {
+        conditionalCount: card.conditionalEffects.length,
+        grantsGoAgain: dynamicGoAgain,
+        additionalEffectsQueued: postResult.additionalEffects?.length || 0
+      });
+    }
+
+    // Get current states after movement and conditionals for finishCardPlay
     const currentStates = {
-      player1: result.newPlayerStates.player1,
-      player2: result.newPlayerStates.player2
+      player1: postStates.player1,
+      player2: postStates.player2
     };
 
     // Call finishCardPlay to discard card and determine turn ending
-    const completion = gameEngine.finishCardPlay(card, playerId, currentStates);
+    // Pass dynamicGoAgain from POST conditionals
+    const completion = gameEngine.finishCardPlay(card, playerId, currentStates, dynamicGoAgain);
 
     // Update state with card removed from hand and added to discard
     this.gameStateManager.setPlayerStates(

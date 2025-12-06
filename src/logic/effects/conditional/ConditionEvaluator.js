@@ -7,7 +7,7 @@
 // Supports:
 // - State conditions: TARGET_IS_MARKED, TARGET_IS_EXHAUSTED, TARGET_IS_READY
 // - Stat conditions: TARGET_STAT_GTE, TARGET_STAT_LTE, TARGET_STAT_GT, TARGET_STAT_LT
-// - Outcome conditions: ON_DESTROY, ON_DAMAGE (require effectResult from POST timing)
+// - Outcome conditions: ON_DESTROY, ON_DAMAGE, ON_MOVE (require effectResult from POST timing)
 //
 // Extensible via registerHandler() for custom conditions
 
@@ -35,7 +35,11 @@ class ConditionEvaluator {
 
       // Outcome conditions (POST timing only)
       ON_DESTROY: this.evaluateOnDestroy.bind(this),
-      ON_DAMAGE: this.evaluateOnDamage.bind(this)
+      ON_DAMAGE: this.evaluateOnDamage.bind(this),
+      ON_MOVE: this.evaluateOnMove.bind(this),
+
+      // Lane comparison conditions (POST timing, for movement)
+      OPPONENT_HAS_MORE_IN_LANE: this.evaluateOpponentHasMoreInLane.bind(this)
     };
   }
 
@@ -247,6 +251,70 @@ class ConditionEvaluator {
     const totalDamage = shield + hull;
 
     return totalDamage > 0;
+  }
+
+  /**
+   * Check if a movement was successfully completed
+   * Requires effectResult from POST timing (movement completion)
+   */
+  evaluateOnMove(condition, context) {
+    const effectResult = context.effectResult;
+
+    if (!effectResult) {
+      return false;
+    }
+
+    return effectResult.wasSuccessful === true;
+  }
+
+  // ========================================
+  // LANE COMPARISON HANDLERS (POST timing, movement)
+  // ========================================
+
+  /**
+   * Check if opponent has more drones in a specific lane
+   * Used for movement cards to reward moving into contested lanes
+   *
+   * @param {Object} condition - { type, lane: 'DESTINATION'|'SOURCE', count: 'TOTAL'|'READY'|'EXHAUSTED' }
+   * @param {Object} context - Must include effectResult with fromLane/toLane
+   */
+  evaluateOpponentHasMoreInLane(condition, context) {
+    const { actingPlayerId, playerStates, effectResult } = context;
+
+    if (!effectResult) {
+      return false;
+    }
+
+    // Determine which lane to check based on condition.lane
+    const laneToCheck = condition.lane === 'DESTINATION'
+      ? effectResult.toLane
+      : effectResult.fromLane;
+
+    if (!laneToCheck) {
+      return false;
+    }
+
+    const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+    const myDrones = playerStates[actingPlayerId]?.dronesOnBoard?.[laneToCheck] || [];
+    const oppDrones = playerStates[opponentId]?.dronesOnBoard?.[laneToCheck] || [];
+
+    // Count drones based on condition.count
+    const countDrones = (drones) => {
+      switch (condition.count) {
+        case 'READY':
+          return drones.filter(d => !d.isExhausted).length;
+        case 'EXHAUSTED':
+          return drones.filter(d => d.isExhausted).length;
+        case 'TOTAL':
+        default:
+          return drones.length;
+      }
+    };
+
+    const myCount = countDrones(myDrones);
+    const oppCount = countDrones(oppDrones);
+
+    return oppCount > myCount;
   }
 }
 

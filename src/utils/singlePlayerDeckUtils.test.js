@@ -11,7 +11,8 @@ import {
   calculateAvailableCards,
   calculateAvailableDrones,
   calculateAvailableComponents,
-  calculateAvailableShips
+  calculateAvailableShips,
+  calculateEffectiveMaxForCard
 } from './singlePlayerDeckUtils.js';
 import { starterPoolCards, starterPoolDroneNames, starterPoolShipIds } from '../data/saveGameSchema.js';
 import fullCardCollection from '../data/cardData.js';
@@ -294,5 +295,219 @@ describe('calculateAvailableShips - Infinite Starter Ships', () => {
 
     expect(starterShip).toBeDefined();
     expect(starterShip.availableCount).toBe(99);
+  });
+});
+
+/**
+ * calculateEffectiveMaxForCard - TDD tests for deck editor card limits
+ *
+ * This function calculates the effective maximum copies of a card that can be
+ * in a deck, considering:
+ * - maxInDeck: The card's inherent limit (e.g., 4 for common, 2 for rare)
+ * - availableQuantity: How many copies the player owns and are available
+ * - currentCountInDeck: How many of this specific variant are in the deck
+ * - totalBaseCardCountInDeck: Total of all variants of this base card in deck
+ */
+describe('calculateEffectiveMaxForCard', () => {
+  describe('basic availability limits', () => {
+    // Player owns 2 copies, maxInDeck=4 → Can only add 2
+    it('should return availableQuantity when less than maxInDeck', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 4,
+        availableQuantity: 2,
+        currentCountInDeck: 0,
+        totalBaseCardCountInDeck: 0
+      });
+      expect(result).toBe(2);
+    });
+
+    // Player owns 10 copies, maxInDeck=4 → Can only add 4
+    it('should return maxInDeck when availableQuantity exceeds it', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 4,
+        availableQuantity: 10,
+        currentCountInDeck: 0,
+        totalBaseCardCountInDeck: 0
+      });
+      expect(result).toBe(4);
+    });
+
+    // Starter cards have availableQuantity=99, should respect maxInDeck
+    it('should handle starter pool cards (availableQuantity=99)', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 4,
+        availableQuantity: 99,
+        currentCountInDeck: 0,
+        totalBaseCardCountInDeck: 0
+      });
+      expect(result).toBe(4);
+    });
+
+    // Rare cards with maxInDeck=2
+    it('should handle rare cards with maxInDeck=2', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 2,
+        availableQuantity: 5,
+        currentCountInDeck: 0,
+        totalBaseCardCountInDeck: 0
+      });
+      expect(result).toBe(2);
+    });
+  });
+
+  describe('with cards already in deck', () => {
+    // Own 3, have 2 in deck, maxInDeck=4 → effectiveMax = 3 (can still have up to 3)
+    it('should account for copies already in deck', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 4,
+        availableQuantity: 3,
+        currentCountInDeck: 2,
+        totalBaseCardCountInDeck: 2
+      });
+      expect(result).toBe(3);
+    });
+
+    // Own 2, have 2 in deck → effectiveMax = 2 (at max ownership)
+    it('should return current count when no more available', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 4,
+        availableQuantity: 2,
+        currentCountInDeck: 2,
+        totalBaseCardCountInDeck: 2
+      });
+      expect(result).toBe(2);
+    });
+
+    // Own 4, have 4 in deck, maxInDeck=4 → effectiveMax = 4 (at both limits)
+    it('should allow keeping cards at both maxInDeck and availability limit', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 4,
+        availableQuantity: 4,
+        currentCountInDeck: 4,
+        totalBaseCardCountInDeck: 4
+      });
+      expect(result).toBe(4);
+    });
+
+    // Own 1, have 0 in deck, maxInDeck=4 → effectiveMax = 1
+    it('should allow adding up to available even with empty deck', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 4,
+        availableQuantity: 1,
+        currentCountInDeck: 0,
+        totalBaseCardCountInDeck: 0
+      });
+      expect(result).toBe(1);
+    });
+  });
+
+  describe('base card variant tracking', () => {
+    // Have 2x CARD001 (base), adding CARD001_ENHANCED (variant)
+    // Both share baseCardId, maxInDeck=4, own 10 of enhanced
+    // Can only add 2 more enhanced because base already has 2
+    it('should limit based on base card total across variants', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 4,
+        availableQuantity: 10,
+        currentCountInDeck: 0,      // This variant (enhanced) has 0 in deck
+        totalBaseCardCountInDeck: 2  // But base card total is 2
+      });
+      expect(result).toBe(2);
+    });
+
+    // Own 3 of enhanced, base card has 2 regular in deck
+    // maxInDeck=4 means only 2 slots left for enhanced
+    // limited to min(2 remaining base, 3 owned) = 2
+    it('should combine availability and base card limits', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 4,
+        availableQuantity: 3,
+        currentCountInDeck: 0,
+        totalBaseCardCountInDeck: 2
+      });
+      expect(result).toBe(2);
+    });
+
+    // Have 2 enhanced in deck, base total is 3 (1 regular + 2 enhanced)
+    // maxInDeck=4, own 5 enhanced
+    // remaining for base = 4 - (3 - 2) = 3
+    // effectiveMax = min(3, 5) = 3
+    it('should correctly calculate with mixed variants in deck', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 4,
+        availableQuantity: 5,
+        currentCountInDeck: 2,       // 2 enhanced in deck
+        totalBaseCardCountInDeck: 3   // Total: 1 regular + 2 enhanced
+      });
+      expect(result).toBe(3);
+    });
+
+    // Edge case: current variant count equals total base count
+    it('should work when only one variant is in deck', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 4,
+        availableQuantity: 4,
+        currentCountInDeck: 3,
+        totalBaseCardCountInDeck: 3  // Same as current (no other variants)
+      });
+      expect(result).toBe(4);
+    });
+  });
+
+  describe('edge cases', () => {
+    // No copies available
+    it('should return 0 when availableQuantity is 0', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 4,
+        availableQuantity: 0,
+        currentCountInDeck: 0,
+        totalBaseCardCountInDeck: 0
+      });
+      expect(result).toBe(0);
+    });
+
+    // Non-extraction mode cards may not have availableQuantity
+    it('should handle undefined availableQuantity (non-extraction mode)', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 4,
+        availableQuantity: undefined,
+        currentCountInDeck: 0,
+        totalBaseCardCountInDeck: 0
+      });
+      expect(result).toBe(4); // Falls back to maxInDeck
+    });
+
+    // Null availability
+    it('should handle null availableQuantity', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 4,
+        availableQuantity: null,
+        currentCountInDeck: 0,
+        totalBaseCardCountInDeck: 0
+      });
+      expect(result).toBe(4); // Falls back to maxInDeck
+    });
+
+    // Should never return negative
+    it('should never return negative values', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 4,
+        availableQuantity: -1,  // Invalid but shouldn't break
+        currentCountInDeck: 0,
+        totalBaseCardCountInDeck: 0
+      });
+      expect(result).toBeGreaterThanOrEqual(0);
+    });
+
+    // Zero maxInDeck (theoretical edge case)
+    it('should handle maxInDeck of 0', () => {
+      const result = calculateEffectiveMaxForCard({
+        maxInDeck: 0,
+        availableQuantity: 5,
+        currentCountInDeck: 0,
+        totalBaseCardCountInDeck: 0
+      });
+      expect(result).toBe(0);
+    });
   });
 });

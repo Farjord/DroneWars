@@ -211,6 +211,11 @@ class ExtractionController {
     });
     debugLog('EXTRACTION', 'Run abandoned - MIA triggered');
 
+    // Get isStarterDeck BEFORE endRun clears the run state
+    const state = gameStateManager.getState();
+    const runState = state?.currentRunState;
+    const isStarterDeck = runState?.shipSlotId === 0;
+
     // If abandoning mid-combat, reset game state first
     if (gameStateManager.get('appState') === 'inGame') {
       debugLog('SP_COMBAT', 'Abandoning mid-combat - resetting game state');
@@ -227,12 +232,14 @@ class ExtractionController {
       hasCurrentRunState: !!gameStateManager.get('currentRunState')
     });
 
-    // Return to hangar
-    gameStateManager.setState({ appState: 'hangar' });
-
-    debugLog('SP_COMBAT', '=== ABANDON RUN COMPLETE ===', {
-      finalAppState: gameStateManager.get('appState')
+    // Show failed run loading screen (will transition to hangar on complete)
+    gameStateManager.setState({
+      showFailedRunScreen: true,
+      failedRunType: 'abandon',
+      failedRunIsStarterDeck: isStarterDeck
     });
+
+    debugLog('SP_COMBAT', '=== SHOWING FAILED RUN SCREEN (abandon) ===');
   }
 
   /**

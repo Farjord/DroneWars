@@ -423,6 +423,59 @@ describe('ConditionEvaluator', () => {
   });
 
   // ========================================
+  // ON_MOVE CONDITION (POST timing)
+  // ========================================
+  describe('ON_MOVE', () => {
+    it('returns true when effectResult.wasSuccessful is true', () => {
+      mockContext.effectResult = {
+        wasSuccessful: true,
+        movedDrones: [mockTarget],
+        fromLane: 'lane1',
+        toLane: 'lane2'
+      };
+      const condition = { type: 'ON_MOVE' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false when effectResult.wasSuccessful is false', () => {
+      mockContext.effectResult = {
+        wasSuccessful: false,
+        movedDrones: [],
+        fromLane: 'lane1',
+        toLane: 'lane2'
+      };
+      const condition = { type: 'ON_MOVE' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns false when effectResult is undefined', () => {
+      mockContext.effectResult = undefined;
+      const condition = { type: 'ON_MOVE' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns false when effectResult.wasSuccessful is undefined', () => {
+      mockContext.effectResult = {
+        movedDrones: [mockTarget]
+      };
+      const condition = { type: 'ON_MOVE' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+  });
+
+  // ========================================
   // UNKNOWN CONDITION HANDLING
   // ========================================
   describe('unknown condition', () => {
@@ -586,6 +639,155 @@ describe('ConditionEvaluator', () => {
       const result = evaluator.evaluate(condition, mockContext);
 
       expect(result).toBe(true);
+    });
+  });
+
+  // ========================================
+  // OPPONENT_HAS_MORE_IN_LANE CONDITION
+  // ========================================
+  describe('OPPONENT_HAS_MORE_IN_LANE', () => {
+    beforeEach(() => {
+      // Set up player states with drones in lanes
+      mockContext.actingPlayerId = 'player1';
+
+      // Player 1 has 1 drone in lane2
+      mockContext.playerStates.player1.dronesOnBoard = {
+        lane1: [],
+        lane2: [{ id: 'p1_drone1', isExhausted: false }],
+        lane3: []
+      };
+
+      // Player 2 (opponent) has 2 drones in lane2, 1 exhausted
+      mockContext.playerStates.player2.dronesOnBoard = {
+        lane1: [],
+        lane2: [
+          { id: 'p2_drone1', isExhausted: false },
+          { id: 'p2_drone2', isExhausted: true }
+        ],
+        lane3: []
+      };
+
+      // Set up effectResult with movement info
+      mockContext.effectResult = {
+        wasSuccessful: true,
+        movedDrones: [mockTarget],
+        fromLane: 'lane1',
+        toLane: 'lane2'
+      };
+    });
+
+    it('returns true when opponent has more TOTAL drones in DESTINATION lane', () => {
+      const condition = {
+        type: 'OPPONENT_HAS_MORE_IN_LANE',
+        lane: 'DESTINATION',
+        count: 'TOTAL'
+      };
+
+      // Player 1 has 1 drone, Player 2 has 2 drones in lane2 (destination)
+      const result = evaluator.evaluate(condition, mockContext);
+      expect(result).toBe(true);
+    });
+
+    it('returns false when opponent has equal drones in DESTINATION lane', () => {
+      // Add another drone for player 1 to make it equal
+      mockContext.playerStates.player1.dronesOnBoard.lane2.push({ id: 'p1_drone2', isExhausted: false });
+
+      const condition = {
+        type: 'OPPONENT_HAS_MORE_IN_LANE',
+        lane: 'DESTINATION',
+        count: 'TOTAL'
+      };
+
+      // Now both have 2 drones
+      const result = evaluator.evaluate(condition, mockContext);
+      expect(result).toBe(false);
+    });
+
+    it('returns false when player has more drones than opponent', () => {
+      // Give player 1 more drones
+      mockContext.playerStates.player1.dronesOnBoard.lane2.push(
+        { id: 'p1_drone2', isExhausted: false },
+        { id: 'p1_drone3', isExhausted: false }
+      );
+
+      const condition = {
+        type: 'OPPONENT_HAS_MORE_IN_LANE',
+        lane: 'DESTINATION',
+        count: 'TOTAL'
+      };
+
+      // Player 1 has 3, Player 2 has 2
+      const result = evaluator.evaluate(condition, mockContext);
+      expect(result).toBe(false);
+    });
+
+    it('checks SOURCE lane when lane is SOURCE', () => {
+      // Set up lane1 (source) - player 1 has 0, player 2 has 1
+      mockContext.playerStates.player2.dronesOnBoard.lane1 = [{ id: 'p2_drone_lane1', isExhausted: false }];
+
+      const condition = {
+        type: 'OPPONENT_HAS_MORE_IN_LANE',
+        lane: 'SOURCE',
+        count: 'TOTAL'
+      };
+
+      // Player 1 has 0 in lane1, Player 2 has 1
+      const result = evaluator.evaluate(condition, mockContext);
+      expect(result).toBe(true);
+    });
+
+    it('counts only READY (non-exhausted) drones when count is READY', () => {
+      const condition = {
+        type: 'OPPONENT_HAS_MORE_IN_LANE',
+        lane: 'DESTINATION',
+        count: 'READY'
+      };
+
+      // Player 1 has 1 ready drone
+      // Player 2 has 1 ready, 1 exhausted (so only 1 ready)
+      // 1 vs 1 = not more, should be false
+      const result = evaluator.evaluate(condition, mockContext);
+      expect(result).toBe(false);
+    });
+
+    it('counts only EXHAUSTED drones when count is EXHAUSTED', () => {
+      const condition = {
+        type: 'OPPONENT_HAS_MORE_IN_LANE',
+        lane: 'DESTINATION',
+        count: 'EXHAUSTED'
+      };
+
+      // Player 1 has 0 exhausted
+      // Player 2 has 1 exhausted
+      // 1 > 0 = true
+      const result = evaluator.evaluate(condition, mockContext);
+      expect(result).toBe(true);
+    });
+
+    it('returns false when effectResult is missing', () => {
+      mockContext.effectResult = undefined;
+
+      const condition = {
+        type: 'OPPONENT_HAS_MORE_IN_LANE',
+        lane: 'DESTINATION',
+        count: 'TOTAL'
+      };
+
+      const result = evaluator.evaluate(condition, mockContext);
+      expect(result).toBe(false);
+    });
+
+    it('returns false when toLane/fromLane is missing in effectResult', () => {
+      mockContext.effectResult = { wasSuccessful: true };
+
+      const condition = {
+        type: 'OPPONENT_HAS_MORE_IN_LANE',
+        lane: 'DESTINATION',
+        count: 'TOTAL'
+      };
+
+      const result = evaluator.evaluate(condition, mockContext);
+      expect(result).toBe(false);
     });
   });
 

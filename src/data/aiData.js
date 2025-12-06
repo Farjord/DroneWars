@@ -170,7 +170,7 @@ const aiPersonalities = [
     shipId: 'SHIP_001',
     imagePath: '/DroneWars/AI/Cruiser.png',
     dronePool: [
-      'Heavy Fighter',
+      'Swarm Drone',
       'Heavy Fighter',
       'Bomber',
       'Guardian Drone',
@@ -205,7 +205,7 @@ const aiPersonalities = [
     shipId: 'SHIP_001',
     imagePath: '/DroneWars/AI/Hunter.png',
     dronePool: [
-      'Interceptor',
+      'Kamikaze Drone',
       'Interceptor',
       'Standard Fighter',
       'Bomber',
@@ -243,7 +243,7 @@ const aiPersonalities = [
     dronePool: [
       'Heavy Fighter',
       'Bomber',
-      'Bomber',
+      'Skirmisher Drone',
       'Aegis Drone',
       'Guardian Drone'
     ],

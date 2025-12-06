@@ -198,18 +198,21 @@ class CombatOutcomeProcessor {
     gameStateManager.resetGameState();
 
     if (isBlockade) {
-      // Blockade victory - complete extraction immediately
-      // Player should go directly to hangar, not back to tactical map
-      debugLog('SP_COMBAT', '=== Blockade Victory - Completing Extraction ===');
-      ExtractionController.completePostBlockadeExtraction(updatedRunState);
+      // Blockade victory - return to tactical map with flag to trigger extraction
+      // This allows TacticalMapScreen to handle loot selection modal if needed
+      // and properly show the run summary
+      debugLog('SP_COMBAT', '=== Blockade Victory - Returning to tactical map for extraction ===');
 
-      // Clear pending loot and ensure we're in hangar
       gameStateManager.setState({
-        appState: 'hangar',
+        appState: 'tacticalMap',
+        currentRunState: {
+          ...updatedRunState,
+          pendingBlockadeExtraction: true  // Flag for TacticalMapScreen to auto-extract
+        },
         pendingLoot: null
       });
 
-      debugLog('SP_COMBAT', '=== Returned to Hangar (blockade extraction complete) ===');
+      debugLog('SP_COMBAT', '=== Returned to Tactical Map (pending blockade extraction) ===');
     } else {
       // Regular POI/ambush combat - return to tactical map
       gameStateManager.setState({
@@ -246,18 +249,23 @@ class CombatOutcomeProcessor {
       });
     }
 
-    // 2. End run as failure (this generates summary and marks MIA)
+    // 2. Determine if this is a starter deck (for display purposes)
+    const isStarterDeck = currentRunState.shipSlotId === 0;
+
+    // 3. End run as failure (this generates summary and marks MIA)
     gameStateManager.endRun(false);
 
-    // 3. Clear ALL combat state using centralized cleanup
+    // 4. Clear ALL combat state using centralized cleanup
     gameStateManager.resetGameState();
 
-    // 4. Set appState to hangar (endRun and resetGameState don't set appState)
+    // 5. Show failed run loading screen (will transition to hangar on complete)
     gameStateManager.setState({
-      appState: 'hangar'
+      showFailedRunScreen: true,
+      failedRunType: 'combat',
+      failedRunIsStarterDeck: isStarterDeck
     });
 
-    debugLog('SP_COMBAT', '=== Returned to Hangar (MIA, combat state cleared) ===');
+    debugLog('SP_COMBAT', '=== Showing Failed Run Screen (combat loss) ===');
 
     return {
       success: true,

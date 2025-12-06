@@ -117,21 +117,43 @@
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 }
 
-/* Player radar ping effect - white concentric circles */
-.player-radar-ping {
+/* Player sonar ping effect - expanding rings that fade */
+.player-sonar-container {
   pointer-events: none;
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.5));
-  animation: player-ping 1.5s ease-in-out infinite;
 }
 
-@keyframes player-ping {
-  0%, 100% {
-    opacity: 0.7;
+.sonar-ping {
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+/* Sonar ping animation - ring expands outward and fades */
+@keyframes sonar-ping-expand {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+    stroke-width: 2;
   }
-  50% {
-    opacity: 1;
-    filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.8));
+  100% {
+    transform: scale(4);
+    opacity: 0;
+    stroke-width: 0.5;
   }
+}
+
+/* Staggered ping animations for continuous effect */
+.sonar-ping-1 {
+  animation: sonar-ping-expand 3s ease-out infinite;
+}
+
+.sonar-ping-2 {
+  animation: sonar-ping-expand 3s ease-out infinite;
+  animation-delay: 1s;
+}
+
+.sonar-ping-3 {
+  animation: sonar-ping-expand 3s ease-out infinite;
+  animation-delay: 2s;
 }
 
 /* Scanning animation - expanding cyan ring */

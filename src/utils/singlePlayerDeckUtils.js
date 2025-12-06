@@ -279,6 +279,33 @@ export function validateDeckForDeployment(deck, drones, shipComponents) {
  * @param {Object} deck - Card deck { cardId: quantity }
  * @returns {Object} Statistics { cardCount, typeCounts, costDistribution }
  */
+/**
+ * Calculate effective maximum copies of a card that can be in the deck
+ * Considers: maxInDeck, availableQuantity, base card variant tracking
+ *
+ * @param {Object} params
+ * @param {number} params.maxInDeck - Card's inherent maximum (e.g., 4)
+ * @param {number} params.availableQuantity - Copies available to player (99 for starter)
+ * @param {number} params.currentCountInDeck - This variant's count in current deck
+ * @param {number} params.totalBaseCardCountInDeck - All variants of base card in deck
+ * @returns {number} Maximum copies that can be in deck
+ */
+export function calculateEffectiveMaxForCard({
+  maxInDeck,
+  availableQuantity,
+  currentCountInDeck,
+  totalBaseCardCountInDeck
+}) {
+  // Handle missing availableQuantity (non-extraction mode) - fall back to maxInDeck
+  const available = availableQuantity ?? maxInDeck;
+
+  // How many more of this base card can be added (accounting for variants)
+  const remainingForBase = maxInDeck - (totalBaseCardCountInDeck - currentCountInDeck);
+
+  // Effective max is the lower of base card limit and availability
+  return Math.max(0, Math.min(remainingForBase, available));
+}
+
 export function getDeckStatistics(deck) {
   const typeCounts = {
     Ordnance: 0,
@@ -317,5 +344,6 @@ export default {
   calculateAvailableComponents,
   calculateAvailableShips,
   validateDeckForDeployment,
-  getDeckStatistics
+  getDeckStatistics,
+  calculateEffectiveMaxForCard
 };

@@ -85,6 +85,11 @@ class GameStateManager {
       // --- EXTRACTION DECK BUILDER NAVIGATION ---
       extractionDeckSlotId: null,        // Slot ID being edited (0-5) or null
       extractionNewDeckOption: null,     // 'empty' | 'copyFromSlot0' | null
+
+      // --- FAILED RUN LOADING SCREEN ---
+      showFailedRunScreen: false,        // Show failed run transition screen
+      failedRunType: null,               // 'combat' | 'detection' | 'abandon'
+      failedRunIsStarterDeck: false,     // If true, show "RUN FAILED" instead of "SHIP MARKED MIA"
     };
 
     // Initialize action processor using singleton pattern

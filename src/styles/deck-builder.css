@@ -650,3 +650,12 @@
     font-size: 9px;
   }
 }
+
+/* ========================================
+   FULL-WIDTH BUTTON OVERRIDE
+   Prevents scale hover from overflowing container
+   ======================================== */
+.dw-btn-no-scale:hover:not(:disabled) {
+  transform: none !important;
+  filter: brightness(1.15);
+}

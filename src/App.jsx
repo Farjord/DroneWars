@@ -27,6 +27,7 @@ import TargetingArrow from './components/ui/TargetingArrow.jsx';
 import ExplosionEffect from './components/animations/ExplosionEffect.jsx';
 import WaitingOverlay from './components/ui/WaitingOverlay';
 import InterceptedBadge from './components/ui/InterceptedBadge.jsx';
+import FailedRunLoadingScreen from './components/ui/FailedRunLoadingScreen.jsx';
 
 // --- 1.3 MODAL COMPONENT IMPORTS ---
 import CardViewerModal from './components/modals/CardViewerModal';
@@ -4134,6 +4135,22 @@ const App = ({ phaseAnimationQueue }) => {
         }}
       />
 
+
+      {/* Failed Run Loading Screen (MIA transition) */}
+      {gameState.showFailedRunScreen && (
+        <FailedRunLoadingScreen
+          failureType={gameState.failedRunType}
+          isStarterDeck={gameState.failedRunIsStarterDeck}
+          onComplete={() => {
+            gameStateManager.setState({
+              showFailedRunScreen: false,
+              failedRunType: null,
+              failedRunIsStarterDeck: false,
+              appState: 'hangar'
+            });
+          }}
+        />
+      )}
 
       {/* Waiting Overlay for multiplayer */}
       <WaitingOverlay

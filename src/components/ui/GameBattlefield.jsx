@@ -89,7 +89,7 @@ function GameBattlefield({
   const playerShipInteractive = turnPhase === 'allocateShields' || reallocationPhase;
 
   return (
-    <main className="flex-grow min-h-0 w-full flex flex-col items-center overflow-y-auto px-5 pb-4">
+    <main className="flex-grow min-h-0 w-full flex flex-col items-center overflow-y-auto dw-modal-scroll px-5 pb-4">
       {/* All pre-game phases now handled by AppRouter - only active gameplay here */}
       <div className="flex flex-col items-center w-full space-y-2">
         {/* Opponent Ship Sections */}

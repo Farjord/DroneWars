@@ -4,9 +4,11 @@
 // SVG-based hex grid renderer for Exploring the Eremos tactical map
 // Renders hexes, PoIs, gates, player position, and highlighted paths
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { axialToPixel } from '../../utils/hexGrid.js';
+import { getShipHeadingForWaypoints } from '../../utils/hexHeadingUtils.js';
 import { Plus, Minus, RotateCcw } from 'lucide-react';
+import ShipIconRenderer from '../ships/ShipIconRenderer.jsx';
 import './HexGridRenderer.css';
 
 // Available tactical background images
@@ -55,8 +57,10 @@ const calculateHexSize = (mapRadius, viewportWidth, viewportHeight) => {
  * @param {Array<Object>} waypoints - Array of waypoint objects with hex and pathFromPrev
  * @param {number|null} currentWaypointIndex - Index of waypoint being traveled to (during movement)
  * @param {Object} insertionGate - Coordinates of insertion gate {q, r} (cannot extract from here)
+ * @param {string} shipId - Ship ID for icon selection (default: 'SHIP_001')
+ * @param {number} currentHexIndex - Current hex index within waypoint path (for heading calculation)
  */
-function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], currentWaypointIndex = null, previewPath = null, isScanning = false, insertionGate = null, lootedPOIs = [] }) {
+function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], currentWaypointIndex = null, previewPath = null, isScanning = false, insertionGate = null, lootedPOIs = [], shipId = 'SHIP_001', currentHexIndex = 0 }) {
   // Track viewport dimensions for dynamic sizing
   const [viewportSize, setViewportSize] = useState({
     width: window.innerWidth,
@@ -71,11 +75,30 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
   const containerRef = useRef(null);
   const transformRef = useRef(null);
   const panRef = useRef({ x: 0, y: 0 }); // Track pan during drag without re-renders
+  const lastHeadingRef = useRef(0); // Track last heading for persistence when stationary
 
   // Random background selected on mount
   const [backgroundImage] = useState(() =>
     tacticalBackgrounds[Math.floor(Math.random() * tacticalBackgrounds.length)]
   );
+
+  // Calculate ship heading based on waypoints and movement state
+  const shipHeading = useMemo(() => {
+    const heading = getShipHeadingForWaypoints(
+      playerPosition,
+      waypoints,
+      currentWaypointIndex,
+      currentHexIndex,
+      lastHeadingRef.current  // Pass last heading for persistence when stationary
+    );
+
+    // Update ref when actively moving (to remember heading for when we stop)
+    if (currentWaypointIndex !== null) {
+      lastHeadingRef.current = heading;
+    }
+
+    return heading;
+  }, [playerPosition, waypoints, currentWaypointIndex, currentHexIndex]);
 
   // Update viewport size on resize
   useEffect(() => {
@@ -493,10 +516,10 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
           </g>
         )}
 
-        {/* Player position - White concentric circles with ping effect */}
+        {/* Player position - Sonar ping effect (rings that expand and fade) */}
         {isPlayer && (
-          <g className="player-radar-ping">
-            {/* Scanning animation ring - cyan expanding circle */}
+          <g className="player-sonar-container">
+            {/* Scanning animation ring - cyan expanding circle (when scanning POI) */}
             {isScanning && (
               <circle
                 cx={x}
@@ -508,32 +531,33 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
                 className="scan-ring-animation"
               />
             )}
-            {/* Outer ring */}
+            {/* Sonar ping rings - staggered animations for continuous effect */}
             <circle
               cx={x}
               cy={y}
-              r={hexSize * 0.5}
+              r={hexSize * 0.4}
               fill="none"
-              stroke="#ffffff"
-              strokeWidth="1"
-              opacity="0.4"
+              stroke="rgba(255, 255, 255, 0.3)"
+              strokeWidth="2"
+              className="sonar-ping sonar-ping-1"
             />
-            {/* Middle ring */}
             <circle
               cx={x}
               cy={y}
-              r={hexSize * 0.35}
+              r={hexSize * 0.4}
               fill="none"
-              stroke="#ffffff"
-              strokeWidth="1.5"
-              opacity="0.7"
+              stroke="rgba(255, 255, 255, 0.3)"
+              strokeWidth="2"
+              className="sonar-ping sonar-ping-2"
             />
-            {/* Inner core */}
             <circle
               cx={x}
               cy={y}
-              r={hexSize * 0.15}
-              fill="#ffffff"
+              r={hexSize * 0.4}
+              fill="none"
+              stroke="rgba(255, 255, 255, 0.3)"
+              strokeWidth="2"
+              className="sonar-ping sonar-ping-3"
             />
           </g>
         )}
@@ -627,6 +651,23 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
 
           {/* Render all hexes */}
           {mapData.hexes.map(renderHex)}
+
+          {/* Ship Icon Layer - renders player's ship at current position */}
+          {playerPosition && (
+            (() => {
+              const { x, y } = axialToPixel(playerPosition.q, playerPosition.r, hexSize);
+              return (
+                <ShipIconRenderer
+                  shipId={shipId}
+                  x={x}
+                  y={y}
+                  heading={shipHeading}
+                  faction="neutral"
+                  size={hexSize * 2.0}
+                />
+              );
+            })()
+          )}
         </svg>
       </div>
 

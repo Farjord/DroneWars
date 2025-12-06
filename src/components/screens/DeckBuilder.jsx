@@ -13,6 +13,7 @@ import { gameEngine } from '../../logic/gameLogic.js';
 import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js';
 import { RARITY_COLORS } from '../../data/cardData.js';
 import { generateDeckCode } from '../../utils/deckExportUtils.js';
+import { calculateEffectiveMaxForCard } from '../../utils/singlePlayerDeckUtils.js';
 
 // Helper functions to get type-based colors for table styling
 const getTypeBackgroundClass = (type) => {
@@ -1334,12 +1335,28 @@ const DeckBuilder = ({
                       <td className="text-xs">{card.targetingText === 'N/A' ? <span className="text-gray-500">N/A</span> : card.targetingText}</td>
                       <td>
                         <div className="quantity-buttons">
-                          {Array.from({ length: maxInDeck + 1 }).map((_, i) => {
-                            const isSelected = i === currentCountForThisVariant;
-                            const remainingForBase = maxInDeck - (totalCountForBaseCard - currentCountForThisVariant);
-                            const isDisabled = i > remainingForBase;
-                            return (<button key={i} onClick={() => !readOnly && onDeckChange(card.id, i)} className={`quantity-btn ${isSelected ? 'selected' : ''} ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`} disabled={readOnly || isDisabled}>{i}</button>);
-                          })}
+                          {(() => {
+                            const effectiveMax = calculateEffectiveMaxForCard({
+                              maxInDeck: card.maxInDeck,
+                              availableQuantity: card.availableQuantity,
+                              currentCountInDeck: currentCountForThisVariant,
+                              totalBaseCardCountInDeck: totalCountForBaseCard
+                            });
+                            return Array.from({ length: maxInDeck + 1 }).map((_, i) => {
+                              const isSelected = i === currentCountForThisVariant;
+                              const isUnavailable = i > effectiveMax;
+                              return (
+                                <button
+                                  key={i}
+                                  onClick={() => !readOnly && !isUnavailable && onDeckChange(card.id, i)}
+                                  className={`quantity-btn ${isSelected ? 'selected' : ''} ${isUnavailable ? 'unavailable' : ''} ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                  disabled={readOnly || isUnavailable}
+                                >
+                                  {i}
+                                </button>
+                              );
+                            });
+                          })()}
                         </div>
                       </td>
                     </tr>
@@ -1357,9 +1374,13 @@ const DeckBuilder = ({
               {filteredAndSortedCards.map((card, index) => {
                 const currentCountForThisVariant = deck[card.id] || 0;
                 const totalCountForBaseCard = baseCardCounts[card.baseCardId] || 0;
-                const maxInDeck = card.maxInDeck;
-                const remainingForBase = maxInDeck - (totalCountForBaseCard - currentCountForThisVariant);
-                const isAtMax = remainingForBase <= currentCountForThisVariant;
+                const effectiveMax = calculateEffectiveMaxForCard({
+                  maxInDeck: card.maxInDeck,
+                  availableQuantity: card.availableQuantity,
+                  currentCountInDeck: currentCountForThisVariant,
+                  totalBaseCardCountInDeck: totalCountForBaseCard
+                });
+                const isAtMax = currentCountForThisVariant >= effectiveMax;
 
                 return (
                   <div key={`${card.id}-${index}`} className="flex flex-col items-center gap-2">
@@ -1383,7 +1404,7 @@ const DeckBuilder = ({
                         -
                       </button>
                       <span className="dw-quantity-value">
-                        {currentCountForThisVariant}/{maxInDeck}
+                        {currentCountForThisVariant}/{effectiveMax}
                       </span>
                       <button
                         onClick={() => !readOnly && !isAtMax && onDeckChange(card.id, currentCountForThisVariant + 1)}
@@ -2244,7 +2265,7 @@ const DeckBuilder = ({
                           // Extraction mode: can save incomplete, but with warning
                           <button
                             onClick={isDeckValid && isDronesValid && shipComponentsValid ? onConfirmDeck : onSaveInvalid}
-                            className={`w-full p-4 mt-4 text-lg font-bold font-orbitron ${
+                            className={`w-full p-4 mt-4 text-lg font-bold font-orbitron dw-btn-no-scale ${
                               isDeckValid && isDronesValid && shipComponentsValid
                                 ? 'btn-confirm'
                                 : 'bg-yellow-600 hover:bg-yellow-500 text-black'
@@ -2260,7 +2281,7 @@ const DeckBuilder = ({
                           <button
                             onClick={onConfirmDeck}
                             disabled={!isDeckValid || !isDronesValid || !shipComponentsValid}
-                            className="btn-confirm w-full p-4 mt-4 text-lg font-bold font-orbitron disabled:opacity-50"
+                            className="btn-confirm w-full p-4 mt-4 text-lg font-bold font-orbitron dw-btn-no-scale disabled:opacity-50"
                             title={!shipComponentsValid ? 'You must select all 3 ship components with lanes assigned' : ''}
                           >
                             Confirm Deck, Drones & Ship
