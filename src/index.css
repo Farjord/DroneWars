@@ -472,6 +472,49 @@
   opacity: 0.5;
 }
 
+/* === SHIP CONFIGURATION TAB STYLES === */
+.dw-config-slot {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(71, 85, 105, 0.5);
+  border-radius: 8px;
+  padding: 12px;
+  transition: all 0.2s ease;
+}
+
+.dw-config-slot--empty {
+  background: rgba(15, 23, 42, 0.4);
+  border-style: dashed;
+}
+
+.dw-config-slot--damaged {
+  border-color: rgba(234, 179, 8, 0.5);
+  background: rgba(234, 179, 8, 0.05);
+}
+
+.dw-config-slot--destroyed {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.dw-config-drone-slot {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(71, 85, 105, 0.5);
+  border-radius: 6px;
+  padding: 8px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.dw-config-drone-slot--empty {
+  background: rgba(15, 23, 42, 0.4);
+  border-style: dashed;
+}
+
+.dw-config-drone-slot--damaged {
+  border-color: rgba(234, 179, 8, 0.5);
+  background: rgba(234, 179, 8, 0.05);
+}
+
 /* === MODAL STYLES === */
 @layer components {
   /* Modal Overlay - Dark background that covers screen */

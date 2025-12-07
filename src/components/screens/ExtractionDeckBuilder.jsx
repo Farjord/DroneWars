@@ -14,7 +14,15 @@ import {
   calculateAvailableShips
 } from '../../utils/singlePlayerDeckUtils.js';
 import { getShipById, getDefaultShip } from '../../data/shipData.js';
-import { updateDeckState, updateDroneState } from '../../utils/deckStateUtils.js';
+import { updateDeckState } from '../../utils/deckStateUtils.js';
+import {
+  createEmptyDroneSlots,
+  migrateDroneSlotsToNewFormat
+} from '../../data/saveGameSchema.js';
+import {
+  addDroneToSlots,
+  removeDroneFromSlots
+} from '../../utils/slotDamageUtils.js';
 
 /**
  * ExtractionDeckBuilder
@@ -45,9 +53,20 @@ const ExtractionDeckBuilder = () => {
   // Local state for deck editing
   const [deckName, setDeckName] = useState('');
   const [deck, setDeck] = useState({});
-  const [selectedDrones, setSelectedDrones] = useState({});
+  const [droneSlots, setDroneSlots] = useState(createEmptyDroneSlots());
   const [selectedShipComponents, setSelectedShipComponents] = useState({});
   const [selectedShip, setSelectedShip] = useState(null);
+
+  // Derive selectedDrones object from droneSlots for DeckBuilder compatibility
+  const selectedDrones = useMemo(() => {
+    const dronesObj = {};
+    droneSlots.forEach(slot => {
+      if (slot.assignedDrone) {
+        dronesObj[slot.assignedDrone] = (dronesObj[slot.assignedDrone] || 0) + 1;
+      }
+    });
+    return dronesObj;
+  }, [droneSlots]);
 
   // Initialize state based on slot data or newDeckOption
   useEffect(() => {
@@ -64,12 +83,8 @@ const ExtractionDeckBuilder = () => {
           });
           setDeck(deckObj);
 
-          // Convert drones array to object format
-          const dronesObj = {};
-          (starterSlot.drones || []).forEach(drone => {
-            dronesObj[drone.name] = 1;
-          });
-          setSelectedDrones(dronesObj);
+          // Use droneSlots with migration for field name consistency
+          setDroneSlots(migrateDroneSlotsToNewFormat(starterSlot.droneSlots));
 
           // Copy ship components
           setSelectedShipComponents({ ...starterSlot.shipComponents });
@@ -82,7 +97,7 @@ const ExtractionDeckBuilder = () => {
       } else {
         // Start with empty deck
         setDeck({});
-        setSelectedDrones({});
+        setDroneSlots(createEmptyDroneSlots());
         setSelectedShipComponents({});
         setSelectedShip(getDefaultShip());
         setDeckName('New Ship');
@@ -98,12 +113,8 @@ const ExtractionDeckBuilder = () => {
       });
       setDeck(deckObj);
 
-      // Convert drones array to object format
-      const dronesObj = {};
-      (slot.drones || []).forEach(drone => {
-        dronesObj[drone.name] = 1;
-      });
-      setSelectedDrones(dronesObj);
+      // Use droneSlots with migration for field name consistency
+      setDroneSlots(migrateDroneSlotsToNewFormat(slot.droneSlots));
 
       // Copy ship components
       setSelectedShipComponents({ ...slot.shipComponents });
@@ -168,10 +179,20 @@ const ExtractionDeckBuilder = () => {
     setDeck(prev => updateDeckState(prev, cardId, quantity));
   };
 
-  // Handle drones change - removes entry when quantity is 0
+  // Handle drones change - add/remove from slots
   const handleDronesChange = (droneName, quantity) => {
     if (isReadOnly) return;
-    setSelectedDrones(prev => updateDroneState(prev, droneName, quantity));
+
+    // quantity 0 = remove drone, quantity 1 = add drone
+    if (quantity === 0) {
+      setDroneSlots(prev => removeDroneFromSlots(prev, droneName));
+    } else if (quantity === 1) {
+      // Check if drone is already in a slot
+      const existingSlot = droneSlots.find(s => s.assignedDrone === droneName);
+      if (!existingSlot) {
+        setDroneSlots(prev => addDroneToSlots(prev, droneName));
+      }
+    }
   };
 
   // Handle ship components change
@@ -216,14 +237,16 @@ const ExtractionDeckBuilder = () => {
       .filter(([, qty]) => qty > 0)
       .map(([id, quantity]) => ({ id, quantity }));
 
-    const drones = Object.entries(selectedDrones)
-      .filter(([, qty]) => qty > 0)
-      .map(([name]) => ({ name }));
+    // Derive legacy drones array from droneSlots for backward compatibility
+    const drones = droneSlots
+      .filter(slot => slot.assignedDrone)
+      .map(slot => ({ name: slot.assignedDrone }));
 
     const deckData = {
       name: deckName || `Ship Slot ${slotId}`,
       decklist,
-      drones,
+      droneSlots,  // Pass the new format
+      drones,       // Also include legacy format for backward compat
       shipComponents: selectedShipComponents,
       shipId: selectedShip?.id || null
     };
@@ -241,6 +264,24 @@ const ExtractionDeckBuilder = () => {
   // Handle back button
   const handleBack = () => {
     navigateBack();
+  };
+
+  // Handle drone slot repair
+  const handleRepairDroneSlot = (position) => {
+    if (isReadOnly || !slotId) return;
+    const result = gameStateManager.repairDroneSlot(slotId, position);
+    if (!result.success) {
+      console.warn('Failed to repair drone slot:', result.reason);
+    }
+  };
+
+  // Handle section slot repair
+  const handleRepairSectionSlot = (lane) => {
+    if (isReadOnly || !slotId) return;
+    const result = gameStateManager.repairSectionSlot(slotId, lane);
+    if (!result.success) {
+      console.warn('Failed to repair section slot:', result.reason);
+    }
   };
 
   // Handle case where slotId is not set (shouldn't happen normally)
@@ -291,6 +332,12 @@ const ExtractionDeckBuilder = () => {
           // Ship card selection
           selectedShip={selectedShip}
           onShipChange={handleShipChange}
+          // Ship Configuration Tab props
+          shipSlot={slot}
+          droneSlots={droneSlots}
+          credits={singlePlayerProfile?.credits || 0}
+          onRepairDroneSlot={handleRepairDroneSlot}
+          onRepairSectionSlot={handleRepairSectionSlot}
         />
       </div>
     </div>

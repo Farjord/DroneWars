@@ -90,8 +90,8 @@ const ShipSlotCard = ({
    * Get drone count for the slot
    */
   const getDroneCount = () => {
-    if (!shipSlot.drones) return 0;
-    return shipSlot.drones.length;
+    if (!shipSlot.droneSlots) return 0;
+    return shipSlot.droneSlots.filter(s => s.assignedDrone).length;
   };
 
   /**

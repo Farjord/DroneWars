@@ -27,12 +27,12 @@ export const starterDeck = {
     { id: 'CARD039', quantity: 4 },  
   ],
   // 5 Drones (Extraction Mode uses exactly 5 drones, no selection phase)
-  drones: [
-    { name: 'Scout Drone', isDamaged: false },
-    { name: 'Standard Fighter', isDamaged: false },
-    { name: 'Heavy Fighter', isDamaged: false },
-    { name: 'Guardian Drone', isDamaged: false },
-    { name: 'Repair Drone', isDamaged: false },
+  droneSlots: [
+    { slotIndex: 0, slotDamaged: false, assignedDrone: 'Scout Drone' },
+    { slotIndex: 1, slotDamaged: false, assignedDrone: 'Standard Fighter' },
+    { slotIndex: 2, slotDamaged: false, assignedDrone: 'Heavy Fighter' },
+    { slotIndex: 3, slotDamaged: false, assignedDrone: 'Guardian Drone' },
+    { slotIndex: 4, slotDamaged: false, assignedDrone: 'Repair Drone' },
   ],
 
   // Ship components (standard layout)

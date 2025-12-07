@@ -21,6 +21,7 @@ import { RARITY_COLORS } from '../../data/cardData';
 import { getMapType, getMapBackground } from '../../logic/extraction/mapExtraction';
 import { debugLog } from '../../utils/debugLogger.js';
 import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js';
+import { validateShipSlot } from '../../utils/slotDamageUtils.js';
 import { SeededRandom } from '../../utils/seededRandom.js';
 import { ECONOMY } from '../../data/economyData.js';
 import { starterDeck } from '../../data/playerDeckData.js';
@@ -589,14 +590,16 @@ const HangarScreen = () => {
 
     // Add starter drones as instances
     const newDroneInstances = [...(singlePlayerDroneInstances || [])];
-    (starterDeck.drones || []).forEach(drone => {
-      newDroneInstances.push({
-        id: `DRONE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        droneName: drone.name,
-        shipSlotId: selectedSlotId,
-        isDamaged: false,
-        isMIA: false
-      });
+    (starterDeck.droneSlots || []).forEach(slot => {
+      if (slot.assignedDrone) {
+        newDroneInstances.push({
+          id: `DRONE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          droneName: slot.assignedDrone,
+          shipSlotId: selectedSlotId,
+          isDamaged: false,
+          isMIA: false
+        });
+      }
     });
 
     // Add starter components as instances
@@ -625,7 +628,7 @@ const HangarScreen = () => {
     const deckData = {
       name: `Ship ${selectedSlotId}`,
       decklist: starterDeck.decklist.map(card => ({ id: card.id, quantity: card.quantity })),
-      drones: starterDeck.drones.map(drone => ({ name: drone.name })),
+      droneSlots: JSON.parse(JSON.stringify(starterDeck.droneSlots)),
       shipComponents: { ...starterDeck.shipComponents },
       shipId: starterDeck.shipId
     };
@@ -767,6 +770,17 @@ const HangarScreen = () => {
       return;
     }
 
+    // Check if the ship is undeployable (all sections destroyed)
+    const slotValidation = validateShipSlot(activeSlot);
+    if (slotValidation.isUndeployable) {
+      debugLog('EXTRACTION', '❌ Ship is undeployable - all sections destroyed', {
+        slotId: activeSlot.id,
+        slotName: activeSlot.name
+      });
+      console.error('[HangarScreen] Ship is undeployable - repair sections in deck builder');
+      return;
+    }
+
     debugLog('EXTRACTION', '✅ Active slot found', { slotId: activeSlot.id });
     debugLog('EXTRACTION', '📝 Setting state for deployment', {
       slotId: activeSlot.id,
@@ -803,6 +817,20 @@ const HangarScreen = () => {
       });
       console.error('[HangarScreen] Cannot deploy: missing parameters');
       return;
+    }
+
+    // Check if ship is undeployable (all sections destroyed)
+    const shipSlot = singlePlayerShipSlots.find(s => s.id === slotId);
+    if (shipSlot) {
+      const slotValidation = validateShipSlot(shipSlot);
+      if (slotValidation.isUndeployable) {
+        debugLog('EXTRACTION', '❌ Cannot deploy: ship undeployable', {
+          slotId,
+          slotName: shipSlot.name
+        });
+        console.error('[HangarScreen] Cannot deploy: ship is undeployable - all sections destroyed');
+        return;
+      }
     }
 
     debugLog('EXTRACTION', '✅ Deploying to map', {
@@ -1309,30 +1337,35 @@ const HangarScreen = () => {
 
                   // Get card/drone counts for active slots
                   const cardCount = isActive ? (slot.decklist || []).reduce((sum, c) => sum + c.quantity, 0) : 0;
-                  const droneCount = isActive ? (slot.drones || []).length : 0;
+                  const droneCount = isActive ? (slot.droneSlots || []).filter(s => s.assignedDrone).length : 0;
 
                   // Get loadout value for reputation display
                   const loadoutValueData = isActive ? ReputationService.getLoadoutValue(slot) : null;
 
                   // Check if deck is valid (for active slots)
-                  const isValidDeck = isActive ? (() => {
+                  const deckValidation = isActive ? (() => {
                     const deckObj = {};
                     (slot.decklist || []).forEach(card => {
                       deckObj[card.id] = card.quantity;
                     });
                     const dronesObj = {};
-                    (slot.drones || []).forEach(d => {
-                      dronesObj[d.name] = 1;
+                    (slot.droneSlots || []).forEach(s => {
+                      if (s.assignedDrone) dronesObj[s.assignedDrone] = 1;
                     });
-                    const validation = validateDeckForDeployment(deckObj, dronesObj, slot.shipComponents);
-                    return validation.valid;
-                  })() : true;
+                    return validateDeckForDeployment(deckObj, dronesObj, slot.shipComponents);
+                  })() : { valid: true };
+                  const isValidDeck = deckValidation.valid;
+
+                  // Check if ship is undeployable (all sections destroyed)
+                  const slotValidation = isActive ? validateShipSlot(slot) : { isUndeployable: false };
+                  const isUndeployable = slotValidation.isUndeployable;
 
                   // Determine slot state class
                   const getSlotClass = () => {
                     if (!isUnlocked) return 'dw-deck-slot--locked';
                     if (isMia) return 'dw-deck-slot--mia';
                     if (isEmpty) return 'dw-deck-slot--empty';
+                    if (isUndeployable) return 'dw-deck-slot--undeployable';
                     if (isDefault) return 'dw-deck-slot--default';
                     return 'dw-deck-slot--active';
                   };
@@ -1377,10 +1410,13 @@ const HangarScreen = () => {
                         <div className={shipImage ? 'dw-deck-slot-content' : undefined}>
                           {/* Header Row: Slot name/id + Star + Delete */}
                           <div className="flex items-center justify-between mb-1">
-                            <span className={`font-orbitron text-sm flex items-center gap-1 ${isMia ? 'text-red-400' : 'text-cyan-400'}`}>
+                            <span className={`font-orbitron text-sm flex items-center gap-1 ${isMia ? 'text-red-400' : isUndeployable ? 'text-red-400' : 'text-cyan-400'}`}>
                               {isSlot0 ? 'STARTER' : `SLOT ${slot.id}`}
-                              {isActive && !isValidDeck && (
-                                <AlertTriangle size={14} className="text-orange-400" />
+                              {isActive && isUndeployable && (
+                                <AlertTriangle size={14} className="text-red-400" title="Ship undeployable - all sections destroyed" />
+                              )}
+                              {isActive && !isValidDeck && !isUndeployable && (
+                                <AlertTriangle size={14} className="text-orange-400" title="Incomplete deck" />
                               )}
                             </span>
                             <div className="flex items-center gap-1">
@@ -1418,9 +1454,14 @@ const HangarScreen = () => {
 
                           {/* Stats for active slots */}
                           {isActive && (
-                            <div className={`text-xs mt-1 ${isValidDeck ? 'text-gray-400' : 'text-orange-400'}`}>
-                              {cardCount}/40 cards • {droneCount}/5 drones
-                              {!isValidDeck && ' (incomplete)'}
+                            <div className={`text-xs mt-1 ${isUndeployable ? 'text-red-400' : isValidDeck ? 'text-gray-400' : 'text-orange-400'}`}>
+                              {isUndeployable
+                                ? 'UNDEPLOYABLE - All sections destroyed'
+                                : <>
+                                    {cardCount}/40 cards • {droneCount}/5 drones
+                                    {!isValidDeck && ' (incomplete)'}
+                                  </>
+                              }
                             </div>
                           )}
 
@@ -1605,7 +1646,7 @@ const HangarScreen = () => {
               </p>
               <ul style={{ fontSize: '12px', color: 'var(--modal-text-secondary)', marginBottom: '12px', paddingLeft: '20px' }}>
                 <li>{starterDeck.decklist?.reduce((sum, c) => sum + c.quantity, 0) || 40} cards</li>
-                <li>{starterDeck.drones?.length || 5} drones</li>
+                <li>{starterDeck.droneSlots?.filter(s => s.assignedDrone).length || 5} drones</li>
                 <li>{Object.keys(starterDeck.shipComponents || {}).length || 3} ship components</li>
                 <li>1 ship</li>
               </ul>

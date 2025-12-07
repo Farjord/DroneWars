@@ -130,22 +130,22 @@ class RepairService {
 
   /**
    * Get all damaged drones across all ship slots
-   * @returns {Array} Array of { shipSlotId, droneIndex, drone, repairCost }
+   * @returns {Array} Array of { shipSlotId, droneIndex, droneSlot, repairCost }
    */
   getDamagedDrones() {
     const slots = gameStateManager.getState().singlePlayerShipSlots || [];
     const damaged = [];
 
     slots.forEach(slot => {
-      if (slot.status !== 'active' || !slot.drones) return;
+      if (slot.status !== 'active' || !slot.droneSlots) return;
 
-      slot.drones.forEach((drone, index) => {
-        if (drone.isDamaged) {
+      slot.droneSlots.forEach((droneSlot, index) => {
+        if (droneSlot.slotDamaged && droneSlot.assignedDrone) {
           damaged.push({
             shipSlotId: slot.id,
             droneIndex: index,
-            drone,
-            repairCost: this.getDroneRepairCost(drone.name)
+            droneSlot,
+            repairCost: this.getDroneRepairCost(droneSlot.assignedDrone)
           });
         }
       });
@@ -155,9 +155,9 @@ class RepairService {
   }
 
   /**
-   * Repair a single drone in a ship slot
+   * Repair a single drone slot in a ship slot
    * @param {number} shipSlotId - Ship slot ID
-   * @param {number} droneIndex - Index of drone in slot's drones array
+   * @param {number} droneIndex - Index of drone in slot's droneSlots array
    * @returns {{ success: boolean, error?: string, cost?: number }}
    */
   repairDrone(shipSlotId, droneIndex) {
@@ -172,38 +172,39 @@ class RepairService {
       return { success: false, error: 'Ship slot is not active' };
     }
 
-    const drone = slot.drones?.[droneIndex];
-    if (!drone) {
-      return { success: false, error: 'Drone not found' };
+    const droneSlot = slot.droneSlots?.[droneIndex];
+    if (!droneSlot) {
+      return { success: false, error: 'Drone slot not found' };
     }
 
-    if (!drone.isDamaged) {
-      return { success: false, error: 'Drone is not damaged' };
+    if (!droneSlot.slotDamaged) {
+      return { success: false, error: 'Drone slot is not damaged' };
     }
 
-    const repairCost = this.getDroneRepairCost(drone.name);
+    const droneName = droneSlot.assignedDrone || 'Unknown';
+    const repairCost = this.getDroneRepairCost(droneName);
 
     // Deduct credits via CreditManager
-    const deductResult = creditManager.deduct(repairCost, `Drone repair: ${drone.name}`);
+    const deductResult = creditManager.deduct(repairCost, `Drone slot repair: ${droneName}`);
     if (!deductResult.success) {
       return { success: false, error: deductResult.error };
     }
 
-    // Repair the drone
-    drone.isDamaged = false;
+    // Repair the drone slot
+    droneSlot.slotDamaged = false;
 
     // Update state
     gameStateManager.setState({
       singlePlayerShipSlots: [...state.singlePlayerShipSlots]
     });
 
-    debugLog('REPAIR', `Repaired drone ${drone.name} in slot ${shipSlotId} for ${repairCost} credits`);
+    debugLog('REPAIR', `Repaired drone slot ${droneIndex} (${droneName}) in ship slot ${shipSlotId} for ${repairCost} credits`);
 
     return { success: true, cost: repairCost };
   }
 
   /**
-   * Repair all damaged drones in a ship slot
+   * Repair all damaged drone slots in a ship slot
    * @param {number} shipSlotId - Ship slot ID
    * @returns {{ success: boolean, error?: string, cost?: number, count?: number }}
    */
@@ -211,32 +212,32 @@ class RepairService {
     const state = gameStateManager.getState();
     const slot = state.singlePlayerShipSlots?.find(s => s.id === shipSlotId);
 
-    if (!slot || slot.status !== 'active' || !slot.drones) {
+    if (!slot || slot.status !== 'active' || !slot.droneSlots) {
       return { success: false, error: 'Invalid ship slot' };
     }
 
-    const damagedDrones = slot.drones
-      .map((drone, index) => ({ drone, index }))
-      .filter(({ drone }) => drone.isDamaged);
+    const damagedSlots = slot.droneSlots
+      .map((droneSlot, index) => ({ droneSlot, index }))
+      .filter(({ droneSlot }) => droneSlot.slotDamaged);
 
-    if (damagedDrones.length === 0) {
-      return { success: false, error: 'No damaged drones in this slot' };
+    if (damagedSlots.length === 0) {
+      return { success: false, error: 'No damaged drone slots in this ship' };
     }
 
-    const totalCost = damagedDrones.reduce(
-      (sum, { drone }) => sum + this.getDroneRepairCost(drone.name),
+    const totalCost = damagedSlots.reduce(
+      (sum, { droneSlot }) => sum + this.getDroneRepairCost(droneSlot.assignedDrone || 'Unknown'),
       0
     );
 
     // Deduct credits via CreditManager
-    const deductResult = creditManager.deduct(totalCost, `Repair all drones in slot ${shipSlotId}`);
+    const deductResult = creditManager.deduct(totalCost, `Repair all drone slots in ship ${shipSlotId}`);
     if (!deductResult.success) {
       return { success: false, error: deductResult.error };
     }
 
-    // Repair all drones
-    damagedDrones.forEach(({ index }) => {
-      slot.drones[index].isDamaged = false;
+    // Repair all drone slots
+    damagedSlots.forEach(({ index }) => {
+      slot.droneSlots[index].slotDamaged = false;
     });
 
     // Update state
@@ -244,9 +245,9 @@ class RepairService {
       singlePlayerShipSlots: [...state.singlePlayerShipSlots]
     });
 
-    debugLog('REPAIR', `Repaired ${damagedDrones.length} drones in slot ${shipSlotId} for ${totalCost} credits`);
+    debugLog('REPAIR', `Repaired ${damagedSlots.length} drone slots in ship ${shipSlotId} for ${totalCost} credits`);
 
-    return { success: true, cost: totalCost, count: damagedDrones.length };
+    return { success: true, cost: totalCost, count: damagedSlots.length };
   }
 }
 

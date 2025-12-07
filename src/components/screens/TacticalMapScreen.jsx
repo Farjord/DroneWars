@@ -303,7 +303,7 @@ function TacticalMapScreen() {
       return [];
     }
 
-    debugLog('QUICK_DEPLOY', 'slot drones:', currentSlot?.drones?.map(d => d.name));
+    debugLog('QUICK_DEPLOY', 'slot drones:', currentSlot?.droneSlots?.filter(s => s.assignedDrone).map(s => s.assignedDrone));
 
     // Get ship card for stats calculation
     const shipCard = getAllShips().find(s => s.id === currentSlot.shipId);

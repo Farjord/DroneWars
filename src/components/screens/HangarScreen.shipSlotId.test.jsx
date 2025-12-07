@@ -18,14 +18,16 @@ import { starterDeck } from '../../data/playerDeckData.js';
  */
 function createInstancesCurrentBehavior(selectedSlotId, existingDroneInstances, existingComponentInstances) {
   const newDroneInstances = [...(existingDroneInstances || [])];
-  (starterDeck.drones || []).forEach(drone => {
-    newDroneInstances.push({
-      id: `DRONE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      droneName: drone.name,
-      isDamaged: false,
-      isMIA: false
-      // BUG: Missing shipSlotId!
-    });
+  (starterDeck.droneSlots || []).forEach(slot => {
+    if (slot.assignedDrone) {
+      newDroneInstances.push({
+        id: `DRONE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        droneName: slot.assignedDrone,
+        isDamaged: false,
+        isMIA: false
+        // BUG: Missing shipSlotId!
+      });
+    }
   });
 
   const newComponentInstances = [...(existingComponentInstances || [])];
@@ -48,14 +50,16 @@ function createInstancesCurrentBehavior(selectedSlotId, existingDroneInstances, 
  */
 function createInstancesFixedBehavior(selectedSlotId, existingDroneInstances, existingComponentInstances) {
   const newDroneInstances = [...(existingDroneInstances || [])];
-  (starterDeck.drones || []).forEach(drone => {
-    newDroneInstances.push({
-      id: `DRONE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      droneName: drone.name,
-      shipSlotId: selectedSlotId, // FIXED: Include shipSlotId
-      isDamaged: false,
-      isMIA: false
-    });
+  (starterDeck.droneSlots || []).forEach(slot => {
+    if (slot.assignedDrone) {
+      newDroneInstances.push({
+        id: `DRONE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        droneName: slot.assignedDrone,
+        shipSlotId: selectedSlotId, // FIXED: Include shipSlotId
+        isDamaged: false,
+        isMIA: false
+      });
+    }
   });
 
   const newComponentInstances = [...(existingComponentInstances || [])];

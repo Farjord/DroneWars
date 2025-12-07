@@ -411,26 +411,62 @@ class SinglePlayerCombatInitializer {
     const rng = new SeededRandom(Date.now());
     deck = rng.shuffle(deck);
 
-    // Get drone pool from ship slot or use default
-    const droneNames = shipSlot?.activeDronePool || this.getDefaultDronePool();
+    // Build drone pool from ship slot's droneSlots (new slot-based format)
+    // or fall back to legacy activeDronePool or default
+    let activeDronePool = [];
 
-    // Load saved damage state for this slot's drones
-    const shipSlotId = runState?.shipSlotId;
-    const droneDamageState = shipSlotId !== undefined
-      ? gameStateManager.getDroneDamageStateForSlot(shipSlotId)
-      : {};
+    if (shipSlot?.droneSlots) {
+      // New slot-based format: droneSlots array with { droneName, isDamaged }
+      activeDronePool = shipSlot.droneSlots
+        .filter(slot => slot?.droneName) // Skip empty slots
+        .map((slot, slotIndex) => {
+          const droneData = fullDroneCollection.find(d => d.name === slot.droneName);
+          if (!droneData) return null;
 
-    const activeDronePool = droneNames.map(name => {
-      const droneData = fullDroneCollection.find(d => d.name === name);
-      const drone = droneData ? { ...droneData } : { name };
+          const drone = { ...droneData };
+          drone.slotIndex = slotIndex;
+          drone.isDamaged = slot.isDamaged;
 
-      // Apply saved damage state if exists
-      if (droneDamageState[name]) {
-        drone.isDamaged = true;
-      }
+          // Apply -1 to limit when in damaged slot (min 1)
+          if (slot.isDamaged && drone.limit > 1) {
+            drone.effectiveLimit = Math.max(1, drone.limit - 1);
+            debugLog('SP_COMBAT', `Drone ${drone.name} in damaged slot: limit ${drone.limit} -> ${drone.effectiveLimit}`);
+          } else {
+            drone.effectiveLimit = drone.limit;
+          }
 
-      return drone;
-    }).filter(d => d);
+          return drone;
+        })
+        .filter(d => d);
+    } else if (shipSlot?.activeDronePool) {
+      // Legacy format fallback
+      const droneNames = shipSlot.activeDronePool;
+      const shipSlotId = runState?.shipSlotId;
+      const droneDamageState = shipSlotId !== undefined
+        ? gameStateManager.getDroneDamageStateForSlot(shipSlotId)
+        : {};
+
+      activeDronePool = droneNames.map(name => {
+        const droneData = fullDroneCollection.find(d => d.name === name);
+        const drone = droneData ? { ...droneData } : { name };
+
+        if (droneDamageState[name]) {
+          drone.isDamaged = true;
+        }
+        drone.effectiveLimit = drone.limit;
+
+        return drone;
+      }).filter(d => d);
+    } else {
+      // Use default drone pool
+      const defaultDrones = this.getDefaultDronePool();
+      activeDronePool = defaultDrones.map(name => {
+        const droneData = fullDroneCollection.find(d => d.name === name);
+        const drone = droneData ? { ...droneData } : { name };
+        drone.effectiveLimit = drone.limit;
+        return drone;
+      }).filter(d => d);
+    }
 
     return {
       name: 'Player',

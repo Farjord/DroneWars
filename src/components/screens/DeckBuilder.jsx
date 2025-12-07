@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp, Sword, Rocket, Shield, Grid, ArrowLeft, LayoutGrid, List, AlertTriangle } from 'lucide-react';
+import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp, Sword, Rocket, Shield, Grid, ArrowLeft, LayoutGrid, List, AlertTriangle, Settings } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import ActionCard from '../ui/ActionCard.jsx';
 import DroneCard from '../ui/DroneCard.jsx';
 import ShipCard from '../ui/ShipCard.jsx';
 import ViewDeckModal from '../modals/ViewDeckModal.jsx';
 import ShipSection from '../ui/ShipSection.jsx';
+import ShipConfigurationTab from '../ui/ShipConfigurationTab.jsx';
 import fullDroneCollection from '../../data/droneData.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { getAllShips, getDefaultShip } from '../../data/shipData.js';
@@ -242,7 +243,13 @@ const DeckBuilder = ({
   onDeckNameChange,            // Callback for name change
   availableDrones = null,      // Filtered drone collection (extraction mode)
   availableComponents = null,  // Filtered component collection (extraction mode)
-  availableShips = null        // Filtered ship collection (extraction mode)
+  availableShips = null,       // Filtered ship collection (extraction mode)
+  // Ship Configuration Tab props (extraction mode only)
+  shipSlot = null,             // Current ship slot for configuration tab
+  droneSlots = null,           // Current drone slots being edited (for config tab display)
+  credits = 0,                 // Player's credits for repairs
+  onRepairDroneSlot = null,    // Callback when drone slot is repaired
+  onRepairSectionSlot = null   // Callback when section slot is repaired
 }) => {
   // Use provided ship or default
   const activeShip = selectedShip || getDefaultShip();
@@ -258,7 +265,7 @@ const DeckBuilder = ({
 
   // Panel view toggles
   const [leftPanelView, setLeftPanelView] = useState('shipCard'); // 'shipCard', 'cards', 'drones', or 'ship'
-  const [rightPanelView, setRightPanelView] = useState('shipCard'); // 'shipCard', 'deck', 'drones', or 'ship'
+  const [rightPanelView, setRightPanelView] = useState('shipCard'); // 'shipCard', 'deck', 'drones', 'ship', or 'config' (extraction only)
 
   // Mobile responsive: which panel is visible on small screens
   const [mobileActivePanel, setMobileActivePanel] = useState('left'); // 'left' or 'right'
@@ -1800,6 +1807,16 @@ const DeckBuilder = ({
               >
                 Components ({shipComponentCount}/3)
               </button>
+              {/* Config tab only appears in extraction mode */}
+              {mode === 'extraction' && shipSlot && (
+                <button
+                  onClick={() => setRightPanelView('config')}
+                  className={`dw-modal-tab ${rightPanelView === 'config' ? 'dw-modal-tab--active' : ''}`}
+                >
+                  <Settings size={14} className="inline mr-1" />
+                  Config
+                </button>
+              )}
             </div>
             <button
               onClick={readOnly ? undefined : (rightPanelView === 'deck' ? resetDeck : rightPanelView === 'drones' ? resetDrones : () => onShipComponentsChange(null, null))}
@@ -2079,6 +2096,18 @@ const DeckBuilder = ({
               )}
             </div>
           </div>
+          )}
+
+          {/* SHIP CONFIGURATION VIEW (Extraction mode only) */}
+          {rightPanelView === 'config' && mode === 'extraction' && shipSlot && (
+            <ShipConfigurationTab
+              shipSlot={shipSlot}
+              droneSlots={droneSlots}
+              credits={credits}
+              onRepairDroneSlot={onRepairDroneSlot}
+              onRepairSectionSlot={onRepairSectionSlot}
+              readOnly={readOnly}
+            />
           )}
 
 {/* --- Statistics Section --- */}

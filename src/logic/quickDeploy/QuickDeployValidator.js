@@ -55,7 +55,9 @@ export const validateAgainstDeck = (quickDeploy, deck, playerState, placedSectio
   debugLog('QUICK_DEPLOY', `Validating "${quickDeploy.name}" against deck`);
 
   // 1. Roster Match - Check if deck has exactly the same 5 drones
-  const deckDrones = deck.drones.map(d => d.name);
+  const deckDrones = (deck.droneSlots || [])
+    .filter(s => s.assignedDrone)
+    .map(s => s.assignedDrone);
   const qDrones = quickDeploy.droneRoster;
 
   debugLog('QUICK_DEPLOY', 'Roster check:', { deckDrones, quickDeployRoster: qDrones });
@@ -155,7 +157,7 @@ export const validateAgainstDeck = (quickDeploy, deck, playerState, placedSectio
 export const getValidDeploymentsForDeck = (allDeployments, deck, playerState, placedSections) => {
   debugLog('QUICK_DEPLOY', '=== getValidDeploymentsForDeck ===');
   debugLog('QUICK_DEPLOY', 'Total deployments to check:', allDeployments?.length);
-  debugLog('QUICK_DEPLOY', 'Deck drones:', deck?.drones?.map(d => d.name));
+  debugLog('QUICK_DEPLOY', 'Deck drones:', deck?.droneSlots?.filter(s => s.assignedDrone).map(s => s.assignedDrone));
 
   if (!allDeployments || !Array.isArray(allDeployments)) {
     debugLog('QUICK_DEPLOY', 'No deployments array - returning empty');

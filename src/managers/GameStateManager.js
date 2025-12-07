@@ -1765,14 +1765,14 @@ class GameStateManager {
   /**
    * Save deck data to a ship slot
    * @param {number} slotId - Slot ID (1-5, cannot modify 0)
-   * @param {Object} deckData - { name, decklist, drones, shipComponents, shipId }
+   * @param {Object} deckData - { name, decklist, droneSlots, drones, shipComponents, shipId }
    */
   saveShipSlotDeck(slotId, deckData) {
     if (slotId === 0) {
       throw new Error('Cannot modify Slot 0 (immutable starter deck)');
     }
 
-    const { name, decklist, drones, shipComponents, shipId } = deckData;
+    const { name, decklist, droneSlots, drones, shipComponents, shipId } = deckData;
     const slots = [...this.state.singlePlayerShipSlots];
     const slotIndex = slots.findIndex(s => s.id === slotId);
 
@@ -1783,12 +1783,23 @@ class GameStateManager {
     // Clear old instances for this slot
     this.clearSlotInstances(slotId);
 
+    // Preserve existing sectionSlots if not provided, or use existing
+    const existingSectionSlots = slots[slotIndex].sectionSlots || {
+      l: { componentId: null, damageDealt: 0 },
+      m: { componentId: null, damageDealt: 0 },
+      r: { componentId: null, damageDealt: 0 }
+    };
+
     slots[slotIndex] = {
       ...slots[slotIndex],
       name: name || `Ship ${slotId}`,
       decklist,
+      // New format: droneSlots is the source of truth
+      droneSlots: droneSlots || slots[slotIndex].droneSlots,
+      // Legacy format for backward compatibility
       drones,
       shipComponents,
+      sectionSlots: existingSectionSlots,
       shipId: shipId || null,
       status: 'active'
     };
@@ -1836,8 +1847,22 @@ class GameStateManager {
       status: 'empty',
       isImmutable: false,
       decklist: [],
+      // New format: empty drone slots
+      droneSlots: [
+        { slotIndex: 0, slotDamaged: false, assignedDrone: null },
+        { slotIndex: 1, slotDamaged: false, assignedDrone: null },
+        { slotIndex: 2, slotDamaged: false, assignedDrone: null },
+        { slotIndex: 3, slotDamaged: false, assignedDrone: null },
+        { slotIndex: 4, slotDamaged: false, assignedDrone: null }
+      ],
+      // Legacy format for backward compatibility
       drones: [],
-      shipComponents: {}
+      shipComponents: {},
+      sectionSlots: {
+        l: { componentId: null, damageDealt: 0 },
+        m: { componentId: null, damageDealt: 0 },
+        r: { componentId: null, damageDealt: 0 }
+      }
     };
 
     // If this was the default slot, reset to 0
@@ -1871,6 +1896,121 @@ class GameStateManager {
       singlePlayerDroneInstances: droneInstances,
       singlePlayerShipComponentInstances: componentInstances
     });
+  }
+
+  /**
+   * Repair a damaged drone slot
+   * @param {number} slotId - Ship slot ID (1-5, cannot modify 0)
+   * @param {number} position - Drone slot position (0-4)
+   * @returns {Object} { success, reason? }
+   */
+  repairDroneSlot(slotId, position) {
+    if (slotId === 0) {
+      return { success: false, reason: 'Cannot modify Slot 0 (immutable starter deck)' };
+    }
+
+    const slots = [...this.state.singlePlayerShipSlots];
+    const slotIndex = slots.findIndex(s => s.id === slotId);
+
+    if (slotIndex === -1) {
+      return { success: false, reason: `Slot ${slotId} not found` };
+    }
+
+    const slot = slots[slotIndex];
+    if (!slot.droneSlots?.[position]) {
+      return { success: false, reason: `Drone position ${position} not found` };
+    }
+
+    // Support both old (isDamaged) and new (slotDamaged) field names
+    const droneSlot = slot.droneSlots[position];
+    const isCurrentlyDamaged = droneSlot.slotDamaged ?? droneSlot.isDamaged ?? false;
+
+    if (!isCurrentlyDamaged) {
+      return { success: false, reason: 'Drone slot is not damaged' };
+    }
+
+    const cost = ECONOMY.DRONE_SLOT_REPAIR_COST || 50;
+    const profile = { ...this.state.singlePlayerProfile };
+
+    if (profile.credits < cost) {
+      return { success: false, reason: `Insufficient credits. Need ${cost}, have ${profile.credits}` };
+    }
+
+    // Deduct credits
+    profile.credits -= cost;
+
+    // Repair the slot (set both old and new field names for compatibility)
+    slots[slotIndex] = {
+      ...slot,
+      droneSlots: slot.droneSlots.map((ds, i) =>
+        i === position ? { ...ds, slotDamaged: false, isDamaged: false } : ds
+      )
+    };
+
+    this.setState({
+      singlePlayerShipSlots: slots,
+      singlePlayerProfile: profile
+    });
+
+    console.log(`Repaired drone slot ${position} in ship slot ${slotId} for ${cost} credits`);
+    return { success: true };
+  }
+
+  /**
+   * Repair a damaged section slot (fully repairs all damage)
+   * @param {number} slotId - Ship slot ID (1-5, cannot modify 0)
+   * @param {string} lane - Lane key ('l', 'm', or 'r')
+   * @returns {Object} { success, reason? }
+   */
+  repairSectionSlot(slotId, lane) {
+    if (slotId === 0) {
+      return { success: false, reason: 'Cannot modify Slot 0 (immutable starter deck)' };
+    }
+
+    const slots = [...this.state.singlePlayerShipSlots];
+    const slotIndex = slots.findIndex(s => s.id === slotId);
+
+    if (slotIndex === -1) {
+      return { success: false, reason: `Slot ${slotId} not found` };
+    }
+
+    const slot = slots[slotIndex];
+    if (!slot.sectionSlots?.[lane]) {
+      return { success: false, reason: `Lane ${lane} not found` };
+    }
+
+    const damageDealt = slot.sectionSlots[lane].damageDealt || 0;
+    if (damageDealt <= 0) {
+      return { success: false, reason: 'Section is not damaged' };
+    }
+
+    const costPerDamage = ECONOMY.SECTION_DAMAGE_REPAIR_COST || 10;
+    const cost = damageDealt * costPerDamage;
+    const profile = { ...this.state.singlePlayerProfile };
+
+    if (profile.credits < cost) {
+      return { success: false, reason: `Insufficient credits. Need ${cost}, have ${profile.credits}` };
+    }
+
+    // Deduct credits
+    profile.credits -= cost;
+
+    // Repair the section (set damageDealt to 0)
+    slots[slotIndex] = {
+      ...slot,
+      sectionSlots: {
+        ...slot.sectionSlots,
+        [lane]: { ...slot.sectionSlots[lane], damageDealt: 0 }
+      }
+    };
+
+    this.setState({
+      singlePlayerShipSlots: slots,
+      singlePlayerProfile: profile
+    });
+
+    console.log(`Repaired section ${lane} in ship slot ${slotId} for ${cost} credits (${damageDealt} damage)`);
+    return { success: true };
   }
 
   /**
@@ -2039,29 +2179,31 @@ class GameStateManager {
     const startingGate = mapData.gates[entryGateId] || mapData.gates[0];
 
     // Build per-section hull tracking from ship slot components
+    // Uses slot-based damage model: damage is stored in sectionSlots, not instances
     const runShipSections = {};
     let totalHull = 0;
     let maxHull = 0;
 
-    if (shipSlot?.shipComponents) {
-      Object.entries(shipSlot.shipComponents).forEach(([componentId, lane]) => {
-        const component = shipComponentCollection.find(c => c.id === componentId);
-        if (component) {
-          const componentMaxHull = component.maxHull || component.hull;
+    // Use new slot-based format if available, fall back to legacy
+    if (shipSlot?.sectionSlots) {
+      // New slot-based format: { l: { componentId, damageDealt }, m: {...}, r: {...} }
+      const laneNames = { l: 'left', m: 'middle', r: 'right' };
 
-          // For non-slot 0, check for persisted hull damage
-          let hullValue = componentMaxHull;
-          if (shipSlotId !== 0) {
-            const savedInstance = this.state.singlePlayerShipComponentInstances?.find(
-              inst => inst.componentId === componentId && inst.shipSlotId === shipSlotId
-            );
-            if (savedInstance?.currentHull !== undefined) {
-              hullValue = savedInstance.currentHull;
-            }
-          }
+      Object.entries(shipSlot.sectionSlots).forEach(([lane, sectionSlot]) => {
+        if (!sectionSlot?.componentId) return;
+
+        const component = shipComponentCollection.find(c => c.id === sectionSlot.componentId);
+        if (component) {
+          const componentMaxHull = component.maxHull || component.hull || 10;
+          const damageDealt = sectionSlot.damageDealt || 0;
+
+          // For slot 0 (starter deck), ignore any damage
+          const hullValue = (shipSlotId === 0)
+            ? componentMaxHull
+            : Math.max(0, componentMaxHull - damageDealt);
 
           runShipSections[component.type] = {
-            id: componentId,
+            id: sectionSlot.componentId,
             name: component.name,
             type: component.type,
             hull: hullValue,
@@ -2069,6 +2211,25 @@ class GameStateManager {
             lane: lane
           };
           totalHull += hullValue;
+          maxHull += componentMaxHull;
+        }
+      });
+    } else if (shipSlot?.shipComponents) {
+      // Legacy format fallback: { componentId: lane }
+      Object.entries(shipSlot.shipComponents).forEach(([componentId, lane]) => {
+        const component = shipComponentCollection.find(c => c.id === componentId);
+        if (component) {
+          const componentMaxHull = component.maxHull || component.hull || 10;
+
+          runShipSections[component.type] = {
+            id: componentId,
+            name: component.name,
+            type: component.type,
+            hull: componentMaxHull,
+            maxHull: componentMaxHull,
+            lane: lane
+          };
+          totalHull += componentMaxHull;
           maxHull += componentMaxHull;
         }
       });
@@ -2282,32 +2443,34 @@ class GameStateManager {
 
       console.log('Run ended successfully - loot transferred');
 
-      // Persist ship section hull damage for non-slot 0
+      // Persist ship section hull damage using slot-based format
+      // Damage is stored in sectionSlots[lane].damageDealt, not in instance arrays
       if (runState.shipSlotId !== 0 && runState.shipSections) {
-        Object.entries(runState.shipSections).forEach(([sectionType, sectionData]) => {
-          const componentId = sectionData.id;
-          if (!componentId) return; // Skip sections without component ID
+        const slots = [...this.state.singlePlayerShipSlots];
+        const slotIndex = slots.findIndex(s => s.id === runState.shipSlotId);
 
-          // Find existing instance
-          const existingIndex = this.state.singlePlayerShipComponentInstances.findIndex(
-            inst => inst.componentId === componentId && inst.shipSlotId === runState.shipSlotId
-          );
+        if (slotIndex >= 0 && slots[slotIndex].sectionSlots) {
+          const shipSlot = { ...slots[slotIndex] };
+          const newSectionSlots = { ...shipSlot.sectionSlots };
 
-          if (existingIndex >= 0) {
-            // Update existing instance
-            this.state.singlePlayerShipComponentInstances[existingIndex].currentHull = sectionData.hull;
-          } else {
-            // Create new instance
-            this.state.singlePlayerShipComponentInstances.push({
-              instanceId: `comp-${Date.now()}-${componentId}`,
-              componentId,
-              shipSlotId: runState.shipSlotId,
-              currentHull: sectionData.hull,
-              maxHull: sectionData.maxHull
-            });
-          }
-        });
-        console.log('Ship section hull damage persisted to instances');
+          // Map section names to lanes for persistence
+          Object.entries(runState.shipSections).forEach(([sectionName, sectionData]) => {
+            const lane = sectionData.lane; // 'l', 'm', or 'r'
+            if (lane && newSectionSlots[lane]) {
+              // Calculate damage dealt = maxHull - currentHull
+              const damageDealt = (sectionData.maxHull || 10) - (sectionData.hull || 0);
+              newSectionSlots[lane] = {
+                ...newSectionSlots[lane],
+                damageDealt: Math.max(0, damageDealt)
+              };
+            }
+          });
+
+          shipSlot.sectionSlots = newSectionSlots;
+          slots[slotIndex] = shipSlot;
+          this.state.singlePlayerShipSlots = slots;
+          console.log('Ship section hull damage persisted to sectionSlots');
+        }
       }
     } else {
       // MIA: Wipe loot, mark slot

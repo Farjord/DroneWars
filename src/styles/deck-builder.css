@@ -812,6 +812,30 @@
   box-shadow: 0 0 16px rgba(239, 68, 68, 0.2);
 }
 
+/* UNDEPLOYABLE STATE - Dark red/maroon theme (all sections destroyed) */
+.dw-deck-slot--undeployable {
+  border-color: rgba(185, 28, 28, 0.7);
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(127, 29, 29, 0.08),
+      rgba(127, 29, 29, 0.08) 10px,
+      transparent 10px,
+      transparent 20px
+    ),
+    linear-gradient(180deg, rgba(127, 29, 29, 0.15) 0%, rgba(10, 15, 28, 0.95) 100%);
+}
+
+.dw-deck-slot--undeployable::before,
+.dw-deck-slot--undeployable::after {
+  border-color: rgba(185, 28, 28, 0.7);
+}
+
+.dw-deck-slot--undeployable:hover {
+  border-color: rgba(185, 28, 28, 0.9);
+  box-shadow: 0 0 16px rgba(185, 28, 28, 0.3);
+}
+
 /* Small button variant for unlock */
 .dw-btn--sm {
   padding: 6px 12px;

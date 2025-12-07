@@ -66,8 +66,10 @@ export function calculateAvailableDrones(targetSlotId, shipSlots, droneInstances
   const usedDrones = {};
   shipSlots.forEach(slot => {
     if (slot.id !== targetSlotId && slot.id !== 0 && slot.status === 'active') {
-      (slot.drones || []).forEach(drone => {
-        usedDrones[drone.name] = (usedDrones[drone.name] || 0) + 1;
+      (slot.droneSlots || []).forEach(droneSlot => {
+        if (droneSlot.assignedDrone) {
+          usedDrones[droneSlot.assignedDrone] = (usedDrones[droneSlot.assignedDrone] || 0) + 1;
+        }
       });
     }
   });

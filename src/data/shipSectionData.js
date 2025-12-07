@@ -43,6 +43,39 @@ const shipComponentCollection = [
   },
 
   {
+    id: 'BRIDGE_HEAVY',
+    type: 'Bridge',
+    name: 'Armored Command Bridge',
+    key: 'armoredBridge',
+    rarity: 'Rare',
+
+    // NEW: Modifier fields (applied to Ship Card baselines)
+    hullModifier: 2,  // +2 hull to the lane
+    shieldsModifier: 0,
+    thresholdModifiers: { damaged: 0, critical: 0 },
+
+    // DEPRECATED: Absolute values (kept for backward compatibility)
+    hull: 12, maxHull: 12, shields: 3, allocatedShields: 3,
+    description: 'Reinforced command center with additional armor plating.',
+    thresholds: { damaged: 6, critical: 0 },
+    stats: {
+      healthy: { 'Draw': 5, 'Discard': 3 },
+      damaged: { 'Draw': 5, 'Discard': 2 },
+      critical: { 'Draw': 4, 'Discard': 1 },
+    },
+    middleLaneBonus: { 'Draw': 1, 'Discard': 1 },
+    image: '/DroneWars/img/Bridge.png',
+    ability: {
+      id: 'ABILITY_SHIP_01',
+      name: 'Recalculate',
+      description: 'Draw a card, then discard a card.',
+      cost: { energy: 1 },
+      targeting: null,
+      effect: { type: 'DRAW_THEN_DISCARD', value: { draw: 1, discard: 1 } }
+    }
+  },
+
+  {
     id: 'BRIDGE_002',
     type: 'Bridge',
     name: 'Tactical Command Bridge',

@@ -19,7 +19,7 @@ import { getAICoresCost } from '../../data/aiCoresData';
  * Starter deck items - EXCLUDED from blueprints (they're infinitely available)
  * Dynamically extracted from starterDeck - updates automatically if starter deck changes
  */
-const STARTER_DRONE_NAMES = new Set(starterDeck.drones.map(d => d.name));
+const STARTER_DRONE_NAMES = new Set(starterDeck.droneSlots.filter(s => s.assignedDrone).map(s => s.assignedDrone));
 const STARTER_COMPONENT_IDS = new Set(Object.keys(starterDeck.shipComponents));
 const STARTER_SHIP_IDS = new Set(starterPoolShipIds);
 

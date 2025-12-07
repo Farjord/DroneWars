@@ -133,8 +133,8 @@ const InventoryModal = ({ onClose }) => {
    */
   const slot0Drones = useMemo(() => {
     const slot0 = singlePlayerShipSlots?.find(slot => slot.id === 0);
-    if (!slot0 || !slot0.drones) return [];
-    return slot0.drones.map(d => d.name || d.id);
+    if (!slot0 || !slot0.droneSlots) return [];
+    return slot0.droneSlots.filter(s => s.assignedDrone).map(s => s.assignedDrone);
   }, [singlePlayerShipSlots]);
 
   /**

@@ -2,8 +2,9 @@
  * GameStateManager Ship Section Damage Persistence Tests
  * TDD: Tests written first to verify ship hull damage persists across runs
  *
- * Bug: Non-slot 0 ship sections should retain hull damage after extraction,
- * but damage is not being stored in shipComponentInstances.
+ * Updated for slot-based damage model:
+ * - Damage is stored in sectionSlots[lane].damageDealt
+ * - No longer uses singlePlayerShipComponentInstances
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -22,20 +23,32 @@ vi.mock('../logic/map/generateMapData.js', () => ({
 }));
 
 describe('GameStateManager - Ship Section Damage Persistence', () => {
-  // Use REAL component IDs from shipSectionData.js
-  // Types use capital case: 'Bridge', 'Power Cell', 'Drone Control Hub'
-  const createTestShipSlot = (slotId) => ({
+  // Use slot-based format with sectionSlots
+  const createTestShipSlot = (slotId, sectionDamage = {}) => ({
     id: slotId,
     name: `Test Ship Slot ${slotId}`,
     status: 'active',
     isImmutable: slotId === 0,
     shipId: 'CORVETTE',
     decklist: [],
+    droneSlots: [
+      { droneName: 'Scout Drone', isDamaged: false },
+      { droneName: 'Standard Fighter', isDamaged: false },
+      { droneName: 'Heavy Fighter', isDamaged: false },
+      { droneName: 'Repair Drone', isDamaged: false },
+      { droneName: 'Bomber', isDamaged: false }
+    ],
+    sectionSlots: {
+      l: { componentId: 'BRIDGE_001', damageDealt: sectionDamage.l || 0 },
+      m: { componentId: 'POWERCELL_001', damageDealt: sectionDamage.m || 0 },
+      r: { componentId: 'DRONECONTROL_001', damageDealt: sectionDamage.r || 0 }
+    },
+    // Legacy format for backward compatibility
     drones: [],
     shipComponents: {
-      'BRIDGE_001': 1,        // Real ID from shipSectionData.js
-      'POWERCELL_001': 2,     // Real ID (no underscore)
-      'DRONECONTROL_001': 3   // Real ID (no underscore)
+      'BRIDGE_001': 'l',
+      'POWERCELL_001': 'm',
+      'DRONECONTROL_001': 'r'
     }
   });
 
@@ -65,7 +78,7 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
   });
 
   describe('endRun - hull damage persistence', () => {
-    it('should persist hull damage to shipComponentInstances on successful run (non-slot 0)', () => {
+    it('should persist hull damage to sectionSlots on successful run (non-slot 0)', () => {
       // Setup: Create a run state with damaged ship sections
       const runState = {
         shipSlotId: 1, // Non-slot 0
@@ -74,9 +87,9 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
         creditsEarned: 50,
         aiCoresEarned: 0,
         shipSections: {
-          bridge: { id: 'BRIDGE_001', type: 'bridge', hull: 7, maxHull: 10 }, // 3 damage
-          powerCell: { id: 'POWER_CELL_001', type: 'powerCell', hull: 5, maxHull: 10 }, // 5 damage
-          droneControlHub: { id: 'DRONE_CTRL_001', type: 'droneControlHub', hull: 10, maxHull: 10 } // No damage
+          'Bridge': { id: 'BRIDGE_001', type: 'Bridge', hull: 7, maxHull: 10, lane: 'l' }, // 3 damage
+          'Power Cell': { id: 'POWERCELL_001', type: 'Power Cell', hull: 5, maxHull: 10, lane: 'm' }, // 5 damage
+          'Drone Control Hub': { id: 'DRONECONTROL_001', type: 'Drone Control Hub', hull: 10, maxHull: 10, lane: 'r' } // No damage
         },
         currentHull: 22,
         maxHull: 30
@@ -87,20 +100,13 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       // Act: End the run successfully
       gameStateManager.endRun(true);
 
-      // Assert: Hull damage should be persisted to shipComponentInstances
+      // Assert: Hull damage should be persisted to sectionSlots
       const state = gameStateManager.getState();
-      const instances = state.singlePlayerShipComponentInstances;
+      const shipSlot = state.singlePlayerShipSlots.find(s => s.id === 1);
 
-      expect(instances.length).toBeGreaterThan(0);
-
-      const bridgeInstance = instances.find(i => i.componentId === 'BRIDGE_001' && i.shipSlotId === 1);
-      const powerCellInstance = instances.find(i => i.componentId === 'POWER_CELL_001' && i.shipSlotId === 1);
-
-      expect(bridgeInstance).toBeDefined();
-      expect(bridgeInstance.currentHull).toBe(7);
-
-      expect(powerCellInstance).toBeDefined();
-      expect(powerCellInstance.currentHull).toBe(5);
+      expect(shipSlot.sectionSlots.l.damageDealt).toBe(3); // 10 - 7 = 3
+      expect(shipSlot.sectionSlots.m.damageDealt).toBe(5); // 10 - 5 = 5
+      expect(shipSlot.sectionSlots.r.damageDealt).toBe(0); // 10 - 10 = 0
     });
 
     it('should NOT persist hull damage for slot 0 (starter deck)', () => {
@@ -112,7 +118,7 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
         creditsEarned: 50,
         aiCoresEarned: 0,
         shipSections: {
-          bridge: { id: 'BRIDGE_001', type: 'bridge', hull: 5, maxHull: 10 }
+          'Bridge': { id: 'BRIDGE_001', type: 'Bridge', hull: 5, maxHull: 10, lane: 'l' }
         },
         currentHull: 25,
         maxHull: 30
@@ -123,26 +129,18 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       // Act
       gameStateManager.endRun(true);
 
-      // Assert: No instances should be created for slot 0
+      // Assert: Slot 0 should have no damage
       const state = gameStateManager.getState();
-      const slot0Instances = state.singlePlayerShipComponentInstances.filter(i => i.shipSlotId === 0);
+      const slot0 = state.singlePlayerShipSlots.find(s => s.id === 0);
 
-      expect(slot0Instances.length).toBe(0);
+      expect(slot0.sectionSlots.l.damageDealt).toBe(0);
     });
 
-    it('should update existing shipComponentInstance if already exists', () => {
-      // Setup: Pre-existing instance with old hull value
-      const existingInstance = {
-        instanceId: 'existing-bridge-instance',
-        componentId: 'BRIDGE_001',
-        shipSlotId: 1,
-        currentHull: 8,
-        maxHull: 10
-      };
-
-      gameStateManager.setState({
-        singlePlayerShipComponentInstances: [existingInstance]
-      });
+    it('should update sectionSlots damage on subsequent runs', () => {
+      // Setup: Set initial damage on slot 1
+      const slots = [...gameStateManager.getState().singlePlayerShipSlots];
+      slots[1].sectionSlots.l.damageDealt = 2; // Pre-existing damage
+      gameStateManager.setState({ singlePlayerShipSlots: slots });
 
       const runState = {
         shipSlotId: 1,
@@ -151,7 +149,7 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
         creditsEarned: 0,
         aiCoresEarned: 0,
         shipSections: {
-          bridge: { id: 'BRIDGE_001', type: 'bridge', hull: 3, maxHull: 10 } // Further damaged
+          'Bridge': { id: 'BRIDGE_001', type: 'Bridge', hull: 3, maxHull: 10, lane: 'l' } // Further damaged
         },
         currentHull: 23,
         maxHull: 30
@@ -162,40 +160,21 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       // Act
       gameStateManager.endRun(true);
 
-      // Assert: Should update existing instance, not create new one
+      // Assert: Should update damage
       const state = gameStateManager.getState();
-      const bridgeInstances = state.singlePlayerShipComponentInstances.filter(
-        i => i.componentId === 'BRIDGE_001' && i.shipSlotId === 1
-      );
+      const slot = state.singlePlayerShipSlots.find(s => s.id === 1);
 
-      expect(bridgeInstances.length).toBe(1);
-      expect(bridgeInstances[0].currentHull).toBe(3);
+      expect(slot.sectionSlots.l.damageDealt).toBe(7); // 10 - 3 = 7
     });
   });
 
   describe('startRun - hull damage loading', () => {
-    it('should load saved hull damage from shipComponentInstances when starting new run', () => {
-      // Setup: Pre-existing damage from previous run
-      const savedInstances = [
-        {
-          instanceId: 'saved-bridge',
-          componentId: 'BRIDGE_001',
-          shipSlotId: 1,
-          currentHull: 6,
-          maxHull: 10
-        },
-        {
-          instanceId: 'saved-power',
-          componentId: 'POWERCELL_001', // Correct ID (no underscore)
-          shipSlotId: 1,
-          currentHull: 4,
-          maxHull: 10
-        }
-      ];
-
-      gameStateManager.setState({
-        singlePlayerShipComponentInstances: savedInstances
-      });
+    it('should load saved hull damage from sectionSlots when starting new run', () => {
+      // Setup: Pre-existing damage in sectionSlots
+      const slots = [...gameStateManager.getState().singlePlayerShipSlots];
+      slots[1].sectionSlots.l.damageDealt = 4; // Bridge took 4 damage
+      slots[1].sectionSlots.m.damageDealt = 6; // Power Cell took 6 damage
+      gameStateManager.setState({ singlePlayerShipSlots: slots });
 
       // Act: Start a new run with slot 1
       gameStateManager.startRun(1, 1, 0, {
@@ -212,25 +191,15 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
 
       expect(runState).toBeDefined();
       // Types use capital case: 'Bridge', 'Power Cell', 'Drone Control Hub'
-      expect(runState.shipSections['Bridge'].hull).toBe(6);
-      expect(runState.shipSections['Power Cell'].hull).toBe(4);
+      expect(runState.shipSections['Bridge'].hull).toBe(6); // 10 - 4
+      expect(runState.shipSections['Power Cell'].hull).toBe(4); // 10 - 6
     });
 
-    it('should use full hull for slot 0 (starter deck) regardless of any saved instances', () => {
-      // Setup: Even if there were somehow saved instances for slot 0
-      const savedInstances = [
-        {
-          instanceId: 'bad-instance',
-          componentId: 'BRIDGE_001',
-          shipSlotId: 0, // Should be ignored
-          currentHull: 1,
-          maxHull: 10
-        }
-      ];
-
-      gameStateManager.setState({
-        singlePlayerShipComponentInstances: savedInstances
-      });
+    it('should use full hull for slot 0 (starter deck) regardless of any saved damage', () => {
+      // Setup: Even if slot 0 had damage (shouldn't happen but let's test)
+      const slots = [...gameStateManager.getState().singlePlayerShipSlots];
+      slots[0].sectionSlots.l.damageDealt = 9; // Should be ignored for slot 0
+      gameStateManager.setState({ singlePlayerShipSlots: slots });
 
       // Act
       gameStateManager.startRun(0, 1, 0, {
@@ -267,7 +236,7 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       // Section types use capital case: 'Bridge', 'Power Cell', 'Drone Control Hub'
       const bridgeSection = state.currentRunState.shipSections['Bridge'];
       expect(bridgeSection).toBeDefined();
-      const initialBridgeHull = bridgeSection?.hull || 10;
+      expect(bridgeSection.hull).toBe(10); // Full hull to start
 
       // Step 2: Simulate combat damage by modifying run state
       const damagedSections = {
@@ -275,7 +244,14 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       };
       // Damage the bridge section
       if (damagedSections['Bridge']) {
-        damagedSections['Bridge'] = { ...damagedSections['Bridge'], hull: 4 };
+        damagedSections['Bridge'] = { ...damagedSections['Bridge'], hull: 4, lane: 'l' };
+      }
+      // Ensure other sections have their lane info
+      if (damagedSections['Power Cell']) {
+        damagedSections['Power Cell'] = { ...damagedSections['Power Cell'], lane: 'm' };
+      }
+      if (damagedSections['Drone Control Hub']) {
+        damagedSections['Drone Control Hub'] = { ...damagedSections['Drone Control Hub'], lane: 'r' };
       }
 
       gameStateManager.setState({
@@ -292,6 +268,10 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       // Verify run state is cleared
       state = gameStateManager.getState();
       expect(state.currentRunState).toBeNull();
+
+      // Verify damage was persisted to sectionSlots
+      const slot1 = state.singlePlayerShipSlots.find(s => s.id === 1);
+      expect(slot1.sectionSlots.l.damageDealt).toBe(6); // 10 - 4 = 6 damage
 
       // Step 4: Start a NEW run with the same slot
       gameStateManager.startRun(1, 1, 0, {

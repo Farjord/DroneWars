@@ -37,7 +37,7 @@ const QuickDeployManager = ({ onClose }) => {
       const invalidFor = [];
 
       shipSlots.forEach(slot => {
-        if (slot.status !== 'active' || !slot.drones || slot.drones.length === 0) return;
+        if (slot.status !== 'active' || !slot.droneSlots || slot.droneSlots.filter(s => s.assignedDrone).length === 0) return;
 
         // Get ship card for stats calculation
         const shipCard = getAllShips().find(s => s.id === slot.shipId);

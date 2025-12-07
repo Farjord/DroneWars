@@ -21,7 +21,7 @@ export const starterPoolCards = [
   ...Object.keys(starterDeck.shipComponents)
 ];
 
-export const starterPoolDroneNames = starterDeck.drones.map(d => d.name);
+export const starterPoolDroneNames = starterDeck.droneSlots.filter(s => s.assignedDrone).map(s => s.assignedDrone);
 
 /**
  * Starter pool ship - ship card from starter deck
@@ -81,19 +81,113 @@ export const defaultPlayerProfile = {
 export const defaultInventory = {};
 
 /**
- * Default drone instances - empty at start
- * Slot 0 drones don't need instances (never damaged)
- * Crafted drones will be added here with instanceId
+ * Default drone instances - DEPRECATED (legacy support only)
+ * Now using slot-based damage model with droneSlots array
  */
 export const defaultDroneInstances = [];
 
 /**
- * Default ship component instances - empty at start
- * Slot 0 components don't need instances (never damaged)
- * Components in slots 1-5 will be tracked here with hull damage
- * Format: { instanceId, componentId, shipSlotId, currentHull, maxHull }
+ * Default ship component instances - DEPRECATED (legacy support only)
+ * Now using slot-based damage model with sectionSlots object
  */
 export const defaultShipComponentInstances = [];
+
+/**
+ * Create empty drone slots array with new format
+ * @returns {Array} 5 empty slots with { slotIndex, slotDamaged, assignedDrone }
+ */
+export function createEmptyDroneSlots() {
+  return Array.from({ length: 5 }, (_, i) => ({
+    slotIndex: i,
+    slotDamaged: false,
+    assignedDrone: null
+  }));
+}
+
+/**
+ * Migrate drone slots from old format to new format
+ * Old format: { droneName, isDamaged }
+ * New format: { slotIndex, slotDamaged, assignedDrone }
+ * @param {Array} oldSlots - Old format slots or null/undefined
+ * @returns {Array} New format slots (5 slots)
+ */
+export function migrateDroneSlotsToNewFormat(oldSlots) {
+  if (!oldSlots) return createEmptyDroneSlots();
+
+  return oldSlots.map((slot, i) => ({
+    slotIndex: i,
+    // Support both old field names and new field names (idempotent)
+    slotDamaged: slot.slotDamaged ?? slot.isDamaged ?? false,
+    assignedDrone: slot.assignedDrone ?? slot.droneName ?? null
+  }));
+}
+
+/**
+ * Convert legacy drone array format to new droneSlots format
+ * Legacy format: [{ name }] (just drone names)
+ * New format: [{ slotIndex, slotDamaged, assignedDrone }]
+ * @param {Array} drones - Legacy format: [{ name, isDamaged? }]
+ * @returns {Array} New format slots (5 slots)
+ */
+export function convertDronesToSlots(drones = []) {
+  const slots = createEmptyDroneSlots();
+  for (let i = 0; i < Math.min(5, drones.length); i++) {
+    const drone = drones[i];
+    if (drone) {
+      slots[i] = {
+        slotIndex: i,
+        slotDamaged: drone.isDamaged || false,
+        assignedDrone: drone.name || null
+      };
+    }
+  }
+  return slots;
+}
+
+/**
+ * Convert old shipComponents format to new sectionSlots format
+ * @param {Object} shipComponents - Old format: { componentId: lane }
+ * @returns {Object} New format: { lane: { componentId, damageDealt } }
+ */
+export function convertComponentsToSectionSlots(shipComponents = {}) {
+  const sectionSlots = {
+    l: { componentId: null, damageDealt: 0 },
+    m: { componentId: null, damageDealt: 0 },
+    r: { componentId: null, damageDealt: 0 }
+  };
+
+  Object.entries(shipComponents).forEach(([componentId, lane]) => {
+    if (sectionSlots[lane]) {
+      sectionSlots[lane].componentId = componentId;
+    }
+  });
+
+  return sectionSlots;
+}
+
+/**
+ * Migrate old ship slot format to new slot-based damage format
+ * @param {Object} oldSlot - Ship slot in old format
+ * @returns {Object} Ship slot in new format
+ */
+export function migrateShipSlotToNewFormat(oldSlot) {
+  // If already migrated (has droneSlots and sectionSlots), return as-is
+  if (oldSlot.droneSlots && oldSlot.sectionSlots) {
+    // Remove legacy drones array if present
+    const { drones, ...rest } = oldSlot;
+    return rest;
+  }
+
+  // Migrate from old format
+  const { drones, ...rest } = oldSlot;
+  return {
+    ...rest,
+    // Convert old drones array to new droneSlots
+    droneSlots: convertDronesToSlots(drones),
+    // Convert old shipComponents to new sectionSlots
+    sectionSlots: convertComponentsToSectionSlots(oldSlot.shipComponents),
+  };
+}
 
 /**
  * Default discovered cards - empty at start
@@ -132,8 +226,11 @@ export function createDefaultShipSlot(id) {
 
       // Use starter deck configuration
       decklist: JSON.parse(JSON.stringify(starterDeck.decklist)),
-      drones: JSON.parse(JSON.stringify(starterDeck.drones)),
       shipComponents: JSON.parse(JSON.stringify(starterDeck.shipComponents)),
+
+      // Slot-based damage format
+      droneSlots: JSON.parse(JSON.stringify(starterDeck.droneSlots)),
+      sectionSlots: convertComponentsToSectionSlots(starterDeck.shipComponents),
     };
   } else {
     // Slots 1-5: Empty slots
@@ -145,8 +242,15 @@ export function createDefaultShipSlot(id) {
       shipId: null,
 
       decklist: [],
-      drones: [],
       shipComponents: {},
+
+      // Slot-based damage format
+      droneSlots: createEmptyDroneSlots(),
+      sectionSlots: {
+        l: { componentId: null, damageDealt: 0 },
+        m: { componentId: null, damageDealt: 0 },
+        r: { componentId: null, damageDealt: 0 }
+      },
     };
   }
 }

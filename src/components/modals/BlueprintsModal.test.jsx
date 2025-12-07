@@ -65,12 +65,12 @@ vi.mock('../../data/cardData.js', () => ({
 // Mock starter deck data
 vi.mock('../../data/playerDeckData.js', () => ({
   starterDeck: {
-    drones: [
-      { name: 'Scout Drone' },
-      { name: 'Standard Fighter' },
-      { name: 'Heavy Fighter' },
-      { name: 'Guardian Drone' },
-      { name: 'Repair Drone' },
+    droneSlots: [
+      { slotIndex: 0, slotDamaged: false, assignedDrone: 'Scout Drone' },
+      { slotIndex: 1, slotDamaged: false, assignedDrone: 'Standard Fighter' },
+      { slotIndex: 2, slotDamaged: false, assignedDrone: 'Heavy Fighter' },
+      { slotIndex: 3, slotDamaged: false, assignedDrone: 'Guardian Drone' },
+      { slotIndex: 4, slotDamaged: false, assignedDrone: 'Repair Drone' },
     ],
     shipComponents: {
       'BRIDGE_001': 'm',

@@ -12,13 +12,23 @@ export const ECONOMY = {
   // Hull repair cost per HP point
   HULL_REPAIR_COST_PER_HP: 200,
 
-  // Drone repair costs by rarity
+  // Drone repair costs by rarity (legacy - for reference)
   DRONE_REPAIR_COSTS: {
     Common: 50,
     Uncommon: 100,
     Rare: 200,
     Mythic: 500
   },
+
+  // ========================================
+  // SLOT-BASED REPAIR COSTS
+  // ========================================
+
+  // Flat cost to repair a damaged drone slot
+  DRONE_SLOT_REPAIR_COST: 500,
+
+  // Cost per 1 point of damage to repair a section slot
+  SECTION_DAMAGE_REPAIR_COST: 200,
 
   // ========================================
   // REPLICATION COSTS
@@ -44,7 +54,7 @@ export const ECONOMY = {
   // ========================================
 
   // Credits player starts with on new game
-  STARTING_CREDITS: 0,
+  STARTING_CREDITS: 1000,
 
   // ========================================
   // STARTER DECK LIMITS

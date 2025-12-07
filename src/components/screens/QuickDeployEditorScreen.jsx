@@ -135,7 +135,7 @@ const QuickDeployEditorScreen = () => {
     };
 
     return shipSlots.map(slot => {
-      if (slot.status !== 'active' || !slot.drones || slot.drones.length === 0) {
+      if (slot.status !== 'active' || !slot.droneSlots || slot.droneSlots.filter(s => s.assignedDrone).length === 0) {
         return { slot, valid: false, reasons: [{ type: 'inactive', message: 'Slot not active or empty' }] };
       }
 
@@ -175,7 +175,7 @@ const QuickDeployEditorScreen = () => {
         valid: result.valid,
         reasons: result.reasons
       };
-    }).filter(v => v.slot.status === 'active' && v.slot.drones?.length > 0);
+    }).filter(v => v.slot.status === 'active' && v.slot.droneSlots?.filter(s => s.assignedDrone).length > 0);
   }, [droneRoster, placements, shipSlots]);
 
   // Handle selecting a drone from the roster for placement

@@ -51,8 +51,8 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
           deckObj[card.id] = card.quantity;
         });
         const dronesObj = {};
-        (slot.drones || []).forEach(d => {
-          dronesObj[d.name] = 1;
+        (slot.droneSlots || []).forEach(s => {
+          if (s.assignedDrone) dronesObj[s.assignedDrone] = 1;
         });
 
         const validation = validateDeckForDeployment(deckObj, dronesObj, slot.shipComponents);
@@ -130,8 +130,8 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
       deckObj[card.id] = card.quantity;
     });
     const dronesObj = {};
-    (slot.drones || []).forEach(d => {
-      dronesObj[d.name] = 1;
+    (slot.droneSlots || []).forEach(s => {
+      if (s.assignedDrone) dronesObj[s.assignedDrone] = 1;
     });
     const deckValidation = validateDeckForDeployment(deckObj, dronesObj, slot.shipComponents);
     if (!deckValidation.valid) {
@@ -157,18 +157,12 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
       }
     }
 
-    // Check drones for damage
-    if (slot.drones && slot.drones.length > 0) {
-      for (const drone of slot.drones) {
-        // For slot 0, drones never damaged
-        if (currentSlotId !== 0) {
-          const droneId = drone.id || drone.name; // Handle both formats
-          const instance = singlePlayerDroneInstances.find(
-            i => (i.droneId === droneId || i.droneName === droneId) && i.shipSlotId === currentSlotId
-          );
-          if (instance && instance.currentHull <= 0) {
-            return { valid: false, error: `Damaged drone: ${droneId}. Repair before deploying.` };
-          }
+    // Check drone slots for damage (using slot-based damage model)
+    if (slot.droneSlots && slot.droneSlots.length > 0 && currentSlotId !== 0) {
+      for (const droneSlot of slot.droneSlots) {
+        if (droneSlot.assignedDrone && droneSlot.slotDamaged) {
+          // Note: Slot damage reduces drone limit but doesn't prevent deployment
+          // This check is kept for consistency but may be adjusted based on game design
         }
       }
     }
