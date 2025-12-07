@@ -1,5 +1,4 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import ReactDOM from 'react-dom';
 import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp, Sword, Rocket, Shield, Grid, ArrowLeft, LayoutGrid, List, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import ActionCard from '../ui/ActionCard.jsx';
@@ -2336,6 +2335,13 @@ const DeckBuilder = ({
                     {/* Save/Confirm Button - hidden in readOnly mode */}
                     {!readOnly && (
                       <>
+                        {/* Save confirmation toast - appears above button */}
+                        {showSaveToast && (
+                          <div className="save-toast-inline">
+                            <span className="save-toast-icon">✓</span>
+                            <span className="save-toast-text">Deck Saved!</span>
+                          </div>
+                        )}
                         {allowInvalidSave ? (
                           // Extraction mode: can save incomplete, but with warning
                           <button
@@ -2384,14 +2390,6 @@ const DeckBuilder = ({
       </div>
      </div>
 
-      {/* Save Toast - rendered via Portal to document.body for proper positioning */}
-      {showSaveToast && ReactDOM.createPortal(
-        <div className="save-toast">
-          <span className="save-toast-icon">✓</span>
-          <span className="save-toast-text">Deck Saved!</span>
-        </div>,
-        document.body
-      )}
     </>
   );
 };

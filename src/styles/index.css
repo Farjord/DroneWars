@@ -791,44 +791,43 @@
 
 /* ========================================
    SAVE TOAST NOTIFICATION
-   Centered popup for deck save confirmation
+   Inline toast above save button - matches success-box theme
    ======================================== */
-.save-toast {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 9999;
+.save-toast-inline {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 16px 24px;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.95) 0%, rgba(5, 150, 105, 0.95) 100%);
-  border: 2px solid rgba(16, 185, 129, 1);
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.4), 0 0 40px rgba(16, 185, 129, 0.2);
-  animation: toast-appear 0.3s ease-out;
+  gap: 8px;
+  padding: 10px 16px;
+  margin-bottom: 8px;
+
+  /* Match success-box pattern from panels.css */
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.08) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-left: 3px solid rgba(16, 185, 129, 0.8);
+  border-radius: 4px;
+
+  /* Subtle animation */
+  animation: toast-fade-in 0.2s ease-out;
 }
 
-.save-toast-icon {
-  font-size: 24px;
-  color: white;
-}
-
-.save-toast-text {
+.save-toast-inline .save-toast-icon {
   font-size: 16px;
-  font-weight: 600;
-  color: white;
-  letter-spacing: 0.5px;
+  color: rgba(16, 185, 129, 0.9);
 }
 
-@keyframes toast-appear {
+.save-toast-inline .save-toast-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(16, 185, 129, 0.9);
+}
+
+@keyframes toast-fade-in {
   from {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(0.9);
+    transform: translateY(-4px);
   }
   to {
     opacity: 1;
-    transform: translate(-50%, -50%) scale(1);
+    transform: translateY(0);
   }
 }

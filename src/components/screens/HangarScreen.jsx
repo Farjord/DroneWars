@@ -25,6 +25,7 @@ import { SeededRandom } from '../../utils/seededRandom.js';
 import { ECONOMY } from '../../data/economyData.js';
 import { starterDeck } from '../../data/playerDeckData.js';
 import { Plus, Minus, RotateCcw, ChevronRight, Star, Trash2, AlertTriangle, Cpu, Lock } from 'lucide-react';
+import { getShipById } from '../../data/shipData.js';
 
 // Background image for the map area
 const eremosBackground = new URL('/Eremos/Eremos.jpg', import.meta.url).href;
@@ -1336,16 +1337,25 @@ const HangarScreen = () => {
                     return 'dw-deck-slot--active';
                   };
 
+                  // Get ship image for active slots background
+                  const ship = isActive && slot.shipId ? getShipById(slot.shipId) : null;
+                  const shipImage = ship?.image || null;
+
                   return (
                     <div
                       key={slot.id}
                       className={`dw-deck-slot ${getSlotClass()}`}
                       onClick={() => isUnlocked && handleSlotClick(slot)}
+                      style={shipImage ? {
+                        backgroundImage: `url(${shipImage})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                      } : undefined}
                     >
                       {!isUnlocked ? (
                         // LOCKED SLOT CONTENT
                         <div className="dw-deck-slot-locked-content">
-                          <Lock size={24} className="dw-deck-slot-lock-icon" />
+                          <Lock size={18} className="dw-deck-slot-lock-icon" />
                           <span className="dw-deck-slot-locked-label">SLOT {slot.id}</span>
 
                           {isNextToUnlock ? (
@@ -1354,7 +1364,7 @@ const HangarScreen = () => {
                               onClick={handleUnlockSlot}
                               disabled={!canAfford}
                             >
-                              UNLOCK - {unlockCost?.toLocaleString()} Credits
+                              UNLOCK - {unlockCost?.toLocaleString()}
                             </button>
                           ) : (
                             <span className="dw-deck-slot-locked-hint">
@@ -1363,8 +1373,8 @@ const HangarScreen = () => {
                           )}
                         </div>
                       ) : (
-                        // UNLOCKED SLOT CONTENT
-                        <>
+                        // UNLOCKED SLOT CONTENT - wrapped in overlay div for ship image backgrounds
+                        <div className={shipImage ? 'dw-deck-slot-content' : undefined}>
                           {/* Header Row: Slot name/id + Star + Delete */}
                           <div className="flex items-center justify-between mb-1">
                             <span className={`font-orbitron text-sm flex items-center gap-1 ${isMia ? 'text-red-400' : 'text-cyan-400'}`}>
@@ -1436,7 +1446,7 @@ const HangarScreen = () => {
                               Click to create
                             </div>
                           )}
-                        </>
+                        </div>
                       )}
                     </div>
                   );
