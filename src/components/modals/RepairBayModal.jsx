@@ -1,77 +1,60 @@
 // ========================================
 // REPAIR BAY MODAL COMPONENT
 // ========================================
-// Shows damaged ship components and allows repairing them for credits
+// Slot picker modal that shows active ship slots and navigates to RepairBayScreen
+// Acts as entry point to the full Repair Bay management screen
 
-import React, { useState } from 'react';
-import { Wrench } from 'lucide-react';
+import React from 'react';
+import { Wrench, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
-import repairService from '../../logic/economy/RepairService.js';
+import { getAllShips } from '../../data/shipData';
+
+/**
+ * Count damage in a ship slot (drones + sections)
+ */
+const countDamage = (slot) => {
+  if (!slot || slot.status !== 'active') return { drones: 0, sections: 0, total: 0 };
+
+  const damagedDrones = (slot.droneSlots || []).filter(s => s.slotDamaged && s.assignedDrone).length;
+  const damagedSections = ['l', 'm', 'r'].filter(lane => {
+    const sectionSlot = slot.sectionSlots?.[lane];
+    return sectionSlot?.componentId && (sectionSlot.damageDealt || 0) > 0;
+  }).length;
+
+  return {
+    drones: damagedDrones,
+    sections: damagedSections,
+    total: damagedDrones + damagedSections
+  };
+};
 
 /**
  * RepairBayModal Component
- * Shows damaged ship components and allows repairing them for credits
- * Uses RepairService for cost calculations and repair operations
+ * Simple slot picker that navigates to RepairBayScreen
  */
 const RepairBayModal = ({ onClose }) => {
-  const { gameState } = useGameState();
-  const [feedback, setFeedback] = useState(null);
+  const { gameState, gameStateManager } = useGameState();
 
-  const { singlePlayerProfile } = gameState;
-  const credits = singlePlayerProfile?.credits || 0;
+  const shipSlots = gameState.singlePlayerShipSlots || [];
+  const credits = gameState.singlePlayerProfile?.credits || 0;
 
-  /**
-   * Handle repair button click
-   */
-  const handleRepair = (instance) => {
-    const result = repairService.repairComponent(instance.instanceId);
-
-    if (!result.success) {
-      setFeedback({ type: 'error', message: result.error });
-      return;
-    }
-
-    setFeedback({
-      type: 'success',
-      message: `Component repaired for ${result.cost} credits`
-    });
-
-    setTimeout(() => setFeedback(null), 2000);
-  };
+  // Filter to active slots only
+  const activeSlots = shipSlots.filter(slot => slot.status === 'active');
 
   /**
-   * Repair all damaged components
+   * Handle slot click - navigate to RepairBayScreen
    */
-  const handleRepairAll = () => {
-    const result = repairService.repairAllComponents();
-
-    if (!result.success) {
-      setFeedback({ type: 'error', message: result.error });
-      return;
-    }
-
-    setFeedback({
-      type: 'success',
-      message: `${result.count} components repaired for ${result.cost} credits`
+  const handleSlotClick = (slotId) => {
+    onClose(); // Close modal first
+    gameStateManager.setState({
+      appState: 'repairBay',
+      repairBaySlotId: slotId
     });
-
-    setTimeout(() => setFeedback(null), 2000);
   };
-
-  // Safely get damaged components (fallback for showcase mode)
-  let damagedComponents = [];
-  let totalRepairCost = 0;
-  try {
-    damagedComponents = repairService.getDamagedComponents() || [];
-    totalRepairCost = repairService.getTotalRepairCost() || 0;
-  } catch (e) {
-    // Service may fail in showcase mode without full game state
-    console.debug('RepairBayModal: Service not available in preview mode');
-  }
 
   return (
     <div className="dw-modal-overlay" onClick={onClose}>
-      <div className="dw-modal-content dw-modal--lg dw-modal--action" onClick={e => e.stopPropagation()}>
+      <div className="dw-modal-content dw-modal--md dw-modal--action" onClick={e => e.stopPropagation()}>
         {/* Header */}
         <div className="dw-modal-header">
           <div className="dw-modal-header-icon">
@@ -79,7 +62,7 @@ const RepairBayModal = ({ onClose }) => {
           </div>
           <div className="dw-modal-header-info">
             <h2 className="dw-modal-header-title">Repair Bay</h2>
-            <p className="dw-modal-header-subtitle">Restore damaged components</p>
+            <p className="dw-modal-header-subtitle">Select a ship slot to manage</p>
           </div>
         </div>
 
@@ -91,115 +74,105 @@ const RepairBayModal = ({ onClose }) => {
             <span className="dw-modal-credits-value">{credits}</span>
           </div>
 
-          {/* Feedback Message */}
-          {feedback && (
-            <div className={`dw-modal-feedback dw-modal-feedback--${feedback.type}`}>
-              {feedback.message}
-            </div>
-          )}
-
-          {/* Damaged Components List */}
-          {damagedComponents.length === 0 ? (
+          {/* Slot List */}
+          {activeSlots.length === 0 ? (
             <div className="dw-modal-empty">
-              <div className="dw-modal-empty-icon">✓</div>
-              <p className="dw-modal-empty-text">No damaged components</p>
+              <div className="dw-modal-empty-icon">⚠️</div>
+              <p className="dw-modal-empty-text">No active ship slots</p>
               <p style={{ fontSize: '12px', color: 'var(--modal-text-muted)', marginTop: '8px' }}>
-                All ship components are at full hull
+                Configure a ship in the Hangar first
               </p>
             </div>
           ) : (
-            <>
-              {/* Repair All Button */}
-              <div style={{ marginBottom: '16px' }}>
-                <button
-                  className={`dw-btn dw-btn-success dw-btn--full ${credits < totalRepairCost ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  onClick={handleRepairAll}
-                  disabled={credits < totalRepairCost}
-                >
-                  Repair All ({totalRepairCost} credits)
-                </button>
-              </div>
+            <div className="dw-modal-scroll" style={{ maxHeight: '350px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {activeSlots.map(slot => {
+                  const damage = countDamage(slot);
+                  const shipName = getAllShips().find(s => s.id === slot.shipId)?.name || 'Unknown Ship';
+                  const hasDamage = damage.total > 0;
 
-              {/* Component List */}
-              <div className="dw-modal-scroll" style={{ maxHeight: '300px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {damagedComponents.map(instance => {
-                    const repairCost = repairService.getHullRepairCost(instance);
-                    const hullPercentage = (instance.currentHull / instance.maxHull) * 100;
-                    const canAfford = credits >= repairCost;
-
-                    return (
-                      <div
-                        key={instance.instanceId}
-                        className="dw-modal-info-box"
-                        style={{ marginBottom: 0 }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                          <div>
-                            <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#fff', margin: 0 }}>
-                              {instance.componentId}
-                            </h4>
-                            <p style={{ fontSize: '12px', color: 'var(--modal-text-secondary)', margin: '4px 0 0 0' }}>
-                              Ship Slot {instance.shipSlotId}
-                            </p>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)' }}>Hull</div>
-                            <div style={{
-                              fontSize: '14px',
-                              fontWeight: '700',
-                              color: hullPercentage > 50 ? '#fbbf24' : '#ef4444'
-                            }}>
-                              {instance.currentHull} / {instance.maxHull}
+                  return (
+                    <button
+                      key={slot.id}
+                      className="dw-modal-info-box"
+                      style={{
+                        marginBottom: 0,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        display: 'block',
+                        width: '100%',
+                        transition: 'all 0.2s ease',
+                        border: hasDamage
+                          ? '1px solid rgba(234, 179, 8, 0.4)'
+                          : '1px solid rgba(100, 116, 139, 0.3)'
+                      }}
+                      onClick={() => handleSlotClick(slot.id)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(51, 65, 85, 0.6)';
+                        e.currentTarget.style.borderColor = hasDamage
+                          ? 'rgba(234, 179, 8, 0.6)'
+                          : 'rgba(100, 116, 139, 0.5)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = '';
+                        e.currentTarget.style.borderColor = hasDamage
+                          ? 'rgba(234, 179, 8, 0.4)'
+                          : 'rgba(100, 116, 139, 0.3)';
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#fff', margin: 0 }}>
+                            {slot.name}
+                          </h4>
+                          <p style={{ fontSize: '12px', color: 'var(--modal-text-secondary)', margin: '4px 0 0 0' }}>
+                            {shipName}
+                          </p>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          {hasDamage ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#fbbf24' }}>
+                              <AlertTriangle size={16} />
+                              <span style={{ fontSize: '13px', fontWeight: '600' }}>
+                                {damage.total} damaged
+                              </span>
                             </div>
-                          </div>
-                        </div>
-
-                        {/* Hull Bar */}
-                        <div style={{
-                          width: '100%',
-                          height: '6px',
-                          backgroundColor: 'rgba(0,0,0,0.3)',
-                          borderRadius: '3px',
-                          overflow: 'hidden',
-                          marginBottom: '12px'
-                        }}>
-                          <div
-                            style={{
-                              height: '100%',
-                              width: `${hullPercentage}%`,
-                              backgroundColor: hullPercentage > 50 ? '#fbbf24' : '#ef4444',
-                              transition: 'width 0.3s ease'
-                            }}
-                          />
-                        </div>
-
-                        {/* Repair Button Row */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ fontSize: '12px', color: 'var(--modal-text-secondary)' }}>
-                            Repair Cost: <span style={{ color: '#fbbf24', fontWeight: '600' }}>{repairCost}</span> credits
-                          </div>
-                          <button
-                            className={`dw-btn dw-btn-confirm ${!canAfford ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            style={{ minWidth: '80px', padding: '6px 16px' }}
-                            onClick={() => handleRepair(instance)}
-                            disabled={!canAfford}
-                          >
-                            Repair
-                          </button>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#4ade80' }}>
+                              <CheckCircle size={16} />
+                              <span style={{ fontSize: '13px', fontWeight: '500' }}>
+                                No damage
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      {hasDamage && (
+                        <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--modal-text-secondary)' }}>
+                          {damage.drones > 0 && (
+                            <span style={{ marginRight: '12px' }}>
+                              🛸 {damage.drones} drone{damage.drones > 1 ? 's' : ''}
+                            </span>
+                          )}
+                          {damage.sections > 0 && (
+                            <span>
+                              🔧 {damage.sections} section{damage.sections > 1 ? 's' : ''}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
-            </>
+            </div>
           )}
         </div>
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-cancel" onClick={onClose}>
+          <button className="dw-btn dw-btn-cancel" onClick={onClose} aria-label="Close">
             Close
           </button>
         </div>

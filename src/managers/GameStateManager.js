@@ -1899,6 +1899,31 @@ class GameStateManager {
   }
 
   /**
+   * Update drone slot order for a ship slot (for Repair Bay reordering)
+   * Swaps only assignedDrone values; slotDamaged stays with the slot position
+   * @param {number} slotId - Ship slot ID (0-5)
+   * @param {Array} newDroneSlots - Updated drone slots array
+   */
+  updateShipSlotDroneOrder(slotId, newDroneSlots) {
+    const slots = [...this.state.singlePlayerShipSlots];
+    const slotIndex = slots.findIndex(s => s.id === slotId);
+
+    if (slotIndex === -1) {
+      console.warn(`updateShipSlotDroneOrder: Slot ${slotId} not found`);
+      return;
+    }
+
+    // Update the drone slots
+    slots[slotIndex] = {
+      ...slots[slotIndex],
+      droneSlots: newDroneSlots
+    };
+
+    this.setState({ singlePlayerShipSlots: slots });
+    debugLog('STATE_SYNC', `Drone order updated for slot ${slotId}`);
+  }
+
+  /**
    * Repair a damaged drone slot
    * @param {number} slotId - Ship slot ID (1-5, cannot modify 0)
    * @param {number} position - Drone slot position (0-4)

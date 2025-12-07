@@ -2,25 +2,127 @@
  * MIARecoveryService.js
  * Handles recovery and scrapping of MIA ship slots
  * Uses CreditManager for transactions, economyData for costs
+ * Recovery cost scales with deck value (50% of total replication/blueprint value)
  */
 
 import gameStateManager from '../../managers/GameStateManager.js';
 import creditManager from '../economy/CreditManager.js';
 import { ECONOMY } from '../../data/economyData.js';
 import { debugLog } from '../../utils/debugLogger.js';
-import { starterPoolShipIds } from '../../data/saveGameSchema.js';
+import { starterPoolShipIds, starterPoolCards, starterPoolDroneNames } from '../../data/saveGameSchema.js';
+import { starterDeck } from '../../data/playerDeckData.js';
+import fullCardCollection from '../../data/cardData.js';
+import fullDroneCollection from '../../data/droneData.js';
+import shipCollection from '../../data/shipData.js';
+import { shipComponentCollection } from '../../data/shipSectionData.js';
+
+// Pre-calculate starter component IDs for quick lookup
+const starterComponentIds = Object.keys(starterDeck?.shipComponents || {});
 
 class MIARecoveryService {
 
   /**
-   * Recover an MIA ship slot by paying credits
+   * Calculate the recovery cost for an MIA ship slot based on deck value
+   * Cost = max(FLOOR, totalValue * MULTIPLIER)
+   *
+   * Value calculation:
+   * - Cards: sum of replication costs by rarity (non-starter only)
+   * - Ship: blueprint cost by rarity (non-starter only)
+   * - Drones: sum of blueprint costs by rarity (non-starter only)
+   * - Components: sum of blueprint costs by rarity (non-starter only)
+   *
+   * @param {number} shipSlotId - The ID of the slot to calculate cost for
+   * @returns {number} The recovery cost in credits
+   */
+  calculateRecoveryCost(shipSlotId) {
+    const state = gameStateManager.getState();
+    const shipSlot = state.singlePlayerShipSlots?.find(s => s.id === shipSlotId);
+
+    // If slot not found, return floor
+    if (!shipSlot) {
+      return ECONOMY.MIA_RECOVERY_FLOOR;
+    }
+
+    let totalValue = 0;
+
+    // Calculate card values (non-starter only)
+    if (shipSlot.decklist && shipSlot.decklist.length > 0) {
+      shipSlot.decklist.forEach(item => {
+        // Skip starter cards
+        if (starterPoolCards.includes(item.id)) {
+          return;
+        }
+
+        const card = fullCardCollection.find(c => c.id === item.id);
+        if (card) {
+          const replicationCost = ECONOMY.REPLICATION_COSTS[card.rarity] || ECONOMY.REPLICATION_COSTS.Common;
+          totalValue += replicationCost * item.quantity;
+        }
+      });
+    }
+
+    // Calculate ship value (non-starter only)
+    if (shipSlot.shipId && !starterPoolShipIds.includes(shipSlot.shipId)) {
+      const ship = shipCollection.find(s => s.id === shipSlot.shipId);
+      if (ship) {
+        const blueprintCost = ECONOMY.STARTER_BLUEPRINT_COSTS[ship.rarity] || ECONOMY.STARTER_BLUEPRINT_COSTS.Common;
+        totalValue += blueprintCost;
+      }
+    }
+
+    // Calculate drone values (non-starter only)
+    if (shipSlot.droneSlots && shipSlot.droneSlots.length > 0) {
+      shipSlot.droneSlots.forEach(slot => {
+        if (!slot.assignedDrone) return;
+
+        // Skip starter drones
+        if (starterPoolDroneNames.includes(slot.assignedDrone)) {
+          return;
+        }
+
+        const drone = fullDroneCollection.find(d => d.name === slot.assignedDrone);
+        if (drone) {
+          const blueprintCost = ECONOMY.STARTER_BLUEPRINT_COSTS[drone.rarity] || ECONOMY.STARTER_BLUEPRINT_COSTS.Common;
+          totalValue += blueprintCost;
+        }
+      });
+    }
+
+    // Calculate component values (non-starter only)
+    // Components are stored as { componentId: lane }
+    if (shipSlot.shipComponents) {
+      Object.keys(shipSlot.shipComponents).forEach(componentId => {
+        // Skip starter components
+        if (starterComponentIds.includes(componentId)) {
+          return;
+        }
+
+        const component = shipComponentCollection.find(c => c.id === componentId);
+        if (component) {
+          const blueprintCost = ECONOMY.STARTER_BLUEPRINT_COSTS[component.rarity] || ECONOMY.STARTER_BLUEPRINT_COSTS.Common;
+          totalValue += blueprintCost;
+        }
+      });
+    }
+
+    // Apply multiplier and floor
+    const calculatedCost = totalValue * ECONOMY.MIA_RECOVERY_MULTIPLIER;
+    const finalCost = Math.max(ECONOMY.MIA_RECOVERY_FLOOR, Math.floor(calculatedCost));
+
+    debugLog('MIA', `Calculated recovery cost for slot ${shipSlotId}: ${finalCost} (value: ${totalValue})`);
+
+    return finalCost;
+  }
+
+  /**
+   * Recover an MIA ship slot by paying credits (cost scales with deck value)
    * @param {number} shipSlotId - The ID of the slot to recover
    * @returns {{ success: boolean, error?: string, cost?: number }}
    */
   recover(shipSlotId) {
     const state = gameStateManager.getState();
     const shipSlot = state.singlePlayerShipSlots.find(s => s.id === shipSlotId);
-    const salvageCost = ECONOMY.MIA_SALVAGE_COST;
+    const salvageCost = this.calculateRecoveryCost(shipSlotId);
 
     // Validate slot exists and is MIA
     if (!shipSlot) {
@@ -139,19 +241,22 @@ class MIARecoveryService {
   }
 
   /**
-   * Get recovery cost for a slot
-   * @returns {number} The salvage cost in credits
+   * Get recovery cost for a specific slot (cost scales with deck value)
+   * @param {number} shipSlotId - The ID of the slot to get cost for
+   * @returns {number} The recovery cost in credits
    */
-  getSalvageCost() {
-    return ECONOMY.MIA_SALVAGE_COST;
+  getSalvageCost(shipSlotId) {
+    return this.calculateRecoveryCost(shipSlotId);
   }
 
   /**
-   * Check if player can afford recovery
+   * Check if player can afford recovery for a specific slot
+   * @param {number} shipSlotId - The ID of the slot to check
    * @returns {boolean}
    */
-  canAffordRecovery() {
-    return creditManager.canAfford(ECONOMY.MIA_SALVAGE_COST);
+  canAffordRecovery(shipSlotId) {
+    const cost = this.calculateRecoveryCost(shipSlotId);
+    return creditManager.canAfford(cost);
   }
 }
 

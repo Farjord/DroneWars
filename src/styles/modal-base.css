@@ -430,6 +430,13 @@
   text-align: center;
 }
 
+.dw-modal-stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
 .dw-modal-stat-label {
   font-size: 11px;
   color: var(--modal-text-muted);

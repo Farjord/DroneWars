@@ -4,7 +4,7 @@
 // Modal that confirms deployment actions with energy and budget costs
 
 import React from 'react';
-import { Rocket, Zap, Target } from 'lucide-react';
+import { Rocket, Power, Plus } from 'lucide-react';
 
 /**
  * DEPLOYMENT CONFIRMATION MODAL COMPONENT
@@ -37,12 +37,12 @@ const DeploymentConfirmationModal = ({ deploymentConfirmation, show, onCancel, o
         <div className="dw-modal-body">
           <div className="dw-modal-grid dw-modal-grid--2col">
             <div className="dw-modal-stat">
-              <div className="dw-modal-stat-icon"><Target size={20} /></div>
+              <div className="dw-modal-stat-icon"><Plus size={28} style={{ color: 'white' }} /></div>
               <div className="dw-modal-stat-value">{budgetCost}</div>
               <div className="dw-modal-stat-label">Deployment Cost</div>
             </div>
             <div className="dw-modal-stat">
-              <div className="dw-modal-stat-icon"><Zap size={20} /></div>
+              <div className="dw-modal-stat-icon"><Power size={28} style={{ color: 'white' }} /></div>
               <div className="dw-modal-stat-value">{energyCost}</div>
               <div className="dw-modal-stat-label">Energy Cost</div>
             </div>

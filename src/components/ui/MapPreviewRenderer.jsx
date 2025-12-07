@@ -11,7 +11,7 @@ import { axialToPixel } from '../../utils/hexGrid.js';
  * MapPreviewRenderer - Compact hex grid preview for sector selection
  *
  * Features:
- * - Fixed size SVG (~400px)
+ * - Configurable size SVG (default 400px)
  * - Zone-based coloring
  * - POIs shown as generic amber markers (type hidden)
  * - Gates clickable to select entry point
@@ -23,10 +23,11 @@ import { axialToPixel } from '../../utils/hexGrid.js';
  * @param {number} radius - Map radius
  * @param {number} selectedGateId - Currently selected gate ID
  * @param {Function} onGateSelect - Callback when gate is clicked
+ * @param {number} size - Container size in pixels (default 400)
  */
-function MapPreviewRenderer({ hexes, gates, pois, radius, selectedGateId, onGateSelect }) {
-  // Fixed hex size for preview - calculate based on radius to fit in ~400px
-  const containerSize = 400;
+function MapPreviewRenderer({ hexes, gates, pois, radius, selectedGateId, onGateSelect, size = 400 }) {
+  // Calculate hex size based on container size and map radius
+  const containerSize = size;
   const hexSize = containerSize / (radius * 3.5);
 
   /**

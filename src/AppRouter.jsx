@@ -24,6 +24,7 @@ import HangarScreen from './components/screens/HangarScreen.jsx';
 import TacticalMapScreen from './components/screens/TacticalMapScreen.jsx';
 import EremosEntryScreen from './components/screens/EremosEntryScreen.jsx';
 import QuickDeployEditorScreen from './components/screens/QuickDeployEditorScreen.jsx';
+import RepairBayScreen from './components/screens/RepairBayScreen.jsx';
 import App from './App.jsx';
 import CyanGlowBackground from './components/ui/CyanGlowBackground.jsx';
 import SplashLoadingScreen from './components/ui/SplashLoadingScreen.jsx';
@@ -225,6 +226,10 @@ function AppRouter() {
 
     case 'quickDeployEditor':
       currentScreen = <QuickDeployEditorScreen />;
+      break;
+
+    case 'repairBay':
+      currentScreen = <RepairBayScreen />;
       break;
 
     case 'modalShowcase':

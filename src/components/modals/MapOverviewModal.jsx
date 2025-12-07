@@ -4,7 +4,7 @@ import { debugLog } from '../../utils/debugLogger.js';
 import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js';
 import { ECONOMY } from '../../data/economyData.js';
 import MapPreviewRenderer from '../ui/MapPreviewRenderer';
-import { Map, AlertTriangle, XCircle, Info, Star, Shield } from 'lucide-react';
+import { Map, AlertTriangle, XCircle, Info, Shield } from 'lucide-react';
 
 /**
  * MapOverviewModal Component
@@ -233,7 +233,7 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
 
   return (
     <div className="dw-modal-overlay" onClick={onClose}>
-      <div className="dw-modal-content dw-modal--xl dw-modal--action" onClick={e => e.stopPropagation()}>
+      <div className="dw-modal-content dw-modal--xl dw-modal--action" style={{ maxWidth: '760px' }} onClick={e => e.stopPropagation()}>
         {/* Header with Navigation */}
         <div className="dw-modal-header">
           <button
@@ -266,12 +266,12 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
         <div className="dw-modal-body">
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'auto 1fr',
-            gridTemplateRows: '1fr auto',
-            gap: '16px 24px'
+            gridTemplateColumns: '340px 340px',
+            gap: '12px 24px'
           }}>
-            {/* Row 1, Col 1: Map (aligned to bottom of cell) */}
-            <div style={{ gridRow: 1, gridColumn: 1, display: 'flex', alignItems: 'flex-end' }}>
+            {/* Row 1, Col 1: Map + Gate */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Map Preview */}
               {selectedMap.hexes ? (
                 <MapPreviewRenderer
                   hexes={selectedMap.hexes}
@@ -280,11 +280,12 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                   radius={selectedMap.radius || 5}
                   selectedGateId={selectedGateId}
                   onGateSelect={setSelectedGateId}
+                  size={340}
                 />
               ) : (
                 <div style={{
-                  width: '400px',
-                  height: '400px',
+                  width: '340px',
+                  height: '340px',
                   backgroundColor: 'rgba(0, 0, 0, 0.3)',
                   borderRadius: '6px',
                   border: '1px solid var(--modal-action-border)',
@@ -298,121 +299,9 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                   </div>
                 </div>
               )}
-            </div>
 
-            {/* Row 1, Col 2: Intel content */}
-            <div style={{ gridRow: 1, gridColumn: 2, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Section Header */}
-              <div style={{ borderBottom: '1px solid var(--modal-border)', paddingBottom: '8px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--modal-action)', margin: 0 }}>SECTOR INTEL</h3>
-              </div>
-
-              {/* Basic Stats */}
-              <div className="dw-modal-grid dw-modal-grid--3">
-                <div className="dw-modal-stat">
-                  <div className="dw-modal-stat-label">Difficulty</div>
-                  <div className="dw-modal-stat-value" style={{ color: getDifficultyColor() }}>
-                    Tier {selectedMap.tier}
-                  </div>
-                </div>
-                <div className="dw-modal-stat">
-                  <div className="dw-modal-stat-label">Total POIs</div>
-                  <div className="dw-modal-stat-value">{totalPOIs}</div>
-                </div>
-                <div className="dw-modal-stat">
-                  <div className="dw-modal-stat-label">Gates</div>
-                  <div className="dw-modal-stat-value" style={{ color: '#3b82f6' }}>{gateCount}</div>
-                </div>
-              </div>
-
-              {/* POI Breakdown */}
-              <div className="dw-modal-info-box">
-                <p className="dw-modal-info-title" style={{ borderBottom: '1px solid var(--modal-border)', paddingBottom: '8px', marginBottom: '12px' }}>POI BREAKDOWN</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--modal-text-secondary)' }}>Ordnance:</span>
-                    <span style={{ color: 'var(--modal-danger)', fontWeight: 600 }}>{poiBreakdown.Ordnance || 0}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--modal-text-secondary)' }}>Support:</span>
-                    <span style={{ color: '#22c55e', fontWeight: 600 }}>{poiBreakdown.Support || 0}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--modal-text-secondary)' }}>Tactic:</span>
-                    <span style={{ color: '#3b82f6', fontWeight: 600 }}>{poiBreakdown.Tactic || 0}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--modal-text-secondary)' }}>Upgrade:</span>
-                    <span style={{ color: '#a855f7', fontWeight: 600 }}>{poiBreakdown.Upgrade || 0}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--modal-text-secondary)' }}>Resource:</span>
-                    <span style={{ color: '#f97316', fontWeight: 600 }}>{poiBreakdown.Resource || 0}</span>
-                  </div>
-
-                  {/* Drone Blueprint Highlight */}
-                  {(selectedMap.hasDroneBlueprints || (poiBreakdown.Drone || 0) > 0) && (
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      padding: '8px 12px',
-                      marginTop: '8px',
-                      backgroundColor: 'rgba(168, 85, 247, 0.15)',
-                      border: '1px solid rgba(168, 85, 247, 0.4)',
-                      borderRadius: '4px'
-                    }}>
-                      <span style={{ color: '#a855f7', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Star size={14} /> Drone Blueprints:
-                      </span>
-                      <span style={{ color: '#a855f7', fontWeight: 700 }}>
-                        {selectedMap.dronePoiCount || poiBreakdown.Drone || 0}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Token Cost for Token-Required Maps */}
-              {selectedMap?.requiresToken && (
-                <div className="dw-modal-info-box" style={{
-                  backgroundColor: 'rgba(6, 182, 212, 0.08)',
-                  border: '1px solid rgba(6, 182, 212, 0.4)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Shield size={18} style={{ color: '#06b6d4' }} />
-                      <span style={{ color: '#06b6d4', fontWeight: 600 }}>Entry Requires: 1 Security Token</span>
-                    </div>
-                    <span style={{
-                      color: (singlePlayerProfile?.securityTokens || 0) >= 1 ? '#22c55e' : '#ef4444',
-                      fontWeight: 700
-                    }}>
-                      You have: {singlePlayerProfile?.securityTokens || 0}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Detection & Encounter */}
-              <div className="dw-modal-grid dw-modal-grid--2">
-                <div className="dw-modal-stat">
-                  <div className="dw-modal-stat-label">Starting Detection</div>
-                  <div className="dw-modal-stat-value" style={{ color: (selectedMap.baseDetection || 0) > 10 ? '#f97316' : 'var(--modal-success)' }}>
-                    {selectedMap.baseDetection || 0}%
-                  </div>
-                </div>
-                <div className="dw-modal-stat">
-                  <div className="dw-modal-stat-label">Encounter Risk</div>
-                  <div className="dw-modal-stat-value" style={{ color: (selectedMap.baseEncounterChance || 5) > 5 ? '#f97316' : 'var(--modal-success)' }}>
-                    {selectedMap.baseEncounterChance || 5}%
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Row 2, Col 1: Gate Selection Info */}
-            <div style={{ gridRow: 2, gridColumn: 1, display: 'flex' }}>
-              <div className="dw-modal-info-box" style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              {/* Gate Selection Info */}
+              <div className="dw-modal-info-box" style={{ width: '100%' }}>
                 <p style={{ fontSize: '13px', color: 'var(--modal-text-secondary)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   Click a gate
                   <svg width="16" height="16" viewBox="-8 -8 16 16" style={{ display: 'inline-block' }}>
@@ -439,74 +328,164 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
               </div>
             </div>
 
-            {/* Row 2, Col 2: Ship Selection + Validation Error */}
-            <div style={{ gridRow: 2, gridColumn: 2, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Ship Selection Dropdown */}
-              <div className="dw-modal-info-box">
-                <p className="dw-modal-info-title" style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  DEPLOY SHIP
-                  {isCurrentSlotInvalid && (
-                    <span style={{ color: '#f97316', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <AlertTriangle size={14} />
-                      CURRENT SHIP IS INVALID
-                    </span>
-                  )}
-                </p>
-                {allActiveSlots.length > 0 ? (
-                  <select
-                    value={currentSlotId}
-                    onChange={(e) => setCurrentSlotId(Number(e.target.value))}
-                    className="w-full bg-slate-700 border border-cyan-500/50 rounded px-3 py-2 text-white font-orbitron focus:outline-none focus:border-cyan-400"
-                  >
-                    {allActiveSlots.map(slot => (
-                      <option key={slot.id} value={slot.id}>
-                        {!slot.isValid ? '⚠ ' : ''}{slot.id === 0 ? 'Starter Deck' : (slot.name || `Ship Slot ${slot.id}`)}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div style={{ color: 'var(--modal-danger)', fontSize: '13px' }}>
-                    <p style={{ margin: 0 }}>No ships available.</p>
-                    <p style={{ margin: '4px 0 0 0', color: 'var(--modal-text-secondary)' }}>
-                      Create a ship in the Hangar first.
-                    </p>
-                  </div>
-                )}
+            {/* Row 1, Col 2: Intel content */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Section Header */}
+              <div style={{ borderBottom: '1px solid var(--modal-border)', paddingBottom: '8px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--modal-action)', margin: 0 }}>SECTOR INTEL</h3>
               </div>
 
-              {/* Extraction Limit Warning (Slot 0 only) */}
-              {currentSlotId === 0 && (
-                <div className="dw-modal-info-box" style={{
-                  background: 'rgba(245, 158, 11, 0.1)',
-                  borderColor: 'rgba(245, 158, 11, 0.3)'
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                    <Info size={18} style={{ color: '#f59e0b', flexShrink: 0, marginTop: '2px' }} />
-                    <div>
-                      <p style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: '#f59e0b' }}>Extraction Limit</p>
-                      <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: 'var(--modal-text-secondary)' }}>
-                        Starter Deck can only extract with <strong style={{ color: '#f59e0b' }}>{ECONOMY.STARTER_DECK_EXTRACTION_LIMIT || 3}</strong> loot items.
-                        Items collected beyond this limit must be selected at extraction.
-                      </p>
-                    </div>
+              {/* Basic Stats */}
+              <div className="dw-modal-grid dw-modal-grid--3">
+                <div className="dw-modal-stat">
+                  <div className="dw-modal-stat-label">Difficulty</div>
+                  <div className="dw-modal-stat-value" style={{ color: getDifficultyColor() }}>
+                    Tier {selectedMap.tier}
                   </div>
                 </div>
-              )}
+                <div className="dw-modal-stat">
+                  <div className="dw-modal-stat-label">Total POIs</div>
+                  <div className="dw-modal-stat-value">{totalPOIs}</div>
+                </div>
+                <div className="dw-modal-stat">
+                  <div className="dw-modal-stat-label">Gates</div>
+                  <div className="dw-modal-stat-value" style={{ color: '#3b82f6' }}>{gateCount}</div>
+                </div>
+              </div>
 
-              {/* Validation Error */}
-              {validationError && (
-                <div className="dw-modal-info-box" style={{ '--modal-theme': 'var(--modal-danger)', '--modal-theme-bg': 'var(--modal-danger-bg)', '--modal-theme-border': 'var(--modal-danger-border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                    <XCircle size={18} style={{ color: 'var(--modal-danger)', flexShrink: 0 }} />
-                    <div>
-                      <p className="dw-modal-info-title">Cannot Deploy</p>
-                      <p style={{ margin: 0, fontSize: '13px', color: 'var(--modal-text-primary)' }}>{validationError}</p>
-                    </div>
+              {/* POI Breakdown - Single Column */}
+              <div className="dw-modal-info-box">
+                <p className="dw-modal-info-title" style={{ marginBottom: '8px' }}>POI BREAKDOWN</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--modal-text-secondary)' }}>Ordnance:</span>
+                    <span style={{ color: 'var(--modal-danger)', fontWeight: 600 }}>{poiBreakdown.Ordnance || 0}</span>
                   </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--modal-text-secondary)' }}>Support:</span>
+                    <span style={{ color: '#22c55e', fontWeight: 600 }}>{poiBreakdown.Support || 0}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--modal-text-secondary)' }}>Tactic:</span>
+                    <span style={{ color: '#3b82f6', fontWeight: 600 }}>{poiBreakdown.Tactic || 0}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--modal-text-secondary)' }}>Upgrade:</span>
+                    <span style={{ color: '#a855f7', fontWeight: 600 }}>{poiBreakdown.Upgrade || 0}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--modal-text-secondary)' }}>Resource:</span>
+                    <span style={{ color: '#f97316', fontWeight: 600 }}>{poiBreakdown.Resource || 0}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: 'var(--modal-text-secondary)' }}>Blueprints:</span>
+                    <span style={{ color: '#a855f7', fontWeight: 600 }}>{selectedMap.dronePoiCount || poiBreakdown.Drone || 0}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detection & Encounter */}
+              <div className="dw-modal-grid dw-modal-grid--2">
+                <div className="dw-modal-stat">
+                  <div className="dw-modal-stat-label">Starting Detection</div>
+                  <div className="dw-modal-stat-value" style={{ color: (selectedMap.baseDetection || 0) > 10 ? '#f97316' : 'var(--modal-success)' }}>
+                    {selectedMap.baseDetection || 0}%
+                  </div>
+                </div>
+                <div className="dw-modal-stat">
+                  <div className="dw-modal-stat-label">Encounter Risk</div>
+                  <div className="dw-modal-stat-value" style={{ color: (selectedMap.baseEncounterChance || 5) > 5 ? '#f97316' : 'var(--modal-success)' }}>
+                    {selectedMap.baseEncounterChance || 5}%
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2, Col 1: Requirements Section (aligned with Deploy Ship) */}
+            <div className="dw-modal-info-box" style={{ width: '100%' }}>
+              <p className="dw-modal-info-title" style={{ marginBottom: '8px' }}>REQUIREMENTS</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
+                {/* Entry Requirements */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--modal-text-secondary)' }}>
+                    <Shield size={14} style={{ color: '#06b6d4' }} />
+                    Entry Requirements:
+                  </span>
+                  {selectedMap?.requiresToken ? (
+                    <span style={{
+                      color: (singlePlayerProfile?.securityTokens || 0) >= 1 ? '#22c55e' : '#ef4444',
+                      fontWeight: 600
+                    }}>
+                      1 Token (You have: {singlePlayerProfile?.securityTokens || 0})
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--modal-text-muted)' }}>None</span>
+                  )}
+                </div>
+
+                {/* Extraction Limit */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--modal-text-secondary)' }}>
+                    <Info size={14} style={{ color: '#f59e0b' }} />
+                    Extraction Limit:
+                  </span>
+                  {currentSlotId === 0 ? (
+                    <span style={{ color: '#f59e0b', fontWeight: 600 }}>
+                      {ECONOMY.STARTER_DECK_EXTRACTION_LIMIT || 3} items
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--modal-text-muted)' }}>None</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2, Col 2: Deploy Ship (aligned with Requirements) */}
+            <div className="dw-modal-info-box" style={{ width: '100%' }}>
+              <p className="dw-modal-info-title" style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                DEPLOY SHIP
+                {isCurrentSlotInvalid && (
+                  <span style={{ color: '#f97316', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <AlertTriangle size={14} />
+                    CURRENT SHIP IS INVALID
+                  </span>
+                )}
+              </p>
+              {allActiveSlots.length > 0 ? (
+                <select
+                  value={currentSlotId}
+                  onChange={(e) => setCurrentSlotId(Number(e.target.value))}
+                  className="w-full bg-slate-700 border border-cyan-500/50 rounded px-3 py-2 text-white font-orbitron focus:outline-none focus:border-cyan-400"
+                >
+                  {allActiveSlots.map(slot => (
+                    <option key={slot.id} value={slot.id}>
+                      {!slot.isValid ? '⚠ ' : ''}{slot.id === 0 ? 'Starter Deck' : (slot.name || `Ship Slot ${slot.id}`)}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div style={{ color: 'var(--modal-danger)', fontSize: '13px' }}>
+                  <p style={{ margin: 0 }}>No ships available.</p>
+                  <p style={{ margin: '4px 0 0 0', color: 'var(--modal-text-secondary)' }}>
+                    Create a ship in the Hangar first.
+                  </p>
                 </div>
               )}
             </div>
           </div>
+
+          {/* Validation Error (outside grid, full width) */}
+          {validationError && (
+            <div className="dw-modal-info-box" style={{ marginTop: '12px', '--modal-theme': 'var(--modal-danger)', '--modal-theme-bg': 'var(--modal-danger-bg)', '--modal-theme-border': 'var(--modal-danger-border)' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <XCircle size={18} style={{ color: 'var(--modal-danger)', flexShrink: 0 }} />
+                <div>
+                  <p className="dw-modal-info-title">Cannot Deploy</p>
+                  <p style={{ margin: 0, fontSize: '13px', color: 'var(--modal-text-primary)' }}>{validationError}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Actions */}

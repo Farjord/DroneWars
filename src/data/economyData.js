@@ -43,10 +43,16 @@ export const ECONOMY = {
   },
 
   // ========================================
-  // MIA RECOVERY
+  // MIA RECOVERY (Scaled by Deck Value)
   // ========================================
 
-  // Cost to salvage/recover an MIA ship
+  // Recovery cost = max(FLOOR, deckValue * MULTIPLIER)
+  // Deck value = sum of replication costs for non-starter cards
+  //            + blueprint costs for non-starter ships/drones/components
+  MIA_RECOVERY_MULTIPLIER: 0.5,    // 50% of deck's total value
+  MIA_RECOVERY_FLOOR: 500,         // Minimum recovery cost
+
+  // DEPRECATED: Flat salvage cost (kept for reference)
   MIA_SALVAGE_COST: 500,
 
   // ========================================

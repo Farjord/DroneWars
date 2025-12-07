@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useGameState } from '../../hooks/useGameState';
 import SaveLoadModal from '../modals/SaveLoadModal';
-import RepairBayModal from '../modals/RepairBayModal';
 import InventoryModal from '../modals/InventoryModal';
 import MapOverviewModal from '../modals/MapOverviewModal';
 import BlueprintsModal from '../modals/BlueprintsModal';
 import ReplicatorModal from '../modals/ReplicatorModal';
 import RunSummaryModal from '../modals/RunSummaryModal';
 import MIARecoveryModal from '../modals/MIARecoveryModal';
+import miaRecoveryService from '../../logic/singlePlayer/MIARecoveryService.js';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import QuickDeployManager from '../quickDeploy/QuickDeployManager';
 import ReputationTrack from '../ui/ReputationTrack';
@@ -712,7 +712,8 @@ const HangarScreen = () => {
         setActiveModal('blueprints');
         break;
       case 'repairBay':
-        setActiveModal('repairBay');
+        // Skip modal, go directly to repair bay screen
+        gameStateManager.setState({ appState: 'repairBay' });
         break;
       case 'saveLoad':
         setActiveModal('saveLoad');
@@ -1474,6 +1475,13 @@ const HangarScreen = () => {
                             </div>
                           )}
 
+                          {/* MIA Recovery Cost (not shown for slot 0 which can't go MIA) */}
+                          {isActive && !isSlot0 && (
+                            <div style={{ fontSize: '11px', color: '#f97316', marginTop: '2px' }}>
+                              MIA Recovery: {miaRecoveryService.calculateRecoveryCost(slot.id).toLocaleString()}
+                            </div>
+                          )}
+
                           {/* MIA indicator */}
                           {isMia && (
                             <div className="text-xs text-red-400 mt-1">
@@ -1509,7 +1517,6 @@ const HangarScreen = () => {
 
       {/* Modals (conditionally rendered) */}
       {activeModal === 'saveLoad' && <SaveLoadModal onClose={closeAllModals} />}
-      {activeModal === 'repairBay' && <RepairBayModal onClose={closeAllModals} />}
       {activeModal === 'inventory' && <InventoryModal onClose={closeAllModals} />}
       {activeModal === 'blueprints' && <BlueprintsModal onClose={closeAllModals} />}
       {activeModal === 'replicator' && <ReplicatorModal onClose={closeAllModals} />}

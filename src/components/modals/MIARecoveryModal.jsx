@@ -23,7 +23,7 @@ function MIARecoveryModal({ shipSlot, onClose }) {
   if (!shipSlot || shipSlot.status !== 'mia') return null;
 
   const profile = gameState.singlePlayerProfile || { credits: 500 };
-  const salvageCost = miaRecoveryService.getSalvageCost();
+  const salvageCost = miaRecoveryService.getSalvageCost(shipSlot.id);
   const canAfford = profile.credits >= salvageCost;
 
   // Get card names for display
