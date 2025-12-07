@@ -10,6 +10,7 @@ import { useGameData } from '../../hooks/useGameData.js';
 import { useEditorStats } from '../../contexts/EditorStatsContext.jsx';
 import InterceptedBadge from './InterceptedBadge.jsx';
 import TargetLockIcon from './TargetLockIcon.jsx';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * STAT HEXAGON COMPONENT
@@ -82,6 +83,11 @@ const DroneToken = ({
   interceptedBadge,
   enableFloatAnimation = false
 }) => {
+  // Debug: Track isPotentialInterceptor prop for opponent drones
+  if (!isPlayer && isPotentialInterceptor) {
+    debugLog('INTERCEPTOR_GLOW', `DroneToken ${drone.name} (${drone.id}) isPotentialInterceptor=${isPotentialInterceptor}`);
+  }
+
   // Get GameDataService for direct effective stats calculation
   const { getEffectiveStats } = useGameData();
   const editorStats = useEditorStats();

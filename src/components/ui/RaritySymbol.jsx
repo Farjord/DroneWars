@@ -2,7 +2,7 @@
 // RARITY SYMBOL COMPONENT
 // ========================================
 // Renders rarity indicator symbols for cards and drones
-// Uses SVG shapes: circle (Common), triangle (Uncommon),
+// Uses SVG shapes: circle (Common), square (Uncommon),
 // diamond (Rare), hexagon (Mythic)
 
 import React from 'react';
@@ -23,8 +23,8 @@ const RaritySymbol = ({ rarity, size = 16, className = '' }) => {
         // Circle
         return <circle cx="8" cy="8" r="6" fill={color} />;
       case 'Uncommon':
-        // Triangle (pointing up)
-        return <polygon points="8,2 14,14 2,14" fill={color} />;
+        // Square
+        return <polygon points="3,3 13,3 13,13 3,13" fill={color} />;
       case 'Rare':
         // Diamond (rotated square)
         return <polygon points="8,1 15,8 8,15 1,8" fill={color} />;

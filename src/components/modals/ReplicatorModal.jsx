@@ -23,10 +23,7 @@ const ReplicatorModal = ({ onClose }) => {
   const credits = singlePlayerProfile?.credits || 0;
 
   // Get costs from service for display (with fallback for showcase mode)
-  let REPLICATE_COSTS = {
-    regular: { Common: 100, Uncommon: 250, Rare: 600, Mythic: 1500 },
-    starter: { Common: 75, Uncommon: 175, Rare: 450, Mythic: 1100 }
-  };
+  let REPLICATE_COSTS = { Common: 100, Uncommon: 250, Rare: 600, Mythic: 1500 };
   try {
     const costs = replicatorService.getAllCosts();
     if (costs) REPLICATE_COSTS = costs;
@@ -35,7 +32,7 @@ const ReplicatorModal = ({ onClose }) => {
   }
 
   /**
-   * Get replicatable cards (starter cards + owned regular cards)
+   * Get replicatable cards (owned non-starter cards)
    */
   const ownedCards = useMemo(() => {
     try {
@@ -161,22 +158,6 @@ const ReplicatorModal = ({ onClose }) => {
                           borderColor: getRarityColor(card.rarity)
                         }}
                       >
-                        {/* Starter Badge */}
-                        {card.isStarterCard && (
-                          <div style={{
-                            fontSize: '10px',
-                            fontWeight: '600',
-                            color: '#fff',
-                            background: 'linear-gradient(180deg, #3b82f6 0%, #2563eb 100%)',
-                            padding: '2px 6px',
-                            borderRadius: '4px',
-                            marginBottom: '6px',
-                            display: 'inline-block'
-                          }}>
-                            STARTER
-                          </div>
-                        )}
-
                         {/* Card Name */}
                         <div style={{
                           fontSize: '13px',
@@ -238,13 +219,9 @@ const ReplicatorModal = ({ onClose }) => {
 
               {/* Info Box */}
               <div className="dw-modal-info-box" style={{ marginTop: '16px', background: 'rgba(147, 51, 234, 0.1)', borderColor: 'rgba(147, 51, 234, 0.3)' }}>
-                <p style={{ fontSize: '12px', color: 'var(--modal-text-primary)', margin: 0, marginBottom: '4px' }}>
-                  <strong style={{ color: '#a855f7' }}>Regular Costs:</strong>{' '}
-                  Common {REPLICATE_COSTS.regular?.Common}, Uncommon {REPLICATE_COSTS.regular?.Uncommon}, Rare {REPLICATE_COSTS.regular?.Rare}, Mythic {REPLICATE_COSTS.regular?.Mythic}
-                </p>
                 <p style={{ fontSize: '12px', color: 'var(--modal-text-primary)', margin: 0 }}>
-                  <strong style={{ color: '#3b82f6' }}>Starter Costs:</strong>{' '}
-                  Common {REPLICATE_COSTS.starter?.Common}, Uncommon {REPLICATE_COSTS.starter?.Uncommon}, Rare {REPLICATE_COSTS.starter?.Rare}, Mythic {REPLICATE_COSTS.starter?.Mythic}
+                  <strong style={{ color: '#a855f7' }}>Costs:</strong>{' '}
+                  Common {REPLICATE_COSTS.Common}, Uncommon {REPLICATE_COSTS.Uncommon}, Rare {REPLICATE_COSTS.Rare}, Mythic {REPLICATE_COSTS.Mythic}
                 </p>
               </div>
             </>

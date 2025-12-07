@@ -38,6 +38,7 @@ class GameFlowManager {
     this.roundNumber = 0;
     this.isProcessingAutomaticPhase = false; // Flag to track automatic phase processing
     this.isInCheckpointCascade = false; // Flag to prevent recursive auto-processing during optimistic cascade
+    this._quickDeployExecutedThisRound = false; // Flag to track quick deploy execution (prevents race condition)
 
     // Event listeners
     this.listeners = [];
@@ -1173,6 +1174,39 @@ class GameFlowManager {
       debugLog('PHASE_MANAGER', '✅ Card draw complete');
 
       // ========================================
+      // STEP 5: Quick Deploy (Round 1 only)
+      // ========================================
+      // Execute quick deploy BEFORE phase determination to avoid async race conditions
+      // Quick deploy happens after card draw, so player has cards in hand during action phase
+      if (currentRoundNumber === 1) {
+        const quickDeployState = this.gameStateManager.getState();
+        const pendingQuickDeployId = quickDeployState.pendingQuickDeploy;
+
+        if (pendingQuickDeployId) {
+          debugLog('PHASE_MANAGER', '⚡ Step 5: Executing quick deploy');
+
+          // Look up the full quick deploy object by ID
+          const quickDeploy = quickDeployState.quickDeployments?.find(
+            qd => qd.id === pendingQuickDeployId
+          );
+
+          if (quickDeploy) {
+            // Set flag BEFORE execution to indicate quick deploy is being handled
+            this._quickDeployExecutedThisRound = true;
+
+            // Execute quick deploy synchronously (await the async function)
+            await this.executeQuickDeploy(quickDeploy);
+
+            debugLog('PHASE_MANAGER', '✅ Quick deploy execution complete');
+          } else {
+            console.warn('[Quick Deploy] Template not found for ID:', pendingQuickDeployId);
+            // Clear the pending flag to prevent infinite loop
+            this.gameStateManager.setState({ pendingQuickDeploy: null });
+          }
+        }
+      }
+
+      // ========================================
       // FINAL: Emit Event & Broadcast
       // ========================================
       // Emit single phaseTransition event for roundInitialization
@@ -1629,23 +1663,20 @@ class GameFlowManager {
       case 'deployment':
         // DIAGNOSTIC: Track every call to isPhaseRequired(deployment)
         debugLog('PHASE_FLOW', '🔍 isPhaseRequired(deployment) called', {
-          caller: new Error().stack?.split('\n')[2]?.trim(),
-          pendingQuickDeploy: gameState.pendingQuickDeploy,
+          quickDeployExecutedThisRound: this._quickDeployExecutedThisRound,
           roundNumber: gameState.roundNumber
         });
-        // Check for pending quick deploy - if present, execute silently and skip deployment phase
-        if (gameState.pendingQuickDeploy && gameState.roundNumber === 1) {
-          debugLog('PHASE_FLOW', '⚡ Quick deploy detected, will execute and skip deployment');
-          // Look up the full quick deploy object by ID
-          const quickDeploy = gameState.quickDeployments?.find(qd => qd.id === gameState.pendingQuickDeploy);
-          if (quickDeploy) {
-            // Execute quick deploy asynchronously (non-blocking)
-            this.executeQuickDeploy(quickDeploy);
-            return false; // Skip deployment phase
-          } else {
-            console.warn('[Quick Deploy] Quick deploy not found for ID:', gameState.pendingQuickDeploy);
-          }
+
+        // Check if quick deploy was executed during processRoundInitialization
+        // This flag-based approach avoids the race condition where executeQuickDeploy
+        // was called from here without being awaited (causing intermittent failures)
+        if (this._quickDeployExecutedThisRound && gameState.roundNumber === 1) {
+          debugLog('PHASE_FLOW', '⚡ Quick deploy was executed, skipping deployment phase');
+          // Clear the flag so it doesn't affect future rounds
+          this._quickDeployExecutedThisRound = false;
+          return false; // Skip deployment phase
         }
+
         return true; // Normal deployment required
       case 'action':
         return true; // Always required
@@ -2147,6 +2178,9 @@ class GameFlowManager {
    * Start a new round (loop back to beginning of round phases)
    */
   async startNewRound() {
+    // Reset quick deploy flag for new round
+    this._quickDeployExecutedThisRound = false;
+
     // Capture first passer from the round that just ended BEFORE incrementing round number
     const currentGameState = this.gameStateManager.getState();
     const firstPasserFromPreviousRound = currentGameState.passInfo?.firstPasser || null;
@@ -2248,6 +2282,7 @@ class GameFlowManager {
     this.gameStage = 'preGame';
     this.roundNumber = 0;
     this.isProcessingAutomaticPhase = false;
+    this._quickDeployExecutedThisRound = false;
 
     this.emit('gameReset', {});
   }

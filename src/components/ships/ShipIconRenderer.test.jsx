@@ -177,7 +177,8 @@ describe('ShipIconRenderer', () => {
         </svg>
       );
       const wrapper = screen.getByTestId('ship-icon-wrapper');
-      expect(wrapper.style.transform).toContain('rotate(90deg)');
+      // +180 offset applied for icon orientation: 90 + 180 = 270
+      expect(wrapper.style.transform).toContain('rotate(270deg)');
     });
 
     // Test: Handles negative rotation
@@ -194,7 +195,8 @@ describe('ShipIconRenderer', () => {
         </svg>
       );
       const wrapper = screen.getByTestId('ship-icon-wrapper');
-      expect(wrapper.style.transform).toContain('rotate(-45deg)');
+      // +180 offset applied for icon orientation: -45 + 180 = 135
+      expect(wrapper.style.transform).toContain('rotate(135deg)');
     });
 
     // Test: Zero heading (default)
@@ -211,7 +213,8 @@ describe('ShipIconRenderer', () => {
         </svg>
       );
       const wrapper = screen.getByTestId('ship-icon-wrapper');
-      expect(wrapper.style.transform).toContain('rotate(0deg)');
+      // +180 offset applied for icon orientation: 0 + 180 = 180
+      expect(wrapper.style.transform).toContain('rotate(180deg)');
     });
   });
 

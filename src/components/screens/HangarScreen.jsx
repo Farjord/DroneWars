@@ -24,7 +24,7 @@ import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js'
 import { SeededRandom } from '../../utils/seededRandom.js';
 import { ECONOMY } from '../../data/economyData.js';
 import { starterDeck } from '../../data/playerDeckData.js';
-import { Plus, Minus, RotateCcw, ChevronRight, Star, Trash2, AlertTriangle, Cpu } from 'lucide-react';
+import { Plus, Minus, RotateCcw, ChevronRight, Star, Trash2, AlertTriangle, Cpu, Lock } from 'lucide-react';
 
 // Background image for the map area
 const eremosBackground = new URL('/Eremos/Eremos.jpg', import.meta.url).href;
@@ -538,6 +538,15 @@ const HangarScreen = () => {
     setDeleteConfirmation(null);
   };
 
+  // Handle slot unlock - unlocks the next deck slot (sequential)
+  const handleUnlockSlot = (e) => {
+    e.stopPropagation(); // Prevent slot click
+    const result = gameStateManager.unlockNextDeckSlot();
+    if (!result.success) {
+      console.warn('Failed to unlock slot:', result.error);
+    }
+  };
+
   // Handle new deck option selection - show confirmation modal for both options
   const handleNewDeckOption = (option) => {
     setActiveModal(null);
@@ -583,6 +592,7 @@ const HangarScreen = () => {
       newDroneInstances.push({
         id: `DRONE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         droneName: drone.name,
+        shipSlotId: selectedSlotId,
         isDamaged: false,
         isMIA: false
       });
@@ -595,6 +605,7 @@ const HangarScreen = () => {
       newComponentInstances.push({
         id: `COMP_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         componentId: compId,
+        shipSlotId: selectedSlotId,
         currentHull: 10,
         maxHull: 10
       });
@@ -862,9 +873,10 @@ const HangarScreen = () => {
             { label: 'AI CORES', value: singlePlayerProfile?.aiCores || 0, color: '#f97316', icon: Cpu },
             { label: 'TOKENS', value: singlePlayerProfile?.securityTokens || 0, color: '#06b6d4' },
             { label: 'MAP KEYS', value: 0, color: '#60a5fa' },
-            { label: 'RUNS', value: singlePlayerProfile?.totalRuns || 0, color: '#e5e7eb' },
-            { label: 'VICTORIES', value: singlePlayerProfile?.victories || 0, color: '#22c55e' },
-            { label: 'MAX TIER', value: singlePlayerProfile?.maxTierReached || 1, color: '#a855f7' }
+            { label: 'RUNS', value: singlePlayerProfile?.stats?.runsCompleted || 0, color: '#e5e7eb' },
+            { label: 'EXTRACTIONS', value: singlePlayerProfile?.stats?.runsCompleted || 0, color: '#22c55e' },
+            { label: 'COMBATS WON', value: singlePlayerProfile?.stats?.totalCombatsWon || 0, color: '#10b981' },
+            { label: 'MAX TIER', value: singlePlayerProfile?.stats?.highestTierCompleted || 1, color: '#a855f7' }
           ].map(({ label, value, color, icon: Icon }) => (
             <div key={label} className="dw-stat-box" style={{ minWidth: '70px', padding: '6px 10px' }}>
               <span className="dw-stat-box-label">{label}</span>
@@ -1286,6 +1298,14 @@ const HangarScreen = () => {
                   const isEmpty = slot.status === 'empty';
                   const isMia = slot.status === 'mia';
 
+                  // Deck slot unlock state
+                  const isUnlocked = gameStateManager.isSlotUnlocked(slot.id);
+                  const highestUnlocked = singlePlayerProfile?.highestUnlockedSlot ?? 0;
+                  const isNextToUnlock = !isUnlocked && slot.id === highestUnlocked + 1;
+                  const unlockCost = isNextToUnlock ? ECONOMY.DECK_SLOT_UNLOCK_COSTS[slot.id] : null;
+                  const credits = singlePlayerProfile?.credits ?? 0;
+                  const canAfford = unlockCost !== null && credits >= unlockCost;
+
                   // Get card/drone counts for active slots
                   const cardCount = isActive ? (slot.decklist || []).reduce((sum, c) => sum + c.quantity, 0) : 0;
                   const droneCount = isActive ? (slot.drones || []).length : 0;
@@ -1307,91 +1327,116 @@ const HangarScreen = () => {
                     return validation.valid;
                   })() : true;
 
+                  // Determine slot state class
+                  const getSlotClass = () => {
+                    if (!isUnlocked) return 'dw-deck-slot--locked';
+                    if (isMia) return 'dw-deck-slot--mia';
+                    if (isEmpty) return 'dw-deck-slot--empty';
+                    if (isDefault) return 'dw-deck-slot--default';
+                    return 'dw-deck-slot--active';
+                  };
+
                   return (
                     <div
                       key={slot.id}
-                      className={`relative rounded-lg border-2 transition-all cursor-pointer ${
-                        isMia
-                          ? 'border-red-500 bg-red-900/20'
-                          : isEmpty
-                          ? 'border-dashed border-gray-600 bg-gray-800/30 hover:border-gray-500'
-                          : isDefault
-                          ? 'border-yellow-400 bg-cyan-900/30'
-                          : 'border-cyan-500 bg-cyan-900/20 hover:border-cyan-400'
-                      }`}
-                      onClick={() => handleSlotClick(slot)}
-                      style={{ padding: '12px' }}
+                      className={`dw-deck-slot ${getSlotClass()}`}
+                      onClick={() => isUnlocked && handleSlotClick(slot)}
                     >
-                      {/* Header Row: Slot name/id + Star + Delete */}
-                      <div className="flex items-center justify-between mb-1">
-                        <span className={`font-orbitron text-sm flex items-center gap-1 ${isMia ? 'text-red-400' : 'text-cyan-400'}`}>
-                          {isSlot0 ? 'STARTER' : `SLOT ${slot.id}`}
-                          {isActive && !isValidDeck && (
-                            <AlertTriangle size={14} className="text-orange-400" />
+                      {!isUnlocked ? (
+                        // LOCKED SLOT CONTENT
+                        <div className="dw-deck-slot-locked-content">
+                          <Lock size={24} className="dw-deck-slot-lock-icon" />
+                          <span className="dw-deck-slot-locked-label">SLOT {slot.id}</span>
+
+                          {isNextToUnlock ? (
+                            <button
+                              className={`dw-btn dw-btn-confirm dw-btn--sm dw-btn--full ${!canAfford ? 'dw-btn--disabled' : ''}`}
+                              onClick={handleUnlockSlot}
+                              disabled={!canAfford}
+                            >
+                              UNLOCK - {unlockCost?.toLocaleString()} Credits
+                            </button>
+                          ) : (
+                            <span className="dw-deck-slot-locked-hint">
+                              Unlock Slot {slot.id - 1} first
+                            </span>
                           )}
-                        </span>
-                        <div className="flex items-center gap-1">
-                          {/* Star button (only for active slots) */}
+                        </div>
+                      ) : (
+                        // UNLOCKED SLOT CONTENT
+                        <>
+                          {/* Header Row: Slot name/id + Star + Delete */}
+                          <div className="flex items-center justify-between mb-1">
+                            <span className={`font-orbitron text-sm flex items-center gap-1 ${isMia ? 'text-red-400' : 'text-cyan-400'}`}>
+                              {isSlot0 ? 'STARTER' : `SLOT ${slot.id}`}
+                              {isActive && !isValidDeck && (
+                                <AlertTriangle size={14} className="text-orange-400" />
+                              )}
+                            </span>
+                            <div className="flex items-center gap-1">
+                              {/* Star button (only for active slots) */}
+                              {isActive && (
+                                <button
+                                  onClick={(e) => handleStarToggle(e, slot.id)}
+                                  className={`p-1 rounded transition-colors ${
+                                    isDefault
+                                      ? 'text-yellow-400 hover:text-yellow-300'
+                                      : 'text-gray-500 hover:text-gray-400'
+                                  }`}
+                                  title={isDefault ? 'Default ship for deployment' : 'Set as default'}
+                                >
+                                  <Star size={16} fill={isDefault ? 'currentColor' : 'none'} />
+                                </button>
+                              )}
+                              {/* Delete button (not for slot 0 or empty slots) */}
+                              {isActive && !isSlot0 && (
+                                <button
+                                  onClick={(e) => handleDeleteClick(e, slot)}
+                                  className="p-1 rounded text-gray-500 hover:text-red-400 transition-colors"
+                                  title="Delete deck"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Deck Name */}
+                          <div className="font-medium text-white text-sm truncate">
+                            {isActive ? (slot.name || 'Unnamed Deck') : isMia ? 'MIA' : 'Empty Slot'}
+                          </div>
+
+                          {/* Stats for active slots */}
                           {isActive && (
-                            <button
-                              onClick={(e) => handleStarToggle(e, slot.id)}
-                              className={`p-1 rounded transition-colors ${
-                                isDefault
-                                  ? 'text-yellow-400 hover:text-yellow-300'
-                                  : 'text-gray-500 hover:text-gray-400'
-                              }`}
-                              title={isDefault ? 'Default ship for deployment' : 'Set as default'}
-                            >
-                              <Star size={16} fill={isDefault ? 'currentColor' : 'none'} />
-                            </button>
+                            <div className={`text-xs mt-1 ${isValidDeck ? 'text-gray-400' : 'text-orange-400'}`}>
+                              {cardCount}/40 cards • {droneCount}/5 drones
+                              {!isValidDeck && ' (incomplete)'}
+                            </div>
                           )}
-                          {/* Delete button (not for slot 0 or empty slots) */}
-                          {isActive && !isSlot0 && (
-                            <button
-                              onClick={(e) => handleDeleteClick(e, slot)}
-                              className="p-1 rounded text-gray-500 hover:text-red-400 transition-colors"
-                              title="Delete deck"
-                            >
-                              <Trash2 size={16} />
-                            </button>
+
+                          {/* Loadout value for reputation */}
+                          {isActive && (
+                            <div style={{ fontSize: '11px', color: '#a855f7', marginTop: '4px' }}>
+                              {loadoutValueData?.isStarterDeck
+                                ? 'Loadout Value: None (Starter)'
+                                : `Loadout Value: ${loadoutValueData?.totalValue?.toLocaleString() || 0}`}
+                            </div>
                           )}
-                        </div>
-                      </div>
 
-                      {/* Deck Name */}
-                      <div className="font-medium text-white text-sm truncate">
-                        {isActive ? (slot.name || 'Unnamed Deck') : isMia ? 'MIA' : 'Empty Slot'}
-                      </div>
+                          {/* MIA indicator */}
+                          {isMia && (
+                            <div className="text-xs text-red-400 mt-1">
+                              Click to recover
+                            </div>
+                          )}
 
-                      {/* Stats for active slots */}
-                      {isActive && (
-                        <div className={`text-xs mt-1 ${isValidDeck ? 'text-gray-400' : 'text-orange-400'}`}>
-                          {cardCount}/40 cards • {droneCount}/5 drones
-                          {!isValidDeck && ' (incomplete)'}
-                        </div>
-                      )}
-
-                      {/* Loadout value for reputation */}
-                      {isActive && (
-                        <div style={{ fontSize: '11px', color: '#a855f7', marginTop: '4px' }}>
-                          {loadoutValueData?.isStarterDeck
-                            ? 'Loadout Value: None (Starter)'
-                            : `Loadout Value: ${loadoutValueData?.totalValue?.toLocaleString() || 0}`}
-                        </div>
-                      )}
-
-                      {/* MIA indicator */}
-                      {isMia && (
-                        <div className="text-xs text-red-400 mt-1">
-                          Click to recover
-                        </div>
-                      )}
-
-                      {/* Empty slot indicator */}
-                      {isEmpty && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          Click to create
-                        </div>
+                          {/* Empty slot indicator */}
+                          {isEmpty && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              Click to create
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   );

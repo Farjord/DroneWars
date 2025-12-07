@@ -60,6 +60,7 @@ function GameBattlefield({
   turnPhase,
   reallocationPhase,
   pendingShieldAllocations,
+  pendingShieldChanges,
   shipAbilityMode,
   hoveredTarget,
   selectedDrone,
@@ -191,6 +192,7 @@ function GameBattlefield({
           validCardTargets={validCardTargets}
           reallocationPhase={reallocationPhase}
           pendingShieldAllocations={pendingShieldAllocations}
+          pendingShieldChanges={pendingShieldChanges}
           gameEngine={gameEngine}
           turnPhase={turnPhase}
           isMyTurn={isMyTurn}

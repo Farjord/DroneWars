@@ -68,6 +68,7 @@ import { gameEngine } from './logic/gameLogic.js';
 import { calculatePotentialInterceptors } from './logic/combat/InterceptionProcessor.js';
 import TargetingRouter from './logic/TargetingRouter.js';
 import ExtractionController from './logic/singlePlayer/ExtractionController.js';
+import { calculateRoundStartReset } from './logic/shields/ShieldResetUtils.js';
 import { BACKGROUNDS, DEFAULT_BACKGROUND, getBackgroundById } from './config/backgrounds.js';
 
 // --- 1.6 MANAGER/STATE IMPORTS ---
@@ -519,6 +520,7 @@ const App = ({ phaseAnimationQueue }) => {
         });
       }
       setPendingShieldAllocations(currentAllocations);
+      setInitialShieldAllocation(currentAllocations); // Store snapshot for reset
       setPendingShieldsRemaining(shieldsToAllocate);
       debugLog('SHIELD_CLICKS', '🆕 Initialized pending shield allocations', {
         currentAllocations,
@@ -728,17 +730,22 @@ const App = ({ phaseAnimationQueue }) => {
   }, [processActionWithGuestRouting, getLocalPlayerId, getOpponentPlayerId, aiCardPlayReport, winner]);
 
   /**
-   * Handle reset shields button - removes all allocated shields
+   * Handle reset shields button - restores shields to initial snapshot
    */
   const handleResetShields = useCallback(async () => {
-    // Reset pending allocations to empty (all shields back to pool)
-    setPendingShieldAllocations({});
-    setPendingShieldsRemaining(shieldsToAllocate);
+    // Use utility function to calculate reset values
+    const snapshot = initialShieldAllocation || {};
+    const { newPending, newRemaining } = calculateRoundStartReset(snapshot, shieldsToAllocate);
 
-    debugLog('SHIELD_CLICKS', '🔄 Reset pending shield allocations', {
-      shieldsToAllocate
+    setPendingShieldAllocations(newPending);
+    setPendingShieldsRemaining(newRemaining);
+
+    debugLog('SHIELD_CLICKS', '🔄 Reset pending shield allocations to initial snapshot', {
+      initialSnapshot: snapshot,
+      newPending,
+      newRemaining
     });
-  }, [shieldsToAllocate]);
+  }, [shieldsToAllocate, initialShieldAllocation]);
 
   /**
    * Handle showing opponent's selected drones modal
@@ -1353,15 +1360,26 @@ const App = ({ phaseAnimationQueue }) => {
   // --- 8.4 INTERCEPTION MONITORING ---
   // TODO: UI MONITORING - Interception monitoring is appropriate UI-only effect - calculates UI hints for user
   useEffect(() => {
+    debugLog('INTERCEPTOR_GLOW', `useEffect triggered: turnPhase=${turnPhase}, selectedDrone=${selectedDrone?.id || 'null'}, isExhausted=${selectedDrone?.isExhausted || 'N/A'}`);
     if (turnPhase === 'action') {
+        const placedSections = getPlacedSectionsForEngine();
+        debugLog('INTERCEPTOR_GLOW', `Calling calculatePotentialInterceptors with:`, {
+          selectedDroneId: selectedDrone?.id,
+          selectedDroneName: selectedDrone?.name,
+          localPlayerName: localPlayerState?.name,
+          opponentPlayerName: opponentPlayerState?.name,
+          placedSections
+        });
         const potential = calculatePotentialInterceptors(
             selectedDrone,
             localPlayerState,
             opponentPlayerState,
-            getPlacedSectionsForEngine()
+            placedSections
         );
+        debugLog('INTERCEPTOR_GLOW', `calculatePotentialInterceptors returned: ${JSON.stringify(potential)}`);
         setPotentialInterceptors(potential);
     } else {
+        debugLog('INTERCEPTOR_GLOW', `Not in action phase, clearing interceptors`);
         setPotentialInterceptors([]);
     }
 }, [selectedDrone, turnPhase, localPlayerState, opponentPlayerState, gameEngine, localPlacedSections, opponentPlacedSections]);
@@ -3708,6 +3726,7 @@ const App = ({ phaseAnimationQueue }) => {
         turnPhase={turnPhase}
         reallocationPhase={reallocationPhase}
         pendingShieldAllocations={pendingShieldAllocations}
+        pendingShieldChanges={pendingShieldChanges}
         shipAbilityMode={shipAbilityMode}
         hoveredTarget={hoveredTarget}
         selectedDrone={selectedDrone}

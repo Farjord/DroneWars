@@ -13,6 +13,7 @@ import fullDroneCollection from '../data/droneData.js';
 import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 import { createNewSave, starterPoolCards, starterPoolDroneNames } from '../data/saveGameSchema.js';
+import { ECONOMY } from '../data/economyData.js';
 import { generateMapData } from '../utils/mapGenerator.js';
 import CombatOutcomeProcessor from '../logic/singlePlayer/CombatOutcomeProcessor.js';
 import { shipComponentCollection } from '../data/shipSectionData.js';
@@ -1540,8 +1541,19 @@ class GameStateManager {
    * @param {Object} saveData - Save data to load
    */
   loadSinglePlayerSave(saveData) {
+    // Migration: Calculate highestUnlockedSlot for saves without it
+    const profile = { ...saveData.playerProfile };
+    if (profile.highestUnlockedSlot === undefined) {
+      // Find highest slot that has a deck (active or mia status)
+      const activeSlotIds = (saveData.shipSlots || [])
+        .filter(s => s.id > 0 && s.status !== 'empty')
+        .map(s => s.id);
+      profile.highestUnlockedSlot = activeSlotIds.length > 0 ? Math.max(...activeSlotIds) : 0;
+      console.log(`Migration: Set highestUnlockedSlot to ${profile.highestUnlockedSlot}`);
+    }
+
     this.setState({
-      singlePlayerProfile: saveData.playerProfile,
+      singlePlayerProfile: profile,
       singlePlayerInventory: saveData.inventory,
       singlePlayerDroneInstances: saveData.droneInstances,
       singlePlayerShipComponentInstances: saveData.shipComponentInstances,
@@ -1686,6 +1698,68 @@ class GameStateManager {
 
     this.setState({ singlePlayerProfile: updatedProfile });
     console.log(`Default ship slot set to ${slotId}`);
+  }
+
+  /**
+   * Check if a deck slot is unlocked
+   * @param {number} slotId - Slot ID (0-5)
+   * @returns {boolean} True if slot is unlocked
+   */
+  isSlotUnlocked(slotId) {
+    const highestUnlocked = this.state.singlePlayerProfile?.highestUnlockedSlot ?? 0;
+    return slotId <= highestUnlocked;
+  }
+
+  /**
+   * Get the next slot available for unlocking
+   * @returns {Object|null} { slotId, cost } or null if all unlocked
+   */
+  getNextUnlockableSlot() {
+    const highestUnlocked = this.state.singlePlayerProfile?.highestUnlockedSlot ?? 0;
+    const nextSlotId = highestUnlocked + 1;
+    if (nextSlotId > 5) return null;
+    return {
+      slotId: nextSlotId,
+      cost: ECONOMY.DECK_SLOT_UNLOCK_COSTS[nextSlotId],
+    };
+  }
+
+  /**
+   * Unlock the next deck slot (sequential unlocking enforced)
+   * Deducts credits from player profile
+   * @returns {Object} { success: boolean, slotId?: number, error?: string }
+   */
+  unlockNextDeckSlot() {
+    const profile = this.state.singlePlayerProfile;
+    const currentHighest = profile.highestUnlockedSlot ?? 0;
+    const nextSlotId = currentHighest + 1;
+
+    // Check if all slots already unlocked
+    if (nextSlotId > 5) {
+      return { success: false, error: 'All deck slots are already unlocked' };
+    }
+
+    // Get cost for next slot
+    const cost = ECONOMY.DECK_SLOT_UNLOCK_COSTS[nextSlotId];
+
+    // Check if player has enough credits
+    if (profile.credits < cost) {
+      return {
+        success: false,
+        error: `Insufficient credits. Need ${cost}, have ${profile.credits}`,
+      };
+    }
+
+    // Deduct credits and unlock slot
+    const updatedProfile = {
+      ...profile,
+      credits: profile.credits - cost,
+      highestUnlockedSlot: nextSlotId,
+    };
+
+    this.setState({ singlePlayerProfile: updatedProfile });
+    console.log(`Unlocked deck slot ${nextSlotId} for ${cost} credits`);
+    return { success: true, slotId: nextSlotId };
   }
 
   /**
@@ -1858,6 +1932,29 @@ class GameStateManager {
   }
 
   /**
+   * Get damage state for all drones in a specific slot
+   * Returns a map of drone name -> isDamaged boolean
+   * Slot 0 always returns empty object (starter deck never persists damage)
+   * @param {number} slotId - Ship slot ID
+   * @returns {Object} Map of drone name to damage state
+   */
+  getDroneDamageStateForSlot(slotId) {
+    // Slot 0 (starter deck) never has persisted damage
+    if (slotId === 0) {
+      return {};
+    }
+
+    const damageState = {};
+    this.state.singlePlayerDroneInstances
+      .filter(inst => inst.shipSlotId === slotId)
+      .forEach(inst => {
+        damageState[inst.droneName] = inst.isDamaged || false;
+      });
+
+    return damageState;
+  }
+
+  /**
    * Create a ship component instance for tracking hull damage
    * Only for non-starter-pool components
    * @param {string} componentId - Component ID
@@ -1950,17 +2047,29 @@ class GameStateManager {
       Object.entries(shipSlot.shipComponents).forEach(([componentId, lane]) => {
         const component = shipComponentCollection.find(c => c.id === componentId);
         if (component) {
-          // Create section with full hull
+          const componentMaxHull = component.maxHull || component.hull;
+
+          // For non-slot 0, check for persisted hull damage
+          let hullValue = componentMaxHull;
+          if (shipSlotId !== 0) {
+            const savedInstance = this.state.singlePlayerShipComponentInstances?.find(
+              inst => inst.componentId === componentId && inst.shipSlotId === shipSlotId
+            );
+            if (savedInstance?.currentHull !== undefined) {
+              hullValue = savedInstance.currentHull;
+            }
+          }
+
           runShipSections[component.type] = {
             id: componentId,
             name: component.name,
             type: component.type,
-            hull: component.hull,
-            maxHull: component.maxHull || component.hull,
+            hull: hullValue,
+            maxHull: componentMaxHull,
             lane: lane
           };
-          totalHull += component.hull;
-          maxHull += component.maxHull || component.hull;
+          totalHull += hullValue;
+          maxHull += componentMaxHull;
         }
       });
     }
@@ -2162,6 +2271,8 @@ class GameStateManager {
       // Update statistics
       this.state.singlePlayerProfile.stats.runsCompleted++;
       this.state.singlePlayerProfile.stats.totalCreditsEarned += runState.creditsEarned;
+      this.state.singlePlayerProfile.stats.totalCombatsWon =
+        (this.state.singlePlayerProfile.stats.totalCombatsWon || 0) + (runState.combatsWon || 0);
 
       // Track highest tier completed
       const currentTier = runState.mapTier || 1;
@@ -2170,6 +2281,34 @@ class GameStateManager {
       }
 
       console.log('Run ended successfully - loot transferred');
+
+      // Persist ship section hull damage for non-slot 0
+      if (runState.shipSlotId !== 0 && runState.shipSections) {
+        Object.entries(runState.shipSections).forEach(([sectionType, sectionData]) => {
+          const componentId = sectionData.id;
+          if (!componentId) return; // Skip sections without component ID
+
+          // Find existing instance
+          const existingIndex = this.state.singlePlayerShipComponentInstances.findIndex(
+            inst => inst.componentId === componentId && inst.shipSlotId === runState.shipSlotId
+          );
+
+          if (existingIndex >= 0) {
+            // Update existing instance
+            this.state.singlePlayerShipComponentInstances[existingIndex].currentHull = sectionData.hull;
+          } else {
+            // Create new instance
+            this.state.singlePlayerShipComponentInstances.push({
+              instanceId: `comp-${Date.now()}-${componentId}`,
+              componentId,
+              shipSlotId: runState.shipSlotId,
+              currentHull: sectionData.hull,
+              maxHull: sectionData.maxHull
+            });
+          }
+        });
+        console.log('Ship section hull damage persisted to instances');
+      }
     } else {
       // MIA: Wipe loot, mark slot
       const shipSlot = this.state.singlePlayerShipSlots.find(

@@ -66,41 +66,4 @@ describe('ExtractionDeckBuilder - Save Behavior Requirements', () => {
     });
   });
 
-  describe('Code verification tests', () => {
-    // These tests verify the code structure matches our requirements
-    // by checking the source code directly
-
-    it('handleConfirmDeck should call setShowSaveToast(false) after timeout, not navigateBack', async () => {
-      // Read the source code and verify the pattern
-      const fs = await import('fs');
-      const path = await import('path');
-
-      const sourcePath = path.resolve(__dirname, './ExtractionDeckBuilder.jsx');
-      const source = fs.readFileSync(sourcePath, 'utf-8');
-
-      // Should have setShowSaveToast(false) in setTimeout
-      const hasToastHide = source.includes('setShowSaveToast(false)');
-
-      // Extract just the handleConfirmDeck function to check
-      // Look for the pattern: saveShipSlotDeck followed by setTimeout containing navigateBack
-      // within the same short context (not across different functions)
-      const handleConfirmDeckPattern = /handleConfirmDeck\s*=\s*\(\)\s*=>\s*\{[\s\S]*?^\s{2}\};/m;
-      const handleConfirmDeckMatch = source.match(handleConfirmDeckPattern);
-
-      // Check if navigateBack is called in setTimeout WITHIN handleConfirmDeck (after saveShipSlotDeck)
-      let hasNavigateInSaveTimeout = false;
-      if (handleConfirmDeckMatch) {
-        const funcBody = handleConfirmDeckMatch[0];
-        // Look for setTimeout containing navigateBack after saveShipSlotDeck
-        const saveAndTimeoutPattern = /saveShipSlotDeck[\s\S]*?setTimeout\s*\(\s*\(\)\s*=>\s*\{[\s\S]*?navigateBack/;
-        hasNavigateInSaveTimeout = saveAndTimeoutPattern.test(funcBody);
-      }
-
-      // Toast hide should exist
-      expect(hasToastHide).toBe(true);
-
-      // Navigate in save timeout should NOT exist
-      expect(hasNavigateInSaveTimeout).toBe(false);
-    });
-  });
 });

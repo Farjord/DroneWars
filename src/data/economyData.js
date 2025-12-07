@@ -10,7 +10,7 @@ export const ECONOMY = {
   // ========================================
 
   // Hull repair cost per HP point
-  HULL_REPAIR_COST_PER_HP: 10,
+  HULL_REPAIR_COST_PER_HP: 200,
 
   // Drone repair costs by rarity
   DRONE_REPAIR_COSTS: {
@@ -26,10 +26,10 @@ export const ECONOMY = {
 
   // Card replication costs by rarity
   REPLICATION_COSTS: {
-    Common: 100,
-    Uncommon: 250,
-    Rare: 600,
-    Mythic: 1500
+    Common: 1000,
+    Uncommon: 2500,
+    Rare: 3000,
+    Mythic: 5000
   },
 
   // ========================================
@@ -57,14 +57,6 @@ export const ECONOMY = {
   // STARTER ITEM COSTS
   // ========================================
 
-  // Cost to replicate starter deck cards (discounted from regular)
-  STARTER_REPLICATION_COSTS: {
-    Common: 75,
-    Uncommon: 175,
-    Rare: 450,
-    Mythic: 1100
-  },
-
   // Cost to craft starter drones/components from Blueprints
   STARTER_BLUEPRINT_COSTS: {
     Common: 75,
@@ -75,6 +67,20 @@ export const ECONOMY = {
 
   // Flat fee to copy entire starter deck (all cards, drones, components, ship)
   STARTER_DECK_COPY_COST: 100,
+
+  // ========================================
+  // DECK SLOT UNLOCK COSTS
+  // ========================================
+
+  // Progressive costs to unlock deck slots 1-5 (Slot 0 is always free)
+  // Must unlock slots sequentially (Slot 1 before Slot 2, etc.)
+  DECK_SLOT_UNLOCK_COSTS: {
+    1: 100,    // Low barrier to entry
+    2: 250,    // Moderate increase
+    3: 500,    // Significant investment
+    4: 1000,   // Premium
+    5: 2000,   // Endgame
+  },
 
   // ========================================
   // FUTURE: Map entry costs, etc.

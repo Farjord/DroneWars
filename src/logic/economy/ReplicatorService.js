@@ -23,7 +23,6 @@ class ReplicatorService {
 
   /**
    * Get replication cost for a card by ID
-   * Uses STARTER_REPLICATION_COSTS for starter cards
    * @param {string} cardId - The card ID
    * @returns {number} Cost in credits
    */
@@ -35,31 +34,24 @@ class ReplicatorService {
     }
 
     const rarity = card.rarity || 'Common';
-    const isStarter = this.isStarterCard(cardId);
-    const costTable = isStarter ? ECONOMY.STARTER_REPLICATION_COSTS : ECONOMY.REPLICATION_COSTS;
-    return costTable[rarity] || costTable.Common;
+    return ECONOMY.REPLICATION_COSTS[rarity] || ECONOMY.REPLICATION_COSTS.Common;
   }
 
   /**
    * Get replication cost by rarity directly
    * @param {string} rarity - The card rarity
-   * @param {boolean} isStarter - Whether this is a starter card
    * @returns {number} Cost in credits
    */
-  getReplicationCostByRarity(rarity, isStarter = false) {
-    const costTable = isStarter ? ECONOMY.STARTER_REPLICATION_COSTS : ECONOMY.REPLICATION_COSTS;
-    return costTable[rarity] || costTable.Common;
+  getReplicationCostByRarity(rarity) {
+    return ECONOMY.REPLICATION_COSTS[rarity] || ECONOMY.REPLICATION_COSTS.Common;
   }
 
   /**
    * Get all replication costs (for UI display)
-   * @returns {Object} Object with regular and starter costs
+   * @returns {Object} Costs by rarity
    */
   getAllCosts() {
-    return {
-      regular: { ...ECONOMY.REPLICATION_COSTS },
-      starter: { ...ECONOMY.STARTER_REPLICATION_COSTS }
-    };
+    return { ...ECONOMY.REPLICATION_COSTS };
   }
 
   /**

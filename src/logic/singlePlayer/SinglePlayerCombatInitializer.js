@@ -413,9 +413,23 @@ class SinglePlayerCombatInitializer {
 
     // Get drone pool from ship slot or use default
     const droneNames = shipSlot?.activeDronePool || this.getDefaultDronePool();
+
+    // Load saved damage state for this slot's drones
+    const shipSlotId = runState?.shipSlotId;
+    const droneDamageState = shipSlotId !== undefined
+      ? gameStateManager.getDroneDamageStateForSlot(shipSlotId)
+      : {};
+
     const activeDronePool = droneNames.map(name => {
       const droneData = fullDroneCollection.find(d => d.name === name);
-      return droneData || { name };
+      const drone = droneData ? { ...droneData } : { name };
+
+      // Apply saved damage state if exists
+      if (droneDamageState[name]) {
+        drone.isDamaged = true;
+      }
+
+      return drone;
     }).filter(d => d);
 
     return {

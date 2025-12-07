@@ -51,6 +51,10 @@ export const defaultPlayerProfile = {
   // Default ship slot for deployment (0-5)
   defaultShipSlotId: 0,
 
+  // Deck slot unlocking - highest slot number unlocked (0 = only starter)
+  // Must unlock slots sequentially (Slot 1 before Slot 2, etc.)
+  highestUnlockedSlot: 0,
+
   // Statistics (optional for MVP)
   stats: {
     runsCompleted: 0,
@@ -200,6 +204,14 @@ export function validateSaveFile(saveData) {
   if (saveData.playerProfile) {
     if (typeof saveData.playerProfile.gameSeed !== 'number') {
       errors.push('playerProfile.gameSeed must be a number');
+    }
+    // Validate highestUnlockedSlot if present
+    if (saveData.playerProfile.highestUnlockedSlot !== undefined) {
+      if (typeof saveData.playerProfile.highestUnlockedSlot !== 'number' ||
+          saveData.playerProfile.highestUnlockedSlot < 0 ||
+          saveData.playerProfile.highestUnlockedSlot > 5) {
+        errors.push('playerProfile.highestUnlockedSlot must be 0-5');
+      }
     }
   }
 

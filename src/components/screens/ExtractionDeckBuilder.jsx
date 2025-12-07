@@ -48,7 +48,6 @@ const ExtractionDeckBuilder = () => {
   const [selectedDrones, setSelectedDrones] = useState({});
   const [selectedShipComponents, setSelectedShipComponents] = useState({});
   const [selectedShip, setSelectedShip] = useState(null);
-  const [showSaveToast, setShowSaveToast] = useState(false);
 
   // Initialize state based on slot data or newDeckOption
   useEffect(() => {
@@ -205,7 +204,7 @@ const ExtractionDeckBuilder = () => {
     });
   };
 
-  // Handle save deck
+  // Handle save deck (toast is now handled by DeckBuilder component)
   const handleConfirmDeck = () => {
     if (isReadOnly) {
       navigateBack();
@@ -229,14 +228,8 @@ const ExtractionDeckBuilder = () => {
       shipId: selectedShip?.id || null
     };
 
-    // Save using GameStateManager
+    // Save using GameStateManager (DeckBuilder shows toast)
     gameStateManager.saveShipSlotDeck(slotId, deckData);
-
-    // Show toast, then hide after delay (stay in editor - do NOT navigate away)
-    setShowSaveToast(true);
-    setTimeout(() => {
-      setShowSaveToast(false);
-    }, 1500);
   };
 
   // Handle save invalid deck (incomplete but save anyway)
@@ -300,14 +293,6 @@ const ExtractionDeckBuilder = () => {
           onShipChange={handleShipChange}
         />
       </div>
-
-      {/* Save Toast Notification */}
-      {showSaveToast && (
-        <div className="save-toast">
-          <span className="save-toast-icon">✓</span>
-          <span className="save-toast-text">Deck Saved!</span>
-        </div>
-      )}
     </div>
   );
 };

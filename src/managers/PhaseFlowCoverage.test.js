@@ -442,6 +442,205 @@ describe('Phase Flow Coverage - Quick Deploy Tests', () => {
     expect(state.turnPhase).toBe('deployment');
     expect(state.roundNumber).toBe(2);
   });
+
+  /**
+   * QD-6: (FIXED) isPhaseRequired no longer calls executeQuickDeploy directly
+   *
+   * BUG WAS: Game stuck at 'roundInitialization' when using quick deploy.
+   * ROOT CAUSE WAS: executeQuickDeploy async but NOT awaited in isPhaseRequired().
+   *
+   * FIX APPLIED: Quick deploy is now executed in processRoundInitialization
+   * and isPhaseRequired uses a flag (_quickDeployExecutedThisRound) to determine
+   * if deployment phase should be skipped. See QD-8 for the post-fix test.
+   */
+  it.skip('QD-6: isPhaseRequired calls executeQuickDeploy but cannot await it (bug demonstration)', async () => {
+    const quickDeployTemplate = {
+      id: 'qd_test_123',
+      name: 'Test Quick Deploy',
+      placements: [
+        { droneName: 'Scout Drone', lane: 0 },
+        { droneName: 'Fighter Drone', lane: 1 }
+      ]
+    };
+
+    // Setup state with pending quick deploy
+    mockGameStateManager._setState({
+      gameMode: 'local',
+      roundNumber: 1,
+      gameStage: 'roundLoop',
+      turnPhase: 'roundInitialization',
+      pendingQuickDeploy: 'qd_test_123',
+      quickDeployments: [quickDeployTemplate],
+      player1: createMockPlayer('Player1'),
+      player2: createMockPlayer('AI')
+    });
+
+    // Create GameFlowManager with minimal mock
+    const gameFlowManager = new GameFlowManager();
+
+    // Manually set up the required references
+    gameFlowManager.gameStateManager = mockGameStateManager;
+    gameFlowManager.gameStage = 'roundLoop';
+
+    // Track executeQuickDeploy calls
+    let executeQuickDeployWasCalled = false;
+    let executeQuickDeployCompleted = false;
+
+    gameFlowManager.executeQuickDeploy = vi.fn(async (quickDeploy) => {
+      executeQuickDeployWasCalled = true;
+      // Simulate some async work
+      await new Promise(resolve => setTimeout(resolve, 50));
+      // Clear the pending flag
+      mockGameStateManager._setState({ pendingQuickDeploy: null });
+      executeQuickDeployCompleted = true;
+    });
+
+    // ACT: Call isPhaseRequired('deployment')
+    const deploymentRequired = gameFlowManager.isPhaseRequired('deployment');
+
+    // ASSERT: isPhaseRequired returns false (deployment skipped)
+    expect(deploymentRequired).toBe(false);
+
+    // ASSERT: executeQuickDeploy WAS called
+    expect(executeQuickDeployWasCalled).toBe(true);
+
+    // THE BUG: isPhaseRequired returned BEFORE executeQuickDeploy completed
+    // This is because executeQuickDeploy is async but not awaited
+    // The race condition means phase determination happens before quick deploy finishes
+    expect(executeQuickDeployCompleted).toBe(false);
+
+    // Wait for the async operation to complete
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Now it should be complete
+    expect(executeQuickDeployCompleted).toBe(true);
+    expect(mockGameStateManager.getState().pendingQuickDeploy).toBeNull();
+  });
+
+  /**
+   * QD-7: Test that quick deploy execution should be awaited before phase determination
+   *
+   * This is the EXPECTED behavior after the fix is applied.
+   * The fix moves quick deploy execution to processRoundInitialization
+   * where it can be properly awaited BEFORE getNextPhase is called.
+   */
+  it('QD-7: quick deploy should complete BEFORE phase determination (expected after fix)', async () => {
+    const quickDeployTemplate = {
+      id: 'qd_test_123',
+      name: 'Test Quick Deploy',
+      placements: [
+        { droneName: 'Scout Drone', lane: 0 }
+      ]
+    };
+
+    mockGameStateManager._setState({
+      gameMode: 'local',
+      roundNumber: 1,
+      gameStage: 'roundLoop',
+      pendingQuickDeploy: 'qd_test_123',
+      quickDeployments: [quickDeployTemplate],
+      player1: createMockPlayer('Player1'),
+      player2: createMockPlayer('AI')
+    });
+
+    // Create GameFlowManager
+    const gameFlowManager = new GameFlowManager();
+    gameFlowManager.gameStateManager = mockGameStateManager;
+    gameFlowManager.gameStage = 'roundLoop';
+
+    // Track execution order
+    const executionOrder = [];
+
+    gameFlowManager.executeQuickDeploy = vi.fn(async (quickDeploy) => {
+      executionOrder.push('executeQuickDeploy_start');
+      await new Promise(resolve => setTimeout(resolve, 10));
+      mockGameStateManager._setState({ pendingQuickDeploy: null });
+      executionOrder.push('executeQuickDeploy_end');
+    });
+
+    // Simulate the CORRECT flow after the fix:
+    // 1. Check for pending quick deploy
+    // 2. If present, AWAIT executeQuickDeploy
+    // 3. Set flag indicating quick deploy ran
+    // 4. THEN call getNextPhase (which checks the flag in isPhaseRequired)
+
+    const state = mockGameStateManager.getState();
+    if (state.pendingQuickDeploy && state.roundNumber === 1) {
+      const quickDeploy = state.quickDeployments?.find(qd => qd.id === state.pendingQuickDeploy);
+      if (quickDeploy) {
+        // AWAIT the quick deploy (this is the fix)
+        await gameFlowManager.executeQuickDeploy(quickDeploy);
+        // Set flag for isPhaseRequired to check
+        gameFlowManager._quickDeployExecutedThisRound = true;
+      }
+    }
+
+    executionOrder.push('phase_determination');
+
+    // Now isPhaseRequired should use the flag, not call executeQuickDeploy again
+    // After fix, isPhaseRequired checks _quickDeployExecutedThisRound flag
+    const shouldSkipDeployment = gameFlowManager._quickDeployExecutedThisRound;
+
+    // ASSERT: Quick deploy completed BEFORE phase determination
+    expect(executionOrder).toEqual([
+      'executeQuickDeploy_start',
+      'executeQuickDeploy_end',
+      'phase_determination'
+    ]);
+
+    // ASSERT: Flag is set so deployment will be skipped
+    expect(shouldSkipDeployment).toBe(true);
+
+    // ASSERT: pendingQuickDeploy is cleared
+    expect(mockGameStateManager.getState().pendingQuickDeploy).toBeNull();
+  });
+
+  /**
+   * QD-8: After fix, isPhaseRequired should check flag instead of calling executeQuickDeploy
+   *
+   * This test will FAIL with current code (because isPhaseRequired calls executeQuickDeploy)
+   * and PASS after the fix (because isPhaseRequired will check _quickDeployExecutedThisRound flag)
+   */
+  it('QD-8: isPhaseRequired should NOT call executeQuickDeploy directly (after fix)', async () => {
+    const quickDeployTemplate = {
+      id: 'qd_test_123',
+      name: 'Test Quick Deploy',
+      placements: [{ droneName: 'Scout Drone', lane: 0 }]
+    };
+
+    mockGameStateManager._setState({
+      gameMode: 'local',
+      roundNumber: 1,
+      gameStage: 'roundLoop',
+      pendingQuickDeploy: 'qd_test_123',
+      quickDeployments: [quickDeployTemplate],
+      player1: createMockPlayer('Player1'),
+      player2: createMockPlayer('AI')
+    });
+
+    const gameFlowManager = new GameFlowManager();
+    gameFlowManager.gameStateManager = mockGameStateManager;
+    gameFlowManager.gameStage = 'roundLoop';
+
+    // Spy on executeQuickDeploy
+    const executeQuickDeploySpy = vi.fn();
+    gameFlowManager.executeQuickDeploy = executeQuickDeploySpy;
+
+    // Simulate that quick deploy was already executed in processRoundInitialization
+    // (this is what the fix will do - execute it there and set this flag)
+    gameFlowManager._quickDeployExecutedThisRound = true;
+
+    // ACT: Call isPhaseRequired('deployment')
+    const deploymentRequired = gameFlowManager.isPhaseRequired('deployment');
+
+    // ASSERT: executeQuickDeploy should NOT have been called
+    // CURRENT BUG: This will FAIL because isPhaseRequired currently calls executeQuickDeploy
+    // AFTER FIX: This will PASS because isPhaseRequired will check the flag instead
+    expect(executeQuickDeploySpy).not.toHaveBeenCalled();
+
+    // ASSERT: Deployment should be skipped (returns false)
+    expect(deploymentRequired).toBe(false);
+  });
 });
 
 // ========================================

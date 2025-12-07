@@ -162,18 +162,4 @@ describe('ReplicatorService - Starter Card Restrictions', () => {
     });
   });
 
-  describe('getReplicationCost - should still work for display purposes', () => {
-    it('should return starter costs for starter cards (for UI info)', () => {
-      const starterCardId = starterPoolCards[0];
-      const card = fullCardCollection.find(c => c.id === starterCardId);
-
-      if (card) {
-        const cost = replicatorService.getReplicationCost(starterCardId);
-        // Starter cards use STARTER_REPLICATION_COSTS which are lower
-        // We just verify it returns a number (the cost calculation itself still works)
-        expect(typeof cost).toBe('number');
-        expect(cost).toBeGreaterThan(0);
-      }
-    });
-  });
 });

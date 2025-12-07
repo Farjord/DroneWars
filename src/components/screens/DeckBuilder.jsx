@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp, Sword, Rocket, Shield, Grid, ArrowLeft, LayoutGrid, List, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import ActionCard from '../ui/ActionCard.jsx';
@@ -14,6 +15,7 @@ import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js
 import { RARITY_COLORS } from '../../data/cardData.js';
 import { generateDeckCode } from '../../utils/deckExportUtils.js';
 import { calculateEffectiveMaxForCard } from '../../utils/singlePlayerDeckUtils.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 // Helper functions to get type-based colors for table styling
 const getTypeBackgroundClass = (type) => {
@@ -253,6 +255,7 @@ const DeckBuilder = ({
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showViewDeckModal, setShowViewDeckModal] = useState(false);
+  const [showSaveToast, setShowSaveToast] = useState(false);
 
   // Panel view toggles
   const [leftPanelView, setLeftPanelView] = useState('shipCard'); // 'shipCard', 'cards', 'drones', or 'ship'
@@ -563,6 +566,77 @@ const DeckBuilder = ({
 
     return { shipComponentCount: count, shipComponentsValid: isValid };
   }, [selectedShipComponents, activeComponentCollection]);
+
+  // Handle save with toast notification
+  const handleSaveWithToast = () => {
+    debugLog('DECK_BUILDER', '>>> handleSaveWithToast START', { mode, readOnly });
+
+    // Call the parent's confirm handler
+    debugLog('DECK_BUILDER', 'Calling onConfirmDeck...');
+    onConfirmDeck();
+    debugLog('DECK_BUILDER', 'onConfirmDeck returned');
+
+    // Show toast (unless in readOnly mode)
+    if (!readOnly) {
+      debugLog('DECK_BUILDER', 'About to call setShowSaveToast(true)');
+      setShowSaveToast(true);
+      debugLog('DECK_BUILDER', 'setShowSaveToast(true) called');
+      setTimeout(() => {
+        debugLog('DECK_BUILDER', 'Timeout firing: setShowSaveToast(false)');
+        setShowSaveToast(false);
+      }, 1500);
+    } else {
+      debugLog('DECK_BUILDER', 'Skipping toast - readOnly mode');
+    }
+
+    debugLog('DECK_BUILDER', '<<< handleSaveWithToast END');
+  };
+
+  // Debug: track showSaveToast state changes
+  useEffect(() => {
+    debugLog('DECK_BUILDER', 'showSaveToast state changed', { showSaveToast });
+  }, [showSaveToast]);
+
+  // Debug: track component mount/unmount to detect remounting
+  useEffect(() => {
+    debugLog('DECK_BUILDER', 'DeckBuilder MOUNTED', { mode });
+    return () => {
+      debugLog('DECK_BUILDER', 'DeckBuilder UNMOUNTED', { mode });
+    };
+  }, []);
+
+  // Debug: verify toast element is actually in DOM and check its properties
+  useEffect(() => {
+    if (showSaveToast) {
+      // Give React a moment to render, then check the DOM
+      setTimeout(() => {
+        const toastElement = document.querySelector('.save-toast');
+        if (toastElement) {
+          const rect = toastElement.getBoundingClientRect();
+          const styles = window.getComputedStyle(toastElement);
+          debugLog('DECK_BUILDER', 'Toast element FOUND in DOM', {
+            exists: true,
+            rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
+            computedStyles: {
+              position: styles.position,
+              display: styles.display,
+              visibility: styles.visibility,
+              opacity: styles.opacity,
+              zIndex: styles.zIndex,
+              transform: styles.transform,
+              background: styles.background
+            },
+            parentElement: toastElement.parentElement?.tagName
+          });
+        } else {
+          debugLog('DECK_BUILDER', 'Toast element NOT FOUND in DOM', {
+            exists: false,
+            documentBodyChildren: document.body.children.length
+          });
+        }
+      }, 50);
+    }
+  }, [showSaveToast]);
 
   // --- NEW: Define colors for the Pie Chart ---
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943', '#A45D5D', '#8C5DA4'];
@@ -1021,6 +1095,7 @@ const DeckBuilder = ({
 
 
   return (
+    <>
     <div className="w-full flex flex-col text-white font-exo mt-8 text-sm">
       {detailedCard && <CardDetailPopup card={detailedCard} onClose={() => setDetailedCard(null)} />}
       {detailedDrone && <DroneDetailPopup drone={detailedDrone} onClose={() => setDetailedDrone(null)} />}
@@ -2264,7 +2339,7 @@ const DeckBuilder = ({
                         {allowInvalidSave ? (
                           // Extraction mode: can save incomplete, but with warning
                           <button
-                            onClick={isDeckValid && isDronesValid && shipComponentsValid ? onConfirmDeck : onSaveInvalid}
+                            onClick={isDeckValid && isDronesValid && shipComponentsValid ? handleSaveWithToast : () => { onSaveInvalid(); setShowSaveToast(true); setTimeout(() => setShowSaveToast(false), 1500); }}
                             className={`w-full p-4 mt-4 text-lg font-bold font-orbitron dw-btn-no-scale ${
                               isDeckValid && isDronesValid && shipComponentsValid
                                 ? 'btn-confirm'
@@ -2279,7 +2354,7 @@ const DeckBuilder = ({
                         ) : (
                           // Multiplayer mode: must be complete
                           <button
-                            onClick={onConfirmDeck}
+                            onClick={handleSaveWithToast}
                             disabled={!isDeckValid || !isDronesValid || !shipComponentsValid}
                             className="btn-confirm w-full p-4 mt-4 text-lg font-bold font-orbitron dw-btn-no-scale disabled:opacity-50"
                             title={!shipComponentsValid ? 'You must select all 3 ship components with lanes assigned' : ''}
@@ -2308,6 +2383,16 @@ const DeckBuilder = ({
         </div>
       </div>
      </div>
+
+      {/* Save Toast - rendered via Portal to document.body for proper positioning */}
+      {showSaveToast && ReactDOM.createPortal(
+        <div className="save-toast">
+          <span className="save-toast-icon">✓</span>
+          <span className="save-toast-text">Deck Saved!</span>
+        </div>,
+        document.body
+      )}
+    </>
   );
 };
 

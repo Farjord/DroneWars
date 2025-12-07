@@ -22,7 +22,6 @@ function StandaloneDeckBuilder() {
   const [selectedDrones, setSelectedDrones] = useState({});
   const [selectedShipComponents, setSelectedShipComponents] = useState({});
   const [selectedShip, setSelectedShip] = useState(getDefaultShip());
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
   // Load saved deck from localStorage on mount
   useEffect(() => {
@@ -93,6 +92,7 @@ function StandaloneDeckBuilder() {
 
   /**
    * Handle confirm deck - save to localStorage
+   * Note: Toast notification is now handled by DeckBuilder component
    */
   const handleConfirmDeck = () => {
     try {
@@ -101,12 +101,6 @@ function StandaloneDeckBuilder() {
       localStorage.setItem('customDrones', JSON.stringify(selectedDrones));
       localStorage.setItem('customShipComponents', JSON.stringify(selectedShipComponents));
       localStorage.setItem('customShipId', selectedShip?.id || 'SHIP_001');
-
-      // Show success message
-      setShowSuccessMessage(true);
-      setTimeout(() => {
-        setShowSuccessMessage(false);
-      }, 3000);
 
       console.log('✅ Deck saved successfully to localStorage');
     } catch (error) {
@@ -203,46 +197,20 @@ function StandaloneDeckBuilder() {
   };
 
   return (
-    <>
-      {/* Success Message */}
-      {showSuccessMessage && (
-        <div
-          style={{
-            position: 'fixed',
-            top: '20px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            backgroundColor: '#10b981',
-            color: 'white',
-            padding: '16px 32px',
-            borderRadius: '8px',
-            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
-            zIndex: 9999,
-            fontFamily: 'Orbitron, sans-serif',
-            fontSize: '16px',
-            fontWeight: 'bold'
-          }}
-        >
-          ✅ Deck Saved Successfully!
-        </div>
-      )}
-
-      {/* Render DeckBuilder with all required props */}
-      <DeckBuilder
-        selectedDrones={selectedDrones}
-        fullCardCollection={fullCardCollection}
-        deck={deck}
-        onDeckChange={handleDeckChange}
-        onDronesChange={handleDronesChange}
-        selectedShipComponents={selectedShipComponents}
-        onShipComponentsChange={handleShipComponentsChange}
-        selectedShip={selectedShip}
-        onShipChange={handleShipChange}
-        onConfirmDeck={handleConfirmDeck}
-        onImportDeck={handleImportDeck}
-        onBack={handleBack}
-      />
-    </>
+    <DeckBuilder
+      selectedDrones={selectedDrones}
+      fullCardCollection={fullCardCollection}
+      deck={deck}
+      onDeckChange={handleDeckChange}
+      onDronesChange={handleDronesChange}
+      selectedShipComponents={selectedShipComponents}
+      onShipComponentsChange={handleShipComponentsChange}
+      selectedShip={selectedShip}
+      onShipChange={handleShipChange}
+      onConfirmDeck={handleConfirmDeck}
+      onImportDeck={handleImportDeck}
+      onBack={handleBack}
+    />
   );
 }
 

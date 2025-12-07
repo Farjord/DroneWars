@@ -47,6 +47,7 @@ const ShipSectionsDisplay = ({
   selectedDrone,
   reallocationPhase,
   pendingShieldAllocations,
+  pendingShieldChanges,
   gameEngine,
   turnPhase,
   isMyTurn,
@@ -99,13 +100,26 @@ const ShipSectionsDisplay = ({
         // Resolve ship-specific image for the section based on player's ship
         const resolvedSectionStats = resolveShipSectionStats(sectionStats, player.shipId);
 
-        // Use pending shields during allocateShields phase (privacy: show local allocations only)
-        const displayStats = (turnPhase === 'allocateShields' && isPlayer && pendingShieldAllocations)
-          ? {
-              ...resolvedSectionStats,
-              allocatedShields: pendingShieldAllocations[sectionName] || 0
-            }
-          : resolvedSectionStats;
+        // Calculate display stats based on phase
+        // - allocateShields: Use pending absolute values (privacy: show local allocations only)
+        // - reallocation: Apply pending deltas to game state values
+        let displayStats;
+        if (turnPhase === 'allocateShields' && isPlayer && pendingShieldAllocations) {
+          // Round start allocation: use pending absolute values
+          displayStats = {
+            ...resolvedSectionStats,
+            allocatedShields: pendingShieldAllocations[sectionName] || 0
+          };
+        } else if (reallocationPhase && isPlayer && pendingShieldChanges) {
+          // Reallocation: apply pending deltas to game state
+          const delta = pendingShieldChanges[sectionName] || 0;
+          displayStats = {
+            ...resolvedSectionStats,
+            allocatedShields: resolvedSectionStats.allocatedShields + delta
+          };
+        } else {
+          displayStats = resolvedSectionStats;
+        }
 
         // Derive the correct player ID for this ship sections display
         const localPlayerId = getLocalPlayerId();

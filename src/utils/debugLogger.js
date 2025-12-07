@@ -58,10 +58,12 @@ const DEBUG_CONFIG = {
     QUICK_DEPLOY: false,         // Quick deployment validation and selection (ENABLED for phase chaos investigation)
     PHASE_FLOW: false,           // Phase transitions and announcements (ENABLED for phase chaos investigation)
     TICKER: false,              // News ticker message generation and data flow
+    INTERCEPTOR_GLOW: true,     // Interceptor glow calculation debugging
     AI_DEPLOYMENT: true,        // AI deployment decisions, validation, and execution loop tracing
     CARD_SIZING: true,           // Card wrapper and sizing debugging
     ASSET_PRELOAD: true,         // Asset preloading and splash screen timing
     SP_COMBAT: true,              // Single-player combat init, abandon, and state transitions
+    DECK_BUILDER: true,           // Deck builder save, toast, and validation debugging
 
     // Effect System Refactoring - Modular Processor Logging
     EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)
