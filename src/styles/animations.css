@@ -5,16 +5,10 @@
 
 /* === PULSE ANIMATIONS === */
 
-/* Generic glow pulse */
-@keyframes pulse-glow {
-  0%, 100% {
-    filter: drop-shadow(0 0 2px rgba(255, 255, 0, 0.7))
-            drop-shadow(0 0 3px rgba(255, 0, 0, 0.6));
-  }
-  50% {
-    filter: drop-shadow(0 0 4px rgba(255, 255, 0, 1))
-            drop-shadow(0 0 7px rgba(255, 0, 0, 0.8));
-  }
+/* Interceptor glow - pseudo-element approach with hexagon clip-path */
+@keyframes interceptor-pulse {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.15); }
 }
 
 /* Guardian shield pulse */
@@ -38,7 +32,18 @@
 }
 
 .interceptor-glow {
-  animation: pulse-glow 2s infinite ease-in-out;
+  position: relative;
+}
+
+.interceptor-glow::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  background: radial-gradient(circle, rgba(255, 255, 0, 0.9) 0%, rgba(255, 100, 0, 0.7) 100%);
+  filter: blur(3px);
+  z-index: -1;
+  animation: interceptor-pulse 2s infinite ease-in-out;
 }
 
 .guardian-glow {

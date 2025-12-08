@@ -1360,26 +1360,15 @@ const App = ({ phaseAnimationQueue }) => {
   // --- 8.4 INTERCEPTION MONITORING ---
   // TODO: UI MONITORING - Interception monitoring is appropriate UI-only effect - calculates UI hints for user
   useEffect(() => {
-    debugLog('INTERCEPTOR_GLOW', `useEffect triggered: turnPhase=${turnPhase}, selectedDrone=${selectedDrone?.id || 'null'}, isExhausted=${selectedDrone?.isExhausted || 'N/A'}`);
     if (turnPhase === 'action') {
-        const placedSections = getPlacedSectionsForEngine();
-        debugLog('INTERCEPTOR_GLOW', `Calling calculatePotentialInterceptors with:`, {
-          selectedDroneId: selectedDrone?.id,
-          selectedDroneName: selectedDrone?.name,
-          localPlayerName: localPlayerState?.name,
-          opponentPlayerName: opponentPlayerState?.name,
-          placedSections
-        });
         const potential = calculatePotentialInterceptors(
             selectedDrone,
             localPlayerState,
             opponentPlayerState,
-            placedSections
+            getPlacedSectionsForEngine()
         );
-        debugLog('INTERCEPTOR_GLOW', `calculatePotentialInterceptors returned: ${JSON.stringify(potential)}`);
         setPotentialInterceptors(potential);
     } else {
-        debugLog('INTERCEPTOR_GLOW', `Not in action phase, clearing interceptors`);
         setPotentialInterceptors([]);
     }
 }, [selectedDrone, turnPhase, localPlayerState, opponentPlayerState, gameEngine, localPlacedSections, opponentPlacedSections]);

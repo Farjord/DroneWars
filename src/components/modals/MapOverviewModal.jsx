@@ -269,9 +269,8 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
             gridTemplateColumns: '340px 340px',
             gap: '12px 24px'
           }}>
-            {/* Row 1, Col 1: Map + Gate */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {/* Map Preview */}
+            {/* Row 1, Col 1: Map - pushed to bottom of row */}
+            <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
               {selectedMap.hexes ? (
                 <MapPreviewRenderer
                   hexes={selectedMap.hexes}
@@ -299,36 +298,9 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                   </div>
                 </div>
               )}
-
-              {/* Gate Selection Info */}
-              <div className="dw-modal-info-box" style={{ width: '100%' }}>
-                <p style={{ fontSize: '13px', color: 'var(--modal-text-secondary)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  Click a gate
-                  <svg width="16" height="16" viewBox="-8 -8 16 16" style={{ display: 'inline-block' }}>
-                    <polygon
-                      points="0,-6 6,0 0,6 -6,0"
-                      fill="#3b82f6"
-                      stroke="#fff"
-                      strokeWidth="1"
-                    />
-                  </svg>
-                  on the map to select entry point
-                </p>
-                <p style={{ color: 'var(--modal-action)', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <svg width="16" height="16" viewBox="-8 -8 16 16" style={{ display: 'inline-block' }}>
-                    <polygon
-                      points="0,-6 6,0 0,6 -6,0"
-                      fill="#22c55e"
-                      stroke="#fff"
-                      strokeWidth="1"
-                    />
-                  </svg>
-                  Entry Point: Gate {selectedGateId + 1}
-                </p>
-              </div>
             </div>
 
-            {/* Row 1, Col 2: Intel content */}
+            {/* Row 1, Col 2: Intel + POI Breakdown */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {/* Section Header */}
               <div style={{ borderBottom: '1px solid var(--modal-border)', paddingBottom: '8px' }}>
@@ -354,7 +326,7 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
               </div>
 
               {/* POI Breakdown - Single Column */}
-              <div className="dw-modal-info-box">
+              <div className="dw-modal-info-box" style={{ flex: 1 }}>
                 <p className="dw-modal-info-title" style={{ marginBottom: '8px' }}>POI BREAKDOWN</p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -383,26 +355,53 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Detection & Encounter */}
-              <div className="dw-modal-grid dw-modal-grid--2">
-                <div className="dw-modal-stat">
-                  <div className="dw-modal-stat-label">Starting Detection</div>
-                  <div className="dw-modal-stat-value" style={{ color: (selectedMap.baseDetection || 0) > 10 ? '#f97316' : 'var(--modal-success)' }}>
-                    {selectedMap.baseDetection || 0}%
-                  </div>
+            {/* Row 2, Col 1: Gate Selection Info */}
+            <div className="dw-modal-info-box" style={{ width: '100%', height: '100%' }}>
+              <p style={{ fontSize: '13px', color: 'var(--modal-text-secondary)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                Click a gate
+                <svg width="16" height="16" viewBox="-8 -8 16 16" style={{ display: 'inline-block' }}>
+                  <polygon
+                    points="0,-6 6,0 0,6 -6,0"
+                    fill="#3b82f6"
+                    stroke="#fff"
+                    strokeWidth="1"
+                  />
+                </svg>
+                on the map to select entry point
+              </p>
+              <p style={{ color: 'var(--modal-action)', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <svg width="16" height="16" viewBox="-8 -8 16 16" style={{ display: 'inline-block' }}>
+                  <polygon
+                    points="0,-6 6,0 0,6 -6,0"
+                    fill="#22c55e"
+                    stroke="#fff"
+                    strokeWidth="1"
+                  />
+                </svg>
+                Entry Point: Gate {selectedGateId + 1}
+              </p>
+            </div>
+
+            {/* Row 2, Col 2: Detection & Encounter */}
+            <div className="dw-modal-grid dw-modal-grid--2" style={{ height: '100%' }}>
+              <div className="dw-modal-stat">
+                <div className="dw-modal-stat-label">Starting Detection</div>
+                <div className="dw-modal-stat-value" style={{ color: (selectedMap.baseDetection || 0) > 10 ? '#f97316' : 'var(--modal-success)' }}>
+                  {selectedMap.baseDetection || 0}%
                 </div>
-                <div className="dw-modal-stat">
-                  <div className="dw-modal-stat-label">Encounter Risk</div>
-                  <div className="dw-modal-stat-value" style={{ color: (selectedMap.baseEncounterChance || 5) > 5 ? '#f97316' : 'var(--modal-success)' }}>
-                    {selectedMap.baseEncounterChance || 5}%
-                  </div>
+              </div>
+              <div className="dw-modal-stat">
+                <div className="dw-modal-stat-label">Encounter Risk</div>
+                <div className="dw-modal-stat-value" style={{ color: (selectedMap.baseEncounterChance || 5) > 5 ? '#f97316' : 'var(--modal-success)' }}>
+                  {selectedMap.baseEncounterChance || 5}%
                 </div>
               </div>
             </div>
 
-            {/* Row 2, Col 1: Requirements Section (aligned with Deploy Ship) */}
-            <div className="dw-modal-info-box" style={{ width: '100%' }}>
+            {/* Row 3, Col 1: Requirements */}
+            <div className="dw-modal-info-box" style={{ width: '100%', height: '100%' }}>
               <p className="dw-modal-info-title" style={{ marginBottom: '8px' }}>REQUIREMENTS</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
                 {/* Entry Requirements */}
@@ -440,8 +439,8 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
               </div>
             </div>
 
-            {/* Row 2, Col 2: Deploy Ship (aligned with Requirements) */}
-            <div className="dw-modal-info-box" style={{ width: '100%' }}>
+            {/* Row 3, Col 2: Deploy Ship */}
+            <div className="dw-modal-info-box" style={{ width: '100%', height: '100%' }}>
               <p className="dw-modal-info-title" style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 DEPLOY SHIP
                 {isCurrentSlotInvalid && (

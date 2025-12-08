@@ -16,6 +16,7 @@ import aiPhaseProcessor from '../../managers/AIPhaseProcessor.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
+import { buildActiveDronePool as buildDronePoolFromSlots } from '../../utils/slotDamageUtils.js';
 
 /**
  * SinglePlayerCombatInitializer
@@ -416,28 +417,16 @@ class SinglePlayerCombatInitializer {
     let activeDronePool = [];
 
     if (shipSlot?.droneSlots) {
-      // New slot-based format: droneSlots array with { droneName, isDamaged }
-      activeDronePool = shipSlot.droneSlots
-        .filter(slot => slot?.droneName) // Skip empty slots
-        .map((slot, slotIndex) => {
-          const droneData = fullDroneCollection.find(d => d.name === slot.droneName);
-          if (!droneData) return null;
+      // New slot-based format: droneSlots array with { assignedDrone, slotDamaged }
+      // Uses utility that handles both old and new field names
+      activeDronePool = buildDronePoolFromSlots(shipSlot);
 
-          const drone = { ...droneData };
-          drone.slotIndex = slotIndex;
-          drone.isDamaged = slot.isDamaged;
-
-          // Apply -1 to limit when in damaged slot (min 1)
-          if (slot.isDamaged && drone.limit > 1) {
-            drone.effectiveLimit = Math.max(1, drone.limit - 1);
-            debugLog('SP_COMBAT', `Drone ${drone.name} in damaged slot: limit ${drone.limit} -> ${drone.effectiveLimit}`);
-          } else {
-            drone.effectiveLimit = drone.limit;
-          }
-
-          return drone;
-        })
-        .filter(d => d);
+      // Log damaged drones for debugging
+      activeDronePool.forEach(drone => {
+        if (drone.slotDamaged) {
+          debugLog('SP_COMBAT', `Drone ${drone.name} in damaged slot: limit ${drone.limit} -> ${drone.effectiveLimit}`);
+        }
+      });
     } else if (shipSlot?.activeDronePool) {
       // Legacy format fallback
       const droneNames = shipSlot.activeDronePool;

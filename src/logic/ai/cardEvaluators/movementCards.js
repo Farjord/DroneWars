@@ -85,3 +85,52 @@ export const evaluateSingleMoveCard = (card, target, moveData, context) => {
 
   return { score, logic };
 };
+
+/**
+ * Evaluate a MULTI_MOVE card (e.g., Reposition)
+ * Moves up to N drones from one lane to other lanes
+ * Since actual destinations aren't known at evaluation time,
+ * we estimate value based on repositioning potential
+ * @param {Object} card - The card being played
+ * @param {Object} target - The source lane (lane to move FROM)
+ * @param {Object} context - Evaluation context
+ * @returns {Object} - { score: number, logic: string[] }
+ */
+export const evaluateMultiMoveCard = (card, target, context) => {
+  const { player2 } = context;
+  const logic = [];
+  let score = 0;
+
+  // Target is the source lane
+  const sourceLaneId = target?.id;
+  if (!sourceLaneId || !sourceLaneId.startsWith('lane')) {
+    return { score: INVALID_SCORE, logic: ['❌ Invalid lane target'] };
+  }
+
+  const dronesInLane = player2.dronesOnBoard[sourceLaneId] || [];
+  const maxMoves = card.effect.count || 3;
+  const availableMoves = Math.min(dronesInLane.length, maxMoves);
+
+  if (availableMoves === 0) {
+    return { score: 0, logic: ['⚠️ No drones in lane to move'] };
+  }
+
+  // Base value per drone that can be moved (flexibility value)
+  const flexibilityValue = availableMoves * 15;
+  score += flexibilityValue;
+  logic.push(`✅ Flexibility: +${flexibilityValue} (${availableMoves} drones can move)`);
+
+  // Bonus for drones that aren't exhausted after move (DO_NOT_EXHAUST)
+  if (card.effect.properties?.includes('DO_NOT_EXHAUST')) {
+    const readyBonus = availableMoves * 10;
+    score += readyBonus;
+    logic.push(`✅ Stay Ready: +${readyBonus}`);
+  }
+
+  // Cost penalty
+  const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
+  score -= costPenalty;
+  logic.push(`⚠️ Cost: -${costPenalty}`);
+
+  return { score, logic };
+};

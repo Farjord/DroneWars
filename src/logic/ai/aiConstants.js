@@ -76,6 +76,9 @@ export const DEPLOYMENT_BONUSES = {
   STABILIZATION_MAX: 30,
   DOMINANCE_MIN: 10,
   DOMINANCE_MAX: 30,
+
+  // ON_DEPLOY ability bonuses
+  MARK_ENEMY_VALUE: 15,            // Scanner: marking an enemy
 };
 
 // ========================================
@@ -90,6 +93,7 @@ export const ATTACK_BONUSES = {
   READY_TARGET: 10,                // target not exhausted
   LANE_IMPACT_WEIGHT: 0.5,         // lane score improvement weight
   LANE_FLIP_WEIGHT: 0.5,           // lane flip bonus weight
+  GROWTH_MULTIPLIER: 8,            // Gladiator: bonus per +1 stat gained
 
   // Ship section attack bonuses
   DAMAGED_SECTION: 15,
@@ -108,7 +112,7 @@ export const PENALTIES = {
   OVERKILL: -150,                  // Deploying to already-won lane
   GUARDIAN_ATTACK_RISK: -200,      // Guardian attacking with enemies present
   INTERCEPTION_RISK: -80,          // Slow attacker can be intercepted
-  ANTI_SHIP_ATTACKING_DRONE: -100,  // Anti-ship drone attacking other drones
+  ANTI_SHIP_ATTACKING_DRONE: -100, // Anti-ship drone attacking other drones
   MOVE_COST: 10,                   // Base cost of moving
 };
 
@@ -180,6 +184,8 @@ export const CARD_EVALUATION = {
   MULTI_HIT_BONUS_PER_TARGET: 15,
   LETHAL_BASE_BONUS: 50,
   LETHAL_CLASS_MULTIPLIER: 15,
+  OVERFLOW_SHIP_DAMAGE_MULTIPLIER: 12,  // Premium value for ship damage overflow
+  PIERCING_SHIELD_BYPASS_MULTIPLIER: 4, // Value of bypassing shields with piercing
 
   // READY_DRONE card scoring
   SHIP_ATTACK_MULTIPLIER: 8,

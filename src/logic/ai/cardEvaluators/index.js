@@ -3,13 +3,14 @@
 // ========================================
 // Central registry for card effect evaluators
 
-import { evaluateDestroyCard, evaluateDamageCard } from './damageCards.js';
+import { evaluateDestroyCard, evaluateDamageCard, evaluateOverflowDamageCard, evaluateSplashDamageCard, evaluateDamageScalingCard, evaluateDestroyUpgradeCard } from './damageCards.js';
 import { evaluateGainEnergyCard, evaluateDrawCard, evaluateSearchAndDrawCard } from './utilityCards.js';
 import { evaluateReadyDroneCard, evaluateCreateTokensCard } from './droneCards.js';
-import { evaluateHealShieldsCard, evaluateHealHullCard } from './healCards.js';
+import { evaluateHealShieldsCard, evaluateHealHullCard, evaluateRestoreSectionShieldsCard } from './healCards.js';
 import { evaluateModifyStatCard, evaluateRepeatingEffectCard } from './statCards.js';
-import { evaluateSingleMoveCard } from './movementCards.js';
+import { evaluateSingleMoveCard, evaluateMultiMoveCard } from './movementCards.js';
 import { evaluateModifyDroneBaseCard } from './upgradeCards.js';
+import { evaluateConditionalEffects } from './conditionalEvaluator.js';
 
 // Re-export all evaluators
 export * from './damageCards.js';
@@ -26,6 +27,10 @@ export * from './upgradeCards.js';
 export const cardEvaluatorRegistry = {
   DESTROY: evaluateDestroyCard,
   DAMAGE: evaluateDamageCard,
+  OVERFLOW_DAMAGE: evaluateOverflowDamageCard,
+  SPLASH_DAMAGE: evaluateSplashDamageCard,
+  DAMAGE_SCALING: evaluateDamageScalingCard,
+  DESTROY_UPGRADE: evaluateDestroyUpgradeCard,
   GAIN_ENERGY: evaluateGainEnergyCard,
   DRAW: evaluateDrawCard,
   SEARCH_AND_DRAW: evaluateSearchAndDrawCard,
@@ -33,15 +38,18 @@ export const cardEvaluatorRegistry = {
   CREATE_TOKENS: evaluateCreateTokensCard,
   HEAL_SHIELDS: evaluateHealShieldsCard,
   HEAL_HULL: evaluateHealHullCard,
+  RESTORE_SECTION_SHIELDS: evaluateRestoreSectionShieldsCard,
   MODIFY_STAT: evaluateModifyStatCard,
   REPEATING_EFFECT: evaluateRepeatingEffectCard,
   SINGLE_MOVE: evaluateSingleMoveCard,
+  MULTI_MOVE: evaluateMultiMoveCard,
   MODIFY_DRONE_BASE: evaluateModifyDroneBaseCard,
 };
 
 /**
  * Evaluate a card play action
- * Dispatches to the appropriate evaluator based on card effect type
+ * Dispatches to the appropriate evaluator based on card effect type,
+ * then adds any conditional effect bonuses
  *
  * @param {Object} card - The card being played
  * @param {Object} target - The target of the card
@@ -58,17 +66,25 @@ export const evaluateCardPlay = (card, target, context, moveData = null) => {
     return { score: 0, logic: [`⚠️ Unknown effect type: ${effectType}`] };
   }
 
+  // Get base evaluation from primary effect
+  let baseResult;
+
   // SINGLE_MOVE needs moveData passed separately
   if (effectType === 'SINGLE_MOVE') {
-    return evaluator(card, target, moveData, context);
+    baseResult = evaluator(card, target, moveData, context);
+  }
+  else {
+    baseResult = evaluator(card, target, context);
   }
 
-  // HEAL_HULL needs targeting type check
-  if (effectType === 'HEAL_HULL' && card.targeting?.type !== 'SHIP_SECTION') {
-    return { score: 0, logic: ['⚠️ Invalid heal target'] };
-  }
+  // Add conditional effect bonuses (modular - works with any base effect)
+  const conditionalResult = evaluateConditionalEffects(card, target, context);
 
-  return evaluator(card, target, context);
+  // Combine base score with conditional bonuses
+  return {
+    score: baseResult.score + conditionalResult.bonusScore,
+    logic: [...baseResult.logic, ...conditionalResult.logic]
+  };
 };
 
 /**

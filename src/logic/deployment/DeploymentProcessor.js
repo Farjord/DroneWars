@@ -95,9 +95,10 @@ class DeploymentProcessor {
       droneInfo: baseDroneInfo
     });
 
-    // Calculate effective limit including upgrade modifications
+    // Calculate effective limit - start with drone's effectiveLimit if available
+    // (includes slot damage penalty from Extraction mode), otherwise fall back to base limit
     const upgrades = player.appliedUpgrades[drone.name] || [];
-    let effectiveLimit = baseDroneInfo.limit;
+    let effectiveLimit = drone.effectiveLimit ?? baseDroneInfo.limit;
     upgrades.forEach(upgrade => {
       if (upgrade.mod.stat === 'limit') {
         effectiveLimit += upgrade.mod.value;

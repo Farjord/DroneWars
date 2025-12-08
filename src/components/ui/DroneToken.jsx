@@ -19,6 +19,7 @@ import { debugLog } from '../../utils/debugLogger.js';
  * @param {boolean} isFlat - Whether to use flat hexagon style
  * @param {string} bgColor - Background color class
  * @param {string} textColor - Text color class
+ * @param {string} borderColor - Border/outer color class (default: 'bg-black')
  */
 const StatHexagon = ({ value, isFlat, bgColor, textColor, borderColor = 'bg-black' }) => (
   <div className={`${isFlat ? 'hexagon-flat' : 'hexagon'} w-full h-full ${borderColor} flex items-center justify-center`}>
@@ -83,11 +84,6 @@ const DroneToken = ({
   interceptedBadge,
   enableFloatAnimation = false
 }) => {
-  // Debug: Track isPotentialInterceptor prop for opponent drones
-  if (!isPlayer && isPotentialInterceptor) {
-    debugLog('INTERCEPTOR_GLOW', `DroneToken ${drone.name} (${drone.id}) isPotentialInterceptor=${isPotentialInterceptor}`);
-  }
-
   // Get GameDataService for direct effective stats calculation
   const { getEffectiveStats } = useGameData();
   const editorStats = useEditorStats();
@@ -101,6 +97,17 @@ const DroneToken = ({
   const { maxShields } = effectiveStats;
   const currentShields = drone.currentShields ?? maxShields;
   const activeAbilities = baseDrone.abilities.filter(a => a.type === 'ACTIVE');
+
+  // Debug log interceptor glow state
+  if (isPotentialInterceptor) {
+    debugLog('INTERCEPTOR_GLOW', `DroneToken render - ${drone.name} (${drone.id})`, {
+      isPlayer,
+      isPotentialInterceptor,
+      lane,
+      speed: effectiveStats.speed,
+      classApplied: 'interceptor-glow'
+    });
+  }
 
   // --- Dynamic Class Calculation ---
   const borderColor = isPlayer ? 'border-cyan-400' : 'border-red-500';
@@ -182,27 +189,6 @@ const DroneToken = ({
           </div>
         </div>
       </div>
-
-      {/* Overlapping Hexagons */}
-      <div className="absolute -top-3 left-[-14px] w-6 h-7 z-20">
-          <StatHexagon value={effectiveStats.attack} isFlat={false} bgColor={statBgColor} textColor={attackTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
-      </div>
-      <div className={`absolute -top-3 right-[-14px] w-7 h-7 z-20 ${isPotentialInterceptor ? 'interceptor-glow' : ''}`}>
-          <StatHexagon value={effectiveStats.speed} isFlat={true} bgColor={statBgColor} textColor={speedTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
-      </div>
-
-      {/* Overlapping Ability Icon */}
-      {isPlayer && activeAbilities.length > 0 && isAbilityUsable(activeAbilities[0]) && (
-          <AbilityIcon onClick={(e) => onAbilityClick && onAbilityClick(e, drone, activeAbilities[0])} />
-      )}
-
-      {/* Intercepted Badge */}
-      {interceptedBadge && interceptedBadge.droneId === drone.id && (
-        <InterceptedBadge
-          droneId={drone.id}
-          timestamp={interceptedBadge.timestamp}
-        />
-      )}
           </div>
           {/* End Grayscale Container */}
 
@@ -231,6 +217,27 @@ const DroneToken = ({
         {/* End Targeting/Visual Effects Container */}
       </div>
       {/* End Float Animation Container */}
+
+      {/* Overlapping Hexagons - Outside nested containers for proper filter rendering */}
+      <div className="absolute -top-3 left-[-14px] w-6 h-7 z-20">
+          <StatHexagon value={effectiveStats.attack} isFlat={false} bgColor={statBgColor} textColor={attackTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
+      </div>
+      <div className={`absolute -top-3 right-[-14px] w-7 h-7 z-20 ${isPotentialInterceptor ? 'interceptor-glow' : ''}`}>
+          <StatHexagon value={effectiveStats.speed} isFlat={true} bgColor={statBgColor} textColor={speedTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
+      </div>
+
+      {/* Overlapping Ability Icon */}
+      {isPlayer && activeAbilities.length > 0 && isAbilityUsable(activeAbilities[0]) && (
+          <AbilityIcon onClick={(e) => onAbilityClick && onAbilityClick(e, drone, activeAbilities[0])} />
+      )}
+
+      {/* Intercepted Badge */}
+      {interceptedBadge && interceptedBadge.droneId === drone.id && (
+        <InterceptedBadge
+          droneId={drone.id}
+          timestamp={interceptedBadge.timestamp}
+        />
+      )}
     </div>
   );
 };

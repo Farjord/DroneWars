@@ -34,6 +34,94 @@ import { applyInterceptionAdjustments } from './ai/adjustmentPasses/interception
 import { applyAntiShipAdjustments } from './ai/adjustmentPasses/antiShipAdjustment.js';
 
 // ========================================
+// ACTIVE ABILITY TARGET HELPER
+// ========================================
+
+/**
+ * Get valid targets for an active ability
+ */
+const getActiveAbilityTargets = (ability, sourceDrone, player1, player2) => {
+  const targets = [];
+  const { targeting, effect } = ability;
+
+  if (!targeting) return [];
+
+  const owner = targeting.affinity === 'FRIENDLY' ? player2 : player1;
+  const lanes = targeting.location === 'SAME_LANE'
+    ? [sourceDrone.lane]
+    : ['lane1', 'lane2', 'lane3'];
+
+  for (const lane of lanes) {
+    const dronesInLane = owner.dronesOnBoard[lane] || [];
+
+    for (const drone of dronesInLane) {
+      // Apply custom filters
+      if (targeting.custom?.includes('DAMAGED_HULL')) {
+        if (drone.hull >= drone.maxHull) continue; // Only target damaged drones
+      }
+
+      targets.push({
+        ...drone,
+        lane,
+        owner: targeting.affinity === 'FRIENDLY' ? 'player2' : 'player1'
+      });
+    }
+  }
+
+  return targets;
+};
+
+/**
+ * Evaluate the value of using an active ability
+ */
+const evaluateActiveAbility = (ability, target, currentEnergy) => {
+  const { effect } = ability;
+  let score = 0;
+
+  switch (effect.type) {
+    case 'HEAL': {
+      // Calculate actual healing (capped by missing hull)
+      const missingHull = (target.maxHull || target.hull) - target.hull;
+      const actualHeal = Math.min(effect.value, missingHull);
+
+      if (actualHeal <= 0) return -999; // Invalid - no healing needed
+
+      // Base value: 8 per hull healed
+      score = actualHeal * 8;
+
+      // Bonus for healing high-value drones
+      score += (target.class || 0) * 5;
+      break;
+    }
+
+    case 'DAMAGE': {
+      const damage = effect.value;
+
+      // Base damage value
+      score = damage * 8;
+
+      // Check for lethal
+      const durability = (target.hull || 0) + (target.currentShields || 0);
+      if (damage >= durability) {
+        // Lethal bonus
+        score += 50 + (target.class || 0) * 15;
+      }
+
+      // Bonus for cross-lane targeting (Sniper can hit any lane)
+      if (ability.targeting?.location === 'ANY_LANE') {
+        score += 20;
+      }
+      break;
+    }
+
+    default:
+      score = 10; // Default small value for unknown abilities
+  }
+
+  return score;
+};
+
+// ========================================
 // DEPLOYMENT DECISION
 // ========================================
 
@@ -174,13 +262,30 @@ const currentLaneScores = {
           dominanceBonus = Math.floor(Math.random() * (30 - 10 + 1)) + 10;
         }
 
+        // ON_DEPLOY ability bonuses (Scanner marking)
+        let onDeployBonus = 0;
+        const onDeployAbilities = baseDrone.abilities?.filter(a =>
+          a.type === 'TRIGGERED' && a.trigger === 'ON_DEPLOY'
+        ) || [];
+
+        for (const ability of onDeployAbilities) {
+          if (ability.effect?.type === 'MARK_RANDOM_ENEMY') {
+            const enemiesInLane = player1.dronesOnBoard[laneId] || [];
+            const unmarkedEnemies = enemiesInLane.filter(d => !d.isMarked);
+            if (unmarkedEnemies.length > 0) {
+              onDeployBonus += 15; // DEPLOYMENT_BONUSES.MARK_ENEMY_VALUE
+            }
+          }
+        }
+
         const logicArray = [
             `LaneScore: ${currentLaneScore.toFixed(0)}`,
             `Projected: ${projectedScore.toFixed(0)}`,
             `Impact: ${impactScore.toFixed(0)}`,
             `Bonus: ${strategicBonus.toFixed(0)}`,
             `Stabilize: ${stabilizationBonus.toFixed(0)}`,
-            `Dominance: ${dominanceBonus.toFixed(0)}`
+            `Dominance: ${dominanceBonus.toFixed(0)}`,
+            ...(onDeployBonus > 0 ? [`OnDeploy: +${onDeployBonus}`] : [])
         ];
 
         let overkillPenalty = 0;
@@ -194,7 +299,7 @@ const currentLaneScores = {
             }
         }
 
-        const finalScore = impactScore + strategicBonus + stabilizationBonus + dominanceBonus + overkillPenalty;
+        const finalScore = impactScore + strategicBonus + stabilizationBonus + dominanceBonus + onDeployBonus + overkillPenalty;
 
         possibleDeployments.push({
           drone,
@@ -386,6 +491,32 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
       });
     }
 
+    // Generate active ability actions (Repair, Sniper, etc.)
+    for (const drone of readyAiDrones) {
+      if (drone.isExhausted) continue; // Can't use abilities if exhausted
+
+      const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
+      const activeAbilities = baseDrone?.abilities?.filter(a => a.type === 'ACTIVE') || [];
+
+      for (const ability of activeAbilities) {
+        // Check energy cost
+        if (ability.cost?.energy && player2.energy < ability.cost.energy) continue;
+
+        // Get valid targets based on ability targeting
+        const targets = getActiveAbilityTargets(ability, drone, player1, player2);
+
+        for (const target of targets) {
+          possibleActions.push({
+            type: 'use_ability',
+            drone,
+            ability,
+            target,
+            score: 0
+          });
+        }
+      }
+    }
+
     // Create evaluation context for modular evaluators
     const evaluationContext = {
       player1,
@@ -446,6 +577,30 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
           const result = evaluateMove(drone, fromLane, toLane, evaluationContext);
           score = result.score;
           action.logic.push(...result.logic);
+          action.score = score;
+          break;
+        }
+
+        case 'use_ability': {
+          const { drone, ability, target } = action;
+          action.instigator = `${drone.name} (${ability.name})`;
+          action.targetName = target?.name || 'N/A';
+
+          // Evaluate active ability
+          score = evaluateActiveAbility(ability, target, player2.energy);
+          action.logic.push(`✅ Active Ability: ${ability.name}`);
+
+          if (score > 0) {
+            action.logic.push(`✅ Effect Value: +${score}`);
+          }
+
+          // Energy cost penalty
+          if (ability.cost?.energy) {
+            const costPenalty = ability.cost.energy * 4;
+            score -= costPenalty;
+            action.logic.push(`⚠️ Energy Cost: -${costPenalty}`);
+          }
+
           action.score = score;
           break;
         }

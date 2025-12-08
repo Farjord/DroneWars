@@ -55,11 +55,42 @@ export const evaluateDroneAttack = (attacker, target, context) => {
     logic.push(`⚠️ Anti-Ship Drone: ${PENALTIES.ANTI_SHIP_ATTACKING_DRONE}`);
   }
 
-  // Piercing damage bonus
-  if (attacker.damageType === 'PIERCING') {
+  // Piercing damage bonus (static or conditional)
+  let isPiercing = attacker.damageType === 'PIERCING';
+
+  // Check for conditional piercing (Hunter - gains PIERCING vs marked targets)
+  if (!isPiercing) {
+    const conditionalPiercingAbility = baseAttacker?.abilities.find(a =>
+      a.type === 'PASSIVE' &&
+      a.effect?.type === 'CONDITIONAL_KEYWORD' &&
+      a.effect?.keyword === 'PIERCING' &&
+      a.effect?.condition?.type === 'TARGET_IS_MARKED'
+    );
+
+    if (conditionalPiercingAbility && target.isMarked) {
+      isPiercing = true;
+      logic.push(`✅ Hunter Protocol: Piercing vs marked target`);
+    }
+  }
+
+  if (isPiercing) {
     const bonus = effectiveTarget.currentShields * SCORING_WEIGHTS.PIERCING_SHIELD_MULTIPLIER;
     score += bonus;
     logic.push(`✅ Piercing Damage: +${bonus}`);
+  }
+
+  // Growth bonus (Gladiator - gains permanent +1 attack after attacking)
+  const growthAbility = baseAttacker?.abilities.find(a =>
+    a.type === 'PASSIVE' &&
+    a.effect?.type === 'AFTER_ATTACK' &&
+    a.effect?.subEffect?.type === 'PERMANENT_STAT_MOD'
+  );
+
+  if (growthAbility) {
+    const statGain = growthAbility.effect.subEffect.mod?.value || 1;
+    const bonus = statGain * ATTACK_BONUSES.GROWTH_MULTIPLIER;
+    score += bonus;
+    logic.push(`✅ Growth: +${bonus} (gains +${statGain} ${growthAbility.effect.subEffect.mod?.stat || 'stat'})`);
   }
 
   // Guardian protection check - heavily penalize attacking with Guardians when enemies present
