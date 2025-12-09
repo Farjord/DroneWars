@@ -88,6 +88,30 @@ class CombatOutcomeProcessor {
     const salvageLoot = lootGenerator.generateCombatSalvage(enemyDeck, enemyTier, aiDifficulty);
     debugLog('SP_COMBAT', 'Generated salvage loot:', salvageLoot);
 
+    // 2b. Check for pending salvage loot from PoI encounter (when combat was triggered during salvage)
+    // This combines salvage loot with combat rewards into a single LootRevealModal
+    const pendingSalvageLoot = currentRunState.pendingSalvageLoot;
+    if (pendingSalvageLoot) {
+      debugLog('SP_COMBAT', 'Combining with pending salvage loot:', pendingSalvageLoot);
+
+      // Prepend salvage cards (PoI loot first, then combat loot)
+      salvageLoot.cards = [
+        ...(pendingSalvageLoot.cards || []),
+        ...(salvageLoot.cards || [])
+      ];
+      // Combine salvage items by adding credit values
+      // Keep the combat salvage item but add pending credits to its value
+      const pendingCredits = pendingSalvageLoot.salvageItem?.creditValue || pendingSalvageLoot.credits || 0;
+      if (salvageLoot.salvageItem && pendingCredits > 0) {
+        salvageLoot.salvageItem = {
+          ...salvageLoot.salvageItem,
+          creditValue: salvageLoot.salvageItem.creditValue + pendingCredits
+        };
+      }
+
+      debugLog('SP_COMBAT', 'Combined loot:', salvageLoot);
+    }
+
     // 3. Check for drone blueprint POI reward
     const rewardType = encounterInfo?.reward?.rewardType;
     if (rewardType?.startsWith('DRONE_BLUEPRINT_')) {
@@ -104,7 +128,8 @@ class CombatOutcomeProcessor {
       ...currentRunState,
       shipSections: updatedShipSections,
       currentHull: currentHull,
-      combatsWon: (currentRunState.combatsWon || 0) + 1
+      combatsWon: (currentRunState.combatsWon || 0) + 1,
+      pendingSalvageLoot: null  // Clear after combining with combat loot
     };
 
     // 5. Store pending loot and enter loot reveal state
@@ -146,11 +171,15 @@ class CombatOutcomeProcessor {
       source: 'combat_salvage'
     }));
 
-    // Add credits as a loot item
-    if (loot.credits > 0) {
+    // Add salvage item (replaces flat credits)
+    if (loot.salvageItem) {
       newCardLoot.push({
-        type: 'credits',
-        amount: loot.credits,
+        type: 'salvageItem',
+        itemId: loot.salvageItem.itemId,
+        name: loot.salvageItem.name,
+        creditValue: loot.salvageItem.creditValue,
+        image: loot.salvageItem.image,
+        description: loot.salvageItem.description,
         source: 'combat_salvage'
       });
     }
@@ -186,7 +215,7 @@ class CombatOutcomeProcessor {
     const updatedRunState = {
       ...currentRunState,
       collectedLoot: [...existingLoot, ...newCardLoot],
-      creditsEarned: (currentRunState.creditsEarned || 0) + (loot.credits || 0),
+      creditsEarned: (currentRunState.creditsEarned || 0) + (loot.salvageItem?.creditValue || 0),
       aiCoresEarned: (currentRunState.aiCoresEarned || 0) + (loot.aiCores || 0)
     };
 

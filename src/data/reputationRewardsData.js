@@ -11,6 +11,15 @@
  * - null - No reward for this level (level 0 starting point)
  */
 
+/**
+ * Reputation levels that grant +1 extraction limit bonus (custom decks only)
+ * Each level in this array adds +1 to the custom deck extraction capacity
+ * Example: [3, 6, 9] means +1 at level 3, +2 at level 6, +3 at level 9
+ *
+ * Modify this array to adjust which reputation levels grant extraction bonuses
+ */
+export const EXTRACTION_LIMIT_BONUS_RANKS = [3, 6, 9];
+
 export const REPUTATION_LEVELS = [
   // Level 0 - Starting level, no reward
   {

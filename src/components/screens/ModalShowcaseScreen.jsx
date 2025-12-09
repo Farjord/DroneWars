@@ -41,6 +41,7 @@ import AbandonRunModal from '../modals/AbandonRunModal.jsx';
 import MapOverviewModal from '../modals/MapOverviewModal.jsx';
 import WaypointConfirmationModal from '../modals/WaypointConfirmationModal.jsx';
 import POIEncounterModal from '../modals/POIEncounterModal.jsx';
+import SalvageModal from '../modals/SalvageModal.jsx';
 import LootRevealModal from '../modals/LootRevealModal.jsx';
 import RunInventoryModal from '../modals/RunInventoryModal.jsx';
 import ExtractionLootSelectionModal from '../modals/ExtractionLootSelectionModal.jsx';
@@ -177,6 +178,10 @@ function ModalShowcaseScreen() {
       MapOverviewModal,
       WaypointConfirmationModal,
       POIEncounterModal,
+      SalvageModal,
+      SalvageModal_midSalvage: SalvageModal,
+      SalvageModal_allRevealed: SalvageModal,
+      SalvageModal_encounter: SalvageModal,
       LootRevealModal,
       RunInventoryModal,
       ExtractionLootSelectionModal,

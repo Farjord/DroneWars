@@ -7,7 +7,7 @@
 import gameStateManager from '../../managers/GameStateManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { calculateReputationResult, calculateLoadoutValue } from './ReputationCalculator.js';
-import { getLevelData, REPUTATION_LEVELS } from '../../data/reputationRewardsData.js';
+import { getLevelData, REPUTATION_LEVELS, EXTRACTION_LIMIT_BONUS_RANKS } from '../../data/reputationRewardsData.js';
 
 class ReputationService {
   /**
@@ -230,6 +230,17 @@ class ReputationService {
    */
   getLoadoutValue(shipSlot) {
     return calculateLoadoutValue(shipSlot);
+  }
+
+  /**
+   * Get extraction limit bonus based on reputation level
+   * Counts how many bonus rank thresholds have been reached
+   * @returns {number} Bonus extraction slots from reputation milestones (0 or more)
+   */
+  getExtractionBonus() {
+    const levelData = this.getLevelData();
+    const bonusRanks = EXTRACTION_LIMIT_BONUS_RANKS || [];
+    return bonusRanks.filter(rank => levelData.level >= rank).length;
   }
 }
 

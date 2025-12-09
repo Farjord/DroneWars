@@ -160,8 +160,8 @@ export const getMockGameState = () => {
 // ========================================
 
 export const MODAL_CATEGORIES = {
-  all: { name: 'All', count: 47 },
-  extraction: { name: 'Extraction', count: 8 },
+  all: { name: 'All', count: 51 },
+  extraction: { name: 'Extraction', count: 12 },
   danger: { name: 'Danger', count: 2 },
   confirmation: { name: 'Confirmation', count: 5 },
   interception: { name: 'Interception', count: 2 },
@@ -674,6 +674,152 @@ export const getMockPropsForModal = (modalName) => {
         onClose: () => console.log('POI encounter closed')
       }
     },
+
+    // Salvage Modal - Initial state (all slots locked)
+    'SalvageModal': {
+      category: 'extraction',
+      props: {
+        salvageState: {
+          poi: {
+            q: 2, r: -1, type: 'poi',
+            poiData: {
+              name: 'Munitions Storage Depot',
+              description: 'Abandoned ordnance cache',
+              color: '#a855f7',
+              image: '/DroneWars/poi/munitions_depot.jpg',
+              rewardType: 'ORDNANCE_PACK'
+            }
+          },
+          zone: 'mid',
+          totalSlots: 4,
+          slots: [
+            { type: 'salvageItem', content: { itemId: 'SALVAGE_GYROSCOPE', name: 'Stabilization Gyroscope', creditValue: 45, image: '/Credits/gyroscope.png', description: 'Precision orientation module in working order.' }, revealed: false },
+            { type: 'card', content: { rarity: 'Rare', cardName: 'Railgun Mk II' }, revealed: false },
+            { type: 'salvageItem', content: { itemId: 'SALVAGE_CIRCUIT_BOARDS', name: 'Damaged Circuit Boards', creditValue: 32, image: '/Credits/circuit-boards.png', description: 'Partially functional processing components.' }, revealed: false },
+            { type: 'card', content: { rarity: 'Common', cardName: 'Shield Drone' }, revealed: false }
+          ],
+          currentSlotIndex: 0,
+          currentEncounterChance: 15,
+          encounterTriggered: false
+        },
+        tierConfig: {},
+        detection: 25.0,
+        onSalvageSlot: () => console.log('Salvage slot clicked'),
+        onLeave: () => console.log('Leave clicked'),
+        onEngageCombat: () => console.log('Engage combat clicked'),
+        onQuit: () => console.log('Quit clicked')
+      }
+    },
+
+    // Salvage Modal - Mid-salvage (some slots revealed)
+    'SalvageModal_midSalvage': {
+      category: 'extraction',
+      props: {
+        salvageState: {
+          poi: {
+            q: 2, r: -1, type: 'poi',
+            poiData: {
+              name: 'Munitions Storage Depot',
+              description: 'Abandoned ordnance cache',
+              color: '#a855f7',
+              image: '/DroneWars/poi/munitions_depot.jpg',
+              rewardType: 'ORDNANCE_PACK'
+            }
+          },
+          zone: 'mid',
+          totalSlots: 4,
+          slots: [
+            { type: 'salvageItem', content: { itemId: 'SALVAGE_GYROSCOPE', name: 'Stabilization Gyroscope', creditValue: 45, image: '/Credits/gyroscope.png', description: 'Precision orientation module in working order.' }, revealed: true },
+            { type: 'card', content: { rarity: 'Rare', cardName: 'Railgun Mk II' }, revealed: true },
+            { type: 'salvageItem', content: { itemId: 'SALVAGE_CIRCUIT_BOARDS', name: 'Damaged Circuit Boards', creditValue: 32, image: '/Credits/circuit-boards.png', description: 'Partially functional processing components.' }, revealed: false },
+            { type: 'card', content: { rarity: 'Common', cardName: 'Shield Drone' }, revealed: false }
+          ],
+          currentSlotIndex: 2,
+          currentEncounterChance: 35,
+          encounterTriggered: false
+        },
+        tierConfig: {},
+        detection: 42.5,
+        onSalvageSlot: () => console.log('Salvage slot clicked'),
+        onLeave: () => console.log('Leave clicked'),
+        onEngageCombat: () => console.log('Engage combat clicked'),
+        onQuit: () => console.log('Quit clicked')
+      }
+    },
+
+    // Salvage Modal - All slots revealed
+    'SalvageModal_allRevealed': {
+      category: 'extraction',
+      props: {
+        salvageState: {
+          poi: {
+            q: 2, r: -1, type: 'poi',
+            poiData: {
+              name: 'Energy Hub Ruins',
+              description: 'Derelict power distribution station',
+              color: '#22c55e',
+              image: '/DroneWars/poi/energy_hub.jpg',
+              rewardType: 'ENERGY_PACK'
+            }
+          },
+          zone: 'core',
+          totalSlots: 5,
+          slots: [
+            { type: 'salvageItem', content: { itemId: 'SALVAGE_GYROSCOPE', name: 'Stabilization Gyroscope', creditValue: 45, image: '/Credits/gyroscope.png', description: 'Precision orientation module in working order.' }, revealed: true },
+            { type: 'card', content: { rarity: 'Rare', cardName: 'Railgun Mk II' }, revealed: true },
+            { type: 'salvageItem', content: { itemId: 'SALVAGE_CIRCUIT_BOARDS', name: 'Damaged Circuit Boards', creditValue: 32, image: '/Credits/circuit-boards.png', description: 'Partially functional processing components.' }, revealed: true },
+            { type: 'card', content: { rarity: 'Common', cardName: 'Shield Drone' }, revealed: true },
+            { type: 'salvageItem', content: { itemId: 'SALVAGE_PLASMA_COIL', name: 'Plasma Induction Coil', creditValue: 58, image: '/Credits/plasma-coil.png', description: 'Energy amplification component with minor wear.' }, revealed: true }
+          ],
+          currentSlotIndex: 5,
+          currentEncounterChance: 72,
+          encounterTriggered: false
+        },
+        tierConfig: {},
+        detection: 65.0,
+        onSalvageSlot: () => console.log('Salvage slot clicked'),
+        onLeave: () => console.log('Leave clicked'),
+        onEngageCombat: () => console.log('Engage combat clicked'),
+        onQuit: () => console.log('Quit clicked')
+      }
+    },
+
+    // Salvage Modal - Encounter triggered
+    'SalvageModal_encounter': {
+      category: 'extraction',
+      props: {
+        salvageState: {
+          poi: {
+            q: 2, r: -1, type: 'poi',
+            poiData: {
+              name: 'Contraband Cache',
+              description: 'Hidden stash of illegal goods',
+              color: '#ef4444',
+              image: '/DroneWars/poi/contraband_cache.jpg',
+              rewardType: 'MIXED_PACK'
+            }
+          },
+          zone: 'mid',
+          totalSlots: 4,
+          slots: [
+            { type: 'salvageItem', content: { itemId: 'SALVAGE_GYROSCOPE', name: 'Stabilization Gyroscope', creditValue: 45, image: '/Credits/gyroscope.png', description: 'Precision orientation module in working order.' }, revealed: true },
+            { type: 'card', content: { rarity: 'Rare', cardName: 'Railgun Mk II' }, revealed: true },
+            { type: 'salvageItem', content: { itemId: 'SALVAGE_CIRCUIT_BOARDS', name: 'Damaged Circuit Boards', creditValue: 32, image: '/Credits/circuit-boards.png', description: 'Partially functional processing components.' }, revealed: true },
+            { type: 'card', content: { rarity: 'Common', cardName: 'Shield Drone' }, revealed: false }
+          ],
+          currentSlotIndex: 3,
+          currentEncounterChance: 55,
+          encounterTriggered: true
+        },
+        tierConfig: {},
+        detection: 58.0,
+        onSalvageSlot: () => console.log('Salvage slot clicked'),
+        onLeave: () => console.log('Leave clicked'),
+        onEngageCombat: () => console.log('Engage combat clicked'),
+        onQuit: () => console.log('Quit clicked')
+      }
+    },
+
     'LootRevealModal': {
       category: 'extraction',
       props: {
@@ -686,7 +832,7 @@ export const getMockPropsForModal = (modalName) => {
             { cardId: 'CARD007', rarity: 'Rare', cardName: 'Overcharge', cardType: 'Tactic' },
             { cardId: 'CARD020', rarity: 'Mythic', cardName: 'Slimline Bodywork', cardType: 'Upgrade' }
           ],
-          credits: 150,
+          salvageItem: { itemId: 'SALVAGE_NAV_MODULE', name: 'Navigation Module', creditValue: 150, image: '/Credits/nav-module.png', description: 'Functional navigation computer with intact star maps.' },
           blueprint: null
         },
         onCollect: () => console.log('Loot collected')
@@ -696,8 +842,12 @@ export const getMockPropsForModal = (modalName) => {
       category: 'extraction',
       props: {
         currentRunState: {
-          collectedLoot: [getMockCard('Laser Blast'), getMockCard('Energy Surge')],
-          creditsEarned: 150,
+          collectedLoot: [
+            getMockCard('Laser Blast'),
+            getMockCard('Energy Surge'),
+            { type: 'salvageItem', itemId: 'SALVAGE_GYROSCOPE', name: 'Stabilization Gyroscope', creditValue: 75, image: '/Credits/gyroscope.png', description: 'Precision orientation module.' },
+            { type: 'salvageItem', itemId: 'SALVAGE_PLASMA_COIL', name: 'Plasma Induction Coil', creditValue: 85, image: '/Credits/plasma-coil.png', description: 'Energy amplification component.' }
+          ],
           poisVisited: 3,
           currentDetection: 25
         },
@@ -873,6 +1023,7 @@ export const getModalsByCategory = () => {
     all: [
       // Extraction modals
       'MapOverviewModal', 'WaypointConfirmationModal', 'POIEncounterModal',
+      'SalvageModal', 'SalvageModal_midSalvage', 'SalvageModal_allRevealed', 'SalvageModal_encounter',
       'LootRevealModal', 'RunInventoryModal', 'RunSummaryModal', 'ExtractionLootSelectionModal',
       // Danger modals
       'AbandonRunModal', 'MIARecoveryModal',
@@ -900,6 +1051,7 @@ export const getModalsByCategory = () => {
     ],
     extraction: [
       'MapOverviewModal', 'WaypointConfirmationModal', 'POIEncounterModal',
+      'SalvageModal', 'SalvageModal_midSalvage', 'SalvageModal_allRevealed', 'SalvageModal_encounter',
       'LootRevealModal', 'RunInventoryModal', 'RunSummaryModal', 'ExtractionLootSelectionModal'
     ],
     danger: [

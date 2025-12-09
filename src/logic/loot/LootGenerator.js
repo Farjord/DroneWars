@@ -9,6 +9,8 @@ import fullCardCollection from '../../data/cardData.js';
 import fullDroneCollection from '../../data/droneData.js';
 import { starterDeck } from '../../data/playerDeckData.js';
 import { calculateAICoresDrop } from '../../data/aiCoresData.js';
+import { generateSalvageItemFromValue } from '../../data/salvageItemData.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 // Starter card IDs to exclude (players have infinite copies)
 const STARTER_CARD_IDS = new Set(starterDeck.decklist.map(entry => entry.id));
@@ -71,9 +73,12 @@ class LootGenerator {
     const { min: cMin, max: cMax } = config.creditsRange;
     const baseCredits = cMin + Math.floor(rng.random() * (cMax - cMin + 1));
     const creditsMultiplier = zoneWeights?.creditsMultiplier || 1.0;
-    const credits = Math.round(baseCredits * creditsMultiplier);
+    const creditValue = Math.round(baseCredits * creditsMultiplier);
 
-    return { cards, credits };
+    // Generate salvage item instead of flat credits
+    const salvageItem = generateSalvageItemFromValue(creditValue, rng);
+
+    return { cards, salvageItem };
   }
 
   /**
@@ -280,8 +285,9 @@ class LootGenerator {
     const rarityOrder = { Common: 0, Uncommon: 1, Rare: 2, Mythic: 3 };
     cards.sort((a, b) => (rarityOrder[a.rarity] || 0) - (rarityOrder[b.rarity] || 0));
 
-    // Credits from combat: 50-100
-    const credits = 50 + Math.floor(rng.random() * 51);
+    // Credits from combat: 50-100, converted to salvage item
+    const creditValue = 50 + Math.floor(rng.random() * 51);
+    const salvageItem = generateSalvageItemFromValue(creditValue, rng);
 
     // AI Cores from combat: probabilistic drops based on AI difficulty (uses seeded RNG)
     const aiCores = calculateAICoresDrop(tier, aiDifficulty, rng);
@@ -297,7 +303,7 @@ class LootGenerator {
       };
     }
 
-    return { cards, credits, aiCores, blueprint };
+    return { cards, salvageItem, aiCores, blueprint };
   }
 
   /**
@@ -352,6 +358,200 @@ class LootGenerator {
       droneData: drone,
       source: 'drone_blueprint_poi'
     };
+  }
+
+  /**
+   * Generate salvage slots for a POI (1-5 based on zone)
+   * @param {string} packType - Pack type from POI
+   * @param {number} tier - Map tier (1, 2, or 3)
+   * @param {string} zone - Map zone (perimeter, mid, core)
+   * @param {Object} tierConfig - Tier configuration with salvageSlotCountWeights
+   * @param {number} seed - Random seed for deterministic results
+   * @returns {Array} Array of slot objects: { type, content, revealed }
+   */
+  generateSalvageSlots(packType, tier = 1, zone = null, tierConfig = null, seed = Date.now()) {
+    const config = packTypes[packType];
+    const rng = this.createRNG(seed);
+
+    debugLog('SALVAGE_LOOT', '=== Generating Salvage Slots ===');
+    debugLog('SALVAGE_LOOT', 'Pack type:', packType);
+    debugLog('SALVAGE_LOOT', 'Tier:', tier);
+    debugLog('SALVAGE_LOOT', 'Zone:', zone);
+
+    // 1. Roll slot count from zone's salvageSlotCountWeights (1-5)
+    const slotCount = this._rollSlotCount(zone, tierConfig, rng);
+    debugLog('SALVAGE_LOOT', 'Total slots rolled:', slotCount);
+
+    // Handle unknown pack type
+    if (!config) {
+      console.warn(`Unknown pack type: ${packType}`);
+      return this._generateDefaultSlots(slotCount, tierConfig, zone, rng);
+    }
+
+    // 2. Roll card count using existing zone cardCountWeights (capped at slot count)
+    const { min, max } = config.cardCount;
+    const zoneWeights = zone && tierConfig?.zoneRewardWeights?.[zone];
+    let cardCount = this._rollWeightedCardCount(min, max, zoneWeights?.cardCountWeights, rng);
+    debugLog('SALVAGE_LOOT', `Card count rolled: ${cardCount} (range: ${min}-${max})`);
+
+    // Cap card count at slot count
+    cardCount = Math.min(cardCount, slotCount);
+
+    // Ensure minimum 1 card for card packs (packs with min >= 1)
+    if (min >= 1 && cardCount < 1) {
+      cardCount = 1;
+      debugLog('SALVAGE_LOOT', 'Enforced minimum 1 card for card pack');
+    }
+
+    // 3. Generate cards using existing logic
+    const tierKey = `tier${tier}`;
+    const rarityWeights = config.rarityWeights[tierKey] || config.rarityWeights.tier1;
+    const allowedRarities = Object.keys(rarityWeights).filter(r => rarityWeights[r] > 0);
+
+    const slots = [];
+
+    for (let i = 0; i < cardCount; i++) {
+      const cardType = this.rollCardType(config, i === 0, rng);
+      const rarity = this.rollRarity(rarityWeights, rng);
+      const card = this.selectCard(cardType, rarity, allowedRarities, rng);
+
+      if (card) {
+        slots.push({
+          type: 'card',
+          content: {
+            cardId: card.id,
+            cardName: card.name,
+            rarity: card.rarity || 'Common',
+            cardType: card.type
+          },
+          revealed: false
+        });
+      }
+    }
+
+    // Log cards generated
+    const cardSlots = slots.filter(s => s.type === 'card');
+    debugLog('SALVAGE_LOOT', `Cards generated (${cardSlots.length}):`, cardSlots.map(s => ({
+      cardId: s.content.cardId,
+      rarity: s.content.rarity
+    })));
+
+    // 4. Generate salvage item slots for remaining slots (replaces flat credits)
+    const salvageSlotCount = slotCount - slots.length;
+    const { min: cMin, max: cMax } = config.creditsRange;
+    const creditsMultiplier = zoneWeights?.creditsMultiplier || 1.0;
+
+    for (let i = 0; i < salvageSlotCount; i++) {
+      const baseCredits = cMin + Math.floor(rng.random() * (cMax - cMin + 1));
+      const creditValue = Math.round(baseCredits * creditsMultiplier);
+
+      // Generate a salvage item with the rolled credit value
+      const salvageItem = generateSalvageItemFromValue(creditValue, rng);
+
+      slots.push({
+        type: 'salvageItem',
+        content: {
+          itemId: salvageItem.itemId,
+          name: salvageItem.name,
+          creditValue: salvageItem.creditValue,
+          image: salvageItem.image,
+          description: salvageItem.description
+        },
+        revealed: false
+      });
+    }
+
+    // 5. Shuffle slot positions
+    const shuffledSlots = this._shuffleArray(slots, rng);
+
+    // Log final slot distribution
+    debugLog('SALVAGE_LOOT', 'Final slot distribution:', shuffledSlots.map((s, i) => ({
+      slot: i,
+      type: s.type,
+      name: s.content.cardName || s.content.name
+    })));
+
+    return shuffledSlots;
+  }
+
+  /**
+   * Roll slot count based on zone weighting
+   * @param {string} zone - Map zone
+   * @param {Object} tierConfig - Tier configuration
+   * @param {Object} rng - Random number generator
+   * @returns {number} Slot count (1-5)
+   */
+  _rollSlotCount(zone, tierConfig, rng) {
+    const weights = tierConfig?.salvageSlotCountWeights?.[zone];
+
+    if (!weights) {
+      // Default: 2-4 slots
+      return 2 + Math.floor(rng.random() * 3);
+    }
+
+    const roll = rng.random() * 100;
+    let cumulative = 0;
+
+    for (let count = 1; count <= 5; count++) {
+      cumulative += (weights[count] || 0);
+      if (roll < cumulative) {
+        return count;
+      }
+    }
+
+    // Fallback
+    return 3;
+  }
+
+  /**
+   * Generate default salvage item slots for unknown pack types
+   * @param {number} slotCount - Number of slots
+   * @param {Object} tierConfig - Tier configuration
+   * @param {string} zone - Map zone
+   * @param {Object} rng - Random number generator
+   * @returns {Array} Array of salvage item slots
+   */
+  _generateDefaultSlots(slotCount, tierConfig, zone, rng) {
+    const zoneWeights = zone && tierConfig?.zoneRewardWeights?.[zone];
+    const creditsMultiplier = zoneWeights?.creditsMultiplier || 1.0;
+    const slots = [];
+
+    for (let i = 0; i < slotCount; i++) {
+      const baseCredits = 20 + Math.floor(rng.random() * 31); // 20-50
+      const creditValue = Math.round(baseCredits * creditsMultiplier);
+
+      // Generate a salvage item with the rolled credit value
+      const salvageItem = generateSalvageItemFromValue(creditValue, rng);
+
+      slots.push({
+        type: 'salvageItem',
+        content: {
+          itemId: salvageItem.itemId,
+          name: salvageItem.name,
+          creditValue: salvageItem.creditValue,
+          image: salvageItem.image,
+          description: salvageItem.description
+        },
+        revealed: false
+      });
+    }
+
+    return slots;
+  }
+
+  /**
+   * Shuffle array using Fisher-Yates algorithm
+   * @param {Array} array - Array to shuffle
+   * @param {Object} rng - Random number generator
+   * @returns {Array} Shuffled array
+   */
+  _shuffleArray(array, rng) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(rng.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
   }
 }
 

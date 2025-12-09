@@ -24,7 +24,7 @@ vi.mock('../loot/LootGenerator.js', () => ({
   default: {
     generateCombatSalvage: vi.fn(() => ({
       cards: [],
-      credits: 0,
+      salvageItem: null,
       aiCores: 0,
       blueprint: null
     })),
@@ -85,7 +85,7 @@ describe('CombatOutcomeProcessor', () => {
       // Combat salvage loot (not PoI loot)
       const combatLoot = {
         cards: [{ cardId: 'CARD001', cardName: 'Standard Fighter', rarity: 'Common' }],
-        credits: 50,
+        salvageItem: { itemId: 'SALVAGE_001', name: 'Salvage Item', creditValue: 50, image: '/Credits/test.png', description: 'Test' },
         aiCores: 0
       }
 
@@ -129,7 +129,7 @@ describe('CombatOutcomeProcessor', () => {
 
       gameStateManager.getState.mockReturnValue(mockState)
 
-      const combatLoot = { cards: [], credits: 100, aiCores: 0 }
+      const combatLoot = { cards: [], salvageItem: { itemId: 'SALVAGE_TEST', name: 'Test', creditValue: 100, image: '/Credits/test.png' }, aiCores: 0 }
 
       // Act
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
@@ -155,7 +155,7 @@ describe('CombatOutcomeProcessor', () => {
 
       gameStateManager.getState.mockReturnValue(mockState)
 
-      const combatLoot = { cards: [], credits: 50, aiCores: 0 }
+      const combatLoot = { cards: [], salvageItem: { itemId: 'SALVAGE_TEST', name: 'Test', creditValue: 50, image: '/Credits/test.png' }, aiCores: 0 }
 
       // Act
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
@@ -184,7 +184,7 @@ describe('CombatOutcomeProcessor', () => {
 
       const combatLoot = {
         cards: [{ cardId: 'NEW_CARD', cardName: 'New Card', rarity: 'Rare' }],
-        credits: 75,
+        salvageItem: { itemId: 'SALVAGE_TEST', name: 'Test Salvage', creditValue: 75, image: '/Credits/test.png' },
         aiCores: 2
       }
 
@@ -194,7 +194,7 @@ describe('CombatOutcomeProcessor', () => {
       // Assert: Both loot collection AND pendingPOICombat preservation work
       const setStateCall = gameStateManager.setState.mock.calls[0][0]
 
-      // Loot was collected: 1 existing + 1 new card + 1 credits + 1 aiCores = 4 items
+      // Loot was collected: 1 existing + 1 new card + 1 salvageItem + 1 aiCores = 4 items
       expect(setStateCall.currentRunState.collectedLoot.length).toBe(4)
       expect(setStateCall.currentRunState.creditsEarned).toBe(175) // 100 + 75
       expect(setStateCall.currentRunState.aiCoresEarned).toBe(3) // 1 + 2
@@ -227,7 +227,7 @@ describe('CombatOutcomeProcessor', () => {
 
       const loot = {
         cards: [{ cardId: 'card1', cardName: 'Test Card', rarity: 'common' }],
-        credits: 100,
+        salvageItem: { itemId: 'SALVAGE_TEST', name: 'Test Salvage', creditValue: 100, image: '/Credits/test.png' },
         aiCores: 1,
         blueprint: null
       }
@@ -312,6 +312,178 @@ describe('CombatOutcomeProcessor', () => {
     })
   })
 
+  describe('processVictory - Salvage Loot Combination', () => {
+    /**
+     * NEW FEATURE: When combat is triggered during PoI salvage, the salvage loot
+     * (cards/credits the player revealed) should be combined with combat rewards
+     * into a single pendingLoot object for the LootRevealModal.
+     *
+     * This prevents:
+     * 1. Salvage loot being added silently without flip animation
+     * 2. Double/triple loot bugs
+     * 3. Multiple confusing LootRevealModals
+     */
+
+    it('should combine pendingSalvageLoot with combat salvage when present', async () => {
+      // SETUP: Player was salvaging a PoI and revealed 2 cards + credits
+      // before encounter triggered
+      const mockState = {
+        currentRunState: {
+          shipSections: {},
+          combatsWon: 0,
+          pendingSalvageLoot: {
+            cards: [
+              { cardId: 'SALVAGE_CARD_1', cardName: 'Salvaged Drone', rarity: 'Common' },
+              { cardId: 'SALVAGE_CARD_2', cardName: 'Salvaged Turret', rarity: 'Rare' }
+            ],
+            salvageItem: { itemId: 'SALVAGE_POI', name: 'POI Salvage', creditValue: 75, image: '/Credits/test.png' }
+          }
+        }
+      }
+
+      // Update the mock to return specific combat salvage for this test
+      const lootGenerator = await import('../loot/LootGenerator.js')
+      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+        cards: [{ cardId: 'COMBAT_CARD_1', cardName: 'Enemy Fighter', rarity: 'Common' }],
+        salvageItem: { itemId: 'SALVAGE_COMBAT', name: 'Combat Salvage', creditValue: 50, image: '/Credits/test.png' },
+        aiCores: 1
+      })
+
+      gameStateManager.getState.mockReturnValue(mockState)
+
+      const gameState = {
+        winner: 'player1',
+        player1: { shipSections: { bridge: { hull: 10 }, powerCell: { hull: 10 }, droneControlHub: { hull: 10 } } },
+        player2: { deck: [] },
+        singlePlayerEncounter: { tier: 1, aiDifficulty: 'normal' }
+      }
+
+      // ACT
+      const result = CombatOutcomeProcessor.processVictory(gameState, gameState.singlePlayerEncounter)
+
+      // ASSERT: Combined loot should have salvage cards first, then combat cards
+      expect(result.loot.cards.length).toBe(3) // 2 salvage + 1 combat
+      expect(result.loot.cards[0].cardId).toBe('SALVAGE_CARD_1') // Salvage first
+      expect(result.loot.cards[1].cardId).toBe('SALVAGE_CARD_2')
+      expect(result.loot.cards[2].cardId).toBe('COMBAT_CARD_1') // Combat last
+
+      // ASSERT: Credits should be combined in salvage item
+      expect(result.loot.salvageItem.creditValue).toBe(125) // 75 salvage + 50 combat
+
+      // ASSERT: AI cores from combat should be preserved
+      expect(result.loot.aiCores).toBe(1)
+    })
+
+    it('should clear pendingSalvageLoot from runState after combining', async () => {
+      const mockState = {
+        currentRunState: {
+          shipSections: {},
+          combatsWon: 0,
+          pendingSalvageLoot: {
+            cards: [{ cardId: 'SALVAGE_CARD', cardName: 'Test Card', rarity: 'Common' }],
+            salvageItem: { itemId: 'SALVAGE_TEST', name: 'Test', creditValue: 50, image: '/Credits/test.png' }
+          }
+        }
+      }
+
+      const lootGenerator = await import('../loot/LootGenerator.js')
+      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+        cards: [],
+        salvageItem: { itemId: 'SALVAGE_COMBAT', name: 'Combat', creditValue: 50, image: '/Credits/test.png' },
+        aiCores: 0
+      })
+
+      gameStateManager.getState.mockReturnValue(mockState)
+
+      const gameState = {
+        winner: 'player1',
+        player1: { shipSections: { bridge: { hull: 10 }, powerCell: { hull: 10 }, droneControlHub: { hull: 10 } } },
+        player2: { deck: [] },
+        singlePlayerEncounter: { tier: 1 }
+      }
+
+      // ACT
+      CombatOutcomeProcessor.processVictory(gameState, gameState.singlePlayerEncounter)
+
+      // ASSERT: pendingSalvageLoot should be cleared in setState call
+      const setStateCall = gameStateManager.setState.mock.calls[0][0]
+      expect(setStateCall.currentRunState.pendingSalvageLoot).toBeNull()
+    })
+
+    it('should work normally when no pendingSalvageLoot exists', async () => {
+      // SETUP: Regular combat (not from salvage) - no pendingSalvageLoot
+      const mockState = {
+        currentRunState: {
+          shipSections: {},
+          combatsWon: 0
+          // No pendingSalvageLoot
+        }
+      }
+
+      const lootGenerator = await import('../loot/LootGenerator.js')
+      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+        cards: [{ cardId: 'COMBAT_CARD', cardName: 'Enemy Card', rarity: 'Common' }],
+        salvageItem: { itemId: 'SALVAGE_COMBAT', name: 'Combat', creditValue: 100, image: '/Credits/test.png' },
+        aiCores: 2
+      })
+
+      gameStateManager.getState.mockReturnValue(mockState)
+
+      const gameState = {
+        winner: 'player1',
+        player1: { shipSections: { bridge: { hull: 10 }, powerCell: { hull: 10 }, droneControlHub: { hull: 10 } } },
+        player2: { deck: [] },
+        singlePlayerEncounter: { tier: 1 }
+      }
+
+      // ACT
+      const result = CombatOutcomeProcessor.processVictory(gameState, gameState.singlePlayerEncounter)
+
+      // ASSERT: Should just have combat loot
+      expect(result.loot.cards.length).toBe(1)
+      expect(result.loot.cards[0].cardId).toBe('COMBAT_CARD')
+      expect(result.loot.salvageItem.creditValue).toBe(100)
+      expect(result.loot.aiCores).toBe(2)
+    })
+
+    it('should handle empty salvage loot arrays gracefully', async () => {
+      // SETUP: pendingSalvageLoot exists but has no cards (only salvageItem)
+      const mockState = {
+        currentRunState: {
+          shipSections: {},
+          combatsWon: 0,
+          pendingSalvageLoot: {
+            cards: [],  // Empty cards array
+            salvageItem: { itemId: 'SALVAGE_POI', name: 'POI Salvage', creditValue: 100, image: '/Credits/test.png', description: 'Test' }
+          }
+        }
+      }
+
+      const lootGenerator = await import('../loot/LootGenerator.js')
+      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+        cards: [{ cardId: 'COMBAT_CARD', cardName: 'Combat Card', rarity: 'Common' }],
+        salvageItem: { itemId: 'SALVAGE_COMBAT', name: 'Combat Salvage', creditValue: 50, image: '/Credits/test.png', description: 'Test' },
+        aiCores: 0
+      })
+
+      gameStateManager.getState.mockReturnValue(mockState)
+
+      const gameState = {
+        winner: 'player1',
+        player1: { shipSections: { bridge: { hull: 10 }, powerCell: { hull: 10 }, droneControlHub: { hull: 10 } } },
+        player2: { deck: [] },
+        singlePlayerEncounter: { tier: 1 }
+      }
+
+      // ACT
+      const result = CombatOutcomeProcessor.processVictory(gameState, gameState.singlePlayerEncounter)
+
+      // ASSERT: Should have just combat card, combined salvageItem credit values
+      expect(result.loot.cards.length).toBe(1)
+      expect(result.loot.salvageItem.creditValue).toBe(150) // 100 salvage + 50 combat
+    })
+  })
+
   describe('processCombatEnd - routing', () => {
     it('should route to processVictory when player1 wins', () => {
       // SETUP
@@ -380,7 +552,7 @@ describe('CombatOutcomeProcessor', () => {
         singlePlayerEncounter: { isBlockade: true }
       })
 
-      const combatLoot = { cards: [], credits: 0, aiCores: 0 }
+      const combatLoot = { cards: [], salvageItem: null, aiCores: 0 }
 
       // ACT
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
@@ -405,7 +577,7 @@ describe('CombatOutcomeProcessor', () => {
         singlePlayerEncounter: { isBlockade: true }
       })
 
-      const combatLoot = { cards: [], credits: 0, aiCores: 0 }
+      const combatLoot = { cards: [], salvageItem: null, aiCores: 0 }
 
       // ACT
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
@@ -427,7 +599,7 @@ describe('CombatOutcomeProcessor', () => {
         singlePlayerEncounter: { isBlockade: false }
       })
 
-      const combatLoot = { cards: [], credits: 0, aiCores: 0 }
+      const combatLoot = { cards: [], salvageItem: null, aiCores: 0 }
 
       // ACT
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
@@ -459,7 +631,7 @@ describe('CombatOutcomeProcessor', () => {
 
       const combatLoot = {
         cards: [{ cardId: 'NEW_CARD', cardName: 'Combat Salvage', rarity: 'Rare' }],
-        credits: 100,
+        salvageItem: { itemId: 'SALVAGE_TEST', name: 'Test Salvage', creditValue: 100, image: '/Credits/test.png' },
         aiCores: 2
       }
 
@@ -470,7 +642,7 @@ describe('CombatOutcomeProcessor', () => {
       const setStateCalls = gameStateManager.setState.mock.calls
       const finalCall = setStateCalls[setStateCalls.length - 1][0]
 
-      // Should have 2 existing + 1 new card + 1 credits + 1 aiCores = 4 items total
+      // Should have 1 existing + 1 new card + 1 salvageItem + 1 aiCores = 4 items total
       expect(finalCall.currentRunState.collectedLoot.length).toBe(4)
       expect(finalCall.currentRunState.creditsEarned).toBe(150) // 50 + 100
       expect(finalCall.currentRunState.aiCoresEarned).toBe(3) // 1 + 2

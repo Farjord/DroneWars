@@ -64,6 +64,8 @@ const DEBUG_CONFIG = {
     ASSET_PRELOAD: true,         // Asset preloading and splash screen timing
     SP_COMBAT: true,              // Single-player combat init, abandon, and state transitions
     DECK_BUILDER: true,           // Deck builder save, toast, and validation debugging
+    SALVAGE_LOOT: true,           // PoI loot distribution: slot count, card count, rarities, positions
+    SALVAGE_ENCOUNTER: true,      // Encounter rolls: chance, roll value, increase per salvage
 
     // Effect System Refactoring - Modular Processor Logging
     EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)

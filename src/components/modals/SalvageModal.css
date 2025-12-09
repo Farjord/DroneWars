@@ -1,0 +1,395 @@
+/* ========================================
+   SALVAGE MODAL STYLES
+   ======================================== */
+
+/* PoI Image */
+.salvage-poi-image {
+  width: 100%;
+  height: 120px;
+  overflow: hidden;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.salvage-poi-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Pack Info */
+.salvage-pack-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+}
+
+.salvage-pack-type {
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.salvage-pack-desc {
+  font-size: 12px;
+  color: var(--modal-text-secondary, #9ca3af);
+}
+
+/* Stats Row */
+.salvage-stats {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.salvage-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.salvage-stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--modal-text-secondary, #9ca3af);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.salvage-stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--modal-text-primary, #f9fafb);
+}
+
+/* Slots Container */
+.salvage-slots-container {
+  padding: 16px 0;
+}
+
+.salvage-slots-grid {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Individual Slot - sized to fit full HiddenCard (225x275px) */
+.salvage-slot {
+  width: 235px;
+  height: 285px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 2px solid rgba(100, 100, 100, 0.5);
+  background: rgba(0, 0, 0, 0.4);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.salvage-slot-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #6b7280;
+}
+
+.salvage-slot-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.salvage-slot-number {
+  position: absolute;
+  bottom: 4px;
+  font-size: 9px;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+/* Slot States */
+.salvage-slot--locked {
+  border-color: rgba(100, 100, 100, 0.3);
+  opacity: 0.7;
+}
+
+.salvage-slot--locked .salvage-slot-content {
+  color: #4b5563;
+}
+
+.salvage-slot--next {
+  border-color: rgba(6, 182, 212, 0.6);
+  box-shadow: 0 0 12px rgba(6, 182, 212, 0.3);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.salvage-slot--next .salvage-slot-content {
+  color: #06b6d4;
+}
+
+.salvage-slot--scanning {
+  border-color: rgba(251, 191, 36, 0.8);
+  box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+  animation: scan-pulse 0.5s ease-in-out infinite;
+}
+
+.salvage-slot--scanning .salvage-slot-content {
+  color: #fbbf24;
+}
+
+.salvage-scan-icon {
+  animation: scan-rotate 1s linear infinite;
+}
+
+.salvage-slot--card {
+  border-color: rgba(168, 85, 247, 0.7);
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(139, 92, 246, 0.1));
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+}
+
+.salvage-slot--card .salvage-slot-content {
+  color: #a855f7;
+}
+
+.salvage-slot--credits {
+  border-color: rgba(34, 197, 94, 0.7);
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(16, 185, 129, 0.1));
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+}
+
+.salvage-slot--credits .salvage-slot-content {
+  color: #22c55e;
+}
+
+/* Salvage Item Slot (Gold/Amber theme) */
+.salvage-slot--salvage {
+  border-color: rgba(217, 119, 6, 0.7);
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.15), rgba(180, 83, 9, 0.1));
+  box-shadow: 0 0 15px rgba(217, 119, 6, 0.3);
+}
+
+.salvage-slot--salvage .salvage-slot-content {
+  color: #d97706;
+}
+
+/* Card Back Container */
+.salvage-slot-card-back {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 4px;
+}
+
+/* Credits Back Container */
+.salvage-slot-credits-back {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(16, 185, 129, 0.1));
+  border-radius: 6px;
+  color: #22c55e;
+}
+
+.salvage-credits-label {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Ensure credits icon is large enough for bigger slots */
+.salvage-slot-credits-back svg {
+  width: 48px;
+  height: 48px;
+}
+
+/* Salvage Item Back Container (Gold/Amber theme) */
+.salvage-slot-salvage-back {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.2), rgba(180, 83, 9, 0.1));
+  border-radius: 6px;
+  color: #d97706;
+}
+
+.salvage-item-label {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #fbbf24;
+}
+
+.salvage-credits-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #d97706;
+}
+
+/* Ensure salvage icon is large enough for bigger slots */
+.salvage-slot-salvage-back svg {
+  width: 48px;
+  height: 48px;
+  color: #fbbf24;
+}
+
+/* Scanning Progress Bar */
+.salvage-scan-container {
+  margin-top: 20px;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 8px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.salvage-scan-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fbbf24;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.salvage-scan-bar {
+  height: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.salvage-scan-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
+  border-radius: 4px;
+  transition: width 0.05s linear;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+}
+
+.salvage-scan-percent {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fbbf24;
+  text-align: center;
+}
+
+/* Info Text */
+.salvage-info-text {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--modal-text-secondary, #9ca3af);
+  text-align: center;
+  font-style: italic;
+}
+
+/* Animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 12px rgba(6, 182, 212, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.6);
+  }
+}
+
+@keyframes scan-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(251, 191, 36, 0.7);
+  }
+}
+
+@keyframes scan-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Responsive */
+@media (max-width: 1000px) {
+  .salvage-slot {
+    width: 180px;
+    height: 220px;
+  }
+}
+
+@media (max-width: 900px) {
+  .salvage-slot {
+    width: 160px;
+    height: 195px;
+  }
+}
+
+@media (max-width: 640px) {
+  .salvage-slot {
+    width: 120px;
+    height: 147px;
+  }
+
+  .salvage-slots-grid {
+    gap: 8px;
+  }
+
+  .salvage-stats {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .salvage-stat {
+    flex: 1 1 30%;
+  }
+
+  .salvage-poi-image {
+    height: 80px;
+  }
+
+  .salvage-slot-credits-back svg {
+    width: 32px;
+    height: 32px;
+  }
+
+  .salvage-credits-label {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .salvage-slot {
+    width: 100px;
+    height: 122px;
+  }
+}

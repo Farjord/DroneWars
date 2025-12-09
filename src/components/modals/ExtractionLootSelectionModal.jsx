@@ -208,6 +208,25 @@ const ExtractionLootSelectionModal = ({ isOpen, collectedLoot = [], limit = 3, o
       );
     }
 
+    // Salvage Item type: Display ResourceCard with salvage item data
+    if (item.type === 'salvageItem') {
+      return (
+        <CardWrapper key={index}>
+          <ResourceCard
+            resourceType="salvageItem"
+            salvageItem={{
+              name: item.name,
+              creditValue: item.creditValue,
+              image: item.image,
+              description: item.description
+            }}
+            isSelected={isSelected}
+            onClick={() => {}}
+          />
+        </CardWrapper>
+      );
+    }
+
     if (item.type === 'token') {
       return (
         <CardWrapper key={index}>
@@ -307,7 +326,8 @@ const ExtractionLootSelectionModal = ({ isOpen, collectedLoot = [], limit = 3, o
         }}>
           <p style={{ fontSize: '12px', color: 'var(--modal-text-primary)', margin: 0 }}>
             <strong style={{ color: '#f59e0b' }}>Note:</strong>{' '}
-            Unselected items will be lost. Upgrade to a custom ship slot to remove this limit.
+            Unselected items will be lost. Damaged ship sections reduce your extraction capacity.
+            Higher reputation levels increase custom deck limits.
           </p>
         </div>
 

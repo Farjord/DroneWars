@@ -8,6 +8,7 @@ import gameStateManager from '../../managers/GameStateManager.js';
 import DetectionManager from '../detection/DetectionManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
+import { generateSalvageItemFromValue } from '../../data/salvageItemData.js';
 
 /**
  * EncounterController - Singleton manager for POI encounters
@@ -84,11 +85,11 @@ class EncounterController {
   }
 
   /**
-   * Calculate reward for encounter (stub implementation)
+   * Calculate reward for encounter (generates salvage item instead of flat credits)
    * Combat encounters give more credits as compensation
    * @param {Object} poi - POI hex object
    * @param {'combat' | 'loot'} outcome - Encounter outcome
-   * @returns {Object} Reward object with credits
+   * @returns {Object} Reward object with salvageItem
    */
   calculateReward(poi, outcome) {
     // Base credits depend on outcome
@@ -98,14 +99,19 @@ class EncounterController {
     const gameState = gameStateManager.getState();
     const rng = SeededRandom.fromGameState(gameState || {});
     const bonusCredits = rng.randomInt(0, 50);
+    const creditValue = baseCredits + bonusCredits;
+
+    // Generate salvage item instead of flat credits
+    const mathRng = { random: () => Math.random() };
+    const salvageItem = generateSalvageItemFromValue(creditValue, mathRng);
 
     const reward = {
-      credits: baseCredits + bonusCredits,
+      salvageItem,
       rewardType: poi.poiData?.rewardType || 'CREDITS',
       poiName: poi.poiData?.name || 'Unknown Location'
     };
 
-    debugLog('ENCOUNTER', 'Reward calculated', reward);
+    debugLog('ENCOUNTER', 'Reward calculated', { ...reward, creditValue });
 
     return reward;
   }
@@ -206,20 +212,35 @@ class EncounterController {
       return;
     }
 
-    // Award credits
+    // Award salvage item (replaces flat credits)
     const gameState = gameStateManager.getState();
     const currentRunState = gameState.currentRunState;
 
-    if (currentRunState) {
-      const newCredits = (currentRunState.creditsEarned || 0) + reward.credits;
+    if (currentRunState && reward.salvageItem) {
+      const creditValue = reward.salvageItem.creditValue || 0;
+      const newCredits = (currentRunState.creditsEarned || 0) + creditValue;
+
+      // Add salvage item to collected loot
+      const existingLoot = currentRunState.collectedLoot || [];
+      const salvageLootItem = {
+        type: 'salvageItem',
+        itemId: reward.salvageItem.itemId,
+        name: reward.salvageItem.name,
+        creditValue: reward.salvageItem.creditValue,
+        image: reward.salvageItem.image,
+        description: reward.salvageItem.description,
+        source: 'encounter_reward'
+      };
+
       gameStateManager.setState({
         currentRunState: {
           ...currentRunState,
+          collectedLoot: [...existingLoot, salvageLootItem],
           creditsEarned: newCredits
         }
       });
 
-      debugLog('ENCOUNTER', 'Credits awarded', { awarded: reward.credits, total: newCredits });
+      debugLog('ENCOUNTER', 'Salvage item awarded', { item: reward.salvageItem.name, creditValue, total: newCredits });
     }
 
     // Mark POI as looted (prevent re-looting)
@@ -338,6 +359,49 @@ class EncounterController {
     }
 
     return null;
+  }
+
+  /**
+   * Check for encounter during salvage operation
+   * Uses provided encounter chance (escalates with each slot)
+   * @param {number} encounterChance - Current encounter chance (0-100)
+   * @returns {boolean} True if encounter triggered
+   */
+  checkSalvageEncounter(encounterChance) {
+    const gameState = gameStateManager.getState();
+    const rng = SeededRandom.fromGameState(gameState || {});
+    const roll = rng.random() * 100;
+
+    debugLog('ENCOUNTER', 'Salvage encounter check', {
+      roll: roll.toFixed(2),
+      encounterChance: encounterChance.toFixed(2),
+      triggered: roll < encounterChance
+    });
+
+    return roll < encounterChance;
+  }
+
+  /**
+   * Roll random encounter increase for salvage from tier's range
+   * @param {Object} tierConfig - Tier configuration with salvageEncounterIncreaseRange
+   * @returns {number} Encounter increase amount
+   */
+  rollSalvageEncounterIncrease(tierConfig) {
+    const range = tierConfig?.salvageEncounterIncreaseRange || { min: 5, max: 10 };
+    const { min, max } = range;
+
+    const gameState = gameStateManager.getState();
+    const rng = SeededRandom.fromGameState(gameState || {});
+
+    const increase = min + rng.random() * (max - min);
+
+    debugLog('ENCOUNTER', 'Salvage encounter increase', {
+      min,
+      max,
+      increase: increase.toFixed(2)
+    });
+
+    return increase;
   }
 }
 

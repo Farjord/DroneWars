@@ -122,6 +122,11 @@
 .dw-modal--lg { max-width: 600px; }
 .dw-modal--xl { max-width: 900px; }  /* Increased for two-column layouts */
 .dw-modal--xxl { max-width: 1100px; }
+.dw-modal--full {
+  max-width: 1320px; /* For up to 5 full-size cards */
+  width: fit-content; /* Shrink to content if fewer cards */
+  min-width: 400px; /* Don't get too narrow */
+}
 
 /* ========================================
    THEME MODIFIERS
@@ -317,7 +322,14 @@
 /* ========================================
    BUTTONS
    ======================================== */
-.dw-btn {
+
+/* Base button styles - applies to .dw-btn and all variants */
+.dw-btn,
+.dw-btn-cancel,
+.dw-btn-confirm,
+.dw-btn-danger,
+.dw-btn-success,
+.dw-btn-secondary {
   font-family: 'Exo', sans-serif;
   font-size: 13px;
   font-weight: 600;
@@ -329,9 +341,21 @@
   transition: all 0.2s ease;
   min-width: 120px;
   text-align: center;
+  /* Flex layout for icon + text alignment */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  /* Prevent text wrapping */
+  white-space: nowrap;
 }
 
-.dw-btn:disabled {
+.dw-btn:disabled,
+.dw-btn-cancel:disabled,
+.dw-btn-confirm:disabled,
+.dw-btn-danger:disabled,
+.dw-btn-success:disabled,
+.dw-btn-secondary:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -527,14 +551,21 @@
   .dw-modal-content {
     width: 95%;
     max-width: none !important;
+    min-width: 0; /* Reset min-width on mobile */
   }
 
   .dw-modal-actions {
     flex-direction: column-reverse;
   }
 
-  .dw-btn {
+  .dw-btn,
+  .dw-btn-cancel,
+  .dw-btn-confirm,
+  .dw-btn-danger,
+  .dw-btn-success,
+  .dw-btn-secondary {
     width: 100%;
+    min-width: 0;
   }
 
   .dw-modal-grid--2,

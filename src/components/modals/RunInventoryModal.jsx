@@ -13,7 +13,12 @@ import { Package, Star } from 'lucide-react';
 const RunInventoryModal = ({ currentRunState, onClose }) => {
   if (!currentRunState) return null;
 
-  const { collectedLoot = [], creditsEarned = 0 } = currentRunState;
+  const { collectedLoot = [] } = currentRunState;
+
+  // Calculate credits from salvage items in inventory (not legacy creditsEarned)
+  const salvageCredits = collectedLoot
+    .filter(item => item.type === 'salvageItem')
+    .reduce((sum, item) => sum + (item.creditValue || 0), 0);
 
   // Filter to just card items
   const cardLoot = collectedLoot.filter(item => item.type === 'card');
@@ -54,7 +59,7 @@ const RunInventoryModal = ({ currentRunState, onClose }) => {
               <div className="dw-modal-stat-label">Cards</div>
             </div>
             <div className="dw-modal-stat">
-              <div className="dw-modal-stat-value" style={{ color: '#eab308' }}>${creditsEarned}</div>
+              <div className="dw-modal-stat-value" style={{ color: '#eab308' }}>${salvageCredits}</div>
               <div className="dw-modal-stat-label">Credits</div>
             </div>
             {blueprints.length > 0 && (

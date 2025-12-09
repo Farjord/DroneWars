@@ -3,6 +3,7 @@ import { useGameState } from '../../hooks/useGameState';
 import { debugLog } from '../../utils/debugLogger.js';
 import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js';
 import { ECONOMY } from '../../data/economyData.js';
+import ReputationService from '../../logic/reputation/ReputationService.js';
 import MapPreviewRenderer from '../ui/MapPreviewRenderer';
 import { Map, AlertTriangle, XCircle, Info, Shield } from 'lucide-react';
 
@@ -428,13 +429,20 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                     <Info size={14} style={{ color: '#f59e0b' }} />
                     Extraction Limit:
                   </span>
-                  {currentSlotId === 0 ? (
-                    <span style={{ color: '#f59e0b', fontWeight: 600 }}>
-                      {ECONOMY.STARTER_DECK_EXTRACTION_LIMIT || 3} items
-                    </span>
-                  ) : (
-                    <span style={{ color: 'var(--modal-text-muted)' }}>None</span>
-                  )}
+                  {(() => {
+                    const isStarterDeck = currentSlotId === 0;
+                    const baseLimit = isStarterDeck
+                      ? (ECONOMY.STARTER_DECK_EXTRACTION_LIMIT || 3)
+                      : (ECONOMY.CUSTOM_DECK_EXTRACTION_LIMIT || 6);
+                    const reputationBonus = isStarterDeck ? 0 : ReputationService.getExtractionBonus();
+                    const totalLimit = baseLimit + reputationBonus;
+
+                    return (
+                      <span style={{ color: '#f59e0b', fontWeight: 600 }}>
+                        {totalLimit} items{reputationBonus > 0 && ` (+${reputationBonus} rep)`}
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

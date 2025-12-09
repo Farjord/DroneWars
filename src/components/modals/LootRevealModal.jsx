@@ -9,6 +9,7 @@ import { RARITY_COLORS } from '../../data/cardPackData.js';
 import fullCardCollection from '../../data/cardData.js';
 import ActionCard from '../ui/ActionCard.jsx';
 import HiddenCard from '../ui/HiddenCard.jsx';
+import ResourceCard from '../ui/ResourceCard.jsx';
 import { Gift, X, Star, Shield, Cpu } from 'lucide-react';
 import './LootRevealModal.css'; // Keep for card flip animations
 
@@ -25,8 +26,10 @@ function LootRevealModal({ loot, onCollect, show }) {
 
   if (!show || !loot) return null;
 
-  const { cards = [], credits = 0, aiCores = 0, blueprint, token } = loot;
-  const allRevealed = revealedCards.size >= cards.length || cards.length === 0;
+  const { cards = [], salvageItems = [], aiCores = 0, blueprint, token } = loot;
+  // Count total revealable items (cards + salvageItems)
+  const totalRevealableItems = cards.length + salvageItems.length;
+  const allRevealed = revealedCards.size >= totalRevealableItems || totalRevealableItems === 0;
 
   const handleCardClick = (index) => {
     if (revealedCards.has(index) || isAnimating) return;
@@ -39,7 +42,11 @@ function LootRevealModal({ loot, onCollect, show }) {
   };
 
   const handleRevealAll = () => {
-    const allIndices = new Set(cards.map((_, i) => i));
+    // Include all cards + all salvageItems (salvageItems start at index cards.length)
+    const allIndices = new Set([
+      ...cards.map((_, i) => i),
+      ...salvageItems.map((_, i) => cards.length + i)
+    ]);
     setRevealedCards(allIndices);
   };
 
@@ -66,6 +73,7 @@ function LootRevealModal({ loot, onCollect, show }) {
         <div className="dw-modal-body">
           {/* Card Grid - uses custom CSS for flip animations */}
           <div className="loot-card-grid">
+            {/* Regular cards */}
             {cards.map((item, i) => {
               const isRevealed = revealedCards.has(i);
               const card = fullCardCollection.find(c => c.id === item.cardId);
@@ -103,16 +111,40 @@ function LootRevealModal({ loot, onCollect, show }) {
                 </div>
               );
             })}
-          </div>
 
-          {/* Credits Display */}
-          {credits > 0 && (
-            <div className="dw-modal-info-box" style={{ marginTop: '16px', textAlign: 'center' }}>
-              <p style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: '#eab308' }}>
-                +{credits} Credits
-              </p>
-            </div>
-          )}
+            {/* Salvage Items - each displayed as a flippable card using ResourceCard */}
+            {salvageItems.map((item, i) => {
+              const salvageIndex = cards.length + i;
+              const isRevealed = revealedCards.has(salvageIndex);
+
+              return (
+                <div
+                  key={`salvage-${i}`}
+                  className={`loot-card-container ${isRevealed ? 'revealed' : ''}`}
+                  onClick={() => handleCardClick(salvageIndex)}
+                  style={{ '--rarity-color': '#d97706' }}
+                >
+                  <div className="loot-card-flipper">
+                    {/* Card Back (face-down) - gold salvage themed */}
+                    <HiddenCard
+                      variant="salvage"
+                      size="full"
+                      className="loot-card-back"
+                    />
+
+                    {/* Card Front (revealed) - Salvage item using ResourceCard */}
+                    <div className="loot-card-front">
+                      <ResourceCard
+                        resourceType="salvageItem"
+                        salvageItem={item}
+                        scale={1.0}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
           {/* AI Cores Display */}
           {aiCores > 0 && (
@@ -208,7 +240,7 @@ function LootRevealModal({ loot, onCollect, show }) {
               className="dw-btn dw-btn-secondary"
               onClick={handleRevealAll}
             >
-              Reveal All ({cards.length - revealedCards.size} remaining)
+              Reveal All ({totalRevealableItems - revealedCards.size} remaining)
             </button>
           )}
           <button

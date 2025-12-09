@@ -9,6 +9,7 @@ import HexGridRenderer from '../ui/HexGridRenderer.jsx';
 import TacticalMapHUD from '../ui/TacticalMapHUD.jsx';
 import HexInfoPanel from '../ui/HexInfoPanel.jsx';
 import POIEncounterModal from '../modals/POIEncounterModal.jsx';
+import SalvageModal from '../modals/SalvageModal.jsx';
 import QuickDeploySelectionModal from '../modals/QuickDeploySelectionModal.jsx';
 import LoadingEncounterScreen from '../ui/LoadingEncounterScreen.jsx';
 import ExtractionLoadingScreen from '../ui/ExtractionLoadingScreen.jsx';
@@ -18,10 +19,12 @@ import AbandonRunModal from '../modals/AbandonRunModal.jsx';
 import ExtractionLootSelectionModal from '../modals/ExtractionLootSelectionModal.jsx';
 import MovementController from '../../logic/map/MovementController.js';
 import lootGenerator from '../../logic/loot/LootGenerator.js';
+import { generateSalvageItemFromValue } from '../../data/salvageItemData.js';
 import DetectionManager from '../../logic/detection/DetectionManager.js';
 import EncounterController from '../../logic/encounters/EncounterController.js';
 import SinglePlayerCombatInitializer from '../../logic/singlePlayer/SinglePlayerCombatInitializer.js';
 import ExtractionController from '../../logic/singlePlayer/ExtractionController.js';
+import SalvageController from '../../logic/salvage/SalvageController.js';
 import aiPersonalities from '../../data/aiData.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
@@ -155,6 +158,10 @@ function TacticalMapScreen() {
   const [showLootSelectionModal, setShowLootSelectionModal] = useState(false);
   const [pendingLootSelection, setPendingLootSelection] = useState(null);
 
+  // Salvage modal state (progressive PoI salvage)
+  const [showSalvageModal, setShowSalvageModal] = useState(false);
+  const [activeSalvage, setActiveSalvage] = useState(null);
+
   // Ref to track pause state in async movement loop
   const isPausedRef = useRef(false);
   const shouldStopMovement = useRef(false);
@@ -190,9 +197,32 @@ function TacticalMapScreen() {
     const runState = currentState.currentRunState;
 
     if (runState?.pendingPOICombat) {
-      console.log('[TacticalMap] Pending PoI loot detected after combat:', runState.pendingPOICombat);
+      console.log('[TacticalMap] Pending PoI combat detected after combat:', runState.pendingPOICombat);
 
-      const { packType, q, r, poiName, remainingWaypoints } = runState.pendingPOICombat;
+      const { packType, q, r, poiName, remainingWaypoints, fromSalvage } = runState.pendingPOICombat;
+
+      // Store remaining waypoints for journey resumption after loot
+      if (remainingWaypoints?.length > 0) {
+        console.log('[TacticalMap] Storing remaining waypoints for resumption:', remainingWaypoints.length);
+        setPendingResumeWaypoints(remainingWaypoints);
+      }
+
+      // Clear pendingPOICombat from run state
+      gameStateManager.setState({
+        currentRunState: {
+          ...runState,
+          pendingPOICombat: null
+        }
+      });
+
+      // If from salvage, loot was already combined with combat rewards - just resume journey
+      if (fromSalvage) {
+        console.log('[TacticalMap] Salvage combat - loot already collected via combat, resuming journey');
+        // Resume journey if waypoints remain (will be picked up by pendingResumeWaypoints)
+        return;
+      }
+
+      // Regular PoI combat (no salvage) - generate PoI loot as reward
       const tier = runState.mapData?.tier || 1;
       const tierConfig = mapTiers[tier - 1];
 
@@ -202,27 +232,13 @@ function TacticalMapScreen() {
 
       // Generate PoI loot
       const poiLoot = lootGenerator.openPack(packType, tier, zone, tierConfig);
-      console.log('[TacticalMap] Generated PoI loot after combat:', poiLoot);
+      console.log('[TacticalMap] Generated PoI loot after regular combat:', poiLoot);
 
       // Set up for loot modal display
       setPendingLootEncounter({
         poi: { q, r, poiData: { name: poiName, threatIncrease: 10 } }
       });
       setPoiLootToReveal(poiLoot);
-
-      // Store remaining waypoints for journey resumption after loot
-      if (remainingWaypoints?.length > 0) {
-        console.log('[TacticalMap] Storing remaining waypoints for resumption:', remainingWaypoints.length);
-        setPendingResumeWaypoints(remainingWaypoints);
-      }
-
-      // Clear pendingPOICombat from run state (loot generation done)
-      gameStateManager.setState({
-        currentRunState: {
-          ...runState,
-          pendingPOICombat: null
-        }
-      });
     }
   }, []); // Run once on mount
 
@@ -524,14 +540,37 @@ function TacticalMapScreen() {
           console.log(`[TacticalMap] PoI at (${arrivedHex.q}, ${arrivedHex.r}) already looted, skipping encounter`);
           // Skip encounter and continue to next waypoint
         } else {
-          console.log('[TacticalMap] PoI encounter triggered');
+          console.log('[TacticalMap] PoI arrived - initializing salvage');
 
-          // Get encounter result from controller
-          const encounter = EncounterController.handlePOIArrival(arrivedHex, tierConfig);
-          setCurrentEncounter(encounter);
-          setShowPOIModal(true);
+          // Initialize salvage state for this POI
+          const zone = arrivedHex.zone || 'mid';
+          const tier = runState.mapData?.tier || 1;
+          const detection = DetectionManager.getCurrentDetection();
 
-          // Wait for encounter to be resolved (player clicks proceed)
+          const salvageState = SalvageController.initializeSalvage(
+            arrivedHex,
+            tierConfig,
+            zone,
+            lootGenerator,
+            tier
+          );
+
+          // Store remaining waypoints for journey resumption after salvage
+          const remainingWps = waypoints.slice(wpIndex + 1);
+          setPendingResumeWaypoints(remainingWps.length > 0 ? remainingWps : null);
+
+          console.log('[TacticalMap] Salvage initialized:', {
+            totalSlots: salvageState.totalSlots,
+            zone: salvageState.zone,
+            baseEncounterChance: salvageState.currentEncounterChance
+          });
+
+          // Pause movement and show salvage modal
+          setIsScanningHex(false);  // Turn off scan overlay
+          setActiveSalvage({ ...salvageState, detection });
+          setShowSalvageModal(true);
+
+          // Wait for salvage to be resolved (player leaves or combat triggers)
           await new Promise(resolve => {
             encounterResolveRef.current = resolve;
           });
@@ -636,10 +675,13 @@ function TacticalMapScreen() {
       // Handle special reward types that don't use pack system
       let loot;
       if (packType === 'TOKEN_REWARD') {
-        // Token reward - guaranteed 1 security token + small credits
+        // Token reward - guaranteed 1 security token + salvage item (50-100 credits)
+        const creditValue = 50 + Math.floor(Math.random() * 51);
+        const rng = { random: () => Math.random() };
+        const salvageItem = generateSalvageItemFromValue(creditValue, rng);
         loot = {
           cards: [],
-          credits: 50 + Math.floor(Math.random() * 51),  // 50-100 bonus credits
+          salvageItem,
           token: {
             type: 'token',
             tokenType: 'security',
@@ -689,6 +731,195 @@ function TacticalMapScreen() {
     // Later could add "flee" option with different consequences
     handleEncounterProceed();
   }, [handleEncounterProceed]);
+
+  // ========================================
+  // SALVAGE HANDLERS
+  // ========================================
+
+  /**
+   * Handle salvage slot attempt - reveal next slot, check for encounter
+   */
+  const handleSalvageSlot = useCallback(() => {
+    if (!activeSalvage) return;
+
+    console.log('[TacticalMap] Salvage slot attempt');
+
+    const runState = gameStateManager.getState().currentRunState;
+    const tierConfig = runState?.mapData ? mapTiers[runState.mapData.tier - 1] : null;
+
+    // Attempt salvage - this reveals the slot and checks for encounter
+    const result = SalvageController.attemptSalvage(activeSalvage, tierConfig);
+
+    // Use the updated salvage state directly from the result
+    setActiveSalvage(result.salvageState);
+
+    console.log('[TacticalMap] Salvage result:', {
+      slotContent: result.slotContent,
+      encounterTriggered: result.encounterTriggered,
+      newEncounterChance: result.salvageState.currentEncounterChance.toFixed(1)
+    });
+  }, [activeSalvage]);
+
+  /**
+   * Handle leaving salvage - show LootRevealModal for revealed items
+   */
+  const handleSalvageLeave = useCallback(() => {
+    if (!activeSalvage) return;
+
+    console.log('[TacticalMap] Salvage leave - preparing loot reveal');
+
+    // Collect revealed loot
+    const loot = SalvageController.collectRevealedLoot(activeSalvage);
+    const hasRevealedSlots = SalvageController.hasRevealedAnySlots(activeSalvage);
+
+    // Close salvage modal first
+    setActiveSalvage(null);
+    setShowSalvageModal(false);
+
+    // If player revealed any slots, show LootRevealModal
+    // Check for cards OR salvageItems (salvageItems replaced credits)
+    if (hasRevealedSlots && loot && (loot.cards?.length > 0 || loot.salvageItems?.length > 0)) {
+      // Convert to LootRevealModal format
+      // Keep salvageItems as array - each should be shown individually
+      const lootForModal = {
+        cards: (loot.cards || []).map(card => ({
+          cardId: card.cardId,
+          cardName: card.cardName,
+          rarity: card.rarity
+        })),
+        // Pass salvageItems array directly - each item should be shown separately
+        salvageItems: loot.salvageItems || []
+      };
+
+      console.log('[TacticalMap] Showing loot reveal modal:', lootForModal);
+
+      // Set pending encounter info for handlePOILootCollected
+      setPendingLootEncounter({ poi: activeSalvage.poi });
+      // Show loot reveal modal
+      setPoiLootToReveal(lootForModal);
+
+      // Note: encounterResolveRef will be resolved by handlePOILootCollected
+    } else {
+      // No loot revealed - just resume journey
+      console.log('[TacticalMap] No loot revealed, resuming journey');
+
+      if (encounterResolveRef.current) {
+        encounterResolveRef.current();
+        encounterResolveRef.current = null;
+      }
+    }
+  }, [activeSalvage]);
+
+  /**
+   * Handle salvage combat engagement - player chooses to fight
+   */
+  const handleSalvageCombat = useCallback(() => {
+    if (!activeSalvage) return;
+
+    console.log('[TacticalMap] Salvage encounter - engaging combat');
+
+    // First collect current revealed loot
+    const loot = SalvageController.collectRevealedLoot(activeSalvage);
+
+    // Store salvage loot for combination with combat rewards in CombatOutcomeProcessor
+    // This allows both salvage loot and combat rewards to appear in one LootRevealModal
+    const currentState = gameStateManager.getState();
+    const runState = currentState.currentRunState;
+
+    // Check for cards OR salvageItems (salvageItems replaced credits)
+    if (runState && loot && (loot.cards?.length > 0 || loot.salvageItems?.length > 0)) {
+      // Convert salvageItems array to single salvageItem for CombatOutcomeProcessor
+      const totalCreditValue = (loot.salvageItems || []).reduce((sum, item) => sum + (item.creditValue || 0), 0);
+      const firstSalvageItem = loot.salvageItems?.[0];
+
+      gameStateManager.setState({
+        currentRunState: {
+          ...runState,
+          pendingSalvageLoot: {
+            cards: loot.cards || [],
+            salvageItem: loot.salvageItems?.length > 0 ? {
+              itemId: loot.salvageItems.length > 1 ? 'combined_salvage' : firstSalvageItem?.itemId,
+              name: loot.salvageItems.length > 1 ? `${loot.salvageItems.length} Salvage Items` : firstSalvageItem?.name,
+              creditValue: totalCreditValue,
+              image: firstSalvageItem?.image,
+              description: loot.salvageItems.length > 1
+                ? `Combined value of ${loot.salvageItems.length} salvage items`
+                : firstSalvageItem?.description
+            } : null
+          }
+        }
+      });
+    }
+
+    // Mark POI as looted
+    const updatedRunState = gameStateManager.getState().currentRunState;
+    const lootedPOIs = updatedRunState.lootedPOIs || [];
+    gameStateManager.setState({
+      currentRunState: {
+        ...updatedRunState,
+        lootedPOIs: [...lootedPOIs, { q: activeSalvage.poi.q, r: activeSalvage.poi.r }]
+      }
+    });
+
+    // Get tier config for AI selection
+    const tier = runState?.mapData?.tier || 1;
+    const tierConfig = mapTiers[tier - 1];
+    const detection = DetectionManager.getCurrentDetection();
+
+    // Get AI from threat level
+    const aiId = EncounterController.getAIForThreat(tierConfig, detection);
+    const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
+
+    // Close salvage modal
+    setActiveSalvage(null);
+    setShowSalvageModal(false);
+
+    // Create encounter for loading screen
+    setCurrentEncounter({
+      poi: activeSalvage.poi,
+      outcome: 'combat',
+      aiId,
+      reward: {
+        credits: 50,
+        rewardType: activeSalvage.poi?.poiData?.rewardType || 'MIXED_PACK',
+        poiName: activeSalvage.poi?.poiData?.name || 'Unknown Location'
+      },
+      detection,
+      threatLevel: DetectionManager.getThreshold(),
+      fromSalvage: true
+    });
+
+    // Set up loading encounter data
+    setLoadingEncounterData({
+      aiName: aiPersonality?.name || 'Unknown Hostile',
+      difficulty: aiPersonality?.difficulty || 'Medium',
+      threatLevel: DetectionManager.getThreshold(),
+      isAmbush: false
+    });
+
+    // Show loading screen
+    setShowLoadingEncounter(true);
+
+    // Stop movement
+    shouldStopMovement.current = true;
+    setIsMoving(false);
+  }, [activeSalvage]);
+
+  /**
+   * Handle salvage abort (MIA) - player abandons run when encounter triggered
+   */
+  const handleSalvageQuit = useCallback(() => {
+    if (!activeSalvage) return;
+
+    console.log('[TacticalMap] Salvage abort - triggering MIA');
+
+    // Close salvage modal
+    setActiveSalvage(null);
+    setShowSalvageModal(false);
+
+    // Trigger MIA flow
+    DetectionManager.triggerMIA();
+  }, [activeSalvage]);
 
   /**
    * Handle POI encounter with quick deploy - similar to handleEncounterProceed but with quick deploy
@@ -757,7 +988,8 @@ function TacticalMapScreen() {
             r: currentEncounter.poi.r,
             packType: currentEncounter.reward?.rewardType || 'MIXED_PACK',
             poiName: currentEncounter.poi.poiData?.name || 'Unknown Location',
-            remainingWaypoints: remainingWps
+            remainingWaypoints: remainingWps,
+            fromSalvage: currentEncounter.fromSalvage || false  // Flag to skip post-combat loot generation
           }
         }
       });
@@ -953,11 +1185,15 @@ function TacticalMapScreen() {
       source: 'poi_loot'
     }));
 
-    // Add credits
-    if (loot.credits > 0) {
+    // Add salvage item (replaces flat credits)
+    if (loot.salvageItem) {
       newCardLoot.push({
-        type: 'credits',
-        amount: loot.credits,
+        type: 'salvageItem',
+        itemId: loot.salvageItem.itemId,
+        name: loot.salvageItem.name,
+        creditValue: loot.salvageItem.creditValue,
+        image: loot.salvageItem.image,
+        description: loot.salvageItem.description,
         source: 'poi_loot'
       });
     }
@@ -973,7 +1209,7 @@ function TacticalMapScreen() {
     }
 
     const updatedLoot = [...(runState?.collectedLoot || []), ...newCardLoot];
-    const newCredits = (runState?.creditsEarned || 0) + (loot.credits || 0);
+    const newCredits = (runState?.creditsEarned || 0) + (loot.salvageItem?.creditValue || 0);
 
     // Handle token collection - save to player profile (persistent across runs)
     if (loot.token) {
@@ -1404,6 +1640,19 @@ function TacticalMapScreen() {
             setShowQuickDeploySelection(false);
             setShowPOIModal(true);
           }}
+        />
+      )}
+
+      {/* Salvage Modal (progressive POI salvage) */}
+      {showSalvageModal && activeSalvage && (
+        <SalvageModal
+          salvageState={activeSalvage}
+          tierConfig={tierConfig}
+          detection={activeSalvage.detection || DetectionManager.getCurrentDetection()}
+          onSalvageSlot={handleSalvageSlot}
+          onLeave={handleSalvageLeave}
+          onEngageCombat={handleSalvageCombat}
+          onQuit={handleSalvageQuit}
         />
       )}
 

@@ -10,6 +10,23 @@ import DetectionManager from '../detection/DetectionManager.js';
 import { mapTiers } from '../../data/mapData.js';
 import { ECONOMY } from '../../data/economyData.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import ReputationService from '../reputation/ReputationService.js';
+
+/**
+ * Calculate total credits from salvage items in a loot array
+ * Only sums creditValue from items with type === 'salvageItem'
+ * @param {Array} loot - Array of loot items (cards, blueprints, salvageItems)
+ * @returns {number} Total credit value from salvage items
+ */
+export function calculateExtractedCredits(loot) {
+  if (!loot || !Array.isArray(loot)) {
+    return 0;
+  }
+
+  return loot
+    .filter(item => item.type === 'salvageItem')
+    .reduce((sum, item) => sum + (item.creditValue || 0), 0);
+}
 
 /**
  * ExtractionController - Singleton manager for extraction logic
@@ -90,17 +107,33 @@ class ExtractionController {
   }
 
   /**
-   * Calculate extraction limit based on damaged ship sections
-   * Base limit (3) is reduced by 1 for each damaged section
+   * Calculate extraction limit based on deck type, damaged ship sections, and reputation
    *
-   * @param {Object} currentRunState - Current run state with shipSections
-   * @returns {number} Extraction limit (0 to base limit)
+   * Base limits:
+   * - Starter deck (Slot 0): 3 items
+   * - Custom decks (Slots 1-5): 6 items + reputation bonuses
+   *
+   * Damage reduces limit by 1 for each damaged section
+   *
+   * @param {Object} currentRunState - Current run state with shipSections and shipSlotId
+   * @returns {number} Extraction limit (0 to max)
    */
   calculateExtractionLimit(currentRunState) {
-    const baseLimit = ECONOMY.STARTER_DECK_EXTRACTION_LIMIT || 3;
-    const shipSections = currentRunState.shipSections || {};
+    const isStarterDeck = currentRunState.shipSlotId === 0;
+
+    // Base limit differs by deck type
+    const baseLimit = isStarterDeck
+      ? (ECONOMY.STARTER_DECK_EXTRACTION_LIMIT || 3)
+      : (ECONOMY.CUSTOM_DECK_EXTRACTION_LIMIT || 6);
+
+    // Reputation bonus (custom decks only)
+    let reputationBonus = 0;
+    if (!isStarterDeck) {
+      reputationBonus = ReputationService.getExtractionBonus();
+    }
 
     // Count damaged sections (hull <= threshold.damaged)
+    const shipSections = currentRunState.shipSections || {};
     let damagedCount = 0;
     Object.values(shipSections).forEach(section => {
       const threshold = section.thresholds?.damaged ?? 5; // Default threshold if not defined
@@ -109,14 +142,14 @@ class ExtractionController {
       }
     });
 
-    // Reduce limit by damaged count, minimum 0
-    return Math.max(0, baseLimit - damagedCount);
+    // Final calculation: base + reputation bonus - damage penalty
+    return Math.max(0, baseLimit + reputationBonus - damagedCount);
   }
 
   /**
    * Complete successful extraction
    * Processes drone damage, transfers loot, updates profile
-   * For Slot 0 (starter deck): enforces extraction limit based on damage
+   * Enforces extraction limits on ALL deck types (starter and custom)
    *
    * @param {Object} currentRunState - Current run state
    * @param {Array|null} selectedLoot - Optional: pre-selected loot items (for limit enforcement)
@@ -128,12 +161,12 @@ class ExtractionController {
       s => s.id === currentRunState.shipSlotId
     );
 
-    // Check extraction limit for Slot 0 (starter deck) - dynamic based on damage
+    // Check extraction limit for ALL deck types (starter and custom)
     const isStarterDeck = currentRunState.shipSlotId === 0;
     const extractionLimit = this.calculateExtractionLimit(currentRunState);
     const lootCount = currentRunState.collectedLoot.length;
 
-    if (isStarterDeck && lootCount > extractionLimit && selectedLoot === null) {
+    if (lootCount > extractionLimit && selectedLoot === null) {
       // Over limit - need player to select which loot to keep
       debugLog('EXTRACTION', `Loot exceeds limit (${lootCount}/${extractionLimit}), selection required`);
       return {
@@ -171,11 +204,14 @@ class ExtractionController {
     }
 
     // 2. Build summary before endRun clears state
+    // Calculate credits from extracted salvage items (not legacy creditsEarned)
+    const extractedCredits = calculateExtractedCredits(lootToTransfer);
+
     const summary = {
       success: true,
       cardsAcquired: lootToTransfer.filter(i => i.type === 'card').length,
       blueprintsAcquired: lootToTransfer.filter(i => i.type === 'blueprint').length,
-      creditsEarned: currentRunState.creditsEarned,
+      creditsEarned: extractedCredits,
       dronesDamaged,
       finalHull: currentRunState.currentHull,
       maxHull: currentRunState.maxHull,

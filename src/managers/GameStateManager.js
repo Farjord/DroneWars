@@ -19,6 +19,7 @@ import CombatOutcomeProcessor from '../logic/singlePlayer/CombatOutcomeProcessor
 import { shipComponentCollection } from '../data/shipSectionData.js';
 import fullCardCollection from '../data/cardData.js';
 import ReputationService from '../logic/reputation/ReputationService.js';
+import { calculateExtractedCredits } from '../logic/singlePlayer/ExtractionController.js';
 // PhaseManager dependency removed - using direct phase checks
 
 class GameStateManager {
@@ -2394,6 +2395,9 @@ class GameStateManager {
       })
       .filter(Boolean);
 
+    // Calculate credits from salvage items in collectedLoot (not legacy creditsEarned)
+    const extractedCredits = calculateExtractedCredits(runState.collectedLoot || []);
+
     const lastRunSummary = {
       success,
       mapName: runState.mapData?.name || 'Unknown Sector',
@@ -2409,7 +2413,7 @@ class GameStateManager {
       poisVisited: runState.poisVisited?.length || 0,
       totalPois: runState.mapData?.poiCount || 0,
       cardsCollected, // Full card objects for display
-      creditsEarned: runState.creditsEarned || 0,
+      creditsEarned: extractedCredits, // Calculated from salvage items
       aiCoresEarned: runState.aiCoresEarned || 0,
 
       // Combat
@@ -2447,8 +2451,8 @@ class GameStateManager {
         }
       });
 
-      // Add credits
-      this.state.singlePlayerProfile.credits += runState.creditsEarned;
+      // Add credits (calculated from salvage items, not legacy creditsEarned)
+      this.state.singlePlayerProfile.credits += extractedCredits;
 
       // Add AI Cores earned from combat
       this.state.singlePlayerProfile.aiCores =
@@ -2456,7 +2460,7 @@ class GameStateManager {
 
       // Update statistics
       this.state.singlePlayerProfile.stats.runsCompleted++;
-      this.state.singlePlayerProfile.stats.totalCreditsEarned += runState.creditsEarned;
+      this.state.singlePlayerProfile.stats.totalCreditsEarned += extractedCredits;
       this.state.singlePlayerProfile.stats.totalCombatsWon =
         (this.state.singlePlayerProfile.stats.totalCombatsWon || 0) + (runState.combatsWon || 0);
 

@@ -63,11 +63,15 @@ export const ECONOMY = {
   STARTING_CREDITS: 1000,
 
   // ========================================
-  // STARTER DECK LIMITS
+  // EXTRACTION LIMITS
   // ========================================
 
   // Max loot items player can extract with when using Slot 0 (starter deck)
   STARTER_DECK_EXTRACTION_LIMIT: 3,
+
+  // Max loot items player can extract with when using custom decks (Slots 1-5)
+  // This limit can be increased by reputation rank bonuses
+  CUSTOM_DECK_EXTRACTION_LIMIT: 6,
 
   // ========================================
   // STARTER ITEM COSTS

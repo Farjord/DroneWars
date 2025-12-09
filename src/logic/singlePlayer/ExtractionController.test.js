@@ -37,13 +37,21 @@ vi.mock('../../data/mapData.js', () => ({
 
 vi.mock('../../data/economyData.js', () => ({
   ECONOMY: {
-    STARTER_DECK_EXTRACTION_LIMIT: 3
+    STARTER_DECK_EXTRACTION_LIMIT: 3,
+    CUSTOM_DECK_EXTRACTION_LIMIT: 6
+  }
+}))
+
+vi.mock('../reputation/ReputationService.js', () => ({
+  default: {
+    getExtractionBonus: vi.fn(() => 0) // Default to 0 bonus for tests
   }
 }))
 
 // Import after mocks are set up
 import ExtractionController from './ExtractionController.js'
 import gameStateManager from '../../managers/GameStateManager.js'
+import ReputationService from '../reputation/ReputationService.js'
 
 describe('ExtractionController', () => {
   beforeEach(() => {
@@ -267,6 +275,201 @@ describe('ExtractionController', () => {
       // 3 items collected, so selection should be required
       expect(result.action).toBe('selectLoot');
       expect(result.limit).toBe(2); // Not the default 3
+    });
+  });
+
+  // ========================================
+  // CUSTOM DECK EXTRACTION LIMIT TESTS
+  // ========================================
+  // TDD tests for custom deck (Slots 1-5) extraction limits
+  // with reputation bonus support
+  //
+  // Requirements:
+  // - Custom decks have a base limit of 6 (vs 3 for starter)
+  // - Damage reduces limit same as starter deck
+  // - Reputation milestones add +1 to custom deck limits
+
+  describe('calculateExtractionLimit - custom deck support', () => {
+    it('should return base limit of 6 for custom decks (Slot 1-5) with no damage', () => {
+      const customDeckState = {
+        shipSlotId: 1, // Custom deck slot
+        shipSections: {
+          bridge: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } },
+          powerCell: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } },
+          droneControlHub: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } }
+        }
+      };
+
+      const limit = ExtractionController.calculateExtractionLimit(customDeckState);
+      expect(limit).toBe(6);
+    });
+
+    it('should reduce custom deck limit by damaged sections', () => {
+      // 1 damaged section on custom deck
+      const customWithDamage = {
+        shipSlotId: 2, // Custom deck slot
+        shipSections: {
+          bridge: { hull: 4, maxHull: 10, thresholds: { damaged: 5 } }, // damaged
+          powerCell: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } },
+          droneControlHub: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } }
+        }
+      };
+
+      expect(ExtractionController.calculateExtractionLimit(customWithDamage)).toBe(5);
+
+      // 3 damaged sections
+      const allDamaged = {
+        shipSlotId: 3,
+        shipSections: {
+          bridge: { hull: 2, maxHull: 10, thresholds: { damaged: 5 } },
+          powerCell: { hull: 3, maxHull: 10, thresholds: { damaged: 5 } },
+          droneControlHub: { hull: 1, maxHull: 10, thresholds: { damaged: 5 } }
+        }
+      };
+
+      expect(ExtractionController.calculateExtractionLimit(allDamaged)).toBe(3);
+    });
+
+    it('should still return base 3 for starter deck (Slot 0)', () => {
+      const starterDeckState = {
+        shipSlotId: 0,
+        shipSections: {
+          bridge: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } },
+          powerCell: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } },
+          droneControlHub: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } }
+        }
+      };
+
+      expect(ExtractionController.calculateExtractionLimit(starterDeckState)).toBe(3);
+    });
+
+    it('should add reputation bonus to custom deck limit', () => {
+      // Mock reputation bonus of 2 (e.g., player at level 6+)
+      ReputationService.getExtractionBonus.mockReturnValue(2);
+
+      const customDeckState = {
+        shipSlotId: 1,
+        shipSections: {
+          bridge: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } },
+          powerCell: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } },
+          droneControlHub: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } }
+        }
+      };
+
+      // Base 6 + 2 reputation bonus = 8
+      expect(ExtractionController.calculateExtractionLimit(customDeckState)).toBe(8);
+
+      // Reset mock
+      ReputationService.getExtractionBonus.mockReturnValue(0);
+    });
+
+    it('should NOT add reputation bonus to starter deck', () => {
+      // Mock reputation bonus of 3
+      ReputationService.getExtractionBonus.mockReturnValue(3);
+
+      const starterDeckState = {
+        shipSlotId: 0,
+        shipSections: {
+          bridge: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } },
+          powerCell: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } },
+          droneControlHub: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } }
+        }
+      };
+
+      // Starter deck should still be 3, not 6
+      expect(ExtractionController.calculateExtractionLimit(starterDeckState)).toBe(3);
+
+      // Reset mock
+      ReputationService.getExtractionBonus.mockReturnValue(0);
+    });
+
+    it('should combine reputation bonus and damage reduction for custom decks', () => {
+      // Mock reputation bonus of 1 (player at level 3-5)
+      ReputationService.getExtractionBonus.mockReturnValue(1);
+
+      const customWithDamage = {
+        shipSlotId: 2,
+        shipSections: {
+          bridge: { hull: 4, maxHull: 10, thresholds: { damaged: 5 } }, // damaged
+          powerCell: { hull: 3, maxHull: 10, thresholds: { damaged: 5 } }, // damaged
+          droneControlHub: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } } // healthy
+        }
+      };
+
+      // Base 6 + 1 reputation - 2 damage = 5
+      expect(ExtractionController.calculateExtractionLimit(customWithDamage)).toBe(5);
+
+      // Reset mock
+      ReputationService.getExtractionBonus.mockReturnValue(0);
+    });
+  });
+
+  describe('completeExtraction - applies limits to custom decks', () => {
+    beforeEach(() => {
+      gameStateManager.getState.mockReturnValue({
+        singlePlayerShipSlots: [
+          { id: 0, status: 'active', drones: [] },
+          { id: 1, status: 'active', drones: [] },
+          { id: 2, status: 'active', drones: [] }
+        ]
+      });
+    });
+
+    it('should enforce extraction limit on custom decks', () => {
+      // Custom deck with 7 items collected - should trigger selection
+      const customDeckRunState = {
+        shipSlotId: 1,
+        collectedLoot: [
+          { type: 'card', cardId: 'CARD001' },
+          { type: 'card', cardId: 'CARD002' },
+          { type: 'card', cardId: 'CARD003' },
+          { type: 'card', cardId: 'CARD004' },
+          { type: 'card', cardId: 'CARD005' },
+          { type: 'card', cardId: 'CARD006' },
+          { type: 'card', cardId: 'CARD007' } // 7 items exceeds limit of 6
+        ],
+        creditsEarned: 100,
+        currentHull: 20,
+        maxHull: 30,
+        shipSections: {
+          bridge: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } },
+          powerCell: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } },
+          droneControlHub: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } }
+        }
+      };
+
+      const result = ExtractionController.completeExtraction(customDeckRunState, null);
+
+      expect(result.action).toBe('selectLoot');
+      expect(result.limit).toBe(6);
+    });
+
+    it('should allow custom deck extraction under limit without selection', () => {
+      // Custom deck with 5 items - under limit of 6
+      const underLimitState = {
+        shipSlotId: 1,
+        collectedLoot: [
+          { type: 'card', cardId: 'CARD001' },
+          { type: 'card', cardId: 'CARD002' },
+          { type: 'card', cardId: 'CARD003' },
+          { type: 'card', cardId: 'CARD004' },
+          { type: 'card', cardId: 'CARD005' }
+        ],
+        creditsEarned: 100,
+        currentHull: 20,
+        maxHull: 30,
+        shipSections: {
+          bridge: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } },
+          powerCell: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } },
+          droneControlHub: { hull: 10, maxHull: 10, thresholds: { damaged: 5 } }
+        }
+      };
+
+      const result = ExtractionController.completeExtraction(underLimitState, null);
+
+      // Should complete extraction, not trigger selection
+      expect(result.action).toBeUndefined();
+      expect(result.success).toBe(true);
     });
   });
 })

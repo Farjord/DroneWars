@@ -77,6 +77,20 @@ export const mapTiers = [
       }
     },
 
+    // Salvage system configuration
+    // Encounter increase per successful salvage (random within range)
+    salvageEncounterIncreaseRange: {
+      min: 5,
+      max: 15
+    },
+
+    // Zone-based salvage slot count distribution (1-5 slots per PoI)
+    salvageSlotCountWeights: {
+      perimeter: { 1: 50, 2: 30, 3: 15, 4: 5, 5: 0 },    // Mostly 1-2 slots
+      mid:       { 1: 10, 2: 30, 3: 35, 4: 20, 5: 5 },   // Mostly 2-3 slots
+      core:      { 1: 0, 2: 10, 3: 25, 4: 40, 5: 25 }    // Mostly 4-5 slots
+    },
+
     // Starting detection ranges (by POI count thresholds)
     // Detection meter starts at this value instead of 0
     startingDetection: [

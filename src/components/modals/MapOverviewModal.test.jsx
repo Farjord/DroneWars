@@ -18,7 +18,16 @@ vi.mock('../../hooks/useGameState.js', () => ({
 }));
 
 vi.mock('../../data/economyData.js', () => ({
-  ECONOMY: { STARTER_DECK_EXTRACTION_LIMIT: 3 }
+  ECONOMY: {
+    STARTER_DECK_EXTRACTION_LIMIT: 3,
+    CUSTOM_DECK_EXTRACTION_LIMIT: 6
+  }
+}));
+
+vi.mock('../../logic/reputation/ReputationService.js', () => ({
+  default: {
+    getExtractionBonus: vi.fn(() => 0)
+  }
 }));
 
 vi.mock('../../utils/debugLogger.js', () => ({
@@ -432,7 +441,7 @@ describe('MapOverviewModal - Requirements Always Visible', () => {
     expect(within(entryRow).getByText('None')).toBeInTheDocument();
   });
 
-  it('should show "None" for Extraction Limit when not Starter Deck', () => {
+  it('should show extraction limit for custom decks (6 items base)', () => {
     useGameState.mockReturnValue({
       gameState: createMockGameState(),
       gameStateManager: { setState: vi.fn() }
@@ -442,10 +451,10 @@ describe('MapOverviewModal - Requirements Always Visible', () => {
 
     render(<MapOverviewModal {...defaultProps} selectedSlotId={1} selectedMap={mockMap} />);
 
-    // Find Extraction Limit row and check for "None"
+    // Find Extraction Limit row and check for custom deck limit (6 items)
     expect(screen.getByText('Extraction Limit:')).toBeInTheDocument();
     const limitRow = screen.getByText('Extraction Limit:').closest('div');
-    expect(within(limitRow).getByText('None')).toBeInTheDocument();
+    expect(within(limitRow).getByText(/6.*items/)).toBeInTheDocument();
   });
 });
 

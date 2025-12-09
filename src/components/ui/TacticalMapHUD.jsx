@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { ECONOMY } from '../../data/economyData.js';
+import ReputationService from '../../logic/reputation/ReputationService.js';
 import './TacticalMapHUD.css';
 
 // ========================================
@@ -61,12 +62,28 @@ function TacticalMapHUD({
   onAbandonClick,
   onInventoryClick
 }) {
-  const { creditsEarned, collectedLoot, playerPosition, insertionGate, mapData, shipSlotId } = currentRunState;
+  const { creditsEarned, collectedLoot, playerPosition, insertionGate, mapData, shipSlotId, shipSections: runShipSections } = currentRunState;
 
-  // Extraction limit for Slot 0 (starter deck)
+  // Calculate extraction limit for any deck type
   const isStarterDeck = shipSlotId === 0;
-  const extractionLimit = ECONOMY.STARTER_DECK_EXTRACTION_LIMIT || 3;
-  const isOverLimit = isStarterDeck && collectedLoot.length > extractionLimit;
+  const baseLimit = isStarterDeck
+    ? (ECONOMY.STARTER_DECK_EXTRACTION_LIMIT || 3)
+    : (ECONOMY.CUSTOM_DECK_EXTRACTION_LIMIT || 6);
+
+  // Reputation bonus (custom decks only)
+  const reputationBonus = isStarterDeck ? 0 : ReputationService.getExtractionBonus();
+
+  // Count damaged sections from run state
+  const damagedCount = runShipSections
+    ? Object.values(runShipSections).filter(section => {
+        const threshold = section.thresholds?.damaged ?? 5;
+        return section.hull <= threshold;
+      }).length
+    : 0;
+
+  // Final extraction limit
+  const extractionLimit = Math.max(0, baseLimit + reputationBonus - damagedCount);
+  const isOverLimit = collectedLoot.length > extractionLimit;
 
   // Check if player is at insertion gate
   const isAtInsertionGate = insertionGate &&
@@ -139,18 +156,16 @@ function TacticalMapHUD({
             </span>
           </div>
 
-          {/* Extraction Limit (only for Slot 0) */}
-          {isStarterDeck && (
-            <>
-              <div className="hud-stat-separator" />
-              <div className="hud-stat" title="Starter deck extraction limit">
-                <span className="stat-label">Extract Limit</span>
-                <span className={`stat-value ${isOverLimit ? 'stat-value-warning' : 'stat-value-healthy'}`}>
-                  {Math.min(collectedLoot.length, extractionLimit)}/{extractionLimit}
-                </span>
-              </div>
-            </>
-          )}
+          {/* Extraction Limit (shown for all decks) */}
+          <>
+            <div className="hud-stat-separator" />
+            <div className="hud-stat" title={isStarterDeck ? "Starter deck extraction limit" : `Custom deck extraction limit (Base: ${baseLimit}${reputationBonus > 0 ? `, Rep: +${reputationBonus}` : ''}${damagedCount > 0 ? `, Damage: -${damagedCount}` : ''})`}>
+              <span className="stat-label">Extract Limit</span>
+              <span className={`stat-value ${isOverLimit ? 'stat-value-warning' : 'stat-value-healthy'}`}>
+                {Math.min(collectedLoot.length, extractionLimit)}/{extractionLimit}
+              </span>
+            </div>
+          </>
         </div>
       </div>
 
