@@ -114,6 +114,8 @@ export const PENALTIES = {
   INTERCEPTION_RISK: -80,          // Slow attacker can be intercepted
   ANTI_SHIP_ATTACKING_DRONE: -100, // Anti-ship drone attacking other drones
   MOVE_COST: 10,                   // Base cost of moving
+  INTERCEPTION_COVERAGE_MULTIPLIER: -5, // Per threat point of enemies being blocked
+  INTERCEPTION_COVERAGE_MIN: -10,  // Minimum penalty when losing interception coverage
 };
 
 // ========================================
@@ -299,3 +301,36 @@ export const UPGRADE_EVALUATION = {
 // Used to mark actions as invalid/blocked
 
 export const INVALID_SCORE = -999;
+
+// ========================================
+// TARGET SCORING CONSTANTS
+// ========================================
+// Universal constants for damage/destroy target evaluation
+// Used by calculateTargetValue() for consistent prioritization
+
+export const TARGET_SCORING = {
+  // Priority 1: Jammer blocking (HIGHEST)
+  JAMMER_BLOCKING_BASE: 30,          // Base bonus + protected targets value
+
+  // Priority 2: Active interception blocking
+  INTERCEPTION_BLOCKER_BONUS: 40,    // Per friendly attacker being blocked
+
+  // Priority 3: Ready state
+  READY_TARGET_BONUS: 25,
+
+  // Priority 4: Threat value (flat bonuses by tier)
+  CLASS_0_BONUS: 0,
+  CLASS_1_BONUS: 3,
+  CLASS_2_BONUS: 6,
+  CLASS_3_BONUS: 10,
+  LOW_ATTACK_BONUS: 0,               // attack 0-1
+  MED_ATTACK_BONUS: 4,               // attack 2-3
+  HIGH_ATTACK_BONUS: 8,              // attack 4+
+  GUARDIAN_ABILITY_BONUS: 15,
+  DEFENDER_ABILITY_BONUS: 12,
+  ANTI_SHIP_ABILITY_BONUS: 10,
+
+  // Priority 5: Damage efficiency (tiebreaker)
+  LETHAL_BONUS: 20,
+  PIERCING_BYPASS_BONUS: 5,
+};

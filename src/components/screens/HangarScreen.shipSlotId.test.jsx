@@ -156,9 +156,9 @@ describe('HangarScreen - Instance Creation with shipSlotId', () => {
       const hangarPath = path.join(process.cwd(), 'src/components/screens/HangarScreen.jsx');
       const source = fs.readFileSync(hangarPath, 'utf-8');
 
-      // Find the drone instance creation code (around line 583-588)
+      // Find the drone instance creation code (around line 595-601)
       const droneInstanceMatch = source.match(
-        /newDroneInstances\.push\(\{[\s\S]*?droneName:\s*drone\.name[\s\S]*?\}\)/
+        /newDroneInstances\.push\(\{[\s\S]*?droneName:\s*slot\.assignedDrone[\s\S]*?\}\)/
       );
 
       expect(droneInstanceMatch).not.toBeNull();

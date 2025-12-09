@@ -11,7 +11,7 @@
 //
 // POST timing: Check conditions after primary effect resolves
 //   - ON_DESTROY: Check if target was destroyed
-//   - ON_DAMAGE: Check if damage was dealt
+//   - ON_HULL_DAMAGE: Check if hull damage was dealt (not shield damage)
 //   - Granted effects routed through EffectRouter
 
 import BaseEffectProcessor from '../BaseEffectProcessor.js';

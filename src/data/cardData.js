@@ -494,7 +494,7 @@ const fullCardCollection = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/DesperateMeasures.png',
-    description: 'Draw 1 card and gain 1 Energy. Repeat this effect for each of your damaged or critical ship sections.',
+    description: 'Draw 1 card and gain 1 Energy. Repeat this effect for each of your damaged or critical ship sections. Go again.',
     effect: {
       type: 'REPEATING_EFFECT',
       effects: [{ type: 'DRAW', value: 1 }, { type: 'GAIN_ENERGY', value: 1 }],
@@ -530,6 +530,26 @@ const fullCardCollection = [
     cost: 3,
     slots: 1,
     image: '/DroneWars/cards/SlimlineBodywork.png',
+    description: 'Permanently increase the deployment limit of a target drone type by 1.',
+    targeting: {
+      type: 'DRONE_CARD'
+    },
+    effect: {
+      type: 'MODIFY_DRONE_BASE',
+      mod: { stat: 'limit', value: 1 },
+    },
+    maxApplications: 1
+},
+  {
+    id: 'CARD020_ENHANCED',
+    baseCardId: 'CARD020',
+    name: 'Slimline Bodywork+',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Upgrade',
+    cost: 3,
+    slots: 1,
+    image: '/DroneWars/cards/SlimlineBodywork.png',
     description: 'Permanently increase the deployment limit of a target drone type by 1. Go again.',
     targeting: {
       type: 'DRONE_CARD'
@@ -549,6 +569,26 @@ const fullCardCollection = [
     rarity: 'Common',
     type: 'Upgrade',
     cost: 3,
+    slots: 2,
+    image: '/DroneWars/cards/OverclockedThrusters.png',
+    description: 'Permanently grant all drones of a target type +1 Speed.',
+    targeting: {
+      type: 'DRONE_CARD'
+    },
+    effect: {
+      type: 'MODIFY_DRONE_BASE',
+      mod: { stat: 'speed', value: 1 },
+    },
+    maxApplications: 2
+},
+{
+    id: 'CARD021_ENHANCED',
+    baseCardId: 'CARD021',
+    name: 'Overclocked Thrusters+',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Upgrade',
+    cost: 3,
     slots: 1,
     image: '/DroneWars/cards/OverclockedThrusters.png',
     description: 'Permanently grant all drones of a target type +1 Speed.',
@@ -561,7 +601,6 @@ const fullCardCollection = [
     },
     maxApplications: 2
 },
-
 {
     id: 'CARD022',
     baseCardId: 'CARD022',
@@ -684,6 +723,26 @@ const fullCardCollection = [
     rarity: 'Common',
     type: 'Upgrade',
     cost: 5,
+    slots: 2,
+    image: '/DroneWars/cards/CombatEnhancement.png',
+    description: 'Permanently increase the attack of all drones of a target type by 1.',
+    targeting: {
+      type: 'DRONE_CARD'
+    },
+    effect: {
+      type: 'MODIFY_DRONE_BASE',
+      mod: { stat: 'attack', value: 1 }
+    },
+    maxApplications: 2
+},
+{
+    id: 'CARD028_ENHANCED',
+    baseCardId: 'CARD028',
+    name: 'Combat Enhancement+',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Upgrade',
+    cost: 5,
     slots: 1,
     image: '/DroneWars/cards/CombatEnhancement.png',
     description: 'Permanently increase the attack of all drones of a target type by 1.',
@@ -701,9 +760,9 @@ const fullCardCollection = [
     baseCardId: 'CARD029',
     name: 'Shield Amplifier',
     maxInDeck: 2,
-    rarity: 'Uncommon',
+    rarity: 'Common',
     type: 'Upgrade',
-    cost: 4,
+    cost: 2,
     slots: 1,
     image: '/DroneWars/cards/ShieldAmplifier.png',
     description: 'Permanently increase the shields of all drones of a target type by 1.',
@@ -713,6 +772,26 @@ const fullCardCollection = [
     effect: {
       type: 'MODIFY_DRONE_BASE',
       mod: { stat: 'shields', value: 1 }
+    },
+    maxApplications: 2
+},
+{
+    id: 'CARD029_ENHANCED',
+    baseCardId: 'CARD029',
+    name: 'Shield Amplifier+',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Upgrade',
+    cost: 3,
+    slots: 1,
+    image: '/DroneWars/cards/ShieldAmplifier.png',
+    description: 'Permanently increase the shields of all drones of a target type by 2.',
+    targeting: {
+      type: 'DRONE_CARD'
+    },
+    effect: {
+      type: 'MODIFY_DRONE_BASE',
+      mod: { stat: 'shields', value: 2 }
     },
     maxApplications: 2
 },
@@ -1245,7 +1324,7 @@ const fullCardCollection = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/EnergyLeech.png',
-    description: 'Deal 1 damage to target drone. If damage is dealt, gain 3 energy.',
+    description: 'Deal 1 damage to target drone. If hull damage is dealt, gain 3 energy.',
     visualEffect: {
       type: 'LASER_BLAST'
     },
@@ -1259,9 +1338,9 @@ const fullCardCollection = [
       value: 1
     },
     conditionalEffects: [{
-      id: 'energy-on-damage',
+      id: 'energy-on-hull-damage',
       timing: 'POST',
-      condition: { type: 'ON_DAMAGE' },
+      condition: { type: 'ON_HULL_DAMAGE' },
       grantedEffect: { type: 'GAIN_ENERGY', value: 3 }
     }]
   }

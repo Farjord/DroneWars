@@ -208,13 +208,13 @@ describe('Slot-Based Damage Model', () => {
 
     it('should calculate drone slot repair as flat cost', () => {
       const cost = calculateDroneSlotRepairCost();
-      expect(cost).toBe(50); // ECONOMY.REPAIR.DRONE_SLOT
+      expect(cost).toBe(500); // ECONOMY.DRONE_SLOT_REPAIR_COST
     });
 
     it('should calculate section repair as cost per damage point', () => {
       const damageDealt = 3;
       const cost = calculateSectionRepairCost(damageDealt);
-      expect(cost).toBe(30); // 3 * 10 (SECTION_PER_DAMAGE)
+      expect(cost).toBe(600); // 3 * 200 (SECTION_DAMAGE_REPAIR_COST)
     });
 
     it('should return 0 for undamaged section', () => {
@@ -253,7 +253,7 @@ describe('Slot-Based Damage Model', () => {
       gameStateManager.repairDroneSlot(1, 1);
 
       const finalCredits = gameStateManager.getState().singlePlayerProfile.credits;
-      expect(finalCredits).toBe(initialCredits - 50);
+      expect(finalCredits).toBe(initialCredits - 500); // DRONE_SLOT_REPAIR_COST
     });
 
     it('should repair damaged section slot', () => {
@@ -274,7 +274,7 @@ describe('Slot-Based Damage Model', () => {
       gameStateManager.repairSectionSlot(1, 'l');
 
       const finalCredits = gameStateManager.getState().singlePlayerProfile.credits;
-      expect(finalCredits).toBe(initialCredits - 50); // 5 * 10
+      expect(finalCredits).toBe(initialCredits - 1000); // 5 * 200 (SECTION_DAMAGE_REPAIR_COST)
     });
 
     it('should fail repair if insufficient credits', () => {

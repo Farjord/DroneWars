@@ -2,8 +2,10 @@
 // DAMAGE CARD EVALUATORS
 // ========================================
 // Evaluates DESTROY and DAMAGE card effects
+// Uses unified target scoring for consistent prioritization
 
 import { SCORING_WEIGHTS, CARD_EVALUATION, INVALID_SCORE } from '../aiConstants.js';
+import { calculateTargetValue } from '../scoring/targetScoring.js';
 
 /**
  * Evaluate a DESTROY card
@@ -13,65 +15,88 @@ import { SCORING_WEIGHTS, CARD_EVALUATION, INVALID_SCORE } from '../aiConstants.
  * @returns {Object} - { score: number, logic: string[] }
  */
 export const evaluateDestroyCard = (card, target, context) => {
-  const { player1, player2, gameDataService } = context;
+  const { player1, player2, gameDataService, getLaneOfDrone } = context;
   const logic = [];
   let score = 0;
 
   if (card.effect.scope === 'SINGLE' && target) {
-    const resourceValue = (target.hull || 0) + (target.currentShields || 0);
-    const targetValue = resourceValue * SCORING_WEIGHTS.RESOURCE_VALUE_MULTIPLIER;
+    // Get lane for context-aware scoring
+    const lane = getLaneOfDrone ? getLaneOfDrone(target.id, player1) : target.lane;
+
+    // Use unified target scoring (damage = 999 for destroy)
+    const { score: targetValue, logic: targetLogic } = calculateTargetValue(target, context, {
+      damageAmount: 999,
+      isPiercing: false,
+      lane
+    });
+
     const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
     score = targetValue - costPenalty;
-    logic.push(`✅ Target Value: +${targetValue}`);
-    logic.push(`⚠️ Cost: -${costPenalty}`);
+
+    logic.push(`Target Value: +${targetValue}`);
+    logic.push(...targetLogic.map(l => `  ${l}`));
+    logic.push(`Cost: -${costPenalty}`);
   }
   else if (card.effect.scope === 'FILTERED' && target && target.id.startsWith('lane')) {
     const { stat, comparison, value } = card.effect.filter;
     const laneId = target.id;
     const dronesInLane = player1.dronesOnBoard[laneId] || [];
-    let totalResourceValue = 0;
+    let totalValue = 0;
+    let matchCount = 0;
 
     dronesInLane.forEach(drone => {
-      // Use effective stats to include upgrades and ability modifiers
       const effectiveStats = gameDataService.getEffectiveStats(drone, laneId);
       const effectiveStatValue = effectiveStats[stat] !== undefined ? effectiveStats[stat] : drone[stat];
 
       let meetsCondition = false;
       if (comparison === 'GTE' && effectiveStatValue >= value) meetsCondition = true;
       if (comparison === 'LTE' && effectiveStatValue <= value) meetsCondition = true;
+
       if (meetsCondition) {
-        totalResourceValue += (drone.hull || 0) + (drone.currentShields || 0) + (drone.class * 5);
+        const { score: droneValue } = calculateTargetValue(drone, context, {
+          damageAmount: 999,
+          isPiercing: false,
+          lane: laneId
+        });
+        totalValue += droneValue;
+        matchCount++;
       }
     });
 
-    const filteredValue = totalResourceValue * CARD_EVALUATION.FILTERED_DESTROY_MULTIPLIER;
     const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
-    score = filteredValue - costPenalty;
-    logic.push(`✅ Filtered Targets: +${filteredValue}`);
-    logic.push(`⚠️ Cost: -${costPenalty}`);
+    score = totalValue - costPenalty;
+
+    logic.push(`Filtered Targets (${matchCount}): +${totalValue}`);
+    logic.push(`Cost: -${costPenalty}`);
   }
   else if (card.effect.scope === 'LANE' && target && target.id.startsWith('lane')) {
     const laneId = target.id;
     const enemyDrones = player1.dronesOnBoard[laneId] || [];
     const friendlyDrones = player2.dronesOnBoard[laneId] || [];
 
-    const calculateWeightedValue = (drones) => {
-      return drones.reduce((sum, d) => {
-        const baseValue = (d.hull || 0) + (d.currentShields || 0) + (d.class * 5);
-        return sum + (d.isExhausted ? baseValue : baseValue * CARD_EVALUATION.READY_DRONE_WEIGHT);
-      }, 0);
-    };
+    // Calculate value of enemy drones we destroy
+    let enemyValue = 0;
+    enemyDrones.forEach(drone => {
+      const { score: droneValue } = calculateTargetValue(drone, context, {
+        damageAmount: 999,
+        isPiercing: false,
+        lane: laneId
+      });
+      enemyValue += droneValue;
+    });
 
-    const enemyValue = calculateWeightedValue(enemyDrones);
-    const friendlyValue = calculateWeightedValue(friendlyDrones);
+    // Calculate value of friendly drones we lose (simplified - base stats only)
+    const friendlyValue = friendlyDrones.reduce((sum, d) => {
+      const baseValue = (d.hull || 0) + (d.currentShields || 0) + (d.class * 5);
+      return sum + (d.isExhausted ? baseValue : baseValue * CARD_EVALUATION.READY_DRONE_WEIGHT);
+    }, 0);
 
-    const netValue = (enemyValue - friendlyValue) * CARD_EVALUATION.LANE_DESTROY_MULTIPLIER;
+    const netValue = enemyValue - friendlyValue;
     const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
-
     score = netValue - costPenalty;
 
-    logic.push(`✅ Net Lane Value: +${netValue.toFixed(0)} (Enemy: ${enemyValue.toFixed(0)}, Friendly: ${friendlyValue.toFixed(0)})`);
-    logic.push(`⚠️ Cost: -${costPenalty}`);
+    logic.push(`Net Lane Value: +${netValue.toFixed(0)} (Enemy: ${enemyValue.toFixed(0)}, Friendly: ${friendlyValue.toFixed(0)})`);
+    logic.push(`Cost: -${costPenalty}`);
   }
 
   return { score, logic };
@@ -85,16 +110,16 @@ export const evaluateDestroyCard = (card, target, context) => {
  * @returns {Object} - { score: number, logic: string[] }
  */
 export const evaluateDamageCard = (card, target, context) => {
-  const { player1, gameDataService } = context;
+  const { player1, gameDataService, getLaneOfDrone } = context;
   const logic = [];
   let score = 0;
 
   if (card.effect.scope === 'FILTERED' && target.id.startsWith('lane') && card.effect.filter) {
     const { stat, comparison, value } = card.effect.filter;
-    const dronesInLane = player1.dronesOnBoard[target.id] || [];
-    let potentialDamage = 0;
-    let targetsHit = 0;
     const laneId = target.id;
+    const dronesInLane = player1.dronesOnBoard[laneId] || [];
+    let totalValue = 0;
+    let targetsHit = 0;
 
     dronesInLane.forEach(drone => {
       const effectiveTarget = gameDataService.getEffectiveStats(drone, laneId);
@@ -104,41 +129,39 @@ export const evaluateDamageCard = (card, target, context) => {
 
       if (meetsCondition) {
         targetsHit++;
-        potentialDamage += card.effect.value;
+        const { score: droneValue } = calculateTargetValue(drone, context, {
+          damageAmount: card.effect.value,
+          isPiercing: card.effect.damageType === 'PIERCING',
+          lane: laneId
+        });
+        totalValue += droneValue;
       }
     });
 
-    const damageValue = potentialDamage * CARD_EVALUATION.FILTERED_DAMAGE_MULTIPLIER;
     const multiHitBonus = targetsHit > 1 ? targetsHit * CARD_EVALUATION.MULTI_HIT_BONUS_PER_TARGET : 0;
     const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
-    score = damageValue + multiHitBonus - costPenalty;
+    score = totalValue + multiHitBonus - costPenalty;
 
-    logic.push(`✅ Filtered Damage: +${damageValue} (${targetsHit} targets)`);
-    if (multiHitBonus > 0) logic.push(`✅ Multi-Hit: +${multiHitBonus}`);
-    logic.push(`⚠️ Cost: -${costPenalty}`);
+    logic.push(`Filtered Damage (${targetsHit} targets): +${totalValue}`);
+    if (multiHitBonus > 0) logic.push(`Multi-Hit: +${multiHitBonus}`);
+    logic.push(`Cost: -${costPenalty}`);
   } else {
-    // Single target damage
-    if (card.effect.damageType === 'PIERCING') {
-      const shieldBypassValue = (target.currentShields || 0);
-      logic.push(`✅ Piercing: Bypasses ${shieldBypassValue} shields`);
-    }
+    // Single target damage - use unified scoring
+    const lane = getLaneOfDrone ? getLaneOfDrone(target.id, player1) : target.lane;
+    const isPiercing = card.effect.damageType === 'PIERCING';
 
-    const damageScore = card.effect.value * CARD_EVALUATION.DAMAGE_MULTIPLIER;
-    logic.push(`✅ Base Damage: +${damageScore}`);
-    let finalScore = damageScore;
-
-    // Lethal bonus
-    if (card.effect.value >= target.hull) {
-      const lethalBonus = (target.class * CARD_EVALUATION.LETHAL_CLASS_MULTIPLIER) + CARD_EVALUATION.LETHAL_BASE_BONUS;
-      finalScore += lethalBonus;
-      logic.push(`✅ Lethal Bonus: +${lethalBonus}`);
-    }
+    const { score: targetValue, logic: targetLogic } = calculateTargetValue(target, context, {
+      damageAmount: card.effect.value,
+      isPiercing,
+      lane
+    });
 
     const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
-    finalScore -= costPenalty;
-    logic.push(`⚠️ Cost: -${costPenalty}`);
+    score = targetValue - costPenalty;
 
-    score = finalScore;
+    logic.push(`Target Value: +${targetValue}`);
+    logic.push(...targetLogic.map(l => `  ${l}`));
+    logic.push(`Cost: -${costPenalty}`);
   }
 
   return { score, logic };
@@ -153,58 +176,48 @@ export const evaluateDamageCard = (card, target, context) => {
  * @returns {Object} - { score: number, logic: string[] }
  */
 export const evaluateOverflowDamageCard = (card, target, context) => {
+  const { player1, getLaneOfDrone } = context;
   const logic = [];
   let score = 0;
 
-  // Extract effect properties
   const { baseDamage, isPiercing, markedBonus = 0 } = card.effect;
-
-  // Calculate effective damage (including marked bonus if applicable)
   const isMarked = target.isMarked || false;
   const totalDamage = baseDamage + (isMarked ? markedBonus : 0);
 
-  // Calculate damage needed to kill drone (piercing ignores shields)
-  const damageToKill = isPiercing ? target.hull : (target.currentShields || 0) + target.hull;
+  // Get lane for context-aware scoring
+  const lane = getLaneOfDrone ? getLaneOfDrone(target.id, player1) : target.lane;
 
-  // Calculate overflow damage
-  const willKill = totalDamage >= damageToKill;
-  const overflowDamage = willKill ? Math.max(0, totalDamage - damageToKill) : 0;
+  // Use unified target scoring
+  const { score: targetValue, logic: targetLogic } = calculateTargetValue(target, context, {
+    damageAmount: totalDamage,
+    isPiercing,
+    lane
+  });
 
-  // Base damage value
-  const damageValue = totalDamage * CARD_EVALUATION.DAMAGE_MULTIPLIER;
-  score += damageValue;
-  logic.push(`✅ Damage: +${damageValue} (${totalDamage} × 8)`);
+  score += targetValue;
+  logic.push(`Target Value: +${targetValue}`);
+  logic.push(...targetLogic.map(l => `  ${l}`));
 
   // Marked bonus logging
   if (isMarked && markedBonus > 0) {
-    logic.push(`✅ Marked Target: +${markedBonus} bonus damage`);
+    logic.push(`Marked Target: +${markedBonus} bonus damage`);
   }
 
-  // Lethal bonus
-  if (willKill) {
-    const lethalBonus = (target.class * CARD_EVALUATION.LETHAL_CLASS_MULTIPLIER) + CARD_EVALUATION.LETHAL_BASE_BONUS;
-    score += lethalBonus;
-    logic.push(`✅ Lethal: +${lethalBonus} (class ${target.class} × 15 + 50)`);
-  }
+  // Calculate overflow damage (additional value beyond target scoring)
+  const damageToKill = isPiercing ? target.hull : (target.currentShields || 0) + target.hull;
+  const willKill = totalDamage >= damageToKill;
+  const overflowDamage = willKill ? Math.max(0, totalDamage - damageToKill) : 0;
 
-  // Overflow bonus (ship damage is very valuable)
   if (overflowDamage > 0) {
     const overflowBonus = overflowDamage * CARD_EVALUATION.OVERFLOW_SHIP_DAMAGE_MULTIPLIER;
     score += overflowBonus;
-    logic.push(`✅ Overflow to Ship: +${overflowBonus} (${overflowDamage} × 12)`);
-  }
-
-  // Piercing bonus (value of bypassing shields)
-  if (isPiercing && (target.currentShields || 0) > 0) {
-    const piercingBonus = target.currentShields * CARD_EVALUATION.PIERCING_SHIELD_BYPASS_MULTIPLIER;
-    score += piercingBonus;
-    logic.push(`✅ Piercing: +${piercingBonus} (bypasses ${target.currentShields} shields)`);
+    logic.push(`Overflow to Ship: +${overflowBonus} (${overflowDamage} dmg)`);
   }
 
   // Cost penalty
   const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
   score -= costPenalty;
-  logic.push(`⚠️ Cost: -${costPenalty}`);
+  logic.push(`Cost: -${costPenalty}`);
 
   return { score, logic };
 };
@@ -222,7 +235,6 @@ export const evaluateSplashDamageCard = (card, target, context) => {
   const logic = [];
   let score = 0;
 
-  // Get lane and all enemy drones in lane
   const laneId = getLaneOfDrone(target.id, player1);
   const enemyDronesInLane = player1.dronesOnBoard[laneId] || [];
   const friendlyDronesInLane = player2.dronesOnBoard[laneId] || [];
@@ -235,14 +247,24 @@ export const evaluateSplashDamageCard = (card, target, context) => {
     const friendlyCount = friendlyDronesInLane.length;
     if (friendlyCount >= conditional.threshold) {
       bonusDamage = conditional.bonusDamage;
-      logic.push(`✅ Bonus Damage: +${bonusDamage} (${friendlyCount} friendly drones in lane)`);
+      logic.push(`Bonus Damage: +${bonusDamage} (${friendlyCount} friendly drones)`);
     }
   }
 
   const effectivePrimaryDamage = primaryDamage + bonusDamage;
   const effectiveSplashDamage = splashDamage + bonusDamage;
 
-  // Find target index to determine adjacent drones
+  // Score primary target using unified scoring
+  const { score: primaryValue, logic: primaryLogic } = calculateTargetValue(target, context, {
+    damageAmount: effectivePrimaryDamage,
+    isPiercing: false,
+    lane: laneId
+  });
+
+  score += primaryValue;
+  logic.push(`Primary Target: +${primaryValue}`);
+
+  // Find adjacent drones
   const targetIndex = enemyDronesInLane.findIndex(d => d.id === target.id);
   const adjacentDrones = [];
 
@@ -253,47 +275,33 @@ export const evaluateSplashDamageCard = (card, target, context) => {
     adjacentDrones.push(enemyDronesInLane[targetIndex + 1]);
   }
 
-  // Score primary target damage
-  const primaryDamageScore = effectivePrimaryDamage * CARD_EVALUATION.DAMAGE_MULTIPLIER;
-  score += primaryDamageScore;
-  logic.push(`✅ Primary Damage: +${primaryDamageScore} (${effectivePrimaryDamage} to target)`);
-
-  // Check for lethal on primary target
-  if (effectivePrimaryDamage >= target.hull) {
-    const lethalBonus = (target.class * CARD_EVALUATION.LETHAL_CLASS_MULTIPLIER) + CARD_EVALUATION.LETHAL_BASE_BONUS;
-    score += lethalBonus;
-    logic.push(`✅ Lethal on Target: +${lethalBonus}`);
-  }
-
   // Score splash damage to adjacent drones
-  let targetsHit = 1; // Primary target
+  let targetsHit = 1;
   adjacentDrones.forEach(adj => {
-    const splashScore = effectiveSplashDamage * CARD_EVALUATION.DAMAGE_MULTIPLIER;
-    score += splashScore;
+    const { score: adjValue } = calculateTargetValue(adj, context, {
+      damageAmount: effectiveSplashDamage,
+      isPiercing: false,
+      lane: laneId
+    });
+    score += adjValue;
     targetsHit++;
-
-    // Check for lethal on adjacent
-    if (effectiveSplashDamage >= adj.hull) {
-      const lethalBonus = (adj.class * CARD_EVALUATION.LETHAL_CLASS_MULTIPLIER) + CARD_EVALUATION.LETHAL_BASE_BONUS;
-      score += lethalBonus;
-    }
   });
 
   if (adjacentDrones.length > 0) {
-    logic.push(`✅ Splash Damage: +${adjacentDrones.length * effectiveSplashDamage * CARD_EVALUATION.DAMAGE_MULTIPLIER} (${adjacentDrones.length} adjacent)`);
+    logic.push(`Splash (${adjacentDrones.length} adjacent): included in score`);
   }
 
   // Multi-hit bonus
   if (targetsHit > 1) {
     const multiHitBonus = targetsHit * CARD_EVALUATION.MULTI_HIT_BONUS_PER_TARGET;
     score += multiHitBonus;
-    logic.push(`✅ Multi-Hit: +${multiHitBonus} (${targetsHit} targets)`);
+    logic.push(`Multi-Hit: +${multiHitBonus} (${targetsHit} targets)`);
   }
 
   // Cost penalty
   const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
   score -= costPenalty;
-  logic.push(`⚠️ Cost: -${costPenalty}`);
+  logic.push(`Cost: -${costPenalty}`);
 
   return { score, logic };
 };
@@ -307,12 +315,11 @@ export const evaluateSplashDamageCard = (card, target, context) => {
  * @returns {Object} - { score: number, logic: string[] }
  */
 export const evaluateDamageScalingCard = (card, target, context) => {
-  const { player2, getLaneOfDrone } = context;
+  const { player1, player2, getLaneOfDrone } = context;
   const logic = [];
   let score = 0;
 
-  // Get the lane of the target
-  const laneId = getLaneOfDrone(target.id, context.player1);
+  const laneId = getLaneOfDrone(target.id, player1);
   const friendlyDronesInLane = player2.dronesOnBoard[laneId] || [];
 
   // Calculate damage based on source
@@ -321,24 +328,23 @@ export const evaluateDamageScalingCard = (card, target, context) => {
 
   if (source === 'READY_DRONES_IN_LANE') {
     damage = friendlyDronesInLane.filter(d => !d.isExhausted).length;
-    logic.push(`✅ Scaling Damage: ${damage} (${damage} ready friendly drones)`);
+    logic.push(`Scaling Damage: ${damage} (${damage} ready friendly drones)`);
   }
 
-  // Score the damage
-  const damageScore = damage * CARD_EVALUATION.DAMAGE_MULTIPLIER;
-  score += damageScore;
+  // Use unified target scoring with calculated damage
+  const { score: targetValue, logic: targetLogic } = calculateTargetValue(target, context, {
+    damageAmount: damage,
+    isPiercing: false,
+    lane: laneId
+  });
 
-  // Check for lethal
-  if (damage >= target.hull) {
-    const lethalBonus = (target.class * CARD_EVALUATION.LETHAL_CLASS_MULTIPLIER) + CARD_EVALUATION.LETHAL_BASE_BONUS;
-    score += lethalBonus;
-    logic.push(`✅ Lethal: +${lethalBonus} (${damage} dmg >= ${target.hull} hull)`);
-  }
+  score += targetValue;
+  logic.push(`Target Value: +${targetValue}`);
 
   // Cost penalty
   const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
   score -= costPenalty;
-  logic.push(`⚠️ Cost: -${costPenalty}`);
+  logic.push(`Cost: -${costPenalty}`);
 
   return { score, logic };
 };
@@ -358,7 +364,6 @@ export const evaluateDestroyUpgradeCard = (card, target, context) => {
   // Calculate upgrade value based on what it provides
   if (target.mod) {
     const { stat, value } = target.mod;
-    // Attack upgrades are more valuable to remove
     if (stat === 'attack') {
       score = value * 20;
     } else if (stat === 'speed') {
@@ -366,21 +371,19 @@ export const evaluateDestroyUpgradeCard = (card, target, context) => {
     } else {
       score = value * 8;
     }
-    logic.push(`✅ Upgrade Destroyed: +${score} (${stat} +${value})`);
+    logic.push(`Upgrade Destroyed: +${score} (${stat} +${value})`);
   } else if (target.keyword) {
-    // Keyword upgrades (like PIERCING) have fixed value
     score = 25;
-    logic.push(`✅ Upgrade Destroyed: +${score} (${target.keyword} keyword)`);
+    logic.push(`Upgrade Destroyed: +${score} (${target.keyword} keyword)`);
   } else {
-    // Unknown upgrade type, use default value
     score = 15;
-    logic.push(`✅ Upgrade Destroyed: +${score}`);
+    logic.push(`Upgrade Destroyed: +${score}`);
   }
 
   // Cost penalty
   const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
   score -= costPenalty;
-  logic.push(`⚠️ Cost: -${costPenalty}`);
+  logic.push(`Cost: -${costPenalty}`);
 
   return { score, logic };
 };

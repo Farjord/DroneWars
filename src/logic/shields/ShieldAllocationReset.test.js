@@ -43,16 +43,17 @@ describe('Shield Allocation Reset Behavior', () => {
       expect(result.newPending).not.toEqual({});
     });
 
-    it('should recalculate remaining shields correctly after reset', () => {
-      // ARRANGE: 5 shields to allocate, initial snapshot uses 3
+    it('should reset remaining shields to full allocation amount', () => {
+      // shieldsToAllocate = NEW shields this round (not a total budget)
+      // initialSnapshot = existing shields from game state (irrelevant to new allocation)
       const shieldsToAllocate = 5;
-      const initialSnapshot = { bridge: 2, powerCell: 1 }; // 3 used
+      const initialSnapshot = { bridge: 2, powerCell: 1 }; // Existing shields from previous rounds
 
       // ACT: Player resets
       const result = calculateRoundStartReset(initialSnapshot, shieldsToAllocate);
 
-      // ASSERT: Remaining should be 2 (5 - 3)
-      expect(result.newRemaining).toBe(2);
+      // Reset should restore full new allocation, not subtract existing shields
+      expect(result.newRemaining).toBe(5);
     });
 
     it('should handle reset when initial snapshot has no shields', () => {
@@ -66,6 +67,19 @@ describe('Shield Allocation Reset Behavior', () => {
       // ASSERT: Should reset to empty (which is correct for new allocation)
       expect(result.newPending).toEqual({});
       expect(result.newRemaining).toBe(5);
+    });
+
+    // BUG FIX TEST: This test captures the exact bug where reset goes negative
+    it('should not go negative when existing shields exceed shieldsToAllocate', () => {
+      // BUG SCENARIO: Player has 5 shields from previous rounds, gets 2 new this round
+      const initialSnapshot = { bridge: 3, powerCell: 2 }; // 5 existing shields
+      const shieldsToAllocate = 2; // Only 2 NEW shields this round
+
+      const result = calculateRoundStartReset(initialSnapshot, shieldsToAllocate);
+
+      // Should return 2 (full new allocation), NOT -3 (2 - 5)
+      expect(result.newRemaining).toBe(2);
+      expect(result.newRemaining).toBeGreaterThanOrEqual(0);
     });
   });
 

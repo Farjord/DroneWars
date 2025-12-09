@@ -14,15 +14,14 @@ import { debugLog } from '../../utils/debugLogger.js';
  * @returns {Object} { newPending, newRemaining }
  */
 export function calculateRoundStartReset(initialSnapshot, shieldsToAllocate) {
-  // FIXED: Restore to initial snapshot, not empty
+  // Reset restores pending allocations to initial snapshot and resets remaining to full allocation
+  // Note: initialSnapshot contains shields from game state (previous rounds), NOT pending allocations
+  // shieldsToAllocate is the NEW shields for this round only
   debugLog('SHIELD_CLICKS', '🔄 Reset pending shield allocations to initial snapshot');
-
-  // Calculate used shields from initial snapshot
-  const usedShields = Object.values(initialSnapshot).reduce((sum, count) => sum + count, 0);
 
   return {
     newPending: { ...initialSnapshot },
-    newRemaining: shieldsToAllocate - usedShields
+    newRemaining: shieldsToAllocate
   };
 }
 

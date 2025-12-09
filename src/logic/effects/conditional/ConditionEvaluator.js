@@ -7,7 +7,7 @@
 // Supports:
 // - State conditions: TARGET_IS_MARKED, TARGET_IS_EXHAUSTED, TARGET_IS_READY
 // - Stat conditions: TARGET_STAT_GTE, TARGET_STAT_LTE, TARGET_STAT_GT, TARGET_STAT_LT
-// - Outcome conditions: ON_DESTROY, ON_DAMAGE, ON_MOVE (require effectResult from POST timing)
+// - Outcome conditions: ON_DESTROY, ON_HULL_DAMAGE, ON_MOVE (require effectResult from POST timing)
 //
 // Extensible via registerHandler() for custom conditions
 
@@ -35,7 +35,7 @@ class ConditionEvaluator {
 
       // Outcome conditions (POST timing only)
       ON_DESTROY: this.evaluateOnDestroy.bind(this),
-      ON_DAMAGE: this.evaluateOnDamage.bind(this),
+      ON_HULL_DAMAGE: this.evaluateOnHullDamage.bind(this),
       ON_MOVE: this.evaluateOnMove.bind(this),
 
       // Lane comparison conditions (POST timing, for movement)
@@ -237,20 +237,21 @@ class ConditionEvaluator {
   }
 
   /**
-   * Check if any damage was dealt by the primary effect
+   * Check if hull damage was dealt by the primary effect
+   * Triggers only when hull > 0 (not shield damage)
    * Requires effectResult from POST timing
    */
-  evaluateOnDamage(condition, context) {
+  evaluateOnHullDamage(condition, context) {
     const effectResult = context.effectResult;
 
     if (!effectResult || !effectResult.damageDealt) {
       return false;
     }
 
-    const { shield = 0, hull = 0 } = effectResult.damageDealt;
-    const totalDamage = shield + hull;
+    const { hull = 0 } = effectResult.damageDealt;
 
-    return totalDamage > 0;
+    // Only trigger when hull damage is dealt, not shield damage
+    return hull > 0;
   }
 
   /**

@@ -103,7 +103,7 @@ const aiPersonalities = [
       'Scout Drone',
       'Standard Fighter',
       'Interceptor',
-      'Heavy Fighter'
+      'Scanner Drone'
     ],
     shipDeployment: {
       strategy: 'defensive',

@@ -360,33 +360,35 @@ describe('ConditionEvaluator', () => {
   });
 
   // ========================================
-  // ON_DAMAGE CONDITION (POST timing)
+  // ON_HULL_DAMAGE CONDITION (POST timing)
   // ========================================
-  describe('ON_DAMAGE', () => {
-    it('returns true when total damage > 0 (hull only)', () => {
+  // Triggers only when hull damage is dealt, not shield damage
+  describe('ON_HULL_DAMAGE', () => {
+    it('returns true when hull damage > 0 (hull only)', () => {
       mockEffectResult.damageDealt = { shield: 0, hull: 3 };
       mockContext.effectResult = mockEffectResult;
-      const condition = { type: 'ON_DAMAGE' };
+      const condition = { type: 'ON_HULL_DAMAGE' };
 
       const result = evaluator.evaluate(condition, mockContext);
 
       expect(result).toBe(true);
     });
 
-    it('returns true when total damage > 0 (shield only)', () => {
+    it('returns false when only shield damage dealt (no hull damage)', () => {
+      // Key behavior: shield-only damage should NOT trigger ON_HULL_DAMAGE
       mockEffectResult.damageDealt = { shield: 2, hull: 0 };
       mockContext.effectResult = mockEffectResult;
-      const condition = { type: 'ON_DAMAGE' };
+      const condition = { type: 'ON_HULL_DAMAGE' };
 
       const result = evaluator.evaluate(condition, mockContext);
 
-      expect(result).toBe(true);
+      expect(result).toBe(false);
     });
 
-    it('returns true when total damage > 0 (both shield and hull)', () => {
+    it('returns true when both shield and hull damage dealt', () => {
       mockEffectResult.damageDealt = { shield: 2, hull: 3 };
       mockContext.effectResult = mockEffectResult;
-      const condition = { type: 'ON_DAMAGE' };
+      const condition = { type: 'ON_HULL_DAMAGE' };
 
       const result = evaluator.evaluate(condition, mockContext);
 
@@ -396,7 +398,7 @@ describe('ConditionEvaluator', () => {
     it('returns false when no damage dealt', () => {
       mockEffectResult.damageDealt = { shield: 0, hull: 0 };
       mockContext.effectResult = mockEffectResult;
-      const condition = { type: 'ON_DAMAGE' };
+      const condition = { type: 'ON_HULL_DAMAGE' };
 
       const result = evaluator.evaluate(condition, mockContext);
 
@@ -405,7 +407,7 @@ describe('ConditionEvaluator', () => {
 
     it('returns false when effectResult is undefined', () => {
       mockContext.effectResult = undefined;
-      const condition = { type: 'ON_DAMAGE' };
+      const condition = { type: 'ON_HULL_DAMAGE' };
 
       const result = evaluator.evaluate(condition, mockContext);
 
@@ -414,7 +416,7 @@ describe('ConditionEvaluator', () => {
 
     it('returns false when damageDealt is undefined', () => {
       mockContext.effectResult = {};
-      const condition = { type: 'ON_DAMAGE' };
+      const condition = { type: 'ON_HULL_DAMAGE' };
 
       const result = evaluator.evaluate(condition, mockContext);
 

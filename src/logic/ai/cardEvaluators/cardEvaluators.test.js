@@ -103,12 +103,9 @@ const createMockContext = (overrides = {}) => ({
 // ========================================
 
 describe('evaluateOverflowDamageCard', () => {
-  // Test constants from aiConstants.js:
-  // DAMAGE_MULTIPLIER: 8
-  // LETHAL_BASE_BONUS: 50
-  // LETHAL_CLASS_MULTIPLIER: 15
+  // Uses unified target scoring with flat bonuses:
+  // Ready: +25, Class 1: +3, Attack 2: +4, Lethal: +20, Piercing bypass: +5
   // OVERFLOW_SHIP_DAMAGE_MULTIPLIER: 12
-  // PIERCING_SHIELD_BYPASS_MULTIPLIER: 4
   // COST_PENALTY_MULTIPLIER: 4
 
   it('calculates base damage value correctly', () => {
@@ -122,14 +119,12 @@ describe('evaluateOverflowDamageCard', () => {
 
     const result = evaluateOverflowDamageCard(card, target, context);
 
-    // 2 damage × 8 = 16 base damage value
+    // Unified scoring: Ready(25) + Class1(3) + Attack2(4) = 32
     // No lethal (10 hull > 2 damage)
-    // No overflow
-    // No piercing bonus (no shields)
+    // No overflow, no piercing bypass (no shields)
     // Cost: 5 × 4 = 20
-    // Expected: 16 - 20 = -4
-    expect(result.score).toBe(-4);
-    expect(result.logic).toContain('✅ Damage: +16 (2 × 8)');
+    // Expected: 32 - 20 = 12
+    expect(result.score).toBe(12);
   });
 
   it('adds lethal bonus when damage kills target', () => {
@@ -143,13 +138,12 @@ describe('evaluateOverflowDamageCard', () => {
 
     const result = evaluateOverflowDamageCard(card, target, context);
 
-    // 2 damage × 8 = 16
-    // Lethal: class 2 × 15 + 50 = 80
+    // Unified scoring: Ready(25) + Class2(6) + Attack2(4) + Lethal(20) = 55
     // No overflow (exactly kills)
     // Cost: 20
-    // Expected: 16 + 80 - 20 = 76
-    expect(result.score).toBe(76);
-    expect(result.logic).toContain('✅ Lethal: +80 (class 2 × 15 + 50)');
+    // Expected: 55 - 20 = 35
+    expect(result.score).toBe(35);
+    expect(result.logic.some(l => l.includes('Lethal'))).toBe(true);
   });
 
   it('calculates overflow damage to ship correctly', () => {
@@ -163,13 +157,12 @@ describe('evaluateOverflowDamageCard', () => {
 
     const result = evaluateOverflowDamageCard(card, target, context);
 
-    // 2 damage × 8 = 16
-    // Lethal: class 1 × 15 + 50 = 65
+    // Unified scoring: Ready(25) + Class1(3) + Attack2(4) + Lethal(20) = 52
     // Overflow: 2 - 1 = 1 → 1 × 12 = 12
     // Cost: 20
-    // Expected: 16 + 65 + 12 - 20 = 73
-    expect(result.score).toBe(73);
-    expect(result.logic).toContain('✅ Overflow to Ship: +12 (1 × 12)');
+    // Expected: 52 + 12 - 20 = 44
+    expect(result.score).toBe(44);
+    expect(result.logic.some(l => l.includes('Overflow'))).toBe(true);
   });
 
   it('applies marked bonus to increase damage', () => {
@@ -184,13 +177,12 @@ describe('evaluateOverflowDamageCard', () => {
     const result = evaluateOverflowDamageCard(card, target, context);
 
     // Marked: 2 + 2 = 4 total damage
-    // 4 damage × 8 = 32
-    // Lethal: 65
+    // Unified scoring: Ready(25) + Class1(3) + Attack2(4) + Lethal(20) = 52
     // Overflow: 4 - 2 = 2 → 2 × 12 = 24
     // Cost: 20
-    // Expected: 32 + 65 + 24 - 20 = 101
-    expect(result.score).toBe(101);
-    expect(result.logic).toContain('✅ Marked Target: +2 bonus damage');
+    // Expected: 52 + 24 - 20 = 56
+    expect(result.score).toBe(56);
+    expect(result.logic.some(l => l.includes('Marked'))).toBe(true);
   });
 
   it('adds piercing bonus for shielded targets', () => {
@@ -204,12 +196,12 @@ describe('evaluateOverflowDamageCard', () => {
 
     const result = evaluateOverflowDamageCard(card, target, context);
 
-    // 2 damage × 8 = 16
-    // Piercing bonus: 3 shields × 4 = 12
+    // Unified scoring: Ready(25) + Class1(3) + Attack2(4) + PiercingBypass(5) = 37
+    // No lethal (10 hull)
     // Cost: 20
-    // Expected: 16 + 12 - 20 = 8
-    expect(result.score).toBe(8);
-    expect(result.logic).toContain('✅ Piercing: +12 (bypasses 3 shields)');
+    // Expected: 37 - 20 = 17
+    expect(result.score).toBe(17);
+    expect(result.logic.some(l => l.includes('Piercing'))).toBe(true);
   });
 
   it('calculates maximum overflow with marked target on 1-hull drone', () => {
@@ -223,12 +215,12 @@ describe('evaluateOverflowDamageCard', () => {
 
     const result = evaluateOverflowDamageCard(card, target, context);
 
-    // 4 damage × 8 = 32
-    // Lethal: 65
+    // Marked: 4 total damage
+    // Unified scoring: Ready(25) + Class1(3) + Attack2(4) + Lethal(20) = 52
     // Overflow: 4 - 1 = 3 → 3 × 12 = 36
     // Cost: 20
-    // Expected: 32 + 65 + 36 - 20 = 113
-    expect(result.score).toBe(113);
+    // Expected: 52 + 36 - 20 = 68
+    expect(result.score).toBe(68);
   });
 });
 
@@ -244,11 +236,11 @@ describe('evaluateDamageCard', () => {
 
     const result = evaluateDamageCard(card, target, context);
 
-    // 2 × 8 = 16 base
+    // Unified scoring: Ready(25) + Class1(3) + Attack2(4) = 32
     // No lethal (3 hull > 2 damage)
     // Cost: 2 × 4 = 8
-    // Expected: 16 - 8 = 8
-    expect(result.score).toBe(8);
+    // Expected: 32 - 8 = 24
+    expect(result.score).toBe(24);
   });
 
   it('adds lethal bonus when damage is lethal', () => {
@@ -257,16 +249,17 @@ describe('evaluateDamageCard', () => {
       cost: 2,
       effect: { type: 'DAMAGE', scope: 'SINGLE', value: 2 }
     };
-    const target = createMockDrone({ hull: 2, class: 2 });
+    // Set currentShields: 0 so 2 damage kills 2 hull target
+    const target = createMockDrone({ hull: 2, currentShields: 0, class: 2 });
     const context = createMockContext();
 
     const result = evaluateDamageCard(card, target, context);
 
-    // 2 × 8 = 16 base
-    // Lethal: 2 × 15 + 50 = 80
+    // Unified scoring: Ready(25) + Class2(6) + Attack2(4) + Lethal(20) = 55
     // Cost: 8
-    // Expected: 16 + 80 - 8 = 88
-    expect(result.score).toBe(88);
+    // Expected: 55 - 8 = 47
+    expect(result.score).toBe(47);
+    expect(result.logic.some(l => l.includes('Lethal'))).toBe(true);
   });
 
   it('logs piercing bypass for shielded targets', () => {
@@ -295,8 +288,9 @@ describe('evaluateDamageCard', () => {
       }
     };
     const target = { id: 'lane1' };
-    const slowDrone1 = createMockDrone({ id: 'd1', speed: 2 });
-    const slowDrone2 = createMockDrone({ id: 'd2', speed: 3 });
+    // Explicitly set hull/shields so 2 damage is lethal
+    const slowDrone1 = createMockDrone({ id: 'd1', speed: 2, hull: 2, currentShields: 0 });
+    const slowDrone2 = createMockDrone({ id: 'd2', speed: 3, hull: 2, currentShields: 0 });
     const fastDrone = createMockDrone({ id: 'd3', speed: 5 });
 
     const context = createMockContext({
@@ -308,11 +302,12 @@ describe('evaluateDamageCard', () => {
 
     const result = evaluateDamageCard(card, target, context);
 
-    // 2 targets hit × 2 damage × 10 = 40
+    // 2 targets hit: each with Ready(25)+Class1(3)+Attack2(4)+Lethal(20) = 52
+    // Total: 52 × 2 = 104
     // Multi-hit: 2 × 15 = 30
     // Cost: 3 × 4 = 12
-    // Expected: 40 + 30 - 12 = 58
-    expect(result.score).toBe(58);
+    // Expected: 104 + 30 - 12 = 122
+    expect(result.score).toBe(122);
     expect(result.logic.some(l => l.includes('Multi-Hit'))).toBe(true);
   });
 });
@@ -335,9 +330,9 @@ describe('evaluateSplashDamageCard', () => {
       player1: createMockPlayer('player1', {
         dronesOnBoard: {
           lane1: [
-            { id: 'drone_1', hull: 2, currentShields: 0, class: 1 },
-            { id: 'drone_2', hull: 1, currentShields: 0, class: 1 },
-            { id: 'drone_3', hull: 2, currentShields: 1, class: 2 }
+            { id: 'drone_1', hull: 2, currentShields: 0, class: 1, attack: 2 },
+            { id: 'drone_2', hull: 1, currentShields: 0, class: 1, attack: 2 },
+            { id: 'drone_3', hull: 2, currentShields: 1, class: 2, attack: 2 }
           ],
           lane2: [],
           lane3: []
@@ -352,14 +347,12 @@ describe('evaluateSplashDamageCard', () => {
     const result = evaluateSplashDamageCard(card, target, context);
 
     // Base damage 1 (no bonus - 0 friendly drones)
-    // Target drone_1 at index 0, adjacent only to drone_2 at index 1
-    // Primary: 1 dmg × 8 = 8 (no lethal, 1 < 2 hull)
-    // Splash to 1 adjacent (drone_2): 1 × 8 = 8
-    // Lethal on drone_2 (1 >= 1 hull): class 1 × 15 + 50 = 65
-    // Multi-hit bonus: 2 targets × 15 = 30
-    // Cost: 4 × 4 = 16
-    // Expected: 8 + 8 + 65 + 30 - 16 = 95
-    expect(result.score).toBe(95);
+    // Target drone_1: Ready(25)+Class1(3)+Attack2(4) = 32 (no lethal, 1 < 2 hull)
+    // Adjacent drone_2: Ready(25)+Class1(3)+Attack2(4)+Lethal(20) = 52 (lethal: 1>=1)
+    // Multi-hit: 2 × 15 = 30
+    // Cost: 16
+    // Expected: 32 + 52 + 30 - 16 = 98
+    expect(result.score).toBe(98);
   });
 
   it('applies bonus damage when friendly threshold met', () => {
@@ -378,8 +371,8 @@ describe('evaluateSplashDamageCard', () => {
       player1: createMockPlayer('player1', {
         dronesOnBoard: {
           lane1: [
-            { id: 'drone_e1', hull: 2, currentShields: 0, class: 1 },
-            { id: 'drone_e2', hull: 1, currentShields: 0, class: 1 }
+            { id: 'drone_e1', hull: 2, currentShields: 0, class: 1, attack: 2 },
+            { id: 'drone_e2', hull: 1, currentShields: 0, class: 1, attack: 2 }
           ],
           lane2: [],
           lane3: []
@@ -401,16 +394,13 @@ describe('evaluateSplashDamageCard', () => {
 
     const result = evaluateSplashDamageCard(card, target, context);
 
-    // Bonus damage applies (3 friendly drones)
-    // Damage is now 2 instead of 1
-    // Primary: 2 dmg × 8 = 16
-    // Lethal on target (2 >= 2 hull): class 1 × 15 + 50 = 65
-    // Splash to 1 adjacent: 2 × 8 = 16
-    // Lethal on adjacent (2 >= 1 hull): class 1 × 15 + 50 = 65
-    // Multi-hit bonus: 2 targets × 15 = 30
-    // Cost: 4 × 4 = 16
-    // Expected: 16 + 65 + 16 + 65 + 30 - 16 = 176
-    expect(result.score).toBe(176);
+    // Bonus damage applies (3 friendly drones): damage is now 2
+    // Target: Ready(25)+Class1(3)+Attack2(4)+Lethal(20) = 52
+    // Adjacent: Ready(25)+Class1(3)+Attack2(4)+Lethal(20) = 52
+    // Multi-hit: 2 × 15 = 30
+    // Cost: 16
+    // Expected: 52 + 52 + 30 - 16 = 118
+    expect(result.score).toBe(118);
     expect(result.logic.some(l => l.includes('Bonus'))).toBe(true);
   });
 
@@ -430,7 +420,7 @@ describe('evaluateSplashDamageCard', () => {
     const context = createMockContext({
       player1: createMockPlayer('player1', {
         dronesOnBoard: {
-          lane1: [{ id: 'drone_1', hull: 1, currentShields: 0, class: 2 }],
+          lane1: [{ id: 'drone_1', hull: 1, currentShields: 0, class: 2, attack: 2 }],
           lane2: [],
           lane3: []
         }
@@ -444,12 +434,12 @@ describe('evaluateSplashDamageCard', () => {
     const result = evaluateSplashDamageCard(card, target, context);
 
     // Single target, no splash (no adjacent)
-    // Damage: 1 × 8 = 8
-    // Lethal bonus: class 2 × 15 + 50 = 80
-    // Cost: 4 × 4 = 16
-    // Expected: 8 + 80 - 16 = 72
-    expect(result.score).toBe(72);
-    expect(result.logic.some(l => l.includes('Lethal'))).toBe(true);
+    // Target: Ready(25)+Class2(6)+Attack2(4)+Lethal(20) = 55
+    // Cost: 16
+    // Expected: 55 - 16 = 39
+    expect(result.score).toBe(39);
+    // Score includes lethal bonus (damage 1 kills 1 hull target)
+    expect(result.score).toBeGreaterThan(30); // Would be ~15 without lethal
   });
 });
 
@@ -490,11 +480,10 @@ describe('evaluateDamageScalingCard', () => {
     const result = evaluateDamageScalingCard(card, target, context);
 
     // 2 ready friendly drones = 2 damage
-    // Damage: 2 × 8 = 16
-    // Lethal (2 >= 2): class 1 × 15 + 50 = 65
-    // Cost: 2 × 4 = 8
-    // Expected: 16 + 65 - 8 = 73
-    expect(result.score).toBe(73);
+    // Unified: Ready(25)+Class1(3)+Attack2(4)+Lethal(20) = 52
+    // Cost: 8
+    // Expected: 52 - 8 = 44
+    expect(result.score).toBe(44);
     expect(result.logic.some(l => l.includes('Scaling Damage'))).toBe(true);
   });
 
@@ -520,9 +509,11 @@ describe('evaluateDamageScalingCard', () => {
 
     const result = evaluateDamageScalingCard(card, target, context);
 
-    // 0 ready friendly drones = 0 damage
-    // Score: 0 - 8 = -8
-    expect(result.score).toBe(-8);
+    // 0 ready friendly drones = 0 damage (not lethal)
+    // Unified: Ready(25)+Class1(3)+Attack2(4) = 32
+    // Cost: 8
+    // Expected: 32 - 8 = 24
+    expect(result.score).toBe(24);
   });
 
   it('scores high with many ready drones for lethal', () => {
@@ -557,12 +548,11 @@ describe('evaluateDamageScalingCard', () => {
 
     const result = evaluateDamageScalingCard(card, target, context);
 
-    // 4 ready friendly drones = 4 damage
-    // Damage: 4 × 8 = 32
-    // Lethal (4 >= 3): class 3 × 15 + 50 = 95
-    // Cost: 2 × 4 = 8
-    // Expected: 32 + 95 - 8 = 119
-    expect(result.score).toBe(119);
+    // 4 ready friendly drones = 4 damage (lethal: 4 >= 3)
+    // Unified: Ready(25)+Class3(10)+Attack2(4)+Lethal(20) = 59
+    // Cost: 8
+    // Expected: 59 - 8 = 51
+    expect(result.score).toBe(51);
   });
 });
 
@@ -631,7 +621,7 @@ describe('evaluateDestroyUpgradeCard', () => {
 });
 
 describe('evaluateDestroyCard', () => {
-  it('scores single target destroy based on resources', () => {
+  it('scores single target destroy based on unified scoring', () => {
     const card = {
       id: 'CARD009',
       cost: 3,
@@ -642,10 +632,10 @@ describe('evaluateDestroyCard', () => {
 
     const result = evaluateDestroyCard(card, target, context);
 
-    // Resource value: (3 + 2) × 8 = 40
-    // Cost: 3 × 4 = 12
-    // Expected: 40 - 12 = 28
-    expect(result.score).toBe(28);
+    // Unified: Ready(25)+Class1(3)+Attack2(4)+Lethal(20) = 52
+    // Cost: 12
+    // Expected: 52 - 12 = 40
+    expect(result.score).toBe(40);
   });
 
   it('calculates lane-wide destroy comparing enemy vs friendly', () => {
@@ -670,12 +660,12 @@ describe('evaluateDestroyCard', () => {
 
     const result = evaluateDestroyCard(card, target, context);
 
-    // Enemy: (2 + 1 + 2×5) × 1.5 (ready) = 19.5
+    // Enemy unified: Ready(25)+Class2(6)+Attack2(4)+Lethal(20) = 55
     // Friendly: (1 + 0 + 1×5) × 1 (exhausted) = 6
-    // Net: (19.5 - 6) × 4 = 54
-    // Cost: 8 × 4 = 32
-    // Expected: 54 - 32 = 22
-    expect(result.score).toBe(22);
+    // Net: 55 - 6 = 49
+    // Cost: 32
+    // Expected: 49 - 32 = 17
+    expect(result.score).toBe(17);
   });
 });
 
@@ -1378,10 +1368,10 @@ describe('Card Evaluator Registry', () => {
 
     const result = evaluateCardPlay(card, target, context);
 
-    // Base DAMAGE: 0 × 8 - 2 × 4 = -8
-    // Conditional DESTROY: 73 (from our earlier test)
-    // Total should be: -8 + 73 = 65
-    expect(result.score).toBe(65);
+    // Base DAMAGE 0: unified Ready(25)+Class1(3)+Attack2(4) = 32, minus cost 8 = 24
+    // Conditional DESTROY uses old scoring: (1×8) + (1×15+50) = 73
+    // Total: 24 + 73 = 97
+    expect(result.score).toBe(97);
     expect(result.logic.some(l => l.includes('Conditional DESTROY'))).toBe(true);
   });
 
@@ -1394,13 +1384,16 @@ describe('Card Evaluator Registry', () => {
       cost: 2,
       effect: { type: 'DAMAGE', value: 2 }
     };
+    // Default currentShields is 1, so total HP is 3, making 2 damage non-lethal
     const target = createMockDrone({ hull: 2, class: 1 });
     const context = createMockContext();
 
     const result = evaluateCardPlay(card, target, context);
 
-    // 2 × 8 = 16 base + lethal bonus (1×15+50=65) - cost 8 = 73
-    expect(result.score).toBe(73);
+    // Unified: Ready(25)+Class1(3)+Attack2(4) = 32 (no Lethal - 2 dmg < 3 HP)
+    // Cost: 8
+    // Expected: 32 - 8 = 24
+    expect(result.score).toBe(24);
   });
 
   it('exports hasEvaluator function', async () => {
@@ -1896,20 +1889,21 @@ describe('evaluateConditionalEffects', () => {
     });
   });
 
-  describe('POST timing conditionals - ON_DAMAGE', () => {
-    it('adds energy bonus when damage will be dealt (CARD054 Energy Leech)', () => {
-      // CARD054: Deal 1 damage, if damage dealt gain 3 energy
+  describe('POST timing conditionals - ON_HULL_DAMAGE', () => {
+    it('adds energy bonus when hull damage will be dealt (CARD054 Energy Leech)', () => {
+      // CARD054: Deal 1 damage, if hull damage dealt gain 3 energy
+      // Target has 0 shields, so 1 damage will deal hull damage
       const card = {
         id: 'CARD054',
         cost: 2,
         effect: { type: 'DAMAGE', value: 1 },
         conditionalEffects: [{
           timing: 'POST',
-          condition: { type: 'ON_DAMAGE' },
+          condition: { type: 'ON_HULL_DAMAGE' },
           grantedEffect: { type: 'GAIN_ENERGY', value: 3 }
         }]
       };
-      const target = createMockDrone({ hull: 3 });
+      const target = createMockDrone({ hull: 3, currentShields: 0 });
       const context = createMockContext();
 
       const result = evaluateConditionalEffects(card, target, context);
@@ -1919,6 +1913,27 @@ describe('evaluateConditionalEffects', () => {
       expect(result.logic.some(l => l.includes('Energy'))).toBe(true);
     });
 
+    it('no bonus when damage blocked by shields (no hull damage)', () => {
+      // Target has 2 shields, dealing 1 damage won't cause hull damage
+      const card = {
+        id: 'CARD054',
+        cost: 2,
+        effect: { type: 'DAMAGE', value: 1 },
+        conditionalEffects: [{
+          timing: 'POST',
+          condition: { type: 'ON_HULL_DAMAGE' },
+          grantedEffect: { type: 'GAIN_ENERGY', value: 3 }
+        }]
+      };
+      const target = createMockDrone({ hull: 3, currentShields: 2 });
+      const context = createMockContext();
+
+      const result = evaluateConditionalEffects(card, target, context);
+
+      // No bonus - shields will absorb all damage
+      expect(result.bonusScore).toBe(0);
+    });
+
     it('no bonus for non-damage effects', () => {
       const card = {
         id: 'TEST_CARD',
@@ -1926,7 +1941,7 @@ describe('evaluateConditionalEffects', () => {
         effect: { type: 'HEAL_HULL', value: 2 }, // Not damage
         conditionalEffects: [{
           timing: 'POST',
-          condition: { type: 'ON_DAMAGE' },
+          condition: { type: 'ON_HULL_DAMAGE' },
           grantedEffect: { type: 'GAIN_ENERGY', value: 3 }
         }]
       };

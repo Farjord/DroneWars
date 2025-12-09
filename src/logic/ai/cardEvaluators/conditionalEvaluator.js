@@ -156,9 +156,15 @@ function evaluatePostCondition(condition, baseEffect, target, context) {
       }
       return false;
 
-    case 'ON_DAMAGE':
-      // Any damage card with value > 0 will deal damage
-      return baseEffect.type === 'DAMAGE' && (baseEffect.value || 0) > 0;
+    case 'ON_HULL_DAMAGE':
+      // Hull damage is dealt when damage exceeds target shields
+      if (baseEffect.type !== 'DAMAGE' || (baseEffect.value || 0) <= 0) {
+        return false;
+      }
+      // Predict if hull damage will be dealt
+      const damage = baseEffect.value || 0;
+      const targetShields = target?.currentShields || 0;
+      return damage > targetShields;
 
     default:
       return false;

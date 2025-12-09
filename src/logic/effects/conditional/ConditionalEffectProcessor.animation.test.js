@@ -157,9 +157,9 @@ describe('Conditional Effects Animation Integration', () => {
       mockEffectResult.damageDealt = { shield: 1, hull: 2 };
       mockContext.effectResult = mockEffectResult;
       const conditionalEffects = [{
-        id: 'energy-on-damage',
+        id: 'energy-on-hull-damage',
         timing: 'POST',
-        condition: { type: 'ON_DAMAGE' },
+        condition: { type: 'ON_HULL_DAMAGE' },
         grantedEffect: { type: 'GAIN_ENERGY', value: 2 }
       }];
 
@@ -243,16 +243,16 @@ describe('Conditional Effects Animation Integration', () => {
           grantedEffect: { type: 'DRAW', value: 1 }
         },
         {
-          id: 'energy-on-damage',
+          id: 'energy-on-hull-damage',
           timing: 'POST',
-          condition: { type: 'ON_DAMAGE' },
+          condition: { type: 'ON_HULL_DAMAGE' },
           grantedEffect: { type: 'GAIN_ENERGY', value: 2 }
         }
       ];
 
       const result = processor.processPostConditionals(conditionalEffects, mockContext, mockEffectResult);
 
-      // Both effects queued
+      // Both effects queued (hull: 2 > 0, wasDestroyed: true)
       expect(result.additionalEffects).toHaveLength(2);
       expect(result.additionalEffects).toContainEqual(
         expect.objectContaining({ type: 'DRAW' })
@@ -264,7 +264,7 @@ describe('Conditional Effects Animation Integration', () => {
 
     it('queues only effects with met conditions', () => {
       mockEffectResult.wasDestroyed = false; // ON_DESTROY NOT met
-      mockEffectResult.damageDealt = { shield: 1, hull: 2 }; // ON_DAMAGE met
+      mockEffectResult.damageDealt = { shield: 1, hull: 2 }; // ON_HULL_DAMAGE met (hull > 0)
       mockContext.effectResult = mockEffectResult;
       const conditionalEffects = [
         {
@@ -274,16 +274,16 @@ describe('Conditional Effects Animation Integration', () => {
           grantedEffect: { type: 'DRAW', value: 1 }
         },
         {
-          id: 'energy-on-damage',
+          id: 'energy-on-hull-damage',
           timing: 'POST',
-          condition: { type: 'ON_DAMAGE' },
+          condition: { type: 'ON_HULL_DAMAGE' },
           grantedEffect: { type: 'GAIN_ENERGY', value: 2 }
         }
       ];
 
       const result = processor.processPostConditionals(conditionalEffects, mockContext, mockEffectResult);
 
-      // Only ON_DAMAGE effect queued
+      // Only ON_HULL_DAMAGE effect queued (hull: 2 > 0)
       expect(result.additionalEffects).toHaveLength(1);
       expect(result.additionalEffects).toContainEqual(
         expect.objectContaining({ type: 'GAIN_ENERGY' })

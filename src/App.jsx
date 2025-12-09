@@ -449,23 +449,6 @@ const App = ({ phaseAnimationQueue }) => {
   const localPlacedSections = getLocalPlacedSections();
   const opponentPlacedSections = getOpponentPlacedSections();
 
-  // Defensive check for hot reload scenarios where player states might be null
-  if (!localPlayerState || !opponentPlayerState) {
-    return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        backgroundColor: '#1a1a1a',
-        color: '#ffffff',
-        fontFamily: 'Arial, sans-serif'
-      }}>
-        <div>Initializing game board...</div>
-      </div>
-    );
-  }
-
   // Ship section placement data
   const sectionsToPlace = ['bridge', 'powerCell', 'droneControlHub'];
 
@@ -551,21 +534,22 @@ const App = ({ phaseAnimationQueue }) => {
 
   // Sorted drone pool for deployment interface
   const sortedLocalActivePool = useMemo(() => {
+    if (!localPlayerState?.activeDronePool) return [];
     return [...localPlayerState.activeDronePool].sort((a, b) => {
       if (a.class !== b.class) {
         return a.class - b.class;
       }
       return a.name.localeCompare(b.name);
     });
-  }, [localPlayerState.activeDronePool]);
+  }, [localPlayerState?.activeDronePool]);
 
   // Shield allocation calculations
   const canAllocateMoreShields = useMemo(() => {
-    if (!localPlayerState) return false;
+    if (!localPlayerState?.shipSections) return false;
     return Object.keys(localPlayerState.shipSections).some(sectionName =>
         localPlayerState.shipSections[sectionName].allocatedShields < gameDataService.getEffectiveSectionMaxShields(sectionName, localPlayerState, localPlacedSections)
     );
-  }, [localPlayerState.shipSections, localPlacedSections, gameDataService]);
+  }, [localPlayerState?.shipSections, localPlacedSections, gameDataService]);
 
   // --- 5.5 PHASE-BASED MANDATORY ACTION DERIVED STATE ---
   // Derive UI state for mandatory discard/removal phases directly from phase + commitments
@@ -1722,6 +1706,55 @@ const App = ({ phaseAnimationQueue }) => {
       }
     }
   }, [turnPhase, gameState.commitments, isMultiplayer, getLocalPlayerId, getOpponentPlayerId, waitingForPlayerPhase]);
+
+  // ========================================
+  // SECTION 9: EARLY RETURN FOR NULL PLAYER STATE
+  // ========================================
+  // This defensive check must come AFTER all hooks are declared.
+  // Handles scenarios where player states might be null:
+  // - Hot reload during development
+  // - Abandon run flow (resetGameState sets player1/player2 to null)
+  // - Combat defeat flow (processDefeat calls resetGameState)
+  // - Transitional states during game initialization
+  //
+  // IMPORTANT: Moving this earlier in the component would cause
+  // "Rendered fewer hooks than expected" errors because React
+  // requires the same number of hooks to be called on every render.
+  if (!localPlayerState || !opponentPlayerState) {
+    // If failed run screen should be shown, render it instead of placeholder
+    // This handles the defeat/abandon flows where player states are null
+    // but we need to show the FailedRunLoadingScreen transition
+    if (gameState.showFailedRunScreen) {
+      return (
+        <FailedRunLoadingScreen
+          failureType={gameState.failedRunType}
+          isStarterDeck={gameState.failedRunIsStarterDeck}
+          onComplete={() => {
+            gameStateManager.setState({
+              showFailedRunScreen: false,
+              failedRunType: null,
+              failedRunIsStarterDeck: false,
+              appState: 'hangar'
+            });
+          }}
+        />
+      );
+    }
+
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100vh',
+        backgroundColor: '#1a1a1a',
+        color: '#ffffff',
+        fontFamily: 'Arial, sans-serif'
+      }}>
+        <div>Initializing game board...</div>
+      </div>
+    );
+  }
 
   // --- 8.11-8.13 REMOVED: AUTO-TRIGGER FOR MANDATORY PHASES ---
   // Previous implementation used client-side useEffects to auto-trigger Continue when player

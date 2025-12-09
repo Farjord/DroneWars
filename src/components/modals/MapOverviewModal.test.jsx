@@ -466,11 +466,12 @@ describe('MapOverviewModal - Gate Selection Alignment', () => {
     const mapPreview = screen.getByTestId('map-preview');
     const gateSelectionText = screen.getByText(/Entry Point: Gate/i);
 
-    // Both should be in the same parent column (flex column container)
-    const mapColumnContainer = mapPreview.parentElement;  // The flex column
+    // Both should be children of the same grid container (different grid cells in the same column)
+    const mapColumnContainer = mapPreview.parentElement;  // The flex column containing map
     const gateBox = gateSelectionText.closest('.dw-modal-info-box');
+    const gridContainer = mapColumnContainer.parentElement;  // The grid container
 
-    // The gate box's parent should be the same flex column that contains the map
-    expect(gateBox.parentElement).toBe(mapColumnContainer);
+    // The gate box should also be a child of the same grid container
+    expect(gateBox.parentElement).toBe(gridContainer);
   });
 });

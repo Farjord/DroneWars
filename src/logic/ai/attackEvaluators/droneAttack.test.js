@@ -80,8 +80,9 @@ describe('evaluateDroneAttack', () => {
 
       const result = evaluateDroneAttack(attacker, target, context);
 
-      // Should have piercing bonus: 2 shields × 8 = 16
-      expect(result.logic.some(l => l.includes('Piercing') || l.includes('piercing'))).toBe(true);
+      // Should have Hunter Protocol triggered and piercing bypass bonus
+      expect(result.logic.some(l => l.includes('Hunter Protocol'))).toBe(true);
+      expect(result.logic.some(l => l.includes('Piercing Bypass'))).toBe(true);
       expect(result.score).toBeGreaterThan(0);
     });
 
@@ -100,11 +101,12 @@ describe('evaluateDroneAttack', () => {
 
       const result = evaluateDroneAttack(attacker, target, context);
 
-      // Should NOT have piercing bonus
-      expect(result.logic.some(l => l.includes('Piercing') || l.includes('piercing'))).toBe(false);
+      // Should NOT have Hunter Protocol or piercing bypass
+      expect(result.logic.some(l => l.includes('Hunter Protocol'))).toBe(false);
+      expect(result.logic.some(l => l.includes('Piercing Bypass'))).toBe(false);
     });
 
-    it('applies piercing with zero bonus when target has no shields', () => {
+    it('triggers Hunter Protocol but no piercing bonus when target has no shields', () => {
       const attacker = createMockDrone({
         name: 'Hunter',
         class: 2,
@@ -121,9 +123,8 @@ describe('evaluateDroneAttack', () => {
 
       // Hunter Protocol should trigger (target is marked)
       expect(result.logic.some(l => l.includes('Hunter Protocol'))).toBe(true);
-      // Piercing damage bonus should be 0 (no shields)
-      const piercingLine = result.logic.find(l => l.includes('Piercing Damage'));
-      expect(piercingLine).toContain('+0');
+      // Piercing Bypass should NOT appear (no shields to bypass)
+      expect(result.logic.some(l => l.includes('Piercing Bypass'))).toBe(false);
     });
   });
 
@@ -143,7 +144,7 @@ describe('evaluateDroneAttack', () => {
       const result = evaluateDroneAttack(attacker, target, context);
 
       // Should have growth bonus (Veteran Instincts)
-      expect(result.logic.some(l => l.includes('Growth') || l.includes('Veteran'))).toBe(true);
+      expect(result.logic.some(l => l.includes('Veteran Instincts'))).toBe(true);
     });
 
     it('does not apply growth bonus for non-growth drones', () => {
@@ -161,7 +162,276 @@ describe('evaluateDroneAttack', () => {
       const result = evaluateDroneAttack(attacker, target, context);
 
       // Should NOT have growth bonus
-      expect(result.logic.some(l => l.includes('Growth') || l.includes('Veteran'))).toBe(false);
+      expect(result.logic.some(l => l.includes('Veteran Instincts'))).toBe(false);
+    });
+  });
+
+  describe('Interception Coverage Penalty', () => {
+    // Test: Applies penalty when attacker is blocking enemy ship attackers
+    it('applies interception coverage penalty when blocking enemy ship attackers', () => {
+      const attacker = createMockDrone({
+        name: 'Scout',
+        class: 1,
+        attack: 1,
+        speed: 4,  // Can intercept slower enemies
+        lane: 'lane1'
+      });
+      const target = createMockDrone({
+        id: 'target-1',
+        name: 'Enemy Drone',
+        class: 1,
+        hull: 2,
+        lane: 'lane1'
+      });
+      // Enemy drone in lane that attacker can intercept
+      const enemyShipAttacker = createMockDrone({
+        id: 'enemy-attacker',
+        name: 'Striker',
+        class: 2,
+        attack: 3,
+        speed: 3,  // Slower than attacker - can be intercepted
+        lane: 'lane1',
+        isExhausted: false
+      });
+      const context = createMockContext({
+        player1: {
+          dronesOnBoard: {
+            lane1: [target, enemyShipAttacker],
+            lane2: [],
+            lane3: []
+          },
+          shipSections: {
+            section1: { hull: 10, maxHull: 10 },
+            section2: { hull: 10, maxHull: 10 },
+            section3: { hull: 10, maxHull: 10 }
+          }
+        }
+      });
+
+      const result = evaluateDroneAttack(attacker, target, context);
+
+      // Should have interception coverage penalty
+      expect(result.logic.some(l => l.includes('Losing Interception Coverage'))).toBe(true);
+    });
+
+    // Test: Does not apply penalty when no enemies can be intercepted
+    it('does not apply penalty when no enemies can be intercepted', () => {
+      const attacker = createMockDrone({
+        name: 'Slow Drone',
+        class: 1,
+        attack: 2,
+        speed: 2,  // Too slow to intercept
+        lane: 'lane1'
+      });
+      const target = createMockDrone({
+        id: 'target-1',
+        name: 'Enemy Drone',
+        class: 1,
+        hull: 2,
+        lane: 'lane1'
+      });
+      // Enemy drone faster than attacker - cannot be intercepted
+      const fastEnemy = createMockDrone({
+        id: 'fast-enemy',
+        name: 'Fast Enemy',
+        class: 2,
+        attack: 3,
+        speed: 5,  // Faster than attacker
+        lane: 'lane1',
+        isExhausted: false
+      });
+      const context = createMockContext({
+        player1: {
+          dronesOnBoard: {
+            lane1: [target, fastEnemy],
+            lane2: [],
+            lane3: []
+          },
+          shipSections: {
+            section1: { hull: 10, maxHull: 10 },
+            section2: { hull: 10, maxHull: 10 },
+            section3: { hull: 10, maxHull: 10 }
+          }
+        }
+      });
+
+      const result = evaluateDroneAttack(attacker, target, context);
+
+      // Should NOT have interception coverage penalty
+      expect(result.logic.some(l => l.includes('Losing Interception Coverage'))).toBe(false);
+    });
+
+    // Test: Does not apply penalty for Defenders (they don't exhaust on intercept)
+    it('does not apply penalty for Defender drones', () => {
+      const attacker = createMockDrone({
+        name: 'Defender Drone',
+        class: 2,
+        attack: 2,
+        speed: 4,
+        lane: 'lane1',
+        keywords: ['DEFENDER']
+      });
+      const target = createMockDrone({
+        id: 'target-1',
+        name: 'Enemy Drone',
+        class: 1,
+        hull: 2,
+        lane: 'lane1'
+      });
+      const enemyAttacker = createMockDrone({
+        id: 'enemy-attacker',
+        name: 'Striker',
+        class: 2,
+        attack: 3,
+        speed: 3,
+        lane: 'lane1',
+        isExhausted: false
+      });
+      const context = createMockContext({
+        player1: {
+          dronesOnBoard: {
+            lane1: [target, enemyAttacker],
+            lane2: [],
+            lane3: []
+          },
+          shipSections: {
+            section1: { hull: 10, maxHull: 10 },
+            section2: { hull: 10, maxHull: 10 },
+            section3: { hull: 10, maxHull: 10 }
+          }
+        }
+      });
+
+      const result = evaluateDroneAttack(attacker, target, context);
+
+      // Defender should NOT have interception coverage penalty
+      expect(result.logic.some(l => l.includes('Losing Interception Coverage'))).toBe(false);
+    });
+
+    // Test: Does not apply penalty for Guardians (handled by Guardian Protection Risk)
+    it('does not apply penalty for Guardian drones (handled separately)', () => {
+      const attacker = createMockDrone({
+        name: 'Guardian Drone',
+        class: 2,
+        attack: 2,
+        speed: 4,
+        lane: 'lane1',
+        keywords: ['GUARDIAN']
+      });
+      const target = createMockDrone({
+        id: 'target-1',
+        name: 'Enemy Drone',
+        class: 1,
+        hull: 2,
+        lane: 'lane1'
+      });
+      const enemyAttacker = createMockDrone({
+        id: 'enemy-attacker',
+        name: 'Striker',
+        class: 2,
+        attack: 3,
+        speed: 3,
+        lane: 'lane1',
+        isExhausted: false
+      });
+      const context = createMockContext({
+        player1: {
+          dronesOnBoard: {
+            lane1: [target, enemyAttacker],
+            lane2: [],
+            lane3: []
+          },
+          shipSections: {
+            section1: { hull: 10, maxHull: 10 },
+            section2: { hull: 10, maxHull: 10 },
+            section3: { hull: 10, maxHull: 10 }
+          }
+        }
+      });
+
+      const result = evaluateDroneAttack(attacker, target, context);
+
+      // Guardian should have Guardian Protection Risk instead
+      expect(result.logic.some(l => l.includes('Guardian Protection Risk'))).toBe(true);
+      // Should NOT have the general interception coverage penalty
+      expect(result.logic.some(l => l.includes('Losing Interception Coverage'))).toBe(false);
+    });
+
+    // Test: Penalty scales with threat level
+    it('penalty scales with threat level of enemies being blocked', () => {
+      const attacker = createMockDrone({
+        name: 'Scout',
+        class: 1,
+        attack: 1,
+        speed: 6,
+        lane: 'lane1'
+      });
+      const target = createMockDrone({
+        id: 'target-1',
+        name: 'Enemy Drone',
+        class: 1,
+        hull: 2,
+        lane: 'lane1'
+      });
+      // Low threat enemy
+      const lowThreatEnemy = createMockDrone({
+        id: 'low-threat',
+        name: 'Weak Enemy',
+        class: 0,
+        attack: 1,
+        speed: 2,
+        lane: 'lane1',
+        isExhausted: false
+      });
+      // High threat enemy
+      const highThreatEnemy = createMockDrone({
+        id: 'high-threat',
+        name: 'Strong Enemy',
+        class: 3,
+        attack: 4,
+        speed: 3,
+        lane: 'lane1',
+        isExhausted: false
+      });
+
+      const lowThreatContext = createMockContext({
+        player1: {
+          dronesOnBoard: {
+            lane1: [target, lowThreatEnemy],
+            lane2: [],
+            lane3: []
+          },
+          shipSections: {
+            section1: { hull: 10, maxHull: 10 },
+            section2: { hull: 10, maxHull: 10 },
+            section3: { hull: 10, maxHull: 10 }
+          }
+        }
+      });
+      const highThreatContext = createMockContext({
+        player1: {
+          dronesOnBoard: {
+            lane1: [target, highThreatEnemy],
+            lane2: [],
+            lane3: []
+          },
+          shipSections: {
+            section1: { hull: 10, maxHull: 10 },
+            section2: { hull: 10, maxHull: 10 },
+            section3: { hull: 10, maxHull: 10 }
+          }
+        }
+      });
+
+      const lowThreatResult = evaluateDroneAttack(attacker, target, lowThreatContext);
+      const highThreatResult = evaluateDroneAttack(attacker, target, highThreatContext);
+
+      // Both should have penalty
+      expect(lowThreatResult.logic.some(l => l.includes('Losing Interception Coverage'))).toBe(true);
+      expect(highThreatResult.logic.some(l => l.includes('Losing Interception Coverage'))).toBe(true);
+
+      // High threat should have larger penalty (lower score)
+      expect(highThreatResult.score).toBeLessThan(lowThreatResult.score);
     });
   });
 });

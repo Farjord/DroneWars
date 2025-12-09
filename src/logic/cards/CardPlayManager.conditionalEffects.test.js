@@ -264,7 +264,9 @@ describe('CardPlayManager with conditionalEffects', () => {
       expect(result).toBeDefined();
     });
 
-    it('grants GAIN_ENERGY when ON_DAMAGE condition met', () => {
+    it('grants GAIN_ENERGY when ON_HULL_DAMAGE condition met', () => {
+      // Target has 0 shields, so damage will deal hull damage
+      mockTarget.currentShields = 0;
       const card = {
         id: 'CARD_ENERGY_LEECH',
         instanceId: 'inst_005',
@@ -272,9 +274,9 @@ describe('CardPlayManager with conditionalEffects', () => {
         cost: 2,
         effect: { type: 'DAMAGE', value: 2 },
         conditionalEffects: [{
-          id: 'energy-on-damage',
+          id: 'energy-on-hull-damage',
           timing: 'POST',
-          condition: { type: 'ON_DAMAGE' },
+          condition: { type: 'ON_HULL_DAMAGE' },
           grantedEffect: { type: 'GAIN_ENERGY', value: 1 }
         }]
       };

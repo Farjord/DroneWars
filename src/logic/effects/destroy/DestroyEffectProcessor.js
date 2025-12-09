@@ -69,18 +69,26 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
         destroyedDrones.push(result.droneDestroyed);
       }
       animationEvents.push(...result.animationEvents);
+
+    } else if (effect.scope === 'ALL') {
+      // ALL scope: Destroy all marked enemy drones (Purge Protocol)
+      const result = this.processAllMarkedDestroy(card, actingPlayerId, opponentId, newPlayerStates);
+      destroyedDrones.push(...result.destroyedDrones);
+      animationEvents.push(...result.animationEvents);
     }
 
     // Route to appropriate animation builder based on card's visualEffect
-    if (destroyedDrones.length > 0) {
+    // Note: For ALL scope (Purge Protocol), animations are already added per-drone in processAllMarkedDestroy
+    // Only add extra NUKE_BLAST animation if NOT ALL scope (since ALL scope may span multiple lanes)
+    if (destroyedDrones.length > 0 && effect.scope !== 'ALL') {
       const visualType = card?.visualEffect?.type;
 
       if (visualType === 'NUKE_BLAST') {
         // Use Nuke-specific animation (large blast + individual explosions)
         animationEvents.push(...buildNukeAnimation({
           destroyedDrones,
-          targetPlayer: target.owner || opponentId,
-          targetLane: target.id,
+          targetPlayer: target?.owner || opponentId,
+          targetLane: target?.id,
           card,
           actingPlayerId
         }));
@@ -88,8 +96,8 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
         // Use default animation if no animations generated yet
         animationEvents.push(...buildDefaultDestroyAnimation({
           destroyedDrones,
-          targetPlayer: target.owner || opponentId,
-          targetLane: target.id
+          targetPlayer: target?.owner || opponentId,
+          targetLane: target?.id
         }));
       }
     }
@@ -303,6 +311,64 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
     }
 
     return { droneDestroyed, animationEvents };
+  }
+
+  /**
+   * Process ALL scope destruction (destroy all marked enemy drones)
+   * Used by Purge Protocol card with ALL_MARKED targeting
+   *
+   * @private
+   */
+  processAllMarkedDestroy(card, actingPlayerId, opponentId, newPlayerStates) {
+    const destroyedDrones = [];
+    const animationEvents = [];
+
+    // Determine target player based on card's targeting affinity
+    const affinity = card?.targeting?.affinity || 'ENEMY';
+    const targetPlayerId = affinity === 'ENEMY' ? opponentId : actingPlayerId;
+    const targetPlayerState = newPlayerStates[targetPlayerId];
+
+    debugLog('EFFECT_PROCESSING', `[DESTROY] ALL scope - destroying all marked drones for ${targetPlayerId}`);
+
+    // Search all lanes for marked drones
+    for (const laneId of ['lane1', 'lane2', 'lane3']) {
+      const dronesInLane = targetPlayerState.dronesOnBoard[laneId] || [];
+
+      // Iterate in reverse for safe removal
+      for (let i = dronesInLane.length - 1; i >= 0; i--) {
+        const drone = dronesInLane[i];
+
+        if (drone.isMarked) {
+          destroyedDrones.push(drone);
+
+          debugLog('EFFECT_PROCESSING', `[DESTROY] ${drone.name} (marked) in ${laneId} destroyed`);
+
+          // Add destruction animation event
+          animationEvents.push({
+            type: 'DRONE_DESTROYED',
+            targetId: drone.id,
+            targetPlayer: targetPlayerId,
+            targetLane: laneId,
+            targetType: 'drone',
+            timestamp: Date.now()
+          });
+
+          // Update deployment counts
+          const updates = gameEngine.onDroneDestroyed(targetPlayerState, drone);
+          targetPlayerState.deployedDroneCounts = {
+            ...(targetPlayerState.deployedDroneCounts || {}),
+            ...updates.deployedDroneCounts
+          };
+
+          // Remove drone from lane
+          dronesInLane.splice(i, 1);
+        }
+      }
+    }
+
+    debugLog('EFFECT_PROCESSING', `[DESTROY] ALL scope destroyed ${destroyedDrones.length} marked drones`);
+
+    return { destroyedDrones, animationEvents };
   }
 }
 

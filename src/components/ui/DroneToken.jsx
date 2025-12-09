@@ -148,14 +148,14 @@ const DroneToken = ({
       onClick={(e) => onClick && onClick(e, drone, isPlayer)}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className="relative"
+      className={`relative ${enableFloatAnimation ? 'drone-float' : ''}`}
       style={{
         width: 'clamp(85px, 4.427vw, 115px)',
         height: 'clamp(115px, 5.99vw, 156px)'
       }}
     >
-      {/* Float Animation Container - only handles floating motion */}
-      <div className={`w-full h-full ${enableFloatAnimation ? 'drone-float' : ''}`}>
+      {/* Visual Effects Wrapper */}
+      <div className="w-full h-full">
         {/* Targeting/Visual Effects Container - handles pulse, hit, selection, etc. */}
         <div className={`w-full h-full transition-all duration-200 ${hitEffect} ${selectedEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect}`}>
           {/* Grayscale Container - only applies exhausted effect */}
@@ -216,13 +216,13 @@ const DroneToken = ({
         </div>
         {/* End Targeting/Visual Effects Container */}
       </div>
-      {/* End Float Animation Container */}
+      {/* End Visual Effects Wrapper */}
 
       {/* Overlapping Hexagons - Outside nested containers for proper filter rendering */}
-      <div className="absolute -top-3 left-[-14px] w-6 h-7 z-20">
+      <div className={`absolute -top-3 left-[-14px] w-6 h-7 z-20 ${teleportingEffect}`}>
           <StatHexagon value={effectiveStats.attack} isFlat={false} bgColor={statBgColor} textColor={attackTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
       </div>
-      <div className={`absolute -top-3 right-[-14px] w-7 h-7 z-20 ${isPotentialInterceptor ? 'interceptor-glow' : ''}`}>
+      <div className={`absolute -top-3 right-[-14px] w-7 h-7 z-20 ${isPotentialInterceptor ? 'interceptor-glow' : ''} ${teleportingEffect}`}>
           <StatHexagon value={effectiveStats.speed} isFlat={true} bgColor={statBgColor} textColor={speedTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
       </div>
 

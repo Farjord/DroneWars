@@ -1,0 +1,387 @@
+{
+  "saveVersion": "1.0",
+  "savedAt": 1765106656843,
+  "playerProfile": {
+    "saveVersion": "1.0",
+    "createdAt": 1765106647789,
+    "lastPlayedAt": 1765106656843,
+    "credits": 0,
+    "securityTokens": 0,
+    "aiCores": 0,
+    "unlockedBlueprints": [],
+    "gameSeed": 1765106647789,
+    "defaultShipSlotId": 0,
+    "highestUnlockedSlot": 0,
+    "stats": {
+      "runsCompleted": 0,
+      "runsLost": 0,
+      "totalCreditsEarned": 0,
+      "totalCombatsWon": 0,
+      "totalCombatsLost": 0,
+      "highestTierCompleted": 0
+    },
+    "reputation": {
+      "current": 0,
+      "level": 0,
+      "unclaimedRewards": []
+    }
+  },
+  "inventory": {},
+  "droneInstances": [],
+  "shipComponentInstances": [],
+  "discoveredCards": [],
+  "shipSlots": [
+    {
+      "id": 0,
+      "name": "Starter Deck",
+      "status": "active",
+      "isImmutable": true,
+      "shipId": "SHIP_001",
+      "decklist": [
+        {
+          "id": "CARD002",
+          "quantity": 4
+        },
+        {
+          "id": "CARD005",
+          "quantity": 4
+        },
+        {
+          "id": "CARD007",
+          "quantity": 2
+        },
+        {
+          "id": "CARD010",
+          "quantity": 2
+        },
+        {
+          "id": "CARD014",
+          "quantity": 4
+        },
+        {
+          "id": "CARD017",
+          "quantity": 4
+        },
+        {
+          "id": "CARD021",
+          "quantity": 2
+        },
+        {
+          "id": "CARD028",
+          "quantity": 2
+        },
+        {
+          "id": "CARD033",
+          "quantity": 4
+        },
+        {
+          "id": "CARD037",
+          "quantity": 4
+        },
+        {
+          "id": "CARD038",
+          "quantity": 4
+        },
+        {
+          "id": "CARD039",
+          "quantity": 4
+        }
+      ],
+      "drones": [
+        {
+          "name": "Scout Drone",
+          "isDamaged": false
+        },
+        {
+          "name": "Standard Fighter",
+          "isDamaged": false
+        },
+        {
+          "name": "Heavy Fighter",
+          "isDamaged": false
+        },
+        {
+          "name": "Guardian Drone",
+          "isDamaged": false
+        },
+        {
+          "name": "Repair Drone",
+          "isDamaged": false
+        }
+      ],
+      "shipComponents": {
+        "POWERCELL_001": "l",
+        "BRIDGE_001": "m",
+        "DRONECONTROL_001": "r"
+      },
+      "droneSlots": [
+        {
+          "droneName": "Scout Drone",
+          "isDamaged": false
+        },
+        {
+          "droneName": "Standard Fighter",
+          "isDamaged": false
+        },
+        {
+          "droneName": "Heavy Fighter",
+          "isDamaged": false
+        },
+        {
+          "droneName": "Guardian Drone",
+          "isDamaged": false
+        },
+        {
+          "droneName": "Repair Drone",
+          "isDamaged": false
+        }
+      ],
+      "sectionSlots": {
+        "l": {
+          "componentId": "POWERCELL_001",
+          "damageDealt": 0
+        },
+        "m": {
+          "componentId": "BRIDGE_001",
+          "damageDealt": 0
+        },
+        "r": {
+          "componentId": "DRONECONTROL_001",
+          "damageDealt": 0
+        }
+      }
+    },
+    {
+      "id": 1,
+      "name": "Ship Slot 1",
+      "status": "empty",
+      "isImmutable": false,
+      "shipId": null,
+      "decklist": [],
+      "drones": [],
+      "shipComponents": {},
+      "droneSlots": [
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        }
+      ],
+      "sectionSlots": {
+        "l": {
+          "componentId": null,
+          "damageDealt": 0
+        },
+        "m": {
+          "componentId": null,
+          "damageDealt": 0
+        },
+        "r": {
+          "componentId": null,
+          "damageDealt": 0
+        }
+      }
+    },
+    {
+      "id": 2,
+      "name": "Ship Slot 2",
+      "status": "empty",
+      "isImmutable": false,
+      "shipId": null,
+      "decklist": [],
+      "drones": [],
+      "shipComponents": {},
+      "droneSlots": [
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        }
+      ],
+      "sectionSlots": {
+        "l": {
+          "componentId": null,
+          "damageDealt": 0
+        },
+        "m": {
+          "componentId": null,
+          "damageDealt": 0
+        },
+        "r": {
+          "componentId": null,
+          "damageDealt": 0
+        }
+      }
+    },
+    {
+      "id": 3,
+      "name": "Ship Slot 3",
+      "status": "empty",
+      "isImmutable": false,
+      "shipId": null,
+      "decklist": [],
+      "drones": [],
+      "shipComponents": {},
+      "droneSlots": [
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        }
+      ],
+      "sectionSlots": {
+        "l": {
+          "componentId": null,
+          "damageDealt": 0
+        },
+        "m": {
+          "componentId": null,
+          "damageDealt": 0
+        },
+        "r": {
+          "componentId": null,
+          "damageDealt": 0
+        }
+      }
+    },
+    {
+      "id": 4,
+      "name": "Ship Slot 4",
+      "status": "empty",
+      "isImmutable": false,
+      "shipId": null,
+      "decklist": [],
+      "drones": [],
+      "shipComponents": {},
+      "droneSlots": [
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        }
+      ],
+      "sectionSlots": {
+        "l": {
+          "componentId": null,
+          "damageDealt": 0
+        },
+        "m": {
+          "componentId": null,
+          "damageDealt": 0
+        },
+        "r": {
+          "componentId": null,
+          "damageDealt": 0
+        }
+      }
+    },
+    {
+      "id": 5,
+      "name": "Ship Slot 5",
+      "status": "empty",
+      "isImmutable": false,
+      "shipId": null,
+      "decklist": [],
+      "drones": [],
+      "shipComponents": {},
+      "droneSlots": [
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        },
+        {
+          "droneName": null,
+          "isDamaged": false
+        }
+      ],
+      "sectionSlots": {
+        "l": {
+          "componentId": null,
+          "damageDealt": 0
+        },
+        "m": {
+          "componentId": null,
+          "damageDealt": 0
+        },
+        "r": {
+          "componentId": null,
+          "damageDealt": 0
+        }
+      }
+    }
+  ],
+  "currentRunState": null,
+  "quickDeployments": []
+}
