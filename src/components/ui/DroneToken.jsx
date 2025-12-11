@@ -63,6 +63,7 @@ const AbilityIcon = ({ onClick }) => (
  * @param {Object} mandatoryAction - Current mandatory action state
  * @param {Object} localPlayerState - Local player state
  * @param {Object} interceptedBadge - Interception badge data ({ droneId, timestamp })
+ * @param {number|null} deploymentOrderNumber - Deployment order number (1-based) to display as badge, or null to hide
  */
 const DroneToken = ({
   drone,
@@ -82,7 +83,8 @@ const DroneToken = ({
   mandatoryAction,
   localPlayerState,
   interceptedBadge,
-  enableFloatAnimation = false
+  enableFloatAnimation = false,
+  deploymentOrderNumber = null
 }) => {
   // Get GameDataService for direct effective stats calculation
   const { getEffectiveStats } = useGameData();
@@ -237,6 +239,22 @@ const DroneToken = ({
           droneId={drone.id}
           timestamp={interceptedBadge.timestamp}
         />
+      )}
+
+      {/* Deployment Order Badge - shown in quick deploy editor, centered underneath token */}
+      {deploymentOrderNumber != null && (
+        <div
+          data-testid="deployment-order-badge"
+          className="absolute left-1/2 w-5 h-5 bg-cyan-500 rounded-full flex items-center justify-center border border-white z-30 shadow-md"
+          style={{
+            bottom: '-10px',
+            transform: 'translateX(-50%)'
+          }}
+        >
+          <span className="text-white text-xs font-bold font-orbitron">
+            {deploymentOrderNumber}
+          </span>
+        </div>
       )}
     </div>
   );

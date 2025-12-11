@@ -88,8 +88,10 @@ class QuickDeployService {
       id: generateId(),
       name: name.trim(),
       createdAt: Date.now(),
+      version: 2,
       droneRoster: [...droneRoster],
-      placements: placements.map(p => ({ ...p }))
+      placements: placements.map(p => ({ ...p })),
+      deploymentOrder: placements.map((_, i) => i)
     };
 
     this.gameStateManager.setState({
@@ -161,6 +163,16 @@ class QuickDeployService {
       }
 
       updated.placements = changes.placements.map(p => ({ ...p }));
+
+      // Rebuild deploymentOrder for new placements if not explicitly provided
+      if (changes.deploymentOrder === undefined) {
+        updated.deploymentOrder = changes.placements.map((_, i) => i);
+      }
+    }
+
+    // Update deploymentOrder if explicitly provided
+    if (changes.deploymentOrder !== undefined) {
+      updated.deploymentOrder = [...changes.deploymentOrder];
     }
 
     const newList = [...existing];
@@ -203,6 +215,55 @@ class QuickDeployService {
    */
   getRemainingCapacity() {
     return Math.max(0, MAX_QUICK_DEPLOYMENTS - this.getAll().length);
+  }
+
+  /**
+   * Reorder the deployment order for a quick deployment
+   * @param {string} id - Quick deployment ID
+   * @param {Array<number>} newOrder - Array of placement indices in desired order
+   * @returns {Object} Updated quick deployment
+   * @throws {Error} If not found, invalid indices, or wrong length
+   */
+  reorderDeployments(id, newOrder) {
+    const existing = this.getAll();
+    const index = existing.findIndex(qd => qd.id === id);
+
+    if (index === -1) {
+      throw new Error('Quick deployment not found');
+    }
+
+    const current = existing[index];
+    const placementsLength = current.placements.length;
+
+    // Validate newOrder length matches placements
+    if (newOrder.length !== placementsLength) {
+      throw new Error('Deployment order must have same length as placements');
+    }
+
+    // Check for duplicates
+    const uniqueIndices = new Set(newOrder);
+    if (uniqueIndices.size !== newOrder.length) {
+      throw new Error('Duplicate placement index');
+    }
+
+    // Validate all indices are valid
+    for (const idx of newOrder) {
+      if (idx < 0 || idx >= placementsLength) {
+        throw new Error('Invalid placement index');
+      }
+    }
+
+    const updated = {
+      ...current,
+      deploymentOrder: [...newOrder]
+    };
+
+    const newList = [...existing];
+    newList[index] = updated;
+
+    this.gameStateManager.setState({ quickDeployments: newList });
+
+    return updated;
   }
 }
 

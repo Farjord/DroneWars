@@ -87,6 +87,7 @@ const renderDronesOnBoard = (
               onMouseLeave={() => !isPlayer && setHoveredTarget(null)}
               interceptedBadge={interceptedBadge}
               enableFloatAnimation={true}
+              deploymentOrderNumber={drone.deploymentOrderNumber}
                />
           );
       })}

@@ -54,16 +54,16 @@ const DEBUG_CONFIG = {
     FIRST_PLAYER: false,        // First player determination and seeded random (DISABLED for clean logs)
     SHIP_ABILITY: false,        // Ship ability execution and turn ending
     EXTRACTION: false,          // Single-player extraction mode (hangar, tactical map, deployment)
-    ENCOUNTER: false,           // Random encounter rolls and combat triggers
+    ENCOUNTER: true,           // Random encounter rolls and combat triggers
     QUICK_DEPLOY: false,         // Quick deployment validation and selection (ENABLED for phase chaos investigation)
     PHASE_FLOW: false,           // Phase transitions and announcements (ENABLED for phase chaos investigation)
     TICKER: false,              // News ticker message generation and data flow
-    INTERCEPTOR_GLOW: true,     // Interceptor glow calculation debugging
-    AI_DEPLOYMENT: true,        // AI deployment decisions, validation, and execution loop tracing
-    CARD_SIZING: true,           // Card wrapper and sizing debugging
-    ASSET_PRELOAD: true,         // Asset preloading and splash screen timing
+    INTERCEPTOR_GLOW: false,     // Interceptor glow calculation debugging
+    AI_DEPLOYMENT: false,        // AI deployment decisions, validation, and execution loop tracing
+    CARD_SIZING: false,           // Card wrapper and sizing debugging
+    ASSET_PRELOAD: false,         // Asset preloading and splash screen timing
     SP_COMBAT: true,              // Single-player combat init, abandon, and state transitions
-    DECK_BUILDER: true,           // Deck builder save, toast, and validation debugging
+    DECK_BUILDER: false,           // Deck builder save, toast, and validation debugging
     SALVAGE_LOOT: true,           // PoI loot distribution: slot count, card count, rarities, positions
     SALVAGE_ENCOUNTER: true,      // Encounter rolls: chance, roll value, increase per salvage
 

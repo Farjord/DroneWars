@@ -5,7 +5,7 @@
 // Shows 1-5 slots based on zone, allows player to salvage one by one
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Target, Lock, CheckCircle, AlertTriangle, Scan } from 'lucide-react';
+import { Target, Lock, CheckCircle, AlertTriangle, Scan, Shield, Zap } from 'lucide-react';
 import HiddenCard from '../ui/HiddenCard.jsx';
 import { packTypes } from '../../data/cardPackData.js';
 import './SalvageModal.css';
@@ -36,6 +36,8 @@ function SalvageModal({
   onSalvageSlot,
   onLeave,
   onEngageCombat,
+  onQuickDeploy,
+  validQuickDeployments = [],
   onQuit
 }) {
   const [isScanning, setIsScanning] = useState(false);
@@ -296,10 +298,25 @@ function SalvageModal({
                 <AlertTriangle size={18} />
                 Abort Mission
               </button>
-              <button className="dw-btn-danger" onClick={onEngageCombat}>
-                <Target size={18} />
-                Engage Enemy
-              </button>
+              {validQuickDeployments.length > 0 ? (
+                // Has quick deployments - show split buttons
+                <>
+                  <button className="dw-btn-secondary" onClick={onEngageCombat}>
+                    <Shield size={18} />
+                    Standard Deploy
+                  </button>
+                  <button className="dw-btn-danger" onClick={onQuickDeploy}>
+                    <Zap size={18} />
+                    Quick Deploy
+                  </button>
+                </>
+              ) : (
+                // No quick deployments - single engage button
+                <button className="dw-btn-danger" onClick={onEngageCombat}>
+                  <Target size={18} />
+                  Engage Enemy
+                </button>
+              )}
             </>
           ) : allSlotsRevealed ? (
             // All slots done - only leave option

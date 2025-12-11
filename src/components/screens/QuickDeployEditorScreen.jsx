@@ -17,6 +17,7 @@ import QuickDeployService from '../../logic/quickDeploy/QuickDeployService';
 import DroneLanesDisplay from '../ui/DroneLanesDisplay';
 import DroneCard from '../ui/DroneCard';
 import DronePicker from '../quickDeploy/DronePicker';
+import DeploymentOrderQueue from '../quickDeploy/DeploymentOrderQueue';
 import { EditorStatsProvider } from '../../contexts/EditorStatsContext';
 
 /**
@@ -40,6 +41,10 @@ const QuickDeployEditorScreen = () => {
   const [name, setName] = useState(deployment.name || '');
   const [droneRoster, setDroneRoster] = useState([...deployment.droneRoster] || []);
   const [placements, setPlacements] = useState([...deployment.placements] || []);
+  // Initialize deploymentOrder from deployment or default to [0, 1, 2, ...] matching placements
+  const [deploymentOrder, setDeploymentOrder] = useState(
+    deployment.deploymentOrder || deployment.placements.map((_, i) => i)
+  );
   const [selectedDrone, setSelectedDrone] = useState(null); // Drone selected for placement
   const [showDronePicker, setShowDronePicker] = useState(null); // Slot index to pick for
 
@@ -78,15 +83,19 @@ const QuickDeployEditorScreen = () => {
       lane3: []
     };
 
-    placements.forEach((placement, index) => {
+    placements.forEach((placement, placementIndex) => {
       const droneData = getDroneByName(placement.droneName);
       if (!droneData) return;
 
       const laneKey = `lane${placement.lane + 1}`;
 
+      // Find this placement's position in deploymentOrder (for displaying order badge)
+      const orderPosition = deploymentOrder.indexOf(placementIndex);
+      const displayOrder = orderPosition !== -1 ? orderPosition + 1 : null;
+
       // Create drone object with all fields required by stats calculator
       dronesOnBoard[laneKey].push({
-        id: `editor_${placement.droneName}_${index}`,
+        id: `editor_${placement.droneName}_${placementIndex}`,
         name: droneData.name,
         image: droneData.image,
         hull: droneData.hull,
@@ -94,7 +103,8 @@ const QuickDeployEditorScreen = () => {
         isExhausted: false,
         statMods: [],        // Required for stat calculation
         isMarked: false,
-        isTeleporting: false
+        isTeleporting: false,
+        deploymentOrderNumber: displayOrder  // 1-based order for badge display
       });
     });
 
@@ -104,7 +114,7 @@ const QuickDeployEditorScreen = () => {
       energy: 0,
       appliedUpgrades: {}  // Required for stats calculator
     };
-  }, [placements]);
+  }, [placements, deploymentOrder]);
 
   // Empty opponent state for DroneLanesDisplay
   const emptyOpponentState = useMemo(() => ({
@@ -199,8 +209,10 @@ const QuickDeployEditorScreen = () => {
     // Convert laneId to lane index (lane1 -> 0, lane2 -> 1, lane3 -> 2)
     const laneIndex = parseInt(laneId.replace('lane', '')) - 1;
 
-    // Add placement
+    // Add placement and append new index to deploymentOrder
+    const newPlacementIndex = placements.length;
     setPlacements([...placements, { droneName: selectedDrone, lane: laneIndex }]);
+    setDeploymentOrder([...deploymentOrder, newPlacementIndex]);
     setSelectedDrone(null);
   };
 
@@ -218,6 +230,12 @@ const QuickDeployEditorScreen = () => {
       const newPlacements = [...placements];
       newPlacements.splice(placementIndex, 1);
       setPlacements(newPlacements);
+
+      // Update deploymentOrder: remove the index and renumber remaining indices
+      const newOrder = deploymentOrder
+        .filter(idx => idx !== placementIndex)  // Remove the deleted index
+        .map(idx => idx > placementIndex ? idx - 1 : idx);  // Renumber indices after the removed one
+      setDeploymentOrder(newOrder);
     }
   };
 
@@ -232,11 +250,36 @@ const QuickDeployEditorScreen = () => {
 
     const newRoster = [...droneRoster];
 
-    // If replacing an existing drone, remove its placements
+    // If replacing an existing drone, remove its placements and update deploymentOrder
     if (showDronePicker < droneRoster.length) {
       const oldDrone = droneRoster[showDronePicker];
       if (oldDrone) {
-        setPlacements(placements.filter(p => p.droneName !== oldDrone));
+        // Find indices of placements being removed
+        const removedIndices = new Set(
+          placements
+            .map((p, idx) => p.droneName === oldDrone ? idx : -1)
+            .filter(idx => idx !== -1)
+        );
+
+        // Filter placements
+        const newPlacements = placements.filter(p => p.droneName !== oldDrone);
+        setPlacements(newPlacements);
+
+        // Update deploymentOrder: remove indices and renumber
+        if (removedIndices.size > 0) {
+          let newIndex = 0;
+          const indexMapping = {};
+          placements.forEach((_, oldIdx) => {
+            if (!removedIndices.has(oldIdx)) {
+              indexMapping[oldIdx] = newIndex++;
+            }
+          });
+
+          const newOrder = deploymentOrder
+            .filter(idx => !removedIndices.has(idx))
+            .map(idx => indexMapping[idx]);
+          setDeploymentOrder(newOrder);
+        }
       }
       newRoster[showDronePicker] = droneName;
     } else {
@@ -253,8 +296,33 @@ const QuickDeployEditorScreen = () => {
     const droneName = droneRoster[slotIndex];
     if (!droneName) return;
 
-    // Remove placements for this drone
-    setPlacements(placements.filter(p => p.droneName !== droneName));
+    // Find indices of placements being removed
+    const removedIndices = new Set(
+      placements
+        .map((p, idx) => p.droneName === droneName ? idx : -1)
+        .filter(idx => idx !== -1)
+    );
+
+    // Filter placements
+    const newPlacements = placements.filter(p => p.droneName !== droneName);
+    setPlacements(newPlacements);
+
+    // Update deploymentOrder: remove indices and renumber
+    if (removedIndices.size > 0) {
+      // Build a mapping from old indices to new indices
+      let newIndex = 0;
+      const indexMapping = {};
+      placements.forEach((_, oldIdx) => {
+        if (!removedIndices.has(oldIdx)) {
+          indexMapping[oldIdx] = newIndex++;
+        }
+      });
+
+      const newOrder = deploymentOrder
+        .filter(idx => !removedIndices.has(idx))
+        .map(idx => indexMapping[idx]);
+      setDeploymentOrder(newOrder);
+    }
 
     // Remove from roster
     const newRoster = droneRoster.filter((_, i) => i !== slotIndex);
@@ -267,12 +335,19 @@ const QuickDeployEditorScreen = () => {
 
     try {
       if (isCreating) {
-        service.create(name.trim(), droneRoster, placements);
+        // Create new deployment - create() will set default deploymentOrder
+        // but then immediately update with the user's order
+        const created = service.create(name.trim(), droneRoster, placements);
+        // Update with custom deploymentOrder if different from default
+        if (JSON.stringify(deploymentOrder) !== JSON.stringify(placements.map((_, i) => i))) {
+          service.update(created.id, { deploymentOrder });
+        }
       } else {
         service.update(deployment.id, {
           name: name.trim(),
           droneRoster,
-          placements
+          placements,
+          deploymentOrder
         });
       }
       // Navigate back to hangar
@@ -291,6 +366,11 @@ const QuickDeployEditorScreen = () => {
       appState: 'hangar',
       quickDeployEditorData: null
     });
+  };
+
+  // Handle reordering deployment order from the order panel
+  const handleReorder = (newOrder) => {
+    setDeploymentOrder(newOrder);
   };
 
   // Get drones already in roster (for filtering picker)
@@ -527,7 +607,8 @@ const QuickDeployEditorScreen = () => {
           background: 'rgba(0,0,0,0.3)',
           border: '1px solid rgba(6, 182, 212, 0.3)',
           borderRadius: '8px',
-          padding: '1rem'
+          padding: '1rem',
+          position: 'relative'
         }}>
           {/* Section header */}
           <div style={{
@@ -550,13 +631,18 @@ const QuickDeployEditorScreen = () => {
             </span>
           </div>
 
-          {/* Roster cards using DroneCard */}
+          {/* Content wrapper - cards centered, order panel absolutely positioned on right */}
           <div style={{
-            display: 'flex',
-            gap: '12px',
-            justifyContent: 'center',
-            flexWrap: 'wrap'
+            position: 'relative'
           }}>
+            {/* Roster cards using DroneCard - always centered */}
+            <div style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+              paddingRight: placements.length > 0 ? '376px' : '0' // Make room for order panel
+            }}>
             {[0, 1, 2, 3, 4].map(slotIndex => {
               const droneName = droneRoster[slotIndex];
               const droneData = droneName ? getDroneByName(droneName) : null;
@@ -643,6 +729,31 @@ const QuickDeployEditorScreen = () => {
                 </div>
               );
             })}
+            </div>
+
+            {/* Deploy Order Panel - Absolutely positioned on right */}
+            {placements.length > 0 && (
+              <div
+                className="panel-scrollable"
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: '360px',
+                  maxHeight: '280px',
+                  background: 'rgba(17, 24, 39, 0.6)',
+                  border: '1px solid rgba(6, 182, 212, 0.2)',
+                  borderRadius: '6px',
+                  padding: '0.75rem'
+                }}
+              >
+                <DeploymentOrderQueue
+                  placements={placements}
+                  deploymentOrder={deploymentOrder}
+                  onReorder={handleReorder}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

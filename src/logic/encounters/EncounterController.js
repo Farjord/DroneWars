@@ -41,7 +41,10 @@ class EncounterController {
    */
   checkPOIEncounter(poi, detection) {
     const gameState = gameStateManager.getState();
-    const rng = SeededRandom.fromGameState(gameState || {});
+    const baseRng = SeededRandom.fromGameState(gameState || {});
+    // Use POI coordinates for unique roll per POI location
+    const poiOffset = ((poi.q || 0) * 1000) + ((poi.r || 0) * 37);
+    const rng = new SeededRandom(baseRng.seed + poiOffset);
     const roll = rng.random() * 100;
     const baseSecurity = poi.poiData?.baseSecurity || 15;
     const threshold = baseSecurity + detection;
@@ -63,9 +66,10 @@ class EncounterController {
    * Get AI opponent based on current threat level
    * @param {Object} tierConfig - Tier configuration with threatTables
    * @param {number} detection - Current detection (0-100)
+   * @param {Object} poi - Optional POI for location-based seeding
    * @returns {string} AI ID from threat table
    */
-  getAIForThreat(tierConfig, detection) {
+  getAIForThreat(tierConfig, detection, poi = null) {
     // Determine threat level
     let level = 'low';
     if (detection >= 80) level = 'high';
@@ -76,7 +80,10 @@ class EncounterController {
 
     // Random selection from table using seeded RNG
     const gameState = gameStateManager.getState();
-    const rng = SeededRandom.fromGameState(gameState || {});
+    const baseRng = SeededRandom.fromGameState(gameState || {});
+    // Use POI coordinates + offset to differentiate from encounter roll
+    const aiOffset = poi ? (((poi.q || 0) * 1000) + ((poi.r || 0) * 37) + 5003) : 5003;
+    const rng = new SeededRandom(baseRng.seed + aiOffset);
     const aiId = rng.select(table);
 
     debugLog('ENCOUNTER', 'AI selection', { level, detection: detection.toFixed(2), aiId });
@@ -97,13 +104,16 @@ class EncounterController {
 
     // Add random bonus (0-49) using seeded RNG
     const gameState = gameStateManager.getState();
-    const rng = SeededRandom.fromGameState(gameState || {});
+    const baseRng = SeededRandom.fromGameState(gameState || {});
+    // Use POI coordinates + offset to differentiate from other POI rolls
+    const rewardOffset = ((poi.q || 0) * 1000) + ((poi.r || 0) * 37) + 9001;
+    const rng = new SeededRandom(baseRng.seed + rewardOffset);
     const bonusCredits = rng.randomInt(0, 50);
     const creditValue = baseCredits + bonusCredits;
 
-    // Generate salvage item instead of flat credits
-    const mathRng = { random: () => Math.random() };
-    const salvageItem = generateSalvageItemFromValue(creditValue, mathRng);
+    // Generate salvage item using seeded RNG for determinism
+    const salvageRng = { random: () => rng.random() };
+    const salvageItem = generateSalvageItemFromValue(creditValue, salvageRng);
 
     const reward = {
       salvageItem,
@@ -166,9 +176,9 @@ class EncounterController {
     // Roll for ambush
     const outcome = this.checkPOIEncounter(poi, detection);
 
-    // Get AI if combat
+    // Get AI if combat (pass poi for location-based seeding)
     const aiId = outcome === 'combat'
-      ? this.getAIForThreat(tierConfig, detection)
+      ? this.getAIForThreat(tierConfig, detection, poi)
       : null;
 
     // Calculate reward
@@ -313,7 +323,10 @@ class EncounterController {
 
     // Get encounter chance based on hex type and zone
     const encounterChance = this.getEncounterChance(hex, tierConfig, mapData);
-    const rng = SeededRandom.fromGameState(gameState || {});
+    // Create seed that includes hex position for unique roll per hex (deterministic)
+    const baseRng = SeededRandom.fromGameState(gameState || {});
+    const hexOffset = (hex.q * 1000) + (hex.r * 37);
+    const rng = new SeededRandom(baseRng.seed + hexOffset);
     const roll = rng.random() * 100;
 
     debugLog('ENCOUNTER', 'Movement encounter check', {
@@ -327,8 +340,8 @@ class EncounterController {
     if (roll < encounterChance) {
       debugLog('ENCOUNTER', '⚠️ INTERCEPT! Encounter triggered');
 
-      // Get AI based on threat level (severity determined by threat, not chance)
-      const aiId = this.getAIForThreat(tierConfig, detection);
+      // Get AI based on threat level (pass hex for location-based seeding)
+      const aiId = this.getAIForThreat(tierConfig, detection, hex);
 
       // Create encounter result
       const encounter = {
@@ -365,16 +378,21 @@ class EncounterController {
    * Check for encounter during salvage operation
    * Uses provided encounter chance (escalates with each slot)
    * @param {number} encounterChance - Current encounter chance (0-100)
+   * @param {number} slotIndex - Current slot index for deterministic offset
    * @returns {boolean} True if encounter triggered
    */
-  checkSalvageEncounter(encounterChance) {
+  checkSalvageEncounter(encounterChance, slotIndex = 0) {
     const gameState = gameStateManager.getState();
-    const rng = SeededRandom.fromGameState(gameState || {});
+    const baseRng = SeededRandom.fromGameState(gameState || {});
+    // Use slot index as offset for unique roll per slot (deterministic)
+    const slotOffset = slotIndex * 1337;
+    const rng = new SeededRandom(baseRng.seed + slotOffset);
     const roll = rng.random() * 100;
 
     debugLog('ENCOUNTER', 'Salvage encounter check', {
       roll: roll.toFixed(2),
       encounterChance: encounterChance.toFixed(2),
+      slotIndex,
       triggered: roll < encounterChance
     });
 
@@ -384,20 +402,25 @@ class EncounterController {
   /**
    * Roll random encounter increase for salvage from tier's range
    * @param {Object} tierConfig - Tier configuration with salvageEncounterIncreaseRange
+   * @param {number} slotIndex - Current slot index for deterministic offset
    * @returns {number} Encounter increase amount
    */
-  rollSalvageEncounterIncrease(tierConfig) {
+  rollSalvageEncounterIncrease(tierConfig, slotIndex = 0) {
     const range = tierConfig?.salvageEncounterIncreaseRange || { min: 5, max: 10 };
     const { min, max } = range;
 
     const gameState = gameStateManager.getState();
-    const rng = SeededRandom.fromGameState(gameState || {});
+    const baseRng = SeededRandom.fromGameState(gameState || {});
+    // Use slot index + offset to differentiate from encounter roll
+    const increaseOffset = (slotIndex * 1337) + 7919;
+    const rng = new SeededRandom(baseRng.seed + increaseOffset);
 
     const increase = min + rng.random() * (max - min);
 
     debugLog('ENCOUNTER', 'Salvage encounter increase', {
       min,
       max,
+      slotIndex,
       increase: increase.toFixed(2)
     });
 

@@ -61,6 +61,15 @@ class SaveGameService {
       saveData = this.triggerMIA(saveData);
     }
 
+    // Migrate quickDeployments: filter old versions and ensure deploymentOrder exists
+    const migratedQuickDeployments = (saveData.quickDeployments || [])
+      .filter(qd => qd.version === 2)  // Only keep v2 deployments
+      .map(qd => ({
+        ...qd,
+        // Ensure deploymentOrder exists (edge case migration)
+        deploymentOrder: qd.deploymentOrder || qd.placements.map((_, i) => i)
+      }));
+
     return {
       playerProfile: saveData.playerProfile,
       inventory: saveData.inventory,
@@ -69,7 +78,7 @@ class SaveGameService {
       discoveredCards: saveData.discoveredCards,
       shipSlots: saveData.shipSlots,
       currentRunState: null,  // Always null on load (MIA if was active)
-      quickDeployments: saveData.quickDeployments || [],  // Backwards compat default
+      quickDeployments: migratedQuickDeployments,
     };
   }
 

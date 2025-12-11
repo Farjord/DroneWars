@@ -5,6 +5,8 @@
  */
 
 import { debugLog } from '../../utils/debugLogger.js';
+import SeededRandom from '../../utils/seededRandom.js';
+import gameStateManager from '../../managers/GameStateManager.js';
 
 /**
  * SalvageController - Manages POI salvage state and operations
@@ -62,8 +64,8 @@ export class SalvageController {
   attemptSalvage(salvageState, tierConfig) {
     const { currentSlotIndex, currentEncounterChance, slots } = salvageState
 
-    // Check for encounter
-    const encounterTriggered = this._rollEncounter(currentEncounterChance)
+    // Check for encounter (pass slot index for deterministic seeding)
+    const encounterTriggered = this._rollEncounter(currentEncounterChance, currentSlotIndex)
 
     // Reveal the current slot regardless of encounter
     const updatedSlots = [...slots]
@@ -84,8 +86,8 @@ export class SalvageController {
     let newSlotIndex = currentSlotIndex
 
     if (!encounterTriggered) {
-      // Increase encounter chance for next salvage
-      newEncounterChance += this.rollEncounterIncrease(tierConfig)
+      // Increase encounter chance for next salvage (pass slot index for deterministic seeding)
+      newEncounterChance += this.rollEncounterIncrease(tierConfig, currentSlotIndex)
       // Move to next slot
       newSlotIndex = currentSlotIndex + 1
     }
@@ -108,10 +110,16 @@ export class SalvageController {
   /**
    * Roll to determine if encounter occurs
    * @param {number} encounterChance - Current encounter chance (0-100)
+   * @param {number} slotIndex - Current slot index for deterministic offset
    * @returns {boolean} True if encounter triggered
    */
-  _rollEncounter(encounterChance) {
-    const roll = Math.random() * 100
+  _rollEncounter(encounterChance, slotIndex = 0) {
+    const gameState = gameStateManager.getState();
+    const baseRng = SeededRandom.fromGameState(gameState || {});
+    // Use slot index as offset for unique roll per slot (deterministic)
+    const slotOffset = slotIndex * 1337;
+    const rng = new SeededRandom(baseRng.seed + slotOffset);
+    const roll = rng.random() * 100;
     const triggered = roll < encounterChance
     debugLog('SALVAGE_ENCOUNTER', `Encounter roll: ${roll.toFixed(1)} vs ${encounterChance.toFixed(1)}% chance - ${triggered ? 'TRIGGERED!' : 'safe'}`)
     return triggered
@@ -120,12 +128,18 @@ export class SalvageController {
   /**
    * Roll random encounter increase from tier's range
    * @param {Object} tierConfig - Tier configuration with salvageEncounterIncreaseRange
+   * @param {number} slotIndex - Current slot index for deterministic offset
    * @returns {number} Encounter increase amount
    */
-  rollEncounterIncrease(tierConfig) {
+  rollEncounterIncrease(tierConfig, slotIndex = 0) {
     const range = tierConfig?.salvageEncounterIncreaseRange || { min: 5, max: 10 }
     const { min, max } = range
-    const increase = min + Math.random() * (max - min)
+    const gameState = gameStateManager.getState();
+    const baseRng = SeededRandom.fromGameState(gameState || {});
+    // Use slot index + offset to differentiate from encounter roll
+    const increaseOffset = (slotIndex * 1337) + 7919;
+    const rng = new SeededRandom(baseRng.seed + increaseOffset);
+    const increase = min + rng.random() * (max - min)
     debugLog('SALVAGE_ENCOUNTER', `Encounter chance increase: +${increase.toFixed(1)}% (range: ${min}-${max})`)
     return increase
   }

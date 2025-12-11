@@ -161,6 +161,7 @@ function TacticalMapScreen() {
   // Salvage modal state (progressive PoI salvage)
   const [showSalvageModal, setShowSalvageModal] = useState(false);
   const [activeSalvage, setActiveSalvage] = useState(null);
+  const [salvageQuickDeployPending, setSalvageQuickDeployPending] = useState(false);
 
   // Ref to track pause state in async movement loop
   const isPausedRef = useRef(false);
@@ -866,8 +867,8 @@ function TacticalMapScreen() {
     const tierConfig = mapTiers[tier - 1];
     const detection = DetectionManager.getCurrentDetection();
 
-    // Get AI from threat level
-    const aiId = EncounterController.getAIForThreat(tierConfig, detection);
+    // Get AI from threat level (pass POI for location-based seeding)
+    const aiId = EncounterController.getAIForThreat(tierConfig, detection, activeSalvage?.poi);
     const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
 
     // Close salvage modal
@@ -925,9 +926,104 @@ function TacticalMapScreen() {
    * Handle POI encounter with quick deploy - similar to handleEncounterProceed but with quick deploy
    */
   const handleEncounterProceedWithQuickDeploy = useCallback((deployment) => {
-    if (!currentEncounter) return;
-
     console.log('[TacticalMap] Quick deploy selected:', deployment.name);
+
+    // Check if this is a salvage encounter quick deploy
+    if (salvageQuickDeployPending && activeSalvage) {
+      console.log('[TacticalMap] Salvage combat with quick deploy');
+      setSalvageQuickDeployPending(false);
+
+      // Collect current revealed loot (same as handleSalvageCombat)
+      const loot = SalvageController.collectRevealedLoot(activeSalvage);
+
+      // Store salvage loot for combination with combat rewards
+      const currentState = gameStateManager.getState();
+      const runState = currentState.currentRunState;
+
+      if (runState && loot && (loot.cards?.length > 0 || loot.salvageItems?.length > 0)) {
+        const totalCreditValue = (loot.salvageItems || []).reduce((sum, item) => sum + (item.creditValue || 0), 0);
+        const firstSalvageItem = loot.salvageItems?.[0];
+
+        gameStateManager.setState({
+          currentRunState: {
+            ...runState,
+            pendingSalvageLoot: {
+              cards: loot.cards || [],
+              salvageItem: loot.salvageItems?.length > 0 ? {
+                itemId: loot.salvageItems.length > 1 ? 'combined_salvage' : firstSalvageItem?.itemId,
+                name: loot.salvageItems.length > 1 ? `${loot.salvageItems.length} Salvage Items` : firstSalvageItem?.name,
+                creditValue: totalCreditValue,
+                image: firstSalvageItem?.image,
+                description: loot.salvageItems.length > 1
+                  ? `Combined value of ${loot.salvageItems.length} salvage items`
+                  : firstSalvageItem?.description
+              } : null
+            }
+          }
+        });
+      }
+
+      // Mark POI as looted
+      const updatedRunState = gameStateManager.getState().currentRunState;
+      const lootedPOIs = updatedRunState.lootedPOIs || [];
+      gameStateManager.setState({
+        currentRunState: {
+          ...updatedRunState,
+          lootedPOIs: [...lootedPOIs, { q: activeSalvage.poi.q, r: activeSalvage.poi.r }]
+        }
+      });
+
+      // Get tier config for AI selection
+      const tier = runState?.mapData?.tier || 1;
+      const salvageTierConfig = mapTiers[tier - 1];
+      const detection = DetectionManager.getCurrentDetection();
+
+      // Get AI from threat level
+      const aiId = EncounterController.getAIForThreat(salvageTierConfig, detection, activeSalvage?.poi);
+      const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
+
+      // Create encounter for combat
+      setCurrentEncounter({
+        poi: activeSalvage.poi,
+        outcome: 'combat',
+        aiId,
+        reward: {
+          credits: 50,
+          rewardType: activeSalvage.poi?.poiData?.rewardType || 'MIXED_PACK',
+          poiName: activeSalvage.poi?.poiData?.name || 'Unknown Location'
+        },
+        detection,
+        threatLevel: DetectionManager.getThreshold(),
+        fromSalvage: true
+      });
+
+      // Close salvage modal
+      setActiveSalvage(null);
+      setShowSalvageModal(false);
+
+      // Store selected quick deploy
+      setSelectedQuickDeploy(deployment);
+
+      // Set up loading encounter data with quick deploy info
+      setLoadingEncounterData({
+        aiName: aiPersonality?.name || 'Unknown Hostile',
+        difficulty: aiPersonality?.difficulty || 'Medium',
+        threatLevel: DetectionManager.getThreshold(),
+        isAmbush: false,
+        quickDeployId: deployment.id
+      });
+
+      // Show loading screen
+      setShowLoadingEncounter(true);
+
+      // Stop movement
+      shouldStopMovement.current = true;
+      setIsMoving(false);
+      return;
+    }
+
+    // Regular POI encounter quick deploy
+    if (!currentEncounter) return;
 
     // Only combat encounters use quick deploy
     if (currentEncounter.outcome === 'combat') {
@@ -957,7 +1053,7 @@ function TacticalMapScreen() {
       setIsScanningHex(false);
       setIsMoving(false);
     }
-  }, [currentEncounter]);
+  }, [currentEncounter, salvageQuickDeployPending, activeSalvage]);
 
   /**
    * Handle loading encounter complete - actually start combat
@@ -1652,6 +1748,12 @@ function TacticalMapScreen() {
           onSalvageSlot={handleSalvageSlot}
           onLeave={handleSalvageLeave}
           onEngageCombat={handleSalvageCombat}
+          onQuickDeploy={() => {
+            setShowSalvageModal(false);
+            setShowQuickDeploySelection(true);
+            setSalvageQuickDeployPending(true);
+          }}
+          validQuickDeployments={validQuickDeployments}
           onQuit={handleSalvageQuit}
         />
       )}

@@ -2330,9 +2330,13 @@ class GameFlowManager {
   }
 
   /**
-   * Execute quick deploy - deploy player's drones silently and trigger AI response
+   * Execute quick deploy - deploy player's drones with ON_DEPLOY effects and interleaved AI response
    * Called from isPhaseRequired when pendingQuickDeploy exists
-   * @param {Object} quickDeploy - Quick deploy template with placements array
+   *
+   * Flow: Player deploys drone → ON_DEPLOY triggers → AI deploys one drone → repeat
+   * This ensures ON_DEPLOY effects (like Scanner's MARK_RANDOM_ENEMY) see the correct board state
+   *
+   * @param {Object} quickDeploy - Quick deploy template with placements array and deploymentOrder
    */
   async executeQuickDeploy(quickDeploy) {
     // DIAGNOSTIC: Track every entry to executeQuickDeploy
@@ -2344,23 +2348,30 @@ class GameFlowManager {
     debugLog('QUICK_DEPLOY', '⚡ Executing quick deploy:', quickDeploy.name);
 
     try {
-      const currentState = this.gameStateManager.getState();
       const { default: DeploymentProcessor } = await import('../logic/deployment/DeploymentProcessor.js');
       const deploymentProcessor = new DeploymentProcessor();
-
-      // Get player state and opponent state
-      let playerState = JSON.parse(JSON.stringify(currentState.player1));
-      let opponentState = JSON.parse(JSON.stringify(currentState.player2));
-      const placedSections = {
-        player1: currentState.placedSections,
-        player2: currentState.opponentPlacedSections
-      };
 
       // Map lane indices (0, 1, 2) to lane IDs (lane1, lane2, lane3)
       const laneIdMap = { 0: 'lane1', 1: 'lane2', 2: 'lane3' };
 
-      // Execute player deployments silently (no animations)
-      for (const placement of quickDeploy.placements) {
+      // Use deploymentOrder if present, otherwise fall back to array order
+      const order = quickDeploy.deploymentOrder || quickDeploy.placements.map((_, i) => i);
+
+      debugLog('QUICK_DEPLOY', `📋 Deployment order: [${order.join(', ')}]`);
+
+      // Create log callback for combat log entries
+      const logCallback = (entry) => this.gameStateManager.addLogEntry(entry);
+
+      const turn = 1; // Quick deploy is always turn 1
+
+      // Execute interleaved player/AI deployments
+      for (const placementIndex of order) {
+        const placement = quickDeploy.placements[placementIndex];
+        if (!placement) {
+          console.warn(`[Quick Deploy] Invalid placement index: ${placementIndex}`);
+          continue;
+        }
+
         const droneData = fullDroneCollection.find(d => d.name === placement.droneName);
         if (!droneData) {
           console.warn(`[Quick Deploy] Drone not found: ${placement.droneName}`);
@@ -2368,10 +2379,21 @@ class GameFlowManager {
         }
 
         const laneId = laneIdMap[placement.lane];
-        const turn = 1; // Quick deploy is always turn 1
 
-        debugLog('QUICK_DEPLOY', `  Deploying ${droneData.name} to ${laneId}`);
+        // Get FRESH state for each deployment (so AI sees previous deployments)
+        const currentState = this.gameStateManager.getState();
+        let playerState = JSON.parse(JSON.stringify(currentState.player1));
+        let opponentState = JSON.parse(JSON.stringify(currentState.player2));
 
+        // Get fresh placedSections each iteration (in case ON_DEPLOY modified them)
+        const placedSections = {
+          player1: currentState.placedSections,
+          player2: currentState.opponentPlacedSections
+        };
+
+        debugLog('QUICK_DEPLOY', `  Deploying ${droneData.name} to ${laneId} (placement index ${placementIndex})`);
+
+        // Deploy player drone (DeploymentProcessor handles ON_DEPLOY effects)
         const result = deploymentProcessor.executeDeployment(
           droneData,
           laneId,
@@ -2379,41 +2401,48 @@ class GameFlowManager {
           playerState,
           opponentState,
           placedSections,
-          null, // No log callback for silent deployment
+          logCallback, // Log deployments to combat log
           'player1'
         );
 
         if (result.success) {
-          playerState = result.newPlayerState;
-          if (result.opponentState) {
-            opponentState = result.opponentState;
-          }
+          // Update state IMMEDIATELY so AI sees the new drone
+          this.gameStateManager.setState({
+            player1: result.newPlayerState,
+            player2: result.opponentState || opponentState  // In case ON_DEPLOY affected opponent
+          });
+
           debugLog('QUICK_DEPLOY', `  ✅ Deployed ${droneData.name} successfully`);
+
+          // AI deploys ONE drone in response (with logging and ON_DEPLOY effects)
+          if (this.actionProcessor && this.actionProcessor.aiPhaseProcessor) {
+            const aiProcessor = this.actionProcessor.aiPhaseProcessor;
+            if (aiProcessor.executeSingleDeployment) {
+              await aiProcessor.executeSingleDeployment();
+            }
+          }
         } else {
           console.warn(`[Quick Deploy] Failed to deploy ${droneData.name}: ${result.error}`);
         }
       }
 
-      // Update player state
-      this.gameStateManager.setState({
-        player1: playerState,
-        pendingQuickDeploy: null // Clear the pending quick deploy
-      });
+      debugLog('QUICK_DEPLOY', '✅ Player quick deploy complete, AI finishing deployment');
 
-      debugLog('QUICK_DEPLOY', '✅ Player quick deploy complete, triggering AI response');
-
-      // Trigger AI deployment response
-      // AI will deploy reactively based on what player deployed
+      // AI deploys any remaining drones
       if (this.actionProcessor && this.actionProcessor.aiPhaseProcessor) {
         const aiProcessor = this.actionProcessor.aiPhaseProcessor;
-        if (aiProcessor.handleQuickDeployResponse) {
+        if (aiProcessor.finishDeploymentPhase) {
+          await aiProcessor.finishDeploymentPhase();
+        } else if (aiProcessor.handleQuickDeployResponse) {
+          // Fallback to old behavior if new methods not available
           await aiProcessor.handleQuickDeployResponse();
-        } else {
-          // Fallback: Use standard opponent turn handling
-          debugLog('QUICK_DEPLOY', 'AI handleQuickDeployResponse not available, using standard deployment');
-          await this.actionProcessor.handleOpponentTurn();
         }
       }
+
+      // Clear pending quick deploy
+      this.gameStateManager.setState({
+        pendingQuickDeploy: null
+      });
 
       // Clear pending quick deploy from run state as well
       const runState = this.gameStateManager.get('currentRunState');
