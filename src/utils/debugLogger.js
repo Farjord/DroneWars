@@ -20,6 +20,7 @@ const DEBUG_CONFIG = {
   // Category-specific toggles
   categories: {
     DEPLOYMENT: false,          // Drone deployment tracking
+    DRAG_DROP_DEPLOY: true,     // Drag-and-drop deployment debugging (enabled for investigation)
     DRONE_SELECTION: false,     // Drone selection phase and data
     DECK_SELECTION: false,      // Deck selection phase
     PLACEMENT: false,           // Ship placement phase
@@ -66,6 +67,7 @@ const DEBUG_CONFIG = {
     DECK_BUILDER: false,           // Deck builder save, toast, and validation debugging
     SALVAGE_LOOT: true,           // PoI loot distribution: slot count, card count, rarities, positions
     SALVAGE_ENCOUNTER: true,      // Encounter rolls: chance, roll value, increase per salvage
+    DRAG_PERF: true,              // Drag performance investigation: cursor position, re-renders, state updates
 
     // Effect System Refactoring - Modular Processor Logging
     EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)

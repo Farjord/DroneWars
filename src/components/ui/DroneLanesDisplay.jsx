@@ -58,7 +58,11 @@ const renderDronesOnBoard = (
   validAbilityTargets,
   validCardTargets,
   setHoveredTarget,
-  interceptedBadge
+  hoveredTarget,
+  interceptedBadge,
+  draggedDrone,
+  handleDroneDragStart,
+  handleDroneDragEnd
 ) => {
   return (
     <div
@@ -83,11 +87,23 @@ const renderDronesOnBoard = (
               mandatoryAction={mandatoryAction}
               localPlayerState={localPlayerState}
               isActionTarget={validAbilityTargets.some(t => t.id === drone.id) || validCardTargets.some(t => t.id === drone.id)}
-              onMouseEnter={() => !isPlayer && setHoveredTarget({ target: drone, type: 'drone', lane })}
-              onMouseLeave={() => !isPlayer && setHoveredTarget(null)}
+              onMouseEnter={() => {
+                if (!isPlayer) {
+                  setHoveredTarget({ target: drone, type: 'drone', lane });
+                }
+              }}
+              onMouseLeave={() => {
+                if (!isPlayer) {
+                  setHoveredTarget(null);
+                }
+              }}
               interceptedBadge={interceptedBadge}
               enableFloatAnimation={true}
               deploymentOrderNumber={drone.deploymentOrderNumber}
+              onDragStart={isPlayer ? handleDroneDragStart : undefined}
+              onDragDrop={!isPlayer && draggedDrone ? (targetDrone) => handleDroneDragEnd(targetDrone, lane, true) : undefined}
+              isDragging={draggedDrone?.drone?.id === drone.id}
+              isHovered={!isPlayer && hoveredTarget?.target?.id === drone.id}
                />
           );
       })}
@@ -166,7 +182,13 @@ const DroneLanesDisplay = ({
   droneRefs,
   mandatoryAction,
   setHoveredTarget,
-  interceptedBadge
+  hoveredTarget,
+  interceptedBadge,
+  draggedCard,
+  handleCardDragEnd,
+  draggedDrone,
+  handleDroneDragStart,
+  handleDroneDragEnd
 }) => {
   // Use GameDataService for computed data
   const { getEffectiveStats } = useGameData();
@@ -179,7 +201,8 @@ const DroneLanesDisplay = ({
         const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
         const isTargetable = (abilityMode && validAbilityTargets.some(t => t.id === lane && t.owner === owner)) ||
                              (selectedCard && validCardTargets.some(t => t.id === lane && t.owner === owner)) ||
-                             (multiSelectState && validCardTargets.some(t => t.id === lane && t.owner === owner));
+                             (multiSelectState && validCardTargets.some(t => t.id === lane && t.owner === owner)) ||
+                             (draggedCard && isPlayer); // Highlight player lanes when dragging a card
 
         // Debug logging for movement lanes
         if (multiSelectState && validCardTargets.length > 0) {
@@ -195,6 +218,17 @@ const DroneLanesDisplay = ({
           <div
             key={lane}
             onClick={(e) => onLaneClick(e, lane, isPlayer)}
+            onMouseUp={() => {
+              // Handle card drop when dragging a card to player lanes
+              debugLog('DRAG_DROP_DEPLOY', '🎯 Lane mouseUp detected', { lane, isPlayer, hasDraggedCard: !!draggedCard, hasDraggedDrone: !!draggedDrone });
+              if (draggedCard && isPlayer && handleCardDragEnd) {
+                handleCardDragEnd(lane);
+              }
+              // Handle drone drop for movement (to player lanes)
+              if (draggedDrone && isPlayer && handleDroneDragEnd) {
+                handleDroneDragEnd(null, lane, false);
+              }
+            }}
             className={`flex-1 rounded-lg transition-all duration-200 p-2
               ${isTargetable ? 'bg-cyan-800/40 ring-2 ring-cyan-400/30 animate-pulse' : baseBackgroundColor}
               ${isInteractivePlayerLane ? 'cursor-pointer hover:bg-cyan-900/20' : ''}
@@ -226,7 +260,11 @@ const DroneLanesDisplay = ({
               validAbilityTargets,
               validCardTargets,
               setHoveredTarget,
-              interceptedBadge
+              hoveredTarget,
+              interceptedBadge,
+              draggedDrone,
+              handleDroneDragStart,
+              handleDroneDragEnd
             )}
           </div>
         );

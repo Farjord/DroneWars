@@ -56,7 +56,9 @@ function GameFooter({
   gameEngine,
   opponentPlayerState,
   setAiDecisionLogToShow,
-  onCardInfoClick
+  onCardInfoClick,
+  handleCardDragStart,
+  draggedCard
 }) {
   // DISABLED: Render-based logging causes excessive noise on every GameFooter render
   // debugLog('HAND_VIEW', '📦 GameFooter received mandatoryAction:', {
@@ -168,6 +170,8 @@ function GameFooter({
                 validCardTargets={validCardTargets}
                 setIsViewDiscardModalOpen={setIsViewDiscardModalOpen}
                 setIsViewDeckModalOpen={setIsViewDeckModalOpen}
+                handleCardDragStart={handleCardDragStart}
+                draggedCard={draggedCard}
               />
             </div>
           )}

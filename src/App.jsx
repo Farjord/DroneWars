@@ -23,7 +23,7 @@ import DronesView from './components/ui/footer/DronesView.jsx';
 import FloatingCardControls from './components/ui/FloatingCardControls.jsx';
 import LogModal from './components/modals/LogModal.jsx';
 import ModalContainer from './components/ui/ModalContainer.jsx';
-import TargetingArrow from './components/ui/TargetingArrow.jsx';
+import TargetingArrow, { calculatePolygonPoints } from './components/ui/TargetingArrow.jsx';
 import ExplosionEffect from './components/animations/ExplosionEffect.jsx';
 import WaitingOverlay from './components/ui/WaitingOverlay';
 import InterceptedBadge from './components/ui/InterceptedBadge.jsx';
@@ -199,6 +199,10 @@ const App = ({ phaseAnimationQueue }) => {
   const [hoveredTarget, setHoveredTarget] = useState(null);
   const [hoveredCardId, setHoveredCardId] = useState(null);
 
+  // Performance-optimized hoveredTarget setter
+  // Skips state update if hovering same target to prevent unnecessary re-renders
+  // Note: handleSetHoveredTarget is defined later after draggedDrone state
+
   // Combat and attack state
   const [playerInterceptionChoice, setPlayerInterceptionChoice] = useState(null);
   const [potentialInterceptors, setPotentialInterceptors] = useState([]);
@@ -216,6 +220,31 @@ const App = ({ phaseAnimationQueue }) => {
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [recentlyHitDrones, setRecentlyHitDrones] = useState([]);
   const [arrowState, setArrowState] = useState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
+  const [cardDragArrowState, setCardDragArrowState] = useState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
+  const [draggedCard, setDraggedCard] = useState(null);
+  // Drone drag state for attack/move actions
+  const [draggedDrone, setDraggedDrone] = useState(null); // { drone, sourceLane }
+  const [droneDragArrowState, setDroneDragArrowState] = useState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
+
+  // Performance-optimized hoveredTarget setter with logging (only during drag)
+  // Skips state update if hovering same target to prevent unnecessary re-renders
+  const handleSetHoveredTarget = useCallback((target) => {
+    const isSameTarget = hoveredTarget?.target?.id === target?.target?.id;
+    // Only log during active drag to reduce noise
+    if (draggedDrone) {
+      debugLog('DRAG_PERF', '👁️ setHoveredTarget', {
+        newTargetId: target?.target?.id,
+        newTargetType: target?.type,
+        previousTargetId: hoveredTarget?.target?.id,
+        isSameTarget,
+        skipping: isSameTarget
+      });
+    }
+    if (!isSameTarget) {
+      setHoveredTarget(target);
+    }
+  }, [hoveredTarget, draggedDrone]);
+
   const [deck, setDeck] = useState({});
 
   // Background selection state - persisted to localStorage
@@ -287,6 +316,8 @@ const App = ({ phaseAnimationQueue }) => {
   // CRITICAL: These refs are positioned AFTER gameState destructuring
   // to prevent "Cannot access before initialization" errors.
   const arrowLineRef = useRef(null);
+  const cardDragArrowRef = useRef(null);
+  const droneDragArrowRef = useRef(null);
   const droneRefs = useRef({});
   const sectionRefs = useRef({});
   const gameAreaRef = useRef(null);
@@ -1343,10 +1374,13 @@ const App = ({ phaseAnimationQueue }) => {
 
   // --- 8.4 INTERCEPTION MONITORING ---
   // TODO: UI MONITORING - Interception monitoring is appropriate UI-only effect - calculates UI hints for user
+  // Calculates potential interceptors for both clicked drone (selectedDrone) and dragged drone (draggedDrone)
   useEffect(() => {
     if (turnPhase === 'action') {
+        // Use draggedDrone if actively dragging, otherwise use selectedDrone
+        const activeDrone = draggedDrone?.drone || selectedDrone;
         const potential = calculatePotentialInterceptors(
-            selectedDrone,
+            activeDrone,
             localPlayerState,
             opponentPlayerState,
             getPlacedSectionsForEngine()
@@ -1355,7 +1389,7 @@ const App = ({ phaseAnimationQueue }) => {
     } else {
         setPotentialInterceptors([]);
     }
-}, [selectedDrone, turnPhase, localPlayerState, opponentPlayerState, gameEngine, localPlacedSections, opponentPlacedSections]);
+}, [selectedDrone, draggedDrone, turnPhase, localPlayerState, opponentPlayerState, gameEngine, localPlacedSections, opponentPlacedSections]);
 
   // --- 8.5 GUARDIAN HIGHLIGHTING ---
   // Calculate potential guardian blockers when drone is selected
@@ -1464,6 +1498,103 @@ const App = ({ phaseAnimationQueue }) => {
         gameArea?.removeEventListener('mousemove', handleMouseMove);
     };
   }, [arrowState.visible]); // This effect only re-runs when the arrow's visibility changes.
+
+  // --- 8.4b CARD DRAG ARROW MOUSE TRACKING ---
+  // Tracks mouse movement for card drag arrow (separate from drone attack arrow)
+  // Uses direct DOM manipulation to avoid re-renders on every mouse move
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (cardDragArrowState.visible && cardDragArrowRef.current && gameAreaRef.current) {
+        const gameAreaRect = gameAreaRef.current.getBoundingClientRect();
+        const endX = e.clientX - gameAreaRect.left;
+        const endY = e.clientY - gameAreaRect.top;
+
+        debugLog('DRAG_DROP_DEPLOY', '🖱️ Mouse move - updating arrow end', {
+          endX, endY,
+          hasRef: !!cardDragArrowRef.current,
+          refType: cardDragArrowRef.current?.tagName
+        });
+
+        // Calculate new polygon points for tapered arrow body
+        const newPoints = calculatePolygonPoints(
+          cardDragArrowState.start,
+          { x: endX, y: endY }
+        );
+        cardDragArrowRef.current.setAttribute('points', newPoints);
+      }
+    };
+
+    const gameArea = gameAreaRef.current;
+    gameArea?.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      gameArea?.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [cardDragArrowState.visible]);
+
+  // --- 8.4c CARD DRAG CANCEL ON MOUSE UP OUTSIDE LANES ---
+  // Cancel drag if mouseup happens outside of valid drop targets
+  useEffect(() => {
+    const handleMouseUp = () => {
+      if (draggedCard) {
+        // Defer cancel to allow React's onMouseUp handlers to fire first
+        // Native DOM listeners fire before React synthetic events
+        setTimeout(() => handleCardDragEnd(null), 0);
+      }
+    };
+
+    const gameArea = gameAreaRef.current;
+    gameArea?.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      gameArea?.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [draggedCard]);
+
+  // --- 8.4d DRONE DRAG ARROW MOUSE TRACKING ---
+  // Tracks mouse movement for drone attack/move arrow
+  // Uses direct DOM manipulation to avoid re-renders on every mouse move
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      if (droneDragArrowState.visible && droneDragArrowRef.current && gameAreaRef.current) {
+        const gameAreaRect = gameAreaRef.current.getBoundingClientRect();
+        const endX = e.clientX - gameAreaRect.left;
+        const endY = e.clientY - gameAreaRect.top;
+
+        // Calculate new polygon points for tapered arrow body
+        const newPoints = calculatePolygonPoints(
+          droneDragArrowState.start,
+          { x: endX, y: endY }
+        );
+        droneDragArrowRef.current.setAttribute('points', newPoints);
+      }
+    };
+
+    const gameArea = gameAreaRef.current;
+    gameArea?.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      gameArea?.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [droneDragArrowState.visible, droneDragArrowState.start]);
+
+  // --- 8.4e DRONE DRAG CANCEL ON MOUSE UP OUTSIDE TARGETS ---
+  // Cancel drone drag if mouseup happens outside of valid drop targets
+  useEffect(() => {
+    const handleMouseUp = () => {
+      if (draggedDrone) {
+        // Defer cancel to allow React's onMouseUp handlers to fire first
+        setTimeout(() => handleDroneDragEnd(null, null, false), 0);
+      }
+    };
+
+    const gameArea = gameAreaRef.current;
+    gameArea?.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      gameArea?.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [draggedDrone]);
 
    // --- 8.5 DEFENSIVE STATE CLEANUP ---
   // Reset attack flag when critical game state changes to prevent infinite loops
@@ -2448,6 +2579,7 @@ const App = ({ phaseAnimationQueue }) => {
    * @param {string} lane - The lane to deploy the drone to
    */
   const executeDeployment = async (lane, droneToDeployed = selectedDrone) => {
+    debugLog('DRAG_DROP_DEPLOY', '🚀 executeDeployment entered', { lane, droneName: droneToDeployed?.name, hasSelectedDrone: !!selectedDrone, usedParam: droneToDeployed !== selectedDrone });
     const drone = droneToDeployed; // Use parameter, fallback to state
     try {
       debugLog('DEPLOYMENT', '🎯 App.jsx: Deploying drone:', {
@@ -2505,6 +2637,191 @@ const App = ({ phaseAnimationQueue }) => {
 
     // Execute deployment (handles its own validation)
     executeDeployment(lane);
+  };
+
+  /**
+   * HANDLE CARD DRAG START
+   * Initiates drag-and-drop deployment of a drone card.
+   * @param {Object} drone - The drone card being dragged
+   * @param {Event} event - The mouse event
+   */
+  const handleCardDragStart = (drone, event) => {
+    if (turnPhase !== 'deployment' || currentPlayer !== getLocalPlayerId()) return;
+
+    setDraggedCard(drone);
+    setSelectedDrone(drone); // Set selected for handleDeployDrone
+
+    // Get start position from top-center of the card element
+    if (gameAreaRef.current) {
+      const gameAreaRect = gameAreaRef.current.getBoundingClientRect();
+      const cardElement = event.currentTarget;
+      const cardRect = cardElement.getBoundingClientRect();
+
+      // Position at top-center of card, 20px from top edge
+      const startX = cardRect.left + cardRect.width / 2 - gameAreaRect.left;
+      const startY = cardRect.top - gameAreaRect.top + 20;
+
+      debugLog('DRAG_DROP_DEPLOY', '🎯 Arrow state set', {
+        visible: true,
+        start: { x: startX, y: startY },
+        cardRect: { left: cardRect.left, top: cardRect.top, width: cardRect.width },
+        gameAreaRect: { left: gameAreaRect.left, top: gameAreaRect.top }
+      });
+
+      setCardDragArrowState({
+        visible: true,
+        start: { x: startX, y: startY },
+        end: { x: startX, y: startY }
+      });
+    }
+  };
+
+  /**
+   * HANDLE CARD DRAG END
+   * Completes or cancels drag-and-drop deployment.
+   * @param {string|null} lane - The lane to deploy to, or null to cancel
+   */
+  const handleCardDragEnd = (lane = null) => {
+    debugLog('DRAG_DROP_DEPLOY', '📥 handleCardDragEnd called', { lane, hasDraggedCard: !!draggedCard, draggedCardName: draggedCard?.name });
+    if (!draggedCard) {
+      debugLog('DRAG_DROP_DEPLOY', '⛔ handleCardDragEnd early return - no draggedCard');
+      return;
+    }
+
+    const droneToDeployFromDrag = draggedCard;
+
+    // Cleanup drag state first
+    setDraggedCard(null);
+    setCardDragArrowState(prev => ({ ...prev, visible: false }));
+
+    if (lane) {
+      // Deploy to lane - call executeDeployment directly with the dragged drone
+      // We bypass handleDeployDrone to avoid cancelAllActions clearing selectedDrone
+      if (currentPlayer !== getLocalPlayerId() || passInfo[getLocalPlayerId() + 'Passed']) {
+        debugLog('DRAG_DROP_DEPLOY', '⛔ handleCardDragEnd early return - not current player or passed', { currentPlayer, localPlayerId: getLocalPlayerId(), passed: passInfo[getLocalPlayerId() + 'Passed'] });
+        return;
+      }
+
+      // For round 1, check if we need a confirmation modal
+      if (roundNumber === 1) {
+        debugLog('DRAG_DROP_DEPLOY', '🔍 Round 1 - validating deployment', { droneName: droneToDeployFromDrag.name });
+        const validationResult = gameEngine.validateDeployment(localPlayerState, droneToDeployFromDrag, roundNumber, totalLocalPlayerDrones, localPlayerEffectiveStats);
+        if (!validationResult.isValid) {
+          debugLog('DRAG_DROP_DEPLOY', '⛔ Validation failed', { reason: validationResult.reason, message: validationResult.message });
+          setModalContent({ title: validationResult.reason, text: validationResult.message, isBlocking: true });
+          return;
+        }
+        const { budgetCost, energyCost } = validationResult;
+        debugLog('DRAG_DROP_DEPLOY', '✅ Validation passed', { budgetCost, energyCost });
+        if (energyCost > 0) {
+          debugLog('DRAG_DROP_DEPLOY', '📋 Showing confirmation modal (energyCost > 0)');
+          setDeploymentConfirmation({ lane, budgetCost, energyCost, drone: droneToDeployFromDrag });
+          return;
+        }
+      }
+
+      // Execute deployment directly with the dragged drone
+      debugLog('DRAG_DROP_DEPLOY', '🚀 Calling executeDeployment', { lane, droneName: droneToDeployFromDrag.name });
+      executeDeployment(lane, droneToDeployFromDrag);
+    }
+  };
+
+  /**
+   * HANDLE DRONE DRAG START
+   * Initiates drag-and-drop for drone attack/move actions.
+   * @param {Object} drone - The drone being dragged
+   * @param {string} sourceLane - The lane the drone is in
+   * @param {Event} event - The mouse event
+   */
+  const handleDroneDragStart = (drone, sourceLane, event) => {
+    // Only allow during action phase, when it's our turn, and drone is not exhausted
+    if (turnPhase !== 'action' || currentPlayer !== getLocalPlayerId() || drone.isExhausted) {
+      debugLog('DRAG_DROP_DEPLOY', '⛔ Drone drag blocked', { turnPhase, currentPlayer, localPlayerId: getLocalPlayerId(), isExhausted: drone.isExhausted });
+      return;
+    }
+
+    debugLog('DRAG_DROP_DEPLOY', '🎯 Drone drag start', { droneName: drone.name, droneId: drone.id, sourceLane });
+    setDraggedDrone({ drone, sourceLane });
+
+    // Get start position from top-middle of the drone token
+    if (gameAreaRef.current) {
+      const gameAreaRect = gameAreaRef.current.getBoundingClientRect();
+      const tokenElement = event.currentTarget;
+      const tokenRect = tokenElement.getBoundingClientRect();
+
+      const startX = tokenRect.left + tokenRect.width / 2 - gameAreaRect.left;
+      const startY = tokenRect.top - gameAreaRect.top + 15; // Top-center of token (emerges from behind due to z-index)
+
+      setDroneDragArrowState({
+        visible: true,
+        start: { x: startX, y: startY },
+        end: { x: startX, y: startY }
+      });
+    }
+  };
+
+  /**
+   * HANDLE DRONE DRAG END
+   * Completes drone drag-and-drop for attack or move.
+   * @param {Object|null} targetDrone - The target drone (for attacks) or null
+   * @param {string|null} targetLane - The target lane
+   * @param {boolean} isOpponentTarget - Whether the target is on opponent's side
+   */
+  const handleDroneDragEnd = (targetDrone = null, targetLane = null, isOpponentTarget = false) => {
+    debugLog('DRAG_DROP_DEPLOY', '📥 handleDroneDragEnd called', {
+      hasDraggedDrone: !!draggedDrone,
+      targetDrone: targetDrone?.name,
+      targetLane,
+      isOpponentTarget
+    });
+
+    if (!draggedDrone) {
+      debugLog('DRAG_DROP_DEPLOY', '⛔ handleDroneDragEnd early return - no draggedDrone');
+      return;
+    }
+
+    const { drone: attackerDrone, sourceLane } = draggedDrone;
+
+    // Cleanup drag state first
+    setDraggedDrone(null);
+    setDroneDragArrowState(prev => ({ ...prev, visible: false }));
+
+    // Case 1: Attack - dropped on opponent drone in same lane
+    if (isOpponentTarget && targetDrone && targetLane) {
+      if (sourceLane === targetLane) {
+        debugLog('DRAG_DROP_DEPLOY', '⚔️ Attack initiated via drag', { attacker: attackerDrone.name, target: targetDrone.name, lane: sourceLane });
+        const attackDetails = {
+          attacker: attackerDrone,
+          target: targetDrone,
+          targetType: 'drone',
+          lane: sourceLane,
+          attackingPlayer: getLocalPlayerId()
+        };
+        resolveAttack(attackDetails);
+      } else {
+        debugLog('DRAG_DROP_DEPLOY', '⛔ Attack blocked - different lanes', { sourceLane, targetLane });
+        setModalContent({ title: "Invalid Target", text: "You can only attack targets in the same lane.", isBlocking: true });
+      }
+      return;
+    }
+
+    // Case 2: Move - dropped on player lane (adjacent to source)
+    if (!isOpponentTarget && targetLane && targetLane !== sourceLane) {
+      const sourceLaneIndex = parseInt(sourceLane.replace('lane', ''), 10);
+      const targetLaneIndex = parseInt(targetLane.replace('lane', ''), 10);
+
+      if (Math.abs(sourceLaneIndex - targetLaneIndex) === 1) {
+        debugLog('DRAG_DROP_DEPLOY', '🏃 Move initiated via drag', { drone: attackerDrone.name, from: sourceLane, to: targetLane });
+        setMoveConfirmation({ drone: attackerDrone, from: sourceLane, to: targetLane });
+      } else {
+        debugLog('DRAG_DROP_DEPLOY', '⛔ Move blocked - not adjacent', { sourceLane, targetLane });
+        setModalContent({ title: "Invalid Move", text: "Drones can only move to adjacent lanes.", isBlocking: true });
+      }
+      return;
+    }
+
+    // Case 3: Cancelled or invalid drop
+    debugLog('DRAG_DROP_DEPLOY', '❌ Drag cancelled or invalid drop');
   };
 
 
@@ -2775,24 +3092,7 @@ const App = ({ phaseAnimationQueue }) => {
           return;
       }
 
-      // 5. Handle selecting/deselecting one of your own drones
-      if (isPlayer && turnPhase === 'action' && isMyTurn() && !passInfo[`${getLocalPlayerId()}Passed`]) {
-          if (token.isExhausted) {
-              debugLog('COMBAT', "Action prevented: Drone is exhausted.");
-              return;
-          }
-          if (selectedDrone?.id === token.id) {
-              debugLog('COMBAT', "Action: Deselecting drone", token.name);
-              setSelectedDrone(null);
-          } else {
-              debugLog('COMBAT', "Action: Selecting drone", token.name);
-              cancelAllActions(); // Cancel all other actions before selecting drone
-              setSelectedDrone(token);
-          }
-          return;
-      }
-
-      // 6. Fallback: show drone details
+      // 5. Fallback: show drone details (click always opens info modal, drag handles attacks)
       debugLog('COMBAT', "Action: Fallback - showing drone details.");
       setDetailedDrone(token);
   };
@@ -3509,13 +3809,15 @@ const App = ({ phaseAnimationQueue }) => {
   const currentBackground = getBackgroundById(selectedBackground);
 
   return (
-    <div className="h-screen text-white font-sans overflow-hidden flex flex-col relative" ref={gameAreaRef} onClick={() => { cancelAbilityMode(); cancelCardSelection(); }}>
+    <div className="h-screen text-white font-sans overflow-hidden flex flex-col relative select-none" ref={gameAreaRef} onClick={() => { cancelAbilityMode(); cancelCardSelection(); }}>
      {currentBackground.type === 'animated' ? (
        <SpaceBackground />
      ) : (
        <StaticBackground imagePath={currentBackground.path} />
      )}
      <TargetingArrow visible={arrowState.visible} start={arrowState.start} end={arrowState.end} lineRef={arrowLineRef} />
+     <TargetingArrow visible={cardDragArrowState.visible} start={cardDragArrowState.start} end={cardDragArrowState.end} lineRef={cardDragArrowRef} color="#22d3ee" />
+     <TargetingArrow visible={droneDragArrowState.visible} start={droneDragArrowState.start} end={droneDragArrowState.end} lineRef={droneDragArrowRef} color="#ff0055" showPulses={false} />
      {explosions.map(exp => <ExplosionEffect key={exp.id} top={exp.top} left={exp.left} size={exp.size} />)}
      {flyingDrones.map(fd => (
 
@@ -3770,9 +4072,14 @@ const App = ({ phaseAnimationQueue }) => {
         handleShipAbilityClick={handleShipAbilityClick}
         handleTokenClick={handleTokenClick}
         handleAbilityIconClick={handleAbilityIconClick}
-        setHoveredTarget={setHoveredTarget}
+        setHoveredTarget={handleSetHoveredTarget}
         onViewShipSection={handleViewShipSection}
         interceptedBadge={interceptedBadge}
+        draggedCard={draggedCard}
+        handleCardDragEnd={handleCardDragEnd}
+        draggedDrone={draggedDrone}
+        handleDroneDragStart={handleDroneDragStart}
+        handleDroneDragEnd={handleDroneDragEnd}
       />
 
       <GameFooter
@@ -3823,6 +4130,8 @@ const App = ({ phaseAnimationQueue }) => {
         handleRoundStartDraw={handleRoundStartDraw}
         handleRoundStartDiscard={handleRoundStartDiscard}
         checkBothPlayersHandLimitComplete={checkBothPlayersHandLimitComplete}
+        handleCardDragStart={handleCardDragStart}
+        draggedCard={draggedCard}
       />
 
       {/* Modals are unaffected and remain at the end */}

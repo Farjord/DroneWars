@@ -84,8 +84,22 @@ const DroneToken = ({
   localPlayerState,
   interceptedBadge,
   enableFloatAnimation = false,
-  deploymentOrderNumber = null
+  deploymentOrderNumber = null,
+  onDragStart,
+  onDragDrop,
+  isDragging = false,
+  isHovered = false
 }) => {
+  // Performance logging for drag investigation - only log when dragging is active
+  if (isDragging) {
+    debugLog('DRAG_PERF', '🔄 DroneToken RENDER (dragging)', {
+      droneId: drone.id,
+      droneName: drone.name,
+      isPlayer,
+      lane
+    });
+  }
+
   // Get GameDataService for direct effective stats calculation
   const { getEffectiveStats } = useGameData();
   const editorStats = useEditorStats();
@@ -133,6 +147,7 @@ const DroneToken = ({
   const selectedEffect = (isSelected || isSelectedForMove) ? 'scale-105 ring-2 ring-cyan-400 shadow-xl shadow-cyan-400/50' : '';
   const actionTargetEffect = isActionTarget ? 'shadow-xl shadow-red-500/95 animate-pulse' : '';
   const mandatoryDestroyEffect = mandatoryAction?.type === 'destroy' && isPlayer ? 'ring-2 ring-red-500 animate-pulse' : '';
+  const hoverEffect = isHovered ? 'scale-105' : '';
 
   const isAbilityUsable = (ability) => {
     if (drone.isExhausted && ability.cost.exhausts !== false) return false;
@@ -148,9 +163,22 @@ const DroneToken = ({
       ref={el => droneRefs.current[drone.id] = el}
       data-drone-id={drone.id}
       onClick={(e) => onClick && onClick(e, drone, isPlayer)}
+      onMouseDown={(e) => {
+        // Initiate drag for player drones during action phase
+        if (onDragStart && isPlayer && !drone.isExhausted) {
+          e.preventDefault();
+          onDragStart(drone, lane, e);
+        }
+      }}
+      onMouseUp={() => {
+        // Handle drop on enemy drone for attack
+        if (onDragDrop) {
+          onDragDrop(drone);
+        }
+      }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={`relative ${enableFloatAnimation ? 'drone-float' : ''}`}
+      className={`relative ${isDragging ? 'z-50' : 'z-10'} ${enableFloatAnimation ? 'drone-float' : ''}`}
       style={{
         width: 'clamp(85px, 4.427vw, 115px)',
         height: 'clamp(115px, 5.99vw, 156px)'
@@ -158,8 +186,8 @@ const DroneToken = ({
     >
       {/* Visual Effects Wrapper */}
       <div className="w-full h-full">
-        {/* Targeting/Visual Effects Container - handles pulse, hit, selection, etc. */}
-        <div className={`w-full h-full transition-all duration-200 ${hitEffect} ${selectedEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect}`}>
+        {/* Targeting/Visual Effects Container - handles pulse, hit, selection, hover, etc. */}
+        <div className={`w-full h-full transition-all duration-200 ${hitEffect} ${selectedEffect} ${hoverEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect}`}>
           {/* Grayscale Container - only applies exhausted effect */}
           <div className={`w-full h-full relative ${exhaustEffect}`}>
       {/* Main Token Body */}

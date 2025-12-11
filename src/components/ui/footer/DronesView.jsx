@@ -9,6 +9,7 @@ import ActionCard from '../ActionCard.jsx';
 import CardBackPlaceholder from '../CardBackPlaceholder.jsx';
 import styles from '../GameFooter.module.css';
 import { calculateCardFanRotation, getHoverTransform, getCardTransition, calculateCardArcOffset, CARD_FAN_CONFIG } from '../../../utils/cardAnimationUtils.js';
+import { debugLog } from '../../../utils/debugLogger.js';
 
 function DronesView({
   localPlayerState,
@@ -26,7 +27,9 @@ function DronesView({
   passInfo,
   validCardTargets,
   setIsViewDiscardModalOpen,
-  setIsViewDeckModalOpen
+  setIsViewDeckModalOpen,
+  handleCardDragStart,
+  draggedCard
 }) {
   const [hoveredDroneId, setHoveredDroneId] = useState(null);
   const [discardHovered, setDiscardHovered] = useState(false);
@@ -114,6 +117,14 @@ function DronesView({
               const isHovered = hoveredDroneId === drone.name;
               const isSelected = selectedDrone && selectedDrone.name === drone.name;
 
+              // Determine if drone is selectable for deployment
+              const isSelectable = (turnPhase === 'deployment' &&
+                isMyTurn() &&
+                !passInfo[`${getLocalPlayerId()}Passed`] &&
+                canAfford &&
+                !mandatoryAction) ||
+                isUpgradeTarget;
+
               // Calculate fan rotation and spacing using centralized utilities
               const rotationDeg = calculateCardFanRotation(index, sortedLocalActivePool.length);
               const marginLeft = index === 0 ? 0 : dynamicOverlap; // Use dynamic overlap
@@ -134,19 +145,20 @@ function DronesView({
                   style={wrapperStyle}
                   onMouseEnter={() => setHoveredDroneId(drone.name)}
                   onMouseLeave={() => setHoveredDroneId(null)}
+                  onMouseDown={(e) => {
+                    // Only initiate drag for selectable drones during deployment
+                    debugLog('DRAG_DROP_DEPLOY', '🖱️ Drag started from DronesView', { droneName: drone.name, isSelectable, hasHandler: !!handleCardDragStart });
+                    if (isSelectable && handleCardDragStart) {
+                      e.preventDefault();
+                      handleCardDragStart(drone, e);
+                    }
+                  }}
                 >
                   <DroneCard
                     drone={drone}
                     onClick={handleToggleDroneSelection}
                     isSelected={selectedDrone && selectedDrone.name === drone.name}
-                    isSelectable={
-                      (turnPhase === 'deployment' &&
-                       isMyTurn() &&
-                       !passInfo[`${getLocalPlayerId()}Passed`] &&
-                       canAfford &&
-                       !mandatoryAction) ||
-                      isUpgradeTarget
-                    }
+                    isSelectable={isSelectable}
                     deployedCount={localPlayerState.deployedDroneCounts[drone.name] || 0}
                     appliedUpgrades={localPlayerState.appliedUpgrades[drone.name] || []}
                     isUpgradeTarget={isUpgradeTarget}

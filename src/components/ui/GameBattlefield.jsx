@@ -46,6 +46,9 @@ import { debugLog } from '../../utils/debugLogger.js';
  * @param {Function} props.setHoveredTarget - Set hovered target
  * @param {Function} props.onViewShipSection - Handle view ship section full card
  * @param {Object} props.interceptedBadge - Interception badge data ({ droneId, timestamp })
+ * @param {Object} props.draggedDrone - Currently dragged drone for attack/move
+ * @param {Function} props.handleDroneDragStart - Handler to start drone drag
+ * @param {Function} props.handleDroneDragEnd - Handler to end drone drag
  */
 function GameBattlefield({
   localPlayerState,
@@ -84,7 +87,12 @@ function GameBattlefield({
   handleAbilityIconClick,
   setHoveredTarget,
   onViewShipSection,
-  interceptedBadge
+  interceptedBadge,
+  draggedCard,
+  handleCardDragEnd,
+  draggedDrone,
+  handleDroneDragStart,
+  handleDroneDragEnd
 }) {
   // Calculate isInteractive for player ship sections
   const playerShipInteractive = turnPhase === 'allocateShields' || reallocationPhase;
@@ -144,7 +152,10 @@ function GameBattlefield({
           droneRefs={droneRefs}
           mandatoryAction={mandatoryAction}
           setHoveredTarget={setHoveredTarget}
+          hoveredTarget={hoveredTarget}
           interceptedBadge={interceptedBadge}
+          draggedDrone={draggedDrone}
+          handleDroneDragEnd={handleDroneDragEnd}
         />
 
         {/* Player Drone Lanes */}
@@ -175,7 +186,13 @@ function GameBattlefield({
           droneRefs={droneRefs}
           mandatoryAction={mandatoryAction}
           setHoveredTarget={setHoveredTarget}
+          hoveredTarget={hoveredTarget}
           interceptedBadge={interceptedBadge}
+          draggedCard={draggedCard}
+          handleCardDragEnd={handleCardDragEnd}
+          draggedDrone={draggedDrone}
+          handleDroneDragStart={handleDroneDragStart}
+          handleDroneDragEnd={handleDroneDragEnd}
         />
 
         {/* Player Ship Sections */}
