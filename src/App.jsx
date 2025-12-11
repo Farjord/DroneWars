@@ -2767,12 +2767,13 @@ const App = ({ phaseAnimationQueue }) => {
    * @param {string|null} targetLane - The target lane
    * @param {boolean} isOpponentTarget - Whether the target is on opponent's side
    */
-  const handleDroneDragEnd = (targetDrone = null, targetLane = null, isOpponentTarget = false) => {
+  const handleDroneDragEnd = (target = null, targetLane = null, isOpponentTarget = false, targetType = 'drone') => {
     debugLog('DRAG_DROP_DEPLOY', '📥 handleDroneDragEnd called', {
       hasDraggedDrone: !!draggedDrone,
-      targetDrone: targetDrone?.name,
+      targetName: target?.name,
       targetLane,
-      isOpponentTarget
+      isOpponentTarget,
+      targetType
     });
 
     if (!draggedDrone) {
@@ -2786,13 +2787,13 @@ const App = ({ phaseAnimationQueue }) => {
     setDraggedDrone(null);
     setDroneDragArrowState(prev => ({ ...prev, visible: false }));
 
-    // Case 1: Attack - dropped on opponent drone in same lane
-    if (isOpponentTarget && targetDrone && targetLane) {
+    // Case 1a: Attack - dropped on opponent drone in same lane
+    if (isOpponentTarget && target && targetLane && targetType === 'drone') {
       if (sourceLane === targetLane) {
-        debugLog('DRAG_DROP_DEPLOY', '⚔️ Attack initiated via drag', { attacker: attackerDrone.name, target: targetDrone.name, lane: sourceLane });
+        debugLog('DRAG_DROP_DEPLOY', '⚔️ Attack initiated via drag', { attacker: attackerDrone.name, target: target.name, lane: sourceLane });
         const attackDetails = {
           attacker: attackerDrone,
-          target: targetDrone,
+          target: target,
           targetType: 'drone',
           lane: sourceLane,
           attackingPlayer: getLocalPlayerId()
@@ -2801,6 +2802,37 @@ const App = ({ phaseAnimationQueue }) => {
       } else {
         debugLog('DRAG_DROP_DEPLOY', '⛔ Attack blocked - different lanes', { sourceLane, targetLane });
         setModalContent({ title: "Invalid Target", text: "You can only attack targets in the same lane.", isBlocking: true });
+      }
+      return;
+    }
+
+    // Case 1b: Attack - dropped on opponent ship section
+    if (isOpponentTarget && target && targetLane && targetType === 'section') {
+      if (sourceLane === targetLane) {
+        // Check for Guardian protection
+        const opponentDronesInLane = opponentPlayerState.dronesOnBoard[sourceLane];
+        const hasGuardian = opponentDronesInLane?.some(drone => {
+          const effectiveStats = getEffectiveStats(drone, sourceLane);
+          return effectiveStats.keywords.has('GUARDIAN') && !drone.isExhausted;
+        });
+
+        if (hasGuardian) {
+          debugLog('DRAG_DROP_DEPLOY', '⛔ Attack blocked - Guardian protection', { sourceLane });
+          setModalContent({ title: "Invalid Target", text: "This lane is protected by a Guardian drone. You must destroy it before targeting the ship section.", isBlocking: true });
+        } else {
+          debugLog('DRAG_DROP_DEPLOY', '⚔️ Ship section attack initiated via drag', { attacker: attackerDrone.name, target: target.name, lane: sourceLane });
+          const attackDetails = {
+            attacker: attackerDrone,
+            target: target,
+            targetType: 'section',
+            lane: sourceLane,
+            attackingPlayer: getLocalPlayerId()
+          };
+          resolveAttack(attackDetails);
+        }
+      } else {
+        debugLog('DRAG_DROP_DEPLOY', '⛔ Attack blocked - different lanes', { sourceLane, targetLane });
+        setModalContent({ title: "Invalid Target", text: "Your drone can only attack the ship section in its lane.", isBlocking: true });
       }
       return;
     }

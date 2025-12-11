@@ -57,7 +57,9 @@ const ShipSectionsDisplay = ({
   shipAbilityMode,
   hoveredTarget,
   setHoveredTarget,
-  sectionRefs
+  sectionRefs,
+  draggedDrone,
+  handleDroneDragEnd
 }) => {
   // Get GameDataService for direct effective stats calculation
   const { getEffectiveShipStats } = useGameData();
@@ -151,6 +153,15 @@ const ShipSectionsDisplay = ({
             style={{
               width: 'clamp(640px, 31.25vw, 850px)',
               height: 'clamp(143px, 6.25vw, 184px)'
+            }}
+            onMouseUp={() => {
+              // Handle drone drop for ship section attack
+              if (draggedDrone && !isPlayer && handleDroneDragEnd) {
+                const targetLane = `lane${laneIndex + 1}`;
+                const targetSection = { ...sectionStats, id: sectionName, name: sectionName };
+                debugLog('DRAG_DROP_DEPLOY', '🎯 Ship section mouseUp detected', { sectionName, targetLane });
+                handleDroneDragEnd(targetSection, targetLane, true, 'section');
+              }
             }}
           >
             <ShipSectionCompact
