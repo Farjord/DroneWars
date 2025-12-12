@@ -5,11 +5,13 @@
 // 1. Waypoint List view (default) - Shows journey plan
 // 2. Hex Info view - Shows details for inspected hex
 
-import React from 'react';
+import React, { useState, useRef } from 'react';
+import { Info } from 'lucide-react';
 import MovementController from '../../logic/map/MovementController.js';
 import DetectionManager from '../../logic/detection/DetectionManager.js';
 import { mapTiers } from '../../data/mapData.js';
 import { packTypes } from '../../data/cardPackData.js';
+import { HEX_INFO_HELP_TEXT } from '../../data/hexInfoHelpText.js';
 import DetectionMeter from './DetectionMeter.jsx';
 import './HexInfoPanel.css';
 
@@ -80,6 +82,75 @@ const IconWarning = ({ size = 16, className = '' }) => (
     <circle cx="12" cy="17.5" r="1" fill="currentColor" />
   </svg>
 );
+
+// ========================================
+// STAT LABEL WITH INFO TOOLTIP
+// ========================================
+
+/**
+ * StatLabel - Label with optional info icon tooltip
+ * Uses fixed positioning to escape overflow clipping from parent containers
+ * @param {string} text - The label text
+ * @param {string} helpKey - Key into HEX_INFO_HELP_TEXT for tooltip content
+ */
+const StatLabel = ({ text, helpKey }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipStyle, setTooltipStyle] = useState({});
+  const wrapperRef = useRef(null);
+  const helpContent = helpKey ? HEX_INFO_HELP_TEXT[helpKey] : null;
+
+  const handleMouseEnter = () => {
+    if (wrapperRef.current) {
+      const rect = wrapperRef.current.getBoundingClientRect();
+      const tooltipWidth = 200; // matches CSS width
+      const padding = 8;
+
+      // Calculate centered position
+      let left = rect.left + rect.width / 2;
+
+      // Check right edge overflow - if tooltip would go past viewport, align to right edge
+      if (left + tooltipWidth / 2 > window.innerWidth - padding) {
+        left = window.innerWidth - padding - tooltipWidth / 2;
+      }
+
+      // Check left edge overflow (less likely but good to handle)
+      if (left - tooltipWidth / 2 < padding) {
+        left = padding + tooltipWidth / 2;
+      }
+
+      setTooltipStyle({
+        left,
+        top: rect.bottom + 8,
+      });
+    }
+    setShowTooltip(true);
+  };
+
+  const handleMouseLeave = () => {
+    setShowTooltip(false);
+  };
+
+  return (
+    <span className="stat-label">
+      {text}
+      {helpContent && (
+        <span
+          ref={wrapperRef}
+          className="stat-info-wrapper"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          <Info size={12} className="stat-info-icon" />
+          {showTooltip && (
+            <span className="stat-tooltip stat-tooltip-visible" style={tooltipStyle}>
+              {helpContent.description}
+            </span>
+          )}
+        </span>
+      )}
+    </span>
+  );
+};
 
 /**
  * HexInfoPanel - Two-view panel for journey planning and hex inspection
@@ -195,6 +266,7 @@ function HexInfoPanel({
     return 'value-critical';
   };
 
+
   // Get reward quality label based on zone (for risk/reward indication)
   const getRewardQualityLabel = (zone) => {
     switch (zone) {
@@ -254,6 +326,16 @@ function HexInfoPanel({
 
         <div className="hex-info-detection">
           <DetectionMeter detection={currentDetection} />
+          {/* Blockade Risk Display */}
+          <div className="blockade-risk-display">
+            <StatLabel text="Extraction Blockade Chance" helpKey="extractionBlockadeChance" />
+            <span
+              className={`blockade-risk-value ${currentDetection >= 80 ? 'blockade-critical' : currentDetection >= 50 ? 'blockade-warning' : ''}`}
+              data-testid="blockade-risk-value"
+            >
+              {Math.round(currentDetection)}%
+            </span>
+          </div>
         </div>
 
         <div className="hex-info-content">
@@ -348,6 +430,16 @@ function HexInfoPanel({
 
         <div className="hex-info-detection">
           <DetectionMeter detection={currentDetection} />
+          {/* Blockade Risk Display */}
+          <div className="blockade-risk-display">
+            <StatLabel text="Extraction Blockade Chance" helpKey="extractionBlockadeChance" />
+            <span
+              className={`blockade-risk-value ${currentDetection >= 80 ? 'blockade-critical' : currentDetection >= 50 ? 'blockade-warning' : ''}`}
+              data-testid="blockade-risk-value"
+            >
+              {Math.round(currentDetection)}%
+            </span>
+          </div>
         </div>
 
         <div className="hex-info-content">
@@ -440,6 +532,10 @@ function HexInfoPanel({
               {preview && !isAlreadyWaypoint && (() => {
                 // Single-hex stats (raw values for this hex only)
                 const hexEncounterChance = MovementController.getHexEncounterChance(inspectedHex, tierConfig, mapData);
+                // POIs use their own encounterChance for salvage risk (not movement encounter)
+                const baseSalvageRisk = inspectedHex.type === 'poi'
+                  ? (inspectedHex.poiData?.encounterChance || 15)
+                  : hexEncounterChance;
                 const hexThreatIncrease = DetectionManager.getHexDetectionCost(inspectedHex, tierConfig, mapRadius);
                 const lootingThreat = inspectedHex.type === 'poi'
                   ? (inspectedHex.poiData?.threatIncrease || tierConfig?.detectionTriggers?.looting || 10)
@@ -468,20 +564,29 @@ function HexInfoPanel({
                       <div className="hex-stats-section-header">Selected Hex</div>
                       <div className="hex-stats">
                         <div className="hex-stat">
-                          <span className="stat-label">Distance</span>
+                          <StatLabel text="Distance" helpKey="distance" />
                           <span className="stat-value">{preview.distance} hexes</span>
                         </div>
                         <div className="hex-stat">
-                          <span className="stat-label">Encounter Chance</span>
-                          <span className="stat-value">{hexEncounterChance}%</span>
+                          {inspectedHex.type === 'poi' ? (
+                            <>
+                              <StatLabel text="Base Salvage Risk" helpKey="baseSalvageRisk" />
+                              <span className="stat-value">{baseSalvageRisk}%</span>
+                            </>
+                          ) : (
+                            <>
+                              <StatLabel text="Movement Encounter Chance" helpKey="movementEncounterChance" />
+                              <span className="stat-value">{hexEncounterChance}%</span>
+                            </>
+                          )}
                         </div>
                         <div className="hex-stat">
-                          <span className="stat-label">Threat Increase</span>
+                          <StatLabel text="Threat Increase" helpKey="threatIncrease" />
                           <span className="stat-value stat-value-cost">+{hexThreatIncrease.toFixed(1)}%</span>
                         </div>
                         {inspectedHex.type === 'poi' && (
                           <div className="hex-stat">
-                            <span className="stat-label">Looting Threat</span>
+                            <StatLabel text="Salvage Threat" helpKey="salvageThreat" />
                             <span className="stat-value stat-value-cost">+{lootingThreat.toFixed(1)}%</span>
                           </div>
                         )}
@@ -493,11 +598,11 @@ function HexInfoPanel({
                       <div className="hex-stats-section-header">Proposed Journey</div>
                       <div className="hex-stats">
                         <div className="hex-stat">
-                          <span className="stat-label">Journey Encounter Risk</span>
+                          <StatLabel text="Movement Encounter Risk" helpKey="journeyEncounterRisk" />
                           <span className="stat-value stat-value-encounter">⚔ {cumulativeEncounterRisk.toFixed(1)}%</span>
                         </div>
                         <div className="hex-stat hex-stat-total">
-                          <span className="stat-label">After Move</span>
+                          <StatLabel text="Threat After Move" helpKey="threatAfterMove" />
                           <span className={`stat-value ${getDetectionColorClass(totalDetectionAfterMove)}`}>
                             → {totalDetectionAfterMove.toFixed(1)}%
                           </span>
@@ -570,6 +675,16 @@ function HexInfoPanel({
 
       <div className="hex-info-detection">
         <DetectionMeter detection={currentDetection} />
+        {/* Blockade Risk Display */}
+        <div className="blockade-risk-display">
+          <StatLabel text="Extraction Blockade Chance" helpKey="extractionBlockadeChance" />
+          <span
+            className={`blockade-risk-value ${currentDetection >= 80 ? 'blockade-critical' : currentDetection >= 50 ? 'blockade-warning' : ''}`}
+            data-testid="blockade-risk-value"
+          >
+            {Math.round(currentDetection)}%
+          </span>
+        </div>
       </div>
 
       <div className="hex-info-content">
@@ -601,18 +716,25 @@ function HexInfoPanel({
                   <span className="waypoint-name">
                     {getPoiDetail(waypoint.hex) || getTargetLabel(waypoint.hex)}
                   </span>
-                  <span className="waypoint-cost">+{waypoint.segmentCost.toFixed(1)}%</span>
                 </div>
-                <div className="waypoint-item-footer">
-                  <span className={`waypoint-cumulative ${getDetectionColorClass(waypoint.cumulativeDetection)}`}>
-                    → {waypoint.cumulativeDetection.toFixed(1)}%
-                  </span>
-                  <span className="waypoint-encounter">
-                    ⚔ {(waypoint.cumulativeEncounterRisk || 0).toFixed(1)}%
-                  </span>
-                  {waypoint.cumulativeDetection >= 80 && (
-                    <span className="waypoint-warning-icon"><IconWarning size={12} className="icon-critical" /></span>
-                  )}
+                <div className="waypoint-item-stats">
+                  <div className="waypoint-threat-line">
+                    <span className="waypoint-stat-label">Threat Increase:</span>
+                    <span className="waypoint-cost">+{waypoint.segmentCost.toFixed(1)}%</span>
+                    <span className="waypoint-arrow">→</span>
+                    <span className={`waypoint-cumulative ${getDetectionColorClass(waypoint.cumulativeDetection)}`}>
+                      {waypoint.cumulativeDetection.toFixed(1)}%
+                    </span>
+                    {waypoint.cumulativeDetection >= 80 && (
+                      <span className="waypoint-warning-icon"><IconWarning size={12} className="icon-critical" /></span>
+                    )}
+                  </div>
+                  <div className="waypoint-encounter-line">
+                    <span className="waypoint-stat-label">Journey Encounter Chance:</span>
+                    <span className="waypoint-encounter">
+                      ⚔ {(waypoint.cumulativeEncounterRisk || 0).toFixed(1)}%
+                    </span>
+                  </div>
                 </div>
               </div>
             ))}

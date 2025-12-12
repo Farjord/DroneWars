@@ -17,6 +17,7 @@ import RunInventoryModal from '../modals/RunInventoryModal.jsx';
 import LootRevealModal from '../modals/LootRevealModal.jsx';
 import AbandonRunModal from '../modals/AbandonRunModal.jsx';
 import ExtractionLootSelectionModal from '../modals/ExtractionLootSelectionModal.jsx';
+import ExtractionConfirmModal from '../modals/ExtractionConfirmModal.jsx';
 import MovementController from '../../logic/map/MovementController.js';
 import lootGenerator from '../../logic/loot/LootGenerator.js';
 import { generateSalvageItemFromValue } from '../../data/salvageItemData.js';
@@ -162,6 +163,10 @@ function TacticalMapScreen() {
   const [showSalvageModal, setShowSalvageModal] = useState(false);
   const [activeSalvage, setActiveSalvage] = useState(null);
   const [salvageQuickDeployPending, setSalvageQuickDeployPending] = useState(false);
+
+  // Extraction confirmation modal state
+  const [showExtractionConfirm, setShowExtractionConfirm] = useState(false);
+  const [extractionQuickDeployPending, setExtractionQuickDeployPending] = useState(false);
 
   // Ref to track pause state in async movement loop
   const isPausedRef = useRef(false);
@@ -928,6 +933,56 @@ function TacticalMapScreen() {
   const handleEncounterProceedWithQuickDeploy = useCallback((deployment) => {
     console.log('[TacticalMap] Quick deploy selected:', deployment.name);
 
+    // Check if this is an extraction blockade quick deploy
+    if (extractionQuickDeployPending) {
+      console.log('[TacticalMap] Extraction blockade with quick deploy');
+      setExtractionQuickDeployPending(false);
+
+      const currentState = gameStateManager.getState();
+      const runState = currentState.currentRunState;
+
+      if (!runState) {
+        console.warn('[TacticalMap] No run state for blockade quick deploy');
+        return;
+      }
+
+      // Get AI for blockade combat
+      const tier = runState.mapData?.tier || 1;
+      const tierCfg = mapTiers[tier - 1];
+      const detection = DetectionManager.getCurrentDetection();
+      const aiId = EncounterController.getAIForThreat(tierCfg, detection, null);
+
+      // Find AI personality info for the loading screen
+      const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
+
+      // Create encounter for combat
+      setCurrentEncounter({
+        outcome: 'combat',
+        aiId,
+        isBlockade: true
+      });
+
+      // Close quick deploy selection
+      setShowQuickDeploySelection(false);
+
+      // Store selected quick deploy
+      setSelectedQuickDeploy(deployment);
+
+      // Set up loading encounter data with quick deploy info
+      setLoadingEncounterData({
+        aiName: aiPersonality?.name || 'Blockade Fleet',
+        difficulty: aiPersonality?.difficulty || 'Hard',
+        threatLevel: 'high',
+        isAmbush: false,
+        isBlockade: true,
+        quickDeployId: deployment.id
+      });
+
+      // Show loading screen
+      setShowLoadingEncounter(true);
+      return;
+    }
+
     // Check if this is a salvage encounter quick deploy
     if (salvageQuickDeployPending && activeSalvage) {
       console.log('[TacticalMap] Salvage combat with quick deploy');
@@ -1123,15 +1178,35 @@ function TacticalMapScreen() {
   }, [currentEncounter, loadingEncounterData, waypoints, currentWaypointIndex]);
 
   /**
-   * Handle extraction - check for blockade and complete run
+   * Handle extraction button click - show confirmation modal
    */
   const handleExtract = useCallback(() => {
-    console.log('[TacticalMap] Extraction initiated');
+    console.log('[TacticalMap] Extraction button clicked - showing confirmation');
 
     // Stop any ongoing movement
     shouldStopMovement.current = true;
     setIsMoving(false);
     setIsScanningHex(false);
+
+    // Show confirmation modal (modal handles blockade check internally)
+    setShowExtractionConfirm(true);
+  }, []);
+
+  /**
+   * Handle extraction cancel - close confirmation modal
+   */
+  const handleExtractionCancel = useCallback(() => {
+    console.log('[TacticalMap] Extraction cancelled');
+    setShowExtractionConfirm(false);
+  }, []);
+
+  /**
+   * Handle safe extraction confirmed - complete the run
+   * Called when modal completes scan and no blockade triggered
+   */
+  const handleExtractionConfirmed = useCallback(() => {
+    console.log('[TacticalMap] Safe extraction confirmed - completing run');
+    setShowExtractionConfirm(false);
 
     const currentState = gameStateManager.getState();
     const runState = currentState.currentRunState;
@@ -1141,53 +1216,76 @@ function TacticalMapScreen() {
       return;
     }
 
-    // Check for blockade encounter
-    const extractionResult = ExtractionController.initiateExtraction(runState);
+    const result = ExtractionController.completeExtraction(runState);
 
-    if (extractionResult.action === 'combat') {
-      // Blockade! Combat encounter
-      console.log('[TacticalMap] Blockade triggered! Combat with:', extractionResult.aiId);
+    // Prepare extraction screen data
+    setExtractionScreenData({
+      creditsEarned: runState.creditsEarned || 0,
+      cardsCollected: runState.collectedLoot?.filter(l => l.type === 'card').length || 0,
+      aiCoresEarned: runState.aiCoresEarned || 0
+    });
 
-      // Find AI personality info for the loading screen
-      const aiPersonality = aiPersonalities.find(ai => ai.name === extractionResult.aiId) || aiPersonalities[0];
+    // Store the result for after animation
+    pendingExtractionRef.current = result;
 
-      // Set up loading encounter data
-      setLoadingEncounterData({
-        aiName: aiPersonality?.name || 'Blockade Fleet',
-        difficulty: aiPersonality?.difficulty || 'Hard',
-        threatLevel: 'high',
-        isAmbush: false,
-        isBlockade: true
-      });
+    // Show extraction loading screen
+    setShowExtractionScreen(true);
+  }, []);
 
-      // Show loading screen (will transition to combat)
-      setShowLoadingEncounter(true);
+  /**
+   * Handle blockade combat - engage with standard deploy
+   * Called when modal detects blockade and player clicks Engage/Standard Deploy
+   */
+  const handleBlockadeCombat = useCallback(() => {
+    console.log('[TacticalMap] Blockade detected - engaging combat');
+    setShowExtractionConfirm(false);
 
-      // Store encounter for combat handling
-      setCurrentEncounter({
-        outcome: 'combat',
-        aiId: extractionResult.aiId,
-        isBlockade: true
-      });
+    const currentState = gameStateManager.getState();
+    const runState = currentState.currentRunState;
 
-    } else {
-      // Safe extraction - complete the run
-      console.log('[TacticalMap] Safe extraction - completing run');
-      const result = ExtractionController.completeExtraction(runState);
-
-      // Prepare extraction screen data
-      setExtractionScreenData({
-        creditsEarned: runState.creditsEarned || 0,
-        cardsCollected: runState.collectedLoot?.filter(l => l.type === 'card').length || 0,
-        aiCoresEarned: runState.aiCoresEarned || 0
-      });
-
-      // Store the result for after animation
-      pendingExtractionRef.current = result;
-
-      // Show extraction loading screen
-      setShowExtractionScreen(true);
+    if (!runState) {
+      console.warn('[TacticalMap] No run state for blockade combat');
+      return;
     }
+
+    // Get AI for blockade combat
+    const tier = runState.mapData?.tier || 1;
+    const tierCfg = mapTiers[tier - 1];
+    const detection = DetectionManager.getCurrentDetection();
+    const aiId = EncounterController.getAIForThreat(tierCfg, detection, null);
+
+    // Find AI personality info for the loading screen
+    const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
+
+    // Set up loading encounter data
+    setLoadingEncounterData({
+      aiName: aiPersonality?.name || 'Blockade Fleet',
+      difficulty: aiPersonality?.difficulty || 'Hard',
+      threatLevel: 'high',
+      isAmbush: false,
+      isBlockade: true
+    });
+
+    // Store encounter for combat handling
+    setCurrentEncounter({
+      outcome: 'combat',
+      aiId,
+      isBlockade: true
+    });
+
+    // Show loading screen (will transition to combat)
+    setShowLoadingEncounter(true);
+  }, []);
+
+  /**
+   * Handle blockade with quick deploy - show quick deploy selection
+   * Called when modal detects blockade and player clicks Quick Deploy
+   */
+  const handleBlockadeQuickDeploy = useCallback(() => {
+    console.log('[TacticalMap] Blockade detected - opening quick deploy selection');
+    setShowExtractionConfirm(false);
+    setShowQuickDeploySelection(true);
+    setExtractionQuickDeployPending(true);
   }, []);
 
   /**
@@ -1281,16 +1379,18 @@ function TacticalMapScreen() {
       source: 'poi_loot'
     }));
 
-    // Add salvage item (replaces flat credits)
-    if (loot.salvageItem) {
-      newCardLoot.push({
-        type: 'salvageItem',
-        itemId: loot.salvageItem.itemId,
-        name: loot.salvageItem.name,
-        creditValue: loot.salvageItem.creditValue,
-        image: loot.salvageItem.image,
-        description: loot.salvageItem.description,
-        source: 'poi_loot'
+    // Add salvage items (each item is a separate entry in collectedLoot)
+    if (loot.salvageItems && loot.salvageItems.length > 0) {
+      loot.salvageItems.forEach(salvageItem => {
+        newCardLoot.push({
+          type: 'salvageItem',
+          itemId: salvageItem.itemId,
+          name: salvageItem.name,
+          creditValue: salvageItem.creditValue,
+          image: salvageItem.image,
+          description: salvageItem.description,
+          source: 'poi_loot'
+        });
       });
     }
 
@@ -1305,7 +1405,8 @@ function TacticalMapScreen() {
     }
 
     const updatedLoot = [...(runState?.collectedLoot || []), ...newCardLoot];
-    const newCredits = (runState?.creditsEarned || 0) + (loot.salvageItem?.creditValue || 0);
+    const salvageTotalCredits = (loot.salvageItems || []).reduce((sum, item) => sum + (item.creditValue || 0), 0);
+    const newCredits = (runState?.creditsEarned || 0) + salvageTotalCredits;
 
     // Handle token collection - save to player profile (persistent across runs)
     if (loot.token) {
@@ -1723,7 +1824,7 @@ function TacticalMapScreen() {
       )}
 
       {/* Quick Deploy Selection Modal */}
-      {showQuickDeploySelection && currentEncounter && (
+      {showQuickDeploySelection && (
         <QuickDeploySelectionModal
           validQuickDeployments={validQuickDeployments}
           onSelect={(deployment) => {
@@ -1734,7 +1835,16 @@ function TacticalMapScreen() {
           }}
           onBack={() => {
             setShowQuickDeploySelection(false);
-            setShowPOIModal(true);
+            // Return to appropriate modal based on context
+            if (extractionQuickDeployPending) {
+              setExtractionQuickDeployPending(false);
+              setShowExtractionConfirm(true);
+            } else if (salvageQuickDeployPending) {
+              setSalvageQuickDeployPending(false);
+              setShowSalvageModal(true);
+            } else {
+              setShowPOIModal(true);
+            }
           }}
         />
       )}
@@ -1755,6 +1865,18 @@ function TacticalMapScreen() {
           }}
           validQuickDeployments={validQuickDeployments}
           onQuit={handleSalvageQuit}
+        />
+      )}
+
+      {/* Extraction Confirmation Modal */}
+      {showExtractionConfirm && (
+        <ExtractionConfirmModal
+          detection={DetectionManager.getCurrentDetection()}
+          onCancel={handleExtractionCancel}
+          onExtract={handleExtractionConfirmed}
+          onEngageCombat={handleBlockadeCombat}
+          onQuickDeploy={handleBlockadeQuickDeploy}
+          validQuickDeployments={validQuickDeployments}
         />
       )}
 

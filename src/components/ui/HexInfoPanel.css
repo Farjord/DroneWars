@@ -106,6 +106,44 @@
 }
 
 /* ========================================
+   BLOCKADE RISK DISPLAY
+   ======================================== */
+
+.blockade-risk-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border-left: 2px solid rgba(239, 68, 68, 0.4);
+}
+
+.blockade-risk-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.blockade-risk-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.blockade-risk-value.blockade-warning {
+  color: #f59e0b;
+}
+
+.blockade-risk-value.blockade-critical {
+  color: #ef4444;
+  animation: critical-pulse 1s ease-in-out infinite;
+}
+
+/* ========================================
    CONTENT AREA
    ======================================== */
 
@@ -341,12 +379,69 @@
 .stat-label {
   font-size: 12px;
   color: #9ca3af;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .stat-value {
   font-size: 14px;
   font-weight: 600;
   color: #fff;
+}
+
+/* ========================================
+   STAT INFO TOOLTIPS
+   ======================================== */
+
+.stat-info-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.stat-info-icon {
+  opacity: 0.4;
+  cursor: help;
+  transition: opacity 0.2s;
+  color: #06b6d4;
+}
+
+.stat-info-wrapper:hover .stat-info-icon {
+  opacity: 1;
+}
+
+.stat-tooltip {
+  position: fixed;
+  transform: translateX(-50%);
+  padding: 10px 12px;
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(6, 182, 212, 0.5);
+  border-radius: 4px;
+  color: #9ca3af;
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  width: 200px;
+  white-space: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  text-align: left;
+}
+
+/* Arrow pointing up */
+.stat-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: transparent transparent rgba(6, 182, 212, 0.5) transparent;
 }
 
 .stat-value-cost {
@@ -633,12 +728,29 @@
   font-weight: 500;
 }
 
-.waypoint-item-footer {
+.waypoint-item-stats {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+.waypoint-threat-line {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 4px;
-  padding-left: 28px;
+  gap: 4px;
+}
+
+.waypoint-stat-label {
+  font-size: 10px;
+  color: rgba(148, 163, 184, 0.7);
+  margin-right: 4px;
+}
+
+.waypoint-arrow {
+  font-size: 11px;
+  color: rgba(148, 163, 184, 0.7);
 }
 
 .waypoint-cumulative {
@@ -646,15 +758,21 @@
   font-weight: 600;
 }
 
+.waypoint-encounter-line {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .waypoint-encounter {
   font-size: 11px;
   font-weight: 500;
   color: #ef4444;
-  margin-left: auto;
 }
 
 .waypoint-warning-icon {
   font-size: 12px;
+  margin-left: 4px;
 }
 
 /* ========================================

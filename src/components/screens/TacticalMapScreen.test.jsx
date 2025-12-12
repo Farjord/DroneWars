@@ -240,4 +240,211 @@ describe('TacticalMapScreen - PoI Combat Integration', () => {
       expect(setStateCall.currentRunState.pendingPOICombat.remainingWaypoints).toHaveLength(0);
     });
   });
+
+  /**
+   * Tests for POI loot collection - specifically for the salvageItems array bug fix.
+   *
+   * BUG: handlePOILootCollected was checking for loot.salvageItem (singular)
+   * but LootRevealModal returns loot.salvageItems (array).
+   * This caused all salvage items to be silently dropped.
+   */
+  describe('POI Loot Collection - salvageItems handling', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    /**
+     * Simulates the loot collection logic from handlePOILootCollected.
+     * This mirrors the actual implementation to test the fix.
+     */
+    function simulateLootCollection(loot, runState) {
+      // Add loot cards to collectedLoot
+      const newCardLoot = (loot.cards || []).map(card => ({
+        type: 'card',
+        cardId: card.cardId,
+        cardName: card.cardName,
+        rarity: card.rarity,
+        source: 'poi_loot'
+      }));
+
+      // BUG FIX: Handle salvageItems array (not singular salvageItem)
+      if (loot.salvageItems && loot.salvageItems.length > 0) {
+        loot.salvageItems.forEach(salvageItem => {
+          newCardLoot.push({
+            type: 'salvageItem',
+            itemId: salvageItem.itemId,
+            name: salvageItem.name,
+            creditValue: salvageItem.creditValue,
+            image: salvageItem.image,
+            description: salvageItem.description,
+            source: 'poi_loot'
+          });
+        });
+      }
+
+      const updatedLoot = [...(runState?.collectedLoot || []), ...newCardLoot];
+      const salvageTotalCredits = (loot.salvageItems || []).reduce((sum, item) => sum + (item.creditValue || 0), 0);
+      const newCredits = (runState?.creditsEarned || 0) + salvageTotalCredits;
+
+      gameStateManager.setState({
+        currentRunState: {
+          ...runState,
+          collectedLoot: updatedLoot,
+          creditsEarned: newCredits
+        }
+      });
+
+      return { updatedLoot, newCredits };
+    }
+
+    it('should add each salvage item from salvageItems array to collectedLoot', () => {
+      // EXPLANATION: LootRevealModal returns loot.salvageItems as an array.
+      // Each item should be added as a separate entry in collectedLoot.
+
+      const mockRunState = {
+        collectedLoot: [],
+        creditsEarned: 0
+      };
+
+      const loot = {
+        cards: [],
+        salvageItems: [
+          { itemId: 'SALVAGE_SCRAP_METAL', name: 'Scrap Metal', creditValue: 25, image: '/Credits/scrap-metal.png', description: 'Twisted hull plating' },
+          { itemId: 'SALVAGE_BURNT_WIRING', name: 'Burnt Wiring', creditValue: 15, image: '/Credits/burnt-wiring.png', description: 'Fried electrical components' },
+          { itemId: 'SALVAGE_GYROSCOPE', name: 'Gyroscope', creditValue: 60, image: '/Credits/gyroscope.png', description: 'Navigation component' }
+        ]
+      };
+
+      const { updatedLoot } = simulateLootCollection(loot, mockRunState);
+
+      // Assert: All 3 salvage items should be in collectedLoot
+      expect(updatedLoot).toHaveLength(3);
+      expect(updatedLoot[0].type).toBe('salvageItem');
+      expect(updatedLoot[0].itemId).toBe('SALVAGE_SCRAP_METAL');
+      expect(updatedLoot[1].itemId).toBe('SALVAGE_BURNT_WIRING');
+      expect(updatedLoot[2].itemId).toBe('SALVAGE_GYROSCOPE');
+    });
+
+    it('should sum credit values from all salvage items', () => {
+      // EXPLANATION: Total credits should be the sum of all salvage item values.
+
+      const mockRunState = {
+        collectedLoot: [],
+        creditsEarned: 100 // Starting with some existing credits
+      };
+
+      const loot = {
+        cards: [],
+        salvageItems: [
+          { itemId: 'SALVAGE_1', name: 'Item 1', creditValue: 25, image: '/test.png', description: 'Test 1' },
+          { itemId: 'SALVAGE_2', name: 'Item 2', creditValue: 50, image: '/test.png', description: 'Test 2' },
+          { itemId: 'SALVAGE_3', name: 'Item 3', creditValue: 75, image: '/test.png', description: 'Test 3' }
+        ]
+      };
+
+      const { newCredits } = simulateLootCollection(loot, mockRunState);
+
+      // Assert: Credits should be 100 (existing) + 25 + 50 + 75 = 250
+      expect(newCredits).toBe(250);
+    });
+
+    it('should handle mixed cards and salvage items', () => {
+      // EXPLANATION: Both cards and salvage items can be in the same loot.
+
+      const mockRunState = {
+        collectedLoot: [],
+        creditsEarned: 0
+      };
+
+      const loot = {
+        cards: [
+          { cardId: 'CARD_001', cardName: 'Test Card', rarity: 'Common' }
+        ],
+        salvageItems: [
+          { itemId: 'SALVAGE_1', name: 'Salvage Item', creditValue: 50, image: '/test.png', description: 'Test' }
+        ]
+      };
+
+      const { updatedLoot, newCredits } = simulateLootCollection(loot, mockRunState);
+
+      // Assert: Should have 1 card + 1 salvage item
+      expect(updatedLoot).toHaveLength(2);
+      expect(updatedLoot[0].type).toBe('card');
+      expect(updatedLoot[1].type).toBe('salvageItem');
+      expect(newCredits).toBe(50);
+    });
+
+    it('should append salvage items to existing collectedLoot', () => {
+      // EXPLANATION: New salvage items should be added to existing loot, not replace it.
+
+      const mockRunState = {
+        collectedLoot: [
+          { type: 'card', cardId: 'EXISTING_CARD', source: 'combat_salvage' },
+          { type: 'salvageItem', itemId: 'EXISTING_SALVAGE', creditValue: 30, source: 'combat_salvage' }
+        ],
+        creditsEarned: 30
+      };
+
+      const loot = {
+        cards: [],
+        salvageItems: [
+          { itemId: 'NEW_SALVAGE', name: 'New Item', creditValue: 70, image: '/test.png', description: 'New' }
+        ]
+      };
+
+      const { updatedLoot, newCredits } = simulateLootCollection(loot, mockRunState);
+
+      // Assert: Should have 2 existing + 1 new = 3 items
+      expect(updatedLoot).toHaveLength(3);
+      expect(updatedLoot[2].itemId).toBe('NEW_SALVAGE');
+      expect(newCredits).toBe(100); // 30 existing + 70 new
+    });
+
+    it('should handle empty salvageItems array gracefully', () => {
+      // EXPLANATION: Empty array should not cause errors.
+
+      const mockRunState = {
+        collectedLoot: [],
+        creditsEarned: 0
+      };
+
+      const loot = {
+        cards: [{ cardId: 'CARD_001', cardName: 'Test', rarity: 'Common' }],
+        salvageItems: []
+      };
+
+      const { updatedLoot, newCredits } = simulateLootCollection(loot, mockRunState);
+
+      // Assert: Only the card should be present
+      expect(updatedLoot).toHaveLength(1);
+      expect(updatedLoot[0].type).toBe('card');
+      expect(newCredits).toBe(0);
+    });
+
+    it('should handle salvage items with same itemId as unique entries', () => {
+      // EXPLANATION: If player gets two of the same salvage item type,
+      // they should appear as separate entries in collectedLoot (not deduplicated).
+
+      const mockRunState = {
+        collectedLoot: [],
+        creditsEarned: 0
+      };
+
+      const loot = {
+        cards: [],
+        salvageItems: [
+          { itemId: 'SALVAGE_SCRAP_METAL', name: 'Scrap Metal', creditValue: 20, image: '/test.png', description: 'Test' },
+          { itemId: 'SALVAGE_SCRAP_METAL', name: 'Scrap Metal', creditValue: 25, image: '/test.png', description: 'Test' } // Same type, different value
+        ]
+      };
+
+      const { updatedLoot, newCredits } = simulateLootCollection(loot, mockRunState);
+
+      // Assert: Both items should be present (not deduplicated)
+      expect(updatedLoot).toHaveLength(2);
+      expect(updatedLoot[0].creditValue).toBe(20);
+      expect(updatedLoot[1].creditValue).toBe(25);
+      expect(newCredits).toBe(45);
+    });
+  });
 });

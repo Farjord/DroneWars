@@ -24,6 +24,8 @@ import { getCardBorderClasses } from '../../utils/cardBorderUtils.js';
  * @param {Function} onViewUpgrades - View upgrades handler
  * @param {number} scale - Optional scale multiplier (default: 1.0)
  * @param {boolean} isViewOnly - Display only mode (no opacity reduction)
+ * @param {Function} onStatClick - Callback when a stat is clicked (for help mode)
+ * @param {string} selectedStat - Currently selected stat key (for highlighting)
  */
 const DroneCard = ({
   drone,
@@ -36,7 +38,9 @@ const DroneCard = ({
   isUpgradeTarget = false,
   onViewUpgrades,
   scale = 1.0,
-  isViewOnly = false
+  isViewOnly = false,
+  onStatClick,
+  selectedStat
 }) => {
   // Calculate effective limit with upgrades
   let effectiveLimit = drone.limit;
@@ -79,6 +83,24 @@ const DroneCard = ({
   const limitTextColor = isLimitBuffed ? 'text-green-400' : 'text-white';
 
   const { name, image, hull, shields, abilities } = drone;
+
+  // Help mode: determines if clicking stats triggers help panel
+  const isHelpMode = !!onStatClick;
+
+  // Helper to handle stat clicks in help mode
+  const handleStatClick = (statKey) => (e) => {
+    if (isHelpMode) {
+      e.stopPropagation();
+      onStatClick(statKey);
+    }
+  };
+
+  // Helper to get highlight class for selected stat
+  const getStatHighlight = (statKey) => {
+    if (!isHelpMode) return '';
+    const isSelected = selectedStat === statKey;
+    return `${isSelected ? 'ring-2 ring-cyan-400 ring-offset-1 ring-offset-transparent' : ''} cursor-pointer hover:ring-2 hover:ring-cyan-400/50 transition-all rounded`;
+  };
 
   // Apply scale transform if provided
   const scaleStyle = scale !== 1.0 ? {
@@ -126,7 +148,10 @@ const DroneCard = ({
 
           {/* Stats Section */}
           <div className="flex justify-between items-center px-2 flex-shrink-0 mt-2 h-12">
-            <div className="w-10 h-12">
+            <div
+              className={`w-10 h-12 ${getStatHighlight('attack')}`}
+              onClick={handleStatClick('attack')}
+            >
               <CardStatHexagon
                 value={effectiveCardStats.attack}
                 isFlat={false}
@@ -137,7 +162,10 @@ const DroneCard = ({
             </div>
 
             <div className="flex flex-col items-center gap-1">
-              <div className="flex w-full justify-center gap-1.5 min-h-[12px]">
+              <div
+                className={`flex w-full justify-center gap-1.5 min-h-[12px] p-1 ${getStatHighlight('shields')}`}
+                onClick={handleStatClick('shields')}
+              >
                 {shields > 0 && Array.from({ length: shields }).map((_, i) => (
                   <svg
                     key={`shield-${i}`}
@@ -153,14 +181,20 @@ const DroneCard = ({
                   </svg>
                 ))}
               </div>
-              <div className="flex w-full justify-center gap-1">
+              <div
+                className={`flex w-full justify-center gap-1 p-1 ${getStatHighlight('hull')}`}
+                onClick={handleStatClick('hull')}
+              >
                 {Array.from({ length: hull }).map((_, i) => (
                   <div key={`hull-${i}`} className="h-3 w-3 rounded-sm bg-cyan-400 border border-black/50"></div>
                 ))}
               </div>
             </div>
 
-            <div className="w-12 h-12">
+            <div
+              className={`w-12 h-12 ${getStatHighlight('speed')}`}
+              onClick={handleStatClick('speed')}
+            >
               <CardStatHexagon
                 value={effectiveCardStats.speed}
                 isFlat={true}
@@ -189,7 +223,10 @@ const DroneCard = ({
 
           {/* Footer */}
           <div className="grid grid-cols-3 items-center p-1 border-t border-cyan-800/70 flex-shrink-0 h-12">
-            <div className="flex flex-col items-center">
+            <div
+              className={`flex flex-col items-center p-1 ${getStatHighlight('cost')}`}
+              onClick={handleStatClick('cost')}
+            >
               <span className="text-[10px] text-gray-400">Cost</span>
               <div className="flex items-center">
                 <Power size={14} className="text-yellow-300"/>
@@ -197,13 +234,13 @@ const DroneCard = ({
               </div>
             </div>
 
-            {drone.upgradeSlots > 0 && (
-              <button
-                onClick={(e) => {
+            {drone.upgradeSlots > 0 ? (
+              <div
+                className={`flex flex-col items-center p-1 ${isHelpMode ? getStatHighlight('upgrades') : 'cursor-pointer group'}`}
+                onClick={isHelpMode ? handleStatClick('upgrades') : (e) => {
                   e.stopPropagation();
                   if (onViewUpgrades) onViewUpgrades(drone, appliedUpgrades);
                 }}
-                className="flex flex-col items-center cursor-pointer group"
               >
                 <span className="text-[10px] text-gray-400 group-hover:text-white transition-colors">Upgrades</span>
                 <div className="flex items-center">
@@ -211,10 +248,17 @@ const DroneCard = ({
                     {appliedUpgrades.length}/{drone.upgradeSlots}
                   </span>
                 </div>
-              </button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center p-1">
+                {/* Empty placeholder for no upgrade slots */}
+              </div>
             )}
 
-            <div className="flex flex-col items-center">
+            <div
+              className={`flex flex-col items-center p-1 ${getStatHighlight('deployed')}`}
+              onClick={handleStatClick('deployed')}
+            >
               <span className="text-[10px] text-gray-400">Deployed</span>
               <div className="flex items-center">
                 <span className={`font-bold text-base ${atLimit ? 'text-red-500' : limitTextColor}`}>

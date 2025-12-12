@@ -12,7 +12,7 @@ export const mapTiers = [
 
     // Topology
     radius: 5,  // Hexes from center
-    gateCount: 3,  // Extraction points
+    gateCount: { min: 3, max: 4 },  // Random number of gates (3-4)
 
     // PoI configuration
     poiCount: { min: 6, max: 8 },

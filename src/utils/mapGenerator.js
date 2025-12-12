@@ -106,8 +106,14 @@ function generateAttempt(tierConfig, mapType, rng, seed) {
     zone: getZone(hex.q, hex.r, tierConfig.radius)
   }));
 
-  // Place gates equidistantly on perimeter
-  const gates = placeGates(hexes, tierConfig.gateCount, tierConfig.radius);
+  // Determine gate count (support both fixed number and {min, max} range)
+  const gateCountConfig = tierConfig.gateCount;
+  const gateCount = typeof gateCountConfig === 'object'
+    ? rng.randomInt(gateCountConfig.min, gateCountConfig.max + 1)
+    : gateCountConfig;
+
+  // Place gates equidistantly on perimeter with random starting position
+  const gates = placeGates(hexes, gateCount, tierConfig.radius, rng);
 
   // Place PoIs with zone distribution and spacing constraints
   const pois = placePOIs(hexes, tierConfig, mapType, gates, rng);
@@ -162,7 +168,7 @@ function generateAttempt(tierConfig, mapType, rng, seed) {
     poiCount: pois.length,
     poiTypeBreakdown,
     radius: tierConfig.radius,
-    gateCount: tierConfig.gateCount,
+    gateCount: gates.length,
 
     // Map variance - real calculated values
     baseDetection,           // Starting detection meter %
@@ -189,18 +195,21 @@ function generateAttempt(tierConfig, mapType, rng, seed) {
 }
 
 /**
- * Place gates equidistantly on perimeter
+ * Place gates equidistantly on perimeter with random starting position
  * @param {Array<Object>} hexes - All hexes on map
  * @param {number} gateCount - Number of gates to place
  * @param {number} radius - Map radius
+ * @param {SeededRandom} rng - Random number generator for consistent placement
  * @returns {Array<Object>} Array of gate hexes
  */
-function placeGates(hexes, gateCount, radius) {
+function placeGates(hexes, gateCount, radius, rng) {
   const gates = [];
   const angleStep = (2 * Math.PI) / gateCount;
+  // Random starting angle so gates aren't always in the same positions
+  const startAngle = rng.random() * 2 * Math.PI;
 
   for (let i = 0; i < gateCount; i++) {
-    const angle = i * angleStep;
+    const angle = startAngle + (i * angleStep);
 
     // Convert polar to axial coordinates
     // For flat-top hexagons, we need to adjust the conversion

@@ -209,12 +209,9 @@ class MovementController {
    */
   getHexEncounterChance(hex, tierConfig, mapData = null) {
     if (hex.type === 'poi') {
-      // POI encounter chance = POI's own value + zone-based value
-      const poiChance = hex.poiData?.encounterChance || 15;
-      const zoneChance = (mapData?.encounterByZone && hex.zone)
-        ? (mapData.encounterByZone[hex.zone] || 0)
-        : 0;
-      return poiChance + zoneChance;
+      // PoIs use the salvage system, not movement encounters
+      // Return 0 - no random encounter risk when moving to a PoI
+      return 0;
     }
     if (hex.type === 'gate') {
       return tierConfig?.encounterChance?.gate || 0;

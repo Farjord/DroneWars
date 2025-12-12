@@ -120,7 +120,7 @@ export const packTypes = {
       tier3: {}
     },
     cardCount: { min: 0, max: 0 },
-    creditsRange: { min: 300, max: 600 },
+    creditsRange: { min: 50, max: 200 },
     color: '#44ff88',
   },
 };

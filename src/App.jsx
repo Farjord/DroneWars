@@ -24,6 +24,7 @@ import FloatingCardControls from './components/ui/FloatingCardControls.jsx';
 import LogModal from './components/modals/LogModal.jsx';
 import ModalContainer from './components/ui/ModalContainer.jsx';
 import TargetingArrow, { calculatePolygonPoints } from './components/ui/TargetingArrow.jsx';
+import InterceptionTargetLine from './components/ui/InterceptionTargetLine.jsx';
 import ExplosionEffect from './components/animations/ExplosionEffect.jsx';
 import WaitingOverlay from './components/ui/WaitingOverlay';
 import InterceptedBadge from './components/ui/InterceptedBadge.jsx';
@@ -3850,6 +3851,13 @@ const App = ({ phaseAnimationQueue }) => {
      <TargetingArrow visible={arrowState.visible} start={arrowState.start} end={arrowState.end} lineRef={arrowLineRef} />
      <TargetingArrow visible={cardDragArrowState.visible} start={cardDragArrowState.start} end={cardDragArrowState.end} lineRef={cardDragArrowRef} color="#22d3ee" />
      <TargetingArrow visible={droneDragArrowState.visible} start={droneDragArrowState.start} end={droneDragArrowState.end} lineRef={droneDragArrowRef} color="#ff0055" showPulses={false} />
+     <InterceptionTargetLine
+       visible={!!playerInterceptionChoice}
+       attackDetails={playerInterceptionChoice?.attackDetails}
+       droneRefs={droneRefs}
+       shipSectionRefs={sectionRefs}
+       gameAreaRef={gameAreaRef}
+     />
      {explosions.map(exp => <ExplosionEffect key={exp.id} top={exp.top} left={exp.left} size={exp.size} />)}
      {flyingDrones.map(fd => (
 

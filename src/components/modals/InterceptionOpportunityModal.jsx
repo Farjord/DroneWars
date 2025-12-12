@@ -3,10 +3,13 @@
 // ========================================
 // Modal that allows player to choose whether to intercept an incoming attack
 
-import React from 'react';
-import { Shield, Swords } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Shield, Swords, ChevronDown, ChevronUp } from 'lucide-react';
 import DroneToken from '../ui/DroneToken.jsx';
 import ShipSection from '../ui/ShipSection.jsx';
+
+// Empty ref for modal DroneTokens - prevents them from overwriting board drone refs
+const EMPTY_DRONE_REFS = { current: {} };
 
 /**
  * INTERCEPTION OPPORTUNITY MODAL COMPONENT
@@ -41,16 +44,47 @@ const InterceptionOpportunityModal = ({
   droneRefs,
   mandatoryAction
 }) => {
+  const [isExpanded, setIsExpanded] = useState(true);
+
   if (!show || !choiceData) return null;
 
   const { attackDetails, interceptors } = choiceData;
   const { attacker, target, targetType, lane } = attackDetails;
 
   return (
-    <div className="dw-modal-overlay" onClick={onDecline}>
-      <div className="dw-modal-content dw-modal--xxl dw-modal--action" onClick={e => e.stopPropagation()}>
+    <div
+      className="dw-modal-overlay"
+      onClick={onDecline}
+      style={{
+        background: isExpanded ? undefined : 'transparent',
+        backdropFilter: isExpanded ? undefined : 'none',
+        pointerEvents: isExpanded ? 'auto' : 'none'
+      }}
+    >
+      <div
+        className="dw-modal-content dw-modal--xxl dw-modal--action"
+        onClick={e => e.stopPropagation()}
+        style={!isExpanded ? {
+          pointerEvents: 'auto',
+          background: 'transparent',
+          border: 'none',
+          boxShadow: 'none'
+        } : { pointerEvents: 'auto' }}
+      >
         {/* Header */}
-        <div className="dw-modal-header">
+        <div
+          className="dw-modal-header"
+          style={{
+            cursor: 'pointer',
+            ...(! isExpanded && {
+              background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(10, 15, 28, 0.98) 100%)',
+              border: '1px solid var(--modal-action-border)',
+              borderRadius: '4px',
+              boxShadow: '0 0 40px var(--modal-action-glow), 0 8px 32px rgba(0, 0, 0, 0.6)'
+            })
+          }}
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
           <div className="dw-modal-header-icon dw-modal-header-icon--pulse">
             <Swords size={28} />
           </div>
@@ -58,10 +92,20 @@ const InterceptionOpportunityModal = ({
             <h2 className="dw-modal-header-title">Interception Opportunity</h2>
             <p className="dw-modal-header-subtitle">{lane?.replace('lane', 'Lane ') || 'Unknown Lane'}</p>
           </div>
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', color: 'var(--modal-theme)', opacity: 0.7 }}>
+            {isExpanded ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+          </div>
         </div>
 
-        {/* Body */}
-        <div className="dw-modal-body">
+        {/* Body - Always rendered, fades when collapsed */}
+        <div
+          className="dw-modal-body"
+          style={{
+            opacity: isExpanded ? 1 : 0,
+            pointerEvents: isExpanded ? 'auto' : 'none',
+            transition: 'opacity 0.2s ease'
+          }}
+        >
           {/* Combat Preview */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '16px 0' }}>
             <div className="flex items-start justify-center gap-8">
@@ -71,7 +115,7 @@ const InterceptionOpportunityModal = ({
                   drone={attacker}
                   isPlayer={false}
                   lane={lane}
-                  droneRefs={droneRefs}
+                  droneRefs={EMPTY_DRONE_REFS}
                   mandatoryAction={mandatoryAction}
                   localPlayerState={localPlayerState}
                 />
@@ -86,7 +130,7 @@ const InterceptionOpportunityModal = ({
                     drone={target}
                     isPlayer={true}
                     lane={lane}
-                    droneRefs={droneRefs}
+                    droneRefs={EMPTY_DRONE_REFS}
                     mandatoryAction={mandatoryAction}
                     localPlayerState={localPlayerState}
                   />
@@ -132,7 +176,7 @@ const InterceptionOpportunityModal = ({
                     isPlayer={true}
                     onClick={() => onIntercept(drone)}
                     lane={lane}
-                    droneRefs={droneRefs}
+                    droneRefs={EMPTY_DRONE_REFS}
                     mandatoryAction={mandatoryAction}
                     localPlayerState={localPlayerState}
                   />
@@ -142,8 +186,15 @@ const InterceptionOpportunityModal = ({
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="dw-modal-actions">
+        {/* Actions - Always rendered, fades when collapsed */}
+        <div
+          className="dw-modal-actions"
+          style={{
+            opacity: isExpanded ? 1 : 0,
+            pointerEvents: isExpanded ? 'auto' : 'none',
+            transition: 'opacity 0.2s ease'
+          }}
+        >
           <button className="dw-btn dw-btn-cancel" onClick={onDecline}>
             Decline Interception
           </button>

@@ -444,25 +444,30 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
           />
         )}
 
-        {/* Waypoint number badge */}
+        {/* Waypoint number badge - centered, squared, matching project aesthetic */}
         {isWaypointHex(hex) && !isPlayer && (
           <g className="waypoint-badge">
-            <circle
-              cx={x + hexSize * 0.5}
-              cy={y - hexSize * 0.5}
-              r={10}
-              fill="#06b6d4"
-              stroke="#fff"
-              strokeWidth={1.5}
+            <rect
+              x={x - 14}
+              y={y - 14}
+              width={28}
+              height={28}
+              rx={3}
+              ry={3}
+              fill="rgba(17, 24, 39, 0.9)"
+              stroke="#06b6d4"
+              strokeWidth={2}
+              filter="url(#waypoint-glow)"
             />
             <text
-              x={x + hexSize * 0.5}
-              y={y - hexSize * 0.5}
-              fontSize="11"
+              x={x}
+              y={y}
+              fontSize="16"
               fontWeight="bold"
+              fontFamily="'Exo', monospace"
               textAnchor="middle"
               dominantBaseline="central"
-              fill="#fff"
+              fill="#06b6d4"
             >
               {getWaypointNumber(hex)}
             </text>
@@ -647,6 +652,11 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
                 />
               </pattern>
             ))}
+
+            {/* Waypoint badge glow effect */}
+            <filter id="waypoint-glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#06b6d4" floodOpacity="0.5"/>
+            </filter>
           </defs>
 
           {/* Render all hexes */}

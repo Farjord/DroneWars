@@ -157,7 +157,7 @@ function RunSummaryModal({ summary, onClose }) {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center' }}>
                 {cards.map((card, idx) => (
                   <div key={idx}>
-                    <ActionCard card={card} />
+                    <ActionCard card={card} isPlayable={true} />
                   </div>
                 ))}
               </div>
