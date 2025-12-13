@@ -647,5 +647,138 @@ describe('CombatOutcomeProcessor', () => {
       expect(finalCall.currentRunState.creditsEarned).toBe(150) // 50 + 100
       expect(finalCall.currentRunState.aiCoresEarned).toBe(3) // 1 + 2
     })
+
+    it('should set blockadeCleared flag for blockade victory (prevents double blockade roll)', () => {
+      // BUG FIX: If auto-extraction fails to trigger (e.g., useEffect timing issue),
+      // player might click Extract again. Without blockadeCleared flag, the modal
+      // would roll for blockade AGAIN, potentially triggering a second combat.
+      // blockadeCleared persists in run state to prevent this.
+
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: {
+          collectedLoot: [],
+          creditsEarned: 0,
+          aiCoresEarned: 0
+        },
+        singlePlayerEncounter: { isBlockade: true }
+      })
+
+      const combatLoot = { cards: [], salvageItem: null, aiCores: 0 }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT: Should set blockadeCleared flag in addition to pendingBlockadeExtraction
+      const setStateCalls = gameStateManager.setState.mock.calls
+      const finalCall = setStateCalls[setStateCalls.length - 1][0]
+      expect(finalCall.currentRunState.blockadeCleared).toBe(true)
+    })
+
+    it('should NOT set blockadeCleared for regular POI combat', () => {
+      // Only blockade victories should set blockadeCleared
+
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: {
+          collectedLoot: [],
+          creditsEarned: 0,
+          aiCoresEarned: 0
+        },
+        singlePlayerEncounter: { isBlockade: false }
+      })
+
+      const combatLoot = { cards: [], salvageItem: null, aiCores: 0 }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT: blockadeCleared should NOT be set
+      const setStateCalls = gameStateManager.setState.mock.calls
+      const finalCall = setStateCalls[setStateCalls.length - 1][0]
+      expect(finalCall.currentRunState.blockadeCleared).toBeUndefined()
+    })
+
+    /**
+     * TDD Tests: Fallback blockade detection from currentRunState.isBlockadeCombat
+     * BUG FIX: singlePlayerEncounter may be cleared/null before finalizeLootCollection
+     * reads it. CombatOutcomeProcessor should fall back to currentRunState.isBlockadeCombat
+     * to ensure blockade victories are properly detected.
+     */
+    it('should use currentRunState.isBlockadeCombat as fallback when singlePlayerEncounter.isBlockade is missing', () => {
+      // EXPLANATION: If singlePlayerEncounter is null/undefined (race condition),
+      // fall back to currentRunState.isBlockadeCombat for blockade detection.
+
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: {
+          collectedLoot: [],
+          creditsEarned: 0,
+          aiCoresEarned: 0,
+          isBlockadeCombat: true  // Fallback flag
+        },
+        singlePlayerEncounter: null  // Simulating race condition - encounter cleared
+      })
+
+      const combatLoot = { cards: [], salvageItem: null, aiCores: 0 }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT: Should still detect as blockade via fallback
+      const setStateCalls = gameStateManager.setState.mock.calls
+      const finalCall = setStateCalls[setStateCalls.length - 1][0]
+      expect(finalCall.currentRunState.pendingBlockadeExtraction).toBe(true)
+      expect(finalCall.currentRunState.blockadeCleared).toBe(true)
+    })
+
+    it('should use currentRunState.isBlockadeCombat as fallback when singlePlayerEncounter.isBlockade is undefined', () => {
+      // EXPLANATION: Even if encounter exists but isBlockade is undefined,
+      // fall back to currentRunState.isBlockadeCombat.
+
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: {
+          collectedLoot: [],
+          creditsEarned: 0,
+          aiCoresEarned: 0,
+          isBlockadeCombat: true  // Fallback flag
+        },
+        singlePlayerEncounter: { aiId: 'TestAI' }  // isBlockade not set
+      })
+
+      const combatLoot = { cards: [], salvageItem: null, aiCores: 0 }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT: Should detect as blockade via fallback
+      const setStateCalls = gameStateManager.setState.mock.calls
+      const finalCall = setStateCalls[setStateCalls.length - 1][0]
+      expect(finalCall.currentRunState.pendingBlockadeExtraction).toBe(true)
+      expect(finalCall.currentRunState.blockadeCleared).toBe(true)
+    })
+
+    it('should NOT trigger blockade extraction when neither flag is set', () => {
+      // EXPLANATION: If both singlePlayerEncounter.isBlockade and
+      // currentRunState.isBlockadeCombat are false/missing, it's regular combat.
+
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: {
+          collectedLoot: [],
+          creditsEarned: 0,
+          aiCoresEarned: 0,
+          isBlockadeCombat: false  // Explicitly false
+        },
+        singlePlayerEncounter: { aiId: 'TestAI', isBlockade: false }
+      })
+
+      const combatLoot = { cards: [], salvageItem: null, aiCores: 0 }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT: Should NOT be treated as blockade
+      const setStateCalls = gameStateManager.setState.mock.calls
+      const finalCall = setStateCalls[setStateCalls.length - 1][0]
+      expect(finalCall.currentRunState.pendingBlockadeExtraction).toBeUndefined()
+      expect(finalCall.currentRunState.blockadeCleared).toBeUndefined()
+    })
   })
 })

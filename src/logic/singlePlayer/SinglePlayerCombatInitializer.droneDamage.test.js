@@ -30,7 +30,7 @@ describe('SinglePlayerCombatInitializer - Drone Damage Loading', () => {
     name: `Test Ship Slot ${slotId}`,
     status: 'active',
     isImmutable: slotId === 0,
-    shipId: 'CORVETTE',
+    shipId: 'SHIP_001',
     decklist: [],
     drones: dronePool.map(name => ({ name })),
     activeDronePool: dronePool,

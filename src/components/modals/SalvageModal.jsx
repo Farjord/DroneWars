@@ -5,7 +5,7 @@
 // Shows 1-5 slots based on zone, allows player to salvage one by one
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Target, Lock, CheckCircle, AlertTriangle, Scan, Shield, Zap } from 'lucide-react';
+import { Target, Lock, CheckCircle, AlertTriangle, Scan, Shield, Zap, LogOut } from 'lucide-react';
 import HiddenCard from '../ui/HiddenCard.jsx';
 import { packTypes } from '../../data/cardPackData.js';
 import './SalvageModal.css';
@@ -27,6 +27,7 @@ const IconPOI = ({ size = 32 }) => (
  * @param {Function} onSalvageSlot - Callback to attempt salvaging next slot
  * @param {Function} onLeave - Callback to leave POI (collect revealed items)
  * @param {Function} onEngageCombat - Callback when encounter triggered
+ * @param {Function} onEscape - Callback to escape combat (takes damage, no rewards)
  * @param {Function} onQuit - Callback for MIA (quit when encounter triggered)
  */
 function SalvageModal({
@@ -37,6 +38,7 @@ function SalvageModal({
   onLeave,
   onEngageCombat,
   onQuickDeploy,
+  onEscape,
   validQuickDeployments = [],
   onQuit
 }) {
@@ -292,11 +294,15 @@ function SalvageModal({
         {/* Actions */}
         <div className="dw-modal-actions">
           {encounterTriggered ? (
-            // Combat triggered - show engage or abort
+            // Combat triggered - show abort, escape, or engage
             <>
               <button className="dw-btn-secondary" onClick={onQuit}>
                 <AlertTriangle size={18} />
                 Abort Mission
+              </button>
+              <button className="dw-btn-secondary" onClick={onEscape}>
+                <LogOut size={18} />
+                Escape
               </button>
               {validQuickDeployments.length > 0 ? (
                 // Has quick deployments - show split buttons

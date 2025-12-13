@@ -472,4 +472,235 @@ describe('ExtractionController', () => {
       expect(result.success).toBe(true);
     });
   });
+
+  // ========================================
+  // VARIABLE ESCAPE DAMAGE TESTS (TDD)
+  // ========================================
+  // Tests for AI-based variable escape damage with random distribution
+  //
+  // Requirements:
+  // - AI defines escape damage range (e.g., { min: 1, max: 3 })
+  // - Total damage rolled within range
+  // - Each damage point randomly assigned to a ship section
+
+  describe('Variable Escape Damage', () => {
+    describe('getEscapeDamageForAI', () => {
+      it('should return AI escapeDamage range when defined', () => {
+        const ai = { name: 'Scout', escapeDamage: { min: 1, max: 3 } };
+        const result = ExtractionController.getEscapeDamageForAI(ai);
+        expect(result).toEqual({ min: 1, max: 3 });
+      });
+
+      it('should return default {min: 2, max: 2} when AI has no escapeDamage', () => {
+        const ai = { name: 'Unknown' };
+        const result = ExtractionController.getEscapeDamageForAI(ai);
+        expect(result).toEqual({ min: 2, max: 2 });
+      });
+
+      it('should return default when AI is null/undefined', () => {
+        expect(ExtractionController.getEscapeDamageForAI(null)).toEqual({ min: 2, max: 2 });
+        expect(ExtractionController.getEscapeDamageForAI(undefined)).toEqual({ min: 2, max: 2 });
+      });
+    });
+
+    describe('createRNG (seeded random)', () => {
+      it('should create RNG with random() method', () => {
+        const rng = ExtractionController.createRNG(12345);
+        expect(typeof rng.random).toBe('function');
+        const value = rng.random();
+        expect(value).toBeGreaterThanOrEqual(0);
+        expect(value).toBeLessThan(1);
+      });
+
+      it('should create RNG with randomIntInclusive() method', () => {
+        const rng = ExtractionController.createRNG(12345);
+        expect(typeof rng.randomIntInclusive).toBe('function');
+        const value = rng.randomIntInclusive(1, 5);
+        expect(value).toBeGreaterThanOrEqual(1);
+        expect(value).toBeLessThanOrEqual(5);
+      });
+
+      it('should produce same sequence with same seed', () => {
+        const rng1 = ExtractionController.createRNG(12345);
+        const rng2 = ExtractionController.createRNG(12345);
+
+        // Same seed should produce identical sequences
+        for (let i = 0; i < 10; i++) {
+          expect(rng1.random()).toBe(rng2.random());
+        }
+      });
+
+      it('should produce different sequences with different seeds', () => {
+        const rng1 = ExtractionController.createRNG(12345);
+        const rng2 = ExtractionController.createRNG(54321);
+
+        // Different seeds should produce different values
+        const values1 = Array.from({ length: 5 }, () => rng1.random());
+        const values2 = Array.from({ length: 5 }, () => rng2.random());
+        expect(values1).not.toEqual(values2);
+      });
+    });
+
+    describe('applyEscapeDamage with random distribution', () => {
+      it('should distribute total damage randomly across sections', () => {
+        const runState = {
+          shipSections: {
+            Bridge: { hull: 8, maxHull: 8, thresholds: { damaged: 4, critical: 0 } },
+            'Power Cell': { hull: 8, maxHull: 8, thresholds: { damaged: 4, critical: 0 } },
+            'Drone Control Hub': { hull: 8, maxHull: 8, thresholds: { damaged: 4, critical: 0 } }
+          }
+        };
+        const ai = { escapeDamage: { min: 3, max: 3 } }; // Fixed 3 for predictable test
+
+        const result = ExtractionController.applyEscapeDamage(runState, ai);
+
+        // Total damage across all sections should equal 3
+        const originalTotal = Object.values(runState.shipSections).reduce((sum, s) => sum + s.hull, 0);
+        const newTotal = Object.values(result.updatedSections).reduce((sum, s) => sum + s.hull, 0);
+        expect(originalTotal - newTotal).toBe(3);
+      });
+
+      it('should return totalDamage in result', () => {
+        const runState = {
+          shipSections: {
+            Bridge: { hull: 8, maxHull: 8, thresholds: { damaged: 4, critical: 0 } }
+          }
+        };
+        const ai = { escapeDamage: { min: 2, max: 2 } };
+
+        const result = ExtractionController.applyEscapeDamage(runState, ai);
+        expect(result.totalDamage).toBe(2);
+      });
+
+      it('should not reduce hull below 0', () => {
+        const runState = {
+          shipSections: {
+            Bridge: { hull: 1, maxHull: 8, thresholds: { damaged: 4, critical: 0 } }
+          }
+        };
+        const ai = { escapeDamage: { min: 5, max: 5 } };
+
+        const result = ExtractionController.applyEscapeDamage(runState, ai);
+        expect(result.updatedSections.Bridge.hull).toBe(0);
+      });
+
+      it('should correctly determine wouldDestroy based on thresholds', () => {
+        // Ship where all sections will be damaged after escape
+        const nearDestroyState = {
+          shipSections: {
+            Bridge: { hull: 5, maxHull: 8, thresholds: { damaged: 4, critical: 0 } },
+            'Power Cell': { hull: 5, maxHull: 8, thresholds: { damaged: 4, critical: 0 } },
+            'Drone Control Hub': { hull: 5, maxHull: 8, thresholds: { damaged: 4, critical: 0 } }
+          }
+        };
+        const ai = { escapeDamage: { min: 3, max: 3 } }; // Will push all to threshold or below
+
+        const result = ExtractionController.applyEscapeDamage(nearDestroyState, ai);
+        // wouldDestroy is true only if ALL sections are at or below damaged threshold
+        expect(result.wouldDestroy).toBeDefined();
+      });
+
+      it('should not mutate original shipSections', () => {
+        const runState = {
+          shipSections: {
+            Bridge: { hull: 8, maxHull: 8, thresholds: { damaged: 4, critical: 0 } }
+          }
+        };
+        const ai = { escapeDamage: { min: 2, max: 2 } };
+
+        ExtractionController.applyEscapeDamage(runState, ai);
+
+        // Original should be unchanged
+        expect(runState.shipSections.Bridge.hull).toBe(8);
+      });
+
+      it('should produce same results with same seed', () => {
+        const runState = {
+          shipSections: {
+            Bridge: { hull: 8, maxHull: 8, thresholds: { damaged: 4, critical: 0 } },
+            'Power Cell': { hull: 8, maxHull: 8, thresholds: { damaged: 4, critical: 0 } },
+            'Drone Control Hub': { hull: 8, maxHull: 8, thresholds: { damaged: 4, critical: 0 } }
+          }
+        };
+        const ai = { escapeDamage: { min: 1, max: 5 } };
+        const seed = 12345;
+
+        const result1 = ExtractionController.applyEscapeDamage(runState, ai, seed);
+        const result2 = ExtractionController.applyEscapeDamage(runState, ai, seed);
+
+        // Same seed should produce identical results
+        expect(result1.totalDamage).toBe(result2.totalDamage);
+        expect(result1.updatedSections).toEqual(result2.updatedSections);
+        expect(result1.wouldDestroy).toBe(result2.wouldDestroy);
+      });
+
+      it('should produce different results with different seeds', () => {
+        const runState = {
+          shipSections: {
+            Bridge: { hull: 8, maxHull: 8, thresholds: { damaged: 4, critical: 0 } },
+            'Power Cell': { hull: 8, maxHull: 8, thresholds: { damaged: 4, critical: 0 } },
+            'Drone Control Hub': { hull: 8, maxHull: 8, thresholds: { damaged: 4, critical: 0 } }
+          }
+        };
+        const ai = { escapeDamage: { min: 1, max: 5 } };
+
+        // Collect results with multiple different seeds
+        const results = [];
+        for (let seed = 1000; seed < 1010; seed++) {
+          const result = ExtractionController.applyEscapeDamage(runState, ai, seed);
+          results.push({
+            totalDamage: result.totalDamage,
+            sections: JSON.stringify(result.updatedSections)
+          });
+        }
+
+        // At least some should be different (extremely unlikely all 10 are identical)
+        const uniqueResults = new Set(results.map(r => `${r.totalDamage}-${r.sections}`));
+        expect(uniqueResults.size).toBeGreaterThan(1);
+      });
+
+      it('should default to Date.now() when no seed provided', () => {
+        const runState = {
+          shipSections: {
+            Bridge: { hull: 8, maxHull: 8, thresholds: { damaged: 4, critical: 0 } }
+          }
+        };
+        const ai = { escapeDamage: { min: 2, max: 2 } };
+
+        // Should not throw when called without seed
+        expect(() => ExtractionController.applyEscapeDamage(runState, ai)).not.toThrow();
+      });
+    });
+
+    describe('checkEscapeCouldDestroy (worst-case analysis)', () => {
+      it('should return true if max damage could destroy ship', () => {
+        // All sections at 5 hull, threshold 4
+        // Max damage 5 could hit same section 5 times, dropping it to 0
+        const vulnerableState = {
+          shipSections: {
+            Bridge: { hull: 5, maxHull: 8, thresholds: { damaged: 4, critical: 0 } },
+            'Power Cell': { hull: 5, maxHull: 8, thresholds: { damaged: 4, critical: 0 } },
+            'Drone Control Hub': { hull: 5, maxHull: 8, thresholds: { damaged: 4, critical: 0 } }
+          }
+        };
+        const hardAI = { escapeDamage: { min: 3, max: 5 } };
+
+        const result = ExtractionController.checkEscapeCouldDestroy(vulnerableState, hardAI);
+        expect(result.couldDestroy).toBeDefined();
+        expect(result.maxDamage).toBe(5);
+      });
+
+      it('should return escapeDamageRange for UI display', () => {
+        const state = {
+          shipSections: {
+            Bridge: { hull: 8, maxHull: 8, thresholds: { damaged: 4, critical: 0 } }
+          }
+        };
+        const ai = { escapeDamage: { min: 1, max: 3 } };
+
+        const result = ExtractionController.checkEscapeCouldDestroy(state, ai);
+        expect(result.escapeDamageRange).toEqual({ min: 1, max: 3 });
+      });
+    });
+  });
 })

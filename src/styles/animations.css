@@ -50,6 +50,54 @@
   animation: guardian-pulse 2s infinite ease-in-out;
 }
 
+/* Interceptor card-level glow - applied to entire drone token during interception mode */
+@keyframes interceptor-card-pulse {
+  0%, 100% {
+    box-shadow: 0 0 10px 3px rgba(255, 200, 0, 0.7),
+                0 0 20px 5px rgba(255, 150, 0, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 15px 5px rgba(255, 220, 0, 0.9),
+                0 0 30px 8px rgba(255, 180, 0, 0.7);
+  }
+}
+
+.interceptor-card-glow {
+  animation: interceptor-card-pulse 1.5s infinite ease-in-out;
+}
+
+/* Cyan interceptor card glow - for player's own interceptor options */
+@keyframes interceptor-card-pulse-cyan {
+  0%, 100% {
+    box-shadow: 0 0 10px 3px rgba(34, 211, 238, 0.7),
+                0 0 20px 5px rgba(6, 182, 212, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 15px 5px rgba(34, 211, 238, 0.9),
+                0 0 30px 8px rgba(6, 182, 212, 0.7);
+  }
+}
+
+.interceptor-card-glow-cyan {
+  animation: interceptor-card-pulse-cyan 1.5s infinite ease-in-out;
+}
+
+/* Cyan interceptor hexagon glow - for player's own interceptor options */
+.interceptor-glow-cyan {
+  position: relative;
+}
+
+.interceptor-glow-cyan::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.9) 0%, rgba(6, 182, 212, 0.7) 100%);
+  filter: blur(3px);
+  z-index: -1;
+  animation: interceptor-pulse 2s infinite ease-in-out;
+}
+
 /* === SHAKE ANIMATIONS === */
 
 @keyframes shake {

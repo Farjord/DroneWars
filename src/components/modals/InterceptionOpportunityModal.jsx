@@ -19,6 +19,7 @@ const EMPTY_DRONE_REFS = { current: {} };
  * @param {boolean} show - Whether to show the modal
  * @param {Function} onIntercept - Callback when player chooses to intercept
  * @param {Function} onDecline - Callback when player declines interception
+ * @param {Function} onViewBattlefield - Callback to close modal and enter interception mode on battlefield
  * @param {Object} gameEngine - Game engine reference
  * @param {string} turnPhase - Current turn phase
  * @param {boolean} isMyTurn - Whether it's the local player's turn
@@ -34,6 +35,7 @@ const InterceptionOpportunityModal = ({
   show,
   onIntercept,
   onDecline,
+  onViewBattlefield,
   gameEngine,
   turnPhase,
   isMyTurn,
@@ -195,6 +197,9 @@ const InterceptionOpportunityModal = ({
             transition: 'opacity 0.2s ease'
           }}
         >
+          <button className="dw-btn dw-btn-secondary" onClick={onViewBattlefield}>
+            View Battlefield
+          </button>
           <button className="dw-btn dw-btn-cancel" onClick={onDecline}>
             Decline Interception
           </button>

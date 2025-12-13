@@ -398,9 +398,9 @@ describe('LootGenerator - generateSalvageSlots', () => {
       }
     })
 
-    it('CREDITS_PACK generates high-value salvage items', () => {
-      // EXPLANATION: CREDITS_PACK has creditsRange { min: 300, max: 600 }.
-      // Salvage items should reflect these higher values.
+    it('CREDITS_PACK generates salvage items with expected value range', () => {
+      // EXPLANATION: CREDITS_PACK has creditsRange { min: 50, max: 200 }.
+      // Salvage items should reflect these values.
 
       let totalCredits = 0
       let count = 0
@@ -416,13 +416,13 @@ describe('LootGenerator - generateSalvageSlots', () => {
       }
 
       const averageValue = totalCredits / count
-      // CREDITS_PACK range is 300-600, so average should be around 450
-      expect(averageValue).toBeGreaterThan(250)
+      // CREDITS_PACK range is 50-200, so average should be around 125
+      expect(averageValue).toBeGreaterThan(75)
     })
 
     it('different packs produce different salvage item value distributions', () => {
       // EXPLANATION: ORDNANCE_PACK (10-100 credits) should produce lower value items
-      // than CREDITS_PACK (300-600 credits).
+      // than CREDITS_PACK (50-200 credits).
 
       let ordnanceTotal = 0
       let creditsTotal = 0
@@ -530,8 +530,8 @@ describe('LootGenerator - openPack salvage items', () => {
       }
     })
 
-    it('CREDITS_PACK should return high-value salvageItem', () => {
-      // CREDITS_PACK has creditsRange: { min: 300, max: 600 }
+    it('CREDITS_PACK should return salvageItem with expected value range', () => {
+      // CREDITS_PACK has creditsRange: { min: 50, max: 200 }
       let total = 0
       const samples = 30
 
@@ -541,7 +541,8 @@ describe('LootGenerator - openPack salvage items', () => {
       }
 
       const average = total / samples
-      expect(average).toBeGreaterThan(300)
+      // Average should be around 125 (midpoint of 50-200)
+      expect(average).toBeGreaterThan(75)
     })
 
     it('salvageItem image should start with /Credits/', () => {

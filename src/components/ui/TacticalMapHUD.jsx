@@ -104,7 +104,27 @@ function TacticalMapHUD({
   const totalMaxHull = shipSections.reduce((sum, s) => sum + s.maxHull, 0);
   const totalHullPercentage = totalMaxHull > 0 ? (totalHull / totalMaxHull) * 100 : 0;
 
-  // Helper for hull color based on percentage
+  /**
+   * Get hull color class based on thresholds
+   * Uses ship's damaged/critical thresholds for accurate status display
+   * Falls back to percentage-based if thresholds not available
+   */
+  const getSectionColorClass = (section) => {
+    // Use threshold-based coloring if thresholds are available
+    if (section.thresholds) {
+      const { damaged, critical } = section.thresholds;
+      if (section.hull <= critical) return 'stat-value-critical';
+      if (section.hull <= damaged) return 'stat-value-warning';
+      return 'stat-value-healthy';
+    }
+    // Fallback to percentage-based for backwards compatibility
+    const pct = section.maxHull > 0 ? (section.hull / section.maxHull) * 100 : 0;
+    if (pct >= 70) return 'stat-value-healthy';
+    if (pct >= 40) return 'stat-value-warning';
+    return 'stat-value-critical';
+  };
+
+  // Helper for total hull color based on percentage (no thresholds for totals)
   const getHullColorClass = (percentage) => {
     if (percentage >= 70) return 'stat-value-healthy';
     if (percentage >= 40) return 'stat-value-warning';
@@ -117,17 +137,14 @@ function TacticalMapHUD({
       <div className="hud-top">
         <div className="hud-stats-group">
           {/* Per-Section Hull */}
-          {shipSections.map(section => {
-            const pct = section.maxHull > 0 ? (section.hull / section.maxHull) * 100 : 0;
-            return (
-              <div key={section.id} className="hud-stat">
-                <span className="stat-label">{section.type}</span>
-                <span className={`stat-value ${getHullColorClass(pct)}`}>
-                  {section.hull}/{section.maxHull}
-                </span>
-              </div>
-            );
-          })}
+          {shipSections.map(section => (
+            <div key={section.id} className="hud-stat">
+              <span className="stat-label">{section.type}</span>
+              <span className={`stat-value ${getSectionColorClass(section)}`}>
+                {section.hull}/{section.maxHull}
+              </span>
+            </div>
+          ))}
 
           {/* Total Hull */}
           <div className="hud-stat hud-stat-total">

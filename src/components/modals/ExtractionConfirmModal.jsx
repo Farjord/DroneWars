@@ -239,6 +239,17 @@ function ExtractionConfirmModal({
         <p className="extraction-blocked-text">
           Enemy forces are blocking your extraction route. Engage to break through.
         </p>
+
+        {/* Cannot escape notice */}
+        <p className="extraction-no-escape-text" style={{
+          marginTop: '12px',
+          fontSize: '12px',
+          color: 'rgba(239, 68, 68, 0.8)',
+          fontStyle: 'italic',
+          textAlign: 'center'
+        }}>
+          You cannot escape this encounter.
+        </p>
       </div>
 
       {/* Actions */}

@@ -98,6 +98,7 @@ const aiPersonalities = [
     modes: ['extraction'],  // Extraction Mode only
     shipId: 'SHIP_003',
     imagePath: '/DroneWars/AI/Scout.png',
+    escapeDamage: { min: 1, max: 3 },  // Easy AI: low escape damage
     dronePool: [
       'Swarm Drone',
       'Scout Drone',
@@ -133,6 +134,7 @@ const aiPersonalities = [
     modes: ['extraction'],
     shipId: 'SHIP_003',
     imagePath: '/DroneWars/AI/Patrol.png',
+    escapeDamage: { min: 1, max: 3 },  // Easy AI: low escape damage
     dronePool: [
       'Scout Drone',
       'Standard Fighter',
@@ -169,6 +171,7 @@ const aiPersonalities = [
     modes: ['extraction'],
     shipId: 'SHIP_001',
     imagePath: '/DroneWars/AI/Cruiser.png',
+    escapeDamage: { min: 2, max: 4 },  // Medium AI: moderate escape damage
     dronePool: [
       'Swarm Drone',
       'Heavy Fighter',
@@ -204,6 +207,7 @@ const aiPersonalities = [
     modes: ['extraction'],
     shipId: 'SHIP_001',
     imagePath: '/DroneWars/AI/Hunter.png',
+    escapeDamage: { min: 2, max: 4 },  // Medium AI: moderate escape damage
     dronePool: [
       'Kamikaze Drone',
       'Interceptor',
@@ -240,6 +244,7 @@ const aiPersonalities = [
     modes: ['extraction'],
     shipId: 'SHIP_001',
     imagePath: '/DroneWars/AI/Blockade.png',
+    escapeDamage: { min: 3, max: 5 },  // Hard AI: high escape damage
     dronePool: [
       'Heavy Fighter',
       'Bomber',

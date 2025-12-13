@@ -10,9 +10,11 @@ import TacticalMapHUD from '../ui/TacticalMapHUD.jsx';
 import HexInfoPanel from '../ui/HexInfoPanel.jsx';
 import POIEncounterModal from '../modals/POIEncounterModal.jsx';
 import SalvageModal from '../modals/SalvageModal.jsx';
+import EscapeConfirmModal from '../modals/EscapeConfirmModal.jsx';
 import QuickDeploySelectionModal from '../modals/QuickDeploySelectionModal.jsx';
 import LoadingEncounterScreen from '../ui/LoadingEncounterScreen.jsx';
 import ExtractionLoadingScreen from '../ui/ExtractionLoadingScreen.jsx';
+import EscapeLoadingScreen from '../ui/EscapeLoadingScreen.jsx';
 import RunInventoryModal from '../modals/RunInventoryModal.jsx';
 import LootRevealModal from '../modals/LootRevealModal.jsx';
 import AbandonRunModal from '../modals/AbandonRunModal.jsx';
@@ -31,7 +33,7 @@ import gameStateManager from '../../managers/GameStateManager.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { mapTiers } from '../../data/mapData.js';
 import { getValidDeploymentsForDeck } from '../../logic/quickDeploy/QuickDeployValidator.js';
-import { getAllShips } from '../../data/shipData.js';
+import { getAllShips, getDefaultShip } from '../../data/shipData.js';
 import { calculateSectionBaseStats } from '../../logic/statsCalculator.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import './TacticalMapScreen.css';
@@ -41,7 +43,12 @@ import './TacticalMapScreen.css';
  * Priority order for hull values:
  * 1. currentRunState.shipSections (live run damage)
  * 2. singlePlayerShipComponentInstances (persistent slot damage)
- * 3. Base component data (fresh/default)
+ * 3. Base stats from ship card + section modifiers (fresh/default)
+ *
+ * Hull values are calculated using calculateSectionBaseStats() which combines:
+ * - Ship's baseHull from shipData.js
+ * - Section's hullModifier from shipSectionData.js
+ * Thresholds also come from the ship's baseThresholds.
  */
 function buildShipSections(shipSlot, slotId, shipComponentInstances, runShipSections) {
   const sections = [];
@@ -53,27 +60,36 @@ function buildShipSections(shipSlot, slotId, shipComponentInstances, runShipSect
         id: sectionData.id || sectionType,
         name: sectionData.name || sectionType,
         type: sectionData.type || sectionType,
-        hull: sectionData.hull ?? 10,
-        maxHull: sectionData.maxHull ?? 10,
+        hull: sectionData.hull ?? 8,
+        maxHull: sectionData.maxHull ?? 8,
+        thresholds: sectionData.thresholds || { damaged: 4, critical: 0 },
         lane: sectionData.lane ?? 1
       });
     }
     return sections;
   }
 
+  // Get ship card for proper hull/threshold calculation
+  const shipCard = shipSlot?.shipId
+    ? getAllShips().find(s => s.id === shipSlot.shipId)
+    : getDefaultShip();
+
   // Fallback: build from ship slot components
-  const componentEntries = Object.entries(shipSlot.shipComponents || {});
+  const componentEntries = Object.entries(shipSlot?.shipComponents || {});
 
   for (const [componentId, lane] of componentEntries) {
     const componentData = shipComponentCollection.find(c => c.id === componentId);
     if (!componentData) continue;
 
-    let currentHull = componentData.hull;
-    let maxHull = componentData.maxHull;
+    // Calculate base stats using ship card + section modifiers (CORRECT approach)
+    const baseStats = calculateSectionBaseStats(shipCard, componentData);
+    let currentHull = baseStats.hull;
+    let maxHull = baseStats.maxHull;
+    let thresholds = baseStats.thresholds;
 
-    // For slots 1-5, check instances for damage
+    // For slots 1-5, check instances for persistent damage
     if (slotId !== 0) {
-      const instance = shipComponentInstances.find(
+      const instance = shipComponentInstances?.find(
         i => i.id === componentId && i.assignedToSlot === slotId
       );
       if (instance) {
@@ -88,6 +104,7 @@ function buildShipSections(shipSlot, slotId, shipComponentInstances, runShipSect
       type: componentData.type,
       hull: currentHull,
       maxHull: maxHull,
+      thresholds: thresholds,
       lane: lane
     });
   }
@@ -142,6 +159,10 @@ function TacticalMapScreen() {
   const [extractionScreenData, setExtractionScreenData] = useState(null);
   const pendingExtractionRef = useRef(null); // Stores result for after animation
 
+  // Escape loading screen state (for escape transitions)
+  const [showEscapeLoadingScreen, setShowEscapeLoadingScreen] = useState(false);
+  const [escapeLoadingData, setEscapeLoadingData] = useState(null);
+
   // Inventory modal state
   const [showInventory, setShowInventory] = useState(false);
 
@@ -154,6 +175,10 @@ function TacticalMapScreen() {
 
   // Extraction/Abandon modal state
   const [showAbandonModal, setShowAbandonModal] = useState(false);
+
+  // Escape confirmation modal state
+  const [showEscapeConfirm, setShowEscapeConfirm] = useState(false);
+  const [escapeContext, setEscapeContext] = useState(null); // { type: 'poi' | 'salvage', isPOI: boolean }
 
   // Loot selection modal state (for Slot 0 extraction limit)
   const [showLootSelectionModal, setShowLootSelectionModal] = useState(false);
@@ -1178,17 +1203,43 @@ function TacticalMapScreen() {
   }, [currentEncounter, loadingEncounterData, waypoints, currentWaypointIndex]);
 
   /**
-   * Handle extraction button click - show confirmation modal
+   * Handle extraction button click - show confirmation modal or extract directly if blockade already cleared
    */
   const handleExtract = useCallback(() => {
-    console.log('[TacticalMap] Extraction button clicked - showing confirmation');
+    console.log('[TacticalMap] Extraction button clicked');
 
     // Stop any ongoing movement
     shouldStopMovement.current = true;
     setIsMoving(false);
     setIsScanningHex(false);
 
-    // Show confirmation modal (modal handles blockade check internally)
+    // Check if blockade was already cleared (player won blockade combat)
+    // This prevents double blockade encounters if auto-extraction failed to trigger
+    const currentState = gameStateManager.getState();
+    const runState = currentState.currentRunState;
+
+    if (runState?.blockadeCleared) {
+      console.log('[TacticalMap] Blockade already cleared - skipping modal, extracting directly');
+
+      const result = ExtractionController.completeExtraction(runState);
+
+      // Prepare extraction screen data
+      setExtractionScreenData({
+        creditsEarned: runState.creditsEarned || 0,
+        cardsCollected: runState.collectedLoot?.filter(l => l.type === 'card').length || 0,
+        aiCoresEarned: runState.aiCoresEarned || 0
+      });
+
+      // Store the result for after animation
+      pendingExtractionRef.current = result;
+
+      // Show extraction loading screen
+      setShowExtractionScreen(true);
+      return;
+    }
+
+    // Normal flow - show confirmation modal (modal handles blockade check internally)
+    console.log('[TacticalMap] Showing extraction confirmation modal');
     setShowExtractionConfirm(true);
   }, []);
 
@@ -1335,6 +1386,130 @@ function TacticalMapScreen() {
     setShowAbandonModal(false);
     ExtractionController.abandonRun();
   }, []);
+
+  /**
+   * Handle escape button click - show escape confirmation modal
+   * @param {Object} context - { type: 'poi' | 'salvage', isPOI: boolean }
+   */
+  const handleEscapeRequest = useCallback((context) => {
+    console.log('[TacticalMap] Escape requested:', context);
+    setEscapeContext(context);
+    setShowEscapeConfirm(true);
+  }, []);
+
+  /**
+   * Handle escape cancel - close escape confirmation modal
+   */
+  const handleEscapeCancel = useCallback(() => {
+    console.log('[TacticalMap] Escape cancelled');
+    setShowEscapeConfirm(false);
+    setEscapeContext(null);
+  }, []);
+
+  /**
+   * Handle escape confirmation - apply damage and show loading screen or trigger MIA
+   */
+  const handleEscapeConfirm = useCallback(() => {
+    console.log('[TacticalMap] Escape confirmed');
+
+    const currentState = gameStateManager.getState();
+    const runState = currentState.currentRunState;
+
+    if (!runState) {
+      console.warn('[TacticalMap] No run state for escape');
+      return;
+    }
+
+    // Get the AI personality for this encounter (affects escape damage)
+    const aiId = currentEncounter?.aiId || 'Rogue Scout Pattern';
+    const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
+
+    // Execute escape - applies variable damage based on AI type
+    const { wouldDestroy, updatedSections, totalDamage, damageHits, initialSections } = ExtractionController.executeEscape(runState, aiPersonality);
+
+    if (wouldDestroy) {
+      // Ship destroyed - trigger MIA
+      console.log('[TacticalMap] Escape destroyed ship - triggering MIA');
+      setShowEscapeConfirm(false);
+      setEscapeContext(null);
+      setShowPOIModal(false);
+      setShowSalvageModal(false);
+      setActiveSalvage(null);
+      setCurrentEncounter(null);
+      ExtractionController.abandonRun();
+      return;
+    }
+
+    // Ship survived - show escape loading screen
+    console.log('[TacticalMap] Escape successful - showing loading screen');
+
+    // Close confirm modal and show loading screen
+    setShowEscapeConfirm(false);
+
+    // Set up escape loading data with damage hits for real-time display
+    setEscapeLoadingData({
+      totalDamage,
+      shipSections: updatedSections,
+      initialSections,
+      damageHits,
+      aiName: aiPersonality?.name || 'Unknown'
+    });
+    setShowEscapeLoadingScreen(true);
+  }, [currentEncounter]);
+
+  /**
+   * Handle escape loading screen completion - resume journey
+   */
+  const handleEscapeLoadingComplete = useCallback(() => {
+    console.log('[TacticalMap] Escape animation complete - resuming journey');
+
+    setShowEscapeLoadingScreen(false);
+    setEscapeLoadingData(null);
+
+    // If this was a POI encounter, mark POI as visited (no loot)
+    if (escapeContext?.isPOI && currentEncounter?.poi) {
+      const updatedRunState = gameStateManager.getState().currentRunState;
+      const lootedPOIs = updatedRunState.lootedPOIs || [];
+      gameStateManager.setState({
+        currentRunState: {
+          ...updatedRunState,
+          lootedPOIs: [...lootedPOIs, { q: currentEncounter.poi.q, r: currentEncounter.poi.r }]
+        }
+      });
+      console.log('[TacticalMap] POI marked as visited (escaped):', currentEncounter.poi.q, currentEncounter.poi.r);
+    }
+
+    // If this was a salvage encounter, mark POI as visited
+    if (escapeContext?.type === 'salvage' && activeSalvage?.poi) {
+      const updatedRunState = gameStateManager.getState().currentRunState;
+      const lootedPOIs = updatedRunState.lootedPOIs || [];
+      gameStateManager.setState({
+        currentRunState: {
+          ...updatedRunState,
+          lootedPOIs: [...lootedPOIs, { q: activeSalvage.poi.q, r: activeSalvage.poi.r }]
+        }
+      });
+      console.log('[TacticalMap] POI marked as visited (salvage escaped):', activeSalvage.poi.q, activeSalvage.poi.r);
+    }
+
+    // Close all escape/encounter modals
+    setEscapeContext(null);
+    setShowPOIModal(false);
+    setShowSalvageModal(false);
+    setActiveSalvage(null);
+    setCurrentEncounter(null);
+
+    // Stop movement
+    shouldStopMovement.current = true;
+    setIsMoving(false);
+    setIsScanningHex(false);
+
+    // Resolve any pending encounter promise to continue flow
+    if (encounterResolveRef.current) {
+      encounterResolveRef.current();
+      encounterResolveRef.current = null;
+    }
+  }, [currentEncounter, activeSalvage, escapeContext]);
 
   /**
    * Handle loot selection confirmation - complete extraction with selected items
@@ -1819,6 +1994,7 @@ function TacticalMapScreen() {
             setShowQuickDeploySelection(true);
           }}
           validQuickDeployments={validQuickDeployments}
+          onEscape={() => handleEscapeRequest({ type: 'poi', isPOI: true })}
           onClose={handleEncounterClose}
         />
       )}
@@ -1863,6 +2039,7 @@ function TacticalMapScreen() {
             setShowQuickDeploySelection(true);
             setSalvageQuickDeployPending(true);
           }}
+          onEscape={() => handleEscapeRequest({ type: 'salvage', isPOI: true })}
           validQuickDeployments={validQuickDeployments}
           onQuit={handleSalvageQuit}
         />
@@ -1896,6 +2073,14 @@ function TacticalMapScreen() {
         />
       )}
 
+      {/* Escape Loading Screen (escape transition) */}
+      {showEscapeLoadingScreen && escapeLoadingData && (
+        <EscapeLoadingScreen
+          escapeData={escapeLoadingData}
+          onComplete={handleEscapeLoadingComplete}
+        />
+      )}
+
       {/* Run Inventory Modal */}
       {showInventory && (
         <RunInventoryModal
@@ -1921,6 +2106,28 @@ function TacticalMapScreen() {
         lootCount={currentRunState?.collectedLoot?.length || 0}
         creditsEarned={currentRunState?.creditsEarned || 0}
       />
+
+      {/* Escape Confirmation Modal */}
+      {(() => {
+        // Get AI personality for escape damage calculation
+        const escapeAiId = currentEncounter?.aiId || 'Rogue Scout Pattern';
+        const escapeAiPersonality = aiPersonalities.find(ai => ai.name === escapeAiId) || aiPersonalities[0];
+        const escapeCheckResult = currentRunState
+          ? ExtractionController.checkEscapeCouldDestroy(currentRunState, escapeAiPersonality)
+          : { couldDestroy: false, escapeDamageRange: { min: 2, max: 2 } };
+
+        return (
+          <EscapeConfirmModal
+            show={showEscapeConfirm}
+            onConfirm={handleEscapeConfirm}
+            onCancel={handleEscapeCancel}
+            shipSections={shipSections}
+            couldDestroyShip={escapeCheckResult.couldDestroy}
+            isPOIEncounter={escapeContext?.isPOI || false}
+            escapeDamageRange={escapeCheckResult.escapeDamageRange}
+          />
+        );
+      })()}
 
       {/* Loot Selection Modal (for Slot 0 extraction limit) */}
       <ExtractionLootSelectionModal

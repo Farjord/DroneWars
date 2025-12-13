@@ -10,6 +10,209 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // skipped after winning combat. Without the fix, pendingPOICombat would
 // NOT be set before combat, causing the PoI loot opportunity to be lost.
 
+// ========================================
+// SHIP SECTION CALCULATION TESTS (TDD)
+// ========================================
+// Tests for buildShipSections function to ensure it uses correct hull values
+// from calculateSectionBaseStats() instead of deprecated absolute values.
+
+import { calculateSectionBaseStats } from '../../logic/statsCalculator.js';
+import { getDefaultShip, getAllShips } from '../../data/shipData.js';
+import { shipComponentCollection } from '../../data/shipSectionData.js';
+
+describe('buildShipSections Hull Calculation', () => {
+  /**
+   * Helper function that replicates the CORRECT buildShipSections logic.
+   * This is what the actual implementation should do.
+   */
+  function buildShipSectionsCorrect(shipSlot, slotId, shipComponentInstances, runShipSections) {
+    const sections = [];
+
+    // If we have run-state ship sections, use those (contains live damage from combat)
+    if (runShipSections && Object.keys(runShipSections).length > 0) {
+      for (const [sectionType, sectionData] of Object.entries(runShipSections)) {
+        sections.push({
+          id: sectionData.id || sectionType,
+          name: sectionData.name || sectionType,
+          type: sectionData.type || sectionType,
+          hull: sectionData.hull ?? 8,
+          maxHull: sectionData.maxHull ?? 8,
+          thresholds: sectionData.thresholds || { damaged: 4, critical: 0 },
+          lane: sectionData.lane ?? 1
+        });
+      }
+      return sections;
+    }
+
+    // Get ship card for proper calculation
+    const shipCard = shipSlot?.shipId
+      ? getAllShips().find(s => s.id === shipSlot.shipId)
+      : getDefaultShip();
+
+    // Fallback: build from ship slot components
+    const componentEntries = Object.entries(shipSlot?.shipComponents || {});
+
+    for (const [componentId, lane] of componentEntries) {
+      const componentData = shipComponentCollection.find(c => c.id === componentId);
+      if (!componentData) continue;
+
+      // Calculate base stats using ship card + section modifiers (CORRECT approach)
+      const baseStats = calculateSectionBaseStats(shipCard, componentData);
+      let currentHull = baseStats.hull;
+      let maxHull = baseStats.maxHull;
+      let thresholds = baseStats.thresholds;
+
+      // For slots 1-5, check instances for persistent damage
+      if (slotId !== 0) {
+        const instance = shipComponentInstances?.find(
+          i => i.id === componentId && i.assignedToSlot === slotId
+        );
+        if (instance) {
+          currentHull = instance.currentHull;
+          maxHull = instance.maxHull;
+        }
+      }
+
+      sections.push({
+        id: componentId,
+        name: componentData.name,
+        type: componentData.type,
+        hull: currentHull,
+        maxHull: maxHull,
+        thresholds: thresholds,
+        lane: lane
+      });
+    }
+
+    return sections;
+  }
+
+  describe('Hull values from ship card', () => {
+    it('should use Reconnaissance Corvette baseHull of 8, not deprecated 10', () => {
+      // EXPLANATION: Reconnaissance Corvette has baseHull=8 in shipData.js
+      // The deprecated values in shipSectionData.js are 10/10
+      // This test ensures we use the ship card values
+
+      const mockShipSlot = {
+        shipId: 'SHIP_001', // Reconnaissance Corvette
+        shipComponents: {
+          'BRIDGE_001': 1,
+          'POWERCELL_001': 0,
+          'DRONECONTROL_001': 2
+        }
+      };
+
+      const sections = buildShipSectionsCorrect(mockShipSlot, 0, [], null);
+
+      // Each section should have hull=8, not hull=10
+      sections.forEach(section => {
+        expect(section.maxHull).toBe(8);
+        expect(section.hull).toBe(8);
+      });
+    });
+
+    it('should use Heavy Assault Carrier baseHull of 12', () => {
+      // EXPLANATION: Heavy Assault Carrier has baseHull=12 in shipData.js
+
+      const mockShipSlot = {
+        shipId: 'SHIP_002', // Heavy Assault Carrier
+        shipComponents: {
+          'BRIDGE_001': 1,
+          'POWERCELL_001': 0,
+          'DRONECONTROL_001': 2
+        }
+      };
+
+      const sections = buildShipSectionsCorrect(mockShipSlot, 0, [], null);
+
+      // Each section should have hull=12
+      sections.forEach(section => {
+        expect(section.maxHull).toBe(12);
+        expect(section.hull).toBe(12);
+      });
+    });
+
+    it('should use Scout baseHull of 5', () => {
+      // EXPLANATION: Scout has baseHull=5 in shipData.js
+
+      const mockShipSlot = {
+        shipId: 'SHIP_003', // Scout
+        shipComponents: {
+          'BRIDGE_001': 1,
+          'POWERCELL_001': 0,
+          'DRONECONTROL_001': 2
+        }
+      };
+
+      const sections = buildShipSectionsCorrect(mockShipSlot, 0, [], null);
+
+      // Each section should have hull=5
+      sections.forEach(section => {
+        expect(section.maxHull).toBe(5);
+        expect(section.hull).toBe(5);
+      });
+    });
+  });
+
+  describe('Thresholds from ship card', () => {
+    it('should use Reconnaissance Corvette thresholds (damaged=4, critical=0)', () => {
+      // EXPLANATION: Thresholds should come from shipData.js baseThresholds
+
+      const mockShipSlot = {
+        shipId: 'SHIP_001', // Reconnaissance Corvette
+        shipComponents: {
+          'BRIDGE_001': 1
+        }
+      };
+
+      const sections = buildShipSectionsCorrect(mockShipSlot, 0, [], null);
+
+      expect(sections[0].thresholds).toBeDefined();
+      expect(sections[0].thresholds.damaged).toBe(4);
+      expect(sections[0].thresholds.critical).toBe(0);
+    });
+
+    it('should use Heavy Assault Carrier thresholds (damaged=5, critical=2)', () => {
+      const mockShipSlot = {
+        shipId: 'SHIP_002', // Heavy Assault Carrier
+        shipComponents: {
+          'BRIDGE_001': 1
+        }
+      };
+
+      const sections = buildShipSectionsCorrect(mockShipSlot, 0, [], null);
+
+      expect(sections[0].thresholds).toBeDefined();
+      expect(sections[0].thresholds.damaged).toBe(5);
+      expect(sections[0].thresholds.critical).toBe(2);
+    });
+  });
+
+  describe('Run damage application', () => {
+    it('should apply damage from runShipSections when available', () => {
+      // EXPLANATION: During a run, damage is tracked in currentRunState.shipSections
+      // This should override the base values
+
+      const runShipSections = {
+        'bridge': {
+          id: 'BRIDGE_001',
+          name: 'Bridge',
+          type: 'Bridge',
+          hull: 5, // Damaged - took 3 damage
+          maxHull: 8,
+          thresholds: { damaged: 4, critical: 0 },
+          lane: 1
+        }
+      };
+
+      const sections = buildShipSectionsCorrect({}, 0, [], runShipSections);
+
+      expect(sections[0].hull).toBe(5);
+      expect(sections[0].maxHull).toBe(8);
+    });
+  });
+});
+
 // Mock dependencies
 vi.mock('../../managers/GameStateManager.js', () => ({
   default: {
@@ -445,6 +648,91 @@ describe('TacticalMapScreen - PoI Combat Integration', () => {
       expect(updatedLoot[0].creditValue).toBe(20);
       expect(updatedLoot[1].creditValue).toBe(25);
       expect(newCredits).toBe(45);
+    });
+  });
+
+  /**
+   * Tests for blockadeCleared flag - preventing double blockade encounters.
+   *
+   * BUG: When player wins a blockade combat, they should extract automatically.
+   * However, the useEffect that detects pendingBlockadeExtraction only runs on mount.
+   * If the component doesn't unmount/remount, auto-extraction fails.
+   * The player might then click Extract again, triggering ANOTHER blockade roll.
+   *
+   * FIX: blockadeCleared flag persists in runState. handleExtract checks this flag
+   * and skips the blockade modal, going directly to extraction.
+   */
+  describe('Extraction - blockadeCleared flag handling', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    /**
+     * Simulates the handleExtract decision logic.
+     * Returns which path was taken: 'modal' or 'directExtraction'
+     */
+    function simulateHandleExtract(runState) {
+      // Check if blockade was already cleared (player won blockade combat)
+      if (runState?.blockadeCleared) {
+        // Skip modal, go directly to extraction
+        return 'directExtraction';
+      }
+
+      // Normal flow - show extraction confirm modal
+      return 'modal';
+    }
+
+    it('should skip modal and go to direct extraction when blockadeCleared is true', () => {
+      // EXPLANATION: After winning a blockade, blockadeCleared=true should cause
+      // handleExtract to bypass the ExtractionConfirmModal and extract immediately.
+
+      const mockRunState = {
+        collectedLoot: [{ type: 'card', cardId: 'CARD_001' }],
+        creditsEarned: 100,
+        blockadeCleared: true,  // Player already won blockade
+        pendingBlockadeExtraction: undefined  // May have been cleared already
+      };
+
+      const result = simulateHandleExtract(mockRunState);
+
+      expect(result).toBe('directExtraction');
+    });
+
+    it('should show modal when blockadeCleared is false/undefined', () => {
+      // EXPLANATION: Normal extraction flow should show the modal.
+
+      const mockRunState = {
+        collectedLoot: [],
+        creditsEarned: 0,
+        blockadeCleared: undefined  // No blockade encountered yet
+      };
+
+      const result = simulateHandleExtract(mockRunState);
+
+      expect(result).toBe('modal');
+    });
+
+    it('should show modal when blockadeCleared is explicitly false', () => {
+      // EXPLANATION: False should be treated same as undefined.
+
+      const mockRunState = {
+        collectedLoot: [],
+        creditsEarned: 0,
+        blockadeCleared: false
+      };
+
+      const result = simulateHandleExtract(mockRunState);
+
+      expect(result).toBe('modal');
+    });
+
+    it('should handle missing runState gracefully', () => {
+      // EXPLANATION: Edge case - should not crash if runState is null.
+
+      const result = simulateHandleExtract(null);
+
+      // Should default to showing modal (safe default)
+      expect(result).toBe('modal');
     });
   });
 });

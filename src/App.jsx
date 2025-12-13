@@ -25,6 +25,7 @@ import LogModal from './components/modals/LogModal.jsx';
 import ModalContainer from './components/ui/ModalContainer.jsx';
 import TargetingArrow, { calculatePolygonPoints } from './components/ui/TargetingArrow.jsx';
 import InterceptionTargetLine from './components/ui/InterceptionTargetLine.jsx';
+import InterceptionSelectionLine from './components/ui/InterceptionSelectionLine.jsx';
 import ExplosionEffect from './components/animations/ExplosionEffect.jsx';
 import WaitingOverlay from './components/ui/WaitingOverlay';
 import InterceptedBadge from './components/ui/InterceptedBadge.jsx';
@@ -210,6 +211,10 @@ const App = ({ phaseAnimationQueue }) => {
   const [potentialGuardians, setPotentialGuardians] = useState([]);
   const [showOpponentDecidingModal, setShowOpponentDecidingModal] = useState(false); // For attacker waiting on defender
   const [interceptedBadge, setInterceptedBadge] = useState(null); // { droneId, timestamp }
+
+  // Interception mode state (for battlefield selection instead of modal)
+  const [interceptionModeActive, setInterceptionModeActive] = useState(false);
+  const [selectedInterceptor, setSelectedInterceptor] = useState(null);
 
   // AI behavior and reporting state
   const [aiCardPlayReport, setAiCardPlayReport] = useState(null);
@@ -421,6 +426,21 @@ const App = ({ phaseAnimationQueue }) => {
       unsubscribeGameFlow();
     };
   }, [isMultiplayer, getLocalPlayerId, setModalContent, waitingForPlayerPhase, gameState.gameMode]);
+
+  // --- 4.3 PAGE UNLOAD WARNING ---
+  // Warn user before closing/refreshing if game is in progress
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      // Check if there's an active game or run that would be lost
+      if (gameState.gameActive || gameState.currentRunState) {
+        e.preventDefault();
+        e.returnValue = 'You have an active game. Progress may be lost.';
+        return e.returnValue;
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [gameState.gameActive, gameState.currentRunState]);
 
   // ========================================
   // SECTION 5: COMPUTED VALUES & MEMOIZATION
@@ -866,6 +886,84 @@ const App = ({ phaseAnimationQueue }) => {
 
     debugLog('CARD_PLAY', '   ✅ handleConfirmMultiMoveDrones completed', { timestamp: performance.now() });
   }, [multiSelectState, getLocalPlayerId]);
+
+  // --- 6.5 INTERCEPTION MODE HANDLERS ---
+
+  /**
+   * HANDLE VIEW BATTLEFIELD
+   * Called when player clicks "View Battlefield" in the interception modal.
+   * Closes modal and enters interception mode for battlefield selection.
+   */
+  const handleViewBattlefield = useCallback(() => {
+    debugLog('INTERCEPTION_MODE', '🌍 Entering interception mode from modal');
+    setInterceptionModeActive(true);
+  }, []);
+
+  /**
+   * HANDLE SHOW INTERCEPTION DIALOG
+   * Called when player clicks "Show Dialog" button in header during interception mode.
+   * Reopens the interception modal.
+   */
+  const handleShowInterceptionDialog = useCallback(() => {
+    debugLog('INTERCEPTION_MODE', '📖 Reopening interception modal');
+    setInterceptionModeActive(false);
+    setSelectedInterceptor(null);
+  }, []);
+
+  /**
+   * HANDLE DECLINE INTERCEPTION FROM HEADER
+   * Called when player clicks "Decline" button in header during interception mode.
+   * Declines the interception and resolves the attack.
+   */
+  const handleDeclineInterceptionFromHeader = useCallback(async () => {
+    if (!playerInterceptionChoice) return;
+
+    debugLog('INTERCEPTION_MODE', '⛔ Declining interception from header');
+
+    const attackDetails = {
+      ...playerInterceptionChoice.attackDetails,
+      interceptor: null
+    };
+
+    // Cleanup interception mode state
+    setInterceptionModeActive(false);
+    setSelectedInterceptor(null);
+    setPlayerInterceptionChoice(null);
+
+    setTimeout(async () => {
+      await resolveAttack(attackDetails);
+    }, 400);
+  }, [playerInterceptionChoice]);
+
+  /**
+   * HANDLE CONFIRM INTERCEPTION
+   * Called when player clicks "Confirm" button in header with an interceptor selected.
+   * Confirms the interception and resolves the attack with the selected interceptor.
+   */
+  const handleConfirmInterception = useCallback(async () => {
+    if (!selectedInterceptor || !playerInterceptionChoice) {
+      debugLog('INTERCEPTION_MODE', '⛔ Cannot confirm - no interceptor selected');
+      return;
+    }
+
+    debugLog('INTERCEPTION_MODE', '✅ Confirming interception', {
+      interceptor: selectedInterceptor.name
+    });
+
+    const attackDetails = {
+      ...playerInterceptionChoice.attackDetails,
+      interceptor: selectedInterceptor
+    };
+
+    // Cleanup interception mode state
+    setInterceptionModeActive(false);
+    setSelectedInterceptor(null);
+    setPlayerInterceptionChoice(null);
+
+    setTimeout(async () => {
+      await resolveAttack(attackDetails);
+    }, 400);
+  }, [selectedInterceptor, playerInterceptionChoice]);
 
   // ========================================
   // SECTION 7: GAME LOGIC FUNCTIONS
@@ -1376,7 +1474,15 @@ const App = ({ phaseAnimationQueue }) => {
   // --- 8.4 INTERCEPTION MONITORING ---
   // TODO: UI MONITORING - Interception monitoring is appropriate UI-only effect - calculates UI hints for user
   // Calculates potential interceptors for both clicked drone (selectedDrone) and dragged drone (draggedDrone)
+  // Also highlights valid interceptors during interception mode
   useEffect(() => {
+    // In interception mode, highlight the valid interceptors from the choice
+    if (interceptionModeActive && playerInterceptionChoice?.interceptors) {
+        const interceptorIds = playerInterceptionChoice.interceptors.map(i => i.id);
+        setPotentialInterceptors(interceptorIds);
+        return;
+    }
+
     if (turnPhase === 'action') {
         // Use draggedDrone if actively dragging, otherwise use selectedDrone
         const activeDrone = draggedDrone?.drone || selectedDrone;
@@ -1390,7 +1496,7 @@ const App = ({ phaseAnimationQueue }) => {
     } else {
         setPotentialInterceptors([]);
     }
-}, [selectedDrone, draggedDrone, turnPhase, localPlayerState, opponentPlayerState, gameEngine, localPlacedSections, opponentPlacedSections]);
+}, [selectedDrone, draggedDrone, turnPhase, localPlayerState, opponentPlayerState, gameEngine, localPlacedSections, opponentPlacedSections, interceptionModeActive, playerInterceptionChoice]);
 
   // --- 8.5 GUARDIAN HIGHLIGHTING ---
   // Calculate potential guardian blockers when drone is selected
@@ -2735,7 +2841,37 @@ const App = ({ phaseAnimationQueue }) => {
    * @param {Event} event - The mouse event
    */
   const handleDroneDragStart = (drone, sourceLane, event) => {
-    // Only allow during action phase, when it's our turn, and drone is not exhausted
+    // Check for interception mode first
+    if (interceptionModeActive) {
+      // In interception mode, only allow dragging valid interceptors
+      const isValidInterceptor = playerInterceptionChoice?.interceptors?.some(i => i.id === drone.id);
+      if (!isValidInterceptor) {
+        debugLog('INTERCEPTION_MODE', '⛔ Drone drag blocked - not a valid interceptor', { droneId: drone.id });
+        return;
+      }
+
+      debugLog('INTERCEPTION_MODE', '🎯 Interceptor drag start', { droneName: drone.name, droneId: drone.id, sourceLane });
+      setDraggedDrone({ drone, sourceLane, isInterceptionDrag: true });
+
+      // Get start position from top-middle of the drone token
+      if (gameAreaRef.current) {
+        const gameAreaRect = gameAreaRef.current.getBoundingClientRect();
+        const tokenElement = event.currentTarget;
+        const tokenRect = tokenElement.getBoundingClientRect();
+
+        const startX = tokenRect.left + tokenRect.width / 2 - gameAreaRect.left;
+        const startY = tokenRect.top - gameAreaRect.top + 15;
+
+        setDroneDragArrowState({
+          visible: true,
+          start: { x: startX, y: startY },
+          end: { x: startX, y: startY }
+        });
+      }
+      return;
+    }
+
+    // Normal action phase drag - only allow during action phase, when it's our turn, and drone is not exhausted
     if (turnPhase !== 'action' || currentPlayer !== getLocalPlayerId() || drone.isExhausted) {
       debugLog('DRAG_DROP_DEPLOY', '⛔ Drone drag blocked', { turnPhase, currentPlayer, localPlayerId: getLocalPlayerId(), isExhausted: drone.isExhausted });
       return;
@@ -2774,7 +2910,8 @@ const App = ({ phaseAnimationQueue }) => {
       targetName: target?.name,
       targetLane,
       isOpponentTarget,
-      targetType
+      targetType,
+      isInterceptionDrag: draggedDrone?.isInterceptionDrag
     });
 
     if (!draggedDrone) {
@@ -2782,7 +2919,39 @@ const App = ({ phaseAnimationQueue }) => {
       return;
     }
 
-    const { drone: attackerDrone, sourceLane } = draggedDrone;
+    const { drone: interceptorDrone, sourceLane, isInterceptionDrag } = draggedDrone;
+
+    // Handle interception mode drag end
+    if (isInterceptionDrag && interceptionModeActive) {
+      // Cleanup drag state
+      setDraggedDrone(null);
+      setDroneDragArrowState(prev => ({ ...prev, visible: false }));
+
+      // Check if dropped on the attacker drone
+      const attackerId = playerInterceptionChoice?.attackDetails?.attacker?.id;
+      if (isOpponentTarget && target?.id === attackerId) {
+        debugLog('INTERCEPTION_MODE', '✅ Valid interception selection', {
+          interceptor: interceptorDrone.name,
+          attacker: target.name
+        });
+        setSelectedInterceptor(interceptorDrone);
+      } else if (target) {
+        debugLog('INTERCEPTION_MODE', '⛔ Invalid drop target - must drop on attacker', {
+          droppedOn: target.name,
+          attackerId
+        });
+        setModalContent({
+          title: "Invalid Target",
+          text: "You must drag your interceptor to the attacking drone.",
+          isBlocking: true
+        });
+      } else {
+        debugLog('INTERCEPTION_MODE', '📥 Interception drag cancelled - no target');
+      }
+      return;
+    }
+
+    const attackerDrone = interceptorDrone; // Rename for clarity in normal flow
 
     // Cleanup drag state first
     setDraggedDrone(null);
@@ -3858,6 +4027,13 @@ const App = ({ phaseAnimationQueue }) => {
        shipSectionRefs={sectionRefs}
        gameAreaRef={gameAreaRef}
      />
+     <InterceptionSelectionLine
+       visible={!!(interceptionModeActive && selectedInterceptor)}
+       interceptor={selectedInterceptor}
+       attacker={playerInterceptionChoice?.attackDetails?.attacker}
+       droneRefs={droneRefs}
+       gameAreaRef={gameAreaRef}
+     />
      {explosions.map(exp => <ExplosionEffect key={exp.id} top={exp.top} left={exp.left} size={exp.size} />)}
      {flyingDrones.map(fd => (
 
@@ -4075,6 +4251,11 @@ const App = ({ phaseAnimationQueue }) => {
         handleConfirmMultiMoveDrones={handleConfirmMultiMoveDrones}
         selectedBackground={selectedBackground}
         onBackgroundChange={handleBackgroundChange}
+        interceptionModeActive={interceptionModeActive}
+        selectedInterceptor={selectedInterceptor}
+        handleShowInterceptionDialog={handleShowInterceptionDialog}
+        handleDeclineInterceptionFromHeader={handleDeclineInterceptionFromHeader}
+        handleConfirmInterception={handleConfirmInterception}
       />
 
       <GameBattlefield
@@ -4120,6 +4301,8 @@ const App = ({ phaseAnimationQueue }) => {
         draggedDrone={draggedDrone}
         handleDroneDragStart={handleDroneDragStart}
         handleDroneDragEnd={handleDroneDragEnd}
+        interceptionModeActive={interceptionModeActive}
+        playerInterceptionChoice={playerInterceptionChoice}
       />
 
       <GameFooter
@@ -4241,7 +4424,8 @@ const App = ({ phaseAnimationQueue }) => {
 
       <InterceptionOpportunityModal
         choiceData={playerInterceptionChoice}
-        show={!!playerInterceptionChoice}
+        show={!!(playerInterceptionChoice && !interceptionModeActive)}
+        onViewBattlefield={handleViewBattlefield}
         onIntercept={async (interceptor) => {
           // Store attack details before closing modal
           const attackDetails = { ...playerInterceptionChoice.attackDetails, interceptor };

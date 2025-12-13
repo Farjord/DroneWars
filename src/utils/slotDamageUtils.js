@@ -41,12 +41,12 @@ export function calculateSectionHull(shipSlot, lane) {
  * @returns {number} Baseline hull for that lane
  */
 function getShipLaneBaselineHull(shipCard, lane) {
-  // Ships may define per-lane hull, or a single hull value
+  // Ships may define per-lane hull, or use baseHull for all lanes
   if (shipCard.laneHull) {
-    return shipCard.laneHull[lane] || 10;
+    return shipCard.laneHull[lane] || shipCard.baseHull || 10;
   }
-  // Default: 10 hull per lane
-  return 10;
+  // Use ship's baseHull, default to 10 if not defined
+  return shipCard.baseHull || 10;
 }
 
 /**

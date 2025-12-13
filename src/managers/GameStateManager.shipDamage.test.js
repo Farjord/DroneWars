@@ -29,7 +29,7 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
     name: `Test Ship Slot ${slotId}`,
     status: 'active',
     isImmutable: slotId === 0,
-    shipId: 'CORVETTE',
+    shipId: 'SHIP_001',
     decklist: [],
     droneSlots: [
       { droneName: 'Scout Drone', isDamaged: false },
@@ -191,8 +191,9 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
 
       expect(runState).toBeDefined();
       // Types use capital case: 'Bridge', 'Power Cell', 'Drone Control Hub'
-      expect(runState.shipSections['Bridge'].hull).toBe(6); // 10 - 4
-      expect(runState.shipSections['Power Cell'].hull).toBe(4); // 10 - 6
+      // SHIP_001 has baseHull = 8, standard components have hullModifier = 0
+      expect(runState.shipSections['Bridge'].hull).toBe(4); // 8 - 4
+      expect(runState.shipSections['Power Cell'].hull).toBe(2); // 8 - 6
     });
 
     it('should use full hull for slot 0 (starter deck) regardless of any saved damage', () => {
@@ -236,7 +237,8 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       // Section types use capital case: 'Bridge', 'Power Cell', 'Drone Control Hub'
       const bridgeSection = state.currentRunState.shipSections['Bridge'];
       expect(bridgeSection).toBeDefined();
-      expect(bridgeSection.hull).toBe(10); // Full hull to start
+      // SHIP_001 has baseHull = 8, standard components have hullModifier = 0
+      expect(bridgeSection.hull).toBe(8); // Full hull to start
 
       // Step 2: Simulate combat damage by modifying run state
       const damagedSections = {
@@ -271,7 +273,8 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
 
       // Verify damage was persisted to sectionSlots
       const slot1 = state.singlePlayerShipSlots.find(s => s.id === 1);
-      expect(slot1.sectionSlots.l.damageDealt).toBe(6); // 10 - 4 = 6 damage
+      // SHIP_001 has baseHull = 8, hull was set to 4, so damageDealt = 8 - 4 = 4
+      expect(slot1.sectionSlots.l.damageDealt).toBe(4);
 
       // Step 4: Start a NEW run with the same slot
       gameStateManager.startRun(1, 1, 0, {

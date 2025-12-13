@@ -224,7 +224,14 @@ class SinglePlayerCombatInitializer {
         },
 
         // Quick deploy ID (if selected at POI encounter modal)
-        pendingQuickDeploy: quickDeployId || currentRunState?.pendingQuickDeploy || null
+        pendingQuickDeploy: quickDeployId || currentRunState?.pendingQuickDeploy || null,
+
+        // Update currentRunState with isBlockadeCombat flag for fallback detection
+        // This survives if singlePlayerEncounter is cleared before CombatOutcomeProcessor reads it
+        currentRunState: currentRunState ? {
+          ...currentRunState,
+          isBlockadeCombat: isBlockade  // Fallback flag for blockade detection
+        } : null
       };
 
       // 8. Apply state to GameStateManager

@@ -17,6 +17,8 @@ import { ECONOMY } from '../data/economyData.js';
 import { generateMapData } from '../utils/mapGenerator.js';
 import CombatOutcomeProcessor from '../logic/singlePlayer/CombatOutcomeProcessor.js';
 import { shipComponentCollection } from '../data/shipSectionData.js';
+import { getAllShips, getDefaultShip } from '../data/shipData.js';
+import { calculateSectionBaseStats } from '../logic/statsCalculator.js';
 import fullCardCollection from '../data/cardData.js';
 import ReputationService from '../logic/reputation/ReputationService.js';
 import { calculateExtractedCredits } from '../logic/singlePlayer/ExtractionController.js';
@@ -490,12 +492,13 @@ class GameStateManager {
   validatePlayerStates(player1, player2) {
     if (!player1 || !player2) return;
 
-    // Check for negative values
+    // Check for negative values (only if player exists with these properties)
     const validatePlayerValues = (player, playerId) => {
-      if (player.energy < 0) {
+      if (!player) return;
+      if (typeof player.energy === 'number' && player.energy < 0) {
         console.error(`Invalid state: ${playerId} has negative energy: ${player.energy}`);
       }
-      if (player.deploymentBudget < 0) {
+      if (typeof player.deploymentBudget === 'number' && player.deploymentBudget < 0) {
         console.error(`Invalid state: ${playerId} has negative deployment budget: ${player.deploymentBudget}`);
       }
     };
@@ -503,17 +506,19 @@ class GameStateManager {
     validatePlayerValues(player1, 'player1');
     validatePlayerValues(player2, 'player2');
 
-    // Check for duplicate drone IDs
+    // Check for duplicate drone IDs (only if dronesOnBoard exists)
     const allDroneIds = new Set();
     [player1, player2].forEach((player, playerIndex) => {
-      Object.values(player.dronesOnBoard).forEach(lane => {
-        lane.forEach(drone => {
-          if (allDroneIds.has(drone.id)) {
-            console.error(`Duplicate drone ID detected: ${drone.id} in player${playerIndex + 1}`);
-          }
-          allDroneIds.add(drone.id);
+      if (player?.dronesOnBoard) {
+        Object.values(player.dronesOnBoard).forEach(lane => {
+          lane.forEach(drone => {
+            if (allDroneIds.has(drone.id)) {
+              console.error(`Duplicate drone ID detected: ${drone.id} in player${playerIndex + 1}`);
+            }
+            allDroneIds.add(drone.id);
+          });
         });
-      });
+      }
     });
   }
 
@@ -1014,6 +1019,107 @@ class GameStateManager {
   // --- GAME STATE METHODS ---
 
   /**
+   * Validate that game state is clean before starting a new game
+   * @returns {{ valid: boolean, issues: string[] }} Validation result
+   */
+  validatePreGameState() {
+    const issues = [];
+
+    if (this.state.gameStage !== 'preGame') {
+      issues.push(`gameStage is '${this.state.gameStage}' (expected 'preGame')`);
+    }
+    if (this.state.roundNumber !== 0) {
+      issues.push(`roundNumber is ${this.state.roundNumber} (expected 0)`);
+    }
+    if (this.state.gameActive) {
+      issues.push('gameActive is true (expected false)');
+    }
+    if (this.state.player1 !== null) {
+      issues.push('player1 is not null');
+    }
+    if (this.state.player2 !== null) {
+      issues.push('player2 is not null');
+    }
+    if (this.state.turnPhase !== null) {
+      issues.push(`turnPhase is '${this.state.turnPhase}' (expected null)`);
+    }
+    if (this.state.currentRunState !== null) {
+      issues.push('currentRunState is not null (orphaned single-player run)');
+    }
+    if (this.state.singlePlayerEncounter !== null) {
+      issues.push('singlePlayerEncounter is not null');
+    }
+    if (this.state.winner !== null) {
+      issues.push(`winner is '${this.state.winner}' (expected null)`);
+    }
+    if (this.state.commitments && Object.keys(this.state.commitments).length > 0) {
+      issues.push('commitments object is not empty');
+    }
+
+    if (issues.length > 0) {
+      debugLog('STATE_SYNC', '⚠️ Pre-game state validation failed:', issues);
+      return { valid: false, issues };
+    }
+    return { valid: true, issues: [] };
+  }
+
+  /**
+   * Validate that state is clean before starting a single-player run
+   * @returns {{ valid: boolean, issues: string[] }} Validation result
+   */
+  validatePreRunState() {
+    const issues = [];
+
+    if (this.state.currentRunState !== null) {
+      issues.push('currentRunState already exists (run in progress)');
+    }
+    if (this.state.singlePlayerEncounter !== null) {
+      issues.push('singlePlayerEncounter is not null');
+    }
+    if (this.state.gameActive) {
+      issues.push('gameActive is true (PvP game in progress)');
+    }
+
+    if (issues.length > 0) {
+      debugLog('STATE_SYNC', '⚠️ Pre-run state validation failed:', issues);
+      return { valid: false, issues };
+    }
+    return { valid: true, issues: [] };
+  }
+
+  /**
+   * Clear single-player context (run state and encounter) without clearing profile/inventory
+   * Call this before starting PvP games to clean up orphaned SP state
+   */
+  clearSinglePlayerContext() {
+    debugLog('STATE_SYNC', '🧹 Clearing single-player context');
+    this.setState({
+      currentRunState: null,
+      singlePlayerEncounter: null
+    });
+  }
+
+  /**
+   * Safely transition to a new app state with automatic cleanup
+   * @param {string} newState - The new app state to transition to
+   */
+  transitionToAppState(newState) {
+    // Clean up active game if navigating away to menu
+    if (this.state.gameActive && newState === 'menu') {
+      debugLog('STATE_SYNC', 'Active game detected during navigation, cleaning up');
+      this.endGame();
+    }
+
+    // Clean up run state if navigating to menu
+    if (this.state.currentRunState && newState === 'menu') {
+      debugLog('STATE_SYNC', 'Active run detected during navigation, cleaning up');
+      this.endRun(false); // Lost run
+    }
+
+    this.setState({ appState: newState });
+  }
+
+  /**
    * Reset game to initial state
    */
   reset() {
@@ -1062,6 +1168,23 @@ class GameStateManager {
   startGame(gameMode = 'local', player1Config = {}, player2Config = {}) {
     debugLog('STATE_SYNC', '🎮 GAME START: Initializing new game session');
 
+    // Clear any orphaned single-player context before starting PvP
+    this.clearSinglePlayerContext();
+
+    // Validate pre-game state and cleanup if dirty
+    const validation = this.validatePreGameState();
+    if (!validation.valid) {
+      console.error(
+        '=== DIRTY STATE DETECTED AT GAME START ===\n' +
+        'Issues found:\n' +
+        validation.issues.map(i => `  - ${i}`).join('\n') + '\n' +
+        'Calling resetGameState() to clean up.\n' +
+        'Stack trace:',
+        new Error().stack
+      );
+      this.resetGameState();
+    }
+
     // Generate random game seed for deterministic gameplay
     // Host/Local generates, Guest receives from first broadcast
     const gameSeed = gameMode === 'guest'
@@ -1078,6 +1201,8 @@ class GameStateManager {
       // Initialize game flow
       turnPhase: 'deckSelection',
       turn: 1,
+      gameStage: 'preGame',
+      roundNumber: 0,
       currentPlayer: null,
       firstPlayerOfRound: null,
       firstPasserOfPreviousRound: null,
@@ -1143,30 +1268,12 @@ class GameStateManager {
   endGame() {
     debugLog('STATE_SYNC', '🎮 GAME END: Ending current game session and clearing caches');
 
+    // Use canonical reset function for all game state cleanup
+    this.resetGameState();
+
+    // Set app state to menu (not part of game state reset)
     this.setState({
       appState: 'menu',
-      gameActive: false,
-      testMode: false, // Clear test mode flag
-      turnPhase: null,
-      turn: null,
-      currentPlayer: null,
-      firstPlayerOfRound: null,
-      firstPasserOfPreviousRound: null,
-      firstPlayerOverride: null,
-      passInfo: null,
-      winner: null,
-      player1: null,
-      player2: null,
-      placedSections: [],
-      opponentPlacedSections: [],
-      unplacedSections: [],
-      shieldsToAllocate: 0,
-      droneSelectionPool: [],
-      droneSelectionTrio: [],
-      gameLog: [],
-
-      // --- COMMITMENTS (for simultaneous phases) ---
-      commitments: {},
     }, 'GAME_ENDED');
 
     // Clear GameDataService singleton and cache to prevent stale data in new games
@@ -2172,6 +2279,12 @@ class GameStateManager {
       throw new Error(`Ship slot ${shipSlotId} is not active (status: ${shipSlot.status})`);
     }
 
+    // Get ship card for proper hull/threshold calculation
+    // Uses ship's baseHull + section's hullModifier instead of deprecated absolute values
+    const shipCard = shipSlot?.shipId
+      ? getAllShips().find(s => s.id === shipSlot.shipId)
+      : getDefaultShip();
+
     // Use pre-generated map if provided (from Hangar preview), otherwise generate new
     let mapData;
     if (preGeneratedMap && preGeneratedMap.hexes) {
@@ -2220,7 +2333,9 @@ class GameStateManager {
 
         const component = shipComponentCollection.find(c => c.id === sectionSlot.componentId);
         if (component) {
-          const componentMaxHull = component.maxHull || component.hull || 10;
+          // Calculate base stats using ship card + section modifiers (correct approach)
+          const baseStats = calculateSectionBaseStats(shipCard, component);
+          const componentMaxHull = baseStats.maxHull;
           const damageDealt = sectionSlot.damageDealt || 0;
 
           // For slot 0 (starter deck), ignore any damage
@@ -2234,6 +2349,7 @@ class GameStateManager {
             type: component.type,
             hull: hullValue,
             maxHull: componentMaxHull,
+            thresholds: baseStats.thresholds,
             lane: lane
           };
           totalHull += hullValue;
@@ -2245,7 +2361,9 @@ class GameStateManager {
       Object.entries(shipSlot.shipComponents).forEach(([componentId, lane]) => {
         const component = shipComponentCollection.find(c => c.id === componentId);
         if (component) {
-          const componentMaxHull = component.maxHull || component.hull || 10;
+          // Calculate base stats using ship card + section modifiers (correct approach)
+          const baseStats = calculateSectionBaseStats(shipCard, component);
+          const componentMaxHull = baseStats.maxHull;
 
           runShipSections[component.type] = {
             id: componentId,
@@ -2253,6 +2371,7 @@ class GameStateManager {
             type: component.type,
             hull: componentMaxHull,
             maxHull: componentMaxHull,
+            thresholds: baseStats.thresholds,
             lane: lane
           };
           totalHull += componentMaxHull;
@@ -2262,12 +2381,16 @@ class GameStateManager {
     }
 
     // Fallback to default sections if no components defined
+    // Uses ship card values instead of hardcoded 10/10
     if (Object.keys(runShipSections).length === 0) {
-      runShipSections.bridge = { type: 'bridge', hull: 10, maxHull: 10, lane: 1 };
-      runShipSections.powerCell = { type: 'powerCell', hull: 10, maxHull: 10, lane: 2 };
-      runShipSections.droneControlHub = { type: 'droneControlHub', hull: 10, maxHull: 10, lane: 3 };
-      totalHull = 30;
-      maxHull = 30;
+      const defaultThresholds = shipCard?.baseThresholds || { damaged: 4, critical: 0 };
+      const defaultHull = shipCard?.baseHull || 8;
+
+      runShipSections.Bridge = { type: 'Bridge', hull: defaultHull, maxHull: defaultHull, thresholds: defaultThresholds, lane: 1 };
+      runShipSections['Power Cell'] = { type: 'Power Cell', hull: defaultHull, maxHull: defaultHull, thresholds: defaultThresholds, lane: 0 };
+      runShipSections['Drone Control Hub'] = { type: 'Drone Control Hub', hull: defaultHull, maxHull: defaultHull, thresholds: defaultThresholds, lane: 2 };
+      totalHull = defaultHull * 3;
+      maxHull = defaultHull * 3;
     }
 
     const runState = {
@@ -2317,6 +2440,8 @@ class GameStateManager {
     this.setState({
       // Game flow state
       gameActive: false,
+      testMode: false,
+      gameSeed: null,
       turnPhase: null,
       gameStage: 'preGame',
       roundNumber: 0,
@@ -2324,6 +2449,7 @@ class GameStateManager {
       currentPlayer: 'player1',
       firstPlayerOfRound: null,
       firstPasserOfPreviousRound: null,
+      firstPlayerOverride: null,
 
       // Player states
       player1: null,
@@ -2341,6 +2467,7 @@ class GameStateManager {
       lastCombatResult: null,
       winner: null,
       singlePlayerEncounter: null,
+      currentRunState: null,
 
       // UI state - ship placement
       placedSections: [],
@@ -2564,5 +2691,22 @@ class GameStateManager {
 
 // Create singleton instance
 const gameStateManager = new GameStateManager();
+
+// Preserve singleton across Hot Module Replacement (HMR) in development
+// This prevents state loss during development when files are edited
+if (import.meta.hot) {
+  import.meta.hot.accept();
+  // Store the current instance in HMR data to preserve across reloads
+  if (import.meta.hot.data?.gameStateManager) {
+    // Restore the previous instance's state
+    gameStateManager.state = import.meta.hot.data.gameStateManager.state;
+    gameStateManager.listeners = import.meta.hot.data.gameStateManager.listeners;
+    debugLog('STATE_SYNC', '🔄 HMR: Preserved GameStateManager state across hot reload');
+  }
+  import.meta.hot.dispose((data) => {
+    // Store instance before disposing
+    data.gameStateManager = gameStateManager;
+  });
+}
 
 export default gameStateManager;

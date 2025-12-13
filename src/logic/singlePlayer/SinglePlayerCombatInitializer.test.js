@@ -149,4 +149,58 @@ describe('SinglePlayerCombatInitializer - isBlockade flag', () => {
     expect(combatStateCall).toBeDefined();
     expect(combatStateCall[0].singlePlayerEncounter.isBlockade).toBe(false);
   });
+
+  /**
+   * TDD Tests: isBlockadeCombat flag in currentRunState
+   * BUG FIX: singlePlayerEncounter can be cleared before WinnerModal reads it.
+   * By also storing the flag in currentRunState, CombatOutcomeProcessor can use
+   * it as a fallback, ensuring blockade victories are properly detected.
+   */
+  it('should set currentRunState.isBlockadeCombat=true when isBlockade=true', async () => {
+    // EXPLANATION: Storing isBlockadeCombat in currentRunState provides a
+    // fallback if singlePlayerEncounter is cleared before victory processing.
+
+    const mockRunState = { shipSlotId: 0, currentHull: 30 };
+
+    // ACT: Call initiateCombat with isBlockade = true
+    await SinglePlayerCombatInitializer.initiateCombat(
+      'Rogue Scout Pattern',
+      mockRunState,
+      null,
+      true  // isBlockade
+    );
+
+    // ASSERT: currentRunState should include isBlockadeCombat: true
+    const runStateCall = setStateSpy.mock.calls.find(
+      call => call[0] && call[0].currentRunState?.isBlockadeCombat !== undefined
+    );
+
+    expect(runStateCall).toBeDefined();
+    expect(runStateCall[0].currentRunState.isBlockadeCombat).toBe(true);
+  });
+
+  it('should NOT set currentRunState.isBlockadeCombat when isBlockade=false', async () => {
+    // EXPLANATION: Regular (non-blockade) combat should NOT have isBlockadeCombat flag.
+
+    const mockRunState = { shipSlotId: 0, currentHull: 30 };
+
+    // ACT: Call initiateCombat with isBlockade = false (default)
+    await SinglePlayerCombatInitializer.initiateCombat(
+      'Rogue Scout Pattern',
+      mockRunState,
+      null,
+      false  // isBlockade = false explicitly
+    );
+
+    // ASSERT: currentRunState should NOT have isBlockadeCombat: true
+    const runStateCall = setStateSpy.mock.calls.find(
+      call => call[0] && call[0].currentRunState
+    );
+
+    // If it exists, it should be false or undefined, not true
+    if (runStateCall && runStateCall[0].currentRunState.isBlockadeCombat !== undefined) {
+      expect(runStateCall[0].currentRunState.isBlockadeCombat).toBe(false);
+    }
+    // If isBlockadeCombat is not set at all, that's also acceptable
+  });
 });

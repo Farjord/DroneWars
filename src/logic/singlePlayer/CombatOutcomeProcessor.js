@@ -220,8 +220,10 @@ class CombatOutcomeProcessor {
     };
 
     // Check if this was a blockade encounter (extraction interception) BEFORE clearing state
+    // Use singlePlayerEncounter.isBlockade as primary, fall back to currentRunState.isBlockadeCombat
+    // The fallback handles race conditions where singlePlayerEncounter may be cleared early
     const encounter = gameStateManager.getState().singlePlayerEncounter;
-    const isBlockade = encounter?.isBlockade;
+    const isBlockade = encounter?.isBlockade || currentRunState?.isBlockadeCombat;
 
     // Clear ALL combat state using centralized cleanup
     gameStateManager.resetGameState();
@@ -236,7 +238,8 @@ class CombatOutcomeProcessor {
         appState: 'tacticalMap',
         currentRunState: {
           ...updatedRunState,
-          pendingBlockadeExtraction: true  // Flag for TacticalMapScreen to auto-extract
+          pendingBlockadeExtraction: true,  // Flag for TacticalMapScreen to auto-extract
+          blockadeCleared: true  // Persistent flag - prevents re-rolling blockade if auto-extract fails
         },
         pendingLoot: null
       });

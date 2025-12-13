@@ -289,6 +289,174 @@ class ExtractionController {
     debugLog('EXTRACTION', 'Post-blockade extraction');
     return this.completeExtraction(currentRunState, selectedLoot);
   }
+
+  // ========================================
+  // VARIABLE ESCAPE DAMAGE SYSTEM
+  // ========================================
+  // Escape damage is based on AI enemy type with random distribution
+  // Uses seeded RNG for deterministic results when same seed is provided
+
+  /**
+   * Create seeded random number generator
+   * Uses linear congruential generator for reproducible results
+   * @param {number} seed - Initial seed value
+   * @returns {Object} RNG with random() method
+   */
+  createRNG(seed) {
+    let s = typeof seed === 'number' ? seed : Date.now();
+    return {
+      random: () => {
+        // Linear congruential generator (same as LootGenerator)
+        s = (s * 9301 + 49297) % 233280;
+        return s / 233280;
+      },
+      randomIntInclusive: function(min, max) {
+        return Math.floor(this.random() * (max - min + 1)) + min;
+      }
+    };
+  }
+
+  /**
+   * Get escape damage range for an AI personality
+   * @param {Object} aiPersonality - AI personality object with escapeDamage field
+   * @returns {{ min: number, max: number }} Damage range
+   */
+  getEscapeDamageForAI(aiPersonality) {
+    if (!aiPersonality?.escapeDamage) {
+      return { min: 2, max: 2 }; // Default fallback
+    }
+    return aiPersonality.escapeDamage;
+  }
+
+  /**
+   * Check if escape COULD destroy ship (worst-case analysis for UI warning)
+   * @param {Object} currentRunState - Current run state with shipSections
+   * @param {Object} aiPersonality - AI personality with escapeDamage
+   * @returns {{ couldDestroy: boolean, maxDamage: number, escapeDamageRange: Object }}
+   */
+  checkEscapeCouldDestroy(currentRunState, aiPersonality) {
+    const escapeDamageRange = this.getEscapeDamageForAI(aiPersonality);
+    const maxDamage = escapeDamageRange.max;
+    const shipSections = currentRunState.shipSections || {};
+
+    // Worst case: all damage hits a single section, pushing it to damaged state
+    // Check if max damage could cause all sections to be in damaged state
+    // This is conservative - if any section could survive, couldDestroy is false
+    const couldDestroy = Object.values(shipSections).every(section => {
+      // Worst case for this section: all max damage hits it
+      const worstCaseHull = Math.max(0, section.hull - maxDamage);
+      const threshold = section.thresholds?.damaged ?? 4;
+      return worstCaseHull <= threshold;
+    });
+
+    return { couldDestroy, maxDamage, escapeDamageRange };
+  }
+
+  /**
+   * Apply escape damage to ship sections with random distribution
+   * Each damage point is randomly assigned to a section
+   * Uses seeded RNG for deterministic results
+   * @param {Object} currentRunState - Current run state with shipSections
+   * @param {Object} aiPersonality - AI personality with escapeDamage range
+   * @param {number} seed - Random seed for deterministic results (defaults to Date.now())
+   * @returns {{ updatedSections: Object, wouldDestroy: boolean, totalDamage: number, damageHits: Array, initialSections: Object }}
+   */
+  applyEscapeDamage(currentRunState, aiPersonality, seed = Date.now()) {
+    const rng = this.createRNG(seed);
+    const shipSections = currentRunState.shipSections || {};
+    const sectionKeys = Object.keys(shipSections);
+
+    // Get damage range from AI and roll total using seeded RNG
+    const damageRange = this.getEscapeDamageForAI(aiPersonality);
+    const totalDamage = rng.randomIntInclusive(damageRange.min, damageRange.max);
+
+    // Clone initial sections (for displaying before damage)
+    const initialSections = {};
+    Object.entries(shipSections).forEach(([key, section]) => {
+      initialSections[key] = { ...section };
+    });
+
+    // Clone sections for modification (don't mutate original)
+    const updatedSections = {};
+    Object.entries(shipSections).forEach(([key, section]) => {
+      updatedSections[key] = { ...section };
+    });
+
+    // Track each individual damage hit for real-time display
+    const damageHits = [];
+
+    // Distribute each damage point randomly using seeded RNG
+    for (let i = 0; i < totalDamage; i++) {
+      const randomIndex = Math.floor(rng.random() * sectionKeys.length);
+      const randomKey = sectionKeys[randomIndex];
+      updatedSections[randomKey].hull = Math.max(0, updatedSections[randomKey].hull - 1);
+
+      // Record this hit
+      damageHits.push({
+        section: randomKey,
+        newHull: updatedSections[randomKey].hull,
+        maxHull: updatedSections[randomKey].maxHull
+      });
+    }
+
+    // Check if ship would be destroyed (all sections damaged)
+    const allDamaged = Object.values(updatedSections).every(section => {
+      const threshold = section.thresholds?.damaged ?? 4;
+      return section.hull <= threshold;
+    });
+
+    debugLog('EXTRACTION', 'Escape damage applied (variable)', {
+      seed,
+      damageRange,
+      totalDamage,
+      damageHits,
+      sections: Object.entries(updatedSections).map(([name, s]) => ({
+        name,
+        hull: s.hull,
+        threshold: s.thresholds?.damaged ?? 4
+      })),
+      wouldDestroy: allDamaged
+    });
+
+    return { updatedSections, wouldDestroy: allDamaged, totalDamage, damageHits, initialSections };
+  }
+
+  /**
+   * Execute escape from encounter
+   * Applies variable damage based on AI type and updates run state
+   * Uses seeded RNG for deterministic results
+   * @param {Object} currentRunState - Current run state
+   * @param {Object} aiPersonality - AI personality with escapeDamage
+   * @param {number} seed - Random seed for deterministic results (defaults to Date.now())
+   * @returns {{ success: boolean, wouldDestroy: boolean, updatedSections: Object, totalDamage: number, damageHits: Array, initialSections: Object }}
+   */
+  executeEscape(currentRunState, aiPersonality, seed = Date.now()) {
+    const { updatedSections, wouldDestroy, totalDamage, damageHits, initialSections } = this.applyEscapeDamage(currentRunState, aiPersonality, seed);
+
+    // Update currentHull totals
+    const totalHull = Object.values(updatedSections).reduce((sum, s) => sum + s.hull, 0);
+    const maxHull = Object.values(updatedSections).reduce((sum, s) => sum + s.maxHull, 0);
+
+    // Update game state with new section values
+    gameStateManager.setState({
+      currentRunState: {
+        ...currentRunState,
+        shipSections: updatedSections,
+        currentHull: totalHull,
+        maxHull: maxHull
+      }
+    });
+
+    debugLog('EXTRACTION', 'Escape executed', {
+      totalDamage,
+      totalHull,
+      maxHull,
+      wouldDestroy,
+      damageHits
+    });
+
+    return { success: true, wouldDestroy, updatedSections, totalDamage, damageHits, initialSections };
+  }
 }
 
 // Export singleton instance

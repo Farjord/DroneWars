@@ -105,7 +105,13 @@ function GameHeader({
   handleCancelMultiMove,
   handleConfirmMultiMoveDrones,
   selectedBackground,
-  onBackgroundChange
+  onBackgroundChange,
+  // Interception mode props
+  interceptionModeActive,
+  selectedInterceptor,
+  handleShowInterceptionDialog,
+  handleDeclineInterceptionFromHeader,
+  handleConfirmInterception
 }) {
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [showBackgroundSubmenu, setShowBackgroundSubmenu] = useState(false);
@@ -267,6 +273,12 @@ function GameHeader({
           {multiSelectState?.phase === 'select_destination_lane' && (
             <span className="text-base font-semibold text-green-300 ml-2">
               (Select destination lane)
+            </span>
+          )}
+          {/* Interception Mode Status Text */}
+          {interceptionModeActive && (
+            <span className="text-base font-semibold text-cyan-300 ml-2">
+              (Intercepting - select interceptor)
             </span>
           )}
         </h2>
@@ -521,6 +533,71 @@ function GameHeader({
                     </div>
                   </button>
                 )}
+              </>
+            )}
+
+            {/* Interception Mode Controls */}
+            {interceptionModeActive && (
+              <>
+                <button
+                  onClick={handleShowInterceptionDialog}
+                  className="relative p-[1px] transition-all hover:scale-105"
+                  style={{
+                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                    backgroundImage: 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
+                  }}
+                >
+                  <div
+                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                      color: '#86efac'
+                    }}
+                  >
+                    Show Dialog
+                  </div>
+                </button>
+
+                <button
+                  onClick={handleDeclineInterceptionFromHeader}
+                  className="relative p-[1px] transition-all hover:scale-105"
+                  style={{
+                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                    backgroundImage: 'linear-gradient(45deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8))'
+                  }}
+                >
+                  <div
+                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                      color: '#fca5a5'
+                    }}
+                  >
+                    Decline
+                  </div>
+                </button>
+
+                <button
+                  onClick={handleConfirmInterception}
+                  disabled={!selectedInterceptor}
+                  className="relative p-[1px] transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{
+                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                    backgroundImage: selectedInterceptor
+                      ? 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
+                      : 'linear-gradient(45deg, rgba(75, 85, 99, 0.6), rgba(107, 114, 128, 0.6))'
+                  }}
+                >
+                  <div
+                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
+                    style={{
+                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
+                      color: selectedInterceptor ? '#86efac' : '#9ca3af'
+                    }}
+                  >
+                    Confirm
+                  </div>
+                </button>
               </>
             )}
             </>

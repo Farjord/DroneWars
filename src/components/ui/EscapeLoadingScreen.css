@@ -1,0 +1,350 @@
+/* ========================================
+   ESCAPE LOADING SCREEN STYLES
+   Amber/warning-themed transition screen for escape sequences
+   ======================================== */
+
+.escape-loading-overlay {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(180deg, #0a0f1a 0%, #1a150a 50%, #0a0f1a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: escapeFadeIn 0.3s ease-out;
+}
+
+.escape-loading-overlay.fade-out {
+  animation: escapeFadeOut 0.3s ease-in forwards;
+}
+
+@keyframes escapeFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes escapeFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* Animated amber background gradient */
+.escape-background {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(217, 119, 6, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(245, 158, 11, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(251, 191, 36, 0.08) 0%, transparent 70%);
+  animation: escapePulse 2s ease-in-out infinite;
+}
+
+@keyframes escapePulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Subtle star effect */
+.escape-stars {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255, 220, 150, 0.3), transparent),
+    radial-gradient(1px 1px at 30% 60%, rgba(255, 255, 255, 0.2), transparent),
+    radial-gradient(1px 1px at 50% 10%, rgba(255, 200, 100, 0.4), transparent),
+    radial-gradient(1px 1px at 70% 40%, rgba(255, 255, 255, 0.2), transparent),
+    radial-gradient(1px 1px at 90% 80%, rgba(255, 220, 150, 0.3), transparent),
+    radial-gradient(1px 1px at 15% 85%, rgba(255, 255, 255, 0.2), transparent),
+    radial-gradient(1px 1px at 85% 15%, rgba(255, 200, 100, 0.3), transparent);
+  animation: escapeStarsTwinkle 3s ease-in-out infinite;
+}
+
+@keyframes escapeStarsTwinkle {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.7; }
+}
+
+.escape-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 48px;
+  text-align: center;
+  z-index: 1;
+  position: relative;
+}
+
+/* Warning Icon - Amber themed */
+.escape-warning-icon {
+  color: #f59e0b;
+  animation: pulseIconEscape 0.8s ease-in-out infinite;
+  filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.6));
+}
+
+@keyframes pulseIconEscape {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: drop-shadow(0 0 20px rgba(245, 158, 11, 0.6));
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 40px rgba(245, 158, 11, 0.9));
+  }
+}
+
+/* Main Title - Amber gradient */
+.escape-title {
+  font-family: 'Orbitron', 'Segoe UI', sans-serif;
+  font-size: 3.5rem;
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(
+    90deg,
+    #d97706 0%,
+    #f59e0b 20%,
+    #fbbf24 40%,
+    #fcd34d 60%,
+    #f59e0b 80%,
+    #d97706 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 0 30px rgba(245, 158, 11, 0.6));
+  animation: titleGradientEscape 2s linear infinite, titlePulseEscape 1s ease-in-out infinite;
+  letter-spacing: 0.15em;
+}
+
+@keyframes titleGradientEscape {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes titlePulseEscape {
+  0%, 100% {
+    filter: drop-shadow(0 0 30px rgba(245, 158, 11, 0.6));
+  }
+  50% {
+    filter: drop-shadow(0 0 50px rgba(245, 158, 11, 0.9));
+  }
+}
+
+/* Subtitle */
+.escape-subtitle {
+  font-size: 1rem;
+  color: #9ca3af;
+  margin: -12px 0 0 0;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+/* Progress Container */
+.escape-progress-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+/* Progress Bar */
+.escape-progress-bar {
+  width: 340px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.escape-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #d97706 0%, #f59e0b 40%, #fbbf24 100%);
+  border-radius: 3px;
+  transition: width 0.1s linear;
+  position: relative;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.6);
+}
+
+.escape-progress-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(253, 224, 71, 0.5) 50%,
+    transparent 100%
+  );
+  animation: progressGlowEscape 1.2s ease-in-out infinite;
+}
+
+@keyframes progressGlowEscape {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+/* Status Message */
+.escape-status-message {
+  font-size: 0.9rem;
+  color: #fbbf24;
+  min-height: 24px;
+  letter-spacing: 0.1em;
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.3);
+}
+
+/* Damage Summary */
+.escape-damage-summary {
+  margin-top: 16px;
+  padding: 20px 32px;
+  background: rgba(217, 119, 6, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 8px;
+  min-width: 280px;
+}
+
+.escape-damage-total {
+  font-size: 1.1rem;
+  color: #e5e7eb;
+  margin-bottom: 16px;
+  letter-spacing: 0.05em;
+}
+
+.escape-damage-total strong {
+  color: #f59e0b;
+  font-size: 1.3rem;
+}
+
+.escape-sections-status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.escape-section-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.escape-section-name {
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+.escape-section-hull {
+  font-family: 'Orbitron', monospace;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+/* Section hit flash effect */
+.escape-section-hit {
+  animation: sectionHitFlash 0.3s ease-out;
+}
+
+@keyframes sectionHitFlash {
+  0% {
+    background: rgba(239, 68, 68, 0.6);
+    transform: scale(1.02);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.8);
+  }
+  50% {
+    background: rgba(239, 68, 68, 0.4);
+  }
+  100% {
+    background: rgba(0, 0, 0, 0.2);
+    transform: scale(1);
+    box-shadow: none;
+  }
+}
+
+/* Escape complete status */
+.escape-status-message.escape-complete {
+  color: #10b981;
+  font-weight: 600;
+  text-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+}
+
+/* Continue button */
+.escape-continue-button {
+  margin-top: 24px;
+  padding: 14px 48px;
+  font-family: 'Orbitron', 'Segoe UI', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #0a0f1a;
+  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 50%, #f59e0b 100%);
+  background-size: 200% auto;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+  animation: continueButtonAppear 0.3s ease-out, continueButtonGlow 2s ease-in-out infinite;
+}
+
+.escape-continue-button:hover {
+  transform: scale(1.05);
+  background-position: 100% center;
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.7);
+}
+
+.escape-continue-button:active {
+  transform: scale(0.98);
+}
+
+@keyframes continueButtonAppear {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes continueButtonGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(245, 158, 11, 0.6);
+  }
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .escape-loading-content {
+    padding: 24px;
+    gap: 16px;
+  }
+
+  .escape-title {
+    font-size: 2.2rem;
+    letter-spacing: 0.08em;
+  }
+
+  .escape-progress-bar {
+    width: 280px;
+  }
+
+  .escape-damage-summary {
+    padding: 16px 24px;
+    min-width: 240px;
+  }
+}

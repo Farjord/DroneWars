@@ -191,7 +191,7 @@ const DroneToken = ({
           {/* Grayscale Container - only applies exhausted effect */}
           <div className={`w-full h-full relative ${exhaustEffect}`}>
       {/* Main Token Body */}
-      <div className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden ${isPotentialGuardian ? 'guardian-glow' : ''}`}>
+      <div className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden ${isPotentialGuardian ? 'guardian-glow' : ''} ${isPotentialInterceptor ? (isPlayer ? 'interceptor-card-glow-cyan' : 'interceptor-card-glow') : ''}`}>
         <img src={drone.image} alt={drone.name} className="absolute inset-0 w-full h-full object-cover"/>
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative z-10 h-full">
@@ -252,7 +252,7 @@ const DroneToken = ({
       <div className={`absolute -top-3 left-[-14px] w-6 h-7 z-20 ${teleportingEffect}`}>
           <StatHexagon value={effectiveStats.attack} isFlat={false} bgColor={statBgColor} textColor={attackTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
       </div>
-      <div className={`absolute -top-3 right-[-14px] w-7 h-7 z-20 ${isPotentialInterceptor ? 'interceptor-glow' : ''} ${teleportingEffect}`}>
+      <div className={`absolute -top-3 right-[-14px] w-7 h-7 z-20 ${isPotentialInterceptor ? (isPlayer ? 'interceptor-glow-cyan' : 'interceptor-glow') : ''} ${teleportingEffect}`}>
           <StatHexagon value={effectiveStats.speed} isFlat={true} bgColor={statBgColor} textColor={speedTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
       </div>
 
