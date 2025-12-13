@@ -1,6 +1,7 @@
 /* ========================================
    TACTICAL MAP HUD STYLES
-   Sci-Fi Data Screen Aesthetic
+   Bottom action buttons only
+   (Stats moved to header bar in TacticalMapScreen)
    ======================================== */
 
 .tactical-map-hud {
@@ -61,138 +62,14 @@
 }
 
 /* ========================================
-   TOP BAR - PLAYER STATS
-   ======================================== */
-
-.hud-top {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  right: 16px;
-  display: flex;
-  justify-content: flex-start;
-}
-
-.hud-stats-group {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.hud-stat {
-  background: linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 28, 0.95) 100%);
-  border: 1px solid rgba(6, 182, 212, 0.3);
-  border-radius: 2px;
-  padding: 8px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  min-width: 85px;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(6, 182, 212, 0.1);
-  position: relative;
-}
-
-/* Angular corner accent */
-.hud-stat::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 8px;
-  height: 8px;
-  border-top: 1px solid rgba(6, 182, 212, 0.5);
-  border-left: 1px solid rgba(6, 182, 212, 0.5);
-}
-
-.stat-label {
-  font-size: 9px;
-  font-weight: 600;
-  color: rgba(6, 182, 212, 0.7);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.stat-value {
-  font-size: 15px;
-  font-weight: 700;
-  color: #e5e7eb;
-  transition: color 0.3s ease;
-  font-family: 'Exo', monospace;
-}
-
-/* Hull color coding */
-.stat-value-healthy {
-  color: #10b981;
-}
-
-.stat-value-warning {
-  color: #f59e0b;
-}
-
-.stat-value-critical {
-  color: #ef4444;
-  animation: critical-pulse 1s ease-in-out infinite;
-}
-
-@keyframes critical-pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.6;
-  }
-}
-
-/* Total hull stat - slightly emphasized */
-.hud-stat-total {
-  border-color: rgba(6, 182, 212, 0.5);
-  background: linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(10, 15, 28, 0.98) 100%);
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.4),
-    0 0 8px rgba(6, 182, 212, 0.1);
-}
-
-/* Separator between hull stats and economy stats */
-.hud-stat-separator {
-  width: 1px;
-  background: linear-gradient(180deg, rgba(6, 182, 212, 0.1) 0%, rgba(6, 182, 212, 0.4) 50%, rgba(6, 182, 212, 0.1) 100%);
-  margin: 0 6px;
-  align-self: stretch;
-}
-
-/* Credits and loot styling */
-.stat-value-credits {
-  color: #fbbf24;
-}
-
-.stat-value-loot {
-  color: #60a5fa;
-}
-
-/* ========================================
-   RIGHT PANEL - DETECTION
-   ======================================== */
-
-.hud-right {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-}
-
-/* ========================================
    BOTTOM BAR - ACTIONS
    ======================================== */
 
 .hud-bottom {
   position: absolute;
   bottom: 16px;
-  left: 320px; /* Clear space for map info + zoom controls on left */
-  right: 336px; /* Account for right panel (320px) + margin */
+  left: 20px; /* Inside the map border */
+  right: 340px; /* Account for right panel (320px) + margin */
   display: flex;
   justify-content: center;
 }
@@ -214,42 +91,14 @@
    ======================================== */
 
 @media (max-width: 768px) {
-  .hud-top {
-    top: 8px;
-    left: 8px;
-    right: 8px;
-  }
-
-  .hud-right {
-    top: 8px;
-    right: 8px;
-  }
-
   .hud-bottom {
     bottom: 8px;
-    left: 280px; /* Clear space for map info + zoom controls on left */
+    left: 16px;
     right: 296px; /* Account for smaller panel (280px) + margin */
-  }
-
-  .hud-stat {
-    min-width: 80px;
-    padding: 6px 12px;
-  }
-
-  .stat-label {
-    font-size: 9px;
-  }
-
-  .stat-value {
-    font-size: 14px;
   }
 }
 
 @media (max-width: 480px) {
-  .hud-stats-group {
-    gap: 8px;
-  }
-
   .hud-bottom {
     left: 16px; /* Full width on mobile */
     right: 16px; /* Panel moves to bottom on mobile, so no right offset needed */

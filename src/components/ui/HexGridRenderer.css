@@ -5,15 +5,23 @@
 .hex-grid-container {
   position: absolute;
   left: 0;
-  top: 0;
-  width: calc(100% - 320px); /* Reserve space for right panel (320px) */
-  height: 100%;
+  top: 60px; /* Below 60px header - no gap */
+  width: calc(100% - 320px); /* 320px panel, no margins */
+  height: calc(100% - 60px); /* Full height minus header */
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
   background: transparent;
   font-family: 'Exo', sans-serif;
+  /* Glowing border matching Hangar - brighter cyan */
+  border: 2px solid rgba(6, 212, 212, 0.8);
+  box-shadow:
+    inset 0 0 30px rgba(0, 0, 0, 0.8),
+    0 0 25px rgba(6, 182, 212, 0.5),
+    0 0 50px rgba(6, 182, 212, 0.3);
+  border-radius: 4px;
+  z-index: 50; /* Above base content but below overlays */
 }
 
 .hex-grid-svg {
@@ -194,7 +202,10 @@
 /* Responsive sizing */
 @media (max-width: 768px) {
   .hex-grid-container {
+    left: 0;
+    top: 60px;
     width: calc(100% - 280px); /* Smaller panel on tablet */
+    height: calc(100% - 60px);
   }
 
   .hex-grid-svg {
@@ -209,8 +220,10 @@
 
 @media (max-width: 480px) {
   .hex-grid-container {
+    left: 0;
+    top: 60px;
     width: 100%; /* Panel moves to bottom on mobile */
-    height: calc(100% - 50vh); /* Account for bottom panel */
+    height: calc(50vh - 60px); /* Account for bottom panel */
   }
 
   .tactical-zoom-controls {

@@ -1,12 +1,10 @@
 // ========================================
 // TACTICAL MAP HUD
 // ========================================
-// Overlay HUD for tactical map showing player stats and actions
-// Provides quick access to inventory and extraction
+// Overlay HUD for tactical map - bottom action buttons only
+// Stats have been moved to the header bar in TacticalMapScreen
 
 import React from 'react';
-import { ECONOMY } from '../../data/economyData.js';
-import ReputationService from '../../logic/reputation/ReputationService.js';
 import './TacticalMapHUD.css';
 
 // ========================================
@@ -39,51 +37,23 @@ const IconAbandon = ({ size = 20, className = '' }) => (
 );
 
 /**
- * TacticalMapHUD - Overlay HUD for tactical map screen
+ * TacticalMapHUD - Bottom action buttons for tactical map screen
  *
- * Displays:
- * - Player ship hull per section (Bridge, Power Cell, Drone Control)
- * - Total ship hull
- * - Credits earned this run
- * - Loot collected
- * - (Detection meter moved to HexInfoPanel)
- * - Action buttons (inventory, extract/abandon)
+ * Note: Stats display has been moved to the header bar in TacticalMapScreen.jsx
+ * This component now only handles the bottom action buttons.
  *
  * @param {Object} currentRunState - Current run state
- * @param {Array} shipSections - Ship sections array with hull data
  * @param {Function} onExtractClick - Extract button callback (at gate)
  * @param {Function} onAbandonClick - Abandon button callback (not at gate)
  * @param {Function} onInventoryClick - Inventory button callback
  */
 function TacticalMapHUD({
   currentRunState,
-  shipSections,
   onExtractClick,
   onAbandonClick,
   onInventoryClick
 }) {
-  const { creditsEarned, collectedLoot, playerPosition, insertionGate, mapData, shipSlotId, shipSections: runShipSections } = currentRunState;
-
-  // Calculate extraction limit for any deck type
-  const isStarterDeck = shipSlotId === 0;
-  const baseLimit = isStarterDeck
-    ? (ECONOMY.STARTER_DECK_EXTRACTION_LIMIT || 3)
-    : (ECONOMY.CUSTOM_DECK_EXTRACTION_LIMIT || 6);
-
-  // Reputation bonus (custom decks only)
-  const reputationBonus = isStarterDeck ? 0 : ReputationService.getExtractionBonus();
-
-  // Count damaged sections from run state
-  const damagedCount = runShipSections
-    ? Object.values(runShipSections).filter(section => {
-        const threshold = section.thresholds?.damaged ?? 5;
-        return section.hull <= threshold;
-      }).length
-    : 0;
-
-  // Final extraction limit
-  const extractionLimit = Math.max(0, baseLimit + reputationBonus - damagedCount);
-  const isOverLimit = collectedLoot.length > extractionLimit;
+  const { collectedLoot, playerPosition, insertionGate, mapData } = currentRunState;
 
   // Check if player is at insertion gate
   const isAtInsertionGate = insertionGate &&
@@ -91,7 +61,6 @@ function TacticalMapHUD({
     playerPosition?.r === insertionGate.r;
 
   // Check if player is at ANY gate by matching coordinates against mapData.gates
-  // Note: playerPosition is just {q, r} coordinates, not a hex object with type
   const isAtAnyGate = mapData?.gates?.some(gate =>
     gate.q === playerPosition?.q && gate.r === playerPosition?.r
   );
@@ -99,93 +68,8 @@ function TacticalMapHUD({
   // Extraction gate = at a gate BUT not the insertion gate
   const atExtractionGate = isAtAnyGate && !isAtInsertionGate;
 
-  // Calculate totals from sections
-  const totalHull = shipSections.reduce((sum, s) => sum + s.hull, 0);
-  const totalMaxHull = shipSections.reduce((sum, s) => sum + s.maxHull, 0);
-  const totalHullPercentage = totalMaxHull > 0 ? (totalHull / totalMaxHull) * 100 : 0;
-
-  /**
-   * Get hull color class based on thresholds
-   * Uses ship's damaged/critical thresholds for accurate status display
-   * Falls back to percentage-based if thresholds not available
-   */
-  const getSectionColorClass = (section) => {
-    // Use threshold-based coloring if thresholds are available
-    if (section.thresholds) {
-      const { damaged, critical } = section.thresholds;
-      if (section.hull <= critical) return 'stat-value-critical';
-      if (section.hull <= damaged) return 'stat-value-warning';
-      return 'stat-value-healthy';
-    }
-    // Fallback to percentage-based for backwards compatibility
-    const pct = section.maxHull > 0 ? (section.hull / section.maxHull) * 100 : 0;
-    if (pct >= 70) return 'stat-value-healthy';
-    if (pct >= 40) return 'stat-value-warning';
-    return 'stat-value-critical';
-  };
-
-  // Helper for total hull color based on percentage (no thresholds for totals)
-  const getHullColorClass = (percentage) => {
-    if (percentage >= 70) return 'stat-value-healthy';
-    if (percentage >= 40) return 'stat-value-warning';
-    return 'stat-value-critical';
-  };
-
   return (
     <div className="tactical-map-hud">
-      {/* Top bar - Player stats */}
-      <div className="hud-top">
-        <div className="hud-stats-group">
-          {/* Per-Section Hull */}
-          {shipSections.map(section => (
-            <div key={section.id} className="hud-stat">
-              <span className="stat-label">{section.type}</span>
-              <span className={`stat-value ${getSectionColorClass(section)}`}>
-                {section.hull}/{section.maxHull}
-              </span>
-            </div>
-          ))}
-
-          {/* Total Hull */}
-          <div className="hud-stat hud-stat-total">
-            <span className="stat-label">Total</span>
-            <span className={`stat-value ${getHullColorClass(totalHullPercentage)}`}>
-              {totalHull}/{totalMaxHull}
-            </span>
-          </div>
-
-          {/* Separator */}
-          <div className="hud-stat-separator" />
-
-          {/* Credits */}
-          <div className="hud-stat">
-            <span className="stat-label">Credits</span>
-            <span className="stat-value stat-value-credits">
-              {creditsEarned}
-            </span>
-          </div>
-
-          {/* Loot */}
-          <div className="hud-stat">
-            <span className="stat-label">Loot</span>
-            <span className="stat-value stat-value-loot">
-              {collectedLoot.length}
-            </span>
-          </div>
-
-          {/* Extraction Limit (shown for all decks) */}
-          <>
-            <div className="hud-stat-separator" />
-            <div className="hud-stat" title={isStarterDeck ? "Starter deck extraction limit" : `Custom deck extraction limit (Base: ${baseLimit}${reputationBonus > 0 ? `, Rep: +${reputationBonus}` : ''}${damagedCount > 0 ? `, Damage: -${damagedCount}` : ''})`}>
-              <span className="stat-label">Extract Limit</span>
-              <span className={`stat-value ${isOverLimit ? 'stat-value-warning' : 'stat-value-healthy'}`}>
-                {Math.min(collectedLoot.length, extractionLimit)}/{extractionLimit}
-              </span>
-            </div>
-          </>
-        </div>
-      </div>
-
       {/* Bottom bar - Actions */}
       <div className="hud-bottom">
         <div className="hud-actions-group">

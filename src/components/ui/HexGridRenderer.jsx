@@ -40,6 +40,48 @@ const calculateHexSize = (mapRadius, viewportWidth, viewportHeight) => {
 };
 
 /**
+ * Generate decorative hex coordinates for rings beyond the playable map
+ * These extend the hex pattern visually without being interactive
+ * @param {number} mapRadius - The playable map radius
+ * @param {Array} hexes - The playable hexes (to exclude from decorative)
+ * @param {number} extraRings - Number of extra rings to generate (default: 8)
+ * @returns {Array} Array of {q, r} coordinates for decorative hexes
+ */
+const generateDecorativeHexes = (mapRadius, hexes, extraRings = 8) => {
+  const decorativeHexes = [];
+  const playableSet = new Set(hexes.map(h => `${h.q},${h.r}`));
+
+  // Generate hexes in rings beyond the playable area
+  for (let ring = mapRadius + 1; ring <= mapRadius + extraRings; ring++) {
+    // Use cube coordinate ring algorithm - start at "east" position
+    let q = ring;
+    let r = 0;
+
+    // Walk around the ring in 6 directions
+    const directions = [
+      { dq: -1, dr: 1 },  // SW
+      { dq: -1, dr: 0 },  // W
+      { dq: 0, dr: -1 },  // NW
+      { dq: 1, dr: -1 },  // NE
+      { dq: 1, dr: 0 },   // E
+      { dq: 0, dr: 1 }    // SE
+    ];
+
+    for (const dir of directions) {
+      for (let step = 0; step < ring; step++) {
+        const key = `${q},${r}`;
+        if (!playableSet.has(key)) {
+          decorativeHexes.push({ q, r });
+        }
+        q += dir.dq;
+        r += dir.dr;
+      }
+    }
+  }
+  return decorativeHexes;
+};
+
+/**
  * HexGridRenderer - Renders hex grid using SVG
  *
  * Features:
@@ -68,7 +110,8 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
   });
 
   // Pan/Zoom state
-  const [zoom, setZoom] = useState(1.4);
+  // Default zoom higher to compensate for expanded viewBox with decorative hexes
+  const [zoom, setZoom] = useState(2.8);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -113,40 +156,25 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Attach wheel listener with { passive: false } to allow preventDefault
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
-    const handleWheel = (e) => {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      setZoom(prevZoom => {
-        const newZoom = Math.min(3, Math.max(1, prevZoom + delta));
-        setPan(p => {
-          if (!containerRef.current || newZoom <= 1) return { x: 0, y: 0 };
-          const { width, height } = containerRef.current.getBoundingClientRect();
-          const maxPanX = (width * (newZoom - 1)) / 2;
-          const maxPanY = (height * (newZoom - 1)) / 2;
-          return {
-            x: Math.max(-maxPanX, Math.min(maxPanX, p.x)),
-            y: Math.max(-maxPanY, Math.min(maxPanY, p.y))
-          };
-        });
-        return newZoom;
-      });
-    };
-
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
-  }, []);
-
-  // Pan/Zoom handlers
+  // Pan/Zoom handlers - limit panning to hex grid bounds
   const clampPan = (panX, panY, zoomLevel) => {
     if (!containerRef.current || zoomLevel <= 1) return { x: 0, y: 0 };
     const { width, height } = containerRef.current.getBoundingClientRect();
-    const maxPanX = (width * (zoomLevel - 1)) / 2;
-    const maxPanY = (height * (zoomLevel - 1)) / 2;
+
+    // Calculate the actual hex grid size in pixels
+    const extraRings = 8;
+    const totalRadius = mapData.radius + extraRings;
+    const gridSize = totalRadius * hexSize * 3; // Same formula as viewBoxSize (without padding)
+
+    // How much of the grid is visible at current zoom
+    const visibleWidth = width / zoomLevel;
+    const visibleHeight = height / zoomLevel;
+
+    // Pan limit = half of (grid size - visible area) * zoom, with multiplier to keep edge hexes visible
+    const panLimitMultiplier = 0.8; // Tweak: 1.0 = exact edge, lower = more restricted
+    const maxPanX = Math.max(0, (gridSize - visibleWidth) / 2 * zoomLevel * panLimitMultiplier);
+    const maxPanY = Math.max(0, (gridSize - visibleHeight) / 2 * zoomLevel * panLimitMultiplier);
+
     return {
       x: Math.max(-maxPanX, Math.min(maxPanX, panX)),
       y: Math.max(-maxPanY, Math.min(maxPanY, panY))
@@ -180,7 +208,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
   };
 
   const handleResetView = () => {
-    setZoom(1);
+    setZoom(2.8); // Reset to default zoom
     setPan({ x: 0, y: 0 });
     panRef.current = { x: 0, y: 0 };
   };
@@ -192,6 +220,45 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
 
   // Calculate dynamic hex size based on viewport and map radius
   const hexSize = calculateHexSize(mapData.radius, viewportSize.width, viewportSize.height);
+
+  // Attach wheel listener with { passive: false } to allow preventDefault
+  // Must be after hexSize calculation since it depends on hexSize
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setZoom(prevZoom => {
+        // Min zoom 2.8 to stay close to the map, max 4 for close inspection
+        const newZoom = Math.min(4, Math.max(2.8, prevZoom + delta));
+        setPan(p => {
+          if (!containerRef.current || newZoom <= 1) return { x: 0, y: 0 };
+          const { width, height } = containerRef.current.getBoundingClientRect();
+
+          // Grid-based pan limits (same as clampPan)
+          const extraRings = 8;
+          const totalRadius = mapData.radius + extraRings;
+          const gridSize = totalRadius * hexSize * 3;
+          const visibleWidth = width / newZoom;
+          const visibleHeight = height / newZoom;
+          const panLimitMultiplier = 0.8;
+          const maxPanX = Math.max(0, (gridSize - visibleWidth) / 2 * newZoom * panLimitMultiplier);
+          const maxPanY = Math.max(0, (gridSize - visibleHeight) / 2 * newZoom * panLimitMultiplier);
+
+          return {
+            x: Math.max(-maxPanX, Math.min(maxPanX, p.x)),
+            y: Math.max(-maxPanY, Math.min(maxPanY, p.y))
+          };
+        });
+        return newZoom;
+      });
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, [mapData.radius, hexSize]);
 
   /**
    * Calculate hex polygon points for flat-top orientation
@@ -210,6 +277,51 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
       points.push(`${px.toFixed(2)},${py.toFixed(2)}`);
     }
     return points.join(' ');
+  };
+
+  // Generate decorative hexes that extend beyond the playable map
+  const decorativeHexes = useMemo(() => {
+    return generateDecorativeHexes(mapData.radius, mapData.hexes, 8);
+  }, [mapData.radius, mapData.hexes]);
+
+  /**
+   * Render a decorative (non-interactive) hex for the background
+   * Same fill as playable hexes but with gradient fade based on distance
+   */
+  const renderDecorativeHex = (hex) => {
+    const { x, y } = axialToPixel(hex.q, hex.r, hexSize);
+    const points = calculateHexPoints(x, y, hexSize);
+
+    // Calculate distance from center (axial coordinate distance formula)
+    const distanceFromCenter = (Math.abs(hex.q) + Math.abs(hex.r) + Math.abs(hex.q + hex.r)) / 2;
+
+    // Calculate how many rings beyond the playable area this hex is
+    const ringsBeyondMap = distanceFromCenter - mapData.radius;
+
+    // Gradient opacity: closer to map = same as playable (0.9), fading to ~0.1 at edge
+    const maxRings = 8;
+    const opacityMultiplier = Math.max(0.1, 1 - (ringsBeyondMap / maxRings) * 0.9);
+
+    // Same fill color as playable hexes (rgba(31, 41, 55, 0.9)) but with fade
+    const fillOpacity = 0.9 * opacityMultiplier;
+    const strokeOpacity = 0.6 * opacityMultiplier;
+
+    return (
+      <g key={`dec-${hex.q}-${hex.r}`} style={{ pointerEvents: 'none' }}>
+        <polygon
+          points={points}
+          fill={`rgba(31, 41, 55, ${fillOpacity.toFixed(2)})`}
+          stroke={`rgba(6, 182, 212, ${strokeOpacity.toFixed(2)})`}
+          strokeWidth={1.2}
+        />
+        <polygon
+          points={points}
+          fill="url(#hex-grid-pattern)"
+          stroke="none"
+          opacity={opacityMultiplier}
+        />
+      </g>
+    );
   };
 
   /**
@@ -581,10 +693,12 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
     );
   };
 
-  // Calculate viewBox based on map radius
-  // Tighter viewBox = larger hexes (1.0 instead of 1.2)
+  // Calculate viewBox based on map radius + decorative rings
+  // Include extra rings so decorative hexes are visible when zoomed out
+  const extraRings = 8;
+  const totalRadius = mapData.radius + extraRings;
   const viewBoxPadding = 0.95;
-  const viewBoxSize = mapData.radius * hexSize * 3 * viewBoxPadding;
+  const viewBoxSize = totalRadius * hexSize * 3 * viewBoxPadding;
   const viewBox = `${-viewBoxSize} ${-viewBoxSize} ${viewBoxSize * 2} ${viewBoxSize * 2}`;
 
   return (
@@ -659,7 +773,10 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
             </filter>
           </defs>
 
-          {/* Render all hexes */}
+          {/* Decorative background hexes - extend beyond visible area, non-clickable */}
+          {decorativeHexes.map(renderDecorativeHex)}
+
+          {/* Render all playable hexes */}
           {mapData.hexes.map(renderHex)}
 
           {/* Ship Icon Layer - renders player's ship at current position */}
@@ -692,7 +809,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
-            setZoom(z => Math.min(3, z + 0.2));
+            setZoom(z => Math.min(4, z + 0.2));
           }}
         >
           <Plus size={18} />
@@ -702,7 +819,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
-            setZoom(z => Math.max(1, z - 0.2));
+            setZoom(z => Math.max(2.8, z - 0.2));
           }}
         >
           <Minus size={18} />
