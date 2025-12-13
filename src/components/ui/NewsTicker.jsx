@@ -10,13 +10,16 @@ import { debugLog } from '../../utils/debugLogger.js';
 import '../../styles/news-ticker.css';
 
 /**
- * NewsTicker - Scrolling intel feed for the Hangar screen
+ * NewsTicker - Scrolling intel feed component
+ * Used in Hangar (with maps) and Tactical Map (with direct messages)
  *
  * @param {Object} props
- * @param {Array} props.maps - Array of generated map objects to analyze
+ * @param {Array} props.maps - Array of generated map objects to analyze (for Hangar)
+ * @param {Array} props.messages - Direct message array to display (for Tactical)
  * @param {number} props.scrollDuration - Optional override for scroll duration in seconds
+ * @param {string} props.label - Optional label text (default: "INTEL")
  */
-const NewsTicker = ({ maps = [], scrollDuration }) => {
+const NewsTicker = ({ maps = [], messages: propMessages = null, scrollDuration, label = 'INTEL' }) => {
   const [messages, setMessages] = useState([]);
   const [calculatedDuration, setCalculatedDuration] = useState(null);
   const [scrollDistance, setScrollDistance] = useState(null);
@@ -29,13 +32,20 @@ const NewsTicker = ({ maps = [], scrollDuration }) => {
     return () => debugLog('TICKER', 'NewsTicker UNMOUNTED');
   }, []);
 
-  // Generate messages when maps change
+  // Generate messages when maps change OR use provided messages directly
   useEffect(() => {
-    debugLog('TICKER', 'Maps prop changed, generating messages', { mapCount: maps.length });
-    const generatedMessages = tickerMessageService.generateMessages(maps);
-    debugLog('TICKER', 'Setting messages state', { count: generatedMessages.length });
-    setMessages(generatedMessages);
-  }, [maps]);
+    if (propMessages !== null) {
+      // Direct messages provided (tactical map mode)
+      debugLog('TICKER', 'Using provided messages', { count: propMessages.length });
+      setMessages(propMessages);
+    } else {
+      // Generate from maps (hangar mode)
+      debugLog('TICKER', 'Maps prop changed, generating messages', { mapCount: maps.length });
+      const generatedMessages = tickerMessageService.generateMessages(maps);
+      debugLog('TICKER', 'Setting messages state', { count: generatedMessages.length });
+      setMessages(generatedMessages);
+    }
+  }, [maps, propMessages]);
 
   // Calculate duration dynamically based on content width
   // This ensures all messages scroll through before the animation loops
@@ -146,7 +156,7 @@ const NewsTicker = ({ maps = [], scrollDuration }) => {
   return (
     <div className="news-ticker">
       <div className="news-ticker__label">
-        INTEL
+        {label}
       </div>
       <div ref={scrollContainerRef} className="news-ticker__scroll-container">
         <div

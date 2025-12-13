@@ -175,3 +175,57 @@
     transparent 100%
   );
 }
+
+/* ========================================
+   TACTICAL TICKER - SCANNING MODE
+   ======================================== */
+
+.tactical-ticker--scanning {
+  justify-content: flex-start;
+}
+
+.tactical-ticker__scanning-content {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: #06b6d4;
+  text-shadow: 0 0 10px rgba(6, 182, 212, 0.8);
+  animation: scanning-pulse 1.5s ease-in-out infinite;
+}
+
+.tactical-ticker__scanning-text {
+  text-transform: uppercase;
+}
+
+.tactical-ticker__scanning-dots {
+  animation: scanning-dots 1.5s steps(4, end) infinite;
+  width: 24px;
+  text-align: left;
+  overflow: hidden;
+}
+
+/* Scanning pulse animation */
+@keyframes scanning-pulse {
+  0%, 100% {
+    opacity: 0.5;
+    text-shadow: 0 0 8px rgba(6, 182, 212, 0.5);
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 16px rgba(6, 182, 212, 1), 0 0 24px rgba(6, 182, 212, 0.6);
+  }
+}
+
+/* Animated dots */
+@keyframes scanning-dots {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75% { content: '...'; }
+  100% { content: ''; }
+}

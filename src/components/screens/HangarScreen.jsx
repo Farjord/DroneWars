@@ -880,7 +880,8 @@ const HangarScreen = () => {
     }}>
       {/* Header Section */}
       <header style={{
-        background: 'rgba(17, 24, 39, 0.95)',
+        background: 'linear-gradient(45deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px), linear-gradient(-45deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px), linear-gradient(180deg, rgba(20, 28, 42, 0.95) 0%, rgba(10, 14, 22, 0.95) 100%)',
+        backgroundSize: '10px 10px, 10px 10px, 100% 100%',
         height: '60px',
         display: 'flex',
         alignItems: 'center',
@@ -955,7 +956,8 @@ const HangarScreen = () => {
               0 0 20px rgba(6, 182, 212, 0.3),
               0 0 40px rgba(6, 182, 212, 0.1)
             `,
-            borderRadius: '4px'
+            borderRadius: '4px',
+            margin: '16px'
           }}
           onMouseDown={handleMapMouseDown}
           onMouseMove={handleMapMouseMove}

@@ -8,6 +8,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import HexGridRenderer from '../ui/HexGridRenderer.jsx';
 import TacticalMapHUD from '../ui/TacticalMapHUD.jsx';
 import HexInfoPanel from '../ui/HexInfoPanel.jsx';
+import TacticalTicker from '../ui/TacticalTicker.jsx';
 import POIEncounterModal from '../modals/POIEncounterModal.jsx';
 import SalvageModal from '../modals/SalvageModal.jsx';
 import EscapeConfirmModal from '../modals/EscapeConfirmModal.jsx';
@@ -1966,7 +1967,8 @@ function TacticalMapScreen() {
         top: 0,
         left: 0,
         right: '320px', // Stop before HexInfoPanel
-        background: 'rgba(17, 24, 39, 0.95)',
+        background: 'linear-gradient(45deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px), linear-gradient(-45deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px), linear-gradient(180deg, rgba(20, 28, 42, 0.95) 0%, rgba(10, 14, 22, 0.95) 100%)',
+        backgroundSize: '10px 10px, 10px 10px, 100% 100%',
         height: '60px',
         display: 'flex',
         alignItems: 'center',
@@ -2025,6 +2027,20 @@ function TacticalMapScreen() {
         </div>
       </header>
 
+      {/* Tactical Ticker - Intel feed below header */}
+      <div style={{
+        position: 'fixed',
+        top: '60px',
+        left: 0,
+        right: '320px', // Stop before HexInfoPanel
+        zIndex: 150
+      }}>
+        <TacticalTicker
+          isMoving={isMoving}
+          currentRunState={currentRunState}
+        />
+      </div>
+
       {/* Warning overlay during scanning */}
       {isScanningHex && (
         <div className="threat-scan-overlay">
@@ -2032,20 +2048,32 @@ function TacticalMapScreen() {
         </div>
       )}
 
-      {/* Background hex grid */}
-      <HexGridRenderer
-        mapData={mapData}
-        playerPosition={playerPosition}
-        onHexClick={handleHexClick}
-        waypoints={waypoints}
-        currentWaypointIndex={isMoving ? currentWaypointIndex : null}
-        previewPath={previewPath}
-        isScanning={isScanningHex}
-        insertionGate={currentRunState.insertionGate}
-        lootedPOIs={currentRunState.lootedPOIs || []}
-        shipId={shipSlot.shipId || 'SHIP_001'}
-        currentHexIndex={currentHexIndex}
-      />
+      {/* Hex grid wrapper - provides dark background for breathing room */}
+      <div style={{
+        position: 'fixed',
+        top: '92px',
+        left: 0,
+        right: '320px',
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.5)',
+        padding: '16px',
+        display: 'flex',
+        boxSizing: 'border-box'
+      }}>
+        <HexGridRenderer
+          mapData={mapData}
+          playerPosition={playerPosition}
+          onHexClick={handleHexClick}
+          waypoints={waypoints}
+          currentWaypointIndex={isMoving ? currentWaypointIndex : null}
+          previewPath={previewPath}
+          isScanning={isScanningHex}
+          insertionGate={currentRunState.insertionGate}
+          lootedPOIs={currentRunState.lootedPOIs || []}
+          shipId={shipSlot.shipId || 'SHIP_001'}
+          currentHexIndex={currentHexIndex}
+        />
+      </div>
 
       {/* HUD Overlay - now only bottom buttons */}
       <TacticalMapHUD

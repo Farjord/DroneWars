@@ -298,7 +298,8 @@ const RepairBayScreen = () => {
     <div className="repair-bay-screen heading-font">
       {/* Header - Exact Hangar style */}
       <header style={{
-        background: 'rgba(17, 24, 39, 0.95)',
+        background: 'linear-gradient(45deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px), linear-gradient(-45deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px), linear-gradient(180deg, rgba(20, 28, 42, 0.95) 0%, rgba(10, 14, 22, 0.95) 100%)',
+        backgroundSize: '10px 10px, 10px 10px, 100% 100%',
         height: '60px',
         display: 'flex',
         alignItems: 'center',

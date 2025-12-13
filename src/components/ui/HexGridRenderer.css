@@ -3,25 +3,25 @@
    ======================================== */
 
 .hex-grid-container {
-  position: absolute;
-  left: 0;
-  top: 60px; /* Below 60px header - no gap */
-  width: calc(100% - 320px); /* 320px panel, no margins */
-  height: calc(100% - 60px); /* Full height minus header */
+  position: relative;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
   background: transparent;
   font-family: 'Exo', sans-serif;
-  /* Glowing border matching Hangar - brighter cyan */
-  border: 2px solid rgba(6, 212, 212, 0.8);
+  /* Glowing border matching Repair Bay */
+  border: 2px solid rgba(6, 182, 212, 0.6);
   box-shadow:
     inset 0 0 30px rgba(0, 0, 0, 0.8),
-    0 0 25px rgba(6, 182, 212, 0.5),
-    0 0 50px rgba(6, 182, 212, 0.3);
+    0 0 20px rgba(6, 182, 212, 0.3),
+    0 0 40px rgba(6, 182, 212, 0.1);
   border-radius: 4px;
-  z-index: 50; /* Above base content but below overlays */
 }
 
 .hex-grid-svg {
@@ -201,13 +201,6 @@
 
 /* Responsive sizing */
 @media (max-width: 768px) {
-  .hex-grid-container {
-    left: 0;
-    top: 60px;
-    width: calc(100% - 280px); /* Smaller panel on tablet */
-    height: calc(100% - 60px);
-  }
-
   .hex-grid-svg {
     max-width: 100vw;
     max-height: calc(100vh - 200px); /* Account for HUD */
@@ -219,13 +212,6 @@
 }
 
 @media (max-width: 480px) {
-  .hex-grid-container {
-    left: 0;
-    top: 60px;
-    width: 100%; /* Panel moves to bottom on mobile */
-    height: calc(50vh - 60px); /* Account for bottom panel */
-  }
-
   .tactical-zoom-controls {
     left: 130px;
     bottom: calc(50vh + 16px); /* Above the bottom panel */
