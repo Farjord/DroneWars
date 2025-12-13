@@ -270,6 +270,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [selectedCard, setSelectedCard] = useState(null); // { card data }
   const [validCardTargets, setValidCardTargets] = useState([]); // [id1, id2, ...]
   const [affectedDroneIds, setAffectedDroneIds] = useState([]); // Drone IDs affected by LANE-targeting cards with filters
+  const [hoveredLane, setHoveredLane] = useState(null); // { laneId: 'lane1', owner: 'player2' } for hover-based targeting
   const [cardConfirmation, setCardConfirmation] = useState(null); // { card, target }
   const [abilityConfirmation, setAbilityConfirmation] = useState(null);
 
@@ -568,6 +569,31 @@ const App = ({ phaseAnimationQueue }) => {
       });
     }
   }, [turnPhase, shieldsToAllocate, localPlayerState]);
+
+  // Recalculate affectedDroneIds when hoveredLane changes (hover-based targeting)
+  // Only applies to LANE-targeting action cards during drag
+  useEffect(() => {
+    if (draggedActionCard && hoveredLane && draggedActionCard.card?.targeting?.type === 'LANE') {
+      const affected = calculateAffectedDroneIds(
+        draggedActionCard.card,
+        [hoveredLane], // Only calculate for the hovered lane
+        gameState.player1,
+        gameState.player2,
+        getLocalPlayerId(),
+        gameDataService.getEffectiveStats.bind(gameDataService),
+        getPlacedSectionsForEngine()
+      );
+      debugLog('LANE_TARGETING', '🎯 Hover-based affected drone recalc', {
+        hoveredLane,
+        affectedDroneIds: affected,
+        cardName: draggedActionCard.card.name
+      });
+      setAffectedDroneIds(affected);
+    } else if (draggedActionCard && !hoveredLane && draggedActionCard.card?.targeting?.type === 'LANE') {
+      // Clear affected drones when not hovering any lane
+      setAffectedDroneIds([]);
+    }
+  }, [hoveredLane, draggedActionCard, gameState.player1, gameState.player2, getLocalPlayerId, gameDataService, getPlacedSectionsForEngine]);
 
   // addLogEntry is now provided by useGameState hook
 
@@ -2922,18 +2948,24 @@ const App = ({ phaseAnimationQueue }) => {
       );
       setValidCardTargets(targets);
 
-      // Calculate affected drone IDs for LANE-targeting cards with filters
-      // This provides visual feedback showing which specific drones will be hit
-      const affected = calculateAffectedDroneIds(
-        card,
-        targets,
-        gameState.player1,
-        gameState.player2,
-        getLocalPlayerId(),
-        gameDataService.getEffectiveStats.bind(gameDataService),
-        getPlacedSectionsForEngine()
-      );
-      setAffectedDroneIds(affected);
+      // For LANE-targeting cards, affectedDroneIds is calculated dynamically
+      // based on hoveredLane via useEffect (hover-based targeting feedback)
+      // For non-LANE cards, calculate immediately
+      if (card.targeting?.type !== 'LANE') {
+        const affected = calculateAffectedDroneIds(
+          card,
+          targets,
+          gameState.player1,
+          gameState.player2,
+          getLocalPlayerId(),
+          gameDataService.getEffectiveStats.bind(gameDataService),
+          getPlacedSectionsForEngine()
+        );
+        setAffectedDroneIds(affected);
+      } else {
+        // LANE-targeting: wait for hover to calculate affected drones
+        setAffectedDroneIds([]);
+      }
     } else {
       setValidCardTargets([]);  // No targets needed for no-target cards
       setAffectedDroneIds([]);
@@ -2969,6 +3001,7 @@ const App = ({ phaseAnimationQueue }) => {
     setDraggedActionCard(null);
     setActionCardDragArrowState(prev => ({ ...prev, visible: false }));
     setAffectedDroneIds([]);
+    setHoveredLane(null);
 
     // Case 1: No-target cards - show confirmation
     if (!card.targeting) {
@@ -4522,6 +4555,8 @@ const App = ({ phaseAnimationQueue }) => {
         playerInterceptionChoice={playerInterceptionChoice}
         draggedActionCard={draggedActionCard}
         handleActionCardDragEnd={handleActionCardDragEnd}
+        hoveredLane={hoveredLane}
+        setHoveredLane={setHoveredLane}
       />
 
       <GameFooter

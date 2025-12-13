@@ -222,7 +222,10 @@ const DroneLanesDisplay = ({
   handleDroneDragEnd,
   // Action card drag-and-drop props
   draggedActionCard = null,
-  handleActionCardDragEnd = null
+  handleActionCardDragEnd = null,
+  // Lane hover targeting props
+  hoveredLane = null,
+  setHoveredLane = null
 }) => {
   // Use GameDataService for computed data
   const { getEffectiveStats } = useGameData();
@@ -258,6 +261,23 @@ const DroneLanesDisplay = ({
           <div
             key={lane}
             onClick={(e) => onLaneClick(e, lane, isPlayer)}
+            onMouseEnter={() => {
+              // Handle lane hover for LANE-targeting action cards
+              if (draggedActionCard &&
+                  draggedActionCard.card?.targeting?.type === 'LANE' &&
+                  isActionCardLaneTarget &&
+                  setHoveredLane) {
+                setHoveredLane({ id: lane, owner });
+              }
+            }}
+            onMouseLeave={() => {
+              // Clear lane hover when mouse leaves during action card drag
+              if (draggedActionCard &&
+                  draggedActionCard.card?.targeting?.type === 'LANE' &&
+                  setHoveredLane) {
+                setHoveredLane(null);
+              }
+            }}
             onMouseUp={() => {
               // Handle card drop when dragging a card to player lanes
               debugLog('DRAG_DROP_DEPLOY', '🎯 Lane mouseUp detected', { lane, isPlayer, hasDraggedCard: !!draggedCard, hasDraggedDrone: !!draggedDrone });

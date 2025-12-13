@@ -95,7 +95,9 @@ function GameBattlefield({
   handleDroneDragStart,
   handleDroneDragEnd,
   draggedActionCard,
-  handleActionCardDragEnd
+  handleActionCardDragEnd,
+  hoveredLane,
+  setHoveredLane
 }) {
   // Calculate isInteractive for player ship sections
   const playerShipInteractive = turnPhase === 'allocateShields' || reallocationPhase;
@@ -164,6 +166,8 @@ function GameBattlefield({
           handleDroneDragEnd={handleDroneDragEnd}
           draggedActionCard={draggedActionCard}
           handleActionCardDragEnd={handleActionCardDragEnd}
+          hoveredLane={hoveredLane}
+          setHoveredLane={setHoveredLane}
         />
 
         {/* Player Drone Lanes */}
@@ -204,6 +208,8 @@ function GameBattlefield({
           handleDroneDragEnd={handleDroneDragEnd}
           draggedActionCard={draggedActionCard}
           handleActionCardDragEnd={handleActionCardDragEnd}
+          hoveredLane={hoveredLane}
+          setHoveredLane={setHoveredLane}
         />
 
         {/* Player Ship Sections */}
