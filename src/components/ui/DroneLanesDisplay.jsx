@@ -57,6 +57,7 @@ const renderDronesOnBoard = (
   mandatoryAction,
   validAbilityTargets,
   validCardTargets,
+  affectedDroneIds,
   setHoveredTarget,
   hoveredTarget,
   interceptedBadge,
@@ -74,6 +75,27 @@ const renderDronesOnBoard = (
       style={{ minHeight: 'clamp(130px, 6.77vw, 175px)', paddingTop: '2px' }}
     >
      {drones.map((drone) => {
+          // Calculate isActionTarget conditions for debugging
+          const abilityTargetMatch = validAbilityTargets.some(t => t.id === drone.id);
+          const cardTargetMatch = validCardTargets.some(t => t.id === drone.id);
+          const affectedDroneMatch = affectedDroneIds.includes(drone.id);
+          const isActionTarget = abilityTargetMatch || cardTargetMatch || affectedDroneMatch;
+
+          // Log when action targeting is active (for diagnosing highlighting issues)
+          if (isActionTarget) {
+            debugLog('LANE_TARGETING', '🎯 Drone action target match', {
+              droneId: drone.id,
+              droneName: drone.name,
+              lane,
+              isPlayer,
+              abilityTargetMatch,
+              cardTargetMatch,
+              affectedDroneMatch,
+              validCardTargetIds: validCardTargets.map(t => t.id).slice(0, 5),
+              affectedDroneIds: affectedDroneIds.slice(0, 5)
+            });
+          }
+
           return (
               <DroneToken
               key={drone.id}
@@ -90,7 +112,7 @@ const renderDronesOnBoard = (
               droneRefs={droneRefs}
               mandatoryAction={mandatoryAction}
               localPlayerState={localPlayerState}
-              isActionTarget={validAbilityTargets.some(t => t.id === drone.id) || validCardTargets.some(t => t.id === drone.id)}
+              isActionTarget={isActionTarget}
               onMouseEnter={() => {
                 if (!isPlayer) {
                   setHoveredTarget({ target: drone, type: 'drone', lane });
@@ -173,6 +195,7 @@ const DroneLanesDisplay = ({
   validAbilityTargets,
   selectedCard,
   validCardTargets,
+  affectedDroneIds = [],
   multiSelectState,
   turnPhase,
   localPlayerState,
@@ -257,7 +280,7 @@ const DroneLanesDisplay = ({
               }
             }}
             className={`flex-1 rounded-lg transition-all duration-200 p-2
-              ${isTargetable ? 'bg-cyan-800/40 ring-2 ring-cyan-400/30 animate-pulse' : baseBackgroundColor}
+              ${isTargetable ? 'bg-cyan-800/40 ring-2 ring-cyan-400/30' : baseBackgroundColor}
               ${isInteractivePlayerLane ? 'cursor-pointer hover:bg-cyan-900/20' : ''}
             `}
             style={{
@@ -286,6 +309,7 @@ const DroneLanesDisplay = ({
               mandatoryAction,
               validAbilityTargets,
               validCardTargets,
+              affectedDroneIds,
               setHoveredTarget,
               hoveredTarget,
               interceptedBadge,

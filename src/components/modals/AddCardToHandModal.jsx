@@ -9,6 +9,9 @@ import { X } from 'lucide-react';
 import DeckBuildingModal from './DeckBuildingModal.jsx';
 import fullCardCollection from '../../data/cardData.js';
 
+// Stable empty object reference to prevent useEffect re-triggering in DeckBuildingModal
+const EMPTY_SELECTION = {};
+
 /**
  * AddCardToHandModal - Debug feature for adding cards to hands
  * @param {boolean} isOpen - Whether modal is visible
@@ -142,7 +145,7 @@ function AddCardToHandModal({ isOpen, onClose, onConfirm, gameMode }) {
         isOpen={showCardSelection}
         onClose={() => setShowCardSelection(false)}
         onConfirm={handleCardSelectionConfirm}
-        initialSelection={{}}
+        initialSelection={EMPTY_SELECTION}
         allCards={fullCardCollection}
         title={`Select Cards for ${selectedTab === 'local' ? getLocalPlayerLabel() : getOpponentPlayerLabel()}`}
         minCards={0}

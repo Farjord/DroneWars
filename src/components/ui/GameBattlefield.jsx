@@ -57,6 +57,7 @@ function GameBattlefield({
   opponentPlacedSections,
   selectedCard,
   validCardTargets,
+  affectedDroneIds = [],
   abilityMode,
   validAbilityTargets,
   multiSelectState,
@@ -139,6 +140,7 @@ function GameBattlefield({
           validAbilityTargets={validAbilityTargets}
           selectedCard={selectedCard}
           validCardTargets={validCardTargets}
+          affectedDroneIds={affectedDroneIds}
           multiSelectState={multiSelectState}
           turnPhase={turnPhase}
           localPlayerState={localPlayerState}
@@ -175,6 +177,7 @@ function GameBattlefield({
           validAbilityTargets={validAbilityTargets}
           selectedCard={selectedCard}
           validCardTargets={validCardTargets}
+          affectedDroneIds={affectedDroneIds}
           multiSelectState={multiSelectState}
           turnPhase={turnPhase}
           localPlayerState={localPlayerState}

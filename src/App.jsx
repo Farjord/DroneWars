@@ -82,7 +82,7 @@ import p2pManager from './network/P2PManager.js';
 // --- 1.7 UTILITY IMPORTS ---
 import { getElementCenter } from './utils/gameUtils.js';
 import { debugLog } from './utils/debugLogger.js';
-import { calculateAllValidTargets } from './utils/uiTargetingHelpers.js';
+import { calculateAllValidTargets, calculateAffectedDroneIds } from './utils/uiTargetingHelpers.js';
 import DEV_CONFIG from './config/devConfig.js';
 import SeededRandom from './utils/seededRandom.js';
 
@@ -269,6 +269,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [shipAbilityConfirmation, setShipAbilityConfirmation] = useState(null);
   const [selectedCard, setSelectedCard] = useState(null); // { card data }
   const [validCardTargets, setValidCardTargets] = useState([]); // [id1, id2, ...]
+  const [affectedDroneIds, setAffectedDroneIds] = useState([]); // Drone IDs affected by LANE-targeting cards with filters
   const [cardConfirmation, setCardConfirmation] = useState(null); // { card, target }
   const [abilityConfirmation, setAbilityConfirmation] = useState(null);
 
@@ -999,6 +1000,7 @@ const App = ({ phaseAnimationQueue }) => {
     setSelectedCard(null);
     setMultiSelectState(null);
     setValidCardTargets([]);  // Clear target highlights
+    setAffectedDroneIds([]);  // Clear affected drone highlights
   };
 
   /**
@@ -1024,6 +1026,9 @@ const App = ({ phaseAnimationQueue }) => {
       setSelectedCard(null);
       setMultiSelectState(null);
     }
+
+    // Clear visual targeting feedback
+    setAffectedDroneIds([]);
 
     // Cancel shield reallocation (async but non-blocking)
     if (reallocationPhase) {
@@ -2916,8 +2921,22 @@ const App = ({ phaseAnimationQueue }) => {
         getLocalPlayerId()
       );
       setValidCardTargets(targets);
+
+      // Calculate affected drone IDs for LANE-targeting cards with filters
+      // This provides visual feedback showing which specific drones will be hit
+      const affected = calculateAffectedDroneIds(
+        card,
+        targets,
+        gameState.player1,
+        gameState.player2,
+        getLocalPlayerId(),
+        gameDataService.getEffectiveStats.bind(gameDataService),
+        getPlacedSectionsForEngine()
+      );
+      setAffectedDroneIds(affected);
     } else {
       setValidCardTargets([]);  // No targets needed for no-target cards
+      setAffectedDroneIds([]);
     }
 
     // Setup arrow from card position
@@ -2949,6 +2968,7 @@ const App = ({ phaseAnimationQueue }) => {
     // Cleanup drag state
     setDraggedActionCard(null);
     setActionCardDragArrowState(prev => ({ ...prev, visible: false }));
+    setAffectedDroneIds([]);
 
     // Case 1: No-target cards - show confirmation
     if (!card.targeting) {
@@ -4461,6 +4481,7 @@ const App = ({ phaseAnimationQueue }) => {
         opponentPlacedSections={opponentPlacedSections}
         selectedCard={selectedCard}
         validCardTargets={validCardTargets}
+        affectedDroneIds={affectedDroneIds}
         abilityMode={abilityMode}
         validAbilityTargets={validAbilityTargets}
         multiSelectState={multiSelectState}

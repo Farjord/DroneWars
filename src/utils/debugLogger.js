@@ -78,6 +78,7 @@ const DEBUG_CONFIG = {
     TARGETING_ROUTING: false,    // Targeting router decisions (DISABLED - Phase 2 complete and verified)
     TARGETING_PROCESSING: false, // Targeting processor execution (DISABLED - Phase 2 complete and verified)
     TARGETING_FALLBACK: false,   // Targeting falling back to monolithic function (DISABLED - no fallbacks expected)
+    LANE_TARGETING: true,        // Lane-targeting cards and filtered drone effects (affectedDroneIds)
   }
 };
 

@@ -193,3 +193,89 @@ export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSele
 
     return { validAbilityTargets, validCardTargets };
 };
+
+/**
+ * Calculate drone IDs affected by a LANE-targeting card
+ *
+ * For LANE-targeting cards, determines which specific drones will be affected:
+ * - FILTERED scope: Only drones matching the effect filter (e.g., speed >= 5)
+ * - LANE scope (or no scope): All drones in the targeted lane(s)
+ *
+ * Used for visual feedback - showing which drones will be hit when targeting a lane.
+ *
+ * @param {Object} card - Card definition with targeting and effect
+ * @param {Array} validLaneTargets - Lane targets from routeTargeting
+ * @param {Object} player1 - Player 1 state
+ * @param {Object} player2 - Player 2 state
+ * @param {string} localPlayerId - Acting player ID
+ * @param {Function} getEffectiveStatsFn - Function to calculate effective stats
+ * @param {Object} placedSections - Placed sections for both players
+ * @returns {Array} Array of drone IDs that will be affected
+ */
+export const calculateAffectedDroneIds = (
+    card,
+    validLaneTargets,
+    player1,
+    player2,
+    localPlayerId,
+    getEffectiveStatsFn,
+    placedSections
+) => {
+    // Only process LANE-targeting cards
+    if (!card || card.targeting?.type !== 'LANE') {
+        return [];
+    }
+
+    const affectedIds = [];
+    const effect = card.effect;
+    const isFiltered = effect?.scope === 'FILTERED' && effect?.filter;
+    const isLaneScope = effect?.scope === 'LANE' || !effect?.scope;
+
+    validLaneTargets.forEach(laneTarget => {
+        const targetPlayerState = laneTarget.owner === 'player1' ? player1 : player2;
+        const opponentState = laneTarget.owner === 'player1' ? player2 : player1;
+        const dronesInLane = targetPlayerState.dronesOnBoard[laneTarget.id] || [];
+
+        if (isFiltered) {
+            // FILTERED scope: only drones matching the filter
+            const { stat, comparison, value } = effect.filter;
+            let matchingDrones = [];
+
+            dronesInLane.forEach(drone => {
+                const effectiveStats = getEffectiveStatsFn(drone, laneTarget.id, {
+                    playerState: targetPlayerState,
+                    opponentState: opponentState,
+                    placedSections
+                });
+
+                const effectiveStatValue = effectiveStats[stat] ?? drone[stat];
+                let meetsCondition = false;
+
+                switch (comparison) {
+                    case 'GTE': meetsCondition = effectiveStatValue >= value; break;
+                    case 'LTE': meetsCondition = effectiveStatValue <= value; break;
+                    case 'EQ':  meetsCondition = effectiveStatValue === value; break;
+                    case 'GT':  meetsCondition = effectiveStatValue > value; break;
+                    case 'LT':  meetsCondition = effectiveStatValue < value; break;
+                }
+
+                if (meetsCondition) {
+                    matchingDrones.push(drone);
+                }
+            });
+
+            // Apply maxTargets if specified (e.g., Strafe Run)
+            if (effect.maxTargets && matchingDrones.length > effect.maxTargets) {
+                matchingDrones = matchingDrones.slice(0, effect.maxTargets);
+            }
+
+            matchingDrones.forEach(d => affectedIds.push(d.id));
+
+        } else if (isLaneScope) {
+            // LANE scope or no scope: all drones in lane
+            dronesInLane.forEach(drone => affectedIds.push(drone.id));
+        }
+    });
+
+    return affectedIds;
+};
