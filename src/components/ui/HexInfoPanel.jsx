@@ -193,7 +193,10 @@ function HexInfoPanel({
   mapRadius = 5,
 
   // Looted POI tracking
-  lootedPOIs = []
+  lootedPOIs = [],
+
+  // Scanning state
+  isScanningHex = false
 }) {
   // Use passed tierConfig if available, otherwise compute from mapData
   const tierConfig = passedTierConfig || (mapData ? mapTiers[mapData.tier - 1] : null);
@@ -349,6 +352,14 @@ function HexInfoPanel({
             <p className="movement-status">
               {isPaused ? 'Paused' : 'Traveling to waypoint...'}
             </p>
+
+            {/* Threat scan indicator */}
+            {isScanningHex && (
+              <div className="threat-scan-indicator">
+                <span className="threat-scan-icon">⚠</span>
+                <span className="threat-scan-label">ENEMY THREAT SCAN ACTIVE</span>
+              </div>
+            )}
 
             {/* Upcoming hexes during movement */}
             {(() => {

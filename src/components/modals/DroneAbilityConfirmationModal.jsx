@@ -18,7 +18,8 @@ const DroneAbilityConfirmationModal = ({ abilityConfirmation, show, onCancel, on
   if (!show || !abilityConfirmation) return null;
 
   const { ability, drone, target } = abilityConfirmation;
-  const targetDisplayName = `Lane ${target.id.slice(-1)}`;
+  // Handle both lane targets (id: "lane1") and drone targets (name: "Scout Drone")
+  const targetDisplayName = target.name || `Lane ${target.id.slice(-1)}`;
 
   return (
     <div className="dw-modal-overlay" onClick={onCancel}>

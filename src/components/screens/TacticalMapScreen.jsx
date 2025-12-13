@@ -2041,39 +2041,20 @@ function TacticalMapScreen() {
         />
       </div>
 
-      {/* Warning overlay during scanning */}
-      {isScanningHex && (
-        <div className="threat-scan-overlay">
-          <div className="threat-scan-text">ENEMY THREAT SCAN ACTIVE</div>
-        </div>
-      )}
-
-      {/* Hex grid wrapper - provides dark background for breathing room */}
-      <div style={{
-        position: 'fixed',
-        top: '92px',
-        left: 0,
-        right: '320px',
-        bottom: 0,
-        background: 'rgba(0, 0, 0, 0.5)',
-        padding: '16px',
-        display: 'flex',
-        boxSizing: 'border-box'
-      }}>
-        <HexGridRenderer
-          mapData={mapData}
-          playerPosition={playerPosition}
-          onHexClick={handleHexClick}
-          waypoints={waypoints}
-          currentWaypointIndex={isMoving ? currentWaypointIndex : null}
-          previewPath={previewPath}
-          isScanning={isScanningHex}
-          insertionGate={currentRunState.insertionGate}
-          lootedPOIs={currentRunState.lootedPOIs || []}
-          shipId={shipSlot.shipId || 'SHIP_001'}
-          currentHexIndex={currentHexIndex}
-        />
-      </div>
+      {/* Background hex grid */}
+      <HexGridRenderer
+        mapData={mapData}
+        playerPosition={playerPosition}
+        onHexClick={handleHexClick}
+        waypoints={waypoints}
+        currentWaypointIndex={isMoving ? currentWaypointIndex : null}
+        previewPath={previewPath}
+        isScanning={isScanningHex}
+        insertionGate={currentRunState.insertionGate}
+        lootedPOIs={currentRunState.lootedPOIs || []}
+        shipId={shipSlot.shipId || 'SHIP_001'}
+        currentHexIndex={currentHexIndex}
+      />
 
       {/* HUD Overlay - now only bottom buttons */}
       <TacticalMapHUD
@@ -2120,6 +2101,9 @@ function TacticalMapScreen() {
 
         // Looted POI tracking
         lootedPOIs={currentRunState.lootedPOIs || []}
+
+        // Scanning state
+        isScanningHex={isScanningHex}
       />
 
       {/* POI Encounter Modal */}

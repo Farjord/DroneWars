@@ -6,12 +6,17 @@
 .escape-loading-overlay {
   position: fixed;
   inset: 0;
-  background: linear-gradient(180deg, #0a0f1a 0%, #1a150a 50%, #0a0f1a 100%);
+  background:
+    linear-gradient(180deg, rgba(10, 15, 26, 0.7) 0%, rgba(26, 21, 10, 0.5) 50%, rgba(10, 15, 26, 0.7) 100%),
+    url('/Transitions/Corvette/Escape.png');
+  background-size: cover;
+  background-position: center;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
   animation: escapeFadeIn 0.3s ease-out;
+  box-shadow: inset 0 0 150px 60px rgba(0, 0, 0, 0.8);
 }
 
 .escape-loading-overlay.fade-out {
@@ -204,8 +209,8 @@
 .escape-damage-summary {
   margin-top: 16px;
   padding: 20px 32px;
-  background: rgba(217, 119, 6, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.2);
+  background: rgba(217, 119, 6, 0.55);
+  border: 1px solid rgba(245, 158, 11, 0.6);
   border-radius: 8px;
   min-width: 280px;
 }

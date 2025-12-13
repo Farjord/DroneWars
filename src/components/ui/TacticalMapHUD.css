@@ -8,7 +8,7 @@
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 100;
+  z-index: 110; /* Above hex-grid-container (105) */
   font-family: 'Exo', sans-serif;
 }
 

@@ -67,7 +67,8 @@ const renderDronesOnBoard = (
   draggedActionCard,
   handleActionCardDragEnd,
   getLocalPlayerId,
-  getOpponentPlayerId
+  getOpponentPlayerId,
+  abilityMode
 ) => {
   return (
     <div
@@ -134,6 +135,7 @@ const renderDronesOnBoard = (
               onActionCardDrop={handleActionCardDragEnd}
               getLocalPlayerId={getLocalPlayerId}
               getOpponentPlayerId={getOpponentPlayerId}
+              isAbilitySource={abilityMode?.drone?.id === drone.id}
                />
           );
       })}
@@ -339,7 +341,8 @@ const DroneLanesDisplay = ({
               draggedActionCard,
               handleActionCardDragEnd,
               getLocalPlayerId,
-              getOpponentPlayerId
+              getOpponentPlayerId,
+              abilityMode
             )}
           </div>
         );

@@ -89,6 +89,7 @@ const DroneToken = ({
   onDragDrop,
   isDragging = false,
   isHovered = false,
+  isAbilitySource = false,
   // Action card drag-and-drop props
   draggedActionCard = null,
   onActionCardDrop = null,
@@ -153,6 +154,7 @@ const DroneToken = ({
   const actionTargetEffect = isActionTarget ? 'shadow-xl shadow-red-500/95 animate-pulse' : '';
   const mandatoryDestroyEffect = mandatoryAction?.type === 'destroy' && isPlayer ? 'ring-2 ring-red-500 animate-pulse' : '';
   const hoverEffect = isHovered ? 'scale-105' : '';
+  const abilitySourceEffect = isAbilitySource ? 'ability-source-glow' : '';
 
   const isAbilityUsable = (ability) => {
     if (drone.isExhausted && ability.cost.exhausts !== false) return false;
@@ -169,6 +171,10 @@ const DroneToken = ({
       data-drone-id={drone.id}
       onClick={(e) => onClick && onClick(e, drone, isPlayer)}
       onMouseDown={(e) => {
+        // Don't initiate drag if clicking on ability button (or any button/interactive element)
+        if (e.target.closest('button')) {
+          return;
+        }
         // Initiate drag for player drones during action phase
         if (onDragStart && isPlayer && !drone.isExhausted) {
           e.preventDefault();
@@ -198,7 +204,7 @@ const DroneToken = ({
       {/* Visual Effects Wrapper */}
       <div className="w-full h-full">
         {/* Targeting/Visual Effects Container - handles pulse, hit, selection, hover, etc. */}
-        <div className={`w-full h-full transition-all duration-200 ${hitEffect} ${selectedEffect} ${hoverEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect}`}>
+        <div className={`w-full h-full transition-all duration-200 ${hitEffect} ${selectedEffect} ${hoverEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${abilitySourceEffect}`}>
           {/* Grayscale Container - only applies exhausted effect */}
           <div className={`w-full h-full relative ${exhaustEffect}`}>
       {/* Main Token Body */}
