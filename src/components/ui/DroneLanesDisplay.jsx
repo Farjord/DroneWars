@@ -62,7 +62,11 @@ const renderDronesOnBoard = (
   interceptedBadge,
   draggedDrone,
   handleDroneDragStart,
-  handleDroneDragEnd
+  handleDroneDragEnd,
+  draggedActionCard,
+  handleActionCardDragEnd,
+  getLocalPlayerId,
+  getOpponentPlayerId
 ) => {
   return (
     <div
@@ -104,6 +108,10 @@ const renderDronesOnBoard = (
               onDragDrop={!isPlayer && draggedDrone ? (targetDrone) => handleDroneDragEnd(targetDrone, lane, true) : undefined}
               isDragging={draggedDrone?.drone?.id === drone.id}
               isHovered={!isPlayer && hoveredTarget?.target?.id === drone.id}
+              draggedActionCard={draggedActionCard}
+              onActionCardDrop={handleActionCardDragEnd}
+              getLocalPlayerId={getLocalPlayerId}
+              getOpponentPlayerId={getOpponentPlayerId}
                />
           );
       })}
@@ -188,7 +196,10 @@ const DroneLanesDisplay = ({
   handleCardDragEnd,
   draggedDrone,
   handleDroneDragStart,
-  handleDroneDragEnd
+  handleDroneDragEnd,
+  // Action card drag-and-drop props
+  draggedActionCard = null,
+  handleActionCardDragEnd = null
 }) => {
   // Use GameDataService for computed data
   const { getEffectiveStats } = useGameData();
@@ -199,10 +210,16 @@ const DroneLanesDisplay = ({
     >
       {['lane1', 'lane2', 'lane3'].map((lane) => {
         const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
+        // Check if this lane is a valid target for action card LANE targeting
+        const isActionCardLaneTarget = draggedActionCard &&
+          draggedActionCard.card?.targeting?.type === 'LANE' &&
+          validCardTargets.some(t => t.id === lane && t.owner === owner);
+
         const isTargetable = (abilityMode && validAbilityTargets.some(t => t.id === lane && t.owner === owner)) ||
                              (selectedCard && validCardTargets.some(t => t.id === lane && t.owner === owner)) ||
                              (multiSelectState && validCardTargets.some(t => t.id === lane && t.owner === owner)) ||
-                             (draggedCard && isPlayer); // Highlight player lanes when dragging a card
+                             (draggedCard && isPlayer) || // Highlight player lanes when dragging a deployment card
+                             isActionCardLaneTarget; // Highlight lanes when dragging a LANE targeting action card
 
         // Debug logging for movement lanes
         if (multiSelectState && validCardTargets.length > 0) {
@@ -221,6 +238,16 @@ const DroneLanesDisplay = ({
             onMouseUp={() => {
               // Handle card drop when dragging a card to player lanes
               debugLog('DRAG_DROP_DEPLOY', '🎯 Lane mouseUp detected', { lane, isPlayer, hasDraggedCard: !!draggedCard, hasDraggedDrone: !!draggedDrone });
+
+              // Handle action card drop on lanes (LANE targeting)
+              if (draggedActionCard && handleActionCardDragEnd) {
+                const card = draggedActionCard.card;
+                if (card?.targeting?.type === 'LANE') {
+                  handleActionCardDragEnd({ id: lane, name: lane }, 'lane', owner);
+                  return;
+                }
+              }
+
               if (draggedCard && isPlayer && handleCardDragEnd) {
                 handleCardDragEnd(lane);
               }
@@ -264,7 +291,11 @@ const DroneLanesDisplay = ({
               interceptedBadge,
               draggedDrone,
               handleDroneDragStart,
-              handleDroneDragEnd
+              handleDroneDragEnd,
+              draggedActionCard,
+              handleActionCardDragEnd,
+              getLocalPlayerId,
+              getOpponentPlayerId
             )}
           </div>
         );

@@ -36,6 +36,7 @@ const ActionCard = ({
   isPlayable,
   isSelected,
   isDimmed,
+  isDragging = false,
   mandatoryAction = null,
   excessCards = 0,
   scale = 1.0
@@ -83,8 +84,14 @@ const ActionCard = ({
           willCallOnClick: isPlayable || isMandatoryTarget
         });
 
-        if (isPlayable || isMandatoryTarget) {
+        if ((isPlayable || isMandatoryTarget) && onClick && !isDragging) {
           onClick(card);
+        } else if (!onClick || isDragging) {
+          debugLog('CARD_PLAY', `🚫 Card click blocked - ${!onClick ? 'onClick is null' : 'drag in progress'}: ${card.name}`, {
+            isPlayable,
+            isDragging,
+            hasOnClick: !!onClick
+          });
         } else {
           debugLog('CARD_PLAY', `🚫 Card click blocked - not playable: ${card.name}`, {
             isPlayable,
@@ -99,6 +106,7 @@ const ActionCard = ({
         ${colors.border}
         ${isDisabled ? 'saturate-50' : ''}
         ${isDimmed ? 'grayscale' : ''}
+        ${isDragging ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/50' : ''}
       `}
       style={{
         width: '225px',

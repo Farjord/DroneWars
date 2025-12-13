@@ -39,7 +39,10 @@ function HandView({
   passInfo,
   validCardTargets,
   gameEngine,
-  opponentPlayerState
+  opponentPlayerState,
+  // Action card drag-and-drop props
+  handleActionCardDragStart,
+  draggedActionCard
 }) {
   // Debug logging for component props
   const localPlayerId = getLocalPlayerId();
@@ -210,10 +213,14 @@ function HandView({
               const marginLeft = index === 0 ? 0 : dynamicOverlap; // Use dynamic overlap
               const arcOffset = calculateCardArcOffset(rotationDeg, localPlayerState.hand.length);
 
+              // Check if this card is being dragged
+              const isDragging = draggedActionCard?.card?.instanceId === card.instanceId;
+              const isElevated = isHovered || isDragging;
+
               // Build style object
               const style = {
-                zIndex: isHovered ? CARD_FAN_CONFIG.zIndex.hovered : CARD_FAN_CONFIG.zIndex.normal(index),
-                transform: isHovered ? getHoverTransform() : `translateY(${arcOffset}px) rotate(${rotationDeg}deg)`,
+                zIndex: isElevated ? CARD_FAN_CONFIG.zIndex.hovered : CARD_FAN_CONFIG.zIndex.normal(index),
+                transform: isElevated ? getHoverTransform() : `translateY(${arcOffset}px) rotate(${rotationDeg}deg)`,
                 marginLeft: `${marginLeft}px`,
                 transformOrigin: CARD_FAN_CONFIG.transformOrigin,
                 transition: getCardTransition()
@@ -239,11 +246,49 @@ function HandView({
                     });
                   }}
                   onMouseLeave={() => setHoveredCardId(null)}
+                  onMouseDown={(e) => {
+                    // Initiate drag for playable cards during action phase (not during mandatory action)
+                    // Uses threshold detection to distinguish click from drag
+                    if (cardIsPlayable && turnPhase === 'action' && !mandatoryAction && handleActionCardDragStart) {
+                      e.preventDefault();
+
+                      // Store start position and card rect immediately (before React nullifies event)
+                      const startX = e.clientX;
+                      const startY = e.clientY;
+                      const originalEvent = e;
+                      const cardRect = e.currentTarget.getBoundingClientRect();
+                      let dragStarted = false;
+
+                      const handleMouseMove = (moveEvent) => {
+                        if (dragStarted) return;
+                        const dx = moveEvent.clientX - startX;
+                        const dy = moveEvent.clientY - startY;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance > 5) { // 5px threshold
+                          dragStarted = true;
+                          handleActionCardDragStart(card, originalEvent, cardRect);
+                          document.removeEventListener('mousemove', handleMouseMove);
+                          document.removeEventListener('mouseup', handleMouseUp);
+                        }
+                      };
+
+                      const handleMouseUp = () => {
+                        // Clean up listeners if drag never started (was just a click)
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', handleMouseUp);
+                      };
+
+                      document.addEventListener('mousemove', handleMouseMove);
+                      document.addEventListener('mouseup', handleMouseUp);
+                    }
+                  }}
                 >
                   <ActionCard
                     card={card}
                     isSelected={selectedCard?.instanceId === card.instanceId}
                     isDimmed={selectedCard && selectedCard.instanceId !== card.instanceId}
+                    isDragging={draggedActionCard?.card?.instanceId === card.instanceId}
                     isPlayable={cardIsPlayable}
                     mandatoryAction={mandatoryAction}
                     excessCards={excessCards}
@@ -271,7 +316,9 @@ function HandView({
                               onCancel: () => setConfirmationModal(null),
                               text: `Are you sure you want to discard ${c.name}?`
                             })
-                          : handleCardClick
+                          : card.type === 'Drone'
+                            ? handleCardClick  // Only Drone cards are click-playable
+                            : null             // Action cards use drag-only
                     }
                   />
                 </div>

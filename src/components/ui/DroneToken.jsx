@@ -88,7 +88,12 @@ const DroneToken = ({
   onDragStart,
   onDragDrop,
   isDragging = false,
-  isHovered = false
+  isHovered = false,
+  // Action card drag-and-drop props
+  draggedActionCard = null,
+  onActionCardDrop = null,
+  getLocalPlayerId = () => 'player1',
+  getOpponentPlayerId = () => 'player2'
 }) => {
   // Performance logging for drag investigation - only log when dragging is active
   if (isDragging) {
@@ -171,7 +176,13 @@ const DroneToken = ({
         }
       }}
       onMouseUp={() => {
-        // Handle drop on enemy drone for attack
+        // Handle action card targeting via drag-and-drop
+        if (draggedActionCard && onActionCardDrop) {
+          const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
+          onActionCardDrop(drone, 'drone', owner);
+          return;
+        }
+        // Handle drop on enemy drone for attack (existing behavior)
         if (onDragDrop) {
           onDragDrop(drone);
         }
