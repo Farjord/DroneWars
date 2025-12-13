@@ -6,6 +6,7 @@
 
 import { gameEngine } from '../logic/gameLogic.js';
 import { resolveAttack } from '../logic/combat/AttackProcessor.js';
+import fullDroneCollection from '../data/droneData.js';
 import { calculatePotentialInterceptors, calculateAiInterception } from '../logic/combat/InterceptionProcessor.js';
 import MovementEffectProcessor from '../logic/effects/movement/MovementEffectProcessor.js';
 import ConditionalEffectProcessor from '../logic/effects/conditional/ConditionalEffectProcessor.js';
@@ -730,8 +731,19 @@ setAnimationManager(animationManager) {
     // Create a copy of the entire player state for processing
     let newPlayerState = JSON.parse(JSON.stringify(playerState));
 
-    // Move the drone
-    const movedDrone = { ...drone, isExhausted: true };
+    // Check if drone has RAPID keyword (first move doesn't exhaust)
+    const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
+    const hasRapid = baseDrone?.abilities?.some(
+      a => a.effect?.type === 'GRANT_KEYWORD' && a.effect?.keyword === 'RAPID'
+    );
+    const canUseRapid = hasRapid && !drone.rapidUsed;
+
+    // Move the drone - RAPID allows first move without exhaustion
+    const movedDrone = {
+      ...drone,
+      isExhausted: canUseRapid ? false : true,
+      rapidUsed: canUseRapid ? true : drone.rapidUsed
+    };
     newPlayerState.dronesOnBoard[fromLane] = newPlayerState.dronesOnBoard[fromLane].filter(d => d.id !== droneId);
     newPlayerState.dronesOnBoard[toLane].push(movedDrone);
 

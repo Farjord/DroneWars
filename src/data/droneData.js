@@ -330,6 +330,68 @@ const fullDroneCollection = [
     }],
     upgradeSlots: 2
   },
+  {
+    name: 'Blitz Drone',
+    class: 2,
+    limit: 3,
+    rarity: 'Uncommon',
+    attack: 2,
+    hull: 2,
+    shields: 1,
+    speed: 5,
+    image: '/DroneWars/img/Scout.png',  // Temp - needs new image
+    abilities: [{
+      name: 'Rapid Response',
+      description: 'First move each round does not exhaust this drone.',
+      type: 'PASSIVE',
+      effect: { type: 'GRANT_KEYWORD', keyword: 'RAPID' }
+    }],
+    upgradeSlots: 2
+  },
+  {
+    name: 'Striker Drone',
+    class: 2,
+    limit: 3,
+    rarity: 'Uncommon',
+    attack: 3,
+    hull: 2,
+    shields: 1,
+    speed: 3,
+    image: '/DroneWars/img/StandardFighter.png',  // Temp - needs new image
+    abilities: [{
+      name: 'Assault Protocol',
+      description: 'First attack each round does not exhaust this drone.',
+      type: 'PASSIVE',
+      effect: { type: 'GRANT_KEYWORD', keyword: 'ASSAULT' }
+    }],
+    upgradeSlots: 2
+  },
+  {
+    name: 'Tempest Drone',
+    class: 3,
+    limit: 2,
+    rarity: 'Rare',
+    attack: 2,
+    hull: 2,
+    shields: 1,
+    speed: 4,
+    image: '/DroneWars/img/StandardFighter.png',  // Temp - needs new image
+    abilities: [
+      {
+        name: 'Rapid Response',
+        description: 'First move each round does not exhaust this drone.',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'RAPID' }
+      },
+      {
+        name: 'Assault Protocol',
+        description: 'First attack each round does not exhaust this drone.',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'ASSAULT' }
+      }
+    ],
+    upgradeSlots: 1
+  },
 
 ];
 

@@ -11,6 +11,7 @@ import { useEditorStats } from '../../contexts/EditorStatsContext.jsx';
 import InterceptedBadge from './InterceptedBadge.jsx';
 import TargetLockIcon from './TargetLockIcon.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
+import { Gauge, Crosshair } from 'lucide-react';
 
 /**
  * STAT HEXAGON COMPONENT
@@ -41,6 +42,73 @@ const AbilityIcon = ({ onClick }) => (
     </svg>
   </button>
 );
+
+/**
+ * SPECIAL ABILITY ICONS COMPONENT
+ * Renders RAPID/ASSAULT status icons on left side of drone token.
+ * Icons are full color when available, greyed out when used.
+ * @param {Object} drone - The drone data object
+ */
+const SpecialAbilityIcons = ({ drone }) => {
+  const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
+
+  const hasRapid = baseDrone?.abilities?.some(
+    a => a.effect?.type === 'GRANT_KEYWORD' && a.effect?.keyword === 'RAPID'
+  );
+  const hasAssault = baseDrone?.abilities?.some(
+    a => a.effect?.type === 'GRANT_KEYWORD' && a.effect?.keyword === 'ASSAULT'
+  );
+
+  if (!hasRapid && !hasAssault) return null;
+
+  const icons = [];
+
+  if (hasRapid) {
+    const isUsed = drone.rapidUsed;
+    icons.push(
+      <div
+        key="rapid"
+        className={`w-6 h-6 rounded-full flex items-center justify-center border ${
+          isUsed
+            ? 'bg-slate-700 border-slate-500'
+            : 'bg-blue-900 border-blue-400 shadow-lg shadow-blue-400/30'
+        }`}
+        title={isUsed ? 'Rapid Response (used)' : 'Rapid Response (available)'}
+      >
+        <Gauge
+          size={14}
+          className={isUsed ? 'text-slate-500' : 'text-blue-400'}
+        />
+      </div>
+    );
+  }
+
+  if (hasAssault) {
+    const isUsed = drone.assaultUsed;
+    icons.push(
+      <div
+        key="assault"
+        className={`w-6 h-6 rounded-full flex items-center justify-center border ${
+          isUsed
+            ? 'bg-slate-700 border-slate-500'
+            : 'bg-red-900 border-red-400 shadow-lg shadow-red-400/30'
+        }`}
+        title={isUsed ? 'Assault Protocol (used)' : 'Assault Protocol (available)'}
+      >
+        <Crosshair
+          size={14}
+          className={isUsed ? 'text-slate-500' : 'text-red-400'}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="absolute top-5 -left-3.5 flex flex-col gap-1 z-20">
+      {icons}
+    </div>
+  );
+};
 
 /**
  * DRONE TOKEN COMPONENT
@@ -279,6 +347,9 @@ const DroneToken = ({
               <AbilityIcon onClick={(e) => onAbilityClick && onAbilityClick(e, drone, activeAbilities[0])} />
           </div>
       )}
+
+      {/* Special Ability Icons (RAPID/ASSAULT) - Left side */}
+      <SpecialAbilityIcons drone={drone} />
 
       {/* Intercepted Badge */}
       {interceptedBadge && interceptedBadge.droneId === drone.id && (

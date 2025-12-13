@@ -261,6 +261,9 @@ class DeploymentProcessor {
       hull: drone.hull,
       isExhausted: false,
       isMarked: false,
+      // Initialize RAPID/ASSAULT ability usage flags
+      rapidUsed: false,
+      assaultUsed: false,
     };
 
     // Update the player state

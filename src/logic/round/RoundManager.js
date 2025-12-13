@@ -52,6 +52,9 @@ class RoundManager {
           statMods: drone.statMods ? drone.statMods.filter(mod => mod.type === 'permanent') : [],
           isExhausted: false,
           currentShields: effectiveStats.maxShields,
+          // Reset RAPID/ASSAULT ability usage flags for new round
+          rapidUsed: false,
+          assaultUsed: false,
         };
       });
     }

@@ -373,7 +373,20 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
         for (const laneKey in newPlayerStates[attackingPlayerId].dronesOnBoard) {
             const attackerIndex = newPlayerStates[attackingPlayerId].dronesOnBoard[laneKey].findIndex(d => d.id === attacker.id);
             if (attackerIndex !== -1) {
-                newPlayerStates[attackingPlayerId].dronesOnBoard[laneKey][attackerIndex].isExhausted = true;
+                const attackerDrone = newPlayerStates[attackingPlayerId].dronesOnBoard[laneKey][attackerIndex];
+
+                // Check if drone has ASSAULT keyword (first attack doesn't exhaust)
+                const baseDrone = fullDroneCollection.find(d => d.name === attackerDrone.name);
+                const hasAssault = baseDrone?.abilities?.some(
+                    a => a.effect?.type === 'GRANT_KEYWORD' && a.effect?.keyword === 'ASSAULT'
+                );
+                const canUseAssault = hasAssault && !attackerDrone.assaultUsed;
+
+                // ASSAULT allows first attack without exhaustion
+                newPlayerStates[attackingPlayerId].dronesOnBoard[laneKey][attackerIndex].isExhausted = !canUseAssault;
+                newPlayerStates[attackingPlayerId].dronesOnBoard[laneKey][attackerIndex].assaultUsed =
+                    canUseAssault ? true : attackerDrone.assaultUsed;
+
                 droneWasOnBoard = true;
                 break;
             }
