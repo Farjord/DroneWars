@@ -258,7 +258,9 @@ const DroneToken = ({
 
       {/* Overlapping Ability Icon */}
       {isPlayer && activeAbilities.length > 0 && isAbilityUsable(activeAbilities[0]) && (
-          <AbilityIcon onClick={(e) => onAbilityClick && onAbilityClick(e, drone, activeAbilities[0])} />
+          <div className={teleportingEffect}>
+              <AbilityIcon onClick={(e) => onAbilityClick && onAbilityClick(e, drone, activeAbilities[0])} />
+          </div>
       )}
 
       {/* Intercepted Badge */}
