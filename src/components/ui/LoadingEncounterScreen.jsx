@@ -4,7 +4,7 @@
 // Full-screen transition displayed before entering combat
 // Shows AI opponent info and auto-transitions after ~2 seconds
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import './LoadingEncounterScreen.css';
 
 /**
@@ -20,6 +20,7 @@ import './LoadingEncounterScreen.css';
 function LoadingEncounterScreen({ encounterData, onComplete }) {
   const [progress, setProgress] = useState(0);
   const [fadeOut, setFadeOut] = useState(false);
+  const [readyToContinue, setReadyToContinue] = useState(false);
 
   useEffect(() => {
     // Progress bar animation
@@ -33,19 +34,25 @@ function LoadingEncounterScreen({ encounterData, onComplete }) {
       });
     }, 100);
 
-    // Trigger fade out and completion
-    const completeTimer = setTimeout(() => {
-      setFadeOut(true);
-      // Small delay for fade animation before calling onComplete
-      setTimeout(() => {
-        onComplete();
-      }, 300);
+    // Mark ready for user acknowledgment when complete
+    const readyTimer = setTimeout(() => {
+      setReadyToContinue(true);
     }, 2000);
 
     return () => {
       clearInterval(progressInterval);
-      clearTimeout(completeTimer);
+      clearTimeout(readyTimer);
     };
+  }, []);
+
+  /**
+   * Handle continue button click
+   */
+  const handleContinue = useCallback(() => {
+    setFadeOut(true);
+    setTimeout(() => {
+      onComplete();
+    }, 300);
   }, [onComplete]);
 
   /**
@@ -152,6 +159,16 @@ function LoadingEncounterScreen({ encounterData, onComplete }) {
         <p className="encounter-status">
           {getStatusMessage()}
         </p>
+
+        {/* Continue button - shown when ready */}
+        {readyToContinue && (
+          <button
+            className="encounter-continue-button"
+            onClick={handleContinue}
+          >
+            Engage
+          </button>
+        )}
       </div>
     </div>
   );

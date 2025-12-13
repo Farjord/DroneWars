@@ -16,6 +16,7 @@ import QuickDeploySelectionModal from '../modals/QuickDeploySelectionModal.jsx';
 import LoadingEncounterScreen from '../ui/LoadingEncounterScreen.jsx';
 import ExtractionLoadingScreen from '../ui/ExtractionLoadingScreen.jsx';
 import EscapeLoadingScreen from '../ui/EscapeLoadingScreen.jsx';
+import FailedRunLoadingScreen from '../ui/FailedRunLoadingScreen.jsx';
 import RunInventoryModal from '../modals/RunInventoryModal.jsx';
 import LootRevealModal from '../modals/LootRevealModal.jsx';
 import AbandonRunModal from '../modals/AbandonRunModal.jsx';
@@ -165,6 +166,10 @@ function TacticalMapScreen() {
   // Escape loading screen state (for escape transitions)
   const [showEscapeLoadingScreen, setShowEscapeLoadingScreen] = useState(false);
   const [escapeLoadingData, setEscapeLoadingData] = useState(null);
+
+  // Failed run loading screen state (for abandon/MIA transitions)
+  const [showFailedRunScreen, setShowFailedRunScreen] = useState(false);
+  const [failedRunData, setFailedRunData] = useState(null);
 
   // Inventory modal state
   const [showInventory, setShowInventory] = useState(false);
@@ -1375,18 +1380,37 @@ function TacticalMapScreen() {
   }, []);
 
   /**
-   * Handle abandon confirmation - trigger MIA
+   * Handle abandon confirmation - show failed run screen
    */
   const handleConfirmAbandon = useCallback(() => {
-    console.log('[TacticalMap] Abandon confirmed - triggering MIA');
+    console.log('[TacticalMap] Abandon confirmed - showing failed run screen');
 
     // Stop any ongoing movement
     shouldStopMovement.current = true;
     setIsMoving(false);
     setIsScanningHex(false);
 
-    // Close modal and trigger MIA
+    // Close modal and show failed run loading screen
     setShowAbandonModal(false);
+
+    // Check if this is a starter deck (slot 0)
+    const isStarterDeck = currentRunState?.shipSlotId === 0;
+
+    setFailedRunData({
+      failureType: 'abandon',
+      isStarterDeck
+    });
+    setShowFailedRunScreen(true);
+  }, [currentRunState?.shipSlotId]);
+
+  /**
+   * Handle failed run screen completion - actually trigger MIA
+   */
+  const handleFailedRunComplete = useCallback(() => {
+    console.log('[TacticalMap] Failed run screen complete - triggering MIA');
+
+    setShowFailedRunScreen(false);
+    setFailedRunData(null);
     ExtractionController.abandonRun();
   }, []);
 
@@ -2200,6 +2224,15 @@ function TacticalMapScreen() {
         <EscapeLoadingScreen
           escapeData={escapeLoadingData}
           onComplete={handleEscapeLoadingComplete}
+        />
+      )}
+
+      {/* Failed Run Loading Screen (abandon/MIA transition) */}
+      {showFailedRunScreen && failedRunData && (
+        <FailedRunLoadingScreen
+          failureType={failedRunData.failureType}
+          isStarterDeck={failedRunData.isStarterDeck}
+          onComplete={handleFailedRunComplete}
         />
       )}
 

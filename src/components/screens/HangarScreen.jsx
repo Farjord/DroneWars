@@ -9,6 +9,7 @@ import RunSummaryModal from '../modals/RunSummaryModal';
 import MIARecoveryModal from '../modals/MIARecoveryModal';
 import miaRecoveryService from '../../logic/singlePlayer/MIARecoveryService.js';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import DeployingScreen from '../ui/DeployingScreen';
 import QuickDeployManager from '../quickDeploy/QuickDeployManager';
 import ReputationTrack from '../ui/ReputationTrack';
 import ReputationProgressModal from '../modals/ReputationProgressModal';
@@ -64,6 +65,8 @@ const HangarScreen = () => {
   const [hoveredButton, setHoveredButton] = useState(null); // Track hovered image button
   const [showReputationProgress, setShowReputationProgress] = useState(false); // Show reputation progress modal
   const [showReputationRewards, setShowReputationRewards] = useState(false); // Show reputation reward modal
+  const [showDeployingScreen, setShowDeployingScreen] = useState(false); // Show deploying transition screen
+  const [deployingData, setDeployingData] = useState(null); // Data for deploying screen (slotId, map, gateId, quickDeploy)
 
   // Compute maps with correct grid coordinates for the news ticker
   const mapsWithCoordinates = useMemo(() => {
@@ -797,7 +800,7 @@ const HangarScreen = () => {
     debugLog('EXTRACTION', '⏱️ State set calls queued (async batch)');
   };
 
-  // Deploy handler
+  // Deploy handler - shows deploying screen first
   const handleDeploy = (slotId, map, entryGateId = 0, quickDeploy = null) => {
     debugLog('EXTRACTION', '🚀 handleDeploy called', {
       slotId,
@@ -834,7 +837,7 @@ const HangarScreen = () => {
       }
     }
 
-    debugLog('EXTRACTION', '✅ Deploying to map', {
+    debugLog('EXTRACTION', '✅ Showing deploying screen', {
       slotId,
       mapName: map.name,
       tier: map.tier,
@@ -842,8 +845,28 @@ const HangarScreen = () => {
       quickDeploy: quickDeploy?.name || 'standard'
     });
 
-    gameStateManager.startRun(slotId, map.tier, entryGateId, map, quickDeploy);
+    // Store deploy data and show deploying screen
+    setDeployingData({ slotId, map, entryGateId, quickDeploy, shipName: shipSlot?.name });
+    setShowDeployingScreen(true);
     closeAllModals();
+  };
+
+  // Handle deploying screen completion - actually start the run
+  const handleDeployingComplete = () => {
+    if (deployingData) {
+      const { slotId, map, entryGateId, quickDeploy } = deployingData;
+      debugLog('EXTRACTION', '✅ Deploying screen complete, starting run', {
+        slotId,
+        mapName: map.name,
+        tier: map.tier,
+        entryGateId,
+        quickDeploy: quickDeploy?.name || 'standard'
+      });
+
+      gameStateManager.startRun(slotId, map.tier, entryGateId, map, quickDeploy);
+    }
+    setShowDeployingScreen(false);
+    setDeployingData(null);
   };
 
   // Close all modals
@@ -1746,6 +1769,17 @@ const HangarScreen = () => {
       {showReputationRewards && (
         <ReputationRewardModal
           onClose={() => setShowReputationRewards(false)}
+        />
+      )}
+
+      {/* Deploying Screen (transition from Hangar to Tactical Map) */}
+      {showDeployingScreen && (
+        <DeployingScreen
+          deployData={{
+            shipName: deployingData?.shipName,
+            destination: deployingData?.map?.name || `Sector ${selectedCoordinate}`
+          }}
+          onComplete={handleDeployingComplete}
         />
       )}
     </div>

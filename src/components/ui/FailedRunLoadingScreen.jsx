@@ -4,7 +4,7 @@
 // Full-screen transition displayed when a run fails (MIA)
 // Shows failure type-specific messages and auto-transitions after ~2 seconds
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import './FailedRunLoadingScreen.css';
 
 /**
@@ -17,6 +17,7 @@ import './FailedRunLoadingScreen.css';
 function FailedRunLoadingScreen({ failureType, isStarterDeck, onComplete }) {
   const [progress, setProgress] = useState(0);
   const [fadeOut, setFadeOut] = useState(false);
+  const [readyToContinue, setReadyToContinue] = useState(false);
 
   useEffect(() => {
     // Progress bar animation
@@ -30,19 +31,25 @@ function FailedRunLoadingScreen({ failureType, isStarterDeck, onComplete }) {
       });
     }, 100);
 
-    // Trigger fade out and completion
-    const completeTimer = setTimeout(() => {
-      setFadeOut(true);
-      // Small delay for fade animation before calling onComplete
-      setTimeout(() => {
-        onComplete();
-      }, 300);
+    // Mark ready for user acknowledgment when complete
+    const readyTimer = setTimeout(() => {
+      setReadyToContinue(true);
     }, 2000);
 
     return () => {
       clearInterval(progressInterval);
-      clearTimeout(completeTimer);
+      clearTimeout(readyTimer);
     };
+  }, []);
+
+  /**
+   * Handle continue button click
+   */
+  const handleContinue = useCallback(() => {
+    setFadeOut(true);
+    setTimeout(() => {
+      onComplete();
+    }, 300);
   }, [onComplete]);
 
   /**
@@ -146,6 +153,16 @@ function FailedRunLoadingScreen({ failureType, isStarterDeck, onComplete }) {
           <div className="failed-run-final-status">
             {getFinalStatus()}
           </div>
+        )}
+
+        {/* Continue button - shown when ready */}
+        {readyToContinue && (
+          <button
+            className="failed-run-continue-button"
+            onClick={handleContinue}
+          >
+            Continue
+          </button>
         )}
       </div>
     </div>

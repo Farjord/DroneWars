@@ -6,12 +6,17 @@
 .failed-run-overlay {
   position: fixed;
   inset: 0;
-  background: linear-gradient(180deg, #0a0f1a 0%, #1a0a0a 50%, #0a0f1a 100%);
+  background:
+    linear-gradient(180deg, rgba(10, 15, 26, 0.7) 0%, rgba(26, 10, 10, 0.5) 50%, rgba(10, 15, 26, 0.7) 100%),
+    url('/Transitions/Corvette/MIA.png');
+  background-size: cover;
+  background-position: center;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9999;
   animation: failedRunFadeIn 0.3s ease-out;
+  box-shadow: inset 0 0 150px 60px rgba(0, 0, 0, 0.8);
 }
 
 .failed-run-overlay.fade-out {
@@ -235,6 +240,56 @@
   50% {
     opacity: 0.8;
     text-shadow: 0 0 50px rgba(239, 68, 68, 1);
+  }
+}
+
+/* Continue button */
+.failed-run-continue-button {
+  margin-top: 24px;
+  padding: 14px 48px;
+  font-family: 'Orbitron', 'Segoe UI', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #0a0f1a;
+  background: linear-gradient(135deg, #ef4444 0%, #f87171 50%, #ef4444 100%);
+  background-size: 200% auto;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+  animation: failedRunButtonAppear 0.3s ease-out, failedRunButtonGlow 2s ease-in-out infinite;
+}
+
+.failed-run-continue-button:hover {
+  transform: scale(1.05);
+  background-position: 100% center;
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.7);
+}
+
+.failed-run-continue-button:active {
+  transform: scale(0.98);
+}
+
+@keyframes failedRunButtonAppear {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes failedRunButtonGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.6);
   }
 }
 
