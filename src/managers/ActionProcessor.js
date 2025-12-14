@@ -1123,7 +1123,8 @@ setAnimationManager(animationManager) {
         return await this.processAttack(attackPayload);
       },
       applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects,
-      updateAurasCallback: gameEngine.updateAuras
+      updateAurasCallback: gameEngine.updateAuras,
+      actionsTakenThisTurn: currentState.actionsTakenThisTurn || 0
     };
 
     const result = gameEngine.resolveCardPlay(

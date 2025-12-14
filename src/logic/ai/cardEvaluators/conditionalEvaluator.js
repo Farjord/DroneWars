@@ -88,6 +88,12 @@ function evaluateCondition(condition, target, context) {
       // Check if opponent has more drones in lane (Tactical Shift)
       return evaluateOpponentHasMore(target, context);
 
+    case 'NOT_FIRST_ACTION':
+      // Check if this is not the first action of the turn
+      // actionsTakenThisTurn comes from gameDataService.getState()
+      const actionsTaken = context?.gameDataService?.getState?.()?.actionsTakenThisTurn ?? 0;
+      return actionsTaken >= 1;
+
     default:
       // Unknown condition type - don't trigger
       console.warn(`[AI] Unknown condition type: ${type}`);

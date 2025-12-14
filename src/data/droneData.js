@@ -25,7 +25,7 @@ const fullDroneCollection = [
     name: 'Devastator',
     class: 3,
     limit: 3,
-    rarity: 'Uncommon', 
+    rarity: 'Common', 
     attack: 1,
     hull: 3, 
     shields: 2, 
@@ -87,7 +87,7 @@ const fullDroneCollection = [
   name: 'Firefly',
   class: 1,
   limit: 4,
-  rarity: 'Rare', 
+  rarity: 'Common', 
   attack: 3, 
   hull: 1, 
   shields: 0, 
@@ -143,7 +143,7 @@ const fullDroneCollection = [
     name: 'Avenger',
     class: 2,
     limit: 2,
-    rarity: 'Uncommon', 
+    rarity: 'Common', 
     attack: 1, 
     hull: 2, 
     shields: 2, 
@@ -254,7 +254,7 @@ const fullDroneCollection = [
   },
   {
     name: 'Elixir',
-    class: 1, limit: 2, rarity: 'Uncommon', attack: 0, hull: 1, shields: 3, speed: 2,
+    class: 1, limit: 2, rarity: 'Common', attack: 0, hull: 1, shields: 3, speed: 2,
     image: '/DroneWars/img/NanoRepair.png',
     abilities: [{
         name: 'Nano Repair Swarm',
@@ -313,7 +313,7 @@ const fullDroneCollection = [
     name: 'Hunter',
     class: 2,
     limit: 3,
-    rarity: 'Rare',
+    rarity: 'Uncommon',
     attack: 2,
     hull: 1,
     shields: 2,
@@ -433,7 +433,7 @@ const fullDroneCollection = [
     name: 'Scorpion',
     class: 3,
     limit: 1,
-    rarity: 'Rare',
+    rarity: 'Mythic',
     attack: 2,
     hull: 3,
     shields: 1,
@@ -442,13 +442,13 @@ const fullDroneCollection = [
     abilities: [
       {
         name: 'Dogfight',
-        description: 'When this drone intercepts, deals its attack damage to the attacker.',
+        description: 'On intercept - deal damage to attacker.',
         type: 'PASSIVE',
         effect: { type: 'GRANT_KEYWORD', keyword: 'DOGFIGHT' }
       },
       {
         name: 'Retaliate',
-        description: 'When this drone is attacked and survives, deals its attack damage to the attacker.',
+        description: 'On defence - deal damage to the attacker.',
         type: 'PASSIVE',
         effect: { type: 'GRANT_KEYWORD', keyword: 'RETALIATE' }
       }
@@ -551,7 +551,7 @@ const fullDroneCollection = [
     name: 'Impactor',
     class: 2,
     limit: 2,
-    rarity: 'Uncommon',
+    rarity: 'Common',
     attack: 4,
     hull: 3,
     shields: 0,
@@ -566,7 +566,28 @@ const fullDroneCollection = [
     }],
     upgradeSlots: 2
   },
-
+  {
+    name: 'Shark',
+    class: 1,
+    limit: 2,
+    rarity: 'Common',
+    attack: 1,
+    hull: 1,
+    shields: 1,
+    speed: 3,
+    image: '/DroneWars/img/Shark.png',
+    abilities: [{
+        name: 'Predator',
+        description: 'Gains +2 damage against marked targets.',
+        type: 'PASSIVE',
+        effect: {
+            type: 'CONDITIONAL_ATTACK_BONUS',
+            value: 2,
+            condition: { type: 'TARGET_IS_MARKED' }
+        }
+    }],
+    upgradeSlots: 2
+  },
 ];
 
 export default fullDroneCollection;

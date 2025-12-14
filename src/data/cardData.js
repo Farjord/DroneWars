@@ -716,6 +716,32 @@ const fullCardCollection = [
     }]
 },
 {
+    id: 'CARD063',
+    baseCardId: 'CARD063',
+    name: 'Follow-Up Strike',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Ordnance',
+    cost: 2,
+    image: '/DroneWars/cards/FollowUpStrike.png',
+    description: 'Deal 2 damage to target drone. If this is not your first action this turn, deal 4 instead.',
+    targeting: {
+      type: 'DRONE',
+      team: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 2
+    },
+    conditionalEffects: [{
+      id: 'momentum-bonus',
+      timing: 'PRE',
+      condition: { type: 'NOT_FIRST_ACTION' },
+      grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
+    }]
+},
+{
     id: 'CARD028',
     baseCardId: 'CARD028',
     name: 'Combat Enhancement',
@@ -1314,7 +1340,6 @@ const fullCardCollection = [
     }]
   },
 
-  // POST timing: Energy on Damage
   {
     id: 'CARD054',
     baseCardId: 'CARD054',
@@ -1345,11 +1370,6 @@ const fullCardCollection = [
     }]
   },
 
-  // ========================================
-  // NEW DAMAGE TYPES
-  // ========================================
-
-  // SHIELD_BREAKER: Each point of damage removes 2 shields
   {
     id: 'CARD_SB01',
     baseCardId: 'CARD_SB01',
@@ -1375,7 +1395,6 @@ const fullCardCollection = [
     }
   },
 
-  // ION: Only damages shields, excess is wasted
   {
     id: 'CARD_ION01',
     baseCardId: 'CARD_ION01',
@@ -1401,7 +1420,6 @@ const fullCardCollection = [
     }
   },
 
-  // KINETIC: Only damages hull, blocked entirely by shields
   {
     id: 'CARD_KIN01',
     baseCardId: 'CARD_KIN01',

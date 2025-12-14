@@ -134,7 +134,8 @@ class CardPlayManager {
       playerStates: currentStates,
       placedSections,
       callbacks,
-      card
+      card,
+      actionsTakenThisTurn: callbacks?.actionsTakenThisTurn || 0
     };
 
     // Process PRE conditionals (before primary effect)

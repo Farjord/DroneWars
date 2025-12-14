@@ -346,6 +346,19 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
         }
     }
 
+    // Check for conditional attack bonus (e.g., Shark vs marked targets)
+    if (attacker && attacker.abilities && finalTargetType === 'drone') {
+        const conditionalBonusAbility = attacker.abilities.find(
+            ability => ability.type === 'PASSIVE' &&
+                      ability.effect?.type === 'CONDITIONAL_ATTACK_BONUS' &&
+                      ability.effect?.condition?.type === 'TARGET_IS_MARKED'
+        );
+
+        if (conditionalBonusAbility && finalTarget.isMarked) {
+            damage += conditionalBonusAbility.effect.value;
+        }
+    }
+
     // Apply ship damage bonus for drones attacking sections
     if (finalTargetType === 'section' && !abilityDamage && attacker && attacker.name) {
         const baseAttacker = fullDroneCollection.find(d => d.name === attacker.name);
