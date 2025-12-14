@@ -3310,6 +3310,16 @@ const App = ({ phaseAnimationQueue }) => {
         return;
     }
 
+    // Check activation limit (per-round usage)
+    if (ability.activationLimit != null) {
+      const abilityIndex = drone.abilities?.findIndex(a => a.name === ability.name) ?? -1;
+      const activations = drone.abilityActivations?.[abilityIndex] || 0;
+      if (activations >= ability.activationLimit) {
+        setModalContent({ title: "Ability Limit Reached", text: `${ability.name} can only be used ${ability.activationLimit} time${ability.activationLimit > 1 ? 's' : ''} per round.`, isBlocking: true });
+        return;
+      }
+    }
+
     // Check for self-targeting lane abilities ---
     if (ability.targeting?.type === 'LANE' && ability.targeting?.location === 'SAME_LANE') {
         // TODO: TECHNICAL DEBT - getLaneOfDrone gets lane of drone for ability targeting - utility function needed for UI logic
@@ -3351,6 +3361,16 @@ const App = ({ phaseAnimationQueue }) => {
     if (localPlayerState.energy < ability.cost.energy) {
         setModalContent({ title: "Not Enough Energy", text: `This ability costs ${ability.cost.energy} energy, but you only have ${localPlayerState.energy}.`, isBlocking: true });
         return;
+    }
+
+    // Check activation limit (per-round usage)
+    if (ability.activationLimit != null) {
+      const sectionData = localPlayerState.shipSections?.[section.name];
+      const activations = sectionData?.abilityActivationCount || 0;
+      if (activations >= ability.activationLimit) {
+        setModalContent({ title: "Ability Limit Reached", text: `${ability.name} can only be used ${ability.activationLimit} time${ability.activationLimit > 1 ? 's' : ''} per round.`, isBlocking: true });
+        return;
+      }
     }
 
     // If the clicked ability is already active, cancel it.

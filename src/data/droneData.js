@@ -104,8 +104,8 @@ const fullDroneCollection = [
   { name: 'Locust', class: 0, limit: 3, rarity: 'Common', attack: 1, hull: 1, shields: 0, speed: 3, image: '/DroneWars/img/Swarm.png', abilities: [], upgradeSlots: 3 },
   {
     name: 'Basilisk',
-    class: 2, limit: 2, rarity: 'Uncommon', attack: 1, hull: 2, shields: 1, speed: 2, 
-    image: '/DroneWars/img/Sniper.png', 
+    class: 2, limit: 2, rarity: 'Uncommon', attack: 1, hull: 2, shields: 1, speed: 2,
+    image: '/DroneWars/img/Sniper.png',
     abilities: [{
         name: 'Long-Range Shot',
         description: 'Pay 1 Energy and exhaust to deal 4 damage to an enemy drone in any lane.',
@@ -116,9 +116,10 @@ const fullDroneCollection = [
             location: 'ANY_LANE'
         },
         effect: { type: 'DAMAGE', value: 4 },
-        cost: { energy: 1, exhausts: true }
+        cost: { energy: 1, exhausts: true },
+        activationLimit: 1  // Can only be used once per round
         }],
-    upgradeSlots: 2 
+    upgradeSlots: 2
   },
   {
     name: 'Sabot',

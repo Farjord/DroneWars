@@ -55,11 +55,25 @@ class RoundManager {
           // Reset RAPID/ASSAULT ability usage flags for new round
           rapidUsed: false,
           assaultUsed: false,
+          // Reset ability activation counts for new round
+          abilityActivations: [],
         };
       });
     }
 
-    return { ...playerState, dronesOnBoard: newDronesOnBoard };
+    // Reset ship section ability activation counts for new round
+    let newShipSections = playerState.shipSections;
+    if (playerState.shipSections) {
+      newShipSections = {};
+      for (const sectionName in playerState.shipSections) {
+        newShipSections[sectionName] = {
+          ...playerState.shipSections[sectionName],
+          abilityActivationCount: 0,
+        };
+      }
+    }
+
+    return { ...playerState, dronesOnBoard: newDronesOnBoard, shipSections: newShipSections };
   }
 
   /**

@@ -264,6 +264,8 @@ class DeploymentProcessor {
       // Initialize RAPID/ASSAULT ability usage flags
       rapidUsed: false,
       assaultUsed: false,
+      // Initialize ability activation tracking for per-round limits
+      abilityActivations: [],
     };
 
     // Update the player state

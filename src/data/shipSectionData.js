@@ -38,7 +38,8 @@ const shipComponentCollection = [
       description: 'Draw a card, then discard a card.',
       cost: { energy: 1 },
       targeting: null,
-      effect: { type: 'DRAW_THEN_DISCARD', value: { draw: 1, discard: 1 } }
+      effect: { type: 'DRAW_THEN_DISCARD', value: { draw: 1, discard: 1 } },
+      activationLimit: 1  // Can only be used once per round
     }
   },
 
@@ -71,7 +72,8 @@ const shipComponentCollection = [
       description: 'Draw a card, then discard a card.',
       cost: { energy: 1 },
       targeting: null,
-      effect: { type: 'DRAW_THEN_DISCARD', value: { draw: 1, discard: 1 } }
+      effect: { type: 'DRAW_THEN_DISCARD', value: { draw: 1, discard: 1 } },
+      activationLimit: 1  // Can only be used once per round
     }
   },
 
@@ -109,7 +111,8 @@ const shipComponentCollection = [
         location: 'ANY_LANE',
         custom: ['NOT_MARKED']
       },
-      effect: { type: 'MARK_DRONE' }
+      effect: { type: 'MARK_DRONE' },
+      activationLimit: 1  // Can only be used once per round
     }
   },
 
@@ -142,7 +145,8 @@ const shipComponentCollection = [
       description: 'Take up to 2 shields from your ship sections and redeploy them elsewhere.',
       cost: { energy: 1 },
       targeting: null,
-      effect: { type: 'REALLOCATE_SHIELDS', value: { maxShields: 2 } }
+      effect: { type: 'REALLOCATE_SHIELDS', value: { maxShields: 2 } },
+      activationLimit: 1  // Can only be used once per round
     }
   },
 
@@ -175,7 +179,8 @@ const shipComponentCollection = [
       description: 'Return a friendly drone from any lane to your active pool.',
       cost: { energy: 1 },
       targeting: { type: 'DRONE', affinity: 'FRIENDLY', location: 'ANY_LANE' },
-      effect: { type: 'RECALL_DRONE', value: 1 }
+      effect: { type: 'RECALL_DRONE', value: 1 },
+      activationLimit: 1  // Can only be used once per round
     }
   }
 ];

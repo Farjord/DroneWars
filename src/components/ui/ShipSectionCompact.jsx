@@ -243,7 +243,10 @@ const ShipSectionCompact = ({
                   turnPhase === 'action' &&
                   isMyTurn() &&
                   !passInfo[`${getLocalPlayerId()}Passed`] &&
-                  localPlayerState.energy >= stats.ability.cost.energy
+                  localPlayerState.energy >= stats.ability.cost.energy &&
+                  // Check activation limit (per-round usage)
+                  (stats.ability.activationLimit == null ||
+                    (localPlayerState.shipSections?.[section]?.abilityActivationCount || 0) < stats.ability.activationLimit)
                 }
                 isSelected={shipAbilityMode?.ability.id === stats.ability.id}
                 onClick={(e) => {

@@ -231,6 +231,12 @@ const DroneToken = ({
   const isAbilityUsable = (ability) => {
     if (drone.isExhausted && ability.cost.exhausts !== false) return false;
     if (ability.cost.energy && localPlayerState.energy < ability.cost.energy) return false;
+    // Check activation limit (per-round usage)
+    if (ability.activationLimit != null) {
+      const abilityIndex = drone.abilities?.findIndex(a => a.name === ability.name) ?? -1;
+      const activations = drone.abilityActivations?.[abilityIndex] || 0;
+      if (activations >= ability.activationLimit) return false;
+    }
     return true;
   };
 

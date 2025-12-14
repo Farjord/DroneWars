@@ -24,6 +24,7 @@ import aiPhaseProcessor from './AIPhaseProcessor.js';
 import GameDataService from '../services/GameDataService.js';
 import PhaseManager from './PhaseManager.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
+import { shipComponentCollection } from '../data/shipSectionData.js';
 import SeededRandom from '../utils/seededRandom.js';
 
 class ActionProcessor {
@@ -839,6 +840,14 @@ setAnimationManager(animationManager) {
 
     const ability = userDrone.abilities[abilityIndex];
 
+    // Validate activation limit (per-round usage)
+    if (ability.activationLimit != null) {
+      const activations = userDrone.abilityActivations?.[abilityIndex] || 0;
+      if (activations >= ability.activationLimit) {
+        throw new Error(`Ability ${ability.name} has reached its activation limit for this round`);
+      }
+    }
+
     const logCallback = (entry) => {
       this.gameStateManager.addLogEntry(entry, 'resolveAbility');
     };
@@ -1612,7 +1621,13 @@ setAnimationManager(animationManager) {
    */
   async processRecallAbility(payload) {
     const currentState = this.gameStateManager.getState();
-    const placedSections = payload.playerId === 'player1' ? currentState.placedSections : currentState.opponentPlacedSections;
+    const { sectionName, playerId } = payload;
+
+    // Validate activation limit
+    const limitError = this.validateShipAbilityActivationLimit(sectionName, playerId, { player1: currentState.player1, player2: currentState.player2 });
+    if (limitError) return limitError;
+
+    const placedSections = playerId === 'player1' ? currentState.placedSections : currentState.opponentPlacedSections;
 
     const result = RecallAbilityProcessor.process(
       payload,
@@ -1634,6 +1649,11 @@ setAnimationManager(animationManager) {
    */
   async processTargetLockAbility(payload) {
     const currentState = this.gameStateManager.getState();
+    const { sectionName, playerId } = payload;
+
+    // Validate activation limit
+    const limitError = this.validateShipAbilityActivationLimit(sectionName, playerId, { player1: currentState.player1, player2: currentState.player2 });
+    if (limitError) return limitError;
 
     const result = TargetLockAbilityProcessor.process(
       payload,
@@ -1649,12 +1669,45 @@ setAnimationManager(animationManager) {
   }
 
   /**
+   * Validate ship ability activation limit
+   * @param {string} sectionName - Ship section name
+   * @param {string} playerId - Player ID
+   * @param {Object} playerStates - Current player states
+   * @returns {Object|null} Error object if limit reached, null if valid
+   */
+  validateShipAbilityActivationLimit(sectionName, playerId, playerStates) {
+    // Find the ability definition from ship section data
+    const sectionDefinition = shipComponentCollection.find(s =>
+      s.type.toLowerCase() === sectionName.toLowerCase() || s.name?.toLowerCase() === sectionName.toLowerCase()
+    );
+    const ability = sectionDefinition?.ability;
+
+    if (ability?.activationLimit != null) {
+      const sectionData = playerStates[playerId]?.shipSections?.[sectionName];
+      const activations = sectionData?.abilityActivationCount || 0;
+      if (activations >= ability.activationLimit) {
+        return {
+          error: `Ability ${ability.name} has reached its activation limit for this round`,
+          shouldEndTurn: false,
+          animationEvents: []
+        };
+      }
+    }
+    return null;
+  }
+
+  /**
    * Process Recalculate ship ability
    * Multi-step: Deduct energy + draw card, return mandatoryAction
    */
   async processRecalculateAbility(payload) {
     const currentState = this.gameStateManager.getState();
     const localPlayerId = this.gameStateManager.getLocalPlayerId();
+    const { sectionName, playerId } = payload;
+
+    // Validate activation limit
+    const limitError = this.validateShipAbilityActivationLimit(sectionName, playerId, { player1: currentState.player1, player2: currentState.player2 });
+    if (limitError) return limitError;
 
     const result = RecalculateAbilityProcessor.process(
       payload,

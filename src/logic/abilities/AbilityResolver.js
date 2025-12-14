@@ -95,6 +95,22 @@ class AbilityResolver {
       }
     }
 
+    // Increment ability activation counter for per-round limits
+    const abilityIndex = userDrone.abilities?.findIndex(a => a.name === ability.name) ?? -1;
+    if (abilityIndex !== -1) {
+      for (const lane in newPlayerStates.player1.dronesOnBoard) {
+        const droneIndex = newPlayerStates.player1.dronesOnBoard[lane].findIndex(d => d.id === userDrone.id);
+        if (droneIndex !== -1) {
+          const drone = newPlayerStates.player1.dronesOnBoard[lane][droneIndex];
+          if (!drone.abilityActivations) {
+            drone.abilityActivations = [];
+          }
+          drone.abilityActivations[abilityIndex] = (drone.abilityActivations[abilityIndex] || 0) + 1;
+          break;
+        }
+      }
+    }
+
     // Apply effects using modular handler
     const effectResult = this.resolveDroneAbilityEffect(effect, userDrone, targetDrone, newPlayerStates, placedSections, { resolveAttackCallback });
 
@@ -156,6 +172,12 @@ class AbilityResolver {
       player1: JSON.parse(JSON.stringify(playerStates.player1)),
       player2: JSON.parse(JSON.stringify(playerStates.player2))
     };
+
+    // Increment ship section ability activation counter for per-round limits
+    if (newPlayerStates[playerId].shipSections?.[sectionName]) {
+      const section = newPlayerStates[playerId].shipSections[sectionName];
+      section.abilityActivationCount = (section.abilityActivationCount || 0) + 1;
+    }
 
     // NOTE: Energy cost is NOT deducted here - it's deducted in processShipAbilityCompletion
     // This ensures energy is only paid when the action completes and the turn ends
