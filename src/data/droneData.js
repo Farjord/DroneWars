@@ -392,6 +392,68 @@ const fullDroneCollection = [
     ],
     upgradeSlots: 1
   },
+  {
+    name: 'Viper',
+    class: 2,
+    limit: 2,
+    rarity: 'Uncommon',
+    attack: 2,
+    hull: 2,
+    shields: 1,
+    speed: 5,
+    image: '/DroneWars/img/Viper.png',
+    abilities: [{
+      name: 'Dogfight',
+      description: 'When this drone intercepts, deals its attack damage to the attacker.',
+      type: 'PASSIVE',
+      effect: { type: 'GRANT_KEYWORD', keyword: 'DOGFIGHT' }
+    }],
+    upgradeSlots: 2
+  },
+  {
+    name: 'Thornback',
+    class: 2,
+    limit: 2,
+    rarity: 'Uncommon',
+    attack: 2,
+    hull: 3,
+    shields: 1,
+    speed: 2,
+    image: '/DroneWars/img/Thornback.png',
+    abilities: [{
+      name: 'Retaliate',
+      description: 'When this drone is attacked and survives, deals its attack damage to the attacker.',
+      type: 'PASSIVE',
+      effect: { type: 'GRANT_KEYWORD', keyword: 'RETALIATE' }
+    }],
+    upgradeSlots: 2
+  },
+  {
+    name: 'Scorpion',
+    class: 3,
+    limit: 1,
+    rarity: 'Rare',
+    attack: 2,
+    hull: 3,
+    shields: 1,
+    speed: 4,
+    image: '/DroneWars/img/Scorpion.png',
+    abilities: [
+      {
+        name: 'Dogfight',
+        description: 'When this drone intercepts, deals its attack damage to the attacker.',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'DOGFIGHT' }
+      },
+      {
+        name: 'Retaliate',
+        description: 'When this drone is attacked and survives, deals its attack damage to the attacker.',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'RETALIATE' }
+      }
+    ],
+    upgradeSlots: 1
+  },
 
 ];
 

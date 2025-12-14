@@ -9,7 +9,10 @@ import {
   getJammerDronesInLane,
   countDroneTypeInLane,
   hasDefenderKeyword,
+  hasDogfightKeyword,
 } from './ai/helpers/index.js';
+
+import { INTERCEPTION } from './ai/aiConstants.js';
 
 // Import extracted scoring functions
 import {
@@ -994,8 +997,31 @@ const makeInterceptionDecision = (potentialInterceptors, target, attackDetails, 
 
     // DEFENDER bonus: Add extra score for DEFENDER drones
     if (hasDefender && shouldIntercept) {
-      score += 20;
-      logic.push(`⭐ DEFENDER bonus: +20`);
+      score += INTERCEPTION.DEFENDER_BONUS;
+      logic.push(`⭐ DEFENDER bonus: +${INTERCEPTION.DEFENDER_BONUS}`);
+    }
+
+    // DOGFIGHT bonus: Add extra score for DOGFIGHT drones (deal damage to attacker)
+    const hasDogfight = hasDogfightKeyword(interceptor);
+    if (hasDogfight && shouldIntercept) {
+      // Calculate dogfight damage using effective stats
+      const interceptorEffective = gameDataService.getEffectiveStats(interceptor, attackDetails.lane);
+      const dogfightDamage = interceptorEffective.attack || 0;
+
+      if (dogfightDamage > 0) {
+        // Calculate if dogfight would kill the attacker
+        const attackerDurability = (target.hull || 0) + (target.currentShields || 0);
+        const wouldKillAttacker = dogfightDamage >= attackerDurability;
+
+        if (wouldKillAttacker) {
+          score += INTERCEPTION.DOGFIGHT_KILL_BONUS;
+          logic.push(`🐕 DOGFIGHT: +${INTERCEPTION.DOGFIGHT_KILL_BONUS} (${dogfightDamage} dmg - KILLS attacker)`);
+        } else {
+          const dogfightBonus = dogfightDamage * INTERCEPTION.DOGFIGHT_DAMAGE_MULTIPLIER;
+          score += dogfightBonus;
+          logic.push(`🐕 DOGFIGHT: +${dogfightBonus} (${dogfightDamage} dmg to attacker)`);
+        }
+      }
     }
 
     decisionContext.push({

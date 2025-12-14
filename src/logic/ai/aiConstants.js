@@ -116,6 +116,10 @@ export const PENALTIES = {
   MOVE_COST: 10,                   // Base cost of moving
   INTERCEPTION_COVERAGE_MULTIPLIER: -5, // Per threat point of enemies being blocked
   INTERCEPTION_COVERAGE_MIN: -10,  // Minimum penalty when losing interception coverage
+
+  // Retaliate ability penalties (when attacking a drone with RETALIATE)
+  RETALIATE_LETHAL: -50,           // Target would kill attacker on retaliate
+  RETALIATE_DAMAGE_MULTIPLIER: -5, // Per point of retaliate damage (if not lethal)
 };
 
 // ========================================
@@ -167,6 +171,10 @@ export const INTERCEPTION = {
   SHIELD_PROTECTION_MULTIPLIER: 5,
   HULL_PROTECTION_MULTIPLIER: 15,
   SHIP_PROTECTION_MULTIPLIER: 10,  // Fallback
+
+  // Dogfight ability bonuses (when intercepting with a DOGFIGHT drone)
+  DOGFIGHT_KILL_BONUS: 30,         // Dogfight damage would kill the attacker
+  DOGFIGHT_DAMAGE_MULTIPLIER: 5,   // Per point of dogfight damage (if not lethal)
 };
 
 // ========================================

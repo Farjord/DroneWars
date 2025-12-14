@@ -151,5 +151,40 @@ export const evaluateDroneAttack = (attacker, target, context) => {
     }
   }
 
+  // RETALIATE penalty - target will deal damage back if it survives
+  const baseTarget = fullDroneCollection.find(d => d.name === target.name);
+  const hasRetaliate = baseTarget?.abilities?.some(a =>
+    a.effect?.type === 'GRANT_KEYWORD' && a.effect?.keyword === 'RETALIATE'
+  );
+
+  if (hasRetaliate) {
+    const effectiveTarget = gameDataService.getEffectiveStats(target, target.lane || attacker.lane);
+    const targetAttack = effectiveTarget.attack || 0;
+
+    // Calculate if target would survive this attack
+    const attackerDamage = effectiveAttacker.attack || 0;
+    const targetShields = target.currentShields || 0;
+    const targetHull = target.hull || 0;
+    const targetHP = isPiercing ? targetHull : (targetShields + targetHull);
+    const targetSurvives = targetHP > attackerDamage;
+
+    if (targetSurvives && targetAttack > 0) {
+      // Calculate if retaliate would be lethal to attacker
+      const attackerShields = attacker.currentShields || 0;
+      const attackerHull = attacker.hull || 0;
+      const attackerHP = attackerShields + attackerHull;
+      const wouldKillAttacker = targetAttack >= attackerHP;
+
+      if (wouldKillAttacker) {
+        score += PENALTIES.RETALIATE_LETHAL;
+        logic.push(`Retaliate Risk: ${PENALTIES.RETALIATE_LETHAL} (${targetAttack} dmg - LETHAL)`);
+      } else {
+        const retaliatePenalty = targetAttack * PENALTIES.RETALIATE_DAMAGE_MULTIPLIER;
+        score += retaliatePenalty;
+        logic.push(`Retaliate Risk: ${retaliatePenalty} (${targetAttack} dmg)`);
+      }
+    }
+  }
+
   return { score, logic };
 };

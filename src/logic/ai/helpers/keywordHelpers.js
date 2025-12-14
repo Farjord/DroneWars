@@ -106,3 +106,23 @@ export const getDroneKeywords = (drone) => {
 
   return keywords;
 };
+
+/**
+ * Check if a drone has the DOGFIGHT keyword
+ * DOGFIGHT drones deal damage to attackers when intercepting
+ * @param {Object} drone - The drone to check
+ * @returns {boolean} True if drone has DOGFIGHT keyword
+ */
+export const hasDogfightKeyword = (drone) => {
+  return hasKeyword(drone, 'DOGFIGHT');
+};
+
+/**
+ * Check if a drone has the RETALIATE keyword
+ * RETALIATE drones deal damage back to attackers when they survive an attack
+ * @param {Object} drone - The drone to check
+ * @returns {boolean} True if drone has RETALIATE keyword
+ */
+export const hasRetaliateKeyword = (drone) => {
+  return hasKeyword(drone, 'RETALIATE');
+};
