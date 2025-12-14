@@ -32,7 +32,7 @@ vi.mock('../CardBackPlaceholder.jsx', () => ({
 
 describe('DronesView drag-and-drop', () => {
   const mockDrone1 = {
-    name: 'Scout Drone',
+    name: 'Dart',
     class: 2,
     attack: 1,
     speed: 3,
@@ -90,7 +90,7 @@ describe('DronesView drag-and-drop', () => {
         />
       );
 
-      const droneWrapper = screen.getByTestId('drone-card-Scout Drone').parentElement;
+      const droneWrapper = screen.getByTestId('drone-card-Dart').parentElement;
       fireEvent.mouseDown(droneWrapper, { clientX: 100, clientY: 200 });
 
       expect(mockHandleCardDragStart).toHaveBeenCalledWith(
@@ -109,7 +109,7 @@ describe('DronesView drag-and-drop', () => {
         />
       );
 
-      const droneWrapper = screen.getByTestId('drone-card-Scout Drone').parentElement;
+      const droneWrapper = screen.getByTestId('drone-card-Dart').parentElement;
       fireEvent.mouseDown(droneWrapper, { clientX: 100, clientY: 200 });
 
       expect(mockHandleCardDragStart).not.toHaveBeenCalled();
@@ -125,7 +125,7 @@ describe('DronesView drag-and-drop', () => {
         />
       );
 
-      const droneWrapper = screen.getByTestId('drone-card-Scout Drone').parentElement;
+      const droneWrapper = screen.getByTestId('drone-card-Dart').parentElement;
       fireEvent.mouseDown(droneWrapper, { clientX: 100, clientY: 200 });
 
       expect(mockHandleCardDragStart).not.toHaveBeenCalled();
@@ -141,7 +141,7 @@ describe('DronesView drag-and-drop', () => {
         />
       );
 
-      const droneWrapper = screen.getByTestId('drone-card-Scout Drone').parentElement;
+      const droneWrapper = screen.getByTestId('drone-card-Dart').parentElement;
       fireEvent.mouseDown(droneWrapper, { clientX: 100, clientY: 200 });
 
       expect(mockHandleCardDragStart).not.toHaveBeenCalled();
@@ -161,7 +161,7 @@ describe('DronesView drag-and-drop', () => {
         />
       );
 
-      const droneWrapper = screen.getByTestId('drone-card-Scout Drone').parentElement;
+      const droneWrapper = screen.getByTestId('drone-card-Dart').parentElement;
       fireEvent.mouseDown(droneWrapper, { clientX: 100, clientY: 200 });
 
       expect(mockHandleCardDragStart).not.toHaveBeenCalled();
@@ -177,7 +177,7 @@ describe('DronesView drag-and-drop', () => {
         />
       );
 
-      const droneWrapper = screen.getByTestId('drone-card-Scout Drone').parentElement;
+      const droneWrapper = screen.getByTestId('drone-card-Dart').parentElement;
       fireEvent.mouseDown(droneWrapper, { clientX: 100, clientY: 200 });
 
       expect(mockHandleCardDragStart).not.toHaveBeenCalled();
@@ -187,7 +187,7 @@ describe('DronesView drag-and-drop', () => {
       // No handleCardDragStart prop - should not throw
       render(<DronesView {...defaultProps} />);
 
-      const droneWrapper = screen.getByTestId('drone-card-Scout Drone').parentElement;
+      const droneWrapper = screen.getByTestId('drone-card-Dart').parentElement;
 
       // Should not throw when mouseDown without handler
       expect(() => {
@@ -204,7 +204,7 @@ describe('DronesView drag-and-drop', () => {
         />
       );
 
-      const droneWrapper = screen.getByTestId('drone-card-Scout Drone').parentElement;
+      const droneWrapper = screen.getByTestId('drone-card-Dart').parentElement;
       const event = fireEvent.mouseDown(droneWrapper, { clientX: 100, clientY: 200 });
 
       // fireEvent returns whether preventDefault was called
@@ -223,7 +223,7 @@ describe('DronesView drag-and-drop', () => {
         />
       );
 
-      const droneWrapper = screen.getByTestId('drone-card-Scout Drone').parentElement;
+      const droneWrapper = screen.getByTestId('drone-card-Dart').parentElement;
       // Verify no opacity class is applied - user didn't want transparency
       expect(droneWrapper.className).not.toMatch(/opacity/i);
     });
@@ -236,7 +236,7 @@ describe('DronesView drag-and-drop', () => {
         />
       );
 
-      const droneWrapper = screen.getByTestId('drone-card-Scout Drone').parentElement;
+      const droneWrapper = screen.getByTestId('drone-card-Dart').parentElement;
       // Scout should not have dragging class when Heavy is being dragged
       expect(droneWrapper.className).not.toMatch(/dragging/i);
     });
@@ -252,7 +252,7 @@ describe('DronesView drag-and-drop', () => {
         />
       );
 
-      const droneCard = screen.getByTestId('drone-card-Scout Drone');
+      const droneCard = screen.getByTestId('drone-card-Dart');
       fireEvent.click(droneCard);
 
       expect(mockToggle).toHaveBeenCalledWith(mockDrone1);

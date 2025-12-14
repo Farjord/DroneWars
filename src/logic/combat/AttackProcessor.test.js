@@ -66,14 +66,14 @@ describe('AttackProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Standard Fighter', // 2 attack, 3 shields, 3 hull
+        name: 'Talon', // 2 attack, 3 shields, 3 hull
         isExhausted: false,
         statMods: []
       }
 
       const target = {
         id: 'drone2',
-        name: 'Guardian Drone', // 1 attack, 5 shields, 4 hull
+        name: 'Bastion', // 1 attack, 5 shields, 4 hull
         isExhausted: false,
         owner: 'player2',
         statMods: []
@@ -112,14 +112,14 @@ describe('AttackProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Standard Fighter',
+        name: 'Talon',
         isExhausted: false,
         statMods: []
       }
 
       const target = {
         id: 'drone2',
-        name: 'Guardian Drone',
+        name: 'Bastion',
         isExhausted: false,
         owner: 'player2',
         statMods: []
@@ -160,14 +160,14 @@ describe('AttackProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Standard Fighter',
+        name: 'Talon',
         isExhausted: false,
         statMods: []
       }
 
       const target = {
         id: 'drone2',
-        name: 'Guardian Drone',
+        name: 'Bastion',
         isExhausted: false,
         owner: 'player2',
         statMods: []
@@ -210,14 +210,14 @@ describe('AttackProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Standard Fighter',
+        name: 'Talon',
         isExhausted: false,
         statMods: []
       }
 
       const target = {
         id: 'drone2',
-        name: 'Guardian Drone',
+        name: 'Bastion',
         isExhausted: false,
         owner: 'player2',
         statMods: []
@@ -253,14 +253,14 @@ describe('AttackProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Heavy Fighter', // 4 attack
+        name: 'Mammoth', // 4 attack
         isExhausted: false,
         statMods: []
       }
 
       const target = {
         id: 'drone2',
-        name: 'Scout Drone', // 1 shields, 1 hull
+        name: 'Dart', // 1 shields, 1 hull
         currentShields: 1,
         hull: 1,
         isExhausted: false,
@@ -287,13 +287,13 @@ describe('AttackProcessor', () => {
         mockLogCallback
       )
 
-      // Heavy Fighter (4 attack) vs Scout Drone (1 shields, 1 hull)
+      // Mammoth (4 attack) vs Dart (1 shields, 1 hull)
       // Should deal 4 damage - destroys shields (1) and hull (1), with 2 overkill
       const targetStillExists = result.newPlayerStates.player2.dronesOnBoard.lane1.some(
         d => d.id === 'drone2'
       )
 
-      // Scout Drone should be destroyed (not enough HP to survive 4 damage)
+      // Dart should be destroyed (not enough HP to survive 4 damage)
       expect(targetStillExists).toBe(false)
     })
 
@@ -305,14 +305,14 @@ describe('AttackProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Standard Fighter',
+        name: 'Talon',
         isExhausted: false,
         statMods: []
       }
 
       const target = {
         id: 'drone2',
-        name: 'Guardian Drone',
+        name: 'Bastion',
         isExhausted: false,
         owner: 'player2',
         statMods: []
@@ -353,14 +353,14 @@ describe('AttackProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Standard Fighter', // 2 attack
+        name: 'Talon', // 2 attack
         isExhausted: false,
         statMods: []
       }
 
       const originalTarget = {
         id: 'drone2',
-        name: 'Guardian Drone',
+        name: 'Bastion',
         currentShields: 5,
         isExhausted: false,
         owner: 'player2',
@@ -369,7 +369,7 @@ describe('AttackProcessor', () => {
 
       const interceptor = {
         id: 'drone3',
-        name: 'Scout Drone', // 1 shields, 1 hull - will be destroyed
+        name: 'Dart', // 1 shields, 1 hull - will be destroyed
         currentShields: 1,
         hull: 1,
         isExhausted: false,
@@ -417,14 +417,14 @@ describe('AttackProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Standard Fighter', // 2 attack
+        name: 'Talon', // 2 attack
         isExhausted: false,
         statMods: []
       }
 
       const originalTarget = {
         id: 'drone2',
-        name: 'Guardian Drone',
+        name: 'Bastion',
         currentShields: 5,
         isExhausted: false,
         owner: 'player2',
@@ -433,7 +433,7 @@ describe('AttackProcessor', () => {
 
       const interceptor = {
         id: 'drone3',
-        name: 'Heavy Fighter', // 4 shields, 4 hull - survives
+        name: 'Mammoth', // 4 shields, 4 hull - survives
         currentShields: 4,
         isExhausted: false,
         owner: 'player2',
@@ -476,14 +476,14 @@ describe('AttackProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Standard Fighter',
+        name: 'Talon',
         isExhausted: false,
         statMods: []
       }
 
       const target = {
         id: 'drone2',
-        name: 'Guardian Drone',
+        name: 'Bastion',
         currentShields: 5,
         isExhausted: false,
         owner: 'player2',
@@ -523,7 +523,7 @@ describe('AttackProcessor', () => {
 
       const target = {
         id: 'drone2',
-        name: 'Scout Drone', // 1 shields, 1 hull
+        name: 'Dart', // 1 shields, 1 hull
         currentShields: 1,
         hull: 1,
         isExhausted: false,

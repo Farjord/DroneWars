@@ -72,9 +72,9 @@ describe('DeploymentProcessor - RAPID/ASSAULT initialization', () => {
     // EXPLANATION: When any drone is deployed, it should have rapidUsed=false
     // so that if it has the RAPID ability, it can use it immediately.
 
-    // Setup: Deploy a Scout Drone
+    // Setup: Deploy a Dart
     const drone = {
-      name: 'Scout Drone',
+      name: 'Dart',
       class: 1,
       attack: 1,
       hull: 1,
@@ -106,9 +106,9 @@ describe('DeploymentProcessor - RAPID/ASSAULT initialization', () => {
     // EXPLANATION: When any drone is deployed, it should have assaultUsed=false
     // so that if it has the ASSAULT ability, it can use it immediately.
 
-    // Setup: Deploy a Standard Fighter
+    // Setup: Deploy a Talon
     const drone = {
-      name: 'Standard Fighter',
+      name: 'Talon',
       class: 2,
       attack: 3,
       hull: 2,
@@ -140,9 +140,9 @@ describe('DeploymentProcessor - RAPID/ASSAULT initialization', () => {
     // EXPLANATION: All deployed drones should have both flags initialized,
     // regardless of whether they have those abilities or not.
 
-    // Setup: Deploy a Blitz Drone (has RAPID ability)
+    // Setup: Deploy a Blitz (has RAPID ability)
     const blitzDrone = {
-      name: 'Blitz Drone',
+      name: 'Blitz',
       class: 2,
       attack: 2,
       hull: 2,

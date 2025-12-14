@@ -37,10 +37,10 @@ vi.mock('../../contexts/EditorStatsContext.jsx', () => ({
 }));
 
 describe('DroneToken - Ability Icon Interaction', () => {
-  // Mock drone with an active ability (like Repair Drone)
+  // Mock drone with an active ability (like Seraph)
   const mockDroneWithAbility = {
     id: 'repair_drone_1',
-    name: 'Repair Drone',
+    name: 'Seraph',
     image: '/images/repair.png',
     hull: 1,
     currentShields: 3,
@@ -177,7 +177,7 @@ describe('DroneToken - Ability Icon Interaction', () => {
 describe('DroneToken - Ability Source Visual Feedback', () => {
   const mockDroneWithAbility = {
     id: 'repair_drone_1',
-    name: 'Repair Drone',
+    name: 'Seraph',
     image: '/images/repair.png',
     hull: 1,
     currentShields: 3,

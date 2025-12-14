@@ -32,11 +32,11 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
     shipId: 'SHIP_001',
     decklist: [],
     droneSlots: [
-      { droneName: 'Scout Drone', isDamaged: false },
-      { droneName: 'Standard Fighter', isDamaged: false },
-      { droneName: 'Heavy Fighter', isDamaged: false },
-      { droneName: 'Repair Drone', isDamaged: false },
-      { droneName: 'Bomber', isDamaged: false }
+      { droneName: 'Dart', isDamaged: false },
+      { droneName: 'Talon', isDamaged: false },
+      { droneName: 'Mammoth', isDamaged: false },
+      { droneName: 'Seraph', isDamaged: false },
+      { droneName: 'Devastator', isDamaged: false }
     ],
     sectionSlots: {
       l: { componentId: 'BRIDGE_001', damageDealt: sectionDamage.l || 0 },

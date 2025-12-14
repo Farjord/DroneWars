@@ -33,7 +33,7 @@ vi.mock('../helpers/upgradeHelpers.js', () => ({
 vi.mock('../../../data/droneData.js', () => ({
   default: [
     { name: 'Test Drone', class: 1, attack: 2, speed: 3, abilities: [] },
-    { name: 'Phase Jumper', class: 2, attack: 3, speed: 4, abilities: [
+    { name: 'Specter', class: 2, attack: 3, speed: 4, abilities: [
       { type: 'TRIGGERED', trigger: 'ON_MOVE', effects: [
         { type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1 } }
       ]}
@@ -1233,7 +1233,7 @@ describe('evaluateSingleMoveCard', () => {
       cost: 0,
       effect: { type: 'SINGLE_MOVE' }
     };
-    const drone = createMockDrone({ name: 'Phase Jumper' });
+    const drone = createMockDrone({ name: 'Specter' });
     const moveData = { drone, fromLane: 'lane1', toLane: 'lane2' };
 
     const context = createMockContext({
@@ -1248,7 +1248,7 @@ describe('evaluateSingleMoveCard', () => {
 
     const result = evaluateSingleMoveCard(card, null, moveData, context);
 
-    // Phase Jumper has ON_MOVE +1 attack ability
+    // Specter has ON_MOVE +1 attack ability
     // ON_MOVE_ATTACK_BONUS_PER_POINT = 15
     expect(result.logic.some(l => l.includes('OnMove Ability'))).toBe(true);
   });
@@ -1523,8 +1523,8 @@ describe('evaluateModifyDroneBaseCard', () => {
       cost: 5,
       effect: { type: 'MODIFY_DRONE_BASE', mod: { stat: 'attack', value: 1 } }
     };
-    // Phase Jumper has speed 4 (from mock)
-    const target = { name: 'Phase Jumper' };
+    // Specter has speed 4 (from mock)
+    const target = { name: 'Specter' };
 
     const context = createMockContext();
 

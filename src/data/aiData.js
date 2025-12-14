@@ -8,11 +8,11 @@ const aiPersonalities = [
     imagePath: '/DroneWars/AI/TEST.png',
     // The specific 5 drones this AI will use.
     dronePool: [
-      'Heavy Fighter',
-      'Standard Fighter',
-      'Kamikaze Drone',
-      'Bomber',
-      'Swarm Drone'
+      'Mammoth',
+      'Talon',
+      'Firefly',
+      'Devastator',
+      'Locust'
     ],
     // Strategic ship section placement [lane0, lane1, lane2]
     shipDeployment: {
@@ -52,16 +52,16 @@ const aiPersonalities = [
     imagePath: '/DroneWars/AI/Manticore.png',
     // The specific 5 drones this AI will use.
     dronePool: [
-      'Avenger Drone',
-      'Bomber',
-      'Heavy Fighter',
-      'Kamikaze Drone',
-      'Scout Drone',
-      'Skirmisher Drone',
-      'Swarm Drone',
-      'Vindicator Drone',
-      'Sabot Drone',
-      'Standard Fighter'
+      'Avenger',
+      'Devastator',
+      'Mammoth',
+      'Firefly',
+      'Dart',
+      'Skirmisher',
+      'Locust',
+      'Vindicator',
+      'Sabot',
+      'Talon'
 
     ],
     // Strategic ship section placement [lane0, lane1, lane2]
@@ -100,10 +100,10 @@ const aiPersonalities = [
     imagePath: '/DroneWars/AI/Scout.png',
     escapeDamage: { min: 1, max: 3 },  // Easy AI: low escape damage
     dronePool: [
-      'Swarm Drone',
-      'Scout Drone',
-      'Standard Fighter',
-      'Interceptor',
+      'Locust',
+      'Dart',
+      'Talon',
+      'Harrier',
       'Scanner'
     ],
     shipDeployment: {
@@ -136,11 +136,11 @@ const aiPersonalities = [
     imagePath: '/DroneWars/AI/Patrol.png',
     escapeDamage: { min: 1, max: 3 },  // Easy AI: low escape damage
     dronePool: [
-      'Scout Drone',
-      'Standard Fighter',
-      'Heavy Fighter',
-      'Kamikaze Drone',
-      'Interceptor'
+      'Dart',
+      'Talon',
+      'Mammoth',
+      'Firefly',
+      'Harrier'
     ],
     shipDeployment: {
       strategy: 'balanced',
@@ -173,11 +173,11 @@ const aiPersonalities = [
     imagePath: '/DroneWars/AI/Cruiser.png',
     escapeDamage: { min: 2, max: 4 },  // Medium AI: moderate escape damage
     dronePool: [
-      'Swarm Drone',
-      'Heavy Fighter',
-      'Bomber',
-      'Guardian Drone',
-      'Aegis Drone'
+      'Locust',
+      'Mammoth',
+      'Devastator',
+      'Bastion',
+      'Aegis'
     ],
     shipDeployment: {
       strategy: 'aggressive',
@@ -209,11 +209,11 @@ const aiPersonalities = [
     imagePath: '/DroneWars/AI/Hunter.png',
     escapeDamage: { min: 2, max: 4 },  // Medium AI: moderate escape damage
     dronePool: [
-      'Kamikaze Drone',
-      'Interceptor',
-      'Standard Fighter',
-      'Bomber',
-      'Swarm Drone'
+      'Firefly',
+      'Harrier',
+      'Talon',
+      'Devastator',
+      'Locust'
     ],
     shipDeployment: {
       strategy: 'aggressive',
@@ -246,11 +246,11 @@ const aiPersonalities = [
     imagePath: '/DroneWars/AI/Blockade.png',
     escapeDamage: { min: 3, max: 5 },  // Hard AI: high escape damage
     dronePool: [
-      'Heavy Fighter',
-      'Bomber',
-      'Skirmisher Drone',
-      'Aegis Drone',
-      'Guardian Drone'
+      'Mammoth',
+      'Devastator',
+      'Skirmisher',
+      'Aegis',
+      'Bastion'
     ],
     shipDeployment: {
       strategy: 'defensive',
@@ -277,7 +277,7 @@ const aiPersonalities = [
   // {
   //   name: 'Swarm Tactician',
   //   description: 'Overwhelms the enemy with numerous, low-cost drones.',
-  //   dronePool: ['Swarm Drone', 'Scout Drone', 'Standard Fighter', 'Interceptor', 'Repair Drone'],
+  //   dronePool: ['Locust', 'Dart', 'Talon', 'Harrier', 'Seraph'],
   //   shipDeployment: {
   //     strategy: 'defensive',
   //     placement: ['droneControlHub', 'powerCell', 'bridge'],

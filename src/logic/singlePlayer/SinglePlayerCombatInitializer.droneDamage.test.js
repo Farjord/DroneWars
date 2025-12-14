@@ -25,7 +25,7 @@ vi.mock('../map/generateMapData.js', () => ({
 
 describe('SinglePlayerCombatInitializer - Drone Damage Loading', () => {
 
-  const createTestShipSlot = (slotId, dronePool = ['Scout Drone', 'Assault Drone']) => ({
+  const createTestShipSlot = (slotId, dronePool = ['Dart', 'Assault Drone']) => ({
     id: slotId,
     name: `Test Ship Slot ${slotId}`,
     status: 'active',
@@ -47,7 +47,7 @@ describe('SinglePlayerCombatInitializer - Drone Damage Loading', () => {
       currentRunState: null,
       singlePlayerShipSlots: [
         createTestShipSlot(0),
-        createTestShipSlot(1, ['Scout Drone', 'Assault Drone', 'Repair Drone']),
+        createTestShipSlot(1, ['Dart', 'Assault Drone', 'Seraph']),
         createTestShipSlot(2)
       ],
       singlePlayerDroneInstances: [],
@@ -74,7 +74,7 @@ describe('SinglePlayerCombatInitializer - Drone Damage Loading', () => {
         singlePlayerDroneInstances: [
           {
             instanceId: 'drone-123',
-            droneName: 'Scout Drone',
+            droneName: 'Dart',
             shipSlotId: 1,
             isDamaged: true
           }
@@ -87,8 +87,8 @@ describe('SinglePlayerCombatInitializer - Drone Damage Loading', () => {
       // Act: Build player state
       const playerState = SinglePlayerCombatInitializer.buildPlayerState(shipSlot, runState);
 
-      // Assert: Scout Drone should be marked as damaged
-      const scoutDrone = playerState.activeDronePool.find(d => d.name === 'Scout Drone');
+      // Assert: Dart should be marked as damaged
+      const scoutDrone = playerState.activeDronePool.find(d => d.name === 'Dart');
       expect(scoutDrone).toBeDefined();
       expect(scoutDrone.isDamaged).toBe(true);
 
@@ -104,7 +104,7 @@ describe('SinglePlayerCombatInitializer - Drone Damage Loading', () => {
         singlePlayerDroneInstances: [
           {
             instanceId: 'drone-bad',
-            droneName: 'Scout Drone',
+            droneName: 'Dart',
             shipSlotId: 0,
             isDamaged: true
           }
@@ -118,7 +118,7 @@ describe('SinglePlayerCombatInitializer - Drone Damage Loading', () => {
       const playerState = SinglePlayerCombatInitializer.buildPlayerState(shipSlot, runState);
 
       // Assert: Slot 0 drones should never be damaged
-      const scoutDrone = playerState.activeDronePool.find(d => d.name === 'Scout Drone');
+      const scoutDrone = playerState.activeDronePool.find(d => d.name === 'Dart');
       expect(scoutDrone).toBeDefined();
       expect(scoutDrone.isDamaged).toBeFalsy();
     });
@@ -127,9 +127,9 @@ describe('SinglePlayerCombatInitializer - Drone Damage Loading', () => {
       // Setup: Multiple damaged drones
       gameStateManager.setState({
         singlePlayerDroneInstances: [
-          { instanceId: 'd1', droneName: 'Scout Drone', shipSlotId: 1, isDamaged: true },
+          { instanceId: 'd1', droneName: 'Dart', shipSlotId: 1, isDamaged: true },
           { instanceId: 'd2', droneName: 'Assault Drone', shipSlotId: 1, isDamaged: true },
-          { instanceId: 'd3', droneName: 'Repair Drone', shipSlotId: 1, isDamaged: false }
+          { instanceId: 'd3', droneName: 'Seraph', shipSlotId: 1, isDamaged: false }
         ]
       });
 
@@ -140,9 +140,9 @@ describe('SinglePlayerCombatInitializer - Drone Damage Loading', () => {
       const playerState = SinglePlayerCombatInitializer.buildPlayerState(shipSlot, runState);
 
       // Assert
-      const scoutDrone = playerState.activeDronePool.find(d => d.name === 'Scout Drone');
+      const scoutDrone = playerState.activeDronePool.find(d => d.name === 'Dart');
       const assaultDrone = playerState.activeDronePool.find(d => d.name === 'Assault Drone');
-      const repairDrone = playerState.activeDronePool.find(d => d.name === 'Repair Drone');
+      const repairDrone = playerState.activeDronePool.find(d => d.name === 'Seraph');
 
       expect(scoutDrone?.isDamaged).toBe(true);
       expect(assaultDrone?.isDamaged).toBe(true);
@@ -153,7 +153,7 @@ describe('SinglePlayerCombatInitializer - Drone Damage Loading', () => {
       // Setup: Damaged drone in slot 2
       gameStateManager.setState({
         singlePlayerDroneInstances: [
-          { instanceId: 'd1', droneName: 'Scout Drone', shipSlotId: 2, isDamaged: true }
+          { instanceId: 'd1', droneName: 'Dart', shipSlotId: 2, isDamaged: true }
         ]
       });
 
@@ -164,7 +164,7 @@ describe('SinglePlayerCombatInitializer - Drone Damage Loading', () => {
       const playerState = SinglePlayerCombatInitializer.buildPlayerState(shipSlot, runState);
 
       // Assert: Slot 1 scout drone should NOT be damaged (damage is in slot 2)
-      const scoutDrone = playerState.activeDronePool.find(d => d.name === 'Scout Drone');
+      const scoutDrone = playerState.activeDronePool.find(d => d.name === 'Dart');
       expect(scoutDrone?.isDamaged).toBeFalsy();
     });
   });

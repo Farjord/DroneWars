@@ -107,8 +107,8 @@ export const getMockGameState = () => {
       deck: getMockCards(20),
       discardPile: getMockCards(5),
       dronesOnBoard: {
-        lane1: [getMockDrone('Scout Drone')],
-        lane2: [getMockDrone('Standard Fighter'), getMockDrone('Heavy Fighter')],
+        lane1: [getMockDrone('Dart')],
+        lane2: [getMockDrone('Talon'), getMockDrone('Mammoth')],
         lane3: []
       },
       shipSections: {
@@ -127,9 +127,9 @@ export const getMockGameState = () => {
       deck: getMockCards(15),
       discardPile: getMockCards(3),
       dronesOnBoard: {
-        lane1: [getMockDrone('Interceptor')],
-        lane2: [getMockDrone('Guardian Drone')],
-        lane3: [getMockDrone('Bomber')]
+        lane1: [getMockDrone('Harrier')],
+        lane2: [getMockDrone('Bastion')],
+        lane3: [getMockDrone('Devastator')]
       },
       shipSections: {
         bridge: getMockShipSection('bridge'),
@@ -222,7 +222,7 @@ export const getMockPropsForModal = (modalName) => {
       props: {
         show: true,
         abilityConfirmation: {
-          drone: getMockDrone('Repair Drone'),
+          drone: getMockDrone('Seraph'),
           ability: {
             name: 'Hull Repair',
             description: 'Pay 1 Energy and exhaust to restore 3 hull to a damaged friendly drone in the same lane.',
@@ -276,8 +276,8 @@ export const getMockPropsForModal = (modalName) => {
         show: true,
         choiceData: {
           attackDetails: {
-            attacker: getMockDrone('Standard Fighter'),
-            target: getMockDrone('Scout Drone'),
+            attacker: getMockDrone('Talon'),
+            target: getMockDrone('Dart'),
             targetType: 'drone',
             lane: 'lane2'
           },
@@ -301,7 +301,7 @@ export const getMockPropsForModal = (modalName) => {
       props: {
         show: true,
         attacker: mockDrone,
-        target: getMockDrone('Heavy Fighter')
+        target: getMockDrone('Mammoth')
       }
     },
 
@@ -376,7 +376,7 @@ export const getMockPropsForModal = (modalName) => {
       props: {
         report: {
           card: getMockCard('Energy Surge'),
-          targetName: 'Scout Drone',
+          targetName: 'Dart',
           targetLane: 'Lane 1'
         },
         onClose: () => console.log('Modal closed')
@@ -389,7 +389,7 @@ export const getMockPropsForModal = (modalName) => {
         decisionLog: [
           {
             type: 'attack',
-            instigator: 'Heavy Fighter',
+            instigator: 'Mammoth',
             targetName: 'Enemy Drone',
             attacker: { lane: 'lane1' },
             target: { name: 'ScoutDrone', id: 'drone1', owner: 'ai' },
@@ -399,7 +399,7 @@ export const getMockPropsForModal = (modalName) => {
           },
           {
             type: 'deploy',
-            instigator: 'Scout Drone',
+            instigator: 'Dart',
             targetName: 'Lane 2',
             score: 60,
             logic: ['Empty lane', 'Strategic positioning'],
@@ -467,7 +467,7 @@ export const getMockPropsForModal = (modalName) => {
       category: 'upgrades',
       props: {
         modalData: {
-          droneName: 'Scout Drone',
+          droneName: 'Dart',
           upgrades: [
             { instanceId: 'CARD020', name: 'Slimline Bodywork', description: '+1 to Deployment Limit', stat: 'limit', value: 1 },
             { instanceId: 'CARD021', name: 'Overclocked Thrusters', description: '+1 Speed', stat: 'speed', value: 1 }
@@ -493,15 +493,15 @@ export const getMockPropsForModal = (modalName) => {
         selectionData: {
           card: getMockCard('System Sabotage'),
           targets: [
-            getMockDrone('Scout Drone'),
-            getMockDrone('Heavy Fighter')
+            getMockDrone('Dart'),
+            getMockDrone('Mammoth')
           ],
           opponentState: {
             appliedUpgrades: {
-              'Scout Drone': [
+              'Dart': [
                 { instanceId: 'upgrade-1', name: 'Slimline Bodywork', stat: 'limit', value: 1 }
               ],
-              'Heavy Fighter': [
+              'Mammoth': [
                 { instanceId: 'upgrade-2', name: 'Combat Enhancement', stat: 'attack', value: 1 },
                 { instanceId: 'upgrade-3', name: 'Shield Amplifier', stat: 'shields', value: 1 }
               ]
@@ -572,7 +572,7 @@ export const getMockPropsForModal = (modalName) => {
       category: 'debug',
       props: {
         isOpen: true,
-        drone: getMockDrone('Heavy Fighter'),
+        drone: getMockDrone('Mammoth'),
         onClose: () => console.log('Modal closed')
       }
     },
@@ -597,7 +597,7 @@ export const getMockPropsForModal = (modalName) => {
           id: 1,
           name: 'Ship Slot 1',
           status: 'mia',
-          drones: [getMockDrone('Scout Drone'), getMockDrone('Heavy Fighter')],
+          drones: [getMockDrone('Dart'), getMockDrone('Mammoth')],
           shipComponents: { left: 'comp1', middle: 'comp2', right: 'comp3' }
         },
         onClose: () => console.log('MIA Recovery closed')
@@ -891,7 +891,7 @@ export const getMockPropsForModal = (modalName) => {
           { type: 'card', id: 'CARD007' },  // Overcharge (Rare)
           { type: 'card', id: 'CARD003' },  // Shield Boost
           // Blueprint showing drone card with real drone name
-          { type: 'blueprint', id: 'Heavy Fighter', droneName: 'Heavy Fighter' },
+          { type: 'blueprint', id: 'Mammoth', droneName: 'Mammoth' },
           // Resource types
           { type: 'credits', amount: 150 },
           { type: 'aiCores', amount: 2 }

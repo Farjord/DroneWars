@@ -311,7 +311,7 @@ describe('evaluateDroneAttack', () => {
     // Test: Does not apply penalty for Guardians (handled by Guardian Protection Risk)
     it('does not apply penalty for Guardian drones (handled separately)', () => {
       const attacker = createMockDrone({
-        name: 'Guardian Drone',
+        name: 'Bastion',
         class: 2,
         attack: 2,
         speed: 4,

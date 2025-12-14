@@ -11,7 +11,7 @@ import DroneToken from './DroneToken.jsx';
 // Mock dependencies
 vi.mock('../../data/droneData.js', () => ({
   default: [{
-    name: 'Scout Drone',
+    name: 'Dart',
     hull: 2,
     abilities: []
   }, {
@@ -40,7 +40,7 @@ vi.mock('../../contexts/EditorStatsContext.jsx', () => ({
 describe('DroneToken action card drop', () => {
   const mockDrone = {
     id: 'drone-1',
-    name: 'Scout Drone',
+    name: 'Dart',
     hull: 2,
     currentShields: 0,
     isExhausted: false,

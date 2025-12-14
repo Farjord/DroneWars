@@ -84,17 +84,17 @@
   }
 }
 
-/* Insertion gate - Orange/amber glow (entry point) */
+/* Insertion gate - White glow (entry point) */
 .hex-insertion-glow {
   animation: insertion-gate-pulse 2.5s ease-in-out infinite;
 }
 
 @keyframes insertion-gate-pulse {
   0%, 100% {
-    filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.3));
+    filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.3));
   }
   50% {
-    filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.7));
+    filter: drop-shadow(0 0 14px rgba(255, 255, 255, 0.7));
   }
 }
 
@@ -109,6 +109,20 @@
   }
   50% {
     filter: drop-shadow(0 0 14px rgba(59, 130, 246, 0.7));
+  }
+}
+
+/* Player hex - White glow for ship visibility */
+.hex-player-glow {
+  animation: player-hex-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes player-hex-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.8));
   }
 }
 

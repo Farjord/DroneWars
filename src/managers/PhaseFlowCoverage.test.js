@@ -458,7 +458,7 @@ describe('Phase Flow Coverage - Quick Deploy Tests', () => {
       id: 'qd_test_123',
       name: 'Test Quick Deploy',
       placements: [
-        { droneName: 'Scout Drone', lane: 0 },
+        { droneName: 'Dart', lane: 0 },
         { droneName: 'Fighter Drone', lane: 1 }
       ]
     };
@@ -529,7 +529,7 @@ describe('Phase Flow Coverage - Quick Deploy Tests', () => {
       id: 'qd_test_123',
       name: 'Test Quick Deploy',
       placements: [
-        { droneName: 'Scout Drone', lane: 0 }
+        { droneName: 'Dart', lane: 0 }
       ]
     };
 
@@ -605,7 +605,7 @@ describe('Phase Flow Coverage - Quick Deploy Tests', () => {
     const quickDeployTemplate = {
       id: 'qd_test_123',
       name: 'Test Quick Deploy',
-      placements: [{ droneName: 'Scout Drone', lane: 0 }]
+      placements: [{ droneName: 'Dart', lane: 0 }]
     };
 
     mockGameStateManager._setState({

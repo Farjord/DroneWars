@@ -581,11 +581,11 @@ class SinglePlayerCombatInitializer {
    */
   getDefaultDronePool() {
     return [
-      'Scout Drone',
-      'Standard Fighter',
-      'Heavy Fighter',
-      'Guardian Drone',
-      'Interceptor'
+      'Dart',
+      'Talon',
+      'Mammoth',
+      'Bastion',
+      'Harrier'
     ];
   }
 }

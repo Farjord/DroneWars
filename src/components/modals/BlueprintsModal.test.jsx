@@ -7,7 +7,7 @@
  * since players don't need to craft them.
  *
  * Starter items to exclude:
- * - Drones: Scout Drone, Standard Fighter, Heavy Fighter, Guardian Drone, Repair Drone
+ * - Drones: Dart, Talon, Mammoth, Bastion, Seraph
  * - Ship Sections: BRIDGE_001, POWERCELL_001, DRONECONTROL_001
  * - Ships: SHIP_001
  */
@@ -24,13 +24,13 @@ vi.mock('../../hooks/useGameState.js', () => ({
 vi.mock('../../data/droneData.js', () => ({
   default: [
     // Starter drones (should be EXCLUDED)
-    { name: 'Scout Drone', rarity: 'Common', selectable: true },
-    { name: 'Standard Fighter', rarity: 'Common', selectable: true },
-    { name: 'Heavy Fighter', rarity: 'Common', selectable: true },
-    { name: 'Guardian Drone', rarity: 'Common', selectable: true },
-    { name: 'Repair Drone', rarity: 'Common', selectable: true },
+    { name: 'Dart', rarity: 'Common', selectable: true },
+    { name: 'Talon', rarity: 'Common', selectable: true },
+    { name: 'Mammoth', rarity: 'Common', selectable: true },
+    { name: 'Bastion', rarity: 'Common', selectable: true },
+    { name: 'Seraph', rarity: 'Common', selectable: true },
     // Non-starter drones (should be INCLUDED)
-    { name: 'Interceptor', rarity: 'Uncommon', selectable: true },
+    { name: 'Harrier', rarity: 'Uncommon', selectable: true },
     { name: 'Bomber Drone', rarity: 'Rare', selectable: true },
   ]
 }));
@@ -66,11 +66,11 @@ vi.mock('../../data/cardData.js', () => ({
 vi.mock('../../data/playerDeckData.js', () => ({
   starterDeck: {
     droneSlots: [
-      { slotIndex: 0, slotDamaged: false, assignedDrone: 'Scout Drone' },
-      { slotIndex: 1, slotDamaged: false, assignedDrone: 'Standard Fighter' },
-      { slotIndex: 2, slotDamaged: false, assignedDrone: 'Heavy Fighter' },
-      { slotIndex: 3, slotDamaged: false, assignedDrone: 'Guardian Drone' },
-      { slotIndex: 4, slotDamaged: false, assignedDrone: 'Repair Drone' },
+      { slotIndex: 0, slotDamaged: false, assignedDrone: 'Dart' },
+      { slotIndex: 1, slotDamaged: false, assignedDrone: 'Talon' },
+      { slotIndex: 2, slotDamaged: false, assignedDrone: 'Mammoth' },
+      { slotIndex: 3, slotDamaged: false, assignedDrone: 'Bastion' },
+      { slotIndex: 4, slotDamaged: false, assignedDrone: 'Seraph' },
     ],
     shipComponents: {
       'BRIDGE_001': 'm',
@@ -120,7 +120,7 @@ describe('BlueprintsModal - Starter Items Exclusion', () => {
           credits: 1000,
           aiCores: 10,
           // Unlock non-starter items so they display their names
-          unlockedBlueprints: ['Interceptor', 'Bomber Drone', 'BRIDGE_002']
+          unlockedBlueprints: ['Harrier', 'Bomber Drone', 'BRIDGE_002']
         },
         // Non-starter ship owned (makes it unlocked)
         singlePlayerInventory: { 'SHIP_002': 1 }
@@ -131,7 +131,7 @@ describe('BlueprintsModal - Starter Items Exclusion', () => {
 
   describe('Drones tab - Starter drones should be excluded', () => {
     /**
-     * Starter drones (Scout Drone, Standard Fighter, Heavy Fighter, Guardian Drone, Repair Drone)
+     * Starter drones (Dart, Talon, Mammoth, Bastion, Seraph)
      * should NOT appear in the Drones tab since they're infinitely available.
      */
     it('should NOT show starter drones in the Drones tab', () => {
@@ -140,18 +140,18 @@ describe('BlueprintsModal - Starter Items Exclusion', () => {
       // Drones tab is default, no need to click
 
       // Starter drones should NOT appear
-      expect(screen.queryByText('Scout Drone')).toBeNull();
-      expect(screen.queryByText('Standard Fighter')).toBeNull();
-      expect(screen.queryByText('Heavy Fighter')).toBeNull();
-      expect(screen.queryByText('Guardian Drone')).toBeNull();
-      expect(screen.queryByText('Repair Drone')).toBeNull();
+      expect(screen.queryByText('Dart')).toBeNull();
+      expect(screen.queryByText('Talon')).toBeNull();
+      expect(screen.queryByText('Mammoth')).toBeNull();
+      expect(screen.queryByText('Bastion')).toBeNull();
+      expect(screen.queryByText('Seraph')).toBeNull();
     });
 
     it('should show non-starter drones in the Drones tab', () => {
       render(<BlueprintsModal onClose={() => {}} />);
 
       // Non-starter drones SHOULD appear
-      expect(screen.getByText('Interceptor')).toBeInTheDocument();
+      expect(screen.getByText('Harrier')).toBeInTheDocument();
       expect(screen.getByText('Bomber Drone')).toBeInTheDocument();
     });
 

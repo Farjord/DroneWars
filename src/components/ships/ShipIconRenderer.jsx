@@ -6,11 +6,18 @@
 // Designed for multi-ship support - uses foreignObject for HTML-in-SVG.
 
 import React from 'react';
-import CorvetteIcon from './CorvetteIcon.jsx';
+
+// PNG image import (Vite handles the base path correctly)
+import mapIconUrl from '/Ships/Corvette/MapIcon.png';
+
+// SVG Icon import (commented out - using PNG image instead)
+// To revert to SVG icons: uncomment import, SHIP_ICON_MAP, change rotation to +180, use IconComponent
+// import CorvetteIcon from './CorvetteIcon.jsx';
 
 /**
  * Faction color mapping
  * player = blue, enemy = red, neutral = white
+ * Note: PNG images don't support dynamic coloring - this is only used for SVG icons
  */
 const FACTION_COLORS = {
   player: '#3b82f6',   // Blue-500
@@ -19,16 +26,16 @@ const FACTION_COLORS = {
 };
 
 /**
- * Ship icon component mapping
+ * Ship icon component mapping (commented out - using PNG image)
  * Maps shipId to the appropriate icon component.
  * All currently use CorvetteIcon as placeholder - future ship icons
  * can be added here.
  */
-const SHIP_ICON_MAP = {
-  'SHIP_001': CorvetteIcon,    // Reconnaissance Corvette
-  'SHIP_002': CorvetteIcon,    // Heavy Assault Carrier (TODO: CarrierIcon)
-  'SHIP_003': CorvetteIcon,    // Scout (TODO: ScoutIcon)
-};
+// const SHIP_ICON_MAP = {
+//   'SHIP_001': CorvetteIcon,    // Reconnaissance Corvette
+//   'SHIP_002': CorvetteIcon,    // Heavy Assault Carrier (TODO: CarrierIcon)
+//   'SHIP_003': CorvetteIcon,    // Scout (TODO: ScoutIcon)
+// };
 
 /**
  * ShipIconRenderer - Renders ship icon at a position on the tactical map SVG.
@@ -52,11 +59,9 @@ function ShipIconRenderer({
   faction = 'neutral',
   size = 40
 }) {
-  // Select icon component (fallback to Corvette for unknown ships)
-  const IconComponent = SHIP_ICON_MAP[shipId] || CorvetteIcon;
-
-  // Get faction color
-  const color = FACTION_COLORS[faction] || FACTION_COLORS.neutral;
+  // SVG icon selection (commented out - using PNG image)
+  // const IconComponent = SHIP_ICON_MAP[shipId] || CorvetteIcon;
+  // const color = FACTION_COLORS[faction] || FACTION_COLORS.neutral;
 
   // Calculate foreignObject position (center the icon on x, y)
   const foreignX = x - size / 2;
@@ -79,16 +84,30 @@ function ShipIconRenderer({
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          transform: `rotate(${heading + 180}deg)`,
+          // PNG faces North, so +90 to align with heading (0=East)
+          // For SVG icons: use +180 instead
+          transform: `rotate(${heading + 90}deg)`,
           transformOrigin: 'center center',
         }}
       >
         <div data-testid="ship-icon">
+          {/* PNG Image (to revert to SVG: uncomment IconComponent below) */}
+          <img
+            src={mapIconUrl}
+            alt="Ship"
+            style={{
+              width: size * 0.9,
+              height: size * 0.9,
+              objectFit: 'contain',
+            }}
+          />
+          {/* SVG Icon (commented out)
           <IconComponent
             size={size * 0.9}
             color={color}
             speed={1}
           />
+          */}
         </div>
       </div>
     </foreignObject>

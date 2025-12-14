@@ -63,7 +63,7 @@ describe('InterceptionProcessor', () => {
 
       const exhaustedAttacker = {
         id: 'drone1',
-        name: 'Standard Fighter',
+        name: 'Talon',
         isExhausted: true
       }
 
@@ -87,7 +87,7 @@ describe('InterceptionProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Standard Fighter',
+        name: 'Talon',
         isExhausted: false
       }
 
@@ -112,13 +112,13 @@ describe('InterceptionProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Standard Fighter', // Speed 4
+        name: 'Talon', // Speed 4
         isExhausted: false
       }
 
       const slowDefender = {
         id: 'drone2',
-        name: 'Guardian Drone', // Speed 2 (slower than Standard Fighter)
+        name: 'Bastion', // Speed 2 (slower than Standard Fighter)
         isExhausted: false,
         owner: 'player2'
       }
@@ -144,13 +144,13 @@ describe('InterceptionProcessor', () => {
 
       const slowAttacker = {
         id: 'drone1',
-        name: 'Guardian Drone', // Speed 2
+        name: 'Bastion', // Speed 2
         isExhausted: false
       }
 
       const fastDefender = {
         id: 'drone2',
-        name: 'Scout Drone', // Speed 6 (much faster)
+        name: 'Dart', // Speed 6 (much faster)
         isExhausted: false,
         owner: 'player2'
       }
@@ -177,13 +177,13 @@ describe('InterceptionProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Guardian Drone', // Speed 2
+        name: 'Bastion', // Speed 2
         isExhausted: false
       }
 
       const exhaustedFastDefender = {
         id: 'drone2',
-        name: 'Scout Drone', // Speed 6, but exhausted
+        name: 'Dart', // Speed 6, but exhausted
         isExhausted: true,
         owner: 'player2'
       }
@@ -209,20 +209,20 @@ describe('InterceptionProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Guardian Drone', // Speed 2, in lane1
+        name: 'Bastion', // Speed 2, in lane1
         isExhausted: false
       }
 
       const lane1Defender = {
         id: 'drone2',
-        name: 'Scout Drone', // Speed 6, in lane1 - CAN intercept
+        name: 'Dart', // Speed 6, in lane1 - CAN intercept
         isExhausted: false,
         owner: 'player2'
       }
 
       const lane2Defender = {
         id: 'drone3',
-        name: 'Scout Drone', // Speed 6, in lane2 - CANNOT intercept
+        name: 'Dart', // Speed 6, in lane2 - CANNOT intercept
         isExhausted: false,
         owner: 'player2'
       }
@@ -251,20 +251,20 @@ describe('InterceptionProcessor', () => {
 
       const slowAttacker = {
         id: 'drone1',
-        name: 'Guardian Drone', // Speed 2
+        name: 'Bastion', // Speed 2
         isExhausted: false
       }
 
       const fastDefender1 = {
         id: 'drone2',
-        name: 'Scout Drone', // Speed 6
+        name: 'Dart', // Speed 6
         isExhausted: false,
         owner: 'player2'
       }
 
       const fastDefender2 = {
         id: 'drone3',
-        name: 'Standard Fighter', // Speed 4
+        name: 'Talon', // Speed 4
         isExhausted: false,
         owner: 'player2'
       }
@@ -292,7 +292,7 @@ describe('InterceptionProcessor', () => {
 
       const orphanedAttacker = {
         id: 'drone1',
-        name: 'Standard Fighter',
+        name: 'Talon',
         isExhausted: false
       }
 
@@ -354,13 +354,13 @@ describe('InterceptionProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Standard Fighter', // Speed 4
+        name: 'Talon', // Speed 4
         owner: 'player1'
       }
 
       const slowDefender = {
         id: 'drone2',
-        name: 'Guardian Drone', // Speed 2 (slower, cannot intercept)
+        name: 'Bastion', // Speed 2 (slower, cannot intercept)
         isExhausted: false,
         owner: 'player2'
       }
@@ -391,13 +391,13 @@ describe('InterceptionProcessor', () => {
 
       const slowAttacker = {
         id: 'drone1',
-        name: 'Guardian Drone', // Speed 2
+        name: 'Bastion', // Speed 2
         owner: 'player1'
       }
 
       const fastDefender = {
         id: 'drone2',
-        name: 'Scout Drone', // Speed 6 (faster, can intercept)
+        name: 'Dart', // Speed 6 (faster, can intercept)
         isExhausted: false,
         owner: 'player2'
       }
@@ -428,20 +428,20 @@ describe('InterceptionProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Guardian Drone', // Speed 2
+        name: 'Bastion', // Speed 2
         owner: 'player1'
       }
 
       const targetDrone = {
         id: 'drone2',
-        name: 'Scout Drone', // Speed 6 (faster, but is the target)
+        name: 'Dart', // Speed 6 (faster, but is the target)
         isExhausted: false,
         owner: 'player2'
       }
 
       const otherDefender = {
         id: 'drone3',
-        name: 'Standard Fighter', // Speed 4 (faster, can intercept)
+        name: 'Talon', // Speed 4 (faster, can intercept)
         isExhausted: false,
         owner: 'player2'
       }
@@ -472,13 +472,13 @@ describe('InterceptionProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Guardian Drone',
+        name: 'Bastion',
         owner: 'player1'
       }
 
       const defender = {
         id: 'drone2',
-        name: 'Scout Drone',
+        name: 'Dart',
         isExhausted: false,
         owner: 'player2'
       }
@@ -509,13 +509,13 @@ describe('InterceptionProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Guardian Drone',
+        name: 'Bastion',
         owner: 'player2'
       }
 
       const defender = {
         id: 'drone2',
-        name: 'Scout Drone',
+        name: 'Dart',
         isExhausted: false,
         owner: 'player1'
       }
@@ -546,7 +546,7 @@ describe('InterceptionProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Standard Fighter'
+        name: 'Talon'
       }
 
       mockPlayerStates.player1.dronesOnBoard.lane1.push(attacker)
@@ -574,20 +574,20 @@ describe('InterceptionProcessor', () => {
 
       const attacker = {
         id: 'drone1',
-        name: 'Guardian Drone', // Speed 2
+        name: 'Bastion', // Speed 2
         owner: 'player1'
       }
 
       const exhaustedFast = {
         id: 'drone2',
-        name: 'Scout Drone', // Speed 6, but exhausted
+        name: 'Dart', // Speed 6, but exhausted
         isExhausted: true,
         owner: 'player2'
       }
 
       const readyFast = {
         id: 'drone3',
-        name: 'Standard Fighter', // Speed 4, ready
+        name: 'Talon', // Speed 4, ready
         isExhausted: false,
         owner: 'player2'
       }

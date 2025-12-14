@@ -46,18 +46,18 @@ describe('generateDeckCode', () => {
 
   describe('drones export', () => {
     it('should export drones with quantity > 0', () => {
-      const drones = { 'Scout Drone': 1, 'Heavy Fighter': 1 };
+      const drones = { 'Dart': 1, 'Mammoth': 1 };
       const result = generateDeckCode({}, drones, {});
 
-      expect(result).toContain('Scout Drone:1');
-      expect(result).toContain('Heavy Fighter:1');
+      expect(result).toContain('Dart:1');
+      expect(result).toContain('Mammoth:1');
     });
 
     it('should NOT export drones with quantity 0', () => {
-      const drones = { 'Scout Drone': 1, 'Removed Drone': 0 };
+      const drones = { 'Dart': 1, 'Removed Drone': 0 };
       const result = generateDeckCode({}, drones, {});
 
-      expect(result).toContain('Scout Drone:1');
+      expect(result).toContain('Dart:1');
       expect(result).not.toContain('Removed Drone');
       expect(result).not.toMatch(/Removed Drone:0/);
     });
@@ -91,7 +91,7 @@ describe('generateDeckCode', () => {
         'CARD004': 0,  // User added then removed (set to 0)
       };
       const drones = {
-        'Scout Drone': 1,
+        'Dart': 1,
         'Removed Drone': 0,  // User added then removed
       };
 
@@ -100,7 +100,7 @@ describe('generateDeckCode', () => {
       // Should contain kept items
       expect(result).toContain('CARD001:4');
       expect(result).toContain('CARD003:2');
-      expect(result).toContain('Scout Drone:1');
+      expect(result).toContain('Dart:1');
 
       // Should NOT contain removed items
       expect(result).not.toContain('CARD002');

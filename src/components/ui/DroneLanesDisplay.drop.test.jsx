@@ -21,7 +21,7 @@ vi.mock('../../hooks/useGameData.js', () => ({
 
 describe('DroneLanesDisplay drag-and-drop', () => {
   const mockDroneCard = {
-    name: 'Scout Drone',
+    name: 'Dart',
     class: 2,
     attack: 1,
     speed: 3

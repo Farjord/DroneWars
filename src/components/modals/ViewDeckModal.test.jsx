@@ -117,7 +117,7 @@ describe('ViewDeckModal', () => {
   };
 
   const mockDrones = [
-    { name: 'Scout Drone', class: 1 },
+    { name: 'Dart', class: 1 },
     { name: 'Fighter Drone', class: 2 }
   ];
 

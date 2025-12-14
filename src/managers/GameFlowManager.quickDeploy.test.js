@@ -31,10 +31,10 @@ describe('executeQuickDeploy - Deployment Order Logic', () => {
       id: 'qd_1',
       name: 'Test Deployment',
       version: 2,
-      droneRoster: ['Scout Drone', 'Standard Fighter', 'Support Drone', 'Heavy Fighter', 'Stealth Drone'],
+      droneRoster: ['Dart', 'Talon', 'Support Drone', 'Mammoth', 'Stealth Drone'],
       placements: [
-        { droneName: 'Scout Drone', lane: 0 },       // index 0
-        { droneName: 'Standard Fighter', lane: 2 }, // index 1
+        { droneName: 'Dart', lane: 0 },       // index 0
+        { droneName: 'Talon', lane: 2 }, // index 1
         { droneName: 'Support Drone', lane: 1 }     // index 2
       ],
       deploymentOrder: [2, 0, 1]  // Support first, Scout second, Fighter third
@@ -46,9 +46,9 @@ describe('executeQuickDeploy - Deployment Order Logic', () => {
     expect(sequence.length).toBe(3);
     expect(sequence[0].droneName).toBe('Support Drone');
     expect(sequence[0].placementIndex).toBe(2);
-    expect(sequence[1].droneName).toBe('Scout Drone');
+    expect(sequence[1].droneName).toBe('Dart');
     expect(sequence[1].placementIndex).toBe(0);
-    expect(sequence[2].droneName).toBe('Standard Fighter');
+    expect(sequence[2].droneName).toBe('Talon');
     expect(sequence[2].placementIndex).toBe(1);
   });
 
@@ -57,10 +57,10 @@ describe('executeQuickDeploy - Deployment Order Logic', () => {
       id: 'qd_2',
       name: 'Test Deployment',
       version: 2,
-      droneRoster: ['Scout Drone', 'Standard Fighter', 'Support Drone', 'Heavy Fighter', 'Stealth Drone'],
+      droneRoster: ['Dart', 'Talon', 'Support Drone', 'Mammoth', 'Stealth Drone'],
       placements: [
-        { droneName: 'Scout Drone', lane: 0 },
-        { droneName: 'Standard Fighter', lane: 2 }
+        { droneName: 'Dart', lane: 0 },
+        { droneName: 'Talon', lane: 2 }
       ]
       // No deploymentOrder - should use array order [0, 1]
     };
@@ -69,9 +69,9 @@ describe('executeQuickDeploy - Deployment Order Logic', () => {
 
     // Verify deployments are in array order
     expect(sequence.length).toBe(2);
-    expect(sequence[0].droneName).toBe('Scout Drone');
+    expect(sequence[0].droneName).toBe('Dart');
     expect(sequence[0].placementIndex).toBe(0);
-    expect(sequence[1].droneName).toBe('Standard Fighter');
+    expect(sequence[1].droneName).toBe('Talon');
     expect(sequence[1].placementIndex).toBe(1);
   });
 
@@ -80,11 +80,11 @@ describe('executeQuickDeploy - Deployment Order Logic', () => {
       id: 'qd_3',
       name: 'Test Deployment',
       version: 2,
-      droneRoster: ['Scout Drone', 'Standard Fighter', 'Support Drone', 'Heavy Fighter', 'Stealth Drone'],
+      droneRoster: ['Dart', 'Talon', 'Support Drone', 'Mammoth', 'Stealth Drone'],
       placements: [
-        { droneName: 'Scout Drone', lane: 0 },       // index 0
-        { droneName: 'Standard Fighter', lane: 1 }, // index 1
-        { droneName: 'Scout Drone', lane: 0 }       // index 2 - same as index 0
+        { droneName: 'Dart', lane: 0 },       // index 0
+        { droneName: 'Talon', lane: 1 }, // index 1
+        { droneName: 'Dart', lane: 0 }       // index 2 - same as index 0
       ],
       deploymentOrder: [2, 1, 0]  // Deploy index 2 first, then 1, then 0
     };
@@ -93,11 +93,11 @@ describe('executeQuickDeploy - Deployment Order Logic', () => {
 
     // All 3 placements should be in order
     expect(sequence.length).toBe(3);
-    expect(sequence[0].droneName).toBe('Scout Drone');
+    expect(sequence[0].droneName).toBe('Dart');
     expect(sequence[0].placementIndex).toBe(2);  // Second Scout Drone
-    expect(sequence[1].droneName).toBe('Standard Fighter');
+    expect(sequence[1].droneName).toBe('Talon');
     expect(sequence[1].placementIndex).toBe(1);
-    expect(sequence[2].droneName).toBe('Scout Drone');
+    expect(sequence[2].droneName).toBe('Dart');
     expect(sequence[2].placementIndex).toBe(0);  // First Scout Drone
   });
 
@@ -106,7 +106,7 @@ describe('executeQuickDeploy - Deployment Order Logic', () => {
       id: 'qd_4',
       name: 'Test Deployment',
       version: 2,
-      droneRoster: ['Scout Drone', 'Standard Fighter', 'Support Drone', 'Heavy Fighter', 'Stealth Drone'],
+      droneRoster: ['Dart', 'Talon', 'Support Drone', 'Mammoth', 'Stealth Drone'],
       placements: [],
       deploymentOrder: []
     };
@@ -121,15 +121,15 @@ describe('executeQuickDeploy - Deployment Order Logic', () => {
       id: 'qd_5',
       name: 'Test Deployment',
       version: 2,
-      droneRoster: ['Scout Drone', 'Standard Fighter', 'Support Drone', 'Heavy Fighter', 'Stealth Drone'],
-      placements: [{ droneName: 'Scout Drone', lane: 1 }],
+      droneRoster: ['Dart', 'Talon', 'Support Drone', 'Mammoth', 'Stealth Drone'],
+      placements: [{ droneName: 'Dart', lane: 1 }],
       deploymentOrder: [0]
     };
 
     const sequence = getDeploymentSequence(quickDeploy);
 
     expect(sequence.length).toBe(1);
-    expect(sequence[0].droneName).toBe('Scout Drone');
+    expect(sequence[0].droneName).toBe('Dart');
     expect(sequence[0].lane).toBe(1);
   });
 
@@ -138,10 +138,10 @@ describe('executeQuickDeploy - Deployment Order Logic', () => {
       id: 'qd_6',
       name: 'Test Deployment',
       version: 2,
-      droneRoster: ['Scout Drone', 'Standard Fighter', 'Support Drone', 'Heavy Fighter', 'Stealth Drone'],
+      droneRoster: ['Dart', 'Talon', 'Support Drone', 'Mammoth', 'Stealth Drone'],
       placements: [
-        { droneName: 'Scout Drone', lane: 0 },
-        { droneName: 'Standard Fighter', lane: 1 }
+        { droneName: 'Dart', lane: 0 },
+        { droneName: 'Talon', lane: 1 }
       ],
       deploymentOrder: [0, 99, 1]  // 99 is invalid
     };
@@ -150,7 +150,7 @@ describe('executeQuickDeploy - Deployment Order Logic', () => {
 
     // Should skip invalid index but process valid ones
     expect(sequence.length).toBe(2);
-    expect(sequence[0].droneName).toBe('Scout Drone');
-    expect(sequence[1].droneName).toBe('Standard Fighter');
+    expect(sequence[0].droneName).toBe('Dart');
+    expect(sequence[1].droneName).toBe('Talon');
   });
 });

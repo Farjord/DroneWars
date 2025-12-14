@@ -177,6 +177,14 @@ function GameHeader({
           )}
         </h2>
         <div className="flex items-center gap-2">
+          {turnPhase === 'deployment' && (
+            <ResourceBadge
+              icon={Power}
+              value={roundNumber === 1 ? opponentPlayerState.initialDeploymentBudget : opponentPlayerState.deploymentBudget}
+              iconColor="text-purple-400"
+              isPlayer={false}
+            />
+          )}
           <ResourceBadge
             icon={Power}
             value={opponentPlayerState.energy}
@@ -196,14 +204,6 @@ function GameHeader({
               isPlayer={false}
             />
           </div>
-          {turnPhase === 'deployment' && (
-            <ResourceBadge
-              icon={Plus}
-              value={roundNumber === 1 ? opponentPlayerState.initialDeploymentBudget : opponentPlayerState.deploymentBudget}
-              iconColor="text-purple-400"
-              isPlayer={false}
-            />
-          )}
           <div
             onClick={() => setTimeout(() => onShowOpponentDrones(), 100)}
             className="cursor-pointer hover:scale-105 transition-transform"
@@ -762,13 +762,6 @@ function GameHeader({
           )}
         </h2>
         <div className="flex items-center gap-2">
-          <ResourceBadge
-            icon={Power}
-            value={localPlayerState.energy}
-            max={localPlayerEffectiveStats.totals.maxEnergy}
-            iconColor="text-yellow-300"
-            isPlayer={true}
-          />
           {turnPhase === 'deployment' && (() => {
             debugLog('RESOURCE_RESET', '🎨 [GAMEHEADER] Deployment badge rendering', {
               roundNumber,
@@ -781,13 +774,20 @@ function GameHeader({
           })()}
           {turnPhase === 'deployment' && (
             <ResourceBadge
-              icon={Plus}
+              icon={Power}
               value={roundNumber === 1 ? localPlayerState.initialDeploymentBudget : localPlayerState.deploymentBudget}
               iconColor="text-purple-400"
               isPlayer={true}
             />
           )}
-          <ResourceBadge 
+          <ResourceBadge
+            icon={Power}
+            value={localPlayerState.energy}
+            max={localPlayerEffectiveStats.totals.maxEnergy}
+            iconColor="text-yellow-300"
+            isPlayer={true}
+          />
+          <ResourceBadge
             icon={Cpu} 
             value={totalLocalPlayerDrones} 
             max={localPlayerEffectiveStats.totals.cpuLimit}

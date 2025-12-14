@@ -359,6 +359,11 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
    * @returns {string} CSS color or pattern URL
    */
   const getHexFill = (hex) => {
+    // Player's hex - darker background for ship contrast
+    if (playerPosition && hex.q === playerPosition.q && hex.r === playerPosition.r) {
+      return 'rgba(8, 12, 24, 0.95)';  // Deep dark blue-black
+    }
+
     // POIs use image pattern if available (greyscale applied via CSS for looted POIs)
     if (hex.type === 'poi' && hex.poiData?.image) {
       // Create unique pattern ID from hex coordinates
@@ -371,10 +376,10 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
       return 'rgba(75, 85, 99, 0.6)';  // Grey for looted POIs without image
     }
 
-    // Gate types: Insertion (orange) vs Extraction (blue) - solid colors
+    // Gate types: Insertion (black) vs Extraction (blue) - solid colors
     if (hex.type === 'gate') {
       if (isInsertionGate(hex)) {
-        return 'rgb(180, 100, 20)'; // Solid dark orange for insertion gate
+        return 'rgba(8, 12, 24, 0.95)'; // Dark black for insertion gate (matches player hex)
       }
       return 'rgb(40, 80, 160)'; // Solid dark blue for extraction gates
     }
@@ -460,6 +465,11 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
    * @returns {string} CSS color
    */
   const getStrokeColor = (hex, highlighted) => {
+    // Player's hex - white border for visibility
+    if (playerPosition && hex.q === playerPosition.q && hex.r === playerPosition.r) {
+      return '#ffffff';  // White
+    }
+
     // Waypoint hexes get bright cyan stroke
     if (isWaypointHex(hex)) {
       const waypointIdx = waypoints.findIndex(w => w.hex.q === hex.q && w.hex.r === hex.r);
@@ -469,8 +479,8 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
       }
       return '#06b6d4'; // Cyan for waypoints
     }
-    // Preview path hexes get orange/amber
-    if (isOnPreviewPath(hex)) return '#f59e0b'; // Orange for preview path
+    // Preview path hexes get white
+    if (isOnPreviewPath(hex)) return '#ffffff'; // White for preview path
     // Confirmed path hexes get green
     if (isOnPath(hex)) return '#10b981'; // Green for confirmed path
 
@@ -482,7 +492,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
     // All other hexes use unified cyan - more vibrant
     if (hex.type === 'gate') {
       if (isInsertionGate(hex)) {
-        return 'rgba(245, 158, 11, 1.0)'; // Orange for insertion gate
+        return '#ffffff'; // White for insertion gate
       }
       return 'rgba(59, 130, 246, 1.0)'; // Blue for extraction gates
     }
@@ -520,11 +530,16 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
     const gateClass = isInsertion ? 'hex-insertion-glow' : (isExtraction ? 'hex-extraction-glow' : '');
     // POI class: looted POIs get dimmed styling, active POIs get glow
     const poiClass = isPOI ? (isLooted ? 'hex-poi-looted' : 'hex-poi-glow') : '';
+    // Player hex gets white glow
+    const playerClass = isPlayer ? 'hex-player-glow' : '';
+    // Important hexes get elevation shadow
+    const isImportantHex = isPlayer || isGate || isPOI;
 
     return (
       <g
         key={`${hex.q},${hex.r}`}
-        className={`hex-group ${poiClass} ${isGate ? `hex-gate-glow ${gateClass}` : ''}`}
+        className={`hex-group ${poiClass} ${playerClass} ${isGate ? `hex-gate-glow ${gateClass}` : ''}`}
+        filter={isImportantHex ? 'url(#hex-elevation-shadow)' : undefined}
         onClick={() => onHexClick && onHexClick(hex)}
       >
         {/* Hex background */}
@@ -544,12 +559,12 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
           className="hex-grid-overlay"
         />
 
-        {/* Path highlight glow - orange for preview, green for confirmed, cyan for waypoints */}
+        {/* Path highlight glow - white for preview, green for confirmed, cyan for waypoints */}
         {highlighted && !isPlayer && (
           <polygon
             points={points}
             fill="none"
-            stroke={isWaypointHex(hex) ? '#06b6d4' : (isOnPreviewPath(hex) ? '#f59e0b' : '#10b981')}
+            stroke={isWaypointHex(hex) ? '#06b6d4' : (isOnPreviewPath(hex) ? '#ffffff' : '#10b981')}
             strokeWidth={2}
             className={`hex-path-glow ${isWaypointHex(hex) ? 'hex-waypoint-glow' : ''} ${isOnPreviewPath(hex) ? 'hex-preview-glow' : ''}`}
             opacity={0.5}
@@ -771,13 +786,29 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
             <filter id="waypoint-glow" x="-50%" y="-50%" width="200%" height="200%">
               <feDropShadow dx="0" dy="0" stdDeviation="3" floodColor="#06b6d4" floodOpacity="0.5"/>
             </filter>
+
+            {/* Elevation shadow for important hexes (POIs, gates, player) */}
+            <filter id="hex-elevation-shadow" x="-30%" y="-30%" width="160%" height="160%">
+              <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#000000" floodOpacity="0.6"/>
+            </filter>
           </defs>
 
           {/* Decorative background hexes - extend beyond visible area, non-clickable */}
           {decorativeHexes.map(renderDecorativeHex)}
 
-          {/* Render all playable hexes */}
-          {mapData.hexes.map(renderHex)}
+          {/* Render all playable hexes - sorted so important hexes (POIs, gates, player) render on top */}
+          {[...mapData.hexes]
+            .sort((a, b) => {
+              // Helper to get priority (higher = render later = on top)
+              const getPriority = (hex) => {
+                if (playerPosition && hex.q === playerPosition.q && hex.r === playerPosition.r) return 3;
+                if (hex.type === 'gate') return 2;
+                if (hex.type === 'poi') return 1;
+                return 0; // Empty hexes render first (at bottom)
+              };
+              return getPriority(a) - getPriority(b);
+            })
+            .map(renderHex)}
 
           {/* Ship Icon Layer - renders player's ship at current position */}
           {playerPosition && (
@@ -790,7 +821,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
                   y={y}
                   heading={shipHeading}
                   faction="neutral"
-                  size={hexSize * 2.0}
+                  size={hexSize * 2.5}
                 />
               );
             })()

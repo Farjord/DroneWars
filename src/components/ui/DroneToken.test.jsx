@@ -33,7 +33,7 @@ vi.mock('../../contexts/EditorStatsContext.jsx', () => ({
 describe('DroneToken - Deployment Order Badge', () => {
   const mockDrone = {
     id: 'test_drone_1',
-    name: 'Scout Drone',
+    name: 'Dart',
     image: '/images/scout.png',
     hull: 2,
     currentShields: 1,
@@ -130,7 +130,7 @@ describe('DroneToken - Deployment Order Badge', () => {
 describe('DroneToken - Interceptor Glow Colors', () => {
   const mockDrone = {
     id: 'test_drone_1',
-    name: 'Scout Drone',
+    name: 'Dart',
     image: '/images/scout.png',
     hull: 2,
     currentShields: 1,

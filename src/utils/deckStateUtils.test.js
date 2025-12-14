@@ -144,50 +144,50 @@ describe('updateDroneState', () => {
   describe('adding drones', () => {
     it('should add a drone with quantity > 0 to empty state', () => {
       const prevState = {};
-      const result = updateDroneState(prevState, 'Scout Drone', 1);
+      const result = updateDroneState(prevState, 'Dart', 1);
 
-      expect(result).toEqual({ 'Scout Drone': 1 });
+      expect(result).toEqual({ 'Dart': 1 });
     });
 
     it('should add a drone to existing state', () => {
-      const prevState = { 'Scout Drone': 1 };
-      const result = updateDroneState(prevState, 'Heavy Fighter', 1);
+      const prevState = { 'Dart': 1 };
+      const result = updateDroneState(prevState, 'Mammoth', 1);
 
-      expect(result).toEqual({ 'Scout Drone': 1, 'Heavy Fighter': 1 });
+      expect(result).toEqual({ 'Dart': 1, 'Mammoth': 1 });
     });
   });
 
   describe('removing drones (quantity = 0)', () => {
     it('should remove drone from state when quantity is set to 0', () => {
-      const prevState = { 'Scout Drone': 1, 'Heavy Fighter': 1 };
-      const result = updateDroneState(prevState, 'Scout Drone', 0);
+      const prevState = { 'Dart': 1, 'Mammoth': 1 };
+      const result = updateDroneState(prevState, 'Dart', 0);
 
-      expect(result).toEqual({ 'Heavy Fighter': 1 });
-      expect(result).not.toHaveProperty('Scout Drone');
+      expect(result).toEqual({ 'Mammoth': 1 });
+      expect(result).not.toHaveProperty('Dart');
     });
 
     it('should return empty object when last drone is removed', () => {
-      const prevState = { 'Scout Drone': 1 };
-      const result = updateDroneState(prevState, 'Scout Drone', 0);
+      const prevState = { 'Dart': 1 };
+      const result = updateDroneState(prevState, 'Dart', 0);
 
       expect(result).toEqual({});
     });
 
     it('should not add entry when setting non-existent drone to 0', () => {
-      const prevState = { 'Scout Drone': 1 };
+      const prevState = { 'Dart': 1 };
       const result = updateDroneState(prevState, 'Unknown Drone', 0);
 
-      expect(result).toEqual({ 'Scout Drone': 1 });
+      expect(result).toEqual({ 'Dart': 1 });
       expect(result).not.toHaveProperty('Unknown Drone');
     });
   });
 
   describe('immutability', () => {
     it('should not mutate the original state', () => {
-      const prevState = { 'Scout Drone': 1 };
-      const result = updateDroneState(prevState, 'Heavy Fighter', 1);
+      const prevState = { 'Dart': 1 };
+      const result = updateDroneState(prevState, 'Mammoth', 1);
 
-      expect(prevState).toEqual({ 'Scout Drone': 1 });
+      expect(prevState).toEqual({ 'Dart': 1 });
       expect(result).not.toBe(prevState);
     });
   });

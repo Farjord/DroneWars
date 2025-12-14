@@ -385,7 +385,7 @@ const DeckBuilder = ({
             return 'N/A';
         })();
 
-        return { ...card, keywords, targetingText };
+        return { ...card, keywords: [...new Set(keywords)], targetingText };
     });
   }, [fullCardCollection]);
 
@@ -420,7 +420,7 @@ const DeckBuilder = ({
         ? drone.abilities.map(a => a.description).join(' | ')
         : 'No abilities';
 
-      return { ...drone, keywords, description };
+      return { ...drone, keywords: [...new Set(keywords)], description };
     });
   }, [availableDrones]);
 

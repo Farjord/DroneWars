@@ -519,7 +519,7 @@ describe('ConditionEvaluator', () => {
       // Standard Fighter: attack: 3, speed: 4, hull: 2, shields: 1
       mockTarget.owner = 'player2';
       mockTarget.lane = 'lane1';
-      mockTarget.name = 'Standard Fighter';
+      mockTarget.name = 'Talon';
       mockTarget.attack = 3;
       mockTarget.speed = 4;
 

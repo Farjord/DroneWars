@@ -38,9 +38,9 @@ const createMockShipSlots = () => [
     status: 'active',
     shipId: 'SHIP_001',
     droneSlots: [
-      { slotIndex: 0, slotDamaged: false, assignedDrone: 'Scout Drone' },
-      { slotIndex: 1, slotDamaged: true, assignedDrone: 'Heavy Fighter' }, // 1 damaged drone
-      { slotIndex: 2, slotDamaged: false, assignedDrone: 'Guardian Drone' },
+      { slotIndex: 0, slotDamaged: false, assignedDrone: 'Dart' },
+      { slotIndex: 1, slotDamaged: true, assignedDrone: 'Mammoth' }, // 1 damaged drone
+      { slotIndex: 2, slotDamaged: false, assignedDrone: 'Bastion' },
       { slotIndex: 3, slotDamaged: false, assignedDrone: null },
       { slotIndex: 4, slotDamaged: false, assignedDrone: null }
     ],
@@ -56,7 +56,7 @@ const createMockShipSlots = () => [
     status: 'active',
     shipId: 'SHIP_001',
     droneSlots: [
-      { slotIndex: 0, slotDamaged: false, assignedDrone: 'Scout Drone' },
+      { slotIndex: 0, slotDamaged: false, assignedDrone: 'Dart' },
       { slotIndex: 1, slotDamaged: false, assignedDrone: null },
       { slotIndex: 2, slotDamaged: false, assignedDrone: null },
       { slotIndex: 3, slotDamaged: false, assignedDrone: null },

@@ -18,10 +18,10 @@ import { resolveAttack } from './AttackProcessor.js'
 describe('ASSAULT keyword - Attack exhaustion bypass', () => {
   let mockPlayerStates, mockPlacedSections, mockLogCallback
 
-  // Create a mock Striker Drone with ASSAULT ability for testing
+  // Create a mock Striker with ASSAULT ability for testing
   const createStrikerDrone = (overrides = {}) => ({
     id: 'striker_drone_1',
-    name: 'Striker Drone',
+    name: 'Striker',
     attack: 3,
     hull: 2,
     shields: 1,
@@ -42,7 +42,7 @@ describe('ASSAULT keyword - Attack exhaustion bypass', () => {
   // Create a standard drone WITHOUT ASSAULT for comparison testing
   const createStandardDrone = (overrides = {}) => ({
     id: 'standard_fighter_1',
-    name: 'Standard Fighter',
+    name: 'Talon',
     attack: 3,
     hull: 2,
     shields: 1,
@@ -58,7 +58,7 @@ describe('ASSAULT keyword - Attack exhaustion bypass', () => {
   // Create a target drone
   const createTargetDrone = (overrides = {}) => ({
     id: 'target_drone_1',
-    name: 'Scout Drone',
+    name: 'Dart',
     attack: 1,
     hull: 1,
     shields: 1,
@@ -126,7 +126,7 @@ describe('ASSAULT keyword - Attack exhaustion bypass', () => {
       // NOT become exhausted. This allows the drone to attack and still move or use
       // abilities in the same turn.
 
-      // Setup: Striker Drone in lane1 with assaultUsed=false
+      // Setup: Striker in lane1 with assaultUsed=false
       const strikerDrone = createStrikerDrone({ assaultUsed: false })
       const targetDrone = createTargetDrone()
       mockPlayerStates.player1.dronesOnBoard.lane1 = [strikerDrone]
@@ -161,7 +161,7 @@ describe('ASSAULT keyword - Attack exhaustion bypass', () => {
       // set to true to prevent the ability from being used again until the next
       // round when it resets.
 
-      // Setup: Striker Drone in lane1 with assaultUsed=false
+      // Setup: Striker in lane1 with assaultUsed=false
       const strikerDrone = createStrikerDrone({ assaultUsed: false })
       const targetDrone = createTargetDrone()
       mockPlayerStates.player1.dronesOnBoard.lane1 = [strikerDrone]
@@ -196,7 +196,7 @@ describe('ASSAULT keyword - Attack exhaustion bypass', () => {
       // in the same round should exhaust the drone normally. ASSAULT only provides
       // one free attack per round.
 
-      // Setup: Striker Drone in lane1 with assaultUsed=true (already used this round)
+      // Setup: Striker in lane1 with assaultUsed=true (already used this round)
       const strikerDrone = createStrikerDrone({ assaultUsed: true })
       const targetDrone = createTargetDrone()
       mockPlayerStates.player1.dronesOnBoard.lane1 = [strikerDrone]
@@ -232,7 +232,7 @@ describe('ASSAULT keyword - Attack exhaustion bypass', () => {
       // EXPLANATION: Drones without the ASSAULT keyword should continue to
       // exhaust when attacking, preserving the existing game behavior.
 
-      // Setup: Standard Fighter in lane1
+      // Setup: Talon in lane1
       const standardDrone = createStandardDrone()
       const targetDrone = createTargetDrone()
       mockPlayerStates.player1.dronesOnBoard.lane1 = [standardDrone]
@@ -267,7 +267,7 @@ describe('ASSAULT keyword - Attack exhaustion bypass', () => {
       // preserved (should remain false or whatever value it was) but it won't
       // affect exhaustion since they don't have the ASSAULT keyword.
 
-      // Setup: Standard Fighter in lane1
+      // Setup: Talon in lane1
       const standardDrone = createStandardDrone({ assaultUsed: false })
       const targetDrone = createTargetDrone()
       mockPlayerStates.player1.dronesOnBoard.lane1 = [standardDrone]

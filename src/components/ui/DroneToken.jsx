@@ -49,7 +49,7 @@ const AbilityIcon = ({ onClick }) => (
  * Icons are full color when available, greyed out when used.
  * @param {Object} drone - The drone data object
  */
-const SpecialAbilityIcons = ({ drone }) => {
+const SpecialAbilityIcons = ({ drone, isPlayer }) => {
   const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
 
   const hasRapid = baseDrone?.abilities?.some(
@@ -71,7 +71,9 @@ const SpecialAbilityIcons = ({ drone }) => {
         className={`w-6 h-6 rounded-full flex items-center justify-center border ${
           isUsed
             ? 'bg-slate-700 border-slate-500'
-            : 'bg-blue-900 border-blue-400 shadow-lg shadow-blue-400/30'
+            : isPlayer
+              ? 'bg-cyan-900 border-cyan-400 shadow-lg shadow-cyan-400/30'
+              : 'bg-red-950 border-red-500 shadow-lg shadow-red-500/30'
         }`}
         title={isUsed ? 'Rapid Response (used)' : 'Rapid Response (available)'}
       >
@@ -91,7 +93,9 @@ const SpecialAbilityIcons = ({ drone }) => {
         className={`w-6 h-6 rounded-full flex items-center justify-center border ${
           isUsed
             ? 'bg-slate-700 border-slate-500'
-            : 'bg-red-900 border-red-400 shadow-lg shadow-red-400/30'
+            : isPlayer
+              ? 'bg-cyan-900 border-cyan-400 shadow-lg shadow-cyan-400/30'
+              : 'bg-red-950 border-red-500 shadow-lg shadow-red-500/30'
         }`}
         title={isUsed ? 'Assault Protocol (used)' : 'Assault Protocol (available)'}
       >
@@ -349,7 +353,7 @@ const DroneToken = ({
       )}
 
       {/* Special Ability Icons (RAPID/ASSAULT) - Left side */}
-      <SpecialAbilityIcons drone={drone} />
+      <SpecialAbilityIcons drone={drone} isPlayer={isPlayer} />
 
       {/* Intercepted Badge */}
       {interceptedBadge && interceptedBadge.droneId === drone.id && (

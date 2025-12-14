@@ -1,10 +1,10 @@
 // --- DATA ---
 const fullDroneCollection = [
-  { name: 'Scout Drone', class: 1, limit: 3, rarity: 'Common', attack: 1, hull: 1, shields: 1, speed: 6, image: '/DroneWars/img/Scout.png', abilities: [],  upgradeSlots: 2 },
-  { name: 'Standard Fighter', class: 2, limit: 3, rarity: 'Common', attack: 3, hull: 2, shields: 1, speed: 4, image: '/DroneWars/img/StandardFighter.png', abilities: [],  upgradeSlots: 2 },
-  { name: 'Heavy Fighter', class: 3, limit: 2, rarity: 'Common', attack: 4, hull: 4, shields: 1, speed: 3, image: '/DroneWars/img/HeavyFighter.png', abilities: [], upgradeSlots: 1 },
+  { name: 'Dart', class: 1, limit: 3, rarity: 'Common', attack: 1, hull: 1, shields: 1, speed: 6, image: '/DroneWars/img/Scout.png', abilities: [],  upgradeSlots: 2 },
+  { name: 'Talon', class: 2, limit: 3, rarity: 'Common', attack: 3, hull: 2, shields: 1, speed: 4, image: '/DroneWars/img/StandardFighter.png', abilities: [],  upgradeSlots: 2 },
+  { name: 'Mammoth', class: 3, limit: 2, rarity: 'Common', attack: 4, hull: 4, shields: 1, speed: 3, image: '/DroneWars/img/HeavyFighter.png', abilities: [], upgradeSlots: 1 },
    {
-    name: 'Guardian Drone',
+    name: 'Bastion',
     class: 3,
     limit: 2,
     rarity: 'Common', 
@@ -22,7 +22,7 @@ const fullDroneCollection = [
     upgradeSlots: 1 
   },
     {
-    name: 'Bomber',
+    name: 'Devastator',
     class: 3,
     limit: 3,
     rarity: 'Uncommon', 
@@ -40,7 +40,7 @@ const fullDroneCollection = [
     upgradeSlots: 2 
   },
   {
-    name: 'Repair Drone',
+    name: 'Seraph',
     class: 1, limit: 2, rarity: 'Common', attack: 0, hull: 1, shields: 3, speed: 2, 
     image: '/DroneWars/img/Repair.png', 
     abilities: [{
@@ -59,7 +59,7 @@ const fullDroneCollection = [
     upgradeSlots: 2 
   },
 {
-    name: 'Interceptor',
+    name: 'Harrier',
     class: 3, limit: 3, rarity: 'Uncommon', attack: 1, hull: 1, shields: 3, speed: 5, 
     image: '/DroneWars/img/Interceptor.png',
     abilities: [{
@@ -71,7 +71,7 @@ const fullDroneCollection = [
     upgradeSlots: 2 
   },
   {
-    name: 'Aegis Drone',
+    name: 'Aegis',
     class: 3, limit: 2, rarity: 'Rare', attack: 1, hull: 2, shields: 3, speed: 2, 
     image: '/DroneWars/img/Aegis.png',
     abilities: [{
@@ -84,7 +84,7 @@ const fullDroneCollection = [
     upgradeSlots: 2 
   },
 {
-  name: 'Kamikaze Drone',
+  name: 'Firefly',
   class: 1,
   limit: 4,
   rarity: 'Rare', 
@@ -101,9 +101,9 @@ const fullDroneCollection = [
       }],
   upgradeSlots: 2 
 },
-  { name: 'Swarm Drone', class: 0, limit: 3, rarity: 'Common', attack: 1, hull: 1, shields: 0, speed: 3, image: '/DroneWars/img/Swarm.png', abilities: [], upgradeSlots: 3 },
+  { name: 'Locust', class: 0, limit: 3, rarity: 'Common', attack: 1, hull: 1, shields: 0, speed: 3, image: '/DroneWars/img/Swarm.png', abilities: [], upgradeSlots: 3 },
   {
-    name: 'Sniper Drone',
+    name: 'Basilisk',
     class: 2, limit: 2, rarity: 'Uncommon', attack: 1, hull: 2, shields: 1, speed: 2, 
     image: '/DroneWars/img/Sniper.png', 
     abilities: [{
@@ -121,7 +121,7 @@ const fullDroneCollection = [
     upgradeSlots: 2 
   },
   {
-    name: 'Sabot Drone',
+    name: 'Sabot',
     class: 3,
     limit: 2,
     rarity: 'Rare', 
@@ -139,7 +139,7 @@ const fullDroneCollection = [
     upgradeSlots: 2 
   },
   {
-    name: 'Avenger Drone',
+    name: 'Avenger',
     class: 2,
     limit: 2,
     rarity: 'Uncommon', 
@@ -182,7 +182,7 @@ const fullDroneCollection = [
     upgradeSlots: 2 
   },
   {
-    name: 'Vindicator Drone',
+    name: 'Vindicator',
     class: 1,
     limit: 3,
     rarity: 'Uncommon',
@@ -206,7 +206,7 @@ const fullDroneCollection = [
     upgradeSlots: 2 
   },
     {
-    name: 'Skirmisher Drone',
+    name: 'Skirmisher',
     class: 1,
     limit: 3,
     rarity: 'Common',
@@ -230,7 +230,7 @@ const fullDroneCollection = [
     upgradeSlots: 2 
   },
   {
-    name: 'Phase Jumper',
+    name: 'Specter',
     class: 1,
     limit: 3,
     rarity: 'Common',
@@ -252,7 +252,7 @@ const fullDroneCollection = [
     upgradeSlots: 2 
   },
   {
-    name: 'Nano Repair Drone',
+    name: 'Elixir',
     class: 1, limit: 2, rarity: 'Uncommon', attack: 0, hull: 1, shields: 3, speed: 2,
     image: '/DroneWars/img/NanoRepair.png',
     abilities: [{
@@ -331,15 +331,15 @@ const fullDroneCollection = [
     upgradeSlots: 2
   },
   {
-    name: 'Blitz Drone',
+    name: 'Blitz',
     class: 2,
-    limit: 3,
+    limit: 2,
     rarity: 'Uncommon',
     attack: 2,
     hull: 2,
     shields: 1,
-    speed: 5,
-    image: '/DroneWars/img/Scout.png',  // Temp - needs new image
+    speed: 3,
+    image: '/DroneWars/img/Blitz.png',  // Temp - needs new image
     abilities: [{
       name: 'Rapid Response',
       description: 'First move each round does not exhaust this drone.',
@@ -349,15 +349,15 @@ const fullDroneCollection = [
     upgradeSlots: 2
   },
   {
-    name: 'Striker Drone',
-    class: 2,
-    limit: 3,
+    name: 'Striker',
+    class: 3,
+    limit: 2,
     rarity: 'Uncommon',
-    attack: 3,
-    hull: 2,
-    shields: 1,
+    attack: 2,
+    hull: 1,
+    shields: 2,
     speed: 3,
-    image: '/DroneWars/img/StandardFighter.png',  // Temp - needs new image
+    image: '/DroneWars/img/Striker.png',  // Temp - needs new image
     abilities: [{
       name: 'Assault Protocol',
       description: 'First attack each round does not exhaust this drone.',
@@ -367,15 +367,15 @@ const fullDroneCollection = [
     upgradeSlots: 2
   },
   {
-    name: 'Tempest Drone',
-    class: 3,
-    limit: 2,
-    rarity: 'Rare',
-    attack: 2,
+    name: 'Tempest',
+    class: 4,
+    limit: 1,
+    rarity: 'Mythic',
+    attack: 3,
     hull: 2,
-    shields: 1,
+    shields: 2,
     speed: 4,
-    image: '/DroneWars/img/StandardFighter.png',  // Temp - needs new image
+    image: '/DroneWars/img/Tempest.png',  // Temp - needs new image
     abilities: [
       {
         name: 'Rapid Response',

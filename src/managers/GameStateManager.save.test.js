@@ -12,9 +12,9 @@ describe('GameStateManager - Quick Deployments Save/Load', () => {
       id: 'qd_test_1',
       name: 'Test Deployment 1',
       createdAt: 1700000000000,
-      droneRoster: ['Scout Drone', 'Fighter Drone', 'Support Drone', 'Heavy Drone', 'Stealth Drone'],
+      droneRoster: ['Dart', 'Fighter Drone', 'Support Drone', 'Heavy Drone', 'Stealth Drone'],
       placements: [
-        { droneName: 'Scout Drone', lane: 0 },
+        { droneName: 'Dart', lane: 0 },
         { droneName: 'Fighter Drone', lane: 1 }
       ]
     },
@@ -22,7 +22,7 @@ describe('GameStateManager - Quick Deployments Save/Load', () => {
       id: 'qd_test_2',
       name: 'Test Deployment 2',
       createdAt: 1700000001000,
-      droneRoster: ['Scout Drone', 'Fighter Drone', 'Support Drone', 'Heavy Drone', 'Stealth Drone'],
+      droneRoster: ['Dart', 'Fighter Drone', 'Support Drone', 'Heavy Drone', 'Stealth Drone'],
       placements: []
     }
   ];

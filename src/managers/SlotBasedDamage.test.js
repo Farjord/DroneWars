@@ -64,7 +64,7 @@ describe('Slot-Based Damage Model', () => {
       });
 
       it('should preserve slot order after save/load', () => {
-        const originalOrder = ['Scout Drone', 'Heavy Fighter', 'Repair Drone', null, 'Bomber'];
+        const originalOrder = ['Dart', 'Mammoth', 'Seraph', null, 'Devastator'];
         const shipSlot = createTestShipSlotWithDrones(1, originalOrder);
 
         gameStateManager.setState({
@@ -168,8 +168,8 @@ describe('Slot-Based Damage Model', () => {
   describe('Drone Slot Damage Effect', () => {
 
     it('should reduce drone limit by 1 when in damaged slot', () => {
-      // Scout Drone normally has limit: 3
-      const shipSlot = createTestShipSlotWithDrones(1, ['Scout Drone']);
+      // Dart normally has limit: 3
+      const shipSlot = createTestShipSlotWithDrones(1, ['Dart']);
       shipSlot.droneSlots[0].slotDamaged = true;
 
       const effectiveLimit = getDroneEffectiveLimit(shipSlot, 0);
@@ -177,8 +177,8 @@ describe('Slot-Based Damage Model', () => {
     });
 
     it('should not reduce limit below 1', () => {
-      // Heavy Fighter has limit: 2
-      const shipSlot = createTestShipSlotWithDrones(1, ['Heavy Fighter']);
+      // Mammoth has limit: 2
+      const shipSlot = createTestShipSlotWithDrones(1, ['Mammoth']);
       shipSlot.droneSlots[0].slotDamaged = true;
 
       const effectiveLimit = getDroneEffectiveLimit(shipSlot, 0);
@@ -186,7 +186,7 @@ describe('Slot-Based Damage Model', () => {
     });
 
     it('should not affect limit for undamaged slots', () => {
-      const shipSlot = createTestShipSlotWithDrones(1, ['Scout Drone']);
+      const shipSlot = createTestShipSlotWithDrones(1, ['Dart']);
       shipSlot.droneSlots[0].slotDamaged = false;
 
       const effectiveLimit = getDroneEffectiveLimit(shipSlot, 0);
@@ -308,7 +308,7 @@ describe('Slot-Based Damage Model', () => {
     });
 
     it('should be INCOMPLETE when drone slot is empty', () => {
-      const shipSlot = createTestShipSlotWithDrones(1, ['Scout Drone', null, null, null, null]);
+      const shipSlot = createTestShipSlotWithDrones(1, ['Dart', null, null, null, null]);
       const validation = validateShipSlot(shipSlot);
 
       expect(validation.isIncomplete).toBe(true);
@@ -353,8 +353,8 @@ describe('Slot-Based Damage Model', () => {
     it('should migrate drones array to droneSlots', () => {
       const oldFormat = {
         drones: [
-          { name: 'Scout Drone' },
-          { name: 'Heavy Fighter' }
+          { name: 'Dart' },
+          { name: 'Mammoth' }
         ]
       };
 
@@ -362,9 +362,9 @@ describe('Slot-Based Damage Model', () => {
 
       expect(migrated.droneSlots).toBeDefined();
       expect(migrated.droneSlots.length).toBe(5);
-      expect(migrated.droneSlots[0].assignedDrone).toBe('Scout Drone');
+      expect(migrated.droneSlots[0].assignedDrone).toBe('Dart');
       expect(migrated.droneSlots[0].slotDamaged).toBe(false);
-      expect(migrated.droneSlots[1].assignedDrone).toBe('Heavy Fighter');
+      expect(migrated.droneSlots[1].assignedDrone).toBe('Mammoth');
       expect(migrated.droneSlots[2].assignedDrone).toBeNull(); // Padded
     });
 
@@ -431,7 +431,7 @@ describe('Slot-Based Damage Model', () => {
     });
 
     it('should apply -1 limit to drones in damaged slots', () => {
-      const shipSlot = createTestShipSlotWithDrones(1, ['Scout Drone']); // limit: 3
+      const shipSlot = createTestShipSlotWithDrones(1, ['Dart']); // limit: 3
       shipSlot.droneSlots[0].slotDamaged = true;
 
       gameStateManager.setState({
@@ -442,12 +442,12 @@ describe('Slot-Based Damage Model', () => {
       // This tests SinglePlayerCombatInitializer.buildPlayerState
       const activeDronePool = buildActiveDronePool(shipSlot);
 
-      expect(activeDronePool[0].name).toBe('Scout Drone');
+      expect(activeDronePool[0].name).toBe('Dart');
       expect(activeDronePool[0].effectiveLimit).toBe(2); // 3 - 1
     });
 
     it('should preserve drone slot order in activeDronePool', () => {
-      const droneOrder = ['Bomber', 'Scout Drone', 'Heavy Fighter', 'Repair Drone', 'Guardian Drone'];
+      const droneOrder = ['Devastator', 'Dart', 'Mammoth', 'Seraph', 'Bastion'];
       const shipSlot = createTestShipSlotWithDrones(1, droneOrder);
 
       const activeDronePool = buildActiveDronePool(shipSlot);
@@ -532,7 +532,7 @@ describe('Slot-Based Damage Model', () => {
   describe('Drone Hand Ordering', () => {
 
     it('should display drones in slot order 1-5', () => {
-      const droneOrder = ['Scout Drone', 'Bomber', 'Heavy Fighter', 'Repair Drone', 'Guardian Drone'];
+      const droneOrder = ['Dart', 'Devastator', 'Mammoth', 'Seraph', 'Bastion'];
       const shipSlot = createTestShipSlotWithDrones(1, droneOrder);
 
       const droneHand = getDroneHandOrder(shipSlot);
@@ -541,12 +541,12 @@ describe('Slot-Based Damage Model', () => {
     });
 
     it('should skip empty slots in drone hand', () => {
-      const shipSlot = createTestShipSlotWithDrones(1, ['Scout Drone', null, 'Heavy Fighter', null, 'Bomber']);
+      const shipSlot = createTestShipSlotWithDrones(1, ['Dart', null, 'Mammoth', null, 'Devastator']);
 
       const droneHand = getDroneHandOrder(shipSlot);
 
       expect(droneHand.length).toBe(3);
-      expect(droneHand.map(d => d.name)).toEqual(['Scout Drone', 'Heavy Fighter', 'Bomber']);
+      expect(droneHand.map(d => d.name)).toEqual(['Dart', 'Mammoth', 'Devastator']);
     });
   });
 });
@@ -564,11 +564,11 @@ function createTestShipSlot(slotId) {
     shipId: 'SHIP_001',
     decklist: [],
     droneSlots: [
-      { slotIndex: 0, slotDamaged: false, assignedDrone: 'Scout Drone' },
-      { slotIndex: 1, slotDamaged: false, assignedDrone: 'Standard Fighter' },
-      { slotIndex: 2, slotDamaged: false, assignedDrone: 'Heavy Fighter' },
-      { slotIndex: 3, slotDamaged: false, assignedDrone: 'Repair Drone' },
-      { slotIndex: 4, slotDamaged: false, assignedDrone: 'Bomber' }
+      { slotIndex: 0, slotDamaged: false, assignedDrone: 'Dart' },
+      { slotIndex: 1, slotDamaged: false, assignedDrone: 'Talon' },
+      { slotIndex: 2, slotDamaged: false, assignedDrone: 'Mammoth' },
+      { slotIndex: 3, slotDamaged: false, assignedDrone: 'Seraph' },
+      { slotIndex: 4, slotDamaged: false, assignedDrone: 'Devastator' }
     ],
     sectionSlots: {
       l: { componentId: 'BRIDGE_001', damageDealt: 0 },

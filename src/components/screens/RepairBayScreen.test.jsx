@@ -39,9 +39,9 @@ vi.mock('../../logic/economy/RepairService.js', () => ({
 
 vi.mock('../../data/droneData.js', () => ({
   default: [
-    { name: 'Scout Drone', class: 1, hull: 2, shields: 0, speed: 3, attack: 1, rarity: 'Common', image: 'scout.png' },
-    { name: 'Heavy Fighter', class: 2, hull: 4, shields: 1, speed: 2, attack: 3, rarity: 'Uncommon', image: 'heavy.png' },
-    { name: 'Guardian Drone', class: 2, hull: 3, shields: 2, speed: 2, attack: 2, rarity: 'Common', image: 'guardian.png' }
+    { name: 'Dart', class: 1, hull: 2, shields: 0, speed: 3, attack: 1, rarity: 'Common', image: 'scout.png' },
+    { name: 'Mammoth', class: 2, hull: 4, shields: 1, speed: 2, attack: 3, rarity: 'Uncommon', image: 'heavy.png' },
+    { name: 'Bastion', class: 2, hull: 3, shields: 2, speed: 2, attack: 2, rarity: 'Common', image: 'guardian.png' }
   ]
 }));
 
@@ -74,9 +74,9 @@ const createMockShipSlots = () => [
     status: 'active',
     shipId: 'SHIP_001',
     droneSlots: [
-      { slotIndex: 0, slotDamaged: false, assignedDrone: 'Scout Drone' },
-      { slotIndex: 1, slotDamaged: true, assignedDrone: 'Heavy Fighter' },
-      { slotIndex: 2, slotDamaged: false, assignedDrone: 'Guardian Drone' },
+      { slotIndex: 0, slotDamaged: false, assignedDrone: 'Dart' },
+      { slotIndex: 1, slotDamaged: true, assignedDrone: 'Mammoth' },
+      { slotIndex: 2, slotDamaged: false, assignedDrone: 'Bastion' },
       { slotIndex: 3, slotDamaged: false, assignedDrone: null },
       { slotIndex: 4, slotDamaged: false, assignedDrone: null }
     ],
@@ -97,8 +97,8 @@ const createMockShipSlots = () => [
     status: 'active',
     shipId: 'SHIP_001',
     droneSlots: [
-      { slotIndex: 0, slotDamaged: false, assignedDrone: 'Scout Drone' },
-      { slotIndex: 1, slotDamaged: false, assignedDrone: 'Scout Drone' },
+      { slotIndex: 0, slotDamaged: false, assignedDrone: 'Dart' },
+      { slotIndex: 1, slotDamaged: false, assignedDrone: 'Dart' },
       { slotIndex: 2, slotDamaged: false, assignedDrone: null },
       { slotIndex: 3, slotDamaged: false, assignedDrone: null },
       { slotIndex: 4, slotDamaged: false, assignedDrone: null }
@@ -332,15 +332,15 @@ describe('RepairBayScreen', () => {
 
     it('should show drone name for assigned slots', () => {
       // render(<RepairBayScreen />);
-      // expect(screen.getByText('Scout Drone')).toBeInTheDocument();
-      // expect(screen.getByText('Heavy Fighter')).toBeInTheDocument();
-      // expect(screen.getByText('Guardian Drone')).toBeInTheDocument();
+      // expect(screen.getByText('Dart')).toBeInTheDocument();
+      // expect(screen.getByText('Mammoth')).toBeInTheDocument();
+      // expect(screen.getByText('Bastion')).toBeInTheDocument();
       expect(true).toBe(true);
     });
 
     it('should show damage indicator for damaged slots', () => {
       // render(<RepairBayScreen />);
-      // Slot 1 (Heavy Fighter) is damaged
+      // Slot 1 (Mammoth) is damaged
       // Look for damage indicator on that slot
       expect(true).toBe(true);
     });
@@ -371,8 +371,8 @@ describe('RepairBayScreen', () => {
   describe('Drag-and-Drop Reordering', () => {
     it('should make assigned drone slots draggable', () => {
       // render(<RepairBayScreen />);
-      // Find slot with Scout Drone, check draggable attribute
-      // const droneSlot = screen.getByText('Scout Drone').closest('[draggable]');
+      // Find slot with Dart, check draggable attribute
+      // const droneSlot = screen.getByText('Dart').closest('[draggable]');
       // expect(droneSlot).toHaveAttribute('draggable', 'true');
       expect(true).toBe(true);
     });
@@ -387,19 +387,19 @@ describe('RepairBayScreen', () => {
       // render(<RepairBayScreen />);
       // Simulate drag from slot 0 (Scout) to slot 2 (Guardian)
       // After drop:
-      // - Slot 0 should have Guardian Drone
-      // - Slot 2 should have Scout Drone
+      // - Slot 0 should have Bastion
+      // - Slot 2 should have Dart
       // - Slot damage should remain in original positions
       expect(true).toBe(true);
     });
 
     it('should preserve slot damage when swapping drones', () => {
       // render(<RepairBayScreen />);
-      // Slot 1 is damaged, has Heavy Fighter
-      // Swap slot 0 (Scout, undamaged) with slot 1 (Heavy Fighter, damaged)
+      // Slot 1 is damaged, has Mammoth
+      // Swap slot 0 (Scout, undamaged) with slot 1 (Mammoth, damaged)
       // After swap:
-      // - Slot 0 should have Heavy Fighter, still UNDAMAGED (slot damage stays)
-      // - Slot 1 should have Scout Drone, still DAMAGED (slot damage stays)
+      // - Slot 0 should have Mammoth, still UNDAMAGED (slot damage stays)
+      // - Slot 1 should have Dart, still DAMAGED (slot damage stays)
       expect(true).toBe(true);
     });
 

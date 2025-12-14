@@ -54,8 +54,8 @@ describe('AI Logic - CPU Limit Bug', () => {
       dronesOnBoard,
       deployedDroneCounts: {},
       activeDronePool: options.activeDronePool || [
-        { name: 'Scout Drone', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] },
-        { name: 'Standard Fighter', class: 2, attack: 3, speed: 4, hull: 2, shields: 1, limit: 3, abilities: [] }
+        { name: 'Dart', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] },
+        { name: 'Talon', class: 2, attack: 3, speed: 4, hull: 2, shields: 1, limit: 3, abilities: [] }
       ],
       hand: options.hand || [],
       shipSections: {
@@ -184,7 +184,7 @@ describe('AI Logic - CPU Limit Bug', () => {
         },
         deployedDroneCounts: {},
         activeDronePool: [
-          { name: 'Scout Drone', class: 1, attack: 1, speed: 4, hull: 1, limit: 3, abilities: [] }
+          { name: 'Dart', class: 1, attack: 1, speed: 4, hull: 1, limit: 3, abilities: [] }
         ],
         hand: [],
         shipSections: {},

@@ -39,7 +39,7 @@ vi.mock('../../hooks/useGameData.js', () => ({
 describe('DroneLanesDisplay - Ability Mode Props', () => {
   const mockDrone1 = {
     id: 'repair_drone_1',
-    name: 'Repair Drone',
+    name: 'Seraph',
     hull: 1,
     currentShields: 3,
     isExhausted: false
@@ -47,7 +47,7 @@ describe('DroneLanesDisplay - Ability Mode Props', () => {
 
   const mockDrone2 = {
     id: 'scout_drone_1',
-    name: 'Scout Drone',
+    name: 'Dart',
     hull: 1,
     currentShields: 1,
     isExhausted: false
@@ -114,7 +114,7 @@ describe('DroneLanesDisplay - Ability Mode Props', () => {
       />
     );
 
-    // Find the props passed to the Repair Drone (the ability source)
+    // Find the props passed to the Seraph (the ability source)
     const repairDroneProps = droneTokenProps.find(p => p.drone.id === 'repair_drone_1');
     expect(repairDroneProps).toBeDefined();
     expect(repairDroneProps.isAbilitySource).toBe(true);
@@ -133,7 +133,7 @@ describe('DroneLanesDisplay - Ability Mode Props', () => {
       />
     );
 
-    // Find the props passed to the Scout Drone (not the ability source)
+    // Find the props passed to the Dart (not the ability source)
     const scoutDroneProps = droneTokenProps.find(p => p.drone.id === 'scout_drone_1');
     expect(scoutDroneProps).toBeDefined();
     expect(scoutDroneProps.isAbilitySource).toBe(false);

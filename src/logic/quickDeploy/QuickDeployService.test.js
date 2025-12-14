@@ -10,11 +10,11 @@ describe('QuickDeployService - Deployment Order', () => {
   let mockGameStateManager;
   let service;
 
-  const validDroneRoster = ['Scout Drone', 'Standard Fighter', 'Support Drone', 'Heavy Drone', 'Stealth Drone'];
+  const validDroneRoster = ['Dart', 'Talon', 'Support Drone', 'Heavy Drone', 'Stealth Drone'];
   const validPlacements = [
-    { droneName: 'Scout Drone', lane: 0 },
-    { droneName: 'Standard Fighter', lane: 2 },
-    { droneName: 'Scout Drone', lane: 0 }  // Duplicate - same drone, same lane
+    { droneName: 'Dart', lane: 0 },
+    { droneName: 'Talon', lane: 2 },
+    { droneName: 'Dart', lane: 0 }  // Duplicate - same drone, same lane
   ];
 
   beforeEach(() => {
@@ -48,10 +48,10 @@ describe('QuickDeployService - Deployment Order', () => {
       const result = service.create('Test Deploy', validDroneRoster, validPlacements);
 
       expect(result.placements).toEqual(validPlacements);
-      expect(result.placements[0].droneName).toBe('Scout Drone');
+      expect(result.placements[0].droneName).toBe('Dart');
       expect(result.placements[0].lane).toBe(0);
-      expect(result.placements[1].droneName).toBe('Standard Fighter');
-      expect(result.placements[2].droneName).toBe('Scout Drone');
+      expect(result.placements[1].droneName).toBe('Talon');
+      expect(result.placements[2].droneName).toBe('Dart');
     });
   });
 

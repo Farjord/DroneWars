@@ -135,7 +135,7 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
           },
           deployedDroneCounts: {},
           activeDronePool: [
-            { name: 'Scout Drone', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }
+            { name: 'Dart', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }
           ],
           hand: [],
           shipSections: {
@@ -167,7 +167,7 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
       // Initialize AIPhaseProcessor
       aiPhaseProcessor.initialize(
         null, // aiPersonalities
-        [{ name: 'Scout Drone', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }],
+        [{ name: 'Dart', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }],
         null, // currentPersonality
         mockActionProcessor,
         mockGameStateManager
@@ -223,7 +223,7 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
           },
           deployedDroneCounts: {},
           activeDronePool: [
-            { name: 'Scout Drone', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }
+            { name: 'Dart', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }
           ],
           hand: [],
           shipSections: {
@@ -253,7 +253,7 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
 
       aiPhaseProcessor.initialize(
         null,
-        [{ name: 'Scout Drone', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }],
+        [{ name: 'Dart', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }],
         null,
         mockActionProcessor,
         mockGameStateManager
@@ -300,7 +300,7 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
           dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
           deployedDroneCounts: {},
           activeDronePool: [
-            { name: 'Scout Drone', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }
+            { name: 'Dart', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }
           ],
           hand: [],
           shipSections: {
@@ -329,7 +329,7 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
 
       aiPhaseProcessor.initialize(
         null,
-        [{ name: 'Scout Drone', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }],
+        [{ name: 'Dart', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }],
         null,
         mockActionProcessor,
         mockGameStateManager
@@ -379,7 +379,7 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
           dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
           deployedDroneCounts: {},
           activeDronePool: [
-            { name: 'Scout Drone', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }
+            { name: 'Dart', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }
           ],
           hand: [],
           shipSections: {
@@ -408,7 +408,7 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
 
       aiPhaseProcessor.initialize(
         null,
-        [{ name: 'Scout Drone', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }],
+        [{ name: 'Dart', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }],
         null,
         mockActionProcessor,
         mockGameStateManager
@@ -454,7 +454,7 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
           deployedDroneCounts: {},
           // Only class 2+ drones available (cost 2+)
           activeDronePool: [
-            { name: 'Standard Fighter', class: 2, attack: 3, speed: 4, hull: 2, shields: 1, limit: 3, abilities: [] },
+            { name: 'Talon', class: 2, attack: 3, speed: 4, hull: 2, shields: 1, limit: 3, abilities: [] },
             { name: 'Heavy Bomber', class: 3, attack: 5, speed: 2, hull: 4, shields: 2, limit: 2, abilities: [] }
           ],
           hand: [],
@@ -485,7 +485,7 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
       aiPhaseProcessor.initialize(
         null,
         [
-          { name: 'Standard Fighter', class: 2, attack: 3, speed: 4, hull: 2, shields: 1, limit: 3, abilities: [] },
+          { name: 'Talon', class: 2, attack: 3, speed: 4, hull: 2, shields: 1, limit: 3, abilities: [] },
           { name: 'Heavy Bomber', class: 3, attack: 5, speed: 2, hull: 4, shields: 2, limit: 2, abilities: [] }
         ],
         null,
@@ -535,9 +535,9 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
             lane2: [{ id: 'd2', name: 'Drone', class: 1, abilities: [] }],
             lane3: []
           },
-          deployedDroneCounts: { 'Scout Drone': 2 },
+          deployedDroneCounts: { 'Dart': 2 },
           activeDronePool: [
-            { name: 'Scout Drone', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }
+            { name: 'Dart', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }
           ],
           hand: [],
           shipSections: {
@@ -566,7 +566,7 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
 
       aiPhaseProcessor.initialize(
         null,
-        [{ name: 'Scout Drone', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }],
+        [{ name: 'Dart', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }],
         null,
         mockActionProcessor,
         mockGameStateManager
@@ -625,7 +625,7 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
             dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
             deployedDroneCounts: {},
             activeDronePool: [
-              { name: 'Scout Drone', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }
+              { name: 'Dart', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }
             ],
             hand: [],
             shipSections: {
@@ -654,7 +654,7 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
 
         aiPhaseProcessor.initialize(
           null,
-          [{ name: 'Scout Drone', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }],
+          [{ name: 'Dart', class: 1, attack: 1, speed: 6, hull: 1, shields: 1, limit: 3, abilities: [] }],
           null,
           mockActionProcessor,
           mockGameStateManager

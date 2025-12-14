@@ -21,16 +21,16 @@ export const startingDecklist = starterDeck.decklist;
 
 // Standard AI drone selection (10 drones for deck)
 export const startingDroneList = [
-  'Scout Drone',
-  'Standard Fighter',
-  'Heavy Fighter',
-  'Guardian Drone',
-  'Bomber',
-  'Repair Drone',
-  'Interceptor',
-  'Aegis Drone',
-  'Kamikaze Drone',
-  'Swarm Drone'
+  'Dart',
+  'Talon',
+  'Mammoth',
+  'Bastion',
+  'Devastator',
+  'Seraph',
+  'Harrier',
+  'Aegis',
+  'Firefly',
+  'Locust'
 ];
 
 /**

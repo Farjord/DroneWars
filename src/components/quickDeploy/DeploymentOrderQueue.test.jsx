@@ -12,9 +12,9 @@ import DeploymentOrderQueue from './DeploymentOrderQueue.jsx';
 
 describe('DeploymentOrderQueue', () => {
   const mockPlacements = [
-    { droneName: 'Scout Drone', lane: 0 },
-    { droneName: 'Standard Fighter', lane: 2 },
-    { droneName: 'Scout Drone', lane: 0 }  // Same drone, same lane as index 0
+    { droneName: 'Dart', lane: 0 },
+    { droneName: 'Talon', lane: 2 },
+    { droneName: 'Dart', lane: 0 }  // Same drone, same lane as index 0
   ];
 
   const defaultProps = {
@@ -35,16 +35,16 @@ describe('DeploymentOrderQueue', () => {
   it('should show drone name and lane for each entry', () => {
     render(<DeploymentOrderQueue {...defaultProps} />);
 
-    // Should show drone names (Scout Drone appears twice)
-    const scoutDrones = screen.getAllByText(/Scout Drone/);
+    // Should show drone names (Dart appears twice)
+    const scoutDrones = screen.getAllByText(/Dart/);
     expect(scoutDrones.length).toBe(2);
 
-    // Should show Standard Fighter once
-    expect(screen.getByText(/Standard Fighter/)).toBeInTheDocument();
+    // Should show Talon once
+    expect(screen.getByText(/Talon/)).toBeInTheDocument();
 
     // Should show lane indicators
     const leftLanes = screen.getAllByText(/Left/);
-    expect(leftLanes.length).toBe(2);  // Two Scout Drones in left lane
+    expect(leftLanes.length).toBe(2);  // Two Darts in left lane
     expect(screen.getByText(/Right/)).toBeInTheDocument();
   });
 
@@ -60,19 +60,19 @@ describe('DeploymentOrderQueue', () => {
     const rows = screen.getAllByRole('listitem');
     expect(rows.length).toBe(3);
 
-    // First row should be placement[2] (Scout Drone, Left) - number shown under token
+    // First row should be placement[2] (Dart, Left) - number shown under token
     expect(rows[0]).toHaveTextContent('1');
-    expect(rows[0]).toHaveTextContent('Scout Drone');
+    expect(rows[0]).toHaveTextContent('Dart');
     expect(rows[0]).toHaveTextContent('Left');
 
-    // Second row should be placement[0] (Scout Drone, Left)
+    // Second row should be placement[0] (Dart, Left)
     expect(rows[1]).toHaveTextContent('2');
-    expect(rows[1]).toHaveTextContent('Scout Drone');
+    expect(rows[1]).toHaveTextContent('Dart');
     expect(rows[1]).toHaveTextContent('Left');
 
-    // Third row should be placement[1] (Standard Fighter, Right)
+    // Third row should be placement[1] (Talon, Right)
     expect(rows[2]).toHaveTextContent('3');
-    expect(rows[2]).toHaveTextContent('Standard Fighter');
+    expect(rows[2]).toHaveTextContent('Talon');
     expect(rows[2]).toHaveTextContent('Right');
   });
 
@@ -107,7 +107,7 @@ describe('DeploymentOrderQueue', () => {
 
   it('should handle single placement without drag handle', () => {
     const singlePlacement = {
-      placements: [{ droneName: 'Scout Drone', lane: 1 }],
+      placements: [{ droneName: 'Dart', lane: 1 }],
       deploymentOrder: [0],
       onReorder: vi.fn()
     };
@@ -116,7 +116,7 @@ describe('DeploymentOrderQueue', () => {
 
     // Should show the single placement (number shown under token without period)
     expect(screen.getByText('1')).toBeInTheDocument();
-    expect(screen.getByText(/Scout Drone/)).toBeInTheDocument();
+    expect(screen.getByText(/Dart/)).toBeInTheDocument();
     expect(screen.getByText(/Middle/)).toBeInTheDocument();
 
     // Should not have drag handle (or it should be disabled)

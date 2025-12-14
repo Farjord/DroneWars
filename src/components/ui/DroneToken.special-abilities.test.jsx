@@ -42,22 +42,22 @@ vi.mock('../../contexts/EditorStatsContext.jsx', () => ({
 vi.mock('../../data/droneData.js', () => ({
   default: [
     {
-      name: 'Blitz Drone',
+      name: 'Blitz',
       class: 2, hull: 2, shields: 1, attack: 2, speed: 5,
       abilities: [{ name: 'Rapid Response', type: 'PASSIVE', effect: { type: 'GRANT_KEYWORD', keyword: 'RAPID' } }]
     },
     {
-      name: 'Striker Drone',
+      name: 'Striker',
       class: 2, hull: 2, shields: 1, attack: 3, speed: 3,
       abilities: [{ name: 'Assault Protocol', type: 'PASSIVE', effect: { type: 'GRANT_KEYWORD', keyword: 'ASSAULT' } }]
     },
     {
-      name: 'Scout Drone',
+      name: 'Dart',
       class: 1, hull: 1, shields: 1, attack: 1, speed: 6,
       abilities: []
     },
     {
-      name: 'Tempest Drone',
+      name: 'Tempest',
       class: 3, hull: 2, shields: 1, attack: 2, speed: 4,
       abilities: [
         { name: 'Rapid Response', type: 'PASSIVE', effect: { type: 'GRANT_KEYWORD', keyword: 'RAPID' } },
@@ -71,7 +71,7 @@ describe('DroneToken - SpecialAbilityIcons', () => {
   // Mock Blitz Drone with RAPID ability
   const mockBlitzDrone = {
     id: 'blitz_drone_1',
-    name: 'Blitz Drone',
+    name: 'Blitz',
     image: '/images/blitz.png',
     hull: 2,
     currentShields: 1,
@@ -90,7 +90,7 @@ describe('DroneToken - SpecialAbilityIcons', () => {
   // Mock Striker Drone with ASSAULT ability
   const mockStrikerDrone = {
     id: 'striker_drone_1',
-    name: 'Striker Drone',
+    name: 'Striker',
     image: '/images/striker.png',
     hull: 2,
     currentShields: 1,
@@ -109,7 +109,7 @@ describe('DroneToken - SpecialAbilityIcons', () => {
   // Mock standard drone without special abilities
   const mockStandardDrone = {
     id: 'scout_drone_1',
-    name: 'Scout Drone',
+    name: 'Dart',
     image: '/images/scout.png',
     hull: 1,
     currentShields: 1,
@@ -242,7 +242,7 @@ describe('DroneToken - SpecialAbilityIcons', () => {
       // Mock drone with both abilities
       const mockDualAbilityDrone = {
         id: 'dual_drone_1',
-        name: 'Tempest Drone',
+        name: 'Tempest',
         image: '/images/dual.png',
         hull: 2,
         currentShields: 1,

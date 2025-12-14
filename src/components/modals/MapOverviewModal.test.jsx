@@ -55,11 +55,11 @@ const createMockGameState = (overrides = {}) => ({
       name: 'Starter Deck',
       decklist: Array(40).fill({ id: 'card1', quantity: 1 }),
       droneSlots: [
-        { slotIndex: 0, assignedDrone: 'Scout Drone' },
+        { slotIndex: 0, assignedDrone: 'Dart' },
         { slotIndex: 1, assignedDrone: 'Fighter Drone' },
-        { slotIndex: 2, assignedDrone: 'Heavy Fighter' },
-        { slotIndex: 3, assignedDrone: 'Guardian Drone' },
-        { slotIndex: 4, assignedDrone: 'Repair Drone' },
+        { slotIndex: 2, assignedDrone: 'Mammoth' },
+        { slotIndex: 3, assignedDrone: 'Bastion' },
+        { slotIndex: 4, assignedDrone: 'Seraph' },
       ],
       shipComponents: { left: 'COMP1', middle: 'COMP2', right: 'COMP3' }
     },
@@ -69,11 +69,11 @@ const createMockGameState = (overrides = {}) => ({
       name: 'Custom Ship',
       decklist: Array(40).fill({ id: 'card1', quantity: 1 }),
       droneSlots: [
-        { slotIndex: 0, assignedDrone: 'Scout Drone' },
+        { slotIndex: 0, assignedDrone: 'Dart' },
         { slotIndex: 1, assignedDrone: 'Fighter Drone' },
-        { slotIndex: 2, assignedDrone: 'Heavy Fighter' },
-        { slotIndex: 3, assignedDrone: 'Guardian Drone' },
-        { slotIndex: 4, assignedDrone: 'Repair Drone' },
+        { slotIndex: 2, assignedDrone: 'Mammoth' },
+        { slotIndex: 3, assignedDrone: 'Bastion' },
+        { slotIndex: 4, assignedDrone: 'Seraph' },
       ],
       shipComponents: { left: 'COMP1', middle: 'COMP2', right: 'COMP3' }
     }

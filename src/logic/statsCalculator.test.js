@@ -256,7 +256,7 @@ describe('statsCalculator', () => {
       // Basic drone with no special abilities
       mockDrone = {
         id: 'drone1',
-        name: 'Scout Drone', // Using actual drone from droneData.js
+        name: 'Dart', // Using actual drone from droneData.js
         hull: 1, // Scout Drone has 1 hull
         isExhausted: false,
         statMods: [],
@@ -352,7 +352,7 @@ describe('statsCalculator', () => {
 
       const cheapDrone = {
         ...mockDrone,
-        name: 'Scout Drone', // Cost 1
+        name: 'Dart', // Cost 1
         statMods: [
           { stat: 'cost', value: -10 } // Huge cost reduction
         ]

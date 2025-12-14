@@ -84,7 +84,7 @@ describe('CombatOutcomeProcessor', () => {
 
       // Combat salvage loot (not PoI loot)
       const combatLoot = {
-        cards: [{ cardId: 'CARD001', cardName: 'Standard Fighter', rarity: 'Common' }],
+        cards: [{ cardId: 'CARD001', cardName: 'Talon', rarity: 'Common' }],
         salvageItem: { itemId: 'SALVAGE_001', name: 'Salvage Item', creditValue: 50, image: '/Credits/test.png', description: 'Test' },
         aiCores: 0
       }

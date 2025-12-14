@@ -119,9 +119,9 @@ describe('MIARecoveryService - Scaled Recovery Cost', () => {
           shipId: starterPoolShipIds[0],
           decklist: [],
           droneSlots: [
-            { slotIndex: 0, assignedDrone: 'Bomber' }, // Uncommon, not starter
-            { slotIndex: 1, assignedDrone: 'Interceptor' }, // Uncommon, not starter
-            { slotIndex: 2, assignedDrone: 'Aegis Drone' } // Rare, not starter
+            { slotIndex: 0, assignedDrone: 'Devastator' }, // Uncommon, not starter
+            { slotIndex: 1, assignedDrone: 'Harrier' }, // Uncommon, not starter
+            { slotIndex: 2, assignedDrone: 'Aegis' } // Rare, not starter
           ],
           shipComponents: {}
         }]
@@ -246,7 +246,7 @@ describe('MIARecoveryService - Scaled Recovery Cost', () => {
           decklist: [],
           droneSlots: [
             { slotIndex: 0, assignedDrone: firstStarterDrone }, // Starter: 0 value
-            { slotIndex: 1, assignedDrone: 'Bomber' } // Non-starter Uncommon
+            { slotIndex: 1, assignedDrone: 'Devastator' } // Non-starter Uncommon
           ],
           shipComponents: {}
         }]

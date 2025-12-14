@@ -24,7 +24,7 @@ vi.mock('../logic/map/generateMapData.js', () => ({
 
 describe('GameStateManager - Drone Damage Persistence', () => {
 
-  const createTestShipSlot = (slotId, dronePool = ['Scout Drone', 'Assault Drone']) => ({
+  const createTestShipSlot = (slotId, dronePool = ['Dart', 'Assault Drone']) => ({
     id: slotId,
     name: `Test Ship Slot ${slotId}`,
     status: 'active',
@@ -73,7 +73,7 @@ describe('GameStateManager - Drone Damage Persistence', () => {
         singlePlayerDroneInstances: [
           {
             instanceId: 'drone-123',
-            droneName: 'Scout Drone',
+            droneName: 'Dart',
             shipSlotId: 1,
             isDamaged: true
           }
@@ -81,11 +81,11 @@ describe('GameStateManager - Drone Damage Persistence', () => {
       });
 
       // Act
-      const instance = gameStateManager.findDroneInstance(1, 'Scout Drone');
+      const instance = gameStateManager.findDroneInstance(1, 'Dart');
 
       // Assert
       expect(instance).not.toBeNull();
-      expect(instance.droneName).toBe('Scout Drone');
+      expect(instance.droneName).toBe('Dart');
       expect(instance.shipSlotId).toBe(1);
       expect(instance.isDamaged).toBe(true);
     });
@@ -101,7 +101,7 @@ describe('GameStateManager - Drone Damage Persistence', () => {
       // Setup: Some drones damaged, some not
       gameStateManager.setState({
         singlePlayerDroneInstances: [
-          { instanceId: 'd1', droneName: 'Scout Drone', shipSlotId: 1, isDamaged: true },
+          { instanceId: 'd1', droneName: 'Dart', shipSlotId: 1, isDamaged: true },
           { instanceId: 'd2', droneName: 'Assault Drone', shipSlotId: 1, isDamaged: false },
           { instanceId: 'd3', droneName: 'Heavy Drone', shipSlotId: 2, isDamaged: true } // Different slot
         ]
@@ -112,7 +112,7 @@ describe('GameStateManager - Drone Damage Persistence', () => {
 
       // Assert
       expect(damageState).toEqual({
-        'Scout Drone': true,
+        'Dart': true,
         'Assault Drone': false
       });
       expect(damageState['Heavy Drone']).toBeUndefined(); // Not in slot 1
@@ -122,7 +122,7 @@ describe('GameStateManager - Drone Damage Persistence', () => {
       // Setup: Even if there are instances for slot 0 (shouldn't happen)
       gameStateManager.setState({
         singlePlayerDroneInstances: [
-          { instanceId: 'd1', droneName: 'Scout Drone', shipSlotId: 0, isDamaged: true }
+          { instanceId: 'd1', droneName: 'Dart', shipSlotId: 0, isDamaged: true }
         ]
       });
 
@@ -148,7 +148,7 @@ describe('GameStateManager - Drone Damage Persistence', () => {
       const savedInstances = [
         {
           instanceId: 'drone-prev-run',
-          droneName: 'Scout Drone',
+          droneName: 'Dart',
           shipSlotId: 1,
           isDamaged: true
         }
@@ -160,7 +160,7 @@ describe('GameStateManager - Drone Damage Persistence', () => {
 
       // Step 2: Check that we can retrieve the damage state
       const damageState = gameStateManager.getDroneDamageStateForSlot(1);
-      expect(damageState['Scout Drone']).toBe(true);
+      expect(damageState['Dart']).toBe(true);
 
       // Step 3: Start a run (drone damage should still be accessible)
       gameStateManager.startRun(1, 1, 0, {
@@ -173,14 +173,14 @@ describe('GameStateManager - Drone Damage Persistence', () => {
 
       // Verify damage state is still available during run
       const damageStateDuringRun = gameStateManager.getDroneDamageStateForSlot(1);
-      expect(damageStateDuringRun['Scout Drone']).toBe(true);
+      expect(damageStateDuringRun['Dart']).toBe(true);
 
       // Step 4: End run successfully
       gameStateManager.endRun(true);
 
       // Step 5: Damage should still persist
       const damageStateAfterRun = gameStateManager.getDroneDamageStateForSlot(1);
-      expect(damageStateAfterRun['Scout Drone']).toBe(true);
+      expect(damageStateAfterRun['Dart']).toBe(true);
     });
 
     it('should allow repairing damaged drones (via updateDroneInstance)', () => {
@@ -189,7 +189,7 @@ describe('GameStateManager - Drone Damage Persistence', () => {
         singlePlayerDroneInstances: [
           {
             instanceId: 'drone-damaged',
-            droneName: 'Scout Drone',
+            droneName: 'Dart',
             shipSlotId: 1,
             isDamaged: true
           }
@@ -200,7 +200,7 @@ describe('GameStateManager - Drone Damage Persistence', () => {
       gameStateManager.updateDroneInstance('drone-damaged', false);
 
       // Assert: Drone should no longer be damaged
-      const instance = gameStateManager.findDroneInstance(1, 'Scout Drone');
+      const instance = gameStateManager.findDroneInstance(1, 'Dart');
       expect(instance.isDamaged).toBe(false);
     });
   });
@@ -210,7 +210,7 @@ describe('GameStateManager - Drone Damage Persistence', () => {
       // Setup: Even if there were somehow damaged instances for slot 0
       gameStateManager.setState({
         singlePlayerDroneInstances: [
-          { instanceId: 'd1', droneName: 'Scout Drone', shipSlotId: 0, isDamaged: true }
+          { instanceId: 'd1', droneName: 'Dart', shipSlotId: 0, isDamaged: true }
         ]
       });
 

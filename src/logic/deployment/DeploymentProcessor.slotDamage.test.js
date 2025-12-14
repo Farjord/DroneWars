@@ -42,9 +42,9 @@ describe('DeploymentProcessor - slot damage penalty', () => {
 
   describe('validateDeployment - effectiveLimit handling', () => {
     it('should use drone.effectiveLimit when available (damaged slot)', () => {
-      // Scout Drone has base limit 3, but damaged slot reduces to effectiveLimit 2
-      const drone = { name: 'Scout Drone', class: 1, effectiveLimit: 2 };
-      const player = createMockPlayer({ 'Scout Drone': 2 }); // Already deployed 2
+      // Dart has base limit 3, but damaged slot reduces to effectiveLimit 2
+      const drone = { name: 'Dart', class: 1, effectiveLimit: 2 };
+      const player = createMockPlayer({ 'Dart': 2 }); // Already deployed 2
       const effectiveStats = createMockEffectiveStats();
 
       const result = processor.validateDeployment(player, drone, 1, 0, effectiveStats, 'lane1');
@@ -55,9 +55,9 @@ describe('DeploymentProcessor - slot damage penalty', () => {
     });
 
     it('should allow deployment when under effectiveLimit', () => {
-      // Scout Drone with effectiveLimit 2 (damaged), only 1 deployed
-      const drone = { name: 'Scout Drone', class: 1, effectiveLimit: 2 };
-      const player = createMockPlayer({ 'Scout Drone': 1 }); // Only 1 deployed
+      // Dart with effectiveLimit 2 (damaged), only 1 deployed
+      const drone = { name: 'Dart', class: 1, effectiveLimit: 2 };
+      const player = createMockPlayer({ 'Dart': 1 }); // Only 1 deployed
       const effectiveStats = createMockEffectiveStats();
 
       const result = processor.validateDeployment(player, drone, 1, 0, effectiveStats, 'lane1');
@@ -68,9 +68,9 @@ describe('DeploymentProcessor - slot damage penalty', () => {
 
     it('should fall back to base limit when effectiveLimit is not set', () => {
       // Normal drone without effectiveLimit (multiplayer or undamaged)
-      // Scout Drone has base limit 3
-      const drone = { name: 'Scout Drone', class: 1 }; // No effectiveLimit
-      const player = createMockPlayer({ 'Scout Drone': 2 }); // 2 deployed
+      // Dart has base limit 3
+      const drone = { name: 'Dart', class: 1 }; // No effectiveLimit
+      const player = createMockPlayer({ 'Dart': 2 }); // 2 deployed
       const effectiveStats = createMockEffectiveStats();
 
       const result = processor.validateDeployment(player, drone, 1, 0, effectiveStats, 'lane1');
@@ -80,11 +80,11 @@ describe('DeploymentProcessor - slot damage penalty', () => {
     });
 
     it('should add upgrade bonuses on top of effectiveLimit', () => {
-      // Scout Drone with effectiveLimit 2 (damaged), but +1 from upgrade = 3 effective
-      const drone = { name: 'Scout Drone', class: 1, effectiveLimit: 2 };
+      // Dart with effectiveLimit 2 (damaged), but +1 from upgrade = 3 effective
+      const drone = { name: 'Dart', class: 1, effectiveLimit: 2 };
       const player = createMockPlayer(
-        { 'Scout Drone': 2 },
-        { 'Scout Drone': [{ mod: { stat: 'limit', value: 1 } }] } // +1 limit upgrade
+        { 'Dart': 2 },
+        { 'Dart': [{ mod: { stat: 'limit', value: 1 } }] } // +1 limit upgrade
       );
       const effectiveStats = createMockEffectiveStats();
 
@@ -96,10 +96,10 @@ describe('DeploymentProcessor - slot damage penalty', () => {
 
     it('should block deployment at exact effectiveLimit with upgrades', () => {
       // effectiveLimit 2 + upgrade +1 = 3, already deployed 3
-      const drone = { name: 'Scout Drone', class: 1, effectiveLimit: 2 };
+      const drone = { name: 'Dart', class: 1, effectiveLimit: 2 };
       const player = createMockPlayer(
-        { 'Scout Drone': 3 },
-        { 'Scout Drone': [{ mod: { stat: 'limit', value: 1 } }] } // +1 limit upgrade
+        { 'Dart': 3 },
+        { 'Dart': [{ mod: { stat: 'limit', value: 1 } }] } // +1 limit upgrade
       );
       const effectiveStats = createMockEffectiveStats();
 

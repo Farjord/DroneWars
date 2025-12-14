@@ -25,7 +25,7 @@ describe('RAPID keyword - Movement exhaustion bypass', () => {
   // Create a mock Blitz Drone with RAPID ability for testing
   const createBlitzDrone = (overrides = {}) => ({
     id: 'blitz_drone_1',
-    name: 'Blitz Drone',
+    name: 'Blitz',
     attack: 2,
     hull: 2,
     shields: 1,
@@ -45,7 +45,7 @@ describe('RAPID keyword - Movement exhaustion bypass', () => {
   // Create a standard drone WITHOUT RAPID for comparison testing
   const createStandardDrone = (overrides = {}) => ({
     id: 'scout_drone_1',
-    name: 'Scout Drone',
+    name: 'Dart',
     attack: 1,
     hull: 1,
     shields: 1,

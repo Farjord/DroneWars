@@ -28,7 +28,7 @@ describe('RoundManager - RAPID/ASSAULT flag reset', () => {
   // Helper to create a drone with RAPID ability
   const createRapidDrone = (overrides = {}) => ({
     id: 'blitz_drone_1',
-    name: 'Blitz Drone',
+    name: 'Blitz',
     attack: 2,
     hull: 2,
     shields: 1,
@@ -48,7 +48,7 @@ describe('RoundManager - RAPID/ASSAULT flag reset', () => {
   // Helper to create a drone with ASSAULT ability
   const createAssaultDrone = (overrides = {}) => ({
     id: 'striker_drone_1',
-    name: 'Striker Drone',
+    name: 'Striker',
     attack: 3,
     hull: 2,
     shields: 1,

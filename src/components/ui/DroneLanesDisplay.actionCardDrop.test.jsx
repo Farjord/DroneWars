@@ -288,7 +288,7 @@ describe('DroneLanesDisplay action card drop', () => {
 
     it('should still handle deployment card drag end', () => {
       const mockHandleCardDragEnd = vi.fn();
-      const mockDroneCard = { name: 'Scout Drone', class: 2 };
+      const mockDroneCard = { name: 'Dart', class: 2 };
       render(
         <DroneLanesDisplay
           {...defaultProps}

@@ -34,7 +34,7 @@ describe('DroneDamageProcessor - Instance-Based Damage', () => {
       const shipSlot = {
         id: 0,
         drones: [
-          { name: 'Scout Drone', isDamaged: false },
+          { name: 'Dart', isDamaged: false },
           { name: 'Fighter Drone', isDamaged: false }
         ]
       };
@@ -56,7 +56,7 @@ describe('DroneDamageProcessor - Instance-Based Damage', () => {
       const shipSlot = {
         id: 0,
         drones: [
-          { name: 'Scout Drone', isDamaged: false },
+          { name: 'Dart', isDamaged: false },
           { name: 'Fighter Drone', isDamaged: false }
         ]
       };
@@ -80,7 +80,7 @@ describe('DroneDamageProcessor - Instance-Based Damage', () => {
       const shipSlot = {
         id: 1,
         drones: [
-          { name: 'Scout Drone', isDamaged: false },
+          { name: 'Dart', isDamaged: false },
           { name: 'Fighter Drone', isDamaged: false }
         ]
       };
@@ -94,7 +94,7 @@ describe('DroneDamageProcessor - Instance-Based Damage', () => {
       // Mock findDroneInstance to return an instance
       gameStateManager.findDroneInstance.mockImplementation((slotId, droneName) => {
         const instances = [
-          { instanceId: 'INST_001', droneName: 'Scout Drone', shipSlotId: 1, isDamaged: false },
+          { instanceId: 'INST_001', droneName: 'Dart', shipSlotId: 1, isDamaged: false },
           { instanceId: 'INST_002', droneName: 'Fighter Drone', shipSlotId: 1, isDamaged: false }
         ];
         return instances.find(i => i.shipSlotId === slotId && i.droneName === droneName) || null;
@@ -109,7 +109,7 @@ describe('DroneDamageProcessor - Instance-Based Damage', () => {
     it('should find correct instance by (slotId, droneName)', () => {
       const shipSlot = {
         id: 2,
-        drones: [{ name: 'Scout Drone', isDamaged: false }]
+        drones: [{ name: 'Dart', isDamaged: false }]
       };
 
       const currentRunState = {
@@ -121,8 +121,8 @@ describe('DroneDamageProcessor - Instance-Based Damage', () => {
       // Mock findDroneInstance to return correct instance based on slotId and droneName
       gameStateManager.findDroneInstance.mockImplementation((slotId, droneName) => {
         const instances = [
-          { instanceId: 'INST_001', droneName: 'Scout Drone', shipSlotId: 1, isDamaged: false }, // Different slot
-          { instanceId: 'INST_002', droneName: 'Scout Drone', shipSlotId: 2, isDamaged: false }, // Correct slot
+          { instanceId: 'INST_001', droneName: 'Dart', shipSlotId: 1, isDamaged: false }, // Different slot
+          { instanceId: 'INST_002', droneName: 'Dart', shipSlotId: 2, isDamaged: false }, // Correct slot
           { instanceId: 'INST_003', droneName: 'Fighter Drone', shipSlotId: 2, isDamaged: false } // Different drone
         ];
         return instances.find(i => i.shipSlotId === slotId && i.droneName === droneName) || null;
@@ -141,7 +141,7 @@ describe('DroneDamageProcessor - Instance-Based Damage', () => {
     it('should NOT damage drones when hull >= 50%', () => {
       const shipSlot = {
         id: 1,
-        drones: [{ name: 'Scout Drone', isDamaged: false }]
+        drones: [{ name: 'Dart', isDamaged: false }]
       };
 
       const currentRunState = {
@@ -164,7 +164,7 @@ describe('DroneDamageProcessor - Instance-Based Damage', () => {
       const shipSlot = {
         id: 1,
         drones: [
-          { name: 'Scout Drone', isDamaged: false },
+          { name: 'Dart', isDamaged: false },
           { name: 'Fighter Drone', isDamaged: false }
         ]
       };
@@ -178,7 +178,7 @@ describe('DroneDamageProcessor - Instance-Based Damage', () => {
       // Mock findDroneInstance to return matching instance
       gameStateManager.findDroneInstance.mockImplementation((slotId, droneName) => {
         const instances = [
-          { instanceId: 'INST_001', droneName: 'Scout Drone', shipSlotId: 1, isDamaged: false },
+          { instanceId: 'INST_001', droneName: 'Dart', shipSlotId: 1, isDamaged: false },
           { instanceId: 'INST_002', droneName: 'Fighter Drone', shipSlotId: 1, isDamaged: false }
         ];
         return instances.find(i => i.shipSlotId === slotId && i.droneName === droneName) || null;
