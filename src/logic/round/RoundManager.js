@@ -143,6 +143,92 @@ class RoundManager {
   }
 
   /**
+   * Process ON_ROUND_START triggered abilities for all drones
+   * Called during roundInitialization after drones are readied
+   *
+   * Processing order:
+   * 1. AI drones (player2) first - threat effects apply before player benefits
+   * 2. Player drones (player1) second
+   * 3. Within each player, process lane1 → lane2 → lane3
+   *
+   * @param {Object} player1State - Player 1 state
+   * @param {Object} player2State - Player 2 state
+   * @param {Object} placedSections - Ship section placements
+   * @param {Object} effectRouter - EffectRouter instance for processing effects
+   * @returns {Object} { player1: updatedState, player2: updatedState, animationEvents: [] }
+   */
+  processRoundStartTriggers(player1State, player2State, placedSections, effectRouter) {
+    // Deep clone states to avoid mutations
+    let currentPlayer1 = JSON.parse(JSON.stringify(player1State));
+    let currentPlayer2 = JSON.parse(JSON.stringify(player2State));
+    const allAnimationEvents = [];
+
+    // Process AI (player2) drones first, then player (player1)
+    // This ensures AI threat effects process before player benefits
+    const processOrder = [
+      { playerId: 'player2', state: currentPlayer2 },
+      { playerId: 'player1', state: currentPlayer1 }
+    ];
+
+    for (const { playerId, state } of processOrder) {
+      const playerState = playerId === 'player1' ? currentPlayer1 : currentPlayer2;
+
+      for (const lane of ['lane1', 'lane2', 'lane3']) {
+        const drones = playerState.dronesOnBoard?.[lane] || [];
+
+        for (const drone of drones) {
+          if (!drone.abilities) continue;
+
+          for (const ability of drone.abilities) {
+            // Only process TRIGGERED abilities with ON_ROUND_START trigger
+            if (ability.type !== 'TRIGGERED' || ability.trigger !== 'ON_ROUND_START') {
+              continue;
+            }
+
+            debugLog('ROUND_START', `Processing ON_ROUND_START for ${drone.name} in ${lane}`, {
+              playerId,
+              droneName: drone.name,
+              droneId: drone.id,
+              abilityName: ability.name
+            });
+
+            const context = {
+              actingPlayerId: playerId,
+              playerStates: { player1: currentPlayer1, player2: currentPlayer2 },
+              placedSections,
+              sourceDroneName: drone.name,
+              sourceDroneId: drone.id,
+              lane
+            };
+
+            // Process single effect or multiple effects
+            const effects = ability.effects || (ability.effect ? [ability.effect] : []);
+
+            for (const effect of effects) {
+              const result = effectRouter.routeEffect(effect, context);
+
+              if (result?.newPlayerStates) {
+                currentPlayer1 = result.newPlayerStates.player1;
+                currentPlayer2 = result.newPlayerStates.player2;
+              }
+
+              if (result?.animationEvents?.length > 0) {
+                allAnimationEvents.push(...result.animationEvents);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      player1: currentPlayer1,
+      player2: currentPlayer2,
+      animationEvents: allAnimationEvents
+    };
+  }
+
+  /**
    * Process complete round start transition
    * Orchestrates: ready → resources → draw → first player determination
    *

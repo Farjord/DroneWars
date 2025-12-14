@@ -1,4 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+// Mock GameStateManager to break circular dependency
+// (ActionProcessor → EffectRouter → IncreaseThreatEffectProcessor → DetectionManager → GameStateManager → ActionProcessor)
+vi.mock('./GameStateManager.js', () => ({
+  default: {
+    getState: vi.fn(() => ({})),
+    setState: vi.fn(),
+    get: vi.fn(),
+    subscribe: vi.fn(() => vi.fn())
+  }
+}));
+
 import ActionProcessor from './ActionProcessor.js';
 import GameDataService from '../services/GameDataService.js';
 import fullDroneCollection from '../data/droneData.js';

@@ -45,6 +45,12 @@ class RecallAbilityProcessor {
     const playerState = newPlayerStates[playerId];
     const opponentId = playerId === 'player1' ? 'player2' : 'player1';
 
+    // Increment ship section ability activation counter for per-round limits
+    if (playerState.shipSections?.[sectionName]) {
+      playerState.shipSections[sectionName].abilityActivationCount =
+        (playerState.shipSections[sectionName].abilityActivationCount || 0) + 1;
+    }
+
     // Step 1: Deduct energy cost (1 energy)
     if (playerState.energy < 1) {
       console.warn('⚠️ RecallAbilityProcessor: Insufficient energy');

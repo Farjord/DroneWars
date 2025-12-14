@@ -36,8 +36,9 @@ export const tacticalItemCollection = [
     maxCapacity: 5,
     image: '/DroneWars/Items/threat.png',
     description: 'Reduce current detection level.',
-    effectDescription: 'Reduce detection by configured amount.',
-    effectValue: 20  // Configurable reduction amount (percentage points)
+    effectDescription: 'Reduce detection by random amount.',
+    effectValueMin: 5,   // Minimum reduction (percentage points)
+    effectValueMax: 15   // Maximum reduction (percentage points)
   }
 ];
 

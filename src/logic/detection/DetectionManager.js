@@ -48,7 +48,7 @@ class DetectionManager {
     }
 
     const current = currentRunState.detection;
-    const newValue = Math.min(100, current + amount);
+    const newValue = Math.max(0, Math.min(100, current + amount));
 
     gameStateManager.setState({
       currentRunState: {

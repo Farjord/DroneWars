@@ -87,6 +87,190 @@ const aiPersonalities = [
       { id: 'CARD004_ENHANCED', quantity: 3 },
       { id: 'CARD002_ENHANCED', quantity: 3 } ,
     ]
+  },
+
+  // === EXTRACTION MODE AIs ===
+  // TIER 1 - LOW THREAT (0-49% Detection)
+  {
+    name: 'Rogue Scout Pattern',
+    description: 'Defensive scout with minimal aggression',
+    difficulty: 'Easy',
+    modes: ['extraction'],  // Extraction Mode only
+    shipId: 'SHIP_003',
+    imagePath: '/DroneWars/AI/Scout.png',
+    dronePool: [
+      'Dart',
+      'Threat Transmitter',
+      'Talon',
+      'Ion Drone',
+      'Signal Beacon'  // Threat drone: +1 threat per round
+    ],
+    shipDeployment: {
+      strategy: 'defensive',
+      placement: ['bridge', 'powerCell', 'droneControlHub'],
+      reasoning: 'Defensive positioning prioritizing survival'
+    },
+    decklist: [
+      { id: 'CARD001', quantity: 3 },   // Laser Blast
+      { id: 'CARD002', quantity: 4 },   // System Reboot
+      { id: 'CARD003', quantity: 4 },   // Out Think
+      { id: 'CARD004', quantity: 4 },   // Energy Surge
+      { id: 'CARD005', quantity: 3 },   // Adrenaline Rush
+      { id: 'CARD007', quantity: 4 },   // Emergency Patch
+      { id: 'CARD008', quantity: 3 },   // Shield Recharge
+      { id: 'CARD009', quantity: 2 },   // Target Lock
+      { id: 'CARD015', quantity: 3 },   // Streamline
+      { id: 'CARD016', quantity: 4 },   // Static Field
+      { id: 'CARD018', quantity: 4 },   // Desperate Measures
+      { id: 'CARD019', quantity: 2 },   // Reposition
+    ]
+  },
+
+// {
+//    name: 'Automated Patrol Unit',
+//    description: 'Balanced combat AI',
+/*     difficulty: 'Easy',
+    modes: ['extraction'],
+    shipId: 'SHIP_001',
+    imagePath: '/DroneWars/AI/Patrol.png',
+    dronePool: [
+      'Talon',
+      'Talon',
+      'Mammoth',
+      'Bastion',
+      'Harrier',
+      'Signal Beacon',       // Threat drone: +1 threat per round
+      'Threat Transmitter'   // Threat drone: +2 threat on ship hull damage
+    ],
+    shipDeployment: {
+      strategy: 'balanced',
+      placement: ['powerCell', 'droneControlHub', 'bridge'],
+      reasoning: 'Balanced approach with resource generation priority'
+    },
+    decklist: [
+      { id: 'CARD001', quantity: 4 },   // Laser Blast
+      { id: 'CARD002', quantity: 3 },   // System Reboot
+      { id: 'CARD003', quantity: 4 },   // Out Think
+      { id: 'CARD004', quantity: 4 },   // Energy Surge
+      { id: 'CARD005', quantity: 4 },   // Adrenaline Rush
+      { id: 'CARD006', quantity: 2 },   // Nanobot Repair
+      { id: 'CARD007', quantity: 3 },   // Emergency Patch
+      { id: 'CARD008', quantity: 3 },   // Shield Recharge
+      { id: 'CARD009', quantity: 2 },   // Target Lock
+      { id: 'CARD012', quantity: 3 },   // Armor-Piercing Shot
+      { id: 'CARD016', quantity: 4 },   // Static Field
+      { id: 'CARD018', quantity: 4 },   // Desperate Measures
+    ]
+  }, */
+
+  // TIER 2 - MEDIUM THREAT (50-79% Detection)
+/*   {
+    name: 'Heavy Cruiser Defense Pattern',
+    description: 'Aggressive with heavy firepower',
+    difficulty: 'Medium',
+    modes: ['extraction'],
+    shipId: 'SHIP_001',
+    imagePath: '/DroneWars/AI/Cruiser.png',
+    dronePool: [
+      'Mammoth',
+      'Mammoth',
+      'Devastator',
+      'Bastion',
+      'Aegis',
+      'Signal Beacon',       // Threat drone: +1 threat per round
+      'Threat Transmitter'   // Threat drone: +2 threat on ship hull damage
+    ],
+    shipDeployment: {
+      strategy: 'aggressive',
+      placement: ['droneControlHub', 'powerCell', 'bridge'],
+      reasoning: 'Aggressive forward positioning with heavy firepower'
+    },
+    decklist: [
+      { id: 'CARD001', quantity: 4 },   // Laser Blast
+      { id: 'CARD002', quantity: 3 },   // System Reboot
+      { id: 'CARD003', quantity: 3 },   // Out Think
+      { id: 'CARD004', quantity: 4 },   // Energy Surge
+      { id: 'CARD005', quantity: 4 },   // Adrenaline Rush
+      { id: 'CARD006', quantity: 3 },   // Nanobot Repair
+      { id: 'CARD007', quantity: 2 },   // Emergency Patch
+      { id: 'CARD008', quantity: 4 },   // Shield Recharge
+      { id: 'CARD009', quantity: 3 },   // Target Lock
+      { id: 'CARD012', quantity: 4 },   // Armor-Piercing Shot
+      { id: 'CARD013', quantity: 2 },   // Sidewinder Missiles
+      { id: 'CARD016', quantity: 4 },   // Static Field
+    ]
+  }, */
+
+  {
+    name: 'Specialized Hunter Group',
+    description: 'Fast and aggressive interceptor',
+    difficulty: 'Medium',
+    modes: ['extraction'],
+    shipId: 'SHIP_003',
+    imagePath: '/DroneWars/AI/Hunter.png',
+    dronePool: [
+      'Signal Beacon',  // Threat drone: +1 threat per round
+      'Threat Transmitter',
+      'Avenger',
+      'Talon',
+      'Mamoth'
+    ],
+    shipDeployment: {
+      strategy: 'aggressive',
+      placement: ['powerCell', 'bridge', 'droneControlHub'],
+      reasoning: 'Speed-focused deployment for rapid strikes'
+    },
+    decklist: [
+      { id: 'CARD001', quantity: 4 },   // Laser Blast
+      { id: 'CARD002', quantity: 4 },   // System Reboot
+      { id: 'CARD003', quantity: 3 },   // Out Think
+      { id: 'CARD004', quantity: 3 },   // Energy Surge
+      { id: 'CARD005', quantity: 4 },   // Adrenaline Rush
+      { id: 'CARD006', quantity: 2 },   // Nanobot Repair
+      { id: 'CARD007', quantity: 3 },   // Emergency Patch
+      { id: 'CARD009', quantity: 4 },   // Target Lock
+      { id: 'CARD012', quantity: 3 },   // Armor-Piercing Shot
+      { id: 'CARD015', quantity: 4 },   // Streamline
+      { id: 'CARD016', quantity: 3 },   // Static Field
+      { id: 'CARD019', quantity: 3 },   // Reposition
+    ]
+  },
+
+  // TIER 3 - HIGH THREAT (80-100% Detection)
+  {
+    name: 'Capital-Class Blockade Fleet',
+    description: 'Overwhelming force, heavy defenses',
+    difficulty: 'Hard',
+    modes: ['extraction'],
+    shipId: 'SHIP_001',
+    imagePath: '/DroneWars/AI/Blockade.png',
+    dronePool: [
+      'Firefly',
+      'Mammoth',
+      'Talon',
+      'Devastator',
+      'Dart',       // Threat drone: +1 threat per round
+
+    ],
+    shipDeployment: {
+      strategy: 'defensive',
+      placement: ['bridge', 'droneControlHub', 'powerCell'],
+      reasoning: 'Heavy defensive positioning with overwhelming force'
+    },
+    decklist: [
+      { id: 'CARD001', quantity: 4 },   // Laser Blast
+      { id: 'CARD002', quantity: 4 },   // System Reboot
+      { id: 'CARD003', quantity: 2 },   // Out Think
+      { id: 'CARD004', quantity: 3 },   // Energy Surge
+      { id: 'CARD005', quantity: 4 },   // Adrenaline Rush
+      { id: 'CARD006', quantity: 4 },   // Nanobot Repair
+      { id: 'CARD007', quantity: 3 },   // Emergency Patch
+      { id: 'CARD008', quantity: 4 },   // Shield Recharge
+      { id: 'CARD009', quantity: 3 },   // Target Lock
+      { id: 'CARD012', quantity: 4 },   // Armor-Piercing Shot
+      { id: 'CARD013', quantity: 2 },   // Sidewinder Missiles
+      { id: 'CARD016', quantity: 3 },   // Static Field
+    ]
   }
 
   // You can add more AI personalities here in the future

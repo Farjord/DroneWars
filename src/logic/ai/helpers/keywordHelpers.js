@@ -160,3 +160,34 @@ export const hasReadyNotFirstActionDrones = (playerState) => {
   }
   return false;
 };
+
+/**
+ * Check if a drone has an ON_ROUND_START ability that increases threat
+ * These drones generate threat each round and should be protected
+ * @param {Object} drone - The drone to check
+ * @returns {boolean} True if drone has threat-per-round ability
+ */
+export const hasThreatOnRoundStart = (drone) => {
+  const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
+  return baseDrone?.abilities?.some(ability =>
+    ability.type === 'TRIGGERED' &&
+    ability.trigger === 'ON_ROUND_START' &&
+    ability.effect?.type === 'INCREASE_THREAT'
+  ) || false;
+};
+
+/**
+ * Check if a drone increases threat when dealing hull damage to ship sections
+ * These drones should prioritize attacking ship sections over drones
+ * @param {Object} drone - The drone to check
+ * @returns {boolean} True if drone has threat-on-ship-hull-damage ability
+ */
+export const hasThreatOnShipHullDamage = (drone) => {
+  const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
+  return baseDrone?.abilities?.some(ability =>
+    ability.conditionalEffects?.some(ce =>
+      ce.condition?.type === 'ON_SHIP_SECTION_HULL_DAMAGE' &&
+      ce.grantedEffect?.type === 'INCREASE_THREAT'
+    )
+  ) || false;
+};

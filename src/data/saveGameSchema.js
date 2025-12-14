@@ -79,6 +79,11 @@ export const defaultPlayerProfile = {
     ITEM_EXTRACT: 0,
     ITEM_THREAT_REDUCE: 0,
   },
+
+  // Shop pack - one random card pack available for purchase
+  // Refreshes on game start and after successful extraction
+  // { packType: string, tier: number, seed: number } | null
+  shopPack: null,
 };
 
 /**

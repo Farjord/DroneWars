@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { getTacticalItemById } from '../../data/tacticalItemData.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 // Get item data with images
 const evadeItem = getTacticalItemById('ITEM_EVADE');
@@ -20,21 +21,28 @@ const threatReduceItem = getTacticalItemById('ITEM_THREAT_REDUCE');
  * @param {number} extractCount - Number of Clearance Override items
  * @param {number} threatReduceCount - Number of Signal Dampener items
  * @param {number} currentDetection - Current detection level (0-100)
- * @param {Function} onUseThreatReduce - Callback when threat reduce is used
+ * @param {Function} onRequestThreatReduce - Callback when threat reduce is requested (shows confirmation)
  */
 const TacticalItemsPanel = ({
   evadeCount = 0,
   extractCount = 0,
   threatReduceCount = 0,
   currentDetection = 0,
-  onUseThreatReduce
+  onRequestThreatReduce
 }) => {
   // Threat reduce is only usable when we have items AND detection > 0
   const canUseThreatReduce = threatReduceCount > 0 && currentDetection > 0;
 
   const handleThreatReduceClick = () => {
-    if (canUseThreatReduce && onUseThreatReduce) {
-      onUseThreatReduce();
+    debugLog('TACTICAL_ITEMS', 'Signal Dampener clicked', {
+      threatReduceCount,
+      currentDetection,
+      canUseThreatReduce,
+      hasCallback: !!onRequestThreatReduce
+    });
+
+    if (canUseThreatReduce && onRequestThreatReduce) {
+      onRequestThreatReduce();
     }
   };
 

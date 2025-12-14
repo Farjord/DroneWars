@@ -5,9 +5,10 @@
 // Uses unified target scoring as base with drone-specific adjustments
 
 import fullDroneCollection from '../../../data/droneData.js';
-import { ATTACK_BONUSES, PENALTIES } from '../aiConstants.js';
+import { ATTACK_BONUSES, PENALTIES, THREAT_DRONES } from '../aiConstants.js';
 import { calculateLaneScore } from '../scoring/laneScoring.js';
 import { calculateTargetValue } from '../scoring/targetScoring.js';
+import { hasThreatOnShipHullDamage } from '../helpers/keywordHelpers.js';
 
 /**
  * Evaluate a drone-on-drone attack
@@ -74,6 +75,12 @@ export const evaluateDroneAttack = (attacker, target, context) => {
   if (isAntiShip) {
     score += PENALTIES.ANTI_SHIP_ATTACKING_DRONE;
     logic.push(`Anti-Ship Drone: ${PENALTIES.ANTI_SHIP_ATTACKING_DRONE}`);
+  }
+
+  // Threat Transmitter penalty - ability only triggers on ship hull damage
+  if (hasThreatOnShipHullDamage(attacker)) {
+    score += THREAT_DRONES.SHIP_DAMAGE_DRONE_PENALTY;
+    logic.push(`Threat Ability Wasted: ${THREAT_DRONES.SHIP_DAMAGE_DRONE_PENALTY}`);
   }
 
   // Growth bonus (Gladiator - gains permanent +1 attack after attacking)

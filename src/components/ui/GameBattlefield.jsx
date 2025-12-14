@@ -129,6 +129,8 @@ function GameBattlefield({
           sectionRefs={sectionRefs}
           draggedDrone={draggedDrone}
           handleDroneDragEnd={handleDroneDragEnd}
+          draggedActionCard={draggedActionCard}
+          handleActionCardDragEnd={handleActionCardDragEnd}
         />
 
         {/* Opponent Drone Lanes */}
@@ -237,6 +239,8 @@ function GameBattlefield({
           hoveredTarget={hoveredTarget}
           setHoveredTarget={setHoveredTarget}
           sectionRefs={sectionRefs}
+          draggedActionCard={draggedActionCard}
+          handleActionCardDragEnd={handleActionCardDragEnd}
         />
       </div>
     </main>

@@ -23,6 +23,8 @@ import fullCardCollection from '../data/cardData.js';
 import ReputationService from '../logic/reputation/ReputationService.js';
 import { calculateExtractedCredits } from '../logic/singlePlayer/ExtractionController.js';
 import { getTacticalItemById } from '../data/tacticalItemData.js';
+import { generateRandomShopPack, getPackCostForTier } from '../data/cardPackData.js';
+import lootGenerator from '../logic/loot/LootGenerator.js';
 // PhaseManager dependency removed - using direct phase checks
 
 class GameStateManager {
@@ -1664,6 +1666,13 @@ class GameStateManager {
       console.log(`Migration: Set highestUnlockedSlot to ${profile.highestUnlockedSlot}`);
     }
 
+    // Migration: Generate shop pack if not present (new saves and old saves)
+    if (!profile.shopPack) {
+      const highestTier = profile.stats?.highestTierCompleted || 0;
+      profile.shopPack = generateRandomShopPack(highestTier, Date.now());
+      console.log('Migration: Generated shop pack:', profile.shopPack);
+    }
+
     this.setState({
       singlePlayerProfile: profile,
       singlePlayerInventory: saveData.inventory,
@@ -1829,6 +1838,56 @@ class GameStateManager {
     console.log(`Purchased ${item.name} for ${item.cost} credits. Now have ${newQuantity}`);
 
     return { success: true, newQuantity };
+  }
+
+  /**
+   * Purchase the currently available shop card pack
+   * @returns {Object} { success: boolean, cards?: Array, cost?: number, error?: string }
+   */
+  purchaseCardPack() {
+    const profile = this.state.singlePlayerProfile;
+    const shopPack = profile?.shopPack;
+
+    if (!shopPack) {
+      return { success: false, error: 'No pack available' };
+    }
+
+    const { packType, tier, seed } = shopPack;
+    const cost = getPackCostForTier(tier);
+
+    if (profile.credits < cost) {
+      return { success: false, error: 'Insufficient credits' };
+    }
+
+    // Generate pack contents using seeded RNG for deterministic results
+    const result = lootGenerator.openShopPack(packType, tier, seed);
+
+    if (!result.cards || result.cards.length === 0) {
+      return { success: false, error: 'Failed to generate cards' };
+    }
+
+    // Deduct credits
+    const newCredits = profile.credits - cost;
+
+    // Add cards to inventory
+    const newInventory = { ...this.state.singlePlayerInventory };
+    result.cards.forEach(card => {
+      newInventory[card.cardId] = (newInventory[card.cardId] || 0) + 1;
+    });
+
+    // Clear shop pack (consumed) and update state
+    this.setState({
+      singlePlayerProfile: {
+        ...profile,
+        credits: newCredits,
+        shopPack: null // Pack consumed
+      },
+      singlePlayerInventory: newInventory
+    });
+
+    console.log(`Purchased ${packType} T${tier} for ${cost} credits. Cards:`, result.cards.map(c => c.cardId));
+
+    return { success: true, cards: result.cards, cost };
   }
 
   /**
@@ -2686,6 +2745,11 @@ class GameStateManager {
       if (currentTier > (this.state.singlePlayerProfile.stats.highestTierCompleted || 0)) {
         this.state.singlePlayerProfile.stats.highestTierCompleted = currentTier;
       }
+
+      // Refresh shop pack for next hangar visit (uses updated highestTierCompleted)
+      const highestTier = this.state.singlePlayerProfile.stats.highestTierCompleted || 0;
+      this.state.singlePlayerProfile.shopPack = generateRandomShopPack(highestTier, Date.now());
+      console.log('Shop pack refreshed:', this.state.singlePlayerProfile.shopPack);
 
       console.log('Run ended successfully - loot transferred');
 

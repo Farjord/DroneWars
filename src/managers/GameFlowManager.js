@@ -10,6 +10,7 @@ import fullDroneCollection from '../data/droneData.js';
 import GameDataService from '../services/GameDataService.js';
 import { gameEngine } from '../logic/gameLogic.js';
 import RoundManager from '../logic/round/RoundManager.js';
+import EffectRouter from '../logic/EffectRouter.js';
 import PhaseManager from './PhaseManager.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 
@@ -1139,11 +1140,43 @@ class GameFlowManager {
       });
 
       // ========================================
+      // STEP 3b: ON_ROUND_START Triggered Abilities
+      // ========================================
+      // Process ON_ROUND_START abilities for all drones (e.g., Signal Beacon, War Machine)
+      // AI drones process first, then player drones
+      debugLog('PHASE_MANAGER', '🎯 Step 3b: Processing ON_ROUND_START triggers');
+
+      const preTriggersState = this.gameStateManager.getState();
+      const effectRouter = new EffectRouter();
+
+      const roundStartResult = RoundManager.processRoundStartTriggers(
+        preTriggersState.player1,
+        preTriggersState.player2,
+        allPlacedSections,
+        effectRouter
+      );
+
+      // Update state with any modifications from ON_ROUND_START abilities
+      if (roundStartResult) {
+        await this.actionProcessor.queueAction({
+          type: 'roundStartTriggers',
+          payload: {
+            player1: roundStartResult.player1,
+            player2: roundStartResult.player2
+          }
+        });
+
+        debugLog('PHASE_MANAGER', '✅ ON_ROUND_START triggers processed', {
+          animationEventsCount: roundStartResult.animationEvents?.length || 0
+        });
+      }
+
+      // ========================================
       // STEP 4: Card Draw
       // ========================================
       debugLog('PHASE_MANAGER', '🃏 Step 4: Drawing cards');
 
-      // Get FRESH state after energy reset to avoid overwriting energy/deployment budget updates
+      // Get FRESH state after energy reset and round start triggers
       const updatedGameState = this.gameStateManager.getState();
 
       // DIAGNOSTIC: Log deck sizes after energyReset

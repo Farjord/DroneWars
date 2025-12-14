@@ -24,6 +24,7 @@ import SearchAndDrawProcessor from './effects/cards/SearchAndDrawProcessor.js';
 import DrawThenDiscardProcessor from './effects/cards/DrawThenDiscardProcessor.js';
 import MovementEffectProcessor from './effects/movement/MovementEffectProcessor.js';
 import MarkingEffectProcessor from './effects/marking/MarkingEffectProcessor.js';
+import IncreaseThreatEffectProcessor from './effects/detection/IncreaseThreatEffectProcessor.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 /**
@@ -76,7 +77,9 @@ class EffectRouter {
       DRAW_THEN_DISCARD: new DrawThenDiscardProcessor(),
       // Phase 9.4A: Marking effects - COMPLETE
       MARK_DRONE: markingProcessor,
-      MARK_RANDOM_ENEMY: markingProcessor
+      MARK_RANDOM_ENEMY: markingProcessor,
+      // Detection/Threat effects (Extraction mode)
+      INCREASE_THREAT: new IncreaseThreatEffectProcessor()
     };
   }
 

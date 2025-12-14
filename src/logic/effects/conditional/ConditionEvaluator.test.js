@@ -881,4 +881,147 @@ describe('ConditionEvaluator', () => {
       expect(result).toBe(false);
     });
   });
+
+  // ========================================
+  // ON_SHIP_SECTION_HULL_DAMAGE CONDITION (POST timing)
+  // ========================================
+  // Triggers only when hull damage is dealt to a ship section (not a drone)
+  // Used by drones like Threat Transmitter to increase threat when damaging the player's ship
+  describe('ON_SHIP_SECTION_HULL_DAMAGE', () => {
+    it('returns true when hull damage dealt to ship section', () => {
+      // Ship sections have thresholds property (drones don't)
+      const shipSectionTarget = {
+        id: 'bridge',
+        name: 'Bridge',
+        hull: 10,
+        maxHull: 15,
+        allocatedShields: 0,
+        thresholds: { damaged: 5, destroyed: 0 }
+      };
+      mockContext.target = shipSectionTarget;
+      mockContext.effectResult = {
+        damageDealt: { hull: 3, shield: 0 }
+      };
+      const condition = { type: 'ON_SHIP_SECTION_HULL_DAMAGE' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false when hull damage dealt to drone (not ship section)', () => {
+      // Drones have attack property, ship sections don't
+      const droneTarget = {
+        id: 'player1_Dart_0001',
+        name: 'Dart',
+        hull: 3,
+        attack: 2,
+        speed: 3,
+        currentShields: 1
+      };
+      mockContext.target = droneTarget;
+      mockContext.effectResult = {
+        damageDealt: { hull: 2, shield: 0 }
+      };
+      const condition = { type: 'ON_SHIP_SECTION_HULL_DAMAGE' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns false when only shield damage dealt to ship section', () => {
+      const shipSectionTarget = {
+        id: 'bridge',
+        name: 'Bridge',
+        hull: 10,
+        allocatedShields: 5,
+        thresholds: { damaged: 5, destroyed: 0 }
+      };
+      mockContext.target = shipSectionTarget;
+      mockContext.effectResult = {
+        damageDealt: { hull: 0, shield: 5 }
+      };
+      const condition = { type: 'ON_SHIP_SECTION_HULL_DAMAGE' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns true when both shield and hull damage dealt to ship section', () => {
+      const shipSectionTarget = {
+        id: 'powerCell',
+        name: 'Power Cell',
+        hull: 8,
+        allocatedShields: 3,
+        thresholds: { damaged: 4, destroyed: 0 }
+      };
+      mockContext.target = shipSectionTarget;
+      mockContext.effectResult = {
+        damageDealt: { hull: 2, shield: 3 }
+      };
+      const condition = { type: 'ON_SHIP_SECTION_HULL_DAMAGE' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false when no effectResult provided', () => {
+      const shipSectionTarget = {
+        id: 'bridge',
+        thresholds: { damaged: 5, destroyed: 0 }
+      };
+      mockContext.target = shipSectionTarget;
+      mockContext.effectResult = undefined;
+      const condition = { type: 'ON_SHIP_SECTION_HULL_DAMAGE' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns false when damageDealt is undefined', () => {
+      const shipSectionTarget = {
+        id: 'bridge',
+        thresholds: { damaged: 5, destroyed: 0 }
+      };
+      mockContext.target = shipSectionTarget;
+      mockContext.effectResult = {};
+      const condition = { type: 'ON_SHIP_SECTION_HULL_DAMAGE' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns false when target is undefined', () => {
+      mockContext.target = undefined;
+      mockContext.effectResult = {
+        damageDealt: { hull: 5, shield: 0 }
+      };
+      const condition = { type: 'ON_SHIP_SECTION_HULL_DAMAGE' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns false when no damage dealt to ship section', () => {
+      const shipSectionTarget = {
+        id: 'bridge',
+        thresholds: { damaged: 5, destroyed: 0 }
+      };
+      mockContext.target = shipSectionTarget;
+      mockContext.effectResult = {
+        damageDealt: { hull: 0, shield: 0 }
+      };
+      const condition = { type: 'ON_SHIP_SECTION_HULL_DAMAGE' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+  });
 });

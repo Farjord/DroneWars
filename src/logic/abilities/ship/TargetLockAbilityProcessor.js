@@ -42,6 +42,12 @@ class TargetLockAbilityProcessor {
     const opponentId = playerId === 'player1' ? 'player2' : 'player1';
     const opponentState = newPlayerStates[opponentId];
 
+    // Increment ship section ability activation counter for per-round limits
+    if (playerState.shipSections?.[sectionName]) {
+      playerState.shipSections[sectionName].abilityActivationCount =
+        (playerState.shipSections[sectionName].abilityActivationCount || 0) + 1;
+    }
+
     // Step 1: Deduct energy cost (2 energy)
     if (playerState.energy < 2) {
       console.warn('⚠️ TargetLockAbilityProcessor: Insufficient energy');

@@ -553,6 +553,56 @@ class LootGenerator {
     }
     return shuffled;
   }
+
+  /**
+   * Open a pack purchased from shop (max cards, no salvage)
+   * Uses seeded RNG for deterministic results
+   * @param {string} packType - Pack type (ORDNANCE_PACK, SUPPORT_PACK, etc.)
+   * @param {number} tier - Tier (1, 2, or 3) affects rarity weights
+   * @param {number} seed - Random seed (required for determinism)
+   * @returns {Object} { cards: Array } - NO salvageItem/credits
+   */
+  openShopPack(packType, tier = 1, seed = Date.now()) {
+    const config = packTypes[packType];
+    if (!config) return { cards: [] };
+
+    // Use seeded RNG for deterministic generation
+    const rng = this.createRNG(seed);
+
+    // Handle tier edge cases - default to tier1 for 0 or less, tier3 for 4+
+    const normalizedTier = Math.max(1, Math.min(3, tier || 1));
+    const tierKey = `tier${normalizedTier}`;
+    const rarityWeights = config.rarityWeights[tierKey] || config.rarityWeights.tier1;
+    const allowedRarities = Object.keys(rarityWeights).filter(r => rarityWeights[r] > 0);
+
+    // Shop packs ALWAYS use max card count (never random)
+    const cardCount = config.cardCount.max;
+
+    const cards = [];
+    for (let i = 0; i < cardCount; i++) {
+      const cardType = this.rollCardType(config, i === 0, rng);
+      const rarity = this.rollRarity(rarityWeights, rng);
+      const card = this.selectCard(cardType, rarity, allowedRarities, rng);
+
+      if (card) {
+        cards.push({
+          type: 'card',
+          cardId: card.id,
+          cardName: card.name,
+          rarity: card.rarity || 'Common',
+          cardType: card.type,
+          source: 'shop_pack'
+        });
+      }
+    }
+
+    // Sort by rarity: Common → Uncommon → Rare → Mythic (best last)
+    const rarityOrder = { Common: 0, Uncommon: 1, Rare: 2, Mythic: 3 };
+    cards.sort((a, b) => (rarityOrder[a.rarity] || 0) - (rarityOrder[b.rarity] || 0));
+
+    // NO salvage/credits for shop packs - only return cards
+    return { cards };
+  }
 }
 
 export default new LootGenerator();

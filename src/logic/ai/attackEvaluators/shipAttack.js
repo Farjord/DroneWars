@@ -3,7 +3,8 @@
 // ========================================
 // Evaluates drone-on-ship-section attack actions
 
-import { ATTACK_BONUSES, SCORING_WEIGHTS } from '../aiConstants.js';
+import { ATTACK_BONUSES, SCORING_WEIGHTS, THREAT_DRONES } from '../aiConstants.js';
+import { hasThreatOnShipHullDamage } from '../helpers/keywordHelpers.js';
 
 /**
  * Evaluate a drone-on-ship-section attack
@@ -55,6 +56,12 @@ export const evaluateShipAttack = (attacker, target, context) => {
     const bonus = target.allocatedShields * SCORING_WEIGHTS.PIERCING_SECTION_MULTIPLIER;
     score += bonus;
     logic.push(`✅ Piercing Damage: +${bonus}`);
+  }
+
+  // Threat Transmitter bonus - attacking ship triggers threat ability
+  if (hasThreatOnShipHullDamage(attacker)) {
+    score += THREAT_DRONES.SHIP_DAMAGE_SHIP_ATTACK_BONUS;
+    logic.push(`✅ Threat on Ship Damage: +${THREAT_DRONES.SHIP_DAMAGE_SHIP_ATTACK_BONUS}`);
   }
 
   return { score, logic };

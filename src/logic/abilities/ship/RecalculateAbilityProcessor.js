@@ -45,6 +45,12 @@ class RecalculateAbilityProcessor {
 
     const playerState = newPlayerStates[playerId];
 
+    // Increment ship section ability activation counter for per-round limits
+    if (playerState.shipSections?.[sectionName]) {
+      playerState.shipSections[sectionName].abilityActivationCount =
+        (playerState.shipSections[sectionName].abilityActivationCount || 0) + 1;
+    }
+
     // Step 1: Deduct energy cost FIRST (1 energy)
     if (playerState.energy < 1) {
       console.warn('⚠️ RecalculateAbilityProcessor: Insufficient energy');

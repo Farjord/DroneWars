@@ -9,14 +9,14 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import TacticalItemsPanel from './TacticalItemsPanel.jsx';
 
 describe('TacticalItemsPanel', () => {
-  const mockOnUseThreatReduce = vi.fn();
+  const mockOnRequestThreatReduce = vi.fn();
 
   const defaultProps = {
     evadeCount: 2,
     extractCount: 1,
     threatReduceCount: 3,
     currentDetection: 50,
-    onUseThreatReduce: mockOnUseThreatReduce
+    onRequestThreatReduce: mockOnRequestThreatReduce
   };
 
   beforeEach(() => {
@@ -93,7 +93,7 @@ describe('TacticalItemsPanel', () => {
           extractCount={0}
           threatReduceCount={0}
           currentDetection={50}
-          onUseThreatReduce={mockOnUseThreatReduce}
+          onRequestThreatReduce={mockOnRequestThreatReduce}
         />
       );
 
@@ -104,22 +104,22 @@ describe('TacticalItemsPanel', () => {
   });
 
   describe('Interactions', () => {
-    test('calls onUseThreatReduce when threat reduce slot clicked', () => {
+    test('calls onRequestThreatReduce when threat reduce slot clicked', () => {
       render(<TacticalItemsPanel {...defaultProps} />);
 
       const threatSlot = screen.getByTestId('tactical-item-threat');
       fireEvent.click(threatSlot);
 
-      expect(mockOnUseThreatReduce).toHaveBeenCalledTimes(1);
+      expect(mockOnRequestThreatReduce).toHaveBeenCalledTimes(1);
     });
 
-    test('does not call onUseThreatReduce when disabled', () => {
+    test('does not call onRequestThreatReduce when disabled', () => {
       render(<TacticalItemsPanel {...defaultProps} threatReduceCount={0} />);
 
       const threatSlot = screen.getByTestId('tactical-item-threat');
       fireEvent.click(threatSlot);
 
-      expect(mockOnUseThreatReduce).not.toHaveBeenCalled();
+      expect(mockOnRequestThreatReduce).not.toHaveBeenCalled();
     });
 
     test('evade slot click does nothing (context-locked)', () => {
@@ -129,7 +129,7 @@ describe('TacticalItemsPanel', () => {
       fireEvent.click(evadeSlot);
 
       // No action should be triggered
-      expect(mockOnUseThreatReduce).not.toHaveBeenCalled();
+      expect(mockOnRequestThreatReduce).not.toHaveBeenCalled();
     });
 
     test('extract slot click does nothing (context-locked)', () => {
@@ -139,7 +139,7 @@ describe('TacticalItemsPanel', () => {
       fireEvent.click(extractSlot);
 
       // No action should be triggered
-      expect(mockOnUseThreatReduce).not.toHaveBeenCalled();
+      expect(mockOnRequestThreatReduce).not.toHaveBeenCalled();
     });
   });
 

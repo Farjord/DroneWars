@@ -5,7 +5,7 @@
 // Extracted from App.jsx for better component organization
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Power, Files, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain, Plus, Image, ChevronRight, Check } from 'lucide-react';
+import { Power, Files, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain, Plus, Image, ChevronRight, Check, AlertTriangle } from 'lucide-react';
 import { getPhaseDisplayName } from '../../utils/gameUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import DEV_CONFIG from '../../config/devConfig.js';
@@ -111,7 +111,10 @@ function GameHeader({
   selectedInterceptor,
   handleShowInterceptionDialog,
   handleDeclineInterceptionFromHeader,
-  handleConfirmInterception
+  handleConfirmInterception,
+  // Extraction mode props
+  currentRunState,
+  isExtractionMode
 }) {
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [showBackgroundSubmenu, setShowBackgroundSubmenu] = useState(false);
@@ -788,12 +791,26 @@ function GameHeader({
             isPlayer={true}
           />
           <ResourceBadge
-            icon={Cpu} 
-            value={totalLocalPlayerDrones} 
+            icon={Cpu}
+            value={totalLocalPlayerDrones}
             max={localPlayerEffectiveStats.totals.cpuLimit}
             iconColor="text-cyan-400"
             isPlayer={true}
           />
+          {/* Threat KPI - Only show in Extraction mode */}
+          {isExtractionMode && currentRunState && (
+            <ResourceBadge
+              icon={AlertTriangle}
+              value={Math.round(currentRunState.detection || 0)}
+              max={100}
+              iconColor={
+                currentRunState.detection >= 80 ? 'text-red-500' :
+                currentRunState.detection >= 50 ? 'text-yellow-400' :
+                'text-green-400'
+              }
+              isPlayer={true}
+            />
+          )}
           {turnPhase === 'allocateShields' && (
             <ResourceBadge
               icon={ShieldCheck}

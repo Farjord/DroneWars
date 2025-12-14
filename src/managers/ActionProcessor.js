@@ -423,6 +423,9 @@ setAnimationManager(animationManager) {
         case 'energyReset':
           result = await this.processEnergyReset(payload); break;
 
+        case 'roundStartTriggers':
+          result = await this.processRoundStartTriggers(payload); break;
+
         case 'destroyDrone':
           result = await this.processDestroyDrone(payload); break;
 
@@ -3746,6 +3749,33 @@ setAnimationManager(animationManager) {
       player2,
       shieldsToAllocate,
       opponentShieldsToAllocate
+    };
+  }
+
+  /**
+   * Process ON_ROUND_START triggered abilities
+   * Updates player states after round start triggers have been processed
+   * @param {Object} payload - { player1, player2 } with updated states
+   * @returns {Object} Round start triggers result
+   */
+  async processRoundStartTriggers(payload) {
+    const { player1, player2 } = payload;
+
+    debugLog('ROUND_START', '🎯 ActionProcessor: Processing round start triggers');
+
+    // Update player states with any modifications from ON_ROUND_START abilities
+    this.gameStateManager.setState({
+      player1,
+      player2
+    }, 'ROUND_START_TRIGGERS');
+
+    debugLog('ROUND_START', '✅ Round start triggers complete');
+
+    return {
+      success: true,
+      message: 'Round start triggers processed',
+      player1,
+      player2
     };
   }
 

@@ -588,6 +588,73 @@ const fullDroneCollection = [
     }],
     upgradeSlots: 2
   },
+  // ========================================
+  // AI-ONLY DRONES (selectable: false)
+  // ========================================
+  // These drones cannot be selected by players but AI can include them in decks
+  {
+    name: 'Signal Beacon',
+    class: 1,
+    limit: 2,
+    rarity: 'Uncommon',
+    attack: 0,
+    hull: 2,
+    shields: 1,
+    speed: 1,
+    image: '/DroneWars/img/SignalBeacon.png',
+    selectable: false, // AI-only - cannot be selected by players
+    abilities: [{
+      name: 'Threat Signal',
+      description: 'Start of Round: Increase player threat by 1.',
+      type: 'TRIGGERED',
+      trigger: 'ON_ROUND_START',
+      effect: { type: 'INCREASE_THREAT', value: 1 }
+    }],
+    upgradeSlots: 0
+  },
+  {
+    name: 'Threat Transmitter',
+    class: 2,
+    limit: 2,
+    rarity: 'Rare',
+    attack: 2,
+    hull: 2,
+    shields: 1,
+    speed: 2,
+    image: '/DroneWars/img/ThreatTransmitter.png',
+    selectable: false, // AI-only - cannot be selected by players
+    abilities: [{
+      name: 'Alert Broadcast',
+      description: 'When this drone deals hull damage to a ship section, increase player threat by 2.',
+      type: 'TRIGGERED',
+      trigger: 'ON_ATTACK',
+      conditionalEffects: [{
+        timing: 'POST',
+        condition: { type: 'ON_SHIP_SECTION_HULL_DAMAGE' },
+        grantedEffect: { type: 'INCREASE_THREAT', value: 2 }
+      }]
+    }],
+    upgradeSlots: 1
+  },
+  {
+    name: 'War Machine',
+    class: 2,
+    limit: 2,
+    rarity: 'Uncommon',
+    attack: 2,
+    hull: 3,
+    shields: 1,
+    speed: 2,
+    image: '/DroneWars/img/WarMachine.png',
+    abilities: [{
+      name: 'Combat Escalation',
+      description: 'Start of Round: Gain +1 attack permanently.',
+      type: 'TRIGGERED',
+      trigger: 'ON_ROUND_START',
+      effects: [{ type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1 } }]
+    }],
+    upgradeSlots: 2
+  },
 ];
 
 export default fullDroneCollection;

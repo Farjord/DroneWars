@@ -10,9 +10,10 @@ import {
   countDroneTypeInLane,
   hasDefenderKeyword,
   hasDogfightKeyword,
+  hasThreatOnRoundStart,
 } from './ai/helpers/index.js';
 
-import { INTERCEPTION } from './ai/aiConstants.js';
+import { INTERCEPTION, THREAT_DRONES } from './ai/aiConstants.js';
 
 // Import extracted scoring functions
 import {
@@ -281,6 +282,12 @@ const currentLaneScores = {
           }
         }
 
+        // Threat drone deployment bonus - threat-per-round drones generate value over time
+        let threatDroneBonus = 0;
+        if (hasThreatOnRoundStart(baseDrone)) {
+          threatDroneBonus = THREAT_DRONES.ROUND_START_DEPLOY_BONUS;
+        }
+
         const logicArray = [
             `LaneScore: ${currentLaneScore.toFixed(0)}`,
             `Projected: ${projectedScore.toFixed(0)}`,
@@ -288,7 +295,8 @@ const currentLaneScores = {
             `Bonus: ${strategicBonus.toFixed(0)}`,
             `Stabilize: ${stabilizationBonus.toFixed(0)}`,
             `Dominance: ${dominanceBonus.toFixed(0)}`,
-            ...(onDeployBonus > 0 ? [`OnDeploy: +${onDeployBonus}`] : [])
+            ...(onDeployBonus > 0 ? [`OnDeploy: +${onDeployBonus}`] : []),
+            ...(threatDroneBonus > 0 ? [`ThreatDrone: +${threatDroneBonus}`] : [])
         ];
 
         let overkillPenalty = 0;
@@ -302,7 +310,7 @@ const currentLaneScores = {
             }
         }
 
-        const finalScore = impactScore + strategicBonus + stabilizationBonus + dominanceBonus + onDeployBonus + overkillPenalty;
+        const finalScore = impactScore + strategicBonus + stabilizationBonus + dominanceBonus + onDeployBonus + threatDroneBonus + overkillPenalty;
 
         possibleDeployments.push({
           drone,

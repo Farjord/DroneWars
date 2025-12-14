@@ -4,8 +4,9 @@
 // Single "black box" function for evaluating target value
 // Used by ALL damage/destroy effects for consistent prioritization
 
-import { TARGET_SCORING, DAMAGE_TYPE_WEIGHTS } from '../aiConstants.js';
+import { TARGET_SCORING, DAMAGE_TYPE_WEIGHTS, THREAT_DRONES } from '../aiConstants.js';
 import fullDroneCollection from '../../../data/droneData.js';
+import { hasThreatOnRoundStart } from '../helpers/keywordHelpers.js';
 
 const {
   JAMMER_BLOCKING_BASE,
@@ -177,6 +178,12 @@ const evaluateDangerousAbilities = (target) => {
       value += ANTI_SHIP_ABILITY_BONUS;
       logic.push(`Anti-Ship: +${ANTI_SHIP_ABILITY_BONUS}`);
     }
+  }
+
+  // Threat-per-round drones are high value (should be protected)
+  if (hasThreatOnRoundStart(target)) {
+    value += THREAT_DRONES.ROUND_START_PROTECTION_VALUE;
+    logic.push(`Threat Generator: +${THREAT_DRONES.ROUND_START_PROTECTION_VALUE}`);
   }
 
   return { value, logic };

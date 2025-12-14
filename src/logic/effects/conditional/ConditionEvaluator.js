@@ -36,6 +36,7 @@ class ConditionEvaluator {
       // Outcome conditions (POST timing only)
       ON_DESTROY: this.evaluateOnDestroy.bind(this),
       ON_HULL_DAMAGE: this.evaluateOnHullDamage.bind(this),
+      ON_SHIP_SECTION_HULL_DAMAGE: this.evaluateOnShipSectionHullDamage.bind(this),
       ON_MOVE: this.evaluateOnMove.bind(this),
 
       // Lane comparison conditions (POST timing, for movement)
@@ -255,6 +256,42 @@ class ConditionEvaluator {
 
     // Only trigger when hull damage is dealt, not shield damage
     return hull > 0;
+  }
+
+  /**
+   * Check if hull damage was dealt to a ship section (not a drone)
+   * Used for abilities that trigger when damaging the player's ship
+   * Requires effectResult from POST timing
+   *
+   * Ship sections are identified by having a 'thresholds' property
+   * Drones have 'attack' property, ship sections don't
+   */
+  evaluateOnShipSectionHullDamage(condition, context) {
+    const effectResult = context.effectResult;
+    const target = context.target;
+
+    // Must have effect result with damage data
+    if (!effectResult || !effectResult.damageDealt) {
+      return false;
+    }
+
+    // Must have a target
+    if (!target) {
+      return false;
+    }
+
+    // Check if hull damage was dealt
+    const { hull = 0 } = effectResult.damageDealt;
+    if (hull <= 0) {
+      return false;
+    }
+
+    // Check if target is a ship section (has thresholds, no attack stat)
+    // Ship sections have: id, hull, maxHull, allocatedShields, thresholds
+    // Drones have: id, hull, attack, speed, currentShields
+    const isShipSection = target.thresholds !== undefined;
+
+    return isShipSection;
   }
 
   /**

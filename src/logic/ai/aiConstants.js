@@ -367,3 +367,22 @@ export const DAMAGE_TYPE_WEIGHTS = {
   KINETIC_UNSHIELDED_BONUS: 25,           // Bonus when target has 0 shields
   KINETIC_BLOCKED_PENALTY: -100,          // Penalty when target has shields (blocked)
 };
+
+// ========================================
+// THREAT DRONE CONSTANTS
+// ========================================
+// Used for AI-only drones that increase player threat
+// Signal Beacon: +1 threat per round (ON_ROUND_START)
+// Threat Transmitter: +2 threat on ship hull damage (ON_SHIP_SECTION_HULL_DAMAGE)
+
+export const THREAT_DRONES = {
+  // Deployment bonuses
+  ROUND_START_DEPLOY_BONUS: 20,           // Value of threat-per-round drones (deploy priority)
+
+  // Attack targeting bonuses
+  SHIP_DAMAGE_SHIP_ATTACK_BONUS: 25,      // Bonus for Threat Transmitter attacking ship sections
+  SHIP_DAMAGE_DRONE_PENALTY: -30,         // Penalty for wasting Threat Transmitter on drone attacks
+
+  // Protection priority (makes AI intercept for these drones)
+  ROUND_START_PROTECTION_VALUE: 25,       // High value = AI will intercept for Signal Beacons
+};

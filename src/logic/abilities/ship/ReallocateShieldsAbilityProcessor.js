@@ -166,7 +166,7 @@ class ReallocateShieldsAbilityProcessor {
    * @returns {Object} { newPlayerStates, shouldEndTurn: true }
    */
   complete(payload, playerStates) {
-    const { playerId, pendingChanges } = payload;
+    const { playerId, sectionName, pendingChanges } = payload;
 
     debugLog('SHIP_ABILITY', `✅ ReallocateShieldsAbilityProcessor: Complete for ${playerId}`, { pendingChanges });
 
@@ -197,6 +197,14 @@ class ReallocateShieldsAbilityProcessor {
     } else {
       playerState.energy -= 1;
       debugLog('SHIP_ABILITY', `💰 ReallocateShieldsAbilityProcessor: Deducted 1 energy (${playerState.energy + 1} → ${playerState.energy})`);
+    }
+
+    // Increment ship section ability activation counter for per-round limits
+    // powerCell is the section that has Reallocate Shields ability
+    const abilitySection = sectionName || 'powerCell';
+    if (playerState.shipSections?.[abilitySection]) {
+      playerState.shipSections[abilitySection].abilityActivationCount =
+        (playerState.shipSections[abilitySection].abilityActivationCount || 0) + 1;
     }
 
     // Return with shouldEndTurn: true

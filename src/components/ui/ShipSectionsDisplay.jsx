@@ -59,7 +59,9 @@ const ShipSectionsDisplay = ({
   setHoveredTarget,
   sectionRefs,
   draggedDrone,
-  handleDroneDragEnd
+  handleDroneDragEnd,
+  draggedActionCard,
+  handleActionCardDragEnd
 }) => {
   // Get GameDataService for direct effective stats calculation
   const { getEffectiveShipStats } = useGameData();
@@ -155,6 +157,15 @@ const ShipSectionsDisplay = ({
               height: 'clamp(143px, 6.25vw, 184px)'
             }}
             onMouseUp={() => {
+              // Handle action card drop for ship section targeting (e.g., Shield Boost)
+              if (draggedActionCard && handleActionCardDragEnd) {
+                const card = draggedActionCard.card;
+                if (card?.targeting?.type === 'SHIP_SECTION') {
+                  const targetSection = { id: sectionName, name: sectionName };
+                  debugLog('DRAG_DROP_DEPLOY', '🎯 Ship section action card drop detected', { sectionName, card: card.name });
+                  handleActionCardDragEnd(targetSection, 'section', currentPlayerId);
+                }
+              }
               // Handle drone drop for ship section attack
               if (draggedDrone && !isPlayer && handleDroneDragEnd) {
                 const targetLane = `lane${laneIndex + 1}`;

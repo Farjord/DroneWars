@@ -3577,7 +3577,8 @@ const App = ({ phaseAnimationQueue }) => {
           setShipAbilityConfirmation({
               ability: shipAbilityMode.ability,
               sectionName: shipAbilityMode.sectionName,
-              target: target
+              target: target,
+              abilityType: shipAbilityMode.abilityType
           });
           return;
       }
@@ -4525,6 +4526,9 @@ const App = ({ phaseAnimationQueue }) => {
         handleShowInterceptionDialog={handleShowInterceptionDialog}
         handleDeclineInterceptionFromHeader={handleDeclineInterceptionFromHeader}
         handleConfirmInterception={handleConfirmInterception}
+        // Extraction mode props
+        currentRunState={gameState.currentRunState}
+        isExtractionMode={!!gameState.currentRunState}
       />
 
       <GameBattlefield
@@ -4971,6 +4975,9 @@ const App = ({ phaseAnimationQueue }) => {
 
               debugLog('SHIP_ABILITY', `Reallocate Shields ability completed:`, result);
             }
+
+            // Clear ship ability targeting mode after completion
+            setShipAbilityMode(null);
 
             // Clear reallocation UI state after ability completion
             setReallocationPhase(null);

@@ -38,9 +38,11 @@ import { getValidDeploymentsForDeck } from '../../logic/quickDeploy/QuickDeployV
 import { getAllShips, getDefaultShip } from '../../data/shipData.js';
 import { calculateSectionBaseStats } from '../../logic/statsCalculator.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import SeededRandom from '../../utils/seededRandom.js';
 import { ECONOMY } from '../../data/economyData.js';
 import ReputationService from '../../logic/reputation/ReputationService.js';
 import TacticalItemsPanel from '../ui/TacticalItemsPanel.jsx';
+import TacticalItemConfirmationModal from '../modals/TacticalItemConfirmationModal.jsx';
 import { getTacticalItemById } from '../../data/tacticalItemData.js';
 import './TacticalMapScreen.css';
 
@@ -202,6 +204,9 @@ function TacticalMapScreen() {
   // Extraction confirmation modal state
   const [showExtractionConfirm, setShowExtractionConfirm] = useState(false);
   const [extractionQuickDeployPending, setExtractionQuickDeployPending] = useState(false);
+
+  // Tactical item confirmation modal state
+  const [tacticalItemConfirmation, setTacticalItemConfirmation] = useState(null);
 
   // Ref to track pause state in async movement loop
   const isPausedRef = useRef(false);
@@ -1514,27 +1519,64 @@ function TacticalMapScreen() {
 
   /**
    * Handle threat reduction item usage
-   * Reduces current detection by item's effectValue
+   * Reduces current detection by random amount within item's effectValueMin/Max range
    */
   const handleUseThreatReduce = useCallback(() => {
     console.log('[TacticalMap] Signal Dampener used');
 
-    // Use the tactical item
+    // Get the item data for effect range
+    const item = getTacticalItemById('ITEM_THREAT_REDUCE');
+    const min = item?.effectValueMin ?? 5;
+    const max = item?.effectValueMax ?? 15;
+
+    // Use seeded random for determinism (offset by remaining item count for unique rolls)
+    const remainingCount = gameStateManager.getTacticalItemCount('ITEM_THREAT_REDUCE');
+    const baseRng = SeededRandom.fromGameState(gameStateManager.getState());
+    const itemUseOffset = 8888 + (remainingCount * 100);
+    const rng = new SeededRandom(baseRng.seed + itemUseOffset);
+    const reductionAmount = rng.randomIntInclusive(min, max);
+
+    // Use the tactical item (consume it)
     const result = gameStateManager.useTacticalItem('ITEM_THREAT_REDUCE');
     if (!result.success) {
       console.warn('[TacticalMap] Failed to use threat reduce item:', result.error);
       return;
     }
 
-    // Get the effect value from the item data
-    const item = getTacticalItemById('ITEM_THREAT_REDUCE');
-    const reductionAmount = item?.effectValue || 20;
-
     // Reduce detection
     DetectionManager.addDetection(-reductionAmount, 'Signal Dampener used');
 
-    console.log('[TacticalMap] Detection reduced by', reductionAmount, ', remaining items:', result.remaining);
+    console.log('[TacticalMap] Detection reduced by', reductionAmount, '% (range:', min, '-', max, '), remaining items:', result.remaining);
   }, []);
+
+  /**
+   * Handle request to use threat reduce item (shows confirmation modal)
+   */
+  const handleRequestThreatReduce = useCallback(() => {
+    const item = getTacticalItemById('ITEM_THREAT_REDUCE');
+    setTacticalItemConfirmation({
+      item,
+      currentDetection: currentRunState?.detection || 0
+    });
+  }, [currentRunState?.detection]);
+
+  /**
+   * Handle tactical item confirmation cancel
+   */
+  const handleTacticalItemCancel = useCallback(() => {
+    setTacticalItemConfirmation(null);
+  }, []);
+
+  /**
+   * Handle tactical item confirmation confirm
+   */
+  const handleTacticalItemConfirm = useCallback(() => {
+    setTacticalItemConfirmation(null);
+    // Delay execution to allow modal to close
+    setTimeout(() => {
+      handleUseThreatReduce();
+    }, 400);
+  }, [handleUseThreatReduce]);
 
   /**
    * Handle escape cancel - close escape confirmation modal
@@ -2207,7 +2249,7 @@ function TacticalMapScreen() {
         extractCount={gameStateManager.getTacticalItemCount('ITEM_EXTRACT')}
         threatReduceCount={gameStateManager.getTacticalItemCount('ITEM_THREAT_REDUCE')}
         currentDetection={currentRunState.detection || 0}
-        onUseThreatReduce={handleUseThreatReduce}
+        onRequestThreatReduce={handleRequestThreatReduce}
       />
 
       {/* Hex Info Panel (right side) - Two views: Waypoint List or Hex Info */}
@@ -2327,6 +2369,15 @@ function TacticalMapScreen() {
           validQuickDeployments={validQuickDeployments}
         />
       )}
+
+      {/* Tactical Item Confirmation Modal */}
+      <TacticalItemConfirmationModal
+        show={!!tacticalItemConfirmation}
+        item={tacticalItemConfirmation?.item}
+        currentDetection={tacticalItemConfirmation?.currentDetection || 0}
+        onCancel={handleTacticalItemCancel}
+        onConfirm={handleTacticalItemConfirm}
+      />
 
       {/* Loading Encounter Screen (combat transition) */}
       {showLoadingEncounter && loadingEncounterData && (

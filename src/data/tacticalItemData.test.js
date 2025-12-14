@@ -63,11 +63,14 @@ describe('tacticalItemData', () => {
       expect(threatItem.type).toBe('threatReduce');
     });
 
-    test('ITEM_THREAT_REDUCE has effectValue property', () => {
+    test('ITEM_THREAT_REDUCE has effectValueMin and effectValueMax properties', () => {
       const threatItem = tacticalItemCollection.find(item => item.id === 'ITEM_THREAT_REDUCE');
-      expect(threatItem).toHaveProperty('effectValue');
-      expect(typeof threatItem.effectValue).toBe('number');
-      expect(threatItem.effectValue).toBeGreaterThan(0);
+      expect(threatItem).toHaveProperty('effectValueMin');
+      expect(threatItem).toHaveProperty('effectValueMax');
+      expect(typeof threatItem.effectValueMin).toBe('number');
+      expect(typeof threatItem.effectValueMax).toBe('number');
+      expect(threatItem.effectValueMin).toBeGreaterThan(0);
+      expect(threatItem.effectValueMax).toBeGreaterThan(threatItem.effectValueMin);
     });
 
     test('all images point to /DroneWars/Items/ directory', () => {
