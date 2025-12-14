@@ -500,6 +500,73 @@ const fullDroneCollection = [
     upgradeSlots: 2
   },
 
+  // ========================================
+  // NEW DAMAGE TYPE DRONES
+  // ========================================
+
+  // SHIELD_BREAKER drone - attacks deal 2:1 damage to shields
+  {
+    name: 'Disruptor',
+    class: 2,
+    limit: 2,
+    rarity: 'Uncommon',
+    attack: 2,
+    hull: 2,
+    shields: 1,
+    speed: 3,
+    damageType: 'SHIELD_BREAKER',
+    image: '/DroneWars/img/Disruptor.png',
+    abilities: [{
+      name: 'Shield Disruptor',
+      description: 'Attacks deal shield-breaker damage (each point removes 2 shields).',
+      type: 'PASSIVE',
+      effect: { type: 'GRANT_DAMAGE_TYPE', damageType: 'SHIELD_BREAKER' }
+    }],
+    upgradeSlots: 2
+  },
+
+  // ION drone - attacks only damage shields
+  {
+    name: 'Ion Drone',
+    class: 1,
+    limit: 3,
+    rarity: 'Common',
+    attack: 3,
+    hull: 1,
+    shields: 0,
+    speed: 4,
+    damageType: 'ION',
+    image: '/DroneWars/img/IonDrone.png',
+    abilities: [{
+      name: 'Ion Emitter',
+      description: 'Attacks deal ion damage (only affects shields).',
+      type: 'PASSIVE',
+      effect: { type: 'GRANT_DAMAGE_TYPE', damageType: 'ION' }
+    }],
+    upgradeSlots: 2
+  },
+
+  // KINETIC drone - attacks only damage hull, blocked by shields
+  {
+    name: 'Impactor',
+    class: 2,
+    limit: 2,
+    rarity: 'Uncommon',
+    attack: 4,
+    hull: 3,
+    shields: 0,
+    speed: 2,
+    damageType: 'KINETIC',
+    image: '/DroneWars/img/Impactor.png',
+    abilities: [{
+      name: 'Kinetic Rounds',
+      description: 'Attacks deal kinetic damage (hull only, blocked by shields).',
+      type: 'PASSIVE',
+      effect: { type: 'GRANT_DAMAGE_TYPE', damageType: 'KINETIC' }
+    }],
+    upgradeSlots: 2
+  },
+
 ];
 
 export default fullDroneCollection;

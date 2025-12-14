@@ -4,7 +4,7 @@
 // Single "black box" function for evaluating target value
 // Used by ALL damage/destroy effects for consistent prioritization
 
-import { TARGET_SCORING } from '../aiConstants.js';
+import { TARGET_SCORING, DAMAGE_TYPE_WEIGHTS } from '../aiConstants.js';
 import fullDroneCollection from '../../../data/droneData.js';
 
 const {
@@ -25,6 +25,17 @@ const {
   PIERCING_BYPASS_BONUS,
 } = TARGET_SCORING;
 
+const {
+  SHIELD_BREAKER_HIGH_SHIELD_BONUS,
+  SHIELD_BREAKER_LOW_SHIELD_PENALTY,
+  ION_FULL_STRIP_BONUS,
+  ION_PER_SHIELD_VALUE,
+  ION_WASTED_PENALTY,
+  ION_NO_SHIELDS_PENALTY,
+  KINETIC_UNSHIELDED_BONUS,
+  KINETIC_BLOCKED_PENALTY,
+} = DAMAGE_TYPE_WEIGHTS;
+
 /**
  * Universal target value calculator for damage/destroy effects
  * @param {Object} target - The target drone
@@ -32,6 +43,7 @@ const {
  * @param {Object} options - Configuration options
  * @param {number} options.damageAmount - Amount of damage being dealt (999 for destroy)
  * @param {boolean} options.isPiercing - Whether damage ignores shields
+ * @param {string} options.damageType - Damage type: NORMAL|PIERCING|SHIELD_BREAKER|ION|KINETIC
  * @param {string} options.lane - Lane context for interception/jammer checks
  * @returns {Object} - { score: number, logic: string[] }
  */
@@ -39,6 +51,7 @@ export const calculateTargetValue = (target, context, options = {}) => {
   const {
     damageAmount = 999,
     isPiercing = false,
+    damageType = isPiercing ? 'PIERCING' : undefined,
     lane = null,
   } = options;
 
@@ -90,6 +103,13 @@ export const calculateTargetValue = (target, context, options = {}) => {
   const efficiencyResult = calculateDamageEfficiency(target, damageAmount, isPiercing);
   score += efficiencyResult.value;
   logic.push(...efficiencyResult.logic);
+
+  // 6. DAMAGE TYPE BONUS/PENALTY
+  if (damageType && damageType !== 'NORMAL' && damageType !== 'PIERCING') {
+    const typeResult = calculateDamageTypeBonus(target, damageAmount, damageType);
+    score += typeResult.value;
+    logic.push(...typeResult.logic);
+  }
 
   return { score, logic };
 };
@@ -183,6 +203,67 @@ const calculateDamageEfficiency = (target, damage, isPiercing) => {
   if (isPiercing && target.currentShields > 0) {
     value += PIERCING_BYPASS_BONUS;
     logic.push(`Piercing Bypass: +${PIERCING_BYPASS_BONUS}`);
+  }
+
+  return { value, logic };
+};
+
+/**
+ * Calculate damage type specific bonuses/penalties
+ * @param {Object} target - Target drone
+ * @param {number} damage - Amount of damage
+ * @param {string} damageType - SHIELD_BREAKER|ION|KINETIC
+ */
+const calculateDamageTypeBonus = (target, damage, damageType) => {
+  let value = 0;
+  const logic = [];
+  const shields = target.currentShields || 0;
+
+  switch (damageType) {
+    case 'SHIELD_BREAKER':
+      // Good against heavily shielded targets
+      if (shields >= 3) {
+        value += SHIELD_BREAKER_HIGH_SHIELD_BONUS;
+        logic.push(`Shield-Breaker vs high shields: +${SHIELD_BREAKER_HIGH_SHIELD_BONUS}`);
+      } else if (shields <= 1) {
+        value += SHIELD_BREAKER_LOW_SHIELD_PENALTY;
+        logic.push(`Shield-Breaker vs low shields: ${SHIELD_BREAKER_LOW_SHIELD_PENALTY}`);
+      }
+      break;
+
+    case 'ION':
+      // Only useful against shielded targets
+      if (shields === 0) {
+        value += ION_NO_SHIELDS_PENALTY;
+        logic.push(`Ion vs no shields: ${ION_NO_SHIELDS_PENALTY}`);
+      } else {
+        const shieldsDamaged = Math.min(damage, shields);
+        value += shieldsDamaged * ION_PER_SHIELD_VALUE;
+        logic.push(`Ion damage ${shieldsDamaged} shields: +${shieldsDamaged * ION_PER_SHIELD_VALUE}`);
+
+        if (damage >= shields) {
+          value += ION_FULL_STRIP_BONUS;
+          logic.push(`Ion full strip: +${ION_FULL_STRIP_BONUS}`);
+        }
+
+        const wastedDamage = Math.max(0, damage - shields);
+        if (wastedDamage > 0) {
+          value += wastedDamage * ION_WASTED_PENALTY;
+          logic.push(`Ion wasted damage: ${wastedDamage * ION_WASTED_PENALTY}`);
+        }
+      }
+      break;
+
+    case 'KINETIC':
+      // Only useful against unshielded targets
+      if (shields > 0) {
+        value += KINETIC_BLOCKED_PENALTY;
+        logic.push(`Kinetic blocked by shields: ${KINETIC_BLOCKED_PENALTY}`);
+      } else {
+        value += KINETIC_UNSHIELDED_BONUS;
+        logic.push(`Kinetic vs unshielded: +${KINETIC_UNSHIELDED_BONUS}`);
+      }
+      break;
   }
 
   return { value, logic };

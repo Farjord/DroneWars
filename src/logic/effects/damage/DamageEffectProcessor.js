@@ -24,6 +24,49 @@ import { buildSplashAnimation } from './animations/SplashAnimation.js';
 import { buildFilteredDamageAnimation } from './animations/FilteredDamageAnimation.js';
 
 /**
+ * Calculate damage distribution based on damage type
+ * @param {number} damageValue - Total damage to apply
+ * @param {number} shields - Target's current shields
+ * @param {number} hull - Target's current hull
+ * @param {string} damageType - NORMAL|PIERCING|SHIELD_BREAKER|ION|KINETIC
+ * @returns {Object} { shieldDamage, hullDamage }
+ */
+const calculateDamageByType = (damageValue, shields, hull, damageType) => {
+  switch (damageType) {
+    case 'PIERCING':
+      return { shieldDamage: 0, hullDamage: Math.min(damageValue, hull) };
+
+    case 'SHIELD_BREAKER': {
+      const effectiveShieldDmg = Math.min(damageValue * 2, shields);
+      const dmgUsedOnShields = Math.ceil(effectiveShieldDmg / 2);
+      const remainingDmg = damageValue - dmgUsedOnShields;
+      return {
+        shieldDamage: effectiveShieldDmg,
+        hullDamage: Math.min(Math.floor(remainingDmg), hull)
+      };
+    }
+
+    case 'ION':
+      return { shieldDamage: Math.min(damageValue, shields), hullDamage: 0 };
+
+    case 'KINETIC':
+      if (shields > 0) {
+        return { shieldDamage: 0, hullDamage: 0 };
+      }
+      return { shieldDamage: 0, hullDamage: Math.min(damageValue, hull) };
+
+    default: {
+      const shieldDmg = Math.min(damageValue, shields);
+      const remainingDamage = damageValue - shieldDmg;
+      return {
+        shieldDamage: shieldDmg,
+        hullDamage: Math.min(remainingDamage, hull)
+      };
+    }
+  }
+};
+
+/**
  * Processor for all damage effect types
  *
  * Supports:
@@ -140,22 +183,22 @@ class DamageEffectProcessor extends BaseEffectProcessor {
         debugLog('COMBAT', `[DAMAGE] Target ${drone.name} is marked - applying bonus: ${effect.value} + ${effect.markedBonus} = ${damageValue}`);
       }
 
-      // Apply damage based on piercing property
-      let shieldDamage = 0;
-      let hullDamage = 0;
+      // Determine damage type from effect
+      const damageType = effect.damageType || (effect.isPiercing ? 'PIERCING' : undefined);
 
-      if (effect.isPiercing) {
-        // Piercing ignores shields
-        hullDamage = Math.min(damageValue, drone.hull);
-        drone.hull -= hullDamage;
-      } else {
-        // Non-piercing: damage shields first
-        shieldDamage = Math.min(damageValue, drone.currentShields);
-        drone.currentShields -= shieldDamage;
-        const remainingDamage = damageValue - shieldDamage;
-        hullDamage = Math.min(remainingDamage, drone.hull);
-        drone.hull -= hullDamage;
-      }
+      // Apply damage using damage type helper
+      const damageResult = calculateDamageByType(
+        damageValue,
+        drone.currentShields,
+        drone.hull,
+        damageType
+      );
+      const shieldDamage = damageResult.shieldDamage;
+      const hullDamage = damageResult.hullDamage;
+
+      // Apply damage to drone state
+      drone.currentShields -= shieldDamage;
+      drone.hull -= hullDamage;
 
       const destroyed = drone.hull <= 0;
 
@@ -343,17 +386,23 @@ class DamageEffectProcessor extends BaseEffectProcessor {
     const finalPrimaryDamage = primaryDamage + bonusDamage;
     const finalSplashDamage = splashDamage + bonusDamage;
 
-    // Helper function to apply damage (non-piercing, respects shields)
+    // Determine damage type from effect
+    const damageType = effect.damageType || (effect.isPiercing ? 'PIERCING' : undefined);
+
+    // Helper function to apply damage (uses damage type helper)
     const applyDamage = (drone, damage) => {
-      const shieldDamage = Math.min(damage, drone.currentShields);
-      drone.currentShields -= shieldDamage;
-      const remainingDamage = damage - shieldDamage;
-      const hullDamage = Math.min(remainingDamage, drone.hull);
-      drone.hull -= hullDamage;
+      const result = calculateDamageByType(
+        damage,
+        drone.currentShields,
+        drone.hull,
+        damageType
+      );
+      drone.currentShields -= result.shieldDamage;
+      drone.hull -= result.hullDamage;
 
       return {
-        shieldDamage,
-        hullDamage,
+        shieldDamage: result.shieldDamage,
+        hullDamage: result.hullDamage,
         destroyed: drone.hull <= 0
       };
     };

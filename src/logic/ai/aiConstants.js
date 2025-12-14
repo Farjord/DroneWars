@@ -343,3 +343,27 @@ export const TARGET_SCORING = {
   LETHAL_BONUS: 20,
   PIERCING_BYPASS_BONUS: 5,
 };
+
+// ========================================
+// DAMAGE TYPE EVALUATION WEIGHTS
+// ========================================
+// Used when evaluating cards and attacks with special damage types
+// SHIELD_BREAKER: 2:1 shield efficiency, then normal hull
+// ION: Shield-only damage, excess wasted
+// KINETIC: Hull-only damage, blocked entirely by shields
+
+export const DAMAGE_TYPE_WEIGHTS = {
+  // SHIELD_BREAKER weights
+  SHIELD_BREAKER_HIGH_SHIELD_BONUS: 15,   // Bonus when target has 3+ shields
+  SHIELD_BREAKER_LOW_SHIELD_PENALTY: -5,  // Penalty when target has 0-1 shields
+
+  // ION weights (shield-only damage)
+  ION_FULL_STRIP_BONUS: 20,               // Bonus when damage >= target shields
+  ION_PER_SHIELD_VALUE: 6,                // Value per shield removed
+  ION_WASTED_PENALTY: -3,                 // Penalty per point of wasted damage
+  ION_NO_SHIELDS_PENALTY: -50,            // Heavy penalty for targets without shields
+
+  // KINETIC weights (hull-only damage)
+  KINETIC_UNSHIELDED_BONUS: 25,           // Bonus when target has 0 shields
+  KINETIC_BLOCKED_PENALTY: -100,          // Penalty when target has shields (blocked)
+};

@@ -1343,6 +1343,88 @@ const fullCardCollection = [
       condition: { type: 'ON_HULL_DAMAGE' },
       grantedEffect: { type: 'GAIN_ENERGY', value: 3 }
     }]
+  },
+
+  // ========================================
+  // NEW DAMAGE TYPES
+  // ========================================
+
+  // SHIELD_BREAKER: Each point of damage removes 2 shields
+  {
+    id: 'CARD_SB01',
+    baseCardId: 'CARD_SB01',
+    name: 'EMP Surge',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Ordnance',
+    cost: 3,
+    image: '/DroneWars/cards/EMPSurge.png',
+    description: 'Deal 3 shield-breaker damage to target drone. Each point removes 2 shields, then remaining damage hits hull.',
+    visualEffect: {
+      type: 'EMP_BLAST'
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 3,
+      damageType: 'SHIELD_BREAKER'
+    }
+  },
+
+  // ION: Only damages shields, excess is wasted
+  {
+    id: 'CARD_ION01',
+    baseCardId: 'CARD_ION01',
+    name: 'Ion Pulse',
+    maxInDeck: 4,
+    rarity: 'Common',
+    type: 'Ordnance',
+    cost: 2,
+    image: '/DroneWars/cards/IonPulse.png',
+    description: 'Deal 3 ion damage to target drone. Ion damage only affects shields.',
+    visualEffect: {
+      type: 'ION_BURST'
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 3,
+      damageType: 'ION'
+    }
+  },
+
+  // KINETIC: Only damages hull, blocked entirely by shields
+  {
+    id: 'CARD_KIN01',
+    baseCardId: 'CARD_KIN01',
+    name: 'Kinetic Slug',
+    maxInDeck: 4,
+    rarity: 'Common',
+    type: 'Ordnance',
+    cost: 2,
+    image: '/DroneWars/cards/KineticSlug.png',
+    description: 'Deal 3 kinetic damage to target drone. Kinetic damage only affects hull; blocked by any shields.',
+    visualEffect: {
+      type: 'KINETIC_IMPACT'
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 3,
+      damageType: 'KINETIC'
+    }
   }
 ];
 

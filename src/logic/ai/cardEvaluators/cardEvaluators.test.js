@@ -1593,6 +1593,215 @@ describe('evaluateModifyDroneBaseCard', () => {
 // CONDITIONAL EFFECTS EVALUATOR
 // ========================================
 
+// ========================================
+// DAMAGE TYPE SCORING TESTS
+// ========================================
+
+describe('Damage Type AI Scoring', () => {
+  describe('SHIELD_BREAKER damage type', () => {
+    it('adds bonus when target has high shields (>=3)', () => {
+      const card = {
+        id: 'CARD_SB',
+        cost: 3,
+        effect: { type: 'DAMAGE', value: 2, damageType: 'SHIELD_BREAKER' }
+      };
+      // Target with 3 shields - should get SHIELD_BREAKER_HIGH_SHIELD_BONUS (+15)
+      const target = createMockDrone({ hull: 3, currentShields: 3, class: 1 });
+      const context = createMockContext();
+
+      const result = evaluateDamageCard(card, target, context);
+
+      // Base: Ready(25) + Class1(3) + Attack2(4) = 32
+      // SHIELD_BREAKER_HIGH_SHIELD_BONUS: +15
+      // Cost: 3 × 4 = 12
+      // Expected: 32 + 15 - 12 = 35
+      expect(result.score).toBe(35);
+      expect(result.logic.some(l => l.includes('Shield-Breaker'))).toBe(true);
+    });
+
+    it('adds penalty when target has low shields (<=1)', () => {
+      const card = {
+        id: 'CARD_SB',
+        cost: 3,
+        effect: { type: 'DAMAGE', value: 2, damageType: 'SHIELD_BREAKER' }
+      };
+      // Target with 1 shield - should get SHIELD_BREAKER_LOW_SHIELD_PENALTY (-5)
+      const target = createMockDrone({ hull: 3, currentShields: 1, class: 1 });
+      const context = createMockContext();
+
+      const result = evaluateDamageCard(card, target, context);
+
+      // Base: Ready(25) + Class1(3) + Attack2(4) = 32
+      // SHIELD_BREAKER_LOW_SHIELD_PENALTY: -5
+      // Cost: 12
+      // Expected: 32 - 5 - 12 = 15
+      expect(result.score).toBe(15);
+    });
+
+    it('no bonus/penalty for moderate shields (2)', () => {
+      const card = {
+        id: 'CARD_SB',
+        cost: 3,
+        effect: { type: 'DAMAGE', value: 2, damageType: 'SHIELD_BREAKER' }
+      };
+      const target = createMockDrone({ hull: 3, currentShields: 2, class: 1 });
+      const context = createMockContext();
+
+      const result = evaluateDamageCard(card, target, context);
+
+      // Base: 32, no damage type modifier, Cost: 12
+      // Expected: 32 - 12 = 20
+      expect(result.score).toBe(20);
+    });
+  });
+
+  describe('ION damage type', () => {
+    it('adds heavy penalty for targets with no shields', () => {
+      const card = {
+        id: 'CARD_ION',
+        cost: 2,
+        effect: { type: 'DAMAGE', value: 3, damageType: 'ION' }
+      };
+      // Target with 0 shields - ION is useless
+      const target = createMockDrone({ hull: 3, currentShields: 0, class: 1 });
+      const context = createMockContext();
+
+      const result = evaluateDamageCard(card, target, context);
+
+      // Base: Ready(25) + Class1(3) + Attack2(4) = 32
+      // Lethal bonus (damage 3 >= hull 3): +20 (note: AI doesn't know ION can't deal hull damage)
+      // ION_NO_SHIELDS_PENALTY: -50
+      // Cost: 8
+      // Expected: 32 + 20 - 50 - 8 = -6
+      expect(result.score).toBe(-6);
+      expect(result.logic.some(l => l.includes('Ion vs no shields'))).toBe(true);
+    });
+
+    it('adds per-shield value and full strip bonus', () => {
+      const card = {
+        id: 'CARD_ION',
+        cost: 2,
+        effect: { type: 'DAMAGE', value: 3, damageType: 'ION' }
+      };
+      // Target with 2 shields - 3 ION damage will strip all 2 + waste 1
+      const target = createMockDrone({ hull: 3, currentShields: 2, class: 1 });
+      const context = createMockContext();
+
+      const result = evaluateDamageCard(card, target, context);
+
+      // Base: 32
+      // ION shields damaged (2): 2 × 6 = 12
+      // ION_FULL_STRIP_BONUS (damage 3 >= shields 2): +20
+      // ION_WASTED_PENALTY (1 wasted): 1 × -3 = -3
+      // Total type bonus: 12 + 20 - 3 = 29
+      // Cost: 8
+      // Expected: 32 + 29 - 8 = 53
+      expect(result.score).toBe(53);
+      expect(result.logic.some(l => l.includes('Ion full strip'))).toBe(true);
+    });
+
+    it('values shields damaged without wasting', () => {
+      const card = {
+        id: 'CARD_ION',
+        cost: 2,
+        effect: { type: 'DAMAGE', value: 2, damageType: 'ION' }
+      };
+      // Target with 3 shields - 2 ION will damage 2 shields with no waste
+      const target = createMockDrone({ hull: 3, currentShields: 3, class: 1 });
+      const context = createMockContext();
+
+      const result = evaluateDamageCard(card, target, context);
+
+      // Base: 32
+      // ION shields damaged (2): 2 × 6 = 12
+      // No full strip (2 < 3), no waste
+      // Cost: 8
+      // Expected: 32 + 12 - 8 = 36
+      expect(result.score).toBe(36);
+    });
+  });
+
+  describe('KINETIC damage type', () => {
+    it('adds heavy penalty when target has shields', () => {
+      const card = {
+        id: 'CARD_KIN',
+        cost: 2,
+        effect: { type: 'DAMAGE', value: 3, damageType: 'KINETIC' }
+      };
+      // Target with shields - KINETIC is blocked entirely
+      const target = createMockDrone({ hull: 3, currentShields: 1, class: 1 });
+      const context = createMockContext();
+
+      const result = evaluateDamageCard(card, target, context);
+
+      // Base: 32
+      // KINETIC_BLOCKED_PENALTY: -100
+      // Cost: 8
+      // Expected: 32 - 100 - 8 = -76
+      expect(result.score).toBe(-76);
+      expect(result.logic.some(l => l.includes('Kinetic blocked'))).toBe(true);
+    });
+
+    it('adds bonus when target has no shields', () => {
+      const card = {
+        id: 'CARD_KIN',
+        cost: 2,
+        effect: { type: 'DAMAGE', value: 3, damageType: 'KINETIC' }
+      };
+      // Target with no shields - KINETIC is effective
+      const target = createMockDrone({ hull: 3, currentShields: 0, class: 1 });
+      const context = createMockContext();
+
+      const result = evaluateDamageCard(card, target, context);
+
+      // Base: 32
+      // Lethal (3 damage kills 3 hull): +20
+      // KINETIC_UNSHIELDED_BONUS: +25
+      // Cost: 8
+      // Expected: 32 + 20 + 25 - 8 = 69
+      expect(result.score).toBe(69);
+      expect(result.logic.some(l => l.includes('Kinetic vs unshielded'))).toBe(true);
+    });
+  });
+
+  describe('Normal/PIERCING damage type (control)', () => {
+    it('PIERCING adds bypass bonus for shielded targets', () => {
+      const card = {
+        id: 'CARD_PIERCE',
+        cost: 3,
+        effect: { type: 'DAMAGE', value: 2, damageType: 'PIERCING' }
+      };
+      const target = createMockDrone({ hull: 3, currentShields: 2, class: 1 });
+      const context = createMockContext();
+
+      const result = evaluateDamageCard(card, target, context);
+
+      // Base: 32
+      // PIERCING_BYPASS_BONUS: +5
+      // Cost: 12
+      // Expected: 32 + 5 - 12 = 25
+      expect(result.score).toBe(25);
+      expect(result.logic.some(l => l.includes('Piercing'))).toBe(true);
+    });
+
+    it('normal damage has no type bonus', () => {
+      const card = {
+        id: 'CARD_NORMAL',
+        cost: 2,
+        effect: { type: 'DAMAGE', value: 2 } // No damageType = NORMAL
+      };
+      const target = createMockDrone({ hull: 3, currentShields: 2, class: 1 });
+      const context = createMockContext();
+
+      const result = evaluateDamageCard(card, target, context);
+
+      // Base: 32, no damage type modifier, Cost: 8
+      // Expected: 32 - 8 = 24
+      expect(result.score).toBe(24);
+    });
+  });
+});
+
 describe('evaluateConditionalEffects', () => {
   // Import will be added once the module exists
   let evaluateConditionalEffects;

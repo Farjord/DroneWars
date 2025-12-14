@@ -21,6 +21,55 @@ import { createDogfightDamageAnimation } from './animations/DogfightDamageAnimat
 import { createRetaliationDamageAnimation } from './animations/RetaliationDamageAnimation.js';
 
 /**
+ * Calculate damage distribution based on damage type
+ * @param {number} damageValue - Total damage to apply
+ * @param {number} shields - Target's current shields
+ * @param {number} hull - Target's current hull
+ * @param {string} damageType - NORMAL|PIERCING|SHIELD_BREAKER|ION|KINETIC
+ * @returns {Object} { shieldDamage, hullDamage }
+ */
+const calculateDamageByType = (damageValue, shields, hull, damageType) => {
+  switch (damageType) {
+    case 'PIERCING':
+      // Bypass shields entirely
+      return { shieldDamage: 0, hullDamage: Math.min(damageValue, hull) };
+
+    case 'SHIELD_BREAKER': {
+      // Each point of damage removes 2 shield points
+      // Remaining damage after shields are gone hits hull at 1:1
+      const effectiveShieldDmg = Math.min(damageValue * 2, shields);
+      const dmgUsedOnShields = Math.ceil(effectiveShieldDmg / 2);
+      const remainingDmg = damageValue - dmgUsedOnShields;
+      return {
+        shieldDamage: effectiveShieldDmg,
+        hullDamage: Math.min(Math.floor(remainingDmg), hull)
+      };
+    }
+
+    case 'ION':
+      // Only damages shields, excess is wasted
+      return { shieldDamage: Math.min(damageValue, shields), hullDamage: 0 };
+
+    case 'KINETIC':
+      // Only damages hull, but completely blocked by any shields
+      if (shields > 0) {
+        return { shieldDamage: 0, hullDamage: 0 };
+      }
+      return { shieldDamage: 0, hullDamage: Math.min(damageValue, hull) };
+
+    default: {
+      // NORMAL: Damage shields first, then hull
+      const shieldDmg = Math.min(damageValue, shields);
+      const remainingDamage = damageValue - shieldDmg;
+      return {
+        shieldDamage: shieldDmg,
+        hullDamage: Math.min(remainingDamage, hull)
+      };
+    }
+  }
+};
+
+/**
  * Calculate after-attack state changes and effects
  *
  * Handles drone abilities that trigger AFTER an attack completes:
@@ -321,12 +370,15 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
             if (targetInState) break;
         }
         if (targetInState) {
-            let remainingDamage = damage;
-            if (finalDamageType !== 'PIERCING') {
-                shieldDamage = Math.min(damage, targetInState.currentShields);
-                remainingDamage -= shieldDamage;
-            }
-            hullDamage = Math.min(remainingDamage, targetInState.hull);
+            // Use damage type helper for all damage calculations
+            const damageResult = calculateDamageByType(
+                damage,
+                targetInState.currentShields,
+                targetInState.hull,
+                finalDamageType
+            );
+            shieldDamage = damageResult.shieldDamage;
+            hullDamage = damageResult.hullDamage;
             wasDestroyed = (targetInState.hull - hullDamage) <= 0;
             remainingShields = targetInState.currentShields - shieldDamage;
             remainingHull = wasDestroyed ? 0 : targetInState.hull - hullDamage;
@@ -334,12 +386,15 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
     } else {
         const sectionInState = defenderPlayerState.shipSections[finalTarget.name];
         if (sectionInState) {
-            let remainingDamage = damage;
-            if (finalDamageType !== 'PIERCING') {
-                shieldDamage = Math.min(damage, sectionInState.allocatedShields);
-                remainingDamage -= shieldDamage;
-            }
-            hullDamage = Math.min(remainingDamage, sectionInState.hull);
+            // Use damage type helper for ship section damage
+            const damageResult = calculateDamageByType(
+                damage,
+                sectionInState.allocatedShields,
+                sectionInState.hull,
+                finalDamageType
+            );
+            shieldDamage = damageResult.shieldDamage;
+            hullDamage = damageResult.hullDamage;
             wasDestroyed = (sectionInState.hull - hullDamage) <= 0;
             remainingShields = sectionInState.allocatedShields - shieldDamage;
             remainingHull = wasDestroyed ? 0 : sectionInState.hull - hullDamage;

@@ -132,6 +132,7 @@ export const evaluateDamageCard = (card, target, context) => {
         const { score: droneValue } = calculateTargetValue(drone, context, {
           damageAmount: card.effect.value,
           isPiercing: card.effect.damageType === 'PIERCING',
+          damageType: card.effect.damageType,
           lane: laneId
         });
         totalValue += droneValue;
@@ -153,6 +154,7 @@ export const evaluateDamageCard = (card, target, context) => {
     const { score: targetValue, logic: targetLogic } = calculateTargetValue(target, context, {
       damageAmount: card.effect.value,
       isPiercing,
+      damageType: card.effect.damageType,
       lane
     });
 
@@ -191,6 +193,7 @@ export const evaluateOverflowDamageCard = (card, target, context) => {
   const { score: targetValue, logic: targetLogic } = calculateTargetValue(target, context, {
     damageAmount: totalDamage,
     isPiercing,
+    damageType: card.effect.damageType,
     lane
   });
 
@@ -258,6 +261,7 @@ export const evaluateSplashDamageCard = (card, target, context) => {
   const { score: primaryValue, logic: primaryLogic } = calculateTargetValue(target, context, {
     damageAmount: effectivePrimaryDamage,
     isPiercing: false,
+    damageType: card.effect.damageType,
     lane: laneId
   });
 
@@ -281,6 +285,7 @@ export const evaluateSplashDamageCard = (card, target, context) => {
     const { score: adjValue } = calculateTargetValue(adj, context, {
       damageAmount: effectiveSplashDamage,
       isPiercing: false,
+      damageType: card.effect.damageType,
       lane: laneId
     });
     score += adjValue;
@@ -335,6 +340,7 @@ export const evaluateDamageScalingCard = (card, target, context) => {
   const { score: targetValue, logic: targetLogic } = calculateTargetValue(target, context, {
     damageAmount: damage,
     isPiercing: false,
+    damageType: card.effect.damageType,
     lane: laneId
   });
 
