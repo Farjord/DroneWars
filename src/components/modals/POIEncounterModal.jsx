@@ -5,7 +5,7 @@
 // Shows encounter outcome (combat vs loot) and reward preview
 
 import React from 'react';
-import { Target, CheckCircle, AlertTriangle, Zap, Shield, LogOut } from 'lucide-react';
+import { Target, CheckCircle, AlertTriangle, Zap, Shield, LogOut, Radio } from 'lucide-react';
 
 // Diamond/Cube icon for POIs (custom SVG)
 const IconPOI = ({ size = 32 }) => (
@@ -23,9 +23,11 @@ const IconPOI = ({ size = 32 }) => (
  * @param {Function} onQuickDeploy - Callback when player chooses quick deployment
  * @param {Array} validQuickDeployments - Array of valid quick deployments for current slot
  * @param {Function} onEscape - Callback when player chooses to escape combat (takes damage, no rewards)
+ * @param {Function} onEvade - Callback when player uses an evade tactical item
+ * @param {number} evadeItemCount - Number of evade items available (0 or undefined hides button)
  * @param {Function} onClose - Callback to close modal
  */
-function POIEncounterModal({ encounter, onProceed, onQuickDeploy, validQuickDeployments = [], onEscape, onClose }) {
+function POIEncounterModal({ encounter, onProceed, onQuickDeploy, validQuickDeployments = [], onEscape, onEvade, evadeItemCount = 0, onClose }) {
   if (!encounter) return null;
 
   const { poi, outcome, aiId, reward, detection, threatLevel } = encounter;
@@ -136,8 +138,19 @@ function POIEncounterModal({ encounter, onProceed, onQuickDeploy, validQuickDepl
         {/* Actions */}
         <div className="dw-modal-actions">
           {isCombat ? (
-            /* Combat encounter - show escape + engage options */
+            /* Combat encounter - show evade + escape + engage options */
             <div style={{ display: 'flex', gap: '12px', width: '100%', flexWrap: 'wrap' }}>
+              {/* Evade Item button - only when player has evade items */}
+              {evadeItemCount > 0 && onEvade && (
+                <button
+                  onClick={onEvade}
+                  className="dw-btn dw-btn-secondary"
+                  style={{ flex: '1 1 auto', minWidth: '120px', backgroundColor: 'rgba(6, 182, 212, 0.2)', borderColor: '#06b6d4' }}
+                >
+                  <Radio size={16} style={{ marginRight: '6px', color: '#06b6d4' }} />
+                  <span style={{ color: '#06b6d4' }}>Use Jammer ({evadeItemCount})</span>
+                </button>
+              )}
               {/* Escape button - always available for combat */}
               <button
                 onClick={onEscape}

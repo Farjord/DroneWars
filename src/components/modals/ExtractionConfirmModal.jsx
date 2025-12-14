@@ -5,7 +5,7 @@
 // Shows scanning animation and handles blockade encounters
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Target, AlertTriangle, Shield, Zap } from 'lucide-react';
+import { Target, AlertTriangle, Shield, Zap, KeyRound } from 'lucide-react';
 import ExtractionController from '../../logic/singlePlayer/ExtractionController.js';
 import './ExtractionConfirmModal.css';
 
@@ -34,6 +34,8 @@ const scanMessages = [
  * @param {number} detection - Current detection level (blockade risk percentage)
  * @param {Function} onCancel - Callback when cancel is clicked
  * @param {Function} onExtract - Callback when extraction succeeds (no blockade)
+ * @param {Function} onExtractWithItem - Callback when using Clearance Override item
+ * @param {number} extractItemCount - Number of Clearance Override items available
  * @param {Function} onEngageCombat - Callback for standard deploy when blockade
  * @param {Function} onQuickDeploy - Callback for quick deploy when blockade
  * @param {Array} validQuickDeployments - Available quick deployment options
@@ -42,6 +44,8 @@ function ExtractionConfirmModal({
   detection,
   onCancel,
   onExtract,
+  onExtractWithItem,
+  extractItemCount = 0,
   onEngageCombat,
   onQuickDeploy,
   validQuickDeployments = []
@@ -145,6 +149,36 @@ function ExtractionConfirmModal({
         <p className="extraction-warning-text">
           Enemy patrols may intercept your extraction. Higher detection increases blockade chance.
         </p>
+
+        {/* Clearance Override option */}
+        {extractItemCount > 0 && onExtractWithItem && (
+          <div className="dw-modal-info-box" style={{ marginTop: '16px', background: 'rgba(6, 182, 212, 0.1)', borderColor: 'rgba(6, 182, 212, 0.3)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <KeyRound size={18} style={{ color: '#06b6d4' }} />
+                <span style={{ color: '#06b6d4', fontSize: '13px' }}>
+                  Clearance Override available ({extractItemCount})
+                </span>
+              </div>
+              <button
+                onClick={onExtractWithItem}
+                className="dw-btn"
+                style={{
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  background: 'rgba(6, 182, 212, 0.2)',
+                  borderColor: '#06b6d4',
+                  color: '#06b6d4'
+                }}
+              >
+                Use Override
+              </button>
+            </div>
+            <p style={{ margin: '8px 0 0', fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>
+              Bypass the blockade check and extract safely. Consumes 1 item.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Actions */}

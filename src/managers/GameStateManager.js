@@ -22,6 +22,7 @@ import { calculateSectionBaseStats } from '../logic/statsCalculator.js';
 import fullCardCollection from '../data/cardData.js';
 import ReputationService from '../logic/reputation/ReputationService.js';
 import { calculateExtractedCredits } from '../logic/singlePlayer/ExtractionController.js';
+import { getTacticalItemById } from '../data/tacticalItemData.js';
 // PhaseManager dependency removed - using direct phase checks
 
 class GameStateManager {
@@ -1782,6 +1783,91 @@ class GameStateManager {
    */
   getShipComponentInstance(instanceId) {
     return this.state.singlePlayerShipComponentInstances.find(inst => inst.instanceId === instanceId) || null;
+  }
+
+  // ========================================
+  // TACTICAL ITEMS METHODS
+  // ========================================
+
+  /**
+   * Purchase a tactical item
+   * @param {string} itemId - The item ID (e.g., 'ITEM_EVADE')
+   * @returns {Object} { success: boolean, newQuantity?: number, error?: string }
+   */
+  purchaseTacticalItem(itemId) {
+    const item = getTacticalItemById(itemId);
+
+    if (!item) {
+      return { success: false, error: 'Item not found' };
+    }
+
+    const profile = this.state.singlePlayerProfile;
+
+    if (profile.credits < item.cost) {
+      return { success: false, error: 'Insufficient credits' };
+    }
+
+    const currentQty = profile.tacticalItems?.[itemId] || 0;
+
+    if (currentQty >= item.maxCapacity) {
+      return { success: false, error: `Already at max capacity (${item.maxCapacity})` };
+    }
+
+    const newQuantity = currentQty + 1;
+
+    this.setState({
+      singlePlayerProfile: {
+        ...profile,
+        credits: profile.credits - item.cost,
+        tacticalItems: {
+          ...profile.tacticalItems,
+          [itemId]: newQuantity
+        }
+      }
+    });
+
+    console.log(`Purchased ${item.name} for ${item.cost} credits. Now have ${newQuantity}`);
+
+    return { success: true, newQuantity };
+  }
+
+  /**
+   * Use a tactical item (during a run)
+   * @param {string} itemId - The item ID
+   * @returns {Object} { success: boolean, remaining?: number, error?: string }
+   */
+  useTacticalItem(itemId) {
+    const profile = this.state.singlePlayerProfile;
+    const currentQty = profile.tacticalItems?.[itemId] || 0;
+
+    if (currentQty <= 0) {
+      return { success: false, error: 'No items available' };
+    }
+
+    const remaining = currentQty - 1;
+
+    this.setState({
+      singlePlayerProfile: {
+        ...profile,
+        tacticalItems: {
+          ...profile.tacticalItems,
+          [itemId]: remaining
+        }
+      }
+    });
+
+    console.log(`Used tactical item ${itemId}. Remaining: ${remaining}`);
+
+    return { success: true, remaining };
+  }
+
+  /**
+   * Get the current count of a tactical item
+   * @param {string} itemId - The item ID
+   * @returns {number} The current quantity (0 if not found)
+   */
+  getTacticalItemCount(itemId) {
+    return this.state.singlePlayerProfile?.tacticalItems?.[itemId] || 0;
   }
 
   // ========================================

@@ -4,7 +4,7 @@
 // Full inventory with category tabs: Cards, Drones, Ships, Ship Sections
 
 import React, { useState, useMemo } from 'react';
-import { Package, Layers, Cpu, Rocket, Box } from 'lucide-react';
+import { Package, Layers, Cpu, Rocket, Box, Zap } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
 import fullCardCollection from '../../data/cardData';
 import { RARITY_COLORS } from '../../data/cardData';
@@ -18,10 +18,12 @@ import ActionCard from '../ui/ActionCard';
 import DroneCard from '../ui/DroneCard';
 import ShipCard from '../ui/ShipCard';
 import ShipSectionCard from '../ui/ShipSectionCard';
+import TacticalItemCard from '../ui/TacticalItemCard';
+import { tacticalItemCollection } from '../../data/tacticalItemData';
 
 /**
  * InventoryModal Component
- * Full inventory with category tabs: Cards, Drones, Ships, Ship Sections
+ * Full inventory with category tabs: Cards, Drones, Ships, Ship Sections, Tactical
  */
 const InventoryModal = ({ onClose }) => {
   const { gameState } = useGameState();
@@ -38,6 +40,7 @@ const InventoryModal = ({ onClose }) => {
     singlePlayerDroneInstances = [],
     singlePlayerShipComponentInstances = [],
     singlePlayerOwnedShips = [],
+    singlePlayerProfile = {},
   } = gameState || {};
 
   /**
@@ -271,11 +274,17 @@ const InventoryModal = ({ onClose }) => {
   /**
    * Category tabs configuration
    */
+  // Calculate total tactical items owned
+  const tacticalItemsOwned = tacticalItemCollection.reduce((sum, item) => {
+    return sum + (singlePlayerProfile?.tacticalItems?.[item.id] || 0);
+  }, 0);
+
   const categories = [
     { id: 'Cards', label: 'Cards', icon: Layers, count: collectionStats.owned },
     { id: 'Drones', label: 'Drones', icon: Cpu, count: droneStats.owned },
     { id: 'Ships', label: 'Ships', icon: Rocket, count: shipStats.owned },
-    { id: 'Sections', label: 'Ship Sections', icon: Box, count: componentStats.owned }
+    { id: 'Sections', label: 'Ship Sections', icon: Box, count: componentStats.owned },
+    { id: 'Tactical', label: 'Items', icon: Zap, count: tacticalItemsOwned }
   ];
 
   /**
@@ -841,6 +850,65 @@ const InventoryModal = ({ onClose }) => {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* TACTICAL ITEMS TAB */}
+          {activeCategory === 'Tactical' && (
+            <div className="dw-modal-scroll" style={{ maxHeight: '550px' }}>
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
+                gap: '10px',
+                justifyItems: 'center'
+              }}>
+                {tacticalItemCollection.map(item => {
+                  const owned = singlePlayerProfile?.tacticalItems?.[item.id] || 0;
+
+                  return (
+                    <div
+                      key={item.id}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        background: 'rgba(0, 0, 0, 0.35)',
+                        borderRadius: '4px',
+                        padding: '16px',
+                        paddingBottom: '10px',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '162px',
+                          height: '198px',
+                          overflow: 'visible'
+                        }}
+                      >
+                        <div style={{
+                          transform: 'scale(0.72)',
+                          transformOrigin: 'top left'
+                        }}>
+                          <TacticalItemCard
+                            item={item}
+                            showQuantity={true}
+                            owned={owned}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Info box */}
+              <div className="dw-modal-info-box" style={{ marginTop: '16px', background: 'rgba(6, 182, 212, 0.1)', borderColor: 'rgba(6, 182, 212, 0.3)' }}>
+                <p style={{ fontSize: '12px', color: 'var(--modal-text-primary)', margin: 0 }}>
+                  <strong style={{ color: '#06b6d4' }}>Tactical Items</strong> can be purchased in the Shop and used during tactical map runs.
+                  Visit the <strong>Shop</strong> to buy more items.
+                </p>
               </div>
             </div>
           )}

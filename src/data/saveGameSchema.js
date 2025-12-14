@@ -7,6 +7,7 @@
 import { starterDeck } from './playerDeckData.js';
 import fullCardCollection from './cardData.js';
 import { ECONOMY } from './economyData.js';
+import { getAllTacticalItemIds } from './tacticalItemData.js';
 
 export const SAVE_VERSION = '1.0';
 
@@ -70,6 +71,13 @@ export const defaultPlayerProfile = {
     current: 0,             // Current reputation points
     level: 0,               // Current level (starts at 0)
     unclaimedRewards: [],   // Array of level numbers with unclaimed rewards
+  },
+
+  // Tactical items - consumables for use on the tactical map
+  tacticalItems: {
+    ITEM_EVADE: 0,
+    ITEM_EXTRACT: 0,
+    ITEM_THREAT_REDUCE: 0,
   },
 };
 
@@ -186,6 +194,40 @@ export function migrateShipSlotToNewFormat(oldSlot) {
     droneSlots: convertDronesToSlots(drones),
     // Convert old shipComponents to new sectionSlots
     sectionSlots: convertComponentsToSectionSlots(oldSlot.shipComponents),
+  };
+}
+
+/**
+ * Migrate tactical items for old save files
+ * Adds missing tacticalItems to player profile if not present
+ * @param {Object} profile - Player profile to migrate
+ * @returns {Object} Profile with tacticalItems ensured
+ */
+export function migrateTacticalItems(profile) {
+  const allItemIds = getAllTacticalItemIds();
+
+  // If no tacticalItems at all, create the object
+  if (!profile.tacticalItems) {
+    return {
+      ...profile,
+      tacticalItems: allItemIds.reduce((acc, id) => {
+        acc[id] = 0;
+        return acc;
+      }, {})
+    };
+  }
+
+  // If tacticalItems exists but might be missing some IDs, add them
+  const updatedItems = { ...profile.tacticalItems };
+  allItemIds.forEach(id => {
+    if (updatedItems[id] === undefined) {
+      updatedItems[id] = 0;
+    }
+  });
+
+  return {
+    ...profile,
+    tacticalItems: updatedItems
   };
 }
 

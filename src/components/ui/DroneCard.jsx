@@ -40,7 +40,8 @@ const DroneCard = ({
   scale = 1.0,
   isViewOnly = false,
   onStatClick,
-  selectedStat
+  selectedStat,
+  hasDeploymentBudget = false
 }) => {
   // Calculate effective limit with upgrades
   let effectiveLimit = drone.limit;
@@ -140,10 +141,24 @@ const DroneCard = ({
 
         {/* Content Wrapper */}
         <div className="relative z-10 flex flex-col h-full">
-          {/* Header */}
-          <div className="py-1 px-3 bg-black/40 flex-shrink-0 h-8 flex items-center justify-center gap-2">
-            <RaritySymbol rarity={drone.rarity || 'Common'} size={14} />
-            <ScalingText text={name} className="font-orbitron text-sm uppercase tracking-widest whitespace-nowrap text-white" />
+          {/* Header with Cost */}
+          <div className="grid grid-cols-[auto_1fr_auto] gap-2 items-center py-1 pl-3 pr-1 bg-black/40 flex-shrink-0 h-8">
+            {/* Left spacer - matches cost pill width for balance */}
+            <div className="w-12"></div>
+
+            {/* Center: Title */}
+            <div className="text-center min-w-0">
+              <ScalingText text={name} className="font-orbitron text-sm uppercase tracking-widest whitespace-nowrap text-white" />
+            </div>
+
+            {/* Right: Cost pill */}
+            <div
+              className={`flex items-center bg-slate-800/70 px-2 py-0.5 rounded-full flex-shrink-0 ${getStatHighlight('cost')}`}
+              onClick={handleStatClick('cost')}
+            >
+              <Power size={14} className={hasDeploymentBudget ? "text-purple-400" : "text-yellow-300"} />
+              <span className={`font-bold text-sm ml-1 ${costTextColor}`}>{deploymentCost}</span>
+            </div>
           </div>
 
           {/* Stats Section */}
@@ -222,50 +237,40 @@ const DroneCard = ({
           </div>
 
           {/* Footer */}
-          <div className="grid grid-cols-3 items-center p-1 border-t border-cyan-800/70 flex-shrink-0 h-12">
-            <div
-              className={`flex flex-col items-center p-1 ${getStatHighlight('cost')}`}
-              onClick={handleStatClick('cost')}
-            >
-              <span className="text-[10px] text-gray-400">Cost</span>
-              <div className="flex items-center">
-                <Power size={14} className="text-yellow-300"/>
-                <span className={`font-bold text-base ml-1 ${costTextColor}`}>{deploymentCost}</span>
-              </div>
+          <div className="grid grid-cols-[auto_1fr_auto] gap-2 items-center p-1 border-t border-cyan-800/70 flex-shrink-0 h-12">
+            {/* Left: Rarity Symbol */}
+            <div className="w-8 flex items-center justify-start pl-1">
+              <RaritySymbol rarity={drone.rarity || 'Common'} size={14} />
             </div>
 
-            {drone.upgradeSlots > 0 ? (
+            {/* Center: Upgrades + Deployed */}
+            <div className="flex items-center justify-center gap-4">
               <div
-                className={`flex flex-col items-center p-1 ${isHelpMode ? getStatHighlight('upgrades') : 'cursor-pointer group'}`}
-                onClick={isHelpMode ? handleStatClick('upgrades') : (e) => {
+                className={`flex flex-col items-center ${isHelpMode ? getStatHighlight('upgrades') : (drone.upgradeSlots > 0 ? 'cursor-pointer group' : '')}`}
+                onClick={drone.upgradeSlots > 0 ? (isHelpMode ? handleStatClick('upgrades') : (e) => {
                   e.stopPropagation();
                   if (onViewUpgrades) onViewUpgrades(drone, appliedUpgrades);
-                }}
+                }) : undefined}
               >
                 <span className="text-[10px] text-gray-400 group-hover:text-white transition-colors">Upgrades</span>
-                <div className="flex items-center">
-                  <span className="font-bold text-base text-purple-400">
-                    {appliedUpgrades.length}/{drone.upgradeSlots}
-                  </span>
-                </div>
+                <span className="font-bold text-base text-purple-400">
+                  {appliedUpgrades.length}/{drone.upgradeSlots}
+                </span>
               </div>
-            ) : (
-              <div className="flex flex-col items-center p-1">
-                {/* Empty placeholder for no upgrade slots */}
-              </div>
-            )}
 
-            <div
-              className={`flex flex-col items-center p-1 ${getStatHighlight('deployed')}`}
-              onClick={handleStatClick('deployed')}
-            >
-              <span className="text-[10px] text-gray-400">Deployed</span>
-              <div className="flex items-center">
+              <div
+                className={`flex flex-col items-center ${getStatHighlight('deployed')}`}
+                onClick={handleStatClick('deployed')}
+              >
+                <span className="text-[10px] text-gray-400">Deployed</span>
                 <span className={`font-bold text-base ${atLimit ? 'text-red-500' : limitTextColor}`}>
                   {deployedCount}/{effectiveLimit}
                 </span>
               </div>
             </div>
+
+            {/* Right: Empty spacer for balance */}
+            <div className="w-8"></div>
           </div>
         </div>
       </div>

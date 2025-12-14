@@ -13,7 +13,9 @@ vi.mock('../../managers/GameStateManager.js', () => ({
     getState: vi.fn(),
     setState: vi.fn(),
     endRun: vi.fn(),
-    resetGameState: vi.fn()
+    resetGameState: vi.fn(),
+    getTacticalItemCount: vi.fn(() => 0),
+    useTacticalItem: vi.fn(() => ({ success: false, error: 'No items' }))
   }
 }))
 
@@ -28,7 +30,9 @@ vi.mock('./DroneDamageProcessor.js', () => ({
 }))
 
 vi.mock('../detection/DetectionManager.js', () => ({
-  default: {}
+  default: {
+    getCurrentDetection: vi.fn(() => 50) // Default 50% detection
+  }
 }))
 
 vi.mock('../../data/mapData.js', () => ({
@@ -52,6 +56,7 @@ vi.mock('../reputation/ReputationService.js', () => ({
 import ExtractionController from './ExtractionController.js'
 import gameStateManager from '../../managers/GameStateManager.js'
 import ReputationService from '../reputation/ReputationService.js'
+import DetectionManager from '../detection/DetectionManager.js'
 
 describe('ExtractionController', () => {
   beforeEach(() => {
@@ -700,6 +705,113 @@ describe('ExtractionController', () => {
 
         const result = ExtractionController.checkEscapeCouldDestroy(state, ai);
         expect(result.escapeDamageRange).toEqual({ min: 1, max: 3 });
+      });
+    });
+  });
+
+  // ========================================
+  // EXTRACT ITEM BYPASS TESTS (TDD)
+  // ========================================
+  // Tests for Clearance Override tactical item that bypasses blockade checks
+  //
+  // Requirements:
+  // - checkExtractItemAvailable returns true when quantity > 0
+  // - initiateExtractionWithItem bypasses blockade when useItem=true
+  // - Item is consumed when used successfully
+
+  describe('Extract Item - Clearance Override', () => {
+    describe('checkExtractItemAvailable', () => {
+      it('should return true when ITEM_EXTRACT quantity > 0', () => {
+        gameStateManager.getTacticalItemCount.mockReturnValue(2);
+
+        const result = ExtractionController.checkExtractItemAvailable();
+        expect(result).toBe(true);
+        expect(gameStateManager.getTacticalItemCount).toHaveBeenCalledWith('ITEM_EXTRACT');
+      });
+
+      it('should return false when ITEM_EXTRACT quantity is 0', () => {
+        gameStateManager.getTacticalItemCount.mockReturnValue(0);
+
+        const result = ExtractionController.checkExtractItemAvailable();
+        expect(result).toBe(false);
+      });
+    });
+
+    describe('initiateExtractionWithItem', () => {
+      const mockRunState = {
+        mapTier: 1,
+        shipSections: {}
+      };
+
+      it('should bypass blockade check when useItem=true and item available', () => {
+        gameStateManager.useTacticalItem.mockReturnValue({ success: true, remaining: 1 });
+
+        const result = ExtractionController.initiateExtractionWithItem(mockRunState, true);
+
+        expect(result.action).toBe('extract');
+        expect(result.itemUsed).toBe(true);
+        expect(gameStateManager.useTacticalItem).toHaveBeenCalledWith('ITEM_EXTRACT');
+      });
+
+      it('should not check blockade at all when using item', () => {
+        // Mock blockade to always fail
+        DetectionManager.getCurrentDetection.mockReturnValue(100);
+        gameStateManager.useTacticalItem.mockReturnValue({ success: true, remaining: 0 });
+
+        const result = ExtractionController.initiateExtractionWithItem(mockRunState, true);
+
+        // Even with 100% detection, should extract safely with item
+        expect(result.action).toBe('extract');
+        expect(result.itemUsed).toBe(true);
+      });
+
+      it('should fall back to normal extraction if item use fails', () => {
+        gameStateManager.useTacticalItem.mockReturnValue({ success: false, error: 'No items' });
+        DetectionManager.getCurrentDetection.mockReturnValue(0); // Safe extraction
+
+        const result = ExtractionController.initiateExtractionWithItem(mockRunState, true);
+
+        // Falls back to normal extraction (safe in this case)
+        expect(result.action).toBe('extract');
+        expect(result.itemUsed).toBeUndefined();
+      });
+
+      it('should fall back to normal blockade check if item use fails with high detection', () => {
+        gameStateManager.useTacticalItem.mockReturnValue({ success: false, error: 'No items' });
+        DetectionManager.getCurrentDetection.mockReturnValue(100); // Guaranteed blockade
+
+        // Force checkBlockade to return true and getBlockadeAI to return a valid AI
+        const originalCheckBlockade = ExtractionController.checkBlockade.bind(ExtractionController);
+        const originalGetBlockadeAI = ExtractionController.getBlockadeAI.bind(ExtractionController);
+        ExtractionController.checkBlockade = vi.fn(() => true);
+        ExtractionController.getBlockadeAI = vi.fn(() => 'Test AI');
+
+        const result = ExtractionController.initiateExtractionWithItem(mockRunState, true);
+
+        // Falls back to normal extraction, which triggers combat
+        expect(result.action).toBe('combat');
+        expect(result.isBlockade).toBe(true);
+
+        // Restore originals
+        ExtractionController.checkBlockade = originalCheckBlockade;
+        ExtractionController.getBlockadeAI = originalGetBlockadeAI;
+      });
+
+      it('should perform normal extraction when useItem=false', () => {
+        DetectionManager.getCurrentDetection.mockReturnValue(0); // Safe
+
+        // Force checkBlockade to return false for safe passage
+        const originalCheckBlockade = ExtractionController.checkBlockade.bind(ExtractionController);
+        ExtractionController.checkBlockade = vi.fn(() => false);
+
+        const result = ExtractionController.initiateExtractionWithItem(mockRunState, false);
+
+        expect(gameStateManager.useTacticalItem).not.toHaveBeenCalled();
+        expect(result.action).toBe('extract');
+        expect(result.itemUsed).toBeUndefined();
+
+        // Restore original
+        ExtractionController.checkBlockade = originalCheckBlockade;
       });
     });
   });

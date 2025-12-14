@@ -5,6 +5,7 @@ import InventoryModal from '../modals/InventoryModal';
 import MapOverviewModal from '../modals/MapOverviewModal';
 import BlueprintsModal from '../modals/BlueprintsModal';
 import ReplicatorModal from '../modals/ReplicatorModal';
+import ShopModal from '../modals/ShopModal';
 import RunSummaryModal from '../modals/RunSummaryModal';
 import MIARecoveryModal from '../modals/MIARecoveryModal';
 import miaRecoveryService from '../../logic/singlePlayer/MIARecoveryService.js';
@@ -37,6 +38,7 @@ const hangarImages = {
   inventory: new URL('/Hanger/Inventory.png', import.meta.url).href,
   replicator: new URL('/Hanger/Replicator.png', import.meta.url).href,
   blueprints: new URL('/Hanger/Blueprints.png', import.meta.url).href,
+  shop: new URL('/Hanger/Shop.png', import.meta.url).href,
   repairBay: new URL('/Hanger/RepairBay.png', import.meta.url).href
 };
 
@@ -714,6 +716,9 @@ const HangarScreen = () => {
       case 'blueprints':
         setActiveModal('blueprints');
         break;
+      case 'shop':
+        setActiveModal('shop');
+        break;
       case 'repairBay':
         // Skip modal, go directly to repair bay screen
         gameStateManager.setState({ appState: 'repairBay' });
@@ -1286,6 +1291,7 @@ const HangarScreen = () => {
                     { key: 'inventory', label: 'INVENTORY', image: hangarImages.inventory },
                     { key: 'replicator', label: 'REPLICATOR', image: hangarImages.replicator },
                     { key: 'blueprints', label: 'BLUEPRINTS', image: hangarImages.blueprints },
+                    { key: 'shop', label: 'SHOP', image: hangarImages.shop },
                     { key: 'repairBay', label: 'REPAIR BAY', image: hangarImages.repairBay }
                   ].map(({ key, label, image }) => {
                     const isHovered = hoveredButton === key;
@@ -1545,6 +1551,7 @@ const HangarScreen = () => {
       {activeModal === 'inventory' && <InventoryModal onClose={closeAllModals} />}
       {activeModal === 'blueprints' && <BlueprintsModal onClose={closeAllModals} />}
       {activeModal === 'replicator' && <ReplicatorModal onClose={closeAllModals} />}
+      {activeModal === 'shop' && <ShopModal onClose={closeAllModals} />}
       {activeModal === 'quickDeploy' && <QuickDeployManager onClose={closeAllModals} />}
 
       {activeModal === 'mapOverview' && (() => {

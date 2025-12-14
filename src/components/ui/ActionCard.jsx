@@ -126,7 +126,7 @@ const ActionCard = ({
         {/* Content Wrapper */}
         <div className="relative z-10 flex flex-col h-full">
           {/* Header with Cost */}
-          <div className="grid grid-cols-[1fr_auto] gap-2 items-center py-1 px-3 bg-black/40 flex-shrink-0 h-8">
+          <div className="grid grid-cols-[1fr_auto] gap-2 items-center py-1 pl-3 pr-1 bg-black/40 flex-shrink-0 h-8">
             <div className="text-center min-w-0">
               <ScalingText text={name} className="font-orbitron text-sm uppercase tracking-widest whitespace-nowrap text-white" />
             </div>

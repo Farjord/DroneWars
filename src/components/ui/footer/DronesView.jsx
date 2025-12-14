@@ -111,6 +111,9 @@ function DronesView({
                 ? localPlayerState.initialDeploymentBudget + localPlayerState.energy
                 : localPlayerState.deploymentBudget + localPlayerState.energy;
               const canAfford = totalResource >= drone.class;
+              const hasDeploymentBudget = roundNumber === 1
+                ? localPlayerState.initialDeploymentBudget > 0
+                : localPlayerState.deploymentBudget > 0;
               const isUpgradeTarget = selectedCard?.type === 'Upgrade'
                 && validCardTargets.some(t => t.id === drone.name);
 
@@ -163,6 +166,7 @@ function DronesView({
                     appliedUpgrades={localPlayerState.appliedUpgrades[drone.name] || []}
                     isUpgradeTarget={isUpgradeTarget}
                     onViewUpgrades={(d, upgrades) => setViewUpgradesModal({ droneName: d.name, upgrades })}
+                    hasDeploymentBudget={hasDeploymentBudget}
                   />
                 </div>
               );

@@ -87,6 +87,18 @@ describe('SinglePlayerCombatInitializer - isBlockade flag', () => {
       ]
     }));
 
+    // Mock getAIPersonality to return a valid AI - this is critical!
+    // Without this mock, initiateCombat() returns early and never calls setState
+    vi.spyOn(SinglePlayerCombatInitializer, 'getAIPersonality').mockReturnValue({
+      name: 'Test AI',
+      difficulty: 1,
+      shipId: 'SHIP_001',
+      decklist: [],
+      dronePool: [],
+      modes: ['extraction'],
+      shipDeployment: { placement: ['bridge', 'powerCell', 'droneControlHub'] }
+    });
+
     // Mock gameFlowManager to avoid phase transition calls
     gameStateManager.gameFlowManager = {
       processRoundInitialization: vi.fn().mockResolvedValue('deployment'),

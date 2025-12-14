@@ -11,6 +11,7 @@ import { poiTypes } from '../data/pointsOfInterestData.js';
 import aiPersonalities from '../data/aiData.js';
 import { BACKGROUNDS } from '../config/backgrounds.js';
 import { shipCollection } from '../data/shipData.js';
+import { tacticalItemCollection } from '../data/tacticalItemData.js';
 import {
   SHIP_FOLDER_NAMES,
   SECTION_FILE_NAMES,
@@ -39,6 +40,7 @@ const shipSectionImages = extractUniquePaths(shipComponentCollection, 'image');
 const poiImages = extractUniquePaths(poiTypes, 'image');
 const aiImages = extractUniquePaths(aiPersonalities, 'imagePath');
 const shipImages = extractUniquePaths(shipCollection, 'image');
+const tacticalItemImages = extractUniquePaths(tacticalItemCollection, 'image');
 
 // Extract background paths (only static backgrounds have paths)
 const backgroundImages = BACKGROUNDS
@@ -73,7 +75,8 @@ const staticAssets = {
     '/DroneWars/Hanger/Inventory.png',
     '/DroneWars/Hanger/Replicator.png',
     '/DroneWars/Hanger/Blueprints.png',
-    '/DroneWars/Hanger/RepairBay.png'
+    '/DroneWars/Hanger/RepairBay.png',
+    '/DroneWars/Hanger/Shop.png'
   ],
   tactical: [
     '/DroneWars/Tactical/Tactical1.jpg',
@@ -105,7 +108,8 @@ export const assetManifest = {
   menu: staticAssets.menu,
   hanger: staticAssets.hanger,
   tactical: staticAssets.tactical,
-  eremos: staticAssets.eremos
+  eremos: staticAssets.eremos,
+  tacticalItems: tacticalItemImages
 };
 
 /**
@@ -144,7 +148,8 @@ export const CATEGORY_LABELS = {
   menu: 'Menu Graphics',
   hanger: 'Hangar Interface',
   tactical: 'Tactical Maps',
-  eremos: 'Eremos Assets'
+  eremos: 'Eremos Assets',
+  tacticalItems: 'Tactical Items'
 };
 
 export default assetManifest;

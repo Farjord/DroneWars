@@ -77,6 +77,41 @@ class ExtractionController {
   }
 
   /**
+   * Check if Clearance Override (extract) tactical item is available
+   * @returns {boolean} True if player has at least one extract item
+   */
+  checkExtractItemAvailable() {
+    const count = gameStateManager.getTacticalItemCount('ITEM_EXTRACT');
+    return count > 0;
+  }
+
+  /**
+   * Initiate extraction at gate with optional item bypass
+   * @param {Object} currentRunState - Current run state
+   * @param {boolean} useItem - Whether to use Clearance Override item to bypass blockade
+   * @returns {Object} { action: 'combat', aiId, isBlockade } or { action: 'extract', itemUsed? }
+   */
+  initiateExtractionWithItem(currentRunState, useItem = false) {
+    // If using item, attempt to consume it and bypass blockade entirely
+    if (useItem) {
+      const result = gameStateManager.useTacticalItem('ITEM_EXTRACT');
+      if (result.success) {
+        debugLog('EXTRACTION', 'Clearance Override used - bypassing blockade', {
+          remaining: result.remaining
+        });
+        return { action: 'extract', itemUsed: true };
+      }
+      // Item use failed - fall back to normal extraction
+      debugLog('EXTRACTION', 'Clearance Override failed - falling back to normal extraction', {
+        error: result.error
+      });
+    }
+
+    // Normal extraction with blockade check
+    return this.initiateExtraction(currentRunState);
+  }
+
+  /**
    * Initiate extraction at gate
    * @param {Object} currentRunState - Current run state
    * @returns {Object} { action: 'combat', aiId } or { action: 'extract' }

@@ -40,6 +40,8 @@ import { calculateSectionBaseStats } from '../../logic/statsCalculator.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { ECONOMY } from '../../data/economyData.js';
 import ReputationService from '../../logic/reputation/ReputationService.js';
+import TacticalItemsPanel from '../ui/TacticalItemsPanel.jsx';
+import { getTacticalItemById } from '../../data/tacticalItemData.js';
 import './TacticalMapScreen.css';
 
 /**
@@ -1292,6 +1294,49 @@ function TacticalMapScreen() {
   }, []);
 
   /**
+   * Handle extraction with Clearance Override item
+   * Bypasses blockade check entirely
+   */
+  const handleExtractionWithItem = useCallback(() => {
+    console.log('[TacticalMap] Extraction with Clearance Override');
+
+    const currentState = gameStateManager.getState();
+    const runState = currentState.currentRunState;
+
+    if (!runState) {
+      console.warn('[TacticalMap] No run state for extraction with item');
+      return;
+    }
+
+    // Use the item and extract
+    const result = ExtractionController.initiateExtractionWithItem(runState, true);
+
+    if (result.action === 'extract' && result.itemUsed) {
+      console.log('[TacticalMap] Clearance Override successful - extracting');
+      setShowExtractionConfirm(false);
+
+      // Complete extraction (no blockade check needed)
+      const extractionResult = ExtractionController.completeExtraction(runState);
+
+      // Prepare extraction screen data
+      setExtractionScreenData({
+        creditsEarned: runState.creditsEarned || 0,
+        cardsCollected: runState.collectedLoot?.filter(l => l.type === 'card').length || 0,
+        aiCoresEarned: runState.aiCoresEarned || 0
+      });
+
+      // Store the result for after animation
+      pendingExtractionRef.current = extractionResult;
+
+      // Show extraction loading screen
+      setShowExtractionScreen(true);
+    } else {
+      // Item use failed - shouldn't happen if button is only shown when available
+      console.warn('[TacticalMap] Clearance Override failed');
+    }
+  }, []);
+
+  /**
    * Handle blockade combat - engage with standard deploy
    * Called when modal detects blockade and player clicks Engage/Standard Deploy
    */
@@ -1422,6 +1467,73 @@ function TacticalMapScreen() {
     console.log('[TacticalMap] Escape requested:', context);
     setEscapeContext(context);
     setShowEscapeConfirm(true);
+  }, []);
+
+  /**
+   * Handle evade item usage - skip encounter without combat or damage
+   * Uses the Emergency Jammer tactical item
+   */
+  const handleEvadeItem = useCallback(() => {
+    console.log('[TacticalMap] Evade item used');
+
+    // Use the tactical item
+    const result = gameStateManager.useTacticalItem('ITEM_EVADE');
+    if (!result.success) {
+      console.warn('[TacticalMap] Failed to use evade item:', result.error);
+      return;
+    }
+
+    console.log('[TacticalMap] Evade successful, remaining:', result.remaining);
+
+    // Mark POI as visited (no loot gained, but encounter skipped)
+    if (currentEncounter?.poi) {
+      const currentState = gameStateManager.getState();
+      const runState = currentState.currentRunState;
+      const lootedPOIs = runState?.lootedPOIs || [];
+      gameStateManager.setState({
+        currentRunState: {
+          ...runState,
+          lootedPOIs: [...lootedPOIs, { q: currentEncounter.poi.q, r: currentEncounter.poi.r }]
+        }
+      });
+      console.log('[TacticalMap] POI marked as visited (evaded):', currentEncounter.poi.q, currentEncounter.poi.r);
+    }
+
+    // Close encounter modal and clear state
+    setShowPOIModal(false);
+    setCurrentEncounter(null);
+
+    // Resume movement if waypoints remain
+    const currentState = gameStateManager.getState();
+    const runState = currentState.currentRunState;
+    if (runState?.waypoints && runState.waypoints.length > 0) {
+      console.log('[TacticalMap] Resuming movement after evade');
+      setIsMoving(true);
+    }
+  }, [currentEncounter]);
+
+  /**
+   * Handle threat reduction item usage
+   * Reduces current detection by item's effectValue
+   */
+  const handleUseThreatReduce = useCallback(() => {
+    console.log('[TacticalMap] Signal Dampener used');
+
+    // Use the tactical item
+    const result = gameStateManager.useTacticalItem('ITEM_THREAT_REDUCE');
+    if (!result.success) {
+      console.warn('[TacticalMap] Failed to use threat reduce item:', result.error);
+      return;
+    }
+
+    // Get the effect value from the item data
+    const item = getTacticalItemById('ITEM_THREAT_REDUCE');
+    const reductionAmount = item?.effectValue || 20;
+
+    // Reduce detection
+    DetectionManager.addDetection(-reductionAmount, 'Signal Dampener used');
+
+    console.log('[TacticalMap] Detection reduced by', reductionAmount, ', remaining items:', result.remaining);
   }, []);
 
   /**
@@ -2089,6 +2201,15 @@ function TacticalMapScreen() {
         onInventoryClick={handleInventory}
       />
 
+      {/* Tactical Items Panel - Bottom left corner */}
+      <TacticalItemsPanel
+        evadeCount={gameStateManager.getTacticalItemCount('ITEM_EVADE')}
+        extractCount={gameStateManager.getTacticalItemCount('ITEM_EXTRACT')}
+        threatReduceCount={gameStateManager.getTacticalItemCount('ITEM_THREAT_REDUCE')}
+        currentDetection={currentRunState.detection || 0}
+        onUseThreatReduce={handleUseThreatReduce}
+      />
+
       {/* Hex Info Panel (right side) - Two views: Waypoint List or Hex Info */}
       <HexInfoPanel
         // Journey state
@@ -2141,6 +2262,8 @@ function TacticalMapScreen() {
           }}
           validQuickDeployments={validQuickDeployments}
           onEscape={() => handleEscapeRequest({ type: 'poi', isPOI: true })}
+          onEvade={handleEvadeItem}
+          evadeItemCount={gameStateManager.getTacticalItemCount('ITEM_EVADE')}
           onClose={handleEncounterClose}
         />
       )}
@@ -2197,6 +2320,8 @@ function TacticalMapScreen() {
           detection={DetectionManager.getCurrentDetection()}
           onCancel={handleExtractionCancel}
           onExtract={handleExtractionConfirmed}
+          onExtractWithItem={handleExtractionWithItem}
+          extractItemCount={gameStateManager.getTacticalItemCount('ITEM_EXTRACT')}
           onEngageCombat={handleBlockadeCombat}
           onQuickDeploy={handleBlockadeQuickDeploy}
           validQuickDeployments={validQuickDeployments}
