@@ -141,7 +141,7 @@ export const calculateEffectiveShipStats = (playerState, placedSections = []) =>
  * @param {Object} allPlacedSections - Placed sections for both players
  * @returns {Object} Effective drone stats
  */
-export const calculateEffectiveStats = (drone, lane, playerState, opponentState, allPlacedSections) => {
+export const calculateEffectiveStats = (drone, lane, playerState, opponentState, allPlacedSections, gameContext = {}) => {
     if (!drone || !lane || !playerState || !opponentState || !allPlacedSections) {
         return { attack: 0, speed: 0, hull: 0, maxShields: 0, cost: 0, baseAttack: 0, baseSpeed: 0, baseCost: 0, keywords: new Set() };
     }
@@ -209,8 +209,14 @@ export const calculateEffectiveStats = (drone, lane, playerState, opponentState,
           }
         }
 
+        if (condition.type === 'NOT_FIRST_ACTION') {
+          const actionsTaken = gameContext.actionsTakenThisTurn ?? 0;
+          conditionMet = actionsTaken >= 1;
+        }
+
         if (conditionMet) {
           if (mod.stat === 'attack') effectiveStats.attack += mod.value;
+          if (mod.stat === 'speed') effectiveStats.speed += mod.value;
         }
       }
 

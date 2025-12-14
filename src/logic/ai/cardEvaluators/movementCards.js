@@ -6,6 +6,7 @@
 import fullDroneCollection from '../../../data/droneData.js';
 import { SCORING_WEIGHTS, CARD_EVALUATION, INVALID_SCORE } from '../aiConstants.js';
 import { calculateLaneScore } from '../scoring/laneScoring.js';
+import { hasReadyNotFirstActionDrones } from '../helpers/keywordHelpers.js';
 
 /**
  * Evaluate a SINGLE_MOVE card
@@ -81,6 +82,11 @@ export const evaluateSingleMoveCard = (card, target, moveData, context) => {
   if (card.effect.goAgain) {
     score += CARD_EVALUATION.GO_AGAIN_BONUS;
     logic.push(`✅ Go Again: +${CARD_EVALUATION.GO_AGAIN_BONUS}`);
+    // Add bonus if we have ready drones that benefit from multiple actions
+    if (hasReadyNotFirstActionDrones(player2)) {
+      score += CARD_EVALUATION.NOT_FIRST_ACTION_ENABLER_BONUS;
+      logic.push(`✅ NOT_FIRST_ACTION enabler: +${CARD_EVALUATION.NOT_FIRST_ACTION_ENABLER_BONUS}`);
+    }
   }
 
   return { score, logic };

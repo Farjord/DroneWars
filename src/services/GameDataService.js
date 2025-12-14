@@ -91,13 +91,20 @@ class GameDataService {
       opponentState = overrideOpponentState;
       placedSections = overridePlacedSections || this.getPlacedSectionsForEngine();
 
+      // Get game context for conditional abilities (e.g., NOT_FIRST_ACTION)
+      const gameState = this.gameStateManager.getState();
+      const gameContext = {
+        actionsTakenThisTurn: gameState.actionsTakenThisTurn || 0
+      };
+
       // Calculate effective stats WITHOUT caching (temp states shouldn't be cached)
       return calculateEffectiveStats(
         drone,
         lane,
         playerState,
         opponentState,
-        placedSections
+        placedSections,
+        gameContext
       );
     }
 
@@ -128,13 +135,19 @@ class GameDataService {
     playerState = isDroneOwnedByLocal ? localPlayerState : opponentPlayerState;
     opponentState = isDroneOwnedByLocal ? opponentPlayerState : localPlayerState;
 
+    // Build game context for conditional abilities (e.g., NOT_FIRST_ACTION)
+    const gameContext = {
+      actionsTakenThisTurn: gameState.actionsTakenThisTurn || 0
+    };
+
     // Calculate effective stats using game engine
     const effectiveStats = calculateEffectiveStats(
       drone,
       lane,
       playerState,
       opponentState,
-      placedSections
+      placedSections,
+      gameContext
     );
 
     // Cache the result

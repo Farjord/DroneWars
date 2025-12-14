@@ -242,6 +242,7 @@ export const CARD_EVALUATION = {
   GENERIC_STAT_BONUS: 10,
   PERMANENT_MOD_MULTIPLIER: 1.5,
   GO_AGAIN_BONUS: 40,
+  NOT_FIRST_ACTION_ENABLER_BONUS: 15,  // Added to goAgain cards when ready drones with NOT_FIRST_ACTION abilities exist
   MULTI_BUFF_BONUS_PER_DRONE: 10,
 
   // SINGLE_MOVE card scoring

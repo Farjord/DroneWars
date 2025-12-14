@@ -443,6 +443,13 @@ setAnimationManager(animationManager) {
       this.lastActionResult = result;
       this.lastActionType = type;
 
+      // Increment action counter for qualifying action types (for NOT_FIRST_ACTION ability condition)
+      const actionCountingTypes = ['attack', 'cardPlay', 'move', 'ability', 'deployment', 'shipAbility'];
+      if (actionCountingTypes.includes(type) && result && result.success !== false) {
+        const currentCount = this.gameStateManager.getState().actionsTakenThisTurn || 0;
+        this.gameStateManager.setState({ actionsTakenThisTurn: currentCount + 1 }, 'ACTION_COUNT_INCREMENT');
+      }
+
       return result;
     } finally {
       // Emit action completed event for GameFlowManager
@@ -1859,6 +1866,13 @@ setAnimationManager(animationManager) {
         debugLog('PHASE_TRANSITIONS', `[TURN TRANSITION DEBUG] Setting new player: ${actualNewPlayer}`);
       }
 
+      // Reset action counter when turn passes to a different player (for NOT_FIRST_ACTION ability condition)
+      const previousPlayer = currentState.currentPlayer;
+      if (actualNewPlayer !== previousPlayer) {
+        this.gameStateManager.setState({ actionsTakenThisTurn: 0 }, 'TURN_TRANSITION_RESET');
+        debugLog('PHASE_TRANSITIONS', `[TURN TRANSITION DEBUG] Reset actionsTakenThisTurn for new player: ${actualNewPlayer}`);
+      }
+
       // Always set the player (even if same) to trigger state change event
       this.gameStateManager.setCurrentPlayer(actualNewPlayer);
     }
@@ -2104,6 +2118,7 @@ setAnimationManager(animationManager) {
         currentPlayer: determinedFirstPlayer,
         firstPlayerOfRound: determinedFirstPlayer,
         firstPasserOfPreviousRound: currentState.passInfo.firstPasser,
+        actionsTakenThisTurn: 0,  // Reset for new round (NOT_FIRST_ACTION ability condition)
         passInfo: {
           firstPasser: null,
           player1Passed: false,

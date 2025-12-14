@@ -39,7 +39,10 @@ class ConditionEvaluator {
       ON_MOVE: this.evaluateOnMove.bind(this),
 
       // Lane comparison conditions (POST timing, for movement)
-      OPPONENT_HAS_MORE_IN_LANE: this.evaluateOpponentHasMoreInLane.bind(this)
+      OPPONENT_HAS_MORE_IN_LANE: this.evaluateOpponentHasMoreInLane.bind(this),
+
+      // Turn-based conditions
+      NOT_FIRST_ACTION: this.evaluateNotFirstAction.bind(this)
     };
   }
 
@@ -316,6 +319,26 @@ class ConditionEvaluator {
     const oppCount = countDrones(oppDrones);
 
     return oppCount > myCount;
+  }
+
+  // ========================================
+  // TURN-BASED CONDITION HANDLERS
+  // ========================================
+
+  /**
+   * Check if this is NOT the first action of the turn
+   * Returns true when actionsTakenThisTurn >= 1
+   * Used for "momentum" abilities that reward chain actions
+   */
+  evaluateNotFirstAction(condition, context) {
+    const actionsTaken = context.actionsTakenThisTurn;
+
+    // Treat undefined/null as 0 (first action)
+    if (actionsTaken === undefined || actionsTaken === null) {
+      return false;
+    }
+
+    return actionsTaken >= 1;
   }
 }
 

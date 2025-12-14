@@ -49,6 +49,9 @@ describe('GameStateManager - Game State Initialization/Cleanup', () => {
       singlePlayerEncounter: null,
     });
 
+    // Also ensure actionsTakenThisTurn is reset
+    gameStateManager.setState({ actionsTakenThisTurn: 0 });
+
     // Mock console.error to capture calls
     console.error = vi.fn();
   });
@@ -265,6 +268,14 @@ describe('GameStateManager - Game State Initialization/Cleanup', () => {
       expect(passInfo.firstPasser).toBe(null);
       expect(passInfo.player1Passed).toBe(false);
       expect(passInfo.player2Passed).toBe(false);
+    });
+
+    it('should reset actionsTakenThisTurn to 0', () => {
+      gameStateManager.setState({ actionsTakenThisTurn: 5 });
+
+      gameStateManager.resetGameState();
+
+      expect(gameStateManager.get('actionsTakenThisTurn')).toBe(0);
     });
 
     it('should reset commitments to empty object', () => {

@@ -831,4 +831,54 @@ describe('ConditionEvaluator', () => {
       expect(result).toBe(true);
     });
   });
+
+  // ========================================
+  // NOT_FIRST_ACTION CONDITION
+  // ========================================
+  describe('NOT_FIRST_ACTION', () => {
+    it('returns false when actionsTakenThisTurn is 0 (first action)', () => {
+      mockContext.actionsTakenThisTurn = 0;
+      const condition = { type: 'NOT_FIRST_ACTION' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns true when actionsTakenThisTurn is 1 (second action)', () => {
+      mockContext.actionsTakenThisTurn = 1;
+      const condition = { type: 'NOT_FIRST_ACTION' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(true);
+    });
+
+    it('returns true when actionsTakenThisTurn >= 1', () => {
+      mockContext.actionsTakenThisTurn = 5;
+      const condition = { type: 'NOT_FIRST_ACTION' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(true);
+    });
+
+    it('returns false when actionsTakenThisTurn is undefined', () => {
+      delete mockContext.actionsTakenThisTurn;
+      const condition = { type: 'NOT_FIRST_ACTION' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+
+    it('returns false when actionsTakenThisTurn is null', () => {
+      mockContext.actionsTakenThisTurn = null;
+      const condition = { type: 'NOT_FIRST_ACTION' };
+
+      const result = evaluator.evaluate(condition, mockContext);
+
+      expect(result).toBe(false);
+    });
+  });
 });

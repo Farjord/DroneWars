@@ -667,4 +667,152 @@ describe('ActionProcessor', () => {
       expect(state.commitments.mandatoryDiscard.player1.phase).toBe('discard');
     });
   });
+
+  // ========================================
+  // ACTION COUNTER TRACKING (NOT_FIRST_ACTION)
+  // ========================================
+
+  describe('actionsTakenThisTurn tracking', () => {
+    describe('increments counter after actions', () => {
+      it('increments after processAttack completes', async () => {
+        mockGameStateManager.getState.mockReturnValue(createBaseState({
+          turnPhase: 'action',
+          currentPlayer: 'player1',
+          actionsTakenThisTurn: 0
+        }));
+
+        // Mock processAttack to return success
+        actionProcessor.processAttack = vi.fn().mockResolvedValue({ success: true });
+
+        await actionProcessor.processAction({
+          type: 'attack',
+          payload: { playerId: 'player1', attackDetails: {} }
+        });
+
+        // Check that setState was called with incremented counter
+        expect(mockGameStateManager.setState).toHaveBeenCalledWith(
+          expect.objectContaining({ actionsTakenThisTurn: 1 }),
+          expect.any(String)
+        );
+      });
+
+      it('increments after processCardPlay completes', async () => {
+        mockGameStateManager.getState.mockReturnValue(createBaseState({
+          turnPhase: 'action',
+          currentPlayer: 'player1',
+          actionsTakenThisTurn: 0
+        }));
+
+        // Mock processCardPlay to return success
+        actionProcessor.processCardPlay = vi.fn().mockResolvedValue({ success: true });
+
+        await actionProcessor.processAction({
+          type: 'cardPlay',
+          payload: { playerId: 'player1', card: {} }
+        });
+
+        expect(mockGameStateManager.setState).toHaveBeenCalledWith(
+          expect.objectContaining({ actionsTakenThisTurn: 1 }),
+          expect.any(String)
+        );
+      });
+
+      it('increments after processMove completes', async () => {
+        mockGameStateManager.getState.mockReturnValue(createBaseState({
+          turnPhase: 'action',
+          currentPlayer: 'player1',
+          actionsTakenThisTurn: 0
+        }));
+
+        // Mock processMove to return success
+        actionProcessor.processMove = vi.fn().mockResolvedValue({ success: true });
+
+        await actionProcessor.processAction({
+          type: 'move',
+          payload: { playerId: 'player1', droneId: 'drone1', targetLane: 'lane2' }
+        });
+
+        expect(mockGameStateManager.setState).toHaveBeenCalledWith(
+          expect.objectContaining({ actionsTakenThisTurn: 1 }),
+          expect.any(String)
+        );
+      });
+
+      it('accumulates across multiple actions in same turn', async () => {
+        let counter = 0;
+        mockGameStateManager.getState.mockImplementation(() => createBaseState({
+          turnPhase: 'action',
+          currentPlayer: 'player1',
+          actionsTakenThisTurn: counter
+        }));
+        mockGameStateManager.setState.mockImplementation((updates) => {
+          if (updates.actionsTakenThisTurn !== undefined) {
+            counter = updates.actionsTakenThisTurn;
+          }
+        });
+
+        // Mock action processors
+        actionProcessor.processAttack = vi.fn().mockResolvedValue({ success: true });
+        actionProcessor.processCardPlay = vi.fn().mockResolvedValue({ success: true });
+
+        // First action
+        await actionProcessor.processAction({
+          type: 'attack',
+          payload: { playerId: 'player1', attackDetails: {} }
+        });
+        expect(counter).toBe(1);
+
+        // Second action
+        await actionProcessor.processAction({
+          type: 'cardPlay',
+          payload: { playerId: 'player1', card: {} }
+        });
+        expect(counter).toBe(2);
+      });
+
+      it('does NOT increment after failed action', async () => {
+        mockGameStateManager.getState.mockReturnValue(createBaseState({
+          turnPhase: 'action',
+          currentPlayer: 'player1',
+          actionsTakenThisTurn: 0
+        }));
+
+        // Mock processAttack to return failure
+        actionProcessor.processAttack = vi.fn().mockResolvedValue({ success: false });
+
+        await actionProcessor.processAction({
+          type: 'attack',
+          payload: { playerId: 'player1', attackDetails: {} }
+        });
+
+        // Counter should not increment for failed actions
+        expect(mockGameStateManager.setState).not.toHaveBeenCalledWith(
+          expect.objectContaining({ actionsTakenThisTurn: 1 }),
+          expect.any(String)
+        );
+      });
+    });
+
+    describe('does NOT increment for non-action types', () => {
+      it('does NOT increment for commitment', async () => {
+        mockGameStateManager.getState.mockReturnValue(createBaseState({
+          gameMode: 'host',
+          turnPhase: 'allocateShields',
+          actionsTakenThisTurn: 0
+        }));
+
+        await actionProcessor.processCommitment({
+          playerId: 'player1',
+          phase: 'allocateShields',
+          actionData: {}
+        });
+
+        // Should not increment for commitments
+        expect(mockGameStateManager.setState).not.toHaveBeenCalledWith(
+          expect.objectContaining({ actionsTakenThisTurn: 1 }),
+          'ACTION_COUNT_INCREMENT'
+        );
+      });
+    });
+  });
 });

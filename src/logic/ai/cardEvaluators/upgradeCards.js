@@ -12,6 +12,7 @@ import {
   getRemainingUpgradeSlots,
   droneHasUpgradedKeyword,
 } from '../helpers/upgradeHelpers.js';
+import { hasReadyNotFirstActionDrones } from '../helpers/keywordHelpers.js';
 
 /**
  * Evaluate a MODIFY_DRONE_BASE (Upgrade) card
@@ -174,6 +175,11 @@ export const evaluateModifyDroneBaseCard = (card, target, context) => {
   if (card.effect.goAgain) {
     score += CARD_EVALUATION.GO_AGAIN_BONUS;
     logic.push(`Go Again: +${CARD_EVALUATION.GO_AGAIN_BONUS}`);
+    // Add bonus if we have ready drones that benefit from multiple actions
+    if (hasReadyNotFirstActionDrones(player2)) {
+      score += CARD_EVALUATION.NOT_FIRST_ACTION_ENABLER_BONUS;
+      logic.push(`NOT_FIRST_ACTION enabler: +${CARD_EVALUATION.NOT_FIRST_ACTION_ENABLER_BONUS}`);
+    }
   }
 
   return { score, logic };

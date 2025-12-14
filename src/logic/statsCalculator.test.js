@@ -648,4 +648,216 @@ describe('statsCalculator', () => {
       expect(stats.bySection.section1['Energy Per Turn']).toBe(3)
     })
   })
+
+  // ========================================
+  // NOT_FIRST_ACTION CONDITIONAL STATS
+  // ========================================
+
+  describe('calculateEffectiveStats() with NOT_FIRST_ACTION condition', () => {
+    let mockPlayerSelf, mockPlayerOpponent, mockPlacedSections
+
+    beforeEach(() => {
+      mockPlayerSelf = {
+        name: 'Player 1',
+        dronesOnBoard: {
+          lane1: [],
+          lane2: [],
+          lane3: []
+        },
+        appliedUpgrades: {},
+        shipSections: {}
+      }
+
+      mockPlayerOpponent = {
+        name: 'Player 2',
+        dronesOnBoard: {
+          lane1: [],
+          lane2: [],
+          lane3: []
+        },
+        appliedUpgrades: {},
+        shipSections: {}
+      }
+
+      mockPlacedSections = {
+        player1: ['section1', 'section2', 'section3'],
+        player2: ['section1', 'section2', 'section3']
+      }
+    })
+
+    it('does NOT apply attack bonus when actionsTakenThisTurn is 0 (first action)', () => {
+      // EXPLANATION: This test verifies that drones with NOT_FIRST_ACTION conditional abilities
+      // do NOT receive their bonus on the first action of a turn. The counter is 0 before any
+      // action is taken, so the condition should not be met.
+      // Expected: Jackal drone with base attack 2 should have attack 2 (no +2 bonus)
+
+      const jackalDrone = {
+        id: 'jackal1',
+        name: 'Jackal',
+        hull: 2,
+        isExhausted: false,
+        statMods: [],
+        appliedUpgrades: []
+      }
+
+      const gameContext = { actionsTakenThisTurn: 0 }
+
+      const stats = calculateEffectiveStats(
+        jackalDrone,
+        'lane1',
+        mockPlayerSelf,
+        mockPlayerOpponent,
+        mockPlacedSections,
+        gameContext
+      )
+
+      // Jackal has base attack 2, should NOT get +2 bonus when actionsTakenThisTurn is 0
+      expect(stats.attack).toBe(2)
+    })
+
+    it('applies attack bonus when actionsTakenThisTurn >= 1 (subsequent actions)', () => {
+      // EXPLANATION: This test verifies that drones with NOT_FIRST_ACTION conditional abilities
+      // receive their bonus after the first action of a turn. When counter >= 1, the condition
+      // is met and the stat modification should be applied.
+      // Expected: Jackal drone with base attack 2 should have attack 4 (+2 bonus applied)
+
+      const jackalDrone = {
+        id: 'jackal1',
+        name: 'Jackal',
+        hull: 2,
+        isExhausted: false,
+        statMods: [],
+        appliedUpgrades: []
+      }
+
+      const gameContext = { actionsTakenThisTurn: 1 }
+
+      const stats = calculateEffectiveStats(
+        jackalDrone,
+        'lane1',
+        mockPlayerSelf,
+        mockPlayerOpponent,
+        mockPlacedSections,
+        gameContext
+      )
+
+      // Jackal has base attack 2, should get +2 bonus when actionsTakenThisTurn >= 1
+      expect(stats.attack).toBe(4)
+    })
+
+    it('applies speed bonus when actionsTakenThisTurn >= 1', () => {
+      // EXPLANATION: This test verifies that NOT_FIRST_ACTION works with speed stat as well.
+      // The Mongoose drone has a speed bonus that should apply on subsequent actions.
+      // Expected: Mongoose drone with base speed 3 should have speed 5 (+2 bonus applied)
+
+      const mongooseDrone = {
+        id: 'mongoose1',
+        name: 'Mongoose',
+        hull: 1,
+        isExhausted: false,
+        statMods: [],
+        appliedUpgrades: []
+      }
+
+      const gameContext = { actionsTakenThisTurn: 1 }
+
+      const stats = calculateEffectiveStats(
+        mongooseDrone,
+        'lane1',
+        mockPlayerSelf,
+        mockPlayerOpponent,
+        mockPlacedSections,
+        gameContext
+      )
+
+      // Mongoose has base speed 3, should get +2 bonus when actionsTakenThisTurn >= 1
+      expect(stats.speed).toBe(5)
+    })
+
+    it('applies bonus when actionsTakenThisTurn is 5 (many actions)', () => {
+      // EXPLANATION: This test verifies that the condition continues to work after multiple
+      // actions in a turn. A goAgain chain could result in many actions, and the bonus
+      // should still apply.
+      // Expected: Jackal drone should still have attack bonus after 5 actions
+
+      const jackalDrone = {
+        id: 'jackal1',
+        name: 'Jackal',
+        hull: 2,
+        isExhausted: false,
+        statMods: [],
+        appliedUpgrades: []
+      }
+
+      const gameContext = { actionsTakenThisTurn: 5 }
+
+      const stats = calculateEffectiveStats(
+        jackalDrone,
+        'lane1',
+        mockPlayerSelf,
+        mockPlayerOpponent,
+        mockPlacedSections,
+        gameContext
+      )
+
+      expect(stats.attack).toBe(4) // 2 base + 2 bonus
+    })
+
+    it('handles missing gameContext gracefully (defaults to no bonus)', () => {
+      // EXPLANATION: This test verifies backward compatibility. When gameContext is not
+      // provided (for existing code paths), the function should treat it as first action
+      // (no bonus applied) rather than crashing.
+      // Expected: Jackal drone should have base attack 2 with no gameContext
+
+      const jackalDrone = {
+        id: 'jackal1',
+        name: 'Jackal',
+        hull: 2,
+        isExhausted: false,
+        statMods: [],
+        appliedUpgrades: []
+      }
+
+      // No gameContext parameter
+      const stats = calculateEffectiveStats(
+        jackalDrone,
+        'lane1',
+        mockPlayerSelf,
+        mockPlayerOpponent,
+        mockPlacedSections
+      )
+
+      // Should default to no bonus (treat as first action)
+      expect(stats.attack).toBe(2)
+    })
+
+    it('handles undefined actionsTakenThisTurn in gameContext (defaults to no bonus)', () => {
+      // EXPLANATION: This test verifies that an empty gameContext object (without the
+      // actionsTakenThisTurn property) is handled gracefully.
+      // Expected: Jackal drone should have base attack 2 with empty gameContext
+
+      const jackalDrone = {
+        id: 'jackal1',
+        name: 'Jackal',
+        hull: 2,
+        isExhausted: false,
+        statMods: [],
+        appliedUpgrades: []
+      }
+
+      const gameContext = {} // Empty context
+
+      const stats = calculateEffectiveStats(
+        jackalDrone,
+        'lane1',
+        mockPlayerSelf,
+        mockPlayerOpponent,
+        mockPlacedSections,
+        gameContext
+      )
+
+      // Should default to no bonus (treat as first action)
+      expect(stats.attack).toBe(2)
+    })
+  })
 })

@@ -455,6 +455,50 @@ const fullDroneCollection = [
     ],
     upgradeSlots: 1
   },
+  {
+    name: 'Jackal',
+    class: 2,
+    limit: 2,
+    rarity: 'Uncommon',
+    attack: 2,
+    hull: 2,
+    shields: 1,
+    speed: 3,
+    image: '/DroneWars/img/Jackal.png',
+    abilities: [{
+      name: 'Opportunist',
+      description: 'Gains +2 attack if you have already taken an action this turn.',
+      type: 'PASSIVE',
+      effect: {
+        type: 'CONDITIONAL_MODIFY_STAT',
+        mod: { stat: 'attack', value: 2 },
+        condition: { type: 'NOT_FIRST_ACTION' }
+      }
+    }],
+    upgradeSlots: 2
+  },
+  {
+    name: 'Mongoose',
+    class: 1,
+    limit: 3,
+    rarity: 'Uncommon',
+    attack: 1,
+    hull: 1,
+    shields: 1,
+    speed: 3,
+    image: '/DroneWars/img/Mongoose.png',
+    abilities: [{
+      name: 'Quick Reflexes',
+      description: 'Gains +2 speed if you have already taken an action this turn.',
+      type: 'PASSIVE',
+      effect: {
+        type: 'CONDITIONAL_MODIFY_STAT',
+        mod: { stat: 'speed', value: 2 },
+        condition: { type: 'NOT_FIRST_ACTION' }
+      }
+    }],
+    upgradeSlots: 2
+  },
 
 ];
 

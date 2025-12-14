@@ -126,3 +126,37 @@ export const hasDogfightKeyword = (drone) => {
 export const hasRetaliateKeyword = (drone) => {
   return hasKeyword(drone, 'RETALIATE');
 };
+
+/**
+ * Check if a drone has a NOT_FIRST_ACTION conditional ability
+ * These drones gain bonuses when they're not the first action of a turn
+ * @param {Object} drone - The drone to check
+ * @returns {boolean} True if drone has NOT_FIRST_ACTION ability
+ */
+export const hasNotFirstActionAbility = (drone) => {
+  const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
+  return baseDrone?.abilities?.some(ability =>
+    ability.type === 'PASSIVE' &&
+    ability.effect?.type === 'CONDITIONAL_MODIFY_STAT' &&
+    ability.effect?.condition?.type === 'NOT_FIRST_ACTION'
+  ) || false;
+};
+
+/**
+ * Check if a player has any ready (non-exhausted) drones with NOT_FIRST_ACTION abilities on the board
+ * Used to determine if goAgain cards should get the NOT_FIRST_ACTION_ENABLER_BONUS
+ * @param {Object} playerState - The player's state object with dronesOnBoard
+ * @returns {boolean} True if player has ready drones with NOT_FIRST_ACTION ability
+ */
+export const hasReadyNotFirstActionDrones = (playerState) => {
+  if (!playerState?.dronesOnBoard) return false;
+
+  for (const lane of ['lane1', 'lane2', 'lane3']) {
+    const drones = playerState.dronesOnBoard[lane] || [];
+    for (const drone of drones) {
+      if (drone.isExhausted) continue; // Skip exhausted drones
+      if (hasNotFirstActionAbility(drone)) return true;
+    }
+  }
+  return false;
+};
