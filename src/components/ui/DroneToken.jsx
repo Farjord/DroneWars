@@ -344,10 +344,10 @@ const DroneToken = ({
       {/* End Visual Effects Wrapper */}
 
       {/* Overlapping Hexagons - Outside nested containers for proper filter rendering */}
-      <div className={`absolute -top-3 left-[-14px] w-6 h-7 z-20 ${teleportingEffect}`}>
+      <div className={`absolute -top-3 left-[-14px] w-6 h-7 z-20 ${teleportingEffect} ${exhaustEffect}`}>
           <StatHexagon value={effectiveStats.attack} isFlat={false} bgColor={statBgColor} textColor={attackTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
       </div>
-      <div className={`absolute -top-3 right-[-14px] w-7 h-7 z-20 ${isPotentialInterceptor ? (isPlayer ? 'interceptor-glow-cyan' : 'interceptor-glow') : ''} ${teleportingEffect}`}>
+      <div className={`absolute -top-3 right-[-14px] w-7 h-7 z-20 ${isPotentialInterceptor ? (isPlayer ? 'interceptor-glow-cyan' : 'interceptor-glow') : ''} ${teleportingEffect} ${exhaustEffect}`}>
           <StatHexagon value={effectiveStats.speed} isFlat={true} bgColor={statBgColor} textColor={speedTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
       </div>
 

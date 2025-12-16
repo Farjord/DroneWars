@@ -334,23 +334,9 @@ function GameHeader({
               <button
                 onClick={handlePlayerPass}
                 disabled={passInfo[`${getLocalPlayerId()}Passed`]}
-                className="relative p-[1px] transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{
-                  clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                  backgroundImage: passInfo[`${getLocalPlayerId()}Passed`]
-                    ? 'linear-gradient(45deg, rgba(75, 85, 99, 0.6), rgba(107, 114, 128, 0.6))'
-                    : 'linear-gradient(45deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8))'
-                }}
+                className="dw-btn dw-btn-danger dw-btn--sm"
               >
-                <div
-                  className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                  style={{
-                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                    color: passInfo[`${getLocalPlayerId()}Passed`] ? '#9ca3af' : '#fca5a5'
-                  }}
-                >
-                  Pass
-                </div>
+                Pass
               </button>
             )}
 
@@ -359,59 +345,23 @@ function GameHeader({
               <>
                 <button
                   onClick={handleCancelReallocation}
-                  className="relative p-[1px] transition-all hover:scale-105"
-                  style={{
-                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                    backgroundImage: 'linear-gradient(45deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8))'
-                  }}
+                  className="dw-btn dw-btn-danger dw-btn--sm"
                 >
-                  <div
-                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                    style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                      color: '#fca5a5'
-                    }}
-                  >
-                    Cancel
-                  </div>
+                  Cancel
                 </button>
 
                 <button
                   onClick={handleResetReallocation}
-                  className="relative p-[1px] transition-all hover:scale-105"
-                  style={{
-                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                    backgroundImage: 'linear-gradient(45deg, rgba(234, 179, 8, 0.8), rgba(202, 138, 4, 0.8))'
-                  }}
+                  className="dw-btn dw-btn-warning dw-btn--sm"
                 >
-                  <div
-                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                    style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                      color: '#fde047'
-                    }}
-                  >
-                    Reset
-                  </div>
+                  Reset
                 </button>
 
                 <button
                   onClick={handleContinueToAddPhase}
-                  className="relative p-[1px] transition-all hover:scale-105"
-                  style={{
-                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                    backgroundImage: 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
-                  }}
+                  className="dw-btn dw-btn-confirm dw-btn--sm"
                 >
-                  <div
-                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                    style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                      color: '#86efac'
-                    }}
-                  >
-                    Continue
-                  </div>
+                  Continue
                 </button>
               </>
             )}
@@ -421,59 +371,23 @@ function GameHeader({
               <>
                 <button
                   onClick={handleCancelReallocation}
-                  className="relative p-[1px] transition-all hover:scale-105"
-                  style={{
-                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                    backgroundImage: 'linear-gradient(45deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8))'
-                  }}
+                  className="dw-btn dw-btn-danger dw-btn--sm"
                 >
-                  <div
-                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                    style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                      color: '#fca5a5'
-                    }}
-                  >
-                    Cancel
-                  </div>
+                  Cancel
                 </button>
 
                 <button
                   onClick={handleResetReallocation}
-                  className="relative p-[1px] transition-all hover:scale-105"
-                  style={{
-                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                    backgroundImage: 'linear-gradient(45deg, rgba(234, 179, 8, 0.8), rgba(202, 138, 4, 0.8))'
-                  }}
+                  className="dw-btn dw-btn-warning dw-btn--sm"
                 >
-                  <div
-                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                    style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                      color: '#fde047'
-                    }}
-                  >
-                    Reset
-                  </div>
+                  Reset
                 </button>
 
                 <button
                   onClick={handleConfirmReallocation}
-                  className="relative p-[1px] transition-all hover:scale-105"
-                  style={{
-                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                    backgroundImage: 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
-                  }}
+                  className="dw-btn dw-btn-confirm dw-btn--sm"
                 >
-                  <div
-                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                    style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                      color: '#86efac'
-                    }}
-                  >
-                    Confirm
-                  </div>
+                  Confirm
                 </button>
               </>
             )}
@@ -484,21 +398,9 @@ function GameHeader({
                 {/* Cancel button - visible for ALL phases */}
                 <button
                   onClick={handleCancelMultiMove}
-                  className="relative p-[1px] transition-all hover:scale-105"
-                  style={{
-                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                    backgroundImage: 'linear-gradient(45deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8))'
-                  }}
+                  className="dw-btn dw-btn-danger dw-btn--sm"
                 >
-                  <div
-                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                    style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                      color: '#fca5a5'
-                    }}
-                  >
-                    Cancel
-                  </div>
+                  Cancel
                 </button>
 
                 {/* Confirm button - only during select_drones phase */}
@@ -517,23 +419,9 @@ function GameHeader({
                       });
                     }}
                     disabled={multiSelectState.selectedDrones.length === 0}
-                    className="relative p-[1px] transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                      backgroundImage: multiSelectState.selectedDrones.length === 0
-                        ? 'linear-gradient(45deg, rgba(75, 85, 99, 0.6), rgba(107, 114, 128, 0.6))'
-                        : 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
-                    }}
+                    className="dw-btn dw-btn-confirm dw-btn--sm"
                   >
-                    <div
-                      className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                      style={{
-                        clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                        color: multiSelectState.selectedDrones.length === 0 ? '#9ca3af' : '#86efac'
-                      }}
-                    >
-                      Confirm Drones
-                    </div>
+                    Confirm Drones
                   </button>
                 )}
               </>
@@ -544,62 +432,24 @@ function GameHeader({
               <>
                 <button
                   onClick={handleShowInterceptionDialog}
-                  className="relative p-[1px] transition-all hover:scale-105"
-                  style={{
-                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                    backgroundImage: 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
-                  }}
+                  className="dw-btn dw-btn-confirm dw-btn--sm"
                 >
-                  <div
-                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                    style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                      color: '#86efac'
-                    }}
-                  >
-                    Show Dialog
-                  </div>
+                  Show Dialog
                 </button>
 
                 <button
                   onClick={handleDeclineInterceptionFromHeader}
-                  className="relative p-[1px] transition-all hover:scale-105"
-                  style={{
-                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                    backgroundImage: 'linear-gradient(45deg, rgba(239, 68, 68, 0.8), rgba(220, 38, 38, 0.8))'
-                  }}
+                  className="dw-btn dw-btn-danger dw-btn--sm"
                 >
-                  <div
-                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                    style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                      color: '#fca5a5'
-                    }}
-                  >
-                    Decline
-                  </div>
+                  Decline
                 </button>
 
                 <button
                   onClick={handleConfirmInterception}
                   disabled={!selectedInterceptor}
-                  className="relative p-[1px] transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{
-                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                    backgroundImage: selectedInterceptor
-                      ? 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
-                      : 'linear-gradient(45deg, rgba(75, 85, 99, 0.6), rgba(107, 114, 128, 0.6))'
-                  }}
+                  className="dw-btn dw-btn-confirm dw-btn--sm"
                 >
-                  <div
-                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                    style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                      color: selectedInterceptor ? '#86efac' : '#9ca3af'
-                    }}
-                  >
-                    Confirm
-                  </div>
+                  Confirm
                 </button>
               </>
             )}
@@ -630,40 +480,16 @@ function GameHeader({
                 <>
                   <button
                     onClick={handleResetShields}
-                    className="relative p-[1px] transition-all hover:scale-105"
-                    style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                      backgroundImage: 'linear-gradient(45deg, rgba(234, 179, 8, 0.8), rgba(202, 138, 4, 0.8))'
-                    }}
+                    className="dw-btn dw-btn-warning dw-btn--sm"
                   >
-                    <div
-                      className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                      style={{
-                        clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                        color: '#fde047'
-                      }}
-                    >
-                      Reset
-                    </div>
+                    Reset
                   </button>
 
                   <button
                     onClick={handleConfirmShields}
-                    className="relative p-[1px] transition-all hover:scale-105"
-                    style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                      backgroundImage: 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
-                    }}
+                    className="dw-btn dw-btn-confirm dw-btn--sm"
                   >
-                    <div
-                      className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                      style={{
-                        clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                        color: '#86efac'
-                      }}
-                    >
-                      Confirm
-                    </div>
+                    Confirm
                   </button>
                 </>
               )}
@@ -672,21 +498,9 @@ function GameHeader({
               {turnPhase === 'optionalDiscard' && (
                 <button
                   onClick={handleRoundStartDraw}
-                  className="relative p-[1px] transition-all hover:scale-105"
-                  style={{
-                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                    backgroundImage: 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
-                  }}
+                  className="dw-btn dw-btn-confirm dw-btn--sm"
                 >
-                  <div
-                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                    style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                      color: '#86efac'
-                    }}
-                  >
-                    Confirm
-                  </div>
+                  Confirm
                 </button>
               )}
 
@@ -695,23 +509,9 @@ function GameHeader({
                 <button
                   onClick={handleMandatoryDiscardContinue}
                   disabled={excessCards > 0}
-                  className="relative p-[1px] transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{
-                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                    backgroundImage: excessCards > 0
-                      ? 'linear-gradient(45deg, rgba(75, 85, 99, 0.6), rgba(107, 114, 128, 0.6))'
-                      : 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
-                  }}
+                  className="dw-btn dw-btn-confirm dw-btn--sm"
                 >
-                  <div
-                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                    style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                      color: excessCards > 0 ? '#9ca3af' : '#86efac'
-                    }}
-                  >
-                    Continue
-                  </div>
+                  Continue
                 </button>
               )}
 
@@ -720,23 +520,9 @@ function GameHeader({
                 <button
                   onClick={handleMandatoryDroneRemovalContinue}
                   disabled={excessDrones > 0}
-                  className="relative p-[1px] transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
-                  style={{
-                    clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                    backgroundImage: excessDrones > 0
-                      ? 'linear-gradient(45deg, rgba(75, 85, 99, 0.6), rgba(107, 114, 128, 0.6))'
-                      : 'linear-gradient(45deg, rgba(34, 197, 94, 0.8), rgba(22, 163, 74, 0.8))'
-                  }}
+                  className="dw-btn dw-btn-confirm dw-btn--sm"
                 >
-                  <div
-                    className="px-6 py-1.5 uppercase text-sm tracking-wider font-semibold bg-gray-900"
-                    style={{
-                      clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)',
-                      color: excessDrones > 0 ? '#9ca3af' : '#86efac'
-                    }}
-                  >
-                    Continue
-                  </div>
+                  Continue
                 </button>
               )}
             </>
@@ -865,7 +651,10 @@ function GameHeader({
             </button>
 
             {showSettingsDropdown && (
-              <div className="absolute right-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50">
+              <div
+                className="absolute right-0 mt-2 w-48 rounded-lg shadow-xl border border-gray-700 z-50"
+                style={{ background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(10, 15, 28, 0.98) 100%)' }}
+              >
                 {DEV_CONFIG.features.debugView && (
                   <button
                     onClick={() => {
@@ -896,7 +685,10 @@ function GameHeader({
                   </button>
 
                   {showBackgroundSubmenu && (
-                    <div className="absolute right-full top-0 w-48 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-50">
+                    <div
+                      className="absolute right-full top-0 w-48 rounded-lg shadow-xl border border-gray-700 z-50"
+                      style={{ background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(10, 15, 28, 0.98) 100%)' }}
+                    >
                       {BACKGROUNDS.map((bg) => (
                         <button
                           key={bg.id}
