@@ -345,7 +345,7 @@ function LobbyScreen() {
                           e.stopPropagation();
                           handleViewDeck(ai);
                         }}
-                        className="btn-info"
+                        className="dw-btn dw-btn-secondary"
                       >
                         View Deck
                       </button>
@@ -372,11 +372,11 @@ function LobbyScreen() {
             gap: '1rem',
             marginTop: '1rem'
           }}>
-            <button onClick={handleBackToMenu} className="btn-cancel">
+            <button onClick={handleBackToMenu} className="dw-btn dw-btn-cancel">
               BACK TO MENU
             </button>
 
-            <button onClick={handleStartGame} disabled={!selectedAI} className="btn-continue">
+            <button onClick={handleStartGame} disabled={!selectedAI} className="dw-btn dw-btn-confirm">
               START GAME
             </button>
           </div>

@@ -19,7 +19,6 @@ const SWIMLANE_MODES = [
 ];
 
 const SUB_SORT_OPTIONS = [
-  { value: 'name', label: 'Name' },
   { value: 'cost', label: 'Cost' },
   { value: 'type', label: 'Type' },
   { value: 'rarity', label: 'Rarity' }
@@ -64,14 +63,14 @@ const ViewDeckModal = ({
 
   // Swimlane state
   const [swimlaneMode, setSwimlaneMode] = useState('cost');
-  const [subSortBy, setSubSortBy] = useState('name');
+  const [subSortBy, setSubSortBy] = useState('cost');
   const [viewMode, setViewMode] = useState('swimlane'); // 'swimlane' | 'matrix'
 
   // Reset settings when modal opens
   useEffect(() => {
     if (isOpen) {
       setSwimlaneMode('cost');
-      setSubSortBy('name');
+      setSubSortBy('cost');
       setViewMode('swimlane');
     }
   }, [isOpen]);
@@ -108,7 +107,6 @@ const ViewDeckModal = ({
     const sortCards = (items) => {
       return [...items].sort((a, b) => {
         switch (subSortBy) {
-          case 'name': return a.card.name.localeCompare(b.card.name);
           case 'cost': return a.card.cost - b.card.cost || a.card.name.localeCompare(b.card.name);
           case 'type': return TYPE_ORDER[a.card.type] - TYPE_ORDER[b.card.type] || a.card.name.localeCompare(b.card.name);
           case 'rarity': return RARITY_ORDER[a.card.rarity] - RARITY_ORDER[b.card.rarity] || a.card.name.localeCompare(b.card.name);
@@ -179,11 +177,6 @@ const ViewDeckModal = ({
             { key: 'Rare', label: 'Rare' },
             { key: 'Mythic', label: 'Mythic' }
           ];
-        case 'name': {
-          // Group by first letter
-          const letters = [...new Set(cards.map(c => c.card.name[0].toUpperCase()))].sort();
-          return letters.map(letter => ({ key: letter, label: letter }));
-        }
         default:
           return [];
       }
@@ -195,7 +188,6 @@ const ViewDeckModal = ({
     // Helper functions for getting values
     const getColumnValue = (card) => swimlaneMode === 'cost' ? card.cost : card[swimlaneMode];
     const getRowValue = (card) => {
-      if (subSortBy === 'name') return card.name[0].toUpperCase();
       return subSortBy === 'cost' ? card.cost : card[subSortBy];
     };
 

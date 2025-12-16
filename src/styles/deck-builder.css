@@ -652,15 +652,6 @@
 }
 
 /* ========================================
-   FULL-WIDTH BUTTON OVERRIDE
-   Prevents scale hover from overflowing container
-   ======================================== */
-.dw-btn-no-scale:hover:not(:disabled) {
-  transform: none !important;
-  filter: brightness(1.15);
-}
-
-/* ========================================
    DECK SLOT CARDS
    HangarScreen ship slot selection
    Compact design with corner brackets
@@ -834,23 +825,6 @@
 .dw-deck-slot--undeployable:hover {
   border-color: rgba(185, 28, 28, 0.9);
   box-shadow: 0 0 16px rgba(185, 28, 28, 0.3);
-}
-
-/* Small button variant for unlock */
-.dw-btn--sm {
-  padding: 6px 12px;
-  font-size: 11px;
-}
-
-/* Disabled button variant */
-.dw-btn--disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.dw-btn--disabled:hover {
-  transform: none;
-  box-shadow: none;
 }
 
 /* ========================================

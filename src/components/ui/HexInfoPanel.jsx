@@ -408,7 +408,7 @@ function HexInfoPanel({
         <div className="hex-info-actions">
           <button
             onClick={onTogglePause}
-            className={isPaused ? 'btn-confirm w-full' : 'btn-reset w-full'}
+            className={isPaused ? 'dw-btn dw-btn-confirm w-full' : 'dw-btn dw-btn-secondary w-full'}
           >
             {isPaused ? 'Resume' : 'Pause'}
           </button>
@@ -663,7 +663,7 @@ function HexInfoPanel({
           {!isCurrentPosition && (
             <button
               onClick={() => onToggleWaypoint(inspectedHex)}
-              className={isAlreadyWaypoint ? 'btn-cancel w-full' : 'btn-info w-full'}
+              className={isAlreadyWaypoint ? 'dw-btn dw-btn-cancel w-full' : 'dw-btn dw-btn-secondary w-full'}
               disabled={!isAlreadyWaypoint && preview && !preview.valid}
             >
               {isAlreadyWaypoint ? 'Remove Waypoint' : 'Add Waypoint'}
@@ -759,7 +759,7 @@ function HexInfoPanel({
           <>
             <button
               onClick={onCommence}
-              className="btn-confirm w-full"
+              className="dw-btn dw-btn-confirm w-full"
             >
               Commence
             </button>

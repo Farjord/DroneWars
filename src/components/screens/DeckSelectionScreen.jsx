@@ -430,7 +430,7 @@ function DeckSelectionScreen() {
       {/* Exit Button - Top Left */}
       <button
         onClick={() => setShowExitConfirm(true)}
-        className="absolute top-4 left-4 z-20 btn-cancel px-4 py-2"
+        className="absolute top-4 left-4 z-20 dw-btn dw-btn-cancel px-4 py-2"
       >
         ✕ Exit
       </button>
@@ -504,7 +504,7 @@ function DeckSelectionScreen() {
             <div className="p-6 flex flex-col items-center text-center">
               <h2 className="text-2xl font-orbitron font-bold text-cyan-400 mb-3">Use Standard Deck</h2>
               <p className="font-exo text-gray-300 flex-grow mb-6">Play with the balanced, pre-built starter deck.</p>
-              <button className="btn-confirm">
+              <button className="dw-btn dw-btn-confirm">
                 Select
               </button>
             </div>
@@ -532,7 +532,7 @@ function DeckSelectionScreen() {
             <div className="p-6 flex flex-col items-center text-center">
               <h2 className="text-2xl font-orbitron font-bold text-purple-400 mb-3">Build Custom Deck</h2>
               <p className="font-exo text-gray-300 flex-grow mb-6">Create your own deck from your card collection.</p>
-              <button className="btn-continue">
+              <button className="dw-btn dw-btn-confirm">
                 Select
               </button>
             </div>

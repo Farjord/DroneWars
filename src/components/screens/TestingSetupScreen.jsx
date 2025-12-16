@@ -436,10 +436,10 @@ function TestingSetupScreen() {
         gap: '1rem',
         justifyContent: 'center'
       }}>
-        <button onClick={handleBackToMenu} className="btn-cancel">
+        <button onClick={handleBackToMenu} className="dw-btn dw-btn-cancel">
           BACK TO MENU
         </button>
-        <button onClick={handleStartTestGame} className="btn-confirm">
+        <button onClick={handleStartTestGame} className="dw-btn dw-btn-confirm">
           START TEST GAME
         </button>
       </div>
@@ -561,7 +561,7 @@ function PlayerConfigPanel({
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={onOpenImportDeck}
-            className="btn-utility"
+            className="dw-btn dw-btn-secondary"
             style={{
               padding: '6px 12px',
               fontSize: '0.75rem',
@@ -574,7 +574,7 @@ function PlayerConfigPanel({
           </button>
           <button
             onClick={onCopyToOtherPlayer}
-            className="btn-utility"
+            className="dw-btn dw-btn-secondary"
             style={{
               padding: '6px 12px',
               fontSize: '0.75rem',
@@ -597,7 +597,7 @@ function PlayerConfigPanel({
         </h3>
         <button
           onClick={onOpenCardSelection}
-          className="btn-confirm"
+          className="dw-btn dw-btn-confirm"
           style={{
             width: '100%',
             padding: '12px',
@@ -613,7 +613,7 @@ function PlayerConfigPanel({
         </button>
         <button
           onClick={onSetStandardDeck}
-          className="btn-utility"
+          className="dw-btn dw-btn-secondary"
           style={{
             width: '100%',
             padding: '8px',
@@ -633,7 +633,7 @@ function PlayerConfigPanel({
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
             onClick={onOpenHandCardSelection}
-            className="btn-confirm"
+            className="dw-btn dw-btn-confirm"
             style={{
               flex: 1,
               padding: '12px',
@@ -650,7 +650,7 @@ function PlayerConfigPanel({
           {handCardCount > 0 && (
             <button
               onClick={onClearHandCards}
-              className="btn-cancel"
+              className="dw-btn dw-btn-cancel"
               style={{
                 padding: '12px',
                 fontSize: '0.9rem'
@@ -669,7 +669,7 @@ function PlayerConfigPanel({
         </h3>
         <button
           onClick={onOpenDroneSelection}
-          className="btn-confirm"
+          className="dw-btn dw-btn-confirm"
           style={{
             width: '100%',
             padding: '12px',
@@ -874,7 +874,7 @@ function LaneAssignmentGrid({
                 <button
                   onClick={() => removeDroneInstanceFromLane(drone.name, 'lane1')}
                   disabled={getDroneCount(drone.name, 'lane1') === 0}
-                  className="btn-cancel"
+                  className="dw-btn dw-btn-cancel"
                   style={{
                     padding: '2px 6px',
                     fontSize: '0.75rem',
@@ -896,7 +896,7 @@ function LaneAssignmentGrid({
                 </span>
                 <button
                   onClick={() => addDroneInstanceToLane(drone.name, 'lane1')}
-                  className="btn-confirm"
+                  className="dw-btn dw-btn-confirm"
                   style={{
                     padding: '2px 6px',
                     fontSize: '0.75rem',
@@ -922,7 +922,7 @@ function LaneAssignmentGrid({
                 <button
                   onClick={() => removeDroneInstanceFromLane(drone.name, 'lane2')}
                   disabled={getDroneCount(drone.name, 'lane2') === 0}
-                  className="btn-cancel"
+                  className="dw-btn dw-btn-cancel"
                   style={{
                     padding: '2px 6px',
                     fontSize: '0.75rem',
@@ -944,7 +944,7 @@ function LaneAssignmentGrid({
                 </span>
                 <button
                   onClick={() => addDroneInstanceToLane(drone.name, 'lane2')}
-                  className="btn-confirm"
+                  className="dw-btn dw-btn-confirm"
                   style={{
                     padding: '2px 6px',
                     fontSize: '0.75rem',
@@ -970,7 +970,7 @@ function LaneAssignmentGrid({
                 <button
                   onClick={() => removeDroneInstanceFromLane(drone.name, 'lane3')}
                   disabled={getDroneCount(drone.name, 'lane3') === 0}
-                  className="btn-cancel"
+                  className="dw-btn dw-btn-cancel"
                   style={{
                     padding: '2px 6px',
                     fontSize: '0.75rem',
@@ -992,7 +992,7 @@ function LaneAssignmentGrid({
                 </span>
                 <button
                   onClick={() => addDroneInstanceToLane(drone.name, 'lane3')}
-                  className="btn-confirm"
+                  className="dw-btn dw-btn-confirm"
                   style={{
                     padding: '2px 6px',
                     fontSize: '0.75rem',
@@ -1096,10 +1096,10 @@ function ImportDeckModal({ isOpen, onClose, onImport, playerLabel }) {
           placeholder="cards:CARD001:4,CARD002:2|drones:Scout Drone:1,Heavy Fighter:1"
         />
         <div className="flex justify-end gap-4 mt-4">
-          <button onClick={onClose} className="btn-cancel">
+          <button onClick={onClose} className="dw-btn dw-btn-cancel">
             Cancel
           </button>
-          <button onClick={handleImport} className="btn-confirm">
+          <button onClick={handleImport} className="dw-btn dw-btn-confirm">
             Import Deck
           </button>
         </div>

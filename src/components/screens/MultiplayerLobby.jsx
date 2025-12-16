@@ -215,7 +215,7 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
             <button
               onClick={handleHostGame}
               disabled={isLoading}
-              className="btn-continue"
+              className="dw-btn dw-btn-confirm"
               style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
             >
               {isLoading ? (
@@ -250,7 +250,7 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
               <button
                 onClick={handleJoinGame}
                 disabled={isLoading || inputRoomCode.length !== 6}
-                className="btn-confirm"
+                className="dw-btn dw-btn-confirm"
                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
               >
                 {isLoading ? (
@@ -322,7 +322,7 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
               )}
             </div>
             {p2pManager.isHost ? (
-              <button onClick={handleStartGame} className="btn-continue" style={{ width: '100%' }}>
+              <button onClick={handleStartGame} className="dw-btn dw-btn-confirm" style={{ width: '100%' }}>
                 Start Game
               </button>
             ) : (
@@ -351,7 +351,7 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
 
         {/* Footer */}
         <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #374151' }}>
-          <button onClick={handleBack} className="btn-cancel" style={{ width: '100%' }}>
+          <button onClick={handleBack} className="dw-btn dw-btn-cancel" style={{ width: '100%' }}>
             {connectionStatus !== 'disconnected' ? 'Disconnect & Back' : 'Back'}
           </button>
         </div>

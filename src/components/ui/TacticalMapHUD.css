@@ -28,39 +28,6 @@
 .icon-extract { color: #3b82f6; }
 .icon-abandon { color: #ef4444; }
 
-/* Danger button style (for abandon run) */
-.btn-danger {
-  font-family: 'Exo', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 10px 16px;
-  background: linear-gradient(180deg, rgba(220, 38, 38, 0.9) 0%, rgba(185, 28, 28, 0.9) 100%);
-  border: 1px solid rgba(239, 68, 68, 0.5);
-  border-radius: 3px;
-  color: #fff;
-  cursor: pointer;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  transition: all 0.2s ease;
-  box-shadow:
-    0 2px 8px rgba(239, 68, 68, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-.btn-danger:hover {
-  background: linear-gradient(180deg, rgba(239, 68, 68, 0.95) 0%, rgba(220, 38, 38, 0.95) 100%);
-  border-color: rgba(239, 68, 68, 0.7);
-  box-shadow:
-    0 4px 12px rgba(239, 68, 68, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  transform: translateY(-1px);
-}
-
-.btn-danger:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
-}
-
 /* ========================================
    BOTTOM BAR - ACTIONS
    ======================================== */

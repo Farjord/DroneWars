@@ -352,7 +352,7 @@ function DeckBuildingModal({
           <div className="flex gap-3">
             <button
               onClick={handleCancel}
-              className="btn-cancel px-6 py-2"
+              className="dw-btn dw-btn-cancel px-6 py-2"
             >
               Cancel
             </button>
@@ -361,7 +361,7 @@ function DeckBuildingModal({
               disabled={!isValidDeck}
               className={`px-6 py-2 rounded transition-all ${
                 isValidDeck
-                  ? 'btn-continue'
+                  ? 'dw-btn dw-btn-confirm'
                   : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-50'
               }`}
             >

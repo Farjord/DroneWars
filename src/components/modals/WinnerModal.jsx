@@ -161,7 +161,7 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
               {isVictory ? (
                 <button
                   onClick={handleCollectSalvage}
-                  className="btn-continue text-xl px-8 py-4"
+                  className="dw-btn dw-btn-confirm text-xl px-8 py-4"
                   style={{
                     background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
                     boxShadow: '0 4px 15px rgba(139, 92, 246, 0.4)'
@@ -172,7 +172,7 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
               ) : (
                 <button
                   onClick={handleDefeatContinue}
-                  className="btn-cancel text-xl px-8 py-4"
+                  className="dw-btn dw-btn-cancel text-xl px-8 py-4"
                 >
                   Return to Hangar
                 </button>
@@ -183,13 +183,13 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
             <>
               <button
                 onClick={handleViewBoard}
-                className="btn-continue text-xl px-8 py-4"
+                className="dw-btn dw-btn-confirm text-xl px-8 py-4"
               >
                 View Board
               </button>
               <button
                 onClick={handleExitToMenu}
-                className="btn-cancel text-xl px-8 py-4"
+                className="dw-btn dw-btn-cancel text-xl px-8 py-4"
               >
                 Exit to Menu
               </button>

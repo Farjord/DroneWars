@@ -331,7 +331,7 @@ function MenuScreen() {
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
             <button
               onClick={() => setShowGlossary(true)}
-              className="btn-info"
+              className="dw-btn dw-btn-secondary"
               style={{ flex: 1, maxWidth: '250px', fontSize: '1rem', padding: '12px 20px' }}
             >
               <ScalingText text="MECHANICS GLOSSARY" className="uppercase tracking-wider font-semibold" />
@@ -339,7 +339,7 @@ function MenuScreen() {
 
             <button
               onClick={() => setShowAIStrategy(true)}
-              className="btn-info"
+              className="dw-btn dw-btn-secondary"
               style={{ flex: 1, maxWidth: '250px', fontSize: '1rem', padding: '12px 20px' }}
             >
               <ScalingText text="AI STRATEGY GUIDE" className="uppercase tracking-wider font-semibold" />
@@ -348,7 +348,7 @@ function MenuScreen() {
             {DEV_CONFIG.features.modalShowcase && (
               <button
                 onClick={() => gameStateManager.setState({ appState: 'modalShowcase' })}
-                className="btn-info"
+                className="dw-btn dw-btn-secondary"
                 style={{ flex: 1, maxWidth: '250px', fontSize: '1rem', padding: '12px 20px' }}
               >
                 <ScalingText text="MODAL SHOWCASE" className="uppercase tracking-wider font-semibold" />

@@ -319,95 +319,6 @@
 }
 
 /* ========================================
-   BUTTONS
-   ======================================== */
-
-.mia-btn {
-  font-family: 'Exo', sans-serif;
-  font-size: 13px;
-  font-weight: 600;
-  padding: 10px 20px;
-  border-radius: 4px;
-  cursor: pointer;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  transition: all 0.2s ease;
-  border: none;
-}
-
-.mia-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Recover button (green) */
-.mia-btn-recover {
-  width: 100%;
-  background: linear-gradient(180deg, #059669 0%, #047857 100%);
-  border: 1px solid rgba(16, 185, 129, 0.6);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-}
-
-.mia-btn-recover:hover:not(:disabled) {
-  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-}
-
-/* Scrap button (red) */
-.mia-btn-scrap {
-  width: 100%;
-  background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
-  border: 1px solid rgba(239, 68, 68, 0.6);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-}
-
-.mia-btn-scrap:hover:not(:disabled) {
-  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
-}
-
-/* Confirm buttons */
-.mia-btn-confirm {
-  background: linear-gradient(180deg, #059669 0%, #047857 100%);
-  color: #fff;
-  padding: 8px 16px;
-}
-
-.mia-btn-confirm-danger {
-  background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
-  color: #fff;
-  padding: 8px 16px;
-}
-
-.mia-btn-cancel-small {
-  background: transparent;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  color: rgba(229, 231, 235, 0.7);
-  padding: 8px 16px;
-}
-
-.mia-btn-cancel-small:hover {
-  background: rgba(148, 163, 184, 0.1);
-  border-color: rgba(148, 163, 184, 0.5);
-}
-
-/* Close button */
-.mia-btn-close {
-  background: transparent;
-  border: 1px solid rgba(6, 182, 212, 0.4);
-  color: rgba(6, 182, 212, 0.9);
-  min-width: 120px;
-}
-
-.mia-btn-close:hover {
-  background: rgba(6, 182, 212, 0.1);
-  border-color: rgba(6, 182, 212, 0.6);
-  color: #06b6d4;
-}
-
-/* ========================================
    IMMUTABLE NOTICE
    ======================================== */
 
@@ -452,9 +363,5 @@
 
   .mia-confirm-buttons {
     flex-direction: column;
-  }
-
-  .mia-confirm-buttons .mia-btn {
-    width: 100%;
   }
 }

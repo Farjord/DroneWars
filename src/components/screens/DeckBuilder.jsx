@@ -1236,7 +1236,7 @@ const DeckBuilder = ({
         {/* Left: Back button */}
         <div className="w-32">
           {onBack && (
-            <button onClick={onBack} className="btn-cancel flex items-center gap-2">
+            <button onClick={onBack} className="dw-btn dw-btn-cancel flex items-center gap-2">
               <ArrowLeft size={16} /> Back
             </button>
           )}
@@ -1398,7 +1398,7 @@ const DeckBuilder = ({
               )}
               <button
                 onClick={leftPanelView === 'cards' ? resetFilters : resetDroneFilters}
-                className="btn-reset"
+                className="dw-btn dw-btn-secondary"
               >
                 Reset Filters
               </button>
@@ -1917,7 +1917,7 @@ const DeckBuilder = ({
             <button
               onClick={readOnly ? undefined : (rightPanelView === 'deck' ? resetDeck : rightPanelView === 'drones' ? resetDrones : () => onShipComponentsChange(null, null))}
               disabled={readOnly}
-              className={`btn-reset ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`dw-btn dw-btn-secondary ${readOnly ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               Reset
             </button>
@@ -2473,7 +2473,7 @@ const DeckBuilder = ({
                             onClick={isDeckValid && isDronesValid && shipComponentsValid ? handleSaveWithToast : () => { onSaveInvalid(); setShowSaveToast(true); setTimeout(() => setShowSaveToast(false), 1500); }}
                             className={`w-full p-4 mt-4 text-lg font-bold font-orbitron dw-btn-no-scale ${
                               isDeckValid && isDronesValid && shipComponentsValid
-                                ? 'btn-confirm'
+                                ? 'dw-btn dw-btn-confirm'
                                 : 'bg-yellow-600 hover:bg-yellow-500 text-black'
                             }`}
                             title={!shipComponentsValid ? 'You must select all 3 ship components with lanes assigned' : ''}
@@ -2487,7 +2487,7 @@ const DeckBuilder = ({
                           <button
                             onClick={handleSaveWithToast}
                             disabled={!isDeckValid || !isDronesValid || !shipComponentsValid}
-                            className="btn-confirm w-full p-4 mt-4 text-lg font-bold font-orbitron dw-btn-no-scale disabled:opacity-50"
+                            className="dw-btn dw-btn-confirm w-full p-4 mt-4 text-lg font-bold font-orbitron dw-btn-no-scale disabled:opacity-50"
                             title={!shipComponentsValid ? 'You must select all 3 ship components with lanes assigned' : ''}
                           >
                             Confirm Deck, Drones & Ship

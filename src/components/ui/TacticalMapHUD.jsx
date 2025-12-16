@@ -76,7 +76,7 @@ function TacticalMapHUD({
           {/* Inventory button */}
           <button
             onClick={onInventoryClick}
-            className="btn-confirm flex items-center gap-2"
+            className="dw-btn dw-btn-confirm flex items-center gap-2"
             title="View collected loot"
           >
             <IconInventory size={18} className="icon-inventory" />
@@ -87,7 +87,7 @@ function TacticalMapHUD({
           {atExtractionGate ? (
             <button
               onClick={onExtractClick}
-              className="btn-confirm flex items-center gap-2"
+              className="dw-btn dw-btn-confirm flex items-center gap-2"
               title="Extract from the Eremos"
             >
               <IconExtract size={18} className="icon-extract" />
@@ -96,7 +96,7 @@ function TacticalMapHUD({
           ) : (
             <button
               onClick={onAbandonClick}
-              className="btn-danger flex items-center gap-2"
+              className="dw-btn dw-btn-danger flex items-center gap-2"
               title="Abandon run (MIA)"
             >
               <IconAbandon size={18} className="icon-abandon" />

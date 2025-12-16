@@ -14,6 +14,7 @@ import SinglePlayerCombatInitializer from '../../logic/singlePlayer/SinglePlayer
 import aiPersonalities from '../../data/aiData.js';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import DeployingScreen from '../ui/DeployingScreen';
+import LoadingEncounterScreen from '../ui/LoadingEncounterScreen';
 import QuickDeployManager from '../quickDeploy/QuickDeployManager';
 import ReputationTrack from '../ui/ReputationTrack';
 import ReputationProgressModal from '../modals/ReputationProgressModal';
@@ -74,6 +75,8 @@ const HangarScreen = () => {
   const [deployingData, setDeployingData] = useState(null); // Data for deploying screen (slotId, map, gateId, quickDeploy)
   const [selectedBossId, setSelectedBossId] = useState(null); // Boss ID for BossEncounterModal
   const [bossHexCell, setBossHexCell] = useState(null); // Boss hex cell data
+  const [showBossLoadingScreen, setShowBossLoadingScreen] = useState(false); // Boss encounter transition
+  const [bossLoadingData, setBossLoadingData] = useState(null); // Data for boss loading screen
 
   // Compute maps with correct grid coordinates for the news ticker
   const mapsWithCoordinates = useMemo(() => {
@@ -866,15 +869,37 @@ const HangarScreen = () => {
     setActiveModal('bossEncounter');
   };
 
-  // Boss challenge handler
-  const handleBossChallenge = async (slotId, bossId) => {
+  // Boss challenge handler - shows loading screen first
+  const handleBossChallenge = (slotId, bossId) => {
     debugLog('HANGAR', '⚔️ Boss challenge initiated', { slotId, bossId });
 
     // Close modal first
     setActiveModal(null);
     setSelectedBossId(null);
 
-    // Initiate boss combat
+    // Get boss config for display name
+    const bossAI = aiPersonalities.find(ai => ai.bossId === bossId);
+    const displayName = bossAI?.bossConfig?.displayName || bossAI?.name || 'Unknown Boss';
+
+    // Show loading screen with boss data
+    setBossLoadingData({
+      aiName: displayName,
+      difficulty: 'BOSS',
+      threatLevel: 'high',
+      isAmbush: false,
+      slotId: slotId,
+      bossId: bossId
+    });
+    setShowBossLoadingScreen(true);
+  };
+
+  // Boss loading screen complete handler
+  const handleBossLoadingComplete = async () => {
+    const { slotId, bossId } = bossLoadingData;
+    setShowBossLoadingScreen(false);
+    setBossLoadingData(null);
+
+    // Now initiate boss combat
     const result = await SinglePlayerCombatInitializer.initiateBossCombat(bossId, slotId);
     if (!result) {
       debugLog('HANGAR', '❌ Failed to initiate boss combat');
@@ -1761,7 +1786,7 @@ const HangarScreen = () => {
           <div className="modal-container modal-container-md">
             <h2 className="modal-title">Deck Editor</h2>
             <p className="modal-text">Coming in Phase 3.5</p>
-            <button onClick={closeAllModals} className="btn-confirm" style={{ width: '100%', marginTop: '1rem' }}>
+            <button onClick={closeAllModals} className="dw-btn dw-btn-confirm" style={{ width: '100%', marginTop: '1rem' }}>
               Close
             </button>
           </div>
@@ -1934,6 +1959,14 @@ const HangarScreen = () => {
             destination: deployingData?.map?.name || `Sector ${selectedCoordinate}`
           }}
           onComplete={handleDeployingComplete}
+        />
+      )}
+
+      {/* Boss Encounter Loading Screen (transition before boss combat) */}
+      {showBossLoadingScreen && bossLoadingData && (
+        <LoadingEncounterScreen
+          encounterData={bossLoadingData}
+          onComplete={handleBossLoadingComplete}
         />
       )}
     </div>

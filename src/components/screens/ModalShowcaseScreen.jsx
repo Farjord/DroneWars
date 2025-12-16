@@ -238,7 +238,7 @@ function ModalShowcaseScreen() {
           </div>
           <button
             onClick={handleCloseShowcase}
-            className="btn-reset"
+            className="dw-btn dw-btn-secondary"
           >
             Back to Menu
           </button>

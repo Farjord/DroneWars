@@ -303,7 +303,7 @@ function DroneSelectionScreen() {
       {/* Exit Button - Top Left */}
       <button
         onClick={() => setShowExitConfirm(true)}
-        className="absolute top-4 left-4 z-20 btn-cancel px-4 py-2"
+        className="absolute top-4 left-4 z-20 dw-btn dw-btn-cancel px-4 py-2"
       >
         ✕ Exit
       </button>
@@ -358,7 +358,7 @@ function DroneSelectionScreen() {
         {isSelectionComplete && (
           <button
             onClick={handleContinueDroneSelection}
-            className="btn-confirm mb-6"
+            className="dw-btn dw-btn-confirm mb-6"
           >
             Continue to Ship Placement →
           </button>
