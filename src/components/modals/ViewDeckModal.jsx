@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { BookOpen, AlertTriangle } from 'lucide-react';
 import DroneCard from '../ui/DroneCard.jsx';
 import ActionCard from '../ui/ActionCard.jsx';
@@ -7,6 +7,23 @@ import ShipSection from '../ui/ShipSection.jsx';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { gameEngine } from '../../logic/gameLogic.js';
 import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js';
+
+// Swimlane configuration constants
+const TYPE_ORDER = { Ordnance: 0, Support: 1, Tactic: 2, Upgrade: 3 };
+const RARITY_ORDER = { Common: 0, Uncommon: 1, Rare: 2, Mythic: 3 };
+
+const SWIMLANE_MODES = [
+  { value: 'cost', label: 'Cost' },
+  { value: 'type', label: 'Type' },
+  { value: 'rarity', label: 'Rarity' }
+];
+
+const SUB_SORT_OPTIONS = [
+  { value: 'name', label: 'Name' },
+  { value: 'cost', label: 'Cost' },
+  { value: 'type', label: 'Type' },
+  { value: 'rarity', label: 'Rarity' }
+];
 
 /**
  * VIEW DECK MODAL
@@ -44,6 +61,165 @@ const ViewDeckModal = ({
 
   // Calculate total cards count
   const totalCards = useMemo(() => sortedCards.reduce((sum, item) => sum + item.quantity, 0), [sortedCards]);
+
+  // Swimlane state
+  const [swimlaneMode, setSwimlaneMode] = useState('cost');
+  const [subSortBy, setSubSortBy] = useState('name');
+  const [viewMode, setViewMode] = useState('swimlane'); // 'swimlane' | 'matrix'
+
+  // Reset settings when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setSwimlaneMode('cost');
+      setSubSortBy('name');
+      setViewMode('swimlane');
+    }
+  }, [isOpen]);
+
+  // Group and sort cards into swimlanes
+  const swimlaneGroups = useMemo(() => {
+    // Define group configurations
+    const getGroups = () => {
+      switch (swimlaneMode) {
+        case 'cost': {
+          const costs = [...new Set(cards.map(c => c.card.cost))].sort((a, b) => a - b);
+          return costs.map(cost => ({ key: cost, label: `Cost ${cost}`, headerClass: '' }));
+        }
+        case 'type':
+          return [
+            { key: 'Ordnance', label: 'Ordnance', headerClass: 'dw-swimlane-header--ordnance' },
+            { key: 'Support', label: 'Support', headerClass: 'dw-swimlane-header--support' },
+            { key: 'Tactic', label: 'Tactic', headerClass: 'dw-swimlane-header--tactic' },
+            { key: 'Upgrade', label: 'Upgrade', headerClass: 'dw-swimlane-header--upgrade' }
+          ];
+        case 'rarity':
+          return [
+            { key: 'Common', label: 'Common', headerClass: 'dw-swimlane-header--common' },
+            { key: 'Uncommon', label: 'Uncommon', headerClass: 'dw-swimlane-header--uncommon' },
+            { key: 'Rare', label: 'Rare', headerClass: 'dw-swimlane-header--rare' },
+            { key: 'Mythic', label: 'Mythic', headerClass: 'dw-swimlane-header--mythic' }
+          ];
+        default:
+          return [];
+      }
+    };
+
+    // Sub-sort function
+    const sortCards = (items) => {
+      return [...items].sort((a, b) => {
+        switch (subSortBy) {
+          case 'name': return a.card.name.localeCompare(b.card.name);
+          case 'cost': return a.card.cost - b.card.cost || a.card.name.localeCompare(b.card.name);
+          case 'type': return TYPE_ORDER[a.card.type] - TYPE_ORDER[b.card.type] || a.card.name.localeCompare(b.card.name);
+          case 'rarity': return RARITY_ORDER[a.card.rarity] - RARITY_ORDER[b.card.rarity] || a.card.name.localeCompare(b.card.name);
+          default: return 0;
+        }
+      });
+    };
+
+    // Group and sort cards
+    const groups = getGroups();
+    return groups.map(group => {
+      const groupCards = cards.filter(item => {
+        const value = swimlaneMode === 'cost' ? item.card.cost : item.card[swimlaneMode];
+        return value === group.key;
+      });
+      return { ...group, cards: sortCards(groupCards) };
+    }).filter(group => group.cards.length > 0); // Hide empty swimlanes
+  }, [cards, swimlaneMode, subSortBy]);
+
+  // Matrix view data - 2D grid with columns (group by) and rows (sort by)
+  const matrixData = useMemo(() => {
+    if (viewMode !== 'matrix') return null;
+
+    // Get column groups (based on swimlaneMode - the "Group by")
+    const getColumnGroups = () => {
+      switch (swimlaneMode) {
+        case 'cost': {
+          const costs = [...new Set(cards.map(c => c.card.cost))].sort((a, b) => a - b);
+          return costs.map(cost => ({ key: cost, label: `${cost}`, headerClass: '' }));
+        }
+        case 'type':
+          return [
+            { key: 'Ordnance', label: 'Ordnance', headerClass: 'dw-matrix-header--ordnance' },
+            { key: 'Support', label: 'Support', headerClass: 'dw-matrix-header--support' },
+            { key: 'Tactic', label: 'Tactic', headerClass: 'dw-matrix-header--tactic' },
+            { key: 'Upgrade', label: 'Upgrade', headerClass: 'dw-matrix-header--upgrade' }
+          ];
+        case 'rarity':
+          return [
+            { key: 'Common', label: 'Common', headerClass: 'dw-matrix-header--common' },
+            { key: 'Uncommon', label: 'Uncommon', headerClass: 'dw-matrix-header--uncommon' },
+            { key: 'Rare', label: 'Rare', headerClass: 'dw-matrix-header--rare' },
+            { key: 'Mythic', label: 'Mythic', headerClass: 'dw-matrix-header--mythic' }
+          ];
+        default:
+          return [];
+      }
+    };
+
+    // Get row groups (based on subSortBy)
+    const getRowGroups = () => {
+      switch (subSortBy) {
+        case 'cost': {
+          const costs = [...new Set(cards.map(c => c.card.cost))].sort((a, b) => a - b);
+          return costs.map(cost => ({ key: cost, label: `Cost ${cost}` }));
+        }
+        case 'type':
+          return [
+            { key: 'Ordnance', label: 'Ordnance' },
+            { key: 'Support', label: 'Support' },
+            { key: 'Tactic', label: 'Tactic' },
+            { key: 'Upgrade', label: 'Upgrade' }
+          ];
+        case 'rarity':
+          return [
+            { key: 'Common', label: 'Common' },
+            { key: 'Uncommon', label: 'Uncommon' },
+            { key: 'Rare', label: 'Rare' },
+            { key: 'Mythic', label: 'Mythic' }
+          ];
+        case 'name': {
+          // Group by first letter
+          const letters = [...new Set(cards.map(c => c.card.name[0].toUpperCase()))].sort();
+          return letters.map(letter => ({ key: letter, label: letter }));
+        }
+        default:
+          return [];
+      }
+    };
+
+    const columns = getColumnGroups();
+    const rows = getRowGroups();
+
+    // Helper functions for getting values
+    const getColumnValue = (card) => swimlaneMode === 'cost' ? card.cost : card[swimlaneMode];
+    const getRowValue = (card) => {
+      if (subSortBy === 'name') return card.name[0].toUpperCase();
+      return subSortBy === 'cost' ? card.cost : card[subSortBy];
+    };
+
+    // Filter to only columns that have cards
+    const columnsWithCards = columns.filter(col =>
+      cards.some(item => getColumnValue(item.card) === col.key)
+    );
+
+    // Filter to only rows that have cards
+    const rowsWithCards = rows.filter(row =>
+      cards.some(item => getRowValue(item.card) === row.key)
+    );
+
+    return {
+      columns: columnsWithCards,
+      rows: rowsWithCards,
+      getCell: (colKey, rowKey) => {
+        return cards.filter(item =>
+          getColumnValue(item.card) === colKey &&
+          getRowValue(item.card) === rowKey
+        ).sort((a, b) => a.card.name.localeCompare(b.card.name));
+      }
+    };
+  }, [cards, swimlaneMode, subSortBy, viewMode]);
 
   // Build available tabs based on what content exists
   const availableTabs = useMemo(() => {
@@ -129,7 +305,7 @@ const ViewDeckModal = ({
               <h3 className="text-xl font-orbitron text-yellow-400 mb-3">Ship Layout</h3>
               <div className="grid grid-cols-3 gap-4 mb-4">
                 {['l', 'm', 'r'].map((lane, index) => {
-                  const componentEntry = Object.entries(shipComponents).find(([id, l]) => l === lane);
+                  const componentEntry = Object.entries(shipComponents).find(([, l]) => l === lane);
                   const component = componentEntry ? shipComponentCollection.find(c => c.id === componentEntry[0]) : null;
 
                   return (
@@ -253,49 +429,149 @@ const ViewDeckModal = ({
               <h3 className="text-xl font-orbitron text-purple-400 mb-3">
                 Cards ({totalCards})
               </h3>
-              {sortedCards.length > 0 ? (
-                <div className="max-w-[1350px] mx-auto">
-                  <div className="flex flex-wrap gap-[12px] justify-center">
-                    {sortedCards.map((item, index) => (
-                      <div
-                        key={`${item.card.id}-${index}`}
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          background: 'rgba(0, 0, 0, 0.35)',
-                          borderRadius: '4px',
-                          padding: '16px',
-                          paddingBottom: '10px',
-                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
-                        }}
+
+              {/* View Controls */}
+              <div className="dw-swimlane-controls">
+                <div className="dw-swimlane-control-group">
+                  <span className="dw-swimlane-control-label">View:</span>
+                  <div className="dw-swimlane-mode-group">
+                    <button
+                      className={`dw-swimlane-mode-btn ${viewMode === 'swimlane' ? 'dw-swimlane-mode-btn--active' : ''}`}
+                      onClick={() => setViewMode('swimlane')}
+                    >
+                      Swimlane
+                    </button>
+                    <button
+                      className={`dw-swimlane-mode-btn ${viewMode === 'matrix' ? 'dw-swimlane-mode-btn--active' : ''}`}
+                      onClick={() => setViewMode('matrix')}
+                    >
+                      Matrix
+                    </button>
+                  </div>
+                </div>
+                <div className="dw-swimlane-control-group">
+                  <span className="dw-swimlane-control-label">{viewMode === 'matrix' ? 'Columns:' : 'Group by:'}</span>
+                  <div className="dw-swimlane-mode-group">
+                    {SWIMLANE_MODES.map(mode => (
+                      <button
+                        key={mode.value}
+                        className={`dw-swimlane-mode-btn ${swimlaneMode === mode.value ? 'dw-swimlane-mode-btn--active' : ''}`}
+                        onClick={() => setSwimlaneMode(mode.value)}
                       >
-                        <ActionCard
-                          card={item.card}
-                          onClick={() => {}}
-                          isPlayable={true}
-                          isSelected={false}
-                          mandatoryAction={null}
-                          excessCards={0}
-                        />
-                        {/* Quantity Label */}
-                        <div
-                          style={{
-                            marginTop: '8px',
-                            padding: '4px 0',
-                            color: 'var(--modal-theme)',
-                            fontWeight: '600',
-                            fontSize: '15px',
-                            textAlign: 'center'
-                          }}
-                        >
-                          ×{item.quantity} in deck
-                        </div>
-                      </div>
+                        {mode.label}
+                      </button>
                     ))}
                   </div>
                 </div>
-              ) : (
+                <div className="dw-swimlane-control-group">
+                  <span className="dw-swimlane-control-label">{viewMode === 'matrix' ? 'Rows:' : 'Sort by:'}</span>
+                  <select
+                    className="dw-filter-select"
+                    value={subSortBy}
+                    onChange={(e) => setSubSortBy(e.target.value)}
+                  >
+                    {SUB_SORT_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="dw-swimlane-scroll-hint">
+                  Shift + scroll to pan horizontally
+                </div>
+              </div>
+
+              {/* Swimlane View */}
+              {viewMode === 'swimlane' && swimlaneGroups.length > 0 && (
+                <div className="dw-swimlane-container">
+                  {swimlaneGroups.map(group => (
+                    <div key={group.key} className="dw-swimlane">
+                      <div className={`dw-swimlane-header ${group.headerClass}`}>
+                        <span className="dw-swimlane-title">{group.label}</span>
+                        <span className="dw-swimlane-count">
+                          {group.cards.reduce((sum, item) => sum + item.quantity, 0)}
+                        </span>
+                      </div>
+                      <div className="dw-swimlane-cards">
+                        {group.cards.map((item, index) => (
+                          <div key={`${item.card.id}-${index}`} className="dw-swimlane-card">
+                            <ActionCard
+                              card={item.card}
+                              onClick={() => {}}
+                              isPlayable={true}
+                              isSelected={false}
+                              mandatoryAction={null}
+                              excessCards={0}
+                            />
+                            <div className="dw-swimlane-card-quantity">
+                              ×{item.quantity} in deck
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Matrix View */}
+              {viewMode === 'matrix' && matrixData && matrixData.columns.length > 0 && (
+                <div className="dw-matrix-container">
+                  {/* Column Headers */}
+                  <div className="dw-matrix-header-row">
+                    <div className="dw-matrix-corner"></div>
+                    {matrixData.columns.map(col => (
+                      <div key={col.key} className={`dw-matrix-col-header ${col.headerClass}`}>
+                        {col.label}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Matrix Rows */}
+                  {matrixData.rows.map(row => {
+                    // Check if this row has any cards in any column
+                    const rowHasCards = matrixData.columns.some(col =>
+                      matrixData.getCell(col.key, row.key).length > 0
+                    );
+                    if (!rowHasCards) return null;
+
+                    return (
+                      <div key={row.key} className="dw-matrix-row">
+                        <div className="dw-matrix-row-header">{row.label}</div>
+                        {matrixData.columns.map(col => {
+                          const cellCards = matrixData.getCell(col.key, row.key);
+                          if (cellCards.length === 0) {
+                            return (
+                              <div key={col.key} className="dw-matrix-cell dw-matrix-cell--empty"></div>
+                            );
+                          }
+                          return (
+                            <div key={col.key} className="dw-matrix-cell">
+                              {cellCards.map((item, index) => (
+                                <div key={`${item.card.id}-${index}`} className="dw-swimlane-card">
+                                  <ActionCard
+                                    card={item.card}
+                                    onClick={() => {}}
+                                    isPlayable={true}
+                                    isSelected={false}
+                                    mandatoryAction={null}
+                                    excessCards={0}
+                                  />
+                                  <div className="dw-swimlane-card-quantity">
+                                    ×{item.quantity} in deck
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* No cards message */}
+              {cards.length === 0 && (
                 <div className="dw-modal-info-box" style={{ textAlign: 'center', padding: '40px' }}>
                   <p style={{ color: 'var(--modal-text-secondary)', fontStyle: 'italic' }}>No cards in deck</p>
                 </div>

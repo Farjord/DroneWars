@@ -617,7 +617,7 @@ const HangarScreen = () => {
 
   // Handle confirm copy from starter deck - pay cost and create inventory copies
   const handleConfirmCopyStarter = () => {
-    const cost = ECONOMY.STARTER_DECK_COPY_COST || 500;
+    const cost = ECONOMY.STARTER_DECK_COPY_COST ?? 0;
     const credits = singlePlayerProfile?.credits || 0;
 
     if (credits < cost) {
@@ -708,7 +708,7 @@ const HangarScreen = () => {
 
   // Handle confirm empty deck creation - pay cost and create empty deck
   const handleConfirmEmptyDeck = () => {
-    const cost = ECONOMY.STARTER_DECK_COPY_COST || 500;
+    const cost = ECONOMY.STARTER_DECK_COPY_COST ?? 0;
     const credits = singlePlayerProfile?.credits || 0;
 
     if (credits < cost) {

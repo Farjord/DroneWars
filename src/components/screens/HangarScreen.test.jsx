@@ -6,7 +6,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 // HANGAR SCREEN DECK CREATION TESTS
 // ========================================
 // Tests for deck creation persistence - ensuring deck is created immediately
-// when "Copy from Starter Deck" is confirmed (500 credits paid)
+// when "Copy from Starter Deck" or "Start Empty" is confirmed (free)
 //
 // BUG: Currently, credits are deducted but deck is NOT created until
 // user clicks "Confirm" in deck builder. Exiting loses the deck.
@@ -84,7 +84,7 @@ vi.mock('../../data/playerDeckData.js', () => ({
 
 vi.mock('../../data/economyData.js', () => ({
   ECONOMY: {
-    STARTER_DECK_COPY_COST: 500
+    STARTER_DECK_COPY_COST: 0  // Free deck creation
   }
 }))
 
@@ -128,7 +128,7 @@ describe('HangarScreen - Deck Creation Persistence', () => {
 
   describe('Copy from Starter Deck - Immediate Persistence', () => {
     /**
-     * BUG TEST: When player confirms copying starter deck (paying 500 credits),
+     * BUG TEST: When player confirms copying starter deck,
      * saveShipSlotDeck MUST be called to persist the deck immediately.
      *
      * CURRENT BEHAVIOR: saveShipSlotDeck is NEVER called during copy
@@ -354,11 +354,11 @@ describe('ExtractionDeckBuilder - Edit Mode', () => {
 })
 
 // ========================================
-// EMPTY DECK CREATION COST TESTS
+// EMPTY DECK CREATION TESTS (FREE)
 // ========================================
-// TDD tests for requiring cost when creating empty deck
+// TDD tests for free deck creation
 //
-// Requirement: ALL new decks must cost 500 credits, whether empty or copied
+// Requirement: ALL new decks are FREE (cost = 0), whether empty or copied
 // This aligns with the starter cards being infinite - no need to distinguish
 
 describe('HangarScreen - Empty Deck Creation Cost', () => {
@@ -368,10 +368,10 @@ describe('HangarScreen - Empty Deck Creation Cost', () => {
     currentMockState = createDefaultState()
   })
 
-  describe('handleNewDeckOption - empty option should require cost', () => {
+  describe('handleNewDeckOption - empty option should be free', () => {
     /**
-     * NEW REQUIREMENT: Empty deck creation should cost 500 credits
-     * Previously, only copying from starter deck cost credits
+     * Empty deck creation is FREE (cost = 0)
+     * Same as copying from starter deck
      */
     it('should show confirmation modal with cost for empty deck option', () => {
       // Currently: handleNewDeckOption('empty') goes directly to deck builder
@@ -382,47 +382,38 @@ describe('HangarScreen - Empty Deck Creation Cost', () => {
       expect(needsConfirmation).toBe(true);
     })
 
-    it('should require 500 credits for empty deck creation (same as copy)', async () => {
-      // The cost for empty deck should equal STARTER_DECK_COPY_COST
-      const emptyCost = 500; // ECONOMY.STARTER_DECK_COPY_COST
-      const copyCost = 500;
+    it('should have 0 cost for empty deck creation (free)', async () => {
+      // Both deck options should be free (cost = 0)
+      const emptyCost = 0; // ECONOMY.STARTER_DECK_COPY_COST
+      const copyCost = 0;
 
       expect(emptyCost).toBe(copyCost);
     })
 
-    it('should prevent empty deck creation when credits < 500', () => {
-      // Setup player with insufficient credits
+    it('should allow empty deck creation with any credit balance (free)', () => {
+      // Setup player with any credits (even 0)
       currentMockState = createDefaultState({
-        profile: { credits: 400 } // Less than 500
+        profile: { credits: 0 }
       })
 
-      // Player should not be able to create empty deck
-      const canCreateEmpty = currentMockState.singlePlayerProfile.credits >= 500;
-      expect(canCreateEmpty).toBe(false);
-    })
-
-    it('should allow empty deck creation when credits >= 500', () => {
-      // Setup player with sufficient credits
-      currentMockState = createDefaultState({
-        profile: { credits: 600 }
-      })
-
-      const canCreateEmpty = currentMockState.singlePlayerProfile.credits >= 500;
+      // Player should always be able to create empty deck (it's free)
+      const cost = 0; // ECONOMY.STARTER_DECK_COPY_COST
+      const canCreateEmpty = currentMockState.singlePlayerProfile.credits >= cost;
       expect(canCreateEmpty).toBe(true);
     })
 
-    it('should deduct 500 credits when creating empty deck', () => {
+    it('should NOT deduct credits when creating empty deck (free)', () => {
       // Setup
       currentMockState = createDefaultState({
         profile: { credits: 600 }
       })
 
       const initialCredits = currentMockState.singlePlayerProfile.credits;
-      const cost = 500;
+      const cost = 0; // Free deck creation
       const expectedCredits = initialCredits - cost;
 
-      // After fix, handleConfirmEmptyDeck should deduct credits
-      expect(expectedCredits).toBe(100);
+      // Credits should remain unchanged (600 - 0 = 600)
+      expect(expectedCredits).toBe(600);
     })
 
     it('should call saveShipSlotDeck when creating empty deck', () => {
@@ -455,40 +446,41 @@ describe('HangarScreen - Empty Deck Creation Cost', () => {
     })
   })
 
-  describe('UI - Empty deck button should show cost', () => {
+  describe('UI - Empty deck button should be free', () => {
     /**
-     * The "Start Empty" button should display the cost (500 credits)
-     * and be disabled when player cannot afford it
+     * The "Start Empty" button should NOT show cost since it's free
+     * and should always be enabled
      */
-    it('should display cost on empty deck button', () => {
-      // Expected button text: "Start Empty (500 credits)"
-      // Not just "Start Empty"
-      const expectedText = /Start Empty.*500/
-      expect('Start Empty (500 credits)').toMatch(expectedText)
+    it('should display button without cost text', () => {
+      // Expected button text: "Start Empty" (no cost displayed)
+      const expectedText = 'Start Empty'
+      expect(expectedText).not.toMatch(/credits/)
     })
 
-    it('should disable empty deck button when cannot afford', () => {
+    it('should always be enabled (free)', () => {
       currentMockState = createDefaultState({
-        profile: { credits: 400 }
+        profile: { credits: 0 } // Even with 0 credits
       })
 
-      // Button should be disabled
-      const canAfford = currentMockState.singlePlayerProfile.credits >= 500
-      expect(canAfford).toBe(false)
+      // Button should always be enabled since deck creation is free
+      const cost = 0;
+      const canAfford = currentMockState.singlePlayerProfile.credits >= cost
+      expect(canAfford).toBe(true)
     })
   })
 
-  describe('Consistency - Both deck options should cost the same', () => {
+  describe('Consistency - Both deck options should be free', () => {
     /**
      * Whether starting empty or copying starter deck,
-     * the cost should be the same (500 credits)
+     * both should be free (cost = 0)
      */
-    it('should use same cost constant for both options', () => {
-      const STARTER_DECK_COPY_COST = 500
+    it('should use 0 cost for both options', () => {
+      const STARTER_DECK_COPY_COST = 0
       const emptyCost = STARTER_DECK_COPY_COST
       const copyCost = STARTER_DECK_COPY_COST
 
-      expect(emptyCost).toBe(copyCost)
+      expect(emptyCost).toBe(0)
+      expect(copyCost).toBe(0)
     })
   })
 })

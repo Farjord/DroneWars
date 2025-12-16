@@ -980,3 +980,355 @@
   z-index: 5;
   pointer-events: none;
 }
+
+/* ========================================
+   SWIMLANE LAYOUT
+   Horizontal column view with dual-axis scrolling
+   for ViewDeckModal cards tab
+   ======================================== */
+
+/* Controls bar at top of swimlane section */
+.dw-swimlane-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  background: rgba(17, 24, 39, 0.5);
+  border: 1px solid var(--modal-action-border);
+  border-radius: 4px;
+  flex-wrap: wrap;
+}
+
+.dw-swimlane-control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dw-swimlane-control-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--modal-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Mode selector buttons (toggle button group) */
+.dw-swimlane-mode-group {
+  display: flex;
+  border: 1px solid var(--modal-action-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.dw-swimlane-mode-btn {
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  color: var(--modal-text-secondary);
+  font-family: 'Exo', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-right: 1px solid var(--modal-action-border);
+}
+
+.dw-swimlane-mode-btn:last-child {
+  border-right: none;
+}
+
+.dw-swimlane-mode-btn:hover {
+  background: var(--modal-action-bg);
+  color: var(--modal-text-primary);
+}
+
+.dw-swimlane-mode-btn--active {
+  background: var(--modal-action);
+  color: #fff;
+}
+
+.dw-swimlane-scroll-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--modal-text-muted, #6b7280);
+  font-style: italic;
+}
+
+/* Main swimlane container */
+.dw-swimlane-container {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(6, 182, 212, 0.6) rgba(0, 0, 0, 0.2);
+}
+
+.dw-swimlane-container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dw-swimlane-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.dw-swimlane-container::-webkit-scrollbar-thumb {
+  background: rgba(6, 182, 212, 0.6);
+  border-radius: 4px;
+}
+
+.dw-swimlane-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(6, 182, 212, 0.8);
+}
+
+/* Individual swimlane column */
+.dw-swimlane {
+  flex: 1 0 260px;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(17, 24, 39, 0.3);
+  border: 1px solid var(--modal-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Swimlane header */
+.dw-swimlane-header {
+  padding: 10px 12px;
+  background: rgba(6, 182, 212, 0.1);
+  border-bottom: 1px solid var(--modal-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.dw-swimlane-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--modal-action);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dw-swimlane-count {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--modal-text-secondary);
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+/* Type-specific header colors */
+.dw-swimlane-header--ordnance { background: rgba(239, 68, 68, 0.12); }
+.dw-swimlane-header--ordnance .dw-swimlane-title { color: #ef4444; }
+
+.dw-swimlane-header--support { background: rgba(16, 185, 129, 0.12); }
+.dw-swimlane-header--support .dw-swimlane-title { color: #10b981; }
+
+.dw-swimlane-header--tactic { background: rgba(6, 182, 212, 0.12); }
+.dw-swimlane-header--tactic .dw-swimlane-title { color: #06b6d4; }
+
+.dw-swimlane-header--upgrade { background: rgba(168, 85, 247, 0.12); }
+.dw-swimlane-header--upgrade .dw-swimlane-title { color: #a855f7; }
+
+/* Rarity-specific header colors */
+.dw-swimlane-header--common { background: rgba(128, 128, 128, 0.15); }
+.dw-swimlane-header--common .dw-swimlane-title { color: #9ca3af; }
+
+.dw-swimlane-header--uncommon { background: rgba(34, 197, 94, 0.15); }
+.dw-swimlane-header--uncommon .dw-swimlane-title { color: #22c55e; }
+
+.dw-swimlane-header--rare { background: rgba(59, 130, 246, 0.15); }
+.dw-swimlane-header--rare .dw-swimlane-title { color: #3b82f6; }
+
+.dw-swimlane-header--mythic { background: rgba(168, 85, 247, 0.15); }
+.dw-swimlane-header--mythic .dw-swimlane-title { color: #a855f7; }
+
+/* Swimlane cards container */
+.dw-swimlane-cards {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Card wrapper in swimlane */
+.dw-swimlane-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 4px;
+  padding: 12px;
+  padding-bottom: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dw-swimlane-card-quantity {
+  margin-top: 6px;
+  padding: 3px 0;
+  color: var(--modal-theme);
+  font-weight: 600;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767px) {
+  .dw-swimlane-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .dw-swimlane-control-group {
+    justify-content: center;
+  }
+
+  .dw-swimlane {
+    min-width: 220px;
+  }
+
+  .dw-swimlane-cards {
+    padding: 8px;
+    gap: 8px;
+  }
+}
+
+/* ========================================
+   MATRIX LAYOUT
+   2D grid view with column/row groupings
+   ======================================== */
+
+.dw-matrix-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(6, 182, 212, 0.6) rgba(0, 0, 0, 0.2);
+}
+
+.dw-matrix-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.dw-matrix-container::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.dw-matrix-container::-webkit-scrollbar-thumb {
+  background: rgba(6, 182, 212, 0.6);
+  border-radius: 4px;
+}
+
+.dw-matrix-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(6, 182, 212, 0.8);
+}
+
+.dw-matrix-header-row {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--modal-bg);
+}
+
+.dw-matrix-corner {
+  flex: 0 0 100px;
+  min-width: 100px;
+  padding: 10px;
+  background: rgba(17, 24, 39, 0.8);
+  border: 1px solid var(--modal-border);
+}
+
+.dw-matrix-col-header {
+  flex: 1 0 260px;
+  min-width: 260px;
+  padding: 10px 12px;
+  background: rgba(6, 182, 212, 0.1);
+  border: 1px solid var(--modal-border);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--modal-action);
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/* Column header color variants */
+.dw-matrix-col-header.dw-matrix-header--ordnance { background: rgba(239, 68, 68, 0.12); color: #ef4444; }
+.dw-matrix-col-header.dw-matrix-header--support { background: rgba(16, 185, 129, 0.12); color: #10b981; }
+.dw-matrix-col-header.dw-matrix-header--tactic { background: rgba(6, 182, 212, 0.12); color: #06b6d4; }
+.dw-matrix-col-header.dw-matrix-header--upgrade { background: rgba(168, 85, 247, 0.12); color: #a855f7; }
+.dw-matrix-col-header.dw-matrix-header--common { background: rgba(128, 128, 128, 0.15); color: #9ca3af; }
+.dw-matrix-col-header.dw-matrix-header--uncommon { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+.dw-matrix-col-header.dw-matrix-header--rare { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+.dw-matrix-col-header.dw-matrix-header--mythic { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+
+.dw-matrix-row {
+  display: flex;
+}
+
+.dw-matrix-row-header {
+  flex: 0 0 100px;
+  min-width: 100px;
+  padding: 12px 10px;
+  background: rgba(17, 24, 39, 0.5);
+  border: 1px solid var(--modal-border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--modal-text-secondary);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.dw-matrix-cell {
+  flex: 1 0 260px;
+  min-width: 260px;
+  padding: 12px;
+  border: 1px solid var(--modal-border);
+  background: rgba(17, 24, 39, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.dw-matrix-cell--empty {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+/* Matrix responsive adjustments */
+@media (max-width: 767px) {
+  .dw-matrix-corner {
+    flex: 0 0 80px;
+    min-width: 80px;
+  }
+
+  .dw-matrix-col-header {
+    min-width: 220px;
+  }
+
+  .dw-matrix-row-header {
+    flex: 0 0 80px;
+    min-width: 80px;
+    font-size: 11px;
+  }
+
+  .dw-matrix-cell {
+    min-width: 220px;
+    padding: 8px;
+    gap: 8px;
+  }
+}
