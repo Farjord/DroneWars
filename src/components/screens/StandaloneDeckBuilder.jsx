@@ -11,6 +11,7 @@ import fullDroneCollection from '../../data/droneData.js';
 import { getShipById, getDefaultShip } from '../../data/shipData.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import { updateDeckState, updateDroneState } from '../../utils/deckStateUtils.js';
+import { parseJSObjectLiteral, convertFromAIFormat } from '../../utils/deckExportUtils.js';
 
 /**
  * StandaloneDeckBuilder - Wrapper component for deck building from menu
@@ -22,6 +23,8 @@ function StandaloneDeckBuilder() {
   const [selectedDrones, setSelectedDrones] = useState({});
   const [selectedShipComponents, setSelectedShipComponents] = useState({});
   const [selectedShip, setSelectedShip] = useState(getDefaultShip());
+  // Preserved fields for import/export round-trip (name, description, difficulty, etc.)
+  const [preservedFields, setPreservedFields] = useState({});
 
   // Load saved deck from localStorage on mount
   useEffect(() => {
@@ -30,6 +33,7 @@ function StandaloneDeckBuilder() {
       const savedDrones = localStorage.getItem('customDrones');
       const savedShipComponents = localStorage.getItem('customShipComponents');
       const savedShipId = localStorage.getItem('customShipId');
+      const savedPreservedFields = localStorage.getItem('customPreservedFields');
 
       if (savedDeck) {
         setDeck(JSON.parse(savedDeck));
@@ -45,6 +49,9 @@ function StandaloneDeckBuilder() {
         if (ship) {
           setSelectedShip(ship);
         }
+      }
+      if (savedPreservedFields) {
+        setPreservedFields(JSON.parse(savedPreservedFields));
       }
     } catch (error) {
       console.error('Error loading saved deck:', error);
@@ -101,6 +108,7 @@ function StandaloneDeckBuilder() {
       localStorage.setItem('customDrones', JSON.stringify(selectedDrones));
       localStorage.setItem('customShipComponents', JSON.stringify(selectedShipComponents));
       localStorage.setItem('customShipId', selectedShip?.id || 'SHIP_001');
+      localStorage.setItem('customPreservedFields', JSON.stringify(preservedFields));
 
       console.log('✅ Deck saved successfully to localStorage');
     } catch (error) {
@@ -109,83 +117,59 @@ function StandaloneDeckBuilder() {
   };
 
   /**
-   * Handle import deck - parse and load deck code
+   * Handle import deck - parse JS object literal format (aiData.js style)
    */
   const handleImportDeck = (deckCode) => {
     try {
-      const importedDeck = {};
-      const importedDrones = {};
-      const importedShipComponents = {};
+      // Parse the JS object literal
+      const parseResult = parseJSObjectLiteral(deckCode);
+      if (!parseResult.success) {
+        return { success: false, message: parseResult.error };
+      }
 
-      // Split into cards, drones, and ship sections
-      const sections = deckCode.split('|');
+      const aiData = parseResult.data;
 
-      for (const section of sections) {
-        const [type, ...data] = section.split(':');
-        const dataStr = data.join(':'); // Rejoin in case drone names have colons
+      // Convert from AI format to internal state
+      const converted = convertFromAIFormat(aiData);
 
-        if (type === 'cards') {
-          const pairs = dataStr.split(',');
-          for (const pair of pairs) {
-            const [cardId, quantity] = pair.split(':');
-            const qty = parseInt(quantity, 10);
-
-            if (!cardId || isNaN(qty)) {
-              return { success: false, message: 'Invalid card format in deck code.' };
-            }
-
-            // Verify card exists
-            const card = fullCardCollection.find(c => c.id === cardId);
-            if (!card) {
-              return { success: false, message: `Card ${cardId} not found.` };
-            }
-
-            importedDeck[cardId] = qty;
-          }
-        } else if (type === 'drones') {
-          const pairs = dataStr.split(',');
-          for (const pair of pairs) {
-            const parts = pair.split(':');
-            const quantity = parts.pop(); // Last element is quantity
-            const droneName = parts.join(':'); // Everything else is the drone name
-            const qty = parseInt(quantity, 10);
-
-            if (!droneName || isNaN(qty)) {
-              return { success: false, message: 'Invalid drone format in deck code.' };
-            }
-
-            // Verify drone exists and is selectable
-            const baseDrone = fullDroneCollection.find(d => d.name === droneName);
-            if (!baseDrone) {
-              return { success: false, message: `Drone ${droneName} not found.` };
-            }
-            if (baseDrone.selectable === false) {
-              return { success: false, message: `Drone ${droneName} cannot be imported (non-selectable token).` };
-            }
-
-            importedDrones[droneName] = qty;
-          }
-        } else if (type === 'ship') {
-          const pairs = dataStr.split(',');
-          for (const pair of pairs) {
-            const [componentId, lane] = pair.split(':');
-
-            if (!componentId || !lane || !['l', 'm', 'r'].includes(lane)) {
-              return { success: false, message: 'Invalid ship component format in deck code.' };
-            }
-
-            importedShipComponents[componentId] = lane;
-          }
+      // Validate cards exist
+      for (const cardId of Object.keys(converted.deck)) {
+        const card = fullCardCollection.find(c => c.id === cardId);
+        if (!card) {
+          return { success: false, message: `Card ${cardId} not found in collection.` };
         }
       }
 
-      setDeck(importedDeck);
-      setSelectedDrones(importedDrones);
-      setSelectedShipComponents(importedShipComponents);
+      // Validate drones exist and are selectable
+      for (const droneName of Object.keys(converted.selectedDrones)) {
+        const drone = fullDroneCollection.find(d => d.name === droneName);
+        if (!drone) {
+          return { success: false, message: `Drone "${droneName}" not found.` };
+        }
+        if (drone.selectable === false) {
+          return { success: false, message: `Drone "${droneName}" cannot be selected (token).` };
+        }
+      }
+
+      // Validate ship exists if specified
+      if (converted.shipId) {
+        const ship = getShipById(converted.shipId);
+        if (!ship) {
+          return { success: false, message: `Ship ${converted.shipId} not found.` };
+        }
+        setSelectedShip(ship);
+      }
+
+      // Apply the imported data
+      setDeck(converted.deck);
+      setSelectedDrones(converted.selectedDrones);
+      setSelectedShipComponents(converted.selectedShipComponents);
+      setPreservedFields(converted.preservedFields);
+
       return { success: true };
     } catch (error) {
       console.error('Error importing deck:', error);
-      return { success: false, message: 'Failed to parse deck code.' };
+      return { success: false, message: 'Failed to parse deck code. Ensure it is valid JS object format.' };
     }
   };
 
@@ -210,6 +194,8 @@ function StandaloneDeckBuilder() {
       onConfirmDeck={handleConfirmDeck}
       onImportDeck={handleImportDeck}
       onBack={handleBack}
+      preservedFields={preservedFields}
+      onPreservedFieldsChange={setPreservedFields}
     />
   );
 }

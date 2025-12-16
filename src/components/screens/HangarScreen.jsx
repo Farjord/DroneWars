@@ -8,7 +8,10 @@ import ReplicatorModal from '../modals/ReplicatorModal';
 import ShopModal from '../modals/ShopModal';
 import RunSummaryModal from '../modals/RunSummaryModal';
 import MIARecoveryModal from '../modals/MIARecoveryModal';
+import BossEncounterModal from '../modals/BossEncounterModal';
 import miaRecoveryService from '../../logic/singlePlayer/MIARecoveryService.js';
+import SinglePlayerCombatInitializer from '../../logic/singlePlayer/SinglePlayerCombatInitializer.js';
+import aiPersonalities from '../../data/aiData.js';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import DeployingScreen from '../ui/DeployingScreen';
 import QuickDeployManager from '../quickDeploy/QuickDeployManager';
@@ -69,6 +72,8 @@ const HangarScreen = () => {
   const [showReputationRewards, setShowReputationRewards] = useState(false); // Show reputation reward modal
   const [showDeployingScreen, setShowDeployingScreen] = useState(false); // Show deploying transition screen
   const [deployingData, setDeployingData] = useState(null); // Data for deploying screen (slotId, map, gateId, quickDeploy)
+  const [selectedBossId, setSelectedBossId] = useState(null); // Boss ID for BossEncounterModal
+  const [bossHexCell, setBossHexCell] = useState(null); // Boss hex cell data
 
   // Compute maps with correct grid coordinates for the news ticker
   const mapsWithCoordinates = useMemo(() => {
@@ -265,6 +270,50 @@ const HangarScreen = () => {
 
     generateMapsForSession();
   }, [singlePlayerProfile]);
+
+  /**
+   * Generate boss hex cell after hex grid is generated
+   * Places boss in a valid position that doesn't overlap with map sectors
+   */
+  useEffect(() => {
+    if (!hexGridData || !singlePlayerProfile?.gameSeed) return;
+
+    // Find the first boss AI
+    const bossAI = aiPersonalities.find(ai => ai.modes?.includes('boss'));
+    if (!bossAI) {
+      debugLog('HANGAR', 'No boss AI found');
+      return;
+    }
+
+    // Get active map cells to avoid
+    const activeCells = hexGridData.allCells.filter(c => c.isActive);
+    const activeCoords = new Set(activeCells.map(c => c.coordinate));
+
+    // Find valid cells for boss (not on edge, not active)
+    const validBossCells = hexGridData.allCells.filter(cell =>
+      cell.col >= 2 && cell.col < 26 - 2 &&
+      cell.row >= 1 && cell.row < 18 - 1 &&
+      !activeCoords.has(cell.coordinate) &&
+      // Ensure minimum distance from active cells
+      !activeCells.some(active =>
+        Math.abs(active.col - cell.col) < 3 && Math.abs(active.row - cell.row) < 2
+      )
+    );
+
+    // Use seeded random for deterministic boss placement
+    const rng = new SeededRandom(singlePlayerProfile.gameSeed + 999);
+    const shuffled = rng.shuffle(validBossCells);
+
+    if (shuffled.length > 0) {
+      const bossCell = {
+        ...shuffled[0],
+        isBoss: true,
+        bossId: bossAI.bossId
+      };
+      setBossHexCell(bossCell);
+      debugLog('HANGAR', 'Boss hex placed at:', bossCell.coordinate);
+    }
+  }, [hexGridData, singlePlayerProfile?.gameSeed]);
 
   /**
    * Build sorted list of active sectors for navigation
@@ -805,6 +854,34 @@ const HangarScreen = () => {
     debugLog('EXTRACTION', '⏱️ State set calls queued (async batch)');
   };
 
+  // Boss hex click handler
+  const handleBossHexClick = (bossId) => {
+    debugLog('HANGAR', '💀 Boss hex clicked', { bossId });
+
+    // Use default ship slot if set, otherwise first active slot
+    const defaultSlotId = singlePlayerProfile?.defaultShipSlotId ?? 0;
+
+    setSelectedBossId(bossId);
+    setSelectedSlotId(defaultSlotId);
+    setActiveModal('bossEncounter');
+  };
+
+  // Boss challenge handler
+  const handleBossChallenge = async (slotId, bossId) => {
+    debugLog('HANGAR', '⚔️ Boss challenge initiated', { slotId, bossId });
+
+    // Close modal first
+    setActiveModal(null);
+    setSelectedBossId(null);
+
+    // Initiate boss combat
+    const result = await SinglePlayerCombatInitializer.initiateBossCombat(bossId, slotId);
+    if (!result) {
+      debugLog('HANGAR', '❌ Failed to initiate boss combat');
+      console.error('[HangarScreen] Failed to initiate boss combat');
+    }
+  };
+
   // Deploy handler - shows deploying screen first
   const handleDeploy = (slotId, map, entryGateId = 0, quickDeploy = null) => {
     debugLog('EXTRACTION', '🚀 handleDeploy called', {
@@ -1053,13 +1130,13 @@ const HangarScreen = () => {
                   const centerX = hexWidth / 2;
                   const centerY = hexHeight / 2;
 
-                  // Determine sector color: red for token-required maps, cyan for normal
+                  // Determine sector color: orange for token-required maps, cyan for normal
                   const requiresToken = map?.requiresToken;
-                  const sectorColor = requiresToken ? '#ef4444' : '#06b6d4';
-                  const sectorColorRgba = requiresToken ? 'rgba(239,68,68,0.15)' : 'rgba(6,182,212,0.15)';
-                  const sectorColorFaint = requiresToken ? 'rgba(239,68,68,0.5)' : 'rgba(6,182,212,0.5)';
+                  const sectorColor = requiresToken ? '#f97316' : '#06b6d4';
+                  const sectorColorRgba = requiresToken ? 'rgba(249,115,22,0.15)' : 'rgba(6,182,212,0.15)';
+                  const sectorColorFaint = requiresToken ? 'rgba(249,115,22,0.5)' : 'rgba(6,182,212,0.5)';
                   const pulseAnimation = requiresToken
-                    ? 'hexDangerPulse 1.5s ease-in-out infinite'
+                    ? 'hexRestrictedPulse 1.5s ease-in-out infinite'
                     : 'hexPulse 2s ease-in-out infinite';
 
                   return (
@@ -1145,6 +1222,98 @@ const HangarScreen = () => {
                   );
                 }
               })}
+
+              {/* Boss Hex - rendered separately for distinct styling */}
+              {bossHexCell && (() => {
+                const { hexWidth, hexHeight } = hexGridData;
+                const hexPath = `M${hexWidth/2},0 L${hexWidth},${hexHeight*0.25} L${hexWidth},${hexHeight*0.75} L${hexWidth/2},${hexHeight} L0,${hexHeight*0.75} L0,${hexHeight*0.25} Z`;
+                const centerX = hexWidth / 2;
+                const centerY = hexHeight / 2;
+
+                return (
+                  <g
+                    transform={`translate(${bossHexCell.x}, ${bossHexCell.y})`}
+                    onClick={() => handleBossHexClick(bossHexCell.bossId)}
+                    style={{ cursor: 'pointer' }}
+                    data-boss-hex="true"
+                    data-coordinate={bossHexCell.coordinate}
+                  >
+                    {/* Pulsing glow layer - red for boss */}
+                    <path
+                      d={hexPath}
+                      fill="none"
+                      stroke="#ef4444"
+                      strokeWidth="12"
+                      style={{
+                        filter: 'blur(8px)',
+                        animation: 'hexDangerPulse 1.5s ease-in-out infinite'
+                      }}
+                    />
+
+                    {/* Radar ping circle */}
+                    <circle
+                      cx={centerX}
+                      cy={centerY}
+                      r="25"
+                      fill="none"
+                      stroke="#ef4444"
+                      strokeWidth="2"
+                      style={{
+                        animation: 'hexRadarPing 3s ease-out infinite'
+                      }}
+                    />
+
+                    {/* Outer hex - red border */}
+                    <path
+                      d={hexPath}
+                      fill="rgba(239,68,68,0.2)"
+                      stroke="#ef4444"
+                      strokeWidth="4"
+                      filter="url(#hexGlow)"
+                    />
+
+                    {/* Inner hex - dark with red tint */}
+                    <path
+                      d={`M${hexWidth/2},4 L${hexWidth-4},${hexHeight*0.25+2} L${hexWidth-4},${hexHeight*0.75-2} L${hexWidth/2},${hexHeight-4} L4,${hexHeight*0.75-2} L4,${hexHeight*0.25+2} Z`}
+                      fill="rgba(17,24,39,0.95)"
+                      stroke="rgba(239,68,68,0.6)"
+                      strokeWidth="1"
+                    />
+
+                    {/* Skull icon placeholder - using text for now */}
+                    <text
+                      x={centerX}
+                      y={centerY - 8}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill="#ffffff"
+                      fontSize={Math.max(16, hexWidth * 0.25)}
+                      style={{
+                        pointerEvents: 'none'
+                      }}
+                    >
+                      ☠
+                    </text>
+
+                    {/* BOSS label */}
+                    <text
+                      x={centerX}
+                      y={centerY + 12}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                      fill="#ffffff"
+                      fontSize={Math.max(10, hexWidth * 0.14)}
+                      fontWeight="bold"
+                      style={{
+                        pointerEvents: 'none',
+                        textShadow: '0 0 4px rgba(0,0,0,0.8)'
+                      }}
+                    >
+                      BOSS
+                    </text>
+                  </g>
+                );
+              })()}
             </svg>
           )}
           </div>
@@ -1554,6 +1723,16 @@ const HangarScreen = () => {
       {activeModal === 'shop' && <ShopModal onClose={closeAllModals} />}
       {activeModal === 'quickDeploy' && <QuickDeployManager onClose={closeAllModals} />}
 
+      {/* Boss Encounter Modal */}
+      {activeModal === 'bossEncounter' && selectedBossId && (
+        <BossEncounterModal
+          bossId={selectedBossId}
+          selectedSlotId={selectedSlotId}
+          onChallenge={handleBossChallenge}
+          onClose={closeAllModals}
+        />
+      )}
+
       {activeModal === 'mapOverview' && (() => {
         debugLog('EXTRACTION', '🖼️ Rendering MapOverviewModal', {
           selectedSlotId,
@@ -1618,34 +1797,20 @@ const HangarScreen = () => {
               <p className="dw-modal-text">How would you like to start your new deck?</p>
             </div>
             <div className="dw-modal-actions" style={{ flexDirection: 'column', gap: '0.75rem' }}>
-              {(() => {
-                const deckCost = ECONOMY.STARTER_DECK_COPY_COST || 500;
-                const canAffordEmpty = (singlePlayerProfile?.credits || 0) >= deckCost;
-                return (
-                  <button
-                    onClick={() => handleNewDeckOption('empty')}
-                    className={`dw-btn dw-btn-confirm dw-btn--full ${!canAffordEmpty ? 'opacity-50' : ''}`}
-                    disabled={!canAffordEmpty}
-                    title={!canAffordEmpty ? `Not enough credits (need ${deckCost})` : undefined}
-                  >
-                    Start Empty ({deckCost} credits)
-                  </button>
-                );
-              })()}
-              {singlePlayerShipSlots[0]?.status === 'active' && (() => {
-                const copyCost = ECONOMY.STARTER_DECK_COPY_COST || 500;
-                const canAffordCopy = (singlePlayerProfile?.credits || 0) >= copyCost;
-                return (
-                  <button
-                    onClick={() => handleNewDeckOption('copyFromSlot0')}
-                    className={`dw-btn dw-btn-secondary dw-btn--full ${!canAffordCopy ? 'opacity-50' : ''}`}
-                    disabled={!canAffordCopy}
-                    title={!canAffordCopy ? `Not enough credits (need ${copyCost})` : undefined}
-                  >
-                    Copy from {singlePlayerShipSlots[0]?.name || 'Starter Deck'} ({copyCost} credits)
-                  </button>
-                );
-              })()}
+              <button
+                onClick={() => handleNewDeckOption('empty')}
+                className="dw-btn dw-btn-confirm dw-btn--full"
+              >
+                Start Empty
+              </button>
+              {singlePlayerShipSlots[0]?.status === 'active' && (
+                <button
+                  onClick={() => handleNewDeckOption('copyFromSlot0')}
+                  className="dw-btn dw-btn-secondary dw-btn--full"
+                >
+                  Copy from {singlePlayerShipSlots[0]?.name || 'Starter Deck'}
+                </button>
+              )}
               <button
                 onClick={closeAllModals}
                 className="dw-btn dw-btn-cancel dw-btn--full"
@@ -1689,15 +1854,6 @@ const HangarScreen = () => {
                 <li>{Object.keys(starterDeck.shipComponents || {}).length || 3} ship components</li>
                 <li>1 ship</li>
               </ul>
-              <div className="dw-modal-credits" style={{ marginBottom: 0 }}>
-                <span className="dw-modal-credits-label">Cost</span>
-                <span className="dw-modal-credits-value" style={{ color: '#fbbf24' }}>
-                  {ECONOMY.STARTER_DECK_COPY_COST || 500} credits
-                </span>
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)', marginTop: '8px' }}>
-                Your balance: {singlePlayerProfile?.credits || 0} credits
-              </div>
             </div>
             <div className="dw-modal-actions">
               <button
@@ -1710,7 +1866,7 @@ const HangarScreen = () => {
                 onClick={handleConfirmCopyStarter}
                 className="dw-btn dw-btn-confirm"
               >
-                Confirm Purchase
+                Confirm
               </button>
             </div>
           </div>
@@ -1733,15 +1889,6 @@ const HangarScreen = () => {
               <p className="dw-modal-text" style={{ fontSize: '12px', color: 'var(--modal-text-secondary)', marginBottom: '12px' }}>
                 Starter cards are always available in unlimited quantities for deck building.
               </p>
-              <div className="dw-modal-credits" style={{ marginBottom: 0 }}>
-                <span className="dw-modal-credits-label">Cost</span>
-                <span className="dw-modal-credits-value" style={{ color: '#fbbf24' }}>
-                  {ECONOMY.STARTER_DECK_COPY_COST || 500} credits
-                </span>
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)', marginTop: '8px' }}>
-                Your balance: {singlePlayerProfile?.credits || 0} credits
-              </div>
             </div>
             <div className="dw-modal-actions">
               <button
@@ -1754,7 +1901,7 @@ const HangarScreen = () => {
                 onClick={handleConfirmEmptyDeck}
                 className="dw-btn dw-btn-confirm"
               >
-                Confirm Purchase
+                Confirm
               </button>
             </div>
           </div>

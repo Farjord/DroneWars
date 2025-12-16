@@ -300,6 +300,81 @@ class SinglePlayerCombatInitializer {
   }
 
   /**
+   * Initialize combat for a boss encounter
+   * Boss fights bypass tactical map and go straight to combat
+   * @param {string} bossId - Boss ID from aiData (e.g., 'BOSS_T1_NEMESIS')
+   * @param {number} shipSlotId - Player's ship slot ID to use
+   * @returns {boolean} Success status
+   */
+  async initiateBossCombat(bossId, shipSlotId) {
+    debugLog('SP_COMBAT', '=== Initiating Boss Combat ===');
+    debugLog('SP_COMBAT', 'Boss ID:', bossId);
+    debugLog('SP_COMBAT', 'Ship Slot ID:', shipSlotId);
+
+    try {
+      // 1. Get boss AI by bossId
+      const bossAI = this.getBossAIByBossId(bossId);
+      if (!bossAI) {
+        console.error('[Boss Combat] Boss AI not found:', bossId);
+        return false;
+      }
+      debugLog('SP_COMBAT', 'Found Boss AI:', bossAI.name);
+
+      // 2. Increment boss attempts in profile
+      const currentState = gameStateManager.getState();
+      const profile = currentState.singlePlayerProfile || {};
+      const bossProgress = profile.bossProgress || { defeatedBosses: [], totalBossVictories: 0, totalBossAttempts: 0 };
+
+      gameStateManager.setState({
+        singlePlayerProfile: {
+          ...profile,
+          bossProgress: {
+            ...bossProgress,
+            totalBossAttempts: bossProgress.totalBossAttempts + 1
+          }
+        }
+      });
+
+      // 3. Create minimal run state for boss combat (no tactical map data)
+      const bossRunState = {
+        shipSlotId: shipSlotId,
+        isBossCombat: true,
+        bossId: bossId
+      };
+
+      // 4. Use existing initiateCombat but with boss-specific flags
+      // We call initiateCombat internally with the boss AI name
+      const result = await this.initiateCombat(bossAI.name, bossRunState, null, false);
+
+      // 5. After initiateCombat, update the singlePlayerEncounter with boss flags
+      if (result) {
+        const state = gameStateManager.getState();
+        gameStateManager.setState({
+          singlePlayerEncounter: {
+            ...state.singlePlayerEncounter,
+            isBossCombat: true,
+            bossId: bossId
+          }
+        });
+      }
+
+      return result;
+    } catch (error) {
+      console.error('[Boss Combat] Error initiating boss combat:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get boss AI by bossId field
+   * @param {string} bossId - Boss ID (e.g., 'BOSS_T1_NEMESIS')
+   * @returns {Object|null} Boss AI personality or null if not found
+   */
+  getBossAIByBossId(bossId) {
+    return aiPersonalities.find(ai => ai.bossId === bossId) || null;
+  }
+
+  /**
    * Get AI personality by ID or name
    * @param {string} aiId - AI ID or name
    * @returns {Object|null} AI personality or null if not found

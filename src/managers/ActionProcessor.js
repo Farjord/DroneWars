@@ -1350,13 +1350,32 @@ setAnimationManager(animationManager) {
 
     // Call finishCardPlay to discard card and determine turn ending
     // Pass dynamicGoAgain from POST conditionals
+    debugLog('CARD_DISCARD', '📤 processMovementCompletion: calling finishCardPlay', {
+      cardName: card.name,
+      cardInstanceId: card.instanceId,
+      playerId,
+      handSizeBefore: currentStates[playerId]?.hand?.length
+    });
+
     const completion = gameEngine.finishCardPlay(card, playerId, currentStates, dynamicGoAgain);
 
     // Update state with card removed from hand and added to discard
+    debugLog('CARD_DISCARD', '📥 processMovementCompletion: finishCardPlay returned', {
+      cardName: card.name,
+      handSizeAfter: completion.newPlayerStates[playerId]?.hand?.length,
+      shouldEndTurn: completion.shouldEndTurn
+    });
+
     this.gameStateManager.setPlayerStates(
       completion.newPlayerStates.player1,
       completion.newPlayerStates.player2
     );
+
+    debugLog('CARD_DISCARD', '✅ processMovementCompletion: setPlayerStates called', {
+      cardName: card.name,
+      player1HandSize: completion.newPlayerStates.player1?.hand?.length,
+      player2HandSize: completion.newPlayerStates.player2?.hand?.length
+    });
 
     // Execute CARD_REVEAL animation now that movement is complete (non-blocking)
     const animDef = this.animationManager?.animations['CARD_REVEAL'];

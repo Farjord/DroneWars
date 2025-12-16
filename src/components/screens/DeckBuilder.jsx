@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp, Sword, Rocket, Shield, Grid, ArrowLeft, LayoutGrid, List, AlertTriangle, Settings } from 'lucide-react';
+import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp, Sword, Rocket, Shield, Grid, ArrowLeft, LayoutGrid, List, AlertTriangle, Settings, Filter } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import ActionCard from '../ui/ActionCard.jsx';
 import DroneCard from '../ui/DroneCard.jsx';
@@ -7,15 +7,30 @@ import ShipCard from '../ui/ShipCard.jsx';
 import ViewDeckModal from '../modals/ViewDeckModal.jsx';
 import ShipSection from '../ui/ShipSection.jsx';
 import ShipConfigurationTab from '../ui/ShipConfigurationTab.jsx';
+import CardFilterModal from '../modals/CardFilterModal.jsx';
+import DroneFilterModal from '../modals/DroneFilterModal.jsx';
+import FilterChip from '../ui/FilterChip.jsx';
 import fullDroneCollection from '../../data/droneData.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { getAllShips, getDefaultShip } from '../../data/shipData.js';
 import { gameEngine } from '../../logic/gameLogic.js';
 import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js';
 import { RARITY_COLORS } from '../../data/cardData.js';
-import { generateDeckCode } from '../../utils/deckExportUtils.js';
+import { generateDeckCode, generateJSObjectLiteral, convertToAIFormat, downloadDeckFile } from '../../utils/deckExportUtils.js';
 import { calculateEffectiveMaxForCard } from '../../utils/singlePlayerDeckUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { DEV_CONFIG } from '../../config/devConfig.js';
+import {
+  filterCards,
+  filterDrones,
+  sortByRarity,
+  countActiveFilters,
+  countActiveDroneFilters,
+  generateFilterChips,
+  generateDroneFilterChips,
+  createDefaultCardFilters,
+  createDefaultDroneFilters,
+} from '../../utils/deckFilterUtils.js';
 
 // Helper functions to get type-based colors for table styling
 const getTypeBackgroundClass = (type) => {
@@ -231,6 +246,9 @@ const DeckBuilder = ({
   onConfirmDeck,
   onImportDeck,
   onBack,
+  // Preserved fields for import/export round-trip
+  preservedFields = {},        // Fields preserved from import (name, description, etc.)
+  onPreservedFieldsChange,     // Callback when preserved fields change
   // Extraction mode props
   maxDrones = 10,              // 5 for extraction, 10 for multiplayer
   droneInstances = [],         // For damage display (yellow triangle)
@@ -270,22 +288,31 @@ const DeckBuilder = ({
   // Mobile responsive: which panel is visible on small screens
   const [mobileActivePanel, setMobileActivePanel] = useState('left'); // 'left' or 'right'
 
+  // Card filters - new popup-based filter system
   const [filters, setFilters] = useState({
-    cost: { min: 0, max: 99 }, // Temporary values
-    target: 'all',
-    type: 'all',
+    searchText: '',
+    cost: { min: 0, max: 99 }, // Temporary values, updated by effect
+    rarity: [],
+    type: [],
+    target: [],
+    damageType: [],
     abilities: [],
     hideEnhanced: false,
+    includeAIOnly: false,
   });
-  const [isAbilityDropdownOpen, setIsAbilityDropdownOpen] = useState(false);
-  const abilityFilterRef = useRef(null);
-  
+  const [showCardFilterModal, setShowCardFilterModal] = useState(false);
+
   const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
 
-  // Drone-specific filters and sort
+  // Drone filters - new popup-based filter system
   const [droneFilters, setDroneFilters] = useState({
-    abilities: []
+    rarity: [],
+    class: [],
+    abilities: [],
+    damageType: [],
+    includeAIOnly: false,
   });
+  const [showDroneFilterModal, setShowDroneFilterModal] = useState(false);
   const [droneSortConfig, setDroneSortConfig] = useState({ key: 'name', direction: 'ascending' });
 
   const [activeChartView, setActiveChartView] = useState('cost');
@@ -394,9 +421,10 @@ const DeckBuilder = ({
     // Use availableDrones if provided (extraction mode), otherwise use full collection
     const droneSource = availableDrones || fullDroneCollection;
     return droneSource
-      .filter(drone => drone.selectable !== false) // Filter out non-selectable drones (tokens)
       .map(drone => {
       const keywords = [];
+      // Mark drones with selectable: false as AI-only (for the Include AI Only filter)
+      const isAiOnly = drone.selectable === false;
 
       // Extract ability names as keywords
       if (drone.abilities && drone.abilities.length > 0) {
@@ -420,7 +448,7 @@ const DeckBuilder = ({
         ? drone.abilities.map(a => a.description).join(' | ')
         : 'No abilities';
 
-      return { ...drone, keywords: [...new Set(keywords)], description };
+      return { ...drone, keywords: [...new Set(keywords)], description, aiOnly: isAiOnly };
     });
   }, [availableDrones]);
 
@@ -433,32 +461,58 @@ const DeckBuilder = ({
     const costs = new Set();
     const targets = new Set();
     const abilities = new Set();
+    const damageTypes = new Set();
     processedCardCollection.forEach(card => {
         costs.add(card.cost);
-        targets.add(card.targetingText);
+        if (card.targetingText && card.targetingText !== 'N/A') {
+          targets.add(card.targetingText);
+        }
         card.keywords.forEach(k => abilities.add(k));
+        if (card.effect?.damageType) {
+          damageTypes.add(card.effect.damageType);
+        }
     });
 
     const costValues = Array.from(costs);
-    
+
+    // Determine rarities based on mode
+    const rarities = mode === 'extraction'
+      ? ['Starter', 'Common', 'Uncommon', 'Rare', 'Mythic']
+      : ['Common', 'Uncommon', 'Rare', 'Mythic'];
+
     return {
         minCost: Math.min(...costValues),
         maxCost: Math.max(...costValues),
-        targets: ['all', ...Array.from(targets).sort()],
+        rarities,
+        types: ['Ordnance', 'Tactic', 'Support', 'Upgrade'],
+        targets: Array.from(targets).sort(),
+        damageTypes: Array.from(damageTypes).sort(),
         abilities: Array.from(abilities).sort(),
     };
-  }, [processedCardCollection]);
+  }, [processedCardCollection, mode]);
 
   const droneFilterOptions = useMemo(() => {
     const abilities = new Set();
+    const damageTypes = new Set();
     processedDroneCollection.forEach(drone => {
       drone.keywords.forEach(k => abilities.add(k));
+      if (drone.damageType) {
+        damageTypes.add(drone.damageType);
+      }
     });
 
+    // Determine rarities based on mode
+    const rarities = mode === 'extraction'
+      ? ['Starter', 'Common', 'Uncommon', 'Rare', 'Mythic']
+      : ['Common', 'Uncommon', 'Rare', 'Mythic'];
+
     return {
+      rarities,
+      classes: [1, 2, 3, 4, 5],
+      damageTypes: Array.from(damageTypes).sort(),
       abilities: Array.from(abilities).sort()
     };
-  }, [processedDroneCollection]);
+  }, [processedDroneCollection, mode]);
 
   // This effect initializes the cost filter range once the options are calculated
   useEffect(() => {
@@ -752,101 +806,89 @@ const DeckBuilder = ({
     };
   }, [selectedDrones, deck, processedDroneCollection, processedCardCollection]);
 
- // --- NEW: Memoize the filtered and sorted list for display ---
+ // --- Memoize the filtered and sorted list for display using new filter utilities ---
   const filteredAndSortedCards = useMemo(() => {
-    let sortableItems = [...processedCardCollection]
-      .filter(card => {
-        // Cost filter
-        if (card.cost < filters.cost.min || card.cost > filters.cost.max) {
-            return false;
-        }
-        // Target filter
-        if (filters.target !== 'all' && card.targetingText !== filters.target) {
-          return false;
-        }
-        // Type filter
-        if (filters.type !== 'all' && card.type !== filters.type) {
-          return false;
-        }
-        // Abilities filter (must have ALL selected abilities)
-        if (filters.abilities.length > 0) {
-          return filters.abilities.every(ability => card.keywords.includes(ability));
-        }
-        // Enhanced cards filter
-        if (filters.hideEnhanced && card.id.endsWith('_ENHANCED')) {
-          return false;
-        }
-        return true;
-      });
+    // Use the filterCards utility with new OR/AND logic
+    let sortableItems = filterCards(processedCardCollection, filters);
 
-    // Sort logic
+    // Sort logic - special handling for rarity to support Starter in extraction mode
     if (sortConfig.key !== null) {
-      sortableItems.sort((a, b) => {
-        const aVal = a[sortConfig.key];
-        const bVal = b[sortConfig.key];
-
-        // Handle null/undefined values
-        if (aVal == null && bVal == null) return 0;
-        if (aVal == null) return 1;
-        if (bVal == null) return -1;
-
-        // Convert to string for consistent comparison
-        const aStr = String(aVal).toLowerCase();
-        const bStr = String(bVal).toLowerCase();
-
-        if (aStr < bStr) {
-          return sortConfig.direction === 'ascending' ? -1 : 1;
+      if (sortConfig.key === 'rarity') {
+        // Use rarity sorting utility that handles Starter properly
+        sortableItems = sortByRarity(sortableItems, mode === 'extraction');
+        if (sortConfig.direction === 'descending') {
+          sortableItems.reverse();
         }
-        if (aStr > bStr) {
-          return sortConfig.direction === 'ascending' ? 1 : -1;
-        }
-        // Secondary sort by ID for stability
-        return a.id.localeCompare(b.id);
-      });
+      } else {
+        sortableItems.sort((a, b) => {
+          const aVal = a[sortConfig.key];
+          const bVal = b[sortConfig.key];
+
+          // Handle null/undefined values
+          if (aVal == null && bVal == null) return 0;
+          if (aVal == null) return 1;
+          if (bVal == null) return -1;
+
+          // Convert to string for consistent comparison
+          const aStr = String(aVal).toLowerCase();
+          const bStr = String(bVal).toLowerCase();
+
+          if (aStr < bStr) {
+            return sortConfig.direction === 'ascending' ? -1 : 1;
+          }
+          if (aStr > bStr) {
+            return sortConfig.direction === 'ascending' ? 1 : -1;
+          }
+          // Secondary sort by ID for stability
+          return a.id.localeCompare(b.id);
+        });
+      }
     }
 
     return sortableItems;
-  }, [processedCardCollection, filters, sortConfig]);
+  }, [processedCardCollection, filters, sortConfig, mode]);
 
-  // --- Filtered and sorted drones list ---
+  // --- Filtered and sorted drones list using new filter utilities ---
   const filteredAndSortedDrones = useMemo(() => {
-    let sortableItems = [...processedDroneCollection]
-      .filter(drone => {
-        // Abilities filter (must have ALL selected abilities)
-        if (droneFilters.abilities.length > 0) {
-          return droneFilters.abilities.every(ability => drone.keywords.includes(ability));
-        }
-        return true;
-      });
+    // Use the filterDrones utility with new OR/AND logic
+    let sortableItems = filterDrones(processedDroneCollection, droneFilters);
 
-    // Sort logic
+    // Sort logic - special handling for rarity to support Starter in extraction mode
     if (droneSortConfig.key !== null) {
-      sortableItems.sort((a, b) => {
-        const aVal = a[droneSortConfig.key];
-        const bVal = b[droneSortConfig.key];
-
-        // Handle null/undefined values
-        if (aVal == null && bVal == null) return 0;
-        if (aVal == null) return 1;
-        if (bVal == null) return -1;
-
-        // Convert to string for consistent comparison
-        const aStr = String(aVal).toLowerCase();
-        const bStr = String(bVal).toLowerCase();
-
-        if (aStr < bStr) {
-          return droneSortConfig.direction === 'ascending' ? -1 : 1;
+      if (droneSortConfig.key === 'rarity') {
+        // Use rarity sorting utility that handles Starter properly
+        sortableItems = sortByRarity(sortableItems, mode === 'extraction');
+        if (droneSortConfig.direction === 'descending') {
+          sortableItems.reverse();
         }
-        if (aStr > bStr) {
-          return droneSortConfig.direction === 'ascending' ? 1 : -1;
-        }
-        // Secondary sort by name for stability
-        return a.name.localeCompare(b.name);
-      });
+      } else {
+        sortableItems.sort((a, b) => {
+          const aVal = a[droneSortConfig.key];
+          const bVal = b[droneSortConfig.key];
+
+          // Handle null/undefined values
+          if (aVal == null && bVal == null) return 0;
+          if (aVal == null) return 1;
+          if (bVal == null) return -1;
+
+          // Convert to string for consistent comparison
+          const aStr = String(aVal).toLowerCase();
+          const bStr = String(bVal).toLowerCase();
+
+          if (aStr < bStr) {
+            return droneSortConfig.direction === 'ascending' ? -1 : 1;
+          }
+          if (aStr > bStr) {
+            return droneSortConfig.direction === 'ascending' ? 1 : -1;
+          }
+          // Secondary sort by name for stability
+          return a.name.localeCompare(b.name);
+        });
+      }
     }
 
     return sortableItems;
-  }, [processedDroneCollection, droneFilters, droneSortConfig]);
+  }, [processedDroneCollection, droneFilters, droneSortConfig, mode]);
 
   // --- NEW: Handler for sorting ---
   const requestSort = (key) => {
@@ -865,42 +907,59 @@ const DeckBuilder = ({
     setDroneSortConfig({ key, direction });
   };
 
-  const handleFilterChange = (filterType, value) => {
-    setFilters(prev => ({ ...prev, [filterType]: value }));
-  };
-
-  const handleAbilityToggle = (ability) => {
+  // Handler for removing filter chips
+  const handleRemoveCardFilterChip = (filterType, filterValue) => {
     setFilters(prev => {
-        const abilities = prev.abilities.includes(ability)
-            ? prev.abilities.filter(a => a !== ability)
-            : [...prev.abilities, ability];
-        return { ...prev, abilities };
+      if (filterType === 'searchText') {
+        return { ...prev, searchText: '' };
+      }
+      if (filterType === 'cost') {
+        return { ...prev, cost: { min: filterOptions.minCost, max: filterOptions.maxCost } };
+      }
+      if (filterType === 'hideEnhanced') {
+        return { ...prev, hideEnhanced: false };
+      }
+      if (filterType === 'includeAIOnly') {
+        return { ...prev, includeAIOnly: false };
+      }
+      // Array filters - remove specific value
+      const current = prev[filterType] || [];
+      return { ...prev, [filterType]: current.filter(v => v !== filterValue) };
     });
   };
 
-  const handleDroneAbilityToggle = (ability) => {
+  const handleRemoveDroneFilterChip = (filterType, filterValue) => {
     setDroneFilters(prev => {
-      const abilities = prev.abilities.includes(ability)
-        ? prev.abilities.filter(a => a !== ability)
-        : [...prev.abilities, ability];
-      return { ...prev, abilities };
+      if (filterType === 'includeAIOnly') {
+        return { ...prev, includeAIOnly: false };
+      }
+      // Array filters - remove specific value
+      const current = prev[filterType] || [];
+      return { ...prev, [filterType]: current.filter(v => v !== filterValue) };
     });
   };
 
   const resetFilters = () => {
     setFilters({
+      searchText: '',
       cost: { min: filterOptions.minCost, max: filterOptions.maxCost },
-      target: 'all',
-      type: 'all',
+      rarity: [],
+      type: [],
+      target: [],
+      damageType: [],
       abilities: [],
       hideEnhanced: false,
+      includeAIOnly: false,
     });
-    setIsAbilityDropdownOpen(false);
   };
 
   const resetDroneFilters = () => {
     setDroneFilters({
-      abilities: []
+      rarity: [],
+      class: [],
+      abilities: [],
+      damageType: [],
+      includeAIOnly: false,
     });
   };
 
@@ -963,16 +1022,29 @@ const DeckBuilder = ({
     const ExportModal = () => {
     const [copySuccess, setCopySuccess] = useState('');
     const textAreaRef = useRef(null);
-    // Use utility function with defensive filtering (excludes quantity 0)
+
+    // Generate JS object literal format (aiData.js style)
     const deckCode = useMemo(() => {
-      return generateDeckCode(deck, selectedDrones, selectedShipComponents);
-    }, [deck, selectedDrones, selectedShipComponents]);
+      const aiFormat = convertToAIFormat(
+        deck,
+        selectedDrones,
+        selectedShipComponents,
+        activeShip,
+        preservedFields
+      );
+      return generateJSObjectLiteral(aiFormat);
+    }, [deck, selectedDrones, selectedShipComponents, activeShip, preservedFields]);
 
     const copyToClipboard = () => {
-      textAreaRef.current.select();
-      document.execCommand('copy');
+      navigator.clipboard.writeText(deckCode);
       setCopySuccess('Copied!');
       setTimeout(() => setCopySuccess(''), 2000);
+    };
+
+    const handleDownload = () => {
+      const exportName = preservedFields.name || 'deck-export';
+      const safeName = exportName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      downloadDeckFile(deckCode, `${safeName}.js`);
     };
 
   return (
@@ -984,7 +1056,7 @@ const DeckBuilder = ({
             <Download size={28} />
           </div>
           <div className="dw-modal-header-info">
-            <h2 className="dw-modal-header-title">Export Deck Code</h2>
+            <h2 className="dw-modal-header-title">Export Deck</h2>
             <p className="dw-modal-header-subtitle">Save or share your configuration</p>
           </div>
           <button onClick={() => setShowExportModal(false)} className="dw-modal-close">
@@ -995,18 +1067,20 @@ const DeckBuilder = ({
         {/* Body */}
         <div className="dw-modal-body">
           <p className="dw-modal-text dw-modal-text--left">
-            Copy the code below to save or share your deck and drones.
+            Copy or download your deck configuration in JavaScript format.
           </p>
           <textarea
             ref={textAreaRef}
             readOnly
             value={deckCode}
-            className="w-full h-32 p-3 rounded font-mono text-sm"
+            className="w-full p-3 rounded font-mono text-sm"
             style={{
               background: 'rgba(17, 24, 39, 0.8)',
               border: '1px solid var(--modal-action-border)',
               color: 'var(--modal-text-primary)',
-              resize: 'none'
+              resize: 'vertical',
+              minHeight: '200px',
+              maxHeight: '400px'
             }}
           />
           {copySuccess && (
@@ -1021,8 +1095,11 @@ const DeckBuilder = ({
           <button onClick={() => setShowExportModal(false)} className="dw-btn dw-btn-cancel">
             Close
           </button>
+          <button onClick={handleDownload} className="dw-btn dw-btn-confirm" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Download size={16} /> Download File
+          </button>
           <button onClick={copyToClipboard} className="dw-btn dw-btn-confirm" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Copy size={16} /> Copy to Clipboard
+            <Copy size={16} /> Copy
           </button>
         </div>
       </div>
@@ -1040,9 +1117,22 @@ const DeckBuilder = ({
       if (result.success) {
         setShowImportModal(false);
       } else {
-        setError(result.message || 'Invalid deck code format.');
+        setError(result.message || 'Invalid deck format.');
       }
     };
+
+    const placeholder = `{
+  name: 'My Deck',
+  shipId: 'SHIP_001',
+  dronePool: ['Talon', 'Mammoth', 'Firefly', 'Devastator', 'Dart'],
+  shipDeployment: {
+    placement: ['bridge', 'powerCell', 'droneControlHub']
+  },
+  decklist: [
+    { id: 'CARD001', quantity: 4 },
+    { id: 'CARD002', quantity: 3 }
+  ]
+}`;
 
     return (
       <div className="dw-modal-overlay" onClick={() => setShowImportModal(false)}>
@@ -1053,7 +1143,7 @@ const DeckBuilder = ({
               <Upload size={28} />
             </div>
             <div className="dw-modal-header-info">
-              <h2 className="dw-modal-header-title">Import Deck Code</h2>
+              <h2 className="dw-modal-header-title">Import Deck</h2>
               <p className="dw-modal-header-subtitle">Load a saved configuration</p>
             </div>
             <button onClick={() => setShowImportModal(false)} className="dw-modal-close">
@@ -1064,19 +1154,21 @@ const DeckBuilder = ({
           {/* Body */}
           <div className="dw-modal-body">
             <p className="dw-modal-text dw-modal-text--left">
-              Paste a deck code below to load both cards and drones into the builder.
+              Paste a deck configuration in JavaScript object format (matching aiData.js style).
             </p>
             <textarea
               value={deckCode}
               onChange={(e) => setDeckCode(e.target.value)}
-              className="w-full h-32 p-3 rounded font-mono text-sm"
+              className="w-full p-3 rounded font-mono text-sm"
               style={{
                 background: 'rgba(17, 24, 39, 0.8)',
                 border: '1px solid var(--modal-action-border)',
                 color: 'var(--modal-text-primary)',
-                resize: 'none'
+                resize: 'vertical',
+                minHeight: '200px',
+                maxHeight: '400px'
               }}
-              placeholder="cards:CARD001:4,CARD002:2|drones:Scout Drone:1,Heavy Fighter:1"
+              placeholder={placeholder}
             />
             {error && (
               <div className="dw-modal-feedback dw-modal-feedback--error" style={{ marginTop: '12px' }}>
@@ -1116,6 +1208,28 @@ const DeckBuilder = ({
         cards={viewDeckData.cards}
         shipComponents={selectedShipComponents || {}}
         ship={activeShip}
+      />
+
+      {/* Card Filter Modal */}
+      <CardFilterModal
+        isOpen={showCardFilterModal}
+        onClose={() => setShowCardFilterModal(false)}
+        filters={filters}
+        onFiltersChange={setFilters}
+        filterOptions={filterOptions}
+        mode={mode}
+        devMode={DEV_CONFIG.enabled}
+      />
+
+      {/* Drone Filter Modal */}
+      <DroneFilterModal
+        isOpen={showDroneFilterModal}
+        onClose={() => setShowDroneFilterModal(false)}
+        filters={droneFilters}
+        onFiltersChange={setDroneFilters}
+        filterOptions={droneFilterOptions}
+        mode={mode}
+        devMode={DEV_CONFIG.enabled}
       />
 
       <div className="flex justify-between items-center mb-4 px-4">
@@ -1318,65 +1432,30 @@ const DeckBuilder = ({
           {/* CARDS VIEW */}
           {leftPanelView === 'cards' && (
           <>
-          {/* --- Filter Input (shown in both table and grid view) --- */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-            {/* Cost Range Filter */}
-            <div className="dw-filter-select flex flex-col justify-center">
-                <label className="dw-filter-label">Cost Range: {filters.cost.min} - {filters.cost.max}</label>
-                <div className="dw-filter-range">
-                    <input
-                        type="range"
-                        min={filterOptions.minCost}
-                        max={filterOptions.maxCost}
-                        value={filters.cost.min}
-                        onChange={(e) => handleFilterChange('cost', { ...filters.cost, min: Math.min(parseInt(e.target.value), filters.cost.max) })}
-                    />
-                    <input
-                        type="range"
-                        min={filterOptions.minCost}
-                        max={filterOptions.maxCost}
-                        value={filters.cost.max}
-                        onChange={(e) => handleFilterChange('cost', { ...filters.cost, max: Math.max(parseInt(e.target.value), filters.cost.min) })}
-                    />
-                </div>
-            </div>
-
-            {/* Ability Multi-Select Filter */}
-            <div className="relative" ref={abilityFilterRef}>
-                <button onClick={() => setIsAbilityDropdownOpen(!isAbilityDropdownOpen)} className="dw-filter-select w-full text-left h-full">
-                    {filters.abilities.length === 0 ? 'Select Abilities' : `${filters.abilities.length} Abilities Selected`}
-                </button>
-                {isAbilityDropdownOpen && (
-                    <div className="dw-filter-dropdown">
-                        {filterOptions.abilities.map(ability => (
-                            <label key={ability} className="dw-filter-dropdown-item">
-                                <input type="checkbox" checked={filters.abilities.includes(ability)} onChange={() => handleAbilityToggle(ability)} />
-                                {ability}
-                            </label>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Type Filter */}
-            <select onChange={(e) => handleFilterChange('type', e.target.value)} value={filters.type} className="dw-filter-select h-full">
-                <option value="all">All Types</option>
-                <option value="Ordnance">Ordnance</option>
-                <option value="Tactic">Tactic</option>
-                <option value="Support">Support</option>
-                <option value="Upgrade">Upgrade</option>
-            </select>
-
-            {/* Enhanced Cards Filter */}
-            <div className="dw-filter-select flex items-center justify-center h-full">
-                <label className="dw-filter-checkbox">
-                    <input
-                        type="checkbox"
-                        checked={filters.hideEnhanced}
-                        onChange={(e) => handleFilterChange('hideEnhanced', e.target.checked)}
-                    />
-                    <span>Hide Enhanced Cards</span>
-                </label>
+          {/* --- Filter Button + Chips (shown in both table and grid view) --- */}
+          <div className="dw-filter-header">
+            <button
+              className="dw-filter-btn"
+              onClick={() => setShowCardFilterModal(true)}
+            >
+              <Filter size={16} />
+              <span>Filters</span>
+              {countActiveFilters(filters, filterOptions) > 0 && (
+                <span className="dw-filter-btn__count">
+                  {countActiveFilters(filters, filterOptions)}
+                </span>
+              )}
+            </button>
+            <div className="dw-filter-chips">
+              {generateFilterChips(filters, filterOptions).map((chip, index) => (
+                <FilterChip
+                  key={`${chip.filterType}-${chip.filterValue || index}`}
+                  label={chip.label}
+                  filterType={chip.filterType}
+                  filterValue={chip.filterValue}
+                  onRemove={handleRemoveCardFilterChip}
+                />
+              ))}
             </div>
           </div>
 
@@ -1465,16 +1544,21 @@ const DeckBuilder = ({
 
                 return (
                   <div key={`${card.id}-${index}`} className="flex flex-col items-center gap-2">
-                    {/* Card Component */}
-                    <ActionCard
-                      card={card}
-                      onClick={() => setDetailedCard(card)}
-                      isPlayable={true}
-                      isSelected={false}
-                      mandatoryAction={null}
-                      excessCards={0}
-                      scale={1.0}
-                    />
+                    {/* Card Component with AI Badge Overlay */}
+                    <div className="relative">
+                      <ActionCard
+                        card={card}
+                        onClick={() => setDetailedCard(card)}
+                        isPlayable={true}
+                        isSelected={false}
+                        mandatoryAction={null}
+                        excessCards={0}
+                        scale={1.0}
+                      />
+                      {card.aiOnly && (
+                        <div className="dw-ai-badge">AI</div>
+                      )}
+                    </div>
                     {/* Quantity Controls */}
                     <div className="dw-quantity-control">
                       <button
@@ -1507,23 +1591,30 @@ const DeckBuilder = ({
           {/* DRONES VIEW */}
           {leftPanelView === 'drones' && (
           <>
-          {/* --- Drone Filter Input (shown in both table and grid view) --- */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-            {/* Ability Multi-Select Filter */}
-            <div className="relative" ref={abilityFilterRef}>
-              <button onClick={() => setIsAbilityDropdownOpen(!isAbilityDropdownOpen)} className="dw-filter-select w-full text-left h-full">
-                {droneFilters.abilities.length === 0 ? 'Select Abilities' : `${droneFilters.abilities.length} Abilities Selected`}
-              </button>
-              {isAbilityDropdownOpen && (
-                <div className="dw-filter-dropdown">
-                  {droneFilterOptions.abilities.map(ability => (
-                    <label key={ability} className="dw-filter-dropdown-item">
-                      <input type="checkbox" checked={droneFilters.abilities.includes(ability)} onChange={() => handleDroneAbilityToggle(ability)} />
-                      {ability}
-                    </label>
-                  ))}
-                </div>
+          {/* --- Drone Filter Button + Chips (shown in both table and grid view) --- */}
+          <div className="dw-filter-header">
+            <button
+              className="dw-filter-btn"
+              onClick={() => setShowDroneFilterModal(true)}
+            >
+              <Filter size={16} />
+              <span>Filters</span>
+              {countActiveDroneFilters(droneFilters) > 0 && (
+                <span className="dw-filter-btn__count">
+                  {countActiveDroneFilters(droneFilters)}
+                </span>
               )}
+            </button>
+            <div className="dw-filter-chips">
+              {generateDroneFilterChips(droneFilters).map((chip, index) => (
+                <FilterChip
+                  key={`${chip.filterType}-${chip.filterValue || index}`}
+                  label={chip.label}
+                  filterType={chip.filterType}
+                  filterValue={chip.filterValue}
+                  onRemove={handleRemoveDroneFilterChip}
+                />
+              ))}
             </div>
           </div>
 
@@ -1591,18 +1682,23 @@ const DeckBuilder = ({
 
                 return (
                   <div key={`${drone.name}-${index}`} className="flex flex-col items-center gap-2">
-                    {/* Drone Card Component */}
-                    <DroneCard
-                      drone={drone}
-                      onClick={() => setDetailedDrone(drone)}
-                      isSelectable={false}
-                      isSelected={false}
-                      deployedCount={0}
-                      ignoreDeployLimit={true}
-                      appliedUpgrades={[]}
-                      scale={1.0}
-                      isViewOnly={true}
-                    />
+                    {/* Drone Card Component with AI Badge Overlay */}
+                    <div className="relative">
+                      <DroneCard
+                        drone={drone}
+                        onClick={() => setDetailedDrone(drone)}
+                        isSelectable={false}
+                        isSelected={false}
+                        deployedCount={0}
+                        ignoreDeployLimit={true}
+                        appliedUpgrades={[]}
+                        scale={1.0}
+                        isViewOnly={true}
+                      />
+                      {drone.aiOnly && (
+                        <div className="dw-ai-badge">AI</div>
+                      )}
+                    </div>
                     {/* Quantity Controls */}
                     <div className="dw-quantity-control">
                       <button

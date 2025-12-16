@@ -8,6 +8,7 @@ import gameStateManager from '../../managers/GameStateManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import lootGenerator from '../loot/LootGenerator.js';
 import ExtractionController from './ExtractionController.js';
+import aiPersonalities from '../../data/aiData.js';
 
 /**
  * CombatOutcomeProcessor
@@ -34,6 +35,17 @@ class CombatOutcomeProcessor {
     debugLog('SP_COMBAT', 'Winner:', winner);
     debugLog('SP_COMBAT', 'Encounter Info:', encounterInfo);
 
+    // Check if this is a boss combat
+    if (encounterInfo.isBossCombat) {
+      debugLog('SP_COMBAT', 'Boss combat detected, using boss-specific processing');
+      if (winner === 'player1') {
+        return this.processBossVictory(gameState, encounterInfo);
+      } else {
+        return this.processBossDefeat(gameState, encounterInfo);
+      }
+    }
+
+    // Regular extraction combat
     if (winner === 'player1') {
       return this.processVictory(gameState, encounterInfo);
     } else {
@@ -304,6 +316,146 @@ class CombatOutcomeProcessor {
       outcome: 'defeat',
       message: 'Ship destroyed. Mission failed. Ship slot marked as MIA.'
     };
+  }
+
+  /**
+   * Process boss combat victory
+   * Awards first-time or repeat rewards based on boss progress
+   * Returns to hangar after loot collection (not tactical map)
+   * @param {Object} gameState - Game state
+   * @param {Object} encounterInfo - Encounter metadata with bossId
+   * @returns {Object} Victory result with boss-specific rewards
+   */
+  processBossVictory(gameState, encounterInfo) {
+    debugLog('SP_COMBAT', '=== Boss Victory ===');
+
+    const bossId = encounterInfo.bossId;
+    const state = gameStateManager.getState();
+    const profile = state.singlePlayerProfile || {};
+    const bossProgress = profile.bossProgress || { defeatedBosses: [], totalBossVictories: 0, totalBossAttempts: 0 };
+
+    // Find boss AI configuration to get rewards
+    const bossAI = aiPersonalities.find(ai => ai.bossId === bossId);
+    const bossConfig = bossAI?.bossConfig || {};
+
+    // Determine if this is first victory against this boss
+    const isFirstBossVictory = !bossProgress.defeatedBosses.includes(bossId);
+    const rewards = isFirstBossVictory ? bossConfig.firstTimeReward : bossConfig.repeatReward;
+
+    debugLog('SP_COMBAT', 'Boss ID:', bossId);
+    debugLog('SP_COMBAT', 'First victory:', isFirstBossVictory);
+    debugLog('SP_COMBAT', 'Rewards:', rewards);
+
+    // Build boss loot object
+    const bossLoot = {
+      credits: rewards?.credits || 0,
+      aiCores: rewards?.aiCores || 0,
+      reputation: rewards?.reputation || 0,
+      isBossReward: true
+    };
+
+    // Update boss progress in profile
+    const updatedDefeatedBosses = isFirstBossVictory
+      ? [...bossProgress.defeatedBosses, bossId]
+      : bossProgress.defeatedBosses;
+
+    gameStateManager.setState({
+      singlePlayerProfile: {
+        ...profile,
+        bossProgress: {
+          ...bossProgress,
+          defeatedBosses: updatedDefeatedBosses,
+          totalBossVictories: bossProgress.totalBossVictories + 1
+        }
+      },
+      pendingLoot: bossLoot
+    });
+
+    debugLog('SP_COMBAT', '=== Boss victory processed, awaiting loot collection ===');
+
+    return {
+      success: true,
+      outcome: 'victory',
+      isBossReward: true,
+      isFirstBossVictory,
+      loot: bossLoot,
+      message: isFirstBossVictory
+        ? `First victory! Claimed ${bossLoot.credits} credits, ${bossLoot.aiCores} AI Cores, ${bossLoot.reputation} reputation.`
+        : `Victory! Claimed ${bossLoot.credits} credits, ${bossLoot.aiCores} AI Cores.`
+    };
+  }
+
+  /**
+   * Process boss combat defeat
+   * Marks ship as MIA and returns to hangar with failed screen
+   * @param {Object} gameState - Game state
+   * @param {Object} encounterInfo - Encounter metadata with bossId
+   * @returns {Object} Defeat result
+   */
+  processBossDefeat(gameState, encounterInfo) {
+    debugLog('SP_COMBAT', '=== Boss Defeat - MIA ===');
+
+    const currentRunState = gameStateManager.getState().currentRunState || {};
+
+    // Determine if this is a starter deck (for display purposes)
+    const isStarterDeck = currentRunState.shipSlotId === 0;
+
+    // End run as failure (marks MIA)
+    gameStateManager.endRun(false);
+
+    // Clear combat state
+    gameStateManager.resetGameState();
+
+    // Show failed run screen with boss-specific type
+    gameStateManager.setState({
+      showFailedRunScreen: true,
+      failedRunType: 'boss',
+      failedRunIsStarterDeck: isStarterDeck
+    });
+
+    debugLog('SP_COMBAT', '=== Showing Failed Run Screen (boss defeat) ===');
+
+    return {
+      success: true,
+      outcome: 'defeat',
+      message: 'Ship destroyed by boss. Mission failed. Ship slot marked as MIA.'
+    };
+  }
+
+  /**
+   * Finalize boss loot collection
+   * Applies rewards directly to profile and returns to hangar
+   * @param {Object} loot - Boss loot { credits, aiCores, reputation, isBossReward }
+   */
+  finalizeBossLootCollection(loot) {
+    debugLog('SP_COMBAT', '=== Finalizing Boss Loot Collection ===');
+    debugLog('SP_COMBAT', 'Boss loot:', loot);
+
+    const state = gameStateManager.getState();
+    const profile = state.singlePlayerProfile || {};
+
+    // Apply rewards directly to profile
+    const updatedProfile = {
+      ...profile,
+      credits: (profile.credits || 0) + (loot.credits || 0),
+      aiCores: (profile.aiCores || 0) + (loot.aiCores || 0),
+      reputation: {
+        ...profile.reputation,
+        current: (profile.reputation?.current || 0) + (loot.reputation || 0)
+      }
+    };
+
+    // Clear combat state and return to hangar
+    gameStateManager.resetGameState();
+
+    gameStateManager.setState({
+      appState: 'hangar',
+      singlePlayerProfile: updatedProfile,
+      pendingLoot: null,
+      singlePlayerEncounter: null
+    });
+
+    debugLog('SP_COMBAT', '=== Returned to Hangar (boss loot collected) ===');
   }
 
   /**

@@ -852,3 +852,131 @@
   transform: none;
   box-shadow: none;
 }
+
+/* ========================================
+   FILTER CHIPS
+   Removable pill-style filter indicators
+   ======================================== */
+.dw-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 12px;
+  background: var(--modal-action-bg);
+  border: 1px solid var(--modal-action-border);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--modal-text-primary);
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.dw-filter-chip:hover {
+  border-color: var(--modal-action-light);
+  background: rgba(6, 182, 212, 0.15);
+}
+
+.dw-filter-chip__label {
+  color: var(--modal-text-primary);
+}
+
+.dw-filter-chip__remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--modal-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dw-filter-chip__remove:hover {
+  background: rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+}
+
+/* ========================================
+   FILTER HEADER BAR
+   Filter button + chips row
+   ======================================== */
+.dw-filter-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.dw-filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(17, 24, 39, 0.8);
+  border: 1px solid var(--modal-action-border);
+  border-radius: 4px;
+  color: var(--modal-action);
+  font-family: 'Exo', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dw-filter-btn:hover {
+  border-color: var(--modal-action-light);
+  background: var(--modal-action-bg);
+  color: var(--modal-action-light);
+}
+
+.dw-filter-btn__count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--modal-action);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.dw-filter-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+/* ========================================
+   AI BADGE OVERLAY
+   Deck builder AI-only card indicator
+   ======================================== */
+.dw-ai-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: rgba(147, 51, 234, 0.85);
+  border: 1px solid rgba(192, 132, 252, 0.6);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #e9d5ff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  z-index: 5;
+  pointer-events: none;
+}

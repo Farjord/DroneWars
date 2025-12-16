@@ -12,6 +12,7 @@ import * as resourceGenerator from './resourceGenerator';
 import * as priorityGenerator from './priorityGenerator';
 import * as rumorGenerator from './rumorGenerator';
 import * as comparativeGenerator from './comparativeGenerator';
+import * as bossGenerator from './bossGenerator';
 
 // All registered generators
 const generators = [
@@ -19,7 +20,8 @@ const generators = [
   resourceGenerator,
   priorityGenerator,
   rumorGenerator,
-  comparativeGenerator
+  comparativeGenerator,
+  bossGenerator
 ];
 
 /**
@@ -45,5 +47,6 @@ export {
   resourceGenerator,
   priorityGenerator,
   rumorGenerator,
-  comparativeGenerator
+  comparativeGenerator,
+  bossGenerator
 };

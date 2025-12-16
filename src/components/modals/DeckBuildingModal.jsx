@@ -5,8 +5,13 @@
 // Used in Testing Mode for deck configuration
 
 import { useState, useMemo, useEffect } from 'react';
-import { X, Search } from 'lucide-react';
+import { X, Search, Upload, Download, Copy, Check, AlertCircle } from 'lucide-react';
 import ActionCard from '../ui/ActionCard.jsx';
+import {
+  parseJSObjectLiteral,
+  generateJSObjectLiteral,
+  downloadDeckFile
+} from '../../utils/deckExportUtils.js';
 
 /**
  * DeckBuildingModal - Grid-based deck building interface
@@ -45,6 +50,13 @@ function DeckBuildingModal({
 
   // Detailed card view state
   const [detailedCard, setDetailedCard] = useState(null);
+
+  // Import/Export modal state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importError, setImportError] = useState('');
+  const [copySuccess, setCopySuccess] = useState(false);
 
   // Calculate total cards in deck
   const totalCards = useMemo(() => {
@@ -127,6 +139,72 @@ function DeckBuildingModal({
   const handleCancel = () => {
     setDeckComposition({ ...initialSelection }); // Reset to initial
     onClose();
+  };
+
+  // Generate export code in JS object literal format
+  const exportCode = useMemo(() => {
+    const decklist = Object.entries(deckComposition)
+      .filter(([, qty]) => qty > 0)
+      .map(([id, quantity]) => ({ id, quantity }));
+
+    const data = {
+      name: 'Test Deck',
+      decklist
+    };
+
+    return generateJSObjectLiteral(data);
+  }, [deckComposition]);
+
+  // Handle copy to clipboard
+  const handleCopyExport = async () => {
+    try {
+      await navigator.clipboard.writeText(exportCode);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  // Handle download file
+  const handleDownloadExport = () => {
+    downloadDeckFile(exportCode, 'test-deck.js');
+  };
+
+  // Handle import
+  const handleImport = () => {
+    setImportError('');
+
+    // Parse the JS object literal
+    const parseResult = parseJSObjectLiteral(importText);
+    if (!parseResult.success) {
+      setImportError(parseResult.error);
+      return;
+    }
+
+    const data = parseResult.data;
+
+    // Convert decklist array to deck object
+    const newDeck = {};
+    (data.decklist || []).forEach(card => {
+      if (card.quantity > 0) {
+        // Validate card exists
+        const cardData = allCards.find(c => c.id === card.id);
+        if (!cardData) {
+          setImportError(`Card ${card.id} not found in collection.`);
+          return;
+        }
+        newDeck[card.id] = card.quantity;
+      }
+    });
+
+    // Check if we had an error during validation
+    if (importError) return;
+
+    // Apply the imported deck
+    setDeckComposition(newDeck);
+    setShowImportModal(false);
+    setImportText('');
   };
 
   if (!isOpen) return null;
@@ -244,24 +322,52 @@ function DeckBuildingModal({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-700 flex justify-end gap-3">
-          <button
-            onClick={handleCancel}
-            className="btn-cancel px-6 py-2"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleConfirm}
-            disabled={!isValidDeck}
-            className={`px-6 py-2 rounded transition-all ${
-              isValidDeck
-                ? 'btn-continue'
-                : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-50'
-            }`}
-          >
-            Confirm
-          </button>
+        <div className="p-4 border-t border-gray-700 flex justify-between">
+          {/* Import/Export buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setImportText('');
+                setImportError('');
+                setShowImportModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition-colors"
+            >
+              <Upload size={16} />
+              Import
+            </button>
+            <button
+              onClick={() => {
+                setCopySuccess(false);
+                setShowExportModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded transition-colors"
+            >
+              <Download size={16} />
+              Export
+            </button>
+          </div>
+
+          {/* Cancel/Confirm buttons */}
+          <div className="flex gap-3">
+            <button
+              onClick={handleCancel}
+              className="btn-cancel px-6 py-2"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={!isValidDeck}
+              className={`px-6 py-2 rounded transition-all ${
+                isValidDeck
+                  ? 'btn-continue'
+                  : 'bg-gray-700 text-gray-500 cursor-not-allowed opacity-50'
+              }`}
+            >
+              Confirm
+            </button>
+          </div>
         </div>
       </div>
 
@@ -278,6 +384,110 @@ function DeckBuildingModal({
               isPlayable={true}
               scale={2.0}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
+          <div className="bg-slate-800 rounded-lg border border-cyan-500 p-6 max-w-2xl w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-white">Import Deck</h3>
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <textarea
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              placeholder={`Paste deck code in JS object format:\n{\n  name: 'My Deck',\n  decklist: [\n    { id: 'CARD001', quantity: 4 },\n    { id: 'CARD002', quantity: 3 }\n  ]\n}`}
+              className="w-full h-64 bg-slate-900 text-white font-mono text-sm p-3 rounded border border-slate-600 focus:border-cyan-500 focus:outline-none resize-none"
+            />
+
+            {importError && (
+              <div className="mt-3 p-3 bg-red-900/50 border border-red-500 rounded flex items-start gap-2">
+                <AlertCircle size={16} className="text-red-400 mt-0.5 flex-shrink-0" />
+                <p className="text-red-300 text-sm">{importError}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => setShowImportModal(false)}
+                className="px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleImport}
+                disabled={!importText.trim()}
+                className={`px-4 py-2 rounded transition-colors ${
+                  importText.trim()
+                    ? 'bg-cyan-600 hover:bg-cyan-500 text-white'
+                    : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                Import
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]">
+          <div className="bg-slate-800 rounded-lg border border-cyan-500 p-6 max-w-2xl w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-white">Export Deck</h3>
+              <button
+                onClick={() => setShowExportModal(false)}
+                className="text-gray-400 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <textarea
+              value={exportCode}
+              readOnly
+              className="w-full h-64 bg-slate-900 text-white font-mono text-sm p-3 rounded border border-slate-600 resize-none"
+            />
+
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={handleDownloadExport}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded transition-colors"
+              >
+                <Download size={16} />
+                Download File
+              </button>
+              <button
+                onClick={handleCopyExport}
+                className={`flex items-center gap-2 px-4 py-2 rounded transition-colors ${
+                  copySuccess
+                    ? 'bg-green-600 text-white'
+                    : 'bg-cyan-600 hover:bg-cyan-500 text-white'
+                }`}
+              >
+                {copySuccess ? (
+                  <>
+                    <Check size={16} />
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy size={16} />
+                    Copy to Clipboard
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

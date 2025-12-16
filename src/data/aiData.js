@@ -271,6 +271,61 @@ const aiPersonalities = [
       { id: 'CARD013', quantity: 2 },   // Sidewinder Missiles
       { id: 'CARD016', quantity: 3 },   // Static Field
     ]
+  },
+
+  // === BOSS ENCOUNTERS ===
+  // Special permanent encounters on the hangar map
+  {
+    bossId: 'BOSS_T1_NEMESIS',
+    name: 'Nemesis-Class Dreadnought',
+    description: 'The infamous commander of the Eremos blockade. A formidable opponent with advanced combat protocols and overwhelming firepower.',
+    difficulty: 'Hard',
+    modes: ['boss'],  // Boss Mode - special permanent encounter
+    shipId: 'SHIP_001',
+    imagePath: '/DroneWars/AI/Boss_Nemesis.png',
+    dronePool: [
+      'Mammoth',
+      'Devastator',
+      'Avenger',
+      'Bastion',
+      'Aegis'
+    ],
+    shipDeployment: {
+      strategy: 'aggressive',
+      placement: ['droneControlHub', 'bridge', 'powerCell'],
+      reasoning: 'Boss-tier aggressive configuration with maximum threat'
+    },
+    decklist: [
+      { id: 'CARD001_ENHANCED', quantity: 4 },   // Enhanced Laser Blast
+      { id: 'CARD002_ENHANCED', quantity: 3 },   // Enhanced System Reboot
+      { id: 'CARD004_ENHANCED', quantity: 4 },   // Enhanced Energy Surge
+      { id: 'CARD006', quantity: 4 },            // Nanobot Repair
+      { id: 'CARD007_ENHANCED', quantity: 4 },   // Enhanced Emergency Patch
+      { id: 'CARD008', quantity: 4 },            // Shield Recharge
+      { id: 'CARD009', quantity: 3 },            // Target Lock
+      { id: 'CARD012_ENHANCED', quantity: 4 },   // Enhanced Armor-Piercing Shot
+      { id: 'CARD013', quantity: 3 },            // Sidewinder Missiles
+      { id: 'CARD016', quantity: 4 },            // Static Field
+    ],
+    // Boss-specific configuration
+    bossConfig: {
+      displayName: 'THE NEMESIS',
+      subtitle: 'Commander of the Eremos Blockade',
+      description: 'A legendary dreadnought that has claimed countless ships. Defeating it will prove your supremacy in the Shallows.',
+      // Rewards for first-time victory
+      firstTimeReward: {
+        credits: 5000,
+        aiCores: 3,
+        reputation: 500,
+        blueprintId: null  // Could add a unique blueprint reward here
+      },
+      // Rewards for repeat victories
+      repeatReward: {
+        credits: 1000,
+        aiCores: 1,
+        reputation: 100
+      }
+    }
   }
 
   // You can add more AI personalities here in the future

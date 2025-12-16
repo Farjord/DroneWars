@@ -23,6 +23,7 @@ import {
   addDroneToSlots,
   removeDroneFromSlots
 } from '../../utils/slotDamageUtils.js';
+import { parseJSObjectLiteral, convertFromAIFormat } from '../../utils/deckExportUtils.js';
 
 /**
  * ExtractionDeckBuilder
@@ -56,6 +57,8 @@ const ExtractionDeckBuilder = () => {
   const [droneSlots, setDroneSlots] = useState(createEmptyDroneSlots());
   const [selectedShipComponents, setSelectedShipComponents] = useState({});
   const [selectedShip, setSelectedShip] = useState(null);
+  // Preserved fields for import/export round-trip
+  const [preservedFields, setPreservedFields] = useState({});
 
   // Derive selectedDrones object from droneSlots for DeckBuilder compatibility
   const selectedDrones = useMemo(() => {
@@ -266,6 +269,77 @@ const ExtractionDeckBuilder = () => {
     navigateBack();
   };
 
+  // Handle import deck - parse JS object literal format (aiData.js style)
+  const handleImportDeck = (deckCode) => {
+    if (isReadOnly) {
+      return { success: false, message: 'Cannot import to read-only deck.' };
+    }
+
+    try {
+      // Parse the JS object literal
+      const parseResult = parseJSObjectLiteral(deckCode);
+      if (!parseResult.success) {
+        return { success: false, message: parseResult.error };
+      }
+
+      const aiData = parseResult.data;
+
+      // Convert from AI format to internal state
+      const converted = convertFromAIFormat(aiData);
+
+      // Validate cards exist in available cards
+      for (const cardId of Object.keys(converted.deck)) {
+        const card = availableCards.find(c => c.id === cardId);
+        if (!card) {
+          return { success: false, message: `Card ${cardId} not available in extraction mode.` };
+        }
+      }
+
+      // Validate drones exist in available drones
+      for (const droneName of Object.keys(converted.selectedDrones)) {
+        const drone = availableDrones.find(d => d.name === droneName);
+        if (!drone) {
+          return { success: false, message: `Drone "${droneName}" not available in extraction mode.` };
+        }
+      }
+
+      // Validate ship exists if specified
+      if (converted.shipId) {
+        const ship = availableShips.find(s => s.id === converted.shipId);
+        if (!ship) {
+          return { success: false, message: `Ship ${converted.shipId} not available in extraction mode.` };
+        }
+        setSelectedShip(ship);
+      }
+
+      // Apply the imported data
+      setDeck(converted.deck);
+      setSelectedShipComponents(converted.selectedShipComponents);
+      setPreservedFields(converted.preservedFields);
+
+      // Convert drones to drone slots
+      const newDroneSlots = createEmptyDroneSlots();
+      let slotIndex = 0;
+      Object.entries(converted.selectedDrones).forEach(([droneName, qty]) => {
+        for (let i = 0; i < qty && slotIndex < newDroneSlots.length; i++) {
+          newDroneSlots[slotIndex].assignedDrone = droneName;
+          slotIndex++;
+        }
+      });
+      setDroneSlots(newDroneSlots);
+
+      // Update deck name if preserved
+      if (converted.preservedFields.name) {
+        setDeckName(converted.preservedFields.name);
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error importing deck:', error);
+      return { success: false, message: 'Failed to parse deck code. Ensure it is valid JS object format.' };
+    }
+  };
+
   // Handle drone slot repair
   const handleRepairDroneSlot = (position) => {
     if (isReadOnly || !slotId) return;
@@ -314,7 +388,11 @@ const ExtractionDeckBuilder = () => {
           selectedShipComponents={selectedShipComponents}
           onShipComponentsChange={handleShipComponentsChange}
           onConfirmDeck={handleConfirmDeck}
+          onImportDeck={handleImportDeck}
           onBack={handleBack}
+          // Preserved fields for import/export round-trip
+          preservedFields={preservedFields}
+          onPreservedFieldsChange={setPreservedFields}
           // Extraction mode props
           maxDrones={5}
           mode="extraction"

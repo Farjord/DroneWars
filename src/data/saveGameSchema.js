@@ -84,6 +84,13 @@ export const defaultPlayerProfile = {
   // Refreshes on game start and after successful extraction
   // { packType: string, tier: number, seed: number } | null
   shopPack: null,
+
+  // Boss battle progress tracking
+  bossProgress: {
+    defeatedBosses: [],      // Array of bossIds that have been defeated (for first-time rewards)
+    totalBossVictories: 0,   // Total number of boss wins (including repeats)
+    totalBossAttempts: 0     // Total number of boss fight attempts
+  },
 };
 
 /**
@@ -440,6 +447,14 @@ export function validateSaveFile(saveData) {
           }
         }
       }
+    }
+  }
+
+  // Check boss progress structure (optional - may not exist in older saves)
+  if (saveData.playerProfile?.bossProgress !== undefined) {
+    const bp = saveData.playerProfile.bossProgress;
+    if (!Array.isArray(bp.defeatedBosses)) {
+      errors.push('bossProgress.defeatedBosses must be an array');
     }
   }
 

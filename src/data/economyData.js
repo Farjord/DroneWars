@@ -86,7 +86,8 @@ export const ECONOMY = {
   },
 
   // Flat fee to copy entire starter deck (all cards, drones, components, ship)
-  STARTER_DECK_COPY_COST: 100,
+  // Set to 0 for free deck creation
+  STARTER_DECK_COPY_COST: 0,
 
   // ========================================
   // DECK SLOT UNLOCK COSTS
