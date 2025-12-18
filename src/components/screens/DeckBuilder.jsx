@@ -981,18 +981,6 @@ const DeckBuilder = ({
     });
   };
 
-  // Effect to close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-        if (abilityFilterRef.current && !abilityFilterRef.current.contains(event.target)) {
-            setIsAbilityDropdownOpen(false);
-        }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-
   // --- Custom renderer for Pie Chart labels with lines ---
   const RADIAN = Math.PI / 180;
   const renderCustomizedLabel = ({ cx, cy, midAngle, outerRadius, fill, name, value }) => {
@@ -1073,7 +1061,7 @@ const DeckBuilder = ({
             ref={textAreaRef}
             readOnly
             value={deckCode}
-            className="w-full p-3 rounded font-mono text-sm"
+            className="w-full p-3 rounded font-mono text-sm dw-modal-scroll"
             style={{
               background: 'rgba(17, 24, 39, 0.8)',
               border: '1px solid var(--modal-action-border)',
@@ -1121,18 +1109,7 @@ const DeckBuilder = ({
       }
     };
 
-    const placeholder = `{
-  name: 'My Deck',
-  shipId: 'SHIP_001',
-  dronePool: ['Talon', 'Mammoth', 'Firefly', 'Devastator', 'Dart'],
-  shipDeployment: {
-    placement: ['bridge', 'powerCell', 'droneControlHub']
-  },
-  decklist: [
-    { id: 'CARD001', quantity: 4 },
-    { id: 'CARD002', quantity: 3 }
-  ]
-}`;
+    const placeholder = 'Paste your deck code here';
 
     return (
       <div className="dw-modal-overlay" onClick={() => setShowImportModal(false)}>
@@ -1159,7 +1136,7 @@ const DeckBuilder = ({
             <textarea
               value={deckCode}
               onChange={(e) => setDeckCode(e.target.value)}
-              className="w-full p-3 rounded font-mono text-sm"
+              className="w-full p-3 rounded font-mono text-sm dw-modal-scroll"
               style={{
                 background: 'rgba(17, 24, 39, 0.8)',
                 border: '1px solid var(--modal-action-border)',

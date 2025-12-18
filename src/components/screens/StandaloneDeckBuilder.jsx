@@ -4,7 +4,7 @@
 // Wrapper for DeckBuilder component when accessed from main menu
 // Manages its own state and provides localStorage persistence
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import DeckBuilder from './DeckBuilder.jsx';
 import fullCardCollection from '../../data/cardData.js';
 import fullDroneCollection from '../../data/droneData.js';
@@ -25,38 +25,6 @@ function StandaloneDeckBuilder() {
   const [selectedShip, setSelectedShip] = useState(getDefaultShip());
   // Preserved fields for import/export round-trip (name, description, difficulty, etc.)
   const [preservedFields, setPreservedFields] = useState({});
-
-  // Load saved deck from localStorage on mount
-  useEffect(() => {
-    try {
-      const savedDeck = localStorage.getItem('customDeck');
-      const savedDrones = localStorage.getItem('customDrones');
-      const savedShipComponents = localStorage.getItem('customShipComponents');
-      const savedShipId = localStorage.getItem('customShipId');
-      const savedPreservedFields = localStorage.getItem('customPreservedFields');
-
-      if (savedDeck) {
-        setDeck(JSON.parse(savedDeck));
-      }
-      if (savedDrones) {
-        setSelectedDrones(JSON.parse(savedDrones));
-      }
-      if (savedShipComponents) {
-        setSelectedShipComponents(JSON.parse(savedShipComponents));
-      }
-      if (savedShipId) {
-        const ship = getShipById(savedShipId);
-        if (ship) {
-          setSelectedShip(ship);
-        }
-      }
-      if (savedPreservedFields) {
-        setPreservedFields(JSON.parse(savedPreservedFields));
-      }
-    } catch (error) {
-      console.error('Error loading saved deck:', error);
-    }
-  }, []);
 
   /**
    * Handle deck change - update card quantities

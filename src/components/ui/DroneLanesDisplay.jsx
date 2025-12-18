@@ -227,7 +227,10 @@ const DroneLanesDisplay = ({
   handleActionCardDragEnd = null,
   // Lane hover targeting props
   hoveredLane = null,
-  setHoveredLane = null
+  setHoveredLane = null,
+  // Lane drag-and-drop props (for Quick Deploy editor)
+  onLaneDrop = null,
+  onLaneDragOver = null
 }) => {
   // Use GameDataService for computed data
   const { getEffectiveStats } = useGameData();
@@ -262,7 +265,10 @@ const DroneLanesDisplay = ({
         return (
           <div
             key={lane}
+            data-testid={`lane-drop-zone-${lane === 'lane1' ? 'left' : lane === 'lane2' ? 'middle' : 'right'}`}
             onClick={(e) => onLaneClick(e, lane, isPlayer)}
+            onDragOver={(e) => onLaneDragOver?.(e)}
+            onDrop={(e) => onLaneDrop?.(e, lane)}
             onMouseEnter={() => {
               // Handle lane hover for LANE-targeting action cards
               if (draggedActionCard &&

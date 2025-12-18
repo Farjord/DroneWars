@@ -4,7 +4,7 @@
  * Uses actual game components (DroneLanesDisplay, DroneCard) for visual fidelity
  */
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
 import fullDroneCollection from '../../data/droneData';
@@ -19,6 +19,7 @@ import DroneCard from '../ui/DroneCard';
 import DronePicker from '../quickDeploy/DronePicker';
 import DeploymentOrderQueue from '../quickDeploy/DeploymentOrderQueue';
 import { EditorStatsProvider } from '../../contexts/EditorStatsContext';
+import TargetingArrow, { calculatePolygonPoints } from '../ui/TargetingArrow';
 
 /**
  * QuickDeployEditorScreen Component
@@ -47,9 +48,21 @@ const QuickDeployEditorScreen = () => {
   );
   const [selectedDrone, setSelectedDrone] = useState(null); // Drone selected for placement
   const [showDronePicker, setShowDronePicker] = useState(null); // Slot index to pick for
+  const [draggedDrone, setDraggedDrone] = useState(null); // { drone, droneName } - Drone being dragged for placement
+  const [dragStartPos, setDragStartPos] = useState(null); // { x, y, drone, name } - Pending drag start position
+  const [droneDragArrowState, setDroneDragArrowState] = useState({
+    visible: false,
+    start: { x: 0, y: 0 },
+    end: { x: 0, y: 0 }
+  });
 
-  // Refs for DroneLanesDisplay
+  // Movement threshold before drag starts (allows clicks to work)
+  const DRAG_THRESHOLD = 5;
+
+  // Refs for DroneLanesDisplay and drag arrow
   const droneRefs = useRef({});
+  const droneDragArrowRef = useRef(null);
+  const editorAreaRef = useRef(null);
 
   // Service for saving
   const service = useMemo(() => new QuickDeployService(gameStateManager), [gameStateManager]);
@@ -202,19 +215,97 @@ const QuickDeployEditorScreen = () => {
     setSelectedDrone(selectedDrone === droneName ? null : droneName);
   };
 
-  // Handle clicking a lane to place selected drone
-  const handleLaneClick = (e, laneId, isPlayer) => {
-    if (!selectedDrone || !isPlayer) return;
-
+  // Helper to place a drone in a lane
+  const placeDroneInLane = (droneName, laneId) => {
     // Convert laneId to lane index (lane1 -> 0, lane2 -> 1, lane3 -> 2)
     const laneIndex = parseInt(laneId.replace('lane', '')) - 1;
 
     // Add placement and append new index to deploymentOrder
     const newPlacementIndex = placements.length;
-    setPlacements([...placements, { droneName: selectedDrone, lane: laneIndex }]);
+    setPlacements([...placements, { droneName, lane: laneIndex }]);
     setDeploymentOrder([...deploymentOrder, newPlacementIndex]);
+  };
+
+  // Handle clicking a lane to place selected drone
+  const handleLaneClick = (e, laneId, isPlayer) => {
+    if (!selectedDrone || !isPlayer) return;
+    placeDroneInLane(selectedDrone, laneId);
     setSelectedDrone(null);
   };
+
+  // Game-style drag handlers using mouseDown/mouseUp with TargetingArrow
+  // Note: startPos is pre-calculated and passed from dragStartPos when threshold is exceeded
+  const handleDroneDragStart = (drone, droneName, startPos) => {
+    if (isAtLimit(droneName)) return;
+
+    setDraggedDrone({ drone, droneName });
+
+    if (startPos) {
+      setDroneDragArrowState({
+        visible: true,
+        start: { x: startPos.arrowX, y: startPos.arrowY },
+        end: { x: startPos.arrowX, y: startPos.arrowY }
+      });
+    }
+  };
+
+  // Drag end - clears state and optionally places drone
+  const handleDroneDragEnd = (targetDrone, laneId = null) => {
+    if (draggedDrone && laneId) {
+      placeDroneInLane(draggedDrone.droneName, laneId);
+    }
+    setDraggedDrone(null);
+    setDroneDragArrowState(prev => ({ ...prev, visible: false }));
+  };
+
+  // Mouse move effect for arrow tracking and movement threshold detection
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      // Check if we need to start drag (movement threshold exceeded)
+      if (dragStartPos && !draggedDrone) {
+        const dx = e.clientX - dragStartPos.x;
+        const dy = e.clientY - dragStartPos.y;
+        if (Math.abs(dx) > DRAG_THRESHOLD || Math.abs(dy) > DRAG_THRESHOLD) {
+          // Movement threshold exceeded - start actual drag using stored position
+          handleDroneDragStart(dragStartPos.drone, dragStartPos.name, dragStartPos);
+          setDragStartPos(null);
+        }
+      }
+
+      // Update arrow position if drag is active
+      if (droneDragArrowState.visible && droneDragArrowRef.current && editorAreaRef.current) {
+        const areaRect = editorAreaRef.current.getBoundingClientRect();
+        const endX = e.clientX - areaRect.left;
+        const endY = e.clientY - areaRect.top;
+
+        const newPoints = calculatePolygonPoints(
+          droneDragArrowState.start,
+          { x: endX, y: endY }
+        );
+        droneDragArrowRef.current.setAttribute('points', newPoints);
+      }
+    };
+
+    const handleMouseUp = () => {
+      // Clear pending drag start (allows click to complete normally)
+      setDragStartPos(null);
+
+      // Cancel active drag if mouseup outside valid target
+      // Use setTimeout to allow React onClick handlers to fire first
+      if (draggedDrone) {
+        setTimeout(() => handleDroneDragEnd(null, null), 0);
+      }
+    };
+
+    // Listen on document for mousemove (user can drag outside the area)
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [droneDragArrowState.visible, droneDragArrowState.start, draggedDrone, dragStartPos]);
 
   // Handle clicking a placed drone token to remove it
   const handleTokenClick = (e, drone, isPlayer) => {
@@ -512,14 +603,28 @@ const QuickDeployEditorScreen = () => {
       )}
 
       {/* Main Content */}
-      <div style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        padding: '1.5rem',
-        gap: '1rem',
-        overflow: 'hidden'
-      }}>
+      <div
+        ref={editorAreaRef}
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          padding: '1.5rem',
+          gap: '1rem',
+          overflow: 'hidden',
+          position: 'relative'
+        }}
+      >
+        {/* Targeting Arrow - FIRST inside relative container (matches App.jsx pattern) */}
+        <TargetingArrow
+          visible={droneDragArrowState.visible}
+          start={droneDragArrowState.start}
+          end={droneDragArrowState.end}
+          lineRef={droneDragArrowRef}
+          color="#06b6d4"
+          showPulses={false}
+        />
+
         {/* Lane Assignment Section */}
         <div style={{
           flex: 1,
@@ -579,7 +684,7 @@ const QuickDeployEditorScreen = () => {
                   selectedCard={null}
                   validCardTargets={[]}
                   multiSelectState={null}
-                  turnPhase={selectedDrone ? 'deployment' : 'action'}
+                  turnPhase={selectedDrone || draggedDrone ? 'deployment' : 'action'}
                   localPlayerState={mockPlayerState}
                   opponentPlayerState={emptyOpponentState}
                   localPlacedSections={[]}
@@ -596,6 +701,8 @@ const QuickDeployEditorScreen = () => {
                   mandatoryAction={null}
                   setHoveredTarget={() => {}}
                   interceptedBadge={null}
+                  draggedDrone={draggedDrone}
+                  handleDroneDragEnd={handleDroneDragEnd}
                 />
               </EditorStatsProvider>
             </div>
@@ -691,9 +798,30 @@ const QuickDeployEditorScreen = () => {
               return (
                 <div
                   key={slotIndex}
+                  data-testid={`roster-drone-${droneName}`}
+                  onMouseDown={(e) => {
+                    // Record position - drag starts only after movement threshold (allows clicks)
+                    if (!atLimit && editorAreaRef.current) {
+                      const areaRect = editorAreaRef.current.getBoundingClientRect();
+                      const tokenRect = e.currentTarget.getBoundingClientRect();
+                      const arrowX = tokenRect.left + tokenRect.width / 2 - areaRect.left;
+                      const arrowY = tokenRect.top - areaRect.top + 15;
+                      setDragStartPos({
+                        x: e.clientX,
+                        y: e.clientY,
+                        drone: droneData,
+                        name: droneName,
+                        arrowX,
+                        arrowY
+                      });
+                    }
+                  }}
                   style={{
                     position: 'relative',
-                    opacity: atLimit ? 0.6 : 1
+                    opacity: atLimit ? 0.6 : 1,
+                    cursor: atLimit ? 'not-allowed' : 'grab',
+                    userSelect: 'none',
+                    zIndex: draggedDrone?.droneName === droneName ? 50 : 10
                   }}
                 >
                   <DroneCard
@@ -756,6 +884,7 @@ const QuickDeployEditorScreen = () => {
             )}
           </div>
         </div>
+
       </div>
 
       {/* Drone Picker Modal */}

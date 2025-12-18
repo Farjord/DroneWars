@@ -406,7 +406,7 @@ function DeckBuildingModal({
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
               placeholder={`Paste deck code in JS object format:\n{\n  name: 'My Deck',\n  decklist: [\n    { id: 'CARD001', quantity: 4 },\n    { id: 'CARD002', quantity: 3 }\n  ]\n}`}
-              className="w-full h-64 bg-slate-900 text-white font-mono text-sm p-3 rounded border border-slate-600 focus:border-cyan-500 focus:outline-none resize-none"
+              className="w-full h-64 bg-slate-900 text-white font-mono text-sm p-3 rounded border border-slate-600 focus:border-cyan-500 focus:outline-none resize-none dw-modal-scroll"
             />
 
             {importError && (
@@ -456,7 +456,7 @@ function DeckBuildingModal({
             <textarea
               value={exportCode}
               readOnly
-              className="w-full h-64 bg-slate-900 text-white font-mono text-sm p-3 rounded border border-slate-600 resize-none"
+              className="w-full h-64 bg-slate-900 text-white font-mono text-sm p-3 rounded border border-slate-600 resize-none dw-modal-scroll"
             />
 
             <div className="flex justify-end gap-3 mt-4">
