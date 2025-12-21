@@ -4,7 +4,7 @@
 // Wrapper for DeckBuilder component when accessed from main menu
 // Manages its own state and provides localStorage persistence
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DeckBuilder from './DeckBuilder.jsx';
 import fullCardCollection from '../../data/cardData.js';
 import fullDroneCollection from '../../data/droneData.js';
@@ -12,6 +12,8 @@ import { getShipById, getDefaultShip } from '../../data/shipData.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import { updateDeckState, updateDroneState } from '../../utils/deckStateUtils.js';
 import { parseJSObjectLiteral, convertFromAIFormat } from '../../utils/deckExportUtils.js';
+import MissionService from '../../logic/missions/MissionService.js';
+import { DeckBuilderTutorialModal } from '../modals/tutorials';
 
 /**
  * StandaloneDeckBuilder - Wrapper component for deck building from menu
@@ -25,6 +27,17 @@ function StandaloneDeckBuilder() {
   const [selectedShip, setSelectedShip] = useState(getDefaultShip());
   // Preserved fields for import/export round-trip (name, description, difficulty, etc.)
   const [preservedFields, setPreservedFields] = useState({});
+  // Tutorial state
+  const [showTutorial, setShowTutorial] = useState(false);
+
+  // Check for deck builder tutorial on first visit
+  useEffect(() => {
+    if (!MissionService.isTutorialDismissed('deckBuilder')) {
+      setShowTutorial(true);
+    }
+    // Record screen visit for missions
+    MissionService.recordProgress('SCREEN_VISIT', { screen: 'deckBuilder' });
+  }, []);
 
   /**
    * Handle deck change - update card quantities
@@ -149,22 +162,32 @@ function StandaloneDeckBuilder() {
   };
 
   return (
-    <DeckBuilder
-      selectedDrones={selectedDrones}
-      fullCardCollection={fullCardCollection}
-      deck={deck}
-      onDeckChange={handleDeckChange}
-      onDronesChange={handleDronesChange}
-      selectedShipComponents={selectedShipComponents}
-      onShipComponentsChange={handleShipComponentsChange}
-      selectedShip={selectedShip}
-      onShipChange={handleShipChange}
-      onConfirmDeck={handleConfirmDeck}
-      onImportDeck={handleImportDeck}
-      onBack={handleBack}
-      preservedFields={preservedFields}
-      onPreservedFieldsChange={setPreservedFields}
-    />
+    <>
+      <DeckBuilder
+        selectedDrones={selectedDrones}
+        fullCardCollection={fullCardCollection}
+        deck={deck}
+        onDeckChange={handleDeckChange}
+        onDronesChange={handleDronesChange}
+        selectedShipComponents={selectedShipComponents}
+        onShipComponentsChange={handleShipComponentsChange}
+        selectedShip={selectedShip}
+        onShipChange={handleShipChange}
+        onConfirmDeck={handleConfirmDeck}
+        onImportDeck={handleImportDeck}
+        onBack={handleBack}
+        preservedFields={preservedFields}
+        onPreservedFieldsChange={setPreservedFields}
+      />
+      {showTutorial && (
+        <DeckBuilderTutorialModal
+          onDismiss={() => {
+            MissionService.dismissTutorial('deckBuilder');
+            setShowTutorial(false);
+          }}
+        />
+      )}
+    </>
   );
 }
 

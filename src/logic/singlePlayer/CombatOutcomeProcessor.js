@@ -9,6 +9,7 @@ import { debugLog } from '../../utils/debugLogger.js';
 import lootGenerator from '../loot/LootGenerator.js';
 import ExtractionController from './ExtractionController.js';
 import aiPersonalities from '../../data/aiData.js';
+import MissionService from '../missions/MissionService.js';
 
 /**
  * CombatOutcomeProcessor
@@ -150,6 +151,9 @@ class CombatOutcomeProcessor {
       currentRunState: updatedRunState,
       pendingLoot: salvageLoot  // Store for LootRevealModal
     });
+
+    // 6. Record mission progress for combat victory
+    MissionService.recordProgress('COMBAT_WIN', {});
 
     debugLog('SP_COMBAT', '=== Victory processed, awaiting loot collection ===');
 
@@ -370,6 +374,9 @@ class CombatOutcomeProcessor {
       },
       pendingLoot: bossLoot
     });
+
+    // Record mission progress for combat victory (boss fights count as combat wins)
+    MissionService.recordProgress('COMBAT_WIN', {});
 
     debugLog('SP_COMBAT', '=== Boss victory processed, awaiting loot collection ===');
 

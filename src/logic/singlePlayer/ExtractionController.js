@@ -11,6 +11,7 @@ import { mapTiers } from '../../data/mapData.js';
 import { ECONOMY } from '../../data/economyData.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import ReputationService from '../reputation/ReputationService.js';
+import MissionService from '../missions/MissionService.js';
 
 /**
  * Calculate total credits from salvage items in a loot array
@@ -258,6 +259,14 @@ class ExtractionController {
 
     // 3. End run with success (transfers loot, adds credits)
     gameStateManager.endRun(true);
+
+    // 4. Record mission progress for successful extraction
+    MissionService.recordProgress('EXTRACTION_COMPLETE', {});
+
+    // 5. Record credits earned for mission progress
+    if (extractedCredits > 0) {
+      MissionService.recordProgress('CREDITS_EARNED', { amount: extractedCredits });
+    }
 
     debugLog('EXTRACTION', 'Extraction complete', summary);
 

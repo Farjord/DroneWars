@@ -306,6 +306,7 @@ const DeckBuilder = ({
 
   // Drone filters - new popup-based filter system
   const [droneFilters, setDroneFilters] = useState({
+    searchText: '',
     rarity: [],
     class: [],
     abilities: [],
@@ -930,6 +931,9 @@ const DeckBuilder = ({
 
   const handleRemoveDroneFilterChip = (filterType, filterValue) => {
     setDroneFilters(prev => {
+      if (filterType === 'searchText') {
+        return { ...prev, searchText: '' };
+      }
       if (filterType === 'includeAIOnly') {
         return { ...prev, includeAIOnly: false };
       }
@@ -955,6 +959,7 @@ const DeckBuilder = ({
 
   const resetDroneFilters = () => {
     setDroneFilters({
+      searchText: '',
       rarity: [],
       class: [],
       abilities: [],

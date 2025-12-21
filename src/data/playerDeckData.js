@@ -11,34 +11,70 @@ export const starterDeck = {
   isImmutable: true,  // Cannot be edited (for Slot 0 in Extraction Mode)
   shipId: 'SHIP_001', // Default ship card
 
-  // 40 Asset Cards - Exactly as defined in StateInitializer.js
+  // 40 Asset Cards - StateInitializer.js imports this decklist
   decklist: [
-    { id: 'CARD002', quantity: 4 }, 
-    { id: 'CARD005', quantity: 4 },  
-    { id: 'CARD007', quantity: 2 },  
-    { id: 'CARD010', quantity: 2 },  
-    { id: 'CARD014', quantity: 4 },  
-    { id: 'CARD017', quantity: 4 },  
-    { id: 'CARD021', quantity: 2 },  
-    { id: 'CARD028', quantity: 2 },   
-    { id: 'CARD033', quantity: 4 },  
-    { id: 'CARD037', quantity: 4 },  
-    { id: 'CARD038', quantity: 4 },  
-    { id: 'CARD039', quantity: 4 },  
+    {
+      id: 'CARD009',
+      quantity: 4
+    },
+    {
+      id: 'CARD001',
+      quantity: 4
+    },
+    {
+      id: 'CARD010',
+      quantity: 2
+    },
+    {
+      id: 'CARD013',
+      quantity: 2
+    },
+    {
+      id: 'CARD037',
+      quantity: 4
+    },
+    {
+      id: 'CARD002',
+      quantity: 4
+    },
+    {
+      id: 'CARD004',
+      quantity: 4
+    },
+    {
+      id: 'CARD005',
+      quantity: 4
+    },
+    {
+      id: 'CARD014',
+      quantity: 4
+    },
+    {
+      id: 'CARD017',
+      quantity: 4
+    },
+    {
+      id: 'CARD028',
+      quantity: 2
+    },
+    {
+      id: 'CARD029',
+      quantity: 2
+    }  
   ],
   // 5 Drones (Extraction Mode uses exactly 5 drones, no selection phase)
   droneSlots: [
-    { slotIndex: 0, slotDamaged: false, assignedDrone: 'Dart' },
-    { slotIndex: 1, slotDamaged: false, assignedDrone: 'Talon' },
-    { slotIndex: 2, slotDamaged: false, assignedDrone: 'Mammoth' },
-    { slotIndex: 3, slotDamaged: false, assignedDrone: 'Bastion' },
-    { slotIndex: 4, slotDamaged: false, assignedDrone: 'Seraph' },
+    { slotIndex: 0, slotDamaged: false, assignedDrone: 'Scanner' },
+    { slotIndex: 1, slotDamaged: false, assignedDrone: 'Shark' },
+    { slotIndex: 2, slotDamaged: false, assignedDrone: 'Dart' },
+    { slotIndex: 3, slotDamaged: false, assignedDrone: 'Talon' },
+    { slotIndex: 4, slotDamaged: false, assignedDrone: 'Mammoth' },
   ],
 
   // Ship components (standard layout)
   shipComponents: {
     'POWERCELL_001': 'l',        // Left lane
-    'BRIDGE_001': 'm',     // Middle lane
+    'BRIDGE_002': 'm',     // Middle lane
     'DRONECONTROL_001': 'r'   // Right lane
   }
 };

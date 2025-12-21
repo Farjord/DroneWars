@@ -91,6 +91,27 @@ export const defaultPlayerProfile = {
     totalBossVictories: 0,   // Total number of boss wins (including repeats)
     totalBossAttempts: 0     // Total number of boss fight attempts
   },
+
+  // Mission tracking system
+  missions: {
+    completed: [],    // Array of mission IDs that have been completed
+    claimable: [],    // Array of mission IDs with unclaimed rewards
+    hidden: [],       // Array of mission IDs hidden (e.g., skipped intro missions)
+    progress: {},     // { missionId: { current: number, target: number } }
+  },
+
+  // Tutorial dismissal tracking (reset on new game)
+  tutorialDismissals: {
+    intro: false,
+    inventory: false,
+    replicator: false,
+    blueprints: false,
+    shop: false,
+    repairBay: false,
+    tacticalMapOverview: false,
+    tacticalMap: false,
+    deckBuilder: false,
+  },
 };
 
 /**

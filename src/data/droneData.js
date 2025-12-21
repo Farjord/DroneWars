@@ -1,7 +1,7 @@
 // --- DATA ---
 const fullDroneCollection = [
   { name: 'Dart', class: 1, limit: 3, rarity: 'Common', attack: 1, hull: 1, shields: 1, speed: 6, image: '/DroneWars/img/Scout.png', abilities: [],  upgradeSlots: 2 },
-  { name: 'Talon', class: 2, limit: 3, rarity: 'Common', attack: 3, hull: 2, shields: 1, speed: 4, image: '/DroneWars/img/StandardFighter.png', abilities: [],  upgradeSlots: 2 },
+  { name: 'Talon', class: 2, limit: 3, rarity: 'Common', attack: 3, hull: 2, shields: 1, speed: 4, image: '/DroneWars/img/StandardFighter.png', abilities: [],  upgradeSlots: 3 },
   { name: 'Mammoth', class: 3, limit: 2, rarity: 'Common', attack: 4, hull: 4, shields: 1, speed: 3, image: '/DroneWars/img/HeavyFighter.png', abilities: [], upgradeSlots: 1 },
    {
     name: 'Bastion',
@@ -568,12 +568,12 @@ const fullDroneCollection = [
   },
   {
     name: 'Shark',
-    class: 1,
+    class: 2,
     limit: 2,
     rarity: 'Common',
-    attack: 1,
-    hull: 1,
-    shields: 1,
+    attack: 2,
+    hull: 2,
+    shields: 2,
     speed: 3,
     image: '/DroneWars/img/Shark.png',
     abilities: [{

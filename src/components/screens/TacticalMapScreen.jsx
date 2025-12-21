@@ -41,6 +41,11 @@ import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import { ECONOMY } from '../../data/economyData.js';
 import ReputationService from '../../logic/reputation/ReputationService.js';
+import MissionService from '../../logic/missions/MissionService.js';
+import MissionPanel from '../ui/MissionPanel.jsx';
+import MissionTrackerModal from '../modals/MissionTrackerModal.jsx';
+import { TacticalMapTutorialModal } from '../modals/tutorials';
+import { HelpCircle } from 'lucide-react';
 import TacticalItemsPanel from '../ui/TacticalItemsPanel.jsx';
 import TacticalItemConfirmationModal from '../modals/TacticalItemConfirmationModal.jsx';
 import { getTacticalItemById } from '../../data/tacticalItemData.js';
@@ -208,6 +213,10 @@ function TacticalMapScreen() {
   // Tactical item confirmation modal state
   const [tacticalItemConfirmation, setTacticalItemConfirmation] = useState(null);
 
+  // Mission tracking state
+  const [showMissionTracker, setShowMissionTracker] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(null);
+
   // Ref to track pause state in async movement loop
   const isPausedRef = useRef(false);
   const shouldStopMovement = useRef(false);
@@ -234,6 +243,15 @@ function TacticalMapScreen() {
       setGameState(gameStateManager.getState());
     });
     return unsubscribe;
+  }, []);
+
+  // Check for tactical map tutorial on first visit
+  useEffect(() => {
+    if (!MissionService.isTutorialDismissed('tacticalMap')) {
+      setShowTutorial('tacticalMap');
+    }
+    // Record screen visit for missions
+    MissionService.recordProgress('SCREEN_VISIT', { screen: 'tacticalMap' });
   }, []);
 
   // Check for pending PoI loot after returning from combat
@@ -1801,6 +1819,9 @@ function TacticalMapScreen() {
       const threatIncrease = pendingLootEncounter.poi?.poiData?.threatIncrease || 10;
       DetectionManager.addDetection(threatIncrease, `Looting ${pendingLootEncounter.poi?.poiData?.name || 'PoI'}`);
       console.log(`[TacticalMap] POI marked as looted: (${poiCoords?.q}, ${poiCoords?.r})`);
+
+      // Record mission progress for POI visit
+      MissionService.recordProgress('POI_LOOTED', {});
     }
 
     // Clear loot state
@@ -2156,12 +2177,31 @@ function TacticalMapScreen() {
         zIndex: 150
       }}>
         {/* Left: Title */}
-        <h1 style={{
-          fontSize: '1.5rem',
-          color: '#e5e7eb',
-          letterSpacing: '0.1em',
-          margin: 0
-        }}>TACTICAL MAP</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h1 style={{
+            fontSize: '1.5rem',
+            color: '#e5e7eb',
+            letterSpacing: '0.1em',
+            margin: 0
+          }}>TACTICAL MAP</h1>
+          <button
+            onClick={() => setShowTutorial('tacticalMap')}
+            title="Show help"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+              color: '#06b6d4',
+              opacity: 0.7,
+              transition: 'opacity 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+          >
+            <HelpCircle size={18} />
+          </button>
+        </div>
 
         {/* Right: Stats */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -2202,6 +2242,13 @@ function TacticalMapScreen() {
               {Math.min(collectedLoot.length, extractionLimit)}/{extractionLimit}
             </span>
           </div>
+
+          {/* Mission Tracker */}
+          <MissionPanel
+            activeCount={MissionService.getActiveCount()}
+            claimableCount={MissionService.getClaimableCount()}
+            onClick={() => setShowMissionTracker(true)}
+          />
         </div>
       </header>
 
@@ -2468,6 +2515,23 @@ function TacticalMapScreen() {
         onConfirm={handleLootSelectionConfirm}
         onCancel={() => handleLootSelectionConfirm([])}
       />
+
+      {/* Mission Tracker Modal */}
+      {showMissionTracker && (
+        <MissionTrackerModal
+          onClose={() => setShowMissionTracker(false)}
+        />
+      )}
+
+      {/* Tactical Map Tutorial Modal */}
+      {showTutorial === 'tacticalMap' && (
+        <TacticalMapTutorialModal
+          onDismiss={() => {
+            MissionService.dismissTutorial('tacticalMap');
+            setShowTutorial(null);
+          }}
+        />
+      )}
 
       {/* Map info display */}
       <div className="tactical-map-info">

@@ -120,6 +120,16 @@ export function filterDrones(drones, filters) {
       return false;
     }
 
+    // Text search filter (name or description, case-insensitive)
+    if (filters.searchText) {
+      const searchLower = filters.searchText.toLowerCase();
+      const nameMatch = drone.name?.toLowerCase().includes(searchLower);
+      const descMatch = drone.description?.toLowerCase().includes(searchLower);
+      if (!nameMatch && !descMatch) {
+        return false;
+      }
+    }
+
     // Rarity filter (OR logic) - supports Starter via isStarterPool
     if (filters.rarity.length > 0) {
       const matchesRarity = filters.rarity.some(r => {
@@ -348,6 +358,15 @@ export function generateFilterChips(filters, filterOptions) {
 export function generateDroneFilterChips(filters) {
   const chips = [];
 
+  // Search text chip
+  if (filters.searchText) {
+    chips.push({
+      label: `"${filters.searchText}"`,
+      filterType: 'searchText',
+      filterValue: null,
+    });
+  }
+
   // Rarity chips
   filters.rarity?.forEach(rarity => {
     chips.push({
@@ -405,6 +424,11 @@ export function generateDroneFilterChips(filters) {
 export function countActiveDroneFilters(filters) {
   let count = 0;
 
+  // Search text
+  if (filters.searchText) {
+    count += 1;
+  }
+
   // Array filters - count each selection
   count += filters.rarity?.length || 0;
   count += filters.class?.length || 0;
@@ -453,6 +477,7 @@ export function createDefaultCardFilters(filterOptions) {
  */
 export function createDefaultDroneFilters() {
   return {
+    searchText: '',
     rarity: [],
     class: [],
     abilities: [],

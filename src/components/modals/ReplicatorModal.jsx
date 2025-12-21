@@ -4,17 +4,18 @@
 // Duplicate owned cards for credits
 
 import React, { useState, useMemo } from 'react';
-import { Copy, Package } from 'lucide-react';
+import { Copy, Package, HelpCircle } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
 import { RARITY_COLORS } from '../../data/cardData';
 import replicatorService from '../../logic/economy/ReplicatorService.js';
+import MissionService from '../../logic/missions/MissionService.js';
 
 /**
  * ReplicatorModal Component
  * Duplicate owned cards for credits
  * Uses ReplicatorService for cost calculations and replication operations
  */
-const ReplicatorModal = ({ onClose }) => {
+const ReplicatorModal = ({ onClose, onShowHelp }) => {
   const { gameState } = useGameState();
   const [feedback, setFeedback] = useState(null);
   const [selectedTab, setSelectedTab] = useState('All');
@@ -67,6 +68,9 @@ const ReplicatorModal = ({ onClose }) => {
       return;
     }
 
+    // Record mission progress for crafting
+    MissionService.recordProgress('CRAFT_ITEM', {});
+
     setFeedback({
       type: 'success',
       message: `Replicated ${card.name} for ${result.cost} credits`
@@ -88,7 +92,7 @@ const ReplicatorModal = ({ onClose }) => {
     <div className="dw-modal-overlay" onClick={onClose}>
       <div className="dw-modal-content dw-modal--xl dw-modal--action" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="dw-modal-header">
+        <div className="dw-modal-header" style={{ position: 'relative' }}>
           <div className="dw-modal-header-icon">
             <Copy size={28} />
           </div>
@@ -96,6 +100,30 @@ const ReplicatorModal = ({ onClose }) => {
             <h2 className="dw-modal-header-title">Replicator</h2>
             <p className="dw-modal-header-subtitle">Duplicate owned cards for credits</p>
           </div>
+          {onShowHelp && (
+            <button
+              onClick={onShowHelp}
+              className="dw-modal-help-btn"
+              title="Show help"
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '4px',
+                color: '#06b6d4',
+                opacity: 0.7,
+                transition: 'opacity 0.2s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+            >
+              <HelpCircle size={20} />
+            </button>
+          )}
         </div>
 
         {/* Body */}

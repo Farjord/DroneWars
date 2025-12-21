@@ -24,6 +24,7 @@ const mockExtractionFilterOptions = {
 };
 
 const defaultFilters = {
+  searchText: '',
   rarity: [],
   class: [],
   abilities: [],
@@ -106,6 +107,97 @@ describe('DroneFilterModal', () => {
       expect(screen.getByText('Class')).toBeInTheDocument();
       expect(screen.getByText('Abilities')).toBeInTheDocument();
       expect(screen.getByText('Damage Type')).toBeInTheDocument();
+    });
+  });
+
+  // ========================================
+  // SEARCH FILTER TESTS
+  // ========================================
+  describe('Search Filter', () => {
+    it('should render search input field', () => {
+      render(
+        <DroneFilterModal
+          isOpen={true}
+          onClose={() => {}}
+          filters={defaultFilters}
+          onFiltersChange={() => {}}
+          filterOptions={mockFilterOptions}
+        />
+      );
+
+      expect(screen.getByPlaceholderText(/search drones/i)).toBeInTheDocument();
+    });
+
+    it('should render search icon', () => {
+      render(
+        <DroneFilterModal
+          isOpen={true}
+          onClose={() => {}}
+          filters={defaultFilters}
+          onFiltersChange={() => {}}
+          filterOptions={mockFilterOptions}
+        />
+      );
+
+      expect(screen.getByText('Search')).toBeInTheDocument();
+    });
+
+    it('should call onFiltersChange when search text changes', () => {
+      const onFiltersChange = vi.fn();
+      render(
+        <DroneFilterModal
+          isOpen={true}
+          onClose={() => {}}
+          filters={defaultFilters}
+          onFiltersChange={onFiltersChange}
+          filterOptions={mockFilterOptions}
+        />
+      );
+
+      const searchInput = screen.getByPlaceholderText(/search drones/i);
+      fireEvent.change(searchInput, { target: { value: 'dart' } });
+
+      expect(onFiltersChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          searchText: 'dart',
+        })
+      );
+    });
+
+    it('should display current search text value', () => {
+      render(
+        <DroneFilterModal
+          isOpen={true}
+          onClose={() => {}}
+          filters={{ ...defaultFilters, searchText: 'mammoth' }}
+          onFiltersChange={() => {}}
+          filterOptions={mockFilterOptions}
+        />
+      );
+
+      const searchInput = screen.getByPlaceholderText(/search drones/i);
+      expect(searchInput.value).toBe('mammoth');
+    });
+
+    it('should clear searchText on Reset All', () => {
+      const onFiltersChange = vi.fn();
+      render(
+        <DroneFilterModal
+          isOpen={true}
+          onClose={() => {}}
+          filters={{ ...defaultFilters, searchText: 'dart' }}
+          onFiltersChange={onFiltersChange}
+          filterOptions={mockFilterOptions}
+        />
+      );
+
+      fireEvent.click(screen.getByRole('button', { name: /reset all/i }));
+
+      expect(onFiltersChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          searchText: '',
+        })
+      );
     });
   });
 

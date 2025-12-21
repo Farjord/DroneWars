@@ -10,7 +10,8 @@
  */
 
 import React, { useState, useMemo } from 'react';
-import { Wrench, AlertTriangle, CheckCircle, GripVertical, Star, Trash2, Lock, Cpu } from 'lucide-react';
+import { Wrench, AlertTriangle, CheckCircle, GripVertical, Star, Trash2, Lock, Cpu, HelpCircle } from 'lucide-react';
+import { RepairBayTutorialModal } from '../modals/tutorials';
 import { useGameState } from '../../hooks/useGameState';
 import DroneCard from '../ui/DroneCard';
 import RepairSectionCard from '../ui/RepairSectionCard';
@@ -183,6 +184,7 @@ const RepairBayScreen = () => {
   const [dragOverIndex, setDragOverIndex] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [showReputationProgress, setShowReputationProgress] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(null);
 
   // Get active slots only (for main content display)
   const activeSlots = useMemo(() => {
@@ -309,11 +311,30 @@ const RepairBayScreen = () => {
         zIndex: 10
       }}>
         {/* Left: Title */}
-        <h1 style={{
-          fontSize: '1.5rem',
-          color: '#e5e7eb',
-          letterSpacing: '0.1em'
-        }}>REPAIR BAY</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h1 style={{
+            fontSize: '1.5rem',
+            color: '#e5e7eb',
+            letterSpacing: '0.1em'
+          }}>REPAIR BAY</h1>
+          <button
+            onClick={() => setShowTutorial('repairBay')}
+            title="Show help"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+              color: '#06b6d4',
+              opacity: 0.7,
+              transition: 'opacity 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+          >
+            <HelpCircle size={18} />
+          </button>
+        </div>
 
         {/* Right: Stats (matching Hangar) */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -641,6 +662,13 @@ const RepairBayScreen = () => {
           </button>
         </aside>
       </div>
+
+      {/* Tutorial Modal */}
+      {showTutorial === 'repairBay' && (
+        <RepairBayTutorialModal
+          onDismiss={() => setShowTutorial(null)}
+        />
+      )}
     </div>
   );
 };

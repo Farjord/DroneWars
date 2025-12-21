@@ -4,7 +4,7 @@
 // View/craft from unlocked blueprints
 
 import React, { useState, useMemo } from 'react';
-import { Layers, Lock, Cpu } from 'lucide-react';
+import { Layers, Lock, Cpu, HelpCircle } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
 import droneData from '../../data/droneData';
 import { shipComponentCollection } from '../../data/shipSectionData';
@@ -28,7 +28,7 @@ const STARTER_SHIP_IDS = new Set(starterPoolShipIds);
  * View/craft from unlocked blueprints
  * Craft costs by rarity: Common 100, Uncommon 250, Rare 600, Mythic 1500
  */
-const BlueprintsModal = ({ onClose }) => {
+const BlueprintsModal = ({ onClose, onShowHelp }) => {
   const { gameState, gameStateManager } = useGameState();
   const [selectedTab, setSelectedTab] = useState('Drones');
   const [feedback, setFeedback] = useState(null);
@@ -204,7 +204,7 @@ const BlueprintsModal = ({ onClose }) => {
     <div className="dw-modal-overlay" onClick={onClose}>
       <div className="dw-modal-content dw-modal--xl dw-modal--action" onClick={e => e.stopPropagation()}>
         {/* Header */}
-        <div className="dw-modal-header">
+        <div className="dw-modal-header" style={{ position: 'relative' }}>
           <div className="dw-modal-header-icon">
             <Layers size={28} />
           </div>
@@ -212,6 +212,30 @@ const BlueprintsModal = ({ onClose }) => {
             <h2 className="dw-modal-header-title">Blueprints</h2>
             <p className="dw-modal-header-subtitle">{stats.unlocked} / {stats.total} unlocked</p>
           </div>
+          {onShowHelp && (
+            <button
+              onClick={onShowHelp}
+              className="dw-modal-help-btn"
+              title="Show help"
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '4px',
+                color: '#06b6d4',
+                opacity: 0.7,
+                transition: 'opacity 0.2s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+            >
+              <HelpCircle size={20} />
+            </button>
+          )}
         </div>
 
         {/* Body */}

@@ -5,13 +5,13 @@ import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js'
 import { ECONOMY } from '../../data/economyData.js';
 import ReputationService from '../../logic/reputation/ReputationService.js';
 import MapPreviewRenderer from '../ui/MapPreviewRenderer';
-import { Map, AlertTriangle, XCircle, Info, Shield } from 'lucide-react';
+import { Map, AlertTriangle, XCircle, Info, Shield, HelpCircle } from 'lucide-react';
 
 /**
  * MapOverviewModal Component
  * Detailed map preview before deployment with validation and gate selection
  */
-const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, activeSectors = [], onNavigate, onDeploy, onClose }) => {
+const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, activeSectors = [], onNavigate, onDeploy, onClose, onShowHelp }) => {
   const { gameState } = useGameState();
   const [validationError, setValidationError] = useState(null);
   const [selectedGateId, setSelectedGateId] = useState(0); // Default to first gate
@@ -246,11 +246,33 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
             ← Prev
           </button>
 
-          <div className="dw-modal-header-info" style={{ flex: 1, textAlign: 'center' }}>
+          <div className="dw-modal-header-info" style={{ flex: 1, textAlign: 'center', position: 'relative' }}>
             <h2 className="dw-modal-header-title">Sector {selectedCoordinate}</h2>
             <p className="dw-modal-header-subtitle">
               {currentSlot ? (currentSlot.id === 0 ? 'Starter Deck' : (currentSlot.name || `Slot ${currentSlotId}`)) : 'No Ship'} | Tier {selectedMap.tier}
             </p>
+            {onShowHelp && (
+              <button
+                onClick={onShowHelp}
+                title="Show help"
+                style={{
+                  position: 'absolute',
+                  top: '0',
+                  right: '-28px',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  color: '#06b6d4',
+                  opacity: 0.7,
+                  transition: 'opacity 0.2s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+              >
+                <HelpCircle size={18} />
+              </button>
+            )}
           </div>
 
           <button

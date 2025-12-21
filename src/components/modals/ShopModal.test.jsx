@@ -107,8 +107,8 @@ describe('ShopModal', () => {
     test('shows owned quantity for each item', () => {
       render(<ShopModal onClose={mockOnClose} />);
 
-      // Check that owned quantities are displayed (e.g., "Owned: 1 / 2")
-      expect(screen.getByText(/Owned: 1 \/ 2/)).toBeInTheDocument();
+      // Check that owned quantities are displayed (ITEM_EXTRACT has maxCapacity 1)
+      expect(screen.getByText(/Owned: 1 \/ 1/)).toBeInTheDocument();
     });
   });
 

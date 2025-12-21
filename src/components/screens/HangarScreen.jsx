@@ -20,6 +20,19 @@ import ReputationTrack from '../ui/ReputationTrack';
 import ReputationProgressModal from '../modals/ReputationProgressModal';
 import ReputationRewardModal from '../modals/ReputationRewardModal';
 import ReputationService from '../../logic/reputation/ReputationService';
+import MissionPanel from '../ui/MissionPanel';
+import MissionTrackerModal from '../modals/MissionTrackerModal';
+import MissionService from '../../logic/missions/MissionService';
+import {
+  IntroTutorialModal,
+  InventoryTutorialModal,
+  ReplicatorTutorialModal,
+  BlueprintsTutorialModal,
+  ShopTutorialModal,
+  RepairBayTutorialModal,
+  TacticalMapOverviewTutorialModal,
+  DeckBuilderTutorialModal,
+} from '../modals/tutorials';
 import NewsTicker from '../ui/NewsTicker';
 import { generateMapData } from '../../utils/mapGenerator';
 import { mapTiers } from '../../data/mapData';
@@ -31,7 +44,7 @@ import { validateShipSlot } from '../../utils/slotDamageUtils.js';
 import { SeededRandom } from '../../utils/seededRandom.js';
 import { ECONOMY } from '../../data/economyData.js';
 import { starterDeck } from '../../data/playerDeckData.js';
-import { Plus, Minus, RotateCcw, ChevronRight, Star, Trash2, AlertTriangle, Cpu, Lock } from 'lucide-react';
+import { Plus, Minus, RotateCcw, ChevronRight, Star, Trash2, AlertTriangle, Cpu, Lock, HelpCircle } from 'lucide-react';
 import { getShipById } from '../../data/shipData.js';
 
 // Background image for the map area
@@ -77,6 +90,9 @@ const HangarScreen = () => {
   const [bossHexCell, setBossHexCell] = useState(null); // Boss hex cell data
   const [showBossLoadingScreen, setShowBossLoadingScreen] = useState(false); // Boss encounter transition
   const [bossLoadingData, setBossLoadingData] = useState(null); // Data for boss loading screen
+  const [showMissionTracker, setShowMissionTracker] = useState(false); // Show mission tracker modal
+  const [showTutorial, setShowTutorial] = useState(null); // Current tutorial modal to show
+  const [isHelpIconTutorial, setIsHelpIconTutorial] = useState(false); // Track if tutorial triggered from help icon
 
   // Compute maps with correct grid coordinates for the news ticker
   const mapsWithCoordinates = useMemo(() => {
@@ -244,6 +260,19 @@ const HangarScreen = () => {
 
     return () => clearTimeout(timer);
   }, [singlePlayerProfile?.gameSeed]);
+
+  /**
+   * Check for intro tutorial on mount (only shows for new games)
+   */
+  useEffect(() => {
+    if (singlePlayerProfile && !MissionService.isTutorialDismissed('intro')) {
+      // Small delay to let the UI render first
+      const timer = setTimeout(() => {
+        setShowTutorial('intro');
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [singlePlayerProfile]);
 
   /**
    * Generate 6 procedural maps on mount (one per icon)
@@ -758,6 +787,30 @@ const HangarScreen = () => {
 
   // Action button clicks
   const handleActionClick = (action) => {
+    // Screens that have tutorials (modals)
+    const tutorialModalScreens = ['inventory', 'replicator', 'blueprints', 'shop'];
+
+    // Show tutorial if not dismissed (tutorial will overlay on top of modal)
+    if (tutorialModalScreens.includes(action) && !MissionService.isTutorialDismissed(action)) {
+      setShowTutorial(action);
+    }
+
+    // Record screen visit for mission progress
+    if (tutorialModalScreens.includes(action)) {
+      MissionService.recordProgress('SCREEN_VISIT', { screen: action });
+    }
+
+    // Handle repairBay separately (navigates to different screen, not a modal)
+    if (action === 'repairBay') {
+      if (!MissionService.isTutorialDismissed('repairBay')) {
+        setShowTutorial('repairBay');
+        return; // Don't navigate yet - tutorial onDismiss will navigate
+      }
+      MissionService.recordProgress('SCREEN_VISIT', { screen: 'repairBay' });
+      gameStateManager.setState({ appState: 'repairBay' });
+      return;
+    }
+
     switch(action) {
       case 'inventory':
         setActiveModal('inventory');
@@ -770,10 +823,6 @@ const HangarScreen = () => {
         break;
       case 'shop':
         setActiveModal('shop');
-        break;
-      case 'repairBay':
-        // Skip modal, go directly to repair bay screen
-        gameStateManager.setState({ appState: 'repairBay' });
         break;
       case 'saveLoad':
         setActiveModal('saveLoad');
@@ -789,6 +838,14 @@ const HangarScreen = () => {
   // Map selection handler
   const handleMapSelected = (mapData) => {
     setSelectedMap(mapData);
+
+    // Show tutorial if not dismissed (tutorial will overlay on top of modal)
+    if (!MissionService.isTutorialDismissed('tacticalMapOverview')) {
+      setShowTutorial('tacticalMapOverview');
+    }
+
+    // Record screen visit for missions
+    MissionService.recordProgress('SCREEN_VISIT', { screen: 'tacticalMapOverview' });
     setActiveModal('mapOverview');
   };
 
@@ -852,6 +909,14 @@ const HangarScreen = () => {
     setSelectedSlotId(activeSlot.id);
     setSelectedMap(map);
     setSelectedCoordinate(coordinate);
+
+    // Show tutorial if not dismissed (tutorial will overlay on top of modal)
+    if (!MissionService.isTutorialDismissed('tacticalMapOverview')) {
+      setShowTutorial('tacticalMapOverview');
+    }
+
+    // Record screen visit for missions
+    MissionService.recordProgress('SCREEN_VISIT', { screen: 'tacticalMapOverview' });
     setActiveModal('mapOverview');
 
     debugLog('EXTRACTION', '⏱️ State set calls queued (async batch)');
@@ -1021,11 +1086,33 @@ const HangarScreen = () => {
         zIndex: 10
       }}>
         {/* Left: Title */}
-        <h1 style={{
-          fontSize: '1.5rem',
-          color: '#e5e7eb',
-          letterSpacing: '0.1em'
-        }}>HANGAR</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h1 style={{
+            fontSize: '1.5rem',
+            color: '#e5e7eb',
+            letterSpacing: '0.1em'
+          }}>HANGAR</h1>
+          <button
+            onClick={() => {
+              setShowTutorial('intro');
+              setIsHelpIconTutorial(true);
+            }}
+            title="Show help"
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '4px',
+              color: '#06b6d4',
+              opacity: 0.7,
+              transition: 'opacity 0.2s ease'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+          >
+            <HelpCircle size={18} />
+          </button>
+        </div>
 
         {/* Right: Stats */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -1062,6 +1149,13 @@ const HangarScreen = () => {
               />
             );
           })()}
+
+          {/* Mission Panel */}
+          <MissionPanel
+            activeCount={MissionService.getActiveCount()}
+            claimableCount={MissionService.getClaimableCount()}
+            onClick={() => setShowMissionTracker(true)}
+          />
         </div>
       </header>
 
@@ -1742,10 +1836,10 @@ const HangarScreen = () => {
 
       {/* Modals (conditionally rendered) */}
       {activeModal === 'saveLoad' && <SaveLoadModal onClose={closeAllModals} />}
-      {activeModal === 'inventory' && <InventoryModal onClose={closeAllModals} />}
-      {activeModal === 'blueprints' && <BlueprintsModal onClose={closeAllModals} />}
-      {activeModal === 'replicator' && <ReplicatorModal onClose={closeAllModals} />}
-      {activeModal === 'shop' && <ShopModal onClose={closeAllModals} />}
+      {activeModal === 'inventory' && <InventoryModal onClose={closeAllModals} onShowHelp={() => setShowTutorial('inventory')} />}
+      {activeModal === 'blueprints' && <BlueprintsModal onClose={closeAllModals} onShowHelp={() => setShowTutorial('blueprints')} />}
+      {activeModal === 'replicator' && <ReplicatorModal onClose={closeAllModals} onShowHelp={() => setShowTutorial('replicator')} />}
+      {activeModal === 'shop' && <ShopModal onClose={closeAllModals} onShowHelp={() => setShowTutorial('shop')} />}
       {activeModal === 'quickDeploy' && <QuickDeployManager onClose={closeAllModals} />}
 
       {/* Boss Encounter Modal */}
@@ -1776,6 +1870,7 @@ const HangarScreen = () => {
             onNavigate={handleNavigateSector}
             onDeploy={handleDeploy}
             onClose={closeAllModals}
+            onShowHelp={() => setShowTutorial('tacticalMapOverview')}
           />
         );
       })()}
@@ -1948,6 +2043,99 @@ const HangarScreen = () => {
       {showReputationRewards && (
         <ReputationRewardModal
           onClose={() => setShowReputationRewards(false)}
+        />
+      )}
+
+      {/* Mission Tracker Modal */}
+      {showMissionTracker && (
+        <MissionTrackerModal
+          onClose={() => setShowMissionTracker(false)}
+          onRewardClaimed={() => {
+            // Force re-render to update mission counts
+          }}
+        />
+      )}
+
+      {/* Tutorial Modals */}
+      {showTutorial === 'intro' && (
+        <IntroTutorialModal
+          onDismiss={() => {
+            MissionService.dismissTutorial('intro');
+            setShowTutorial(null);
+            setIsHelpIconTutorial(false);
+          }}
+          onSkipAll={!isHelpIconTutorial ? () => {
+            MissionService.skipIntroMissions();
+            MissionService.dismissTutorial('intro');
+            MissionService.dismissTutorial('inventory');
+            MissionService.dismissTutorial('replicator');
+            MissionService.dismissTutorial('blueprints');
+            MissionService.dismissTutorial('shop');
+            MissionService.dismissTutorial('repairBay');
+            MissionService.dismissTutorial('deckBuilder');
+            setShowTutorial(null);
+            setIsHelpIconTutorial(false);
+          } : undefined}
+        />
+      )}
+      {showTutorial === 'inventory' && (
+        <InventoryTutorialModal
+          onDismiss={() => {
+            MissionService.dismissTutorial('inventory');
+            setShowTutorial(null);
+          }}
+        />
+      )}
+      {showTutorial === 'replicator' && (
+        <ReplicatorTutorialModal
+          onDismiss={() => {
+            MissionService.dismissTutorial('replicator');
+            setShowTutorial(null);
+          }}
+        />
+      )}
+      {showTutorial === 'blueprints' && (
+        <BlueprintsTutorialModal
+          onDismiss={() => {
+            MissionService.dismissTutorial('blueprints');
+            setShowTutorial(null);
+          }}
+        />
+      )}
+      {showTutorial === 'shop' && (
+        <ShopTutorialModal
+          onDismiss={() => {
+            MissionService.dismissTutorial('shop');
+            setShowTutorial(null);
+          }}
+        />
+      )}
+      {showTutorial === 'repairBay' && (
+        <RepairBayTutorialModal
+          onDismiss={() => {
+            MissionService.dismissTutorial('repairBay');
+            MissionService.recordProgress('SCREEN_VISIT', { screen: 'repairBay' });
+            setShowTutorial(null);
+            gameStateManager.setState({ appState: 'repairBay' });
+          }}
+        />
+      )}
+      {showTutorial === 'tacticalMapOverview' && (
+        <TacticalMapOverviewTutorialModal
+          onDismiss={() => {
+            MissionService.dismissTutorial('tacticalMapOverview');
+            setShowTutorial(null);
+          }}
+        />
+      )}
+      {showTutorial === 'deckBuilder' && (
+        <DeckBuilderTutorialModal
+          onDismiss={() => {
+            MissionService.dismissTutorial('deckBuilder');
+            MissionService.recordProgress('SCREEN_VISIT', { screen: 'deckBuilder' });
+            setShowTutorial(null);
+            // DeckBuilder is accessed from other places, not HangarScreen directly
+          }}
         />
       )}
 

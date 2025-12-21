@@ -1319,7 +1319,7 @@ const fullCardCollection = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/Executioner.png',
-    description: 'Destroy target enemy drone if its hull is less than 2.',
+    description: 'Destroy target enemy drone if its current hull is less than 2.',
     visualEffect: {
       type: 'LASER_BLAST'
     },

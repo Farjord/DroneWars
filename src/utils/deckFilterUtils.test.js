@@ -15,7 +15,9 @@ import {
   filterDrones,
   sortByRarity,
   countActiveFilters,
+  countActiveDroneFilters,
   generateFilterChips,
+  generateDroneFilterChips,
   RARITY_ORDER,
   RARITY_ORDER_EXTRACTION,
 } from './deckFilterUtils.js';
@@ -118,6 +120,7 @@ const mockDrones = [
     class: 1,
     rarity: 'Common',
     keywords: ['Active', 'Scout'],
+    description: 'A fast reconnaissance drone.',
     aiOnly: false,
   },
   {
@@ -126,6 +129,7 @@ const mockDrones = [
     rarity: 'Uncommon',
     keywords: ['Active', 'Fighter'],
     damageType: 'Kinetic',
+    description: 'Standard combat fighter.',
     aiOnly: false,
   },
   {
@@ -134,6 +138,7 @@ const mockDrones = [
     rarity: 'Rare',
     keywords: ['Passive', 'Tank'],
     damageType: 'Ion',
+    description: 'Heavy armored assault platform.',
     aiOnly: false,
   },
   {
@@ -173,6 +178,7 @@ const defaultCardFilters = {
 };
 
 const defaultDroneFilters = {
+  searchText: '',
   rarity: [],
   class: [],
   abilities: [],
@@ -417,6 +423,51 @@ describe('filterDrones', () => {
 
     expect(result.every(d => d.isStarterPool)).toBe(true);
   });
+
+  // ----------------------------------------
+  // TEXT SEARCH FILTER
+  // ----------------------------------------
+  describe('Text search filter', () => {
+    it('should filter drones by text search (name)', () => {
+      const filters = { ...defaultDroneFilters, searchText: 'dart' };
+      const result = filterDrones(mockDrones, filters);
+
+      expect(result.length).toBe(1);
+      expect(result[0].name).toBe('Dart');
+    });
+
+    it('should filter drones by text search (case-insensitive)', () => {
+      const filters = { ...defaultDroneFilters, searchText: 'DART' };
+      const result = filterDrones(mockDrones, filters);
+
+      expect(result.length).toBe(1);
+      expect(result[0].name).toBe('Dart');
+    });
+
+    it('should filter drones by text search (description)', () => {
+      const filters = { ...defaultDroneFilters, searchText: 'reconnaissance' };
+      const result = filterDrones(mockDrones, filters);
+
+      expect(result.length).toBe(1);
+      expect(result[0].name).toBe('Dart');
+    });
+
+    it('should match partial text in name or description', () => {
+      const filters = { ...defaultDroneFilters, searchText: 'combat' };
+      const result = filterDrones(mockDrones, filters);
+
+      expect(result.length).toBe(1);
+      expect(result[0].name).toBe('Talon');
+    });
+
+    it('should return all drones when searchText is empty', () => {
+      const filters = { ...defaultDroneFilters, searchText: '' };
+      const result = filterDrones(mockDrones, filters);
+
+      // Should return all non-AI drones (5 out of 6)
+      expect(result.length).toBe(5);
+    });
+  });
 });
 
 // ========================================
@@ -615,5 +666,87 @@ describe('Rarity order constants', () => {
   it('should have Starter first in extraction order', () => {
     expect(RARITY_ORDER_EXTRACTION[0]).toBe('Starter');
     expect(RARITY_ORDER_EXTRACTION).toEqual(['Starter', 'Common', 'Uncommon', 'Rare', 'Mythic']);
+  });
+});
+
+// ========================================
+// DRONE FILTER COUNTING TESTS
+// ========================================
+
+describe('countActiveDroneFilters', () => {
+  it('should return 0 when no filters active', () => {
+    const count = countActiveDroneFilters(defaultDroneFilters);
+    expect(count).toBe(0);
+  });
+
+  it('should count searchText as 1 when non-empty', () => {
+    const filters = { ...defaultDroneFilters, searchText: 'dart' };
+    const count = countActiveDroneFilters(filters);
+    expect(count).toBe(1);
+  });
+
+  it('should count each rarity selection separately', () => {
+    const filters = { ...defaultDroneFilters, rarity: ['Common', 'Rare'] };
+    const count = countActiveDroneFilters(filters);
+    expect(count).toBe(2);
+  });
+
+  it('should count all active filters correctly', () => {
+    const filters = {
+      ...defaultDroneFilters,
+      searchText: 'test',
+      rarity: ['Common'],
+      class: [1, 2],
+      abilities: ['Active'],
+      includeAIOnly: true,
+    };
+    const count = countActiveDroneFilters(filters);
+    // search(1) + rarity(1) + class(2) + abilities(1) + includeAIOnly(1) = 6
+    expect(count).toBe(6);
+  });
+});
+
+// ========================================
+// DRONE FILTER CHIPS GENERATION TESTS
+// ========================================
+
+describe('generateDroneFilterChips', () => {
+  it('should generate search chip with quoted text', () => {
+    const filters = { ...defaultDroneFilters, searchText: 'dart' };
+    const chips = generateDroneFilterChips(filters);
+
+    expect(chips.some(c => c.label === '"dart"')).toBe(true);
+  });
+
+  it('should generate chip for each selected rarity', () => {
+    const filters = { ...defaultDroneFilters, rarity: ['Common', 'Rare'] };
+    const chips = generateDroneFilterChips(filters);
+
+    expect(chips.some(c => c.label === 'Common')).toBe(true);
+    expect(chips.some(c => c.label === 'Rare')).toBe(true);
+  });
+
+  it('should generate chip for each selected class', () => {
+    const filters = { ...defaultDroneFilters, class: [1, 3] };
+    const chips = generateDroneFilterChips(filters);
+
+    expect(chips.some(c => c.label === 'Class 1')).toBe(true);
+    expect(chips.some(c => c.label === 'Class 3')).toBe(true);
+  });
+
+  it('should include filterType and filterValue for searchText chip', () => {
+    const filters = { ...defaultDroneFilters, searchText: 'dart' };
+    const chips = generateDroneFilterChips(filters);
+
+    const searchChip = chips.find(c => c.label === '"dart"');
+    expect(searchChip.filterType).toBe('searchText');
+    expect(searchChip.filterValue).toBe(null);
+  });
+
+  it('should NOT generate search chip when searchText is empty', () => {
+    const filters = { ...defaultDroneFilters, searchText: '' };
+    const chips = generateDroneFilterChips(filters);
+
+    expect(chips.some(c => c.filterType === 'searchText')).toBe(false);
   });
 });

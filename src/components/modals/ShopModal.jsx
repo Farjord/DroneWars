@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { ShoppingCart, Package } from 'lucide-react';
+import { ShoppingCart, Package, HelpCircle } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
 import gameStateManager from '../../managers/GameStateManager.js';
 import { tacticalItemCollection } from '../../data/tacticalItemData.js';
@@ -22,9 +22,20 @@ const CardPackShopCard = ({ packType, tier, config, cost, canAfford, onBuy }) =>
   const packColor = config.color || '#667eea';
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        background: 'rgba(0, 0, 0, 0.35)',
+        borderRadius: '4px',
+        padding: '12px',
+        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+      }}
+    >
+      {/* Card */}
       <div
-        className="rounded-lg p-[4px] relative group transition-all duration-200 hover:scale-[1.02]"
+        className="rounded-lg p-[4px] relative"
         style={{
           width: '225px',
           height: '275px',
@@ -67,37 +78,39 @@ const CardPackShopCard = ({ packType, tier, config, cost, canAfford, onBuy }) =>
               Contains {cardCount} card{cardCount > 1 ? 's' : ''}
             </p>
           </div>
-
-          {/* Footer - Cost & Buy */}
-          <div
-            className="flex flex-col items-center justify-center py-2 min-h-[60px]"
-            style={{ backgroundColor: `${packColor}80` }}
-          >
-            <span className="font-orbitron text-lg font-bold text-yellow-400">
-              {cost.toLocaleString()}
-              <span className="text-sm ml-1 opacity-80">cr</span>
-            </span>
-            <button
-              onClick={onBuy}
-              disabled={!canAfford}
-              className={`
-                mt-1 px-4 py-1 text-xs font-orbitron uppercase tracking-wide rounded
-                transition-all duration-200
-                ${!canAfford
-                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-500 text-white cursor-pointer'
-                }
-              `}
-            >
-              Buy Pack
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* Limited Stock label */}
-      <div className="text-xs font-orbitron text-center text-amber-400">
-        Limited Stock
+      {/* Controls Below Card */}
+      <div className="flex flex-col items-center gap-2 mt-3 w-full">
+        {/* Cost */}
+        <div className="flex items-center justify-center gap-1">
+          <span className="font-orbitron text-lg font-bold text-yellow-400">
+            {cost.toLocaleString()}
+          </span>
+          <span className="text-sm text-yellow-400/80">cr</span>
+        </div>
+
+        {/* Buy Button */}
+        <button
+          onClick={onBuy}
+          disabled={!canAfford}
+          className={`
+            px-6 py-1.5 text-xs font-orbitron uppercase tracking-wide rounded
+            transition-all duration-200 w-full max-w-[160px]
+            ${!canAfford
+              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+              : 'bg-green-600 hover:bg-green-500 text-white cursor-pointer'
+            }
+          `}
+        >
+          Buy Pack
+        </button>
+
+        {/* Limited Stock label */}
+        <div className="text-xs font-orbitron text-center text-amber-400">
+          Limited Stock
+        </div>
       </div>
     </div>
   );
@@ -107,7 +120,7 @@ const CardPackShopCard = ({ packType, tier, config, cost, canAfford, onBuy }) =>
  * ShopModal Component
  * Allows players to purchase tactical items and card packs
  */
-const ShopModal = ({ onClose }) => {
+const ShopModal = ({ onClose, onShowHelp }) => {
   const { gameState } = useGameState();
   const [feedback, setFeedback] = useState(null);
   const [purchasedCards, setPurchasedCards] = useState(null); // For loot reveal
@@ -194,9 +207,9 @@ const ShopModal = ({ onClose }) => {
   return (
     <>
       <div className="dw-modal-overlay" onClick={onClose}>
-        <div className="dw-modal-content dw-modal--xl dw-modal--action" onClick={e => e.stopPropagation()}>
+        <div className="dw-modal-content dw-modal--xl dw-modal--action" onClick={e => e.stopPropagation()} style={{ maxWidth: '1200px' }}>
           {/* Header */}
-          <div className="dw-modal-header">
+          <div className="dw-modal-header" style={{ position: 'relative' }}>
             <div className="dw-modal-header-icon">
               <ShoppingCart size={28} />
             </div>
@@ -204,6 +217,30 @@ const ShopModal = ({ onClose }) => {
               <h2 className="dw-modal-header-title">Shop</h2>
               <p className="dw-modal-header-subtitle">Purchase tactical items and card packs</p>
             </div>
+            {onShowHelp && (
+              <button
+                onClick={onShowHelp}
+                className="dw-modal-help-btn"
+                title="Show help"
+                style={{
+                  position: 'absolute',
+                  top: '12px',
+                  right: '12px',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  borderRadius: '4px',
+                  color: '#06b6d4',
+                  opacity: 0.7,
+                  transition: 'opacity 0.2s ease'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+              >
+                <HelpCircle size={20} />
+              </button>
+            )}
           </div>
 
           {/* Body */}
@@ -225,7 +262,7 @@ const ShopModal = ({ onClose }) => {
             <div className="dw-modal-scroll" style={{ maxHeight: '400px' }}>
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+                gridTemplateColumns: 'repeat(4, 1fr)',
                 gap: '16px',
                 justifyItems: 'center'
               }}>
@@ -248,21 +285,56 @@ const ShopModal = ({ onClose }) => {
                   const atMaxCapacity = owned >= item.maxCapacity;
 
                   return (
-                    <div key={item.id} className="flex flex-col items-center gap-2">
-                      <TacticalItemCard
-                        item={item}
-                        showCost={true}
-                        onBuy={() => handlePurchase(item)}
-                        disabled={!canBuy}
-                      />
-                      {/* Owned quantity display */}
-                      <div className="text-sm font-orbitron text-center">
-                        <span className={`${atMaxCapacity ? 'text-green-400' : 'text-cyan-300'}`}>
-                          Owned: {owned} / {item.maxCapacity}
-                        </span>
-                        {atMaxCapacity && (
-                          <span className="block text-xs text-green-400 mt-1">MAX</span>
-                        )}
+                    <div
+                      key={item.id}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        background: 'rgba(0, 0, 0, 0.35)',
+                        borderRadius: '4px',
+                        padding: '12px',
+                        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+                      }}
+                    >
+                      {/* Card */}
+                      <TacticalItemCard item={item} />
+
+                      {/* Controls Below Card */}
+                      <div className="flex flex-col items-center gap-2 mt-3 w-full">
+                        {/* Cost */}
+                        <div className="flex items-center justify-center gap-1">
+                          <span className="font-orbitron text-lg font-bold text-yellow-400">
+                            {item.cost.toLocaleString()}
+                          </span>
+                          <span className="text-sm text-yellow-400/80">cr</span>
+                        </div>
+
+                        {/* Buy Button */}
+                        <button
+                          onClick={() => handlePurchase(item)}
+                          disabled={!canBuy}
+                          className={`
+                            px-6 py-1.5 text-xs font-orbitron uppercase tracking-wide rounded
+                            transition-all duration-200 w-full max-w-[160px]
+                            ${!canBuy
+                              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                              : 'bg-cyan-600 hover:bg-cyan-500 text-white cursor-pointer'
+                            }
+                          `}
+                        >
+                          Buy
+                        </button>
+
+                        {/* Owned Quantity */}
+                        <div className="text-sm font-orbitron text-center">
+                          <span className={atMaxCapacity ? 'text-green-400' : 'text-cyan-300'}>
+                            Owned: {owned} / {item.maxCapacity}
+                          </span>
+                          {atMaxCapacity && (
+                            <span className="block text-xs text-green-400 mt-1">MAX</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );

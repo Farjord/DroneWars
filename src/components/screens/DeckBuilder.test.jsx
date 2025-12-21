@@ -62,7 +62,10 @@ vi.mock('../ui/ShipSection.jsx', () => ({ default: () => null }));
 vi.mock('../ui/ShipConfigurationTab.jsx', () => ({ default: () => null }));
 vi.mock('../modals/CardFilterModal.jsx', () => ({ default: () => null }));
 vi.mock('../modals/DroneFilterModal.jsx', () => ({ default: () => null }));
-vi.mock('../ui/FilterChip.jsx', () => ({ default: () => null }));
+// FilterChip mock - will be configured in tests
+vi.mock('../ui/FilterChip.jsx', () => ({
+  default: vi.fn(() => null)
+}));
 
 import DeckBuilder from './DeckBuilder.jsx';
 

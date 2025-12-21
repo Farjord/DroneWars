@@ -4,7 +4,7 @@
 // Full inventory with category tabs: Cards, Drones, Ships, Ship Sections
 
 import React, { useState, useMemo } from 'react';
-import { Package, Layers, Cpu, Rocket, Box, Zap } from 'lucide-react';
+import { Package, Layers, Cpu, Rocket, Box, Zap, HelpCircle } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
 import fullCardCollection from '../../data/cardData';
 import { RARITY_COLORS } from '../../data/cardData';
@@ -25,7 +25,7 @@ import { tacticalItemCollection } from '../../data/tacticalItemData';
  * InventoryModal Component
  * Full inventory with category tabs: Cards, Drones, Ships, Ship Sections, Tactical
  */
-const InventoryModal = ({ onClose }) => {
+const InventoryModal = ({ onClose, onShowHelp }) => {
   const { gameState } = useGameState();
   const [activeCategory, setActiveCategory] = useState('Cards');
   const [selectedTab, setSelectedTab] = useState('All');
@@ -184,11 +184,22 @@ const InventoryModal = ({ onClose }) => {
     const ownedCount = enrichedDrones.filter(d => d.ownedCount > 0 || d.isStarterDrone).length;
     const totalInstances = singlePlayerDroneInstances.filter(i => i.shipSlotId === null).length;
 
+    // Stats per rarity
+    const byRarity = {};
+    for (const rarity of ['Common', 'Uncommon', 'Rare', 'Mythic']) {
+      const rarityDrones = enrichedDrones.filter(d => d.rarity === rarity);
+      byRarity[rarity] = {
+        total: rarityDrones.length,
+        owned: rarityDrones.filter(d => d.ownedCount > 0 || d.isStarterDrone).length
+      };
+    }
+
     return {
       total: enrichedDrones.length,
       owned: ownedCount,
       starter: starterCount,
-      instances: totalInstances
+      instances: totalInstances,
+      byRarity
     };
   }, [enrichedDrones, singlePlayerDroneInstances]);
 
@@ -226,11 +237,22 @@ const InventoryModal = ({ onClose }) => {
     const ownedCount = enrichedComponents.filter(c => c.ownedCount > 0 || c.isStarterComponent).length;
     const totalInstances = singlePlayerShipComponentInstances.filter(i => i.shipSlotId === null).length;
 
+    // Stats per rarity
+    const byRarity = {};
+    for (const rarity of ['Common', 'Uncommon', 'Rare', 'Mythic']) {
+      const rarityComps = enrichedComponents.filter(c => c.rarity === rarity);
+      byRarity[rarity] = {
+        total: rarityComps.length,
+        owned: rarityComps.filter(c => c.ownedCount > 0 || c.isStarterComponent).length
+      };
+    }
+
     return {
       total: enrichedComponents.length,
       owned: ownedCount,
       starter: starterCount,
-      instances: totalInstances
+      instances: totalInstances,
+      byRarity
     };
   }, [enrichedComponents, singlePlayerShipComponentInstances]);
 
@@ -264,10 +286,21 @@ const InventoryModal = ({ onClose }) => {
     const starterCount = enrichedShips.filter(s => s.isStarterShip).length;
     const ownedCount = enrichedShips.filter(s => s.ownedCount > 0 || s.isStarterShip).length;
 
+    // Stats per rarity
+    const byRarity = {};
+    for (const rarity of ['Common', 'Uncommon', 'Rare', 'Mythic']) {
+      const rarityShips = enrichedShips.filter(s => s.rarity === rarity);
+      byRarity[rarity] = {
+        total: rarityShips.length,
+        owned: rarityShips.filter(s => s.ownedCount > 0 || s.isStarterShip).length
+      };
+    }
+
     return {
       total: enrichedShips.length,
       owned: ownedCount,
-      starter: starterCount
+      starter: starterCount,
+      byRarity
     };
   }, [enrichedShips]);
 
@@ -339,9 +372,21 @@ const InventoryModal = ({ onClose }) => {
 
   return (
     <div className="dw-modal-overlay" onClick={onClose}>
-      <div className="dw-modal-content dw-modal--action" onClick={e => e.stopPropagation()} style={{ maxWidth: '1150px', width: '95%' }}>
+      <div
+        className="dw-modal-content dw-modal--action"
+        onClick={e => e.stopPropagation()}
+        style={{
+          maxWidth: '1150px',
+          width: '95%',
+          height: '85vh',
+          maxHeight: '85vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}
+      >
         {/* Header */}
-        <div className="dw-modal-header">
+        <div className="dw-modal-header" style={{ position: 'relative' }}>
           <div className="dw-modal-header-icon">
             <Package size={28} />
           </div>
@@ -349,12 +394,45 @@ const InventoryModal = ({ onClose }) => {
             <h2 className="dw-modal-header-title">Inventory</h2>
             <p className="dw-modal-header-subtitle">{getSubtitle()}</p>
           </div>
+          {onShowHelp && (
+            <button
+              onClick={onShowHelp}
+              className="dw-modal-help-btn"
+              title="Show help"
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                padding: '4px',
+                borderRadius: '4px',
+                color: '#06b6d4',
+                opacity: 0.7,
+                transition: 'opacity 0.2s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+            >
+              <HelpCircle size={20} />
+            </button>
+          )}
         </div>
 
         {/* Body */}
-        <div className="dw-modal-body">
-          {/* Category Tabs */}
-          <div className="dw-modal-tabs" style={{ marginBottom: '16px' }}>
+        <div
+          className="dw-modal-body"
+          style={{
+            flex: '1 1 auto',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: 0
+          }}
+        >
+          {/* Category Tabs - Fixed at top */}
+          <div className="dw-modal-tabs" style={{ marginBottom: '16px', flexShrink: 0 }}>
             {categories.map(cat => {
               const Icon = cat.icon;
               return (
@@ -380,27 +458,39 @@ const InventoryModal = ({ onClose }) => {
             })}
           </div>
 
-          {/* ===== CARDS CATEGORY ===== */}
+          {/* ===== CARDS CATEGORY - Fixed Filters ===== */}
           {activeCategory === 'Cards' && (
-            <>
-              {/* Collection Stats Grid */}
-              <div className="dw-modal-grid dw-modal-grid--4" style={{ marginBottom: '16px' }}>
+            <div style={{ flexShrink: 0 }}>
+              {/* Collection Stats Grid - Compact */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: '8px',
+                marginBottom: '12px'
+              }}>
                 {Object.entries(collectionStats.byRarity).map(([rarity, stats]) => (
                   <div
                     key={rarity}
-                    className="dw-modal-stat"
-                    style={{ borderLeft: `3px solid ${getRarityColor(rarity)}` }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '6px 10px',
+                      background: 'rgba(0, 0, 0, 0.3)',
+                      borderLeft: `3px solid ${getRarityColor(rarity)}`,
+                      borderRadius: '2px'
+                    }}
                   >
-                    <div className="dw-modal-stat-label">{rarity}</div>
-                    <div className="dw-modal-stat-value" style={{ color: getRarityColor(rarity) }}>
-                      {stats.owned} / {stats.total}
-                    </div>
+                    <span style={{ fontSize: '11px', color: 'var(--modal-text-secondary)' }}>{rarity}</span>
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: getRarityColor(rarity) }}>
+                      {stats.owned}/{stats.total}
+                    </span>
                   </div>
                 ))}
               </div>
 
               {/* Tab Navigation */}
-              <div className="dw-modal-tabs">
+              <div className="dw-modal-tabs" style={{ marginBottom: '12px' }}>
                 {cardTypeTabs.map(tab => (
                   <button
                     key={tab}
@@ -411,9 +501,107 @@ const InventoryModal = ({ onClose }) => {
                   </button>
                 ))}
               </div>
+            </div>
+          )}
 
-          {/* Cards Grid */}
-          <div className="dw-modal-scroll" style={{ maxHeight: '550px' }}>
+          {/* ===== DRONES CATEGORY - Fixed Stats Header ===== */}
+          {activeCategory === 'Drones' && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: '8px',
+              marginBottom: '12px',
+              flexShrink: 0
+            }}>
+              {Object.entries(droneStats.byRarity).map(([rarity, stats]) => (
+                <div
+                  key={rarity}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 10px',
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    borderLeft: `3px solid ${getRarityColor(rarity)}`,
+                    borderRadius: '2px'
+                  }}
+                >
+                  <span style={{ fontSize: '11px', color: 'var(--modal-text-secondary)' }}>{rarity}</span>
+                  <span style={{ fontSize: '12px', fontWeight: '600', color: getRarityColor(rarity) }}>
+                    {stats.owned}/{stats.total}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ===== SHIPS CATEGORY - Fixed Stats Header ===== */}
+          {activeCategory === 'Ships' && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: '8px',
+              marginBottom: '12px',
+              flexShrink: 0
+            }}>
+              {Object.entries(shipStats.byRarity).map(([rarity, stats]) => (
+                <div
+                  key={rarity}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 10px',
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    borderLeft: `3px solid ${getRarityColor(rarity)}`,
+                    borderRadius: '2px'
+                  }}
+                >
+                  <span style={{ fontSize: '11px', color: 'var(--modal-text-secondary)' }}>{rarity}</span>
+                  <span style={{ fontSize: '12px', fontWeight: '600', color: getRarityColor(rarity) }}>
+                    {stats.owned}/{stats.total}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ===== SECTIONS CATEGORY - Fixed Stats Header ===== */}
+          {activeCategory === 'Sections' && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: '8px',
+              marginBottom: '12px',
+              flexShrink: 0
+            }}>
+              {Object.entries(componentStats.byRarity).map(([rarity, stats]) => (
+                <div
+                  key={rarity}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 10px',
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    borderLeft: `3px solid ${getRarityColor(rarity)}`,
+                    borderRadius: '2px'
+                  }}
+                >
+                  <span style={{ fontSize: '11px', color: 'var(--modal-text-secondary)' }}>{rarity}</span>
+                  <span style={{ fontSize: '12px', fontWeight: '600', color: getRarityColor(rarity) }}>
+                    {stats.owned}/{stats.total}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Scrollable Content Area */}
+          <div className="dw-modal-scroll" style={{ flex: '1 1 auto', overflowY: 'auto', minHeight: 0 }}>
+
+          {/* ===== CARDS CATEGORY - Scrollable Grid ===== */}
+          {activeCategory === 'Cards' && (
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
@@ -522,13 +710,11 @@ const InventoryModal = ({ onClose }) => {
                 );
               })}
             </div>
-          </div>
-            </>
           )}
 
           {/* ===== DRONES CATEGORY ===== */}
           {activeCategory === 'Drones' && (
-            <div className="dw-modal-scroll" style={{ maxHeight: '550px' }}>
+            <div>
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
@@ -635,7 +821,7 @@ const InventoryModal = ({ onClose }) => {
 
           {/* ===== SHIPS CATEGORY ===== */}
           {activeCategory === 'Ships' && (
-            <div className="dw-modal-scroll" style={{ maxHeight: '550px' }}>
+            <div>
               {enrichedShips.length === 0 ? (
                 <div className="dw-modal-info-box" style={{ textAlign: 'center', padding: '40px' }}>
                   <Rocket size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
@@ -749,7 +935,7 @@ const InventoryModal = ({ onClose }) => {
 
           {/* ===== SHIP SECTIONS CATEGORY ===== */}
           {activeCategory === 'Sections' && (
-            <div className="dw-modal-scroll" style={{ maxHeight: '550px' }}>
+            <div>
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
@@ -856,7 +1042,7 @@ const InventoryModal = ({ onClose }) => {
 
           {/* TACTICAL ITEMS TAB */}
           {activeCategory === 'Tactical' && (
-            <div className="dw-modal-scroll" style={{ maxHeight: '550px' }}>
+            <div>
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))',
@@ -865,6 +1051,7 @@ const InventoryModal = ({ onClose }) => {
               }}>
                 {tacticalItemCollection.map(item => {
                   const owned = singlePlayerProfile?.tacticalItems?.[item.id] || 0;
+                  const isAtMax = owned >= item.maxCapacity;
 
                   return (
                     <div
@@ -891,12 +1078,22 @@ const InventoryModal = ({ onClose }) => {
                           transform: 'scale(0.72)',
                           transformOrigin: 'top left'
                         }}>
-                          <TacticalItemCard
-                            item={item}
-                            showQuantity={true}
-                            owned={owned}
-                          />
+                          <TacticalItemCard item={item} />
                         </div>
+                      </div>
+
+                      {/* Quantity Display Below Card */}
+                      <div
+                        style={{
+                          marginTop: '8px',
+                          padding: '4px 0',
+                          color: isAtMax ? 'var(--modal-success)' : 'var(--modal-text-primary)',
+                          fontWeight: '600',
+                          fontSize: '15px',
+                          textAlign: 'center'
+                        }}
+                      >
+                        <span className="font-orbitron">{owned} / {item.maxCapacity}</span>
                       </div>
                     </div>
                   );
@@ -912,6 +1109,7 @@ const InventoryModal = ({ onClose }) => {
               </div>
             </div>
           )}
+          </div>{/* End Scrollable Content Area */}
         </div>
 
         {/* Card Detail Popup */}
