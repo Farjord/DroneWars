@@ -153,6 +153,58 @@ const StatLabel = ({ text, helpKey }) => {
 };
 
 /**
+ * EscapeRouteDisplay - Shows threat cost to reach nearest extraction gate
+ */
+const EscapeRouteDisplay = ({ escapeRouteData, hasWaypoints }) => {
+  if (!escapeRouteData) return null;
+
+  const { fromCurrent, afterJourney, noPathExists } = escapeRouteData;
+
+  if (noPathExists) {
+    return (
+      <div className="escape-route-display escape-route-trapped">
+        <span className="escape-route-icon">!</span>
+        <span className="escape-route-text">No escape route available</span>
+      </div>
+    );
+  }
+
+  const getStatusClass = (wouldMIA) => wouldMIA ? 'escape-critical' : 'escape-safe';
+  const formatCost = (cost) => {
+    if (cost === undefined || cost === null) return '?';
+    if (!Number.isFinite(cost)) return 'N/A';
+    return `+${cost.toFixed(1)}%`;
+  };
+
+  return (
+    <div className="escape-route-display">
+      <div className="escape-route-header">
+        <StatLabel text="Escape Route" helpKey="escapeRoute" />
+      </div>
+      <div className="escape-route-values">
+        {fromCurrent && (
+          <div className={`escape-route-item ${getStatusClass(fromCurrent.wouldMIA)}`}>
+            <span className="escape-label">Current</span>
+            <span className="escape-arrow">→</span>
+            <span className="escape-cost">{formatCost(fromCurrent.threatCost)}</span>
+          </div>
+        )}
+        {hasWaypoints && afterJourney && (
+          <>
+            <span className="escape-divider">|</span>
+            <div className={`escape-route-item ${getStatusClass(afterJourney.wouldMIA)}`}>
+              <span className="escape-label">After Journey</span>
+              <span className="escape-arrow">→</span>
+              <span className="escape-cost">{formatCost(afterJourney.threatCost)}</span>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/**
  * HexInfoPanel - Two-view panel for journey planning and hex inspection
  *
  * Views:
@@ -196,7 +248,14 @@ function HexInfoPanel({
   lootedPOIs = [],
 
   // Scanning state
-  isScanningHex = false
+  isScanningHex = false,
+
+  // Escape route data
+  escapeRouteData = null,
+
+  // Pathfinding mode
+  pathMode = 'shortest',
+  onPathModeChange
 }) {
   // Use passed tierConfig if available, otherwise compute from mapData
   const tierConfig = passedTierConfig || (mapData ? mapTiers[mapData.tier - 1] : null);
@@ -696,9 +755,32 @@ function HexInfoPanel({
             {Math.round(currentDetection)}%
           </span>
         </div>
+        {/* Escape Route Display */}
+        <EscapeRouteDisplay
+          escapeRouteData={escapeRouteData}
+          hasWaypoints={waypoints.length > 0}
+        />
       </div>
 
       <div className="hex-info-content">
+        {/* MIA Warning */}
+        {(() => {
+          const wouldCauseMIA = waypoints.some(wp => wp.cumulativeDetection >= 100);
+          const firstMIAWaypoint = waypoints.findIndex(wp => wp.cumulativeDetection >= 100);
+          if (wouldCauseMIA) {
+            return (
+              <div className="escape-route-mia-warning">
+                <IconWarning size={20} className="icon-critical" />
+                <div className="mia-warning-text">
+                  <strong>FATAL PATH</strong>
+                  <span>Waypoint {firstMIAWaypoint + 1} will cause MIA</span>
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
+
         {waypoints.length === 0 ? (
           <div className="hex-info-empty">
             <span className="empty-icon"><IconRadar size={48} className="icon-radar" /></span>
@@ -752,6 +834,25 @@ function HexInfoPanel({
           </div>
         )}
       </div>
+
+      {/* Pathfinding Mode Toggle */}
+      {onPathModeChange && (
+        <div className="pathfinding-mode-toggle">
+          <span className="toggle-label">Path:</span>
+          <button
+            className={`toggle-btn ${pathMode === 'lowEncounter' ? 'active' : ''}`}
+            onClick={() => onPathModeChange('lowEncounter')}
+          >
+            Low Encounter
+          </button>
+          <button
+            className={`toggle-btn ${pathMode === 'lowThreat' ? 'active' : ''}`}
+            onClick={() => onPathModeChange('lowThreat')}
+          >
+            Low Threat
+          </button>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="hex-info-actions">

@@ -87,9 +87,9 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
         creditsEarned: 50,
         aiCoresEarned: 0,
         shipSections: {
-          'Bridge': { id: 'BRIDGE_001', type: 'Bridge', hull: 7, maxHull: 10, lane: 'l' }, // 3 damage
-          'Power Cell': { id: 'POWERCELL_001', type: 'Power Cell', hull: 5, maxHull: 10, lane: 'm' }, // 5 damage
-          'Drone Control Hub': { id: 'DRONECONTROL_001', type: 'Drone Control Hub', hull: 10, maxHull: 10, lane: 'r' } // No damage
+          bridge: { id: 'BRIDGE_001', type: 'Bridge', hull: 7, maxHull: 10, lane: 'l' }, // 3 damage
+          powerCell: { id: 'POWERCELL_001', type: 'Power Cell', hull: 5, maxHull: 10, lane: 'm' }, // 5 damage
+          droneControlHub: { id: 'DRONECONTROL_001', type: 'Drone Control Hub', hull: 10, maxHull: 10, lane: 'r' } // No damage
         },
         currentHull: 22,
         maxHull: 30
@@ -118,7 +118,7 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
         creditsEarned: 50,
         aiCoresEarned: 0,
         shipSections: {
-          'Bridge': { id: 'BRIDGE_001', type: 'Bridge', hull: 5, maxHull: 10, lane: 'l' }
+          bridge: { id: 'BRIDGE_001', type: 'Bridge', hull: 5, maxHull: 10, lane: 'l' }
         },
         currentHull: 25,
         maxHull: 30
@@ -149,7 +149,7 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
         creditsEarned: 0,
         aiCoresEarned: 0,
         shipSections: {
-          'Bridge': { id: 'BRIDGE_001', type: 'Bridge', hull: 3, maxHull: 10, lane: 'l' } // Further damaged
+          bridge: { id: 'BRIDGE_001', type: 'Bridge', hull: 3, maxHull: 10, lane: 'l' } // Further damaged
         },
         currentHull: 23,
         maxHull: 30
@@ -190,10 +190,10 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       const runState = state.currentRunState;
 
       expect(runState).toBeDefined();
-      // Types use capital case: 'Bridge', 'Power Cell', 'Drone Control Hub'
+      // Keys use lowercase camelCase: 'bridge', 'powerCell', 'droneControlHub'
       // SHIP_001 has baseHull = 8, standard components have hullModifier = 0
-      expect(runState.shipSections['Bridge'].hull).toBe(4); // 8 - 4
-      expect(runState.shipSections['Power Cell'].hull).toBe(2); // 8 - 6
+      expect(runState.shipSections['bridge'].hull).toBe(4); // 8 - 4
+      expect(runState.shipSections['powerCell'].hull).toBe(2); // 8 - 6
     });
 
     it('should use full hull for slot 0 (starter deck) regardless of any saved damage', () => {
@@ -234,8 +234,8 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       });
 
       let state = gameStateManager.getState();
-      // Section types use capital case: 'Bridge', 'Power Cell', 'Drone Control Hub'
-      const bridgeSection = state.currentRunState.shipSections['Bridge'];
+      // Section keys use lowercase camelCase: 'bridge', 'powerCell', 'droneControlHub'
+      const bridgeSection = state.currentRunState.shipSections['bridge'];
       expect(bridgeSection).toBeDefined();
       // SHIP_001 has baseHull = 8, standard components have hullModifier = 0
       expect(bridgeSection.hull).toBe(8); // Full hull to start
@@ -245,15 +245,15 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
         ...state.currentRunState.shipSections
       };
       // Damage the bridge section
-      if (damagedSections['Bridge']) {
-        damagedSections['Bridge'] = { ...damagedSections['Bridge'], hull: 4, lane: 'l' };
+      if (damagedSections['bridge']) {
+        damagedSections['bridge'] = { ...damagedSections['bridge'], hull: 4, lane: 'l' };
       }
       // Ensure other sections have their lane info
-      if (damagedSections['Power Cell']) {
-        damagedSections['Power Cell'] = { ...damagedSections['Power Cell'], lane: 'm' };
+      if (damagedSections['powerCell']) {
+        damagedSections['powerCell'] = { ...damagedSections['powerCell'], lane: 'm' };
       }
-      if (damagedSections['Drone Control Hub']) {
-        damagedSections['Drone Control Hub'] = { ...damagedSections['Drone Control Hub'], lane: 'r' };
+      if (damagedSections['droneControlHub']) {
+        damagedSections['droneControlHub'] = { ...damagedSections['droneControlHub'], lane: 'r' };
       }
 
       gameStateManager.setState({
@@ -287,10 +287,95 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
 
       // Assert: New run should start with damaged hull from previous run
       state = gameStateManager.getState();
-      const newBridgeSection = state.currentRunState.shipSections['Bridge'];
+      const newBridgeSection = state.currentRunState.shipSections['bridge'];
 
       expect(newBridgeSection).toBeDefined();
       expect(newBridgeSection.hull).toBe(4); // Should retain damage from previous run
+    });
+  });
+
+  // ========================================
+  // BUG FIX TESTS: Section Key Format Consistency
+  // ========================================
+  // TDD Tests for key mismatch bug fix
+  //
+  // Bug: startRun creates sections with uppercase keys ('Bridge', 'Power Cell', 'Drone Control Hub')
+  // but CombatOutcomeProcessor and SinglePlayerCombatInitializer expect lowercase keys
+  // ('bridge', 'powerCell', 'droneControlHub')
+  //
+  // This causes thresholds to be lost when combat ends, breaking extraction limit calculations
+
+  describe('startRun - section key format (bug fix)', () => {
+    it('should create shipSections with lowercase camelCase keys', () => {
+      // Setup: Start a run
+      gameStateManager.startRun(1, 1, 0, {
+        name: 'Test Map',
+        hexes: [{ q: 0, r: 0 }],
+        gates: [{ q: 0, r: 0 }],
+        poiCount: 1,
+        gateCount: 1
+      });
+
+      // Assert: Keys should be lowercase camelCase to match CombatOutcomeProcessor expectations
+      const state = gameStateManager.getState();
+      const shipSections = state.currentRunState.shipSections;
+
+      // Verify lowercase keys exist
+      expect(shipSections['bridge']).toBeDefined();
+      expect(shipSections['powerCell']).toBeDefined();
+      expect(shipSections['droneControlHub']).toBeDefined();
+
+      // Verify uppercase keys do NOT exist (the bug)
+      expect(shipSections['Bridge']).toBeUndefined();
+      expect(shipSections['Power Cell']).toBeUndefined();
+      expect(shipSections['Drone Control Hub']).toBeUndefined();
+    });
+
+    it('should include thresholds in each section for damage calculations', () => {
+      // Setup: Start a run
+      gameStateManager.startRun(1, 1, 0, {
+        name: 'Test Map',
+        hexes: [{ q: 0, r: 0 }],
+        gates: [{ q: 0, r: 0 }],
+        poiCount: 1,
+        gateCount: 1
+      });
+
+      // Assert: Each section should have thresholds for extraction limit calculation
+      const state = gameStateManager.getState();
+      const shipSections = state.currentRunState.shipSections;
+
+      // All sections should have thresholds defined
+      Object.values(shipSections).forEach(section => {
+        expect(section.thresholds).toBeDefined();
+        expect(section.thresholds.damaged).toBeDefined();
+        expect(typeof section.thresholds.damaged).toBe('number');
+      });
+    });
+
+    it('should create sections compatible with CombatOutcomeProcessor spread pattern', () => {
+      // Setup: Start a run
+      gameStateManager.startRun(1, 1, 0, {
+        name: 'Test Map',
+        hexes: [{ q: 0, r: 0 }],
+        gates: [{ q: 0, r: 0 }],
+        poiCount: 1,
+        gateCount: 1
+      });
+
+      const state = gameStateManager.getState();
+      const shipSections = state.currentRunState.shipSections;
+
+      // Simulate what CombatOutcomeProcessor does when updating sections
+      // It spreads from currentRunState.shipSections?.bridge || {}
+      const updatedBridge = {
+        ...(shipSections?.bridge || {}),
+        hull: 5 // Simulated new hull value from combat
+      };
+
+      // If the key mismatch bug is fixed, thresholds should be preserved
+      expect(updatedBridge.thresholds).toBeDefined();
+      expect(updatedBridge.thresholds.damaged).toBeDefined();
     });
   });
 });

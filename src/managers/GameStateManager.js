@@ -12,7 +12,7 @@ import OptimisticActionService from './OptimisticActionService.js';
 import fullDroneCollection from '../data/droneData.js';
 import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
-import { createNewSave, starterPoolCards, starterPoolDroneNames } from '../data/saveGameSchema.js';
+import { createNewSave, starterPoolCards, starterPoolDroneNames, convertComponentsToSectionSlots } from '../data/saveGameSchema.js';
 import { ECONOMY } from '../data/economyData.js';
 import { generateMapData } from '../utils/mapGenerator.js';
 import CombatOutcomeProcessor from '../logic/singlePlayer/CombatOutcomeProcessor.js';
@@ -2039,12 +2039,23 @@ class GameStateManager {
     // Clear old instances for this slot
     this.clearSlotInstances(slotId);
 
-    // Preserve existing sectionSlots if not provided, or use existing
-    const existingSectionSlots = slots[slotIndex].sectionSlots || {
-      l: { componentId: null, damageDealt: 0 },
-      m: { componentId: null, damageDealt: 0 },
-      r: { componentId: null, damageDealt: 0 }
-    };
+    // Preserve existing sectionSlots OR convert from shipComponents
+    // This ensures componentIds are properly populated for damage persistence
+    let existingSectionSlots = slots[slotIndex].sectionSlots
+      || convertComponentsToSectionSlots(shipComponents);
+
+    // Update componentIds from shipComponents while preserving damageDealt
+    if (shipComponents) {
+      existingSectionSlots = { ...existingSectionSlots };
+      Object.entries(shipComponents).forEach(([componentId, lane]) => {
+        if (existingSectionSlots[lane]) {
+          existingSectionSlots[lane] = {
+            ...existingSectionSlots[lane],
+            componentId
+          };
+        }
+      });
+    }
 
     slots[slotIndex] = {
       ...slots[slotIndex],
@@ -2471,6 +2482,18 @@ class GameStateManager {
     let totalHull = 0;
     let maxHull = 0;
 
+    // Helper to normalize component type to lowercase camelCase key
+    // This ensures consistency with CombatOutcomeProcessor and SinglePlayerCombatInitializer
+    // which expect keys like 'bridge', 'powerCell', 'droneControlHub'
+    const normalizeTypeToKey = (type) => {
+      const typeToKey = {
+        'Bridge': 'bridge',
+        'Power Cell': 'powerCell',
+        'Drone Control Hub': 'droneControlHub'
+      };
+      return typeToKey[type] || type.charAt(0).toLowerCase() + type.slice(1).replace(/\s+/g, '');
+    };
+
     // Use new slot-based format if available, fall back to legacy
     if (shipSlot?.sectionSlots) {
       // New slot-based format: { l: { componentId, damageDealt }, m: {...}, r: {...} }
@@ -2491,7 +2514,9 @@ class GameStateManager {
             ? componentMaxHull
             : Math.max(0, componentMaxHull - damageDealt);
 
-          runShipSections[component.type] = {
+          // Use normalized lowercase key for consistency with CombatOutcomeProcessor
+          const sectionKey = normalizeTypeToKey(component.type);
+          runShipSections[sectionKey] = {
             id: sectionSlot.componentId,
             name: component.name,
             type: component.type,
@@ -2513,7 +2538,9 @@ class GameStateManager {
           const baseStats = calculateSectionBaseStats(shipCard, component);
           const componentMaxHull = baseStats.maxHull;
 
-          runShipSections[component.type] = {
+          // Use normalized lowercase key for consistency with CombatOutcomeProcessor
+          const sectionKey = normalizeTypeToKey(component.type);
+          runShipSections[sectionKey] = {
             id: componentId,
             name: component.name,
             type: component.type,
@@ -2530,13 +2557,14 @@ class GameStateManager {
 
     // Fallback to default sections if no components defined
     // Uses ship card values instead of hardcoded 10/10
+    // Keys use lowercase camelCase for consistency with CombatOutcomeProcessor
     if (Object.keys(runShipSections).length === 0) {
       const defaultThresholds = shipCard?.baseThresholds || { damaged: 4, critical: 0 };
       const defaultHull = shipCard?.baseHull || 8;
 
-      runShipSections.Bridge = { type: 'Bridge', hull: defaultHull, maxHull: defaultHull, thresholds: defaultThresholds, lane: 1 };
-      runShipSections['Power Cell'] = { type: 'Power Cell', hull: defaultHull, maxHull: defaultHull, thresholds: defaultThresholds, lane: 0 };
-      runShipSections['Drone Control Hub'] = { type: 'Drone Control Hub', hull: defaultHull, maxHull: defaultHull, thresholds: defaultThresholds, lane: 2 };
+      runShipSections.bridge = { type: 'Bridge', hull: defaultHull, maxHull: defaultHull, thresholds: defaultThresholds, lane: 'm' };
+      runShipSections.powerCell = { type: 'Power Cell', hull: defaultHull, maxHull: defaultHull, thresholds: defaultThresholds, lane: 'l' };
+      runShipSections.droneControlHub = { type: 'Drone Control Hub', hull: defaultHull, maxHull: defaultHull, thresholds: defaultThresholds, lane: 'r' };
       totalHull = defaultHull * 3;
       maxHull = defaultHull * 3;
     }

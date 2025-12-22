@@ -24,7 +24,8 @@ vi.mock('../../managers/GameStateManager.js', () => ({
     getState: vi.fn(),
     setState: vi.fn(),
     subscribe: vi.fn(() => () => {}),
-    updateShipSlotDroneOrder: vi.fn()
+    updateShipSlotDroneOrder: vi.fn(),
+    isSlotUnlocked: vi.fn().mockReturnValue(true)
   }
 }));
 
@@ -34,6 +35,14 @@ vi.mock('../../logic/economy/RepairService.js', () => ({
     repairDroneSlot: vi.fn().mockReturnValue({ success: true }),
     getSectionRepairCost: vi.fn().mockReturnValue(200),
     repairSectionSlot: vi.fn().mockReturnValue({ success: true })
+  }
+}));
+
+vi.mock('../../logic/reputation/ReputationService.js', () => ({
+  default: {
+    getReputation: vi.fn().mockReturnValue({ current: 0, level: 1, unclaimedRewards: [] }),
+    getLevelData: vi.fn().mockReturnValue({ level: 1, title: 'Rookie', xpToNext: 100, xpForLevel: 0 }),
+    getUnclaimedRewards: vi.fn().mockReturnValue([])
   }
 }));
 
@@ -110,7 +119,32 @@ const createMockShipSlots = () => [
     },
     shipComponents: {}
   },
-  { id: 2, name: 'Empty Slot', status: 'empty', shipId: null, droneSlots: [], sectionSlots: {} },
+  {
+    // This slot simulates the bug case: sectionSlots exists with null componentIds,
+    // but shipComponents has the actual component data (legacy format)
+    id: 2,
+    name: 'Legacy Format Deck',
+    status: 'active',
+    shipId: 'SHIP_001',
+    droneSlots: [
+      { slotIndex: 0, slotDamaged: false, assignedDrone: 'Dart' },
+      { slotIndex: 1, slotDamaged: false, assignedDrone: null },
+      { slotIndex: 2, slotDamaged: false, assignedDrone: null },
+      { slotIndex: 3, slotDamaged: false, assignedDrone: null },
+      { slotIndex: 4, slotDamaged: false, assignedDrone: null }
+    ],
+    sectionSlots: {
+      l: { componentId: null, damageDealt: 2 },
+      m: { componentId: null, damageDealt: 0 },
+      r: { componentId: null, damageDealt: 4 }
+    },
+    // Legacy format: shipComponents has the actual component assignments
+    shipComponents: {
+      'POWERCELL_001': 'l',
+      'BRIDGE_001': 'm',
+      'DRONECONTROL_001': 'r'
+    }
+  },
   { id: 3, name: 'Empty Slot', status: 'empty', shipId: null, droneSlots: [], sectionSlots: {} },
   { id: 4, name: 'Empty Slot', status: 'empty', shipId: null, droneSlots: [], sectionSlots: {} },
   { id: 5, name: 'Empty Slot', status: 'empty', shipId: null, droneSlots: [], sectionSlots: {} }
@@ -472,6 +506,108 @@ describe('RepairBayScreen', () => {
       // Attempt repair
       // Verify error message is shown
       expect(true).toBe(true);
+    });
+  });
+
+  // ========================================
+  // PHASE 8: LEGACY FORMAT FALLBACK TESTS
+  // ========================================
+  describe('Legacy shipComponents Fallback', () => {
+    describe('resolveComponentIdForLane helper', () => {
+      it('should return componentId from sectionSlots when available', async () => {
+        // Import the helper (must be exported from component)
+        const { resolveComponentIdForLane } = await import('./RepairBayScreen.jsx');
+
+        const slot = {
+          sectionSlots: {
+            l: { componentId: 'POWERCELL_001', damageDealt: 0 },
+            m: { componentId: 'BRIDGE_001', damageDealt: 0 },
+            r: { componentId: 'DRONECONTROL_001', damageDealt: 0 }
+          },
+          shipComponents: {}
+        };
+
+        expect(resolveComponentIdForLane(slot, 'l')).toBe('POWERCELL_001');
+        expect(resolveComponentIdForLane(slot, 'm')).toBe('BRIDGE_001');
+        expect(resolveComponentIdForLane(slot, 'r')).toBe('DRONECONTROL_001');
+      });
+
+      it('should fallback to shipComponents when sectionSlots has null componentId', async () => {
+        const { resolveComponentIdForLane } = await import('./RepairBayScreen.jsx');
+
+        // This is the bug case: sectionSlots exists but has null componentIds
+        const slot = {
+          sectionSlots: {
+            l: { componentId: null, damageDealt: 2 },
+            m: { componentId: null, damageDealt: 0 },
+            r: { componentId: null, damageDealt: 4 }
+          },
+          shipComponents: {
+            'POWERCELL_001': 'l',
+            'BRIDGE_001': 'm',
+            'DRONECONTROL_001': 'r'
+          }
+        };
+
+        expect(resolveComponentIdForLane(slot, 'l')).toBe('POWERCELL_001');
+        expect(resolveComponentIdForLane(slot, 'm')).toBe('BRIDGE_001');
+        expect(resolveComponentIdForLane(slot, 'r')).toBe('DRONECONTROL_001');
+      });
+
+      it('should return null when neither sectionSlots nor shipComponents has the component', async () => {
+        const { resolveComponentIdForLane } = await import('./RepairBayScreen.jsx');
+
+        const slot = {
+          sectionSlots: {
+            l: { componentId: null, damageDealt: 0 }
+          },
+          shipComponents: {}
+        };
+
+        expect(resolveComponentIdForLane(slot, 'l')).toBeNull();
+        expect(resolveComponentIdForLane(slot, 'm')).toBeNull();
+      });
+
+      it('should handle missing slot gracefully', async () => {
+        const { resolveComponentIdForLane } = await import('./RepairBayScreen.jsx');
+
+        expect(resolveComponentIdForLane(null, 'l')).toBeNull();
+        expect(resolveComponentIdForLane(undefined, 'm')).toBeNull();
+      });
+    });
+
+    describe('Section display with legacy format', () => {
+      it('should resolve components for slots with legacy shipComponents format', async () => {
+        // Test that the helper correctly resolves components for the legacy format slot
+        const { resolveComponentIdForLane } = await import('./RepairBayScreen.jsx');
+
+        // The legacy format slot (id: 2) has sectionSlots with null componentIds
+        // but shipComponents has the actual assignments
+        const legacySlot = createMockShipSlots().find(s => s.id === 2);
+
+        // Verify componentIds are resolved from shipComponents
+        expect(legacySlot.sectionSlots.l.componentId).toBeNull();
+        expect(legacySlot.sectionSlots.m.componentId).toBeNull();
+        expect(legacySlot.sectionSlots.r.componentId).toBeNull();
+
+        // But the helper should find them in shipComponents
+        expect(resolveComponentIdForLane(legacySlot, 'l')).toBe('POWERCELL_001');
+        expect(resolveComponentIdForLane(legacySlot, 'm')).toBe('BRIDGE_001');
+        expect(resolveComponentIdForLane(legacySlot, 'r')).toBe('DRONECONTROL_001');
+      });
+
+      it('should calculate hull correctly for sections using legacy format', async () => {
+        const { resolveComponentIdForLane } = await import('./RepairBayScreen.jsx');
+
+        // The legacy format slot (id: 2) has damageDealt values
+        // l: damageDealt: 2, m: damageDealt: 0, r: damageDealt: 4
+        const slot = createMockShipSlots().find(s => s.id === 2);
+
+        // Verify the componentId can be resolved for hull calculation
+        expect(resolveComponentIdForLane(slot, 'l')).toBe('POWERCELL_001');
+        expect(resolveComponentIdForLane(slot, 'm')).toBe('BRIDGE_001');
+        expect(resolveComponentIdForLane(slot, 'r')).toBe('DRONECONTROL_001');
+      });
     });
   });
 });

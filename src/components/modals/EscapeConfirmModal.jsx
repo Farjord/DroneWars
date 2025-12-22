@@ -114,6 +114,18 @@ function EscapeConfirmModal({
                 <span className="dw-modal-consequence-icon"><X size={14} /></span>
                 <span>All collected loot will be lost</span>
               </div>
+              {isPOIEncounter && (
+                <>
+                  <div className="dw-modal-consequence">
+                    <span className="dw-modal-consequence-icon"><X size={14} /></span>
+                    <span>This PoI will be locked down by the AI</span>
+                  </div>
+                  <div className="dw-modal-consequence">
+                    <span className="dw-modal-consequence-icon"><X size={14} /></span>
+                    <span>You cannot return to loot this location</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -182,10 +194,16 @@ function EscapeConfirmModal({
               <span>You will receive no loot from this encounter</span>
             </div>
             {isPOIEncounter && (
-              <div className="escape-info-item">
-                <X size={14} style={{ color: 'var(--modal-danger)' }} />
-                <span>You will receive no rewards from this location</span>
-              </div>
+              <>
+                <div className="escape-info-item">
+                  <X size={14} style={{ color: 'var(--modal-danger)' }} />
+                  <span>This PoI will be locked down by the AI</span>
+                </div>
+                <div className="escape-info-item">
+                  <X size={14} style={{ color: 'var(--modal-danger)' }} />
+                  <span>You cannot return to loot this location</span>
+                </div>
+              </>
             )}
           </div>
         </div>

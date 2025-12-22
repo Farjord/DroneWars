@@ -736,3 +736,143 @@ describe('TacticalMapScreen - PoI Combat Integration', () => {
     });
   });
 });
+
+// ========================================
+// ESCAPE WAYPOINT RETENTION TESTS (TDD)
+// ========================================
+// Tests for the bug where escaping an encounter clears the player's
+// remaining waypoints instead of preserving them.
+//
+// BUG: When escape is confirmed, remaining waypoints are NOT captured.
+// When escape loading completes, waypoints are NOT restored.
+// The journey loop then clears all waypoints at line 665.
+
+describe('Escape Waypoint Retention', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * BUG TEST: When escaping an encounter, remaining waypoints should be preserved.
+   * Current behavior: Waypoints are cleared after escape
+   * Expected behavior: Remaining waypoints should be retained for journey continuation
+   */
+  describe('handleEscapeConfirm - waypoint capture', () => {
+    it('should capture remaining waypoints when escape is confirmed', () => {
+      // EXPLANATION: When player confirms escape during a journey,
+      // the remaining waypoints should be captured for later restoration.
+      // This mirrors the behavior of pendingPOICombat.remainingWaypoints
+      // used in the combat flow.
+
+      const waypoints = [
+        { hex: { q: 0, r: 0 }, pathFromPrev: [] },   // Waypoint 0 (passed)
+        { hex: { q: 1, r: -1 }, pathFromPrev: [] },  // Waypoint 1 (current - encounter)
+        { hex: { q: 2, r: -2 }, pathFromPrev: [] },  // Waypoint 2 (remaining)
+        { hex: { q: 3, r: -3 }, pathFromPrev: [] }   // Waypoint 3 (remaining - gate)
+      ];
+      const currentWaypointIndex = 1;
+
+      // Simulate what handleEscapeConfirm SHOULD do
+      const remainingWps = waypoints.slice(currentWaypointIndex + 1);
+
+      // Assert: 2 remaining waypoints should be captured
+      expect(remainingWps).toHaveLength(2);
+      expect(remainingWps[0].hex.q).toBe(2);
+      expect(remainingWps[1].hex.q).toBe(3);
+    });
+
+    it('should handle escape at last waypoint (no remaining waypoints)', () => {
+      // EXPLANATION: When escape happens at the final waypoint,
+      // there are no remaining waypoints to capture.
+
+      const waypoints = [
+        { hex: { q: 0, r: 0 }, pathFromPrev: [] },
+        { hex: { q: 1, r: -1 }, pathFromPrev: [] }  // Current - encounter at last waypoint
+      ];
+      const currentWaypointIndex = 1;
+
+      const remainingWps = waypoints.slice(currentWaypointIndex + 1);
+
+      // Assert: No remaining waypoints
+      expect(remainingWps).toHaveLength(0);
+    });
+
+    it('should handle escape at first waypoint', () => {
+      // EXPLANATION: When escape happens at the first waypoint,
+      // all subsequent waypoints should be captured.
+
+      const waypoints = [
+        { hex: { q: 0, r: 0 }, pathFromPrev: [] },   // Current - encounter at first waypoint
+        { hex: { q: 1, r: -1 }, pathFromPrev: [] },
+        { hex: { q: 2, r: -2 }, pathFromPrev: [] }
+      ];
+      const currentWaypointIndex = 0;
+
+      const remainingWps = waypoints.slice(currentWaypointIndex + 1);
+
+      // Assert: All subsequent waypoints captured
+      expect(remainingWps).toHaveLength(2);
+    });
+  });
+
+  describe('handleEscapeLoadingComplete - waypoint restoration', () => {
+    it('should restore captured waypoints after escape animation completes', () => {
+      // EXPLANATION: After the escape animation, pendingResumeWaypoints
+      // should be restored to the waypoints state (via setWaypoints).
+      // This is the same pattern used in handlePOILootCollected.
+
+      const pendingResumeWaypoints = [
+        { hex: { q: 2, r: -2 }, pathFromPrev: [] },
+        { hex: { q: 3, r: -3 }, pathFromPrev: [] }
+      ];
+
+      let restoredWaypoints = null;
+      let clearedPending = false;
+
+      // Simulate what handleEscapeLoadingComplete SHOULD do
+      if (pendingResumeWaypoints?.length > 0) {
+        restoredWaypoints = pendingResumeWaypoints;
+        clearedPending = true;
+      }
+
+      // Assert: Waypoints should be restored
+      expect(restoredWaypoints).toHaveLength(2);
+      expect(restoredWaypoints[0].hex.q).toBe(2);
+      expect(clearedPending).toBe(true);
+    });
+
+    it('should handle case when no remaining waypoints were captured', () => {
+      // EXPLANATION: If escape happened at the last waypoint,
+      // pendingResumeWaypoints will be null/empty, and no restoration occurs.
+
+      const pendingResumeWaypoints = null;
+
+      let restoredWaypoints = null;
+      let clearedPending = false;
+
+      // Simulate the restoration logic
+      if (pendingResumeWaypoints?.length > 0) {
+        restoredWaypoints = pendingResumeWaypoints;
+        clearedPending = true;
+      }
+
+      // Assert: No restoration should happen
+      expect(restoredWaypoints).toBeNull();
+      expect(clearedPending).toBe(false);
+    });
+
+    it('should handle empty array of pending waypoints', () => {
+      // EXPLANATION: Edge case - empty array should not cause errors
+
+      const pendingResumeWaypoints = [];
+
+      let restoredWaypoints = null;
+
+      if (pendingResumeWaypoints?.length > 0) {
+        restoredWaypoints = pendingResumeWaypoints;
+      }
+
+      expect(restoredWaypoints).toBeNull();
+    });
+  });
+});

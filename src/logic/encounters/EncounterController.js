@@ -9,6 +9,8 @@ import DetectionManager from '../detection/DetectionManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import { generateSalvageItemFromValue } from '../../data/salvageItemData.js';
+import aiPersonalities from '../../data/aiData.js';
+import { getShipById } from '../../data/shipData.js';
 
 /**
  * EncounterController - Singleton manager for POI encounters
@@ -60,6 +62,24 @@ class EncounterController {
     debugLog('ENCOUNTER', `POI outcome: ${outcome.toUpperCase()}`);
 
     return outcome;
+  }
+
+  /**
+   * Get AI personality data by name
+   * @param {string} aiName - AI name to look up
+   * @returns {Object|null} AI personality object with ship data, or null
+   */
+  getAIData(aiName) {
+    const ai = aiPersonalities.find(a => a.name === aiName);
+    if (!ai) return null;
+
+    const ship = getShipById(ai.shipId);
+    return {
+      name: ai.name,
+      shipClass: ship?.name || 'Unknown',
+      difficulty: ai.difficulty || 'Unknown',
+      escapeDamage: ai.escapeDamage || { min: 2, max: 2 }
+    };
   }
 
   /**
@@ -161,11 +181,14 @@ class EncounterController {
       });
 
       const reward = this.calculateReward(poi, 'combat');
+      const guardianName = poi.poiData.guardianAI.id;
+      const aiData = this.getAIData(guardianName);
 
       return {
         poi,
         outcome: 'combat',
-        aiId: poi.poiData.guardianAI.id,  // Use pre-determined guardian
+        aiId: guardianName,  // Use pre-determined guardian
+        aiData,  // Ship class, difficulty, escape damage
         reward,
         detection,
         threatLevel: DetectionManager.getThreshold(),
@@ -181,6 +204,9 @@ class EncounterController {
       ? this.getAIForThreat(tierConfig, detection, poi)
       : null;
 
+    // Get AI data for display (ship class, difficulty, escape damage)
+    const aiData = aiId ? this.getAIData(aiId) : null;
+
     // Calculate reward
     const reward = this.calculateReward(poi, outcome);
 
@@ -189,6 +215,7 @@ class EncounterController {
       poi,
       outcome,           // 'combat' or 'loot'
       aiId,              // AI opponent if combat, null if loot
+      aiData,            // Ship class, difficulty, escape damage (combat only)
       reward,            // Credits and reward info
       detection,         // Detection at time of encounter
       threatLevel: DetectionManager.getThreshold()  // 'low', 'medium', 'high'
@@ -348,6 +375,9 @@ class EncounterController {
       // Get AI based on threat level (pass hex for location-based seeding)
       const aiId = this.getAIForThreat(tierConfig, detection, hex);
 
+      // Get AI data for display (ship class, difficulty, escape damage)
+      const aiData = this.getAIData(aiId);
+
       // Create encounter result
       const encounter = {
         poi: {
@@ -363,6 +393,7 @@ class EncounterController {
         },
         outcome: 'combat',
         aiId,
+        aiData,  // Ship class, difficulty, escape damage
         reward: {
           credits: 50 + rng.randomInt(0, 51), // 50-100 credits for combat victory
           rewardType: hex.type === 'poi' ? hex.poiData?.rewardType : 'CREDITS',

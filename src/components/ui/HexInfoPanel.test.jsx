@@ -396,4 +396,194 @@ describe('HexInfoPanel', () => {
       expect(screen.getByText('15%')).toBeInTheDocument()
     })
   })
+
+  // ========================================
+  // MIA WARNING TESTS
+  // ========================================
+
+  describe('MIA warning display', () => {
+    it('shows MIA warning when any waypoint cumulativeDetection >= 100', () => {
+      // EXPLANATION: When a planned journey would cause MIA (100% threat),
+      // a prominent warning should be displayed
+
+      const props = createDefaultProps()
+      props.waypoints = [
+        { hex: { q: 1, r: 0 }, segmentCost: 50, cumulativeDetection: 60, cumulativeEncounterRisk: 5 },
+        { hex: { q: 2, r: 0 }, segmentCost: 50, cumulativeDetection: 110, cumulativeEncounterRisk: 10 }
+      ]
+
+      render(<HexInfoPanel {...props} />)
+
+      expect(screen.getByText(/FATAL PATH/i)).toBeInTheDocument()
+    })
+
+    it('identifies correct waypoint number that causes MIA', () => {
+      // EXPLANATION: The warning should indicate which specific waypoint
+      // would trigger MIA so player knows where the problem is
+
+      const props = createDefaultProps()
+      props.waypoints = [
+        { hex: { q: 1, r: 0 }, segmentCost: 30, cumulativeDetection: 40, cumulativeEncounterRisk: 5 },
+        { hex: { q: 2, r: 0 }, segmentCost: 70, cumulativeDetection: 100, cumulativeEncounterRisk: 10 }
+      ]
+
+      render(<HexInfoPanel {...props} />)
+
+      // Should mention waypoint 2 as the problem
+      expect(screen.getByText(/waypoint 2/i)).toBeInTheDocument()
+    })
+
+    it('does not show MIA warning when journey is safe', () => {
+      // EXPLANATION: No warning when all waypoints are below 100%
+
+      const props = createDefaultProps()
+      props.waypoints = [
+        { hex: { q: 1, r: 0 }, segmentCost: 20, cumulativeDetection: 30, cumulativeEncounterRisk: 5 },
+        { hex: { q: 2, r: 0 }, segmentCost: 20, cumulativeDetection: 50, cumulativeEncounterRisk: 10 }
+      ]
+
+      render(<HexInfoPanel {...props} />)
+
+      expect(screen.queryByText(/FATAL PATH/i)).not.toBeInTheDocument()
+    })
+  })
+
+  // ========================================
+  // ESCAPE ROUTE DISPLAY TESTS
+  // ========================================
+
+  describe('escape route display', () => {
+    it('displays escape route from current position', () => {
+      // EXPLANATION: Shows threat cost to reach nearest gate from current position
+
+      const props = createDefaultProps()
+      props.escapeRouteData = {
+        fromCurrent: { threatCost: 5.5, totalAfterEscape: 30.5, wouldMIA: false, gate: { gateId: 0 } },
+        afterJourney: null,
+        noPathExists: false
+      }
+
+      render(<HexInfoPanel {...props} />)
+
+      expect(screen.getByText(/escape route/i)).toBeInTheDocument()
+      expect(screen.getByText(/\+5\.5%/)).toBeInTheDocument()
+    })
+
+    it('displays escape route after journey when waypoints exist', () => {
+      // EXPLANATION: Shows escape cost after completing planned waypoints
+
+      const props = createDefaultProps()
+      props.waypoints = [
+        { hex: { q: 1, r: 0 }, segmentCost: 20, cumulativeDetection: 45, cumulativeEncounterRisk: 5 }
+      ]
+      props.escapeRouteData = {
+        fromCurrent: { threatCost: 5.5, totalAfterEscape: 30.5, wouldMIA: false, gate: { gateId: 0 } },
+        afterJourney: { threatCost: 3.0, totalAfterEscape: 48.0, wouldMIA: false, gate: { gateId: 0 } },
+        noPathExists: false
+      }
+
+      render(<HexInfoPanel {...props} />)
+
+      // Should show both values
+      expect(screen.getByText(/\+5\.5%/)).toBeInTheDocument()
+      expect(screen.getByText(/\+3\.0%/)).toBeInTheDocument()
+    })
+
+    it('color codes escape route as safe when wouldMIA is false', () => {
+      // EXPLANATION: Green color when escape is safe
+
+      const props = createDefaultProps()
+      props.escapeRouteData = {
+        fromCurrent: { threatCost: 5.5, totalAfterEscape: 30.5, wouldMIA: false, gate: { gateId: 0 } },
+        afterJourney: null,
+        noPathExists: false
+      }
+
+      render(<HexInfoPanel {...props} />)
+
+      const escapeSection = document.querySelector('.escape-route-display')
+      expect(escapeSection).toBeInTheDocument()
+      expect(escapeSection).not.toHaveClass('escape-critical')
+    })
+
+    it('color codes escape route as critical when wouldMIA is true', () => {
+      // EXPLANATION: Red/critical color when escape would cause MIA
+
+      const props = createDefaultProps()
+      props.escapeRouteData = {
+        fromCurrent: { threatCost: 15, totalAfterEscape: 105, wouldMIA: true, gate: { gateId: 0 } },
+        afterJourney: null,
+        noPathExists: false
+      }
+
+      render(<HexInfoPanel {...props} />)
+
+      const escapeItem = document.querySelector('.escape-route-item')
+      expect(escapeItem).toHaveClass('escape-critical')
+    })
+
+    it('shows no escape route warning when noPathExists is true', () => {
+      // EXPLANATION: When no path to any gate exists, show warning
+
+      const props = createDefaultProps()
+      props.escapeRouteData = {
+        fromCurrent: null,
+        afterJourney: null,
+        noPathExists: true
+      }
+
+      render(<HexInfoPanel {...props} />)
+
+      expect(screen.getByText(/no escape route/i)).toBeInTheDocument()
+    })
+  })
+
+  // ========================================
+  // PATHFINDING MODE TOGGLE TESTS
+  // ========================================
+
+  describe('pathfinding mode toggle', () => {
+    it('displays toggle button with Low Encounter and Low Threat options', () => {
+      // EXPLANATION: Toggle should show both pathfinding mode options
+
+      const props = createDefaultProps()
+      props.pathMode = 'lowEncounter'
+      props.onPathModeChange = vi.fn()
+
+      render(<HexInfoPanel {...props} />)
+
+      expect(screen.getByText('Low Encounter')).toBeInTheDocument()
+      expect(screen.getByText('Low Threat')).toBeInTheDocument()
+    })
+
+    it('shows active state on currently selected mode', () => {
+      // EXPLANATION: The active mode button should be visually highlighted
+
+      const props = createDefaultProps()
+      props.pathMode = 'lowThreat'
+      props.onPathModeChange = vi.fn()
+
+      render(<HexInfoPanel {...props} />)
+
+      const lowThreatBtn = screen.getByText('Low Threat')
+      const lowEncounterBtn = screen.getByText('Low Encounter')
+
+      expect(lowThreatBtn).toHaveClass('active')
+      expect(lowEncounterBtn).not.toHaveClass('active')
+    })
+
+    it('triggers onPathModeChange callback when mode is changed', () => {
+      // EXPLANATION: Clicking a mode button should call the callback
+
+      const props = createDefaultProps()
+      props.pathMode = 'lowEncounter'
+      props.onPathModeChange = vi.fn()
+
+      render(<HexInfoPanel {...props} />)
+
+      fireEvent.click(screen.getByText('Low Threat'))
+
+      expect(props.onPathModeChange).toHaveBeenCalledWith('lowThreat')
+    })
+  })
 })

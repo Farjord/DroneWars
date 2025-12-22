@@ -30,7 +30,7 @@ const IconPOI = ({ size = 32 }) => (
 function POIEncounterModal({ encounter, onProceed, onQuickDeploy, validQuickDeployments = [], onEscape, onEvade, evadeItemCount = 0, onClose }) {
   if (!encounter) return null;
 
-  const { poi, outcome, aiId, reward, detection, threatLevel } = encounter;
+  const { poi, outcome, aiId, aiData, detection, threatLevel } = encounter;
   const poiData = poi.poiData || {};
 
   const isCombat = outcome === 'combat';
@@ -45,6 +45,27 @@ function POIEncounterModal({ encounter, onProceed, onQuickDeploy, validQuickDepl
       case 'high': return { label: 'High Threat', color: '#ef4444' };
       default: return { label: 'Unknown', color: '#6b7280' };
     }
+  };
+
+  /**
+   * Get difficulty display color
+   */
+  const getDifficultyColor = (difficulty) => {
+    switch (difficulty) {
+      case 'Easy': return '#10b981';
+      case 'Medium': return '#f59e0b';
+      case 'Hard': return '#ef4444';
+      default: return '#6b7280';
+    }
+  };
+
+  /**
+   * Format escape damage range for display
+   */
+  const formatEscapeDamage = (escapeDamage) => {
+    if (!escapeDamage) return '2';
+    const { min, max } = escapeDamage;
+    return min === max ? `${min}` : `${min}-${max}`;
   };
 
   const threat = getThreatDisplay();
@@ -106,33 +127,31 @@ function POIEncounterModal({ encounter, onProceed, onQuickDeploy, validQuickDepl
             </div>
           )}
 
-          {/* Stats Grid */}
-          <div className="dw-modal-grid dw-modal-grid--2" style={{ marginTop: '16px' }}>
-            <div className="dw-modal-stat">
-              <div className="dw-modal-stat-label">Detection</div>
-              <div className="dw-modal-stat-value">{detection.toFixed(1)}%</div>
-            </div>
-            <div className="dw-modal-stat">
-              <div className="dw-modal-stat-label">Loot Bonus</div>
-              <div className="dw-modal-stat-value" style={{ color: 'var(--modal-success)' }}>+10%</div>
-            </div>
-            {isCombat && (
+          {/* Combat Stats Grid - only show for combat encounters */}
+          {isCombat && aiData && (
+            <div className="dw-modal-grid dw-modal-grid--2" style={{ marginTop: '16px' }}>
               <div className="dw-modal-stat">
-                <div className="dw-modal-stat-label">Combat Bonus</div>
-                <div className="dw-modal-stat-value" style={{ color: '#eab308' }}>+20%</div>
+                <div className="dw-modal-stat-label">Ship Class</div>
+                <div className="dw-modal-stat-value">{aiData.shipClass}</div>
               </div>
-            )}
-            <div className="dw-modal-stat">
-              <div className="dw-modal-stat-label">Credits</div>
-              <div className="dw-modal-stat-value" style={{ color: '#eab308' }}>{reward.credits}</div>
+              <div className="dw-modal-stat">
+                <div className="dw-modal-stat-label">Detection</div>
+                <div className="dw-modal-stat-value">{detection.toFixed(1)}%</div>
+              </div>
+              <div className="dw-modal-stat">
+                <div className="dw-modal-stat-label">Difficulty</div>
+                <div className="dw-modal-stat-value" style={{ color: getDifficultyColor(aiData.difficulty) }}>
+                  {aiData.difficulty}
+                </div>
+              </div>
+              <div className="dw-modal-stat">
+                <div className="dw-modal-stat-label">Escape Damage</div>
+                <div className="dw-modal-stat-value" style={{ color: 'var(--modal-danger)' }}>
+                  {formatEscapeDamage(aiData.escapeDamage)} hull
+                </div>
+              </div>
             </div>
-          </div>
-
-          {/* Reward Type */}
-          <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-            <span style={{ color: 'var(--modal-text-secondary)' }}>Reward Type:</span>
-            <span style={{ color: 'var(--modal-action)', fontWeight: 600 }}>{reward.rewardType.replace(/_/g, ' ')}</span>
-          </div>
+          )}
         </div>
 
         {/* Actions */}

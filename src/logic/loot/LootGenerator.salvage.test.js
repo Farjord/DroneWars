@@ -608,3 +608,165 @@ describe('LootGenerator - generateCombatSalvage salvage items', () => {
     })
   })
 })
+
+// ========================================
+// TOKEN_REWARD PACK TYPE TESTS
+// ========================================
+
+describe('LootGenerator - TOKEN_REWARD pack type', () => {
+  let mockTierConfig
+
+  beforeEach(() => {
+    mockTierConfig = {
+      salvageSlotCountWeights: {
+        perimeter: { 1: 50, 2: 30, 3: 15, 4: 5, 5: 0 },
+        mid: { 1: 10, 2: 30, 3: 35, 4: 20, 5: 5 },
+        core: { 1: 0, 2: 10, 3: 25, 4: 40, 5: 25 }
+      },
+      zoneRewardWeights: {
+        perimeter: {
+          cardCountWeights: { 1: 80, 2: 15, 3: 5 },
+          creditsMultiplier: 0.6
+        },
+        mid: {
+          cardCountWeights: { 1: 35, 2: 50, 3: 15 },
+          creditsMultiplier: 1.0
+        },
+        core: {
+          cardCountWeights: { 1: 15, 2: 40, 3: 45 },
+          creditsMultiplier: 1.5
+        }
+      }
+    }
+  })
+
+  describe('token slot generation', () => {
+    it('generates exactly one token slot for TOKEN_REWARD', () => {
+      // EXPLANATION: TOKEN_REWARD should always include 1 security token
+      const slots = LootGenerator.generateSalvageSlots('TOKEN_REWARD', 1, 'mid', mockTierConfig)
+      const tokenSlots = slots.filter(s => s.type === 'token')
+      expect(tokenSlots.length).toBe(1)
+    })
+
+    it('token slot has correct content structure', () => {
+      // EXPLANATION: Token content should have tokenType, amount, and source
+      const slots = LootGenerator.generateSalvageSlots('TOKEN_REWARD', 1, 'mid', mockTierConfig)
+      const tokenSlot = slots.find(s => s.type === 'token')
+
+      expect(tokenSlot).toBeDefined()
+      expect(tokenSlot.content).toHaveProperty('tokenType', 'security')
+      expect(tokenSlot.content).toHaveProperty('amount', 1)
+      expect(tokenSlot.content).toHaveProperty('source', 'contraband_cache')
+    })
+
+    it('token slot starts unrevealed', () => {
+      // EXPLANATION: Like other slots, token should start hidden
+      const slots = LootGenerator.generateSalvageSlots('TOKEN_REWARD', 1, 'mid', mockTierConfig)
+      const tokenSlot = slots.find(s => s.type === 'token')
+
+      expect(tokenSlot.revealed).toBe(false)
+    })
+  })
+
+  describe('card chance (25%)', () => {
+    it('has approximately 25% chance for a random card slot', () => {
+      // EXPLANATION: Over 100 samples, should see roughly 25 cards
+      let cardCount = 0
+      for (let i = 0; i < 100; i++) {
+        const slots = LootGenerator.generateSalvageSlots('TOKEN_REWARD', 1, 'mid', mockTierConfig, i)
+        cardCount += slots.filter(s => s.type === 'card').length
+      }
+      // Allow variance: 10-45 cards expected (25% with statistical variance)
+      expect(cardCount).toBeGreaterThan(10)
+      expect(cardCount).toBeLessThan(45)
+    })
+
+    it('card can be any type (Ordnance, Support, Tactic, Upgrade)', () => {
+      // EXPLANATION: Card type should be randomly selected from all types
+      const cardTypes = new Set()
+      for (let i = 0; i < 300; i++) {
+        const slots = LootGenerator.generateSalvageSlots('TOKEN_REWARD', 1, 'mid', mockTierConfig, i)
+        const cardSlot = slots.find(s => s.type === 'card')
+        if (cardSlot) {
+          cardTypes.add(cardSlot.content.cardType)
+        }
+      }
+      // Should see multiple card types over many samples
+      expect(cardTypes.size).toBeGreaterThan(1)
+    })
+
+    it('card rarity follows tier-appropriate weights', () => {
+      // EXPLANATION: Tier 3 has higher chance for Rare/Mythic
+      const rarities = []
+      for (let i = 0; i < 400; i++) {
+        const slots = LootGenerator.generateSalvageSlots('TOKEN_REWARD', 3, 'mid', mockTierConfig, i)
+        const cardSlot = slots.find(s => s.type === 'card')
+        if (cardSlot) rarities.push(cardSlot.content.rarity)
+      }
+      // At tier 3, should see at least some non-Common rarities
+      const nonCommon = rarities.filter(r => r !== 'Common')
+      expect(nonCommon.length).toBeGreaterThan(0)
+    })
+
+    it('card slot has correct content structure when present', () => {
+      // EXPLANATION: Card content should have cardId, cardName, rarity, cardType
+      // Find a seed that generates a card
+      for (let i = 0; i < 100; i++) {
+        const slots = LootGenerator.generateSalvageSlots('TOKEN_REWARD', 1, 'mid', mockTierConfig, i)
+        const cardSlot = slots.find(s => s.type === 'card')
+        if (cardSlot) {
+          expect(cardSlot.content).toHaveProperty('cardId')
+          expect(cardSlot.content).toHaveProperty('cardName')
+          expect(cardSlot.content).toHaveProperty('rarity')
+          expect(cardSlot.content).toHaveProperty('cardType')
+          return // Found a card, test passed
+        }
+      }
+      // If no card found in 100 samples, that's still valid (25% chance)
+    })
+  })
+
+  describe('slot composition', () => {
+    it('slot types include only token, card, or salvageItem', () => {
+      // EXPLANATION: TOKEN_REWARD slots should only contain these types
+      const slots = LootGenerator.generateSalvageSlots('TOKEN_REWARD', 1, 'mid', mockTierConfig)
+      expect(slots.every(s => ['token', 'card', 'salvageItem'].includes(s.type))).toBe(true)
+    })
+
+    it('remaining slots after token (and optional card) are salvage items', () => {
+      // EXPLANATION: Non-token, non-card slots should be salvage items
+      for (let i = 0; i < 20; i++) {
+        const slots = LootGenerator.generateSalvageSlots('TOKEN_REWARD', 1, 'mid', mockTierConfig, i)
+        const tokenCount = slots.filter(s => s.type === 'token').length
+        const cardCount = slots.filter(s => s.type === 'card').length
+        const salvageCount = slots.filter(s => s.type === 'salvageItem').length
+
+        expect(tokenCount).toBe(1)
+        expect(tokenCount + cardCount + salvageCount).toBe(slots.length)
+      }
+    })
+
+    it('salvage items have credit values in 50-100 range', () => {
+      // EXPLANATION: TOKEN_REWARD salvage items should use 50-100 credit range
+      const slots = LootGenerator.generateSalvageSlots('TOKEN_REWARD', 1, 'mid', mockTierConfig)
+      const salvageSlots = slots.filter(s => s.type === 'salvageItem')
+
+      for (const slot of salvageSlots) {
+        expect(slot.content.creditValue).toBeGreaterThanOrEqual(50)
+        expect(slot.content.creditValue).toBeLessThanOrEqual(100)
+      }
+    })
+  })
+
+  describe('deterministic seeding', () => {
+    it('same seed produces same result', () => {
+      // EXPLANATION: Seeded RNG should be deterministic
+      const seed = 12345
+      const slots1 = LootGenerator.generateSalvageSlots('TOKEN_REWARD', 1, 'mid', mockTierConfig, seed)
+      const slots2 = LootGenerator.generateSalvageSlots('TOKEN_REWARD', 1, 'mid', mockTierConfig, seed)
+
+      expect(slots1.length).toBe(slots2.length)
+      expect(slots1.map(s => s.type)).toEqual(slots2.map(s => s.type))
+    })
+  })
+})

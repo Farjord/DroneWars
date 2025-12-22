@@ -42,13 +42,36 @@ const getComponentById = (componentId) => {
 };
 
 /**
+ * Resolve component ID for a lane, falling back to shipComponents if sectionSlots has null
+ * This handles legacy data where sectionSlots may have null componentIds but shipComponents has the data
+ * @param {Object} slot - Ship slot object
+ * @param {string} lane - Lane identifier ('l', 'm', or 'r')
+ * @returns {string|null} Component ID or null if not found
+ */
+export const resolveComponentIdForLane = (slot, lane) => {
+  // First try sectionSlots (preferred format)
+  if (slot?.sectionSlots?.[lane]?.componentId) {
+    return slot.sectionSlots[lane].componentId;
+  }
+
+  // Fallback to shipComponents legacy format: { componentId: lane }
+  if (slot?.shipComponents) {
+    const entry = Object.entries(slot.shipComponents).find(([_, l]) => l === lane);
+    if (entry) return entry[0]; // componentId is the key
+  }
+
+  return null;
+};
+
+/**
  * Calculate section hull from ship and component
  */
 const calculateSectionHull = (shipSlot, lane) => {
-  const sectionSlot = shipSlot?.sectionSlots?.[lane];
-  if (!sectionSlot?.componentId) return { current: 0, max: 0 };
+  const componentId = resolveComponentIdForLane(shipSlot, lane);
+  if (!componentId) return { current: 0, max: 0 };
 
-  const component = getComponentById(sectionSlot.componentId);
+  const component = getComponentById(componentId);
+  const sectionSlot = shipSlot?.sectionSlots?.[lane];
   const ship = getAllShips().find(s => s.id === shipSlot.shipId);
 
   if (!component || !ship) return { current: 0, max: 0 };
@@ -69,8 +92,9 @@ const countDamage = (slot) => {
 
   const damagedDrones = (slot.droneSlots || []).filter(s => s.slotDamaged && s.assignedDrone).length;
   const damagedSections = ['l', 'm', 'r'].filter(lane => {
+    const componentId = resolveComponentIdForLane(slot, lane);
     const sectionSlot = slot.sectionSlots?.[lane];
-    return sectionSlot?.componentId && (sectionSlot.damageDealt || 0) > 0;
+    return componentId && (sectionSlot?.damageDealt || 0) > 0;
   }).length;
 
   return {
@@ -400,7 +424,8 @@ const RepairBayScreen = () => {
                 <div className="repair-bay-sections-grid">
                   {['l', 'm', 'r'].map(lane => {
                     const sectionSlot = selectedSlot.sectionSlots?.[lane];
-                    const component = sectionSlot?.componentId ? getComponentById(sectionSlot.componentId) : null;
+                    const componentId = resolveComponentIdForLane(selectedSlot, lane);
+                    const component = componentId ? getComponentById(componentId) : null;
                     const hull = calculateSectionHull(selectedSlot, lane);
                     const damageDealt = sectionSlot?.damageDealt || 0;
                     const repairCost = repairService.getSectionRepairCost ? repairService.getSectionRepairCost(damageDealt) : damageDealt * 200;

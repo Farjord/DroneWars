@@ -16,13 +16,13 @@ import QuickDeploySelectionModal from '../modals/QuickDeploySelectionModal.jsx';
 import LoadingEncounterScreen from '../ui/LoadingEncounterScreen.jsx';
 import ExtractionLoadingScreen from '../ui/ExtractionLoadingScreen.jsx';
 import EscapeLoadingScreen from '../ui/EscapeLoadingScreen.jsx';
-import FailedRunLoadingScreen from '../ui/FailedRunLoadingScreen.jsx';
 import RunInventoryModal from '../modals/RunInventoryModal.jsx';
 import LootRevealModal from '../modals/LootRevealModal.jsx';
 import AbandonRunModal from '../modals/AbandonRunModal.jsx';
 import ExtractionLootSelectionModal from '../modals/ExtractionLootSelectionModal.jsx';
 import ExtractionConfirmModal from '../modals/ExtractionConfirmModal.jsx';
 import MovementController from '../../logic/map/MovementController.js';
+import EscapeRouteCalculator from '../../logic/map/EscapeRouteCalculator.js';
 import lootGenerator from '../../logic/loot/LootGenerator.js';
 import { generateSalvageItemFromValue } from '../../data/salvageItemData.js';
 import DetectionManager from '../../logic/detection/DetectionManager.js';
@@ -176,9 +176,9 @@ function TacticalMapScreen() {
   const [showEscapeLoadingScreen, setShowEscapeLoadingScreen] = useState(false);
   const [escapeLoadingData, setEscapeLoadingData] = useState(null);
 
-  // Failed run loading screen state (for abandon/MIA transitions)
-  const [showFailedRunScreen, setShowFailedRunScreen] = useState(false);
-  const [failedRunData, setFailedRunData] = useState(null);
+  // NOTE: FailedRunLoadingScreen state has been consolidated to App.jsx
+  // TacticalMapScreen now uses ExtractionController.abandonRun() which
+  // sets showFailedRunScreen in GameStateManager for App.jsx to render
 
   // Inventory modal state
   const [showInventory, setShowInventory] = useState(false);
@@ -221,6 +221,7 @@ function TacticalMapScreen() {
   const isPausedRef = useRef(false);
   const shouldStopMovement = useRef(false);
   const totalWaypointsRef = useRef(0);
+  const escapedWithWaypoints = useRef(false); // Track if escape occurred with remaining waypoints
 
   // Ref to resolve encounter promise (allows async waiting in movement loop)
   const encounterResolveRef = useRef(null);
@@ -236,6 +237,9 @@ function TacticalMapScreen() {
 
   // Movement warning state (for "ENEMY THREAT SCAN ACTIVE" overlay)
   const [isScanningHex, setIsScanningHex] = useState(false);
+
+  // Pathfinding mode state: 'lowEncounter' (lowest encounter chance) or 'lowThreat' (lowest detection)
+  const [pathfindingMode, setPathfindingMode] = useState('lowEncounter');
 
   // Subscribe to game state updates
   useEffect(() => {
@@ -511,6 +515,9 @@ function TacticalMapScreen() {
     // Check for MIA trigger
     if (newDetection >= 100) {
       DetectionManager.triggerMIA();
+      // Signal to stop movement loop BEFORE encounter check to prevent race condition
+      // where both MIA screen and encounter modal appear simultaneously
+      shouldStopMovement.current = true;
     }
 
     return hexCost;
@@ -565,6 +572,10 @@ function TacticalMapScreen() {
 
         // Phase 2: Move to hex (zone-based detection cost)
         moveToSingleHex(targetHex, tierConfig, mapRadius);
+
+        // Check if MIA was triggered during move - stop BEFORE encounter check
+        // This prevents the race condition where both MIA and encounter screens appear
+        if (shouldStopMovement.current) break;
 
         // Phase 3: Check for random encounter on this hex
         const encounterResult = EncounterController.checkMovementEncounter(targetHex, tierConfig);
@@ -654,9 +665,14 @@ function TacticalMapScreen() {
       }
     }
 
-    // Journey complete - clear waypoints and reset state
+    // Journey complete - clear waypoints and reset state (unless escaped with pending waypoints)
     console.log('[TacticalMap] Journey complete');
-    setWaypoints([]);
+    if (!escapedWithWaypoints.current) {
+      setWaypoints([]);
+    } else {
+      console.log('[TacticalMap] Skipping waypoint clear - escaped with pending waypoints');
+    }
+    escapedWithWaypoints.current = false; // Reset flag for next journey
     setIsMoving(false);
     setIsPaused(false);
     isPausedRef.current = false;
@@ -720,6 +736,13 @@ function TacticalMapScreen() {
       shouldStopMovement.current = true;
       setIsScanningHex(false);
       setIsMoving(false);
+
+      // Resolve the encounter promise so movement loop can exit cleanly
+      // Without this, the promise at line ~582 hangs indefinitely
+      if (encounterResolveRef.current) {
+        encounterResolveRef.current();
+        encounterResolveRef.current = null;
+      }
 
       return;
     }
@@ -841,8 +864,8 @@ function TacticalMapScreen() {
     setShowSalvageModal(false);
 
     // If player revealed any slots, show LootRevealModal
-    // Check for cards OR salvageItems (salvageItems replaced credits)
-    if (hasRevealedSlots && loot && (loot.cards?.length > 0 || loot.salvageItems?.length > 0)) {
+    // Check for cards OR salvageItems OR tokens
+    if (hasRevealedSlots && loot && (loot.cards?.length > 0 || loot.salvageItems?.length > 0 || loot.tokens?.length > 0)) {
       // Convert to LootRevealModal format
       // Keep salvageItems as array - each should be shown individually
       const lootForModal = {
@@ -852,7 +875,9 @@ function TacticalMapScreen() {
           rarity: card.rarity
         })),
         // Pass salvageItems array directly - each item should be shown separately
-        salvageItems: loot.salvageItems || []
+        salvageItems: loot.salvageItems || [],
+        // Pass tokens array for display and collection
+        tokens: loot.tokens || []
       };
 
       console.log('[TacticalMap] Showing loot reveal modal:', lootForModal);
@@ -890,8 +915,8 @@ function TacticalMapScreen() {
     const currentState = gameStateManager.getState();
     const runState = currentState.currentRunState;
 
-    // Check for cards OR salvageItems (salvageItems replaced credits)
-    if (runState && loot && (loot.cards?.length > 0 || loot.salvageItems?.length > 0)) {
+    // Check for cards OR salvageItems OR tokens
+    if (runState && loot && (loot.cards?.length > 0 || loot.salvageItems?.length > 0 || loot.tokens?.length > 0)) {
       // Convert salvageItems array to single salvageItem for CombatOutcomeProcessor
       const totalCreditValue = (loot.salvageItems || []).reduce((sum, item) => sum + (item.creditValue || 0), 0);
       const firstSalvageItem = loot.salvageItems?.[0];
@@ -909,7 +934,9 @@ function TacticalMapScreen() {
               description: loot.salvageItems.length > 1
                 ? `Combined value of ${loot.salvageItems.length} salvage items`
                 : firstSalvageItem?.description
-            } : null
+            } : null,
+            // Include tokens from salvage
+            tokens: loot.tokens || []
           }
         }
       });
@@ -1053,7 +1080,7 @@ function TacticalMapScreen() {
       const currentState = gameStateManager.getState();
       const runState = currentState.currentRunState;
 
-      if (runState && loot && (loot.cards?.length > 0 || loot.salvageItems?.length > 0)) {
+      if (runState && loot && (loot.cards?.length > 0 || loot.salvageItems?.length > 0 || loot.tokens?.length > 0)) {
         const totalCreditValue = (loot.salvageItems || []).reduce((sum, item) => sum + (item.creditValue || 0), 0);
         const firstSalvageItem = loot.salvageItems?.[0];
 
@@ -1070,7 +1097,9 @@ function TacticalMapScreen() {
                 description: loot.salvageItems.length > 1
                   ? `Combined value of ${loot.salvageItems.length} salvage items`
                   : firstSalvageItem?.description
-              } : null
+              } : null,
+              // Include tokens from salvage
+              tokens: loot.tokens || []
             }
           }
         });
@@ -1435,7 +1464,8 @@ function TacticalMapScreen() {
     } else {
       // Normal extraction complete - go directly to hangar (RunSummaryModal shows there)
       console.log('[TacticalMap] Extraction complete - returning to hangar');
-      gameStateManager.setState({ appState: 'hangar' });
+      // Use ExtractionController to avoid direct gameStateManager.setState() call (architecture pattern)
+      ExtractionController.completeExtractionTransition();
     }
   }, []);
 
@@ -1448,39 +1478,28 @@ function TacticalMapScreen() {
   }, []);
 
   /**
-   * Handle abandon confirmation - show failed run screen
+   * Handle abandon confirmation - trigger failed run flow
+   * Uses ExtractionController.abandonRun() which sets showFailedRunScreen in GameStateManager
+   * App.jsx renders the global FailedRunLoadingScreen based on that state
    */
   const handleConfirmAbandon = useCallback(() => {
-    console.log('[TacticalMap] Abandon confirmed - showing failed run screen');
+    console.log('[TacticalMap] Abandon confirmed - triggering failed run');
 
     // Stop any ongoing movement
     shouldStopMovement.current = true;
     setIsMoving(false);
     setIsScanningHex(false);
 
-    // Close modal and show failed run loading screen
+    // Close modal
     setShowAbandonModal(false);
 
-    // Check if this is a starter deck (slot 0)
-    const isStarterDeck = currentRunState?.shipSlotId === 0;
-
-    setFailedRunData({
-      failureType: 'abandon',
-      isStarterDeck
-    });
-    setShowFailedRunScreen(true);
-  }, [currentRunState?.shipSlotId]);
-
-  /**
-   * Handle failed run screen completion - actually trigger MIA
-   */
-  const handleFailedRunComplete = useCallback(() => {
-    console.log('[TacticalMap] Failed run screen complete - triggering MIA');
-
-    setShowFailedRunScreen(false);
-    setFailedRunData(null);
+    // Let ExtractionController handle the failed run flow
+    // This sets showFailedRunScreen in GameStateManager which App.jsx renders
     ExtractionController.abandonRun();
   }, []);
+
+  // NOTE: handleFailedRunComplete has been removed - FailedRunLoadingScreen
+  // is now handled globally by App.jsx using ExtractionController.completeFailedRunTransition()
 
   /**
    * Handle escape button click - show escape confirmation modal
@@ -1642,6 +1661,32 @@ function TacticalMapScreen() {
     // Ship survived - show escape loading screen
     console.log('[TacticalMap] Escape successful - showing loading screen');
 
+    // Capture FULL remaining journey including current position
+    let remainingWps = [];
+
+    // Get current waypoint and check if we're mid-path
+    const currentWp = waypoints[currentWaypointIndex];
+    if (currentWp && currentWp.pathFromPrev) {
+      // Slice path from current hex position (remaining hexes to traverse)
+      const remainingPath = currentWp.pathFromPrev.slice(currentHexIndex);
+
+      if (remainingPath.length > 1) {
+        // Still have hexes to traverse in current waypoint
+        const modifiedCurrentWp = {
+          ...currentWp,
+          pathFromPrev: remainingPath
+        };
+        remainingWps.push(modifiedCurrentWp);
+      }
+    }
+
+    // Add all subsequent waypoints
+    remainingWps = [...remainingWps, ...waypoints.slice(currentWaypointIndex + 1)];
+
+    setPendingResumeWaypoints(remainingWps.length > 0 ? remainingWps : null);
+    escapedWithWaypoints.current = remainingWps.length > 0; // Flag to prevent journey loop from clearing
+    console.log('[TacticalMap] Captured remaining journey for escape:', remainingWps.length, 'waypoints');
+
     // Close confirm modal and show loading screen
     setShowEscapeConfirm(false);
 
@@ -1654,7 +1699,7 @@ function TacticalMapScreen() {
       aiName: aiPersonality?.name || 'Unknown'
     });
     setShowEscapeLoadingScreen(true);
-  }, [currentEncounter]);
+  }, [currentEncounter, waypoints, currentWaypointIndex, currentHexIndex]);
 
   /**
    * Handle escape loading screen completion - resume journey
@@ -1708,7 +1753,14 @@ function TacticalMapScreen() {
       encounterResolveRef.current();
       encounterResolveRef.current = null;
     }
-  }, [currentEncounter, activeSalvage, escapeContext]);
+
+    // Restore remaining waypoints if any were captured during escape
+    if (pendingResumeWaypoints?.length > 0) {
+      console.log('[TacticalMap] Restoring waypoints after escape:', pendingResumeWaypoints.length);
+      setWaypoints(pendingResumeWaypoints);
+      setPendingResumeWaypoints(null);
+    }
+  }, [currentEncounter, activeSalvage, escapeContext, pendingResumeWaypoints]);
 
   /**
    * Handle loot selection confirmation - complete extraction with selected items
@@ -1769,6 +1821,7 @@ function TacticalMapScreen() {
     }
 
     // Add token to loot record (for display in run summary)
+    // Handle both single token (direct encounter) and tokens array (salvage)
     if (loot.token) {
       newCardLoot.push({
         type: 'token',
@@ -1777,12 +1830,24 @@ function TacticalMapScreen() {
         source: 'poi_loot'
       });
     }
+    // Handle tokens array from salvage
+    if (loot.tokens && loot.tokens.length > 0) {
+      loot.tokens.forEach(token => {
+        newCardLoot.push({
+          type: 'token',
+          tokenType: token.tokenType,
+          amount: token.amount,
+          source: 'poi_loot'
+        });
+      });
+    }
 
     const updatedLoot = [...(runState?.collectedLoot || []), ...newCardLoot];
     const salvageTotalCredits = (loot.salvageItems || []).reduce((sum, item) => sum + (item.creditValue || 0), 0);
     const newCredits = (runState?.creditsEarned || 0) + salvageTotalCredits;
 
     // Handle token collection - save to player profile (persistent across runs)
+    // Handle single token (direct encounter)
     if (loot.token) {
       const saveData = gameStateManager.getState();
       const currentTokens = saveData.playerProfile?.securityTokens || 0;
@@ -1793,6 +1858,19 @@ function TacticalMapScreen() {
         }
       });
       console.log(`[TacticalMap] Security token collected! Total: ${currentTokens + loot.token.amount}`);
+    }
+    // Handle tokens array (salvage)
+    if (loot.tokens && loot.tokens.length > 0) {
+      const saveData = gameStateManager.getState();
+      const currentTokens = saveData.playerProfile?.securityTokens || 0;
+      const totalNewTokens = loot.tokens.reduce((sum, t) => sum + (t.amount || 0), 0);
+      gameStateManager.setState({
+        playerProfile: {
+          ...saveData.playerProfile,
+          securityTokens: currentTokens + totalNewTokens
+        }
+      });
+      console.log(`[TacticalMap] Security tokens collected from salvage! Total: ${currentTokens + totalNewTokens}`);
     }
 
     // Mark POI as looted (prevents re-looting)
@@ -1929,6 +2007,41 @@ function TacticalMapScreen() {
     waypoints.length > 0 ? waypoints[waypoints.length - 1].cumulativeEncounterRisk : 0;
 
   /**
+   * Calculate escape route data for display in HexInfoPanel
+   * Shows minimum threat cost to reach nearest extraction gate
+   */
+  const escapeRouteData = React.useMemo(() => {
+    if (!mapData || !tierConfig) return null;
+
+    const lastWaypointPosition = waypoints.length > 0
+      ? waypoints[waypoints.length - 1].hex
+      : playerPosition;
+
+    const journeyEndDetection = waypoints.length > 0
+      ? waypoints[waypoints.length - 1].cumulativeDetection
+      : detection;
+
+    return EscapeRouteCalculator.calculateEscapeRoutes(
+      playerPosition,
+      lastWaypointPosition,
+      detection,
+      journeyEndDetection,
+      mapData,
+      tierConfig,
+      currentRunState
+    );
+  }, [playerPosition, waypoints, detection, mapData, tierConfig, currentRunState]);
+
+  /**
+   * Handle pathfinding mode change
+   */
+  const handlePathModeChange = useCallback((newMode) => {
+    setPathfindingMode(newMode);
+    // TODO: If we want to recalculate existing waypoints with new mode,
+    // that would be done here. For now, mode only affects new waypoints.
+  }, []);
+
+  /**
    * Add a waypoint to the end of the journey
    */
   const addWaypoint = (hex) => {
@@ -1939,8 +2052,21 @@ function TacticalMapScreen() {
     console.log('[TacticalMap] lastPosition:', lastPosition);
 
     // Calculate path from last position to new waypoint
-    const path = MovementController.calculatePath(lastPosition, hex, mapData.hexes);
-    console.log('[TacticalMap] calculated path:', path);
+    // Use encounter-based or threat-based weighted A* based on pathfinding mode
+    let path;
+    if (pathfindingMode === 'lowThreat') {
+      // Use weighted A* that minimizes threat/detection cost
+      const result = EscapeRouteCalculator.findLowestThreatPath(
+        lastPosition, hex, mapData.hexes, tierConfig, mapData.radius
+      );
+      path = result?.path || null;
+    } else {
+      // Default (lowEncounter): Use weighted A* that minimizes encounter chance
+      const result = EscapeRouteCalculator.findLowestEncounterPath(
+        lastPosition, hex, mapData.hexes, tierConfig, mapData
+      );
+      path = result?.path || null;
+    }
 
     if (!path) {
       console.warn('[TacticalMap] No path available to waypoint');
@@ -2338,6 +2464,13 @@ function TacticalMapScreen() {
 
         // Scanning state
         isScanningHex={isScanningHex}
+
+        // Escape route calculation
+        escapeRouteData={escapeRouteData}
+
+        // Pathfinding mode toggle
+        pathMode={pathfindingMode}
+        onPathModeChange={handlePathModeChange}
       />
 
       {/* POI Encounter Modal */}
@@ -2447,15 +2580,6 @@ function TacticalMapScreen() {
         <EscapeLoadingScreen
           escapeData={escapeLoadingData}
           onComplete={handleEscapeLoadingComplete}
-        />
-      )}
-
-      {/* Failed Run Loading Screen (abandon/MIA transition) */}
-      {showFailedRunScreen && failedRunData && (
-        <FailedRunLoadingScreen
-          failureType={failedRunData.failureType}
-          isStarterDeck={failedRunData.isStarterDeck}
-          onComplete={handleFailedRunComplete}
         />
       )}
 

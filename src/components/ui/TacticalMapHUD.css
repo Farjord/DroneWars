@@ -34,7 +34,7 @@
 
 .hud-bottom {
   position: absolute;
-  bottom: 16px;
+  bottom: 16px; /* Match zoom controls position */
   left: 20px; /* Inside the map border */
   right: 340px; /* Account for right panel (320px) + margin */
   display: flex;
@@ -47,10 +47,17 @@
   flex-wrap: wrap;
 }
 
-/* Make action buttons consistent width */
+/* Make action buttons consistent with zoom controls */
 .hud-actions-group button {
   min-width: 160px;
   justify-content: center;
+}
+
+/* Override dw-btn padding to match zoom controls for top-alignment */
+.hud-actions-group .dw-btn,
+.hud-actions-group .dw-btn-confirm,
+.hud-actions-group .dw-btn-danger {
+  padding: 8px 12px;
 }
 
 /* ========================================
@@ -59,7 +66,7 @@
 
 @media (max-width: 768px) {
   .hud-bottom {
-    bottom: 8px;
+    bottom: 16px;
     left: 16px;
     right: 296px; /* Account for smaller panel (280px) + margin */
   }

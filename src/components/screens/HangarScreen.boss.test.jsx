@@ -12,6 +12,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import React from 'react';
 
 // Mock dependencies BEFORE importing the component
 vi.mock('../../hooks/useGameState.js', () => ({
@@ -126,6 +127,15 @@ vi.mock('../modals/RunSummaryModal', () => ({ default: () => null }));
 vi.mock('../modals/MIARecoveryModal', () => ({ default: () => null }));
 vi.mock('../modals/ConfirmationModal', () => ({ default: () => null }));
 vi.mock('../ui/DeployingScreen', () => ({ default: () => null }));
+vi.mock('../ui/LoadingEncounterScreen', () => ({
+  default: ({ onComplete }) => {
+    // Auto-trigger onComplete for tests to simulate player clicking "Engage"
+    React.useEffect(() => {
+      if (onComplete) onComplete();
+    }, [onComplete]);
+    return <div data-testid="loading-encounter-screen">Loading...</div>;
+  }
+}));
 vi.mock('../quickDeploy/QuickDeployManager', () => ({ default: () => null }));
 vi.mock('../ui/ReputationTrack', () => ({ default: () => <div data-testid="reputation-track" /> }));
 vi.mock('../modals/ReputationProgressModal', () => ({ default: () => null }));

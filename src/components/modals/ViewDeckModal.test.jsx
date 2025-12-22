@@ -307,8 +307,14 @@ describe('ViewDeckModal', () => {
       const layoutTab = screen.getByRole('button', { name: /layout/i });
       fireEvent.click(layoutTab);
 
-      // Should have been called for each of the 3 components
-      expect(resolveShipSectionStats).toHaveBeenCalledTimes(3);
+      // Should have been called for each component (may be called multiple times due to React Strict Mode)
+      // Verify at least called with expected arguments for each component
+      expect(resolveShipSectionStats).toHaveBeenCalled();
+      const calls = resolveShipSectionStats.mock.calls;
+      const calledComponentIds = calls.map(call => call[0]?.id);
+      expect(calledComponentIds).toContain('BRIDGE_001');
+      expect(calledComponentIds).toContain('POWERCELL_001');
+      expect(calledComponentIds).toContain('DRONECONTROL_001');
     });
 
     it('should pass resolved stats with ship-specific image to ShipSection', () => {

@@ -2050,14 +2050,7 @@ const App = ({ phaseAnimationQueue }) => {
         <FailedRunLoadingScreen
           failureType={gameState.failedRunType}
           isStarterDeck={gameState.failedRunIsStarterDeck}
-          onComplete={() => {
-            gameStateManager.setState({
-              showFailedRunScreen: false,
-              failedRunType: null,
-              failedRunIsStarterDeck: false,
-              appState: 'hangar'
-            });
-          }}
+          onComplete={() => ExtractionController.completeFailedRunTransition()}
         />
       );
     }
@@ -4998,14 +4991,7 @@ const App = ({ phaseAnimationQueue }) => {
         <FailedRunLoadingScreen
           failureType={gameState.failedRunType}
           isStarterDeck={gameState.failedRunIsStarterDeck}
-          onComplete={() => {
-            gameStateManager.setState({
-              showFailedRunScreen: false,
-              failedRunType: null,
-              failedRunIsStarterDeck: false,
-              appState: 'hangar'
-            });
-          }}
+          onComplete={() => ExtractionController.completeFailedRunTransition()}
         />
       )}
 

@@ -4,11 +4,13 @@
 // Duplicate owned cards for credits
 
 import React, { useState, useMemo } from 'react';
-import { Copy, Package, HelpCircle } from 'lucide-react';
+import { Copy, Package, HelpCircle, Filter } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
-import { RARITY_COLORS } from '../../data/cardData';
 import replicatorService from '../../logic/economy/ReplicatorService.js';
 import MissionService from '../../logic/missions/MissionService.js';
+import ActionCard from '../ui/ActionCard.jsx';
+import FilterChip from '../ui/FilterChip.jsx';
+import ReplicatorFilterModal from './ReplicatorFilterModal.jsx';
 
 /**
  * ReplicatorModal Component
@@ -19,6 +21,12 @@ const ReplicatorModal = ({ onClose, onShowHelp }) => {
   const { gameState } = useGameState();
   const [feedback, setFeedback] = useState(null);
   const [selectedTab, setSelectedTab] = useState('All');
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [filters, setFilters] = useState({
+    searchText: '',
+    rarity: [],
+    copiesLessThan: null
+  });
 
   const { singlePlayerProfile } = gameState;
   const credits = singlePlayerProfile?.credits || 0;
@@ -50,12 +58,110 @@ const ReplicatorModal = ({ onClose, onShowHelp }) => {
   }, [gameState?.singlePlayerInventory, gameState?.singlePlayerShipSlots]);
 
   /**
-   * Filter by tab
+   * Apply filters to cards
+   */
+  const applyFilters = (cards) => {
+    return cards.filter(card => {
+      // Search text (name match)
+      if (filters.searchText) {
+        const searchLower = filters.searchText.toLowerCase();
+        if (!card.name?.toLowerCase().includes(searchLower)) {
+          return false;
+        }
+      }
+
+      // Rarity filter (OR logic)
+      if (filters.rarity.length > 0 && !filters.rarity.includes(card.rarity)) {
+        return false;
+      }
+
+      // Copies owned filter (less than X)
+      if (filters.copiesLessThan !== null && card.quantity >= filters.copiesLessThan) {
+        return false;
+      }
+
+      return true;
+    });
+  };
+
+  /**
+   * Filter by tab and modal filters
    */
   const filteredCards = useMemo(() => {
-    if (selectedTab === 'All') return ownedCards;
-    return ownedCards.filter(card => card.type === selectedTab);
-  }, [ownedCards, selectedTab]);
+    let result = ownedCards;
+
+    // Apply tab filter (type)
+    if (selectedTab !== 'All') {
+      result = result.filter(card => card.type === selectedTab);
+    }
+
+    // Apply modal filters
+    result = applyFilters(result);
+
+    return result;
+  }, [ownedCards, selectedTab, filters]);
+
+  /**
+   * Count active filters
+   */
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filters.searchText) count++;
+    count += filters.rarity.length;
+    if (filters.copiesLessThan !== null) count++;
+    return count;
+  }, [filters]);
+
+  /**
+   * Generate filter chips for display
+   */
+  const generateFilterChips = () => {
+    const chips = [];
+
+    if (filters.searchText) {
+      chips.push({
+        label: `"${filters.searchText}"`,
+        filterType: 'searchText',
+        filterValue: filters.searchText
+      });
+    }
+
+    filters.rarity.forEach(r => {
+      chips.push({
+        label: r,
+        filterType: 'rarity',
+        filterValue: r
+      });
+    });
+
+    if (filters.copiesLessThan !== null) {
+      chips.push({
+        label: `< ${filters.copiesLessThan} copies`,
+        filterType: 'copiesLessThan',
+        filterValue: filters.copiesLessThan
+      });
+    }
+
+    return chips;
+  };
+
+  /**
+   * Handle chip removal
+   */
+  const handleRemoveFilterChip = (filterType, filterValue) => {
+    setFilters(prev => {
+      if (filterType === 'searchText') {
+        return { ...prev, searchText: '' };
+      }
+      if (filterType === 'rarity') {
+        return { ...prev, rarity: prev.rarity.filter(r => r !== filterValue) };
+      }
+      if (filterType === 'copiesLessThan') {
+        return { ...prev, copiesLessThan: null };
+      }
+      return prev;
+    });
+  };
 
   /**
    * Handle replicate button click
@@ -79,18 +185,11 @@ const ReplicatorModal = ({ onClose, onShowHelp }) => {
     setTimeout(() => setFeedback(null), 2000);
   };
 
-  /**
-   * Get rarity color
-   */
-  const getRarityColor = (rarity) => {
-    return RARITY_COLORS[rarity] || '#808080';
-  };
-
   const tabs = ['All', 'Ordnance', 'Tactic', 'Support', 'Upgrade'];
 
   return (
     <div className="dw-modal-overlay" onClick={onClose}>
-      <div className="dw-modal-content dw-modal--xl dw-modal--action" onClick={e => e.stopPropagation()}>
+      <div className="dw-modal-content dw-modal--xl dw-modal--action" onClick={e => e.stopPropagation()} style={{ maxWidth: '1200px' }}>
         {/* Header */}
         <div className="dw-modal-header" style={{ position: 'relative' }}>
           <div className="dw-modal-header-icon">
@@ -141,6 +240,34 @@ const ReplicatorModal = ({ onClose, onShowHelp }) => {
             </div>
           )}
 
+          {/* Filter Header */}
+          {ownedCards.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap mb-3">
+              <button
+                onClick={() => setShowFilterModal(true)}
+                className="dw-filter-btn"
+                aria-label="Filters"
+              >
+                <Filter size={16} />
+                <span>Filters</span>
+                {activeFilterCount > 0 && (
+                  <span className="dw-filter-btn__count">{activeFilterCount}</span>
+                )}
+              </button>
+
+              {/* Active Filter Chips */}
+              {generateFilterChips().map((chip, index) => (
+                <FilterChip
+                  key={`${chip.filterType}-${chip.filterValue || index}`}
+                  label={chip.label}
+                  filterType={chip.filterType}
+                  filterValue={chip.filterValue}
+                  onRemove={handleRemoveFilterChip}
+                />
+              ))}
+            </div>
+          )}
+
           {/* Empty State */}
           {ownedCards.length === 0 ? (
             <div className="dw-modal-empty">
@@ -168,11 +295,12 @@ const ReplicatorModal = ({ onClose, onShowHelp }) => {
               </div>
 
               {/* Cards Grid */}
-              <div className="dw-modal-scroll" style={{ maxHeight: '400px' }}>
+              <div className="dw-modal-scroll" style={{ maxHeight: '500px' }}>
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-                  gap: '12px'
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gap: '16px',
+                  justifyItems: 'center'
                 }}>
                   {filteredCards.map(card => {
                     const canAfford = credits >= card.replicateCost;
@@ -180,65 +308,52 @@ const ReplicatorModal = ({ onClose, onShowHelp }) => {
                     return (
                       <div
                         key={card.id}
-                        className="dw-modal-info-box"
                         style={{
-                          marginBottom: 0,
-                          borderColor: getRarityColor(card.rarity)
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          background: 'rgba(0, 0, 0, 0.35)',
+                          borderRadius: '4px',
+                          padding: '12px',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
                         }}
                       >
-                        {/* Card Name */}
-                        <div style={{
-                          fontSize: '13px',
-                          fontWeight: '600',
-                          color: '#fff',
-                          marginBottom: '6px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {card.name}
-                        </div>
+                        {/* Full Card */}
+                        <ActionCard card={card} isPlayable={true} />
 
-                        {/* Type & Rarity */}
-                        <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)', marginBottom: '4px' }}>
-                          {card.type}
-                        </div>
-                        <div style={{
-                          fontSize: '11px',
-                          fontWeight: '600',
-                          color: getRarityColor(card.rarity),
-                          marginBottom: '6px'
-                        }}>
-                          {card.rarity}
-                        </div>
+                        {/* Controls Below Card */}
+                        <div className="flex flex-col items-center gap-2 mt-3 w-full">
+                          {/* Cost */}
+                          <div className="flex items-center justify-center gap-1">
+                            <span className="font-orbitron text-lg font-bold text-yellow-400">
+                              {card.replicateCost.toLocaleString()}
+                            </span>
+                            <span className="text-sm text-yellow-400/80">cr</span>
+                          </div>
 
-                        {/* Current Quantity */}
-                        <div style={{
-                          fontSize: '12px',
-                          color: 'var(--modal-text-secondary)',
-                          marginBottom: '4px'
-                        }}>
-                          Owned: <span style={{ color: 'var(--modal-success)', fontWeight: '600' }}>{card.quantity}</span>
-                        </div>
+                          {/* Replicate Button */}
+                          <button
+                            onClick={() => handleReplicate(card)}
+                            disabled={!canAfford}
+                            className={`
+                              px-6 py-1.5 text-xs font-orbitron uppercase tracking-wide rounded
+                              transition-all duration-200 w-full max-w-[160px]
+                              ${!canAfford
+                                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                                : 'bg-purple-600 hover:bg-purple-500 text-white cursor-pointer'
+                              }
+                            `}
+                          >
+                            Replicate
+                          </button>
 
-                        {/* Replicate Cost */}
-                        <div style={{
-                          fontSize: '12px',
-                          color: 'var(--modal-text-secondary)',
-                          marginBottom: '10px'
-                        }}>
-                          Cost: <span style={{ color: '#fbbf24', fontWeight: '600' }}>{card.replicateCost}</span>
+                          {/* Owned Quantity */}
+                          <div className="text-sm font-orbitron text-center">
+                            <span className="text-cyan-300">
+                              Owned: {card.quantity}
+                            </span>
+                          </div>
                         </div>
-
-                        {/* Replicate Button */}
-                        <button
-                          className={`dw-btn dw-btn-confirm dw-btn--full ${!canAfford ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          style={{ padding: '6px 12px', fontSize: '12px', background: 'linear-gradient(180deg, #9333ea 0%, #7e22ce 100%)' }}
-                          onClick={() => handleReplicate(card)}
-                          disabled={!canAfford}
-                        >
-                          Replicate
-                        </button>
                       </div>
                     );
                   })}
@@ -263,6 +378,14 @@ const ReplicatorModal = ({ onClose, onShowHelp }) => {
           </button>
         </div>
       </div>
+
+      {/* Filter Modal */}
+      <ReplicatorFilterModal
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        filters={filters}
+        onFiltersChange={setFilters}
+      />
     </div>
   );
 };

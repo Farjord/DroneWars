@@ -497,4 +497,76 @@ describe('SalvageController', () => {
       expect(salvageController.hasRevealedAnySlots(salvageState)).toBe(false)
     })
   })
+
+  // ========================================
+  // TOKEN SLOT COLLECTION TESTS
+  // ========================================
+
+  describe('collectRevealedLoot() with token slots', () => {
+    it('collects revealed token slots', () => {
+      // EXPLANATION: Token slots should be collected like cards and salvage items
+
+      const salvageState = {
+        slots: [
+          { type: 'token', content: { tokenType: 'security', amount: 1, source: 'contraband_cache' }, revealed: true },
+          { type: 'salvageItem', content: { itemId: 'salvage_1', name: 'Item', creditValue: 50, image: '/test.png' }, revealed: true }
+        ]
+      }
+
+      const loot = salvageController.collectRevealedLoot(salvageState)
+
+      expect(loot.tokens).toHaveLength(1)
+      expect(loot.tokens[0].tokenType).toBe('security')
+      expect(loot.tokens[0].amount).toBe(1)
+    })
+
+    it('does not collect unrevealed token slots', () => {
+      // EXPLANATION: Only revealed tokens should be collected
+
+      const salvageState = {
+        slots: [
+          { type: 'token', content: { tokenType: 'security', amount: 1 }, revealed: false },
+          { type: 'salvageItem', content: { creditValue: 50 }, revealed: true }
+        ]
+      }
+
+      const loot = salvageController.collectRevealedLoot(salvageState)
+
+      expect(loot.tokens).toHaveLength(0)
+    })
+
+    it('returns empty tokens array when no token slots exist', () => {
+      // EXPLANATION: Should always return tokens array, even if empty
+
+      const salvageState = {
+        slots: [
+          { type: 'salvageItem', content: { itemId: 'salvage_1', creditValue: 50 }, revealed: true },
+          { type: 'card', content: { cardId: 'card_1', cardName: 'Card' }, revealed: true }
+        ]
+      }
+
+      const loot = salvageController.collectRevealedLoot(salvageState)
+
+      expect(loot.tokens).toBeDefined()
+      expect(loot.tokens).toEqual([])
+    })
+
+    it('collects tokens alongside cards and salvage items', () => {
+      // EXPLANATION: All three types should be collected together
+
+      const salvageState = {
+        slots: [
+          { type: 'token', content: { tokenType: 'security', amount: 1 }, revealed: true },
+          { type: 'card', content: { cardId: 'card_1', cardName: 'Card 1', rarity: 'Common' }, revealed: true },
+          { type: 'salvageItem', content: { itemId: 'salvage_1', name: 'Item', creditValue: 50 }, revealed: true }
+        ]
+      }
+
+      const loot = salvageController.collectRevealedLoot(salvageState)
+
+      expect(loot.tokens).toHaveLength(1)
+      expect(loot.cards).toHaveLength(1)
+      expect(loot.salvageItems).toHaveLength(1)
+    })
+  })
 })

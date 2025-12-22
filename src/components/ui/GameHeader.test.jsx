@@ -234,20 +234,20 @@ describe('GameHeader - Interception Mode', () => {
   })
 
   describe('button styling', () => {
-    it('Show Dialog button should have green styling', () => {
+    it('Show Dialog button should have confirm styling', () => {
       render(<GameHeader {...defaultProps} interceptionModeActive={true} />)
 
       const showDialogButton = screen.getByText('Show Dialog').closest('button')
-      // Check for green gradient in style
-      expect(showDialogButton.style.backgroundImage).toContain('rgba(34, 197, 94')
+      // Check for confirm button class (styled via CSS)
+      expect(showDialogButton.className).toContain('dw-btn-confirm')
     })
 
-    it('Decline button should have red styling', () => {
+    it('Decline button should have danger styling', () => {
       render(<GameHeader {...defaultProps} interceptionModeActive={true} />)
 
       const declineButton = screen.getByText('Decline').closest('button')
-      // Check for red gradient in style
-      expect(declineButton.style.backgroundImage).toContain('rgba(239, 68, 68')
+      // Check for danger button class (styled via CSS)
+      expect(declineButton.className).toContain('dw-btn-danger')
     })
   })
 })

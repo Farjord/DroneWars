@@ -815,4 +815,54 @@ describe('ExtractionController', () => {
       });
     });
   });
+
+  // ========================================
+  // STATE TRANSITION METHODS (TDD)
+  // ========================================
+  // Tests for centralized state transition methods
+  // These methods ensure App.jsx/TacticalMapScreen don't directly call gameStateManager.setState()
+  // which would violate the architecture pattern
+
+  describe('State Transition Methods - Architecture Compliance', () => {
+    describe('completeFailedRunTransition', () => {
+      /**
+       * TDD TEST: completeFailedRunTransition should properly clear failed run state
+       * and transition to hangar via gameStateManager.setState()
+       *
+       * This method is called by FailedRunLoadingScreen.onComplete to ensure
+       * App.jsx doesn't directly call gameStateManager.setState() (architecture violation)
+       */
+      it('should clear failed run flags and transition to hangar', () => {
+        ExtractionController.completeFailedRunTransition();
+
+        expect(gameStateManager.setState).toHaveBeenCalledWith({
+          showFailedRunScreen: false,
+          failedRunType: null,
+          failedRunIsStarterDeck: false,
+          appState: 'hangar'
+        });
+      });
+
+      it('should be callable without any parameters', () => {
+        // The method should work without needing any external state
+        expect(() => ExtractionController.completeFailedRunTransition()).not.toThrow();
+      });
+    });
+
+    describe('completeExtractionTransition', () => {
+      /**
+       * TDD TEST: completeExtractionTransition should transition to hangar
+       * This ensures TacticalMapScreen doesn't directly call gameStateManager.setState()
+       */
+      it('should transition to hangar', () => {
+        ExtractionController.completeExtractionTransition();
+
+        expect(gameStateManager.setState).toHaveBeenCalledWith({ appState: 'hangar' });
+      });
+
+      it('should be callable without any parameters', () => {
+        expect(() => ExtractionController.completeExtractionTransition()).not.toThrow();
+      });
+    });
+  });
 })

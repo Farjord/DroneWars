@@ -425,9 +425,10 @@ describe('Slot-Based Damage Model', () => {
 
       const runState = gameStateManager.getState().currentRunState;
       // SHIP_001 has baseHull = 8, standard components have hullModifier = 0
-      expect(runState.shipSections['Bridge'].hull).toBe(5);  // 8 - 3
-      expect(runState.shipSections['Power Cell'].hull).toBe(8); // 8 - 0
-      expect(runState.shipSections['Drone Control Hub'].hull).toBe(1); // 8 - 7
+      // Keys use lowercase camelCase: 'bridge', 'powerCell', 'droneControlHub'
+      expect(runState.shipSections['bridge'].hull).toBe(5);  // 8 - 3
+      expect(runState.shipSections['powerCell'].hull).toBe(8); // 8 - 0
+      expect(runState.shipSections['droneControlHub'].hull).toBe(1); // 8 - 7
     });
 
     it('should apply -1 limit to drones in damaged slots', () => {
@@ -484,9 +485,9 @@ describe('Slot-Based Damage Model', () => {
         gateCount: 1
       });
 
-      // Simulate combat damage
+      // Simulate combat damage (keys are lowercase camelCase)
       const state = gameStateManager.getState();
-      state.currentRunState.shipSections['Bridge'].hull = 4; // Took 6 damage
+      state.currentRunState.shipSections['bridge'].hull = 4; // Took 6 damage
       gameStateManager.setState({ currentRunState: state.currentRunState });
 
       // End run successfully
@@ -513,9 +514,9 @@ describe('Slot-Based Damage Model', () => {
         gateCount: 1
       });
 
-      // Simulate damage
+      // Simulate damage (keys are lowercase camelCase)
       const state = gameStateManager.getState();
-      state.currentRunState.shipSections['Bridge'].hull = 4;
+      state.currentRunState.shipSections['bridge'].hull = 4;
       gameStateManager.setState({ currentRunState: state.currentRunState });
 
       gameStateManager.endRun(true);

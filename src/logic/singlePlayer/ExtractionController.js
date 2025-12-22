@@ -501,6 +501,39 @@ class ExtractionController {
 
     return { success: true, wouldDestroy, updatedSections, totalDamage, damageHits, initialSections };
   }
+
+  // ========================================
+  // STATE TRANSITION METHODS
+  // ========================================
+  // Centralized methods for state transitions to ensure UI components
+  // don't directly call gameStateManager.setState() (architecture violation)
+
+  /**
+   * Complete the failed run transition - handles the "Continue" button from FailedRunLoadingScreen
+   * This method ensures App.jsx/TacticalMapScreen don't directly call gameStateManager.setState()
+   * which would violate the architecture pattern
+   */
+  completeFailedRunTransition() {
+    debugLog('EXTRACTION', 'Completing failed run transition to hangar');
+
+    gameStateManager.setState({
+      showFailedRunScreen: false,
+      failedRunType: null,
+      failedRunIsStarterDeck: false,
+      appState: 'hangar'
+    });
+  }
+
+  /**
+   * Complete extraction and transition to hangar
+   * This method handles the extraction screen completion in a centralized way
+   * ensuring TacticalMapScreen doesn't directly call gameStateManager.setState()
+   */
+  completeExtractionTransition() {
+    debugLog('EXTRACTION', 'Completing extraction transition to hangar');
+
+    gameStateManager.setState({ appState: 'hangar' });
+  }
 }
 
 // Export singleton instance

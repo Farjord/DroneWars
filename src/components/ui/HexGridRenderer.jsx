@@ -5,7 +5,7 @@
 // Renders hexes, PoIs, gates, player position, and highlighted paths
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { axialToPixel } from '../../utils/hexGrid.js';
+import { axialToPixel, axialToDisplayLabel } from '../../utils/hexGrid.js';
 import { getShipHeadingForWaypoints } from '../../utils/hexHeadingUtils.js';
 import { Plus, Minus, RotateCcw } from 'lucide-react';
 import ShipIconRenderer from '../ships/ShipIconRenderer.jsx';
@@ -601,50 +601,21 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
           </g>
         )}
 
-        {/* Gate symbols - simple white arrows with labels */}
+        {/* Gate coordinate labels */}
         {isGate && !isPlayer && (
           <g style={{ pointerEvents: 'none' }}>
-            {isInsertion ? (
-              // Insertion gate: Arrow pointing DOWN (entering the map)
-              <>
-                <path
-                  d={`M ${x} ${y - hexSize * 0.1} L ${x - hexSize * 0.2} ${y + hexSize * 0.2} L ${x - hexSize * 0.08} ${y + hexSize * 0.2} L ${x - hexSize * 0.08} ${y + hexSize * 0.45} L ${x + hexSize * 0.08} ${y + hexSize * 0.45} L ${x + hexSize * 0.08} ${y + hexSize * 0.2} L ${x + hexSize * 0.2} ${y + hexSize * 0.2} Z`}
-                  fill="#ffffff"
-                  opacity="0.9"
-                />
-                <text
-                  x={x}
-                  y={y - hexSize * 0.35}
-                  fontSize={hexSize * 0.22}
-                  fontWeight="bold"
-                  textAnchor="middle"
-                  fill="#ffffff"
-                  opacity="0.9"
-                >
-                  ENTRY
-                </text>
-              </>
-            ) : (
-              // Extraction gate: Arrow pointing UP (exiting the map)
-              <>
-                <path
-                  d={`M ${x} ${y + hexSize * 0.1} L ${x - hexSize * 0.2} ${y - hexSize * 0.2} L ${x - hexSize * 0.08} ${y - hexSize * 0.2} L ${x - hexSize * 0.08} ${y - hexSize * 0.45} L ${x + hexSize * 0.08} ${y - hexSize * 0.45} L ${x + hexSize * 0.08} ${y - hexSize * 0.2} L ${x + hexSize * 0.2} ${y - hexSize * 0.2} Z`}
-                  fill="#ffffff"
-                  opacity="0.9"
-                />
-                <text
-                  x={x}
-                  y={y + hexSize * 0.5}
-                  fontSize={hexSize * 0.22}
-                  fontWeight="bold"
-                  textAnchor="middle"
-                  fill="#ffffff"
-                  opacity="0.9"
-                >
-                  EXIT
-                </text>
-              </>
-            )}
+            <text
+              x={x}
+              y={y}
+              fontSize={hexSize * 0.35}
+              fontWeight="bold"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#ffffff"
+              opacity="0.95"
+            >
+              {axialToDisplayLabel(hex.q, hex.r, mapData.radius)} {isInsertion ? '↓' : '↑'}
+            </text>
           </g>
         )}
 

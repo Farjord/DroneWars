@@ -79,3 +79,23 @@ export function axialToPixel(q, r, hexSize) {
   const y = hexSize * (Math.sqrt(3) / 2 * q + Math.sqrt(3) * r);
   return { x, y };
 }
+
+/**
+ * Convert axial coordinates to A1 display format for UI labels
+ * Offsets coordinates so the grid appears as a standard letter-number grid
+ * @param {number} q - Axial q coordinate
+ * @param {number} r - Axial r coordinate
+ * @param {number} radius - Map radius (determines grid bounds)
+ * @returns {string} Display label like "A1", "D3", "K5"
+ */
+export function axialToDisplayLabel(q, r, radius) {
+  // Offset q so minimum becomes column 0 (A)
+  // For radius 5: q ranges -5 to 5, so col = q + radius gives 0-10
+  const col = q + radius;
+
+  // For r, offset similarly and adjust for hex grid stagger
+  const row = r + radius;
+
+  const colLetter = String.fromCharCode(65 + col); // A=0, B=1, etc.
+  return `${colLetter}${row + 1}`;
+}

@@ -98,6 +98,7 @@ const aiPersonalities = [
     modes: ['extraction'],  // Extraction Mode only
     shipId: 'SHIP_003',
     imagePath: '/DroneWars/AI/Scout.png',
+    escapeDamage: { min: 1, max: 2 },  // Damage taken when escaping
     dronePool: [
       'Dart',
       'Threat Transmitter',
@@ -208,6 +209,7 @@ const aiPersonalities = [
     modes: ['extraction'],
     shipId: 'SHIP_003',
     imagePath: '/DroneWars/AI/Hunter.png',
+    escapeDamage: { min: 2, max: 3 },  // Damage taken when escaping
     dronePool: [
       'Signal Beacon',  // Threat drone: +1 threat per round
       'Threat Transmitter',
@@ -244,6 +246,7 @@ const aiPersonalities = [
     modes: ['extraction'],
     shipId: 'SHIP_001',
     imagePath: '/DroneWars/AI/Blockade.png',
+    escapeDamage: { min: 3, max: 5 },  // Damage taken when escaping
     dronePool: [
       'Firefly',
       'Mammoth',

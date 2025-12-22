@@ -147,7 +147,7 @@ export class SalvageController {
   /**
    * Collect all revealed loot from salvage state
    * @param {Object} salvageState - Current salvage state
-   * @returns {Object} { cards: [...], salvageItems: [...] }
+   * @returns {Object} { cards: [...], salvageItems: [...], tokens: [...] }
    */
   collectRevealedLoot(salvageState) {
     const { slots } = salvageState
@@ -162,7 +162,12 @@ export class SalvageController {
       .filter(slot => slot.type === 'salvageItem' && slot.content)
       .map(slot => slot.content)
 
-    return { cards, salvageItems }
+    // Collect tokens
+    const tokens = revealedSlots
+      .filter(slot => slot.type === 'token' && slot.content)
+      .map(slot => slot.content)
+
+    return { cards, salvageItems, tokens }
   }
 
   /**

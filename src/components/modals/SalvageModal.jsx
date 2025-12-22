@@ -5,7 +5,7 @@
 // Shows 1-5 slots based on zone, allows player to salvage one by one
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { Target, Lock, CheckCircle, AlertTriangle, Scan, Shield, Zap, LogOut } from 'lucide-react';
+import { Target, CheckCircle, AlertTriangle, Scan, Shield, Zap, LogOut } from 'lucide-react';
 import HiddenCard from '../ui/HiddenCard.jsx';
 import { packTypes } from '../../data/cardPackData.js';
 import './SalvageModal.css';
@@ -43,9 +43,8 @@ function SalvageModal({
   onQuit
 }) {
   const [isScanning, setIsScanning] = useState(false);
-  const [scanProgress, setScanProgress] = useState(0);
   const [lastRevealedSlot, setLastRevealedSlot] = useState(null);
-  const scanIntervalRef = useRef(null);
+  const scanTimeoutRef = useRef(null);
 
   if (!salvageState) return null;
 
@@ -92,34 +91,24 @@ function SalvageModal({
     if (isScanning || encounterTriggered || currentSlotIndex >= totalSlots) return;
 
     setIsScanning(true);
-    setScanProgress(0);
 
-    // Animate progress bar
+    // Scan duration - sweep effect runs during this time
     const duration = 1500; // 1.5 seconds
-    const interval = 50;
-    const steps = duration / interval;
-    let step = 0;
 
-    scanIntervalRef.current = setInterval(() => {
-      step++;
-      setScanProgress(Math.min((step / steps) * 100, 100));
+    scanTimeoutRef.current = setTimeout(() => {
+      setIsScanning(false);
+      setLastRevealedSlot(currentSlotIndex);
 
-      if (step >= steps) {
-        clearInterval(scanIntervalRef.current);
-        setIsScanning(false);
-        setLastRevealedSlot(currentSlotIndex);
-
-        // Trigger the actual salvage
-        onSalvageSlot?.();
-      }
-    }, interval);
+      // Trigger the actual salvage
+      onSalvageSlot?.();
+    }, duration);
   }, [isScanning, encounterTriggered, currentSlotIndex, totalSlots, onSalvageSlot]);
 
-  // Cleanup interval on unmount
+  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
-      if (scanIntervalRef.current) {
-        clearInterval(scanIntervalRef.current);
+      if (scanTimeoutRef.current) {
+        clearTimeout(scanTimeoutRef.current);
       }
     };
   }, []);
@@ -159,17 +148,11 @@ function SalvageModal({
                 <HiddenCard variant="salvage" size="full" />
               </div>
             )
-          ) : isBeingScanned ? (
-            // Currently scanning
-            <div className="salvage-slot-scanning">
-              <Scan size={28} className="salvage-scan-icon" />
-              <span className="salvage-slot-label">Scanning...</span>
-            </div>
           ) : (
-            // Locked slot
-            <div className="salvage-slot-locked">
-              <Lock size={28} />
-              <span className="salvage-slot-label">?</span>
+            // Locked or scanning slot - show large question mark
+            // Sweep effect for scanning is handled by CSS pseudo-element
+            <div className={isBeingScanned ? "salvage-slot-scanning" : "salvage-slot-locked"}>
+              <span className="salvage-slot-question">?</span>
             </div>
           )}
         </div>
@@ -246,20 +229,6 @@ function SalvageModal({
               {slots.map((slot, index) => renderSlot(slot, index))}
             </div>
           </div>
-
-          {/* Scanning Progress Bar */}
-          {isScanning && (
-            <div className="salvage-scan-container">
-              <div className="salvage-scan-label">SCANNING FOR THREATS...</div>
-              <div className="salvage-scan-bar">
-                <div
-                  className="salvage-scan-fill"
-                  style={{ width: `${scanProgress}%` }}
-                />
-              </div>
-              <div className="salvage-scan-percent">{Math.round(scanProgress)}%</div>
-            </div>
-          )}
 
           {/* Encounter Warning */}
           {encounterTriggered && (

@@ -382,6 +382,71 @@ class LootGenerator {
     const slotCount = this._rollSlotCount(zone, tierConfig, rng);
     debugLog('SALVAGE_LOOT', 'Total slots rolled:', slotCount);
 
+    // Handle TOKEN_REWARD specially - 1 guaranteed token + optional card + salvage items
+    if (packType === 'TOKEN_REWARD') {
+      const slots = [];
+
+      // Token slot (guaranteed)
+      slots.push({
+        type: 'token',
+        content: {
+          tokenType: 'security',
+          amount: 1,
+          source: 'contraband_cache'
+        },
+        revealed: false
+      });
+
+      // 25% chance for a random card (any type, tier-appropriate rarity)
+      const cardChance = 0.25;
+      if (rng.random() < cardChance) {
+        const tierKey = `tier${tier}`;
+        // Use ORDNANCE_PACK rarity weights as reference (same across pack types)
+        const rarityWeights = packTypes.ORDNANCE_PACK.rarityWeights[tierKey] || packTypes.ORDNANCE_PACK.rarityWeights.tier1;
+        const allowedRarities = Object.keys(rarityWeights).filter(r => rarityWeights[r] > 0);
+
+        // Random card type
+        const cardTypes = ['Ordnance', 'Support', 'Tactic', 'Upgrade'];
+        const cardType = cardTypes[Math.floor(rng.random() * cardTypes.length)];
+
+        const rarity = this.rollRarity(rarityWeights, rng);
+        const card = this.selectCard(cardType, rarity, allowedRarities, rng);
+
+        if (card) {
+          slots.push({
+            type: 'card',
+            content: {
+              cardId: card.id,
+              cardName: card.name,
+              rarity: card.rarity || 'Common',
+              cardType: card.type
+            },
+            revealed: false
+          });
+        }
+      }
+
+      // Remaining slots are salvage items (50-100 credits)
+      while (slots.length < slotCount) {
+        const creditValue = 50 + Math.floor(rng.random() * 51);
+        const salvageItem = generateSalvageItemFromValue(creditValue, rng);
+        slots.push({
+          type: 'salvageItem',
+          content: {
+            itemId: salvageItem.itemId,
+            name: salvageItem.name,
+            creditValue: salvageItem.creditValue,
+            image: salvageItem.image,
+            description: salvageItem.description
+          },
+          revealed: false
+        });
+      }
+
+      debugLog('SALVAGE_LOOT', 'TOKEN_REWARD slots:', slots.map(s => ({ type: s.type, content: s.type === 'token' ? 'security token' : s.content.name || s.content.cardName })));
+      return this._shuffleArray(slots, rng);
+    }
+
     // Handle unknown pack type
     if (!config) {
       console.warn(`Unknown pack type: ${packType}`);

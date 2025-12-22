@@ -75,7 +75,7 @@ describe('MIARecoveryService - Scaled Recovery Cost', () => {
           status: 'mia',
           shipId: starterPoolShipIds[0], // Starter ship (0 value)
           decklist: [
-            { id: 'CARD001', quantity: 10 } // Common card, not in starter pool
+            { id: 'CARD003', quantity: 10 } // Common card (non-starter)
           ],
           droneSlots: [],
           shipComponents: {}
@@ -185,7 +185,7 @@ describe('MIARecoveryService - Scaled Recovery Cost', () => {
           status: 'mia',
           shipId: starterPoolShipIds[0],
           decklist: [
-            { id: 'CARD001', quantity: 10 }, // Common: 10 × 1000 = 10,000
+            { id: 'CARD003', quantity: 10 }, // Common (non-starter): 10 × 1000 = 10,000
             { id: 'CARD001_ENHANCED', quantity: 5 }, // Uncommon: 5 × 2500 = 12,500
             { id: 'CARD024', quantity: 2 } // Rare (Piercing Rounds): 2 × 3000 = 6,000
           ],
@@ -211,7 +211,7 @@ describe('MIARecoveryService - Scaled Recovery Cost', () => {
           shipId: starterPoolShipIds[0],
           decklist: [
             { id: firstStarterCard, quantity: 20 }, // Starter: 0 value
-            { id: 'CARD001', quantity: 10 } // Common non-starter: 10 × 1000 = 10,000
+            { id: 'CARD003', quantity: 10 } // Common non-starter: 10 × 1000 = 10,000
           ],
           droneSlots: [],
           shipComponents: {}
@@ -271,7 +271,7 @@ describe('MIARecoveryService - Scaled Recovery Cost', () => {
           name: 'Test Ship',
           shipId: starterPoolShipIds[0],
           decklist: [
-            { id: 'CARD001', quantity: 20 } // 20 Common = 20,000 × 0.5 = 10,000
+            { id: 'CARD003', quantity: 20 } // 20 Common (non-starter) = 20,000 × 0.5 = 10,000
           ],
           droneSlots: [],
           shipComponents: {}
@@ -300,7 +300,7 @@ describe('MIARecoveryService - Scaled Recovery Cost', () => {
           name: 'Test Ship',
           shipId: starterPoolShipIds[0],
           decklist: [
-            { id: 'CARD001', quantity: 40 } // 40 Common = 40,000 × 0.5 = 20,000
+            { id: 'CARD003', quantity: 40 } // 40 Common (non-starter) = 40,000 × 0.5 = 20,000
           ],
           droneSlots: [],
           shipComponents: {}
@@ -324,7 +324,7 @@ describe('MIARecoveryService - Scaled Recovery Cost', () => {
           status: 'mia',
           shipId: starterPoolShipIds[0],
           decklist: [
-            { id: 'CARD001', quantity: 20 } // 20,000 × 0.5 = 10,000
+            { id: 'CARD003', quantity: 20 } // 20 Common (non-starter) = 20,000 × 0.5 = 10,000
           ],
           droneSlots: [],
           shipComponents: {}
@@ -348,7 +348,7 @@ describe('MIARecoveryService - Scaled Recovery Cost', () => {
           status: 'mia',
           shipId: starterPoolShipIds[0],
           decklist: [
-            { id: 'CARD001', quantity: 10 } // 10,000 × 0.5 = 5,000
+            { id: 'CARD003', quantity: 10 } // 10 Common (non-starter) = 10,000 × 0.5 = 5,000
           ],
           droneSlots: [],
           shipComponents: {}
