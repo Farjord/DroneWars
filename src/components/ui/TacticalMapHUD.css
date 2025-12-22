@@ -25,7 +25,7 @@
 }
 
 .icon-inventory { color: #f59e0b; }
-.icon-extract { color: #3b82f6; }
+.icon-extract { color: #22c55e; }
 .icon-abandon { color: #ef4444; }
 
 /* ========================================
@@ -34,7 +34,7 @@
 
 .hud-bottom {
   position: absolute;
-  bottom: 16px; /* Match zoom controls position */
+  bottom: 32px; /* Match zoom controls: 16px (container offset) + 16px (control offset) */
   left: 20px; /* Inside the map border */
   right: 340px; /* Account for right panel (320px) + margin */
   display: flex;
@@ -53,11 +53,12 @@
   justify-content: center;
 }
 
-/* Override dw-btn padding to match zoom controls for top-alignment */
+/* Override dw-btn padding to match zoom controls */
 .hud-actions-group .dw-btn,
 .hud-actions-group .dw-btn-confirm,
+.hud-actions-group .dw-btn-success,
 .hud-actions-group .dw-btn-danger {
-  padding: 8px 12px;
+  padding: 8px 12px !important;
 }
 
 /* ========================================
@@ -66,7 +67,7 @@
 
 @media (max-width: 768px) {
   .hud-bottom {
-    bottom: 16px;
+    bottom: 32px;
     left: 16px;
     right: 296px; /* Account for smaller panel (280px) + margin */
   }
@@ -76,7 +77,7 @@
   .hud-bottom {
     left: 16px; /* Full width on mobile */
     right: 16px; /* Panel moves to bottom on mobile, so no right offset needed */
-    bottom: calc(50vh + 16px); /* Above the bottom panel */
+    bottom: calc(50vh + 32px); /* Above the bottom panel */
   }
 
   .hud-actions-group {

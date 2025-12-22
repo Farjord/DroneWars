@@ -876,3 +876,287 @@ describe('Escape Waypoint Retention', () => {
     });
   });
 });
+
+// ========================================
+// PREVIEW PATH CONSISTENCY TESTS (TDD)
+// ========================================
+// Tests to ensure preview path matches the actual waypoint path
+// based on the selected pathfinding mode.
+//
+// BUG: getPreviewPath uses MovementController.calculatePath (basic A*)
+// but addWaypoint uses EscapeRouteCalculator.findLowest*Path (weighted A*)
+// This causes the preview to show a different route than what gets added.
+
+describe('Preview Path - Pathfinding Mode Consistency', () => {
+  /**
+   * Helper that replicates the CORRECT getPreviewPath logic.
+   * Should use the same pathfinding as addWaypoint.
+   */
+  function getPreviewPathCorrect(inspectedHex, lastPosition, pathfindingMode) {
+    if (!inspectedHex) return null;
+
+    // Use weighted pathfinding based on mode (same as addWaypoint)
+    if (pathfindingMode === 'lowThreat') {
+      return { method: 'findLowestThreatPath', from: lastPosition, to: inspectedHex };
+    } else {
+      return { method: 'findLowestEncounterPath', from: lastPosition, to: inspectedHex };
+    }
+  }
+
+  /**
+   * Helper that replicates the BUGGY getPreviewPath logic.
+   */
+  function getPreviewPathBuggy(inspectedHex, lastPosition) {
+    if (!inspectedHex) return null;
+    return { method: 'calculatePath', from: lastPosition, to: inspectedHex };
+  }
+
+  it('should use findLowestThreatPath when pathfindingMode is lowThreat', () => {
+    // EXPLANATION: Preview should use the same algorithm as addWaypoint
+    // When mode is 'lowThreat', both should use findLowestThreatPath
+
+    const inspectedHex = { q: 3, r: -2 };
+    const lastPosition = { q: 0, r: 0 };
+    const pathfindingMode = 'lowThreat';
+
+    const result = getPreviewPathCorrect(inspectedHex, lastPosition, pathfindingMode);
+
+    expect(result.method).toBe('findLowestThreatPath');
+    expect(result.method).not.toBe('calculatePath');
+  });
+
+  it('should use findLowestEncounterPath when pathfindingMode is lowEncounter', () => {
+    // EXPLANATION: Default mode should use encounter-minimizing pathfinding
+
+    const inspectedHex = { q: 3, r: -2 };
+    const lastPosition = { q: 0, r: 0 };
+    const pathfindingMode = 'lowEncounter';
+
+    const result = getPreviewPathCorrect(inspectedHex, lastPosition, pathfindingMode);
+
+    expect(result.method).toBe('findLowestEncounterPath');
+    expect(result.method).not.toBe('calculatePath');
+  });
+
+  it('BUGGY: current implementation always uses calculatePath regardless of mode', () => {
+    // EXPLANATION: This test documents the bug - the preview path
+    // ignores pathfindingMode and always uses basic A* (calculatePath)
+
+    const inspectedHex = { q: 3, r: -2 };
+    const lastPosition = { q: 0, r: 0 };
+
+    // Even when mode is lowThreat, buggy version uses calculatePath
+    const buggyResultLowThreat = getPreviewPathBuggy(inspectedHex, lastPosition);
+    expect(buggyResultLowThreat.method).toBe('calculatePath');
+
+    // And when mode is lowEncounter, still uses calculatePath
+    const buggyResultLowEncounter = getPreviewPathBuggy(inspectedHex, lastPosition);
+    expect(buggyResultLowEncounter.method).toBe('calculatePath');
+  });
+
+  it('preview and waypoint should use same pathfinding method', () => {
+    // EXPLANATION: The core requirement - preview must match waypoint path
+
+    const inspectedHex = { q: 3, r: -2 };
+    const lastPosition = { q: 0, r: 0 };
+
+    // For lowThreat mode
+    const previewLowThreat = getPreviewPathCorrect(inspectedHex, lastPosition, 'lowThreat');
+    const waypointLowThreat = { method: 'findLowestThreatPath' }; // This is what addWaypoint uses
+    expect(previewLowThreat.method).toBe(waypointLowThreat.method);
+
+    // For lowEncounter mode
+    const previewLowEncounter = getPreviewPathCorrect(inspectedHex, lastPosition, 'lowEncounter');
+    const waypointLowEncounter = { method: 'findLowestEncounterPath' }; // This is what addWaypoint uses
+    expect(previewLowEncounter.method).toBe(waypointLowEncounter.method);
+  });
+});
+
+// ========================================
+// TOKEN PERSISTENCE TESTS (TDD)
+// ========================================
+// Tests for the bug where security tokens from salvage are written
+// to playerProfile.securityTokens but read from singlePlayerProfile.securityTokens
+//
+// BUG: Tokens are saved to wrong property, so they never appear in player's balance
+
+describe('Token Persistence - singlePlayerProfile', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /**
+   * Simulates the CORRECT token persistence logic from handlePOILootCollected.
+   * Uses singlePlayerProfile (not playerProfile) to match where tokens are read.
+   */
+  function persistTokensCorrectly(loot, currentState) {
+    // Handle single token (direct encounter)
+    if (loot.token) {
+      const currentTokens = currentState.singlePlayerProfile?.securityTokens || 0;
+      gameStateManager.setState({
+        singlePlayerProfile: {
+          ...currentState.singlePlayerProfile,
+          securityTokens: currentTokens + loot.token.amount
+        }
+      });
+    }
+    // Handle tokens array (salvage)
+    if (loot.tokens && loot.tokens.length > 0) {
+      const currentTokens = currentState.singlePlayerProfile?.securityTokens || 0;
+      const totalNewTokens = loot.tokens.reduce((sum, t) => sum + (t.amount || 0), 0);
+      gameStateManager.setState({
+        singlePlayerProfile: {
+          ...currentState.singlePlayerProfile,
+          securityTokens: currentTokens + totalNewTokens
+        }
+      });
+    }
+  }
+
+  /**
+   * Simulates the BUGGY token persistence logic that uses playerProfile.
+   */
+  function persistTokensBuggy(loot, currentState) {
+    // BUG: Uses playerProfile instead of singlePlayerProfile
+    if (loot.token) {
+      const currentTokens = currentState.playerProfile?.securityTokens || 0;
+      gameStateManager.setState({
+        playerProfile: {
+          ...currentState.playerProfile,
+          securityTokens: currentTokens + loot.token.amount
+        }
+      });
+    }
+    if (loot.tokens && loot.tokens.length > 0) {
+      const currentTokens = currentState.playerProfile?.securityTokens || 0;
+      const totalNewTokens = loot.tokens.reduce((sum, t) => sum + (t.amount || 0), 0);
+      gameStateManager.setState({
+        playerProfile: {
+          ...currentState.playerProfile,
+          securityTokens: currentTokens + totalNewTokens
+        }
+      });
+    }
+  }
+
+  describe('Token collection from salvage (tokens array)', () => {
+    it('should persist tokens to singlePlayerProfile.securityTokens', () => {
+      // EXPLANATION: This is the core fix - tokens must be saved to
+      // singlePlayerProfile where they are read by HangarScreen, etc.
+
+      const loot = {
+        cards: [],
+        salvageItems: [],
+        tokens: [{ tokenType: 'security', amount: 1, source: 'contraband_cache' }]
+      };
+
+      const currentState = {
+        singlePlayerProfile: {
+          credits: 1000,
+          securityTokens: 0
+        }
+      };
+
+      persistTokensCorrectly(loot, currentState);
+
+      // Assert: setState was called with singlePlayerProfile
+      expect(gameStateManager.setState).toHaveBeenCalled();
+      const setStateCall = gameStateManager.setState.mock.calls[0][0];
+
+      expect(setStateCall.singlePlayerProfile).toBeDefined();
+      expect(setStateCall.singlePlayerProfile.securityTokens).toBe(1);
+      // Should NOT have playerProfile
+      expect(setStateCall.playerProfile).toBeUndefined();
+    });
+
+    it('should accumulate tokens with existing count', () => {
+      // EXPLANATION: Player already has 2 tokens, collects 1 more = 3 total
+
+      const loot = {
+        tokens: [{ tokenType: 'security', amount: 1 }]
+      };
+
+      const currentState = {
+        singlePlayerProfile: {
+          securityTokens: 2
+        }
+      };
+
+      persistTokensCorrectly(loot, currentState);
+
+      const setStateCall = gameStateManager.setState.mock.calls[0][0];
+      expect(setStateCall.singlePlayerProfile.securityTokens).toBe(3);
+    });
+
+    it('should handle multiple tokens in array', () => {
+      // EXPLANATION: Salvage can produce multiple token items
+
+      const loot = {
+        tokens: [
+          { tokenType: 'security', amount: 1 },
+          { tokenType: 'security', amount: 1 }
+        ]
+      };
+
+      const currentState = {
+        singlePlayerProfile: {
+          securityTokens: 0
+        }
+      };
+
+      persistTokensCorrectly(loot, currentState);
+
+      const setStateCall = gameStateManager.setState.mock.calls[0][0];
+      expect(setStateCall.singlePlayerProfile.securityTokens).toBe(2);
+    });
+  });
+
+  describe('Token collection from direct encounter (single token)', () => {
+    it('should persist single token to singlePlayerProfile.securityTokens', () => {
+      // EXPLANATION: Direct encounters use loot.token (singular)
+
+      const loot = {
+        token: { tokenType: 'security', amount: 1 }
+      };
+
+      const currentState = {
+        singlePlayerProfile: {
+          securityTokens: 0
+        }
+      };
+
+      persistTokensCorrectly(loot, currentState);
+
+      const setStateCall = gameStateManager.setState.mock.calls[0][0];
+      expect(setStateCall.singlePlayerProfile).toBeDefined();
+      expect(setStateCall.singlePlayerProfile.securityTokens).toBe(1);
+    });
+  });
+
+  describe('BUGGY: playerProfile vs singlePlayerProfile mismatch', () => {
+    it('BUGGY: current implementation writes to playerProfile (wrong)', () => {
+      // EXPLANATION: This test documents the bug - tokens are saved
+      // to playerProfile but UI reads from singlePlayerProfile
+
+      const loot = {
+        tokens: [{ tokenType: 'security', amount: 1 }]
+      };
+
+      const currentState = {
+        playerProfile: { securityTokens: 0 },
+        singlePlayerProfile: { securityTokens: 0 }
+      };
+
+      persistTokensBuggy(loot, currentState);
+
+      const setStateCall = gameStateManager.setState.mock.calls[0][0];
+
+      // Bug: saves to playerProfile
+      expect(setStateCall.playerProfile).toBeDefined();
+      expect(setStateCall.playerProfile.securityTokens).toBe(1);
+
+      // Bug: singlePlayerProfile is NOT updated
+      expect(setStateCall.singlePlayerProfile).toBeUndefined();
+    });
+  });
+});

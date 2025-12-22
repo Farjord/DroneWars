@@ -56,6 +56,7 @@ const RESOURCE_CONFIG = {
  * @param {string} resourceType - Type of resource ('credits', 'token', 'aiCores', 'salvageItem')
  * @param {number} amount - Amount of the resource (used for credits/token/aiCores)
  * @param {Object} salvageItem - Salvage item data { name, creditValue, image, description }
+ * @param {Object} tokenData - Token data { tokenType, amount, source }
  * @param {boolean} isSelected - Whether card is selected
  * @param {Function} onClick - Click handler
  * @param {number} scale - Optional scale multiplier (default: 1.0)
@@ -64,26 +65,34 @@ const ResourceCard = ({
   resourceType = 'credits',
   amount = 0,
   salvageItem = null,
+  tokenData = null,
   isSelected = false,
   onClick,
   scale = 1.0
 }) => {
-  // Determine if this is a salvage item
+  // Determine if this is a salvage item or token
   const isSalvageItem = resourceType === 'salvageItem' || salvageItem !== null;
+  const isToken = resourceType === 'token' || tokenData !== null;
 
   // Get config based on type
   const config = isSalvageItem
     ? RESOURCE_CONFIG.salvageItem
-    : (RESOURCE_CONFIG[resourceType] || RESOURCE_CONFIG.credits);
+    : isToken
+      ? RESOURCE_CONFIG.token
+      : (RESOURCE_CONFIG[resourceType] || RESOURCE_CONFIG.credits);
 
-  // For salvage items, use item-specific data
+  // For salvage items, use item-specific data; for tokens, use tokenData
   const displayName = isSalvageItem
     ? (salvageItem?.name || 'Unknown Item')
-    : config.name;
+    : isToken
+      ? 'Security Token'
+      : config.name;
 
   const displayValue = isSalvageItem
     ? (salvageItem?.creditValue || 0)
-    : amount;
+    : isToken
+      ? (tokenData?.amount || amount || 1)
+      : amount;
 
   const backgroundImage = isSalvageItem
     ? salvageItem?.image
@@ -155,10 +164,10 @@ const ResourceCard = ({
             )}
           </div>
 
-          {/* Footer Bar - Credit Value Display */}
+          {/* Footer Bar - Value Display */}
           <div className={`${config.footerBg} flex items-center justify-center border-t ${config.borderColor} h-10`}>
             <span className={`font-orbitron text-xl font-bold ${config.textColor}`}>
-              {displayValue.toLocaleString()}
+              {isToken ? `+${displayValue}` : displayValue.toLocaleString()}
               {isSalvageItem && <span className="text-sm ml-1 opacity-80">cr</span>}
             </span>
           </div>

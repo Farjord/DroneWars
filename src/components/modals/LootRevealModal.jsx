@@ -26,9 +26,9 @@ function LootRevealModal({ loot, onCollect, show }) {
 
   if (!show || !loot) return null;
 
-  const { cards = [], salvageItems = [], aiCores = 0, blueprint, token } = loot;
-  // Count total revealable items (cards + salvageItems)
-  const totalRevealableItems = cards.length + salvageItems.length;
+  const { cards = [], salvageItems = [], aiCores = 0, blueprint, token, tokens = [] } = loot;
+  // Count total revealable items (cards + salvageItems + tokens)
+  const totalRevealableItems = cards.length + salvageItems.length + tokens.length;
   const allRevealed = revealedCards.size >= totalRevealableItems || totalRevealableItems === 0;
 
   const handleCardClick = (index) => {
@@ -42,10 +42,11 @@ function LootRevealModal({ loot, onCollect, show }) {
   };
 
   const handleRevealAll = () => {
-    // Include all cards + all salvageItems (salvageItems start at index cards.length)
+    // Include all cards + salvageItems + tokens
     const allIndices = new Set([
       ...cards.map((_, i) => i),
-      ...salvageItems.map((_, i) => cards.length + i)
+      ...salvageItems.map((_, i) => cards.length + i),
+      ...tokens.map((_, i) => `token-${i}`)
     ]);
     setRevealedCards(allIndices);
   };
@@ -137,6 +138,39 @@ function LootRevealModal({ loot, onCollect, show }) {
                       <ResourceCard
                         resourceType="salvageItem"
                         salvageItem={item}
+                        scale={1.0}
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Token items - rendered as clickable cards */}
+            {tokens.map((tokenItem, i) => {
+              const tokenKey = `token-${i}`;
+              const isRevealed = revealedCards.has(tokenKey);
+
+              return (
+                <div
+                  key={tokenKey}
+                  className={`loot-card-container ${isRevealed ? 'revealed' : ''}`}
+                  onClick={() => handleCardClick(tokenKey)}
+                  style={{ '--rarity-color': '#06b6d4' }}
+                >
+                  <div className="loot-card-flipper">
+                    {/* Card Back (face-down) - cyan token themed */}
+                    <HiddenCard
+                      variant="token"
+                      size="full"
+                      className="loot-card-back"
+                    />
+
+                    {/* Card Front (revealed) - Token display */}
+                    <div className="loot-card-front">
+                      <ResourceCard
+                        resourceType="token"
+                        tokenData={tokenItem}
                         scale={1.0}
                       />
                     </div>

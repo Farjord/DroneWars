@@ -200,7 +200,7 @@ const RepairBayScreen = () => {
   const singlePlayerProfile = gameState.singlePlayerProfile;
   const singlePlayerShipSlots = gameState.singlePlayerShipSlots || [];
   const credits = singlePlayerProfile?.credits || 0;
-  const initialSlotId = gameState.repairBaySlotId ?? 0;
+  const initialSlotId = gameState.repairBaySlotId ?? 1;
 
   // Local state
   const [selectedSlotId, setSelectedSlotId] = useState(initialSlotId);
@@ -210,9 +210,9 @@ const RepairBayScreen = () => {
   const [showReputationProgress, setShowReputationProgress] = useState(false);
   const [showTutorial, setShowTutorial] = useState(null);
 
-  // Get active slots only (for main content display)
+  // Get active slots only (for main content display), excluding Slot 0 (starter deck never persists damage)
   const activeSlots = useMemo(() => {
-    return singlePlayerShipSlots.filter(slot => slot.status === 'active');
+    return singlePlayerShipSlots.filter(slot => slot.status === 'active' && slot.id !== 0);
   }, [singlePlayerShipSlots]);
 
   // Get selected slot
@@ -504,9 +504,8 @@ const RepairBayScreen = () => {
           </div>
 
           <div className="flex flex-col panel-scrollable" style={{ flex: 1, gap: '0.75rem' }}>
-            {singlePlayerShipSlots.map((slot) => {
+            {singlePlayerShipSlots.filter(slot => slot.id !== 0).map((slot) => {
               const isDefault = singlePlayerProfile?.defaultShipSlotId === slot.id;
-              const isSlot0 = slot.id === 0;
               const isActive = slot.status === 'active';
               const isEmpty = slot.status === 'empty';
               const isMia = slot.status === 'mia';

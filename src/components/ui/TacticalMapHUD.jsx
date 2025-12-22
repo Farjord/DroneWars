@@ -87,7 +87,7 @@ function TacticalMapHUD({
           {atExtractionGate ? (
             <button
               onClick={onExtractClick}
-              className="dw-btn dw-btn-confirm flex items-center gap-2"
+              className="dw-btn dw-btn-success flex items-center gap-2"
               title="Extract from the Eremos"
             >
               <IconExtract size={18} className="icon-extract" />

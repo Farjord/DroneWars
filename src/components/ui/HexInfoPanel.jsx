@@ -12,6 +12,7 @@ import DetectionManager from '../../logic/detection/DetectionManager.js';
 import { mapTiers } from '../../data/mapData.js';
 import { packTypes } from '../../data/cardPackData.js';
 import { HEX_INFO_HELP_TEXT } from '../../data/hexInfoHelpText.js';
+import { axialToDisplayLabel } from '../../utils/hexGrid.js';
 import DetectionMeter from './DetectionMeter.jsx';
 import './HexInfoPanel.css';
 
@@ -153,9 +154,9 @@ const StatLabel = ({ text, helpKey }) => {
 };
 
 /**
- * EscapeRouteDisplay - Shows threat cost to reach nearest extraction gate
+ * EscapeRouteDisplay - Shows nearest extraction gate coordinate
  */
-const EscapeRouteDisplay = ({ escapeRouteData, hasWaypoints }) => {
+const EscapeRouteDisplay = ({ escapeRouteData, hasWaypoints, mapRadius }) => {
   if (!escapeRouteData) return null;
 
   const { fromCurrent, afterJourney, noPathExists } = escapeRouteData;
@@ -170,10 +171,10 @@ const EscapeRouteDisplay = ({ escapeRouteData, hasWaypoints }) => {
   }
 
   const getStatusClass = (wouldMIA) => wouldMIA ? 'escape-critical' : 'escape-safe';
-  const formatCost = (cost) => {
-    if (cost === undefined || cost === null) return '?';
-    if (!Number.isFinite(cost)) return 'N/A';
-    return `+${cost.toFixed(1)}%`;
+  const getGateLabel = (routeData) => {
+    if (!routeData?.gate) return '?';
+    if (routeData.wouldMIA) return 'MIA';
+    return axialToDisplayLabel(routeData.gate.q, routeData.gate.r, mapRadius);
   };
 
   return (
@@ -186,7 +187,7 @@ const EscapeRouteDisplay = ({ escapeRouteData, hasWaypoints }) => {
           <div className={`escape-route-item ${getStatusClass(fromCurrent.wouldMIA)}`}>
             <span className="escape-label">Current</span>
             <span className="escape-arrow">→</span>
-            <span className="escape-cost">{formatCost(fromCurrent.threatCost)}</span>
+            <span className="escape-gate">{getGateLabel(fromCurrent)}</span>
           </div>
         )}
         {hasWaypoints && afterJourney && (
@@ -195,7 +196,7 @@ const EscapeRouteDisplay = ({ escapeRouteData, hasWaypoints }) => {
             <div className={`escape-route-item ${getStatusClass(afterJourney.wouldMIA)}`}>
               <span className="escape-label">After Journey</span>
               <span className="escape-arrow">→</span>
-              <span className="escape-cost">{formatCost(afterJourney.threatCost)}</span>
+              <span className="escape-gate">{getGateLabel(afterJourney)}</span>
             </div>
           </>
         )}
@@ -255,7 +256,8 @@ function HexInfoPanel({
 
   // Pathfinding mode
   pathMode = 'shortest',
-  onPathModeChange
+  onPathModeChange,
+  previewPath = null
 }) {
   // Use passed tierConfig if available, otherwise compute from mapData
   const tierConfig = passedTierConfig || (mapData ? mapTiers[mapData.tier - 1] : null);
@@ -359,6 +361,24 @@ function HexInfoPanel({
       ? waypoints[waypoints.length - 1].cumulativeDetection
       : currentDetection;
 
+    // Use previewPath from parent if provided (respects pathfinding mode)
+    if (previewPath && previewPath.length > 0) {
+      const detectionCost = previewPath.reduce((cost, hex) => {
+        return cost + DetectionManager.getHexDetectionCost(hex, tierConfig, mapRadius);
+      }, 0);
+
+      return {
+        path: previewPath,
+        distance: previewPath.length - 1,
+        cost: detectionCost,
+        newDetection: startDetection + detectionCost,
+        valid: true,
+        reason: '',
+        currentDetection: startDetection
+      };
+    }
+
+    // Fallback: use basic A* when no previewPath provided
     return MovementController.getMovementPreview(
       startPosition,
       inspectedHex,
@@ -491,11 +511,9 @@ function HexInfoPanel({
   if (inspectedHex) {
     return (
       <div className="hex-info-panel">
-        {/* Back button header */}
-        <div className="hex-info-header hex-info-header-back">
-          <button onClick={onBackToJourney} className="back-button">
-            ← Back
-          </button>
+        {/* Title header */}
+        <div className="hex-info-header">
+          <h2 className="hex-info-title">Hex Details</h2>
         </div>
 
         <div className="hex-info-detection">
@@ -717,12 +735,37 @@ function HexInfoPanel({
           )}
         </div>
 
-        {/* Actions */}
-        <div className="hex-info-actions">
+        {/* Pathfinding Mode Toggle - show for valid destinations */}
+        {onPathModeChange && !isCurrentPosition && !isAlreadyWaypoint && (
+          <div className="pathfinding-mode-toggle">
+            <span className="toggle-label">Path:</span>
+            <button
+              className={`toggle-btn ${pathMode === 'lowEncounter' ? 'active' : ''}`}
+              onClick={() => onPathModeChange('lowEncounter')}
+            >
+              Low Encounter
+            </button>
+            <button
+              className={`toggle-btn ${pathMode === 'lowThreat' ? 'active' : ''}`}
+              onClick={() => onPathModeChange('lowThreat')}
+            >
+              Low Threat
+            </button>
+          </div>
+        )}
+
+        {/* Actions - Back and Add Waypoint side by side */}
+        <div className="hex-info-actions hex-info-actions-row">
+          <button
+            onClick={onBackToJourney}
+            className="dw-btn dw-btn-secondary"
+          >
+            Back
+          </button>
           {!isCurrentPosition && (
             <button
               onClick={() => onToggleWaypoint(inspectedHex)}
-              className={isAlreadyWaypoint ? 'dw-btn dw-btn-cancel w-full' : 'dw-btn dw-btn-secondary w-full'}
+              className={isAlreadyWaypoint ? 'dw-btn dw-btn-cancel' : 'dw-btn dw-btn-confirm'}
               disabled={!isAlreadyWaypoint && preview && !preview.valid}
             >
               {isAlreadyWaypoint ? 'Remove Waypoint' : 'Add Waypoint'}
@@ -759,6 +802,7 @@ function HexInfoPanel({
         <EscapeRouteDisplay
           escapeRouteData={escapeRouteData}
           hasWaypoints={waypoints.length > 0}
+          mapRadius={mapRadius}
         />
       </div>
 

@@ -1846,14 +1846,14 @@ function TacticalMapScreen() {
     const salvageTotalCredits = (loot.salvageItems || []).reduce((sum, item) => sum + (item.creditValue || 0), 0);
     const newCredits = (runState?.creditsEarned || 0) + salvageTotalCredits;
 
-    // Handle token collection - save to player profile (persistent across runs)
+    // Handle token collection - save to singlePlayerProfile (persistent across runs)
     // Handle single token (direct encounter)
     if (loot.token) {
       const saveData = gameStateManager.getState();
-      const currentTokens = saveData.playerProfile?.securityTokens || 0;
+      const currentTokens = saveData.singlePlayerProfile?.securityTokens || 0;
       gameStateManager.setState({
-        playerProfile: {
-          ...saveData.playerProfile,
+        singlePlayerProfile: {
+          ...saveData.singlePlayerProfile,
           securityTokens: currentTokens + loot.token.amount
         }
       });
@@ -1862,11 +1862,11 @@ function TacticalMapScreen() {
     // Handle tokens array (salvage)
     if (loot.tokens && loot.tokens.length > 0) {
       const saveData = gameStateManager.getState();
-      const currentTokens = saveData.playerProfile?.securityTokens || 0;
+      const currentTokens = saveData.singlePlayerProfile?.securityTokens || 0;
       const totalNewTokens = loot.tokens.reduce((sum, t) => sum + (t.amount || 0), 0);
       gameStateManager.setState({
-        playerProfile: {
-          ...saveData.playerProfile,
+        singlePlayerProfile: {
+          ...saveData.singlePlayerProfile,
           securityTokens: currentTokens + totalNewTokens
         }
       });
@@ -1961,6 +1961,7 @@ function TacticalMapScreen() {
   );
 
   // Calculate preview path for inspected hex (shown before adding as waypoint)
+  // Uses same weighted pathfinding as addWaypoint to ensure preview matches actual path
   const getPreviewPath = () => {
     if (!inspectedHex || isMoving) return null;
     // Don't show preview for current position
@@ -1968,11 +1969,22 @@ function TacticalMapScreen() {
     // Don't show preview if already a waypoint
     if (waypoints.some(w => w.hex.q === inspectedHex.q && w.hex.r === inspectedHex.r)) return null;
 
-    const startPosition = waypoints.length > 0
+    const lastPosition = waypoints.length > 0
       ? waypoints[waypoints.length - 1].hex
       : playerPosition;
 
-    return MovementController.calculatePath(startPosition, inspectedHex, mapData.hexes);
+    // Use weighted pathfinding based on mode (same as addWaypoint)
+    if (pathfindingMode === 'lowThreat') {
+      const result = EscapeRouteCalculator.findLowestThreatPath(
+        lastPosition, inspectedHex, mapData.hexes, tierConfig, mapData.radius
+      );
+      return result?.path || null;
+    } else {
+      const result = EscapeRouteCalculator.findLowestEncounterPath(
+        lastPosition, inspectedHex, mapData.hexes, tierConfig, mapData
+      );
+      return result?.path || null;
+    }
   };
 
   const previewPath = getPreviewPath();
@@ -2471,6 +2483,7 @@ function TacticalMapScreen() {
         // Pathfinding mode toggle
         pathMode={pathfindingMode}
         onPathModeChange={handlePathModeChange}
+        previewPath={previewPath}
       />
 
       {/* POI Encounter Modal */}

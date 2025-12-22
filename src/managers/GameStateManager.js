@@ -2457,7 +2457,7 @@ class GameStateManager {
 
     // Deduct security token if map requires it
     if (mapData.requiresToken) {
-      const currentTokens = this.state.playerProfile?.securityTokens || 0;
+      const currentTokens = this.state.singlePlayerProfile?.securityTokens || 0;
       if (currentTokens < 1) {
         console.error('[GameStateManager] Cannot start run - insufficient tokens');
         return;
@@ -2465,8 +2465,8 @@ class GameStateManager {
 
       // Deduct token
       this.setState({
-        playerProfile: {
-          ...this.state.playerProfile,
+        singlePlayerProfile: {
+          ...this.state.singlePlayerProfile,
           securityTokens: currentTokens - 1
         }
       });
