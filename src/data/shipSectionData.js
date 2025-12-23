@@ -185,13 +185,4 @@ const shipComponentCollection = [
   }
 ];
 
-// Legacy object format for backward compatibility with existing code
-const shipSections = {
-  bridge: shipComponentCollection.find(c => c.key === 'bridge'),
-  tacticalBridge: shipComponentCollection.find(c => c.key === 'tacticalBridge'),
-  powerCell: shipComponentCollection.find(c => c.key === 'powerCell'),
-  droneControlHub: shipComponentCollection.find(c => c.key === 'droneControlHub')
-};
-
 export { shipComponentCollection };
-export default shipSections;

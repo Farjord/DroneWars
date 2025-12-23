@@ -6,7 +6,7 @@
 
 import { gameEngine } from '../logic/gameLogic.js';
 import { calculateEffectiveShipStats } from '../logic/statsCalculator.js';
-import shipSectionData from '../data/shipSectionData.js';
+import { shipComponentCollection } from '../data/shipSectionData.js';
 import fullCardCollection from '../data/cardData.js';
 import fullDroneCollection from '../data/droneData.js';
 import aiPersonalities from '../data/aiData.js';
@@ -141,16 +141,16 @@ export function initializeTestGame(config, gameStateManager) {
       // Create temporary player states with just ship sections for stats calculation
       const tempPlayer1 = {
         shipSections: {
-          bridge: JSON.parse(JSON.stringify(shipSectionData.bridge)),
-          powerCell: JSON.parse(JSON.stringify(shipSectionData.powerCell)),
-          droneControlHub: JSON.parse(JSON.stringify(shipSectionData.droneControlHub))
+          bridge: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'bridge'))),
+          powerCell: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'powerCell'))),
+          droneControlHub: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'droneControlHub')))
         }
       };
       const tempPlayer2 = {
         shipSections: {
-          bridge: JSON.parse(JSON.stringify(shipSectionData.bridge)),
-          powerCell: JSON.parse(JSON.stringify(shipSectionData.powerCell)),
-          droneControlHub: JSON.parse(JSON.stringify(shipSectionData.droneControlHub))
+          bridge: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'bridge'))),
+          powerCell: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'powerCell'))),
+          droneControlHub: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'droneControlHub')))
         }
       };
 
@@ -282,11 +282,11 @@ export function initializeTestGame(config, gameStateManager) {
  */
 function createPlayerStateFromConfig(playerConfig, playerName, calculatedResources = {}) {
   // Create deep copies of ship sections to avoid mutations
-  // shipSectionData contains the template objects from shipData.js
+  // shipComponentCollection contains all ship component definitions
   const shipSections = {
-    bridge: JSON.parse(JSON.stringify(shipSectionData.bridge)),
-    powerCell: JSON.parse(JSON.stringify(shipSectionData.powerCell)),
-    droneControlHub: JSON.parse(JSON.stringify(shipSectionData.droneControlHub))
+    bridge: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'bridge'))),
+    powerCell: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'powerCell'))),
+    droneControlHub: JSON.parse(JSON.stringify(shipComponentCollection.find(c => c.key === 'droneControlHub')))
   };
 
   // Build deck from deckComposition if provided, otherwise use provided deck array

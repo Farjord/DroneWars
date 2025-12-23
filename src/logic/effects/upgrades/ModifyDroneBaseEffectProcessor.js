@@ -78,6 +78,30 @@ class ModifyDroneBaseEffectProcessor extends BaseEffectProcessor {
 
     debugLog('EFFECT_PROCESSING', `[MODIFY_DRONE_BASE] ${droneName} now has ${existingUpgrades.length + 1} upgrades`);
 
+    // Update currently deployed drones of this type with the new upgrade
+    const { stat, value } = effect.mod;
+    if (stat && value) {
+      for (const lane in actingPlayerState.dronesOnBoard) {
+        actingPlayerState.dronesOnBoard[lane].forEach(drone => {
+          if (drone.name === droneName) {
+            if (stat === 'shields') {
+              // Shields need both current and max updated
+              drone.currentMaxShields = (drone.currentMaxShields || 0) + value;
+              drone.currentShields = (drone.currentShields || 0) + value;
+              debugLog('EFFECT_PROCESSING', `[MODIFY_DRONE_BASE] Updated ${drone.name} shields: +${value} (now ${drone.currentShields}/${drone.currentMaxShields})`);
+            } else if (stat === 'hull') {
+              // Hull is tracked directly (no separate max)
+              drone.hull = (drone.hull || 0) + value;
+              debugLog('EFFECT_PROCESSING', `[MODIFY_DRONE_BASE] Updated ${drone.name} hull: +${value} (now ${drone.hull})`);
+            }
+            // Note: attack, speed, cost, limit are either:
+            // - Calculated dynamically via calculateEffectiveStats (attack, speed)
+            // - Not applicable to deployed drones (cost, limit)
+          }
+        });
+      }
+    }
+
     const result = {
       newPlayerStates,
       additionalEffects: [],

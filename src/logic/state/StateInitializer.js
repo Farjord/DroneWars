@@ -5,7 +5,7 @@
 // Extracted from gameLogic.js Phase 9.1
 
 import fullCardCollection from '../../data/cardData.js';
-import shipSectionData, { shipComponentCollection } from '../../data/shipSectionData.js';
+import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { getShipById, getDefaultShip } from '../../data/shipData.js';
 import { calculateEffectiveShipStats, calculateSectionBaseStats } from '../statsCalculator.js';
 import SeededRandom from '../../utils/seededRandom.js';
@@ -116,8 +116,9 @@ class StateInitializer {
 
     // Build ship sections with computed base stats from Ship Card + Section modifiers
     const computedShipSections = {};
-    for (const key in shipSectionData) {
-      const sectionTemplate = shipSectionData[key];
+    const defaultSectionKeys = ['bridge', 'powerCell', 'droneControlHub'];
+    for (const key of defaultSectionKeys) {
+      const sectionTemplate = shipComponentCollection.find(c => c.key === key);
       if (sectionTemplate) {
         const baseStats = calculateSectionBaseStats(shipCard, sectionTemplate);
         computedShipSections[key] = {

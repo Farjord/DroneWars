@@ -510,6 +510,7 @@ const RepairBayScreen = () => {
               const isEmpty = slot.status === 'empty';
               const isMia = slot.status === 'mia';
               const isSelected = slot.id === selectedSlotId;
+              const isSlot0 = slot.id === 0;
 
               // Deck slot unlock state
               const isUnlocked = gameStateManager.isSlotUnlocked(slot.id);

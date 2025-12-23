@@ -388,7 +388,7 @@ const fullCardCollection = [
     type: 'Ordnance',
     cost: 3,
     image: '/DroneWars/cards/SidewinderMissiles.png',
-    description: 'Deal 2 damage to all enemy drones with a speed of 3 or Less in a selected lane.',
+    description: 'Deal 2 damage to all enemy drones with a speed of 4 or Less in a selected lane.',
     visualEffect: {
       type: 'ENERGY_WAVE'
     },
@@ -400,7 +400,7 @@ const fullCardCollection = [
       type: 'DAMAGE',
       value: 2,
       scope: 'FILTERED', 
-       filter: { stat: 'speed', comparison: 'LTE', value: 3 }
+       filter: { stat: 'speed', comparison: 'LTE', value: 4 }
     }
   },
    {

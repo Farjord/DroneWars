@@ -1878,6 +1878,8 @@ const App = ({ phaseAnimationQueue }) => {
     const prevPhase = previousPhaseRef.current;
     const enteredMandatoryDiscard = turnPhase === 'mandatoryDiscard' && prevPhase !== 'mandatoryDiscard';
     const enteredMandatoryRemoval = turnPhase === 'mandatoryDroneRemoval' && prevPhase !== 'mandatoryDroneRemoval';
+    const enteredOptionalDiscard = turnPhase === 'optionalDiscard' && prevPhase !== 'optionalDiscard';
+    const enteredDeployment = turnPhase === 'deployment' && prevPhase !== 'deployment';
 
     // Open footer and set view to hand when first entering mandatoryDiscard phase
     if (enteredMandatoryDiscard) {
@@ -1885,8 +1887,20 @@ const App = ({ phaseAnimationQueue }) => {
       setIsFooterOpen(true);
     }
 
+    // Open footer and set view to hand when first entering optionalDiscard phase
+    if (enteredOptionalDiscard) {
+      setFooterView('hand');
+      setIsFooterOpen(true);
+    }
+
     // Open footer and set view to drones when first entering mandatoryDroneRemoval phase
     if (enteredMandatoryRemoval) {
+      setFooterView('drones');
+      setIsFooterOpen(true);
+    }
+
+    // Open footer and set view to drones when first entering deployment phase
+    if (enteredDeployment) {
       setFooterView('drones');
       setIsFooterOpen(true);
     }

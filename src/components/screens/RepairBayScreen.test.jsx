@@ -65,15 +65,17 @@ vi.mock('../../data/shipSectionData.js', () => ({
 vi.mock('../../data/shipData.js', () => ({
   getAllShips: () => [
     { id: 'SHIP_001', name: 'Corvette', baseHull: 8 }
-  ]
+  ],
+  getShipById: (id) => id === 'SHIP_001' ? { id: 'SHIP_001', name: 'Corvette', baseHull: 8, image: null } : null,
+  getDefaultShip: () => ({ id: 'SHIP_001', name: 'Corvette', baseHull: 8, image: null })
 }));
 
 // Import after mocks
 import { useGameState } from '../../hooks/useGameState.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 
-// Component will be imported after we create it
-// import RepairBayScreen from './RepairBayScreen.jsx';
+// Import component
+import RepairBayScreen from './RepairBayScreen.jsx';
 
 // Mock ship slots for testing
 const createMockShipSlots = () => [
@@ -153,18 +155,37 @@ const createMockShipSlots = () => [
 describe('RepairBayScreen', () => {
   const mockGameStateManager = {
     setState: vi.fn(),
-    updateShipSlotDroneOrder: vi.fn()
+    updateShipSlotDroneOrder: vi.fn(),
+    isSlotUnlocked: vi.fn().mockReturnValue(true),
+    unlockNextDeckSlot: vi.fn(),
+    setDefaultShipSlot: vi.fn()
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
     useGameState.mockReturnValue({
       gameState: {
-        singlePlayerProfile: { credits: 1000 },
+        singlePlayerProfile: { credits: 1000, defaultShipSlotId: 0, highestUnlockedSlot: 3 },
         singlePlayerShipSlots: createMockShipSlots(),
         repairBaySlotId: 0
       },
       gameStateManager: mockGameStateManager
+    });
+  });
+
+  // ========================================
+  // BUG FIX: isSlot0 undefined error
+  // ========================================
+  describe('isSlot0 bug fix', () => {
+    it('should render ship slots without crashing (isSlot0 must be defined)', () => {
+      // This will fail with "ReferenceError: isSlot0 is not defined" until the bug is fixed
+      expect(() => render(<RepairBayScreen />)).not.toThrow();
+    });
+
+    it('should render correctly with ship slots', () => {
+      render(<RepairBayScreen />);
+      // Should see the header and some content
+      expect(screen.getByText('REPAIR BAY')).toBeInTheDocument();
     });
   });
 

@@ -60,11 +60,11 @@ vi.mock('../../data/shipData.js', () => ({
 }));
 
 vi.mock('../../data/shipSectionData.js', () => ({
-  default: {
-    bridge: { id: 'bridge', name: 'Bridge', lane: 'm' },
-    powerCell: { id: 'powerCell', name: 'Power Cell', lane: 'l' },
-    droneControlHub: { id: 'droneControlHub', name: 'Drone Control Hub', lane: 'r' }
-  }
+  shipComponentCollection: [
+    { id: 'BRIDGE_001', key: 'bridge', name: 'Bridge', type: 'Bridge', lane: 'm' },
+    { id: 'POWERCELL_001', key: 'powerCell', name: 'Power Cell', type: 'Power Cell', lane: 'l' },
+    { id: 'DRONECONTROL_001', key: 'droneControlHub', name: 'Drone Control Hub', type: 'Drone Control Hub', lane: 'r' }
+  ]
 }));
 
 vi.mock('../statsCalculator.js', () => ({
