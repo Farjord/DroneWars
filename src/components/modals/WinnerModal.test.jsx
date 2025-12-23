@@ -19,12 +19,43 @@ vi.mock('../../managers/GameStateManager.js', () => ({
 vi.mock('../../logic/singlePlayer/CombatOutcomeProcessor.js', () => ({
   default: {
     processCombatEnd: vi.fn(),
-    finalizeLootCollection: vi.fn()
+    finalizeLootCollection: vi.fn(),
+    finalizeBlueprintCollection: vi.fn()
+  }
+}))
+
+// Mock LootRevealModal
+vi.mock('./LootRevealModal.jsx', () => ({
+  default: ({ loot, onCollect, show }) => {
+    if (!show) return null;
+    return (
+      <div data-testid="loot-reveal-modal">
+        <button onClick={() => onCollect(loot)} data-testid="collect-loot-btn">
+          Collect Loot
+        </button>
+      </div>
+    );
+  }
+}))
+
+// Mock DroneBlueprintRewardModal
+vi.mock('./DroneBlueprintRewardModal.jsx', () => ({
+  default: ({ blueprint, onAccept, show }) => {
+    if (!show) return null;
+    return (
+      <div data-testid="drone-blueprint-modal">
+        <span data-testid="blueprint-name">{blueprint?.blueprintId}</span>
+        <button onClick={() => onAccept(blueprint)} data-testid="accept-blueprint-btn">
+          Accept Blueprint
+        </button>
+      </div>
+    );
   }
 }))
 
 // Import after mocks
 import gameStateManager from '../../managers/GameStateManager.js'
+import CombatOutcomeProcessor from '../../logic/singlePlayer/CombatOutcomeProcessor.js'
 import WinnerModal from './WinnerModal.jsx'
 
 describe('WinnerModal', () => {
@@ -125,6 +156,152 @@ describe('WinnerModal', () => {
       // ASSERT: Exit to Menu button should NOT exist
       // Extraction mode shows "Collect Salvage" or "Return to Hangar" instead
       expect(screen.queryByText('Exit to Menu')).toBeNull()
+    })
+  })
+
+  /**
+   * TDD Tests: Drone Blueprint Flow
+   *
+   * When winning combat at a Drone Blueprint PoI:
+   * 1. Player clicks "Collect Salvage" → LootRevealModal shows
+   * 2. After collecting loot, if pendingDroneBlueprint exists, show DroneBlueprintRewardModal
+   * 3. When player accepts blueprint, call finalizeBlueprintCollection
+   */
+  describe('Drone Blueprint Flow', () => {
+    const mockBlueprint = {
+      blueprintId: 'Gunship',
+      blueprintType: 'drone',
+      rarity: 'Uncommon',
+      droneData: { name: 'Gunship', attack: 3, hull: 4, speed: 2 }
+    }
+
+    it('should show DroneBlueprintRewardModal after loot collection when hasPendingDroneBlueprint is true', () => {
+      // SETUP: Victory with pending blueprint
+      CombatOutcomeProcessor.processCombatEnd.mockReturnValue({
+        success: true,
+        outcome: 'victory',
+        loot: { cards: [], salvageItem: null, aiCores: 0 }
+      })
+
+      // First render: No pending blueprint yet
+      gameStateManager.getState.mockReturnValue({
+        singlePlayerEncounter: { enemyId: 'test' },
+        currentRunState: { shipSlotId: 0 },
+        hasPendingDroneBlueprint: false,
+        pendingDroneBlueprint: null
+      })
+
+      const { rerender } = render(
+        <WinnerModal
+          winner="player1"
+          localPlayerId="player1"
+          show={true}
+          onClose={() => {}}
+        />
+      )
+
+      // Click "Collect Salvage"
+      fireEvent.click(screen.getByText('Collect Salvage'))
+
+      // Simulate state change after finalizeLootCollection (blueprint available)
+      gameStateManager.getState.mockReturnValue({
+        singlePlayerEncounter: { enemyId: 'test' },
+        currentRunState: { shipSlotId: 0 },
+        hasPendingDroneBlueprint: true,
+        pendingDroneBlueprint: mockBlueprint
+      })
+
+      // Collect loot from LootRevealModal
+      fireEvent.click(screen.getByTestId('collect-loot-btn'))
+
+      // Force re-render to pick up state change
+      rerender(
+        <WinnerModal
+          winner="player1"
+          localPlayerId="player1"
+          show={true}
+          onClose={() => {}}
+        />
+      )
+
+      // ASSERT: DroneBlueprintRewardModal should be shown
+      expect(screen.getByTestId('drone-blueprint-modal')).toBeInTheDocument()
+      expect(screen.getByTestId('blueprint-name')).toHaveTextContent('Gunship')
+    })
+
+    it('should NOT show DroneBlueprintRewardModal when no pending blueprint', () => {
+      // SETUP: Victory without blueprint
+      CombatOutcomeProcessor.processCombatEnd.mockReturnValue({
+        success: true,
+        outcome: 'victory',
+        loot: { cards: [], salvageItem: null, aiCores: 0 }
+      })
+
+      gameStateManager.getState.mockReturnValue({
+        singlePlayerEncounter: { enemyId: 'test' },
+        currentRunState: { shipSlotId: 0 },
+        hasPendingDroneBlueprint: false,
+        pendingDroneBlueprint: null
+      })
+
+      render(
+        <WinnerModal
+          winner="player1"
+          localPlayerId="player1"
+          show={true}
+          onClose={() => {}}
+        />
+      )
+
+      // Click "Collect Salvage"
+      fireEvent.click(screen.getByText('Collect Salvage'))
+
+      // Collect loot
+      fireEvent.click(screen.getByTestId('collect-loot-btn'))
+
+      // ASSERT: DroneBlueprintRewardModal should NOT be shown
+      expect(screen.queryByTestId('drone-blueprint-modal')).not.toBeInTheDocument()
+    })
+
+    it('should call finalizeBlueprintCollection when blueprint is accepted', () => {
+      // SETUP: Pending blueprint after loot collection
+      CombatOutcomeProcessor.processCombatEnd.mockReturnValue({
+        success: true,
+        outcome: 'victory',
+        loot: { cards: [], salvageItem: null, aiCores: 0 }
+      })
+
+      gameStateManager.getState.mockReturnValue({
+        singlePlayerEncounter: { enemyId: 'test' },
+        currentRunState: { shipSlotId: 0 },
+        hasPendingDroneBlueprint: true,
+        pendingDroneBlueprint: mockBlueprint
+      })
+
+      render(
+        <WinnerModal
+          winner="player1"
+          localPlayerId="player1"
+          show={true}
+          onClose={() => {}}
+        />
+      )
+
+      // Click "Collect Salvage" to show loot modal
+      fireEvent.click(screen.getByText('Collect Salvage'))
+
+      // Collect loot - should trigger blueprint modal
+      fireEvent.click(screen.getByTestId('collect-loot-btn'))
+
+      // ASSERT: Blueprint modal should be shown
+      expect(screen.getByTestId('drone-blueprint-modal')).toBeInTheDocument()
+
+      // Accept the blueprint
+      fireEvent.click(screen.getByTestId('accept-blueprint-btn'))
+
+      // ASSERT: finalizeBlueprintCollection should be called with the blueprint
+      expect(CombatOutcomeProcessor.finalizeBlueprintCollection).toHaveBeenCalledTimes(1)
+      expect(CombatOutcomeProcessor.finalizeBlueprintCollection).toHaveBeenCalledWith(mockBlueprint)
     })
   })
 })

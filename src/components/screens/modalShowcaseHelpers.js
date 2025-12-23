@@ -160,8 +160,8 @@ export const getMockGameState = () => {
 // ========================================
 
 export const MODAL_CATEGORIES = {
-  all: { name: 'All', count: 51 },
-  extraction: { name: 'Extraction', count: 12 },
+  all: { name: 'All', count: 52 },
+  extraction: { name: 'Extraction', count: 13 },
   danger: { name: 'Danger', count: 2 },
   confirmation: { name: 'Confirmation', count: 5 },
   interception: { name: 'Interception', count: 2 },
@@ -901,6 +901,26 @@ export const getMockPropsForModal = (modalName) => {
         onCancel: () => console.log('Discarded all loot')
       }
     },
+    'DroneBlueprintRewardModal': {
+      category: 'extraction',
+      props: {
+        show: true,
+        blueprint: {
+          blueprintId: 'Mammoth',
+          blueprintType: 'drone',
+          rarity: 'Uncommon',
+          droneData: {
+            name: 'Mammoth',
+            attack: 4,
+            hull: 6,
+            speed: 1,
+            class: 3,
+            rarity: 'Uncommon'
+          }
+        },
+        onAccept: (blueprint) => console.log('Blueprint accepted:', blueprint.blueprintId)
+      }
+    },
 
     // ========================================
     // UTILITY MODALS (Additional)
@@ -1025,6 +1045,7 @@ export const getModalsByCategory = () => {
       'MapOverviewModal', 'WaypointConfirmationModal', 'POIEncounterModal',
       'SalvageModal', 'SalvageModal_midSalvage', 'SalvageModal_allRevealed', 'SalvageModal_encounter',
       'LootRevealModal', 'RunInventoryModal', 'RunSummaryModal', 'ExtractionLootSelectionModal',
+      'DroneBlueprintRewardModal',
       // Danger modals
       'AbandonRunModal', 'MIARecoveryModal',
       // Confirmation modals
@@ -1052,7 +1073,8 @@ export const getModalsByCategory = () => {
     extraction: [
       'MapOverviewModal', 'WaypointConfirmationModal', 'POIEncounterModal',
       'SalvageModal', 'SalvageModal_midSalvage', 'SalvageModal_allRevealed', 'SalvageModal_encounter',
-      'LootRevealModal', 'RunInventoryModal', 'RunSummaryModal', 'ExtractionLootSelectionModal'
+      'LootRevealModal', 'RunInventoryModal', 'RunSummaryModal', 'ExtractionLootSelectionModal',
+      'DroneBlueprintRewardModal'
     ],
     danger: [
       'AbandonRunModal', 'MIARecoveryModal'

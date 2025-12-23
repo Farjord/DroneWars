@@ -57,12 +57,17 @@ class SinglePlayerCombatInitializer {
     };
     debugLog('SP_COMBAT', 'Pre-existing game state (check for residual):', preExistingState);
 
-    // Flag potential issues
-    if (preExistingState.gameActive) {
-      debugLog('SP_COMBAT', '⚠️ WARNING: gameActive is true before combat init - possible residual state!');
-    }
-    if (preExistingState.hasPlayer1 || preExistingState.hasPlayer2) {
-      debugLog('SP_COMBAT', '⚠️ WARNING: Player states exist before combat init - possible residual state!');
+    // Flag and cleanup residual state (e.g., from Force Win or unexpected exits)
+    if (preExistingState.gameActive || preExistingState.turnPhase) {
+      debugLog('SP_COMBAT', '⚠️ WARNING: Residual state detected - cleaning up before new combat');
+      debugLog('SP_COMBAT', '  gameActive:', preExistingState.gameActive);
+      debugLog('SP_COMBAT', '  turnPhase:', preExistingState.turnPhase);
+      debugLog('SP_COMBAT', '  hasPlayer1:', preExistingState.hasPlayer1);
+      debugLog('SP_COMBAT', '  hasPlayer2:', preExistingState.hasPlayer2);
+
+      // Clean up residual state to prevent the new game from getting stuck
+      gameStateManager.resetGameState();
+      debugLog('SP_COMBAT', '✅ Residual state cleaned up');
     }
 
     debugLog('SP_COMBAT', 'Current Run State:', currentRunState);
@@ -104,7 +109,22 @@ class SinglePlayerCombatInitializer {
       });
 
       // 5. Get ship placements
-      const placedSections = shipSlot?.shipPlacement || ['bridge', 'powerCell', 'droneControlHub'];
+      // Build placedSections from runState.shipSections lane assignments
+      // Array order: [0: left lane, 1: middle lane, 2: right lane]
+      let placedSections = ['bridge', 'powerCell', 'droneControlHub']; // Default fallback
+      if (currentRunState?.shipSections) {
+        const laneToIndex = { 'l': 0, 'm': 1, 'r': 2 };
+        const sectionsByLane = ['', '', ''];
+        for (const [key, section] of Object.entries(currentRunState.shipSections)) {
+          if (section.lane && laneToIndex[section.lane] !== undefined) {
+            sectionsByLane[laneToIndex[section.lane]] = key;
+          }
+        }
+        // Only use if all lanes are filled
+        if (sectionsByLane.every(s => s)) {
+          placedSections = sectionsByLane;
+        }
+      }
       const opponentPlacedSections = aiPersonality.shipDeployment?.placement || ['bridge', 'powerCell', 'droneControlHub'];
 
       // 6. Set initial resources to 0 - roundInitialization will calculate from ship stats

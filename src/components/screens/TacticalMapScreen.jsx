@@ -30,6 +30,7 @@ import EncounterController from '../../logic/encounters/EncounterController.js';
 import SinglePlayerCombatInitializer from '../../logic/singlePlayer/SinglePlayerCombatInitializer.js';
 import ExtractionController from '../../logic/singlePlayer/ExtractionController.js';
 import SalvageController from '../../logic/salvage/SalvageController.js';
+import HighAlertManager from '../../logic/salvage/HighAlertManager.js';
 import aiPersonalities from '../../data/aiData.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
@@ -267,7 +268,7 @@ function TacticalMapScreen() {
     if (runState?.pendingPOICombat) {
       console.log('[TacticalMap] Pending PoI combat detected after combat:', runState.pendingPOICombat);
 
-      const { packType, q, r, poiName, remainingWaypoints, fromSalvage } = runState.pendingPOICombat;
+      const { packType, q, r, poiName, remainingWaypoints, fromSalvage, salvageFullyLooted } = runState.pendingPOICombat;
 
       // Store remaining waypoints for journey resumption after loot
       if (remainingWaypoints?.length > 0) {
@@ -283,11 +284,40 @@ function TacticalMapScreen() {
         }
       });
 
-      // If from salvage, loot was already combined with combat rewards - just resume journey
+      // If from salvage, determine outcome based on whether POI was fully looted
       if (fromSalvage) {
-        console.log('[TacticalMap] Salvage combat - loot already collected via combat, resuming journey');
-        // Resume journey if waypoints remain (will be picked up by pendingResumeWaypoints)
-        return;
+
+        if (salvageFullyLooted) {
+          // All slots were revealed before encounter - mark POI as looted
+          console.log('[TacticalMap] Salvage combat victory - POI fully looted, marking as looted');
+
+          const currentRunState = gameStateManager.getState().currentRunState;
+          const lootedPOIs = currentRunState.lootedPOIs || [];
+
+          gameStateManager.setState({
+            currentRunState: {
+              ...currentRunState,
+              lootedPOIs: [...lootedPOIs, { q, r }]
+            }
+          });
+
+          console.log('[TacticalMap] POI marked as looted (all slots were revealed)');
+          // Player already got combat salvage + pendingSalvageLoot via CombatOutcomeProcessor
+          return;
+        } else {
+          // Slots remain - add to high alert state
+          console.log('[TacticalMap] Salvage combat victory - adding POI to high alert');
+
+          const currentRunState = gameStateManager.getState().currentRunState;
+          const updatedRunState = HighAlertManager.addHighAlert(currentRunState, { q, r });
+
+          gameStateManager.setState({
+            currentRunState: updatedRunState
+          });
+
+          console.log('[TacticalMap] POI now in high alert state, player can continue salvaging');
+          return;
+        }
       }
 
       // Regular PoI combat (no salvage) - generate PoI loot as reward
@@ -942,15 +972,9 @@ function TacticalMapScreen() {
       });
     }
 
-    // Mark POI as looted
-    const updatedRunState = gameStateManager.getState().currentRunState;
-    const lootedPOIs = updatedRunState.lootedPOIs || [];
-    gameStateManager.setState({
-      currentRunState: {
-        ...updatedRunState,
-        lootedPOIs: [...lootedPOIs, { q: activeSalvage.poi.q, r: activeSalvage.poi.r }]
-      }
-    });
+    // NOTE: Do NOT mark POI as looted before combat.
+    // If player wins, they can continue looting (POI enters High Alert state).
+    // If player escapes, POI will be marked as looted then.
 
     // Get tier config for AI selection
     const tier = runState?.mapData?.tier || 1;
@@ -965,6 +989,9 @@ function TacticalMapScreen() {
     setActiveSalvage(null);
     setShowSalvageModal(false);
 
+    // Check if all slots were revealed (for determining High Alert vs Looted after combat)
+    const salvageFullyLooted = SalvageController.isFullyLooted(activeSalvage);
+
     // Create encounter for loading screen
     setCurrentEncounter({
       poi: activeSalvage.poi,
@@ -977,7 +1004,8 @@ function TacticalMapScreen() {
       },
       detection,
       threatLevel: DetectionManager.getThreshold(),
-      fromSalvage: true
+      fromSalvage: true,
+      salvageFullyLooted
     });
 
     // Set up loading encounter data
@@ -1105,15 +1133,9 @@ function TacticalMapScreen() {
         });
       }
 
-      // Mark POI as looted
-      const updatedRunState = gameStateManager.getState().currentRunState;
-      const lootedPOIs = updatedRunState.lootedPOIs || [];
-      gameStateManager.setState({
-        currentRunState: {
-          ...updatedRunState,
-          lootedPOIs: [...lootedPOIs, { q: activeSalvage.poi.q, r: activeSalvage.poi.r }]
-        }
-      });
+      // NOTE: Do NOT mark POI as looted before combat.
+      // If player wins, they can continue looting (POI enters High Alert state).
+      // If player escapes, POI will be marked as looted then.
 
       // Get tier config for AI selection
       const tier = runState?.mapData?.tier || 1;
@@ -1227,7 +1249,8 @@ function TacticalMapScreen() {
             packType: currentEncounter.reward?.rewardType || 'MIXED_PACK',
             poiName: currentEncounter.poi.poiData?.name || 'Unknown Location',
             remainingWaypoints: remainingWps,
-            fromSalvage: currentEncounter.fromSalvage || false  // Flag to skip post-combat loot generation
+            fromSalvage: currentEncounter.fromSalvage || false,  // Flag to skip post-combat loot generation
+            salvageFullyLooted: currentEncounter.salvageFullyLooted || false  // Flag for fully looted POI
           }
         }
       });
@@ -1925,6 +1948,55 @@ function TacticalMapScreen() {
   }, [pendingLootEncounter, pendingResumeWaypoints]);
 
   // ========================================
+  // HOOKS THAT MUST BE BEFORE EARLY RETURNS
+  // ========================================
+  // These hooks were moved here to fix the "Rendered fewer hooks than expected"
+  // error that occurred during extraction when currentRunState becomes null.
+  // All hooks must be called unconditionally on every render.
+
+  /**
+   * Calculate escape route data for display in HexInfoPanel
+   * Shows minimum threat cost to reach nearest extraction gate
+   * NOTE: Derives mapData/tierConfig from currentRunState to work before early returns
+   */
+  const escapeRouteData = React.useMemo(() => {
+    // Derive values from currentRunState (may be null)
+    const mapData = currentRunState?.mapData;
+    const playerPosition = currentRunState?.playerPosition;
+    const detection = currentRunState?.detection;
+    const tierConfig = mapData ? mapTiers[mapData.tier - 1] : null;
+
+    if (!mapData || !tierConfig || !playerPosition) return null;
+
+    const lastWaypointPosition = waypoints.length > 0
+      ? waypoints[waypoints.length - 1].hex
+      : playerPosition;
+
+    const journeyEndDetection = waypoints.length > 0
+      ? waypoints[waypoints.length - 1].cumulativeDetection
+      : detection;
+
+    return EscapeRouteCalculator.calculateEscapeRoutes(
+      playerPosition,
+      lastWaypointPosition,
+      detection,
+      journeyEndDetection,
+      mapData,
+      tierConfig,
+      currentRunState
+    );
+  }, [currentRunState, waypoints]);
+
+  /**
+   * Handle pathfinding mode change
+   */
+  const handlePathModeChange = useCallback((newMode) => {
+    setPathfindingMode(newMode);
+    // TODO: If we want to recalculate existing waypoints with new mode,
+    // that would be done here. For now, mode only affects new waypoints.
+  }, []);
+
+  // ========================================
   // EARLY RETURNS (safe now - all hooks above)
   // ========================================
 
@@ -2017,41 +2089,6 @@ function TacticalMapScreen() {
    */
   const getJourneyEndEncounterRisk = () =>
     waypoints.length > 0 ? waypoints[waypoints.length - 1].cumulativeEncounterRisk : 0;
-
-  /**
-   * Calculate escape route data for display in HexInfoPanel
-   * Shows minimum threat cost to reach nearest extraction gate
-   */
-  const escapeRouteData = React.useMemo(() => {
-    if (!mapData || !tierConfig) return null;
-
-    const lastWaypointPosition = waypoints.length > 0
-      ? waypoints[waypoints.length - 1].hex
-      : playerPosition;
-
-    const journeyEndDetection = waypoints.length > 0
-      ? waypoints[waypoints.length - 1].cumulativeDetection
-      : detection;
-
-    return EscapeRouteCalculator.calculateEscapeRoutes(
-      playerPosition,
-      lastWaypointPosition,
-      detection,
-      journeyEndDetection,
-      mapData,
-      tierConfig,
-      currentRunState
-    );
-  }, [playerPosition, waypoints, detection, mapData, tierConfig, currentRunState]);
-
-  /**
-   * Handle pathfinding mode change
-   */
-  const handlePathModeChange = useCallback((newMode) => {
-    setPathfindingMode(newMode);
-    // TODO: If we want to recalculate existing waypoints with new mode,
-    // that would be done here. For now, mode only affects new waypoints.
-  }, []);
 
   /**
    * Add a waypoint to the end of the journey
@@ -2415,6 +2452,7 @@ function TacticalMapScreen() {
         isScanning={isScanningHex}
         insertionGate={currentRunState.insertionGate}
         lootedPOIs={currentRunState.lootedPOIs || []}
+        highAlertPOIs={currentRunState.highAlertPOIs || []}
         shipId={shipSlot.shipId || 'SHIP_001'}
         currentHexIndex={currentHexIndex}
       />

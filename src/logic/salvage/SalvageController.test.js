@@ -498,6 +498,43 @@ describe('SalvageController', () => {
     })
   })
 
+  describe('isFullyLooted()', () => {
+    it('returns true when all slots have been revealed', () => {
+      // EXPLANATION: When currentSlotIndex equals totalSlots, all slots
+      // have been revealed and the POI is fully looted.
+
+      const salvageState = { totalSlots: 3, currentSlotIndex: 3 }
+
+      expect(salvageController.isFullyLooted(salvageState)).toBe(true)
+    })
+
+    it('returns false when slots remain unrevealed', () => {
+      // EXPLANATION: When currentSlotIndex is less than totalSlots,
+      // there are still slots to reveal.
+
+      const salvageState = { totalSlots: 3, currentSlotIndex: 2 }
+
+      expect(salvageController.isFullyLooted(salvageState)).toBe(false)
+    })
+
+    it('returns false when no slots have been revealed', () => {
+      // EXPLANATION: When currentSlotIndex is 0, no slots have been revealed.
+
+      const salvageState = { totalSlots: 4, currentSlotIndex: 0 }
+
+      expect(salvageController.isFullyLooted(salvageState)).toBe(false)
+    })
+
+    it('returns true for single slot POI when slot is revealed', () => {
+      // EXPLANATION: Edge case - a single slot POI is fully looted
+      // after revealing just one slot.
+
+      const salvageState = { totalSlots: 1, currentSlotIndex: 1 }
+
+      expect(salvageController.isFullyLooted(salvageState)).toBe(true)
+    })
+  })
+
   // ========================================
   // TOKEN SLOT COLLECTION TESTS
   // ========================================

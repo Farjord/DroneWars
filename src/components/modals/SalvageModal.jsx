@@ -251,7 +251,7 @@ function SalvageModal({
           )}
 
           {/* Info about leaving */}
-          {hasRevealedAny && !encounterTriggered && !allSlotsRevealed && (
+          {!encounterTriggered && !allSlotsRevealed && (
             <p className="salvage-info-text">
               {currentSlotIndex < totalSlots
                 ? `${totalSlots - currentSlotIndex} slot${totalSlots - currentSlotIndex > 1 ? 's' : ''} remaining. Each salvage increases encounter chance.`

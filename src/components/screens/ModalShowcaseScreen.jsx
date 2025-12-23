@@ -47,6 +47,7 @@ import RunInventoryModal from '../modals/RunInventoryModal.jsx';
 import ExtractionLootSelectionModal from '../modals/ExtractionLootSelectionModal.jsx';
 import RunSummaryModal from '../modals/RunSummaryModal.jsx';
 import MIARecoveryModal from '../modals/MIARecoveryModal.jsx';
+import DroneBlueprintRewardModal from '../modals/DroneBlueprintRewardModal.jsx';
 
 // Utility modals
 import CardDetailModal from '../modals/CardDetailModal.jsx';
@@ -187,6 +188,7 @@ function ModalShowcaseScreen() {
       ExtractionLootSelectionModal,
       RunSummaryModal,
       MIARecoveryModal,
+      DroneBlueprintRewardModal,
       // Utility modals
       CardDetailModal,
       GlossaryModal,

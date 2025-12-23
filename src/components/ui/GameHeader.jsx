@@ -5,7 +5,7 @@
 // Extracted from App.jsx for better component organization
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Power, Files, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain, Plus, Image, ChevronRight, Check, AlertTriangle } from 'lucide-react';
+import { Power, Files, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain, Plus, Image, ChevronRight, Check, AlertTriangle, Zap } from 'lucide-react';
 import { getPhaseDisplayName } from '../../utils/gameUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import DEV_CONFIG from '../../config/devConfig.js';
@@ -101,6 +101,7 @@ function GameHeader({
   onShowGlossary,
   onShowAIStrategy,
   onShowAddCardModal,
+  onForceWin,
   testMode,
   handleCancelMultiMove,
   handleConfirmMultiMoveDrones,
@@ -721,6 +722,18 @@ function GameHeader({
                   >
                     <Plus size={16} />
                     Add Card to Hand
+                  </button>
+                )}
+                {DEV_CONFIG.features.forceWin && (
+                  <button
+                    onClick={() => {
+                      onForceWin && onForceWin();
+                      setShowSettingsDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-3 text-yellow-400 hover:bg-gray-700 transition-colors flex items-center gap-2 border-b border-gray-700"
+                  >
+                    <Zap size={16} />
+                    Force Win (DEV)
                   </button>
                 )}
                 <button

@@ -562,6 +562,59 @@
 }
 
 /* ========================================
+   GUARANTEED COMBAT WARNING
+   ======================================== */
+
+.hex-guaranteed-combat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  margin-top: 8px;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.18) 0%, rgba(239, 68, 68, 0.08) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  border-left: 3px solid #ef4444;
+  border-radius: 4px;
+}
+
+.guaranteed-combat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.guaranteed-combat-icon {
+  font-size: 14px;
+  color: #ef4444;
+}
+
+.guaranteed-combat-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ef4444;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.guaranteed-combat-enemy {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 22px;
+}
+
+.enemy-label {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.enemy-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fca5a5;
+}
+
+/* ========================================
    ACTIONS
    ======================================== */
 

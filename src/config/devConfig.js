@@ -41,7 +41,12 @@ export const DEV_CONFIG = {
     // Add Card to Hand button in game header settings dropdown
     // Allows adding cards to either player's hand during gameplay
     // Useful for testing specific card interactions and game states
-    addCardToHand: DEV_MODE
+    addCardToHand: DEV_MODE,
+
+    // Force Win button in game header settings dropdown
+    // Instantly wins combat by damaging all opponent ship sections
+    // Useful for testing extraction mode victory flows
+    forceWin: DEV_MODE
   }
 };
 

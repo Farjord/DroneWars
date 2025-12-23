@@ -71,6 +71,7 @@ import { calculatePotentialInterceptors } from './logic/combat/InterceptionProce
 import TargetingRouter from './logic/TargetingRouter.js';
 import ExtractionController from './logic/singlePlayer/ExtractionController.js';
 import { calculateRoundStartReset } from './logic/shields/ShieldResetUtils.js';
+import { forceWinCombat } from './logic/game/ForceWin.js';
 import { BACKGROUNDS, DEFAULT_BACKGROUND, getBackgroundById } from './config/backgrounds.js';
 
 // --- 1.6 MANAGER/STATE IMPORTS ---
@@ -1880,6 +1881,7 @@ const App = ({ phaseAnimationQueue }) => {
     const enteredMandatoryRemoval = turnPhase === 'mandatoryDroneRemoval' && prevPhase !== 'mandatoryDroneRemoval';
     const enteredOptionalDiscard = turnPhase === 'optionalDiscard' && prevPhase !== 'optionalDiscard';
     const enteredDeployment = turnPhase === 'deployment' && prevPhase !== 'deployment';
+    const enteredAction = turnPhase === 'action' && prevPhase !== 'action';
 
     // Open footer and set view to hand when first entering mandatoryDiscard phase
     if (enteredMandatoryDiscard) {
@@ -1902,6 +1904,12 @@ const App = ({ phaseAnimationQueue }) => {
     // Open footer and set view to drones when first entering deployment phase
     if (enteredDeployment) {
       setFooterView('drones');
+      setIsFooterOpen(true);
+    }
+
+    // Open footer and set view to hand when first entering action phase
+    if (enteredAction) {
+      setFooterView('hand');
       setIsFooterOpen(true);
     }
 
@@ -2179,6 +2187,24 @@ const App = ({ phaseAnimationQueue }) => {
    */
   const handleOpenAddCardModal = () => {
     setShowAddCardModal(true);
+  };
+
+  /**
+   * HANDLE FORCE WIN (DEV)
+   * Instantly wins combat by damaging all opponent ship sections.
+   * Triggers the natural win condition flow (WinnerModal, loot, etc.)
+   */
+  const handleForceWin = () => {
+    forceWinCombat({
+      player1State: localPlayerState,
+      player2State: opponentPlayerState,
+      updatePlayerState,
+      callbacks: {
+        logCallback: addLogEntry,
+        setWinnerCallback: setWinner,
+        showWinnerModalCallback: setShowWinnerModal
+      }
+    });
   };
 
   /**
@@ -4523,6 +4549,7 @@ const App = ({ phaseAnimationQueue }) => {
         onShowGlossary={() => setShowGlossaryModal(true)}
         onShowAIStrategy={() => setShowAIStrategyModal(true)}
         onShowAddCardModal={handleOpenAddCardModal}
+        onForceWin={handleForceWin}
         testMode={testMode}
         handleCancelMultiMove={handleCancelMultiMove}
         handleConfirmMultiMoveDrones={handleConfirmMultiMoveDrones}

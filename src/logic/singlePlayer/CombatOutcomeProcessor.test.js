@@ -46,6 +46,7 @@ vi.mock('./ExtractionController.js', () => ({
 import CombatOutcomeProcessor from './CombatOutcomeProcessor.js'
 import gameStateManager from '../../managers/GameStateManager.js'
 import ExtractionController from './ExtractionController.js'
+import lootGenerator from '../loot/LootGenerator.js'
 
 describe('CombatOutcomeProcessor', () => {
   beforeEach(() => {
@@ -779,6 +780,175 @@ describe('CombatOutcomeProcessor', () => {
       const finalCall = setStateCalls[setStateCalls.length - 1][0]
       expect(finalCall.currentRunState.pendingBlockadeExtraction).toBeUndefined()
       expect(finalCall.currentRunState.blockadeCleared).toBeUndefined()
+    })
+  })
+
+  /**
+   * TDD Tests: Drone Blueprint POI Reward Flow
+   *
+   * When winning combat at a Drone Blueprint PoI, the blueprint should be
+   * stored separately (pendingDroneBlueprint) so WinnerModal can show it
+   * in a special modal AFTER the regular salvage is collected.
+   */
+  describe('Drone Blueprint POI Reward Flow', () => {
+    it('should store drone blueprint separately as pendingDroneBlueprint', () => {
+      // EXPLANATION: When the reward is a drone blueprint, it should NOT be
+      // included in salvageLoot.blueprint. Instead, it should be stored as
+      // pendingDroneBlueprint for the special modal to display.
+
+      const mockDroneBlueprint = {
+        type: 'blueprint',
+        blueprintId: 'Gunship',
+        blueprintType: 'drone',
+        rarity: 'Uncommon',
+        droneData: { name: 'Gunship', attack: 3, hull: 4, speed: 2 }
+      }
+
+      // Configure lootGenerator mock
+      lootGenerator.generateDroneBlueprint.mockReturnValue(mockDroneBlueprint)
+
+      gameStateManager.getState.mockReturnValue({
+        winner: 'player1',
+        player1: { shipSections: {} },
+        player2: { deck: [] },
+        currentRunState: {
+          collectedLoot: [],
+          shipSections: {},
+          pendingPOICombat: {
+            packType: 'DRONE_BLUEPRINT_FIGHTER'
+          }
+        },
+        singlePlayerEncounter: {}
+      })
+
+      // ACT
+      const result = CombatOutcomeProcessor.processCombatEnd({
+        winner: 'player1',
+        player1: { shipSections: {} },
+        player2: { deck: [] },
+        currentRunState: {
+          collectedLoot: [],
+          shipSections: {},
+          pendingPOICombat: {
+            packType: 'DRONE_BLUEPRINT_FIGHTER'
+          }
+        },
+        singlePlayerEncounter: {}
+      })
+
+      // ASSERT: Blueprint should NOT be in loot.blueprint
+      expect(result.loot.blueprint).toBeUndefined()
+
+      // ASSERT: pendingDroneBlueprint should be set in state
+      const setStateCalls = gameStateManager.setState.mock.calls
+      const stateWithBlueprint = setStateCalls.find(call =>
+        call[0].pendingDroneBlueprint !== undefined
+      )
+      expect(stateWithBlueprint).toBeDefined()
+      expect(stateWithBlueprint[0].pendingDroneBlueprint).toEqual(mockDroneBlueprint)
+    })
+
+    it('should NOT include blueprint in salvageLoot.blueprint for drone POIs', () => {
+      // EXPLANATION: The regular salvageLoot should not have the blueprint
+      // so LootRevealModal doesn't show it. The special modal shows it later.
+
+      const mockDroneBlueprint = {
+        type: 'blueprint',
+        blueprintId: 'Harrier',
+        blueprintType: 'drone',
+        rarity: 'Common',
+        droneData: { name: 'Harrier', attack: 2, hull: 2, speed: 3 }
+      }
+
+      // Configure lootGenerator mock
+      lootGenerator.generateDroneBlueprint.mockReturnValue(mockDroneBlueprint)
+
+      gameStateManager.getState.mockReturnValue({
+        winner: 'player1',
+        player1: { shipSections: {} },
+        player2: { deck: [] },
+        currentRunState: {
+          collectedLoot: [],
+          shipSections: {},
+          pendingPOICombat: {
+            packType: 'DRONE_BLUEPRINT_LIGHT'
+          }
+        },
+        singlePlayerEncounter: {}
+      })
+
+      // ACT
+      const result = CombatOutcomeProcessor.processCombatEnd({
+        winner: 'player1',
+        player1: { shipSections: {} },
+        player2: { deck: [] },
+        currentRunState: {
+          collectedLoot: [],
+          shipSections: {},
+          pendingPOICombat: {
+            packType: 'DRONE_BLUEPRINT_LIGHT'
+          }
+        },
+        singlePlayerEncounter: {}
+      })
+
+      // ASSERT: loot.blueprint should be undefined for drone blueprint POIs
+      expect(result.loot.blueprint).toBeUndefined()
+    })
+
+    it('should set hasPendingDroneBlueprint flag after finalizeLootCollection when blueprint exists', () => {
+      // EXPLANATION: After salvage is collected, WinnerModal needs to know
+      // there's a pending drone blueprint to show the special modal.
+
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: {
+          collectedLoot: [],
+          creditsEarned: 0,
+          aiCoresEarned: 0
+        },
+        pendingDroneBlueprint: {
+          blueprintId: 'Mammoth',
+          blueprintType: 'drone',
+          rarity: 'Rare',
+          droneData: { name: 'Mammoth', attack: 4, hull: 6, speed: 1 }
+        },
+        singlePlayerEncounter: {}
+      })
+
+      const combatLoot = { cards: [], salvageItem: null, aiCores: 0 }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT: hasPendingDroneBlueprint should be set
+      const setStateCalls = gameStateManager.setState.mock.calls
+      const finalCall = setStateCalls[setStateCalls.length - 1][0]
+      expect(finalCall.hasPendingDroneBlueprint).toBe(true)
+    })
+
+    it('should NOT set hasPendingDroneBlueprint when no blueprint exists', () => {
+      // EXPLANATION: Regular combat (not at drone blueprint POI) should not
+      // trigger the special modal flow.
+
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: {
+          collectedLoot: [],
+          creditsEarned: 0,
+          aiCoresEarned: 0
+        },
+        pendingDroneBlueprint: null,  // No blueprint pending
+        singlePlayerEncounter: {}
+      })
+
+      const combatLoot = { cards: [], salvageItem: null, aiCores: 0 }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT: hasPendingDroneBlueprint should NOT be set
+      const setStateCalls = gameStateManager.setState.mock.calls
+      const finalCall = setStateCalls[setStateCalls.length - 1][0]
+      expect(finalCall.hasPendingDroneBlueprint).toBeUndefined()
     })
   })
 })

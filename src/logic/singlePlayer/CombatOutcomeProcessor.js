@@ -126,13 +126,19 @@ class CombatOutcomeProcessor {
     }
 
     // 3. Check for drone blueprint POI reward
-    const rewardType = encounterInfo?.reward?.rewardType;
+    // First check encounterInfo.reward.rewardType, fallback to pendingPOICombat.packType
+    // NOTE: Drone blueprints are stored SEPARATELY as pendingDroneBlueprint (not in salvageLoot)
+    // This allows WinnerModal to show a special modal AFTER regular salvage collection
+    let pendingDroneBlueprint = null;
+    const rewardType = encounterInfo?.reward?.rewardType
+      || currentRunState?.pendingPOICombat?.packType;
     if (rewardType?.startsWith('DRONE_BLUEPRINT_')) {
       debugLog('SP_COMBAT', 'Drone blueprint POI - generating blueprint:', rewardType);
       const droneBlueprint = lootGenerator.generateDroneBlueprint(rewardType, enemyTier);
       if (droneBlueprint) {
-        salvageLoot.blueprint = droneBlueprint;
-        debugLog('SP_COMBAT', 'Drone blueprint generated:', droneBlueprint);
+        // Store separately - NOT in salvageLoot.blueprint
+        pendingDroneBlueprint = droneBlueprint;
+        debugLog('SP_COMBAT', 'Drone blueprint generated (pending for special modal):', droneBlueprint);
       }
     }
 
@@ -149,7 +155,8 @@ class CombatOutcomeProcessor {
     // Do NOT return to tactical map yet - WinnerModal will show "Collect Salvage" button
     gameStateManager.setState({
       currentRunState: updatedRunState,
-      pendingLoot: salvageLoot  // Store for LootRevealModal
+      pendingLoot: salvageLoot,  // Store for LootRevealModal
+      pendingDroneBlueprint  // Store separately for special modal (null if no blueprint)
     });
 
     // 6. Record mission progress for combat victory
@@ -238,8 +245,13 @@ class CombatOutcomeProcessor {
     // Check if this was a blockade encounter (extraction interception) BEFORE clearing state
     // Use singlePlayerEncounter.isBlockade as primary, fall back to currentRunState.isBlockadeCombat
     // The fallback handles race conditions where singlePlayerEncounter may be cleared early
-    const encounter = gameStateManager.getState().singlePlayerEncounter;
+    const fullState = gameStateManager.getState();
+    const encounter = fullState.singlePlayerEncounter;
     const isBlockade = encounter?.isBlockade || currentRunState?.isBlockadeCombat;
+
+    // Check for pending drone blueprint BEFORE clearing state
+    // This triggers the special blueprint modal after regular salvage collection
+    const pendingDroneBlueprint = fullState.pendingDroneBlueprint;
 
     // Clear ALL combat state using centralized cleanup
     gameStateManager.resetGameState();
@@ -257,12 +269,27 @@ class CombatOutcomeProcessor {
           pendingBlockadeExtraction: true,  // Flag for TacticalMapScreen to auto-extract
           blockadeCleared: true  // Persistent flag - prevents re-rolling blockade if auto-extract fails
         },
-        pendingLoot: null
+        pendingLoot: null,
+        // Preserve drone blueprint for special modal (if exists)
+        pendingDroneBlueprint,
+        hasPendingDroneBlueprint: !!pendingDroneBlueprint
       });
 
       debugLog('SP_COMBAT', '=== Returned to Tactical Map (pending blockade extraction) ===');
+    } else if (pendingDroneBlueprint) {
+      // Regular combat with pending drone blueprint - stay in combat screen
+      // WinnerModal will show the DroneBlueprintRewardModal
+      gameStateManager.setState({
+        currentRunState: updatedRunState,
+        pendingLoot: null,  // Clear pending loot
+        pendingDroneBlueprint,
+        hasPendingDroneBlueprint: true
+        // NOTE: Do NOT set appState yet - WinnerModal handles transition after blueprint accepted
+      });
+
+      debugLog('SP_COMBAT', '=== Pending drone blueprint modal (staying in combat screen) ===');
     } else {
-      // Regular POI/ambush combat - return to tactical map
+      // Regular POI/ambush combat without blueprint - return to tactical map
       gameStateManager.setState({
         appState: 'tacticalMap',
         currentRunState: updatedRunState,
@@ -271,6 +298,45 @@ class CombatOutcomeProcessor {
 
       debugLog('SP_COMBAT', '=== Returned to Tactical Map (loot collected) ===');
     }
+  }
+
+  /**
+   * Finalize drone blueprint collection after special modal
+   * Called when user accepts the drone blueprint from DroneBlueprintRewardModal
+   * Adds blueprint to collectedLoot and returns to tactical map
+   * @param {Object} blueprint - The drone blueprint to add { blueprintId, blueprintType, rarity, droneData }
+   */
+  finalizeBlueprintCollection(blueprint) {
+    debugLog('SP_COMBAT', '=== Finalizing Blueprint Collection ===');
+    debugLog('SP_COMBAT', 'Blueprint:', blueprint);
+
+    const currentRunState = gameStateManager.getState().currentRunState || {};
+    const existingLoot = currentRunState.collectedLoot || [];
+
+    // Add blueprint to collectedLoot
+    const blueprintLoot = {
+      type: 'blueprint',
+      blueprintId: blueprint.blueprintId,
+      blueprintType: blueprint.blueprintType || 'drone',
+      rarity: blueprint.rarity,
+      droneData: blueprint.droneData,
+      source: 'drone_poi_reward'
+    };
+
+    const updatedRunState = {
+      ...currentRunState,
+      collectedLoot: [...existingLoot, blueprintLoot]
+    };
+
+    // Return to tactical map and clear blueprint state
+    gameStateManager.setState({
+      appState: 'tacticalMap',
+      currentRunState: updatedRunState,
+      pendingDroneBlueprint: null,
+      hasPendingDroneBlueprint: false
+    });
+
+    debugLog('SP_COMBAT', '=== Blueprint collected, returned to Tactical Map ===');
   }
 
   /**

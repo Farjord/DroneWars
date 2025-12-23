@@ -9,6 +9,7 @@ import React, { useState } from 'react';
 import gameStateManager from '../../managers/GameStateManager.js';
 import CombatOutcomeProcessor from '../../logic/singlePlayer/CombatOutcomeProcessor.js';
 import LootRevealModal from './LootRevealModal.jsx';
+import DroneBlueprintRewardModal from './DroneBlueprintRewardModal.jsx';
 
 /**
  * WINNER MODAL COMPONENT
@@ -24,6 +25,7 @@ import LootRevealModal from './LootRevealModal.jsx';
  */
 const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
   const [lootToReveal, setLootToReveal] = useState(null);
+  const [showBlueprintModal, setShowBlueprintModal] = useState(false);
   const isVictory = winner === localPlayerId;
 
   // Check if this is single-player extraction mode
@@ -66,11 +68,28 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
   /**
    * Handle loot collection complete
    * Called when user has revealed all cards and clicked Continue
+   * If there's a pending drone blueprint, shows the special modal instead of returning
    */
   const handleLootCollected = (loot) => {
-    // Finalize loot and return to tactical map
+    // Finalize loot collection (this may set hasPendingDroneBlueprint flag)
     CombatOutcomeProcessor.finalizeLootCollection(loot);
     setLootToReveal(null);
+
+    // Check if there's a pending drone blueprint to show special modal
+    const updatedState = gameStateManager.getState();
+    if (updatedState.hasPendingDroneBlueprint && updatedState.pendingDroneBlueprint) {
+      setShowBlueprintModal(true);
+    }
+  };
+
+  /**
+   * Handle blueprint acceptance
+   * Called when user clicks Accept on the drone blueprint reward modal
+   */
+  const handleBlueprintAccept = (blueprint) => {
+    // Finalize blueprint collection and return to tactical map
+    CombatOutcomeProcessor.finalizeBlueprintCollection(blueprint);
+    setShowBlueprintModal(false);
   };
 
   return (
@@ -203,6 +222,13 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
         loot={lootToReveal}
         onCollect={handleLootCollected}
         show={!!lootToReveal}
+      />
+
+      {/* Drone Blueprint Reward Modal - shown after loot collection when blueprint POI */}
+      <DroneBlueprintRewardModal
+        blueprint={gameState.pendingDroneBlueprint}
+        onAccept={handleBlueprintAccept}
+        show={showBlueprintModal}
       />
     </div>
   );

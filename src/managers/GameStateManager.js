@@ -2590,6 +2590,7 @@ class GameStateManager {
       hexesExplored: [{ q: startingGate.q, r: startingGate.r }], // Start with insertion gate
       poisVisited: [],
       lootedPOIs: [],  // Track POIs that have been looted (prevents re-looting)
+      highAlertPOIs: [],  // Track POIs in high alert state after combat victory (increased encounter chance)
       combatsWon: 0,
       combatsLost: 0,
       damageDealtToEnemies: 0,

@@ -7,6 +7,7 @@
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import gameStateManager from '../../managers/GameStateManager.js';
+import HighAlertManager from './HighAlertManager.js';
 
 /**
  * SalvageController - Manages POI salvage state and operations
@@ -62,10 +63,10 @@ export class SalvageController {
    * @returns {Object} { salvageState, slotContent, encounterTriggered }
    */
   attemptSalvage(salvageState, tierConfig) {
-    const { currentSlotIndex, currentEncounterChance, slots } = salvageState
+    const { currentSlotIndex, currentEncounterChance, slots, poi } = salvageState
 
-    // Check for encounter (pass slot index for deterministic seeding)
-    const encounterTriggered = this._rollEncounter(currentEncounterChance, currentSlotIndex)
+    // Check for encounter (pass slot index for deterministic seeding, and POI for high alert check)
+    const encounterTriggered = this._rollEncounter(currentEncounterChance, currentSlotIndex, poi)
 
     // Reveal the current slot regardless of encounter
     const updatedSlots = [...slots]
@@ -111,17 +112,32 @@ export class SalvageController {
    * Roll to determine if encounter occurs
    * @param {number} encounterChance - Current encounter chance (0-100)
    * @param {number} slotIndex - Current slot index for deterministic offset
+   * @param {Object} poi - POI object with q, r coordinates (for high alert check)
    * @returns {boolean} True if encounter triggered
    */
-  _rollEncounter(encounterChance, slotIndex = 0) {
+  _rollEncounter(encounterChance, slotIndex = 0, poi = null) {
     const gameState = gameStateManager.getState();
     const baseRng = SeededRandom.fromGameState(gameState || {});
     // Use slot index as offset for unique roll per slot (deterministic)
     const slotOffset = slotIndex * 1337;
     const rng = new SeededRandom(baseRng.seed + slotOffset);
     const roll = rng.random() * 100;
-    const triggered = roll < encounterChance
-    debugLog('SALVAGE_ENCOUNTER', `Encounter roll: ${roll.toFixed(1)} vs ${encounterChance.toFixed(1)}% chance - ${triggered ? 'TRIGGERED!' : 'safe'}`)
+
+    // Add high alert bonus if POI is in high alert state
+    let totalEncounterChance = encounterChance;
+    if (poi && poi.q !== undefined && poi.r !== undefined) {
+      const runState = gameState?.currentRunState;
+      const alertBonus = HighAlertManager.getAlertBonus(runState, { q: poi.q, r: poi.r });
+      if (alertBonus > 0) {
+        // Convert bonus (0.05-0.15) to percentage (5-15)
+        const alertBonusPercent = alertBonus * 100;
+        totalEncounterChance += alertBonusPercent;
+        debugLog('SALVAGE_ENCOUNTER', `High Alert bonus: +${alertBonusPercent.toFixed(1)}%`);
+      }
+    }
+
+    const triggered = roll < totalEncounterChance
+    debugLog('SALVAGE_ENCOUNTER', `Encounter roll: ${roll.toFixed(1)} vs ${totalEncounterChance.toFixed(1)}% chance - ${triggered ? 'TRIGGERED!' : 'safe'}`)
     return triggered
   }
 
@@ -187,6 +203,16 @@ export class SalvageController {
    */
   hasRevealedAnySlots(salvageState) {
     return salvageState.slots.some(slot => slot.revealed)
+  }
+
+  /**
+   * Check if all slots have been revealed (POI fully looted)
+   * Used to determine if POI should go to High Alert vs Looted after combat
+   * @param {Object} salvageState - Current salvage state
+   * @returns {boolean} True if all slots have been revealed
+   */
+  isFullyLooted(salvageState) {
+    return salvageState.currentSlotIndex >= salvageState.totalSlots
   }
 }
 

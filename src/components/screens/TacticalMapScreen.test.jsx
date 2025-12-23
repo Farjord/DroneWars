@@ -218,7 +218,8 @@ vi.mock('../../managers/GameStateManager.js', () => ({
   default: {
     getState: vi.fn(),
     setState: vi.fn(),
-    subscribe: vi.fn(() => () => {})
+    subscribe: vi.fn(() => () => {}),
+    getTacticalItemCount: vi.fn().mockReturnValue(0)
   }
 }));
 
@@ -979,6 +980,233 @@ describe('Preview Path - Pathfinding Mode Consistency', () => {
 // to playerProfile.securityTokens but read from singlePlayerProfile.securityTokens
 //
 // BUG: Tokens are saved to wrong property, so they never appear in player's balance
+
+// ========================================
+// HOOKS ORDERING TESTS (TDD)
+// ========================================
+// Tests for the bug where hooks are called after early returns,
+// causing "Rendered fewer hooks than expected" error during extraction.
+//
+// BUG: escapeRouteData (useMemo) and handlePathModeChange (useCallback)
+// are defined AFTER the early return statements at lines 1932-1951.
+// When currentRunState becomes null during extraction, the early return
+// fires before these hooks are called, causing a hooks count mismatch.
+
+import { render, act } from '@testing-library/react';
+import TacticalMapScreen from './TacticalMapScreen.jsx';
+
+describe('TacticalMapScreen - Hooks Ordering (Extraction Crash Fix)', () => {
+  // Store original console.error to restore later
+  let originalConsoleError;
+  let consoleErrorCalls = [];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    consoleErrorCalls = [];
+    originalConsoleError = console.error;
+    // Capture console.error calls to detect React hooks errors
+    console.error = (...args) => {
+      consoleErrorCalls.push(args);
+      // Still log for debugging
+      originalConsoleError(...args);
+    };
+
+    // Mock gameStateManager to return valid state initially
+    gameStateManager.getState.mockReturnValue({
+      currentScreen: 'TacticalMap',
+      currentRunState: {
+        mapData: {
+          tier: 1,
+          radius: 5,
+          hexes: [],
+          seed: 12345,
+          gates: [{ q: 5, r: 0, type: 'extraction' }]
+        },
+        playerPosition: { q: 0, r: 0 },
+        detection: 25,
+        shipSlotId: 1,
+        collectedLoot: [],
+        creditsEarned: 0,
+        shipSections: {}
+      },
+      singlePlayerShipSlots: [{
+        id: 1,
+        shipId: 'SHIP_001',
+        shipComponents: {
+          'BRIDGE_001': 1,
+          'POWERCELL_001': 0,
+          'DRONECONTROL_001': 2
+        },
+        activeDeck: { cards: [] }
+      }],
+      singlePlayerShipComponentInstances: [],
+      singlePlayerProfile: {
+        credits: 1000,
+        securityTokens: 0,
+        reputation: { faction1: 0 },
+        ownedCards: [],
+        tacticalItems: []
+      }
+    });
+  });
+
+  afterEach(() => {
+    console.error = originalConsoleError;
+  });
+
+  /**
+   * BUG TEST: When extraction completes and currentRunState becomes null,
+   * the component should handle the early return without crashing.
+   *
+   * Before the fix: "Rendered fewer hooks than expected" error
+   * After the fix: Component renders loading message without error
+   */
+  it('should not crash when currentRunState becomes null during extraction', () => {
+    // EXPLANATION: This reproduces the exact crash scenario:
+    // 1. Component renders with valid state (all hooks called)
+    // 2. Extraction completes, currentRunState becomes null
+    // 3. Re-render triggers early return at line 1932
+    // 4. BUG: hooks at lines 2025, 2050 are not called, causing mismatch
+
+    let subscriberCallback = null;
+    gameStateManager.subscribe.mockImplementation((callback) => {
+      subscriberCallback = callback;
+      return () => { subscriberCallback = null; };
+    });
+
+    // First render with valid state
+    const { unmount } = render(<TacticalMapScreen />);
+
+    // Simulate extraction completing - currentRunState becomes null
+    act(() => {
+      gameStateManager.getState.mockReturnValue({
+        currentScreen: 'TacticalMap',
+        currentRunState: null, // <-- Extraction cleared the run state
+        singlePlayerShipSlots: [],
+        singlePlayerShipComponentInstances: [],
+        singlePlayerProfile: { credits: 1000 }
+      });
+
+      // Trigger re-render via subscriber
+      if (subscriberCallback) {
+        subscriberCallback(gameStateManager.getState());
+      }
+    });
+
+    // Check for React hooks error in console
+    const hooksError = consoleErrorCalls.find(args =>
+      args.some(arg =>
+        typeof arg === 'string' &&
+        arg.includes('Rendered fewer hooks than expected')
+      )
+    );
+
+    // After the fix, there should be NO hooks error
+    expect(hooksError).toBeUndefined();
+
+    unmount();
+  });
+
+  /**
+   * BUG TEST: Verify hooks are called consistently on every render path.
+   *
+   * This tests that the useMemo and useCallback hooks that were
+   * after the early returns have been moved before them.
+   */
+  it('should not crash when mapData becomes null', () => {
+    // EXPLANATION: mapData null is another trigger for early return at line 1932
+
+    let subscriberCallback = null;
+    gameStateManager.subscribe.mockImplementation((callback) => {
+      subscriberCallback = callback;
+      return () => { subscriberCallback = null; };
+    });
+
+    // First render with valid state
+    const { unmount } = render(<TacticalMapScreen />);
+
+    // Simulate mapData becoming null (edge case during state transitions)
+    act(() => {
+      gameStateManager.getState.mockReturnValue({
+        currentScreen: 'TacticalMap',
+        currentRunState: {
+          mapData: null, // <-- mapData null also triggers early return
+          playerPosition: { q: 0, r: 0 },
+          detection: 25
+        },
+        singlePlayerShipSlots: [],
+        singlePlayerShipComponentInstances: [],
+        singlePlayerProfile: { credits: 1000 }
+      });
+
+      if (subscriberCallback) {
+        subscriberCallback(gameStateManager.getState());
+      }
+    });
+
+    // Check for React hooks error
+    const hooksError = consoleErrorCalls.find(args =>
+      args.some(arg =>
+        typeof arg === 'string' &&
+        arg.includes('Rendered fewer hooks than expected')
+      )
+    );
+
+    expect(hooksError).toBeUndefined();
+
+    unmount();
+  });
+
+  /**
+   * BUG TEST: Verify component handles shipSlot not found gracefully.
+   *
+   * The second early return at line 1945 also needs hooks before it.
+   */
+  it('should not crash when shipSlot is not found', () => {
+    // EXPLANATION: Tests the second early return path (shipSlot not found)
+
+    let subscriberCallback = null;
+    gameStateManager.subscribe.mockImplementation((callback) => {
+      subscriberCallback = callback;
+      return () => { subscriberCallback = null; };
+    });
+
+    // First render with valid state
+    const { unmount } = render(<TacticalMapScreen />);
+
+    // Simulate shipSlot not being found (shipSlotId doesn't match any slot)
+    act(() => {
+      gameStateManager.getState.mockReturnValue({
+        currentScreen: 'TacticalMap',
+        currentRunState: {
+          mapData: { tier: 1, radius: 5, hexes: [], seed: 12345 },
+          playerPosition: { q: 0, r: 0 },
+          detection: 25,
+          shipSlotId: 999 // <-- No slot with this ID
+        },
+        singlePlayerShipSlots: [{ id: 1, shipId: 'SHIP_001', shipComponents: {} }], // Only slot 1 exists
+        singlePlayerShipComponentInstances: [],
+        singlePlayerProfile: { credits: 1000 }
+      });
+
+      if (subscriberCallback) {
+        subscriberCallback(gameStateManager.getState());
+      }
+    });
+
+    // Check for React hooks error
+    const hooksError = consoleErrorCalls.find(args =>
+      args.some(arg =>
+        typeof arg === 'string' &&
+        arg.includes('Rendered fewer hooks than expected')
+      )
+    );
+
+    expect(hooksError).toBeUndefined();
+
+    unmount();
+  });
+});
 
 describe('Token Persistence - singlePlayerProfile', () => {
   beforeEach(() => {

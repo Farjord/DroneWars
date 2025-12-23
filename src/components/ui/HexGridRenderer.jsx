@@ -102,7 +102,7 @@ const generateDecorativeHexes = (mapRadius, hexes, extraRings = 8) => {
  * @param {string} shipId - Ship ID for icon selection (default: 'SHIP_001')
  * @param {number} currentHexIndex - Current hex index within waypoint path (for heading calculation)
  */
-function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], currentWaypointIndex = null, previewPath = null, isScanning = false, insertionGate = null, lootedPOIs = [], shipId = 'SHIP_001', currentHexIndex = 0 }) {
+function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], currentWaypointIndex = null, previewPath = null, isScanning = false, insertionGate = null, lootedPOIs = [], highAlertPOIs = [], shipId = 'SHIP_001', currentHexIndex = 0 }) {
   // Track viewport dimensions for dynamic sizing
   const [viewportSize, setViewportSize] = useState({
     width: window.innerWidth,
@@ -354,6 +354,16 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
   };
 
   /**
+   * Check if a POI hex is in high alert (combat won here, increased encounter chance)
+   * @param {Object} hex - Hex to check
+   * @returns {boolean} Is high alert POI
+   */
+  const isHighAlertPOI = (hex) => {
+    if (hex.type !== 'poi') return false;
+    return highAlertPOIs.some(p => p.q === hex.q && p.r === hex.r);
+  };
+
+  /**
    * Get fill color/pattern based on hex type and zone
    * @param {Object} hex - Hex object
    * @returns {string} CSS color or pattern URL
@@ -522,14 +532,24 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
     const isPlayer = isPlayerHex(hex);
     const isPOI = hex.type === 'poi';
     const isLooted = isPOI && isLootedPOI(hex);
+    const isHighAlert = isPOI && isHighAlertPOI(hex);
     const isGate = hex.type === 'gate';
     const isInsertion = isInsertionGate(hex);
     const isExtraction = isExtractionGate(hex);
 
     // Build gate class name
     const gateClass = isInsertion ? 'hex-insertion-glow' : (isExtraction ? 'hex-extraction-glow' : '');
-    // POI class: looted POIs get dimmed styling, active POIs get glow
-    const poiClass = isPOI ? (isLooted ? 'hex-poi-looted' : 'hex-poi-glow') : '';
+    // POI class: looted POIs get dimmed, high alert gets red pulse, active POIs get normal glow
+    let poiClass = '';
+    if (isPOI) {
+      if (isLooted) {
+        poiClass = 'hex-poi-looted';
+      } else if (isHighAlert) {
+        poiClass = 'hex-poi-alert hex-poi-glow';
+      } else {
+        poiClass = 'hex-poi-glow';
+      }
+    }
     // Player hex gets white glow
     const playerClass = isPlayer ? 'hex-player-glow' : '';
     // Important hexes get elevation shadow

@@ -94,17 +94,17 @@ export const packTypes = {
     description: 'Permanent system enhancements',
     guaranteedTypes: ['Upgrade'],
     additionalCardWeights: {
-      Upgrade: 100,
-      Ordnance: 0,
-      Support: 0,
-      Tactic: 0
+      Upgrade: 0,
+      Ordnance: 34,
+      Support: 33,
+      Tactic: 33
     },
     rarityWeights: {
       tier1: { Common: 90, Uncommon: 10 },
       tier2: { Common: 60, Uncommon: 35, Rare: 5 },
       tier3: { Common: 40, Uncommon: 45, Rare: 13, Mythic: 2 }
     },
-    cardCount: { min: 1, max: 1 },
+    cardCount: { min: 1, max: 3 },
     creditsRange: { min: 10, max: 100 },
     color: '#aa44ff',
   },

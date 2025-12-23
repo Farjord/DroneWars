@@ -8,6 +8,7 @@ import { render, screen } from '@testing-library/react';
 // Tests for automatic footer tab switching based on game phase.
 // When entering certain phases, the footer should auto-switch to the relevant tab:
 // - Deployment phase → Drones tab (to select drones to deploy)
+// - Action phase → Hand tab (to play action cards)
 // - Discard phases (mandatory/optional) → Hand tab (to select cards to discard)
 //
 // This follows the same testing pattern as App.hooks.test.jsx:
@@ -30,6 +31,13 @@ const FooterPhaseSyncComponent = ({ turnPhase }) => {
     const enteredDeployment = turnPhase === 'deployment' && prevPhase !== 'deployment';
     if (enteredDeployment) {
       setFooterView('drones');
+      setIsFooterOpen(true);
+    }
+
+    // Action phase → Hand tab
+    const enteredAction = turnPhase === 'action' && prevPhase !== 'action';
+    if (enteredAction) {
+      setFooterView('hand');
       setIsFooterOpen(true);
     }
 
@@ -106,6 +114,34 @@ describe('Footer phase-based tab switching (App.jsx footer sync)', () => {
     });
   });
 
+  describe('Action phase', () => {
+    it('switches to hand tab when entering action phase', () => {
+      const { rerender } = render(<FooterPhaseSyncComponent turnPhase="deployment" />);
+
+      // First go to deployment (sets to drones)
+      rerender(<FooterPhaseSyncComponent turnPhase="deployment" />);
+
+      // Transition to action phase
+      rerender(<FooterPhaseSyncComponent turnPhase="action" />);
+
+      // Should switch to hand tab and open footer
+      expect(screen.getByTestId('footer-view')).toHaveTextContent('hand');
+      expect(screen.getByTestId('footer-open')).toHaveTextContent('open');
+    });
+
+    it('switches to hand tab when transitioning from deployment to action', () => {
+      const { rerender } = render(<FooterPhaseSyncComponent turnPhase="placement" />);
+
+      // Go to deployment (sets to drones)
+      rerender(<FooterPhaseSyncComponent turnPhase="deployment" />);
+      expect(screen.getByTestId('footer-view')).toHaveTextContent('drones');
+
+      // Then to action (should switch to hand)
+      rerender(<FooterPhaseSyncComponent turnPhase="action" />);
+      expect(screen.getByTestId('footer-view')).toHaveTextContent('hand');
+    });
+  });
+
   describe('Optional discard phase', () => {
     it('switches to hand tab when entering optionalDiscard phase', () => {
       const { rerender } = render(<FooterPhaseSyncComponent turnPhase="action" />);
@@ -174,11 +210,11 @@ describe('Footer phase-based tab switching (App.jsx footer sync)', () => {
       rerender(<FooterPhaseSyncComponent turnPhase="deployment" />);
       expect(screen.getByTestId('footer-view')).toHaveTextContent('drones');
 
-      // 4. Enter action → no change (stays drones)
+      // 4. Enter action → hand
       rerender(<FooterPhaseSyncComponent turnPhase="action" />);
-      expect(screen.getByTestId('footer-view')).toHaveTextContent('drones');
+      expect(screen.getByTestId('footer-view')).toHaveTextContent('hand');
 
-      // 5. Back to mandatoryDiscard → hand
+      // 5. Back to mandatoryDiscard → hand (stays hand)
       rerender(<FooterPhaseSyncComponent turnPhase="mandatoryDiscard" />);
       expect(screen.getByTestId('footer-view')).toHaveTextContent('hand');
     });
