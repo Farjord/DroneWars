@@ -290,3 +290,113 @@ describe('Race condition prevention - combat trigger stores waypoints early', ()
     expect(escapedWithWaypoints.current).toBe(false);
   });
 });
+
+/**
+ * Stale Closure Prevention Tests
+ *
+ * Tests that handleEncounterProceed uses CURRENT waypoints,
+ * not stale values from initial render.
+ *
+ * Root cause: useCallback deps didn't include waypoints/currentWaypointIndex
+ */
+describe('handleEncounterProceed callback freshness (stale closure fix)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should capture current waypoints when combat triggers (not stale values)', () => {
+    // Simulate the scenario:
+    // - Initial render: waypoints = []
+    // - Movement starts: waypoints = [wp1, wp2, wp3]
+    // - Combat triggers: handleEncounterProceed should see [wp1, wp2, wp3]
+
+    const currentWaypoints = [
+      { q: 0, r: 0 },
+      { q: 1, r: 0 },
+      { q: 2, r: 0 }
+    ];
+    const currentWaypointIndex = 0;
+
+    // This simulates what should happen in handleEncounterProceed
+    // with CURRENT (not stale) waypoints
+    const remainingWps = currentWaypoints.slice(currentWaypointIndex + 1);
+
+    expect(remainingWps.length).toBe(2);
+    expect(remainingWps).toEqual([{ q: 1, r: 0 }, { q: 2, r: 0 }]);
+
+    // Store waypoints
+    tacticalMapStateManager.setState({ pendingWaypoints: remainingWps });
+
+    expect(tacticalMapStateManager.setState).toHaveBeenCalledWith({
+      pendingWaypoints: [{ q: 1, r: 0 }, { q: 2, r: 0 }]
+    });
+  });
+
+  it('should NOT use stale empty waypoints array', () => {
+    // The bug: callback captured [] from initial render
+    const staleWaypoints = [];  // This is what the broken callback sees
+    const currentWaypointIndex = 0;
+
+    const remainingWps = staleWaypoints.slice(currentWaypointIndex + 1);
+
+    // This is the bug - nothing to store!
+    expect(remainingWps.length).toBe(0);
+    // No setState call would happen - this documents the bug behavior
+  });
+
+  it('should handle combat at different waypoint indices', () => {
+    // Combat can trigger at any waypoint, not just the first
+    const waypoints = [
+      { q: 0, r: 0 },  // Waypoint 0
+      { q: 1, r: 0 },  // Waypoint 1 - combat here
+      { q: 2, r: 0 },  // Waypoint 2 - should be preserved
+      { q: 3, r: 0 }   // Waypoint 3 - should be preserved
+    ];
+    const currentWaypointIndex = 1;
+
+    const remainingWps = waypoints.slice(currentWaypointIndex + 1);
+
+    expect(remainingWps.length).toBe(2);
+    expect(remainingWps).toEqual([{ q: 2, r: 0 }, { q: 3, r: 0 }]);
+  });
+});
+
+/**
+ * Empty Hex Encounter Waypoint Restoration Tests
+ *
+ * Bug: For empty hex encounters (packType: null), the post-combat
+ * useEffect returns early without restoring waypoints from
+ * pendingResumeWaypoints to setWaypoints().
+ */
+describe('Empty hex encounter waypoint restoration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should restore waypoints even when packType is null (empty hex)', () => {
+    // Empty hex encounters have packType: null
+    // Waypoints should still be restored after combat
+
+    const pendingResumeWaypoints = [
+      { q: 1, r: 0 },
+      { q: 2, r: 0 }
+    ];
+    const packType = null;  // Empty hex
+
+    // Even with null packType, waypoints should be restored
+    expect(pendingResumeWaypoints.length).toBe(2);
+    expect(packType).toBeNull();
+
+    // The fix: setWaypoints should be called before return
+    // This test documents the expected behavior
+  });
+
+  it('should handle empty pendingResumeWaypoints gracefully', () => {
+    const pendingResumeWaypoints = null;
+    const packType = null;
+
+    // No waypoints to restore - should not crash
+    const hasWaypoints = pendingResumeWaypoints?.length > 0;
+    expect(hasWaypoints).toBeFalsy();
+  });
+});

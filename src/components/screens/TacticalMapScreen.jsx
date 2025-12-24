@@ -297,9 +297,13 @@ function TacticalMapScreen() {
       pendingPOICombat: !!runState?.pendingPOICombat
     });
 
+    // FIX: Capture waypoints in local variable (React state is async, can't use in same effect)
+    let waypointsToRestore = null;
+
     // Restore waypoints from pendingWaypoints (set before ANY combat)
     if (runState?.pendingWaypoints?.length > 0) {
       debugLog('RUN_STATE', 'Restoring waypoints after combat:', runState.pendingWaypoints.length);
+      waypointsToRestore = runState.pendingWaypoints;  // Capture before async state update
       setPendingResumeWaypoints(runState.pendingWaypoints);
 
       // Clear pendingWaypoints from run state
@@ -332,6 +336,12 @@ function TacticalMapScreen() {
       // Player only gets enemy salvage from combat
       if (!packType) {
         debugLog('MODE_TRANSITION', 'Empty hex encounter - no POI loot to collect');
+        // FIX: Restore waypoints before returning (use local var, not stale React state)
+        if (waypointsToRestore?.length > 0) {
+          debugLog('RUN_STATE', 'Restoring waypoints after empty hex combat:', waypointsToRestore.length);
+          setWaypoints(waypointsToRestore);
+          setPendingResumeWaypoints(null);
+        }
         return;
       }
 
@@ -959,7 +969,7 @@ function TacticalMapScreen() {
       encounterResolveRef.current();
       encounterResolveRef.current = null;
     }
-  }, [currentEncounter, currentRunState]);
+  }, [currentEncounter, currentRunState, waypoints, currentWaypointIndex]);
 
   /**
    * Handle closing POI modal without proceeding
