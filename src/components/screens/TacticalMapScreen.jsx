@@ -300,9 +300,113 @@ function TacticalMapScreen() {
     // FIX: Capture waypoints in local variable (React state is async, can't use in same effect)
     let waypointsToRestore = null;
 
-    // Restore waypoints from pendingWaypoints (set before ANY combat)
-    if (runState?.pendingWaypoints?.length > 0) {
-      debugLog('RUN_STATE', 'Restoring waypoints after combat:', runState.pendingWaypoints.length);
+    // NEW: Restore from flat pendingPath (mid-path combat resumption)
+    if (runState?.pendingPath?.length > 0) {
+      // === DETAILED RESTORE LOGGING ===
+      debugLog('RUN_STATE', '╔══════════════════════════════════════════╗');
+      debugLog('RUN_STATE', '║      POST-COMBAT - PATH RESTORE          ║');
+      debugLog('RUN_STATE', '╚══════════════════════════════════════════╝');
+      debugLog('RUN_STATE', '<<< Retrieved pendingPath:', runState.pendingPath);
+      debugLog('RUN_STATE', '<<< Retrieved pendingWaypointDestinations:', runState.pendingWaypointDestinations);
+      debugLog('RUN_STATE', 'Player position:', runState.playerPosition);
+
+      // Convert "q,r" strings to hex objects
+      const mapHexes = runState.mapData?.hexes || [];
+      const pathHexes = runState.pendingPath.map(s => {
+        const [q, r] = s.split(',').map(Number);
+        return mapHexes.find(h => h.q === q && h.r === r);
+      }).filter(Boolean);
+
+      debugLog('RUN_STATE', 'Converted pathHexes count:', pathHexes.length);
+
+      if (pathHexes.length > 0) {
+        // Get current player position
+        const playerPos = runState.playerPosition || pathHexes[0];
+        const startHex = mapHexes.find(h => h.q === playerPos.q && h.r === playerPos.r);
+
+        // Check if we have waypoint destinations to reconstruct multiple waypoints
+        const waypointDests = runState.pendingWaypointDestinations || [];
+
+        debugLog('RUN_STATE', 'waypointDests.length:', waypointDests.length);
+        debugLog('RUN_STATE', 'Branch taken:', waypointDests.length > 1 ? 'MULTIPLE WAYPOINTS' : 'SINGLE WAYPOINT');
+
+        if (waypointDests.length > 1) {
+          // Reconstruct multiple waypoints from path and destinations
+          debugLog('RUN_STATE', 'Reconstructing multiple waypoints:', waypointDests.length);
+
+          waypointsToRestore = [];
+          let pathStartIndex = 0;
+          let prevHex = startHex;
+
+          for (const wpDest of waypointDests) {
+            // Find where this waypoint's destination is in the path
+            const destIndex = runState.pendingPath.indexOf(wpDest);
+            debugLog('RUN_STATE', `  Processing ${wpDest}: indexOf=${destIndex}, pathStartIndex=${pathStartIndex}`);
+            if (destIndex === -1) {
+              debugLog('RUN_STATE', `  SKIPPED: ${wpDest} not found in pendingPath!`);
+              continue;
+            }
+
+            // Extract path segment for this waypoint (from pathStartIndex to destIndex inclusive)
+            const segmentStrings = runState.pendingPath.slice(pathStartIndex, destIndex + 1);
+            debugLog('RUN_STATE', `  Segment strings:`, segmentStrings);
+            const segmentHexes = segmentStrings.map(s => {
+              const [q, r] = s.split(',').map(Number);
+              return mapHexes.find(h => h.q === q && h.r === r);
+            }).filter(Boolean);
+
+            if (segmentHexes.length > 0) {
+              // Build pathFromPrev: [previous hex, ...segment hexes]
+              const pathFromPrev = [prevHex, ...segmentHexes].filter(Boolean);
+
+              waypointsToRestore.push({
+                hex: segmentHexes[segmentHexes.length - 1],  // Destination of this waypoint
+                pathFromPrev,
+                segmentCost: 0,
+                cumulativeDetection: 0,
+                segmentEncounterRisk: 0,
+                cumulativeEncounterRisk: 0
+              });
+
+              // Next segment starts after this one's destination
+              prevHex = segmentHexes[segmentHexes.length - 1];
+            }
+
+            pathStartIndex = destIndex + 1;
+          }
+
+          debugLog('RUN_STATE', 'Reconstructed waypoints:', waypointsToRestore.length);
+        } else {
+          // Single waypoint or no destinations - create synthetic waypoint with full path
+          const syntheticWaypoint = {
+            hex: pathHexes[pathHexes.length - 1],  // Final destination
+            pathFromPrev: [startHex, ...pathHexes].filter(Boolean),  // Include current position
+            segmentCost: 0,
+            cumulativeDetection: 0,
+            segmentEncounterRisk: 0,
+            cumulativeEncounterRisk: 0
+          };
+
+          waypointsToRestore = [syntheticWaypoint];
+          debugLog('RUN_STATE', 'Created synthetic waypoint with path length:', syntheticWaypoint.pathFromPrev.length);
+        }
+
+        // Log final result
+        debugLog('RUN_STATE', '>>> Reconstructed waypointsToRestore:', waypointsToRestore?.map((wp, i) => ({
+          index: i,
+          dest: `${wp.hex?.q},${wp.hex?.r}`,
+          pathLength: wp.pathFromPrev?.length || 0,
+          path: wp.pathFromPrev?.map(h => `${h?.q},${h?.r}`)
+        })));
+      }
+
+      // Clear pendingPath and pendingWaypointDestinations from run state
+      tacticalMapStateManager.setState({ pendingPath: null, pendingWaypointDestinations: null });
+      runState = tacticalMapStateManager.getState();
+    }
+    // LEGACY: Fallback to old pendingWaypoints format
+    else if (runState?.pendingWaypoints?.length > 0) {
+      debugLog('RUN_STATE', 'Restoring waypoints after combat (legacy):', runState.pendingWaypoints.length);
       waypointsToRestore = runState.pendingWaypoints;  // Capture before async state update
       setPendingResumeWaypoints(runState.pendingWaypoints);
 
@@ -876,12 +980,54 @@ function TacticalMapScreen() {
       setShowPOIModal(false);
       setShowLoadingEncounter(true);
 
-      // FIX: Store remaining waypoints BEFORE stopping movement (prevents race condition)
+      // FIX: Store remaining PATH (not just waypoints) for mid-path combat resumption
       // Must happen before shouldStopMovement flag triggers journey loop exit
-      const remainingWps = waypoints.slice(currentWaypointIndex + 1);
-      if (remainingWps.length > 0) {
-        debugLog('RUN_STATE', 'Combat trigger - storing waypoints early:', remainingWps.length);
-        tacticalMapStateManager.setState({ pendingWaypoints: remainingWps });
+      const remainingPath = [];
+
+      // Add remaining hexes from CURRENT waypoint's path (excluding current hex)
+      if (waypoints[currentWaypointIndex]?.pathFromPrev) {
+        const currentPath = waypoints[currentWaypointIndex].pathFromPrev;
+        for (let i = currentHexIndex + 1; i < currentPath.length; i++) {
+          remainingPath.push(`${currentPath[i].q},${currentPath[i].r}`);
+        }
+      }
+
+      // Add ALL hexes from subsequent waypoints (skip first hex - overlaps with previous)
+      for (let wp = currentWaypointIndex + 1; wp < waypoints.length; wp++) {
+        const wpPath = waypoints[wp].pathFromPrev;
+        if (wpPath) {
+          for (let i = 1; i < wpPath.length; i++) {
+            remainingPath.push(`${wpPath[i].q},${wpPath[i].r}`);
+          }
+        }
+      }
+
+      if (remainingPath.length > 0) {
+        // Also store waypoint destinations to preserve markers on restore
+        const waypointDestinations = [];
+        for (let wp = currentWaypointIndex; wp < waypoints.length; wp++) {
+          waypointDestinations.push(`${waypoints[wp].hex.q},${waypoints[wp].hex.r}`);
+        }
+
+        // === DETAILED STORAGE LOGGING ===
+        debugLog('RUN_STATE', '╔══════════════════════════════════════════╗');
+        debugLog('RUN_STATE', '║      COMBAT TRIGGER - PATH STORAGE       ║');
+        debugLog('RUN_STATE', '╚══════════════════════════════════════════╝');
+        debugLog('RUN_STATE', 'Position:', { waypointIndex: currentWaypointIndex, hexIndex: currentHexIndex });
+        debugLog('RUN_STATE', 'Total waypoints in state:', waypoints.length);
+        debugLog('RUN_STATE', 'Waypoints detail:', waypoints.map((wp, i) => ({
+          index: i,
+          dest: `${wp.hex.q},${wp.hex.r}`,
+          pathLength: wp.pathFromPrev?.length || 0,
+          path: wp.pathFromPrev?.map(h => `${h?.q},${h?.r}`)
+        })));
+        debugLog('RUN_STATE', '>>> Storing pendingPath:', remainingPath);
+        debugLog('RUN_STATE', '>>> Storing pendingWaypointDestinations:', waypointDestinations);
+
+        tacticalMapStateManager.setState({
+          pendingPath: remainingPath,
+          pendingWaypointDestinations: waypointDestinations
+        });
         escapedWithWaypoints.current = true;  // Prevent journey loop from clearing
       }
 
@@ -1158,11 +1304,29 @@ function TacticalMapScreen() {
     // Show loading screen
     setShowLoadingEncounter(true);
 
-    // FIX: Store remaining waypoints BEFORE stopping movement (prevents race condition)
-    const remainingWps = waypoints.slice(currentWaypointIndex + 1);
-    if (remainingWps.length > 0) {
-      debugLog('RUN_STATE', 'Salvage combat trigger - storing waypoints early:', remainingWps.length);
-      tacticalMapStateManager.setState({ pendingWaypoints: remainingWps });
+    // FIX: Store remaining PATH (not just waypoints) for combat resumption
+    // For salvage, player is at POI so remaining path is subsequent waypoints
+    const remainingPath = [];
+    for (let wp = currentWaypointIndex + 1; wp < waypoints.length; wp++) {
+      const wpPath = waypoints[wp].pathFromPrev;
+      if (wpPath) {
+        for (let i = 1; i < wpPath.length; i++) {
+          remainingPath.push(`${wpPath[i].q},${wpPath[i].r}`);
+        }
+      }
+    }
+    if (remainingPath.length > 0) {
+      // Also store waypoint destinations (for salvage, start from next waypoint)
+      const waypointDestinations = [];
+      for (let wp = currentWaypointIndex + 1; wp < waypoints.length; wp++) {
+        waypointDestinations.push(`${waypoints[wp].hex.q},${waypoints[wp].hex.r}`);
+      }
+
+      debugLog('RUN_STATE', 'Salvage combat trigger - storing remaining path:', remainingPath.length, 'waypoints:', waypointDestinations.length);
+      tacticalMapStateManager.setState({
+        pendingPath: remainingPath,
+        pendingWaypointDestinations: waypointDestinations
+      });
       escapedWithWaypoints.current = true;
     }
 
@@ -1322,11 +1486,28 @@ function TacticalMapScreen() {
       // Show loading screen
       setShowLoadingEncounter(true);
 
-      // FIX: Store remaining waypoints BEFORE stopping movement (prevents race condition)
-      const remainingWps = waypoints.slice(currentWaypointIndex + 1);
-      if (remainingWps.length > 0) {
-        debugLog('RUN_STATE', 'Salvage quick deploy combat - storing waypoints early:', remainingWps.length);
-        tacticalMapStateManager.setState({ pendingWaypoints: remainingWps });
+      // FIX: Store remaining PATH for combat resumption
+      const remainingPath = [];
+      for (let wp = currentWaypointIndex + 1; wp < waypoints.length; wp++) {
+        const wpPath = waypoints[wp].pathFromPrev;
+        if (wpPath) {
+          for (let i = 1; i < wpPath.length; i++) {
+            remainingPath.push(`${wpPath[i].q},${wpPath[i].r}`);
+          }
+        }
+      }
+      if (remainingPath.length > 0) {
+        // Also store waypoint destinations
+        const waypointDestinations = [];
+        for (let wp = currentWaypointIndex + 1; wp < waypoints.length; wp++) {
+          waypointDestinations.push(`${waypoints[wp].hex.q},${waypoints[wp].hex.r}`);
+        }
+
+        debugLog('RUN_STATE', 'Salvage quick deploy combat - storing remaining path:', remainingPath.length, 'waypoints:', waypointDestinations.length);
+        tacticalMapStateManager.setState({
+          pendingPath: remainingPath,
+          pendingWaypointDestinations: waypointDestinations
+        });
         escapedWithWaypoints.current = true;
       }
 
@@ -1366,11 +1547,36 @@ function TacticalMapScreen() {
       // Show loading screen
       setShowLoadingEncounter(true);
 
-      // FIX: Store remaining waypoints BEFORE stopping movement (prevents race condition)
-      const remainingWps = waypoints.slice(currentWaypointIndex + 1);
-      if (remainingWps.length > 0) {
-        debugLog('RUN_STATE', 'POI quick deploy combat - storing waypoints early:', remainingWps.length);
-        tacticalMapStateManager.setState({ pendingWaypoints: remainingWps });
+      // FIX: Store remaining PATH for mid-journey combat resumption
+      const remainingPath = [];
+      // Add remaining hexes from CURRENT waypoint's path (if mid-path)
+      if (waypoints[currentWaypointIndex]?.pathFromPrev) {
+        const currentPath = waypoints[currentWaypointIndex].pathFromPrev;
+        for (let i = currentHexIndex + 1; i < currentPath.length; i++) {
+          remainingPath.push(`${currentPath[i].q},${currentPath[i].r}`);
+        }
+      }
+      // Add ALL hexes from subsequent waypoints
+      for (let wp = currentWaypointIndex + 1; wp < waypoints.length; wp++) {
+        const wpPath = waypoints[wp].pathFromPrev;
+        if (wpPath) {
+          for (let i = 1; i < wpPath.length; i++) {
+            remainingPath.push(`${wpPath[i].q},${wpPath[i].r}`);
+          }
+        }
+      }
+      if (remainingPath.length > 0) {
+        // Also store waypoint destinations to preserve markers on restore
+        const waypointDestinations = [];
+        for (let wp = currentWaypointIndex; wp < waypoints.length; wp++) {
+          waypointDestinations.push(`${waypoints[wp].hex.q},${waypoints[wp].hex.r}`);
+        }
+
+        debugLog('RUN_STATE', 'POI quick deploy combat - storing remaining path:', remainingPath.length, 'waypoints:', waypointDestinations.length);
+        tacticalMapStateManager.setState({
+          pendingPath: remainingPath,
+          pendingWaypointDestinations: waypointDestinations
+        });
         escapedWithWaypoints.current = true;
       }
 
@@ -1379,7 +1585,7 @@ function TacticalMapScreen() {
       setIsScanningHex(false);
       setIsMoving(false);
     }
-  }, [currentEncounter, salvageQuickDeployPending, activeSalvage, waypoints, currentWaypointIndex]);
+  }, [currentEncounter, salvageQuickDeployPending, activeSalvage, waypoints, currentWaypointIndex, currentHexIndex]);
 
   /**
    * Handle loading encounter complete - actually start combat
@@ -1428,24 +1634,50 @@ function TacticalMapScreen() {
 
     debugLog('RUN_STATE', 'Loading complete - initializing combat');
 
-    // Capture remaining waypoints for journey resumption (SEPARATE from POI logic)
-    // Must be stored in tacticalMapStateManager to survive combat (component unmounts during combat)
-    const remainingWps = waypoints.slice(currentWaypointIndex + 1);
+    // NOTE: Path is already stored by combat trigger (handleEncounterProceed, etc.)
+    // This is a backup check - only store if not already stored
+    if (!runState?.pendingPath) {
+      // Capture remaining path for journey resumption (SEPARATE from POI logic)
+      const remainingPath = [];
+      if (waypoints[currentWaypointIndex]?.pathFromPrev) {
+        const currentPath = waypoints[currentWaypointIndex].pathFromPrev;
+        for (let i = currentHexIndex + 1; i < currentPath.length; i++) {
+          remainingPath.push(`${currentPath[i].q},${currentPath[i].r}`);
+        }
+      }
+      for (let wp = currentWaypointIndex + 1; wp < waypoints.length; wp++) {
+        const wpPath = waypoints[wp].pathFromPrev;
+        if (wpPath) {
+          for (let i = 1; i < wpPath.length; i++) {
+            remainingPath.push(`${wpPath[i].q},${wpPath[i].r}`);
+          }
+        }
+      }
 
-    debugLog('RUN_STATE', 'Before combat - waypoint storage check:', {
-      totalWaypoints: waypoints.length,
-      currentWaypointIndex,
-      remainingWpsCount: remainingWps.length,
-      willStore: remainingWps.length > 0
-    });
-
-    if (remainingWps.length > 0) {
-      debugLog('RUN_STATE', 'Storing waypoints for post-combat resumption:', remainingWps.length);
-      tacticalMapStateManager.setState({
-        pendingWaypoints: remainingWps
+      debugLog('RUN_STATE', 'Before combat - path storage check:', {
+        totalWaypoints: waypoints.length,
+        currentWaypointIndex,
+        currentHexIndex,
+        remainingPathLength: remainingPath.length,
+        willStore: remainingPath.length > 0
       });
-      // Re-fetch runState after waypoint storage
-      runState = tacticalMapStateManager.getState();
+
+      if (remainingPath.length > 0) {
+        // Also store waypoint destinations to preserve markers on restore
+        const waypointDestinations = [];
+        for (let wp = currentWaypointIndex; wp < waypoints.length; wp++) {
+          waypointDestinations.push(`${waypoints[wp].hex.q},${waypoints[wp].hex.r}`);
+        }
+
+        debugLog('RUN_STATE', 'Storing path for post-combat resumption:', remainingPath.length, 'waypoints:', waypointDestinations.length);
+        tacticalMapStateManager.setState({
+          pendingPath: remainingPath,
+          pendingWaypointDestinations: waypointDestinations
+        });
+        runState = tacticalMapStateManager.getState();
+      }
+    } else {
+      debugLog('RUN_STATE', 'Path already stored by combat trigger');
     }
 
     // Store pending PoI combat info for post-combat loot (ONLY for POI encounters)

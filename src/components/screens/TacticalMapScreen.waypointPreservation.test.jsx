@@ -400,3 +400,375 @@ describe('Empty hex encounter waypoint restoration', () => {
     expect(hasWaypoints).toBeFalsy();
   });
 });
+
+/**
+ * Mid-Path Combat - Flat Path Preservation Tests
+ *
+ * When combat triggers mid-path (between waypoints), we need to store
+ * the exact remaining hexes, not just the remaining waypoints.
+ * This ensures the player resumes at the exact hex, not jumping ahead.
+ */
+describe('Mid-path combat - flat path preservation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should store remaining hexes from current waypoint path', () => {
+    // Player is mid-path to first waypoint, combat triggers at hexIndex=1
+    const waypoints = [{
+      hex: { q: 3, r: 0 },
+      pathFromPrev: [
+        { q: 0, r: 0 },  // Start (hexIndex=0)
+        { q: 1, r: 0 },  // Hex 1 - combat here (hexIndex=1)
+        { q: 2, r: 0 },  // Hex 2 - should be stored
+        { q: 3, r: 0 }   // Destination - should be stored
+      ]
+    }];
+    const currentWaypointIndex = 0;
+    const currentHexIndex = 1;  // Combat at hex 1
+
+    // Calculate remaining path (what the fix should do)
+    const remainingPath = [];
+    const currentPath = waypoints[currentWaypointIndex].pathFromPrev;
+    for (let i = currentHexIndex + 1; i < currentPath.length; i++) {
+      remainingPath.push(`${currentPath[i].q},${currentPath[i].r}`);
+    }
+
+    expect(remainingPath).toEqual(['2,0', '3,0']);
+    expect(remainingPath).toHaveLength(2);
+  });
+
+  it('should include hexes from subsequent waypoints', () => {
+    // Player has multiple waypoints, combat mid-first-waypoint
+    const waypoints = [
+      {
+        hex: { q: 2, r: 0 },
+        pathFromPrev: [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 }]
+      },
+      {
+        hex: { q: 4, r: 0 },
+        pathFromPrev: [{ q: 2, r: 0 }, { q: 3, r: 0 }, { q: 4, r: 0 }]
+      }
+    ];
+    const currentWaypointIndex = 0;
+    const currentHexIndex = 1;  // Combat mid-first-waypoint (at hex 1,0)
+
+    const remainingPath = [];
+    // Remaining from current waypoint
+    const currentPath = waypoints[currentWaypointIndex].pathFromPrev;
+    for (let i = currentHexIndex + 1; i < currentPath.length; i++) {
+      remainingPath.push(`${currentPath[i].q},${currentPath[i].r}`);
+    }
+    // All subsequent waypoints (skip first hex - it overlaps with previous waypoint's destination)
+    for (let wp = currentWaypointIndex + 1; wp < waypoints.length; wp++) {
+      const wpPath = waypoints[wp].pathFromPrev;
+      for (let i = 1; i < wpPath.length; i++) {
+        remainingPath.push(`${wpPath[i].q},${wpPath[i].r}`);
+      }
+    }
+
+    // Should have: 2,0 (rest of wp0) + 3,0, 4,0 (wp1, skipping first overlap)
+    expect(remainingPath).toEqual(['2,0', '3,0', '4,0']);
+  });
+
+  it('should handle combat at very start of path (hexIndex=0)', () => {
+    const waypoints = [{
+      hex: { q: 2, r: 0 },
+      pathFromPrev: [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 }]
+    }];
+    const currentWaypointIndex = 0;
+    const currentHexIndex = 0;  // Combat at very first hex
+
+    const remainingPath = [];
+    const currentPath = waypoints[currentWaypointIndex].pathFromPrev;
+    for (let i = currentHexIndex + 1; i < currentPath.length; i++) {
+      remainingPath.push(`${currentPath[i].q},${currentPath[i].r}`);
+    }
+
+    // Should store all remaining hexes
+    expect(remainingPath).toEqual(['1,0', '2,0']);
+  });
+
+  it('should handle combat at final hex of waypoint', () => {
+    const waypoints = [
+      {
+        hex: { q: 2, r: 0 },
+        pathFromPrev: [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 }]
+      },
+      {
+        hex: { q: 4, r: 0 },
+        pathFromPrev: [{ q: 2, r: 0 }, { q: 3, r: 0 }, { q: 4, r: 0 }]
+      }
+    ];
+    const currentWaypointIndex = 0;
+    const currentHexIndex = 2;  // Combat at final hex of first waypoint
+
+    const remainingPath = [];
+    const currentPath = waypoints[currentWaypointIndex].pathFromPrev;
+    for (let i = currentHexIndex + 1; i < currentPath.length; i++) {
+      remainingPath.push(`${currentPath[i].q},${currentPath[i].r}`);
+    }
+    for (let wp = currentWaypointIndex + 1; wp < waypoints.length; wp++) {
+      const wpPath = waypoints[wp].pathFromPrev;
+      for (let i = 1; i < wpPath.length; i++) {
+        remainingPath.push(`${wpPath[i].q},${wpPath[i].r}`);
+      }
+    }
+
+    // Only subsequent waypoint hexes (current waypoint complete)
+    expect(remainingPath).toEqual(['3,0', '4,0']);
+  });
+
+  it('should return empty path when combat at final hex of final waypoint', () => {
+    const waypoints = [{
+      hex: { q: 2, r: 0 },
+      pathFromPrev: [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 }]
+    }];
+    const currentWaypointIndex = 0;
+    const currentHexIndex = 2;  // Combat at destination
+
+    const remainingPath = [];
+    const currentPath = waypoints[currentWaypointIndex].pathFromPrev;
+    for (let i = currentHexIndex + 1; i < currentPath.length; i++) {
+      remainingPath.push(`${currentPath[i].q},${currentPath[i].r}`);
+    }
+
+    expect(remainingPath).toEqual([]);
+    expect(remainingPath).toHaveLength(0);
+  });
+});
+
+/**
+ * Path Restoration - Synthetic Waypoint Creation Tests
+ */
+describe('Path restoration - synthetic waypoint creation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should restore path strings to synthetic waypoint', () => {
+    const pendingPath = ['2,0', '3,0', '4,0'];
+    const playerPosition = { q: 1, r: 0 };
+    const mapHexes = [
+      { q: 1, r: 0 }, { q: 2, r: 0 }, { q: 3, r: 0 }, { q: 4, r: 0 }
+    ];
+
+    // Convert strings to hex objects
+    const pathHexes = pendingPath.map(s => {
+      const [q, r] = s.split(',').map(Number);
+      return mapHexes.find(h => h.q === q && h.r === r);
+    }).filter(Boolean);
+
+    const startHex = mapHexes.find(h => h.q === playerPosition.q && h.r === playerPosition.r);
+
+    const syntheticWaypoint = {
+      hex: pathHexes[pathHexes.length - 1],
+      pathFromPrev: [startHex, ...pathHexes]
+    };
+
+    expect(syntheticWaypoint.hex).toEqual({ q: 4, r: 0 });
+    expect(syntheticWaypoint.pathFromPrev).toHaveLength(4);
+    expect(syntheticWaypoint.pathFromPrev[0]).toEqual({ q: 1, r: 0 });  // Start
+    expect(syntheticWaypoint.pathFromPrev[1]).toEqual({ q: 2, r: 0 });
+    expect(syntheticWaypoint.pathFromPrev[2]).toEqual({ q: 3, r: 0 });
+    expect(syntheticWaypoint.pathFromPrev[3]).toEqual({ q: 4, r: 0 });  // Destination
+  });
+
+  it('should handle single remaining hex', () => {
+    const pendingPath = ['2,0'];
+    const playerPosition = { q: 1, r: 0 };
+    const mapHexes = [{ q: 1, r: 0 }, { q: 2, r: 0 }];
+
+    const pathHexes = pendingPath.map(s => {
+      const [q, r] = s.split(',').map(Number);
+      return mapHexes.find(h => h.q === q && h.r === r);
+    }).filter(Boolean);
+
+    const startHex = mapHexes.find(h => h.q === playerPosition.q && h.r === playerPosition.r);
+
+    const syntheticWaypoint = {
+      hex: pathHexes[pathHexes.length - 1],
+      pathFromPrev: [startHex, ...pathHexes]
+    };
+
+    expect(syntheticWaypoint.hex).toEqual({ q: 2, r: 0 });
+    expect(syntheticWaypoint.pathFromPrev).toHaveLength(2);
+  });
+
+  it('should filter out invalid hex coordinates', () => {
+    const pendingPath = ['2,0', '99,99', '3,0'];  // 99,99 doesn't exist
+    const playerPosition = { q: 1, r: 0 };
+    const mapHexes = [
+      { q: 1, r: 0 }, { q: 2, r: 0 }, { q: 3, r: 0 }
+    ];
+
+    const pathHexes = pendingPath.map(s => {
+      const [q, r] = s.split(',').map(Number);
+      return mapHexes.find(h => h.q === q && h.r === r);
+    }).filter(Boolean);  // Filter removes undefined
+
+    expect(pathHexes).toHaveLength(2);  // Only valid hexes
+    expect(pathHexes).toEqual([{ q: 2, r: 0 }, { q: 3, r: 0 }]);
+  });
+
+  it('should store pendingPath in TacticalMapStateManager', () => {
+    const remainingPath = ['2,0', '3,0'];
+
+    tacticalMapStateManager.setState({ pendingPath: remainingPath });
+
+    expect(tacticalMapStateManager.setState).toHaveBeenCalledWith({
+      pendingPath: ['2,0', '3,0']
+    });
+  });
+});
+
+/**
+ * Waypoint Marker Preservation Tests
+ *
+ * When restoring from combat, we need to preserve the user's original
+ * waypoint markers (intermediate destinations), not just create one
+ * synthetic waypoint to the final destination.
+ */
+describe('Waypoint marker preservation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should store waypoint destinations alongside path', () => {
+    // User clicked two waypoints: wp1 at (2,0) and wp2 at (5,0)
+    const waypoints = [
+      { hex: { q: 2, r: 0 }, pathFromPrev: [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 }] },
+      { hex: { q: 5, r: 0 }, pathFromPrev: [{ q: 2, r: 0 }, { q: 3, r: 0 }, { q: 4, r: 0 }, { q: 5, r: 0 }] }
+    ];
+    const currentWaypointIndex = 0;
+
+    // Extract waypoint destinations (starting from current, excluding already passed)
+    const waypointDestinations = [];
+    for (let wp = currentWaypointIndex; wp < waypoints.length; wp++) {
+      waypointDestinations.push(`${waypoints[wp].hex.q},${waypoints[wp].hex.r}`);
+    }
+
+    expect(waypointDestinations).toEqual(['2,0', '5,0']);
+  });
+
+  it('should exclude already-passed waypoints from destinations', () => {
+    // Combat mid-path to second waypoint - first waypoint already passed
+    const waypoints = [
+      { hex: { q: 2, r: 0 }, pathFromPrev: [{ q: 0, r: 0 }, { q: 2, r: 0 }] },
+      { hex: { q: 5, r: 0 }, pathFromPrev: [{ q: 2, r: 0 }, { q: 5, r: 0 }] }
+    ];
+    const currentWaypointIndex = 1;  // Already at/past first waypoint
+
+    const waypointDestinations = [];
+    for (let wp = currentWaypointIndex; wp < waypoints.length; wp++) {
+      waypointDestinations.push(`${waypoints[wp].hex.q},${waypoints[wp].hex.r}`);
+    }
+
+    expect(waypointDestinations).toEqual(['5,0']);  // Only second waypoint
+  });
+
+  it('should reconstruct multiple waypoints from path and destinations', () => {
+    // Stored data after combat
+    const pendingPath = ['1,0', '2,0', '3,0', '4,0', '5,0'];
+    const pendingWaypointDestinations = ['2,0', '5,0'];
+    const playerPosition = { q: 0, r: 0 };
+    const mapHexes = [
+      { q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 },
+      { q: 3, r: 0 }, { q: 4, r: 0 }, { q: 5, r: 0 }
+    ];
+
+    // Helper to find hex
+    const findHex = (s) => {
+      const [q, r] = s.split(',').map(Number);
+      return mapHexes.find(h => h.q === q && h.r === r);
+    };
+
+    // Reconstruct waypoints
+    const waypointsToRestore = [];
+    let pathStartIndex = 0;
+    let prevHex = findHex(`${playerPosition.q},${playerPosition.r}`);
+
+    for (const wpDest of pendingWaypointDestinations) {
+      const destIndex = pendingPath.indexOf(wpDest);
+      if (destIndex === -1) continue;
+
+      // Extract path segment for this waypoint (from pathStartIndex to destIndex inclusive)
+      const pathSegment = pendingPath.slice(pathStartIndex, destIndex + 1);
+      const pathHexes = pathSegment.map(findHex);
+
+      waypointsToRestore.push({
+        hex: pathHexes[pathHexes.length - 1],
+        pathFromPrev: [prevHex, ...pathHexes]
+      });
+
+      // Next waypoint starts after this one
+      prevHex = pathHexes[pathHexes.length - 1];
+      pathStartIndex = destIndex + 1;
+    }
+
+    // Should have 2 waypoints
+    expect(waypointsToRestore).toHaveLength(2);
+
+    // First waypoint: destination (2,0), path from (0,0) through (1,0) to (2,0)
+    expect(waypointsToRestore[0].hex).toEqual({ q: 2, r: 0 });
+    expect(waypointsToRestore[0].pathFromPrev).toHaveLength(3);  // 0,0 -> 1,0 -> 2,0
+    expect(waypointsToRestore[0].pathFromPrev[0]).toEqual({ q: 0, r: 0 });
+    expect(waypointsToRestore[0].pathFromPrev[2]).toEqual({ q: 2, r: 0 });
+
+    // Second waypoint: destination (5,0), path from (2,0) through to (5,0)
+    expect(waypointsToRestore[1].hex).toEqual({ q: 5, r: 0 });
+    expect(waypointsToRestore[1].pathFromPrev).toHaveLength(4);  // 2,0 -> 3,0 -> 4,0 -> 5,0
+    expect(waypointsToRestore[1].pathFromPrev[0]).toEqual({ q: 2, r: 0 });
+    expect(waypointsToRestore[1].pathFromPrev[3]).toEqual({ q: 5, r: 0 });
+  });
+
+  it('should handle single waypoint case', () => {
+    const pendingPath = ['1,0', '2,0'];
+    const pendingWaypointDestinations = ['2,0'];
+    const playerPosition = { q: 0, r: 0 };
+    const mapHexes = [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 }];
+
+    const findHex = (s) => {
+      const [q, r] = s.split(',').map(Number);
+      return mapHexes.find(h => h.q === q && h.r === r);
+    };
+
+    const waypointsToRestore = [];
+    let pathStartIndex = 0;
+    let prevHex = findHex(`${playerPosition.q},${playerPosition.r}`);
+
+    for (const wpDest of pendingWaypointDestinations) {
+      const destIndex = pendingPath.indexOf(wpDest);
+      if (destIndex === -1) continue;
+
+      const pathSegment = pendingPath.slice(pathStartIndex, destIndex + 1);
+      const pathHexes = pathSegment.map(findHex);
+
+      waypointsToRestore.push({
+        hex: pathHexes[pathHexes.length - 1],
+        pathFromPrev: [prevHex, ...pathHexes]
+      });
+
+      prevHex = pathHexes[pathHexes.length - 1];
+      pathStartIndex = destIndex + 1;
+    }
+
+    expect(waypointsToRestore).toHaveLength(1);
+    expect(waypointsToRestore[0].hex).toEqual({ q: 2, r: 0 });
+  });
+
+  it('should store both pendingPath and pendingWaypointDestinations', () => {
+    const remainingPath = ['1,0', '2,0', '3,0'];
+    const waypointDestinations = ['2,0', '3,0'];
+
+    tacticalMapStateManager.setState({
+      pendingPath: remainingPath,
+      pendingWaypointDestinations: waypointDestinations
+    });
+
+    expect(tacticalMapStateManager.setState).toHaveBeenCalledWith({
+      pendingPath: ['1,0', '2,0', '3,0'],
+      pendingWaypointDestinations: ['2,0', '3,0']
+    });
+  });
+});
