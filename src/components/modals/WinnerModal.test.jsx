@@ -16,6 +16,16 @@ vi.mock('../../managers/GameStateManager.js', () => ({
   }
 }))
 
+vi.mock('../../managers/TacticalMapStateManager.js', () => ({
+  default: {
+    getState: vi.fn(),
+    setState: vi.fn(),
+    isRunActive: vi.fn(),
+    startRun: vi.fn(),
+    endRun: vi.fn()
+  }
+}))
+
 vi.mock('../../logic/singlePlayer/CombatOutcomeProcessor.js', () => ({
   default: {
     processCombatEnd: vi.fn(),
@@ -55,6 +65,7 @@ vi.mock('./DroneBlueprintRewardModal.jsx', () => ({
 
 // Import after mocks
 import gameStateManager from '../../managers/GameStateManager.js'
+import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js'
 import CombatOutcomeProcessor from '../../logic/singlePlayer/CombatOutcomeProcessor.js'
 import WinnerModal from './WinnerModal.jsx'
 
@@ -77,12 +88,14 @@ describe('WinnerModal', () => {
       // SETUP: Simulate multiplayer game state (not single-player extraction)
       gameStateManager.getState.mockReturnValue({
         singlePlayerEncounter: null,  // NOT single-player extraction
-        currentRunState: null,
         gameActive: true,
         turnPhase: 'action',
         player1: { name: 'Player 1' },
         player2: { name: 'Player 2' }
       })
+
+      // Mock that run is NOT active (multiplayer mode)
+      tacticalMapStateManager.isRunActive.mockReturnValue(false)
 
       // Render the WinnerModal in multiplayer victory state
       render(
@@ -110,12 +123,14 @@ describe('WinnerModal', () => {
       // SETUP: Simulate multiplayer game after defeat
       gameStateManager.getState.mockReturnValue({
         singlePlayerEncounter: null,
-        currentRunState: null,
         gameActive: true,
         winner: 'player2',
         player1: { name: 'Player 1' },
         player2: { name: 'Player 2' }
       })
+
+      // Mock that run is NOT active (multiplayer mode)
+      tacticalMapStateManager.isRunActive.mockReturnValue(false)
 
       // Render the WinnerModal in multiplayer defeat state
       render(
@@ -139,8 +154,13 @@ describe('WinnerModal', () => {
       // SETUP: Simulate single-player extraction mode
       gameStateManager.getState.mockReturnValue({
         singlePlayerEncounter: { enemyId: 'test-enemy' },  // IS single-player
-        currentRunState: { shipSlotId: 0 },
         gameActive: true
+      })
+
+      // Mock that run IS active (extraction mode)
+      tacticalMapStateManager.isRunActive.mockReturnValue(true)
+      tacticalMapStateManager.getState.mockReturnValue({
+        shipSlotId: 0
       })
 
       // Render the WinnerModal in extraction mode
@@ -186,9 +206,13 @@ describe('WinnerModal', () => {
       // First render: No pending blueprint yet
       gameStateManager.getState.mockReturnValue({
         singlePlayerEncounter: { enemyId: 'test' },
-        currentRunState: { shipSlotId: 0 },
         hasPendingDroneBlueprint: false,
         pendingDroneBlueprint: null
+      })
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true)
+      tacticalMapStateManager.getState.mockReturnValue({
+        shipSlotId: 0
       })
 
       const { rerender } = render(
@@ -206,7 +230,6 @@ describe('WinnerModal', () => {
       // Simulate state change after finalizeLootCollection (blueprint available)
       gameStateManager.getState.mockReturnValue({
         singlePlayerEncounter: { enemyId: 'test' },
-        currentRunState: { shipSlotId: 0 },
         hasPendingDroneBlueprint: true,
         pendingDroneBlueprint: mockBlueprint
       })
@@ -239,9 +262,13 @@ describe('WinnerModal', () => {
 
       gameStateManager.getState.mockReturnValue({
         singlePlayerEncounter: { enemyId: 'test' },
-        currentRunState: { shipSlotId: 0 },
         hasPendingDroneBlueprint: false,
         pendingDroneBlueprint: null
+      })
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true)
+      tacticalMapStateManager.getState.mockReturnValue({
+        shipSlotId: 0
       })
 
       render(
@@ -273,9 +300,13 @@ describe('WinnerModal', () => {
 
       gameStateManager.getState.mockReturnValue({
         singlePlayerEncounter: { enemyId: 'test' },
-        currentRunState: { shipSlotId: 0 },
         hasPendingDroneBlueprint: true,
         pendingDroneBlueprint: mockBlueprint
+      })
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true)
+      tacticalMapStateManager.getState.mockReturnValue({
+        shipSlotId: 0
       })
 
       render(

@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react';
 import gameStateManager from '../../managers/GameStateManager.js';
+import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import CombatOutcomeProcessor from '../../logic/singlePlayer/CombatOutcomeProcessor.js';
 import LootRevealModal from './LootRevealModal.jsx';
 import DroneBlueprintRewardModal from './DroneBlueprintRewardModal.jsx';
@@ -31,7 +32,7 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
   // Check if this is single-player extraction mode
   // Note: gameMode is 'local' during extraction combat (for AI compatibility), so check singlePlayerEncounter instead
   const gameState = gameStateManager.getState();
-  const isSinglePlayerExtraction = gameState.singlePlayerEncounter && gameState.currentRunState;
+  const isSinglePlayerExtraction = gameState.singlePlayerEncounter && tacticalMapStateManager.isRunActive();
 
   if (!show) return null;
 

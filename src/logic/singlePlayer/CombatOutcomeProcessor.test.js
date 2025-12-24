@@ -16,6 +16,15 @@ vi.mock('../../managers/GameStateManager.js', () => ({
   }
 }))
 
+vi.mock('../../managers/TacticalMapStateManager.js', () => ({
+  default: {
+    getState: vi.fn(),
+    setState: vi.fn(),
+    isRunActive: vi.fn(),
+    startRun: vi.fn()
+  }
+}))
+
 vi.mock('../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }))
@@ -45,6 +54,7 @@ vi.mock('./ExtractionController.js', () => ({
 // Import after mocks are set up
 import CombatOutcomeProcessor from './CombatOutcomeProcessor.js'
 import gameStateManager from '../../managers/GameStateManager.js'
+import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js'
 import ExtractionController from './ExtractionController.js'
 import lootGenerator from '../loot/LootGenerator.js'
 
@@ -66,22 +76,21 @@ describe('CombatOutcomeProcessor', () => {
       // to loot the PoI contents. This requires pendingPOICombat to persist
       // through the combat salvage collection phase.
 
-      const mockState = {
-        currentRunState: {
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0,
-          pendingPOICombat: {
-            q: 2,
-            r: -1,
-            packType: 'MIXED_PACK',
-            poiName: 'Abandoned Outpost',
-            remainingWaypoints: []
-          }
+      const mockRunState = {
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0,
+        pendingPOICombat: {
+          q: 2,
+          r: -1,
+          packType: 'MIXED_PACK',
+          poiName: 'Abandoned Outpost',
+          remainingWaypoints: []
         }
       }
 
-      gameStateManager.getState.mockReturnValue(mockState)
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState)
+      gameStateManager.getState.mockReturnValue({ singlePlayerEncounter: {} })
 
       // Combat salvage loot (not PoI loot)
       const combatLoot = {
@@ -94,14 +103,14 @@ describe('CombatOutcomeProcessor', () => {
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
 
       // Assert: pendingPOICombat should still be present in the updated state
-      expect(gameStateManager.setState).toHaveBeenCalled()
-      const setStateCall = gameStateManager.setState.mock.calls[0][0]
+      expect(tacticalMapStateManager.setState).toHaveBeenCalled()
+      const setStateCall = tacticalMapStateManager.setState.mock.calls[0][0]
 
-      expect(setStateCall.currentRunState.pendingPOICombat).toBeDefined()
-      expect(setStateCall.currentRunState.pendingPOICombat.q).toBe(2)
-      expect(setStateCall.currentRunState.pendingPOICombat.r).toBe(-1)
-      expect(setStateCall.currentRunState.pendingPOICombat.packType).toBe('MIXED_PACK')
-      expect(setStateCall.currentRunState.pendingPOICombat.poiName).toBe('Abandoned Outpost')
+      expect(setStateCall.pendingPOICombat).toBeDefined()
+      expect(setStateCall.pendingPOICombat.q).toBe(2)
+      expect(setStateCall.pendingPOICombat.r).toBe(-1)
+      expect(setStateCall.pendingPOICombat.packType).toBe('MIXED_PACK')
+      expect(setStateCall.pendingPOICombat.poiName).toBe('Abandoned Outpost')
     })
 
     it('should preserve remainingWaypoints in pendingPOICombat', () => {
@@ -113,22 +122,21 @@ describe('CombatOutcomeProcessor', () => {
         { hex: { q: 4, r: -3, type: 'gate' }, pathFromPrev: [] }
       ]
 
-      const mockState = {
-        currentRunState: {
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0,
-          pendingPOICombat: {
-            q: 2,
-            r: -1,
-            packType: 'MIXED_PACK',
-            poiName: 'Salvage Cache',
-            remainingWaypoints: remainingWaypoints
-          }
+      const mockRunState = {
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0,
+        pendingPOICombat: {
+          q: 2,
+          r: -1,
+          packType: 'MIXED_PACK',
+          poiName: 'Salvage Cache',
+          remainingWaypoints: remainingWaypoints
         }
       }
 
-      gameStateManager.getState.mockReturnValue(mockState)
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState)
+      gameStateManager.getState.mockReturnValue({ singlePlayerEncounter: {} })
 
       const combatLoot = { cards: [], salvageItem: { itemId: 'SALVAGE_TEST', name: 'Test', creditValue: 100, image: '/Credits/test.png' }, aiCores: 0 }
 
@@ -136,25 +144,24 @@ describe('CombatOutcomeProcessor', () => {
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
 
       // Assert
-      const setStateCall = gameStateManager.setState.mock.calls[0][0]
-      expect(setStateCall.currentRunState.pendingPOICombat.remainingWaypoints).toEqual(remainingWaypoints)
-      expect(setStateCall.currentRunState.pendingPOICombat.remainingWaypoints.length).toBe(2)
+      const setStateCall = tacticalMapStateManager.setState.mock.calls[0][0]
+      expect(setStateCall.pendingPOICombat.remainingWaypoints).toEqual(remainingWaypoints)
+      expect(setStateCall.pendingPOICombat.remainingWaypoints.length).toBe(2)
     })
 
     it('should NOT have pendingPOICombat when combat was not at a PoI', () => {
       // EXPLANATION: Random ambushes (not at PoIs) should not set pendingPOICombat.
       // After such combat, there's no PoI to loot.
 
-      const mockState = {
-        currentRunState: {
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0
-          // No pendingPOICombat - this was a random ambush
-        }
+      const mockRunState = {
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0
+        // No pendingPOICombat - this was a random ambush
       }
 
-      gameStateManager.getState.mockReturnValue(mockState)
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState)
+      gameStateManager.getState.mockReturnValue({ singlePlayerEncounter: {} })
 
       const combatLoot = { cards: [], salvageItem: { itemId: 'SALVAGE_TEST', name: 'Test', creditValue: 50, image: '/Credits/test.png' }, aiCores: 0 }
 
@@ -162,26 +169,25 @@ describe('CombatOutcomeProcessor', () => {
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
 
       // Assert: pendingPOICombat should remain undefined (not present)
-      const setStateCall = gameStateManager.setState.mock.calls[0][0]
-      expect(setStateCall.currentRunState.pendingPOICombat).toBeUndefined()
+      const setStateCall = tacticalMapStateManager.setState.mock.calls[0][0]
+      expect(setStateCall.pendingPOICombat).toBeUndefined()
     })
 
     it('should still collect combat salvage correctly while preserving pendingPOICombat', () => {
       // EXPLANATION: The main functionality of finalizeLootCollection should
       // continue to work - adding cards, credits, and aiCores to the run state.
 
-      const mockState = {
-        currentRunState: {
-          collectedLoot: [
-            { type: 'card', cardId: 'EXISTING_CARD', cardName: 'Old Card', rarity: 'Common' }
-          ],
-          creditsEarned: 100,
-          aiCoresEarned: 1,
-          pendingPOICombat: { q: 0, r: 0, packType: 'CREDITS', poiName: 'Test' }
-        }
+      const mockRunState = {
+        collectedLoot: [
+          { type: 'card', cardId: 'EXISTING_CARD', cardName: 'Old Card', rarity: 'Common' }
+        ],
+        creditsEarned: 100,
+        aiCoresEarned: 1,
+        pendingPOICombat: { q: 0, r: 0, packType: 'CREDITS', poiName: 'Test' }
       }
 
-      gameStateManager.getState.mockReturnValue(mockState)
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState)
+      gameStateManager.getState.mockReturnValue({ singlePlayerEncounter: {} })
 
       const combatLoot = {
         cards: [{ cardId: 'NEW_CARD', cardName: 'New Card', rarity: 'Rare' }],
@@ -193,15 +199,15 @@ describe('CombatOutcomeProcessor', () => {
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
 
       // Assert: Both loot collection AND pendingPOICombat preservation work
-      const setStateCall = gameStateManager.setState.mock.calls[0][0]
+      const setStateCall = tacticalMapStateManager.setState.mock.calls[0][0]
 
       // Loot was collected: 1 existing + 1 new card + 1 salvageItem + 1 aiCores = 4 items
-      expect(setStateCall.currentRunState.collectedLoot.length).toBe(4)
-      expect(setStateCall.currentRunState.creditsEarned).toBe(175) // 100 + 75
-      expect(setStateCall.currentRunState.aiCoresEarned).toBe(3) // 1 + 2
+      expect(setStateCall.collectedLoot.length).toBe(4)
+      expect(setStateCall.creditsEarned).toBe(175) // 100 + 75
+      expect(setStateCall.aiCoresEarned).toBe(3) // 1 + 2
 
       // pendingPOICombat preserved
-      expect(setStateCall.currentRunState.pendingPOICombat).toBeDefined()
+      expect(setStateCall.pendingPOICombat).toBeDefined()
     })
   })
 
@@ -217,14 +223,14 @@ describe('CombatOutcomeProcessor', () => {
      */
     it('should call resetGameState() when finalizing loot collection', () => {
       // SETUP: Simulate victory with pending loot
-      gameStateManager.getState.mockReturnValue({
-        currentRunState: {
-          shipSlotId: 0,
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0
-        }
+      tacticalMapStateManager.getState.mockReturnValue({
+        shipSlotId: 0,
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0
       })
+
+      gameStateManager.getState.mockReturnValue({ singlePlayerEncounter: {} })
 
       const loot = {
         cards: [{ cardId: 'card1', cardName: 'Test Card', rarity: 'common' }],
@@ -253,11 +259,9 @@ describe('CombatOutcomeProcessor', () => {
      */
     it('should call resetGameState() when processing defeat', () => {
       // SETUP: Simulate defeat state
-      gameStateManager.getState.mockReturnValue({
-        currentRunState: {
-          shipSlotId: 0,
-          combatsLost: 0
-        }
+      tacticalMapStateManager.getState.mockReturnValue({
+        shipSlotId: 0,
+        combatsLost: 0
       })
 
       const gameState = {
@@ -280,8 +284,8 @@ describe('CombatOutcomeProcessor', () => {
 
     it('should NOT duplicate field clearing that resetGameState handles', () => {
       // SETUP
-      gameStateManager.getState.mockReturnValue({
-        currentRunState: { shipSlotId: 0 }
+      tacticalMapStateManager.getState.mockReturnValue({
+        shipSlotId: 0
       })
 
       const gameState = {
@@ -328,17 +332,15 @@ describe('CombatOutcomeProcessor', () => {
     it('should combine pendingSalvageLoot with combat salvage when present', async () => {
       // SETUP: Player was salvaging a PoI and revealed 2 cards + credits
       // before encounter triggered
-      const mockState = {
-        currentRunState: {
-          shipSections: {},
-          combatsWon: 0,
-          pendingSalvageLoot: {
-            cards: [
-              { cardId: 'SALVAGE_CARD_1', cardName: 'Salvaged Drone', rarity: 'Common' },
-              { cardId: 'SALVAGE_CARD_2', cardName: 'Salvaged Turret', rarity: 'Rare' }
-            ],
-            salvageItem: { itemId: 'SALVAGE_POI', name: 'POI Salvage', creditValue: 75, image: '/Credits/test.png' }
-          }
+      const mockRunState = {
+        shipSections: {},
+        combatsWon: 0,
+        pendingSalvageLoot: {
+          cards: [
+            { cardId: 'SALVAGE_CARD_1', cardName: 'Salvaged Drone', rarity: 'Common' },
+            { cardId: 'SALVAGE_CARD_2', cardName: 'Salvaged Turret', rarity: 'Rare' }
+          ],
+          salvageItem: { itemId: 'SALVAGE_POI', name: 'POI Salvage', creditValue: 75, image: '/Credits/test.png' }
         }
       }
 
@@ -350,7 +352,7 @@ describe('CombatOutcomeProcessor', () => {
         aiCores: 1
       })
 
-      gameStateManager.getState.mockReturnValue(mockState)
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState)
 
       const gameState = {
         winner: 'player1',
@@ -376,14 +378,12 @@ describe('CombatOutcomeProcessor', () => {
     })
 
     it('should clear pendingSalvageLoot from runState after combining', async () => {
-      const mockState = {
-        currentRunState: {
-          shipSections: {},
-          combatsWon: 0,
-          pendingSalvageLoot: {
-            cards: [{ cardId: 'SALVAGE_CARD', cardName: 'Test Card', rarity: 'Common' }],
-            salvageItem: { itemId: 'SALVAGE_TEST', name: 'Test', creditValue: 50, image: '/Credits/test.png' }
-          }
+      const mockRunState = {
+        shipSections: {},
+        combatsWon: 0,
+        pendingSalvageLoot: {
+          cards: [{ cardId: 'SALVAGE_CARD', cardName: 'Test Card', rarity: 'Common' }],
+          salvageItem: { itemId: 'SALVAGE_TEST', name: 'Test', creditValue: 50, image: '/Credits/test.png' }
         }
       }
 
@@ -394,7 +394,7 @@ describe('CombatOutcomeProcessor', () => {
         aiCores: 0
       })
 
-      gameStateManager.getState.mockReturnValue(mockState)
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState)
 
       const gameState = {
         winner: 'player1',
@@ -407,18 +407,16 @@ describe('CombatOutcomeProcessor', () => {
       CombatOutcomeProcessor.processVictory(gameState, gameState.singlePlayerEncounter)
 
       // ASSERT: pendingSalvageLoot should be cleared in setState call
-      const setStateCall = gameStateManager.setState.mock.calls[0][0]
-      expect(setStateCall.currentRunState.pendingSalvageLoot).toBeNull()
+      const setStateCall = tacticalMapStateManager.setState.mock.calls[0][0]
+      expect(setStateCall.pendingSalvageLoot).toBeNull()
     })
 
     it('should work normally when no pendingSalvageLoot exists', async () => {
       // SETUP: Regular combat (not from salvage) - no pendingSalvageLoot
-      const mockState = {
-        currentRunState: {
-          shipSections: {},
-          combatsWon: 0
-          // No pendingSalvageLoot
-        }
+      const mockRunState = {
+        shipSections: {},
+        combatsWon: 0
+        // No pendingSalvageLoot
       }
 
       const lootGenerator = await import('../loot/LootGenerator.js')
@@ -428,7 +426,7 @@ describe('CombatOutcomeProcessor', () => {
         aiCores: 2
       })
 
-      gameStateManager.getState.mockReturnValue(mockState)
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState)
 
       const gameState = {
         winner: 'player1',
@@ -449,14 +447,12 @@ describe('CombatOutcomeProcessor', () => {
 
     it('should handle empty salvage loot arrays gracefully', async () => {
       // SETUP: pendingSalvageLoot exists but has no cards (only salvageItem)
-      const mockState = {
-        currentRunState: {
-          shipSections: {},
-          combatsWon: 0,
-          pendingSalvageLoot: {
-            cards: [],  // Empty cards array
-            salvageItem: { itemId: 'SALVAGE_POI', name: 'POI Salvage', creditValue: 100, image: '/Credits/test.png', description: 'Test' }
-          }
+      const mockRunState = {
+        shipSections: {},
+        combatsWon: 0,
+        pendingSalvageLoot: {
+          cards: [],  // Empty cards array
+          salvageItem: { itemId: 'SALVAGE_POI', name: 'POI Salvage', creditValue: 100, image: '/Credits/test.png', description: 'Test' }
         }
       }
 
@@ -467,7 +463,7 @@ describe('CombatOutcomeProcessor', () => {
         aiCores: 0
       })
 
-      gameStateManager.getState.mockReturnValue(mockState)
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState)
 
       const gameState = {
         winner: 'player1',
@@ -488,8 +484,8 @@ describe('CombatOutcomeProcessor', () => {
   describe('processCombatEnd - routing', () => {
     it('should route to processVictory when player1 wins', () => {
       // SETUP
-      gameStateManager.getState.mockReturnValue({
-        currentRunState: { shipSlotId: 0 }
+      tacticalMapStateManager.getState.mockReturnValue({
+        shipSlotId: 0
       })
 
       const gameState = {
@@ -508,8 +504,8 @@ describe('CombatOutcomeProcessor', () => {
 
     it('should route to processDefeat when player2 wins', () => {
       // SETUP
-      gameStateManager.getState.mockReturnValue({
-        currentRunState: { shipSlotId: 0 }
+      tacticalMapStateManager.getState.mockReturnValue({
+        shipSlotId: 0
       })
 
       const gameState = {
@@ -544,12 +540,13 @@ describe('CombatOutcomeProcessor', () => {
       // extraction automatically, which properly handles loot selection and
       // run summary.
 
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0
+      })
+
       gameStateManager.getState.mockReturnValue({
-        currentRunState: {
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0
-        },
         singlePlayerEncounter: { isBlockade: true }
       })
 
@@ -559,22 +556,26 @@ describe('CombatOutcomeProcessor', () => {
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
 
       // ASSERT: Should go to tactical map with pendingBlockadeExtraction flag
-      const setStateCalls = gameStateManager.setState.mock.calls
-      const finalCall = setStateCalls[setStateCalls.length - 1][0]
-      expect(finalCall.appState).toBe('tacticalMap')
-      expect(finalCall.currentRunState.pendingBlockadeExtraction).toBe(true)
+      const tacticalSetStateCalls = tacticalMapStateManager.setState.mock.calls
+      const tacticalFinalCall = tacticalSetStateCalls[tacticalSetStateCalls.length - 1][0]
+      expect(tacticalFinalCall.pendingBlockadeExtraction).toBe(true)
+
+      const gameSetStateCalls = gameStateManager.setState.mock.calls
+      const gameFinalCall = gameSetStateCalls[gameSetStateCalls.length - 1][0]
+      expect(gameFinalCall.appState).toBe('tacticalMap')
     })
 
     it('should NOT call completePostBlockadeExtraction directly (TacticalMapScreen handles it)', () => {
       // EXPLANATION: Extraction is now handled by TacticalMapScreen via the
       // pendingBlockadeExtraction flag, not directly in finalizeLootCollection.
 
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0
+      })
+
       gameStateManager.getState.mockReturnValue({
-        currentRunState: {
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0
-        },
         singlePlayerEncounter: { isBlockade: true }
       })
 
@@ -591,12 +592,13 @@ describe('CombatOutcomeProcessor', () => {
       // EXPLANATION: Regular combat (at POIs, random ambushes) should still
       // return to tactical map so player can continue their journey.
 
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0
+      })
+
       gameStateManager.getState.mockReturnValue({
-        currentRunState: {
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0
-        },
         singlePlayerEncounter: { isBlockade: false }
       })
 
@@ -609,24 +611,28 @@ describe('CombatOutcomeProcessor', () => {
       expect(ExtractionController.completePostBlockadeExtraction).not.toHaveBeenCalled()
 
       // ASSERT: Should return to tacticalMap without pendingBlockadeExtraction
-      const setStateCalls = gameStateManager.setState.mock.calls
-      const finalCall = setStateCalls[setStateCalls.length - 1][0]
-      expect(finalCall.appState).toBe('tacticalMap')
-      expect(finalCall.currentRunState.pendingBlockadeExtraction).toBeUndefined()
+      const gameSetStateCalls = gameStateManager.setState.mock.calls
+      const gameFinalCall = gameSetStateCalls[gameSetStateCalls.length - 1][0]
+      expect(gameFinalCall.appState).toBe('tacticalMap')
+
+      const tacticalSetStateCalls = tacticalMapStateManager.setState.mock.calls
+      const tacticalFinalCall = tacticalSetStateCalls[tacticalSetStateCalls.length - 1][0]
+      expect(tacticalFinalCall.pendingBlockadeExtraction).toBeUndefined()
     })
 
     it('should include combat salvage loot in currentRunState for blockade extraction', () => {
       // EXPLANATION: The combat salvage loot must be included in currentRunState
       // so that when TacticalMapScreen calls handleExtract, the loot is available.
 
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [
+          { type: 'card', cardId: 'EXISTING', cardName: 'Old Card', rarity: 'Common' }
+        ],
+        creditsEarned: 50,
+        aiCoresEarned: 1
+      })
+
       gameStateManager.getState.mockReturnValue({
-        currentRunState: {
-          collectedLoot: [
-            { type: 'card', cardId: 'EXISTING', cardName: 'Old Card', rarity: 'Common' }
-          ],
-          creditsEarned: 50,
-          aiCoresEarned: 1
-        },
         singlePlayerEncounter: { isBlockade: true }
       })
 
@@ -640,13 +646,13 @@ describe('CombatOutcomeProcessor', () => {
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
 
       // ASSERT: currentRunState should include both existing and new loot
-      const setStateCalls = gameStateManager.setState.mock.calls
+      const setStateCalls = tacticalMapStateManager.setState.mock.calls
       const finalCall = setStateCalls[setStateCalls.length - 1][0]
 
       // Should have 1 existing + 1 new card + 1 salvageItem + 1 aiCores = 4 items total
-      expect(finalCall.currentRunState.collectedLoot.length).toBe(4)
-      expect(finalCall.currentRunState.creditsEarned).toBe(150) // 50 + 100
-      expect(finalCall.currentRunState.aiCoresEarned).toBe(3) // 1 + 2
+      expect(finalCall.collectedLoot.length).toBe(4)
+      expect(finalCall.creditsEarned).toBe(150) // 50 + 100
+      expect(finalCall.aiCoresEarned).toBe(3) // 1 + 2
     })
 
     it('should set blockadeCleared flag for blockade victory (prevents double blockade roll)', () => {
@@ -655,12 +661,13 @@ describe('CombatOutcomeProcessor', () => {
       // would roll for blockade AGAIN, potentially triggering a second combat.
       // blockadeCleared persists in run state to prevent this.
 
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0
+      })
+
       gameStateManager.getState.mockReturnValue({
-        currentRunState: {
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0
-        },
         singlePlayerEncounter: { isBlockade: true }
       })
 
@@ -670,20 +677,21 @@ describe('CombatOutcomeProcessor', () => {
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
 
       // ASSERT: Should set blockadeCleared flag in addition to pendingBlockadeExtraction
-      const setStateCalls = gameStateManager.setState.mock.calls
+      const setStateCalls = tacticalMapStateManager.setState.mock.calls
       const finalCall = setStateCalls[setStateCalls.length - 1][0]
-      expect(finalCall.currentRunState.blockadeCleared).toBe(true)
+      expect(finalCall.blockadeCleared).toBe(true)
     })
 
     it('should NOT set blockadeCleared for regular POI combat', () => {
       // Only blockade victories should set blockadeCleared
 
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0
+      })
+
       gameStateManager.getState.mockReturnValue({
-        currentRunState: {
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0
-        },
         singlePlayerEncounter: { isBlockade: false }
       })
 
@@ -693,9 +701,9 @@ describe('CombatOutcomeProcessor', () => {
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
 
       // ASSERT: blockadeCleared should NOT be set
-      const setStateCalls = gameStateManager.setState.mock.calls
+      const setStateCalls = tacticalMapStateManager.setState.mock.calls
       const finalCall = setStateCalls[setStateCalls.length - 1][0]
-      expect(finalCall.currentRunState.blockadeCleared).toBeUndefined()
+      expect(finalCall.blockadeCleared).toBeUndefined()
     })
 
     /**
@@ -708,13 +716,14 @@ describe('CombatOutcomeProcessor', () => {
       // EXPLANATION: If singlePlayerEncounter is null/undefined (race condition),
       // fall back to currentRunState.isBlockadeCombat for blockade detection.
 
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0,
+        isBlockadeCombat: true  // Fallback flag
+      })
+
       gameStateManager.getState.mockReturnValue({
-        currentRunState: {
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0,
-          isBlockadeCombat: true  // Fallback flag
-        },
         singlePlayerEncounter: null  // Simulating race condition - encounter cleared
       })
 
@@ -724,23 +733,24 @@ describe('CombatOutcomeProcessor', () => {
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
 
       // ASSERT: Should still detect as blockade via fallback
-      const setStateCalls = gameStateManager.setState.mock.calls
+      const setStateCalls = tacticalMapStateManager.setState.mock.calls
       const finalCall = setStateCalls[setStateCalls.length - 1][0]
-      expect(finalCall.currentRunState.pendingBlockadeExtraction).toBe(true)
-      expect(finalCall.currentRunState.blockadeCleared).toBe(true)
+      expect(finalCall.pendingBlockadeExtraction).toBe(true)
+      expect(finalCall.blockadeCleared).toBe(true)
     })
 
     it('should use currentRunState.isBlockadeCombat as fallback when singlePlayerEncounter.isBlockade is undefined', () => {
       // EXPLANATION: Even if encounter exists but isBlockade is undefined,
       // fall back to currentRunState.isBlockadeCombat.
 
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0,
+        isBlockadeCombat: true  // Fallback flag
+      })
+
       gameStateManager.getState.mockReturnValue({
-        currentRunState: {
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0,
-          isBlockadeCombat: true  // Fallback flag
-        },
         singlePlayerEncounter: { aiId: 'TestAI' }  // isBlockade not set
       })
 
@@ -750,23 +760,24 @@ describe('CombatOutcomeProcessor', () => {
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
 
       // ASSERT: Should detect as blockade via fallback
-      const setStateCalls = gameStateManager.setState.mock.calls
+      const setStateCalls = tacticalMapStateManager.setState.mock.calls
       const finalCall = setStateCalls[setStateCalls.length - 1][0]
-      expect(finalCall.currentRunState.pendingBlockadeExtraction).toBe(true)
-      expect(finalCall.currentRunState.blockadeCleared).toBe(true)
+      expect(finalCall.pendingBlockadeExtraction).toBe(true)
+      expect(finalCall.blockadeCleared).toBe(true)
     })
 
     it('should NOT trigger blockade extraction when neither flag is set', () => {
       // EXPLANATION: If both singlePlayerEncounter.isBlockade and
       // currentRunState.isBlockadeCombat are false/missing, it's regular combat.
 
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0,
+        isBlockadeCombat: false  // Explicitly false
+      })
+
       gameStateManager.getState.mockReturnValue({
-        currentRunState: {
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0,
-          isBlockadeCombat: false  // Explicitly false
-        },
         singlePlayerEncounter: { aiId: 'TestAI', isBlockade: false }
       })
 
@@ -776,10 +787,10 @@ describe('CombatOutcomeProcessor', () => {
       CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
 
       // ASSERT: Should NOT be treated as blockade
-      const setStateCalls = gameStateManager.setState.mock.calls
+      const setStateCalls = tacticalMapStateManager.setState.mock.calls
       const finalCall = setStateCalls[setStateCalls.length - 1][0]
-      expect(finalCall.currentRunState.pendingBlockadeExtraction).toBeUndefined()
-      expect(finalCall.currentRunState.blockadeCleared).toBeUndefined()
+      expect(finalCall.pendingBlockadeExtraction).toBeUndefined()
+      expect(finalCall.blockadeCleared).toBeUndefined()
     })
   })
 
@@ -807,17 +818,18 @@ describe('CombatOutcomeProcessor', () => {
       // Configure lootGenerator mock
       lootGenerator.generateDroneBlueprint.mockReturnValue(mockDroneBlueprint)
 
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        shipSections: {},
+        pendingPOICombat: {
+          packType: 'DRONE_BLUEPRINT_FIGHTER'
+        }
+      })
+
       gameStateManager.getState.mockReturnValue({
         winner: 'player1',
         player1: { shipSections: {} },
         player2: { deck: [] },
-        currentRunState: {
-          collectedLoot: [],
-          shipSections: {},
-          pendingPOICombat: {
-            packType: 'DRONE_BLUEPRINT_FIGHTER'
-          }
-        },
         singlePlayerEncounter: {}
       })
 
@@ -826,13 +838,6 @@ describe('CombatOutcomeProcessor', () => {
         winner: 'player1',
         player1: { shipSections: {} },
         player2: { deck: [] },
-        currentRunState: {
-          collectedLoot: [],
-          shipSections: {},
-          pendingPOICombat: {
-            packType: 'DRONE_BLUEPRINT_FIGHTER'
-          }
-        },
         singlePlayerEncounter: {}
       })
 
@@ -863,17 +868,18 @@ describe('CombatOutcomeProcessor', () => {
       // Configure lootGenerator mock
       lootGenerator.generateDroneBlueprint.mockReturnValue(mockDroneBlueprint)
 
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        shipSections: {},
+        pendingPOICombat: {
+          packType: 'DRONE_BLUEPRINT_LIGHT'
+        }
+      })
+
       gameStateManager.getState.mockReturnValue({
         winner: 'player1',
         player1: { shipSections: {} },
         player2: { deck: [] },
-        currentRunState: {
-          collectedLoot: [],
-          shipSections: {},
-          pendingPOICombat: {
-            packType: 'DRONE_BLUEPRINT_LIGHT'
-          }
-        },
         singlePlayerEncounter: {}
       })
 
@@ -882,13 +888,6 @@ describe('CombatOutcomeProcessor', () => {
         winner: 'player1',
         player1: { shipSections: {} },
         player2: { deck: [] },
-        currentRunState: {
-          collectedLoot: [],
-          shipSections: {},
-          pendingPOICombat: {
-            packType: 'DRONE_BLUEPRINT_LIGHT'
-          }
-        },
         singlePlayerEncounter: {}
       })
 
@@ -900,12 +899,13 @@ describe('CombatOutcomeProcessor', () => {
       // EXPLANATION: After salvage is collected, WinnerModal needs to know
       // there's a pending drone blueprint to show the special modal.
 
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0
+      })
+
       gameStateManager.getState.mockReturnValue({
-        currentRunState: {
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0
-        },
         pendingDroneBlueprint: {
           blueprintId: 'Mammoth',
           blueprintType: 'drone',
@@ -930,12 +930,13 @@ describe('CombatOutcomeProcessor', () => {
       // EXPLANATION: Regular combat (not at drone blueprint POI) should not
       // trigger the special modal flow.
 
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0
+      })
+
       gameStateManager.getState.mockReturnValue({
-        currentRunState: {
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0
-        },
         pendingDroneBlueprint: null,  // No blueprint pending
         singlePlayerEncounter: {}
       })
@@ -963,12 +964,13 @@ describe('CombatOutcomeProcessor', () => {
         droneData: { name: 'Seraph', attack: 2, hull: 3, speed: 2 }
       }
 
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0
+      })
+
       gameStateManager.getState.mockReturnValue({
-        currentRunState: {
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0
-        },
         pendingDroneBlueprint: mockBlueprint,
         singlePlayerEncounter: {}
       })
@@ -986,12 +988,13 @@ describe('CombatOutcomeProcessor', () => {
       // EXPLANATION: When there's no pending blueprint, resetGameState should be
       // called to clear combat state before returning to tactical map.
 
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0
+      })
+
       gameStateManager.getState.mockReturnValue({
-        currentRunState: {
-          collectedLoot: [],
-          creditsEarned: 0,
-          aiCoresEarned: 0
-        },
         pendingDroneBlueprint: null,  // No blueprint
         singlePlayerEncounter: {}
       })
@@ -1020,28 +1023,26 @@ describe('CombatOutcomeProcessor', () => {
       // POI loot should stay separate so player sees it on salvage screen, not in WinnerModal.
       // Only combat rewards (enemy salvage) should be in the returned loot.
 
-      const mockState = {
-        currentRunState: {
-          shipSections: {},
-          combatsWon: 0,
-          pendingSalvageLoot: {
-            cards: [
-              { cardId: 'SALVAGE_CARD_1', cardName: 'POI Card 1', rarity: 'Common' },
-              { cardId: 'SALVAGE_CARD_2', cardName: 'POI Card 2', rarity: 'Rare' }
-            ],
-            salvageItem: { itemId: 'SALVAGE_POI', name: 'POI Salvage', creditValue: 75, image: '/test.png' }
-          },
-          pendingSalvageState: {
-            poi: { q: 2, r: -1 },
-            slots: [{ revealed: true }, { revealed: true }, { revealed: false }],
-            currentSlotIndex: 2
-          },
-          pendingPOICombat: {
-            fromSalvage: true,
-            salvageFullyLooted: false,
-            q: 2,
-            r: -1
-          }
+      const mockRunState = {
+        shipSections: {},
+        combatsWon: 0,
+        pendingSalvageLoot: {
+          cards: [
+            { cardId: 'SALVAGE_CARD_1', cardName: 'POI Card 1', rarity: 'Common' },
+            { cardId: 'SALVAGE_CARD_2', cardName: 'POI Card 2', rarity: 'Rare' }
+          ],
+          salvageItem: { itemId: 'SALVAGE_POI', name: 'POI Salvage', creditValue: 75, image: '/test.png' }
+        },
+        pendingSalvageState: {
+          poi: { q: 2, r: -1 },
+          slots: [{ revealed: true }, { revealed: true }, { revealed: false }],
+          currentSlotIndex: 2
+        },
+        pendingPOICombat: {
+          fromSalvage: true,
+          salvageFullyLooted: false,
+          q: 2,
+          r: -1
         }
       }
 
@@ -1052,7 +1053,7 @@ describe('CombatOutcomeProcessor', () => {
         aiCores: 1
       })
 
-      gameStateManager.getState.mockReturnValue(mockState)
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState)
 
       const gameState = {
         winner: 'player1',
@@ -1076,24 +1077,22 @@ describe('CombatOutcomeProcessor', () => {
       // EXPLANATION: pendingSalvageLoot must remain in runState so TacticalMapScreen
       // can restore the salvage modal and the player can collect POI loot there.
 
-      const mockState = {
-        currentRunState: {
-          shipSections: {},
-          combatsWon: 0,
-          pendingSalvageLoot: {
-            cards: [{ cardId: 'POI_CARD', cardName: 'POI Card', rarity: 'Common' }],
-            salvageItem: { itemId: 'POI_SALVAGE', name: 'POI Salvage', creditValue: 100, image: '/test.png' }
-          },
-          pendingSalvageState: {
-            poi: { q: 1, r: 0 },
-            slots: [{ revealed: true }],
-            currentSlotIndex: 1
-          },
-          pendingPOICombat: {
-            fromSalvage: true,
-            q: 1,
-            r: 0
-          }
+      const mockRunState = {
+        shipSections: {},
+        combatsWon: 0,
+        pendingSalvageLoot: {
+          cards: [{ cardId: 'POI_CARD', cardName: 'POI Card', rarity: 'Common' }],
+          salvageItem: { itemId: 'POI_SALVAGE', name: 'POI Salvage', creditValue: 100, image: '/test.png' }
+        },
+        pendingSalvageState: {
+          poi: { q: 1, r: 0 },
+          slots: [{ revealed: true }],
+          currentSlotIndex: 1
+        },
+        pendingPOICombat: {
+          fromSalvage: true,
+          q: 1,
+          r: 0
         }
       }
 
@@ -1104,7 +1103,7 @@ describe('CombatOutcomeProcessor', () => {
         aiCores: 0
       })
 
-      gameStateManager.getState.mockReturnValue(mockState)
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState)
 
       const gameState = {
         winner: 'player1',
@@ -1117,9 +1116,9 @@ describe('CombatOutcomeProcessor', () => {
       CombatOutcomeProcessor.processVictory(gameState, gameState.singlePlayerEncounter)
 
       // ASSERT: pendingSalvageLoot should NOT be cleared
-      const setStateCall = gameStateManager.setState.mock.calls[0][0]
-      expect(setStateCall.currentRunState.pendingSalvageLoot).not.toBeNull()
-      expect(setStateCall.currentRunState.pendingSalvageLoot.cards[0].cardId).toBe('POI_CARD')
+      const setStateCall = tacticalMapStateManager.setState.mock.calls[0][0]
+      expect(setStateCall.pendingSalvageLoot).not.toBeNull()
+      expect(setStateCall.pendingSalvageLoot.cards[0].cardId).toBe('POI_CARD')
     })
 
     it('should preserve pendingSalvageState through processVictory when fromSalvage is true', async () => {
@@ -1141,17 +1140,15 @@ describe('CombatOutcomeProcessor', () => {
         encounterTriggered: true
       }
 
-      const mockState = {
-        currentRunState: {
-          shipSections: {},
-          combatsWon: 0,
-          pendingSalvageLoot: { cards: [], salvageItem: null },
-          pendingSalvageState: mockSalvageState,
-          pendingPOICombat: {
-            fromSalvage: true,
-            q: 3,
-            r: -2
-          }
+      const mockRunState = {
+        shipSections: {},
+        combatsWon: 0,
+        pendingSalvageLoot: { cards: [], salvageItem: null },
+        pendingSalvageState: mockSalvageState,
+        pendingPOICombat: {
+          fromSalvage: true,
+          q: 3,
+          r: -2
         }
       }
 
@@ -1162,7 +1159,8 @@ describe('CombatOutcomeProcessor', () => {
         aiCores: 0
       })
 
-      gameStateManager.getState.mockReturnValue(mockState)
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState)
+      gameStateManager.getState.mockReturnValue({ singlePlayerEncounter: {} })
 
       const gameState = {
         winner: 'player1',
@@ -1175,30 +1173,28 @@ describe('CombatOutcomeProcessor', () => {
       CombatOutcomeProcessor.processVictory(gameState, gameState.singlePlayerEncounter)
 
       // ASSERT: pendingSalvageState should be preserved
-      const setStateCall = gameStateManager.setState.mock.calls[0][0]
-      expect(setStateCall.currentRunState.pendingSalvageState).toBeDefined()
-      expect(setStateCall.currentRunState.pendingSalvageState.poi.q).toBe(3)
-      expect(setStateCall.currentRunState.pendingSalvageState.currentSlotIndex).toBe(2)
-      expect(setStateCall.currentRunState.pendingSalvageState.slots[0].revealed).toBe(true)
+      const setStateCall = tacticalMapStateManager.setState.mock.calls[0][0]
+      expect(setStateCall.pendingSalvageState).toBeDefined()
+      expect(setStateCall.pendingSalvageState.poi.q).toBe(3)
+      expect(setStateCall.pendingSalvageState.currentSlotIndex).toBe(2)
+      expect(setStateCall.pendingSalvageState.slots[0].revealed).toBe(true)
     })
 
     it('should still combine loot when fromSalvage is false (regular POI combat)', async () => {
       // EXPLANATION: When combat is not from salvage (e.g., direct POI encounter),
       // the existing combining behavior should remain for backwards compatibility.
 
-      const mockState = {
-        currentRunState: {
-          shipSections: {},
-          combatsWon: 0,
-          pendingSalvageLoot: {
-            cards: [{ cardId: 'OLD_CARD', cardName: 'Old Card', rarity: 'Common' }],
-            salvageItem: { itemId: 'OLD_SALVAGE', name: 'Old', creditValue: 100, image: '/test.png' }
-          },
-          pendingPOICombat: {
-            fromSalvage: false,  // NOT from salvage
-            q: 0,
-            r: 0
-          }
+      const mockRunState = {
+        shipSections: {},
+        combatsWon: 0,
+        pendingSalvageLoot: {
+          cards: [{ cardId: 'OLD_CARD', cardName: 'Old Card', rarity: 'Common' }],
+          salvageItem: { itemId: 'OLD_SALVAGE', name: 'Old', creditValue: 100, image: '/test.png' }
+        },
+        pendingPOICombat: {
+          fromSalvage: false,  // NOT from salvage
+          q: 0,
+          r: 0
         }
       }
 
@@ -1209,7 +1205,7 @@ describe('CombatOutcomeProcessor', () => {
         aiCores: 0
       })
 
-      gameStateManager.getState.mockReturnValue(mockState)
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState)
 
       const gameState = {
         winner: 'player1',
@@ -1229,16 +1225,14 @@ describe('CombatOutcomeProcessor', () => {
     it('should still combine loot when pendingPOICombat does not exist', async () => {
       // EXPLANATION: Random ambush combat (no POI) should still combine any pending loot.
 
-      const mockState = {
-        currentRunState: {
-          shipSections: {},
-          combatsWon: 0,
-          pendingSalvageLoot: {
-            cards: [{ cardId: 'PENDING_CARD', cardName: 'Pending', rarity: 'Common' }],
-            salvageItem: { itemId: 'PENDING', name: 'Pending', creditValue: 75, image: '/test.png' }
-          }
-          // No pendingPOICombat - this is a random ambush
+      const mockRunState = {
+        shipSections: {},
+        combatsWon: 0,
+        pendingSalvageLoot: {
+          cards: [{ cardId: 'PENDING_CARD', cardName: 'Pending', rarity: 'Common' }],
+          salvageItem: { itemId: 'PENDING', name: 'Pending', creditValue: 75, image: '/test.png' }
         }
+        // No pendingPOICombat - this is a random ambush
       }
 
       const lootGenerator = await import('../loot/LootGenerator.js')
@@ -1248,7 +1242,7 @@ describe('CombatOutcomeProcessor', () => {
         aiCores: 0
       })
 
-      gameStateManager.getState.mockReturnValue(mockState)
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState)
 
       const gameState = {
         winner: 'player1',

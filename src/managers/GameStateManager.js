@@ -26,6 +26,7 @@ import { getTacticalItemById } from '../data/tacticalItemData.js';
 import { generateRandomShopPack, getPackCostForTier } from '../data/cardPackData.js';
 import lootGenerator from '../logic/loot/LootGenerator.js';
 import aiPhaseProcessor from './AIPhaseProcessor.js';
+import tacticalMapStateManager from './TacticalMapStateManager.js';
 // PhaseManager dependency removed - using direct phase checks
 
 class GameStateManager {
@@ -88,7 +89,7 @@ class GameStateManager {
       singlePlayerShipComponentInstances: [],  // Ship component instances with hull tracking
       singlePlayerDiscoveredCards: [],   // Card discovery states (owned/discovered/undiscovered)
       singlePlayerShipSlots: [],         // 6 ship slots
-      currentRunState: null,             // Active run state or null
+      // NOTE: currentRunState has been moved to TacticalMapStateManager
       quickDeployments: [],              // Quick deploy templates (max 5)
 
       // --- EXTRACTION DECK BUILDER NAVIGATION ---
@@ -382,7 +383,7 @@ class GameStateManager {
       debugLog('EXTRACTION', 'appState transition', {
         from: this.state.appState,
         to: updates.appState,
-        hasRunState: !!this.state.currentRunState,
+        hasRunState: tacticalMapStateManager.isRunActive(),
         runAbandoning: this.state.runAbandoning,
         eventType
       });
@@ -1059,8 +1060,8 @@ class GameStateManager {
     if (this.state.turnPhase !== null) {
       issues.push(`turnPhase is '${this.state.turnPhase}' (expected null)`);
     }
-    if (this.state.currentRunState !== null) {
-      issues.push('currentRunState is not null (orphaned single-player run)');
+    if (tacticalMapStateManager.isRunActive()) {
+      issues.push('TacticalMapStateManager has active run (orphaned single-player run)');
     }
     if (this.state.singlePlayerEncounter !== null) {
       issues.push('singlePlayerEncounter is not null');
@@ -1086,8 +1087,8 @@ class GameStateManager {
   validatePreRunState() {
     const issues = [];
 
-    if (this.state.currentRunState !== null) {
-      issues.push('currentRunState already exists (run in progress)');
+    if (tacticalMapStateManager.isRunActive()) {
+      issues.push('TacticalMapStateManager has active run (run already in progress)');
     }
     if (this.state.singlePlayerEncounter !== null) {
       issues.push('singlePlayerEncounter is not null');
@@ -1109,8 +1110,11 @@ class GameStateManager {
    */
   clearSinglePlayerContext() {
     debugLog('STATE_SYNC', '🧹 Clearing single-player context');
+    // End run in TacticalMapStateManager if active
+    if (tacticalMapStateManager.isRunActive()) {
+      tacticalMapStateManager.endRun();
+    }
     this.setState({
-      currentRunState: null,
       singlePlayerEncounter: null
     });
   }
@@ -1127,7 +1131,7 @@ class GameStateManager {
     }
 
     // Clean up run state if navigating to menu
-    if (this.state.currentRunState && newState === 'menu') {
+    if (tacticalMapStateManager.isRunActive() && newState === 'menu') {
       debugLog('STATE_SYNC', 'Active run detected during navigation, cleaning up');
       this.endRun(false); // Lost run
     }
@@ -1606,7 +1610,7 @@ class GameStateManager {
   setWinner(winnerId) {
     // Check if this is single-player extraction mode combat
     const currentState = this.getState();
-    if (currentState.gameMode === 'singlePlayer' && currentState.currentRunState) {
+    if (currentState.gameMode === 'singlePlayer' && tacticalMapStateManager.isRunActive()) {
       debugLog('SP_COMBAT', `Single-player combat ended. Winner: ${winnerId}`);
 
       // Just set winner - WinnerModal will handle transition via button click
@@ -1699,9 +1703,14 @@ class GameStateManager {
       singlePlayerShipComponentInstances: saveData.shipComponentInstances,
       singlePlayerDiscoveredCards: saveData.discoveredCards,
       singlePlayerShipSlots: saveData.shipSlots,
-      currentRunState: saveData.currentRunState,
       quickDeployments: saveData.quickDeployments || [],  // Backwards compat default
     });
+
+    // Load run state to TacticalMapStateManager if present
+    if (saveData.currentRunState) {
+      tacticalMapStateManager.loadFromSave(saveData.currentRunState);
+      console.log('Run state loaded to TacticalMapStateManager');
+    }
 
     console.log('Single-player save loaded');
   }
@@ -1718,7 +1727,7 @@ class GameStateManager {
       shipComponentInstances: this.state.singlePlayerShipComponentInstances,
       discoveredCards: this.state.singlePlayerDiscoveredCards,
       shipSlots: this.state.singlePlayerShipSlots,
-      currentRunState: this.state.currentRunState,
+      currentRunState: tacticalMapStateManager.getState(),  // Get from TacticalMapStateManager
       quickDeployments: this.state.quickDeployments || [],
     };
   }
@@ -2455,7 +2464,7 @@ class GameStateManager {
       hasPreGeneratedMap: !!preGeneratedMap,
       hasQuickDeploy: !!quickDeploy,
       currentAppState: this.state.appState,
-      hasExistingRun: !!this.state.currentRunState,
+      hasExistingRun: tacticalMapStateManager.isRunActive(),
       runAbandoning: this.state.runAbandoning
     });
 
@@ -2644,14 +2653,24 @@ class GameStateManager {
       mapName: mapData.name
     });
 
+    // Initialize TacticalMapStateManager with run data
+    // This provides clean separation of tactical map state from combat state
+    tacticalMapStateManager.startRun({
+      shipSlotId,
+      mapTier,
+      mapData,
+      startingGate,
+      shipSections: runShipSections
+    });
+    debugLog('STATE_SYNC', 'TacticalMapStateManager initialized for run');
+
     this.setState({
-      currentRunState: runState,
       appState: 'tacticalMap',
       // CRITICAL: Clear stale flags from previous runs to prevent race conditions
       // runAbandoning must be false or SinglePlayerCombatInitializer will reject combat init
       runAbandoning: false,
     });
-    console.log('Run started:', runState);
+    console.log('Run started via TacticalMapStateManager');
     console.log('Map generated:', mapData.name, `(${mapData.poiCount} PoIs, ${mapData.gateCount} gates)`);
   }
 
@@ -2700,7 +2719,7 @@ class GameStateManager {
         lastCombatResult: null,
         winner: null,
         singlePlayerEncounter: null,
-        currentRunState: null,
+        // NOTE: currentRunState now managed by TacticalMapStateManager
 
         // UI state - ship placement
         placedSections: [],
@@ -2717,6 +2736,27 @@ class GameStateManager {
         droneSelectionPool: [],
         droneSelectionTrio: []
       }, 'GAME_STATE_RESET');
+
+      // Reset singletons to ensure clean state for next combat
+      // These are idempotent - safe to call multiple times
+
+      // GameFlowManager - reset phase/stage tracking
+      if (this.gameFlowManager?.reset) {
+        this.gameFlowManager.reset();
+        debugLog('SP_COMBAT', '✅ GameFlowManager reset');
+      }
+
+      // ActionProcessor - clear queue and locks
+      if (this.actionProcessor?.clearQueue) {
+        this.actionProcessor.clearQueue();
+        debugLog('SP_COMBAT', '✅ ActionProcessor queue cleared');
+      }
+
+      // AIPhaseProcessor - cleanup subscriptions and timers
+      if (aiPhaseProcessor?.cleanup) {
+        aiPhaseProcessor.cleanup();
+        debugLog('SP_COMBAT', '✅ AIPhaseProcessor cleaned up');
+      }
     } finally {
       this._updateContext = null;
     }
@@ -2737,7 +2777,8 @@ class GameStateManager {
       hasPlayer2: !!this.state.player2
     });
 
-    const runState = this.state.currentRunState;
+    // Read run state from TacticalMapStateManager
+    const runState = tacticalMapStateManager.getState();
     if (!runState) {
       console.warn('No active run to end');
       debugLog('SP_COMBAT', 'WARNING: No active run to end');
@@ -2913,16 +2954,20 @@ class GameStateManager {
 
     console.log('Reputation awarded:', lastRunSummary.reputation);
 
-    // Clear run state and set summary for display at hangar
+    // End the run in TacticalMapStateManager
+    tacticalMapStateManager.endRun();
+    debugLog('STATE_SYNC', 'TacticalMapStateManager run ended');
+
+    // Set summary for display at hangar
     // Include singlePlayerProfile so React subscribers see the stats change
+    // NOTE: Run state is cleared via tacticalMapStateManager.endRun() above
     this.setState({
-      currentRunState: null,
       lastRunSummary,
       singlePlayerProfile: { ...this.state.singlePlayerProfile }
     });
 
     debugLog('SP_COMBAT', '=== END RUN COMPLETE ===', {
-      clearedRunState: this.state.currentRunState === null,
+      clearedRunState: !tacticalMapStateManager.isRunActive(),
       // Note: game state (player1, player2, gameActive) is NOT cleared by endRun
       gameActiveStillSet: this.state.gameActive,
       turnPhaseStillSet: this.state.turnPhase,

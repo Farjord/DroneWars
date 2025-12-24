@@ -1,5 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+// Mock tacticalMapStateManager
+vi.mock('./TacticalMapStateManager.js', () => ({
+  default: {
+    getState: vi.fn(),
+    setState: vi.fn(),
+    isRunActive: vi.fn(),
+    startRun: vi.fn(),
+    endRun: vi.fn(),
+    subscribe: vi.fn(() => () => {})
+  }
+}));
+
 // ========================================
 // GAMESTATE MANAGER CREDIT HANDLING TESTS
 // ========================================
@@ -8,14 +20,18 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 describe('GameStateManager Credit Handling', () => {
   let gameStateManager;
+  let tacticalMapStateManager;
 
   beforeEach(async () => {
     // Reset modules to get fresh state
     vi.resetModules();
 
-    // Import fresh instance
+    // Import fresh instances
     const module = await import('./GameStateManager.js');
     gameStateManager = module.default;
+
+    const tacticalModule = await import('./TacticalMapStateManager.js');
+    tacticalMapStateManager = tacticalModule.default;
 
     // Reset to clean state with a profile
     gameStateManager.setState({
@@ -33,9 +49,13 @@ describe('GameStateManager Credit Handling', () => {
       singlePlayerInventory: {},
       singlePlayerShipSlots: [
         { id: 0, status: 'active' } // Starter deck
-      ],
-      currentRunState: null
+      ]
     });
+
+    // Reset tacticalMapStateManager mock
+    vi.clearAllMocks();
+    tacticalMapStateManager.isRunActive.mockReturnValue(false);
+    tacticalMapStateManager.getState.mockReturnValue(null);
   });
 
   describe('endRun() credit calculation', () => {
@@ -44,25 +64,26 @@ describe('GameStateManager Credit Handling', () => {
       // in collectedLoot, NOT from the legacy creditsEarned field
 
       // Set up run state with salvage items
-      gameStateManager.setState({
-        currentRunState: {
-          shipSlotId: 0,
-          mapTier: 1,
-          mapData: { name: 'Test Sector', hexes: [] },
-          collectedLoot: [
-            { type: 'salvageItem', creditValue: 50, itemId: 'S1', name: 'Item 1' },
-            { type: 'salvageItem', creditValue: 75, itemId: 'S2', name: 'Item 2' },
-            { type: 'card', cardId: 'CARD_001' } // Cards don't contribute credits
-          ],
-          creditsEarned: 999, // Legacy field - should be IGNORED
-          currentHull: 100,
-          maxHull: 100,
-          hexesMoved: 5,
-          hexesExplored: [],
-          combatsWon: 0,
-          combatsLost: 0
-        }
-      });
+      const runState = {
+        shipSlotId: 0,
+        mapTier: 1,
+        mapData: { name: 'Test Sector', hexes: [] },
+        collectedLoot: [
+          { type: 'salvageItem', creditValue: 50, itemId: 'S1', name: 'Item 1' },
+          { type: 'salvageItem', creditValue: 75, itemId: 'S2', name: 'Item 2' },
+          { type: 'card', cardId: 'CARD_001' } // Cards don't contribute credits
+        ],
+        creditsEarned: 999, // Legacy field - should be IGNORED
+        currentHull: 100,
+        maxHull: 100,
+        hexesMoved: 5,
+        hexesExplored: [],
+        combatsWon: 0,
+        combatsLost: 0
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(runState);
 
       const initialCredits = gameStateManager.getState().singlePlayerProfile.credits;
 
@@ -78,24 +99,25 @@ describe('GameStateManager Credit Handling', () => {
     it('adds zero credits when no salvageItems in collectedLoot', () => {
       // EXPLANATION: If player only collected cards/blueprints (no salvage), credits should be 0
 
-      gameStateManager.setState({
-        currentRunState: {
-          shipSlotId: 0,
-          mapTier: 1,
-          mapData: { name: 'Test Sector', hexes: [] },
-          collectedLoot: [
-            { type: 'card', cardId: 'CARD_001' },
-            { type: 'blueprint', blueprintId: 'BP_001' }
-          ],
-          creditsEarned: 500, // Legacy field - should be IGNORED
-          currentHull: 100,
-          maxHull: 100,
-          hexesMoved: 5,
-          hexesExplored: [],
-          combatsWon: 0,
-          combatsLost: 0
-        }
-      });
+      const runState = {
+        shipSlotId: 0,
+        mapTier: 1,
+        mapData: { name: 'Test Sector', hexes: [] },
+        collectedLoot: [
+          { type: 'card', cardId: 'CARD_001' },
+          { type: 'blueprint', blueprintId: 'BP_001' }
+        ],
+        creditsEarned: 500, // Legacy field - should be IGNORED
+        currentHull: 100,
+        maxHull: 100,
+        hexesMoved: 5,
+        hexesExplored: [],
+        combatsWon: 0,
+        combatsLost: 0
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(runState);
 
       const initialCredits = gameStateManager.getState().singlePlayerProfile.credits;
 
@@ -110,23 +132,24 @@ describe('GameStateManager Credit Handling', () => {
     it('updates totalCreditsEarned stat with calculated credits', () => {
       // EXPLANATION: Stats tracking should use calculated credits, not legacy field
 
-      gameStateManager.setState({
-        currentRunState: {
-          shipSlotId: 0,
-          mapTier: 1,
-          mapData: { name: 'Test Sector', hexes: [] },
-          collectedLoot: [
-            { type: 'salvageItem', creditValue: 100, itemId: 'S1' }
-          ],
-          creditsEarned: 9999, // Should be ignored
-          currentHull: 100,
-          maxHull: 100,
-          hexesMoved: 5,
-          hexesExplored: [],
-          combatsWon: 0,
-          combatsLost: 0
-        }
-      });
+      const runState = {
+        shipSlotId: 0,
+        mapTier: 1,
+        mapData: { name: 'Test Sector', hexes: [] },
+        collectedLoot: [
+          { type: 'salvageItem', creditValue: 100, itemId: 'S1' }
+        ],
+        creditsEarned: 9999, // Should be ignored
+        currentHull: 100,
+        maxHull: 100,
+        hexesMoved: 5,
+        hexesExplored: [],
+        combatsWon: 0,
+        combatsLost: 0
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(runState);
 
       const initialTotal = gameStateManager.getState().singlePlayerProfile.stats.totalCreditsEarned;
 
@@ -140,24 +163,25 @@ describe('GameStateManager Credit Handling', () => {
     it('includes calculated credits in lastRunSummary', () => {
       // EXPLANATION: The run summary shown to player should reflect actual extracted credits
 
-      gameStateManager.setState({
-        currentRunState: {
-          shipSlotId: 0,
-          mapTier: 1,
-          mapData: { name: 'Test Sector', hexes: [] },
-          collectedLoot: [
-            { type: 'salvageItem', creditValue: 80, itemId: 'S1' },
-            { type: 'salvageItem', creditValue: 45, itemId: 'S2' }
-          ],
-          creditsEarned: 5000, // Should be ignored
-          currentHull: 100,
-          maxHull: 100,
-          hexesMoved: 5,
-          hexesExplored: [],
-          combatsWon: 0,
-          combatsLost: 0
-        }
-      });
+      const runState = {
+        shipSlotId: 0,
+        mapTier: 1,
+        mapData: { name: 'Test Sector', hexes: [] },
+        collectedLoot: [
+          { type: 'salvageItem', creditValue: 80, itemId: 'S1' },
+          { type: 'salvageItem', creditValue: 45, itemId: 'S2' }
+        ],
+        creditsEarned: 5000, // Should be ignored
+        currentHull: 100,
+        maxHull: 100,
+        hexesMoved: 5,
+        hexesExplored: [],
+        combatsWon: 0,
+        combatsLost: 0
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(runState);
 
       gameStateManager.endRun(true);
 
@@ -169,23 +193,24 @@ describe('GameStateManager Credit Handling', () => {
     it('does not add credits on failed run (MIA)', () => {
       // EXPLANATION: When player goes MIA, they lose all loot including credits
 
-      gameStateManager.setState({
-        currentRunState: {
-          shipSlotId: 0,
-          mapTier: 1,
-          mapData: { name: 'Test Sector', hexes: [] },
-          collectedLoot: [
-            { type: 'salvageItem', creditValue: 500, itemId: 'S1' }
-          ],
-          creditsEarned: 500,
-          currentHull: 0,
-          maxHull: 100,
-          hexesMoved: 5,
-          hexesExplored: [],
-          combatsWon: 0,
-          combatsLost: 0
-        }
-      });
+      const runState = {
+        shipSlotId: 0,
+        mapTier: 1,
+        mapData: { name: 'Test Sector', hexes: [] },
+        collectedLoot: [
+          { type: 'salvageItem', creditValue: 500, itemId: 'S1' }
+        ],
+        creditsEarned: 500,
+        currentHull: 0,
+        maxHull: 100,
+        hexesMoved: 5,
+        hexesExplored: [],
+        combatsWon: 0,
+        combatsLost: 0
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(runState);
 
       const initialCredits = gameStateManager.getState().singlePlayerProfile.credits;
 
@@ -201,21 +226,22 @@ describe('GameStateManager Credit Handling', () => {
     it('handles empty collectedLoot array', () => {
       // EXPLANATION: Edge case - player extracted without collecting anything
 
-      gameStateManager.setState({
-        currentRunState: {
-          shipSlotId: 0,
-          mapTier: 1,
-          mapData: { name: 'Test Sector', hexes: [] },
-          collectedLoot: [],
-          creditsEarned: 0,
-          currentHull: 100,
-          maxHull: 100,
-          hexesMoved: 1,
-          hexesExplored: [],
-          combatsWon: 0,
-          combatsLost: 0
-        }
-      });
+      const runState = {
+        shipSlotId: 0,
+        mapTier: 1,
+        mapData: { name: 'Test Sector', hexes: [] },
+        collectedLoot: [],
+        creditsEarned: 0,
+        currentHull: 100,
+        maxHull: 100,
+        hexesMoved: 1,
+        hexesExplored: [],
+        combatsWon: 0,
+        combatsLost: 0
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(runState);
 
       const initialCredits = gameStateManager.getState().singlePlayerProfile.credits;
 

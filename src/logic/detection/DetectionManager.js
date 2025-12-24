@@ -6,6 +6,7 @@
 // Triggers MIA protocol at 100%
 
 import gameStateManager from '../../managers/GameStateManager.js';
+import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import { getZone } from '../../utils/hexGrid.js';
 
 /**
@@ -39,22 +40,18 @@ class DetectionManager {
    * @param {string} reason - Reason for increase (for logging)
    */
   addDetection(amount, reason = 'Unknown') {
-    const gameState = gameStateManager.getState();
-    const currentRunState = gameState.currentRunState;
+    const runState = tacticalMapStateManager.getState();
 
-    if (!currentRunState) {
+    if (!runState) {
       console.warn('Cannot add detection: No active run');
       return;
     }
 
-    const current = currentRunState.detection;
+    const current = runState.detection || 0;
     const newValue = Math.max(0, Math.min(100, current + amount));
 
-    gameStateManager.setState({
-      currentRunState: {
-        ...currentRunState,
-        detection: newValue
-      }
+    tacticalMapStateManager.setState({
+      detection: newValue
     });
 
     console.log(`[Detection] ${current.toFixed(1)}% -> ${newValue.toFixed(1)}% (+${amount.toFixed(1)}%) [${reason}]`);
@@ -70,8 +67,7 @@ class DetectionManager {
    * @returns {number} Current detection (0-100)
    */
   getCurrentDetection() {
-    const gameState = gameStateManager.getState();
-    return gameState.currentRunState?.detection || 0;
+    return tacticalMapStateManager.getState()?.detection || 0;
   }
 
   /**
@@ -121,7 +117,7 @@ class DetectionManager {
     console.warn('[Detection] 100% reached - MIA TRIGGERED');
 
     // Get isStarterDeck BEFORE endRun clears the run state
-    const runState = gameStateManager.getState().currentRunState;
+    const runState = tacticalMapStateManager.getState();
     const isStarterDeck = runState?.shipSlotId === 0;
 
     // End the run as failed
@@ -175,19 +171,13 @@ class DetectionManager {
    * Reset detection (for testing/debugging)
    */
   reset() {
-    const gameState = gameStateManager.getState();
-    const currentRunState = gameState.currentRunState;
-
-    if (!currentRunState) {
+    if (!tacticalMapStateManager.isRunActive()) {
       console.warn('Cannot reset detection: No active run');
       return;
     }
 
-    gameStateManager.setState({
-      currentRunState: {
-        ...currentRunState,
-        detection: 0
-      }
+    tacticalMapStateManager.setState({
+      detection: 0
     });
 
     console.log('[Detection] Reset to 0%');

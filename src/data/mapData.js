@@ -101,10 +101,11 @@ export const mapTiers = [
     ],
 
     // Threat escalation (AI names from aiData.js extraction mode)
+    // NOTE: Only reference ACTIVE (non-commented) AIs here
     threatTables: {
-      low: ['Rogue Scout Pattern', 'Automated Patrol Unit'],           // 0-49% detection
-      medium: ['Heavy Cruiser Defense Pattern', 'Specialized Hunter Group'],  // 50-79% detection
-      high: ['Heavy Cruiser Defense Pattern', 'Specialized Hunter Group']     // 80-100% detection (reuse until Hard AIs added)
+      low: ['Rogue Scout Pattern'],                // 0-49% detection
+      medium: ['Specialized Hunter Group'],        // 50-79% detection
+      high: ['Specialized Hunter Group']           // 80-100% detection (reuse until Hard AIs added)
     },
 
     // Validation

@@ -5,6 +5,7 @@
 // Handles both successful extraction and run abandonment
 
 import gameStateManager from '../../managers/GameStateManager.js';
+import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import DroneDamageProcessor from './DroneDamageProcessor.js';
 import DetectionManager from '../detection/DetectionManager.js';
 import { mapTiers } from '../../data/mapData.js';
@@ -225,11 +226,8 @@ class ExtractionController {
 
     // Update runState with filtered loot before endRun processes it
     if (selectedLoot) {
-      gameStateManager.setState({
-        currentRunState: {
-          ...currentRunState,
-          collectedLoot: selectedLoot
-        }
+      tacticalMapStateManager.setState({
+        collectedLoot: selectedLoot
       });
     }
 
@@ -299,13 +297,12 @@ class ExtractionController {
       roundNumber: gameStateManager.get('roundNumber'),
       hasPlayer1: !!gameStateManager.get('player1'),
       hasPlayer2: !!gameStateManager.get('player2'),
-      hasCurrentRunState: !!gameStateManager.get('currentRunState')
+      hasCurrentRunState: tacticalMapStateManager.isRunActive()
     });
     debugLog('EXTRACTION', 'Run abandoned - MIA triggered');
 
     // Get isStarterDeck BEFORE endRun clears the run state
-    const state = gameStateManager.getState();
-    const runState = state?.currentRunState;
+    const runState = tacticalMapStateManager.getState();
     const isStarterDeck = runState?.shipSlotId === 0;
 
     // If abandoning mid-combat, reset game state first
@@ -321,7 +318,7 @@ class ExtractionController {
       appState: gameStateManager.get('appState'),
       turnPhase: gameStateManager.get('turnPhase'),
       gameActive: gameStateManager.get('gameActive'),
-      hasCurrentRunState: !!gameStateManager.get('currentRunState')
+      hasCurrentRunState: tacticalMapStateManager.isRunActive()
     });
 
     // Show failed run loading screen (will transition to hangar on complete)
@@ -493,14 +490,11 @@ class ExtractionController {
     const totalHull = Object.values(updatedSections).reduce((sum, s) => sum + s.hull, 0);
     const maxHull = Object.values(updatedSections).reduce((sum, s) => sum + s.maxHull, 0);
 
-    // Update game state with new section values
-    gameStateManager.setState({
-      currentRunState: {
-        ...currentRunState,
-        shipSections: updatedSections,
-        currentHull: totalHull,
-        maxHull: maxHull
-      }
+    // Update run state with new section values
+    tacticalMapStateManager.setState({
+      shipSections: updatedSections,
+      currentHull: totalHull,
+      maxHull: maxHull
     });
 
     debugLog('EXTRACTION', 'Escape executed', {

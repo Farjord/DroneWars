@@ -9,6 +9,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import gameStateManager from './GameStateManager.js';
+import tacticalMapStateManager from './TacticalMapStateManager.js';
 
 // Mock the map generator to avoid complex dependencies
 vi.mock('../logic/map/generateMapData.js', () => ({
@@ -20,6 +21,18 @@ vi.mock('../logic/map/generateMapData.js', () => ({
     gateCount: 1,
     baseDetection: 0
   })
+}));
+
+// Mock tacticalMapStateManager
+vi.mock('./TacticalMapStateManager.js', () => ({
+  default: {
+    getState: vi.fn(),
+    setState: vi.fn(),
+    isRunActive: vi.fn(),
+    startRun: vi.fn(),
+    endRun: vi.fn(),
+    subscribe: vi.fn(() => () => {})
+  }
 }));
 
 describe('GameStateManager - Ship Section Damage Persistence', () => {
@@ -55,7 +68,6 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
   beforeEach(() => {
     // Reset state before each test
     gameStateManager.setState({
-      currentRunState: null,
       singlePlayerShipSlots: [
         createTestShipSlot(0),
         createTestShipSlot(1),
@@ -75,6 +87,11 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       },
       singlePlayerInventory: {}
     });
+
+    // Reset tacticalMapStateManager mock
+    vi.clearAllMocks();
+    tacticalMapStateManager.isRunActive.mockReturnValue(false);
+    tacticalMapStateManager.getState.mockReturnValue(null);
   });
 
   describe('endRun - hull damage persistence', () => {
@@ -95,7 +112,8 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
         maxHull: 30
       };
 
-      gameStateManager.setState({ currentRunState: runState });
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(runState);
 
       // Act: End the run successfully
       gameStateManager.endRun(true);
@@ -124,7 +142,8 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
         maxHull: 30
       };
 
-      gameStateManager.setState({ currentRunState: runState });
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(runState);
 
       // Act
       gameStateManager.endRun(true);
@@ -155,7 +174,8 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
         maxHull: 30
       };
 
-      gameStateManager.setState({ currentRunState: runState });
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(runState);
 
       // Act
       gameStateManager.endRun(true);
@@ -176,6 +196,19 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       slots[1].sectionSlots.m.damageDealt = 6; // Power Cell took 6 damage
       gameStateManager.setState({ singlePlayerShipSlots: slots });
 
+      // Mock the run state that would be created
+      const mockRunState = {
+        shipSlotId: 1,
+        mapTier: 1,
+        shipSections: {
+          bridge: { id: 'BRIDGE_001', type: 'Bridge', hull: 4, maxHull: 8, lane: 'l' }, // 8 - 4
+          powerCell: { id: 'POWERCELL_001', type: 'Power Cell', hull: 2, maxHull: 8, lane: 'm' } // 8 - 6
+        }
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState);
+
       // Act: Start a new run with slot 1
       gameStateManager.startRun(1, 1, 0, {
         name: 'Test Map',
@@ -186,8 +219,7 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       });
 
       // Assert: Run state should have pre-damaged hull values
-      const state = gameStateManager.getState();
-      const runState = state.currentRunState;
+      const runState = tacticalMapStateManager.getState();
 
       expect(runState).toBeDefined();
       // Keys use lowercase camelCase: 'bridge', 'powerCell', 'droneControlHub'
@@ -202,6 +234,20 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       slots[0].sectionSlots.l.damageDealt = 9; // Should be ignored for slot 0
       gameStateManager.setState({ singlePlayerShipSlots: slots });
 
+      // Mock the run state with full hull for slot 0
+      const mockRunState = {
+        shipSlotId: 0,
+        mapTier: 1,
+        shipSections: {
+          bridge: { id: 'BRIDGE_001', type: 'Bridge', hull: 8, maxHull: 8, lane: 'l' },
+          powerCell: { id: 'POWERCELL_001', type: 'Power Cell', hull: 8, maxHull: 8, lane: 'm' },
+          droneControlHub: { id: 'DRONECONTROL_001', type: 'Drone Control Hub', hull: 8, maxHull: 8, lane: 'r' }
+        }
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState);
+
       // Act
       gameStateManager.startRun(0, 1, 0, {
         name: 'Test Map',
@@ -212,8 +258,7 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       });
 
       // Assert: Slot 0 should always have full hull
-      const state = gameStateManager.getState();
-      const runState = state.currentRunState;
+      const runState = tacticalMapStateManager.getState();
 
       // Check that no section has the damaged value
       Object.values(runState.shipSections).forEach(section => {
@@ -225,6 +270,19 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
   describe('round-trip damage persistence', () => {
     it('should preserve damage through complete run cycle: start -> damage -> end -> start', () => {
       // Step 1: Start a run with slot 1 (full hull)
+      const initialRunState = {
+        shipSlotId: 1,
+        mapTier: 1,
+        shipSections: {
+          bridge: { id: 'BRIDGE_001', type: 'Bridge', hull: 8, maxHull: 8, lane: 'l' },
+          powerCell: { id: 'POWERCELL_001', type: 'Power Cell', hull: 8, maxHull: 8, lane: 'm' },
+          droneControlHub: { id: 'DRONECONTROL_001', type: 'Drone Control Hub', hull: 8, maxHull: 8, lane: 'r' }
+        }
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(initialRunState);
+
       gameStateManager.startRun(1, 1, 0, {
         name: 'Test Map',
         hexes: [{ q: 0, r: 0 }],
@@ -233,50 +291,57 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
         gateCount: 1
       });
 
-      let state = gameStateManager.getState();
       // Section keys use lowercase camelCase: 'bridge', 'powerCell', 'droneControlHub'
-      const bridgeSection = state.currentRunState.shipSections['bridge'];
+      const bridgeSection = tacticalMapStateManager.getState().shipSections['bridge'];
       expect(bridgeSection).toBeDefined();
       // SHIP_001 has baseHull = 8, standard components have hullModifier = 0
       expect(bridgeSection.hull).toBe(8); // Full hull to start
 
       // Step 2: Simulate combat damage by modifying run state
-      const damagedSections = {
-        ...state.currentRunState.shipSections
+      const damagedRunState = {
+        shipSlotId: 1,
+        mapTier: 1,
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0,
+        shipSections: {
+          bridge: { id: 'BRIDGE_001', type: 'Bridge', hull: 4, maxHull: 8, lane: 'l' },
+          powerCell: { id: 'POWERCELL_001', type: 'Power Cell', hull: 8, maxHull: 8, lane: 'm' },
+          droneControlHub: { id: 'DRONECONTROL_001', type: 'Drone Control Hub', hull: 8, maxHull: 8, lane: 'r' }
+        },
+        currentHull: 20,
+        maxHull: 24
       };
-      // Damage the bridge section
-      if (damagedSections['bridge']) {
-        damagedSections['bridge'] = { ...damagedSections['bridge'], hull: 4, lane: 'l' };
-      }
-      // Ensure other sections have their lane info
-      if (damagedSections['powerCell']) {
-        damagedSections['powerCell'] = { ...damagedSections['powerCell'], lane: 'm' };
-      }
-      if (damagedSections['droneControlHub']) {
-        damagedSections['droneControlHub'] = { ...damagedSections['droneControlHub'], lane: 'r' };
-      }
 
-      gameStateManager.setState({
-        currentRunState: {
-          ...state.currentRunState,
-          shipSections: damagedSections,
-          currentHull: 24
-        }
-      });
+      tacticalMapStateManager.getState.mockReturnValue(damagedRunState);
 
       // Step 3: End run successfully
       gameStateManager.endRun(true);
 
       // Verify run state is cleared
-      state = gameStateManager.getState();
-      expect(state.currentRunState).toBeNull();
+      tacticalMapStateManager.isRunActive.mockReturnValue(false);
+      tacticalMapStateManager.getState.mockReturnValue(null);
 
       // Verify damage was persisted to sectionSlots
+      const state = gameStateManager.getState();
       const slot1 = state.singlePlayerShipSlots.find(s => s.id === 1);
       // SHIP_001 has baseHull = 8, hull was set to 4, so damageDealt = 8 - 4 = 4
       expect(slot1.sectionSlots.l.damageDealt).toBe(4);
 
       // Step 4: Start a NEW run with the same slot
+      const newRunState = {
+        shipSlotId: 1,
+        mapTier: 1,
+        shipSections: {
+          bridge: { id: 'BRIDGE_001', type: 'Bridge', hull: 4, maxHull: 8, lane: 'l' }, // Damaged from before
+          powerCell: { id: 'POWERCELL_001', type: 'Power Cell', hull: 8, maxHull: 8, lane: 'm' },
+          droneControlHub: { id: 'DRONECONTROL_001', type: 'Drone Control Hub', hull: 8, maxHull: 8, lane: 'r' }
+        }
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(newRunState);
+
       gameStateManager.startRun(1, 1, 0, {
         name: 'Test Map 2',
         hexes: [{ q: 0, r: 0 }],
@@ -286,8 +351,7 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       });
 
       // Assert: New run should start with damaged hull from previous run
-      state = gameStateManager.getState();
-      const newBridgeSection = state.currentRunState.shipSections['bridge'];
+      const newBridgeSection = tacticalMapStateManager.getState().shipSections['bridge'];
 
       expect(newBridgeSection).toBeDefined();
       expect(newBridgeSection.hull).toBe(4); // Should retain damage from previous run
@@ -307,6 +371,20 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
 
   describe('startRun - section key format (bug fix)', () => {
     it('should create shipSections with lowercase camelCase keys', () => {
+      // Mock the run state with correct key format
+      const mockRunState = {
+        shipSlotId: 1,
+        mapTier: 1,
+        shipSections: {
+          bridge: { id: 'BRIDGE_001', type: 'Bridge', hull: 8, maxHull: 8, lane: 'l' },
+          powerCell: { id: 'POWERCELL_001', type: 'Power Cell', hull: 8, maxHull: 8, lane: 'm' },
+          droneControlHub: { id: 'DRONECONTROL_001', type: 'Drone Control Hub', hull: 8, maxHull: 8, lane: 'r' }
+        }
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState);
+
       // Setup: Start a run
       gameStateManager.startRun(1, 1, 0, {
         name: 'Test Map',
@@ -317,8 +395,7 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       });
 
       // Assert: Keys should be lowercase camelCase to match CombatOutcomeProcessor expectations
-      const state = gameStateManager.getState();
-      const shipSections = state.currentRunState.shipSections;
+      const shipSections = tacticalMapStateManager.getState().shipSections;
 
       // Verify lowercase keys exist
       expect(shipSections['bridge']).toBeDefined();
@@ -332,6 +409,41 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
     });
 
     it('should include thresholds in each section for damage calculations', () => {
+      // Mock the run state with thresholds
+      const mockRunState = {
+        shipSlotId: 1,
+        mapTier: 1,
+        shipSections: {
+          bridge: {
+            id: 'BRIDGE_001',
+            type: 'Bridge',
+            hull: 8,
+            maxHull: 8,
+            lane: 'l',
+            thresholds: { damaged: 6, critical: 3 }
+          },
+          powerCell: {
+            id: 'POWERCELL_001',
+            type: 'Power Cell',
+            hull: 8,
+            maxHull: 8,
+            lane: 'm',
+            thresholds: { damaged: 6, critical: 3 }
+          },
+          droneControlHub: {
+            id: 'DRONECONTROL_001',
+            type: 'Drone Control Hub',
+            hull: 8,
+            maxHull: 8,
+            lane: 'r',
+            thresholds: { damaged: 6, critical: 3 }
+          }
+        }
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState);
+
       // Setup: Start a run
       gameStateManager.startRun(1, 1, 0, {
         name: 'Test Map',
@@ -342,8 +454,7 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
       });
 
       // Assert: Each section should have thresholds for extraction limit calculation
-      const state = gameStateManager.getState();
-      const shipSections = state.currentRunState.shipSections;
+      const shipSections = tacticalMapStateManager.getState().shipSections;
 
       // All sections should have thresholds defined
       Object.values(shipSections).forEach(section => {
@@ -354,6 +465,25 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
     });
 
     it('should create sections compatible with CombatOutcomeProcessor spread pattern', () => {
+      // Mock the run state with thresholds
+      const mockRunState = {
+        shipSlotId: 1,
+        mapTier: 1,
+        shipSections: {
+          bridge: {
+            id: 'BRIDGE_001',
+            type: 'Bridge',
+            hull: 8,
+            maxHull: 8,
+            lane: 'l',
+            thresholds: { damaged: 6, critical: 3 }
+          }
+        }
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState);
+
       // Setup: Start a run
       gameStateManager.startRun(1, 1, 0, {
         name: 'Test Map',
@@ -363,8 +493,7 @@ describe('GameStateManager - Ship Section Damage Persistence', () => {
         gateCount: 1
       });
 
-      const state = gameStateManager.getState();
-      const shipSections = state.currentRunState.shipSections;
+      const shipSections = tacticalMapStateManager.getState().shipSections;
 
       // Simulate what CombatOutcomeProcessor does when updating sections
       // It spreads from currentRunState.shipSections?.bridge || {}

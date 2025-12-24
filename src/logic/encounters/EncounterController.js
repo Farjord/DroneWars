@@ -5,6 +5,7 @@
 // Handles ambush rolls, threat selection, and encounter outcomes
 
 import gameStateManager from '../../managers/GameStateManager.js';
+import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import DetectionManager from '../detection/DetectionManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
@@ -158,17 +159,13 @@ class EncounterController {
     debugLog('ENCOUNTER', 'POI arrival', { name: poi.poiData?.name || 'Unknown', detection: detection.toFixed(2) });
 
     // Track POI visit for run summary
-    const gameState = gameStateManager.getState();
-    const currentRunState = gameState.currentRunState;
-    if (currentRunState && poi.type === 'poi') {
-      const poisVisited = currentRunState.poisVisited || [];
+    const runState = tacticalMapStateManager.getState();
+    if (runState && poi.type === 'poi') {
+      const poisVisited = runState.poisVisited || [];
       const alreadyVisited = poisVisited.some(p => p.q === poi.q && p.r === poi.r);
       if (!alreadyVisited) {
-        gameStateManager.setState({
-          currentRunState: {
-            ...currentRunState,
-            poisVisited: [...poisVisited, { q: poi.q, r: poi.r, name: poi.poiData?.name }]
-          }
+        tacticalMapStateManager.setState({
+          poisVisited: [...poisVisited, { q: poi.q, r: poi.r, name: poi.poiData?.name }]
         });
         debugLog('ENCOUNTER', 'POI tracked for summary', { q: poi.q, r: poi.r, name: poi.poiData?.name });
       }
@@ -250,15 +247,14 @@ class EncounterController {
     }
 
     // Award salvage item (replaces flat credits)
-    const gameState = gameStateManager.getState();
-    const currentRunState = gameState.currentRunState;
+    const runState = tacticalMapStateManager.getState();
 
-    if (currentRunState && reward.salvageItem) {
+    if (runState && reward.salvageItem) {
       const creditValue = reward.salvageItem.creditValue || 0;
-      const newCredits = (currentRunState.creditsEarned || 0) + creditValue;
+      const newCredits = (runState.creditsEarned || 0) + creditValue;
 
       // Add salvage item to collected loot
-      const existingLoot = currentRunState.collectedLoot || [];
+      const existingLoot = runState.collectedLoot || [];
       const salvageLootItem = {
         type: 'salvageItem',
         itemId: reward.salvageItem.itemId,
@@ -269,12 +265,9 @@ class EncounterController {
         source: 'encounter_reward'
       };
 
-      gameStateManager.setState({
-        currentRunState: {
-          ...currentRunState,
-          collectedLoot: [...existingLoot, salvageLootItem],
-          creditsEarned: newCredits
-        }
+      tacticalMapStateManager.setState({
+        collectedLoot: [...existingLoot, salvageLootItem],
+        creditsEarned: newCredits
       });
 
       debugLog('ENCOUNTER', 'Salvage item awarded', { item: reward.salvageItem.name, creditValue, total: newCredits });
@@ -355,13 +348,14 @@ class EncounterController {
 
     const detection = DetectionManager.getCurrentDetection();
 
-    // Get map data from current run state for zone-based encounter chance
-    const gameState = gameStateManager.getState();
-    const mapData = gameState.currentRunState?.mapData;
+    // Get map data from TacticalMapStateManager for zone-based encounter chance
+    const runState = tacticalMapStateManager.getState();
+    const mapData = runState?.mapData;
 
     // Get encounter chance based on hex type and zone
     const encounterChance = this.getEncounterChance(hex, tierConfig, mapData);
     // Create seed that includes hex position for unique roll per hex (deterministic)
+    const gameState = gameStateManager.getState();
     const baseRng = SeededRandom.fromGameState(gameState || {});
     const hexOffset = (hex.q * 1000) + (hex.r * 37);
     const rng = new SeededRandom(baseRng.seed + hexOffset);

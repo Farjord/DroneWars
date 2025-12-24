@@ -89,6 +89,7 @@ import SeededRandom from './utils/seededRandom.js';
 
 // --- 1.8 ANIMATION IMPORTS ---
 import AnimationManager from './managers/AnimationManager.js';
+import tacticalMapStateManager from './managers/TacticalMapStateManager.js';
 import FlyingDrone from './components/animations/FlyingDrone.jsx';
 import FlashEffect from './components/animations/FlashEffect.jsx';
 import HealEffect from './components/animations/HealEffect.jsx';
@@ -439,7 +440,7 @@ const App = ({ phaseAnimationQueue }) => {
   useEffect(() => {
     const handleBeforeUnload = (e) => {
       // Check if there's an active game or run that would be lost
-      if (gameState.gameActive || gameState.currentRunState) {
+      if (gameState.gameActive || tacticalMapStateManager.isRunActive()) {
         e.preventDefault();
         e.returnValue = 'You have an active game. Progress may be lost.';
         return e.returnValue;
@@ -447,7 +448,7 @@ const App = ({ phaseAnimationQueue }) => {
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [gameState.gameActive, gameState.currentRunState]);
+  }, [gameState.gameActive]);
 
   // ========================================
   // SECTION 5: COMPUTED VALUES & MEMOIZATION
@@ -2138,8 +2139,7 @@ const App = ({ phaseAnimationQueue }) => {
    */
   const handleExitGame = () => {
     // Check if in Extract mode (single-player run active)
-    const currentRunState = gameStateManager.get('currentRunState');
-    if (currentRunState) {
+    if (tacticalMapStateManager.isRunActive()) {
       // In Extract mode - show abandon run confirmation instead of exiting
       setShowAbandonRunModal(true);
       return;
@@ -4558,8 +4558,8 @@ const App = ({ phaseAnimationQueue }) => {
         handleDeclineInterceptionFromHeader={handleDeclineInterceptionFromHeader}
         handleConfirmInterception={handleConfirmInterception}
         // Extraction mode props
-        currentRunState={gameState.currentRunState}
-        isExtractionMode={!!gameState.currentRunState}
+        currentRunState={tacticalMapStateManager.getState()}
+        isExtractionMode={tacticalMapStateManager.isRunActive()}
       />
 
       <GameBattlefield
@@ -4796,7 +4796,7 @@ const App = ({ phaseAnimationQueue }) => {
         show={showAbandonRunModal}
         onCancel={() => setShowAbandonRunModal(false)}
         onConfirm={handleConfirmAbandonRun}
-        lootCount={gameState.currentRunState?.runInventory?.length || 0}
+        lootCount={tacticalMapStateManager.getState()?.collectedLoot?.length || 0}
         creditsEarned={0}
       />
 

@@ -12,6 +12,7 @@ import { gameEngine } from '../logic/gameLogic.js';
 import RoundManager from '../logic/round/RoundManager.js';
 import EffectRouter from '../logic/EffectRouter.js';
 import PhaseManager from './PhaseManager.js';
+import tacticalMapStateManager from './TacticalMapStateManager.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 
 /**
@@ -2490,13 +2491,10 @@ class GameFlowManager {
       });
 
       // Clear pending quick deploy from run state as well
-      const runState = this.gameStateManager.get('currentRunState');
+      const runState = tacticalMapStateManager.getState();
       if (runState && runState.pendingQuickDeploy) {
-        this.gameStateManager.setState({
-          currentRunState: {
-            ...runState,
-            pendingQuickDeploy: null
-          }
+        tacticalMapStateManager.setState({
+          pendingQuickDeploy: null
         });
       }
 

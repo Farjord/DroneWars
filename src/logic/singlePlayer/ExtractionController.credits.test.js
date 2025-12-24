@@ -126,6 +126,7 @@ describe('ExtractionController Credit Calculation', () => {
   describe('completeExtraction() credit handling', () => {
     let ExtractionController;
     let mockGameStateManager;
+    let mockTacticalMapStateManager;
 
     beforeEach(async () => {
       // Reset mocks
@@ -142,8 +143,21 @@ describe('ExtractionController Credit Calculation', () => {
         get: vi.fn()
       };
 
+      // Mock tacticalMapStateManager
+      mockTacticalMapStateManager = {
+        getState: vi.fn().mockReturnValue({}),
+        setState: vi.fn(),
+        isRunActive: vi.fn().mockReturnValue(true),
+        startRun: vi.fn(),
+        endRun: vi.fn()
+      };
+
       vi.doMock('../../managers/GameStateManager.js', () => ({
         default: mockGameStateManager
+      }));
+
+      vi.doMock('../../managers/TacticalMapStateManager.js', () => ({
+        default: mockTacticalMapStateManager
       }));
 
       // Mock other dependencies
@@ -168,7 +182,8 @@ describe('ExtractionController Credit Calculation', () => {
       // EXPLANATION: When player selects specific loot, credits should be
       // calculated from that selection, not the original creditsEarned total
 
-      const runState = {
+      // Mock the run state in tacticalMapStateManager
+      mockTacticalMapStateManager.getState.mockReturnValue({
         shipSlotId: 0,
         collectedLoot: [
           { type: 'salvageItem', creditValue: 50, itemId: 'S1' },
@@ -179,7 +194,9 @@ describe('ExtractionController Credit Calculation', () => {
         currentHull: 100,
         maxHull: 100,
         shipSections: {}
-      };
+      });
+
+      const runState = mockTacticalMapStateManager.getState();
 
       // Player can only extract 2 items, selects the first two
       const selectedLoot = [
@@ -197,14 +214,17 @@ describe('ExtractionController Credit Calculation', () => {
       // EXPLANATION: The summary should count cards and blueprints separately,
       // while credits come from salvage items
 
-      const runState = {
+      // Mock the run state in tacticalMapStateManager
+      mockTacticalMapStateManager.getState.mockReturnValue({
         shipSlotId: 0,
         collectedLoot: [],
         creditsEarned: 0,
         currentHull: 100,
         maxHull: 100,
         shipSections: {}
-      };
+      });
+
+      const runState = mockTacticalMapStateManager.getState();
 
       const selectedLoot = [
         { type: 'card', cardId: 'CARD_001' },

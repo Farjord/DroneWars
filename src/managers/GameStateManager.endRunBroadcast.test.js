@@ -1,5 +1,17 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+// Mock tacticalMapStateManager
+vi.mock('./TacticalMapStateManager.js', () => ({
+  default: {
+    getState: vi.fn(),
+    setState: vi.fn(),
+    isRunActive: vi.fn(),
+    startRun: vi.fn(),
+    endRun: vi.fn(),
+    subscribe: vi.fn(() => () => {})
+  }
+}));
+
 // ================================================
 // GAMESTATE MANAGER - endRun Stats Broadcasting
 // ================================================
@@ -12,17 +24,21 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 describe('GameStateManager.endRun - Stats Broadcasting', () => {
   let gameStateManager;
+  let tacticalMapStateManager;
   let setStateSpy;
 
   beforeEach(async () => {
     // Reset modules to get fresh state
     vi.resetModules();
 
-    // Import fresh instance
+    // Import fresh instances
     const module = await import('./GameStateManager.js');
     gameStateManager = module.default;
 
-    // Set up initial state with a profile and run state
+    const tacticalModule = await import('./TacticalMapStateManager.js');
+    tacticalMapStateManager = tacticalModule.default;
+
+    // Set up initial state with a profile
     gameStateManager.setState({
       singlePlayerProfile: {
         credits: 1000,
@@ -40,21 +56,26 @@ describe('GameStateManager.endRun - Stats Broadcasting', () => {
       singlePlayerInventory: {},
       singlePlayerShipSlots: [
         { id: 0, status: 'active', name: 'Starter Deck' }
-      ],
-      currentRunState: {
-        shipSlotId: 0,
-        mapTier: 1,
-        mapData: { name: 'Test Sector', hexes: [] },
-        collectedLoot: [],
-        creditsEarned: 0,
-        currentHull: 100,
-        maxHull: 100,
-        hexesMoved: 5,
-        hexesExplored: [],
-        combatsWon: 0,
-        combatsLost: 0
-      }
+      ]
     });
+
+    // Mock run state in tacticalMapStateManager
+    const mockRunState = {
+      shipSlotId: 0,
+      mapTier: 1,
+      mapData: { name: 'Test Sector', hexes: [] },
+      collectedLoot: [],
+      creditsEarned: 0,
+      currentHull: 100,
+      maxHull: 100,
+      hexesMoved: 5,
+      hexesExplored: [],
+      combatsWon: 0,
+      combatsLost: 0
+    };
+
+    tacticalMapStateManager.isRunActive.mockReturnValue(true);
+    tacticalMapStateManager.getState.mockReturnValue(mockRunState);
 
     // Spy on setState to capture what's passed to it
     setStateSpy = vi.spyOn(gameStateManager, 'setState');

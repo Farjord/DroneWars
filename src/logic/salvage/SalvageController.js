@@ -7,6 +7,7 @@
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import gameStateManager from '../../managers/GameStateManager.js';
+import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import HighAlertManager from './HighAlertManager.js';
 
 /**
@@ -126,7 +127,7 @@ export class SalvageController {
     // Add high alert bonus if POI is in high alert state
     let totalEncounterChance = encounterChance;
     if (poi && poi.q !== undefined && poi.r !== undefined) {
-      const runState = gameState?.currentRunState;
+      const runState = tacticalMapStateManager.getState();
       const alertBonus = HighAlertManager.getAlertBonus(runState, { q: poi.q, r: poi.r });
       if (alertBonus > 0) {
         // Convert bonus (0.05-0.15) to percentage (5-15)

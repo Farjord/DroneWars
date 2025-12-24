@@ -33,6 +33,7 @@ import SalvageController from '../../logic/salvage/SalvageController.js';
 import HighAlertManager from '../../logic/salvage/HighAlertManager.js';
 import aiPersonalities from '../../data/aiData.js';
 import gameStateManager from '../../managers/GameStateManager.js';
+import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { mapTiers } from '../../data/mapData.js';
 import { getValidDeploymentsForDeck } from '../../logic/quickDeploy/QuickDeployValidator.js';
@@ -145,6 +146,8 @@ function buildShipSections(shipSlot, slotId, shipComponentInstances, runShipSect
  */
 function TacticalMapScreen() {
   const [gameState, setGameState] = useState(gameStateManager.getState());
+  // State from TacticalMapStateManager (new architecture - will replace currentRunState)
+  const [tacticalMapRunState, setTacticalMapRunState] = useState(tacticalMapStateManager.getState());
 
   // Waypoint journey planning state
   const [waypoints, setWaypoints] = useState([]);           // Array of waypoint objects
@@ -242,12 +245,18 @@ function TacticalMapScreen() {
   // Pathfinding mode state: 'lowEncounter' (lowest encounter chance) or 'lowThreat' (lowest detection)
   const [pathfindingMode, setPathfindingMode] = useState('lowEncounter');
 
-  // Subscribe to game state updates
+  // Subscribe to game state updates (both GameStateManager and TacticalMapStateManager)
   useEffect(() => {
-    const unsubscribe = gameStateManager.subscribe(() => {
+    const unsubscribeGame = gameStateManager.subscribe(() => {
       setGameState(gameStateManager.getState());
     });
-    return unsubscribe;
+    const unsubscribeTactical = tacticalMapStateManager.subscribe(() => {
+      setTacticalMapRunState(tacticalMapStateManager.getState());
+    });
+    return () => {
+      unsubscribeGame();
+      unsubscribeTactical();
+    };
   }, []);
 
   // Check for tactical map tutorial on first visit
@@ -262,8 +271,7 @@ function TacticalMapScreen() {
   // Check for pending waypoints after returning from combat
   // This restores waypoints for journey resumption (SEPARATE from POI loot logic)
   useEffect(() => {
-    const currentState = gameStateManager.getState();
-    let runState = currentState.currentRunState;
+    let runState = tacticalMapStateManager.getState();
 
     // Restore waypoints from pendingWaypoints (set before ANY combat)
     if (runState?.pendingWaypoints?.length > 0) {
@@ -271,14 +279,11 @@ function TacticalMapScreen() {
       setPendingResumeWaypoints(runState.pendingWaypoints);
 
       // Clear pendingWaypoints from run state
-      gameStateManager.setState({
-        currentRunState: {
-          ...runState,
-          pendingWaypoints: null
-        }
+      tacticalMapStateManager.setState({
+        pendingWaypoints: null
       });
       // Re-fetch runState after clearing waypoints
-      runState = gameStateManager.getState().currentRunState;
+      runState = tacticalMapStateManager.getState();
     }
 
     // Process pending POI combat (ONLY for POI encounters - loot processing)
@@ -295,11 +300,8 @@ function TacticalMapScreen() {
       console.log('[TacticalMap] Pending PoI combat detected after combat:', runState.pendingPOICombat);
 
       // Clear pendingPOICombat from run state
-      gameStateManager.setState({
-        currentRunState: {
-          ...runState,
-          pendingPOICombat: null
-        }
+      tacticalMapStateManager.setState({
+        pendingPOICombat: null
       });
 
       // Empty hex encounters have null packType - no POI loot to collect
@@ -311,14 +313,14 @@ function TacticalMapScreen() {
 
       // If from salvage, restore the salvage modal to show revealed loot
       if (fromSalvage) {
-        const currentRunState = gameStateManager.getState().currentRunState;
-        const pendingSalvageState = currentRunState?.pendingSalvageState;
+        const tacticalRunState = tacticalMapStateManager.getState();
+        const pendingSalvageState = tacticalRunState?.pendingSalvageState;
 
         if (pendingSalvageState) {
           console.log('[TacticalMap] Salvage combat victory - restoring salvage modal');
 
           // Calculate high alert bonus (combat at POI increases encounter chance)
-          const highAlertBonus = HighAlertManager.getAlertBonus(currentRunState, { q, r }) * 100;
+          const highAlertBonus = HighAlertManager.getAlertBonus(tacticalRunState, { q, r }) * 100;
 
           // Reset salvage state for continued operation (clears encounterTriggered, adds bonus)
           const restoredState = SalvageController.resetAfterCombat(pendingSalvageState, highAlertBonus);
@@ -331,12 +333,9 @@ function TacticalMapScreen() {
           setShowSalvageModal(true);
 
           // Clear pending states (but keep pendingSalvageLoot for later collection)
-          gameStateManager.setState({
-            currentRunState: {
-              ...currentRunState,
-              pendingPOICombat: null,
-              pendingSalvageState: null
-            }
+          tacticalMapStateManager.setState({
+            pendingPOICombat: null,
+            pendingSalvageState: null
           });
 
           console.log('[TacticalMap] Salvage modal restored with', restoredState.slots.filter(s => s.revealed).length, 'revealed slots');
@@ -346,19 +345,16 @@ function TacticalMapScreen() {
         // Fallback: If no pending salvage state (shouldn't happen), use old behavior
         console.warn('[TacticalMap] No pendingSalvageState found, using fallback behavior');
         if (salvageFullyLooted) {
-          const lootedPOIs = currentRunState.lootedPOIs || [];
-          gameStateManager.setState({
-            currentRunState: {
-              ...currentRunState,
-              lootedPOIs: [...lootedPOIs, { q, r }]
-            }
+          const lootedPOIs = tacticalRunState?.lootedPOIs || [];
+          tacticalMapStateManager.setState({
+            lootedPOIs: [...lootedPOIs, { q, r }]
           });
           console.log('[TacticalMap] POI marked as looted (fallback)');
           return;
         } else {
-          const updatedRunState = HighAlertManager.addHighAlert(currentRunState, { q, r });
-          gameStateManager.setState({
-            currentRunState: updatedRunState
+          const updatedRunState = HighAlertManager.addHighAlert(tacticalRunState, { q, r });
+          tacticalMapStateManager.setState({
+            highAlertPOIs: updatedRunState.highAlertPOIs
           });
           console.log('[TacticalMap] POI in high alert (fallback)');
           return;
@@ -403,17 +399,14 @@ function TacticalMapScreen() {
   // Check for pending blockade extraction on mount
   // This handles returning from blockade combat - triggers extraction automatically
   useEffect(() => {
-    const runState = gameStateManager.getState().currentRunState;
+    const runState = tacticalMapStateManager.getState();
     if (runState?.pendingBlockadeExtraction) {
       console.log('[TacticalMap] Pending blockade extraction detected - will auto-extract');
       pendingBlockadeExtractionRef.current = true;
 
       // Clear the flag
-      gameStateManager.setState({
-        currentRunState: {
-          ...runState,
-          pendingBlockadeExtraction: undefined
-        }
+      tacticalMapStateManager.setState({
+        pendingBlockadeExtraction: undefined
       });
     }
   }, []); // Run once on mount
@@ -426,8 +419,7 @@ function TacticalMapScreen() {
       const timer = setTimeout(() => {
         console.log('[TacticalMap] Triggering auto-extraction after blockade victory');
         // Call the extraction handler directly - it will handle loot selection and run summary
-        const currentState = gameStateManager.getState();
-        const runState = currentState.currentRunState;
+        const runState = tacticalMapStateManager.getState();
         if (runState) {
           const result = ExtractionController.completeExtraction(runState);
 
@@ -449,7 +441,10 @@ function TacticalMapScreen() {
     }
   }, []); // Run once on mount
 
-  const { currentRunState, singlePlayerShipSlots, singlePlayerShipComponentInstances, quickDeployments } = gameState;
+  // Read run state from TacticalMapStateManager
+  // This ensures backgroundIndex and other critical data persists across combat transitions
+  const { singlePlayerShipSlots, singlePlayerShipComponentInstances, quickDeployments } = gameState;
+  const currentRunState = tacticalMapRunState;
 
   // Calculate valid quick deployments for current ship slot
   const validQuickDeployments = React.useMemo(() => {
@@ -597,8 +592,8 @@ function TacticalMapScreen() {
    * Also tracks hexesMoved and hexesExplored for run summary
    */
   const moveToSingleHex = useCallback((hex, tierConfig, mapRadius) => {
-    const currentState = gameStateManager.getState();
-    const { currentRunState: runState } = currentState;
+    const runState = tacticalMapStateManager.getState();
+    if (!runState) return 0;
 
     // Calculate zone-based detection cost for this hex
     const hexCost = DetectionManager.getHexDetectionCost(hex, tierConfig, mapRadius);
@@ -612,14 +607,14 @@ function TacticalMapScreen() {
       : [...hexesExplored, { q: hex.q, r: hex.r }];
 
     // Update detection, position, and tracking stats in single setState
-    gameStateManager.setState({
-      currentRunState: {
-        ...runState,
-        detection: newDetection,
-        playerPosition: { q: hex.q, r: hex.r },
-        hexesMoved: (runState.hexesMoved || 0) + 1,
-        hexesExplored: updatedHexesExplored
-      }
+    const newHexesMoved = (runState.hexesMoved || 0) + 1;
+
+    // Update TacticalMapStateManager
+    tacticalMapStateManager.setState({
+      detection: newDetection,
+      playerPosition: { q: hex.q, r: hex.r },
+      hexesMoved: newHexesMoved,
+      hexesExplored: updatedHexesExplored
     });
 
     console.log(`[TacticalMap] Moved to hex (${hex.q}, ${hex.r}) - Zone: ${hex.zone} - Detection: ${runState.detection.toFixed(1)}% -> ${newDetection.toFixed(1)}% (+${hexCost.toFixed(1)}%)`);
@@ -652,8 +647,8 @@ function TacticalMapScreen() {
     setCurrentHexIndex(0);  // Reset hex index
     setIsScanningHex(true);  // Start scan overlay for entire journey
 
-    const currentState = gameStateManager.getState();
-    const { currentRunState: runState } = currentState;
+    const runState = tacticalMapStateManager.getState();
+    if (!runState?.mapData) return;
     const tierConfig = mapTiers[runState.mapData.tier - 1];
     const mapRadius = runState.mapData.radius;
 
@@ -719,8 +714,7 @@ function TacticalMapScreen() {
 
       if (arrivedHex.type === 'poi') {
         // Check if POI has already been looted
-        const currentState = gameStateManager.getState();
-        const lootedPOIs = currentState.currentRunState?.lootedPOIs || [];
+        const lootedPOIs = tacticalMapStateManager.getState()?.lootedPOIs || [];
         const alreadyLooted = lootedPOIs.some(p => p.q === arrivedHex.q && p.r === arrivedHex.r);
 
         if (alreadyLooted) {
@@ -829,7 +823,11 @@ function TacticalMapScreen() {
       console.log('[TacticalMap] Combat encounter - showing loading screen');
 
       // Find AI personality info for the loading screen
-      const aiId = currentEncounter.aiId || 'Rogue Scout Pattern';
+      const aiId = currentEncounter.aiId;
+      if (!aiId) {
+        console.error('[TacticalMap] CRITICAL: No aiId in currentEncounter for POI combat', currentEncounter);
+        return;
+      }
       const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
 
       // Set up loading encounter data
@@ -951,7 +949,7 @@ function TacticalMapScreen() {
 
     console.log('[TacticalMap] Salvage slot attempt');
 
-    const runState = gameStateManager.getState().currentRunState;
+    const runState = tacticalMapStateManager.getState();
     const tierConfig = runState?.mapData ? mapTiers[runState.mapData.tier - 1] : null;
 
     // Attempt salvage - this reveals the slot and checks for encounter
@@ -1038,8 +1036,7 @@ function TacticalMapScreen() {
 
     // Store salvage loot for combination with combat rewards in CombatOutcomeProcessor
     // This allows both salvage loot and combat rewards to appear in one LootRevealModal
-    const currentState = gameStateManager.getState();
-    const runState = currentState.currentRunState;
+    const runState = tacticalMapStateManager.getState();
 
     // Store salvage loot and FULL salvage state for post-combat restoration
     // Convert salvageItems array to single salvageItem for CombatOutcomeProcessor
@@ -1050,27 +1047,24 @@ function TacticalMapScreen() {
     const hasLoot = loot && (loot.cards?.length > 0 || loot.salvageItems?.length > 0 || loot.tokens?.length > 0);
 
     if (runState) {
-      gameStateManager.setState({
-        currentRunState: {
-          ...runState,
-          // Store revealed loot for later collection on salvage screen
-          pendingSalvageLoot: hasLoot ? {
-            cards: loot.cards || [],
-            salvageItem: loot.salvageItems?.length > 0 ? {
-              itemId: loot.salvageItems.length > 1 ? 'combined_salvage' : firstSalvageItem?.itemId,
-              name: loot.salvageItems.length > 1 ? `${loot.salvageItems.length} Salvage Items` : firstSalvageItem?.name,
-              creditValue: totalCreditValue,
-              image: firstSalvageItem?.image,
-              description: loot.salvageItems.length > 1
-                ? `Combined value of ${loot.salvageItems.length} salvage items`
-                : firstSalvageItem?.description
-            } : null,
-            // Include tokens from salvage
-            tokens: loot.tokens || []
+      tacticalMapStateManager.setState({
+        // Store revealed loot for later collection on salvage screen
+        pendingSalvageLoot: hasLoot ? {
+          cards: loot.cards || [],
+          salvageItem: loot.salvageItems?.length > 0 ? {
+            itemId: loot.salvageItems.length > 1 ? 'combined_salvage' : firstSalvageItem?.itemId,
+            name: loot.salvageItems.length > 1 ? `${loot.salvageItems.length} Salvage Items` : firstSalvageItem?.name,
+            creditValue: totalCreditValue,
+            image: firstSalvageItem?.image,
+            description: loot.salvageItems.length > 1
+              ? `Combined value of ${loot.salvageItems.length} salvage items`
+              : firstSalvageItem?.description
           } : null,
-          // Store FULL salvage state for restoring modal after combat
-          pendingSalvageState: activeSalvage
-        }
+          // Include tokens from salvage
+          tokens: loot.tokens || []
+        } : null,
+        // Store FULL salvage state for restoring modal after combat
+        pendingSalvageState: activeSalvage
       });
     }
 
@@ -1153,8 +1147,7 @@ function TacticalMapScreen() {
       console.log('[TacticalMap] Extraction blockade with quick deploy');
       setExtractionQuickDeployPending(false);
 
-      const currentState = gameStateManager.getState();
-      const runState = currentState.currentRunState;
+      const runState = tacticalMapStateManager.getState();
 
       if (!runState) {
         console.warn('[TacticalMap] No run state for blockade quick deploy');
@@ -1207,30 +1200,26 @@ function TacticalMapScreen() {
       const loot = SalvageController.collectRevealedLoot(activeSalvage);
 
       // Store salvage loot for combination with combat rewards
-      const currentState = gameStateManager.getState();
-      const runState = currentState.currentRunState;
+      const runState = tacticalMapStateManager.getState();
 
       if (runState && loot && (loot.cards?.length > 0 || loot.salvageItems?.length > 0 || loot.tokens?.length > 0)) {
         const totalCreditValue = (loot.salvageItems || []).reduce((sum, item) => sum + (item.creditValue || 0), 0);
         const firstSalvageItem = loot.salvageItems?.[0];
 
-        gameStateManager.setState({
-          currentRunState: {
-            ...runState,
-            pendingSalvageLoot: {
-              cards: loot.cards || [],
-              salvageItem: loot.salvageItems?.length > 0 ? {
-                itemId: loot.salvageItems.length > 1 ? 'combined_salvage' : firstSalvageItem?.itemId,
-                name: loot.salvageItems.length > 1 ? `${loot.salvageItems.length} Salvage Items` : firstSalvageItem?.name,
-                creditValue: totalCreditValue,
-                image: firstSalvageItem?.image,
-                description: loot.salvageItems.length > 1
-                  ? `Combined value of ${loot.salvageItems.length} salvage items`
-                  : firstSalvageItem?.description
-              } : null,
-              // Include tokens from salvage
-              tokens: loot.tokens || []
-            }
+        tacticalMapStateManager.setState({
+          pendingSalvageLoot: {
+            cards: loot.cards || [],
+            salvageItem: loot.salvageItems?.length > 0 ? {
+              itemId: loot.salvageItems.length > 1 ? 'combined_salvage' : firstSalvageItem?.itemId,
+              name: loot.salvageItems.length > 1 ? `${loot.salvageItems.length} Salvage Items` : firstSalvageItem?.name,
+              creditValue: totalCreditValue,
+              image: firstSalvageItem?.image,
+              description: loot.salvageItems.length > 1
+                ? `Combined value of ${loot.salvageItems.length} salvage items`
+                : firstSalvageItem?.description
+            } : null,
+            // Include tokens from salvage
+            tokens: loot.tokens || []
           }
         });
       }
@@ -1296,7 +1285,11 @@ function TacticalMapScreen() {
       console.log('[TacticalMap] Combat encounter with quick deploy - showing loading screen');
 
       // Find AI personality info for the loading screen
-      const aiId = currentEncounter.aiId || 'Rogue Scout Pattern';
+      const aiId = currentEncounter.aiId;
+      if (!aiId) {
+        console.error('[TacticalMap] CRITICAL: No aiId in currentEncounter for quick deploy combat', currentEncounter);
+        return;
+      }
       const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
 
       // Set up loading encounter data with quick deploy info
@@ -1347,8 +1340,7 @@ function TacticalMapScreen() {
       return;
     }
 
-    const currentState = gameStateManager.getState();
-    let runState = currentState.currentRunState;
+    let runState = tacticalMapStateManager.getState();
 
     // CRITICAL: Validate run state exists before proceeding
     if (!runState || !runState.mapData) {
@@ -1370,18 +1362,15 @@ function TacticalMapScreen() {
     console.log('[TacticalMap] Loading complete - initializing combat');
 
     // Capture remaining waypoints for journey resumption (SEPARATE from POI logic)
-    // Must be stored in currentRunState to survive combat (component unmounts during combat)
+    // Must be stored in tacticalMapStateManager to survive combat (component unmounts during combat)
     const remainingWps = waypoints.slice(currentWaypointIndex + 1);
     if (remainingWps.length > 0) {
       console.log('[TacticalMap] Storing waypoints for post-combat resumption:', remainingWps.length);
-      gameStateManager.setState({
-        currentRunState: {
-          ...runState,
-          pendingWaypoints: remainingWps
-        }
+      tacticalMapStateManager.setState({
+        pendingWaypoints: remainingWps
       });
       // Re-fetch runState after waypoint storage
-      runState = gameStateManager.getState().currentRunState;
+      runState = tacticalMapStateManager.getState();
     }
 
     // Store pending PoI combat info for post-combat loot (ONLY for POI encounters)
@@ -1392,30 +1381,35 @@ function TacticalMapScreen() {
         packType: currentEncounter.reward?.rewardType || null
       });
 
-      gameStateManager.setState({
-        currentRunState: {
-          ...runState,
-          pendingPOICombat: {
-            q: currentEncounter.poi.q,
-            r: currentEncounter.poi.r,
-            packType: currentEncounter.reward?.rewardType || null,
-            poiName: currentEncounter.poi.poiData?.name || 'Unknown Location',
-            fromSalvage: currentEncounter.fromSalvage || false,  // Flag to skip post-combat loot generation
-            salvageFullyLooted: currentEncounter.salvageFullyLooted || false  // Flag for fully looted POI
-          }
+      tacticalMapStateManager.setState({
+        pendingPOICombat: {
+          q: currentEncounter.poi.q,
+          r: currentEncounter.poi.r,
+          packType: currentEncounter.reward?.rewardType || null,
+          poiName: currentEncounter.poi.poiData?.name || 'Unknown Location',
+          fromSalvage: currentEncounter.fromSalvage || false,  // Flag to skip post-combat loot generation
+          salvageFullyLooted: currentEncounter.salvageFullyLooted || false  // Flag for fully looted POI
         }
       });
     }
 
-    // Get AI from the encounter
-    const aiId = currentEncounter?.aiId || 'Rogue Scout Pattern';
+    // Get AI from the encounter - CRITICAL: must have valid aiId
+    const aiId = currentEncounter?.aiId;
+    if (!aiId) {
+      console.error('[TacticalMap] CRITICAL: No aiId in currentEncounter for combat initialization', currentEncounter);
+      // Close loading screen and abort - don't proceed with undefined aiId
+      setShowLoadingEncounter(false);
+      setLoadingEncounterData(null);
+      setCurrentEncounter(null);
+      return;
+    }
 
     // Get quick deploy ID from loading data (if user selected quick deploy)
     const quickDeployId = loadingEncounterData?.quickDeployId || null;
     console.log('[TacticalMap] Quick deploy ID:', quickDeployId);
 
     // Re-fetch runState after potential update above
-    const updatedRunState = gameStateManager.getState().currentRunState;
+    const updatedRunState = tacticalMapStateManager.getState();
 
     // Initialize combat with optional quick deploy
     // Pass isBlockade flag so post-combat can auto-extract on blockade victory
@@ -1451,8 +1445,7 @@ function TacticalMapScreen() {
 
     // Check if blockade was already cleared (player won blockade combat)
     // This prevents double blockade encounters if auto-extraction failed to trigger
-    const currentState = gameStateManager.getState();
-    const runState = currentState.currentRunState;
+    const runState = tacticalMapStateManager.getState();
 
     if (runState?.blockadeCleared) {
       console.log('[TacticalMap] Blockade already cleared - skipping modal, extracting directly');
@@ -1495,8 +1488,7 @@ function TacticalMapScreen() {
     console.log('[TacticalMap] Safe extraction confirmed - completing run');
     setShowExtractionConfirm(false);
 
-    const currentState = gameStateManager.getState();
-    const runState = currentState.currentRunState;
+    const runState = tacticalMapStateManager.getState();
 
     if (!runState) {
       console.warn('[TacticalMap] No run state for extraction');
@@ -1526,8 +1518,7 @@ function TacticalMapScreen() {
   const handleExtractionWithItem = useCallback(() => {
     console.log('[TacticalMap] Extraction with Clearance Override');
 
-    const currentState = gameStateManager.getState();
-    const runState = currentState.currentRunState;
+    const runState = tacticalMapStateManager.getState();
 
     if (!runState) {
       console.warn('[TacticalMap] No run state for extraction with item');
@@ -1576,8 +1567,7 @@ function TacticalMapScreen() {
     console.log('[TacticalMap] Blockade detected - engaging combat');
     setShowExtractionConfirm(false);
 
-    const currentState = gameStateManager.getState();
-    const runState = currentState.currentRunState;
+    const runState = tacticalMapStateManager.getState();
 
     if (!runState) {
       console.warn('[TacticalMap] No run state for blockade combat');
@@ -1715,14 +1705,10 @@ function TacticalMapScreen() {
 
     // Mark POI as fled (no loot gained, encounter skipped via evade)
     if (currentEncounter?.poi) {
-      const currentState = gameStateManager.getState();
-      const runState = currentState.currentRunState;
+      const runState = tacticalMapStateManager.getState();
       const fledPOIs = runState?.fledPOIs || [];
-      gameStateManager.setState({
-        currentRunState: {
-          ...runState,
-          fledPOIs: [...fledPOIs, { q: currentEncounter.poi.q, r: currentEncounter.poi.r }]
-        }
+      tacticalMapStateManager.setState({
+        fledPOIs: [...fledPOIs, { q: currentEncounter.poi.q, r: currentEncounter.poi.r }]
       });
       console.log('[TacticalMap] POI marked as fled (evaded):', currentEncounter.poi.q, currentEncounter.poi.r);
     }
@@ -1732,8 +1718,7 @@ function TacticalMapScreen() {
     setCurrentEncounter(null);
 
     // Resume movement if waypoints remain
-    const currentState = gameStateManager.getState();
-    const runState = currentState.currentRunState;
+    const runState = tacticalMapStateManager.getState();
     if (runState?.waypoints && runState.waypoints.length > 0) {
       console.log('[TacticalMap] Resuming movement after evade');
       setIsMoving(true);
@@ -1816,8 +1801,7 @@ function TacticalMapScreen() {
   const handleEscapeConfirm = useCallback(() => {
     console.log('[TacticalMap] Escape confirmed');
 
-    const currentState = gameStateManager.getState();
-    const runState = currentState.currentRunState;
+    const runState = tacticalMapStateManager.getState();
 
     if (!runState) {
       console.warn('[TacticalMap] No run state for escape');
@@ -1825,8 +1809,13 @@ function TacticalMapScreen() {
     }
 
     // Get the AI personality for this encounter (affects escape damage)
-    const aiId = currentEncounter?.aiId || 'Rogue Scout Pattern';
-    const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
+    const aiId = currentEncounter?.aiId;
+    if (!aiId) {
+      console.warn('[TacticalMap] No aiId in currentEncounter for escape - using default damage', currentEncounter);
+    }
+    const aiPersonality = aiId
+      ? aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0]
+      : aiPersonalities[0];  // Default to first AI for damage calculation
 
     // Execute escape - applies variable damage based on AI type
     const { wouldDestroy, updatedSections, totalDamage, damageHits, initialSections } = ExtractionController.executeEscape(runState, aiPersonality);
@@ -1898,26 +1887,20 @@ function TacticalMapScreen() {
 
     // If this was a POI encounter, mark POI as fled (no loot, escaped combat)
     if (escapeContext?.isPOI && currentEncounter?.poi) {
-      const updatedRunState = gameStateManager.getState().currentRunState;
-      const fledPOIs = updatedRunState.fledPOIs || [];
-      gameStateManager.setState({
-        currentRunState: {
-          ...updatedRunState,
-          fledPOIs: [...fledPOIs, { q: currentEncounter.poi.q, r: currentEncounter.poi.r }]
-        }
+      const updatedRunState = tacticalMapStateManager.getState();
+      const fledPOIs = updatedRunState?.fledPOIs || [];
+      tacticalMapStateManager.setState({
+        fledPOIs: [...fledPOIs, { q: currentEncounter.poi.q, r: currentEncounter.poi.r }]
       });
       console.log('[TacticalMap] POI marked as fled (escaped):', currentEncounter.poi.q, currentEncounter.poi.r);
     }
 
     // If this was a salvage encounter, mark POI as fled (escaped during salvage)
     if (escapeContext?.type === 'salvage' && activeSalvage?.poi) {
-      const updatedRunState = gameStateManager.getState().currentRunState;
-      const fledPOIs = updatedRunState.fledPOIs || [];
-      gameStateManager.setState({
-        currentRunState: {
-          ...updatedRunState,
-          fledPOIs: [...fledPOIs, { q: activeSalvage.poi.q, r: activeSalvage.poi.r }]
-        }
+      const updatedRunState = tacticalMapStateManager.getState();
+      const fledPOIs = updatedRunState?.fledPOIs || [];
+      tacticalMapStateManager.setState({
+        fledPOIs: [...fledPOIs, { q: activeSalvage.poi.q, r: activeSalvage.poi.r }]
       });
       console.log('[TacticalMap] POI marked as fled (salvage escaped):', activeSalvage.poi.q, activeSalvage.poi.r);
     }
@@ -1965,8 +1948,7 @@ function TacticalMapScreen() {
     setPendingLootSelection(null);
 
     // Get current run state and complete extraction with selected loot
-    const currentState = gameStateManager.getState();
-    const runState = currentState.currentRunState;
+    const runState = tacticalMapStateManager.getState();
 
     if (runState) {
       ExtractionController.completeExtraction(runState, selectedLoot);
@@ -1981,8 +1963,7 @@ function TacticalMapScreen() {
   const handlePOILootCollected = useCallback((loot) => {
     console.log('[TacticalMap] POI loot collected:', loot);
 
-    const currentState = gameStateManager.getState();
-    const runState = currentState.currentRunState;
+    const runState = tacticalMapStateManager.getState();
 
     if (!runState) {
       console.warn('[TacticalMap] No run state for loot collection');
@@ -2076,13 +2057,10 @@ function TacticalMapScreen() {
       : lootedPOIs;
 
     // Update run state
-    gameStateManager.setState({
-      currentRunState: {
-        ...runState,
-        collectedLoot: updatedLoot,
-        creditsEarned: newCredits,
-        lootedPOIs: updatedLootedPOIs
-      }
+    tacticalMapStateManager.setState({
+      collectedLoot: updatedLoot,
+      creditsEarned: newCredits,
+      lootedPOIs: updatedLootedPOIs
     });
 
     // Add detection for looting (from pending encounter)
@@ -2835,8 +2813,11 @@ function TacticalMapScreen() {
       {/* Escape Confirmation Modal */}
       {(() => {
         // Get AI personality for escape damage calculation
-        const escapeAiId = currentEncounter?.aiId || 'Rogue Scout Pattern';
-        const escapeAiPersonality = aiPersonalities.find(ai => ai.name === escapeAiId) || aiPersonalities[0];
+        const escapeAiId = currentEncounter?.aiId;
+        // Use first AI as default for damage preview if no aiId (escape modal display only)
+        const escapeAiPersonality = escapeAiId
+          ? aiPersonalities.find(ai => ai.name === escapeAiId) || aiPersonalities[0]
+          : aiPersonalities[0];
         const escapeCheckResult = currentRunState
           ? ExtractionController.checkEscapeCouldDestroy(currentRunState, escapeAiPersonality)
           : { couldDestroy: false, escapeDamageRange: { min: 2, max: 2 } };

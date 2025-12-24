@@ -5,6 +5,7 @@
 // Processes wins (loot, hull update) and losses (MIA)
 
 import gameStateManager from '../../managers/GameStateManager.js';
+import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import lootGenerator from '../loot/LootGenerator.js';
 import ExtractionController from './ExtractionController.js';
@@ -67,7 +68,8 @@ class CombatOutcomeProcessor {
 
     // 1. Extract per-section hull values from combat state
     const combatSections = gameState.player1?.shipSections || {};
-    const currentRunState = gameStateManager.getState().currentRunState || {};
+    // Read from TacticalMapStateManager
+    const currentRunState = tacticalMapStateManager.getState() || {};
 
     // Build updated ship sections with hull values from combat
     const updatedShipSections = {
@@ -164,8 +166,18 @@ class CombatOutcomeProcessor {
 
     // 5. Store pending loot and enter loot reveal state
     // Do NOT return to tactical map yet - WinnerModal will show "Collect Salvage" button
+    // Update TacticalMapStateManager with the run state changes
+    tacticalMapStateManager.setState({
+      shipSections: updatedShipSections,
+      currentHull: currentHull,
+      combatsWon: updatedRunState.combatsWon,
+      pendingSalvageLoot: updatedRunState.pendingSalvageLoot,
+      pendingPOICombat: currentRunState.pendingPOICombat,
+      pendingSalvageState: currentRunState.pendingSalvageState
+    });
+
+    // Store UI-level state in GameStateManager
     gameStateManager.setState({
-      currentRunState: updatedRunState,
       pendingLoot: salvageLoot,  // Store for LootRevealModal
       pendingDroneBlueprint  // Store separately for special modal (null if no blueprint)
     });
@@ -193,7 +205,8 @@ class CombatOutcomeProcessor {
     debugLog('SP_COMBAT', '=== Finalizing Loot Collection ===');
     debugLog('SP_COMBAT', 'Loot to add:', loot);
 
-    const currentRunState = gameStateManager.getState().currentRunState || {};
+    // Read from TacticalMapStateManager
+    const currentRunState = tacticalMapStateManager.getState() || {};
 
     // Log pendingPOICombat state for debugging consecutive combat issues
     debugLog('SP_COMBAT', '=== Checking pendingPOICombat State ===', {
@@ -288,13 +301,19 @@ class CombatOutcomeProcessor {
       });
       debugLog('SP_COMBAT', '=== Blockade Victory - Returning to tactical map for extraction ===');
 
+      // Update TacticalMapStateManager
+      tacticalMapStateManager.setState({
+        collectedLoot: updatedRunState.collectedLoot,
+        creditsEarned: updatedRunState.creditsEarned,
+        aiCoresEarned: updatedRunState.aiCoresEarned,
+        pendingBlockadeExtraction: true,
+        blockadeCleared: true,
+        pendingPOICombat: currentRunState.pendingPOICombat,
+        pendingSalvageState: currentRunState.pendingSalvageState
+      });
+
       gameStateManager.setState({
         appState: 'tacticalMap',
-        currentRunState: {
-          ...updatedRunState,
-          pendingBlockadeExtraction: true,  // Flag for TacticalMapScreen to auto-extract
-          blockadeCleared: true  // Persistent flag - prevents re-rolling blockade if auto-extract fails
-        },
         pendingLoot: null,
         // Preserve drone blueprint for special modal (if exists)
         pendingDroneBlueprint,
@@ -305,8 +324,16 @@ class CombatOutcomeProcessor {
     } else if (pendingDroneBlueprint) {
       // Regular combat with pending drone blueprint - stay in combat screen
       // WinnerModal will show the DroneBlueprintRewardModal
+      // Update TacticalMapStateManager
+      tacticalMapStateManager.setState({
+        collectedLoot: updatedRunState.collectedLoot,
+        creditsEarned: updatedRunState.creditsEarned,
+        aiCoresEarned: updatedRunState.aiCoresEarned,
+        pendingPOICombat: currentRunState.pendingPOICombat,
+        pendingSalvageState: currentRunState.pendingSalvageState
+      });
+
       gameStateManager.setState({
-        currentRunState: updatedRunState,
         pendingLoot: null,  // Clear pending loot
         pendingDroneBlueprint,
         hasPendingDroneBlueprint: true
@@ -325,9 +352,17 @@ class CombatOutcomeProcessor {
         detail: 'Regular POI/ambush victory, returning to tactical map'
       });
 
+      // Update TacticalMapStateManager
+      tacticalMapStateManager.setState({
+        collectedLoot: updatedRunState.collectedLoot,
+        creditsEarned: updatedRunState.creditsEarned,
+        aiCoresEarned: updatedRunState.aiCoresEarned,
+        pendingPOICombat: currentRunState.pendingPOICombat,
+        pendingSalvageState: currentRunState.pendingSalvageState
+      });
+
       gameStateManager.setState({
         appState: 'tacticalMap',
-        currentRunState: updatedRunState,
         pendingLoot: null  // Clear pending loot
       });
 
@@ -345,7 +380,8 @@ class CombatOutcomeProcessor {
     debugLog('SP_COMBAT', '=== Finalizing Blueprint Collection ===');
     debugLog('SP_COMBAT', 'Blueprint:', blueprint);
 
-    const currentRunState = gameStateManager.getState().currentRunState || {};
+    // Read from TacticalMapStateManager
+    const currentRunState = tacticalMapStateManager.getState() || {};
     const existingLoot = currentRunState.collectedLoot || [];
 
     // Add blueprint to collectedLoot
@@ -358,15 +394,14 @@ class CombatOutcomeProcessor {
       source: 'drone_poi_reward'
     };
 
-    const updatedRunState = {
-      ...currentRunState,
+    // Update TacticalMapStateManager
+    tacticalMapStateManager.setState({
       collectedLoot: [...existingLoot, blueprintLoot]
-    };
+    });
 
     // Return to tactical map and clear blueprint state
     gameStateManager.setState({
       appState: 'tacticalMap',
-      currentRunState: updatedRunState,
       pendingDroneBlueprint: null,
       hasPendingDroneBlueprint: false
     });
@@ -384,17 +419,15 @@ class CombatOutcomeProcessor {
     debugLog('SP_COMBAT', '=== Player Defeat - MIA ===');
 
     // 1. Track combat loss before ending run
-    const currentRunState = gameStateManager.getState().currentRunState || {};
+    // Read from TacticalMapStateManager
+    const currentRunState = tacticalMapStateManager.getState() || {};
 
     // Update combatsLost stat before run ends
-    if (currentRunState) {
-      gameStateManager.setState({
-        currentRunState: {
-          ...currentRunState,
-          combatsLost: (currentRunState.combatsLost || 0) + 1,
-          // Set hull to 0 for defeat
-          currentHull: 0
-        }
+    if (tacticalMapStateManager.isRunActive()) {
+      tacticalMapStateManager.setState({
+        combatsLost: (currentRunState.combatsLost || 0) + 1,
+        // Set hull to 0 for defeat
+        currentHull: 0
       });
     }
 
@@ -509,7 +542,8 @@ class CombatOutcomeProcessor {
   processBossDefeat(gameState, encounterInfo) {
     debugLog('SP_COMBAT', '=== Boss Defeat - MIA ===');
 
-    const currentRunState = gameStateManager.getState().currentRunState || {};
+    // Read from TacticalMapStateManager
+    const currentRunState = tacticalMapStateManager.getState() || {};
 
     // Determine if this is a starter deck (for display purposes)
     const isStarterDeck = currentRunState.shipSlotId === 0;

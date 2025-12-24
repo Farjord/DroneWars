@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import SinglePlayerCombatInitializer from './SinglePlayerCombatInitializer.js';
 import gameStateManager from '../../managers/GameStateManager.js';
+import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 
 describe('SinglePlayerCombatInitializer - shipId inclusion', () => {
   describe('buildPlayerState', () => {
@@ -86,6 +87,9 @@ describe('SinglePlayerCombatInitializer - isBlockade flag', () => {
         { id: 0, shipId: 'SHIP_001', decklist: [], activeDronePool: [] }
       ]
     }));
+
+    // Mock tacticalMapStateManager
+    vi.spyOn(tacticalMapStateManager, 'setState').mockImplementation(() => {});
 
     // Mock getAIPersonality to return a valid AI - this is critical!
     // Without this mock, initiateCombat() returns early and never calls setState
@@ -168,11 +172,15 @@ describe('SinglePlayerCombatInitializer - isBlockade flag', () => {
    * By also storing the flag in currentRunState, CombatOutcomeProcessor can use
    * it as a fallback, ensuring blockade victories are properly detected.
    */
-  it('should set currentRunState.isBlockadeCombat=true when isBlockade=true', async () => {
-    // EXPLANATION: Storing isBlockadeCombat in currentRunState provides a
+  it('should set isBlockadeCombat=true in tacticalMapStateManager when isBlockade=true', async () => {
+    // EXPLANATION: Storing isBlockadeCombat in run state provides a
     // fallback if singlePlayerEncounter is cleared before victory processing.
 
     const mockRunState = { shipSlotId: 0, currentHull: 30, mapData: {} };
+
+    // Mock isRunActive to return true (required for isBlockadeCombat to be set)
+    vi.spyOn(tacticalMapStateManager, 'isRunActive').mockReturnValue(true);
+    const tacticalMapSetStateSpy = vi.spyOn(tacticalMapStateManager, 'setState');
 
     // ACT: Call initiateCombat with isBlockade = true
     await SinglePlayerCombatInitializer.initiateCombat(
@@ -182,19 +190,21 @@ describe('SinglePlayerCombatInitializer - isBlockade flag', () => {
       true  // isBlockade
     );
 
-    // ASSERT: currentRunState should include isBlockadeCombat: true
-    const runStateCall = setStateSpy.mock.calls.find(
-      call => call[0] && call[0].currentRunState?.isBlockadeCombat !== undefined
+    // ASSERT: tacticalMapStateManager.setState should be called with isBlockadeCombat: true
+    const runStateCall = tacticalMapSetStateSpy.mock.calls.find(
+      call => call[0] && call[0].isBlockadeCombat !== undefined
     );
 
     expect(runStateCall).toBeDefined();
-    expect(runStateCall[0].currentRunState.isBlockadeCombat).toBe(true);
+    expect(runStateCall[0].isBlockadeCombat).toBe(true);
   });
 
-  it('should NOT set currentRunState.isBlockadeCombat when isBlockade=false', async () => {
+  it('should NOT set isBlockadeCombat when isBlockade=false', async () => {
     // EXPLANATION: Regular (non-blockade) combat should NOT have isBlockadeCombat flag.
 
     const mockRunState = { shipSlotId: 0, currentHull: 30, mapData: {} };
+
+    const tacticalMapSetStateSpy = vi.spyOn(tacticalMapStateManager, 'setState');
 
     // ACT: Call initiateCombat with isBlockade = false (default)
     await SinglePlayerCombatInitializer.initiateCombat(
@@ -204,14 +214,14 @@ describe('SinglePlayerCombatInitializer - isBlockade flag', () => {
       false  // isBlockade = false explicitly
     );
 
-    // ASSERT: currentRunState should NOT have isBlockadeCombat: true
-    const runStateCall = setStateSpy.mock.calls.find(
-      call => call[0] && call[0].currentRunState
+    // ASSERT: tacticalMapStateManager.setState should NOT have isBlockadeCombat: true
+    const runStateCall = tacticalMapSetStateSpy.mock.calls.find(
+      call => call[0] && call[0].isBlockadeCombat !== undefined
     );
 
     // If it exists, it should be false or undefined, not true
-    if (runStateCall && runStateCall[0].currentRunState.isBlockadeCombat !== undefined) {
-      expect(runStateCall[0].currentRunState.isBlockadeCombat).toBe(false);
+    if (runStateCall && runStateCall[0].isBlockadeCombat !== undefined) {
+      expect(runStateCall[0].isBlockadeCombat).toBe(false);
     }
     // If isBlockadeCombat is not set at all, that's also acceptable
   });

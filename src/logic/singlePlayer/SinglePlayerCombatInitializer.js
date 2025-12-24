@@ -14,6 +14,7 @@ import fullDroneCollection from '../../data/droneData.js';
 import aiPersonalities from '../../data/aiData.js';
 import aiPhaseProcessor from '../../managers/AIPhaseProcessor.js';
 import gameStateManager from '../../managers/GameStateManager.js';
+import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import { buildActiveDronePool as buildDronePoolFromSlots } from '../../utils/slotDamageUtils.js';
@@ -280,15 +281,16 @@ class SinglePlayerCombatInitializer {
         },
 
         // Quick deploy ID (if selected at POI encounter modal)
-        pendingQuickDeploy: quickDeployId || currentRunState?.pendingQuickDeploy || null,
-
-        // Update currentRunState with isBlockadeCombat flag for fallback detection
-        // This survives if singlePlayerEncounter is cleared before CombatOutcomeProcessor reads it
-        currentRunState: currentRunState ? {
-          ...currentRunState,
-          isBlockadeCombat: isBlockade  // Fallback flag for blockade detection
-        } : null
+        pendingQuickDeploy: quickDeployId || currentRunState?.pendingQuickDeploy || null
       };
+
+      // Update TacticalMapStateManager with isBlockadeCombat flag for fallback detection
+      // This survives if singlePlayerEncounter is cleared before CombatOutcomeProcessor reads it
+      if (isBlockade && tacticalMapStateManager.isRunActive()) {
+        tacticalMapStateManager.setState({
+          isBlockadeCombat: true  // Fallback flag for blockade detection
+        });
+      }
 
       // 8. Apply state to GameStateManager
       debugLog('MODE_TRANSITION', '=== MODE: tacticalMap -> inGame ===', {

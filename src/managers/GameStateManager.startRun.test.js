@@ -10,7 +10,20 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import gameStateManager from './GameStateManager.js';
+import tacticalMapStateManager from './TacticalMapStateManager.js';
 import ExtractionController from '../logic/singlePlayer/ExtractionController.js';
+
+// Mock tacticalMapStateManager
+vi.mock('./TacticalMapStateManager.js', () => ({
+  default: {
+    getState: vi.fn(),
+    setState: vi.fn(),
+    isRunActive: vi.fn(),
+    startRun: vi.fn(),
+    endRun: vi.fn(),
+    subscribe: vi.fn(() => () => {})
+  }
+}));
 
 // Mock map data for tests
 const createMockMap = (name = 'Test Map') => ({
@@ -33,7 +46,6 @@ describe('GameStateManager - startRun() State Cleanup', () => {
       turnPhase: null,
       gameStage: 'preGame',
       roundNumber: 0,
-      currentRunState: null,
       runAbandoning: false,
       showFailedRunScreen: false,
       failedRunType: null,
@@ -59,6 +71,11 @@ describe('GameStateManager - startRun() State Cleanup', () => {
       ],
       singlePlayerShipComponentInstances: []
     });
+
+    // Reset tacticalMapStateManager mock
+    vi.clearAllMocks();
+    tacticalMapStateManager.isRunActive.mockReturnValue(false);
+    tacticalMapStateManager.getState.mockReturnValue(null);
   });
 
   describe('runAbandoning flag cleanup', () => {
@@ -94,45 +111,78 @@ describe('GameStateManager - startRun() State Cleanup', () => {
 
   describe('blockade flags initialization', () => {
     it('should initialize pendingBlockadeExtraction as false in new runState', () => {
+      // Mock the run state after startRun
+      const mockRunState = {
+        shipSlotId: 0,
+        mapTier: 1,
+        pendingBlockadeExtraction: false,
+        blockadeCleared: false
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState);
+
       // Act: Start new run
       const mockMap = createMockMap();
       gameStateManager.startRun(0, 1, 0, mockMap, null);
 
       // Assert: Blockade flag should be explicitly false
-      const runState = gameStateManager.get('currentRunState');
+      const runState = tacticalMapStateManager.getState();
       expect(runState.pendingBlockadeExtraction).toBe(false);
     });
 
     it('should initialize blockadeCleared as false in new runState', () => {
+      // Mock the run state after startRun
+      const mockRunState = {
+        shipSlotId: 0,
+        mapTier: 1,
+        pendingBlockadeExtraction: false,
+        blockadeCleared: false
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState);
+
       // Act: Start new run
       const mockMap = createMockMap();
       gameStateManager.startRun(0, 1, 0, mockMap, null);
 
       // Assert: Blockade flag should be explicitly false
-      const runState = gameStateManager.get('currentRunState');
+      const runState = tacticalMapStateManager.getState();
       expect(runState.blockadeCleared).toBe(false);
     });
 
     it('should not inherit blockade flags from previous run', () => {
       // Setup: Simulate a previous run with blockade flags set
-      // (This mimics the bug where flags persisted)
-      gameStateManager.setState({
-        currentRunState: {
-          shipSlotId: 0,
-          pendingBlockadeExtraction: true,
-          blockadeCleared: true
-        }
-      });
+      const oldRunState = {
+        shipSlotId: 0,
+        pendingBlockadeExtraction: true,
+        blockadeCleared: true
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(oldRunState);
 
       // Clear the run state (as endRun would)
-      gameStateManager.setState({ currentRunState: null });
+      tacticalMapStateManager.isRunActive.mockReturnValue(false);
+      tacticalMapStateManager.getState.mockReturnValue(null);
 
-      // Act: Start new run
+      // Act: Start new run with fresh flags
+      const newRunState = {
+        shipSlotId: 0,
+        mapTier: 1,
+        pendingBlockadeExtraction: false,
+        blockadeCleared: false
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(newRunState);
+
       const mockMap = createMockMap();
       gameStateManager.startRun(0, 1, 0, mockMap, null);
 
       // Assert: New runState should have fresh flags
-      const runState = gameStateManager.get('currentRunState');
+      const runState = tacticalMapStateManager.getState();
       expect(runState.pendingBlockadeExtraction).toBe(false);
       expect(runState.blockadeCleared).toBe(false);
     });
@@ -141,9 +191,18 @@ describe('GameStateManager - startRun() State Cleanup', () => {
   describe('full abandon/restart cycle', () => {
     it('should allow clean restart after abandon without going through failed run screen', () => {
       // Setup: Start first run
+      const mockRunState1 = {
+        shipSlotId: 0,
+        mapTier: 1,
+        mapData: { name: 'Map 1' }
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState1);
+
       const mockMap1 = createMockMap('Map 1');
       gameStateManager.startRun(0, 1, 0, mockMap1, null);
-      expect(gameStateManager.get('currentRunState')).not.toBeNull();
+      expect(tacticalMapStateManager.isRunActive()).toBe(true);
 
       // Abandon the run (sets runAbandoning: true)
       ExtractionController.abandonRun();
@@ -158,17 +217,35 @@ describe('GameStateManager - startRun() State Cleanup', () => {
       });
 
       // Act: Start second run
+      const mockRunState2 = {
+        shipSlotId: 0,
+        mapTier: 1,
+        mapData: { name: 'Map 2' }
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState2);
+
       const mockMap2 = createMockMap('Map 2');
       gameStateManager.startRun(0, 1, 0, mockMap2, null);
 
       // Assert: Should have clean state
       expect(gameStateManager.get('runAbandoning')).toBe(false);
-      expect(gameStateManager.get('currentRunState')).not.toBeNull();
-      expect(gameStateManager.get('currentRunState').mapData.name).toBe('Map 2');
+      expect(tacticalMapStateManager.isRunActive()).toBe(true);
+      expect(tacticalMapStateManager.getState().mapData.name).toBe('Map 2');
     });
 
     it('should allow clean restart after normal abandon flow', () => {
       // Setup: Start first run
+      const mockRunState1 = {
+        shipSlotId: 0,
+        mapTier: 1,
+        mapData: { name: 'Map 1' }
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState1);
+
       const mockMap1 = createMockMap('Map 1');
       gameStateManager.startRun(0, 1, 0, mockMap1, null);
 
@@ -180,12 +257,22 @@ describe('GameStateManager - startRun() State Cleanup', () => {
       expect(gameStateManager.get('runAbandoning')).toBe(false);
 
       // Act: Start second run
+      const mockRunState2 = {
+        shipSlotId: 0,
+        mapTier: 1,
+        pendingBlockadeExtraction: false,
+        blockadeCleared: false
+      };
+
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState2);
+
       const mockMap2 = createMockMap('Map 2');
       gameStateManager.startRun(0, 1, 0, mockMap2, null);
 
       // Assert: Should have clean state
       expect(gameStateManager.get('runAbandoning')).toBe(false);
-      const runState = gameStateManager.get('currentRunState');
+      const runState = tacticalMapStateManager.getState();
       expect(runState.pendingBlockadeExtraction).toBe(false);
       expect(runState.blockadeCleared).toBe(false);
     });

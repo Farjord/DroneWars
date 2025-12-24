@@ -4,17 +4,26 @@
 // TDD tests for detection clamping behavior
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 
 // Import the actual DetectionManager (not mocked)
 import DetectionManager from './DetectionManager.js';
 
-// Mock gameStateManager
-vi.mock('../../managers/GameStateManager.js', () => ({
+// Mock tacticalMapStateManager
+vi.mock('../../managers/TacticalMapStateManager.js', () => ({
   default: {
     getState: vi.fn(),
     setState: vi.fn(),
-    endRun: vi.fn()
+    isRunActive: vi.fn()
+  }
+}));
+
+// Mock gameStateManager (for MIA trigger)
+vi.mock('../../managers/GameStateManager.js', () => ({
+  default: {
+    endRun: vi.fn(),
+    setState: vi.fn()
   }
 }));
 
@@ -25,69 +34,59 @@ describe('DetectionManager', () => {
 
   describe('addDetection', () => {
     it('should clamp detection to minimum of 0 when reducing', () => {
-      gameStateManager.getState.mockReturnValue({
-        currentRunState: { detection: 9 }
+      tacticalMapStateManager.getState.mockReturnValue({
+        detection: 9
       });
 
       DetectionManager.addDetection(-20, 'Signal Dampener');
 
-      expect(gameStateManager.setState).toHaveBeenCalledWith({
-        currentRunState: {
-          detection: 0  // Should be 0, not -11
-        }
+      expect(tacticalMapStateManager.setState).toHaveBeenCalledWith({
+        detection: 0  // Should be 0, not -11
       });
     });
 
     it('should clamp detection to maximum of 100 when increasing', () => {
-      gameStateManager.getState.mockReturnValue({
-        currentRunState: { detection: 95 }
+      tacticalMapStateManager.getState.mockReturnValue({
+        detection: 95
       });
 
       DetectionManager.addDetection(10, 'Combat ended');
 
-      expect(gameStateManager.setState).toHaveBeenCalledWith({
-        currentRunState: {
-          detection: 100  // Should be 100, not 105
-        }
+      expect(tacticalMapStateManager.setState).toHaveBeenCalledWith({
+        detection: 100  // Should be 100, not 105
       });
     });
 
     it('should allow normal increases within range', () => {
-      gameStateManager.getState.mockReturnValue({
-        currentRunState: { detection: 50 }
+      tacticalMapStateManager.getState.mockReturnValue({
+        detection: 50
       });
 
       DetectionManager.addDetection(10, 'Movement');
 
-      expect(gameStateManager.setState).toHaveBeenCalledWith({
-        currentRunState: {
-          detection: 60
-        }
+      expect(tacticalMapStateManager.setState).toHaveBeenCalledWith({
+        detection: 60
       });
     });
 
     it('should allow normal decreases within range', () => {
-      gameStateManager.getState.mockReturnValue({
-        currentRunState: { detection: 50 }
+      tacticalMapStateManager.getState.mockReturnValue({
+        detection: 50
       });
 
       DetectionManager.addDetection(-20, 'Signal Dampener');
 
-      expect(gameStateManager.setState).toHaveBeenCalledWith({
-        currentRunState: {
-          detection: 30
-        }
+      expect(tacticalMapStateManager.setState).toHaveBeenCalledWith({
+        detection: 30
       });
     });
 
     it('should not call setState when no active run', () => {
-      gameStateManager.getState.mockReturnValue({
-        currentRunState: null
-      });
+      tacticalMapStateManager.getState.mockReturnValue(null);
 
       DetectionManager.addDetection(10, 'Test');
 
-      expect(gameStateManager.setState).not.toHaveBeenCalled();
+      expect(tacticalMapStateManager.setState).not.toHaveBeenCalled();
     });
   });
 });

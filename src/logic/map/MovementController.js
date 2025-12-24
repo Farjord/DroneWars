@@ -8,6 +8,7 @@
 import PathValidator from './PathValidator.js';
 import DetectionManager from '../detection/DetectionManager.js';
 import gameStateManager from '../../managers/GameStateManager.js';
+import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import { mapTiers } from '../../data/mapData.js';
 
 /**
@@ -104,7 +105,7 @@ class MovementController {
    * @returns {boolean} Success
    */
   movePlayer(targetHex, gameState) {
-    const { currentRunState } = gameState;
+    const currentRunState = tacticalMapStateManager.getState();
 
     if (!currentRunState || !currentRunState.mapData) {
       console.error('[Movement] Cannot move: No active run');
@@ -135,11 +136,8 @@ class MovementController {
     DetectionManager.addDetection(cost, 'Movement');
 
     // Update player position
-    gameStateManager.setState({
-      currentRunState: {
-        ...currentRunState,
-        playerPosition: targetHex
-      }
+    tacticalMapStateManager.setState({
+      playerPosition: targetHex
     });
 
     // Handle hex arrival triggers

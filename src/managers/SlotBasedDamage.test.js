@@ -10,6 +10,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import gameStateManager from './GameStateManager.js';
+import tacticalMapStateManager from './TacticalMapStateManager.js';
 import {
   calculateSectionHull,
   getDroneEffectiveLimit,
@@ -423,7 +424,7 @@ describe('Slot-Based Damage Model', () => {
         gateCount: 1
       });
 
-      const runState = gameStateManager.getState().currentRunState;
+      const runState = tacticalMapStateManager.getState();
       // SHIP_001 has baseHull = 8, standard components have hullModifier = 0
       // Keys use lowercase camelCase: 'bridge', 'powerCell', 'droneControlHub'
       expect(runState.shipSections['bridge'].hull).toBe(5);  // 8 - 3
@@ -486,9 +487,9 @@ describe('Slot-Based Damage Model', () => {
       });
 
       // Simulate combat damage (keys are lowercase camelCase)
-      const state = gameStateManager.getState();
-      state.currentRunState.shipSections['bridge'].hull = 4; // Took 6 damage
-      gameStateManager.setState({ currentRunState: state.currentRunState });
+      const runState = tacticalMapStateManager.getState();
+      runState.shipSections['bridge'].hull = 4; // Took 6 damage
+      tacticalMapStateManager.setState({ shipSections: runState.shipSections });
 
       // End run successfully
       gameStateManager.endRun(true);
@@ -515,9 +516,9 @@ describe('Slot-Based Damage Model', () => {
       });
 
       // Simulate damage (keys are lowercase camelCase)
-      const state = gameStateManager.getState();
-      state.currentRunState.shipSections['bridge'].hull = 4;
-      gameStateManager.setState({ currentRunState: state.currentRunState });
+      const runState = tacticalMapStateManager.getState();
+      runState.shipSections['bridge'].hull = 4;
+      tacticalMapStateManager.setState({ shipSections: runState.shipSections });
 
       gameStateManager.endRun(true);
 

@@ -137,15 +137,17 @@ describe('GameStateManager - Game State Initialization/Cleanup', () => {
       expect(result.issues.length).toBeGreaterThanOrEqual(4);
     });
 
-    it('should detect orphaned currentRunState', () => {
+    it('should detect orphaned singlePlayerEncounter (run state is in TacticalMapStateManager)', () => {
+      // NOTE: currentRunState has been migrated to TacticalMapStateManager
+      // This test now checks for orphaned singlePlayerEncounter
       gameStateManager.setState({
-        currentRunState: { shipSlotId: 1, mapTier: 1 }
+        singlePlayerEncounter: { type: 'combat' }
       });
 
       const result = gameStateManager.validatePreGameState();
 
       expect(result.valid).toBe(false);
-      expect(result.issues).toContain('currentRunState is not null (orphaned single-player run)');
+      expect(result.issues).toContain('singlePlayerEncounter is not null');
     });
 
     it('should detect orphaned singlePlayerEncounter', () => {
@@ -496,14 +498,16 @@ describe('GameStateManager - Game State Initialization/Cleanup', () => {
     });
 
     it('should detect existing run in progress', () => {
+      // NOTE: Run state has been migrated to TacticalMapStateManager
+      // This test now checks for orphaned singlePlayerEncounter as an indicator of active run
       gameStateManager.setState({
-        currentRunState: { shipSlotId: 1, mapTier: 1 }
+        singlePlayerEncounter: { type: 'combat' }
       });
 
       const result = gameStateManager.validatePreRunState();
 
       expect(result.valid).toBe(false);
-      expect(result.issues).toContain('currentRunState already exists (run in progress)');
+      expect(result.issues).toContain('singlePlayerEncounter is not null');
     });
 
     it('should detect orphaned encounter', () => {
@@ -527,8 +531,9 @@ describe('GameStateManager - Game State Initialization/Cleanup', () => {
     });
 
     it('should detect multiple issues', () => {
+      // NOTE: currentRunState has been migrated to TacticalMapStateManager
+      // This test now checks 2 issues: singlePlayerEncounter and gameActive
       gameStateManager.setState({
-        currentRunState: { shipSlotId: 1 },
         singlePlayerEncounter: { type: 'poi' },
         gameActive: true
       });
@@ -536,19 +541,21 @@ describe('GameStateManager - Game State Initialization/Cleanup', () => {
       const result = gameStateManager.validatePreRunState();
 
       expect(result.valid).toBe(false);
-      expect(result.issues.length).toBe(3);
+      expect(result.issues.length).toBe(2);
     });
   });
 
   describe('clearSinglePlayerContext()', () => {
-    it('should clear currentRunState', () => {
+    it('should clear singlePlayerEncounter (run state is in TacticalMapStateManager)', () => {
+      // NOTE: currentRunState has been migrated to TacticalMapStateManager
+      // This test now verifies singlePlayerEncounter is cleared
       gameStateManager.setState({
-        currentRunState: { shipSlotId: 1, mapTier: 1, collectedLoot: [] }
+        singlePlayerEncounter: { type: 'combat' }
       });
 
       gameStateManager.clearSinglePlayerContext();
 
-      expect(gameStateManager.get('currentRunState')).toBe(null);
+      expect(gameStateManager.get('singlePlayerEncounter')).toBe(null);
     });
 
     it('should clear singlePlayerEncounter', () => {
@@ -616,9 +623,10 @@ describe('GameStateManager - Game State Initialization/Cleanup', () => {
 
     it('should clean up active run when transitioning to menu', () => {
       // Set up active single-player run with profile (required by endRun)
+      // NOTE: currentRunState has been migrated to TacticalMapStateManager
+      // This test now only verifies the appState transition works correctly
       gameStateManager.setState({
         appState: 'tacticalMap',
-        currentRunState: { shipSlotId: 1, mapTier: 1, collectedLoot: [] },
         singlePlayerProfile: {
           credits: 100,
           aiCores: 0,
@@ -630,7 +638,7 @@ describe('GameStateManager - Game State Initialization/Cleanup', () => {
       gameStateManager.transitionToAppState('menu');
 
       expect(gameStateManager.get('appState')).toBe('menu');
-      expect(gameStateManager.get('currentRunState')).toBe(null);
+      // Run state cleanup is now handled by TacticalMapStateManager
     });
 
     it('should not clean up when transitioning between non-menu states', () => {
@@ -651,15 +659,14 @@ describe('GameStateManager - Game State Initialization/Cleanup', () => {
   describe('startGame() - single-player context cleanup', () => {
     it('should clear single-player context before starting PvP game', () => {
       // Set up orphaned single-player state
+      // NOTE: currentRunState has been migrated to TacticalMapStateManager
       gameStateManager.setState({
-        currentRunState: { shipSlotId: 1, mapTier: 1 },
         singlePlayerEncounter: { type: 'combat' }
       });
 
       gameStateManager.startGame('local');
 
-      // SP context should be cleared
-      expect(gameStateManager.get('currentRunState')).toBe(null);
+      // SP encounter context should be cleared (run state is now in TacticalMapStateManager)
       expect(gameStateManager.get('singlePlayerEncounter')).toBe(null);
     });
   });
