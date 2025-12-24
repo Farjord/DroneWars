@@ -381,4 +381,166 @@ describe('SalvageModal', () => {
       expect(screen.getByRole('button', { name: /escape/i })).toBeInTheDocument();
     });
   });
+
+  describe('MIA Warning', () => {
+    // State with high detection that would cause MIA when leaving
+    const highDetectionState = {
+      ...baseSalvageState,
+      poi: {
+        poiData: {
+          name: 'Dangerous Outpost',
+          description: 'A dangerous location',
+          color: '#ef4444',
+          threatIncrease: 15  // Will cause MIA if detection >= 85
+        }
+      }
+    };
+
+    // tierConfig with fallback looting threat
+    const tierConfig = {
+      detectionTriggers: {
+        looting: 10
+      }
+    };
+
+    test('shows MIA warning when detection + threatIncrease >= 100', () => {
+      render(
+        <SalvageModal
+          salvageState={highDetectionState}
+          tierConfig={tierConfig}
+          detection={90}  // 90 + 15 = 105 >= 100
+          onSalvageSlot={mockOnSalvageSlot}
+          onLeave={mockOnLeave}
+        />
+      );
+
+      expect(screen.getByText(/salvaging would result in mia/i)).toBeInTheDocument();
+    });
+
+    test('disables Salvage button when MIA would occur', () => {
+      render(
+        <SalvageModal
+          salvageState={highDetectionState}
+          tierConfig={tierConfig}
+          detection={90}  // 90 + 15 = 105 >= 100
+          onSalvageSlot={mockOnSalvageSlot}
+          onLeave={mockOnLeave}
+        />
+      );
+
+      const salvageButton = screen.getByRole('button', { name: /salvage/i });
+      expect(salvageButton).toBeDisabled();
+    });
+
+    test('keeps Leave POI button enabled when MIA would occur', () => {
+      render(
+        <SalvageModal
+          salvageState={highDetectionState}
+          tierConfig={tierConfig}
+          detection={90}
+          onSalvageSlot={mockOnSalvageSlot}
+          onLeave={mockOnLeave}
+        />
+      );
+
+      const leaveButton = screen.getByRole('button', { name: /leave poi/i });
+      expect(leaveButton).not.toBeDisabled();
+    });
+
+    test('shows correct detection values in warning message', () => {
+      render(
+        <SalvageModal
+          salvageState={highDetectionState}
+          tierConfig={tierConfig}
+          detection={90}  // 90 + 15 = 105
+          onSalvageSlot={mockOnSalvageSlot}
+          onLeave={mockOnLeave}
+        />
+      );
+
+      // Should show the threat increase and total
+      expect(screen.getByText(/\+15%/)).toBeInTheDocument();
+      expect(screen.getByText(/105%/)).toBeInTheDocument();
+    });
+
+    test('does NOT show MIA warning when detection is safe', () => {
+      render(
+        <SalvageModal
+          salvageState={highDetectionState}
+          tierConfig={tierConfig}
+          detection={50}  // 50 + 15 = 65 < 100
+          onSalvageSlot={mockOnSalvageSlot}
+          onLeave={mockOnLeave}
+        />
+      );
+
+      expect(screen.queryByText(/salvaging would result in mia/i)).not.toBeInTheDocument();
+    });
+
+    test('Salvage button is enabled when detection is safe', () => {
+      render(
+        <SalvageModal
+          salvageState={highDetectionState}
+          tierConfig={tierConfig}
+          detection={50}  // 50 + 15 = 65 < 100
+          onSalvageSlot={mockOnSalvageSlot}
+          onLeave={mockOnLeave}
+        />
+      );
+
+      const salvageButton = screen.getByRole('button', { name: /salvage/i });
+      expect(salvageButton).not.toBeDisabled();
+    });
+
+    test('uses tierConfig fallback when POI has no threatIncrease', () => {
+      const stateNoThreat = {
+        ...baseSalvageState,
+        poi: {
+          poiData: {
+            name: 'Basic Outpost',
+            description: 'A basic location'
+            // No threatIncrease - should use tierConfig.detectionTriggers.looting (10)
+          }
+        }
+      };
+
+      render(
+        <SalvageModal
+          salvageState={stateNoThreat}
+          tierConfig={tierConfig}
+          detection={95}  // 95 + 10 = 105 >= 100
+          onSalvageSlot={mockOnSalvageSlot}
+          onLeave={mockOnLeave}
+        />
+      );
+
+      expect(screen.getByText(/salvaging would result in mia/i)).toBeInTheDocument();
+      expect(screen.getByText(/\+10%/)).toBeInTheDocument();
+    });
+
+    test('shows MIA warning at exactly 100% detection threshold', () => {
+      const stateExact = {
+        ...baseSalvageState,
+        poi: {
+          poiData: {
+            name: 'Edge Case Outpost',
+            description: 'Testing exact threshold',
+            threatIncrease: 10
+          }
+        }
+      };
+
+      render(
+        <SalvageModal
+          salvageState={stateExact}
+          tierConfig={tierConfig}
+          detection={90}  // 90 + 10 = 100 exactly
+          onSalvageSlot={mockOnSalvageSlot}
+          onLeave={mockOnLeave}
+        />
+      );
+
+      expect(screen.getByText(/salvaging would result in mia/i)).toBeInTheDocument();
+    });
+  });
 });

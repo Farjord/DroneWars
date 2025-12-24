@@ -12,6 +12,7 @@ import aiPersonalities from '../data/aiData.js';
 import { BACKGROUNDS } from '../config/backgrounds.js';
 import { shipCollection } from '../data/shipData.js';
 import { tacticalItemCollection } from '../data/tacticalItemData.js';
+import { SALVAGE_ITEMS } from '../data/salvageItemData.js';
 import {
   SHIP_FOLDER_NAMES,
   SECTION_FILE_NAMES,
@@ -41,6 +42,7 @@ const poiImages = extractUniquePaths(poiTypes, 'image');
 const aiImages = extractUniquePaths(aiPersonalities, 'imagePath');
 const shipImages = extractUniquePaths(shipCollection, 'image');
 const tacticalItemImages = extractUniquePaths(tacticalItemCollection, 'image');
+const salvageItemImages = extractUniquePaths(SALVAGE_ITEMS, 'image');
 
 // Extract background paths (only static backgrounds have paths)
 const backgroundImages = BACKGROUNDS
@@ -109,7 +111,8 @@ export const assetManifest = {
   hanger: staticAssets.hanger,
   tactical: staticAssets.tactical,
   eremos: staticAssets.eremos,
-  tacticalItems: tacticalItemImages
+  tacticalItems: tacticalItemImages,
+  salvageItems: salvageItemImages
 };
 
 /**
@@ -149,7 +152,8 @@ export const CATEGORY_LABELS = {
   hanger: 'Hangar Interface',
   tactical: 'Tactical Maps',
   eremos: 'Eremos Assets',
-  tacticalItems: 'Tactical Items'
+  tacticalItems: 'Tactical Items',
+  salvageItems: 'Salvage Items'
 };
 
 export default assetManifest;

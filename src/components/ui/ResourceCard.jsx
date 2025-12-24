@@ -155,14 +155,20 @@ const ResourceCard = ({
             </span>
           </div>
 
-          {/* Middle Area - Description for salvage items */}
-          <div className="flex-1 flex items-center justify-center p-2">
-            {isSalvageItem && salvageItem?.description && (
-              <p className="text-xs text-gray-300 text-center italic opacity-80 px-2">
+          {/* Full Art Area - Spacer */}
+          <div className="flex-1" />
+
+          {/* Description Overlay at Bottom - matches TacticalItemCard style */}
+          {isSalvageItem && salvageItem?.description && (
+            <div
+              className="bg-black/60 backdrop-blur-sm px-3 py-2 flex items-center justify-center"
+              style={{ minHeight: '60px' }}
+            >
+              <p className="text-xs text-gray-200 text-center leading-relaxed font-exo">
                 {salvageItem.description}
               </p>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Footer Bar - Value Display */}
           <div className={`${config.footerBg} flex items-center justify-center border-t ${config.borderColor} h-10`}>
