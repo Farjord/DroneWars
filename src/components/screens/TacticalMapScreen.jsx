@@ -147,7 +147,17 @@ function buildShipSections(shipSlot, slotId, shipComponentInstances, runShipSect
 function TacticalMapScreen() {
   const [gameState, setGameState] = useState(gameStateManager.getState());
   // State from TacticalMapStateManager (new architecture - will replace currentRunState)
-  const [tacticalMapRunState, setTacticalMapRunState] = useState(tacticalMapStateManager.getState());
+  const [tacticalMapRunState, setTacticalMapRunState] = useState(() => {
+    const state = tacticalMapStateManager.getState();
+    debugLog('RUN_STATE', 'TacticalMapScreen INIT useState:', {
+      hasState: !!state,
+      hasMapData: !!state?.mapData,
+      backgroundIndex: state?.mapData?.backgroundIndex,
+      hasPendingWaypoints: !!state?.pendingWaypoints,
+      pendingWaypointsCount: state?.pendingWaypoints?.length
+    });
+    return state;
+  });
 
   // Waypoint journey planning state
   const [waypoints, setWaypoints] = useState([]);           // Array of waypoint objects
@@ -250,7 +260,12 @@ function TacticalMapScreen() {
     const unsubscribeGame = gameStateManager.subscribe(() => {
       setGameState(gameStateManager.getState());
     });
-    const unsubscribeTactical = tacticalMapStateManager.subscribe(() => {
+    const unsubscribeTactical = tacticalMapStateManager.subscribe((event) => {
+      debugLog('RUN_STATE', 'TacticalMapStateManager subscription UPDATE:', {
+        eventType: event?.type,
+        hasMapData: !!event?.state?.mapData,
+        backgroundIndex: event?.state?.mapData?.backgroundIndex
+      });
       setTacticalMapRunState(tacticalMapStateManager.getState());
     });
     return () => {
@@ -273,9 +288,18 @@ function TacticalMapScreen() {
   useEffect(() => {
     let runState = tacticalMapStateManager.getState();
 
+    // Diagnostic logging for state persistence debugging
+    debugLog('RUN_STATE', 'TacticalMapScreen MOUNT - checking pending state:', {
+      hasRunState: !!runState,
+      hasMapData: !!runState?.mapData,
+      backgroundIndex: runState?.mapData?.backgroundIndex,
+      pendingWaypoints: runState?.pendingWaypoints?.length || 0,
+      pendingPOICombat: !!runState?.pendingPOICombat
+    });
+
     // Restore waypoints from pendingWaypoints (set before ANY combat)
     if (runState?.pendingWaypoints?.length > 0) {
-      console.log('[TacticalMap] Restoring waypoints after combat:', runState.pendingWaypoints.length);
+      debugLog('RUN_STATE', 'Restoring waypoints after combat:', runState.pendingWaypoints.length);
       setPendingResumeWaypoints(runState.pendingWaypoints);
 
       // Clear pendingWaypoints from run state
@@ -842,6 +866,15 @@ function TacticalMapScreen() {
       setShowPOIModal(false);
       setShowLoadingEncounter(true);
 
+      // FIX: Store remaining waypoints BEFORE stopping movement (prevents race condition)
+      // Must happen before shouldStopMovement flag triggers journey loop exit
+      const remainingWps = waypoints.slice(currentWaypointIndex + 1);
+      if (remainingWps.length > 0) {
+        debugLog('RUN_STATE', 'Combat trigger - storing waypoints early:', remainingWps.length);
+        tacticalMapStateManager.setState({ pendingWaypoints: remainingWps });
+        escapedWithWaypoints.current = true;  // Prevent journey loop from clearing
+      }
+
       // Stop movement
       shouldStopMovement.current = true;
       setIsScanningHex(false);
@@ -1115,10 +1148,18 @@ function TacticalMapScreen() {
     // Show loading screen
     setShowLoadingEncounter(true);
 
+    // FIX: Store remaining waypoints BEFORE stopping movement (prevents race condition)
+    const remainingWps = waypoints.slice(currentWaypointIndex + 1);
+    if (remainingWps.length > 0) {
+      debugLog('RUN_STATE', 'Salvage combat trigger - storing waypoints early:', remainingWps.length);
+      tacticalMapStateManager.setState({ pendingWaypoints: remainingWps });
+      escapedWithWaypoints.current = true;
+    }
+
     // Stop movement
     shouldStopMovement.current = true;
     setIsMoving(false);
-  }, [activeSalvage]);
+  }, [activeSalvage, waypoints, currentWaypointIndex]);
 
   /**
    * Handle salvage abort (MIA) - player abandons run when encounter triggered
@@ -1271,6 +1312,14 @@ function TacticalMapScreen() {
       // Show loading screen
       setShowLoadingEncounter(true);
 
+      // FIX: Store remaining waypoints BEFORE stopping movement (prevents race condition)
+      const remainingWps = waypoints.slice(currentWaypointIndex + 1);
+      if (remainingWps.length > 0) {
+        debugLog('RUN_STATE', 'Salvage quick deploy combat - storing waypoints early:', remainingWps.length);
+        tacticalMapStateManager.setState({ pendingWaypoints: remainingWps });
+        escapedWithWaypoints.current = true;
+      }
+
       // Stop movement
       shouldStopMovement.current = true;
       setIsMoving(false);
@@ -1307,12 +1356,20 @@ function TacticalMapScreen() {
       // Show loading screen
       setShowLoadingEncounter(true);
 
+      // FIX: Store remaining waypoints BEFORE stopping movement (prevents race condition)
+      const remainingWps = waypoints.slice(currentWaypointIndex + 1);
+      if (remainingWps.length > 0) {
+        debugLog('RUN_STATE', 'POI quick deploy combat - storing waypoints early:', remainingWps.length);
+        tacticalMapStateManager.setState({ pendingWaypoints: remainingWps });
+        escapedWithWaypoints.current = true;
+      }
+
       // Stop movement
       shouldStopMovement.current = true;
       setIsScanningHex(false);
       setIsMoving(false);
     }
-  }, [currentEncounter, salvageQuickDeployPending, activeSalvage]);
+  }, [currentEncounter, salvageQuickDeployPending, activeSalvage, waypoints, currentWaypointIndex]);
 
   /**
    * Handle loading encounter complete - actually start combat
@@ -1359,13 +1416,21 @@ function TacticalMapScreen() {
       return;
     }
 
-    console.log('[TacticalMap] Loading complete - initializing combat');
+    debugLog('RUN_STATE', 'Loading complete - initializing combat');
 
     // Capture remaining waypoints for journey resumption (SEPARATE from POI logic)
     // Must be stored in tacticalMapStateManager to survive combat (component unmounts during combat)
     const remainingWps = waypoints.slice(currentWaypointIndex + 1);
+
+    debugLog('RUN_STATE', 'Before combat - waypoint storage check:', {
+      totalWaypoints: waypoints.length,
+      currentWaypointIndex,
+      remainingWpsCount: remainingWps.length,
+      willStore: remainingWps.length > 0
+    });
+
     if (remainingWps.length > 0) {
-      console.log('[TacticalMap] Storing waypoints for post-combat resumption:', remainingWps.length);
+      debugLog('RUN_STATE', 'Storing waypoints for post-combat resumption:', remainingWps.length);
       tacticalMapStateManager.setState({
         pendingWaypoints: remainingWps
       });
@@ -1376,7 +1441,7 @@ function TacticalMapScreen() {
     // Store pending PoI combat info for post-combat loot (ONLY for POI encounters)
     // This allows the player to loot the PoI after winning combat
     if (currentEncounter?.poi) {
-      console.log('[TacticalMap] Storing pendingPOICombat for post-combat loot:', {
+      debugLog('RUN_STATE', 'Storing pendingPOICombat for post-combat loot:', {
         poi: { q: currentEncounter.poi.q, r: currentEncounter.poi.r },
         packType: currentEncounter.reward?.rewardType || null
       });

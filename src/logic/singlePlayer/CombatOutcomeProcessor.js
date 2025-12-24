@@ -312,6 +312,11 @@ class CombatOutcomeProcessor {
         pendingSalvageState: currentRunState.pendingSalvageState
       });
 
+      debugLog('RUN_STATE', 'CombatOutcome - Updated TacticalMapStateManager (blockade victory):', {
+        backgroundIndex: tacticalMapStateManager.getState()?.mapData?.backgroundIndex,
+        pendingWaypoints: tacticalMapStateManager.getState()?.pendingWaypoints?.length || 0
+      });
+
       gameStateManager.setState({
         appState: 'tacticalMap',
         pendingLoot: null,
@@ -331,6 +336,11 @@ class CombatOutcomeProcessor {
         aiCoresEarned: updatedRunState.aiCoresEarned,
         pendingPOICombat: currentRunState.pendingPOICombat,
         pendingSalvageState: currentRunState.pendingSalvageState
+      });
+
+      debugLog('RUN_STATE', 'CombatOutcome - Updated TacticalMapStateManager (pending blueprint):', {
+        backgroundIndex: tacticalMapStateManager.getState()?.mapData?.backgroundIndex,
+        pendingWaypoints: tacticalMapStateManager.getState()?.pendingWaypoints?.length || 0
       });
 
       gameStateManager.setState({
@@ -359,6 +369,11 @@ class CombatOutcomeProcessor {
         aiCoresEarned: updatedRunState.aiCoresEarned,
         pendingPOICombat: currentRunState.pendingPOICombat,
         pendingSalvageState: currentRunState.pendingSalvageState
+      });
+
+      debugLog('RUN_STATE', 'CombatOutcome - Updated TacticalMapStateManager (regular victory):', {
+        backgroundIndex: tacticalMapStateManager.getState()?.mapData?.backgroundIndex,
+        pendingWaypoints: tacticalMapStateManager.getState()?.pendingWaypoints?.length || 0
       });
 
       gameStateManager.setState({
