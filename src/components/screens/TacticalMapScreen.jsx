@@ -865,13 +865,15 @@ function TacticalMapScreen() {
           const zone = arrivedHex.zone || 'mid';
           const tier = runState.mapData?.tier || 1;
           const detection = DetectionManager.getCurrentDetection();
+          const threatLevel = DetectionManager.getThreshold();
 
           const salvageState = SalvageController.initializeSalvage(
             arrivedHex,
             tierConfig,
             zone,
             lootGenerator,
-            tier
+            tier,
+            threatLevel
           );
 
           // Store remaining waypoints for journey resumption after salvage

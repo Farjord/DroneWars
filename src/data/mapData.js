@@ -84,6 +84,14 @@ export const mapTiers = [
       max: 15
     },
 
+    // Threat-based encounter bonus for PoI salvage
+    // Adds a random bonus to starting encounter chance based on detection threat level
+    threatEncounterBonus: {
+      low: { min: 0, max: 0 },       // No bonus at low threat (0-49% detection)
+      medium: { min: 5, max: 10 },   // +5-10% at medium threat (50-79% detection)
+      high: { min: 10, max: 20 }     // +10-20% at high threat (80-100% detection)
+    },
+
     // Zone-based salvage slot count distribution (1-5 slots per PoI)
     salvageSlotCountWeights: {
       perimeter: { 1: 50, 2: 30, 3: 15, 4: 5, 5: 0 },    // Mostly 1-2 slots

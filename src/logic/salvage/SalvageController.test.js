@@ -730,5 +730,234 @@ describe('SalvageController', () => {
       expect(result.currentSlotIndex).toBe(3)
       expect(result.slots.every(s => s.revealed)).toBe(true)
     })
+
+    it('should advance currentSlotIndex when current slot was already revealed (encounter on last slot bug fix)', () => {
+      // EXPLANATION: BUG FIX - When an encounter triggers, attemptSalvage reveals the slot
+      // but does NOT increment currentSlotIndex. This causes a bug when the encounter
+      // triggers on the LAST slot: the slot is revealed but currentSlotIndex stays at
+      // totalSlots - 1, making canContinueSalvage() return true incorrectly.
+      //
+      // Scenario: 3 slots, player at last slot (index 2), encounter triggers
+      // - Slot 2 gets revealed
+      // - currentSlotIndex stays at 2 (not incremented because encounter triggered)
+      // - After combat, resetAfterCombat is called
+      // - canContinueSalvage() returns (2 < 3) && !false = true ← BUG!
+      // - isFullyLooted() returns 2 >= 3 = false ← BUG!
+      //
+      // FIX: resetAfterCombat should detect that the current slot is already revealed
+      // and advance the index so the player cannot "continue salvaging" a revealed slot.
+
+      const encounterOnLastSlotState = {
+        poi: { q: 2, r: -1, poiData: { name: 'Test POI' } },
+        zone: 'mid',
+        totalSlots: 3,
+        slots: [
+          { type: 'card', content: { cardId: 'card_1' }, revealed: true },
+          { type: 'salvageItem', content: { creditValue: 50 }, revealed: true },
+          { type: 'card', content: { cardId: 'card_2' }, revealed: true }  // Last slot revealed during encounter
+        ],
+        currentSlotIndex: 2,  // Stuck at 2 because encounter triggered on last slot
+        currentEncounterChance: 45,
+        encounterTriggered: true
+      }
+
+      const result = salvageController.resetAfterCombat(encounterOnLastSlotState)
+
+      // After reset, currentSlotIndex should advance past the already-revealed slot
+      expect(result.currentSlotIndex).toBe(3)
+
+      // Now the helper methods should return correct values
+      expect(salvageController.isFullyLooted(result)).toBe(true)
+      expect(salvageController.canContinueSalvage(result)).toBe(false)
+    })
+
+    it('should advance currentSlotIndex when current slot revealed mid-salvage (not just last slot)', () => {
+      // EXPLANATION: The fix should work for any slot, not just the last one.
+      // If encounter triggers on slot 1 (middle slot), slot 1 is revealed but
+      // currentSlotIndex stays at 1. After combat, it should advance to 2.
+
+      const encounterOnMiddleSlotState = {
+        poi: { q: 2, r: -1, poiData: { name: 'Test POI' } },
+        zone: 'mid',
+        totalSlots: 3,
+        slots: [
+          { type: 'card', content: { cardId: 'card_1' }, revealed: true },
+          { type: 'salvageItem', content: { creditValue: 50 }, revealed: true },  // Revealed during encounter
+          { type: 'card', content: { cardId: 'card_2' }, revealed: false }
+        ],
+        currentSlotIndex: 1,  // Stuck at 1 because encounter triggered
+        currentEncounterChance: 35,
+        encounterTriggered: true
+      }
+
+      const result = salvageController.resetAfterCombat(encounterOnMiddleSlotState)
+
+      // After reset, currentSlotIndex should advance past the already-revealed slot
+      expect(result.currentSlotIndex).toBe(2)
+
+      // Player can still continue salvaging slot 2
+      expect(salvageController.canContinueSalvage(result)).toBe(true)
+      expect(salvageController.isFullyLooted(result)).toBe(false)
+    })
+  })
+
+  // ========================================
+  // THREAT-BASED ENCOUNTER BONUS TESTS
+  // ========================================
+
+  describe('_calculateThreatBonus()', () => {
+    const mockTierConfigWithBonus = {
+      threatEncounterBonus: {
+        low: { min: 0, max: 0 },
+        medium: { min: 5, max: 10 },
+        high: { min: 10, max: 20 }
+      }
+    }
+
+    const mockPoi = { q: 5, r: -3, poiData: { name: 'Test POI' } }
+
+    it('should return 0 when threat level is low', () => {
+      // EXPLANATION: At low threat (0-49% detection), players should not
+      // face any additional encounter risk when salvaging PoIs.
+
+      const bonus = salvageController._calculateThreatBonus(mockPoi, mockTierConfigWithBonus, 'low')
+
+      expect(bonus).toBe(0)
+    })
+
+    it('should return value in range [5, 10] when threat level is medium', () => {
+      // EXPLANATION: At medium threat (50-79% detection), PoIs become
+      // more dangerous with a 5-10% encounter chance increase.
+
+      const bonus = salvageController._calculateThreatBonus(mockPoi, mockTierConfigWithBonus, 'medium')
+
+      expect(bonus).toBeGreaterThanOrEqual(5)
+      expect(bonus).toBeLessThanOrEqual(10)
+    })
+
+    it('should return value in range [10, 20] when threat level is high', () => {
+      // EXPLANATION: At high threat (80-100% detection), PoIs are very
+      // dangerous with a 10-20% encounter chance increase.
+
+      const bonus = salvageController._calculateThreatBonus(mockPoi, mockTierConfigWithBonus, 'high')
+
+      expect(bonus).toBeGreaterThanOrEqual(10)
+      expect(bonus).toBeLessThanOrEqual(20)
+    })
+
+    it('should use default ranges when tierConfig lacks threatEncounterBonus', () => {
+      // EXPLANATION: If the tier config doesn't define threatEncounterBonus,
+      // use sensible defaults (0 for low, 5-10 for medium, 10-20 for high).
+
+      const configWithoutBonus = {}
+
+      // Low should still return 0
+      const lowBonus = salvageController._calculateThreatBonus(mockPoi, configWithoutBonus, 'low')
+      expect(lowBonus).toBe(0)
+
+      // Medium should return value in default range [5, 10]
+      const mediumBonus = salvageController._calculateThreatBonus(mockPoi, configWithoutBonus, 'medium')
+      expect(mediumBonus).toBeGreaterThanOrEqual(5)
+      expect(mediumBonus).toBeLessThanOrEqual(10)
+
+      // High should return value in default range [10, 20]
+      const highBonus = salvageController._calculateThreatBonus(mockPoi, configWithoutBonus, 'high')
+      expect(highBonus).toBeGreaterThanOrEqual(10)
+      expect(highBonus).toBeLessThanOrEqual(20)
+    })
+
+    it('should return deterministic value for same POI coordinates (seeded random)', () => {
+      // EXPLANATION: The bonus should be deterministic based on POI location
+      // so the same PoI always gets the same bonus in the same run.
+
+      const bonus1 = salvageController._calculateThreatBonus(mockPoi, mockTierConfigWithBonus, 'medium')
+      const bonus2 = salvageController._calculateThreatBonus(mockPoi, mockTierConfigWithBonus, 'medium')
+
+      expect(bonus1).toBe(bonus2)
+    })
+
+    it('should return different values for different POI coordinates', () => {
+      // EXPLANATION: Different PoIs should get different bonuses based on
+      // their unique coordinates, ensuring variety across the map.
+
+      const poi1 = { q: 1, r: 2 }
+      const poi2 = { q: 3, r: -1 }
+
+      const bonus1 = salvageController._calculateThreatBonus(poi1, mockTierConfigWithBonus, 'high')
+      const bonus2 = salvageController._calculateThreatBonus(poi2, mockTierConfigWithBonus, 'high')
+
+      // While theoretically possible to be equal, with seeded random they should differ
+      // Test multiple pairs to ensure variation
+      const bonuses = []
+      for (let i = 0; i < 5; i++) {
+        const poi = { q: i, r: i * 2 }
+        bonuses.push(salvageController._calculateThreatBonus(poi, mockTierConfigWithBonus, 'high'))
+      }
+
+      // At least some should be different
+      const uniqueBonuses = new Set(bonuses)
+      expect(uniqueBonuses.size).toBeGreaterThan(1)
+    })
+  })
+
+  describe('initializeSalvage() with threat bonus', () => {
+    let mockLootGeneratorForThreat
+
+    beforeEach(() => {
+      mockLootGeneratorForThreat = {
+        generateSalvageSlots: vi.fn().mockReturnValue([
+          { type: 'card', content: { cardId: 'test_card' }, revealed: false }
+        ])
+      }
+    })
+
+    const mockTierConfigWithBonus = {
+      threatEncounterBonus: {
+        low: { min: 0, max: 0 },
+        medium: { min: 5, max: 10 },
+        high: { min: 10, max: 20 }
+      }
+    }
+
+    it('should apply no bonus at low threat level', () => {
+      // EXPLANATION: When the player has low threat (0-49% detection),
+      // the starting encounter chance should equal the PoI's base value.
+
+      const poi = { q: 2, r: -1, encounterChance: 20, rewardType: 'ORDNANCE_PACK' }
+
+      const result = salvageController.initializeSalvage(
+        poi, mockTierConfigWithBonus, 'mid', mockLootGeneratorForThreat, 1, 'low'
+      )
+
+      expect(result.currentEncounterChance).toBe(20)
+    })
+
+    it('should apply bonus in range [5, 10] at medium threat level', () => {
+      // EXPLANATION: When the player has medium threat (50-79% detection),
+      // the starting encounter chance should be base + 5-10%.
+
+      const poi = { q: 2, r: -1, encounterChance: 20, rewardType: 'ORDNANCE_PACK' }
+
+      const result = salvageController.initializeSalvage(
+        poi, mockTierConfigWithBonus, 'mid', mockLootGeneratorForThreat, 1, 'medium'
+      )
+
+      expect(result.currentEncounterChance).toBeGreaterThanOrEqual(25) // 20 + 5
+      expect(result.currentEncounterChance).toBeLessThanOrEqual(30) // 20 + 10
+    })
+
+    it('should apply bonus in range [10, 20] at high threat level', () => {
+      // EXPLANATION: When the player has high threat (80-100% detection),
+      // the starting encounter chance should be base + 10-20%.
+
+      const poi = { q: 2, r: -1, encounterChance: 20, rewardType: 'ORDNANCE_PACK' }
+
+      const result = salvageController.initializeSalvage(
+        poi, mockTierConfigWithBonus, 'mid', mockLootGeneratorForThreat, 1, 'high'
+      )
+
+      expect(result.currentEncounterChance).toBeGreaterThanOrEqual(30) // 20 + 10
+      expect(result.currentEncounterChance).toBeLessThanOrEqual(40) // 20 + 20
+    })
   })
 })

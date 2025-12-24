@@ -9,6 +9,7 @@ import React, { useState, useRef } from 'react';
 import { Info } from 'lucide-react';
 import MovementController from '../../logic/map/MovementController.js';
 import DetectionManager from '../../logic/detection/DetectionManager.js';
+import SalvageController from '../../logic/salvage/SalvageController.js';
 import { mapTiers } from '../../data/mapData.js';
 import { packTypes } from '../../data/cardPackData.js';
 import { HEX_INFO_HELP_TEXT } from '../../data/hexInfoHelpText.js';
@@ -621,9 +622,14 @@ function HexInfoPanel({
                 // Single-hex stats (raw values for this hex only)
                 const hexEncounterChance = MovementController.getHexEncounterChance(inspectedHex, tierConfig, mapData);
                 // POIs use their own encounterChance for salvage risk (not movement encounter)
-                const baseSalvageRisk = inspectedHex.type === 'poi'
-                  ? (inspectedHex.poiData?.encounterChance || 15)
-                  : hexEncounterChance;
+                // Calculate threat-adjusted salvage risk for POIs
+                const baseEncounterChance = inspectedHex.poiData?.encounterChance || 15;
+                const threatLevel = DetectionManager.getThreshold();
+                const threatBonus = inspectedHex.type === 'poi'
+                  ? SalvageController._calculateThreatBonus(inspectedHex, tierConfig, threatLevel)
+                  : 0;
+                const salvageRisk = Math.round(baseEncounterChance + threatBonus);
+                const increaseRange = tierConfig?.salvageEncounterIncreaseRange || { min: 5, max: 15 };
                 const hexThreatIncrease = DetectionManager.getHexDetectionCost(inspectedHex, tierConfig, mapRadius);
                 const lootingThreat = inspectedHex.type === 'poi'
                   ? (inspectedHex.poiData?.threatIncrease || tierConfig?.detectionTriggers?.looting || 10)
@@ -658,8 +664,8 @@ function HexInfoPanel({
                         <div className="hex-stat">
                           {inspectedHex.type === 'poi' ? (
                             <>
-                              <StatLabel text="Base Salvage Risk" helpKey="baseSalvageRisk" />
-                              <span className="stat-value">{baseSalvageRisk}%</span>
+                              <StatLabel text="Salvage Risk" helpKey="salvageRisk" />
+                              <span className="stat-value">{salvageRisk}% <span className="stat-subtext">(+{increaseRange.min}% - {increaseRange.max}%)</span></span>
                             </>
                           ) : (
                             <>

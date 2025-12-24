@@ -10,7 +10,15 @@ import { render, screen, fireEvent } from '@testing-library/react'
 vi.mock('../../logic/detection/DetectionManager.js', () => ({
   default: {
     getCurrentDetection: vi.fn(),
-    getHexDetectionCost: vi.fn(() => 5)
+    getHexDetectionCost: vi.fn(() => 5),
+    getThreshold: vi.fn(() => 'low')
+  }
+}))
+
+// Mock SalvageController
+vi.mock('../../logic/salvage/SalvageController.js', () => ({
+  default: {
+    _calculateThreatBonus: vi.fn(() => 0)
   }
 }))
 
@@ -31,6 +39,7 @@ vi.mock('../../logic/map/MovementController.js', () => ({
 // Import after mocks
 import HexInfoPanel from './HexInfoPanel.jsx'
 import DetectionManager from '../../logic/detection/DetectionManager.js'
+import SalvageController from '../../logic/salvage/SalvageController.js'
 
 // Default props for testing
 const createDefaultProps = () => ({
@@ -57,7 +66,13 @@ const createDefaultProps = () => ({
   currentHexIndex: 0,
   totalWaypoints: 0,
   tierConfig: {
-    detectionTriggers: { looting: 10 }
+    detectionTriggers: { looting: 10 },
+    salvageEncounterIncreaseRange: { min: 5, max: 15 },
+    threatEncounterBonus: {
+      low: { min: 0, max: 0 },
+      medium: { min: 5, max: 10 },
+      high: { min: 10, max: 20 }
+    }
   },
   mapRadius: 5,
   lootedPOIs: []
@@ -284,7 +299,7 @@ describe('HexInfoPanel', () => {
       expect(screen.getByText(/Chance of a random encounter when moving through this hex/i)).toBeInTheDocument()
     })
 
-    it('shows Base Salvage Risk tooltip on hover for PoI hexes', () => {
+    it('shows Salvage Risk tooltip on hover for PoI hexes', () => {
       // EXPLANATION: PoI hexes show salvage risk, not movement encounter chance
 
       const props = createDefaultProps()
@@ -295,7 +310,7 @@ describe('HexInfoPanel', () => {
       const wrappers = document.querySelectorAll('.stat-info-wrapper')
       wrappers.forEach(wrapper => fireEvent.mouseEnter(wrapper))
 
-      expect(screen.getByText(/Starting encounter chance for the first salvage slot/i)).toBeInTheDocument()
+      expect(screen.getByText(/Starting encounter chance.*adjusted for current threat/i)).toBeInTheDocument()
     })
 
     it('shows Salvage Threat tooltip on hover for PoI hexes', () => {
@@ -358,30 +373,86 @@ describe('HexInfoPanel', () => {
   })
 
   // ========================================
-  // BASE SALVAGE RISK FOR POIs
+  // SALVAGE RISK FOR POIs (with threat bonus)
   // ========================================
 
-  describe('Base Salvage Risk for PoIs', () => {
-    it('displays correct Base Salvage Risk from POI encounterChance', () => {
-      // EXPLANATION: Base Salvage Risk should come from poiData.encounterChance, not 0
+  describe('Salvage Risk for PoIs', () => {
+    beforeEach(() => {
+      // Reset mocks before each test
+      SalvageController._calculateThreatBonus.mockReturnValue(0)
+      DetectionManager.getThreshold.mockReturnValue('low')
+    })
+
+    it('displays "Salvage Risk" label instead of "Base Salvage Risk"', () => {
+      // EXPLANATION: Label should be renamed to just "Salvage Risk"
 
       const props = createDefaultProps()
       props.inspectedHex = {
         q: 2, r: 2,
         type: 'poi',
-        poiData: {
-          name: 'Test POI',
-          encounterChance: 20  // Should display 20%, not 0%
-        }
+        poiData: { name: 'Test POI', encounterChance: 20 }
       }
 
       render(<HexInfoPanel {...props} />)
 
-      // Should show 20% for Base Salvage Risk
-      expect(screen.getByText('20%')).toBeInTheDocument()
+      expect(screen.getByText('Salvage Risk')).toBeInTheDocument()
+      expect(screen.queryByText('Base Salvage Risk')).not.toBeInTheDocument()
     })
 
-    it('displays default 15% Base Salvage Risk when POI has no encounterChance', () => {
+    it('displays base salvage risk when threat level is low (no bonus)', () => {
+      // EXPLANATION: At low threat, salvage risk equals the PoI base encounterChance
+
+      SalvageController._calculateThreatBonus.mockReturnValue(0)
+
+      const props = createDefaultProps()
+      props.inspectedHex = {
+        q: 2, r: 2,
+        type: 'poi',
+        poiData: { name: 'Test POI', encounterChance: 20 }
+      }
+
+      render(<HexInfoPanel {...props} />)
+
+      // Should show 20% (base only, no threat bonus)
+      expect(screen.getByText(/20%/)).toBeInTheDocument()
+    })
+
+    it('displays threat-adjusted salvage risk when threat bonus applies', () => {
+      // EXPLANATION: At medium/high threat, salvage risk includes threat bonus
+
+      SalvageController._calculateThreatBonus.mockReturnValue(8)
+      DetectionManager.getThreshold.mockReturnValue('medium')
+
+      const props = createDefaultProps()
+      props.inspectedHex = {
+        q: 2, r: 2,
+        type: 'poi',
+        poiData: { name: 'Test POI', encounterChance: 20 }
+      }
+
+      render(<HexInfoPanel {...props} />)
+
+      // Should show 28% (20% base + 8% threat bonus)
+      expect(screen.getByText(/28%/)).toBeInTheDocument()
+    })
+
+    it('displays per-slot increase range alongside salvage risk', () => {
+      // EXPLANATION: Should show how much risk increases per salvage slot
+
+      const props = createDefaultProps()
+      props.inspectedHex = {
+        q: 2, r: 2,
+        type: 'poi',
+        poiData: { name: 'Test POI', encounterChance: 20 }
+      }
+
+      render(<HexInfoPanel {...props} />)
+
+      // Should show per-slot increase range from tierConfig
+      expect(screen.getByText(/\+5% - 15%/)).toBeInTheDocument()
+    })
+
+    it('displays default 15% salvage risk when POI has no encounterChance', () => {
       // EXPLANATION: Default to 15% if POI doesn't specify encounterChance
 
       const props = createDefaultProps()
@@ -393,7 +464,30 @@ describe('HexInfoPanel', () => {
 
       render(<HexInfoPanel {...props} />)
 
-      expect(screen.getByText('15%')).toBeInTheDocument()
+      // Check the stat-value span starts with 15%
+      const statValue = screen.getByText((content, element) => {
+        return element.classList.contains('stat-value') && content.startsWith('15%')
+      })
+      expect(statValue).toBeInTheDocument()
+    })
+
+    it('calls SalvageController._calculateThreatBonus with correct params', () => {
+      // EXPLANATION: Should pass inspectedHex, tierConfig, and threatLevel to calculate bonus
+
+      const props = createDefaultProps()
+      props.inspectedHex = {
+        q: 2, r: 2,
+        type: 'poi',
+        poiData: { name: 'Test POI', encounterChance: 20 }
+      }
+
+      render(<HexInfoPanel {...props} />)
+
+      expect(SalvageController._calculateThreatBonus).toHaveBeenCalledWith(
+        props.inspectedHex,
+        props.tierConfig,
+        'low'
+      )
     })
   })
 

@@ -11,9 +11,9 @@ export const HEX_INFO_HELP_TEXT = {
     description: 'Chance of a random encounter when moving through this hex. Based on the zone danger level.'
   },
   // PoI-specific stats
-  baseSalvageRisk: {
-    title: 'Base Salvage Risk',
-    description: 'Starting encounter chance for the first salvage slot. Each additional slot you salvage increases this risk.'
+  salvageRisk: {
+    title: 'Salvage Risk',
+    description: 'Starting encounter chance adjusted for current threat level. The range shows how much risk increases per salvage slot.'
   },
   salvageThreat: {
     title: 'Salvage Threat',

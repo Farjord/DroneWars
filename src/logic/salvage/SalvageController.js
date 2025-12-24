@@ -30,9 +30,10 @@ export class SalvageController {
    * @param {string} zone - Map zone (perimeter, mid, core)
    * @param {Object} lootGenerator - LootGenerator instance
    * @param {number} tier - Map tier (1, 2, or 3), defaults to 1
+   * @param {string} threatLevel - Current threat level ('low', 'medium', 'high'), defaults to 'low'
    * @returns {Object} Initial salvage state
    */
-  initializeSalvage(poi, tierConfig, zone, lootGenerator, tier = 1) {
+  initializeSalvage(poi, tierConfig, zone, lootGenerator, tier = 1, threatLevel = 'low') {
     // Handle both hex objects (with nested poiData) and direct POI objects
     const poiData = poi.poiData || poi
 
@@ -44,16 +45,59 @@ export class SalvageController {
       tierConfig
     )
 
+    // Calculate base encounter chance plus threat bonus
+    const baseEncounterChance = poiData.encounterChance || 15
+    const threatBonus = this._calculateThreatBonus(poi, tierConfig, threatLevel)
+
     return {
       poi,
       zone,
       totalSlots: slots.length,
       slots,
       currentSlotIndex: 0,
-      currentEncounterChance: poiData.encounterChance || 15,
+      currentEncounterChance: baseEncounterChance + threatBonus,
       encounterTriggered: false,
       scanningInProgress: false
     }
+  }
+
+  /**
+   * Calculate threat-based encounter bonus for a POI
+   * Higher threat levels result in higher starting encounter chances
+   * @param {Object} poi - POI with q, r coordinates for seeded random
+   * @param {Object} tierConfig - Tier configuration with threatEncounterBonus
+   * @param {string} threatLevel - Current threat level ('low', 'medium', 'high')
+   * @returns {number} Bonus to add to encounter chance (0-20)
+   */
+  _calculateThreatBonus(poi, tierConfig, threatLevel) {
+    // Default ranges if not specified in tierConfig
+    const defaultRanges = {
+      low: { min: 0, max: 0 },
+      medium: { min: 5, max: 10 },
+      high: { min: 10, max: 20 }
+    }
+
+    // Get range from tierConfig or use defaults
+    const configRanges = tierConfig?.threatEncounterBonus || defaultRanges
+    const range = configRanges[threatLevel] || defaultRanges[threatLevel] || { min: 0, max: 0 }
+
+    // If range is 0-0 (low threat), return 0 immediately
+    if (range.min === 0 && range.max === 0) {
+      return 0
+    }
+
+    // Use seeded random based on POI coordinates for deterministic bonus
+    const gameState = gameStateManager.getState()
+    const baseRng = SeededRandom.fromGameState(gameState || {})
+
+    // Create unique offset for this POI using its coordinates
+    const poiOffset = ((poi?.q || 0) * 1000) + ((poi?.r || 0) * 37) + 8887
+    const rng = new SeededRandom(baseRng.seed + poiOffset)
+
+    const bonus = range.min + rng.random() * (range.max - range.min)
+    debugLog('SALVAGE_ENCOUNTER', `Threat bonus (${threatLevel}): +${bonus.toFixed(1)}% (range: ${range.min}-${range.max})`)
+
+    return bonus
   }
 
   /**
@@ -225,9 +269,19 @@ export class SalvageController {
    * @returns {Object} Updated salvage state ready for continued salvaging
    */
   resetAfterCombat(salvageState, highAlertBonus = 0) {
+    const { slots, currentSlotIndex } = salvageState
+
+    // FIX: When an encounter triggers, attemptSalvage reveals the slot but does NOT
+    // increment currentSlotIndex. This causes a bug where the player can "continue
+    // salvaging" a slot that was already revealed. Advance the index if the current
+    // slot is already revealed.
+    const currentSlotRevealed = slots[currentSlotIndex]?.revealed === true
+    const newSlotIndex = currentSlotRevealed ? currentSlotIndex + 1 : currentSlotIndex
+
     return {
       ...salvageState,
       encounterTriggered: false,
+      currentSlotIndex: newSlotIndex,
       currentEncounterChance: salvageState.currentEncounterChance + highAlertBonus
     }
   }

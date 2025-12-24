@@ -1,3 +1,5 @@
+import { debugLog } from '../utils/debugLogger.js';
+
 /**
  * TacticalMapStateManager
  * Manages state for the tactical map / extraction run
@@ -143,6 +145,15 @@ class TacticalMapStateManager {
   setState(updates) {
     if (!this.isRunActive()) {
       throw new Error('[TacticalMapStateManager] Cannot update state - no run is active');
+    }
+
+    // Log if mapData is being modified (background change detection)
+    if (updates.mapData) {
+      const oldBg = this.state?.mapData?.backgroundIndex;
+      const newBg = updates.mapData?.backgroundIndex;
+      if (oldBg !== newBg) {
+        debugLog('RUN_STATE', '⚠️ TacticalMapStateManager: mapData.backgroundIndex changing!', { from: oldBg, to: newBg });
+      }
     }
 
     // Merge updates into current state

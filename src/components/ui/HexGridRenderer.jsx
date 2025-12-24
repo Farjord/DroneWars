@@ -9,6 +9,7 @@ import { axialToPixel, axialToDisplayLabel } from '../../utils/hexGrid.js';
 import { getShipHeadingForWaypoints } from '../../utils/hexHeadingUtils.js';
 import { Plus, Minus, RotateCcw } from 'lucide-react';
 import ShipIconRenderer from '../ships/ShipIconRenderer.jsx';
+import { debugLog } from '../../utils/debugLogger.js';
 import './HexGridRenderer.css';
 
 // Available tactical background images
@@ -119,6 +120,15 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
   const transformRef = useRef(null);
   const panRef = useRef({ x: 0, y: 0 }); // Track pan during drag without re-renders
   const lastHeadingRef = useRef(0); // Track last heading for persistence when stationary
+  const prevBgRef = useRef(backgroundIndex); // Track previous background for change detection
+
+  // Log background changes (using RUN_STATE category)
+  useEffect(() => {
+    if (prevBgRef.current !== backgroundIndex) {
+      debugLog('RUN_STATE', '⚠️ BACKGROUND CHANGED:', { from: prevBgRef.current, to: backgroundIndex });
+      prevBgRef.current = backgroundIndex;
+    }
+  }, [backgroundIndex]);
 
   // Background selected from prop (persisted in mapData)
   // Fallback to first background if index invalid
