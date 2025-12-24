@@ -827,4 +827,165 @@ describe('ActionProcessor', () => {
       });
     });
   });
+
+  // ========================================
+  // PROCESS FORCE WIN (DEV ONLY)
+  // ========================================
+
+  describe('processForceWin (DEV)', () => {
+    it('should damage all opponent ship sections to hull 0', () => {
+      // Setup: Mock game state with healthy opponent sections
+      const mockPlayer2 = {
+        shipSections: {
+          bridge: { hull: 10, maxHull: 10 },
+          powerCell: { hull: 10, maxHull: 10 },
+          droneControlHub: { hull: 10, maxHull: 10 }
+        }
+      };
+
+      mockGameStateManager.getState.mockReturnValue({
+        player2: mockPlayer2,
+        winner: null
+      });
+
+      // Mock addLogEntry for this test
+      mockGameStateManager.addLogEntry = vi.fn();
+
+      // Mock checkWinCondition to avoid side effects
+      vi.spyOn(actionProcessor, 'checkWinCondition').mockReturnValue(null);
+
+      // ACT: Call processForceWin
+      actionProcessor.processForceWin();
+
+      // ASSERT: All sections damaged to 0
+      const updateCall = mockGameStateManager.updatePlayerState.mock.calls.find(
+        call => call[0] === 'player2'
+      );
+      expect(updateCall).toBeDefined();
+      expect(updateCall[1].shipSections.bridge.hull).toBe(0);
+      expect(updateCall[1].shipSections.powerCell.hull).toBe(0);
+      expect(updateCall[1].shipSections.droneControlHub.hull).toBe(0);
+    });
+
+    it('should call checkWinCondition after damaging sections', () => {
+      const checkWinSpy = vi.spyOn(actionProcessor, 'checkWinCondition').mockReturnValue(null);
+
+      mockGameStateManager.getState.mockReturnValue({
+        player2: {
+          shipSections: {
+            bridge: { hull: 10 },
+            powerCell: { hull: 10 },
+            droneControlHub: { hull: 10 }
+          }
+        },
+        winner: null
+      });
+
+      // Mock addLogEntry for this test
+      mockGameStateManager.addLogEntry = vi.fn();
+
+      actionProcessor.processForceWin();
+
+      expect(checkWinSpy).toHaveBeenCalled();
+    });
+
+    it('should add log entry for dev action', () => {
+      mockGameStateManager.addLogEntry = vi.fn();
+
+      mockGameStateManager.getState.mockReturnValue({
+        player2: {
+          shipSections: {
+            bridge: { hull: 10 },
+            powerCell: { hull: 10 },
+            droneControlHub: { hull: 10 }
+          }
+        },
+        winner: null
+      });
+
+      // Mock checkWinCondition to avoid side effects
+      vi.spyOn(actionProcessor, 'checkWinCondition').mockReturnValue(null);
+
+      actionProcessor.processForceWin();
+
+      expect(mockGameStateManager.addLogEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actionType: 'DEV_ACTION',
+          source: 'Force Win'
+        }),
+        'forceWin'
+      );
+    });
+  });
+
+  // ========================================
+  // CLEARQUEUE - FULL CLEANUP TESTS
+  // ========================================
+  // These tests verify clearQueue() properly cleans up all state
+  // to prevent memory leaks and stale state between games.
+
+  describe('clearQueue() - Full Cleanup', () => {
+    it('should clear listeners array', () => {
+      // Add some listeners
+      actionProcessor.listeners = [() => {}, () => {}, () => {}];
+
+      actionProcessor.clearQueue();
+
+      expect(actionProcessor.listeners).toEqual([]);
+    });
+
+    it('should clear pending animation arrays', () => {
+      // Populate pending animation arrays
+      actionProcessor.pendingActionAnimations = [{ type: 'move' }, { type: 'attack' }];
+      actionProcessor.pendingSystemAnimations = [{ type: 'system1' }];
+
+      actionProcessor.clearQueue();
+
+      expect(actionProcessor.pendingActionAnimations).toEqual([]);
+      expect(actionProcessor.pendingSystemAnimations).toEqual([]);
+    });
+
+    it('should clear pending state fields', () => {
+      // Populate pending state fields
+      actionProcessor.pendingStateUpdate = { player1: {}, player2: {} };
+      actionProcessor.pendingFinalState = { player1: {}, player2: {} };
+
+      actionProcessor.clearQueue();
+
+      expect(actionProcessor.pendingStateUpdate).toBeNull();
+      expect(actionProcessor.pendingFinalState).toBeNull();
+    });
+
+    it('should still clear action queue and locks (existing behavior)', () => {
+      // Add actions to queue
+      actionProcessor.actionQueue = [
+        { type: 'action1', resolve: vi.fn(), reject: vi.fn() },
+        { type: 'action2', resolve: vi.fn(), reject: vi.fn() }
+      ];
+      actionProcessor.actionLocks.action = true;
+      actionProcessor.isProcessing = true;
+
+      actionProcessor.clearQueue();
+
+      expect(actionProcessor.actionQueue).toEqual([]);
+      expect(actionProcessor.actionLocks.action).toBe(false);
+      expect(actionProcessor.isProcessing).toBe(false);
+    });
+
+    it('should reject pending actions when clearing', () => {
+      // Add actions with reject callbacks
+      const reject1 = vi.fn();
+      const reject2 = vi.fn();
+      actionProcessor.actionQueue = [
+        { type: 'action1', resolve: vi.fn(), reject: reject1 },
+        { type: 'action2', resolve: vi.fn(), reject: reject2 }
+      ];
+
+      actionProcessor.clearQueue();
+
+      // Both reject callbacks should be called
+      expect(reject1).toHaveBeenCalledWith(expect.any(Error));
+      expect(reject2).toHaveBeenCalledWith(expect.any(Error));
+    });
+  });
 });

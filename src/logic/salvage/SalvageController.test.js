@@ -606,4 +606,129 @@ describe('SalvageController', () => {
       expect(loot.salvageItems).toHaveLength(1)
     })
   })
+
+  // ========================================
+  // RESET AFTER COMBAT TESTS
+  // ========================================
+
+  describe('resetAfterCombat()', () => {
+    let postCombatSalvageState
+
+    beforeEach(() => {
+      // Simulate salvage state after an encounter was triggered
+      postCombatSalvageState = {
+        poi: { q: 2, r: -1, poiData: { name: 'Test POI', encounterChance: 20, rewardType: 'ORDNANCE_PACK' } },
+        zone: 'mid',
+        totalSlots: 3,
+        slots: [
+          { type: 'card', content: { cardId: 'card_1', cardName: 'Card 1', rarity: 'Common' }, revealed: true },
+          { type: 'salvageItem', content: { itemId: 'salvage_1', name: 'Item 1', creditValue: 50 }, revealed: true },
+          { type: 'card', content: { cardId: 'card_2', cardName: 'Card 2', rarity: 'Rare' }, revealed: false }
+        ],
+        currentSlotIndex: 2,
+        currentEncounterChance: 35,
+        encounterTriggered: true  // Combat was triggered
+      }
+    })
+
+    it('should reset encounterTriggered to false', () => {
+      // EXPLANATION: After winning combat, player should be able to continue
+      // salvaging. The encounterTriggered flag must be reset to allow this.
+
+      const result = salvageController.resetAfterCombat(postCombatSalvageState)
+
+      expect(result.encounterTriggered).toBe(false)
+    })
+
+    it('should preserve all revealed slots', () => {
+      // EXPLANATION: Previously revealed slots should remain visible after
+      // returning from combat so player can see their discovered loot.
+
+      const result = salvageController.resetAfterCombat(postCombatSalvageState)
+
+      expect(result.slots[0].revealed).toBe(true)
+      expect(result.slots[1].revealed).toBe(true)
+      expect(result.slots[2].revealed).toBe(false)
+    })
+
+    it('should preserve currentSlotIndex position', () => {
+      // EXPLANATION: Don't advance past slots that weren't salvaged.
+      // Player should continue from where they left off.
+
+      const result = salvageController.resetAfterCombat(postCombatSalvageState)
+
+      expect(result.currentSlotIndex).toBe(2)
+    })
+
+    it('should preserve slot contents', () => {
+      // EXPLANATION: The actual loot content in each slot should not be modified.
+
+      const result = salvageController.resetAfterCombat(postCombatSalvageState)
+
+      expect(result.slots[0].content.cardId).toBe('card_1')
+      expect(result.slots[1].content.creditValue).toBe(50)
+    })
+
+    it('should add high alert bonus to encounter chance', () => {
+      // EXPLANATION: If returning to a POI that triggered an encounter,
+      // the encounter chance should increase by the high alert bonus.
+
+      const highAlertBonus = 10  // 10% bonus
+
+      const result = salvageController.resetAfterCombat(postCombatSalvageState, highAlertBonus)
+
+      expect(result.currentEncounterChance).toBe(45)  // 35 + 10
+    })
+
+    it('should use zero bonus when no high alert bonus provided', () => {
+      // EXPLANATION: If no bonus is provided, encounter chance should stay the same.
+
+      const result = salvageController.resetAfterCombat(postCombatSalvageState)
+
+      expect(result.currentEncounterChance).toBe(35)
+    })
+
+    it('should preserve POI data', () => {
+      // EXPLANATION: The POI reference should remain intact for proper handling.
+
+      const result = salvageController.resetAfterCombat(postCombatSalvageState)
+
+      expect(result.poi.q).toBe(2)
+      expect(result.poi.r).toBe(-1)
+      expect(result.poi.poiData.name).toBe('Test POI')
+    })
+
+    it('should preserve zone information', () => {
+      // EXPLANATION: Zone is used for various calculations and should be preserved.
+
+      const result = salvageController.resetAfterCombat(postCombatSalvageState)
+
+      expect(result.zone).toBe('mid')
+    })
+
+    it('should preserve totalSlots', () => {
+      // EXPLANATION: Total slots determines when salvage is complete.
+
+      const result = salvageController.resetAfterCombat(postCombatSalvageState)
+
+      expect(result.totalSlots).toBe(3)
+    })
+
+    it('should handle fully looted POI (all slots revealed)', () => {
+      // EXPLANATION: When all slots are revealed, player should still be able
+      // to return to salvage screen to collect, just can't salvage more.
+
+      const fullyLootedState = {
+        ...postCombatSalvageState,
+        currentSlotIndex: 3,
+        slots: postCombatSalvageState.slots.map(s => ({ ...s, revealed: true }))
+      }
+
+      const result = salvageController.resetAfterCombat(fullyLootedState)
+
+      expect(result.encounterTriggered).toBe(false)
+      expect(result.currentSlotIndex).toBe(3)
+      expect(result.slots.every(s => s.revealed)).toBe(true)
+    })
+  })
 })

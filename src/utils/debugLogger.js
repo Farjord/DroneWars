@@ -20,7 +20,7 @@ const DEBUG_CONFIG = {
   // Category-specific toggles
   categories: {
     DEPLOYMENT: false,          // Drone deployment tracking
-    DRAG_DROP_DEPLOY: true,     // Drag-and-drop deployment debugging (enabled for investigation)
+    DRAG_DROP_DEPLOY: false,    // Drag-and-drop deployment debugging
     DRONE_SELECTION: false,     // Drone selection phase and data
     DECK_SELECTION: false,      // Deck selection phase
     PLACEMENT: false,           // Ship placement phase
@@ -50,12 +50,12 @@ const DEBUG_CONFIG = {
     CASCADE_LOOP: false,        // Cascade loop iteration details (DISABLED - already debugged)
     VALIDATION: false,           // State validation and reconciliation (ENABLED for checkpoint testing)
     TIMING: false,               // High-resolution timing milestones with timestamps (ENABLED for pass notification debugging)
-    ANNOUNCE_TRACE: true,       // Announcement queueing and playback tracing - shows exact source of each announcement
+    ANNOUNCE_TRACE: false,      // Announcement queueing and playback tracing
     SUBTITLE_CALC: false,       // Phase animation subtitle calculation (DISABLED - already debugged)
     FIRST_PLAYER: false,        // First player determination and seeded random (DISABLED for clean logs)
     SHIP_ABILITY: false,        // Ship ability execution and turn ending
-    EXTRACTION: false,          // Single-player extraction mode (hangar, tactical map, deployment)
-    ENCOUNTER: true,           // Random encounter rolls and combat triggers
+    EXTRACTION: true,           // Single-player extraction mode (hangar, tactical map, deployment)
+    ENCOUNTER: false,          // Random encounter rolls and combat triggers
     QUICK_DEPLOY: false,         // Quick deployment validation and selection (ENABLED for phase chaos investigation)
     PHASE_FLOW: false,           // Phase transitions and announcements (ENABLED for phase chaos investigation)
     TICKER: false,              // News ticker message generation and data flow
@@ -65,9 +65,10 @@ const DEBUG_CONFIG = {
     ASSET_PRELOAD: false,         // Asset preloading and splash screen timing
     SP_COMBAT: true,              // Single-player combat init, abandon, and state transitions
     DECK_BUILDER: false,           // Deck builder save, toast, and validation debugging
-    SALVAGE_LOOT: true,           // PoI loot distribution: slot count, card count, rarities, positions
-    SALVAGE_ENCOUNTER: true,      // Encounter rolls: chance, roll value, increase per salvage
-    DRAG_PERF: true,              // Drag performance investigation: cursor position, re-renders, state updates
+    SALVAGE_LOOT: false,          // PoI loot distribution: slot count, card count, rarities, positions
+    SALVAGE_ENCOUNTER: false,     // Encounter rolls: chance, roll value, increase per salvage
+    DRAG_PERF: false,             // Drag performance investigation: cursor position, re-renders, state updates
+    MODE_TRANSITION: true,        // All mode transitions: hangar <-> tacticalMap <-> inGame (with trigger source)
 
     // Effect System Refactoring - Modular Processor Logging
     EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)
@@ -78,9 +79,9 @@ const DEBUG_CONFIG = {
     TARGETING_ROUTING: false,    // Targeting router decisions (DISABLED - Phase 2 complete and verified)
     TARGETING_PROCESSING: false, // Targeting processor execution (DISABLED - Phase 2 complete and verified)
     TARGETING_FALLBACK: false,   // Targeting falling back to monolithic function (DISABLED - no fallbacks expected)
-    LANE_TARGETING: true,        // Lane-targeting cards and filtered drone effects (affectedDroneIds)
-    TACTICAL_ITEMS: true,         // Tactical item panel clicks and usage
-    CARD_DISCARD: true,           // Card discard after play - tracks instanceId and hand filtering
+    LANE_TARGETING: false,       // Lane-targeting cards and filtered drone effects (affectedDroneIds)
+    TACTICAL_ITEMS: false,        // Tactical item panel clicks and usage
+    CARD_DISCARD: false,          // Card discard after play - tracks instanceId and hand filtering
   }
 };
 

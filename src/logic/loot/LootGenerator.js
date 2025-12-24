@@ -26,7 +26,11 @@ class LootGenerator {
    * @returns {Object} { cards: [...], credits: number }
    */
   openPack(packType, tier = 1, zone = null, tierConfig = null, seed = Date.now()) {
-    const config = packTypes[packType];
+    // Normalize CREDITS to CREDITS_PACK for backwards compatibility
+    // EncounterController may use 'CREDITS' as fallback for ambush encounters
+    const normalizedPackType = packType === 'CREDITS' ? 'CREDITS_PACK' : packType;
+
+    const config = packTypes[normalizedPackType];
     if (!config) {
       console.warn(`Unknown pack type: ${packType}`);
       return { cards: [], credits: 0 };
@@ -65,9 +69,8 @@ class LootGenerator {
       }
     }
 
-    // Sort by rarity: Common → Uncommon → Rare → Mythic (best last)
-    const rarityOrder = { Common: 0, Uncommon: 1, Rare: 2, Mythic: 3 };
-    cards.sort((a, b) => (rarityOrder[a.rarity] || 0) - (rarityOrder[b.rarity] || 0));
+    // Shuffle cards using seeded RNG for deterministic randomization
+    const shuffledCards = this._shuffleArray(cards, rng);
 
     // Roll credits (from config range) and apply zone multiplier
     const { min: cMin, max: cMax } = config.creditsRange;
@@ -78,7 +81,7 @@ class LootGenerator {
     // Generate salvage item instead of flat credits
     const salvageItem = generateSalvageItemFromValue(creditValue, rng);
 
-    return { cards, salvageItem };
+    return { cards: shuffledCards, salvageItem };
   }
 
   /**
@@ -661,12 +664,11 @@ class LootGenerator {
       }
     }
 
-    // Sort by rarity: Common → Uncommon → Rare → Mythic (best last)
-    const rarityOrder = { Common: 0, Uncommon: 1, Rare: 2, Mythic: 3 };
-    cards.sort((a, b) => (rarityOrder[a.rarity] || 0) - (rarityOrder[b.rarity] || 0));
+    // Shuffle cards using seeded RNG for deterministic randomization
+    const shuffledCards = this._shuffleArray(cards, rng);
 
     // NO salvage/credits for shop packs - only return cards
-    return { cards };
+    return { cards: shuffledCards };
   }
 }
 

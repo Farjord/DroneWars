@@ -144,8 +144,9 @@ const HangarScreen = () => {
   /**
    * Generate hex grid with fixed dimensions and integrated map icons
    * Grid is always 26x18, hex size scales to fit container
+   * totalDeployments is used to vary positions on each return from tactical map
    */
-  const generateHexGrid = (containerWidth, containerHeight, gameSeed, activeCount = 6) => {
+  const generateHexGrid = (containerWidth, containerHeight, gameSeed, activeCount = 6, totalDeployments = 0) => {
     // Calculate hex size to fit width (primary constraint)
     const hexWidth = containerWidth / (GRID_COLS + 0.5); // +0.5 for stagger offset
 
@@ -210,7 +211,8 @@ const HangarScreen = () => {
     );
 
     // Use seeded random for deterministic placement
-    const rng = new SeededRandom(gameSeed || 12345);
+    // Include totalDeployments to vary positions on each return from tactical map
+    const rng = new SeededRandom((gameSeed || 12345) + (totalDeployments * 1000));
     const shuffled = rng.shuffle(zoneCells.length > 0 ? zoneCells : validCells);
     const selected = [];
 
@@ -244,13 +246,17 @@ const HangarScreen = () => {
   };
 
   /**
-   * Generate hex grid on mount (uses game seed for deterministic placement)
+   * Generate hex grid on mount (uses game seed + total deployments for varied placement)
    */
   useEffect(() => {
     const generateGrid = () => {
       if (mapContainerRef.current && singlePlayerProfile?.gameSeed) {
         const { width, height } = mapContainerRef.current.getBoundingClientRect();
-        const gridData = generateHexGrid(width, height, singlePlayerProfile.gameSeed, 6);
+        // Total deployments = completed runs + lost/abandoned runs
+        // This ensures hex positions change each time player returns from tactical map
+        const totalDeployments = (singlePlayerProfile?.stats?.runsCompleted || 0) +
+                                 (singlePlayerProfile?.stats?.runsLost || 0);
+        const gridData = generateHexGrid(width, height, singlePlayerProfile.gameSeed, 6, totalDeployments);
         setHexGridData({ ...gridData, width, height });
       }
     };
@@ -259,7 +265,9 @@ const HangarScreen = () => {
     const timer = setTimeout(generateGrid, 100);
 
     return () => clearTimeout(timer);
-  }, [singlePlayerProfile?.gameSeed]);
+  }, [singlePlayerProfile?.gameSeed,
+      singlePlayerProfile?.stats?.runsCompleted,
+      singlePlayerProfile?.stats?.runsLost]);
 
   /**
    * Check for intro tutorial on mount (only shows for new games)
@@ -276,7 +284,7 @@ const HangarScreen = () => {
 
   /**
    * Generate 6 procedural maps on mount (one per icon)
-   * Uses game seed for deterministic generation
+   * Uses game seed + total deployments for deterministic but fresh maps each return
    */
   useEffect(() => {
     if (!singlePlayerProfile?.gameSeed) return;
@@ -284,11 +292,16 @@ const HangarScreen = () => {
     const generateMapsForSession = () => {
       const maps = [];
       const { gameSeed } = singlePlayerProfile;
+      // Total deployments = completed runs + lost/abandoned runs
+      // This ensures maps regenerate each time player returns from tactical map
+      const totalDeployments = (singlePlayerProfile?.stats?.runsCompleted || 0) +
+                               (singlePlayerProfile?.stats?.runsLost || 0);
 
       // Generate 6 maps using mapGenerator utility
       // For now, all Tier 1 and GENERIC type (can mix later)
       for (let i = 0; i < 6; i++) {
-        const mapSeed = gameSeed + i; // Unique seed per map
+        // Offset seed by totalDeployments * 1000 to ensure unique maps each return
+        const mapSeed = gameSeed + i + (totalDeployments * 1000);
         const mapType = 'GENERIC';  // For MVP: all generic, later add type selection
         const mapData = generateMapData(mapSeed, 1, mapType); // Tier 1, GENERIC type
         maps.push({
@@ -301,7 +314,9 @@ const HangarScreen = () => {
     };
 
     generateMapsForSession();
-  }, [singlePlayerProfile]);
+  }, [singlePlayerProfile?.gameSeed,
+      singlePlayerProfile?.stats?.runsCompleted,
+      singlePlayerProfile?.stats?.runsLost]);
 
   /**
    * Generate boss hex cell after hex grid is generated
@@ -974,6 +989,14 @@ const HangarScreen = () => {
 
   // Deploy handler - shows deploying screen first
   const handleDeploy = (slotId, map, entryGateId = 0, quickDeploy = null) => {
+    debugLog('MODE_TRANSITION', '=== MODE: hangar -> tacticalMap (initiating) ===', {
+      trigger: 'user_action',
+      source: 'HangarScreen.handleDeploy',
+      detail: 'Deploy button clicked',
+      slotId,
+      mapTier: map?.tier,
+      mapName: map?.name
+    });
     debugLog('EXTRACTION', '🚀 handleDeploy called', {
       slotId,
       mapName: map?.name,

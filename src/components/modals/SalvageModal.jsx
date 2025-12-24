@@ -55,7 +55,8 @@ function SalvageModal({
     slots,
     currentSlotIndex,
     currentEncounterChance,
-    encounterTriggered
+    encounterTriggered,
+    returnedFromCombat
   } = salvageState;
 
   const poiData = poi?.poiData || {};
@@ -244,6 +245,28 @@ function SalvageModal({
                   <p style={{ margin: 0, fontSize: '12px', color: 'var(--modal-text-secondary)', textTransform: 'uppercase' }}>Alert</p>
                   <p style={{ margin: 0, fontWeight: 700, color: 'var(--modal-danger)' }}>
                     HOSTILE CONTACT DETECTED
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Post-Combat Return Message */}
+          {returnedFromCombat && !encounterTriggered && (
+            <div className="dw-modal-info-box" style={{
+              marginTop: '16px',
+              '--modal-theme': '#f59e0b',
+              '--modal-theme-bg': 'rgba(245, 158, 11, 0.1)',
+              '--modal-theme-border': 'rgba(245, 158, 11, 0.3)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Shield size={28} style={{ color: '#f59e0b' }} />
+                <div>
+                  <p style={{ margin: 0, fontSize: '12px', color: 'var(--modal-text-secondary)', textTransform: 'uppercase' }}>Combat Survived</p>
+                  <p style={{ margin: 0, fontWeight: 700, color: '#f59e0b' }}>
+                    {allSlotsRevealed
+                      ? 'All loot revealed. Collect and evacuate!'
+                      : 'Location is now on HIGH ALERT. Increased encounter risk!'}
                   </p>
                 </div>
               </div>

@@ -1848,6 +1848,38 @@ setAnimationManager(animationManager) {
   }
 
   /**
+   * Process Force Win (DEV ONLY)
+   * Damages all opponent sections and triggers win condition check.
+   * Routes through ActionProcessor to avoid architecture violations.
+   */
+  processForceWin() {
+    const currentState = this.gameStateManager.getState();
+
+    // Log the dev action
+    this.gameStateManager.addLogEntry({
+      player: 'SYSTEM',
+      actionType: 'DEV_ACTION',
+      source: 'Force Win',
+      target: 'Opponent Ship',
+      outcome: 'All opponent ship sections destroyed (DEV)'
+    }, 'forceWin');
+
+    // Damage all opponent sections to hull 0
+    const damagedSections = {
+      bridge: { ...currentState.player2.shipSections.bridge, hull: 0 },
+      powerCell: { ...currentState.player2.shipSections.powerCell, hull: 0 },
+      droneControlHub: { ...currentState.player2.shipSections.droneControlHub, hull: 0 }
+    };
+
+    this.gameStateManager.updatePlayerState('player2', {
+      shipSections: damagedSections
+    });
+
+    // Use ActionProcessor's own checkWinCondition (proper callbacks)
+    this.checkWinCondition();
+  }
+
+  /**
    * Process turn transition
    */
   async processTurnTransition(payload) {
@@ -4026,6 +4058,17 @@ setAnimationManager(animationManager) {
     });
 
     this.isProcessing = false;
+
+    // Clear event listeners to prevent stale subscriptions
+    this.listeners = [];
+
+    // Clear pending animation queues
+    this.pendingActionAnimations = [];
+    this.pendingSystemAnimations = [];
+
+    // Clear pending state updates
+    this.pendingStateUpdate = null;
+    this.pendingFinalState = null;
   }
 }
 

@@ -39,6 +39,26 @@ class SinglePlayerCombatInitializer {
    * @returns {boolean} Success status
    */
   async initiateCombat(aiId, currentRunState, quickDeployId = null, isBlockade = false) {
+    // CRITICAL: Check abort flag - prevents combat from starting if run is being abandoned
+    if (gameStateManager.get('runAbandoning')) {
+      debugLog('SP_COMBAT', '🚫 ABORT: Combat init blocked - run is being abandoned', {
+        runAbandoningFlag: true,
+        hasCurrentRunState: !!currentRunState
+      });
+      return false;
+    }
+
+    // CRITICAL: Hard abort if run state is missing (except for boss combat which doesn't need mapData)
+    if (!currentRunState || (!currentRunState.mapData && !currentRunState.isBossCombat)) {
+      debugLog('SP_COMBAT', '🚫 ABORT: Combat init blocked - run state is null/invalid', {
+        hasCurrentRunState: !!currentRunState,
+        hasMapData: !!currentRunState?.mapData,
+        isBossCombat: !!currentRunState?.isBossCombat
+      });
+      console.error('[SP Combat] Attempted to initiate combat with null run state - aborting');
+      return false;
+    }
+
     debugLog('SP_COMBAT', '=== Initiating Single Player Combat ===');
     debugLog('SP_COMBAT', 'AI ID:', aiId);
     debugLog('SP_COMBAT', 'Quick Deploy ID:', quickDeployId);
@@ -57,6 +77,14 @@ class SinglePlayerCombatInitializer {
     };
     debugLog('SP_COMBAT', 'Pre-existing game state (check for residual):', preExistingState);
 
+    // Log pending state from run state for debugging consecutive combat issues
+    debugLog('SP_COMBAT', '=== Pre-Combat State Verification ===', {
+      pendingPOICombat: !!currentRunState?.pendingPOICombat,
+      pendingSalvageLoot: !!currentRunState?.pendingSalvageLoot,
+      pendingSalvageState: !!currentRunState?.pendingSalvageState,
+      pendingPOICombatData: currentRunState?.pendingPOICombat
+    });
+
     // Flag and cleanup residual state (e.g., from Force Win or unexpected exits)
     if (preExistingState.gameActive || preExistingState.turnPhase) {
       debugLog('SP_COMBAT', '⚠️ WARNING: Residual state detected - cleaning up before new combat');
@@ -67,6 +95,14 @@ class SinglePlayerCombatInitializer {
 
       // Clean up residual state to prevent the new game from getting stuck
       gameStateManager.resetGameState();
+
+      // Clear animation queue to prevent stale animations blocking new game
+      // (e.g., old roundAnnouncement blocking new one via deduplication)
+      if (gameStateManager.actionProcessor?.phaseAnimationQueue) {
+        gameStateManager.actionProcessor.phaseAnimationQueue.clear();
+        debugLog('SP_COMBAT', '✅ Animation queue cleared');
+      }
+
       debugLog('SP_COMBAT', '✅ Residual state cleaned up');
     }
 
@@ -255,6 +291,14 @@ class SinglePlayerCombatInitializer {
       };
 
       // 8. Apply state to GameStateManager
+      debugLog('MODE_TRANSITION', '=== MODE: tacticalMap -> inGame ===', {
+        trigger: 'async_event',
+        source: 'SinglePlayerCombatInitializer.initiateCombat',
+        detail: 'Combat state fully initialized, transitioning to inGame',
+        aiId,
+        isBlockade,
+        hasQuickDeploy: !!quickDeployId
+      });
       gameStateManager.setState(combatGameState, 'SP_COMBAT_INITIALIZED');
 
       // DIAGNOSTIC: Verify state was set correctly

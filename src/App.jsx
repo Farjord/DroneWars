@@ -2177,6 +2177,12 @@ const App = ({ phaseAnimationQueue }) => {
    * Uses ExtractionController to abandon the run and return to hangar.
    */
   const handleConfirmAbandonRun = () => {
+    debugLog('MODE_TRANSITION', '=== MODE: current -> failedRunScreen (abandon via modal) ===', {
+      trigger: 'user_action',
+      source: 'App.handleConfirmAbandonRun',
+      detail: 'User confirmed abandon in global abandon modal',
+      currentAppState: appState
+    });
     setShowAbandonRunModal(false);
     ExtractionController.abandonRun(); // Goes to hangar, not main menu
   };
@@ -2192,19 +2198,10 @@ const App = ({ phaseAnimationQueue }) => {
   /**
    * HANDLE FORCE WIN (DEV)
    * Instantly wins combat by damaging all opponent ship sections.
-   * Triggers the natural win condition flow (WinnerModal, loot, etc.)
+   * Routes through ActionProcessor to avoid architecture violations.
    */
   const handleForceWin = () => {
-    forceWinCombat({
-      player1State: localPlayerState,
-      player2State: opponentPlayerState,
-      updatePlayerState,
-      callbacks: {
-        logCallback: addLogEntry,
-        setWinnerCallback: setWinner,
-        showWinnerModalCallback: setShowWinnerModal
-      }
-    });
+    forceWinCombat();
   };
 
   /**

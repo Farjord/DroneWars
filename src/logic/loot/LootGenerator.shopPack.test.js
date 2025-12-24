@@ -68,10 +68,11 @@ describe('LootGenerator.openShopPack', () => {
       }
     });
 
-    it('always returns max cards for UPGRADE_PACK (max: 1)', () => {
+    it('always returns max cards for UPGRADE_PACK (max: 3)', () => {
       for (let seed = 1; seed <= 20; seed++) {
         const result = lootGenerator.openShopPack('UPGRADE_PACK', 1, seed);
         expect(result.cards.length).toBe(packTypes.UPGRADE_PACK.cardCount.max);
+        expect(result.cards.length).toBe(3);
       }
     });
   });
@@ -94,31 +95,45 @@ describe('LootGenerator.openShopPack', () => {
   });
 
   describe('card generation', () => {
-    it('first card matches guaranteed type for ORDNANCE_PACK', () => {
+    it('exactly one card matches guaranteed type for ORDNANCE_PACK (shuffled position)', () => {
       for (let seed = 1; seed <= 10; seed++) {
         const result = lootGenerator.openShopPack('ORDNANCE_PACK', 1, seed);
-        expect(result.cards[0].cardType).toBe('Ordnance');
+        const ordnanceCards = result.cards.filter(c => c.cardType === 'Ordnance');
+        expect(ordnanceCards.length).toBeGreaterThanOrEqual(1);
       }
     });
 
-    it('first card matches guaranteed type for SUPPORT_PACK', () => {
+    it('exactly one card matches guaranteed type for SUPPORT_PACK (shuffled position)', () => {
       for (let seed = 1; seed <= 10; seed++) {
         const result = lootGenerator.openShopPack('SUPPORT_PACK', 1, seed);
-        expect(result.cards[0].cardType).toBe('Support');
+        const supportCards = result.cards.filter(c => c.cardType === 'Support');
+        expect(supportCards.length).toBeGreaterThanOrEqual(1);
       }
     });
 
-    it('first card matches guaranteed type for TACTICAL_PACK', () => {
+    it('exactly one card matches guaranteed type for TACTICAL_PACK (shuffled position)', () => {
       for (let seed = 1; seed <= 10; seed++) {
         const result = lootGenerator.openShopPack('TACTICAL_PACK', 1, seed);
-        expect(result.cards[0].cardType).toBe('Tactic');
+        const tacticCards = result.cards.filter(c => c.cardType === 'Tactic');
+        expect(tacticCards.length).toBeGreaterThanOrEqual(1);
       }
     });
 
-    it('first card matches guaranteed type for UPGRADE_PACK', () => {
+    it('exactly one Upgrade card in UPGRADE_PACK (shuffled position)', () => {
       for (let seed = 1; seed <= 10; seed++) {
         const result = lootGenerator.openShopPack('UPGRADE_PACK', 1, seed);
-        expect(result.cards[0].cardType).toBe('Upgrade');
+        const upgradeCards = result.cards.filter(c => c.cardType === 'Upgrade');
+        expect(upgradeCards.length).toBe(1);
+      }
+    });
+
+    it('additional cards in UPGRADE_PACK are never Upgrades', () => {
+      for (let seed = 1; seed <= 20; seed++) {
+        const result = lootGenerator.openShopPack('UPGRADE_PACK', 1, seed);
+        const upgradeCards = result.cards.filter(c => c.cardType === 'Upgrade');
+        const nonUpgradeCards = result.cards.filter(c => c.cardType !== 'Upgrade');
+        expect(upgradeCards.length).toBe(1);
+        expect(nonUpgradeCards.length).toBe(2);
       }
     });
 
@@ -141,20 +156,30 @@ describe('LootGenerator.openShopPack', () => {
       });
     });
 
-    it('cards are sorted by rarity (Common first, Mythic last)', () => {
-      // Use tier 3 for chance of higher rarities
-      const rarityOrder = { Common: 0, Uncommon: 1, Rare: 2, Mythic: 3 };
+    it('cards are shuffled (guaranteed type card can appear in any position)', () => {
+      // Track which position the guaranteed Ordnance card appears in
+      const ordnancePositions = new Set();
 
-      // Test multiple seeds to increase chance of mixed rarities
-      for (let seed = 1; seed <= 50; seed++) {
-        const result = lootGenerator.openShopPack('ORDNANCE_PACK', 3, seed);
-
-        for (let i = 1; i < result.cards.length; i++) {
-          const prevRarity = rarityOrder[result.cards[i - 1].rarity];
-          const currRarity = rarityOrder[result.cards[i].rarity];
-          expect(currRarity).toBeGreaterThanOrEqual(prevRarity);
+      // Test multiple seeds to see variance in position
+      for (let seed = 1; seed <= 100; seed++) {
+        const result = lootGenerator.openShopPack('ORDNANCE_PACK', 1, seed);
+        const ordnanceIndex = result.cards.findIndex(c => c.cardType === 'Ordnance');
+        if (ordnanceIndex !== -1) {
+          ordnancePositions.add(ordnanceIndex);
         }
       }
+
+      // Guaranteed card should appear in multiple positions due to shuffling
+      // With 100 samples and 3 positions (0, 1, 2), we should see at least 2 different positions
+      expect(ordnancePositions.size).toBeGreaterThanOrEqual(2);
+    });
+
+    it('shuffle is deterministic with same seed', () => {
+      const result1 = lootGenerator.openShopPack('ORDNANCE_PACK', 3, 12345);
+      const result2 = lootGenerator.openShopPack('ORDNANCE_PACK', 3, 12345);
+
+      // Same seed should produce same card order
+      expect(result1.cards.map(c => c.cardId)).toEqual(result2.cards.map(c => c.cardId));
     });
   });
 

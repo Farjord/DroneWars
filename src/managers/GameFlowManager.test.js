@@ -591,4 +591,71 @@ describe('GameFlowManager - Sequential Phases', () => {
       // This unit test confirms PhaseManager has the data ready for broadcasting
     });
   });
+
+  // ========================================
+  // RESET - FULL CLEANUP TESTS
+  // ========================================
+  // These tests verify GameFlowManager.reset() properly cleans up all state
+  // to prevent memory leaks and stale state between games.
+
+  describe('reset() - Full Cleanup', () => {
+    beforeEach(() => {
+      gameFlowManager = new GameFlowManager();
+      gameFlowManager.phaseManager = new PhaseManager(createMockGameStateManager(), 'host');
+      gameFlowManager.listeners = [];
+    });
+
+    it('should clear listeners array', () => {
+      // Add some listeners
+      gameFlowManager.listeners = [() => {}, () => {}, () => {}];
+
+      gameFlowManager.reset();
+
+      expect(gameFlowManager.listeners).toEqual([]);
+    });
+
+    it('should reset isInCheckpointCascade', () => {
+      // Set to true to simulate in-progress cascade
+      gameFlowManager.isInCheckpointCascade = true;
+
+      gameFlowManager.reset();
+
+      expect(gameFlowManager.isInCheckpointCascade).toBe(false);
+    });
+
+    it('should call phaseManager.reset() if available', () => {
+      // Spy on phaseManager.reset
+      const resetSpy = vi.fn();
+      gameFlowManager.phaseManager = { reset: resetSpy };
+
+      gameFlowManager.reset();
+
+      expect(resetSpy).toHaveBeenCalled();
+    });
+
+    it('should handle reset when phaseManager is null', () => {
+      // phaseManager may be null if not initialized
+      gameFlowManager.phaseManager = null;
+
+      // Should not throw
+      expect(() => gameFlowManager.reset()).not.toThrow();
+    });
+
+    it('should still reset existing fields (existing behavior)', () => {
+      // Set fields to non-default values
+      gameFlowManager.currentPhase = 'action';
+      gameFlowManager.gameStage = 'roundLoop';
+      gameFlowManager.roundNumber = 5;
+      gameFlowManager.isProcessingAutomaticPhase = true;
+      gameFlowManager._quickDeployExecutedThisRound = true;
+
+      gameFlowManager.reset();
+
+      expect(gameFlowManager.currentPhase).toBe('preGame');
+      expect(gameFlowManager.gameStage).toBe('preGame');
+      expect(gameFlowManager.roundNumber).toBe(0);
+      expect(gameFlowManager.isProcessingAutomaticPhase).toBe(false);
+      expect(gameFlowManager._quickDeployExecutedThisRound).toBe(false);
+    });
+  });
 });

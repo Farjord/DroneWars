@@ -218,6 +218,7 @@ vi.mock('../../managers/GameStateManager.js', () => ({
   default: {
     getState: vi.fn(),
     setState: vi.fn(),
+    get: vi.fn(),
     subscribe: vi.fn(() => () => {}),
     getTacticalItemCount: vi.fn().mockReturnValue(0)
   }

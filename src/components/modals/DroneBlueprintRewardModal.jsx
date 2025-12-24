@@ -15,11 +15,15 @@ import './DroneBlueprintRewardModal.css';
 
 function DroneBlueprintRewardModal({ blueprint, onAccept, show }) {
   const [isRevealed, setIsRevealed] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [isRarityVisible, setIsRarityVisible] = useState(false);
 
   // Reset state when modal is shown
   useEffect(() => {
     if (show) {
       setIsRevealed(false);
+      setIsAnimating(false);
+      setIsRarityVisible(false);
     }
   }, [show]);
 
@@ -28,6 +32,11 @@ function DroneBlueprintRewardModal({ blueprint, onAccept, show }) {
     if (show && !isRevealed) {
       const timer = setTimeout(() => {
         setIsRevealed(true);
+        setIsAnimating(true);
+        // Show rarity badge after 300ms delay
+        setTimeout(() => setIsRarityVisible(true), 300);
+        // Animation lasts 0.8s (card flip) + 0.4s (rarity reveal)
+        setTimeout(() => setIsAnimating(false), 1200);
       }, 1000);
       return () => clearTimeout(timer);
     }
@@ -58,13 +67,15 @@ function DroneBlueprintRewardModal({ blueprint, onAccept, show }) {
         onClick={e => e.stopPropagation()}
         style={{
           '--modal-theme': '#a855f7',
+          '--modal-theme-light': 'rgba(168, 85, 247, 0.7)',
           '--modal-theme-bg': 'rgba(168, 85, 247, 0.08)',
-          '--modal-theme-border': 'rgba(168, 85, 247, 0.4)'
+          '--modal-theme-border': 'rgba(168, 85, 247, 0.4)',
+          '--modal-theme-glow': 'rgba(168, 85, 247, 0.15)'
         }}
       >
         {/* Header */}
         <div className="dw-modal-header" style={{ borderBottomColor: 'rgba(168, 85, 247, 0.3)' }}>
-          <div className="dw-modal-header-icon" style={{ background: 'linear-gradient(135deg, #a855f7, #7c3aed)' }}>
+          <div className="dw-modal-header-icon drone-blueprint-star-icon">
             <Star size={28} />
           </div>
           <div className="dw-modal-header-info">
@@ -95,7 +106,12 @@ function DroneBlueprintRewardModal({ blueprint, onAccept, show }) {
                 {/* Rarity badge */}
                 <div
                   className="drone-blueprint-rarity"
-                  style={{ color: rarityColor }}
+                  style={{
+                    color: rarityColor,
+                    opacity: isRarityVisible ? 1 : 0,
+                    transform: isRarityVisible ? 'translateY(0)' : 'translateY(10px)',
+                    transition: 'opacity 0.4s ease-out, transform 0.4s ease-out'
+                  }}
                 >
                   {rarity || 'Common'}
                 </div>
@@ -108,12 +124,10 @@ function DroneBlueprintRewardModal({ blueprint, onAccept, show }) {
         {isRevealed && (
           <div className="dw-modal-footer">
             <button
-              className="dw-modal-button dw-modal-button--primary"
+              className="dw-btn-success"
               onClick={handleAccept}
-              style={{
-                background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-                minWidth: '200px'
-              }}
+              disabled={isAnimating}
+              style={{ minWidth: '200px' }}
             >
               ACCEPT
             </button>

@@ -234,6 +234,8 @@ class PhaseAnimationQueue {
     this.isPlayingAnimations = false;
     this.currentAnimation = null;
     this.emit('playbackStateChanged', false);
+    // Note: Do NOT clear listeners here - UI subscriptions (App.jsx) are set up
+    // on mount and must persist across game resets. Clearing them breaks animations.
   }
 
   /**

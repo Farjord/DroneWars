@@ -273,6 +273,12 @@ describe('DroneBlueprintRewardModal', () => {
 
       revealCard();
 
+      // Wait for animation to complete (isAnimating becomes false after 1200ms from reveal)
+      // Total time: 1000ms reveal delay + 1200ms animation = 2200ms
+      act(() => {
+        vi.advanceTimersByTime(1200);
+      });
+
       expect(screen.getByRole('button', { name: /accept/i })).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole('button', { name: /accept/i }));

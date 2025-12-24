@@ -102,7 +102,7 @@ const generateDecorativeHexes = (mapRadius, hexes, extraRings = 8) => {
  * @param {string} shipId - Ship ID for icon selection (default: 'SHIP_001')
  * @param {number} currentHexIndex - Current hex index within waypoint path (for heading calculation)
  */
-function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], currentWaypointIndex = null, previewPath = null, isScanning = false, insertionGate = null, lootedPOIs = [], highAlertPOIs = [], shipId = 'SHIP_001', currentHexIndex = 0 }) {
+function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], currentWaypointIndex = null, previewPath = null, isScanning = false, insertionGate = null, lootedPOIs = [], fledPOIs = [], highAlertPOIs = [], shipId = 'SHIP_001', currentHexIndex = 0 }) {
   // Track viewport dimensions for dynamic sizing
   const [viewportSize, setViewportSize] = useState({
     width: window.innerWidth,
@@ -364,6 +364,16 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
   };
 
   /**
+   * Check if a POI hex was fled from (escape or evade)
+   * @param {Object} hex - Hex to check
+   * @returns {boolean} Is fled POI
+   */
+  const isFledPOI = (hex) => {
+    if (hex.type !== 'poi') return false;
+    return fledPOIs.some(p => p.q === hex.q && p.r === hex.r);
+  };
+
+  /**
    * Get fill color/pattern based on hex type and zone
    * @param {Object} hex - Hex object
    * @returns {string} CSS color or pattern URL
@@ -532,6 +542,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
     const isPlayer = isPlayerHex(hex);
     const isPOI = hex.type === 'poi';
     const isLooted = isPOI && isLootedPOI(hex);
+    const isFled = isPOI && isFledPOI(hex);
     const isHighAlert = isPOI && isHighAlertPOI(hex);
     const isGate = hex.type === 'gate';
     const isInsertion = isInsertionGate(hex);
@@ -539,14 +550,20 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
 
     // Build gate class name
     const gateClass = isInsertion ? 'hex-insertion-glow' : (isExtraction ? 'hex-extraction-glow' : '');
-    // POI class: looted POIs get dimmed, high alert gets red pulse, active POIs get normal glow
+    // POI class: high alert gets yellow pulse, fled gets red, looted gets green, active gets cyan glow
     let poiClass = '';
     if (isPOI) {
-      if (isLooted) {
-        poiClass = 'hex-poi-looted';
-      } else if (isHighAlert) {
+      if (isHighAlert) {
+        // High alert takes priority - player can return here
         poiClass = 'hex-poi-alert hex-poi-glow';
+      } else if (isFled) {
+        // Fled POI - red effect
+        poiClass = 'hex-poi-fled';
+      } else if (isLooted) {
+        // Successfully looted - green effect
+        poiClass = 'hex-poi-looted';
       } else {
+        // Active POI - cyan glow
         poiClass = 'hex-poi-glow';
       }
     }
@@ -578,6 +595,56 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
           stroke="none"
           className="hex-grid-overlay"
         />
+
+        {/* POI Status Icons - Show outcome indicators for visited POIs */}
+        {/* Looted POI - Green tick icon */}
+        {isPOI && isLooted && !isHighAlert && !isFled && (
+          <g className="poi-status-icon poi-status-looted">
+            <circle cx={x} cy={y} r={12} fill="rgba(34, 197, 94, 0.9)" />
+            <path
+              d={`M${x - 5} ${y} L${x - 1} ${y + 4} L${x + 6} ${y - 4}`}
+              stroke="white"
+              strokeWidth="2.5"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </g>
+        )}
+
+        {/* Fled POI - Red lock icon */}
+        {isPOI && isFled && !isHighAlert && (
+          <g className="poi-status-icon poi-status-fled">
+            <circle cx={x} cy={y} r={12} fill="rgba(239, 68, 68, 0.9)" />
+            {/* Lock body */}
+            <rect x={x - 4} y={y - 1} width={8} height={6} rx={1} fill="white" />
+            {/* Lock shackle */}
+            <path
+              d={`M${x - 3} ${y - 1} L${x - 3} ${y - 3} A 3 3 0 0 1 ${x + 3} ${y - 3} L${x + 3} ${y - 1}`}
+              stroke="white"
+              strokeWidth="2"
+              fill="none"
+              strokeLinecap="round"
+            />
+          </g>
+        )}
+
+        {/* High Alert POI - Yellow/orange warning icon */}
+        {isPOI && isHighAlert && (
+          <g className="poi-status-icon poi-status-alert">
+            <circle cx={x} cy={y} r={12} fill="rgba(245, 158, 11, 0.9)" />
+            <text
+              x={x}
+              y={y + 1}
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill="white"
+              fontSize="14"
+              fontWeight="bold"
+              fontFamily="'Exo', sans-serif"
+            >!</text>
+          </g>
+        )}
 
         {/* Path highlight glow - white for preview, green for confirmed, cyan for waypoints */}
         {highlighted && !isPlayer && (

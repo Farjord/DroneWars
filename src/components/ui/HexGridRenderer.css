@@ -126,24 +126,65 @@
   }
 }
 
-/* Looted POI - greyed out, no glow animation */
+/* Looted POI - green glow, successfully salvaged */
 .hex-poi-looted {
-  filter: grayscale(70%) brightness(0.6);
-  opacity: 0.7;
+  animation: looted-pulse 2.5s ease-in-out infinite;
 }
 
-/* High Alert POI - red pulsing glow (combat occurred here) */
+@keyframes looted-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.4));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(34, 197, 94, 0.7));
+  }
+}
+
+/* Fled POI - red glow, player escaped/evaded */
+.hex-poi-fled {
+  filter: brightness(0.8);
+  animation: fled-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes fled-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.4)) brightness(0.8);
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(239, 68, 68, 0.7)) brightness(0.8);
+  }
+}
+
+/* High Alert POI - yellow/orange pulsing glow (can return here) */
 .hex-poi-alert {
   animation: alert-pulse 1.5s ease-in-out infinite !important;
 }
 
 @keyframes alert-pulse {
   0%, 100% {
-    filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.6));
+    filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6));
   }
   50% {
-    filter: drop-shadow(0 0 16px rgba(239, 68, 68, 0.9));
+    filter: drop-shadow(0 0 16px rgba(245, 158, 11, 0.9));
   }
+}
+
+/* POI Status Icons */
+.poi-status-icon {
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+}
+
+.poi-status-looted circle {
+  filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.6));
+}
+
+.poi-status-fled circle {
+  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.6));
+}
+
+.poi-status-alert circle {
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.6));
 }
 
 /* Icons */

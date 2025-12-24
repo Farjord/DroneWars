@@ -278,7 +278,19 @@ class ExtractionController {
    * Player loses all collected loot, deck marked as MIA
    */
   abandonRun() {
+    // IMMEDIATELY signal abort - this must be the FIRST operation
+    // This allows async operations to detect the abort and cancel
+    gameStateManager.setState({ runAbandoning: true });
+
+    debugLog('MODE_TRANSITION', '=== MODE: current -> failedRunScreen (abandon) ===', {
+      trigger: 'user_action',
+      source: 'ExtractionController.abandonRun',
+      detail: 'Run abandoned, initiating failed run flow',
+      currentAppState: gameStateManager.get('appState')
+    });
+
     debugLog('SP_COMBAT', '=== ABANDON RUN START ===');
+    debugLog('SP_COMBAT', 'runAbandoning flag set to TRUE');
     debugLog('SP_COMBAT', 'Current state before abandon:', {
       appState: gameStateManager.get('appState'),
       turnPhase: gameStateManager.get('turnPhase'),
@@ -514,13 +526,19 @@ class ExtractionController {
    * which would violate the architecture pattern
    */
   completeFailedRunTransition() {
+    debugLog('MODE_TRANSITION', '=== MODE: failedRunScreen -> hangar ===', {
+      trigger: 'async_event',
+      source: 'ExtractionController.completeFailedRunTransition',
+      detail: 'Failed run screen animation complete, returning to hangar'
+    });
     debugLog('EXTRACTION', 'Completing failed run transition to hangar');
 
     gameStateManager.setState({
       showFailedRunScreen: false,
       failedRunType: null,
       failedRunIsStarterDeck: false,
-      appState: 'hangar'
+      appState: 'hangar',
+      runAbandoning: false  // Clear abort signaling flag
     });
   }
 
@@ -530,6 +548,11 @@ class ExtractionController {
    * ensuring TacticalMapScreen doesn't directly call gameStateManager.setState()
    */
   completeExtractionTransition() {
+    debugLog('MODE_TRANSITION', '=== MODE: tacticalMap -> hangar (extraction complete) ===', {
+      trigger: 'async_event',
+      source: 'ExtractionController.completeExtractionTransition',
+      detail: 'Extraction screen animation complete, returning to hangar'
+    });
     debugLog('EXTRACTION', 'Completing extraction transition to hangar');
 
     gameStateManager.setState({ appState: 'hangar' });

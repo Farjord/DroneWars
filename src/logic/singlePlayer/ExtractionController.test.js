@@ -839,7 +839,8 @@ describe('ExtractionController', () => {
           showFailedRunScreen: false,
           failedRunType: null,
           failedRunIsStarterDeck: false,
-          appState: 'hangar'
+          appState: 'hangar',
+          runAbandoning: false
         });
       });
 

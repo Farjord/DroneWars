@@ -25,6 +25,7 @@ import { calculateExtractedCredits } from '../logic/singlePlayer/ExtractionContr
 import { getTacticalItemById } from '../data/tacticalItemData.js';
 import { generateRandomShopPack, getPackCostForTier } from '../data/cardPackData.js';
 import lootGenerator from '../logic/loot/LootGenerator.js';
+import aiPhaseProcessor from './AIPhaseProcessor.js';
 // PhaseManager dependency removed - using direct phase checks
 
 class GameStateManager {
@@ -376,6 +377,17 @@ class GameStateManager {
   setState(updates, eventType = 'STATE_UPDATE', context = null) {
     const prevState = { ...this.state };
 
+    // CRITICAL: Log appState transitions for extraction mode debugging
+    if (updates.appState && updates.appState !== this.state.appState) {
+      debugLog('EXTRACTION', 'appState transition', {
+        from: this.state.appState,
+        to: updates.appState,
+        hasRunState: !!this.state.currentRunState,
+        runAbandoning: this.state.runAbandoning,
+        eventType
+      });
+    }
+
     // Extract caller information from stack trace for detailed logging
     const stack = new Error().stack;
     const stackLines = stack ? stack.split('\n') : [];
@@ -536,7 +548,7 @@ class GameStateManager {
     }
 
     const validTransitions = {
-      null: ['deckSelection', 'preGame'],
+      null: ['deckSelection', 'preGame', 'roundInitialization'],  // roundInitialization added for SP combat init
       'preGame': ['deckSelection', 'droneSelection'],
       'deckSelection': ['droneSelection'],
       'droneSelection': ['placement'],
@@ -1288,9 +1300,16 @@ class GameStateManager {
     // Clear ActionProcessor queue to prevent stale actions
     this.actionProcessor.clearQueue();
 
-    // Reset GameFlowManager to clear phase state
+    // Reset GameFlowManager to clear phase state (includes PhaseManager.reset())
     if (this.gameFlowManager) {
       this.gameFlowManager.reset();
+    }
+
+    // Clean up AIPhaseProcessor (clear timers, unsubscribe from state changes)
+    // This prevents stale subscriptions and timers from affecting the next game
+    if (aiPhaseProcessor?.cleanup) {
+      aiPhaseProcessor.cleanup();
+      debugLog('STATE_SYNC', '✅ AIPhaseProcessor cleaned up');
     }
 
     debugLog('STATE_SYNC', '✅ GAME END: Returned to menu state, all singletons cleared');
@@ -2429,6 +2448,17 @@ class GameStateManager {
    * @param {Object} quickDeploy - Optional quick deploy template to use for first combat
    */
   startRun(shipSlotId, mapTier, entryGateId = 0, preGeneratedMap = null, quickDeploy = null) {
+    debugLog('EXTRACTION', '=== START RUN ===', {
+      shipSlotId,
+      mapTier,
+      entryGateId,
+      hasPreGeneratedMap: !!preGeneratedMap,
+      hasQuickDeploy: !!quickDeploy,
+      currentAppState: this.state.appState,
+      hasExistingRun: !!this.state.currentRunState,
+      runAbandoning: this.state.runAbandoning
+    });
+
     const shipSlot = this.state.singlePlayerShipSlots.find(s => s.id === shipSlotId);
     if (!shipSlot) {
       throw new Error('Invalid ship slot ID');
@@ -2590,6 +2620,7 @@ class GameStateManager {
       hexesExplored: [{ q: startingGate.q, r: startingGate.r }], // Start with insertion gate
       poisVisited: [],
       lootedPOIs: [],  // Track POIs that have been looted (prevents re-looting)
+      fledPOIs: [],  // Track POIs where player fled/escaped (escape or evade)
       highAlertPOIs: [],  // Track POIs in high alert state after combat victory (increased encounter chance)
       combatsWon: 0,
       combatsLost: 0,
@@ -2597,11 +2628,28 @@ class GameStateManager {
 
       // Quick deploy for first combat (consumed after use)
       pendingQuickDeploy: quickDeploy || null,
+
+      // Blockade flags - MUST be initialized false for fresh runs
+      // These track post-blockade extraction state and must not persist across runs
+      pendingBlockadeExtraction: false,
+      blockadeCleared: false,
     };
+
+    debugLog('MODE_TRANSITION', '=== MODE: hangar -> tacticalMap ===', {
+      trigger: 'async_event',
+      source: 'GameStateManager.startRun',
+      detail: 'Deploying screen completed, run initialized',
+      shipSlotId,
+      mapTier,
+      mapName: mapData.name
+    });
 
     this.setState({
       currentRunState: runState,
-      appState: 'tacticalMap'
+      appState: 'tacticalMap',
+      // CRITICAL: Clear stale flags from previous runs to prevent race conditions
+      // runAbandoning must be false or SinglePlayerCombatInitializer will reject combat init
+      runAbandoning: false,
     });
     console.log('Run started:', runState);
     console.log('Map generated:', mapData.name, `(${mapData.poiCount} PoIs, ${mapData.gateCount} gates)`);
@@ -2614,54 +2662,64 @@ class GameStateManager {
    */
   resetGameState() {
     debugLog('SP_COMBAT', '=== RESET GAME STATE ===');
-    this.setState({
-      // Game flow state
-      gameActive: false,
-      testMode: false,
-      gameSeed: null,
-      turnPhase: null,
-      gameStage: 'preGame',
-      roundNumber: 0,
-      turn: 1,
-      currentPlayer: 'player1',
-      actionsTakenThisTurn: 0,
-      firstPlayerOfRound: null,
-      firstPasserOfPreviousRound: null,
-      firstPlayerOverride: null,
 
-      // Player states
-      player1: null,
-      player2: null,
+    // Set context to GameFlowManager since resetGameState legitimately resets
+    // game orchestration state (this avoids ownership violations when called
+    // from CombatOutcomeProcessor.finalizeLootCollection or other paths)
+    this._updateContext = 'GameFlowManager';
 
-      // Pass state
-      passInfo: {
-        firstPasser: null,
-        player1Passed: false,
-        player2Passed: false
-      },
+    try {
+      this.setState({
+        // Game flow state
+        gameActive: false,
+        testMode: false,
+        gameSeed: null,
+        turnPhase: null,
+        gameStage: 'preGame',
+        roundNumber: 0,
+        turn: 1,
+        currentPlayer: 'player1',
+        actionsTakenThisTurn: 0,
+        firstPlayerOfRound: null,
+        firstPasserOfPreviousRound: null,
+        firstPlayerOverride: null,
 
-      // Combat state
-      attackInProgress: null,
-      lastCombatResult: null,
-      winner: null,
-      singlePlayerEncounter: null,
-      currentRunState: null,
+        // Player states
+        player1: null,
+        player2: null,
 
-      // UI state - ship placement
-      placedSections: [],
-      opponentPlacedSections: [],
-      unplacedSections: [],
+        // Pass state
+        passInfo: {
+          firstPasser: null,
+          player1Passed: false,
+          player2Passed: false
+        },
 
-      // UI state - game
-      gameLog: [],
-      commitments: {},
-      shieldsToAllocate: 0,
-      opponentShieldsToAllocate: 0,
+        // Combat state
+        attackInProgress: null,
+        lastCombatResult: null,
+        winner: null,
+        singlePlayerEncounter: null,
+        currentRunState: null,
 
-      // Drone selection state
-      droneSelectionPool: [],
-      droneSelectionTrio: []
-    });
+        // UI state - ship placement
+        placedSections: [],
+        opponentPlacedSections: [],
+        unplacedSections: [],
+
+        // UI state - game
+        gameLog: [],
+        commitments: {},
+        shieldsToAllocate: 0,
+        opponentShieldsToAllocate: 0,
+
+        // Drone selection state
+        droneSelectionPool: [],
+        droneSelectionTrio: []
+      }, 'GAME_STATE_RESET');
+    } finally {
+      this._updateContext = null;
+    }
   }
 
   /**
@@ -2856,9 +2914,11 @@ class GameStateManager {
     console.log('Reputation awarded:', lastRunSummary.reputation);
 
     // Clear run state and set summary for display at hangar
+    // Include singlePlayerProfile so React subscribers see the stats change
     this.setState({
       currentRunState: null,
-      lastRunSummary
+      lastRunSummary,
+      singlePlayerProfile: { ...this.state.singlePlayerProfile }
     });
 
     debugLog('SP_COMBAT', '=== END RUN COMPLETE ===', {

@@ -123,7 +123,7 @@ describe('SinglePlayerCombatInitializer - isBlockade flag', () => {
     // This test verifies the fix for the bug where winning a blockade combat
     // returns player to tactical map instead of auto-extracting.
 
-    const mockRunState = { shipSlotId: 0, currentHull: 30 };
+    const mockRunState = { shipSlotId: 0, currentHull: 30, mapData: {} };
 
     // ACT: Call initiateCombat with isBlockade = true
     await SinglePlayerCombatInitializer.initiateCombat(
@@ -143,7 +143,7 @@ describe('SinglePlayerCombatInitializer - isBlockade flag', () => {
   });
 
   it('should store isBlockade: false in singlePlayerEncounter when not passed', async () => {
-    const mockRunState = { shipSlotId: 0, currentHull: 30 };
+    const mockRunState = { shipSlotId: 0, currentHull: 30, mapData: {} };
 
     // ACT: Call without isBlockade parameter (should default to false)
     await SinglePlayerCombatInitializer.initiateCombat(
@@ -172,7 +172,7 @@ describe('SinglePlayerCombatInitializer - isBlockade flag', () => {
     // EXPLANATION: Storing isBlockadeCombat in currentRunState provides a
     // fallback if singlePlayerEncounter is cleared before victory processing.
 
-    const mockRunState = { shipSlotId: 0, currentHull: 30 };
+    const mockRunState = { shipSlotId: 0, currentHull: 30, mapData: {} };
 
     // ACT: Call initiateCombat with isBlockade = true
     await SinglePlayerCombatInitializer.initiateCombat(
@@ -194,7 +194,7 @@ describe('SinglePlayerCombatInitializer - isBlockade flag', () => {
   it('should NOT set currentRunState.isBlockadeCombat when isBlockade=false', async () => {
     // EXPLANATION: Regular (non-blockade) combat should NOT have isBlockadeCombat flag.
 
-    const mockRunState = { shipSlotId: 0, currentHull: 30 };
+    const mockRunState = { shipSlotId: 0, currentHull: 30, mapData: {} };
 
     // ACT: Call initiateCombat with isBlockade = false (default)
     await SinglePlayerCombatInitializer.initiateCombat(
@@ -279,6 +279,7 @@ describe('SinglePlayerCombatInitializer - placedSections lane assignments', () =
     const mockRunState = {
       shipSlotId: 0,
       currentHull: 30,
+      mapData: {},
       shipSections: {
         powerCell: { id: 'POWERCELL_001', name: 'Power Cell', type: 'Power Cell', lane: 'l', hull: 10, maxHull: 10 },
         bridge: { id: 'BRIDGE_001', name: 'Bridge', type: 'Bridge', lane: 'm', hull: 10, maxHull: 10 },
@@ -310,7 +311,8 @@ describe('SinglePlayerCombatInitializer - placedSections lane assignments', () =
 
     const mockRunState = {
       shipSlotId: 0,
-      currentHull: 30
+      currentHull: 30,
+      mapData: {}
       // No shipSections
     };
 
@@ -367,10 +369,11 @@ describe('SinglePlayerCombatInitializer - residual state cleanup', () => {
       transitionToPhase: vi.fn().mockResolvedValue(undefined)
     };
 
-    // Mock actionProcessor
+    // Mock actionProcessor (include clear for animation queue cleanup)
     gameStateManager.actionProcessor = {
       phaseAnimationQueue: {
-        queueAnimation: vi.fn()
+        queueAnimation: vi.fn(),
+        clear: vi.fn()
       },
       setAIPhaseProcessor: vi.fn()
     };
@@ -406,7 +409,7 @@ describe('SinglePlayerCombatInitializer - residual state cleanup', () => {
     // Mock getState() for parts that use it
     gameStateManager.getState = vi.fn(() => residualState);
 
-    const mockRunState = { shipSlotId: 0, currentHull: 30 };
+    const mockRunState = { shipSlotId: 0, currentHull: 30, mapData: {} };
 
     // ACT: Start new combat
     await SinglePlayerCombatInitializer.initiateCombat(
@@ -443,7 +446,7 @@ describe('SinglePlayerCombatInitializer - residual state cleanup', () => {
     // Mock getState() for parts that use it
     gameStateManager.getState = vi.fn(() => cleanState);
 
-    const mockRunState = { shipSlotId: 0, currentHull: 30 };
+    const mockRunState = { shipSlotId: 0, currentHull: 30, mapData: {} };
 
     // ACT: Start new combat
     await SinglePlayerCombatInitializer.initiateCombat(
@@ -455,5 +458,123 @@ describe('SinglePlayerCombatInitializer - residual state cleanup', () => {
 
     // ASSERT: resetGameState should NOT be called when state is clean
     expect(resetGameStateSpy).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * TDD Tests: Animation queue cleanup
+ * BUG FIX: Stale roundAnnouncement in animation queue blocks new game.
+ * PhaseAnimationQueue.clear() must be called when residual state is detected.
+ */
+describe('SinglePlayerCombatInitializer - animation queue cleanup', () => {
+  let resetGameStateSpy;
+  let setStateSpy;
+  let clearQueueSpy;
+  let originalGetState;
+  let originalGet;
+
+  beforeEach(() => {
+    // Spy on resetGameState and setState
+    resetGameStateSpy = vi.spyOn(gameStateManager, 'resetGameState').mockImplementation(() => {});
+    setStateSpy = vi.spyOn(gameStateManager, 'setState').mockImplementation(() => {});
+    originalGetState = gameStateManager.getState;
+    originalGet = gameStateManager.get;
+
+    // Mock getAIPersonality to return a valid AI
+    vi.spyOn(SinglePlayerCombatInitializer, 'getAIPersonality').mockReturnValue({
+      name: 'Test AI',
+      difficulty: 1,
+      shipId: 'SHIP_001',
+      decklist: [],
+      dronePool: [],
+      modes: ['extraction'],
+      shipDeployment: { placement: ['bridge', 'powerCell', 'droneControlHub'] }
+    });
+
+    // Mock gameFlowManager to avoid phase transition calls
+    gameStateManager.gameFlowManager = {
+      processRoundInitialization: vi.fn().mockResolvedValue('deployment'),
+      transitionToPhase: vi.fn().mockResolvedValue(undefined)
+    };
+
+    // Create spy for animation queue clear
+    clearQueueSpy = vi.fn();
+
+    // Mock actionProcessor with phaseAnimationQueue.clear
+    gameStateManager.actionProcessor = {
+      phaseAnimationQueue: {
+        queueAnimation: vi.fn(),
+        clear: clearQueueSpy
+      },
+      setAIPhaseProcessor: vi.fn()
+    };
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    gameStateManager.getState = originalGetState;
+    gameStateManager.get = originalGet;
+  });
+
+  it('should clear animation queue when residual state is detected', async () => {
+    // EXPLANATION: Stale animations from a previous game (e.g., Force Win) can block
+    // the new game's roundAnnouncement due to deduplication. Clearing the queue
+    // ensures the new game can start fresh.
+
+    const residualState = {
+      appState: 'inGame',
+      gameActive: true,  // Residual from Force Win
+      turnPhase: 'deployment',  // Residual from Force Win
+      singlePlayerShipSlots: [
+        { id: 0, shipId: 'SHIP_001', decklist: [], activeDronePool: [] }
+      ]
+    };
+
+    // Mock get() to return residual state values
+    gameStateManager.get = vi.fn((key) => residualState[key]);
+    gameStateManager.getState = vi.fn(() => residualState);
+
+    const mockRunState = { shipSlotId: 0, currentHull: 30, mapData: {} };
+
+    // ACT: Start new combat with residual state
+    await SinglePlayerCombatInitializer.initiateCombat(
+      'Rogue Scout Pattern',
+      mockRunState,
+      null,
+      false
+    );
+
+    // ASSERT: Animation queue should be cleared
+    expect(clearQueueSpy).toHaveBeenCalled();
+  });
+
+  it('should NOT clear animation queue when no residual state exists', async () => {
+    // EXPLANATION: When starting combat fresh, animation queue doesn't need clearing.
+
+    const cleanState = {
+      appState: 'tacticalMap',
+      gameActive: false,  // No residual
+      turnPhase: null,  // No residual
+      singlePlayerShipSlots: [
+        { id: 0, shipId: 'SHIP_001', decklist: [], activeDronePool: [] }
+      ]
+    };
+
+    // Mock get() to return clean state values
+    gameStateManager.get = vi.fn((key) => cleanState[key]);
+    gameStateManager.getState = vi.fn(() => cleanState);
+
+    const mockRunState = { shipSlotId: 0, currentHull: 30, mapData: {} };
+
+    // ACT: Start new combat with clean state
+    await SinglePlayerCombatInitializer.initiateCombat(
+      'Rogue Scout Pattern',
+      mockRunState,
+      null,
+      false
+    );
+
+    // ASSERT: Animation queue should NOT be cleared
+    expect(clearQueueSpy).not.toHaveBeenCalled();
   });
 });

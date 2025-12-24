@@ -159,3 +159,65 @@ describe('EncounterController - getEncounterChance', () => {
     })
   })
 })
+
+// ========================================
+// ENCOUNTER CONTROLLER - checkMovementEncounter TESTS
+// ========================================
+// Tests for movement encounter behavior with different hex types
+
+describe('EncounterController - checkMovementEncounter', () => {
+  // ========================================
+  // POI HEX HANDLING - MOVEMENT ENCOUNTERS SHOULD NOT TRIGGER
+  // ========================================
+
+  describe('PoI hex handling', () => {
+    it('should return null for POI hexes (POIs use salvage encounter system)', () => {
+      // EXPLANATION: Movement encounters should NEVER trigger on POI hexes.
+      // POIs have their own encounter system via salvage - when the player
+      // clicks "Salvage", THAT is when encounters are rolled.
+      // Movement encounters on POIs cause bugs:
+      // 1. Premature encounters before salvage modal appears
+      // 2. Double modal display after combat (AI loot + empty salvage)
+
+      const poiHex = {
+        type: 'poi',
+        q: 2,
+        r: -1,
+        zone: 'mid',
+        poiData: {
+          name: 'Test POI',
+          encounterChance: 100,  // 100% would guarantee trigger if checked
+          rewardType: 'ORDNANCE_PACK'
+        }
+      }
+
+      const result = EncounterController.checkMovementEncounter(poiHex, mockTierConfig)
+
+      // Should return null - NO encounter on POI hex during movement
+      expect(result).toBeNull()
+    })
+
+    it('should return null for POI hexes regardless of zone encounter rates', () => {
+      // EXPLANATION: Even if the map has high zone encounter rates,
+      // POI hexes should still return null for movement encounters.
+      // The POI encounter chance is only used by the salvage system.
+
+      const poiHex = {
+        type: 'poi',
+        q: 0,
+        r: 0,
+        zone: 'core',  // Core zone typically has highest encounter rates
+        poiData: {
+          name: 'Core POI',
+          encounterChance: 50,
+          rewardType: 'ORDNANCE_PACK'
+        }
+      }
+
+      const result = EncounterController.checkMovementEncounter(poiHex, mockTierConfig)
+
+      // Should still return null - POIs don't have movement encounters
+      expect(result).toBeNull()
+    })
+  })
+})

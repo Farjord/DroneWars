@@ -214,6 +214,22 @@ export class SalvageController {
   isFullyLooted(salvageState) {
     return salvageState.currentSlotIndex >= salvageState.totalSlots
   }
+
+  /**
+   * Reset salvage state after combat victory
+   * Clears encounterTriggered flag and optionally applies high alert bonus
+   * Used to restore salvage screen after winning a combat triggered during salvage
+   * @param {Object} salvageState - Current salvage state (with encounterTriggered: true)
+   * @param {number} highAlertBonus - Optional high alert bonus to add to encounter chance (0-15)
+   * @returns {Object} Updated salvage state ready for continued salvaging
+   */
+  resetAfterCombat(salvageState, highAlertBonus = 0) {
+    return {
+      ...salvageState,
+      encounterTriggered: false,
+      currentEncounterChance: salvageState.currentEncounterChance + highAlertBonus
+    }
+  }
 }
 
 export default new SalvageController()

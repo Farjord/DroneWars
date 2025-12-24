@@ -240,6 +240,22 @@ describe('PhaseAnimationQueue', () => {
       expect(queue.getCurrentAnimation()).toBe(null);
     });
 
+    it('should preserve listeners when clear is called', () => {
+      // UI subscriptions (App.jsx) are set up on mount and must persist
+      // across game resets. Clearing them breaks animations.
+      queue.on('animationStarted', () => {});
+      queue.on('animationEnded', () => {});
+      queue.on('complete', () => {});
+
+      const listenerCountBefore = queue.listeners.size;
+      expect(listenerCountBefore).toBeGreaterThan(0);
+
+      queue.clear();
+
+      // Listeners should NOT be cleared - they persist across resets
+      expect(queue.listeners.size).toBe(listenerCountBefore);
+    });
+
     it('BUG: should stop playback when clear is called', async () => {
       // EXPLANATION: clear() sets currentAnimation to null but playNext() continues
       // executing asynchronously, causing "Cannot read properties of null" error.

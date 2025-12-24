@@ -101,10 +101,17 @@ class CombatOutcomeProcessor {
     const salvageLoot = lootGenerator.generateCombatSalvage(enemyDeck, enemyTier, aiDifficulty);
     debugLog('SP_COMBAT', 'Generated salvage loot:', salvageLoot);
 
-    // 2b. Check for pending salvage loot from PoI encounter (when combat was triggered during salvage)
-    // This combines salvage loot with combat rewards into a single LootRevealModal
+    // 2b. Check for pending salvage loot from PoI encounter
+    // When combat was triggered during salvage (fromSalvage: true):
+    //   - DON'T combine loot - POI loot stays separate for salvage screen
+    //   - DON'T clear pendingSalvageLoot - it's needed when returning to salvage modal
+    // When fromSalvage is false/undefined:
+    //   - Combine loot as before (legacy behavior for regular POI combat)
     const pendingSalvageLoot = currentRunState.pendingSalvageLoot;
-    if (pendingSalvageLoot) {
+    const isFromSalvage = currentRunState?.pendingPOICombat?.fromSalvage === true;
+
+    if (pendingSalvageLoot && !isFromSalvage) {
+      // Legacy behavior: combine loot for non-salvage combat
       debugLog('SP_COMBAT', 'Combining with pending salvage loot:', pendingSalvageLoot);
 
       // Prepend salvage cards (PoI loot first, then combat loot)
@@ -123,6 +130,8 @@ class CombatOutcomeProcessor {
       }
 
       debugLog('SP_COMBAT', 'Combined loot:', salvageLoot);
+    } else if (isFromSalvage) {
+      debugLog('SP_COMBAT', 'Combat from salvage - keeping POI loot separate for salvage screen');
     }
 
     // 3. Check for drone blueprint POI reward
@@ -143,12 +152,14 @@ class CombatOutcomeProcessor {
     }
 
     // 4. Update run state with hull (but NOT loot yet - that happens after reveal)
+    // When fromSalvage: keep pendingSalvageLoot for later collection on salvage screen
+    // When not fromSalvage: clear it since we already combined with combat loot
     const updatedRunState = {
       ...currentRunState,
       shipSections: updatedShipSections,
       currentHull: currentHull,
       combatsWon: (currentRunState.combatsWon || 0) + 1,
-      pendingSalvageLoot: null  // Clear after combining with combat loot
+      pendingSalvageLoot: isFromSalvage ? currentRunState.pendingSalvageLoot : null
     };
 
     // 5. Store pending loot and enter loot reveal state
@@ -183,6 +194,12 @@ class CombatOutcomeProcessor {
     debugLog('SP_COMBAT', 'Loot to add:', loot);
 
     const currentRunState = gameStateManager.getState().currentRunState || {};
+
+    // Log pendingPOICombat state for debugging consecutive combat issues
+    debugLog('SP_COMBAT', '=== Checking pendingPOICombat State ===', {
+      hadPendingPOICombat: !!currentRunState.pendingPOICombat,
+      pendingPOICombatData: currentRunState.pendingPOICombat
+    });
     const existingLoot = currentRunState.collectedLoot || [];
 
     // Convert loot.cards to collectedLoot format
@@ -253,13 +270,22 @@ class CombatOutcomeProcessor {
     // This triggers the special blueprint modal after regular salvage collection
     const pendingDroneBlueprint = fullState.pendingDroneBlueprint;
 
-    // Clear ALL combat state using centralized cleanup
-    gameStateManager.resetGameState();
+    // NOTE: resetGameState() is called conditionally below, NOT unconditionally here.
+    // For pending drone blueprints, we must NOT call resetGameState() because it clears
+    // player1/player2 states, which causes App.jsx to show "Initializing game board..."
+    // instead of keeping the combat screen visible for the blueprint modal.
 
     if (isBlockade) {
+      // Clear combat state for blockade case
+      gameStateManager.resetGameState();
       // Blockade victory - return to tactical map with flag to trigger extraction
       // This allows TacticalMapScreen to handle loot selection modal if needed
       // and properly show the run summary
+      debugLog('MODE_TRANSITION', '=== MODE: inGame -> tacticalMap (blockade victory) ===', {
+        trigger: 'auto_trigger',
+        source: 'CombatOutcomeProcessor.processVictory',
+        detail: 'Blockade cleared, returning for auto-extraction'
+      });
       debugLog('SP_COMBAT', '=== Blockade Victory - Returning to tactical map for extraction ===');
 
       gameStateManager.setState({
@@ -290,6 +316,15 @@ class CombatOutcomeProcessor {
       debugLog('SP_COMBAT', '=== Pending drone blueprint modal (staying in combat screen) ===');
     } else {
       // Regular POI/ambush combat without blueprint - return to tactical map
+      // Clear combat state for regular case
+      gameStateManager.resetGameState();
+
+      debugLog('MODE_TRANSITION', '=== MODE: inGame -> tacticalMap (combat victory) ===', {
+        trigger: 'auto_trigger',
+        source: 'CombatOutcomeProcessor.processVictory',
+        detail: 'Regular POI/ambush victory, returning to tactical map'
+      });
+
       gameStateManager.setState({
         appState: 'tacticalMap',
         currentRunState: updatedRunState,
@@ -373,6 +408,12 @@ class CombatOutcomeProcessor {
     gameStateManager.resetGameState();
 
     // 5. Show failed run loading screen (will transition to hangar on complete)
+    debugLog('MODE_TRANSITION', '=== MODE: inGame -> failedRunScreen (combat defeat) ===', {
+      trigger: 'auto_trigger',
+      source: 'CombatOutcomeProcessor.processDefeat',
+      detail: 'Ship destroyed in combat, showing failed run screen'
+    });
+
     gameStateManager.setState({
       showFailedRunScreen: true,
       failedRunType: 'combat',
@@ -520,6 +561,12 @@ class CombatOutcomeProcessor {
 
     // Clear combat state and return to hangar
     gameStateManager.resetGameState();
+
+    debugLog('MODE_TRANSITION', '=== MODE: inGame -> hangar (boss victory) ===', {
+      trigger: 'user_action',
+      source: 'CombatOutcomeProcessor.finalizeBossLootCollection',
+      detail: 'Boss defeated and loot collected, returning to hangar'
+    });
 
     gameStateManager.setState({
       appState: 'hangar',

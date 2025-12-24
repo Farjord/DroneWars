@@ -2317,6 +2317,18 @@ class GameFlowManager {
     this.isProcessingAutomaticPhase = false;
     this._quickDeployExecutedThisRound = false;
 
+    // Clear event listeners to prevent stale subscriptions
+    this.listeners = [];
+
+    // Reset checkpoint cascade flag
+    this.isInCheckpointCascade = false;
+
+    // Reset PhaseManager state (clears transitionHistory, passInfo, commitments)
+    if (this.phaseManager?.reset) {
+      this.phaseManager.reset();
+      debugLog('PHASE_TRANSITIONS', '✅ PhaseManager reset');
+    }
+
     this.emit('gameReset', {});
   }
 

@@ -137,7 +137,7 @@ class EncounterController {
 
     const reward = {
       salvageItem,
-      rewardType: poi.poiData?.rewardType || 'CREDITS',
+      rewardType: poi.poiData?.rewardType || 'CREDITS_PACK',
       poiName: poi.poiData?.name || 'Unknown Location'
     };
 
@@ -347,6 +347,12 @@ class EncounterController {
    * @returns {Object|null} Encounter result or null if no encounter
    */
   checkMovementEncounter(hex, tierConfig) {
+    // POI hexes should NEVER have movement encounters
+    // POIs use their own encounter system via salvage
+    if (hex.type === 'poi') {
+      return null;
+    }
+
     const detection = DetectionManager.getCurrentDetection();
 
     // Get map data from current run state for zone-based encounter chance
@@ -396,7 +402,7 @@ class EncounterController {
         aiData,  // Ship class, difficulty, escape damage
         reward: {
           credits: 50 + rng.randomInt(0, 51), // 50-100 credits for combat victory
-          rewardType: hex.type === 'poi' ? hex.poiData?.rewardType : 'CREDITS',
+          rewardType: hex.type === 'poi' ? hex.poiData?.rewardType : 'CREDITS_PACK',
           poiName: hex.type === 'poi' ? hex.poiData?.name : 'Intercept'
         },
         detection,

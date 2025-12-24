@@ -898,4 +898,124 @@ describe('PhaseManager', () => {
       // This is the atomicity guarantee
     });
   });
+
+  // ========================================
+  // RESET - GAME CLEANUP
+  // ========================================
+  // These tests verify PhaseManager.reset() clears all state between games
+  // to prevent memory leaks and stale state affecting subsequent games.
+
+  describe('reset() - Game Cleanup', () => {
+    let phaseManager;
+
+    beforeEach(() => {
+      phaseManager = new PhaseManager(createMockGameStateManager(), 'host');
+    });
+
+    it('should clear transitionHistory', () => {
+      // EXPLANATION: transitionHistory grows unbounded if not cleared between games.
+      // This causes memory leaks and potentially confusing debug output.
+      // Expected: reset() should clear transitionHistory to empty array
+
+      // Populate history with transitions
+      phaseManager.transitionToPhase('deployment');
+      phaseManager.transitionToPhase('action');
+      phaseManager.transitionToPhase('roundInitialization');
+
+      expect(phaseManager.transitionHistory.length).toBeGreaterThan(0);
+
+      // Reset
+      phaseManager.reset();
+
+      expect(phaseManager.transitionHistory).toEqual([]);
+    });
+
+    it('should reset isTransitioning to false', () => {
+      // EXPLANATION: If a transition was in progress when game ended,
+      // isTransitioning could be stuck at true, blocking all future transitions.
+      // Expected: reset() should set isTransitioning = false
+
+      // Simulate stuck transitioning state
+      phaseManager.isTransitioning = true;
+
+      phaseManager.reset();
+
+      expect(phaseManager.isTransitioning).toBe(false);
+    });
+
+    it('should clear phaseState to defaults', () => {
+      // EXPLANATION: phaseState holds turnPhase, roundNumber, etc.
+      // These must reset to initial values for a new game.
+      // Expected: reset() should restore phaseState to constructor defaults
+
+      // Modify phase state as if game progressed
+      phaseManager.phaseState.turnPhase = 'action';
+      phaseManager.phaseState.gameStage = 'roundLoop';
+      phaseManager.phaseState.roundNumber = 5;
+      phaseManager.phaseState.turn = 20;
+      phaseManager.phaseState.currentPlayer = 'player2';
+      phaseManager.phaseState.firstPlayerOfRound = 'player2';
+      phaseManager.phaseState.firstPasserOfPreviousRound = 'player1';
+
+      phaseManager.reset();
+
+      expect(phaseManager.phaseState.turnPhase).toBe('deckSelection');
+      expect(phaseManager.phaseState.gameStage).toBe('preGame');
+      expect(phaseManager.phaseState.roundNumber).toBe(1);
+      expect(phaseManager.phaseState.turn).toBe(1);
+      expect(phaseManager.phaseState.currentPlayer).toBe('player1');
+      expect(phaseManager.phaseState.firstPlayerOfRound).toBe(null);
+      expect(phaseManager.phaseState.firstPasserOfPreviousRound).toBe(null);
+    });
+
+    it('should clear hostLocalState', () => {
+      // EXPLANATION: hostLocalState holds pass info and commitments.
+      // Stale values could affect first round of next game.
+      // Expected: reset() should clear hostLocalState to initial values
+
+      // Populate host state
+      phaseManager.hostLocalState.passInfo.passed = true;
+      phaseManager.hostLocalState.passInfo.firstPasser = 'player2';
+      phaseManager.hostLocalState.commitments.placement = { completed: true };
+      phaseManager.hostLocalState.commitments.deployment = { completed: true };
+
+      phaseManager.reset();
+
+      expect(phaseManager.hostLocalState.passInfo.passed).toBe(false);
+      expect(phaseManager.hostLocalState.passInfo.firstPasser).toBe(null);
+      expect(phaseManager.hostLocalState.commitments).toEqual({});
+    });
+
+    it('should clear guestLocalState', () => {
+      // EXPLANATION: guestLocalState holds pass info and commitments for player2.
+      // Must be cleared for new game.
+      // Expected: reset() should clear guestLocalState to initial values
+
+      // Populate guest state
+      phaseManager.guestLocalState.passInfo.passed = true;
+      phaseManager.guestLocalState.passInfo.firstPasser = 'player1';
+      phaseManager.guestLocalState.commitments.placement = { completed: true };
+      phaseManager.guestLocalState.commitments.action = { completed: true };
+
+      phaseManager.reset();
+
+      expect(phaseManager.guestLocalState.passInfo.passed).toBe(false);
+      expect(phaseManager.guestLocalState.passInfo.firstPasser).toBe(null);
+      expect(phaseManager.guestLocalState.commitments).toEqual({});
+    });
+
+    it('should handle reset when called on fresh instance', () => {
+      // EXPLANATION: Defensive test - reset() should not error on fresh state.
+      // Expected: reset() should safely run without throwing
+
+      const freshPhaseManager = new PhaseManager(createMockGameStateManager(), 'host');
+
+      // Should not throw
+      expect(() => freshPhaseManager.reset()).not.toThrow();
+
+      // State should be at defaults
+      expect(freshPhaseManager.transitionHistory).toEqual([]);
+      expect(freshPhaseManager.phaseState.turnPhase).toBe('deckSelection');
+    });
+  });
 });

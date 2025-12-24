@@ -950,5 +950,319 @@ describe('CombatOutcomeProcessor', () => {
       const finalCall = setStateCalls[setStateCalls.length - 1][0]
       expect(finalCall.hasPendingDroneBlueprint).toBeUndefined()
     })
+
+    it('should NOT call resetGameState when pending drone blueprint exists', () => {
+      // EXPLANATION: When there's a pending drone blueprint, we must NOT call
+      // resetGameState() because it clears player1/player2 states, which causes
+      // App.jsx to show "Initializing game board..." instead of WinnerModal.
+
+      const mockBlueprint = {
+        blueprintId: 'Seraph',
+        blueprintType: 'drone',
+        rarity: 'Rare',
+        droneData: { name: 'Seraph', attack: 2, hull: 3, speed: 2 }
+      }
+
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: {
+          collectedLoot: [],
+          creditsEarned: 0,
+          aiCoresEarned: 0
+        },
+        pendingDroneBlueprint: mockBlueprint,
+        singlePlayerEncounter: {}
+      })
+
+      const combatLoot = { cards: [], salvageItem: null, aiCores: 0 }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT: resetGameState should NOT be called when blueprint is pending
+      expect(gameStateManager.resetGameState).not.toHaveBeenCalled()
+    })
+
+    it('should call resetGameState when NO pending drone blueprint', () => {
+      // EXPLANATION: When there's no pending blueprint, resetGameState should be
+      // called to clear combat state before returning to tactical map.
+
+      gameStateManager.getState.mockReturnValue({
+        currentRunState: {
+          collectedLoot: [],
+          creditsEarned: 0,
+          aiCoresEarned: 0
+        },
+        pendingDroneBlueprint: null,  // No blueprint
+        singlePlayerEncounter: {}
+      })
+
+      const combatLoot = { cards: [], salvageItem: null, aiCores: 0 }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT: resetGameState SHOULD be called when no blueprint
+      expect(gameStateManager.resetGameState).toHaveBeenCalled()
+    })
+  })
+
+  /**
+   * TDD Tests: Salvage State Preservation for Post-Combat Return
+   *
+   * When combat is triggered during salvage, we need to:
+   * 1. Keep pendingSalvageState and pendingSalvageLoot separate from combat loot
+   * 2. NOT combine POI loot with combat salvage (they should be shown separately)
+   * 3. Allow TacticalMapScreen to restore the salvage modal after combat
+   */
+  describe('processVictory - Salvage State Preservation', () => {
+    it('should NOT combine pendingSalvageLoot with combat salvage when fromSalvage is true', async () => {
+      // EXPLANATION: When combat was triggered during salvage (fromSalvage: true),
+      // POI loot should stay separate so player sees it on salvage screen, not in WinnerModal.
+      // Only combat rewards (enemy salvage) should be in the returned loot.
+
+      const mockState = {
+        currentRunState: {
+          shipSections: {},
+          combatsWon: 0,
+          pendingSalvageLoot: {
+            cards: [
+              { cardId: 'SALVAGE_CARD_1', cardName: 'POI Card 1', rarity: 'Common' },
+              { cardId: 'SALVAGE_CARD_2', cardName: 'POI Card 2', rarity: 'Rare' }
+            ],
+            salvageItem: { itemId: 'SALVAGE_POI', name: 'POI Salvage', creditValue: 75, image: '/test.png' }
+          },
+          pendingSalvageState: {
+            poi: { q: 2, r: -1 },
+            slots: [{ revealed: true }, { revealed: true }, { revealed: false }],
+            currentSlotIndex: 2
+          },
+          pendingPOICombat: {
+            fromSalvage: true,
+            salvageFullyLooted: false,
+            q: 2,
+            r: -1
+          }
+        }
+      }
+
+      const lootGenerator = await import('../loot/LootGenerator.js')
+      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+        cards: [{ cardId: 'COMBAT_CARD_1', cardName: 'Enemy Card', rarity: 'Common' }],
+        salvageItem: { itemId: 'SALVAGE_COMBAT', name: 'Combat Salvage', creditValue: 50, image: '/test.png' },
+        aiCores: 1
+      })
+
+      gameStateManager.getState.mockReturnValue(mockState)
+
+      const gameState = {
+        winner: 'player1',
+        player1: { shipSections: { bridge: { hull: 10 }, powerCell: { hull: 10 }, droneControlHub: { hull: 10 } } },
+        player2: { deck: [] },
+        singlePlayerEncounter: { tier: 1 }
+      }
+
+      // ACT
+      const result = CombatOutcomeProcessor.processVictory(gameState, gameState.singlePlayerEncounter)
+
+      // ASSERT: Loot should only contain combat cards, NOT salvage cards
+      expect(result.loot.cards.length).toBe(1)
+      expect(result.loot.cards[0].cardId).toBe('COMBAT_CARD_1')
+
+      // ASSERT: Salvage item credit value should NOT be combined
+      expect(result.loot.salvageItem.creditValue).toBe(50)  // Only combat, not 50+75
+    })
+
+    it('should keep pendingSalvageLoot in runState for later collection when fromSalvage is true', async () => {
+      // EXPLANATION: pendingSalvageLoot must remain in runState so TacticalMapScreen
+      // can restore the salvage modal and the player can collect POI loot there.
+
+      const mockState = {
+        currentRunState: {
+          shipSections: {},
+          combatsWon: 0,
+          pendingSalvageLoot: {
+            cards: [{ cardId: 'POI_CARD', cardName: 'POI Card', rarity: 'Common' }],
+            salvageItem: { itemId: 'POI_SALVAGE', name: 'POI Salvage', creditValue: 100, image: '/test.png' }
+          },
+          pendingSalvageState: {
+            poi: { q: 1, r: 0 },
+            slots: [{ revealed: true }],
+            currentSlotIndex: 1
+          },
+          pendingPOICombat: {
+            fromSalvage: true,
+            q: 1,
+            r: 0
+          }
+        }
+      }
+
+      const lootGenerator = await import('../loot/LootGenerator.js')
+      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+        cards: [],
+        salvageItem: { itemId: 'COMBAT', name: 'Combat', creditValue: 50, image: '/test.png' },
+        aiCores: 0
+      })
+
+      gameStateManager.getState.mockReturnValue(mockState)
+
+      const gameState = {
+        winner: 'player1',
+        player1: { shipSections: { bridge: { hull: 10 }, powerCell: { hull: 10 }, droneControlHub: { hull: 10 } } },
+        player2: { deck: [] },
+        singlePlayerEncounter: { tier: 1 }
+      }
+
+      // ACT
+      CombatOutcomeProcessor.processVictory(gameState, gameState.singlePlayerEncounter)
+
+      // ASSERT: pendingSalvageLoot should NOT be cleared
+      const setStateCall = gameStateManager.setState.mock.calls[0][0]
+      expect(setStateCall.currentRunState.pendingSalvageLoot).not.toBeNull()
+      expect(setStateCall.currentRunState.pendingSalvageLoot.cards[0].cardId).toBe('POI_CARD')
+    })
+
+    it('should preserve pendingSalvageState through processVictory when fromSalvage is true', async () => {
+      // EXPLANATION: Full salvage state must be preserved so TacticalMapScreen
+      // can restore the salvage modal with revealed slots visible.
+
+      const mockSalvageState = {
+        poi: { q: 3, r: -2, poiData: { name: 'Test POI' } },
+        zone: 'core',
+        totalSlots: 4,
+        slots: [
+          { type: 'card', content: { cardId: 'c1' }, revealed: true },
+          { type: 'salvageItem', content: { creditValue: 50 }, revealed: true },
+          { type: 'card', content: { cardId: 'c2' }, revealed: false },
+          { type: 'card', content: { cardId: 'c3' }, revealed: false }
+        ],
+        currentSlotIndex: 2,
+        currentEncounterChance: 45,
+        encounterTriggered: true
+      }
+
+      const mockState = {
+        currentRunState: {
+          shipSections: {},
+          combatsWon: 0,
+          pendingSalvageLoot: { cards: [], salvageItem: null },
+          pendingSalvageState: mockSalvageState,
+          pendingPOICombat: {
+            fromSalvage: true,
+            q: 3,
+            r: -2
+          }
+        }
+      }
+
+      const lootGenerator = await import('../loot/LootGenerator.js')
+      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+        cards: [],
+        salvageItem: null,
+        aiCores: 0
+      })
+
+      gameStateManager.getState.mockReturnValue(mockState)
+
+      const gameState = {
+        winner: 'player1',
+        player1: { shipSections: { bridge: { hull: 10 }, powerCell: { hull: 10 }, droneControlHub: { hull: 10 } } },
+        player2: { deck: [] },
+        singlePlayerEncounter: { tier: 1 }
+      }
+
+      // ACT
+      CombatOutcomeProcessor.processVictory(gameState, gameState.singlePlayerEncounter)
+
+      // ASSERT: pendingSalvageState should be preserved
+      const setStateCall = gameStateManager.setState.mock.calls[0][0]
+      expect(setStateCall.currentRunState.pendingSalvageState).toBeDefined()
+      expect(setStateCall.currentRunState.pendingSalvageState.poi.q).toBe(3)
+      expect(setStateCall.currentRunState.pendingSalvageState.currentSlotIndex).toBe(2)
+      expect(setStateCall.currentRunState.pendingSalvageState.slots[0].revealed).toBe(true)
+    })
+
+    it('should still combine loot when fromSalvage is false (regular POI combat)', async () => {
+      // EXPLANATION: When combat is not from salvage (e.g., direct POI encounter),
+      // the existing combining behavior should remain for backwards compatibility.
+
+      const mockState = {
+        currentRunState: {
+          shipSections: {},
+          combatsWon: 0,
+          pendingSalvageLoot: {
+            cards: [{ cardId: 'OLD_CARD', cardName: 'Old Card', rarity: 'Common' }],
+            salvageItem: { itemId: 'OLD_SALVAGE', name: 'Old', creditValue: 100, image: '/test.png' }
+          },
+          pendingPOICombat: {
+            fromSalvage: false,  // NOT from salvage
+            q: 0,
+            r: 0
+          }
+        }
+      }
+
+      const lootGenerator = await import('../loot/LootGenerator.js')
+      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+        cards: [{ cardId: 'NEW_CARD', cardName: 'New Card', rarity: 'Common' }],
+        salvageItem: { itemId: 'NEW_SALVAGE', name: 'New', creditValue: 50, image: '/test.png' },
+        aiCores: 0
+      })
+
+      gameStateManager.getState.mockReturnValue(mockState)
+
+      const gameState = {
+        winner: 'player1',
+        player1: { shipSections: { bridge: { hull: 10 }, powerCell: { hull: 10 }, droneControlHub: { hull: 10 } } },
+        player2: { deck: [] },
+        singlePlayerEncounter: { tier: 1 }
+      }
+
+      // ACT
+      const result = CombatOutcomeProcessor.processVictory(gameState, gameState.singlePlayerEncounter)
+
+      // ASSERT: Loot SHOULD be combined when not from salvage
+      expect(result.loot.cards.length).toBe(2)
+      expect(result.loot.salvageItem.creditValue).toBe(150)  // 100 + 50
+    })
+
+    it('should still combine loot when pendingPOICombat does not exist', async () => {
+      // EXPLANATION: Random ambush combat (no POI) should still combine any pending loot.
+
+      const mockState = {
+        currentRunState: {
+          shipSections: {},
+          combatsWon: 0,
+          pendingSalvageLoot: {
+            cards: [{ cardId: 'PENDING_CARD', cardName: 'Pending', rarity: 'Common' }],
+            salvageItem: { itemId: 'PENDING', name: 'Pending', creditValue: 75, image: '/test.png' }
+          }
+          // No pendingPOICombat - this is a random ambush
+        }
+      }
+
+      const lootGenerator = await import('../loot/LootGenerator.js')
+      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+        cards: [],
+        salvageItem: { itemId: 'COMBAT', name: 'Combat', creditValue: 25, image: '/test.png' },
+        aiCores: 0
+      })
+
+      gameStateManager.getState.mockReturnValue(mockState)
+
+      const gameState = {
+        winner: 'player1',
+        player1: { shipSections: { bridge: { hull: 10 }, powerCell: { hull: 10 }, droneControlHub: { hull: 10 } } },
+        player2: { deck: [] },
+        singlePlayerEncounter: { tier: 1 }
+      }
+
+      // ACT
+      const result = CombatOutcomeProcessor.processVictory(gameState, gameState.singlePlayerEncounter)
+
+      // ASSERT: Loot should be combined
+      expect(result.loot.cards.length).toBe(1)
+      expect(result.loot.salvageItem.creditValue).toBe(100)  // 75 + 25
+    })
   })
 })

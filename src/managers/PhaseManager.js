@@ -410,6 +410,49 @@ class PhaseManager {
   }
 
   /**
+   * Reset all state to initial values for a new game.
+   * Called by GameStateManager.endGame() to prevent state leaks between games.
+   */
+  reset() {
+    // Reset host local state
+    this.hostLocalState = {
+      passInfo: {
+        passed: false,
+        firstPasser: null
+      },
+      commitments: {}
+    };
+
+    // Reset guest local state
+    this.guestLocalState = {
+      passInfo: {
+        passed: false,
+        firstPasser: null
+      },
+      commitments: {}
+    };
+
+    // Reset authoritative phase state to defaults
+    this.phaseState = {
+      turnPhase: 'deckSelection',
+      gameStage: 'preGame',
+      roundNumber: 1,
+      turn: 1,
+      currentPlayer: 'player1',
+      firstPlayerOfRound: null,
+      firstPasserOfPreviousRound: null
+    };
+
+    // Clear transition history (prevents unbounded memory growth)
+    this.transitionHistory = [];
+
+    // Reset transition lock
+    this.isTransitioning = false;
+
+    debugLog('PHASE_MANAGER', '🧹 PhaseManager reset complete');
+  }
+
+  /**
    * Apply master phase state (Guest receives Host broadcast)
    * @param {object} masterPhaseState - Authoritative state from Host
    * @returns {boolean} True if applied, false if blocked
