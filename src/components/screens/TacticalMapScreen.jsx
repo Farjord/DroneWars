@@ -863,8 +863,16 @@ function TacticalMapScreen() {
     if (currentEncounter.outcome === 'loot') {
       console.log('[TacticalMap] Loot encounter - generating loot');
 
-      // Get pack type from POI reward (default to MIXED_PACK)
-      const packType = currentEncounter.reward?.rewardType || 'MIXED_PACK';
+      // Get pack type from POI reward
+      const packType = currentEncounter.reward?.rewardType;
+
+      // Empty hex encounters have null rewardType - no POI loot to generate
+      if (!packType) {
+        console.log('[TacticalMap] No pack type (empty hex loot outcome) - skipping loot generation');
+        setCurrentEncounter(null);
+        return;
+      }
+
       const tier = currentRunState?.mapData?.tier || 1;
 
       // Get zone for reward weighting (core zones give better rewards)
@@ -1093,7 +1101,7 @@ function TacticalMapScreen() {
       aiId,
       reward: {
         credits: 50,
-        rewardType: activeSalvage.poi?.poiData?.rewardType || 'MIXED_PACK',
+        rewardType: activeSalvage.poi?.poiData?.rewardType || null,
         poiName: activeSalvage.poi?.poiData?.name || 'Unknown Location'
       },
       detection,
@@ -1247,7 +1255,7 @@ function TacticalMapScreen() {
         aiId,
         reward: {
           credits: 50,
-          rewardType: activeSalvage.poi?.poiData?.rewardType || 'MIXED_PACK',
+          rewardType: activeSalvage.poi?.poiData?.rewardType || null,
           poiName: activeSalvage.poi?.poiData?.name || 'Unknown Location'
         },
         detection,
@@ -2618,6 +2626,7 @@ function TacticalMapScreen() {
         highAlertPOIs={currentRunState.highAlertPOIs || []}
         shipId={shipSlot.shipId || 'SHIP_001'}
         currentHexIndex={currentHexIndex}
+        backgroundIndex={mapData?.backgroundIndex}
       />
 
       {/* HUD Overlay - now only bottom buttons */}

@@ -75,6 +75,26 @@ describe('EncounterController - ambush reward type', () => {
         expect(result.reward.rewardType).toBe('ORDNANCE_PACK');
       }
     });
+
+    it('empty hex encounters should never have "loot" outcome - only combat or no encounter', () => {
+      // Empty hexes: chance of COMBAT only, never loot
+      // If the roll doesn't trigger an encounter, return null
+      // If the roll triggers an encounter, outcome MUST be 'combat'
+
+      const hex = { type: 'empty', q: 0, r: 0 };
+      const tierConfig = {
+        encounterChance: { empty: 100 }, // 100% encounter chance
+        enemies: ['Rogue Scout Pattern']
+      };
+
+      const result = EncounterController.checkMovementEncounter(hex, tierConfig);
+
+      if (result) {
+        // Empty hex encounters must be combat, never loot
+        expect(result.outcome).toBe('combat');
+        expect(result.outcome).not.toBe('loot');
+      }
+    });
   });
 
   describe('calculateReward', () => {

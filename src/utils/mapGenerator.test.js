@@ -102,4 +102,36 @@ describe('mapGenerator', () => {
       expect(map1.pois.length).toBe(map2.pois.length);
     });
   });
+
+  describe('background persistence', () => {
+    it('should include backgroundIndex in map data for tactical map persistence', () => {
+      const map = generateMapData(12345, 1);
+
+      // backgroundIndex should be present
+      expect(map.backgroundIndex).toBeDefined();
+
+      // backgroundIndex should be a valid index (0-4 for 5 backgrounds)
+      expect(map.backgroundIndex).toBeGreaterThanOrEqual(0);
+      expect(map.backgroundIndex).toBeLessThan(5);
+    });
+
+    it('should generate same backgroundIndex with same seed (deterministic)', () => {
+      const map1 = generateMapData(99999, 1);
+      const map2 = generateMapData(99999, 1);
+
+      expect(map1.backgroundIndex).toBe(map2.backgroundIndex);
+    });
+
+    it('should generate different backgroundIndex with different seeds', () => {
+      // Generate maps with different seeds
+      const backgroundIndices = new Set();
+      for (let seed = 1; seed <= 20; seed++) {
+        const map = generateMapData(seed * 1000, 1);
+        backgroundIndices.add(map.backgroundIndex);
+      }
+
+      // With 20 different seeds, we should see more than 1 unique background
+      expect(backgroundIndices.size).toBeGreaterThan(1);
+    });
+  });
 });

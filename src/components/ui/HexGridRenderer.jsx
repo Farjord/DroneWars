@@ -102,7 +102,7 @@ const generateDecorativeHexes = (mapRadius, hexes, extraRings = 8) => {
  * @param {string} shipId - Ship ID for icon selection (default: 'SHIP_001')
  * @param {number} currentHexIndex - Current hex index within waypoint path (for heading calculation)
  */
-function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], currentWaypointIndex = null, previewPath = null, isScanning = false, insertionGate = null, lootedPOIs = [], fledPOIs = [], highAlertPOIs = [], shipId = 'SHIP_001', currentHexIndex = 0 }) {
+function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], currentWaypointIndex = null, previewPath = null, isScanning = false, insertionGate = null, lootedPOIs = [], fledPOIs = [], highAlertPOIs = [], shipId = 'SHIP_001', currentHexIndex = 0, backgroundIndex = 0 }) {
   // Track viewport dimensions for dynamic sizing
   const [viewportSize, setViewportSize] = useState({
     width: window.innerWidth,
@@ -120,10 +120,9 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
   const panRef = useRef({ x: 0, y: 0 }); // Track pan during drag without re-renders
   const lastHeadingRef = useRef(0); // Track last heading for persistence when stationary
 
-  // Random background selected on mount
-  const [backgroundImage] = useState(() =>
-    tacticalBackgrounds[Math.floor(Math.random() * tacticalBackgrounds.length)]
-  );
+  // Background selected from prop (persisted in mapData)
+  // Fallback to first background if index invalid
+  const backgroundImage = tacticalBackgrounds[backgroundIndex] || tacticalBackgrounds[0];
 
   // Calculate ship heading based on waypoints and movement state
   const shipHeading = useMemo(() => {

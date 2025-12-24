@@ -190,7 +190,10 @@ function generateAttempt(tierConfig, mapType, rng, seed) {
     dronePoiCount,
 
     // Token entry requirement (true if any PoI requires token)
-    requiresToken
+    requiresToken,
+
+    // Background persistence - randomly selected once per map, persists across encounters
+    backgroundIndex: rng.randomInt(0, 5)  // 5 backgrounds available (0-4)
   };
 }
 
