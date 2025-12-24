@@ -112,7 +112,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
 
   // Pan/Zoom state
   // Default zoom higher to compensate for expanded viewBox with decorative hexes
-  const [zoom, setZoom] = useState(2.8);
+  const [zoom, setZoom] = useState(4);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -217,7 +217,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
   };
 
   const handleResetView = () => {
-    setZoom(2.8); // Reset to default zoom
+    setZoom(4); // Reset to default zoom
     setPan({ x: 0, y: 0 });
     panRef.current = { x: 0, y: 0 };
   };
@@ -241,7 +241,7 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
       setZoom(prevZoom => {
         // Min zoom 2.8 to stay close to the map, max 4 for close inspection
-        const newZoom = Math.min(4, Math.max(2.8, prevZoom + delta));
+        const newZoom = Math.min(6, Math.max(3.5, prevZoom + delta));
         setPan(p => {
           if (!containerRef.current || newZoom <= 1) return { x: 0, y: 0 };
           const { width, height } = containerRef.current.getBoundingClientRect();

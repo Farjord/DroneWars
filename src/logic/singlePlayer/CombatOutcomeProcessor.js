@@ -246,6 +246,26 @@ class CombatOutcomeProcessor {
       });
     }
 
+    // Add security tokens as loot items (for run inventory tracking)
+    if (loot.token) {
+      newCardLoot.push({
+        type: 'token',
+        tokenType: loot.token.tokenType || 'security',
+        amount: loot.token.amount || 1,
+        source: loot.token.source || 'combat_salvage'
+      });
+    }
+    if (loot.tokens?.length > 0) {
+      loot.tokens.forEach(token => {
+        newCardLoot.push({
+          type: 'token',
+          tokenType: token.tokenType || 'security',
+          amount: token.amount || 1,
+          source: token.source || 'combat_salvage'
+        });
+      });
+    }
+
     // Add blueprint if present (supports both legacy card blueprints and drone blueprints)
     if (loot.blueprint) {
       const blueprintLoot = {
