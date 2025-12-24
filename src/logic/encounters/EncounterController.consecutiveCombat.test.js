@@ -1,11 +1,11 @@
 /**
  * EncounterController Consecutive Combat Tests
- * Tests for correct pack type fallback in ambush encounters
+ * Tests for correct reward type handling in encounters
  *
- * BUG: EncounterController uses 'CREDITS' as fallback rewardType (line 140, 405),
- * but LootGenerator only recognizes 'CREDITS_PACK'. This causes:
- * - "Unknown pack type: CREDITS" console error
- * - Empty loot generation for ambush encounters
+ * Empty hex encounters: should have NO rewardType (null)
+ * - Player only gets enemy salvage from combat, not POI loot
+ *
+ * POI encounters: should use poiData.rewardType or fallback to CREDITS_PACK
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -36,9 +36,9 @@ describe('EncounterController - ambush reward type', () => {
   });
 
   describe('checkMovementEncounter', () => {
-    it('should use CREDITS_PACK not CREDITS for empty hex encounter reward type', () => {
-      // This test reproduces the bug where 'CREDITS' is used as fallback (line 405)
-      // Expected: Should use 'CREDITS_PACK' instead
+    it('should return null rewardType for empty hex encounters (no POI reward)', () => {
+      // Empty hex encounters should have NO rewardType
+      // Player only gets enemy salvage from combat - no POI loot
 
       const hex = { type: 'empty', q: 0, r: 0 };
       const tierConfig = {
@@ -50,10 +50,8 @@ describe('EncounterController - ambush reward type', () => {
       const result = EncounterController.checkMovementEncounter(hex, tierConfig);
 
       if (result) {
-        // The rewardType should be CREDITS_PACK, not CREDITS
-        // This will FAIL currently because line 405 uses 'CREDITS'
-        expect(result.reward?.rewardType).not.toBe('CREDITS');
-        expect(result.reward?.rewardType).toBe('CREDITS_PACK');
+        // Empty hex should have NO rewardType - only enemy salvage
+        expect(result.reward?.rewardType).toBeNull();
       }
     });
 

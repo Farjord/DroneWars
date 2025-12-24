@@ -293,6 +293,13 @@ function TacticalMapScreen() {
         }
       });
 
+      // Empty hex encounters have null packType - no POI loot to collect
+      // Player only gets enemy salvage from combat
+      if (!packType) {
+        debugLog('MODE_TRANSITION', 'Empty hex encounter - no POI loot to collect');
+        return;
+      }
+
       // If from salvage, restore the salvage modal to show revealed loot
       if (fromSalvage) {
         const currentRunState = gameStateManager.getState().currentRunState;

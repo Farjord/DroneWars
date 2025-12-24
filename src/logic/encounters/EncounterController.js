@@ -402,7 +402,7 @@ class EncounterController {
         aiData,  // Ship class, difficulty, escape damage
         reward: {
           credits: 50 + rng.randomInt(0, 51), // 50-100 credits for combat victory
-          rewardType: hex.type === 'poi' ? hex.poiData?.rewardType : 'CREDITS_PACK',
+          rewardType: hex.type === 'poi' ? hex.poiData?.rewardType : null,  // Empty hex = no POI reward, only enemy salvage
           poiName: hex.type === 'poi' ? hex.poiData?.name : 'Intercept'
         },
         detection,
