@@ -259,31 +259,40 @@ function TacticalMapScreen() {
     MissionService.recordProgress('SCREEN_VISIT', { screen: 'tacticalMap' });
   }, []);
 
-  // Check for pending PoI loot after returning from combat
-  // This handles the case where player won combat at a PoI and should now loot it
+  // Check for pending waypoints after returning from combat
+  // This restores waypoints for journey resumption (SEPARATE from POI loot logic)
   useEffect(() => {
     const currentState = gameStateManager.getState();
-    const runState = currentState.currentRunState;
+    let runState = currentState.currentRunState;
 
+    // Restore waypoints from pendingWaypoints (set before ANY combat)
+    if (runState?.pendingWaypoints?.length > 0) {
+      console.log('[TacticalMap] Restoring waypoints after combat:', runState.pendingWaypoints.length);
+      setPendingResumeWaypoints(runState.pendingWaypoints);
+
+      // Clear pendingWaypoints from run state
+      gameStateManager.setState({
+        currentRunState: {
+          ...runState,
+          pendingWaypoints: null
+        }
+      });
+      // Re-fetch runState after clearing waypoints
+      runState = gameStateManager.getState().currentRunState;
+    }
+
+    // Process pending POI combat (ONLY for POI encounters - loot processing)
     if (runState?.pendingPOICombat) {
-      const { packType, q, r, poiName, remainingWaypoints, fromSalvage, salvageFullyLooted } = runState.pendingPOICombat;
+      const { packType, q, r, poiName, fromSalvage, salvageFullyLooted } = runState.pendingPOICombat;
 
       // Debug logging for consecutive combat issues
       debugLog('MODE_TRANSITION', '=== Post-Combat POI Processing ===', {
         packType,
-        hasRemainingWaypoints: remainingWaypoints?.length > 0,
-        waypointCount: remainingWaypoints?.length || 0,
         fromSalvage,
         salvageFullyLooted,
         poi: { q, r, poiName }
       });
       console.log('[TacticalMap] Pending PoI combat detected after combat:', runState.pendingPOICombat);
-
-      // Store remaining waypoints for journey resumption after loot
-      if (remainingWaypoints?.length > 0) {
-        console.log('[TacticalMap] Storing remaining waypoints for resumption:', remainingWaypoints.length);
-        setPendingResumeWaypoints(remainingWaypoints);
-      }
 
       // Clear pendingPOICombat from run state
       gameStateManager.setState({
@@ -1331,7 +1340,7 @@ function TacticalMapScreen() {
     }
 
     const currentState = gameStateManager.getState();
-    const runState = currentState.currentRunState;
+    let runState = currentState.currentRunState;
 
     // CRITICAL: Validate run state exists before proceeding
     if (!runState || !runState.mapData) {
@@ -1352,16 +1361,27 @@ function TacticalMapScreen() {
 
     console.log('[TacticalMap] Loading complete - initializing combat');
 
-    // Store pending PoI combat info for post-combat loot
+    // Capture remaining waypoints for journey resumption (SEPARATE from POI logic)
+    // Must be stored in currentRunState to survive combat (component unmounts during combat)
+    const remainingWps = waypoints.slice(currentWaypointIndex + 1);
+    if (remainingWps.length > 0) {
+      console.log('[TacticalMap] Storing waypoints for post-combat resumption:', remainingWps.length);
+      gameStateManager.setState({
+        currentRunState: {
+          ...runState,
+          pendingWaypoints: remainingWps
+        }
+      });
+      // Re-fetch runState after waypoint storage
+      runState = gameStateManager.getState().currentRunState;
+    }
+
+    // Store pending PoI combat info for post-combat loot (ONLY for POI encounters)
     // This allows the player to loot the PoI after winning combat
     if (currentEncounter?.poi) {
-      // Capture remaining waypoints (for journey resumption after loot)
-      const remainingWps = waypoints.slice(currentWaypointIndex + 1);
-
       console.log('[TacticalMap] Storing pendingPOICombat for post-combat loot:', {
         poi: { q: currentEncounter.poi.q, r: currentEncounter.poi.r },
-        packType: currentEncounter.reward?.rewardType || 'MIXED_PACK',
-        remainingWaypoints: remainingWps.length
+        packType: currentEncounter.reward?.rewardType || null
       });
 
       gameStateManager.setState({
@@ -1370,9 +1390,8 @@ function TacticalMapScreen() {
           pendingPOICombat: {
             q: currentEncounter.poi.q,
             r: currentEncounter.poi.r,
-            packType: currentEncounter.reward?.rewardType || 'MIXED_PACK',
+            packType: currentEncounter.reward?.rewardType || null,
             poiName: currentEncounter.poi.poiData?.name || 'Unknown Location',
-            remainingWaypoints: remainingWps,
             fromSalvage: currentEncounter.fromSalvage || false,  // Flag to skip post-combat loot generation
             salvageFullyLooted: currentEncounter.salvageFullyLooted || false  // Flag for fully looted POI
           }
