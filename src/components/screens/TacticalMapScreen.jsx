@@ -755,6 +755,9 @@ function TacticalMapScreen() {
       hexesExplored: updatedHexesExplored
     });
 
+    // Increase Signal Lock (encounter detection chance) after each move
+    EncounterController.increaseEncounterDetection(tierConfig, newHexesMoved);
+
     console.log(`[TacticalMap] Moved to hex (${hex.q}, ${hex.r}) - Zone: ${hex.zone} - Detection: ${runState.detection.toFixed(1)}% -> ${newDetection.toFixed(1)}% (+${hexCost.toFixed(1)}%)`);
 
     // Check for MIA trigger
@@ -2981,6 +2984,9 @@ function TacticalMapScreen() {
         pathMode={pathfindingMode}
         onPathModeChange={handlePathModeChange}
         previewPath={previewPath}
+
+        // Signal Lock (encounter detection)
+        encounterDetectionChance={currentRunState.encounterDetectionChance || 0}
       />
 
       {/* POI Encounter Modal */}
@@ -3140,6 +3146,7 @@ function TacticalMapScreen() {
             couldDestroyShip={escapeCheckResult.couldDestroy}
             isPOIEncounter={escapeContext?.isPOI || false}
             escapeDamageRange={escapeCheckResult.escapeDamageRange}
+            encounterDetectionChance={currentRunState?.encounterDetectionChance || 0}
           />
         );
       })()}

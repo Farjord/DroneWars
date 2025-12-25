@@ -258,7 +258,10 @@ function HexInfoPanel({
   // Pathfinding mode
   pathMode = 'shortest',
   onPathModeChange,
-  previewPath = null
+  previewPath = null,
+
+  // Signal Lock (encounter detection)
+  encounterDetectionChance = 0
 }) {
   // Use passed tierConfig if available, otherwise compute from mapData
   const tierConfig = passedTierConfig || (mapData ? mapTiers[mapData.tier - 1] : null);
@@ -329,6 +332,13 @@ function HexInfoPanel({
     if (value < 50) return 'value-safe';
     if (value < 80) return 'value-warning';
     return 'value-critical';
+  };
+
+  // Get Signal Lock color class (same thresholds as plan: 0-49 green, 50-74 yellow, 75+ red)
+  const getSignalLockColorClass = (value) => {
+    if (value < 50) return 'signal-lock-safe';
+    if (value < 75) return 'signal-lock-warning';
+    return 'signal-lock-critical';
   };
 
 
@@ -417,6 +427,16 @@ function HexInfoPanel({
               data-testid="blockade-risk-value"
             >
               {Math.round(currentDetection)}%
+            </span>
+          </div>
+          {/* Signal Lock Display */}
+          <div className={`signal-lock-display ${getSignalLockColorClass(encounterDetectionChance)}`}>
+            <div className="signal-lock-header">
+              <span className="signal-lock-icon">◎</span>
+              <StatLabel text="Signal Lock" helpKey="signalLock" />
+            </div>
+            <span className="signal-lock-value" data-testid="signal-lock-value">
+              {Math.round(encounterDetectionChance)}%
             </span>
           </div>
         </div>
@@ -527,6 +547,16 @@ function HexInfoPanel({
               data-testid="blockade-risk-value"
             >
               {Math.round(currentDetection)}%
+            </span>
+          </div>
+          {/* Signal Lock Display */}
+          <div className={`signal-lock-display ${getSignalLockColorClass(encounterDetectionChance)}`}>
+            <div className="signal-lock-header">
+              <span className="signal-lock-icon">◎</span>
+              <StatLabel text="Signal Lock" helpKey="signalLock" />
+            </div>
+            <span className="signal-lock-value" data-testid="signal-lock-value">
+              {Math.round(encounterDetectionChance)}%
             </span>
           </div>
         </div>
@@ -802,6 +832,16 @@ function HexInfoPanel({
             data-testid="blockade-risk-value"
           >
             {Math.round(currentDetection)}%
+          </span>
+        </div>
+        {/* Signal Lock Display */}
+        <div className={`signal-lock-display ${getSignalLockColorClass(encounterDetectionChance)}`}>
+          <div className="signal-lock-header">
+            <span className="signal-lock-icon">◎</span>
+            <StatLabel text="Signal Lock" helpKey="signalLock" />
+          </div>
+          <span className="signal-lock-value" data-testid="signal-lock-value">
+            {Math.round(encounterDetectionChance)}%
           </span>
         </div>
         {/* Escape Route Display */}

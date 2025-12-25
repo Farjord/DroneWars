@@ -1259,4 +1259,76 @@ describe('CombatOutcomeProcessor', () => {
       expect(result.loot.salvageItem.creditValue).toBe(100)  // 75 + 25
     })
   })
+
+  // ========================================
+  // SIGNAL LOCK SYSTEM TESTS
+  // ========================================
+  // TDD tests for encounter detection reset on combat victory
+  // The Signal Lock (encounterDetectionChance) should reset to 0 after victory
+
+  describe('Signal Lock reset on victory', () => {
+    it('calls EncounterController.resetEncounterDetection on victory', async () => {
+      // EXPLANATION: When player wins combat, the Signal Lock should reset
+      // to give them a fresh start (enemy loses their tracking data)
+
+      tacticalMapStateManager.getState.mockReturnValue({
+        shipSections: {},
+        combatsWon: 0,
+        encounterDetectionChance: 75 // High signal lock before victory
+      })
+
+      const lootGenerator = await import('../loot/LootGenerator.js')
+      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+        cards: [],
+        salvageItem: null,
+        aiCores: 0
+      })
+
+      const gameState = {
+        winner: 'player1',
+        player1: { shipSections: { bridge: { hull: 10 }, powerCell: { hull: 10 }, droneControlHub: { hull: 10 } } },
+        player2: { deck: [] },
+        singlePlayerEncounter: { tier: 1 }
+      }
+
+      // ACT
+      CombatOutcomeProcessor.processVictory(gameState, gameState.singlePlayerEncounter)
+
+      // ASSERT: The tacticalMapStateManager.setState should include encounterDetectionChance: 0
+      const setStateCalls = tacticalMapStateManager.setState.mock.calls
+      const hasResetCall = setStateCalls.some(call =>
+        call[0].encounterDetectionChance === 0
+      )
+      expect(hasResetCall).toBe(true)
+    })
+
+    it('does NOT reset detection on escape (escape handled elsewhere)', () => {
+      // EXPLANATION: Escape does NOT reset Signal Lock - enemy retains tracking data.
+      // This is handled by escape flow NOT calling resetEncounterDetection.
+      // CombatOutcomeProcessor.processDefeat should NOT reset detection.
+
+      tacticalMapStateManager.getState.mockReturnValue({
+        shipSlotId: 0,
+        combatsLost: 0,
+        encounterDetectionChance: 80 // High signal lock before escape/defeat
+      })
+
+      const gameState = {
+        winner: 'player2',
+        player1: { shipSections: {} },
+        player2: { shipSections: {} },
+        singlePlayerEncounter: {}
+      }
+
+      // ACT: Process defeat (simulating escape leading to ship destruction)
+      CombatOutcomeProcessor.processDefeat(gameState, {})
+
+      // ASSERT: encounterDetectionChance should NOT be reset to 0 in defeat
+      const setStateCalls = tacticalMapStateManager.setState.mock.calls
+      const hasResetCall = setStateCalls.some(call =>
+        call[0].encounterDetectionChance === 0
+      )
+      expect(hasResetCall).toBe(false)
+    })
+  })
 })

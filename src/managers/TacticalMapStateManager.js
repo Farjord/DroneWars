@@ -98,6 +98,10 @@ class TacticalMapStateManager {
       // Detection (starts at map's base detection)
       detection: mapData.baseDetection || 0,
 
+      // Signal Lock - progressive encounter detection chance (0-100%)
+      // Starts at 0%, increases per move, resets on combat victory
+      encounterDetectionChance: 0,
+
       // Ship state (run-specific damage tracking)
       shipSections: shipSections || {},
       currentHull: 0,

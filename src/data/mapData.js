@@ -46,8 +46,17 @@ export const mapTiers = [
       timePerTurn: 5        // % per turn (optional for MVP)
     },
 
+    // Signal Lock - progressive encounter detection rate per move
+    // This is the first roll in the two-roll encounter system
+    // Each move increases encounterDetectionChance by a random value in this range
+    encounterDetectionRate: {
+      min: 5,   // +5% minimum per move
+      max: 15   // +15% maximum per move
+    },
+
     // Encounter chance by hex type (% per hex entered)
     // empty is now a range - generator picks random value within range
+    // NOTE: This is the SECOND roll - only happens if Signal Lock roll succeeds
     encounterChance: {
       empty: { min: 3, max: 7 },  // Random 3-7% base for perimeter
       gate: 0                     // 0% for extraction gates (safe zones)

@@ -67,6 +67,13 @@ class AIPhaseProcessor {
     // Subscribe to game state changes for AI turn detection
     if (gameStateManager) {
       this.stateSubscriptionCleanup = gameStateManager.subscribe((event) => {
+        debugLog('TURN_TRANSITION_DEBUG', 'AI subscription received state change', {
+          eventType: event.type,
+          currentPlayer: event.state?.currentPlayer,
+          turnPhase: event.state?.turnPhase,
+          gameMode: event.state?.gameMode,
+          isProcessing: this.isProcessing
+        });
         this.checkForAITurn(event.state);
       });
     }
@@ -930,6 +937,19 @@ class AIPhaseProcessor {
    * @param {Object} state - Current game state
    */
   checkForAITurn(state) {
+    debugLog('TURN_TRANSITION_DEBUG', 'checkForAITurn called', {
+      currentPlayer: state.currentPlayer,
+      turnPhase: state.turnPhase,
+      gameMode: state.gameMode,
+      isProcessing: this.isProcessing,
+      player2Passed: state.passInfo?.player2Passed,
+      willTrigger: state.gameMode === 'local' &&
+                   state.currentPlayer === 'player2' &&
+                   ['deployment', 'action'].includes(state.turnPhase) &&
+                   !this.isProcessing &&
+                   !state.passInfo?.player2Passed
+    });
+
     // Don't process if AI is already taking a turn or in wrong mode
     if (this.isProcessing || state.gameMode !== 'local') {
       return;

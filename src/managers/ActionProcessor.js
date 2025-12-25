@@ -478,12 +478,27 @@ setAnimationManager(animationManager) {
         gameMode: this.gameStateManager?.getState()?.gameMode
       });
 
+      // TURN TRANSITION DEBUG: Diagnose event chain breakdown
+      debugLog('TURN_TRANSITION_DEBUG', 'Finally block executing', {
+        type,
+        isPlayerAction: playerActionTypes.includes(type),
+        hasResult: !!this.lastActionResult,
+        willEmit: playerActionTypes.includes(type) && !!this.lastActionResult,
+        listenerCount: this.listeners?.length || 0
+      });
+
       if (playerActionTypes.includes(type) && this.lastActionResult) {
         debugLog('PASS_LOGIC', `📢 [ACTION PROCESSOR] Emitting action_completed event`, {
           actionType: type,
           hasResult: !!this.lastActionResult,
           gameMode: this.gameStateManager?.getState()?.gameMode,
           willEmit: true
+        });
+
+        debugLog('TURN_TRANSITION_DEBUG', 'Emitting action_completed event', {
+          actionType: type,
+          listenerCount: this.listeners?.length || 0,
+          shouldEndTurn: this.lastActionResult?.shouldEndTurn
         });
 
         this.emit('action_completed', {
@@ -1042,6 +1057,12 @@ setAnimationManager(animationManager) {
 
       // NOTE: Turn transitions now handled by GameFlowManager
       // Deployment always ends turn
+
+      debugLog('TURN_TRANSITION_DEBUG', 'processDeployment returning', {
+        success: result.success,
+        shouldEndTurn: true,
+        currentPlayer: currentState.currentPlayer
+      });
 
       // Return result with animations for optimistic action tracking
       return {

@@ -83,6 +83,7 @@ const DEBUG_CONFIG = {
     LANE_TARGETING: false,       // Lane-targeting cards and filtered drone effects (affectedDroneIds)
     TACTICAL_ITEMS: false,        // Tactical item panel clicks and usage
     CARD_DISCARD: false,          // Card discard after play - tracks instanceId and hand filtering
+    TURN_TRANSITION_DEBUG: true,  // Turn transition investigation (TEMPORARY)
   }
 };
 

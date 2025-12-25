@@ -60,5 +60,10 @@ export const HEX_INFO_HELP_TEXT = {
   pathfindingMode: {
     title: 'Path Mode',
     description: 'Shortest: Finds the fastest route (fewer hexes). Safest: Finds the route with lowest total threat increase, even if longer.'
+  },
+  // Signal Lock - progressive encounter detection
+  signalLock: {
+    title: 'Signal Lock',
+    description: 'Enemy AI triangulating your position. Each move increases Signal Lock. Must pass detection roll before encounter roll. Resets only on combat victory - escaping does NOT reset.'
   }
 };

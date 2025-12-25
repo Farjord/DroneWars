@@ -37,12 +37,61 @@ class EncounterController {
   }
 
   /**
+   * Calculate POI encounter threat bonus based on current detection level
+   * Higher threat = higher bonus to encounter chance
+   * - Low (0-49%): +0%
+   * - Medium (50-79%): +8-15% (one tier)
+   * - High (80-100%): +16-30% (two tiers stacked)
+   *
+   * @param {Object} poi - POI hex object with coordinates
+   * @param {Object} tierConfig - Tier configuration with optional poiThreatBonus range
+   * @param {string} threatLevel - 'low', 'medium', or 'high'
+   * @returns {number} Bonus percentage to add to encounter threshold
+   */
+  _calculatePOIThreatBonus(poi, tierConfig, threatLevel) {
+    // Default range: 8-15% per tier
+    const defaultRange = { min: 8, max: 15 };
+    const configRange = tierConfig?.poiThreatBonus || defaultRange;
+
+    // No bonus at low threat
+    if (threatLevel === 'low') return 0;
+
+    // Use seeded RNG based on POI coordinates for determinism
+    const gameState = gameStateManager.getState();
+    const baseRng = SeededRandom.fromGameState(gameState || {});
+    const poiOffset = ((poi?.q || 0) * 1000) + ((poi?.r || 0) * 37) + 9999;
+    const rng = new SeededRandom(baseRng.seed + poiOffset);
+
+    // Medium: one tier of bonus (8-15%)
+    const tierBonus = configRange.min + rng.random() * (configRange.max - configRange.min);
+
+    if (threatLevel === 'medium') {
+      debugLog('ENCOUNTER', 'POI threat bonus (medium)', {
+        tierBonus: tierBonus.toFixed(1)
+      });
+      return tierBonus;
+    }
+
+    // High: two tiers of bonus (16-30%)
+    const secondTierBonus = configRange.min + rng.random() * (configRange.max - configRange.min);
+    const totalBonus = tierBonus + secondTierBonus;
+
+    debugLog('ENCOUNTER', 'POI threat bonus (high)', {
+      tier1: tierBonus.toFixed(1),
+      tier2: secondTierBonus.toFixed(1),
+      total: totalBonus.toFixed(1)
+    });
+
+    return totalBonus;
+  }
+
+  /**
    * Check if POI encounter results in ambush or safe looting
    * @param {Object} poi - POI hex object with poiData
-   * @param {number} detection - Current detection (0-100)
+   * @param {Object} tierConfig - Tier configuration for threat bonus calculation
    * @returns {'combat' | 'loot'} Encounter outcome
    */
-  checkPOIEncounter(poi, detection) {
+  checkPOIEncounter(poi, tierConfig = {}) {
     const gameState = gameStateManager.getState();
     const baseRng = SeededRandom.fromGameState(gameState || {});
     // Use POI coordinates for unique roll per POI location
@@ -50,13 +99,18 @@ class EncounterController {
     const rng = new SeededRandom(baseRng.seed + poiOffset);
     const roll = rng.random() * 100;
     const baseSecurity = poi.poiData?.baseSecurity || 15;
-    const threshold = baseSecurity + detection;
 
-    debugLog('ENCOUNTER', 'POI security check', {
+    // Calculate threat bonus based on current detection level
+    const threatLevel = DetectionManager.getThreshold();
+    const threatBonus = this._calculatePOIThreatBonus(poi, tierConfig, threatLevel);
+    const threshold = baseSecurity + threatBonus;
+
+    debugLog('ENCOUNTER', 'POI security check with threat bonus', {
       roll: roll.toFixed(2),
-      threshold: threshold.toFixed(2),
       baseSecurity,
-      detection: detection.toFixed(2)
+      threatLevel,
+      threatBonus: threatBonus.toFixed(1),
+      threshold: threshold.toFixed(1)
     });
 
     const outcome = roll < threshold ? 'combat' : 'loot';
@@ -193,8 +247,8 @@ class EncounterController {
       };
     }
 
-    // Roll for ambush
-    const outcome = this.checkPOIEncounter(poi, detection);
+    // Roll for ambush (with threat bonus based on detection level)
+    const outcome = this.checkPOIEncounter(poi, tierConfig);
 
     // Get AI if combat (pass poi for location-based seeding)
     const aiId = outcome === 'combat'
@@ -332,7 +386,9 @@ class EncounterController {
 
   /**
    * Check for random encounter during movement (per-hex check)
-   * Encounter chance varies by zone based on map's pre-rolled values
+   * Uses TWO-ROLL MECHANIC:
+   * 1. First roll against Signal Lock (encounterDetectionChance) - progressive tracking
+   * 2. If detected, second roll against hex's encounter chance
    * Threat level affects severity only, not encounter chance
    *
    * @param {Object} hex - Current hex object
@@ -352,16 +408,44 @@ class EncounterController {
     const runState = tacticalMapStateManager.getState();
     const mapData = runState?.mapData;
 
+    // ========================================
+    // ROLL 1: Signal Lock (encounter detection)
+    // ========================================
+    // Check if the progressive encounter detection triggers
+    const encounterDetectionChance = runState?.encounterDetectionChance || 0;
+
+    // Create seed for detection roll (different offset than encounter roll)
+    const gameState = gameStateManager.getState();
+    const baseRng = SeededRandom.fromGameState(gameState || {});
+    const detectionOffset = (hex.q * 1000) + (hex.r * 37) + 7777;
+    const detectionRng = new SeededRandom(baseRng.seed + detectionOffset);
+    const detectionRoll = detectionRng.random() * 100;
+
+    debugLog('ENCOUNTER', 'Signal Lock check (Roll 1)', {
+      detectionRoll: detectionRoll.toFixed(2),
+      encounterDetectionChance: encounterDetectionChance.toFixed(2),
+      detected: detectionRoll < encounterDetectionChance
+    });
+
+    // If Signal Lock roll fails, no encounter is possible
+    if (detectionRoll >= encounterDetectionChance) {
+      debugLog('ENCOUNTER', 'Signal Lock roll failed - no encounter possible');
+      return null;
+    }
+
+    debugLog('ENCOUNTER', '🎯 Signal Lock triggered - rolling for encounter');
+
+    // ========================================
+    // ROLL 2: Hex encounter chance
+    // ========================================
     // Get encounter chance based on hex type and zone
     const encounterChance = this.getEncounterChance(hex, tierConfig, mapData);
     // Create seed that includes hex position for unique roll per hex (deterministic)
-    const gameState = gameStateManager.getState();
-    const baseRng = SeededRandom.fromGameState(gameState || {});
     const hexOffset = (hex.q * 1000) + (hex.r * 37);
     const rng = new SeededRandom(baseRng.seed + hexOffset);
     const roll = rng.random() * 100;
 
-    debugLog('ENCOUNTER', 'Movement encounter check', {
+    debugLog('ENCOUNTER', 'Hex encounter check (Roll 2)', {
       hexType: hex.type,
       roll: roll.toFixed(2),
       encounterChance,
@@ -461,6 +545,73 @@ class EncounterController {
     });
 
     return increase;
+  }
+
+  // ========================================
+  // SIGNAL LOCK METHODS
+  // ========================================
+  // Progressive encounter detection system
+  // First roll in the two-roll encounter mechanic
+
+  /**
+   * Get current encounter detection chance (Signal Lock percentage)
+   * @returns {number} Current encounterDetectionChance (0-100)
+   */
+  getEncounterDetectionChance() {
+    return tacticalMapStateManager.getState()?.encounterDetectionChance || 0;
+  }
+
+  /**
+   * Increase encounter detection chance after a move
+   * @param {Object} tierConfig - Tier configuration with encounterDetectionRate
+   * @param {number} moveIndex - Move index for deterministic seeding
+   */
+  increaseEncounterDetection(tierConfig, moveIndex = 0) {
+    if (!tacticalMapStateManager.isRunActive()) {
+      return;
+    }
+
+    const runState = tacticalMapStateManager.getState();
+    if (!runState) return;
+
+    // Get detection rate range from tier config (default: 5-15%)
+    const range = tierConfig?.encounterDetectionRate || { min: 5, max: 15 };
+    const { min, max } = range;
+
+    // Use seeded RNG for deterministic increase
+    const gameState = gameStateManager.getState();
+    const baseRng = SeededRandom.fromGameState(gameState || {});
+    const increaseOffset = moveIndex * 1337 + 8888;
+    const rng = new SeededRandom(baseRng.seed + increaseOffset);
+
+    const increase = min + rng.random() * (max - min);
+    const current = runState.encounterDetectionChance || 0;
+    const newValue = Math.min(100, current + increase); // Cap at 100%
+
+    tacticalMapStateManager.setState({
+      encounterDetectionChance: newValue
+    });
+
+    debugLog('ENCOUNTER', 'Signal Lock increased', {
+      from: current.toFixed(1),
+      to: newValue.toFixed(1),
+      increase: increase.toFixed(1)
+    });
+  }
+
+  /**
+   * Reset encounter detection chance to 0 (called on combat victory only)
+   */
+  resetEncounterDetection() {
+    if (!tacticalMapStateManager.isRunActive()) {
+      return;
+    }
+
+    tacticalMapStateManager.setState({
+      encounterDetectionChance: 0
+    });
+
+    debugLog('ENCOUNTER', 'Signal Lock reset to 0 (combat victory)');
   }
 }
 

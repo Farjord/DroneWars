@@ -1176,6 +1176,8 @@ class GameStateManager {
 
     // Clear ActionProcessor queue to prevent stale actions
     this.actionProcessor.clearQueue();
+    // Re-establish GameFlowManager's subscription after clearQueue wipes listeners
+    this.gameFlowManager?.resubscribe();
 
     debugLog('STATE_SYNC', '✅ GAME RESET: State, cache, and queue cleared');
   }
@@ -1303,6 +1305,8 @@ class GameStateManager {
 
     // Clear ActionProcessor queue to prevent stale actions
     this.actionProcessor.clearQueue();
+    // Re-establish GameFlowManager's subscription after clearQueue wipes listeners
+    this.gameFlowManager?.resubscribe();
 
     // Reset GameFlowManager to clear phase state (includes PhaseManager.reset())
     if (this.gameFlowManager) {
@@ -1403,6 +1407,11 @@ class GameStateManager {
    * Set current player
    */
   setCurrentPlayer(playerId) {
+    debugLog('TURN_TRANSITION_DEBUG', 'setCurrentPlayer called', {
+      newPlayerId: playerId,
+      previousPlayer: this.state.currentPlayer,
+      subscriberCount: this.listeners.size
+    });
     this.setState({ currentPlayer: playerId }, 'CURRENT_PLAYER_CHANGED');
   }
 
@@ -1657,6 +1666,8 @@ class GameStateManager {
    */
   clearActionQueue() {
     this.actionProcessor.clearQueue();
+    // Re-establish GameFlowManager's subscription after clearQueue wipes listeners
+    this.gameFlowManager?.resubscribe();
   }
 
   // ========================================
@@ -2749,6 +2760,8 @@ class GameStateManager {
       // ActionProcessor - clear queue and locks
       if (this.actionProcessor?.clearQueue) {
         this.actionProcessor.clearQueue();
+        // Re-establish GameFlowManager's subscription after clearQueue wipes listeners
+        this.gameFlowManager?.resubscribe();
         debugLog('SP_COMBAT', '✅ ActionProcessor queue cleared');
       }
 

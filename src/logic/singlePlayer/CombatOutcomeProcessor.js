@@ -9,6 +9,7 @@ import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import lootGenerator from '../loot/LootGenerator.js';
 import ExtractionController from './ExtractionController.js';
+import EncounterController from '../encounters/EncounterController.js';
 import aiPersonalities from '../../data/aiData.js';
 import MissionService from '../missions/MissionService.js';
 
@@ -173,8 +174,13 @@ class CombatOutcomeProcessor {
       combatsWon: updatedRunState.combatsWon,
       pendingSalvageLoot: updatedRunState.pendingSalvageLoot,
       pendingPOICombat: currentRunState.pendingPOICombat,
-      pendingSalvageState: currentRunState.pendingSalvageState
+      pendingSalvageState: currentRunState.pendingSalvageState,
+      encounterDetectionChance: 0  // Reset Signal Lock on victory
     });
+
+    // 5b. Reset Signal Lock (encounter detection) on combat victory
+    // Enemy tracking data is disrupted when player wins combat
+    EncounterController.resetEncounterDetection();
 
     // Store UI-level state in GameStateManager
     gameStateManager.setState({

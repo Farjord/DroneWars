@@ -201,6 +201,25 @@ class GameFlowManager {
   }
 
   /**
+   * Re-establish ActionProcessor event subscription
+   * Call this after actionProcessor.clearQueue() which wipes out listeners
+   */
+  resubscribe() {
+    if (this.actionProcessor) {
+      this.actionProcessor.subscribe((event) => {
+        if (event.type === 'action_completed') {
+          debugLog('PASS_LOGIC', `📥 [GAME FLOW] Received action_completed event (resubscribed)`, {
+            actionType: event.actionType,
+            gameMode: this.gameStateManager?.getState()?.gameMode
+          });
+          this.handleActionCompletion(event);
+        }
+      });
+      debugLog('PHASE_TRANSITIONS', '🔄 GameFlowManager re-subscribed to ActionProcessor');
+    }
+  }
+
+  /**
    * Handle action completion events from ActionProcessor
    * Processes turn transitions based on shouldEndTurn flag
    * @param {Object} event - Action completion event
@@ -214,6 +233,14 @@ class GameFlowManager {
       actionType,
       gameMode: currentState.gameMode,
       turnPhase: currentState.turnPhase
+    });
+
+    debugLog('TURN_TRANSITION_DEBUG', 'handleActionCompletion entry', {
+      actionType,
+      shouldEndTurn: result?.shouldEndTurn,
+      gameMode: currentState.gameMode,
+      turnPhase: currentState.turnPhase,
+      currentPlayer: currentState.currentPlayer
     });
 
     // CRITICAL: Handle pass playback BEFORE guest guard
@@ -338,6 +365,13 @@ class GameFlowManager {
       // Process turn transition via ActionProcessor
       await this.actionProcessor.processTurnTransition({
         newPlayer: nextPlayer
+      });
+
+      const stateAfterTransition = this.gameStateManager.getState();
+      debugLog('TURN_TRANSITION_DEBUG', 'After processTurnTransition', {
+        previousPlayer: updatedState.currentPlayer,
+        newPlayer: stateAfterTransition.currentPlayer,
+        turnPhase: stateAfterTransition.turnPhase
       });
 
       debugLog('PHASE_TRANSITIONS', `✅ GameFlowManager: Turn transition completed`);

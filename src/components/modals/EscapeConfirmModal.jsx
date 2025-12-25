@@ -18,6 +18,7 @@ import './EscapeConfirmModal.css';
  * @param {boolean} couldDestroyShip - Whether max escape damage COULD cause all sections to be damaged (worst-case)
  * @param {boolean} isPOIEncounter - Whether this is a POI encounter (affects messaging)
  * @param {Object} escapeDamageRange - Damage range { min, max } based on AI type
+ * @param {number} encounterDetectionChance - Current Signal Lock percentage (0-100)
  */
 function EscapeConfirmModal({
   show,
@@ -26,7 +27,8 @@ function EscapeConfirmModal({
   shipSections = [],
   couldDestroyShip = false,
   isPOIEncounter = false,
-  escapeDamageRange = { min: 2, max: 2 }
+  escapeDamageRange = { min: 2, max: 2 },
+  encounterDetectionChance = 0
 }) {
   if (!show) return null;
 
@@ -126,6 +128,12 @@ function EscapeConfirmModal({
                   </div>
                 </>
               )}
+              {encounterDetectionChance > 0 && (
+                <div className="dw-modal-consequence">
+                  <span className="dw-modal-consequence-icon"><AlertTriangle size={14} style={{ color: '#f59e0b' }} /></span>
+                  <span>Signal Lock remains at {Math.round(encounterDetectionChance)}%</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -204,6 +212,12 @@ function EscapeConfirmModal({
                   <span>You cannot return to loot this location</span>
                 </div>
               </>
+            )}
+            {encounterDetectionChance > 0 && (
+              <div className="escape-info-item">
+                <AlertTriangle size={14} style={{ color: 'var(--modal-warning, #f59e0b)' }} />
+                <span>Signal Lock remains at {Math.round(encounterDetectionChance)}% - enemy AI continues triangulating</span>
+              </div>
             )}
           </div>
         </div>

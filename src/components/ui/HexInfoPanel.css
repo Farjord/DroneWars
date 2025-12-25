@@ -144,6 +144,93 @@
 }
 
 /* ========================================
+   SIGNAL LOCK DISPLAY
+   ======================================== */
+
+.signal-lock-display {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  border-left: 2px solid rgba(6, 182, 212, 0.4);
+  transition: all 0.3s ease;
+}
+
+.signal-lock-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.signal-lock-icon {
+  font-size: 14px;
+  color: #06b6d4;
+  opacity: 0.8;
+}
+
+.signal-lock-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #10b981;
+}
+
+/* Signal Lock state classes */
+.signal-lock-display.signal-lock-safe {
+  border-left-color: rgba(16, 185, 129, 0.5);
+}
+
+.signal-lock-display.signal-lock-safe .signal-lock-icon {
+  color: #10b981;
+}
+
+.signal-lock-display.signal-lock-safe .signal-lock-value {
+  color: #10b981;
+}
+
+.signal-lock-display.signal-lock-warning {
+  border-left-color: rgba(245, 158, 11, 0.6);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.signal-lock-display.signal-lock-warning .signal-lock-icon {
+  color: #f59e0b;
+  animation: signal-pulse 2s ease-in-out infinite;
+}
+
+.signal-lock-display.signal-lock-warning .signal-lock-value {
+  color: #f59e0b;
+}
+
+.signal-lock-display.signal-lock-critical {
+  border-left-color: rgba(239, 68, 68, 0.8);
+  background: rgba(239, 68, 68, 0.12);
+}
+
+.signal-lock-display.signal-lock-critical .signal-lock-icon {
+  color: #ef4444;
+  animation: signal-pulse 1s ease-in-out infinite;
+}
+
+.signal-lock-display.signal-lock-critical .signal-lock-value {
+  color: #ef4444;
+  animation: critical-pulse 1s ease-in-out infinite;
+}
+
+@keyframes signal-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
+}
+
+/* ========================================
    CONTENT AREA
    ======================================== */
 
