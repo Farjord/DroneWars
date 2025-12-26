@@ -103,12 +103,12 @@ export const poiTypes = [
   },
 
   {
-    id: 'POI_DRONE_FIGHTER',
+    id: 'POI_DRONE_MEDIUM',
     name: 'Drone Combat Bay',
     description: 'Fighter drone manufacturing complex',
     encounterChance: 100,
     threatIncrease: 18,
-    rewardType: 'DRONE_BLUEPRINT_FIGHTER',
+    rewardType: 'DRONE_BLUEPRINT_MEDIUM',
     image: '/DroneWars/poi/drone_fighter.png',
     color: '#f97316',
     flavourText: 'Combat drone schematics stored in central database. Heavy resistance expected.',

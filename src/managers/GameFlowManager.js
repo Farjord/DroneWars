@@ -182,18 +182,10 @@ class GameFlowManager {
       });
     }
 
-    // Subscribe to ActionProcessor for turn transition handling
-    if (this.actionProcessor) {
-      this.actionProcessor.subscribe((event) => {
-        if (event.type === 'action_completed') {
-          debugLog('PASS_LOGIC', `📥 [GAME FLOW] Received action_completed event`, {
-            actionType: event.actionType,
-            gameMode: this.gameStateManager?.getState()?.gameMode
-          });
-          this.handleActionCompletion(event);
-        }
-      });
-    }
+    // Note: ActionProcessor subscription is NOT set up here.
+    // It is set up lazily via resubscribe() called from GameStateManager.startGame()
+    // This ensures cleanup operations (like MenuScreen) don't break turn transitions.
+    // See: GameFlowManager.subscription.test.js for architectural documentation.
 
     // Note: Direct state monitoring replaces both SequentialPhaseManager and SimultaneousActionManager event subscriptions
     // GameFlowManager now directly detects when both sequential and simultaneous phases should complete

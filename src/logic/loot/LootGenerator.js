@@ -8,8 +8,9 @@ import packTypes from '../../data/cardPackData.js';
 import fullCardCollection from '../../data/cardData.js';
 import fullDroneCollection from '../../data/droneData.js';
 import { starterDeck } from '../../data/playerDeckData.js';
+import { starterPoolDroneNames } from '../../data/saveGameSchema.js';
 import { calculateAICoresDrop } from '../../data/aiCoresData.js';
-import { generateSalvageItemFromValue } from '../../data/salvageItemData.js';
+import { generateSalvageItemFromValue, SALVAGE_ITEMS } from '../../data/salvageItemData.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
 // Starter card IDs to exclude (players have infinite copies)
@@ -311,22 +312,28 @@ class LootGenerator {
 
   /**
    * Generate a drone blueprint based on reward type and tier
-   * Uses drone's actual rarity for selection, not class
-   * @param {string} rewardType - DRONE_BLUEPRINT_LIGHT/FIGHTER/HEAVY
+   * Uses weighted class selection with rarity filtering
+   * Filters out starter drones and already-unlocked blueprints
+   * @param {string} rewardType - DRONE_BLUEPRINT_LIGHT/MEDIUM/HEAVY
    * @param {number} tier - Map tier (1, 2, or 3)
-   * @returns {Object} Blueprint object { type: 'blueprint', blueprintId, blueprintType: 'drone', droneData }
+   * @param {Array<string>} unlockedBlueprints - Array of drone names already unlocked
+   * @returns {Object} Blueprint object or { type: 'blueprint_exhausted' } if all exhausted
    */
-  generateDroneBlueprint(rewardType, tier = 1) {
-    // Map reward type to drone classes (determines WHICH drones are in the pool)
-    const classMap = {
-      'DRONE_BLUEPRINT_LIGHT': [0, 1],
-      'DRONE_BLUEPRINT_FIGHTER': [2],
-      'DRONE_BLUEPRINT_HEAVY': [3]
+  generateDroneBlueprint(rewardType, tier = 1, unlockedBlueprints = []) {
+    // POI type → class band weights
+    const CLASS_BAND_WEIGHTS = {
+      'DRONE_BLUEPRINT_LIGHT': { 0: 60, 1: 40, 2: 0 },
+      'DRONE_BLUEPRINT_MEDIUM': { 1: 60, 2: 30, 3: 10 },
+      'DRONE_BLUEPRINT_HEAVY': { 2: 60, 3: 30, 4: 10 }
     };
 
-    const allowedClasses = classMap[rewardType] || [1, 2];
+    const classBandWeights = CLASS_BAND_WEIGHTS[rewardType];
+    if (!classBandWeights) {
+      console.warn(`Unknown drone blueprint reward type: ${rewardType}`);
+      return null;
+    }
 
-    // Tier-based rarity weights - determines WHICH RARITY to select
+    // Tier-based rarity weights
     const rarityWeights = {
       tier1: { Common: 90, Uncommon: 10, Rare: 0 },
       tier2: { Common: 60, Uncommon: 35, Rare: 5 },
@@ -335,31 +342,109 @@ class LootGenerator {
 
     const weights = rarityWeights[`tier${tier}`] || rarityWeights.tier1;
     const rng = this.createRNG(Date.now());
-    const targetRarity = this.rollRarity(weights, rng);
 
-    // Filter drones by CLASS first, then by RARITY
-    const eligibleDrones = fullDroneCollection.filter(d =>
-      allowedClasses.includes(d.class) &&
-      (d.rarity || 'Common') === targetRarity &&
-      d.selectable !== false
-    );
+    // Reroll up to MAX_REROLL_ATTEMPTS times to find an available drone
+    const MAX_REROLL_ATTEMPTS = 10;
+    let selectedDrone = null;
 
-    // Fallback: any drone in allowed classes with any rarity if no exact match
-    const pool = eligibleDrones.length > 0
-      ? eligibleDrones
-      : fullDroneCollection.filter(d => allowedClasses.includes(d.class) && d.selectable !== false);
+    for (let attempt = 0; attempt < MAX_REROLL_ATTEMPTS; attempt++) {
+      // Roll a class based on POI weights
+      const rolledClass = parseInt(this.weightedRoll(classBandWeights, rng));
 
-    if (pool.length === 0) return null;
+      // Roll rarity based on tier weights
+      const targetRarity = this.rollRarity(weights, rng);
 
-    const drone = pool[Math.floor(rng.random() * pool.length)];
+      // Filter drones by class, rarity, and exclusions
+      const availableDrones = fullDroneCollection.filter(d => {
+        // Exclude starters
+        if (starterPoolDroneNames.includes(d.name)) return false;
 
+        // Exclude already unlocked
+        if (unlockedBlueprints.includes(d.name)) return false;
+
+        // Exclude non-selectable
+        if (d.selectable === false) return false;
+
+        // Match rolled class
+        if (d.class !== rolledClass) return false;
+
+        // Match rolled rarity
+        if ((d.rarity || 'Common') !== targetRarity) return false;
+
+        return true;
+      });
+
+      // If pool has drones, select one
+      if (availableDrones.length > 0) {
+        selectedDrone = availableDrones[Math.floor(rng.random() * availableDrones.length)];
+        break;
+      }
+
+      // Otherwise, reroll class and rarity
+    }
+
+    // Check if all classes exhausted
+    if (!selectedDrone) {
+      // All classes in this POI band have zero unowned drones
+      return {
+        type: 'blueprint_exhausted',
+        poiType: rewardType,
+        tier: tier
+      };
+    }
+
+    // Return blueprint
     return {
       type: 'blueprint',
-      blueprintId: drone.name,
+      blueprintId: selectedDrone.name,
       blueprintType: 'drone',
-      rarity: drone.rarity || 'Common',
-      droneData: drone,
+      rarity: selectedDrone.rarity || 'Common',
+      droneData: selectedDrone,
       source: 'drone_blueprint_poi'
+    };
+  }
+
+  /**
+   * Generate higher-tier salvage as fallback for exhausted blueprints
+   * @param {string} rolledRarity - The rarity that would have been rolled
+   * @param {Object} rng - Random number generator
+   * @returns {Object} Salvage item one tier higher
+   */
+  generateBlueprintFallbackSalvage(rolledRarity, rng) {
+    // Map blueprint rarity to one tier higher salvage rarity
+    const RARITY_TIER_UP = {
+      'Common': 'Uncommon',      // Systems tier salvage
+      'Uncommon': 'Rare',         // Artifacts tier salvage
+      'Rare': 'Mythic',           // Premium tier salvage
+      'Mythic': 'Mythic'          // Capped at Mythic (Premium tier)
+    };
+
+    const targetSalvageRarity = RARITY_TIER_UP[rolledRarity] || 'Uncommon';
+
+    // Filter salvage items by rarity
+    const eligibleSalvage = SALVAGE_ITEMS.filter(item => item.rarity === targetSalvageRarity);
+
+    if (eligibleSalvage.length === 0) {
+      // Fallback to any salvage if somehow no items match
+      console.warn(`No salvage items found for rarity ${targetSalvageRarity}`);
+      return this.generateSalvageItemFromValue(100, rng);
+    }
+
+    // Select random item from eligible pool
+    const selectedItem = eligibleSalvage[Math.floor(rng.random() * eligibleSalvage.length)];
+
+    // Roll credit value within item's range
+    const creditValue = selectedItem.creditRange.min +
+      Math.floor(rng.random() * (selectedItem.creditRange.max - selectedItem.creditRange.min + 1));
+
+    return {
+      type: 'salvageItem',
+      itemId: selectedItem.id,
+      name: selectedItem.name,
+      rarity: selectedItem.rarity,
+      creditValue: creditValue,
+      image: selectedItem.image,
+      description: selectedItem.description
     };
   }
 

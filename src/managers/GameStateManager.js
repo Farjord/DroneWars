@@ -1273,6 +1273,11 @@ class GameStateManager {
 
     this.setState(gameState, 'GAME_STARTED');
 
+    // Set up GameFlowManager subscription just before gameplay begins
+    // This is the "just-in-time" initialization point for turn transitions
+    // See: GameFlowManager.subscription.test.js for architectural documentation
+    this.gameFlowManager?.resubscribe();
+
     debugLog('STATE_SYNC', '👤 Player 1 Created:', {
       name: gameState.player1.name,
       energy: gameState.player1.energy,

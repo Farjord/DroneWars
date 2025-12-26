@@ -113,9 +113,10 @@ function MenuScreen() {
     // Clear GameDataService singleton and cache
     GameDataService.reset();
 
-    // Clear ActionProcessor queue
-    if (gameStateManager?.actionProcessor) {
-      gameStateManager.actionProcessor.clearQueue();
+    // Clear ActionProcessor queue using wrapper (handles resubscribe automatically)
+    // See: GameFlowManager.subscription.test.js for architectural documentation
+    if (gameStateManager?.clearActionQueue) {
+      gameStateManager.clearActionQueue();
     }
 
     // Reset GameFlowManager as failsafe

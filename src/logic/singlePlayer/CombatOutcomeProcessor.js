@@ -146,8 +146,52 @@ class CombatOutcomeProcessor {
       || currentRunState?.pendingPOICombat?.packType;
     if (rewardType?.startsWith('DRONE_BLUEPRINT_')) {
       debugLog('SP_COMBAT', 'Drone blueprint POI - generating blueprint:', rewardType);
-      const droneBlueprint = lootGenerator.generateDroneBlueprint(rewardType, enemyTier);
-      if (droneBlueprint) {
+
+      // Read unlocked blueprints from profile
+      const state = gameStateManager.getState();
+      const profile = state.singlePlayerProfile || {};
+      const unlockedBlueprints = profile.unlockedBlueprints || [];
+
+      const droneBlueprint = lootGenerator.generateDroneBlueprint(rewardType, enemyTier, unlockedBlueprints);
+
+      // Check if all blueprints in this category are exhausted
+      if (droneBlueprint?.type === 'blueprint_exhausted') {
+        debugLog('SP_COMBAT', 'All blueprints exhausted for', droneBlueprint.poiType, '- awarding bonus salvage');
+
+        // Generate higher-tier salvage as compensation
+        const rng = lootGenerator.createRNG(Date.now());
+
+        // Determine what rarity would have been rolled (for fallback tier calculation)
+        const tierKey = `tier${enemyTier}`;
+        const rarityWeights = {
+          tier1: { Common: 90, Uncommon: 10, Rare: 0 },
+          tier2: { Common: 60, Uncommon: 35, Rare: 5 },
+          tier3: { Common: 40, Uncommon: 45, Rare: 15 }
+        };
+        const weights = rarityWeights[tierKey] || rarityWeights.tier1;
+        const rolledRarity = lootGenerator.rollRarity(weights, rng);
+
+        // Generate bonus salvage
+        const bonusSalvage = lootGenerator.generateBlueprintFallbackSalvage(rolledRarity, rng);
+
+        // Add to salvageLoot
+        if (salvageLoot.salvageItem) {
+          // Combine credit values
+          salvageLoot.salvageItem.creditValue += bonusSalvage.creditValue;
+        } else {
+          salvageLoot.salvageItem = bonusSalvage;
+        }
+
+        // Set pendingDroneBlueprint to null (no blueprint awarded)
+        pendingDroneBlueprint = null;
+
+        // Store exhaustion message for UI display
+        gameStateManager.setState({
+          blueprintExhaustedMessage: 'All blueprints in this category unlocked! Awarded bonus salvage.'
+        });
+
+        debugLog('SP_COMBAT', 'Bonus salvage awarded:', bonusSalvage);
+      } else if (droneBlueprint) {
         // Store separately - NOT in salvageLoot.blueprint
         pendingDroneBlueprint = droneBlueprint;
         debugLog('SP_COMBAT', 'Drone blueprint generated (pending for special modal):', droneBlueprint);
@@ -444,7 +488,8 @@ class CombatOutcomeProcessor {
     gameStateManager.setState({
       appState: 'tacticalMap',
       pendingDroneBlueprint: null,
-      hasPendingDroneBlueprint: false
+      hasPendingDroneBlueprint: false,
+      blueprintExhaustedMessage: null  // Clear exhaustion message
     });
 
     debugLog('SP_COMBAT', '=== Blueprint collected, returned to Tactical Map ===');

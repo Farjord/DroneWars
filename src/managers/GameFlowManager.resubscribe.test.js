@@ -2,6 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import GameFlowManager from './GameFlowManager';
 import ActionProcessor from './ActionProcessor';
 
+/**
+ * GameFlowManager.resubscribe() Tests
+ *
+ * NOTE: For comprehensive architecture tests, see GameFlowManager.subscription.test.js
+ * This file tests the resubscribe() functionality specifically.
+ */
 describe('GameFlowManager.resubscribe', () => {
   let gameFlowManager;
   let mockGameStateManager;
@@ -30,6 +36,7 @@ describe('GameFlowManager.resubscribe', () => {
     actionProcessor = ActionProcessor.getInstance(mockGameStateManager);
 
     // Create and initialize GameFlowManager
+    // Note: initialize() does NOT set up ActionProcessor subscription (lazy init)
     gameFlowManager = new GameFlowManager();
     gameFlowManager.isInitialized = false;
     gameFlowManager.initialize(mockGameStateManager, actionProcessor, () => false);
@@ -40,16 +47,26 @@ describe('GameFlowManager.resubscribe', () => {
     ActionProcessor.instance = null;
   });
 
-  it('should have listeners after initial subscription', () => {
+  it('should have listeners after resubscribe() is called', () => {
+    // Architecture: initialize() doesn't set up subscription; resubscribe() does
+    gameFlowManager.resubscribe();
     expect(actionProcessor.listeners.length).toBeGreaterThan(0);
   });
 
   it('should have zero listeners after clearQueue', () => {
+    // First set up subscription
+    gameFlowManager.resubscribe();
+    expect(actionProcessor.listeners.length).toBeGreaterThan(0);
+
+    // Then clear it
     actionProcessor.clearQueue();
     expect(actionProcessor.listeners.length).toBe(0);
   });
 
-  it('should restore listeners after resubscribe is called', () => {
+  it('should restore listeners after resubscribe is called following clearQueue', () => {
+    // Set up subscription
+    gameFlowManager.resubscribe();
+
     // Clear the queue (simulating game reset)
     actionProcessor.clearQueue();
     expect(actionProcessor.listeners.length).toBe(0);
