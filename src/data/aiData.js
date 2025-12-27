@@ -219,7 +219,7 @@ const aiPersonalities = [
       'Threat Transmitter',
       'Avenger',
       'Talon',
-      'Mamoth'
+      'Mammoth'
     ],
     shipDeployment: {
       strategy: 'aggressive',

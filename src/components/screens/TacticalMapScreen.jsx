@@ -224,6 +224,7 @@ function TacticalMapScreen() {
   // Blueprint encounter modal state (Phase 5)
   const [showBlueprintEncounterModal, setShowBlueprintEncounterModal] = useState(false);
   const [pendingBlueprintEncounter, setPendingBlueprintEncounter] = useState(null);
+  const [blueprintQuickDeployPending, setBlueprintQuickDeployPending] = useState(false);
 
   // Extraction confirmation modal state
   const [showExtractionConfirm, setShowExtractionConfirm] = useState(false);
@@ -287,6 +288,13 @@ function TacticalMapScreen() {
     // Record screen visit for missions
     MissionService.recordProgress('SCREEN_VISIT', { screen: 'tacticalMap' });
   }, []);
+
+  /**
+   * Check if reward type is a drone blueprint
+   */
+  const isBlueprintRewardType = (rewardType) => {
+    return rewardType?.startsWith('DRONE_BLUEPRINT_');
+  };
 
   // Check for pending waypoints after returning from combat
   // This restores waypoints for journey resumption (SEPARATE from POI loot logic)
@@ -537,7 +545,23 @@ function TacticalMapScreen() {
       const zone = hex?.zone || 'mid';
 
       // Generate PoI loot
-      const poiLoot = lootGenerator.openPack(packType, tier, zone, tierConfig);
+      let poiLoot;
+
+      if (isBlueprintRewardType(packType)) {
+        // Blueprint reward - use dedicated blueprint generation
+        console.log('[TacticalMap] Generating blueprint reward:', packType);
+        const blueprint = lootGenerator.generateDroneBlueprint(packType, tierConfig);
+
+        poiLoot = {
+          cards: [],  // Blueprints don't come from card packs
+          credits: 0,
+          blueprint: blueprint  // Add blueprint to loot
+        };
+      } else {
+        // Regular pack reward - use standard pack opening
+        poiLoot = lootGenerator.openPack(packType, tier, zone, tierConfig);
+      }
+
       console.log('[TacticalMap] Generated PoI loot after regular combat:', poiLoot);
 
       // Skip loot modal if no cards in loot (credits-only rewards from CREDITS_PACK)
@@ -545,9 +569,9 @@ function TacticalMapScreen() {
       if (!poiLoot.cards || poiLoot.cards.length === 0) {
         console.log('[TacticalMap] No cards in POI loot - skipping loot modal');
         // Resume journey if waypoints remain
-        if (remainingWaypoints?.length > 0) {
-          console.log('[TacticalMap] Resuming journey with', remainingWaypoints.length, 'waypoints');
-          setPendingResumeWaypoints(remainingWaypoints);
+        if (waypointsToRestore?.length > 0) {
+          console.log('[TacticalMap] Resuming journey with', waypointsToRestore.length, 'waypoints');
+          setPendingResumeWaypoints(waypointsToRestore);
         }
         return;
       }
@@ -1198,6 +1222,15 @@ function TacticalMapScreen() {
     const aiId = encounter.aiId;
     const currentRunState = tacticalMapStateManager.getState();
 
+    // Store encounter data for combat initialization (CRITICAL FIX)
+    setCurrentEncounter({
+      poi: encounter.poi,
+      outcome: 'combat',
+      aiId: encounter.aiId,           // Required by handleLoadingEncounterComplete
+      reward: encounter.reward,        // Needed for pendingPOICombat
+      fromBlueprintPoI: true           // Flag for special handling
+    });
+
     // Store encounter info for victory processing (Phase 7)
     tacticalMapStateManager.setState({
       pendingPOICombat: {
@@ -1245,6 +1278,63 @@ function TacticalMapScreen() {
       encounterResolveRef.current();
     }
   }, []);
+
+  /**
+   * Handle blueprint encounter quick deploy
+   * Opens quick deploy selection modal
+   */
+  const handleBlueprintQuickDeploy = useCallback(() => {
+    console.log('[TacticalMap] Blueprint encounter - opening quick deploy selection');
+    setShowBlueprintEncounterModal(false);
+    setShowQuickDeploySelection(true);
+    setBlueprintQuickDeployPending(true);  // Flag to track blueprint quick deploy
+  }, []);
+
+  /**
+   * Handle blueprint encounter accept WITH quick deployment
+   */
+  const handleBlueprintEncounterAcceptWithQuickDeploy = useCallback((deployment) => {
+    if (!pendingBlueprintEncounter) return;
+
+    console.log('[TacticalMap] Blueprint encounter accepted with quick deploy:', deployment.name);
+
+    const encounter = pendingBlueprintEncounter;
+
+    // Store encounter data for combat initialization
+    setCurrentEncounter({
+      poi: encounter.poi,
+      outcome: 'combat',
+      aiId: encounter.aiId,
+      reward: encounter.reward,
+      fromBlueprintPoI: true,
+      isBlockade: true  // Quick deploy requires blockade mode
+    });
+
+    // Store encounter info for victory processing
+    tacticalMapStateManager.setState({
+      pendingPOICombat: {
+        packType: encounter.reward.rewardType,
+        fromBlueprintPoI: true
+      },
+      currentPOI: encounter.poi
+    });
+
+    // Transition to combat with loading screen + quick deploy
+    setLoadingEncounterData({
+      aiName: encounter.aiData.name,
+      aiShipClass: encounter.aiData.shipClass,
+      aiDifficulty: encounter.aiData.difficulty,
+      escapeDamage: encounter.aiData.escapeDamage,
+      transitionMessage: `Engaging ${encounter.poi.poiData.name}...`,
+      quickDeployId: deployment.id  // Include quick deploy ID
+    });
+    setShowLoadingEncounter(true);
+
+    // Resume movement logic
+    if (encounterResolveRef.current) {
+      encounterResolveRef.current();
+    }
+  }, [pendingBlueprintEncounter]);
 
   // ========================================
   // SALVAGE HANDLERS
@@ -3111,6 +3201,8 @@ function TacticalMapScreen() {
           show={showBlueprintEncounterModal}
           onAccept={handleBlueprintEncounterAccept}
           onDecline={handleBlueprintEncounterDecline}
+          onQuickDeploy={handleBlueprintQuickDeploy}
+          validQuickDeployments={validQuickDeployments}
         />
       )}
 
@@ -3138,13 +3230,24 @@ function TacticalMapScreen() {
           onSelect={(deployment) => {
             setSelectedQuickDeploy(deployment);
             setShowQuickDeploySelection(false);
-            // Proceed to combat with selected quick deploy
-            handleEncounterProceedWithQuickDeploy(deployment);
+
+            // Check if this is from a blueprint encounter
+            if (blueprintQuickDeployPending) {
+              setBlueprintQuickDeployPending(false);
+              // Blueprint quick deploy - same flow but set fromBlueprintPoI flag
+              handleBlueprintEncounterAcceptWithQuickDeploy(deployment);
+            } else {
+              // Regular POI/blockade/extraction/salvage quick deploy
+              handleEncounterProceedWithQuickDeploy(deployment);
+            }
           }}
           onBack={() => {
             setShowQuickDeploySelection(false);
             // Return to appropriate modal based on context
-            if (extractionQuickDeployPending) {
+            if (blueprintQuickDeployPending) {
+              setBlueprintQuickDeployPending(false);
+              setShowBlueprintEncounterModal(true);
+            } else if (extractionQuickDeployPending) {
               setExtractionQuickDeployPending(false);
               setShowExtractionConfirm(true);
             } else if (salvageQuickDeployPending) {

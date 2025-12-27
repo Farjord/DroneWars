@@ -13,10 +13,19 @@ import { AlertTriangle, Shield, Cpu, Zap, Award } from 'lucide-react';
  *
  * @param {Object} encounter - Encounter result from EncounterController
  * @param {boolean} show - Whether to show the modal
- * @param {Function} onAccept - Callback when player engages combat
+ * @param {Function} onAccept - Callback when player engages combat (standard deployment)
  * @param {Function} onDecline - Callback when player declines (instant, no damage)
+ * @param {Function} onQuickDeploy - Callback when player chooses quick deploy
+ * @param {Array} validQuickDeployments - Array of valid quick deployments
  */
-function BlueprintEncounterModal({ encounter, show, onAccept, onDecline }) {
+function BlueprintEncounterModal({
+  encounter,
+  show,
+  onAccept,
+  onDecline,
+  onQuickDeploy,
+  validQuickDeployments = []
+}) {
   if (!show || !encounter) return null;
 
   const { poi, aiData } = encounter;
@@ -49,7 +58,7 @@ function BlueprintEncounterModal({ encounter, show, onAccept, onDecline }) {
 
   return (
     <div className="dw-modal-overlay" onClick={(e) => e.stopPropagation()}>
-      <div className="dw-modal-content dw-modal--md dw-modal--danger" onClick={(e) => e.stopPropagation()}>
+      <div className="dw-modal-content dw-modal--lg dw-modal--danger" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="dw-modal-header">
           <div className="dw-modal-header-icon" style={{ color: poiData.color || '#ef4444' }}>
@@ -69,13 +78,15 @@ function BlueprintEncounterModal({ encounter, show, onAccept, onDecline }) {
         <div className="dw-modal-body">
           {/* POI Image (if available) */}
           {poiData.image && (
-            <div style={{ marginBottom: '16px', textAlign: 'center' }}>
+            <div style={{ marginBottom: '16px', width: '100%', overflow: 'hidden' }}>
               <img
                 src={poiData.image}
                 alt={poiData.name}
                 style={{
-                  maxWidth: '100%',
-                  maxHeight: '200px',
+                  width: '100%',
+                  height: '200px',
+                  objectFit: 'cover',
+                  objectPosition: 'center center',
                   borderRadius: '8px',
                   border: `2px solid ${poiData.color || '#ef4444'}`
                 }}
@@ -120,7 +131,7 @@ function BlueprintEncounterModal({ encounter, show, onAccept, onDecline }) {
                 GUARDIAN PROFILE
               </p>
 
-              <div className="dw-modal-grid dw-modal-grid--2">
+              <div className="dw-modal-grid dw-modal-grid--3">
                 <div className="dw-modal-stat">
                   <div className="dw-modal-stat-label">Guardian</div>
                   <div className="dw-modal-stat-value" style={{ fontSize: '14px' }}>
@@ -140,12 +151,6 @@ function BlueprintEncounterModal({ encounter, show, onAccept, onDecline }) {
                     fontSize: '14px'
                   }}>
                     {aiData.difficulty || 'Unknown'}
-                  </div>
-                </div>
-                <div className="dw-modal-stat">
-                  <div className="dw-modal-stat-label">Escape Damage</div>
-                  <div className="dw-modal-stat-value" style={{ fontSize: '14px' }}>
-                    {aiData.escapeDamage ? `${aiData.escapeDamage.min}-${aiData.escapeDamage.max}` : '0-0'}
                   </div>
                 </div>
               </div>
@@ -192,9 +197,25 @@ function BlueprintEncounterModal({ encounter, show, onAccept, onDecline }) {
           <button onClick={onDecline} className="dw-btn dw-btn-cancel">
             DECLINE
           </button>
-          <button onClick={onAccept} className="dw-btn dw-btn-danger">
-            ENGAGE
-          </button>
+
+          {/* Conditional rendering based on valid quick deployments */}
+          {validQuickDeployments.length > 0 ? (
+            // Has quick deployments - show both options
+            <>
+              <button onClick={onAccept} className="dw-btn dw-btn-secondary">
+                STANDARD DEPLOY
+              </button>
+              <button onClick={onQuickDeploy} className="dw-btn dw-btn-danger">
+                <Zap size={16} style={{ marginRight: '6px' }} />
+                QUICK DEPLOY
+              </button>
+            </>
+          ) : (
+            // No quick deployments - single engage button
+            <button onClick={onAccept} className="dw-btn dw-btn-danger">
+              ENGAGE
+            </button>
+          )}
         </div>
       </div>
     </div>
