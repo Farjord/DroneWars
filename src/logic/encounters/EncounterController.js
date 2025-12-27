@@ -207,34 +207,81 @@ class EncounterController {
    * @param {Object} tierConfig - Tier configuration
    * @returns {Object} Encounter result for modal display
    */
-  handlePOIArrival(poi, tierConfig) {
+  async handlePOIArrival(poi, tierConfig) {
     const detection = DetectionManager.getCurrentDetection();
 
     debugLog('ENCOUNTER', 'POI arrival', { name: poi.poiData?.name || 'Unknown', detection: detection.toFixed(2) });
 
     // Track POI visit for run summary
+    // Blueprint PoIs with requiresEncounterConfirmation should NOT be marked visited
+    // until player actually engages (allows declining and returning later)
     const runState = tacticalMapStateManager.getState();
     if (runState && poi.type === 'poi') {
-      const poisVisited = runState.poisVisited || [];
-      const alreadyVisited = poisVisited.some(p => p.q === poi.q && p.r === poi.r);
-      if (!alreadyVisited) {
-        tacticalMapStateManager.setState({
-          poisVisited: [...poisVisited, { q: poi.q, r: poi.r, name: poi.poiData?.name }]
-        });
-        debugLog('ENCOUNTER', 'POI tracked for summary', { q: poi.q, r: poi.r, name: poi.poiData?.name });
+      const shouldTrackImmediately = !poi.poiData?.requiresEncounterConfirmation;
+
+      if (shouldTrackImmediately) {
+        const poisVisited = runState.poisVisited || [];
+        const alreadyVisited = poisVisited.some(p => p.q === poi.q && p.r === poi.r);
+        if (!alreadyVisited) {
+          tacticalMapStateManager.setState({
+            poisVisited: [...poisVisited, { q: poi.q, r: poi.r, name: poi.poiData?.name }]
+          });
+          debugLog('ENCOUNTER', 'POI tracked for summary', { q: poi.q, r: poi.r, name: poi.poiData?.name });
+        }
+      } else {
+        debugLog('ENCOUNTER', 'Blueprint PoI - delaying visit tracking until engagement decision');
       }
     }
 
-    // For drone blueprint PoIs with pre-determined guardian, always combat
+    // For drone blueprint PoIs with pre-determined guardian
     if (poi.poiData?.guardianAI) {
       debugLog('ENCOUNTER', 'Drone blueprint POI - guaranteed combat with guardian', {
-        guardian: poi.poiData.guardianAI.name
+        guardian: poi.poiData.guardianAI.name,
+        requiresConfirmation: poi.poiData.requiresEncounterConfirmation
       });
 
       const reward = this.calculateReward(poi, 'combat');
       const guardianName = poi.poiData.guardianAI.id;
       const aiData = this.getAIData(guardianName);
 
+      // Calculate potential reputation for guardian combat
+      let potentialReputation = null;
+      const gameState = gameStateManager.getState();
+      const shipSlot = gameState.singlePlayerShipSlots?.find(s => s.id === runState?.shipSlotId);
+
+      if (shipSlot && runState) {
+        const ReputationCalculator = await import('../reputation/ReputationCalculator.js');
+        const { mapTiers } = await import('../../data/mapData.js');
+
+        const loadoutValue = ReputationCalculator.calculateLoadoutValue(shipSlot);
+        const mapTier = runState.mapTier || 1;
+        const mapConfig = mapTiers.find(t => t.tier === mapTier);
+        const tierCap = mapConfig?.maxReputationPerCombat || 5000;
+
+        potentialReputation = ReputationCalculator.calculateCombatReputation(
+          loadoutValue.totalValue,
+          guardianName,
+          tierCap
+        );
+      }
+
+      // NEW: Check if this PoI requires confirmation modal before combat
+      if (poi.poiData.requiresEncounterConfirmation) {
+        return {
+          poi,
+          outcome: 'encounterPending',  // NEW: Pending user decision
+          aiId: guardianName,
+          aiData,
+          reward,
+          detection,
+          threatLevel: DetectionManager.getThreshold(),
+          isGuaranteedCombat: true,
+          requiresConfirmation: true,  // NEW: Flag for UI to show modal
+          potentialReputation  // NEW: Potential reputation
+        };
+      }
+
+      // OLD BEHAVIOR: Auto-combat for non-confirmation guardians (backward compatibility)
       return {
         poi,
         outcome: 'combat',
@@ -243,7 +290,8 @@ class EncounterController {
         reward,
         detection,
         threatLevel: DetectionManager.getThreshold(),
-        isGuaranteedCombat: true  // Flag for UI
+        isGuaranteedCombat: true,  // Flag for UI
+        potentialReputation  // NEW: Potential reputation
       };
     }
 
@@ -261,6 +309,31 @@ class EncounterController {
     // Calculate reward
     const reward = this.calculateReward(poi, outcome);
 
+    // Calculate potential combat reputation (only for combat encounters)
+    let potentialReputation = null;
+    if (aiId) {
+      const gameState = gameStateManager.getState();
+      const shipSlot = gameState.singlePlayerShipSlots?.find(s => s.id === runState?.shipSlotId);
+
+      if (shipSlot && runState) {
+        const ReputationCalculator = await import('../reputation/ReputationCalculator.js');
+        const { mapTiers } = await import('../../data/mapData.js');
+
+        const loadoutValue = ReputationCalculator.calculateLoadoutValue(shipSlot);
+        const mapTier = runState.mapTier || 1;
+        const mapConfig = mapTiers.find(t => t.tier === mapTier);
+        const tierCap = mapConfig?.maxReputationPerCombat || 5000;
+
+        potentialReputation = ReputationCalculator.calculateCombatReputation(
+          loadoutValue.totalValue,
+          aiId,
+          tierCap
+        );
+
+        debugLog('ENCOUNTER', 'Potential combat reputation:', potentialReputation);
+      }
+    }
+
     // Build encounter result
     const encounter = {
       poi,
@@ -269,7 +342,8 @@ class EncounterController {
       aiData,            // Ship class, difficulty, escape damage (combat only)
       reward,            // Credits and reward info
       detection,         // Detection at time of encounter
-      threatLevel: DetectionManager.getThreshold()  // 'low', 'medium', 'high'
+      threatLevel: DetectionManager.getThreshold(),  // 'low', 'medium', 'high'
+      potentialReputation  // NEW: Potential reputation from combat
     };
 
     debugLog('ENCOUNTER', 'Encounter result', encounter);

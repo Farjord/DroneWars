@@ -321,4 +321,86 @@ describe('POIEncounterModal', () => {
       expect(mockOnClose).not.toHaveBeenCalled();
     });
   });
+
+  describe('Potential Reputation Tooltip', () => {
+    test('should render potential reputation label with title attribute when reputation data provided', () => {
+      const encounterWithRep = {
+        ...combatEncounter,
+        aiData: {
+          difficulty: 'Easy',
+          shipClass: 'Raider',
+          escapeDamage: { min: 2, max: 4 }
+        },
+        potentialReputation: {
+          repEarned: 1000,
+          aiMultiplier: 0.5,
+          aiDifficulty: 'Easy',
+          wasCapped: false
+        }
+      };
+
+      const { container } = render(
+        <POIEncounterModal
+          encounter={encounterWithRep}
+          onProceed={mockOnProceed}
+          onEscape={mockOnEscape}
+          onClose={mockOnClose}
+        />
+      );
+
+      const labels = container.querySelectorAll('.dw-modal-stat-label');
+      const repLabel = Array.from(labels).find(label => label.textContent.includes('Potential Reputation'));
+
+      expect(repLabel).toHaveAttribute('title');
+    });
+
+    test('should have formula explanation in title attribute', () => {
+      const encounterWithRep = {
+        ...combatEncounter,
+        aiData: {
+          difficulty: 'Easy',
+          shipClass: 'Raider',
+          escapeDamage: { min: 2, max: 4 }
+        },
+        potentialReputation: {
+          repEarned: 1000,
+          aiMultiplier: 0.5,
+          aiDifficulty: 'Easy',
+          wasCapped: false
+        }
+      };
+
+      const { container } = render(
+        <POIEncounterModal
+          encounter={encounterWithRep}
+          onProceed={mockOnProceed}
+          onEscape={mockOnEscape}
+          onClose={mockOnClose}
+        />
+      );
+
+      const labels = container.querySelectorAll('.dw-modal-stat-label');
+      const repLabel = Array.from(labels).find(label => label.textContent.includes('Potential Reputation'));
+      const title = repLabel.getAttribute('title');
+
+      expect(title).toContain('Formula');
+      expect(title).toContain('Deck Value');
+      expect(title).toContain('Map Cap');
+      expect(title).toContain('AI Multiplier');
+    });
+
+    test('should not render potential reputation when data not provided', () => {
+      // Combat encounter without potentialReputation
+      render(
+        <POIEncounterModal
+          encounter={combatEncounter}
+          onProceed={mockOnProceed}
+          onEscape={mockOnEscape}
+          onClose={mockOnClose}
+        />
+      );
+
+      expect(screen.queryByText(/Potential Reputation/i)).not.toBeInTheDocument();
+    });
+  });
 });

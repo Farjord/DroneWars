@@ -10,6 +10,9 @@ export const mapTiers = [
     name: 'The Shallows',
     description: 'Outer perimeter of the Eremos. Low-risk reconnaissance zone with scattered debris fields.',
 
+    // Reputation cap per combat encounter
+    maxReputationPerCombat: 5000,  // Caps individual combat reputation gain
+
     // Topology
     radius: 5,  // Hexes from center
     gateCount: { min: 3, max: 4 },  // Random number of gates (3-4)

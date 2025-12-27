@@ -100,6 +100,14 @@ export const poiTypes = [
     weight: 0.1,       // Rare spawn (10% of normal)
     baseDetectionIncrease: 10,  // +10% starting detection when this PoI is on map
     requiresToken: true,  // Map entry requires security token
+    requiresEncounterConfirmation: true,  // Show modal before combat
+    disableSalvage: true,  // No salvage operations allowed
+    threatIncreaseOnVictoryOnly: true,  // Only apply threat increase on combat victory
+    tierAIMapping: {
+      1: 'Rogue Scout Pattern',  // Tier 1: Easy difficulty
+      2: 'Rogue Scout Pattern',  // Tier 2: TBD (placeholder)
+      3: 'Rogue Scout Pattern'   // Tier 3: TBD (placeholder)
+    }
   },
 
   {
@@ -116,6 +124,14 @@ export const poiTypes = [
     weight: 0.1,
     baseDetectionIncrease: 12,  // +12% starting detection when this PoI is on map
     requiresToken: true,  // Map entry requires security token
+    requiresEncounterConfirmation: true,  // Show modal before combat
+    disableSalvage: true,  // No salvage operations allowed
+    threatIncreaseOnVictoryOnly: true,  // Only apply threat increase on combat victory
+    tierAIMapping: {
+      1: 'Specialized Hunter Group',  // Tier 1: Medium difficulty
+      2: 'Specialized Hunter Group',  // Tier 2: TBD (placeholder)
+      3: 'Specialized Hunter Group'   // Tier 3: TBD (placeholder)
+    }
   },
 
   {
@@ -132,6 +148,14 @@ export const poiTypes = [
     weight: 0.1,
     baseDetectionIncrease: 15,  // +15% starting detection when this PoI is on map
     requiresToken: true,  // Map entry requires security token
+    requiresEncounterConfirmation: true,  // Show modal before combat
+    disableSalvage: true,  // No salvage operations allowed
+    threatIncreaseOnVictoryOnly: true,  // Only apply threat increase on combat victory
+    tierAIMapping: {  // Tier-specific AI assignments
+      1: 'Capital-Class Blockade Fleet',  // Tier 1: Hard difficulty
+      2: 'Capital-Class Blockade Fleet',  // Tier 2: TBD (placeholder)
+      3: 'Capital-Class Blockade Fleet'   // Tier 3: TBD (placeholder)
+    }
   }
 ];
 

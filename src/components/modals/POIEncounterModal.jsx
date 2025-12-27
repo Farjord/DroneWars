@@ -150,6 +150,29 @@ function POIEncounterModal({ encounter, onProceed, onQuickDeploy, validQuickDepl
                   {formatEscapeDamage(aiData.escapeDamage)} hull
                 </div>
               </div>
+
+              {/* Potential Reputation - only show if repEarned > 0 */}
+              {encounter.potentialReputation && encounter.potentialReputation.repEarned > 0 && (
+                <div className="dw-modal-stat" style={{ gridColumn: '1 / -1' }}>
+                  <div
+                    className="dw-modal-stat-label"
+                    title="Reputation earned if you defeat this enemy and successfully extract. Formula: min(Deck Value, Map Cap) × AI Multiplier"
+                  >
+                    Potential Reputation
+                    {encounter.potentialReputation.wasCapped && (
+                      <span style={{ color: '#f59e0b', fontSize: '10px', marginLeft: '4px' }}>
+                        (CAPPED)
+                      </span>
+                    )}
+                  </div>
+                  <div className="dw-modal-stat-value" style={{ color: '#a855f7' }}>
+                    +{encounter.potentialReputation.repEarned.toLocaleString()}
+                    <span style={{ fontSize: '11px', color: 'var(--modal-text-secondary)', marginLeft: '4px' }}>
+                      ({encounter.potentialReputation.aiMultiplier}× {encounter.potentialReputation.aiDifficulty})
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

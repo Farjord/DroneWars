@@ -7,7 +7,8 @@
 import gameStateManager from '../../managers/GameStateManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { calculateReputationResult, calculateLoadoutValue } from './ReputationCalculator.js';
-import { getLevelData, REPUTATION_LEVELS, EXTRACTION_LIMIT_BONUS_RANKS } from '../../data/reputationRewardsData.js';
+import { REPUTATION } from '../../data/reputationData.js';
+import { getLevelData, REPUTATION_LEVELS, EXTRACTION_LIMIT_BONUS_RANKS, getNewlyUnlockedLevels } from '../../data/reputationRewardsData.js';
 
 class ReputationService {
   /**
@@ -66,9 +67,10 @@ class ReputationService {
    * @param {Object} shipSlot - The ship slot used for the run
    * @param {number} tier - Map tier (1, 2, or 3)
    * @param {boolean} success - Whether extraction was successful
+   * @param {number} combatReputation - Total combat rep earned during run (default: 0)
    * @returns {Object} Result including rep gained and level changes
    */
-  awardReputation(shipSlot, tier, success) {
+  awardReputation(shipSlot, tier, success, combatReputation = 0) {
     const state = gameStateManager.getState();
     const profile = state.singlePlayerProfile;
 
@@ -84,26 +86,45 @@ class ReputationService {
 
     const currentRep = profile.reputation.current;
 
-    // Calculate reputation result
-    const result = calculateReputationResult(shipSlot, tier, success, currentRep);
+    // Calculate loadout-based reputation (existing system)
+    const loadoutResult = calculateReputationResult(shipSlot, tier, success, currentRep);
+
+    // Add combat reputation (new system)
+    // Combat rep is reduced by 25% on MIA (same as loadout rep)
+    const finalCombatRep = success
+      ? combatReputation
+      : Math.floor(combatReputation * REPUTATION.MIA_MULTIPLIER);
+
+    // Total rep gain = loadout rep + combat rep
+    const totalRepGain = loadoutResult.repGained + finalCombatRep;
+    const newRep = currentRep + totalRepGain;
+
+    // Get level data before and after total rep gain
+    const levelBefore = getLevelData(currentRep);
+    const levelAfter = getLevelData(newRep);
+
+    // Get newly unlocked levels (for rewards)
+    const unlockedLevels = getNewlyUnlockedLevels(currentRep, newRep);
 
     // Skip if starter deck (no rep gain)
-    if (result.loadout.isStarterDeck) {
+    if (loadoutResult.loadout.isStarterDeck) {
       debugLog('REPUTATION', 'Starter deck used - no reputation awarded');
       return {
         success: true,
         repGained: 0,
+        loadoutRepGained: 0,
+        combatRepGained: 0,
         isStarterDeck: true,
-        ...result,
+        ...loadoutResult,
       };
     }
 
     // Update profile
-    profile.reputation.current = result.newRep;
-    profile.reputation.level = result.newLevel;
+    profile.reputation.current = newRep;
+    profile.reputation.level = levelAfter.level;
 
     // Add newly unlocked levels to unclaimed rewards
-    for (const unlockedLevel of result.unlockedLevels) {
+    for (const unlockedLevel of unlockedLevels) {
       if (unlockedLevel.reward && !profile.reputation.unclaimedRewards.includes(unlockedLevel.level)) {
         profile.reputation.unclaimedRewards.push(unlockedLevel.level);
       }
@@ -114,14 +135,35 @@ class ReputationService {
       singlePlayerProfile: { ...profile }
     });
 
-    debugLog('REPUTATION', `Awarded ${result.repGained} reputation. ` +
-      `Total: ${currentRep} → ${result.newRep}. ` +
-      `Level: ${result.previousLevel} → ${result.newLevel}. ` +
-      `New rewards: ${result.newRewards.length}`);
+    debugLog('REPUTATION', `Awarded ${totalRepGain} reputation (Loadout: ${loadoutResult.repGained}, Combat: ${finalCombatRep}). ` +
+      `Total: ${currentRep} → ${newRep}. ` +
+      `Level: ${levelBefore.level} → ${levelAfter.level}. ` +
+      `New rewards: ${unlockedLevels.filter(l => l.reward).length}`);
 
     return {
       success: true,
-      ...result,
+      repGained: totalRepGain,
+      loadoutRepGained: loadoutResult.repGained,
+      combatRepGained: finalCombatRep,
+      previousRep: currentRep,
+      newRep,
+      previousLevel: levelBefore.level,
+      newLevel: levelAfter.level,
+      leveledUp: levelAfter.level > levelBefore.level,
+      levelsGained: levelAfter.level - levelBefore.level,
+      progress: levelAfter.progress,
+      currentInLevel: levelAfter.currentInLevel,
+      requiredForNext: levelAfter.requiredForNext,
+      nextLevelThreshold: levelAfter.nextLevelThreshold,
+      unlockedLevels,
+      newRewards: unlockedLevels.filter(l => l.reward !== null).map(l => ({
+        level: l.level,
+        reward: l.reward,
+      })),
+      loadout: loadoutResult.loadout,
+      tierCap: loadoutResult.tierCap,
+      wasCapped: loadoutResult.wasCapped,
+      multiplier: loadoutResult.multiplier,
     };
   }
 

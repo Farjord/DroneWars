@@ -6,6 +6,7 @@ import { ECONOMY } from '../../data/economyData.js';
 import ReputationService from '../../logic/reputation/ReputationService.js';
 import MapPreviewRenderer from '../ui/MapPreviewRenderer';
 import { Map, AlertTriangle, XCircle, Info, Shield, HelpCircle } from 'lucide-react';
+import StarterDeckWarningModal from './StarterDeckWarningModal.jsx';
 
 /**
  * MapOverviewModal Component
@@ -16,6 +17,7 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
   const [validationError, setValidationError] = useState(null);
   const [selectedGateId, setSelectedGateId] = useState(0); // Default to first gate
   const [currentSlotId, setCurrentSlotId] = useState(selectedSlotId); // Track selected ship slot
+  const [showStarterWarning, setShowStarterWarning] = useState(false);
 
   // Find current index in sorted sectors for navigation
   const currentIndex = activeSectors.findIndex(s => s.coordinate === selectedCoordinate);
@@ -60,6 +62,16 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
         return { ...slot, isValid: validation.valid };
       });
   }, [singlePlayerShipSlots]);
+
+  // Check if player has custom decks available
+  const hasCustomDecks = useMemo(() => {
+    const customDecks = allActiveSlots.filter(slot => slot.id !== 0);
+    return customDecks.length > 0;
+  }, [allActiveSlots]);
+
+  const customDeckCount = useMemo(() => {
+    return allActiveSlots.filter(slot => slot.id !== 0).length;
+  }, [allActiveSlots]);
 
   // Check if the currently selected slot is invalid
   const isCurrentSlotInvalid = useMemo(() => {
@@ -207,6 +219,12 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
       return;
     }
 
+    // Check if we should show starter deck warning
+    if (currentSlotId === 0) {
+      setShowStarterWarning(true);
+      return;
+    }
+
     debugLog('EXTRACTION', '✅ Validation passed, calling onDeploy', {
       slotId: currentSlotId,
       mapName: selectedMap.name,
@@ -215,6 +233,30 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
 
     setValidationError(null);
     onDeploy(currentSlotId, selectedMap, selectedGateId); // Pass gate ID
+  };
+
+  /**
+   * Handle starter deck warning modal cancel
+   */
+  const handleStarterWarningCancel = () => {
+    setShowStarterWarning(false);
+  };
+
+  /**
+   * Handle deploying with starter deck anyway
+   */
+  const handleDeployWithStarter = () => {
+    setShowStarterWarning(false);
+    setValidationError(null);
+    onDeploy(currentSlotId, selectedMap, selectedGateId);
+  };
+
+  /**
+   * Handle switching deck from warning modal
+   */
+  const handleSwitchDeck = () => {
+    setShowStarterWarning(false);
+    // User can manually select a different deck from the dropdown
   };
 
   /**
@@ -246,33 +288,36 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
             ← Prev
           </button>
 
-          <div className="dw-modal-header-info" style={{ flex: 1, textAlign: 'center', position: 'relative' }}>
-            <h2 className="dw-modal-header-title">Sector {selectedCoordinate}</h2>
+          <div className="dw-modal-header-info" style={{ flex: 1, textAlign: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <h2 className="dw-modal-header-title" style={{ margin: 0 }}>Sector {selectedCoordinate}</h2>
+              {onShowHelp && (
+                <button
+                  onClick={onShowHelp}
+                  className="dw-modal-help-btn"
+                  title="Show help"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '4px',
+                    borderRadius: '4px',
+                    color: '#06b6d4',
+                    opacity: 0.7,
+                    transition: 'opacity 0.2s ease',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
+                >
+                  <HelpCircle size={18} />
+                </button>
+              )}
+            </div>
             <p className="dw-modal-header-subtitle">
               {currentSlot ? (currentSlot.id === 0 ? 'Starter Deck' : (currentSlot.name || `Slot ${currentSlotId}`)) : 'No Ship'} | Tier {selectedMap.tier}
             </p>
-            {onShowHelp && (
-              <button
-                onClick={onShowHelp}
-                title="Show help"
-                style={{
-                  position: 'absolute',
-                  top: '0',
-                  right: '-28px',
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  color: '#06b6d4',
-                  opacity: 0.7,
-                  transition: 'opacity 0.2s ease'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
-              >
-                <HelpCircle size={18} />
-              </button>
-            )}
           </div>
 
           <button
@@ -343,8 +388,28 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
                   <div className="dw-modal-stat-value">{totalPOIs}</div>
                 </div>
                 <div className="dw-modal-stat">
-                  <div className="dw-modal-stat-label">Gates</div>
-                  <div className="dw-modal-stat-value" style={{ color: '#3b82f6' }}>{gateCount}</div>
+                  <div className="dw-modal-stat-label">
+                    Rep Cap
+                    <button
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'help',
+                        padding: 0,
+                        marginLeft: '4px',
+                        color: 'var(--modal-text-secondary)',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        verticalAlign: 'middle'
+                      }}
+                      title="Maximum reputation you can earn from defeating a single enemy. Based on map tier. Formula: min(Deck Value, Map Cap) × AI Multiplier"
+                    >
+                      <HelpCircle size={12} />
+                    </button>
+                  </div>
+                  <div className="dw-modal-stat-value" style={{ color: '#a855f7' }}>
+                    {(selectedMap.maxReputationPerCombat || 5000).toLocaleString()}
+                  </div>
                 </div>
               </div>
 
@@ -531,6 +596,16 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
           </button>
         </div>
       </div>
+
+      {/* Starter Deck Warning Modal */}
+      {showStarterWarning && (
+        <StarterDeckWarningModal
+          onCancel={handleStarterWarningCancel}
+          onDeployAnyway={handleDeployWithStarter}
+          onSwitchDeck={handleSwitchDeck}
+          customDeckCount={customDeckCount}
+        />
+      )}
     </div>
   );
 };

@@ -16,6 +16,8 @@ import { shipCollection, getShipById } from '../../data/shipData.js';
 import fullDroneCollection from '../../data/droneData.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { starterPoolCards, starterPoolDroneNames, starterPoolShipIds } from '../../data/saveGameSchema.js';
+import aiPersonalities from '../../data/aiData.js';
+import { mapTiers } from '../../data/mapData.js';
 
 /**
  * Get blueprint cost for a given rarity
@@ -154,8 +156,9 @@ export function calculateLoadoutValue(shipSlot) {
  * @returns {Object} Reputation gain details
  */
 export function calculateRepGain(loadoutValue, tier, success) {
-  // Get tier cap
-  const tierCap = REPUTATION.TIER_CAPS[tier] || REPUTATION.TIER_CAPS[3];
+  // Get tier cap from map data instead of removed TIER_CAPS
+  const mapConfig = mapTiers.find(t => t.tier === tier);
+  const tierCap = mapConfig?.maxReputationPerCombat || 5000; // Default to T1 cap
 
   // Apply tier cap
   const cappedValue = Math.min(loadoutValue, tierCap);
@@ -234,6 +237,40 @@ export function calculateReputationResult(shipSlot, tier, success, currentRep) {
   };
 }
 
+/**
+ * Calculate combat reputation gain
+ * Formula: min(deckValue, mapTierCap) × aiMultiplier = repEarned
+ *
+ * @param {number} deckValue - Player's deck value (from calculateLoadoutValue)
+ * @param {string} aiId - AI name/ID
+ * @param {number} mapTierCap - Map's maxReputationPerCombat
+ * @returns {Object} { deckValue, aiMultiplier, aiDifficulty, tierCap, cappedValue, wasCapped, repEarned }
+ */
+export function calculateCombatReputation(deckValue, aiId, mapTierCap) {
+  // Get AI data to find reputationMultiplier
+  const ai = aiPersonalities.find(a => a.name === aiId);
+
+  // Default to 1.0 if AI not found or no multiplier defined
+  const aiMultiplier = ai?.reputationMultiplier ?? 1.0;
+
+  // Apply tier cap to deck value FIRST
+  const cappedValue = Math.min(deckValue, mapTierCap);
+  const wasCapped = deckValue > mapTierCap;
+
+  // Then multiply by AI difficulty
+  const repEarned = Math.floor(cappedValue * aiMultiplier);
+
+  return {
+    deckValue,
+    aiMultiplier,
+    aiDifficulty: ai?.difficulty || 'Unknown',
+    tierCap: mapTierCap,
+    cappedValue,
+    wasCapped,
+    repEarned
+  };
+}
+
 export default {
   getBlueprintCost,
   calculateCardValue,
@@ -243,4 +280,5 @@ export default {
   calculateLoadoutValue,
   calculateRepGain,
   calculateReputationResult,
+  calculateCombatReputation,
 };

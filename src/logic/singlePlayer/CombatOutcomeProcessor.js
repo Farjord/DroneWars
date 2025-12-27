@@ -10,8 +10,11 @@ import { debugLog } from '../../utils/debugLogger.js';
 import lootGenerator from '../loot/LootGenerator.js';
 import ExtractionController from './ExtractionController.js';
 import EncounterController from '../encounters/EncounterController.js';
+import DetectionManager from '../detection/DetectionManager.js';
 import aiPersonalities from '../../data/aiData.js';
 import MissionService from '../missions/MissionService.js';
+import { calculateLoadoutValue, calculateCombatReputation } from '../reputation/ReputationCalculator.js';
+import { mapTiers } from '../../data/mapData.js';
 
 /**
  * CombatOutcomeProcessor
@@ -97,7 +100,54 @@ class CombatOutcomeProcessor {
     debugLog('SP_COMBAT', 'Per-section hull:', updatedShipSections);
     debugLog('SP_COMBAT', 'Total remaining hull:', currentHull);
 
-    // 2. Generate salvage loot using LootGenerator
+    // 2. Calculate combat reputation earned (before loot generation)
+    const encounterAI = encounterInfo?.aiId || gameState.singlePlayerEncounter?.aiId;
+
+    // Skip combat rep for boss encounters (use boss reward system)
+    if (!encounterInfo.isBossCombat && encounterAI) {
+      const mapTier = currentRunState.mapTier || 1;
+
+      // Get loadout value from current ship slot
+      const gameStateObj = gameStateManager.getState();
+      const shipSlot = gameStateObj.singlePlayerShipSlots?.find(s => s.id === currentRunState.shipSlotId);
+
+      if (shipSlot) {
+        const loadoutValue = calculateLoadoutValue(shipSlot);
+
+        // Get map tier cap
+        const mapConfig = mapTiers.find(t => t.tier === mapTier);
+        const tierCap = mapConfig?.maxReputationPerCombat || 5000;
+
+        // Calculate combat rep
+        const combatRep = calculateCombatReputation(
+          loadoutValue.totalValue,
+          encounterAI,
+          tierCap
+        );
+
+        // Add to run state tracking
+        const combatRepEntry = {
+          aiId: encounterAI,
+          aiDifficulty: combatRep.aiDifficulty,
+          deckValue: combatRep.deckValue,
+          capUsed: combatRep.tierCap,
+          repEarned: combatRep.repEarned,
+          wasCapped: combatRep.wasCapped,
+          timestamp: Date.now()
+        };
+
+        currentRunState.combatReputationEarned = [
+          ...(currentRunState.combatReputationEarned || []),
+          combatRepEntry
+        ];
+
+        debugLog('SP_COMBAT', 'Combat reputation calculated:', combatRepEntry);
+      }
+    } else if (encounterInfo.isBossCombat) {
+      debugLog('SP_COMBAT', 'Boss combat - using boss reward system, skipping combat rep');
+    }
+
+    // 3. Generate salvage loot using LootGenerator
     const enemyDeck = gameState.player2?.deck || [];
     const enemyTier = encounterInfo?.tier || 1;
     const aiDifficulty = encounterInfo?.aiDifficulty || null;
@@ -206,30 +256,66 @@ class CombatOutcomeProcessor {
       shipSections: updatedShipSections,
       currentHull: currentHull,
       combatsWon: (currentRunState.combatsWon || 0) + 1,
+      combatReputationEarned: currentRunState.combatReputationEarned || [],  // Preserve combat rep array
       pendingSalvageLoot: isFromSalvage ? currentRunState.pendingSalvageLoot : null
     };
 
-    // 5. Store pending loot and enter loot reveal state
+    // 5. Apply conditional threat increase for blueprint PoI victories (Phase 7)
+    const pendingPOICombat = currentRunState?.pendingPOICombat;
+    const fromBlueprintPoI = pendingPOICombat?.fromBlueprintPoI === true;
+
+    if (fromBlueprintPoI) {
+      // Get threat increase from PoI data
+      const poi = currentRunState?.currentPOI;
+      const threatIncrease = poi?.poiData?.threatIncrease || 0;
+
+      if (poi?.poiData?.threatIncreaseOnVictoryOnly && threatIncrease > 0) {
+        DetectionManager.addDetection(threatIncrease, `Blueprint PoI victory: ${poi.poiData.name}`);
+        debugLog('SP_COMBAT', `Applied blueprint PoI threat increase: +${threatIncrease}%`);
+      }
+
+      // CRITICAL: Blueprint PoI victories do NOT reset Signal Lock
+      // Player chose to engage, so tracking continues uninterrupted
+      debugLog('SP_COMBAT', 'Signal Lock RETAINED (blueprint PoI victory)');
+    }
+
+    // 6. Store pending loot and enter loot reveal state
     // Do NOT return to tactical map yet - WinnerModal will show "Collect Salvage" button
     // Update TacticalMapStateManager with the run state changes
-    tacticalMapStateManager.setState({
+    const stateUpdates = {
       shipSections: updatedShipSections,
       currentHull: currentHull,
       combatsWon: updatedRunState.combatsWon,
+      combatReputationEarned: updatedRunState.combatReputationEarned,  // Include combat rep tracking
       pendingSalvageLoot: updatedRunState.pendingSalvageLoot,
       pendingPOICombat: currentRunState.pendingPOICombat,
       pendingSalvageState: currentRunState.pendingSalvageState,
-      encounterDetectionChance: 0  // Reset Signal Lock on victory
-    });
+      encounterDetectionChance: fromBlueprintPoI ? currentRunState.encounterDetectionChance : 0  // Preserve Signal Lock for blueprint PoIs
+    };
 
-    // 5b. Reset Signal Lock (encounter detection) on combat victory
-    // Enemy tracking data is disrupted when player wins combat
-    EncounterController.resetEncounterDetection();
+    // Mark blueprint PoI as looted after victory
+    if (fromBlueprintPoI && currentRunState?.currentPOI) {
+      const poi = currentRunState.currentPOI;
+      const lootedPOIs = currentRunState.lootedPOIs || [];
+      stateUpdates.lootedPOIs = [...lootedPOIs, { q: poi.q, r: poi.r }];
+      debugLog('SP_COMBAT', `Marked blueprint PoI as looted: (${poi.q}, ${poi.r})`);
+    }
+
+    tacticalMapStateManager.setState(stateUpdates);
+
+    // 6b. Reset Signal Lock (encounter detection) on combat victory
+    // ONLY for non-blueprint encounters (regular ambushes/encounters)
+    // Blueprint combat does NOT disrupt enemy tracking
+    if (!fromBlueprintPoI) {
+      EncounterController.resetEncounterDetection();
+      debugLog('SP_COMBAT', 'Signal Lock reset (non-blueprint victory)');
+    }
 
     // Store UI-level state in GameStateManager
     gameStateManager.setState({
       pendingLoot: salvageLoot,  // Store for LootRevealModal
-      pendingDroneBlueprint  // Store separately for special modal (null if no blueprint)
+      pendingDroneBlueprint,  // Store separately for special modal (null if no blueprint)
+      hasPendingDroneBlueprint: pendingDroneBlueprint !== null  // Flag for UI to show blueprint modal
     });
 
     // 6. Record mission progress for combat victory

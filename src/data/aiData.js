@@ -3,6 +3,7 @@ const aiPersonalities = [
     name: 'TEST AI',
     description: 'Used for test scenarios.',
     difficulty: 'Easy',
+    reputationMultiplier: 0.5,  // Easy AI: 0.5x reputation
     modes: ['vs'],  // VS Mode only
     shipId: 'SHIP_003',
     imagePath: '/DroneWars/AI/TEST.png',
@@ -47,6 +48,7 @@ const aiPersonalities = [
     name: 'Manticore - Class II Gunship',
     description: 'Focuses on overwhelming firepower and direct damage to drones and ship sections.',
     difficulty: 'Normal',
+    reputationMultiplier: 1.0,  // Normal AI: 1.0x reputation
     modes: ['vs'],  // VS Mode only
     shipId: 'SHIP_001',
     imagePath: '/DroneWars/AI/Manticore.png',
@@ -95,6 +97,7 @@ const aiPersonalities = [
     name: 'Rogue Scout Pattern',
     description: 'Defensive scout with minimal aggression',
     difficulty: 'Easy',
+    reputationMultiplier: 0.5,  // Easy AI: 0.5x reputation
     modes: ['extraction'],  // Extraction Mode only
     shipId: 'SHIP_003',
     imagePath: '/DroneWars/AI/Scout.png',
@@ -206,6 +209,7 @@ const aiPersonalities = [
     name: 'Specialized Hunter Group',
     description: 'Fast and aggressive interceptor',
     difficulty: 'Medium',
+    reputationMultiplier: 1.0,  // Medium AI: 1.0x reputation
     modes: ['extraction'],
     shipId: 'SHIP_003',
     imagePath: '/DroneWars/AI/Hunter.png',
@@ -243,6 +247,7 @@ const aiPersonalities = [
     name: 'Capital-Class Blockade Fleet',
     description: 'Overwhelming force, heavy defenses',
     difficulty: 'Hard',
+    reputationMultiplier: 1.5,  // Hard AI: 1.5x reputation
     modes: ['extraction'],
     shipId: 'SHIP_001',
     imagePath: '/DroneWars/AI/Blockade.png',
@@ -283,6 +288,7 @@ const aiPersonalities = [
     name: 'Nemesis-Class Dreadnought',
     description: 'The infamous commander of the Eremos blockade. A formidable opponent with advanced combat protocols and overwhelming firepower.',
     difficulty: 'Hard',
+    reputationMultiplier: 0,  // Boss uses boss reward system, not combat rep
     modes: ['boss'],  // Boss Mode - special permanent encounter
     shipId: 'SHIP_001',
     imagePath: '/DroneWars/AI/Boss_Nemesis.png',

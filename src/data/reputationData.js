@@ -10,13 +10,8 @@ export const REPUTATION = {
   // 0.25 = 25% of calculated rep on failure
   MIA_MULTIPLIER: 0.25,
 
-  // Maximum reputation that can be earned per run, by map tier
-  // Prevents grinding easy maps with high-value loadouts
-  TIER_CAPS: {
-    1: 5000,    // Tier 1 maps cap at 5000 rep
-    2: 15000,   // Tier 2 maps cap at 15000 rep
-    3: 50000,   // Tier 3 maps cap at 50000 rep (effectively uncapped for most loadouts)
-  },
+  // NOTE: Reputation caps moved to mapData.js (maxReputationPerCombat property)
+  // Each map tier defines its own per-combat reputation cap
 
   // Blueprint costs by rarity (used for loadout value calculation)
   // These match the existing REPLICATION_COSTS in economyData.js

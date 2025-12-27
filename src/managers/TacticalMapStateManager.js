@@ -126,6 +126,9 @@ class TacticalMapStateManager {
       combatsLost: 0,
       damageDealtToEnemies: 0,
 
+      // Combat reputation tracking
+      combatReputationEarned: [],  // Array of { aiId, aiDifficulty, deckValue, capUsed, repEarned, wasCapped, timestamp }
+
       // Pending state (for combat transitions)
       pendingPOICombat: null,
       pendingWaypoints: null,

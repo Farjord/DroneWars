@@ -10,6 +10,7 @@ import TacticalMapHUD from '../ui/TacticalMapHUD.jsx';
 import HexInfoPanel from '../ui/HexInfoPanel.jsx';
 import TacticalTicker from '../ui/TacticalTicker.jsx';
 import POIEncounterModal from '../modals/POIEncounterModal.jsx';
+import BlueprintEncounterModal from '../modals/BlueprintEncounterModal.jsx';
 import SalvageModal from '../modals/SalvageModal.jsx';
 import EscapeConfirmModal from '../modals/EscapeConfirmModal.jsx';
 import QuickDeploySelectionModal from '../modals/QuickDeploySelectionModal.jsx';
@@ -219,6 +220,10 @@ function TacticalMapScreen() {
   const [showSalvageModal, setShowSalvageModal] = useState(false);
   const [activeSalvage, setActiveSalvage] = useState(null);
   const [salvageQuickDeployPending, setSalvageQuickDeployPending] = useState(false);
+
+  // Blueprint encounter modal state (Phase 5)
+  const [showBlueprintEncounterModal, setShowBlueprintEncounterModal] = useState(false);
+  const [pendingBlueprintEncounter, setPendingBlueprintEncounter] = useState(null);
 
   // Extraction confirmation modal state
   const [showExtractionConfirm, setShowExtractionConfirm] = useState(false);
@@ -470,18 +475,42 @@ function TacticalMapScreen() {
           setActiveSalvage(restoredState);
           setShowSalvageModal(true);
 
-          // Clear pending states (but keep pendingSalvageLoot for later collection)
+          // Clear pending states (but keep pendingSalvageState until salvage complete)
+          // Only clear pendingSalvageState if all slots are revealed
+          const salvageComplete = SalvageController.isFullyLooted(restoredState);
+
           tacticalMapStateManager.setState({
             pendingPOICombat: null,
-            pendingSalvageState: null
+            pendingSalvageState: salvageComplete ? null : restoredState  // Conditional clear
           });
 
-          console.log('[TacticalMap] Salvage modal restored with', restoredState.slots.filter(s => s.revealed).length, 'revealed slots');
+          debugLog('RUN_STATE', 'Salvage state after combat:', {
+            slotsRevealed: restoredState.slots.filter(s => s.revealed).length,
+            totalSlots: restoredState.totalSlots,
+            salvageComplete,
+            statePreserved: !salvageComplete
+          });
+
+          console.log('[TacticalMap] Salvage modal restored with',
+            restoredState.slots.filter(s => s.revealed).length, 'revealed slots',
+            salvageComplete ? '(complete - state cleared)' : '(preserving state for next combat)');
           return;
         }
 
         // Fallback: If no pending salvage state (shouldn't happen), use old behavior
         console.warn('[TacticalMap] No pendingSalvageState found, using fallback behavior');
+
+        // CRITICAL: Restore waypoints BEFORE early return
+        // (similar to empty hex encounters at lines 449-453)
+        if (waypointsToRestore?.length > 0) {
+          debugLog('RUN_STATE', 'Restoring waypoints in fallback path:', {
+            count: waypointsToRestore.length,
+            destinations: waypointsToRestore.map(wp => `${wp.hex?.q},${wp.hex?.r}`)
+          });
+          setWaypoints(waypointsToRestore);
+          setPendingResumeWaypoints(null);
+        }
+
         if (salvageFullyLooted) {
           const lootedPOIs = tacticalRunState?.lootedPOIs || [];
           tacticalMapStateManager.setState({
@@ -862,45 +891,66 @@ function TacticalMapScreen() {
           console.log(`[TacticalMap] PoI at (${arrivedHex.q}, ${arrivedHex.r}) already looted, skipping encounter`);
           // Skip encounter and continue to next waypoint
         } else {
-          console.log('[TacticalMap] PoI arrived - initializing salvage');
+          // Phase 5: Check for guardian encounter (blueprint PoIs) BEFORE salvage
+          const encounterResult = await EncounterController.handlePOIArrival(arrivedHex, tierConfig);
 
-          // Initialize salvage state for this POI
-          const zone = arrivedHex.zone || 'mid';
-          const tier = runState.mapData?.tier || 1;
-          const detection = DetectionManager.getCurrentDetection();
-          const threatLevel = DetectionManager.getThreshold();
+          // If this is a blueprint PoI requiring confirmation, show modal
+          if (encounterResult && encounterResult.requiresConfirmation && encounterResult.outcome === 'encounterPending') {
+            console.log('[TacticalMap] Blueprint PoI detected - showing confirmation modal');
 
-          const salvageState = SalvageController.initializeSalvage(
-            arrivedHex,
-            tierConfig,
-            zone,
-            lootGenerator,
-            tier,
-            threatLevel
-          );
+            setPendingBlueprintEncounter(encounterResult);
+            setShowBlueprintEncounterModal(true);
+            setIsPaused(true);  // Pause movement while modal is shown
 
-          // Store remaining waypoints for journey resumption after salvage
-          const remainingWps = waypoints.slice(wpIndex + 1);
-          setPendingResumeWaypoints(remainingWps.length > 0 ? remainingWps : null);
+            // Wait for user decision via promise
+            await new Promise((resolve) => {
+              encounterResolveRef.current = resolve;
+            });
 
-          console.log('[TacticalMap] Salvage initialized:', {
-            totalSlots: salvageState.totalSlots,
-            zone: salvageState.zone,
-            baseEncounterChance: salvageState.currentEncounterChance
-          });
+            // After modal closes, check if we should continue
+            if (shouldStopMovement.current) break;
+          } else {
+            // Regular PoI (no guardian) - proceed with salvage
+            console.log('[TacticalMap] PoI arrived - initializing salvage');
 
-          // Pause movement and show salvage modal
-          setIsScanningHex(false);  // Turn off scan overlay
-          setActiveSalvage({ ...salvageState, detection });
-          setShowSalvageModal(true);
+            // Initialize salvage state for this POI
+            const zone = arrivedHex.zone || 'mid';
+            const tier = runState.mapData?.tier || 1;
+            const detection = DetectionManager.getCurrentDetection();
+            const threatLevel = DetectionManager.getThreshold();
 
-          // Wait for salvage to be resolved (player leaves or combat triggers)
-          await new Promise(resolve => {
-            encounterResolveRef.current = resolve;
-          });
+            const salvageState = SalvageController.initializeSalvage(
+              arrivedHex,
+              tierConfig,
+              zone,
+              lootGenerator,
+              tier,
+              threatLevel
+            );
 
-          // Check if movement was cancelled while waiting
-          if (shouldStopMovement.current) break;
+            // Store remaining waypoints for journey resumption after salvage
+            const remainingWps = waypoints.slice(wpIndex + 1);
+            setPendingResumeWaypoints(remainingWps.length > 0 ? remainingWps : null);
+
+            console.log('[TacticalMap] Salvage initialized:', {
+              totalSlots: salvageState.totalSlots,
+              zone: salvageState.zone,
+              baseEncounterChance: salvageState.currentEncounterChance
+            });
+
+            // Pause movement and show salvage modal
+            setIsScanningHex(false);  // Turn off scan overlay
+            setActiveSalvage({ ...salvageState, detection });
+            setShowSalvageModal(true);
+
+            // Wait for salvage to be resolved (player leaves or combat triggers)
+            await new Promise(resolve => {
+              encounterResolveRef.current = resolve;
+            });
+
+            // Check if movement was cancelled while waiting
+            if (shouldStopMovement.current) break;
+          }
         }
       } else if (arrivedHex.type === 'gate') {
         console.log('[TacticalMap] Arrived at gate - extraction available');
@@ -1130,6 +1180,71 @@ function TacticalMapScreen() {
     // Later could add "flee" option with different consequences
     handleEncounterProceed();
   }, [handleEncounterProceed]);
+
+  // ========================================
+  // BLUEPRINT ENCOUNTER HANDLERS (Phase 5)
+  // ========================================
+
+  /**
+   * Handle blueprint encounter accept - initiate combat with guardian AI
+   */
+  const handleBlueprintEncounterAccept = useCallback(async () => {
+    if (!pendingBlueprintEncounter) return;
+
+    console.log('[TacticalMap] Blueprint encounter accepted - initiating combat');
+    setShowBlueprintEncounterModal(false);
+
+    const encounter = pendingBlueprintEncounter;
+    const aiId = encounter.aiId;
+    const currentRunState = tacticalMapStateManager.getState();
+
+    // Store encounter info for victory processing (Phase 7)
+    tacticalMapStateManager.setState({
+      pendingPOICombat: {
+        packType: encounter.reward.rewardType,
+        fromBlueprintPoI: true  // Flag for conditional threat increase (Phase 7)
+      },
+      currentPOI: encounter.poi  // Store for threat calculation (Phase 7)
+    });
+
+    // Transition to combat with loading screen
+    setLoadingEncounterData({
+      aiName: encounter.aiData.name,
+      aiShipClass: encounter.aiData.shipClass,
+      aiDifficulty: encounter.aiData.difficulty,
+      escapeDamage: encounter.aiData.escapeDamage,
+      transitionMessage: `Engaging ${encounter.poi.poiData.name}...`
+    });
+    setShowLoadingEncounter(true);
+
+    // Combat will be initiated by handleLoadingEncounterComplete
+    // Resume movement logic after modal dismissal
+    if (encounterResolveRef.current) {
+      encounterResolveRef.current();
+    }
+  }, [pendingBlueprintEncounter]);
+
+  /**
+   * Handle blueprint encounter decline - player stays on hex
+   * No damage, no animations, instant return to tactical map
+   * PoI remains available for re-engagement
+   */
+  const handleBlueprintEncounterDecline = useCallback(() => {
+    console.log('[TacticalMap] Blueprint encounter declined - staying on hex');
+
+    setShowBlueprintEncounterModal(false);
+    setPendingBlueprintEncounter(null);
+    setIsPaused(false);
+
+    // Player stays on hex, can move away or try again later
+    // PoI remains available (not marked as looted/visited - handled by Phase 8)
+    // NO damage taken, NO loading screens, instant return
+
+    // Resume movement logic
+    if (encounterResolveRef.current) {
+      encounterResolveRef.current();
+    }
+  }, []);
 
   // ========================================
   // SALVAGE HANDLERS
@@ -2988,6 +3103,16 @@ function TacticalMapScreen() {
         // Signal Lock (encounter detection)
         encounterDetectionChance={currentRunState.encounterDetectionChance || 0}
       />
+
+      {/* Blueprint Encounter Modal (Phase 5) */}
+      {showBlueprintEncounterModal && pendingBlueprintEncounter && (
+        <BlueprintEncounterModal
+          encounter={pendingBlueprintEncounter}
+          show={showBlueprintEncounterModal}
+          onAccept={handleBlueprintEncounterAccept}
+          onDecline={handleBlueprintEncounterDecline}
+        />
+      )}
 
       {/* POI Encounter Modal */}
       {showPOIModal && currentEncounter && (

@@ -324,17 +324,35 @@ function placeInZone(hexes, count, pois, gates, tierConfig, rng, zoneName) {
 
     // For drone blueprint PoIs, assign pre-determined guardian AI
     if (poiData.rewardType?.startsWith('DRONE_BLUEPRINT_')) {
-      // Select guardian from tier's threat tables (use 'high' for strong enemy)
-      const threatTable = tierConfig.threatTables?.high || tierConfig.threatTables?.medium || ['Rogue Scout Pattern'];
-      const guardianAIName = threatTable[Math.floor(rng.random() * threatTable.length)];
+      // CRITICAL: Read AI from tierAIMapping in data file only - no hardcoding!
+      // The tierAIMapping is defined in pointsOfInterestData.js
+      if (poiData.tierAIMapping) {
+        const tier = tierConfig.tier || 1;
+        const guardianAIName = poiData.tierAIMapping[tier];
 
-      // Look up AI data for full information
-      const guardianAI = aiPersonalities.find(ai => ai.name === guardianAIName);
+        if (guardianAIName) {
+          // Look up AI data for full information
+          const guardianAI = aiPersonalities.find(ai => ai.name === guardianAIName);
 
-      poiData.guardianAI = {
-        id: guardianAIName,
-        name: guardianAI?.name || guardianAIName
-      };
+          poiData.guardianAI = {
+            id: guardianAIName,
+            name: guardianAI?.name || guardianAIName
+          };
+        } else {
+          console.warn(`[MapGenerator] No AI mapping for tier ${tier} in ${poiData.id}`);
+        }
+      } else {
+        // Fallback for backward compatibility (if tierAIMapping not defined)
+        const threatTable = tierConfig.threatTables?.high || tierConfig.threatTables?.medium || ['Rogue Scout Pattern'];
+        const guardianAIName = threatTable[Math.floor(rng.random() * threatTable.length)];
+
+        const guardianAI = aiPersonalities.find(ai => ai.name === guardianAIName);
+
+        poiData.guardianAI = {
+          id: guardianAIName,
+          name: guardianAI?.name || guardianAIName
+        };
+      }
     }
 
     // Place PoI

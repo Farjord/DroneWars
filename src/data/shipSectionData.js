@@ -26,8 +26,8 @@ const shipComponentCollection = [
     description: 'The command center of your ship.',
     thresholds: { damaged: 5, critical: 0 },
     stats: {
-      healthy: { 'Draw': 5, 'Discard': 3 },
-      damaged: { 'Draw': 4, 'Discard': 2 },
+      healthy: { 'Draw': 5, 'Discard': 4 },
+      damaged: { 'Draw': 5, 'Discard': 2 },
       critical: { 'Draw': 3, 'Discard': 1 },
     },
     middleLaneBonus: { 'Draw': 1, 'Discard': 1 },
@@ -60,8 +60,8 @@ const shipComponentCollection = [
     description: 'Reinforced command center with additional armor plating.',
     thresholds: { damaged: 6, critical: 0 },
     stats: {
-      healthy: { 'Draw': 5, 'Discard': 3 },
-      damaged: { 'Draw': 4, 'Discard': 2 },
+      healthy: { 'Draw': 5, 'Discard': 4 },
+      damaged: { 'Draw': 5, 'Discard': 2 },
       critical: { 'Draw': 3, 'Discard': 1 },
     },
     middleLaneBonus: { 'Draw': 1, 'Discard': 1 },
@@ -94,8 +94,8 @@ const shipComponentCollection = [
     description: 'Advanced command center with targeting capabilities.',
     thresholds: { damaged: 5, critical: 0 },
     stats: {
-      healthy: { 'Draw': 5, 'Discard': 3 },
-      damaged: { 'Draw': 4, 'Discard': 2 },
+      healthy: { 'Draw': 5, 'Discard': 4 },
+      damaged: { 'Draw': 5, 'Discard': 2 },
       critical: { 'Draw': 3, 'Discard': 1 },
     },
     middleLaneBonus: { 'Draw': 1, 'Discard': 1 },
@@ -134,7 +134,7 @@ const shipComponentCollection = [
     thresholds: { damaged: 5, critical: 0 },
     stats: {
       healthy: { 'Energy Per Turn': 10, 'Max Energy': 10, 'Shields Per Turn': 3 },
-      damaged: { 'Energy Per Turn': 8, 'Max Energy': 8, 'Shields Per Turn': 2 },
+      damaged: { 'Energy Per Turn': 10, 'Max Energy': 10, 'Shields Per Turn': 1 },
       critical: { 'Energy Per Turn': 8, 'Max Energy': 8, 'Shields Per Turn': 1 },
     },
     middleLaneBonus: { 'Energy Per Turn': 2, 'Max Energy': 2, 'Shields Per Turn': 1 },
@@ -167,11 +167,11 @@ const shipComponentCollection = [
     description: 'Controls your drone fleet.',
     thresholds: { damaged: 5, critical: 0 },
     stats: {
-      healthy: { 'Initial Deployment': 10, 'CPU Control Value': 10, 'Deployment Budget': 6 },
-      damaged: { 'Initial Deployment': 10, 'CPU Control Value': 9, 'Deployment Budget': 5 },
-      critical: { 'Initial Deployment': 10, 'CPU Control Value': 8, 'Deployment Budget': 4 },
+      healthy: { 'Initial Deployment': 10, 'CPU Control Value': 8, 'Deployment Budget': 6 },
+      damaged: { 'Initial Deployment': 10, 'CPU Control Value': 8, 'Deployment Budget': 4 },
+      critical: { 'Initial Deployment': 10, 'CPU Control Value': 6, 'Deployment Budget': 4 },
     },
-    middleLaneBonus: {'Initial Deployment': 2, 'Deployment Budget': 2, 'CPU Control Value': 2 },
+    middleLaneBonus: {'Initial Deployment': 2, 'Deployment Budget': 1, 'CPU Control Value': 1 },
     image: '/DroneWars/img/Drone_Control_Hub.png',
     ability: {
       id: 'ABILITY_SHIP_03',

@@ -1,0 +1,80 @@
+/* Blueprint Drop Info Icon & Tooltip */
+
+.blueprint-drop-info-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: help;
+}
+
+.blueprint-drop-info-icon {
+  opacity: 0.4;
+  transition: opacity 0.2s;
+  color: #06b6d4; /* Cyan theme */
+  filter: drop-shadow(0 0 4px rgba(6, 182, 212, 0.3));
+}
+
+.blueprint-drop-info-wrapper:hover .blueprint-drop-info-icon {
+  opacity: 1;
+}
+
+.blueprint-drop-tooltip {
+  position: fixed;
+  transform: translateX(-50%);
+  padding: 12px 14px;
+  background: rgba(15, 23, 42, 0.98); /* Dark blue-black */
+  border: 1px solid rgba(6, 182, 212, 0.6); /* Cyan border */
+  border-radius: 6px;
+  color: #9ca3af; /* Gray text */
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.6;
+  width: 240px;
+  white-space: normal;
+  z-index: 9999;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  text-align: left;
+  font-family: 'Orbitron', sans-serif;
+}
+
+/* Arrow pointing up to icon */
+.blueprint-drop-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: transparent transparent rgba(6, 182, 212, 0.6) transparent;
+}
+
+/* Tooltip content styling */
+.tooltip-poi-group {
+  margin-bottom: 8px;
+}
+
+.tooltip-poi-group:last-of-type {
+  margin-bottom: 6px;
+}
+
+.tooltip-poi-group strong {
+  color: #e5e7eb; /* Lighter text for headers */
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.tooltip-pool-context {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(75, 85, 99, 0.5);
+  font-size: 10px;
+  color: #6b7280; /* Muted gray */
+  font-style: italic;
+}
+
+.no-sources {
+  color: #6b7280; /* Muted gray */
+  font-style: italic;
+}

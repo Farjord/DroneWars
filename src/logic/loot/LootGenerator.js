@@ -12,6 +12,7 @@ import { starterPoolDroneNames } from '../../data/saveGameSchema.js';
 import { calculateAICoresDrop } from '../../data/aiCoresData.js';
 import { generateSalvageItemFromValue, SALVAGE_ITEMS } from '../../data/salvageItemData.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { CLASS_BAND_WEIGHTS, RARITY_WEIGHTS } from '../../utils/blueprintDropCalculator.js';
 
 // Starter card IDs to exclude (players have infinite copies)
 const STARTER_CARD_IDS = new Set(starterDeck.decklist.map(entry => entry.id));
@@ -320,27 +321,13 @@ class LootGenerator {
    * @returns {Object} Blueprint object or { type: 'blueprint_exhausted' } if all exhausted
    */
   generateDroneBlueprint(rewardType, tier = 1, unlockedBlueprints = []) {
-    // POI type → class band weights
-    const CLASS_BAND_WEIGHTS = {
-      'DRONE_BLUEPRINT_LIGHT': { 0: 60, 1: 40, 2: 0 },
-      'DRONE_BLUEPRINT_MEDIUM': { 1: 60, 2: 30, 3: 10 },
-      'DRONE_BLUEPRINT_HEAVY': { 2: 60, 3: 30, 4: 10 }
-    };
-
     const classBandWeights = CLASS_BAND_WEIGHTS[rewardType];
     if (!classBandWeights) {
       console.warn(`Unknown drone blueprint reward type: ${rewardType}`);
       return null;
     }
 
-    // Tier-based rarity weights
-    const rarityWeights = {
-      tier1: { Common: 90, Uncommon: 10, Rare: 0 },
-      tier2: { Common: 60, Uncommon: 35, Rare: 5 },
-      tier3: { Common: 40, Uncommon: 45, Rare: 15 }
-    };
-
-    const weights = rarityWeights[`tier${tier}`] || rarityWeights.tier1;
+    const weights = RARITY_WEIGHTS[`tier${tier}`] || RARITY_WEIGHTS.tier1;
     const rng = this.createRNG(Date.now());
 
     // Reroll up to MAX_REROLL_ATTEMPTS times to find an available drone

@@ -37,6 +37,12 @@ export class SalvageController {
     // Handle both hex objects (with nested poiData) and direct POI objects
     const poiData = poi.poiData || poi
 
+    // NEW: Block salvage for blueprint PoIs (Phase 6)
+    if (poiData.disableSalvage) {
+      debugLog('SALVAGE', 'Salvage blocked - PoI disables salvage operations');
+      return null;
+    }
+
     // Generate slots using loot generator
     const slots = lootGenerator.generateSalvageSlots(
       poiData.rewardType,

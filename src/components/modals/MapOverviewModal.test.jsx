@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, fireEvent } from '@testing-library/react';
 
 // Mock dependencies BEFORE importing the component
 vi.mock('../../hooks/useGameState.js', () => ({
@@ -482,5 +482,431 @@ describe('MapOverviewModal - Gate Selection Alignment', () => {
 
     // The gate box should also be a child of the same grid container
     expect(gateBox.parentElement).toBe(gridContainer);
+  });
+});
+
+// ============================================
+// Help Button TDD Tests - CSS Positioning Fix
+// ============================================
+
+describe('MapOverviewModal - Help Button', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should render help button with correct className', () => {
+    useGameState.mockReturnValue({
+      gameState: createMockGameState(),
+      gameStateManager: { setState: vi.fn() }
+    });
+
+    const mockOnShowHelp = vi.fn();
+    const mockMap = createMockMap();
+
+    const { container } = render(
+      <MapOverviewModal
+        {...defaultProps}
+        selectedMap={mockMap}
+        onShowHelp={mockOnShowHelp}
+      />
+    );
+
+    const helpButton = container.querySelector('.dw-modal-help-btn');
+    expect(helpButton).toBeInTheDocument();
+  });
+
+  it('should position help button correctly inside modal header', () => {
+    useGameState.mockReturnValue({
+      gameState: createMockGameState(),
+      gameStateManager: { setState: vi.fn() }
+    });
+
+    const mockOnShowHelp = vi.fn();
+    const mockMap = createMockMap();
+
+    const { container } = render(
+      <MapOverviewModal
+        {...defaultProps}
+        selectedMap={mockMap}
+        onShowHelp={mockOnShowHelp}
+      />
+    );
+
+    const helpButton = container.querySelector('button[title="Show help"]');
+
+    expect(helpButton.style.position).toBe('absolute');
+    expect(helpButton.style.top).toBe('12px');
+    expect(helpButton.style.right).toBe('12px');
+  });
+
+  it('should have borderRadius style', () => {
+    useGameState.mockReturnValue({
+      gameState: createMockGameState(),
+      gameStateManager: { setState: vi.fn() }
+    });
+
+    const mockOnShowHelp = vi.fn();
+    const mockMap = createMockMap();
+
+    const { container } = render(
+      <MapOverviewModal
+        {...defaultProps}
+        selectedMap={mockMap}
+        onShowHelp={mockOnShowHelp}
+      />
+    );
+
+    const helpButton = container.querySelector('button[title="Show help"]');
+    expect(helpButton.style.borderRadius).toBe('4px');
+  });
+
+  it('should change opacity on hover', () => {
+    useGameState.mockReturnValue({
+      gameState: createMockGameState(),
+      gameStateManager: { setState: vi.fn() }
+    });
+
+    const mockOnShowHelp = vi.fn();
+    const mockMap = createMockMap();
+
+    const { container } = render(
+      <MapOverviewModal
+        {...defaultProps}
+        selectedMap={mockMap}
+        onShowHelp={mockOnShowHelp}
+      />
+    );
+
+    const helpButton = container.querySelector('button[title="Show help"]');
+
+    expect(helpButton.style.opacity).toBe('0.7');
+
+    fireEvent.mouseEnter(helpButton);
+    expect(helpButton.style.opacity).toBe('1');
+
+    fireEvent.mouseLeave(helpButton);
+    expect(helpButton.style.opacity).toBe('0.7');
+  });
+
+  it('should render HelpCircle icon with size 20', () => {
+    useGameState.mockReturnValue({
+      gameState: createMockGameState(),
+      gameStateManager: { setState: vi.fn() }
+    });
+
+    const mockOnShowHelp = vi.fn();
+    const mockMap = createMockMap();
+
+    const { container } = render(
+      <MapOverviewModal
+        {...defaultProps}
+        selectedMap={mockMap}
+        onShowHelp={mockOnShowHelp}
+      />
+    );
+
+    const icon = container.querySelector('button[title="Show help"] svg');
+    expect(icon).toHaveAttribute('width', '20');
+    expect(icon).toHaveAttribute('height', '20');
+  });
+});
+
+// ============================================
+// Starter Deck Warning Integration TDD Tests
+// ============================================
+
+// Helper functions for creating test ship slots
+const createStarterSlot = () => ({
+  id: 0,
+  name: 'Starter Deck',
+  status: 'active',
+  isImmutable: true,
+  decklist: Array(40).fill({ id: 'card1', quantity: 1 }),
+  droneSlots: Array(5).fill({ slotIndex: 0, assignedDrone: 'Drone1' }),
+  shipComponents: { left: 'COMP1', middle: 'COMP2', right: 'COMP3' }
+});
+
+const createCustomSlot = (id, name) => ({
+  id,
+  name,
+  status: 'active',
+  isImmutable: false,
+  decklist: Array(40).fill({ id: 'card2', quantity: 1 }),
+  droneSlots: Array(5).fill({ slotIndex: 0, assignedDrone: 'Drone2' }),
+  shipComponents: { left: 'COMP4', middle: 'COMP5', right: 'COMP6' }
+});
+
+describe('Starter Deck Warning Integration', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should show warning modal when deploying starter with custom decks available', () => {
+    const mockOnDeploy = vi.fn();
+    const mockGameState = {
+      singlePlayerShipSlots: [
+        createStarterSlot(),
+        createCustomSlot(1, 'Custom Ship 1'),
+        createCustomSlot(2, 'Custom Ship 2')
+      ],
+      singlePlayerShipComponentInstances: [],
+      singlePlayerDroneInstances: [],
+      singlePlayerProfile: {
+        credits: 1000,
+        securityTokens: 0
+      }
+    };
+
+    useGameState.mockReturnValue({
+      gameState: mockGameState,
+      gameStateManager: { setState: vi.fn() }
+    });
+
+    render(
+      <MapOverviewModal
+        selectedMap={createMockMap()}
+        selectedCoordinate="01-05"
+        selectedSlotId={0}
+        onDeploy={mockOnDeploy}
+        onClose={() => {}}
+        onNavigate={vi.fn()}
+        activeSectors={[{ coordinate: '01-05' }]}
+      />
+    );
+
+    // Click Deploy button
+    fireEvent.click(screen.getByRole('button', { name: /deploy/i }));
+
+    // Warning modal should appear
+    expect(screen.getByText('Deploying with Starter Deck')).toBeInTheDocument();
+    expect(screen.getByText('You have 2 custom decks available')).toBeInTheDocument();
+
+    // Deploy should NOT have been called yet
+    expect(mockOnDeploy).not.toHaveBeenCalled();
+  });
+
+  it('should NOT show warning when deploying with custom deck', () => {
+    const mockOnDeploy = vi.fn();
+    const mockGameState = {
+      singlePlayerShipSlots: [
+        createStarterSlot(),
+        createCustomSlot(1, 'Custom Ship 1')
+      ],
+      singlePlayerShipComponentInstances: [],
+      singlePlayerDroneInstances: [],
+      singlePlayerProfile: {
+        credits: 1000,
+        securityTokens: 0
+      }
+    };
+
+    useGameState.mockReturnValue({
+      gameState: mockGameState,
+      gameStateManager: { setState: vi.fn() }
+    });
+
+    render(
+      <MapOverviewModal
+        selectedMap={createMockMap()}
+        selectedCoordinate="01-05"
+        selectedSlotId={1}
+        onDeploy={mockOnDeploy}
+        onClose={() => {}}
+        onNavigate={vi.fn()}
+        activeSectors={[{ coordinate: '01-05' }]}
+      />
+    );
+
+    // Click Deploy button
+    fireEvent.click(screen.getByRole('button', { name: /deploy/i }));
+
+    // Warning modal should NOT appear
+    expect(screen.queryByText('Deploying with Starter Deck')).not.toBeInTheDocument();
+
+    // Deploy should have been called
+    expect(mockOnDeploy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should show warning when only starter deck available', () => {
+    const mockOnDeploy = vi.fn();
+    const mockGameState = {
+      singlePlayerShipSlots: [
+        createStarterSlot() // Only starter, no custom decks
+      ],
+      singlePlayerShipComponentInstances: [],
+      singlePlayerDroneInstances: [],
+      singlePlayerProfile: {
+        credits: 1000,
+        securityTokens: 0
+      }
+    };
+
+    useGameState.mockReturnValue({
+      gameState: mockGameState,
+      gameStateManager: { setState: vi.fn() }
+    });
+
+    render(
+      <MapOverviewModal
+        selectedMap={createMockMap()}
+        selectedCoordinate="01-05"
+        selectedSlotId={0}
+        onDeploy={mockOnDeploy}
+        onClose={() => {}}
+        onNavigate={vi.fn()}
+        activeSectors={[{ coordinate: '01-05' }]}
+      />
+    );
+
+    // Click Deploy button
+    fireEvent.click(screen.getByRole('button', { name: /deploy/i }));
+
+    // Warning modal SHOULD appear
+    expect(screen.getByText('Deploying with Starter Deck')).toBeInTheDocument();
+    expect(screen.getByText('Build a custom deck to unlock full potential!')).toBeInTheDocument();
+
+    // Deploy should NOT have been called (warning blocks deployment)
+    expect(mockOnDeploy).not.toHaveBeenCalled();
+  });
+
+  it('should proceed with deployment when Deploy Anyway clicked', () => {
+    const mockOnDeploy = vi.fn();
+    const mockGameState = {
+      singlePlayerShipSlots: [
+        createStarterSlot(),
+        createCustomSlot(1, 'Custom Ship 1')
+      ],
+      singlePlayerShipComponentInstances: [],
+      singlePlayerDroneInstances: [],
+      singlePlayerProfile: {
+        credits: 1000,
+        securityTokens: 0
+      }
+    };
+
+    useGameState.mockReturnValue({
+      gameState: mockGameState,
+      gameStateManager: { setState: vi.fn() }
+    });
+
+    render(
+      <MapOverviewModal
+        selectedMap={createMockMap()}
+        selectedCoordinate="01-05"
+        selectedSlotId={0}
+        onDeploy={mockOnDeploy}
+        onClose={() => {}}
+        onNavigate={vi.fn()}
+        activeSectors={[{ coordinate: '01-05' }]}
+      />
+    );
+
+    // Click Deploy button
+    fireEvent.click(screen.getByRole('button', { name: /^deploy$/i }));
+
+    // Warning appears
+    expect(screen.getByText('Deploying with Starter Deck')).toBeInTheDocument();
+
+    // Click Deploy Anyway
+    fireEvent.click(screen.getByRole('button', { name: /deploy anyway/i }));
+
+    // Warning should close
+    expect(screen.queryByText('Deploying with Starter Deck')).not.toBeInTheDocument();
+
+    // Deploy should now have been called
+    expect(mockOnDeploy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should close warning modal when Cancel clicked', () => {
+    const mockOnDeploy = vi.fn();
+    const mockGameState = {
+      singlePlayerShipSlots: [
+        createStarterSlot(),
+        createCustomSlot(1, 'Custom Ship 1')
+      ],
+      singlePlayerShipComponentInstances: [],
+      singlePlayerDroneInstances: [],
+      singlePlayerProfile: {
+        credits: 1000,
+        securityTokens: 0
+      }
+    };
+
+    useGameState.mockReturnValue({
+      gameState: mockGameState,
+      gameStateManager: { setState: vi.fn() }
+    });
+
+    render(
+      <MapOverviewModal
+        selectedMap={createMockMap()}
+        selectedCoordinate="01-05"
+        selectedSlotId={0}
+        onDeploy={mockOnDeploy}
+        onClose={() => {}}
+        onNavigate={vi.fn()}
+        activeSectors={[{ coordinate: '01-05' }]}
+      />
+    );
+
+    // Click Deploy button
+    fireEvent.click(screen.getByRole('button', { name: /^deploy$/i }));
+
+    // Warning appears
+    expect(screen.getByText('Deploying with Starter Deck')).toBeInTheDocument();
+
+    // Click Cancel
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+
+    // Warning should close
+    expect(screen.queryByText('Deploying with Starter Deck')).not.toBeInTheDocument();
+
+    // Deploy should NOT have been called
+    expect(mockOnDeploy).not.toHaveBeenCalled();
+  });
+
+  it('should NOT show Switch Deck button when only starter deck available', () => {
+    const mockOnDeploy = vi.fn();
+    const mockGameState = {
+      singlePlayerShipSlots: [
+        createStarterSlot() // Only starter, no custom decks
+      ],
+      singlePlayerShipComponentInstances: [],
+      singlePlayerDroneInstances: [],
+      singlePlayerProfile: {
+        credits: 1000,
+        securityTokens: 0
+      }
+    };
+
+    useGameState.mockReturnValue({
+      gameState: mockGameState,
+      gameStateManager: { setState: vi.fn() }
+    });
+
+    render(
+      <MapOverviewModal
+        selectedMap={createMockMap()}
+        selectedCoordinate="01-05"
+        selectedSlotId={0}
+        onDeploy={mockOnDeploy}
+        onClose={() => {}}
+        onNavigate={vi.fn()}
+        activeSectors={[{ coordinate: '01-05' }]}
+      />
+    );
+
+    // Click Deploy button
+    fireEvent.click(screen.getByRole('button', { name: /deploy/i }));
+
+    // Warning appears
+    expect(screen.getByText('Deploying with Starter Deck')).toBeInTheDocument();
+
+    // Switch Deck button should NOT appear (no custom decks to switch to)
+    expect(screen.queryByRole('button', { name: /switch deck/i })).not.toBeInTheDocument();
+
+    // Only Cancel and Deploy Anyway should be present
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /deploy anyway/i })).toBeInTheDocument();
   });
 });

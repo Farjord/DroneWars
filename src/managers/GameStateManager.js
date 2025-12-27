@@ -2944,19 +2944,32 @@ class GameStateManager {
       console.log('Run ended - MIA protocol triggered');
     }
 
-    // Award reputation based on loadout value
+    // Calculate total combat reputation from run
+    const combatReputationArray = runState.combatReputationEarned || [];
+    const totalCombatRep = combatReputationArray.reduce((sum, entry) => sum + entry.repEarned, 0);
+
+    debugLog('REPUTATION', 'Combat reputation summary:', {
+      combatCount: combatReputationArray.length,
+      totalCombatRep,
+      breakdown: combatReputationArray
+    });
+
+    // Award reputation based on loadout value + combat reputation
     const shipSlot = this.state.singlePlayerShipSlots.find(
       s => s.id === runState.shipSlotId
     );
     const reputationResult = ReputationService.awardReputation(
       shipSlot,
       runState.mapTier || 1,
-      success
+      success,
+      totalCombatRep  // NEW: Pass combat reputation
     );
 
     // Add reputation info to run summary
     lastRunSummary.reputation = {
       repGained: reputationResult.repGained || 0,
+      loadoutRepGained: reputationResult.loadoutRepGained || 0,  // NEW: Breakdown
+      combatRepGained: reputationResult.combatRepGained || 0,     // NEW: Breakdown
       previousRep: reputationResult.previousRep || 0,
       newRep: reputationResult.newRep || 0,
       previousLevel: reputationResult.previousLevel || 1,

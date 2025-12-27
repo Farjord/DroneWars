@@ -3,12 +3,16 @@
  * Displays all reputation levels, progress, and upcoming rewards
  */
 
-import { Award, Gift, ChevronRight, Lock } from 'lucide-react';
+import { useState } from 'react';
+import { Award, Gift, ChevronRight, Lock, HelpCircle } from 'lucide-react';
 import ReputationService from '../../logic/reputation/ReputationService';
 import { REPUTATION_LEVELS } from '../../data/reputationRewardsData';
 import CardPackBadge from '../ui/CardPackBadge';
 
 function ReputationProgressModal({ onClose, onClaimRewards }) {
+  // State for tooltip
+  const [showTooltip, setShowTooltip] = useState(false);
+
   // Get current reputation data
   const levelData = ReputationService.getLevelData();
   const unclaimedRewards = ReputationService.getUnclaimedRewards();
@@ -49,7 +53,18 @@ function ReputationProgressModal({ onClose, onClaimRewards }) {
             <Award size={28} />
           </div>
           <div className="dw-modal-header-info">
-            <h2 className="dw-modal-header-title">REPUTATION PROGRESS</h2>
+            <h2 className="dw-modal-header-title">
+              REPUTATION PROGRESS
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowTooltip(!showTooltip); }}
+                style={{ marginLeft: '8px', padding: '4px', background: 'transparent',
+                         border: 'none', color: '#a855f7', cursor: 'pointer',
+                         display: 'inline-flex', alignItems: 'center' }}
+                title="How combat reputation works"
+              >
+                <HelpCircle size={18} />
+              </button>
+            </h2>
             <p className="dw-modal-header-subtitle">
               {levelData.isMaxLevel
                 ? `Level ${levelData.level} (MAX)`
@@ -57,6 +72,27 @@ function ReputationProgressModal({ onClose, onClaimRewards }) {
             </p>
           </div>
         </div>
+
+        {/* Tooltip Content */}
+        {showTooltip && (
+          <div style={{ margin: '12px 20px', padding: '16px',
+                        background: 'rgba(168, 85, 247, 0.08)',
+                        border: '1px solid rgba(168, 85, 247, 0.4)',
+                        borderRadius: '8px', fontSize: '13px', lineHeight: '1.6' }}>
+            <h4 style={{ margin: '0 0 8px', color: '#a855f7', fontSize: '14px' }}>
+              How Combat Reputation Works
+            </h4>
+            <ul style={{ margin: 0, paddingLeft: '20px' }}>
+              <li>Defeat enemies to earn reputation during runs</li>
+              <li>Reputation = min(Deck Value, Map Cap) × Enemy Difficulty</li>
+              <li>Easy enemies: 0.5× | Medium: 1.0× | Hard: 1.5×</li>
+              <li>Each combat is capped separately (can earn from multiple fights)</li>
+              <li>Reputation only awarded on successful extraction</li>
+              <li>MIA penalty: You keep only 25% of earned reputation</li>
+              <li>Escaping combat grants no reputation</li>
+            </ul>
+          </div>
+        )}
 
         {/* Current Progress Bar */}
         <div style={{

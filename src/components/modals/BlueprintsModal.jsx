@@ -14,6 +14,8 @@ import { starterDeck } from '../../data/playerDeckData';
 import { starterPoolShipIds } from '../../data/saveGameSchema';
 import { ECONOMY } from '../../data/economyData';
 import { getAICoresCost } from '../../data/aiCoresData';
+import DroneCard from '../ui/DroneCard';
+import BlueprintDropInfo from '../ui/BlueprintDropInfo';
 
 /**
  * Starter deck items - EXCLUDED from blueprints (they're infinitely available)
@@ -202,7 +204,7 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
 
   return (
     <div className="dw-modal-overlay" onClick={onClose}>
-      <div className="dw-modal-content dw-modal--xl dw-modal--action" onClick={e => e.stopPropagation()}>
+      <div className="dw-modal-content dw-modal--xl dw-modal--action" onClick={e => e.stopPropagation()} style={{ maxWidth: '1200px' }}>
         {/* Header */}
         <div className="dw-modal-header" style={{ position: 'relative' }}>
           <div className="dw-modal-header-icon">
@@ -280,134 +282,183 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
             ))}
           </div>
 
-          {/* Blueprints Grid */}
+          {/* Blueprints Grid - Shop-style 4-column layout */}
           <div className="dw-modal-scroll" style={{ maxHeight: '400px' }}>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-              gap: '12px'
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: '16px',
+              justifyItems: 'center'
             }}>
               {currentBlueprints.map(blueprint => {
                 const canAffordCredits = credits >= blueprint.craftCost;
                 const canAffordCores = aiCores >= blueprint.aiCoresCost;
                 const canAfford = canAffordCredits && canAffordCores;
+                const isDrone = selectedTab === 'Drones';
 
                 return (
                   <div
                     key={blueprint.id}
-                    className={`dw-blueprint-card ${!blueprint.isUnlocked ? 'dw-blueprint-card--locked' : ''}`}
                     style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      background: 'rgba(0, 0, 0, 0.35)',
+                      borderRadius: '4px',
                       padding: '12px',
-                      borderRadius: '4px'
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
                     }}
                   >
-                    <div className="dw-blueprint-card-scanline" />
-                    <div className="dw-blueprint-card-inner">
-                      {/* Locked View */}
-                      {!blueprint.isUnlocked ? (
-                        <div style={{ textAlign: 'center', padding: '16px 0', position: 'relative', zIndex: 1 }}>
-                          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
-                            <Lock size={32} style={{ color: 'var(--modal-text-muted)' }} />
-                          </div>
-                          <div style={{
-                            fontSize: '11px',
-                            fontWeight: '600',
-                            color: getRarityColor(blueprint.rarity),
-                            marginBottom: '4px'
-                          }}>
-                            {blueprint.rarity}
-                          </div>
-                          <div style={{ fontSize: '11px', color: 'var(--modal-text-muted)' }}>Locked</div>
+                    {/* Card wrapper with info icon */}
+                    <div style={{ position: 'relative', width: '225px', height: '275px' }}>
+                      {/* Info icon in top right corner - only for drones */}
+                      {isDrone && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '8px',
+                          right: '8px',
+                          zIndex: 10
+                        }}>
+                          <BlueprintDropInfo drone={blueprint} />
                         </div>
+                      )}
+
+                      {/* Card itself */}
+                      {blueprint.isUnlocked && isDrone ? (
+                        <DroneCard
+                          drone={blueprint}
+                          isViewOnly={true}
+                        />
                       ) : (
-                        <div style={{ position: 'relative', zIndex: 1 }}>
-                          {/* Blueprint Name */}
-                          <div style={{
-                            fontSize: '13px',
-                            fontWeight: '600',
-                            color: '#fff',
-                            marginBottom: '6px'
-                          }}>
-                            {blueprint.name}
-                          </div>
-
-                          {/* Type/Stats/Rarity */}
-                          {isShipCard(blueprint) ? (
-                            <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)', marginBottom: '4px' }}>
-                              Hull: {blueprint.baseHull} | Shields: {blueprint.baseShields}
-                            </div>
-                          ) : (
-                            <div style={{ fontSize: '11px', color: 'var(--modal-text-secondary)', marginBottom: '4px' }}>
-                              {blueprint.type}
-                            </div>
-                          )}
-                          <div style={{
-                            fontSize: '11px',
-                            fontWeight: '600',
-                            color: getRarityColor(blueprint.rarity),
-                            marginBottom: '8px'
-                          }}>
-                            {blueprint.rarity}
-                          </div>
-
-                          {/* Owned Count - not shown for ship cards */}
-                          {blueprint.owned > 0 && !isShipCard(blueprint) && (
-                            <div style={{
-                              fontSize: '12px',
-                              color: 'var(--modal-success)',
-                              marginBottom: '6px'
-                            }}>
-                              Owned: {blueprint.owned}
-                            </div>
-                          )}
-
-                          {/* Ship Card Status - show Unlocked instead of Owned */}
-                          {isShipCard(blueprint) && blueprint.isUnlocked && (
-                            <div style={{
-                              fontSize: '12px',
-                              color: 'var(--modal-success)',
-                              marginBottom: '6px',
-                              fontWeight: '600'
-                            }}>
-                              ✓ Unlocked
-                            </div>
-                          )}
-
-                          {/* Craft Cost - only show if can still craft */}
-                          {(!isShipCard(blueprint) || !blueprint.isUnlocked) && (
-                            <div style={{
-                              fontSize: '12px',
-                              color: 'var(--modal-text-secondary)',
-                              marginBottom: '10px'
-                            }}>
-                              <div>
-                                <span style={{ color: canAffordCredits ? '#fbbf24' : '#ef4444', fontWeight: '600' }}>
-                                  {blueprint.craftCost}
-                                </span>
-                                <span style={{ color: 'var(--modal-text-muted)', marginLeft: '4px' }}>credits</span>
+                        <div
+                          className={`dw-blueprint-card dw-blueprint-card--locked`}
+                          style={{
+                            width: '225px',
+                            height: '275px',
+                            padding: '12px',
+                            borderRadius: '4px',
+                            clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)'
+                          }}
+                        >
+                          <div className="dw-blueprint-card-scanline" />
+                          <div className="dw-blueprint-card-inner">
+                            <div style={{ textAlign: 'center', padding: '16px 0', position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                                <Lock size={48} style={{ color: 'var(--modal-text-muted)' }} />
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                                <Cpu size={12} style={{ color: canAffordCores ? '#f97316' : '#ef4444' }} />
-                                <span style={{ color: canAffordCores ? '#f97316' : '#ef4444', fontWeight: '600' }}>
-                                  {blueprint.aiCoresCost}
-                                </span>
-                                <span style={{ color: 'var(--modal-text-muted)' }}>AI Core{blueprint.aiCoresCost > 1 ? 's' : ''}</span>
+                              <div style={{
+                                fontSize: '13px',
+                                fontWeight: '700',
+                                color: getRarityColor(blueprint.rarity),
+                                marginBottom: '8px',
+                                textTransform: 'uppercase',
+                                letterSpacing: '1px'
+                              }}>
+                                {blueprint.rarity}
                               </div>
+                              <div style={{ fontSize: '12px', color: 'var(--modal-text-muted)' }}>LOCKED</div>
                             </div>
-                          )}
-
-                          {/* Craft/Unlock Button - not shown for already-unlocked ship cards */}
-                          {(!isShipCard(blueprint) || !blueprint.isUnlocked) && (
-                            <button
-                              className={`dw-btn dw-btn-confirm dw-btn--full ${!canAfford ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              style={{ padding: '6px 12px', fontSize: '12px' }}
-                              onClick={() => handleCraft(blueprint)}
-                              disabled={!canAfford}
-                            >
-                              {isShipCard(blueprint) ? 'Unlock' : 'Craft'}
-                            </button>
-                          )}
+                          </div>
                         </div>
+                      )}
+                    </div>
+
+                    {/* Controls Container (below card) */}
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '8px',
+                      marginTop: '12px',
+                      width: '100%',
+                      maxWidth: '225px'
+                    }}>
+                      {/* Blueprint Name */}
+                      <span style={{
+                        fontFamily: 'Orbitron, sans-serif',
+                        fontSize: '13px',
+                        fontWeight: '700',
+                        color: '#e0f2fe',
+                        textAlign: 'center'
+                      }}>
+                        {blueprint.isUnlocked ? blueprint.name : '????'}
+                      </span>
+
+                      {/* Owned Count - shown for unlocked non-ship-card blueprints */}
+                      {blueprint.isUnlocked && blueprint.owned > 0 && !isShipCard(blueprint) && (
+                        <div style={{
+                          fontSize: '12px',
+                          fontFamily: 'Orbitron, sans-serif',
+                          color: '#4ade80'
+                        }}>
+                          Owned: {blueprint.owned}
+                        </div>
+                      )}
+
+                      {/* Ship Card Unlocked Status */}
+                      {isShipCard(blueprint) && blueprint.isUnlocked && (
+                        <div style={{
+                          fontSize: '12px',
+                          fontFamily: 'Orbitron, sans-serif',
+                          color: '#4ade80',
+                          fontWeight: '600'
+                        }}>
+                          ✓ Unlocked
+                        </div>
+                      )}
+
+                      {/* Craft Cost */}
+                      {(!isShipCard(blueprint) || !blueprint.isUnlocked) && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{
+                            fontFamily: 'Orbitron, sans-serif',
+                            fontSize: '16px',
+                            fontWeight: '700',
+                            color: canAffordCredits ? '#fbbf24' : '#ef4444'
+                          }}>
+                            {blueprint.craftCost.toLocaleString()}
+                          </span>
+                          <span style={{ fontSize: '12px', color: '#fbbf24', opacity: 0.8 }}>cr</span>
+                        </div>
+                      )}
+
+                      {/* AI Cores Cost */}
+                      {(!isShipCard(blueprint) || !blueprint.isUnlocked) && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Cpu size={14} style={{ color: canAffordCores ? '#f97316' : '#ef4444' }} />
+                          <span style={{
+                            fontFamily: 'Orbitron, sans-serif',
+                            fontSize: '14px',
+                            fontWeight: '700',
+                            color: canAffordCores ? '#f97316' : '#ef4444'
+                          }}>
+                            {blueprint.aiCoresCost}
+                          </span>
+                          <span style={{ fontSize: '11px', color: '#f97316', opacity: 0.8 }}>
+                            AI Core{blueprint.aiCoresCost > 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Craft/Unlock Button */}
+                      {(!isShipCard(blueprint) || !blueprint.isUnlocked) && (
+                        <button
+                          className={`dw-btn dw-btn-confirm ${!canAfford ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          style={{
+                            padding: '8px 24px',
+                            fontSize: '12px',
+                            fontFamily: 'Orbitron, sans-serif',
+                            textTransform: 'uppercase',
+                            letterSpacing: '1px',
+                            borderRadius: '4px',
+                            maxWidth: '160px',
+                            fontWeight: '600'
+                          }}
+                          onClick={() => handleCraft(blueprint)}
+                          disabled={!canAfford}
+                        >
+                          {isShipCard(blueprint) ? 'Unlock' : 'Create'}
+                        </button>
                       )}
                     </div>
                   </div>
