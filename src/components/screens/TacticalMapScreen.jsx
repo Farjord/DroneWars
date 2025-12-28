@@ -11,6 +11,7 @@ import HexInfoPanel from '../ui/HexInfoPanel.jsx';
 import TacticalTicker from '../ui/TacticalTicker.jsx';
 import POIEncounterModal from '../modals/POIEncounterModal.jsx';
 import BlueprintEncounterModal from '../modals/BlueprintEncounterModal.jsx';
+import DroneBlueprintRewardModal from '../modals/DroneBlueprintRewardModal.jsx';
 import SalvageModal from '../modals/SalvageModal.jsx';
 import EscapeConfirmModal from '../modals/EscapeConfirmModal.jsx';
 import QuickDeploySelectionModal from '../modals/QuickDeploySelectionModal.jsx';
@@ -226,6 +227,10 @@ function TacticalMapScreen() {
   const [pendingBlueprintEncounter, setPendingBlueprintEncounter] = useState(null);
   const [blueprintQuickDeployPending, setBlueprintQuickDeployPending] = useState(false);
 
+  // Blueprint reward modal state (for reveal animation)
+  const [showBlueprintRewardModal, setShowBlueprintRewardModal] = useState(false);
+  const [pendingBlueprintReward, setPendingBlueprintReward] = useState(null);
+
   // Extraction confirmation modal state
   const [showExtractionConfirm, setShowExtractionConfirm] = useState(false);
   const [extractionQuickDeployPending, setExtractionQuickDeployPending] = useState(false);
@@ -277,6 +282,23 @@ function TacticalMapScreen() {
     return () => {
       unsubscribeGame();
       unsubscribeTactical();
+    };
+  }, []);
+
+  // Component lifecycle logging
+  useEffect(() => {
+    const runState = tacticalMapStateManager.getState();
+    debugLog('COMBAT_FLOW', 'TacticalMapScreen mounted', {
+      appState: gameStateManager.getState().appState,
+      hasRunState: !!runState,
+      playerPosition: runState?.playerPosition,
+      hasPendingPath: !!runState?.pendingPath,
+      hasPendingPOICombat: !!runState?.pendingPOICombat,
+      hasPendingBlockadeExtraction: !!runState?.pendingBlockadeExtraction
+    });
+
+    return () => {
+      debugLog('COMBAT_FLOW', 'TacticalMapScreen unmounting');
     };
   }, []);
 
@@ -564,10 +586,14 @@ function TacticalMapScreen() {
 
       console.log('[TacticalMap] Generated PoI loot after regular combat:', poiLoot);
 
-      // Skip loot modal if no cards in loot (credits-only rewards from CREDITS_PACK)
-      // This prevents showing empty salvage modal for ambush encounters
-      if (!poiLoot.cards || poiLoot.cards.length === 0) {
-        console.log('[TacticalMap] No cards in POI loot - skipping loot modal');
+      // Check if there's actually any loot to display
+      const hasVisibleLoot = !!((poiLoot.cards?.length > 0) ||
+                                poiLoot.blueprint ||
+                                (poiLoot.salvageItems?.length > 0));
+
+      // Skip loot modal only if truly empty (credits-only rewards)
+      if (!hasVisibleLoot) {
+        console.log('[TacticalMap] No visible loot (credits-only) - skipping loot modal');
         // Resume journey if waypoints remain
         if (waypointsToRestore?.length > 0) {
           console.log('[TacticalMap] Resuming journey with', waypointsToRestore.length, 'waypoints');
@@ -576,11 +602,42 @@ function TacticalMapScreen() {
         return;
       }
 
-      // Set up for loot modal display
-      setPendingLootEncounter({
-        poi: { q, r, poiData: { name: poiName, threatIncrease: 10 } }
+      // Check if this is blueprint-only loot (use dedicated modal)
+      const isBlueprintOnly = poiLoot.blueprint &&
+                              (!poiLoot.cards || poiLoot.cards.length === 0) &&
+                              (!poiLoot.salvageItems || poiLoot.salvageItems.length === 0);
+
+      if (isBlueprintOnly) {
+        // Use dedicated blueprint reveal modal
+        console.log('[TacticalMap] Blueprint-only loot - showing DroneBlueprintRewardModal');
+        setPendingBlueprintReward(poiLoot.blueprint);
+        setShowBlueprintRewardModal(true);
+
+        // Store encounter info for cleanup
+        setPendingLootEncounter({
+          poi: { q, r, poiData: { name: poiName, threatIncrease: 10 } }
+        });
+      } else {
+        // Use generic loot modal (for mixed loot or non-blueprint)
+        setPendingLootEncounter({
+          poi: { q, r, poiData: { name: poiName, threatIncrease: 10 } }
+        });
+        setPoiLootToReveal(poiLoot);
+      }
+    }
+
+    // Log post-combat state restoration
+    runState = tacticalMapStateManager.getState();
+    if (waypointsToRestore || runState?.pendingPOICombat || runState?.pendingBlockadeExtraction) {
+      debugLog('COMBAT_FLOW', 'Post-combat state restored', {
+        position: { q: runState?.playerPosition?.q, r: runState?.playerPosition?.r },
+        waypointsRestored: waypointsToRestore?.length || 0,
+        waypointDestinations: waypointsToRestore?.map(wp => `(${wp?.hex?.q},${wp?.hex?.r})`).join(' -> '),
+        detection: runState?.detection,
+        hull: runState?.currentHull,
+        pendingPOICombat: !!runState?.pendingPOICombat,
+        pendingBlockadeExtraction: !!runState?.pendingBlockadeExtraction
       });
-      setPoiLootToReveal(poiLoot);
     }
   }, []); // Run once on mount
 
@@ -1306,8 +1363,8 @@ function TacticalMapScreen() {
       outcome: 'combat',
       aiId: encounter.aiId,
       reward: encounter.reward,
-      fromBlueprintPoI: true,
-      isBlockade: true  // Quick deploy requires blockade mode
+      fromBlueprintPoI: true
+      // Note: Blueprint PoI is NOT a blockade - do not set isBlockade flag
     });
 
     // Store encounter info for victory processing
@@ -1928,6 +1985,26 @@ function TacticalMapScreen() {
     // Re-fetch runState after potential update above
     const updatedRunState = tacticalMapStateManager.getState();
 
+    // Log combat initiation
+    debugLog('COMBAT_FLOW', 'Initiating combat', {
+      type: currentEncounter?.fromBlueprintPoI ? 'Blueprint PoI' :
+            currentEncounter?.fromSalvage ? 'Salvage Encounter' :
+            currentEncounter?.isBlockade ? 'Blockade' : 'Random/PoI',
+      aiId: currentEncounter?.aiId,
+      position: updatedRunState?.playerPosition,
+      hasQuickDeploy: !!quickDeployId
+    });
+
+    // Log pre-combat state snapshot
+    debugLog('COMBAT_FLOW', 'Pre-combat state snapshot', {
+      position: { q: updatedRunState?.playerPosition?.q, r: updatedRunState?.playerPosition?.r },
+      detection: updatedRunState?.detection,
+      hull: updatedRunState?.currentHull,
+      hasPendingPath: !!updatedRunState?.pendingPath,
+      hasPendingWaypoints: !!updatedRunState?.pendingWaypoints,
+      pendingPathHexCount: updatedRunState?.pendingPath?.length || 0
+    });
+
     // Initialize combat with optional quick deploy
     // Pass isBlockade flag so post-combat can auto-extract on blockade victory
     const success = await SinglePlayerCombatInitializer.initiateCombat(
@@ -2511,6 +2588,19 @@ function TacticalMapScreen() {
       });
     }
 
+    // Add blueprint to loot record (blueprint PoI rewards)
+    if (loot.blueprint) {
+      console.log('[TacticalMap] Adding blueprint to collectedLoot:', loot.blueprint.blueprintId);
+      newCardLoot.push({
+        type: 'blueprint',
+        blueprintId: loot.blueprint.blueprintId,
+        blueprintType: loot.blueprint.blueprintType || 'drone',
+        rarity: loot.blueprint.rarity,
+        droneData: loot.blueprint.droneData,
+        source: loot.blueprint.source || 'poi_loot'
+      });
+    }
+
     // Add token to loot record (for display in run summary)
     // Handle both single token (direct encounter) and tokens array (salvage)
     if (loot.token) {
@@ -2610,6 +2700,83 @@ function TacticalMapScreen() {
     }
 
     console.log('[TacticalMap] POI loot finalized, resuming movement');
+  }, [pendingLootEncounter, pendingResumeWaypoints]);
+
+  /**
+   * Handle blueprint reward modal acceptance
+   * Called when player clicks Accept on DroneBlueprintRewardModal
+   */
+  const handleBlueprintRewardAccepted = useCallback((blueprint) => {
+    console.log('[TacticalMap] Blueprint reward accepted:', blueprint.blueprintId);
+
+    // Close blueprint modal
+    setShowBlueprintRewardModal(false);
+    setPendingBlueprintReward(null);
+
+    const runState = tacticalMapStateManager.getState();
+
+    // Add blueprint to collectedLoot
+    const blueprintLootItem = {
+      type: 'blueprint',
+      blueprintId: blueprint.blueprintId,
+      blueprintType: blueprint.blueprintType || 'drone',
+      rarity: blueprint.rarity,
+      droneData: blueprint.droneData,
+      source: blueprint.source || 'poi_loot'
+    };
+
+    const updatedLoot = [...(runState?.collectedLoot || []), blueprintLootItem];
+
+    // Update run state with blueprint
+    tacticalMapStateManager.setState({
+      collectedLoot: updatedLoot
+    });
+
+    console.log('[TacticalMap] Blueprint added to collectedLoot. Total items:', updatedLoot.length);
+
+    // Mark POI as looted (if from encounter)
+    if (pendingLootEncounter?.poi) {
+      const { q, r } = pendingLootEncounter.poi;
+
+      // Update hex data to mark as looted
+      const updatedMapData = { ...runState.mapData };
+      const hexToUpdate = updatedMapData.hexes.find(h => h.q === q && h.r === r);
+
+      if (hexToUpdate && hexToUpdate.poi) {
+        hexToUpdate.poi.looted = true;
+        console.log(`[TacticalMap] Marked blueprint PoI at (${q}, ${r}) as looted`);
+
+        tacticalMapStateManager.setState({
+          mapData: updatedMapData
+        });
+      }
+
+      // Add detection for looting
+      const threatIncrease = pendingLootEncounter.poi.poiData?.threatIncrease || 10;
+      DetectionManager.addDetection(threatIncrease, `Looting ${pendingLootEncounter.poi.poiData?.name || 'Blueprint PoI'}`);
+
+      // Record mission progress for POI visit
+      MissionService.recordProgress('POI_LOOTED', {});
+
+      setPendingLootEncounter(null);
+    }
+
+    // Resume journey if waypoints remain (handled by existing logic)
+    if (pendingResumeWaypoints?.length > 0) {
+      console.log('[TacticalMap] Resuming journey with remaining waypoints:', pendingResumeWaypoints.length);
+      setWaypoints(pendingResumeWaypoints);
+      setPendingResumeWaypoints(null);
+      // Movement will start via the executeMovement useEffect that watches waypoints
+    }
+
+    // Resume movement by resolving the waiting promise
+    if (encounterResolveRef.current) {
+      encounterResolveRef.current();
+      encounterResolveRef.current = null;
+    }
+
+    setIsPaused(false);
+    console.log('[TacticalMap] Blueprint reward finalized, resuming movement');
   }, [pendingLootEncounter, pendingResumeWaypoints]);
 
   // ========================================
@@ -3335,7 +3502,16 @@ function TacticalMapScreen() {
         />
       )}
 
-      {/* POI Loot Reveal Modal */}
+      {/* Blueprint Reward Modal (dedicated reveal animation) */}
+      {showBlueprintRewardModal && pendingBlueprintReward && (
+        <DroneBlueprintRewardModal
+          blueprint={pendingBlueprintReward}
+          onAccept={handleBlueprintRewardAccepted}
+          show={true}
+        />
+      )}
+
+      {/* POI Loot Reveal Modal (for card packs and mixed loot) */}
       {poiLootToReveal && (
         <LootRevealModal
           loot={poiLootToReveal}

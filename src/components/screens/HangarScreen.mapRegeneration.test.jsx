@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import React from 'react';
 
 // Track calls to generateMapData to verify seeds
@@ -339,7 +339,9 @@ describe('HangarScreen - Map Regeneration', () => {
     rerender(<HangarScreen />);
 
     // Give time for potential regeneration
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    });
 
     // If maps regenerated, seeds would be captured
     // Since stats didn't change, maps should NOT regenerate

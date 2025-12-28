@@ -131,7 +131,7 @@ describe('HexInfoPanel', () => {
 
       render(<HexInfoPanel {...props} />)
 
-      expect(screen.getByText('0%')).toBeInTheDocument()
+      expect(screen.getByTestId('blockade-risk-value')).toHaveTextContent('0%')
     })
 
     it('shows warning styling when detection is at or above 50%', () => {

@@ -82,7 +82,7 @@ function RunSummaryModal({ summary, onClose }) {
         </div>
 
         {/* Body */}
-        <div className="dw-modal-body" style={{ flex: 1, overflow: 'auto', padding: '20px' }}>
+        <div className="dw-modal-body dw-modal-scroll" style={{ flex: 1, overflow: 'auto', padding: '20px' }}>
           {/* Stats Grid - 3 columns */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '24px' }}>
             {/* Exploration Column */}

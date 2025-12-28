@@ -366,7 +366,7 @@ describe('LootGenerator - generateSalvageSlots', () => {
         expect(typeof slot.content.name).toBe('string')
         expect(typeof slot.content.creditValue).toBe('number')
         expect(slot.content.creditValue).toBeGreaterThan(0)
-        expect(slot.content.image.startsWith('/Credits/')).toBe(true)
+        expect(slot.content.image.startsWith('/DroneWars/Credits/')).toBe(true)
       }
     })
 
@@ -547,7 +547,7 @@ describe('LootGenerator - openPack salvage items', () => {
 
     it('salvageItem image should start with /Credits/', () => {
       const result = LootGenerator.openPack('ORDNANCE_PACK', 1, 'mid', mockTierConfig)
-      expect(result.salvageItem.image.startsWith('/Credits/')).toBe(true)
+      expect(result.salvageItem.image.startsWith('/DroneWars/Credits/')).toBe(true)
     })
   })
 })
@@ -604,7 +604,7 @@ describe('LootGenerator - generateCombatSalvage salvage items', () => {
 
     it('salvageItem image should start with /Credits/', () => {
       const result = LootGenerator.generateCombatSalvage(mockEnemyDeck, 1, 'Normal')
-      expect(result.salvageItem.image.startsWith('/Credits/')).toBe(true)
+      expect(result.salvageItem.image.startsWith('/DroneWars/Credits/')).toBe(true)
     })
   })
 })

@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 
 // Mock dependencies BEFORE importing the component
@@ -230,7 +230,9 @@ describe('Boss Hex on Hangar Grid', () => {
     const { container } = render(<HangarScreen />);
 
     // Wait for hex grid to generate
-    await new Promise(r => setTimeout(r, 200));
+    await waitFor(() => {
+      expect(container.querySelector('[data-boss-hex="true"]')).toBeInTheDocument();
+    });
 
     // Look for boss hex element (should have distinct styling or data attribute)
     const bossHex = container.querySelector('[data-boss-hex="true"]');
@@ -249,7 +251,9 @@ describe('Boss Hex on Hangar Grid', () => {
     const { container } = render(<HangarScreen />);
 
     // Wait for hex grid to generate
-    await new Promise(r => setTimeout(r, 200));
+    await waitFor(() => {
+      expect(container.querySelector('[data-boss-hex="true"]')).toBeInTheDocument();
+    });
 
     // Get all active sector hexes (map sectors)
     const sectorHexes = container.querySelectorAll('[data-sector-hex="true"]');
@@ -276,7 +280,9 @@ describe('Boss Hex on Hangar Grid', () => {
     const { container } = render(<HangarScreen />);
 
     // Wait for hex grid to generate
-    await new Promise(r => setTimeout(r, 200));
+    await waitFor(() => {
+      expect(container.querySelector('[data-boss-hex="true"]')).toBeInTheDocument();
+    });
 
     // Boss hex should have red color scheme
     const bossHex = container.querySelector('[data-boss-hex="true"]');
@@ -299,7 +305,9 @@ describe('Boss Hex on Hangar Grid', () => {
     const { container } = render(<HangarScreen />);
 
     // Wait for hex grid to generate
-    await new Promise(r => setTimeout(r, 200));
+    await waitFor(() => {
+      expect(container.querySelector('[data-boss-hex="true"]')).toBeInTheDocument();
+    });
 
     // Click boss hex
     const bossHex = container.querySelector('[data-boss-hex="true"]');
@@ -307,7 +315,9 @@ describe('Boss Hex on Hangar Grid', () => {
       fireEvent.click(bossHex);
 
       // Wait for modal to render
-      await new Promise(r => setTimeout(r, 100));
+      await waitFor(() => {
+        expect(screen.getByTestId('boss-encounter-modal')).toBeInTheDocument();
+      });
 
       // BossEncounterModal should be visible
       expect(screen.getByTestId('boss-encounter-modal')).toBeInTheDocument();
@@ -326,7 +336,9 @@ describe('Boss Hex on Hangar Grid', () => {
     const { container } = render(<HangarScreen />);
 
     // Wait for hex grid to generate
-    await new Promise(r => setTimeout(r, 200));
+    await waitFor(() => {
+      expect(container.querySelector('[data-boss-hex="true"]')).toBeInTheDocument();
+    });
 
     // Click boss hex
     const bossHex = container.querySelector('[data-boss-hex="true"]');
@@ -334,7 +346,9 @@ describe('Boss Hex on Hangar Grid', () => {
       fireEvent.click(bossHex);
 
       // Wait for modal to render
-      await new Promise(r => setTimeout(r, 100));
+      await waitFor(() => {
+        expect(screen.getByTestId('boss-id')).toBeInTheDocument();
+      });
 
       // Check bossId is passed correctly
       expect(screen.getByTestId('boss-id').textContent).toBe('BOSS_T1_NEMESIS');
@@ -371,7 +385,9 @@ describe('Boss Challenge Flow', () => {
     const { container } = render(<HangarScreen />);
 
     // Wait for hex grid to generate
-    await new Promise(r => setTimeout(r, 200));
+    await waitFor(() => {
+      expect(container.querySelector('[data-boss-hex="true"]')).toBeInTheDocument();
+    });
 
     // Click boss hex to open modal
     const bossHex = container.querySelector('[data-boss-hex="true"]');
@@ -379,7 +395,9 @@ describe('Boss Challenge Flow', () => {
       fireEvent.click(bossHex);
 
       // Wait for modal to render
-      await new Promise(r => setTimeout(r, 100));
+      await waitFor(() => {
+        expect(screen.getByTestId('challenge-btn')).toBeInTheDocument();
+      });
 
       // Click challenge button
       const challengeBtn = screen.getByTestId('challenge-btn');
@@ -402,7 +420,9 @@ describe('Boss Challenge Flow', () => {
     const { container } = render(<HangarScreen />);
 
     // Wait for hex grid to generate
-    await new Promise(r => setTimeout(r, 200));
+    await waitFor(() => {
+      expect(container.querySelector('[data-boss-hex="true"]')).toBeInTheDocument();
+    });
 
     // Click boss hex to open modal
     const bossHex = container.querySelector('[data-boss-hex="true"]');
@@ -410,14 +430,18 @@ describe('Boss Challenge Flow', () => {
       fireEvent.click(bossHex);
 
       // Wait for modal to render
-      await new Promise(r => setTimeout(r, 100));
+      await waitFor(() => {
+        expect(screen.getByTestId('challenge-btn')).toBeInTheDocument();
+      });
 
       // Click challenge button
       const challengeBtn = screen.getByTestId('challenge-btn');
       fireEvent.click(challengeBtn);
 
       // Wait for modal to close
-      await new Promise(r => setTimeout(r, 100));
+      await waitFor(() => {
+        expect(screen.queryByTestId('boss-encounter-modal')).toBeNull();
+      });
 
       // Modal should be closed
       expect(screen.queryByTestId('boss-encounter-modal')).toBeNull();

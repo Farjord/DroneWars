@@ -169,9 +169,41 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
       [blueprint.id]: (singlePlayerInventory[blueprint.id] || 0) + 1
     };
 
+    // Create drone instances for non-starter drones
+    let newDroneInstances = gameState.singlePlayerDroneInstances || [];
+    if (selectedTab === 'Drones' && !STARTER_DRONE_NAMES.has(blueprint.name)) {
+      const instanceId = `DRONE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const newInstance = {
+        instanceId,
+        droneName: blueprint.name,
+        shipSlotId: null,  // Not assigned to a slot yet
+        isDamaged: false
+      };
+      newDroneInstances = [...newDroneInstances, newInstance];
+    }
+
+    // Create ship component instances for non-starter components
+    let newComponentInstances = gameState.singlePlayerShipComponentInstances || [];
+    if (selectedTab === 'Ships' && !STARTER_COMPONENT_IDS.has(blueprint.id)) {
+      const componentData = shipComponentCollection.find(c => c.id === blueprint.id);
+      if (componentData) {
+        const instanceId = `COMP_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const newInstance = {
+          instanceId,
+          componentId: blueprint.id,
+          shipSlotId: null,
+          currentHull: componentData.hull,
+          maxHull: componentData.maxHull || componentData.hull
+        };
+        newComponentInstances = [...newComponentInstances, newInstance];
+      }
+    }
+
     gameStateManager.setState({
       singlePlayerProfile: newProfile,
       singlePlayerInventory: newInventory,
+      singlePlayerDroneInstances: newDroneInstances,
+      singlePlayerShipComponentInstances: newComponentInstances,
     });
 
     // Update card discovery state to 'owned' if not already (for drones/components)

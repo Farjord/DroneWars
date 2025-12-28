@@ -64,7 +64,7 @@ describe('Salvage Item Data Structure', () => {
 
         expect(item.image).toBeDefined();
         expect(typeof item.image).toBe('string');
-        expect(item.image.startsWith('/Credits/')).toBe(true);
+        expect(item.image.startsWith('/DroneWars/Credits/')).toBe(true);
 
         expect(item.description).toBeDefined();
         expect(typeof item.description).toBe('string');
@@ -279,7 +279,7 @@ describe('generateSalvageItemFromValue', () => {
   it('should have image path starting with /Credits/', () => {
     const rng = createMockRNG([0.5]);
     const result = generateSalvageItemFromValue(100, rng);
-    expect(result.image.startsWith('/Credits/')).toBe(true);
+    expect(result.image.startsWith('/DroneWars/Credits/')).toBe(true);
   });
 });
 

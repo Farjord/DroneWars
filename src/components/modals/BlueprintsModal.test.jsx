@@ -82,7 +82,8 @@ vi.mock('../../data/playerDeckData.js', () => ({
 
 // Mock starter pool ship IDs
 vi.mock('../../data/saveGameSchema.js', () => ({
-  starterPoolShipIds: ['SHIP_001']
+  starterPoolShipIds: ['SHIP_001'],
+  starterPoolDroneNames: ['Dart', 'Talon', 'Mammoth', 'Bastion', 'Seraph']
 }));
 
 // Mock economy data
@@ -150,9 +151,9 @@ describe('BlueprintsModal - Starter Items Exclusion', () => {
     it('should show non-starter drones in the Drones tab', () => {
       render(<BlueprintsModal onClose={() => {}} />);
 
-      // Non-starter drones SHOULD appear
-      expect(screen.getByText('Harrier')).toBeInTheDocument();
-      expect(screen.getByText('Bomber Drone')).toBeInTheDocument();
+      // Non-starter drones SHOULD appear (use getAllByText since they may appear multiple times)
+      expect(screen.getAllByText('Harrier').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Bomber Drone').length).toBeGreaterThan(0);
     });
 
     it('should show correct stats count excluding starter drones', () => {

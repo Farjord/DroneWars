@@ -70,6 +70,7 @@ const DEBUG_CONFIG = {
     DRAG_PERF: false,             // Drag performance investigation: cursor position, re-renders, state updates
     MODE_TRANSITION: true,        // All mode transitions: hangar <-> tacticalMap <-> inGame (with trigger source)
     RUN_STATE: true,              // TacticalMapStateManager persistence debugging (background, waypoints)
+    COMBAT_FLOW: true,            // Combat type identification and state restoration after combat
 
     // Effect System Refactoring - Modular Processor Logging
     EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)
