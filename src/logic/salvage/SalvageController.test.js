@@ -1,24 +1,29 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { SalvageController } from './SalvageController.js'
 
+// Mock RewardManager
+vi.mock('../../managers/RewardManager.js', () => ({
+  default: {
+    generateSalvageSlots: vi.fn(() => [
+      { type: 'card', content: { cardId: 'test_card_1', cardName: 'Test Card', rarity: 'Common' }, revealed: false },
+      { type: 'salvageItem', content: { itemId: 'salvage_1', creditValue: 50 }, revealed: false },
+      { type: 'salvageItem', content: { itemId: 'salvage_2', creditValue: 30 }, revealed: false }
+    ])
+  }
+}))
+
+import rewardManager from '../../managers/RewardManager.js'
+
 // ========================================
 // SALVAGE CONTROLLER TESTS
 // ========================================
 
 describe('SalvageController', () => {
   let salvageController
-  let mockLootGenerator
   let mockTierConfig
 
   beforeEach(() => {
-    // Mock loot generator that returns predictable slots
-    mockLootGenerator = {
-      generateSalvageSlots: vi.fn().mockReturnValue([
-        { type: 'card', content: { cardId: 'test_card_1', cardName: 'Test Card', rarity: 'Common' }, revealed: false },
-        { type: 'credits', content: { amount: 50 }, revealed: false },
-        { type: 'credits', content: { amount: 30 }, revealed: false }
-      ])
-    }
+    vi.clearAllMocks()
 
     // Mock tier config with salvage settings
     mockTierConfig = {
@@ -52,7 +57,7 @@ describe('SalvageController', () => {
         rewardType: 'ORDNANCE_PACK'
       }
 
-      const result = salvageController.initializeSalvage(poi, mockTierConfig, 'mid', mockLootGenerator)
+      const result = salvageController.initializeSalvage(poi, mockTierConfig, 'mid')
 
       expect(result.poi).toEqual(poi)
       expect(result.zone).toBe('mid')
@@ -68,7 +73,7 @@ describe('SalvageController', () => {
         rewardType: 'ORDNANCE_PACK'
       }
 
-      const result = salvageController.initializeSalvage(poi, mockTierConfig, 'mid', mockLootGenerator)
+      const result = salvageController.initializeSalvage(poi, mockTierConfig, 'mid')
 
       expect(result.currentEncounterChance).toBe(20)
     })
@@ -79,7 +84,7 @@ describe('SalvageController', () => {
 
       const poi = { encounterChance: 15, rewardType: 'ORDNANCE_PACK' }
 
-      const result = salvageController.initializeSalvage(poi, mockTierConfig, 'core', mockLootGenerator)
+      const result = salvageController.initializeSalvage(poi, mockTierConfig, 'core')
 
       expect(result.slots.every(slot => slot.revealed === false)).toBe(true)
     })
@@ -89,7 +94,7 @@ describe('SalvageController', () => {
 
       const poi = { encounterChance: 15, rewardType: 'ORDNANCE_PACK' }
 
-      const result = salvageController.initializeSalvage(poi, mockTierConfig, 'mid', mockLootGenerator)
+      const result = salvageController.initializeSalvage(poi, mockTierConfig, 'mid')
 
       expect(result.currentSlotIndex).toBe(0)
     })
@@ -99,7 +104,7 @@ describe('SalvageController', () => {
 
       const poi = { encounterChance: 15, rewardType: 'ORDNANCE_PACK' }
 
-      const result = salvageController.initializeSalvage(poi, mockTierConfig, 'mid', mockLootGenerator)
+      const result = salvageController.initializeSalvage(poi, mockTierConfig, 'mid')
 
       expect(result.encounterTriggered).toBe(false)
     })
@@ -110,9 +115,9 @@ describe('SalvageController', () => {
 
       const poi = { encounterChance: 15, rewardType: 'TACTICAL_PACK' }
 
-      salvageController.initializeSalvage(poi, mockTierConfig, 'core', mockLootGenerator)
+      salvageController.initializeSalvage(poi, mockTierConfig, 'core')
 
-      expect(mockLootGenerator.generateSalvageSlots).toHaveBeenCalledWith(
+      expect(rewardManager.generateSalvageSlots).toHaveBeenCalledWith(
         'TACTICAL_PACK',
         expect.any(Number), // tier
         'core',
@@ -126,7 +131,7 @@ describe('SalvageController', () => {
 
       const poi = { encounterChance: 15, rewardType: 'ORDNANCE_PACK' }
 
-      const result = salvageController.initializeSalvage(poi, mockTierConfig, 'mid', mockLootGenerator)
+      const result = salvageController.initializeSalvage(poi, mockTierConfig, 'mid')
 
       expect(result.totalSlots).toBe(3) // mockLootGenerator returns 3 slots
       expect(result.slots.length).toBe(3)
@@ -148,10 +153,10 @@ describe('SalvageController', () => {
         }
       }
 
-      salvageController.initializeSalvage(hexWithNestedPoiData, mockTierConfig, 'mid', mockLootGenerator)
+      salvageController.initializeSalvage(hexWithNestedPoiData, mockTierConfig, 'mid')
 
-      // Should pass the nested rewardType to lootGenerator
-      expect(mockLootGenerator.generateSalvageSlots).toHaveBeenCalledWith(
+      // Should pass the nested rewardType to rewardManager
+      expect(rewardManager.generateSalvageSlots).toHaveBeenCalledWith(
         'ORDNANCE_PACK',
         expect.any(Number),
         'mid',
@@ -169,7 +174,7 @@ describe('SalvageController', () => {
         }
       }
 
-      const result = salvageController.initializeSalvage(hexWithNestedPoiData, mockTierConfig, 'core', mockLootGenerator)
+      const result = salvageController.initializeSalvage(hexWithNestedPoiData, mockTierConfig, 'core')
 
       expect(result.currentEncounterChance).toBe(30)
     })
@@ -901,16 +906,6 @@ describe('SalvageController', () => {
   })
 
   describe('initializeSalvage() with threat bonus', () => {
-    let mockLootGeneratorForThreat
-
-    beforeEach(() => {
-      mockLootGeneratorForThreat = {
-        generateSalvageSlots: vi.fn().mockReturnValue([
-          { type: 'card', content: { cardId: 'test_card' }, revealed: false }
-        ])
-      }
-    })
-
     const mockTierConfigWithBonus = {
       threatEncounterBonus: {
         low: { min: 0, max: 0 },
@@ -926,7 +921,7 @@ describe('SalvageController', () => {
       const poi = { q: 2, r: -1, encounterChance: 20, rewardType: 'ORDNANCE_PACK' }
 
       const result = salvageController.initializeSalvage(
-        poi, mockTierConfigWithBonus, 'mid', mockLootGeneratorForThreat, 1, 'low'
+        poi, mockTierConfigWithBonus, 'mid', 1, 'low'
       )
 
       expect(result.currentEncounterChance).toBe(20)
@@ -939,7 +934,7 @@ describe('SalvageController', () => {
       const poi = { q: 2, r: -1, encounterChance: 20, rewardType: 'ORDNANCE_PACK' }
 
       const result = salvageController.initializeSalvage(
-        poi, mockTierConfigWithBonus, 'mid', mockLootGeneratorForThreat, 1, 'medium'
+        poi, mockTierConfigWithBonus, 'mid', 1, 'medium'
       )
 
       expect(result.currentEncounterChance).toBeGreaterThanOrEqual(25) // 20 + 5
@@ -953,7 +948,7 @@ describe('SalvageController', () => {
       const poi = { q: 2, r: -1, encounterChance: 20, rewardType: 'ORDNANCE_PACK' }
 
       const result = salvageController.initializeSalvage(
-        poi, mockTierConfigWithBonus, 'mid', mockLootGeneratorForThreat, 1, 'high'
+        poi, mockTierConfigWithBonus, 'mid', 1, 'high'
       )
 
       expect(result.currentEncounterChance).toBeGreaterThanOrEqual(30) // 20 + 10

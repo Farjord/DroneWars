@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { Award, Gift, Star, ChevronRight } from 'lucide-react';
 import ReputationService from '../../logic/reputation/ReputationService';
-import lootGenerator from '../../logic/loot/LootGenerator';
+import rewardManager from '../../managers/RewardManager';
 import LootRevealModal from './LootRevealModal';
 import gameStateManager from '../../managers/GameStateManager';
 import { packTypes, RARITY_COLORS } from '../../data/cardPackData';
@@ -32,14 +32,11 @@ function ReputationRewardModal({ onClose }) {
     if (result.success && result.reward) {
       // Generate loot from pack
       if (result.reward.type === 'pack') {
-        const seed = Date.now() + reward.level; // Unique seed per reward
-        const loot = lootGenerator.openPack(
-          result.reward.packType,
-          result.reward.tier,
-          null,
-          null,
-          seed
-        );
+        const loot = rewardManager.generateReputationReward({
+          packType: result.reward.packType,
+          tier: result.reward.tier,
+          level: reward.level
+        });
 
         setGeneratedLoot(loot);
         setShowLootReveal(true);

@@ -6,8 +6,9 @@
 
 import gameStateManager from '../../managers/GameStateManager.js';
 import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
+import transitionManager from '../../managers/TransitionManager.js';
+import rewardManager from '../../managers/RewardManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
-import lootGenerator from '../loot/LootGenerator.js';
 import ExtractionController from './ExtractionController.js';
 import EncounterController from '../encounters/EncounterController.js';
 import DetectionManager from '../detection/DetectionManager.js';
@@ -147,12 +148,28 @@ class CombatOutcomeProcessor {
       debugLog('SP_COMBAT', 'Boss combat - using boss reward system, skipping combat rep');
     }
 
-    // 3. Generate salvage loot using LootGenerator
+    // 3. Generate combat rewards using RewardManager
     const enemyDeck = gameState.player2?.deck || [];
     const enemyTier = encounterInfo?.tier || 1;
     const aiDifficulty = encounterInfo?.aiDifficulty || null;
-    const salvageLoot = lootGenerator.generateCombatSalvage(enemyDeck, enemyTier, aiDifficulty);
-    debugLog('SP_COMBAT', 'Generated salvage loot:', salvageLoot);
+    const aiId = encounterInfo?.aiId;
+
+    const combatRewards = rewardManager.generateCombatRewards({
+      enemyDeck,
+      tier: enemyTier,
+      aiDifficulty,
+      aiId,
+      encounterInfo
+    });
+
+    // Extract salvage loot for compatibility with existing code
+    const salvageLoot = {
+      cards: combatRewards.cards,
+      salvageItem: combatRewards.salvageItem,
+      aiCores: combatRewards.aiCores
+    };
+
+    debugLog('SP_COMBAT', 'Generated combat rewards:', combatRewards);
 
     // 2b. Check for pending salvage loot from PoI encounter
     // When combat was triggered during salvage (fromSalvage: true):
@@ -197,34 +214,15 @@ class CombatOutcomeProcessor {
     if (rewardType?.startsWith('DRONE_BLUEPRINT_')) {
       debugLog('SP_COMBAT', 'Drone blueprint POI - generating blueprint:', rewardType);
 
-      // Read unlocked blueprints from profile
-      const state = gameStateManager.getState();
-      const profile = state.singlePlayerProfile || {};
-      const unlockedBlueprints = profile.unlockedBlueprints || [];
-
-      const droneBlueprint = lootGenerator.generateDroneBlueprint(rewardType, enemyTier, unlockedBlueprints);
+      const blueprintResult = rewardManager.generateBlueprintReward(rewardType, enemyTier);
 
       // Check if all blueprints in this category are exhausted
-      if (droneBlueprint?.type === 'blueprint_exhausted') {
-        debugLog('SP_COMBAT', 'All blueprints exhausted for', droneBlueprint.poiType, '- awarding bonus salvage');
+      if (blueprintResult?.type === 'blueprint_exhausted') {
+        debugLog('SP_COMBAT', 'All blueprints exhausted for', blueprintResult.poiType, '- awarding bonus salvage');
 
-        // Generate higher-tier salvage as compensation
-        const rng = lootGenerator.createRNG(Date.now());
+        // RewardManager already generated fallback salvage - add to combat loot
+        const bonusSalvage = blueprintResult.fallbackSalvage;
 
-        // Determine what rarity would have been rolled (for fallback tier calculation)
-        const tierKey = `tier${enemyTier}`;
-        const rarityWeights = {
-          tier1: { Common: 90, Uncommon: 10, Rare: 0 },
-          tier2: { Common: 60, Uncommon: 35, Rare: 5 },
-          tier3: { Common: 40, Uncommon: 45, Rare: 15 }
-        };
-        const weights = rarityWeights[tierKey] || rarityWeights.tier1;
-        const rolledRarity = lootGenerator.rollRarity(weights, rng);
-
-        // Generate bonus salvage
-        const bonusSalvage = lootGenerator.generateBlueprintFallbackSalvage(rolledRarity, rng);
-
-        // Add to salvageLoot
         if (salvageLoot.salvageItem) {
           // Combine credit values
           salvageLoot.salvageItem.creditValue += bonusSalvage.creditValue;
@@ -241,10 +239,10 @@ class CombatOutcomeProcessor {
         });
 
         debugLog('SP_COMBAT', 'Bonus salvage awarded:', bonusSalvage);
-      } else if (droneBlueprint) {
+      } else if (blueprintResult) {
         // Store separately - NOT in salvageLoot.blueprint
-        pendingDroneBlueprint = droneBlueprint;
-        debugLog('SP_COMBAT', 'Drone blueprint generated (pending for special modal):', droneBlueprint);
+        pendingDroneBlueprint = blueprintResult;
+        debugLog('SP_COMBAT', 'Drone blueprint generated (pending for special modal):', blueprintResult);
       }
     }
 
@@ -353,10 +351,8 @@ class CombatOutcomeProcessor {
 
     // Convert loot.cards to collectedLoot format
     const newCardLoot = (loot.cards || []).map(card => ({
-      type: 'card',
-      cardId: card.cardId,
-      cardName: card.cardName,
-      rarity: card.rarity,
+      ...card,  // Already has cardId, cardName from RewardManager
+      type: 'card',  // Override card.type (Ordnance/Support/etc) with 'card' for collectedLoot
       source: 'combat_salvage'
     }));
 
@@ -512,6 +508,20 @@ class CombatOutcomeProcessor {
       // Clear combat state for regular case
       gameStateManager.resetGameState();
 
+      // Notify TransitionManager of combat return (if snapshot exists)
+      if (transitionManager.hasSnapshot()) {
+        try {
+          transitionManager.returnFromCombat({
+            result: 'victory',
+            type: isBlockade ? 'blockade' : 'regular',
+            shouldRestoreWaypoints: true,
+            shouldRestoreSalvage: !!currentRunState.pendingSalvageState
+          });
+        } catch (error) {
+          debugLog('SP_COMBAT', 'TransitionManager.returnFromCombat error (non-critical):', error);
+        }
+      }
+
       debugLog('MODE_TRANSITION', '=== MODE: inGame -> tacticalMap (combat victory) ===', {
         trigger: 'auto_trigger',
         source: 'CombatOutcomeProcessor.processVictory',
@@ -570,6 +580,20 @@ class CombatOutcomeProcessor {
       collectedLoot: [...existingLoot, blueprintLoot]
     });
 
+    // Notify TransitionManager of combat return with blueprint (if snapshot exists)
+    if (transitionManager.hasSnapshot()) {
+      try {
+        transitionManager.returnFromCombat({
+          result: 'victory',
+          type: 'blueprint',
+          blueprint,
+          shouldRestoreWaypoints: true
+        });
+      } catch (error) {
+        debugLog('SP_COMBAT', 'TransitionManager.returnFromCombat error (non-critical):', error);
+      }
+    }
+
     // Return to tactical map and clear blueprint state
     gameStateManager.setState({
       appState: 'tacticalMap',
@@ -611,6 +635,18 @@ class CombatOutcomeProcessor {
 
     // 4. Clear ALL combat state using centralized cleanup
     gameStateManager.resetGameState();
+
+    // Notify TransitionManager of combat defeat (if snapshot exists)
+    if (transitionManager.hasSnapshot()) {
+      try {
+        transitionManager.returnFromCombat({
+          result: 'defeat',
+          defeatReason: 'hull_destroyed'
+        });
+      } catch (error) {
+        debugLog('SP_COMBAT', 'TransitionManager.returnFromCombat error (non-critical):', error);
+      }
+    }
 
     // 5. Show failed run loading screen (will transition to hangar on complete)
     debugLog('MODE_TRANSITION', '=== MODE: inGame -> failedRunScreen (combat defeat) ===', {
@@ -656,19 +692,13 @@ class CombatOutcomeProcessor {
 
     // Determine if this is first victory against this boss
     const isFirstBossVictory = !bossProgress.defeatedBosses.includes(bossId);
-    const rewards = isFirstBossVictory ? bossConfig.firstTimeReward : bossConfig.repeatReward;
+
+    // Use RewardManager for consistent reward generation with seed tracking
+    const bossLoot = rewardManager.generateBossReward(bossConfig, isFirstBossVictory);
 
     debugLog('SP_COMBAT', 'Boss ID:', bossId);
     debugLog('SP_COMBAT', 'First victory:', isFirstBossVictory);
-    debugLog('SP_COMBAT', 'Rewards:', rewards);
-
-    // Build boss loot object
-    const bossLoot = {
-      credits: rewards?.credits || 0,
-      aiCores: rewards?.aiCores || 0,
-      reputation: rewards?.reputation || 0,
-      isBossReward: true
-    };
+    debugLog('SP_COMBAT', 'Rewards (via RewardManager):', bossLoot);
 
     // Update boss progress in profile
     const updatedDefeatedBosses = isFirstBossVictory

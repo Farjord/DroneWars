@@ -24,7 +24,7 @@ import ReputationService from '../logic/reputation/ReputationService.js';
 import { calculateExtractedCredits } from '../logic/singlePlayer/ExtractionController.js';
 import { getTacticalItemById } from '../data/tacticalItemData.js';
 import { generateRandomShopPack, getPackCostForTier } from '../data/cardPackData.js';
-import lootGenerator from '../logic/loot/LootGenerator.js';
+import rewardManager from './RewardManager.js';
 import aiPhaseProcessor from './AIPhaseProcessor.js';
 import tacticalMapStateManager from './TacticalMapStateManager.js';
 // PhaseManager dependency removed - using direct phase checks
@@ -1904,7 +1904,7 @@ class GameStateManager {
     }
 
     // Generate pack contents using seeded RNG for deterministic results
-    const result = lootGenerator.openShopPack(packType, tier, seed);
+    const result = rewardManager.generateShopPack(packType, tier, seed);
 
     if (!result.cards || result.cards.length === 0) {
       return { success: false, error: 'Failed to generate cards' };

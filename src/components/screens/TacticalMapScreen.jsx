@@ -25,7 +25,6 @@ import ExtractionLootSelectionModal from '../modals/ExtractionLootSelectionModal
 import ExtractionConfirmModal from '../modals/ExtractionConfirmModal.jsx';
 import MovementController from '../../logic/map/MovementController.js';
 import EscapeRouteCalculator from '../../logic/map/EscapeRouteCalculator.js';
-import lootGenerator from '../../logic/loot/LootGenerator.js';
 import { generateSalvageItemFromValue } from '../../data/salvageItemData.js';
 import DetectionManager from '../../logic/detection/DetectionManager.js';
 import EncounterController from '../../logic/encounters/EncounterController.js';
@@ -36,6 +35,9 @@ import HighAlertManager from '../../logic/salvage/HighAlertManager.js';
 import aiPersonalities from '../../data/aiData.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
+import waypointManager from '../../managers/WaypointManager.js';
+import transitionManager from '../../managers/TransitionManager.js';
+import rewardManager from '../../managers/RewardManager.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { mapTiers } from '../../data/mapData.js';
 import { getValidDeploymentsForDeck } from '../../logic/quickDeploy/QuickDeployValidator.js';
@@ -247,6 +249,7 @@ function TacticalMapScreen() {
   const shouldStopMovement = useRef(false);
   const totalWaypointsRef = useRef(0);
   const escapedWithWaypoints = useRef(false); // Track if escape occurred with remaining waypoints
+  const pendingCombatLoadingRef = useRef(false); // Track if loading screen is pending combat (prevents waypoint clearing)
 
   // Ref to resolve encounter promise (allows async waiting in movement loop)
   const encounterResolveRef = useRef(null);
@@ -332,126 +335,11 @@ function TacticalMapScreen() {
       pendingPOICombat: !!runState?.pendingPOICombat
     });
 
-    // FIX: Capture waypoints in local variable (React state is async, can't use in same effect)
-    let waypointsToRestore = null;
+    // Restore path using WaypointManager (if path was stored before combat)
+    const waypointsToRestore = waypointManager.restorePathAfterCombat();
 
-    // NEW: Restore from flat pendingPath (mid-path combat resumption)
-    if (runState?.pendingPath?.length > 0) {
-      // === DETAILED RESTORE LOGGING ===
-      debugLog('RUN_STATE', '╔══════════════════════════════════════════╗');
-      debugLog('RUN_STATE', '║      POST-COMBAT - PATH RESTORE          ║');
-      debugLog('RUN_STATE', '╚══════════════════════════════════════════╝');
-      debugLog('RUN_STATE', '<<< Retrieved pendingPath:', runState.pendingPath);
-      debugLog('RUN_STATE', '<<< Retrieved pendingWaypointDestinations:', runState.pendingWaypointDestinations);
-      debugLog('RUN_STATE', 'Player position:', runState.playerPosition);
-
-      // Convert "q,r" strings to hex objects
-      const mapHexes = runState.mapData?.hexes || [];
-      const pathHexes = runState.pendingPath.map(s => {
-        const [q, r] = s.split(',').map(Number);
-        return mapHexes.find(h => h.q === q && h.r === r);
-      }).filter(Boolean);
-
-      debugLog('RUN_STATE', 'Converted pathHexes count:', pathHexes.length);
-
-      if (pathHexes.length > 0) {
-        // Get current player position
-        const playerPos = runState.playerPosition || pathHexes[0];
-        const startHex = mapHexes.find(h => h.q === playerPos.q && h.r === playerPos.r);
-
-        // Check if we have waypoint destinations to reconstruct multiple waypoints
-        const waypointDests = runState.pendingWaypointDestinations || [];
-
-        debugLog('RUN_STATE', 'waypointDests.length:', waypointDests.length);
-        debugLog('RUN_STATE', 'Branch taken:', waypointDests.length > 1 ? 'MULTIPLE WAYPOINTS' : 'SINGLE WAYPOINT');
-
-        if (waypointDests.length > 1) {
-          // Reconstruct multiple waypoints from path and destinations
-          debugLog('RUN_STATE', 'Reconstructing multiple waypoints:', waypointDests.length);
-
-          waypointsToRestore = [];
-          let pathStartIndex = 0;
-          let prevHex = startHex;
-
-          for (const wpDest of waypointDests) {
-            // Find where this waypoint's destination is in the path
-            const destIndex = runState.pendingPath.indexOf(wpDest);
-            debugLog('RUN_STATE', `  Processing ${wpDest}: indexOf=${destIndex}, pathStartIndex=${pathStartIndex}`);
-            if (destIndex === -1) {
-              debugLog('RUN_STATE', `  SKIPPED: ${wpDest} not found in pendingPath!`);
-              continue;
-            }
-
-            // Extract path segment for this waypoint (from pathStartIndex to destIndex inclusive)
-            const segmentStrings = runState.pendingPath.slice(pathStartIndex, destIndex + 1);
-            debugLog('RUN_STATE', `  Segment strings:`, segmentStrings);
-            const segmentHexes = segmentStrings.map(s => {
-              const [q, r] = s.split(',').map(Number);
-              return mapHexes.find(h => h.q === q && h.r === r);
-            }).filter(Boolean);
-
-            if (segmentHexes.length > 0) {
-              // Build pathFromPrev: [previous hex, ...segment hexes]
-              const pathFromPrev = [prevHex, ...segmentHexes].filter(Boolean);
-
-              waypointsToRestore.push({
-                hex: segmentHexes[segmentHexes.length - 1],  // Destination of this waypoint
-                pathFromPrev,
-                segmentCost: 0,
-                cumulativeDetection: 0,
-                segmentEncounterRisk: 0,
-                cumulativeEncounterRisk: 0
-              });
-
-              // Next segment starts after this one's destination
-              prevHex = segmentHexes[segmentHexes.length - 1];
-            }
-
-            pathStartIndex = destIndex + 1;
-          }
-
-          debugLog('RUN_STATE', 'Reconstructed waypoints:', waypointsToRestore.length);
-        } else {
-          // Single waypoint or no destinations - create synthetic waypoint with full path
-          const syntheticWaypoint = {
-            hex: pathHexes[pathHexes.length - 1],  // Final destination
-            pathFromPrev: [startHex, ...pathHexes].filter(Boolean),  // Include current position
-            segmentCost: 0,
-            cumulativeDetection: 0,
-            segmentEncounterRisk: 0,
-            cumulativeEncounterRisk: 0
-          };
-
-          waypointsToRestore = [syntheticWaypoint];
-          debugLog('RUN_STATE', 'Created synthetic waypoint with path length:', syntheticWaypoint.pathFromPrev.length);
-        }
-
-        // Log final result
-        debugLog('RUN_STATE', '>>> Reconstructed waypointsToRestore:', waypointsToRestore?.map((wp, i) => ({
-          index: i,
-          dest: `${wp.hex?.q},${wp.hex?.r}`,
-          pathLength: wp.pathFromPrev?.length || 0,
-          path: wp.pathFromPrev?.map(h => `${h?.q},${h?.r}`)
-        })));
-      }
-
-      // Clear pendingPath and pendingWaypointDestinations from run state
-      tacticalMapStateManager.setState({ pendingPath: null, pendingWaypointDestinations: null });
-      runState = tacticalMapStateManager.getState();
-    }
-    // LEGACY: Fallback to old pendingWaypoints format
-    else if (runState?.pendingWaypoints?.length > 0) {
-      debugLog('RUN_STATE', 'Restoring waypoints after combat (legacy):', runState.pendingWaypoints.length);
-      waypointsToRestore = runState.pendingWaypoints;  // Capture before async state update
-      setPendingResumeWaypoints(runState.pendingWaypoints);
-
-      // Clear pendingWaypoints from run state
-      tacticalMapStateManager.setState({
-        pendingWaypoints: null
-      });
-      // Re-fetch runState after clearing waypoints
-      runState = tacticalMapStateManager.getState();
-    }
+    // Re-fetch runState after potential path clearing
+    runState = tacticalMapStateManager.getState();
 
     // Process pending POI combat (ONLY for POI encounters - loot processing)
     if (runState?.pendingPOICombat) {
@@ -570,18 +458,24 @@ function TacticalMapScreen() {
       let poiLoot;
 
       if (isBlueprintRewardType(packType)) {
-        // Blueprint reward - use dedicated blueprint generation
-        console.log('[TacticalMap] Generating blueprint reward:', packType);
-        const blueprint = lootGenerator.generateDroneBlueprint(packType, tierConfig);
+        // Blueprint PoI blueprints already generated by CombatOutcomeProcessor
+        // Do NOT regenerate to avoid duplicates
+        debugLog('COMBAT_FLOW', 'Blueprint PoI - skipping duplicate generation (handled by CombatOutcomeProcessor)');
 
         poiLoot = {
           cards: [],  // Blueprints don't come from card packs
           credits: 0,
-          blueprint: blueprint  // Add blueprint to loot
+          blueprint: null  // Blueprint handled separately by CombatOutcomeProcessor
         };
       } else {
-        // Regular pack reward - use standard pack opening
-        poiLoot = lootGenerator.openPack(packType, tier, zone, tierConfig);
+        // Regular pack reward - use RewardManager
+        poiLoot = rewardManager.generatePOIRewards({
+          poiData: { rewardType: packType },
+          outcome: 'loot',
+          tier: tier,
+          zone: zone,
+          tierConfig: tierConfig
+        });
       }
 
       console.log('[TacticalMap] Generated PoI loot after regular combat:', poiLoot);
@@ -1004,7 +898,6 @@ function TacticalMapScreen() {
               arrivedHex,
               tierConfig,
               zone,
-              lootGenerator,
               tier,
               threatLevel
             );
@@ -1045,12 +938,13 @@ function TacticalMapScreen() {
       }
     }
 
-    // Journey complete - clear waypoints and reset state (unless escaped with pending waypoints)
+    // Journey complete - clear waypoints and reset state
+    // Skip clearing if: (1) transitioning to combat, (2) escaped from encounter, or (3) loading screen active
     console.log('[TacticalMap] Journey complete');
-    if (!escapedWithWaypoints.current) {
+    if (!transitionManager.hasSnapshot() && !escapedWithWaypoints.current && !pendingCombatLoadingRef.current) {
       setWaypoints([]);
     } else {
-      console.log('[TacticalMap] Skipping waypoint clear - escaped with pending waypoints');
+      console.log('[TacticalMap] Skipping waypoint clear - pending combat, loading screen, or escape');
     }
     escapedWithWaypoints.current = false; // Reset flag for next journey
     setIsMoving(false);
@@ -1114,58 +1008,10 @@ function TacticalMapScreen() {
 
       // Close POI modal and show loading screen
       setShowPOIModal(false);
+      pendingCombatLoadingRef.current = true; // Prevent waypoint clearing during loading
       setShowLoadingEncounter(true);
 
-      // FIX: Store remaining PATH (not just waypoints) for mid-path combat resumption
-      // Must happen before shouldStopMovement flag triggers journey loop exit
-      const remainingPath = [];
-
-      // Add remaining hexes from CURRENT waypoint's path (excluding current hex)
-      if (waypoints[currentWaypointIndex]?.pathFromPrev) {
-        const currentPath = waypoints[currentWaypointIndex].pathFromPrev;
-        for (let i = currentHexIndex + 1; i < currentPath.length; i++) {
-          remainingPath.push(`${currentPath[i].q},${currentPath[i].r}`);
-        }
-      }
-
-      // Add ALL hexes from subsequent waypoints (skip first hex - overlaps with previous)
-      for (let wp = currentWaypointIndex + 1; wp < waypoints.length; wp++) {
-        const wpPath = waypoints[wp].pathFromPrev;
-        if (wpPath) {
-          for (let i = 1; i < wpPath.length; i++) {
-            remainingPath.push(`${wpPath[i].q},${wpPath[i].r}`);
-          }
-        }
-      }
-
-      if (remainingPath.length > 0) {
-        // Also store waypoint destinations to preserve markers on restore
-        const waypointDestinations = [];
-        for (let wp = currentWaypointIndex; wp < waypoints.length; wp++) {
-          waypointDestinations.push(`${waypoints[wp].hex.q},${waypoints[wp].hex.r}`);
-        }
-
-        // === DETAILED STORAGE LOGGING ===
-        debugLog('RUN_STATE', '╔══════════════════════════════════════════╗');
-        debugLog('RUN_STATE', '║      COMBAT TRIGGER - PATH STORAGE       ║');
-        debugLog('RUN_STATE', '╚══════════════════════════════════════════╝');
-        debugLog('RUN_STATE', 'Position:', { waypointIndex: currentWaypointIndex, hexIndex: currentHexIndex });
-        debugLog('RUN_STATE', 'Total waypoints in state:', waypoints.length);
-        debugLog('RUN_STATE', 'Waypoints detail:', waypoints.map((wp, i) => ({
-          index: i,
-          dest: `${wp.hex.q},${wp.hex.r}`,
-          pathLength: wp.pathFromPrev?.length || 0,
-          path: wp.pathFromPrev?.map(h => `${h?.q},${h?.r}`)
-        })));
-        debugLog('RUN_STATE', '>>> Storing pendingPath:', remainingPath);
-        debugLog('RUN_STATE', '>>> Storing pendingWaypointDestinations:', waypointDestinations);
-
-        tacticalMapStateManager.setState({
-          pendingPath: remainingPath,
-          pendingWaypointDestinations: waypointDestinations
-        });
-        escapedWithWaypoints.current = true;  // Prevent journey loop from clearing
-      }
+      // Note: Waypoint storage is now handled by TransitionManager in handleLoadingEncounterComplete
 
       // Stop movement
       shouldStopMovement.current = true;
@@ -1221,8 +1067,14 @@ function TacticalMapScreen() {
         };
         console.log('[TacticalMap] Generated token reward:', loot);
       } else {
-        // Generate loot using LootGenerator with zone-based weighting
-        loot = lootGenerator.openPack(packType, tier, zone, tierConfig);
+        // Generate loot using RewardManager with zone-based weighting
+        loot = rewardManager.generatePOIRewards({
+          poiData: { rewardType: packType },
+          outcome: 'loot',
+          tier: tier,
+          zone: zone,
+          tierConfig: tierConfig
+        });
         console.log('[TacticalMap] Generated loot:', { zone, loot });
       }
 
@@ -1305,7 +1157,12 @@ function TacticalMapScreen() {
       escapeDamage: encounter.aiData.escapeDamage,
       transitionMessage: `Engaging ${encounter.poi.poiData.name}...`
     });
+    pendingCombatLoadingRef.current = true; // Prevent waypoint clearing during loading
     setShowLoadingEncounter(true);
+
+    // Stop movement before resolving promise (prevents journey from continuing)
+    shouldStopMovement.current = true;
+    setIsMoving(false);
 
     // Combat will be initiated by handleLoadingEncounterComplete
     // Resume movement logic after modal dismissal
@@ -1376,6 +1233,8 @@ function TacticalMapScreen() {
       currentPOI: encounter.poi
     });
 
+    // Note: Waypoint storage is now handled by TransitionManager in handleLoadingEncounterComplete
+
     // Transition to combat with loading screen + quick deploy
     setLoadingEncounterData({
       aiName: encounter.aiData.name,
@@ -1385,7 +1244,12 @@ function TacticalMapScreen() {
       transitionMessage: `Engaging ${encounter.poi.poiData.name}...`,
       quickDeployId: deployment.id  // Include quick deploy ID
     });
+    pendingCombatLoadingRef.current = true; // Prevent waypoint clearing during loading
     setShowLoadingEncounter(true);
+
+    // Stop movement before resolving promise (prevents journey from continuing)
+    shouldStopMovement.current = true;
+    setIsMoving(false);
 
     // Resume movement logic
     if (encounterResolveRef.current) {
@@ -1443,11 +1307,7 @@ function TacticalMapScreen() {
       // Convert to LootRevealModal format
       // Keep salvageItems as array - each should be shown individually
       const lootForModal = {
-        cards: (loot.cards || []).map(card => ({
-          cardId: card.cardId,
-          cardName: card.cardName,
-          rarity: card.rarity
-        })),
+        cards: loot.cards || [],  // Already has cardId, cardName from RewardManager
         // Pass salvageItems array directly - each item should be shown separately
         salvageItems: loot.salvageItems || [],
         // Pass tokens array for display and collection
@@ -1569,33 +1429,10 @@ function TacticalMapScreen() {
     });
 
     // Show loading screen
+    pendingCombatLoadingRef.current = true; // Prevent waypoint clearing during loading
     setShowLoadingEncounter(true);
 
-    // FIX: Store remaining PATH (not just waypoints) for combat resumption
-    // For salvage, player is at POI so remaining path is subsequent waypoints
-    const remainingPath = [];
-    for (let wp = currentWaypointIndex + 1; wp < waypoints.length; wp++) {
-      const wpPath = waypoints[wp].pathFromPrev;
-      if (wpPath) {
-        for (let i = 1; i < wpPath.length; i++) {
-          remainingPath.push(`${wpPath[i].q},${wpPath[i].r}`);
-        }
-      }
-    }
-    if (remainingPath.length > 0) {
-      // Also store waypoint destinations (for salvage, start from next waypoint)
-      const waypointDestinations = [];
-      for (let wp = currentWaypointIndex + 1; wp < waypoints.length; wp++) {
-        waypointDestinations.push(`${waypoints[wp].hex.q},${waypoints[wp].hex.r}`);
-      }
-
-      debugLog('RUN_STATE', 'Salvage combat trigger - storing remaining path:', remainingPath.length, 'waypoints:', waypointDestinations.length);
-      tacticalMapStateManager.setState({
-        pendingPath: remainingPath,
-        pendingWaypointDestinations: waypointDestinations
-      });
-      escapedWithWaypoints.current = true;
-    }
+    // Note: Waypoint storage is now handled by TransitionManager in handleLoadingEncounterComplete
 
     // Stop movement
     shouldStopMovement.current = true;
@@ -1751,32 +1588,10 @@ function TacticalMapScreen() {
       });
 
       // Show loading screen
+      pendingCombatLoadingRef.current = true; // Prevent waypoint clearing during loading
       setShowLoadingEncounter(true);
 
-      // FIX: Store remaining PATH for combat resumption
-      const remainingPath = [];
-      for (let wp = currentWaypointIndex + 1; wp < waypoints.length; wp++) {
-        const wpPath = waypoints[wp].pathFromPrev;
-        if (wpPath) {
-          for (let i = 1; i < wpPath.length; i++) {
-            remainingPath.push(`${wpPath[i].q},${wpPath[i].r}`);
-          }
-        }
-      }
-      if (remainingPath.length > 0) {
-        // Also store waypoint destinations
-        const waypointDestinations = [];
-        for (let wp = currentWaypointIndex + 1; wp < waypoints.length; wp++) {
-          waypointDestinations.push(`${waypoints[wp].hex.q},${waypoints[wp].hex.r}`);
-        }
-
-        debugLog('RUN_STATE', 'Salvage quick deploy combat - storing remaining path:', remainingPath.length, 'waypoints:', waypointDestinations.length);
-        tacticalMapStateManager.setState({
-          pendingPath: remainingPath,
-          pendingWaypointDestinations: waypointDestinations
-        });
-        escapedWithWaypoints.current = true;
-      }
+      // Note: Waypoint storage is now handled by TransitionManager in handleLoadingEncounterComplete
 
       // Stop movement
       shouldStopMovement.current = true;
@@ -1812,40 +1627,10 @@ function TacticalMapScreen() {
       setSelectedQuickDeploy(deployment);
 
       // Show loading screen
+      pendingCombatLoadingRef.current = true; // Prevent waypoint clearing during loading
       setShowLoadingEncounter(true);
 
-      // FIX: Store remaining PATH for mid-journey combat resumption
-      const remainingPath = [];
-      // Add remaining hexes from CURRENT waypoint's path (if mid-path)
-      if (waypoints[currentWaypointIndex]?.pathFromPrev) {
-        const currentPath = waypoints[currentWaypointIndex].pathFromPrev;
-        for (let i = currentHexIndex + 1; i < currentPath.length; i++) {
-          remainingPath.push(`${currentPath[i].q},${currentPath[i].r}`);
-        }
-      }
-      // Add ALL hexes from subsequent waypoints
-      for (let wp = currentWaypointIndex + 1; wp < waypoints.length; wp++) {
-        const wpPath = waypoints[wp].pathFromPrev;
-        if (wpPath) {
-          for (let i = 1; i < wpPath.length; i++) {
-            remainingPath.push(`${wpPath[i].q},${wpPath[i].r}`);
-          }
-        }
-      }
-      if (remainingPath.length > 0) {
-        // Also store waypoint destinations to preserve markers on restore
-        const waypointDestinations = [];
-        for (let wp = currentWaypointIndex; wp < waypoints.length; wp++) {
-          waypointDestinations.push(`${waypoints[wp].hex.q},${waypoints[wp].hex.r}`);
-        }
-
-        debugLog('RUN_STATE', 'POI quick deploy combat - storing remaining path:', remainingPath.length, 'waypoints:', waypointDestinations.length);
-        tacticalMapStateManager.setState({
-          pendingPath: remainingPath,
-          pendingWaypointDestinations: waypointDestinations
-        });
-        escapedWithWaypoints.current = true;
-      }
+      // Note: Waypoint storage is now handled by TransitionManager in handleLoadingEncounterComplete
 
       // Stop movement
       shouldStopMovement.current = true;
@@ -1874,6 +1659,7 @@ function TacticalMapScreen() {
         source: 'TacticalMapScreen.handleLoadingEncounterComplete',
         detail: 'runAbandoning flag detected'
       });
+      pendingCombatLoadingRef.current = false;
       setShowLoadingEncounter(false);
       setLoadingEncounterData(null);
       setCurrentEncounter(null);
@@ -1893,6 +1679,7 @@ function TacticalMapScreen() {
         source: 'TacticalMapScreen.handleLoadingEncounterComplete',
         detail: 'Run state is null or invalid'
       });
+      pendingCombatLoadingRef.current = false;
       setShowLoadingEncounter(false);
       setLoadingEncounterData(null);
       setCurrentEncounter(null);
@@ -1901,50 +1688,57 @@ function TacticalMapScreen() {
 
     debugLog('RUN_STATE', 'Loading complete - initializing combat');
 
-    // NOTE: Path is already stored by combat trigger (handleEncounterProceed, etc.)
-    // This is a backup check - only store if not already stored
-    if (!runState?.pendingPath) {
-      // Capture remaining path for journey resumption (SEPARATE from POI logic)
-      const remainingPath = [];
-      if (waypoints[currentWaypointIndex]?.pathFromPrev) {
-        const currentPath = waypoints[currentWaypointIndex].pathFromPrev;
-        for (let i = currentHexIndex + 1; i < currentPath.length; i++) {
-          remainingPath.push(`${currentPath[i].q},${currentPath[i].r}`);
-        }
-      }
-      for (let wp = currentWaypointIndex + 1; wp < waypoints.length; wp++) {
-        const wpPath = waypoints[wp].pathFromPrev;
-        if (wpPath) {
-          for (let i = 1; i < wpPath.length; i++) {
-            remainingPath.push(`${wpPath[i].q},${wpPath[i].r}`);
-          }
-        }
-      }
+    // Get AI from the encounter - CRITICAL: must have valid aiId
+    const aiId = currentEncounter?.aiId;
+    if (!aiId) {
+      console.error('[TacticalMap] CRITICAL: No aiId in currentEncounter for combat initialization', currentEncounter);
+      setShowLoadingEncounter(false);
+      setLoadingEncounterData(null);
+      setCurrentEncounter(null);
+      return;
+    }
 
-      debugLog('RUN_STATE', 'Before combat - path storage check:', {
-        totalWaypoints: waypoints.length,
-        currentWaypointIndex,
-        currentHexIndex,
-        remainingPathLength: remainingPath.length,
-        willStore: remainingPath.length > 0
+    // Determine entry reason for TransitionManager
+    let entryReason = 'poi_encounter';
+    if (currentEncounter?.isBlockade) {
+      entryReason = 'blockade';
+    } else if (currentEncounter?.fromSalvage) {
+      entryReason = 'salvage_encounter';
+    } else if (currentEncounter?.fromBlueprintPoI) {
+      entryReason = 'blueprint_poi';
+    } else if (loadingEncounterData?.quickDeployId) {
+      entryReason = 'quick_deploy_poi';
+    }
+
+    // Prepare for combat using TransitionManager (single entry point)
+    // This captures: tactical map state, waypoints, salvage state (if mid-salvage)
+    try {
+      transitionManager.prepareForCombat({
+        entryReason,
+        sourceLocation: 'TacticalMapScreen:handleLoadingEncounterComplete',
+        aiId,
+        poi: currentEncounter?.poi,
+        waypointContext: waypoints.length > 0 ? {
+          waypoints,
+          currentWaypointIndex,
+          currentHexIndex,
+          isAtPOI: currentEncounter?.fromSalvage || false
+        } : null,
+        salvageState: currentEncounter?.fromSalvage ? activeSalvage : null,
+        isBlockade: currentEncounter?.isBlockade || false,
+        isBlueprintPoI: currentEncounter?.fromBlueprintPoI || false,
+        quickDeployId: loadingEncounterData?.quickDeployId || null
       });
 
-      if (remainingPath.length > 0) {
-        // Also store waypoint destinations to preserve markers on restore
-        const waypointDestinations = [];
-        for (let wp = currentWaypointIndex; wp < waypoints.length; wp++) {
-          waypointDestinations.push(`${waypoints[wp].hex.q},${waypoints[wp].hex.r}`);
-        }
-
-        debugLog('RUN_STATE', 'Storing path for post-combat resumption:', remainingPath.length, 'waypoints:', waypointDestinations.length);
-        tacticalMapStateManager.setState({
-          pendingPath: remainingPath,
-          pendingWaypointDestinations: waypointDestinations
-        });
-        runState = tacticalMapStateManager.getState();
-      }
-    } else {
-      debugLog('RUN_STATE', 'Path already stored by combat trigger');
+      // Clear pending combat loading ref - prepareForCombat has captured the waypoints
+      pendingCombatLoadingRef.current = false;
+    } catch (error) {
+      console.error('[TacticalMap] TransitionManager.prepareForCombat failed:', error);
+      pendingCombatLoadingRef.current = false;
+      setShowLoadingEncounter(false);
+      setLoadingEncounterData(null);
+      setCurrentEncounter(null);
+      return;
     }
 
     // Store pending PoI combat info for post-combat loot (ONLY for POI encounters)
@@ -1961,28 +1755,16 @@ function TacticalMapScreen() {
           r: currentEncounter.poi.r,
           packType: currentEncounter.reward?.rewardType || null,
           poiName: currentEncounter.poi.poiData?.name || 'Unknown Location',
-          fromSalvage: currentEncounter.fromSalvage || false,  // Flag to skip post-combat loot generation
-          salvageFullyLooted: currentEncounter.salvageFullyLooted || false  // Flag for fully looted POI
+          fromSalvage: currentEncounter.fromSalvage || false,
+          salvageFullyLooted: currentEncounter.salvageFullyLooted || false
         }
       });
     }
 
-    // Get AI from the encounter - CRITICAL: must have valid aiId
-    const aiId = currentEncounter?.aiId;
-    if (!aiId) {
-      console.error('[TacticalMap] CRITICAL: No aiId in currentEncounter for combat initialization', currentEncounter);
-      // Close loading screen and abort - don't proceed with undefined aiId
-      setShowLoadingEncounter(false);
-      setLoadingEncounterData(null);
-      setCurrentEncounter(null);
-      return;
-    }
-
-    // Get quick deploy ID from loading data (if user selected quick deploy)
+    // Get quick deploy ID from loading data
     const quickDeployId = loadingEncounterData?.quickDeployId || null;
-    console.log('[TacticalMap] Quick deploy ID:', quickDeployId);
 
-    // Re-fetch runState after potential update above
+    // Re-fetch runState after TransitionManager update
     const updatedRunState = tacticalMapStateManager.getState();
 
     // Log combat initiation
@@ -2024,7 +1806,7 @@ function TacticalMapScreen() {
 
     // GameStateManager will handle the transition to inGame state
     // The appState change will unmount this component
-  }, [currentEncounter, loadingEncounterData, waypoints, currentWaypointIndex]);
+  }, [currentEncounter, loadingEncounterData, waypoints, currentWaypointIndex, currentHexIndex, activeSalvage]);
 
   /**
    * Handle extraction button click - show confirmation modal or extract directly if blockade already cleared
@@ -2566,10 +2348,8 @@ function TacticalMapScreen() {
 
     // Add loot cards to collectedLoot
     const newCardLoot = (loot.cards || []).map(card => ({
-      type: 'card',
-      cardId: card.cardId,
-      cardName: card.cardName,
-      rarity: card.rarity,
+      ...card,  // Already has cardId, cardName from RewardManager
+      type: 'card',  // Override card.type with 'card' for collectedLoot
       source: 'poi_loot'
     }));
 

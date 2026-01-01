@@ -8,6 +8,7 @@ import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
+import rewardManager from '../../managers/RewardManager.js';
 import HighAlertManager from './HighAlertManager.js';
 
 /**
@@ -28,12 +29,11 @@ export class SalvageController {
    * @param {Object} poi - POI data with encounterChance, rewardType
    * @param {Object} tierConfig - Tier configuration with salvage settings
    * @param {string} zone - Map zone (perimeter, mid, core)
-   * @param {Object} lootGenerator - LootGenerator instance
    * @param {number} tier - Map tier (1, 2, or 3), defaults to 1
    * @param {string} threatLevel - Current threat level ('low', 'medium', 'high'), defaults to 'low'
    * @returns {Object} Initial salvage state
    */
-  initializeSalvage(poi, tierConfig, zone, lootGenerator, tier = 1, threatLevel = 'low') {
+  initializeSalvage(poi, tierConfig, zone, tier = 1, threatLevel = 'low') {
     // Handle both hex objects (with nested poiData) and direct POI objects
     const poiData = poi.poiData || poi
 
@@ -43,8 +43,8 @@ export class SalvageController {
       return null;
     }
 
-    // Generate slots using loot generator
-    const slots = lootGenerator.generateSalvageSlots(
+    // Generate slots using RewardManager
+    const slots = rewardManager.generateSalvageSlots(
       poiData.rewardType,
       tier,
       zone,
@@ -213,6 +213,12 @@ export class SalvageController {
 
   /**
    * Collect all revealed loot from salvage state
+   *
+   * Returns loot in RewardManager's output format:
+   * - cards: Array of card objects in collectedLoot format {cardId, cardName, rarity, ...}
+   * - salvageItems: Array of salvage item objects
+   * - tokens: Array of token objects
+   *
    * @param {Object} salvageState - Current salvage state
    * @returns {Object} { cards: [...], salvageItems: [...], tokens: [...] }
    */

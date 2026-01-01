@@ -396,11 +396,6 @@ describe('Blueprint PoI System', () => {
       };
 
       const salvageController = new SalvageController();
-      const mockLootGenerator = {
-        generateSalvageSlots: vi.fn().mockReturnValue([
-          { type: 'card', content: {}, revealed: false }
-        ])
-      };
       const tierConfig = {};
       const zone = 'core';
 
@@ -408,15 +403,15 @@ describe('Blueprint PoI System', () => {
         mockRegularPoI,
         tierConfig,
         zone,
-        mockLootGenerator,
         1,
         'low'
       );
 
-      // Should succeed for regular PoIs
+      // Should succeed for regular PoIs (returns salvage state with slots)
       expect(result).toBeDefined();
       expect(result).not.toBeNull();
-      expect(mockLootGenerator.generateSalvageSlots).toHaveBeenCalled();
+      expect(result.slots).toBeDefined();
+      expect(Array.isArray(result.slots)).toBe(true);
     });
   });
 

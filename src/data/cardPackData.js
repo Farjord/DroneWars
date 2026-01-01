@@ -111,7 +111,7 @@ export const packTypes = {
 
   CREDITS_PACK: {
     name: 'Credit Cache',
-    description: 'Financial data extraction',
+    description: 'Financial data extraction - high value salvage',
     guaranteedTypes: [],
     additionalCardWeights: {},
     rarityWeights: {
@@ -120,8 +120,59 @@ export const packTypes = {
       tier3: {}
     },
     cardCount: { min: 0, max: 0 },
-    creditsRange: { min: 50, max: 200 },
+    // Higher credit range than normal POIs (normal is 50-100)
+    creditsRange: { min: 100, max: 300 },
+    // Apply zone multiplier for risk/reward scaling
+    useZoneMultiplier: true,
     color: '#44ff88',
+  },
+
+  // =====================================================
+  // SPECIAL REWARD TYPES (non-card packs)
+  // =====================================================
+
+  TOKEN_REWARD: {
+    name: 'Contraband Cache',
+    description: 'Security token and salvage',
+    // Guaranteed token (always included)
+    guaranteedToken: {
+      tokenType: 'security',
+      amount: 1,
+      source: 'contraband_cache'
+    },
+    // 25% chance for a random card
+    cardChance: 0.25,
+    cardRarityWeights: { Common: 70, Uncommon: 25, Rare: 5 },
+    // No guaranteed card types (random from pool if card rolls)
+    guaranteedTypes: [],
+    additionalCardWeights: {},
+    // Card count is 0-1 based on cardChance roll
+    cardCount: { min: 0, max: 1 },
+    // Salvage fills remaining slots (normal range)
+    salvageRange: { min: 50, max: 100 },
+    color: '#ffaa00',
+  },
+
+  // =====================================================
+  // BOSS REWARDS
+  // =====================================================
+
+  BOSS_REWARD: {
+    name: 'Boss Reward',
+    description: 'Rewards from defeating a boss AI',
+    // Boss rewards are config-driven from aiData.js
+    // This entry provides fallback defaults when config is missing
+    firstTimeDefaults: {
+      credits: 500,
+      aiCores: 5,
+      reputation: 1000
+    },
+    repeatDefaults: {
+      credits: 250,
+      aiCores: 2,
+      reputation: 500
+    },
+    color: '#ff00ff',
   },
 };
 

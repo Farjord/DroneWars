@@ -71,6 +71,9 @@ const DEBUG_CONFIG = {
     MODE_TRANSITION: true,        // All mode transitions: hangar <-> tacticalMap <-> inGame (with trigger source)
     RUN_STATE: true,              // TacticalMapStateManager persistence debugging (background, waypoints)
     COMBAT_FLOW: true,            // Combat type identification and state restoration after combat
+    WAYPOINT_MANAGER: false,      // Waypoint path storage and restoration debugging
+    REWARD_MANAGER: false,        // Reward generation and seed management debugging
+    TRANSITION_MANAGER: true,     // State transitions between TacticalMap and Combat
 
     // Effect System Refactoring - Modular Processor Logging
     EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)

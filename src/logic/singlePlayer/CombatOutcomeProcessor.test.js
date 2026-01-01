@@ -29,15 +29,16 @@ vi.mock('../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }))
 
-vi.mock('../loot/LootGenerator.js', () => ({
+vi.mock('../../managers/RewardManager.js', () => ({
   default: {
-    generateCombatSalvage: vi.fn(() => ({
+    generateCombatRewards: vi.fn(() => ({
       cards: [],
       salvageItem: null,
       aiCores: 0,
-      blueprint: null
+      blueprint: null,
+      reputation: 0
     })),
-    generateDroneBlueprint: vi.fn()
+    generateBlueprintReward: vi.fn()
   }
 }))
 
@@ -56,7 +57,7 @@ import CombatOutcomeProcessor from './CombatOutcomeProcessor.js'
 import gameStateManager from '../../managers/GameStateManager.js'
 import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js'
 import ExtractionController from './ExtractionController.js'
-import lootGenerator from '../loot/LootGenerator.js'
+import rewardManager from '../../managers/RewardManager.js'
 
 describe('CombatOutcomeProcessor', () => {
   beforeEach(() => {
@@ -209,6 +210,55 @@ describe('CombatOutcomeProcessor', () => {
       // pendingPOICombat preserved
       expect(setStateCall.pendingPOICombat).toBeDefined()
     })
+
+    it('should map card properties correctly (id -> cardId, name -> cardName) when finalizing loot', () => {
+      // TDD TEST (RED): Cards from cardData.js have 'id' and 'name' properties,
+      // but collectedLoot format needs 'cardId' and 'cardName'.
+      // Current bug: Code uses card.cardId and card.cardName which are undefined.
+
+      const mockRunState = {
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0
+      }
+
+      tacticalMapStateManager.getState.mockReturnValue(mockRunState)
+      gameStateManager.getState.mockReturnValue({ singlePlayerEncounter: {} })
+
+      // Mock loot with cards in RewardManager's output format (cardId, cardName)
+      // RewardManager now transforms cards at the source
+      const combatLoot = {
+        cards: [
+          { cardId: 'CARD001', cardName: 'Laser Blast', rarity: 'Common', type: 'Ordnance' },
+          { cardId: 'CARD042', cardName: 'Shield Boost', rarity: 'Uncommon', type: 'Support' }
+        ],
+        salvageItem: null,
+        aiCores: 0
+      }
+
+      // Act
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // Assert: Cards should be mapped with correct property names
+      const setStateCall = tacticalMapStateManager.setState.mock.calls[0][0]
+
+      // Verify cards are mapped with correct property names (id -> cardId, name -> cardName)
+      expect(setStateCall.collectedLoot[0]).toMatchObject({
+        type: 'card',
+        cardId: 'CARD001',      // Should use card.id, not card.cardId
+        cardName: 'Laser Blast', // Should use card.name, not card.cardName
+        rarity: 'Common',
+        source: 'combat_salvage'
+      })
+
+      expect(setStateCall.collectedLoot[1]).toMatchObject({
+        type: 'card',
+        cardId: 'CARD042',
+        cardName: 'Shield Boost',
+        rarity: 'Uncommon',
+        source: 'combat_salvage'
+      })
+    })
   })
 
   describe('finalizeLootCollection - game state cleanup with resetGameState', () => {
@@ -345,8 +395,8 @@ describe('CombatOutcomeProcessor', () => {
       }
 
       // Update the mock to return specific combat salvage for this test
-      const lootGenerator = await import('../loot/LootGenerator.js')
-      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+      const rewardManager = await import('../../managers/RewardManager.js')
+      rewardManager.default.generateCombatRewards.mockReturnValue({
         cards: [{ cardId: 'COMBAT_CARD_1', cardName: 'Enemy Fighter', rarity: 'Common' }],
         salvageItem: { itemId: 'SALVAGE_COMBAT', name: 'Combat Salvage', creditValue: 50, image: '/Credits/test.png' },
         aiCores: 1
@@ -387,8 +437,8 @@ describe('CombatOutcomeProcessor', () => {
         }
       }
 
-      const lootGenerator = await import('../loot/LootGenerator.js')
-      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+      const rewardManager = await import('../../managers/RewardManager.js')
+      rewardManager.default.generateCombatRewards.mockReturnValue({
         cards: [],
         salvageItem: { itemId: 'SALVAGE_COMBAT', name: 'Combat', creditValue: 50, image: '/Credits/test.png' },
         aiCores: 0
@@ -419,8 +469,8 @@ describe('CombatOutcomeProcessor', () => {
         // No pendingSalvageLoot
       }
 
-      const lootGenerator = await import('../loot/LootGenerator.js')
-      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+      const rewardManager = await import('../../managers/RewardManager.js')
+      rewardManager.default.generateCombatRewards.mockReturnValue({
         cards: [{ cardId: 'COMBAT_CARD', cardName: 'Enemy Card', rarity: 'Common' }],
         salvageItem: { itemId: 'SALVAGE_COMBAT', name: 'Combat', creditValue: 100, image: '/Credits/test.png' },
         aiCores: 2
@@ -456,8 +506,8 @@ describe('CombatOutcomeProcessor', () => {
         }
       }
 
-      const lootGenerator = await import('../loot/LootGenerator.js')
-      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+      const rewardManager = await import('../../managers/RewardManager.js')
+      rewardManager.default.generateCombatRewards.mockReturnValue({
         cards: [{ cardId: 'COMBAT_CARD', cardName: 'Combat Card', rarity: 'Common' }],
         salvageItem: { itemId: 'SALVAGE_COMBAT', name: 'Combat Salvage', creditValue: 50, image: '/Credits/test.png', description: 'Test' },
         aiCores: 0
@@ -816,7 +866,7 @@ describe('CombatOutcomeProcessor', () => {
       }
 
       // Configure lootGenerator mock
-      lootGenerator.generateDroneBlueprint.mockReturnValue(mockDroneBlueprint)
+      rewardManager.generateBlueprintReward.mockReturnValue(mockDroneBlueprint)
 
       tacticalMapStateManager.getState.mockReturnValue({
         collectedLoot: [],
@@ -866,7 +916,7 @@ describe('CombatOutcomeProcessor', () => {
       }
 
       // Configure lootGenerator mock
-      lootGenerator.generateDroneBlueprint.mockReturnValue(mockDroneBlueprint)
+      rewardManager.generateBlueprintReward.mockReturnValue(mockDroneBlueprint)
 
       tacticalMapStateManager.getState.mockReturnValue({
         collectedLoot: [],
@@ -1046,8 +1096,8 @@ describe('CombatOutcomeProcessor', () => {
         }
       }
 
-      const lootGenerator = await import('../loot/LootGenerator.js')
-      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+      const rewardManager = await import('../../managers/RewardManager.js')
+      rewardManager.default.generateCombatRewards.mockReturnValue({
         cards: [{ cardId: 'COMBAT_CARD_1', cardName: 'Enemy Card', rarity: 'Common' }],
         salvageItem: { itemId: 'SALVAGE_COMBAT', name: 'Combat Salvage', creditValue: 50, image: '/test.png' },
         aiCores: 1
@@ -1096,8 +1146,8 @@ describe('CombatOutcomeProcessor', () => {
         }
       }
 
-      const lootGenerator = await import('../loot/LootGenerator.js')
-      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+      const rewardManager = await import('../../managers/RewardManager.js')
+      rewardManager.default.generateCombatRewards.mockReturnValue({
         cards: [],
         salvageItem: { itemId: 'COMBAT', name: 'Combat', creditValue: 50, image: '/test.png' },
         aiCores: 0
@@ -1152,8 +1202,8 @@ describe('CombatOutcomeProcessor', () => {
         }
       }
 
-      const lootGenerator = await import('../loot/LootGenerator.js')
-      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+      const rewardManager = await import('../../managers/RewardManager.js')
+      rewardManager.default.generateCombatRewards.mockReturnValue({
         cards: [],
         salvageItem: null,
         aiCores: 0
@@ -1198,8 +1248,8 @@ describe('CombatOutcomeProcessor', () => {
         }
       }
 
-      const lootGenerator = await import('../loot/LootGenerator.js')
-      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+      const rewardManager = await import('../../managers/RewardManager.js')
+      rewardManager.default.generateCombatRewards.mockReturnValue({
         cards: [{ cardId: 'NEW_CARD', cardName: 'New Card', rarity: 'Common' }],
         salvageItem: { itemId: 'NEW_SALVAGE', name: 'New', creditValue: 50, image: '/test.png' },
         aiCores: 0
@@ -1235,8 +1285,8 @@ describe('CombatOutcomeProcessor', () => {
         // No pendingPOICombat - this is a random ambush
       }
 
-      const lootGenerator = await import('../loot/LootGenerator.js')
-      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+      const rewardManager = await import('../../managers/RewardManager.js')
+      rewardManager.default.generateCombatRewards.mockReturnValue({
         cards: [],
         salvageItem: { itemId: 'COMBAT', name: 'Combat', creditValue: 25, image: '/test.png' },
         aiCores: 0
@@ -1277,8 +1327,8 @@ describe('CombatOutcomeProcessor', () => {
         encounterDetectionChance: 75 // High signal lock before victory
       })
 
-      const lootGenerator = await import('../loot/LootGenerator.js')
-      lootGenerator.default.generateCombatSalvage.mockReturnValue({
+      const rewardManager = await import('../../managers/RewardManager.js')
+      rewardManager.default.generateCombatRewards.mockReturnValue({
         cards: [],
         salvageItem: null,
         aiCores: 0
