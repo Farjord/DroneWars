@@ -9,6 +9,7 @@ import { updateAuras } from '../utils/auraManager.js';
 import fullDroneCollection from '../../data/droneData.js';
 import EffectRouter from '../EffectRouter.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import { onDroneDeployed } from '../availability/DroneAvailabilityManager.js';
 
 /**
  * DeploymentProcessor
@@ -116,6 +117,25 @@ class DeploymentProcessor {
         reason: "Deployment Limit Reached",
         message: `The deployment limit for ${drone.name} is currently ${effectiveLimit}.`
       };
+    }
+
+    // Check drone availability (new availability system)
+    // This checks if we have ready copies available to deploy
+    if (player.droneAvailability) {
+      const availability = player.droneAvailability[drone.name];
+      if (availability && availability.readyCount <= 0) {
+        debugLog('AI_DEPLOYMENT', `⛔ Validation FAILED: No Copies Available`, {
+          droneName: drone?.name,
+          readyCount: availability.readyCount,
+          inPlayCount: availability.inPlayCount,
+          rebuildingCount: availability.rebuildingCount
+        });
+        return {
+          isValid: false,
+          reason: "No Copies Available",
+          message: `No ${drone.name} copies are ready. ${availability.rebuildingCount} rebuilding.`
+        };
+      }
     }
 
     // Check maxPerLane restriction if applicable
@@ -274,6 +294,12 @@ class DeploymentProcessor {
       ...newPlayerState.deployedDroneCounts,
       [drone.name]: (newPlayerState.deployedDroneCounts[drone.name] || 0) + 1
     };
+
+    // Update droneAvailability (new availability system)
+    // Decrements readyCount, increments inPlayCount
+    if (newPlayerState.droneAvailability) {
+      newPlayerState.droneAvailability = onDroneDeployed(newPlayerState.droneAvailability, drone.name);
+    }
 
     // Increment total deployment counter for deterministic ID generation
     newPlayerState.totalDronesDeployed = deploymentNumber;

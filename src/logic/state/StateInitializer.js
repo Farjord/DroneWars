@@ -10,6 +10,7 @@ import { getShipById, getDefaultShip } from '../../data/shipData.js';
 import { calculateEffectiveShipStats, calculateSectionBaseStats } from '../statsCalculator.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import { starterDeck } from '../../data/playerDeckData.js';
+import { initializeForCombat as initializeDroneAvailability } from '../availability/DroneAvailabilityManager.js';
 
 // ========================================
 // DEFAULT GAME CONFIGURATIONS
@@ -135,6 +136,10 @@ class StateInitializer {
 
     const effectiveStats = calculateEffectiveShipStats({ shipSections: computedShipSections }, []).totals;
 
+    // Initialize empty drone availability (will be populated when drones are selected)
+    const activeDronePool = [];
+    const appliedUpgrades = {};
+
     return {
         name: name,
         shipId: shipCard.id,  // Track which ship is in use
@@ -145,11 +150,12 @@ class StateInitializer {
         hand: [],
         deck: this.buildDeckFromList(decklist, playerId, gameSeed),
         discardPile: [],
-        activeDronePool: [],
+        activeDronePool: activeDronePool,
         dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
         deployedDroneCounts: {},
         totalDronesDeployed: 0,  // Global deployment counter for deterministic IDs
-        appliedUpgrades: {},
+        appliedUpgrades: appliedUpgrades,
+        droneAvailability: initializeDroneAvailability(activeDronePool, appliedUpgrades),
     };
   }
 }

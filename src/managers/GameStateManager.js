@@ -2350,6 +2350,76 @@ class GameStateManager {
   }
 
   /**
+   * Repair a section slot partially (incremental repair)
+   * @param {number} slotId - Ship slot ID (1-5)
+   * @param {string} lane - Lane identifier ('l', 'm', 'r')
+   * @param {number} hpToRepair - Amount of HP to repair (default 1)
+   * @returns {{ success: boolean, reason?: string, cost?: number, repairedHP?: number, remainingDamage?: number }}
+   */
+  repairSectionSlotPartial(slotId, lane, hpToRepair = 1) {
+    if (slotId === 0) {
+      return { success: false, reason: 'Cannot modify Slot 0 (immutable starter deck)' };
+    }
+
+    if (hpToRepair < 1) {
+      return { success: false, reason: 'Must repair at least 1 HP' };
+    }
+
+    const slots = [...this.state.singlePlayerShipSlots];
+    const slotIndex = slots.findIndex(s => s.id === slotId);
+
+    if (slotIndex === -1) {
+      return { success: false, reason: `Slot ${slotId} not found` };
+    }
+
+    const slot = slots[slotIndex];
+    if (!slot.sectionSlots?.[lane]) {
+      return { success: false, reason: `Lane ${lane} not found` };
+    }
+
+    const damageDealt = slot.sectionSlots[lane].damageDealt || 0;
+    if (damageDealt <= 0) {
+      return { success: false, reason: 'Section is not damaged' };
+    }
+
+    // Cap repair amount to actual damage
+    const actualRepair = Math.min(hpToRepair, damageDealt);
+    const costPerDamage = ECONOMY.SECTION_DAMAGE_REPAIR_COST || 200;
+    const cost = actualRepair * costPerDamage;
+    const profile = { ...this.state.singlePlayerProfile };
+
+    if (profile.credits < cost) {
+      return { success: false, reason: `Insufficient credits. Need ${cost}, have ${profile.credits}` };
+    }
+
+    // Deduct credits
+    profile.credits -= cost;
+
+    // Reduce damage (partial repair)
+    const newDamage = damageDealt - actualRepair;
+    slots[slotIndex] = {
+      ...slot,
+      sectionSlots: {
+        ...slot.sectionSlots,
+        [lane]: { ...slot.sectionSlots[lane], damageDealt: newDamage }
+      }
+    };
+
+    this.setState({
+      singlePlayerShipSlots: slots,
+      singlePlayerProfile: profile
+    });
+
+    console.log(`Partial repair: ${actualRepair} HP on section ${lane} in slot ${slotId} for ${cost} credits (${newDamage} damage remaining)`);
+    return {
+      success: true,
+      cost,
+      repairedHP: actualRepair,
+      remainingDamage: newDamage
+    };
+  }
+
+  /**
    * Create a drone instance for tracking damage
    * Only for non-starter-pool drones
    * @param {string} droneName - Name of the drone

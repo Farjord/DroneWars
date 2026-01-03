@@ -42,6 +42,9 @@ const RepairSectionCard = ({
   onRepair,
   repairCost,
   canAfford,
+  onRepairOne,
+  repairOneCost,
+  canAffordOne,
   lane
 }) => {
   // Empty state
@@ -126,17 +129,31 @@ const RepairSectionCard = ({
           </div>
         </div>
 
-        {/* Repair Button */}
+        {/* Repair Buttons */}
         {isDamaged && (
-          <button
-            className={`dw-btn dw-btn--sm ${canAfford ? 'dw-btn-confirm' : 'dw-btn-secondary'}`}
-            onClick={handleRepairClick}
-            disabled={!canAfford}
-            aria-label="Repair"
-          >
-            <Wrench size={12} />
-            <span>Repair ({repairCost} cr)</span>
-          </button>
+          <div className="repair-section-card__buttons" style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+            {/* Repair +1 HP Button */}
+            <button
+              className={`dw-btn dw-btn--sm ${canAffordOne ? 'dw-btn-primary' : 'dw-btn-secondary'}`}
+              onClick={() => canAffordOne && onRepairOne && onRepairOne()}
+              disabled={!canAffordOne}
+              aria-label="Repair 1 HP"
+            >
+              <Wrench size={12} />
+              <span>+1 HP ({repairOneCost} cr)</span>
+            </button>
+
+            {/* Repair All Button */}
+            <button
+              className={`dw-btn dw-btn--sm ${canAfford ? 'dw-btn-primary' : 'dw-btn-secondary'}`}
+              onClick={handleRepairClick}
+              disabled={!canAfford}
+              aria-label="Repair All"
+            >
+              <Wrench size={12} />
+              <span>All ({repairCost} cr)</span>
+            </button>
+          </div>
         )}
       </div>
     </div>

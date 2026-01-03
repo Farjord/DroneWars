@@ -14,6 +14,7 @@ import EffectRouter from '../logic/EffectRouter.js';
 import PhaseManager from './PhaseManager.js';
 import tacticalMapStateManager from './TacticalMapStateManager.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
+import { processRebuildProgress } from '../logic/availability/DroneAvailabilityManager.js';
 
 /**
  * GameFlowManager - Central authority for game phase flow and transitions
@@ -1196,6 +1197,45 @@ class GameFlowManager {
         debugLog('PHASE_MANAGER', '✅ ON_ROUND_START triggers processed', {
           animationEventsCount: roundStartResult.animationEvents?.length || 0
         });
+      }
+
+      // ========================================
+      // STEP 3c: Drone Rebuild Progress
+      // ========================================
+      // Process rebuild progress for destroyed drones (availability system)
+      // Advances rebuild timers and converts completed rebuilds to ready copies
+      debugLog('PHASE_MANAGER', '🔧 Step 3c: Processing drone rebuild progress');
+
+      const preRebuildState = this.gameStateManager.getState();
+      let rebuildUpdates = {};
+
+      // Process player 1 rebuild progress
+      if (preRebuildState.player1?.droneAvailability) {
+        const newAvailability = processRebuildProgress(preRebuildState.player1.droneAvailability);
+        rebuildUpdates.player1 = {
+          ...preRebuildState.player1,
+          droneAvailability: newAvailability
+        };
+        debugLog('PHASE_MANAGER', '   ↳ Player 1 rebuild progress processed');
+      }
+
+      // Process player 2 (AI) rebuild progress
+      if (preRebuildState.player2?.droneAvailability) {
+        const newAvailability = processRebuildProgress(preRebuildState.player2.droneAvailability);
+        rebuildUpdates.player2 = {
+          ...preRebuildState.player2,
+          droneAvailability: newAvailability
+        };
+        debugLog('PHASE_MANAGER', '   ↳ Player 2 rebuild progress processed');
+      }
+
+      // Update state with rebuild progress
+      if (rebuildUpdates.player1 || rebuildUpdates.player2) {
+        await this.actionProcessor.queueAction({
+          type: 'rebuildProgress',
+          payload: rebuildUpdates
+        });
+        debugLog('PHASE_MANAGER', '✅ Drone rebuild progress complete');
       }
 
       // ========================================

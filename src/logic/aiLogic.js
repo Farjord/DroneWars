@@ -169,7 +169,13 @@ const currentLaneScores = {
       if (availableResources < droneCost) {
         isAffordable = false;
         reason = 'Insufficient total resources';
+      } else if (player2.droneAvailability?.[drone.name]?.readyCount <= 0) {
+        // New availability system: check if any copies are ready
+        isAffordable = false;
+        const rebuildingCount = player2.droneAvailability[drone.name]?.rebuildingCount || 0;
+        reason = rebuildingCount > 0 ? `No copies available (${rebuildingCount} rebuilding)` : 'No copies available';
       } else if ((player2.deployedDroneCounts[drone.name] || 0) >= drone.limit) {
+        // Legacy fallback: check deployment limit (when droneAvailability not present)
         isAffordable = false;
         reason = 'Deployment limit reached';
       } else if (totalDrones >= effectiveStats.cpuLimit) {

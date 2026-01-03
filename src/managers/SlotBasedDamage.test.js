@@ -292,6 +292,96 @@ describe('Slot-Based Damage Model', () => {
       expect(result.success).toBe(false);
       expect(result.reason.toLowerCase()).toContain('insufficient');
     });
+
+    // Partial Section Repair Tests
+    describe('Partial Section Repair', () => {
+
+      it('should repair section slot partially (1 HP)', () => {
+        const shipSlot = gameStateManager.getState().singlePlayerShipSlots[0];
+        shipSlot.sectionSlots.l.damageDealt = 5;
+
+        gameStateManager.repairSectionSlotPartial(1, 'l', 1);
+
+        const updated = gameStateManager.getState().singlePlayerShipSlots[0];
+        expect(updated.sectionSlots.l.damageDealt).toBe(4); // 5 - 1 = 4
+      });
+
+      it('should deduct correct credits for partial repair (1 HP = 200 credits)', () => {
+        const shipSlot = gameStateManager.getState().singlePlayerShipSlots[0];
+        shipSlot.sectionSlots.l.damageDealt = 5;
+        const initialCredits = gameStateManager.getState().singlePlayerProfile.credits;
+
+        gameStateManager.repairSectionSlotPartial(1, 'l', 1);
+
+        const finalCredits = gameStateManager.getState().singlePlayerProfile.credits;
+        expect(finalCredits).toBe(initialCredits - 200); // 1 * 200 (SECTION_DAMAGE_REPAIR_COST)
+      });
+
+      it('should cap partial repair to remaining damage', () => {
+        const shipSlot = gameStateManager.getState().singlePlayerShipSlots[0];
+        shipSlot.sectionSlots.l.damageDealt = 2;
+
+        const result = gameStateManager.repairSectionSlotPartial(1, 'l', 5); // Request 5, only 2 damage
+
+        const updated = gameStateManager.getState().singlePlayerShipSlots[0];
+        expect(updated.sectionSlots.l.damageDealt).toBe(0);
+        expect(result.repairedHP).toBe(2); // Only repaired 2
+        expect(result.cost).toBe(400); // 2 * 200
+      });
+
+      it('should return remaining damage in partial repair result', () => {
+        const shipSlot = gameStateManager.getState().singlePlayerShipSlots[0];
+        shipSlot.sectionSlots.l.damageDealt = 5;
+
+        const result = gameStateManager.repairSectionSlotPartial(1, 'l', 2);
+
+        expect(result.success).toBe(true);
+        expect(result.remainingDamage).toBe(3); // 5 - 2 = 3
+        expect(result.repairedHP).toBe(2);
+        expect(result.cost).toBe(400); // 2 * 200
+      });
+
+      it('should fail partial repair if insufficient credits', () => {
+        gameStateManager.setState({
+          singlePlayerProfile: { credits: 100 } // Not enough for 1 HP (200)
+        });
+
+        const shipSlot = gameStateManager.getState().singlePlayerShipSlots[0];
+        shipSlot.sectionSlots.l.damageDealt = 5;
+
+        const result = gameStateManager.repairSectionSlotPartial(1, 'l', 1);
+
+        expect(result.success).toBe(false);
+        expect(result.reason.toLowerCase()).toContain('insufficient');
+      });
+
+      it('should default to repairing 1 HP if hpToRepair not specified', () => {
+        const shipSlot = gameStateManager.getState().singlePlayerShipSlots[0];
+        shipSlot.sectionSlots.l.damageDealt = 5;
+
+        gameStateManager.repairSectionSlotPartial(1, 'l'); // No hpToRepair specified
+
+        const updated = gameStateManager.getState().singlePlayerShipSlots[0];
+        expect(updated.sectionSlots.l.damageDealt).toBe(4); // 5 - 1 = 4
+      });
+
+      it('should reject partial repair on slot 0 (starter deck)', () => {
+        const result = gameStateManager.repairSectionSlotPartial(0, 'l', 1);
+
+        expect(result.success).toBe(false);
+        expect(result.reason).toContain('Slot 0');
+      });
+
+      it('should reject partial repair if section is not damaged', () => {
+        const shipSlot = gameStateManager.getState().singlePlayerShipSlots[0];
+        shipSlot.sectionSlots.l.damageDealt = 0;
+
+        const result = gameStateManager.repairSectionSlotPartial(1, 'l', 1);
+
+        expect(result.success).toBe(false);
+        expect(result.reason.toLowerCase()).toContain('not damaged');
+      });
+    });
   });
 
   // ===========================================

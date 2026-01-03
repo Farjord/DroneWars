@@ -285,7 +285,7 @@ const RepairBayScreen = () => {
     setTimeout(() => setFeedback(null), 3000);
   };
 
-  // Handle section repair
+  // Handle section repair (full)
   const handleRepairSection = async (lane) => {
     try {
       const result = repairService.repairSectionSlot
@@ -296,6 +296,25 @@ const RepairBayScreen = () => {
         setFeedback({ type: 'success', message: `Section repaired for ${result.cost} credits` });
       } else {
         setFeedback({ type: 'error', message: result.error || 'Repair failed' });
+      }
+    } catch (error) {
+      setFeedback({ type: 'error', message: 'Repair failed' });
+    }
+    setTimeout(() => setFeedback(null), 3000);
+  };
+
+  // Handle partial section repair (+1 HP)
+  const handleRepairSectionPartial = (lane) => {
+    try {
+      const result = gameStateManager.repairSectionSlotPartial(selectedSlotId, lane, 1);
+
+      if (result.success) {
+        const msg = result.remainingDamage > 0
+          ? `Repaired 1 HP for ${result.cost} credits (${result.remainingDamage} damage remaining)`
+          : `Repaired 1 HP for ${result.cost} credits (fully repaired)`;
+        setFeedback({ type: 'success', message: msg });
+      } else {
+        setFeedback({ type: 'error', message: result.reason || 'Repair failed' });
       }
     } catch (error) {
       setFeedback({ type: 'error', message: 'Repair failed' });
@@ -438,6 +457,9 @@ const RepairBayScreen = () => {
                       ? resolveShipSectionImage(selectedSlot.shipId, component.type)
                       : null;
 
+                    const repairOneCost = ECONOMY.SECTION_DAMAGE_REPAIR_COST || 200;
+                    const canAffordOne = credits >= repairOneCost;
+
                     return (
                       <RepairSectionCard
                         key={lane}
@@ -449,6 +471,9 @@ const RepairBayScreen = () => {
                         onRepair={() => handleRepairSection(lane)}
                         repairCost={repairCost}
                         canAfford={canAfford}
+                        onRepairOne={() => handleRepairSectionPartial(lane)}
+                        repairOneCost={repairOneCost}
+                        canAffordOne={canAffordOne}
                         lane={lane}
                       />
                     );

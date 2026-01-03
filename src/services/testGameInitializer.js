@@ -12,6 +12,7 @@ import fullDroneCollection from '../data/droneData.js';
 import aiPersonalities from '../data/aiData.js';
 import aiPhaseProcessor from '../managers/AIPhaseProcessor.js';
 import { debugLog } from '../utils/debugLogger.js';
+import { initializeForCombat as initializeDroneAvailability } from '../logic/availability/DroneAvailabilityManager.js';
 
 /**
  * Initialize a drone instance for placement in a lane
@@ -375,6 +376,9 @@ function createPlayerStateFromConfig(playerConfig, playerName, calculatedResourc
 
   // Create base player state
   // Use calculated resources if provided, otherwise fall back to config or defaults
+  const activeDronePool = playerConfig.selectedDrones || [];
+  const appliedUpgrades = {};
+
   const playerState = {
     name: playerName,
     shipSections: shipSections,
@@ -384,10 +388,11 @@ function createPlayerStateFromConfig(playerConfig, playerName, calculatedResourc
     hand: hand,
     deck: deck,
     discardPile: [],
-    activeDronePool: playerConfig.selectedDrones || [],
+    activeDronePool: activeDronePool,
     dronesOnBoard: initializedDronesOnBoard,
     deployedDroneCounts: calculateDeployedCounts(laneAssignments),
-    appliedUpgrades: {},
+    appliedUpgrades: appliedUpgrades,
+    droneAvailability: initializeDroneAvailability(activeDronePool, appliedUpgrades),
   };
 
   debugLog('TESTING', `📊 Created ${playerName} state:`, {

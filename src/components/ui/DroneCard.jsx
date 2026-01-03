@@ -9,6 +9,7 @@ import { Crosshair, Gauge, Power } from 'lucide-react';
 import CardStatHexagon from './CardStatHexagon.jsx';
 import ScalingText from './ScalingText.jsx';
 import RaritySymbol from './RaritySymbol.jsx';
+import AvailabilityDots from './AvailabilityDots.jsx';
 import { getCardBorderClasses } from '../../utils/cardBorderUtils.js';
 
 /**
@@ -17,7 +18,7 @@ import { getCardBorderClasses } from '../../utils/cardBorderUtils.js';
  * @param {Function} onClick - Click handler
  * @param {boolean} isSelectable - Whether card can be selected
  * @param {boolean} isSelected - Whether card is selected
- * @param {number} deployedCount - Number deployed
+ * @param {number} deployedCount - Number deployed (legacy, used when availability not provided)
  * @param {boolean} ignoreDeployLimit - Ignore limit
  * @param {Array} appliedUpgrades - Applied upgrades
  * @param {boolean} isUpgradeTarget - Is upgrade target
@@ -26,6 +27,8 @@ import { getCardBorderClasses } from '../../utils/cardBorderUtils.js';
  * @param {boolean} isViewOnly - Display only mode (no opacity reduction)
  * @param {Function} onStatClick - Callback when a stat is clicked (for help mode)
  * @param {string} selectedStat - Currently selected stat key (for highlighting)
+ * @param {Object} availability - Drone availability state { readyCount, inPlayCount, rebuildingCount, rebuildProgress, copyLimit }
+ * @param {number} rebuildRate - Drone rebuild rate (from droneData)
  */
 const DroneCard = ({
   drone,
@@ -41,7 +44,9 @@ const DroneCard = ({
   isViewOnly = false,
   onStatClick,
   selectedStat,
-  hasDeploymentBudget = false
+  hasDeploymentBudget = false,
+  availability,
+  rebuildRate
 }) => {
   // Calculate effective limit with upgrades
   let effectiveLimit = drone.limit;
@@ -49,7 +54,10 @@ const DroneCard = ({
     if (upg.mod.stat === 'limit') effectiveLimit += upg.mod.value;
   });
 
-  const atLimit = deployedCount >= effectiveLimit;
+  // Determine if at limit: use availability system if available, otherwise legacy deployedCount
+  const atLimit = availability
+    ? availability.readyCount <= 0
+    : deployedCount >= effectiveLimit;
   const isInteractive = isSelectable && (!atLimit || ignoreDeployLimit);
 
   // Calculate effective stats
@@ -243,8 +251,9 @@ const DroneCard = ({
               <RaritySymbol rarity={drone.rarity || 'Common'} size={14} />
             </div>
 
-            {/* Center: Upgrades + Deployed */}
-            <div className="flex items-center justify-center gap-4">
+            {/* Center: Upgrades + Available + Replen */}
+            <div className="flex items-center justify-center gap-3">
+              {/* Upgrades */}
               <div
                 className={`flex flex-col items-center ${isHelpMode ? getStatHighlight('upgrades') : (drone.upgradeSlots > 0 ? 'cursor-pointer group' : '')}`}
                 onClick={drone.upgradeSlots > 0 ? (isHelpMode ? handleStatClick('upgrades') : (e) => {
@@ -253,18 +262,34 @@ const DroneCard = ({
                 }) : undefined}
               >
                 <span className="text-[10px] text-gray-400 group-hover:text-white transition-colors">Upgrades</span>
-                <span className="font-bold text-base text-purple-400">
+                <span className="font-bold text-sm text-purple-400">
                   {appliedUpgrades.length}/{drone.upgradeSlots}
                 </span>
               </div>
 
+              {/* Available (dots showing copy availability) */}
               <div
-                className={`flex flex-col items-center ${getStatHighlight('deployed')}`}
-                onClick={handleStatClick('deployed')}
+                className={`flex flex-col items-center ${getStatHighlight('available')}`}
+                onClick={handleStatClick('available')}
               >
-                <span className="text-[10px] text-gray-400">Deployed</span>
-                <span className={`font-bold text-base ${atLimit ? 'text-red-500' : limitTextColor}`}>
-                  {deployedCount}/{effectiveLimit}
+                <span className="text-[10px] text-gray-400">Available</span>
+                <AvailabilityDots
+                  availability={availability}
+                  copyLimit={effectiveLimit}
+                  droneName={name}
+                  dotSize={10}
+                  gap={2}
+                />
+              </div>
+
+              {/* Replen Rate */}
+              <div
+                className={`flex flex-col items-center ${getStatHighlight('replen')}`}
+                onClick={handleStatClick('replen')}
+              >
+                <span className="text-[10px] text-gray-400">Replen</span>
+                <span className="font-bold text-sm text-cyan-400">
+                  {rebuildRate ?? drone.rebuildRate ?? '—'}
                 </span>
               </div>
             </div>

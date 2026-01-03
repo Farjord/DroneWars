@@ -26,6 +26,7 @@ import PhaseManager from './PhaseManager.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 import { shipComponentCollection } from '../data/shipSectionData.js';
 import SeededRandom from '../utils/seededRandom.js';
+import { initializeForCombat as initializeDroneAvailability } from '../logic/availability/DroneAvailabilityManager.js';
 
 class ActionProcessor {
   // Singleton instance
@@ -425,6 +426,9 @@ setAnimationManager(animationManager) {
 
         case 'roundStartTriggers':
           result = await this.processRoundStartTriggers(payload); break;
+
+        case 'rebuildProgress':
+          result = await this.processRebuildProgress(payload); break;
 
         case 'destroyDrone':
           result = await this.processDestroyDrone(payload); break;
@@ -3605,23 +3609,29 @@ setAnimationManager(animationManager) {
       case 'droneSelection':
         // Apply drone selections to player states
         if (phaseCommitments.player1?.drones) {
+          const p1Drones = phaseCommitments.player1.drones;
+          const p1Upgrades = currentState.player1?.appliedUpgrades || {};
           stateUpdates.player1 = {
             ...currentState.player1,
-            activeDronePool: phaseCommitments.player1.drones,
-            deployedDroneCounts: phaseCommitments.player1.drones.reduce((acc, drone) => {
+            activeDronePool: p1Drones,
+            deployedDroneCounts: p1Drones.reduce((acc, drone) => {
               acc[drone.name] = 0;
               return acc;
-            }, {})
+            }, {}),
+            droneAvailability: initializeDroneAvailability(p1Drones, p1Upgrades)
           };
         }
         if (phaseCommitments.player2?.drones) {
+          const p2Drones = phaseCommitments.player2.drones;
+          const p2Upgrades = currentState.player2?.appliedUpgrades || {};
           stateUpdates.player2 = {
             ...currentState.player2,
-            activeDronePool: phaseCommitments.player2.drones,
-            deployedDroneCounts: phaseCommitments.player2.drones.reduce((acc, drone) => {
+            activeDronePool: p2Drones,
+            deployedDroneCounts: p2Drones.reduce((acc, drone) => {
               acc[drone.name] = 0;
               return acc;
-            }, {})
+            }, {}),
+            droneAvailability: initializeDroneAvailability(p2Drones, p2Upgrades)
           };
         }
         debugLog('COMMITMENTS', '✅ Applied drone selections to player states');
@@ -3846,6 +3856,36 @@ setAnimationManager(animationManager) {
     return {
       success: true,
       message: 'Round start triggers processed',
+      player1,
+      player2
+    };
+  }
+
+  /**
+   * Process drone rebuild progress
+   * Updates droneAvailability state after rebuild progress has been calculated
+   * Called at the start of each round after ON_ROUND_START triggers
+   * @param {Object} payload - { player1?, player2? } with updated droneAvailability
+   * @returns {Object} Rebuild progress result
+   */
+  async processRebuildProgress(payload) {
+    const { player1, player2 } = payload;
+
+    debugLog('PHASE_MANAGER', '🔧 ActionProcessor: Processing drone rebuild progress');
+
+    // Build state update object
+    const stateUpdate = {};
+    if (player1) stateUpdate.player1 = player1;
+    if (player2) stateUpdate.player2 = player2;
+
+    // Update player states with rebuild progress
+    this.gameStateManager.setState(stateUpdate, 'REBUILD_PROGRESS');
+
+    debugLog('PHASE_MANAGER', '✅ Drone rebuild progress complete');
+
+    return {
+      success: true,
+      message: 'Drone rebuild progress processed',
       player1,
       player2
     };

@@ -88,6 +88,7 @@ const DEBUG_CONFIG = {
     TACTICAL_ITEMS: false,        // Tactical item panel clicks and usage
     CARD_DISCARD: false,          // Card discard after play - tracks instanceId and hand filtering
     TURN_TRANSITION_DEBUG: false,  // Turn transition investigation (TEMPORARY)
+    AVAILABILITY: true,             // Drone availability system (dots, readyCount, inPlayCount)
   }
 };
 

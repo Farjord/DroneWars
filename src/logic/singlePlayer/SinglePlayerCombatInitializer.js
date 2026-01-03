@@ -18,6 +18,7 @@ import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import { buildActiveDronePool as buildDronePoolFromSlots } from '../../utils/slotDamageUtils.js';
+import { initializeForCombat as initializeDroneAvailability } from '../availability/DroneAvailabilityManager.js';
 
 /**
  * SinglePlayerCombatInitializer
@@ -626,6 +627,11 @@ class SinglePlayerCombatInitializer {
       }).filter(d => d);
     }
 
+    // Initialize drone availability system (all copies start ready)
+    const appliedUpgrades = {}; // TODO: Load from ship slot if upgrades are supported
+    const droneAvailability = initializeDroneAvailability(activeDronePool, appliedUpgrades);
+    debugLog('SP_COMBAT', 'Initialized drone availability:', Object.keys(droneAvailability));
+
     return {
       name: 'Player',
       shipId: shipCard.id,
@@ -640,7 +646,8 @@ class SinglePlayerCombatInitializer {
       dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
       deployedDroneCounts: {},
       totalDronesDeployed: 0,
-      appliedUpgrades: {}
+      appliedUpgrades: appliedUpgrades,
+      droneAvailability: droneAvailability
     };
   }
 
@@ -698,6 +705,10 @@ class SinglePlayerCombatInitializer {
       return droneData || { name };
     }).filter(d => d);
 
+    // Initialize drone availability system for AI (all copies start ready)
+    const droneAvailability = initializeDroneAvailability(activeDronePool, {});
+    debugLog('SP_COMBAT', 'Initialized AI drone availability:', Object.keys(droneAvailability));
+
     return {
       name: aiPersonality.name,
       shipId: shipCard.id,
@@ -713,6 +724,7 @@ class SinglePlayerCombatInitializer {
       deployedDroneCounts: {},
       totalDronesDeployed: 0,
       appliedUpgrades: {},
+      droneAvailability: droneAvailability,
       aiPersonality: aiPersonality // Store reference for AI decision making
     };
   }
