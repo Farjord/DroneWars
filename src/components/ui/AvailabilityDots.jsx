@@ -1,21 +1,51 @@
 // ========================================
 // AVAILABILITY DOTS COMPONENT
 // ========================================
-// Renders dots representing drone copy availability status
-// Part of the Drone Availability & Rebuild System
+// Renders dots representing drone deployment availability
+// Part of the Drone Availability & Rebuild System (NEW MODEL)
 //
-// Dot States:
-// - Ready: Solid green filled (available to deploy)
-// - In-Play: Green outline/hollow (currently deployed)
-// - Rebuilding: Grey with animated partial fill (returning)
-// - Unavailable: Dark outline/hollow (slot not active)
+// NEW Dot States (show deployment availability, not drone location):
+// - Deployable: Solid green pip (ready AND under in-play limit)
+// - Blocked: Green outline (ready BUT at deployment limit)
+// - Rebuilding: Grey segmented circle with progress
+// - Inactive: Grey outline (slot not producing)
 
 import React from 'react';
 import { debugLog } from '../../utils/debugLogger.js';
 
+// Custom keyframes for stronger pulse effect (brighter and darker)
+const pulseKeyframes = `
+@keyframes pulse-strong {
+  0%, 100% { opacity: 1; filter: brightness(1.4); }
+  50% { opacity: 0.3; filter: brightness(0.6); }
+}
+`;
+
+/**
+ * Calculate segment count based on rebuild rate
+ * Lower rates = more segments (slower rebuild)
+ * @param {number} rebuildRate - Rate per round
+ * @returns {number} Number of segments (1-3 typically)
+ */
+const calculateSegmentCount = (rebuildRate) => {
+  if (rebuildRate >= 1.0) return 1;
+  if (rebuildRate >= 0.5) return 2;
+  return Math.ceil(1 / rebuildRate);
+};
+
+/**
+ * Calculate how many segments are filled based on progress
+ * @param {number} progress - Current rebuild progress (0.0 - 0.999)
+ * @param {number} segmentCount - Total segments
+ * @returns {number} Number of completely filled segments
+ */
+const calculateFilledSegments = (progress, segmentCount) => {
+  return Math.floor(progress * segmentCount);
+};
+
 /**
  * AvailabilityDots Component
- * Displays a row of dots showing drone copy availability status
+ * Displays a row of dots showing drone deployment availability
  *
  * @param {Object} availability - Drone availability state from droneAvailability
  *   - readyCount: Number ready to deploy
@@ -23,6 +53,7 @@ import { debugLog } from '../../utils/debugLogger.js';
  *   - rebuildingCount: Number being rebuilt
  *   - rebuildProgress: Fractional progress (0.0 - 0.999)
  *   - copyLimit: Max simultaneous copies
+ *   - rebuildRate: Rate per round
  * @param {number} copyLimit - Explicit copy limit (fallback if not in availability)
  * @param {string} droneName - Name of the drone (for debug logging)
  * @param {number} dotSize - Dot diameter in pixels (default: 10)
@@ -33,7 +64,8 @@ const AvailabilityDots = ({
   copyLimit: explicitCopyLimit,
   droneName = 'unknown',
   dotSize = 10,
-  gap = 2
+  gap = 2,
+  enableDebug = false
 }) => {
   // Use explicit copyLimit or fall back to availability.copyLimit
   const limit = explicitCopyLimit ?? availability?.copyLimit ?? 0;
@@ -43,58 +75,74 @@ const AvailabilityDots = ({
   const inPlayCount = availability?.inPlayCount ?? 0;
   const rebuildingCount = availability?.rebuildingCount ?? 0;
   const rebuildProgress = availability?.rebuildProgress ?? 0;
+  const rebuildRate = availability?.rebuildRate ?? 1.0;
 
-  debugLog('AVAILABILITY', `[${droneName}] AvailabilityDots render:`, {
-    explicitCopyLimit,
-    limit,
-    availability,
-    readyCount,
-    inPlayCount,
-    rebuildingCount
-  });
+  if (enableDebug) {
+    debugLog('AVAILABILITY', `[${droneName}] AvailabilityDots render:`, {
+      explicitCopyLimit,
+      limit,
+      availability,
+      readyCount,
+      inPlayCount,
+      rebuildingCount
+    });
+  }
 
-  // Build dots array: Ready first, then In-Play, then Rebuilding, then Unavailable
+  // NEW MODEL: Calculate deployment availability
+  const availableSlots = Math.max(0, limit - inPlayCount); // How many MORE can be deployed
+  const deployablePips = Math.min(readyCount, availableSlots);
+  const blockedOutlines = Math.max(0, readyCount - deployablePips); // Ready but can't deploy
+
+  // Only rebuildRate slots can actively rebuild per round
+  // Use ceiling to handle fractional rates (rate 1.5 = up to 2 active)
+  const activelyRebuilding = Math.min(rebuildingCount, Math.ceil(rebuildRate));
+  const queuedSlots = rebuildingCount - activelyRebuilding;
+
+  const rebuildingSlots = activelyRebuilding;
+  const inactiveSlots = Math.max(0, limit - readyCount - rebuildingCount) + queuedSlots;
+
+  // Calculate segment info for rebuilding dots
+  const segmentCount = calculateSegmentCount(rebuildRate);
+  const filledSegments = calculateFilledSegments(rebuildProgress, segmentCount);
+
+  // Build dots array
   const dots = [];
-  let remaining = limit;
 
-  // Ready dots (solid green)
-  // Pre-calculate count to avoid loop condition changing mid-iteration
-  const readyToAdd = Math.min(readyCount, remaining);
-  for (let i = 0; i < readyToAdd; i++) {
-    dots.push({ type: 'ready', index: dots.length });
-    remaining--;
+  // 1. Deployable pips (solid green)
+  for (let i = 0; i < deployablePips; i++) {
+    dots.push({ type: 'deployable', index: dots.length });
   }
 
-  // In-Play dots (green outline)
-  const inPlayToAdd = Math.min(inPlayCount, remaining);
-  for (let i = 0; i < inPlayToAdd; i++) {
-    dots.push({ type: 'inPlay', index: dots.length });
-    remaining--;
+  // 2. Blocked outlines (green outline)
+  for (let i = 0; i < blockedOutlines; i++) {
+    dots.push({ type: 'blocked', index: dots.length });
   }
 
-  // Rebuilding dots (grey with partial fill)
-  const rebuildingToAdd = Math.min(rebuildingCount, remaining);
-  for (let i = 0; i < rebuildingToAdd; i++) {
-    // First rebuilding dot shows progress, rest are empty
-    const showProgress = i === 0 && rebuildProgress > 0;
+  // 3. Rebuilding dots (grey with segments, current segment pulsing)
+  for (let i = 0; i < rebuildingSlots; i++) {
     dots.push({
       type: 'rebuilding',
       index: dots.length,
-      progress: showProgress ? rebuildProgress : 0
+      segmentCount,
+      filledSegments
     });
-    remaining--;
   }
 
-  // Unavailable dots (dark outline - slots that exist but aren't active)
-  // This shouldn't normally happen, but handles edge cases
-  for (let i = 0; i < remaining; i++) {
-    dots.push({ type: 'unavailable', index: dots.length });
+  // 4. Inactive dots (grey outline)
+  for (let i = 0; i < inactiveSlots; i++) {
+    dots.push({ type: 'inactive', index: dots.length });
   }
 
-  debugLog('AVAILABILITY', `[${droneName}] Dots array built:`, {
-    dotsCount: dots.length,
-    dots: dots.map(d => d.type)
-  });
+  if (enableDebug) {
+    debugLog('AVAILABILITY', `[${droneName}] Dots array built:`, {
+      dotsCount: dots.length,
+      deployable: deployablePips,
+      blocked: blockedOutlines,
+      rebuilding: rebuildingSlots,
+      inactive: inactiveSlots,
+      queuedSlots
+    });
+  }
 
   if (dots.length === 0) {
     return null;
@@ -110,8 +158,9 @@ const AvailabilityDots = ({
         <Dot
           key={dot.index}
           type={dot.type}
-          progress={dot.progress}
           size={dotSize}
+          segmentCount={dot.segmentCount}
+          filledSegments={dot.filledSegments}
         />
       ))}
     </div>
@@ -121,60 +170,148 @@ const AvailabilityDots = ({
 /**
  * Individual Dot Component
  */
-const Dot = ({ type, progress = 0, size }) => {
+const Dot = ({ type, size, segmentCount = 1, filledSegments = 0 }) => {
   const baseClasses = 'rounded-full transition-all duration-300';
 
-  // Styles based on dot type
-  const styles = {
-    ready: {
-      // Solid green filled
-      className: `${baseClasses} bg-green-500`,
-      style: { width: size, height: size }
-    },
-    inPlay: {
-      // Green outline (hollow)
-      className: `${baseClasses} border-2 border-green-500 bg-transparent`,
-      style: { width: size, height: size }
-    },
-    rebuilding: {
-      // Grey with optional partial fill showing progress
-      className: `${baseClasses} border-2 border-gray-500 overflow-hidden relative`,
-      style: { width: size, height: size }
-    },
-    unavailable: {
-      // Dark outline (hollow)
-      className: `${baseClasses} border border-gray-700 bg-transparent`,
-      style: { width: size, height: size }
-    }
+  // Build data attributes for testing
+  const dataAttrs = {
+    'data-dot-type': type
   };
 
-  const dotStyle = styles[type] || styles.unavailable;
+  if (type === 'rebuilding') {
+    dataAttrs['data-segment-count'] = String(segmentCount);
+    dataAttrs['data-filled-segments'] = String(filledSegments);
+  }
 
-  // Special handling for rebuilding dots with progress fill
-  if (type === 'rebuilding' && progress > 0) {
+  // Styles based on dot type
+  if (type === 'deployable') {
+    // Solid green filled
     return (
       <div
-        className={dotStyle.className}
-        style={dotStyle.style}
-      >
-        {/* Progress fill (fills from bottom to top) */}
-        <div
-          className="absolute bottom-0 left-0 right-0 bg-gray-400 animate-pulse"
-          style={{
-            height: `${Math.min(progress * 100, 100)}%`,
-            transition: 'height 0.3s ease-out'
-          }}
-        />
-      </div>
+        className={`${baseClasses} bg-green-500`}
+        style={{ width: size, height: size }}
+        {...dataAttrs}
+      />
     );
   }
 
+  if (type === 'blocked') {
+    // Green outline (ready but can't deploy)
+    return (
+      <div
+        className={`${baseClasses} border-2 border-green-500 bg-transparent`}
+        style={{ width: size, height: size }}
+        {...dataAttrs}
+      />
+    );
+  }
+
+  if (type === 'rebuilding') {
+    // Grey segmented circle with current segment pulsing
+    return (
+      <SegmentedDot
+        size={size}
+        segmentCount={segmentCount}
+        filledSegments={filledSegments}
+        dataAttrs={dataAttrs}
+      />
+    );
+  }
+
+  // Inactive - grey outline
   return (
     <div
-      className={dotStyle.className}
-      style={dotStyle.style}
+      className={`${baseClasses} border border-gray-600 bg-transparent`}
+      style={{ width: size, height: size }}
+      {...dataAttrs}
     />
   );
+};
+
+/**
+ * Segmented Dot for rebuilding visualization
+ * Uses CSS conic-gradient for segment display
+ */
+const SegmentedDot = ({ size, segmentCount, filledSegments, dataAttrs }) => {
+  // Calculate the angle for each segment
+  const segmentAngle = 360 / segmentCount;
+
+  // Current segment is the one being worked on (after filled segments)
+  const currentSegmentIndex = filledSegments;
+
+  // Build gradient stops for conic-gradient
+  // Gradient starts from top (-90deg or 270deg in CSS)
+  let gradientStops = [];
+
+  for (let i = 0; i < segmentCount; i++) {
+    const startAngle = i * segmentAngle;
+    const endAngle = (i + 1) * segmentAngle;
+
+    if (i < filledSegments) {
+      // Filled segment - static grey (completed)
+      gradientStops.push(`#6b7280 ${startAngle}deg ${endAngle}deg`);
+    } else if (i === currentSegmentIndex) {
+      // Current segment - transparent so pulsing overlay is visible
+      gradientStops.push(`transparent ${startAngle}deg ${endAngle}deg`);
+    } else {
+      // Future segment - empty
+      gradientStops.push(`transparent ${startAngle}deg ${endAngle}deg`);
+    }
+  }
+
+  const gradient = `conic-gradient(from -90deg, ${gradientStops.join(', ')})`;
+
+  return (
+    <div
+      className="relative rounded-full border border-gray-500"
+      style={{
+        width: size,
+        height: size
+      }}
+      {...dataAttrs}
+    >
+      {/* Inject keyframes for pulse animation */}
+      <style>{pulseKeyframes}</style>
+      {/* Background gradient showing segments */}
+      <div
+        className="absolute inset-0 rounded-full"
+        style={{
+          background: gradient
+        }}
+      />
+      {/* Pulsing overlay for current segment - stronger pulse effect */}
+      <div
+        className="absolute inset-0 rounded-full"
+        style={{
+          background: buildPulsingGradient(segmentCount, currentSegmentIndex),
+          animation: 'pulse-strong 1.5s ease-in-out infinite'
+        }}
+      />
+    </div>
+  );
+};
+
+/**
+ * Build a gradient for the pulsing animation on current segment
+ * Shows the full segment as pulsing (work in progress)
+ */
+const buildPulsingGradient = (segmentCount, currentIndex) => {
+  const segmentAngle = 360 / segmentCount;
+
+  let stops = [];
+  for (let i = 0; i < segmentCount; i++) {
+    const sAngle = i * segmentAngle;
+    const eAngle = (i + 1) * segmentAngle;
+
+    if (i === currentIndex) {
+      // Full segment pulsing
+      stops.push(`#9ca3af ${sAngle}deg ${eAngle}deg`);
+    } else {
+      stops.push(`transparent ${sAngle}deg ${eAngle}deg`);
+    }
+  }
+
+  return `conic-gradient(from -90deg, ${stops.join(', ')})`;
 };
 
 export default AvailabilityDots;

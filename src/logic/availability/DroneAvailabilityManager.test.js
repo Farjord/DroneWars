@@ -78,7 +78,8 @@ describe('DroneAvailabilityManager', () => {
   // DEPLOYMENT TESTS
   // ========================================
   describe('onDroneDeployed', () => {
-    it('should decrement readyCount and increment inPlayCount', () => {
+    it('should decrement readyCount, increment inPlayCount AND start rebuilding', () => {
+      // NEW MODEL: Deploying immediately starts rebuilding
       const availability = {
         Dart: {
           copyLimit: 3,
@@ -95,7 +96,7 @@ describe('DroneAvailabilityManager', () => {
 
       expect(result.Dart.readyCount).toBe(2);
       expect(result.Dart.inPlayCount).toBe(1);
-      expect(result.Dart.rebuildingCount).toBe(0);
+      expect(result.Dart.rebuildingCount).toBe(1); // NEW: Rebuilding starts immediately
     });
 
     it('should not modify state if no ready copies available', () => {
@@ -134,14 +135,16 @@ describe('DroneAvailabilityManager', () => {
   // DESTRUCTION TESTS
   // ========================================
   describe('onDroneDestroyed', () => {
-    it('should decrement inPlayCount and increment rebuildingCount', () => {
+    it('should only decrement inPlayCount (rebuild already started on deploy)', () => {
+      // NEW MODEL: Rebuild starts on deploy, not on destroy
+      // State after deploying 2 drones: ready=1, inPlay=2, rebuilding=2
       const availability = {
         Dart: {
           copyLimit: 3,
           rebuildRate: 2.0,
           readyCount: 1,
           inPlayCount: 2,
-          rebuildingCount: 0,
+          rebuildingCount: 2, // Already rebuilding from deploy
           rebuildProgress: 0,
           accelerationBonus: 0
         }
@@ -150,8 +153,8 @@ describe('DroneAvailabilityManager', () => {
       const result = onDroneDestroyed(availability, 'Dart');
 
       expect(result.Dart.readyCount).toBe(1);
-      expect(result.Dart.inPlayCount).toBe(1);
-      expect(result.Dart.rebuildingCount).toBe(1);
+      expect(result.Dart.inPlayCount).toBe(1); // Decremented
+      expect(result.Dart.rebuildingCount).toBe(2); // Unchanged - already rebuilding
     });
 
     it('should handle destruction when no drones in play (edge case)', () => {
@@ -651,23 +654,28 @@ describe('DroneAvailabilityManager', () => {
   // INVARIANT TESTS
   // ========================================
   describe('State Invariants', () => {
-    it('should maintain invariant: ready + inPlay + rebuilding <= copyLimit', () => {
+    it('should maintain NEW invariant: ready + rebuilding = copyLimit (production slots)', () => {
+      // NEW MODEL: Production slots (ready + rebuilding) always equal copyLimit
+      // inPlayCount is tracked separately
       let availability = initializeForCombat([
         { name: 'Dart', limit: 3, rebuildRate: 2.0 }
       ]);
 
-      // Run through various operations
+      // Initial: ready=3, rebuilding=0
+      expect(availability.Dart.readyCount + availability.Dart.rebuildingCount).toBe(3);
+
+      // Deploy 2: ready=1, rebuilding=2
       availability = onDroneDeployed(availability, 'Dart');
       availability = onDroneDeployed(availability, 'Dart');
+      expect(availability.Dart.readyCount + availability.Dart.rebuildingCount).toBe(3);
+
+      // Destroy 1 (no effect on production slots): ready=1, rebuilding=2
       availability = onDroneDestroyed(availability, 'Dart');
+      expect(availability.Dart.readyCount + availability.Dart.rebuildingCount).toBe(3);
+
+      // Process rebuild (rate 2.0 rebuilds 2): ready=3, rebuilding=0
       availability = processRebuildProgress(availability);
-
-      const total =
-        availability.Dart.readyCount +
-        availability.Dart.inPlayCount +
-        availability.Dart.rebuildingCount;
-
-      expect(total).toBeLessThanOrEqual(availability.Dart.copyLimit);
+      expect(availability.Dart.readyCount + availability.Dart.rebuildingCount).toBe(3);
     });
 
     it('should never have negative counts', () => {
@@ -682,6 +690,223 @@ describe('DroneAvailabilityManager', () => {
       expect(availability.Dart.readyCount).toBeGreaterThanOrEqual(0);
       expect(availability.Dart.inPlayCount).toBeGreaterThanOrEqual(0);
       expect(availability.Dart.rebuildingCount).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  // ========================================
+  // NEW MODEL TESTS - Deploy starts rebuild
+  // ========================================
+  describe('New Model - Deploy starts rebuild immediately', () => {
+    describe('onDroneDeployed - starts rebuild', () => {
+      it('should decrement readyCount, increment inPlayCount AND rebuildingCount', () => {
+        const availability = {
+          Dart: {
+            copyLimit: 3,
+            rebuildRate: 1.0,
+            readyCount: 3,
+            inPlayCount: 0,
+            rebuildingCount: 0,
+            rebuildProgress: 0,
+            accelerationBonus: 0
+          }
+        };
+
+        const result = onDroneDeployed(availability, 'Dart');
+
+        expect(result.Dart.readyCount).toBe(2);
+        expect(result.Dart.inPlayCount).toBe(1);
+        expect(result.Dart.rebuildingCount).toBe(1); // NEW: rebuilding starts immediately
+      });
+
+      it('should maintain invariant: readyCount + rebuildingCount = copyLimit', () => {
+        let availability = initializeForCombat([
+          { name: 'Dart', limit: 3, rebuildRate: 1.0 }
+        ]);
+
+        // Deploy all 3
+        availability = onDroneDeployed(availability, 'Dart');
+        expect(availability.Dart.readyCount + availability.Dart.rebuildingCount).toBe(3);
+
+        availability = onDroneDeployed(availability, 'Dart');
+        expect(availability.Dart.readyCount + availability.Dart.rebuildingCount).toBe(3);
+
+        availability = onDroneDeployed(availability, 'Dart');
+        expect(availability.Dart.readyCount + availability.Dart.rebuildingCount).toBe(3);
+
+        // All slots now rebuilding
+        expect(availability.Dart.readyCount).toBe(0);
+        expect(availability.Dart.rebuildingCount).toBe(3);
+        expect(availability.Dart.inPlayCount).toBe(3);
+      });
+    });
+
+    describe('onDroneDestroyed - no new rebuild', () => {
+      it('should only decrement inPlayCount (rebuild already started on deploy)', () => {
+        const availability = {
+          Dart: {
+            copyLimit: 3,
+            rebuildRate: 1.0,
+            readyCount: 2,
+            inPlayCount: 1,
+            rebuildingCount: 1, // Already rebuilding from deploy
+            rebuildProgress: 0,
+            accelerationBonus: 0
+          }
+        };
+
+        const result = onDroneDestroyed(availability, 'Dart');
+
+        expect(result.Dart.readyCount).toBe(2);
+        expect(result.Dart.inPlayCount).toBe(0); // Drone removed from board
+        expect(result.Dart.rebuildingCount).toBe(1); // Unchanged - already rebuilding
+      });
+    });
+
+    describe('At limit - no rebuilding', () => {
+      it('should NOT rebuild when all slots are ready (at limit)', () => {
+        const availability = {
+          Dart: {
+            copyLimit: 3,
+            rebuildRate: 1.0,
+            readyCount: 3,
+            inPlayCount: 0,
+            rebuildingCount: 0, // Nothing rebuilding
+            rebuildProgress: 0,
+            accelerationBonus: 0
+          }
+        };
+
+        // Process rebuild - should do nothing
+        const result = processRebuildProgress(availability);
+
+        expect(result.Dart.readyCount).toBe(3);
+        expect(result.Dart.rebuildingCount).toBe(0);
+      });
+    });
+
+    describe('High rebuild rates (1.5, 2.0)', () => {
+      it('should handle rate 1.5 - rebuild 1 per round with 0.5 progress', () => {
+        let availability = initializeForCombat([
+          { name: 'FastDrone', limit: 3, rebuildRate: 1.5 }
+        ]);
+
+        // Deploy 3
+        availability = onDroneDeployed(availability, 'FastDrone');
+        availability = onDroneDeployed(availability, 'FastDrone');
+        availability = onDroneDeployed(availability, 'FastDrone');
+
+        expect(availability.FastDrone.readyCount).toBe(0);
+        expect(availability.FastDrone.rebuildingCount).toBe(3);
+
+        // Round 1: 1.5 progress, rebuilds 1, leaves 0.5 progress
+        availability = processRebuildProgress(availability);
+        expect(availability.FastDrone.readyCount).toBe(1);
+        expect(availability.FastDrone.rebuildingCount).toBe(2);
+        expect(availability.FastDrone.rebuildProgress).toBe(0.5);
+
+        // Round 2: 0.5 + 1.5 = 2.0, rebuilds 2, progress resets
+        availability = processRebuildProgress(availability);
+        expect(availability.FastDrone.readyCount).toBe(3);
+        expect(availability.FastDrone.rebuildingCount).toBe(0);
+        expect(availability.FastDrone.rebuildProgress).toBe(0);
+      });
+
+      it('should handle rate 2.0 - rebuild 2 per round', () => {
+        let availability = initializeForCombat([
+          { name: 'VeryFastDrone', limit: 4, rebuildRate: 2.0 }
+        ]);
+
+        // Deploy 4
+        availability = onDroneDeployed(availability, 'VeryFastDrone');
+        availability = onDroneDeployed(availability, 'VeryFastDrone');
+        availability = onDroneDeployed(availability, 'VeryFastDrone');
+        availability = onDroneDeployed(availability, 'VeryFastDrone');
+
+        expect(availability.VeryFastDrone.readyCount).toBe(0);
+        expect(availability.VeryFastDrone.rebuildingCount).toBe(4);
+
+        // Round 1: rebuilds 2
+        availability = processRebuildProgress(availability);
+        expect(availability.VeryFastDrone.readyCount).toBe(2);
+        expect(availability.VeryFastDrone.rebuildingCount).toBe(2);
+
+        // Round 2: rebuilds remaining 2
+        availability = processRebuildProgress(availability);
+        expect(availability.VeryFastDrone.readyCount).toBe(4);
+        expect(availability.VeryFastDrone.rebuildingCount).toBe(0);
+      });
+    });
+
+    describe('Complete lifecycle scenarios', () => {
+      it('should handle deploy-destroy cycle correctly', () => {
+        let availability = initializeForCombat([
+          { name: 'Drone', limit: 2, rebuildRate: 1.0 }
+        ]);
+
+        // Deploy 1: ready 2->1, inPlay 0->1, rebuilding 0->1
+        availability = onDroneDeployed(availability, 'Drone');
+        expect(availability.Drone.readyCount).toBe(1);
+        expect(availability.Drone.inPlayCount).toBe(1);
+        expect(availability.Drone.rebuildingCount).toBe(1);
+
+        // Destroy: inPlay 1->0 (rebuilding stays at 1)
+        availability = onDroneDestroyed(availability, 'Drone');
+        expect(availability.Drone.readyCount).toBe(1);
+        expect(availability.Drone.inPlayCount).toBe(0);
+        expect(availability.Drone.rebuildingCount).toBe(1);
+
+        // Round start: rebuilding 1->0, ready 1->2
+        availability = processRebuildProgress(availability);
+        expect(availability.Drone.readyCount).toBe(2);
+        expect(availability.Drone.inPlayCount).toBe(0);
+        expect(availability.Drone.rebuildingCount).toBe(0);
+      });
+
+      it('should handle recall returning drone to ready immediately', () => {
+        let availability = initializeForCombat([
+          { name: 'Drone', limit: 2, rebuildRate: 1.0 }
+        ]);
+
+        // Deploy: ready 2->1, inPlay 0->1, rebuilding 0->1
+        availability = onDroneDeployed(availability, 'Drone');
+        expect(availability.Drone.readyCount).toBe(1);
+        expect(availability.Drone.rebuildingCount).toBe(1);
+
+        // Recall: inPlay 1->0, ready 1->2
+        // Note: This creates ready > copyLimit - rebuildingCount temporarily
+        // The recalled drone goes back to ready, but the slot is still rebuilding
+        availability = onDroneRecalled(availability, 'Drone');
+        expect(availability.Drone.readyCount).toBe(2);
+        expect(availability.Drone.inPlayCount).toBe(0);
+        // The rebuilding slot continues - it was already building a replacement
+        expect(availability.Drone.rebuildingCount).toBe(1);
+      });
+    });
+
+    describe('Segment calculation for UI', () => {
+      it('rate 0.33 should take 3 rounds (3 segments)', () => {
+        let availability = initializeForCombat([
+          { name: 'SlowDrone', limit: 1, rebuildRate: 0.34 }
+        ]);
+
+        availability = onDroneDeployed(availability, 'SlowDrone');
+        expect(availability.SlowDrone.rebuildingCount).toBe(1);
+
+        // Round 1: progress 0.34
+        availability = processRebuildProgress(availability);
+        expect(availability.SlowDrone.rebuildProgress).toBeCloseTo(0.34);
+        expect(availability.SlowDrone.readyCount).toBe(0);
+
+        // Round 2: progress 0.68
+        availability = processRebuildProgress(availability);
+        expect(availability.SlowDrone.rebuildProgress).toBeCloseTo(0.68);
+        expect(availability.SlowDrone.readyCount).toBe(0);
+
+        // Round 3: progress 1.02, becomes ready
+        availability = processRebuildProgress(availability);
+        expect(availability.SlowDrone.readyCount).toBe(1);
+        expect(availability.SlowDrone.rebuildingCount).toBe(0);
+      });
     });
   });
 });

@@ -107,12 +107,6 @@ function DronesView({
         <div className={styles.handCardsContainer}>
           <div ref={droneGridRef} className={styles.handCardsWrapper}>
             {sortedLocalActivePool.map((drone, index) => {
-              // Debug: trace availability lookup
-              debugLog('AVAILABILITY', `[${drone.name}] DronesView lookup:`, {
-                availability: localPlayerState.droneAvailability?.[drone.name],
-                hasAvailabilityState: !!localPlayerState.droneAvailability
-              });
-
               const totalResource = roundNumber === 1
                 ? localPlayerState.initialDeploymentBudget + localPlayerState.energy
                 : localPlayerState.deploymentBudget + localPlayerState.energy;

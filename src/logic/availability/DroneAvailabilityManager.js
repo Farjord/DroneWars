@@ -87,11 +87,9 @@ export const processRebuildProgress = (droneAvailability) => {
         newState.readyCount += 1;
       }
 
-      // Cap ready count at copy limit (safety check)
-      const totalActive = newState.readyCount + newState.inPlayCount;
-      if (totalActive > newState.copyLimit) {
-        newState.readyCount = newState.copyLimit - newState.inPlayCount;
-      }
+      // NEW MODEL INVARIANT: readyCount + rebuildingCount = copyLimit (production slots)
+      // inPlayCount is tracked separately and represents drones on the board
+      // No cap needed since we only move units between ready and rebuilding
     }
 
     updated[droneName] = newState;
@@ -102,7 +100,10 @@ export const processRebuildProgress = (droneAvailability) => {
 
 /**
  * Handle drone deployment
- * Decrements readyCount, increments inPlayCount
+ * Decrements readyCount, increments inPlayCount AND starts rebuilding immediately
+ *
+ * NEW MODEL: When a drone deploys, its production slot immediately starts rebuilding
+ * This maintains invariant: readyCount + rebuildingCount = copyLimit
  *
  * @param {Object} droneAvailability - Current availability state
  * @param {string} droneName - Name of deployed drone
@@ -126,6 +127,7 @@ export const onDroneDeployed = (droneAvailability, droneName) => {
   if (updated[droneName].readyCount > 0) {
     updated[droneName].readyCount -= 1;
     updated[droneName].inPlayCount += 1;
+    updated[droneName].rebuildingCount += 1; // NEW: Start rebuilding immediately
     debugLog('AVAILABILITY', `[${droneName}] Deployed - new state:`, updated[droneName]);
   } else {
     debugLog('AVAILABILITY', `[${droneName}] Cannot deploy - no ready copies`);
@@ -136,8 +138,10 @@ export const onDroneDeployed = (droneAvailability, droneName) => {
 
 /**
  * Handle drone destruction
- * Decrements inPlayCount, increments rebuildingCount
- * Triggers rebuild process (will complete over future rounds)
+ * Only decrements inPlayCount (rebuild was already started on deployment)
+ *
+ * NEW MODEL: Rebuilding starts when drone deploys, not when destroyed
+ * Destruction just removes the drone from the board
  *
  * @param {Object} droneAvailability - Current availability state
  * @param {string} droneName - Name of destroyed drone
@@ -153,7 +157,7 @@ export const onDroneDestroyed = (droneAvailability, droneName) => {
   // Only process if we have drones in play
   if (updated[droneName].inPlayCount > 0) {
     updated[droneName].inPlayCount -= 1;
-    updated[droneName].rebuildingCount += 1;
+    // NOTE: No rebuildingCount++ - rebuild already started on deploy
   }
 
   return updated;

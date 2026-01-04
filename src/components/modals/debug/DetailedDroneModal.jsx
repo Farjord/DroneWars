@@ -24,9 +24,10 @@ const ICON_MAP = {
  * DetailedDroneModal - Displays detailed drone information in a modal
  * @param {boolean} isOpen - Whether the modal should be displayed
  * @param {Object} drone - The drone data to display
+ * @param {Object} droneAvailability - Availability state for all drones (keyed by name)
  * @param {Function} onClose - Callback when modal is closed
  */
-const DetailedDroneModal = ({ isOpen, drone, onClose }) => {
+const DetailedDroneModal = ({ isOpen, drone, droneAvailability, onClose }) => {
   const [selectedStat, setSelectedStat] = useState(null);
 
   // Don't render if not open or no drone data
@@ -60,6 +61,8 @@ const DetailedDroneModal = ({ isOpen, drone, onClose }) => {
                 isViewOnly={true}
                 onStatClick={setSelectedStat}
                 selectedStat={selectedStat}
+                availability={droneAvailability?.[drone?.name]}
+                enableDebug={true}
               />
             </div>
 

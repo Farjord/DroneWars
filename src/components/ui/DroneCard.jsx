@@ -46,7 +46,8 @@ const DroneCard = ({
   selectedStat,
   hasDeploymentBudget = false,
   availability,
-  rebuildRate
+  rebuildRate,
+  enableDebug = false
 }) => {
   // Calculate effective limit with upgrades
   let effectiveLimit = drone.limit;
@@ -279,6 +280,7 @@ const DroneCard = ({
                   droneName={name}
                   dotSize={10}
                   gap={2}
+                  enableDebug={enableDebug}
                 />
               </div>
 

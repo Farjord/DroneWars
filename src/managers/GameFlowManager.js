@@ -330,8 +330,9 @@ class GameFlowManager {
 
     // Guard: Guest mode doesn't handle turn transitions (host sends them)
     // This guard is AFTER pass playback handling so guests can trigger their own animations
-    if (currentState.gameMode === 'guest') {
-      debugLog('PASS_LOGIC', `🚫 [GUEST] Early return - guest mode blocks turn transitions`, {
+    // Only apply in actual P2P networked mode (when p2pManager exists)
+    if (currentState.gameMode === 'guest' && this.actionProcessor?.p2pManager) {
+      debugLog('PASS_LOGIC', `🚫 [GUEST] Early return - guest mode blocks turn transitions (P2P)`, {
         actionType
       });
       return;

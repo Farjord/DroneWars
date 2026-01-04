@@ -4775,7 +4775,12 @@ const App = ({ phaseAnimationQueue }) => {
         show={showOpponentDecidingModal}
         opponentName={opponentPlayerState?.name || 'Opponent'}
       />
-      <DetailedDroneModal isOpen={!!detailedDrone} drone={detailedDrone} onClose={() => setDetailedDrone(null)} />
+      <DetailedDroneModal
+        isOpen={!!detailedDrone}
+        drone={detailedDrone}
+        droneAvailability={localPlayerState?.droneAvailability}
+        onClose={() => setDetailedDrone(null)}
+      />
       <CardDetailModal isOpen={!!cardToView} card={cardToView} onClose={() => setCardToView(null)} />
       {aiCardPlayReport && <AICardPlayReportModal report={aiCardPlayReport} onClose={() => setAiCardPlayReport(null)} />}
       <AIDecisionLogModal
