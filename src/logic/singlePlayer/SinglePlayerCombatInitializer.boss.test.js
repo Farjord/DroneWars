@@ -294,3 +294,167 @@ describe('getBossAIByBossId', () => {
     expect(bossAI).toBeNull();
   });
 });
+
+/**
+ * TDD Tests for Boss Combat Ship Sections Loading
+ *
+ * Bug: initiateBossCombat creates minimal bossRunState without shipSections,
+ * causing buildPlayerState to fall back to defaults instead of using the
+ * player's configured ship slot sectionSlots.
+ */
+describe('initiateBossCombat - Ship Sections Loading', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it('should load ship sections from ship slot sectionSlots', async () => {
+    // Ship slot with custom sectionSlots configuration
+    gameStateManager.getState.mockReturnValue({
+      singlePlayerShipSlots: [{
+        id: 0,
+        status: 'active',
+        shipId: 'SHIP_001',
+        decklist: [{ id: 'CARD001', quantity: 4 }],
+        droneSlots: [{ slotIndex: 0, assignedDrone: 'Dart', slotDamaged: false }],
+        // Custom sectionSlots configuration
+        sectionSlots: {
+          l: { componentId: 'POWERCELL_001', damageDealt: 0 },
+          m: { componentId: 'BRIDGE_001', damageDealt: 0 },
+          r: { componentId: 'DRONECONTROL_001', damageDealt: 0 }
+        }
+      }],
+      singlePlayerProfile: {
+        bossProgress: {
+          defeatedBosses: [],
+          totalBossVictories: 0,
+          totalBossAttempts: 0
+        }
+      }
+    });
+
+    await SinglePlayerCombatInitializer.initiateBossCombat('BOSS_T1_NEMESIS', 0);
+
+    // Find the setState call that sets player1 state
+    const setStateCalls = gameStateManager.setState.mock.calls;
+    const gameStateCall = setStateCalls.find(call => call[0].player1?.shipSections);
+
+    expect(gameStateCall).toBeDefined();
+
+    // Should have loaded ship sections from sectionSlots, not defaults
+    const shipSections = gameStateCall[0].player1.shipSections;
+    expect(shipSections.bridge).toBeDefined();
+    expect(shipSections.bridge.id).toBe('BRIDGE_001');
+    expect(shipSections.powerCell).toBeDefined();
+    expect(shipSections.powerCell.id).toBe('POWERCELL_001');
+    expect(shipSections.droneControlHub).toBeDefined();
+    expect(shipSections.droneControlHub.id).toBe('DRONECONTROL_001');
+  });
+
+  it('should use custom component configurations from sectionSlots', async () => {
+    // Ship slot with custom upgraded components
+    gameStateManager.getState.mockReturnValue({
+      singlePlayerShipSlots: [{
+        id: 0,
+        status: 'active',
+        shipId: 'SHIP_001',
+        decklist: [{ id: 'CARD001', quantity: 4 }],
+        droneSlots: [],
+        sectionSlots: {
+          l: { componentId: 'POWERCELL_001', damageDealt: 0 },
+          m: { componentId: 'BRIDGE_001', damageDealt: 0 },
+          r: { componentId: 'DRONECONTROL_001', damageDealt: 0 }
+        }
+      }],
+      singlePlayerProfile: {
+        bossProgress: { defeatedBosses: [], totalBossVictories: 0, totalBossAttempts: 0 }
+      }
+    });
+
+    await SinglePlayerCombatInitializer.initiateBossCombat('BOSS_T1_NEMESIS', 0);
+
+    // Find the setState call that sets player1
+    const setStateCalls = gameStateManager.setState.mock.calls;
+    const gameStateCall = setStateCalls.find(call => call[0].player1?.shipSections);
+
+    expect(gameStateCall).toBeDefined();
+
+    // Each section should have component data from the mock shipComponentCollection
+    const shipSections = gameStateCall[0].player1.shipSections;
+    expect(shipSections.bridge.name).toBe('Bridge');
+    expect(shipSections.powerCell.name).toBe('Power Cell');
+    expect(shipSections.droneControlHub.name).toBe('Drone Control Hub');
+  });
+
+  it('should preserve lane assignments from sectionSlots', async () => {
+    gameStateManager.getState.mockReturnValue({
+      singlePlayerShipSlots: [{
+        id: 0,
+        status: 'active',
+        shipId: 'SHIP_001',
+        decklist: [],
+        droneSlots: [],
+        sectionSlots: {
+          l: { componentId: 'BRIDGE_001', damageDealt: 0 },  // Bridge in left lane (unusual)
+          m: { componentId: 'POWERCELL_001', damageDealt: 0 },
+          r: { componentId: 'DRONECONTROL_001', damageDealt: 0 }
+        }
+      }],
+      singlePlayerProfile: {
+        bossProgress: { defeatedBosses: [], totalBossVictories: 0, totalBossAttempts: 0 }
+      }
+    });
+
+    await SinglePlayerCombatInitializer.initiateBossCombat('BOSS_T1_NEMESIS', 0);
+
+    // Find the setState call with player1
+    const setStateCalls = gameStateManager.setState.mock.calls;
+    const gameStateCall = setStateCalls.find(call => call[0].player1?.shipSections);
+
+    expect(gameStateCall).toBeDefined();
+
+    // Lane assignments should be preserved
+    const shipSections = gameStateCall[0].player1.shipSections;
+    expect(shipSections.bridge.lane).toBe('l');
+    expect(shipSections.powerCell.lane).toBe('m');
+    expect(shipSections.droneControlHub.lane).toBe('r');
+  });
+
+  it('should apply damage from sectionSlots damageDealt', async () => {
+    gameStateManager.getState.mockReturnValue({
+      singlePlayerShipSlots: [{
+        id: 0,
+        status: 'active',
+        shipId: 'SHIP_001',
+        decklist: [],
+        droneSlots: [],
+        sectionSlots: {
+          l: { componentId: 'POWERCELL_001', damageDealt: 3 },  // 3 damage dealt
+          m: { componentId: 'BRIDGE_001', damageDealt: 0 },
+          r: { componentId: 'DRONECONTROL_001', damageDealt: 5 }  // 5 damage dealt
+        }
+      }],
+      singlePlayerProfile: {
+        bossProgress: { defeatedBosses: [], totalBossVictories: 0, totalBossAttempts: 0 }
+      }
+    });
+
+    await SinglePlayerCombatInitializer.initiateBossCombat('BOSS_T1_NEMESIS', 0);
+
+    // Find the setState call with player1
+    const setStateCalls = gameStateManager.setState.mock.calls;
+    const gameStateCall = setStateCalls.find(call => call[0].player1?.shipSections);
+
+    expect(gameStateCall).toBeDefined();
+
+    // Hull should be maxHull - damageDealt
+    // Mock calculateSectionBaseStats returns maxHull: 10
+    const shipSections = gameStateCall[0].player1.shipSections;
+    expect(shipSections.powerCell.hull).toBe(7);  // 10 - 3
+    expect(shipSections.bridge.hull).toBe(10);     // 10 - 0
+    expect(shipSections.droneControlHub.hull).toBe(5);  // 10 - 5
+  });
+});

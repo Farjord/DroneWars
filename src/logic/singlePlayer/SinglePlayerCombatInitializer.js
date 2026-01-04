@@ -402,18 +402,54 @@ class SinglePlayerCombatInitializer {
         }
       });
 
-      // 3. Create minimal run state for boss combat (no tactical map data)
+      // 3. Get ship slot and build ship sections from sectionSlots
+      const shipSlots = currentState.singlePlayerShipSlots || [];
+      const shipSlot = shipSlots.find(s => s.id === shipSlotId);
+
+      // Build shipSections from ship slot's sectionSlots configuration
+      let shipSections = {};
+      if (shipSlot?.sectionSlots) {
+        const shipCard = getShipById(shipSlot.shipId) || getDefaultShip();
+
+        for (const [lane, slotData] of Object.entries(shipSlot.sectionSlots)) {
+          if (slotData?.componentId) {
+            const component = shipComponentCollection.find(c => c.id === slotData.componentId);
+            if (component) {
+              const baseStats = calculateSectionBaseStats(shipCard, component);
+              // Use component.key as the section key (bridge, powerCell, droneControlHub)
+              shipSections[component.key] = {
+                ...JSON.parse(JSON.stringify(component)),
+                id: component.id,
+                hull: baseStats.maxHull - (slotData.damageDealt || 0),
+                maxHull: baseStats.maxHull,
+                shields: baseStats.shields ?? 0,
+                allocatedShields: baseStats.allocatedShields ?? 0,
+                thresholds: baseStats.thresholds,
+                lane: lane  // Preserve lane assignment from sectionSlots key
+              };
+            }
+          }
+        }
+        debugLog('SP_COMBAT', 'Built ship sections from sectionSlots:', {
+          bridge: shipSections.bridge?.name,
+          powerCell: shipSections.powerCell?.name,
+          droneControlHub: shipSections.droneControlHub?.name
+        });
+      }
+
+      // 4. Create run state for boss combat with ship sections
       const bossRunState = {
         shipSlotId: shipSlotId,
         isBossCombat: true,
-        bossId: bossId
+        bossId: bossId,
+        shipSections: shipSections
       };
 
-      // 4. Use existing initiateCombat but with boss-specific flags
+      // 5. Use existing initiateCombat but with boss-specific flags
       // We call initiateCombat internally with the boss AI name
       const result = await this.initiateCombat(bossAI.name, bossRunState, null, false);
 
-      // 5. After initiateCombat, update the singlePlayerEncounter with boss flags
+      // 6. After initiateCombat, update the singlePlayerEncounter with boss flags
       if (result) {
         const state = gameStateManager.getState();
         gameStateManager.setState({

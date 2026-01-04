@@ -29,10 +29,14 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
   const [showBlueprintModal, setShowBlueprintModal] = useState(false);
   const isVictory = winner === localPlayerId;
 
-  // Check if this is single-player extraction mode
+  // Check if this is single-player extraction mode or boss combat
   // Note: gameMode is 'local' during extraction combat (for AI compatibility), so check singlePlayerEncounter instead
   const gameState = gameStateManager.getState();
+  const isBossCombat = gameState.singlePlayerEncounter?.isBossCombat === true;
   const isSinglePlayerExtraction = gameState.singlePlayerEncounter && tacticalMapStateManager.isRunActive();
+
+  // Show extraction-style buttons for both extraction runs and boss combat
+  const showExtractionButtons = isSinglePlayerExtraction || isBossCombat;
 
   if (!show) return null;
 
@@ -59,6 +63,25 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
   };
 
   /**
+   * Handle collecting rewards after boss victory
+   * Boss loot is already stored in pendingLoot by processBossVictory
+   */
+  const handleBossCollectRewards = () => {
+    // For boss combat, loot is already stored in pendingLoot (set by processBossVictory during combat end)
+    // If not yet processed, process now
+    const currentState = gameStateManager.getState();
+    if (currentState.pendingLoot) {
+      setLootToReveal(currentState.pendingLoot);
+    } else {
+      // Process combat outcome to get boss loot
+      const result = CombatOutcomeProcessor.processCombatEnd(currentState);
+      if (result.success && result.outcome === 'victory' && result.loot) {
+        setLootToReveal(result.loot);
+      }
+    }
+  };
+
+  /**
    * Handle defeat - return to hangar
    */
   const handleDefeatContinue = () => {
@@ -81,6 +104,17 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
     if (updatedState.hasPendingDroneBlueprint && updatedState.pendingDroneBlueprint) {
       setShowBlueprintModal(true);
     }
+  };
+
+  /**
+   * Handle boss loot collection complete
+   * Called when user has revealed boss rewards and clicked Continue
+   * Returns to hangar after applying rewards to profile
+   */
+  const handleBossLootCollected = (loot) => {
+    // Finalize boss loot collection - applies rewards and returns to hangar
+    CombatOutcomeProcessor.finalizeBossLootCollection(loot);
+    setLootToReveal(null);
   };
 
   /**
@@ -169,8 +203,8 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
 
         {/* Action Buttons */}
         <div className="flex gap-6 z-20">
-          {isSinglePlayerExtraction ? (
-            // Single-player extraction mode buttons
+          {showExtractionButtons ? (
+            // Single-player extraction mode or boss combat buttons
             <>
               <button
                 onClick={handleViewBoard}
@@ -180,14 +214,14 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
               </button>
               {isVictory ? (
                 <button
-                  onClick={handleCollectSalvage}
+                  onClick={isBossCombat ? handleBossCollectRewards : handleCollectSalvage}
                   className="dw-btn dw-btn-confirm text-xl px-8 py-4"
                   style={{
                     background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)',
                     boxShadow: '0 4px 15px rgba(139, 92, 246, 0.4)'
                   }}
                 >
-                  Collect Salvage
+                  {isBossCombat ? 'Collect Rewards' : 'Collect Salvage'}
                 </button>
               ) : (
                 <button
@@ -218,10 +252,10 @@ const WinnerModal = ({ winner, localPlayerId, show, onClose }) => {
         </div>
       </div>
 
-      {/* Loot Reveal Modal - shown after clicking Collect Salvage */}
+      {/* Loot Reveal Modal - shown after clicking Collect Salvage/Collect Rewards */}
       <LootRevealModal
         loot={lootToReveal}
-        onCollect={handleLootCollected}
+        onCollect={isBossCombat ? handleBossLootCollected : handleLootCollected}
         show={!!lootToReveal}
       />
 
