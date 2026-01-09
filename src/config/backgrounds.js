@@ -49,7 +49,7 @@ export const BACKGROUNDS = [
   // }
 ];
 
-export const DEFAULT_BACKGROUND = 'animated';
+export const DEFAULT_BACKGROUND = 'orbit_1';
 
 /**
  * Get background configuration by ID

@@ -337,6 +337,7 @@ const App = ({ phaseAnimationQueue }) => {
   const gameAreaRef = useRef(null);
   const isResolvingAttackRef = useRef(false);
   const previousPhaseRef = useRef(null); // Track previous turnPhase for guest phase detection
+  const footerPreviousPhaseRef = useRef(null); // Separate ref for footer view switching (avoids race condition with previousPhaseRef)
   const roundStartCascadeTriggered = useRef(false); // Prevent duplicate round start cascade triggers
   const deploymentToActionTriggered = useRef(false); // Prevent duplicate deployment → action triggers
   // NOTE: enteredMandatoryDiscardWithExcess and enteredMandatoryRemovalWithExcess refs REMOVED
@@ -1877,7 +1878,7 @@ const App = ({ phaseAnimationQueue }) => {
   // Manage ability-based mandatory action clearing and UI state for mandatory phases
   // Note: Phase-based mandatory actions now derive UI state from turnPhase + commitments (see Section 5.5)
   useEffect(() => {
-    const prevPhase = previousPhaseRef.current;
+    const prevPhase = footerPreviousPhaseRef.current;
     const enteredMandatoryDiscard = turnPhase === 'mandatoryDiscard' && prevPhase !== 'mandatoryDiscard';
     const enteredMandatoryRemoval = turnPhase === 'mandatoryDroneRemoval' && prevPhase !== 'mandatoryDroneRemoval';
     const enteredOptionalDiscard = turnPhase === 'optionalDiscard' && prevPhase !== 'optionalDiscard';
@@ -1925,7 +1926,7 @@ const App = ({ phaseAnimationQueue }) => {
     }
 
     // Update ref for next comparison
-    previousPhaseRef.current = turnPhase;
+    footerPreviousPhaseRef.current = turnPhase;
   }, [turnPhase, mandatoryAction]);
 
   // --- 8.10 SIMULTANEOUS PHASE WAITING MODAL ---
