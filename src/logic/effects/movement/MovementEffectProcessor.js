@@ -10,6 +10,7 @@ import { applyOnMoveEffects } from '../../utils/abilityHelpers.js';
 import { updateAuras } from '../../utils/auraManager.js';
 import fullDroneCollection from '../../../data/droneData.js';
 import { buildDefaultMovementAnimation } from './animations/DefaultMovementAnimation.js';
+import { debugLog } from '../../../utils/debugLogger.js';
 
 /**
  * MovementEffectProcessor
@@ -242,6 +243,15 @@ class MovementEffectProcessor extends BaseEffectProcessor {
   executeSingleMove(card, droneToMove, fromLane, toLane, actingPlayerId, newPlayerStates, opponentPlayerId, context) {
     const { effect } = card;
     const { callbacks, placedSections } = context;
+
+    debugLog('MOVEMENT_EFFECT', 'executeSingleMove - card effect check', {
+      cardName: card.name,
+      cardId: card.id,
+      effectType: effect?.type,
+      effectProperties: effect?.properties,
+      hasDoNotExhaust: effect?.properties?.includes('DO_NOT_EXHAUST'),
+      droneCurrentExhausted: droneToMove.isExhausted
+    });
     const { logCallback } = callbacks;
 
     const actingPlayerState = newPlayerStates[actingPlayerId];
@@ -275,6 +285,12 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       isExhausted: effect.properties?.includes('DO_NOT_EXHAUST') ? droneToMove.isExhausted : true
     };
     actingPlayerState.dronesOnBoard[toLane].push(movedDrone);
+
+    debugLog('MOVEMENT_EFFECT', 'executeSingleMove - drone exhaustion result', {
+      droneName: movedDrone.name,
+      isExhausted: movedDrone.isExhausted,
+      expectedNonExhausted: effect?.properties?.includes('DO_NOT_EXHAUST')
+    });
 
     // Log the movement
     logCallback({

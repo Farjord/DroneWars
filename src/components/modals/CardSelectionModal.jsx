@@ -51,7 +51,7 @@ const CardSelectionModal = ({ isOpen, onClose, onConfirm, selectionData }) => {
   const canConfirm = selectedCards.length === drawCount;
 
   return (
-    <div className="dw-modal-overlay" onClick={handleClose}>
+    <div className="dw-modal-overlay">
       <div
         className="dw-modal-content dw-modal--xxl dw-modal--action"
         style={{ maxWidth: '1280px', width: '95vw', height: '90vh', display: 'flex', flexDirection: 'column' }}
@@ -106,7 +106,7 @@ const CardSelectionModal = ({ isOpen, onClose, onConfirm, selectionData }) => {
                   >
                     <ActionCard
                       card={card}
-                      onClick={() => {}}
+                      onClick={() => handleCardClick(card)}
                       isPlayable={true}
                       isSelected={false}
                     />
@@ -125,9 +125,6 @@ const CardSelectionModal = ({ isOpen, onClose, onConfirm, selectionData }) => {
 
         {/* Actions */}
         <div className="dw-modal-actions">
-          <button className="dw-btn dw-btn-cancel" onClick={handleClose}>
-            Cancel
-          </button>
           <button
             className="dw-btn dw-btn-confirm"
             onClick={handleConfirm}

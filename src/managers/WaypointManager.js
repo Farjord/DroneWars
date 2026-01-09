@@ -31,6 +31,12 @@ class WaypointManager {
   restorePathAfterCombat() {
     const runState = tacticalMapStateManager.getState();
 
+    // Diagnostic logging for debugging waypoint restoration issues
+    console.log('[WaypointManager] restorePathAfterCombat:', {
+      pendingPathLength: runState?.pendingPath?.length || 0,
+      pendingDestinationsLength: runState?.pendingWaypointDestinations?.length || 0
+    });
+
     if (!runState?.pendingPath || runState.pendingPath.length === 0) {
       return null;
     }
@@ -51,6 +57,26 @@ class WaypointManager {
     // Build waypoints by grouping hexes by destination
     let currentPathHexes = [playerPosition];  // Start from current player position
     let pathIndex = 0;
+
+    // Fallback: if path exists but no waypoint destinations, create synthetic waypoint
+    if (pendingPath.length > 0 && pendingWaypointDestinations.length === 0) {
+      const lastHex = pathHexes[pathHexes.length - 1];
+      debugLog('WAYPOINT_MANAGER', 'Using fallback - creating synthetic waypoint from path', {
+        pathLength: pendingPath.length,
+        destination: `(${lastHex.q},${lastHex.r})`
+      });
+
+      // NOTE: State clearing moved to caller (TacticalMapScreen) to support React StrictMode double-mount
+
+      return [{
+        hex: lastHex,
+        pathFromPrev: [playerPosition, ...pathHexes],
+        segmentCost: pathHexes.length,  // Approximate cost
+        cumulativeDetection: 0,
+        segmentEncounterRisk: 0,
+        cumulativeEncounterRisk: 0
+      }];
+    }
 
     for (let i = 0; i < pendingWaypointDestinations.length; i++) {
       const waypointData = pendingWaypointDestinations[i];
@@ -84,11 +110,7 @@ class WaypointManager {
       currentPathHexes = [destination];
     }
 
-    // Clear stored path after restoration
-    tacticalMapStateManager.setState({
-      pendingPath: null,
-      pendingWaypointDestinations: null
-    });
+    // NOTE: State clearing moved to caller (TacticalMapScreen) to support React StrictMode double-mount
 
     debugLog('WAYPOINT_MANAGER', 'Restored path after combat', {
       waypointsRestored: waypoints.length,

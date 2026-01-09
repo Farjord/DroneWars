@@ -104,7 +104,7 @@ const shipComponentCollection = [
       id: 'ABILITY_SHIP_04',
       name: 'Target Lock',
       description: 'Mark target enemy drone.',
-      cost: { energy: 2 },
+      cost: { energy: 1 },
       targeting: {
         type: 'DRONE',
         affinity: 'ENEMY',
@@ -167,11 +167,11 @@ const shipComponentCollection = [
     description: 'Controls your drone fleet.',
     thresholds: { damaged: 5, critical: 0 },
     stats: {
-      healthy: { 'Initial Deployment': 10, 'CPU Control Value': 8, 'Deployment Budget': 6 },
-      damaged: { 'Initial Deployment': 10, 'CPU Control Value': 8, 'Deployment Budget': 4 },
-      critical: { 'Initial Deployment': 10, 'CPU Control Value': 6, 'Deployment Budget': 4 },
+      healthy: { 'Initial Deployment': 10, 'CPU Control Value': 8, 'Deployment Budget': 4 },
+      damaged: { 'Initial Deployment': 10, 'CPU Control Value': 8, 'Deployment Budget': 2 },
+      critical: { 'Initial Deployment': 10, 'CPU Control Value': 6, 'Deployment Budget': 2 },
     },
-    middleLaneBonus: {'Initial Deployment': 2, 'Deployment Budget': 1, 'CPU Control Value': 1 },
+    middleLaneBonus: {'Initial Deployment': 2, 'Deployment Budget': 4, 'CPU Control Value': 0 },
     image: '/DroneWars/img/Drone_Control_Hub.png',
     ability: {
       id: 'ABILITY_SHIP_03',

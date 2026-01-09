@@ -14,6 +14,7 @@
 
 import BaseEffectProcessor from '../BaseEffectProcessor.js';
 import { getLaneOfDrone } from '../../utils/gameEngineUtils.js';
+import { calculateEffectiveStats } from '../../statsCalculator.js';
 import { gameEngine } from '../../gameLogic.js';
 import { resolveAttack } from '../../combat/AttackProcessor.js';
 import { debugLog } from '../../../utils/debugLogger.js';
@@ -164,6 +165,48 @@ class DamageEffectProcessor extends BaseEffectProcessor {
       affectedDrones = droneSnapshot.length > 0 ? [droneSnapshot[0]] : [];
     } else if (effect.filter.targetType === 'BACK_MOST') {
       affectedDrones = droneSnapshot.length > 0 ? [droneSnapshot[droneSnapshot.length - 1]] : [];
+    }
+
+    // Apply stat-based filtering (e.g., speed LTE 4 for Sidewinder Missiles)
+    if (effect.filter.stat) {
+      const { stat, comparison, value } = effect.filter;
+      const actingPlayerState = newPlayerStates[actingPlayerId];
+
+      affectedDrones = affectedDrones.filter(drone => {
+        // Calculate effective stats to include upgrades, auras, and ability modifiers
+        const effectiveStats = calculateEffectiveStats(
+          drone,
+          laneId,
+          targetPlayerState,
+          actingPlayerState,
+          placedSections || {}
+        );
+        const statValue = effectiveStats[stat] !== undefined ? effectiveStats[stat] : drone[stat];
+
+        let meetsCondition = false;
+        switch (comparison) {
+          case 'LTE':
+            meetsCondition = statValue <= value;
+            break;
+          case 'GTE':
+            meetsCondition = statValue >= value;
+            break;
+          case 'EQ':
+            meetsCondition = statValue === value;
+            break;
+          case 'GT':
+            meetsCondition = statValue > value;
+            break;
+          case 'LT':
+            meetsCondition = statValue < value;
+            break;
+          default:
+            meetsCondition = true;
+        }
+
+        debugLog('COMBAT', `[DAMAGE FILTERED] ${drone.name} ${stat}=${statValue} ${comparison} ${value} = ${meetsCondition}`);
+        return meetsCondition;
+      });
     }
 
     // Track damage results for animation

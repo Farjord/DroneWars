@@ -49,6 +49,7 @@ class GameFlowManager {
     // External system references (injected)
     this.gameStateManager = null;
     this.actionProcessor = null;
+    this.actionProcessorUnsubscribe = null; // Store unsubscribe function to prevent duplicate subscriptions
     this.phaseAnimationQueue = phaseAnimationQueue; // For non-blocking phase announcements
     this.isMultiplayer = false;
     this.gameDataService = null;
@@ -198,8 +199,15 @@ class GameFlowManager {
    * Call this after actionProcessor.clearQueue() which wipes out listeners
    */
   resubscribe() {
+    // Unsubscribe existing listener first to prevent duplicate subscriptions
+    // This fixes turn transitions flipping back in VS/Multiplayer mode
+    if (this.actionProcessorUnsubscribe) {
+      this.actionProcessorUnsubscribe();
+      this.actionProcessorUnsubscribe = null;
+    }
+
     if (this.actionProcessor) {
-      this.actionProcessor.subscribe((event) => {
+      this.actionProcessorUnsubscribe = this.actionProcessor.subscribe((event) => {
         if (event.type === 'action_completed') {
           debugLog('PASS_LOGIC', `📥 [GAME FLOW] Received action_completed event (resubscribed)`, {
             actionType: event.actionType,

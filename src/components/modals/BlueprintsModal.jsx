@@ -135,6 +135,15 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
    * Handle craft button click
    */
   const handleCraft = (blueprint) => {
+    // Validate blueprint is unlocked (for non-ship-cards)
+    if (!isShipCard(blueprint) && !blueprint.isUnlocked) {
+      setFeedback({
+        type: 'error',
+        message: 'This blueprint is not unlocked yet'
+      });
+      return;
+    }
+
     const craftCost = blueprint.craftCost;
     const aiCoresCost = blueprint.aiCoresCost;
 
@@ -473,7 +482,7 @@ const BlueprintsModal = ({ onClose, onShowHelp }) => {
                       )}
 
                       {/* Craft/Unlock Button */}
-                      {(!isShipCard(blueprint) || !blueprint.isUnlocked) && (
+                      {((blueprint.isUnlocked && !isShipCard(blueprint)) || (!blueprint.isUnlocked && isShipCard(blueprint))) && (
                         <button
                           className={`dw-btn dw-btn-confirm ${!canAfford ? 'opacity-50 cursor-not-allowed' : ''}`}
                           style={{

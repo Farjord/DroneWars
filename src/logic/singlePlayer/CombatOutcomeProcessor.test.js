@@ -1060,6 +1060,129 @@ describe('CombatOutcomeProcessor', () => {
   })
 
   /**
+   * TDD Tests: Waypoint Preservation for Blueprint Victory
+   *
+   * BUG FIX: When player wins combat at a Blueprint PoI, waypoint data
+   * (pendingPath and pendingWaypointDestinations) stored by TransitionManager
+   * should NOT be overwritten by the blueprint victory state update.
+   */
+  describe('Waypoint Preservation for Blueprint Victory', () => {
+    it('should preserve pendingPath when blueprint modal is pending', () => {
+      // EXPLANATION: When a blueprint victory occurs, waypoint data stored by
+      // TransitionManager must NOT be overwritten. This ensures waypoints restore
+      // after player dismisses the blueprint modal.
+
+      const mockPendingPath = ['0,0', '1,0', '2,0', '3,0']
+      const mockWaypointDestinations = [
+        { hex: '1,0', label: 'waypoint1' },
+        { hex: '3,0', label: 'waypoint2' }
+      ]
+
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0,
+        pendingPOICombat: { packType: 'DRONE_BLUEPRINT_FIGHTER' },
+        pendingPath: mockPendingPath,
+        pendingWaypointDestinations: mockWaypointDestinations
+      })
+
+      gameStateManager.getState.mockReturnValue({
+        pendingDroneBlueprint: { blueprintId: 'TestDrone' },
+        singlePlayerEncounter: {}
+      })
+
+      const combatLoot = { cards: [], salvageItem: null, aiCores: 0 }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT: pendingPath and pendingWaypointDestinations should be preserved
+      const setStateCalls = tacticalMapStateManager.setState.mock.calls
+      const finalCall = setStateCalls[setStateCalls.length - 1][0]
+
+      expect(finalCall.pendingPath).toEqual(mockPendingPath)
+      expect(finalCall.pendingWaypointDestinations).toEqual(mockWaypointDestinations)
+    })
+
+    it('should preserve pendingWaypointDestinations when blueprint modal is pending', () => {
+      const mockWaypointDestinations = [
+        { hex: '2,-1', label: 'gate' }
+      ]
+
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0,
+        pendingPath: ['0,0', '1,0', '2,-1'],
+        pendingWaypointDestinations: mockWaypointDestinations
+      })
+
+      gameStateManager.getState.mockReturnValue({
+        pendingDroneBlueprint: { blueprintId: 'AnotherDrone' },
+        singlePlayerEncounter: {}
+      })
+
+      const combatLoot = { cards: [], salvageItem: null, aiCores: 0 }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT
+      const setStateCalls = tacticalMapStateManager.setState.mock.calls
+      const finalCall = setStateCalls[setStateCalls.length - 1][0]
+
+      expect(finalCall.pendingWaypointDestinations).toEqual(mockWaypointDestinations)
+    })
+  })
+
+  /**
+   * TDD Tests: Waypoint Preservation for Regular Victory (Part 3)
+   *
+   * BUG FIX: Regular victory path (non-blueprint) also needs to preserve
+   * waypoint data. Line 536-542 was missing pendingPath and pendingWaypointDestinations.
+   */
+  describe('Waypoint Preservation for Regular Victory', () => {
+    it('should preserve pendingPath and pendingWaypointDestinations during regular victory', () => {
+      // EXPLANATION: When regular combat victory occurs (no blueprint), waypoint data
+      // stored by TransitionManager must still be preserved for post-modal restoration.
+
+      const mockPendingPath = ['0,0', '1,0', '2,0', '3,0', '4,0']
+      const mockWaypointDestinations = [
+        { hex: { q: 2, r: 0 }, segmentCost: 5 },
+        { hex: { q: 4, r: 0 }, segmentCost: 7 }
+      ]
+
+      tacticalMapStateManager.getState.mockReturnValue({
+        collectedLoot: [],
+        creditsEarned: 0,
+        aiCoresEarned: 0,
+        pendingPOICombat: { packType: 'REGULAR_PACK' },  // Non-blueprint
+        pendingPath: mockPendingPath,
+        pendingWaypointDestinations: mockWaypointDestinations
+      })
+
+      // NO pending drone blueprint - this is regular victory
+      gameStateManager.getState.mockReturnValue({
+        pendingDroneBlueprint: null,
+        singlePlayerEncounter: {}
+      })
+
+      const combatLoot = { cards: [], salvageItem: null, aiCores: 0 }
+
+      // ACT
+      CombatOutcomeProcessor.finalizeLootCollection(combatLoot)
+
+      // ASSERT: pendingPath and pendingWaypointDestinations should be preserved
+      const setStateCalls = tacticalMapStateManager.setState.mock.calls
+      const finalCall = setStateCalls[setStateCalls.length - 1][0]
+
+      expect(finalCall.pendingPath).toEqual(mockPendingPath)
+      expect(finalCall.pendingWaypointDestinations).toEqual(mockWaypointDestinations)
+    })
+  })
+
+  /**
    * TDD Tests: Salvage State Preservation for Post-Combat Return
    *
    * When combat is triggered during salvage, we need to:

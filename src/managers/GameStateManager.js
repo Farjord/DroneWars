@@ -27,6 +27,7 @@ import { generateRandomShopPack, getPackCostForTier } from '../data/cardPackData
 import rewardManager from './RewardManager.js';
 import aiPhaseProcessor from './AIPhaseProcessor.js';
 import tacticalMapStateManager from './TacticalMapStateManager.js';
+import transitionManager from './TransitionManager.js';
 // PhaseManager dependency removed - using direct phase checks
 
 class GameStateManager {
@@ -2756,6 +2757,11 @@ class GameStateManager {
       // runAbandoning must be false or SinglePlayerCombatInitializer will reject combat init
       runAbandoning: false,
     });
+
+    // CRITICAL: Reset TransitionManager to clear any stale transition state from previous runs
+    // This prevents "Transition already in progress" errors when entering combat
+    transitionManager.forceReset();
+
     console.log('Run started via TacticalMapStateManager');
     console.log('Map generated:', mapData.name, `(${mapData.poiCount} PoIs, ${mapData.gateCount} gates)`);
   }
@@ -2887,6 +2893,16 @@ class GameStateManager {
       })
       .filter(Boolean);
 
+    // Get blueprint data for collected blueprints
+    const blueprintsCollected = (runState.collectedLoot || [])
+      .filter(item => item.type === 'blueprint')
+      .map(item => ({
+        blueprintId: item.blueprintId,
+        blueprintType: item.blueprintType || 'drone',
+        rarity: item.rarity,
+        droneData: item.droneData
+      }));
+
     // Calculate credits from salvage items in collectedLoot (not legacy creditsEarned)
     const extractedCredits = calculateExtractedCredits(runState.collectedLoot || []);
 
@@ -2905,6 +2921,7 @@ class GameStateManager {
       poisVisited: runState.poisVisited?.length || 0,
       totalPois: runState.mapData?.poiCount || 0,
       cardsCollected, // Full card objects for display
+      blueprintsCollected, // Drone blueprints unlocked this run
       creditsEarned: extractedCredits, // Calculated from salvage items
       aiCoresEarned: runState.aiCoresEarned || 0,
 

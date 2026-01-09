@@ -88,10 +88,12 @@ export function getShipHeadingForWaypoints(
     return calculateHexHeading(playerPosition, currentWaypoint.hex);
   }
 
-  // Not moving - check if at first waypoint position
-  if (playerPosition.q === waypoints[0].hex.q &&
-      playerPosition.r === waypoints[0].hex.r) {
+  // Not moving - check if at last waypoint position (journey endpoint)
+  // After completing a journey, player is at the LAST waypoint, not the first
+  const lastWaypoint = waypoints[waypoints.length - 1];
+  if (playerPosition.q === lastWaypoint.hex.q &&
+      playerPosition.r === lastWaypoint.hex.r) {
     return lastHeading;
   }
-  return calculateHexHeading(playerPosition, waypoints[0].hex);
+  return calculateHexHeading(playerPosition, lastWaypoint.hex);
 }

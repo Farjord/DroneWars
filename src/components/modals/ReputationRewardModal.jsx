@@ -49,11 +49,9 @@ function ReputationRewardModal({ onClose }) {
     // Add cards to inventory
     const state = gameStateManager.getState();
 
-    loot.cards.forEach(item => {
-      if (item.type === 'card') {
-        state.singlePlayerInventory[item.cardId] =
-          (state.singlePlayerInventory[item.cardId] || 0) + 1;
-      }
+    loot.cards.forEach(card => {
+      state.singlePlayerInventory[card.cardId] =
+        (state.singlePlayerInventory[card.cardId] || 0) + 1;
     });
 
     // Add credits

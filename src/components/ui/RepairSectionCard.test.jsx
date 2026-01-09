@@ -49,6 +49,9 @@ const mockDamagedProps = {
   onRepair: vi.fn(),
   repairCost: 600,
   canAfford: true,
+  onRepairOne: vi.fn(),
+  repairOneCost: 200,
+  canAffordOne: true,
   lane: 'm'
 };
 
@@ -71,6 +74,9 @@ const mockCannotAffordProps = {
   onRepair: vi.fn(),
   repairCost: 600,
   canAfford: false,
+  onRepairOne: vi.fn(),
+  repairOneCost: 200,
+  canAffordOne: false,
   lane: 'm'
 };
 
@@ -158,7 +164,8 @@ describe('RepairSectionCard', () => {
   describe('Repair Button', () => {
     it('should show repair button when damaged', () => {
       render(<RepairSectionCard {...mockDamagedProps} />);
-      expect(screen.getByRole('button', { name: /repair/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /repair 1 hp/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /repair all/i })).toBeInTheDocument();
     });
 
     it('should NOT show repair button when not damaged', () => {
@@ -173,13 +180,13 @@ describe('RepairSectionCard', () => {
 
     it('should enable repair button when can afford', () => {
       render(<RepairSectionCard {...mockDamagedProps} />);
-      const button = screen.getByRole('button', { name: /repair/i });
+      const button = screen.getByRole('button', { name: /repair all/i });
       expect(button).not.toBeDisabled();
     });
 
     it('should disable repair button when cannot afford', () => {
       render(<RepairSectionCard {...mockCannotAffordProps} />);
-      const button = screen.getByRole('button', { name: /repair/i });
+      const button = screen.getByRole('button', { name: /repair all/i });
       expect(button).toBeDisabled();
     });
 
@@ -187,7 +194,7 @@ describe('RepairSectionCard', () => {
       const onRepair = vi.fn();
       render(<RepairSectionCard {...mockDamagedProps} onRepair={onRepair} />);
 
-      fireEvent.click(screen.getByRole('button', { name: /repair/i }));
+      fireEvent.click(screen.getByRole('button', { name: /repair all/i }));
 
       expect(onRepair).toHaveBeenCalledTimes(1);
     });
@@ -196,7 +203,7 @@ describe('RepairSectionCard', () => {
       const onRepair = vi.fn();
       render(<RepairSectionCard {...mockCannotAffordProps} onRepair={onRepair} />);
 
-      const button = screen.getByRole('button', { name: /repair/i });
+      const button = screen.getByRole('button', { name: /repair all/i });
       fireEvent.click(button);
 
       expect(onRepair).not.toHaveBeenCalled();

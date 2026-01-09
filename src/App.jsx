@@ -190,7 +190,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [modalContent, setModalContent] = useState(null);
   const [deploymentConfirmation, setDeploymentConfirmation] = useState(null);
   const [moveConfirmation, setMoveConfirmation] = useState(null);
-  const [detailedDrone, setDetailedDrone] = useState(null);
+  const [detailedDroneInfo, setDetailedDroneInfo] = useState(null); // { drone, isPlayer }
   const [cardToView, setCardToView] = useState(null);
   const [waitingForPlayerPhase, setWaitingForPlayerPhase] = useState(null); // Track which phase we're waiting for player acknowledgment
   const [showWinnerModal, setShowWinnerModal] = useState(false);
@@ -3286,7 +3286,16 @@ const App = ({ phaseAnimationQueue }) => {
 
       if (Math.abs(sourceLaneIndex - targetLaneIndex) === 1) {
         debugLog('DRAG_DROP_DEPLOY', '🏃 Move initiated via drag', { drone: attackerDrone.name, from: sourceLane, to: targetLane });
-        setMoveConfirmation({ drone: attackerDrone, from: sourceLane, to: targetLane });
+        // Include card from multiSelectState if movement card is active
+        const movementCard = multiSelectState?.card?.effect?.type === 'SINGLE_MOVE' ||
+                             multiSelectState?.card?.effect?.type === 'MULTI_MOVE'
+                             ? multiSelectState.card : null;
+        setMoveConfirmation({
+          drone: attackerDrone,
+          from: sourceLane,
+          to: targetLane,
+          card: movementCard  // Include card for card-based movement
+        });
       } else {
         debugLog('DRAG_DROP_DEPLOY', '⛔ Move blocked - not adjacent', { sourceLane, targetLane });
         setModalContent({ title: "Invalid Move", text: "Drones can only move to adjacent lanes.", isBlocking: true });
@@ -3588,7 +3597,7 @@ const App = ({ phaseAnimationQueue }) => {
 
       // 5. Fallback: show drone details (click always opens info modal, drag handles attacks)
       debugLog('COMBAT', "Action: Fallback - showing drone details.");
-      setDetailedDrone(token);
+      setDetailedDroneInfo({ drone: token, isPlayer });
   };
   
   /**
@@ -3677,7 +3686,7 @@ const App = ({ phaseAnimationQueue }) => {
 
       // If no ability/card is active, clicking any drone just shows its details.
       if (targetType === 'drone') {
-          setDetailedDrone(target);
+          setDetailedDroneInfo({ drone: target, isPlayer });
       }
   };
 
@@ -3780,7 +3789,11 @@ const App = ({ phaseAnimationQueue }) => {
         const targetLaneIndex = parseInt(lane.replace('lane', ''), 10);
 
         if (Math.abs(sourceLaneIndex - targetLaneIndex) === 1) {
-           setMoveConfirmation({ drone: selectedDrone, from: sourceLaneName, to: lane });
+           // Include card from multiSelectState if movement card is active
+           const movementCard = multiSelectState?.card?.effect?.type === 'SINGLE_MOVE' ||
+                                multiSelectState?.card?.effect?.type === 'MULTI_MOVE'
+                                ? multiSelectState.card : null;
+           setMoveConfirmation({ drone: selectedDrone, from: sourceLaneName, to: lane, card: movementCard });
         } else {
            setModalContent({ title: "Invalid Move", text: "Drones can only move to adjacent lanes.", isBlocking: true });
         }
@@ -4776,10 +4789,14 @@ const App = ({ phaseAnimationQueue }) => {
         opponentName={opponentPlayerState?.name || 'Opponent'}
       />
       <DetailedDroneModal
-        isOpen={!!detailedDrone}
-        drone={detailedDrone}
-        droneAvailability={localPlayerState?.droneAvailability}
-        onClose={() => setDetailedDrone(null)}
+        isOpen={!!detailedDroneInfo}
+        drone={detailedDroneInfo?.drone}
+        droneAvailability={
+          detailedDroneInfo?.isPlayer
+            ? localPlayerState?.droneAvailability
+            : opponentPlayerState?.droneAvailability
+        }
+        onClose={() => setDetailedDroneInfo(null)}
       />
       <CardDetailModal isOpen={!!cardToView} card={cardToView} onClose={() => setCardToView(null)} />
       {aiCardPlayReport && <AICardPlayReportModal report={aiCardPlayReport} onClose={() => setAiCardPlayReport(null)} />}
@@ -4896,6 +4913,7 @@ const App = ({ phaseAnimationQueue }) => {
         onClose={() => setShowOpponentDronesModal(false)}
         drones={opponentSelectedDrones}
         appliedUpgrades={opponentPlayerState.appliedUpgrades}
+        droneAvailability={opponentPlayerState.droneAvailability}
       />
 
       <GameDebugModal

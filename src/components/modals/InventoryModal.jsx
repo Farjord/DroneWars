@@ -153,8 +153,11 @@ const InventoryModal = ({ onClose, onShowHelp }) => {
   /**
    * Enriched drone data with ownership info
    * Shows all drones with discoveryState for placeholder rendering
+   * discoveryState: 'owned' (starter or crafted), 'discovered' (blueprint unlocked), 'undiscovered'
    */
   const enrichedDrones = useMemo(() => {
+    const unlockedBlueprints = singlePlayerProfile?.unlockedBlueprints || [];
+
     return fullDroneCollection.map(drone => {
       const droneId = drone.name || drone.id;
       const isStarterDrone = slot0Drones.includes(droneId);
@@ -166,15 +169,32 @@ const InventoryModal = ({ onClose, onShowHelp }) => {
 
       const isOwned = isStarterDrone || ownedInstances.length > 0;
 
+      // Check if blueprint is unlocked (can be crafted but hasn't been yet)
+      const isBlueprintUnlocked = unlockedBlueprints.includes(droneId);
+
+      // Determine discovery state:
+      // - 'owned': Has starter drone or crafted copies
+      // - 'discovered': Blueprint unlocked but no copies yet
+      // - 'undiscovered': Not unlocked at all
+      let discoveryState;
+      if (isOwned) {
+        discoveryState = 'owned';
+      } else if (isBlueprintUnlocked) {
+        discoveryState = 'discovered';
+      } else {
+        discoveryState = 'undiscovered';
+      }
+
       return {
         ...drone,
         isStarterDrone,
+        isBlueprintUnlocked,
         ownedCount: ownedInstances.length,
         instances: ownedInstances,
-        discoveryState: isOwned ? 'owned' : 'undiscovered'
+        discoveryState
       };
     });
-  }, [singlePlayerDroneInstances, slot0Drones]);
+  }, [singlePlayerDroneInstances, slot0Drones, singlePlayerProfile]);
 
   /**
    * Drone stats
@@ -773,6 +793,52 @@ const InventoryModal = ({ onClose, onShowHelp }) => {
                             }}
                           >
                             {drone.rarity}
+                          </div>
+                        </>
+                      ) : drone.discoveryState === 'discovered' ? (
+                        /* Discovered (Blueprint Unlocked) - Show DroneCard with reduced opacity */
+                        <>
+                          <div
+                            style={{
+                              width: '162px',
+                              height: '198px',
+                              overflow: 'visible',
+                              opacity: 0.7
+                            }}
+                          >
+                            <div style={{
+                              transform: 'scale(0.72)',
+                              transformOrigin: 'top left'
+                            }}>
+                              <DroneCard drone={drone} isViewOnly={true} />
+                            </div>
+                          </div>
+
+                          {/* Blueprint Unlocked Label */}
+                          <div
+                            style={{
+                              marginTop: '8px',
+                              padding: '4px 8px',
+                              color: '#3b82f6',
+                              fontWeight: '600',
+                              fontSize: '13px',
+                              textAlign: 'center',
+                              background: 'rgba(59, 130, 246, 0.1)',
+                              borderRadius: '4px'
+                            }}
+                          >
+                            Blueprint Unlocked
+                          </div>
+                          <div
+                            style={{
+                              marginTop: '4px',
+                              color: 'var(--modal-text-secondary)',
+                              fontSize: '11px',
+                              textAlign: 'center',
+                              fontStyle: 'italic'
+                            }}
+                          >
+                            Craft in Blueprints
                           </div>
                         </>
                       ) : (

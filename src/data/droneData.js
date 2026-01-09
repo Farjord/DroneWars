@@ -5,15 +5,17 @@
 // - Lane Control/Guardian (limit 2): 1.0 (standard)
 // - Investment/Scaling (limit 2-3): 1.0 (standard)
 // - Mythic/Siege (limit 1): 0.5 (slow recovery)
+// - TODO : Recovery rate of 0. (Cannot recover - needs cards to do so)
+
 const fullDroneCollection = [
   { name: 'Dart', class: 1, limit: 3, rebuildRate: 2.0, rarity: 'Common', attack: 1, hull: 1, shields: 1, speed: 6, image: '/DroneWars/img/Scout.png', abilities: [],  upgradeSlots: 2 },
-  { name: 'Talon', class: 2, limit: 3, rebuildRate: 2.0, rarity: 'Common', attack: 3, hull: 2, shields: 1, speed: 4, image: '/DroneWars/img/StandardFighter.png', abilities: [],  upgradeSlots: 3 },
-  { name: 'Mammoth', class: 3, limit: 2, rebuildRate: 1.0, rarity: 'Common', attack: 4, hull: 4, shields: 1, speed: 3, image: '/DroneWars/img/HeavyFighter.png', abilities: [], upgradeSlots: 1 },
+  { name: 'Talon', class: 2, limit: 3, rebuildRate: 1.0, rarity: 'Common', attack: 3, hull: 2, shields: 1, speed: 4, image: '/DroneWars/img/StandardFighter.png', abilities: [],  upgradeSlots: 3 },
+  { name: 'Mammoth', class: 3, limit: 2, rebuildRate: 0.5, rarity: 'Common', attack: 4, hull: 4, shields: 1, speed: 3, image: '/DroneWars/img/HeavyFighter.png', abilities: [], upgradeSlots: 1 },
    {
     name: 'Bastion',
     class: 3,
     limit: 2,
-    rebuildRate: 1.0,
+    rebuildRate: 0.5,
     rarity: 'Common',
     attack: 1,
     hull: 3,
@@ -672,7 +674,7 @@ const fullDroneCollection = [
     name: 'War Machine',
     class: 2,
     limit: 2,
-    rebuildRate: 1.0,
+    rebuildRate: 0.5,
     rarity: 'Uncommon',
     attack: 2,
     hull: 3,

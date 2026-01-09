@@ -70,11 +70,8 @@ describe('WaypointManager', () => {
         }
       ]);
 
-      // Should clear stored path after restoration
-      expect(tacticalMapStateManager.setState).toHaveBeenCalledWith({
-        pendingPath: null,
-        pendingWaypointDestinations: null
-      });
+      // NOTE: State clearing is now done by caller (TacticalMapScreen) via clearStoredPath()
+      // to support React StrictMode double-mount. The function is now idempotent.
     });
 
     it('should return null when no path stored', () => {
@@ -92,6 +89,39 @@ describe('WaypointManager', () => {
 
       // Should NOT call setState
       expect(tacticalMapStateManager.setState).not.toHaveBeenCalled();
+    });
+
+    /**
+     * TDD Test: Fallback for empty pendingWaypointDestinations (Part 3)
+     *
+     * BUG FIX: When pendingPath exists but pendingWaypointDestinations is empty,
+     * the for loop at line 55 doesn't execute, returning empty array.
+     * This fallback creates a synthetic waypoint from the full path.
+     */
+    it('should create synthetic waypoint when pendingPath exists but pendingWaypointDestinations is empty', () => {
+      // Setup: pendingPath has entries but pendingWaypointDestinations is empty
+      tacticalMapStateManager.getState.mockReturnValue({
+        playerPosition: { q: 0, r: 0 },
+        pendingPath: ['1,0', '2,0', '3,0'],
+        pendingWaypointDestinations: []  // Empty array - this is the bug scenario
+      });
+
+      const restored = waypointManager.restorePathAfterCombat();
+
+      // Should NOT return null or empty array - should create synthetic waypoint
+      expect(restored).not.toBeNull();
+      expect(restored.length).toBe(1);
+
+      // Synthetic waypoint should target the last hex in the path
+      expect(restored[0].hex).toEqual({ q: 3, r: 0 });
+
+      // Path should include player position + all path hexes
+      expect(restored[0].pathFromPrev).toEqual([
+        { q: 0, r: 0 },  // Player position
+        { q: 1, r: 0 },
+        { q: 2, r: 0 },
+        { q: 3, r: 0 }
+      ]);
     });
 
     it('should handle single waypoint restoration', () => {

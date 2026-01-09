@@ -1166,4 +1166,117 @@ describe('TransitionManager', () => {
       expect(state.pendingWaypointDestinations[0].segmentCost).toBeDefined();
     });
   });
+
+  // ==========================================================
+  // Bug Fix: transitionInProgress flag stuck after failures
+  // ==========================================================
+  describe('Bug Fix: transitionInProgress flag stuck after failures', () => {
+    beforeEach(() => {
+      const currentState = createMockTacticalMapState();
+      tacticalMapStateManager.getState.mockReturnValue(currentState);
+      tacticalMapStateManager.isRunActive.mockReturnValue(true);
+
+      tacticalMapStateManager.setState.mockImplementation((updates) => {
+        Object.assign(currentState, updates);
+      });
+    });
+
+    it('should reset transitionInProgress if prepareForCombat throws after setting flag', () => {
+      // Arrange: Mock _captureWaypointState to throw AFTER flag is set
+      const originalCapture = transitionManager._captureWaypointState.bind(transitionManager);
+      transitionManager._captureWaypointState = () => {
+        throw new Error('Simulated waypoint capture failure');
+      };
+
+      // Act: Call prepareForCombat with waypoint context (triggers the throwing method)
+      try {
+        transitionManager.prepareForCombat({
+          entryReason: 'poi_encounter',
+          aiId: 'AI_SCOUT_1',
+          waypointContext: createMockWaypointContext()
+        });
+      } catch (e) {
+        // Expected to throw
+      }
+
+      // Assert: transitionInProgress should be FALSE, not stuck at true
+      expect(transitionManager.transitionInProgress).toBe(false);
+
+      // Cleanup
+      transitionManager._captureWaypointState = originalCapture;
+    });
+
+    it('should allow new transition after prepareForCombat failure', () => {
+      // Arrange: Force prepareForCombat to fail by breaking state
+      tacticalMapStateManager.getState.mockReturnValue(
+        createMockTacticalMapState({ playerPosition: null })
+      );
+
+      // First call fails (validation error before flag is set - this is OK)
+      expect(() => {
+        transitionManager.prepareForCombat({
+          entryReason: 'poi_encounter',
+          aiId: 'AI_SCOUT_1'
+        });
+      }).toThrow('Invalid player position');
+
+      // Restore valid state
+      tacticalMapStateManager.getState.mockReturnValue(createMockTacticalMapState());
+
+      // Second call should succeed (not throw "Transition already in progress")
+      expect(() => {
+        transitionManager.prepareForCombat({
+          entryReason: 'poi_encounter',
+          aiId: 'AI_SCOUT_2'
+        });
+      }).not.toThrow();
+    });
+
+    it('should expose forceReset() method for error recovery', () => {
+      // Start a transition
+      transitionManager.prepareForCombat({
+        entryReason: 'poi_encounter',
+        aiId: 'AI_SCOUT_1'
+      });
+
+      expect(transitionManager.transitionInProgress).toBe(true);
+
+      // Force reset (simulates what TacticalMapScreen error handler would call)
+      transitionManager.forceReset();
+
+      // Should be able to start new transition
+      expect(transitionManager.transitionInProgress).toBe(false);
+      expect(() => {
+        transitionManager.prepareForCombat({
+          entryReason: 'poi_encounter',
+          aiId: 'AI_SCOUT_2'
+        });
+      }).not.toThrow();
+    });
+
+    it('should reset transitionInProgress if _captureSalvageState throws', () => {
+      // Arrange: Mock _captureSalvageState to throw AFTER flag is set
+      const originalCapture = transitionManager._captureSalvageState.bind(transitionManager);
+      transitionManager._captureSalvageState = () => {
+        throw new Error('Simulated salvage capture failure');
+      };
+
+      // Act: Call prepareForCombat with salvage state (triggers the throwing method)
+      try {
+        transitionManager.prepareForCombat({
+          entryReason: 'salvage_encounter',
+          aiId: 'AI_SCOUT_1',
+          salvageState: createMockSalvageState()
+        });
+      } catch (e) {
+        // Expected to throw
+      }
+
+      // Assert: transitionInProgress should be FALSE, not stuck at true
+      expect(transitionManager.transitionInProgress).toBe(false);
+
+      // Cleanup
+      transitionManager._captureSalvageState = originalCapture;
+    });
+  });
 });

@@ -25,7 +25,7 @@ const DEBUG_CONFIG = {
     DECK_SELECTION: false,      // Deck selection phase
     PLACEMENT: false,           // Ship placement phase
     PLACEMENT_CASCADE: false,   // Placement optimistic cascade tracking (DISABLED - replaced by GUEST_CASCADE)
-    PHASE_TRANSITIONS: false,    // Game phase transitions and flow (ENABLED for ship ability debugging)
+    PHASE_TRANSITIONS: true,    // Game phase transitions and flow (ENABLED for ship ability debugging)
     PHASE_MANAGER: false,        // Phase Manager state tracking and transitions (NEW - for refactor)
     AI_DECISIONS: false,        // AI decision making
     MULTIPLAYER: false,          // Network sync and multiplayer (ENABLED for Phase 8 testing)
@@ -34,7 +34,7 @@ const DEBUG_CONFIG = {
     OPTIMISTIC: false,           // Animation deduplication and matching logic (ENABLED for Phase 8 testing)
     COMMITMENTS: false,          // Simultaneous phase commitments (ENABLED for Phase 8 testing)
     COMBAT: false,              // Combat resolution
-    PASS_LOGIC: false,            // Pass handling and pass notification debugging (ENABLED for ship ability turn transition debugging)
+    PASS_LOGIC: true,            // Pass handling and pass notification debugging (ENABLED for ship ability turn transition debugging)
     STATE_SYNC: false,          // State synchronization (DISABLED - too verbose)
     BROADCAST_TIMING: false,    // Broadcast timing and state validation (DISABLED - too verbose)
     ENERGY: false,              // Energy management (shield allocation)
@@ -63,7 +63,7 @@ const DEBUG_CONFIG = {
     AI_DEPLOYMENT: false,        // AI deployment decisions, validation, and execution loop tracing
     CARD_SIZING: false,           // Card wrapper and sizing debugging
     ASSET_PRELOAD: false,         // Asset preloading and splash screen timing
-    SP_COMBAT: true,              // Single-player combat init, abandon, and state transitions
+    SP_COMBAT: true,              // Single-player combat init, abandon, and state transitions (ENABLED for waypoint debugging)
     DECK_BUILDER: false,           // Deck builder save, toast, and validation debugging
     SALVAGE_LOOT: false,          // PoI loot distribution: slot count, card count, rarities, positions
     SALVAGE_ENCOUNTER: false,     // Encounter rolls: chance, roll value, increase per salvage
@@ -71,7 +71,7 @@ const DEBUG_CONFIG = {
     MODE_TRANSITION: true,        // All mode transitions: hangar <-> tacticalMap <-> inGame (with trigger source)
     RUN_STATE: true,              // TacticalMapStateManager persistence debugging (background, waypoints)
     COMBAT_FLOW: true,            // Combat type identification and state restoration after combat
-    WAYPOINT_MANAGER: false,      // Waypoint path storage and restoration debugging
+    WAYPOINT_MANAGER: true,      // Waypoint path storage and restoration debugging
     REWARD_MANAGER: false,        // Reward generation and seed management debugging
     TRANSITION_MANAGER: true,     // State transitions between TacticalMap and Combat
 
@@ -87,8 +87,9 @@ const DEBUG_CONFIG = {
     LANE_TARGETING: false,       // Lane-targeting cards and filtered drone effects (affectedDroneIds)
     TACTICAL_ITEMS: false,        // Tactical item panel clicks and usage
     CARD_DISCARD: false,          // Card discard after play - tracks instanceId and hand filtering
+    MOVEMENT_EFFECT: false,       // Movement effect execution (DO_NOT_EXHAUST, drone state changes)
     TURN_TRANSITION_DEBUG: false,  // Turn transition investigation (TEMPORARY)
-    AVAILABILITY: true,             // Drone availability system (dots, readyCount, inPlayCount)
+    AVAILABILITY: false,             // Drone availability system (dots, readyCount, inPlayCount)
   }
 };
 

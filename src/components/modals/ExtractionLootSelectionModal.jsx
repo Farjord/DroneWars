@@ -138,8 +138,9 @@ const ExtractionLootSelectionModal = ({ isOpen, collectedLoot = [], limit = 3, o
     // Blueprint type: Display DroneCard for the drone that would be unlocked
     // Shows with blue tint + white hatch lines like a technical drawing
     if (item.type === 'blueprint') {
-      const droneData = fullDroneCollection.find(
-        d => d.name === item.id || d.name === item.droneId || d.name === item.droneName
+      // Use droneData if already present, otherwise look up by blueprintId or legacy fields
+      const droneData = item.droneData || fullDroneCollection.find(
+        d => d.name === item.blueprintId || d.name === item.id || d.name === item.droneId || d.name === item.droneName
       );
       if (!droneData) {
         return (

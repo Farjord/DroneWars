@@ -94,44 +94,52 @@ class TransitionManager {
     // Mark transition in progress
     this.transitionInProgress = true;
 
-    // Create snapshot
-    const snapshot = this._createSnapshot(context, tacticalState);
+    try {
+      // Create snapshot
+      const snapshot = this._createSnapshot(context, tacticalState);
 
-    // Store waypoint data if provided
-    if (context.waypointContext) {
-      snapshot.waypointData = this._captureWaypointState(context.waypointContext);
+      // Store waypoint data if provided
+      if (context.waypointContext) {
+        snapshot.waypointData = this._captureWaypointState(context.waypointContext);
 
-      // Persist to TacticalMapStateManager
-      // Use pendingWaypointDestinations (not pendingWaypointIndexes) for WaypointManager compatibility
-      if (snapshot.waypointData) {
-        tacticalMapStateManager.setState({
-          pendingPath: snapshot.waypointData.pathHexes,
-          pendingWaypointDestinations: this._buildWaypointDestinations(context.waypointContext)
-        });
+        // Persist to TacticalMapStateManager
+        // Use pendingWaypointDestinations (not pendingWaypointIndexes) for WaypointManager compatibility
+        if (snapshot.waypointData) {
+          tacticalMapStateManager.setState({
+            pendingPath: snapshot.waypointData.pathHexes,
+            pendingWaypointDestinations: this._buildWaypointDestinations(context.waypointContext)
+          });
+        }
+      } else {
+        snapshot.waypointData = null;
       }
-    } else {
-      snapshot.waypointData = null;
+
+      // Capture salvage state if provided
+      if (context.salvageState) {
+        snapshot.salvageState = this._captureSalvageState(context.salvageState);
+
+        // PERSIST to TacticalMapStateManager so it survives combat
+        tacticalMapStateManager.setState({
+          pendingSalvageState: snapshot.salvageState
+        });
+      } else {
+        snapshot.salvageState = null;
+      }
+
+      // Store snapshot
+      this.currentSnapshot = snapshot;
+
+      // Log transition start
+      this._logTransitionStart(snapshot);
+
+      return snapshot;
+    } catch (error) {
+      // Reset flag on any failure during snapshot creation
+      // This prevents the "Transition already in progress" error from blocking future encounters
+      this.transitionInProgress = false;
+      this.currentSnapshot = null;
+      throw error;
     }
-
-    // Capture salvage state if provided
-    if (context.salvageState) {
-      snapshot.salvageState = this._captureSalvageState(context.salvageState);
-
-      // PERSIST to TacticalMapStateManager so it survives combat
-      tacticalMapStateManager.setState({
-        pendingSalvageState: snapshot.salvageState
-      });
-    } else {
-      snapshot.salvageState = null;
-    }
-
-    // Store snapshot
-    this.currentSnapshot = snapshot;
-
-    // Log transition start
-    this._logTransitionStart(snapshot);
-
-    return snapshot;
   }
 
   /**
@@ -608,6 +616,20 @@ class TransitionManager {
   _reset() {
     this.currentSnapshot = null;
     this.transitionHistory = [];
+    this.transitionInProgress = false;
+  }
+
+  /**
+   * Force reset transition state - use for error recovery
+   * Called when prepareForCombat fails or combat initialization fails
+   * This is safe to call even if no transition is in progress
+   */
+  forceReset() {
+    debugLog('TRANSITION_MANAGER', 'Force resetting transition state', {
+      hadSnapshot: !!this.currentSnapshot,
+      wasInProgress: this.transitionInProgress
+    });
+    this.currentSnapshot = null;
     this.transitionInProgress = false;
   }
 }

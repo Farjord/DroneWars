@@ -22,6 +22,7 @@ function RunSummaryModal({ summary, onClose }) {
     poisVisited,
     totalPois,
     cardsCollected,
+    blueprintsCollected,
     creditsEarned,
     combatsWon,
     combatsLost,
@@ -56,6 +57,20 @@ function RunSummaryModal({ summary, onClose }) {
     const fullCard = fullCardCollection.find(c => c.id === card.cardId);
     return fullCard || card;
   });
+
+  // Get blueprints for rendering
+  const blueprints = blueprintsCollected || [];
+
+  // Get rarity color for blueprint badges
+  const getRarityColor = (rarity) => {
+    switch (rarity) {
+      case 'Common': return '#9ca3af';
+      case 'Uncommon': return '#22c55e';
+      case 'Rare': return '#3b82f6';
+      case 'Mythic': return '#a855f7';
+      default: return '#9ca3af';
+    }
+  };
 
   const themeClass = success ? 'dw-modal--success' : 'dw-modal--danger';
 
@@ -148,6 +163,71 @@ function RunSummaryModal({ summary, onClose }) {
             <p style={{ margin: 0, fontSize: '12px', color: 'var(--modal-text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Credits Earned</p>
             <p style={{ margin: '4px 0 0', fontSize: '32px', fontWeight: 700, color: '#eab308' }}>{creditsEarned || 0}</p>
           </div>
+
+          {/* Blueprints Acquired Section */}
+          {blueprints.length > 0 && (
+            <div className="dw-modal-info-box" style={{
+              marginBottom: '24px',
+              background: 'rgba(59, 130, 246, 0.08)',
+              borderColor: 'rgba(59, 130, 246, 0.4)'
+            }}>
+              <h3 style={{
+                fontSize: '12px',
+                fontWeight: 700,
+                color: '#3b82f6',
+                marginBottom: '12px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                textAlign: 'center'
+              }}>
+                Blueprints Acquired ({blueprints.length})
+              </h3>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center' }}>
+                {blueprints.map((blueprint, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      background: 'var(--modal-surface)',
+                      borderRadius: '6px',
+                      padding: '8px 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      border: `1px solid ${getRarityColor(blueprint.rarity)}40`
+                    }}
+                  >
+                    <span style={{
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      color: 'var(--modal-text-primary)'
+                    }}>
+                      {blueprint.droneData?.name || blueprint.blueprintId}
+                    </span>
+                    <span style={{
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      padding: '2px 6px',
+                      borderRadius: '3px',
+                      background: `${getRarityColor(blueprint.rarity)}20`,
+                      color: getRarityColor(blueprint.rarity),
+                      textTransform: 'uppercase'
+                    }}>
+                      {blueprint.rarity}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p style={{
+                margin: '10px 0 0',
+                fontSize: '11px',
+                color: 'var(--modal-text-secondary)',
+                textAlign: 'center',
+                fontStyle: 'italic'
+              }}>
+                Visit Blueprints to craft copies for your fleet
+              </p>
+            </div>
+          )}
 
           {/* Reputation Earned Section - NEW */}
           {reputation && !reputation.isStarterDeck && (

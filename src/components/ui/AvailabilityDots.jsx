@@ -248,8 +248,8 @@ const SegmentedDot = ({ size, segmentCount, filledSegments, dataAttrs }) => {
     const endAngle = (i + 1) * segmentAngle;
 
     if (i < filledSegments) {
-      // Filled segment - static grey (completed)
-      gradientStops.push(`#6b7280 ${startAngle}deg ${endAngle}deg`);
+      // Filled segment - static white (completed)
+      gradientStops.push(`#ffffff ${startAngle}deg ${endAngle}deg`);
     } else if (i === currentSegmentIndex) {
       // Current segment - transparent so pulsing overlay is visible
       gradientStops.push(`transparent ${startAngle}deg ${endAngle}deg`);
@@ -259,7 +259,7 @@ const SegmentedDot = ({ size, segmentCount, filledSegments, dataAttrs }) => {
     }
   }
 
-  const gradient = `conic-gradient(from -90deg, ${gradientStops.join(', ')})`;
+  const gradient = `conic-gradient(from 180deg, ${gradientStops.join(', ')})`;
 
   return (
     <div
@@ -311,7 +311,7 @@ const buildPulsingGradient = (segmentCount, currentIndex) => {
     }
   }
 
-  return `conic-gradient(from -90deg, ${stops.join(', ')})`;
+  return `conic-gradient(from 180deg, ${stops.join(', ')})`;
 };
 
 export default AvailabilityDots;

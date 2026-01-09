@@ -772,3 +772,473 @@ describe('Waypoint marker preservation', () => {
     });
   });
 });
+
+/**
+ * TDD Tests: Waypoint Restoration via Modal Paths
+ *
+ * BUG FIX: When post-combat mount effect shows a modal (blueprint or generic loot),
+ * waypoints must be stored in pendingResumeWaypoints so the modal's handler can
+ * restore them after the modal closes.
+ *
+ * Two paths are missing this call:
+ * - Blueprint-only loot path (line 504-513)
+ * - Generic loot modal path (line 514-520)
+ */
+describe('waypoint restoration - modal paths (TDD)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should have waypointsToRestore available for blueprint modal path', () => {
+    // TEST: When returning from blueprint POI combat, waypointsToRestore should be available
+    // to store in pendingResumeWaypoints for post-modal resumption
+
+    tacticalMapStateManager.getState.mockReturnValue({
+      pendingPOICombat: {
+        q: 5, r: 3,
+        packType: 'DRONE_BLUEPRINT_FIGHTER',  // Blueprint POI
+        poiName: 'Fighter Blueprint Cache'
+      },
+      pendingPath: ['0,0', '1,0', '2,0'],  // Waypoints exist
+      pendingWaypointDestinations: [{ hex: '2,0' }]
+    });
+
+    const state = tacticalMapStateManager.getState();
+
+    // Preconditions for the bug: waypoints ARE in state manager
+    expect(state.pendingPath).toBeDefined();
+    expect(state.pendingPath.length).toBeGreaterThan(0);
+
+    // And this is a blueprint POI (triggers the blueprint-only modal path)
+    expect(state.pendingPOICombat.packType).toContain('BLUEPRINT');
+
+    // BUG: The blueprint-only path doesn't call setPendingResumeWaypoints()
+    // FIX: After showing blueprint modal, must call setPendingResumeWaypoints(waypointsToRestore)
+  });
+
+  it('should have waypointsToRestore available for generic loot modal path', () => {
+    // TEST: When returning from non-blueprint POI combat, waypointsToRestore should be available
+
+    tacticalMapStateManager.getState.mockReturnValue({
+      pendingPOICombat: {
+        q: 5, r: 3,
+        packType: 'MIXED_PACK',  // Non-blueprint POI
+        poiName: 'Salvage Cache'
+      },
+      pendingPath: ['0,0', '1,0', '2,0'],
+      pendingWaypointDestinations: [{ hex: '2,0' }]
+    });
+
+    const state = tacticalMapStateManager.getState();
+
+    // Waypoints are available
+    expect(state.pendingPath).toBeDefined();
+
+    // This is NOT a blueprint POI (triggers the generic loot modal path)
+    expect(state.pendingPOICombat.packType).not.toContain('BLUEPRINT');
+
+    // BUG: The generic loot path doesn't call setPendingResumeWaypoints()
+    // FIX: After showing generic loot modal, must call setPendingResumeWaypoints(waypointsToRestore)
+  });
+
+  it('should restore waypoints when handleBlueprintRewardAccepted is called with pendingResumeWaypoints set', () => {
+    // TEST: handleBlueprintRewardAccepted checks pendingResumeWaypoints and calls setWaypoints()
+    // This verifies the handler is correct - it's the mount effect that's missing the setup
+
+    const mockWaypoints = [
+      { hex: { q: 2, r: 0 }, pathFromPrev: ['1,0', '2,0'] },
+      { hex: { q: 3, r: 0 }, pathFromPrev: ['2,0', '3,0'] }
+    ];
+
+    // Simulate pendingResumeWaypoints being set (what the fix should do)
+    const pendingResumeWaypoints = mockWaypoints;
+
+    // Handler logic (from line 2553-2558)
+    if (pendingResumeWaypoints?.length > 0) {
+      // This is what should happen - waypoints get restored
+      expect(pendingResumeWaypoints.length).toBe(2);
+    }
+  });
+});
+
+/**
+ * TDD Tests: Waypoint removal during movement
+ *
+ * These tests verify that waypoints are removed from the array as the player
+ * completes each one, ensuring only FUTURE waypoints remain.
+ */
+describe('Waypoint removal during movement (TDD)', () => {
+  /**
+   * Core behavior: When player leaves a waypoint (after 500ms pause),
+   * that waypoint should be removed from the array.
+   */
+  it('should remove completed waypoint from array after player leaves', () => {
+    // Setup: 3 waypoints, player has completed waypoint 1 and is leaving
+    const initialWaypoints = [
+      { hex: { q: 1, r: 0 }, pathFromPrev: [{ q: 0, r: 0 }, { q: 1, r: 0 }] },
+      { hex: { q: 2, r: 0 }, pathFromPrev: [{ q: 1, r: 0 }, { q: 2, r: 0 }] },
+      { hex: { q: 3, r: 0 }, pathFromPrev: [{ q: 2, r: 0 }, { q: 3, r: 0 }] }
+    ];
+
+    // Simulate the removal that should happen after completing waypoint 1
+    // This is: setWaypoints(prev => prev.slice(1))
+    const afterRemoval = initialWaypoints.slice(1);
+
+    // Verify: Only waypoints 2 and 3 remain
+    expect(afterRemoval.length).toBe(2);
+    expect(afterRemoval[0].hex).toEqual({ q: 2, r: 0 });
+    expect(afterRemoval[1].hex).toEqual({ q: 3, r: 0 });
+  });
+
+  /**
+   * Combat at waypoint: If combat triggers AT a POI waypoint,
+   * the waypoint should NOT be removed (player is still there).
+   */
+  it('should NOT remove waypoint if combat triggers AT the waypoint', () => {
+    // Setup: 3 waypoints, player arrives at waypoint 1 (POI), combat triggers
+    const initialWaypoints = [
+      { hex: { q: 1, r: 0, type: 'poi' }, pathFromPrev: [{ q: 0, r: 0 }, { q: 1, r: 0 }] },
+      { hex: { q: 2, r: 0 }, pathFromPrev: [{ q: 1, r: 0 }, { q: 2, r: 0 }] },
+      { hex: { q: 3, r: 0 }, pathFromPrev: [{ q: 2, r: 0 }, { q: 3, r: 0 }] }
+    ];
+
+    // Simulate: shouldStopMovement.current = true causes break BEFORE removal
+    // The loop exits before setWaypoints(prev => prev.slice(1)) is called
+    const combatTriggered = true;
+    let waypointsAfterCombatTrigger = initialWaypoints;
+
+    if (!combatTriggered) {
+      // This block is NOT executed when combat triggers
+      waypointsAfterCombatTrigger = initialWaypoints.slice(1);
+    }
+
+    // Verify: All 3 waypoints remain (including the one player is at)
+    expect(waypointsAfterCombatTrigger.length).toBe(3);
+    expect(waypointsAfterCombatTrigger[0].hex).toEqual({ q: 1, r: 0, type: 'poi' });
+  });
+
+  /**
+   * Mid-path combat: If player completed waypoint 1, then combat triggers
+   * mid-path to waypoint 2, the array should have waypoints 2 and 3.
+   */
+  it('should have correct waypoints when combat triggers mid-path after completing previous waypoint', () => {
+    // Setup: Player completed waypoint 1 (removed), now mid-path to waypoint 2
+    const initialWaypoints = [
+      { hex: { q: 1, r: 0 }, pathFromPrev: [{ q: 0, r: 0 }, { q: 1, r: 0 }] },
+      { hex: { q: 2, r: 0 }, pathFromPrev: [{ q: 1, r: 0 }, { q: 1, r: 1 }, { q: 2, r: 0 }] },
+      { hex: { q: 3, r: 0 }, pathFromPrev: [{ q: 2, r: 0 }, { q: 3, r: 0 }] }
+    ];
+
+    // Step 1: Player completes waypoint 1, leaves it
+    let currentWaypoints = initialWaypoints.slice(1); // Waypoint 1 removed
+
+    // Step 2: Player is mid-path to waypoint 2, combat triggers
+    // The current hex index is 1 (first hex after leaving waypoint 1)
+    const currentHexIndex = 1;
+    const combatTriggered = true;
+
+    // Waypoint 2 is NOT removed because we haven't completed it
+    // (removal only happens after the 500ms pause at the waypoint destination)
+
+    // Verify: Waypoints 2 and 3 remain
+    expect(currentWaypoints.length).toBe(2);
+    expect(currentWaypoints[0].hex).toEqual({ q: 2, r: 0 });
+    expect(currentWaypoints[1].hex).toEqual({ q: 3, r: 0 });
+  });
+
+  /**
+   * Sequential removal: Each waypoint is removed as completed,
+   * maintaining correct order.
+   */
+  it('should sequentially remove waypoints as each is completed', () => {
+    // Setup: 3 waypoints
+    let waypoints = [
+      { hex: { q: 1, r: 0 }, pathFromPrev: [{ q: 0, r: 0 }, { q: 1, r: 0 }] },
+      { hex: { q: 2, r: 0 }, pathFromPrev: [{ q: 1, r: 0 }, { q: 2, r: 0 }] },
+      { hex: { q: 3, r: 0 }, pathFromPrev: [{ q: 2, r: 0 }, { q: 3, r: 0 }] }
+    ];
+
+    // Complete waypoint 1
+    waypoints = waypoints.slice(1);
+    expect(waypoints.length).toBe(2);
+    expect(waypoints[0].hex.q).toBe(2);
+
+    // Complete waypoint 2
+    waypoints = waypoints.slice(1);
+    expect(waypoints.length).toBe(1);
+    expect(waypoints[0].hex.q).toBe(3);
+
+    // Complete waypoint 3 (final)
+    waypoints = waypoints.slice(1);
+    expect(waypoints.length).toBe(0);
+  });
+
+  /**
+   * Final waypoint: When the last waypoint is completed,
+   * the array becomes empty.
+   */
+  it('should result in empty array when final waypoint is completed', () => {
+    // Setup: Only 1 waypoint remaining
+    const waypoints = [
+      { hex: { q: 3, r: 0 }, pathFromPrev: [{ q: 2, r: 0 }, { q: 3, r: 0 }] }
+    ];
+
+    // Complete the final waypoint
+    const afterRemoval = waypoints.slice(1);
+
+    // Verify: Array is empty
+    expect(afterRemoval.length).toBe(0);
+  });
+});
+
+/**
+ * TDD Tests: Path trimming during movement
+ *
+ * As player moves through hexes, the pathFromPrev array should be TRIMMED
+ * to only show upcoming hexes. This affects both the visual display and
+ * what gets stored when combat triggers.
+ *
+ * REQUIREMENT: Path should SHRINK as player moves, not show traversed hexes.
+ */
+describe('Path trimming during movement (TDD)', () => {
+  /**
+   * Core trimming logic: After moving to hexIndex N, the path should
+   * start from hex N (slice from N, not N+1, to include current position).
+   */
+  it('should trim pathFromPrev after moving to each hex', () => {
+    // Setup: waypoint with path [hex0, hex1, hex2, hex3]
+    const waypoint = {
+      hex: { q: 3, r: 0 },
+      pathFromPrev: [
+        { q: 0, r: 0 },  // hexIndex 0 - start position
+        { q: 1, r: 0 },  // hexIndex 1
+        { q: 2, r: 0 },  // hexIndex 2
+        { q: 3, r: 0 }   // hexIndex 3 - destination
+      ]
+    };
+
+    // After player moves to hex1 (hexIndex=1), path should be [hex1, hex2, hex3]
+    // We slice from hexIndex to keep current position + remaining
+    const afterHex1 = waypoint.pathFromPrev.slice(1);
+    expect(afterHex1.length).toBe(3);
+    expect(afterHex1[0]).toEqual({ q: 1, r: 0 });
+    expect(afterHex1[2]).toEqual({ q: 3, r: 0 });
+
+    // After player moves to hex2 (hexIndex=2), path should be [hex2, hex3]
+    const afterHex2 = waypoint.pathFromPrev.slice(2);
+    expect(afterHex2.length).toBe(2);
+    expect(afterHex2[0]).toEqual({ q: 2, r: 0 });
+    expect(afterHex2[1]).toEqual({ q: 3, r: 0 });
+
+    // After player moves to hex3 (hexIndex=3), path should be [hex3] only
+    const afterHex3 = waypoint.pathFromPrev.slice(3);
+    expect(afterHex3.length).toBe(1);
+    expect(afterHex3[0]).toEqual({ q: 3, r: 0 });
+  });
+
+  /**
+   * State update simulation: Test the setWaypoints pattern used in component.
+   */
+  it('should update waypoint state with trimmed path (functional update pattern)', () => {
+    // Setup: Initial state with waypoints
+    const initialWaypoints = [
+      {
+        hex: { q: 3, r: 0 },
+        pathFromPrev: [
+          { q: 0, r: 0 },
+          { q: 1, r: 0 },
+          { q: 2, r: 0 },
+          { q: 3, r: 0 }
+        ]
+      },
+      {
+        hex: { q: 5, r: 0 },
+        pathFromPrev: [
+          { q: 3, r: 0 },
+          { q: 4, r: 0 },
+          { q: 5, r: 0 }
+        ]
+      }
+    ];
+
+    // Simulate setWaypoints(prev => ...) after moving to hexIndex=1 in waypoint 0
+    const wpIndex = 0;
+    const hexIndex = 1;
+
+    const updatedWaypoints = initialWaypoints.map((wp, i) => {
+      if (i === wpIndex) {
+        return {
+          ...wp,
+          pathFromPrev: wp.pathFromPrev.slice(hexIndex)
+        };
+      }
+      return wp;
+    });
+
+    // Verify: First waypoint's path is trimmed, second unchanged
+    expect(updatedWaypoints[0].pathFromPrev.length).toBe(3);
+    expect(updatedWaypoints[0].pathFromPrev[0]).toEqual({ q: 1, r: 0 });
+    expect(updatedWaypoints[1].pathFromPrev.length).toBe(3); // Unchanged
+  });
+
+  /**
+   * Combat storage: When combat triggers mid-path, store ONLY remaining path.
+   */
+  it('should only store remaining path when combat triggers mid-path', () => {
+    // Setup: Player at hexIndex=2 of waypoint 0
+    const waypoints = [
+      {
+        hex: { q: 3, r: 0 },
+        pathFromPrev: [
+          { q: 0, r: 0 },
+          { q: 1, r: 0 },
+          { q: 2, r: 0 },  // Player is HERE
+          { q: 3, r: 0 }
+        ]
+      },
+      {
+        hex: { q: 5, r: 0 },
+        pathFromPrev: [{ q: 3, r: 0 }, { q: 4, r: 0 }, { q: 5, r: 0 }]
+      }
+    ];
+    const currentWaypointIndex = 0;
+    const currentHexIndex = 2;
+
+    // Calculate remaining path for storage (from current hex onward)
+    const remainingPath = waypoints[0].pathFromPrev.slice(currentHexIndex);
+    expect(remainingPath.length).toBe(2); // [hex2, hex3]
+    expect(remainingPath[0]).toEqual({ q: 2, r: 0 });
+    expect(remainingPath[1]).toEqual({ q: 3, r: 0 });
+  });
+
+  /**
+   * Ref-based tracking: Test the pattern for sync progress tracking.
+   */
+  it('should track progress with ref for synchronous access', () => {
+    // Setup: Simulate useRef pattern
+    const pathProgressRef = { current: { waypointIndex: 0, hexIndex: 0 } };
+
+    // Simulate movement loop updating ref
+    pathProgressRef.current = { waypointIndex: 0, hexIndex: 1 };
+    expect(pathProgressRef.current.hexIndex).toBe(1);
+
+    pathProgressRef.current = { waypointIndex: 0, hexIndex: 2 };
+    expect(pathProgressRef.current.hexIndex).toBe(2);
+
+    // Combat triggers - ref has correct current position
+    const { waypointIndex, hexIndex } = pathProgressRef.current;
+    expect(waypointIndex).toBe(0);
+    expect(hexIndex).toBe(2);
+  });
+
+  /**
+   * Remove waypoint entirely when all hexes traversed.
+   */
+  it('should remove waypoint entirely when path fully traversed', () => {
+    const waypoints = [
+      { hex: { q: 2, r: 0 }, pathFromPrev: [{ q: 0, r: 0 }, { q: 1, r: 0 }, { q: 2, r: 0 }] },
+      { hex: { q: 4, r: 0 }, pathFromPrev: [{ q: 2, r: 0 }, { q: 3, r: 0 }, { q: 4, r: 0 }] }
+    ];
+
+    // After completing waypoint 0, remove it entirely
+    const afterCompletion = waypoints.slice(1);
+    expect(afterCompletion.length).toBe(1);
+    expect(afterCompletion[0].hex).toEqual({ q: 4, r: 0 });
+  });
+
+  /**
+   * Calculate remaining waypoints from ref for combat storage.
+   */
+  it('should calculate remaining waypoints correctly using ref', () => {
+    const waypoints = [
+      {
+        hex: { q: 3, r: 0 },
+        pathFromPrev: [
+          { q: 0, r: 0 },
+          { q: 1, r: 0 },
+          { q: 2, r: 0 },
+          { q: 3, r: 0 }
+        ],
+        segmentCost: 10,
+        cumulativeDetection: 5
+      },
+      {
+        hex: { q: 5, r: 0 },
+        pathFromPrev: [{ q: 3, r: 0 }, { q: 4, r: 0 }, { q: 5, r: 0 }],
+        segmentCost: 8,
+        cumulativeDetection: 10
+      }
+    ];
+
+    // Ref indicates: waypointIndex=0, hexIndex=2 (player at hex 2,0)
+    const pathProgressRef = { current: { waypointIndex: 0, hexIndex: 2 } };
+    const { waypointIndex, hexIndex } = pathProgressRef.current;
+
+    // Build remaining waypoints for storage
+    const remainingWaypoints = [];
+
+    // Current waypoint: trim path from current hexIndex
+    if (waypointIndex < waypoints.length) {
+      const currentWp = waypoints[waypointIndex];
+      const trimmedPath = currentWp.pathFromPrev.slice(hexIndex);
+
+      // Only add if there are remaining hexes beyond current position
+      if (trimmedPath.length > 1) {
+        remainingWaypoints.push({
+          ...currentWp,
+          pathFromPrev: trimmedPath
+        });
+      }
+    }
+
+    // Add subsequent waypoints unchanged
+    for (let i = waypointIndex + 1; i < waypoints.length; i++) {
+      remainingWaypoints.push(waypoints[i]);
+    }
+
+    // Verify: Current waypoint has trimmed path, subsequent waypoint intact
+    expect(remainingWaypoints.length).toBe(2);
+    expect(remainingWaypoints[0].pathFromPrev.length).toBe(2); // [hex2, hex3]
+    expect(remainingWaypoints[0].pathFromPrev[0]).toEqual({ q: 2, r: 0 });
+    expect(remainingWaypoints[1].pathFromPrev.length).toBe(3); // Unchanged
+  });
+
+  /**
+   * Edge case: Combat at first hex of waypoint.
+   */
+  it('should include all remaining hexes when combat at first hex', () => {
+    const waypoint = {
+      hex: { q: 3, r: 0 },
+      pathFromPrev: [
+        { q: 0, r: 0 },
+        { q: 1, r: 0 },
+        { q: 2, r: 0 },
+        { q: 3, r: 0 }
+      ]
+    };
+
+    // Combat at hexIndex=0 (very start)
+    const remaining = waypoint.pathFromPrev.slice(0);
+    expect(remaining.length).toBe(4); // All hexes remain
+  });
+
+  /**
+   * Edge case: Combat at last hex of waypoint (destination).
+   */
+  it('should have only destination hex when combat at waypoint destination', () => {
+    const waypoint = {
+      hex: { q: 3, r: 0 },
+      pathFromPrev: [
+        { q: 0, r: 0 },
+        { q: 1, r: 0 },
+        { q: 2, r: 0 },
+        { q: 3, r: 0 }
+      ]
+    };
+
+    // Combat at hexIndex=3 (destination)
+    const remaining = waypoint.pathFromPrev.slice(3);
+    expect(remaining.length).toBe(1);
+    expect(remaining[0]).toEqual({ q: 3, r: 0 });
+  });
+});

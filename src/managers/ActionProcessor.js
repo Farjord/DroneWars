@@ -1166,6 +1166,34 @@ setAnimationManager(animationManager) {
       currentState.gameMode
     );
 
+    // Process additional effects (from POST conditionals like GAIN_ENERGY on Energy Leech)
+    if (result.additionalEffects && result.additionalEffects.length > 0) {
+      const effectRouter = new EffectRouter();
+      let currentStatesForEffects = result.newPlayerStates;
+
+      for (const effect of result.additionalEffects) {
+        const effectContext = {
+          actingPlayerId: playerId,
+          playerStates: currentStatesForEffects,
+          placedSections,
+          target,
+          card
+        };
+        const effectResult = effectRouter.routeEffect(effect, effectContext);
+        if (effectResult?.newPlayerStates) {
+          currentStatesForEffects = effectResult.newPlayerStates;
+        }
+      }
+
+      // Update result with processed states
+      result.newPlayerStates = currentStatesForEffects;
+
+      debugLog('EFFECT_PROCESSING', '[ActionProcessor] Card play additionalEffects processed', {
+        effectCount: result.additionalEffects.length,
+        effectTypes: result.additionalEffects.map(e => e.type)
+      });
+    }
+
     debugLog('CARDS', '[ANIMATION EVENTS] Card play events:', result.animationEvents);
 
     // Collect animation events
@@ -1237,6 +1265,15 @@ setAnimationManager(animationManager) {
    */
   async processMovementCompletion(payload) {
     const { card, movementType, drones, fromLane, toLane, playerId } = payload;
+
+    debugLog('MOVEMENT_EFFECT', 'processMovementCompletion - payload received', {
+      cardName: card.name,
+      cardInstanceId: card.instanceId,
+      cardEffectType: card.effect?.type,
+      cardEffectProperties: card.effect?.properties,
+      movementType,
+      playerId
+    });
 
     const currentState = this.gameStateManager.getState();
 

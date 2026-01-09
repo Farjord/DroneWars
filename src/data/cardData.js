@@ -271,7 +271,7 @@ const fullCardCollection = [
     maxInDeck: 4,
     rarity: 'Common',
     type: 'Ordnance',
-    cost: 3,
+    cost: 1,
     image: '/DroneWars/cards/TargetLock.png',
     description: 'Destroy target marked enemy drone.',
     targeting: {
@@ -665,7 +665,8 @@ const fullCardCollection = [
     image: '/DroneWars/cards/SwiftManeuver.png',
     description: 'Move a friendly drone to an adjacent lane. If its speed is 5 or higher, go again.',
     effect: {
-      type: 'SINGLE_MOVE'
+      type: 'SINGLE_MOVE',
+      properties: ['DO_NOT_EXHAUST']
     },
     conditionalEffects: [{
       id: 'fast-goagain',
@@ -915,7 +916,7 @@ const fullCardCollection = [
     baseCardId: 'CARD030',
     name: 'Deploy Jammers',
     maxInDeck: 2,
-    rarity: 'Uncommon',
+    rarity: 'Common',
     type: 'Tactic',
     cost: 5,
     image: '/DroneWars/cards/DeployJammers.png',
@@ -959,9 +960,34 @@ const fullCardCollection = [
     baseCardId: 'CARD032',
     name: 'Barrage',
     maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Ordnance',
+    cost: 2,
+    image: '/DroneWars/cards/Barrage.png',
+    description: 'Deal 1 damage to target drone and all drones adjacent to it in the same lane (splash).',
+    visualEffect: {
+      type: 'SPLASH_EFFECT'
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'SPLASH_DAMAGE',
+      primaryDamage: 1,
+      splashDamage: 1,
+    }
+},
+
+{
+    id: 'CARD032_Enhanced',
+    baseCardId: 'CARD032',
+    name: 'Barrage+',
+    maxInDeck: 2,
     rarity: 'Rare',
     type: 'Ordnance',
-    cost: 4,
+    cost: 3,
     image: '/DroneWars/cards/Barrage.png',
     description: 'Deal 1 damage to target drone and all drones adjacent to it in the same lane (splash). If you control 3 or more drones in target lane, deal 2 damage instead.',
     visualEffect: {
@@ -1102,7 +1128,8 @@ const fullCardCollection = [
     },
     effect: {
       type: 'RESTORE_SECTION_SHIELDS',
-      value: 2
+      value: 2,
+      goAgain: true
     }
 },
 {
@@ -1114,7 +1141,7 @@ const fullCardCollection = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/ShieldBoost.png',
-    description: 'Restore up to 2 shields to a friendly ship section. Go again.',
+    description: 'Restore up to 3 shields to a friendly ship section. Go again.',
     targeting: {
       type: 'SHIP_SECTION',
       affinity: 'FRIENDLY'
@@ -1314,6 +1341,36 @@ const fullCardCollection = [
     id: 'CARD053',
     baseCardId: 'CARD053',
     name: 'Executioner',
+    maxInDeck: 4,
+    rarity: 'Common',
+    type: 'Ordnance',
+    cost: 1,
+    image: '/DroneWars/cards/Executioner.png',
+    description: 'Destroy target enemy drone if its current hull is less than 2.',
+    visualEffect: {
+      type: 'LASER_BLAST'
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 0
+    },
+    conditionalEffects: [{
+      id: 'execute-weak',
+      timing: 'PRE',
+      condition: { type: 'TARGET_STAT_LT', stat: 'hull', value: 1 },
+      grantedEffect: { type: 'DESTROY', scope: 'SINGLE' }
+    }]
+  },
+
+  {
+    id: 'CARD053_Enhanced',
+    baseCardId: 'CARD053',
+    name: 'Executioner+',
     maxInDeck: 4,
     rarity: 'Uncommon',
     type: 'Ordnance',

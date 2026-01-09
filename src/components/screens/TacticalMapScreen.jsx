@@ -157,8 +157,8 @@ function TacticalMapScreen() {
       hasState: !!state,
       hasMapData: !!state?.mapData,
       backgroundIndex: state?.mapData?.backgroundIndex,
-      hasPendingWaypoints: !!state?.pendingWaypoints,
-      pendingWaypointsCount: state?.pendingWaypoints?.length
+      hasPendingWaypoints: !!state?.pendingPath,
+      pendingWaypointsCount: state?.pendingPath?.length
     });
     return state;
   });
@@ -248,6 +248,10 @@ function TacticalMapScreen() {
   const isPausedRef = useRef(false);
   const shouldStopMovement = useRef(false);
   const totalWaypointsRef = useRef(0);
+
+  // Ref to track current path progress synchronously (for combat storage)
+  // React state is async, so this ref ensures accurate position when combat triggers
+  const pathProgressRef = useRef({ waypointIndex: 0, hexIndex: 0 });
   const escapedWithWaypoints = useRef(false); // Track if escape occurred with remaining waypoints
   const pendingCombatLoadingRef = useRef(false); // Track if loading screen is pending combat (prevents waypoint clearing)
 
@@ -331,12 +335,18 @@ function TacticalMapScreen() {
       hasRunState: !!runState,
       hasMapData: !!runState?.mapData,
       backgroundIndex: runState?.mapData?.backgroundIndex,
-      pendingWaypoints: runState?.pendingWaypoints?.length || 0,
+      pendingWaypoints: runState?.pendingPath?.length || 0,
       pendingPOICombat: !!runState?.pendingPOICombat
     });
 
     // Restore path using WaypointManager (if path was stored before combat)
     const waypointsToRestore = waypointManager.restorePathAfterCombat();
+
+    // ALWAYS restore waypoints after combat - player sees their route (no auto-movement)
+    if (waypointsToRestore?.length > 0) {
+      setWaypoints(waypointsToRestore);
+      waypointManager.clearStoredPath();
+    }
 
     // Re-fetch runState after potential path clearing
     runState = tacticalMapStateManager.getState();
@@ -344,6 +354,14 @@ function TacticalMapScreen() {
     // Process pending POI combat (ONLY for POI encounters - loot processing)
     if (runState?.pendingPOICombat) {
       const { packType, q, r, poiName, fromSalvage, salvageFullyLooted } = runState.pendingPOICombat;
+
+      // Debug: waypoint-specific logging for mount effect
+      debugLog('COMBAT_FLOW', 'Mount effect - processing pendingPOICombat', {
+        packType,
+        poiName,
+        waypointsToRestoreCount: waypointsToRestore?.length || 0,
+        fromSalvage
+      });
 
       // Debug logging for consecutive combat issues
       debugLog('MODE_TRANSITION', '=== Post-Combat POI Processing ===', {
@@ -363,12 +381,6 @@ function TacticalMapScreen() {
       // Player only gets enemy salvage from combat
       if (!packType) {
         debugLog('MODE_TRANSITION', 'Empty hex encounter - no POI loot to collect');
-        // FIX: Restore waypoints before returning (use local var, not stale React state)
-        if (waypointsToRestore?.length > 0) {
-          debugLog('RUN_STATE', 'Restoring waypoints after empty hex combat:', waypointsToRestore.length);
-          setWaypoints(waypointsToRestore);
-          setPendingResumeWaypoints(null);
-        }
         return;
       }
 
@@ -417,17 +429,6 @@ function TacticalMapScreen() {
 
         // Fallback: If no pending salvage state (shouldn't happen), use old behavior
         console.warn('[TacticalMap] No pendingSalvageState found, using fallback behavior');
-
-        // CRITICAL: Restore waypoints BEFORE early return
-        // (similar to empty hex encounters at lines 449-453)
-        if (waypointsToRestore?.length > 0) {
-          debugLog('RUN_STATE', 'Restoring waypoints in fallback path:', {
-            count: waypointsToRestore.length,
-            destinations: waypointsToRestore.map(wp => `${wp.hex?.q},${wp.hex?.r}`)
-          });
-          setWaypoints(waypointsToRestore);
-          setPendingResumeWaypoints(null);
-        }
 
         if (salvageFullyLooted) {
           const lootedPOIs = tacticalRunState?.lootedPOIs || [];
@@ -487,12 +488,7 @@ function TacticalMapScreen() {
 
       // Skip loot modal only if truly empty (credits-only rewards)
       if (!hasVisibleLoot) {
-        console.log('[TacticalMap] No visible loot (credits-only) - skipping loot modal');
-        // Resume journey if waypoints remain
-        if (waypointsToRestore?.length > 0) {
-          console.log('[TacticalMap] Resuming journey with', waypointsToRestore.length, 'waypoints');
-          setPendingResumeWaypoints(waypointsToRestore);
-        }
+        debugLog('COMBAT_FLOW', 'Mount effect - NO VISIBLE LOOT path (credits-only)');
         return;
       }
 
@@ -503,11 +499,9 @@ function TacticalMapScreen() {
 
       if (isBlueprintOnly) {
         // Use dedicated blueprint reveal modal
-        console.log('[TacticalMap] Blueprint-only loot - showing DroneBlueprintRewardModal');
+        debugLog('COMBAT_FLOW', 'Mount effect - BLUEPRINT ONLY path');
         setPendingBlueprintReward(poiLoot.blueprint);
         setShowBlueprintRewardModal(true);
-
-        // Store encounter info for cleanup
         setPendingLootEncounter({
           poi: { q, r, poiData: { name: poiName, threatIncrease: 10 } }
         });
@@ -790,6 +784,7 @@ function TacticalMapScreen() {
     shouldStopMovement.current = false;
     setCurrentWaypointIndex(0);
     setCurrentHexIndex(0);  // Reset hex index
+    pathProgressRef.current = { waypointIndex: 0, hexIndex: 0 };  // Reset path progress tracking
     setIsScanningHex(true);  // Start scan overlay for entire journey
 
     const runState = tacticalMapStateManager.getState();
@@ -814,8 +809,8 @@ function TacticalMapScreen() {
       for (let hexIndex = 1; hexIndex < path.length; hexIndex++) {
         if (shouldStopMovement.current) break;
 
-        // Update hex index BEFORE the scan/move so UI shows NEXT hex info
-        setCurrentHexIndex(hexIndex);
+        // NOTE: Don't set currentHexIndex here - it's set to 0 after each trim (line ~842)
+        // The path is trimmed after each move, so currentHexIndex should always be 0
         const targetHex = path[hexIndex];
 
         // Phase 1: Scan delay (warning overlay stays active throughout journey)
@@ -824,6 +819,27 @@ function TacticalMapScreen() {
 
         // Phase 2: Move to hex (zone-based detection cost)
         moveToSingleHex(targetHex, tierConfig, mapRadius);
+
+        // Update path progress ref synchronously (for combat storage accuracy)
+        pathProgressRef.current = { waypointIndex: wpIndex, hexIndex };
+
+        // Trim pathFromPrev to remove the just-traversed hex (path shrinks as player moves)
+        // Always slice(1) because after each trim, current position is at index 0
+        // Using slice(hexIndex) would be wrong since state path is already shortened
+        setWaypoints(prev => {
+          const updated = [...prev];
+          if (updated[wpIndex] && updated[wpIndex].pathFromPrev.length > 1) {
+            updated[wpIndex] = {
+              ...updated[wpIndex],
+              pathFromPrev: updated[wpIndex].pathFromPrev.slice(1)
+            };
+          }
+          return updated;
+        });
+
+        // Reset currentHexIndex to 0 after trimming so heading calculation uses correct index
+        // (After trim, current position is always at path[0], next hex is at path[1])
+        setCurrentHexIndex(0);
 
         // Check if MIA was triggered during move - stop BEFORE encounter check
         // This prevents the race condition where both MIA and encounter screens appear
@@ -883,7 +899,11 @@ function TacticalMapScreen() {
             });
 
             // After modal closes, check if we should continue
-            if (shouldStopMovement.current) break;
+            if (shouldStopMovement.current) {
+              // Remove visited waypoint before breaking (we've arrived, just combat interrupted)
+              setWaypoints(prev => prev.length <= 1 ? [] : prev.slice(1));
+              break;
+            }
           } else {
             // Regular PoI (no guardian) - proceed with salvage
             console.log('[TacticalMap] PoI arrived - initializing salvage');
@@ -923,7 +943,11 @@ function TacticalMapScreen() {
             });
 
             // Check if movement was cancelled while waiting
-            if (shouldStopMovement.current) break;
+            if (shouldStopMovement.current) {
+              // Remove visited waypoint before breaking (we've arrived, just combat interrupted)
+              setWaypoints(prev => prev.length <= 1 ? [] : prev.slice(1));
+              break;
+            }
           }
         }
       } else if (arrivedHex.type === 'gate') {
@@ -936,6 +960,17 @@ function TacticalMapScreen() {
         const shouldContinue = await waitWithPauseSupport(500);
         if (!shouldContinue) break;
       }
+
+      // Remove completed waypoint from array after arrival
+      // This updates React state (for UI) without affecting the closure-captured waypoints array
+      // The loop continues using the closure variable, while React renders the updated state
+      // After removal: old waypoint[1] becomes waypoint[0] in UI → numbers update correctly
+      setWaypoints(prev => {
+        if (prev.length <= 1) {
+          return [];  // Last waypoint - clear all
+        }
+        return prev.slice(1);  // Remove first (completed) waypoint
+      });
     }
 
     // Journey complete - clear waypoints and reset state
@@ -951,7 +986,7 @@ function TacticalMapScreen() {
     setIsPaused(false);
     isPausedRef.current = false;
     setIsScanningHex(false);
-    setCurrentWaypointIndex(0);
+    setCurrentWaypointIndex(null);  // Journey complete - not moving
     setCurrentHexIndex(0);
   }, [waypoints, waitWithPauseSupport, moveToSingleHex, SCAN_DELAY, MOVE_DELAY]);
 
@@ -1637,7 +1672,7 @@ function TacticalMapScreen() {
       setIsScanningHex(false);
       setIsMoving(false);
     }
-  }, [currentEncounter, salvageQuickDeployPending, activeSalvage, waypoints, currentWaypointIndex, currentHexIndex]);
+  }, [extractionQuickDeployPending, currentEncounter, salvageQuickDeployPending, activeSalvage, waypoints, currentWaypointIndex, currentHexIndex]);
 
   /**
    * Handle loading encounter complete - actually start combat
@@ -1712,6 +1747,8 @@ function TacticalMapScreen() {
 
     // Prepare for combat using TransitionManager (single entry point)
     // This captures: tactical map state, waypoints, salvage state (if mid-salvage)
+    // NOTE: Use pathProgressRef for sync access since React state can be stale in closures
+    // Paths are trimmed in real-time during movement, so waypoints[0] always starts at current position
     try {
       transitionManager.prepareForCombat({
         entryReason,
@@ -1720,9 +1757,13 @@ function TacticalMapScreen() {
         poi: currentEncounter?.poi,
         waypointContext: waypoints.length > 0 ? {
           waypoints,
-          currentWaypointIndex,
-          currentHexIndex,
-          isAtPOI: currentEncounter?.fromSalvage || false
+          // After path trimming, current waypoint is always at index 0
+          // and current position is always at start of pathFromPrev (hexIndex 0)
+          currentWaypointIndex: 0,
+          currentHexIndex: 0,
+          isAtPOI: currentEncounter?.fromSalvage || false,
+          // Include ref values for debugging/logging purposes
+          originalProgress: pathProgressRef.current
         } : null,
         salvageState: currentEncounter?.fromSalvage ? activeSalvage : null,
         isBlockade: currentEncounter?.isBlockade || false,
@@ -1734,6 +1775,11 @@ function TacticalMapScreen() {
       pendingCombatLoadingRef.current = false;
     } catch (error) {
       console.error('[TacticalMap] TransitionManager.prepareForCombat failed:', error);
+
+      // Reset TransitionManager to prevent stuck state
+      // Note: prepareForCombat now auto-resets on failure, but this is a safety net
+      transitionManager.forceReset();
+
       pendingCombatLoadingRef.current = false;
       setShowLoadingEncounter(false);
       setLoadingEncounterData(null);
@@ -1783,7 +1829,6 @@ function TacticalMapScreen() {
       detection: updatedRunState?.detection,
       hull: updatedRunState?.currentHull,
       hasPendingPath: !!updatedRunState?.pendingPath,
-      hasPendingWaypoints: !!updatedRunState?.pendingWaypoints,
       pendingPathHexCount: updatedRunState?.pendingPath?.length || 0
     });
 
@@ -1798,6 +1843,10 @@ function TacticalMapScreen() {
 
     if (!success) {
       console.error('[TacticalMap] Failed to initialize combat');
+
+      // Reset TransitionManager since prepareForCombat succeeded but combat init failed
+      transitionManager.forceReset();
+
       // Fall back to map
       setShowLoadingEncounter(false);
       setLoadingEncounterData(null);
