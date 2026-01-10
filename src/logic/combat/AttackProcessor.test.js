@@ -409,11 +409,11 @@ describe('AttackProcessor', () => {
       expect(originalTargetExists).toBe(true)
     })
 
-    it('marks interceptor as exhausted after interception', () => {
-      // EXPLANATION: This test verifies that intercepting drones become exhausted,
-      // preventing them from intercepting multiple attacks per turn. This balances
-      // the interception mechanic - each drone can only intercept once.
-      // Expected: Interceptor's isExhausted becomes true after interception
+    it('does NOT exhaust interceptor after interception', () => {
+      // EXPLANATION: Interceptors do NOT become exhausted when intercepting.
+      // This allows drones to intercept multiple attacks per turn, with HP/shields
+      // as the natural limiter. This creates richer defensive gameplay.
+      // Expected: Interceptor's isExhausted remains false after interception
 
       const attacker = {
         id: 'drone1',
@@ -465,7 +465,7 @@ describe('AttackProcessor', () => {
       )
 
       expect(updatedInterceptor).toBeDefined()
-      expect(updatedInterceptor.isExhausted).toBe(true)
+      expect(updatedInterceptor.isExhausted).toBe(false)
     })
 
     it('generates attack result with damage information', () => {

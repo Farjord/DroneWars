@@ -56,21 +56,21 @@ export const analyzeInterceptionInLane = (laneId, player1, player2, gameDataServ
       aiUncheckedThreats.push(drone.id);
     }
 
-    // Defensive interceptor: can intercept enemy threats (faster than at least one enemy)
+    // Defensive interceptor: can intercept enemy threats (equal or faster than at least one enemy)
     const canInterceptEnemy = enemyReadyDrones.some(e => {
       const enemyStats = gameDataService.getEffectiveStats(e, laneId);
-      return droneSpeed > (enemyStats.speed || 0);
+      return droneSpeed >= (enemyStats.speed || 0);
     });
     if (canInterceptEnemy) {
       aiDefensiveInterceptors.push(drone.id);
     }
   });
 
-  // Enemy interceptors that can block AI attacks (faster than AI max speed)
+  // Enemy interceptors that can block AI attacks (equal or faster than AI max speed)
   const enemyInterceptors = enemyReadyDrones
     .filter(d => {
       const stats = gameDataService.getEffectiveStats(d, laneId);
-      return (stats.speed || 0) > aiMaxSpeed && aiMaxSpeed > 0;
+      return (stats.speed || 0) >= aiMaxSpeed && aiMaxSpeed > 0;
     })
     .map(d => d.id);
 
@@ -86,7 +86,11 @@ export const analyzeInterceptionInLane = (laneId, player1, player2, gameDataServ
  * Calculate total threats that a defensive interceptor is keeping in check
  *
  * CRITICAL: This calculates the ship threat potential of ALL enemy drones that would
- * become free to attack if this defensive interceptor exhausts by attacking.
+ * become free to attack if this defensive interceptor exhausts by ATTACKING.
+ *
+ * Note: Intercepting does NOT exhaust drones - they can intercept multiple times.
+ * However, ATTACKING still exhausts drones, which means they can no longer intercept.
+ * This function evaluates the cost of using a drone for offense vs defense.
  *
  * Also determines if these threats would cause a state transition on the AI's ship section,
  * and counts how many sections are already damaged (for context-aware penalty scaling).
@@ -113,8 +117,8 @@ export const calculateThreatsKeptInCheck = (attacker, laneId, player1, player2, 
     const enemyStats = gameDataService.getEffectiveStats(enemy, laneId);
     const enemySpeed = enemyStats.speed || 0;
 
-    // If this attacker is faster, it's keeping this enemy in check
-    if (attackerSpeed > enemySpeed) {
+    // If this attacker is equal or faster, it's keeping this enemy in check
+    if (attackerSpeed >= enemySpeed) {
       // Calculate ship threat potential (includes BONUS_DAMAGE_VS_SHIP)
       let shipThreatDamage = enemyStats.attack || 0;
 

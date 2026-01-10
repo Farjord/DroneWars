@@ -261,15 +261,16 @@ describe('evaluateDroneAttack', () => {
       expect(result.logic.some(l => l.includes('Losing Interception Coverage'))).toBe(false);
     });
 
-    // Test: Does not apply penalty for Defenders (they don't exhaust on intercept)
-    it('does not apply penalty for Defender drones', () => {
+    // Note: DEFENDER keyword removed - all drones now get interception coverage penalty when attacking
+    // (because attacking exhausts them, even though intercepting no longer does)
+    it('applies penalty to all drones when they could provide interception coverage', () => {
       const attacker = createMockDrone({
-        name: 'Defender Drone',
+        name: 'Fast Drone',
         class: 2,
         attack: 2,
         speed: 4,
         lane: 'lane1',
-        keywords: ['DEFENDER']
+        keywords: [] // No special keywords
       });
       const target = createMockDrone({
         id: 'target-1',
@@ -283,7 +284,7 @@ describe('evaluateDroneAttack', () => {
         name: 'Striker',
         class: 2,
         attack: 3,
-        speed: 3,
+        speed: 3, // Slower than attacker, so attacker could intercept it
         lane: 'lane1',
         isExhausted: false
       });
@@ -304,8 +305,8 @@ describe('evaluateDroneAttack', () => {
 
       const result = evaluateDroneAttack(attacker, target, context);
 
-      // Defender should NOT have interception coverage penalty
-      expect(result.logic.some(l => l.includes('Losing Interception Coverage'))).toBe(false);
+      // All drones should get interception coverage penalty when attacking exhausts them
+      expect(result.logic.some(l => l.includes('Losing Interception Coverage'))).toBe(true);
     });
 
     // Test: Does not apply penalty for Guardians (handled by Guardian Protection Risk)

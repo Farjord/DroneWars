@@ -14,7 +14,7 @@ import { getLaneOfDrone } from '../gameLogic.js';
  * Interception rules:
  * - Interceptor must be in the same lane as attacker
  * - Interceptor must not be exhausted
- * - Interceptor must have higher speed OR ALWAYS_INTERCEPTS keyword
+ * - Interceptor must have equal or higher speed OR ALWAYS_INTERCEPTS keyword
  *
  * @param {Object} selectedDrone - The attacking drone
  * @param {Object} player1 - Player 1 state
@@ -51,7 +51,7 @@ export const calculatePotentialInterceptors = (selectedDrone, player1, player2, 
             placedSections
         );
         return !opponentDrone.isExhausted &&
-               (effectiveInterceptor.speed > effectiveAttacker.speed ||
+               (effectiveInterceptor.speed >= effectiveAttacker.speed ||
                 effectiveInterceptor.keywords.has('ALWAYS_INTERCEPTS'));
     }).map(d => d.id);
 
@@ -87,7 +87,7 @@ export const calculateAiInterception = (pendingAttack, playerStates, placedSecti
                 d, lane, defendingPlayerState, attackingPlayerState, placedSections
             );
             return !d.isExhausted &&
-                   (effectiveInterceptor.speed > effectiveAttacker.speed ||
+                   (effectiveInterceptor.speed >= effectiveAttacker.speed ||
                     effectiveInterceptor.keywords.has('ALWAYS_INTERCEPTS')) &&
                    (targetType !== 'drone' || d.id !== target.id);
         });

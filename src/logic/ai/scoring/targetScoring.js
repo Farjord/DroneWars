@@ -20,7 +20,6 @@ const {
   MED_ATTACK_BONUS,
   HIGH_ATTACK_BONUS,
   GUARDIAN_ABILITY_BONUS,
-  DEFENDER_ABILITY_BONUS,
   ANTI_SHIP_ABILITY_BONUS,
   LETHAL_BONUS,
   PIERCING_BYPASS_BONUS,
@@ -167,11 +166,7 @@ const evaluateDangerousAbilities = (target) => {
       logic.push(`Guardian: +${GUARDIAN_ABILITY_BONUS}`);
     }
 
-    // DEFENDER - doesn't exhaust on intercept
-    if (ability.effect?.type === 'GRANT_KEYWORD' && ability.effect?.keyword === 'DEFENDER') {
-      value += DEFENDER_ABILITY_BONUS;
-      logic.push(`Defender: +${DEFENDER_ABILITY_BONUS}`);
-    }
+    // Note: DEFENDER keyword removed - all drones can now intercept multiple times
 
     // BONUS_DAMAGE_VS_SHIP - anti-ship threat
     if (ability.effect?.type === 'BONUS_DAMAGE_VS_SHIP') {

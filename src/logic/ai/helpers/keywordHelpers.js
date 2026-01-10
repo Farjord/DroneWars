@@ -2,22 +2,11 @@
 // KEYWORD HELPERS
 // ========================================
 // Functions for detecting keywords and abilities on drones
+//
+// Note: DEFENDER keyword removed - all drones can now intercept multiple times
+// without exhausting. HP/shields naturally limit interception capacity.
 
 import fullDroneCollection from '../../../data/droneData.js';
-
-/**
- * Check if a drone has the DEFENDER keyword
- * DEFENDER drones don't exhaust when intercepting, allowing multiple interceptions
- * @param {Object} drone - The drone to check
- * @returns {boolean} True if drone has DEFENDER keyword
- */
-export const hasDefenderKeyword = (drone) => {
-  const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
-  return baseDrone?.abilities?.some(ability =>
-    ability.effect?.type === 'GRANT_KEYWORD' &&
-    ability.effect?.keyword === 'DEFENDER'
-  ) || false;
-};
 
 /**
  * Check if a drone has a specific keyword

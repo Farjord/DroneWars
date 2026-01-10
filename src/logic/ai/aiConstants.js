@@ -139,25 +139,18 @@ export const INTERCEPTION = {
   EXCELLENT_SACRIFICE_RATIO: 2.0,
   GOOD_SACRIFICE_RATIO: 1.3,
 
-  // Keyword bonuses
-  DEFENDER_BONUS: 20,
-
   // Opportunity cost threshold multiplier
   OPPORTUNITY_COST_MULTIPLIER: 1.5,
 
   // Score values for different decision outcomes (when interceptor survives)
-  EXCELLENT_TRADE_SCORE_DEFENDER: 110,
-  EXCELLENT_TRADE_SCORE_NORMAL: 90,
-  GOOD_TRADE_SCORE_DEFENDER: 90,
-  GOOD_TRADE_SCORE_NORMAL: 70,
-  PROTECTIVE_SCORE_DEFENDER: 70,
-  PROTECTIVE_SCORE_NORMAL: 50,
+  // Note: DEFENDER-specific scores removed - all drones can now intercept multiple times
+  EXCELLENT_TRADE_SCORE: 90,
+  GOOD_TRADE_SCORE: 70,
+  PROTECTIVE_SCORE: 50,
 
   // Score values for sacrifice scenarios (interceptor dies)
-  EXCELLENT_SACRIFICE_SCORE_DEFENDER: 80,
-  EXCELLENT_SACRIFICE_SCORE_NORMAL: 60,
-  GOOD_SACRIFICE_SCORE_DEFENDER: 70,
-  GOOD_SACRIFICE_SCORE_NORMAL: 45,
+  EXCELLENT_SACRIFICE_SCORE: 60,
+  GOOD_SACRIFICE_SCORE: 45,
 
   // Defensive penalty multipliers (context-aware)
   DEFENSIVE_PENALTY_MULTIPLIER: -12,          // Full penalty - would lose game (3rd section)
@@ -201,7 +194,6 @@ export const CARD_EVALUATION = {
   SHIP_ATTACK_MULTIPLIER: 8,
   DRONE_ATTACK_MULTIPLIER: 8,
   INTERCEPTION_VALUE_PER_THREAT: 20,
-  DEFENDER_KEYWORD_BONUS: 40,
   GUARDIAN_KEYWORD_BONUS: 30,
   LANE_IMPACT_WEIGHT: 1.5,
   LANE_FLIP_BONUS: 30,
@@ -336,7 +328,6 @@ export const TARGET_SCORING = {
   MED_ATTACK_BONUS: 4,               // attack 2-3
   HIGH_ATTACK_BONUS: 8,              // attack 4+
   GUARDIAN_ABILITY_BONUS: 15,
-  DEFENDER_ABILITY_BONUS: 12,
   ANTI_SHIP_ABILITY_BONUS: 10,
 
   // Priority 5: Damage efficiency (tiebreaker)

@@ -111,7 +111,7 @@ function GameHeader({
   interceptionModeActive,
   selectedInterceptor,
   handleShowInterceptionDialog,
-  handleDeclineInterceptionFromHeader,
+  handleResetInterception,
   handleConfirmInterception,
   // Extraction mode props
   currentRunState,
@@ -439,15 +439,14 @@ function GameHeader({
                 </button>
 
                 <button
-                  onClick={handleDeclineInterceptionFromHeader}
-                  className="dw-btn dw-btn-danger dw-btn--sm"
+                  onClick={handleResetInterception}
+                  className="dw-btn dw-btn-warning dw-btn--sm"
                 >
-                  Decline
+                  Reset
                 </button>
 
                 <button
                   onClick={handleConfirmInterception}
-                  disabled={!selectedInterceptor}
                   className="dw-btn dw-btn-confirm dw-btn--sm"
                 >
                   Confirm

@@ -945,6 +945,16 @@ const App = ({ phaseAnimationQueue }) => {
   }, []);
 
   /**
+   * HANDLE RESET INTERCEPTION
+   * Called when player clicks "Reset" button in header during interception mode.
+   * Clears the selected interceptor, allowing them to re-drag or confirm without intercepting.
+   */
+  const handleResetInterception = useCallback(() => {
+    debugLog('INTERCEPTION_MODE', '🔄 Resetting interception selection');
+    setSelectedInterceptor(null);
+  }, []);
+
+  /**
    * HANDLE DECLINE INTERCEPTION FROM HEADER
    * Called when player clicks "Decline" button in header during interception mode.
    * Declines the interception and resolves the attack.
@@ -971,22 +981,28 @@ const App = ({ phaseAnimationQueue }) => {
 
   /**
    * HANDLE CONFIRM INTERCEPTION
-   * Called when player clicks "Confirm" button in header with an interceptor selected.
-   * Confirms the interception and resolves the attack with the selected interceptor.
+   * Called when player clicks "Confirm" button in header during interception mode.
+   * Confirms the current board state:
+   * - If an interceptor is selected (via drag), resolves attack with interception
+   * - If no interceptor selected, resolves attack without interception
    */
   const handleConfirmInterception = useCallback(async () => {
-    if (!selectedInterceptor || !playerInterceptionChoice) {
-      debugLog('INTERCEPTION_MODE', '⛔ Cannot confirm - no interceptor selected');
+    if (!playerInterceptionChoice) {
+      debugLog('INTERCEPTION_MODE', '⛔ Cannot confirm - no interception pending');
       return;
     }
 
-    debugLog('INTERCEPTION_MODE', '✅ Confirming interception', {
-      interceptor: selectedInterceptor.name
-    });
+    if (selectedInterceptor) {
+      debugLog('INTERCEPTION_MODE', '✅ Confirming interception', {
+        interceptor: selectedInterceptor.name
+      });
+    } else {
+      debugLog('INTERCEPTION_MODE', '⛔ Confirming without interception (no interceptor selected)');
+    }
 
     const attackDetails = {
       ...playerInterceptionChoice.attackDetails,
-      interceptor: selectedInterceptor
+      interceptor: selectedInterceptor || null
     };
 
     // Cleanup interception mode state
@@ -4569,7 +4585,7 @@ const App = ({ phaseAnimationQueue }) => {
         interceptionModeActive={interceptionModeActive}
         selectedInterceptor={selectedInterceptor}
         handleShowInterceptionDialog={handleShowInterceptionDialog}
-        handleDeclineInterceptionFromHeader={handleDeclineInterceptionFromHeader}
+        handleResetInterception={handleResetInterception}
         handleConfirmInterception={handleConfirmInterception}
         // Extraction mode props
         currentRunState={tacticalMapStateManager.getState()}

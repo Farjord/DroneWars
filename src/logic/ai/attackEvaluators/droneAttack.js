@@ -110,9 +110,9 @@ export const evaluateDroneAttack = (attacker, target, context) => {
   }
 
   // Interception coverage penalty - penalize attacking with drones providing interception coverage
-  // Skip if DEFENDER (doesn't exhaust on intercept) or already handled by Guardian check
-  const isDefender = effectiveAttacker.keywords?.has('DEFENDER');
-  if (!isGuardian && !isDefender) {
+  // Note: Attacking exhausts drones (even though intercepting no longer does), so we still
+  // penalize attacking with drones that are currently blocking enemy ship attackers.
+  if (!isGuardian) {
     const enemyDronesInLane = player1.dronesOnBoard[attacker.lane] || [];
     const enemyShipAttackers = enemyDronesInLane.filter(d =>
       !d.isExhausted && effectiveAttacker.speed >= d.speed

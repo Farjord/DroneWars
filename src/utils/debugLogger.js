@@ -89,7 +89,7 @@ const DEBUG_CONFIG = {
     CARD_DISCARD: false,          // Card discard after play - tracks instanceId and hand filtering
     MOVEMENT_EFFECT: false,       // Movement effect execution (DO_NOT_EXHAUST, drone state changes)
     TURN_TRANSITION_DEBUG: false,  // Turn transition investigation (TEMPORARY)
-    AVAILABILITY: false,             // Drone availability system (dots, readyCount, inPlayCount)
+    AVAILABILITY: true,             // Drone availability system (dots, readyCount, inPlayCount)
   }
 };
 

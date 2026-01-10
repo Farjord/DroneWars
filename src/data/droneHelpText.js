@@ -23,7 +23,7 @@ export const DRONE_HELP_TEXT = {
   speed: {
     title: 'Speed Rating',
     icon: 'Gauge',
-    description: `Determines interception ability. A drone can only intercept an attacker if its speed is HIGHER. Faster drones can't be blocked by slower ones.`
+    description: `Determines interception ability. A drone can only intercept an attacker if its speed is equal or higher. Faster drones can't be blocked by slower ones.`
   },
   cost: {
     title: 'Deployment Cost',

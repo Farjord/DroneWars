@@ -2,9 +2,13 @@
 // INTERCEPTION ADJUSTMENT PASS
 // ========================================
 // Applies interception-based score adjustments after initial scoring
-// - Penalizes attacks by defensive interceptors
+// - Penalizes attacks by defensive interceptors (attacking exhausts, losing interception ability)
 // - Adjusts ship attack scores based on interception risk
 // - Bonuses for removing enemy interceptors
+//
+// Note: Intercepting does NOT exhaust drones - they can intercept multiple times.
+// However, ATTACKING still exhausts drones, which means they can no longer intercept.
+// This pass evaluates the opportunity cost of using a drone for offense vs defense.
 
 import { INTERCEPTION, PENALTIES } from '../aiConstants.js';
 import { analyzeInterceptionInLane, calculateThreatsKeptInCheck } from '../scoring/interceptionAnalysis.js';

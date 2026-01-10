@@ -240,11 +240,11 @@ export const effectPatterns = {
 
   'GRANT_KEYWORD': {
     validParameters: {
-      keyword: ['PIERCING', 'DEFENDER', 'GUARDIAN', 'JAMMER']
+      keyword: ['PIERCING', 'GUARDIAN', 'JAMMER', 'DOGFIGHT', 'RETALIATE']
     },
     requiredParameters: ['keyword'],
     implementation: 'statsCalculator.js:calculateEffectiveStats',
-    notes: 'Adds special keyword ability to drone.'
+    notes: 'Adds special keyword ability to drone. Note: DEFENDER removed - all drones can intercept multiple times.'
   },
 
   'BONUS_DAMAGE_VS_SHIP': {
@@ -352,12 +352,14 @@ export const conditionPatterns = {
 // ========================================
 
 export const keywordPatterns = {
-  validKeywords: ['PIERCING', 'DEFENDER', 'GUARDIAN', 'JAMMER'],
+  // Note: DEFENDER removed - all drones can now intercept multiple times without exhausting
+  validKeywords: ['PIERCING', 'GUARDIAN', 'JAMMER', 'DOGFIGHT', 'RETALIATE'],
   notes: {
     'PIERCING': 'Checked during damage calculation. Bypasses shields.',
-    'DEFENDER': 'Checked during interception. Prevents exhaustion.',
     'GUARDIAN': 'Checked during targeting. Protects ship section.',
-    'JAMMER': 'Checked during card effect targeting. Forces target this drone.'
+    'JAMMER': 'Checked during card effect targeting. Forces target this drone.',
+    'DOGFIGHT': 'Checked during interception. Deals damage to attacker.',
+    'RETALIATE': 'Checked when attacked. Deals damage back if drone survives.'
   }
 };
 

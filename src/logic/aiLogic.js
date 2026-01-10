@@ -8,7 +8,6 @@ import {
   hasJammerInLane,
   getJammerDronesInLane,
   countDroneTypeInLane,
-  hasDefenderKeyword,
   hasDogfightKeyword,
   hasThreatOnRoundStart,
 } from './ai/helpers/index.js';
@@ -702,7 +701,6 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
 // ========================================
 // INTERCEPTION DECISION HELPERS
 // ========================================
-// Note: hasDefenderKeyword is now imported from ./ai/helpers/keywordHelpers.js
 
 /**
  * Analyze remaining threats in the lane to evaluate opportunity cost
@@ -780,10 +778,12 @@ const analyzeRemainingThreats = (attackDetails, potentialInterceptors, gameDataS
  * AI Interception Decision (Enhanced)
  * Decides whether to intercept an incoming attack and which interceptor to use
  *
+ * NOTE: Interceptors do NOT exhaust when intercepting - they can intercept multiple
+ * times per turn. HP/shields naturally limit how many times a drone can intercept.
+ *
  * ENHANCEMENTS:
  * 1. Survivability-based decisions (hull + shields vs damage)
  * 2. Opportunity cost analysis (scan for bigger threats)
- * 3. DEFENDER keyword handling (no exhaustion, no opportunity cost)
  *
  * @param {Array} potentialInterceptors - Drones that can intercept (pre-filtered for speed/keywords)
  * @param {Object} target - The attacker drone
@@ -851,26 +851,17 @@ const makeInterceptionDecision = (potentialInterceptors, target, attackDetails, 
     opportunityCostData = analyzeRemainingThreats(attackDetails, potentialInterceptors, gameDataService, gameStateManager);
   }
 
-  // Sort interceptors: DEFENDER first (they don't exhaust), then by least impact
-  // This ensures we sacrifice lowest-value drones first
+  // Sort interceptors by least impact first
+  // This ensures we use lowest-value drones for interception first
+  // Note: All drones can now intercept multiple times (no exhaustion on intercept)
   const sortedInterceptors = [...potentialInterceptors].sort((a, b) => {
-    const aHasDefender = hasDefenderKeyword(a);
-    const bHasDefender = hasDefenderKeyword(b);
-
-    // DEFENDER drones always come first
-    if (aHasDefender && !bHasDefender) return -1;
-    if (!aHasDefender && bHasDefender) return 1;
-
-    // Among same DEFENDER status, sort by impact (lowest first)
-    // Use calculateDroneImpact to get consistent value measurement
     const impactA = calculateDroneImpact(a, attackDetails.lane, gameDataService);
     const impactB = calculateDroneImpact(b, attackDetails.lane, gameDataService);
-    return impactA - impactB; // Ascending - sacrifice least valuable first
+    return impactA - impactB; // Ascending - use least valuable first
   });
 
   for (const interceptor of sortedInterceptors) {
     const interceptorClass = interceptor.class ?? Infinity;
-    const hasDefender = hasDefenderKeyword(interceptor);
     const logic = [];
     let score = 0;
     let shouldIntercept = false;
@@ -894,12 +885,10 @@ const makeInterceptionDecision = (potentialInterceptors, target, attackDetails, 
     logic.push(`Durability: ${durability} (${interceptor.hull}H + ${interceptor.currentShields}S)`);
     logic.push(`Survivability: ${survives ? '✅ SURVIVES' : '❌ DIES'} (${damageTaken} dmg, ${(damageRatio * 100).toFixed(0)}%)`);
 
-    if (hasDefender) {
-      logic.push(`⭐ DEFENDER: No exhaustion penalty`);
-    }
-
-    // === OPPORTUNITY COST CHECK (skip for DEFENDER drones) ===
-    if (!hasDefender && opportunityCostData && opportunityCostData.maxBlockableThreat > 0) {
+    // === OPPORTUNITY COST CHECK ===
+    // Note: Interceptors don't exhaust, but we still check opportunity cost
+    // to avoid intercepting weak attacks when stronger threats are incoming
+    if (opportunityCostData && opportunityCostData.maxBlockableThreat > 0) {
       // Check if there's a bigger threat worth saving interceptor for
       // Compare ship threats (includes bonus damage) for opportunity cost
       if (opportunityCostData.maxBlockableThreat > shipThreatDamage * 1.5) {
@@ -969,17 +958,17 @@ const makeInterceptionDecision = (potentialInterceptors, target, attackDetails, 
       if (impactRatio < 0.3) {
         // Low-impact interceptor vs high-impact attacker - GREAT trade
         shouldIntercept = true;
-        score = hasDefender ? 110 : 90;
+        score = 90;
         logic.push(`✅ Excellent: Low impact defender (ratio ${impactRatio.toFixed(2)})`);
       } else if (impactRatio < 0.7) {
         // Reasonable trade - good interception
         shouldIntercept = true;
-        score = hasDefender ? 90 : 70;
+        score = 70;
         logic.push(`✅ Good: Defender impact favorable (ratio ${impactRatio.toFixed(2)})`);
       } else if (protectionValue > interceptorImpact * 1.5) {
         // High impact interceptor, but protecting something valuable
         shouldIntercept = true;
-        score = hasDefender ? 70 : 50;
+        score = 50;
         logic.push(`✅ Protective: Saving ${protectionValue.toFixed(0)} value vs ${interceptorImpact.toFixed(0)} cost`);
       } else {
         // Not worth it - high impact interceptor for low value protection
@@ -994,12 +983,12 @@ const makeInterceptionDecision = (potentialInterceptors, target, attackDetails, 
       if (sacrificeRatio > 2.0) {
         // Losing low-impact defender to save high-value target - GREAT sacrifice
         shouldIntercept = true;
-        score = hasDefender ? 80 : 60; // DEFENDER doesn't actually die
+        score = 60;
         logic.push(`✅ Excellent sacrifice: Lose ${interceptorImpact.toFixed(0)} to save ${protectionValue.toFixed(0)} (ratio ${sacrificeRatio.toFixed(2)})`);
       } else if (sacrificeRatio > 1.3) {
         // Reasonable sacrifice trade
         shouldIntercept = true;
-        score = hasDefender ? 70 : 45;
+        score = 45;
         logic.push(`✅ Good sacrifice: Lose ${interceptorImpact.toFixed(0)} to save ${protectionValue.toFixed(0)} (ratio ${sacrificeRatio.toFixed(2)})`);
       } else {
         // Bad trade - losing too much impact
@@ -1007,12 +996,6 @@ const makeInterceptionDecision = (potentialInterceptors, target, attackDetails, 
         score = -999;
         logic.push(`❌ Poor sacrifice: Lose ${interceptorImpact.toFixed(0)} to save only ${protectionValue.toFixed(0)} (ratio ${sacrificeRatio.toFixed(2)})`);
       }
-    }
-
-    // DEFENDER bonus: Add extra score for DEFENDER drones
-    if (hasDefender && shouldIntercept) {
-      score += INTERCEPTION.DEFENDER_BONUS;
-      logic.push(`⭐ DEFENDER bonus: +${INTERCEPTION.DEFENDER_BONUS}`);
     }
 
     // DOGFIGHT bonus: Add extra score for DOGFIGHT drones (deal damage to attacker)
@@ -1046,10 +1029,10 @@ const makeInterceptionDecision = (potentialInterceptors, target, attackDetails, 
       isChosen: false // Will be set later for chosen interceptor
     });
 
-    // Choose first valid interceptor (already sorted by DEFENDER first, then class)
+    // Choose first valid interceptor (already sorted by lowest impact first)
     if (shouldIntercept && !decisionContext.some(d => d.isChosen)) {
       decisionContext[decisionContext.length - 1].isChosen = true;
-      debugLog('AI_DECISIONS', `🛡️ [INTERCEPTION] INTERCEPT with ${interceptor.name}${hasDefender ? ' (DEFENDER)' : ''} - Score: ${score}`);
+      debugLog('AI_DECISIONS', `🛡️ [INTERCEPTION] INTERCEPT with ${interceptor.name} - Score: ${score}`);
       return { interceptor, decisionContext };
     }
   }

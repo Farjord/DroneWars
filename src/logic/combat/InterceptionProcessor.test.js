@@ -104,11 +104,10 @@ describe('InterceptionProcessor', () => {
       expect(interceptors).toEqual([])
     })
 
-    it('returns empty array if opponent drones have lower or equal speed', () => {
-      // EXPLANATION: This test verifies the core interception rule: only FASTER drones
-      // can intercept. A drone with equal or lower speed cannot intercept. This creates
-      // strategic depth where speed matters for both offense and defense.
-      // Expected: Returns empty array when opponent drone speed ≤ attacker speed
+    it('returns empty array if opponent drones have lower speed', () => {
+      // EXPLANATION: This test verifies that slower drones cannot intercept faster attackers.
+      // Only drones with equal or higher speed can intercept.
+      // Expected: Returns empty array when opponent drone speed < attacker speed
 
       const attacker = {
         id: 'drone1',
@@ -118,7 +117,7 @@ describe('InterceptionProcessor', () => {
 
       const slowDefender = {
         id: 'drone2',
-        name: 'Bastion', // Speed 2 (slower than Standard Fighter)
+        name: 'Bastion', // Speed 2 (slower than attacker)
         isExhausted: false,
         owner: 'player2'
       }
@@ -134,6 +133,39 @@ describe('InterceptionProcessor', () => {
       )
 
       expect(interceptors).toEqual([])
+    })
+
+    it('returns interceptor ID when opponent drone has equal speed', () => {
+      // EXPLANATION: This test verifies that drones with equal speed CAN intercept.
+      // "Defender wins ties" - this creates strategic depth where positioning and
+      // defender advantage matter, not just raw speed.
+      // Expected: Returns interceptor ID when opponent speed === attacker speed
+
+      const attacker = {
+        id: 'drone1',
+        name: 'Talon', // Speed 4
+        isExhausted: false
+      }
+
+      const equalSpeedDefender = {
+        id: 'drone2',
+        name: 'Talon', // Speed 4 (same as attacker)
+        isExhausted: false,
+        owner: 'player2'
+      }
+
+      mockPlayerState1.dronesOnBoard.lane1.push(attacker)
+      mockPlayerState2.dronesOnBoard.lane1.push(equalSpeedDefender)
+
+      const interceptors = calculatePotentialInterceptors(
+        attacker,
+        mockPlayerState1,
+        mockPlayerState2,
+        mockPlacedSections
+      )
+
+      expect(interceptors).toContain('drone2')
+      expect(interceptors.length).toBe(1)
     })
 
     it('returns interceptor ID when opponent drone has higher speed', () => {

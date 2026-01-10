@@ -74,7 +74,7 @@ export const effectDescriptions = {
   'REPEATING_EFFECT': 'Executes a set of effects multiple times based on a condition. For example, "Draw 1 card and gain 1 energy" repeated once for each damaged ship section.',
 
   // === KEYWORDS ===
-  'GRANT_KEYWORD': 'Gives a special keyword ability to a drone. Keywords provide special combat behaviors like PIERCING (ignore shields), DEFENDER (doesn\'t exhaust when blocking), or GUARDIAN (protects ship section).',
+  'GRANT_KEYWORD': 'Gives a special keyword ability to a drone. Keywords provide special combat behaviors like PIERCING (ignore shields), GUARDIAN (protects ship section), or DOGFIGHT (deal damage when intercepting).',
 
   // === SHIELD MANAGEMENT ===
   'REALLOCATE_SHIELDS': 'Allows moving shield tokens between drones in a lane or removing them entirely. Used during the shield allocation phase.',
@@ -120,7 +120,8 @@ export const conditionDescriptions = {
 export const keywordDescriptions = {
   'PIERCING': 'Damage from this source ignores shields and directly damages hull. Useful against heavily-shielded targets.',
 
-  'DEFENDER': 'This drone does not exhaust when intercepting enemy attacks. Allows it to block multiple times per turn.',
+  // Note: DEFENDER keyword removed - all drones can now intercept multiple times without exhausting.
+  // HP/shields naturally limit how many times a drone can intercept before being destroyed.
 
   'GUARDIAN': 'While this drone is active in a lane, the ship section in that lane cannot be directly targeted by attacks. Enemies must destroy the Guardian first.',
 

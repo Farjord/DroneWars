@@ -602,26 +602,8 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
         }
     }
 
-    // Handle interceptor exhaustion
-    if (interceptor) {
-        const interceptorPlayerId = attackingPlayerId === 'player1' ? 'player2' : 'player1';
-        for (const laneKey in newPlayerStates[interceptorPlayerId].dronesOnBoard) {
-            const interceptorIndex = newPlayerStates[interceptorPlayerId].dronesOnBoard[laneKey].findIndex(d => d.id === interceptor.id);
-            if (interceptorIndex !== -1) {
-                const effectiveStats = calculateEffectiveStats(
-                    newPlayerStates[interceptorPlayerId].dronesOnBoard[laneKey][interceptorIndex],
-                    laneKey,
-                    newPlayerStates[interceptorPlayerId],
-                    newPlayerStates[attackingPlayerId],
-                    placedSections
-                );
-                if (!effectiveStats.keywords.has('DEFENDER')) {
-                    newPlayerStates[interceptorPlayerId].dronesOnBoard[laneKey][interceptorIndex].isExhausted = true;
-                }
-                break;
-            }
-        }
-    }
+    // Note: Interceptors do NOT exhaust when intercepting - they can intercept multiple times per turn.
+    // HP/shields naturally limit how many times a drone can intercept before being destroyed.
 
     // Track if attacker was destroyed by counter abilities
     let attackerDestroyedByCounter = false;

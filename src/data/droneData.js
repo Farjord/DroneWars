@@ -10,7 +10,7 @@
 const fullDroneCollection = [
   { name: 'Dart', class: 1, limit: 3, rebuildRate: 2.0, rarity: 'Common', attack: 1, hull: 1, shields: 1, speed: 6, image: '/DroneWars/img/Scout.png', abilities: [],  upgradeSlots: 2 },
   { name: 'Talon', class: 2, limit: 3, rebuildRate: 1.0, rarity: 'Common', attack: 3, hull: 2, shields: 1, speed: 4, image: '/DroneWars/img/StandardFighter.png', abilities: [],  upgradeSlots: 3 },
-  { name: 'Mammoth', class: 3, limit: 2, rebuildRate: 0.5, rarity: 'Common', attack: 4, hull: 4, shields: 1, speed: 3, image: '/DroneWars/img/HeavyFighter.png', abilities: [], upgradeSlots: 1 },
+  { name: 'Mammoth', class: 3, limit: 1, rebuildRate: 0.5, rarity: 'Common', attack: 4, hull: 4, shields: 1, speed: 3, image: '/DroneWars/img/HeavyFighter.png', abilities: [], upgradeSlots: 1 },
    {
     name: 'Bastion',
     class: 3,
@@ -33,8 +33,8 @@ const fullDroneCollection = [
     {
     name: 'Devastator',
     class: 3,
-    limit: 3,
-    rebuildRate: 1.0,
+    limit: 2,
+    rebuildRate: 0.5,
     rarity: 'Common',
     attack: 1,
     hull: 3,
@@ -70,15 +70,10 @@ const fullDroneCollection = [
   },
 {
     name: 'Harrier',
-    class: 3, limit: 3, rebuildRate: 2.0, rarity: 'Uncommon', attack: 1, hull: 1, shields: 3, speed: 5,
+    class: 3, limit: 2, rebuildRate: 0.5, rarity: 'Uncommon', attack: 1, hull: 2, shields: 3, speed: 5,
     image: '/DroneWars/img/Interceptor.png',
-    abilities: [{
-        name: 'Defender',
-        description: 'Does not exhaust when intercepting.',
-        type: 'PASSIVE',
-        effect: { type: 'GRANT_KEYWORD', keyword: 'DEFENDER' }
-        }],
-    upgradeSlots: 2 
+    abilities: [],
+    upgradeSlots: 2
   },
   {
     name: 'Aegis',
@@ -97,7 +92,7 @@ const fullDroneCollection = [
   name: 'Firefly',
   class: 1,
   limit: 4,
-  rebuildRate: 1.0,
+  rebuildRate: 2.0,
   rarity: 'Common',
   attack: 3,
   hull: 1,
@@ -112,7 +107,7 @@ const fullDroneCollection = [
       }],
   upgradeSlots: 2 
 },
-  { name: 'Locust', class: 0, limit: 3, rebuildRate: 1.0, rarity: 'Common', attack: 1, hull: 1, shields: 0, speed: 3, image: '/DroneWars/img/Swarm.png', abilities: [], upgradeSlots: 3 },
+  { name: 'Locust', class: 0, limit: 3, rebuildRate: 2.0, rarity: 'Common', attack: 1, hull: 1, shields: 0, speed: 3, image: '/DroneWars/img/Swarm.png', abilities: [], upgradeSlots: 3 },
   {
     name: 'Basilisk',
     class: 2, limit: 2, rebuildRate: 1.0, rarity: 'Uncommon', attack: 1, hull: 2, shields: 1, speed: 2,
@@ -331,8 +326,8 @@ const fullDroneCollection = [
   {
     name: 'Hunter',
     class: 2,
-    limit: 3,
-    rebuildRate: 2.0,
+    limit: 2,
+    rebuildRate: 1.0,
     rarity: 'Uncommon',
     attack: 2,
     hull: 1,
