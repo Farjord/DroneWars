@@ -10,6 +10,7 @@ import { getPhaseDisplayName } from '../../utils/gameUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import DEV_CONFIG from '../../config/devConfig.js';
 import { BACKGROUNDS } from '../../config/backgrounds.js';
+import HullIntegrityBadge from './HullIntegrityBadge.jsx';
 
 /**
  * Resource Badge Component - Information panel styled resource display
@@ -115,7 +116,10 @@ function GameHeader({
   handleConfirmInterception,
   // Extraction mode props
   currentRunState,
-  isExtractionMode
+  isExtractionMode,
+  // Hull integrity props for win condition display
+  localPlayerHullIntegrity,
+  opponentHullIntegrity
 }) {
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
   const [showBackgroundSubmenu, setShowBackgroundSubmenu] = useState(false);
@@ -220,6 +224,14 @@ function GameHeader({
               isPlayer={false}
             />
           </div>
+          {/* Hull Integrity - Win Condition Progress */}
+          {opponentHullIntegrity && (
+            <HullIntegrityBadge
+              current={opponentHullIntegrity.remainingToWin}
+              threshold={opponentHullIntegrity.damageThreshold}
+              isPlayer={false}
+            />
+          )}
         </div>
       </div>
 
@@ -551,6 +563,14 @@ function GameHeader({
           )}
         </h2>
         <div className="flex items-center gap-2">
+          {/* Hull Integrity - Win Condition Progress (far left for player) */}
+          {localPlayerHullIntegrity && (
+            <HullIntegrityBadge
+              current={localPlayerHullIntegrity.remainingToWin}
+              threshold={localPlayerHullIntegrity.damageThreshold}
+              isPlayer={true}
+            />
+          )}
           {turnPhase === 'deployment' && (() => {
             debugLog('RESOURCE_RESET', '🎨 [GAMEHEADER] Deployment badge rendering', {
               roundNumber,

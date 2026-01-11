@@ -72,6 +72,7 @@ import TargetingRouter from './logic/TargetingRouter.js';
 import ExtractionController from './logic/singlePlayer/ExtractionController.js';
 import { calculateRoundStartReset } from './logic/shields/ShieldResetUtils.js';
 import { forceWinCombat } from './logic/game/ForceWin.js';
+import WinConditionChecker from './logic/game/WinConditionChecker.js';
 import { BACKGROUNDS, DEFAULT_BACKGROUND, getBackgroundById } from './config/backgrounds.js';
 
 // --- 1.6 MANAGER/STATE IMPORTS ---
@@ -612,6 +613,15 @@ const App = ({ phaseAnimationQueue }) => {
   const totalOpponentPlayerDrones = useMemo(() => {
     return opponentPlayerState ? Object.values(opponentPlayerState.dronesOnBoard).flat().length : 0;
   }, [opponentPlayerState?.dronesOnBoard]);
+
+  // Hull integrity calculations for win condition display
+  const localPlayerHullIntegrity = useMemo(() => {
+    return localPlayerState ? WinConditionChecker.calculateHullIntegrity(localPlayerState) : null;
+  }, [localPlayerState?.shipSections]);
+
+  const opponentHullIntegrity = useMemo(() => {
+    return opponentPlayerState ? WinConditionChecker.calculateHullIntegrity(opponentPlayerState) : null;
+  }, [opponentPlayerState?.shipSections]);
 
   // Opponent's selected drone cards (from drone selection phase)
   const opponentSelectedDrones = useMemo(() => {
@@ -4590,6 +4600,9 @@ const App = ({ phaseAnimationQueue }) => {
         // Extraction mode props
         currentRunState={tacticalMapStateManager.getState()}
         isExtractionMode={tacticalMapStateManager.isRunActive()}
+        // Hull integrity props for win condition display
+        localPlayerHullIntegrity={localPlayerHullIntegrity}
+        opponentHullIntegrity={opponentHullIntegrity}
       />
 
       <GameBattlefield

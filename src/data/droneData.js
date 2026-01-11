@@ -70,7 +70,7 @@ const fullDroneCollection = [
   },
 {
     name: 'Harrier',
-    class: 3, limit: 2, rebuildRate: 0.5, rarity: 'Uncommon', attack: 1, hull: 2, shields: 3, speed: 5,
+    class: 3, limit: 2, rebuildRate: 1, rarity: 'Uncommon', attack: 1, hull: 2, shields: 3, speed: 5,
     image: '/DroneWars/img/Interceptor.png',
     abilities: [],
     upgradeSlots: 2
@@ -131,7 +131,7 @@ const fullDroneCollection = [
     name: 'Sabot',
     class: 3,
     limit: 2,
-    rebuildRate: 1.0,
+    rebuildRate: 0.5,
     rarity: 'Rare',
     attack: 2,
     hull: 3,
@@ -369,7 +369,7 @@ const fullDroneCollection = [
     name: 'Striker',
     class: 3,
     limit: 2,
-    rebuildRate: 1.0,
+    rebuildRate: 0.5,
     rarity: 'Uncommon',
     attack: 2,
     hull: 1,

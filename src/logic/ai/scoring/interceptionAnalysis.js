@@ -7,6 +7,12 @@
 import fullDroneCollection from '../../../data/droneData.js';
 import { calculateDroneImpact } from './droneImpact.js';
 import { getShipStatus } from '../../statsCalculator.js';
+import {
+  calculateDamagePercentage,
+  calculateDefenseUrgency,
+  calculateWinRaceAdvantage,
+  getDamageStateDescription
+} from '../helpers/hullIntegrityHelpers.js';
 
 /**
  * Analyze interception dynamics in a specific lane
@@ -150,6 +156,11 @@ export const calculateThreatsKeptInCheck = (attacker, laneId, player1, player2, 
   const sectionName = aiPlacedSections?.[laneIndex];
   const aiSection = sectionName ? player2.shipSections?.[sectionName] : null;
 
+  // Calculate percentage-based defense metrics
+  const aiDamagePercent = calculateDamagePercentage(player2);
+  const defenseUrgency = calculateDefenseUrgency(aiDamagePercent);
+  const damageStateDescription = getDamageStateDescription(player2);
+
   if (!aiSection) {
     // No section in lane - no defensive value
     return {
@@ -158,7 +169,11 @@ export const calculateThreatsKeptInCheck = (attacker, laneId, player1, player2, 
       threatsKeptInCheck,
       wouldCauseStateTransition: false,
       currentSectionStatus: 'healthy',
-      damagedSectionCount: 0
+      damagedSectionCount: 0,
+      // New percentage-based metrics
+      aiDamagePercent,
+      defenseUrgency,
+      damageStateDescription
     };
   }
 
@@ -170,10 +185,10 @@ export const calculateThreatsKeptInCheck = (attacker, laneId, player1, player2, 
   const effectiveDamage = Math.max(0, totalThreatDamage - currentShields);
   const projectedHull = currentHull - effectiveDamage;
 
-  // Check if this would cause a state transition
+  // Check if this would cause a state transition (still useful for small bonus)
   const wouldTransition = checkWouldTransition(currentStatus, projectedHull, aiSection.thresholds);
 
-  // Count how many sections are ALREADY damaged/critical
+  // Count how many sections are ALREADY damaged/critical (kept for backwards compatibility)
   const damagedSectionCount = countDamagedSections(player2, aiPlacedSections);
 
   return {
@@ -182,7 +197,11 @@ export const calculateThreatsKeptInCheck = (attacker, laneId, player1, player2, 
     threatsKeptInCheck,
     wouldCauseStateTransition: wouldTransition,
     currentSectionStatus: currentStatus,
-    damagedSectionCount
+    damagedSectionCount,
+    // New percentage-based metrics
+    aiDamagePercent,
+    defenseUrgency,
+    damageStateDescription
   };
 };
 

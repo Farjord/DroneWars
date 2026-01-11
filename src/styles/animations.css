@@ -514,3 +514,33 @@
   }
 }
 
+/* === AVAILABILITY DOT ANIMATIONS === */
+
+/* Fill then empty animation for availability dots */
+/* Arc GROWS from 0 to arc-length (build), then SHRINKS back to 0 (unbuild) */
+/* Uses stroke-dasharray to change arc LENGTH, not position */
+/* Rotation at 100% makes unbuild appear clockwise (erases from back) */
+/* --arc-length: the length of the arc segment to animate */
+/* --circumference: total circumference of the circle */
+/* --start-rotation: starting angle position for the segment */
+/* --end-rotation: ending angle position (start + segment angle) */
+@keyframes availability-fill-empty {
+  0% {
+    stroke-dasharray: 0 var(--circumference);
+    transform: rotate(var(--start-rotation));
+  }
+  50% {
+    stroke-dasharray: var(--arc-length) var(--circumference);
+    transform: rotate(var(--start-rotation));
+  }
+  100% {
+    stroke-dasharray: 0 var(--circumference);
+    transform: rotate(var(--end-rotation));
+  }
+}
+
+.availability-fill-empty-animation {
+  animation: availability-fill-empty 2.5s ease-in-out infinite;
+  transform-origin: center;
+}
+

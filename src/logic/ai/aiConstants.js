@@ -152,11 +152,6 @@ export const INTERCEPTION = {
   EXCELLENT_SACRIFICE_SCORE: 60,
   GOOD_SACRIFICE_SCORE: 45,
 
-  // Defensive penalty multipliers (context-aware)
-  DEFENSIVE_PENALTY_MULTIPLIER: -12,          // Full penalty - would lose game (3rd section)
-  MODERATE_DEFENSIVE_PENALTY_MULTIPLIER: -6,  // Moderate - 2nd section at risk
-  REDUCED_DEFENSIVE_PENALTY_MULTIPLIER: -3,   // Reduced - no state transition
-
   // Ship attack specific adjustments
   UNCHECKED_THREAT_BONUS: 100,
 
@@ -168,6 +163,59 @@ export const INTERCEPTION = {
   // Dogfight ability bonuses (when intercepting with a DOGFIGHT drone)
   DOGFIGHT_KILL_BONUS: 30,         // Dogfight damage would kill the attacker
   DOGFIGHT_DAMAGE_MULTIPLIER: 5,   // Per point of dogfight damage (if not lethal)
+};
+
+// ========================================
+// DEFENSE URGENCY (Percentage-Based)
+// ========================================
+// Defense priority scales with how close AI is to losing (60% damage = loss)
+// Uses total hull damage percentage instead of section counting
+
+export const DEFENSE_URGENCY = {
+  // Damage percentage thresholds
+  LOW_DAMAGE_THRESHOLD: 0.20,      // Below 20% - minimal defense priority
+  MEDIUM_DAMAGE_THRESHOLD: 0.40,   // 20-40% - moderate defense
+  HIGH_DAMAGE_THRESHOLD: 0.55,     // 40-55% - high priority (close to losing)
+  // Above 55% is CRITICAL
+
+  // Defense multipliers at each tier
+  BASELINE_MULTIPLIER: 1.0,        // Below 20% damage
+  MODERATE_MULTIPLIER: 2.0,        // 20-40% damage
+  HIGH_MULTIPLIER: 4.0,            // 40-55% damage
+  CRITICAL_MULTIPLIER: 8.0,        // 55%+ damage (close to 60% loss)
+
+  // Base penalty per point of potential damage
+  BASE_DAMAGE_PENALTY: -3,
+};
+
+// ========================================
+// WIN RACE AWARENESS
+// ========================================
+// Adjust aggression based on relative damage progress
+
+export const WIN_RACE = {
+  // Threshold for significant advantage (10% difference)
+  ADVANTAGE_THRESHOLD: 0.10,
+
+  // Multipliers when ahead (protect the lead)
+  AHEAD_DEFENSE_MULTIPLIER: 1.5,
+  AHEAD_OFFENSE_MULTIPLIER: 0.7,
+
+  // Multipliers when behind (catch up)
+  BEHIND_DEFENSE_MULTIPLIER: 0.7,
+  BEHIND_OFFENSE_MULTIPLIER: 1.5,
+};
+
+// ========================================
+// THRESHOLD CROSSING BONUSES
+// ========================================
+// Small bonus for attacks that cross status thresholds (stat penalties)
+
+export const THRESHOLD_BONUS = {
+  // Bonus for pushing section to damaged status
+  CROSS_TO_DAMAGED: 8,
+  // Bonus for pushing section to critical status
+  CROSS_TO_CRITICAL: 12,
 };
 
 // ========================================

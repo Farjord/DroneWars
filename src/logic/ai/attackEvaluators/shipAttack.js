@@ -5,6 +5,7 @@
 
 import { ATTACK_BONUSES, SCORING_WEIGHTS, THREAT_DRONES } from '../aiConstants.js';
 import { hasThreatOnShipHullDamage } from '../helpers/keywordHelpers.js';
+import { calculateThresholdCrossingBonus } from '../helpers/hullIntegrityHelpers.js';
 
 /**
  * Evaluate a drone-on-ship-section attack
@@ -25,15 +26,13 @@ export const evaluateShipAttack = (attacker, target, context) => {
   score = attackerAttack * SCORING_WEIGHTS.DAMAGE_VALUE_MULTIPLIER;
   logic.push(`(Effective Attack: ${attackerAttack} * ${SCORING_WEIGHTS.DAMAGE_VALUE_MULTIPLIER})`);
 
-  // Section status bonuses
-  const status = getShipStatus(target);
-  if (status === 'damaged') {
-    score += ATTACK_BONUSES.DAMAGED_SECTION;
-    logic.push(`✅ Damaged Section: +${ATTACK_BONUSES.DAMAGED_SECTION}`);
-  }
-  if (status === 'critical') {
-    score += ATTACK_BONUSES.CRITICAL_SECTION;
-    logic.push(`✅ Critical Section: +${ATTACK_BONUSES.CRITICAL_SECTION}`);
+  // Threshold crossing bonus - small bonus for attacks that inflict stat penalties
+  // by pushing section from healthy→damaged or damaged→critical
+  // (Per total damage win condition: all damage matters equally, but stat penalties are still valuable)
+  const thresholdBonus = calculateThresholdCrossingBonus(target, attackerAttack);
+  if (thresholdBonus > 0) {
+    score += thresholdBonus;
+    logic.push(`✅ Threshold Cross: +${thresholdBonus}`);
   }
 
   // Shield bonuses

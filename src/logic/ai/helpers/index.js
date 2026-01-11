@@ -7,3 +7,4 @@ export * from './jammerHelpers.js';
 export * from './droneHelpers.js';
 export * from './keywordHelpers.js';
 export * from './upgradeHelpers.js';
+export * from './hullIntegrityHelpers.js';

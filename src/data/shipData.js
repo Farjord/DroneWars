@@ -16,11 +16,11 @@ const shipCollection = [
 
     // BASELINE COMBAT VALUES
     // These are the default values for all ship sections
-    baseHull: 8,
+    baseHull: 15,
     baseShields: 3,
     baseThresholds: {
-      damaged: 4,
-      critical: 0
+      damaged: 10,
+      critical: 5
     },
 
     // DECK COMPOSITION LIMITS

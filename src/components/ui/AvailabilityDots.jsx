@@ -4,22 +4,16 @@
 // Renders dots representing drone deployment availability
 // Part of the Drone Availability & Rebuild System (NEW MODEL)
 //
-// NEW Dot States (show deployment availability, not drone location):
+// Dot States (show deployment availability, not drone location):
 // - Deployable: Solid green pip (ready AND under in-play limit)
 // - Blocked: Green outline (ready BUT at deployment limit)
-// - Rebuilding: Grey segmented circle with progress
-// - Inactive: Grey outline (slot not producing)
+// - Rebuilding-Deployable: Segmented solid green, flashing (will be deployable when ready)
+// - Rebuilding-Blocked: Segmented green outline, flashing (will be blocked when ready)
+// - Inactive: Grey outline (slot not producing / queued)
+// - N/A: Text display for non-deployable drones (limit === 999)
 
 import React from 'react';
 import { debugLog } from '../../utils/debugLogger.js';
-
-// Custom keyframes for stronger pulse effect (brighter and darker)
-const pulseKeyframes = `
-@keyframes pulse-strong {
-  0%, 100% { opacity: 1; filter: brightness(1.4); }
-  50% { opacity: 0.3; filter: brightness(0.6); }
-}
-`;
 
 /**
  * Calculate segment count based on rebuild rate
@@ -70,6 +64,13 @@ const AvailabilityDots = ({
   // Use explicit copyLimit or fall back to availability.copyLimit
   const limit = explicitCopyLimit ?? availability?.copyLimit ?? 0;
 
+  // Handle non-deployable drones (limit === 999)
+  if (limit === 999) {
+    return (
+      <span className="text-gray-500 text-xs font-medium">N/A</span>
+    );
+  }
+
   // Default to all ready if no availability data (pre-combat state)
   const readyCount = availability?.readyCount ?? limit;
   const inPlayCount = availability?.inPlayCount ?? 0;
@@ -90,8 +91,8 @@ const AvailabilityDots = ({
 
   // NEW MODEL: Calculate deployment availability
   const availableSlots = Math.max(0, limit - inPlayCount); // How many MORE can be deployed
-  const deployablePips = Math.min(readyCount, availableSlots);
-  const blockedOutlines = Math.max(0, readyCount - deployablePips); // Ready but can't deploy
+  let deployablePips = Math.min(readyCount, availableSlots);
+  let blockedOutlines = Math.max(0, readyCount - deployablePips); // Ready but can't deploy
 
   // Only rebuildRate slots can actively rebuild per round
   // Use ceiling to handle fractional rates (rate 1.5 = up to 2 active)
@@ -99,11 +100,23 @@ const AvailabilityDots = ({
   const queuedSlots = rebuildingCount - activelyRebuilding;
 
   const rebuildingSlots = activelyRebuilding;
-  const inactiveSlots = Math.max(0, limit - readyCount - rebuildingCount) + queuedSlots;
+
+  // Cap ready dots so total doesn't exceed limit when combined with rebuilding
+  const maxReadySlots = Math.max(0, limit - rebuildingSlots);
+  if (deployablePips + blockedOutlines > maxReadySlots) {
+    deployablePips = Math.min(deployablePips, maxReadySlots);
+    blockedOutlines = Math.min(blockedOutlines, maxReadySlots - deployablePips);
+  }
+
+  const inactiveSlots = Math.max(0, limit - deployablePips - blockedOutlines - rebuildingSlots);
 
   // Calculate segment info for rebuilding dots
   const segmentCount = calculateSegmentCount(rebuildRate);
   const filledSegments = calculateFilledSegments(rebuildProgress, segmentCount);
+
+  // Calculate future available slots for deployment prediction
+  // When rebuilding completes, will this drone be deployable?
+  const futureAvailableSlots = Math.max(0, limit - inPlayCount);
 
   // Build dots array
   const dots = [];
@@ -118,17 +131,20 @@ const AvailabilityDots = ({
     dots.push({ type: 'blocked', index: dots.length });
   }
 
-  // 3. Rebuilding dots (grey with segments, current segment pulsing)
+  // 3. Rebuilding dots with deployment prediction
+  // Determine if each rebuilding slot will be deployable when ready
   for (let i = 0; i < rebuildingSlots; i++) {
+    // readyCount drones will claim slots first, then rebuilding drones in order
+    const willBeDeployable = readyCount + i < futureAvailableSlots;
     dots.push({
-      type: 'rebuilding',
+      type: willBeDeployable ? 'rebuilding-deployable' : 'rebuilding-blocked',
       index: dots.length,
       segmentCount,
       filledSegments
     });
   }
 
-  // 4. Inactive dots (grey outline)
+  // 4. Inactive dots (grey outline) - queued slots waiting to rebuild
   for (let i = 0; i < inactiveSlots; i++) {
     dots.push({ type: 'inactive', index: dots.length });
   }
@@ -178,7 +194,7 @@ const Dot = ({ type, size, segmentCount = 1, filledSegments = 0 }) => {
     'data-dot-type': type
   };
 
-  if (type === 'rebuilding') {
+  if (type === 'rebuilding-deployable' || type === 'rebuilding-blocked') {
     dataAttrs['data-segment-count'] = String(segmentCount);
     dataAttrs['data-filled-segments'] = String(filledSegments);
   }
@@ -206,13 +222,27 @@ const Dot = ({ type, size, segmentCount = 1, filledSegments = 0 }) => {
     );
   }
 
-  if (type === 'rebuilding') {
-    // Grey segmented circle with current segment pulsing
+  if (type === 'rebuilding-deployable') {
+    // Green segmented circle with current segment pulsing (will be deployable)
     return (
       <SegmentedDot
         size={size}
         segmentCount={segmentCount}
         filledSegments={filledSegments}
+        willBeDeployable={true}
+        dataAttrs={dataAttrs}
+      />
+    );
+  }
+
+  if (type === 'rebuilding-blocked') {
+    // Green outline segmented circle with current segment pulsing (will be blocked)
+    return (
+      <SegmentedDot
+        size={size}
+        segmentCount={segmentCount}
+        filledSegments={filledSegments}
+        willBeDeployable={false}
         dataAttrs={dataAttrs}
       />
     );
@@ -230,88 +260,131 @@ const Dot = ({ type, size, segmentCount = 1, filledSegments = 0 }) => {
 
 /**
  * Segmented Dot for rebuilding visualization
- * Uses CSS conic-gradient for segment display
+ * Radar sweep effect: fills clockwise, then empties clockwise
+ * Supports fractional rebuild rates with:
+ * - Static completed segments
+ * - Animated current segment
+ * - Empty future segments
+ * Style based on deployment prediction:
+ * - willBeDeployable: true = solid pie fill
+ * - willBeDeployable: false = ring/border only (hollow center)
  */
-const SegmentedDot = ({ size, segmentCount, filledSegments, dataAttrs }) => {
-  // Calculate the angle for each segment
+const SegmentedDot = ({ size, segmentCount, filledSegments, willBeDeployable, dataAttrs }) => {
+  const center = size / 2;
   const segmentAngle = 360 / segmentCount;
 
-  // Current segment is the one being worked on (after filled segments)
+  // Current segment position (the one being animated)
+  // Start from 90deg (6 o'clock/bottom) so segment 0 is the LEFT half
+  // Drawing clockwise from bottom goes UP the left side
   const currentSegmentIndex = filledSegments;
+  const currentSegmentStartAngle = 90 + (currentSegmentIndex * segmentAngle);
+  const currentSegmentEndAngle = currentSegmentStartAngle + segmentAngle;
 
-  // Build gradient stops for conic-gradient
-  // Gradient starts from top (-90deg or 270deg in CSS)
-  let gradientStops = [];
+  if (!willBeDeployable) {
+    // BLOCKED: Ring style (hollow center)
+    const strokeWidth = 2;
+    const radius = (size - strokeWidth) / 2;
+    const circumference = 2 * Math.PI * radius;
+    const segmentArcLength = circumference / segmentCount;
+    const completedArcLength = filledSegments * segmentArcLength;
 
-  for (let i = 0; i < segmentCount; i++) {
-    const startAngle = i * segmentAngle;
-    const endAngle = (i + 1) * segmentAngle;
+    return (
+      <svg width={size} height={size} {...dataAttrs}>
+        {/* Background grey ring */}
+        <circle
+          cx={center}
+          cy={center}
+          r={radius}
+          fill="transparent"
+          stroke="#4b5563"
+          strokeWidth={1}
+        />
 
-    if (i < filledSegments) {
-      // Filled segment - static white (completed)
-      gradientStops.push(`#ffffff ${startAngle}deg ${endAngle}deg`);
-    } else if (i === currentSegmentIndex) {
-      // Current segment - transparent so pulsing overlay is visible
-      gradientStops.push(`transparent ${startAngle}deg ${endAngle}deg`);
-    } else {
-      // Future segment - empty
-      gradientStops.push(`transparent ${startAngle}deg ${endAngle}deg`);
-    }
+        {/* Completed segments - static green ring */}
+        {filledSegments > 0 && (
+          <circle
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="transparent"
+            stroke="#22c55e"
+            strokeWidth={strokeWidth}
+            strokeDasharray={`${completedArcLength} ${circumference - completedArcLength}`}
+            style={{ transform: 'rotate(90deg)', transformOrigin: 'center' }}
+          />
+        )}
+
+        {/* Current segment - animated green ring */}
+        <circle
+          cx={center}
+          cy={center}
+          r={radius}
+          fill="transparent"
+          stroke="#22c55e"
+          strokeWidth={strokeWidth}
+          className="availability-fill-empty-animation"
+          style={{
+            '--arc-length': segmentArcLength,
+            '--circumference': circumference,
+            '--start-rotation': `${currentSegmentStartAngle}deg`,
+            '--end-rotation': `${currentSegmentEndAngle}deg`
+          }}
+        />
+      </svg>
+    );
   }
 
-  const gradient = `conic-gradient(from 180deg, ${gradientStops.join(', ')})`;
+  // DEPLOYABLE: Pie fill style (solid from center to edge)
+  const pieRadius = size / 4;
+  const pieStrokeWidth = size / 2;
+  const pieCircumference = 2 * Math.PI * pieRadius;
+  const pieSegmentArcLength = pieCircumference / segmentCount;
+  const pieCompletedArcLength = filledSegments * pieSegmentArcLength;
 
   return (
-    <div
-      className="relative rounded-full border border-gray-500"
-      style={{
-        width: size,
-        height: size
-      }}
-      {...dataAttrs}
-    >
-      {/* Inject keyframes for pulse animation */}
-      <style>{pulseKeyframes}</style>
-      {/* Background gradient showing segments */}
-      <div
-        className="absolute inset-0 rounded-full"
+    <svg width={size} height={size} {...dataAttrs}>
+      {/* Background grey outline */}
+      <circle
+        cx={center}
+        cy={center}
+        r={center - 0.5}
+        fill="transparent"
+        stroke="#4b5563"
+        strokeWidth={1}
+      />
+
+      {/* Completed segments - static green pie fill */}
+      {filledSegments > 0 && (
+        <circle
+          cx={center}
+          cy={center}
+          r={pieRadius}
+          fill="transparent"
+          stroke="#22c55e"
+          strokeWidth={pieStrokeWidth}
+          strokeDasharray={`${pieCompletedArcLength} ${pieCircumference - pieCompletedArcLength}`}
+          style={{ transform: 'rotate(90deg)', transformOrigin: 'center' }}
+        />
+      )}
+
+      {/* Current segment - animated green pie fill */}
+      <circle
+        cx={center}
+        cy={center}
+        r={pieRadius}
+        fill="transparent"
+        stroke="#22c55e"
+        strokeWidth={pieStrokeWidth}
+        className="availability-fill-empty-animation"
         style={{
-          background: gradient
+          '--arc-length': pieSegmentArcLength,
+          '--circumference': pieCircumference,
+          '--start-rotation': `${currentSegmentStartAngle}deg`,
+          '--end-rotation': `${currentSegmentEndAngle}deg`
         }}
       />
-      {/* Pulsing overlay for current segment - stronger pulse effect */}
-      <div
-        className="absolute inset-0 rounded-full"
-        style={{
-          background: buildPulsingGradient(segmentCount, currentSegmentIndex),
-          animation: 'pulse-strong 1.5s ease-in-out infinite'
-        }}
-      />
-    </div>
+    </svg>
   );
-};
-
-/**
- * Build a gradient for the pulsing animation on current segment
- * Shows the full segment as pulsing (work in progress)
- */
-const buildPulsingGradient = (segmentCount, currentIndex) => {
-  const segmentAngle = 360 / segmentCount;
-
-  let stops = [];
-  for (let i = 0; i < segmentCount; i++) {
-    const sAngle = i * segmentAngle;
-    const eAngle = (i + 1) * segmentAngle;
-
-    if (i === currentIndex) {
-      // Full segment pulsing
-      stops.push(`#9ca3af ${sAngle}deg ${eAngle}deg`);
-    } else {
-      stops.push(`transparent ${sAngle}deg ${eAngle}deg`);
-    }
-  }
-
-  return `conic-gradient(from 180deg, ${stops.join(', ')})`;
 };
 
 export default AvailabilityDots;

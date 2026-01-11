@@ -4,8 +4,9 @@
 // Evaluates drone movement actions (not card-based moves)
 
 import fullDroneCollection from '../../data/droneData.js';
-import { MOVE_EVALUATION, PENALTIES } from './aiConstants.js';
+import { MOVE_EVALUATION, DEFENSE_URGENCY } from './aiConstants.js';
 import { calculateLaneScore } from './scoring/laneScoring.js';
+import { calculateDamagePercentage, calculateDefenseUrgency } from './helpers/hullIntegrityHelpers.js';
 
 /**
  * Evaluate a drone move action
@@ -53,14 +54,19 @@ export const evaluateMove = (drone, fromLane, toLane, context) => {
   logic.push(`FromLane Impact: ${fromLaneImpact.toFixed(0)}`);
   logic.push(`Move Cost: -${MOVE_EVALUATION.BASE_MOVE_COST}`);
 
-  // Defensive move bonus - moving to protect a damaged AI section
+  // Defensive move bonus - scales with how close AI is to losing (percentage-based)
+  // Moving to defend a losing lane becomes more valuable as AI takes more damage
   const toLaneIndex = parseInt(toLane.slice(-1)) - 1;
-  const sectionToDefend = opponentPlacedSections[toLaneIndex];
-  if (sectionToDefend) {
-    const sectionStatus = getShipStatus(player2.shipSections[sectionToDefend]);
-    if ((sectionStatus === 'damaged' || sectionStatus === 'critical') && currentToScore < 0) {
-      score += MOVE_EVALUATION.DEFENSIVE_MOVE_BONUS;
-      logic.push(`🛡️ Defensive Move: +${MOVE_EVALUATION.DEFENSIVE_MOVE_BONUS}`);
+  if (currentToScore < 0) {
+    // AI is losing this lane - consider defensive move value
+    const aiDamagePercent = calculateDamagePercentage(player2);
+    const defenseUrgency = calculateDefenseUrgency(aiDamagePercent);
+
+    // Defensive bonus scales with urgency (higher when closer to losing)
+    const defensiveBonus = Math.round(MOVE_EVALUATION.DEFENSIVE_MOVE_BONUS * (defenseUrgency / DEFENSE_URGENCY.BASELINE_MULTIPLIER));
+    if (defenseUrgency > DEFENSE_URGENCY.BASELINE_MULTIPLIER) {
+      score += defensiveBonus;
+      logic.push(`🛡️ Defensive Move: +${defensiveBonus} (${defenseUrgency}x urgency)`);
     }
   }
 
@@ -79,21 +85,11 @@ export const evaluateMove = (drone, fromLane, toLane, context) => {
     logic.push(`✅ OnMove Ability: +${abilityBonus}`);
   }
 
-  // Offensive move bonus - moving toward a damaged enemy section
-  const humanSectionToAttack = placedSections[toLaneIndex];
-  if (humanSectionToAttack) {
-    const sectionStatus = getShipStatus(player1.shipSections[humanSectionToAttack]);
-    if (currentToScore > 0) {
-      if (sectionStatus === 'damaged') {
-        score += MOVE_EVALUATION.OFFENSIVE_MOVE_DAMAGED;
-        logic.push(`✅ Offensive Move: +${MOVE_EVALUATION.OFFENSIVE_MOVE_DAMAGED}`);
-      } else if (sectionStatus === 'critical') {
-        // Overkill penalty - don't pile onto already-won lanes
-        score += PENALTIES.OVERKILL;
-        logic.push(`⚠️ Overkill: ${PENALTIES.OVERKILL}`);
-      }
-    }
-  }
+  // NOTE: Per the total damage win condition model, we no longer give bonus
+  // for moving toward damaged sections or penalty for critical sections.
+  // All hull damage contributes equally toward the 60% threshold.
+  // Lane control (being able to attack AND defend) drives move evaluation
+  // through the lane score impact calculations above.
 
   return { score, logic };
 };

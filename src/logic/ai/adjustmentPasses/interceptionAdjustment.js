@@ -10,8 +10,9 @@
 // However, ATTACKING still exhausts drones, which means they can no longer intercept.
 // This pass evaluates the opportunity cost of using a drone for offense vs defense.
 
-import { INTERCEPTION, PENALTIES } from '../aiConstants.js';
+import { INTERCEPTION, PENALTIES, DEFENSE_URGENCY, THRESHOLD_BONUS } from '../aiConstants.js';
 import { analyzeInterceptionInLane, calculateThreatsKeptInCheck } from '../scoring/interceptionAnalysis.js';
+import { calculateWinRaceAdjustments, getWinRaceDescription } from '../helpers/hullIntegrityHelpers.js';
 
 /**
  * Apply interception adjustment pass to scored actions
@@ -53,7 +54,14 @@ export const applyInterceptionAdjustments = (possibleActions, context) => {
         );
 
         if (threatsData.threatsKeptInCheck.length > 0) {
-          const { damagedSectionCount, currentSectionStatus, wouldCauseStateTransition, totalImpact, totalThreatDamage } = threatsData;
+          const {
+            totalImpact,
+            totalThreatDamage,
+            wouldCauseStateTransition,
+            currentSectionStatus,
+            defenseUrgency,
+            damageStateDescription
+          } = threatsData;
 
           // Build threat list for logging
           const threatNames = threatsData.threatsKeptInCheck
@@ -63,36 +71,33 @@ export const applyInterceptionAdjustments = (possibleActions, context) => {
           action.logic.push(
             `🔍 Threats in check: ${threatsData.threatsKeptInCheck.length} [${threatNames}]`
           );
+          action.logic.push(
+            `📊 AI Damage State: ${damageStateDescription} (urgency: ${defenseUrgency}x)`
+          );
 
-          // Context-aware penalty calculation
-          let defensivePenalty = 0;
+          // PERCENTAGE-BASED DEFENSE PENALTY
+          // Defense urgency scales with how close AI is to losing (60% damage = loss)
+          const basePenalty = totalThreatDamage * DEFENSE_URGENCY.BASE_DAMAGE_PENALTY;
+          let defensivePenalty = basePenalty * defenseUrgency;
 
-          if (currentSectionStatus === 'critical') {
-            // NO penalty - section already critical, nothing to protect
-            defensivePenalty = 0;
-            action.logic.push(`⚔️ Full Aggro: Section already critical`);
-          } else if (!wouldCauseStateTransition) {
-            // REDUCED penalty - section stays in same state
-            defensivePenalty = totalImpact * INTERCEPTION.REDUCED_DEFENSIVE_PENALTY_MULTIPLIER;
-            action.logic.push(`⚔️ Offensive Priority: Section stays ${currentSectionStatus}`);
-          } else if (damagedSectionCount === 0) {
-            // Would be FIRST section damaged - acceptable, no penalty
-            defensivePenalty = 0;
-            action.logic.push(`⚔️ Acceptable Risk: Would be 1st section damaged`);
-          } else if (damagedSectionCount === 1) {
-            // Would be SECOND section damaged - moderate penalty
-            defensivePenalty = totalImpact * INTERCEPTION.MODERATE_DEFENSIVE_PENALTY_MULTIPLIER;
-            action.logic.push(`⚠️ Moderate Defense: Would be 2nd section damaged`);
-          } else {
-            // Would be THIRD section damaged - GAME LOSS! Maximum penalty
-            defensivePenalty = totalImpact * INTERCEPTION.DEFENSIVE_PENALTY_MULTIPLIER;
-            action.logic.push(`🛡️ CRITICAL Defense: Would lose game (3rd section)!`);
+          // Small bonus reduction if no state transition would occur
+          if (!wouldCauseStateTransition && currentSectionStatus !== 'critical') {
+            // Reduce penalty by 30% if damage wouldn't cross a threshold
+            defensivePenalty *= 0.7;
+            action.logic.push(`⚔️ No threshold cross: Section stays ${currentSectionStatus}`);
+          } else if (wouldCauseStateTransition) {
+            // Small extra penalty for crossing thresholds (stat penalties)
+            const thresholdPenalty = currentSectionStatus === 'healthy'
+              ? THRESHOLD_BONUS.CROSS_TO_DAMAGED
+              : THRESHOLD_BONUS.CROSS_TO_CRITICAL;
+            defensivePenalty -= thresholdPenalty; // Make more negative
+            action.logic.push(`⚠️ Would cross threshold: ${currentSectionStatus}→worse`);
           }
 
           if (defensivePenalty !== 0) {
             action.score += defensivePenalty;
             action.logic.push(
-              `Defensive Penalty: ${defensivePenalty.toFixed(0)} (${totalThreatDamage} ship dmg, ${totalImpact.toFixed(0)} impact)`
+              `Defense Penalty: ${defensivePenalty.toFixed(0)} (${totalThreatDamage} dmg × ${defenseUrgency}x urgency)`
             );
           }
         }

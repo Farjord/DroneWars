@@ -80,10 +80,11 @@ export const calculateLaneScore = (laneId, player2State, player1State, allSectio
   const humanMaxSpeed = getMaxSpeed(humanDronesInLane, laneId, gameDataService, humanOptions);
   const speedScore = (aiMaxSpeed - humanMaxSpeed) * SCORING_WEIGHTS.SPEED_ADVANTAGE_MULTIPLIER;
 
-  // Calculate health modifier based on ship section status
+  // Calculate health modifier based on AI ship section status
+  // When AI's section is damaged/critical, their drones have stat penalties
+  // making the lane less favorable for them
   let healthModifier = 0;
 
-  // AI section health penalty
   const aiSectionName = allSections.player2[laneIndex];
   if (aiSectionName) {
     const aiSectionStatus = getShipStatus(player2State.shipSections[aiSectionName]);
@@ -91,13 +92,10 @@ export const calculateLaneScore = (laneId, player2State, player1State, allSectio
     if (aiSectionStatus === 'critical') healthModifier -= 40;
   }
 
-  // Human section health bonus (AI wants to attack weak sections)
-  const humanSectionName = allSections.player1[laneIndex];
-  if (humanSectionName) {
-    const humanSectionStatus = getShipStatus(player1State.shipSections[humanSectionName]);
-    if (humanSectionStatus === 'damaged') healthModifier += 15;
-    if (humanSectionStatus === 'critical') healthModifier += 30;
-  }
+  // NOTE: Per the total damage win condition model, we no longer give bonus
+  // for attacking damaged/critical opponent sections. All hull damage contributes
+  // equally toward the 60% threshold win condition. Lane control (being able to
+  // attack AND defend) is more important than targeting specific weak sections.
 
   return baseScore + speedScore + healthModifier;
 };
