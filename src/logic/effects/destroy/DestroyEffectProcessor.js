@@ -187,12 +187,15 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
           timestamp: Date.now()
         });
 
-        // Update deployment counts
+        // Update deployment counts and availability
         const updates = gameEngine.onDroneDestroyed(targetPlayerState, droneInLane);
         targetPlayerState.deployedDroneCounts = {
           ...(targetPlayerState.deployedDroneCounts || {}),
           ...updates.deployedDroneCounts
         };
+        if (updates.droneAvailability) {
+          targetPlayerState.droneAvailability = updates.droneAvailability;
+        }
 
         // Remove drone from lane
         dronesInLane.splice(i, 1);
@@ -231,12 +234,15 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
         timestamp: Date.now()
       });
 
-      // Update deployment counts
+      // Update deployment counts and availability
       const updates = gameEngine.onDroneDestroyed(newPlayerStates[opponentId], drone);
       newPlayerStates[opponentId].deployedDroneCounts = {
         ...(newPlayerStates[opponentId].deployedDroneCounts || {}),
         ...updates.deployedDroneCounts
       };
+      if (updates.droneAvailability) {
+        newPlayerStates[opponentId].droneAvailability = updates.droneAvailability;
+      }
     });
     newPlayerStates[opponentId].dronesOnBoard[laneId] = [];
 
@@ -255,12 +261,15 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
         timestamp: Date.now()
       });
 
-      // Update deployment counts
+      // Update deployment counts and availability
       const updates = gameEngine.onDroneDestroyed(newPlayerStates[actingPlayerId], drone);
       newPlayerStates[actingPlayerId].deployedDroneCounts = {
         ...(newPlayerStates[actingPlayerId].deployedDroneCounts || {}),
         ...updates.deployedDroneCounts
       };
+      if (updates.droneAvailability) {
+        newPlayerStates[actingPlayerId].droneAvailability = updates.droneAvailability;
+      }
     });
     newPlayerStates[actingPlayerId].dronesOnBoard[laneId] = [];
 
@@ -298,12 +307,15 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
           timestamp: Date.now()
         });
 
-        // Update deployment counts
+        // Update deployment counts and availability
         const updates = gameEngine.onDroneDestroyed(targetPlayerState, droneToDestroy);
         targetPlayerState.deployedDroneCounts = {
           ...(targetPlayerState.deployedDroneCounts || {}),
           ...updates.deployedDroneCounts
         };
+        if (updates.droneAvailability) {
+          targetPlayerState.droneAvailability = updates.droneAvailability;
+        }
 
         // Remove drone from lane
         targetPlayerState.dronesOnBoard[laneId] = targetPlayerState.dronesOnBoard[laneId].filter(d => d.id !== target.id);
@@ -353,12 +365,15 @@ class DestroyEffectProcessor extends BaseEffectProcessor {
             timestamp: Date.now()
           });
 
-          // Update deployment counts
+          // Update deployment counts and availability
           const updates = gameEngine.onDroneDestroyed(targetPlayerState, drone);
           targetPlayerState.deployedDroneCounts = {
             ...(targetPlayerState.deployedDroneCounts || {}),
             ...updates.deployedDroneCounts
           };
+          if (updates.droneAvailability) {
+            targetPlayerState.droneAvailability = updates.droneAvailability;
+          }
 
           // Remove drone from lane
           dronesInLane.splice(i, 1);

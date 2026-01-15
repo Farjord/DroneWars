@@ -33,29 +33,76 @@ export const evaluateSingleMoveCard = (card, target, moveData, context) => {
 
   const { drone, fromLane, toLane } = moveData;
 
-  // Calculate lane scores
-  const currentFromScore = calculateLaneScore(fromLane, player2, player1, allSections, getShipStatus, gameDataService);
-  const currentToScore = calculateLaneScore(toLane, player2, player1, allSections, getShipStatus, gameDataService);
+  // Detect if this is an enemy drone (Tactical Repositioning) or friendly drone
+  const isEnemyDrone = player1.dronesOnBoard[fromLane]?.some(d => d.id === drone.id);
 
-  // Simulate the move
-  const tempAiState = JSON.parse(JSON.stringify(player2));
-  const droneToMove = tempAiState.dronesOnBoard[fromLane].find(d => d.id === drone.id);
-  if (droneToMove) {
-    tempAiState.dronesOnBoard[fromLane] = tempAiState.dronesOnBoard[fromLane].filter(d => d.id !== drone.id);
-    tempAiState.dronesOnBoard[toLane].push(droneToMove);
+  if (isEnemyDrone) {
+    // ENEMY DRONE MOVEMENT (Tactical Repositioning card)
+    // Strategy: Maximize opponent's disadvantage (their loss = our gain)
+
+    // Calculate current lane scores for opponent
+    const currentFromScore = calculateLaneScore(fromLane, player1, player2, allSections, getShipStatus, gameDataService);
+    const currentToScore = calculateLaneScore(toLane, player1, player2, allSections, getShipStatus, gameDataService);
+
+    // Simulate moving opponent's drone
+    const tempOpponentState = JSON.parse(JSON.stringify(player1));
+    const droneToMove = tempOpponentState.dronesOnBoard[fromLane].find(d => d.id === drone.id);
+    if (droneToMove) {
+      tempOpponentState.dronesOnBoard[fromLane] = tempOpponentState.dronesOnBoard[fromLane].filter(d => d.id !== drone.id);
+      tempOpponentState.dronesOnBoard[toLane].push(droneToMove);
+    }
+
+    // Calculate projected scores after move
+    const projectedFromScore = calculateLaneScore(fromLane, tempOpponentState, player2, allSections, getShipStatus, gameDataService);
+    const projectedToScore = calculateLaneScore(toLane, tempOpponentState, player2, allSections, getShipStatus, gameDataService);
+
+    // Calculate opponent's score change (negative = they got worse = good for us)
+    const opponentToLaneChange = projectedToScore - currentToScore;
+    const opponentFromLaneChange = projectedFromScore - currentFromScore;
+    const opponentTotalChange = opponentToLaneChange + opponentFromLaneChange;
+
+    // Our gain = their loss (invert the score)
+    score = -opponentTotalChange;
+
+    logic.push(`✅ Enemy Move Impact: +${score.toFixed(0)} (${drone.name}: ${fromLane}→${toLane})`);
+    logic.push(`   Opponent lane change: ${opponentTotalChange.toFixed(0)} (worse for them = better for us)`);
+
+    // Bonus for removing interceptors from lanes we want to attack
+    const droneHasInterceptor = drone.class === 'Interceptor' || drone.keywords?.includes('INTERCEPTOR');
+    if (droneHasInterceptor) {
+      const interceptorRemovalBonus = 40;
+      score += interceptorRemovalBonus;
+      logic.push(`✅ Interceptor Removal: +${interceptorRemovalBonus} (clears blocker)`);
+    }
+
+  } else {
+    // FRIENDLY DRONE MOVEMENT (existing logic)
+    // Calculate lane scores
+    const currentFromScore = calculateLaneScore(fromLane, player2, player1, allSections, getShipStatus, gameDataService);
+    const currentToScore = calculateLaneScore(toLane, player2, player1, allSections, getShipStatus, gameDataService);
+
+    // Simulate the move
+    const tempAiState = JSON.parse(JSON.stringify(player2));
+    const droneToMove = tempAiState.dronesOnBoard[fromLane].find(d => d.id === drone.id);
+    if (droneToMove) {
+      tempAiState.dronesOnBoard[fromLane] = tempAiState.dronesOnBoard[fromLane].filter(d => d.id !== drone.id);
+      tempAiState.dronesOnBoard[toLane].push(droneToMove);
+    }
+
+    const projectedFromScore = calculateLaneScore(fromLane, tempAiState, player1, allSections, getShipStatus, gameDataService);
+    const projectedToScore = calculateLaneScore(toLane, tempAiState, player1, allSections, getShipStatus, gameDataService);
+
+    const toLaneImpact = projectedToScore - currentToScore;
+    const fromLaneImpact = projectedFromScore - currentFromScore;
+
+    // No move cost for card-based moves (cards already have energy cost)
+    const moveImpact = toLaneImpact + fromLaneImpact;
+    score = moveImpact;
+
+    logic.push(`✅ Move Impact: +${moveImpact.toFixed(0)} (${drone.name}: ${fromLane}→${toLane})`);
   }
 
-  const projectedFromScore = calculateLaneScore(fromLane, tempAiState, player1, allSections, getShipStatus, gameDataService);
-  const projectedToScore = calculateLaneScore(toLane, tempAiState, player1, allSections, getShipStatus, gameDataService);
-
-  const toLaneImpact = projectedToScore - currentToScore;
-  const fromLaneImpact = projectedFromScore - currentFromScore;
-
-  // No move cost for card-based moves (cards already have energy cost)
-  const moveImpact = toLaneImpact + fromLaneImpact;
-  score = moveImpact;
-
-  // Check for ON_MOVE abilities (e.g., Phase Jumper)
+  // Check for ON_MOVE abilities (e.g., Phase Jumper) - works for both friendly and enemy drones
   const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
   const onMoveAbility = baseDrone?.abilities.find(a => a.type === 'TRIGGERED' && a.trigger === 'ON_MOVE');
 
@@ -67,11 +114,16 @@ export const evaluateSingleMoveCard = (card, target, moveData, context) => {
         if (effect.mod.stat === 'speed') abilityBonus += (effect.mod.value * CARD_EVALUATION.ON_MOVE_SPEED_BONUS_PER_POINT);
       }
     });
-    score += abilityBonus;
-    logic.push(`✅ OnMove Ability: +${abilityBonus}`);
-  }
 
-  logic.push(`✅ Move Impact: +${moveImpact.toFixed(0)} (${drone.name}: ${fromLane}→${toLane})`);
+    // For enemy drones, their ability bonus is bad for us (subtract it)
+    if (isEnemyDrone) {
+      score -= abilityBonus;
+      logic.push(`⚠️ Enemy OnMove Ability: -${abilityBonus} (makes them stronger)`);
+    } else {
+      score += abilityBonus;
+      logic.push(`✅ OnMove Ability: +${abilityBonus}`);
+    }
+  }
 
   // Apply card cost
   const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;

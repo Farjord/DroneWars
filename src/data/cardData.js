@@ -149,7 +149,7 @@ const fullCardCollection = [
     name: 'Adrenaline Rush',
     maxInDeck: 4,
     rarity: 'Common',
-    type: 'Tactic',
+    type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/AdrenalineRush.png',
     description: 'Ready an exhausted friendly drone.',
@@ -169,7 +169,7 @@ const fullCardCollection = [
     name: 'Adrenaline Rush+',
     maxInDeck: 4,
     rarity: 'Uncommon',
-    type: 'Tactic',
+    type: 'Support',
     cost: 3,
     image: '/DroneWars/cards/AdrenalineRush.png',
     description: 'Ready an exhausted friendly drone. Go again.',
@@ -409,7 +409,7 @@ const fullCardCollection = [
     name: 'Overcharge',
     maxInDeck: 4,
     rarity: 'Common',
-    type: 'Tactic',
+    type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/Overcharge.png',
     description: 'Give a friendly drone +2 attack until the end of the turn.',
@@ -429,10 +429,10 @@ const fullCardCollection = [
     name: 'Streamline',
     maxInDeck: 4,
     rarity: 'Uncommon',
-    type: 'Tactic',
+    type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/Streamline.png',
-    description: 'Give all friendly drones in a line a permanent +1 speed bonus. Go again.',
+    description: 'Give all friendly drones in a lane +1 speed until the end of the turn.',
     targeting: {
       type: 'LANE',
       affinity: 'FRIENDLY',
@@ -440,9 +440,8 @@ const fullCardCollection = [
     },
     effect: {
       type: 'MODIFY_STAT',
-      mod: { stat: 'speed', value: 1, type: 'permanent' },
-      goAgain: true
-    }
+      mod: { stat: 'speed', value: 1, type: 'temporary' },
+     }
   },
   {
     id: 'CARD016',
@@ -461,8 +460,7 @@ const fullCardCollection = [
     },
     effect: {
       type: 'MODIFY_STAT',
-      mod: { stat: 'attack', value: -2, type: 'temporary' },
-      goAgain: true
+      mod: { stat: 'attack', value: -2, type: 'temporary' }
     }
   },
   {
@@ -471,7 +469,7 @@ const fullCardCollection = [
     name: 'Boosters',
     maxInDeck: 4,
     rarity: 'Common',
-    type: 'Tactic',
+    type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/Boosters.png',
     description: 'Give a friendly drone +2 speed until the end of the turn.',
@@ -508,7 +506,7 @@ const fullCardCollection = [
     name: 'Reposition',
     maxInDeck: 4,
     rarity: 'Common',
-    type: 'Tactic',
+    type: 'Support',
     cost: 4,
     image: '/DroneWars/cards/Reposition.png',
     description: 'Select a lane. Move up to 3 friendly drones from that lane to another. The moved drones are not exhausted.',
@@ -626,7 +624,7 @@ const fullCardCollection = [
     name: 'Maneuver',
     maxInDeck: 4,
     rarity: 'Common',
-    type: 'Tactic',
+    type: 'Support',
     cost: 0,
     image: '/DroneWars/cards/Maneuver.png',
     description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move.',
@@ -641,7 +639,7 @@ const fullCardCollection = [
     name: 'Maneuver+',
     maxInDeck: 4,
     rarity: 'Uncommon',
-    type: 'Tactic',
+    type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/Maneuver.png',
     description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move. Go again.',
@@ -660,7 +658,7 @@ const fullCardCollection = [
     name: 'Swift Maneuver',
     maxInDeck: 2,
     rarity: 'Common',
-    type: 'Tactic',
+    type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/SwiftManeuver.png',
     description: 'Move a friendly drone to an adjacent lane. If its speed is 5 or higher, go again.',
@@ -681,7 +679,7 @@ const fullCardCollection = [
     name: 'Tactical Shift',
     maxInDeck: 2,
     rarity: 'Uncommon',
-    type: 'Tactic',
+    type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/TacticalShift.png',
     description: 'Move a friendly drone to an adjacent lane without exhausting it. If the opponent has more drones in that lane, draw a card.',
@@ -702,7 +700,7 @@ const fullCardCollection = [
     name: 'Assault Reposition',
     maxInDeck: 2,
     rarity: 'Uncommon',
-    type: 'Tactic',
+    type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/AssaultReposition.png',
     description: 'Move a friendly drone to an adjacent lane. If its attack is less than 4, give it +1 attack.',
@@ -1499,6 +1497,207 @@ const fullCardCollection = [
       type: 'DAMAGE',
       value: 3,
       damageType: 'KINETIC'
+    }
+  },
+
+  // ========================================
+  // NEW TACTICS CARDS - Phase 10
+  // ========================================
+
+  {
+    id: 'CARD_TACTICS_1',
+    baseCardId: 'CARD_TACTICS_1',
+    name: 'Tactical Repositioning',
+    maxInDeck: 4,
+    rarity: 'Common',
+    type: 'Tactic',
+    cost: 2,
+    image: '/DroneWars/cards/TacticalRepositioning.png',
+    description: 'Move target enemy drone to an adjacent lane.',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'SINGLE_MOVE'
+    }
+  },
+
+  {
+    id: 'CARD_TACTICS_2',
+    baseCardId: 'CARD_TACTICS_2',
+    name: 'Mental Disruption',
+    maxInDeck: 4,
+    rarity: 'Uncommon',
+    type: 'Tactic',
+    cost: 3,
+    image: '/DroneWars/cards/MentalDisruption.png',
+    description: 'Target opponent discards 2 cards at random.',
+    effect: {
+      type: 'DISCARD',
+      count: 2,
+      targetPlayer: 'opponent'
+    }
+  },
+
+  {
+    id: 'CARD_TACTICS_3',
+    baseCardId: 'CARD_TACTICS_3',
+    name: 'Power Drain',
+    maxInDeck: 4,
+    rarity: 'Common',
+    type: 'Tactic',
+    cost: 2,
+    image: '/DroneWars/cards/PowerDrain.png',
+    description: 'Target opponent loses 3 energy.',
+    effect: {
+      type: 'DRAIN_ENERGY',
+      amount: 3
+    }
+  },
+
+  {
+    id: 'CARD_TACTICS_4',
+    baseCardId: 'CARD_TACTICS_4',
+    name: 'EMP Burst',
+    maxInDeck: 4,
+    rarity: 'Common',
+    type: 'Tactic',
+    cost: 1,
+    image: '/DroneWars/cards/EMPBurst.png',
+    description: 'Exhaust target drone.',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ANY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'EXHAUST_DRONE'
+    }
+  },
+
+  {
+    id: 'CARD_TACTICS_5',
+    baseCardId: 'CARD_TACTICS_5',
+    name: 'Targeting Scrambler',
+    maxInDeck: 4,
+    rarity: 'Common',
+    type: 'Tactic',
+    cost: 1,
+    image: '/DroneWars/cards/TargetingScrambler.png',
+    description: 'Target drone gets -2 speed until end of turn.',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ANY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'MODIFY_STAT',
+      mod: {
+        stat: 'speed',
+        value: -2,
+        type: 'temporary'
+      }
+    }
+  },
+  // ========================================
+  // STATUS EFFECT CARDS
+  // ========================================
+  {
+    id: 'CARD_STATUS_1',
+    baseCardId: 'CARD_STATUS_1',
+    name: 'System Lock',
+    maxInDeck: 4,
+    rarity: 'Common',
+    type: 'Tactic',
+    cost: 2,
+    image: '/DroneWars/cards/SystemLock.png',
+    description: 'Target drone cannot move. This effect is permanent.',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'APPLY_CANNOT_MOVE'
+    }
+  },
+  {
+    id: 'CARD_STATUS_2',
+    baseCardId: 'CARD_STATUS_2',
+    name: 'Weapon Malfunction',
+    maxInDeck: 4,
+    rarity: 'Common',
+    type: 'Tactic',
+    cost: 2,
+    image: '/DroneWars/cards/WeaponMalfunction.png',
+    description: 'Target drone cannot attack. This effect is permanent.',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'APPLY_CANNOT_ATTACK'
+    }
+  },
+  {
+    id: 'CARD_STATUS_3',
+    baseCardId: 'CARD_STATUS_3',
+    name: 'Sensor Jam',
+    maxInDeck: 4,
+    rarity: 'Common',
+    type: 'Tactic',
+    cost: 2,
+    image: '/DroneWars/cards/SensorJam.png',
+    description: 'Target drone cannot intercept attacks. This effect is permanent.',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'APPLY_CANNOT_INTERCEPT'
+    }
+  },
+  {
+    id: 'CARD_STATUS_4',
+    baseCardId: 'CARD_STATUS_4',
+    name: 'Stasis Field',
+    maxInDeck: 4,
+    rarity: 'Uncommon',
+    type: 'Tactic',
+    cost: 1,
+    image: '/DroneWars/cards/StasisField.png',
+    description: 'Target drone does not ready during the next ready phase.',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'APPLY_DOES_NOT_READY'
+    }
+  },
+  {
+    id: 'CARD_STATUS_CLEAR',
+    baseCardId: 'CARD_STATUS_CLEAR',
+    name: 'System Restore',
+    maxInDeck: 4,
+    rarity: 'Uncommon',
+    type: 'Support',
+    cost: 3,
+    image: '/DroneWars/cards/SystemRestore.png',
+    description: 'Remove all status effects from target drone, including marked status. Go again.',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'FRIENDLY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'CLEAR_ALL_STATUS',
+      goAgain: true
     }
   }
 ];

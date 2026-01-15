@@ -25,6 +25,10 @@ import DrawThenDiscardProcessor from './effects/cards/DrawThenDiscardProcessor.j
 import MovementEffectProcessor from './effects/movement/MovementEffectProcessor.js';
 import MarkingEffectProcessor from './effects/marking/MarkingEffectProcessor.js';
 import IncreaseThreatEffectProcessor from './effects/detection/IncreaseThreatEffectProcessor.js';
+import DiscardEffectProcessor from './effects/cards/DiscardEffectProcessor.js';
+import DrainEnergyEffectProcessor from './effects/energy/DrainEnergyEffectProcessor.js';
+import ExhaustDroneEffectProcessor from './effects/state/ExhaustDroneEffectProcessor.js';
+import StatusEffectProcessor from './effects/state/StatusEffectProcessor.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 /**
@@ -79,7 +83,17 @@ class EffectRouter {
       MARK_DRONE: markingProcessor,
       MARK_RANDOM_ENEMY: markingProcessor,
       // Detection/Threat effects (Extraction mode)
-      INCREASE_THREAT: new IncreaseThreatEffectProcessor()
+      INCREASE_THREAT: new IncreaseThreatEffectProcessor(),
+      // Phase 10: New tactics card effects
+      DISCARD: new DiscardEffectProcessor(),
+      DRAIN_ENERGY: new DrainEnergyEffectProcessor(),
+      EXHAUST_DRONE: new ExhaustDroneEffectProcessor(),
+      // Status effects - restriction/control effects
+      APPLY_CANNOT_MOVE: new StatusEffectProcessor(),
+      APPLY_CANNOT_ATTACK: new StatusEffectProcessor(),
+      APPLY_CANNOT_INTERCEPT: new StatusEffectProcessor(),
+      APPLY_DOES_NOT_READY: new StatusEffectProcessor(),
+      CLEAR_ALL_STATUS: new StatusEffectProcessor()
     };
   }
 

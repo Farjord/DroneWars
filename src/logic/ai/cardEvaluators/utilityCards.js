@@ -3,7 +3,7 @@
 // ========================================
 // Evaluates DRAW, GAIN_ENERGY, and SEARCH_AND_DRAW card effects
 
-import { CARD_EVALUATION } from '../aiConstants.js';
+import { CARD_EVALUATION, SCORING_WEIGHTS, INVALID_SCORE } from '../aiConstants.js';
 
 /**
  * Evaluate a GAIN_ENERGY card
@@ -92,6 +92,106 @@ export const evaluateSearchAndDrawCard = (card, target, context) => {
     score = 2;
     logic.push(`⚠️ Low Priority: +2`);
   }
+
+  return { score, logic };
+};
+
+/**
+ * Evaluate a DRAIN_ENERGY card (Power Drain)
+ * Strategy: Sooner the better - always valuable for tempo
+ * @param {Object} card - The card being played
+ * @param {Object} target - The target of the card (usually null)
+ * @param {Object} context - Evaluation context with player states
+ * @returns {Object} - { score: number, logic: string[] }
+ */
+export const evaluateDrainEnergyCard = (card, target, context) => {
+  const { player1, roundNumber } = context;
+  const logic = [];
+
+  const energyDrained = card.effect.amount;
+  let baseValue = energyDrained * CARD_EVALUATION.ENERGY_DENY_MULTIPLIER;
+
+  logic.push(`✅ Energy Drain: +${baseValue} (${energyDrained} energy denied)`);
+
+  // Bonus if opponent has high energy (more impactful)
+  if (player1.energy >= 5) {
+    const highEnergyBonus = 15;
+    baseValue += highEnergyBonus;
+    logic.push(`✅ High Energy Target: +${highEnergyBonus} (opponent has ${player1.energy})`);
+  }
+
+  // Reduced value if opponent already low on energy
+  if (player1.energy <= 2) {
+    baseValue *= 0.5;
+    logic.push(`⚠️ Low Energy Target: ×0.5 (diminishing returns)`);
+  }
+
+  // Early game bonus (play ASAP for tempo advantage)
+  const currentRound = roundNumber || 1;
+  if (currentRound <= 3) {
+    const earlyGameBonus = 10;
+    baseValue += earlyGameBonus;
+    logic.push(`✅ Early Game: +${earlyGameBonus} (tempo advantage)`);
+  }
+
+  // Cost penalty
+  const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
+  const score = baseValue - costPenalty;
+  logic.push(`⚠️ Cost: -${costPenalty}`);
+
+  return { score, logic };
+};
+
+/**
+ * Evaluate a DISCARD card (Mental Disruption)
+ * Strategy: Higher value when opponent has more cards and energy
+ * @param {Object} card - The card being played
+ * @param {Object} target - The target of the card (usually null)
+ * @param {Object} context - Evaluation context with player states
+ * @returns {Object} - { score: number, logic: string[] }
+ */
+export const evaluateDiscardCard = (card, target, context) => {
+  const { player1 } = context;
+  const logic = [];
+
+  const discardCount = card.effect.count;
+  const opponentHandSize = player1.hand.length;
+  const opponentEnergy = player1.energy;
+
+  // Check if opponent has cards to discard
+  if (opponentHandSize === 0) {
+    return { score: INVALID_SCORE, logic: ['❌ No cards to discard'] };
+  }
+
+  let baseValue = discardCount * CARD_EVALUATION.CARD_VALUE_MULTIPLIER;
+  logic.push(`✅ Card Disruption: +${baseValue} (${discardCount} cards)`);
+
+  // Hand size scaling (more cards = more disruption potential)
+  if (opponentHandSize >= 5) {
+    const fullHandBonus = 20;
+    baseValue += fullHandBonus;
+    logic.push(`✅ Full Hand: +${fullHandBonus} (${opponentHandSize} cards)`);
+  } else if (opponentHandSize <= 2) {
+    const lowHandPenalty = -15;
+    baseValue += lowHandPenalty;
+    logic.push(`⚠️ Few Cards: ${lowHandPenalty} (only ${opponentHandSize} cards)`);
+  }
+
+  // Energy scaling (high energy means they can play cards)
+  if (opponentEnergy >= 5) {
+    const highEnergyBonus = 15;
+    baseValue += highEnergyBonus;
+    logic.push(`✅ High Energy: +${highEnergyBonus} (can play cards)`);
+  } else if (opponentEnergy <= 2) {
+    const lowEnergyPenalty = -10;
+    baseValue += lowEnergyPenalty;
+    logic.push(`⚠️ Low Energy: ${lowEnergyPenalty} (cards less threatening)`);
+  }
+
+  // Cost penalty
+  const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
+  const score = baseValue - costPenalty;
+  logic.push(`⚠️ Cost: -${costPenalty}`);
 
   return { score, logic };
 };

@@ -10,6 +10,7 @@ import { useGameData } from '../../hooks/useGameData.js';
 import { useEditorStats } from '../../contexts/EditorStatsContext.jsx';
 import InterceptedBadge from './InterceptedBadge.jsx';
 import TargetLockIcon from './TargetLockIcon.jsx';
+import StatusEffectIcons from './StatusEffectIcons.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 import { Gauge, Crosshair } from 'lucide-react';
 
@@ -360,6 +361,9 @@ const DroneToken = ({
 
       {/* Special Ability Icons (RAPID/ASSAULT) - Left side */}
       <SpecialAbilityIcons drone={drone} isPlayer={isPlayer} />
+
+      {/* Status Effect Icons - Right side */}
+      <StatusEffectIcons drone={drone} isPlayer={isPlayer} />
 
       {/* Intercepted Badge */}
       {interceptedBadge && interceptedBadge.droneId === drone.id && (

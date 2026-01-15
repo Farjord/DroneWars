@@ -295,6 +295,16 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
     const attackerPlayerState = playerStates[attackingPlayerId];
     const defenderPlayerState = playerStates[defendingPlayerId];
 
+    // Check if attacker can attack (status effect restriction)
+    // Skip this check for card/ability attacks (no attacker drone)
+    if (!isAbilityOrCard && attacker && attacker.cannotAttack) {
+        return {
+            newPlayerStates: playerStates,
+            error: `${attacker.name} cannot attack due to active status effect.`,
+            shouldShowErrorModal: true
+        };
+    }
+
     // Calculate attacker stats (skip for card/ability attacks)
     let attackerLane = null;
     let effectiveAttacker = null;

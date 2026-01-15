@@ -28,7 +28,12 @@ function initializeDroneForLane(droneTemplate) {
     currentMaxShields: droneTemplate.shields,
     hull: droneTemplate.hull,
     isExhausted: false,
-    statMods: []
+    statMods: [],
+    // Status effect flags
+    cannotMove: false,
+    cannotAttack: false,
+    cannotIntercept: false,
+    doesNotReady: false
   };
 }
 

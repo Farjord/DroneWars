@@ -288,6 +288,28 @@ export const CARD_EVALUATION = {
   // SINGLE_MOVE card scoring
   ON_MOVE_ATTACK_BONUS_PER_POINT: 15,
   ON_MOVE_SPEED_BONUS_PER_POINT: 10,
+
+  // EXHAUST_DRONE card scoring (EMP Burst)
+  EXHAUST_VALUE_MULTIPLIER: 8,    // Value per attack point denied
+
+  // DRAIN_ENERGY card scoring (Power Drain)
+  ENERGY_DENY_MULTIPLIER: 10,     // Value per energy drained from opponent
+
+  // DISCARD card scoring (Mental Disruption)
+  CARD_VALUE_MULTIPLIER: 18,      // Value per card discarded from opponent's hand
+
+  // DEFENDER keyword bonus (also used by EXHAUST_DRONE)
+  DEFENDER_KEYWORD_BONUS: 15,
+
+  // Status effect evaluation
+  STATUS_MOVE_DENY_MULTIPLIER: 8,      // Per attack point (locked in place)
+  STATUS_ATTACK_DENY_MULTIPLIER: 10,   // Per attack point (direct threat)
+  STATUS_INTERCEPT_DENY_MULTIPLIER: 6, // Per speed point (interception capability)
+  STATUS_READY_DENY_MULTIPLIER: 8,     // Per attack point for does not ready
+  STATUS_READY_DURATION_FACTOR: 0.7,   // Does not ready is temporary (70% value)
+  STATUS_CLEAR_VALUE_PER_EFFECT: 25,   // Per status removed
+  STATUS_MARKED_CLEAR_BONUS: 15,       // Clearing marked status
+  ON_MOVE_ABILITY_BONUS: 15,           // Denying ON_MOVE ability
 };
 
 // ========================================

@@ -186,3 +186,113 @@ export const evaluateCreateTokensCard = (card, target, context) => {
 
   return { score, logic };
 };
+
+/**
+ * Evaluate an EXHAUST_DRONE card (EMP Burst)
+ * Similar to DESTROY evaluation - targets high-threat ready drones
+ * @param {Object} card - The card being played
+ * @param {Object} target - The target drone to exhaust
+ * @param {Object} context - Evaluation context
+ * @returns {Object} - { score: number, logic: string[] }
+ */
+export const evaluateExhaustDroneCard = (card, target, context) => {
+  const {
+    player1,
+    player2,
+    gameDataService,
+    getLaneOfDrone,
+    placedSections,
+    allSections,
+    getShipStatus
+  } = context;
+  const logic = [];
+  let score = 0;
+
+  // Check if target is already exhausted (invalid target)
+  if (target.isExhausted) {
+    return { score: INVALID_SCORE, logic: ['❌ Target already exhausted'] };
+  }
+
+  // Determine which player owns the drone
+  const targetLane = getLaneOfDrone(target.id, player1) || getLaneOfDrone(target.id, player2);
+
+  if (!targetLane) {
+    return { score: INVALID_SCORE, logic: ['❌ Target not found on board'] };
+  }
+
+  // Get effective stats
+  const effectiveTarget = gameDataService.getEffectiveStats(target, targetLane);
+  const baseDrone = fullDroneCollection.find(d => d.name === target.name);
+  let totalScore = 0;
+
+  // === THREAT VALUE (attack potential denied) ===
+  const effectiveAttack = Math.max(0, effectiveTarget.attack);
+  const attackThreatValue = effectiveAttack * CARD_EVALUATION.EXHAUST_VALUE_MULTIPLIER;
+
+  if (effectiveAttack > 0) {
+    totalScore += attackThreatValue;
+    logic.push(`✅ Attack Threat: +${attackThreatValue} (${effectiveAttack} ATK denied)`);
+  }
+
+  // === INTERCEPTION VALUE (if it's an interceptor) ===
+  const keywords = effectiveTarget.keywords || new Set();
+  const isInterceptor = target.class === 'Interceptor' || keywords.has('INTERCEPTOR');
+
+  if (isInterceptor) {
+    const interceptorValue = 30;
+    totalScore += interceptorValue;
+    logic.push(`✅ Interceptor: +${interceptorValue} (blocks our attacks)`);
+  }
+
+  // === KEYWORD BONUSES (high-value abilities denied) ===
+  if (keywords.has('DEFENDER')) {
+    totalScore += 15;
+    logic.push(`⭐ DEFENDER: +15 (protects their drones)`);
+  }
+
+  if (keywords.has('GUARDIAN')) {
+    totalScore += 20;
+    logic.push(`⭐ GUARDIAN: +20 (protects their ship)`);
+  }
+
+  // === ACTIVE ABILITY VALUE ===
+  const hasActiveAbility = baseDrone?.abilities?.some(a =>
+    a.type === 'ACTIVATED' || (a.type === 'TRIGGERED' && ['ON_ATTACK', 'ON_DAMAGE_DEALT'].includes(a.trigger))
+  );
+
+  if (hasActiveAbility) {
+    const abilityValue = 20;
+    totalScore += abilityValue;
+    logic.push(`✅ Active Ability: +${abilityValue} (ability denied)`);
+  }
+
+  // === LANE IMPACT ANALYSIS ===
+  // Simulate exhausting the drone
+  const ownerPlayer = getLaneOfDrone(target.id, player1) ? player1 : player2;
+  const tempState = JSON.parse(JSON.stringify(ownerPlayer));
+  const droneInLane = tempState.dronesOnBoard[targetLane]?.find(d => d.id === target.id);
+
+  if (droneInLane) {
+    droneInLane.isExhausted = true;
+  }
+
+  // Calculate lane score impact (for enemy exhaustion, this improves our position)
+  const isEnemyDrone = getLaneOfDrone(target.id, player1);
+  if (isEnemyDrone) {
+    const currentLaneScore = calculateLaneScore(targetLane, player2, player1, allSections, getShipStatus, gameDataService);
+    const projectedLaneScore = calculateLaneScore(targetLane, player2, tempState, allSections, getShipStatus, gameDataService);
+    const laneImprovement = (projectedLaneScore - currentLaneScore) * 0.5; // Weighted at 50%
+
+    if (laneImprovement > 0) {
+      totalScore += laneImprovement;
+      logic.push(`📊 Lane Advantage: +${laneImprovement.toFixed(0)}`);
+    }
+  }
+
+  // === COST PENALTY ===
+  const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
+  totalScore -= costPenalty;
+  logic.push(`⚠️ Cost: -${costPenalty}`);
+
+  return { score: totalScore, logic };
+};

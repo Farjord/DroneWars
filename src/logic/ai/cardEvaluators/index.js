@@ -4,13 +4,14 @@
 // Central registry for card effect evaluators
 
 import { evaluateDestroyCard, evaluateDamageCard, evaluateOverflowDamageCard, evaluateSplashDamageCard, evaluateDamageScalingCard, evaluateDestroyUpgradeCard } from './damageCards.js';
-import { evaluateGainEnergyCard, evaluateDrawCard, evaluateSearchAndDrawCard } from './utilityCards.js';
-import { evaluateReadyDroneCard, evaluateCreateTokensCard } from './droneCards.js';
+import { evaluateGainEnergyCard, evaluateDrawCard, evaluateSearchAndDrawCard, evaluateDrainEnergyCard, evaluateDiscardCard } from './utilityCards.js';
+import { evaluateReadyDroneCard, evaluateCreateTokensCard, evaluateExhaustDroneCard } from './droneCards.js';
 import { evaluateHealShieldsCard, evaluateHealHullCard, evaluateRestoreSectionShieldsCard } from './healCards.js';
 import { evaluateModifyStatCard, evaluateRepeatingEffectCard } from './statCards.js';
 import { evaluateSingleMoveCard, evaluateMultiMoveCard } from './movementCards.js';
 import { evaluateModifyDroneBaseCard } from './upgradeCards.js';
 import { evaluateConditionalEffects } from './conditionalEvaluator.js';
+import { evaluateApplyCannotMoveCard, evaluateApplyCannotAttackCard, evaluateApplyCannotInterceptCard, evaluateApplyDoesNotReadyCard, evaluateClearAllStatusCard } from './statusEffectCards.js';
 
 // Re-export all evaluators
 export * from './damageCards.js';
@@ -20,6 +21,7 @@ export * from './healCards.js';
 export * from './statCards.js';
 export * from './movementCards.js';
 export * from './upgradeCards.js';
+export * from './statusEffectCards.js';
 
 /**
  * Card evaluator registry - maps effect types to evaluation functions
@@ -44,6 +46,16 @@ export const cardEvaluatorRegistry = {
   SINGLE_MOVE: evaluateSingleMoveCard,
   MULTI_MOVE: evaluateMultiMoveCard,
   MODIFY_DRONE_BASE: evaluateModifyDroneBaseCard,
+  // New tactics card evaluators
+  EXHAUST_DRONE: evaluateExhaustDroneCard,
+  DRAIN_ENERGY: evaluateDrainEnergyCard,
+  DISCARD: evaluateDiscardCard,
+  // Status effect evaluators
+  APPLY_CANNOT_MOVE: evaluateApplyCannotMoveCard,
+  APPLY_CANNOT_ATTACK: evaluateApplyCannotAttackCard,
+  APPLY_CANNOT_INTERCEPT: evaluateApplyCannotInterceptCard,
+  APPLY_DOES_NOT_READY: evaluateApplyDoesNotReadyCard,
+  CLEAR_ALL_STATUS: evaluateClearAllStatusCard,
 };
 
 /**

@@ -46,11 +46,15 @@ class RoundManager {
           placedSections
         );
 
+        // Check if drone should remain exhausted due to doesNotReady status
+        const shouldRemainExhausted = drone.doesNotReady && drone.isExhausted;
+
         return {
           ...drone,
           // Filter statMods to remove temporary effects
           statMods: drone.statMods ? drone.statMods.filter(mod => mod.type === 'permanent') : [],
-          isExhausted: false,
+          isExhausted: shouldRemainExhausted, // Keep exhausted if doesNotReady was set
+          doesNotReady: false, // ALWAYS remove flag after ready attempt
           currentShields: effectiveStats.maxShields,
           // Reset RAPID/ASSAULT ability usage flags for new round
           rapidUsed: false,

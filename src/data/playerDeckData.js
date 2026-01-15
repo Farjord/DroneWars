@@ -34,23 +34,7 @@ export const starterDeck = {
       quantity: 4
     },
     {
-      id: 'CARD002',
-      quantity: 4
-    },
-    {
-      id: 'CARD004',
-      quantity: 4
-    },
-    {
-      id: 'CARD005',
-      quantity: 4
-    },
-    {
       id: 'CARD014',
-      quantity: 4
-    },
-    {
-      id: 'CARD017',
       quantity: 4
     },
     {
@@ -60,7 +44,23 @@ export const starterDeck = {
     {
       id: 'CARD029',
       quantity: 2
-    }  
+    },
+    {
+      id: 'CARD005',
+      quantity: 4
+    },
+    {
+      id: 'CARD_TACTICS_4',
+      quantity: 4
+    },
+    {
+      id: 'CARD_TACTICS_1',
+      quantity: 4
+    },
+    {
+      id: 'CARD016',
+      quantity: 4
+    } 
   ],
   // 5 Drones (Extraction Mode uses exactly 5 drones, no selection phase)
   droneSlots: [

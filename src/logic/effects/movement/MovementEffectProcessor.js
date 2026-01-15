@@ -257,6 +257,17 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     const actingPlayerState = newPlayerStates[actingPlayerId];
     const opponentPlayerState = newPlayerStates[opponentPlayerId];
 
+    // Check if drone can move (status effect restriction)
+    if (droneToMove.cannotMove) {
+      return {
+        newPlayerStates: newPlayerStates,
+        error: `${droneToMove.name} cannot move due to active status effect.`,
+        shouldShowErrorModal: true,
+        shouldCancelCardSelection: true,
+        shouldClearMultiSelectState: true
+      };
+    }
+
     // Check maxPerLane restriction before moving
     const baseDrone = fullDroneCollection.find(d => d.name === droneToMove.name);
     if (baseDrone && baseDrone.maxPerLane) {
@@ -348,6 +359,19 @@ class MovementEffectProcessor extends BaseEffectProcessor {
 
     const actingPlayerState = newPlayerStates[actingPlayerId];
     const opponentPlayerState = newPlayerStates[opponentPlayerId];
+
+    // Check if any drone has cannotMove restriction
+    for (const drone of dronesToMove) {
+      if (drone.cannotMove) {
+        return {
+          newPlayerStates: newPlayerStates,
+          error: `${drone.name} cannot move due to active status effect.`,
+          shouldShowErrorModal: true,
+          shouldCancelCardSelection: true,
+          shouldClearMultiSelectState: true
+        };
+      }
+    }
 
     // Check maxPerLane restriction for each drone type being moved
     const droneTypeCount = {};

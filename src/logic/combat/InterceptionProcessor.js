@@ -51,6 +51,7 @@ export const calculatePotentialInterceptors = (selectedDrone, player1, player2, 
             placedSections
         );
         return !opponentDrone.isExhausted &&
+               !opponentDrone.cannotIntercept &&
                (effectiveInterceptor.speed >= effectiveAttacker.speed ||
                 effectiveInterceptor.keywords.has('ALWAYS_INTERCEPTS'));
     }).map(d => d.id);
@@ -87,6 +88,7 @@ export const calculateAiInterception = (pendingAttack, playerStates, placedSecti
                 d, lane, defendingPlayerState, attackingPlayerState, placedSections
             );
             return !d.isExhausted &&
+                   !d.cannotIntercept &&
                    (effectiveInterceptor.speed >= effectiveAttacker.speed ||
                     effectiveInterceptor.keywords.has('ALWAYS_INTERCEPTS')) &&
                    (targetType !== 'drone' || d.id !== target.id);
