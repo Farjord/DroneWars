@@ -280,41 +280,43 @@ const DroneToken = ({
         height: 'clamp(115px, 5.99vw, 156px)'
       }}
     >
-      {/* Visual Effects Wrapper */}
-      <div className="w-full h-full">
+      {/* Scale Wrapper - Separates scale transforms from hover/selection effects */}
+      <div className={`w-full h-full ${hoverEffect} ${selectedEffect} transition-transform duration-200`}>
+        {/* Visual Effects Wrapper */}
+        <div className="w-full h-full">
         {/* Targeting/Visual Effects Container - handles pulse, hit, selection, hover, etc. */}
-        <div className={`w-full h-full transition-all duration-200 ${hitEffect} ${selectedEffect} ${hoverEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${abilitySourceEffect}`}>
+        <div className={`w-full h-full transition-all duration-200 ${hitEffect} ${actionTargetEffect} ${mandatoryDestroyEffect} ${teleportingEffect} ${abilitySourceEffect}`}>
           {/* Grayscale Container - only applies exhausted effect */}
           <div className={`w-full h-full relative ${exhaustEffect}`}>
-      {/* Main Token Body */}
-      <div className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden ${isPotentialGuardian ? 'guardian-glow' : ''} ${isPotentialInterceptor ? (isPlayer ? 'interceptor-card-glow-cyan' : 'interceptor-card-glow') : ''}`}>
-        <img src={drone.image} alt={drone.name} className="absolute inset-0 w-full h-full object-cover"/>
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative z-10 h-full">
-          <div className="absolute bottom-6 left-0 right-0 w-full flex flex-col gap-1 px-2">
-            <div className="flex w-full justify-center gap-1 min-h-[12px]">
-              {Array.from({ length: maxShields }).map((_, i) => (
-                i < currentShields
-                  ? <svg key={i} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#22d3ee"><path d="M12,0 L24,6 L24,18 L12,24 L0,18 L0,6 Z" stroke="rgba(0,0,0,0.5)" strokeWidth="2"></path></svg>
-                  : <svg key={i} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={emptyShieldColor}><path d="M12,0 L24,6 L24,18 L12,24 L0,18 L0,6 Z"></path></svg>
-              ))}
+            {/* Main Token Body */}
+            <div className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden ${isPotentialGuardian ? 'guardian-glow' : ''} ${isPotentialInterceptor ? (isPlayer ? 'interceptor-card-glow-cyan' : 'interceptor-card-glow') : ''}`}>
+              <img src={drone.image} alt={drone.name} className="absolute inset-0 w-full h-full object-cover"/>
+              <div className="absolute inset-0 bg-black/10"></div>
+              <div className="relative z-10 h-full">
+                <div className="absolute bottom-6 left-0 right-0 w-full flex flex-col gap-1 px-2">
+                  <div className="flex w-full justify-center gap-1 min-h-[12px]">
+                    {Array.from({ length: maxShields }).map((_, i) => (
+                      i < currentShields
+                        ? <svg key={i} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#22d3ee"><path d="M12,0 L24,6 L24,18 L12,24 L0,18 L0,6 Z" stroke="rgba(0,0,0,0.5)" strokeWidth="2"></path></svg>
+                        : <svg key={i} xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={emptyShieldColor}><path d="M12,0 L24,6 L24,18 L12,24 L0,18 L0,6 Z"></path></svg>
+                    ))}
+                  </div>
+                  <div className="flex w-full justify-center gap-0.5">
+                    {Array.from({ length: baseDrone.hull }).map((_, i) => {
+                      const isFullHull = i < drone.hull;
+                      const fullHullColor = drone.isExhausted ? 'bg-white' : 'bg-cyan-400';
+                      const damagedHullColor = drone.isExhausted ? 'bg-gray-500' : 'bg-gray-400';
+                      return (
+                        <div key={i} className={`h-2 w-2 rounded-sm ${isFullHull ? fullHullColor : damagedHullColor} border border-black/50`}></div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className={`absolute bottom-0 left-0 right-0 h-5 ${nameBgColor} flex items-center justify-center border-t ${borderColor}`}>
+                  <span className={`font-orbitron text-[8px] uppercase ${nameTextColor} tracking-wider w-full text-center`}>{drone.name}</span>
+                </div>
+              </div>
             </div>
-            <div className="flex w-full justify-center gap-0.5">
-              {Array.from({ length: baseDrone.hull }).map((_, i) => {
-                const isFullHull = i < drone.hull;
-                const fullHullColor = drone.isExhausted ? 'bg-white' : 'bg-cyan-400';
-                const damagedHullColor = drone.isExhausted ? 'bg-gray-500' : 'bg-gray-400';
-                return (
-                  <div key={i} className={`h-2 w-2 rounded-sm ${isFullHull ? fullHullColor : damagedHullColor} border border-black/50`}></div>
-                );
-              })}
-            </div>
-          </div>
-          <div className={`absolute bottom-0 left-0 right-0 h-5 ${nameBgColor} flex items-center justify-center border-t ${borderColor}`}>
-            <span className={`font-orbitron text-[8px] uppercase ${nameTextColor} tracking-wider w-full text-center`}>{drone.name}</span>
-          </div>
-        </div>
-      </div>
           </div>
           {/* End Grayscale Container */}
 
@@ -344,50 +346,52 @@ const DroneToken = ({
       </div>
       {/* End Visual Effects Wrapper */}
 
-      {/* Overlapping Hexagons - Outside nested containers for proper filter rendering */}
-      <div className={`absolute -top-3 left-[-14px] w-6 h-7 z-20 ${teleportingEffect} ${exhaustEffect}`}>
-          <StatHexagon value={effectiveStats.attack} isFlat={false} bgColor={statBgColor} textColor={attackTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
-      </div>
-      <div className={`absolute -top-3 right-[-14px] w-7 h-7 z-20 ${isPotentialInterceptor ? (isPlayer ? 'interceptor-glow-cyan' : 'interceptor-glow') : ''} ${teleportingEffect} ${exhaustEffect}`}>
-          <StatHexagon value={effectiveStats.speed} isFlat={true} bgColor={statBgColor} textColor={speedTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
-      </div>
-
-      {/* Overlapping Ability Icon */}
-      {isPlayer && activeAbilities.length > 0 && isAbilityUsable(activeAbilities[0]) && (
-          <div className={teleportingEffect}>
-              <AbilityIcon onClick={(e) => onAbilityClick && onAbilityClick(e, drone, activeAbilities[0])} />
-          </div>
-      )}
-
-      {/* Special Ability Icons (RAPID/ASSAULT) - Left side */}
-      <SpecialAbilityIcons drone={drone} isPlayer={isPlayer} />
-
-      {/* Status Effect Icons - Right side */}
-      <StatusEffectIcons drone={drone} isPlayer={isPlayer} />
-
-      {/* Intercepted Badge */}
-      {interceptedBadge && interceptedBadge.droneId === drone.id && (
-        <InterceptedBadge
-          droneId={drone.id}
-          timestamp={interceptedBadge.timestamp}
-        />
-      )}
-
-      {/* Deployment Order Badge - shown in quick deploy editor, centered underneath token */}
-      {deploymentOrderNumber != null && (
-        <div
-          data-testid="deployment-order-badge"
-          className="absolute left-1/2 w-5 h-5 bg-cyan-500 rounded-full flex items-center justify-center border border-white z-30 shadow-md"
-          style={{
-            bottom: '-10px',
-            transform: 'translateX(-50%)'
-          }}
-        >
-          <span className="text-white text-xs font-bold font-orbitron">
-            {deploymentOrderNumber}
-          </span>
+        {/* Overlapping Hexagons - Outside nested containers for proper filter rendering */}
+        <div className={`absolute -top-3 left-[-14px] w-6 h-7 z-20 ${teleportingEffect} ${exhaustEffect}`}>
+            <StatHexagon value={effectiveStats.attack} isFlat={false} bgColor={statBgColor} textColor={attackTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
         </div>
-      )}
+        <div className={`absolute -top-3 right-[-14px] w-7 h-7 z-20 ${isPotentialInterceptor ? (isPlayer ? 'interceptor-glow-cyan' : 'interceptor-glow') : ''} ${teleportingEffect} ${exhaustEffect}`}>
+            <StatHexagon value={effectiveStats.speed} isFlat={true} bgColor={statBgColor} textColor={speedTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
+        </div>
+
+        {/* Overlapping Ability Icon */}
+        {isPlayer && activeAbilities.length > 0 && isAbilityUsable(activeAbilities[0]) && (
+            <div className={teleportingEffect}>
+                <AbilityIcon onClick={(e) => onAbilityClick && onAbilityClick(e, drone, activeAbilities[0])} />
+            </div>
+        )}
+
+        {/* Special Ability Icons (RAPID/ASSAULT) - Left side */}
+        <SpecialAbilityIcons drone={drone} isPlayer={isPlayer} />
+
+        {/* Status Effect Icons - Right side */}
+        <StatusEffectIcons drone={drone} isPlayer={isPlayer} />
+
+        {/* Intercepted Badge */}
+        {interceptedBadge && interceptedBadge.droneId === drone.id && (
+          <InterceptedBadge
+            droneId={drone.id}
+            timestamp={interceptedBadge.timestamp}
+          />
+        )}
+
+        {/* Deployment Order Badge - shown in quick deploy editor, centered underneath token */}
+        {deploymentOrderNumber != null && (
+          <div
+            data-testid="deployment-order-badge"
+            className="absolute left-1/2 w-5 h-5 bg-cyan-500 rounded-full flex items-center justify-center border border-white z-30 shadow-md"
+            style={{
+              bottom: '-10px',
+              transform: 'translateX(-50%)'
+            }}
+          >
+            <span className="text-white text-xs font-bold font-orbitron">
+              {deploymentOrderNumber}
+            </span>
+          </div>
+        )}
+      </div>
+      {/* End Scale Wrapper */}
     </div>
   );
 };

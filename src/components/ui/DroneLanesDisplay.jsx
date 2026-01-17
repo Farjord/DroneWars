@@ -128,7 +128,6 @@ const renderDronesOnBoard = (
               isDragging={draggedDrone?.drone?.id === drone.id}
               isHovered={
                 hoveredTarget?.target?.id === drone.id &&
-                draggedDrone?.drone?.id !== drone.id &&
                 !(selectedDrone && selectedDrone.id === drone.id) &&
                 !(multiSelectState?.phase === 'select_drones' && multiSelectState.selectedDrones.some(d => d.id === drone.id))
               }
