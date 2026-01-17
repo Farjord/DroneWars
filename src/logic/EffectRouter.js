@@ -29,6 +29,7 @@ import DiscardEffectProcessor from './effects/cards/DiscardEffectProcessor.js';
 import DrainEnergyEffectProcessor from './effects/energy/DrainEnergyEffectProcessor.js';
 import ExhaustDroneEffectProcessor from './effects/state/ExhaustDroneEffectProcessor.js';
 import StatusEffectProcessor from './effects/state/StatusEffectProcessor.js';
+import ConditionalSectionDamageProcessor from './effects/doctrine/ConditionalSectionDamageProcessor.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 /**
@@ -66,6 +67,7 @@ class EffectRouter {
       DAMAGE_SCALING: damageProcessor,
       SPLASH_DAMAGE: damageProcessor,
       OVERFLOW_DAMAGE: damageProcessor,
+      CONDITIONAL_SECTION_DAMAGE: new ConditionalSectionDamageProcessor(),
       // Phase 6: Stat modification effects (destroy, modify, upgrades)
       DESTROY: new DestroyEffectProcessor(),
       MODIFY_STAT: new ModifyStatEffectProcessor(),

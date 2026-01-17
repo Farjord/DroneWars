@@ -370,7 +370,7 @@ const InventoryModal = ({ onClose, onShowHelp }) => {
     }
   };
 
-  const cardTypeTabs = ['All', 'Ordnance', 'Tactic', 'Support', 'Upgrade'];
+  const cardTypeTabs = ['All', 'Ordnance', 'Tactic', 'Support', 'Upgrade', 'Doctrine'];
 
   /**
    * Get subtitle based on active category

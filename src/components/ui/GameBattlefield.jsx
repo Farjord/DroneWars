@@ -49,6 +49,7 @@ import { debugLog } from '../../utils/debugLogger.js';
  * @param {Object} props.draggedDrone - Currently dragged drone for attack/move
  * @param {Function} props.handleDroneDragStart - Handler to start drone drag
  * @param {Function} props.handleDroneDragEnd - Handler to end drone drag
+ * @param {Object} props.laneControl - Lane control state ({ lane1: 'player1'|'player2'|null, lane2: ..., lane3: ... })
  */
 function GameBattlefield({
   localPlayerState,
@@ -97,7 +98,8 @@ function GameBattlefield({
   draggedActionCard,
   handleActionCardDragEnd,
   hoveredLane,
-  setHoveredLane
+  setHoveredLane,
+  laneControl
 }) {
   // Calculate isInteractive for player ship sections
   const playerShipInteractive = turnPhase === 'allocateShields' || reallocationPhase;
@@ -170,6 +172,7 @@ function GameBattlefield({
           handleActionCardDragEnd={handleActionCardDragEnd}
           hoveredLane={hoveredLane}
           setHoveredLane={setHoveredLane}
+          laneControl={laneControl}
         />
 
         {/* Player Drone Lanes */}
@@ -212,6 +215,7 @@ function GameBattlefield({
           handleActionCardDragEnd={handleActionCardDragEnd}
           hoveredLane={hoveredLane}
           setHoveredLane={setHoveredLane}
+          laneControl={laneControl}
         />
 
         {/* Player Ship Sections */}

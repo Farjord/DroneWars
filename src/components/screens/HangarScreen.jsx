@@ -1682,6 +1682,10 @@ const HangarScreen = () => {
                   const cardCount = isActive ? (slot.decklist || []).reduce((sum, c) => sum + c.quantity, 0) : 0;
                   const droneCount = isActive ? (slot.droneSlots || []).filter(s => s.assignedDrone).length : 0;
 
+                  // Get ship and deck limit for active slots
+                  const ship = isActive ? getShipById(slot.shipId) : null;
+                  const deckLimit = ship?.deckLimits?.totalCards ?? 40;
+
                   // Get loadout value for reputation display
                   const loadoutValueData = isActive ? ReputationService.getLoadoutValue(slot) : null;
 
@@ -1695,7 +1699,7 @@ const HangarScreen = () => {
                     (slot.droneSlots || []).forEach(s => {
                       if (s.assignedDrone) dronesObj[s.assignedDrone] = 1;
                     });
-                    return validateDeckForDeployment(deckObj, dronesObj, slot.shipComponents);
+                    return validateDeckForDeployment(deckObj, dronesObj, slot.shipComponents, deckLimit);
                   })() : { valid: true };
                   const isValidDeck = deckValidation.valid;
 
@@ -1714,7 +1718,6 @@ const HangarScreen = () => {
                   };
 
                   // Get ship image for active slots background
-                  const ship = isActive && slot.shipId ? getShipById(slot.shipId) : null;
                   const shipImage = ship?.image || null;
 
                   return (
@@ -1801,7 +1804,7 @@ const HangarScreen = () => {
                               {isUndeployable
                                 ? 'UNDEPLOYABLE - All sections destroyed'
                                 : <>
-                                    {cardCount}/40 cards • {droneCount}/5 drones
+                                    {cardCount}/{deckLimit} cards • {droneCount}/5 drones
                                     {!isValidDeck && ' (incomplete)'}
                                   </>
                               }

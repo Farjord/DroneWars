@@ -17,13 +17,14 @@ import { getShipBorderClasses } from '../../utils/cardBorderUtils.js';
  */
 const DeckCompositionBars = ({ limits }) => {
   const totalLimits = limits.ordnanceLimit + limits.tacticLimit +
-                      limits.supportLimit + limits.upgradeLimit;
+                      limits.supportLimit + limits.upgradeLimit + limits.doctrineLimit;
 
   const barData = [
     { key: 'ordnance', label: 'Ordnance', value: limits.ordnanceLimit, bgColor: 'bg-red-500', textColor: 'text-red-400' },
     { key: 'tactic', label: 'Tactic', value: limits.tacticLimit, bgColor: 'bg-cyan-500', textColor: 'text-cyan-400' },
     { key: 'support', label: 'Support', value: limits.supportLimit, bgColor: 'bg-emerald-500', textColor: 'text-emerald-400' },
     { key: 'upgrade', label: 'Upgrade', value: limits.upgradeLimit, bgColor: 'bg-purple-500', textColor: 'text-purple-400' },
+    { key: 'doctrine', label: 'Doctrine', value: limits.doctrineLimit, bgColor: 'bg-amber-500', textColor: 'text-amber-400' },
   ];
 
   return (
@@ -46,9 +47,15 @@ const DeckCompositionBars = ({ limits }) => {
           </div>
         ))}
       </div>
-      <div className="flex justify-between text-[9px] mt-0.5 px-0.5">
-        {barData.map(({ key, label, textColor }) => (
-          <span key={key} className={`${textColor} font-exo`}>{label}</span>
+      <div className="flex text-[9px] mt-0.5">
+        {barData.map(({ key, label, value, textColor }) => (
+          <div
+            key={key}
+            style={{ width: `${(value / totalLimits) * 100}%` }}
+            className="flex items-center"
+          >
+            <span className={`${textColor} font-exo text-left pl-0.5`}>{label}</span>
+          </div>
         ))}
       </div>
     </div>

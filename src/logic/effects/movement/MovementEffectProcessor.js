@@ -257,6 +257,20 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     const actingPlayerState = newPlayerStates[actingPlayerId];
     const opponentPlayerState = newPlayerStates[opponentPlayerId];
 
+    // Determine which player owns the drone being moved
+    // For enemy-targeting cards like Tactical Repositioning, the drone belongs to opponent
+    const droneOwnerId = droneToMove.owner || actingPlayerId;
+    const droneOwnerState = newPlayerStates[droneOwnerId];
+    const isMovingEnemyDrone = droneOwnerId !== actingPlayerId;
+
+    debugLog('MOVEMENT_EFFECT', 'executeSingleMove - drone ownership', {
+      cardName: card.name,
+      droneName: droneToMove.name,
+      droneOwnerId,
+      actingPlayerId,
+      isMovingEnemyDrone
+    });
+
     // Check if drone can move (status effect restriction)
     if (droneToMove.cannotMove) {
       return {
@@ -271,7 +285,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     // Check maxPerLane restriction before moving
     const baseDrone = fullDroneCollection.find(d => d.name === droneToMove.name);
     if (baseDrone && baseDrone.maxPerLane) {
-      const currentCountInTargetLane = countDroneTypeInLane(actingPlayerState, droneToMove.name, toLane);
+      const currentCountInTargetLane = countDroneTypeInLane(droneOwnerState, droneToMove.name, toLane);
       const isSameLane = fromLane === toLane;
       const effectiveCount = isSameLane ? currentCountInTargetLane - 1 : currentCountInTargetLane;
 
@@ -285,17 +299,18 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       }
     }
 
-    // Remove drone from source lane
-    actingPlayerState.dronesOnBoard[fromLane] = actingPlayerState.dronesOnBoard[fromLane].filter(
+    // Remove drone from source lane (from the drone owner's state)
+    droneOwnerState.dronesOnBoard[fromLane] = droneOwnerState.dronesOnBoard[fromLane].filter(
       d => d.id !== droneToMove.id
     );
 
     // Add drone to destination lane with proper exhaustion state
+    // Enemy drones are always exhausted, friendly drones respect DO_NOT_EXHAUST
     const movedDrone = {
       ...droneToMove,
-      isExhausted: effect.properties?.includes('DO_NOT_EXHAUST') ? droneToMove.isExhausted : true
+      isExhausted: isMovingEnemyDrone ? true : (effect.properties?.includes('DO_NOT_EXHAUST') ? droneToMove.isExhausted : true)
     };
-    actingPlayerState.dronesOnBoard[toLane].push(movedDrone);
+    droneOwnerState.dronesOnBoard[toLane].push(movedDrone);
 
     debugLog('MOVEMENT_EFFECT', 'executeSingleMove - drone exhaustion result', {
       droneName: movedDrone.name,
@@ -309,19 +324,30 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       actionType: 'MOVE',
       source: card.name,
       target: droneToMove.name,
-      outcome: `Moved from ${fromLane} to ${toLane}.`
+      outcome: `Moved ${isMovingEnemyDrone ? 'enemy ' : ''}${droneToMove.name} from ${fromLane} to ${toLane}.`
     }, 'executeSingleMove');
 
-    // Apply ON_MOVE triggered abilities
-    const { newState } = applyOnMoveEffects(actingPlayerState, movedDrone, fromLane, toLane, logCallback);
-    newPlayerStates[actingPlayerId] = newState;
+    // Apply ON_MOVE triggered abilities (only for friendly drones)
+    if (!isMovingEnemyDrone) {
+      const { newState } = applyOnMoveEffects(droneOwnerState, movedDrone, fromLane, toLane, logCallback);
+      newPlayerStates[droneOwnerId] = newState;
+    }
 
-    // Update auras after movement
-    newPlayerStates[actingPlayerId].dronesOnBoard = updateAuras(
-      newPlayerStates[actingPlayerId],
-      opponentPlayerState,
+    // Update auras after movement for the drone owner's board
+    newPlayerStates[droneOwnerId].dronesOnBoard = updateAuras(
+      newPlayerStates[droneOwnerId],
+      droneOwnerId === 'player1' ? newPlayerStates['player2'] : newPlayerStates['player1'],
       placedSections
     );
+
+    // Also update auras for the acting player's board (in case their auras are affected)
+    if (isMovingEnemyDrone) {
+      newPlayerStates[actingPlayerId].dronesOnBoard = updateAuras(
+        newPlayerStates[actingPlayerId],
+        newPlayerStates[opponentPlayerId],
+        placedSections
+      );
+    }
 
     return {
       newPlayerStates,

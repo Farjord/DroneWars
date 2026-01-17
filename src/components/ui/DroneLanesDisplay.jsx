@@ -230,7 +230,9 @@ const DroneLanesDisplay = ({
   setHoveredLane = null,
   // Lane drag-and-drop props (for Quick Deploy editor)
   onLaneDrop = null,
-  onLaneDragOver = null
+  onLaneDragOver = null,
+  // Lane control for Doctrine cards
+  laneControl = { lane1: null, lane2: null, lane3: null }
 }) => {
   // Use GameDataService for computed data
   const { getEffectiveStats } = useGameData();
@@ -261,6 +263,28 @@ const DroneLanesDisplay = ({
 
         const isInteractivePlayerLane = isPlayer && (turnPhase === 'deployment' || turnPhase === 'action');
         const baseBackgroundColor = isPlayer ? 'bg-cyan-400/10' : 'bg-red-500/10';
+
+        // Determine lane control state for visual indicators (Doctrine cards)
+        const laneControlState = laneControl[lane];
+        const localPlayerId = getLocalPlayerId();
+        const opponentPlayerId = getOpponentPlayerId();
+        const isPlayerControlled = laneControlState === localPlayerId;
+        const isOpponentControlled = laneControlState === opponentPlayerId;
+
+        // Calculate lane border and background classes based on control
+        let laneBorderClass = 'border-2 border-gray-700/30';  // Default neutral
+        let laneBackgroundClass = baseBackgroundColor;
+
+        // Apply control styling based on whose lanes we're rendering
+        if (isPlayer && isPlayerControlled) {
+          // Player controls this lane AND we're rendering player's lanes - show cyan
+          laneBorderClass = 'border-[3px] border-cyan-400/70 shadow-[0_0_20px_rgba(6,182,212,0.4)]';
+          laneBackgroundClass = 'bg-cyan-400/15';
+        } else if (!isPlayer && isOpponentControlled) {
+          // Opponent controls this lane AND we're rendering opponent's lanes - show red
+          laneBorderClass = 'border-[3px] border-red-400/70 shadow-[0_0_20px_rgba(239,68,68,0.4)]';
+          // DON'T change background - keep default opponent background
+        }
 
         return (
           <div
@@ -307,8 +331,8 @@ const DroneLanesDisplay = ({
                 handleDroneDragEnd(null, lane, false);
               }
             }}
-            className={`flex-1 rounded-lg transition-all duration-200 p-2
-              ${isTargetable ? 'bg-cyan-800/40 ring-2 ring-cyan-400/30' : baseBackgroundColor}
+            className={`flex-1 rounded-lg transition-all duration-1000 ease-in-out p-2 ${laneBorderClass}
+              ${isTargetable ? 'bg-cyan-800/40 ring-2 ring-cyan-400/30' : laneBackgroundClass}
               ${isInteractivePlayerLane ? 'cursor-pointer hover:bg-cyan-900/20' : ''}
             `}
             style={{

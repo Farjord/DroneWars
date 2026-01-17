@@ -74,6 +74,7 @@ import { calculateRoundStartReset } from './logic/shields/ShieldResetUtils.js';
 import { forceWinCombat } from './logic/game/ForceWin.js';
 import WinConditionChecker from './logic/game/WinConditionChecker.js';
 import { BACKGROUNDS, DEFAULT_BACKGROUND, getBackgroundById } from './config/backgrounds.js';
+import { LaneControlCalculator } from './logic/combat/LaneControlCalculator.js';
 
 // --- 1.6 MANAGER/STATE IMPORTS ---
 // Note: gameFlowManager is initialized in AppRouter and accessed via gameStateManager
@@ -324,6 +325,9 @@ const App = ({ phaseAnimationQueue }) => {
   // Pending shield allocation state (privacy: keep allocations local until confirmed)
   const [pendingShieldAllocations, setPendingShieldAllocations] = useState({}); // { sectionName: count }
   const [pendingShieldsRemaining, setPendingShieldsRemaining] = useState(null); // Remaining shields to allocate
+
+  // Lane control state for Doctrine cards
+  const [laneControl, setLaneControl] = useState({ lane1: null, lane2: null, lane3: null });
 
 
   // --- 3.3 REFS ---
@@ -598,6 +602,32 @@ const App = ({ phaseAnimationQueue }) => {
       setAffectedDroneIds([]);
     }
   }, [hoveredLane, draggedActionCard, gameState.player1, gameState.player2, getLocalPlayerId, gameDataService, getPlacedSectionsForEngine]);
+
+  // Calculate lane control whenever drones on board change (for Doctrine cards)
+  useEffect(() => {
+    if (gameState.player1 && gameState.player2) {
+      const newControl = LaneControlCalculator.calculateLaneControl(
+        gameState.player1,
+        gameState.player2
+      );
+      setLaneControl(newControl);
+      debugLog('LANE_CONTROL', '🎯 Lane control updated', {
+        lane1: newControl.lane1,
+        lane2: newControl.lane2,
+        lane3: newControl.lane3,
+        player1Drones: {
+          lane1: (gameState.player1.dronesOnBoard?.lane1 || []).length,
+          lane2: (gameState.player1.dronesOnBoard?.lane2 || []).length,
+          lane3: (gameState.player1.dronesOnBoard?.lane3 || []).length
+        },
+        player2Drones: {
+          lane1: (gameState.player2.dronesOnBoard?.lane1 || []).length,
+          lane2: (gameState.player2.dronesOnBoard?.lane2 || []).length,
+          lane3: (gameState.player2.dronesOnBoard?.lane3 || []).length
+        }
+      });
+    }
+  }, [gameState.player1?.dronesOnBoard, gameState.player2?.dronesOnBoard]);
 
   // addLogEntry is now provided by useGameState hook
 
@@ -3078,15 +3108,53 @@ const App = ({ phaseAnimationQueue }) => {
       return;
     }
 
-    // Case 4: Movement cards - initiate multi-select flow directly
+    // Case 4: Movement cards - check if dropped on target or needs multi-select
     if (card.effect?.type === 'SINGLE_MOVE' || card.effect?.type === 'MULTI_MOVE') {
+      debugLog('DRAG_DROP_DEPLOY', '🎯 Movement card detected', { target, targetType });
+
+      // Sub-case 4a: Movement card dropped on a valid target drone
+      if (target && targetType === 'drone') {
+        const isValidTarget = validCardTargets.some(t => t.id === target.id);
+        if (isValidTarget) {
+          debugLog('DRAG_DROP_DEPLOY', '✅ Valid drone target - proceeding to lane selection', { droneId: target.id });
+
+          // Keep card selected for UI greyscale effect on other cards
+          setSelectedCard(card);
+
+          // Drone was selected via drag-drop, now need lane selection
+          setMultiSelectState({
+            card: card,
+            phase: 'select_destination',
+            selectedDrone: { ...target, owner: targetOwner },
+            sourceLane: target.lane,
+            maxDrones: 1,
+            actingPlayerId: getLocalPlayerId()
+          });
+          return;
+        } else {
+          debugLog('DRAG_DROP_DEPLOY', '⛔ Invalid drone target for movement card', { target, validCardTargets });
+          cancelCardSelection();
+          return;
+        }
+      }
+
+      // Sub-case 4b: Movement card clicked (no target) - initiate multi-select flow
       debugLog('DRAG_DROP_DEPLOY', '🎯 Movement card - setting up multi-select UI');
 
       // Keep card selected for UI greyscale effect on other cards
       setSelectedCard(card);
 
       if (card.effect.type === 'SINGLE_MOVE') {
-        // For SINGLE_MOVE, highlight all friendly non-exhausted drones as valid targets
+        // If card has explicit targeting (like Tactical Repositioning), use standard drag-drop
+        if (card.targeting) {
+          debugLog('DRAG_DROP_DEPLOY', '🎯 SINGLE_MOVE with targeting - using drag-drop flow');
+          // Standard targeting already calculated in validCardTargets
+          // Don't set multiSelectState for drone selection - just wait for drop
+          return;
+        }
+
+        // For cards without targeting (basic Maneuver), use multiSelectState
+        debugLog('DRAG_DROP_DEPLOY', '🎯 SINGLE_MOVE without targeting - using multiSelectState');
         const friendlyDrones = Object.values(localPlayerState.dronesOnBoard)
           .flat()
           .filter(drone => !drone.isExhausted)
@@ -4655,6 +4723,7 @@ const App = ({ phaseAnimationQueue }) => {
         handleActionCardDragEnd={handleActionCardDragEnd}
         hoveredLane={hoveredLane}
         setHoveredLane={setHoveredLane}
+        laneControl={laneControl}
       />
 
       <GameFooter

@@ -12,10 +12,13 @@ import { Ban, Move, Swords, Shield, CirclePause } from 'lucide-react';
  * NoEntryIcon - Overlays Ban icon on base icon
  * Used for Cannot Move, Cannot Attack, Cannot Intercept
  */
-const NoEntryIcon = ({ baseIcon, size = 10 }) => (
+const NoEntryIcon = ({ baseIcon, size = 10, isExhausted = false }) => (
   <div className="relative flex items-center justify-center">
-    {React.cloneElement(baseIcon, { size, className: 'text-slate-400' })}
-    <Ban size={14} className="absolute text-red-500" strokeWidth={3} />
+    {React.cloneElement(baseIcon, {
+      size,
+      className: isExhausted ? 'text-slate-400' : 'text-slate-200'
+    })}
+    <Ban size={20} className="absolute text-red-500" strokeWidth={3} />
   </div>
 );
 
@@ -41,7 +44,7 @@ const StatusEffectIcons = ({ drone, isPlayer }) => {
     statuses.push({
       key: 'cannot-attack',
       title: 'Cannot Attack',
-      icon: <NoEntryIcon baseIcon={<Swords />} />
+      icon: <NoEntryIcon baseIcon={<Swords />} isExhausted={drone.isExhausted} />
     });
   }
 
@@ -50,7 +53,7 @@ const StatusEffectIcons = ({ drone, isPlayer }) => {
     statuses.push({
       key: 'cannot-move',
       title: 'Cannot Move',
-      icon: <NoEntryIcon baseIcon={<Move />} />
+      icon: <NoEntryIcon baseIcon={<Move />} isExhausted={drone.isExhausted} />
     });
   }
 
@@ -59,7 +62,7 @@ const StatusEffectIcons = ({ drone, isPlayer }) => {
     statuses.push({
       key: 'cannot-intercept',
       title: 'Cannot Intercept',
-      icon: <NoEntryIcon baseIcon={<Shield />} />
+      icon: <NoEntryIcon baseIcon={<Shield />} isExhausted={drone.isExhausted} />
     });
   }
 
@@ -68,7 +71,12 @@ const StatusEffectIcons = ({ drone, isPlayer }) => {
     statuses.push({
       key: 'does-not-ready',
       title: 'Does Not Ready Next Phase',
-      icon: <CirclePause size={14} className="text-amber-400" />
+      icon: (
+        <CirclePause
+          size={14}
+          className={drone.isExhausted ? 'text-slate-400' : 'text-amber-400'}
+        />
+      )
     });
   }
 

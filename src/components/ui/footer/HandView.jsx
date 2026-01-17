@@ -11,6 +11,7 @@ import styles from '../GameFooter.module.css';
 import { debugLog } from '../../../utils/debugLogger.js';
 import { calculateCardFanRotation, getHoverTransform, getCardTransition, calculateCardArcOffset, CARD_FAN_CONFIG } from '../../../utils/cardAnimationUtils.js';
 import TargetingRouter from '../../../logic/TargetingRouter.js';
+import { isDoctrineCardPlayable } from '../../../logic/targeting/DoctrineValidator.js';
 
 // Initialize TargetingRouter for card targeting validation
 const targetingRouter = new TargetingRouter();
@@ -204,7 +205,21 @@ function HandView({
                 hasValidTargets;
               const isOptionalDiscardPlayable = turnPhase === 'optionalDiscard' &&
                 optionalDiscardCount < localPlayerEffectiveStats.totals.discardLimit;
-              const cardIsPlayable = isActionPhasePlayable || isOptionalDiscardPlayable;
+
+              // Check Doctrine card lane control conditions
+              let doctrinePlayable = true;
+              if (card.type === 'Doctrine') {
+                // Construct playerStates object from local and opponent states
+                const playerStates = localPlayerId === 'player1'
+                  ? { player1: localPlayerState, player2: opponentPlayerState }
+                  : { player1: opponentPlayerState, player2: localPlayerState };
+                doctrinePlayable = isDoctrineCardPlayable(card, localPlayerId, playerStates);
+              }
+
+              // Doctrine validation only applies during action phase, not discard phase
+              const cardIsPlayable = turnPhase === 'action'
+                ? (isActionPhasePlayable && doctrinePlayable)
+                : isOptionalDiscardPlayable;
 
               const isHovered = hoveredCardId === card.instanceId;
 
@@ -226,10 +241,14 @@ function HandView({
                 transition: getCardTransition()
               };
 
+              // Apply pulse effect during mandatory discard (all cards) or optional discard (only selectable cards)
+              const shouldPulse = mandatoryAction?.type === 'discard' ||
+                (turnPhase === 'optionalDiscard' && cardIsPlayable);
+
               return (
                 <div
                   key={card.instanceId || `${card.id}-${index}`}
-                  className={`${styles.cardWrapper} ${mandatoryAction?.type === 'discard' ? 'animate-pulse' : ''}`}
+                  className={`${styles.cardWrapper} ${shouldPulse ? 'animate-pulse' : ''}`}
                   style={style}
                   onMouseEnter={() => {
                     setHoveredCardId(card.instanceId);

@@ -373,6 +373,16 @@ class RewardManager {
     const salvageValue = Math.floor(rng.random() * 51) + 50;
     const salvageItem = generateSalvageItemFromValue(salvageValue, rng);
 
+    // Rare Doctrine bonus (15% chance)
+    if (rng.random() < 0.15) {
+      const doctrineCards = fullCardCollection.filter(c => c.type === 'Doctrine');
+      if (doctrineCards.length > 0) {
+        const randomDoctrine = doctrineCards[Math.floor(rng.random() * doctrineCards.length)];
+        cards.push(randomDoctrine);
+        debugLog('REWARD_MANAGER', `🎁 Doctrine bonus card added: ${randomDoctrine.name}`);
+      }
+    }
+
     debugLog('REWARD_MANAGER', `Generated POI rewards (seed: ${seed})`, {
       packType: normalizedPackType,
       cardCount: cards.length,

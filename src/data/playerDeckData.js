@@ -14,10 +14,6 @@ export const starterDeck = {
   // 40 Asset Cards - StateInitializer.js imports this decklist
   decklist: [
     {
-      id: 'CARD009',
-      quantity: 4
-    },
-    {
       id: 'CARD001',
       quantity: 4
     },
@@ -60,7 +56,35 @@ export const starterDeck = {
     {
       id: 'CARD016',
       quantity: 4
-    } 
+    },
+    {
+      id: 'CARD033',
+      quantity: 4
+    },
+    {
+      id: 'CARD039',
+      quantity: 4
+    },
+    {
+      id: 'CARD_TACTICS_5',
+      quantity: 4
+    },
+    {
+      id: 'CARD004',
+      quantity: 4
+    },
+    {
+      id: 'CARD002',
+      quantity: 4
+    },
+    {
+      id: 'DOCTRINE_004',
+      quantity: 2
+    },
+    {
+      id: 'DOCTRINE_002',
+      quantity: 2
+    }
   ],
   // 5 Drones (Extraction Mode uses exactly 5 drones, no selection phase)
   droneSlots: [

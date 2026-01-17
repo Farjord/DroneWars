@@ -221,16 +221,17 @@ export function calculateAvailableShips(targetSlotId, shipSlots, inventory) {
  * @param {Object} deck - Card deck { cardId: quantity }
  * @param {Object} drones - Selected drones { droneName: quantity }
  * @param {Object} shipComponents - Ship components { componentId: lane }
+ * @param {number} deckLimit - Maximum deck size (default: 40)
  * @returns {Object} { valid: boolean, errors: string[], warnings: string[] }
  */
-export function validateDeckForDeployment(deck, drones, shipComponents) {
+export function validateDeckForDeployment(deck, drones, shipComponents, deckLimit = 40) {
   const errors = [];
   const warnings = [];
 
   // Check card count
   const cardCount = Object.values(deck || {}).reduce((sum, qty) => sum + qty, 0);
-  if (cardCount !== 40) {
-    errors.push(`Deck requires exactly 40 cards (currently ${cardCount})`);
+  if (cardCount !== deckLimit) {
+    errors.push(`Deck requires exactly ${deckLimit} cards (currently ${cardCount})`);
   }
 
   // Check drone count

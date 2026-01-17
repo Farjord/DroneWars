@@ -3,6 +3,7 @@ import { useGameState } from '../../hooks/useGameState';
 import { debugLog } from '../../utils/debugLogger.js';
 import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js';
 import aiPersonalities from '../../data/aiData.js';
+import { getShipById } from '../../data/shipData.js';
 import { Skull, AlertTriangle, Trophy, Coins, Cpu, Star } from 'lucide-react';
 
 /**
@@ -52,7 +53,9 @@ const BossEncounterModal = ({ bossId, selectedSlotId, onChallenge, onClose }) =>
           if (s.assignedDrone) dronesObj[s.assignedDrone] = 1;
         });
 
-        const validation = validateDeckForDeployment(deckObj, dronesObj, slot.shipComponents);
+        const ship = getShipById(slot.shipId);
+        const deckLimit = ship?.deckLimits?.totalCards ?? 40;
+        const validation = validateDeckForDeployment(deckObj, dronesObj, slot.shipComponents, deckLimit);
         return { ...slot, isValid: validation.valid };
       });
   }, [singlePlayerShipSlots]);

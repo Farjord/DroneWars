@@ -185,7 +185,7 @@ const ReplicatorModal = ({ onClose, onShowHelp }) => {
     setTimeout(() => setFeedback(null), 2000);
   };
 
-  const tabs = ['All', 'Ordnance', 'Tactic', 'Support', 'Upgrade'];
+  const tabs = ['All', 'Ordnance', 'Tactic', 'Support', 'Upgrade', 'Doctrine'];
 
   return (
     <div className="dw-modal-overlay" onClick={onClose}>

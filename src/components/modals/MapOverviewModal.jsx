@@ -7,6 +7,7 @@ import ReputationService from '../../logic/reputation/ReputationService.js';
 import MapPreviewRenderer from '../ui/MapPreviewRenderer';
 import { Map, AlertTriangle, XCircle, Info, Shield, HelpCircle } from 'lucide-react';
 import StarterDeckWarningModal from './StarterDeckWarningModal.jsx';
+import { getShipById } from '../../data/shipData.js';
 
 /**
  * MapOverviewModal Component
@@ -58,7 +59,9 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
           if (s.assignedDrone) dronesObj[s.assignedDrone] = 1;
         });
 
-        const validation = validateDeckForDeployment(deckObj, dronesObj, slot.shipComponents);
+        const ship = getShipById(slot.shipId);
+        const deckLimit = ship?.deckLimits?.totalCards ?? 40;
+        const validation = validateDeckForDeployment(deckObj, dronesObj, slot.shipComponents, deckLimit);
         return { ...slot, isValid: validation.valid };
       });
   }, [singlePlayerShipSlots]);
@@ -137,7 +140,7 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
       return { valid: false, error: 'Invalid ship slot' };
     }
 
-    // Check deck validity (40 cards, 5 drones, 3 components)
+    // Check deck validity (cards, 5 drones, 3 components)
     const deckObj = {};
     (slot.decklist || []).forEach(card => {
       deckObj[card.id] = card.quantity;
@@ -146,7 +149,9 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
     (slot.droneSlots || []).forEach(s => {
       if (s.assignedDrone) dronesObj[s.assignedDrone] = 1;
     });
-    const deckValidation = validateDeckForDeployment(deckObj, dronesObj, slot.shipComponents);
+    const ship = getShipById(slot.shipId);
+    const deckLimit = ship?.deckLimits?.totalCards ?? 40;
+    const deckValidation = validateDeckForDeployment(deckObj, dronesObj, slot.shipComponents, deckLimit);
     if (!deckValidation.valid) {
       return { valid: false, error: deckValidation.errors[0] };
     }

@@ -26,11 +26,12 @@ const shipCollection = [
     // DECK COMPOSITION LIMITS
     // Controls how many cards of each type can be in the deck
     deckLimits: {
-      totalCards: 40,
-      ordnanceLimit: 15,
-      tacticLimit: 15,
-      supportLimit: 15,
-      upgradeLimit: 10
+      totalCards: 60,
+      ordnanceLimit: 20,
+      tacticLimit: 20,
+      supportLimit: 20,
+      upgradeLimit: 10,
+      doctrineLimit: 6
     },
 
     // FUTURE PROPERTIES (not yet implemented)
@@ -61,7 +62,8 @@ const shipCollection = [
       ordnanceLimit: 20,
       tacticLimit: 10,
       supportLimit: 15,
-      upgradeLimit: 5
+      upgradeLimit: 5,
+      doctrineLimit: 4
     },
 
     // FUTURE PROPERTIES
@@ -92,7 +94,8 @@ const shipCollection = [
       ordnanceLimit: 15,
       tacticLimit: 15,
       supportLimit: 15,
-      upgradeLimit: 5
+      upgradeLimit: 5,
+      doctrineLimit: 4
     },
 
     // FUTURE PROPERTIES

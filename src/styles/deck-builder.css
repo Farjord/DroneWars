@@ -280,6 +280,7 @@
 .dw-info-row-label--tactic { color: #06b6d4; }
 .dw-info-row-label--support { color: #10b981; }
 .dw-info-row-label--upgrade { color: #a855f7; }
+.dw-info-row-label--doctrine { color: #f59e0b; }
 
 /* ========================================
    CARD TYPE STATS BOX
@@ -323,6 +324,7 @@
 .dw-type-stats-label--tactic { color: #06b6d4; }
 .dw-type-stats-label--support { color: #10b981; }
 .dw-type-stats-label--upgrade { color: #a855f7; }
+.dw-type-stats-label--doctrine { color: #f59e0b; }
 .dw-type-stats-label--danger { color: #ef4444; }
 
 /* ========================================
@@ -1113,6 +1115,9 @@
 .dw-swimlane-header--upgrade { background: rgba(168, 85, 247, 0.12); }
 .dw-swimlane-header--upgrade .dw-swimlane-title { color: #a855f7; }
 
+.dw-swimlane-header--doctrine { background: rgba(245, 158, 11, 0.12); }
+.dw-swimlane-header--doctrine .dw-swimlane-title { color: #f59e0b; }
+
 /* Rarity-specific header colors */
 .dw-swimlane-header--common { background: rgba(128, 128, 128, 0.15); }
 .dw-swimlane-header--common .dw-swimlane-title { color: #9ca3af; }
@@ -1244,6 +1249,7 @@
 .dw-matrix-col-header.dw-matrix-header--support { background: rgba(16, 185, 129, 0.12); color: #10b981; }
 .dw-matrix-col-header.dw-matrix-header--tactic { background: rgba(6, 182, 212, 0.12); color: #06b6d4; }
 .dw-matrix-col-header.dw-matrix-header--upgrade { background: rgba(168, 85, 247, 0.12); color: #a855f7; }
+.dw-matrix-col-header.dw-matrix-header--doctrine { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
 .dw-matrix-col-header.dw-matrix-header--common { background: rgba(128, 128, 128, 0.15); color: #9ca3af; }
 .dw-matrix-col-header.dw-matrix-header--uncommon { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
 .dw-matrix-col-header.dw-matrix-header--rare { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
