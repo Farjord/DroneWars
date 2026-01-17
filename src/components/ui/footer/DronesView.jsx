@@ -13,6 +13,7 @@ import { debugLog } from '../../../utils/debugLogger.js';
 
 function DronesView({
   localPlayerState,
+  localPlayerEffectiveStats,
   sortedLocalActivePool,
   selectedCard,
   turnPhase,
@@ -64,6 +65,12 @@ function DronesView({
     window.addEventListener('resize', calculateOverlap);
     return () => window.removeEventListener('resize', calculateOverlap);
   }, [sortedLocalActivePool.length]);
+
+  // Calculate total drones on board for CPU limit check
+  const totalDronesOnBoard = Object.values(localPlayerState.dronesOnBoard).flat().length;
+
+  // Check if player is at CPU limit
+  const isAtCPULimit = totalDronesOnBoard >= localPlayerEffectiveStats.totals.cpuLimit;
 
   return (
     <div className={styles.handContainer} style={{ paddingLeft: '16px', paddingRight: '16px' }}>
@@ -120,13 +127,35 @@ function DronesView({
               const isHovered = hoveredDroneId === drone.name;
               const isSelected = selectedDrone && selectedDrone.name === drone.name;
 
+              // Calculate effective limit (base + upgrade bonuses) - matches DeploymentProcessor logic
+              const appliedUpgrades = localPlayerState.appliedUpgrades[drone.name] || [];
+              let effectiveLimit = drone.limit;
+              appliedUpgrades.forEach(upgrade => {
+                if (upgrade.mod && upgrade.mod.stat === 'limit') {
+                  effectiveLimit += upgrade.mod.value;
+                }
+              });
+
+              // Check drone-specific availability
+              const availability = localPlayerState.droneAvailability?.[drone.name];
+              const hasAvailableCopies = !availability || availability.readyCount > 0;
+
+              // Check deployment limit (matches DeploymentProcessor validation at line 109)
+              const deployedCount = localPlayerState.deployedDroneCounts[drone.name] || 0;
+              const atDeploymentLimit = deployedCount >= effectiveLimit;
+
               // Determine if drone is selectable for deployment
-              const isSelectable = (turnPhase === 'deployment' &&
-                isMyTurn() &&
-                !passInfo[`${getLocalPlayerId()}Passed`] &&
-                canAfford &&
-                !mandatoryAction) ||
-                isUpgradeTarget;
+              // During deployment phase, check: turn conditions, affordability, CPU limit, deployment limit, and availability
+              // During action phase with upgrade target, only check upgrade target (allow targeting unavailable drones for upgrades)
+              const isSelectable = turnPhase === 'deployment'
+                ? (isMyTurn() &&
+                   !passInfo[`${getLocalPlayerId()}Passed`] &&
+                   canAfford &&
+                   !mandatoryAction &&
+                   !isAtCPULimit &&           // Overall CPU limit check
+                   !atDeploymentLimit &&      // ✨ NEW: Individual drone deployment limit check
+                   hasAvailableCopies)        // Individual availability check (rebuilding state)
+                : isUpgradeTarget;            // Upgrade targeting remains separate (allow targeting unavailable drones)
 
               // Calculate fan rotation and spacing using centralized utilities
               const rotationDeg = calculateCardFanRotation(index, sortedLocalActivePool.length);

@@ -159,6 +159,7 @@ function GameFooter({
             <div className={styles.viewContent}>
               <DronesView
                 localPlayerState={localPlayerState}
+                localPlayerEffectiveStats={localPlayerEffectiveStats}
                 sortedLocalActivePool={sortedLocalActivePool}
                 selectedCard={selectedCard}
                 turnPhase={turnPhase}

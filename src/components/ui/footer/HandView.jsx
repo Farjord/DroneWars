@@ -216,6 +216,7 @@ function HandView({
                 doctrinePlayable = isDoctrineCardPlayable(card, localPlayerId, playerStates);
               }
 
+              // Combine all playability checks
               // Doctrine validation only applies during action phase, not discard phase
               const cardIsPlayable = turnPhase === 'action'
                 ? (isActionPhasePlayable && doctrinePlayable)

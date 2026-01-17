@@ -145,7 +145,15 @@ const DroneCard = ({
         style={{ clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%)' }}
       >
         {/* Background Image */}
-        <img src={image} alt={name} className="absolute inset-0 w-full h-full object-cover" />
+        <img
+          src={image}
+          alt={name}
+          className={`
+            absolute inset-0 w-full h-full object-cover
+            transition-all duration-200
+            ${isDisabled ? 'grayscale' : ''}
+          `}
+        />
         <div className="absolute inset-0 bg-black/40" />
 
         {/* Content Wrapper */}
