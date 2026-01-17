@@ -4,8 +4,9 @@
 // Modal for debugging game state - shows raw state and calculated stats
 
 import React, { useState } from 'react';
-import { Terminal, Copy, Download } from 'lucide-react';
+import { Terminal, Copy, Download, FileDown } from 'lucide-react';
 import { debugLog } from '../../utils/debugLogger.js';
+import { exportFullHistory } from '../../utils/csvExport.js';
 
 /**
  * GameDebugModal - Two-tab debug view for game state
@@ -45,6 +46,17 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  };
+
+  const exportAIDecisions = () => {
+    const aiDecisionHistory = gameState.aiDecisionHistory || [];
+    if (aiDecisionHistory.length === 0) {
+      debugLog('CSV_EXPORT', 'No AI decisions to export');
+      alert('No AI decisions to export. Play against an AI opponent first.');
+      return;
+    }
+    exportFullHistory(aiDecisionHistory);
+    debugLog('CSV_EXPORT', `Exported ${aiDecisionHistory.length} AI decision entries`);
   };
 
   const formatValue = (value) => {
@@ -249,6 +261,10 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
 
         {/* Actions */}
         <div className="dw-modal-actions">
+          <button className="dw-btn dw-btn-secondary" onClick={exportAIDecisions}>
+            <FileDown size={16} style={{ marginRight: '6px' }} />
+            Export AI Decisions (CSV)
+          </button>
           <button className="dw-btn dw-btn-primary" onClick={downloadGameState}>
             <Download size={16} style={{ marginRight: '6px' }} />
             Download State

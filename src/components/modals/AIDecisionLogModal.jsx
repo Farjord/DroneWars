@@ -4,7 +4,8 @@
 // Modal that displays AI decision matrix with scores and logic breakdown
 
 import React from 'react';
-import { Brain } from 'lucide-react';
+import { Brain, Download } from 'lucide-react';
+import { exportSingleDecision } from '../../utils/csvExport.js';
 
 /**
  * AI DECISION LOG MODAL COMPONENT
@@ -14,8 +15,27 @@ import { Brain } from 'lucide-react';
  * @param {Function} onClose - Callback when modal is closed
  * @param {Function} getLocalPlayerId - Function to get local player ID
  */
-const AIDecisionLogModal = ({ decisionLog, show, onClose, getLocalPlayerId }) => {
+const AIDecisionLogModal = ({ decisionLog, show, onClose, getLocalPlayerId, gameState }) => {
   if (!show || !decisionLog) return null;
+
+  // Handler for exporting this decision to CSV
+  const handleExportDecision = () => {
+    // Infer phase from decision types
+    const hasDeployType = decisionLog.some(d => d.type === 'deploy' || !d.type);
+    const phase = hasDeployType ? 'deployment' : 'action';
+
+    // Get turn from game state if available
+    const turn = gameState?.turn || 'unknown';
+    const gameTimestamp = new Date().toISOString();
+
+    exportSingleDecision({
+      decisions: decisionLog,
+      phase,
+      turn,
+      gameTimestamp,
+      gameState: gameState || {}
+    });
+  };
 
   // Helper to format the target display
   const formatTarget = (action) => {
@@ -54,6 +74,15 @@ const AIDecisionLogModal = ({ decisionLog, show, onClose, getLocalPlayerId }) =>
             <h2 className="dw-modal-header-title">AI Decision Matrix</h2>
             <p className="dw-modal-header-subtitle">{decisionLog.length} actions evaluated</p>
           </div>
+          <button
+            className="dw-btn dw-btn-secondary"
+            onClick={handleExportDecision}
+            style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}
+            title="Export this decision to CSV"
+          >
+            <Download size={16} />
+            Export CSV
+          </button>
         </div>
 
         {/* Body */}

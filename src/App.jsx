@@ -4904,6 +4904,7 @@ const App = ({ phaseAnimationQueue }) => {
         show={!!aiDecisionLogToShow}
         onClose={() => setAiDecisionLogToShow(null)}
         getLocalPlayerId={getLocalPlayerId}
+        gameState={gameState}
       />
 
       <WinnerModal

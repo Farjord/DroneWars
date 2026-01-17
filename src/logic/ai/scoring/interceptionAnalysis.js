@@ -53,12 +53,12 @@ export const analyzeInterceptionInLane = (laneId, player1, player2, gameDataServ
     const droneSpeed = stats.speed || 0;
 
     // Slow attacker: can be intercepted by enemy (speed <= enemy max speed)
-    if (droneSpeed <= enemyMaxSpeed && enemyMaxSpeed > 0) {
+    if (droneSpeed <= enemyMaxSpeed && enemyMaxSpeed > 0 && stats.attack > 0) {
       aiSlowAttackers.push(drone.id);
     }
 
     // Unchecked threat: too fast to be intercepted (speed > enemy max speed)
-    if (droneSpeed > enemyMaxSpeed) {
+    if (droneSpeed > enemyMaxSpeed && stats.attack > 0) {
       aiUncheckedThreats.push(drone.id);
     }
 

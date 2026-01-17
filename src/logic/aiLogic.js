@@ -349,6 +349,8 @@ const currentLaneScores = {
         evaluatedCount: possibleDeployments.length
       });
       addLogEntry({ player: player2.name, actionType: 'PASS', source: 'N/A', target: 'N/A', outcome: `Passed during deployment phase (no high-impact plays).` }, 'aiDeploymentPass', possibleDeployments);
+      // Capture decision for CSV export
+      gameStateManager.addAIDecisionToHistory('deployment', turn, possibleDeployments, { player1, player2 });
       return { type: 'pass' };
     }
 
@@ -372,6 +374,9 @@ const currentLaneScores = {
       target: chosenAction.laneId,
       outcome: `Deployed ${chosenAction.drone.name} to ${chosenAction.laneId} (Score: ${chosenAction.score.toFixed(0)})`
     }, 'aiDeployment', possibleDeployments);
+
+    // Capture decision for CSV export
+    gameStateManager.addAIDecisionToHistory('deployment', turn, possibleDeployments, { player1, player2 });
 
     return {
       type: 'deploy',
@@ -463,6 +468,12 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
     for (const attacker of readyAiDrones) {
       // Skip Jammer drones - they should never attack
       if (hasJammerKeyword(attacker)) {
+        continue;
+      }
+
+      // Skip drones with 0 attack - they can't deal damage
+      const effectiveAttackerStats = gameDataService.getEffectiveStats(attacker, attacker.lane);
+      if (effectiveAttackerStats.attack <= 0) {
         continue;
       }
 
@@ -648,6 +659,9 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
 
     if (topScore <= 0) {
         addLogEntry({ player: player2.name, actionType: 'PASS', source: 'N/A', target: 'N/A', outcome: `Passed during action phase.` }, 'aiActionPass', possibleActions);
+        // Capture decision for CSV export
+        const turn = gameStateManager.getState().turn;
+        gameStateManager.addAIDecisionToHistory('action', turn, possibleActions, { player1, player2 });
       return { type: 'pass' };
     }
 
@@ -694,6 +708,10 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
       target,
       outcome
     }, 'aiAction', possibleActions);
+
+    // Capture decision for CSV export
+    const turn = gameStateManager.getState().turn;
+    gameStateManager.addAIDecisionToHistory('action', turn, possibleActions, { player1, player2 });
 
     return { type: 'action', payload: chosenAction, logContext: possibleActions };
 };
@@ -1033,6 +1051,11 @@ const makeInterceptionDecision = (potentialInterceptors, target, attackDetails, 
     if (shouldIntercept && !decisionContext.some(d => d.isChosen)) {
       decisionContext[decisionContext.length - 1].isChosen = true;
       debugLog('AI_DECISIONS', `🛡️ [INTERCEPTION] INTERCEPT with ${interceptor.name} - Score: ${score}`);
+      // Capture decision for CSV export
+      const turn = gameStateManager.getState().turn;
+      const player1 = gameStateManager.getState().player1;
+      const player2 = gameStateManager.getState().player2;
+      gameStateManager.addAIDecisionToHistory('interception', turn, decisionContext, { player1, player2 });
       return { interceptor, decisionContext };
     }
   }
@@ -1043,6 +1066,11 @@ const makeInterceptionDecision = (potentialInterceptors, target, attackDetails, 
   } else {
     debugLog('AI_DECISIONS', `🛡️ [INTERCEPTION] DECLINE - No valid interceptor for ${target.name} (threat ${baseAttackDamage} dmg)`);
   }
+  // Capture decision for CSV export
+  const turn = gameStateManager.getState().turn;
+  const player1 = gameStateManager.getState().player1;
+  const player2 = gameStateManager.getState().player2;
+  gameStateManager.addAIDecisionToHistory('interception', turn, decisionContext, { player1, player2 });
   return { interceptor: null, decisionContext };
 };
 

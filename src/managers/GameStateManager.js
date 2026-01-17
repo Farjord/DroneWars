@@ -75,6 +75,7 @@ class GameStateManager {
       droneSelectionPool: [],
       droneSelectionTrio: [],
       gameLog: [],
+      aiDecisionHistory: [], // Array of AI decision entries for CSV export
 
       // --- GAME FLOW METADATA (owned by GameFlowManager) ---
       gameStage: 'preGame', // 'preGame', 'roundLoop', 'gameOver'
@@ -1608,6 +1609,43 @@ class GameStateManager {
 
     const updatedLog = [...this.state.gameLog, enhancedEntry];
     this.setState({ gameLog: updatedLog }, 'LOG_ENTRY_ADDED');
+  }
+
+  /**
+   * Add AI decision to history for CSV export
+   * @param {string} phase - Decision phase (deployment, action, interception)
+   * @param {number} turn - Turn number
+   * @param {Array} possibleActions - Array of all evaluated actions
+   * @param {Object} gameState - Current game state snapshot
+   */
+  addAIDecisionToHistory(phase, turn, possibleActions, gameState) {
+    // Create decision entry
+    const decisionEntry = {
+      phase,
+      turn,
+      timestamp: new Date().toISOString(),
+      decisions: possibleActions.map(action => ({
+        type: action.type,
+        instigator: action.instigator,
+        targetName: action.targetName,
+        score: action.score,
+        logic: action.logic || [],
+        isChosen: action.isChosen || false
+      })),
+      gameState: {
+        player1: {
+          energy: gameState?.player1?.energy,
+          dronesOnBoard: gameState?.player1?.dronesOnBoard
+        },
+        player2: {
+          energy: gameState?.player2?.energy,
+          dronesOnBoard: gameState?.player2?.dronesOnBoard
+        }
+      }
+    };
+
+    const updatedHistory = [...this.state.aiDecisionHistory, decisionEntry];
+    this.setState({ aiDecisionHistory: updatedHistory }, 'AI_DECISION_ADDED');
   }
 
   /**
