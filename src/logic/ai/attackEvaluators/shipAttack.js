@@ -3,7 +3,7 @@
 // ========================================
 // Evaluates drone-on-ship-section attack actions
 
-import { ATTACK_BONUSES, SCORING_WEIGHTS, THREAT_DRONES } from '../aiConstants.js';
+import { ATTACK_BONUSES, SCORING_WEIGHTS, THREAT_DRONES, DAMAGE_TYPE_WEIGHTS } from '../aiConstants.js';
 import { hasThreatOnShipHullDamage } from '../helpers/keywordHelpers.js';
 import { calculateThresholdCrossingBonus } from '../helpers/hullIntegrityHelpers.js';
 
@@ -55,6 +55,53 @@ export const evaluateShipAttack = (attacker, target, context) => {
     const bonus = target.allocatedShields * SCORING_WEIGHTS.PIERCING_SECTION_MULTIPLIER;
     score += bonus;
     logic.push(`✅ Piercing Damage: +${bonus}`);
+  }
+
+  // Damage type bonuses/penalties for ship attacks
+  if (attacker.damageType && attacker.damageType !== 'NORMAL' && attacker.damageType !== 'PIERCING') {
+    const sectionShields = target.allocatedShields || 0;
+
+    switch (attacker.damageType) {
+      case 'ION':
+        // Ion only damages shields
+        if (sectionShields === 0) {
+          score += DAMAGE_TYPE_WEIGHTS.ION_NO_SHIELDS_PENALTY;
+          logic.push(`❌ Ion vs No Shields: ${DAMAGE_TYPE_WEIGHTS.ION_NO_SHIELDS_PENALTY}`);
+        } else {
+          const shieldsDamaged = Math.min(attackerAttack, sectionShields);
+          const bonus = shieldsDamaged * DAMAGE_TYPE_WEIGHTS.ION_PER_SHIELD_VALUE;
+          score += bonus;
+          logic.push(`✅ Ion Damage (${shieldsDamaged} shields): +${bonus}`);
+
+          if (attackerAttack >= sectionShields) {
+            score += DAMAGE_TYPE_WEIGHTS.ION_FULL_STRIP_BONUS;
+            logic.push(`✅ Ion Full Strip: +${DAMAGE_TYPE_WEIGHTS.ION_FULL_STRIP_BONUS}`);
+          }
+        }
+        break;
+
+      case 'KINETIC':
+        // Kinetic is completely blocked by ANY shields
+        if (sectionShields > 0) {
+          score += DAMAGE_TYPE_WEIGHTS.KINETIC_BLOCKED_PENALTY;
+          logic.push(`❌ Kinetic Blocked by Shields: ${DAMAGE_TYPE_WEIGHTS.KINETIC_BLOCKED_PENALTY}`);
+        } else {
+          score += DAMAGE_TYPE_WEIGHTS.KINETIC_UNSHIELDED_BONUS;
+          logic.push(`✅ Kinetic vs Unshielded: +${DAMAGE_TYPE_WEIGHTS.KINETIC_UNSHIELDED_BONUS}`);
+        }
+        break;
+
+      case 'SHIELD_BREAKER':
+        // Shield breaker deals 2:1 against shields
+        if (sectionShields >= 3) {
+          score += DAMAGE_TYPE_WEIGHTS.SHIELD_BREAKER_HIGH_SHIELD_BONUS;
+          logic.push(`✅ Shield-Breaker vs High Shields: +${DAMAGE_TYPE_WEIGHTS.SHIELD_BREAKER_HIGH_SHIELD_BONUS}`);
+        } else if (sectionShields <= 1) {
+          score += DAMAGE_TYPE_WEIGHTS.SHIELD_BREAKER_LOW_SHIELD_PENALTY;
+          logic.push(`❌ Shield-Breaker vs Low Shields: ${DAMAGE_TYPE_WEIGHTS.SHIELD_BREAKER_LOW_SHIELD_PENALTY}`);
+        }
+        break;
+    }
   }
 
   // Threat Transmitter bonus - attacking ship triggers threat ability

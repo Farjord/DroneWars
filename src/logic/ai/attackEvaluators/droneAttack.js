@@ -52,6 +52,7 @@ export const evaluateDroneAttack = (attacker, target, context) => {
   const { score: targetValue, logic: targetLogic } = calculateTargetValue(target, context, {
     damageAmount: effectiveAttacker.attack,
     isPiercing,
+    damageType: attacker.damageType,
     lane: attacker.lane
   });
 

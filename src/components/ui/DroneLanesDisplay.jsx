@@ -115,14 +115,10 @@ const renderDronesOnBoard = (
               localPlayerState={localPlayerState}
               isActionTarget={isActionTarget}
               onMouseEnter={() => {
-                if (!isPlayer) {
-                  setHoveredTarget({ target: drone, type: 'drone', lane });
-                }
+                setHoveredTarget({ target: drone, type: 'drone', lane });
               }}
               onMouseLeave={() => {
-                if (!isPlayer) {
-                  setHoveredTarget(null);
-                }
+                setHoveredTarget(null);
               }}
               interceptedBadge={interceptedBadge}
               enableFloatAnimation={true}
@@ -130,7 +126,12 @@ const renderDronesOnBoard = (
               onDragStart={isPlayer ? handleDroneDragStart : undefined}
               onDragDrop={!isPlayer && draggedDrone ? (targetDrone) => handleDroneDragEnd(targetDrone, lane, true) : undefined}
               isDragging={draggedDrone?.drone?.id === drone.id}
-              isHovered={!isPlayer && hoveredTarget?.target?.id === drone.id}
+              isHovered={
+                hoveredTarget?.target?.id === drone.id &&
+                draggedDrone?.drone?.id !== drone.id &&
+                !(selectedDrone && selectedDrone.id === drone.id) &&
+                !(multiSelectState?.phase === 'select_drones' && multiSelectState.selectedDrones.some(d => d.id === drone.id))
+              }
               draggedActionCard={draggedActionCard}
               onActionCardDrop={handleActionCardDragEnd}
               getLocalPlayerId={getLocalPlayerId}
