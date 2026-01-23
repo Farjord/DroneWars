@@ -15,6 +15,7 @@
 
 import fullDroneCollection from '../data/droneData.js';
 import TargetingRouter from '../logic/TargetingRouter.js';
+import { debugLog } from './debugLogger.js';
 
 // Initialize TargetingRouter for ability/card targeting
 const targetingRouter = new TargetingRouter();
@@ -27,46 +28,80 @@ const targetingRouter = new TargetingRouter();
  * - MULTI_MOVE: select_source_lane → select_drones → select_destination_lane
  *
  * @param {Object} multiSelectState - Current selection state { phase, sourceLane, card }
- * @param {Object} playerState - Acting player's state
- * @param {string} localPlayerId - 'player1' or 'player2'
+ * @param {Object} player1 - Player 1 state
+ * @param {Object} player2 - Player 2 state
+ * @param {string} actingPlayerId - 'player1' or 'player2'
  * @returns {Array} List of valid target objects
  */
-export const calculateMultiSelectTargets = (multiSelectState, playerState, localPlayerId) => {
+export const calculateMultiSelectTargets = (multiSelectState, player1, player2, actingPlayerId) => {
     const { phase, sourceLane, card } = multiSelectState;
+
+    // Determine which player state to target based on card affinity
+    const targetAffinity = card.targeting?.affinity || 'FRIENDLY';
+    const opponentPlayerId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+
+    let targetPlayerId;
+    let targetPlayerState;
+
+    if (targetAffinity === 'ENEMY') {
+        targetPlayerId = opponentPlayerId;
+        targetPlayerState = opponentPlayerId === 'player1' ? player1 : player2;
+    } else {
+        // Default to friendly (acting player)
+        targetPlayerId = actingPlayerId;
+        targetPlayerState = actingPlayerId === 'player1' ? player1 : player2;
+    }
+
+    // For phases that need acting player state (non-targeting phases)
+    const actingPlayerState = actingPlayerId === 'player1' ? player1 : player2;
+
     let targets = [];
 
     if (card.effect.type === 'SINGLE_MOVE') {
         if (phase === 'select_drone') {
-            // Target all friendly, non-exhausted drones
-            Object.values(playerState.dronesOnBoard).flat().forEach(drone => {
+            // Target drones based on card affinity (ENEMY or FRIENDLY)
+            Object.values(targetPlayerState.dronesOnBoard).flat().forEach(drone => {
                 if (!drone.isExhausted) {
-                    targets.push({ ...drone, owner: localPlayerId });
+                    targets.push({ ...drone, owner: targetPlayerId });
                 }
             });
         } else if (phase === 'select_destination') {
             // Target adjacent lanes
             const sourceLaneIndex = parseInt(sourceLane.replace('lane', ''), 10);
+
+            debugLog('TARGETING_PROCESSING', '🎯 PHASE: select_destination detected', {
+                sourceLane,
+                sourceLaneIndex,
+                willCalculateAdjacent: true
+            });
+
             ['lane1', 'lane2', 'lane3'].forEach(laneId => {
                 const targetLaneIndex = parseInt(laneId.replace('lane', ''), 10);
                 const isAdjacent = Math.abs(sourceLaneIndex - targetLaneIndex) === 1;
                 if (isAdjacent) {
-                    targets.push({ id: laneId, owner: localPlayerId });
+                    targets.push({ id: laneId, owner: actingPlayerId });
+
+                    debugLog('TARGETING_PROCESSING', `✅ Adding adjacent lane: ${laneId}`, {
+                        sourceLaneIndex,
+                        targetLaneIndex,
+                        distance: Math.abs(sourceLaneIndex - targetLaneIndex)
+                    });
                 }
             });
         }
     } else if (phase === 'select_source_lane') {
         // Target friendly lanes that have at least one drone
         ['lane1', 'lane2', 'lane3'].forEach(laneId => {
-            if (playerState.dronesOnBoard[laneId].length > 0) {
-                targets.push({ id: laneId, owner: localPlayerId });
+            if (actingPlayerState.dronesOnBoard[laneId].length > 0) {
+                targets.push({ id: laneId, owner: actingPlayerId });
             }
         });
     } else if (phase === 'select_drones') {
         // Target non-exhausted drones within the selected source lane
-        playerState.dronesOnBoard[sourceLane]
+        actingPlayerState.dronesOnBoard[sourceLane]
             .filter(drone => !drone.isExhausted)
             .forEach(drone => {
-                targets.push({ ...drone, owner: localPlayerId });
+                targets.push({ ...drone, owner: actingPlayerId });
             });
     } else if (phase === 'select_destination_lane') {
         // Target ADJACENT friendly lanes
@@ -75,7 +110,7 @@ export const calculateMultiSelectTargets = (multiSelectState, playerState, local
             const targetLaneIndex = parseInt(laneId.replace('lane', ''), 10);
             const isAdjacent = Math.abs(sourceLaneIndex - targetLaneIndex) === 1;
             if (isAdjacent) {
-                targets.push({ id: laneId, owner: localPlayerId });
+                targets.push({ id: laneId, owner: actingPlayerId });
             }
         });
     }
@@ -131,11 +166,37 @@ export const calculateUpgradeTargets = (selectedCard, playerState) => {
  * @param {Object} player1 - Player 1 state
  * @param {Object} player2 - Player 2 state
  * @param {string} localPlayerId - 'player1' or 'player2'
+ * @param {Object} singleMoveMode - Single-move card mode state (if any)
  * @returns {Object} { validAbilityTargets, validCardTargets }
  */
-export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSelectState, selectedCard, player1, player2, localPlayerId) => {
+export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSelectState, selectedCard, player1, player2, localPlayerId, singleMoveMode = null) => {
     let validAbilityTargets = [];
     let validCardTargets = [];
+
+    // Handle singleMoveMode - highlight adjacent lanes for drone movement
+    if (singleMoveMode) {
+        const sourceLaneIndex = parseInt(singleMoveMode.sourceLane.replace('lane', ''), 10);
+        const adjacentLanes = [];
+
+        // Check all lanes and find adjacent ones (distance = 1)
+        ['lane1', 'lane2', 'lane3'].forEach(laneId => {
+            const targetLaneIndex = parseInt(laneId.replace('lane', ''), 10);
+            if (Math.abs(sourceLaneIndex - targetLaneIndex) === 1) {
+                adjacentLanes.push({ id: laneId, owner: singleMoveMode.owner, type: 'lane' });
+            }
+        });
+
+        // CHECKPOINT 4: Target Calculation for Adjacent Lanes
+        debugLog('SINGLE_MOVE_FLOW', '🎲 CHECKPOINT 4: Calculated valid target lanes', {
+            singleMoveMode: singleMoveMode,
+            sourceLane: singleMoveMode.sourceLane,
+            adjacentLanes: adjacentLanes,
+            droneId: singleMoveMode.droneId,
+            owner: singleMoveMode.owner
+        });
+
+        return { validAbilityTargets: [], validCardTargets: adjacentLanes };
+    }
 
     if (abilityMode) {
         validAbilityTargets = targetingRouter.routeTargeting({
@@ -156,8 +217,7 @@ export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSele
     } else if (multiSelectState) {
         // Determine which player state to use based on who is acting
         const actingPlayerId = multiSelectState.actingPlayerId || localPlayerId;
-        const actingPlayerState = actingPlayerId === 'player1' ? player1 : player2;
-        validCardTargets = calculateMultiSelectTargets(multiSelectState, actingPlayerState, actingPlayerId);
+        validCardTargets = calculateMultiSelectTargets(multiSelectState, player1, player2, actingPlayerId);
     } else if (selectedCard) {
         if (selectedCard.type === 'Upgrade') {
             validCardTargets = calculateUpgradeTargets(selectedCard, player1);
@@ -165,18 +225,40 @@ export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSele
             // MULTI_MOVE cards use multiSelectState for targeting via calculateMultiSelectTargets
             if (multiSelectState) {
                 const actingPlayerId = multiSelectState.actingPlayerId || localPlayerId;
-                const actingPlayerState = actingPlayerId === 'player1' ? player1 : player2;
-                validCardTargets = calculateMultiSelectTargets(multiSelectState, actingPlayerState, actingPlayerId);
+                validCardTargets = calculateMultiSelectTargets(multiSelectState, player1, player2, actingPlayerId);
             } else {
                 validCardTargets = [];
             }
         } else if (selectedCard.effect.type === 'SINGLE_MOVE') {
-            // SINGLE_MOVE cards use multiSelectState for targeting
-            // If multiSelectState not set yet, return empty (will be set by needsCardSelection flow)
+            // Prioritize multiSelectState when it exists (for multi-step targeting phases)
             if (multiSelectState) {
+                // Use multiSelectState for all SINGLE_MOVE cards when in multi-select flow
+                // This handles 'select_destination' phase where we need lane targets, not drone targets
+                debugLog('TARGETING_PROCESSING', '✅ Taking multiSelectState branch (SINGLE_MOVE)', {
+                    phase: multiSelectState.phase,
+                    actingPlayerId: multiSelectState.actingPlayerId,
+                    sourceLane: multiSelectState.sourceLane,
+                    timestamp: performance.now()
+                });
+
                 const actingPlayerId = multiSelectState.actingPlayerId || localPlayerId;
-                const actingPlayerState = actingPlayerId === 'player1' ? player1 : player2;
-                validCardTargets = calculateMultiSelectTargets(multiSelectState, actingPlayerState, actingPlayerId);
+                validCardTargets = calculateMultiSelectTargets(multiSelectState, player1, player2, actingPlayerId);
+
+                debugLog('TARGETING_PROCESSING', '📋 calculateMultiSelectTargets result', {
+                    phase: multiSelectState.phase,
+                    targetCount: validCardTargets.length,
+                    targets: validCardTargets.map(t => ({ id: t.id, owner: t.owner })),
+                    timestamp: performance.now()
+                });
+            } else if (selectedCard.targeting) {
+                // Use TargetingRouter for initial targeting (before multiSelectState is set)
+                validCardTargets = targetingRouter.routeTargeting({
+                    actingPlayerId: localPlayerId,
+                    source: null,
+                    definition: selectedCard,
+                    player1,
+                    player2
+                });
             } else {
                 validCardTargets = [];
             }

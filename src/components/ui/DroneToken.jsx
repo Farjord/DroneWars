@@ -163,6 +163,7 @@ const DroneToken = ({
   isDragging = false,
   isHovered = false,
   isAbilitySource = false,
+  singleMoveMode = null,
   // Action card drag-and-drop props
   draggedActionCard = null,
   onActionCardDrop = null,
@@ -254,22 +255,30 @@ const DroneToken = ({
         if (e.target.closest('button')) {
           return;
         }
-        // Initiate drag for player drones during action phase
-        if (onDragStart && isPlayer && !drone.isExhausted) {
+
+        // Allow drag in two cases:
+        // 1. Normal case: player-owned drone that's not exhausted
+        // 2. Single-move case: this is the selected drone in singleMoveMode (any owner)
+        const canDragNormally = isPlayer && !drone.isExhausted;
+        const canDragInSingleMode = singleMoveMode?.droneId === drone.id;
+
+        if (onDragStart && (canDragNormally || canDragInSingleMode)) {
           e.preventDefault();
           onDragStart(drone, lane, e);
         }
       }}
-      onMouseUp={() => {
+      onMouseUp={(e) => {
         // Handle action card targeting via drag-and-drop
         if (draggedActionCard && onActionCardDrop) {
           const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
           onActionCardDrop(drone, 'drone', owner);
+          e.stopPropagation();
           return;
         }
         // Handle drop on enemy drone for attack (existing behavior)
         if (onDragDrop) {
           onDragDrop(drone);
+          e.stopPropagation();
         }
       }}
       onMouseEnter={onMouseEnter}

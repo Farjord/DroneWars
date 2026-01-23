@@ -111,6 +111,19 @@ import RailgunBeam from './components/animations/RailgunBeam.jsx';
 // Initialize TargetingRouter for card targeting validation
 const targetingRouter = new TargetingRouter();
 
+/**
+ * Helper function to extract drone name from drone ID
+ * @param {string} droneId - The drone ID (e.g., "player2_Talon_0006")
+ * @returns {string} - The drone name (e.g., "Talon")
+ */
+const extractDroneNameFromId = (droneId) => {
+  if (!droneId) return '';
+  // ID format: "player2_Talon_0006" → extract "Talon"
+  const parts = droneId.split('_');
+  // Remove player prefix and sequence number, join remaining parts for multi-word names
+  return parts.slice(1, -1).join('_');
+};
+
 // ========================================
 // SECTION 2: MAIN COMPONENT DECLARATION
 // ========================================
@@ -270,6 +283,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [abilityMode, setAbilityMode] = useState(null); // { drone, ability }
   const [validAbilityTargets, setValidAbilityTargets] = useState([]);
   const [shipAbilityMode, setShipAbilityMode] = useState(null); // { sectionName, ability }
+  const [singleMoveMode, setSingleMoveMode] = useState(null); // { card, drone, owner, sourceLane }
   const [shipAbilityConfirmation, setShipAbilityConfirmation] = useState(null);
   const [selectedCard, setSelectedCard] = useState(null); // { card data }
   const [validCardTargets, setValidCardTargets] = useState([]); // [id1, id2, ...]
@@ -345,6 +359,7 @@ const App = ({ phaseAnimationQueue }) => {
   const footerPreviousPhaseRef = useRef(null); // Separate ref for footer view switching (avoids race condition with previousPhaseRef)
   const roundStartCascadeTriggered = useRef(false); // Prevent duplicate round start cascade triggers
   const deploymentToActionTriggered = useRef(false); // Prevent duplicate deployment → action triggers
+  const multiSelectFlowInProgress = useRef(false); // Track multi-select flow to prevent premature cleanup
   // NOTE: enteredMandatoryDiscardWithExcess and enteredMandatoryRemovalWithExcess refs REMOVED
   // Auto-completion for mandatory phases is now handled consistently by GameFlowManager.autoCompleteUnnecessaryCommitments()
 
@@ -1077,13 +1092,40 @@ const App = ({ phaseAnimationQueue }) => {
   };
 
   /**
+   * CANCEL SINGLE-MOVE MODE
+   * Cancels the single-move card interaction mode where user drags a drone to adjacent lane.
+   * Resets UI state when player cancels single-move card play.
+   */
+  const cancelSingleMoveMode = useCallback(() => {
+    debugLog('SINGLE_MOVE_MODE', '🚨 cancelSingleMoveMode CALLED', {
+      timestamp: performance.now(),
+      hadSingleMoveMode: singleMoveMode !== null
+    });
+    setSingleMoveMode(null);
+    setSelectedCard(null);
+    setSelectedDrone(null);        // Clear drone highlighting
+    setValidCardTargets([]);       // Clear lane highlighting
+  }, [singleMoveMode]);
+
+  /**
    * CANCEL CARD SELECTION
    * Cancels active card selection and multi-select targeting modes.
    * Resets UI state when player cancels card play.
    */
   const cancelCardSelection = () => {
+    debugLog('BUTTON_CLICKS', '🚨 cancelCardSelection CALLED', {
+      timestamp: performance.now(),
+      refValueBefore: multiSelectFlowInProgress.current,
+      multiSelectStateExists: multiSelectState !== null,
+      selectedCardExists: selectedCard !== null,
+      singleMoveModeExists: singleMoveMode !== null,
+      callStack: new Error().stack.split('\n').slice(0, 5).join('\n')
+    });
+
+    multiSelectFlowInProgress.current = false; // Reset flag when canceling
     setSelectedCard(null);
     setMultiSelectState(null);
+    setSingleMoveMode(null); // Also cancel single-move mode
     setValidCardTargets([]);  // Clear target highlights
     setAffectedDroneIds([]);  // Clear affected drone highlights
   };
@@ -1420,18 +1462,72 @@ const App = ({ phaseAnimationQueue }) => {
    * RESOLVE SINGLE MOVE
    * Processes single-drone movement cards through ActionProcessor.
    * @param {Object} card - The movement card being played
-   * @param {Object} droneToMove - The drone to move
+   * @param {string} droneId - The ID of the drone to move
+   * @param {string} droneOwner - The owner of the drone (player1 or player2)
    * @param {string} fromLane - Source lane ID
    * @param {string} toLane - Destination lane ID
    */
-  const resolveSingleMove = useCallback(async (card, droneToMove, fromLane, toLane) => {
+  const resolveSingleMove = useCallback(async (card, droneId, droneOwner, fromLane, toLane) => {
+    // CHECKPOINT 10: Inside resolveSingleMove
+    debugLog('SINGLE_MOVE_FLOW', '⚙️ CHECKPOINT 10: Inside resolveSingleMove', {
+      receivedCard: card?.name,
+      receivedDroneId: droneId,
+      receivedDroneOwner: droneOwner,
+      receivedFromLane: fromLane,
+      receivedToLane: toLane,
+      allParametersDefined: !!(card && droneId && droneOwner && fromLane && toLane)
+    });
+
+    // Look up the CURRENT drone from game state
+    const currentState = gameStateManager.getState();
+    const ownerState = currentState?.[droneOwner];
+
+    debugLog('SINGLE_MOVE_FLOW', '🔍 CHECKPOINT 10b: Looking up drone in state', {
+      droneOwner: droneOwner,
+      fromLane: fromLane,
+      ownerStateExists: !!ownerState,
+      dronesInLane: ownerState?.dronesOnBoard?.[fromLane]?.map(d => ({ id: d.id, name: d.name })),
+      searchingForId: droneId
+    });
+
+    // Find the drone in the source lane
+    const currentDrone = ownerState?.dronesOnBoard?.[fromLane]?.find(d => d.id === droneId);
+
+    if (!currentDrone) {
+      debugLog('SINGLE_MOVE_FLOW', '❌ CHECKPOINT 10c: Drone NOT FOUND', {
+        droneId: droneId,
+        fromLane: fromLane,
+        droneOwner: droneOwner,
+        ownerState: ownerState,
+        availableDrones: ownerState?.dronesOnBoard?.[fromLane]
+      });
+      console.error('resolveSingleMove: Could not find drone', { droneId, fromLane, droneOwner });
+      setMultiSelectState(null);
+      cancelCardSelection();
+      return;
+    }
+
+    debugLog('SINGLE_MOVE_FLOW', '✅ CHECKPOINT 10d: Drone FOUND, proceeding with move', {
+      foundDrone: { id: currentDrone.id, name: currentDrone.name },
+      fromLane: fromLane,
+      toLane: toLane
+    });
+
     await processActionWithGuestRouting('movementCompletion', {
       card,
       movementType: 'single_move',
-      drones: [droneToMove],
+      drones: [{ ...currentDrone, owner: droneOwner }],
       fromLane,
       toLane,
       playerId: getLocalPlayerId()
+    });
+
+    // CHECKPOINT 11: Move Executed
+    debugLog('SINGLE_MOVE_FLOW', '🎉 CHECKPOINT 11: Move completed successfully', {
+      drone: currentDrone.name,
+      from: fromLane,
+      to: toLane,
+      card: card.name
     });
 
     // Clean up UI state
@@ -1486,12 +1582,16 @@ const App = ({ phaseAnimationQueue }) => {
       selectedCardId: selectedCard?.id || null,
       abilityMode: abilityMode?.drone?.name || null,
       shipAbilityMode: shipAbilityMode?.sectionName || null,
-      multiSelectState: multiSelectState?.phase || null,
-      willSkipCalculation: !selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState
+      multiSelectState_phase: multiSelectState?.phase || null,
+      multiSelectState_sourceLane: multiSelectState?.sourceLane || null,
+      multiSelectState_full: multiSelectState ? JSON.stringify(multiSelectState) : null,
+      singleMoveMode_drone: singleMoveMode?.drone?.name || null,
+      singleMoveMode_sourceLane: singleMoveMode?.sourceLane || null,
+      willSkipCalculation: !selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState && !singleMoveMode
     });
 
     // Early return: Only calculate if actually in a targeting mode
-    if (!selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState) {
+    if (!selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState && !singleMoveMode) {
       // No selection active - clear targeting and skip calculation
       setValidAbilityTargets([]);
       setValidCardTargets([]);
@@ -1506,7 +1606,8 @@ const App = ({ phaseAnimationQueue }) => {
       selectedCard,
       gameState.player1,
       gameState.player2,
-      getLocalPlayerId()
+      getLocalPlayerId(),
+      singleMoveMode  // Pass singleMoveMode for adjacent lane highlighting
     );
 
     setValidAbilityTargets(validAbilityTargets);
@@ -1517,7 +1618,7 @@ const App = ({ phaseAnimationQueue }) => {
       setSelectedCard(null);
       setShipAbilityMode(null);
     }
-  }, [abilityMode, shipAbilityMode, selectedCard, multiSelectState]);
+  }, [abilityMode, shipAbilityMode, selectedCard, multiSelectState, singleMoveMode]);
 
   // --- 8.2 PHASE ANIMATION QUEUE SUBSCRIPTION ---
 
@@ -1578,6 +1679,12 @@ const App = ({ phaseAnimationQueue }) => {
         return;
     }
 
+    // Skip interception calculations during SINGLE_MOVE card flow
+    if (singleMoveMode) {
+        setPotentialInterceptors([]);
+        return;
+    }
+
     if (turnPhase === 'action') {
         // Use draggedDrone if actively dragging, otherwise use selectedDrone
         const activeDrone = draggedDrone?.drone || selectedDrone;
@@ -1591,12 +1698,18 @@ const App = ({ phaseAnimationQueue }) => {
     } else {
         setPotentialInterceptors([]);
     }
-}, [selectedDrone, draggedDrone, turnPhase, localPlayerState, opponentPlayerState, gameEngine, localPlacedSections, opponentPlacedSections, interceptionModeActive, playerInterceptionChoice]);
+}, [selectedDrone, draggedDrone, turnPhase, localPlayerState, opponentPlayerState, gameEngine, localPlacedSections, opponentPlacedSections, interceptionModeActive, playerInterceptionChoice, singleMoveMode]);
 
   // --- 8.5 GUARDIAN HIGHLIGHTING ---
   // Calculate potential guardian blockers when drone is selected
   // Highlights opponent drones with GUARDIAN keyword in the same lane
   useEffect(() => {
+    // Skip guardian highlighting during SINGLE_MOVE card flow
+    if (singleMoveMode) {
+      setPotentialGuardians([]);
+      return;
+    }
+
     if (turnPhase === 'action' && selectedDrone && !selectedDrone.isExhausted) {
       // Find which lane the selected drone is in
       const [attackerLane] = Object.entries(localPlayerState.dronesOnBoard)
@@ -1618,7 +1731,7 @@ const App = ({ phaseAnimationQueue }) => {
     } else {
       setPotentialGuardians([]);
     }
-  }, [selectedDrone, turnPhase, localPlayerState, opponentPlayerState, getEffectiveStats]);
+  }, [selectedDrone, turnPhase, localPlayerState, opponentPlayerState, getEffectiveStats, singleMoveMode]);
 
   // Monitor unified interceptionPending state for both AI and human defenders
   useEffect(() => {
@@ -3114,25 +3227,148 @@ const App = ({ phaseAnimationQueue }) => {
 
       // Sub-case 4a: Movement card dropped on a valid target drone
       if (target && targetType === 'drone') {
-        const isValidTarget = validCardTargets.some(t => t.id === target.id);
+        // Calculate valid targets for this specific card to avoid state timing issues
+        // validCardTargets from state may be stale/empty since selectedCard is not yet set
+        const { validCardTargets: dragCardTargets } = calculateAllValidTargets(
+          null,  // abilityMode
+          null,  // shipAbilityMode
+          null,  // multiSelectState
+          card,  // Use the dragged card directly (from draggedActionCard.card)
+          gameState.player1,
+          gameState.player2,
+          getLocalPlayerId()
+        );
+
+        const isValidTarget = dragCardTargets.some(t => t.id === target.id && t.owner === targetOwner);
         if (isValidTarget) {
           debugLog('DRAG_DROP_DEPLOY', '✅ Valid drone target - proceeding to lane selection', { droneId: target.id });
 
           // Keep card selected for UI greyscale effect on other cards
           setSelectedCard(card);
 
-          // Drone was selected via drag-drop, now need lane selection
+          // Find which lane the target drone is in
+          // Use the appropriate player state based on target owner
+          const targetPlayerState = targetOwner === getLocalPlayerId()
+            ? localPlayerState
+            : opponentPlayerState;
+
+          // DEBUG: Log targetPlayerState structure to diagnose lane lookup failure
+          debugLog('DRAG_DROP_DEPLOY', '🔍 DEBUG: targetPlayerState', {
+            targetOwner,
+            localPlayerId: getLocalPlayerId(),
+            dronesOnBoard: targetPlayerState.dronesOnBoard,
+            dronesOnBoardKeys: Object.keys(targetPlayerState.dronesOnBoard || {}),
+            targetDroneId: target.id
+          });
+
+          const [targetLane] = Object.entries(targetPlayerState.dronesOnBoard).find(
+            ([_, drones]) => drones.some(d => d.id === target.id)
+          ) || [];
+
+          // DEBUG: Log targetLane lookup result
+          debugLog('DRAG_DROP_DEPLOY', '🔍 DEBUG: targetLane lookup result', {
+            targetLane,
+            foundLane: targetLane !== undefined,
+            targetDroneId: target.id
+          });
+
+          if (!targetLane) {
+            debugLog('DRAG_DROP_DEPLOY', '⛔ Error: Could not find lane for target drone', { droneId: target.id });
+            debugLog('BUTTON_CLICKS', '🔍 cancelCardSelection called from ERROR HANDLER - Could not find lane', {
+              timestamp: performance.now(),
+              refValue: multiSelectFlowInProgress.current,
+              droneId: target.id
+            });
+            cancelCardSelection();
+            return;
+          }
+
+          // NEW FLOW: For SINGLE_MOVE cards, enter singleMoveMode instead of multiSelectState
+          if (card.effect.type === 'SINGLE_MOVE') {
+            // CHECKPOINT 2: Card Dropped on Drone Target
+            debugLog('SINGLE_MOVE_FLOW', '🎯 CHECKPOINT 2: Card dropped on drone target', {
+              cardName: card.name,
+              targetId: target.id,
+              targetName: target.name,
+              targetOwner: targetOwner,
+              targetLane: targetLane,
+              targetObject: target
+            });
+
+            debugLog('SINGLE_MOVE_MODE', '🎯 Entering single-move mode', {
+              cardName: card.name,
+              droneId: target.id,
+              droneName: target.name,
+              sourceLane: targetLane,
+              targetOwner: targetOwner
+            });
+
+            // CHECKPOINT 3: Setting singleMoveMode State
+            const newSingleMoveMode = {
+              card: card,
+              droneId: target.id,
+              owner: targetOwner,
+              sourceLane: targetLane
+            };
+
+            debugLog('SINGLE_MOVE_FLOW', '💾 CHECKPOINT 3: Setting singleMoveMode state', {
+              singleMoveMode: newSingleMoveMode,
+              droneId: newSingleMoveMode.droneId,
+              owner: newSingleMoveMode.owner,
+              sourceLane: newSingleMoveMode.sourceLane,
+              cardName: newSingleMoveMode.card.name
+            });
+
+            setSingleMoveMode(newSingleMoveMode);
+
+            // Set selectedDrone so the drone highlights correctly
+            setSelectedDrone({ ...target, owner: targetOwner });
+
+            // Clear selectedCard so targeting useEffect prioritizes singleMoveMode
+            // The card will still be referenced via singleMoveMode.card
+            setSelectedCard(null);
+
+            return;
+          }
+
+          // MULTI_MOVE flow: Use the existing multiSelectState logic
           setMultiSelectState({
             card: card,
             phase: 'select_destination',
             selectedDrone: { ...target, owner: targetOwner },
-            sourceLane: target.lane,
+            sourceLane: targetLane,
             maxDrones: 1,
             actingPlayerId: getLocalPlayerId()
           });
+
+          multiSelectFlowInProgress.current = true; // Set ref synchronously to prevent premature cleanup
+
+          debugLog('BUTTON_CLICKS', '🛡️ multiSelectFlowInProgress REF SET TO TRUE', {
+            timestamp: performance.now(),
+            location: 'handleActionCardDragEnd - after drone target validation',
+            refValue: multiSelectFlowInProgress.current,
+            shortStack: new Error().stack.split('\n').slice(0, 3).join('\n')
+          });
+
+          debugLog('BUTTON_CLICKS', '🔄 multiSelectState SET for lane selection', {
+            phase: 'select_destination',
+            selectedDroneId: target.id,
+            selectedDroneOwner: targetOwner,
+            sourceLane: targetLane,
+            maxDrones: 1,
+            actingPlayerId: getLocalPlayerId(),
+            timestamp: performance.now()
+          });
+
           return;
         } else {
           debugLog('DRAG_DROP_DEPLOY', '⛔ Invalid drone target for movement card', { target, validCardTargets });
+          debugLog('BUTTON_CLICKS', '🔍 cancelCardSelection called from ERROR HANDLER - Invalid drone target', {
+            timestamp: performance.now(),
+            refValue: multiSelectFlowInProgress.current,
+            target: target,
+            cardName: card?.name
+          });
           cancelCardSelection();
           return;
         }
@@ -3186,17 +3422,34 @@ const App = ({ phaseAnimationQueue }) => {
     // Case 5: Targeted cards (drone, lane, section) - validate and show confirmation
     if (target && targetType) {
       const isValidTarget = validCardTargets.some(t =>
-        t.id === target.id || t.id === target.name
+        (t.id === target.id || t.id === target.name) && t.owner === targetOwner
       );
       if (isValidTarget) {
         setCardConfirmation({ card, target: { ...target, owner: targetOwner } });
       } else {
         debugLog('DRAG_DROP_DEPLOY', '⛔ Invalid target', { target, validCardTargets });
+        debugLog('BUTTON_CLICKS', '🔍 cancelCardSelection called from ERROR HANDLER - Invalid target', {
+          timestamp: performance.now(),
+          refValue: multiSelectFlowInProgress.current,
+          target: target,
+          cardName: card?.name
+        });
         cancelCardSelection();
       }
     } else {
       // Released without target - cancel
-      cancelCardSelection();
+      debugLog('BUTTON_CLICKS', '🔍 handleActionCardDragEnd CLEANUP PATH', {
+        timestamp: performance.now(),
+        location: 'handleActionCardDragEnd - else block (no valid target)',
+        refValue: multiSelectFlowInProgress.current,
+        willCallCancel: !multiSelectFlowInProgress.current,
+        draggedCard: card?.name || 'none'
+      });
+
+      // BUT: Don't clean up if we're in a multi-select flow waiting for user to select destination
+      if (!multiSelectFlowInProgress.current) {
+        cancelCardSelection();
+      }
     }
   };
 
@@ -3219,6 +3472,37 @@ const App = ({ phaseAnimationQueue }) => {
 
       debugLog('INTERCEPTION_MODE', '🎯 Interceptor drag start', { droneName: drone.name, droneId: drone.id, sourceLane });
       setDraggedDrone({ drone, sourceLane, isInterceptionDrag: true });
+
+      // Get start position from top-middle of the drone token
+      if (gameAreaRef.current) {
+        const gameAreaRect = gameAreaRef.current.getBoundingClientRect();
+        const tokenElement = event.currentTarget;
+        const tokenRect = tokenElement.getBoundingClientRect();
+
+        const startX = tokenRect.left + tokenRect.width / 2 - gameAreaRect.left;
+        const startY = tokenRect.top - gameAreaRect.top + 15;
+
+        setDroneDragArrowState({
+          visible: true,
+          start: { x: startX, y: startY },
+          end: { x: startX, y: startY }
+        });
+      }
+      return;
+    }
+
+    // Check for single-move mode - only allow dragging the selected drone
+    if (singleMoveMode) {
+      if (drone.id !== singleMoveMode.droneId) {
+        debugLog('SINGLE_MOVE_MODE', '⛔ Drone drag blocked - not the selected drone', {
+          attemptedDroneId: drone.id,
+          selectedDroneId: singleMoveMode.droneId
+        });
+        return;
+      }
+
+      debugLog('SINGLE_MOVE_MODE', '🎯 Selected drone drag start', { droneName: drone.name, droneId: drone.id, sourceLane });
+      setDraggedDrone({ drone, sourceLane, isSingleMoveDrag: true });
 
       // Get start position from top-middle of the drone token
       if (gameAreaRef.current) {
@@ -3286,7 +3570,7 @@ const App = ({ phaseAnimationQueue }) => {
       return;
     }
 
-    const { drone: interceptorDrone, sourceLane, isInterceptionDrag } = draggedDrone;
+    const { drone: interceptorDrone, sourceLane, isInterceptionDrag, isSingleMoveDrag } = draggedDrone;
 
     // Handle interception mode drag end
     if (isInterceptionDrag && interceptionModeActive) {
@@ -3315,6 +3599,79 @@ const App = ({ phaseAnimationQueue }) => {
       } else {
         debugLog('INTERCEPTION_MODE', '📥 Interception drag cancelled - no target');
       }
+      return;
+    }
+
+    // Handle single-move mode drag end
+    if (isSingleMoveDrag && singleMoveMode) {
+      // Cleanup drag state
+      setDraggedDrone(null);
+      setDroneDragArrowState(prev => ({ ...prev, visible: false }));
+
+      // Validate drone matches singleMoveMode
+      if (interceptorDrone.id !== singleMoveMode.droneId) {
+        debugLog('SINGLE_MOVE_MODE', '⛔ Drone mismatch - should not happen', {
+          draggedDroneId: interceptorDrone.id,
+          selectedDroneId: singleMoveMode.droneId
+        });
+        return;
+      }
+
+      // Must be dropped on a lane (not opponent target)
+      if (!targetLane || isOpponentTarget) {
+        debugLog('SINGLE_MOVE_MODE', '📥 Single-move drag cancelled - no valid lane target');
+        return;
+      }
+
+      // Validate target lane is adjacent to source lane
+      const sourceLaneIndex = parseInt(singleMoveMode.sourceLane.replace('lane', ''), 10);
+      const targetLaneIndex = parseInt(targetLane.replace('lane', ''), 10);
+      const distance = Math.abs(sourceLaneIndex - targetLaneIndex);
+
+      if (distance !== 1) {
+        debugLog('SINGLE_MOVE_MODE', '⛔ Move blocked - not adjacent', {
+          sourceLane: singleMoveMode.sourceLane,
+          targetLane,
+          distance
+        });
+        setModalContent({
+          title: "Invalid Move",
+          text: "You can only move this drone to an adjacent lane.",
+          isBlocking: true
+        });
+        return;
+      }
+
+      // Valid move - show confirmation modal
+      debugLog('SINGLE_MOVE_MODE', '✅ Valid move - showing confirmation', {
+        drone: interceptorDrone.name,
+        from: singleMoveMode.sourceLane,
+        to: targetLane,
+        card: singleMoveMode.card.name
+      });
+
+      const moveConfData = {
+        droneId: singleMoveMode.droneId,
+        owner: singleMoveMode.owner,
+        from: singleMoveMode.sourceLane,
+        to: targetLane,
+        card: singleMoveMode.card  // Include card for card-based movement
+      };
+
+      debugLog('SINGLE_MOVE_FLOW', '⚠️ setMoveConfirmation called from [handleDroneDragEnd - single-move drag]', {
+        location: 'handleDroneDragEnd - single-move drag',
+        lineNumber: 3641,
+        dataStructure: {
+          hasDroneId: 'droneId' in moveConfData,
+          hasDrone: 'drone' in moveConfData,
+          hasOwner: 'owner' in moveConfData,
+          keys: Object.keys(moveConfData)
+        },
+        data: moveConfData
+      });
+
+      setMoveConfirmation(moveConfData);
+
       return;
     }
 
@@ -3385,12 +3742,28 @@ const App = ({ phaseAnimationQueue }) => {
         const movementCard = multiSelectState?.card?.effect?.type === 'SINGLE_MOVE' ||
                              multiSelectState?.card?.effect?.type === 'MULTI_MOVE'
                              ? multiSelectState.card : null;
-        setMoveConfirmation({
-          drone: attackerDrone,
+
+        const moveConfData = {
+          droneId: attackerDrone.id,
+          owner: getLocalPlayerId(),
           from: sourceLane,
           to: targetLane,
           card: movementCard  // Include card for card-based movement
+        };
+
+        debugLog('SINGLE_MOVE_FLOW', '⚠️ setMoveConfirmation called from [handleDroneDragEnd - regular drag move]', {
+          location: 'handleDroneDragEnd - regular drag move',
+          lineNumber: 3718,
+          dataStructure: {
+            hasDroneId: 'droneId' in moveConfData,
+            hasDrone: 'drone' in moveConfData,
+            hasOwner: 'owner' in moveConfData,
+            keys: Object.keys(moveConfData)
+          },
+          data: moveConfData
         });
+
+        setMoveConfirmation(moveConfData);
       } else {
         debugLog('DRAG_DROP_DEPLOY', '⛔ Move blocked - not adjacent', { sourceLane, targetLane });
         setModalContent({ title: "Invalid Move", text: "Drones can only move to adjacent lanes.", isBlocking: true });
@@ -3560,7 +3933,8 @@ const App = ({ phaseAnimationQueue }) => {
       // NEW: Prioritize multi-move selection
       if (multiSelectState && multiSelectState.phase === 'select_drones' && isPlayer) {
           // Validate drone is a valid target (includes exhaustion check + any future filters)
-          if (!validCardTargets.some(t => t.id === token.id)) {
+          const tokenOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
+          if (!validCardTargets.some(t => t.id === token.id && t.owner === tokenOwner)) {
               debugLog('COMBAT', "Action prevented: Drone is not a valid target for movement.");
               return;
           }
@@ -3580,7 +3954,8 @@ const App = ({ phaseAnimationQueue }) => {
       // IMPORTANT: This must come BEFORE generic validCardTargets check to prevent interception
       if (multiSelectState && multiSelectState.phase === 'select_drone' && isPlayer) {
           // Check if this drone is a valid target
-          if (!validCardTargets.some(t => t.id === token.id)) {
+          const tokenOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
+          if (!validCardTargets.some(t => t.id === token.id && t.owner === tokenOwner)) {
               debugLog('COMBAT', "Action prevented: Drone is not a valid target for movement.");
               return;
           }
@@ -3627,7 +4002,9 @@ const App = ({ phaseAnimationQueue }) => {
       }
 
       // 2. Handle targeting for an active card or ability
-      if (validAbilityTargets.some(t => t.id === token.id) || validCardTargets.some(t => t.id === token.id)) {
+      const tokenOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
+      if (validAbilityTargets.some(t => t.id === token.id && t.owner === tokenOwner) ||
+          validCardTargets.some(t => t.id === token.id && t.owner === tokenOwner)) {
           debugLog('COMBAT', "Action: Targeting for an active card/ability.");
           handleTargetClick(token, 'drone', isPlayer);
           return;
@@ -3662,7 +4039,8 @@ const App = ({ phaseAnimationQueue }) => {
       // 3. Handle multi-move drone selection
       if (multiSelectState && multiSelectState.phase === 'select_drones' && isPlayer) {
           // Validate drone is a valid target (includes exhaustion check + any future filters)
-          if (!validCardTargets.some(t => t.id === token.id)) {
+          const tokenOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
+          if (!validCardTargets.some(t => t.id === token.id && t.owner === tokenOwner)) {
               debugLog('COMBAT', "Action prevented: Drone is not a valid target for movement.");
               return;
           }
@@ -3721,10 +4099,12 @@ const App = ({ phaseAnimationQueue }) => {
           return;
       }
 
-      if (selectedCard && validCardTargets.some(t => t.id === target.id)) {
+      if (selectedCard) {
         const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
-        setCardConfirmation({ card: selectedCard, target: { ...target, owner } });
-        return;
+        if (validCardTargets.some(t => t.id === target.id && t.owner === owner)) {
+          setCardConfirmation({ card: selectedCard, target: { ...target, owner } });
+          return;
+        }
       }
 
       // Handle standard ship section attacks
@@ -3819,6 +4199,54 @@ const App = ({ phaseAnimationQueue }) => {
         }
     }
 
+    // --- 9.2 HANDLE SINGLE-MOVE MODE LANE CLICKS ---
+    if (singleMoveMode && isPlayer && validCardTargets.some(t => t.id === lane)) {
+      // CHECKPOINT 5: Lane Clicked/Selected
+      debugLog('SINGLE_MOVE_FLOW', '🖱️ CHECKPOINT 5: Lane selected for move', {
+        lane: lane,
+        currentSingleMoveMode: singleMoveMode,
+        droneId: singleMoveMode.droneId,
+        owner: singleMoveMode.owner,
+        from: singleMoveMode.sourceLane,
+        to: lane,
+        cardName: singleMoveMode.card.name
+      });
+
+      debugLog('SINGLE_MOVE_MODE', '🎯 Lane selected for single-move', {
+        cardName: singleMoveMode.card.name,
+        drone: extractDroneNameFromId(singleMoveMode.droneId),
+        from: singleMoveMode.sourceLane,
+        to: lane
+      });
+
+      // CHECKPOINT 6: Setting moveConfirmation State
+      const newMoveConfirmation = {
+        droneId: singleMoveMode.droneId,
+        owner: singleMoveMode.owner,
+        from: singleMoveMode.sourceLane,
+        to: lane,
+        card: singleMoveMode.card
+      };
+
+      debugLog('SINGLE_MOVE_FLOW', '📝 CHECKPOINT 6: Setting moveConfirmation state', {
+        moveConfirmation: newMoveConfirmation,
+        droneId: newMoveConfirmation.droneId,
+        owner: newMoveConfirmation.owner,
+        from: newMoveConfirmation.from,
+        to: newMoveConfirmation.to,
+        cardName: newMoveConfirmation.card.name,
+        hasAllRequiredFields: !!(newMoveConfirmation.droneId && newMoveConfirmation.owner && newMoveConfirmation.from && newMoveConfirmation.to)
+      });
+
+      setMoveConfirmation(newMoveConfirmation);
+
+      // Clear single-move mode state
+      setSingleMoveMode(null);
+      setSelectedDrone(null);
+
+      return;
+    }
+
     if (multiSelectState && isPlayer && validCardTargets.some(t => t.id === lane)) {
         const { phase, sourceLane, selectedDrones } = multiSelectState;
 
@@ -3843,19 +4271,6 @@ const App = ({ phaseAnimationQueue }) => {
         }
     }
 
-    if (multiSelectState && multiSelectState.card.effect.type === 'SINGLE_MOVE' && multiSelectState.phase === 'select_destination' && isPlayer) {
-        if (validCardTargets.some(t => t.id === lane)) {
-            // Show confirmation modal instead of immediately executing
-            setMoveConfirmation({
-                drone: multiSelectState.selectedDrone,
-                from: multiSelectState.sourceLane,
-                to: lane,
-                card: multiSelectState.card  // Include card for movement via card
-            });
-        }
-        return;
-    }
-
     if (selectedCard && selectedCard.targeting.type === 'LANE') {
         const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
         if (validCardTargets.some(t => t.id === lane && t.owner === owner)) {
@@ -3864,7 +4279,18 @@ const App = ({ phaseAnimationQueue }) => {
         }
     }
 
-    if (selectedCard) {
+    debugLog('BUTTON_CLICKS', '🔍 onLaneClick LANE SELECTION CHECK', {
+      timestamp: performance.now(),
+      location: 'handleLaneClick - checking if should cancel',
+      lane: lane,
+      isPlayer: isPlayer,
+      hasSelectedCard: !!selectedCard,
+      refValue: multiSelectFlowInProgress.current,
+      willCallCancel: !!selectedCard && !multiSelectFlowInProgress.current
+    });
+
+    // Don't cancel if in single-move mode (user needs to drag the drone to complete)
+    if (selectedCard && !multiSelectFlowInProgress.current && !singleMoveMode) {
       cancelCardSelection();
       return;
     }
@@ -3888,7 +4314,28 @@ const App = ({ phaseAnimationQueue }) => {
            const movementCard = multiSelectState?.card?.effect?.type === 'SINGLE_MOVE' ||
                                 multiSelectState?.card?.effect?.type === 'MULTI_MOVE'
                                 ? multiSelectState.card : null;
-           setMoveConfirmation({ drone: selectedDrone, from: sourceLaneName, to: lane, card: movementCard });
+
+           const moveConfData = {
+             droneId: selectedDrone.id,
+             owner: getLocalPlayerId(),
+             from: sourceLaneName,
+             to: lane,
+             card: movementCard
+           };
+
+           debugLog('SINGLE_MOVE_FLOW', '⚠️ setMoveConfirmation called from [handleLaneClick - selectedDrone move]', {
+             location: 'handleLaneClick - selectedDrone move',
+             lineNumber: 4287,
+             dataStructure: {
+               hasDroneId: 'droneId' in moveConfData,
+               hasDrone: 'drone' in moveConfData,
+               hasOwner: 'owner' in moveConfData,
+               keys: Object.keys(moveConfData)
+             },
+             data: moveConfData
+           });
+
+           setMoveConfirmation(moveConfData);
         } else {
            setModalContent({ title: "Invalid Move", text: "Drones can only move to adjacent lanes.", isBlocking: true });
         }
@@ -3960,7 +4407,23 @@ const App = ({ phaseAnimationQueue }) => {
     // Movement cards - Set up UI state directly (don't call ActionProcessor until selection complete)
     if (card.effect.type === 'MULTI_MOVE' || card.effect.type === 'SINGLE_MOVE') {
       debugLog('CARD_PLAY', `✅ Movement card - setting up UI: ${card.name}`, { effectType: card.effect.type });
+
+      // CHECKPOINT 1: Card Selection
+      if (card.effect.type === 'SINGLE_MOVE') {
+        debugLog('SINGLE_MOVE_FLOW', '📦 CHECKPOINT 1: SINGLE_MOVE card selected', {
+          cardId: card.id,
+          cardName: card.name,
+          targeting: card.targeting,
+          effect: card.effect
+        });
+      }
       if (multiSelectState && multiSelectState.card.instanceId === card.instanceId) {
+        debugLog('BUTTON_CLICKS', '🔍 cancelCardSelection called from handleCardClick - Toggle off movement card', {
+          timestamp: performance.now(),
+          refValue: multiSelectFlowInProgress.current,
+          cardName: card.name,
+          cardInstanceId: card.instanceId
+        });
         cancelCardSelection();
       } else {
         cancelAllActions(); // Cancel all other actions before starting movement card
@@ -4006,6 +4469,12 @@ const App = ({ phaseAnimationQueue }) => {
 
     if (selectedCard?.instanceId === card.instanceId) {
       debugLog('CARD_PLAY', `✅ Card deselected: ${card.name}`);
+      debugLog('BUTTON_CLICKS', '🔍 cancelCardSelection called from handleCardClick - Deselect card', {
+        timestamp: performance.now(),
+        refValue: multiSelectFlowInProgress.current,
+        cardName: card.name,
+        cardInstanceId: card.instanceId
+      });
       cancelCardSelection();
     } else if (card.name === 'System Sabotage') {
         debugLog('CARD_PLAY', `✅ System Sabotage card - getting targets`, { card: card.name });
@@ -4418,7 +4887,13 @@ const App = ({ phaseAnimationQueue }) => {
   const currentBackground = getBackgroundById(selectedBackground);
 
   return (
-    <div className="h-screen text-white font-sans overflow-hidden flex flex-col relative select-none" ref={gameAreaRef} onClick={() => { cancelAbilityMode(); cancelCardSelection(); }}>
+    <div className="h-screen text-white font-sans overflow-hidden flex flex-col relative select-none" ref={gameAreaRef} onClick={() => {
+      cancelAbilityMode();
+      // Don't cancel card selection if we're in a multi-select flow or single-move mode
+      if (!multiSelectFlowInProgress.current && !singleMoveMode) {
+        cancelCardSelection();
+      }
+    }}>
      {currentBackground.type === 'animated' ? (
        <SpaceBackground />
      ) : (
@@ -4665,6 +5140,9 @@ const App = ({ phaseAnimationQueue }) => {
         handleShowInterceptionDialog={handleShowInterceptionDialog}
         handleResetInterception={handleResetInterception}
         handleConfirmInterception={handleConfirmInterception}
+        // Single-move mode props
+        singleMoveMode={singleMoveMode}
+        handleCancelSingleMove={cancelSingleMoveMode}
         // Extraction mode props
         currentRunState={tacticalMapStateManager.getState()}
         isExtractionMode={tacticalMapStateManager.isRunActive()}
@@ -4684,6 +5162,7 @@ const App = ({ phaseAnimationQueue }) => {
         abilityMode={abilityMode}
         validAbilityTargets={validAbilityTargets}
         multiSelectState={multiSelectState}
+        singleMoveMode={singleMoveMode}
         turnPhase={turnPhase}
         reallocationPhase={reallocationPhase}
         pendingShieldAllocations={pendingShieldAllocations}
@@ -4814,27 +5293,91 @@ const App = ({ phaseAnimationQueue }) => {
           }, 400);
         }}
       />
+      {/* CHECKPOINT 7: Modal Displayed */}
+      {moveConfirmation && (() => {
+        debugLog('SINGLE_MOVE_FLOW', '🪟 CHECKPOINT 7: Modal displayed', {
+          moveConfirmation: moveConfirmation,
+          droneId: moveConfirmation.droneId,
+          owner: moveConfirmation.owner,
+          from: moveConfirmation.from,
+          to: moveConfirmation.to,
+          hasCard: !!moveConfirmation.card,
+          cardName: moveConfirmation.card?.name,
+          hasAllRequiredFields: !!(moveConfirmation.droneId && moveConfirmation.owner && moveConfirmation.from && moveConfirmation.to)
+        });
+        return null;
+      })()}
       <MoveConfirmationModal
         moveConfirmation={moveConfirmation}
         show={!!moveConfirmation}
         onCancel={() => setMoveConfirmation(null)}
         onConfirm={async () => {
           if (!moveConfirmation) return;
+
+          // CHECKPOINT 8: Log state before destructuring
+          debugLog('SINGLE_MOVE_FLOW', '✅ CHECKPOINT 8: Modal confirmed, extracting data', {
+            moveConfirmation: moveConfirmation,
+            moveConfirmationKeys: Object.keys(moveConfirmation),
+            droneIdPresent: 'droneId' in moveConfirmation,
+            ownerPresent: 'owner' in moveConfirmation,
+            dronePresent: 'drone' in moveConfirmation,
+            rawDroneId: moveConfirmation.droneId,
+            rawOwner: moveConfirmation.owner,
+            rawFrom: moveConfirmation.from,
+            rawTo: moveConfirmation.to
+          });
+
           // Store data before closing modal
-          const { drone, from, to, card } = moveConfirmation;
+          const { droneId, owner, from, to, card } = moveConfirmation;
+
+          // CHECKPOINT 8b: Log after destructuring
+          debugLog('SINGLE_MOVE_FLOW', '🔓 CHECKPOINT 8b: Data destructured from moveConfirmation', {
+            droneId: droneId,
+            owner: owner,
+            from: from,
+            to: to,
+            hasCard: !!card,
+            cardName: card?.name,
+            allDefined: !!(droneId && owner && from && to),
+            typeofDroneId: typeof droneId,
+            typeofOwner: typeof owner
+          });
 
           // Close modal immediately
           setMoveConfirmation(null);
 
+          // Clean up singleMoveMode if it was active
+          if (singleMoveMode) {
+            setSingleMoveMode(null);
+            setSelectedCard(null);
+          }
+
           // Wait for modal to unmount before playing animations
           setTimeout(async () => {
             if (card) {
-              // Card-based movement (Maneuver, etc.)
-              await resolveSingleMove(card, drone, from, to);
+              // CHECKPOINT 9: Calling resolveSingleMove
+              debugLog('SINGLE_MOVE_FLOW', '🚀 CHECKPOINT 9: Calling resolveSingleMove', {
+                card: card.name,
+                droneId: droneId,
+                owner: owner,
+                fromLane: from,
+                toLane: to,
+                parameters: { card, droneId, owner, from, to }
+              });
+
+              // Card-based movement (Tactical Repositioning, etc.)
+              await resolveSingleMove(card, droneId, owner, from, to);
+
+              // Clean up all UI selection states
+              setSelectedDrone(null);
+              setPotentialInterceptors([]);
+              setPotentialGuardians([]);
+              setDraggedDrone(null);
+              setValidCardTargets([]);
             } else {
               // Normal drone movement (no card)
               await processActionWithGuestRouting('move', {
-                droneId: drone.id,
+                droneId: droneId,
                 fromLane: from,
                 toLane: to,
                 playerId: getLocalPlayerId()

@@ -305,10 +305,12 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     );
 
     // Add drone to destination lane with proper exhaustion state
-    // Enemy drones are always exhausted, friendly drones respect DO_NOT_EXHAUST
+    // All drones respect the DO_NOT_EXHAUST property regardless of ownership
     const movedDrone = {
       ...droneToMove,
-      isExhausted: isMovingEnemyDrone ? true : (effect.properties?.includes('DO_NOT_EXHAUST') ? droneToMove.isExhausted : true)
+      isExhausted: effect.properties?.includes('DO_NOT_EXHAUST')
+        ? droneToMove.isExhausted
+        : true
     };
     droneOwnerState.dronesOnBoard[toLane].push(movedDrone);
 

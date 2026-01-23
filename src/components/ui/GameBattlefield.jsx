@@ -62,6 +62,7 @@ function GameBattlefield({
   abilityMode,
   validAbilityTargets,
   multiSelectState,
+  singleMoveMode,
   turnPhase,
   reallocationPhase,
   pendingShieldAllocations,
@@ -148,6 +149,7 @@ function GameBattlefield({
           validCardTargets={validCardTargets}
           affectedDroneIds={affectedDroneIds}
           multiSelectState={multiSelectState}
+          singleMoveMode={singleMoveMode}
           turnPhase={turnPhase}
           localPlayerState={localPlayerState}
           opponentPlayerState={opponentPlayerState}
@@ -167,6 +169,7 @@ function GameBattlefield({
           hoveredTarget={hoveredTarget}
           interceptedBadge={interceptedBadge}
           draggedDrone={draggedDrone}
+          handleDroneDragStart={handleDroneDragStart}
           handleDroneDragEnd={handleDroneDragEnd}
           draggedActionCard={draggedActionCard}
           handleActionCardDragEnd={handleActionCardDragEnd}
@@ -188,6 +191,7 @@ function GameBattlefield({
           validCardTargets={validCardTargets}
           affectedDroneIds={affectedDroneIds}
           multiSelectState={multiSelectState}
+          singleMoveMode={singleMoveMode}
           turnPhase={turnPhase}
           localPlayerState={localPlayerState}
           opponentPlayerState={opponentPlayerState}

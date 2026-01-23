@@ -20,7 +20,7 @@ const DEBUG_CONFIG = {
   // Category-specific toggles
   categories: {
     DEPLOYMENT: false,          // Drone deployment tracking
-    DRAG_DROP_DEPLOY: false,    // Drag-and-drop deployment debugging
+    DRAG_DROP_DEPLOY: true,    // Drag-and-drop deployment debugging
     DRONE_SELECTION: false,     // Drone selection phase and data
     DECK_SELECTION: false,      // Deck selection phase
     PLACEMENT: false,           // Ship placement phase
@@ -44,8 +44,8 @@ const DEBUG_CONFIG = {
     HAND_VIEW: false,            // Hand display and card interaction (ENABLED for mandatoryAction debugging)
     CARD_PLAY: false,             // Card playability and clicking (ENABLED for mandatoryAction debugging)
     SHIELD_CLICKS: false,       // Shield allocation click tracking
-    BUTTON_CLICKS: false,       // Button click tracking and effects
-    MOVEMENT_LANES: false,      // Movement card lane highlighting diagnostics
+    BUTTON_CLICKS: true,       // Button click tracking and effects
+    MOVEMENT_LANES: true,      // Movement card lane highlighting diagnostics
     GUEST_CASCADE: false,        // Guest optimistic cascade flow (ENABLED for checkpoint testing)
     CASCADE_LOOP: false,        // Cascade loop iteration details (DISABLED - already debugged)
     VALIDATION: false,           // State validation and reconciliation (ENABLED for checkpoint testing)
@@ -82,7 +82,7 @@ const DEBUG_CONFIG = {
 
     // Targeting System Refactoring - Modular Processor Logging
     TARGETING_ROUTING: false,    // Targeting router decisions (DISABLED - Phase 2 complete and verified)
-    TARGETING_PROCESSING: false, // Targeting processor execution (DISABLED - Phase 2 complete and verified)
+    TARGETING_PROCESSING: true, // Targeting processor execution (DISABLED - Phase 2 complete and verified)
     TARGETING_FALLBACK: false,   // Targeting falling back to monolithic function (DISABLED - no fallbacks expected)
     LANE_TARGETING: false,       // Lane-targeting cards and filtered drone effects (affectedDroneIds)
     TACTICAL_ITEMS: false,        // Tactical item panel clicks and usage
@@ -90,6 +90,7 @@ const DEBUG_CONFIG = {
     MOVEMENT_EFFECT: false,       // Movement effect execution (DO_NOT_EXHAUST, drone state changes)
     TURN_TRANSITION_DEBUG: false,  // Turn transition investigation (TEMPORARY)
     AVAILABILITY: true,             // Drone availability system (dots, readyCount, inPlayCount)
+    SINGLE_MOVE_FLOW: true,         // ✅ Comprehensive SINGLE_MOVE card flow logging (card selection → modal → resolution)
   }
 };
 

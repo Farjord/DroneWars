@@ -1520,7 +1520,8 @@ const fullCardCollection = [
       location: 'ANY_LANE'
     },
     effect: {
-      type: 'SINGLE_MOVE'
+      type: 'SINGLE_MOVE',
+      properties: ['DO_NOT_EXHAUST']
     }
   },
 

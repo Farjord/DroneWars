@@ -13,6 +13,19 @@ import { BACKGROUNDS } from '../../config/backgrounds.js';
 import HullIntegrityBadge from './HullIntegrityBadge.jsx';
 
 /**
+ * Helper function to extract drone name from drone ID
+ * @param {string} droneId - The drone ID (e.g., "player2_Talon_0006")
+ * @returns {string} - The drone name (e.g., "Talon")
+ */
+const extractDroneNameFromId = (droneId) => {
+  if (!droneId) return '';
+  // ID format: "player2_Talon_0006" → extract "Talon"
+  const parts = droneId.split('_');
+  // Remove player prefix and sequence number, join remaining parts for multi-word names
+  return parts.slice(1, -1).join('_');
+};
+
+/**
  * Resource Badge Component - Information panel styled resource display
  * Matches the dw-stat-box aesthetic with angular corner accent
  */
@@ -114,6 +127,9 @@ function GameHeader({
   handleShowInterceptionDialog,
   handleResetInterception,
   handleConfirmInterception,
+  // Single-move mode props
+  singleMoveMode,
+  handleCancelSingleMove,
   // Extraction mode props
   currentRunState,
   isExtractionMode,
@@ -297,6 +313,12 @@ function GameHeader({
               (Intercepting - select interceptor)
             </span>
           )}
+          {/* Single Move Mode Status Text */}
+          {singleMoveMode && (
+            <span className="text-base font-semibold text-cyan-300 ml-2">
+              (Moving {extractDroneNameFromId(singleMoveMode.droneId)} - drag to adjacent lane)
+            </span>
+          )}
         </h2>
 
         {/* Turn Indicator - Always show */}
@@ -343,7 +365,7 @@ function GameHeader({
               )}
 
             {/* Pass Button - Hide during reallocation */}
-            {isMyTurn() && !mandatoryAction && !multiSelectState && !reallocationPhase && (
+            {isMyTurn() && !mandatoryAction && !multiSelectState && !singleMoveMode && !reallocationPhase && (
               <button
                 onClick={handlePlayerPass}
                 disabled={passInfo[`${getLocalPlayerId()}Passed`]}
@@ -464,6 +486,16 @@ function GameHeader({
                   Confirm
                 </button>
               </>
+            )}
+
+            {/* Single Move Mode Controls */}
+            {singleMoveMode && (
+              <button
+                onClick={handleCancelSingleMove}
+                className="dw-btn dw-btn-danger dw-btn--sm"
+              >
+                Cancel
+              </button>
             )}
             </>
           ) : (
