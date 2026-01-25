@@ -156,6 +156,10 @@ const renderDronesOnBoard = (
               getLocalPlayerId={getLocalPlayerId}
               getOpponentPlayerId={getOpponentPlayerId}
               isAbilitySource={abilityMode?.drone?.id === drone.id}
+              isElevated={
+                additionalCostState?.phase === 'select_effect' &&
+                additionalCostState?.costSelection?.drone?.id === drone.id
+              }
                />
           );
       })}
@@ -387,7 +391,7 @@ const DroneLanesDisplay = ({
               }
             }}
             className={`flex-1 rounded-lg transition-all duration-1000 ease-in-out p-2 ${laneBorderClass}
-              ${isTargetable ? 'bg-cyan-800/40 ring-2 ring-cyan-400/30' : laneBackgroundClass}
+              ${isTargetable ? 'lane-target-pulse' : laneBackgroundClass}
               ${isInteractivePlayerLane ? 'cursor-pointer hover:bg-cyan-900/20' : ''}
             `}
             style={{

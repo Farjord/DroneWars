@@ -141,3 +141,40 @@ export const isSimultaneousPhase = (phase) => SIMULTANEOUS_PHASES.includes(phase
  * @returns {boolean} True if phase is sequential
  */
 export const isSequentialPhase = (phase) => SEQUENTIAL_PHASES.includes(phase);
+
+/**
+ * Calculate destination point for cost reminder arrow
+ * Estimates lane position based on current drone position and lane offset
+ * @param {string} fromLane - Source lane ID (lane1, lane2, lane3)
+ * @param {string} toLane - Destination lane ID
+ * @param {Object} dronePos - Current drone center position {x, y}
+ * @param {HTMLElement} gameAreaElement - Game area reference for bounds
+ * @returns {Object} Destination point {x, y}
+ */
+export const calculateLaneDestinationPoint = (fromLane, toLane, dronePos, gameAreaElement) => {
+  if (!dronePos || !gameAreaElement) return dronePos;
+
+  // Parse lane numbers (1, 2, 3)
+  const fromLaneNum = parseInt(fromLane.replace('lane', ''), 10);
+  const toLaneNum = parseInt(toLane.replace('lane', ''), 10);
+  const laneOffset = toLaneNum - fromLaneNum; // -1 for left, +1 for right
+
+  // Get game area dimensions
+  const gameAreaRect = gameAreaElement.getBoundingClientRect();
+
+  // Estimate lane width (game area divided into 3 lanes with gap-8 spacing)
+  // Each lane is approximately 30% of game area width
+  const estimatedLaneWidth = gameAreaRect.width * 0.3;
+  const estimatedGap = 32; // gap-8 in pixels (2rem)
+
+  // Calculate horizontal movement
+  const horizontalShift = laneOffset * (estimatedLaneWidth + estimatedGap);
+
+  // Point to near edge of destination lane (~15% into lane from boundary)
+  const edgeOffset = laneOffset > 0 ? -estimatedLaneWidth * 0.35 : estimatedLaneWidth * 0.35;
+
+  return {
+    x: dronePos.x + horizontalShift + edgeOffset,
+    y: dronePos.y // Keep same vertical position
+  };
+};

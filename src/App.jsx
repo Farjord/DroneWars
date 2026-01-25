@@ -84,7 +84,7 @@ import p2pManager from './network/P2PManager.js';
 // ActionProcessor is created internally by GameStateManager
 
 // --- 1.7 UTILITY IMPORTS ---
-import { getElementCenter } from './utils/gameUtils.js';
+import { getElementCenter, calculateLaneDestinationPoint } from './utils/gameUtils.js';
 import { debugLog } from './utils/debugLogger.js';
 import { calculateAllValidTargets, calculateAffectedDroneIds, calculateCostTargets, calculateEffectTargetsWithCostContext } from './utils/uiTargetingHelpers.js';
 import DEV_CONFIG from './config/devConfig.js';
@@ -253,6 +253,9 @@ const App = ({ phaseAnimationQueue }) => {
   const [draggedActionCard, setDraggedActionCard] = useState(null); // { card }
   const [actionCardDragArrowState, setActionCardDragArrowState] = useState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
   const actionCardDragArrowRef = useRef(null);
+  // Cost reminder arrow for Forced Repositioning card
+  const [costReminderArrowState, setCostReminderArrowState] = useState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
+  const costReminderArrowRef = useRef(null);
 
   // Performance-optimized hoveredTarget setter with logging (only during drag)
   // Skips state update if hovering same target to prevent unnecessary re-renders
@@ -1138,6 +1141,7 @@ const App = ({ phaseAnimationQueue }) => {
 
     additionalCostFlowInProgress.current = false; // Reset flag when canceling
     setAdditionalCostState(null);
+    setCostReminderArrowState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
     setSelectedCard(null);
     setValidCardTargets([]);
     setAffectedDroneIds([]);
@@ -1175,6 +1179,7 @@ const App = ({ phaseAnimationQueue }) => {
       // CRITICAL: Clear additional cost state to prevent interference with multiSelectState
       setAdditionalCostConfirmation(null);
       setAdditionalCostState(null);  // Clear to avoid conflicting UI state
+      setCostReminderArrowState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
       setValidCardTargets([]);  // Clear old targets
       setAffectedDroneIds([]);  // Clear old affected drones
 
@@ -1198,6 +1203,7 @@ const App = ({ phaseAnimationQueue }) => {
     additionalCostFlowInProgress.current = false; // Reset flag when confirming
     setAdditionalCostConfirmation(null);
     setAdditionalCostState(null);
+    setCostReminderArrowState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
     setSelectedCard(null);
     setValidCardTargets([]);
     setAffectedDroneIds([]);
@@ -1681,6 +1687,7 @@ const App = ({ phaseAnimationQueue }) => {
       setAdditionalCostSelectionContext(null);
       setMultiSelectState(null);
       setAdditionalCostState(null);
+      setCostReminderArrowState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
       setSelectedCard(null);
       setValidCardTargets([]);
       setAffectedDroneIds([]);
@@ -4211,6 +4218,45 @@ const App = ({ phaseAnimationQueue }) => {
       });
       additionalCostFlowInProgress.current = true;
       setValidCardTargets(effectTargets);
+
+      // Show cost reminder arrow for Forced Repositioning
+      if (additionalCostState.card.id === 'FORCED_REPOSITION') {
+        const costDrone = additionalCostState.costSelection?.drone;
+        const fromLane = additionalCostState.costSelection?.sourceLane;
+        const toLane = targetLane;
+
+        if (costDrone && droneRefs.current[costDrone.id]) {
+          // Get drone center position
+          const dronePos = getElementCenter(
+            droneRefs.current[costDrone.id],
+            gameAreaRef.current
+          );
+
+          if (dronePos) {
+            // Calculate destination lane position
+            const arrowEnd = calculateLaneDestinationPoint(
+              fromLane,
+              toLane,
+              dronePos,
+              gameAreaRef.current
+            );
+
+            setCostReminderArrowState({
+              visible: true,
+              start: dronePos,
+              end: arrowEnd
+            });
+
+            debugLog('ADDITIONAL_COST_UI', '🏹 Cost reminder arrow shown (drag-drop path)', {
+              fromLane,
+              toLane,
+              dronePos,
+              arrowEnd
+            });
+          }
+        }
+      }
+
       return;
     }
 
@@ -5107,6 +5153,45 @@ const App = ({ phaseAnimationQueue }) => {
       });
       additionalCostFlowInProgress.current = true; // Ensure flag is set for movement → effect transition
       setValidCardTargets(effectTargets);
+
+      // Show cost reminder arrow for Forced Repositioning
+      if (additionalCostState.card.id === 'FORCED_REPOSITION') {
+        const costDrone = additionalCostState.costSelection?.drone;
+        const fromLane = additionalCostState.costSelection?.sourceLane;
+        const toLane = lane;
+
+        if (costDrone && droneRefs.current[costDrone.id]) {
+          // Get drone center position
+          const dronePos = getElementCenter(
+            droneRefs.current[costDrone.id],
+            gameAreaRef.current
+          );
+
+          if (dronePos) {
+            // Calculate destination lane position
+            const arrowEnd = calculateLaneDestinationPoint(
+              fromLane,
+              toLane,
+              dronePos,
+              gameAreaRef.current
+            );
+
+            setCostReminderArrowState({
+              visible: true,
+              start: dronePos,
+              end: arrowEnd
+            });
+
+            debugLog('ADDITIONAL_COST_UI', '🏹 Cost reminder arrow shown', {
+              fromLane,
+              toLane,
+              dronePos,
+              arrowEnd
+            });
+          }
+        }
+      }
+
       return;
     }
 
@@ -5870,6 +5955,7 @@ const App = ({ phaseAnimationQueue }) => {
      <TargetingArrow visible={cardDragArrowState.visible} start={cardDragArrowState.start} end={cardDragArrowState.end} lineRef={cardDragArrowRef} color="#22d3ee" />
      <TargetingArrow visible={droneDragArrowState.visible} start={droneDragArrowState.start} end={droneDragArrowState.end} lineRef={droneDragArrowRef} color="#ff0055" showPulses={false} />
      <TargetingArrow visible={actionCardDragArrowState.visible} start={actionCardDragArrowState.start} end={actionCardDragArrowState.end} lineRef={actionCardDragArrowRef} color="#22d3ee" />
+     <TargetingArrow visible={costReminderArrowState.visible} start={costReminderArrowState.start} end={costReminderArrowState.end} lineRef={costReminderArrowRef} color="#22d3ee" showPulses={false} zIndex={15} />
      <InterceptionTargetLine
        visible={!!playerInterceptionChoice}
        attackDetails={playerInterceptionChoice?.attackDetails}

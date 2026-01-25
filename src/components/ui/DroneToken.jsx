@@ -163,6 +163,7 @@ const DroneToken = ({
   isDragging = false,
   isHovered = false,
   isAbilitySource = false,
+  isElevated = false,
   singleMoveMode = null,
   // Action card drag-and-drop props
   draggedActionCard = null,
@@ -224,7 +225,7 @@ const DroneToken = ({
   // --- State Effects ---
   const exhaustEffect = drone.isExhausted ? 'grayscale opacity-90' : '';
   const hitEffect = isHit ? 'animate-shake' : '';
-  const selectedEffect = (isSelected || isSelectedForMove) ? 'scale-105 ring-2 ring-cyan-400 shadow-xl shadow-cyan-400/50' : '';
+  const selectedEffect = (isSelected || isSelectedForMove) ? 'scale-105 selected-glow' : '';
   const actionTargetEffect = isActionTarget ? 'shadow-xl shadow-red-500/95 animate-pulse' : '';
   const mandatoryDestroyEffect = mandatoryAction?.type === 'destroy' && isPlayer ? 'ring-2 ring-red-500 animate-pulse' : '';
   const hoverEffect = isHovered ? 'scale-105' : '';
@@ -305,7 +306,7 @@ const DroneToken = ({
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={`relative ${isDragging ? 'z-50' : 'z-10'} ${enableFloatAnimation ? 'drone-float' : ''}`}
+      className={`relative ${isDragging ? 'z-50' : isElevated ? 'z-20' : 'z-10'} ${enableFloatAnimation ? 'drone-float' : ''}`}
       style={{
         width: 'clamp(85px, 4.427vw, 115px)',
         height: 'clamp(115px, 5.99vw, 156px)'
