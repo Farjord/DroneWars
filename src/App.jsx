@@ -3606,6 +3606,7 @@ const App = ({ phaseAnimationQueue }) => {
         const costSelection = {
           type: card.additionalCost.type,
           target,
+          drone: target,  // Add for highlighting consistency
           owner: targetOwner,
           lane: targetLane
         };
@@ -3641,11 +3642,7 @@ const App = ({ phaseAnimationQueue }) => {
             name: t.name,
             owner: t.owner,
             attack: t.attack,
-            lane: Object.keys(gameState.playerLanes).find(lane =>
-              gameState.playerLanes[lane]?.some(d => d.id === t.id)
-            ) || Object.keys(gameState.opponentLanes).find(lane =>
-              gameState.opponentLanes[lane]?.some(d => d.id === t.id)
-            )
+            lane: t.lane
           })),
           timestamp: Date.now()
         });
