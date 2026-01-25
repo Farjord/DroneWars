@@ -268,17 +268,39 @@ const DroneToken = ({
         }
       }}
       onMouseUp={(e) => {
+        debugLog('CHECKPOINT_FLOW', '🎯 CHECKPOINT 2: DroneToken mouseup fired', {
+          droneName: drone.name,
+          droneId: drone.id,
+          droneOwner: isPlayer ? 'player' : 'opponent',
+          hasDraggedActionCard: !!draggedActionCard,
+          hasOnDragDrop: !!onDragDrop,
+          timestamp: Date.now()
+        });
+
         // Handle action card targeting via drag-and-drop
         if (draggedActionCard && onActionCardDrop) {
           const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
+          debugLog('CHECKPOINT_FLOW', '🎯 CHECKPOINT 2A: Handling action card drop on drone', {
+            drone: drone.name,
+            owner
+          });
           onActionCardDrop(drone, 'drone', owner);
           e.stopPropagation();
+          debugLog('CHECKPOINT_FLOW', '🎯 CHECKPOINT 2A-STOP: stopPropagation called');
           return;
         }
         // Handle drop on enemy drone for attack (existing behavior)
         if (onDragDrop) {
+          debugLog('CHECKPOINT_FLOW', '🎯 CHECKPOINT 2B: Calling onDragDrop callback', {
+            drone: drone.name,
+            droneId: drone.id,
+            callback: 'onDragDrop(drone)'
+          });
           onDragDrop(drone);
           e.stopPropagation();
+          debugLog('CHECKPOINT_FLOW', '🎯 CHECKPOINT 2B-STOP: stopPropagation called');
+        } else {
+          debugLog('CHECKPOINT_FLOW', '🎯 CHECKPOINT 2C: No onDragDrop callback, propagating to lane');
         }
       }}
       onMouseEnter={onMouseEnter}

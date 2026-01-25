@@ -6,6 +6,7 @@
 
 import BaseTargetingProcessor from '../BaseTargetingProcessor.js';
 import { getLaneOfDrone, hasJammerInLane, getJammerDronesInLane } from '../../utils/gameEngineUtils.js';
+import { debugLog } from '../../../utils/debugLogger.js';
 
 /**
  * DroneTargetingProcessor - Handles drone targeting
@@ -41,12 +42,15 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
   process(context) {
     this.logProcessStart(context);
 
-    const { actingPlayerId, source, definition } = context;
+    const { actingPlayerId, source, definition, costSelection } = context;
     const { affinity, location, custom } = definition.targeting;
     const targets = [];
 
     const isCard = this.isCard(definition);
     const isAbility = this.isAbility(definition);
+
+    // Extract cost context for stat comparisons and location filtering
+    const costContext = costSelection || null;
 
     // For SAME_LANE abilities, determine source drone's lane
     let userLane = null;
@@ -73,7 +77,9 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
         location,
         custom,
         isCard,
-        targets
+        targets,
+        costContext,
+        context
       );
     }
 
@@ -87,7 +93,9 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
         location,
         custom,
         isCard,
-        targets
+        targets,
+        costContext,
+        context
       );
     }
 
@@ -130,14 +138,44 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
    * @param {Array} custom - Custom criteria
    * @param {boolean} isCard - Whether this is a card (vs ability)
    * @param {Array} targets - Array to add valid targets to
+   * @param {Object} costContext - Optional cost selection context for stat comparisons
+   * @param {Object} context - Targeting context with getEffectiveStats function
    */
-  processPlayerDrones(playerState, playerId, actingPlayerId, userLane, location, custom, isCard, targets) {
+  processPlayerDrones(playerState, playerId, actingPlayerId, userLane, location, custom, isCard, targets, costContext = null, context = null) {
+    debugLog('ADDITIONAL_COST_TARGETING', '🔍 processPlayerDrones called', {
+      playerId,
+      actingPlayerId,
+      location,
+      hasCostContext: !!costContext,
+      costContextLane: costContext?.lane,
+      costContextTarget: costContext?.target?.id
+    });
+
     // Check if this is an opponent's card effect targeting
     const isOpponentTargeting = (actingPlayerId !== playerId) && isCard;
 
     Object.entries(playerState.dronesOnBoard).forEach(([lane, drones]) => {
+      debugLog('ADDITIONAL_COST_TARGETING', `🔍 Checking lane ${lane}`, {
+        droneCount: drones.length,
+        location,
+        userLane,
+        costContextLane: costContext?.lane
+      });
+
       // Check location criteria
-      const isValidLocation = this.checkLocationCriteria(location, lane, userLane);
+      const isValidLocation = this.checkLocationCriteria(location, lane, userLane, costContext);
+
+      debugLog('ADDITIONAL_COST_TARGETING',
+        isValidLocation ? `✅ Lane ${lane} passes location criteria` : `❌ Lane ${lane} fails location criteria`,
+        {
+          lane,
+          location,
+          userLane,
+          costContextLane: costContext?.lane,
+          isValidLocation
+        }
+      );
+
       if (!isValidLocation) return;
 
       // CRITICAL: Jammer protection logic
@@ -147,14 +185,40 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
         // Opponent card effects are forced to target only Jammers in this lane
         const jammers = getJammerDronesInLane(playerState, lane);
         jammers.forEach(drone => {
-          if (this.applyCustomCriteria(drone, custom)) {
+          // Check if this is a movement effect
+          const effectType = context?.definition?.effect?.type;
+          const isMovementEffect = effectType === 'SINGLE_MOVE' || effectType === 'MULTI_MOVE';
+
+          // Check if EXHAUSTED is explicitly allowed as a custom criterion
+          const allowsExhausted = custom && Array.isArray(custom) &&
+            custom.some(c => c === 'EXHAUSTED' || (typeof c === 'object' && c.type === 'EXHAUSTED'));
+
+          // For movement effects, skip exhausted drones unless explicitly allowed
+          if (isMovementEffect && !allowsExhausted && drone.isExhausted) {
+            return; // Skip this drone
+          }
+
+          if (this.applyCustomCriteria(drone, custom, costContext, lane, context)) {
             targets.push({ ...drone, lane, owner: playerId });
           }
         });
       } else {
         // Normal targeting (no Jammer interference or not an opponent card effect)
         drones.forEach(drone => {
-          if (this.applyCustomCriteria(drone, custom)) {
+          // Check if this is a movement effect
+          const effectType = context?.definition?.effect?.type;
+          const isMovementEffect = effectType === 'SINGLE_MOVE' || effectType === 'MULTI_MOVE';
+
+          // Check if EXHAUSTED is explicitly allowed as a custom criterion
+          const allowsExhausted = custom && Array.isArray(custom) &&
+            custom.some(c => c === 'EXHAUSTED' || (typeof c === 'object' && c.type === 'EXHAUSTED'));
+
+          // For movement effects, skip exhausted drones unless explicitly allowed
+          if (isMovementEffect && !allowsExhausted && drone.isExhausted) {
+            return; // Skip this drone
+          }
+
+          if (this.applyCustomCriteria(drone, custom, costContext, lane, context)) {
             targets.push({ ...drone, lane, owner: playerId });
           }
         });
@@ -165,14 +229,78 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
   /**
    * Check if a lane matches location criteria
    *
-   * @param {string} location - ANY_LANE or SAME_LANE
+   * @param {string} location - ANY_LANE, SAME_LANE, SAME_LANE_AS_COST, or COST_SOURCE_LANE
    * @param {string} lane - Lane to check
    * @param {string|null} userLane - Source lane (for SAME_LANE)
+   * @param {Object} costContext - Cost selection context (for cost-based location filtering)
    * @returns {boolean} True if lane matches criteria
    */
-  checkLocationCriteria(location, lane, userLane) {
-    if (location === 'ANY_LANE') return true;
-    if (location === 'SAME_LANE') return lane === userLane;
+  checkLocationCriteria(location, lane, userLane, costContext = null) {
+    debugLog('ADDITIONAL_COST_TARGETING', '📏 checkLocationCriteria called', {
+      location,
+      lane,
+      userLane,
+      hasCostContext: !!costContext,
+      costContextLane: costContext?.lane,
+      costContextSourceLane: costContext?.sourceLane
+    });
+
+    if (location === 'ANY_LANE') {
+      debugLog('ADDITIONAL_COST_TARGETING', '✅ ANY_LANE - always passes', { lane });
+      return true;
+    }
+
+    if (location === 'SAME_LANE') {
+      const passes = lane === userLane;
+      debugLog('ADDITIONAL_COST_TARGETING',
+        passes ? '✅ SAME_LANE passes' : '❌ SAME_LANE fails',
+        { lane, userLane, passes }
+      );
+      return passes;
+    }
+
+    // NEW: Cost-based location filtering
+    if (location === 'SAME_LANE_AS_COST') {
+      if (!costContext || !costContext.lane) {
+        debugLog('ADDITIONAL_COST_TARGETING', '❌ SAME_LANE_AS_COST fails - missing cost context', {
+          hasCostContext: !!costContext,
+          costContextLane: costContext?.lane
+        });
+        return false;
+      }
+      const passes = lane === costContext.lane;
+      debugLog('ADDITIONAL_COST_TARGETING',
+        passes ? '✅ SAME_LANE_AS_COST passes' : '❌ SAME_LANE_AS_COST fails',
+        {
+          lane,
+          costLane: costContext.lane,
+          passes
+        }
+      );
+      return passes;
+    }
+
+    if (location === 'COST_SOURCE_LANE') {
+      if (!costContext || !costContext.sourceLane) {
+        debugLog('ADDITIONAL_COST_TARGETING', '❌ COST_SOURCE_LANE fails - missing cost source lane', {
+          hasCostContext: !!costContext,
+          costContextSourceLane: costContext?.sourceLane
+        });
+        return false;
+      }
+      const passes = lane === costContext.sourceLane;
+      debugLog('ADDITIONAL_COST_TARGETING',
+        passes ? '✅ COST_SOURCE_LANE passes' : '❌ COST_SOURCE_LANE fails',
+        {
+          lane,
+          costSourceLane: costContext.sourceLane,
+          passes
+        }
+      );
+      return passes;
+    }
+
+    debugLog('ADDITIONAL_COST_TARGETING', '❌ Unknown location type', { location });
     return false;
   }
 }

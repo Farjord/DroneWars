@@ -628,6 +628,11 @@ const fullCardCollection = [
     cost: 1,
     image: '/DroneWars/cards/Maneuver.png',
     description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move.',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'FRIENDLY',
+      location: 'ANY_LANE'
+    },
     effect: {
       type: 'SINGLE_MOVE',
       properties: ['DO_NOT_EXHAUST'],
@@ -643,6 +648,11 @@ const fullCardCollection = [
     cost: 4,
     image: '/DroneWars/cards/Maneuver.png',
     description: 'Move a friendly drone to an adjacent lane. The drone is not exhausted by this move. Go again.',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'FRIENDLY',
+      location: 'ANY_LANE'
+    },
     effect: {
       type: 'SINGLE_MOVE',
       properties: ['DO_NOT_EXHAUST'],
@@ -1816,6 +1826,124 @@ const fullCardCollection = [
       targets: 'ALL_SECTIONS',
       damageType: 'KINETIC'
     }
+  },
+
+  // ============================================
+  // ADDITIONAL COST CARDS - Example Cards
+  // ============================================
+
+  {
+    id: 'EXHAUST_TO_DISABLE',
+    baseCardId: 'EXHAUST_TO_DISABLE',
+    name: 'Exhausting Strike',
+    maxInDeck: 2,
+    rarity: 'Common',
+    type: 'Tactic',
+    cost: 0,
+    image: '/DroneWars/cards/placeholder.png',
+    description: 'Exhaust a friendly drone to exhaust an enemy drone with lower speed in the same lane.',
+    additionalCost: {
+      type: 'EXHAUST_DRONE',
+      targeting: {
+        type: 'DRONE',
+        affinity: 'FRIENDLY',
+        location: 'ANY_LANE'
+      },
+      description: 'Exhaust a friendly drone'
+    },
+    effect: {
+      type: 'EXHAUST_DRONE'
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'SAME_LANE_AS_COST',
+      custom: [
+        {
+          type: 'STAT_COMPARISON',
+          stat: 'speed',
+          comparison: 'LT',
+          reference: 'COST_TARGET',
+          referenceStat: 'speed'
+        }
+      ]
+    },
+    visualEffect: { type: 'DISRUPTION' }
+  },
+
+  {
+    id: 'FORCED_REPOSITION',
+    baseCardId: 'FORCED_REPOSITION',
+    name: 'Forced Repositioning',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Movement',
+    cost: 1,
+    image: '/DroneWars/cards/placeholder.png',
+    description: 'Move a friendly drone to an adjacent lane, then move an enemy drone from the original lane with higher attack.',
+    additionalCost: {
+      type: 'SINGLE_MOVE',
+      targeting: {
+        type: 'DRONE',
+        affinity: 'FRIENDLY',
+        location: 'ANY_LANE'
+      },
+      description: 'Move a friendly drone',
+      properties: ['DO_NOT_EXHAUST']
+    },
+    effect: {
+      type: 'SINGLE_MOVE',
+      properties: ['DO_NOT_EXHAUST']
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'COST_SOURCE_LANE',
+      custom: [
+        {
+          type: 'STAT_COMPARISON',
+          stat: 'attack',
+          comparison: 'GT',
+          reference: 'COST_TARGET',
+          referenceStat: 'attack'
+        }
+      ]
+    },
+    visualEffect: { type: 'MOVEMENT' }
+  },
+
+  {
+    id: 'SACRIFICE_FOR_POWER',
+    baseCardId: 'SACRIFICE_FOR_POWER',
+    name: 'Sacrifice for Power',
+    maxInDeck: 2,
+    rarity: 'Rare',
+    type: 'Tactic',
+    cost: 0,
+    image: '/DroneWars/cards/placeholder.png',
+    description: 'Discard a card from your hand to give a friendly drone +X attack until end of turn, where X is the discarded card\'s energy cost.',
+    additionalCost: {
+      type: 'DISCARD_CARD',
+      targeting: {
+        type: 'CARD_IN_HAND',
+        affinity: 'FRIENDLY'
+      },
+      description: 'Discard a card from your hand'
+    },
+    effect: {
+      type: 'MODIFY_STAT',
+      mod: {
+        stat: 'attack',
+        value: 'COST_CARD_VALUE',
+        type: 'temporary'
+      }
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'FRIENDLY',
+      location: 'ANY_LANE'
+    },
+    visualEffect: { type: 'BUFF' }
   }
 ];
 

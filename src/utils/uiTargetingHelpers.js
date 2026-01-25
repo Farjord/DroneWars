@@ -169,7 +169,7 @@ export const calculateUpgradeTargets = (selectedCard, playerState) => {
  * @param {Object} singleMoveMode - Single-move card mode state (if any)
  * @returns {Object} { validAbilityTargets, validCardTargets }
  */
-export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSelectState, selectedCard, player1, player2, localPlayerId, singleMoveMode = null) => {
+export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSelectState, selectedCard, player1, player2, localPlayerId, singleMoveMode = null, getEffectiveStatsFn = null) => {
     let validAbilityTargets = [];
     let validCardTargets = [];
 
@@ -204,7 +204,8 @@ export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSele
             source: abilityMode.drone,
             definition: abilityMode.ability,
             player1,
-            player2
+            player2,
+            getEffectiveStats: getEffectiveStatsFn
         });
     } else if (shipAbilityMode) {
         validAbilityTargets = targetingRouter.routeTargeting({
@@ -212,7 +213,8 @@ export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSele
             source: { id: shipAbilityMode.sectionName },
             definition: shipAbilityMode.ability,
             player1,
-            player2
+            player2,
+            getEffectiveStats: getEffectiveStatsFn
         });
     } else if (multiSelectState) {
         // Determine which player state to use based on who is acting
@@ -257,7 +259,8 @@ export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSele
                     source: null,
                     definition: selectedCard,
                     player1,
-                    player2
+                    player2,
+                    getEffectiveStats: getEffectiveStatsFn
                 });
             } else {
                 validCardTargets = [];
@@ -268,7 +271,8 @@ export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSele
                 source: null,
                 definition: selectedCard,
                 player1,
-                player2
+                player2,
+                getEffectiveStats: getEffectiveStatsFn
             });
         }
     }
@@ -361,3 +365,142 @@ export const calculateAffectedDroneIds = (
 
     return affectedIds;
 };
+
+/**
+ * Calculate valid cost targets for additional cost cards
+ *
+ * This is called at card drag start to determine which targets are valid
+ * for the COST selection (before any cost selection has been made).
+ * For example: which drones can be exhausted, which cards can be discarded.
+ *
+ * @param {Object} additionalCost - The additionalCost object from card definition
+ * @param {Object} player1 - Player 1 state
+ * @param {Object} player2 - Player 2 state
+ * @param {string} actingPlayerId - Player playing the card
+ * @param {string} playingCardId - ID of the card being played (to exclude from hand selection)
+ * @returns {Array} Valid cost targets
+ */
+export function calculateCostTargets(additionalCost, player1, player2, actingPlayerId, playingCardId, getEffectiveStatsFn = null) {
+  debugLog('ADDITIONAL_COST_TARGETING', '🎯 calculateCostTargets called', {
+    costType: additionalCost.type,
+    costTargeting: additionalCost.targeting,
+    actingPlayerId
+  });
+
+  // Special case: CARD_IN_HAND costs (discard card)
+  if (additionalCost.targeting?.type === 'CARD_IN_HAND') {
+    const actingPlayerState = actingPlayerId === 'player1' ? player1 : player2;
+
+    // Return all cards in hand except the one being played
+    const validCards = actingPlayerState.hand
+      .filter(c => c.id !== playingCardId)
+      .map(c => ({
+        ...c,
+        owner: actingPlayerId,
+        type: 'card'
+      }));
+
+    debugLog('ADDITIONAL_COST_TARGETING', '✅ CARD_IN_HAND cost targets calculated', {
+      handSize: actingPlayerState.hand.length,
+      validTargetCount: validCards.length,
+      excludedCardId: playingCardId
+    });
+
+    return validCards;
+  }
+
+  // General case: Use targeting router with cost targeting definition
+  // This handles DRONE costs (exhaust drone, move drone, etc.)
+  const context = {
+    actingPlayerId,
+    player1,
+    player2,
+    definition: {
+      targeting: additionalCost.targeting,
+      name: `Additional Cost (${additionalCost.type})`
+    },
+    playingCardId,
+    getEffectiveStats: getEffectiveStatsFn
+  };
+
+  debugLog('ADDITIONAL_COST_TARGETING', '📦 Context prepared for cost targeting router', {
+    targetingType: additionalCost.targeting?.type,
+    targetingAffinity: additionalCost.targeting?.affinity,
+    targetingLocation: additionalCost.targeting?.location
+  });
+
+  const validTargets = targetingRouter.routeTargeting(context);
+
+  debugLog('ADDITIONAL_COST_TARGETING', '✅ Cost targeting router returned results', {
+    costType: additionalCost.type,
+    validTargetCount: validTargets.length,
+    validTargets: validTargets.map(t => ({
+      id: t.id,
+      name: t.name,
+      owner: t.owner,
+      lane: t.lane
+    }))
+  });
+
+  return validTargets;
+}
+
+/**
+ * Calculate valid effect targets with cost context
+ *
+ * This is used for cards with additional costs where the effect targeting
+ * depends on the cost selection (e.g., "enemy drone in same lane as cost")
+ *
+ * @param {Object} card - Card with additionalCost and targeting
+ * @param {Object} costSelection - Selected cost target(s)
+ * @param {Object} player1 - Player 1 state
+ * @param {Object} player2 - Player 2 state
+ * @param {string} actingPlayerId - Player playing the card
+ * @returns {Array} Valid effect targets
+ */
+export function calculateEffectTargetsWithCostContext(card, costSelection, player1, player2, actingPlayerId, getEffectiveStatsFn = null) {
+  debugLog('ADDITIONAL_COST_TARGETING', '🔧 calculateEffectTargetsWithCostContext called', {
+    cardName: card.name,
+    cardTargeting: card.targeting,
+    costSelection,
+    actingPlayerId
+  });
+
+  const context = {
+    actingPlayerId,
+    player1,
+    player2,
+    definition: card,
+    costSelection,  // Pass cost context
+    playingCardId: card.id,
+    getEffectiveStats: getEffectiveStatsFn
+  };
+
+  debugLog('ADDITIONAL_COST_TARGETING', '📦 Context prepared for targeting router', {
+    hasPlayer1: !!context.player1,
+    hasPlayer2: !!context.player2,
+    hasCostSelection: !!context.costSelection,
+    costSelectionLane: context.costSelection?.lane,
+    costSelectionTarget: context.costSelection?.target?.id,
+    targetingType: card.targeting?.type,
+    targetingLocation: card.targeting?.location,
+    targetingAffinity: card.targeting?.affinity,
+    customCriteria: card.targeting?.custom
+  });
+
+  const validTargets = targetingRouter.routeTargeting(context);
+
+  debugLog('ADDITIONAL_COST_TARGETING', '✅ Targeting router returned results', {
+    cardName: card.name,
+    costSelection,
+    validTargetCount: validTargets.length,
+    validTargets: validTargets.map(t => ({
+      id: t.id,
+      name: t.name,
+      owner: t.owner,
+      lane: t.lane
+    }))
+  });
+
+  return validTargets;
+}

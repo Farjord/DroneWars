@@ -63,6 +63,7 @@ function GameBattlefield({
   validAbilityTargets,
   multiSelectState,
   singleMoveMode,
+  additionalCostState,
   turnPhase,
   reallocationPhase,
   pendingShieldAllocations,
@@ -150,6 +151,7 @@ function GameBattlefield({
           affectedDroneIds={affectedDroneIds}
           multiSelectState={multiSelectState}
           singleMoveMode={singleMoveMode}
+          additionalCostState={additionalCostState}
           turnPhase={turnPhase}
           localPlayerState={localPlayerState}
           opponentPlayerState={opponentPlayerState}
@@ -192,6 +194,7 @@ function GameBattlefield({
           affectedDroneIds={affectedDroneIds}
           multiSelectState={multiSelectState}
           singleMoveMode={singleMoveMode}
+          additionalCostState={additionalCostState}
           turnPhase={turnPhase}
           localPlayerState={localPlayerState}
           opponentPlayerState={opponentPlayerState}

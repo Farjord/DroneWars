@@ -130,6 +130,9 @@ function GameHeader({
   // Single-move mode props
   singleMoveMode,
   handleCancelSingleMove,
+  // Additional cost mode props
+  additionalCostState,
+  handleCancelAdditionalCost,
   // Extraction mode props
   currentRunState,
   isExtractionMode,
@@ -297,6 +300,11 @@ function GameHeader({
               (Select source lane)
             </span>
           )}
+          {multiSelectState?.phase === 'select_drone' && (
+            <span className="text-base font-semibold text-cyan-300 ml-2">
+              (Select drone to move)
+            </span>
+          )}
           {multiSelectState?.phase === 'select_drones' && (
             <span className="text-base font-semibold text-cyan-300 ml-2">
               ({multiSelectState.selectedDrones.length} / {multiSelectState.maxDrones} drones selected)
@@ -317,6 +325,14 @@ function GameHeader({
           {singleMoveMode && (
             <span className="text-base font-semibold text-cyan-300 ml-2">
               (Moving {extractDroneNameFromId(singleMoveMode.droneId)} - drag to adjacent lane)
+            </span>
+          )}
+          {/* Additional Cost Mode Status Text */}
+          {additionalCostState && (
+            <span className="text-base font-semibold text-cyan-300 ml-2">
+              {additionalCostState.phase === 'select_cost' && `(Select ${additionalCostState.card.additionalCost.description || 'cost'})`}
+              {additionalCostState.phase === 'select_cost_movement_destination' && `(Moving ${extractDroneNameFromId(additionalCostState.costSelection.drone.id)} - select destination)`}
+              {additionalCostState.phase === 'select_effect' && `(Select target for ${additionalCostState.card.name})`}
             </span>
           )}
         </h2>
@@ -365,7 +381,7 @@ function GameHeader({
               )}
 
             {/* Pass Button - Hide during reallocation */}
-            {isMyTurn() && !mandatoryAction && !multiSelectState && !singleMoveMode && !reallocationPhase && (
+            {isMyTurn() && !mandatoryAction && !multiSelectState && !singleMoveMode && !additionalCostState && !reallocationPhase && (
               <button
                 onClick={handlePlayerPass}
                 disabled={passInfo[`${getLocalPlayerId()}Passed`]}
@@ -492,6 +508,16 @@ function GameHeader({
             {singleMoveMode && (
               <button
                 onClick={handleCancelSingleMove}
+                className="dw-btn dw-btn-danger dw-btn--sm"
+              >
+                Cancel
+              </button>
+            )}
+
+            {/* Additional Cost Mode Controls */}
+            {additionalCostState && !multiSelectState && (
+              <button
+                onClick={handleCancelAdditionalCost}
                 className="dw-btn dw-btn-danger dw-btn--sm"
               >
                 Cancel

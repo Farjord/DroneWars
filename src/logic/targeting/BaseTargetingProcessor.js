@@ -53,44 +53,197 @@ class BaseTargetingProcessor {
 
   /**
    * Apply custom criteria filtering to a drone
+   * Extended to support stat comparisons with cost targets
    *
    * @param {Object} drone - Drone to check
-   * @param {Array} custom - Array of custom criteria strings
+   * @param {Array} custom - Array of custom criteria (strings or objects)
+   * @param {Object} costContext - Optional cost selection context
+   * @param {string} lane - Lane where drone is located
+   * @param {Object} context - Targeting context with getEffectiveStats function
    * @returns {boolean} True if drone meets all custom criteria
    */
-  applyCustomCriteria(drone, custom) {
+  applyCustomCriteria(drone, custom, costContext = null, lane = null, context = null) {
     if (!custom || custom.length === 0) return true;
 
-    // DAMAGED_HULL - Drone's hull must be less than max hull
-    if (custom.includes('DAMAGED_HULL')) {
-      const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
-      if (!baseDrone || drone.hull >= baseDrone.hull) {
-        return false;
+    for (const criterion of custom) {
+      // Legacy string criteria
+      if (typeof criterion === 'string') {
+        if (!this.applyStringCriterion(drone, criterion)) {
+          return false;
+        }
+        continue;
       }
-    }
 
-    // EXHAUSTED - Drone must be exhausted
-    if (custom.includes('EXHAUSTED')) {
-      if (!drone.isExhausted) {
-        return false;
-      }
-    }
-
-    // MARKED - Drone must be marked
-    if (custom.includes('MARKED')) {
-      if (!drone.isMarked) {
-        return false;
-      }
-    }
-
-    // NOT_MARKED - Drone must not be marked
-    if (custom.includes('NOT_MARKED')) {
-      if (drone.isMarked) {
-        return false;
+      // New object-based criteria
+      if (criterion.type === 'STAT_COMPARISON') {
+        if (!this.applyStatComparison(drone, criterion, costContext, lane, context)) {
+          return false;
+        }
+        continue;
       }
     }
 
     return true;
+  }
+
+  /**
+   * Apply legacy string criterion (existing logic)
+   *
+   * @param {Object} drone - Drone to check
+   * @param {string} criterion - String criterion
+   * @returns {boolean} True if criterion passes
+   */
+  applyStringCriterion(drone, criterion) {
+    // DAMAGED_HULL - Drone's hull must be less than max hull
+    if (criterion === 'DAMAGED_HULL') {
+      const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
+      return baseDrone && drone.hull < baseDrone.hull;
+    }
+
+    // EXHAUSTED - Drone must be exhausted
+    if (criterion === 'EXHAUSTED') {
+      return drone.isExhausted;
+    }
+
+    // MARKED - Drone must be marked
+    if (criterion === 'MARKED') {
+      return drone.isMarked;
+    }
+
+    // NOT_MARKED - Drone must not be marked
+    if (criterion === 'NOT_MARKED') {
+      return !drone.isMarked;
+    }
+
+    return true;
+  }
+
+  /**
+   * Apply stat comparison criterion
+   *
+   * @param {Object} drone - Drone to check
+   * @param {Object} criterion - { type, stat, comparison, reference, referenceStat }
+   * @param {Object} costContext - Cost selection context
+   * @param {string} lane - Lane where drone is located
+   * @param {Object} context - Targeting context with getEffectiveStats function
+   * @returns {boolean} True if comparison passes
+   */
+  applyStatComparison(drone, criterion, costContext, lane, context) {
+    debugLog('ADDITIONAL_COST_TARGETING', '📊 applyStatComparison called', {
+      droneId: drone.id,
+      criterion,
+      hasCostContext: !!costContext,
+      costContextTarget: costContext?.target?.id
+    });
+
+    const { stat, comparison, reference, referenceStat } = criterion;
+
+    if (reference === 'COST_TARGET') {
+      if (!costContext || !costContext.target) {
+        debugLog('ADDITIONAL_COST_TARGETING', '❌ STAT_COMPARISON fails - missing cost target', {
+          hasCostContext: !!costContext,
+          costContextTarget: costContext?.target
+        });
+        return false;
+      }
+
+      const costTarget = costContext.target;
+      const droneValue = this.getEffectiveStat(drone, stat, lane, context);
+      const referenceValue = this.getEffectiveStat(costTarget, referenceStat || stat, costContext?.lane, context);
+      const passes = this.compareValues(droneValue, comparison, referenceValue);
+
+      debugLog('ADDITIONAL_COST_TARGETING',
+        passes ? '✅ STAT_COMPARISON passes' : '❌ STAT_COMPARISON fails',
+        {
+          droneId: drone.id,
+          droneStat: stat,
+          droneValue,
+          comparison,
+          costTargetId: costTarget.id,
+          referenceStat: referenceStat || stat,
+          referenceValue,
+          passes
+        }
+      );
+
+      return passes;
+    }
+
+    debugLog('ADDITIONAL_COST_TARGETING', '⚠️ Unknown reference type', { reference });
+    // Future: support other reference types (PLAYER_ENERGY, etc.)
+    return true;
+  }
+
+  /**
+   * Get effective stat value using GameDataService
+   *
+   * @param {Object} drone - Drone object
+   * @param {string} stat - Stat name (attack, speed, hull, etc.)
+   * @param {string} lane - Lane where drone is located
+   * @param {Object} context - Targeting context with getEffectiveStats function
+   * @returns {number} Effective stat value
+   */
+  getEffectiveStat(drone, stat, lane = null, context = null) {
+    // For non-buffable stats, return base value directly
+    if (stat !== 'attack' && stat !== 'speed') {
+      return drone[stat] || 0;
+    }
+
+    // If no getEffectiveStats function provided, fall back to base stat
+    if (!context || !context.getEffectiveStats || !lane) {
+      debugLog('STAT_CALCULATION', '⚠️ Missing getEffectiveStats or lane, using base stat', {
+        droneId: drone.id,
+        stat,
+        hasContext: !!context,
+        hasFunction: !!(context?.getEffectiveStats),
+        hasLane: !!lane
+      });
+      return drone[stat] || 0;
+    }
+
+    // Use the proven GameDataService.getEffectiveStats method
+    try {
+      const effectiveStats = context.getEffectiveStats(drone, lane, {
+        playerState: context.player1,
+        opponentState: context.player2
+      });
+
+      debugLog('STAT_CALCULATION', '✅ Used GameDataService.getEffectiveStats', {
+        droneId: drone.id,
+        stat,
+        lane,
+        baseValue: drone[stat],
+        effectiveValue: effectiveStats[stat]
+      });
+
+      return effectiveStats[stat];
+    } catch (error) {
+      debugLog('STAT_CALCULATION', '❌ Error calling getEffectiveStats', {
+        droneId: drone.id,
+        stat,
+        error: error.message
+      });
+      return drone[stat] || 0;
+    }
+  }
+
+  /**
+   * Compare two values based on comparison operator
+   *
+   * @param {number} value - Value to compare
+   * @param {string} operator - Comparison operator (GT, GTE, LT, LTE, EQ)
+   * @param {number} reference - Reference value
+   * @returns {boolean} Comparison result
+   */
+  compareValues(value, operator, reference) {
+    switch (operator) {
+      case 'GT': return value > reference;
+      case 'GTE': return value >= reference;
+      case 'LT': return value < reference;
+      case 'LTE': return value <= reference;
+      case 'EQ': return value === reference;
+      default: return true;
+    }
   }
 
   /**

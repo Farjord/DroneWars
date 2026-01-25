@@ -10,6 +10,7 @@ import DroneTargetingProcessor from './targeting/drone/DroneTargetingProcessor.j
 import DroneCardTargetingProcessor from './targeting/cards/DroneCardTargetingProcessor.js';
 import AppliedUpgradeTargetingProcessor from './targeting/cards/AppliedUpgradeTargetingProcessor.js';
 import AllMarkedProcessor from './targeting/drone/AllMarkedProcessor.js';
+import CardInHandTargetingProcessor from './targeting/cards/CardInHandTargetingProcessor.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 /**
@@ -23,6 +24,7 @@ import { debugLog } from '../utils/debugLogger.js';
  *  - DRONE_CARD
  *  - APPLIED_UPGRADE
  *  - ALL_MARKED
+ *  - CARD_IN_HAND
  *
  * Usage:
  *   const router = new TargetingRouter();
@@ -38,7 +40,8 @@ class TargetingRouter {
       MULTI_DRONE: new DroneTargetingProcessor(), // Uses same processor as DRONE
       DRONE_CARD: new DroneCardTargetingProcessor(),
       APPLIED_UPGRADE: new AppliedUpgradeTargetingProcessor(),
-      ALL_MARKED: new AllMarkedProcessor()
+      ALL_MARKED: new AllMarkedProcessor(),
+      CARD_IN_HAND: new CardInHandTargetingProcessor()
     };
   }
 

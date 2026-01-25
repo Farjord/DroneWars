@@ -122,9 +122,48 @@ function HandView({
 
     const targetMap = new Map();
     localPlayerState.hand.forEach(card => {
-      if (!card.targeting) {
+      debugLog('ADDITIONAL_COST_VALIDATION', '🔍 Checking card playability', {
+        cardName: card.name,
+        cardId: card.id,
+        hasAdditionalCost: !!card.additionalCost,
+        hasTargeting: !!card.targeting
+      });
+
+      // NEW: Check for additional cost cards first
+      if (card.additionalCost) {
+        debugLog('ADDITIONAL_COST_VALIDATION', '💰 Card has additional cost - checking cost targets', {
+          cardName: card.name,
+          costType: card.additionalCost.type,
+          costTargeting: card.additionalCost.targeting
+        });
+
+        // Card has additional cost - check for valid COST targets
+        const hasCostTargets = targetingRouter.routeTargeting({
+          actingPlayerId: localPlayerId,
+          source: null,
+          definition: { targeting: card.additionalCost.targeting },  // Use cost targeting
+          player1: player1State,
+          player2: player2State
+        }).length > 0;
+
+        debugLog('ADDITIONAL_COST_VALIDATION',
+          hasCostTargets ? '✅ Card is PLAYABLE (has cost targets)' : '❌ Card is UNPLAYABLE (no cost targets)',
+          {
+            cardName: card.name,
+            hasCostTargets,
+            costTargeting: card.additionalCost.targeting
+          }
+        );
+
+        targetMap.set(card.instanceId, hasCostTargets);
+      } else if (!card.targeting) {
+        debugLog('ADDITIONAL_COST_VALIDATION', '✅ Card is PLAYABLE (no targeting)', {
+          cardName: card.name
+        });
+        // No targeting = always playable
         targetMap.set(card.instanceId, true);
       } else {
+        // Normal card - check for valid effect targets
         const hasTargets = targetingRouter.routeTargeting({
           actingPlayerId: localPlayerId,
           source: null,
@@ -132,6 +171,15 @@ function HandView({
           player1: player1State,
           player2: player2State
         }).length > 0;
+
+        debugLog('ADDITIONAL_COST_VALIDATION',
+          hasTargets ? '✅ Card is PLAYABLE (has targets)' : '❌ Card is UNPLAYABLE (no targets)',
+          {
+            cardName: card.name,
+            hasTargets
+          }
+        );
+
         targetMap.set(card.instanceId, hasTargets);
       }
     });

@@ -121,6 +121,9 @@ class GameFlowManager {
     // Subscribe to completion events from other managers
     this.setupEventListeners();
 
+    // Subscribe to ActionProcessor events for turn transitions
+    this.resubscribe();
+
     this.isInitialized = true;
     debugLog('PHASE_TRANSITIONS', '🔧 GameFlowManager initialized with external systems');
   }

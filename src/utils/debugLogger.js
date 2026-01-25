@@ -20,7 +20,7 @@ const DEBUG_CONFIG = {
   // Category-specific toggles
   categories: {
     DEPLOYMENT: false,          // Drone deployment tracking
-    DRAG_DROP_DEPLOY: true,    // Drag-and-drop deployment debugging
+    DRAG_DROP_DEPLOY: false,   // Drag-and-drop deployment debugging (DISABLED - not needed)
     DRONE_SELECTION: false,     // Drone selection phase and data
     DECK_SELECTION: false,      // Deck selection phase
     PLACEMENT: false,           // Ship placement phase
@@ -33,8 +33,8 @@ const DEBUG_CONFIG = {
     ANIMATIONS: false,           // Animation system (ENABLED for Railgun investigation)
     OPTIMISTIC: false,           // Animation deduplication and matching logic (ENABLED for Phase 8 testing)
     COMMITMENTS: false,          // Simultaneous phase commitments (ENABLED for Phase 8 testing)
-    COMBAT: false,              // Combat resolution
-    PASS_LOGIC: true,            // Pass handling and pass notification debugging (ENABLED for ship ability turn transition debugging)
+    COMBAT: false,              // Combat resolution (DISABLED - can disable now)
+    PASS_LOGIC: true,           // Pass handling and pass notification debugging (ENABLED for ship ability turn transition debugging)
     STATE_SYNC: false,          // State synchronization (DISABLED - too verbose)
     BROADCAST_TIMING: false,    // Broadcast timing and state validation (DISABLED - too verbose)
     ENERGY: false,              // Energy management (shield allocation)
@@ -42,10 +42,10 @@ const DEBUG_CONFIG = {
     CARDS: false,                // Card play and effects (ENABLED for Railgun investigation)
     RAILGUN_ANIMATION: false,    // Railgun-specific animation investigation (NEW)
     HAND_VIEW: false,            // Hand display and card interaction (ENABLED for mandatoryAction debugging)
-    CARD_PLAY: false,             // Card playability and clicking (ENABLED for mandatoryAction debugging)
+    CARD_PLAY: false,            // Card playability and clicking (DISABLED - too verbose)
     SHIELD_CLICKS: false,       // Shield allocation click tracking
-    BUTTON_CLICKS: true,       // Button click tracking and effects
-    MOVEMENT_LANES: true,      // Movement card lane highlighting diagnostics
+    BUTTON_CLICKS: false,        // Button click tracking and effects (DISABLED - too verbose)
+    MOVEMENT_LANES: false,       // Movement card lane highlighting diagnostics (DISABLED - not needed)
     GUEST_CASCADE: false,        // Guest optimistic cascade flow (ENABLED for checkpoint testing)
     CASCADE_LOOP: false,        // Cascade loop iteration details (DISABLED - already debugged)
     VALIDATION: false,           // State validation and reconciliation (ENABLED for checkpoint testing)
@@ -82,7 +82,7 @@ const DEBUG_CONFIG = {
 
     // Targeting System Refactoring - Modular Processor Logging
     TARGETING_ROUTING: false,    // Targeting router decisions (DISABLED - Phase 2 complete and verified)
-    TARGETING_PROCESSING: true, // Targeting processor execution (DISABLED - Phase 2 complete and verified)
+    TARGETING_PROCESSING: false, // Targeting processor execution (DISABLED - can disable now)
     TARGETING_FALLBACK: false,   // Targeting falling back to monolithic function (DISABLED - no fallbacks expected)
     LANE_TARGETING: false,       // Lane-targeting cards and filtered drone effects (affectedDroneIds)
     TACTICAL_ITEMS: false,        // Tactical item panel clicks and usage
@@ -91,6 +91,25 @@ const DEBUG_CONFIG = {
     TURN_TRANSITION_DEBUG: false,  // Turn transition investigation (TEMPORARY)
     AVAILABILITY: true,             // Drone availability system (dots, readyCount, inPlayCount)
     SINGLE_MOVE_FLOW: true,         // ✅ Comprehensive SINGLE_MOVE card flow logging (card selection → modal → resolution)
+
+    // Additional Cost Card Flow Debugging
+    ADDITIONAL_COST_UI: false,         // UI state transitions, drag/drop, phase changes (DISABLED - too verbose)
+    ADDITIONAL_COST_TARGETING: true,  // Target calculation, filtering, routing (DISABLED - too verbose)
+    ADDITIONAL_COST_HIGHLIGHT: false,  // Visual highlighting state and rendering (DISABLED - too verbose)
+    ADDITIONAL_COST_VALIDATION: true,  // Cost/effect validation checks
+    ADDITIONAL_COST: true,             // Card execution, cost processing, animations (KEEP - critical flow tracking)
+    ADDITIONAL_COST_MODE: false,       // Additional cost mode validation and flow control (DISABLED - too verbose)
+    ADDITIONAL_COST_EFFECT_FLOW: false, // Comprehensive effect selection completion flow (DISABLED - no longer needed, direct execution)
+
+    // Checkpoint flow debugging for drag-drop event tracking
+    CHECKPOINT_FLOW: false,            // Drag-drop event checkpoint tracking (DISABLED - too verbose)
+
+    // Modal and click debugging for additional cost investigation
+    LANE_CLICK_ENTRY: true,   // Track all lane click invocations
+    MODAL_TRIGGER: true,       // Track "Invalid Move" modal triggers
+
+    // Stat Calculation Debugging
+    STAT_CALCULATION: true,           // Effective stat calculation for targeting comparisons
   }
 };
 

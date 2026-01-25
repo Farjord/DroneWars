@@ -47,6 +47,7 @@ import MoveConfirmationModal from './components/modals/MoveConfirmationModal.jsx
 import InterceptionOpportunityModal from './components/modals/InterceptionOpportunityModal.jsx';
 import OpponentDecidingInterceptionModal from './components/modals/OpponentDecidingInterceptionModal.jsx';
 import CardConfirmationModal from './components/modals/CardConfirmationModal.jsx';
+import AdditionalCostConfirmationModal from './components/modals/AdditionalCostConfirmationModal.jsx';
 import DroneAbilityConfirmationModal from './components/modals/DroneAbilityConfirmationModal.jsx';
 import ShipAbilityConfirmationModal from './components/modals/ShipAbilityConfirmationModal.jsx';
 import AIHandDebugModal from './components/modals/AIHandDebugModal.jsx';
@@ -85,7 +86,7 @@ import p2pManager from './network/P2PManager.js';
 // --- 1.7 UTILITY IMPORTS ---
 import { getElementCenter } from './utils/gameUtils.js';
 import { debugLog } from './utils/debugLogger.js';
-import { calculateAllValidTargets, calculateAffectedDroneIds } from './utils/uiTargetingHelpers.js';
+import { calculateAllValidTargets, calculateAffectedDroneIds, calculateCostTargets, calculateEffectTargetsWithCostContext } from './utils/uiTargetingHelpers.js';
 import DEV_CONFIG from './config/devConfig.js';
 import SeededRandom from './utils/seededRandom.js';
 
@@ -310,6 +311,11 @@ const App = ({ phaseAnimationQueue }) => {
     setMultiSelectStateRaw(value);
   }, []);
 
+  // Additional cost selection state
+  const [additionalCostState, setAdditionalCostState] = useState(null); // { phase, card, costSelection, effectSelection, validTargets }
+  const [additionalCostConfirmation, setAdditionalCostConfirmation] = useState(null); // { card, costSelection, effectTarget }
+  const [additionalCostSelectionContext, setAdditionalCostSelectionContext] = useState(null); // Context for multi-step additional cost cards
+
   // Upgrade system state
   const [destroyUpgradeModal, setDestroyUpgradeModal] = useState(null); // For targeting specific upgrades to destroy
   const [upgradeSelectionModal, setUpgradeSelectionModal] = useState(null); // For the new upgrade target selection modal
@@ -360,6 +366,7 @@ const App = ({ phaseAnimationQueue }) => {
   const roundStartCascadeTriggered = useRef(false); // Prevent duplicate round start cascade triggers
   const deploymentToActionTriggered = useRef(false); // Prevent duplicate deployment → action triggers
   const multiSelectFlowInProgress = useRef(false); // Track multi-select flow to prevent premature cleanup
+  const additionalCostFlowInProgress = useRef(false); // Track additional cost flow to prevent premature cleanup
   // NOTE: enteredMandatoryDiscardWithExcess and enteredMandatoryRemovalWithExcess refs REMOVED
   // Auto-completion for mandatory phases is now handled consistently by GameFlowManager.autoCompleteUnnecessaryCommitments()
 
@@ -452,7 +459,9 @@ const App = ({ phaseAnimationQueue }) => {
     const unsubscribeGameFlow = gameStateManager.gameFlowManager?.subscribe(handlePhaseEvent);
 
     return () => {
-      unsubscribeGameFlow();
+      if (typeof unsubscribeGameFlow === 'function') {
+        unsubscribeGameFlow();
+      }
     };
   }, [isMultiplayer, getLocalPlayerId, setModalContent, waitingForPlayerPhase, gameState.gameMode]);
 
@@ -643,6 +652,19 @@ const App = ({ phaseAnimationQueue }) => {
       });
     }
   }, [gameState.player1?.dronesOnBoard, gameState.player2?.dronesOnBoard]);
+
+  // Log highlighting state changes for Additional Cost cards debugging
+  useEffect(() => {
+    if (additionalCostState || validCardTargets.length > 0) {
+      debugLog('ADDITIONAL_COST_HIGHLIGHT', '🎨 Highlighting state changed', {
+        additionalCostStatePhase: additionalCostState?.phase,
+        validCardTargetsCount: validCardTargets?.length,
+        validCardTargetIds: validCardTargets?.map(t => t.id),
+        affectedDroneIdsCount: affectedDroneIds?.length,
+        affectedDroneIds
+      });
+    }
+  }, [additionalCostState, validCardTargets, affectedDroneIds]);
 
   // addLogEntry is now provided by useGameState hook
 
@@ -1108,20 +1130,109 @@ const App = ({ phaseAnimationQueue }) => {
   }, [singleMoveMode]);
 
   /**
+   * Cancel additional cost mode
+   * Resets UI state when player cancels additional cost card play
+   */
+  const cancelAdditionalCostMode = useCallback(() => {
+    debugLog('ADDITIONAL_COST_UI', '🚨 Canceling additional cost mode');
+
+    additionalCostFlowInProgress.current = false; // Reset flag when canceling
+    setAdditionalCostState(null);
+    setSelectedCard(null);
+    setValidCardTargets([]);
+    setAffectedDroneIds([]);
+  }, []);
+
+  /**
+   * Confirm additional cost card play
+   * Processes card with both cost and effect
+   */
+  const confirmAdditionalCostCard = useCallback(async (card, costSelection, effectTarget) => {
+    debugLog('ADDITIONAL_COST_UI', '✅ Confirming additional cost card', {
+      cardName: card.name,
+      costSelection,
+      effectTarget
+    });
+
+    // Process via ActionProcessor
+    const result = await processActionWithGuestRouting('additionalCostCardPlay', {
+      card,
+      costSelection,
+      effectTarget,
+      playerId: getLocalPlayerId()
+    });
+
+    // Check if effect needs additional selection
+    if (result && result.needsEffectSelection) {
+      debugLog('ADDITIONAL_COST', '🔄 Entering effect selection mode', {
+        cardName: card.name,
+        selectionType: result.needsEffectSelection.selectionData.type
+      });
+
+      // Store selection context for completion later
+      setAdditionalCostSelectionContext(result.needsEffectSelection);
+
+      // CRITICAL: Clear additional cost state to prevent interference with multiSelectState
+      setAdditionalCostConfirmation(null);
+      setAdditionalCostState(null);  // Clear to avoid conflicting UI state
+      setValidCardTargets([]);  // Clear old targets
+      setAffectedDroneIds([]);  // Clear old affected drones
+
+      // Enter movement selection mode based on effect type
+      if (result.needsEffectSelection.selectionData.type === 'single_move') {
+        setMultiSelectState({
+          active: true,
+          card: card,
+          phase: 'select_drone',  // Start movement selection
+          maxDrones: 1,
+          selectedDrones: [],
+          doNotExhaust: result.needsEffectSelection.selectionData.doNotExhaust
+        });
+      }
+      // Handle other selection types as needed
+
+      return;  // Don't clear additional state - already done above
+    }
+
+    // Normal completion path (effect didn't need selection)
+    additionalCostFlowInProgress.current = false; // Reset flag when confirming
+    setAdditionalCostConfirmation(null);
+    setAdditionalCostState(null);
+    setSelectedCard(null);
+    setValidCardTargets([]);
+    setAffectedDroneIds([]);
+  }, [processActionWithGuestRouting, getLocalPlayerId]);
+
+  /**
    * CANCEL CARD SELECTION
    * Cancels active card selection and multi-select targeting modes.
    * Resets UI state when player cancels card play.
+   * @param {string} callerInfo - Identifier for debugging which code path triggered the cancel
    */
-  const cancelCardSelection = () => {
+  const cancelCardSelection = (callerInfo = 'unknown') => {
     debugLog('BUTTON_CLICKS', '🚨 cancelCardSelection CALLED', {
       timestamp: performance.now(),
-      refValueBefore: multiSelectFlowInProgress.current,
+      caller: callerInfo,
+      additionalCostFlowRef: additionalCostFlowInProgress.current,
+      multiSelectFlowRef: multiSelectFlowInProgress.current,
       multiSelectStateExists: multiSelectState !== null,
       selectedCardExists: selectedCard !== null,
       singleMoveModeExists: singleMoveMode !== null,
-      callStack: new Error().stack.split('\n').slice(0, 5).join('\n')
+      additionalCostStateExists: additionalCostState !== null,
+      additionalCostPhase: additionalCostState?.phase || 'none',
+      callStack: new Error().stack.split('\n').slice(0, 10).join('\n')
     });
 
+    // Don't clear state if we're in additional cost flow (unless explicitly intended)
+    if (additionalCostFlowInProgress.current && callerInfo !== 'user-cancel' && callerInfo !== 'confirm') {
+      debugLog('BUTTON_CLICKS', '⏭️ Skipping cancelCardSelection - additional cost flow in progress', {
+        caller: callerInfo,
+        additionalCostPhase: additionalCostState?.phase || 'none'
+      });
+      return;
+    }
+
+    additionalCostFlowInProgress.current = false; // Reset additional cost flow flag when canceling
     multiSelectFlowInProgress.current = false; // Reset flag when canceling
     setSelectedCard(null);
     setMultiSelectState(null);
@@ -1390,7 +1501,7 @@ const App = ({ phaseAnimationQueue }) => {
                 // Return cards to deck and cancel
                 setCardSelectionModal(null);
                 if (actingPlayerId === getLocalPlayerId()) {
-                    cancelCardSelection();
+                    cancelCardSelection('user-cancel-card-selection-modal');
                     setCardConfirmation(null);
                 }
             }
@@ -1427,7 +1538,7 @@ const App = ({ phaseAnimationQueue }) => {
 
     // UI cleanup only
     if (actingPlayerId === getLocalPlayerId()) {
-      cancelCardSelection();
+      cancelCardSelection('confirm-card-selection');
       setCardConfirmation(null);
     }
   }, [processActionWithGuestRouting, getLocalPlayerId, cancelCardSelection]);
@@ -1454,7 +1565,7 @@ const App = ({ phaseAnimationQueue }) => {
 
     // Clean up UI state
     setMultiSelectState(null);
-    cancelCardSelection();
+    cancelCardSelection('confirm-multi-move');
   }, [processActionWithGuestRouting, getLocalPlayerId]);
 
 
@@ -1468,6 +1579,17 @@ const App = ({ phaseAnimationQueue }) => {
    * @param {string} toLane - Destination lane ID
    */
   const resolveSingleMove = useCallback(async (card, droneId, droneOwner, fromLane, toLane) => {
+    debugLog('ADDITIONAL_COST_EFFECT_FLOW', '🔵 resolveSingleMove ENTRY', {
+      cardName: card.name,
+      cardId: card.id,
+      droneId,
+      droneOwner,
+      fromLane,
+      toLane,
+      hasAdditionalCostContext: !!additionalCostSelectionContext,
+      contextCardId: additionalCostSelectionContext?.card?.id
+    });
+
     // CHECKPOINT 10: Inside resolveSingleMove
     debugLog('SINGLE_MOVE_FLOW', '⚙️ CHECKPOINT 10: Inside resolveSingleMove', {
       receivedCard: card?.name,
@@ -1475,7 +1597,8 @@ const App = ({ phaseAnimationQueue }) => {
       receivedDroneOwner: droneOwner,
       receivedFromLane: fromLane,
       receivedToLane: toLane,
-      allParametersDefined: !!(card && droneId && droneOwner && fromLane && toLane)
+      allParametersDefined: !!(card && droneId && droneOwner && fromLane && toLane),
+      hasAdditionalCostContext: !!additionalCostSelectionContext
     });
 
     // Look up the CURRENT drone from game state
@@ -1503,7 +1626,7 @@ const App = ({ phaseAnimationQueue }) => {
       });
       console.error('resolveSingleMove: Could not find drone', { droneId, fromLane, droneOwner });
       setMultiSelectState(null);
-      cancelCardSelection();
+      cancelCardSelection('error-single-move-drone-not-found');
       return;
     }
 
@@ -1513,6 +1636,70 @@ const App = ({ phaseAnimationQueue }) => {
       toLane: toLane
     });
 
+    // Check if this is completing an additional cost effect selection
+    if (additionalCostSelectionContext && additionalCostSelectionContext.card.id === card.id) {
+      debugLog('ADDITIONAL_COST_EFFECT_FLOW', '✅ Additional cost effect selection detected', {
+        cardName: card.name,
+        contextCard: additionalCostSelectionContext.card.name,
+        willDispatchAction: true
+      });
+
+      debugLog('ADDITIONAL_COST', '✅ Completing additional cost effect selection', {
+        drone: currentDrone.name,
+        from: fromLane,
+        to: toLane
+      });
+
+      debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   🔵 Dispatching additionalCostEffectSelectionComplete action', {
+        selectionType: 'single_move',
+        droneId,
+        droneOwner,
+        fromLane,
+        toLane,
+        playerId: getLocalPlayerId()
+      });
+
+      const result = await processActionWithGuestRouting('additionalCostEffectSelectionComplete', {
+        selectionContext: additionalCostSelectionContext,
+        effectSelection: {
+          type: 'single_move',
+          drone: { ...currentDrone, owner: droneOwner },  // Pass full drone object
+          fromLane,
+          toLane,
+          playerId: getLocalPlayerId()
+        },
+        playerId: getLocalPlayerId()
+      });
+
+      debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ Action dispatched, clearing state', {
+        resultSuccess: result?.success,
+        hasAnimations: !!result?.animationEvents,
+        animationCount: result?.animationEvents?.length || 0
+      });
+
+      // Clear context and UI state
+      setAdditionalCostSelectionContext(null);
+      setMultiSelectState(null);
+      setAdditionalCostState(null);
+      setSelectedCard(null);
+      setValidCardTargets([]);
+      setAffectedDroneIds([]);
+      additionalCostFlowInProgress.current = false;
+
+      debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ Cleanup complete');
+
+      // Handle animations and game flow
+      if (result && result.animationEvents) {
+        queueAnimations(result.animationEvents);
+      }
+
+      debugLog('ADDITIONAL_COST_EFFECT_FLOW', '✅ resolveSingleMove complete (additional cost path)');
+      return;
+    }
+
+    debugLog('ADDITIONAL_COST_EFFECT_FLOW', '🔵 No additional cost context - normal movement path');
+
+    // Normal movement completion (existing code)
     await processActionWithGuestRouting('movementCompletion', {
       card,
       movementType: 'single_move',
@@ -1532,8 +1719,8 @@ const App = ({ phaseAnimationQueue }) => {
 
     // Clean up UI state
     setMultiSelectState(null);
-    cancelCardSelection();
-  }, [processActionWithGuestRouting, getLocalPlayerId]);
+    cancelCardSelection('confirm-single-move');
+  }, [processActionWithGuestRouting, getLocalPlayerId, additionalCostSelectionContext]);
 
 
 
@@ -1587,6 +1774,7 @@ const App = ({ phaseAnimationQueue }) => {
       multiSelectState_full: multiSelectState ? JSON.stringify(multiSelectState) : null,
       singleMoveMode_drone: singleMoveMode?.drone?.name || null,
       singleMoveMode_sourceLane: singleMoveMode?.sourceLane || null,
+      additionalCostState_phase: additionalCostState?.phase || null,
       willSkipCalculation: !selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState && !singleMoveMode
     });
 
@@ -1598,6 +1786,27 @@ const App = ({ phaseAnimationQueue }) => {
       return;
     }
 
+    // Skip recalculation if in ANY additional cost phase
+    // Targets have already been manually set for these phases:
+    // - 'select_cost': Targets set for card-in-hand selection
+    // - 'select_cost_movement_destination': Targets set to adjacent lanes
+    // - 'select_effect': Targets calculated with cost context
+    if (additionalCostState?.phase === 'select_effect' ||
+        additionalCostState?.phase === 'select_cost_movement_destination' ||
+        additionalCostState?.phase === 'select_cost') {
+
+      // CRITICAL: Allow recalculation if multiSelectState is active
+      // This happens when effect selection needs drone targeting after cost is confirmed
+      if (!multiSelectState) {
+        debugLog('TARGETING_PROCESSING', '⏭️ Skipping recalculation - additional cost phase in progress', {
+          cardName: selectedCard?.name,
+          costPhase: additionalCostState.phase
+        });
+        return;
+      }
+      // If multiSelectState IS active, fall through to recalculate for it
+    }
+
     // Only calculate when something is actually selected
     const { validAbilityTargets, validCardTargets } = calculateAllValidTargets(
       abilityMode,
@@ -1607,7 +1816,8 @@ const App = ({ phaseAnimationQueue }) => {
       gameState.player1,
       gameState.player2,
       getLocalPlayerId(),
-      singleMoveMode  // Pass singleMoveMode for adjacent lane highlighting
+      singleMoveMode,  // Pass singleMoveMode for adjacent lane highlighting
+      gameDataService.getEffectiveStats.bind(gameDataService)  // Pass stat calculator
     );
 
     setValidAbilityTargets(validAbilityTargets);
@@ -1618,7 +1828,7 @@ const App = ({ phaseAnimationQueue }) => {
       setSelectedCard(null);
       setShipAbilityMode(null);
     }
-  }, [abilityMode, shipAbilityMode, selectedCard, multiSelectState, singleMoveMode]);
+  }, [abilityMode, shipAbilityMode, selectedCard, multiSelectState, singleMoveMode, additionalCostState]);
 
   // --- 8.2 PHASE ANIMATION QUEUE SUBSCRIPTION ---
 
@@ -1897,9 +2107,31 @@ const App = ({ phaseAnimationQueue }) => {
   // Cancel drone drag if mouseup happens outside of valid drop targets
   useEffect(() => {
     const handleMouseUp = () => {
+      debugLog('CHECKPOINT_FLOW', '🌍 CHECKPOINT 1: Global mouseup handler fired', {
+        hasDraggedDrone: !!draggedDrone,
+        draggedDroneName: draggedDrone?.drone?.name,
+        additionalCostPhase: additionalCostState?.phase,
+        timestamp: Date.now()
+      });
+
       if (draggedDrone) {
+        // Skip deferred cleanup call during additional cost destination selection
+        // The lane handler already processes the drag correctly
+        if (draggedDrone.isAdditionalCostDrag && additionalCostState?.phase === 'select_cost_movement_destination') {
+          debugLog('CHECKPOINT_FLOW', '🌍 CHECKPOINT 1A-SKIP: Skipping deferred call during additional cost destination selection', {
+            phase: additionalCostState.phase,
+            isAdditionalCostDrag: draggedDrone.isAdditionalCostDrag
+          });
+          return;
+        }
+
+        debugLog('CHECKPOINT_FLOW', '🌍 CHECKPOINT 1A: Calling handleDroneDragEnd with null target (deferred)', {
+          willCallWith: { target: null, targetLane: null, isOpponentTarget: false, targetType: 'drone' }
+        });
         // Defer cancel to allow React's onMouseUp handlers to fire first
         setTimeout(() => handleDroneDragEnd(null, null, false), 0);
+      } else {
+        debugLog('CHECKPOINT_FLOW', '🌍 CHECKPOINT 1B: No draggedDrone, global handler exiting');
       }
     };
 
@@ -3130,13 +3362,44 @@ const App = ({ phaseAnimationQueue }) => {
     if (localPlayerState.energy < card.cost) return;
 
     debugLog('DRAG_DROP_DEPLOY', '🎯 Action card drag start', { cardName: card.name, cardId: card.id });
+    debugLog('ADDITIONAL_COST_UI', '🎴 Card drag started', {
+      cardName: card.name,
+      cardId: card.id,
+      hasAdditionalCost: !!card.additionalCost,
+      additionalCostType: card.additionalCost?.type,
+      expectedCostTargetType: card.additionalCost?.targeting?.type
+    });
 
     cancelAllActions();
     setDraggedActionCard({ card });
 
-    // Calculate valid targets for cards that have targeting requirements
-    // Skip for no-target cards (targeting: null) - they don't need valid targets
-    if (card.targeting) {
+    // For additional cost cards, calculate COST targets first (not effect targets)
+    // Effect targets will be calculated after cost selection is complete
+    if (card.additionalCost && card.additionalCost.targeting) {
+      debugLog('ADDITIONAL_COST_UI', '🎯 Calculating COST targets at drag start', {
+        costType: card.additionalCost.type,
+        costTargetingType: card.additionalCost.targeting.type
+      });
+
+      const costTargets = calculateCostTargets(
+        card.additionalCost,
+        gameState.player1,
+        gameState.player2,
+        getLocalPlayerId(),
+        card.id,  // Exclude this card from hand selection
+        gameDataService.getEffectiveStats.bind(gameDataService)  // Pass stat calculator
+      );
+
+      setValidCardTargets(costTargets);
+      setAffectedDroneIds([]);  // No effect preview during cost selection
+
+      debugLog('ADDITIONAL_COST_UI', '✅ Cost targets calculated', {
+        costTargetCount: costTargets.length,
+        costTargetIds: costTargets.map(t => t.id)
+      });
+    }
+    // For regular cards (no additional cost), calculate effect targets
+    else if (card.targeting) {
       const { validCardTargets: targets } = calculateAllValidTargets(
         null,  // abilityMode
         null,  // shipAbilityMode
@@ -3144,7 +3407,9 @@ const App = ({ phaseAnimationQueue }) => {
         card,  // the dragged card
         gameState.player1,
         gameState.player2,
-        getLocalPlayerId()
+        getLocalPlayerId(),
+        null,  // singleMoveMode
+        gameDataService.getEffectiveStats.bind(gameDataService)  // Pass stat calculator
       );
       setValidCardTargets(targets);
 
@@ -3221,6 +3486,202 @@ const App = ({ phaseAnimationQueue }) => {
       return;
     }
 
+    // Case 3.5: Additional cost cards - multi-step selection flow
+    if (card.additionalCost) {
+      debugLog('ADDITIONAL_COST_UI', '🎴 Additional cost card drag-ended', {
+        cardName: card.name,
+        costType: card.additionalCost.type,
+        target: target?.id,
+        targetType,
+        targetOwner,
+        expectedTargetType: card.additionalCost.targeting.type
+      });
+
+      const costTargeting = card.additionalCost.targeting;
+
+      // Cost targets a drone
+      if (costTargeting.type === 'DRONE') {
+        debugLog('ADDITIONAL_COST_VALIDATION', '🔍 Validating cost target (DRONE)', {
+          hasTarget: !!target,
+          targetType,
+          expectedAffinity: costTargeting.affinity,
+          targetOwner
+        });
+
+        if (!target || targetType !== 'drone') {
+          debugLog('ADDITIONAL_COST_VALIDATION', '❌ Invalid cost target - not a drone', {
+            target,
+            targetType
+          });
+          cancelCardSelection('additional-cost-invalid-target');
+          return;
+        }
+
+        // Find target lane
+        const targetPlayerState = targetOwner === getLocalPlayerId() ? localPlayerState : opponentPlayerState;
+        const [targetLane] = Object.entries(targetPlayerState.dronesOnBoard).find(
+          ([_, drones]) => drones.some(d => d.id === target.id)
+        ) || [];
+
+        debugLog('ADDITIONAL_COST_UI', '📍 Cost target lane determined', {
+          targetId: target.id,
+          lane: targetLane,
+          foundInBoard: !!targetLane
+        });
+
+        if (!targetLane) {
+          debugLog('ADDITIONAL_COST_UI', '❌ Could not find lane for cost target', {
+            targetId: target.id,
+            targetOwner,
+            dronesOnBoard: targetPlayerState.dronesOnBoard
+          });
+          cancelCardSelection('additional-cost-lane-not-found');
+          return;
+        }
+
+        // Special handling for movement costs
+        if (card.additionalCost.type === 'SINGLE_MOVE' || card.additionalCost.type === 'MULTI_MOVE') {
+          // Use the dropped target - it's already validated at this point
+          debugLog('ADDITIONAL_COST_UI', '🎯 Cost drone selected from drop', {
+            cardName: card.name,
+            costType: card.additionalCost.type,
+            droneId: target.id,
+            droneName: target.name,
+            sourceLane: targetLane,
+            owner: targetOwner
+          });
+
+          // Calculate adjacent lanes for movement destination
+          const sourceLaneIndex = parseInt(targetLane.replace('lane', ''), 10);
+          const adjacentLanes = ['lane1', 'lane2', 'lane3'].filter(laneId => {
+            const targetLaneIndex = parseInt(laneId.replace('lane', ''), 10);
+            return Math.abs(sourceLaneIndex - targetLaneIndex) === 1;
+          });
+
+          debugLog('ADDITIONAL_COST_UI', '🎯 Transitioning to lane selection phase', {
+            sourceLane: targetLane,
+            adjacentLanes,
+            phase: 'select_cost_movement_destination'
+          });
+
+          // Go directly to lane selection - the drone is already selected
+          setAdditionalCostState({
+            phase: 'select_cost_movement_destination',
+            card,
+            costSelection: {
+              type: card.additionalCost.type,
+              drone: target,
+              owner: targetOwner,
+              sourceLane: targetLane,
+              target: target,        // Normalized name for stat comparisons
+              lane: targetLane       // Normalized name for location filtering
+            },
+            validTargets: adjacentLanes.map(laneId => ({ id: laneId, owner: getLocalPlayerId() }))
+          });
+          additionalCostFlowInProgress.current = true;
+          setSelectedCard(card);
+          setValidCardTargets(adjacentLanes.map(laneId => ({ id: laneId, owner: getLocalPlayerId() })));
+          setSelectedDrone(null);  // Clear any leftover drone selection
+          return;
+        }
+
+        // Non-movement cost: proceed to effect selection
+        debugLog('ADDITIONAL_COST_UI', '🔄 Transitioning to effect selection phase', {
+          phase: 'select_effect',
+          costSelection: {
+            type: card.additionalCost.type,
+            targetId: target.id,
+            owner: targetOwner,
+            lane: targetLane
+          }
+        });
+
+        const costSelection = {
+          type: card.additionalCost.type,
+          target,
+          owner: targetOwner,
+          lane: targetLane
+        };
+
+        // Calculate valid effect targets with cost context
+        const effectTargets = calculateEffectTargetsWithCostContext(
+          card,
+          costSelection,
+          gameState.player1,
+          gameState.player2,
+          getLocalPlayerId(),
+          gameDataService.getEffectiveStats.bind(gameDataService)  // Pass stat calculator
+        );
+
+        debugLog('ADDITIONAL_COST_TARGETING', '🎯 Effect targets calculated with cost context', {
+          effectTargetCount: effectTargets.length,
+          effectTargets: effectTargets.map(t => ({
+            id: t.id,
+            name: t.name,
+            owner: t.owner,
+            lane: t.lane
+          }))
+        });
+
+        debugLog('CHECKPOINT_FLOW', '🔀 CHECKPOINT 7: Transitioning to select_effect phase', {
+          previousPhase: additionalCostState?.phase,
+          newPhase: 'select_effect',
+          card: card.name,
+          costSelection,
+          effectTargetsCount: effectTargets.length,
+          effectTargets: effectTargets.map(t => ({
+            id: t.id,
+            name: t.name,
+            owner: t.owner,
+            attack: t.attack,
+            lane: Object.keys(gameState.playerLanes).find(lane =>
+              gameState.playerLanes[lane]?.some(d => d.id === t.id)
+            ) || Object.keys(gameState.opponentLanes).find(lane =>
+              gameState.opponentLanes[lane]?.some(d => d.id === t.id)
+            )
+          })),
+          timestamp: Date.now()
+        });
+
+        setAdditionalCostState({
+          phase: 'select_effect',
+          card,
+          costSelection,
+          validTargets: effectTargets
+        });
+        additionalCostFlowInProgress.current = true; // Set flag when entering effect selection phase (MAIN FIX)
+        setSelectedCard(card);
+        setValidCardTargets(effectTargets);
+
+        debugLog('CHECKPOINT_FLOW', '🔀 CHECKPOINT 7A: State updates completed', {
+          validCardTargetsSet: effectTargets.length,
+          additionalCostFlowInProgress: true
+        });
+
+        debugLog('ADDITIONAL_COST_HIGHLIGHT', '💡 Valid targets set for highlighting', {
+          validTargetIds: effectTargets.map(t => t.id),
+          expectedHighlightCount: effectTargets.length
+        });
+
+        return;
+      }
+
+      // Cost targets a card in hand
+      if (costTargeting.type === 'CARD_IN_HAND') {
+        // Card dropped in play area (not on a specific target) - enter hand selection mode
+        setAdditionalCostState({
+          phase: 'select_cost',
+          card,
+          costSelection: null,
+          validTargets: localPlayerState.hand.filter(c => c.id !== card.id)
+        });
+        additionalCostFlowInProgress.current = true; // Set flag when entering cost selection phase
+        setSelectedCard(card);
+        setValidCardTargets(localPlayerState.hand.filter(c => c.id !== card.id));
+        return;
+      }
+    }
+
     // Case 4: Movement cards - check if dropped on target or needs multi-select
     if (card.effect?.type === 'SINGLE_MOVE' || card.effect?.type === 'MULTI_MOVE') {
       debugLog('DRAG_DROP_DEPLOY', '🎯 Movement card detected', { target, targetType });
@@ -3236,7 +3697,9 @@ const App = ({ phaseAnimationQueue }) => {
           card,  // Use the dragged card directly (from draggedActionCard.card)
           gameState.player1,
           gameState.player2,
-          getLocalPlayerId()
+          getLocalPlayerId(),
+          null,  // singleMoveMode
+          gameDataService.getEffectiveStats.bind(gameDataService)  // Pass stat calculator
         );
 
         const isValidTarget = dragCardTargets.some(t => t.id === target.id && t.owner === targetOwner);
@@ -3279,7 +3742,7 @@ const App = ({ phaseAnimationQueue }) => {
               refValue: multiSelectFlowInProgress.current,
               droneId: target.id
             });
-            cancelCardSelection();
+            cancelCardSelection('movement-lane-not-found');
             return;
           }
 
@@ -3369,7 +3832,7 @@ const App = ({ phaseAnimationQueue }) => {
             target: target,
             cardName: card?.name
           });
-          cancelCardSelection();
+          cancelCardSelection('movement-invalid-target');
           return;
         }
       }
@@ -3434,7 +3897,7 @@ const App = ({ phaseAnimationQueue }) => {
           target: target,
           cardName: card?.name
         });
-        cancelCardSelection();
+        cancelCardSelection('drag-invalid-target');
       }
     } else {
       // Released without target - cancel
@@ -3446,9 +3909,9 @@ const App = ({ phaseAnimationQueue }) => {
         draggedCard: card?.name || 'none'
       });
 
-      // BUT: Don't clean up if we're in a multi-select flow waiting for user to select destination
-      if (!multiSelectFlowInProgress.current) {
-        cancelCardSelection();
+      // BUT: Don't clean up if we're in a multi-select or additional cost flow
+      if (!multiSelectFlowInProgress.current && !additionalCostFlowInProgress.current) {
+        cancelCardSelection('drag-no-target');
       }
     }
   };
@@ -3488,6 +3951,48 @@ const App = ({ phaseAnimationQueue }) => {
           end: { x: startX, y: startY }
         });
       }
+      return;
+    }
+
+    // Handle additional cost flow
+    if (additionalCostState) {
+      // During cost movement destination selection, ONLY allow dragging the specific cost drone
+      if (additionalCostState.phase === 'select_cost_movement_destination') {
+        const costDrone = additionalCostState.costSelection?.drone;
+        if (costDrone && drone.id === costDrone.id) {
+          // Allow dragging the cost drone to select destination
+          debugLog('ADDITIONAL_COST_MODE', '🎯 Cost drone drag start', {
+            droneName: drone.name,
+            droneId: drone.id,
+            sourceLane,
+            phase: additionalCostState.phase
+          });
+          setDraggedDrone({ drone, sourceLane, isAdditionalCostDrag: true });
+
+          // Set up drag arrow
+          if (gameAreaRef.current) {
+            const gameAreaRect = gameAreaRef.current.getBoundingClientRect();
+            const tokenElement = event.currentTarget;
+            const tokenRect = tokenElement.getBoundingClientRect();
+
+            const startX = tokenRect.left + tokenRect.width / 2 - gameAreaRect.left;
+            const startY = tokenRect.top - gameAreaRect.top + 15;
+
+            setDroneDragArrowState({
+              visible: true,
+              start: { x: startX, y: startY },
+              end: { x: startX, y: startY }
+            });
+          }
+          return;
+        }
+      }
+
+      // Block all other drags during additional cost flow
+      debugLog('ADDITIONAL_COST_MODE', '⛔ Drone drag blocked - additional cost flow in progress', {
+        phase: additionalCostState.phase,
+        droneId: drone.id
+      });
       return;
     }
 
@@ -3556,21 +4061,45 @@ const App = ({ phaseAnimationQueue }) => {
    * @param {boolean} isOpponentTarget - Whether the target is on opponent's side
    */
   const handleDroneDragEnd = (target = null, targetLane = null, isOpponentTarget = false, targetType = 'drone') => {
-    debugLog('DRAG_DROP_DEPLOY', '📥 handleDroneDragEnd called', {
-      hasDraggedDrone: !!draggedDrone,
+    debugLog('CHECKPOINT_FLOW', '📥 CHECKPOINT 5: handleDroneDragEnd ENTRY', {
+      // Parameters
+      hasTarget: !!target,
       targetName: target?.name,
+      targetId: target?.id,
       targetLane,
       isOpponentTarget,
       targetType,
-      isInterceptionDrag: draggedDrone?.isInterceptionDrag
+
+      // Current state
+      hasDraggedDrone: !!draggedDrone,
+      draggedDroneName: draggedDrone?.drone?.name,
+      draggedDroneId: draggedDrone?.drone?.id,
+      isInterceptionDrag: draggedDrone?.isInterceptionDrag,
+      isSingleMoveDrag: draggedDrone?.isSingleMoveDrag,
+      isAdditionalCostDrag: draggedDrone?.isAdditionalCostDrag,
+
+      // Additional cost state
+      additionalCostPhase: additionalCostState?.phase,
+      additionalCostCard: additionalCostState?.card?.name,
+      validCardTargetsCount: validCardTargets?.length,
+      validCardTargetIds: validCardTargets?.map(t => `${t.name}(${t.owner})`),
+
+      timestamp: Date.now()
     });
 
     if (!draggedDrone) {
-      debugLog('DRAG_DROP_DEPLOY', '⛔ handleDroneDragEnd early return - no draggedDrone');
+      debugLog('CHECKPOINT_FLOW', '⛔ CHECKPOINT 5-EXIT: No draggedDrone, exiting early');
       return;
     }
 
     const { drone: interceptorDrone, sourceLane, isInterceptionDrag, isSingleMoveDrag } = draggedDrone;
+
+    debugLog('CHECKPOINT_FLOW', '📥 CHECKPOINT 5A: draggedDrone destructured', {
+      interceptorDrone: interceptorDrone?.name,
+      sourceLane,
+      isInterceptionDrag,
+      isSingleMoveDrag
+    });
 
     // Handle interception mode drag end
     if (isInterceptionDrag && interceptionModeActive) {
@@ -3599,6 +4128,89 @@ const App = ({ phaseAnimationQueue }) => {
       } else {
         debugLog('INTERCEPTION_MODE', '📥 Interception drag cancelled - no target');
       }
+      return;
+    }
+
+    // --- CASE 3: Additional Cost Movement Destination Selection ---
+    if (draggedDrone.isAdditionalCostDrag && additionalCostState?.phase === 'select_cost_movement_destination') {
+      debugLog('ADDITIONAL_COST_MODE', '🎯 CASE 3: Additional cost movement destination selection', {
+        costDroneName: draggedDrone.drone?.name,
+        isAdditionalCostDrag: draggedDrone.isAdditionalCostDrag,
+        phase: additionalCostState?.phase
+      });
+
+      const costDrone = draggedDrone.drone;
+
+      // Cleanup drag state first
+      setDraggedDrone(null);
+      setDroneDragArrowState(prev => ({ ...prev, visible: false }));
+
+      debugLog('ADDITIONAL_COST_MODE', '🔍 VALIDATION CHECK: targetType check', {
+        targetType,
+        targetName: target?.name,
+        targetId: target?.id,
+        willShowModal: targetType === 'drone'
+      });
+
+      // Validate: Must drop on a lane (not a drone)
+      if (targetType === 'drone') {
+        debugLog('ADDITIONAL_COST_MODE', '⛔ Invalid drop - must drop on lane, not drone', {
+          targetType,
+          targetName: target?.name
+        });
+        setModalContent({
+          title: "Invalid Target",
+          text: "Please drag the drone to a lane, not onto another drone.",
+          isBlocking: true
+        });
+        return;
+      }
+
+      // Validate: Target lane must be valid (in validCardTargets)
+      if (!validCardTargets.some(t => t.id === targetLane)) {
+        debugLog('ADDITIONAL_COST_MODE', '⛔ Invalid destination lane', {
+          targetLane,
+          validLanes: validCardTargets.map(t => t.id)
+        });
+        setModalContent({
+          title: "Invalid Lane",
+          text: "Please move the drone to the highlighted lane.",
+          isBlocking: true
+        });
+        return;
+      }
+
+      debugLog('ADDITIONAL_COST_MODE', '✅ Cost movement destination selected via drag', {
+        drone: costDrone.name,
+        fromLane: sourceLane,
+        toLane: targetLane
+      });
+
+      // Update cost selection with destination (replicate handleLaneClick logic)
+      const updatedCostSelection = {
+        ...additionalCostState.costSelection,
+        toLane: targetLane
+      };
+
+      // Calculate valid effect targets (e.g., enemy drones in SOURCE lane)
+      const effectTargets = calculateEffectTargetsWithCostContext(
+        additionalCostState.card,
+        updatedCostSelection,
+        gameState.player1,
+        gameState.player2,
+        getLocalPlayerId(),
+        gameDataService.getEffectiveStats.bind(gameDataService)  // Pass stat calculator
+      );
+
+      // Proceed to effect selection
+      setAdditionalCostState({
+        phase: 'select_effect',
+        card: additionalCostState.card,
+        costSelection: updatedCostSelection,
+        validTargets: effectTargets
+      });
+      additionalCostFlowInProgress.current = true;
+      setValidCardTargets(effectTargets);
       return;
     }
 
@@ -3634,6 +4246,20 @@ const App = ({ phaseAnimationQueue }) => {
           targetLane,
           distance
         });
+        debugLog('MODAL_TRIGGER', '🚨 INVALID MOVE MODAL TRIGGERED', {
+          location: 'handleDroneDragEnd - single move mode',
+          lineNumber: 4106,
+          timestamp: Date.now(),
+          singleMoveMode: singleMoveMode,
+          sourceLane: singleMoveMode?.sourceLane,
+          targetLane: targetLane,
+          distance: distance,
+          selectedDrone: selectedDrone,
+          additionalCostState: additionalCostState,
+          additionalCostPhase: additionalCostState?.phase,
+          turnPhase: turnPhase
+        });
+        console.trace('Invalid Move modal call stack');
         setModalContent({
           title: "Invalid Move",
           text: "You can only move this drone to an adjacent lane.",
@@ -3675,11 +4301,146 @@ const App = ({ phaseAnimationQueue }) => {
       return;
     }
 
+    // --- CASE 4: Additional Cost Effect Target Selection via Drag ---
+    if (additionalCostState?.phase === 'select_effect') {
+      debugLog('CHECKPOINT_FLOW', '🎯 CHECKPOINT 6: Entered select_effect branch', {
+        // Entry conditions
+        phase: additionalCostState.phase,
+        card: additionalCostState.card?.name,
+
+        // Parameters received
+        hasTarget: !!target,
+        targetName: target?.name,
+        targetId: target?.id,
+        targetType,
+        isOpponentTarget,
+        targetLane,
+
+        // State for validation
+        validCardTargetsCount: validCardTargets.length,
+        validCardTargets: validCardTargets.map(t => ({
+          id: t.id,
+          name: t.name,
+          owner: t.owner,
+          attack: t.attack
+        })),
+
+        // Cost selection context
+        costSelection: additionalCostState.costSelection,
+
+        timestamp: Date.now()
+      });
+
+      // Cleanup drag state first
+      setDraggedDrone(null);
+      setDroneDragArrowState(prev => ({ ...prev, visible: false }));
+
+      debugLog('CHECKPOINT_FLOW', '🧹 CHECKPOINT 6A: Drag state cleaned up');
+
+      // SILENTLY CANCEL: User missed the target (dropped on empty space, lane, etc.)
+      if (!target) {
+        debugLog('CHECKPOINT_FLOW', '🔄 CHECKPOINT 6B-EXIT: No target (silent cancel)', {
+          targetType,
+          reason: 'User missed the target, this is OK'
+        });
+        return;  // Exit silently, no error modal
+      }
+
+      debugLog('CHECKPOINT_FLOW', '✅ CHECKPOINT 6C: Target exists, validating type', {
+        targetType,
+        expectedType: 'drone'
+      });
+
+      // Validate: Target must be a drone (not a lane, section, etc.)
+      if (targetType !== 'drone') {
+        debugLog('CHECKPOINT_FLOW', '⛔ CHECKPOINT 6D-ERROR: Wrong target type', {
+          actualType: targetType,
+          expectedType: 'drone',
+          showingError: true
+        });
+        setModalContent({
+          title: "Invalid Target",
+          text: "Please select an enemy drone as the target.",
+          isBlocking: true
+        });
+        return;
+      }
+
+      debugLog('CHECKPOINT_FLOW', '✅ CHECKPOINT 6E: Target type valid, validating against validCardTargets', {
+        targetId: target.id,
+        targetName: target.name,
+        isOpponentTarget,
+        calculatedOwner: isOpponentTarget ? 'player2' : 'player1'
+      });
+
+      // Validate: Target must be in validCardTargets
+      const targetOwner = isOpponentTarget ? 'player2' : 'player1';
+      const isValidTarget = validCardTargets.some(t => t.id === target.id && t.owner === targetOwner);
+
+      debugLog('CHECKPOINT_FLOW', '🔍 CHECKPOINT 6F: Validation result', {
+        isValidTarget,
+        targetId: target.id,
+        targetOwner,
+        validCardTargets: validCardTargets.map(t => ({
+          id: t.id,
+          name: t.name,
+          owner: t.owner,
+          matches: t.id === target.id && t.owner === targetOwner
+        }))
+      });
+
+      if (!isValidTarget) {
+        debugLog('CHECKPOINT_FLOW', '⛔ CHECKPOINT 6G-ERROR: Target not in validCardTargets', {
+          targetId: target.id,
+          targetOwner,
+          showingError: true
+        });
+        setModalContent({
+          title: "Invalid Target",
+          text: "This drone is not a valid target for this effect.",
+          isBlocking: true
+        });
+        return;
+      }
+
+      debugLog('CHECKPOINT_FLOW', '✅ CHECKPOINT 6H-SUCCESS: All validations passed, showing confirmation modal', {
+        targetId: target.id,
+        targetName: target.name,
+        targetOwner,
+        card: selectedCard?.name,
+        costSelection: additionalCostState.costSelection
+      });
+
+      // Show confirmation modal (same as handleDroneClick does)
+      setAdditionalCostConfirmation({
+        card: selectedCard,
+        costSelection: additionalCostState.costSelection,
+        effectTarget: { ...target, owner: targetOwner }
+      });
+
+      return;
+    }
+
     const attackerDrone = interceptorDrone; // Rename for clarity in normal flow
 
     // Cleanup drag state first
     setDraggedDrone(null);
     setDroneDragArrowState(prev => ({ ...prev, visible: false }));
+
+    // Block attacks during additional cost flow
+    if (additionalCostState) {
+      debugLog('ADDITIONAL_COST_MODE', '⛔ Attack blocked - additional cost flow in progress', {
+        phase: additionalCostState.phase,
+        attackerId: attackerDrone.id,
+        targetId: target?.id
+      });
+      setModalContent({
+        title: "Cannot Attack",
+        text: "Please complete the card selection first.",
+        isBlocking: true
+      });
+      return;
+    }
 
     // Case 1a: Attack - dropped on opponent drone in same lane
     if (isOpponentTarget && target && targetLane && targetType === 'drone') {
@@ -3766,6 +4527,21 @@ const App = ({ phaseAnimationQueue }) => {
         setMoveConfirmation(moveConfData);
       } else {
         debugLog('DRAG_DROP_DEPLOY', '⛔ Move blocked - not adjacent', { sourceLane, targetLane });
+        debugLog('MODAL_TRIGGER', '🚨 INVALID MOVE MODAL TRIGGERED', {
+          location: 'handleDroneDragEnd - regular drag move',
+          lineNumber: 4373,
+          timestamp: Date.now(),
+          sourceLane: sourceLane,
+          targetLane: targetLane,
+          sourceLaneIndex: sourceLaneIndex,
+          targetLaneIndex: targetLaneIndex,
+          distance: Math.abs(sourceLaneIndex - targetLaneIndex),
+          selectedDrone: selectedDrone,
+          additionalCostState: additionalCostState,
+          additionalCostPhase: additionalCostState?.phase,
+          turnPhase: turnPhase
+        });
+        console.trace('Invalid Move modal call stack');
         setModalContent({ title: "Invalid Move", text: "Drones can only move to adjacent lanes.", isBlocking: true });
       }
       return;
@@ -3952,38 +4728,73 @@ const App = ({ phaseAnimationQueue }) => {
 
       // 1. Handle single-move drone selection (SINGLE_MOVE cards like Maneuver)
       // IMPORTANT: This must come BEFORE generic validCardTargets check to prevent interception
-      if (multiSelectState && multiSelectState.phase === 'select_drone' && isPlayer) {
+      // PHASE 9 FIX: Support both friendly and enemy drone selection
+      // Check validCardTargets instead of isPlayer to support enemy drone selection
+      if (multiSelectState && multiSelectState.phase === 'select_drone') {
+          debugLog('ADDITIONAL_COST_EFFECT_FLOW', '🎯 Drone click during select_drone phase', {
+              droneName: token.name,
+              droneId: token.id,
+              isPlayer,
+              multiSelectPhase: multiSelectState.phase,
+              multiSelectCard: multiSelectState.card?.name,
+              hasAdditionalCostContext: !!additionalCostSelectionContext
+          });
+
           // Check if this drone is a valid target
           const tokenOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
+
+          debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   🔍 Checking if drone is valid target', {
+              tokenOwner,
+              validCardTargetCount: validCardTargets.length,
+              validCardTargetIds: validCardTargets.map(t => t.id),
+              isValidTarget: validCardTargets.some(t => t.id === token.id && t.owner === tokenOwner)
+          });
+
           if (!validCardTargets.some(t => t.id === token.id && t.owner === tokenOwner)) {
+              debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ❌ Drone is not a valid target - ABORTING');
               debugLog('COMBAT', "Action prevented: Drone is not a valid target for movement.");
               return;
           }
 
+          debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ Drone is valid target - proceeding');
           debugLog('COMBAT', "Action: Single-move drone selection.");
 
-          // Find the drone's current lane - use the acting player's state
-          const actingPlayerId = multiSelectState.actingPlayerId || getLocalPlayerId();
-          const actingPlayerState = actingPlayerId === getLocalPlayerId()
+          // Find the drone's current lane
+          // For enemy drones, search in opponent state; for friendly, search in local state
+          const droneOwnerState = tokenOwner === getLocalPlayerId()
               ? localPlayerState
               : opponentPlayerState;
-          const droneLane = Object.entries(actingPlayerState.dronesOnBoard).find(([_, drones]) =>
+
+          const droneLane = Object.entries(droneOwnerState.dronesOnBoard).find(([_, drones]) =>
               drones.some(d => d.id === token.id)
           )?.[0];
 
+          debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   🔍 Found drone lane', {
+              droneLane,
+              tokenOwner
+          });
+
           if (droneLane) {
-              debugLog('MOVEMENT_LANES', `Drone selected from ${droneLane}, actingPlayerId: ${actingPlayerId}`);
+              debugLog('MOVEMENT_LANES', `Drone selected from ${droneLane}, tokenOwner: ${tokenOwner}`);
 
               // Calculate adjacent lanes
               const currentLaneIndex = parseInt(droneLane.replace('lane', ''));
               const adjacentLanes = [];
 
               if (currentLaneIndex > 1) {
-                  adjacentLanes.push({ id: `lane${currentLaneIndex - 1}`, owner: actingPlayerId, type: 'lane' });
+                  adjacentLanes.push({ id: `lane${currentLaneIndex - 1}`, owner: tokenOwner, type: 'lane' });
               }
               if (currentLaneIndex < 3) {
-                  adjacentLanes.push({ id: `lane${currentLaneIndex + 1}`, owner: actingPlayerId, type: 'lane' });
+                  adjacentLanes.push({ id: `lane${currentLaneIndex + 1}`, owner: tokenOwner, type: 'lane' });
               }
+
+              debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ Transitioning to select_destination phase', {
+                  selectedDrone: token.name,
+                  selectedDroneId: token.id,
+                  sourceLane: droneLane,
+                  adjacentLanes: adjacentLanes.map(l => l.id),
+                  willSetValidCardTargets: true
+              });
 
               debugLog('MOVEMENT_LANES', `Adjacent lanes with owner:`, adjacentLanes);
 
@@ -3997,6 +4808,10 @@ const App = ({ phaseAnimationQueue }) => {
                   sourceLane: droneLane,
                   phase: 'select_destination'
               }));
+
+              debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ State updated - drone click handler complete');
+          } else {
+              debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ❌ Could not find drone lane - ABORTING');
           }
           return;
       }
@@ -4101,6 +4916,52 @@ const App = ({ phaseAnimationQueue }) => {
 
       if (selectedCard) {
         const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
+
+        // Additional cost card handling
+        if (additionalCostState) {
+          if (additionalCostState.phase === 'select_cost') {
+            // Cost selection (e.g., card in hand)
+            debugLog('ADDITIONAL_COST_UI', '🎯 Cost selected', { target });
+
+            const costSelection = {
+              type: selectedCard.additionalCost.type,
+              card: target  // For DISCARD_CARD cost
+            };
+
+            // Calculate valid effect targets
+            const effectTargets = calculateEffectTargetsWithCostContext(
+              selectedCard,
+              costSelection,
+              gameState.player1,
+              gameState.player2,
+              getLocalPlayerId(),
+              gameDataService.getEffectiveStats.bind(gameDataService)  // Pass stat calculator
+            );
+
+            setAdditionalCostState({
+              ...additionalCostState,
+              phase: 'select_effect',
+              costSelection
+            });
+            additionalCostFlowInProgress.current = true; // Ensure flag is set for cost → effect transition
+            setValidCardTargets(effectTargets);
+            return;
+          }
+
+          if (additionalCostState.phase === 'select_effect') {
+            // Effect target selected - show confirmation modal
+            debugLog('ADDITIONAL_COST_UI', '✅ Effect target selected, showing confirmation', { target });
+
+            setAdditionalCostConfirmation({
+              card: selectedCard,
+              costSelection: additionalCostState.costSelection,
+              effectTarget: { ...target, owner }
+            });
+            return;
+          }
+        }
+
+        // Standard card confirmation
         if (validCardTargets.some(t => t.id === target.id && t.owner === owner)) {
           setCardConfirmation({ card: selectedCard, target: { ...target, owner } });
           return;
@@ -4178,6 +5039,18 @@ const App = ({ phaseAnimationQueue }) => {
     // Stop the click from bubbling up to the main game area div
     e.stopPropagation();
 
+    // Entry logging for diagnostics
+    debugLog('LANE_CLICK_ENTRY', '🖱️ handleLaneClick ENTRY', {
+      lane: lane,
+      isPlayer: isPlayer,
+      selectedDrone: selectedDrone,
+      additionalCostState: additionalCostState,
+      additionalCostPhase: additionalCostState?.phase,
+      turnPhase: turnPhase,
+      singleMoveMode: singleMoveMode,
+      timestamp: Date.now()
+    });
+
     // Debug logging for MULTI_MOVE
     if (multiSelectState) {
       debugLog('CARD_PLAY', '🔵 MULTI_MOVE: handleLaneClick called');
@@ -4197,6 +5070,44 @@ const App = ({ phaseAnimationQueue }) => {
             });
             return;
         }
+    }
+
+    // --- 9.1.5 HANDLE ADDITIONAL COST MOVEMENT DESTINATION ---
+    if (additionalCostState && additionalCostState.phase === 'select_cost_movement_destination' && isPlayer && validCardTargets.some(t => t.id === lane)) {
+      debugLog('ADDITIONAL_COST_UI', '🚚 Cost movement destination selected', {
+        toLane: lane,
+        additionalCostPhase: additionalCostState.phase,
+        selectedDrone: selectedDrone,
+        validCardTargets: validCardTargets,
+        aboutToTransitionToSelectEffect: true
+      });
+
+      // Update cost selection with destination
+      const updatedCostSelection = {
+        ...additionalCostState.costSelection,
+        toLane: lane
+      };
+
+      // Calculate valid effect targets (e.g., enemy drones in SOURCE lane)
+      const effectTargets = calculateEffectTargetsWithCostContext(
+        additionalCostState.card,
+        updatedCostSelection,
+        gameState.player1,
+        gameState.player2,
+        getLocalPlayerId(),
+        gameDataService.getEffectiveStats.bind(gameDataService)  // Pass stat calculator
+      );
+
+      // Proceed to effect selection
+      setAdditionalCostState({
+        phase: 'select_effect',
+        card: additionalCostState.card,
+        costSelection: updatedCostSelection,
+        validTargets: effectTargets
+      });
+      additionalCostFlowInProgress.current = true; // Ensure flag is set for movement → effect transition
+      setValidCardTargets(effectTargets);
+      return;
     }
 
     // --- 9.2 HANDLE SINGLE-MOVE MODE LANE CLICKS ---
@@ -4262,6 +5173,43 @@ const App = ({ phaseAnimationQueue }) => {
             return;
         }
 
+        if (phase === 'select_destination') {
+            debugLog('ADDITIONAL_COST_EFFECT_FLOW', '🎯 Lane click during select_destination phase', {
+                lane,
+                sourceLane,
+                card: multiSelectState.card?.name,
+                selectedDrone: multiSelectState.selectedDrone?.name,
+                selectedDroneId: multiSelectState.selectedDrone?.id,
+                hasAdditionalCostContext: !!additionalCostSelectionContext
+            });
+
+            // Handle single-move destination selection (for additional cost effects)
+            debugLog('CARD_PLAY', '   ✅ Destination lane selected (single-move), calling resolveSingleMove');
+            debugLog('CARD_PLAY', '   Card:', multiSelectState.card?.name);
+            debugLog('CARD_PLAY', '   From lane:', sourceLane, '→ To lane:', lane);
+
+            const selectedDrone = multiSelectState.selectedDrone;
+
+            debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   🔵 Calling resolveSingleMove', {
+                cardId: multiSelectState.card?.id,
+                droneId: selectedDrone.id,
+                droneOwner: selectedDrone.owner || getLocalPlayerId(),
+                fromLane: sourceLane,
+                toLane: lane
+            });
+
+            resolveSingleMove(
+                multiSelectState.card,
+                selectedDrone.id,
+                selectedDrone.owner || getLocalPlayerId(),
+                sourceLane,
+                lane
+            );
+
+            debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ resolveSingleMove called - lane click handler complete');
+            return;
+        }
+
         if (phase === 'select_destination_lane') {
             debugLog('CARD_PLAY', '   ✅ Destination lane selected, calling resolveMultiMove');
             debugLog('CARD_PLAY', '   Card:', multiSelectState.card?.name);
@@ -4289,9 +5237,9 @@ const App = ({ phaseAnimationQueue }) => {
       willCallCancel: !!selectedCard && !multiSelectFlowInProgress.current
     });
 
-    // Don't cancel if in single-move mode (user needs to drag the drone to complete)
-    if (selectedCard && !multiSelectFlowInProgress.current && !singleMoveMode) {
-      cancelCardSelection();
+    // Don't cancel if in single-move mode or additional cost flow
+    if (selectedCard && !multiSelectFlowInProgress.current && !singleMoveMode && !additionalCostFlowInProgress.current) {
+      cancelCardSelection('lane-click-cleanup');
       return;
     }
     
@@ -4337,6 +5285,25 @@ const App = ({ phaseAnimationQueue }) => {
 
            setMoveConfirmation(moveConfData);
         } else {
+           debugLog('MODAL_TRIGGER', '🚨 INVALID MOVE MODAL TRIGGERED', {
+             location: 'handleLaneClick - selected drone move',
+             lineNumber: 5020,
+             timestamp: Date.now(),
+             lane: lane,
+             isPlayer: isPlayer,
+             selectedDrone: selectedDrone,
+             sourceLaneName: sourceLaneName,
+             sourceLaneIndex: sourceLaneIndex,
+             targetLaneIndex: targetLaneIndex,
+             distance: Math.abs(sourceLaneIndex - targetLaneIndex),
+             additionalCostState: additionalCostState,
+             additionalCostPhase: additionalCostState?.phase,
+             additionalCostFlowInProgress: additionalCostFlowInProgress.current,
+             turnPhase: turnPhase,
+             validCardTargets: validCardTargets,
+             validCardTargetsCount: validCardTargets?.length
+           });
+           console.trace('Invalid Move modal call stack');
            setModalContent({ title: "Invalid Move", text: "Drones can only move to adjacent lanes.", isBlocking: true });
         }
     }
@@ -4424,7 +5391,7 @@ const App = ({ phaseAnimationQueue }) => {
           cardName: card.name,
           cardInstanceId: card.instanceId
         });
-        cancelCardSelection();
+        cancelCardSelection('card-click-toggle-off');
       } else {
         cancelAllActions(); // Cancel all other actions before starting movement card
         setSelectedCard(card); // Keep card selected for greyscale effect on other cards
@@ -4475,7 +5442,7 @@ const App = ({ phaseAnimationQueue }) => {
         cardName: card.name,
         cardInstanceId: card.instanceId
       });
-      cancelCardSelection();
+      cancelCardSelection('card-click-deselect');
     } else if (card.name === 'System Sabotage') {
         debugLog('CARD_PLAY', `✅ System Sabotage card - getting targets`, { card: card.name });
         // TODO: TECHNICAL DEBT - getValidTargets gets valid targets for special cards - required for card targeting UI
@@ -4891,7 +5858,7 @@ const App = ({ phaseAnimationQueue }) => {
       cancelAbilityMode();
       // Don't cancel card selection if we're in a multi-select flow or single-move mode
       if (!multiSelectFlowInProgress.current && !singleMoveMode) {
-        cancelCardSelection();
+        cancelCardSelection('game-area-click');
       }
     }}>
      {currentBackground.type === 'animated' ? (
@@ -5143,6 +6110,9 @@ const App = ({ phaseAnimationQueue }) => {
         // Single-move mode props
         singleMoveMode={singleMoveMode}
         handleCancelSingleMove={cancelSingleMoveMode}
+        // Additional cost mode props
+        additionalCostState={additionalCostState}
+        handleCancelAdditionalCost={cancelAdditionalCostMode}
         // Extraction mode props
         currentRunState={tacticalMapStateManager.getState()}
         isExtractionMode={tacticalMapStateManager.isRunActive()}
@@ -5163,6 +6133,7 @@ const App = ({ phaseAnimationQueue }) => {
         validAbilityTargets={validAbilityTargets}
         multiSelectState={multiSelectState}
         singleMoveMode={singleMoveMode}
+        additionalCostState={additionalCostState}
         turnPhase={turnPhase}
         reallocationPhase={reallocationPhase}
         pendingShieldAllocations={pendingShieldAllocations}
@@ -5521,6 +6492,32 @@ const App = ({ phaseAnimationQueue }) => {
           }, 400); // Delay to allow modal to close
         }}
       />
+
+      {additionalCostConfirmation && (
+        <AdditionalCostConfirmationModal
+          card={additionalCostConfirmation.card}
+          costSelection={additionalCostConfirmation.costSelection}
+          effectTarget={additionalCostConfirmation.effectTarget}
+          onConfirm={async () => {
+            // Store data before closing modal
+            const card = additionalCostConfirmation.card;
+            const costSelection = additionalCostConfirmation.costSelection;
+            const effectTarget = additionalCostConfirmation.effectTarget;
+
+            // Close modal immediately
+            setAdditionalCostConfirmation(null);
+
+            // Wait for modal to unmount/fade out before processing card
+            setTimeout(async () => {
+              await confirmAdditionalCostCard(card, costSelection, effectTarget);
+            }, 400); // Delay to allow modal to close
+          }}
+          onCancel={() => {
+            setAdditionalCostConfirmation(null);
+            // Don't clear additionalCostState - user can reselect effect target
+          }}
+        />
+      )}
 
       <DroneAbilityConfirmationModal
         abilityConfirmation={abilityConfirmation}

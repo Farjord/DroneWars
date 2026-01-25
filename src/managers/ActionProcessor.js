@@ -5,6 +5,7 @@
 // All game actions must go through this processor to ensure serialization.
 
 import { gameEngine } from '../logic/gameLogic.js';
+import CardPlayManager from '../logic/cards/CardPlayManager.js';
 import { resolveAttack } from '../logic/combat/AttackProcessor.js';
 import fullDroneCollection from '../data/droneData.js';
 import { calculatePotentialInterceptors, calculateAiInterception } from '../logic/combat/InterceptionProcessor.js';
@@ -84,6 +85,7 @@ class ActionProcessor {
       ability: false,
       deployment: false,
       cardPlay: false,
+      additionalCostCardPlay: false,
       shipAbility: false,
       shipAbilityCompletion: false,
       turnTransition: false,
@@ -256,7 +258,7 @@ setAnimationManager(animationManager) {
     // PASS STATE VALIDATION - Prevent actions after players have passed
     if (currentState.passInfo) {
       // Actions that should be blocked if current player has passed
-      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'shipAbility', 'recallAbility', 'targetLockAbility', 'recalculateAbility', 'reallocateShieldsAbility'];
+      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'additionalCostCardPlay', 'shipAbility', 'recallAbility', 'targetLockAbility', 'recalculateAbility', 'reallocateShieldsAbility'];
       if (playerActionTypes.includes(type)) {
         // Determine the current player for this action
         let actionPlayerId = payload.playerId || currentState.currentPlayer;
@@ -279,7 +281,7 @@ setAnimationManager(animationManager) {
     // Sequential phases (deployment, action) are turn-based - only currentPlayer can act
     const sequentialPhases = ['deployment', 'action'];
     if (sequentialPhases.includes(currentState.turnPhase)) {
-      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'shipAbility', 'movementCompletion', 'searchAndDrawCompletion'];
+      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'additionalCostCardPlay', 'shipAbility', 'movementCompletion', 'searchAndDrawCompletion'];
       if (playerActionTypes.includes(type)) {
         // Determine which player is attempting this action
         const actionPlayerId = payload.playerId || currentState.currentPlayer;
@@ -344,6 +346,14 @@ setAnimationManager(animationManager) {
 
         case 'cardPlay':
           result = await this.processCardPlay(payload);
+          break;
+
+        case 'additionalCostCardPlay':
+          result = await this.processAdditionalCostCardPlay(payload);
+          break;
+
+        case 'additionalCostEffectSelectionComplete':
+          result = await this.processAdditionalCostEffectSelectionComplete(payload);
           break;
 
         case 'movementCompletion':
@@ -463,6 +473,7 @@ setAnimationManager(animationManager) {
       // Only emit for player actions that might need turn transitions or broadcasting
       const playerActionTypes = [
         'attack', 'ability', 'move', 'deployment', 'cardPlay',
+        'additionalCostCardPlay',
         'shipAbility', 'shipAbilityCompletion',
         'movementCompletion', 'searchAndDrawCompletion',
         'aiAction', 'aiTurn', 'playerPass', 'turnTransition',
@@ -1263,6 +1274,191 @@ setAnimationManager(animationManager) {
    * Called after user has selected drones and destination in UI
    * Card costs are paid here (not during initial card play)
    */
+  async processAdditionalCostCardPlay(payload) {
+    const { card, costSelection, effectTarget, playerId } = payload;
+
+    debugLog('ADDITIONAL_COST', '⚙️ ActionProcessor: processAdditionalCostCardPlay started', {
+      cardName: card.name,
+      cardId: card.id,
+      costSelection,
+      effectTargetId: effectTarget.id,
+      effectTargetName: effectTarget.name,
+      playerId
+    });
+
+    const currentState = this.gameStateManager.getState();
+    const playerStates = { player1: currentState.player1, player2: currentState.player2 };
+
+    debugLog('ADDITIONAL_COST', '📊 Current game state', {
+      player1Energy: playerStates.player1.energy,
+      player2Energy: playerStates.player2.energy,
+      player1Hand: playerStates.player1.hand.length,
+      player2Hand: playerStates.player2.hand.length
+    });
+    const placedSections = {
+      player1: currentState.placedSections,
+      player2: currentState.opponentPlacedSections
+    };
+
+    const callbacks = {
+      logCallback: (entry) => this.gameStateManager.addLogEntry(entry),
+      resolveAttackCallback: async (attackPayload) => {
+        return await this.processAttack(attackPayload);
+      },
+      applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects,
+      updateAurasCallback: gameEngine.updateAuras,
+      actionsTakenThisTurn: currentState.actionsTakenThisTurn || 0
+    };
+
+    // Use CardPlayManager to process the additional cost card completion
+    const result = CardPlayManager.processAdditionalCostCardCompletion(
+      card,
+      costSelection,
+      effectTarget,
+      playerId,
+      playerStates,
+      placedSections,
+      callbacks
+    );
+
+    // Check if effect needs card selection (e.g., movement effect)
+    if (result.needsEffectSelection) {
+      debugLog('ADDITIONAL_COST', '🔄 Effect needs selection - returning to UI', {
+        cardName: card.name,
+        selectionType: result.needsEffectSelection.selectionData.type
+      });
+
+      return {
+        success: true,  // Action processed successfully (though not complete)
+        needsEffectSelection: result.needsEffectSelection,  // Pass to UI
+        playerStates: result.needsEffectSelection.currentStates
+      };
+    }
+
+    debugLog('ADDITIONAL_COST', '✅ ActionProcessor: Card execution completed', {
+      cardName: card.name,
+      stateChanged: result.newPlayerStates !== playerStates,
+      animationEventCount: result.animationEvents?.length || 0,
+      shouldEndTurn: result.shouldEndTurn
+    });
+
+    // Update game state with result
+    const updatedState = {
+      ...currentState,
+      player1: result.newPlayerStates.player1,
+      player2: result.newPlayerStates.player2,
+      actionsTakenThisTurn: (currentState.actionsTakenThisTurn || 0) + 1
+    };
+
+    // Queue animations
+    if (result.animationEvents && result.animationEvents.length > 0) {
+      debugLog('ADDITIONAL_COST', '🎬 Animation events queued', {
+        eventCount: result.animationEvents.length,
+        eventTypes: result.animationEvents.map(e => e.type)
+      });
+      this.pendingActionAnimations.push(...result.animationEvents);
+    }
+
+    // Update state via GameStateManager
+    this.gameStateManager.setState(updatedState);
+
+    // Execute CARD_REVEAL animation now that additional cost card play is complete
+    const animDef = this.animationManager?.animations['CARD_REVEAL'];
+    const cardRevealAnimation = [{
+      animationName: 'CARD_REVEAL',
+      timing: animDef?.timing || 'independent',
+      payload: {
+        cardId: card.id,
+        cardName: card.name,
+        cardData: card,
+        targetPlayer: playerId,
+        timestamp: Date.now()
+      }
+    }];
+    await this.executeAndCaptureAnimations(cardRevealAnimation);
+
+    // NOTE: Turn transitions now handled by GameFlowManager based on shouldEndTurn flag
+    // GameFlowManager monitors action completion and processes turn transitions after animations complete
+
+    return {
+      success: true,
+      shouldEndTurn: result.shouldEndTurn,
+      animationEvents: result.animationEvents
+    };
+  }
+
+  /**
+   * Process additional cost effect selection completion
+   *
+   * Called when user completes selecting the effect target for an additional cost card
+   * (e.g., after selecting which enemy drone to move in Forced Repositioning)
+   *
+   * @param {Object} payload - { selectionContext, effectSelection, playerId }
+   * @returns {Object} { success, newPlayerStates, shouldEndTurn, animationEvents }
+   */
+  async processAdditionalCostEffectSelectionComplete(payload) {
+    debugLog('ADDITIONAL_COST_EFFECT_FLOW', '🎯 ActionProcessor: processAdditionalCostEffectSelectionComplete ENTRY', {
+      cardName: payload.selectionContext.card.name,
+      playerId: payload.playerId,
+      effectSelectionType: payload.effectSelection.type,
+      droneId: payload.effectSelection.drone?.id,
+      fromLane: payload.effectSelection.fromLane,
+      toLane: payload.effectSelection.toLane
+    });
+
+    debugLog('ADDITIONAL_COST', '🎯 Processing effect selection completion', {
+      cardName: payload.selectionContext.card.name,
+      playerId: payload.playerId
+    });
+
+    const callbacks = this.gameStateManager.createCallbacks();
+
+    debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   🔵 Calling CardPlayManager.completeAdditionalCostEffectSelection');
+
+    const result = CardPlayManager.completeAdditionalCostEffectSelection(
+      payload.selectionContext,
+      payload.effectSelection,
+      callbacks
+    );
+
+    debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ CardPlayManager completed', {
+      success: true,
+      hasNewStates: !!result.newPlayerStates,
+      shouldEndTurn: result.shouldEndTurn,
+      animationCount: result.animationEvents?.length || 0
+    });
+
+    // Update game state with result
+    const currentState = this.gameStateManager.getState();
+    const updatedState = {
+      ...currentState,
+      player1: result.newPlayerStates.player1,
+      player2: result.newPlayerStates.player2,
+      actionsTakenThisTurn: (currentState.actionsTakenThisTurn || 0) + 1
+    };
+
+    // Queue animations
+    if (result.animationEvents && result.animationEvents.length > 0) {
+      debugLog('ADDITIONAL_COST', '🎬 Animation events queued', {
+        eventCount: result.animationEvents.length,
+        eventTypes: result.animationEvents.map(e => e.type)
+      });
+      this.pendingActionAnimations.push(...result.animationEvents);
+    }
+
+    // Update state via GameStateManager
+    this.gameStateManager.setState(updatedState);
+
+    debugLog('ADDITIONAL_COST_EFFECT_FLOW', '✅ ActionProcessor complete - returning result');
+
+    return {
+      success: true,
+      newPlayerStates: result.newPlayerStates,
+      shouldEndTurn: result.shouldEndTurn,
+      animationEvents: result.animationEvents
+    };
+  }
+
   async processMovementCompletion(payload) {
     const { card, movementType, drones, fromLane, toLane, playerId } = payload;
 

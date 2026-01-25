@@ -69,7 +69,8 @@ const renderDronesOnBoard = (
   handleActionCardDragEnd,
   getLocalPlayerId,
   getOpponentPlayerId,
-  abilityMode
+  abilityMode,
+  additionalCostState
 ) => {
   return (
     <div
@@ -108,7 +109,11 @@ const renderDronesOnBoard = (
               isPlayer={isPlayer}
               onClick={handleTokenClick}
               onAbilityClick={handleAbilityIconClick}
-              isSelected={selectedDrone && selectedDrone.id === drone.id}
+              isSelected={
+                (selectedDrone && selectedDrone.id === drone.id) ||
+                (additionalCostState?.costSelection?.drone?.id === drone.id) ||
+                (singleMoveMode?.droneId === drone.id)
+              }
               isSelectedForMove={multiSelectState?.phase === 'select_drones' && multiSelectState.selectedDrones.some(d => d.id === drone.id)}
               isHit={recentlyHitDrones.includes(drone.id)}
               isPotentialInterceptor={potentialInterceptors.includes(drone.id)}
@@ -128,7 +133,18 @@ const renderDronesOnBoard = (
               enableFloatAnimation={true}
               deploymentOrderNumber={drone.deploymentOrderNumber}
               onDragStart={(isPlayer || singleMoveMode?.droneId === drone.id) ? handleDroneDragStart : undefined}
-              onDragDrop={!isPlayer && draggedDrone ? (targetDrone) => handleDroneDragEnd(targetDrone, lane, true) : undefined}
+              onDragDrop={!isPlayer && draggedDrone ?
+                (targetDrone) => {
+                  debugLog('CHECKPOINT_FLOW', '🔌 CHECKPOINT 3-FIRE: onDragDrop callback executing', {
+                    targetDrone: targetDrone.name,
+                    targetId: targetDrone.id,
+                    lane: lane,
+                    willCallHandleDroneDragEnd: true,
+                    params: { target: targetDrone.name, targetLane: lane, isOpponentTarget: true, targetType: 'drone' }
+                  });
+                  handleDroneDragEnd(targetDrone, lane, true, 'drone');
+                }
+                : undefined}
               isDragging={draggedDrone?.drone?.id === drone.id}
               isHovered={
                 hoveredTarget?.target?.id === drone.id &&
@@ -204,6 +220,7 @@ const DroneLanesDisplay = ({
   affectedDroneIds = [],
   multiSelectState,
   singleMoveMode,
+  additionalCostState,
   turnPhase,
   localPlayerState,
   opponentPlayerState,
@@ -253,33 +270,12 @@ const DroneLanesDisplay = ({
           draggedActionCard.card?.targeting?.type === 'LANE' &&
           validCardTargets.some(t => t.id === lane && t.owner === owner);
 
-        // Debug logging BEFORE isTargetable calculation
-        if (multiSelectState) {
-          debugLog('MOVEMENT_LANES', `🎯 Lane ${lane} highlight check`, {
-            lane,
-            owner,
-            isPlayer,
-            multiSelectState_phase: multiSelectState.phase,
-            validCardTargets_count: validCardTargets.length,
-            validCardTargets_ids: validCardTargets.map(t => t.id),
-            laneMatchFound: validCardTargets.some(t => t.id === lane)
-          });
-        }
-
         const isTargetable = (abilityMode && validAbilityTargets.some(t => t.id === lane && t.owner === owner)) ||
                              (selectedCard && validCardTargets.some(t => t.id === lane && t.owner === owner)) ||
                              (multiSelectState && validCardTargets.some(t => t.id === lane && t.owner === owner)) ||
                              (singleMoveMode && validCardTargets.some(t => t.id === lane && t.owner === owner)) ||
                              (draggedCard && isPlayer) || // Highlight player lanes when dragging a deployment card
                              isActionCardLaneTarget; // Highlight lanes when dragging a LANE targeting action card
-
-        // Debug logging AFTER isTargetable calculation
-        if (multiSelectState) {
-          debugLog('MOVEMENT_LANES', `📍 Lane ${lane} result: ${isTargetable ? 'HIGHLIGHTED' : 'not highlighted'}`, {
-            lane,
-            isTargetable
-          });
-        }
 
         const isInteractivePlayerLane = isPlayer && (turnPhase === 'deployment' || turnPhase === 'action');
         const baseBackgroundColor = isPlayer ? 'bg-cyan-400/10' : 'bg-red-500/10';
@@ -330,32 +326,64 @@ const DroneLanesDisplay = ({
                 setHoveredLane(null);
               }
             }}
-            onMouseUp={() => {
+            onMouseUp={(e) => {
               // Handle card drop when dragging a card to player lanes
-              debugLog('DRAG_DROP_DEPLOY', '🎯 Lane mouseUp detected', {
+              debugLog('CHECKPOINT_FLOW', '🏁 CHECKPOINT 4: Lane mouseUp fired', {
                 lane: lane,
                 isPlayer: isPlayer,
                 hasDraggedCard: draggedCard !== null,
                 hasDraggedDrone: draggedDrone !== null,
                 hasDraggedActionCard: draggedActionCard !== null,
-                willCallOnLaneClick: !draggedCard && !draggedDrone && !draggedActionCard
+                additionalCostPhase: additionalCostState?.phase,
+                guardWillBlock: additionalCostState?.phase === 'select_effect',
+                timestamp: Date.now()
               });
 
               // Handle action card drop on lanes (LANE targeting)
               if (draggedActionCard && handleActionCardDragEnd) {
                 const card = draggedActionCard.card;
                 if (card?.targeting?.type === 'LANE') {
+                  debugLog('CHECKPOINT_FLOW', '🏁 CHECKPOINT 4A: Action card lane drop');
                   handleActionCardDragEnd({ id: lane, name: lane }, 'lane', owner);
+                  e.stopPropagation();
+                  debugLog('CHECKPOINT_FLOW', '🏁 CHECKPOINT 4A-STOP: stopPropagation called');
                   return;
                 }
               }
 
               if (draggedCard && isPlayer && handleCardDragEnd) {
+                debugLog('CHECKPOINT_FLOW', '🏁 CHECKPOINT 4B: Drone card drop on lane');
                 handleCardDragEnd(lane);
+                e.stopPropagation();
+                debugLog('CHECKPOINT_FLOW', '🏁 CHECKPOINT 4B-STOP: stopPropagation called');
+                return;
               }
+
               // Handle drone drop for movement (to player lanes OR in single-move mode)
               if (draggedDrone && handleDroneDragEnd && (isPlayer || singleMoveMode)) {
-                handleDroneDragEnd(null, lane, false);
+                if (additionalCostState?.phase === 'select_effect') {
+                  debugLog('CHECKPOINT_FLOW', '🏁 CHECKPOINT 4C-BLOCKED: Drone drop on lane BLOCKED by select_effect phase guard', {
+                    lane: lane,
+                    phase: additionalCostState.phase,
+                    reason: 'Guard prevents lane drops during effect selection'
+                  });
+                  // Do NOT call e.stopPropagation() - let it bubble to global handler
+                } else {
+                  debugLog('CHECKPOINT_FLOW', '🏁 CHECKPOINT 4C: Drone drop on lane (not blocked)', {
+                    lane: lane,
+                    phase: additionalCostState?.phase,
+                    willCallWith: { target: null, targetLane: lane, isOpponentTarget: false, targetType: 'lane' }
+                  });
+                  handleDroneDragEnd(null, lane, false, 'lane');
+                  e.stopPropagation();
+                  debugLog('CHECKPOINT_FLOW', '🏁 CHECKPOINT 4C-STOP: stopPropagation called');
+                }
+              } else {
+                debugLog('CHECKPOINT_FLOW', '🏁 CHECKPOINT 4D: Lane conditions not met, propagating', {
+                  hasDraggedDrone: !!draggedDrone,
+                  hasHandler: !!handleDroneDragEnd,
+                  isPlayerOrSingleMove: isPlayer || singleMoveMode
+                });
               }
             }}
             className={`flex-1 rounded-lg transition-all duration-1000 ease-in-out p-2 ${laneBorderClass}
@@ -400,7 +428,8 @@ const DroneLanesDisplay = ({
               handleActionCardDragEnd,
               getLocalPlayerId,
               getOpponentPlayerId,
-              abilityMode
+              abilityMode,
+              additionalCostState
             )}
           </div>
         );
