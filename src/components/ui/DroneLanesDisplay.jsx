@@ -70,7 +70,8 @@ const renderDronesOnBoard = (
   getLocalPlayerId,
   getOpponentPlayerId,
   abilityMode,
-  additionalCostState
+  additionalCostState,
+  selectedCard
 ) => {
   return (
     <div
@@ -85,6 +86,23 @@ const renderDronesOnBoard = (
           const cardTargetMatch = validCardTargets.some(t => t.id === drone.id && t.owner === droneOwner);
           const affectedDroneMatch = affectedDroneIds.includes(drone.id);
           const isActionTarget = abilityTargetMatch || cardTargetMatch || affectedDroneMatch;
+
+          // Calculate invalid target indicator state
+          // Shows "no entry" symbol on drones in targeting scope but NOT valid targets
+          const targetingAffinity = selectedCard?.targeting?.affinity || abilityMode?.ability?.targeting?.affinity;
+          const targetingType = selectedCard?.targeting?.type || abilityMode?.ability?.targeting?.type;
+
+          const isInvalidTarget = (() => {
+            // Only for DRONE targeting when not a valid target
+            if (targetingType !== 'DRONE' || isActionTarget) return false;
+
+            switch (targetingAffinity) {
+              case 'ENEMY': return !isPlayer;      // Show on enemy drones only
+              case 'FRIENDLY': return isPlayer;    // Show on friendly drones only
+              case 'ANY': return true;             // Show on all drones
+              default: return false;
+            }
+          })();
 
           // Log when action targeting is active (for diagnosing highlighting issues)
           if (isActionTarget) {
@@ -160,6 +178,7 @@ const renderDronesOnBoard = (
                 additionalCostState?.phase === 'select_effect' &&
                 additionalCostState?.costSelection?.drone?.id === drone.id
               }
+              isInvalidTarget={isInvalidTarget}
                />
           );
       })}
@@ -391,7 +410,7 @@ const DroneLanesDisplay = ({
               }
             }}
             className={`flex-1 rounded-lg transition-all duration-1000 ease-in-out p-2 ${laneBorderClass}
-              ${isTargetable ? 'lane-target-pulse' : laneBackgroundClass}
+              ${laneBackgroundClass} ${isTargetable ? 'lane-target-pulse' : ''}
               ${isInteractivePlayerLane ? 'cursor-pointer hover:bg-cyan-900/20' : ''}
             `}
             style={{
@@ -433,7 +452,8 @@ const DroneLanesDisplay = ({
               getLocalPlayerId,
               getOpponentPlayerId,
               abilityMode,
-              additionalCostState
+              additionalCostState,
+              selectedCard
             )}
           </div>
         );

@@ -15,6 +15,26 @@ import { debugLog } from '../../utils/debugLogger.js';
 import { Gauge, Crosshair } from 'lucide-react';
 
 /**
+ * INVALID TARGET INDICATOR COMPONENT
+ * Renders a red "no entry" symbol overlay on drones that are NOT valid targets.
+ * @param {boolean} show - Whether to show the indicator
+ */
+const InvalidTargetIndicator = ({ show }) => {
+  if (!show) return null;
+
+  return (
+    <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none">
+      <div className="invalid-target-overlay">
+        <svg viewBox="0 0 48 48" className="w-12 h-12">
+          <circle cx="24" cy="24" r="20" fill="none" stroke="#ef4444" strokeWidth="4" opacity="0.9" />
+          <line x1="10" y1="10" x2="38" y2="38" stroke="#ef4444" strokeWidth="4" strokeLinecap="round" opacity="0.9" />
+        </svg>
+      </div>
+    </div>
+  );
+};
+
+/**
  * STAT HEXAGON COMPONENT
  * Renders stat values in hexagonal containers for drone tokens.
  * @param {number} value - The stat value to display
@@ -169,7 +189,9 @@ const DroneToken = ({
   draggedActionCard = null,
   onActionCardDrop = null,
   getLocalPlayerId = () => 'player1',
-  getOpponentPlayerId = () => 'player2'
+  getOpponentPlayerId = () => 'player2',
+  // Invalid target indicator prop
+  isInvalidTarget = false
 }) => {
   // Performance logging for drag investigation - only log when dragging is active
   if (isDragging) {
@@ -375,6 +397,9 @@ const DroneToken = ({
           )}
         </div>
         {/* End Targeting/Visual Effects Container */}
+
+          {/* Invalid Target Indicator - shown when drone is in scope but not valid target */}
+          <InvalidTargetIndicator show={isInvalidTarget} />
       </div>
       {/* End Visual Effects Wrapper */}
 

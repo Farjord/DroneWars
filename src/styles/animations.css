@@ -555,14 +555,26 @@
 /* Targetable lane pulse - fades lane opacity in and out */
 @keyframes lane-target-fade {
   0%, 100% {
-    background-color: rgba(34, 211, 238, 0.15);
+    opacity: 0.4;
   }
   50% {
-    background-color: rgba(34, 211, 238, 0.5);
+    opacity: 1;
   }
 }
 
 .lane-target-pulse {
   animation: lane-target-fade 1.5s ease-in-out infinite;
+}
+
+/* === INVALID TARGET INDICATOR === */
+
+/* Pulse animation for "no entry" symbol on invalid targets */
+@keyframes invalid-target-pulse {
+  0%, 100% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.05); }
+}
+
+.invalid-target-overlay {
+  animation: invalid-target-pulse 1.5s ease-in-out infinite;
 }
 
