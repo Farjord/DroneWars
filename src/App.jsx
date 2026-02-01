@@ -2002,7 +2002,7 @@ const App = ({ phaseAnimationQueue }) => {
   // This hook now ONLY handles showing/hiding the arrow and setting its start point.
   // It only runs when the selected drone changes, not on every mouse move.
   useEffect(() => {
-    if (selectedDrone && !abilityMode && turnPhase === 'action') {
+    if (selectedDrone && !abilityMode && !singleMoveMode && turnPhase === 'action') {
         const startPos = getElementCenter(droneRefs.current[selectedDrone.id], gameAreaRef.current);
         if(startPos) {
             // Set state once to make the arrow visible and position its start point.
@@ -2012,7 +2012,7 @@ const App = ({ phaseAnimationQueue }) => {
         // Set state once to hide the arrow.
         setArrowState(prev => ({ ...prev, visible: false }));
     }
-  }, [selectedDrone, turnPhase, abilityMode]);
+  }, [selectedDrone, turnPhase, abilityMode, singleMoveMode]);
 
   // This hook handles updating the arrow's end position on every mouse move.
   // It does NOT set state, so it will not cause re-renders, fixing the animation bug.
@@ -6405,6 +6405,7 @@ const App = ({ phaseAnimationQueue }) => {
         handleActionCardDragStart={handleActionCardDragStart}
         draggedActionCard={draggedActionCard}
         additionalCostState={additionalCostState}
+        actionsTakenThisTurn={gameState.actionsTakenThisTurn || 0}
       />
 
       {/* Modals are unaffected and remain at the end */}

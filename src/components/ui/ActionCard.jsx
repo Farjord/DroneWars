@@ -46,6 +46,7 @@ const ActionCard = ({
   isDimmed,
   isDragging = false,
   isCostSelectionTarget = false,
+  hasMomentumGlow = false,
   mandatoryAction = null,
   excessCards = 0,
   scale = 1.0,
@@ -140,7 +141,10 @@ const ActionCard = ({
           {/* Header with Cost */}
           <div className="grid grid-cols-[1fr_auto] gap-2 items-center py-1 pl-3 pr-1 bg-black/40 flex-shrink-0 h-8">
             <div className="text-center min-w-0">
-              <ScalingText text={name} className="font-orbitron text-sm uppercase tracking-widest whitespace-nowrap text-white" />
+              <ScalingText
+                text={name}
+                className={`font-orbitron text-sm uppercase tracking-widest whitespace-nowrap ${hasMomentumGlow ? 'momentum-title-glow' : 'text-white'}`}
+              />
             </div>
             <div className="flex items-center gap-1 flex-shrink-0">
               {/* Momentum Cost Chip (if applicable) */}

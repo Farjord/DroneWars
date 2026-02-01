@@ -61,7 +61,7 @@ export const calculatePolygonPoints = (start, end, baseWidth = 10, tipWidth = 4)
  * @param {Object} lineRef - React ref for the SVG polygon element (updates dynamically via setAttribute('points', ...))
  * @param {string} color - Optional color for the arrow (default: #ff0055)
  */
-const TargetingArrow = ({ visible, start, end, lineRef, color = '#ff0055', zIndex = 40, showPulses = true }) => {
+const TargetingArrow = ({ visible, start, end, lineRef, color = '#ff0055', zIndex = 15, showPulses = true }) => {
   debugLog('DRAG_DROP_DEPLOY', '🏹 TargetingArrow render', { visible, start, end, hasRef: !!lineRef, color });
   if (!visible) return null;
 

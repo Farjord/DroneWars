@@ -439,7 +439,7 @@ const DroneLanesDisplay = ({
             {/* Pulse overlay for lane targeting - sits behind drone content */}
             {isTargetable && (
               <div
-                className="absolute inset-0 rounded-lg lane-target-pulse pointer-events-none"
+                className="absolute inset-0 rounded-lg lane-target-pulse pointer-events-none z-[-1]"
                 style={{
                   backgroundImage: isPlayer ? cyanHexGrid : redHexGrid,
                   backgroundSize: '56px 32px',
@@ -448,7 +448,7 @@ const DroneLanesDisplay = ({
               />
             )}
             {/* Drone content wrapper - sits above pulse overlay */}
-            <div className="relative z-10">
+            <div className="relative">
             {renderDronesOnBoard(
               player.dronesOnBoard[lane],
               isPlayer,

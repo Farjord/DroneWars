@@ -69,7 +69,6 @@ const fullCardCollection = [
     cost: 2,
     image: '/DroneWars/cards/Reboot.png',
     description: 'Draw 2 cards from your deck. Go again.',
-    // No targeting key is needed for this card
     effect: {
       type: 'DRAW',
       value: 2,
@@ -86,7 +85,6 @@ const fullCardCollection = [
     cost: 2,
     image: '/DroneWars/cards/Reboot.png',
     description: 'Draw 3 cards from your deck. Go again.',
-    // No targeting key is needed for this card
     effect: {
       type: 'DRAW',
       value: 3,
@@ -100,14 +98,17 @@ const fullCardCollection = [
     maxInDeck: 4,
     rarity: 'Common',
     type: 'Support',
-    cost: 1,
+    cost: 0,
     image: '/DroneWars/cards/OutThink.png',
-    description: 'Draw 1 card.',
-    // No targeting is needed
+    description: 'Draw 2 cards. Can only be played when you control fewer lanes than your opponent.',
+    playCondition: {
+      type: 'LANE_CONTROL_COMPARISON',
+      comparison: 'FEWER_THAN_OPPONENT'
+    },
     effect: {
       type: 'DRAW',
-      value: 1,
-     }
+      value: 2,
+    }
   },
     {
     id: 'CARD004',
@@ -118,11 +119,10 @@ const fullCardCollection = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/EnergySurge.png',
-    description: 'Gain 2 Energy. Go again',
-    // No targeting is needed for this effect
-    effect: {
+    description: 'Gain 3 Energy. Go again',
+     effect: {
       type: 'GAIN_ENERGY',
-      value: 2,
+      value: 3,
       goAgain: true
     }
   },
@@ -133,13 +133,12 @@ const fullCardCollection = [
     maxInDeck: 4,
     rarity: 'Uncommon',
     type: 'Support',
-    cost: 1,
+    cost: 2,
     image: '/DroneWars/cards/EnergySurge.png',
-    description: 'Gain 3 Energy. Go again.',
-    // No targeting is needed for this effect
+    description: 'Gain 5 Energy. Go again.',
     effect: {
       type: 'GAIN_ENERGY',
-      value: 3,
+      value: 5,
       goAgain: true
     }
   },
@@ -263,7 +262,7 @@ const fullCardCollection = [
       goAgain: true
     }
   },
-  // Single-target destroy (requires marked)
+
   {
     id: 'CARD009',
     baseCardId: 'CARD009',
@@ -659,9 +658,7 @@ const fullCardCollection = [
       goAgain: true
     }
 },
-// ========================================
-// MOVEMENT CARDS WITH CONDITIONALS
-// ========================================
+
 {
     id: 'CARD060',
     baseCardId: 'CARD060',
@@ -672,6 +669,11 @@ const fullCardCollection = [
     cost: 2,
     image: '/DroneWars/cards/SwiftManeuver.png',
     description: 'Move a friendly drone to an adjacent lane. If its speed is 5 or higher, go again.',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'FRIENDLY',
+      location: 'ANY_LANE'
+    },
     effect: {
       type: 'SINGLE_MOVE',
       properties: ['DO_NOT_EXHAUST']
@@ -693,6 +695,11 @@ const fullCardCollection = [
     cost: 2,
     image: '/DroneWars/cards/TacticalShift.png',
     description: 'Move a friendly drone to an adjacent lane without exhausting it. If the opponent has more drones in that lane, draw a card.',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'FRIENDLY',
+      location: 'ANY_LANE'
+    },
     effect: {
       type: 'SINGLE_MOVE',
       properties: ['DO_NOT_EXHAUST']
@@ -714,6 +721,11 @@ const fullCardCollection = [
     cost: 2,
     image: '/DroneWars/cards/AssaultReposition.png',
     description: 'Move a friendly drone to an adjacent lane. If its attack is less than 4, give it +1 attack.',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'FRIENDLY',
+      location: 'ANY_LANE'
+    },
     effect: {
       type: 'SINGLE_MOVE'
     },
@@ -721,7 +733,7 @@ const fullCardCollection = [
       id: 'attack-buff',
       timing: 'POST',
       condition: { type: 'TARGET_STAT_LTE', stat: 'attack', value: 3 },
-      grantedEffect: { type: 'MODIFY_STAT', stat: 'attack', value: 1 }
+      grantedEffect: { type: 'MODIFY_STAT', mod: { stat: 'attack', value: 1 } }
     }]
 },
 {
@@ -736,7 +748,7 @@ const fullCardCollection = [
     description: 'Deal 2 damage to target drone. If this is not your first action this turn, deal 4 instead.',
     targeting: {
       type: 'DRONE',
-      team: 'ENEMY',
+      affinity: 'ENEMY',
       location: 'ANY_LANE'
     },
     effect: {
@@ -1232,12 +1244,6 @@ const fullCardCollection = [
     },
    },
 
-  // ========================================
-  // CONDITIONAL EFFECT CARDS
-  // ========================================
-  // Cards demonstrating the modular conditional effects system
-
-  // POST timing: Draw on Destroy
   {
     id: 'CARD050',
     baseCardId: 'CARD050',
@@ -1268,7 +1274,6 @@ const fullCardCollection = [
     }]
   },
 
-  // PRE timing: Bonus Damage on Low Hull
   {
     id: 'CARD051',
     baseCardId: 'CARD051',
@@ -1299,7 +1304,6 @@ const fullCardCollection = [
     }]
   },
 
-  // Multiple Conditionals: PRE and POST
   {
     id: 'CARD052',
     baseCardId: 'CARD052',
@@ -1344,7 +1348,6 @@ const fullCardCollection = [
     ]
   },
 
-  // Conditional Destroy
   {
     id: 'CARD053',
     baseCardId: 'CARD053',
@@ -1354,14 +1357,15 @@ const fullCardCollection = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/Executioner.png',
-    description: 'Destroy target enemy drone if its current hull is less than 2.',
+    description: 'Destroy target enemy drone with hull 1 or less.',
     visualEffect: {
       type: 'LASER_BLAST'
     },
     targeting: {
       type: 'DRONE',
       affinity: 'ENEMY',
-      location: 'ANY_LANE'
+      location: 'ANY_LANE',
+      custom: [{ stat: 'hull', comparison: 'LTE', value: 1 }]
     },
     effect: {
       type: 'DAMAGE',
@@ -1370,7 +1374,7 @@ const fullCardCollection = [
     conditionalEffects: [{
       id: 'execute-weak',
       timing: 'PRE',
-      condition: { type: 'TARGET_STAT_LT', stat: 'hull', value: 1 },
+      condition: { type: 'TARGET_STAT_LTE', stat: 'hull', value: 1 },
       grantedEffect: { type: 'DESTROY', scope: 'SINGLE' }
     }]
   },
@@ -1384,14 +1388,15 @@ const fullCardCollection = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/Executioner.png',
-    description: 'Destroy target enemy drone if its current hull is less than 2.',
+    description: 'Destroy target enemy drone with hull 2 or less.',
     visualEffect: {
       type: 'LASER_BLAST'
     },
     targeting: {
       type: 'DRONE',
       affinity: 'ENEMY',
-      location: 'ANY_LANE'
+      location: 'ANY_LANE',
+      custom: [{ stat: 'hull', comparison: 'LTE', value: 2 }]
     },
     effect: {
       type: 'DAMAGE',
@@ -1400,7 +1405,7 @@ const fullCardCollection = [
     conditionalEffects: [{
       id: 'execute-weak',
       timing: 'PRE',
-      condition: { type: 'TARGET_STAT_LT', stat: 'hull', value: 2 },
+      condition: { type: 'TARGET_STAT_LTE', stat: 'hull', value: 2 },
       grantedEffect: { type: 'DESTROY', scope: 'SINGLE' }
     }]
   },
@@ -1494,7 +1499,7 @@ const fullCardCollection = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/KineticSlug.png',
-    description: 'Deal 3 kinetic damage to target drone. Kinetic damage only affects hull; blocked by any shields.',
+    description: 'Deal 3 kinetic damage to target drone. (Kinetic damage only affects hull. It is blocked by shields.)',
     visualEffect: {
       type: 'KINETIC_IMPACT'
     },
@@ -1509,10 +1514,6 @@ const fullCardCollection = [
       damageType: 'KINETIC'
     }
   },
-
-  // ========================================
-  // NEW TACTICS CARDS - Phase 10
-  // ========================================
 
   {
     id: 'CARD_TACTICS_1',
@@ -1612,9 +1613,7 @@ const fullCardCollection = [
       }
     }
   },
-  // ========================================
-  // STATUS EFFECT CARDS
-  // ========================================
+
   {
     id: 'CARD_STATUS_1',
     baseCardId: 'CARD_STATUS_1',
@@ -1712,11 +1711,6 @@ const fullCardCollection = [
     }
   },
 
-  // ========================================
-  // DOCTRINE CARDS
-  // ========================================
-  // Strategic cards that reward lane control with direct ship damage
-
   {
     id: 'DOCTRINE_001',
     baseCardId: 'DOCTRINE_001',
@@ -1724,7 +1718,7 @@ const fullCardCollection = [
     maxInDeck: 2,
     rarity: 'Rare',
     type: 'Doctrine',
-    cost: 6,
+    cost: 4,
     momentumCost: 1,
     image: '/DroneWars/cards/CrossfirePattern.png',
     description: 'If you control both flank lanes (left and right), deal 3 kinetic damage to both enemy flank ship sections.',
@@ -1753,7 +1747,7 @@ const fullCardCollection = [
     maxInDeck: 2,
     rarity: 'Rare',
     type: 'Doctrine',
-    cost: 6,
+    cost: 4,
     momentumCost: 1,
     image: '/DroneWars/cards/BreachTheLine.png',
     description: 'If you control the middle lane, deal 6 kinetic damage to the enemy middle ship section.',
@@ -1782,10 +1776,10 @@ const fullCardCollection = [
     maxInDeck: 2,
     rarity: 'Rare',
     type: 'Doctrine',
-    cost: 5,
+    cost: 3,
     momentumCost: 1,
     image: '/DroneWars/cards/Overrun.png',
-    description: 'Target a lane you control. If the enemy has no drones in that lane, deal 2 kineticdamage to the corresponding ship section.',
+    description: 'Target a lane you control. If the enemy has no drones in that lane, deal 3 kinetic damage to the corresponding ship section.',
     targeting: {
       type: 'LANE',
       affinity: 'FRIENDLY',
@@ -1797,7 +1791,7 @@ const fullCardCollection = [
         type: 'CONTROL_LANE_EMPTY',
         lane: 'TARGET'
       },
-      damage: 2,
+      damage: 3,
       targets: 'CORRESPONDING_SECTION',
       damageType: 'KINETIC'
     }
@@ -1810,8 +1804,8 @@ const fullCardCollection = [
     maxInDeck: 2,
     rarity: 'Mythic',
     type: 'Doctrine',
-    cost: 7,
-    momentumCost: 1,
+    cost: 3,
+    momentumCost: 2,
     image: '/DroneWars/cards/Encirclement.png',
     description: 'If you control all three lanes, deal 3 kinetic damage to all enemy ship sections.',
     targeting: {
@@ -1832,10 +1826,6 @@ const fullCardCollection = [
     }
   },
 
-  // ============================================
-  // ADDITIONAL COST CARDS - Example Cards
-  // ============================================
-
   {
     id: 'EXHAUST_TO_DISABLE',
     baseCardId: 'EXHAUST_TO_DISABLE',
@@ -1844,8 +1834,8 @@ const fullCardCollection = [
     rarity: 'Common',
     type: 'Tactic',
     cost: 0,
-    image: '/DroneWars/cards/placeholder.png',
-    description: 'Exhaust a friendly drone to exhaust an enemy drone with lower speed in the same lane.',
+    image: '/DroneWars/cards/ExhaustingStrike.png',
+    description: 'Exhaust a friendly drone. Then exhaust an enemy drone with lower speed in the same lane.',
     additionalCost: {
       type: 'EXHAUST_DRONE',
       targeting: {
@@ -1881,9 +1871,9 @@ const fullCardCollection = [
     name: 'Forced Repositioning',
     maxInDeck: 2,
     rarity: 'Uncommon',
-    type: 'Movement',
+    type: 'Tactic',
     cost: 1,
-    image: '/DroneWars/cards/placeholder.png',
+    image: '/DroneWars/cards/ForcedRepositioning.png',
     description: 'Move a friendly drone to an adjacent lane, then move an enemy drone from the original lane with higher attack.',
     additionalCost: {
       type: 'SINGLE_MOVE',
@@ -1924,7 +1914,7 @@ const fullCardCollection = [
     rarity: 'Rare',
     type: 'Tactic',
     cost: 0,
-    image: '/DroneWars/cards/placeholder.png',
+    image: '/DroneWars/cards/SacrificeforPower.png',
     description: 'Discard a card from your hand to give a friendly drone +X attack until end of turn, where X is the discarded card\'s energy cost.',
     additionalCost: {
       type: 'DISCARD_CARD',
@@ -1950,11 +1940,6 @@ const fullCardCollection = [
     visualEffect: { type: 'BUFF' }
   },
 
-  // ========================================
-  // LANE CONTROL CARDS
-  // ========================================
-  // Cards that reward or interact with lane control mechanics
-
   {
     id: 'LANE_CONTROL_ENERGY',
     baseCardId: 'LANE_CONTROL_ENERGY',
@@ -1962,15 +1947,14 @@ const fullCardCollection = [
     maxInDeck: 4,
     rarity: 'Common',
     type: 'Support',
-    cost: 1,
-    image: '/DroneWars/cards/placeholder.png',
-    description: 'Gain 1 energy for each lane you control. Go again.',
+    cost: 0,
+    image: '/DroneWars/cards/StrategicDominance.png',
+    description: 'Gain 1 energy for each lane you control.',
     effect: {
       type: 'REPEATING_EFFECT',
       effects: [{ type: 'GAIN_ENERGY', value: 1 }],
       condition: 'LANES_CONTROLLED',
-      goAgain: true
-    }
+   }
   },
 
   {
@@ -1980,14 +1964,13 @@ const fullCardCollection = [
     maxInDeck: 4,
     rarity: 'Uncommon',
     type: 'Support',
-    cost: 2,
-    image: '/DroneWars/cards/placeholder.png',
-    description: 'Draw a card for each lane you control. Go again.',
+    cost: 1,
+    image: '/DroneWars/cards/TacticalAdvantage.png',
+    description: 'Draw a card for each lane you control.',
     effect: {
       type: 'REPEATING_EFFECT',
       effects: [{ type: 'DRAW', value: 1 }],
       condition: 'LANES_CONTROLLED',
-      goAgain: true
     }
   },
 
@@ -1999,7 +1982,7 @@ const fullCardCollection = [
     rarity: 'Common',
     type: 'Ordnance',
     cost: 2,
-    image: '/DroneWars/cards/placeholder.png',
+    image: '/DroneWars/cards/SuppressionFire.png',
     description: 'Deal 3 damage to an enemy drone in a lane you control.',
     visualEffect: {
       type: 'LASER_BLAST'
@@ -2024,7 +2007,7 @@ const fullCardCollection = [
     rarity: 'Uncommon',
     type: 'Support',
     cost: 3,
-    image: '/DroneWars/cards/placeholder.png',
+    image: '/DroneWars/cards/RallyingCry.png',
     description: 'Ready an exhausted friendly drone in a lane you do NOT control.',
     targeting: {
       type: 'DRONE',

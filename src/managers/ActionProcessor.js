@@ -1180,10 +1180,11 @@ setAnimationManager(animationManager) {
       currentState.gameMode
     );
 
-    // Process additional effects (from POST conditionals like GAIN_ENERGY on Energy Leech)
+    // Process additional effects (from PRE/POST conditionals like DESTROY on Executioner, GAIN_ENERGY on Energy Leech)
     if (result.additionalEffects && result.additionalEffects.length > 0) {
       const effectRouter = new EffectRouter();
       let currentStatesForEffects = result.newPlayerStates;
+      const additionalAnimationEvents = [];
 
       for (const effect of result.additionalEffects) {
         const effectContext = {
@@ -1197,10 +1198,15 @@ setAnimationManager(animationManager) {
         if (effectResult?.newPlayerStates) {
           currentStatesForEffects = effectResult.newPlayerStates;
         }
+        // Collect animation events from additional effects
+        if (effectResult?.animationEvents) {
+          additionalAnimationEvents.push(...effectResult.animationEvents);
+        }
       }
 
-      // Update result with processed states
+      // Update result with processed states and merged animation events
       result.newPlayerStates = currentStatesForEffects;
+      result.animationEvents = [...(result.animationEvents || []), ...additionalAnimationEvents];
 
       debugLog('EFFECT_PROCESSING', '[ActionProcessor] Card play additionalEffects processed', {
         effectCount: result.additionalEffects.length,

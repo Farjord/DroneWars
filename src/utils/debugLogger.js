@@ -110,6 +110,9 @@ const DEBUG_CONFIG = {
 
     // Stat Calculation Debugging
     STAT_CALCULATION: true,           // Effective stat calculation for targeting comparisons
+
+    // Momentum Glow Debugging
+    MOMENTUM_GLOW: false,             // Card hover logging for momentum glow debugging
   }
 };
 

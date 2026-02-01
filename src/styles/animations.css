@@ -579,3 +579,21 @@
   animation: invalid-target-pulse 1.5s ease-in-out infinite;
 }
 
+/* === MOMENTUM TITLE GLOW === */
+@keyframes momentum-title-pulse {
+  0%, 100% {
+    text-shadow: 0 0 4px rgba(251, 146, 60, 0.8),
+                 0 0 8px rgba(249, 115, 22, 0.5);
+    color: rgb(251, 146, 60);
+  }
+  50% {
+    text-shadow: 0 0 8px rgba(251, 146, 60, 1),
+                 0 0 16px rgba(249, 115, 22, 0.7);
+    color: rgb(253, 186, 116);
+  }
+}
+
+.momentum-title-glow {
+  animation: momentum-title-pulse 1.5s infinite ease-in-out;
+}
+

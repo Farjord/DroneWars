@@ -83,6 +83,14 @@ class BaseTargetingProcessor {
         continue;
       }
 
+      // Simple stat comparison (e.g., { stat: 'hull', comparison: 'LTE', value: 1 })
+      if (criterion.stat && criterion.comparison && criterion.value !== undefined) {
+        if (!this.applySimpleStatCriterion(drone, criterion)) {
+          return false;
+        }
+        continue;
+      }
+
       // Lane control criteria
       if (criterion.type === 'IN_LANE_CONTROLLED_BY') {
         if (!this.applyLaneControlCriterion(drone, criterion, lane, context, true)) {
@@ -100,6 +108,43 @@ class BaseTargetingProcessor {
     }
 
     return true;
+  }
+
+  /**
+   * Apply simple stat criterion for targeting validation
+   * Used for cards like Executioner that need to filter by stat thresholds
+   *
+   * @param {Object} drone - Drone to check
+   * @param {Object} criterion - { stat, comparison, value }
+   * @returns {boolean} True if criterion passes
+   */
+  applySimpleStatCriterion(drone, criterion) {
+    const { stat, comparison, value } = criterion;
+    const droneValue = drone[stat];
+
+    if (droneValue === undefined) {
+      debugLog('TARGETING_PROCESSING', '⚠️ Drone missing stat for criterion', {
+        droneId: drone.id,
+        stat
+      });
+      return false;
+    }
+
+    const passes = this.compareValues(droneValue, comparison, value);
+
+    debugLog('TARGETING_PROCESSING',
+      passes ? '✅ Simple stat criterion passes' : '❌ Simple stat criterion fails',
+      {
+        droneId: drone.id,
+        stat,
+        droneValue,
+        comparison,
+        targetValue: value,
+        passes
+      }
+    );
+
+    return passes;
   }
 
   /**

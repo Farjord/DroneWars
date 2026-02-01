@@ -13,9 +13,17 @@ import { calculateCardFanRotation, getHoverTransform, getCardTransition, calcula
 import TargetingRouter from '../../../logic/TargetingRouter.js';
 import { isDoctrineCardPlayable } from '../../../logic/targeting/DoctrineValidator.js';
 import { LaneControlCalculator } from '../../../logic/combat/LaneControlCalculator.js';
+import { isCardConditionMet } from '../../../logic/targeting/CardConditionValidator.js';
 
 // Initialize TargetingRouter for card targeting validation
 const targetingRouter = new TargetingRouter();
+
+// Helper function to check if card has momentum bonus (NOT_FIRST_ACTION conditional)
+const hasMomentumBonus = (card) => {
+  return card.conditionalEffects?.some(
+    effect => effect.condition?.type === 'NOT_FIRST_ACTION'
+  );
+};
 
 function HandView({
   gameMode,
@@ -46,7 +54,9 @@ function HandView({
   handleActionCardDragStart,
   draggedActionCard,
   // Additional cost selection state
-  additionalCostState
+  additionalCostState,
+  // Momentum tracking for glow effects
+  actionsTakenThisTurn = 0
 }) {
   // Debug logging for component props
   const localPlayerId = getLocalPlayerId();
@@ -289,6 +299,15 @@ function HandView({
                 doctrinePlayable = isDoctrineCardPlayable(card, localPlayerId, playerStates);
               }
 
+              // Check generic playCondition for any card type
+              let cardConditionMet = true;
+              if (card.playCondition) {
+                const playerStates = localPlayerId === 'player1'
+                  ? { player1: localPlayerState, player2: opponentPlayerState }
+                  : { player1: opponentPlayerState, player2: localPlayerState };
+                cardConditionMet = isCardConditionMet(card, localPlayerId, playerStates);
+              }
+
               // Check if this card is a valid cost target for additional cost selection
               // Use additionalCostState.validTargets directly to ensure sync with phase
               const isCostSelectionTarget = additionalCostState?.phase === 'select_cost' &&
@@ -317,7 +336,7 @@ function HandView({
               const cardIsPlayable = isCostSelectionTarget ||
                 isSelectedCostCard ||  // Cost card stays highlighted during effect selection
                 (turnPhase === 'action'
-                  ? (isActionPhasePlayable && doctrinePlayable)
+                  ? (isActionPhasePlayable && doctrinePlayable && cardConditionMet)
                   : isOptionalDiscardPlayable);
 
               const isHovered = hoveredCardId === card.instanceId;
@@ -330,6 +349,10 @@ function HandView({
               // Check if this card is being dragged
               const isDragging = draggedActionCard?.card?.instanceId === card.instanceId;
               const isElevated = isHovered || isDragging;
+
+              // Check if momentum bonus is active for this card
+              const isMomentumActive = actionsTakenThisTurn >= 1;
+              const showMomentumGlow = hasMomentumBonus(card) && isMomentumActive;
 
               // Build style object
               const style = {
@@ -415,6 +438,7 @@ function HandView({
                     isDragging={draggedActionCard?.card?.instanceId === card.instanceId}
                     isPlayable={cardIsPlayable}
                     isCostSelectionTarget={isCostSelectionTarget}
+                    hasMomentumGlow={showMomentumGlow}
                     mandatoryAction={mandatoryAction}
                     excessCards={excessCards}
                     lanesControlled={lanesControlledCount}

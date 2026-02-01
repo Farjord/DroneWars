@@ -328,7 +328,7 @@ const DroneToken = ({
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className={`relative ${isDragging ? 'z-50' : isElevated ? 'z-20' : 'z-10'} ${enableFloatAnimation ? 'drone-float' : ''}`}
+      className={`relative ${isDragging || isSelected ? 'z-50' : isElevated ? 'z-20' : 'z-10'} ${enableFloatAnimation ? 'drone-float' : ''}`}
       style={{
         width: 'clamp(85px, 4.427vw, 115px)',
         height: 'clamp(115px, 5.99vw, 156px)'
