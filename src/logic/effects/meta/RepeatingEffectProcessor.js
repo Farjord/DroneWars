@@ -11,6 +11,7 @@ import BaseEffectProcessor from '../BaseEffectProcessor.js';
 import { debugLog } from '../../../utils/debugLogger.js';
 import EffectRouter from '../../EffectRouter.js';
 import { getShipStatus } from '../../statsCalculator.js';
+import { LaneControlCalculator } from '../../combat/LaneControlCalculator.js';
 
 /**
  * Processor for REPEATING_EFFECT type
@@ -56,7 +57,7 @@ class RepeatingEffectProcessor extends BaseEffectProcessor {
     const allAnimationEvents = [];
 
     // Calculate how many times to repeat based on condition
-    const repeatCount = this.calculateRepeatCount(effect.condition, currentStates[actingPlayerId]);
+    const repeatCount = this.calculateRepeatCount(effect.condition, actingPlayerId, currentStates);
 
     debugLog('EFFECT_PROCESSING', `[REPEATING_EFFECT] ${actingPlayerId} executing ${effect.effects.length} sub-effects × ${repeatCount} times`, {
       condition: effect.condition,
@@ -125,15 +126,18 @@ class RepeatingEffectProcessor extends BaseEffectProcessor {
    *
    * @private
    * @param {string} condition - Repeat condition type
-   * @param {Object} playerState - Current player state
+   * @param {string} actingPlayerId - ID of the acting player
+   * @param {Object} playerStates - Both player states { player1, player2 }
    * @returns {number} Number of times to execute effects
    */
-  calculateRepeatCount(condition, playerState) {
-    let repeatCount = 1; // Base effect always happens once
+  calculateRepeatCount(condition, actingPlayerId, playerStates) {
+    const playerState = playerStates[actingPlayerId];
 
     switch (condition) {
       case 'OWN_DAMAGED_SECTIONS': {
         // Count damaged or critical ship sections
+        // Base effect always happens once, then additional for each damaged section
+        let repeatCount = 1;
         for (const sectionName in playerState.shipSections) {
           const section = playerState.shipSections[sectionName];
           const status = getShipStatus(section);
@@ -144,19 +148,27 @@ class RepeatingEffectProcessor extends BaseEffectProcessor {
         }
 
         debugLog('EFFECT_PROCESSING', `[REPEATING_EFFECT] OWN_DAMAGED_SECTIONS: ${repeatCount - 1} damaged sections found (${repeatCount} total executions)`);
-        break;
+        return repeatCount;
       }
 
-      // Future conditions can be added here:
-      // case 'OPPONENT_DRONES_ON_BOARD':
-      // case 'OWN_HAND_SIZE':
-      // case 'DESTROYED_DRONES_THIS_TURN':
+      case 'LANES_CONTROLLED': {
+        // Count lanes controlled by acting player
+        // Unlike OWN_DAMAGED_SECTIONS, this does NOT have a base of 1
+        // If you control 0 lanes, effect does nothing
+        const lanesControlled = LaneControlCalculator.countLanesControlled(
+          actingPlayerId,
+          playerStates.player1,
+          playerStates.player2
+        );
+
+        debugLog('EFFECT_PROCESSING', `[REPEATING_EFFECT] LANES_CONTROLLED: ${lanesControlled} lanes controlled (${lanesControlled} total executions)`);
+        return lanesControlled;
+      }
 
       default:
         debugLog('EFFECT_PROCESSING', `[REPEATING_EFFECT] ⚠️ Unknown condition: ${condition}, defaulting to 1 execution`);
+        return 1;
     }
-
-    return repeatCount;
   }
 }
 

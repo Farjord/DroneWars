@@ -1725,6 +1725,7 @@ const fullCardCollection = [
     rarity: 'Rare',
     type: 'Doctrine',
     cost: 6,
+    momentumCost: 1,
     image: '/DroneWars/cards/CrossfirePattern.png',
     description: 'If you control both flank lanes (left and right), deal 3 kinetic damage to both enemy flank ship sections.',
     targeting: {
@@ -1753,6 +1754,7 @@ const fullCardCollection = [
     rarity: 'Rare',
     type: 'Doctrine',
     cost: 6,
+    momentumCost: 1,
     image: '/DroneWars/cards/BreachTheLine.png',
     description: 'If you control the middle lane, deal 6 kinetic damage to the enemy middle ship section.',
     targeting: {
@@ -1781,6 +1783,7 @@ const fullCardCollection = [
     rarity: 'Rare',
     type: 'Doctrine',
     cost: 5,
+    momentumCost: 1,
     image: '/DroneWars/cards/Overrun.png',
     description: 'Target a lane you control. If the enemy has no drones in that lane, deal 2 kineticdamage to the corresponding ship section.',
     targeting: {
@@ -1808,6 +1811,7 @@ const fullCardCollection = [
     rarity: 'Mythic',
     type: 'Doctrine',
     cost: 7,
+    momentumCost: 1,
     image: '/DroneWars/cards/Encirclement.png',
     description: 'If you control all three lanes, deal 3 kinetic damage to all enemy ship sections.',
     targeting: {
@@ -1944,6 +1948,96 @@ const fullCardCollection = [
       location: 'ANY_LANE'
     },
     visualEffect: { type: 'BUFF' }
+  },
+
+  // ========================================
+  // LANE CONTROL CARDS
+  // ========================================
+  // Cards that reward or interact with lane control mechanics
+
+  {
+    id: 'LANE_CONTROL_ENERGY',
+    baseCardId: 'LANE_CONTROL_ENERGY',
+    name: 'Strategic Dominance',
+    maxInDeck: 4,
+    rarity: 'Common',
+    type: 'Support',
+    cost: 1,
+    image: '/DroneWars/cards/placeholder.png',
+    description: 'Gain 1 energy for each lane you control. Go again.',
+    effect: {
+      type: 'REPEATING_EFFECT',
+      effects: [{ type: 'GAIN_ENERGY', value: 1 }],
+      condition: 'LANES_CONTROLLED',
+      goAgain: true
+    }
+  },
+
+  {
+    id: 'LANE_CONTROL_DRAW',
+    baseCardId: 'LANE_CONTROL_DRAW',
+    name: 'Tactical Advantage',
+    maxInDeck: 4,
+    rarity: 'Uncommon',
+    type: 'Support',
+    cost: 2,
+    image: '/DroneWars/cards/placeholder.png',
+    description: 'Draw a card for each lane you control. Go again.',
+    effect: {
+      type: 'REPEATING_EFFECT',
+      effects: [{ type: 'DRAW', value: 1 }],
+      condition: 'LANES_CONTROLLED',
+      goAgain: true
+    }
+  },
+
+  {
+    id: 'LANE_CONTROL_DAMAGE',
+    baseCardId: 'LANE_CONTROL_DAMAGE',
+    name: 'Suppression Fire',
+    maxInDeck: 4,
+    rarity: 'Common',
+    type: 'Ordnance',
+    cost: 2,
+    image: '/DroneWars/cards/placeholder.png',
+    description: 'Deal 3 damage to an enemy drone in a lane you control.',
+    visualEffect: {
+      type: 'LASER_BLAST'
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE',
+      custom: [{ type: 'IN_LANE_CONTROLLED_BY', controller: 'ACTING_PLAYER' }]
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 3
+    }
+  },
+
+  {
+    id: 'LANE_CONTROL_READY',
+    baseCardId: 'LANE_CONTROL_READY',
+    name: 'Rallying Cry',
+    maxInDeck: 4,
+    rarity: 'Uncommon',
+    type: 'Support',
+    cost: 3,
+    image: '/DroneWars/cards/placeholder.png',
+    description: 'Ready an exhausted friendly drone in a lane you do NOT control.',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'FRIENDLY',
+      location: 'ANY_LANE',
+      custom: [
+        'EXHAUSTED',
+        { type: 'IN_LANE_NOT_CONTROLLED_BY', controller: 'ACTING_PLAYER' }
+      ]
+    },
+    effect: {
+      type: 'READY_DRONE'
+    }
   }
 ];
 

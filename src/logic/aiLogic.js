@@ -398,7 +398,13 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
       drones.filter(d => !d.isExhausted).map(d => ({ ...d, lane }))
     );
 
-    const playableCards = player2.hand.filter(card => player2.energy >= card.cost);
+    const playableCards = player2.hand.filter(card => {
+      // Check energy cost
+      if (player2.energy < card.cost) return false;
+      // Check momentum cost (if card has one)
+      if (card.momentumCost && (player2.momentum || 0) < card.momentumCost) return false;
+      return true;
+    });
     for (const card of playableCards) {
       if (card.targeting) {
         let targets = getValidTargets('player2', null, card, player1, player2);

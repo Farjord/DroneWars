@@ -5,7 +5,7 @@
 // Extracted from App.jsx for better component organization
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Power, Files, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain, Plus, Image, ChevronRight, Check, AlertTriangle, Zap } from 'lucide-react';
+import { Power, Files, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain, Plus, Image, ChevronRight, Check, AlertTriangle, Zap, ChevronsUp } from 'lucide-react';
 import { getPhaseDisplayName } from '../../utils/gameUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import DEV_CONFIG from '../../config/devConfig.js';
@@ -217,6 +217,12 @@ function GameHeader({
             value={opponentPlayerState.energy}
             max={opponentPlayerEffectiveStats.totals.maxEnergy}
             iconColor="text-yellow-300"
+            isPlayer={false}
+          />
+          <ResourceBadge
+            icon={ChevronsUp}
+            value={opponentPlayerState.momentum || 0}
+            iconColor="text-blue-400"
             isPlayer={false}
           />
           <div
@@ -652,6 +658,12 @@ function GameHeader({
             value={localPlayerState.energy}
             max={localPlayerEffectiveStats.totals.maxEnergy}
             iconColor="text-yellow-300"
+            isPlayer={true}
+          />
+          <ResourceBadge
+            icon={ChevronsUp}
+            value={localPlayerState.momentum || 0}
+            iconColor="text-blue-400"
             isPlayer={true}
           />
           <ResourceBadge

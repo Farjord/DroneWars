@@ -130,7 +130,7 @@ const ShipSectionCompact = ({
     }
   }
 
-  const cardTargetEffect = isCardTarget ? 'ring-4 ring-purple-400 shadow-lg shadow-purple-400/50 animate-pulse' : '';
+  const cardTargetEffect = isCardTarget ? 'shadow-xl shadow-cyan-400/80 animate-pulse' : '';
 
   const backgroundImageStyle = {
     backgroundImage: `url(${stats.image})`,

@@ -54,6 +54,16 @@ class CardPlayManager {
       actingPlayerState.energy -= card.cost;
     }
 
+    // Pay momentum cost (if card has one)
+    if (card.momentumCost) {
+      actingPlayerState.momentum = (actingPlayerState.momentum || 0) - card.momentumCost;
+      debugLog('CARD_PLAY', `💫 Momentum cost paid: ${card.momentumCost}`, {
+        cardName: card.name,
+        oldMomentum: actingPlayerState.momentum + card.momentumCost,
+        newMomentum: actingPlayerState.momentum
+      });
+    }
+
     // Note: Card discard is now handled in finishCardPlay() to ensure proper timing
     // with card selection effects
 

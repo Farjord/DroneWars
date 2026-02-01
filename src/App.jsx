@@ -605,30 +605,36 @@ const App = ({ phaseAnimationQueue }) => {
     }
   }, [turnPhase, shieldsToAllocate, localPlayerState]);
 
-  // Recalculate affectedDroneIds when hoveredLane changes (hover-based targeting)
-  // Only applies to LANE-targeting action cards during drag
-  useEffect(() => {
-    if (draggedActionCard && hoveredLane && draggedActionCard.card?.targeting?.type === 'LANE') {
+  // Combined lane hover handler - calculates affected drones synchronously to prevent visual flash
+  // When hovering a lane with a LANE-targeting card, we need both hoveredLane and affectedDroneIds
+  // to update in the same render. React batches setState calls in event handlers, so setting both
+  // together prevents the one-frame flash where hoveredLane is set but affectedDroneIds is empty.
+  const handleLaneHover = useCallback((laneData) => {
+    if (laneData && draggedActionCard?.card?.targeting?.type === 'LANE') {
+      // Calculate affected drones immediately (synchronously)
       const affected = calculateAffectedDroneIds(
         draggedActionCard.card,
-        [hoveredLane], // Only calculate for the hovered lane
+        [laneData], // Only calculate for the hovered lane
         gameState.player1,
         gameState.player2,
         getLocalPlayerId(),
         gameDataService.getEffectiveStats.bind(gameDataService),
         getPlacedSectionsForEngine()
       );
-      debugLog('LANE_TARGETING', '🎯 Hover-based affected drone recalc', {
-        hoveredLane,
+      debugLog('LANE_TARGETING', '🎯 Hover-based affected drone calc (sync)', {
+        hoveredLane: laneData,
         affectedDroneIds: affected,
         cardName: draggedActionCard.card.name
       });
+      // Set both states together - React batches these into a single render
+      setHoveredLane(laneData);
       setAffectedDroneIds(affected);
-    } else if (draggedActionCard && !hoveredLane && draggedActionCard.card?.targeting?.type === 'LANE') {
-      // Clear affected drones when not hovering any lane
+    } else {
+      // Clear both states together
+      setHoveredLane(null);
       setAffectedDroneIds([]);
     }
-  }, [hoveredLane, draggedActionCard, gameState.player1, gameState.player2, getLocalPlayerId, gameDataService, getPlacedSectionsForEngine]);
+  }, [draggedActionCard, gameState.player1, gameState.player2, getLocalPlayerId, gameDataService, getPlacedSectionsForEngine]);
 
   // Calculate lane control whenever drones on board change (for Doctrine cards)
   useEffect(() => {
@@ -3504,6 +3510,15 @@ const App = ({ phaseAnimationQueue }) => {
         expectedTargetType: card.additionalCost.targeting.type
       });
 
+      // Debug: Trace entry into additionalCost flow
+      debugLog('ADDITIONAL_COST', '🚀 handleActionCardDragEnd: Entering additionalCost flow', {
+        cardName: card.name,
+        costType: card.additionalCost.type,
+        costTargetingType: card.additionalCost.targeting?.type,
+        target,
+        targetType
+      });
+
       const costTargeting = card.additionalCost.targeting;
 
       // Cost targets a drone
@@ -3671,7 +3686,18 @@ const App = ({ phaseAnimationQueue }) => {
       }
 
       // Cost targets a card in hand
+      // Debug: Check if we reach CARD_IN_HAND condition
+      debugLog('ADDITIONAL_COST', '🔍 Checking CARD_IN_HAND condition', {
+        costTargetingType: costTargeting.type,
+        isCardInHand: costTargeting.type === 'CARD_IN_HAND'
+      });
+
       if (costTargeting.type === 'CARD_IN_HAND') {
+        debugLog('ADDITIONAL_COST_UI', '🃏 CARD_IN_HAND cost - entering hand selection mode', {
+          cardName: card.name,
+          handSize: localPlayerState.hand.length,
+          validTargetCount: localPlayerState.hand.filter(c => c.id !== card.id).length
+        });
         // Card dropped in play area (not on a specific target) - enter hand selection mode
         setAdditionalCostState({
           phase: 'select_cost',
@@ -3679,6 +3705,15 @@ const App = ({ phaseAnimationQueue }) => {
           costSelection: null,
           validTargets: localPlayerState.hand.filter(c => c.id !== card.id)
         });
+
+        // Debug: Confirm setAdditionalCostState was called
+        debugLog('ADDITIONAL_COST', '✅ setAdditionalCostState called with select_cost phase', {
+          phase: 'select_cost',
+          cardName: card.name,
+          validTargetsCount: localPlayerState.hand.filter(c => c.id !== card.id).length,
+          validTargetIds: localPlayerState.hand.filter(c => c.id !== card.id).map(c => c.instanceId)
+        });
+
         additionalCostFlowInProgress.current = true; // Set flag when entering cost selection phase
         setSelectedCard(card);
         setValidCardTargets(localPlayerState.hand.filter(c => c.id !== card.id));
@@ -5411,12 +5446,60 @@ const App = ({ phaseAnimationQueue }) => {
       isMyTurn: myTurn,
       playerPassed,
       playerEnergy: localPlayerState.energy,
-      hasEnoughEnergy: localPlayerState.energy >= card.cost
+      hasEnoughEnergy: localPlayerState.energy >= card.cost,
+      additionalCostPhase: additionalCostState?.phase
     });
 
     if (turnPhase !== 'action') {
       debugLog('CARD_PLAY', `🚫 Card click rejected - wrong phase: ${turnPhase}`, { card: card.name });
       return;
+    }
+
+    // Handle cost selection clicks (card-in-hand as cost)
+    if (additionalCostState?.phase === 'select_cost') {
+      // Verify this card is a valid cost target
+      const isValidCostTarget = additionalCostState.validTargets?.some(
+        t => t.instanceId === card.instanceId
+      );
+
+      if (isValidCostTarget) {
+        debugLog('ADDITIONAL_COST', '🎯 Cost card selected from hand', {
+          selectedCard: card.name,
+          cardInstanceId: card.instanceId,
+          costingCard: additionalCostState.card?.name
+        });
+
+        const costSelection = {
+          type: additionalCostState.card.additionalCost.type,
+          card: card  // The card being discarded as cost
+        };
+
+        // Calculate valid effect targets
+        const effectTargets = calculateEffectTargetsWithCostContext(
+          additionalCostState.card,  // The card being played (e.g., Sacrifice for Power)
+          costSelection,
+          gameState.player1,
+          gameState.player2,
+          getLocalPlayerId(),
+          gameDataService.getEffectiveStats.bind(gameDataService)
+        );
+
+        setAdditionalCostState({
+          ...additionalCostState,
+          phase: 'select_effect',
+          costSelection
+        });
+        additionalCostFlowInProgress.current = true;
+        setValidCardTargets(effectTargets);
+        return;
+      } else {
+        debugLog('ADDITIONAL_COST', '🚫 Card is not a valid cost target', {
+          card: card.name,
+          cardInstanceId: card.instanceId,
+          validTargetIds: additionalCostState.validTargets?.map(t => t.instanceId)
+        });
+        return;
+      }
     }
 
     // Action cards (non-Drone) use drag-only during action phase
@@ -5449,6 +5532,16 @@ const App = ({ phaseAnimationQueue }) => {
         card: card.name,
         cardCost: card.cost,
         playerEnergy: localPlayerState.energy
+      });
+      return;
+    }
+
+    // Check momentum cost for cards that require it (e.g., Doctrine cards)
+    if (card.momentumCost && (localPlayerState.momentum || 0) < card.momentumCost) {
+      debugLog('CARD_PLAY', `🚫 Card click rejected - not enough momentum`, {
+        card: card.name,
+        momentumCost: card.momentumCost,
+        playerMomentum: localPlayerState.momentum || 0
       });
       return;
     }
@@ -6255,7 +6348,7 @@ const App = ({ phaseAnimationQueue }) => {
         draggedActionCard={draggedActionCard}
         handleActionCardDragEnd={handleActionCardDragEnd}
         hoveredLane={hoveredLane}
-        setHoveredLane={setHoveredLane}
+        setHoveredLane={handleLaneHover}
         laneControl={laneControl}
       />
 
@@ -6311,6 +6404,7 @@ const App = ({ phaseAnimationQueue }) => {
         draggedCard={draggedCard}
         handleActionCardDragStart={handleActionCardDragStart}
         draggedActionCard={draggedActionCard}
+        additionalCostState={additionalCostState}
       />
 
       {/* Modals are unaffected and remain at the end */}

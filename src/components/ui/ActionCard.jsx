@@ -5,7 +5,7 @@
 // Accepts optional scale prop for enlargement in modals
 
 import React from 'react';
-import { Power, RefreshCw, Cpu } from 'lucide-react';
+import { Power, RefreshCw, Cpu, ChevronsUp } from 'lucide-react';
 import ScalingText from './ScalingText.jsx';
 import RaritySymbol from './RaritySymbol.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
@@ -17,6 +17,14 @@ const getTypeColors = (type, rarity, isDisabled) => {
     border: getCardBorderClasses(type, rarity, isDisabled),
     ...getTypeInnerColors(type)
   };
+};
+
+// Helper function to get effect label for LANES_CONTROLLED cards
+const getEffectLabel = (card) => {
+  const effectType = card.effect?.effects?.[0]?.type;
+  if (effectType === 'GAIN_ENERGY') return 'energy';
+  if (effectType === 'DRAW_CARDS' || effectType === 'DRAW') return 'cards';
+  return 'effect';
 };
 
 /**
@@ -37,9 +45,11 @@ const ActionCard = ({
   isSelected,
   isDimmed,
   isDragging = false,
+  isCostSelectionTarget = false,
   mandatoryAction = null,
   excessCards = 0,
-  scale = 1.0
+  scale = 1.0,
+  lanesControlled
 }) => {
   const { name, cost, image, description, type, effect, rarity } = card;
   const goAgain = effect?.goAgain;
@@ -81,10 +91,11 @@ const ActionCard = ({
           cardName: card.name,
           isPlayable,
           isMandatoryTarget,
-          willCallOnClick: isPlayable || isMandatoryTarget
+          isCostSelectionTarget,
+          willCallOnClick: isPlayable || isMandatoryTarget || isCostSelectionTarget
         });
 
-        if ((isPlayable || isMandatoryTarget) && onClick && !isDragging) {
+        if ((isPlayable || isMandatoryTarget || isCostSelectionTarget) && onClick && !isDragging) {
           onClick(card);
         } else if (!onClick || isDragging) {
           debugLog('CARD_PLAY', `🚫 Card click blocked - ${!onClick ? 'onClick is null' : 'drag in progress'}: ${card.name}`, {
@@ -107,6 +118,7 @@ const ActionCard = ({
         ${isDisabled ? 'saturate-50' : ''}
         ${isDimmed ? 'grayscale' : ''}
         ${isDragging ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-500/50' : ''}
+        ${isCostSelectionTarget ? 'ring-2 ring-cyan-400' : ''}
       `}
       style={{
         width: '225px',
@@ -130,9 +142,19 @@ const ActionCard = ({
             <div className="text-center min-w-0">
               <ScalingText text={name} className="font-orbitron text-sm uppercase tracking-widest whitespace-nowrap text-white" />
             </div>
-            <div className="flex items-center bg-slate-800/70 px-2 py-0.5 rounded-full flex-shrink-0">
-              <Power size={14} className="text-yellow-300" />
-              <span className="text-white font-bold text-sm ml-1">{cost}</span>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {/* Momentum Cost Chip (if applicable) */}
+              {card.momentumCost && (
+                <div className="flex items-center bg-slate-800/70 px-2 py-0.5 rounded-full">
+                  <ChevronsUp size={14} className="text-blue-400" />
+                  <span className="text-white font-bold text-sm ml-1">{card.momentumCost}</span>
+                </div>
+              )}
+              {/* Energy Cost Chip */}
+              <div className="flex items-center bg-slate-800/70 px-2 py-0.5 rounded-full">
+                <Power size={14} className="text-yellow-300" />
+                <span className="text-white font-bold text-sm ml-1">{cost}</span>
+              </div>
             </div>
           </div>
 
@@ -158,6 +180,12 @@ const ActionCard = ({
               <div className="mt-auto pt-1 border-t border-slate-700/50 flex items-center justify-center gap-1">
                 <Cpu size={12} className="text-purple-400" />
                 <span className="text-[10px] text-purple-400 font-bold">Slot Cost: {card.slots}</span>
+              </div>
+            )}
+            {/* Dynamic Helper Text for lane control cards */}
+            {effect?.condition === 'LANES_CONTROLLED' && lanesControlled !== undefined && (
+              <div className="text-[10px] text-cyan-300 text-center mt-1">
+                (Currently {lanesControlled * (effect.effects?.[0]?.value || 1)} {getEffectLabel(card)})
               </div>
             )}
           </div>

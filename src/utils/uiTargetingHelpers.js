@@ -312,6 +312,13 @@ export const calculateAffectedDroneIds = (
         return [];
     }
 
+    // Movement effects target lanes as DESTINATIONS - drones in destination are not affected
+    // This is a defensive check to future-proof against LANE-targeting movement cards
+    const effectType = card.effect?.type;
+    if (effectType === 'SINGLE_MOVE' || effectType === 'MULTI_MOVE') {
+        return [];
+    }
+
     const affectedIds = [];
     const effect = card.effect;
     const isFiltered = effect?.scope === 'FILTERED' && effect?.filter;

@@ -552,7 +552,8 @@
               0 0 50px 20px rgba(34, 211, 238, 0.4);
 }
 
-/* Targetable lane pulse - fades lane opacity in and out */
+/* Targetable lane pulse - applied to overlay div, not parent element */
+/* This allows drones to render at full opacity above the pulsing background */
 @keyframes lane-target-fade {
   0%, 100% {
     opacity: 0.4;

@@ -3,9 +3,10 @@
 // ========================================
 // Evaluates MODIFY_STAT and REPEATING_EFFECT card effects
 
-import { SCORING_WEIGHTS, CARD_EVALUATION } from '../aiConstants.js';
+import { SCORING_WEIGHTS, CARD_EVALUATION, INVALID_SCORE } from '../aiConstants.js';
 import { calculateLaneScore } from '../scoring/laneScoring.js';
 import { hasReadyNotFirstActionDrones } from '../helpers/keywordHelpers.js';
+import { LaneControlCalculator } from '../../combat/LaneControlCalculator.js';
 
 /**
  * Evaluate a MODIFY_STAT card
@@ -149,13 +150,16 @@ export const evaluateModifyStatCard = (card, target, context) => {
  * @returns {Object} - { score: number, logic: string[] }
  */
 export const evaluateRepeatingEffectCard = (card, target, context) => {
-  const { player2, getShipStatus } = context;
+  const { player1, player2, getShipStatus } = context;
   const logic = [];
   let score = 0;
 
-  let repeatCount = 1;
+  let repeatCount = 0;
+  const condition = card.effect?.condition || card.condition;
 
-  if (card.condition === 'OWN_DAMAGED_SECTIONS') {
+  if (condition === 'OWN_DAMAGED_SECTIONS') {
+    // Base of 1, plus additional for each damaged section
+    repeatCount = 1;
     for (const sectionName in player2.shipSections) {
       const section = player2.shipSections[sectionName];
       const status = getShipStatus(section);
@@ -163,6 +167,37 @@ export const evaluateRepeatingEffectCard = (card, target, context) => {
         repeatCount++;
       }
     }
+  } else if (condition === 'LANES_CONTROLLED') {
+    // No base - if you control 0 lanes, effect does nothing
+    repeatCount = LaneControlCalculator.countLanesControlled('player2', player1, player2);
+
+    if (repeatCount === 0) {
+      // Card does nothing useful - very low score
+      logic.push('⚠️ No lanes controlled - card does nothing');
+      return { score: INVALID_SCORE, logic };
+    }
+
+    // Use specific values for lane control effects
+    const subEffectType = card.effect?.effects?.[0]?.type;
+    let valuePerRepeat = CARD_EVALUATION.REPEAT_VALUE_PER_REPEAT;
+
+    if (subEffectType === 'GAIN_ENERGY') {
+      valuePerRepeat = CARD_EVALUATION.LANE_CONTROL_ENERGY_VALUE;
+    } else if (subEffectType === 'DRAW') {
+      valuePerRepeat = CARD_EVALUATION.LANE_CONTROL_DRAW_VALUE;
+    }
+
+    const repeatValue = repeatCount * valuePerRepeat;
+    const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
+    score = repeatValue - costPenalty;
+
+    logic.push(`✅ Lane Control: +${repeatValue} (${repeatCount} lanes × ${valuePerRepeat})`);
+    logic.push(`⚠️ Cost: -${costPenalty}`);
+
+    return { score, logic };
+  } else {
+    // Unknown condition - default to 1
+    repeatCount = 1;
   }
 
   const repeatValue = repeatCount * CARD_EVALUATION.REPEAT_VALUE_PER_REPEAT;

@@ -54,8 +54,10 @@ export const applyJammerAdjustments = (possibleActions, context) => {
   };
 
   player2.hand.forEach(card => {
-    // Only consider affordable cards
-    if (player2.energy >= card.cost && card.targeting) {
+    // Only consider affordable cards (check both energy and momentum costs)
+    const canAffordEnergy = player2.energy >= card.cost;
+    const canAffordMomentum = !card.momentumCost || (player2.momentum || 0) >= card.momentumCost;
+    if (canAffordEnergy && canAffordMomentum && card.targeting) {
       // Check if this card targets enemy drones
       const targetsEnemyDrones =
         card.targeting.type === 'DRONE' &&

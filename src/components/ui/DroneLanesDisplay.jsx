@@ -71,7 +71,8 @@ const renderDronesOnBoard = (
   getOpponentPlayerId,
   abilityMode,
   additionalCostState,
-  selectedCard
+  selectedCard,
+  hoveredLane
 ) => {
   return (
     <div
@@ -89,19 +90,36 @@ const renderDronesOnBoard = (
 
           // Calculate invalid target indicator state
           // Shows "no entry" symbol on drones in targeting scope but NOT valid targets
-          const targetingAffinity = selectedCard?.targeting?.affinity || abilityMode?.ability?.targeting?.affinity;
-          const targetingType = selectedCard?.targeting?.type || abilityMode?.ability?.targeting?.type;
+          const targetingAffinity = selectedCard?.targeting?.affinity || draggedActionCard?.card?.targeting?.affinity || abilityMode?.ability?.targeting?.affinity;
+          const targetingType = selectedCard?.targeting?.type || draggedActionCard?.card?.targeting?.type || abilityMode?.ability?.targeting?.type;
 
           const isInvalidTarget = (() => {
-            // Only for DRONE targeting when not a valid target
-            if (targetingType !== 'DRONE' || isActionTarget) return false;
-
-            switch (targetingAffinity) {
-              case 'ENEMY': return !isPlayer;      // Show on enemy drones only
-              case 'FRIENDLY': return isPlayer;    // Show on friendly drones only
-              case 'ANY': return true;             // Show on all drones
-              default: return false;
+            // For DRONE targeting: show invalid indicator on drones in scope but not valid targets
+            if (targetingType === 'DRONE' && !isActionTarget) {
+              switch (targetingAffinity) {
+                case 'ENEMY': return !isPlayer;      // Show on enemy drones only
+                case 'FRIENDLY': return isPlayer;    // Show on friendly drones only
+                case 'ANY': return true;             // Show on all drones
+                default: return false;
+              }
             }
+
+            // For LANE targeting: show invalid indicator on drones NOT in affectedDroneIds
+            // when hovering over their lane (indicates they won't be affected by the card)
+            if (targetingType === 'LANE' && hoveredLane?.id === lane) {
+              const isAffected = affectedDroneIds.includes(drone.id);
+              if (!isAffected) {
+                // Check if drone is in scope (based on affinity)
+                switch (targetingAffinity) {
+                  case 'ENEMY': return !isPlayer;      // Show on enemy drones only
+                  case 'FRIENDLY': return isPlayer;    // Show on friendly drones only
+                  case 'ANY': return true;             // Show on all drones
+                  default: return false;
+                }
+              }
+            }
+
+            return false;
           })();
 
           // Log when action targeting is active (for diagnosing highlighting issues)
@@ -409,8 +427,8 @@ const DroneLanesDisplay = ({
                 });
               }
             }}
-            className={`flex-1 rounded-lg transition-all duration-1000 ease-in-out p-2 ${laneBorderClass}
-              ${laneBackgroundClass} ${isTargetable ? 'lane-target-pulse' : ''}
+            className={`flex-1 rounded-lg transition-all duration-1000 ease-in-out p-2 relative ${laneBorderClass}
+              ${laneBackgroundClass}
               ${isInteractivePlayerLane ? 'cursor-pointer hover:bg-cyan-900/20' : ''}
             `}
             style={{
@@ -418,6 +436,19 @@ const DroneLanesDisplay = ({
               backgroundSize: '56px 32px'
             }}
           >
+            {/* Pulse overlay for lane targeting - sits behind drone content */}
+            {isTargetable && (
+              <div
+                className="absolute inset-0 rounded-lg lane-target-pulse pointer-events-none"
+                style={{
+                  backgroundImage: isPlayer ? cyanHexGrid : redHexGrid,
+                  backgroundSize: '56px 32px',
+                  backgroundColor: isPlayer ? 'rgba(34, 211, 238, 0.1)' : 'rgba(239, 68, 68, 0.1)'
+                }}
+              />
+            )}
+            {/* Drone content wrapper - sits above pulse overlay */}
+            <div className="relative z-10">
             {renderDronesOnBoard(
               player.dronesOnBoard[lane],
               isPlayer,
@@ -453,8 +484,10 @@ const DroneLanesDisplay = ({
               getOpponentPlayerId,
               abilityMode,
               additionalCostState,
-              selectedCard
+              selectedCard,
+              hoveredLane
             )}
+            </div>
           </div>
         );
       })}

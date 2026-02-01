@@ -6,6 +6,7 @@
 
 import { debugLog } from '../../utils/debugLogger.js';
 import fullDroneCollection from '../../data/droneData.js';
+import { LaneControlCalculator } from '../combat/LaneControlCalculator.js';
 
 /**
  * BaseTargetingProcessor - Abstract base class for targeting processors
@@ -81,6 +82,21 @@ class BaseTargetingProcessor {
         }
         continue;
       }
+
+      // Lane control criteria
+      if (criterion.type === 'IN_LANE_CONTROLLED_BY') {
+        if (!this.applyLaneControlCriterion(drone, criterion, lane, context, true)) {
+          return false;
+        }
+        continue;
+      }
+
+      if (criterion.type === 'IN_LANE_NOT_CONTROLLED_BY') {
+        if (!this.applyLaneControlCriterion(drone, criterion, lane, context, false)) {
+          return false;
+        }
+        continue;
+      }
     }
 
     return true;
@@ -116,6 +132,64 @@ class BaseTargetingProcessor {
     }
 
     return true;
+  }
+
+  /**
+   * Apply lane control criterion
+   *
+   * @param {Object} drone - Drone to check
+   * @param {Object} criterion - { type, controller }
+   * @param {string} lane - Lane where drone is located
+   * @param {Object} context - Targeting context with player states
+   * @param {boolean} requireControlled - true for IN_LANE_CONTROLLED_BY, false for IN_LANE_NOT_CONTROLLED_BY
+   * @returns {boolean} True if criterion passes
+   */
+  applyLaneControlCriterion(drone, criterion, lane, context, requireControlled) {
+    if (!lane || !context) {
+      debugLog('TARGETING_PROCESSING', '⚠️ Lane control criterion - missing lane or context', {
+        droneId: drone.id,
+        hasLane: !!lane,
+        hasContext: !!context
+      });
+      return false;
+    }
+
+    // Determine which player to check for control
+    let controllerPlayerId;
+    if (criterion.controller === 'ACTING_PLAYER') {
+      controllerPlayerId = context.actingPlayerId;
+    } else if (criterion.controller === 'OPPONENT') {
+      controllerPlayerId = this.getOpponentPlayerId(context.actingPlayerId);
+    } else {
+      debugLog('TARGETING_PROCESSING', '⚠️ Unknown controller type', { controller: criterion.controller });
+      return true; // Unknown controller, don't filter
+    }
+
+    // Get lanes controlled by the specified player
+    const lanesControlled = LaneControlCalculator.getLanesControlled(
+      controllerPlayerId,
+      context.player1,
+      context.player2
+    );
+
+    const isInControlledLane = lanesControlled.includes(lane);
+
+    const passes = requireControlled ? isInControlledLane : !isInControlledLane;
+
+    debugLog('TARGETING_PROCESSING',
+      passes ? '✅ Lane control criterion passes' : '❌ Lane control criterion fails',
+      {
+        droneId: drone.id,
+        lane,
+        controllerPlayerId,
+        requireControlled,
+        lanesControlled,
+        isInControlledLane,
+        passes
+      }
+    );
+
+    return passes;
   }
 
   /**

@@ -440,6 +440,9 @@ setAnimationManager(animationManager) {
         case 'rebuildProgress':
           result = await this.processRebuildProgress(payload); break;
 
+        case 'momentumAward':
+          result = await this.processMomentumAward(payload); break;
+
         case 'destroyDrone':
           result = await this.processDestroyDrone(payload); break;
 
@@ -4119,6 +4122,36 @@ setAnimationManager(animationManager) {
     return {
       success: true,
       message: 'Drone rebuild progress processed',
+      player1,
+      player2
+    };
+  }
+
+  /**
+   * Process momentum award
+   * Awards momentum to the player controlling more lanes
+   * @param {Object} payload - { player1?, player2? }
+   * @returns {Object} Momentum award result
+   */
+  async processMomentumAward(payload) {
+    const { player1, player2 } = payload;
+
+    debugLog('PHASE_MANAGER', '🚀 ActionProcessor: Processing momentum award');
+
+    // Build state update object
+    const stateUpdate = {};
+    if (player1) stateUpdate.player1 = player1;
+    if (player2) stateUpdate.player2 = player2;
+
+    // Update player states with momentum changes
+    this.gameStateManager.setState(stateUpdate, 'MOMENTUM_AWARD');
+
+    const awardedTo = player1 ? 'Player 1' : player2 ? 'Player 2' : 'None';
+    debugLog('PHASE_MANAGER', `✅ Momentum award complete - Awarded to: ${awardedTo}`);
+
+    return {
+      success: true,
+      message: 'Momentum award processed',
       player1,
       player2
     };

@@ -268,6 +268,11 @@ export const CARD_EVALUATION = {
   // REPEATING_EFFECT card scoring
   REPEAT_VALUE_PER_REPEAT: 25,
 
+  // LANES_CONTROLLED card scoring
+  LANE_CONTROL_ENERGY_VALUE: 30,    // Per energy gained from lane control
+  LANE_CONTROL_DRAW_VALUE: 35,      // Per card drawn from lane control
+  LANE_CONTROL_RALLY_BONUS: 25,     // Bonus for readying in contested lane
+
   // CREATE_TOKENS (Jammers) card scoring
   JAMMER_BASE_VALUE: 30,
   JAMMER_CPU_VALUE_MULTIPLIER: 5,

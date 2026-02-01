@@ -145,6 +145,7 @@ class StateInitializer {
         shipId: shipCard.id,  // Track which ship is in use
         shipSections: computedShipSections,
         energy: 0, // Energy will be set correctly during round start with actual placed sections
+        momentum: 0, // Momentum earned by controlling more lanes than opponent (cap: 4)
         initialDeploymentBudget: effectiveStats.initialDeployment,
         deploymentBudget: 0,
         hand: [],

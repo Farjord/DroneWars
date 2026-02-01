@@ -12,6 +12,7 @@ import { debugLog } from '../../../utils/debugLogger.js';
 import { calculateCardFanRotation, getHoverTransform, getCardTransition, calculateCardArcOffset, CARD_FAN_CONFIG } from '../../../utils/cardAnimationUtils.js';
 import TargetingRouter from '../../../logic/TargetingRouter.js';
 import { isDoctrineCardPlayable } from '../../../logic/targeting/DoctrineValidator.js';
+import { LaneControlCalculator } from '../../../logic/combat/LaneControlCalculator.js';
 
 // Initialize TargetingRouter for card targeting validation
 const targetingRouter = new TargetingRouter();
@@ -43,12 +44,31 @@ function HandView({
   opponentPlayerState,
   // Action card drag-and-drop props
   handleActionCardDragStart,
-  draggedActionCard
+  draggedActionCard,
+  // Additional cost selection state
+  additionalCostState
 }) {
   // Debug logging for component props
   const localPlayerId = getLocalPlayerId();
   const myTurn = isMyTurn();
   const playerPassed = passInfo[`${localPlayerId}Passed`];
+
+  // Debug: Log additionalCostState when it changes
+  debugLog('ADDITIONAL_COST', '🎴 HandView additionalCostState:', {
+    phase: additionalCostState?.phase,
+    cardName: additionalCostState?.card?.name,
+    validTargetsCount: additionalCostState?.validTargets?.length,
+    validTargetIds: additionalCostState?.validTargets?.map(t => t.instanceId)
+  });
+
+  // Calculate lanes controlled for dynamic helper text on LANES_CONTROLLED cards
+  const player1State = localPlayerId === 'player1' ? localPlayerState : opponentPlayerState;
+  const player2State = localPlayerId === 'player1' ? opponentPlayerState : localPlayerState;
+  const lanesControlledCount = LaneControlCalculator.countLanesControlled(
+    localPlayerId,
+    player1State,
+    player2State
+  );
 
   // Dynamic overlap calculation
   const handSectionRef = useRef(null);
@@ -244,12 +264,17 @@ function HandView({
             {localPlayerState.hand.map((card, index) => {
               // Check card playability conditions
               const hasEnoughEnergy = localPlayerState.energy >= card.cost;
+              // Check momentum cost if card requires it
+              const hasEnoughMomentum = card.momentumCost
+                ? (localPlayerState.momentum || 0) >= card.momentumCost
+                : true;
               // Use memoized valid targets calculation instead of calling getValidTargets on every render
               const hasValidTargets = cardValidTargetsMap.get(card.instanceId);
               const isActionPhasePlayable = turnPhase === 'action' &&
                 myTurn &&
                 !playerPassed &&
                 hasEnoughEnergy &&
+                hasEnoughMomentum &&
                 hasValidTargets;
               const isOptionalDiscardPlayable = turnPhase === 'optionalDiscard' &&
                 optionalDiscardCount < localPlayerEffectiveStats.totals.discardLimit;
@@ -264,11 +289,36 @@ function HandView({
                 doctrinePlayable = isDoctrineCardPlayable(card, localPlayerId, playerStates);
               }
 
+              // Check if this card is a valid cost target for additional cost selection
+              // Use additionalCostState.validTargets directly to ensure sync with phase
+              const isCostSelectionTarget = additionalCostState?.phase === 'select_cost' &&
+                additionalCostState?.validTargets?.some(t => t.instanceId === card.instanceId);
+
+              // Debug: Log cost selection evaluation for each card
+              if (additionalCostState?.phase === 'select_cost') {
+                debugLog('ADDITIONAL_COST', `🃏 Card "${card.name}" cost selection check:`, {
+                  cardInstanceId: card.instanceId,
+                  phase: additionalCostState?.phase,
+                  validTargets: additionalCostState?.validTargets?.map(t => ({ id: t.id, instanceId: t.instanceId, name: t.name })),
+                  isCostSelectionTarget,
+                  cardIsPlayable: isCostSelectionTarget ||
+                    (turnPhase === 'action'
+                      ? (isActionPhasePlayable && doctrinePlayable)
+                      : isOptionalDiscardPlayable)
+                });
+              }
+
+              // Check if this card is the selected cost card (should appear highlighted during select_effect)
+              const isSelectedCostCard = additionalCostState?.phase === 'select_effect' &&
+                additionalCostState?.costSelection?.card?.instanceId === card.instanceId;
+
               // Combine all playability checks
               // Doctrine validation only applies during action phase, not discard phase
-              const cardIsPlayable = turnPhase === 'action'
-                ? (isActionPhasePlayable && doctrinePlayable)
-                : isOptionalDiscardPlayable;
+              const cardIsPlayable = isCostSelectionTarget ||
+                isSelectedCostCard ||  // Cost card stays highlighted during effect selection
+                (turnPhase === 'action'
+                  ? (isActionPhasePlayable && doctrinePlayable)
+                  : isOptionalDiscardPlayable);
 
               const isHovered = hoveredCardId === card.instanceId;
 
@@ -290,9 +340,11 @@ function HandView({
                 transition: getCardTransition()
               };
 
-              // Apply pulse effect during mandatory discard (all cards) or optional discard (only selectable cards)
+              // Apply pulse effect during mandatory discard (all cards), optional discard (only selectable cards),
+              // or cost selection (valid cost targets). Applied to wrapper div to avoid CSS conflicts with rarity animations.
               const shouldPulse = mandatoryAction?.type === 'discard' ||
-                (turnPhase === 'optionalDiscard' && cardIsPlayable);
+                (turnPhase === 'optionalDiscard' && cardIsPlayable) ||
+                isCostSelectionTarget;
 
               return (
                 <div
@@ -315,9 +367,10 @@ function HandView({
                   }}
                   onMouseLeave={() => setHoveredCardId(null)}
                   onMouseDown={(e) => {
-                    // Initiate drag for playable cards during action phase (not during mandatory action)
+                    // Initiate drag for playable cards during action phase (not during mandatory action or cost selection)
                     // Uses threshold detection to distinguish click from drag
-                    if (cardIsPlayable && turnPhase === 'action' && !mandatoryAction && handleActionCardDragStart) {
+                    // Cost selection targets use click, not drag, so exclude them
+                    if (cardIsPlayable && turnPhase === 'action' && !mandatoryAction && !isCostSelectionTarget && handleActionCardDragStart) {
                       e.preventDefault();
 
                       // Store start position and card rect immediately (before React nullifies event)
@@ -355,13 +408,21 @@ function HandView({
                   <ActionCard
                     card={card}
                     isSelected={selectedCard?.instanceId === card.instanceId}
-                    isDimmed={selectedCard && selectedCard.instanceId !== card.instanceId}
+                    isDimmed={selectedCard &&
+                      selectedCard.instanceId !== card.instanceId &&
+                      !isCostSelectionTarget &&
+                      additionalCostState?.costSelection?.card?.instanceId !== card.instanceId}
                     isDragging={draggedActionCard?.card?.instanceId === card.instanceId}
                     isPlayable={cardIsPlayable}
+                    isCostSelectionTarget={isCostSelectionTarget}
                     mandatoryAction={mandatoryAction}
                     excessCards={excessCards}
+                    lanesControlled={lanesControlledCount}
                     onClick={
-                      mandatoryAction?.type === 'discard'
+                      // Cost selection click handler - when selecting cards to pay additional costs
+                      isCostSelectionTarget
+                        ? () => handleCardClick(card)
+                      : mandatoryAction?.type === 'discard'
                         ? (c) => {
                             // For phase-based mandatory discards, check if limit reached
                             if (!mandatoryAction.fromAbility && excessCards <= 0) {

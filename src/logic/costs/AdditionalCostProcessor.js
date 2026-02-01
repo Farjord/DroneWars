@@ -201,7 +201,7 @@ class AdditionalCostProcessor {
     const cardIndex = actingPlayerState.hand.findIndex(c => c.id === cardToDiscard.id);
     if (cardIndex !== -1) {
       actingPlayerState.hand.splice(cardIndex, 1);
-      actingPlayerState.discard.push(cardToDiscard);
+      actingPlayerState.discardPile.push(cardToDiscard);
 
       debugLog('ADDITIONAL_COST', '🗑️ Card discarded as cost', {
         cardName: cardToDiscard.name,

@@ -15,6 +15,7 @@ import PhaseManager from './PhaseManager.js';
 import tacticalMapStateManager from './TacticalMapStateManager.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 import { processRebuildProgress } from '../logic/availability/DroneAvailabilityManager.js';
+import { LaneControlCalculator } from '../logic/combat/LaneControlCalculator.js';
 
 /**
  * GameFlowManager - Central authority for game phase flow and transitions
@@ -1209,6 +1210,71 @@ class GameFlowManager {
         debugLog('PHASE_MANAGER', '✅ ON_ROUND_START triggers processed', {
           animationEventsCount: roundStartResult.animationEvents?.length || 0
         });
+      }
+
+      // ========================================
+      // STEP 3b2: Momentum Award (Lane Control Bonus)
+      // ========================================
+      // Award +1 momentum to player controlling most lanes (checked after start-of-round effects)
+      // Rules: No momentum on ties, no momentum on round 1, cap at 4
+      const momentumRoundNumber = this.gameStateManager.get('roundNumber');
+      if (momentumRoundNumber >= 2) {
+        debugLog('PHASE_MANAGER', '🚀 Step 3b2: Processing momentum award');
+
+        const postTriggersState = this.gameStateManager.getState();
+        const laneControl = LaneControlCalculator.calculateLaneControl(
+          postTriggersState.player1,
+          postTriggersState.player2
+        );
+
+        // Count lanes controlled by each player
+        let player1Lanes = 0;
+        let player2Lanes = 0;
+        ['lane1', 'lane2', 'lane3'].forEach(lane => {
+          if (laneControl[lane] === 'player1') player1Lanes++;
+          if (laneControl[lane] === 'player2') player2Lanes++;
+        });
+
+        debugLog('PHASE_MANAGER', '📊 Lane control status:', {
+          player1Lanes,
+          player2Lanes,
+          laneControl
+        });
+
+        // Award momentum to player controlling more lanes (no award on tie)
+        let momentumUpdates = {};
+        const MOMENTUM_CAP = 4;
+
+        if (player1Lanes > player2Lanes) {
+          const newMomentum = Math.min((postTriggersState.player1.momentum || 0) + 1, MOMENTUM_CAP);
+          momentumUpdates.player1 = { ...postTriggersState.player1, momentum: newMomentum };
+          debugLog('PHASE_MANAGER', '🎯 Player 1 awarded +1 momentum', {
+            oldMomentum: postTriggersState.player1.momentum || 0,
+            newMomentum,
+            lanesControlled: player1Lanes
+          });
+        } else if (player2Lanes > player1Lanes) {
+          const newMomentum = Math.min((postTriggersState.player2.momentum || 0) + 1, MOMENTUM_CAP);
+          momentumUpdates.player2 = { ...postTriggersState.player2, momentum: newMomentum };
+          debugLog('PHASE_MANAGER', '🎯 Player 2 awarded +1 momentum', {
+            oldMomentum: postTriggersState.player2.momentum || 0,
+            newMomentum,
+            lanesControlled: player2Lanes
+          });
+        } else {
+          debugLog('PHASE_MANAGER', '⚖️ Lane control tied - no momentum awarded');
+        }
+
+        // Update state with momentum changes
+        if (momentumUpdates.player1 || momentumUpdates.player2) {
+          await this.actionProcessor.queueAction({
+            type: 'momentumAward',
+            payload: momentumUpdates
+          });
+          debugLog('PHASE_MANAGER', '✅ Momentum award complete');
+        }
+      } else {
+        debugLog('PHASE_MANAGER', '⏭️ Skipping momentum award (Round 1)');
       }
 
       // ========================================
