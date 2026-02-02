@@ -8,6 +8,7 @@ import { gameEngine } from '../logic/gameLogic.js';
 import CardPlayManager from '../logic/cards/CardPlayManager.js';
 import { resolveAttack } from '../logic/combat/AttackProcessor.js';
 import fullDroneCollection from '../data/droneData.js';
+import { calculateEffectiveStats } from '../logic/statsCalculator.js';
 import { calculatePotentialInterceptors, calculateAiInterception } from '../logic/combat/InterceptionProcessor.js';
 import MovementEffectProcessor from '../logic/effects/movement/MovementEffectProcessor.js';
 import ConditionalEffectProcessor from '../logic/effects/conditional/ConditionalEffectProcessor.js';
@@ -772,6 +773,22 @@ setAnimationManager(animationManager) {
 
     const drone = playerState.dronesOnBoard[fromLane][droneIndex];
 
+    // Get placed sections for INERT check and later updateAuras
+    const placedSections = {
+      player1: currentState.placedSections,
+      player2: currentState.opponentPlacedSections
+    };
+
+    // Check if drone has INERT keyword (cannot move)
+    const effectiveStats = calculateEffectiveStats(drone, fromLane, playerState, opponentPlayerState, placedSections);
+    if (effectiveStats.keywords.has('INERT')) {
+      return {
+        success: false,
+        error: `${drone.name} cannot move (Inert).`,
+        shouldShowErrorModal: true
+      };
+    }
+
     // Create a copy of the entire player state for processing
     let newPlayerState = JSON.parse(JSON.stringify(playerState));
 
@@ -790,12 +807,6 @@ setAnimationManager(animationManager) {
     };
     newPlayerState.dronesOnBoard[fromLane] = newPlayerState.dronesOnBoard[fromLane].filter(d => d.id !== droneId);
     newPlayerState.dronesOnBoard[toLane].push(movedDrone);
-
-    // Get placed sections for updateAuras
-    const placedSections = {
-      player1: currentState.placedSections,
-      player2: currentState.opponentPlacedSections
-    };
 
     // Apply ON_MOVE effects (e.g., Phase Jumper's Phase Shift)
     const { newState: stateAfterMoveEffects } = gameEngine.applyOnMoveEffects(

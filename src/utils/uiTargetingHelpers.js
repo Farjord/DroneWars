@@ -33,7 +33,7 @@ const targetingRouter = new TargetingRouter();
  * @param {string} actingPlayerId - 'player1' or 'player2'
  * @returns {Array} List of valid target objects
  */
-export const calculateMultiSelectTargets = (multiSelectState, player1, player2, actingPlayerId) => {
+export const calculateMultiSelectTargets = (multiSelectState, player1, player2, actingPlayerId, getEffectiveStatsFn = null) => {
     const { phase, sourceLane, card } = multiSelectState;
 
     // Determine which player state to target based on card affinity
@@ -60,10 +60,17 @@ export const calculateMultiSelectTargets = (multiSelectState, player1, player2, 
     if (card.effect.type === 'SINGLE_MOVE') {
         if (phase === 'select_drone') {
             // Target drones based on card affinity (ENEMY or FRIENDLY)
-            Object.values(targetPlayerState.dronesOnBoard).flat().forEach(drone => {
-                if (!drone.isExhausted) {
-                    targets.push({ ...drone, owner: targetPlayerId });
-                }
+            const opponentState = targetPlayerId === 'player1' ? player2 : player1;
+            Object.entries(targetPlayerState.dronesOnBoard).forEach(([lane, drones]) => {
+                drones.forEach(drone => {
+                    if (drone.isExhausted) return;
+                    // Filter out INERT drones
+                    if (getEffectiveStatsFn) {
+                        const stats = getEffectiveStatsFn(drone, lane);
+                        if (stats.keywords.has('INERT')) return;
+                    }
+                    targets.push({ ...drone, lane, owner: targetPlayerId });
+                });
             });
         } else if (phase === 'select_destination') {
             // Target adjacent lanes
@@ -99,9 +106,17 @@ export const calculateMultiSelectTargets = (multiSelectState, player1, player2, 
     } else if (phase === 'select_drones') {
         // Target non-exhausted drones within the selected source lane
         actingPlayerState.dronesOnBoard[sourceLane]
-            .filter(drone => !drone.isExhausted)
+            .filter(drone => {
+                if (drone.isExhausted) return false;
+                // Filter out INERT drones
+                if (getEffectiveStatsFn) {
+                    const stats = getEffectiveStatsFn(drone, sourceLane);
+                    if (stats.keywords.has('INERT')) return false;
+                }
+                return true;
+            })
             .forEach(drone => {
-                targets.push({ ...drone, owner: actingPlayerId });
+                targets.push({ ...drone, lane: sourceLane, owner: actingPlayerId });
             });
     } else if (phase === 'select_destination_lane') {
         // Target ADJACENT friendly lanes
@@ -219,7 +234,7 @@ export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSele
     } else if (multiSelectState) {
         // Determine which player state to use based on who is acting
         const actingPlayerId = multiSelectState.actingPlayerId || localPlayerId;
-        validCardTargets = calculateMultiSelectTargets(multiSelectState, player1, player2, actingPlayerId);
+        validCardTargets = calculateMultiSelectTargets(multiSelectState, player1, player2, actingPlayerId, getEffectiveStatsFn);
     } else if (selectedCard) {
         if (selectedCard.type === 'Upgrade') {
             validCardTargets = calculateUpgradeTargets(selectedCard, player1);
@@ -227,7 +242,7 @@ export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSele
             // MULTI_MOVE cards use multiSelectState for targeting via calculateMultiSelectTargets
             if (multiSelectState) {
                 const actingPlayerId = multiSelectState.actingPlayerId || localPlayerId;
-                validCardTargets = calculateMultiSelectTargets(multiSelectState, player1, player2, actingPlayerId);
+                validCardTargets = calculateMultiSelectTargets(multiSelectState, player1, player2, actingPlayerId, getEffectiveStatsFn);
             } else {
                 validCardTargets = [];
             }
@@ -244,7 +259,7 @@ export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSele
                 });
 
                 const actingPlayerId = multiSelectState.actingPlayerId || localPlayerId;
-                validCardTargets = calculateMultiSelectTargets(multiSelectState, player1, player2, actingPlayerId);
+                validCardTargets = calculateMultiSelectTargets(multiSelectState, player1, player2, actingPlayerId, getEffectiveStatsFn);
 
                 debugLog('TARGETING_PROCESSING', '📋 calculateMultiSelectTargets result', {
                     phase: multiSelectState.phase,

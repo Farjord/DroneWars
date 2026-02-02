@@ -295,12 +295,27 @@ const fullDroneCollection = [
     image: '/DroneWars/img/Jammer.png',
     selectable: false, // Cannot be selected in deck builder or drone selection
     maxPerLane: 1, // Only one Jammer allowed per lane
-    abilities: [{
+    isToken: true, // Token drones do not count toward CPU Control Limit
+    abilities: [
+      {
         name: 'Jammer',
         description: 'While this drone is ready in a lane, opponent card effects can only target this drone.',
         type: 'PASSIVE',
         effect: { type: 'GRANT_KEYWORD', keyword: 'JAMMER' }
-    }],
+      },
+      {
+        name: 'Inert',
+        description: 'Inert.',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'INERT' }
+      },
+      {
+        name: 'Passive',
+        description: 'Passive.',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'PASSIVE' }
+      }
+    ],
     upgradeSlots: 0
   },
   {

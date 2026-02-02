@@ -30,6 +30,11 @@ export const evaluateDroneAttack = (attacker, target, context) => {
   const effectiveAttacker = gameDataService.getEffectiveStats(attacker, attacker.lane);
   const baseAttacker = fullDroneCollection.find(d => d.name === attacker.name);
 
+  // Check if attacker has PASSIVE keyword - cannot attack
+  if (effectiveAttacker.keywords.has('PASSIVE')) {
+    return { score: -Infinity, logic: ['⛔ PASSIVE: Cannot attack'] };
+  }
+
   // Determine if attack is piercing (static or conditional)
   let isPiercing = attacker.damageType === 'PIERCING';
 

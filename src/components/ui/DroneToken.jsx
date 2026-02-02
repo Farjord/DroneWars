@@ -9,8 +9,8 @@ import fullDroneCollection from '../../data/droneData.js';
 import { useGameData } from '../../hooks/useGameData.js';
 import { useEditorStats } from '../../contexts/EditorStatsContext.jsx';
 import InterceptedBadge from './InterceptedBadge.jsx';
-import TargetLockIcon from './TargetLockIcon.jsx';
 import StatusEffectIcons from './StatusEffectIcons.jsx';
+import TraitIndicators from './TraitIndicators.jsx';
 import { debugLog } from '../../utils/debugLogger.js';
 import { Gauge, Crosshair } from 'lucide-react';
 
@@ -230,9 +230,14 @@ const DroneToken = ({
 
   // --- Dynamic Class Calculation ---
   const borderColor = isPlayer ? 'border-cyan-400' : 'border-red-500';
-  const nameBgColor = isPlayer ? 'bg-cyan-900' : 'bg-red-950';
+  const isToken = baseDrone?.isToken;
+  const nameBgColor = isToken
+    ? (isPlayer ? 'bg-slate-600' : 'bg-stone-700')
+    : (isPlayer ? 'bg-cyan-900' : 'bg-red-950');
   const nameTextColor = isPlayer ? 'text-cyan-100' : 'text-red-100';
-  const statBgColor = isPlayer ? 'bg-cyan-900' : 'bg-red-950';
+  const statBgColor = isToken
+    ? (isPlayer ? 'bg-slate-600' : 'bg-stone-700')
+    : (isPlayer ? 'bg-cyan-900' : 'bg-red-950');
   const shieldColor = drone.isExhausted ? 'text-white' : 'text-cyan-200';
   const emptyShieldColor = drone.isExhausted ? 'text-gray-500' : 'text-cyan-200 opacity-50';
 
@@ -374,27 +379,6 @@ const DroneToken = ({
           </div>
           {/* End Grayscale Container */}
 
-          {/* Marked Indicator - Inside animation container, outside grayscale container */}
-          {drone.isMarked && (
-            <div
-              className="absolute top-5 left-[-14px] z-30 pointer-events-none"
-              style={{
-                animation: 'targetGlow 2s ease-in-out infinite',
-              }}
-            >
-              <TargetLockIcon size={24} />
-              <style>{`
-                @keyframes targetGlow {
-                  0%, 100% {
-                    filter: brightness(1) drop-shadow(0 0 2px rgba(239, 68, 68, 0.8));
-                  }
-                  50% {
-                    filter: brightness(1.5) drop-shadow(0 0 8px rgba(239, 68, 68, 1));
-                  }
-                }
-              `}</style>
-            </div>
-          )}
         </div>
         {/* End Targeting/Visual Effects Container */}
 
@@ -420,6 +404,9 @@ const DroneToken = ({
 
         {/* Special Ability Icons (RAPID/ASSAULT) - Left side */}
         <SpecialAbilityIcons drone={drone} isPlayer={isPlayer} />
+
+        {/* Trait Indicators (Marked/PASSIVE/INERT) - Top-left side */}
+        <TraitIndicators drone={drone} effectiveStats={effectiveStats} />
 
         {/* Status Effect Icons - Right side */}
         <StatusEffectIcons drone={drone} isPlayer={isPlayer} />

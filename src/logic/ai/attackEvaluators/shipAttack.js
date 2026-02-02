@@ -20,6 +20,12 @@ export const evaluateShipAttack = (attacker, target, context) => {
   let score = 0;
 
   const effectiveAttacker = gameDataService.getEffectiveStats(attacker, attacker.lane);
+
+  // Check if attacker has PASSIVE keyword - cannot attack
+  if (effectiveAttacker.keywords.has('PASSIVE')) {
+    return { score: -Infinity, logic: ['⛔ PASSIVE: Cannot attack'] };
+  }
+
   const attackerAttack = Math.max(0, effectiveAttacker.attack);
 
   // Base score from attack value

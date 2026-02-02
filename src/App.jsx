@@ -683,11 +683,15 @@ const App = ({ phaseAnimationQueue }) => {
   const opponentPlayerEffectiveStats = opponentPlayerState ? getEffectiveShipStats(opponentPlayerState, opponentPlacedSections) : null;
 
   const totalLocalPlayerDrones = useMemo(() => {
-    return localPlayerState ? Object.values(localPlayerState.dronesOnBoard).flat().length : 0;
+    return localPlayerState
+      ? Object.values(localPlayerState.dronesOnBoard).flat().filter(d => !d.isToken).length
+      : 0;
   }, [localPlayerState?.dronesOnBoard]);
 
   const totalOpponentPlayerDrones = useMemo(() => {
-    return opponentPlayerState ? Object.values(opponentPlayerState.dronesOnBoard).flat().length : 0;
+    return opponentPlayerState
+      ? Object.values(opponentPlayerState.dronesOnBoard).flat().filter(d => !d.isToken).length
+      : 0;
   }, [opponentPlayerState?.dronesOnBoard]);
 
   // Hull integrity calculations for win condition display
@@ -4069,6 +4073,13 @@ const App = ({ phaseAnimationQueue }) => {
     // Normal action phase drag - only allow during action phase, when it's our turn, and drone is not exhausted
     if (turnPhase !== 'action' || currentPlayer !== getLocalPlayerId() || drone.isExhausted) {
       debugLog('DRAG_DROP_DEPLOY', '⛔ Drone drag blocked', { turnPhase, currentPlayer, localPlayerId: getLocalPlayerId(), isExhausted: drone.isExhausted });
+      return;
+    }
+
+    // Check if drone has INERT keyword (cannot move)
+    const effectiveStats = getEffectiveStats(drone, sourceLane);
+    if (effectiveStats.keywords.has('INERT')) {
+      debugLog('DRAG_DROP_DEPLOY', '⛔ Drone drag blocked - INERT keyword', { droneName: drone.name, droneId: drone.id });
       return;
     }
 

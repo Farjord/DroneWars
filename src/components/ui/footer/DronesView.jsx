@@ -10,6 +10,7 @@ import CardBackPlaceholder from '../CardBackPlaceholder.jsx';
 import styles from '../GameFooter.module.css';
 import { calculateCardFanRotation, getHoverTransform, getCardTransition, calculateCardArcOffset, CARD_FAN_CONFIG } from '../../../utils/cardAnimationUtils.js';
 import { debugLog } from '../../../utils/debugLogger.js';
+import fullDroneCollection from '../../../data/droneData.js';
 
 function DronesView({
   localPlayerState,
@@ -66,8 +67,14 @@ function DronesView({
     return () => window.removeEventListener('resize', calculateOverlap);
   }, [sortedLocalActivePool.length]);
 
-  // Calculate total drones on board for CPU limit check
-  const totalDronesOnBoard = Object.values(localPlayerState.dronesOnBoard).flat().length;
+  // Calculate total drones on board for CPU limit check (excluding tokens)
+  const totalDronesOnBoard = Object.values(localPlayerState.dronesOnBoard)
+    .flat()
+    .filter(d => {
+      const baseDrone = fullDroneCollection.find(bd => bd.name === d.name);
+      return !baseDrone?.isToken;
+    })
+    .length;
 
   // Check if player is at CPU limit
   const isAtCPULimit = totalDronesOnBoard >= localPlayerEffectiveStats.totals.cpuLimit;

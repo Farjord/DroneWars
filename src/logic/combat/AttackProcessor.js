@@ -295,14 +295,25 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
     const attackerPlayerState = playerStates[attackingPlayerId];
     const defenderPlayerState = playerStates[defendingPlayerId];
 
-    // Check if attacker can attack (status effect restriction)
+    // Check if attacker can attack (status effect restriction or PASSIVE keyword)
     // Skip this check for card/ability attacks (no attacker drone)
-    if (!isAbilityOrCard && attacker && attacker.cannotAttack) {
-        return {
-            newPlayerStates: playerStates,
-            error: `${attacker.name} cannot attack due to active status effect.`,
-            shouldShowErrorModal: true
-        };
+    if (!isAbilityOrCard && attacker && attacker.id) {
+        const attackerLaneForCheck = getLaneOfDrone(attacker.id, attackerPlayerState);
+        const effectiveAttackerCheck = calculateEffectiveStats(
+            attacker,
+            attackerLaneForCheck,
+            attackerPlayerState,
+            defenderPlayerState,
+            placedSections
+        );
+
+        if (effectiveAttackerCheck.keywords.has('PASSIVE') || attacker.cannotAttack) {
+            return {
+                newPlayerStates: playerStates,
+                error: `${attacker.name} cannot attack${effectiveAttackerCheck.keywords.has('PASSIVE') ? ' (Passive)' : ''}.`,
+                shouldShowErrorModal: true
+            };
+        }
     }
 
     // Calculate attacker stats (skip for card/ability attacks)

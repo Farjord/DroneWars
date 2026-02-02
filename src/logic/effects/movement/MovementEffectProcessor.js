@@ -8,6 +8,7 @@ import BaseEffectProcessor from '../BaseEffectProcessor.js';
 import { countDroneTypeInLane } from '../../utils/gameEngineUtils.js';
 import { applyOnMoveEffects } from '../../utils/abilityHelpers.js';
 import { updateAuras } from '../../utils/auraManager.js';
+import { calculateEffectiveStats } from '../../statsCalculator.js';
 import fullDroneCollection from '../../../data/droneData.js';
 import { buildDefaultMovementAnimation } from './animations/DefaultMovementAnimation.js';
 import { debugLog } from '../../../utils/debugLogger.js';
@@ -271,11 +272,12 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       isMovingEnemyDrone
     });
 
-    // Check if drone can move (status effect restriction)
-    if (droneToMove.cannotMove) {
+    // Check if drone can move (status effect restriction or INERT keyword)
+    const effectiveStats = calculateEffectiveStats(droneToMove, fromLane, droneOwnerState, opponentPlayerState, placedSections);
+    if (effectiveStats.keywords.has('INERT') || droneToMove.cannotMove) {
       return {
         newPlayerStates: newPlayerStates,
-        error: `${droneToMove.name} cannot move due to active status effect.`,
+        error: `${droneToMove.name} cannot move${effectiveStats.keywords.has('INERT') ? ' (Inert)' : ''}.`,
         shouldShowErrorModal: true,
         shouldCancelCardSelection: true,
         shouldClearMultiSelectState: true
@@ -388,12 +390,13 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     const actingPlayerState = newPlayerStates[actingPlayerId];
     const opponentPlayerState = newPlayerStates[opponentPlayerId];
 
-    // Check if any drone has cannotMove restriction
+    // Check if any drone has cannotMove restriction or INERT keyword
     for (const drone of dronesToMove) {
-      if (drone.cannotMove) {
+      const effectiveStats = calculateEffectiveStats(drone, fromLane, actingPlayerState, opponentPlayerState, placedSections);
+      if (effectiveStats.keywords.has('INERT') || drone.cannotMove) {
         return {
           newPlayerStates: newPlayerStates,
-          error: `${drone.name} cannot move due to active status effect.`,
+          error: `${drone.name} cannot move${effectiveStats.keywords.has('INERT') ? ' (Inert)' : ''}.`,
           shouldShowErrorModal: true,
           shouldCancelCardSelection: true,
           shouldClearMultiSelectState: true

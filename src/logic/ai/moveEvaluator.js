@@ -29,6 +29,12 @@ export const evaluateMove = (drone, fromLane, toLane, context) => {
   const logic = [];
   let score = 0;
 
+  // Check if drone has INERT keyword - cannot move
+  const effectiveStats = gameDataService.getEffectiveStats(drone, fromLane);
+  if (effectiveStats.keywords.has('INERT')) {
+    return { score: -Infinity, logic: ['⛔ INERT: Cannot move'] };
+  }
+
   // Calculate current lane scores
   const currentFromScore = calculateLaneScore(fromLane, player2, player1, allSections, getShipStatus, gameDataService);
   const currentToScore = calculateLaneScore(toLane, player2, player1, allSections, getShipStatus, gameDataService);

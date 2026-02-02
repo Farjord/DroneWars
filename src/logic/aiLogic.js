@@ -136,7 +136,13 @@ const handleOpponentTurn = ({ player1, player2, turn, placedSections, opponentPl
     // Create GameDataService instance for centralized data computation
     const gameDataService = GameDataService.getInstance(gameStateManager);
     const effectiveStats = gameDataService.getEffectiveShipStats(player2, opponentPlacedSections).totals;
-    const totalDrones = Object.values(player2.dronesOnBoard).flat().length;
+    const totalDrones = Object.values(player2.dronesOnBoard)
+  .flat()
+  .filter(d => {
+    const baseDrone = fullDroneCollection.find(bd => bd.name === d.name);
+    return !baseDrone?.isToken;
+  })
+  .length;
     const availableResources = turn === 1
       ? (player2.initialDeploymentBudget + player2.energy)
       : (player2.deploymentBudget + player2.energy);

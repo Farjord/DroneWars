@@ -214,7 +214,14 @@ class DeploymentProcessor {
    */
   executeDeployment(drone, lane, turn, playerState, opponentState, placedSections, logCallback, playerId) {
     // Validate deployment
-    const totalPlayerDrones = Object.values(playerState.dronesOnBoard).flat().length;
+    // Filter out token drones from CPU count - tokens don't count toward CPU limit
+    const totalPlayerDrones = Object.values(playerState.dronesOnBoard)
+      .flat()
+      .filter(d => {
+        const baseDrone = fullDroneCollection.find(bd => bd.name === d.name);
+        return !baseDrone?.isToken;
+      })
+      .length;
     const playerEffectiveStats = calculateEffectiveShipStats(
       playerState,
       placedSections.player1 || placedSections

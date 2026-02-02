@@ -198,6 +198,12 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
             return; // Skip this drone
           }
 
+          // For movement effects, skip INERT drones
+          if (isMovementEffect && context?.getEffectiveStats) {
+            const stats = context.getEffectiveStats(drone, lane);
+            if (stats.keywords.has('INERT')) return;
+          }
+
           if (this.applyCustomCriteria(drone, custom, costContext, lane, context)) {
             targets.push({ ...drone, lane, owner: playerId });
           }
@@ -216,6 +222,12 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
           // For movement effects, skip exhausted drones unless explicitly allowed
           if (isMovementEffect && !allowsExhausted && drone.isExhausted) {
             return; // Skip this drone
+          }
+
+          // For movement effects, skip INERT drones
+          if (isMovementEffect && context?.getEffectiveStats) {
+            const stats = context.getEffectiveStats(drone, lane);
+            if (stats.keywords.has('INERT')) return;
           }
 
           if (this.applyCustomCriteria(drone, custom, costContext, lane, context)) {
