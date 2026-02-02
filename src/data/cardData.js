@@ -720,14 +720,15 @@ const fullCardCollection = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/AssaultReposition.png',
-    description: 'Move a friendly drone to an adjacent lane. If its attack is less than 4, give it +1 attack.',
+    description: 'Move a friendly drone to an adjacent lane without exhausting it. If its attack is less than 4, give it +1 attack.',
     targeting: {
       type: 'DRONE',
       affinity: 'FRIENDLY',
       location: 'ANY_LANE'
     },
     effect: {
-      type: 'SINGLE_MOVE'
+      type: 'SINGLE_MOVE',
+      properties: ['DO_NOT_EXHAUST']
     },
     conditionalEffects: [{
       id: 'attack-buff',
@@ -1524,11 +1525,12 @@ const fullCardCollection = [
     type: 'Tactic',
     cost: 3,
     image: '/DroneWars/cards/TacticalRepositioning.png',
-    description: 'Move target enemy drone to an adjacent lane.',
+    description: 'Move target enemy drone (class 2 or less) to an adjacent lane.',
     targeting: {
       type: 'DRONE',
       affinity: 'ENEMY',
-      location: 'ANY_LANE'
+      location: 'ANY_LANE',
+      custom: [{ stat: 'class', comparison: 'LTE', value: 2 }]
     },
     effect: {
       type: 'SINGLE_MOVE',
@@ -1578,11 +1580,12 @@ const fullCardCollection = [
     type: 'Tactic',
     cost: 4,
     image: '/DroneWars/cards/EMPBurst.png',
-    description: 'Exhaust target drone.',
+    description: 'Exhaust target drone (class 2 or less).',
     targeting: {
       type: 'DRONE',
       affinity: 'ANY',
-      location: 'ANY_LANE'
+      location: 'ANY_LANE',
+      custom: [{ stat: 'class', comparison: 'LTE', value: 2 }]
     },
     effect: {
       type: 'EXHAUST_DRONE'

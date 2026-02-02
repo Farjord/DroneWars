@@ -3880,23 +3880,21 @@ const App = ({ phaseAnimationQueue }) => {
         }
       }
 
-      // Sub-case 4b: Movement card clicked (no target) - initiate multi-select flow
-      debugLog('DRAG_DROP_DEPLOY', '🎯 Movement card - setting up multi-select UI');
-
-      // Keep card selected for UI greyscale effect on other cards
-      setSelectedCard(card);
+      // Sub-case 4b: Movement card - either clicked (no target) or drag cancelled
+      debugLog('DRAG_DROP_DEPLOY', '🎯 Movement card - checking flow type');
 
       if (card.effect.type === 'SINGLE_MOVE') {
-        // If card has explicit targeting (like Tactical Repositioning), use standard drag-drop
+        // If card has explicit targeting (like Assault Reposition), this is a drag cancel
         if (card.targeting) {
-          debugLog('DRAG_DROP_DEPLOY', '🎯 SINGLE_MOVE with targeting - using drag-drop flow');
-          // Standard targeting already calculated in validCardTargets
-          // Don't set multiSelectState for drone selection - just wait for drop
+          debugLog('DRAG_DROP_DEPLOY', '🎯 SINGLE_MOVE with targeting - drag cancelled (no target)');
+          cancelCardSelection('single-move-drag-no-target');
           return;
         }
 
         // For cards without targeting (basic Maneuver), use multiSelectState
         debugLog('DRAG_DROP_DEPLOY', '🎯 SINGLE_MOVE without targeting - using multiSelectState');
+        // Keep card selected for UI greyscale effect on other cards
+        setSelectedCard(card);
         const friendlyDrones = Object.values(localPlayerState.dronesOnBoard)
           .flat()
           .filter(drone => !drone.isExhausted)
@@ -3913,6 +3911,8 @@ const App = ({ phaseAnimationQueue }) => {
         });
       } else {
         // MULTI_MOVE - select source lane first
+        // Keep card selected for UI greyscale effect on other cards
+        setSelectedCard(card);
         setMultiSelectState({
           card: card,
           phase: 'select_source_lane',
