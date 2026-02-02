@@ -36,6 +36,10 @@ import { applyJammerAdjustments } from './ai/adjustmentPasses/jammerAdjustment.j
 import { applyInterceptionAdjustments } from './ai/adjustmentPasses/interceptionAdjustment.js';
 import { applyAntiShipAdjustments } from './ai/adjustmentPasses/antiShipAdjustment.js';
 
+// Import card validators
+import { isCardConditionMet } from './targeting/CardConditionValidator.js';
+import { isDoctrineCardPlayable } from './targeting/DoctrineValidator.js';
+
 // ========================================
 // ACTIVE ABILITY TARGET HELPER
 // ========================================
@@ -398,11 +402,21 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
       drones.filter(d => !d.isExhausted).map(d => ({ ...d, lane }))
     );
 
+    const playerStates = { player1, player2 };
+
     const playableCards = player2.hand.filter(card => {
       // Check energy cost
       if (player2.energy < card.cost) return false;
       // Check momentum cost (if card has one)
       if (card.momentumCost && (player2.momentum || 0) < card.momentumCost) return false;
+      // Check generic playCondition (e.g., Out Think's LANE_CONTROL_COMPARISON)
+      if (card.playCondition) {
+        if (!isCardConditionMet(card, 'player2', playerStates)) return false;
+      }
+      // Check Doctrine card lane control conditions
+      if (card.type === 'Doctrine') {
+        if (!isDoctrineCardPlayable(card, 'player2', playerStates)) return false;
+      }
       return true;
     });
     for (const card of playableCards) {

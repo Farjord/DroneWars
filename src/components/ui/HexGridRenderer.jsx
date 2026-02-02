@@ -130,6 +130,24 @@ function HexGridRenderer({ mapData, playerPosition, onHexClick, waypoints = [], 
     }
   }, [backgroundIndex]);
 
+  // Debug: Log waypoints state changes for path highlighting
+  useEffect(() => {
+    if (waypoints?.length > 0) {
+      const pathHexCount = waypoints.reduce((sum, w) => sum + (w.pathFromPrev?.length ?? 0), 0);
+      debugLog('PATH_HIGHLIGHTING', 'Waypoints received by HexGridRenderer:', {
+        waypointCount: waypoints.length,
+        totalPathHexes: pathHexCount,
+        destinations: waypoints.map((w, i) => ({
+          waypoint: i + 1,
+          hex: w.hex,
+          pathLength: w.pathFromPrev?.length ?? 0
+        }))
+      });
+    } else {
+      debugLog('PATH_HIGHLIGHTING', 'No waypoints - path highlighting disabled');
+    }
+  }, [waypoints]);
+
   // Background selected from prop (persisted in mapData)
   // Fallback to first background if index invalid
   const backgroundImage = tacticalBackgrounds[backgroundIndex] || tacticalBackgrounds[0];

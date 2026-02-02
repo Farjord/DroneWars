@@ -254,6 +254,7 @@ function TacticalMapScreen() {
   const pathProgressRef = useRef({ waypointIndex: 0, hexIndex: 0 });
   const escapedWithWaypoints = useRef(false); // Track if escape occurred with remaining waypoints
   const pendingCombatLoadingRef = useRef(false); // Track if loading screen is pending combat (prevents waypoint clearing)
+  const skipWaypointRemovalRef = useRef(false); // Prevents removal when resuming from loot
 
   // Ref to resolve encounter promise (allows async waiting in movement loop)
   const encounterResolveRef = useRef(null);
@@ -344,6 +345,7 @@ function TacticalMapScreen() {
 
     // ALWAYS restore waypoints after combat - player sees their route (no auto-movement)
     if (waypointsToRestore?.length > 0) {
+      debugLog('PATH_HIGHLIGHTING', 'Restoring waypoints after combat:', { count: waypointsToRestore?.length });
       setWaypoints(waypointsToRestore);
       waypointManager.clearStoredPath();
     }
@@ -827,6 +829,7 @@ function TacticalMapScreen() {
         // Always slice(1) because after each trim, current position is at index 0
         // Using slice(hexIndex) would be wrong since state path is already shortened
         setWaypoints(prev => {
+          debugLog('PATH_HIGHLIGHTING', 'Trimming path (player moved):', { prevCount: prev?.length });
           const updated = [...prev];
           if (updated[wpIndex] && updated[wpIndex].pathFromPrev.length > 1) {
             updated[wpIndex] = {
@@ -901,6 +904,7 @@ function TacticalMapScreen() {
             // After modal closes, check if we should continue
             if (shouldStopMovement.current) {
               // Remove visited waypoint before breaking (we've arrived, just combat interrupted)
+              debugLog('PATH_HIGHLIGHTING', 'Guardian encounter stopped movement, clearing waypoint');
               setWaypoints(prev => prev.length <= 1 ? [] : prev.slice(1));
               break;
             }
@@ -924,7 +928,15 @@ function TacticalMapScreen() {
 
             // Store remaining waypoints for journey resumption after salvage
             const remainingWps = waypoints.slice(wpIndex + 1);
+            debugLog('PATH_HIGHLIGHTING', 'Storing pending waypoints for resume:', {
+              currentWpIndex: wpIndex,
+              totalWaypoints: waypoints.length,
+              remainingCount: remainingWps.length,
+              remainingDestinations: remainingWps.map(w => w.hex)
+            });
             setPendingResumeWaypoints(remainingWps.length > 0 ? remainingWps : null);
+            // Signal to skip waypoint removal since loot handler will restore waypoints
+            skipWaypointRemovalRef.current = remainingWps.length > 0;
 
             console.log('[TacticalMap] Salvage initialized:', {
               totalSlots: salvageState.totalSlots,
@@ -945,6 +957,7 @@ function TacticalMapScreen() {
             // Check if movement was cancelled while waiting
             if (shouldStopMovement.current) {
               // Remove visited waypoint before breaking (we've arrived, just combat interrupted)
+              debugLog('PATH_HIGHLIGHTING', 'Salvage combat stopped movement, clearing waypoint');
               setWaypoints(prev => prev.length <= 1 ? [] : prev.slice(1));
               break;
             }
@@ -962,25 +975,37 @@ function TacticalMapScreen() {
       }
 
       // Remove completed waypoint from array after arrival
-      // This updates React state (for UI) without affecting the closure-captured waypoints array
-      // The loop continues using the closure variable, while React renders the updated state
-      // After removal: old waypoint[1] becomes waypoint[0] in UI → numbers update correctly
-      setWaypoints(prev => {
-        if (prev.length <= 1) {
-          return [];  // Last waypoint - clear all
-        }
-        return prev.slice(1);  // Remove first (completed) waypoint
-      });
+      // Skip removal if loot handler will restore waypoints (prevents race condition)
+      if (skipWaypointRemovalRef.current) {
+        debugLog('PATH_HIGHLIGHTING', 'Skipping waypoint removal - loot handler will restore waypoints');
+        // Keep ref TRUE - will be checked by journey complete section
+        // Break to let the resumed waypoints trigger a new movement cycle
+        break;
+      } else {
+        debugLog('PATH_HIGHLIGHTING', 'POI visit complete, removing first waypoint');
+        setWaypoints(prev => {
+          const result = prev.length <= 1 ? [] : prev.slice(1);
+          debugLog('PATH_HIGHLIGHTING', 'Waypoints after removal:', {
+            count: result.length,
+            destinations: result.map(w => w.hex)
+          });
+          return result;
+        });
+      }
     }
 
     // Journey complete - clear waypoints and reset state
-    // Skip clearing if: (1) transitioning to combat, (2) escaped from encounter, or (3) loading screen active
+    // Skip clearing if: (1) transitioning to combat, (2) escaped from encounter, (3) loading screen active, or (4) loot resume in progress
     console.log('[TacticalMap] Journey complete');
-    if (!transitionManager.hasSnapshot() && !escapedWithWaypoints.current && !pendingCombatLoadingRef.current) {
+    if (!transitionManager.hasSnapshot() && !escapedWithWaypoints.current && !pendingCombatLoadingRef.current && !skipWaypointRemovalRef.current) {
+      debugLog('PATH_HIGHLIGHTING', 'Journey complete - clearing all waypoints');
       setWaypoints([]);
+    } else if (skipWaypointRemovalRef.current) {
+      debugLog('PATH_HIGHLIGHTING', 'Skipping journey complete clear - loot resume in progress');
     } else {
       console.log('[TacticalMap] Skipping waypoint clear - pending combat, loading screen, or escape');
     }
+    skipWaypointRemovalRef.current = false; // Reset after the check
     escapedWithWaypoints.current = false; // Reset flag for next journey
     setIsMoving(false);
     setIsPaused(false);
@@ -2264,24 +2289,35 @@ function TacticalMapScreen() {
     // Capture FULL remaining journey including current position
     let remainingWps = [];
 
-    // Get current waypoint and check if we're mid-path
-    const currentWp = waypoints[currentWaypointIndex];
-    if (currentWp && currentWp.pathFromPrev) {
-      // Slice path from current hex position (remaining hexes to traverse)
-      const remainingPath = currentWp.pathFromPrev.slice(currentHexIndex);
+    // Use pathProgressRef for synchronous access to current waypoint index
+    // (React state can be stale in closures)
+    const { waypointIndex = 0 } = pathProgressRef.current || {};
 
-      if (remainingPath.length > 1) {
-        // Still have hexes to traverse in current waypoint
-        const modifiedCurrentWp = {
-          ...currentWp,
-          pathFromPrev: remainingPath
-        };
-        remainingWps.push(modifiedCurrentWp);
+    // Guard against invalid index
+    if (waypointIndex >= 0 && waypointIndex < waypoints.length) {
+      const currentWp = waypoints[waypointIndex];
+      if (currentWp && currentWp.pathFromPrev) {
+        // Path is already trimmed to start from current position after each move
+        // So we use the remaining path as-is (no slice needed)
+        if (currentWp.pathFromPrev.length > 1) {
+          remainingWps.push({
+            ...currentWp,
+            pathFromPrev: currentWp.pathFromPrev
+          });
+        }
       }
     }
 
-    // Add all subsequent waypoints
-    remainingWps = [...remainingWps, ...waypoints.slice(currentWaypointIndex + 1)];
+    // Add all subsequent waypoints using ref's waypointIndex
+    remainingWps = [...remainingWps, ...waypoints.slice(waypointIndex + 1)];
+
+    debugLog('PATH_HIGHLIGHTING', 'Escape capturing remaining waypoints:', {
+      refWaypointIndex: pathProgressRef.current?.waypointIndex,
+      stateWaypointIndex: currentWaypointIndex,  // For comparison
+      waypointsLength: waypoints.length,
+      currentPathLength: waypoints[waypointIndex]?.pathFromPrev?.length,
+      remainingWpsCount: remainingWps.length
+    });
 
     setPendingResumeWaypoints(remainingWps.length > 0 ? remainingWps : null);
     escapedWithWaypoints.current = remainingWps.length > 0; // Flag to prevent journey loop from clearing
@@ -2299,7 +2335,7 @@ function TacticalMapScreen() {
       aiName: aiPersonality?.name || 'Unknown'
     });
     setShowEscapeLoadingScreen(true);
-  }, [currentEncounter, waypoints, currentWaypointIndex, currentHexIndex]);
+  }, [currentEncounter, waypoints, currentWaypointIndex]); // Note: currentWaypointIndex kept for debug logging comparison
 
   /**
    * Handle escape loading screen completion - resume journey
@@ -2350,6 +2386,7 @@ function TacticalMapScreen() {
 
     // Restore remaining waypoints if any were captured during escape
     if (pendingResumeWaypoints?.length > 0) {
+      debugLog('PATH_HIGHLIGHTING', 'Restoring waypoints after escape:', { count: pendingResumeWaypoints?.length });
       console.log('[TacticalMap] Restoring waypoints after escape:', pendingResumeWaypoints.length);
       setWaypoints(pendingResumeWaypoints);
       setPendingResumeWaypoints(null);
@@ -2522,6 +2559,10 @@ function TacticalMapScreen() {
     // Resume journey with remaining waypoints (post-combat flow)
     // This happens when player won combat at a PoI and just collected PoI loot
     if (pendingResumeWaypoints?.length > 0) {
+      debugLog('PATH_HIGHLIGHTING', 'Resuming journey after loot:', {
+        count: pendingResumeWaypoints?.length,
+        destinations: pendingResumeWaypoints?.map(w => w.hex)
+      });
       console.log('[TacticalMap] Resuming journey with remaining waypoints:', pendingResumeWaypoints.length);
       setWaypoints(pendingResumeWaypoints);
       setPendingResumeWaypoints(null);
@@ -2592,6 +2633,7 @@ function TacticalMapScreen() {
 
     // Resume journey if waypoints remain (handled by existing logic)
     if (pendingResumeWaypoints?.length > 0) {
+      debugLog('PATH_HIGHLIGHTING', 'Resuming journey after blueprint:', { count: pendingResumeWaypoints?.length });
       console.log('[TacticalMap] Resuming journey with remaining waypoints:', pendingResumeWaypoints.length);
       setWaypoints(pendingResumeWaypoints);
       setPendingResumeWaypoints(null);

@@ -25,7 +25,7 @@ const DEBUG_CONFIG = {
     DECK_SELECTION: false,      // Deck selection phase
     PLACEMENT: false,           // Ship placement phase
     PLACEMENT_CASCADE: false,   // Placement optimistic cascade tracking (DISABLED - replaced by GUEST_CASCADE)
-    PHASE_TRANSITIONS: true,    // Game phase transitions and flow (ENABLED for ship ability debugging)
+    PHASE_TRANSITIONS: false,    // Game phase transitions and flow (ENABLED for ship ability debugging)
     PHASE_MANAGER: false,        // Phase Manager state tracking and transitions (NEW - for refactor)
     AI_DECISIONS: false,        // AI decision making
     MULTIPLAYER: false,          // Network sync and multiplayer (ENABLED for Phase 8 testing)
@@ -34,7 +34,7 @@ const DEBUG_CONFIG = {
     OPTIMISTIC: false,           // Animation deduplication and matching logic (ENABLED for Phase 8 testing)
     COMMITMENTS: false,          // Simultaneous phase commitments (ENABLED for Phase 8 testing)
     COMBAT: false,              // Combat resolution (DISABLED - can disable now)
-    PASS_LOGIC: true,           // Pass handling and pass notification debugging (ENABLED for ship ability turn transition debugging)
+    PASS_LOGIC: false,           // Pass handling and pass notification debugging (ENABLED for ship ability turn transition debugging)
     STATE_SYNC: false,          // State synchronization (DISABLED - too verbose)
     BROADCAST_TIMING: false,    // Broadcast timing and state validation (DISABLED - too verbose)
     ENERGY: false,              // Energy management (shield allocation)
@@ -74,6 +74,7 @@ const DEBUG_CONFIG = {
     WAYPOINT_MANAGER: true,      // Waypoint path storage and restoration debugging
     REWARD_MANAGER: false,        // Reward generation and seed management debugging
     TRANSITION_MANAGER: true,     // State transitions between TacticalMap and Combat
+    PATH_HIGHLIGHTING: true,      // Path/waypoint display state in HexGridRenderer
 
     // Effect System Refactoring - Modular Processor Logging
     EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)
@@ -89,15 +90,15 @@ const DEBUG_CONFIG = {
     CARD_DISCARD: false,          // Card discard after play - tracks instanceId and hand filtering
     MOVEMENT_EFFECT: false,       // Movement effect execution (DO_NOT_EXHAUST, drone state changes)
     TURN_TRANSITION_DEBUG: false,  // Turn transition investigation (TEMPORARY)
-    AVAILABILITY: true,             // Drone availability system (dots, readyCount, inPlayCount)
-    SINGLE_MOVE_FLOW: true,         // ✅ Comprehensive SINGLE_MOVE card flow logging (card selection → modal → resolution)
+    AVAILABILITY: false,             // Drone availability system (dots, readyCount, inPlayCount)
+    SINGLE_MOVE_FLOW: false,         // ✅ Comprehensive SINGLE_MOVE card flow logging (card selection → modal → resolution)
 
     // Additional Cost Card Flow Debugging
     ADDITIONAL_COST_UI: false,         // UI state transitions, drag/drop, phase changes (DISABLED - too verbose)
-    ADDITIONAL_COST_TARGETING: true,  // Target calculation, filtering, routing (DISABLED - too verbose)
+    ADDITIONAL_COST_TARGETING: false,  // Target calculation, filtering, routing (DISABLED - too verbose)
     ADDITIONAL_COST_HIGHLIGHT: false,  // Visual highlighting state and rendering (DISABLED - too verbose)
-    ADDITIONAL_COST_VALIDATION: true,  // Cost/effect validation checks
-    ADDITIONAL_COST: true,             // Card execution, cost processing, animations (KEEP - critical flow tracking)
+    ADDITIONAL_COST_VALIDATION: false,  // Cost/effect validation checks
+    ADDITIONAL_COST: false,             // Card execution, cost processing, animations (KEEP - critical flow tracking)
     ADDITIONAL_COST_MODE: false,       // Additional cost mode validation and flow control (DISABLED - too verbose)
     ADDITIONAL_COST_EFFECT_FLOW: false, // Comprehensive effect selection completion flow (DISABLED - no longer needed, direct execution)
 
@@ -105,12 +106,11 @@ const DEBUG_CONFIG = {
     CHECKPOINT_FLOW: false,            // Drag-drop event checkpoint tracking (DISABLED - too verbose)
 
     // Modal and click debugging for additional cost investigation
-    LANE_CLICK_ENTRY: true,   // Track all lane click invocations
-    MODAL_TRIGGER: true,       // Track "Invalid Move" modal triggers
+    LANE_CLICK_ENTRY: false,   // Track all lane click invocations
+    MODAL_TRIGGER: false,       // Track "Invalid Move" modal triggers
 
     // Stat Calculation Debugging
-    STAT_CALCULATION: true,           // Effective stat calculation for targeting comparisons
-
+    STAT_CALCULATION: false,           // Effective stat calculation for targeting comparisons
     // Momentum Glow Debugging
     MOMENTUM_GLOW: false,             // Card hover logging for momentum glow debugging
   }
