@@ -4,13 +4,27 @@
 // Header section showing player resources, game phase, and controls
 // Extracted from App.jsx for better component organization
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Power, Files, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain, Plus, Image, ChevronRight, Check, AlertTriangle, Zap, ChevronsUp } from 'lucide-react';
 import { getPhaseDisplayName } from '../../utils/gameUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import DEV_CONFIG from '../../config/devConfig.js';
 import { BACKGROUNDS } from '../../config/backgrounds.js';
 import HullIntegrityBadge from './HullIntegrityBadge.jsx';
+import KPIChangePopup from '../animations/KPIChangePopup.jsx';
+
+/**
+ * Hook to track the previous value of a state/prop
+ * @param {any} value - The value to track
+ * @returns {any} - The previous value
+ */
+const usePrevious = (value) => {
+  const ref = useRef();
+  useEffect(() => {
+    ref.current = value;
+  }, [value]);
+  return ref.current;
+};
 
 /**
  * Helper function to extract drone name from drone ID
@@ -29,7 +43,7 @@ const extractDroneNameFromId = (droneId) => {
  * Resource Badge Component - Information panel styled resource display
  * Matches the dw-stat-box aesthetic with angular corner accent
  */
-const ResourceBadge = ({ icon: Icon, value, max, iconColor, isPlayer }) => {
+const ResourceBadge = React.forwardRef(({ icon: Icon, value, max, iconColor, isPlayer }, ref) => {
   // Theme colors - cyan for player, red for opponent
   const borderColor = isPlayer ? 'rgba(6, 182, 212, 0.3)' : 'rgba(239, 68, 68, 0.3)';
   const accentColor = isPlayer ? 'rgba(6, 182, 212, 0.5)' : 'rgba(239, 68, 68, 0.5)';
@@ -37,6 +51,7 @@ const ResourceBadge = ({ icon: Icon, value, max, iconColor, isPlayer }) => {
 
   return (
     <div
+      ref={ref}
       className="relative"
       style={{
         background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 28, 0.95) 100%)',
@@ -63,7 +78,7 @@ const ResourceBadge = ({ icon: Icon, value, max, iconColor, isPlayer }) => {
       </div>
     </div>
   );
-};
+});
 
 /**
  * GameHeader - Top header displaying player resources and game state
@@ -144,6 +159,100 @@ function GameHeader({
   const [showBackgroundSubmenu, setShowBackgroundSubmenu] = useState(false);
   const dropdownRef = useRef(null);
 
+  // KPI Change Popup refs and state
+  const playerEnergyRef = useRef(null);
+  const playerMomentumRef = useRef(null);
+  const playerDeploymentRef = useRef(null);
+  const playerThreatRef = useRef(null);
+  const opponentEnergyRef = useRef(null);
+  const opponentMomentumRef = useRef(null);
+  const opponentDeploymentRef = useRef(null);
+  const opponentHandRef = useRef(null);
+
+  const [activePopups, setActivePopups] = useState([]);
+
+  // Track previous KPI values for change detection
+  const prevPlayerEnergy = usePrevious(localPlayerState?.energy);
+  const prevPlayerMomentum = usePrevious(localPlayerState?.momentum);
+  const playerDeploymentValue = roundNumber === 1 ? localPlayerState?.initialDeploymentBudget : localPlayerState?.deploymentBudget;
+  const prevPlayerDeployment = usePrevious(playerDeploymentValue);
+  const prevThreat = usePrevious(currentRunState?.detection);
+  const prevOpponentEnergy = usePrevious(opponentPlayerState?.energy);
+  const prevOpponentMomentum = usePrevious(opponentPlayerState?.momentum);
+  const opponentDeploymentValue = roundNumber === 1 ? opponentPlayerState?.initialDeploymentBudget : opponentPlayerState?.deploymentBudget;
+  const prevOpponentDeployment = usePrevious(opponentDeploymentValue);
+  const prevOpponentHand = usePrevious(opponentPlayerState?.hand?.length);
+
+  // Helper to trigger a KPI change popup
+  const triggerPopup = useCallback((type, delta, ref) => {
+    const rect = ref.current?.getBoundingClientRect();
+    if (!rect || delta === 0) return;
+
+    const popup = {
+      id: `${type}-${Date.now()}-${Math.random()}`,
+      delta,
+      position: { left: rect.left, top: rect.top, width: rect.width, height: rect.height },
+      type
+    };
+    setActivePopups(prev => [...prev, popup]);
+  }, []);
+
+  // Detect player energy changes
+  useEffect(() => {
+    if (prevPlayerEnergy !== undefined && localPlayerState?.energy !== prevPlayerEnergy) {
+      triggerPopup('energy', localPlayerState.energy - prevPlayerEnergy, playerEnergyRef);
+    }
+  }, [localPlayerState?.energy, prevPlayerEnergy, triggerPopup]);
+
+  // Detect player momentum changes
+  useEffect(() => {
+    if (prevPlayerMomentum !== undefined && localPlayerState?.momentum !== prevPlayerMomentum) {
+      triggerPopup('momentum', localPlayerState.momentum - prevPlayerMomentum, playerMomentumRef);
+    }
+  }, [localPlayerState?.momentum, prevPlayerMomentum, triggerPopup]);
+
+  // Detect opponent energy changes
+  useEffect(() => {
+    if (prevOpponentEnergy !== undefined && opponentPlayerState?.energy !== prevOpponentEnergy) {
+      triggerPopup('energy', opponentPlayerState.energy - prevOpponentEnergy, opponentEnergyRef);
+    }
+  }, [opponentPlayerState?.energy, prevOpponentEnergy, triggerPopup]);
+
+  // Detect opponent momentum changes
+  useEffect(() => {
+    if (prevOpponentMomentum !== undefined && opponentPlayerState?.momentum !== prevOpponentMomentum) {
+      triggerPopup('momentum', opponentPlayerState.momentum - prevOpponentMomentum, opponentMomentumRef);
+    }
+  }, [opponentPlayerState?.momentum, prevOpponentMomentum, triggerPopup]);
+
+  // Detect opponent hand count changes
+  useEffect(() => {
+    if (prevOpponentHand !== undefined && opponentPlayerState?.hand?.length !== prevOpponentHand) {
+      triggerPopup('hand', opponentPlayerState.hand.length - prevOpponentHand, opponentHandRef);
+    }
+  }, [opponentPlayerState?.hand?.length, prevOpponentHand, triggerPopup]);
+
+  // Detect player deployment budget changes
+  useEffect(() => {
+    if (prevPlayerDeployment !== undefined && playerDeploymentValue !== prevPlayerDeployment) {
+      triggerPopup('deployment', playerDeploymentValue - prevPlayerDeployment, playerDeploymentRef);
+    }
+  }, [playerDeploymentValue, prevPlayerDeployment, triggerPopup]);
+
+  // Detect opponent deployment budget changes
+  useEffect(() => {
+    if (prevOpponentDeployment !== undefined && opponentDeploymentValue !== prevOpponentDeployment) {
+      triggerPopup('deployment', opponentDeploymentValue - prevOpponentDeployment, opponentDeploymentRef);
+    }
+  }, [opponentDeploymentValue, prevOpponentDeployment, triggerPopup]);
+
+  // Detect player threat/detection changes (Extraction mode only)
+  useEffect(() => {
+    if (prevThreat !== undefined && currentRunState?.detection !== prevThreat) {
+      triggerPopup('threat', currentRunState.detection - prevThreat, playerThreatRef);
+    }
+  }, [currentRunState?.detection, prevThreat, triggerPopup]);
+
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -206,6 +315,7 @@ function GameHeader({
         <div className="flex items-center gap-2">
           {turnPhase === 'deployment' && (
             <ResourceBadge
+              ref={opponentDeploymentRef}
               icon={Power}
               value={roundNumber === 1 ? opponentPlayerState.initialDeploymentBudget : opponentPlayerState.deploymentBudget}
               iconColor="text-purple-400"
@@ -213,6 +323,7 @@ function GameHeader({
             />
           )}
           <ResourceBadge
+            ref={opponentEnergyRef}
             icon={Power}
             value={opponentPlayerState.energy}
             max={opponentPlayerEffectiveStats.totals.maxEnergy}
@@ -220,6 +331,7 @@ function GameHeader({
             isPlayer={false}
           />
           <ResourceBadge
+            ref={opponentMomentumRef}
             icon={ChevronsUp}
             value={opponentPlayerState.momentum || 0}
             iconColor="text-blue-400"
@@ -230,6 +342,7 @@ function GameHeader({
             className={AI_HAND_DEBUG_MODE ? 'cursor-pointer' : ''}
           >
             <ResourceBadge
+              ref={opponentHandRef}
               icon={Files}
               value={opponentPlayerState.hand.length}
               max={opponentPlayerEffectiveStats.totals.handLimit}
@@ -647,6 +760,7 @@ function GameHeader({
           })()}
           {turnPhase === 'deployment' && (
             <ResourceBadge
+              ref={playerDeploymentRef}
               icon={Power}
               value={roundNumber === 1 ? localPlayerState.initialDeploymentBudget : localPlayerState.deploymentBudget}
               iconColor="text-purple-400"
@@ -654,6 +768,7 @@ function GameHeader({
             />
           )}
           <ResourceBadge
+            ref={playerEnergyRef}
             icon={Power}
             value={localPlayerState.energy}
             max={localPlayerEffectiveStats.totals.maxEnergy}
@@ -661,6 +776,7 @@ function GameHeader({
             isPlayer={true}
           />
           <ResourceBadge
+            ref={playerMomentumRef}
             icon={ChevronsUp}
             value={localPlayerState.momentum || 0}
             iconColor="text-blue-400"
@@ -676,6 +792,7 @@ function GameHeader({
           {/* Threat KPI - Only show in Extraction mode */}
           {isExtractionMode && currentRunState && (
             <ResourceBadge
+              ref={playerThreatRef}
               icon={AlertTriangle}
               value={Math.round(currentRunState.detection || 0)}
               max={100}
@@ -860,6 +977,17 @@ function GameHeader({
           </div>
         </div>
       </div>
+
+      {/* KPI Change Popups */}
+      {activePopups.map(popup => (
+        <KPIChangePopup
+          key={popup.id}
+          delta={popup.delta}
+          position={popup.position}
+          type={popup.type}
+          onComplete={() => setActivePopups(prev => prev.filter(p => p.id !== popup.id))}
+        />
+      ))}
     </header>
   );
 }

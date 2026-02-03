@@ -9,6 +9,7 @@ import CardPlayManager from '../logic/cards/CardPlayManager.js';
 import { resolveAttack } from '../logic/combat/AttackProcessor.js';
 import fullDroneCollection from '../data/droneData.js';
 import { calculateEffectiveStats } from '../logic/statsCalculator.js';
+import { LaneControlCalculator } from '../logic/combat/LaneControlCalculator.js';
 import { calculatePotentialInterceptors, calculateAiInterception } from '../logic/combat/InterceptionProcessor.js';
 import MovementEffectProcessor from '../logic/effects/movement/MovementEffectProcessor.js';
 import ConditionalEffectProcessor from '../logic/effects/conditional/ConditionalEffectProcessor.js';
@@ -799,10 +800,24 @@ setAnimationManager(animationManager) {
     );
     const canUseRapid = hasRapid && !drone.rapidUsed;
 
-    // Move the drone - RAPID allows first move without exhaustion
+    // Check if drone has INFILTRATE keyword (doesn't exhaust when moving into uncontrolled lane)
+    const hasInfiltrate = baseDrone?.abilities?.some(
+      a => a.effect?.type === 'GRANT_KEYWORD' && a.effect?.keyword === 'INFILTRATE'
+    );
+    let canUseInfiltrate = false;
+    if (hasInfiltrate) {
+      // Check lane control BEFORE movement - does not exhaust if destination lane is NOT controlled
+      const laneControl = LaneControlCalculator.calculateLaneControl(
+        this.gameStateManager.getState().player1,
+        this.gameStateManager.getState().player2
+      );
+      canUseInfiltrate = laneControl[toLane] !== playerId;
+    }
+
+    // Move the drone - RAPID or INFILTRATE allows move without exhaustion
     const movedDrone = {
       ...drone,
-      isExhausted: canUseRapid ? false : true,
+      isExhausted: (canUseRapid || canUseInfiltrate) ? false : true,
       rapidUsed: canUseRapid ? true : drone.rapidUsed
     };
     newPlayerState.dronesOnBoard[fromLane] = newPlayerState.dronesOnBoard[fromLane].filter(d => d.id !== droneId);

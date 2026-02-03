@@ -12,6 +12,7 @@ import { calculateEffectiveStats } from '../../statsCalculator.js';
 import fullDroneCollection from '../../../data/droneData.js';
 import { buildDefaultMovementAnimation } from './animations/DefaultMovementAnimation.js';
 import { debugLog } from '../../../utils/debugLogger.js';
+import { LaneControlCalculator } from '../../combat/LaneControlCalculator.js';
 
 /**
  * MovementEffectProcessor
@@ -306,11 +307,24 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       d => d.id !== droneToMove.id
     );
 
+    // Check INFILTRATE keyword before setting exhaustion
+    const hasInfiltrate = baseDrone?.abilities?.some(
+      a => a.effect?.type === 'GRANT_KEYWORD' && a.effect?.keyword === 'INFILTRATE'
+    );
+    let infiltrateActive = false;
+    if (hasInfiltrate) {
+      // Check lane control BEFORE movement - does not exhaust if destination is NOT controlled
+      const laneControl = LaneControlCalculator.calculateLaneControl(
+        newPlayerStates.player1, newPlayerStates.player2
+      );
+      infiltrateActive = laneControl[toLane] !== droneOwnerId;
+    }
+
     // Add drone to destination lane with proper exhaustion state
-    // All drones respect the DO_NOT_EXHAUST property regardless of ownership
+    // All drones respect the DO_NOT_EXHAUST property or INFILTRATE keyword regardless of ownership
     const movedDrone = {
       ...droneToMove,
-      isExhausted: effect.properties?.includes('DO_NOT_EXHAUST')
+      isExhausted: (effect.properties?.includes('DO_NOT_EXHAUST') || infiltrateActive)
         ? droneToMove.isExhausted
         : true
     };
@@ -436,11 +450,28 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       d => !dronesBeingMovedIds.has(d.id)
     );
 
+    // Calculate lane control for INFILTRATE check (before movement)
+    const laneControl = LaneControlCalculator.calculateLaneControl(
+      newPlayerStates.player1, newPlayerStates.player2
+    );
+    const isDestinationNotControlled = laneControl[toLane] !== actingPlayerId;
+
     // Add drones to destination lane with proper exhaustion state
-    const movedDrones = dronesToMove.map(d => ({
-      ...d,
-      isExhausted: d.isExhausted || !effect.properties?.includes('DO_NOT_EXHAUST')
-    }));
+    // Check INFILTRATE keyword for each drone individually
+    const movedDrones = dronesToMove.map(d => {
+      const dBaseDrone = fullDroneCollection.find(bd => bd.name === d.name);
+      const hasInfiltrate = dBaseDrone?.abilities?.some(
+        a => a.effect?.type === 'GRANT_KEYWORD' && a.effect?.keyword === 'INFILTRATE'
+      );
+      const infiltrateActive = hasInfiltrate && isDestinationNotControlled;
+
+      return {
+        ...d,
+        isExhausted: (effect.properties?.includes('DO_NOT_EXHAUST') || infiltrateActive)
+          ? d.isExhausted
+          : true
+      };
+    });
     actingPlayerState.dronesOnBoard[toLane].push(...movedDrones);
 
     // Log the movement

@@ -32,7 +32,7 @@
 }
 
 .interceptor-glow {
-  position: relative;
+  /* No position property - ::before works with any positioned parent */
 }
 
 .interceptor-glow::before {
@@ -84,7 +84,7 @@
 
 /* Cyan interceptor hexagon glow - for player's own interceptor options */
 .interceptor-glow-cyan {
-  position: relative;
+  /* No position property - ::before works with any positioned parent */
 }
 
 .interceptor-glow-cyan::before {
@@ -595,5 +595,34 @@
 
 .momentum-title-glow {
   animation: momentum-title-pulse 1.5s infinite ease-in-out;
+}
+
+/* === KPI CHANGE POPUP ANIMATIONS === */
+
+@keyframes kpiPopup {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0;
+  }
+  20% {
+    transform: translate(-50%, -50%) scale(1.1);
+    opacity: 1;
+  }
+  40% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  70% {
+    transform: translate(-50%, -50%) translateY(-10px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) translateY(-20px) scale(0.9);
+    opacity: 0;
+  }
+}
+
+.kpi-popup-animation {
+  animation: kpiPopup 1.2s ease-out forwards;
 }
 

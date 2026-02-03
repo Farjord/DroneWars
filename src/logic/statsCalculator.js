@@ -7,6 +7,7 @@
 
 // --- IMPORTS ---
 import fullDroneCollection from '../data/droneData.js';
+import { LaneControlCalculator } from './combat/LaneControlCalculator.js';
 
 // ========================================
 // SHIP STATUS UTILITY
@@ -212,6 +213,16 @@ export const calculateEffectiveStats = (drone, lane, playerState, opponentState,
         if (condition.type === 'NOT_FIRST_ACTION') {
           const actionsTaken = gameContext.actionsTakenThisTurn ?? 0;
           conditionMet = actionsTaken >= 1;
+        }
+
+        if (condition.type === 'IN_CONTROLLED_LANE') {
+          // Calculate lane control to check if player controls the drone's lane
+          const laneControl = LaneControlCalculator.calculateLaneControl(
+            playerState.name === 'Player 1' ? playerState : opponentState,
+            playerState.name === 'Player 1' ? opponentState : playerState
+          );
+          const playerId = playerState.name === 'Player 1' ? 'player1' : 'player2';
+          conditionMet = laneControl[lane] === playerId;
         }
 
         if (conditionMet) {

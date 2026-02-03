@@ -630,10 +630,48 @@ const fullDroneCollection = [
     }],
     upgradeSlots: 2
   },
-  // ========================================
-  // AI-ONLY DRONES (selectable: false)
-  // ========================================
-  // These drones cannot be selected by players but AI can include them in decks
+  {
+    name: 'Dominator',
+    class: 2,
+    limit: 2,
+    rebuildRate: 0.5,
+    rarity: 'Common',
+    attack: 2,
+    hull: 2,
+    shields: 2,
+    speed: 3,
+    image: '/DroneWars/img/Dominator.png',
+    abilities: [{
+      name: 'Territorial',
+      description: 'Gains +2 attack while in a lane you control.',
+      type: 'PASSIVE',
+      effect: {
+        type: 'CONDITIONAL_MODIFY_STAT',
+        mod: { stat: 'attack', value: 2 },
+        condition: { type: 'IN_CONTROLLED_LANE' }
+      }
+    }],
+    upgradeSlots: 1
+  },
+  {
+    name: 'Infiltrator',
+    class: 1,
+    limit: 3,
+    rebuildRate: 1.0,
+    rarity: 'Common',
+    attack: 1,
+    hull: 1,
+    shields: 1,
+    speed: 4,
+    image: '/DroneWars/img/Infiltrator.png',
+    abilities: [{
+      name: 'Infiltration Protocol',
+      description: 'Does not exhaust when moving into a lane you currently do not control.',
+      type: 'PASSIVE',
+      effect: { type: 'GRANT_KEYWORD', keyword: 'INFILTRATE' }
+    }],
+    upgradeSlots: 1
+  },
   {
     name: 'Signal Beacon',
     class: 1,

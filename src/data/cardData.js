@@ -151,12 +151,12 @@ const fullCardCollection = [
     type: 'Support',
     cost: 3,
     image: '/DroneWars/cards/AdrenalineRush.png',
-    description: 'Ready an exhausted friendly drone.',
+    description: 'Ready an exhausted friendly drone with a Class of 2 or less.',
     targeting: {
       type: 'DRONE',
       affinity: 'FRIENDLY',
       location: 'ANY_LANE',
-      custom: ['EXHAUSTED']
+      custom: [{ stat: 'class', comparison: 'LTE', value: 2 },'EXHAUSTED']        
     },
     effect: {
       type: 'READY_DRONE'

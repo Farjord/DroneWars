@@ -14,7 +14,7 @@ export const starterDeck = {
   // 40 Asset Cards - StateInitializer.js imports this decklist
   decklist: [
     {
-      id: 'CARD001',
+      id: 'LANE_CONTROL_DAMAGE',
       quantity: 4
     },
     {
@@ -42,7 +42,7 @@ export const starterDeck = {
       quantity: 2
     },
     {
-      id: 'CARD005',
+      id: 'LANE_CONTROL_READY',
       quantity: 4
     },
     {
@@ -70,11 +70,11 @@ export const starterDeck = {
       quantity: 4
     },
     {
-      id: 'CARD004',
+      id: 'LANE_CONTROL_ENERGY',
       quantity: 4
     },
     {
-      id: 'CARD002',
+      id: 'LANE_CONTROL_DRAW',
       quantity: 4
     },
     {
@@ -88,9 +88,9 @@ export const starterDeck = {
   ],
   // 5 Drones (Extraction Mode uses exactly 5 drones, no selection phase)
   droneSlots: [
-    { slotIndex: 0, slotDamaged: false, assignedDrone: 'Scanner' },
-    { slotIndex: 1, slotDamaged: false, assignedDrone: 'Shark' },
-    { slotIndex: 2, slotDamaged: false, assignedDrone: 'Dart' },
+    { slotIndex: 0, slotDamaged: false, assignedDrone: 'Dart' },
+    { slotIndex: 1, slotDamaged: false, assignedDrone: 'Dominator' },
+    { slotIndex: 2, slotDamaged: false, assignedDrone: 'Infiltrator' },
     { slotIndex: 3, slotDamaged: false, assignedDrone: 'Talon' },
     { slotIndex: 4, slotDamaged: false, assignedDrone: 'Mammoth' },
   ],
@@ -98,7 +98,7 @@ export const starterDeck = {
   // Ship components (standard layout)
   shipComponents: {
     'POWERCELL_001': 'l',        // Left lane
-    'BRIDGE_002': 'm',     // Middle lane
+    'BRIDGE_001': 'm',     // Middle lane
     'DRONECONTROL_001': 'r'   // Right lane
   }
 };
