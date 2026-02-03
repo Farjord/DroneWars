@@ -694,7 +694,7 @@ const fullCardCollection = [
     type: 'Support',
     cost: 2,
     image: '/DroneWars/cards/TacticalShift.png',
-    description: 'Move a friendly drone to an adjacent lane without exhausting it. If the opponent has more drones in that lane, draw a card.',
+    description: 'Move a friendly ready drone to an adjacent lane without exhausting it. If the opponent has more drones in that lane, draw a card.',
     targeting: {
       type: 'DRONE',
       affinity: 'FRIENDLY',
@@ -1525,7 +1525,7 @@ const fullCardCollection = [
     type: 'Tactic',
     cost: 3,
     image: '/DroneWars/cards/TacticalRepositioning.png',
-    description: 'Move target enemy drone (class 2 or less) to an adjacent lane.',
+    description: 'Move target class 2 or less ready enemy drone  to an adjacent lane.',
     targeting: {
       type: 'DRONE',
       affinity: 'ENEMY',
