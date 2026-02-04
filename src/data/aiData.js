@@ -52,7 +52,6 @@ const aiPersonalities = [
     modes: ['vs'],  // VS Mode only
     shipId: 'SHIP_001',
     imagePath: '/DroneWars/AI/Manticore.png',
-    // The specific 5 drones this AI will use.
     dronePool: [
       'Avenger',
       'Devastator',
@@ -73,22 +72,30 @@ const aiPersonalities = [
       reasoning: 'Places bridge in outer lane for durability, droneControlHub in middle for deployment bonus, powerCell in outer for resource safety'
     },
     // The specific cards and quantities for this AI's deck.
-    decklist: [
-      { id: 'CARD001_ENHANCED', quantity: 4 },
-      { id: 'CARD011', quantity: 1 },
-      { id: 'CARD012_ENHANCED', quantity: 2 },
-      { id: 'CARD010', quantity: 2 },
-      { id: 'CARD013', quantity: 1 },
-      { id: 'CARD030', quantity: 2 },
-      { id: 'CARD014', quantity: 2 },
-      { id: 'CARD016', quantity: 2 },
-      { id: 'CARD018', quantity: 2 },
-      { id: 'CARD015_ENHANCED', quantity: 2 },
-      { id: 'CARD023_ENHANCED', quantity: 2 },
-      { id: 'CARD007_ENHANCED', quantity: 4 },
-      { id: 'CARD004_ENHANCED', quantity: 3 },
-      { id: 'CARD002_ENHANCED', quantity: 3 } ,
-    ]
+  decklist: [
+    { id: 'CARD011',quantity: 2},
+    { id: 'CARD010',quantity: 2 },
+    { id: 'CARD030', quantity: 2 },
+    { id: 'CARD016', quantity: 2 },
+    { id: 'CARD018', quantity: 2},
+    { id: 'CARD023_ENHANCED',quantity: 2},
+    { id: 'CARD004_ENHANCED', quantity: 2 },
+    { id: 'CARD002_ENHANCED', quantity: 2 },
+    { id: 'CARD001_ENHANCED', quantity: 4 },
+    { id: 'CARD012_ENHANCED', quantity: 2 },
+    { id: 'CARD050', quantity: 4 },
+    { id: 'CARD033', quantity: 4 },
+    { id: 'CARD_TACTICS_1', quantity: 4 },
+    { id: 'CARD_STATUS_4', quantity: 4 },
+    { id: 'CARD_TACTICS_4', quantity: 4 },
+    { id: 'CARD005', quantity: 4 },
+    { id: 'CARD007_ENHANCED', quantity: 4 },
+    { id: 'CARD028', quantity: 2},
+    { id: 'CARD021', quantity: 2 },   
+    { id: 'CARD029', quantity: 2 },
+    { id: 'DOCTRINE_003', quantity: 2 },
+    { id: 'DOCTRINE_002', quantity: 2 }
+  ]
   },
 
   // === EXTRACTION MODE AIs ===
