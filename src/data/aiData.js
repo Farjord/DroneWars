@@ -122,14 +122,14 @@ const aiPersonalities = [
       reasoning: 'Defensive positioning prioritizing survival'
     },
     decklist: [
-      { id: 'CARD001', quantity: 3 },   // Laser Blast
+      { id: 'CARD039', quantity: 3 },   // Thermal Lance
       { id: 'CARD002', quantity: 4 },   // System Reboot
       { id: 'CARD003', quantity: 4 },   // Out Think
       { id: 'CARD004', quantity: 4 },   // Energy Surge
       { id: 'CARD005', quantity: 3 },   // Adrenaline Rush
       { id: 'CARD007', quantity: 4 },   // Emergency Patch
       { id: 'CARD008', quantity: 3 },   // Shield Recharge
-      { id: 'CARD009', quantity: 2 },   // Target Lock
+      { id: 'CARD033', quantity: 2 },   // Finishing Volley
       { id: 'CARD015', quantity: 3 },   // Streamline
       { id: 'CARD016', quantity: 4 },   // Static Field
       { id: 'CARD018', quantity: 4 },   // Desperate Measures
@@ -234,7 +234,7 @@ const aiPersonalities = [
       reasoning: 'Speed-focused deployment for rapid strikes'
     },
     decklist: [
-      { id: 'CARD001', quantity: 4 },   // Laser Blast
+      { id: 'CARD039_ENHANCED', quantity: 4 },   // Thermal Lance
       { id: 'CARD002', quantity: 4 },   // System Reboot
       { id: 'CARD003', quantity: 3 },   // Out Think
       { id: 'CARD004', quantity: 3 },   // Energy Surge
@@ -273,7 +273,7 @@ const aiPersonalities = [
       reasoning: 'Heavy defensive positioning with overwhelming force'
     },
     decklist: [
-      { id: 'CARD001', quantity: 4 },   // Laser Blast
+      { id: 'CARD039_ENHANCED', quantity: 4 },   // Thermal Lance
       { id: 'CARD002', quantity: 4 },   // System Reboot
       { id: 'CARD003', quantity: 2 },   // Out Think
       { id: 'CARD004', quantity: 3 },   // Energy Surge
@@ -281,7 +281,7 @@ const aiPersonalities = [
       { id: 'CARD006', quantity: 4 },   // Nanobot Repair
       { id: 'CARD007', quantity: 3 },   // Emergency Patch
       { id: 'CARD008', quantity: 4 },   // Shield Recharge
-      { id: 'CARD009', quantity: 3 },   // Target Lock
+      { id: 'CARD053_Enhanced', quantity: 3 },   // Executioner+
       { id: 'CARD012', quantity: 4 },   // Armor-Piercing Shot
       { id: 'CARD013', quantity: 2 },   // Sidewinder Missiles
       { id: 'CARD016', quantity: 3 },   // Static Field
@@ -312,13 +312,13 @@ const aiPersonalities = [
       reasoning: 'Boss-tier aggressive configuration with maximum threat'
     },
     decklist: [
-      { id: 'CARD001_ENHANCED', quantity: 4 },   // Enhanced Laser Blast
+      { id: 'CARD039_ENHANCED', quantity: 4 },   // Enhanced Thermal Lance
       { id: 'CARD002_ENHANCED', quantity: 3 },   // Enhanced System Reboot
       { id: 'CARD004_ENHANCED', quantity: 4 },   // Enhanced Energy Surge
       { id: 'CARD006', quantity: 4 },            // Nanobot Repair
       { id: 'CARD007_ENHANCED', quantity: 4 },   // Enhanced Emergency Patch
       { id: 'CARD008', quantity: 4 },            // Shield Recharge
-      { id: 'CARD009', quantity: 3 },            // Target Lock
+      { id: 'CARD053_Enhanced', quantity: 3 },   // Enhanced Executioner
       { id: 'CARD012_ENHANCED', quantity: 4 },   // Enhanced Armor-Piercing Shot
       { id: 'CARD013', quantity: 3 },            // Sidewinder Missiles
       { id: 'CARD016', quantity: 4 },            // Static Field

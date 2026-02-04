@@ -1065,7 +1065,7 @@ const fullCardCollection = [
     type: 'Ordnance',
     cost: 3,
     image: '/DroneWars/cards/StrafeRun.png',
-    description: 'Deal 1 damage to up to 3 enemy drones in target lane (front to back).',
+    description: 'Deal 1 damage to the first 3 enemy drones in target lane (left to right).',
     visualEffect: {
       type: 'LASER_BLAST' 
     },
