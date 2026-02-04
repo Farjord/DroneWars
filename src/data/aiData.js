@@ -81,7 +81,7 @@ const aiPersonalities = [
     { id: 'CARD023_ENHANCED',quantity: 2},
     { id: 'CARD004_ENHANCED', quantity: 2 },
     { id: 'CARD002_ENHANCED', quantity: 2 },
-    { id: 'CARD001_ENHANCED', quantity: 4 },
+    { id: 'CARD051', quantity: 4 },
     { id: 'CARD012_ENHANCED', quantity: 2 },
     { id: 'CARD050', quantity: 4 },
     { id: 'CARD033', quantity: 4 },
