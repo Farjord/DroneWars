@@ -675,21 +675,21 @@ const fullDroneCollection = [
   {
     name: 'Signal Beacon',
     class: 1,
-    limit: 2,
-    rebuildRate: 1.0,
+    limit: 3,
+    rebuildRate: 2.0,
     rarity: 'Uncommon',
-    attack: 0,
+    attack: 1,
     hull: 2,
     shields: 1,
-    speed: 1,
+    speed: 2,
     image: '/DroneWars/img/SignalBeacon.png',
     selectable: false, // AI-only - cannot be selected by players
     abilities: [{
       name: 'Threat Signal',
-      description: 'Start of Round: Increase player threat by 1.',
+      description: 'Start of Round: Increase player threat by 2.',
       type: 'TRIGGERED',
       trigger: 'ON_ROUND_START',
-      effect: { type: 'INCREASE_THREAT', value: 1 }
+      effect: { type: 'INCREASE_THREAT', value: 2 }
     }],
     upgradeSlots: 0
   },
@@ -702,18 +702,18 @@ const fullDroneCollection = [
     attack: 2,
     hull: 2,
     shields: 1,
-    speed: 2,
+    speed: 4,
     image: '/DroneWars/img/ThreatTransmitter.png',
     selectable: false, // AI-only - cannot be selected by players
     abilities: [{
       name: 'Alert Broadcast',
-      description: 'When this drone deals hull damage to a ship section, increase player threat by 2.',
+      description: 'When this drone deals hull damage to a ship section, increase player threat by 4.',
       type: 'TRIGGERED',
       trigger: 'ON_ATTACK',
       conditionalEffects: [{
         timing: 'POST',
         condition: { type: 'ON_SHIP_SECTION_HULL_DAMAGE' },
-        grantedEffect: { type: 'INCREASE_THREAT', value: 2 }
+        grantedEffect: { type: 'INCREASE_THREAT', value: 4 }
       }]
     }],
     upgradeSlots: 1
@@ -738,6 +738,7 @@ const fullDroneCollection = [
     }],
     upgradeSlots: 2
   },
+  { name: 'Behemoth', class: 4, limit: 1, rebuildRate: 0, rarity: 'Common', attack: 3, hull: 6, shields: 2, speed: 2, image: '/DroneWars/img/Behemoth.png', abilities: [], upgradeSlots: 4 },
 ];
 
 export default fullDroneCollection;

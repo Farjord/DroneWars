@@ -12,7 +12,7 @@ const fullCardCollection = [
   {
     id: 'CARD001',
     baseCardId: 'CARD001',
-    name: 'Laser Blast',
+    name: 'Convergence Beam',
     maxInDeck: 4,
     rarity: 'Common',
     type: 'Ordnance',
@@ -37,7 +37,7 @@ const fullCardCollection = [
   {
     id: 'CARD001_ENHANCED',
     baseCardId: 'CARD001',
-    name: 'Laser Blast+',
+    name: 'Convergence Beam+',
     maxInDeck: 4,
     rarity: 'Uncommon',
     type: 'Ordnance',
@@ -145,7 +145,7 @@ const fullCardCollection = [
     {
     id: 'CARD005',
     baseCardId: 'CARD005',
-    name: 'Adrenaline Rush',
+    name: 'Reactivation Protocol',
     maxInDeck: 4,
     rarity: 'Common',
     type: 'Support',
@@ -165,13 +165,13 @@ const fullCardCollection = [
       {
     id: 'CARD005_ENHANCED',
     baseCardId: 'CARD005',
-    name: 'Adrenaline Rush+',
+    name: 'Reactivation Protocol+',
     maxInDeck: 4,
     rarity: 'Uncommon',
     type: 'Support',
-    cost: 3,
+    cost: 5,
     image: '/DroneWars/cards/AdrenalineRush.png',
-    description: 'Ready an exhausted friendly drone. Go again.',
+    description: 'Ready an exhausted friendly drone.',
     targeting: {
       type: 'DRONE',
       affinity: 'FRIENDLY',
@@ -180,7 +180,6 @@ const fullCardCollection = [
     },
     effect: {
       type: 'READY_DRONE',
-      goAgain: true
     }
   },
     {
@@ -445,7 +444,7 @@ const fullCardCollection = [
   {
     id: 'CARD016',
     baseCardId: 'CARD016',
-    name: 'Static Field',
+    name: 'Weapon Overload',
     maxInDeck: 4,
     rarity: 'Common',
     type: 'Tactic',
@@ -469,9 +468,9 @@ const fullCardCollection = [
     maxInDeck: 4,
     rarity: 'Common',
     type: 'Support',
-    cost: 1,
+    cost: 0,
     image: '/DroneWars/cards/Boosters.png',
-    description: 'Give a friendly drone +1 speed until the end of the turn.',
+    description: 'Give a friendly drone +2 speed until the end of the turn.',
     targeting: {
       type: 'DRONE',
       affinity: 'FRIENDLY',
@@ -479,7 +478,7 @@ const fullCardCollection = [
     },
     effect: {
       type: 'MODIFY_STAT',
-      mod: { stat: 'speed', value: 1, type: 'temporary' },
+      mod: { stat: 'speed', value: 2, type: 'temporary' },
     }
   },
   {
@@ -740,7 +739,7 @@ const fullCardCollection = [
 {
     id: 'CARD063',
     baseCardId: 'CARD063',
-    name: 'Follow-Up Strike',
+    name: 'Phase-Charged Laser',
     maxInDeck: 2,
     rarity: 'Uncommon',
     type: 'Ordnance',
@@ -1059,7 +1058,7 @@ const fullCardCollection = [
 {
     id: 'CARD034',
     baseCardId: 'CARD034',
-    name: 'Strafe Run',
+    name: 'Strafing Run',
     maxInDeck: 4,
     rarity: 'Uncommon',
     type: 'Ordnance',
@@ -1278,7 +1277,7 @@ const fullCardCollection = [
   {
     id: 'CARD051',
     baseCardId: 'CARD051',
-    name: 'Finishing Blow',
+    name: 'Sundering Beam',
     maxInDeck: 4,
     rarity: 'Rare',
     type: 'Ordnance',
@@ -1308,13 +1307,13 @@ const fullCardCollection = [
   {
     id: 'CARD052',
     baseCardId: 'CARD052',
-    name: 'Opportunist Strike',
+    name: 'Condemnation Ray',
     maxInDeck: 4,
     rarity: 'Rare',
     type: 'Ordnance',
     cost: 4,
     image: '/DroneWars/cards/OpportunistStrike.png',
-    description: 'Deal 2 damage. +2 if target is marked. If destroyed, gain 2 energy and go again.',
+    description: 'Deal 2 damage. +2 if target is marked. If destroyed, gain 4 energy.',
     visualEffect: {
       type: 'LASER_BLAST'
     },
@@ -1338,21 +1337,15 @@ const fullCardCollection = [
         id: 'energy-on-destroy',
         timing: 'POST',
         condition: { type: 'ON_DESTROY' },
-        grantedEffect: { type: 'GAIN_ENERGY', value: 2 }
+        grantedEffect: { type: 'GAIN_ENERGY', value: 4 }
       },
-      {
-        id: 'goagain-on-destroy',
-        timing: 'POST',
-        condition: { type: 'ON_DESTROY' },
-        grantedEffect: { type: 'GO_AGAIN' }
-      }
     ]
   },
 
   {
     id: 'CARD053',
     baseCardId: 'CARD053',
-    name: 'Executioner',
+    name: 'Prey on the Weak',
     maxInDeck: 4,
     rarity: 'Common',
     type: 'Ordnance',
@@ -1383,7 +1376,7 @@ const fullCardCollection = [
   {
     id: 'CARD053_Enhanced',
     baseCardId: 'CARD053',
-    name: 'Executioner+',
+    name: 'Prey on the Weak+',
     maxInDeck: 4,
     rarity: 'Uncommon',
     type: 'Ordnance',
@@ -1444,13 +1437,13 @@ const fullCardCollection = [
   {
     id: 'CARD_SB01',
     baseCardId: 'CARD_SB01',
-    name: 'EMP Surge',
+    name: 'Nullwave Cannon',
     maxInDeck: 2,
     rarity: 'Uncommon',
     type: 'Ordnance',
     cost: 3,
     image: '/DroneWars/cards/EMPSurge.png',
-    description: 'Deal 3 shield-breaker damage to target drone. Each point removes 2 shields, then remaining damage hits hull.',
+    description: 'Deal 3 shield-breaker damage to target drone. (Deals double damage to shields.)',
     visualEffect: {
       type: 'EMP_BLAST'
     },
@@ -1541,7 +1534,7 @@ const fullCardCollection = [
   {
     id: 'CARD_TACTICS_2',
     baseCardId: 'CARD_TACTICS_2',
-    name: 'Mental Disruption',
+    name: 'Memory Leak',
     maxInDeck: 4,
     rarity: 'Uncommon',
     type: 'Tactic',
@@ -1601,7 +1594,7 @@ const fullCardCollection = [
     type: 'Tactic',
     cost: 1,
     image: '/DroneWars/cards/TemporalDampener.png',
-    description: 'Target drone gets -1 speed until end of turn.',
+    description: 'Target drone gets -2 speed until end of turn.',
     targeting: {
       type: 'DRONE',
       affinity: 'ANY',
@@ -1611,7 +1604,7 @@ const fullCardCollection = [
       type: 'MODIFY_STAT',
       mod: {
         stat: 'speed',
-        value: -1,
+        value: -2,
         type: 'temporary'
       }
     }
@@ -1620,13 +1613,13 @@ const fullCardCollection = [
   {
     id: 'CARD_STATUS_1',
     baseCardId: 'CARD_STATUS_1',
-    name: 'System Lock',
+    name: 'Thruster Malfunction',
     maxInDeck: 4,
     rarity: 'Common',
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/SystemLock.png',
-    description: 'Target drone cannot move. This effect is permanent.',
+    description: 'Target drone gains Immobile. (It cannot optionally Move.)',
     targeting: {
       type: 'DRONE',
       affinity: 'ENEMY',
@@ -1645,7 +1638,7 @@ const fullCardCollection = [
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/WeaponMalfunction.png',
-    description: 'Target drone cannot attack. This effect is permanent.',
+    description: 'Target drone gains Disarmed. (It cannot optionally Attack.)',
     targeting: {
       type: 'DRONE',
       affinity: 'ENEMY',
@@ -1658,13 +1651,13 @@ const fullCardCollection = [
   {
     id: 'CARD_STATUS_3',
     baseCardId: 'CARD_STATUS_3',
-    name: 'Sensor Jam',
+    name: 'Sensor Malfunction',
     maxInDeck: 4,
     rarity: 'Common',
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/SensorJam.png',
-    description: 'Target drone cannot intercept attacks. This effect is permanent.',
+    description: 'Target drone gains Blinded. (It cannot optionally Intercept.)',
     targeting: {
       type: 'DRONE',
       affinity: 'ENEMY',
@@ -1832,7 +1825,7 @@ const fullCardCollection = [
   {
     id: 'EXHAUST_TO_DISABLE',
     baseCardId: 'EXHAUST_TO_DISABLE',
-    name: 'Exhausting Strike',
+    name: 'Feint',
     maxInDeck: 2,
     rarity: 'Common',
     type: 'Tactic',

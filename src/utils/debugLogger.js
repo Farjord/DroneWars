@@ -11,7 +11,7 @@ import { FastForward } from "lucide-react";
  */
 const DEBUG_CONFIG = {
   // Master switch - set to false to disable ALL debug logging
-  enabled: true,
+  enabled: false,
 
   // Filter out all non-debugLog console.log messages
   // When true, only messages from debugLog() will appear in console
