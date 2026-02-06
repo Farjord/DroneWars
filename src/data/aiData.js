@@ -134,6 +134,8 @@ const aiPersonalities = [
       { id: 'CARD016', quantity: 4 },   // Static Field
       { id: 'CARD018', quantity: 4 },   // Desperate Measures
       { id: 'CARD019', quantity: 2 },   // Reposition
+      { id: 'Raise_the_Alarm', quantity: 2 },
+      { id: 'Transmit_Threat', quantity: 4 },
     ]
   },
 
@@ -246,6 +248,8 @@ const aiPersonalities = [
       { id: 'CARD015', quantity: 4 },   // Streamline
       { id: 'CARD016', quantity: 3 },   // Static Field
       { id: 'CARD019', quantity: 3 },   // Reposition
+      { id: 'Raise_the_Alarm', quantity: 2 },
+      { id: 'Transmit_Threat', quantity: 4 },
     ]
   },
 

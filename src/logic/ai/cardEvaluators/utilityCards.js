@@ -13,7 +13,7 @@ import { CARD_EVALUATION, SCORING_WEIGHTS, INVALID_SCORE } from '../aiConstants.
  * @returns {Object} - { score: number, logic: string[] }
  */
 export const evaluateGainEnergyCard = (card, target, context) => {
-  const { player2 } = context;
+  const { player1, player2, getValidTargets } = context;
   const logic = [];
   let score = 0;
 
@@ -27,12 +27,23 @@ export const evaluateGainEnergyCard = (card, target, context) => {
   );
 
   if (newlyPlayableCards.length > 0) {
-    const mostExpensiveTarget = newlyPlayableCards.sort((a, b) => b.cost - a.cost)[0];
-    score = CARD_EVALUATION.ENABLES_CARD_BASE + (mostExpensiveTarget.cost * CARD_EVALUATION.ENABLES_CARD_PER_COST);
-    logic.push(`✅ Enables '${mostExpensiveTarget.name}': +${score}`);
+    const usableCards = getValidTargets ? newlyPlayableCards.filter(enabledCard => {
+      if (!enabledCard.targeting) return true;
+      const targets = getValidTargets('player2', null, enabledCard, player1, player2);
+      return targets.length > 0;
+    }) : newlyPlayableCards;
+
+    if (usableCards.length > 0) {
+      const mostExpensive = usableCards.sort((a, b) => b.cost - a.cost)[0];
+      score = CARD_EVALUATION.ENABLES_CARD_BASE + (mostExpensive.cost * CARD_EVALUATION.ENABLES_CARD_PER_COST);
+      logic.push(`✅ Enables '${mostExpensive.name}': +${score}`);
+    } else {
+      score = INVALID_SCORE;
+      logic.push(`⚠️ Enabled cards have no valid targets - no benefit`);
+    }
   } else {
-    score = CARD_EVALUATION.LOW_PRIORITY_SCORE;
-    logic.push(`⚠️ Low Priority: +${CARD_EVALUATION.LOW_PRIORITY_SCORE}`);
+    score = INVALID_SCORE;
+    logic.push(`⚠️ No cards enabled by energy gain - no benefit`);
   }
 
   return { score, logic };

@@ -46,9 +46,9 @@ const InterceptionTargetLine = ({ attackDetails, droneRefs, shipSectionRefs, gam
         targetPos = getElementCenter(targetEl, gameAreaRef.current);
         console.log('[InterceptionTargetLine] Target drone element found:', !!targetEl);
       } else if (targetType === 'section' && target?.name) {
-        // Section refs use format: "player-{sectionName}" or "opponent-{sectionName}"
-        // For interception, the target is the player's own section being defended
-        const sectionKey = `player-${target.name}`;
+        // Section refs use format: "local-{sectionName}" or "opponent-{sectionName}"
+        // For interception, the target is the local player's own section being defended
+        const sectionKey = `local-${target.name}`;
         const sectionEl = shipSectionRefs?.current?.[sectionKey];
         targetPos = getElementCenter(sectionEl, gameAreaRef.current);
         console.log('[InterceptionTargetLine] Target section element found:', !!sectionEl);

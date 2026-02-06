@@ -12,6 +12,7 @@ import { evaluateSingleMoveCard, evaluateMultiMoveCard } from './movementCards.j
 import { evaluateModifyDroneBaseCard } from './upgradeCards.js';
 import { evaluateConditionalEffects } from './conditionalEvaluator.js';
 import { evaluateApplyCannotMoveCard, evaluateApplyCannotAttackCard, evaluateApplyCannotInterceptCard, evaluateApplyDoesNotReadyCard, evaluateClearAllStatusCard } from './statusEffectCards.js';
+import { evaluateIncreaseThreatCard } from './threatCards.js';
 
 // Re-export all evaluators
 export * from './damageCards.js';
@@ -22,6 +23,7 @@ export * from './statCards.js';
 export * from './movementCards.js';
 export * from './upgradeCards.js';
 export * from './statusEffectCards.js';
+export * from './threatCards.js';
 
 /**
  * Card evaluator registry - maps effect types to evaluation functions
@@ -56,6 +58,8 @@ export const cardEvaluatorRegistry = {
   APPLY_CANNOT_INTERCEPT: evaluateApplyCannotInterceptCard,
   APPLY_DOES_NOT_READY: evaluateApplyDoesNotReadyCard,
   CLEAR_ALL_STATUS: evaluateClearAllStatusCard,
+  // Threat effect evaluators
+  INCREASE_THREAT: evaluateIncreaseThreatCard,
 };
 
 /**

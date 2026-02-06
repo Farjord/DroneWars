@@ -100,7 +100,7 @@ export const calculateTargetValue = (target, context, options = {}) => {
   logic.push(...threatResult.logic);
 
   // 5. DAMAGE EFFICIENCY
-  const efficiencyResult = calculateDamageEfficiency(target, damageAmount, isPiercing);
+  const efficiencyResult = calculateDamageEfficiency(target, damageAmount, isPiercing, damageType);
   score += efficiencyResult.value;
   logic.push(...efficiencyResult.logic);
 
@@ -187,16 +187,38 @@ const evaluateDangerousAbilities = (target) => {
 /**
  * Calculate damage efficiency (flat bonuses)
  */
-const calculateDamageEfficiency = (target, damage, isPiercing) => {
+const calculateDamageEfficiency = (target, damage, isPiercing, damageType) => {
   let value = 0;
   const logic = [];
 
   const effectiveHull = target.hull || 0;
   const shields = isPiercing ? 0 : (target.currentShields || 0);
-  const totalDurability = effectiveHull + shields;
 
-  // Lethal bonus
-  if (damage >= totalDurability) {
+  // Determine lethality based on actual damage type mechanics
+  let isLethal = false;
+  switch (damageType) {
+    case 'ION':
+      // ION only damages shields, can never kill
+      break;
+    case 'KINETIC':
+      // KINETIC is completely blocked by any shields
+      isLethal = shields === 0 && damage >= effectiveHull;
+      break;
+    case 'SHIELD_BREAKER': {
+      // Each point removes 2 shields, remainder hits hull 1:1
+      const effectiveShieldDmg = Math.min(damage * 2, shields);
+      const dmgUsedOnShields = Math.ceil(effectiveShieldDmg / 2);
+      const remainingDmg = damage - dmgUsedOnShields;
+      isLethal = remainingDmg >= effectiveHull;
+      break;
+    }
+    default:
+      // NORMAL/PIERCING: standard durability check
+      isLethal = damage >= (effectiveHull + shields);
+      break;
+  }
+
+  if (isLethal) {
     value += LETHAL_BONUS;
     logic.push(`Lethal: +${LETHAL_BONUS}`);
   }

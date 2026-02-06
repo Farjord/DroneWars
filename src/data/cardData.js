@@ -2017,6 +2017,41 @@ const fullCardCollection = [
     effect: {
       type: 'READY_DRONE'
     }
+  },
+
+  {
+    id: 'Raise_the_Alarm',
+    baseCardId: 'Raise_the_Alarm',
+    name: 'Raise the Alarm',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Doctrine',
+    cost: 3,
+    momentumCost: 1,
+    aiOnly: true,
+    image: '/DroneWars/cards/RaiseTheAlarm.png',
+    description: 'Immediately increase player threat by 10.',
+    effect: {
+      type: 'INCREASE_THREAT',
+      value: 10
+    }
+  },
+  {
+    id: 'Transmit_Threat',
+    baseCardId: 'Transmit_Threat',
+    name: 'Transmit Threat',
+    maxInDeck: 4,
+    rarity: 'Uncommon',
+    type: 'Tactic',
+    cost: 2,
+    aiOnly: true,
+    image: '/DroneWars/cards/TransmitThreat.png',
+    description: 'Immediately trigger the Round Start ability of every Signal Beacon drone currently on the board.',
+    effect: {
+      type: 'INCREASE_THREAT',
+      value: 2,
+      perDrone: 'Signal Beacon'
+    }
   }
 ];
 

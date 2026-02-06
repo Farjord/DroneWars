@@ -5,12 +5,13 @@
 // Used by AI drones and cards to pressure the player
 //
 // Effect format:
-// { type: 'INCREASE_THREAT', value: number }
+// { type: 'INCREASE_THREAT', value: number, perDrone?: string }
 //
 // Works for:
 // - Drone triggered abilities (ON_ROUND_START)
 // - Drone conditional abilities (ON_ATTACK with POST condition)
 // - Card effects
+// - perDrone: multiplies value by count of named drones on acting player's board
 
 import BaseEffectProcessor from '../BaseEffectProcessor.js';
 import DetectionManager from '../../detection/DetectionManager.js';
@@ -30,6 +31,7 @@ class IncreaseThreatEffectProcessor extends BaseEffectProcessor {
    *
    * @param {Object} effect - Effect configuration
    * @param {number} effect.value - Amount of threat to add (default: 1)
+   * @param {string} [effect.perDrone] - If set, multiply value by count of named drones on acting player's board
    * @param {Object} context - Effect execution context
    * @param {string} context.actingPlayerId - Player executing the effect
    * @param {Object} context.playerStates - Current player states
@@ -40,7 +42,29 @@ class IncreaseThreatEffectProcessor extends BaseEffectProcessor {
   process(effect, context) {
     this.logProcessStart(effect, context);
 
-    const value = effect.value ?? 1;
+    let value = effect.value ?? 1;
+    let droneCount = 0;
+
+    // If perDrone is specified, multiply value by count of matching drones
+    if (effect.perDrone) {
+      const actingPlayerState = context.playerStates?.[context.actingPlayerId];
+      if (actingPlayerState) {
+        for (const lane of ['lane1', 'lane2', 'lane3']) {
+          const drones = actingPlayerState.dronesOnBoard?.[lane] || [];
+          droneCount += drones.filter(d => d.name === effect.perDrone).length;
+        }
+      }
+      value = value * droneCount;
+    }
+
+    if (value <= 0) {
+      // No threat to add (0 drones found, or 0 value)
+      debugLog('EFFECT_PROCESSING', `[INCREASE_THREAT] No threat added (value=${value}, droneCount=${droneCount})`, {
+        actingPlayer: context.actingPlayerId
+      });
+      return this.createResult(context.playerStates || { player1: {}, player2: {} }, []);
+    }
+
     const reason = this.buildReasonString(context);
 
     // Add detection via DetectionManager
@@ -49,6 +73,8 @@ class IncreaseThreatEffectProcessor extends BaseEffectProcessor {
 
     debugLog('EFFECT_PROCESSING', `[INCREASE_THREAT] Added ${value} threat`, {
       value,
+      droneCount: effect.perDrone ? droneCount : undefined,
+      perDrone: effect.perDrone,
       reason,
       actingPlayer: context.actingPlayerId
     });

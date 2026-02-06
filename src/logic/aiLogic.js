@@ -12,7 +12,7 @@ import {
   hasThreatOnRoundStart,
 } from './ai/helpers/index.js';
 
-import { INTERCEPTION, THREAT_DRONES } from './ai/aiConstants.js';
+import { INTERCEPTION, THREAT_DRONES, DRONE_PACING } from './ai/aiConstants.js';
 
 // Import extracted scoring functions
 import {
@@ -239,6 +239,45 @@ const currentLaneScores = {
               logic: [`Max per lane reached (${currentCount}/${baseDrone.maxPerLane})`]
             });
             continue; // Skip to next lane
+          }
+        }
+
+        // Prevent inefficient Ion drone stacking
+        if (baseDrone.damageType === 'ION') {
+          const aiDronesInLane = player2.dronesOnBoard[laneId];
+          const existingIonCount = aiDronesInLane
+            .filter(d => fullDroneCollection.find(bd => bd.name === d.name)?.damageType === 'ION').length;
+
+          if (existingIonCount >= 1) {
+            // Count individual enemy targets with meaningful shields (>= 2)
+            const enemyDrones = player1.dronesOnBoard[laneId] || [];
+            const worthwhileDroneTargets = enemyDrones.filter(d => (d.currentShields || 0) >= 2).length;
+            const laneIdx = parseInt(laneId.slice(-1)) - 1;
+            const sectionName = placedSections[laneIdx];
+            const worthwhileSectionTarget = sectionName
+              && (player1.shipSections[sectionName]?.allocatedShields || 0) >= 2 ? 1 : 0;
+            const worthwhileTargets = worthwhileDroneTargets + worthwhileSectionTarget;
+
+            // Check if any non-ION drones can deal hull damage after shields are stripped
+            const hasHullDamageDealer = aiDronesInLane.some(d => {
+              const bd = fullDroneCollection.find(base => base.name === d.name);
+              return bd && bd.damageType !== 'ION' && (d.attack || 0) > 0;
+            });
+
+            if (worthwhileTargets <= existingIonCount || !hasHullDamageDealer) {
+              const reason = !hasHullDamageDealer
+                ? `Ion without follow-up: no hull damage dealers in lane`
+                : `Ion stacking: ${existingIonCount} Ion drone(s) for only ${worthwhileTargets} target(s) with 2+ shields`;
+              possibleDeployments.push({
+                drone,
+                laneId,
+                score: -999,
+                instigator: drone.name,
+                targetName: laneId,
+                logic: [reason]
+              });
+              continue;
+            }
           }
         }
 
@@ -580,6 +619,7 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
       opponentPlacedSections,
       allSections,
       getShipStatus,
+      getValidTargets,
     };
 
     possibleActions.forEach(action => {
@@ -661,6 +701,18 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
         default:
           break;
       }
+
+      // Enrich targetName with lane info for targeted actions
+      if (action.type === 'attack') {
+        const laneNumber = action.attacker.lane.slice(-1);
+        action.targetName = `${action.targetName} (Lane ${laneNumber})`;
+      } else if ((action.type === 'play_card' || action.type === 'use_ability') && action.target) {
+        const playerState = action.target.owner === 'player1' ? player1 : player2;
+        const laneId = getLaneOfDrone(action.target.id, playerState);
+        if (laneId) {
+          action.targetName = `${action.targetName} (Lane ${laneId.slice(-1)})`;
+        }
+      }
     });
 
     // ========================================
@@ -680,6 +732,21 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
     // ========================================
     // Remove anti-ship penalty when no alternatives exist
     applyAntiShipAdjustments(possibleActions, evaluationContext);
+
+    // ========================================
+    // DRONE DISADVANTAGE PACING PASS
+    // ========================================
+    // When AI has fewer ready drones, prefer card plays over drone actions
+    const readyPlayerDrones = Object.values(player1.dronesOnBoard).flat().filter(d => !d.isExhausted);
+    if (readyAiDrones.length <= readyPlayerDrones.length - DRONE_PACING.READY_DRONE_DEFICIT_THRESHOLD) {
+      for (const action of possibleActions) {
+        if (action.type === 'play_card') {
+          action.score += DRONE_PACING.NON_DRONE_ACTION_BONUS;
+          action.logic = action.logic || [];
+          action.logic.push(`+${DRONE_PACING.NON_DRONE_ACTION_BONUS} Pacing (AI has ${readyAiDrones.length} ready drones vs player's ${readyPlayerDrones.length})`);
+        }
+      }
+    }
 
     const topScore = possibleActions.length > 0 ? Math.max(...possibleActions.map(a => a.score)) : 0;
 

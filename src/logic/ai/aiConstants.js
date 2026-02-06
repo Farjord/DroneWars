@@ -154,6 +154,7 @@ export const INTERCEPTION = {
 
   // Ship attack specific adjustments
   UNCHECKED_THREAT_BONUS: 100,
+  INTERCEPTOR_REMOVAL_CARD_PREMIUM: 1.15,  // Cards get 15% premium (don't exhaust a drone)
 
   // Protection value multipliers based on what's being protected
   SHIELD_PROTECTION_MULTIPLIER: 5,
@@ -306,6 +307,11 @@ export const CARD_EVALUATION = {
   // DEFENDER keyword bonus (also used by EXHAUST_DRONE)
   DEFENDER_KEYWORD_BONUS: 15,
 
+  // INCREASE_THREAT card scoring (Raise the Alarm, Transmit Threat)
+  THREAT_INCREASE_BASE_VALUE: 250,          // High base for flat threat cards - play ASAP
+  THREAT_INCREASE_PER_POINT: 2,            // Per point of threat added
+  THREAT_PER_DRONE_VALUE: 100,              // Per matching drone when perDrone is set
+
   // Status effect evaluation
   STATUS_MOVE_DENY_MULTIPLIER: 8,      // Per attack point (locked in place)
   STATUS_ATTACK_DENY_MULTIPLIER: 10,   // Per attack point (direct threat)
@@ -440,6 +446,16 @@ export const DAMAGE_TYPE_WEIGHTS = {
 // Used for AI-only drones that increase player threat
 // Signal Beacon: +1 threat per round (ON_ROUND_START)
 // Threat Transmitter: +2 threat on ship hull damage (ON_SHIP_SECTION_HULL_DAMAGE)
+
+// ========================================
+// DRONE DISADVANTAGE PACING
+// ========================================
+// When AI has fewer ready drones, prefer card plays over drone actions
+
+export const DRONE_PACING = {
+  READY_DRONE_DEFICIT_THRESHOLD: 1,    // Minimum drone disadvantage to trigger
+  NON_DRONE_ACTION_BONUS: 80,          // Bonus applied to play_card actions
+};
 
 export const THREAT_DRONES = {
   // Deployment bonuses

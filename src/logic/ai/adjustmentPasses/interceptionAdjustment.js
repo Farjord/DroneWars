@@ -4,7 +4,7 @@
 // Applies interception-based score adjustments after initial scoring
 // - Penalizes attacks by defensive interceptors (attacking exhausts, losing interception ability)
 // - Adjusts ship attack scores based on interception risk
-// - Bonuses for removing enemy interceptors
+// - Bonuses for removing enemy interceptors (drone attacks AND card plays)
 //
 // Note: Intercepting does NOT exhaust drones - they can intercept multiple times.
 // However, ATTACKING still exhausts drones, which means they can no longer intercept.
@@ -15,17 +15,79 @@ import { analyzeInterceptionInLane, calculateThreatsKeptInCheck } from '../scori
 import { calculateWinRaceAdjustments, getWinRaceDescription } from '../helpers/hullIntegrityHelpers.js';
 
 /**
+ * Calculate the best single unblocked ship attack value in a lane.
+ * Returns the highest score among blocked slow attackers (max, not sum).
+ *
+ * @param {string} laneId - Lane to check
+ * @param {Object} analysis - Interception analysis for this lane
+ * @param {Array} possibleActions - All scored actions
+ * @returns {number} - Best single unblocked attack value (0 if none)
+ */
+const calculateBestUnblockedValue = (laneId, analysis, possibleActions) => {
+  let bestValue = 0;
+
+  possibleActions.forEach(a => {
+    if (
+      a.type === 'attack' &&
+      a.targetType === 'section' &&
+      a.attacker.lane === laneId &&
+      analysis.aiSlowAttackers.includes(a.attacker.id)
+    ) {
+      const value = Math.max(0, a.score - PENALTIES.INTERCEPTION_RISK);
+      if (value > bestValue) {
+        bestValue = value;
+      }
+    }
+  });
+
+  return bestValue;
+};
+
+/**
+ * Check if a given amount of damage would kill the target drone.
+ * Handles damage type mechanics: PIERCING bypasses shields, ION can never kill,
+ * KINETIC is blocked by shields, SHIELD_BREAKER removes shields at 2:1.
+ *
+ * @param {number} damage - The damage amount
+ * @param {Object} target - The target drone
+ * @param {boolean} isPiercing - Whether the damage bypasses shields
+ * @param {string} [damageType] - Damage type: NORMAL|PIERCING|SHIELD_BREAKER|ION|KINETIC
+ * @returns {boolean} - True if the damage would destroy the target
+ */
+const isLethal = (damage, target, isPiercing = false, damageType) => {
+  const targetHull = target.hull || 0;
+  const targetShields = isPiercing ? 0 : (target.currentShields || 0);
+
+  switch (damageType) {
+    case 'ION':
+      return false;
+    case 'KINETIC':
+      return targetShields === 0 && damage >= targetHull;
+    case 'SHIELD_BREAKER': {
+      const effectiveShieldDmg = Math.min(damage * 2, targetShields);
+      const dmgUsedOnShields = Math.ceil(effectiveShieldDmg / 2);
+      const remainingDmg = damage - dmgUsedOnShields;
+      return remainingDmg >= targetHull;
+    }
+    default:
+      return damage >= targetHull + targetShields;
+  }
+};
+
+/**
  * Apply interception adjustment pass to scored actions
  * Two-pass approach:
- * 1. Analyze interception dynamics for all lanes
- * 2. Apply interception-based score adjustments (context-aware based on section damage)
+ * Pass 1: Defensive interceptor penalties + ship attack adjustments (INTERCEPTION_RISK, UNCHECKED_THREAT)
+ * Pass 2: Interceptor removal bonuses for drone attacks AND card plays
+ *
+ * Pass 1 must finalize ship attack scores before Pass 2 references them.
  *
  * @param {Array} possibleActions - Array of scored actions
  * @param {Object} context - Evaluation context
  * @returns {Array} - Modified possibleActions with interception adjustments
  */
 export const applyInterceptionAdjustments = (possibleActions, context) => {
-  const { player1, player2, gameDataService, opponentPlacedSections } = context;
+  const { player1, player2, gameDataService, getLaneOfDrone, opponentPlacedSections } = context;
 
   // Step 1: Analyze interception dynamics for all lanes
   const lanes = ['lane1', 'lane2', 'lane3'];
@@ -35,7 +97,7 @@ export const applyInterceptionAdjustments = (possibleActions, context) => {
     interceptionAnalysis[laneId] = analyzeInterceptionInLane(laneId, player1, player2, gameDataService);
   });
 
-  // Step 2: Apply interception-based score adjustments
+  // === PASS 1: Defensive penalties + ship attack adjustments ===
   possibleActions.forEach(action => {
     if (action.type === 'attack') {
       const attackerLane = action.attacker.lane;
@@ -117,26 +179,67 @@ export const applyInterceptionAdjustments = (possibleActions, context) => {
           action.logic.push(`✅ Unchecked Threat: +${INTERCEPTION.UNCHECKED_THREAT_BONUS}`);
         }
       }
+    }
+  });
 
-      // === DRONE ATTACK SPECIFIC ADJUSTMENTS ===
-      if (action.targetType === 'drone') {
-        const targetId = action.target.id;
+  // === PASS 2: Interceptor removal bonuses (drone attacks + card plays) ===
+  possibleActions.forEach(action => {
+    // --- Drone attacks targeting enemy interceptors ---
+    if (action.type === 'attack' && action.targetType === 'drone') {
+      const attackerLane = action.attacker.lane;
+      const analysis = interceptionAnalysis[attackerLane];
+      const targetId = action.target.id;
 
-        // Bonus for removing enemy interceptors (frees up our attacks)
-        if (analysis.enemyInterceptors.includes(targetId)) {
-          // Calculate value of attacks that would be unblocked by removing this interceptor
-          const unblockedValue = possibleActions
-            .filter(a =>
-              a.type === 'attack' &&
-              a.targetType === 'section' &&
-              a.attacker.lane === attackerLane &&
-              analysis.aiSlowAttackers.includes(a.attacker.id)
-            )
-            .reduce((sum, a) => sum + Math.max(0, a.score - PENALTIES.INTERCEPTION_RISK), 0);
+      if (analysis.enemyInterceptors.includes(targetId)) {
+        const effectiveStats = gameDataService.getEffectiveStats(action.attacker, attackerLane);
+        const isPiercing = action.attacker.damageType === 'PIERCING';
 
-          if (unblockedValue > 0) {
-            action.score += unblockedValue;
-            action.logic.push(`🎯 Interceptor Removal: +${unblockedValue.toFixed(0)}`);
+        if (isLethal(effectiveStats.attack, action.target, isPiercing, action.attacker.damageType)) {
+          const bestUnblockedValue = calculateBestUnblockedValue(attackerLane, analysis, possibleActions);
+
+          if (bestUnblockedValue > 0) {
+            action.score += bestUnblockedValue;
+            action.logic.push(`Interceptor Removal: +${bestUnblockedValue.toFixed(0)}`);
+          }
+        }
+      }
+    }
+
+    // --- Card plays targeting enemy interceptors ---
+    if (action.type === 'play_card' && action.target && action.target.owner === 'player1') {
+      const card = action.card;
+      const target = action.target;
+      const effectType = card.effect?.type;
+      const scope = card.effect?.scope;
+
+      // Only apply to SINGLE-target DESTROY or single-target DAMAGE cards
+      // Skip FILTERED/LANE/OVERFLOW/SPLASH - already handled by calculateTargetValue
+      if (effectType === 'DESTROY' && scope === 'SINGLE') {
+        const laneId = getLaneOfDrone(target.id, player1);
+        if (laneId) {
+          const analysis = interceptionAnalysis[laneId];
+          if (analysis.enemyInterceptors.includes(target.id)) {
+            const bestUnblockedValue = calculateBestUnblockedValue(laneId, analysis, possibleActions);
+
+            if (bestUnblockedValue > 0) {
+              const cardBonus = Math.round(bestUnblockedValue * INTERCEPTION.INTERCEPTOR_REMOVAL_CARD_PREMIUM);
+              action.score += cardBonus;
+              action.logic.push(`Interceptor Removal (Destroy): +${cardBonus}`);
+            }
+          }
+        }
+      } else if (effectType === 'DAMAGE' && (!scope || scope === 'SINGLE')) {
+        const laneId = getLaneOfDrone(target.id, player1);
+        if (laneId) {
+          const analysis = interceptionAnalysis[laneId];
+          if (analysis.enemyInterceptors.includes(target.id) && isLethal(card.effect.value || 0, target, card.effect.damageType === 'PIERCING', card.effect.damageType)) {
+            const bestUnblockedValue = calculateBestUnblockedValue(laneId, analysis, possibleActions);
+
+            if (bestUnblockedValue > 0) {
+              const cardBonus = Math.round(bestUnblockedValue * INTERCEPTION.INTERCEPTOR_REMOVAL_CARD_PREMIUM);
+              action.score += cardBonus;
+              action.logic.push(`Interceptor Removal (Lethal Damage): +${cardBonus}`);
+            }
           }
         }
       }

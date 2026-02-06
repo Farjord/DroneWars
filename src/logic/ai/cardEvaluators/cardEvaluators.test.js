@@ -697,7 +697,7 @@ describe('evaluateGainEnergyCard', () => {
     expect(result.logic.some(l => l.includes('Enables'))).toBe(true);
   });
 
-  it('returns low priority when no cards enabled', () => {
+  it('returns invalid score when no cards enabled', () => {
     const card = {
       id: 'CARD004',
       instanceId: 'inst1',
@@ -716,8 +716,72 @@ describe('evaluateGainEnergyCard', () => {
     const result = evaluateGainEnergyCard(card, null, context);
 
     // No new cards enabled (already have enough energy for cheapCard)
-    expect(result.score).toBe(CARD_EVALUATION.LOW_PRIORITY_SCORE);
-    expect(result.logic.some(l => l.includes('Low Priority'))).toBe(true);
+    expect(result.score).toBe(INVALID_SCORE);
+    expect(result.logic.some(l => l.includes('No cards enabled by energy gain'))).toBe(true);
+  });
+
+  it('returns invalid score when enabled cards have no valid targets', () => {
+    const card = {
+      id: 'CARD004',
+      instanceId: 'inst1',
+      cost: 1,
+      effect: { type: 'GAIN_ENERGY', value: 2 }
+    };
+    const targetedCard = {
+      instanceId: 'inst2',
+      name: 'Targeted Card',
+      cost: 6,
+      targeting: { type: 'ENEMY_DRONE' }
+    };
+
+    const mockGetValidTargets = vi.fn(() => []);
+
+    const context = createMockContext({
+      player1: createMockPlayer('player1'),
+      player2: createMockPlayer('player2', {
+        energy: 5,
+        hand: [card, targetedCard]
+      }),
+      getValidTargets: mockGetValidTargets,
+    });
+
+    const result = evaluateGainEnergyCard(card, null, context);
+
+    expect(result.score).toBe(INVALID_SCORE);
+    expect(result.logic.some(l => l.includes('no valid targets'))).toBe(true);
+  });
+
+  it('scores high when enabling untargeted cards', () => {
+    const card = {
+      id: 'CARD004',
+      instanceId: 'inst1',
+      cost: 1,
+      effect: { type: 'GAIN_ENERGY', value: 2 }
+    };
+    const drawCard = {
+      instanceId: 'inst2',
+      name: 'Big Draw',
+      cost: 6,
+      // No targeting property - untargeted cards are always usable
+    };
+
+    const mockGetValidTargets = vi.fn(() => []);
+
+    const context = createMockContext({
+      player2: createMockPlayer('player2', {
+        energy: 5,
+        hand: [card, drawCard]
+      }),
+      getValidTargets: mockGetValidTargets,
+    });
+
+    const result = evaluateGainEnergyCard(card, null, context);
+
+    // Enables card: 60 + (6 × 5) = 90
+    expect(result.score).toBe(90);
+    expect(result.logic.some(l => l.includes('Enables'))).toBe(true);
+    // getValidTargets should NOT have been called for untargeted card
+    expect(mockGetValidTargets).not.toHaveBeenCalled();
   });
 });
 
