@@ -739,6 +739,47 @@ const fullDroneCollection = [
     upgradeSlots: 2
   },
   { name: 'Behemoth', class: 4, limit: 1, rebuildRate: 0, rarity: 'Common', attack: 3, hull: 6, shields: 2, speed: 2, image: '/DroneWars/img/Behemoth.png', abilities: [], upgradeSlots: 4 },
+  {
+    name: 'Odin',
+    class: 4,
+    limit: 1,
+    rebuildRate: 0.33,
+    rarity: 'Uncommon',
+    attack: 1,
+    hull: 3,
+    shields: 2,
+    speed: 2,
+    image: '/DroneWars/img/Odin.png',
+    abilities: [{
+      name: 'All-Seeing Eye',
+      description: 'Each time you draw cards during the action phase, permanently gain +1 attack per card drawn.',
+      type: 'TRIGGERED',
+      trigger: 'ON_CARD_DRAWN',
+      effects: [{ type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+    }],
+    upgradeSlots: 1
+  },
+  {
+    name: 'Thor',
+    class: 3,
+    limit: 2,
+    rebuildRate: 0.5,
+    rarity: 'Uncommon',
+    attack: 1,
+    hull: 1,
+    shields: 2,
+    speed: 4,
+    image: '/DroneWars/img/Thor.png',
+    abilities: [{
+      name: 'Storm Surge',
+      description: 'Each time you gain energy during the action phase, permanently gain +1 attack per 2 energy gained (rounded down).',
+      type: 'TRIGGERED',
+      trigger: 'ON_ENERGY_GAINED',
+      scalingDivisor: 2,
+      effects: [{ type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1, type: 'permanent' } }]
+    }],
+    upgradeSlots: 1
+  },
 ];
 
 export default fullDroneCollection;

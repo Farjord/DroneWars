@@ -5,6 +5,7 @@
 // Respects maximum energy cap from ship sections
 
 import BaseEffectProcessor from '../BaseEffectProcessor.js';
+import { applyOnEnergyGainedEffects } from '../../utils/abilityHelpers.js';
 import { calculateEffectiveShipStats } from '../../statsCalculator.js';
 
 /**
@@ -52,6 +53,13 @@ class GainEnergyEffectProcessor extends BaseEffectProcessor {
     );
 
     actingPlayerState.energy = newEnergy;
+
+    const actualEnergyGained = newEnergy - oldEnergy;
+    if (actualEnergyGained > 0) {
+      const logCallback = context.callbacks?.logCallback || null;
+      const { newState } = applyOnEnergyGainedEffects(actingPlayerState, actualEnergyGained, logCallback);
+      newPlayerStates[actingPlayerId] = newState;
+    }
 
     const result = this.createResult(newPlayerStates);
 

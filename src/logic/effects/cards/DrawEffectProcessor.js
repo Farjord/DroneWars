@@ -5,6 +5,7 @@
 // Automatically reshuffles discard pile into deck when empty
 
 import BaseEffectProcessor from '../BaseEffectProcessor.js';
+import { applyOnCardDrawnEffects } from '../../utils/abilityHelpers.js';
 
 /**
  * DrawEffectProcessor - Handles card drawing
@@ -66,6 +67,13 @@ class DrawEffectProcessor extends BaseEffectProcessor {
     actingPlayerState.deck = newDeck;
     actingPlayerState.hand = newHand;
     actingPlayerState.discardPile = newDiscard;
+
+    const actualCardsDrawn = newHand.length - initialHandSize;
+    if (actualCardsDrawn > 0) {
+      const logCallback = context.callbacks?.logCallback || null;
+      const { newState } = applyOnCardDrawnEffects(actingPlayerState, actualCardsDrawn, logCallback);
+      newPlayerStates[actingPlayerId] = newState;
+    }
 
     const result = this.createResult(newPlayerStates);
 
