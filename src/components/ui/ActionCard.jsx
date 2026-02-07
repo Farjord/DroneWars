@@ -47,7 +47,6 @@ const ActionCard = ({
   isDragging = false,
   isCostSelectionTarget = false,
   hasMomentumGlow = false,
-  hasWarning = false,
   mandatoryAction = null,
   excessCards = 0,
   scale = 1.0,
@@ -115,7 +114,7 @@ const ActionCard = ({
       className={`
         rounded-lg p-[4px] relative group
         transition-all duration-200
-        ${isPlayable || isMandatoryTarget || hasWarning ? 'cursor-pointer' : 'cursor-not-allowed'}
+        ${isPlayable || isMandatoryTarget ? 'cursor-pointer' : 'cursor-not-allowed'}
         ${colors.border}
         ${isDisabled ? 'saturate-50' : ''}
         ${isDimmed ? 'grayscale' : ''}
