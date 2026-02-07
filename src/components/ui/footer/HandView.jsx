@@ -463,6 +463,12 @@ function HandView({
                     isCostSelectionTarget={isCostSelectionTarget}
                     hasMomentumGlow={showMomentumGlow}
                     hasWarning={!cardIsPlayable && turnPhase === 'action' && !mandatoryAction && !isCostSelectionTarget && !isSelectedCostCard}
+                    onWarningClick={onCardPlayWarning ? () => {
+                      const reasons = getUnplayableReasons();
+                      if (reasons.length > 0) {
+                        onCardPlayWarning(reasons);
+                      }
+                    } : undefined}
                     mandatoryAction={mandatoryAction}
                     excessCards={excessCards}
                     lanesControlled={lanesControlledCount}

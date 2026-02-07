@@ -41,6 +41,7 @@ const getEffectLabel = (card) => {
 const ActionCard = ({
   card,
   onClick,
+  onWarningClick,
   isPlayable,
   isSelected,
   isDimmed,
@@ -85,6 +86,12 @@ const ActionCard = ({
 
   return (
     <div
+      onMouseDown={() => {
+        // Trigger warning on mouseDown to catch drag attempts on unplayable cards
+        if (hasWarning && onWarningClick && !isPlayable && !isMandatoryTarget) {
+          onWarningClick(card);
+        }
+      }}
       onClick={(e) => {
         e.stopPropagation();
 
@@ -99,6 +106,8 @@ const ActionCard = ({
 
         if ((isPlayable || isMandatoryTarget || isCostSelectionTarget) && onClick && !isDragging) {
           onClick(card);
+        } else if (hasWarning && onWarningClick) {
+          onWarningClick(card);
         } else if (!onClick || isDragging) {
           debugLog('CARD_PLAY', `🚫 Card click blocked - ${!onClick ? 'onClick is null' : 'drag in progress'}: ${card.name}`, {
             isPlayable,
