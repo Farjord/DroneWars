@@ -49,7 +49,7 @@ export const BACKGROUNDS = [
   // }
 ];
 
-export const DEFAULT_BACKGROUND = 'orbit_1';
+export const DEFAULT_BACKGROUND = 'Orbit_1';
 
 /**
  * Get background configuration by ID
@@ -57,5 +57,5 @@ export const DEFAULT_BACKGROUND = 'orbit_1';
  * @returns {Background} Background configuration object
  */
 export const getBackgroundById = (id) => {
-  return BACKGROUNDS.find(bg => bg.id === id) || BACKGROUNDS.find(bg => bg.id === DEFAULT_BACKGROUND);
+  return BACKGROUNDS.find(bg => bg.id === id) || BACKGROUNDS.find(bg => bg.id === DEFAULT_BACKGROUND) || BACKGROUNDS[0];
 };
