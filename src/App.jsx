@@ -130,6 +130,39 @@ const extractDroneNameFromId = (droneId) => {
 // ========================================
 
 const App = ({ phaseAnimationQueue }) => {
+  // DEBUG: Production crash diagnostic - check all imports are defined
+  // Remove this block once the issue is identified
+  if (typeof window !== 'undefined' && !window.__appImportCheck) {
+    window.__appImportCheck = true;
+    const imports = {
+      SpaceBackground, StaticBackground, GamePhaseModal, GameHeader, GameBattlefield,
+      GameFooter, HandView, DronesView, FloatingCardControls, LogModal, ModalContainer,
+      TargetingArrow, InterceptionTargetLine, InterceptionSelectionLine, ExplosionEffect,
+      WaitingOverlay, InterceptedBadge, FailedRunLoadingScreen,
+      CardViewerModal, CardSelectionModal, AICardPlayReportModal, DetailedDroneModal,
+      WaitingForPlayerModal, ConfirmationModal, MandatoryActionModal, WinnerModal,
+      AIDecisionLogModal, ViewShipSectionModal, DeploymentConfirmationModal,
+      MoveConfirmationModal, InterceptionOpportunityModal, OpponentDecidingInterceptionModal,
+      CardConfirmationModal, AdditionalCostConfirmationModal, DroneAbilityConfirmationModal,
+      ShipAbilityConfirmationModal, AIHandDebugModal, GameDebugModal, OpponentDronesModal,
+      GlossaryModal, AIStrategyModal, AddCardToHandModal, CardDetailModal, AbandonRunModal,
+      useGameState, useGameData, useExplosions, useAnimationSetup,
+      fullCardCollection, gameEngine, calculatePotentialInterceptors, TargetingRouter,
+      ExtractionController, calculateRoundStartReset, forceWinCombat, WinConditionChecker,
+      LaneControlCalculator, aiPhaseProcessor, AnimationManager, tacticalMapStateManager,
+      FlyingDrone, FlashEffect, HealEffect, CardVisualEffect, CardRevealOverlay,
+      ShipAbilityRevealOverlay, PassNotificationOverlay, PhaseAnnouncementOverlay,
+      LaserEffect, TeleportEffect, OverflowProjectile, SplashEffect, BarrageImpact,
+      RailgunTurret, RailgunBeam, targetingRouter, DEV_CONFIG, SeededRandom,
+    };
+    const undefinedImports = Object.entries(imports).filter(([, v]) => v === undefined);
+    if (undefinedImports.length > 0) {
+      console.error('🚨 PRODUCTION CRASH DEBUG: Undefined imports in App.jsx:', undefinedImports.map(([k]) => k));
+    } else {
+      console.log('✅ All App.jsx imports are defined');
+    }
+  }
+
   // ========================================
   // SECTION 3: HOOKS & STATE
   // ========================================
