@@ -864,6 +864,7 @@ const App = ({ phaseAnimationQueue }) => {
   // --- 6.2 UI EVENT HANDLERS ---
 
   const showCardPlayWarning = useCallback((reasons) => {
+    console.log('[CARD_WARNING] showCardPlayWarning called in App.jsx', { reasons });
     setCardPlayWarning({ id: Date.now(), reasons });
   }, []);
 
@@ -6147,6 +6148,7 @@ const App = ({ phaseAnimationQueue }) => {
         onComplete={notification.onComplete}
       />
     ))}
+    {cardPlayWarning && console.log('[CARD_WARNING] Rendering CardWarningOverlay', cardPlayWarning)}
     {cardPlayWarning && (
       <CardWarningOverlay
         key={cardPlayWarning.id}

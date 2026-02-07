@@ -391,6 +391,22 @@ function HandView({
                   className={`${styles.cardWrapper} ${shouldPulse ? 'animate-pulse' : ''}`}
                   style={style}
                   onMouseEnter={() => {
+                    console.log(`[CARD_WARNING] onMouseEnter fired for: ${card.name}`, {
+                      cardIsPlayable,
+                      turnPhase,
+                      mandatoryAction: !!mandatoryAction,
+                      isCostSelectionTarget,
+                      isSelectedCostCard,
+                      hasCallback: !!onCardPlayWarning,
+                      myTurn,
+                      playerPassed,
+                      hasEnoughEnergy,
+                      hasEnoughMomentum,
+                      hasValidTargets,
+                      doctrinePlayable,
+                      cardConditionMet
+                    });
+
                     setHoveredCardId(card.instanceId);
                     // Debug logging on hover - shows this specific card's state
                     debugLog('HAND_VIEW', `🎯 Card hover - ${card.name}:`, {
@@ -407,6 +423,7 @@ function HandView({
                     // Show warning overlay on hover for unplayable cards during action phase
                     if (!cardIsPlayable && turnPhase === 'action' && !mandatoryAction && !isCostSelectionTarget && !isSelectedCostCard && onCardPlayWarning) {
                       const reasons = getUnplayableReasons();
+                      console.log(`[CARD_WARNING] Showing warning for: ${card.name}`, { reasons });
                       if (reasons.length > 0) {
                         onCardPlayWarning(reasons);
                       }
