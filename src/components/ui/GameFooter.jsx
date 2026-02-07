@@ -62,7 +62,8 @@ function GameFooter({
   handleActionCardDragStart,
   draggedActionCard,
   additionalCostState,
-  actionsTakenThisTurn = 0
+  actionsTakenThisTurn = 0,
+  onCardPlayWarning
 }) {
   // DISABLED: Render-based logging causes excessive noise on every GameFooter render
   // debugLog('HAND_VIEW', '📦 GameFooter received mandatoryAction:', {
@@ -155,6 +156,7 @@ function GameFooter({
                 draggedActionCard={draggedActionCard}
                 additionalCostState={additionalCostState}
                 actionsTakenThisTurn={actionsTakenThisTurn}
+                onCardPlayWarning={onCardPlayWarning}
               />
             </div>
           )}
