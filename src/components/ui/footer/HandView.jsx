@@ -403,6 +403,14 @@ function HandView({
                       excessCards,
                       isPlayable: cardIsPlayable
                     });
+
+                    // Show warning overlay on hover for unplayable cards during action phase
+                    if (!cardIsPlayable && turnPhase === 'action' && !mandatoryAction && !isCostSelectionTarget && !isSelectedCostCard && onCardPlayWarning) {
+                      const reasons = getUnplayableReasons();
+                      if (reasons.length > 0) {
+                        onCardPlayWarning(reasons);
+                      }
+                    }
                   }}
                   onMouseLeave={() => setHoveredCardId(null)}
                   onMouseDown={(e) => {
@@ -442,13 +450,6 @@ function HandView({
                       document.addEventListener('mousemove', handleMouseMove);
                       document.addEventListener('mouseup', handleMouseUp);
                     }
-                    // Show warning overlay for unplayable cards during action phase
-                    else if (!cardIsPlayable && turnPhase === 'action' && !mandatoryAction && !isCostSelectionTarget && !isSelectedCostCard && onCardPlayWarning) {
-                      const reasons = getUnplayableReasons();
-                      if (reasons.length > 0) {
-                        onCardPlayWarning(reasons);
-                      }
-                    }
                   }}
                 >
                   <ActionCard
@@ -462,13 +463,6 @@ function HandView({
                     isPlayable={cardIsPlayable}
                     isCostSelectionTarget={isCostSelectionTarget}
                     hasMomentumGlow={showMomentumGlow}
-                    hasWarning={!cardIsPlayable && turnPhase === 'action' && !mandatoryAction && !isCostSelectionTarget && !isSelectedCostCard}
-                    onWarningClick={onCardPlayWarning ? () => {
-                      const reasons = getUnplayableReasons();
-                      if (reasons.length > 0) {
-                        onCardPlayWarning(reasons);
-                      }
-                    } : undefined}
                     mandatoryAction={mandatoryAction}
                     excessCards={excessCards}
                     lanesControlled={lanesControlledCount}

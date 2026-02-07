@@ -41,14 +41,12 @@ const getEffectLabel = (card) => {
 const ActionCard = ({
   card,
   onClick,
-  onWarningClick,
   isPlayable,
   isSelected,
   isDimmed,
   isDragging = false,
   isCostSelectionTarget = false,
   hasMomentumGlow = false,
-  hasWarning = false,
   mandatoryAction = null,
   excessCards = 0,
   scale = 1.0,
@@ -86,12 +84,6 @@ const ActionCard = ({
 
   return (
     <div
-      onMouseDown={() => {
-        // Trigger warning on mouseDown to catch drag attempts on unplayable cards
-        if (hasWarning && onWarningClick && !isPlayable && !isMandatoryTarget) {
-          onWarningClick(card);
-        }
-      }}
       onClick={(e) => {
         e.stopPropagation();
 
@@ -106,8 +98,6 @@ const ActionCard = ({
 
         if ((isPlayable || isMandatoryTarget || isCostSelectionTarget) && onClick && !isDragging) {
           onClick(card);
-        } else if (hasWarning && onWarningClick) {
-          onWarningClick(card);
         } else if (!onClick || isDragging) {
           debugLog('CARD_PLAY', `🚫 Card click blocked - ${!onClick ? 'onClick is null' : 'drag in progress'}: ${card.name}`, {
             isPlayable,
@@ -124,7 +114,7 @@ const ActionCard = ({
       className={`
         rounded-lg p-[4px] relative group
         transition-all duration-200
-        ${isPlayable || isMandatoryTarget || hasWarning ? 'cursor-pointer' : 'cursor-not-allowed'}
+        ${isPlayable || isMandatoryTarget ? 'cursor-pointer' : 'cursor-not-allowed'}
         ${colors.border}
         ${isDisabled ? 'saturate-50' : ''}
         ${isDimmed ? 'grayscale' : ''}
