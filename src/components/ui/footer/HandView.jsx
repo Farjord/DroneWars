@@ -56,7 +56,9 @@ function HandView({
   // Additional cost selection state
   additionalCostState,
   // Momentum tracking for glow effects
-  actionsTakenThisTurn = 0
+  actionsTakenThisTurn = 0,
+  // Warning callback for unplayable card attempts
+  onCardPlayWarning
 }) {
   // Debug logging for component props
   const localPlayerId = getLocalPlayerId();
@@ -339,6 +341,20 @@ function HandView({
                   ? (isActionPhasePlayable && doctrinePlayable && cardConditionMet)
                   : isOptionalDiscardPlayable);
 
+              // Compute specific reasons why card can't be played (for warning overlay)
+              const getUnplayableReasons = () => {
+                const reasons = [];
+                if (turnPhase !== 'action') return reasons;
+                if (!myTurn) { reasons.push("Not your turn"); return reasons; }
+                if (playerPassed) { reasons.push("You have passed"); return reasons; }
+                if (!hasEnoughEnergy) reasons.push(`Not enough energy (need ${card.cost}, have ${localPlayerState.energy})`);
+                if (card.momentumCost && !hasEnoughMomentum) reasons.push(`Not enough momentum (need ${card.momentumCost}, have ${localPlayerState.momentum || 0})`);
+                if (!hasValidTargets) reasons.push("No valid targets");
+                if (!doctrinePlayable) reasons.push("Doctrine lane control requirement not met");
+                if (!cardConditionMet) reasons.push("Play condition not met");
+                return reasons;
+              };
+
               const isHovered = hoveredCardId === card.instanceId;
 
               // Calculate fan rotation and spacing using centralized utilities
@@ -425,6 +441,13 @@ function HandView({
 
                       document.addEventListener('mousemove', handleMouseMove);
                       document.addEventListener('mouseup', handleMouseUp);
+                    }
+                    // Show warning overlay for unplayable cards during action phase
+                    else if (!cardIsPlayable && turnPhase === 'action' && !mandatoryAction && !isCostSelectionTarget && !isSelectedCostCard && onCardPlayWarning) {
+                      const reasons = getUnplayableReasons();
+                      if (reasons.length > 0) {
+                        onCardPlayWarning(reasons);
+                      }
                     }
                   }}
                 >
