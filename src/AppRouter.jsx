@@ -4,7 +4,7 @@
 // Routes between different application screens based on app state
 // Eliminates monolithic App.jsx by separating menu from game concerns
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGameState } from './hooks/useGameState.js';
 import gameStateManager from './managers/GameStateManager.js';
 import GameFlowManager from './managers/GameFlowManager.js';
@@ -290,9 +290,53 @@ function AppRouter() {
       overflow: 'auto'
     }}>
       {shouldShowCyanGlowBackground && <CyanGlowBackground />}
-      {currentScreen}
+      <AppErrorBoundary>
+        {currentScreen}
+      </AppErrorBoundary>
     </div>
   );
+}
+
+// Error boundary to catch and diagnose production-only crashes
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('🚨 AppErrorBoundary caught error:', error.message);
+    console.error('🚨 Component stack:', errorInfo.componentStack);
+    this.setState({ errorInfo });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '2rem', color: '#ef4444', backgroundColor: '#1a1a2e', minHeight: '100vh', fontFamily: 'monospace' }}>
+          <h1 style={{ color: '#f87171' }}>Production Crash Detected</h1>
+          <p style={{ color: '#fca5a5' }}><strong>Error:</strong> {this.state.error?.message}</p>
+          <p style={{ color: '#fca5a5' }}><strong>Stack:</strong></p>
+          <pre style={{ fontSize: '0.75rem', whiteSpace: 'pre-wrap', color: '#d1d5db' }}>
+            {this.state.error?.stack}
+          </pre>
+          {this.state.errorInfo && (
+            <>
+              <p style={{ color: '#fca5a5' }}><strong>Component Stack:</strong></p>
+              <pre style={{ fontSize: '0.75rem', whiteSpace: 'pre-wrap', color: '#d1d5db' }}>
+                {this.state.errorInfo.componentStack}
+              </pre>
+            </>
+          )}
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export default AppRouter;

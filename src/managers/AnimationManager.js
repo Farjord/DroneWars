@@ -60,6 +60,13 @@ class AnimationManager {
         config: { }
       },
 
+      GO_AGAIN_NOTIFICATION: {
+        duration: 800,
+        type: 'GO_AGAIN_NOTIFICATION_EFFECT',
+        timing: 'independent',
+        config: { }
+      },
+
       // Phase announcements
       PHASE_ANNOUNCEMENT: {
         duration: 1500,  // 1.5 second phase announcement

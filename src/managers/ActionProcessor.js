@@ -738,6 +738,11 @@ setAnimationManager(animationManager) {
     // Check for win conditions after attack
     this.checkWinCondition();
 
+    // Show Go Again notification when the turn continues (goAgain attacks)
+    if (!result.shouldEndTurn) {
+      await this.executeGoAgainAnimation(attackDetails.attackingPlayer);
+    }
+
     // NOTE: Turn transitions now handled by GameFlowManager based on shouldEndTurn flag
     // GameFlowManager monitors action completion and processes turn transitions after animations complete
 
@@ -1291,6 +1296,11 @@ setAnimationManager(animationManager) {
     // Check for win conditions after card play
     this.checkWinCondition();
 
+    // Show Go Again notification when the turn continues
+    if (!result.shouldEndTurn) {
+      await this.executeGoAgainAnimation(playerId);
+    }
+
     // NOTE: Turn transitions now handled by GameFlowManager based on shouldEndTurn flag
     // GameFlowManager processes turn transitions after card animations complete
 
@@ -1412,6 +1422,11 @@ setAnimationManager(animationManager) {
     }];
     await this.executeAndCaptureAnimations(cardRevealAnimation);
 
+    // Show Go Again notification when the turn continues
+    if (!result.shouldEndTurn) {
+      await this.executeGoAgainAnimation(playerId);
+    }
+
     // NOTE: Turn transitions now handled by GameFlowManager based on shouldEndTurn flag
     // GameFlowManager monitors action completion and processes turn transitions after animations complete
 
@@ -1485,6 +1500,11 @@ setAnimationManager(animationManager) {
     this.gameStateManager.setState(updatedState);
 
     debugLog('ADDITIONAL_COST_EFFECT_FLOW', '✅ ActionProcessor complete - returning result');
+
+    // Show Go Again notification when the turn continues
+    if (!result.shouldEndTurn) {
+      await this.executeGoAgainAnimation(payload.playerId);
+    }
 
     return {
       success: true,
@@ -1685,6 +1705,11 @@ setAnimationManager(animationManager) {
     }];
     await this.executeAndCaptureAnimations(cardRevealAnimation);
 
+    // Show Go Again notification when the turn continues
+    if (!completion.shouldEndTurn) {
+      await this.executeGoAgainAnimation(playerId);
+    }
+
     // NOTE: Turn transitions now handled by GameFlowManager based on shouldEndTurn flag
     // GameFlowManager processes turn transitions after movement animations complete
 
@@ -1785,6 +1810,11 @@ setAnimationManager(animationManager) {
     }];
     // Execute animation and wait for completion to ensure proper sequencing
     await this.executeAndCaptureAnimations(cardRevealAnimation);
+
+    // Show Go Again notification when the turn continues
+    if (!completion.shouldEndTurn) {
+      await this.executeGoAgainAnimation(playerId);
+    }
 
     // NOTE: Turn transitions now handled by GameFlowManager based on shouldEndTurn flag
     // GameFlowManager processes turn transitions after search card animations complete
@@ -2881,6 +2911,16 @@ setAnimationManager(animationManager) {
    * @param {boolean} isSystemAnimation - True for system animations (phase announcements), false for action animations
    * @param {boolean} waitForCompletion - If true, awaits animation completion (blocking). Default: true for proper animation sequencing.
    */
+  async executeGoAgainAnimation(actingPlayerId) {
+    const animDef = this.animationManager?.animations['GO_AGAIN_NOTIFICATION'];
+    const goAgainAnim = [{
+      animationName: 'GO_AGAIN_NOTIFICATION',
+      timing: animDef?.timing || 'independent',
+      payload: { actingPlayerId }
+    }];
+    await this.executeAndCaptureAnimations(goAgainAnim);
+  }
+
   async executeAndCaptureAnimations(animations, isSystemAnimation = false, waitForCompletion = true) {
     if (!animations || animations.length === 0) {
       return;

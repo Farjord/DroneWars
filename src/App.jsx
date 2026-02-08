@@ -100,6 +100,8 @@ import CardVisualEffect from './components/animations/CardVisualEffect.jsx';
 import CardRevealOverlay from './components/animations/CardRevealOverlay.jsx';
 import ShipAbilityRevealOverlay from './components/animations/ShipAbilityRevealOverlay.jsx';
 import PassNotificationOverlay from './components/animations/PassNotificationOverlay.jsx';
+import GoAgainOverlay from './components/animations/GoAgainOverlay.jsx';
+import CardWarningOverlay from './components/animations/CardWarningOverlay.jsx';
 import PhaseAnnouncementOverlay from './components/animations/PhaseAnnouncementOverlay.jsx';
 import LaserEffect from './components/animations/LaserEffect.jsx';
 import TeleportEffect from './components/animations/TeleportEffect.jsx';
@@ -202,6 +204,8 @@ const App = ({ phaseAnimationQueue }) => {
   const [railgunTurrets, setRailgunTurrets] = useState([]);
   const [railgunBeams, setRailgunBeams] = useState([]);
   const [passNotifications, setPassNotifications] = useState([]);
+  const [goAgainNotifications, setGoAgainNotifications] = useState([]);
+  const [cardPlayWarning, setCardPlayWarning] = useState(null); // { id, reasons: string[] }
   const [animationBlocking, setAnimationBlocking] = useState(false);
   const [modalContent, setModalContent] = useState(null);
   const [deploymentConfirmation, setDeploymentConfirmation] = useState(null);
@@ -397,6 +401,7 @@ const App = ({ phaseAnimationQueue }) => {
   setLaserEffects,
   setTeleportEffects,
   setPassNotifications,
+  setGoAgainNotifications,
   setOverflowProjectiles,
   setSplashEffects,
   setBarrageImpacts,
@@ -860,6 +865,12 @@ const App = ({ phaseAnimationQueue }) => {
   }, [isMultiplayer, p2pManager]);
 
   // --- 6.2 UI EVENT HANDLERS ---
+
+  const showCardPlayWarning = useCallback((reasons) => {
+    setCardPlayWarning({ id: Date.now(), reasons });
+  }, []);
+
+  const clearCardPlayWarning = useCallback(() => setCardPlayWarning(null), []);
 
   const handleBackgroundChange = useCallback((backgroundId) => {
     setSelectedBackground(backgroundId);
@@ -6141,6 +6152,20 @@ const App = ({ phaseAnimationQueue }) => {
         onComplete={notification.onComplete}
       />
     ))}
+    {goAgainNotifications.map(notification => (
+      <GoAgainOverlay
+        key={notification.id}
+        label={notification.label}
+        isLocalPlayer={notification.isLocalPlayer}
+        onComplete={notification.onComplete}
+      />
+    ))}
+    {cardPlayWarning && (
+      <CardWarningOverlay
+        key={cardPlayWarning.id}
+        reasons={cardPlayWarning.reasons}
+      />
+    )}
     {laserEffects.map(laser => (
       <LaserEffect
         key={laser.id}
@@ -6417,6 +6442,8 @@ const App = ({ phaseAnimationQueue }) => {
         draggedActionCard={draggedActionCard}
         additionalCostState={additionalCostState}
         actionsTakenThisTurn={gameState.actionsTakenThisTurn || 0}
+        onCardPlayWarning={showCardPlayWarning}
+        onCardPlayWarningClear={clearCardPlayWarning}
       />
 
       {/* Modals are unaffected and remain at the end */}

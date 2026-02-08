@@ -62,7 +62,9 @@ function GameFooter({
   handleActionCardDragStart,
   draggedActionCard,
   additionalCostState,
-  actionsTakenThisTurn = 0
+  actionsTakenThisTurn = 0,
+  onCardPlayWarning,
+  onCardPlayWarningClear
 }) {
   // DISABLED: Render-based logging causes excessive noise on every GameFooter render
   // debugLog('HAND_VIEW', '📦 GameFooter received mandatoryAction:', {
@@ -155,6 +157,8 @@ function GameFooter({
                 draggedActionCard={draggedActionCard}
                 additionalCostState={additionalCostState}
                 actionsTakenThisTurn={actionsTakenThisTurn}
+                onCardPlayWarning={onCardPlayWarning}
+                onCardPlayWarningClear={onCardPlayWarningClear}
               />
             </div>
           )}
@@ -181,6 +185,8 @@ function GameFooter({
                 setIsViewDeckModalOpen={setIsViewDeckModalOpen}
                 handleCardDragStart={handleCardDragStart}
                 draggedCard={draggedCard}
+                onCardPlayWarning={onCardPlayWarning}
+                onCardPlayWarningClear={onCardPlayWarningClear}
               />
             </div>
           )}

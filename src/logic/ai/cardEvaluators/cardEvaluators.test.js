@@ -661,11 +661,11 @@ describe('evaluateDestroyCard', () => {
     const result = evaluateDestroyCard(card, target, context);
 
     // Enemy unified: Ready(25)+Class2(6)+Attack2(4)+Lethal(20) = 55
-    // Friendly: (1 + 0 + 1×5) × 1 (exhausted) = 6
-    // Net: 55 - 6 = 49
+    // Friendly unified (swapped context): Class1(3)+Attack2(4)+Lethal(20) = 27 (exhausted = no ready bonus)
+    // Net: 55 - 27 = 28
     // Cost: 32
-    // Expected: 49 - 32 = 17
-    expect(result.score).toBe(17);
+    // Expected: 28 - 32 = -4
+    expect(result.score).toBe(-4);
   });
 });
 

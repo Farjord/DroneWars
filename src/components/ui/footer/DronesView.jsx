@@ -31,7 +31,9 @@ function DronesView({
   setIsViewDiscardModalOpen,
   setIsViewDeckModalOpen,
   handleCardDragStart,
-  draggedCard
+  draggedCard,
+  onCardPlayWarning,
+  onCardPlayWarningClear
 }) {
   const [hoveredDroneId, setHoveredDroneId] = useState(null);
   const [discardHovered, setDiscardHovered] = useState(false);
@@ -164,6 +166,20 @@ function DronesView({
                    hasAvailableCopies)        // Individual availability check (rebuilding state)
                 : isUpgradeTarget;            // Upgrade targeting remains separate (allow targeting unavailable drones)
 
+              // Compute specific reasons why drone can't be deployed (for warning overlay)
+              const getUndeployableReasons = () => {
+                const reasons = [];
+                if (turnPhase !== 'deployment') return reasons;
+                if (!isMyTurn()) { reasons.push("Not your turn"); return reasons; }
+                if (passInfo[`${getLocalPlayerId()}Passed`]) { reasons.push("You have passed"); return reasons; }
+                if (mandatoryAction) { reasons.push("Mandatory action required"); return reasons; }
+                if (!canAfford) reasons.push(`Not enough resources (need ${drone.class}, have ${totalResource})`);
+                if (isAtCPULimit) reasons.push(`CPU limit reached (${totalDronesOnBoard}/${localPlayerEffectiveStats.totals.cpuLimit})`);
+                if (atDeploymentLimit) reasons.push(`Deployment limit reached for ${drone.name} (${deployedCount}/${effectiveLimit})`);
+                if (!hasAvailableCopies) reasons.push("Drone unavailable (rebuilding)");
+                return reasons;
+              };
+
               // Calculate fan rotation and spacing using centralized utilities
               const rotationDeg = calculateCardFanRotation(index, sortedLocalActivePool.length);
               const marginLeft = index === 0 ? 0 : dynamicOverlap; // Use dynamic overlap
@@ -182,8 +198,21 @@ function DronesView({
                   key={drone.name}
                   className={styles.droneCardWrapper}
                   style={wrapperStyle}
-                  onMouseEnter={() => setHoveredDroneId(drone.name)}
-                  onMouseLeave={() => setHoveredDroneId(null)}
+                  onMouseEnter={() => {
+                    setHoveredDroneId(drone.name);
+                    // Wrong phase warning (action phase)
+                    if (turnPhase === 'action' && onCardPlayWarning) {
+                      onCardPlayWarning(["Not in the Deployment Phase"]);
+                    }
+                    // Existing deployment phase warnings
+                    else if (!isSelectable && turnPhase === 'deployment' && !isUpgradeTarget && onCardPlayWarning) {
+                      const reasons = getUndeployableReasons();
+                      if (reasons.length > 0) {
+                        onCardPlayWarning(reasons);
+                      }
+                    }
+                  }}
+                  onMouseLeave={() => { setHoveredDroneId(null); onCardPlayWarningClear?.(); }}
                   onMouseDown={(e) => {
                     // Only initiate drag for selectable drones during deployment
                     debugLog('DRAG_DROP_DEPLOY', '🖱️ Drag started from DronesView', { droneName: drone.name, isSelectable, hasHandler: !!handleCardDragStart });

@@ -4,7 +4,7 @@ import FlashEffect from '../components/animations/FlashEffect.jsx';
 import CardVisualEffect from '../components/animations/CardVisualEffect.jsx';
 import { debugLog, timingLog } from '../utils/debugLogger.js';
 
-export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setOverflowProjectiles, setSplashEffects, setBarrageImpacts, setRailgunTurrets, setRailgunBeams) {
+export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getLocalPlayerState, getOpponentPlayerState, triggerExplosion, getElementCenter, gameAreaRef, setFlyingDrones, setAnimationBlocking, setFlashEffects, setHealEffects, setCardVisuals, setCardReveals, setShipAbilityReveals, setPhaseAnnouncements, setLaserEffects, setTeleportEffects, setPassNotifications, setGoAgainNotifications, setOverflowProjectiles, setSplashEffects, setBarrageImpacts, setRailgunTurrets, setRailgunBeams) {
   useEffect(() => {
     const localPlayerState = getLocalPlayerState();
     const opponentPlayerState = getOpponentPlayerState();
@@ -437,6 +437,25 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         label: isLocalPlayer ? 'You Passed' : 'Opponent Passed',
         onComplete: () => {
           setPassNotifications(prev => prev.filter(n => n.id !== notificationId));
+          onComplete?.();
+        }
+      }]);
+    });
+
+    animationManager.registerVisualHandler('GO_AGAIN_NOTIFICATION_EFFECT', (payload) => {
+      const { actingPlayerId, onComplete } = payload;
+
+      const localPlayerId = gameStateManager.getLocalPlayerId();
+      const isLocalPlayer = actingPlayerId === localPlayerId;
+
+      const notificationId = `goagain-${Date.now()}`;
+
+      setGoAgainNotifications(prev => [...prev, {
+        id: notificationId,
+        label: isLocalPlayer ? 'Go Again' : 'Opponent Goes Again',
+        isLocalPlayer,
+        onComplete: () => {
+          setGoAgainNotifications(prev => prev.filter(n => n.id !== notificationId));
           onComplete?.();
         }
       }]);

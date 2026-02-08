@@ -85,11 +85,17 @@ export const evaluateDestroyCard = (card, target, context) => {
       enemyValue += droneValue;
     });
 
-    // Calculate value of friendly drones we lose (simplified - base stats only)
-    const friendlyValue = friendlyDrones.reduce((sum, d) => {
-      const baseValue = (d.hull || 0) + (d.currentShields || 0) + (d.class * 5);
-      return sum + (d.isExhausted ? baseValue : baseValue * CARD_EVALUATION.READY_DRONE_WEIGHT);
-    }, 0);
+    // Calculate value of friendly drones we lose (same scoring, swapped perspective)
+    const friendlyContext = { ...context, player1: player2, player2: player1 };
+    let friendlyValue = 0;
+    friendlyDrones.forEach(drone => {
+      const { score: droneValue } = calculateTargetValue(drone, friendlyContext, {
+        damageAmount: 999,
+        isPiercing: false,
+        lane: laneId
+      });
+      friendlyValue += droneValue;
+    });
 
     const netValue = enemyValue - friendlyValue;
     const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
