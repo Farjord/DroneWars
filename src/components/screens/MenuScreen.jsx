@@ -12,6 +12,7 @@ import { debugLog } from '../../utils/debugLogger.js';
 import GlossaryModal from '../modals/GlossaryModal.jsx';
 import AIStrategyModal from '../modals/AIStrategyModal.jsx';
 import ScalingText from '../ui/ScalingText.jsx';
+import SoundManager from '../../managers/SoundManager.js';
 
 // Menu button images
 const menuImages = {
@@ -45,6 +46,7 @@ const ImageButton = ({ image, label, subtitle, onClick, style }) => (
       ...style
     }}
     onMouseEnter={(e) => {
+      SoundManager.getInstance().play('hover_over');
       e.currentTarget.style.backgroundSize = '115%';
       e.currentTarget.style.boxShadow = '0 6px 30px rgba(0, 0, 0, 0.7), 0 0 2px rgba(255, 255, 255, 0.3)';
     }}

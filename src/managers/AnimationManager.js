@@ -313,6 +313,9 @@ class AnimationManager {
       droneIds: animations.map(a => a.payload?.targetId)
     });
 
+    // Emit sound cue at animation start (before executeAnimations)
+    this.gameStateManager.emit('ANIMATION_STARTED', { animationType: 'TELEPORT_IN' });
+
     // Start animations (non-blocking)
     const animationPromise = this.executeAnimations(animations, executor.getAnimationSource());
 
@@ -446,6 +449,9 @@ class AnimationManager {
 
                 debugLog('ANIMATIONS', `🎬 [SEQUENCE] Starting animation at T+${seqAnim.startAt}ms:`, seqAnim.type);
 
+                // Emit sound cue for sequence child animation
+                this.gameStateManager.emit('ANIMATION_STARTED', { animationType: seqAnim.type });
+
                 // Execute the animation
                 handler({
                   ...seqAnim.payload,
@@ -487,6 +493,9 @@ class AnimationManager {
               return;
             }
 
+            // Emit sound cue for damage animation
+            this.gameStateManager.emit('ANIMATION_STARTED', { animationType: dmgEffect.animationName });
+
             return new Promise(resolve => {
               handler({
                 ...dmgEffect.payload,
@@ -522,6 +531,9 @@ class AnimationManager {
             duration: animDef.duration,
             blockingReason: 'triggering_react_component'
           });
+
+          // Emit sound cue for sequential animation
+          this.gameStateManager.emit('ANIMATION_STARTED', { animationType: effect.animationName });
 
           await new Promise(resolve => {
             handler({

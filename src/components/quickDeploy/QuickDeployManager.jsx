@@ -7,6 +7,7 @@
 import React, { useState, useMemo } from 'react';
 import { Zap, Plus, Edit2, Trash2 } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
+import SoundManager from '../../managers/SoundManager.js';
 import QuickDeployService, { MAX_QUICK_DEPLOYMENTS } from '../../logic/quickDeploy/QuickDeployService';
 import { calculateTotalCost, validateAgainstDeck } from '../../logic/quickDeploy/QuickDeployValidator';
 import { shipComponentCollection } from '../../data/shipSectionData';
@@ -291,7 +292,7 @@ const QuickDeployManager = ({ onClose }) => {
                   minHeight: '160px',
                   borderStyle: 'dashed'
                 }}
-                onClick={handleCreate}
+                onClick={() => { SoundManager.getInstance().play('ui_click'); handleCreate(); }}
               >
                 <Plus size={32} style={{ color: 'var(--modal-theme)', marginBottom: '8px' }} />
                 <div style={{

@@ -43,6 +43,8 @@ import { mapTiers } from '../../data/mapData.js';
 import { getValidDeploymentsForDeck } from '../../logic/quickDeploy/QuickDeployValidator.js';
 import { getAllShips, getDefaultShip } from '../../data/shipData.js';
 import { calculateSectionBaseStats } from '../../logic/statsCalculator.js';
+import MusicManager from '../../managers/MusicManager.js';
+import SoundManager from '../../managers/SoundManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import { ECONOMY } from '../../data/economyData.js';
@@ -273,6 +275,48 @@ function TacticalMapScreen() {
 
   // Pathfinding mode state: 'lowEncounter' (lowest encounter chance) or 'lowThreat' (lowest detection)
   const [pathfindingMode, setPathfindingMode] = useState('lowEncounter');
+
+  // Music override for extraction success screen
+  useEffect(() => {
+    if (showExtractionScreen) {
+      MusicManager.getInstance().setOverride('victory');
+    }
+    return () => {
+      if (showExtractionScreen) MusicManager.getInstance().clearOverride();
+    };
+  }, [showExtractionScreen]);
+
+  // Music override for escape loading screen
+  useEffect(() => {
+    if (showEscapeLoadingScreen) {
+      MusicManager.getInstance().setOverride('victory');
+    }
+    return () => {
+      if (showEscapeLoadingScreen) MusicManager.getInstance().clearOverride();
+    };
+  }, [showEscapeLoadingScreen]);
+
+  // Threat-based music switching
+  useEffect(() => {
+    const detection = tacticalMapRunState?.detection;
+    if (detection == null) return;
+
+    const musicManager = MusicManager.getInstance();
+    const threshold = detection < 50 ? 'low' : detection < 80 ? 'medium' : 'high';
+
+    if (threshold === 'low') {
+      musicManager.clearOverride();
+    } else if (threshold === 'medium') {
+      musicManager.setOverride('tactical_medium');
+    } else {
+      musicManager.setOverride('tactical_high');
+    }
+  }, [tacticalMapRunState?.detection]);
+
+  // Clear override when leaving tactical map
+  useEffect(() => {
+    return () => MusicManager.getInstance().clearOverride();
+  }, []);
 
   // Subscribe to game state updates (both GameStateManager and TacticalMapStateManager)
   useEffect(() => {
@@ -732,6 +776,7 @@ function TacticalMapScreen() {
   const moveToSingleHex = useCallback((hex, tierConfig, mapRadius) => {
     const runState = tacticalMapStateManager.getState();
     if (!runState) return 0;
+    SoundManager.getInstance().play('ship_move');
 
     // Calculate zone-based detection cost for this hex
     const hexCost = DetectionManager.getHexDetectionCost(hex, tierConfig, mapRadius);
@@ -2942,6 +2987,7 @@ function TacticalMapScreen() {
    */
   const handleHexClick = (hex) => {
     if (isMoving) return; // Can't inspect while moving
+    SoundManager.getInstance().play('hex_click');
     setInspectedHex(hex);
   };
 
@@ -3125,7 +3171,7 @@ function TacticalMapScreen() {
           <MissionPanel
             activeCount={MissionService.getActiveCount()}
             claimableCount={MissionService.getClaimableCount()}
-            onClick={() => setShowMissionTracker(true)}
+            onClick={() => { SoundManager.getInstance().play('ui_click'); setShowMissionTracker(true); }}
           />
         </div>
       </header>

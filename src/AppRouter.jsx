@@ -29,7 +29,10 @@ import App from './App.jsx';
 import CyanGlowBackground from './components/ui/CyanGlowBackground.jsx';
 import SplashLoadingScreen from './components/ui/SplashLoadingScreen.jsx';
 import assetPreloader from './services/AssetPreloader.js';
+import SoundManager from './managers/SoundManager.js';
 import DEV_CONFIG from './config/devConfig.js';
+import { useSoundSetup } from './hooks/useSoundSetup.js';
+import { useMusicSetup } from './hooks/useMusicSetup.js';
 import { debugLog } from './utils/debugLogger.js';
 
 /**
@@ -55,24 +58,46 @@ function AppRouter() {
     gameFlowManagerRef.current = new GameFlowManager(phaseAnimationQueueRef.current);
   }
 
+  // Initialize sound system (autoplay unlock + event bridge)
+  useSoundSetup(gameStateManager, phaseAnimationQueueRef.current);
+
+  // Initialize background music system (screen-based crossfading)
+  useMusicSetup(gameState.appState);
+
   // Initialization guard to prevent multiple GameFlowManager initializations
   const gameFlowInitialized = useRef(false);
 
-  // Asset preloading effect
+  // Asset + sound preloading effect
   useEffect(() => {
     let dismissed = false;  // Guard against React StrictMode double-execution
-    let dismissTimer = null;
 
-    const preloadAssets = async () => {
+    const preloadAll = async () => {
       const MIN_DISPLAY_TIME = 2000; // 2 seconds minimum
-      const startTime = Date.now();
+      const soundManager = SoundManager.getInstance();
 
-      debugLog('ASSET_PRELOAD', '🚀 Preload effect started', {
-        isComplete: assetPreloader.isComplete(),
-        startTime
-      });
+      debugLog('ASSET_PRELOAD', '🚀 Preload effect started (images + sounds)');
 
-      // Create minimum delay promise (ALWAYS runs)
+      // Track progress from both loaders as plain objects (not state — avoids closure issues)
+      const imageProgress = { loaded: 0, total: 0, failed: 0 };
+      const soundProgress = { loaded: 0, total: 0, failed: 0 };
+
+      const updateCombinedProgress = () => {
+        const totalLoaded = imageProgress.loaded + soundProgress.loaded;
+        const totalAssets = imageProgress.total + soundProgress.total;
+        const percentage = totalAssets > 0
+          ? Math.round((totalLoaded / totalAssets) * 100)
+          : 0;
+
+        setLoadProgress({
+          total: totalAssets,
+          loaded: totalLoaded,
+          failed: imageProgress.failed + soundProgress.failed,
+          percentage,
+          currentCategory: '',
+        });
+      };
+
+      // Minimum display time promise
       const minDelayPromise = new Promise(resolve =>
         setTimeout(() => {
           debugLog('ASSET_PRELOAD', '⏱️ Minimum delay timer completed (2s)');
@@ -80,50 +105,55 @@ function AppRouter() {
         }, MIN_DISPLAY_TIME)
       );
 
-      // Only load if not already complete
-      if (!assetPreloader.isComplete()) {
-        debugLog('ASSET_PRELOAD', '📦 Starting asset loading...');
+      // Image loading promise
+      const imagePromise = assetPreloader.isComplete()
+        ? Promise.resolve()
+        : assetPreloader.loadAll((progress) => {
+            imageProgress.loaded = progress.loaded;
+            imageProgress.total = progress.total;
+            imageProgress.failed = progress.failed;
+            updateCombinedProgress();
+          }).catch(error => {
+            console.error('Asset preload error:', error);
+          });
 
-        const loadPromise = assetPreloader.loadAll((progress) => {
-          setLoadProgress(progress);
-        }).catch(error => {
-          console.error('Asset preload error:', error);
-        });
+      // Sound loading promise
+      const soundPromise = soundManager.isPreloaded
+        ? Promise.resolve()
+        : soundManager.preloadOnly((progress) => {
+            soundProgress.loaded = progress.loaded;
+            soundProgress.total = progress.total;
+            soundProgress.failed = progress.failed;
+            updateCombinedProgress();
+          });
 
-        debugLog('ASSET_PRELOAD', '⏳ Waiting for Promise.all [loading + minDelay]...');
-        await Promise.all([loadPromise, minDelayPromise]);
-        debugLog('ASSET_PRELOAD', '✅ Promise.all resolved');
-      } else {
-        debugLog('ASSET_PRELOAD', '⚡ Assets already loaded, waiting minimum delay only...');
-        await minDelayPromise;
-        debugLog('ASSET_PRELOAD', '✅ Minimum delay completed');
-      }
+      debugLog('ASSET_PRELOAD', '⏳ Waiting for Promise.all [images + sounds + minDelay]...');
+      await Promise.all([imagePromise, soundPromise, minDelayPromise]);
+      debugLog('ASSET_PRELOAD', '✅ All loading complete');
 
       // Guard against setting state after cleanup (StrictMode re-run)
       if (dismissed) {
-        debugLog('ASSET_PRELOAD', '⚠️ Effect was cleaned up, aborting dismiss');
+        debugLog('ASSET_PRELOAD', '⚠️ Effect was cleaned up, aborting');
         return;
       }
 
-      const elapsed = Date.now() - startTime;
-      debugLog('ASSET_PRELOAD', '🏁 Preload complete, scheduling dismiss', { elapsed });
-
-      // Brief additional delay to show 100% state
-      dismissTimer = setTimeout(() => {
-        if (!dismissed) {
-          debugLog('ASSET_PRELOAD', '👋 Dismissing splash screen');
-          setIsLoading(false);
-        }
-      }, 200);
+      // Force progress to 100%
+      const finalTotal = imageProgress.total + soundProgress.total;
+      setLoadProgress({
+        total: finalTotal,
+        loaded: finalTotal,
+        failed: imageProgress.failed + soundProgress.failed,
+        percentage: 100,
+        currentCategory: '',
+      });
     };
 
-    preloadAssets();
+    preloadAll();
 
     // Cleanup: prevent double-dismiss on StrictMode re-run
     return () => {
       debugLog('ASSET_PRELOAD', '🧹 Cleanup: marking dismissed');
       dismissed = true;
-      if (dismissTimer) clearTimeout(dismissTimer);
     };
   }, []);
 
@@ -177,10 +207,16 @@ function AppRouter() {
   }, [gameState.appState]);
 
   if (isLoading) {
+    const handleContinue = async () => {
+      const soundManager = SoundManager.getInstance();
+      await soundManager.unlock();
+      setIsLoading(false);
+    };
+
     return (
       <SplashLoadingScreen
         progress={loadProgress}
-        onComplete={() => setIsLoading(false)}
+        onContinue={handleContinue}
       />
     );
   }

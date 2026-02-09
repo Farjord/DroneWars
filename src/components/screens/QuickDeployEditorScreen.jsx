@@ -7,6 +7,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
+import SoundManager from '../../managers/SoundManager.js';
 import fullDroneCollection from '../../data/droneData';
 import { starterPoolDroneNames } from '../../data/saveGameSchema';
 import { calculateTotalCost, getDroneByName, validateAgainstDeck } from '../../logic/quickDeploy/QuickDeployValidator';
@@ -762,7 +763,7 @@ const QuickDeployEditorScreen = () => {
                 return (
                   <div
                     key={slotIndex}
-                    onClick={() => handleOpenPicker(slotIndex)}
+                    onClick={() => { SoundManager.getInstance().play('ui_click'); handleOpenPicker(slotIndex); }}
                     style={{
                       width: '225px',
                       height: '275px',

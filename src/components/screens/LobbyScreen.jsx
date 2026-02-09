@@ -16,6 +16,7 @@ import MultiplayerLobby from './MultiplayerLobby.jsx';
 import p2pManager from '../../network/P2PManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import ViewDeckModal from '../modals/ViewDeckModal.jsx';
+import SoundManager from '../../managers/SoundManager.js';
 
 /**
  * LobbyScreen - AI selection and multiplayer setup
@@ -287,7 +288,8 @@ function LobbyScreen() {
                 <div
                   key={ai.name}
                   className={`ai-opponent-card ${selectedAI?.name === ai.name ? 'selected' : ''}`}
-                  onClick={() => handleSelectAI(ai)}
+                  onClick={() => { SoundManager.getInstance().play('ui_click'); handleSelectAI(ai); }}
+                  onMouseEnter={() => SoundManager.getInstance().play('hover_over')}
                 >
                   {/* Background Image */}
                   <div

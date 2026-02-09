@@ -11,6 +11,7 @@ import ActionCard from '../ui/ActionCard.jsx';
 import HiddenCard from '../ui/HiddenCard.jsx';
 import ResourceCard from '../ui/ResourceCard.jsx';
 import { Gift, X, Star, Shield, Cpu } from 'lucide-react';
+import SoundManager from '../../managers/SoundManager.js';
 import './LootRevealModal.css'; // Keep for card flip animations
 
 function LootRevealModal({ loot, onCollect, show }) {
@@ -33,6 +34,7 @@ function LootRevealModal({ loot, onCollect, show }) {
 
   const handleCardClick = (index) => {
     if (revealedCards.has(index) || isAnimating) return;
+    SoundManager.getInstance().play('card_flip');
 
     setIsAnimating(true);
     setRevealedCards(prev => new Set([...prev, index]));
@@ -42,6 +44,7 @@ function LootRevealModal({ loot, onCollect, show }) {
   };
 
   const handleRevealAll = () => {
+    SoundManager.getInstance().play('card_flip');
     // Include all cards + salvageItems + tokens
     const allIndices = new Set([
       ...cards.map((_, i) => i),

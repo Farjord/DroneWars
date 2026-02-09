@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react';
 import { AlertTriangle, Check } from 'lucide-react';
+import SoundManager from '../../managers/SoundManager.js';
 
 // Import card components
 import ActionCard from '../ui/ActionCard.jsx';
@@ -39,14 +40,14 @@ const ExtractionLootSelectionModal = ({ isOpen, collectedLoot = [], limit = 3, o
 
   // Toggle item selection
   const handleItemClick = (index) => {
-    setSelectedItems(prev => {
-      if (prev.includes(index)) {
-        return prev.filter(i => i !== index);
-      } else if (prev.length < limit) {
-        return [...prev, index];
-      }
-      return prev;
-    });
+    if (selectedItems.includes(index)) {
+      SoundManager.getInstance().play('card_deselected');
+      setSelectedItems(selectedItems.filter(i => i !== index));
+    } else {
+      if (selectedItems.length >= limit) return;
+      SoundManager.getInstance().play('card_selected');
+      setSelectedItems([...selectedItems, index]);
+    }
   };
 
   // Confirm selection

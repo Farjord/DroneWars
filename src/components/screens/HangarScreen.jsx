@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useGameState } from '../../hooks/useGameState';
+import SoundManager from '../../managers/SoundManager.js';
 import SaveLoadModal from '../modals/SaveLoadModal';
 import InventoryModal from '../modals/InventoryModal';
 import MapOverviewModal from '../modals/MapOverviewModal';
@@ -38,6 +39,7 @@ import { generateMapData } from '../../utils/mapGenerator';
 import { mapTiers } from '../../data/mapData';
 import { RARITY_COLORS } from '../../data/cardData';
 import { getMapType, getMapBackground } from '../../logic/extraction/mapExtraction';
+import MusicManager from '../../managers/MusicManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js';
 import { validateShipSlot } from '../../utils/slotDamageUtils.js';
@@ -244,6 +246,16 @@ const HangarScreen = () => {
     };
     return RARITY_COLORS[tierToRarity[tier]] || '#808080';
   };
+
+  // Music override for deploying transition screen
+  useEffect(() => {
+    if (showDeployingScreen) {
+      MusicManager.getInstance().setOverride('deploying');
+    }
+    return () => {
+      if (showDeployingScreen) MusicManager.getInstance().clearOverride();
+    };
+  }, [showDeployingScreen]);
 
   /**
    * Generate hex grid on mount (uses game seed + total deployments for varied placement)
@@ -583,6 +595,7 @@ const HangarScreen = () => {
 
   // Ship slot click - opens deck editor
   const handleSlotClick = (slot) => {
+    SoundManager.getInstance().play('ui_click');
     if (slot.status === 'mia') {
       // Open MIA recovery modal
       setSelectedMiaSlot(slot);
@@ -866,6 +879,7 @@ const HangarScreen = () => {
 
   // Map icon click handler
   const handleMapIconClick = (mapIndex, coordinate) => {
+    SoundManager.getInstance().play('hex_click');
     debugLog('EXTRACTION', '🗺️ Map icon clicked', { mapIndex, coordinate });
 
     const map = generatedMaps[mapIndex];
@@ -1168,7 +1182,7 @@ const HangarScreen = () => {
                 requiredForNext={repData.requiredForNext}
                 unclaimedCount={unclaimed.length}
                 isMaxLevel={repData.isMaxLevel}
-                onClick={() => setShowReputationProgress(true)}
+                onClick={() => { SoundManager.getInstance().play('ui_click'); setShowReputationProgress(true); }}
               />
             );
           })()}
@@ -1177,7 +1191,7 @@ const HangarScreen = () => {
           <MissionPanel
             activeCount={MissionService.getActiveCount()}
             claimableCount={MissionService.getClaimableCount()}
-            onClick={() => setShowMissionTracker(true)}
+            onClick={() => { SoundManager.getInstance().play('ui_click'); setShowMissionTracker(true); }}
           />
         </div>
       </header>

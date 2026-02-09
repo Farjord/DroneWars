@@ -32,7 +32,7 @@ const CardWarningOverlay = ({ reasons }) => {
       `}
     >
       {/* Semi-transparent background */}
-      <div className="absolute inset-0 bg-black/40" />
+      <div className="absolute inset-0 bg-black/70" />
 
       {/* Content container */}
       <div
@@ -46,9 +46,10 @@ const CardWarningOverlay = ({ reasons }) => {
         <h2
           className="
             text-2xl font-orbitron font-bold uppercase tracking-wider
-            text-amber-400
-            drop-shadow-[0_0_12px_rgba(251,191,36,0.6)]
+            text-amber-300
+            [text-shadow:_-1px_-1px_0_#000,_1px_-1px_0_#000,_-1px_1px_0_#000,_1px_1px_0_#000,_0_0_12px_rgba(251,191,36,0.6)]
           "
+          style={{ WebkitTextStroke: '1px black' }}
         >
           Cannot Play Card
         </h2>
@@ -61,7 +62,7 @@ const CardWarningOverlay = ({ reasons }) => {
               className="
                 flex items-center gap-2
                 px-4 py-1.5 rounded
-                bg-amber-900/40 border border-amber-500/30
+                bg-amber-950 border border-amber-500
               "
             >
               <span className="text-amber-300 text-sm font-bold">!</span>

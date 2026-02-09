@@ -75,6 +75,7 @@ const DEBUG_CONFIG = {
     REWARD_MANAGER: false,        // Reward generation and seed management debugging
     TRANSITION_MANAGER: true,     // State transitions between TacticalMap and Combat
     PATH_HIGHLIGHTING: true,      // Path/waypoint display state in HexGridRenderer
+    SOUND: true,                     // Sound system: unlock, preload, playback, bridge events
 
     // Effect System Refactoring - Modular Processor Logging
     EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)

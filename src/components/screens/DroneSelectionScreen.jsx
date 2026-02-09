@@ -13,6 +13,7 @@ import gameStateManager from '../../managers/GameStateManager.js';
 import p2pManager from '../../network/P2PManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import ConfirmationModal from '../modals/ConfirmationModal.jsx';
+import SoundManager from '../../managers/SoundManager.js';
 
 /**
  * SUBMITTING OVERLAY COMPONENT
@@ -126,6 +127,7 @@ function DroneSelectionScreen() {
   const handleChooseDroneForSelection = (chosenDrone) => {
     // Only handle during drone selection phase
     if (turnPhase !== 'droneSelection') return;
+    SoundManager.getInstance().play('ui_click');
 
     debugLog('DRONE_SELECTION', '🔧 handleChooseDroneForSelection called with:', chosenDrone.name);
 

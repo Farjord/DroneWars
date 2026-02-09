@@ -8,6 +8,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Target, CheckCircle, AlertTriangle, Scan, Shield, Zap, LogOut } from 'lucide-react';
 import HiddenCard from '../ui/HiddenCard.jsx';
 import { packTypes } from '../../data/cardPackData.js';
+import SoundManager from '../../managers/SoundManager.js';
 import './SalvageModal.css';
 
 // Diamond/Cube icon for POIs (custom SVG)
@@ -95,6 +96,7 @@ function SalvageModal({
    */
   const handleSalvage = useCallback(() => {
     if (isScanning || encounterTriggered || currentSlotIndex >= totalSlots) return;
+    SoundManager.getInstance().play('salvage_scan');
 
     setIsScanning(true);
 

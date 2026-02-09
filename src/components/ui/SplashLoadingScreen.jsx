@@ -3,21 +3,20 @@
 // ========================================
 // Animated splash screen displayed during asset preloading
 // Shows progress with themed visuals matching the game aesthetic
+// Displays a Continue button when loading completes (user gesture unlocks AudioContext)
 
-import React, { useState, useEffect } from 'react';
-import { CATEGORY_LABELS } from '../../services/assetManifest.js';
+import React, { useState, useEffect, useCallback } from 'react';
 import './SplashLoadingScreen.css';
 
 /**
  * Get dynamic status message based on loading progress
  * @param {number} percentage - Current load percentage
- * @param {string} currentCategory - Category being loaded
  * @returns {string} Status message
  */
-const getStatusMessage = (percentage, currentCategory) => {
+const getStatusMessage = (percentage) => {
   if (percentage === 0) return 'Initializing systems...';
   if (percentage < 15) return 'Establishing connection...';
-  if (percentage < 30) return `Loading ${CATEGORY_LABELS[currentCategory] || 'assets'}...`;
+  if (percentage < 30) return 'Loading assets...';
   if (percentage < 50) return 'Calibrating drone networks...';
   if (percentage < 70) return 'Syncing tactical data...';
   if (percentage < 85) return 'Preparing combat systems...';
@@ -30,29 +29,33 @@ const getStatusMessage = (percentage, currentCategory) => {
  *
  * @param {Object} props
  * @param {Object} props.progress - Loading progress data
- * @param {Function} props.onComplete - Callback when loading completes
+ * @param {Function} props.onContinue - Callback when user clicks Continue (unlocks audio)
  */
-function SplashLoadingScreen({ progress, onComplete }) {
+function SplashLoadingScreen({ progress, onContinue }) {
   const [fadeOut, setFadeOut] = useState(false);
-
-  // Handle completion with fade-out animation
-  useEffect(() => {
-    if (progress?.percentage >= 100) {
-      // Brief delay to show 100%, then fade out
-      const timer = setTimeout(() => {
-        setFadeOut(true);
-        // Wait for fade animation before calling onComplete
-        setTimeout(onComplete, 400);
-      }, 400);
-      return () => clearTimeout(timer);
-    }
-  }, [progress?.percentage, onComplete]);
+  const [showContinue, setShowContinue] = useState(false);
 
   const percentage = progress?.percentage || 0;
-  const currentCategory = progress?.currentCategory || '';
   const loaded = progress?.loaded || 0;
   const total = progress?.total || 0;
   const failed = progress?.failed || 0;
+
+  // Show Continue button after a brief delay when loading hits 100%
+  useEffect(() => {
+    if (percentage >= 100) {
+      const timer = setTimeout(() => setShowContinue(true), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [percentage]);
+
+  const handleContinueClick = useCallback(() => {
+    if (fadeOut) return; // Prevent double-click
+    setFadeOut(true);
+    // Wait for fade animation before calling onContinue
+    setTimeout(() => onContinue(), 400);
+  }, [fadeOut, onContinue]);
+
+  const isReady = percentage >= 100;
 
   return (
     <div className={`splash-loading-overlay ${fadeOut ? 'fade-out' : ''}`}>
@@ -64,7 +67,9 @@ function SplashLoadingScreen({ progress, onComplete }) {
         {/* Logo/Title */}
         <div className="splash-logo-container">
           <h1 className="splash-title">EREMOS</h1>
-          <div className="splash-subtitle">LOADING GAME ASSETS</div>
+          <div className="splash-subtitle">
+            {isReady ? 'SYSTEMS ONLINE' : 'LOADING GAME ASSETS'}
+          </div>
         </div>
 
         {/* Main Progress Bar */}
@@ -83,7 +88,7 @@ function SplashLoadingScreen({ progress, onComplete }) {
 
         {/* Status Message */}
         <div className="splash-status">
-          {getStatusMessage(percentage, currentCategory)}
+          {getStatusMessage(percentage)}
         </div>
 
         {/* Asset Count */}
@@ -96,6 +101,17 @@ function SplashLoadingScreen({ progress, onComplete }) {
           <div className="splash-warning">
             {failed} asset{failed > 1 ? 's' : ''} failed to load
           </div>
+        )}
+
+        {/* Continue button — user gesture unlocks AudioContext */}
+        {showContinue && (
+          <button
+            className="splash-continue-button"
+            onClick={handleContinueClick}
+            data-no-click-sound
+          >
+            CONTINUE
+          </button>
         )}
       </div>
     </div>

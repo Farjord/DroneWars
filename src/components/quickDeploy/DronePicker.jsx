@@ -8,6 +8,7 @@ import React, { useMemo } from 'react';
 import { X } from 'lucide-react';
 import { starterPoolDroneNames } from '../../data/saveGameSchema';
 import { RARITY_COLORS } from '../../data/cardData';
+import SoundManager from '../../managers/SoundManager.js';
 
 /**
  * DronePicker Component
@@ -50,7 +51,7 @@ const DronePicker = ({ availableDrones, excludedDrones, onSelect, onClose }) => 
     return (
       <div
         key={drone.name}
-        onClick={() => !isExcluded && onSelect(drone.name)}
+        onClick={() => { if (!isExcluded) { SoundManager.getInstance().play('ui_click'); onSelect(drone.name); } }}
         style={{
           background: isExcluded
             ? 'rgba(50, 50, 50, 0.4)'

@@ -8,6 +8,7 @@ import { useState, useRef } from 'react';
 import { useGameState } from '../../hooks/useGameState.js';
 import SaveGameService from '../../services/SaveGameService.js';
 import { debugLog } from '../../utils/debugLogger.js';
+import SoundManager from '../../managers/SoundManager.js';
 
 // Eremos entry button images
 const eremosImages = {
@@ -38,6 +39,7 @@ const ImageButton = ({ image, label, subtitle, onClick, style }) => (
       ...style
     }}
     onMouseEnter={(e) => {
+      SoundManager.getInstance().play('hover_over');
       e.currentTarget.style.backgroundSize = '115%';
       e.currentTarget.style.boxShadow = '0 6px 30px rgba(0, 0, 0, 0.7), 0 0 2px rgba(255, 255, 255, 0.3)';
     }}
