@@ -97,7 +97,7 @@ export const SOUND_MANIFEST = {
 
   // Music tracks (looping, managed by MusicManager)
   music_menu:      { path: `${MUSIC_BASE_PATH}menu.ogg`,      channel: 'music', volume: 0.4 },
-  music_hangar:    { path: `${MUSIC_BASE_PATH}hangar.mp3`,    channel: 'music', volume: 0.35 },
+  music_hangar:    { path: `${MUSIC_BASE_PATH}hangar.ogg`,    channel: 'music', volume: 0.35 },
   music_tactical:  { path: `${MUSIC_BASE_PATH}tactical.ogg`,  channel: 'music', volume: 0.35 },
   music_combat:    { path: `${MUSIC_BASE_PATH}combat.ogg`,    channel: 'music', volume: 0.3 },
   music_deploying: { path: `${MUSIC_BASE_PATH}deploying.ogg`, channel: 'music', volume: 0.35 },
