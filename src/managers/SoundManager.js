@@ -91,6 +91,7 @@ class SoundManager {
       if (entries.length === 0) return;
 
       debugLog('SOUND', '📦 Preloading sounds (suspended context)...', { count: entries.length });
+      debugLog('SOUND', 'AudioContext state at preload start', { state: this.audioContext.state });
 
       const CONCURRENCY = 4;
       let index = 0;
@@ -106,13 +107,25 @@ class SoundManager {
           const [soundId, config] = entries[currentIndex];
 
           try {
+            debugLog('SOUND', `[${currentIndex + 1}/${total}] Fetching: ${soundId}`, { path: config.path });
+            const fetchStart = performance.now();
+
             const response = await fetch(config.path);
             if (!response.ok) {
               throw new Error(`HTTP ${response.status}`);
             }
 
             const arrayBuffer = await response.arrayBuffer();
+            const fetchElapsed = Math.round(performance.now() - fetchStart);
+            debugLog('SOUND', `[${currentIndex + 1}/${total}] Fetched: ${soundId}`, { bytes: arrayBuffer.byteLength, elapsed: `${fetchElapsed}ms` });
+
+            debugLog('SOUND', `[${currentIndex + 1}/${total}] Decoding: ${soundId}...`);
+            const decodeStart = performance.now();
+
             const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+            const decodeElapsed = Math.round(performance.now() - decodeStart);
+            debugLog('SOUND', `[${currentIndex + 1}/${total}] Decoded: ${soundId}`, { duration: audioBuffer.duration.toFixed(2) + 's', elapsed: `${decodeElapsed}ms` });
+
             this.buffers.set(soundId, audioBuffer);
             loaded++;
           } catch (error) {

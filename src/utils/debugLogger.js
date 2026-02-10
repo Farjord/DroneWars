@@ -11,7 +11,7 @@ import { FastForward } from "lucide-react";
  */
 const DEBUG_CONFIG = {
   // Master switch - set to false to disable ALL debug logging
-  enabled: false,
+  enabled: true,
 
   // Filter out all non-debugLog console.log messages
   // When true, only messages from debugLog() will appear in console
@@ -62,7 +62,7 @@ const DEBUG_CONFIG = {
     INTERCEPTOR_GLOW: false,     // Interceptor glow calculation debugging
     AI_DEPLOYMENT: false,        // AI deployment decisions, validation, and execution loop tracing
     CARD_SIZING: false,           // Card wrapper and sizing debugging
-    ASSET_PRELOAD: false,         // Asset preloading and splash screen timing
+    ASSET_PRELOAD: true,          // Asset preloading and splash screen timing
     SP_COMBAT: true,              // Single-player combat init, abandon, and state transitions (ENABLED for waypoint debugging)
     DECK_BUILDER: false,           // Deck builder save, toast, and validation debugging
     SALVAGE_LOOT: false,          // PoI loot distribution: slot count, card count, rarities, positions

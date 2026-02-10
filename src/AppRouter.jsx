@@ -127,8 +127,25 @@ function AppRouter() {
             updateCombinedProgress();
           });
 
+      // Stall watchdog — logs progress every 3s so we can see what's stuck
+      const watchdog = setInterval(() => {
+        const totalLoaded = imageProgress.loaded + soundProgress.loaded;
+        const totalAssets = imageProgress.total + soundProgress.total;
+        const pct = totalAssets > 0 ? Math.round((totalLoaded / totalAssets) * 100) : 0;
+        debugLog('ASSET_PRELOAD', '⏳ Stall watchdog', {
+          imageLoaded: imageProgress.loaded,
+          imageTotal: imageProgress.total,
+          imageFailed: imageProgress.failed,
+          soundLoaded: soundProgress.loaded,
+          soundTotal: soundProgress.total,
+          soundFailed: soundProgress.failed,
+          combinedPct: pct + '%',
+        });
+      }, 3000);
+
       debugLog('ASSET_PRELOAD', '⏳ Waiting for Promise.all [images + sounds + minDelay]...');
       await Promise.all([imagePromise, soundPromise, minDelayPromise]);
+      clearInterval(watchdog);
       debugLog('ASSET_PRELOAD', '✅ All loading complete');
 
       // Guard against setting state after cleanup (StrictMode re-run)
