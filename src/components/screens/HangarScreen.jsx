@@ -1624,7 +1624,7 @@ const HangarScreen = () => {
                       <button
                         key={key}
                         onClick={() => handleActionClick(key)}
-                        onMouseEnter={() => setHoveredButton(key)}
+                        onMouseEnter={() => { SoundManager.getInstance().play('hover_over'); setHoveredButton(key); }}
                         onMouseLeave={() => setHoveredButton(null)}
                         style={{
                           backgroundImage: `url('${image}')`,

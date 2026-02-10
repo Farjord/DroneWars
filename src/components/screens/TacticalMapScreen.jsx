@@ -273,6 +273,10 @@ function TacticalMapScreen() {
   // Movement warning state (for "ENEMY THREAT SCAN ACTIVE" overlay)
   const [isScanningHex, setIsScanningHex] = useState(false);
 
+  // Threat level change animation
+  const [threatAlert, setThreatAlert] = useState(null);  // 'medium' | 'high' | null
+  const prevThresholdRef = useRef(null);
+
   // Pathfinding mode state: 'lowEncounter' (lowest encounter chance) or 'lowThreat' (lowest detection)
   const [pathfindingMode, setPathfindingMode] = useState('lowEncounter');
 
@@ -296,11 +300,9 @@ function TacticalMapScreen() {
     };
   }, [showEscapeLoadingScreen]);
 
-  // Threat-based music switching
-  useEffect(() => {
-    const detection = tacticalMapRunState?.detection;
+  // Helper: apply threat-based music override
+  const applyThreatMusic = useCallback((detection) => {
     if (detection == null) return;
-
     const musicManager = MusicManager.getInstance();
     const threshold = detection < 50 ? 'low' : detection < 80 ? 'medium' : 'high';
 
@@ -311,12 +313,38 @@ function TacticalMapScreen() {
     } else {
       musicManager.setOverride('tactical_high');
     }
-  }, [tacticalMapRunState?.detection]);
-
-  // Clear override when leaving tactical map
-  useEffect(() => {
-    return () => MusicManager.getInstance().clearOverride();
   }, []);
+
+  // Apply threat music when detection changes during gameplay
+  useEffect(() => {
+    applyThreatMusic(tacticalMapRunState?.detection);
+  }, [tacticalMapRunState?.detection, applyThreatMusic]);
+
+  // Also apply on mount (handles return from combat where detection is unchanged)
+  // Reads directly from state manager to avoid stale closure / dependency issues
+  useEffect(() => {
+    applyThreatMusic(tacticalMapStateManager.getState()?.detection);
+    return () => MusicManager.getInstance().clearOverride();
+  }, [applyThreatMusic]);
+
+  // Threat level change animation
+  useEffect(() => {
+    const detection = tacticalMapRunState?.detection;
+    if (detection == null) return;
+
+    const threshold = detection < 50 ? 'low' : detection < 80 ? 'medium' : 'high';
+    const prev = prevThresholdRef.current;
+    prevThresholdRef.current = threshold;
+
+    // Only animate on increases (not on mount or decreases)
+    if (prev == null) return;
+    const levels = { low: 0, medium: 1, high: 2 };
+    if (levels[threshold] > levels[prev]) {
+      setThreatAlert(threshold);
+      const timer = setTimeout(() => setThreatAlert(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [tacticalMapRunState?.detection]);
 
   // Subscribe to game state updates (both GameStateManager and TacticalMapStateManager)
   useEffect(() => {
@@ -3084,6 +3112,15 @@ function TacticalMapScreen() {
 
   return (
     <div className="tactical-map-screen">
+      {/* Threat Level Change Alert Overlay */}
+      {threatAlert && (
+        <div className={`threat-level-alert threat-level-alert--${threatAlert}`}>
+          <div className="threat-level-alert-text">
+            {threatAlert === 'high' ? '\u26A0 THREAT CRITICAL' : '\u26A0 THREAT ELEVATED'}
+          </div>
+        </div>
+      )}
+
       {/* Header Bar - matching Hangar/Repair Bay style */}
       <header style={{
         position: 'fixed',

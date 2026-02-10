@@ -125,3 +125,70 @@
     font-size: 10px;
   }
 }
+
+/* ========================================
+   THREAT LEVEL CHANGE ALERT
+   ======================================== */
+
+.threat-level-alert {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 500;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: threat-alert-fade 3s ease-out forwards;
+}
+
+.threat-level-alert--medium {
+  background: radial-gradient(ellipse at center, rgba(245, 158, 11, 0.15) 0%, transparent 70%);
+  border-top: 2px solid rgba(245, 158, 11, 0.6);
+  border-bottom: 2px solid rgba(245, 158, 11, 0.6);
+}
+
+.threat-level-alert--high {
+  background: radial-gradient(ellipse at center, rgba(239, 68, 68, 0.2) 0%, transparent 70%);
+  border-top: 2px solid rgba(239, 68, 68, 0.7);
+  border-bottom: 2px solid rgba(239, 68, 68, 0.7);
+}
+
+.threat-level-alert-text {
+  font-family: 'Exo', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  animation: threat-text-pulse 0.4s ease-in-out infinite alternate;
+}
+
+.threat-level-alert--medium .threat-level-alert-text {
+  color: #f59e0b;
+  text-shadow:
+    0 0 10px rgba(245, 158, 11, 0.8),
+    0 0 20px rgba(245, 158, 11, 0.5),
+    0 0 40px rgba(245, 158, 11, 0.3);
+}
+
+.threat-level-alert--high .threat-level-alert-text {
+  color: #ef4444;
+  text-shadow:
+    0 0 10px rgba(239, 68, 68, 0.8),
+    0 0 20px rgba(239, 68, 68, 0.5),
+    0 0 40px rgba(239, 68, 68, 0.3);
+}
+
+@keyframes threat-alert-fade {
+  0%   { opacity: 0; }
+  10%  { opacity: 1; }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes threat-text-pulse {
+  from { opacity: 0.7; transform: scale(0.98); }
+  to   { opacity: 1;   transform: scale(1); }
+}
