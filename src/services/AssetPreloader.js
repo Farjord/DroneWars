@@ -97,7 +97,7 @@ class AssetPreloader {
         .catch(err => {
           debugLog('ASSET_PRELOAD', `❌ Image failed: ${url}`, { error: err.message });
           onItemLoaded(); // Still increment progress on failure
-          throw err;
+          // Removed: throw err — was causing Promise.race to reject, aborting all remaining categories
         })
         .finally(() => {
           executing.delete(promise);

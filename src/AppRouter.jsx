@@ -120,7 +120,7 @@ function AppRouter() {
               failedAssets: result.failedAssets
             });
           }).catch(error => {
-            debugLog('ASSET_PRELOAD', '⚠️ Image loading REJECTED (abort bug)', {
+            debugLog('ASSET_PRELOAD', '⚠️ Image loading REJECTED (unexpected)', {
               error: error.message,
               imageLoadedSoFar: imageProgress.loaded,
               imageTotal: imageProgress.total
