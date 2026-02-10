@@ -95,6 +95,7 @@ class AssetPreloader {
           return img;
         })
         .catch(err => {
+          debugLog('ASSET_PRELOAD', `❌ Image failed: ${url}`, { error: err.message });
           onItemLoaded(); // Still increment progress on failure
           throw err;
         })
@@ -168,6 +169,12 @@ class AssetPreloader {
           continue;
         }
 
+        debugLog('ASSET_PRELOAD', `📂 Category starting: ${categoryName}`, {
+          count: paths.length,
+          loadedSoFar: loadedCount,
+          totalAssets
+        });
+
         categoryStatus[categoryName].status = 'loading';
 
         // Notify category started
@@ -200,6 +207,12 @@ class AssetPreloader {
           }
         );
 
+        debugLog('ASSET_PRELOAD', `✅ Category complete: ${categoryName}`, {
+          loaded: categoryStatus[categoryName].loaded,
+          total: paths.length,
+          failedSoFar: this.failedAssets.length
+        });
+
         categoryStatus[categoryName].status = 'complete';
       }
 
@@ -207,6 +220,10 @@ class AssetPreloader {
       this.loadComplete = true;
 
       const elapsed = ((performance.now() - startTime) / 1000).toFixed(2);
+      debugLog('ASSET_PRELOAD',
+        `🏁 loadAll() finished: ${loadedCount}/${totalAssets} loaded, ` +
+        `${this.failedAssets.length} failed, ${elapsed}s`
+      );
       debugLog('STATE_SYNC',
         `Asset preload complete: ${loadedCount}/${totalAssets} loaded, ` +
         `${this.failedAssets.length} failed, ${elapsed}s`

@@ -113,7 +113,18 @@ function AppRouter() {
             imageProgress.total = progress.total;
             imageProgress.failed = progress.failed;
             updateCombinedProgress();
+          }).then(result => {
+            debugLog('ASSET_PRELOAD', '✅ Image loading completed normally', {
+              loaded: result.loaded,
+              failed: result.failed,
+              failedAssets: result.failedAssets
+            });
           }).catch(error => {
+            debugLog('ASSET_PRELOAD', '⚠️ Image loading REJECTED (abort bug)', {
+              error: error.message,
+              imageLoadedSoFar: imageProgress.loaded,
+              imageTotal: imageProgress.total
+            });
             console.error('Asset preload error:', error);
           });
 
