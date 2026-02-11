@@ -170,7 +170,7 @@ export const evaluateMultiMoveCard = (card, target, context) => {
   const availableMoves = Math.min(dronesInLane.length, maxMoves);
 
   if (availableMoves === 0) {
-    return { score: 0, logic: ['⚠️ No drones in lane to move'] };
+    return { score: INVALID_SCORE, logic: ['❌ No drones in lane to move'] };
   }
 
   // Base value per drone that can be moved (flexibility value)

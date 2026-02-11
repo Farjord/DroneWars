@@ -353,7 +353,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [pendingShieldAllocations, setPendingShieldAllocations] = useState({}); // { sectionName: count }
   const [pendingShieldsRemaining, setPendingShieldsRemaining] = useState(null); // Remaining shields to allocate
 
-  // Lane control state for Doctrine cards
+  // Lane control state for lane-control cards
   const [laneControl, setLaneControl] = useState({ lane1: null, lane2: null, lane3: null });
 
 
@@ -641,7 +641,7 @@ const App = ({ phaseAnimationQueue }) => {
     }
   }, [draggedActionCard, gameState.player1, gameState.player2, getLocalPlayerId, gameDataService, getPlacedSectionsForEngine]);
 
-  // Calculate lane control whenever drones on board change (for Doctrine cards)
+  // Calculate lane control whenever drones on board change (for lane-control cards)
   useEffect(() => {
     if (gameState.player1 && gameState.player2) {
       const newControl = LaneControlCalculator.calculateLaneControl(
@@ -5558,7 +5558,7 @@ const App = ({ phaseAnimationQueue }) => {
       return;
     }
 
-    // Check momentum cost for cards that require it (e.g., Doctrine cards)
+    // Check momentum cost for cards that require it (e.g., lane-control cards)
     if (card.momentumCost && (localPlayerState.momentum || 0) < card.momentumCost) {
       debugLog('CARD_PLAY', `🚫 Card click rejected - not enough momentum`, {
         card: card.name,

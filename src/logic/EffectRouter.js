@@ -29,7 +29,7 @@ import DiscardEffectProcessor from './effects/cards/DiscardEffectProcessor.js';
 import DrainEnergyEffectProcessor from './effects/energy/DrainEnergyEffectProcessor.js';
 import ExhaustDroneEffectProcessor from './effects/state/ExhaustDroneEffectProcessor.js';
 import StatusEffectProcessor from './effects/state/StatusEffectProcessor.js';
-import ConditionalSectionDamageProcessor from './effects/doctrine/ConditionalSectionDamageProcessor.js';
+import ConditionalSectionDamageProcessor from './effects/ConditionalSectionDamageProcessor.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 /**

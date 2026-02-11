@@ -2,7 +2,7 @@
  * Card Border Rarity System Utilities
  * Generates CSS class names based on card type and rarity
  *
- * TYPE determines border COLOR (Ordnance=red, Tactic=cyan, Support=green, Upgrade=purple, Doctrine=amber)
+ * TYPE determines border COLOR (Ordnance=red, Tactic=cyan, Support=green, Upgrade=purple)
  * RARITY determines border EFFECTS:
  *   - Common: Static gradient
  *   - Uncommon: Slow rotating gradient (15s)
@@ -37,7 +37,7 @@ export const getCardBorderClasses = (type, rarity = 'Common', isDisabled = false
   const rarityKey = rarity?.toLowerCase() || 'common';
 
   // Validate type
-  const validTypes = ['ordnance', 'tactic', 'support', 'upgrade', 'doctrine'];
+  const validTypes = ['ordnance', 'tactic', 'support', 'upgrade'];
   const normalizedType = validTypes.includes(typeKey) ? typeKey : 'upgrade';
 
   // Validate rarity
@@ -109,13 +109,6 @@ export const getTypeInnerColors = (type) => {
         descBorder: 'border-emerald-800/70',
         footerBorder: 'border-emerald-800/70',
         typeText: 'text-emerald-400'
-      };
-    case 'Doctrine':
-      return {
-        imageBorder: 'border-amber-400/50',
-        descBorder: 'border-amber-800/70',
-        footerBorder: 'border-amber-800/70',
-        typeText: 'text-amber-400'
       };
     case 'Upgrade':
     default:

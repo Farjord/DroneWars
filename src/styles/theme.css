@@ -88,13 +88,6 @@
   --card-upgrade-glow: rgba(147, 51, 234, 0.6);
   --card-upgrade-glow-dim: rgba(147, 51, 234, 0.3);
 
-  /* Doctrine (Amber/Gold) */
-  --card-doctrine-primary: rgba(245, 158, 11, 1.0);
-  --card-doctrine-secondary: rgba(217, 119, 6, 1.0);
-  --card-doctrine-dark: rgba(146, 64, 14, 1.0);
-  --card-doctrine-glow: rgba(245, 158, 11, 0.6);
-  --card-doctrine-glow-dim: rgba(245, 158, 11, 0.3);
-
   /* Disabled (Grey) */
   --card-disabled-primary: rgba(107, 114, 128, 0.8);
   --card-disabled-secondary: rgba(75, 85, 99, 0.8);

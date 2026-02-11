@@ -598,62 +598,7 @@
   animation: cardBorderMetallicSheen 10s linear infinite;
 }
 
-/* === DOCTRINE BORDERS === */
-.card-border-doctrine-common {
-  background: linear-gradient(
-    90deg,
-    var(--card-doctrine-primary) 0%,
-    var(--card-doctrine-secondary) 50%,
-    var(--card-doctrine-primary) 100%
-  );
-}
 
-.card-border-doctrine-uncommon {
-  background: linear-gradient(
-    90deg,
-    var(--card-doctrine-primary) 0%,
-    rgba(255, 200, 100, 0.85) 20%,
-    var(--card-doctrine-secondary) 40%,
-    var(--card-doctrine-primary) 50%,
-    var(--card-doctrine-secondary) 60%,
-    rgba(255, 200, 100, 0.85) 80%,
-    var(--card-doctrine-primary) 100%
-  );
-  background-size: 400% 100%;
-  box-shadow: 0 0 10px var(--card-doctrine-glow-dim);
-  animation: cardBorderRotate 15s linear infinite;
-}
-
-.card-border-doctrine-rare {
-  background: linear-gradient(
-    90deg,
-    var(--card-doctrine-primary) 0%,
-    var(--card-doctrine-secondary) 30%,
-    rgba(255, 220, 140, 0.9) 50%,
-    var(--card-doctrine-secondary) 70%,
-    var(--card-doctrine-primary) 100%
-  );
-  color: var(--card-doctrine-glow);
-  box-shadow: 0 0 10px var(--card-doctrine-glow);
-  animation: cardBorderGlowPulse 4s ease-in-out infinite;
-}
-
-.card-border-doctrine-mythic {
-  background: linear-gradient(
-    90deg,
-    var(--card-doctrine-primary) 0%,
-    var(--card-doctrine-primary) 40%,
-    rgba(255, 255, 255, 0.7) 50%,
-    var(--card-doctrine-primary) 60%,
-    var(--card-doctrine-primary) 100%
-  );
-  background-size: 300% 100%;
-  box-shadow:
-    0 0 16px var(--card-doctrine-glow),
-    0 0 32px var(--card-doctrine-glow),
-    0 0 48px var(--card-doctrine-glow-dim);
-  animation: cardBorderMetallicSheen 10s linear infinite;
-}
 
 /* === DISABLED STATE === */
 .card-border-disabled {

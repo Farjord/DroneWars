@@ -30,8 +30,7 @@ const shipCollection = [
       ordnanceLimit: 20,
       tacticLimit: 20,
       supportLimit: 20,
-      upgradeLimit: 10,
-      doctrineLimit: 6
+      upgradeLimit: 10
     },
 
     // FUTURE PROPERTIES (not yet implemented)
@@ -62,8 +61,7 @@ const shipCollection = [
       ordnanceLimit: 20,
       tacticLimit: 10,
       supportLimit: 15,
-      upgradeLimit: 5,
-      doctrineLimit: 4
+      upgradeLimit: 5
     },
 
     // FUTURE PROPERTIES
@@ -94,8 +92,7 @@ const shipCollection = [
       ordnanceLimit: 15,
       tacticLimit: 15,
       supportLimit: 15,
-      upgradeLimit: 5,
-      doctrineLimit: 4
+      upgradeLimit: 5
     },
 
     // FUTURE PROPERTIES

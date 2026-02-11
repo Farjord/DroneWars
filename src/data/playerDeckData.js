@@ -42,8 +42,8 @@ export const starterDeck = {
       quantity: 2
     },
     {
-      id: 'LANE_CONTROL_READY',
-      quantity: 4
+      id: 'Rally',
+      quantity: 2
     },
     {
       id: 'CARD_TACTICS_4',
@@ -78,11 +78,15 @@ export const starterDeck = {
       quantity: 4
     },
     {
-      id: 'DOCTRINE_004',
+      id: 'Exhaust',
       quantity: 2
     },
     {
       id: 'DOCTRINE_002',
+      quantity: 2
+    },
+        {
+      id: 'CARD020',
       quantity: 2
     }
   ],

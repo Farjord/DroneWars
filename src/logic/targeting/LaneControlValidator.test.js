@@ -1,38 +1,38 @@
 // ========================================
-// DOCTRINE VALIDATOR TESTS
+// LANE CONTROL VALIDATOR TESTS
 // ========================================
-// Tests for Doctrine card playability validation
-// Following TDD - these tests are written BEFORE implementation
+// Tests for lane-control card playability validation
 
-import { isDoctrineCardPlayable } from './DoctrineValidator.js';
+import { describe, it, expect } from 'vitest';
+import { isLaneControlCardPlayable } from './LaneControlValidator.js';
 
-describe('isDoctrineCardPlayable', () => {
-  describe('Non-Doctrine cards', () => {
-    it('should return true for Ordnance cards', () => {
+describe('isLaneControlCardPlayable', () => {
+  describe('Cards without effect conditions', () => {
+    it('should return true for Ordnance cards without conditions', () => {
       const card = { type: 'Ordnance', name: 'Laser Blast' };
       const playerStates = {};
 
-      expect(isDoctrineCardPlayable(card, 'player1', playerStates)).toBe(true);
+      expect(isLaneControlCardPlayable(card, 'player1', playerStates)).toBe(true);
     });
 
     it('should return true for Support cards', () => {
       const card = { type: 'Support', name: 'System Reboot' };
       const playerStates = {};
 
-      expect(isDoctrineCardPlayable(card, 'player1', playerStates)).toBe(true);
+      expect(isLaneControlCardPlayable(card, 'player1', playerStates)).toBe(true);
     });
 
-    it('should return true for any non-Doctrine card type', () => {
+    it('should return true for any card without effect.condition', () => {
       const card = { type: 'Tactic', name: 'EMP Burst' };
       const playerStates = {};
 
-      expect(isDoctrineCardPlayable(card, 'player1', playerStates)).toBe(true);
+      expect(isLaneControlCardPlayable(card, 'player1', playerStates)).toBe(true);
     });
   });
 
   describe('Crossfire Pattern (CONTROL_LANES: lane1 + lane3)', () => {
     const crossfireCard = {
-      type: 'Doctrine',
+      type: 'Ordnance',
       name: 'Crossfire Pattern',
       effect: {
         condition: {
@@ -61,7 +61,7 @@ describe('isDoctrineCardPlayable', () => {
         }
       };
 
-      expect(isDoctrineCardPlayable(crossfireCard, 'player1', playerStates)).toBe(true);
+      expect(isLaneControlCardPlayable(crossfireCard, 'player1', playerStates)).toBe(true);
     });
 
     it('should return false when player controls only one flank', () => {
@@ -82,7 +82,7 @@ describe('isDoctrineCardPlayable', () => {
         }
       };
 
-      expect(isDoctrineCardPlayable(crossfireCard, 'player1', playerStates)).toBe(false);
+      expect(isLaneControlCardPlayable(crossfireCard, 'player1', playerStates)).toBe(false);
     });
 
     it('should return false when player controls neither flank', () => {
@@ -103,7 +103,7 @@ describe('isDoctrineCardPlayable', () => {
         }
       };
 
-      expect(isDoctrineCardPlayable(crossfireCard, 'player1', playerStates)).toBe(false);
+      expect(isLaneControlCardPlayable(crossfireCard, 'player1', playerStates)).toBe(false);
     });
 
     it('should return false when lanes are tied (no control)', () => {
@@ -124,13 +124,13 @@ describe('isDoctrineCardPlayable', () => {
         }
       };
 
-      expect(isDoctrineCardPlayable(crossfireCard, 'player1', playerStates)).toBe(false);
+      expect(isLaneControlCardPlayable(crossfireCard, 'player1', playerStates)).toBe(false);
     });
   });
 
   describe('Breach the Line (CONTROL_LANES: lane2)', () => {
     const breachCard = {
-      type: 'Doctrine',
+      type: 'Ordnance',
       name: 'Breach the Line',
       effect: {
         condition: {
@@ -159,7 +159,7 @@ describe('isDoctrineCardPlayable', () => {
         }
       };
 
-      expect(isDoctrineCardPlayable(breachCard, 'player1', playerStates)).toBe(true);
+      expect(isLaneControlCardPlayable(breachCard, 'player1', playerStates)).toBe(true);
     });
 
     it('should return false when player does not control middle lane', () => {
@@ -180,13 +180,13 @@ describe('isDoctrineCardPlayable', () => {
         }
       };
 
-      expect(isDoctrineCardPlayable(breachCard, 'player1', playerStates)).toBe(false);
+      expect(isLaneControlCardPlayable(breachCard, 'player1', playerStates)).toBe(false);
     });
   });
 
   describe('Overrun (CONTROL_LANE_EMPTY)', () => {
     const overrunCard = {
-      type: 'Doctrine',
+      type: 'Ordnance',
       name: 'Overrun',
       effect: {
         condition: {
@@ -213,7 +213,7 @@ describe('isDoctrineCardPlayable', () => {
         }
       };
 
-      expect(isDoctrineCardPlayable(overrunCard, 'player1', playerStates)).toBe(true);
+      expect(isLaneControlCardPlayable(overrunCard, 'player1', playerStates)).toBe(true);
     });
 
     it('should return false when no lane is both controlled AND empty', () => {
@@ -234,7 +234,7 @@ describe('isDoctrineCardPlayable', () => {
         }
       };
 
-      expect(isDoctrineCardPlayable(overrunCard, 'player1', playerStates)).toBe(false);
+      expect(isLaneControlCardPlayable(overrunCard, 'player1', playerStates)).toBe(false);
     });
 
     it('should return true when multiple lanes meet condition (any is sufficient)', () => {
@@ -256,13 +256,13 @@ describe('isDoctrineCardPlayable', () => {
       };
 
       // All three lanes meet the condition
-      expect(isDoctrineCardPlayable(overrunCard, 'player1', playerStates)).toBe(true);
+      expect(isLaneControlCardPlayable(overrunCard, 'player1', playerStates)).toBe(true);
     });
   });
 
   describe('Encirclement (CONTROL_LANES: all lanes)', () => {
     const encirclementCard = {
-      type: 'Doctrine',
+      type: 'Ordnance',
       name: 'Encirclement',
       effect: {
         condition: {
@@ -291,7 +291,7 @@ describe('isDoctrineCardPlayable', () => {
         }
       };
 
-      expect(isDoctrineCardPlayable(encirclementCard, 'player1', playerStates)).toBe(true);
+      expect(isLaneControlCardPlayable(encirclementCard, 'player1', playerStates)).toBe(true);
     });
 
     it('should return false when player controls only two lanes', () => {
@@ -312,7 +312,7 @@ describe('isDoctrineCardPlayable', () => {
         }
       };
 
-      expect(isDoctrineCardPlayable(encirclementCard, 'player1', playerStates)).toBe(false);
+      expect(isLaneControlCardPlayable(encirclementCard, 'player1', playerStates)).toBe(false);
     });
 
     it('should return false when all lanes are empty (no control)', () => {
@@ -333,14 +333,14 @@ describe('isDoctrineCardPlayable', () => {
         }
       };
 
-      expect(isDoctrineCardPlayable(encirclementCard, 'player1', playerStates)).toBe(false);
+      expect(isLaneControlCardPlayable(encirclementCard, 'player1', playerStates)).toBe(false);
     });
   });
 
   describe('Player 2 perspective', () => {
     it('should work correctly for player2 as acting player', () => {
       const crossfireCard = {
-        type: 'Doctrine',
+        type: 'Ordnance',
         effect: {
           condition: {
             type: 'CONTROL_LANES',
@@ -367,14 +367,14 @@ describe('isDoctrineCardPlayable', () => {
         }
       };
 
-      expect(isDoctrineCardPlayable(crossfireCard, 'player2', playerStates)).toBe(true);
+      expect(isLaneControlCardPlayable(crossfireCard, 'player2', playerStates)).toBe(true);
     });
   });
 
   describe('Unknown condition types', () => {
     it('should return false for unknown condition types', () => {
       const unknownCard = {
-        type: 'Doctrine',
+        type: 'Ordnance',
         effect: {
           condition: {
             type: 'UNKNOWN_CONDITION'
@@ -387,7 +387,7 @@ describe('isDoctrineCardPlayable', () => {
         player2: { dronesOnBoard: { lane1: [], lane2: [], lane3: [] } }
       };
 
-      expect(isDoctrineCardPlayable(unknownCard, 'player1', playerStates)).toBe(false);
+      expect(isLaneControlCardPlayable(unknownCard, 'player1', playerStates)).toBe(false);
     });
   });
 });

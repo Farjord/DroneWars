@@ -221,13 +221,15 @@ class RewardManager {
    */
   selectCard(cardType, rarity, allowedRarities, rng) {
     const notStarter = (c) => !STARTER_CARD_IDS.has(c.id);
+    const notAIOnly = (c) => !c.aiOnly;
     const isAllowedRarity = (c) => allowedRarities.includes(c.rarity || 'Common');
 
     // Primary: exact type + rarity
     let pool = fullCardCollection.filter(c =>
       c.type === cardType &&
       (c.rarity || 'Common') === rarity &&
-      notStarter(c)
+      notStarter(c) &&
+      notAIOnly(c)
     );
 
     // Fallback 1: same type, any allowed rarity
@@ -235,7 +237,8 @@ class RewardManager {
       pool = fullCardCollection.filter(c =>
         c.type === cardType &&
         isAllowedRarity(c) &&
-        notStarter(c)
+        notStarter(c) &&
+        notAIOnly(c)
       );
     }
 
@@ -243,7 +246,8 @@ class RewardManager {
     if (pool.length === 0) {
       pool = fullCardCollection.filter(c =>
         c.type === cardType &&
-        notStarter(c)
+        notStarter(c) &&
+        notAIOnly(c)
       );
     }
 
@@ -251,13 +255,14 @@ class RewardManager {
     if (pool.length === 0) {
       pool = fullCardCollection.filter(c =>
         (c.rarity || 'Common') === rarity &&
-        notStarter(c)
+        notStarter(c) &&
+        notAIOnly(c)
       );
     }
 
-    // Fallback 4: any non-starter card
+    // Fallback 4: any non-starter, non-AI-only card
     if (pool.length === 0) {
-      pool = fullCardCollection.filter(c => notStarter(c));
+      pool = fullCardCollection.filter(c => notStarter(c) && notAIOnly(c));
     }
 
     if (pool.length === 0) return null;
@@ -373,16 +378,6 @@ class RewardManager {
     const salvageValue = Math.floor(rng.random() * 51) + 50;
     const salvageItem = generateSalvageItemFromValue(salvageValue, rng);
 
-    // Rare Doctrine bonus (15% chance)
-    if (rng.random() < 0.15) {
-      const doctrineCards = fullCardCollection.filter(c => c.type === 'Doctrine');
-      if (doctrineCards.length > 0) {
-        const randomDoctrine = doctrineCards[Math.floor(rng.random() * doctrineCards.length)];
-        cards.push(randomDoctrine);
-        debugLog('REWARD_MANAGER', `🎁 Doctrine bonus card added: ${randomDoctrine.name}`);
-      }
-    }
-
     debugLog('REWARD_MANAGER', `Generated POI rewards (seed: ${seed})`, {
       packType: normalizedPackType,
       cardCount: cards.length,
@@ -428,9 +423,9 @@ class RewardManager {
     const seed = this.getNextSeed();
     const rng = this.createRNG(seed);
 
-    // Filter enemy deck (remove starter cards by ID or rarity)
+    // Filter enemy deck (remove starter cards by ID or rarity, and AI-only cards)
     const filteredDeck = enemyDeck.filter(card =>
-      !STARTER_CARD_IDS.has(card.id) && card.rarity !== 'Starter'
+      !STARTER_CARD_IDS.has(card.id) && card.rarity !== 'Starter' && !card.aiOnly
     );
 
     // Select 1-3 cards from enemy deck

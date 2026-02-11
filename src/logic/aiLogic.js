@@ -38,7 +38,7 @@ import { applyAntiShipAdjustments } from './ai/adjustmentPasses/antiShipAdjustme
 
 // Import card validators
 import { isCardConditionMet } from './targeting/CardConditionValidator.js';
-import { isDoctrineCardPlayable } from './targeting/DoctrineValidator.js';
+import { isLaneControlCardPlayable } from './targeting/LaneControlValidator.js';
 
 // ========================================
 // ACTIVE ABILITY TARGET HELPER
@@ -458,9 +458,9 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
       if (card.playCondition) {
         if (!isCardConditionMet(card, 'player2', playerStates)) return false;
       }
-      // Check Doctrine card lane control conditions
-      if (card.type === 'Doctrine') {
-        if (!isDoctrineCardPlayable(card, 'player2', playerStates)) return false;
+      // Check lane control conditions (ex-Doctrine cards with effect.condition)
+      if (card.effect?.condition) {
+        if (!isLaneControlCardPlayable(card, 'player2', playerStates)) return false;
       }
       return true;
     });
@@ -740,7 +740,7 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
     const readyPlayerDrones = Object.values(player1.dronesOnBoard).flat().filter(d => !d.isExhausted);
     if (readyAiDrones.length <= readyPlayerDrones.length - DRONE_PACING.READY_DRONE_DEFICIT_THRESHOLD) {
       for (const action of possibleActions) {
-        if (action.type === 'play_card') {
+        if (action.type === 'play_card' && action.score > 0) {
           action.score += DRONE_PACING.NON_DRONE_ACTION_BONUS;
           action.logic = action.logic || [];
           action.logic.push(`+${DRONE_PACING.NON_DRONE_ACTION_BONUS} Pacing (AI has ${readyAiDrones.length} ready drones vs player's ${readyPlayerDrones.length})`);

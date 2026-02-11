@@ -35,8 +35,7 @@ export const evaluateModifyStatCard = (card, target, context) => {
     const activeDronesInLane = dronesInLane.filter(drone => !drone.isExhausted);
 
     if (activeDronesInLane.length === 0) {
-      score = 0;
-      logic.push('⚠️ No Active Drones in Lane');
+      return { score: INVALID_SCORE, logic: ['❌ No Active Drones in Lane - card has no effect'] };
     } else {
       const currentLaneScore = calculateLaneScore(laneId, player2, player1, allSections, getShipStatus, gameDataService);
 

@@ -17,14 +17,13 @@ import { getShipBorderClasses } from '../../utils/cardBorderUtils.js';
  */
 const DeckCompositionBars = ({ limits }) => {
   const totalLimits = limits.ordnanceLimit + limits.tacticLimit +
-                      limits.supportLimit + limits.upgradeLimit + limits.doctrineLimit;
+                      limits.supportLimit + limits.upgradeLimit;
 
   const barData = [
     { key: 'ordnance', label: 'Ordnance', value: limits.ordnanceLimit, bgColor: 'bg-red-500', textColor: 'text-red-400' },
     { key: 'tactic', label: 'Tactic', value: limits.tacticLimit, bgColor: 'bg-cyan-500', textColor: 'text-cyan-400' },
     { key: 'support', label: 'Support', value: limits.supportLimit, bgColor: 'bg-emerald-500', textColor: 'text-emerald-400' },
     { key: 'upgrade', label: 'Upgrade', value: limits.upgradeLimit, bgColor: 'bg-purple-500', textColor: 'text-purple-400' },
-    { key: 'doctrine', label: 'Doctrine', value: limits.doctrineLimit, bgColor: 'bg-amber-500', textColor: 'text-amber-400' },
   ];
 
   return (

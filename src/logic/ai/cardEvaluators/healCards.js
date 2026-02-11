@@ -3,7 +3,7 @@
 // ========================================
 // Evaluates HEAL_SHIELDS and HEAL_HULL card effects
 
-import { CARD_EVALUATION } from '../aiConstants.js';
+import { CARD_EVALUATION, INVALID_SCORE } from '../aiConstants.js';
 import { hasReadyNotFirstActionDrones } from '../helpers/keywordHelpers.js';
 
 /**
@@ -41,8 +41,7 @@ export const evaluateHealHullCard = (card, target, context) => {
     const hullToHeal = Math.min(card.effect.value, target.maxHull - target.hull);
 
     if (hullToHeal <= 0) {
-      logic.push('⚠️ Drone at full hull');
-      return { score: 0, logic };
+      return { score: INVALID_SCORE, logic: ['❌ Drone at full hull - no effect'] };
     }
 
     // Value hull healing - keeping a drone alive is valuable
@@ -89,8 +88,7 @@ export const evaluateRestoreSectionShieldsCard = (card, target, context) => {
   const shieldsToRestore = Math.min(card.effect.value, missingShields);
 
   if (shieldsToRestore <= 0) {
-    logic.push('⚠️ Section at full shields');
-    return { score: 0, logic };
+    return { score: INVALID_SCORE, logic: ['❌ Section at full shields - no effect'] };
   }
 
   const score = shieldsToRestore * CARD_EVALUATION.SHIELD_HEAL_VALUE_PER_POINT;

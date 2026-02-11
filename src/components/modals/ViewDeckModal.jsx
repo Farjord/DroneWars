@@ -9,7 +9,7 @@ import { gameEngine } from '../../logic/gameLogic.js';
 import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js';
 
 // Swimlane configuration constants
-const TYPE_ORDER = { Ordnance: 0, Support: 1, Tactic: 2, Upgrade: 3, Doctrine: 4 };
+const TYPE_ORDER = { Ordnance: 0, Support: 1, Tactic: 2, Upgrade: 3 };
 const RARITY_ORDER = { Common: 0, Uncommon: 1, Rare: 2, Mythic: 3 };
 
 const SWIMLANE_MODES = [
@@ -89,8 +89,7 @@ const ViewDeckModal = ({
             { key: 'Ordnance', label: 'Ordnance', headerClass: 'dw-swimlane-header--ordnance' },
             { key: 'Support', label: 'Support', headerClass: 'dw-swimlane-header--support' },
             { key: 'Tactic', label: 'Tactic', headerClass: 'dw-swimlane-header--tactic' },
-            { key: 'Upgrade', label: 'Upgrade', headerClass: 'dw-swimlane-header--upgrade' },
-            { key: 'Doctrine', label: 'Doctrine', headerClass: 'dw-swimlane-header--doctrine' }
+            { key: 'Upgrade', label: 'Upgrade', headerClass: 'dw-swimlane-header--upgrade' }
           ];
         case 'rarity':
           return [
@@ -143,8 +142,7 @@ const ViewDeckModal = ({
             { key: 'Ordnance', label: 'Ordnance', headerClass: 'dw-matrix-header--ordnance' },
             { key: 'Support', label: 'Support', headerClass: 'dw-matrix-header--support' },
             { key: 'Tactic', label: 'Tactic', headerClass: 'dw-matrix-header--tactic' },
-            { key: 'Upgrade', label: 'Upgrade', headerClass: 'dw-matrix-header--upgrade' },
-            { key: 'Doctrine', label: 'Doctrine', headerClass: 'dw-matrix-header--doctrine' }
+            { key: 'Upgrade', label: 'Upgrade', headerClass: 'dw-matrix-header--upgrade' }
           ];
         case 'rarity':
           return [
@@ -170,8 +168,7 @@ const ViewDeckModal = ({
             { key: 'Ordnance', label: 'Ordnance' },
             { key: 'Support', label: 'Support' },
             { key: 'Tactic', label: 'Tactic' },
-            { key: 'Upgrade', label: 'Upgrade' },
-            { key: 'Doctrine', label: 'Doctrine' }
+            { key: 'Upgrade', label: 'Upgrade' }
           ];
         case 'rarity':
           return [

@@ -294,7 +294,7 @@ const DroneLanesDisplay = ({
   // Lane drag-and-drop props (for Quick Deploy editor)
   onLaneDrop = null,
   onLaneDragOver = null,
-  // Lane control for Doctrine cards
+  // Lane control for lane-control cards
   laneControl = { lane1: null, lane2: null, lane3: null }
 }) => {
   // Use GameDataService for computed data
@@ -321,7 +321,7 @@ const DroneLanesDisplay = ({
         const isInteractivePlayerLane = isPlayer && (turnPhase === 'deployment' || turnPhase === 'action');
         const baseBackgroundColor = isPlayer ? 'bg-cyan-400/10' : 'bg-red-500/10';
 
-        // Determine lane control state for visual indicators (Doctrine cards)
+        // Determine lane control state for visual indicators (lane-control cards)
         const laneControlState = laneControl[lane];
         const localPlayerId = getLocalPlayerId();
         const opponentPlayerId = getOpponentPlayerId();

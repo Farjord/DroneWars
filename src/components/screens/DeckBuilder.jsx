@@ -43,8 +43,6 @@ const getTypeBackgroundClass = (type) => {
       return 'bg-emerald-900/10';
     case 'Upgrade':
       return 'bg-purple-900/10';
-    case 'Doctrine':
-      return 'bg-amber-900/10';
     default:
       return '';
   }
@@ -60,8 +58,6 @@ const getTypeTextClass = (type) => {
       return 'text-emerald-400';
     case 'Upgrade':
       return 'text-purple-400';
-    case 'Doctrine':
-      return 'text-amber-400';
     default:
       return 'text-gray-400';
   }
@@ -489,7 +485,7 @@ const DeckBuilder = ({
         minCost: Math.min(...costValues),
         maxCost: Math.max(...costValues),
         rarities,
-        types: ['Ordnance', 'Tactic', 'Support', 'Upgrade', 'Doctrine'],
+        types: ['Ordnance', 'Tactic', 'Support', 'Upgrade'],
         targets: Array.from(targets).sort(),
         damageTypes: Array.from(damageTypes).sort(),
         abilities: Array.from(abilities).sort(),
@@ -532,7 +528,7 @@ const DeckBuilder = ({
   // --- MODIFIED: Memoize calculations for performance, now using processedCardCollection ---
   const { cardCount, deckListForDisplay, baseCardCounts, typeCounts } = useMemo(() => {
     const counts = {};
-    const types = { Ordnance: 0, Tactic: 0, Support: 0, Upgrade: 0, Doctrine: 0 };
+    const types = { Ordnance: 0, Tactic: 0, Support: 0, Upgrade: 0 };
     let total = 0;
 
     // Iterate over the deck object, which is { cardId: quantity }
@@ -568,8 +564,7 @@ const DeckBuilder = ({
     Ordnance: activeShip?.deckLimits?.ordnanceLimit ?? 15,
     Tactic: activeShip?.deckLimits?.tacticLimit ?? 15,
     Support: activeShip?.deckLimits?.supportLimit ?? 15,
-    Upgrade: activeShip?.deckLimits?.upgradeLimit ?? 10,
-    Doctrine: activeShip?.deckLimits?.doctrineLimit ?? 5
+    Upgrade: activeShip?.deckLimits?.upgradeLimit ?? 10
   };
   const totalCardLimit = activeShip?.deckLimits?.totalCards ?? 40;
 
@@ -1944,10 +1939,6 @@ const DeckBuilder = ({
                       <div className="dw-info-row">
                         <span className="dw-info-row-label dw-info-row-label--upgrade">Upgrade:</span>
                         <span className="dw-info-row-value">{activeShip.deckLimits.upgradeLimit}</span>
-                      </div>
-                      <div className="dw-info-row">
-                        <span className="dw-info-row-label dw-info-row-label--doctrine">Doctrine:</span>
-                        <span className="dw-info-row-value">{activeShip.deckLimits.doctrineLimit || 5}</span>
                       </div>
                     </div>
                   </div>

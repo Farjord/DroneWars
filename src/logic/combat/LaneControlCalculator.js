@@ -5,7 +5,7 @@
 // Control rule: Player with MORE drones controls the lane (tie = no control)
 //
 // This is designed to be reusable for:
-// - Doctrine cards (conditional effects based on lane control)
+// - Lane-control cards (conditional effects based on lane control)
 // - UI feedback (visual indicators)
 // - Future card effects (e.g., "This drone gets +1 attack if you control the lane")
 
@@ -48,7 +48,7 @@ export class LaneControlCalculator {
 
   /**
    * Check if a player controls specific lanes
-   * Used by Doctrine cards to validate conditions
+   * Used by lane-control cards to validate conditions
    * @param {string} playerId - 'player1' or 'player2'
    * @param {Array<string>} requiredLanes - Array of lane IDs (e.g., ['lane1', 'lane3'])
    * @param {Object} laneControl - Lane control state from calculateLaneControl()
@@ -131,7 +131,7 @@ export class LaneControlCalculator {
 
   /**
    * Check if a lane is controlled by a player AND has no enemy drones
-   * Used by the "Overrun" Doctrine card
+   * Used by the "Overrun" card
    * @param {string} playerId - 'player1' or 'player2'
    * @param {string} lane - Lane ID (e.g., 'lane1')
    * @param {Object} player1State - Player 1 game state

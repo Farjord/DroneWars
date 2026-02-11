@@ -1,12 +1,12 @@
 // ========================================
 // CONDITIONAL SECTION DAMAGE PROCESSOR
 // ========================================
-// Handles CONDITIONAL_SECTION_DAMAGE effect type for Doctrine cards
+// Handles CONDITIONAL_SECTION_DAMAGE effect type for lane-control cards
 // Applies damage to ship sections based on lane control conditions
 
-import BaseEffectProcessor from '../BaseEffectProcessor.js';
-import { LaneControlCalculator } from '../../combat/LaneControlCalculator.js';
-import { debugLog } from '../../../utils/debugLogger.js';
+import BaseEffectProcessor from './BaseEffectProcessor.js';
+import { LaneControlCalculator } from '../combat/LaneControlCalculator.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * Calculate damage distribution based on damage type
@@ -55,7 +55,7 @@ const calculateDamageByType = (damageValue, shields, hull, damageType) => {
 
 /**
  * Processor for CONDITIONAL_SECTION_DAMAGE effect type
- * Used by Doctrine cards to apply damage conditionally based on lane control
+ * Used by lane-control cards to apply damage conditionally based on lane control
  *
  * @extends BaseEffectProcessor
  */
@@ -94,7 +94,7 @@ class ConditionalSectionDamageProcessor extends BaseEffectProcessor {
     );
 
     if (!conditionMet) {
-      debugLog('DOCTRINE', `[ConditionalSectionDamage] Condition not met for ${card.name}`);
+      debugLog('LANE_CONTROL', `[ConditionalSectionDamage] Condition not met for ${card.name}`);
       return this.createResult(playerStates, []);
     }
 
@@ -115,7 +115,7 @@ class ConditionalSectionDamageProcessor extends BaseEffectProcessor {
 
     targetSections.forEach(sectionName => {
       if (!sectionName || !opponentSections[sectionName]) {
-        debugLog('DOCTRINE', `[ConditionalSectionDamage] Section ${sectionName} not found, skipping`);
+        debugLog('LANE_CONTROL', `[ConditionalSectionDamage] Section ${sectionName} not found, skipping`);
         return;
       }
 
@@ -126,7 +126,7 @@ class ConditionalSectionDamageProcessor extends BaseEffectProcessor {
         effect.damageType || 'NORMAL'
       );
 
-      debugLog('DOCTRINE', `[ConditionalSectionDamage] Dealt ${effect.damage} damage to ${sectionName} (${shieldDamage} shields, ${hullDamage} hull)`);
+      debugLog('LANE_CONTROL', `[ConditionalSectionDamage] Dealt ${effect.damage} damage to ${sectionName} (${shieldDamage} shields, ${hullDamage} hull)`);
 
       // Generate staggered explosion animations (1 per damage point, like Railgun)
       for (let i = 0; i < effect.damage; i++) {
@@ -180,7 +180,7 @@ class ConditionalSectionDamageProcessor extends BaseEffectProcessor {
         );
 
       default:
-        debugLog('DOCTRINE', `[ConditionalSectionDamage] Unknown condition type: ${condition.type}`);
+        debugLog('LANE_CONTROL', `[ConditionalSectionDamage] Unknown condition type: ${condition.type}`);
         return false;
     }
   }
@@ -213,7 +213,7 @@ class ConditionalSectionDamageProcessor extends BaseEffectProcessor {
         return [...placedSections];
 
       default:
-        debugLog('DOCTRINE', `[ConditionalSectionDamage] Unknown target type: ${targets}`);
+        debugLog('LANE_CONTROL', `[ConditionalSectionDamage] Unknown target type: ${targets}`);
         return [];
     }
   }

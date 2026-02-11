@@ -1,9 +1,9 @@
 // ========================================
 // CONDITIONAL SECTION DAMAGE PROCESSOR TESTS
 // ========================================
-// Tests for Doctrine card effect processor
-// Following TDD - these tests are written BEFORE implementation
+// Tests for lane-control card effect processor
 
+import { describe, it, expect, beforeEach } from 'vitest';
 import ConditionalSectionDamageProcessor from './ConditionalSectionDamageProcessor.js';
 
 describe('ConditionalSectionDamageProcessor', () => {
@@ -431,7 +431,7 @@ describe('ConditionalSectionDamageProcessor', () => {
           player1: ['LEFT_SECTION', 'MIDDLE_SECTION', 'RIGHT_SECTION'],
           player2: ['LEFT_SECTION', 'MIDDLE_SECTION', 'RIGHT_SECTION']
         },
-        card: { name: 'Test Doctrine' }
+        card: { name: 'Test Card' }
       };
 
       const result = processor.process(effect, context);
@@ -474,7 +474,7 @@ describe('ConditionalSectionDamageProcessor', () => {
           player1: ['LEFT_SECTION', 'MIDDLE_SECTION', 'RIGHT_SECTION'],
           player2: ['LEFT_SECTION', 'MIDDLE_SECTION', 'RIGHT_SECTION']
         },
-        card: { name: 'Test Doctrine' }
+        card: { name: 'Test Card' }
       };
 
       const result = processor.process(effect, context);

@@ -1713,7 +1713,7 @@ const fullCardCollection = [
     name: 'Crossfire Pattern',
     maxInDeck: 2,
     rarity: 'Rare',
-    type: 'Doctrine',
+    type: 'Ordnance',
     cost: 4,
     momentumCost: 1,
     image: '/DroneWars/cards/CrossfirePattern.png',
@@ -1741,8 +1741,8 @@ const fullCardCollection = [
     baseCardId: 'DOCTRINE_002',
     name: 'Breach the Line',
     maxInDeck: 2,
-    rarity: 'Rare',
-    type: 'Doctrine',
+    rarity: 'Common',
+    type: 'Ordnance',
     cost: 4,
     momentumCost: 1,
     image: '/DroneWars/cards/BreachTheLine.png',
@@ -1771,8 +1771,8 @@ const fullCardCollection = [
     name: 'Overrun',
     maxInDeck: 2,
     rarity: 'Rare',
-    type: 'Doctrine',
-    cost: 3,
+    type: 'Ordnance',
+    cost: 2,
     momentumCost: 1,
     image: '/DroneWars/cards/Overrun.png',
     description: 'Target a lane you control. If the enemy has no drones in that lane, deal 3 kinetic damage to the corresponding ship section.',
@@ -1799,7 +1799,7 @@ const fullCardCollection = [
     name: 'Encirclement',
     maxInDeck: 2,
     rarity: 'Mythic',
-    type: 'Doctrine',
+    type: 'Ordnance',
     cost: 3,
     momentumCost: 2,
     image: '/DroneWars/cards/Encirclement.png',
@@ -1958,7 +1958,7 @@ const fullCardCollection = [
     baseCardId: 'LANE_CONTROL_DRAW',
     name: 'Tactical Advantage',
     maxInDeck: 4,
-    rarity: 'Uncommon',
+    rarity: 'Common',
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/TacticalAdvantage.png',
@@ -2000,7 +2000,7 @@ const fullCardCollection = [
     baseCardId: 'LANE_CONTROL_READY',
     name: 'Rallying Cry',
     maxInDeck: 4,
-    rarity: 'Uncommon',
+    rarity: 'Common',
     type: 'Support',
     cost: 3,
     image: '/DroneWars/cards/RallyingCry.png',
@@ -2025,7 +2025,7 @@ const fullCardCollection = [
     name: 'Raise the Alarm',
     maxInDeck: 2,
     rarity: 'Uncommon',
-    type: 'Doctrine',
+    type: 'Tactics',
     cost: 3,
     momentumCost: 1,
     aiOnly: true,
@@ -2052,7 +2052,85 @@ const fullCardCollection = [
       value: 2,
       perDrone: 'Signal Beacon'
     }
-  }
+  },
+    {
+    id: 'Rally',
+    baseCardId: 'Rally',
+    name: 'Rally',
+    maxInDeck: 2,
+    rarity: 'Common',
+    type: 'Support',
+    cost: 2,
+    momentumCost: 1,
+    image: '/DroneWars/cards/Rally.png',
+    description: 'Ready an exhausted friendly drone.',
+    targeting: {
+                type: 'DRONE',
+                affinity: 'FRIENDLY',
+                location: 'ANY_LANE',
+                },
+    effect: {
+              type: 'READY_DRONE'
+            }
+  },
+  {
+    id: 'Exhaust',
+    baseCardId: 'Exhaust',
+    name: 'Exhaust',
+    maxInDeck: 2,
+    rarity: 'Common',
+    type: 'Tactic',
+    cost: 3,
+    momentumCost: 1,
+    image: '/DroneWars/cards/Exhaust.png',
+    description: 'Exhaust target drone.',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ANY',
+      location: 'ANY_LANE',     
+    },
+    effect: {
+      type: 'EXHAUST_DRONE'
+    }
+  },
+      {
+    id: 'Superior_Intel',
+    baseCardId: 'Superior_Intel',
+    name: 'Superior Intel',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Support',
+    cost: 2,
+    momentumCost: 1,
+    image: '/DroneWars/cards/SuperiorIntel.png',
+    description: 'Draw 4 cards from your deck.',
+    effect: {
+      type: 'DRAW',
+      value: 4,
+    }
+  },
+  {
+    id: 'Mainframe_Breach',
+    baseCardId: 'Mainframe_Breach',
+    name: 'Mainframe Breach',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Tactic',
+    cost: 4,
+    momentumCost: 1,
+    image: '/DroneWars/cards/MainframeBreach.png',
+    description: 'Target opponent discards 2 cards at random and loses 4 energy.',
+    effect: {
+      type: 'DISCARD',
+      count: 2,
+      targetPlayer: 'opponent'
+    },
+        effect: {
+      type: 'DRAIN_ENERGY',
+      amount: 4
+    }
+  },
+
 ];
 
 

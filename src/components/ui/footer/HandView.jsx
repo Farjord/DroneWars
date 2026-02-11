@@ -11,7 +11,7 @@ import styles from '../GameFooter.module.css';
 import { debugLog } from '../../../utils/debugLogger.js';
 import { calculateCardFanRotation, getHoverTransform, getCardTransition, calculateCardArcOffset, CARD_FAN_CONFIG } from '../../../utils/cardAnimationUtils.js';
 import TargetingRouter from '../../../logic/TargetingRouter.js';
-import { isDoctrineCardPlayable } from '../../../logic/targeting/DoctrineValidator.js';
+import { isLaneControlCardPlayable } from '../../../logic/targeting/LaneControlValidator.js';
 import { LaneControlCalculator } from '../../../logic/combat/LaneControlCalculator.js';
 import { isCardConditionMet } from '../../../logic/targeting/CardConditionValidator.js';
 
@@ -292,14 +292,14 @@ function HandView({
               const isOptionalDiscardPlayable = turnPhase === 'optionalDiscard' &&
                 optionalDiscardCount < localPlayerEffectiveStats.totals.discardLimit;
 
-              // Check Doctrine card lane control conditions
-              let doctrinePlayable = true;
-              if (card.type === 'Doctrine') {
+              // Check lane control conditions (cards with effect.condition)
+              let laneControlPlayable = true;
+              if (card.effect?.condition) {
                 // Construct playerStates object from local and opponent states
                 const playerStates = localPlayerId === 'player1'
                   ? { player1: localPlayerState, player2: opponentPlayerState }
                   : { player1: opponentPlayerState, player2: localPlayerState };
-                doctrinePlayable = isDoctrineCardPlayable(card, localPlayerId, playerStates);
+                laneControlPlayable = isLaneControlCardPlayable(card, localPlayerId, playerStates);
               }
 
               // Check generic playCondition for any card type
@@ -325,7 +325,7 @@ function HandView({
                   isCostSelectionTarget,
                   cardIsPlayable: isCostSelectionTarget ||
                     (turnPhase === 'action'
-                      ? (isActionPhasePlayable && doctrinePlayable)
+                      ? (isActionPhasePlayable && laneControlPlayable)
                       : isOptionalDiscardPlayable)
                 });
               }
@@ -335,11 +335,11 @@ function HandView({
                 additionalCostState?.costSelection?.card?.instanceId === card.instanceId;
 
               // Combine all playability checks
-              // Doctrine validation only applies during action phase, not discard phase
+              // Lane control validation only applies during action phase, not discard phase
               const cardIsPlayable = isCostSelectionTarget ||
                 isSelectedCostCard ||  // Cost card stays highlighted during effect selection
                 (turnPhase === 'action'
-                  ? (isActionPhasePlayable && doctrinePlayable && cardConditionMet)
+                  ? (isActionPhasePlayable && laneControlPlayable && cardConditionMet)
                   : isOptionalDiscardPlayable);
 
               // Compute specific reasons why card can't be played (for warning overlay)
@@ -351,7 +351,7 @@ function HandView({
                 if (!hasEnoughEnergy) reasons.push(`Not enough energy (need ${card.cost}, have ${localPlayerState.energy})`);
                 if (card.momentumCost && !hasEnoughMomentum) reasons.push(`Not enough momentum (need ${card.momentumCost}, have ${localPlayerState.momentum || 0})`);
                 if (!hasValidTargets) reasons.push("No valid targets");
-                if (!doctrinePlayable) reasons.push("Doctrine lane control requirement not met");
+                if (!laneControlPlayable) reasons.push("Lane control requirement not met");
                 if (!cardConditionMet) reasons.push("Play condition not met");
                 return reasons;
               };
