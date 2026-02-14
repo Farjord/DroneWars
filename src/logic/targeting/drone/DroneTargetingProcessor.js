@@ -20,7 +20,7 @@ import { debugLog } from '../../../utils/debugLogger.js';
  * - Applies custom criteria (EXHAUSTED, MARKED, DAMAGED_HULL, NOT_MARKED)
  * - CRITICAL: Jammer protection - opponent card effects targeting a lane with ready Jammers
  *   can ONLY target those Jammers (not other drones in that lane)
- * - Location filtering: ANY_LANE vs SAME_LANE (for abilities)
+ * - Location filtering: ANY_LANE vs SAME_LANE vs OTHER_LANES (for abilities)
  * - Ability source lane detection (drone abilities only)
  */
 class DroneTargetingProcessor extends BaseTargetingProcessor {
@@ -52,9 +52,9 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
     // Extract cost context for stat comparisons and location filtering
     const costContext = costSelection || null;
 
-    // For SAME_LANE abilities, determine source drone's lane
+    // For SAME_LANE or OTHER_LANES abilities, determine source drone's lane
     let userLane = null;
-    if (isAbility && location === 'SAME_LANE') {
+    if (isAbility && (location === 'SAME_LANE' || location === 'OTHER_LANES')) {
       userLane = this.determineSourceLane(context, source);
       if (!userLane) {
         // Can't determine source lane, return empty targets
@@ -266,6 +266,15 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
       const passes = lane === userLane;
       debugLog('ADDITIONAL_COST_TARGETING',
         passes ? '✅ SAME_LANE passes' : '❌ SAME_LANE fails',
+        { lane, userLane, passes }
+      );
+      return passes;
+    }
+
+    if (location === 'OTHER_LANES') {
+      const passes = lane !== userLane;
+      debugLog('ADDITIONAL_COST_TARGETING',
+        passes ? '✅ OTHER_LANES passes' : '❌ OTHER_LANES fails',
         { lane, userLane, passes }
       );
       return passes;

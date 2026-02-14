@@ -10,7 +10,7 @@
 const fullDroneCollection = [
   { name: 'Dart', class: 1, limit: 3, rebuildRate: 2.0, rarity: 'Common', attack: 1, hull: 1, shields: 1, speed: 6, image: '/DroneWars/img/Scout.png', abilities: [],  upgradeSlots: 2 },
   { name: 'Talon', class: 2, limit: 3, rebuildRate: 1.0, rarity: 'Common', attack: 3, hull: 2, shields: 1, speed: 4, image: '/DroneWars/img/StandardFighter.png', abilities: [],  upgradeSlots: 3 },
-  { name: 'Mammoth', class: 3, limit: 1, rebuildRate: 0.5, rarity: 'Common', attack: 4, hull: 4, shields: 1, speed: 3, image: '/DroneWars/img/HeavyFighter.png', abilities: [], upgradeSlots: 1 },
+  { name: 'Mammoth', class: 3, limit: 1, rebuildRate: 0.5, rarity: 'Common', attack: 4, hull: 4, shields: 2, speed: 3, image: '/DroneWars/img/HeavyFighter.png', abilities: [], upgradeSlots: 1 },
    {
     name: 'Bastion',
     class: 3,
@@ -18,7 +18,7 @@ const fullDroneCollection = [
     rebuildRate: 0.5,
     rarity: 'Uncommon',
     attack: 1,
-    hull: 3,
+    hull: 4,
     shields: 0,
     speed: 1,
     image: '/DroneWars/img/Guardian.png',
@@ -114,12 +114,12 @@ const fullDroneCollection = [
     image: '/DroneWars/img/Sniper.png',
     abilities: [{
         name: 'Long-Range Shot',
-        description: 'Pay 1 Energy and exhaust to deal 4 damage to an enemy drone in any lane.',
+        description: 'Pay 1 Energy and exhaust to deal 4 damage to an enemy drone in another lane.',
         type: 'ACTIVE',
         targeting: {
             type: 'DRONE',
             affinity: 'ENEMY',
-            location: 'ANY_LANE'
+            location: 'OTHER_LANES'
         },
         effect: { type: 'DAMAGE', value: 4 },
         cost: { energy: 1, exhausts: true },
@@ -387,8 +387,8 @@ const fullDroneCollection = [
     rebuildRate: 0.5,
     rarity: 'Uncommon',
     attack: 2,
-    hull: 1,
-    shields: 2,
+    hull: 2,
+    shields: 3,
     speed: 3,
     image: '/DroneWars/img/Striker.png',  // Temp - needs new image
     abilities: [{
@@ -406,7 +406,7 @@ const fullDroneCollection = [
     rebuildRate: 0.5,
     rarity: 'Mythic',
     attack: 3,
-    hull: 2,
+    hull: 3,
     shields: 2,
     speed: 4,
     image: '/DroneWars/img/Tempest.png',  // Temp - needs new image
@@ -472,7 +472,7 @@ const fullDroneCollection = [
     rarity: 'Mythic',
     attack: 2,
     hull: 3,
-    shields: 1,
+    shields: 2,
     speed: 4,
     image: '/DroneWars/img/Scorpion.png',
     abilities: [
@@ -747,7 +747,7 @@ const fullDroneCollection = [
     rarity: 'Common',
     attack: 1,
     hull: 3,
-    shields: 2,
+    shields: 3,
     speed: 2,
     image: '/DroneWars/img/Odin.png',
     abilities: [{
@@ -767,7 +767,7 @@ const fullDroneCollection = [
     rarity: 'Common',
     attack: 1,
     hull: 1,
-    shields: 2,
+    shields: 3,
     speed: 4,
     image: '/DroneWars/img/Thor.png',
     abilities: [{

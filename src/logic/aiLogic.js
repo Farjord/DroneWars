@@ -56,7 +56,9 @@ const getActiveAbilityTargets = (ability, sourceDrone, player1, player2) => {
   const owner = targeting.affinity === 'FRIENDLY' ? player2 : player1;
   const lanes = targeting.location === 'SAME_LANE'
     ? [sourceDrone.lane]
-    : ['lane1', 'lane2', 'lane3'];
+    : targeting.location === 'OTHER_LANES'
+      ? ['lane1', 'lane2', 'lane3'].filter(l => l !== sourceDrone.lane)
+      : ['lane1', 'lane2', 'lane3'];
 
   for (const lane of lanes) {
     const dronesInLane = owner.dronesOnBoard[lane] || [];
@@ -114,8 +116,8 @@ const evaluateActiveAbility = (ability, target, currentEnergy) => {
         score += 50 + (target.class || 0) * 15;
       }
 
-      // Bonus for cross-lane targeting (Sniper can hit any lane)
-      if (ability.targeting?.location === 'ANY_LANE') {
+      // Bonus for cross-lane targeting (Sniper can hit other lanes)
+      if (ability.targeting?.location === 'ANY_LANE' || ability.targeting?.location === 'OTHER_LANES') {
         score += 20;
       }
       break;
