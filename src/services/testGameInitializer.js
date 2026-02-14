@@ -33,7 +33,9 @@ function initializeDroneForLane(droneTemplate) {
     cannotMove: false,
     cannotAttack: false,
     cannotIntercept: false,
-    doesNotReady: false
+    doesNotReady: false,
+    isSnared: false,
+    isSuppressed: false
   };
 }
 

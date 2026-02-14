@@ -95,6 +95,8 @@ class EffectRouter {
       APPLY_CANNOT_ATTACK: new StatusEffectProcessor(),
       APPLY_CANNOT_INTERCEPT: new StatusEffectProcessor(),
       APPLY_DOES_NOT_READY: new StatusEffectProcessor(),
+      APPLY_SNARED: new StatusEffectProcessor(),
+      APPLY_SUPPRESSED: new StatusEffectProcessor(),
       CLEAR_ALL_STATUS: new StatusEffectProcessor()
     };
   }

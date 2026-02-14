@@ -458,6 +458,16 @@ setAnimationManager(animationManager) {
         case 'debugAddCardsToHand':
           result = await this.processDebugAddCardsToHand(payload); break;
 
+        case 'snaredConsumption':
+          this.processSnaredConsumption(payload);
+          result = { success: true };
+          break;
+
+        case 'suppressedConsumption':
+          this.processSuppressedConsumption(payload);
+          result = { success: true };
+          break;
+
         default:
           throw new Error(`Unknown action type: ${type}`);
       }
@@ -794,6 +804,19 @@ setAnimationManager(animationManager) {
         error: `${drone.name} cannot move (Inert).`,
         shouldShowErrorModal: true
       };
+    }
+
+    // Check if drone is Snared (one-shot movement cancellation for AI path)
+    if (drone.isSnared) {
+      let newPlayerState = JSON.parse(JSON.stringify(playerState));
+      const snaredDrone = newPlayerState.dronesOnBoard[fromLane].find(d => d.id === droneId);
+      if (snaredDrone) {
+        snaredDrone.isSnared = false;
+        snaredDrone.isExhausted = true;
+      }
+      this.gameStateManager.updatePlayerState(playerId, newPlayerState);
+      this.gameStateManager.addLogEntry(`${drone.name}'s move was cancelled (Snared)`);
+      return { success: true, snaredConsumed: true };
     }
 
     // Create a copy of the entire player state for processing
@@ -4477,6 +4500,50 @@ setAnimationManager(animationManager) {
     // Clear pending state updates
     this.pendingStateUpdate = null;
     this.pendingFinalState = null;
+  }
+
+  /**
+   * Consume Snared status from a drone (for human player UI path)
+   * Sets isSnared = false, isExhausted = true, logs the cancellation
+   * @param {Object} params - { droneId, playerId }
+   */
+  processSnaredConsumption({ droneId, playerId }) {
+    const currentState = this.gameStateManager.getState();
+    const playerState = currentState[playerId];
+    const newPlayerState = JSON.parse(JSON.stringify(playerState));
+
+    for (const lane in newPlayerState.dronesOnBoard) {
+      const drone = newPlayerState.dronesOnBoard[lane].find(d => d.id === droneId);
+      if (drone) {
+        drone.isSnared = false;
+        drone.isExhausted = true;
+        this.gameStateManager.updatePlayerState(playerId, newPlayerState);
+        this.gameStateManager.addLogEntry(`${drone.name}'s move was cancelled (Snared)`);
+        return;
+      }
+    }
+  }
+
+  /**
+   * Consume Suppressed status from a drone (for human player UI path)
+   * Sets isSuppressed = false, isExhausted = true, logs the cancellation
+   * @param {Object} params - { droneId, playerId }
+   */
+  processSuppressedConsumption({ droneId, playerId }) {
+    const currentState = this.gameStateManager.getState();
+    const playerState = currentState[playerId];
+    const newPlayerState = JSON.parse(JSON.stringify(playerState));
+
+    for (const lane in newPlayerState.dronesOnBoard) {
+      const drone = newPlayerState.dronesOnBoard[lane].find(d => d.id === droneId);
+      if (drone) {
+        drone.isSuppressed = false;
+        drone.isExhausted = true;
+        this.gameStateManager.updatePlayerState(playerId, newPlayerState);
+        this.gameStateManager.addLogEntry(`${drone.name}'s attack was cancelled (Suppressed)`);
+        return;
+      }
+    }
   }
 }
 

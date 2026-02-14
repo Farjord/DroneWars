@@ -6,7 +6,7 @@
 // Priority order with overflow handling (+X indicator)
 
 import React from 'react';
-import { Ban, Move, Swords, Shield, CirclePause } from 'lucide-react';
+import { Ban, Move, Swords, Shield, CirclePause, Link2, ShieldOff } from 'lucide-react';
 
 /**
  * NoEntryIcon - Overlays Ban icon on base icon
@@ -66,7 +66,35 @@ const StatusEffectIcons = ({ drone, isPlayer }) => {
     });
   }
 
-  // Priority 4: Does Not Ready
+  // Priority 4: Snared (next move cancelled)
+  if (drone.isSnared) {
+    statuses.push({
+      key: 'snared',
+      title: 'Snared - Next move will be cancelled',
+      icon: (
+        <Link2
+          size={12}
+          className={drone.isExhausted ? 'text-slate-400' : 'text-orange-400'}
+        />
+      )
+    });
+  }
+
+  // Priority 5: Suppressed (next attack cancelled)
+  if (drone.isSuppressed) {
+    statuses.push({
+      key: 'suppressed',
+      title: 'Suppressed - Next attack will be cancelled',
+      icon: (
+        <ShieldOff
+          size={12}
+          className={drone.isExhausted ? 'text-slate-400' : 'text-violet-400'}
+        />
+      )
+    });
+  }
+
+  // Priority 6: Does Not Ready
   if (drone.doesNotReady) {
     statuses.push({
       key: 'does-not-ready',

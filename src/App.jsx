@@ -44,6 +44,7 @@ import AIDecisionLogModal from './components/modals/AIDecisionLogModal.jsx';
 import ViewShipSectionModal from './components/modals/ViewShipSectionModal.jsx';
 import DeploymentConfirmationModal from './components/modals/DeploymentConfirmationModal.jsx';
 import MoveConfirmationModal from './components/modals/MoveConfirmationModal.jsx';
+import AttackConfirmationModal from './components/modals/AttackConfirmationModal.jsx';
 import InterceptionOpportunityModal from './components/modals/InterceptionOpportunityModal.jsx';
 import OpponentDecidingInterceptionModal from './components/modals/OpponentDecidingInterceptionModal.jsx';
 import CardConfirmationModal from './components/modals/CardConfirmationModal.jsx';
@@ -210,6 +211,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [modalContent, setModalContent] = useState(null);
   const [deploymentConfirmation, setDeploymentConfirmation] = useState(null);
   const [moveConfirmation, setMoveConfirmation] = useState(null);
+  const [attackConfirmation, setAttackConfirmation] = useState(null);
   const [detailedDroneInfo, setDetailedDroneInfo] = useState(null); // { drone, isPlayer }
   const [cardToView, setCardToView] = useState(null);
   const [waitingForPlayerPhase, setWaitingForPlayerPhase] = useState(null); // Track which phase we're waiting for player acknowledgment
@@ -1316,6 +1318,12 @@ const App = ({ phaseAnimationQueue }) => {
 
    */
   const resolveAttack = useCallback(async (attackDetails) => {
+    // Check if attacker is Suppressed - show confirmation modal instead of attacking
+    if (attackDetails.attacker?.isSuppressed) {
+      setAttackConfirmation(attackDetails);
+      return;
+    }
+
     // --- Prevent duplicate runs ---
     if (isResolvingAttackRef.current) {
         console.warn("Attack already in progress. Aborting duplicate call.");
@@ -4381,12 +4389,15 @@ const App = ({ phaseAnimationQueue }) => {
         card: singleMoveMode.card.name
       });
 
+      // Look up drone for isSnared status
+      const smDrone = Object.values(localPlayerState.dronesOnBoard).flat().find(d => d.id === singleMoveMode.droneId);
       const moveConfData = {
         droneId: singleMoveMode.droneId,
         owner: singleMoveMode.owner,
         from: singleMoveMode.sourceLane,
         to: targetLane,
-        card: singleMoveMode.card  // Include card for card-based movement
+        card: singleMoveMode.card,  // Include card for card-based movement
+        isSnared: smDrone?.isSnared || false
       };
 
       debugLog('SINGLE_MOVE_FLOW', '⚠️ setMoveConfirmation called from [handleDroneDragEnd - single-move drag]', {
@@ -4614,7 +4625,8 @@ const App = ({ phaseAnimationQueue }) => {
           owner: getLocalPlayerId(),
           from: sourceLane,
           to: targetLane,
-          card: movementCard  // Include card for card-based movement
+          card: movementCard,  // Include card for card-based movement
+          isSnared: attackerDrone.isSnared || false
         };
 
         debugLog('SINGLE_MOVE_FLOW', '⚠️ setMoveConfirmation called from [handleDroneDragEnd - regular drag move]', {
@@ -5275,12 +5287,14 @@ const App = ({ phaseAnimationQueue }) => {
       });
 
       // CHECKPOINT 6: Setting moveConfirmation State
+      const smClickDrone = Object.values(localPlayerState.dronesOnBoard).flat().find(d => d.id === singleMoveMode.droneId);
       const newMoveConfirmation = {
         droneId: singleMoveMode.droneId,
         owner: singleMoveMode.owner,
         from: singleMoveMode.sourceLane,
         to: lane,
-        card: singleMoveMode.card
+        card: singleMoveMode.card,
+        isSnared: smClickDrone?.isSnared || false
       };
 
       debugLog('SINGLE_MOVE_FLOW', '📝 CHECKPOINT 6: Setting moveConfirmation state', {
@@ -5412,7 +5426,8 @@ const App = ({ phaseAnimationQueue }) => {
              owner: getLocalPlayerId(),
              from: sourceLaneName,
              to: lane,
-             card: movementCard
+             card: movementCard,
+             isSnared: selectedDrone.isSnared || false
            };
 
            debugLog('SINGLE_MOVE_FLOW', '⚠️ setMoveConfirmation called from [handleLaneClick - selectedDrone move]', {
@@ -6502,6 +6517,7 @@ const App = ({ phaseAnimationQueue }) => {
       <MoveConfirmationModal
         moveConfirmation={moveConfirmation}
         show={!!moveConfirmation}
+        isSnared={moveConfirmation?.isSnared}
         onCancel={() => setMoveConfirmation(null)}
         onConfirm={async () => {
           if (!moveConfirmation) return;
@@ -6520,7 +6536,7 @@ const App = ({ phaseAnimationQueue }) => {
           });
 
           // Store data before closing modal
-          const { droneId, owner, from, to, card } = moveConfirmation;
+          const { droneId, owner, from, to, card, isSnared: wasSnared } = moveConfirmation;
 
           // CHECKPOINT 8b: Log after destructuring
           debugLog('SINGLE_MOVE_FLOW', '🔓 CHECKPOINT 8b: Data destructured from moveConfirmation', {
@@ -6542,6 +6558,17 @@ const App = ({ phaseAnimationQueue }) => {
           if (singleMoveMode) {
             setSingleMoveMode(null);
             setSelectedCard(null);
+          }
+
+          // If snared: consume the flag, exhaust the drone, skip actual movement
+          if (wasSnared) {
+            await processAction('snaredConsumption', { droneId, playerId: owner });
+            setSelectedDrone(null);
+            setPotentialInterceptors([]);
+            setPotentialGuardians([]);
+            setDraggedDrone(null);
+            setValidCardTargets([]);
+            return;
           }
 
           // Wait for modal to unmount before playing animations
@@ -6577,6 +6604,25 @@ const App = ({ phaseAnimationQueue }) => {
               setSelectedDrone(null);
             }
           }, 400);
+        }}
+      />
+
+      <AttackConfirmationModal
+        attackConfirmation={attackConfirmation}
+        show={!!attackConfirmation}
+        onCancel={() => {
+          setAttackConfirmation(null);
+          setSelectedDrone(null);
+        }}
+        onConfirm={async () => {
+          if (!attackConfirmation) return;
+          const { attacker } = attackConfirmation;
+          await processAction('suppressedConsumption', {
+            droneId: attacker.id,
+            playerId: attackConfirmation.attackingPlayer
+          });
+          setAttackConfirmation(null);
+          setSelectedDrone(null);
         }}
       />
 

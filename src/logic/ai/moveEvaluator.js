@@ -35,6 +35,11 @@ export const evaluateMove = (drone, fromLane, toLane, context) => {
     return { score: -Infinity, logic: ['⛔ INERT: Cannot move'] };
   }
 
+  // Check if drone is Snared - move will be cancelled but clears status
+  if (drone.isSnared) {
+    return { score: -15, logic: ['⚠️ Snared: move will be cancelled but clears status'] };
+  }
+
   // Calculate current lane scores
   const currentFromScore = calculateLaneScore(fromLane, player2, player1, allSections, getShipStatus, gameDataService);
   const currentToScore = calculateLaneScore(toLane, player2, player1, allSections, getShipStatus, gameDataService);

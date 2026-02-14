@@ -1673,7 +1673,6 @@ const fullCardCollection = [
       }
     }
   },
-
   {
     id: 'CARD_STATUS_1',
     baseCardId: 'CARD_STATUS_1',
@@ -1682,6 +1681,26 @@ const fullCardCollection = [
     rarity: 'Common',
     type: 'Tactic',
     cost: 2,
+    image: '/DroneWars/cards/SystemLock.png',
+    description: 'Target drone gains Immobile. (Cancel its next move to remove this status.)',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'APPLY_SNARED'
+    }
+  },
+  {
+    id: 'CARD_STATUS_1_ENHANCED',
+    baseCardId: 'CARD_STATUS_1',
+    name: 'Thruster Malfunction+',
+    maxInDeck: 4,
+    rarity: 'Rare',
+    type: 'Tactic',
+    cost: 2,
+    momentumCost: 1,
     image: '/DroneWars/cards/SystemLock.png',
     description: 'Target drone gains Immobile. (It cannot optionally Move.)',
     targeting: {
@@ -1693,7 +1712,7 @@ const fullCardCollection = [
       type: 'APPLY_CANNOT_MOVE'
     }
   },
-  {
+    {
     id: 'CARD_STATUS_2',
     baseCardId: 'CARD_STATUS_2',
     name: 'Weapon Malfunction',
@@ -1701,6 +1720,26 @@ const fullCardCollection = [
     rarity: 'Common',
     type: 'Tactic',
     cost: 2,
+    image: '/DroneWars/cards/WeaponMalfunction.png',
+    description: 'Target drone gains Suppressed. (Cancel its next attack to remove this status.)',
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE'
+    },
+    effect: {
+      type: 'APPLY_SUPPRESSED'
+    }
+  },
+  {
+    id: 'CARD_STATUS_2_ENHANCED',
+    baseCardId: 'CARD_STATUS_2',
+    name: 'Weapon Malfunction+',
+    maxInDeck: 4,
+    rarity: 'Rare',
+    type: 'Tactic',
+    cost: 2,
+    momentumCost: 1,
     image: '/DroneWars/cards/WeaponMalfunction.png',
     description: 'Target drone gains Disarmed. (It cannot optionally Attack.)',
     targeting: {

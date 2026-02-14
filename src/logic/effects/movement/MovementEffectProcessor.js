@@ -107,6 +107,10 @@ class MovementEffectProcessor extends BaseEffectProcessor {
 
       if (availableDrones.length === 0) continue;
 
+      // Skip snared drones for card-triggered movement (they'd waste the move)
+      const nonSnaredDrones = availableDrones.filter(d => !d.isSnared);
+      if (nonSnaredDrones.length === 0) continue;
+
       for (const toLane of ['lane1', 'lane2', 'lane3']) {
         if (fromLane === toLane) continue;
 
@@ -130,8 +134,8 @@ class MovementEffectProcessor extends BaseEffectProcessor {
             fromLane,
             toLane,
             drones: effect.type === 'SINGLE_MOVE'
-              ? [availableDrones[0]]  // Just pick first drone
-              : availableDrones.slice(0, Math.min(effect.count || 3, availableDrones.length))
+              ? [nonSnaredDrones[0]]  // Just pick first non-snared drone
+              : nonSnaredDrones.slice(0, Math.min(effect.count || 3, nonSnaredDrones.length))
           };
         }
       }

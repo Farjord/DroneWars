@@ -314,6 +314,22 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
                 shouldShowErrorModal: true
             };
         }
+
+        // Check if attacker is Suppressed (one-shot attack cancellation for AI path)
+        if (attacker.isSuppressed) {
+            const newPlayerStates = JSON.parse(JSON.stringify(playerStates));
+            const atkState = newPlayerStates[attackingPlayerId];
+            const atkDrone = atkState.dronesOnBoard[attackerLaneForCheck]?.find(d => d.id === attacker.id);
+            if (atkDrone) {
+                atkDrone.isSuppressed = false;
+                atkDrone.isExhausted = true;
+            }
+            return {
+                newPlayerStates,
+                suppressedConsumed: true,
+                logEntry: `${attacker.name}'s attack was cancelled (Suppressed)`
+            };
+        }
     }
 
     // Calculate attacker stats (skip for card/ability attacks)

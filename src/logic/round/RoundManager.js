@@ -61,6 +61,9 @@ class RoundManager {
           assaultUsed: false,
           // Reset ability activation counts for new round
           abilityActivations: [],
+          // Preserve one-shot status flags across rounds (consumed on use, not on round transition)
+          isSnared: drone.isSnared,
+          isSuppressed: drone.isSuppressed,
         };
       });
     }

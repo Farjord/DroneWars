@@ -3,7 +3,7 @@
 // ========================================
 // Handles status effect types for drone restrictions
 // APPLY_CANNOT_MOVE, APPLY_CANNOT_ATTACK, APPLY_CANNOT_INTERCEPT,
-// APPLY_DOES_NOT_READY, CLEAR_ALL_STATUS
+// APPLY_DOES_NOT_READY, APPLY_SNARED, APPLY_SUPPRESSED, CLEAR_ALL_STATUS
 
 import BaseEffectProcessor from '../BaseEffectProcessor.js';
 import { debugLog } from '../../../utils/debugLogger.js';
@@ -73,6 +73,12 @@ class StatusEffectProcessor extends BaseEffectProcessor {
         break;
       case 'APPLY_DOES_NOT_READY':
         result = this.applyStatus(effect, newPlayerStates, targetPlayerState, target, 'doesNotReady');
+        break;
+      case 'APPLY_SNARED':
+        result = this.applyStatus(effect, newPlayerStates, targetPlayerState, target, 'isSnared');
+        break;
+      case 'APPLY_SUPPRESSED':
+        result = this.applyStatus(effect, newPlayerStates, targetPlayerState, target, 'isSuppressed');
         break;
       case 'CLEAR_ALL_STATUS':
         result = this.clearAllStatus(effect, newPlayerStates, targetPlayerState, target, targetPlayerId);
@@ -159,6 +165,8 @@ class StatusEffectProcessor extends BaseEffectProcessor {
         drone.cannotIntercept = false;
         drone.doesNotReady = false;
         drone.isMarked = false;
+        drone.isSnared = false;
+        drone.isSuppressed = false;
 
         droneFound = true;
         foundInLane = lane;

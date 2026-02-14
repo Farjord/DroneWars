@@ -2,6 +2,7 @@
 // MOVE CONFIRMATION MODAL COMPONENT
 // ========================================
 // Modal that confirms drone movement actions
+// Includes Snared warning when drone has isSnared status
 
 import React from 'react';
 import { Move, ArrowRight } from 'lucide-react';
@@ -22,12 +23,14 @@ const extractDroneNameFromId = (droneId) => {
 /**
  * MOVE CONFIRMATION MODAL COMPONENT
  * Shows confirmation dialog for drone movement with source and destination.
+ * When isSnared is true, warns that the move will be cancelled but the snare consumed.
  * @param {Object} moveConfirmation - Move data with droneId, from, and to lane info
  * @param {boolean} show - Whether to show the modal
+ * @param {boolean} isSnared - Whether the drone is snared
  * @param {Function} onCancel - Callback when move is cancelled
  * @param {Function} onConfirm - Callback when move is confirmed
  */
-const MoveConfirmationModal = ({ moveConfirmation, show, onCancel, onConfirm }) => {
+const MoveConfirmationModal = ({ moveConfirmation, show, isSnared, onCancel, onConfirm }) => {
   if (!show || !moveConfirmation) return null;
 
   const { droneId, from, to } = moveConfirmation;
@@ -42,24 +45,32 @@ const MoveConfirmationModal = ({ moveConfirmation, show, onCancel, onConfirm }) 
             <Move size={28} />
           </div>
           <div className="dw-modal-header-info">
-            <h2 className="dw-modal-header-title">Move Drone</h2>
+            <h2 className="dw-modal-header-title">{isSnared ? 'Drone Snared' : 'Move Drone'}</h2>
             <p className="dw-modal-header-subtitle">{droneName}</p>
           </div>
         </div>
 
         {/* Body */}
         <div className="dw-modal-body">
-          <div className="dw-modal-info-box">
-            <div className="dw-modal-info-item" style={{ justifyContent: 'center', gap: '12px' }}>
-              <span style={{ fontWeight: 'bold' }}>{from}</span>
-              <ArrowRight size={20} />
-              <span style={{ fontWeight: 'bold' }}>{to}</span>
+          {!isSnared && (
+            <div className="dw-modal-info-box">
+              <div className="dw-modal-info-item" style={{ justifyContent: 'center', gap: '12px' }}>
+                <span style={{ fontWeight: 'bold' }}>{from}</span>
+                <ArrowRight size={20} />
+                <span style={{ fontWeight: 'bold' }}>{to}</span>
+              </div>
             </div>
-          </div>
+          )}
 
-          <p className="dw-modal-text" style={{ marginTop: '12px', fontSize: '13px', opacity: 0.8 }}>
-            The drone will be exhausted after moving.
-          </p>
+          {isSnared ? (
+            <p className="dw-modal-text" style={{ marginTop: '12px', fontSize: '13px', color: '#f59e0b' }}>
+              <strong>{droneName}</strong> is Snared — this will remove the Snared effect and exhaust the drone, but it will <strong>NOT</strong> move.
+            </p>
+          ) : (
+            <p className="dw-modal-text" style={{ marginTop: '12px', fontSize: '13px', opacity: 0.8 }}>
+              The drone will be exhausted after moving.
+            </p>
+          )}
         </div>
 
         {/* Actions */}
@@ -68,7 +79,7 @@ const MoveConfirmationModal = ({ moveConfirmation, show, onCancel, onConfirm }) 
             Cancel
           </button>
           <button className="dw-btn dw-btn-confirm" onClick={onConfirm}>
-            Move
+            {isSnared ? 'Remove Snare' : 'Move'}
           </button>
         </div>
       </div>

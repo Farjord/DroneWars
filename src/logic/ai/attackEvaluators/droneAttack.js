@@ -35,6 +35,11 @@ export const evaluateDroneAttack = (attacker, target, context) => {
     return { score: -Infinity, logic: ['⛔ PASSIVE: Cannot attack'] };
   }
 
+  // Check if attacker is Suppressed - attack will be cancelled but clears status
+  if (attacker.isSuppressed) {
+    return { score: -15, logic: ['⚠️ Suppressed: attack will be cancelled but clears status'] };
+  }
+
   // Determine if attack is piercing (static or conditional)
   let isPiercing = attacker.damageType === 'PIERCING';
 
