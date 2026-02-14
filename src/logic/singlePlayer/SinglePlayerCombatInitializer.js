@@ -15,6 +15,7 @@ import aiPersonalities from '../../data/aiData.js';
 import aiPhaseProcessor from '../../managers/AIPhaseProcessor.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
+import { shipComponentsToPlacement } from '../../utils/deckExportUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import { buildActiveDronePool as buildDronePoolFromSlots } from '../../utils/slotDamageUtils.js';
@@ -163,7 +164,9 @@ class SinglePlayerCombatInitializer {
           placedSections = sectionsByLane;
         }
       }
-      const opponentPlacedSections = aiPersonality.shipDeployment?.placement || ['bridge', 'powerCell', 'droneControlHub'];
+      const opponentPlacedSections = (aiPersonality.shipComponents && shipComponentsToPlacement(aiPersonality.shipComponents).length === 3)
+        ? shipComponentsToPlacement(aiPersonality.shipComponents)
+        : ['bridge', 'powerCell', 'droneControlHub'];
 
       // 6. Set initial resources to 0 - roundInitialization will calculate from ship stats
       // This ensures middle lane bonus and other stat modifiers are properly applied

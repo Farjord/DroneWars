@@ -5,6 +5,7 @@
 // Provides instant AI decisions for SimultaneousActionManager commitment system
 
 import GameDataService from '../services/GameDataService.js';
+import { shipComponentsToPlacement } from '../utils/deckExportUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 import SeededRandom from '../utils/seededRandom.js';
 
@@ -343,23 +344,13 @@ class AIPhaseProcessor {
     debugLog('AI_DECISIONS', `✅ AI selected deck: ${selectedDeck.length} cards + ${selectedDrones.length} drones`);
     debugLog('AI_DECISIONS', `🎲 AI drones: ${selectedDrones.join(', ')}`);
 
-    // Convert AI's placement array to shipComponents format
-    // placement array is [lane0, lane1, lane2] with legacy keys -> { key: 'l'/'m'/'r' }
-    const laneMap = ['l', 'm', 'r']; // lane0=left, lane1=middle, lane2=right
-    const shipComponents = {};
-
-    if (personality?.shipDeployment?.placement) {
-      personality.shipDeployment.placement.forEach((key, index) => {
-        shipComponents[key] = laneMap[index];
-      });
-      debugLog('AI_DECISIONS', `🎯 Using ${personality.name} ship placement:`, shipComponents);
-    } else {
-      // Fallback to default layout if personality doesn't have placement
-      shipComponents['bridge'] = 'l';
-      shipComponents['powerCell'] = 'm';
-      shipComponents['droneControlHub'] = 'r';
-      debugLog('AI_DECISIONS', `⚠️ No ship placement in personality, using default layout`);
-    }
+    // Read shipComponents directly from personality
+    const shipComponents = personality?.shipComponents || {
+      'BRIDGE_001': 'l',
+      'POWERCELL_001': 'm',
+      'DRONECONTROL_001': 'r'
+    };
+    debugLog('AI_DECISIONS', `🎯 Using ${personality?.name || 'default'} ship components:`, shipComponents);
 
     return {
       deck: selectedDeck,
@@ -378,17 +369,15 @@ class AIPhaseProcessor {
 
     debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.processPlacement starting...');
 
-    // Use AI personality's defined placement array (contains legacy keys)
+    // Convert shipComponents to legacy placement array
     let placedSections;
 
-    if (personality?.shipDeployment?.placement) {
-      placedSections = [...personality.shipDeployment.placement]; // [lane0, lane1, lane2]
-      debugLog('AI_DECISIONS', `🎯 Using ${personality.name} defined placement: ${placedSections.join(', ')}`);
-      debugLog('AI_DECISIONS', `📋 Strategy: ${personality.shipDeployment.strategy} - ${personality.shipDeployment.reasoning}`);
+    if (personality?.shipComponents) {
+      placedSections = shipComponentsToPlacement(personality.shipComponents);
+      debugLog('AI_DECISIONS', `🎯 Using ${personality.name} placement: ${placedSections.join(', ')}`);
     } else {
-      // Fallback to default placement if personality doesn't have placement
       placedSections = ['bridge', 'powerCell', 'droneControlHub'];
-      debugLog('AI_DECISIONS', `⚠️ No ship placement in personality, using default: ${placedSections.join(', ')}`);
+      debugLog('AI_DECISIONS', `⚠️ No shipComponents in personality, using default: ${placedSections.join(', ')}`);
     }
 
     debugLog('AI_DECISIONS', `🤖 AI placement completed: ${placedSections.join(', ')}`);
@@ -398,7 +387,7 @@ class AIPhaseProcessor {
 
   // REMOVED: Legacy hard-coded placement strategy methods (selectSectionsForPlacement,
   // arrangeAggressivePlacement, arrangeEconomicPlacement, arrangeBalancedPlacement)
-  // All AIs now use their defined shipDeployment.placement arrays with legacy keys
+  // All AIs now use their defined shipComponents with component IDs
 
   /**
    * Execute AI turn for deployment phase

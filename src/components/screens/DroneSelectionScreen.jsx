@@ -302,14 +302,6 @@ function DroneSelectionScreen() {
         `}
       </style>
 
-      {/* Exit Button - Top Left */}
-      <button
-        onClick={() => setShowExitConfirm(true)}
-        className="absolute top-4 left-4 z-20 dw-btn dw-btn-cancel px-4 py-2"
-      >
-        ✕ Exit
-      </button>
-
       {/* Content Wrapper */}
       <div className="flex flex-col items-center w-full p-4 relative z-10">
         {/* Header with hex decorations */}
@@ -356,16 +348,6 @@ function DroneSelectionScreen() {
           </h2>
         </div>
 
-        {/* Continue button - positioned at top center when selection complete */}
-        {isSelectionComplete && (
-          <button
-            onClick={handleContinueDroneSelection}
-            className="dw-btn dw-btn-confirm mb-6"
-          >
-            Continue to Ship Placement →
-          </button>
-        )}
-
         {/* Pair selection */}
         {!isSelectionComplete ? (
           <>
@@ -411,6 +393,23 @@ function DroneSelectionScreen() {
           ) : (
             <p className="text-center text-gray-500">No drones selected yet.</p>
           )}
+
+          {/* Action Buttons - always visible */}
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '1.5rem' }}>
+            <button
+              onClick={() => setShowExitConfirm(true)}
+              className="dw-btn dw-btn-cancel"
+            >
+              EXIT
+            </button>
+            <button
+              onClick={handleContinueDroneSelection}
+              disabled={!isSelectionComplete}
+              className="dw-btn dw-btn-confirm"
+            >
+              Continue to Ship Placement →
+            </button>
+          </div>
         </div>
       </div>
 

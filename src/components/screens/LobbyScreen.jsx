@@ -156,17 +156,7 @@ function LobbyScreen() {
       }))
       .filter(item => item.card); // Filter out any cards that weren't found
 
-    // Convert ship placement to shipComponents format
-    // placement is [lane0, lane1, lane2] with legacy keys
-    const shipComponents = {};
-    const laneMap = ['l', 'm', 'r']; // lane0=left, lane1=middle, lane2=right
-
-    ai.shipDeployment.placement.forEach((key, index) => {
-      // placement array contains legacy keys directly (e.g., 'bridge', 'powerCell')
-      shipComponents[key] = laneMap[index];
-    });
-
-    return { drones, cards, shipComponents };
+    return { drones, cards, shipComponents: ai.shipComponents || {} };
   };
 
   return (

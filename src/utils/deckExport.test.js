@@ -1,126 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import {
-  generateDeckCode,
   parseJSObjectLiteral,
   generateJSObjectLiteral,
   convertToAIFormat,
-  convertFromAIFormat
+  convertFromAIFormat,
+  shipComponentsToPlacement
 } from './deckExportUtils.js';
-
-// ========================================
-// DECK EXPORT TESTS
-// ========================================
-// Integration tests for deck export functionality
-// Key requirement: Export should NEVER include entries with quantity 0
-
-describe('generateDeckCode', () => {
-  describe('cards export', () => {
-    it('should export cards with quantity > 0', () => {
-      const deck = { CARD001: 2, CARD002: 3 };
-      const result = generateDeckCode(deck, {}, {});
-
-      expect(result).toContain('CARD001:2');
-      expect(result).toContain('CARD002:3');
-    });
-
-    it('should NOT export cards with quantity 0', () => {
-      const deck = { CARD001: 2, CARD002: 0, CARD003: 1 };
-      const result = generateDeckCode(deck, {}, {});
-
-      expect(result).toContain('CARD001:2');
-      expect(result).toContain('CARD003:1');
-      expect(result).not.toContain('CARD002');
-      expect(result).not.toContain(':0');
-    });
-
-    it('should handle deck with all cards set to 0', () => {
-      const deck = { CARD001: 0, CARD002: 0 };
-      const result = generateDeckCode(deck, {}, {});
-
-      expect(result).toMatch(/^cards:\|/); // Empty cards section
-      expect(result).not.toContain('CARD001');
-      expect(result).not.toContain('CARD002');
-    });
-
-    it('should handle empty deck', () => {
-      const deck = {};
-      const result = generateDeckCode(deck, {}, {});
-
-      expect(result).toMatch(/^cards:\|/);
-    });
-  });
-
-  describe('drones export', () => {
-    it('should export drones with quantity > 0', () => {
-      const drones = { 'Dart': 1, 'Mammoth': 1 };
-      const result = generateDeckCode({}, drones, {});
-
-      expect(result).toContain('Dart:1');
-      expect(result).toContain('Mammoth:1');
-    });
-
-    it('should NOT export drones with quantity 0', () => {
-      const drones = { 'Dart': 1, 'Removed Drone': 0 };
-      const result = generateDeckCode({}, drones, {});
-
-      expect(result).toContain('Dart:1');
-      expect(result).not.toContain('Removed Drone');
-      expect(result).not.toMatch(/Removed Drone:0/);
-    });
-  });
-
-  describe('ship components export', () => {
-    it('should export components with lane assignments', () => {
-      const components = { 'COMP_001': 'l', 'COMP_002': 'm' };
-      const result = generateDeckCode({}, {}, components);
-
-      expect(result).toContain('COMP_001:l');
-      expect(result).toContain('COMP_002:m');
-    });
-
-    it('should NOT export components with null lane', () => {
-      const components = { 'COMP_001': 'l', 'COMP_002': null };
-      const result = generateDeckCode({}, {}, components);
-
-      expect(result).toContain('COMP_001:l');
-      expect(result).not.toContain('COMP_002');
-    });
-  });
-
-  describe('full workflow: add then remove cards', () => {
-    it('should not include removed cards in export after setting to 0', () => {
-      // Simulate a deck where user added cards then removed some
-      const deck = {
-        'CARD001': 4,  // User added 4
-        'CARD002': 0,  // User added then removed (set to 0)
-        'CARD003': 2,  // User added 2
-        'CARD004': 0,  // User added then removed (set to 0)
-      };
-      const drones = {
-        'Dart': 1,
-        'Removed Drone': 0,  // User added then removed
-      };
-
-      const result = generateDeckCode(deck, drones, {});
-
-      // Should contain kept items
-      expect(result).toContain('CARD001:4');
-      expect(result).toContain('CARD003:2');
-      expect(result).toContain('Dart:1');
-
-      // Should NOT contain removed items
-      expect(result).not.toContain('CARD002');
-      expect(result).not.toContain('CARD004');
-      expect(result).not.toContain('Removed Drone');
-      expect(result).not.toContain(':0');
-    });
-  });
-});
 
 // ========================================
 // JS OBJECT LITERAL PARSING TESTS
 // ========================================
-// Tests for parsing JavaScript object literals (aiData.js format)
 
 describe('parseJSObjectLiteral', () => {
   describe('basic parsing', () => {
@@ -244,44 +133,34 @@ describe('parseJSObjectLiteral', () => {
     });
   });
 
-  describe('aiData format parsing', () => {
-    it('should parse full aiData-style object', () => {
+  describe('deck format parsing', () => {
+    it('should parse full deck-style object with shipComponents', () => {
       const input = `{
-        name: 'TEST AI',
-        description: 'Used for test scenarios.',
-        difficulty: 'Easy',
-        modes: ['vs'],
         shipId: 'SHIP_001',
-        imagePath: '/DroneWars/AI/TEST.png',
-        dronePool: ['Talon', 'Mammoth'],
-        shipDeployment: {
-          strategy: 'aggressive',
-          placement: ['bridge', 'powerCell', 'droneControlHub'],
-          reasoning: 'Test reasoning'
-        },
         decklist: [
           { id: 'CARD001', quantity: 4 },
           { id: 'CARD002', quantity: 2 },
-        ]
+        ],
+        dronePool: ['Talon', 'Mammoth'],
+        shipComponents: {
+          'BRIDGE_001': 'l',
+          'POWERCELL_001': 'm',
+          'DRONECONTROL_001': 'r'
+        }
       }`;
       const result = parseJSObjectLiteral(input);
       expect(result.success).toBe(true);
-      expect(result.data.name).toBe('TEST AI');
-      expect(result.data.description).toBe('Used for test scenarios.');
-      expect(result.data.difficulty).toBe('Easy');
-      expect(result.data.modes).toEqual(['vs']);
       expect(result.data.shipId).toBe('SHIP_001');
       expect(result.data.dronePool).toHaveLength(2);
-      expect(result.data.shipDeployment.strategy).toBe('aggressive');
-      expect(result.data.shipDeployment.placement).toHaveLength(3);
+      expect(result.data.shipComponents['BRIDGE_001']).toBe('l');
       expect(result.data.decklist).toHaveLength(2);
       expect(result.data.decklist[0].id).toBe('CARD001');
       expect(result.data.decklist[0].quantity).toBe(4);
     });
 
-    it('should parse aiData with inline comments', () => {
+    it('should parse deck with inline comments', () => {
       const input = `{
-        name: 'Test',
+        shipId: 'SHIP_001',
         dronePool: [
           'Dart',        // Fast drone
           'Mammoth',     // Heavy drone
@@ -289,7 +168,12 @@ describe('parseJSObjectLiteral', () => {
         decklist: [
           { id: 'CARD001', quantity: 4 },   // Laser Blast
           { id: 'CARD002', quantity: 2 },   // System Reboot
-        ]
+        ],
+        shipComponents: {
+          'BRIDGE_001': 'l',
+          'POWERCELL_001': 'm',
+          'DRONECONTROL_001': 'r'
+        }
       }`;
       const result = parseJSObjectLiteral(input);
       expect(result.success).toBe(true);
@@ -350,16 +234,24 @@ describe('generateJSObjectLiteral', () => {
       expect(output).toContain("'c'");
     });
 
-    it('should format arrays of objects', () => {
+    it('should format arrays of objects with inline simple objects', () => {
       const data = { items: [{ id: 'A', qty: 1 }, { id: 'B', qty: 2 }] };
       const output = generateJSObjectLiteral(data);
-      expect(output).toContain("id: 'A'");
-      expect(output).toContain('qty: 1');
+      expect(output).toContain("{ id: 'A', qty: 1 }");
+      expect(output).toContain("{ id: 'B', qty: 2 }");
+    });
+
+    it('should group string arrays ~5 per line', () => {
+      const data = { names: ['A', 'B', 'C', 'D', 'E', 'F', 'G'] };
+      const output = generateJSObjectLiteral(data);
+      // First 5 on one line, remaining 2 on next line
+      expect(output).toContain("'A', 'B', 'C', 'D', 'E'");
+      expect(output).toContain("'F', 'G'");
     });
   });
 
   describe('nested objects', () => {
-    it('should format nested objects properly', () => {
+    it('should inline simple nested objects', () => {
       const data = {
         outer: {
           inner: 'value',
@@ -367,8 +259,25 @@ describe('generateJSObjectLiteral', () => {
         }
       };
       const output = generateJSObjectLiteral(data);
+      // outer is not simple (has nested object), so it stays multi-line
       expect(output).toContain("inner: 'value'");
-      expect(output).toContain("deep: 'deeper'");
+      // nested is simple (only scalar values), so it gets inlined
+      expect(output).toContain("{ deep: 'deeper' }");
+    });
+
+    it('should quote ALL_CAPS keys like data IDs', () => {
+      const data = {
+        shipComponents: {
+          'BRIDGE_001': 'l',
+          'POWERCELL_001': 'm'
+        }
+      };
+      const output = generateJSObjectLiteral(data);
+      expect(output).toContain("'BRIDGE_001': 'l'");
+      expect(output).toContain("'POWERCELL_001': 'm'");
+      // shipComponents should NOT be quoted (camelCase)
+      expect(output).toContain('shipComponents:');
+      expect(output).not.toContain("'shipComponents'");
     });
   });
 
@@ -434,7 +343,6 @@ describe('convertToAIFormat', () => {
     it('should expand drone quantities', () => {
       const drones = { 'Talon': 2, 'Mammoth': 1 };
       const result = convertToAIFormat({}, drones, {}, { id: 'SHIP_001' }, {});
-      // Should have 'Talon' twice
       expect(result.dronePool.filter(d => d === 'Talon')).toHaveLength(2);
       expect(result.dronePool.filter(d => d === 'Mammoth')).toHaveLength(1);
     });
@@ -447,66 +355,16 @@ describe('convertToAIFormat', () => {
     });
   });
 
-  describe('shipDeployment conversion', () => {
-    it('should convert ship components to placement array', () => {
+  describe('shipComponents output', () => {
+    it('should output shipComponents directly', () => {
       const components = { 'BRIDGE_001': 'l', 'POWERCELL_001': 'm', 'DRONECONTROL_001': 'r' };
       const result = convertToAIFormat({}, {}, components, { id: 'SHIP_001' }, {});
-      expect(result.shipDeployment).toBeDefined();
-      expect(result.shipDeployment.placement).toHaveLength(3);
+      expect(result.shipComponents).toEqual(components);
     });
 
-    it('should default strategy to balanced', () => {
+    it('should not include shipDeployment', () => {
       const result = convertToAIFormat({}, {}, {}, { id: 'SHIP_001' }, {});
-      expect(result.shipDeployment.strategy).toBe('balanced');
-    });
-  });
-
-  describe('preserved fields', () => {
-    it('should preserve name from import', () => {
-      const preserved = { name: 'My Custom Name' };
-      const result = convertToAIFormat({}, {}, {}, { id: 'SHIP_001' }, preserved);
-      expect(result.name).toBe('My Custom Name');
-    });
-
-    it('should preserve description from import', () => {
-      const preserved = { description: 'Test deck description' };
-      const result = convertToAIFormat({}, {}, {}, { id: 'SHIP_001' }, preserved);
-      expect(result.description).toBe('Test deck description');
-    });
-
-    it('should preserve difficulty from import', () => {
-      const preserved = { difficulty: 'Hard' };
-      const result = convertToAIFormat({}, {}, {}, { id: 'SHIP_001' }, preserved);
-      expect(result.difficulty).toBe('Hard');
-    });
-
-    it('should preserve modes from import', () => {
-      const preserved = { modes: ['vs', 'extraction'] };
-      const result = convertToAIFormat({}, {}, {}, { id: 'SHIP_001' }, preserved);
-      expect(result.modes).toEqual(['vs', 'extraction']);
-    });
-
-    it('should preserve imagePath from import', () => {
-      const preserved = { imagePath: '/path/to/image.png' };
-      const result = convertToAIFormat({}, {}, {}, { id: 'SHIP_001' }, preserved);
-      expect(result.imagePath).toBe('/path/to/image.png');
-    });
-
-    it('should preserve shipDeployment strategy and reasoning', () => {
-      const preserved = {
-        shipDeployment: {
-          strategy: 'aggressive',
-          reasoning: 'Test reasoning text'
-        }
-      };
-      const result = convertToAIFormat({}, {}, {}, { id: 'SHIP_001' }, preserved);
-      expect(result.shipDeployment.strategy).toBe('aggressive');
-      expect(result.shipDeployment.reasoning).toBe('Test reasoning text');
-    });
-
-    it('should use default name when not preserved', () => {
-      const result = convertToAIFormat({}, {}, {}, { id: 'SHIP_001' }, {});
-      expect(result.name).toBe('Exported Deck');
+      expect(result.shipDeployment).toBeUndefined();
     });
   });
 
@@ -590,8 +448,20 @@ describe('convertFromAIFormat', () => {
     });
   });
 
-  describe('shipDeployment conversion', () => {
-    it('should convert placement to ship components', () => {
+  describe('shipComponents conversion', () => {
+    it('should read shipComponents directly', () => {
+      const aiData = {
+        shipComponents: { 'BRIDGE_001': 'l', 'POWERCELL_001': 'm', 'DRONECONTROL_001': 'r' }
+      };
+      const result = convertFromAIFormat(aiData);
+      expect(result.selectedShipComponents).toEqual({
+        'BRIDGE_001': 'l',
+        'POWERCELL_001': 'm',
+        'DRONECONTROL_001': 'r'
+      });
+    });
+
+    it('should fall back to shipDeployment.placement for backward compat', () => {
       const aiData = {
         shipDeployment: {
           placement: ['bridge', 'powerCell', 'droneControlHub']
@@ -599,29 +469,19 @@ describe('convertFromAIFormat', () => {
       };
       const result = convertFromAIFormat(aiData);
       expect(Object.keys(result.selectedShipComponents)).toHaveLength(3);
-    });
-
-    it('should map placement positions to lanes correctly', () => {
-      const aiData = {
-        shipDeployment: {
-          placement: ['bridge', 'powerCell', 'droneControlHub']
-        }
-      };
-      const result = convertFromAIFormat(aiData);
-      // Index 0 -> lane 'l', index 1 -> lane 'm', index 2 -> lane 'r'
       const lanes = Object.values(result.selectedShipComponents);
       expect(lanes).toContain('l');
       expect(lanes).toContain('m');
       expect(lanes).toContain('r');
     });
 
-    it('should handle empty placement', () => {
-      const aiData = { shipDeployment: { placement: [] } };
+    it('should handle empty shipComponents', () => {
+      const aiData = { shipComponents: {} };
       const result = convertFromAIFormat(aiData);
       expect(result.selectedShipComponents).toEqual({});
     });
 
-    it('should handle missing shipDeployment', () => {
+    it('should handle missing shipComponents and shipDeployment', () => {
       const aiData = {};
       const result = convertFromAIFormat(aiData);
       expect(result.selectedShipComponents).toEqual({});
@@ -672,19 +532,34 @@ describe('convertFromAIFormat', () => {
       const result = convertFromAIFormat(aiData);
       expect(result.preservedFields.imagePath).toBe('/path/to/image.png');
     });
+  });
+});
 
-    it('should capture shipDeployment strategy and reasoning', () => {
-      const aiData = {
-        shipDeployment: {
-          strategy: 'aggressive',
-          reasoning: 'Because reasons',
-          placement: []
-        }
-      };
-      const result = convertFromAIFormat(aiData);
-      expect(result.preservedFields.shipDeployment.strategy).toBe('aggressive');
-      expect(result.preservedFields.shipDeployment.reasoning).toBe('Because reasons');
-    });
+// ========================================
+// SHIP COMPONENTS TO PLACEMENT TESTS
+// ========================================
+
+describe('shipComponentsToPlacement', () => {
+  it('should convert component IDs to legacy placement array', () => {
+    const components = { 'BRIDGE_001': 'l', 'POWERCELL_001': 'm', 'DRONECONTROL_001': 'r' };
+    const result = shipComponentsToPlacement(components);
+    expect(result).toEqual(['bridge', 'powerCell', 'droneControlHub']);
+  });
+
+  it('should handle different lane orders', () => {
+    const components = { 'POWERCELL_001': 'l', 'BRIDGE_001': 'm', 'DRONECONTROL_001': 'r' };
+    const result = shipComponentsToPlacement(components);
+    expect(result).toEqual(['powerCell', 'bridge', 'droneControlHub']);
+  });
+
+  it('should handle empty components', () => {
+    const result = shipComponentsToPlacement({});
+    expect(result).toEqual([]);
+  });
+
+  it('should handle null components', () => {
+    const result = shipComponentsToPlacement(null);
+    expect(result).toEqual([]);
   });
 });
 
@@ -695,17 +570,12 @@ describe('convertFromAIFormat', () => {
 describe('round-trip conversion', () => {
   it('should preserve all data through import-export cycle', () => {
     const original = {
-      name: 'Test AI',
-      description: 'Test description',
-      difficulty: 'Hard',
-      modes: ['vs'],
       shipId: 'SHIP_001',
-      imagePath: '/path/to/image.png',
       dronePool: ['Talon', 'Mammoth', 'Mammoth'],
-      shipDeployment: {
-        strategy: 'aggressive',
-        placement: ['bridge', 'powerCell', 'droneControlHub'],
-        reasoning: 'Test reasoning'
+      shipComponents: {
+        'BRIDGE_001': 'l',
+        'POWERCELL_001': 'm',
+        'DRONECONTROL_001': 'r'
       },
       decklist: [
         { id: 'CARD001', quantity: 4 },
@@ -726,17 +596,9 @@ describe('round-trip conversion', () => {
       preservedFields
     );
 
-    // Verify preserved fields
-    expect(exported.name).toBe(original.name);
-    expect(exported.description).toBe(original.description);
-    expect(exported.difficulty).toBe(original.difficulty);
-    expect(exported.modes).toEqual(original.modes);
-    expect(exported.imagePath).toBe(original.imagePath);
-    expect(exported.shipDeployment.strategy).toBe(original.shipDeployment.strategy);
-    expect(exported.shipDeployment.reasoning).toBe(original.shipDeployment.reasoning);
-
     // Verify converted data
     expect(exported.shipId).toBe(original.shipId);
+    expect(exported.shipComponents).toEqual(original.shipComponents);
     expect(exported.decklist).toContainEqual({ id: 'CARD001', quantity: 4 });
     expect(exported.decklist).toContainEqual({ id: 'CARD002', quantity: 2 });
     expect(exported.dronePool).toContain('Talon');
@@ -766,39 +628,14 @@ describe('round-trip conversion', () => {
     expect(exported.decklist).toContainEqual({ id: 'CARD001', quantity: 1 });
   });
 
-  it('should preserve unknown top-level fields', () => {
-    const original = {
-      name: 'Test',
-      customField: 'custom value',
-      anotherField: { nested: 'data' },
-      shipId: 'SHIP_001',
-      dronePool: [],
-      decklist: []
-    };
-
-    const { deck, selectedDrones, selectedShipComponents, shipId, preservedFields } =
-      convertFromAIFormat(original);
-
-    const exported = convertToAIFormat(
-      deck,
-      selectedDrones,
-      selectedShipComponents,
-      { id: shipId },
-      preservedFields
-    );
-
-    expect(exported.name).toBe(original.name);
-    // Custom fields should be preserved if implemented
-  });
-
   it('should handle full JS round-trip with parse and generate', () => {
     const original = `{
-      name: 'Full Round Trip',
       shipId: 'SHIP_001',
       dronePool: ['Talon', 'Mammoth'],
-      shipDeployment: {
-        strategy: 'balanced',
-        placement: ['bridge', 'powerCell', 'droneControlHub'],
+      shipComponents: {
+        'BRIDGE_001': 'l',
+        'POWERCELL_001': 'm',
+        'DRONECONTROL_001': 'r'
       },
       decklist: [
         { id: 'CARD001', quantity: 4 },
@@ -828,7 +665,40 @@ describe('round-trip conversion', () => {
     // Parse generated text to verify validity
     const finalParse = parseJSObjectLiteral(outputText);
     expect(finalParse.success).toBe(true);
-    expect(finalParse.data.name).toBe('Full Round Trip');
     expect(finalParse.data.shipId).toBe('SHIP_001');
+    expect(finalParse.data.shipComponents).toEqual({
+      'BRIDGE_001': 'l',
+      'POWERCELL_001': 'm',
+      'DRONECONTROL_001': 'r'
+    });
+  });
+
+  it('should handle backward compat: legacy shipDeployment import re-exports as shipComponents', () => {
+    const legacy = {
+      shipId: 'SHIP_001',
+      dronePool: ['Talon'],
+      shipDeployment: {
+        placement: ['bridge', 'powerCell', 'droneControlHub']
+      },
+      decklist: [{ id: 'CARD001', quantity: 4 }]
+    };
+
+    const { deck, selectedDrones, selectedShipComponents, shipId, preservedFields } =
+      convertFromAIFormat(legacy);
+
+    const exported = convertToAIFormat(
+      deck,
+      selectedDrones,
+      selectedShipComponents,
+      { id: shipId },
+      preservedFields
+    );
+
+    expect(exported.shipComponents).toEqual({
+      'BRIDGE_001': 'l',
+      'POWERCELL_001': 'm',
+      'DRONECONTROL_001': 'r'
+    });
+    expect(exported.shipDeployment).toBeUndefined();
   });
 });

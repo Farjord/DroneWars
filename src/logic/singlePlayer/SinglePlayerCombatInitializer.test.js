@@ -100,7 +100,7 @@ describe('SinglePlayerCombatInitializer - isBlockade flag', () => {
       decklist: [],
       dronePool: [],
       modes: ['extraction'],
-      shipDeployment: { placement: ['bridge', 'powerCell', 'droneControlHub'] }
+      shipComponents: { 'BRIDGE_001': 'l', 'POWERCELL_001': 'm', 'DRONECONTROL_001': 'r' }
     });
 
     // Mock gameFlowManager to avoid phase transition calls
@@ -257,7 +257,7 @@ describe('SinglePlayerCombatInitializer - placedSections lane assignments', () =
       decklist: [],
       dronePool: [],
       modes: ['extraction'],
-      shipDeployment: { placement: ['bridge', 'powerCell', 'droneControlHub'] }
+      shipComponents: { 'BRIDGE_001': 'l', 'POWERCELL_001': 'm', 'DRONECONTROL_001': 'r' }
     });
 
     // Mock gameFlowManager to avoid phase transition calls
@@ -370,7 +370,7 @@ describe('SinglePlayerCombatInitializer - residual state cleanup', () => {
       decklist: [],
       dronePool: [],
       modes: ['extraction'],
-      shipDeployment: { placement: ['bridge', 'powerCell', 'droneControlHub'] }
+      shipComponents: { 'BRIDGE_001': 'l', 'POWERCELL_001': 'm', 'DRONECONTROL_001': 'r' }
     });
 
     // Mock gameFlowManager to avoid phase transition calls
@@ -498,7 +498,7 @@ describe('SinglePlayerCombatInitializer - animation queue cleanup', () => {
       decklist: [],
       dronePool: [],
       modes: ['extraction'],
-      shipDeployment: { placement: ['bridge', 'powerCell', 'droneControlHub'] }
+      shipComponents: { 'BRIDGE_001': 'l', 'POWERCELL_001': 'm', 'DRONECONTROL_001': 'r' }
     });
 
     // Mock gameFlowManager to avoid phase transition calls

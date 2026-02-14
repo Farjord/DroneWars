@@ -28,9 +28,9 @@ vi.mock('../../utils/shipSectionImageResolver.js', () => ({
   resolveShipSectionStats: vi.fn(c => c)
 }));
 vi.mock('../../utils/deckExportUtils.js', () => ({
-  generateDeckCode: vi.fn(),
   generateJSObjectLiteral: vi.fn(),
   convertToAIFormat: vi.fn(),
+  convertFromAIFormat: vi.fn(() => ({ deck: {}, selectedDrones: {}, selectedShipComponents: {} })),
   downloadDeckFile: vi.fn()
 }));
 vi.mock('../../utils/singlePlayerDeckUtils.js', () => ({

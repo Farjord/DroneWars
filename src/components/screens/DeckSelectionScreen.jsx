@@ -7,14 +7,19 @@
 import React, { useState, useEffect } from 'react';
 import { useGameState } from '../../hooks/useGameState.js';
 import { WaitingForOpponentScreen, SubmittingOverlay } from './DroneSelectionScreen.jsx';
-import { gameEngine, startingDecklist, startingDroneList } from '../../logic/gameLogic.js';
+import { gameEngine } from '../../logic/gameLogic.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import p2pManager from '../../network/P2PManager.js';
 import DeckBuilder from './DeckBuilder.jsx';
 import fullCardCollection from '../../data/cardData.js';
+import fullDroneCollection from '../../data/droneData.js';
+import vsDecks from '../../data/vsModeDeckData.js';
+import { parseJSObjectLiteral, convertFromAIFormat } from '../../utils/deckExportUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
 import ConfirmationModal from '../modals/ConfirmationModal.jsx';
+import ViewDeckModal from '../modals/ViewDeckModal.jsx';
+import SoundManager from '../../managers/SoundManager.js';
 import { updateDeckState, updateDroneState } from '../../utils/deckStateUtils.js';
 
 /**
@@ -49,93 +54,118 @@ function DeckSelectionScreen() {
   // Exit confirmation state
   const [showExitConfirm, setShowExitConfirm] = useState(false);
 
+  // VS deck selection state
+  const [selectedDeck, setSelectedDeck] = useState(null);
+  const [deckModalOpen, setDeckModalOpen] = useState(false);
+  const [deckModalDeck, setDeckModalDeck] = useState(null);
+
+  /**
+   * PREPARE VS DECK DATA
+   * Converts a VS deck's data into props for ViewDeckModal.
+   * Same pattern as prepareAIDeckData in LobbyScreen.
+   */
+  const prepareVSDeckData = (deck) => {
+    if (!deck) return { drones: [], cards: [], shipComponents: {} };
+
+    const drones = fullDroneCollection.filter(d => deck.dronePool.includes(d.name));
+
+    const cards = deck.decklist
+      .filter(entry => entry.quantity > 0)
+      .map(entry => ({
+        card: fullCardCollection.find(c => c.id === entry.id),
+        quantity: entry.quantity
+      }))
+      .filter(item => item.card);
+
+    return { drones, cards, shipComponents: deck.shipComponents };
+  };
+
+  /**
+   * HANDLE SELECT DECK
+   * Highlights a VS deck card (does NOT submit).
+   */
+  const handleSelectDeck = (deck) => {
+    SoundManager.getInstance().play('ui_click');
+    setSelectedDeck(deck);
+  };
+
+  /**
+   * HANDLE VIEW DECK
+   * Opens ViewDeckModal for the given VS deck.
+   */
+  const handleViewDeck = (deck) => {
+    setDeckModalDeck(deck);
+    setDeckModalOpen(true);
+  };
+
+  /**
+   * HANDLE CONFIRM SELECTED DECK
+   * Builds the selected VS deck and submits it as a commitment.
+   */
+  const handleConfirmSelectedDeck = async () => {
+    if (!selectedDeck || turnPhase !== 'deckSelection') return;
+
+    debugLog('DECK_SELECTION', '🔧 Confirming VS deck:', selectedDeck.name);
+
+    const localPlayerId = getLocalPlayerId();
+    const builtDeck = gameEngine.buildDeckFromList(selectedDeck.decklist, localPlayerId, gameState.gameSeed);
+    const droneNames = [...selectedDeck.dronePool];
+
+    const payload = {
+      phase: 'deckSelection',
+      playerId: localPlayerId,
+      actionData: {
+        deck: builtDeck,
+        drones: droneNames,
+        shipComponents: selectedDeck.shipComponents
+      }
+    };
+
+    // Guest mode: Send action to host with immediate UI feedback
+    if (gameState.gameMode === 'guest') {
+      debugLog('COMMITMENTS', '[GUEST] Sending deck selection commitment to host:', {
+        phase: payload.phase,
+        playerId: payload.playerId,
+        actionDataKeys: Object.keys(payload.actionData),
+        deckSize: payload.actionData.deck?.length,
+        dronesCount: payload.actionData.drones?.length,
+        shipComponentsCount: Object.keys(payload.actionData.shipComponents || {}).length
+      });
+
+      setIsSubmitting(true);
+      p2pManager.sendActionToHost('commitment', payload);
+      return;
+    }
+
+    // Host/Local mode: Process action locally
+    const submissionResult = await gameStateManager.actionProcessor.processCommitment(payload);
+
+    if (!submissionResult.success) {
+      console.error('❌ Deck selection submission failed:', submissionResult.error);
+      return;
+    }
+
+    debugLog('DECK_SELECTION', '✅ VS deck selection submitted to PhaseManager');
+
+    addLogEntry({
+      player: 'SYSTEM',
+      actionType: 'DECK_SELECTION',
+      source: 'Player Setup',
+      target: 'N/A',
+      outcome: `Player selected the ${selectedDeck.name} deck.`
+    }, 'handleConfirmSelectedDeck');
+  };
+
   /**
    * HANDLE DECK CHOICE
-   * Processes player's choice between standard deck and custom deck building.
-   * @param {string} choice - Either 'standard' or 'custom'
+   * Opens the custom deck builder.
+   * @param {string} choice - 'custom'
    */
-  const handleDeckChoice = async (choice) => {
-    // Only handle during deck selection phase
+  const handleDeckChoice = (choice) => {
     if (turnPhase !== 'deckSelection') return;
 
-    debugLog('DECK_SELECTION', '🔧 handleDeckChoice called with:', choice);
-
-    if (choice === 'standard') {
-      // Build the standard deck for the local player
-      const localPlayerId = getLocalPlayerId();
-      const standardDeck = gameEngine.buildDeckFromList(startingDecklist, localPlayerId, gameState.gameSeed);
-      const standardDrones = [...startingDroneList]; // 10 standard drones
-
-      // Validate standard drone list has exactly 10 drones
-      if (standardDrones.length !== 10) {
-        console.error(`❌ Standard drone list has ${standardDrones.length} drones, expected 10`);
-        addLogEntry({
-          player: 'SYSTEM',
-          actionType: 'ERROR',
-          source: 'Deck Validation',
-          target: 'N/A',
-          outcome: `Invalid standard drone list: ${standardDrones.length} drones instead of 10.`
-        }, 'handleDeckChoice');
-        return;
-      }
-
-      // Default ship components for standard deck
-      const standardShipComponents = {
-        'BRIDGE_001': 'l',
-        'POWERCELL_001': 'm',
-        'DRONECONTROL_001': 'r'
-      };
-
-      const payload = {
-        phase: 'deckSelection',
-        playerId: localPlayerId,
-        actionData: {
-          deck: standardDeck,
-          drones: standardDrones,
-          shipComponents: standardShipComponents
-        }
-      };
-
-      // Guest mode: Send action to host with immediate UI feedback
-      if (gameState.gameMode === 'guest') {
-        debugLog('COMMITMENTS', '[GUEST] Sending deck selection commitment to host:', {
-          phase: payload.phase,
-          playerId: payload.playerId,
-          actionDataKeys: Object.keys(payload.actionData),
-          deckSize: payload.actionData.deck?.length,
-          dronesCount: payload.actionData.drones?.length,
-          shipComponentsCount: payload.actionData.shipComponents?.length
-        });
-
-        // Set UI state immediately for visual feedback
-        setIsSubmitting(true);
-
-        p2pManager.sendActionToHost('commitment', payload);
-        return;
-      }
-
-      // Host/Local mode: Process action locally
-      const submissionResult = await gameStateManager.actionProcessor.processCommitment(payload);
-
-      if (!submissionResult.success) {
-        console.error('❌ Deck selection submission failed:', submissionResult.error);
-        return;
-      }
-
-      debugLog('DECK_SELECTION', '✅ Standard deck selection submitted to PhaseManager');
-
-      addLogEntry({
-        player: 'SYSTEM',
-        actionType: 'DECK_SELECTION',
-        source: 'Player Setup',
-        target: 'N/A',
-        outcome: 'Player selected the Standard Deck.'
-      }, 'handleDeckChoice');
-
-    } else if (choice === 'custom') {
+    if (choice === 'custom') {
       debugLog('DECK_SELECTION', '🔧 Opening custom deck builder');
-
-      // Show deck builder UI (stay in deckSelection phase)
       setShowDeckBuilder(true);
     }
   };
@@ -269,75 +299,19 @@ function DeckSelectionScreen() {
 
   /**
    * HANDLE IMPORT DECK
-   * Imports a deck from a deck code (format: cards:CARD001:4,CARD002:2|drones:Scout Drone:1,Heavy Fighter:1|ship:BRIDGE_001:l,POWERCELL_001:m,DRONECONTROL_001:r)
+   * Imports a deck from a JS object literal (matching export format)
    */
   const handleImportDeck = (deckCode) => {
-    try {
-      const importedDeck = {};
-      const importedDrones = {};
-      const importedShipComponents = {};
-
-      // Split into cards, drones, and ship sections
-      const sections = deckCode.split('|');
-
-      for (const section of sections) {
-        const [type, ...data] = section.split(':');
-        const dataStr = data.join(':'); // Rejoin in case drone names have colons
-
-        if (type === 'cards') {
-          const pairs = dataStr.split(',');
-          for (const pair of pairs) {
-            const [cardId, quantity] = pair.split(':');
-            const qty = parseInt(quantity, 10);
-
-            if (!cardId || isNaN(qty)) {
-              return { success: false, message: 'Invalid card format in deck code.' };
-            }
-
-            // Verify card exists
-            const card = fullCardCollection.find(c => c.id === cardId);
-            if (!card) {
-              return { success: false, message: `Card ${cardId} not found.` };
-            }
-
-            importedDeck[cardId] = qty;
-          }
-        } else if (type === 'drones') {
-          const pairs = dataStr.split(',');
-          for (const pair of pairs) {
-            const parts = pair.split(':');
-            const quantity = parts.pop(); // Last element is quantity
-            const droneName = parts.join(':'); // Everything else is the drone name
-            const qty = parseInt(quantity, 10);
-
-            if (!droneName || isNaN(qty)) {
-              return { success: false, message: 'Invalid drone format in deck code.' };
-            }
-
-            importedDrones[droneName] = qty;
-          }
-        } else if (type === 'ship') {
-          const pairs = dataStr.split(',');
-          for (const pair of pairs) {
-            const [componentId, lane] = pair.split(':');
-
-            if (!componentId || !lane || !['l', 'm', 'r'].includes(lane)) {
-              return { success: false, message: 'Invalid ship component format in deck code.' };
-            }
-
-            importedShipComponents[componentId] = lane;
-          }
-        }
-      }
-
-      setCustomDeck(importedDeck);
-      setSelectedDrones(importedDrones);
-      setSelectedShipComponents(importedShipComponents);
-      return { success: true };
-    } catch (error) {
-      console.error('Error importing deck:', error);
-      return { success: false, message: 'Failed to parse deck code.' };
+    const parsed = parseJSObjectLiteral(deckCode);
+    if (!parsed.success) {
+      return { success: false, message: parsed.error };
     }
+
+    const result = convertFromAIFormat(parsed.data);
+    setCustomDeck(result.deck);
+    setSelectedDrones(result.selectedDrones);
+    setSelectedShipComponents(result.selectedShipComponents);
+    return { success: true };
   };
 
   // Notify GuestMessageQueueService when React has finished rendering (guest mode only)
@@ -427,14 +401,6 @@ function DeckSelectionScreen() {
         `}
       </style>
 
-      {/* Exit Button - Top Left */}
-      <button
-        onClick={() => setShowExitConfirm(true)}
-        className="absolute top-4 left-4 z-20 dw-btn dw-btn-cancel px-4 py-2"
-      >
-        ✕ Exit
-      </button>
-
       {/* Content Wrapper */}
       <div className="flex flex-col items-center w-full pt-8 px-4 relative z-10">
         {/* Header with hex decorations */}
@@ -481,62 +447,121 @@ function DeckSelectionScreen() {
           </h1>
         </div>
         <p className="text-gray-400 mb-8">Choose a pre-defined deck or build your own.</p>
-        <div className="flex flex-wrap justify-center gap-8">
-          {/* Standard Deck Option */}
-          <div
-            onClick={() => handleDeckChoice('standard')}
-            className="relative w-80 cursor-pointer transition-all duration-300 hover:scale-105"
-            style={{
-              background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 28, 0.95) 100%)',
-              border: '1px solid rgba(6, 182, 212, 0.4)',
-              clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%)',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(6, 182, 212, 0.1)'
-            }}
-          >
-            {/* Angular corner accent */}
-            <div
-              className="absolute top-0 left-0 w-3 h-3 z-10 pointer-events-none"
-              style={{
-                borderTop: '2px solid rgba(6, 182, 212, 0.6)',
-                borderLeft: '2px solid rgba(6, 182, 212, 0.6)'
-              }}
-            />
-            <div className="p-6 flex flex-col items-center text-center">
-              <h2 className="text-2xl font-orbitron font-bold text-cyan-400 mb-3">Use Standard Deck</h2>
-              <p className="font-exo text-gray-300 flex-grow mb-6">Play with the balanced, pre-built starter deck.</p>
-              <button className="dw-btn dw-btn-confirm">
-                Select
-              </button>
-            </div>
-          </div>
 
-          {/* Custom Deck Option */}
-          <div
-            onClick={() => handleDeckChoice('custom')}
-            className="relative w-80 cursor-pointer transition-all duration-300 hover:scale-105"
-            style={{
-              background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 28, 0.95) 100%)',
-              border: '1px solid rgba(147, 51, 234, 0.4)',
-              clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%)',
-              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(147, 51, 234, 0.1)'
-            }}
-          >
-            {/* Angular corner accent */}
+        {/* VS Deck Grid - 2 columns */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: '1rem',
+          maxWidth: '640px',
+          width: '100%'
+        }}>
+          {/* VS Mode Decks */}
+          {vsDecks.map((deck) => (
             <div
-              className="absolute top-0 left-0 w-3 h-3 z-10 pointer-events-none"
-              style={{
-                borderTop: '2px solid rgba(147, 51, 234, 0.6)',
-                borderLeft: '2px solid rgba(147, 51, 234, 0.6)'
-              }}
-            />
-            <div className="p-6 flex flex-col items-center text-center">
-              <h2 className="text-2xl font-orbitron font-bold text-purple-400 mb-3">Build Custom Deck</h2>
-              <p className="font-exo text-gray-300 flex-grow mb-6">Create your own deck from your card collection.</p>
-              <button className="dw-btn dw-btn-confirm">
-                Select
-              </button>
+              key={deck.id}
+              className={`vs-deck-card ${selectedDeck?.id === deck.id ? 'selected' : ''}`}
+              onClick={() => handleSelectDeck(deck)}
+              onMouseEnter={() => SoundManager.getInstance().play('hover_over')}
+            >
+              {/* Background Image */}
+              <div
+                className="vs-deck-card-bg"
+                style={{ backgroundImage: `url(${deck.imagePath})` }}
+              />
+
+              {/* Gradient Overlay */}
+              <div className="vs-deck-card-overlay" />
+
+              {/* Content */}
+              <div className="vs-deck-card-content">
+                <div>
+                  <h3 className="font-exo" style={{
+                    margin: '0 0 6px 0',
+                    fontSize: '1.3rem',
+                    fontWeight: 'bold',
+                    color: '#ffffff',
+                    textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+                  }}>
+                    {deck.name}
+                  </h3>
+                  <p className="font-exo" style={{
+                    margin: 0,
+                    fontSize: '0.85rem',
+                    color: '#dddddd',
+                    lineHeight: '1.3',
+                    textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+                  }}>
+                    {deck.description}
+                  </p>
+                </div>
+
+                {/* Bottom: View Deck button */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewDeck(deck);
+                    }}
+                    className="dw-btn dw-btn-secondary"
+                    style={{ fontSize: '0.8rem', padding: '4px 10px' }}
+                  >
+                    View Deck
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Build Custom Deck Card */}
+          <div
+            className="vs-deck-card vs-deck-card--custom"
+            onClick={() => { SoundManager.getInstance().play('ui_click'); handleDeckChoice('custom'); }}
+            onMouseEnter={() => SoundManager.getInstance().play('hover_over')}
+          >
+            {/* No background image — purple-themed overlay */}
+            <div className="vs-deck-card-overlay" style={{
+              background: 'linear-gradient(to bottom, rgba(88, 28, 135, 0.3) 0%, rgba(30, 10, 60, 0.6) 100%)'
+            }} />
+
+            <div className="vs-deck-card-content" style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+              <h3 className="font-exo" style={{
+                margin: '0 0 6px 0',
+                fontSize: '1.3rem',
+                fontWeight: 'bold',
+                color: '#c084fc',
+                textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+              }}>
+                Build Custom Deck
+              </h3>
+              <p className="font-exo" style={{
+                margin: 0,
+                fontSize: '0.85rem',
+                color: '#d8b4fe',
+                lineHeight: '1.3',
+                textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+              }}>
+                Create your own deck from your card collection.
+              </p>
             </div>
           </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+          <button
+            onClick={() => setShowExitConfirm(true)}
+            className="dw-btn dw-btn-cancel"
+          >
+            EXIT
+          </button>
+          <button
+            onClick={handleConfirmSelectedDeck}
+            disabled={!selectedDeck}
+            className="dw-btn dw-btn-confirm"
+          >
+            CONFIRM DECK
+          </button>
         </div>
       </div>
 
@@ -556,6 +581,19 @@ function DeckSelectionScreen() {
             },
             onCancel: () => setShowExitConfirm(false)
           }}
+        />
+      )}
+
+      {/* View Deck Modal */}
+      {deckModalOpen && deckModalDeck && (
+        <ViewDeckModal
+          isOpen={deckModalOpen}
+          onClose={() => {
+            setDeckModalOpen(false);
+            setDeckModalDeck(null);
+          }}
+          title={`${deckModalDeck.name} - Complete Loadout`}
+          {...prepareVSDeckData(deckModalDeck)}
         />
       )}
     </div>

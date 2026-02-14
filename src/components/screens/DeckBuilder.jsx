@@ -16,7 +16,9 @@ import { getAllShips, getDefaultShip } from '../../data/shipData.js';
 import { gameEngine } from '../../logic/gameLogic.js';
 import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js';
 import { RARITY_COLORS } from '../../data/cardData.js';
-import { generateDeckCode, generateJSObjectLiteral, convertToAIFormat, downloadDeckFile } from '../../utils/deckExportUtils.js';
+import { generateJSObjectLiteral, convertToAIFormat, convertFromAIFormat, downloadDeckFile } from '../../utils/deckExportUtils.js';
+import vsDecks from '../../data/vsModeDeckData.js';
+import aiPersonalities from '../../data/aiData.js';
 import { calculateEffectiveMaxForCard } from '../../utils/singlePlayerDeckUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { DEV_CONFIG } from '../../config/devConfig.js';
@@ -278,6 +280,7 @@ const DeckBuilder = ({
   const [detailedShipComponent, setDetailedShipComponent] = useState(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showLoadDeckModal, setShowLoadDeckModal] = useState(false);
   const [showViewDeckModal, setShowViewDeckModal] = useState(false);
   const [showSaveToast, setShowSaveToast] = useState(false);
 
@@ -1173,6 +1176,74 @@ const DeckBuilder = ({
     );
   };
 
+  const LoadDeckModal = () => {
+    const vsAIs = aiPersonalities.filter(ai => ai.modes?.includes('vs'));
+
+    const handleLoadDeck = (deckData) => {
+      const result = convertFromAIFormat(deckData);
+      const importResult = onImportDeck(generateJSObjectLiteral({
+        shipId: deckData.shipId,
+        decklist: deckData.decklist,
+        dronePool: deckData.dronePool,
+        shipComponents: deckData.shipComponents || {}
+      }));
+      if (importResult.success) {
+        setShowLoadDeckModal(false);
+      }
+    };
+
+    const deckRow = (deck, index) => (
+      <button
+        key={index}
+        onClick={() => handleLoadDeck(deck)}
+        className="w-full text-left p-3 rounded border border-gray-600/50 hover:border-cyan-500/60 hover:bg-cyan-900/20 transition-colors"
+        style={{ background: 'rgba(17, 24, 39, 0.5)' }}
+      >
+        <div className="font-medium text-cyan-300 text-sm">{deck.name}</div>
+        {deck.description && (
+          <div className="text-gray-400 text-xs mt-1">{deck.description}</div>
+        )}
+      </button>
+    );
+
+    return (
+      <div className="dw-modal-overlay" onClick={() => setShowLoadDeckModal(false)}>
+        <div className="dw-modal-content dw-modal--lg dw-modal--action" onClick={e => e.stopPropagation()}>
+          <div className="dw-modal-header">
+            <div className="dw-modal-header-icon">
+              <Rocket size={28} />
+            </div>
+            <div className="dw-modal-header-info">
+              <h2 className="dw-modal-header-title">Load Deck</h2>
+              <p className="dw-modal-header-subtitle">Load a pre-existing deck configuration</p>
+            </div>
+            <button onClick={() => setShowLoadDeckModal(false)} className="dw-modal-close">
+              <X size={20} />
+            </button>
+          </div>
+          <div className="dw-modal-body dw-modal-scroll" style={{ maxHeight: '60vh' }}>
+            <div className="mb-4">
+              <h3 className="text-cyan-400 font-medium text-sm mb-2 uppercase tracking-wider">VS Decks</h3>
+              <div className="flex flex-col gap-2">
+                {vsDecks.map((deck, i) => deckRow(deck, `vs-${i}`))}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-cyan-400 font-medium text-sm mb-2 uppercase tracking-wider">AI Decks</h3>
+              <div className="flex flex-col gap-2">
+                {vsAIs.map((ai, i) => deckRow(ai, `ai-${i}`))}
+              </div>
+            </div>
+          </div>
+          <div className="dw-modal-actions">
+            <button onClick={() => setShowLoadDeckModal(false)} className="dw-btn dw-btn-cancel">
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <>
@@ -1182,6 +1253,7 @@ const DeckBuilder = ({
       {detailedShipComponent && <ShipComponentDetailPopup component={detailedShipComponent} onClose={() => setDetailedShipComponent(null)} ship={activeShip} />}
       {showExportModal && <ExportModal />}
       {showImportModal && <ImportModal />}
+      {showLoadDeckModal && <LoadDeckModal />}
       <ViewDeckModal
         isOpen={showViewDeckModal}
         onClose={() => setShowViewDeckModal(false)}
@@ -1318,6 +1390,14 @@ const DeckBuilder = ({
               >
                 <Grid size={14} />
                 View Deck
+              </button>
+              <button
+                onClick={() => setShowLoadDeckModal(true)}
+                className="dw-modal-tab"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Rocket size={14} />
+                Load Deck
               </button>
               <button
                 onClick={() => setShowImportModal(true)}

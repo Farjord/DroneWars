@@ -3,10 +3,7 @@
 // ========================================
 // Functions for generating and parsing deck export codes
 // Key behavior: Entries with quantity 0 are filtered out (defensive)
-//
-// Supports two formats:
-// 1. Legacy pipe-delimited format: "cards:CARD001:4|drones:Talon:1|ship:BRIDGE_001:l"
-// 2. JS object literal format (matching aiData.js style)
+// Format: JS object literal with { shipId, decklist, dronePool, shipComponents }
 
 // ========================================
 // COMPONENT TYPE MAPPINGS
@@ -224,6 +221,25 @@ export const generateJSObjectLiteral = (data) => {
 };
 
 /**
+ * Format an object key: quote ALL_CAPS_STYLE keys (data IDs), leave camelCase unquoted
+ */
+function formatKey(key) {
+  if (/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key) && !/^[A-Z][A-Z0-9_]*$/.test(key)) {
+    return key; // valid identifier + not ALL_CAPS → unquoted
+  }
+  return `'${key.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
+}
+
+/**
+ * Check if an object contains only scalar values (string, number, boolean, null)
+ */
+function isSimpleObject(obj) {
+  return Object.values(obj).every(v =>
+    typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || v === null
+  );
+}
+
+/**
  * Serialize a value to JS literal format
  */
 function serializeValue(value, indent) {
@@ -258,6 +274,7 @@ function serializeValue(value, indent) {
 
 /**
  * Serialize an array to JS literal format
+ * Groups string arrays ~5 per line for compact output
  */
 function serializeArray(arr, indent) {
   if (arr.length === 0) {
@@ -267,6 +284,16 @@ function serializeArray(arr, indent) {
   const spaces = '  '.repeat(indent + 1);
   const closingSpaces = '  '.repeat(indent);
 
+  // Group string arrays ~5 per line
+  if (arr.every(item => typeof item === 'string')) {
+    const serialized = arr.map(s => serializeValue(s, 0));
+    const lines = [];
+    for (let i = 0; i < serialized.length; i += 5) {
+      lines.push(spaces + serialized.slice(i, i + 5).join(', '));
+    }
+    return `[\n${lines.join(',\n')}\n${closingSpaces}]`;
+  }
+
   const items = arr.map(item => `${spaces}${serializeValue(item, indent + 1)}`);
 
   return `[\n${items.join(',\n')}\n${closingSpaces}]`;
@@ -274,6 +301,7 @@ function serializeArray(arr, indent) {
 
 /**
  * Serialize an object to JS literal format
+ * Inlines simple nested objects (only scalar values) on a single line
  */
 function serializeObject(obj, indent) {
   const keys = Object.keys(obj);
@@ -281,12 +309,17 @@ function serializeObject(obj, indent) {
     return '{}';
   }
 
+  // Inline simple objects when nested (indent > 0)
+  if (indent > 0 && isSimpleObject(obj)) {
+    const entries = keys.map(key => `${formatKey(key)}: ${serializeValue(obj[key], 0)}`);
+    return `{ ${entries.join(', ')} }`;
+  }
+
   const spaces = '  '.repeat(indent + 1);
   const closingSpaces = '  '.repeat(indent);
 
   const entries = keys.map(key => {
-    const value = serializeValue(obj[key], indent + 1);
-    return `${spaces}${key}: ${value}`;
+    return `${spaces}${formatKey(key)}: ${serializeValue(obj[key], indent + 1)}`;
   });
 
   return `{\n${entries.join(',\n')}\n${closingSpaces}}`;
@@ -322,52 +355,20 @@ export const convertToAIFormat = (deck, selectedDrones, selectedShipComponents, 
       }
     });
 
-  // Build placement array from selectedShipComponents
-  const placement = convertComponentsToPlacement(selectedShipComponents);
-
-  // Build the result object, preserving fields from import
-  const result = {
-    name: preservedFields.name || 'Exported Deck'
+  return {
+    shipId: selectedShip?.id || 'SHIP_001',
+    decklist,
+    dronePool,
+    shipComponents: selectedShipComponents || {}
   };
-
-  // Add optional preserved fields if they exist
-  if (preservedFields.description) {
-    result.description = preservedFields.description;
-  }
-  if (preservedFields.difficulty) {
-    result.difficulty = preservedFields.difficulty;
-  }
-  if (preservedFields.modes) {
-    result.modes = preservedFields.modes;
-  }
-  if (preservedFields.imagePath) {
-    result.imagePath = preservedFields.imagePath;
-  }
-
-  // Add shipId
-  result.shipId = selectedShip?.id || 'SHIP_001';
-
-  // Add dronePool
-  result.dronePool = dronePool;
-
-  // Add shipDeployment
-  result.shipDeployment = {
-    strategy: preservedFields.shipDeployment?.strategy || 'balanced',
-    placement: placement,
-    reasoning: preservedFields.shipDeployment?.reasoning || 'User-configured layout'
-  };
-
-  // Add decklist
-  result.decklist = decklist;
-
-  return result;
 };
 
 /**
- * Convert selectedShipComponents to placement array
+ * Convert selectedShipComponents to placement array (legacy keys)
  * { 'BRIDGE_001': 'l', 'POWERCELL_001': 'm' } -> ['bridge', 'powerCell', 'droneControlHub']
+ * Exported as shipComponentsToPlacement for consumers that need legacy key arrays.
  */
-function convertComponentsToPlacement(components) {
+export function shipComponentsToPlacement(components) {
   if (!components || Object.keys(components).length === 0) {
     return [];
   }
@@ -419,8 +420,15 @@ export const convertFromAIFormat = (aiData) => {
     selectedDrones[name] = (selectedDrones[name] || 0) + 1;
   });
 
-  // Convert placement array to selectedShipComponents
-  const selectedShipComponents = convertPlacementToComponents(aiData.shipDeployment?.placement || []);
+  // Read shipComponents directly; backward compat: convert from shipDeployment if needed
+  let selectedShipComponents;
+  if (aiData.shipComponents) {
+    selectedShipComponents = { ...aiData.shipComponents };
+  } else if (aiData.shipDeployment?.placement) {
+    selectedShipComponents = convertPlacementToComponents(aiData.shipDeployment.placement);
+  } else {
+    selectedShipComponents = {};
+  }
 
   // Extract shipId
   const shipId = aiData.shipId;
@@ -433,14 +441,6 @@ export const convertFromAIFormat = (aiData) => {
     modes: aiData.modes,
     imagePath: aiData.imagePath
   };
-
-  // Preserve shipDeployment strategy and reasoning
-  if (aiData.shipDeployment) {
-    preservedFields.shipDeployment = {
-      strategy: aiData.shipDeployment.strategy,
-      reasoning: aiData.shipDeployment.reasoning
-    };
-  }
 
   return {
     deck,
@@ -493,37 +493,3 @@ export const downloadDeckFile = (content, filename = 'deck-export.js') => {
   URL.revokeObjectURL(url);
 };
 
-// ========================================
-// LEGACY DECK CODE FORMAT
-// ========================================
-
-/**
- * Generate a deck export code string
- * Filters out any entries with quantity 0 as a defensive measure
- *
- * @param {Object} deck - Deck state { cardId: quantity }
- * @param {Object} selectedDrones - Drone state { droneName: quantity }
- * @param {Object} selectedShipComponents - Components { componentId: lane }
- * @returns {string} Export code in format "cards:...|drones:...|ship:..."
- */
-export const generateDeckCode = (deck, selectedDrones, selectedShipComponents) => {
-  // Filter out any cards with quantity 0 (defensive - should not exist if state is correct)
-  const cardsStr = Object.entries(deck || {})
-    .filter(([id, q]) => q > 0)
-    .map(([id, q]) => `${id}:${q}`)
-    .join(',');
-
-  // Filter out any drones with quantity 0
-  const dronesStr = Object.entries(selectedDrones || {})
-    .filter(([name, q]) => q > 0)
-    .map(([name, q]) => `${name}:${q}`)
-    .join(',');
-
-  // Filter out components with null/undefined lane (already done, but defensive)
-  const shipStr = Object.entries(selectedShipComponents || {})
-    .filter(([id, lane]) => lane)
-    .map(([id, lane]) => `${id}:${lane}`)
-    .join(',');
-
-  return `cards:${cardsStr}|drones:${dronesStr}|ship:${shipStr}`;
-};
