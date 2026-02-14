@@ -279,6 +279,12 @@ export const CARD_EVALUATION = {
   JAMMER_CPU_VALUE_MULTIPLIER: 5,
   JAMMER_HIGH_VALUE_DRONE_BONUS: 15,
 
+  // CREATE_TOKENS (Rally Beacon) card scoring
+  RALLY_BEACON_BASE_VALUE: 20,
+  RALLY_BEACON_ADJACENT_DRONE_VALUE: 10,
+  RALLY_BEACON_DEFENDING_DRONE_VALUE: 8,
+  RALLY_BEACON_MOVEMENT_CARD_BONUS: 15,
+
   // MODIFY_STAT card scoring
   ATTACK_BUFF_MULTIPLIER: 8,
   CLASS_VALUE_MULTIPLIER: 10,
@@ -414,6 +420,9 @@ export const TARGET_SCORING = {
   // Priority 5: Damage efficiency (tiebreaker)
   LETHAL_BONUS: 20,
   PIERCING_BYPASS_BONUS: 5,
+
+  // Rally Beacon attack priority
+  RALLY_BEACON_ATTACK_PRIORITY: 45,
 };
 
 // ========================================

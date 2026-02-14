@@ -5,6 +5,8 @@
 // Used by ALL damage/destroy effects for consistent prioritization
 
 import { TARGET_SCORING, DAMAGE_TYPE_WEIGHTS, THREAT_DRONES } from '../aiConstants.js';
+
+const { RALLY_BEACON_ATTACK_PRIORITY } = TARGET_SCORING;
 import fullDroneCollection from '../../../data/droneData.js';
 import { hasThreatOnRoundStart } from '../helpers/keywordHelpers.js';
 
@@ -179,6 +181,12 @@ const evaluateDangerousAbilities = (target) => {
   if (hasThreatOnRoundStart(target)) {
     value += THREAT_DRONES.ROUND_START_PROTECTION_VALUE;
     logic.push(`Threat Generator: +${THREAT_DRONES.ROUND_START_PROTECTION_VALUE}`);
+  }
+
+  // Rally Beacon tokens grant opponent go-again on moves - high priority target
+  if (target.name === 'Rally Beacon' && target.isToken) {
+    value += RALLY_BEACON_ATTACK_PRIORITY;
+    logic.push(`Rally Beacon: +${RALLY_BEACON_ATTACK_PRIORITY}`);
   }
 
   return { value, logic };

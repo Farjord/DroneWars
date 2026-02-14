@@ -54,7 +54,7 @@ class RoundManager {
           // Filter statMods to remove temporary effects
           statMods: drone.statMods ? drone.statMods.filter(mod => mod.type === 'permanent') : [],
           isExhausted: shouldRemainExhausted, // Keep exhausted if doesNotReady was set
-          doesNotReady: false, // ALWAYS remove flag after ready attempt
+          doesNotReady: drone.doesNotReady && !drone.isExhausted, // Only consume flag if drone was actually exhausted
           currentShields: effectiveStats.maxShields,
           // Reset RAPID/ASSAULT ability usage flags for new round
           rapidUsed: false,

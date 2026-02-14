@@ -62,14 +62,17 @@ class TokenCreationProcessor extends BaseEffectProcessor {
       };
     }
 
+    // Derive locations from effect.locations or from context.target (lane-targeted cards)
+    const locations = effect.locations || (context.target ? [context.target.id] : []);
+
     debugLog('EFFECT_PROCESSING', `[CREATE_TOKENS] ${actingPlayerId} creating ${effect.tokenName} tokens`, {
       tokenName: effect.tokenName,
-      locations: effect.locations,
+      locations,
       baseDrone: { attack: baseDrone.attack, hull: baseDrone.hull, shields: baseDrone.shields }
     });
 
     // Create tokens in specified lanes
-    effect.locations.forEach(laneId => {
+    locations.forEach(laneId => {
       // Check maxPerLane restriction before creating token
       if (baseDrone.maxPerLane) {
         const currentCountInLane = countDroneTypeInLane(actingPlayerState, baseDrone.name, laneId);

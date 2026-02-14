@@ -13,6 +13,7 @@ import fullDroneCollection from '../../../data/droneData.js';
 import { buildDefaultMovementAnimation } from './animations/DefaultMovementAnimation.js';
 import { debugLog } from '../../../utils/debugLogger.js';
 import { LaneControlCalculator } from '../../combat/LaneControlCalculator.js';
+import { checkRallyBeaconGoAgain } from '../../utils/rallyBeaconHelper.js';
 
 /**
  * MovementEffectProcessor
@@ -190,7 +191,12 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       return this.createResult(playerStates, []);
     }
 
-    return this.createResult(result.newPlayerStates, []);
+    const baseResult = this.createResult(result.newPlayerStates, []);
+    // Propagate goAgain from Rally Beacon for AI card play pipeline
+    if (!result.shouldEndTurn) {
+      baseResult.goAgain = true;
+    }
+    return baseResult;
   }
 
   /**
@@ -224,7 +230,12 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       return this.createResult(playerStates, []);
     }
 
-    return this.createResult(result.newPlayerStates, []);
+    const baseResult = this.createResult(result.newPlayerStates, []);
+    // Propagate goAgain from Rally Beacon for AI card play pipeline
+    if (!result.shouldEndTurn) {
+      baseResult.goAgain = true;
+    }
+    return baseResult;
   }
 
   /**
@@ -367,6 +378,11 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       );
     }
 
+    // Check Rally Beacon go-again for friendly drone moves only
+    const rallyGoAgain = !isMovingEnemyDrone
+      ? checkRallyBeaconGoAgain(newPlayerStates[droneOwnerId], toLane, card.effect.goAgain, logCallback)
+      : false;
+
     return {
       newPlayerStates,
       effectResult: {
@@ -375,7 +391,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
         toLane,
         wasSuccessful: true
       },
-      shouldEndTurn: !card.effect.goAgain, // Respect goAgain property
+      shouldEndTurn: !card.effect.goAgain && !rallyGoAgain,
       shouldCancelCardSelection: true,
       shouldClearMultiSelectState: true
     };
@@ -498,6 +514,11 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       placedSections
     );
 
+    // Check Rally Beacon go-again for multi-move
+    const rallyGoAgain = checkRallyBeaconGoAgain(
+      newPlayerStates[actingPlayerId], toLane, card.effect?.goAgain || false, logCallback
+    );
+
     return {
       newPlayerStates,
       effectResult: {
@@ -506,7 +527,7 @@ class MovementEffectProcessor extends BaseEffectProcessor {
         toLane,
         wasSuccessful: true
       },
-      shouldEndTurn: true,
+      shouldEndTurn: !(card.effect?.goAgain || rallyGoAgain),
       shouldCancelCardSelection: true,
       shouldClearMultiSelectState: true
     };

@@ -225,6 +225,11 @@ class CardPlayManager {
       });
     }
 
+    // Pick up goAgain from effect processor results (e.g., Rally Beacon on AI movement)
+    if (result.goAgain) {
+      dynamicGoAgain = true;
+    }
+
     // Merge all additional effects (from PRE, primary, and POST)
     const allAdditionalEffects = [
       ...preAdditionalEffects,

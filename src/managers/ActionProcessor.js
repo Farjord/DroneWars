@@ -30,6 +30,7 @@ import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 import { shipComponentCollection } from '../data/shipSectionData.js';
 import SeededRandom from '../utils/seededRandom.js';
 import { initializeForCombat as initializeDroneAvailability } from '../logic/availability/DroneAvailabilityManager.js';
+import { checkRallyBeaconGoAgain } from '../logic/utils/rallyBeaconHelper.js';
 
 class ActionProcessor {
   // Singleton instance
@@ -858,12 +859,20 @@ setAnimationManager(animationManager) {
 
     debugLog('COMBAT', `✅ Moved ${drone.name} from ${fromLane} to ${toLane}`);
 
-    // NOTE: Turn transitions now handled by GameFlowManager
-    // Moves always end turn (no goAgain flag on movement)
+    // Check if a Rally Beacon in the destination lane grants go-again
+    const rallyGoAgain = checkRallyBeaconGoAgain(
+      stateAfterMoveEffects, toLane, false,
+      (entry) => this.gameStateManager.addLogEntry(entry)
+    );
+
+    // Show Go Again notification if Rally Beacon triggered
+    if (rallyGoAgain) {
+      await this.executeGoAgainAnimation(playerId);
+    }
 
     return {
       success: true,
-      shouldEndTurn: true, // Moves always end turn
+      shouldEndTurn: !rallyGoAgain,
       message: `${drone.name} moved from ${fromLane} to ${toLane}`,
       drone: drone,
       fromLane: fromLane,
@@ -1600,7 +1609,7 @@ setAnimationManager(animationManager) {
 
     // Process POST conditionals for movement cards
     // The moved drone(s) become the target for condition evaluation
-    let dynamicGoAgain = false;
+    let dynamicGoAgain = !result.shouldEndTurn; // Picks up Rally Beacon go-again from movement processor
     let postStates = result.newPlayerStates;
 
     if (card.conditionalEffects && card.conditionalEffects.length > 0) {

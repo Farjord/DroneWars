@@ -47,8 +47,14 @@ class ReadyDroneEffectProcessor extends BaseEffectProcessor {
       );
 
       if (droneIndex !== -1) {
-        // Found the drone - ready it
-        actingPlayerState.dronesOnBoard[lane][droneIndex].isExhausted = false;
+        const drone = actingPlayerState.dronesOnBoard[lane][droneIndex];
+        if (drone.doesNotReady) {
+          // Consume the doesNotReady flag instead of readying
+          drone.doesNotReady = false;
+        } else {
+          // Ready the drone normally
+          drone.isExhausted = false;
+        }
         droneFound = true;
         foundInLane = lane;
         break;

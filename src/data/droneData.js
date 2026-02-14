@@ -114,14 +114,14 @@ const fullDroneCollection = [
     image: '/DroneWars/img/Sniper.png',
     abilities: [{
         name: 'Long-Range Shot',
-        description: 'Pay 1 Energy and exhaust to deal 4 damage to an enemy drone in another lane.',
+        description: 'Pay 1 Energy and exhaust to deal 2 damage to an enemy drone in another lane.',
         type: 'ACTIVE',
         targeting: {
             type: 'DRONE',
             affinity: 'ENEMY',
             location: 'OTHER_LANES'
         },
-        effect: { type: 'DAMAGE', value: 4 },
+        effect: { type: 'DAMAGE', value: 2 },
         cost: { energy: 1, exhausts: true },
         activationLimit: 1  
         }],
@@ -153,7 +153,7 @@ const fullDroneCollection = [
     rebuildRate: 1.0,
     rarity: 'Common',
     attack: 1,
-    hull: 2,
+    hull: 1,
     shields: 2,
     speed: 3,
     image: '/DroneWars/img/Avenger.png', 
@@ -178,7 +178,7 @@ const fullDroneCollection = [
     limit: 2,
     rebuildRate: 1.0,
     rarity: 'Uncommon',
-    attack: 2,
+    attack: 1,
     hull: 2,
     shields: 2,
     speed: 3,
@@ -537,12 +537,6 @@ const fullDroneCollection = [
     }],
     upgradeSlots: 2
   },
-
-  // ========================================
-  // NEW DAMAGE TYPE DRONES
-  // ========================================
-
-  // SHIELD_BREAKER drone - attacks deal 2:1 damage to shields
   {
     name: 'Disruptor',
     class: 2,
@@ -563,9 +557,7 @@ const fullDroneCollection = [
     }],
     upgradeSlots: 2
   },
-
-  // ION drone - attacks only damage shields
-  {
+    {
     name: 'Ion Drone',
     class: 1,
     limit: 3,
@@ -573,7 +565,7 @@ const fullDroneCollection = [
     rarity: 'Uncommon',
     attack: 3,
     hull: 1,
-    shields: 0,
+    shields: 1,
     speed: 4,
     damageType: 'ION',
     image: '/DroneWars/img/IonDrone.png',
@@ -585,8 +577,6 @@ const fullDroneCollection = [
     }],
     upgradeSlots: 2
   },
-
-  // KINETIC drone - attacks only damage hull, blocked by shields
   {
     name: 'Impactor',
     class: 2,
@@ -636,7 +626,7 @@ const fullDroneCollection = [
     limit: 2,
     rebuildRate: 0.5,
     rarity: 'Common',
-    attack: 2,
+    attack: 1,
     hull: 2,
     shields: 2,
     speed: 3,
@@ -683,7 +673,7 @@ const fullDroneCollection = [
     shields: 1,
     speed: 2,
     image: '/DroneWars/img/SignalBeacon.png',
-    selectable: false, // AI-only - cannot be selected by players
+    selectable: false,
     abilities: [{
       name: 'Threat Signal',
       description: 'Start of Round: Increase player threat by 2.',
@@ -704,7 +694,7 @@ const fullDroneCollection = [
     shields: 1,
     speed: 4,
     image: '/DroneWars/img/ThreatTransmitter.png',
-    selectable: false, // AI-only - cannot be selected by players
+    selectable: false,
     abilities: [{
       name: 'Alert Broadcast',
       description: 'When this drone deals hull damage to a ship section, increase player threat by 4.',
@@ -720,12 +710,12 @@ const fullDroneCollection = [
   },
   {
     name: 'War Machine',
-    class: 2,
+    class: 3,
     limit: 2,
     rebuildRate: 0.5,
     rarity: 'Uncommon',
     attack: 2,
-    hull: 3,
+    hull: 4,
     shields: 1,
     speed: 2,
     image: '/DroneWars/img/WarMachine.png',
@@ -737,6 +727,42 @@ const fullDroneCollection = [
       effects: [{ type: 'PERMANENT_STAT_MOD', mod: { stat: 'attack', value: 1 } }]
     }],
     upgradeSlots: 2
+  },
+  {
+    name: 'Rally Beacon',
+    class: 0,
+    limit: 999,
+    rebuildRate: 1.0,
+    rarity: 'Uncommon',
+    attack: 0,
+    hull: 1,
+    shields: 0,
+    speed: 1,
+    image: '/DroneWars/img/RallyBeacon.png',
+    selectable: false,
+    maxPerLane: 1,
+    isToken: true,
+    abilities: [
+      {
+        name: 'Rally Point',
+        description: 'When a friendly drone moves into this lane, go again.',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'RALLY_BEACON' }
+      },
+      {
+        name: 'Inert',
+        description: '',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'INERT' }
+      },
+      {
+        name: 'Passive',
+        description: '',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'PASSIVE' }
+      }
+    ],
+    upgradeSlots: 0
   },
   { name: 'Behemoth', class: 4, limit: 1, rebuildRate: 0, rarity: 'Common', attack: 3, hull: 6, shields: 2, speed: 2, image: '/DroneWars/img/Behemoth.png', abilities: [], upgradeSlots: 4 },
   {

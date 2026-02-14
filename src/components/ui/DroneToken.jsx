@@ -403,13 +403,19 @@ const DroneToken = ({
         )}
 
         {/* Special Ability Icons (RAPID/ASSAULT) - Left side */}
-        <SpecialAbilityIcons drone={drone} isPlayer={isPlayer} />
+        <div className={teleportingEffect}>
+            <SpecialAbilityIcons drone={drone} isPlayer={isPlayer} />
+        </div>
 
         {/* Trait Indicators (Marked/PASSIVE/INERT) - Top-left side */}
-        <TraitIndicators drone={drone} effectiveStats={effectiveStats} />
+        <div className={teleportingEffect}>
+            <TraitIndicators drone={drone} effectiveStats={effectiveStats} />
+        </div>
 
         {/* Status Effect Icons - Right side */}
-        <StatusEffectIcons drone={drone} isPlayer={isPlayer} />
+        <div className={teleportingEffect}>
+            <StatusEffectIcons drone={drone} isPlayer={isPlayer} />
+        </div>
 
         {/* Intercepted Badge */}
         {interceptedBadge && interceptedBadge.droneId === drone.id && (

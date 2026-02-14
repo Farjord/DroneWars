@@ -1130,11 +1130,11 @@ const App = ({ phaseAnimationQueue }) => {
    * Cancels any active ability targeting mode and clears selections.
    * Resets UI state when player cancels an ability activation.
    */
-  const cancelAbilityMode = () => {
+  const cancelAbilityMode = useCallback(() => {
     setAbilityMode(null);
     setSelectedDrone(null);
     setValidAbilityTargets([]);
-  };
+  }, []);
 
   /**
    * CANCEL SINGLE-MOVE MODE
@@ -1388,7 +1388,7 @@ const App = ({ phaseAnimationQueue }) => {
       console.error('Error in resolveAbility:', error);
       cancelAbilityMode();
     }
-  }, [processActionWithGuestRouting, getLocalPlayerId]);
+  }, [processActionWithGuestRouting, getLocalPlayerId, cancelAbilityMode]);
 
   // --- 7.4 SHIP ABILITY RESOLUTION ---
 
@@ -1922,6 +1922,12 @@ const App = ({ phaseAnimationQueue }) => {
         return;
     }
 
+    // Skip interception calculations during ability targeting (abilities can't be intercepted)
+    if (abilityMode) {
+        setPotentialInterceptors([]);
+        return;
+    }
+
     if (turnPhase === 'action') {
         // Use draggedDrone if actively dragging, otherwise use selectedDrone
         const activeDrone = draggedDrone?.drone || selectedDrone;
@@ -1935,7 +1941,7 @@ const App = ({ phaseAnimationQueue }) => {
     } else {
         setPotentialInterceptors([]);
     }
-}, [selectedDrone, draggedDrone, turnPhase, localPlayerState, opponentPlayerState, gameEngine, localPlacedSections, opponentPlacedSections, interceptionModeActive, playerInterceptionChoice, singleMoveMode]);
+}, [selectedDrone, draggedDrone, turnPhase, localPlayerState, opponentPlayerState, gameEngine, localPlacedSections, opponentPlacedSections, interceptionModeActive, playerInterceptionChoice, singleMoveMode, abilityMode]);
 
   // --- 8.5 GUARDIAN HIGHLIGHTING ---
   // Calculate potential guardian blockers when drone is selected

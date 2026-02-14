@@ -30,7 +30,7 @@ const shipComponentCollection = [
       damaged: { 'Draw': 5, 'Discard': 2 },
       critical: { 'Draw': 3, 'Discard': 1 },
     },
-    middleLaneBonus: { 'Draw': 1, 'Discard': 1 },
+    middleLaneBonus: { 'Draw': 1, 'Discard': 0 },
     image: '/DroneWars/img/Bridge.png',
     ability: {
       id: 'ABILITY_SHIP_01',
@@ -64,7 +64,7 @@ const shipComponentCollection = [
       damaged: { 'Draw': 5, 'Discard': 2 },
       critical: { 'Draw': 3, 'Discard': 1 },
     },
-    middleLaneBonus: { 'Draw': 1, 'Discard': 1 },
+    middleLaneBonus: { 'Draw': 1, 'Discard': 0 },
     image: '/DroneWars/img/Bridge.png',
     ability: {
       id: 'ABILITY_SHIP_01',
@@ -98,7 +98,7 @@ const shipComponentCollection = [
       damaged: { 'Draw': 5, 'Discard': 2 },
       critical: { 'Draw': 3, 'Discard': 1 },
     },
-    middleLaneBonus: { 'Draw': 1, 'Discard': 1 },
+    middleLaneBonus: { 'Draw': 1, 'Discard': 0 },
     image: '/DroneWars/img/Bridge.png',
     ability: {
       id: 'ABILITY_SHIP_04',
@@ -137,7 +137,7 @@ const shipComponentCollection = [
       damaged: { 'Energy Per Turn': 10, 'Max Energy': 10, 'Shields Per Turn': 1 },
       critical: { 'Energy Per Turn': 8, 'Max Energy': 8, 'Shields Per Turn': 1 },
     },
-    middleLaneBonus: { 'Energy Per Turn': 2, 'Max Energy': 2, 'Shields Per Turn': 1 },
+    middleLaneBonus: { 'Energy Per Turn': 2, 'Max Energy': 2, 'Shields Per Turn': 0 },
     image: '/DroneWars/img/Power_Cell.png',
     ability: {
       id: 'ABILITY_SHIP_02',
@@ -169,9 +169,9 @@ const shipComponentCollection = [
     stats: {
       healthy: { 'Initial Deployment': 10, 'CPU Control Value': 8, 'Deployment Budget': 4 },
       damaged: { 'Initial Deployment': 10, 'CPU Control Value': 8, 'Deployment Budget': 2 },
-      critical: { 'Initial Deployment': 10, 'CPU Control Value': 6, 'Deployment Budget': 2 },
+      critical: { 'Initial Deployment': 10, 'CPU Control Value': 8, 'Deployment Budget': 2 },
     },
-    middleLaneBonus: {'Initial Deployment': 2, 'Deployment Budget': 4, 'CPU Control Value': 0 },
+    middleLaneBonus: {'Initial Deployment': 4, 'Deployment Budget': 4, 'CPU Control Value': 0 },
     image: '/DroneWars/img/Drone_Control_Hub.png',
     ability: {
       id: 'ABILITY_SHIP_03',

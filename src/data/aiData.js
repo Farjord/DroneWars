@@ -35,13 +35,13 @@ const aiPersonalities = [
       'Avenger',
       'Devastator',
       'Mammoth',
-      'Firefly',
+      'Gladiator',
       'Dart',
       'Skirmisher',
-      'Locust',
+      'Behemoth',
       'Vindicator',
       'Sabot',
-      'Talon'
+      'Tempest'
     ],
     shipComponents: {
       'BRIDGE_001': 'l',
@@ -50,7 +50,7 @@ const aiPersonalities = [
     },
     decklist: [
       { id: 'CARD011', quantity: 2 },
-      { id: 'CARD010', quantity: 2 },
+      { id: 'CARD010_ENHANCED', quantity: 2 },
       { id: 'CARD030', quantity: 2 },
       { id: 'CARD016', quantity: 2 },
       { id: 'CARD018', quantity: 2 },
@@ -60,14 +60,14 @@ const aiPersonalities = [
       { id: 'CARD051', quantity: 4 },
       { id: 'CARD012_ENHANCED', quantity: 2 },
       { id: 'CARD050', quantity: 4 },
-      { id: 'CARD033', quantity: 4 },
+      { id: 'CARD033_ENHANCED', quantity: 4 },
       { id: 'CARD_TACTICS_1', quantity: 4 },
       { id: 'CARD_STATUS_4', quantity: 4 },
       { id: 'CARD_TACTICS_4', quantity: 4 },
       { id: 'CARD005', quantity: 4 },
       { id: 'CARD007_ENHANCED', quantity: 4 },
       { id: 'CARD028', quantity: 2 },
-      { id: 'CARD021', quantity: 2 },
+      { id: 'CARD024', quantity: 2 },
       { id: 'CARD029', quantity: 2 },
       { id: 'DOCTRINE_003', quantity: 2 },
       { id: 'DOCTRINE_002', quantity: 2 }

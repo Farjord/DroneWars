@@ -304,6 +304,26 @@ const fullCardCollection = [
       filter: { stat: 'speed', comparison: 'GTE', value: 5 }
     }
   },
+    {
+    id: 'CARD010_ENHANCED',
+    baseCardId: 'CARD010',
+    name: 'Shrieker Missiles+',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Ordnance',
+    cost: 4,
+    image: '/DroneWars/cards/ShriekerMissiles.png',
+    description: 'Destroy all enemy drones with a speed of 5 or higher in a selected lane.',
+    targeting: {
+      type: 'LANE',
+      affinity: 'ENEMY'
+    },
+    effect: {
+      type: 'DESTROY',
+      scope: 'FILTERED',
+      filter: { stat: 'speed', comparison: 'GTE', value: 5 }
+    }
+  },
 
   {
     id: 'CARD011',
@@ -506,6 +526,7 @@ const fullCardCollection = [
     rarity: 'Common',
     type: 'Support',
     cost: 5,
+    momentumCost: 1,
     image: '/DroneWars/cards/Reposition.png',
     description: 'Select a lane. Move up to 3 friendly drones from that lane to another. The moved drones are not exhausted.',
     effect: {
@@ -714,7 +735,7 @@ const fullCardCollection = [
     id: 'CARD062',
     baseCardId: 'CARD062',
     name: 'Assault Reposition',
-    maxInDeck: 2,
+    maxInDeck: 4,
     rarity: 'Uncommon',
     type: 'Support',
     cost: 2,
@@ -761,6 +782,26 @@ const fullCardCollection = [
       condition: { type: 'NOT_FIRST_ACTION' },
       grantedEffect: { type: 'BONUS_DAMAGE', value: 2 }
     }]
+},
+{
+    id: 'Deploy_Rally_Beacon',
+    baseCardId: 'Deploy_Rally_Beacon',
+    name: 'Deploy Rally Beacon',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Support',
+    cost: 2,
+    image: '/DroneWars/cards/RallyBeacon.png',
+    description: 'Create a Rally Beacon token in a friendly lane. (Rally Beacon: 0/1, Speed 1. When a friendly drone moves into this lane, go again.)',
+    targeting: {
+      type: 'LANE',
+      affinity: 'FRIENDLY'
+    },
+    effect: {
+      type: 'CREATE_TOKENS',
+      tokenName: 'Rally Beacon',
+      ignoresCPULimit: true
+    }
 },
 {
     id: 'CARD028',
@@ -1039,7 +1080,7 @@ const fullCardCollection = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/FinishingVolley.png',
-    description: 'Destroy target exhausted enemy drone.',
+    description: 'Deal 4 damage to target exhausted enemy drone.',
     visualEffect: {
       type: 'LASER_BLAST'
     },
@@ -1050,11 +1091,34 @@ const fullCardCollection = [
       custom: ['EXHAUSTED']
     },
     effect: {
-      type: 'DESTROY',
-      scope: 'SINGLE'
+      type: 'DAMAGE',
+      value: 4
     }
 },
-
+{
+    id: 'CARD033_ENHANCED',
+    baseCardId: 'CARD033',
+    name: 'Finishing Volley+',
+    maxInDeck: 4,
+    rarity: 'Uncommon',
+    type: 'Ordnance',
+    cost: 2,
+    image: '/DroneWars/cards/FinishingVolley.png',
+    description: 'Deal 5 damage to target exhausted enemy drone.',
+    visualEffect: {
+      type: 'LASER_BLAST'
+    },
+    targeting: {
+      type: 'DRONE',
+      affinity: 'ENEMY',
+      location: 'ANY_LANE',
+      custom: ['EXHAUSTED']
+    },
+    effect: {
+      type: 'DAMAGE',
+      value: 5
+    }
+},
 {
     id: 'CARD034',
     baseCardId: 'CARD034',
@@ -1283,7 +1347,7 @@ const fullCardCollection = [
     type: 'Ordnance',
     cost: 3,
     image: '/DroneWars/cards/FinishingBlow.png',
-    description: 'Deal 2 damage to target drone. If its hull is 2 or less, deal 4 damage instead.',
+    description: 'Deal 2 damage to target drone. If its current hull is 2 or less, deal 4 damage instead.',
     visualEffect: {
       type: 'LASER_BLAST'
     },
@@ -1351,7 +1415,7 @@ const fullCardCollection = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/Executioner.png',
-    description: 'Destroy target enemy drone with hull 1 or less.',
+    description: 'Destroy target enemy drone if its current hull is 1 or less.',
     visualEffect: {
       type: 'LASER_BLAST'
     },
@@ -1382,7 +1446,7 @@ const fullCardCollection = [
     type: 'Ordnance',
     cost: 2,
     image: '/DroneWars/cards/Executioner.png',
-    description: 'Destroy target enemy drone with hull 2 or less.',
+    description: 'Destroy target enemy drone if its current hull is 2 or less.',
     visualEffect: {
       type: 'LASER_BLAST'
     },

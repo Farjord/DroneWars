@@ -6,7 +6,7 @@
 // Hierarchy: Marked → Passive → Inert (top to bottom)
 
 import React from 'react';
-import { Anchor, Feather } from 'lucide-react';
+import { Anchor, Feather, Flag } from 'lucide-react';
 import TargetLockIcon from './TargetLockIcon.jsx';
 
 /**
@@ -25,8 +25,9 @@ const TraitIndicators = ({ drone, effectiveStats }) => {
   const isMarked = drone?.isMarked;
   const hasPassive = effectiveStats.keywords.has('PASSIVE');
   const hasInert = effectiveStats.keywords.has('INERT');
+  const hasRallyBeacon = effectiveStats.keywords.has('RALLY_BEACON');
 
-  if (!isMarked && !hasPassive && !hasInert) return null;
+  if (!isMarked && !hasPassive && !hasInert && !hasRallyBeacon) return null;
 
   const icons = [];
 
@@ -51,6 +52,18 @@ const TraitIndicators = ({ drone, effectiveStats }) => {
         title="Passive - Cannot attack or intercept"
       >
         <Feather size={12} className="text-emerald-400" />
+      </div>
+    );
+  }
+
+  if (hasRallyBeacon) {
+    icons.push(
+      <div
+        key="rally-beacon"
+        className="w-5 h-5 rounded-sm flex items-center justify-center bg-teal-950 border border-teal-500 shadow-md"
+        title="Rally Point - Friendly drones moving here grant go again"
+      >
+        <Flag size={12} className="text-teal-400" />
       </div>
     );
   }

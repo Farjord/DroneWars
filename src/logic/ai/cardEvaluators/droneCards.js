@@ -144,13 +144,24 @@ export const evaluateReadyDroneCard = (card, target, context) => {
 };
 
 /**
- * Evaluate a CREATE_TOKENS card (Jammer deployment)
+ * Evaluate a CREATE_TOKENS card
+ * Dispatches to Jammer or Rally Beacon evaluator based on token type
  * @param {Object} card - The card being played
- * @param {Object} target - The target (usually null)
+ * @param {Object} target - The target (null for Jammers, lane object for Rally Beacon)
  * @param {Object} context - Evaluation context
  * @returns {Object} - { score: number, logic: string[] }
  */
 export const evaluateCreateTokensCard = (card, target, context) => {
+  if (card.effect.tokenName === 'Rally Beacon') {
+    return evaluateRallyBeaconCard(card, target, context);
+  }
+  return evaluateJammerCard(card, target, context);
+};
+
+/**
+ * Evaluate a Jammer deployment card
+ */
+const evaluateJammerCard = (card, target, context) => {
   const { player2 } = context;
   const logic = [];
   let score = 0;
@@ -183,6 +194,79 @@ export const evaluateCreateTokensCard = (card, target, context) => {
     logic.push(`⚠️ Cost: -${costPenalty}`);
     logic.push(`📊 Available Lanes: ${availableLanes}/3 (${(scalingFactor * 100).toFixed(0)}% value)`);
   }
+
+  return { score, logic };
+};
+
+/**
+ * Evaluate a Rally Beacon deployment card
+ * Scores based on movement potential, adjacent drones, and movement cards in hand
+ * @param {Object} card - The card being played
+ * @param {Object} target - Lane target object { id: 'lane1', owner: 'player2' }
+ * @param {Object} context - Evaluation context
+ * @returns {Object} - { score: number, logic: string[] }
+ */
+const evaluateRallyBeaconCard = (card, target, context) => {
+  const { player2 } = context;
+  const logic = [];
+  let score = 0;
+
+  // Target is a lane object from LaneTargetingProcessor
+  const targetLane = target?.id;
+  if (!targetLane) {
+    return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
+  }
+
+  // Check if lane already has a Rally Beacon (maxPerLane: 1)
+  const dronesInLane = player2.dronesOnBoard[targetLane] || [];
+  const hasBeacon = dronesInLane.some(d => d.isToken && d.name === 'Rally Beacon');
+  if (hasBeacon) {
+    return { score: INVALID_SCORE, logic: ['❌ Lane already has a Rally Beacon'] };
+  }
+
+  // Base value
+  score += CARD_EVALUATION.RALLY_BEACON_BASE_VALUE;
+  logic.push(`✅ Base Value: +${CARD_EVALUATION.RALLY_BEACON_BASE_VALUE}`);
+
+  // Adjacent lane friendly drone count (movement potential into this lane)
+  const laneIndex = parseInt(targetLane.slice(-1));
+  const adjacentLanes = [];
+  if (laneIndex > 1) adjacentLanes.push(`lane${laneIndex - 1}`);
+  if (laneIndex < 3) adjacentLanes.push(`lane${laneIndex + 1}`);
+
+  let adjacentDroneCount = 0;
+  for (const adjLane of adjacentLanes) {
+    const adjDrones = (player2.dronesOnBoard[adjLane] || []).filter(d => !d.isToken);
+    adjacentDroneCount += adjDrones.length;
+  }
+  if (adjacentDroneCount > 0) {
+    const adjBonus = adjacentDroneCount * CARD_EVALUATION.RALLY_BEACON_ADJACENT_DRONE_VALUE;
+    score += adjBonus;
+    logic.push(`✅ Adjacent Drones: +${adjBonus} (${adjacentDroneCount} drones)`);
+  }
+
+  // Friendly drones in same lane (can defend beacon)
+  const defendingDrones = dronesInLane.filter(d => !d.isToken).length;
+  if (defendingDrones > 0) {
+    const defBonus = defendingDrones * CARD_EVALUATION.RALLY_BEACON_DEFENDING_DRONE_VALUE;
+    score += defBonus;
+    logic.push(`🛡️ Defending Drones: +${defBonus} (${defendingDrones} drones)`);
+  }
+
+  // Movement cards in hand bonus
+  const movementCards = player2.hand.filter(c =>
+    c.effect?.type === 'SINGLE_MOVE' || c.effect?.type === 'MULTI_MOVE'
+  ).length;
+  if (movementCards > 0) {
+    const moveBonus = movementCards * CARD_EVALUATION.RALLY_BEACON_MOVEMENT_CARD_BONUS;
+    score += moveBonus;
+    logic.push(`✅ Movement Cards: +${moveBonus} (${movementCards} in hand)`);
+  }
+
+  // Cost penalty
+  const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
+  score -= costPenalty;
+  logic.push(`⚠️ Cost: -${costPenalty}`);
 
   return { score, logic };
 };
