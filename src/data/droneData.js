@@ -110,7 +110,7 @@ const fullDroneCollection = [
   { name: 'Locust', class: 0, limit: 3, rebuildRate: 2.0, rarity: 'Common', attack: 1, hull: 1, shields: 0, speed: 3, image: '/DroneWars/img/Swarm.png', abilities: [], upgradeSlots: 3 },
   {
     name: 'Basilisk',
-    class: 2, limit: 2, rebuildRate: 1.0, rarity: 'Uncommon', attack: 1, hull: 2, shields: 1, speed: 2,
+    class: 3, limit: 2, rebuildRate: 0.5, rarity: 'Uncommon', attack: 1, hull: 2, shields: 1, speed: 2,
     image: '/DroneWars/img/Sniper.png',
     abilities: [{
         name: 'Long-Range Shot',
@@ -123,7 +123,7 @@ const fullDroneCollection = [
         },
         effect: { type: 'DAMAGE', value: 4 },
         cost: { energy: 1, exhausts: true },
-        activationLimit: 1  // Can only be used once per round
+        activationLimit: 1  
         }],
     upgradeSlots: 2
   },
@@ -371,7 +371,7 @@ const fullDroneCollection = [
     hull: 2,
     shields: 1,
     speed: 3,
-    image: '/DroneWars/img/Blitz.png',  // Temp - needs new image
+    image: '/DroneWars/img/Blitz.png',
     abilities: [{
       name: 'Rapid Response',
       description: 'First move each round does not exhaust this drone.',
@@ -390,7 +390,7 @@ const fullDroneCollection = [
     hull: 2,
     shields: 3,
     speed: 3,
-    image: '/DroneWars/img/Striker.png',  // Temp - needs new image
+    image: '/DroneWars/img/Striker.png',
     abilities: [{
       name: 'Assault Protocol',
       description: 'First attack each round does not exhaust this drone.',
@@ -403,13 +403,13 @@ const fullDroneCollection = [
     name: 'Tempest',
     class: 4,
     limit: 1,
-    rebuildRate: 0.5,
+    rebuildRate: 0,
     rarity: 'Mythic',
     attack: 3,
-    hull: 3,
-    shields: 2,
+    hull: 4,
+    shields: 4,
     speed: 4,
-    image: '/DroneWars/img/Tempest.png',  // Temp - needs new image
+    image: '/DroneWars/img/Tempest.png',
     abilities: [
       {
         name: 'Rapid Response',

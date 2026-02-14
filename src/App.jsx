@@ -1131,10 +1131,9 @@ const App = ({ phaseAnimationQueue }) => {
    * Resets UI state when player cancels an ability activation.
    */
   const cancelAbilityMode = () => {
-    if (abilityMode) {
-     setAbilityMode(null);
-     setSelectedDrone(null);
-    }
+    setAbilityMode(null);
+    setSelectedDrone(null);
+    setValidAbilityTargets([]);
   };
 
   /**
