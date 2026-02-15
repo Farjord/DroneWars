@@ -330,7 +330,7 @@ export const calculateAffectedDroneIds = (
     // Movement effects target lanes as DESTINATIONS - drones in destination are not affected
     // This is a defensive check to future-proof against LANE-targeting movement cards
     const effectType = card.effect?.type;
-    if (effectType === 'SINGLE_MOVE' || effectType === 'MULTI_MOVE') {
+    if (effectType === 'SINGLE_MOVE' || effectType === 'MULTI_MOVE' || effectType === 'CREATE_TOKENS') {
         return [];
     }
 
@@ -439,8 +439,10 @@ export function calculateCostTargets(additionalCost, player1, player2, actingPla
     player2,
     definition: {
       targeting: additionalCost.targeting,
+      effect: { type: additionalCost.type },
       name: `Additional Cost (${additionalCost.type})`
     },
+    isCostTargeting: true,
     playingCardId,
     getEffectiveStats: getEffectiveStatsFn
   };

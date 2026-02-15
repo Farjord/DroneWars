@@ -460,12 +460,12 @@ setAnimationManager(animationManager) {
 
         case 'snaredConsumption':
           this.processSnaredConsumption(payload);
-          result = { success: true };
+          result = { success: true, shouldEndTurn: true };
           break;
 
         case 'suppressedConsumption':
           this.processSuppressedConsumption(payload);
-          result = { success: true };
+          result = { success: true, shouldEndTurn: true };
           break;
 
         default:
@@ -806,6 +806,19 @@ setAnimationManager(animationManager) {
       };
     }
 
+    // Check for INHIBIT_MOVEMENT keyword in source lane (prevents moving OUT)
+    const dronesInFromLane = playerState.dronesOnBoard[fromLane] || [];
+    const hasMovementInhibitor = dronesInFromLane.some(d =>
+      d.abilities?.some(a => a.effect?.keyword === 'INHIBIT_MOVEMENT')
+    );
+    if (hasMovementInhibitor) {
+      return {
+        success: false,
+        error: `${drone.name} cannot move out of ${fromLane} - Thruster Inhibitor is active.`,
+        shouldShowErrorModal: true
+      };
+    }
+
     // Check if drone is Snared (one-shot movement cancellation for AI path)
     if (drone.isSnared) {
       let newPlayerState = JSON.parse(JSON.stringify(playerState));
@@ -816,7 +829,7 @@ setAnimationManager(animationManager) {
       }
       this.gameStateManager.updatePlayerState(playerId, newPlayerState);
       this.gameStateManager.addLogEntry(`${drone.name}'s move was cancelled (Snared)`);
-      return { success: true, snaredConsumed: true };
+      return { success: true, snaredConsumed: true, shouldEndTurn: true };
     }
 
     // Create a copy of the entire player state for processing
@@ -920,19 +933,19 @@ setAnimationManager(animationManager) {
     let userDrone = null;
     let targetDrone = null;
 
-    // Search for the drone in all lanes
-    Object.values(playerStates).forEach(player => {
-      Object.values(player.dronesOnBoard).forEach(lane => {
-        lane.forEach(drone => {
+    // Search for the drone in all lanes, tracking owner
+    for (const [playerId, player] of Object.entries(playerStates)) {
+      for (const lane of Object.values(player.dronesOnBoard)) {
+        for (const drone of lane) {
           if (drone.id === droneId) {
-            userDrone = drone;
+            userDrone = { ...drone, owner: playerId };
           }
           if (drone.id === targetId) {
-            targetDrone = drone;
+            targetDrone = { ...drone, owner: playerId };
           }
-        });
-      });
-    });
+        }
+      }
+    }
 
     // Check if targetId is a lane (for lane-targeted abilities)
     if (targetId && typeof targetId === 'string' && targetId.startsWith('lane') && !targetDrone) {

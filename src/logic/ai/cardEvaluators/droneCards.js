@@ -4,9 +4,10 @@
 // Evaluates READY_DRONE and CREATE_TOKENS card effects
 
 import fullDroneCollection from '../../../data/droneData.js';
-import { SCORING_WEIGHTS, CARD_EVALUATION, INVALID_SCORE } from '../aiConstants.js';
+import { SCORING_WEIGHTS, CARD_EVALUATION, INVALID_SCORE, THRUSTER_INHIBITOR, PROXIMITY_MINE, INHIBITOR_MINE, JITTER_MINE } from '../aiConstants.js';
 import { calculateLaneScore } from '../scoring/laneScoring.js';
 import { hasJammerInLane } from '../helpers/jammerHelpers.js';
+import { countDroneTypeInLane } from '../../utils/gameEngineUtils.js';
 
 /**
  * Evaluate a READY_DRONE card
@@ -155,6 +156,18 @@ export const evaluateCreateTokensCard = (card, target, context) => {
   if (card.effect.tokenName === 'Rally Beacon') {
     return evaluateRallyBeaconCard(card, target, context);
   }
+  if (card.effect.tokenName === 'Thruster Inhibitor') {
+    return evaluateThrusterInhibitorCard(card, target, context);
+  }
+  if (card.effect.tokenName === 'Proximity Mine') {
+    return evaluateProximityMineCard(card, target, context);
+  }
+  if (card.effect.tokenName === 'Inhibitor Mine') {
+    return evaluateInhibitorMineCard(card, target, context);
+  }
+  if (card.effect.tokenName === 'Jitter Mine') {
+    return evaluateJitterMineCard(card, target, context);
+  }
   return evaluateJammerCard(card, target, context);
 };
 
@@ -261,6 +274,215 @@ const evaluateRallyBeaconCard = (card, target, context) => {
     const moveBonus = movementCards * CARD_EVALUATION.RALLY_BEACON_MOVEMENT_CARD_BONUS;
     score += moveBonus;
     logic.push(`✅ Movement Cards: +${moveBonus} (${movementCards} in hand)`);
+  }
+
+  // Cost penalty
+  const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
+  score -= costPenalty;
+  logic.push(`⚠️ Cost: -${costPenalty}`);
+
+  return { score, logic };
+};
+
+/**
+ * Evaluate a Thruster Inhibitor deployment card
+ * Scores based on enemy drones locked down in the target lane
+ * Card places a token on the OPPONENT's board to block movement out
+ * @param {Object} card - The card being played
+ * @param {Object} target - Lane target object { id: 'lane1', owner: 'player1' }
+ * @param {Object} context - Evaluation context
+ * @returns {Object} - { score: number, logic: string[] }
+ */
+const evaluateThrusterInhibitorCard = (card, target, context) => {
+  const { player1 } = context;
+  const logic = [];
+  let score = 0;
+
+  // Target is an enemy lane object from LaneTargetingProcessor
+  const targetLane = target?.id;
+  if (!targetLane) {
+    return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
+  }
+
+  // Check if lane already has a Thruster Inhibitor (maxPerLane: 1)
+  const dronesInLane = player1.dronesOnBoard[targetLane] || [];
+  const hasInhibitor = dronesInLane.some(d => d.isToken && d.name === 'Thruster Inhibitor');
+  if (hasInhibitor) {
+    return { score: INVALID_SCORE, logic: ['❌ Lane already has a Thruster Inhibitor'] };
+  }
+
+  // Count non-token enemy drones that would be locked down
+  const enemyDrones = dronesInLane.filter(d => !d.isToken);
+  if (enemyDrones.length === 0) {
+    return { score: INVALID_SCORE, logic: ['❌ No enemy drones in target lane to lock down'] };
+  }
+
+  // Base value
+  score += THRUSTER_INHIBITOR.BASE_VALUE;
+  logic.push(`✅ Base Value: +${THRUSTER_INHIBITOR.BASE_VALUE}`);
+
+  // Value per locked drone
+  const lockedValue = enemyDrones.length * THRUSTER_INHIBITOR.LOCKED_DRONE_VALUE;
+  score += lockedValue;
+  logic.push(`✅ Locked Drones: +${lockedValue} (${enemyDrones.length} drones)`);
+
+  // Bonus for high-class drones being locked
+  const highClassDrones = enemyDrones.filter(d => (d.class || 0) >= 3).length;
+  if (highClassDrones > 0) {
+    const highClassBonus = highClassDrones * THRUSTER_INHIBITOR.HIGH_CLASS_BONUS;
+    score += highClassBonus;
+    logic.push(`✅ High-Class Lockdown: +${highClassBonus} (${highClassDrones} class 3+ drones)`);
+  }
+
+  // Cost penalty
+  const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
+  score -= costPenalty;
+  logic.push(`⚠️ Cost: -${costPenalty}`);
+
+  return { score, logic };
+};
+
+/**
+ * Evaluate a Proximity Mine deployment card
+ * Scores based on drones in adjacent lanes that might move into the target lane
+ * @param {Object} card - The card being played
+ * @param {Object} target - Lane target object { id: 'lane1', owner: 'player1' }
+ * @param {Object} context - Evaluation context
+ * @returns {Object} - { score: number, logic: string[] }
+ */
+const evaluateProximityMineCard = (card, target, context) => {
+  const { player1 } = context;
+  const logic = [];
+  let score = 0;
+
+  const targetLane = target?.id;
+  if (!targetLane) {
+    return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
+  }
+
+  // Check if lane already has a Proximity Mine
+  const dronesInLane = player1.dronesOnBoard[targetLane] || [];
+  const hasMine = dronesInLane.some(d => d.isToken && d.name === 'Proximity Mine');
+  if (hasMine) {
+    return { score: INVALID_SCORE, logic: ['❌ Lane already has a Proximity Mine'] };
+  }
+
+  // Base value
+  score += PROXIMITY_MINE.BASE_VALUE;
+  logic.push(`✅ Base Value: +${PROXIMITY_MINE.BASE_VALUE}`);
+
+  // Count drones in adjacent lanes that could move into the target lane
+  const laneIndex = parseInt(targetLane.slice(-1));
+  const adjacentLanes = [];
+  if (laneIndex > 1) adjacentLanes.push(`lane${laneIndex - 1}`);
+  if (laneIndex < 3) adjacentLanes.push(`lane${laneIndex + 1}`);
+
+  let adjacentDroneCount = 0;
+  for (const adjLane of adjacentLanes) {
+    const adjDrones = (player1.dronesOnBoard[adjLane] || []).filter(d => !d.isToken && !d.isExhausted);
+    adjacentDroneCount += adjDrones.length;
+  }
+
+  if (adjacentDroneCount > 0) {
+    const adjBonus = adjacentDroneCount * PROXIMITY_MINE.THREAT_PER_ADJACENT_DRONE;
+    score += adjBonus;
+    logic.push(`✅ Adjacent Moveable Drones: +${adjBonus} (${adjacentDroneCount} drones)`);
+  }
+
+  // Cost penalty
+  const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
+  score -= costPenalty;
+  logic.push(`⚠️ Cost: -${costPenalty}`);
+
+  return { score, logic };
+};
+
+/**
+ * Evaluate an Inhibitor Mine deployment card
+ * Scores based on opponent's undeployed drones and empty lane slots
+ * @param {Object} card - The card being played
+ * @param {Object} target - Lane target object { id: 'lane1', owner: 'player1' }
+ * @param {Object} context - Evaluation context
+ * @returns {Object} - { score: number, logic: string[] }
+ */
+const evaluateInhibitorMineCard = (card, target, context) => {
+  const { player1 } = context;
+  const logic = [];
+  let score = 0;
+
+  const targetLane = target?.id;
+  if (!targetLane) {
+    return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
+  }
+
+  // Check if lane already has an Inhibitor Mine
+  const dronesInLane = player1.dronesOnBoard[targetLane] || [];
+  const hasMine = dronesInLane.some(d => d.isToken && d.name === 'Inhibitor Mine');
+  if (hasMine) {
+    return { score: INVALID_SCORE, logic: ['❌ Lane already has an Inhibitor Mine'] };
+  }
+
+  // Base value
+  score += INHIBITOR_MINE.BASE_VALUE;
+  logic.push(`✅ Base Value: +${INHIBITOR_MINE.BASE_VALUE}`);
+
+  // Value based on how few drones opponent has in this lane (more room for deployment)
+  const enemyDronesInLane = dronesInLane.filter(d => !d.isToken).length;
+  const emptySlots = Math.max(0, 4 - enemyDronesInLane); // rough estimate of deployment room
+  if (emptySlots > 0) {
+    const deployThreat = emptySlots * INHIBITOR_MINE.DEPLOYMENT_THREAT_VALUE;
+    score += deployThreat;
+    logic.push(`✅ Deployment Threat: +${deployThreat} (${emptySlots} empty slots)`);
+  }
+
+  // Cost penalty
+  const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
+  score -= costPenalty;
+  logic.push(`⚠️ Cost: -${costPenalty}`);
+
+  return { score, logic };
+};
+
+/**
+ * Evaluate a Jitter Mine deployment card
+ * Scores based on drones in target lane that haven't attacked yet
+ * @param {Object} card - The card being played
+ * @param {Object} target - Lane target object { id: 'lane1', owner: 'player1' }
+ * @param {Object} context - Evaluation context
+ * @returns {Object} - { score: number, logic: string[] }
+ */
+const evaluateJitterMineCard = (card, target, context) => {
+  const { player1, gameDataService } = context;
+  const logic = [];
+  let score = 0;
+
+  const targetLane = target?.id;
+  if (!targetLane) {
+    return { score: INVALID_SCORE, logic: ['❌ No target lane'] };
+  }
+
+  // Check if lane already has a Jitter Mine
+  const dronesInLane = player1.dronesOnBoard[targetLane] || [];
+  const hasMine = dronesInLane.some(d => d.isToken && d.name === 'Jitter Mine');
+  if (hasMine) {
+    return { score: INVALID_SCORE, logic: ['❌ Lane already has a Jitter Mine'] };
+  }
+
+  // Base value
+  score += JITTER_MINE.BASE_VALUE;
+  logic.push(`✅ Base Value: +${JITTER_MINE.BASE_VALUE}`);
+
+  // Value based on ready drones in the target lane (drones that could attack)
+  const readyDrones = dronesInLane.filter(d => !d.isToken && !d.isExhausted);
+  for (const drone of readyDrones) {
+    const effectiveStats = gameDataService.getEffectiveStats(drone, targetLane);
+    const attack = Math.max(0, effectiveStats.attack);
+    if (attack > 0) {
+      // Higher value for high-attack drones (reducing 4 attack matters more on a 6-attack drone)
+      const droneValue = JITTER_MINE.ATTACK_REDUCTION_VALUE + attack * 2;
+      score += droneValue;
+      logic.push(`✅ ${drone.name}: +${droneValue} (${attack} ATK drone)`);
+    }
   }
 
   // Cost penalty

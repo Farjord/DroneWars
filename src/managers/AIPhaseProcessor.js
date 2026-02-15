@@ -751,8 +751,8 @@ class AIPhaseProcessor {
     const effectiveStats = this.gameDataService.getEffectiveShipStats(aiState, opponentPlacedSections);
     const droneLimit = effectiveStats.totals.cpuLimit;
 
-    // Count total drones on board
-    const totalDrones = Object.values(aiState.dronesOnBoard || {}).flat().length;
+    // Count total non-token drones on board (token drones don't count toward CPU limit)
+    const totalDrones = Object.values(aiState.dronesOnBoard || {}).flat().filter(d => !d.isToken).length;
 
     // Early return if AI is already at or below drone limit
     if (totalDrones <= droneLimit) {
@@ -791,7 +791,7 @@ class AIPhaseProcessor {
     // Collect all drones with their lane score
     const allDrones = [];
     Object.entries(aiState.dronesOnBoard || {}).forEach(([lane, drones]) => {
-      drones.forEach(drone => {
+      drones.filter(drone => !drone.isToken).forEach(drone => {
         allDrones.push({ ...drone, lane, laneScore: laneScores[lane] });
       });
     });

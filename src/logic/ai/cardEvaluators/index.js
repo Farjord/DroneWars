@@ -3,7 +3,7 @@
 // ========================================
 // Central registry for card effect evaluators
 
-import { evaluateDestroyCard, evaluateDamageCard, evaluateOverflowDamageCard, evaluateSplashDamageCard, evaluateDamageScalingCard, evaluateDestroyUpgradeCard } from './damageCards.js';
+import { evaluateDestroyCard, evaluateDamageCard, evaluateOverflowDamageCard, evaluateSplashDamageCard, evaluateDamageScalingCard, evaluateDestroyUpgradeCard, evaluateConditionalSectionDamageCard } from './damageCards.js';
 import { evaluateGainEnergyCard, evaluateDrawCard, evaluateSearchAndDrawCard, evaluateDrainEnergyCard, evaluateDiscardCard } from './utilityCards.js';
 import { evaluateReadyDroneCard, evaluateCreateTokensCard, evaluateExhaustDroneCard } from './droneCards.js';
 import { evaluateHealShieldsCard, evaluateHealHullCard, evaluateRestoreSectionShieldsCard } from './healCards.js';
@@ -58,6 +58,8 @@ export const cardEvaluatorRegistry = {
   APPLY_CANNOT_INTERCEPT: evaluateApplyCannotInterceptCard,
   APPLY_DOES_NOT_READY: evaluateApplyDoesNotReadyCard,
   CLEAR_ALL_STATUS: evaluateClearAllStatusCard,
+  // Doctrine card evaluators
+  CONDITIONAL_SECTION_DAMAGE: evaluateConditionalSectionDamageCard,
   // Threat effect evaluators
   INCREASE_THREAT: evaluateIncreaseThreatCard,
 };

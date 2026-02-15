@@ -56,9 +56,16 @@ const StatHexagon = ({ value, isFlat, bgColor, textColor, borderColor = 'bg-blac
  * Renders clickable ability button for drone tokens.
  * @param {Function} onClick - Callback when ability button is clicked
  */
-const AbilityIcon = ({ onClick }) => (
-  <button onClick={onClick} className="absolute top-5 -right-3.5 w-7 h-7 bg-slate-800 rounded-full flex items-center justify-center border border-cyan-400 z-20 hover:border-cyan-300 hover:shadow-lg hover:shadow-cyan-400/50 transition-all">
-    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-400">
+const AbilityIcon = ({ onClick, disabled }) => (
+  <button
+    onClick={disabled ? undefined : onClick}
+    className={`absolute top-5 -right-3.5 w-7 h-7 bg-slate-800 rounded-full flex items-center justify-center border z-20 transition-all ${
+      disabled
+        ? 'border-gray-500 cursor-not-allowed opacity-60'
+        : 'border-cyan-400 hover:border-cyan-300 hover:shadow-lg hover:shadow-cyan-400/50 cursor-pointer'
+    }`}
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={disabled ? 'text-gray-500' : 'text-cyan-400'}>
       <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
     </svg>
   </button>
@@ -229,15 +236,20 @@ const DroneToken = ({
   }
 
   // --- Dynamic Class Calculation ---
-  const borderColor = isPlayer ? 'border-cyan-400' : 'border-red-500';
+  // For tokens with deployedBy, color based on who deployed them, not whose board they sit on
+  const isVisuallyOwned = drone.deployedBy
+    ? drone.deployedBy === getLocalPlayerId()
+    : isPlayer;
+
+  const borderColor = isVisuallyOwned ? 'border-cyan-400' : 'border-red-500';
   const isToken = baseDrone?.isToken;
   const nameBgColor = isToken
-    ? (isPlayer ? 'bg-slate-600' : 'bg-stone-700')
-    : (isPlayer ? 'bg-cyan-900' : 'bg-red-950');
-  const nameTextColor = isPlayer ? 'text-cyan-100' : 'text-red-100';
+    ? (isVisuallyOwned ? 'bg-slate-600' : 'bg-stone-700')
+    : (isVisuallyOwned ? 'bg-cyan-900' : 'bg-red-950');
+  const nameTextColor = isVisuallyOwned ? 'text-cyan-100' : 'text-red-100';
   const statBgColor = isToken
-    ? (isPlayer ? 'bg-slate-600' : 'bg-stone-700')
-    : (isPlayer ? 'bg-cyan-900' : 'bg-red-950');
+    ? (isVisuallyOwned ? 'bg-slate-600' : 'bg-stone-700')
+    : (isVisuallyOwned ? 'bg-cyan-900' : 'bg-red-950');
   const shieldColor = drone.isExhausted ? 'text-white' : 'text-cyan-200';
   const emptyShieldColor = drone.isExhausted ? 'text-gray-500' : 'text-cyan-200 opacity-50';
 
@@ -307,6 +319,11 @@ const DroneToken = ({
 
         // Handle action card targeting via drag-and-drop
         if (draggedActionCard && onActionCardDrop) {
+          if (isInvalidTarget) {
+            onActionCardDrop();
+            e.stopPropagation();
+            return;
+          }
           const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
           debugLog('CHECKPOINT_FLOW', '🎯 CHECKPOINT 2A: Handling action card drop on drone', {
             drone: drone.name,
@@ -348,7 +365,7 @@ const DroneToken = ({
           {/* Grayscale Container - only applies exhausted effect */}
           <div className={`w-full h-full relative ${exhaustEffect}`}>
             {/* Main Token Body */}
-            <div className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden ${isPotentialGuardian ? 'guardian-glow' : ''} ${isPotentialInterceptor ? (isPlayer ? 'interceptor-card-glow-cyan' : 'interceptor-card-glow') : ''}`}>
+            <div className={`relative w-full h-full rounded-lg shadow-lg border ${borderColor} cursor-pointer shadow-black overflow-hidden ${isPotentialGuardian ? 'guardian-glow' : ''} ${isPotentialInterceptor ? (isVisuallyOwned ? 'interceptor-card-glow-cyan' : 'interceptor-card-glow') : ''}`}>
               <img src={drone.image} alt={drone.name} className="absolute inset-0 w-full h-full object-cover"/>
               <div className="absolute inset-0 bg-black/10"></div>
               <div className="relative z-10 h-full">
@@ -389,22 +406,25 @@ const DroneToken = ({
 
         {/* Overlapping Hexagons - Outside nested containers for proper filter rendering */}
         <div className={`absolute -top-3 left-[-14px] w-6 h-7 z-20 ${teleportingEffect} ${exhaustEffect}`}>
-            <StatHexagon value={effectiveStats.attack} isFlat={false} bgColor={statBgColor} textColor={attackTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
+            <StatHexagon value={effectiveStats.attack} isFlat={false} bgColor={statBgColor} textColor={attackTextColor} borderColor={isVisuallyOwned ? 'bg-cyan-400' : 'bg-red-500'} />
         </div>
-        <div className={`absolute -top-3 right-[-14px] w-7 h-7 z-20 ${isPotentialInterceptor ? (isPlayer ? 'interceptor-glow-cyan' : 'interceptor-glow') : ''} ${teleportingEffect} ${exhaustEffect}`}>
-            <StatHexagon value={effectiveStats.speed} isFlat={true} bgColor={statBgColor} textColor={speedTextColor} borderColor={isPlayer ? 'bg-cyan-400' : 'bg-red-500'} />
+        <div className={`absolute -top-3 right-[-14px] w-7 h-7 z-20 ${isPotentialInterceptor ? (isVisuallyOwned ? 'interceptor-glow-cyan' : 'interceptor-glow') : ''} ${teleportingEffect} ${exhaustEffect}`}>
+            <StatHexagon value={effectiveStats.speed} isFlat={true} bgColor={statBgColor} textColor={speedTextColor} borderColor={isVisuallyOwned ? 'bg-cyan-400' : 'bg-red-500'} />
         </div>
 
         {/* Overlapping Ability Icon */}
-        {isPlayer && activeAbilities.length > 0 && isAbilityUsable(activeAbilities[0]) && (
+        {isPlayer && activeAbilities.length > 0 && (
             <div className={teleportingEffect}>
-                <AbilityIcon onClick={(e) => onAbilityClick && onAbilityClick(e, drone, activeAbilities[0])} />
+                <AbilityIcon
+                  disabled={!isAbilityUsable(activeAbilities[0])}
+                  onClick={(e) => onAbilityClick && onAbilityClick(e, drone, activeAbilities[0])}
+                />
             </div>
         )}
 
         {/* Special Ability Icons (RAPID/ASSAULT) - Left side */}
         <div className={teleportingEffect}>
-            <SpecialAbilityIcons drone={drone} isPlayer={isPlayer} />
+            <SpecialAbilityIcons drone={drone} isPlayer={isVisuallyOwned} />
         </div>
 
         {/* Trait Indicators (Marked/PASSIVE/INERT) - Top-left side */}

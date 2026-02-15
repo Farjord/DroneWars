@@ -12,7 +12,7 @@ import {
   hasThreatOnRoundStart,
 } from './ai/helpers/index.js';
 
-import { INTERCEPTION, THREAT_DRONES, DRONE_PACING } from './ai/aiConstants.js';
+import { INTERCEPTION, THREAT_DRONES, DRONE_PACING, THRUSTER_INHIBITOR } from './ai/aiConstants.js';
 
 // Import extracted scoring functions
 import {
@@ -35,6 +35,7 @@ import { evaluateMove } from './ai/moveEvaluator.js';
 import { applyJammerAdjustments } from './ai/adjustmentPasses/jammerAdjustment.js';
 import { applyInterceptionAdjustments } from './ai/adjustmentPasses/interceptionAdjustment.js';
 import { applyAntiShipAdjustments } from './ai/adjustmentPasses/antiShipAdjustment.js';
+import { applyMovementInhibitorAdjustments } from './ai/adjustmentPasses/movementInhibitorAdjustment.js';
 
 // Import card validators
 import { isCardConditionMet } from './targeting/CardConditionValidator.js';
@@ -52,6 +53,14 @@ const getActiveAbilityTargets = (ability, sourceDrone, player1, player2) => {
   const { targeting, effect } = ability;
 
   if (!targeting) return [];
+
+  // Handle SELF targeting - return the source drone itself as the target
+  if (targeting.type === 'SELF') {
+    return [{
+      ...sourceDrone,
+      owner: 'player2'  // AI is always player2
+    }];
+  }
 
   const owner = targeting.affinity === 'FRIENDLY' ? player2 : player1;
   const lanes = targeting.location === 'SAME_LANE'
@@ -120,6 +129,16 @@ const evaluateActiveAbility = (ability, target, currentEnergy) => {
       if (ability.targeting?.location === 'ANY_LANE' || ability.targeting?.location === 'OTHER_LANES') {
         score += 20;
       }
+      break;
+    }
+
+    case 'DESTROY_TOKEN_SELF': {
+      // Purge ability: self-destruct a Thruster Inhibitor token
+      // Value depends on how many friendly drones are locked down in the lane
+      const lane = target.lane;
+      // Score is calculated in the adjustment pass with full context
+      // Provide a base value here
+      score = THRUSTER_INHIBITOR.PURGE_BASE_VALUE;
       break;
     }
 
@@ -566,6 +585,14 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
 
     for (const drone of readyAiDrones) {
       const fromLaneIndex = parseInt(drone.lane.slice(-1));
+
+      // Check for INHIBIT_MOVEMENT keyword preventing moves out of this lane
+      const dronesInFromLane = player2.dronesOnBoard[drone.lane] || [];
+      const hasMovementInhibitor = dronesInFromLane.some(d =>
+        d.abilities?.some(a => a.effect?.keyword === 'INHIBIT_MOVEMENT')
+      );
+      if (hasMovementInhibitor) continue; // Skip all moves from inhibited lanes
+
       [fromLaneIndex - 1, fromLaneIndex + 1].forEach(toLaneIndex => {
         if (toLaneIndex >= 1 && toLaneIndex <= 3) {
           const toLane = `lane${toLaneIndex}`;
@@ -734,6 +761,12 @@ const handleOpponentAction = ({ player1, player2, placedSections, opponentPlaced
     // ========================================
     // Remove anti-ship penalty when no alternatives exist
     applyAntiShipAdjustments(possibleActions, evaluationContext);
+
+    // ========================================
+    // MOVEMENT INHIBITOR ADJUSTMENT PASS
+    // ========================================
+    // Boost attacks against Thruster Inhibitors and Purge ability usage
+    applyMovementInhibitorAdjustments(possibleActions, evaluationContext);
 
     // ========================================
     // DRONE DISADVANTAGE PACING PASS

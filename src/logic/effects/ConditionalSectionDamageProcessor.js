@@ -170,7 +170,11 @@ class ConditionalSectionDamageProcessor extends BaseEffectProcessor {
 
       case 'CONTROL_LANE_EMPTY':
         // Check if player controls the target lane AND no enemy drones present
-        const targetLane = condition.lane === 'TARGET' ? target.id : condition.lane;
+        // target.id is now a section name (e.g., 'left') - convert to lane
+        const sectionToLaneMap = { 'left': 'lane1', 'middle': 'lane2', 'right': 'lane3' };
+        const targetLane = condition.lane === 'TARGET'
+          ? (sectionToLaneMap[target.id] || target.id)
+          : condition.lane;
         return LaneControlCalculator.checkLaneControlEmpty(
           actingPlayerId,
           targetLane,
@@ -204,9 +208,11 @@ class ConditionalSectionDamageProcessor extends BaseEffectProcessor {
         return [placedSections[1]];
 
       case 'CORRESPONDING_SECTION':
-        // Section corresponding to the targeted lane
-        const laneIndex = parseInt(target.id.replace('lane', '')) - 1;
-        return [placedSections[laneIndex]];
+        // Section corresponding to the targeted section name
+        // target.id is now a section name (e.g., 'left', 'middle', 'right')
+        const sectionIndexMap = { 'left': 0, 'middle': 1, 'right': 2 };
+        const sectionIndex = sectionIndexMap[target.id];
+        return sectionIndex !== undefined ? [placedSections[sectionIndex]] : [];
 
       case 'ALL_SECTIONS':
         // All three sections

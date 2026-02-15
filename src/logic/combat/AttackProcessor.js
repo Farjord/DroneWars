@@ -19,6 +19,7 @@ import { createSectionDamagedAnimation } from './animations/SectionDamagedAnimat
 import { createDroneReturnAnimation } from './animations/DroneReturnAnimation.js';
 import { createDogfightDamageAnimation } from './animations/DogfightDamageAnimation.js';
 import { createRetaliationDamageAnimation } from './animations/RetaliationDamageAnimation.js';
+import { processTrigger as processMineTrigger } from '../effects/mines/MineTriggeredEffectProcessor.js';
 
 /**
  * Calculate damage distribution based on damage type
@@ -327,6 +328,7 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
             return {
                 newPlayerStates,
                 suppressedConsumed: true,
+                shouldEndTurn: true,
                 logEntry: `${attacker.name}'s attack was cancelled (Suppressed)`
             };
         }
@@ -360,6 +362,51 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
             attackerPlayerState,
             placedSections
         );
+    }
+
+    // Process ON_LANE_ATTACK mine triggers (before damage calculation)
+    // Only triggers for drone attacks, not card/ability attacks
+    const mineAnimationEvents = [];
+    if (!isAbilityOrCard && attacker && attacker.id && attackerLane) {
+        const minePlayerStates = {
+            [attackingPlayerId]: JSON.parse(JSON.stringify(attackerPlayerState)),
+            [defendingPlayerId]: JSON.parse(JSON.stringify(defenderPlayerState))
+        };
+        const mineResult = processMineTrigger('ON_LANE_ATTACK', {
+            lane: attackerLane,
+            triggeringDrone: attacker,
+            triggeringPlayerId: attackingPlayerId
+        }, {
+            playerStates: minePlayerStates,
+            placedSections,
+            logCallback
+        });
+
+        if (mineResult.triggered) {
+            // Apply mine state changes back to the source states
+            Object.assign(attackerPlayerState, minePlayerStates[attackingPlayerId]);
+            Object.assign(defenderPlayerState, minePlayerStates[defendingPlayerId]);
+            // Update playerStates references
+            playerStates[attackingPlayerId] = attackerPlayerState;
+            playerStates[defendingPlayerId] = defenderPlayerState;
+
+            mineAnimationEvents.push(...mineResult.animationEvents);
+
+            // Re-calculate effective attacker stats if a stat mod was applied (e.g., Jitter Mine -4 attack)
+            if (mineResult.statModsApplied) {
+                // Re-find the attacker in updated state (it may have been modified)
+                const updatedAttacker = attackerPlayerState.dronesOnBoard[attackerLane]?.find(d => d.id === attacker.id);
+                if (updatedAttacker) {
+                    effectiveAttacker = calculateEffectiveStats(
+                        updatedAttacker,
+                        attackerLane,
+                        attackerPlayerState,
+                        defenderPlayerState,
+                        placedSections
+                    );
+                }
+            }
+        }
     }
 
     // Calculate damage
@@ -737,6 +784,9 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
         }
     }
 
+    // Prepend mine animation events (mine triggers before damage visually)
+    const allAnimationEvents = [...mineAnimationEvents, ...animationEvents];
+
     return {
         newPlayerStates,
         shouldEndTurn: !goAgain,
@@ -753,6 +803,6 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
             remainingHull,
             outcome
         },
-        animationEvents
+        animationEvents: allAnimationEvents
     };
 };

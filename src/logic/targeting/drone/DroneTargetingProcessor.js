@@ -198,6 +198,11 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
             return; // Skip this drone
           }
 
+          // For movement costs, skip snared drones (snared drone can't pay a movement cost)
+          if (isMovementEffect && context?.isCostTargeting && drone.isSnared) {
+            return;
+          }
+
           // For movement effects, skip INERT drones
           if (isMovementEffect && context?.getEffectiveStats) {
             const stats = context.getEffectiveStats(drone, lane);
@@ -222,6 +227,11 @@ class DroneTargetingProcessor extends BaseTargetingProcessor {
           // For movement effects, skip exhausted drones unless explicitly allowed
           if (isMovementEffect && !allowsExhausted && drone.isExhausted) {
             return; // Skip this drone
+          }
+
+          // For movement costs, skip snared drones (snared drone can't pay a movement cost)
+          if (isMovementEffect && context?.isCostTargeting && drone.isSnared) {
+            return;
           }
 
           // For movement effects, skip INERT drones

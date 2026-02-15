@@ -47,8 +47,13 @@ class TokenCreationProcessor extends BaseEffectProcessor {
 
     const { actingPlayerId, playerStates, callbacks, card } = context;
     const newPlayerStates = this.clonePlayerStates(playerStates);
-    const actingPlayerState = newPlayerStates[actingPlayerId];
     const animationEvents = [];
+
+    // Determine target player: tokens go on opponent's board if targetOwner is 'OPPONENT'
+    const opponentPlayerId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+    const targetPlayerId = effect.targetOwner === 'OPPONENT' ? opponentPlayerId : actingPlayerId;
+    const targetPlayerState = newPlayerStates[targetPlayerId];
+    const actingPlayerState = newPlayerStates[actingPlayerId];
 
     // Look up base drone data
     const baseDrone = fullDroneCollection.find(d => d.name === effect.tokenName);
@@ -65,17 +70,18 @@ class TokenCreationProcessor extends BaseEffectProcessor {
     // Derive locations from effect.locations or from context.target (lane-targeted cards)
     const locations = effect.locations || (context.target ? [context.target.id] : []);
 
-    debugLog('EFFECT_PROCESSING', `[CREATE_TOKENS] ${actingPlayerId} creating ${effect.tokenName} tokens`, {
+    debugLog('EFFECT_PROCESSING', `[CREATE_TOKENS] ${actingPlayerId} creating ${effect.tokenName} tokens on ${targetPlayerId}'s board`, {
       tokenName: effect.tokenName,
       locations,
+      targetOwner: effect.targetOwner || 'SELF',
       baseDrone: { attack: baseDrone.attack, hull: baseDrone.hull, shields: baseDrone.shields }
     });
 
     // Create tokens in specified lanes
     locations.forEach(laneId => {
-      // Check maxPerLane restriction before creating token
+      // Check maxPerLane restriction before creating token (check on the target player's board)
       if (baseDrone.maxPerLane) {
-        const currentCountInLane = countDroneTypeInLane(actingPlayerState, baseDrone.name, laneId);
+        const currentCountInLane = countDroneTypeInLane(targetPlayerState, baseDrone.name, laneId);
 
         if (currentCountInLane >= baseDrone.maxPerLane) {
           debugLog('EFFECT_PROCESSING', `[CREATE_TOKENS] ⚠️ Cannot create ${effect.tokenName} in ${laneId} (max per lane: ${baseDrone.maxPerLane})`);
@@ -93,9 +99,9 @@ class TokenCreationProcessor extends BaseEffectProcessor {
         }
       }
 
-      // Generate deterministic ID using deployment counter
-      const deploymentNumber = (actingPlayerState.totalDronesDeployed || 0) + 1;
-      const tokenId = `${actingPlayerId}_${baseDrone.name}_${deploymentNumber.toString().padStart(4, '0')}`;
+      // Generate deterministic ID using the target player's deployment counter
+      const deploymentNumber = (targetPlayerState.totalDronesDeployed || 0) + 1;
+      const tokenId = `${targetPlayerId}_${baseDrone.name}_${deploymentNumber.toString().padStart(4, '0')}`;
 
       // Create unique token instance with all necessary properties
       const tokenDrone = {
@@ -110,22 +116,23 @@ class TokenCreationProcessor extends BaseEffectProcessor {
         currentMaxShields: baseDrone.shields,
         isExhausted: false,
         isToken: true, // Mark as token for identification
+        deployedBy: actingPlayerId, // Track who deployed this token for visual ownership
         abilities: baseDrone.abilities ? JSON.parse(JSON.stringify(baseDrone.abilities)) : []
       };
 
-      // Add to the specified lane
-      actingPlayerState.dronesOnBoard[laneId].push(tokenDrone);
+      // Add to the target player's lane (opponent's board for OPPONENT tokens)
+      targetPlayerState.dronesOnBoard[laneId].push(tokenDrone);
 
-      // Increment total deployment counter for deterministic ID generation
-      actingPlayerState.totalDronesDeployed = deploymentNumber;
+      // Increment target player's deployment counter for deterministic ID generation
+      targetPlayerState.totalDronesDeployed = deploymentNumber;
 
-      debugLog('EFFECT_PROCESSING', `[CREATE_TOKENS] Created ${tokenDrone.name} with ID ${tokenId} in ${laneId}`);
+      debugLog('EFFECT_PROCESSING', `[CREATE_TOKENS] Created ${tokenDrone.name} with ID ${tokenId} in ${laneId} (on ${targetPlayerId}'s board)`);
 
-      // Add teleport-in animation for the token appearing
+      // Add teleport-in animation for the token appearing (on the target player's board)
       animationEvents.push({
         type: 'TELEPORT_IN',  // Token spawn animation
         targetId: tokenDrone.id,
-        targetPlayer: actingPlayerId,
+        targetPlayer: targetPlayerId,
         targetLane: laneId,
         sourceCardInstanceId: card?.instanceId,
         timestamp: Date.now()
@@ -137,7 +144,7 @@ class TokenCreationProcessor extends BaseEffectProcessor {
           player: actingPlayerState.name,
           actionType: 'TOKEN_CREATED',
           source: card?.name || 'Unknown',
-          outcome: `Created a ${effect.tokenName} token in ${laneId}`
+          outcome: `Created a ${effect.tokenName} token in ${laneId}${effect.targetOwner === 'OPPONENT' ? ' (on opponent\'s board)' : ''}`
         });
       }
     });

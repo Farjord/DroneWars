@@ -73,8 +73,8 @@ describe('ConditionalSectionDamageProcessor', () => {
 
       // Should generate 6 animation events total (3 per section)
       expect(result.animationEvents).toHaveLength(6);
-      expect(result.animationEvents.filter(e => e.targetSection === 'LEFT_SECTION')).toHaveLength(3);
-      expect(result.animationEvents.filter(e => e.targetSection === 'RIGHT_SECTION')).toHaveLength(3);
+      expect(result.animationEvents.filter(e => e.targetId === 'LEFT_SECTION')).toHaveLength(3);
+      expect(result.animationEvents.filter(e => e.targetId === 'RIGHT_SECTION')).toHaveLength(3);
     });
 
     it('should NOT deal damage when player does not control both flanks', () => {
@@ -205,7 +205,7 @@ describe('ConditionalSectionDamageProcessor', () => {
 
       const context = {
         actingPlayerId: 'player1',
-        target: { id: 'lane1' },  // Targeting lane1
+        target: { id: 'left' },  // Targeting left section (corresponds to lane1)
         playerStates: {
           player1: {
             dronesOnBoard: {
@@ -260,7 +260,7 @@ describe('ConditionalSectionDamageProcessor', () => {
 
       const context = {
         actingPlayerId: 'player1',
-        target: { id: 'lane1' },
+        target: { id: 'left' },
         playerStates: {
           player1: {
             dronesOnBoard: {
@@ -438,9 +438,8 @@ describe('ConditionalSectionDamageProcessor', () => {
 
       // Check animation event structure
       expect(result.animationEvents[0]).toHaveProperty('type', 'SECTION_DAMAGED');
-      expect(result.animationEvents[0]).toHaveProperty('phase', 'PRE-STATE');
       expect(result.animationEvents[0]).toHaveProperty('targetPlayer', 'player2');
-      expect(result.animationEvents[0]).toHaveProperty('targetSection');
+      expect(result.animationEvents[0]).toHaveProperty('targetId');
       expect(result.animationEvents[0]).toHaveProperty('delay');
 
       // Delays should be staggered

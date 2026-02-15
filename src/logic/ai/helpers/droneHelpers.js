@@ -63,5 +63,5 @@ export const getReadyDronesInLane = (playerState, laneId) => {
  * @returns {number} Total drone count
  */
 export const getTotalDroneCount = (playerState) => {
-  return Object.values(playerState.dronesOnBoard).flat().length;
+  return Object.values(playerState.dronesOnBoard).flat().filter(d => !d.isToken).length;
 };

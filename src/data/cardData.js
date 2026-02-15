@@ -804,6 +804,90 @@ const fullCardCollection = [
     }
 },
 {
+    id: 'Deploy_Thruster_Inhibitor',
+    baseCardId: 'Deploy_Thruster_Inhibitor',
+    name: 'Deploy Thruster Inhibitor',
+    maxInDeck: 4,
+    rarity: 'Uncommon',
+    type: 'Tactic',
+    cost: 3,
+    image: '/DroneWars/cards/ThrusterInhibitor.png',
+    description: 'Create a Thruster Inhibitor token in an enemy lane. (Thruster Inhibitor: 0/1, Speed 1. Enemy drones cannot move out of this lane. Pay 2 Energy: Destroy this token.)',
+    targeting: {
+      type: 'LANE',
+      affinity: 'ENEMY'
+    },
+    effect: {
+      type: 'CREATE_TOKENS',
+      tokenName: 'Thruster Inhibitor',
+      targetOwner: 'OPPONENT',
+      ignoresCPULimit: true
+    }
+},
+{
+    id: 'Deploy_Proximity_Mine',
+    baseCardId: 'Deploy_Proximity_Mine',
+    name: 'Deploy Proximity Mine',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Ordnance',
+    cost: 2,
+    image: '/DroneWars/cards/ProximityMine.png',
+    description: 'Create a Proximity Mine in an enemy lane. (Proximity Mine: 0/1. When an enemy drone moves into this lane, deal 4 damage to it. Then destroy this mine.)',
+    targeting: {
+      type: 'LANE',
+      affinity: 'ENEMY'
+    },
+    effect: {
+      type: 'CREATE_TOKENS',
+      tokenName: 'Proximity Mine',
+      targetOwner: 'OPPONENT',
+      ignoresCPULimit: true
+    }
+},
+{
+    id: 'Deploy_Inhibitor_Mine',
+    baseCardId: 'Deploy_Inhibitor_Mine',
+    name: 'Deploy Inhibitor Mine',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Ordnance',
+    cost: 2,
+    image: '/DroneWars/cards/InhibitorMine.png',
+    description: 'Create an Inhibitor Mine in an enemy lane. (Inhibitor Mine: 0/1. When an enemy drone is deployed here, exhaust it. Then destroy this mine.)',
+    targeting: {
+      type: 'LANE',
+      affinity: 'ENEMY'
+    },
+    effect: {
+      type: 'CREATE_TOKENS',
+      tokenName: 'Inhibitor Mine',
+      targetOwner: 'OPPONENT',
+      ignoresCPULimit: true
+    }
+},
+{
+    id: 'Deploy_Jitter_Mine',
+    baseCardId: 'Deploy_Jitter_Mine',
+    name: 'Deploy Jitter Mine',
+    maxInDeck: 2,
+    rarity: 'Uncommon',
+    type: 'Ordnance',
+    cost: 2,
+    image: '/DroneWars/cards/JitterMine.png',
+    description: 'Create a Jitter Mine in an enemy lane. (Jitter Mine: 0/1. When an enemy drone attacks from this lane, give it -4 attack permanently. Then destroy this mine.)',
+    targeting: {
+      type: 'LANE',
+      affinity: 'ENEMY'
+    },
+    effect: {
+      type: 'CREATE_TOKENS',
+      tokenName: 'Jitter Mine',
+      targetOwner: 'OPPONENT',
+      ignoresCPULimit: true
+    }
+},
+{
     id: 'CARD028',
     baseCardId: 'CARD028',
     name: 'Combat Enhancement',
@@ -1205,7 +1289,7 @@ const fullCardCollection = [
     type: 'Support',
     cost: 1,
     image: '/DroneWars/cards/ShieldBoost.png',
-    description: 'Restore up to 2 shields to a friendly ship section.',
+    description: 'Restore up to 2 shields to a friendly ship section. Go again.',
     targeting: {
       type: 'SHIP_SECTION',
       affinity: 'FRIENDLY'
@@ -1438,7 +1522,7 @@ const fullCardCollection = [
   },
 
   {
-    id: 'CARD053_Enhanced',
+    id: 'CARD053_ENHANCED',
     baseCardId: 'CARD053',
     name: 'Prey on the Weak+',
     maxInDeck: 4,
@@ -1682,7 +1766,7 @@ const fullCardCollection = [
     type: 'Tactic',
     cost: 2,
     image: '/DroneWars/cards/SystemLock.png',
-    description: 'Target drone gains Immobile. (Cancel its next move to remove this status.)',
+    description: 'Target drone gains Snared. (Cancel its next move to remove this status.)',
     targeting: {
       type: 'DRONE',
       affinity: 'ENEMY',
@@ -1822,9 +1906,10 @@ const fullCardCollection = [
     image: '/DroneWars/cards/CrossfirePattern.png',
     description: 'If you control both flank lanes (left and right), deal 3 kinetic damage to both enemy flank ship sections.',
     targeting: {
-      type: 'LANE',
-      affinity: 'ANY',
-      custom: ['REQUIRES_LANE_CONTROL']
+      type: 'SHIP_SECTION',
+      affinity: 'ENEMY',
+      custom: ['REQUIRES_LANE_CONTROL'],
+      validSections: ['left', 'right']
     },
     effect: {
       type: 'CONDITIONAL_SECTION_DAMAGE',
@@ -1851,9 +1936,10 @@ const fullCardCollection = [
     image: '/DroneWars/cards/BreachTheLine.png',
     description: 'If you control the middle lane, deal 6 kinetic damage to the enemy middle ship section.',
     targeting: {
-      type: 'LANE',
-      affinity: 'ANY',
-      custom: ['REQUIRES_LANE_CONTROL']
+      type: 'SHIP_SECTION',
+      affinity: 'ENEMY',
+      custom: ['REQUIRES_LANE_CONTROL'],
+      validSections: ['middle']
     },
     effect: {
       type: 'CONDITIONAL_SECTION_DAMAGE',
@@ -1880,8 +1966,8 @@ const fullCardCollection = [
     image: '/DroneWars/cards/Overrun.png',
     description: 'Target a lane you control. If the enemy has no drones in that lane, deal 3 kinetic damage to the corresponding ship section.',
     targeting: {
-      type: 'LANE',
-      affinity: 'FRIENDLY',
+      type: 'SHIP_SECTION',
+      affinity: 'ENEMY',
       custom: ['REQUIRES_LANE_CONTROL']
     },
     effect: {
@@ -1908,9 +1994,10 @@ const fullCardCollection = [
     image: '/DroneWars/cards/Encirclement.png',
     description: 'If you control all three lanes, deal 3 kinetic damage to all enemy ship sections.',
     targeting: {
-      type: 'LANE',
-      affinity: 'ANY',
-      custom: ['REQUIRES_LANE_CONTROL']
+      type: 'SHIP_SECTION',
+      affinity: 'ENEMY',
+      custom: ['REQUIRES_LANE_CONTROL'],
+      validSections: ['left', 'middle', 'right']
     },
     effect: {
       type: 'CONDITIONAL_SECTION_DAMAGE',

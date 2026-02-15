@@ -764,6 +764,167 @@ const fullDroneCollection = [
     ],
     upgradeSlots: 0
   },
+  {
+    name: 'Thruster Inhibitor',
+    class: 0,
+    limit: 999,
+    rebuildRate: 1.0,
+    rarity: 'Uncommon',
+    attack: 0,
+    hull: 1,
+    shields: 0,
+    speed: 1,
+    image: '/DroneWars/img/ThrusterInhibitor.png',
+    selectable: false,
+    maxPerLane: 1,
+    isToken: true,
+    abilities: [
+      {
+        name: 'Thruster Lock',
+        description: 'Enemy drones in this lane cannot move out.',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'INHIBIT_MOVEMENT' }
+      },
+      {
+        name: 'Purge',
+        description: 'Pay 2 Energy: Destroy this token.',
+        type: 'ACTIVE',
+        targeting: { type: 'SELF' },
+        effect: { type: 'DESTROY_TOKEN_SELF' },
+        cost: { energy: 2, exhausts: false }
+      },
+      {
+        name: 'Inert',
+        description: '',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'INERT' }
+      },
+      {
+        name: 'Passive',
+        description: '',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'PASSIVE' }
+      }
+    ],
+    upgradeSlots: 0
+  },
+  {
+    name: 'Proximity Mine',
+    class: 0,
+    limit: 999,
+    rebuildRate: 1.0,
+    rarity: 'Uncommon',
+    attack: 0,
+    hull: 1,
+    shields: 0,
+    speed: 1,
+    image: '/DroneWars/img/ProximityMine.png',
+    selectable: false,
+    maxPerLane: 1,
+    isToken: true,
+    abilities: [
+      {
+        name: 'Proximity Detonation',
+        description: 'When an enemy drone moves into this lane, deal 4 damage to it. Then destroy this mine.',
+        type: 'TRIGGERED',
+        trigger: 'ON_LANE_MOVEMENT_IN',
+        triggerOwner: 'LANE_OWNER',
+        destroyAfterTrigger: true,
+        effect: { type: 'DAMAGE', value: 4 }
+      },
+      {
+        name: 'Inert',
+        description: '',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'INERT' }
+      },
+      {
+        name: 'Passive',
+        description: '',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'PASSIVE' }
+      }
+    ],
+    upgradeSlots: 0
+  },
+  {
+    name: 'Inhibitor Mine',
+    class: 0,
+    limit: 999,
+    rebuildRate: 1.0,
+    rarity: 'Uncommon',
+    attack: 0,
+    hull: 1,
+    shields: 0,
+    speed: 1,
+    image: '/DroneWars/img/ThrusterInhibitor.png',
+    selectable: false,
+    maxPerLane: 1,
+    isToken: true,
+    abilities: [
+      {
+        name: 'Inhibitor Detonation',
+        description: 'When an enemy drone is deployed into this lane, exhaust it. Then destroy this mine.',
+        type: 'TRIGGERED',
+        trigger: 'ON_LANE_DEPLOYMENT',
+        triggerOwner: 'LANE_OWNER',
+        destroyAfterTrigger: true,
+        effect: { type: 'EXHAUST_DRONE' }
+      },
+      {
+        name: 'Inert',
+        description: '',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'INERT' }
+      },
+      {
+        name: 'Passive',
+        description: '',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'PASSIVE' }
+      }
+    ],
+    upgradeSlots: 0
+  },
+  {
+    name: 'Jitter Mine',
+    class: 0,
+    limit: 999,
+    rebuildRate: 1.0,
+    rarity: 'Uncommon',
+    attack: 0,
+    hull: 1,
+    shields: 0,
+    speed: 1,
+    image: '/DroneWars/img/ThrusterInhibitor.png',
+    selectable: false,
+    maxPerLane: 1,
+    isToken: true,
+    abilities: [
+      {
+        name: 'Jitter Detonation',
+        description: 'When an enemy drone attacks from this lane, give it -4 attack permanently. Then destroy this mine.',
+        type: 'TRIGGERED',
+        trigger: 'ON_LANE_ATTACK',
+        triggerOwner: 'LANE_OWNER',
+        destroyAfterTrigger: true,
+        effect: { type: 'MODIFY_STAT', mod: { stat: 'attack', value: -4, type: 'permanent' } }
+      },
+      {
+        name: 'Inert',
+        description: '',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'INERT' }
+      },
+      {
+        name: 'Passive',
+        description: '',
+        type: 'PASSIVE',
+        effect: { type: 'GRANT_KEYWORD', keyword: 'PASSIVE' }
+      }
+    ],
+    upgradeSlots: 0
+  },
   { name: 'Behemoth', class: 4, limit: 1, rebuildRate: 0, rarity: 'Common', attack: 3, hull: 6, shields: 2, speed: 2, image: '/DroneWars/img/Behemoth.png', abilities: [], upgradeSlots: 4 },
   {
     name: 'Odin',

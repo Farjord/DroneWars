@@ -90,23 +90,33 @@ const renderDronesOnBoard = (
 
           // Calculate invalid target indicator state
           // Shows "no entry" symbol on drones in targeting scope but NOT valid targets
-          const targetingAffinity = selectedCard?.targeting?.affinity || draggedActionCard?.card?.targeting?.affinity || abilityMode?.ability?.targeting?.affinity;
-          const targetingType = selectedCard?.targeting?.type || draggedActionCard?.card?.targeting?.type || abilityMode?.ability?.targeting?.type;
+          // During additional cost selection (dragging card with additionalCost, cost not yet selected),
+          // use the COST targeting info, not the effect targeting info
+          const isInCostSelectionPhase =
+            (draggedActionCard?.card?.additionalCost?.targeting && !additionalCostState?.costSelection) ||
+            (selectedCard?.additionalCost?.targeting && additionalCostState?.phase === 'select_cost');
+
+          const activeCostTargeting = isInCostSelectionPhase
+            ? (draggedActionCard?.card?.additionalCost?.targeting || selectedCard?.additionalCost?.targeting)
+            : null;
+
+          const targetingAffinity = activeCostTargeting?.affinity || selectedCard?.targeting?.affinity || draggedActionCard?.card?.targeting?.affinity || abilityMode?.ability?.targeting?.affinity;
+          const targetingType = activeCostTargeting?.type || selectedCard?.targeting?.type || draggedActionCard?.card?.targeting?.type || abilityMode?.ability?.targeting?.type;
 
           const isInvalidTarget = (() => {
             // For DRONE targeting: show invalid indicator on drones in scope but not valid targets
             if (targetingType === 'DRONE' && !isActionTarget) {
-              switch (targetingAffinity) {
-                case 'ENEMY': return !isPlayer;      // Show on enemy drones only
-                case 'FRIENDLY': return isPlayer;    // Show on friendly drones only
-                case 'ANY': return true;             // Show on all drones
-                default: return false;
-              }
+              return true;
             }
 
             // For LANE targeting: show invalid indicator on drones NOT in affectedDroneIds
             // when hovering over their lane (indicates they won't be affected by the card)
+            // Skip for CREATE_TOKENS - these cards create new drones, they don't affect existing ones
             if (targetingType === 'LANE' && hoveredLane?.id === lane) {
+              const effectType = draggedActionCard?.card?.effect?.type || selectedCard?.effect?.type;
+              if (effectType === 'CREATE_TOKENS') {
+                return false;
+              }
               const isAffected = affectedDroneIds.includes(drone.id);
               if (!isAffected) {
                 // Check if drone is in scope (based on affinity)

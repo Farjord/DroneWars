@@ -10,6 +10,7 @@ import fullDroneCollection from '../../data/droneData.js';
 import EffectRouter from '../EffectRouter.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { onDroneDeployed } from '../availability/DroneAvailabilityManager.js';
+import { processTrigger as processMineTrigger } from '../effects/mines/MineTriggeredEffectProcessor.js';
 
 /**
  * DeploymentProcessor
@@ -378,6 +379,30 @@ class DeploymentProcessor {
           }
         }
       }
+    }
+
+    // Process ON_LANE_DEPLOYMENT mine triggers (fires LAST, after ON_DEPLOY)
+    const opponentIdForMine = playerId === 'player1' ? 'player2' : 'player1';
+    const minePlayerStates = {
+      [playerId]: finalPlayerState,
+      [opponentIdForMine]: finalOpponentState
+    };
+    const mineResult = processMineTrigger('ON_LANE_DEPLOYMENT', {
+      lane: lane,
+      triggeringDrone: newDrone,
+      triggeringPlayerId: playerId
+    }, {
+      playerStates: minePlayerStates,
+      placedSections,
+      logCallback
+    });
+
+    // Update states from mine processing (minePlayerStates was mutated)
+    finalPlayerState = minePlayerStates[playerId];
+    finalOpponentState = minePlayerStates[opponentIdForMine];
+
+    if (mineResult.triggered && mineResult.animationEvents.length > 0) {
+      allAnimationEvents.push(...mineResult.animationEvents);
     }
 
     // Create animation event for deployment

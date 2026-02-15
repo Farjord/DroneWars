@@ -5,6 +5,7 @@
 // Handles conditional phase logic and round loop management
 
 import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
+import { SeededRandom } from '../utils/seededRandom.js';
 import { initializeShipPlacement } from '../utils/shipPlacementUtils.js';
 import fullDroneCollection from '../data/droneData.js';
 import GameDataService from '../services/GameDataService.js';
@@ -541,10 +542,13 @@ class GameFlowManager {
         });
 
         if (deckCommitments) {
+          const gameState = this.gameStateManager.getState();
+
           // Initialize for player1
           if (deckCommitments.player1?.drones) {
             const player1Drones = this.extractDronesFromDeck(deckCommitments.player1.drones);
-            const player1DroneData = initializeDroneSelection(player1Drones, 2);
+            const player1Rng = SeededRandom.forDroneSelection(gameState, 'player1');
+            const player1DroneData = initializeDroneSelection(player1Drones, 2, player1Rng);
             stateUpdates.player1DroneSelectionTrio = player1DroneData.droneSelectionTrio;
             stateUpdates.player1DroneSelectionPool = player1DroneData.droneSelectionPool;
             debugLog('PHASE_TRANSITIONS', `🎲 Player1 deck has ${player1Drones.length} drones for selection`);
@@ -557,7 +561,8 @@ class GameFlowManager {
           // Initialize for player2
           if (deckCommitments.player2?.drones) {
             const player2Drones = this.extractDronesFromDeck(deckCommitments.player2.drones);
-            const player2DroneData = initializeDroneSelection(player2Drones, 2);
+            const player2Rng = SeededRandom.forDroneSelection(gameState, 'player2');
+            const player2DroneData = initializeDroneSelection(player2Drones, 2, player2Rng);
             stateUpdates.player2DroneSelectionTrio = player2DroneData.droneSelectionTrio;
             stateUpdates.player2DroneSelectionPool = player2DroneData.droneSelectionPool;
             debugLog('PHASE_TRANSITIONS', `🎲 Player2 deck has ${player2Drones.length} drones for selection`);
@@ -1963,7 +1968,7 @@ class GameFlowManager {
     }
 
     // Check player1
-    const player1DronesCount = Object.values(gameState.player1.dronesOnBoard || {}).flat().length;
+    const player1DronesCount = Object.values(gameState.player1.dronesOnBoard || {}).flat().filter(d => !d.isToken).length;
     const player1Stats = this.gameDataService.getEffectiveShipStats(gameState.player1, gameState.placedSections);
     const player1DroneLimit = player1Stats.totals.cpuLimit;
 
@@ -1972,7 +1977,7 @@ class GameFlowManager {
     }
 
     // Check player2
-    const player2DronesCount = Object.values(gameState.player2.dronesOnBoard || {}).flat().length;
+    const player2DronesCount = Object.values(gameState.player2.dronesOnBoard || {}).flat().filter(d => !d.isToken).length;
     const player2Stats = this.gameDataService.getEffectiveShipStats(gameState.player2, gameState.opponentPlacedSections);
     const player2DroneLimit = player2Stats.totals.cpuLimit;
 
@@ -2032,7 +2037,7 @@ class GameFlowManager {
     const player = gameState[playerId];
     if (!player) return false;
 
-    const droneCount = Object.values(player.dronesOnBoard || {}).flat().length;
+    const droneCount = Object.values(player.dronesOnBoard || {}).flat().filter(d => !d.isToken).length;
     const placedSections = playerId === 'player1'
       ? gameState.placedSections
       : gameState.opponentPlacedSections;

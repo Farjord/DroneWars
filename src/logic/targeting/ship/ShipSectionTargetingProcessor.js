@@ -5,6 +5,13 @@
 // Returns ship sections with affinity-based filtering
 
 import BaseTargetingProcessor from '../BaseTargetingProcessor.js';
+import { LaneControlCalculator } from '../../combat/LaneControlCalculator.js';
+
+const SECTION_TO_LANE = {
+  'left': 'lane1',
+  'middle': 'lane2',
+  'right': 'lane3'
+};
 
 /**
  * ShipSectionTargetingProcessor - Handles ship section targeting
@@ -16,6 +23,7 @@ import BaseTargetingProcessor from '../BaseTargetingProcessor.js';
  * Behavior:
  * - Returns all ship sections from targeted player(s)
  * - Filters by affinity (FRIENDLY/ENEMY/ANY)
+ * - Filters by lane control when custom includes 'REQUIRES_LANE_CONTROL'
  * - Each section includes owner property for targeting
  */
 class ShipSectionTargetingProcessor extends BaseTargetingProcessor {
@@ -52,8 +60,11 @@ class ShipSectionTargetingProcessor extends BaseTargetingProcessor {
       this.processPlayerSections(opponentPlayerState, opponentId, targets);
     }
 
-    this.logProcessComplete(context, targets);
-    return targets;
+    // Apply lane control filtering if required
+    const filteredTargets = this.applyLaneControlFilter(targets, context);
+
+    this.logProcessComplete(context, filteredTargets);
+    return filteredTargets;
   }
 
   /**
@@ -72,6 +83,45 @@ class ShipSectionTargetingProcessor extends BaseTargetingProcessor {
         owner: playerId
       });
     });
+  }
+
+  /**
+   * Apply lane control filtering for doctrine cards
+   * Only filters when targeting.custom includes 'REQUIRES_LANE_CONTROL'
+   *
+   * @param {Array} targets - Unfiltered targets
+   * @param {Object} context - Targeting context
+   * @returns {Array} Filtered targets
+   */
+  applyLaneControlFilter(targets, context) {
+    const { definition, actingPlayerId } = context;
+    const targeting = definition.targeting;
+
+    if (!targeting.custom?.includes('REQUIRES_LANE_CONTROL')) {
+      return targets;
+    }
+
+    const player1State = context.player1;
+    const player2State = context.player2;
+    const laneControl = LaneControlCalculator.calculateLaneControl(player1State, player2State);
+
+    // If card has validSections (predetermined targets like Crossfire, Breach, Encirclement)
+    if (targeting.validSections) {
+      return targets.filter(t => targeting.validSections.includes(t.id));
+    }
+
+    // If card has CONTROL_LANE_EMPTY condition (Overrun) - filter dynamically
+    if (definition.effect?.condition?.type === 'CONTROL_LANE_EMPTY') {
+      return targets.filter(t => {
+        const lane = SECTION_TO_LANE[t.id];
+        if (!lane) return false;
+        return LaneControlCalculator.checkLaneControlEmpty(
+          actingPlayerId, lane, player1State, player2State, laneControl
+        );
+      });
+    }
+
+    return targets;
   }
 }
 

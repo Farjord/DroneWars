@@ -466,6 +466,47 @@ export const DRONE_PACING = {
   NON_DRONE_ACTION_BONUS: 80,          // Bonus applied to play_card actions
 };
 
+// ========================================
+// THRUSTER INHIBITOR CONSTANTS
+// ========================================
+// Used in Thruster Inhibitor evaluation and adjustment pass
+
+export const THRUSTER_INHIBITOR = {
+  // Card play evaluation
+  BASE_VALUE: 25,
+  LOCKED_DRONE_VALUE: 12,
+  HIGH_CLASS_BONUS: 8,
+
+  // Purge ability evaluation
+  PURGE_BASE_VALUE: 15,
+  LOCKED_DRONE_MOVE_VALUE: 10,
+
+  // Adjustment pass - attack priority
+  ATTACK_PRIORITY: 40,
+  EFFICIENCY_BONUS: 25,
+  EFFICIENCY_ATTACK_THRESHOLD: 2,
+};
+
+// ========================================
+// MINE CONSTANTS
+// ========================================
+// Used in mine card evaluation
+
+export const PROXIMITY_MINE = {
+  BASE_VALUE: 20,
+  THREAT_PER_ADJACENT_DRONE: 10,
+};
+
+export const INHIBITOR_MINE = {
+  BASE_VALUE: 22,
+  DEPLOYMENT_THREAT_VALUE: 12,
+};
+
+export const JITTER_MINE = {
+  BASE_VALUE: 18,
+  ATTACK_REDUCTION_VALUE: 10,
+};
+
 export const THREAT_DRONES = {
   // Deployment bonuses
   ROUND_START_DEPLOY_BONUS: 20,           // Value of threat-per-round drones (deploy priority)

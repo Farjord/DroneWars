@@ -4720,6 +4720,16 @@ const App = ({ phaseAnimationQueue }) => {
       }
     }
 
+    // Check for SELF targeting abilities (e.g., Purge - destroy self)
+    if (ability.targeting?.type === 'SELF') {
+        setAbilityConfirmation({
+            ability: ability,
+            drone: drone,
+            target: drone  // Target is the drone itself
+        });
+        return;
+    }
+
     // Check for self-targeting lane abilities ---
     if (ability.targeting?.type === 'LANE' && ability.targeting?.location === 'SAME_LANE') {
         // TODO: TECHNICAL DEBT - getLaneOfDrone gets lane of drone for ability targeting - utility function needed for UI logic
@@ -5967,7 +5977,7 @@ const App = ({ phaseAnimationQueue }) => {
       const p2IsOver = totalOpponentPlayerDrones > opponentPlayerEffectiveStats.totals.cpuLimit;
       if (p2IsOver && gameState.gameMode === 'local') {
         // In single-player mode, handle AI opponent destruction
-        const dronesToDestroyCount = Object.values(opponentPlayerState.dronesOnBoard).flat().length -
+        const dronesToDestroyCount = Object.values(opponentPlayerState.dronesOnBoard).flat().filter(d => !d.isToken).length -
                                      getEffectiveShipStats(opponentPlayerState, opponentPlacedSections).totals.cpuLimit;
 
         // Destroy AI drones one by one using ActionProcessor

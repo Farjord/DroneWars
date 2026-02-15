@@ -40,6 +40,15 @@ export const evaluateMove = (drone, fromLane, toLane, context) => {
     return { score: -15, logic: ['⚠️ Snared: move will be cancelled but clears status'] };
   }
 
+  // Check for INHIBIT_MOVEMENT keyword preventing moves out of this lane
+  const aiDronesInFromLane = player2.dronesOnBoard[fromLane] || [];
+  const hasMovementInhibitor = aiDronesInFromLane.some(d =>
+    d.abilities?.some(a => a.effect?.keyword === 'INHIBIT_MOVEMENT')
+  );
+  if (hasMovementInhibitor) {
+    return { score: -Infinity, logic: ['⛔ THRUSTER INHIBITOR: Cannot move out of lane'] };
+  }
+
   // Calculate current lane scores
   const currentFromScore = calculateLaneScore(fromLane, player2, player1, allSections, getShipStatus, gameDataService);
   const currentToScore = calculateLaneScore(toLane, player2, player1, allSections, getShipStatus, gameDataService);

@@ -14,6 +14,7 @@ import { buildDefaultMovementAnimation } from './animations/DefaultMovementAnima
 import { debugLog } from '../../../utils/debugLogger.js';
 import { LaneControlCalculator } from '../../combat/LaneControlCalculator.js';
 import { checkRallyBeaconGoAgain } from '../../utils/rallyBeaconHelper.js';
+import { processTrigger as processMineTrigger } from '../mines/MineTriggeredEffectProcessor.js';
 
 /**
  * MovementEffectProcessor
@@ -300,6 +301,22 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       };
     }
 
+    // Check for INHIBIT_MOVEMENT keyword in source lane (prevents moving OUT)
+    // The inhibiting drone lives on the same player's board as the drones it locks down
+    const dronesInFromLane = droneOwnerState.dronesOnBoard[fromLane] || [];
+    const hasMovementInhibitor = dronesInFromLane.some(d =>
+      d.abilities?.some(a => a.effect?.keyword === 'INHIBIT_MOVEMENT')
+    );
+    if (hasMovementInhibitor && !isMovingEnemyDrone) {
+      return {
+        newPlayerStates: newPlayerStates,
+        error: `${droneToMove.name} cannot move out of ${fromLane} - Thruster Inhibitor is active.`,
+        shouldShowErrorModal: true,
+        shouldCancelCardSelection: true,
+        shouldClearMultiSelectState: true
+      };
+    }
+
     // Check maxPerLane restriction before moving
     const baseDrone = fullDroneCollection.find(d => d.name === droneToMove.name);
     if (baseDrone && baseDrone.maxPerLane) {
@@ -387,6 +404,23 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       ? checkRallyBeaconGoAgain(newPlayerStates[droneOwnerId], toLane, card.effect.goAgain, logCallback)
       : false;
 
+    // Process ON_LANE_MOVEMENT_IN mine triggers (fires LAST, after ON_MOVE and Rally Beacon)
+    if (!isMovingEnemyDrone) {
+      const mineResult = processMineTrigger('ON_LANE_MOVEMENT_IN', {
+        lane: toLane,
+        triggeringDrone: movedDrone,
+        triggeringPlayerId: droneOwnerId
+      }, {
+        playerStates: newPlayerStates,
+        placedSections,
+        logCallback
+      });
+
+      if (mineResult.triggered && mineResult.animationEvents.length > 0) {
+        // Animation events from mine will be handled by the caller
+      }
+    }
+
     return {
       newPlayerStates,
       effectResult: {
@@ -436,6 +470,21 @@ class MovementEffectProcessor extends BaseEffectProcessor {
           shouldClearMultiSelectState: true
         };
       }
+    }
+
+    // Check for INHIBIT_MOVEMENT keyword in source lane (prevents moving OUT)
+    const dronesInFromLane = actingPlayerState.dronesOnBoard[fromLane] || [];
+    const hasMovementInhibitor = dronesInFromLane.some(d =>
+      d.abilities?.some(a => a.effect?.keyword === 'INHIBIT_MOVEMENT')
+    );
+    if (hasMovementInhibitor) {
+      return {
+        newPlayerStates: newPlayerStates,
+        error: `Drones cannot move out of ${fromLane} - Thruster Inhibitor is active.`,
+        shouldShowErrorModal: true,
+        shouldCancelCardSelection: true,
+        shouldClearMultiSelectState: true
+      };
     }
 
     // Check maxPerLane restriction for each drone type being moved
@@ -522,6 +571,24 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     const rallyGoAgain = checkRallyBeaconGoAgain(
       newPlayerStates[actingPlayerId], toLane, card.effect?.goAgain || false, logCallback
     );
+
+    // Process ON_LANE_MOVEMENT_IN mine triggers for each moved drone
+    // Mines self-destruct, so only the first drone triggers it
+    for (const movedDrone of movedDrones) {
+      const mineResult = processMineTrigger('ON_LANE_MOVEMENT_IN', {
+        lane: toLane,
+        triggeringDrone: movedDrone,
+        triggeringPlayerId: actingPlayerId
+      }, {
+        playerStates: newPlayerStates,
+        placedSections,
+        logCallback
+      });
+
+      if (mineResult.triggered) {
+        break; // Mine self-destructed, no more mines to trigger
+      }
+    }
 
     return {
       newPlayerStates,

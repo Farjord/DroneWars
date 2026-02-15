@@ -130,6 +130,20 @@ export class SeededRandom {
    * @param {string} playerId - Player performing shuffle ('player1' or 'player2')
    * @returns {SeededRandom} New seeded RNG instance
    */
+  /**
+   * Create SeededRandom for drone selection shuffling
+   * Uses base game seed + unique offset per player for deterministic but unique pools
+   *
+   * @param {Object} gameState - Current game state
+   * @param {string} playerId - Player performing selection ('player1' or 'player2')
+   * @returns {SeededRandom} New seeded RNG instance
+   */
+  static forDroneSelection(gameState, playerId) {
+    const gameSeed = gameState.gameSeed || 12345;
+    const playerOffset = playerId === 'player1' ? 3000 : 4000;
+    return new SeededRandom(gameSeed + playerOffset);
+  }
+
   static forCardShuffle(gameState, playerId) {
     const gameSeed = gameState.gameSeed || 12345; // Fallback for tests
     const playerState = gameState[playerId];

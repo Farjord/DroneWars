@@ -4,8 +4,9 @@
 // Evaluates DESTROY and DAMAGE card effects
 // Uses unified target scoring for consistent prioritization
 
-import { SCORING_WEIGHTS, CARD_EVALUATION, INVALID_SCORE } from '../aiConstants.js';
+import { SCORING_WEIGHTS, CARD_EVALUATION } from '../aiConstants.js';
 import { calculateTargetValue } from '../scoring/targetScoring.js';
+import { LaneControlCalculator } from '../../combat/LaneControlCalculator.js';
 
 /**
  * Evaluate a DESTROY card
@@ -394,6 +395,80 @@ export const evaluateDestroyUpgradeCard = (card, target, context) => {
 
   // Cost penalty
   const costPenalty = card.cost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
+  score -= costPenalty;
+  logic.push(`Cost: -${costPenalty}`);
+
+  return { score, logic };
+};
+
+/**
+ * Evaluate a CONDITIONAL_SECTION_DAMAGE card (doctrine cards)
+ * Scores based on damage * number of target sections, reduced if shields block kinetic
+ * @param {Object} card - The card being played
+ * @param {Object} target - The target ship section
+ * @param {Object} context - Evaluation context with player states and services
+ * @returns {Object} - { score: number, logic: string[] }
+ */
+export const evaluateConditionalSectionDamageCard = (card, target, context) => {
+  const { player1, player2 } = context;
+  const logic = [];
+  let score = 0;
+
+  const effect = card.effect;
+  const actingPlayerId = 'player2'; // AI is always player2
+  const opponentId = 'player1';
+
+  // Check if lane control condition is met
+  const laneControl = LaneControlCalculator.calculateLaneControl(player1, player2);
+  let conditionMet = false;
+
+  if (effect.condition.type === 'CONTROL_LANES') {
+    conditionMet = LaneControlCalculator.checkLaneControl(
+      actingPlayerId, effect.condition.lanes, laneControl, effect.condition.operator || 'ALL'
+    );
+  } else if (effect.condition.type === 'CONTROL_LANE_EMPTY') {
+    // For Overrun, check the specific section's corresponding lane
+    const sectionToLane = { 'left': 'lane1', 'middle': 'lane2', 'right': 'lane3' };
+    const lane = sectionToLane[target.id];
+    if (lane) {
+      conditionMet = LaneControlCalculator.checkLaneControlEmpty(
+        actingPlayerId, lane, player1, player2, laneControl
+      );
+    }
+  }
+
+  if (!conditionMet) {
+    logic.push('Lane control condition NOT met');
+    return { score: 0, logic };
+  }
+
+  // Determine number of sections that will be hit
+  let sectionCount = 1;
+  if (effect.targets === 'FLANK_SECTIONS') sectionCount = 2;
+  else if (effect.targets === 'ALL_SECTIONS') sectionCount = 3;
+
+  // Base value: damage * sections * damage value weight
+  const baseValue = effect.damage * sectionCount * SCORING_WEIGHTS.DAMAGE_VALUE_MULTIPLIER;
+  score += baseValue;
+  logic.push(`Section Damage: ${effect.damage} x ${sectionCount} sections = +${baseValue}`);
+
+  // Kinetic damage is blocked by shields - reduce value if sections have shields
+  if (effect.damageType === 'KINETIC') {
+    const opponentSections = player1.shipSections;
+    let shieldedCount = 0;
+    Object.values(opponentSections).forEach(section => {
+      if (section.allocatedShields > 0) shieldedCount++;
+    });
+    if (shieldedCount > 0) {
+      const shieldPenalty = shieldedCount * 5;
+      score -= shieldPenalty;
+      logic.push(`Kinetic vs Shields: -${shieldPenalty} (${shieldedCount} shielded sections)`);
+    }
+  }
+
+  // Cost penalty
+  const totalCost = card.cost + (card.momentumCost || 0) * 3;
+  const costPenalty = totalCost * SCORING_WEIGHTS.COST_PENALTY_MULTIPLIER;
   score -= costPenalty;
   logic.push(`Cost: -${costPenalty}`);
 

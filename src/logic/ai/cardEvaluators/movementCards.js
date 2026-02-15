@@ -77,6 +77,16 @@ export const evaluateSingleMoveCard = (card, target, moveData, context) => {
 
   } else {
     // FRIENDLY DRONE MOVEMENT (existing logic)
+
+    // Check for INHIBIT_MOVEMENT keyword preventing moves out of this lane
+    const aiDronesInFromLane = player2.dronesOnBoard[fromLane] || [];
+    const hasMovementInhibitor = aiDronesInFromLane.some(d =>
+      d.abilities?.some(a => a.effect?.keyword === 'INHIBIT_MOVEMENT')
+    );
+    if (hasMovementInhibitor) {
+      return { score: INVALID_SCORE, logic: ['⛔ THRUSTER INHIBITOR: Cannot move out of lane'] };
+    }
+
     // Calculate lane scores
     const currentFromScore = calculateLaneScore(fromLane, player2, player1, allSections, getShipStatus, gameDataService);
     const currentToScore = calculateLaneScore(toLane, player2, player1, allSections, getShipStatus, gameDataService);
@@ -166,6 +176,15 @@ export const evaluateMultiMoveCard = (card, target, context) => {
   }
 
   const dronesInLane = player2.dronesOnBoard[sourceLaneId] || [];
+
+  // Check for INHIBIT_MOVEMENT keyword preventing moves out of this lane
+  const hasMovementInhibitor = dronesInLane.some(d =>
+    d.abilities?.some(a => a.effect?.keyword === 'INHIBIT_MOVEMENT')
+  );
+  if (hasMovementInhibitor) {
+    return { score: INVALID_SCORE, logic: ['⛔ THRUSTER INHIBITOR: Cannot move out of lane'] };
+  }
+
   const maxMoves = card.effect.count || 3;
   const availableMoves = Math.min(dronesInLane.length, maxMoves);
 
