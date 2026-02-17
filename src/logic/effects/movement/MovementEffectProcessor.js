@@ -404,7 +404,11 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       ? checkRallyBeaconGoAgain(newPlayerStates[droneOwnerId], toLane, card.effect.goAgain, logCallback)
       : false;
 
+    // Snapshot state before mine trigger (movement complete, mine not yet triggered)
+    const preMineTriggerStates = JSON.parse(JSON.stringify(newPlayerStates));
+
     // Process ON_LANE_MOVEMENT_IN mine triggers (fires LAST, after ON_MOVE and Rally Beacon)
+    const mineAnimationEvents = [];
     if (!isMovingEnemyDrone) {
       const mineResult = processMineTrigger('ON_LANE_MOVEMENT_IN', {
         lane: toLane,
@@ -417,12 +421,13 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       });
 
       if (mineResult.triggered && mineResult.animationEvents.length > 0) {
-        // Animation events from mine will be handled by the caller
+        mineAnimationEvents.push(...mineResult.animationEvents);
       }
     }
 
     return {
       newPlayerStates,
+      preMineTriggerStates,
       effectResult: {
         movedDrones: [movedDrone],
         fromLane,
@@ -431,7 +436,8 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       },
       shouldEndTurn: !card.effect.goAgain && !rallyGoAgain,
       shouldCancelCardSelection: true,
-      shouldClearMultiSelectState: true
+      shouldClearMultiSelectState: true,
+      mineAnimationEvents
     };
   }
 
@@ -572,8 +578,12 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       newPlayerStates[actingPlayerId], toLane, card.effect?.goAgain || false, logCallback
     );
 
+    // Snapshot state before mine trigger (movement complete, mine not yet triggered)
+    const preMineTriggerStates = JSON.parse(JSON.stringify(newPlayerStates));
+
     // Process ON_LANE_MOVEMENT_IN mine triggers for each moved drone
     // Mines self-destruct, so only the first drone triggers it
+    const mineAnimationEvents = [];
     for (const movedDrone of movedDrones) {
       const mineResult = processMineTrigger('ON_LANE_MOVEMENT_IN', {
         lane: toLane,
@@ -586,12 +596,16 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       });
 
       if (mineResult.triggered) {
+        if (mineResult.animationEvents.length > 0) {
+          mineAnimationEvents.push(...mineResult.animationEvents);
+        }
         break; // Mine self-destructed, no more mines to trigger
       }
     }
 
     return {
       newPlayerStates,
+      preMineTriggerStates,
       effectResult: {
         movedDrones,
         fromLane,
@@ -600,7 +614,8 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       },
       shouldEndTurn: !(card.effect?.goAgain || rallyGoAgain),
       shouldCancelCardSelection: true,
-      shouldClearMultiSelectState: true
+      shouldClearMultiSelectState: true,
+      mineAnimationEvents
     };
   }
 }

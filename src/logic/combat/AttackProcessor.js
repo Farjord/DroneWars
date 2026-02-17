@@ -803,6 +803,7 @@ export const resolveAttack = (attackDetails, playerStates, placedSections, logCa
             remainingHull,
             outcome
         },
-        animationEvents: allAnimationEvents
+        animationEvents: allAnimationEvents,
+        mineAnimationEventCount: mineAnimationEvents.length
     };
 };

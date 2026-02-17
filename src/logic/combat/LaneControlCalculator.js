@@ -28,8 +28,8 @@ export class LaneControlCalculator {
     // Calculate control for each lane independently
     ['lane1', 'lane2', 'lane3'].forEach(lane => {
       // Get drone counts, handling undefined/missing arrays
-      const p1Count = (player1State.dronesOnBoard[lane] || []).length;
-      const p2Count = (player2State.dronesOnBoard[lane] || []).length;
+      const p1Count = (player1State.dronesOnBoard[lane] || []).filter(d => !d.isToken).length;
+      const p2Count = (player2State.dronesOnBoard[lane] || []).filter(d => !d.isToken).length;
 
       // Determine control: more drones = control, tie = null
       if (p1Count > p2Count) {
@@ -150,7 +150,7 @@ export class LaneControlCalculator {
     // Second check: Are there zero enemy drones in this lane?
     const opponentId = playerId === 'player1' ? 'player2' : 'player1';
     const opponentState = opponentId === 'player1' ? player1State : player2State;
-    const enemyDroneCount = (opponentState.dronesOnBoard[lane] || []).length;
+    const enemyDroneCount = (opponentState.dronesOnBoard[lane] || []).filter(d => !d.isToken).length;
 
     return enemyDroneCount === 0;
   }

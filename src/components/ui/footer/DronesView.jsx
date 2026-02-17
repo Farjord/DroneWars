@@ -10,6 +10,7 @@ import CardBackPlaceholder from '../CardBackPlaceholder.jsx';
 import styles from '../GameFooter.module.css';
 import { calculateCardFanRotation, getHoverTransform, getCardTransition, calculateCardArcOffset, CARD_FAN_CONFIG } from '../../../utils/cardAnimationUtils.js';
 import { debugLog } from '../../../utils/debugLogger.js';
+import SoundManager from '../../../managers/SoundManager.js';
 import fullDroneCollection from '../../../data/droneData.js';
 
 function DronesView({
@@ -200,6 +201,7 @@ function DronesView({
                   style={wrapperStyle}
                   onMouseEnter={() => {
                     setHoveredDroneId(drone.name);
+                    SoundManager.getInstance().play('card_hover_over');
                     // Wrong phase warning (action phase)
                     if (turnPhase === 'action' && onCardPlayWarning) {
                       onCardPlayWarning(["Not in the Deployment Phase"]);

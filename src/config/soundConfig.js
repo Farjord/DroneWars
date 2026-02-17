@@ -45,6 +45,11 @@ export const SOUND_MANIFEST = {
     channel: 'sfx',
     volume: 0.5
   },
+  card_hover_over: {
+    path: `${BASE_PATH}card-hover-over.mp3`,
+    channel: 'sfx',
+    volume: 0.2
+  },
 
   // UI interactions
   ui_click: {

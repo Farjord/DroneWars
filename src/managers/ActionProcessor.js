@@ -31,6 +31,7 @@ import { shipComponentCollection } from '../data/shipSectionData.js';
 import SeededRandom from '../utils/seededRandom.js';
 import { initializeForCombat as initializeDroneAvailability } from '../logic/availability/DroneAvailabilityManager.js';
 import { checkRallyBeaconGoAgain } from '../logic/utils/rallyBeaconHelper.js';
+import { processTrigger as processMineTrigger } from '../logic/effects/mines/MineTriggeredEffectProcessor.js';
 
 class ActionProcessor {
   // Singleton instance
@@ -460,14 +461,14 @@ setAnimationManager(animationManager) {
 
         case 'snaredConsumption':
           debugLog('CONSUMPTION_DEBUG', '🟢 [2] ActionProcessor: snaredConsumption case hit', { payload });
-          await this.processSnaredConsumption(payload);
-          result = { success: true, shouldEndTurn: true };
+          result = await this.processSnaredConsumption(payload);
+          result.shouldEndTurn = true;
           break;
 
         case 'suppressedConsumption':
           debugLog('CONSUMPTION_DEBUG', '🟢 [2] ActionProcessor: suppressedConsumption case hit', { payload });
-          await this.processSuppressedConsumption(payload);
-          result = { success: true, shouldEndTurn: true };
+          result = await this.processSuppressedConsumption(payload);
+          result.shouldEndTurn = true;
           break;
 
         default:
@@ -718,30 +719,87 @@ setAnimationManager(animationManager) {
       this.pendingActionAnimations.push(...animations);
     }
 
-    // Prepare states for TELEPORT_IN animation timing
-    const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
-      animations,
-      result.newPlayerStates
-    );
+    const mineCount = result.mineAnimationEventCount || 0;
 
-    // Set pending states for Animation Manager
-    this.pendingStateUpdate = pendingStateUpdate;
-    this.pendingFinalState = pendingFinalState;
+    // Two-phase execution: mine animations play and update state first,
+    // then attack animations play with the remaining state update.
+    // This ensures the mine token disappears before the attack animation starts.
+    if (mineCount > 0 && animations.length > mineCount) {
+      const mineAnimations = animations.slice(0, mineCount);
+      const attackAnimations = animations.slice(mineCount);
 
-    // HOST: Broadcast IMMEDIATELY (before execution starts)
-    // Guest receives execution plan with zero delay
-    if (gameMode === 'host') {
-      this.broadcastStateToGuest();
-    }
+      // Phase 1: Mine destruction - build intermediate state with mines removed but no attack damage
+      const currentState = this.gameStateManager.getState();
+      const intermediatePlayerStates = {
+        player1: JSON.parse(JSON.stringify(currentState.player1)),
+        player2: JSON.parse(JSON.stringify(currentState.player2))
+      };
 
-    // Execute with proper timing (BOTH HOST and GUEST use same path)
-    // Animation Manager orchestrates: pre-state anims → state update → post-state anims
-    // This ensures entities exist in DOM before destruction animations play
-    try {
-      await this.animationManager.executeWithStateUpdate(animations, this);
-    } finally {
-      this.pendingStateUpdate = null;
-      this.pendingFinalState = null;
+      // Remove destroyed mines from intermediate state using mine animation event data
+      for (const mineAnim of mineAnimations) {
+        const { targetId, targetPlayer, targetLane } = mineAnim.payload;
+        if (targetId && targetPlayer && targetLane) {
+          const laneDrones = intermediatePlayerStates[targetPlayer]?.dronesOnBoard?.[targetLane];
+          if (laneDrones) {
+            intermediatePlayerStates[targetPlayer].dronesOnBoard[targetLane] =
+              laneDrones.filter(d => d.id !== targetId);
+          }
+        }
+      }
+
+      // Phase 1: Execute mine animations with intermediate state (mine removal only)
+      const { pendingStateUpdate: mineStateUpdate, pendingFinalState: mineFinalState } =
+        this.prepareTeleportStates(mineAnimations, intermediatePlayerStates);
+      this.pendingStateUpdate = mineStateUpdate;
+      this.pendingFinalState = mineFinalState;
+
+      if (gameMode === 'host') {
+        this.broadcastStateToGuest();
+      }
+
+      try {
+        await this.animationManager.executeWithStateUpdate(mineAnimations, this);
+      } finally {
+        this.pendingStateUpdate = null;
+        this.pendingFinalState = null;
+      }
+
+      // Phase 2: Execute attack animations with full final state (includes attack damage)
+      const { pendingStateUpdate: attackStateUpdate, pendingFinalState: attackFinalState } =
+        this.prepareTeleportStates(attackAnimations, result.newPlayerStates);
+      this.pendingStateUpdate = attackStateUpdate;
+      this.pendingFinalState = attackFinalState;
+
+      if (gameMode === 'host') {
+        this.broadcastStateToGuest();
+      }
+
+      try {
+        await this.animationManager.executeWithStateUpdate(attackAnimations, this);
+      } finally {
+        this.pendingStateUpdate = null;
+        this.pendingFinalState = null;
+      }
+    } else {
+      // Single-phase execution: no mine animations or only mine animations (no attack after)
+      const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
+        animations,
+        result.newPlayerStates
+      );
+
+      this.pendingStateUpdate = pendingStateUpdate;
+      this.pendingFinalState = pendingFinalState;
+
+      if (gameMode === 'host') {
+        this.broadcastStateToGuest();
+      }
+
+      try {
+        await this.animationManager.executeWithStateUpdate(animations, this);
+      } finally {
+        this.pendingStateUpdate = null;
+        this.pendingFinalState = null;
+      }
     }
 
     // Clear interceptionPending state after attack completes (closes "opponent deciding" modal)
@@ -881,7 +939,7 @@ setAnimationManager(animationManager) {
     newPlayerState.dronesOnBoard[toLane].push(movedDrone);
 
     // Apply ON_MOVE effects (e.g., Phase Jumper's Phase Shift)
-    const { newState: stateAfterMoveEffects } = gameEngine.applyOnMoveEffects(
+    let { newState: stateAfterMoveEffects } = gameEngine.applyOnMoveEffects(
       newPlayerState,
       movedDrone,
       fromLane,
@@ -896,8 +954,54 @@ setAnimationManager(animationManager) {
       placedSections
     );
 
-    // Update player state with the processed state
+    // --- Phase 1: Commit movement (drone appears in destination lane) ---
     this.gameStateManager.updatePlayerState(playerId, stateAfterMoveEffects);
+
+    // Wait for React to render drone in new lane before querying DOM for animation positions
+    if (this.animationManager) {
+      await this.animationManager.waitForReactRender();
+    }
+
+    // --- Phase 2: Process mine triggers on committed state (drone is now visually in destination lane) ---
+    const committedState = this.gameStateManager.getState();
+    const minePlayerStates = {
+      [playerId]: JSON.parse(JSON.stringify(committedState[playerId])),
+      [opponentPlayerId]: JSON.parse(JSON.stringify(committedState[opponentPlayerId]))
+    };
+    const movedDroneInLane = minePlayerStates[playerId].dronesOnBoard[toLane].find(d => d.id === droneId);
+    const mineResult = processMineTrigger('ON_LANE_MOVEMENT_IN', {
+      lane: toLane,
+      triggeringDrone: movedDroneInLane,
+      triggeringPlayerId: playerId
+    }, {
+      playerStates: minePlayerStates,
+      placedSections,
+      logCallback: (entry) => this.gameStateManager.addLogEntry(entry)
+    });
+
+    // Play mine animations (drone is now visually in destination lane)
+    if (mineResult.triggered && mineResult.animationEvents.length > 0) {
+      const mineAnimations = mineResult.animationEvents.map(event => {
+        const animDef = this.animationManager?.animations[event.type];
+        return {
+          animationName: event.type,
+          timing: animDef?.timing || 'pre-state',
+          payload: { ...event }
+        };
+      });
+      await this.executeAndCaptureAnimations(mineAnimations);
+    }
+
+    // Commit mine destruction state (removes destroyed mine/drone from DOM)
+    if (mineResult.triggered) {
+      this.gameStateManager.updatePlayerState(playerId, minePlayerStates[playerId]);
+      this.gameStateManager.updatePlayerState(opponentPlayerId, minePlayerStates[opponentPlayerId]);
+    }
+
+    // Check if the moved drone was destroyed by the mine
+    const finalPlayerState = this.gameStateManager.getState()[playerId];
+    const droneDestroyedByMine = mineResult.triggered &&
+      !finalPlayerState.dronesOnBoard[toLane].some(d => d.id === droneId);
 
     // Log the move
     this.gameStateManager.addLogEntry({
@@ -910,9 +1014,21 @@ setAnimationManager(animationManager) {
 
     debugLog('COMBAT', `✅ Moved ${drone.name} from ${fromLane} to ${toLane}`);
 
+    // If drone was destroyed by mine, end turn immediately (no rally beacon check)
+    if (droneDestroyedByMine) {
+      return {
+        success: true,
+        shouldEndTurn: true,
+        message: `${drone.name} moved from ${fromLane} to ${toLane} but was destroyed by a mine`,
+        drone: drone,
+        fromLane: fromLane,
+        toLane: toLane
+      };
+    }
+
     // Check if a Rally Beacon in the destination lane grants go-again
     const rallyGoAgain = checkRallyBeaconGoAgain(
-      stateAfterMoveEffects, toLane, false,
+      finalPlayerState, toLane, false,
       (entry) => this.gameStateManager.addLogEntry(entry)
     );
 
@@ -1739,12 +1855,27 @@ setAnimationManager(animationManager) {
       shouldEndTurn: completion.shouldEndTurn
     });
 
-    this.gameStateManager.setPlayerStates(
-      completion.newPlayerStates.player1,
-      completion.newPlayerStates.player2
-    );
+    const hasMineAnimations = result.mineAnimationEvents && result.mineAnimationEvents.length > 0;
 
-    debugLog('CARD_DISCARD', '✅ processMovementCompletion: setPlayerStates called', {
+    // --- Phase 1: Commit movement state (drone visually in destination lane, card discarded) ---
+    if (hasMineAnimations) {
+      // Use pre-mine states for initial commit so drone appears in destination before mine plays
+      const preMineTriggerStates = result.preMineTriggerStates || result.newPlayerStates;
+      const preCurrentStates = { player1: preMineTriggerStates.player1, player2: preMineTriggerStates.player2 };
+      const preCompletion = gameEngine.finishCardPlay(card, playerId, preCurrentStates, dynamicGoAgain);
+      this.gameStateManager.setPlayerStates(
+        preCompletion.newPlayerStates.player1,
+        preCompletion.newPlayerStates.player2
+      );
+    } else {
+      // No mine — commit everything at once (same as before)
+      this.gameStateManager.setPlayerStates(
+        completion.newPlayerStates.player1,
+        completion.newPlayerStates.player2
+      );
+    }
+
+    debugLog('CARD_DISCARD', '✅ processMovementCompletion: Phase 1 setPlayerStates called', {
       cardName: card.name,
       player1HandSize: completion.newPlayerStates.player1?.hand?.length,
       player2HandSize: completion.newPlayerStates.player2?.hand?.length
@@ -1764,6 +1895,34 @@ setAnimationManager(animationManager) {
       }
     }];
     await this.executeAndCaptureAnimations(cardRevealAnimation);
+
+    // --- Phase 2: Play mine animations then commit mine destruction ---
+    if (hasMineAnimations) {
+      // Wait for React to render drone in new lane before querying DOM for animation positions
+      if (this.animationManager) {
+        await this.animationManager.waitForReactRender();
+      }
+
+      const mineAnimations = result.mineAnimationEvents.map(event => {
+        const animDef2 = this.animationManager?.animations[event.type];
+        return {
+          animationName: event.type,
+          timing: animDef2?.timing || 'pre-state',
+          payload: { ...event }
+        };
+      });
+      await this.executeAndCaptureAnimations(mineAnimations);
+
+      // Commit post-mine state (drone/mine destruction applied)
+      this.gameStateManager.setPlayerStates(
+        completion.newPlayerStates.player1,
+        completion.newPlayerStates.player2
+      );
+
+      debugLog('CARD_DISCARD', '✅ processMovementCompletion: Phase 2 mine destruction committed', {
+        cardName: card.name
+      });
+    }
 
     // Show Go Again notification when the turn continues
     if (!completion.shouldEndTurn) {
@@ -4568,9 +4727,25 @@ setAnimationManager(animationManager) {
             timestamp: Date.now()
           }
         }];
-        await this.executeAndCaptureAnimations(animation);
 
-        return;
+        // Broadcast-first pattern: send state + animations to guest BEFORE blocking on local animation
+        const gameMode = this.gameStateManager.get('gameMode');
+        if (gameMode === 'host' && animation.length > 0) {
+          this.pendingActionAnimations.push(...animation);
+          this.broadcastStateToGuest('snaredConsumption');
+        }
+        if (this.animationManager) {
+          const source = gameMode === 'guest' ? 'GUEST_OPTIMISTIC' : gameMode === 'host' ? 'HOST_LOCAL' : 'LOCAL';
+          await this.animationManager.executeAnimations(animation, source);
+        }
+
+        return {
+          success: true,
+          animations: {
+            actionAnimations: animation,
+            systemAnimations: []
+          }
+        };
       }
     }
   }
@@ -4611,9 +4786,25 @@ setAnimationManager(animationManager) {
             timestamp: Date.now()
           }
         }];
-        await this.executeAndCaptureAnimations(animation);
 
-        return;
+        // Broadcast-first pattern: send state + animations to guest BEFORE blocking on local animation
+        const gameMode = this.gameStateManager.get('gameMode');
+        if (gameMode === 'host' && animation.length > 0) {
+          this.pendingActionAnimations.push(...animation);
+          this.broadcastStateToGuest('suppressedConsumption');
+        }
+        if (this.animationManager) {
+          const source = gameMode === 'guest' ? 'GUEST_OPTIMISTIC' : gameMode === 'host' ? 'HOST_LOCAL' : 'LOCAL';
+          await this.animationManager.executeAnimations(animation, source);
+        }
+
+        return {
+          success: true,
+          animations: {
+            actionAnimations: animation,
+            systemAnimations: []
+          }
+        };
       }
     }
   }

@@ -9,6 +9,7 @@ import ActionCard from '../ActionCard.jsx';
 import CardBackPlaceholder from '../CardBackPlaceholder.jsx';
 import styles from '../GameFooter.module.css';
 import { debugLog } from '../../../utils/debugLogger.js';
+import SoundManager from '../../../managers/SoundManager.js';
 import { calculateCardFanRotation, getHoverTransform, getCardTransition, calculateCardArcOffset, CARD_FAN_CONFIG } from '../../../utils/cardAnimationUtils.js';
 import TargetingRouter from '../../../logic/TargetingRouter.js';
 import { isLaneControlCardPlayable } from '../../../logic/targeting/LaneControlValidator.js';
@@ -393,6 +394,7 @@ function HandView({
                   style={style}
                   onMouseEnter={() => {
                     setHoveredCardId(card.instanceId);
+                    SoundManager.getInstance().play('card_hover_over');
                     // Debug logging on hover - shows this specific card's state
                     debugLog('HAND_VIEW', `🎯 Card hover - ${card.name}:`, {
                       cardName: card.name,

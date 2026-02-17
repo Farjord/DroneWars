@@ -6641,12 +6641,12 @@ const App = ({ phaseAnimationQueue }) => {
           if (!attackConfirmation) return;
           const { attacker } = attackConfirmation;
           debugLog('CONSUMPTION_DEBUG', '🟢 [1] App.jsx: Calling processAction suppressedConsumption', { droneId: attacker.id, owner: attackConfirmation.attackingPlayer });
+          setAttackConfirmation(null);
+          setSelectedDrone(null);
           await processActionWithGuestRouting('suppressedConsumption', {
             droneId: attacker.id,
             playerId: attackConfirmation.attackingPlayer
           });
-          setAttackConfirmation(null);
-          setSelectedDrone(null);
         }}
       />
 

@@ -74,6 +74,20 @@ export const processTrigger = (triggerType, triggerContext, effectContext) => {
       // Execute the mine's effect on the triggering drone
       applyMineEffect(ability.effect, triggeringDrone, triggeringPlayerId, lane, playerStates, logCallback);
 
+      // Check if the triggering drone was destroyed by the mine effect
+      const mineOwnerState2 = playerStates[triggeringPlayerId];
+      const droneStillAlive = mineOwnerState2.dronesOnBoard[lane]?.some(d => d.id === triggeringDrone.id);
+      if (!droneStillAlive) {
+        result.animationEvents.push({
+          type: 'DRONE_DESTROYED',
+          targetId: triggeringDrone.id,
+          targetPlayer: triggeringPlayerId,
+          targetLane: lane,
+          targetType: 'drone',
+          timestamp: Date.now()
+        });
+      }
+
       // Check if MODIFY_STAT was applied (for attack recalculation in AttackProcessor)
       if (ability.effect.type === 'MODIFY_STAT') {
         result.statModsApplied = true;

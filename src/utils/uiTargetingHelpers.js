@@ -237,7 +237,8 @@ export const calculateAllValidTargets = (abilityMode, shipAbilityMode, multiSele
         validCardTargets = calculateMultiSelectTargets(multiSelectState, player1, player2, actingPlayerId, getEffectiveStatsFn);
     } else if (selectedCard) {
         if (selectedCard.type === 'Upgrade') {
-            validCardTargets = calculateUpgradeTargets(selectedCard, player1);
+            const localPlayer = localPlayerId === 'player1' ? player1 : player2;
+            validCardTargets = calculateUpgradeTargets(selectedCard, localPlayer);
         } else if (selectedCard.effect.type === 'MULTI_MOVE') {
             // MULTI_MOVE cards use multiSelectState for targeting via calculateMultiSelectTargets
             if (multiSelectState) {
