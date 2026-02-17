@@ -52,6 +52,14 @@ class AnimationManager {
         config: { }
       },
 
+      // Status consumption
+      STATUS_CONSUMPTION: {
+        duration: 1000,
+        type: 'STATUS_CONSUMPTION_EFFECT',
+        timing: 'independent',
+        config: {}
+      },
+
       // Player notifications
       PASS_NOTIFICATION: {
         duration: 1000,  // 1 second notification

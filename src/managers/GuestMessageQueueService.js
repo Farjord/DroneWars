@@ -847,6 +847,7 @@ class GuestMessageQueueService {
     // Preserve only essential guest identity, trust PhaseManager for everything else
 
     const currentGuestState = this.gameStateManager.getState();
+
     const preservedFields = {
       gameMode: currentGuestState.gameMode,  // Must stay 'guest'
     };

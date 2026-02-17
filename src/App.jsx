@@ -102,6 +102,7 @@ import CardRevealOverlay from './components/animations/CardRevealOverlay.jsx';
 import ShipAbilityRevealOverlay from './components/animations/ShipAbilityRevealOverlay.jsx';
 import PassNotificationOverlay from './components/animations/PassNotificationOverlay.jsx';
 import GoAgainOverlay from './components/animations/GoAgainOverlay.jsx';
+import StatusConsumptionOverlay from './components/animations/StatusConsumptionOverlay.jsx';
 import CardWarningOverlay from './components/animations/CardWarningOverlay.jsx';
 import PhaseAnnouncementOverlay from './components/animations/PhaseAnnouncementOverlay.jsx';
 import LaserEffect from './components/animations/LaserEffect.jsx';
@@ -206,6 +207,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [railgunBeams, setRailgunBeams] = useState([]);
   const [passNotifications, setPassNotifications] = useState([]);
   const [goAgainNotifications, setGoAgainNotifications] = useState([]);
+  const [statusConsumptions, setStatusConsumptions] = useState([]);
   const [cardPlayWarning, setCardPlayWarning] = useState(null); // { id, reasons: string[] }
   const [animationBlocking, setAnimationBlocking] = useState(false);
   const [modalContent, setModalContent] = useState(null);
@@ -408,7 +410,8 @@ const App = ({ phaseAnimationQueue }) => {
   setSplashEffects,
   setBarrageImpacts,
   setRailgunTurrets,
-  setRailgunBeams
+  setRailgunBeams,
+  setStatusConsumptions
 );
   // Refs for async operations (defined after gameState destructuring)
 
@@ -6159,6 +6162,15 @@ const App = ({ phaseAnimationQueue }) => {
         onComplete={reveal.onComplete}
       />
     ))}
+    {statusConsumptions.map(consumption => (
+      <StatusConsumptionOverlay
+        key={consumption.id}
+        label={consumption.label}
+        droneName={consumption.droneName}
+        statusType={consumption.statusType}
+        onComplete={consumption.onComplete}
+      />
+    ))}
     {shipAbilityReveals.map(reveal => (
       <ShipAbilityRevealOverlay
         key={reveal.id}
@@ -6572,7 +6584,8 @@ const App = ({ phaseAnimationQueue }) => {
 
           // If snared: consume the flag, exhaust the drone, skip actual movement
           if (wasSnared) {
-            await processAction('snaredConsumption', { droneId, playerId: owner });
+            debugLog('CONSUMPTION_DEBUG', '🟢 [1] App.jsx: Calling processAction snaredConsumption', { droneId, owner });
+            await processActionWithGuestRouting('snaredConsumption', { droneId, playerId: owner });
             setSelectedDrone(null);
             setPotentialInterceptors([]);
             setPotentialGuardians([]);
@@ -6627,7 +6640,8 @@ const App = ({ phaseAnimationQueue }) => {
         onConfirm={async () => {
           if (!attackConfirmation) return;
           const { attacker } = attackConfirmation;
-          await processAction('suppressedConsumption', {
+          debugLog('CONSUMPTION_DEBUG', '🟢 [1] App.jsx: Calling processAction suppressedConsumption', { droneId: attacker.id, owner: attackConfirmation.attackingPlayer });
+          await processActionWithGuestRouting('suppressedConsumption', {
             droneId: attacker.id,
             playerId: attackConfirmation.attackingPlayer
           });

@@ -328,6 +328,8 @@ const DroneLanesDisplay = ({
                              (draggedCard && isPlayer) || // Highlight player lanes when dragging a deployment card
                              isActionCardLaneTarget; // Highlight lanes when dragging a LANE targeting action card
 
+        const isHoveredTarget = isTargetable && hoveredLane?.id === lane && hoveredLane?.owner === owner;
+
         const isInteractivePlayerLane = isPlayer && (turnPhase === 'deployment' || turnPhase === 'action');
         const baseBackgroundColor = isPlayer ? 'bg-cyan-400/10' : 'bg-red-500/10';
 
@@ -437,9 +439,10 @@ const DroneLanesDisplay = ({
                 });
               }
             }}
-            className={`flex-1 rounded-lg transition-all duration-1000 ease-in-out p-2 relative ${laneBorderClass}
+            className={`flex-1 rounded-lg p-2 relative ${laneBorderClass}
               ${laneBackgroundClass}
               ${isInteractivePlayerLane ? 'cursor-pointer hover:bg-cyan-900/20' : ''}
+             ${isHoveredTarget ? 'scale-[1.01] z-10 transition-transform duration-200 ease-out' : 'transition-transform duration-200 ease-in-out'}
             `}
             style={{
               backgroundImage: isPlayer ? cyanHexGrid : redHexGrid,

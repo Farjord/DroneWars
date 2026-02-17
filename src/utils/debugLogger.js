@@ -114,6 +114,7 @@ const DEBUG_CONFIG = {
     STAT_CALCULATION: false,           // Effective stat calculation for targeting comparisons
     // Momentum Glow Debugging
     MOMENTUM_GLOW: false,             // Card hover logging for momentum glow debugging
+    CONSUMPTION_DEBUG: true,           // Snared/suppressed consumption flow tracing
   }
 };
 

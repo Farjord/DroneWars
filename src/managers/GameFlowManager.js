@@ -218,7 +218,12 @@ class GameFlowManager {
             actionType: event.actionType,
             gameMode: this.gameStateManager?.getState()?.gameMode
           });
-          this.handleActionCompletion(event);
+          if (event.actionType === 'snaredConsumption' || event.actionType === 'suppressedConsumption') {
+            debugLog('CONSUMPTION_DEBUG', '🟢 [4] GameFlowManager: Received action_completed', { actionType: event.actionType, shouldEndTurn: event.result?.shouldEndTurn });
+          }
+          this.handleActionCompletion(event).catch(err => {
+            debugLog('CONSUMPTION_DEBUG', '🔴 handleActionCompletion FAILED', { error: err.message, stack: err.stack });
+          });
         }
       });
       debugLog('PHASE_TRANSITIONS', '🔄 GameFlowManager re-subscribed to ActionProcessor');
@@ -353,6 +358,9 @@ class GameFlowManager {
 
     // Only process for sequential phases
     const sequentialPhases = ['deployment', 'action'];
+    if (actionType === 'snaredConsumption' || actionType === 'suppressedConsumption') {
+      debugLog('CONSUMPTION_DEBUG', '🟢 [5] GameFlowManager: Phase guard check', { turnPhase: currentState.turnPhase, willPass: sequentialPhases.includes(currentState.turnPhase) });
+    }
     if (!sequentialPhases.includes(currentState.turnPhase)) {
       return;
     }
@@ -363,10 +371,14 @@ class GameFlowManager {
     });
 
     // Check if action should end turn
+    if (actionType === 'snaredConsumption' || actionType === 'suppressedConsumption') {
+      debugLog('CONSUMPTION_DEBUG', '🟢 [6] GameFlowManager: shouldEndTurn check', { shouldEndTurn: result?.shouldEndTurn, currentPlayer: currentState.currentPlayer });
+    }
     if (result && result.shouldEndTurn) {
       const updatedState = this.gameStateManager.getState();
       const nextPlayer = updatedState.currentPlayer === 'player1' ? 'player2' : 'player1';
 
+      debugLog('CONSUMPTION_DEBUG', '🟢 [7] GameFlowManager: Calling processTurnTransition', { nextPlayer });
       debugLog('PHASE_TRANSITIONS', `🔄 GameFlowManager: Processing turn transition to ${nextPlayer}`);
 
       // Process turn transition via ActionProcessor

@@ -459,12 +459,14 @@ setAnimationManager(animationManager) {
           result = await this.processDebugAddCardsToHand(payload); break;
 
         case 'snaredConsumption':
-          this.processSnaredConsumption(payload);
+          debugLog('CONSUMPTION_DEBUG', '🟢 [2] ActionProcessor: snaredConsumption case hit', { payload });
+          await this.processSnaredConsumption(payload);
           result = { success: true, shouldEndTurn: true };
           break;
 
         case 'suppressedConsumption':
-          this.processSuppressedConsumption(payload);
+          debugLog('CONSUMPTION_DEBUG', '🟢 [2] ActionProcessor: suppressedConsumption case hit', { payload });
+          await this.processSuppressedConsumption(payload);
           result = { success: true, shouldEndTurn: true };
           break;
 
@@ -497,7 +499,9 @@ setAnimationManager(animationManager) {
         'recallAbility',
         'targetLockAbility',
         'recalculateComplete',
-        'reallocateShieldsComplete'
+        'reallocateShieldsComplete',
+        'snaredConsumption',
+        'suppressedConsumption'
       ];
 
       // DEBUG: Log finally block execution to diagnose why emission might not happen
@@ -531,6 +535,11 @@ setAnimationManager(animationManager) {
           listenerCount: this.listeners?.length || 0,
           shouldEndTurn: this.lastActionResult?.shouldEndTurn
         });
+
+        // Consumption debug logging
+        if (type === 'snaredConsumption' || type === 'suppressedConsumption') {
+          debugLog('CONSUMPTION_DEBUG', '🟢 [3] ActionProcessor: About to emit action_completed', { type, result: this.lastActionResult, listenerCount: this.listeners?.length });
+        }
 
         this.emit('action_completed', {
           actionType: type,  // Use 'actionType' to avoid collision with event.type
@@ -828,7 +837,13 @@ setAnimationManager(animationManager) {
         snaredDrone.isExhausted = true;
       }
       this.gameStateManager.updatePlayerState(playerId, newPlayerState);
-      this.gameStateManager.addLogEntry(`${drone.name}'s move was cancelled (Snared)`);
+      this.gameStateManager.addLogEntry({
+        player: playerState.name,
+        actionType: 'STATUS_CONSUMED',
+        source: drone.name,
+        target: fromLane.replace('lane', 'Lane '),
+        outcome: `${drone.name}'s move was cancelled — Snare effect consumed. Drone is now exhausted.`
+      });
       return { success: true, snaredConsumed: true, shouldEndTurn: true };
     }
 
@@ -2256,6 +2271,7 @@ setAnimationManager(animationManager) {
     debugLog('PHASE_TRANSITIONS', `[TURN TRANSITION DEBUG] Processing turn transition:`, { newPhase, newPlayer });
 
     const currentState = this.gameStateManager.getState();
+    debugLog('CONSUMPTION_DEBUG', '🟢 [8] processTurnTransition entered', { newPlayer, currentPlayer: currentState.currentPlayer, passInfo: currentState.passInfo });
     debugLog('PHASE_TRANSITIONS', `[TURN TRANSITION DEBUG] Current state before transition:`, {
       turnPhase: currentState.turnPhase,
       currentPlayer: currentState.currentPlayer,
@@ -2298,6 +2314,7 @@ setAnimationManager(animationManager) {
 
       // Always set the player (even if same) to trigger state change event
       this.gameStateManager.setCurrentPlayer(actualNewPlayer);
+      debugLog('CONSUMPTION_DEBUG', '🟢 [9] processTurnTransition: setCurrentPlayer called', { actualNewPlayer });
     }
 
     const newState = this.gameStateManager.getState();
@@ -4520,7 +4537,7 @@ setAnimationManager(animationManager) {
    * Sets isSnared = false, isExhausted = true, logs the cancellation
    * @param {Object} params - { droneId, playerId }
    */
-  processSnaredConsumption({ droneId, playerId }) {
+  async processSnaredConsumption({ droneId, playerId }) {
     const currentState = this.gameStateManager.getState();
     const playerState = currentState[playerId];
     const newPlayerState = JSON.parse(JSON.stringify(playerState));
@@ -4531,7 +4548,28 @@ setAnimationManager(animationManager) {
         drone.isSnared = false;
         drone.isExhausted = true;
         this.gameStateManager.updatePlayerState(playerId, newPlayerState);
-        this.gameStateManager.addLogEntry(`${drone.name}'s move was cancelled (Snared)`);
+        this.gameStateManager.addLogEntry({
+          player: playerState.name,
+          actionType: 'STATUS_CONSUMED',
+          source: drone.name,
+          target: lane.replace('lane', 'Lane '),
+          outcome: `${drone.name}'s move was cancelled — Snare effect consumed. Drone is now exhausted.`
+        });
+
+        const laneNumber = lane.replace('lane', '');
+        const animation = [{
+          animationName: 'STATUS_CONSUMPTION',
+          timing: 'independent',
+          payload: {
+            droneName: drone.name,
+            laneNumber,
+            statusType: 'snared',
+            targetPlayer: playerId,
+            timestamp: Date.now()
+          }
+        }];
+        await this.executeAndCaptureAnimations(animation);
+
         return;
       }
     }
@@ -4542,7 +4580,7 @@ setAnimationManager(animationManager) {
    * Sets isSuppressed = false, isExhausted = true, logs the cancellation
    * @param {Object} params - { droneId, playerId }
    */
-  processSuppressedConsumption({ droneId, playerId }) {
+  async processSuppressedConsumption({ droneId, playerId }) {
     const currentState = this.gameStateManager.getState();
     const playerState = currentState[playerId];
     const newPlayerState = JSON.parse(JSON.stringify(playerState));
@@ -4553,7 +4591,28 @@ setAnimationManager(animationManager) {
         drone.isSuppressed = false;
         drone.isExhausted = true;
         this.gameStateManager.updatePlayerState(playerId, newPlayerState);
-        this.gameStateManager.addLogEntry(`${drone.name}'s attack was cancelled (Suppressed)`);
+        this.gameStateManager.addLogEntry({
+          player: playerState.name,
+          actionType: 'STATUS_CONSUMED',
+          source: drone.name,
+          target: lane.replace('lane', 'Lane '),
+          outcome: `${drone.name}'s attack was cancelled — Suppressed effect consumed. Drone is now exhausted.`
+        });
+
+        const laneNumber = lane.replace('lane', '');
+        const animation = [{
+          animationName: 'STATUS_CONSUMPTION',
+          timing: 'independent',
+          payload: {
+            droneName: drone.name,
+            laneNumber,
+            statusType: 'suppressed',
+            targetPlayer: playerId,
+            timestamp: Date.now()
+          }
+        }];
+        await this.executeAndCaptureAnimations(animation);
+
         return;
       }
     }
