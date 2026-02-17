@@ -48,7 +48,7 @@ export const SOUND_MANIFEST = {
   card_hover_over: {
     path: `${BASE_PATH}card-hover-over.mp3`,
     channel: 'sfx',
-    volume: 0.2
+    volume: 0.1
   },
 
   // UI interactions
@@ -59,7 +59,7 @@ export const SOUND_MANIFEST = {
   },
   hex_click:        { path: `${BASE_PATH}hex-click.wav`,        channel: 'sfx', volume: 0.3 },
   hover_over:       { path: `${BASE_PATH}hover-over.wav`,       channel: 'sfx', volume: 0.2 },
-  card_flip:        { path: `${BASE_PATH}card-flip.mp3`,        channel: 'sfx', volume: 0.5 },
+  card_flip:        { path: `${BASE_PATH}card-flip.mp3`,        channel: 'sfx', volume: 0.2 },
   card_selected:    { path: `${BASE_PATH}card-selected.wav`,    channel: 'sfx', volume: 0.4 },
   card_deselected:  { path: `${BASE_PATH}card-deselected.wav`,  channel: 'sfx', volume: 0.4 },
   salvage_scan:     { path: `${BASE_PATH}salvage.wav`,          channel: 'sfx', volume: 0.5 },

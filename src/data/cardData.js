@@ -2311,13 +2311,11 @@ const fullCardCollection = [
     image: '/DroneWars/cards/MainframeBreach.png',
     description: 'Target opponent discards 2 cards at random and loses 4 energy.',
     effect: {
-      type: 'DISCARD',
-      count: 2,
-      targetPlayer: 'opponent'
-    },
-        effect: {
-      type: 'DRAIN_ENERGY',
-      amount: 4
+      type: 'COMPOSITE_EFFECT',
+      effects: [
+        { type: 'DISCARD', count: 2, targetPlayer: 'opponent' },
+        { type: 'DRAIN_ENERGY', amount: 4, targetPlayer: 'opponent' }
+      ]
     }
   },
 

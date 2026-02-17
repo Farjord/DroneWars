@@ -19,6 +19,7 @@ import ModifyStatEffectProcessor from './effects/stat_modification/ModifyStatEff
 import ModifyDroneBaseEffectProcessor from './effects/upgrades/ModifyDroneBaseEffectProcessor.js';
 import DestroyUpgradeEffectProcessor from './effects/upgrades/DestroyUpgradeEffectProcessor.js';
 import RepeatingEffectProcessor from './effects/meta/RepeatingEffectProcessor.js';
+import CompositeEffectProcessor from './effects/meta/CompositeEffectProcessor.js';
 import TokenCreationProcessor from './effects/tokens/TokenCreationProcessor.js';
 import SearchAndDrawProcessor from './effects/cards/SearchAndDrawProcessor.js';
 import DrawThenDiscardProcessor from './effects/cards/DrawThenDiscardProcessor.js';
@@ -78,6 +79,7 @@ class EffectRouter {
       MULTI_MOVE: movementProcessor,
       // Phase 8: Special effects (meta-processors, tokens, search) - COMPLETE
       REPEATING_EFFECT: new RepeatingEffectProcessor(),
+      COMPOSITE_EFFECT: new CompositeEffectProcessor(),
       CREATE_TOKENS: new TokenCreationProcessor(),
       SEARCH_AND_DRAW: new SearchAndDrawProcessor(),
       DRAW_THEN_DISCARD: new DrawThenDiscardProcessor(),
