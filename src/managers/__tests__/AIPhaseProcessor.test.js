@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import aiPhaseProcessor from './AIPhaseProcessor.js';
-import GameDataService from '../services/GameDataService.js';
+import aiPhaseProcessor from '../AIPhaseProcessor.js';
+import GameDataService from '../../services/GameDataService.js';
 
 /**
  * AI PHASE PROCESSOR TESTS - DEPLOYMENT FAILURE HANDLING
