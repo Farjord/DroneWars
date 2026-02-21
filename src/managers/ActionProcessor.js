@@ -2970,121 +2970,6 @@ setAnimationManager(animationManager) {
   }
 
   /**
-   * Process AI decision through appropriate handlers
-   * NOTE: This method is legacy/dead code - never called in current architecture.
-   * Current AI flow uses processAiAction() instead, called via type: 'aiAction'.
-   * Kept temporarily for reference, should be removed in future cleanup.
-   */
-  async processAiDecision(aiDecision, playerId) {
-    debugLog('DEPLOYMENT', `[AI DECISION DEBUG] Processing AI decision type: ${aiDecision.type}`);
-
-    switch (aiDecision.type) {
-      case 'deploy':
-        const { droneToDeploy, targetLane } = aiDecision.payload;
-        debugLog('DEPLOYMENT', `[AI DECISION DEBUG] AI deploying:`, { droneToDeploy: droneToDeploy?.name, targetLane });
-
-        const deployResult = await this.processDeployment({
-          droneData: droneToDeploy,
-          laneId: targetLane,
-          playerId: playerId,
-          turn: this.gameStateManager.get('turn')
-        });
-
-        debugLog('DEPLOYMENT', `[AI DECISION DEBUG] Deployment result:`, deployResult);
-
-        // NOTE: Turn transitions now handled by GameFlowManager
-        // deployResult already includes shouldEndTurn flag
-        debugLog('DEPLOYMENT', `[AI DECISION DEBUG] Deployment complete, shouldEndTurn: ${deployResult.shouldEndTurn}`);
-
-        return deployResult;
-
-      case 'action':
-        const chosenAction = aiDecision.payload;
-        let actionResult;
-
-        switch (chosenAction.type) {
-          case 'attack':
-            actionResult = await this.processAttack({
-              attackDetails: {
-                attacker: chosenAction.attacker,
-                target: chosenAction.target,
-                targetType: chosenAction.targetType || 'drone',
-                lane: chosenAction.lane,
-                attackingPlayer: playerId,
-                aiContext: aiDecision.logContext
-              }
-            });
-            break;
-
-          case 'play_card':
-            actionResult = await this.processCardPlay({
-              card: chosenAction.card,
-              targetId: chosenAction.target?.id,
-              playerId: playerId
-            });
-            break;
-
-          case 'move':
-            actionResult = await this.processMove({
-              droneId: chosenAction.drone.id,
-              fromLane: chosenAction.fromLane,
-              toLane: chosenAction.toLane,
-              playerId: playerId
-            });
-            break;
-
-          case 'ability':
-            actionResult = await this.processAbility({
-              droneId: chosenAction.drone.id,
-              abilityIndex: chosenAction.abilityIndex,
-              targetId: chosenAction.target?.id
-            });
-            break;
-
-          default:
-            throw new Error(`Unknown AI action subtype: ${chosenAction.type}`);
-        }
-
-        // Turn transitions are handled by individual action processors (processAttack, processAbility, etc.)
-        // No need to call processTurnTransition here to avoid double transitions
-
-        return actionResult;
-
-      case 'pass':
-        debugLog('PASS_LOGIC', `[AI DECISION DEBUG] AI passing`);
-        // Handle AI pass
-        const currentState = this.gameStateManager.getState();
-        const wasFirstToPass = !currentState.passInfo[playerId === 'player1' ? 'player2Passed' : 'player1Passed'];
-
-        debugLog('PASS_LOGIC', `[AI DECISION DEBUG] Pass info before update:`, currentState.passInfo);
-
-        this.gameStateManager.updatePassInfo({
-          [playerId + 'Passed']: true,
-          firstPasser: currentState.passInfo.firstPasser || (wasFirstToPass ? playerId : null)
-        });
-
-        const newPassInfo = this.gameStateManager.get('passInfo');
-        debugLog('PASS_LOGIC', `[AI DECISION DEBUG] Pass info after update:`, newPassInfo);
-
-        // NOTE: Turn and phase transitions now handled by GameFlowManager
-        // GameFlowManager monitors passInfo and handles:
-        // - Turn transitions when one player passes
-        // - Phase transitions when both players pass
-        const bothPlayersPassed = newPassInfo.player1Passed && newPassInfo.player2Passed;
-        debugLog('PASS_LOGIC', `[AI DECISION DEBUG] Both players passed: ${bothPlayersPassed}`);
-
-        return {
-          success: true,
-          action: 'pass',
-          shouldEndTurn: !bothPlayersPassed // Pass ends turn unless both players passed (then phase ends)
-        };
-
-      default:
-        throw new Error(`Unknown AI action type: ${aiDecision.type}`);
-    }
-  }
-
-  /**
    * Check if any actions are currently being processed
    */
   isActionInProgress() {
@@ -3619,7 +3504,6 @@ setAnimationManager(animationManager) {
     });
 
     // Update opponent placed sections through GameStateManager
-    console.error('🔥 CRITICAL - Setting opponentPlacedSections to:', placement);
     try {
       this.gameStateManager._updateContext = 'ActionProcessor';
       this.gameStateManager.setState({
@@ -3628,10 +3512,6 @@ setAnimationManager(animationManager) {
     } finally {
       this.gameStateManager._updateContext = null;
     }
-
-    // Verify it was set correctly
-    const newState = this.gameStateManager.getState();
-    console.error('🔥 CRITICAL - After setState, opponentPlacedSections is now:', newState.opponentPlacedSections);
 
     // Add log entry
     this.gameStateManager.addLogEntry({
