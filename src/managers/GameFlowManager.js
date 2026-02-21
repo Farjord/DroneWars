@@ -114,7 +114,8 @@ class GameFlowManager {
           currentDronePool,
           currentPersonality,
           actionProcessor,
-          gameStateManager
+          gameStateManager,
+          { isAnimationBlocking: () => actionProcessor?.phaseAnimationQueue?.isPlaying() || actionProcessor?.animationManager?.isBlocking }
         );
         debugLog('PHASE_TRANSITIONS', '🔄 GameFlowManager re-initialized AIPhaseProcessor with dependencies');
       }

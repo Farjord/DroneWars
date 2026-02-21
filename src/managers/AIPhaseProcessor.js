@@ -55,7 +55,7 @@ class AIPhaseProcessor {
    * @param {Object} actionProcessor - ActionProcessor instance for executing actions
    * @param {Object} gameStateManager - GameStateManager instance for state updates
    */
-  initialize(aiPersonalities, dronePool, currentPersonality, actionProcessor = null, gameStateManager = null) {
+  initialize(aiPersonalities, dronePool, currentPersonality, actionProcessor = null, gameStateManager = null, { isAnimationBlocking } = {}) {
     // Check if already initialized
     if (this.isInitialized) {
       debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor already initialized, skipping...');
@@ -73,6 +73,7 @@ class AIPhaseProcessor {
     this.currentAIPersonality = currentPersonality;
     this.actionProcessor = actionProcessor;
     this.gameStateManager = gameStateManager;
+    this.isAnimationBlocking = isAnimationBlocking || (() => false);
 
     // Initialize GameDataService for centralized data computation
     if (gameStateManager && !this.gameDataService) {
@@ -261,27 +262,12 @@ class AIPhaseProcessor {
       return;
     }
 
-    // Check if animations are blocking AI actions
-    const phaseAnimationQueue = this.gameStateManager?.gameFlowManager?.phaseAnimationQueue;
-    const animationManager = this.actionProcessor?.animationManager;
-
-    // Block AI if phase announcements are playing
-    if (phaseAnimationQueue && phaseAnimationQueue.isPlaying()) {
-      debugLog('AI_DECISIONS', '⏸️ AIPhaseProcessor: Phase animation playing, rescheduling AI turn');
-      // Reschedule after animations complete
+    // Block AI if animations are playing (phase announcements or action animations)
+    if (this.isAnimationBlocking()) {
+      debugLog('AI_DECISIONS', '⏸️ AIPhaseProcessor: Animation blocking, rescheduling AI turn');
       this.turnTimer = setTimeout(() => {
         this.executeTurn();
-      }, 500); // Check again in 0.5s
-      return;
-    }
-
-    // Block AI if action animations are blocking
-    if (animationManager && animationManager.isBlocking) {
-      debugLog('AI_DECISIONS', '⏸️ AIPhaseProcessor: Action animation blocking, rescheduling AI turn');
-      // Reschedule after animations complete
-      this.turnTimer = setTimeout(() => {
-        this.executeTurn();
-      }, 500); // Check again in 0.5s
+      }, 500);
       return;
     }
 

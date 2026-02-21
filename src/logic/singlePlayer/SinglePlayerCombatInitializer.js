@@ -328,12 +328,14 @@ class SinglePlayerCombatInitializer {
       }
 
       // 10. Initialize AIPhaseProcessor
+      const ap = gameStateManager.actionProcessor;
       aiPhaseProcessor.initialize(
         aiPersonalities,
         fullDroneCollection,
         aiPersonality,
-        gameStateManager.actionProcessor,
-        gameStateManager
+        ap,
+        gameStateManager,
+        { isAnimationBlocking: () => ap?.phaseAnimationQueue?.isPlaying() || ap?.animationManager?.isBlocking }
       );
       debugLog('SP_COMBAT', 'AIPhaseProcessor initialized with:', aiPersonality.name);
 

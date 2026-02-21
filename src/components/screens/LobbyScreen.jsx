@@ -85,12 +85,14 @@ function LobbyScreen() {
       });
 
       // Initialize AIPhaseProcessor for single-player game
+      const ap = gameStateManager.actionProcessor;
       aiPhaseProcessor.initialize(
         aiPersonalities,
         fullDroneCollection,
         selectedAI,
-        gameStateManager.actionProcessor,
-        gameStateManager
+        ap,
+        gameStateManager,
+        { isAnimationBlocking: () => ap?.phaseAnimationQueue?.isPlaying() || ap?.animationManager?.isBlocking }
       );
       debugLog('PHASE_TRANSITIONS', '🤖 AIPhaseProcessor initialized for single-player with:', selectedAI.name);
 

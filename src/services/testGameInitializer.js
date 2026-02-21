@@ -258,12 +258,14 @@ export function initializeTestGame(config, gameStateManager) {
 
     // Initialize AIPhaseProcessor for AI functionality in test mode
     const defaultAI = aiPersonalities[0]; // Use first AI personality as default
+    const ap = gameStateManager.actionProcessor;
     aiPhaseProcessor.initialize(
       aiPersonalities,
       fullDroneCollection,
       defaultAI,
-      gameStateManager.actionProcessor,
-      gameStateManager
+      ap,
+      gameStateManager,
+      { isAnimationBlocking: () => ap?.phaseAnimationQueue?.isPlaying() || ap?.animationManager?.isBlocking }
     );
     debugLog('TESTING', '🤖 TEST MODE: AIPhaseProcessor initialized with:', defaultAI.name);
 
