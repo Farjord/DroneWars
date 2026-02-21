@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'vitest';
-import { validateSaveFile, SAVE_VERSION } from '../../../data/saveGameSchema.js';
+import { SAVE_VERSION } from '../../../data/saveGameSchema.js';
 import { createNewSave } from '../saveGameFactory.js';
+import { validateSaveFile } from '../saveGameValidator.js';
 
 function makeValidSave(overrides = {}) {
   return { ...createNewSave(), ...overrides };

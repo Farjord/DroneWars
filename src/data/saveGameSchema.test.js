@@ -4,11 +4,9 @@
  */
 
 import { describe, test, expect } from 'vitest';
-import {
-  defaultPlayerProfile,
-  validateSaveFile,
-} from './saveGameSchema.js';
+import { defaultPlayerProfile } from './saveGameSchema.js';
 import { createNewSave } from '../logic/save/saveGameFactory.js';
+import { validateSaveFile } from '../logic/save/saveGameValidator.js';
 import { migrateTacticalItems } from '../logic/migration/saveGameMigrations.js';
 import { getAllTacticalItemIds } from './tacticalItemData.js';
 

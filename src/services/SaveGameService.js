@@ -4,7 +4,8 @@
  * Uses file download/upload (no backend required)
  */
 
-import { validateSaveFile, SAVE_VERSION } from '../data/saveGameSchema.js';
+import { SAVE_VERSION } from '../data/saveGameSchema.js';
+import { validateSaveFile } from '../logic/save/saveGameValidator.js';
 
 class SaveGameService {
   constructor() {
