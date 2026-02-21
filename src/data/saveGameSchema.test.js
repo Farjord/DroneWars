@@ -8,8 +8,8 @@ import {
   defaultPlayerProfile,
   createNewSave,
   validateSaveFile,
-  migrateTacticalItems
 } from './saveGameSchema.js';
+import { migrateTacticalItems } from '../logic/migration/saveGameMigrations.js';
 import { getAllTacticalItemIds } from './tacticalItemData.js';
 
 describe('saveGameSchema - tacticalItems', () => {

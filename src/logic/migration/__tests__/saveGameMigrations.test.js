@@ -6,7 +6,7 @@ import {
   convertComponentsToSectionSlots,
   migrateShipSlotToNewFormat,
   migrateTacticalItems,
-} from '../../../data/saveGameSchema.js';
+} from '../saveGameMigrations.js';
 import { getAllTacticalItemIds } from '../../../data/tacticalItemData.js';
 
 // --- createEmptyDroneSlots ---

@@ -10,7 +10,7 @@ import {
   createEmptyDroneSlots,
   migrateDroneSlotsToNewFormat,
   convertDronesToSlots
-} from '../data/saveGameSchema.js';
+} from '../logic/migration/saveGameMigrations.js';
 import {
   addDroneToSlots,
   removeDroneFromSlots,

@@ -20,7 +20,7 @@ import {
   buildActiveDronePool,
   getDroneHandOrder
 } from '../utils/slotDamageUtils.js';
-import { migrateShipSlotToNewFormat } from '../data/saveGameSchema.js';
+import { migrateShipSlotToNewFormat } from '../logic/migration/saveGameMigrations.js';
 
 // Mock the map generator
 vi.mock('../logic/map/generateMapData.js', () => ({

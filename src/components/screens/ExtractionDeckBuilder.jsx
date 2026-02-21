@@ -18,7 +18,7 @@ import { updateDeckState } from '../../utils/deckStateUtils.js';
 import {
   createEmptyDroneSlots,
   migrateDroneSlotsToNewFormat
-} from '../../data/saveGameSchema.js';
+} from '../../logic/migration/saveGameMigrations.js';
 import {
   addDroneToSlots,
   removeDroneFromSlots
