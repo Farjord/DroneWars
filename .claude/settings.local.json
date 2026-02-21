@@ -38,7 +38,20 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(del \"C:\\Drone-Wars-Game\\drone-wars-game\\src\\components\\ui\\GameFooter.experimental.jsx\")",
-      "Bash(del:*)"
+      "Bash(del:*)",
+      "Bash(npx vite build)",
+      "Bash(ls \"C:\\\\Drone-Wars-Game\\\\drone-wars-game\\\\public\\\\DroneWars\\\\AI\"\" 2>/dev/null || ls \"C:/Drone-Wars-Game/drone-wars-game/public/DroneWars/AI/\" 2>/dev/null || echo \"Directory not found \")",
+      "Bash(ls \"C:\\\\Drone-Wars-Game\\\\drone-wars-game\\\\public\\\\DroneWars\"\" 2>&1 || dir \"C:Drone-Wars-Gamedrone-wars-gamepublicDroneWars\"\")",
+      "Bash(npx vitest run:*)",
+      "Bash(npx vite build:*)",
+      "Bash(cd:*)",
+      "Bash(claude plugins:*)",
+      "Bash(npx typescript-language-server:*)",
+      "Bash(which node && node --version 2>/dev/null; which npx && npx --version 2>/dev/null)",
+      "Bash(cd /c/Drone-Wars-Game/drone-wars-game && npx tsc --version 2>&1)",
+      "Bash(find \"C:/Drone-Wars-Game/drone-wars-game/src/logic/ai\" -type f | sort && wc -l \"C:/Drone-Wars-Game/drone-wars-game/src/logic/ai\"/*.js \"C:/Drone-Wars-Game/drone-wars-game/src/logic/ai\"/*/*.js 2>&1)",
+      "Bash(ls:*)",
+      "Bash(cd /c/Drone-Wars-Game/drone-wars-game && git rm --cached node_modules/.vite/deps/_metadata.json 2>&1)"
     ],
     "deny": [],
     "ask": []

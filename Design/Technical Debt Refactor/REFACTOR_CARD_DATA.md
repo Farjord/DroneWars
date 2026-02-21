@@ -165,7 +165,10 @@ None. No animations, events, network calls, or localStorage writes. Module evalu
 
 ## Change Log
 
-*Append entries here as refactoring steps are completed.*
-
 | Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
 |-|-|-|-|-|-|
+| 1 | 2026-02-21 | Added 533 data integrity tests | N/A — additive | N/A | None |
+| 2 | 2026-02-21 | Fixed 3 data bugs: CARD032 casing, Raise_the_Alarm type, CARD037 value | Card lookup by id (updated vsModeDeckData ref) | Shield Boost+ restores 3 shields (was 2) | None |
+| 3-4 | 2026-02-21 | Normalized formatting + grouped by type with section separators | All card data identical | Array order changed; updated modalShowcaseHelpers positional access to find() | Steps 3 & 4 combined into single commit |
+| 5 | 2026-02-21 | Extracted RARITY_COLORS to src/data/rarityColors.js, updated 9 importers | RARITY_COLORS values identical | Import paths changed | None |
+| 6 | 2026-02-21 | Removed RARITY_COLORS re-export from cardData.js | fullCardCollection export unchanged | cardData.js no longer exports RARITY_COLORS | None |

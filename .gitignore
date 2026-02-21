@@ -1,6 +1,14 @@
 node_modules/
 dist/
-null
+NUL
+
+# Tool/IDE generated
+.VSCodeCounter/
+.claude/worktrees/
+coverage/
+
+# Local guidance docs
+Guidance/
 
 # Environment variables (contains Firebase config)
 .env

@@ -38,7 +38,8 @@ Refer to `Design/Technical Debt Refactor/CODE_STANDARDS.md` for full standards.
 
 ## Git Workflow
 
-- **Auto-push after refactors**: After completing each refactoring task (tests pass, build clean), commit and push to origin with a descriptive title. Format: `Refactor: <file> — <what changed>`.
+- **No feature branches**: Work directly on master. No worktrees, no feature branches for refactoring work.
+- **Auto-commit after refactors**: After completing each refactoring task (tests pass, build clean), commit with a descriptive title. Do NOT push — the user will push manually. Format: `Refactor: <file> — <what changed>`.
 - **Commit before risky changes**: Before starting a refactor that touches many imports, create a checkpoint commit.
 
 ## Testing Philosophy
@@ -85,31 +86,31 @@ Every file refactor MUST follow these phases. Skills listed are mandatory, not o
 
 **Phase 0 — Pre-flight:**
 1. Run `tech-debt-review` skill to capture the "before" state
-2. Use `superpowers:using-git-worktrees` to isolate the work on a separate branch
 
 **Phase 1 — Understand:**
-3. Use `Explore` agents to map the file's dependencies, consumers, and patterns
-4. Populate the `## Behavioral Baseline` in the REFACTOR_*.md (immutable once written)
-5. Use `superpowers:brainstorming` if the extraction strategy isn't obvious
+2. Use `Explore` agents to map the file's dependencies, consumers, and patterns
+3. Populate the `## Behavioral Baseline` in the REFACTOR_*.md (immutable once written)
+4. Use `superpowers:brainstorming` if the extraction strategy isn't obvious
 
 **Phase 2 — Test First:**
-6. Use `superpowers:test-driven-development` — write or verify tests for existing behavior BEFORE changing anything
-7. Run tests to confirm green baseline
+5. Use `superpowers:test-driven-development` — write or verify tests for existing behavior BEFORE changing anything
+6. Run tests to confirm green baseline
 
 **Phase 3 — Extract (iterative):**
-8. Use `superpowers:writing-plans` or `superpowers:executing-plans` for multi-step extractions
-9. Each extraction step: make one small change → run tests (`superpowers:verification-before-completion`) → if broken, use `superpowers:systematic-debugging` → checkpoint commit
-10. Use `superpowers:dispatching-parallel-agents` for independent extractions when safe
+7. Use `superpowers:writing-plans` or `superpowers:executing-plans` for multi-step extractions
+8. Each extraction step: make one small change → run tests (`superpowers:verification-before-completion`) → if broken, use `superpowers:systematic-debugging` → checkpoint commit
+9. Use `superpowers:dispatching-parallel-agents` for independent extractions when safe
 
 **Phase 4 — Review:**
-11. Use `superpowers:requesting-code-review` → triggers `superpowers:code-reviewer` architect agent
-12. Address feedback using `superpowers:receiving-code-review`
-13. Update the `## Change Log` in the REFACTOR_*.md
+10. Use `superpowers:requesting-code-review` → triggers `superpowers:code-reviewer` architect agent
+11. Address feedback using `superpowers:receiving-code-review`
+12. Update the `## Change Log` in the REFACTOR_*.md
 
 **Phase 5 — Complete:**
-14. Run `tech-debt-review` again — compare before/after metrics
-15. Use `superpowers:finishing-a-development-branch` to merge
-16. Final commit and push
+13. Run `tech-debt-review` again — compare before/after metrics
+14. Update REFACTOR_PLAN.md — mark file as [x] Complete with date and summary in Notes
+15. Update the `## Change Log` in the REFACTOR_*.md with all completed steps
+16. Final commit on master (no push — user pushes manually)
 
 ### Behavioral Baseline Template
 
@@ -152,6 +153,13 @@ Mandatory bottom-up sequence — earlier files have no dependencies on later fil
 | 8 | HangarScreen.jsx | Depends on cardData only |
 | 9 | TacticalMapScreen.jsx | Depends on GameStateManager, GameFlowManager |
 | 10 | App.jsx | Depends on most files — must be last |
+
+### Refactoring Documentation (Non-Negotiable)
+
+Every refactoring task MUST update these docs before the final commit:
+- **REFACTOR_*.md Change Log** — append a row per completed step (date, change, behavior preserved/altered, deviations)
+- **REFACTOR_PLAN.md** — mark the file's status as [x] Complete with date and summary in Notes column
+- These updates are part of the deliverable. Incomplete docs = incomplete work.
 
 ### Parallel Extraction Safety Rule
 

@@ -21,7 +21,7 @@
 | 7 | HangarScreen.jsx (2,204) | REFACTOR_HANGAR_SCREEN.md | [ ] | |
 | 8 | saveGameSchema.js | REFACTOR_SAVE_GAME_SCHEMA.md | [ ] | |
 | 9 | AIPhaseProcessor.js (1,413) | REFACTOR_AI_PHASE_PROCESSOR.md | [ ] | |
-| 10 | cardData.js (2,324) | REFACTOR_CARD_DATA.md | [ ] | |
+| 10 | cardData.js (2,324→1,821) | REFACTOR_CARD_DATA.md | [x] | Complete 2026-02-21. 3 bugs fixed, RARITY_COLORS extracted, 533 tests added. |
 
 ## Cross-Cutting Concerns
 - [ ] Dead code removal (click-to-act remnants, unused functions)
