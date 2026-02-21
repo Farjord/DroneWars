@@ -54,7 +54,7 @@ export const getMockDrones = (count = 3) => {
 export const getMockCard = (name = null) => {
   const card = name
     ? fullCardCollection.find(c => c.name === name)
-    : fullCardCollection[0]; // Default to Laser Blast
+    : fullCardCollection.find(c => c.id === 'CARD001') ?? fullCardCollection[0];
 
   return {
     ...card,
