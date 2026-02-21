@@ -159,6 +159,7 @@ Mandatory bottom-up sequence — earlier files have no dependencies on later fil
 Every refactoring task MUST update these docs before the final commit:
 - **REFACTOR_*.md Change Log** — append a row per completed step (date, change, behavior preserved/altered, deviations)
 - **REFACTOR_PLAN.md** — mark the file's status as [x] Complete with date and summary in Notes column
+- **Implementation plan** — save the session's plan to `Design/Technical Debt Refactor/Plans/PLAN_<FILE>.md` before starting work. Update with actual outcomes in an `## Actual Outcomes` section at the end. This is the permanent record of intent vs. reality.
 - These updates are part of the deliverable. Incomplete docs = incomplete work.
 
 ### Parallel Extraction Safety Rule

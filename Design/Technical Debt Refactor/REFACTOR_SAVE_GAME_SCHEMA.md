@@ -223,7 +223,65 @@ Write comprehensive tests for behavior that will be moved, ensuring no regressio
 ## Behavioral Baseline
 <!-- IMMUTABLE — do not edit after initial writing -->
 
-*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+### Exports / Public API
+
+| Export | Type | Contract |
+|-|-|-|
+| `SAVE_VERSION` | `string` (`'1.0'`) | Current save file format version. Used by validator and factory. |
+| `starterPoolCards` | `string[]` | All action card IDs + ship component IDs from starter deck. Computed at module load from `starterDeck`. Immutable after load. |
+| `starterPoolDroneNames` | `string[]` | Drone names from non-empty starter deck slots. Computed at module load. |
+| `starterPoolShipIds` | `string[]` | Single-element array: `[starterDeck.shipId]`. |
+| `defaultPlayerProfile` | `object` | Template for new player profile. `createdAt` and `gameSeed` capture `Date.now()` at module load (overridden in `createNewSave` via deep clone). |
+| `defaultInventory` | `object` | Empty object `{}`. |
+| `defaultDroneInstances` | `array` | **DEPRECATED** — empty array `[]`. Zero external consumers. |
+| `defaultShipComponentInstances` | `array` | **DEPRECATED** — empty array `[]`. Zero external consumers. |
+| `defaultDiscoveredCards` | `array` | Empty array `[]`. |
+| `defaultQuickDeployments` | `array` | Empty array `[]`. |
+| `defaultShipSlots` | `array` | 6-element array computed via `createDefaultShipSlot(0..5)` at module load. Slot 0 is immutable starter; slots 1-5 are empty. |
+| `createEmptyDroneSlots()` | `function → array` | Returns 5-element array: `[{ slotIndex: 0..4, slotDamaged: false, assignedDrone: null }]`. No params. |
+| `migrateDroneSlotsToNewFormat(oldSlots)` | `function → array` | If `oldSlots` is null/undefined → returns `createEmptyDroneSlots()`. Otherwise maps each slot preserving `slotDamaged ?? isDamaged ?? false` and `assignedDrone ?? droneName ?? null`. Idempotent. |
+| `convertDronesToSlots(drones=[])` | `function → array` | Converts legacy `[{ name, isDamaged? }]` to new format. Fills up to 5 slots. Empty slots remain default. |
+| `convertComponentsToSectionSlots(shipComponents={})` | `function → object` | Converts `{ componentId: lane }` to `{ l/m/r: { componentId, damageDealt: 0 } }`. Unknown lanes silently ignored. |
+| `migrateShipSlotToNewFormat(oldSlot)` | `function → object` | If already migrated (has `droneSlots` AND `sectionSlots`) → strips `drones` prop and returns. Otherwise converts via `convertDronesToSlots` and `convertComponentsToSectionSlots`. |
+| `migrateTacticalItems(profile)` | `function → object` | Ensures `profile.tacticalItems` contains all IDs from `getAllTacticalItemIds()`. Creates object if missing; backfills missing keys with `0`. Returns new profile (no mutation). |
+| `createDefaultShipSlot(id)` | `function → object` | `id=0`: immutable starter deck slot (deep-cloned from `starterDeck`). `id=1-5`: empty slot with null ship, empty decklist, empty drone/section slots. |
+| `createNewSave()` | `function → object` | Returns complete save game object with deep-cloned defaults. `savedAt` set to `Date.now()` at call time. `shipSlots` individually deep-cloned from `defaultShipSlots`. |
+| `validateSaveFile(saveData)` | `function → { valid: boolean, errors: string[] }` | Validates: required fields (saveVersion, playerProfile, inventory, droneInstances, shipComponentInstances, discoveredCards, shipSlots), version match, profile field types, ship slot count (6), slot 0 immutability, array types, discoveredCards entries, quickDeployments structure (optional), bossProgress structure (optional). |
+| `default` export | `object` | Facade re-exporting 12 items. **Zero consumers** — all use named imports. |
+
+### State Mutations and Their Triggers
+
+No mutable state. All functions are pure — they return new objects. `defaultPlayerProfile`, `defaultShipSlots`, etc. are module-level constants computed once at load. `createNewSave()` deep-clones via `JSON.parse(JSON.stringify(...))` to prevent cross-reference mutation.
+
+### Side Effects
+
+- `Date.now()` called at module load for `defaultPlayerProfile.createdAt`, `defaultPlayerProfile.gameSeed`, and `defaultPlayerProfile.lastPlayedAt`. These are captured once and cloned in `createNewSave()`.
+- `Date.now()` called in `createNewSave()` for `savedAt` field.
+- `getAllTacticalItemIds()` called inside `migrateTacticalItems()` — reads from `tacticalItemData.js` (pure data dependency).
+- No network calls, no localStorage, no events, no animations.
+
+### Known Edge Cases
+
+- `migrateDroneSlotsToNewFormat(null)` → returns fresh empty slots (not an error).
+- `migrateDroneSlotsToNewFormat` is idempotent — re-running on already-migrated data produces identical output (via `??` fallback chain).
+- `convertDronesToSlots` caps at 5 drones — silently drops any beyond index 4.
+- `convertComponentsToSectionSlots` silently ignores components with lanes other than `l`, `m`, `r`.
+- `migrateShipSlotToNewFormat` destructures `{ drones, ...rest }` even when already migrated — safely strips `drones` if accidentally present.
+- `validateSaveFile` checks `quickDeployments` and `bossProgress` only if present (backward-compatible with older saves missing these fields).
+- `validateSaveFile` uses early `break` in loops — reports at most one error per validation section (discoveredCards, quickDeployments, placement).
+- Deep clone via `JSON.parse(JSON.stringify(...))` drops `undefined`, functions, and `Symbol` values. This is safe for the current schema (all values are JSON-serializable).
+
+### Dependencies
+
+**Imports**: `starterDeck` (playerDeckData.js), `fullCardCollection` (cardData.js — UNUSED), `ECONOMY` (economyData.js), `getAllTacticalItemIds` (tacticalItemData.js).
+
+**Consumers** (19 files):
+- GameStateManager.js: `createNewSave`, `starterPoolCards`, `starterPoolDroneNames`, `convertComponentsToSectionSlots`
+- SaveGameService.js: `validateSaveFile`, `SAVE_VERSION`
+- ExtractionDeckBuilder.jsx: `createEmptyDroneSlots`, `migrateDroneSlotsToNewFormat`
+- DroneSlotStructure.test.js: `createEmptyDroneSlots`, `migrateDroneSlotsToNewFormat`, `convertDronesToSlots`
+- SlotBasedDamage.test.js: `migrateShipSlotToNewFormat`
+- 14 other files: data-only imports (`starterPoolCards`, `starterPoolDroneNames`, `starterPoolShipIds`)
 
 ## Change Log
 
@@ -231,3 +289,16 @@ Write comprehensive tests for behavior that will be moved, ensuring no regressio
 
 | Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
 |-|-|-|-|-|-|
+| 0a | 2026-02-21 | Tech-debt-review before state captured | N/A | N/A | None |
+| 0b | 2026-02-21 | Plan archived to Plans/PLAN_SAVE_GAME_SCHEMA.md | N/A | N/A | None |
+| 0c | 2026-02-21 | CLAUDE.md plan archival requirement added (both copies) | N/A | N/A | None |
+| 1 | 2026-02-21 | Behavioral baseline populated (immutable) | N/A | N/A | ExtractionDeckBuilder.jsx discovered as additional consumer |
+| 2 | 2026-02-21 | 87 pre-extraction tests written (migrations: 26, factory: 27, validator: 34) | All functions tested at current location | None | None |
+| 3a | 2026-02-21 | Dead code removed: unused fullCardCollection import, deprecated defaultDroneInstances/defaultShipComponentInstances | All behavior preserved | Deprecated exports removed (zero consumers) | None |
+| 3b | 2026-02-21 | 6 migration functions extracted to src/logic/migration/saveGameMigrations.js | All migration behavior preserved | None | ExtractionDeckBuilder.jsx added to consumer update list (not in original plan) |
+| 3c | 2026-02-21 | 3 factory functions + defaultShipSlots extracted to src/logic/save/saveGameFactory.js | All factory behavior preserved | None | defaultShipSlots moved to factory (resolves circular import risk as planned) |
+| 3d | 2026-02-21 | validateSaveFile extracted to src/logic/save/saveGameValidator.js | All validation behavior preserved | None | None |
+| 3e-tests | 2026-02-21 | Co-located tests deleted, data tests relocated to src/data/__tests__/saveGameSchema.test.js (19 tests) | Test coverage preserved and expanded | Old test files removed | Consolidated boss + tactical item data tests into single file |
+| 3e-logging | 2026-02-21 | SAVE debug category added, debugLog calls in migrateDroneSlotsToNewFormat, migrateShipSlotToNewFormat, migrateTacticalItems | All behavior preserved | Logging added (off by default) | None |
+| 3e-export | 2026-02-21 | Default export facade removed | None — zero consumers | Default export removed | None |
+| 4 | 2026-02-21 | Code review: APPROVED, zero critical/important issues | N/A | N/A | None |
