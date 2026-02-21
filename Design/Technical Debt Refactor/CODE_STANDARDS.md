@@ -1,0 +1,117 @@
+# Drone Wars — Code Standards
+
+## Single Responsibility Principle
+
+Each file owns one concern. A cohesive 400-line file is preferable to four scattered 100-line files. Split when a file handles genuinely distinct responsibilities, not just because it's long.
+
+## File Type Purity
+
+| File type | Must contain | Must NOT contain |
+|-|-|-|
+| Data files (`src/data/`) | Static data definitions, constant arrays/objects, enums | Helper functions, query logic, factory functions, migration logic, RNG utilities |
+| Components (`.jsx`) | One React component and its directly coupled sub-components | Business logic, data definitions, utility functions unrelated to rendering |
+| Modals (`src/components/modals/`) | One modal component per file | Multiple unrelated modals, utility functions |
+| Animations (`src/components/animations/`) | One animation component per file | Multiple unrelated animations |
+| Hooks (`src/hooks/` or co-located) | One custom hook per file (with internal helpers) | Components, data definitions |
+| Managers (`src/managers/`) | One manager/processor class per file | UI code, data definitions |
+| Logic (`src/logic/`) | Pure game logic functions, no React dependencies | React components, hooks, UI concerns |
+| Utils (`src/utils/`) | Pure utility functions with no domain knowledge | Business logic, game-specific rules |
+
+### Where Extracted Helpers Go
+
+- **Data query helpers** (e.g., `getMissionById`) — `src/logic/<domain>/` or a dedicated `<dataFile>Helpers.js` alongside the data file
+- **Factory functions** (e.g., `createNewSave`) — `src/logic/<domain>/`
+- **Migration logic** — `src/logic/state/` or `src/logic/migration/`
+- **RNG/generation utilities** — `src/utils/` or `src/logic/<domain>/`
+
+### Known Data File Violations
+
+These `src/data/` files currently contain logic that should be extracted:
+
+- `aiCoresData.js` — contains `calculateAICoresDrop()`, `getAICoresCost()`
+- `cardPackData.js` — contains `createSeededRNG()`, `getPackCostForTier()`, `generateRandomShopPack()`
+- `salvageItemData.js` — contains `findEligibleItems()`, `selectSalvageItem()`, `generateSalvageItemFromValue()`
+- `saveGameSchema.js` — contains 8+ migration/factory/validation functions
+- `missionData.js` — contains query helpers like `getMissionById()`
+- `reputationRewardsData.js` — contains `getLevelData()`, `getNewlyUnlockedLevels()`
+- `tutorialData.js` — contains query/factory helpers
+- `shipData.js`, `tacticalItemData.js` — contain accessor functions
+
+## Size Guidelines
+
+These are guidelines, not hard limits. A cohesive file shouldn't be split just to hit a number.
+
+- **Under 200 lines**: Healthy
+- **200-400 lines**: Normal for complex components/processors — review for cohesion
+- **400+ lines**: Review trigger — actively look for extraction opportunities
+- **800+ lines**: Strong smell — almost certainly doing too much
+
+## Directory Structure
+
+```
+src/
+  components/
+    screens/          # Full-page views
+      __tests__/
+    modals/           # Modal dialogs
+      __tests__/
+    ui/               # Reusable UI primitives
+      __tests__/
+    animations/       # Animation components
+      __tests__/
+    ships/            # Ship-related components
+      __tests__/
+  hooks/              # Custom React hooks
+    __tests__/
+  logic/              # Pure game logic (no React)
+    ai/               # AI decision-making
+    targeting/        # Targeting resolution
+    combat/           # Combat resolution
+    effects/          # Card/ability effects
+    ...etc
+    __tests__/        # Per-subfolder
+  managers/           # Stateful orchestration (processors, state managers)
+    __tests__/
+  contexts/           # React contexts
+    __tests__/
+  data/               # Static game data (cards, ships, config)
+    __tests__/
+  services/           # External service interfaces
+    __tests__/
+  utils/              # Pure utility functions
+    __tests__/
+  config/             # App configuration
+  styles/             # Shared styles
+  theme/              # Theme definitions
+```
+
+## Test Convention
+
+- All tests in `__tests__/` subfolders within the directory containing the source file
+- Test file naming: `<SourceFileName>.test.js(x)` or `<SourceFileName>.<aspect>.test.js(x)` for focused test suites
+- Existing co-located tests migrated incrementally (not all at once)
+
+## Naming Conventions
+
+- **Components**: PascalCase (`TacticalMapScreen.jsx`)
+- **Logic/utils**: camelCase (`aiLogic.js`)
+- **Hooks**: `use` prefix (`useTargeting.js`)
+- **Constants/config**: UPPER_SNAKE_CASE for exports, camelCase for files
+- **Index files**: barrel exports for module folders
+
+## Decomposition Patterns
+
+- **Extract custom hooks** when a component has complex state/effect logic
+- **Split sub-components** when a render method has visually distinct sections
+- **Extract utility functions** when logic is reusable and has no component dependencies
+- **Use strategy pattern** for processors with many conditional branches (like ActionProcessor)
+- **Group related tests** by aspect into separate test files
+
+## Investigation Process for Large Files
+
+1. Map the file's responsibilities (list what it does)
+2. Trace dependency graph (imports in, exports out)
+3. Identify natural seams — groups of functions/state that work together
+4. Propose extraction plan with rationale
+5. Execute incrementally — tests green at every step
+6. Update imports across the codebase
