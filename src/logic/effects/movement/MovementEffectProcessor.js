@@ -378,9 +378,13 @@ class MovementEffectProcessor extends BaseEffectProcessor {
     }, 'executeSingleMove');
 
     // Apply ON_MOVE triggered abilities (only for friendly drones)
+    const healAnimationEvents = [];
     if (!isMovingEnemyDrone) {
-      const { newState } = applyOnMoveEffects(droneOwnerState, movedDrone, fromLane, toLane, logCallback);
+      const { newState, animationEvents } = applyOnMoveEffects(droneOwnerState, movedDrone, fromLane, toLane, logCallback);
       newPlayerStates[droneOwnerId] = newState;
+      if (animationEvents && animationEvents.length > 0) {
+        healAnimationEvents.push(...animationEvents.map(e => ({ ...e, targetPlayer: droneOwnerId })));
+      }
     }
 
     // Update auras after movement for the drone owner's board
@@ -437,7 +441,8 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       shouldEndTurn: !card.effect.goAgain && !rallyGoAgain,
       shouldCancelCardSelection: true,
       shouldClearMultiSelectState: true,
-      mineAnimationEvents
+      mineAnimationEvents,
+      healAnimationEvents
     };
   }
 
@@ -560,9 +565,13 @@ class MovementEffectProcessor extends BaseEffectProcessor {
 
     // Apply ON_MOVE triggered abilities for each drone
     let finalPlayerState = actingPlayerState;
+    const healAnimationEvents = [];
     movedDrones.forEach(movedDrone => {
-      const { newState } = applyOnMoveEffects(finalPlayerState, movedDrone, fromLane, toLane, logCallback);
+      const { newState, animationEvents } = applyOnMoveEffects(finalPlayerState, movedDrone, fromLane, toLane, logCallback);
       finalPlayerState = newState;
+      if (animationEvents && animationEvents.length > 0) {
+        healAnimationEvents.push(...animationEvents.map(e => ({ ...e, targetPlayer: actingPlayerId })));
+      }
     });
     newPlayerStates[actingPlayerId] = finalPlayerState;
 
@@ -615,7 +624,8 @@ class MovementEffectProcessor extends BaseEffectProcessor {
       shouldEndTurn: !(card.effect?.goAgain || rallyGoAgain),
       shouldCancelCardSelection: true,
       shouldClearMultiSelectState: true,
-      mineAnimationEvents
+      mineAnimationEvents,
+      healAnimationEvents
     };
   }
 }

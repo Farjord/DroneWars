@@ -16,21 +16,21 @@ const shipCollection = [
 
     // BASELINE COMBAT VALUES
     // These are the default values for all ship sections
-    baseHull: 15,
+    baseHull: 10,
     baseShields: 3,
     baseThresholds: {
-      damaged: 10,
-      critical: 5
+      damaged: 6,
+      critical: 3
     },
 
     // DECK COMPOSITION LIMITS
     // Controls how many cards of each type can be in the deck
     deckLimits: {
-      totalCards: 60,
-      ordnanceLimit: 20,
-      tacticLimit: 20,
-      supportLimit: 20,
-      upgradeLimit: 10
+      totalCards: 40,
+      ordnanceLimit: 15,
+      tacticLimit: 15,
+      supportLimit: 15,
+      upgradeLimit: 6
     },
 
     // FUTURE PROPERTIES (not yet implemented)

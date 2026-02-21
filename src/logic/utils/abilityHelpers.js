@@ -5,32 +5,39 @@
 // Extracted from gameLogic.js Phase 7A
 
 import fullDroneCollection from '../../data/droneData.js';
+import { debugLog } from '../../utils/debugLogger.js';
+import { buildHealAnimation } from '../effects/healing/animations/HealAnimation.js';
 
 /**
  * Apply ON_MOVE triggered abilities to a moved drone
- * Checks for PERMANENT_STAT_MOD effects and applies them
+ * Checks for PERMANENT_STAT_MOD and HEAL_HULL effects and applies them
  * @param {Object} playerState - Player state object
  * @param {Object} movedDrone - The drone that was moved
  * @param {string} fromLane - Source lane ID (e.g., 'lane1')
  * @param {string} toLane - Destination lane ID (e.g., 'lane2')
  * @param {Function} addLogEntryCallback - Callback for game log entries
- * @returns {Object} { newState } - Updated player state or original if unchanged
+ * @returns {Object} { newState, animationEvents } - Updated player state or original if unchanged, plus animation events
  */
 export const applyOnMoveEffects = (playerState, movedDrone, fromLane, toLane, addLogEntryCallback) => {
     const baseDrone = fullDroneCollection.find(d => d.name === movedDrone.name);
+    debugLog('ON_MOVE_EFFECTS', `Entry: drone="${movedDrone.name}", baseDrone found=${!!baseDrone}, hasAbilities=${!!baseDrone?.abilities}`, { fromLane, toLane, movedDroneId: movedDrone.id });
     if (!baseDrone?.abilities) {
-        return { newState: playerState };
+        debugLog('ON_MOVE_EFFECTS', 'Early exit: no baseDrone or no abilities');
+        return { newState: playerState, animationEvents: [] };
     }
 
     let newState = JSON.parse(JSON.stringify(playerState));
     let stateModified = false;
+    const animationEvents = [];
 
     const onMoveAbilities = baseDrone.abilities.filter(ability =>
         ability.type === 'TRIGGERED' && ability.trigger === 'ON_MOVE'
     );
+    debugLog('ON_MOVE_EFFECTS', `ON_MOVE abilities found: ${onMoveAbilities.length}`, onMoveAbilities.map(a => ({ name: a.name, effects: a.effects })));
 
     if (onMoveAbilities.length > 0) {
         const droneIndex = newState.dronesOnBoard[toLane].findIndex(d => d.id === movedDrone.id);
+        debugLog('ON_MOVE_EFFECTS', `droneIndex in ${toLane}: ${droneIndex}`, { droneIds: newState.dronesOnBoard[toLane].map(d => d.id), searchId: movedDrone.id });
         if (droneIndex !== -1) {
             const droneInState = newState.dronesOnBoard[toLane][droneIndex];
 
@@ -48,6 +55,7 @@ export const applyOnMoveEffects = (playerState, movedDrone, fromLane, toLane, ad
                 }
 
                 ability.effects?.forEach(effect => {
+                    debugLog('ON_MOVE_EFFECTS', `Processing effect: type="${effect.type}", scope="${effect.scope}"`, effect);
                     if (effect.type === 'PERMANENT_STAT_MOD') {
                         stateModified = true;
                         droneInState.statMods.push(effect.mod);
@@ -58,6 +66,30 @@ export const applyOnMoveEffects = (playerState, movedDrone, fromLane, toLane, ad
                             target: 'Self',
                             outcome: `Gained a permanent +${effect.mod.value} ${effect.mod.stat}.`
                         }, 'applyOnMoveEffects_mod');
+                    } else if (effect.type === 'HEAL_HULL' && effect.scope === 'SELF') {
+                        const baseDrone = fullDroneCollection.find(d => d.name === movedDrone.name);
+                        debugLog('ON_MOVE_EFFECTS', `HEAL_HULL branch: currentHull=${droneInState.hull}, maxHull=${baseDrone?.hull}, healValue=${effect.value}, needsHeal=${baseDrone && droneInState.hull < baseDrone.hull}`);
+                        if (baseDrone && droneInState.hull < baseDrone.hull) {
+                            stateModified = true;
+                            const oldHull = droneInState.hull;
+                            droneInState.hull = Math.min(baseDrone.hull, droneInState.hull + effect.value);
+                            debugLog('ON_MOVE_EFFECTS', `HEAL_HULL applied: ${oldHull} → ${droneInState.hull}`);
+                            addLogEntryCallback({
+                                player: newState.name,
+                                actionType: 'ABILITY',
+                                source: movedDrone.name,
+                                target: 'Self',
+                                outcome: `Healed ${droneInState.hull - oldHull} hull (${oldHull} → ${droneInState.hull}).`
+                            }, 'applyOnMoveEffects_heal');
+                            animationEvents.push(...buildHealAnimation({
+                                target: droneInState,
+                                healAmount: droneInState.hull - oldHull,
+                                targetPlayer: null,  // Caller fills this in
+                                targetLane: toLane,
+                                targetType: 'drone',
+                                card: null
+                            }));
+                        }
                     }
                 });
             });
@@ -65,7 +97,8 @@ export const applyOnMoveEffects = (playerState, movedDrone, fromLane, toLane, ad
     }
 
     return {
-        newState: stateModified ? newState : playerState
+        newState: stateModified ? newState : playerState,
+        animationEvents
     };
 };
 

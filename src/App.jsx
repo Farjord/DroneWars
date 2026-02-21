@@ -3512,6 +3512,207 @@ const App = ({ phaseAnimationQueue }) => {
     setAffectedDroneIds([]);
     setHoveredLane(null);
 
+    // Case 0: Movement cards - check if dropped on target or needs multi-select
+    // Must be checked before no-targeting case, since movement cards have no targeting property
+    if (card.effect?.type === 'SINGLE_MOVE' || card.effect?.type === 'MULTI_MOVE') {
+      debugLog('DRAG_DROP_DEPLOY', '🎯 Movement card detected', { target, targetType });
+
+      // Sub-case 0a: Movement card dropped on a valid target drone
+      if (target && targetType === 'drone') {
+        // Calculate valid targets for this specific card to avoid state timing issues
+        // validCardTargets from state may be stale/empty since selectedCard is not yet set
+        const { validCardTargets: dragCardTargets } = calculateAllValidTargets(
+          null,  // abilityMode
+          null,  // shipAbilityMode
+          null,  // multiSelectState
+          card,  // Use the dragged card directly (from draggedActionCard.card)
+          gameState.player1,
+          gameState.player2,
+          getLocalPlayerId(),
+          null,  // singleMoveMode
+          gameDataService.getEffectiveStats.bind(gameDataService)  // Pass stat calculator
+        );
+
+        const isValidTarget = dragCardTargets.some(t => t.id === target.id && t.owner === targetOwner);
+        if (isValidTarget) {
+          debugLog('DRAG_DROP_DEPLOY', '✅ Valid drone target - proceeding to lane selection', { droneId: target.id });
+
+          // Keep card selected for UI greyscale effect on other cards
+          setSelectedCard(card);
+
+          // Find which lane the target drone is in
+          // Use the appropriate player state based on target owner
+          const targetPlayerState = targetOwner === getLocalPlayerId()
+            ? localPlayerState
+            : opponentPlayerState;
+
+          // DEBUG: Log targetPlayerState structure to diagnose lane lookup failure
+          debugLog('DRAG_DROP_DEPLOY', '🔍 DEBUG: targetPlayerState', {
+            targetOwner,
+            localPlayerId: getLocalPlayerId(),
+            dronesOnBoard: targetPlayerState.dronesOnBoard,
+            dronesOnBoardKeys: Object.keys(targetPlayerState.dronesOnBoard || {}),
+            targetDroneId: target.id
+          });
+
+          const [targetLane] = Object.entries(targetPlayerState.dronesOnBoard).find(
+            ([_, drones]) => drones.some(d => d.id === target.id)
+          ) || [];
+
+          // DEBUG: Log targetLane lookup result
+          debugLog('DRAG_DROP_DEPLOY', '🔍 DEBUG: targetLane lookup result', {
+            targetLane,
+            foundLane: targetLane !== undefined,
+            targetDroneId: target.id
+          });
+
+          if (!targetLane) {
+            debugLog('DRAG_DROP_DEPLOY', '⛔ Error: Could not find lane for target drone', { droneId: target.id });
+            debugLog('BUTTON_CLICKS', '🔍 cancelCardSelection called from ERROR HANDLER - Could not find lane', {
+              timestamp: performance.now(),
+              refValue: multiSelectFlowInProgress.current,
+              droneId: target.id
+            });
+            cancelCardSelection('movement-lane-not-found');
+            return;
+          }
+
+          // NEW FLOW: For SINGLE_MOVE cards, enter singleMoveMode instead of multiSelectState
+          if (card.effect.type === 'SINGLE_MOVE') {
+            // CHECKPOINT 2: Card Dropped on Drone Target
+            debugLog('SINGLE_MOVE_FLOW', '🎯 CHECKPOINT 2: Card dropped on drone target', {
+              cardName: card.name,
+              targetId: target.id,
+              targetName: target.name,
+              targetOwner: targetOwner,
+              targetLane: targetLane,
+              targetObject: target
+            });
+
+            debugLog('SINGLE_MOVE_MODE', '🎯 Entering single-move mode', {
+              cardName: card.name,
+              droneId: target.id,
+              droneName: target.name,
+              sourceLane: targetLane,
+              targetOwner: targetOwner
+            });
+
+            // CHECKPOINT 3: Setting singleMoveMode State
+            const newSingleMoveMode = {
+              card: card,
+              droneId: target.id,
+              owner: targetOwner,
+              sourceLane: targetLane
+            };
+
+            debugLog('SINGLE_MOVE_FLOW', '💾 CHECKPOINT 3: Setting singleMoveMode state', {
+              singleMoveMode: newSingleMoveMode,
+              droneId: newSingleMoveMode.droneId,
+              owner: newSingleMoveMode.owner,
+              sourceLane: newSingleMoveMode.sourceLane,
+              cardName: newSingleMoveMode.card.name
+            });
+
+            setSingleMoveMode(newSingleMoveMode);
+
+            // Set selectedDrone so the drone highlights correctly
+            setSelectedDrone({ ...target, owner: targetOwner });
+
+            // Clear selectedCard so targeting useEffect prioritizes singleMoveMode
+            // The card will still be referenced via singleMoveMode.card
+            setSelectedCard(null);
+
+            return;
+          }
+
+          // MULTI_MOVE flow: Use the existing multiSelectState logic
+          setMultiSelectState({
+            card: card,
+            phase: 'select_destination',
+            selectedDrone: { ...target, owner: targetOwner },
+            sourceLane: targetLane,
+            maxDrones: 1,
+            actingPlayerId: getLocalPlayerId()
+          });
+
+          multiSelectFlowInProgress.current = true; // Set ref synchronously to prevent premature cleanup
+
+          debugLog('BUTTON_CLICKS', '🛡️ multiSelectFlowInProgress REF SET TO TRUE', {
+            timestamp: performance.now(),
+            location: 'handleActionCardDragEnd - after drone target validation',
+            refValue: multiSelectFlowInProgress.current,
+            shortStack: new Error().stack.split('\n').slice(0, 3).join('\n')
+          });
+
+          debugLog('BUTTON_CLICKS', '🔄 multiSelectState SET for lane selection', {
+            phase: 'select_destination',
+            selectedDroneId: target.id,
+            selectedDroneOwner: targetOwner,
+            sourceLane: targetLane,
+            maxDrones: 1,
+            actingPlayerId: getLocalPlayerId(),
+            timestamp: performance.now()
+          });
+
+          return;
+        } else {
+          debugLog('DRAG_DROP_DEPLOY', '⛔ Invalid drone target for movement card', { target, validCardTargets });
+          debugLog('BUTTON_CLICKS', '🔍 cancelCardSelection called from ERROR HANDLER - Invalid drone target', {
+            timestamp: performance.now(),
+            refValue: multiSelectFlowInProgress.current,
+            target: target,
+            cardName: card?.name
+          });
+          cancelCardSelection('movement-invalid-target');
+          return;
+        }
+      }
+
+      // Sub-case 0b: Movement card - either clicked (no target) or drag cancelled
+      debugLog('DRAG_DROP_DEPLOY', '🎯 Movement card - checking flow type');
+
+      if (card.effect.type === 'SINGLE_MOVE') {
+        // If card has explicit targeting (like Assault Reposition), this is a drag cancel
+        if (card.targeting) {
+          debugLog('DRAG_DROP_DEPLOY', '🎯 SINGLE_MOVE with targeting - drag cancelled (no target)');
+          cancelCardSelection('single-move-drag-no-target');
+          return;
+        }
+
+        // For cards without targeting (basic Maneuver), use multiSelectState
+        debugLog('DRAG_DROP_DEPLOY', '🎯 SINGLE_MOVE without targeting - using multiSelectState');
+        // Keep card selected for UI greyscale effect on other cards
+        setSelectedCard(card);
+        const friendlyDrones = Object.values(localPlayerState.dronesOnBoard)
+          .flat()
+          .filter(drone => !drone.isExhausted)
+          .map(drone => ({ id: drone.id, type: 'drone', owner: getLocalPlayerId() }));
+
+        setValidCardTargets(friendlyDrones);
+        setMultiSelectState({
+          card: card,
+          phase: 'select_drone',
+          selectedDrones: [],
+          sourceLane: null,
+          maxDrones: 1,
+          actingPlayerId: getLocalPlayerId()
+        });
+      } else {
+        // MULTI_MOVE - select source lane first
+        // Keep card selected for UI greyscale effect on other cards
+        setSelectedCard(card);
+        setMultiSelectState({
+          card: card,
+          phase: 'select_source_lane',
+          selectedDrones: [],
+          sourceLane: null,
+          maxDrones: card.effect.count || 3,
+          actingPlayerId: getLocalPlayerId()
+        });
+      }
+      return;
+    }
+
     // Case 1: No-target cards - show confirmation
     if (!card.targeting) {
       setCardConfirmation({ card, target: null });
@@ -3750,206 +3951,6 @@ const App = ({ phaseAnimationQueue }) => {
         setValidCardTargets(localPlayerState.hand.filter(c => c.id !== card.id));
         return;
       }
-    }
-
-    // Case 4: Movement cards - check if dropped on target or needs multi-select
-    if (card.effect?.type === 'SINGLE_MOVE' || card.effect?.type === 'MULTI_MOVE') {
-      debugLog('DRAG_DROP_DEPLOY', '🎯 Movement card detected', { target, targetType });
-
-      // Sub-case 4a: Movement card dropped on a valid target drone
-      if (target && targetType === 'drone') {
-        // Calculate valid targets for this specific card to avoid state timing issues
-        // validCardTargets from state may be stale/empty since selectedCard is not yet set
-        const { validCardTargets: dragCardTargets } = calculateAllValidTargets(
-          null,  // abilityMode
-          null,  // shipAbilityMode
-          null,  // multiSelectState
-          card,  // Use the dragged card directly (from draggedActionCard.card)
-          gameState.player1,
-          gameState.player2,
-          getLocalPlayerId(),
-          null,  // singleMoveMode
-          gameDataService.getEffectiveStats.bind(gameDataService)  // Pass stat calculator
-        );
-
-        const isValidTarget = dragCardTargets.some(t => t.id === target.id && t.owner === targetOwner);
-        if (isValidTarget) {
-          debugLog('DRAG_DROP_DEPLOY', '✅ Valid drone target - proceeding to lane selection', { droneId: target.id });
-
-          // Keep card selected for UI greyscale effect on other cards
-          setSelectedCard(card);
-
-          // Find which lane the target drone is in
-          // Use the appropriate player state based on target owner
-          const targetPlayerState = targetOwner === getLocalPlayerId()
-            ? localPlayerState
-            : opponentPlayerState;
-
-          // DEBUG: Log targetPlayerState structure to diagnose lane lookup failure
-          debugLog('DRAG_DROP_DEPLOY', '🔍 DEBUG: targetPlayerState', {
-            targetOwner,
-            localPlayerId: getLocalPlayerId(),
-            dronesOnBoard: targetPlayerState.dronesOnBoard,
-            dronesOnBoardKeys: Object.keys(targetPlayerState.dronesOnBoard || {}),
-            targetDroneId: target.id
-          });
-
-          const [targetLane] = Object.entries(targetPlayerState.dronesOnBoard).find(
-            ([_, drones]) => drones.some(d => d.id === target.id)
-          ) || [];
-
-          // DEBUG: Log targetLane lookup result
-          debugLog('DRAG_DROP_DEPLOY', '🔍 DEBUG: targetLane lookup result', {
-            targetLane,
-            foundLane: targetLane !== undefined,
-            targetDroneId: target.id
-          });
-
-          if (!targetLane) {
-            debugLog('DRAG_DROP_DEPLOY', '⛔ Error: Could not find lane for target drone', { droneId: target.id });
-            debugLog('BUTTON_CLICKS', '🔍 cancelCardSelection called from ERROR HANDLER - Could not find lane', {
-              timestamp: performance.now(),
-              refValue: multiSelectFlowInProgress.current,
-              droneId: target.id
-            });
-            cancelCardSelection('movement-lane-not-found');
-            return;
-          }
-
-          // NEW FLOW: For SINGLE_MOVE cards, enter singleMoveMode instead of multiSelectState
-          if (card.effect.type === 'SINGLE_MOVE') {
-            // CHECKPOINT 2: Card Dropped on Drone Target
-            debugLog('SINGLE_MOVE_FLOW', '🎯 CHECKPOINT 2: Card dropped on drone target', {
-              cardName: card.name,
-              targetId: target.id,
-              targetName: target.name,
-              targetOwner: targetOwner,
-              targetLane: targetLane,
-              targetObject: target
-            });
-
-            debugLog('SINGLE_MOVE_MODE', '🎯 Entering single-move mode', {
-              cardName: card.name,
-              droneId: target.id,
-              droneName: target.name,
-              sourceLane: targetLane,
-              targetOwner: targetOwner
-            });
-
-            // CHECKPOINT 3: Setting singleMoveMode State
-            const newSingleMoveMode = {
-              card: card,
-              droneId: target.id,
-              owner: targetOwner,
-              sourceLane: targetLane
-            };
-
-            debugLog('SINGLE_MOVE_FLOW', '💾 CHECKPOINT 3: Setting singleMoveMode state', {
-              singleMoveMode: newSingleMoveMode,
-              droneId: newSingleMoveMode.droneId,
-              owner: newSingleMoveMode.owner,
-              sourceLane: newSingleMoveMode.sourceLane,
-              cardName: newSingleMoveMode.card.name
-            });
-
-            setSingleMoveMode(newSingleMoveMode);
-
-            // Set selectedDrone so the drone highlights correctly
-            setSelectedDrone({ ...target, owner: targetOwner });
-
-            // Clear selectedCard so targeting useEffect prioritizes singleMoveMode
-            // The card will still be referenced via singleMoveMode.card
-            setSelectedCard(null);
-
-            return;
-          }
-
-          // MULTI_MOVE flow: Use the existing multiSelectState logic
-          setMultiSelectState({
-            card: card,
-            phase: 'select_destination',
-            selectedDrone: { ...target, owner: targetOwner },
-            sourceLane: targetLane,
-            maxDrones: 1,
-            actingPlayerId: getLocalPlayerId()
-          });
-
-          multiSelectFlowInProgress.current = true; // Set ref synchronously to prevent premature cleanup
-
-          debugLog('BUTTON_CLICKS', '🛡️ multiSelectFlowInProgress REF SET TO TRUE', {
-            timestamp: performance.now(),
-            location: 'handleActionCardDragEnd - after drone target validation',
-            refValue: multiSelectFlowInProgress.current,
-            shortStack: new Error().stack.split('\n').slice(0, 3).join('\n')
-          });
-
-          debugLog('BUTTON_CLICKS', '🔄 multiSelectState SET for lane selection', {
-            phase: 'select_destination',
-            selectedDroneId: target.id,
-            selectedDroneOwner: targetOwner,
-            sourceLane: targetLane,
-            maxDrones: 1,
-            actingPlayerId: getLocalPlayerId(),
-            timestamp: performance.now()
-          });
-
-          return;
-        } else {
-          debugLog('DRAG_DROP_DEPLOY', '⛔ Invalid drone target for movement card', { target, validCardTargets });
-          debugLog('BUTTON_CLICKS', '🔍 cancelCardSelection called from ERROR HANDLER - Invalid drone target', {
-            timestamp: performance.now(),
-            refValue: multiSelectFlowInProgress.current,
-            target: target,
-            cardName: card?.name
-          });
-          cancelCardSelection('movement-invalid-target');
-          return;
-        }
-      }
-
-      // Sub-case 4b: Movement card - either clicked (no target) or drag cancelled
-      debugLog('DRAG_DROP_DEPLOY', '🎯 Movement card - checking flow type');
-
-      if (card.effect.type === 'SINGLE_MOVE') {
-        // If card has explicit targeting (like Assault Reposition), this is a drag cancel
-        if (card.targeting) {
-          debugLog('DRAG_DROP_DEPLOY', '🎯 SINGLE_MOVE with targeting - drag cancelled (no target)');
-          cancelCardSelection('single-move-drag-no-target');
-          return;
-        }
-
-        // For cards without targeting (basic Maneuver), use multiSelectState
-        debugLog('DRAG_DROP_DEPLOY', '🎯 SINGLE_MOVE without targeting - using multiSelectState');
-        // Keep card selected for UI greyscale effect on other cards
-        setSelectedCard(card);
-        const friendlyDrones = Object.values(localPlayerState.dronesOnBoard)
-          .flat()
-          .filter(drone => !drone.isExhausted)
-          .map(drone => ({ id: drone.id, type: 'drone', owner: getLocalPlayerId() }));
-
-        setValidCardTargets(friendlyDrones);
-        setMultiSelectState({
-          card: card,
-          phase: 'select_drone',
-          selectedDrones: [],
-          sourceLane: null,
-          maxDrones: 1,
-          actingPlayerId: getLocalPlayerId()
-        });
-      } else {
-        // MULTI_MOVE - select source lane first
-        // Keep card selected for UI greyscale effect on other cards
-        setSelectedCard(card);
-        setMultiSelectState({
-          card: card,
-          phase: 'select_source_lane',
-          selectedDrones: [],
-          sourceLane: null,
-          maxDrones: card.effect.count || 3,
-          actingPlayerId: getLocalPlayerId()
-        });
-      }
-      return;
     }
 
     // Case 5: Targeted cards (drone, lane, section) - validate and show confirmation

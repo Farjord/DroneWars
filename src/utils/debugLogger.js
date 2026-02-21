@@ -42,10 +42,10 @@ const DEBUG_CONFIG = {
     CARDS: false,                // Card play and effects (ENABLED for Railgun investigation)
     RAILGUN_ANIMATION: false,    // Railgun-specific animation investigation (NEW)
     HAND_VIEW: false,            // Hand display and card interaction (ENABLED for mandatoryAction debugging)
-    CARD_PLAY: false,            // Card playability and clicking (DISABLED - too verbose)
+    CARD_PLAY: false,             // Card playability and clicking
     SHIELD_CLICKS: false,       // Shield allocation click tracking
-    BUTTON_CLICKS: false,        // Button click tracking and effects (DISABLED - too verbose)
-    MOVEMENT_LANES: false,       // Movement card lane highlighting diagnostics (DISABLED - not needed)
+    BUTTON_CLICKS: false,         // Button click tracking and effects
+    MOVEMENT_LANES: false,        // Movement card lane highlighting diagnostics
     GUEST_CASCADE: false,        // Guest optimistic cascade flow (ENABLED for checkpoint testing)
     CASCADE_LOOP: false,        // Cascade loop iteration details (DISABLED - already debugged)
     VALIDATION: false,           // State validation and reconciliation (ENABLED for checkpoint testing)
@@ -62,20 +62,20 @@ const DEBUG_CONFIG = {
     INTERCEPTOR_GLOW: false,     // Interceptor glow calculation debugging
     AI_DEPLOYMENT: false,        // AI deployment decisions, validation, and execution loop tracing
     CARD_SIZING: false,           // Card wrapper and sizing debugging
-    ASSET_PRELOAD: true,          // Asset preloading and splash screen timing
-    SP_COMBAT: true,              // Single-player combat init, abandon, and state transitions (ENABLED for waypoint debugging)
+    ASSET_PRELOAD: false,          // Asset preloading and splash screen timing
+    SP_COMBAT: false,              // Single-player combat init, abandon, and state transitions (ENABLED for waypoint debugging)
     DECK_BUILDER: false,           // Deck builder save, toast, and validation debugging
     SALVAGE_LOOT: false,          // PoI loot distribution: slot count, card count, rarities, positions
     SALVAGE_ENCOUNTER: false,     // Encounter rolls: chance, roll value, increase per salvage
     DRAG_PERF: false,             // Drag performance investigation: cursor position, re-renders, state updates
-    MODE_TRANSITION: true,        // All mode transitions: hangar <-> tacticalMap <-> inGame (with trigger source)
-    RUN_STATE: true,              // TacticalMapStateManager persistence debugging (background, waypoints)
-    COMBAT_FLOW: true,            // Combat type identification and state restoration after combat
-    WAYPOINT_MANAGER: true,      // Waypoint path storage and restoration debugging
+    MODE_TRANSITION: false,        // All mode transitions: hangar <-> tacticalMap <-> inGame (with trigger source)
+    RUN_STATE: false,              // TacticalMapStateManager persistence debugging (background, waypoints)
+    COMBAT_FLOW: false,            // Combat type identification and state restoration after combat
+    WAYPOINT_MANAGER: false,      // Waypoint path storage and restoration debugging
     REWARD_MANAGER: false,        // Reward generation and seed management debugging
-    TRANSITION_MANAGER: true,     // State transitions between TacticalMap and Combat
-    PATH_HIGHLIGHTING: true,      // Path/waypoint display state in HexGridRenderer
-    SOUND: true,                     // Sound system: unlock, preload, playback, bridge events
+    TRANSITION_MANAGER: false,     // State transitions between TacticalMap and Combat
+    PATH_HIGHLIGHTING: false,      // Path/waypoint display state in HexGridRenderer
+    SOUND: false,                     // Sound system: unlock, preload, playback, bridge events
 
     // Effect System Refactoring - Modular Processor Logging
     EFFECT_ROUTING: false,       // Effect router decisions (which processor handles effect)
@@ -115,6 +115,7 @@ const DEBUG_CONFIG = {
     // Momentum Glow Debugging
     MOMENTUM_GLOW: false,             // Card hover logging for momentum glow debugging
     CONSUMPTION_DEBUG: true,           // Snared/suppressed consumption flow tracing
+    ON_MOVE_EFFECTS: true,             // ON_MOVE ability trigger flow (HEAL, PERMANENT_STAT_MOD)
   }
 };
 

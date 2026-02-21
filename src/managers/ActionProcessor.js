@@ -939,7 +939,7 @@ setAnimationManager(animationManager) {
     newPlayerState.dronesOnBoard[toLane].push(movedDrone);
 
     // Apply ON_MOVE effects (e.g., Phase Jumper's Phase Shift)
-    let { newState: stateAfterMoveEffects } = gameEngine.applyOnMoveEffects(
+    let { newState: stateAfterMoveEffects, animationEvents: onMoveAnimationEvents } = gameEngine.applyOnMoveEffects(
       newPlayerState,
       movedDrone,
       fromLane,
@@ -960,6 +960,16 @@ setAnimationManager(animationManager) {
     // Wait for React to render drone in new lane before querying DOM for animation positions
     if (this.animationManager) {
       await this.animationManager.waitForReactRender();
+    }
+
+    // Play ON_MOVE heal animations (drone is now visually in destination lane)
+    if (onMoveAnimationEvents && onMoveAnimationEvents.length > 0) {
+      const healAnimations = onMoveAnimationEvents.map(event => ({
+        animationName: event.type,
+        timing: this.animationManager?.animations[event.type]?.timing || 'independent',
+        payload: { ...event, targetPlayer: playerId }
+      }));
+      await this.executeAndCaptureAnimations(healAnimations);
     }
 
     // --- Phase 2: Process mine triggers on committed state (drone is now visually in destination lane) ---
@@ -1473,7 +1483,8 @@ setAnimationManager(animationManager) {
     this.checkWinCondition();
 
     // Show Go Again notification when the turn continues
-    if (!result.shouldEndTurn) {
+    // Skip when card needs UI selection (e.g., movement cards entering lane/drone picker)
+    if (!result.shouldEndTurn && !result.needsCardSelection) {
       await this.executeGoAgainAnimation(playerId);
     }
 
@@ -1856,6 +1867,7 @@ setAnimationManager(animationManager) {
     });
 
     const hasMineAnimations = result.mineAnimationEvents && result.mineAnimationEvents.length > 0;
+    const hasHealAnimations = result.healAnimationEvents && result.healAnimationEvents.length > 0;
 
     // --- Phase 1: Commit movement state (drone visually in destination lane, card discarded) ---
     if (hasMineAnimations) {
@@ -1895,6 +1907,19 @@ setAnimationManager(animationManager) {
       }
     }];
     await this.executeAndCaptureAnimations(cardRevealAnimation);
+
+    // Play ON_MOVE heal animations (drone is now visually in destination lane)
+    if (hasHealAnimations) {
+      if (this.animationManager) {
+        await this.animationManager.waitForReactRender();
+      }
+      const healAnimations = result.healAnimationEvents.map(event => ({
+        animationName: event.type,
+        timing: this.animationManager?.animations[event.type]?.timing || 'independent',
+        payload: { ...event }
+      }));
+      await this.executeAndCaptureAnimations(healAnimations);
+    }
 
     // --- Phase 2: Play mine animations then commit mine destruction ---
     if (hasMineAnimations) {

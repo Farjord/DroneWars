@@ -264,6 +264,28 @@ const fullDroneCollection = [
      }],
     upgradeSlots: 2 
   },
+    {
+    name: 'Osiris',
+    class: 3,
+    limit: 2,
+    rebuildRate: 0.5,
+    rarity: 'Common',
+    attack: 0,
+    hull: 4,
+    shields: 1,
+    speed: 5,
+    image: '/DroneWars/img/Osiris.png', 
+    abilities: [{
+        name: 'Regeneration Protocol',
+        description: 'After this drone moves, heal 4 hull.',
+        type: 'TRIGGERED',
+        trigger: 'ON_MOVE',
+        effects: [
+            { type: 'HEAL_HULL', value: 4, scope: 'SELF' }
+        ]
+     }],
+    upgradeSlots: 1 
+  },
   {
     name: 'Elixir',
     class: 1, limit: 2, rebuildRate: 1.0, rarity: 'Common', attack: 0, hull: 1, shields: 3, speed: 2,
