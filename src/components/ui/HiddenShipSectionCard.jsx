@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { Cog } from 'lucide-react';
-import { RARITY_COLORS } from '../../data/cardData';
+import { RARITY_COLORS } from '../../data/rarityColors';
 import './HiddenCard.css';
 
 /**

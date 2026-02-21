@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import fullCardCollection, { RARITY_COLORS } from '../cardData';
+import fullCardCollection from '../cardData';
+import { RARITY_COLORS } from '../rarityColors';
 
 const VALID_RARITIES = ['Common', 'Uncommon', 'Rare', 'Mythic'];
 const VALID_TYPES = ['Ordnance', 'Support', 'Tactic', 'Upgrade'];

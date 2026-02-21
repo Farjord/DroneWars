@@ -7,7 +7,7 @@
 import React, { useMemo } from 'react';
 import { X } from 'lucide-react';
 import { starterPoolDroneNames } from '../../data/saveGameSchema';
-import { RARITY_COLORS } from '../../data/cardData';
+import { RARITY_COLORS } from '../../data/rarityColors';
 import SoundManager from '../../managers/SoundManager.js';
 
 /**

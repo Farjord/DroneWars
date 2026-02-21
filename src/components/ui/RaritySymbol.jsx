@@ -6,7 +6,7 @@
 // diamond (Rare), hexagon (Mythic)
 
 import React from 'react';
-import { RARITY_COLORS } from '../../data/cardData.js';
+import { RARITY_COLORS } from '../../data/rarityColors';
 
 /**
  * RARITY SYMBOL COMPONENT

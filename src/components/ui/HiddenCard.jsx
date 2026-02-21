@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { Package, Shield } from 'lucide-react';
-import { RARITY_COLORS } from '../../data/cardData';
+import { RARITY_COLORS } from '../../data/rarityColors';
 import './HiddenCard.css';
 
 // Gold/amber color scheme for salvage variant

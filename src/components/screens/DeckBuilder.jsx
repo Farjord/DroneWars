@@ -15,7 +15,7 @@ import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { getAllShips, getDefaultShip } from '../../data/shipData.js';
 import { gameEngine } from '../../logic/gameLogic.js';
 import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js';
-import { RARITY_COLORS } from '../../data/cardData.js';
+import { RARITY_COLORS } from '../../data/rarityColors';
 import { generateJSObjectLiteral, convertToAIFormat, convertFromAIFormat, downloadDeckFile } from '../../utils/deckExportUtils.js';
 import vsDecks from '../../data/vsModeDeckData.js';
 import aiPersonalities from '../../data/aiData.js';

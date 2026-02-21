@@ -37,7 +37,7 @@ import {
 import NewsTicker from '../ui/NewsTicker';
 import { generateMapData } from '../../utils/mapGenerator';
 import { mapTiers } from '../../data/mapData';
-import { RARITY_COLORS } from '../../data/cardData';
+import { RARITY_COLORS } from '../../data/rarityColors';
 import { getMapType, getMapBackground } from '../../logic/extraction/mapExtraction';
 import MusicManager from '../../managers/MusicManager.js';
 import { debugLog } from '../../utils/debugLogger.js';

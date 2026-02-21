@@ -7,7 +7,7 @@ import React, { useState, useMemo } from 'react';
 import { Package, Layers, Cpu, Rocket, Box, Zap, HelpCircle } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
 import fullCardCollection from '../../data/cardData';
-import { RARITY_COLORS } from '../../data/cardData';
+import { RARITY_COLORS } from '../../data/rarityColors';
 import fullDroneCollection from '../../data/droneData';
 import { shipComponentCollection } from '../../data/shipSectionData';
 import { shipCollection } from '../../data/shipData';

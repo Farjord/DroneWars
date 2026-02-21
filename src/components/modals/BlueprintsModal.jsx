@@ -9,7 +9,7 @@ import { useGameState } from '../../hooks/useGameState';
 import droneData from '../../data/droneData';
 import { shipComponentCollection } from '../../data/shipSectionData';
 import { getAllShips } from '../../data/shipData';
-import { RARITY_COLORS } from '../../data/cardData';
+import { RARITY_COLORS } from '../../data/rarityColors';
 import { starterDeck } from '../../data/playerDeckData';
 import { starterPoolShipIds } from '../../data/saveGameSchema';
 import { ECONOMY } from '../../data/economyData';
