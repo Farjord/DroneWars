@@ -116,14 +116,26 @@ Every file refactor MUST follow these phases. Skills listed are mandatory, not o
 15. Update the `## Change Log` in the REFACTOR_*.md with all completed steps
 16. Final commit on master (no push — user pushes manually)
 
-### Behavioral Baseline Template
+### REFACTOR_*.md Document Template
 
-Every `## Behavioral Baseline` section in a REFACTOR_*.md must include these subsections:
+Every REFACTOR_*.md must use this three-section structure:
 
-- **Exports / public API** — every exported function, constant, class, and its contract (params, return, side effects)
-- **State mutations and their triggers** — what state is changed, by which methods, and what triggers them
-- **Side effects** — animations fired, events emitted, network calls, localStorage writes
-- **Known edge cases** — race conditions, null guards, fallback behaviors, timing dependencies
+**## BEFORE** — Populated before any changes. Immutable once written.
+- `### Current State` — line count, location, responsibilities, section map, existing tests
+- `### Behavioral Baseline` — IMMUTABLE after initial writing. Must include:
+  - **Exports / public API** — every exported function, constant, class, and its contract (params, return, side effects)
+  - **State mutations and their triggers** — what state is changed, by which methods, and what triggers them
+  - **Side effects** — animations fired, events emitted, network calls, localStorage writes
+  - **Known edge cases** — race conditions, null guards, fallback behaviors, timing dependencies
+
+**## TO DO** — Plan for what needs to change. Written during planning phase.
+- `### Problems`, `### Extraction Plan`, `### Dead Code Removal`, `### Logging Improvements`, `### Comment Cleanup`, `### Testing Requirements`, `### Execution Order`, `### Risk Assessment`
+- Import Direction Diagrams go here
+- Not all subsections required — only include what's relevant
+
+**## NOW** — Populated during/after implementation. Records what actually happened.
+- `### Final State` — resulting file line counts, test counts, new file locations
+- `### Change Log` — step-by-step table (date, change, behavior preserved/altered, deviations)
 
 ### Minimum Viable Test Coverage
 
@@ -160,8 +172,10 @@ Mandatory bottom-up sequence — earlier files have no dependencies on later fil
 
 ### Refactoring Documentation (Non-Negotiable)
 
+Every REFACTOR_*.md MUST use the BEFORE / TO DO / NOW structure (see Document Template above).
+
 Every refactoring task MUST update these docs before the final commit:
-- **REFACTOR_*.md Change Log** — append a row per completed step (date, change, behavior preserved/altered, deviations)
+- **REFACTOR_*.md** — BEFORE section immutable; TO DO populated during planning; NOW populated during/after implementation with Final State and Change Log
 - **REFACTOR_PLAN.md** — mark the file's status as [x] Complete with date and summary in Notes column
 - **Implementation plan** — save the session's plan to `Design/Technical Debt Refactor/Plans/PLAN_<FILE>.md` before starting work. Update with actual outcomes in an `## Actual Outcomes` section at the end. This is the permanent record of intent vs. reality.
 - These updates are part of the deliverable. Incomplete docs = incomplete work.

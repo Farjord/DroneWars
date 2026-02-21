@@ -1,10 +1,15 @@
 # Implementation Plan: AIPhaseProcessor.js Refactor
 
+## BEFORE
+
 **Date**: 2026-02-21
 **Starting state**: 1,414 lines, 6 tests (co-located), ~270 lines dead code, 6 raw console calls, banned comment patterns
+
+## TO DO
+
 **Target state**: ~300-350 line orchestrator + 3 extracted strategy files, tests in `__tests__/`, clean logging, no dead code
 
-## Steps
+### Steps
 
 1. **Behavioral baseline** — Document exports, state mutations, side effects, edge cases in REFACTOR_AI_PHASE_PROCESSOR.md
 2. **Move test file** — `AIPhaseProcessor.test.js` → `src/managers/__tests__/`
@@ -20,7 +25,7 @@
 12. **Fix circular dependency** — Replace `gameStateManager.gameFlowManager.phaseAnimationQueue` with injected `isAnimationBlocking` callback
 13. **Code review + documentation** — Run code-reviewer, update Change Log, mark complete in REFACTOR_PLAN.md
 
-## Expected Outcomes
+### Expected Outcomes
 
 - AIPhaseProcessor.js: ~300-350 lines (orchestrator only)
 - AISimultaneousPhaseStrategy.js: ~150-200 lines
@@ -31,12 +36,14 @@
 - Zero banned comment patterns
 - Zero dead code
 
-## Actual Outcomes
+## NOW
+
+### Actual Outcomes
 
 **Date completed**: 2026-02-21
 **Commits**: 11 (862a001 through 21f86fd)
 
-### Final line counts
+#### Final line counts
 | File | Lines | Target | Status |
 |-|-|-|-|
 | AIPhaseProcessor.js | 406 | 300-350 | Slightly over — retains makeInterceptionDecision (60 lines) which is tightly coupled to orchestrator state |
@@ -44,7 +51,7 @@
 | AISequentialTurnStrategy.js | 347 | 350-400 | On target |
 | AIQuickDeployHandler.js | 114 | 100-150 | On target |
 
-### Test counts
+#### Test counts
 | File | Tests |
 |-|-|
 | AIPhaseProcessor.test.js | 8 |
@@ -53,11 +60,11 @@
 | AIQuickDeployHandler.test.js | 2 |
 | **Total** | **29** |
 
-### Deviations from plan
+#### Deviations from plan
 1. **Step 8 (Static imports)**: Aborted. Converting `await import('../logic/gameLogic.js')` to static caused `TypeError: __vite_ssr_import_0__.default is not a constructor` at `new EffectRouter()` due to Vite SSR module initialization ordering. Consolidated 3 redundant dynamic imports per method instead.
 2. **Orchestrator size**: 406 lines vs 300-350 target. The `makeInterceptionDecision` method (60 lines) was not extracted because it directly uses `this.gameDataService`, `this.gameStateManager`, and `this.isInitialized` — extracting it would just create pass-through complexity.
 
-### Quality checks
+#### Quality checks
 - Zero raw console calls in modified files
 - Zero banned comment patterns
 - All tests in `__tests__/` directories

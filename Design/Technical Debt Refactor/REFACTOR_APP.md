@@ -1,6 +1,8 @@
 # Refactor: App.jsx
 
-## Current State
+## BEFORE
+
+### Current State
 
 | Metric | Value |
 |-|-|
@@ -14,7 +16,7 @@
 | Existing tests | None (`src/__tests__/App*` does not exist) |
 | Render JSX | ~930 lines (6087-7003) |
 
-### Section Map
+#### Section Map
 
 | Section | Lines | Description |
 |-|-|-|
@@ -30,22 +32,29 @@
 | 9b: Game actions | 2556-6075 | Reset, deploy, pass, drag handlers, card/lane clicks |
 | 9c: Render | 6077-7003 | JSX with 30+ modal/animation components |
 
-### Key Observations
+#### Key Observations
 - App.jsx is 7,007 lines, 9x the 800-line threshold
 - Acts as a god object: orchestrator, state container, event hub, and renderer all in one
 - No inline sub-components, but massive prop-drilling to GameHeader (70+ props), GameBattlefield (50+ props), GameFooter (40+ props)
 - Module-level side effects: `targetingRouter` instantiated at line 117, `extractDroneNameFromId` helper at line 124
 
-## Problems
+### Behavioral Baseline
+<!-- IMMUTABLE — do not edit after initial writing -->
 
-### CODE_STANDARDS.md Violations
+*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+
+## TO DO
+
+### Problems
+
+#### CODE_STANDARDS.md Violations
 1. **Single responsibility**: App.jsx owns 10+ concerns (animation state, targeting, interception, shields, drag-and-drop, modals, multiplayer sync, game lifecycle, card selection, combat)
 2. **File size**: 7,007 lines (9x the 800-line threshold)
 3. **Business logic in component**: Direct gameEngine calls (validateDeployment at 4292, getLaneOfDrone at 4740), lane index calculations, targeting validation
 4. **Data mixed with UI**: Module-level `targetingRouter` and `extractDroneNameFromId` definitions
 5. **Banned comments**: `// NEW` at lines 3580, 4840
 
-### Dead Code / Legacy Click Handlers
+#### Dead Code / Legacy Click Handlers
 1. **handleTokenClick click-to-attack path** (lines 4959-4982): `selectedDrone && !isPlayer` attack via click. Drag-and-drop is canonical for attacks; this is the legacy click-to-initiate-action path. Note: The click handler also contains valid sub-action selections (multi-move, ability targeting, mandatory destruction, drone details) that must be preserved.
 2. **handleTargetClick ship section attack** (lines 5102-5151): `selectedDrone && targetType === 'section'` click-to-attack path. Attacks are drag-only now.
 3. **handleLaneClick selected drone move** (lines 5425-5481): `turnPhase === 'action' && selectedDrone` click-to-move path. Movement is drag-only now.
@@ -59,13 +68,13 @@
 11. **queueAnimations** (referenced at line 1731): Not defined in App.jsx -- likely dead reference.
 12. **RACE_CONDITION_DEBUG** (line 182): Always `true`, never used in any conditional.
 
-### Raw console.log / console.warn / console.error / console.trace
+#### Raw console.log / console.warn / console.error / console.trace
 17 instances of raw console calls that should use `debugLog()`:
 - `console.warn` at lines 1332, 2975, 2991, 3016, 3088, 3127, 6073
 - `console.error` at lines 1370, 1399, 1664, 2666, 3003, 3020, 3101, 3218, 3273, 5972
 - `console.trace` at lines 4379, 4665, 5479
 
-### Code Smells
+#### Code Smells
 1. **Massive prop drilling**: GameHeader receives 70+ props, GameBattlefield 50+, GameFooter 40+
 2. **Duplicated "waiting for opponent" pattern**: Lines 2392-2498 repeat the same phaseAnimationQueue/commitment check pattern 4 times (mandatoryDiscard, optionalDiscard, allocateShields, mandatoryDroneRemoval)
 3. **Duplicated "cost reminder arrow" pattern**: Identical arrow calculation code at lines 4294-4329 and 5243-5278
@@ -73,9 +82,9 @@
 5. **handleShipAbilityConfirmation onConfirm** (lines 6904-6977): 73-line inline callback with duplicated reallocation cleanup (done both inside switch case and after)
 6. **Functions not using useCallback**: cancelCardSelection, cancelAllActions, handleFooterViewToggle, handleFooterButtonClick, handleToggleDroneSelection, handleDeployDrone, handleShipSectionClick, downloadLogAsCSV, and 10+ others
 
-## Extraction Plan
+### Extraction Plan
 
-### Hook 1: useAnimationEffects
+#### Hook 1: useAnimationEffects
 **What to extract:**
 - State: flyingDrones, flashEffects, healEffects, cardVisuals, cardReveals, shipAbilityReveals, phaseAnnouncements, currentPhaseAnimation, isPhaseAnimationPlaying, laserEffects, teleportEffects, overflowProjectiles, splashEffects, barrageImpacts, railgunTurrets, railgunBeams, passNotifications, goAgainNotifications, statusConsumptions, cardPlayWarning, animationBlocking (21 state vars)
 - Effects: Phase animation queue subscription (lines 1874-1907)
@@ -85,7 +94,7 @@
 - **Why**: Animation state is self-contained. 21 state vars + their setters are only consumed by animation components in the render. Eliminates ~200 lines of state + ~200 lines of JSX.
 - **Dependencies**: phaseAnimationQueue (prop), gameAreaRef
 
-### Hook 2: useCardSelection
+#### Hook 2: useCardSelection
 **What to extract:**
 - State: selectedCard, validCardTargets, affectedDroneIds, cardConfirmation, multiSelectState (raw + wrapped), singleMoveMode, additionalCostState, additionalCostConfirmation, additionalCostSelectionContext, destroyUpgradeModal, upgradeSelectionModal, viewUpgradesModal
 - Refs: multiSelectFlowInProgress, additionalCostFlowInProgress
@@ -95,7 +104,7 @@
 - **Why**: Card selection is the most complex UI flow with 5+ phases. Isolating it makes the state machine testable. ~600 lines.
 - **Dependencies**: gameState, processActionWithGuestRouting, getLocalPlayerId, localPlayerState, opponentPlayerState, gameDataService
 
-### Hook 3: useTargeting
+#### Hook 3: useTargeting
 **What to extract:**
 - Functions: handleTargetClick, handleTokenClick (non-attack parts), handleLaneClick (non-deployment parts)
 - State: hoveredTarget, hoveredCardId, hoveredLane
@@ -104,7 +113,7 @@
 - **Why**: Targeting is a distinct concern with complex routing logic. ~400 lines.
 - **Dependencies**: abilityMode, shipAbilityMode, selectedCard, validCardTargets, validAbilityTargets, multiSelectState, singleMoveMode, additionalCostState
 
-### Hook 4: useInterception
+#### Hook 4: useInterception
 **What to extract:**
 - State: playerInterceptionChoice, potentialInterceptors, potentialGuardians, showOpponentDecidingModal, interceptionModeActive, selectedInterceptor, interceptedBadge
 - Functions: handleViewBattlefield, handleShowInterceptionDialog, handleResetInterception, handleDeclineInterceptionFromHeader, handleConfirmInterception
@@ -113,7 +122,7 @@
 - **Why**: Interception is a self-contained combat subsystem. ~200 lines.
 - **Dependencies**: resolveAttack, gameState.interceptionPending, localPlayerState, opponentPlayerState, draggedDrone, selectedDrone, singleMoveMode, abilityMode
 
-### Hook 5: useShieldAllocation
+#### Hook 5: useShieldAllocation
 **What to extract:**
 - State: reallocationPhase, shieldsToAdd, shieldsToRemove, originalShieldAllocation, postRemovalShieldAllocation, initialShieldAllocation, reallocationAbility, pendingShieldChanges, postRemovalPendingChanges, pendingShieldAllocations, pendingShieldsRemaining
 - Functions: handleAllocateShield, handleRemoveShield, handleAddShield, handleContinueToAddPhase, handleResetReallocation, handleCancelReallocation, handleConfirmReallocation, handleShipSectionClick, handleResetShieldAllocation, handleEndAllocation, handleResetShields, handleConfirmShields, handleShieldAction, handleRoundStartShieldAction
@@ -122,7 +131,7 @@
 - **Why**: Shield allocation is entirely self-contained with 11 state vars and 14 functions. ~500 lines.
 - **Dependencies**: processActionWithGuestRouting, gameState, localPlayerState, gameDataService
 
-### Hook 6: useDragMechanics
+#### Hook 6: useDragMechanics
 **What to extract:**
 - State: draggedCard, draggedDrone, draggedActionCard, arrowState, cardDragArrowState, droneDragArrowState, actionCardDragArrowState, costReminderArrowState
 - Refs: arrowLineRef, cardDragArrowRef, droneDragArrowRef, actionCardDragArrowRef, costReminderArrowRef
@@ -135,7 +144,7 @@
 - **Why**: Drag-and-drop is a distinct interaction layer with 8 state vars, 5 refs, 6 handlers, 7 effects. At ~1200 lines, a single hook would itself be a god object. Each drag type has independent state and handlers.
 - **Dependencies**: gameAreaRef, droneRefs, sectionRefs, resolveAttack, executeDeployment, multiSelectState, singleMoveMode, additionalCostState, validCardTargets
 
-### Hook 7: useModals
+#### Hook 7: useModals
 **What to extract:**
 - State: showAiHandModal, showDebugModal, showGlossaryModal, showAIStrategyModal, showAddCardModal, showAbandonRunModal, viewShipSectionModal, modalContent, deploymentConfirmation, moveConfirmation, attackConfirmation, detailedDroneInfo, cardToView, showWinnerModal, isViewDeckModalOpen, isViewDiscardModalOpen, showOpponentDronesModal, aiCardPlayReport, aiDecisionLogToShow, showMandatoryActionModal, confirmationModal, cardSelectionModal, abilityConfirmation, shipAbilityConfirmation, waitingForPlayerPhase
 - Functions: handleCloseAiCardReport, handleViewShipSection, handleShowOpponentDrones, handleOpenAddCardModal, handleForceWin, handleAddCardsToHand, handleCardInfoClick
@@ -143,7 +152,7 @@
 - **Why**: 25 modal state vars constitute purely UI state with no business logic. ~300 lines.
 - **Dependencies**: processActionWithGuestRouting (for a few handlers)
 
-### Hook 8: useActionRouting
+#### Hook 8: useActionRouting
 **What to extract:**
 - Functions: processActionWithGuestRouting, handleGameAction, handleSimultaneousAction
 - Constant: HOST_ONLY_ACTIONS
@@ -151,7 +160,7 @@
 - **Why**: Action routing is cross-cutting infrastructure. Extracting it clarifies the multiplayer architecture. ~150 lines.
 - **Dependencies**: gameState.gameMode, processAction, p2pManager, gameStateManager
 
-### Hook 9: useMultiplayerSync
+#### Hook 9: useMultiplayerSync
 **What to extract:**
 - Functions: sendPhaseCompletion, waitForBothPlayersComplete, checkBothPlayersHandLimitComplete
 - Effects: Multiplayer phase sync handler (lines 573-594), guest phase transition detection (lines 2258-2310), guest render completion (lines 2316-2320), simultaneous phase waiting modal (lines 2384-2498)
@@ -159,7 +168,7 @@
 - **Why**: Multiplayer sync is a distinct networking concern. ~300 lines.
 - **Dependencies**: isMultiplayer, p2pManager, gameStateManager, gameState
 
-### Hook 10: useGameLifecycle
+#### Hook 10: useGameLifecycle
 **What to extract:**
 - Functions: handleReset, handleExitGame, handleConfirmAbandonRun, handlePlayerPass, executeDeployment, handleDeployDrone
 - State: deck, lastCurrentPlayer, lastTurnPhase, optionalDiscardCount, footerView, isFooterOpen, isLogModalOpen, selectedDrone, selectedBackground
@@ -197,9 +206,9 @@ These are render-only extractions -- they receive props and render JSX with no s
 
 **Where**: `src/components/ui/AnimationLayer.jsx`, `src/components/ui/TargetingArrowLayer.jsx`, `src/components/ui/ModalLayer.jsx`
 
-## Dead Code Removal
+### Dead Code Removal
 
-### Legacy Click-to-Initiate-Action Code
+#### Legacy Click-to-Initiate-Action Code
 These handlers contain click-to-attack/move paths that are dead code now that drag-and-drop is canonical:
 
 | Handler | Lines | Dead Code Description |
@@ -210,7 +219,7 @@ These handlers contain click-to-attack/move paths that are dead code now that dr
 | handleToggleDroneSelection | 3230-3239 | Sets selectedDrone for click-based attacks |
 | handleDeployDrone | 3284-3306 | Click-based deployment (lane click path) |
 
-### Other Dead Code
+#### Other Dead Code
 | Item | Lines | Reason |
 |-|-|-|
 | HOST_ONLY_ACTIONS | 793 | Empty array, dead branch |
@@ -221,9 +230,9 @@ These handlers contain click-to-attack/move paths that are dead code now that dr
 | queueAnimations | 1731 | Referenced but not defined in App.jsx |
 | Duplicate multi-move block | 4986-5002 | Identical to lines 4840-4858 (both handle `select_drones`) |
 
-## Logging Improvements
+### Logging Improvements
 
-### Replace raw console calls with debugLog
+#### Replace raw console calls with debugLog
 | Line | Current | Category |
 |-|-|-|
 | 1332 | `console.warn("Attack already in progress...")` | `'COMBAT'` |
@@ -244,34 +253,34 @@ These handlers contain click-to-attack/move paths that are dead code now that dr
 | 5972 | `console.error('Failed to destroy drone:')` | `'COMBAT'` |
 | 6073 | `console.warn('Card not found in collection:')` | `'DEBUG_TOOLS'` |
 
-### Remove console.trace calls
+#### Remove console.trace calls
 Lines 4379, 4665, 5479: `console.trace('Invalid Move modal call stack')` -- these are debug artifacts, replace with debugLog or remove.
 
-### Noisy logs to review
+#### Noisy logs to review
 - `CHECKPOINT_FLOW` category has extensive logging throughout handleDroneDragEnd (lines 4142-4670) -- review for reduction after drag mechanics stabilize
 - `BUTTON_CLICKS` category in setMultiSelectState wrapper (lines 310-323) logs call stack on every invocation
 - `ADDITIONAL_COST_EFFECT_FLOW` has 20+ log points through the additional cost flow -- consolidate after extraction
 
-## Comment Cleanup
+### Comment Cleanup
 
-### Banned Comments to Remove
+#### Banned Comments to Remove
 | Line | Comment |
 |-|-|
 | 3580 | `// NEW FLOW: For SINGLE_MOVE cards...` |
 | 4840 | `// NEW: Prioritize multi-move selection` |
 
-### Stale Comments to Remove
+#### Stale Comments to Remove
 - Line 232: `// Note: handleSetHoveredTarget is defined later after draggedDrone state` -- no longer needed after extraction
 - Lines 2542-2554: Long removed-section comment block explaining auto-trigger removal -- replace with one-line TODO reference to GameFlowManager
 - Line 381-382: `// NOTE: enteredMandatoryDiscardWithExcess...refs REMOVED` -- stale removal note
 
-### Useful Comments to Add
+#### Useful Comments to Add
 - Each extracted hook file should get a JSDoc header explaining its role and what state it owns
 - Module-level `extractDroneNameFromId` should have a `@module` comment explaining it's a pure utility (then move to utils)
 
-## Testing Requirements
+### Testing Requirements
 
-### Intent-Based Tests BEFORE Extraction
+#### Intent-Based Tests BEFORE Extraction
 
 Write tests that verify behavior through the public interface before moving code. These establish a safety net.
 
@@ -283,16 +292,16 @@ Write tests that verify behavior through the public interface before moving code
 | `src/hooks/__tests__/useDragMechanics.test.js` | Drag start/end for cards, drones, action cards; arrow state management; cancel on mouseup |
 | `src/hooks/__tests__/useMultiplayerSync.test.js` | Phase completion sending, waiting overlay show/clear, guest phase detection |
 
-### Tests AFTER Extraction
+#### Tests AFTER Extraction
 - Each extracted hook gets unit tests in `src/hooks/__tests__/<HookName>.test.js`
 - Integration test verifying App.jsx still composes all hooks correctly
 - Drag-and-drop E2E tests (manual checklist -- see Risk Assessment)
 
-## Execution Order
+### Execution Order
 
 Each step is independently committable: extract/clean -> test -> review -> fix -> update plan -> commit -> push.
 
-### Phase A: Dead Code & Cleanup (Low Risk)
+#### Phase A: Dead Code & Cleanup (Low Risk)
 
 **Step 1: Remove dead code and fix logging**
 - Remove HOST_ONLY_ACTIONS empty array and dead branch
@@ -318,7 +327,7 @@ Each step is independently committable: extract/clean -> test -> review -> fix -
 - Evaluate and remove waitForBothPlayersComplete if unused
 - Remove or fix areBothPlayersReady / queueAnimations dead references
 
-### Phase B: Extract Self-Contained Hooks (Medium Risk)
+#### Phase B: Extract Self-Contained Hooks (Medium Risk)
 
 **Step 4: Extract useShieldAllocation**
 - 11 state vars, 14 functions, 1 effect
@@ -340,7 +349,7 @@ Each step is independently committable: extract/clean -> test -> review -> fix -
 - Pure UI state management
 - Extract alongside ModalLayer sub-component
 
-### Phase C: Extract Complex Hooks (Higher Risk)
+#### Phase C: Extract Complex Hooks (Higher Risk)
 
 **Step 8: Extract useActionRouting**
 - 3 functions, 1 constant
@@ -372,7 +381,7 @@ Each step is independently committable: extract/clean -> test -> review -> fix -
 - Extract last as it contains the "remainder" logic
 - Includes mandatory action handling and phase transition effects
 
-### Phase D: Sub-component Extraction (Low Risk)
+#### Phase D: Sub-component Extraction (Low Risk)
 
 **Step 14: Extract AnimationLayer sub-component**
 - All animation `.map()` JSX (lines 6119-6305)
@@ -387,7 +396,7 @@ Each step is independently committable: extract/clean -> test -> review -> fix -
 - Many have inline onConfirm/onCancel callbacks that need extraction
 - Largest render sub-component extraction
 
-### Phase E: Consolidation
+#### Phase E: Consolidation
 
 **Step 17: Deduplicate and consolidate**
 - Extract shared "waiting for opponent" pattern into helper (used 4 times)
@@ -402,9 +411,9 @@ Each step is independently committable: extract/clean -> test -> review -> fix -
 - Verify no business logic remains in App.jsx
 - Update this plan document with final state
 
-## Risk Assessment
+### Risk Assessment
 
-### What Could Break
+#### What Could Break
 
 | Risk | Severity | Mitigation |
 |-|-|-|
@@ -415,7 +424,7 @@ Each step is independently committable: extract/clean -> test -> review -> fix -
 | Animation timing breaks | Medium | useAnimationSetup passes 18 setters -- after extraction, these must come from the animation hook. |
 | Interception modal / drag interaction race | Medium | Test interception mode drag-to-intercept and modal toggle carefully. |
 
-### Drag-and-Drop Flows to Verify After Each Step
+#### Drag-and-Drop Flows to Verify After Each Step
 1. **Deploy drone**: Drag card from footer to lane -> confirmation if needed -> drone appears
 2. **Attack drone**: Drag friendly drone to enemy drone in same lane -> attack resolves
 3. **Attack ship section**: Drag friendly drone to enemy ship section -> guardian check -> attack resolves
@@ -427,21 +436,20 @@ Each step is independently committable: extract/clean -> test -> review -> fix -
 9. **Additional cost card**: Drag card to cost target -> destination selection -> effect target -> confirmation
 10. **Interception drag**: During interception mode, drag interceptor to attacker -> confirm
 
-### How to Validate
+#### How to Validate
 - Run existing test suite after each step
 - Manual smoke test of all 10 drag-and-drop flows above
 - Verify multiplayer by testing local + guest mode
 - Check browser console for any new errors/warnings after each extraction
 - Verify animation playback for attacks, deployments, card plays, and phase transitions
 
----
+## NOW
 
-## Behavioral Baseline
-<!-- IMMUTABLE — do not edit after initial writing -->
+### Final State
 
-*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+*To be completed after refactoring.*
 
-## Change Log
+### Change Log
 
 *Append entries here as refactoring steps are completed.*
 

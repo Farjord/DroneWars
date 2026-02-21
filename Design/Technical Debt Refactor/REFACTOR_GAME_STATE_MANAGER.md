@@ -1,12 +1,14 @@
 # Refactor: GameStateManager.js
 
-## Current State
+## BEFORE
+
+### Current State
 
 - **Line count**: 3,156 lines (4x over the 800-line "strong smell" threshold)
 - **Test coverage**: 12 co-located test files (NOT in `__tests__/` subfolder per CODE_STANDARDS)
 - **Singleton**: Exported as default singleton with HMR preservation
 
-### Responsibility Map
+#### Responsibility Map
 
 | Lines | Concern |
 |-|-|
@@ -30,7 +32,7 @@
 | 2897-3133 | endRun (~235 lines, summary, loot transfer, damage persistence, reputation) |
 | 3136-3156 | Singleton export & HMR preservation |
 
-### Existing Test Files (co-located, need migration to `__tests__/`)
+#### Existing Test Files (co-located, need migration to `__tests__/`)
 
 - `GameStateManager.cardPack.test.js`
 - `GameStateManager.consecutiveCombat.test.js`
@@ -45,9 +47,16 @@
 - `GameStateManager.startRun.test.js`
 - `GameStateManager.tacticalItems.test.js`
 
-## Problems
+### Behavioral Baseline
+<!-- IMMUTABLE — do not edit after initial writing -->
 
-### CODE_STANDARDS.md Violations
+*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+
+## TO DO
+
+### Problems
+
+#### CODE_STANDARDS.md Violations
 
 1. **God object**: One file handles 10+ distinct concerns (state validation, guest sync, single-player profile, inventory, deck management, run lifecycle, repair operations, tactical items, AI logging, event system).
 2. **Size**: 3,156 lines, nearly 4x the 800-line threshold.
@@ -55,20 +64,20 @@
 4. **Test location**: All 12 test files are co-located in `src/managers/` instead of `src/managers/__tests__/`.
 5. **Managers standard**: "One manager/processor class per file" -- the file also embeds validation, inventory management, repair operations, and run lifecycle logic that are separate concerns.
 
-### Dead Code
+#### Dead Code
 
 1. **Duplicate `updatePassInfo` method** (lines 1456 and 1654) -- identical implementation defined twice. The second shadows the first in practice but both are reachable depending on call site expectations.
 
-### Missing/Inconsistent Logging
+#### Missing/Inconsistent Logging
 
 1. **56 raw `console.log/warn/error/debug` calls** throughout the file. All should use `debugLog()` with appropriate categories.
 2. Logging is inconsistent: core state methods use `debugLog()`, but single-player methods use raw `console.log`.
 
-### Banned Comments
+#### Banned Comments
 
 1. Lines 3090, 3096, 3097: `// NEW:` comments violate the "no `// NEW`, `// CHANGED`" rule.
 
-### Code Smells
+#### Code Smells
 
 1. **Direct state mutation in `endRun`**: Lines 2990-3018, 3052, 3063, 3067 directly mutate `this.state.singlePlayerProfile` and `this.state.singlePlayerInventory` instead of using `setState()`. This bypasses the event system and validation.
 2. **startRun is 230 lines**: Builds run state, calculates hull from components, generates map -- multiple concerns in one method.
@@ -76,13 +85,13 @@
 4. **Stack trace parsing in production**: `setState()` creates `new Error().stack` on every single state update for validation. This is expensive and fragile.
 5. **Validation subsystem is 585 lines**: The 7 validation methods (lines 451-1036) are a self-contained concern that could be a separate validator.
 
-## Extraction Plan
+### Extraction Plan
 
-### Singleton Wiring Pattern
+#### Singleton Wiring Pattern
 
 All extracted managers receive the `GameStateManager` singleton instance in their constructor (constructor injection). Extracted managers access state via `this.gsm.state` and `this.gsm.setState()`. No back-imports of the singleton — extracted managers never `import gameStateManager from './GameStateManager'`. This eliminates circular dependency risk.
 
-### Extraction 1: SinglePlayerInventoryManager
+#### Extraction 1: SinglePlayerInventoryManager
 
 **What**: All single-player inventory, card discovery, and save/load methods.
 
@@ -103,7 +112,7 @@ All extracted managers receive the `GameStateManager` singleton instance in thei
 
 **Dependencies affected**: Components calling `gameStateManager.addToInventory()` etc. would import `singlePlayerInventoryManager` instead. ~10 files affected.
 
-### Extraction 2: ShipSlotManager
+#### Extraction 2: ShipSlotManager
 
 **What**: All deck/ship slot CRUD, repair operations, drone instance management.
 
@@ -131,7 +140,7 @@ All extracted managers receive the `GameStateManager` singleton instance in thei
 
 **Dependencies affected**: `HangarScreen.jsx`, `ExtractionDeckBuilder.jsx`, `RepairBayScreen.jsx`, `CombatOutcomeProcessor.js`, `DroneDamageProcessor.js`, and their tests.
 
-### Extraction 3: TacticalItemManager
+#### Extraction 3: TacticalItemManager
 
 **What**: Tactical item purchase/use/count and card pack purchase.
 
@@ -147,7 +156,7 @@ All extracted managers receive the `GameStateManager` singleton instance in thei
 
 **Dependencies affected**: `TacticalMapScreen.jsx`, `ShopModal.jsx`, and their tests.
 
-### Extraction 4: StateValidationService
+#### Extraction 4: StateValidationService
 
 **What**: All validation methods that guard state updates.
 
@@ -168,7 +177,7 @@ All extracted managers receive the `GameStateManager` singleton instance in thei
 
 **Dependencies affected**: Only `GameStateManager.setState()` calls these -- minimal external impact.
 
-### Extraction 5: RunLifecycleManager
+#### Extraction 5: RunLifecycleManager
 
 **What**: `startRun()` and `endRun()` with their helper logic.
 
@@ -182,7 +191,7 @@ All extracted managers receive the `GameStateManager` singleton instance in thei
 
 **Dependencies affected**: `HangarScreen.jsx`, `ExtractionController.js`, `CombatOutcomeProcessor.js`, and multiple test files.
 
-### Extraction 6: GuestSyncManager
+#### Extraction 6: GuestSyncManager
 
 **What**: Guest/P2P state synchronization methods.
 
@@ -205,7 +214,7 @@ All extracted managers receive the `GameStateManager` singleton instance in thei
 
 **Dependencies affected**: `GuestMessageQueueService.js`, `AppRouter.jsx` (P2P setup).
 
-## Import Direction Diagram
+### Import Direction Diagram
 
 After all extractions, the import graph looks like this (`A → B` means A imports from B):
 
@@ -226,16 +235,16 @@ GameStateManager             → (does NOT import extracted managers — they re
 
 **No circular dependencies**: Extracted managers import GameStateManager (singleton passed via constructor). GameStateManager does not import them back. `RunLifecycleManager` imports peer managers but none import it.
 
-## Dead Code Removal
+### Dead Code Removal
 
 | Item | Location | Reason |
 |-|-|-|
 | Duplicate `updatePassInfo()` | Lines 1654-1657 | Exact duplicate of lines 1456-1458. Second definition is dead because JS classes use last definition. |
 | `state_sync_requested` handler | Lines 195-203 | Comment says "deprecated, kept for compatibility" |
 
-## Logging Improvements
+### Logging Improvements
 
-### Raw console calls to convert to debugLog
+#### Raw console calls to convert to debugLog
 
 All 56 `console.log/warn/error/debug` calls should be converted to `debugLog()`. Suggested categories:
 
@@ -250,34 +259,34 @@ All 56 `console.log/warn/error/debug` calls should be converted to `debugLog()`.
 | `EXTRACTION` | `startRun`, `endRun` (partially already uses this) |
 | `VALIDATION` | All validation methods (some already use `console.warn` for violations -- these should remain as warnings but use `debugLog('VALIDATION', ...)`) |
 
-### Noisy logs to reduce
+#### Noisy logs to reduce
 
 - `logPlayerStateChanges()` (lines 727-810): Creates `new Error().stack` for every drone pool change. Consider gating behind a verbose flag.
 - `setState()` stack trace parsing (lines 394-410): Creates `new Error()` on every state update. Should be dev-only or behind a flag.
 
-## Comment Cleanup
+### Comment Cleanup
 
-### Banned comments to remove
+#### Banned comments to remove
 
 - Line 3090: `// NEW: Pass combat reputation`
 - Line 3096: `// NEW: Breakdown`
 - Line 3097: `// NEW: Breakdown`
 
-### Stale comments to remove
+#### Stale comments to remove
 
 - Line 31: `// PhaseManager dependency removed - using direct phase checks` -- historical note, no longer informative
 - Line 94: `// NOTE: currentRunState has been moved to TacticalMapStateManager` -- migration note
 - Line 2852: `// NOTE: currentRunState now managed by TacticalMapStateManager` -- duplicate migration note
 
-### Useful comments to keep
+#### Useful comments to keep
 
 - Section separators (`// ========================================`) -- aid navigation in large file
 - JSDoc blocks on public methods -- useful API documentation
 - Architecture comments in `setState` validation (explain WHY validation exists)
 
-## Testing Requirements
+### Testing Requirements
 
-### Before Extraction
+#### Before Extraction
 
 1. **Characterization tests for `startRun`**: Test hull calculation from sectionSlots, legacy fallback, default sections, security token deduction, map generation. File: `src/managers/__tests__/GameStateManager.startRun.test.js` (migrate existing).
 2. **Characterization tests for `endRun`**: Test loot transfer, damage persistence, MIA protocol, reputation award, shop pack refresh, run summary shape. File: `src/managers/__tests__/GameStateManager.endRun.test.js` (adapt existing `endRunBroadcast` and `credits` tests).
@@ -285,14 +294,14 @@ All 56 `console.log/warn/error/debug` calls should be converted to `debugLog()`.
 4. **Inventory method tests**: Test `addToInventory`, `updateCardDiscoveryState` state changes. File: `src/managers/__tests__/SinglePlayerInventoryManager.test.js`.
 5. **Ship slot CRUD tests**: Test save/delete/unlock/repair flows. File: `src/managers/__tests__/ShipSlotManager.test.js`.
 
-### After Extraction
+#### After Extraction
 
 1. Move all 12 existing co-located test files into `src/managers/__tests__/`.
 2. Update imports in each test file to reference new managers.
 3. Verify `GameStateManager` tests still pass (methods now delegate to extracted managers).
 4. Add integration tests verifying delegation wiring (GameStateManager calls through to extracted manager).
 
-### Test file locations
+#### Test file locations
 
 | Test file | Location |
 |-|-|
@@ -304,7 +313,7 @@ All 56 `console.log/warn/error/debug` calls should be converted to `debugLog()`.
 | RunLifecycleManager.test.js | `src/managers/__tests__/RunLifecycleManager.test.js` |
 | GuestSyncManager.test.js | `src/managers/__tests__/GuestSyncManager.test.js` |
 
-## Execution Order
+### Execution Order
 
 Each step is independently committable with tests green.
 
@@ -319,9 +328,9 @@ Each step is independently committable with tests green.
 9. **Extract `RunLifecycleManager`** (~465 lines). Orchestrates startRun/endRun using other managers. Write tests.
 10. **Final cleanup**: Verify GameStateManager is under 400 lines (core state, event system, game lifecycle, thin delegation). Update all import sites across 73 dependent files.
 
-## Risk Assessment
+### Risk Assessment
 
-### What Could Break
+#### What Could Break
 
 | Risk | Severity | Mitigation |
 |-|-|-|
@@ -332,7 +341,7 @@ Each step is independently committable with tests green.
 | HMR singleton preservation | Low | Extracted managers also need HMR preservation if they hold state |
 | Stack-trace-based validation breaks after extraction (different file names) | Low | Already handled by `_updateContext` flag; stack-based fallback is secondary |
 
-### How to Validate
+#### How to Validate
 
 1. Run full test suite after each extraction step
 2. Manual smoke test: start PvP game, start extraction run, complete combat, extract, verify save/load
@@ -340,14 +349,13 @@ Each step is independently committable with tests green.
 4. Verify GameStateManager line count is under 400 after step 10
 5. Run existing 12 test files from new `__tests__/` location after step 3
 
----
+## NOW
 
-## Behavioral Baseline
-<!-- IMMUTABLE — do not edit after initial writing -->
+### Final State
 
-*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+*To be completed after refactoring.*
 
-## Change Log
+### Change Log
 
 *Append entries here as refactoring steps are completed.*
 

@@ -1,12 +1,12 @@
 # Implementation Plan: saveGameSchema.js Refactor
 
-## Date
-2026-02-21
+## BEFORE
 
-## Goal
-Strip saveGameSchema.js to a pure data file (~130 lines) by extracting 9 functions into `src/logic/`.
+**Date**: 2026-02-21
+**Goal**: Strip saveGameSchema.js to a pure data file (~130 lines) by extracting 9 functions into `src/logic/`.
 
-## Pre-flight Metrics (Before)
+### Pre-flight Metrics
+
 | Metric | Value |
 |-|-|
 | saveGameSchema.js lines | 503 |
@@ -14,7 +14,9 @@ Strip saveGameSchema.js to a pure data file (~130 lines) by extracting 9 functio
 | Co-located test files | 2 |
 | Consumer files | 18 |
 
-## Extraction Targets
+## TO DO
+
+### Extraction Targets
 
 | Source functions | Destination | Reason |
 |-|-|-|
@@ -22,7 +24,7 @@ Strip saveGameSchema.js to a pure data file (~130 lines) by extracting 9 functio
 | `createDefaultShipSlot`, `defaultShipSlots`, `createNewSave` | `src/logic/save/saveGameFactory.js` | Factory functions |
 | `validateSaveFile` | `src/logic/save/saveGameValidator.js` | Validation logic |
 
-## Dependency Graph (Post-Extraction)
+### Dependency Graph (Post-Extraction)
 ```
 saveGameSchema.js (pure data) <- no imports from factory/migrations/validator
   ^                    ^
@@ -31,7 +33,7 @@ saveGameSchema.js (pure data) <- no imports from factory/migrations/validator
   migrations.js
 ```
 
-## Execution Steps
+### Execution Steps
 
 1. Phase 0: Pre-flight (tech-debt-review, archive plan, CLAUDE.md update)
 2. Phase 1: Behavioral baseline documentation
@@ -44,7 +46,7 @@ saveGameSchema.js (pure data) <- no imports from factory/migrations/validator
 9. Phase 4: Code review
 10. Phase 5: Tech-debt comparison, docs update, final commit
 
-## Consumer Import Updates
+### Consumer Import Updates
 
 | Consumer | Current | New |
 |-|-|-|
@@ -53,9 +55,11 @@ saveGameSchema.js (pure data) <- no imports from factory/migrations/validator
 | DroneSlotStructure.test.js | migration functions from schema | from migrations |
 | SlotBasedDamage.test.js | migration functions from schema | from migrations |
 
-## Actual Outcomes
+## NOW
 
-### Metrics
+### Actual Outcomes
+
+#### Metrics
 
 | Metric | Before | After |
 |-|-|-|
@@ -66,16 +70,16 @@ saveGameSchema.js (pure data) <- no imports from factory/migrations/validator
 | New extraction files | 0 | 3 (saveGameMigrations.js, saveGameFactory.js, saveGameValidator.js) |
 | Consumer files updated | — | 7 (GameStateManager, SaveGameService, ExtractionDeckBuilder, DroneSlotStructure.test, SlotBasedDamage.test, saveGameSchema.test, saveGameMigrations.test) |
 
-### Deviations from Plan
+#### Deviations from Plan
 
 1. **ExtractionDeckBuilder.jsx** was discovered as an additional consumer of migration functions (`createEmptyDroneSlots`, `migrateDroneSlotsToNewFormat`) — not listed in original plan. Import updated successfully.
 2. **Test consolidation**: Rather than migrating all old test content verbatim, the relocated `src/data/__tests__/saveGameSchema.test.js` tests data-only concerns (19 tests). Function tests are comprehensively covered in the new extraction test files (87 tests).
 3. **Default export removed entirely** rather than cleaned up — it had zero consumers.
 
-### Code Review
+#### Code Review
 Reviewed by strict principal technical architect agent. **APPROVED** with zero critical or important issues. One minor note: pre-existing misplaced test files in `src/managers/` (out of scope).
 
-### Commits (7 total)
+#### Commits (7 total)
 1. `f886b6d` — Add tests for saveGameSchema functions before extraction
 2. `03b89c6` — Remove dead code (fullCardCollection, deprecated exports)
 3. `17ade56` — Extract migration functions to saveGameMigrations.js
