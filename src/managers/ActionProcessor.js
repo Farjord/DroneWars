@@ -739,58 +739,13 @@ setAnimationManager(animationManager) {
       }
 
       // Phase 1: Execute mine animations with intermediate state (mine removal only)
-      const { pendingStateUpdate: mineStateUpdate, pendingFinalState: mineFinalState } =
-        this.prepareTeleportStates(mineAnimations, intermediatePlayerStates);
-      this.pendingStateUpdate = mineStateUpdate;
-      this.pendingFinalState = mineFinalState;
-
-      if (gameMode === 'host') {
-        this.broadcastStateToGuest();
-      }
-
-      try {
-        await this.animationManager.executeWithStateUpdate(mineAnimations, this);
-      } finally {
-        this.pendingStateUpdate = null;
-        this.pendingFinalState = null;
-      }
+      await this._executeAnimationPhase(mineAnimations, intermediatePlayerStates);
 
       // Phase 2: Execute attack animations with full final state (includes attack damage)
-      const { pendingStateUpdate: attackStateUpdate, pendingFinalState: attackFinalState } =
-        this.prepareTeleportStates(attackAnimations, result.newPlayerStates);
-      this.pendingStateUpdate = attackStateUpdate;
-      this.pendingFinalState = attackFinalState;
-
-      if (gameMode === 'host') {
-        this.broadcastStateToGuest();
-      }
-
-      try {
-        await this.animationManager.executeWithStateUpdate(attackAnimations, this);
-      } finally {
-        this.pendingStateUpdate = null;
-        this.pendingFinalState = null;
-      }
+      await this._executeAnimationPhase(attackAnimations, result.newPlayerStates);
     } else {
       // Single-phase execution: no mine animations or only mine animations (no attack after)
-      const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
-        animations,
-        result.newPlayerStates
-      );
-
-      this.pendingStateUpdate = pendingStateUpdate;
-      this.pendingFinalState = pendingFinalState;
-
-      if (gameMode === 'host') {
-        this.broadcastStateToGuest();
-      }
-
-      try {
-        await this.animationManager.executeWithStateUpdate(animations, this);
-      } finally {
-        this.pendingStateUpdate = null;
-        this.pendingFinalState = null;
-      }
+      await this._executeAnimationPhase(animations, result.newPlayerStates);
     }
 
     // Clear interceptionPending state after attack completes (closes "opponent deciding" modal)
@@ -1138,31 +1093,7 @@ setAnimationManager(animationManager) {
       this.pendingActionAnimations.push(...animations);
     }
 
-    // Prepare states for TELEPORT_IN animation timing
-    const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
-      animations,
-      result.newPlayerStates
-    );
-
-    // Set pending states for Animation Manager
-    this.pendingStateUpdate = pendingStateUpdate;
-    this.pendingFinalState = pendingFinalState;
-
-    // HOST: Broadcast IMMEDIATELY (before execution starts)
-    // Guest receives execution plan with zero delay
-    if (gameMode === 'host') {
-      this.broadcastStateToGuest();
-    }
-
-    // Execute with proper timing (BOTH HOST and GUEST use same path)
-    // Animation Manager orchestrates: pre-state anims → state update → post-state anims
-    // This ensures entities exist in DOM before destruction animations play
-    try {
-      await this.animationManager.executeWithStateUpdate(animations, this);
-    } finally {
-      this.pendingStateUpdate = null;
-      this.pendingFinalState = null;
-    }
+    await this._executeAnimationPhase(animations, result.newPlayerStates);
 
     // Check for win conditions after ability
     this.checkWinCondition();
@@ -1253,36 +1184,7 @@ setAnimationManager(animationManager) {
         player2: playerId === 'player2' ? result.newPlayerState : (result.opponentState || currentState.player2)
       };
 
-      const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
-        animations,
-        newPlayerStates
-      );
-
-      // Set pending states for Animation Manager
-      this.pendingStateUpdate = pendingStateUpdate;
-      this.pendingFinalState = pendingFinalState;
-
-      // HOST: Broadcast IMMEDIATELY (before execution starts)
-      // Guest receives execution plan with zero delay
-      if (gameMode === 'host') {
-        this.broadcastStateToGuest();
-      }
-
-      // Execute with proper timing (BOTH HOST and GUEST use same path)
-      // TELEPORT_IN is post-state with mid-animation reveal:
-      // 1. pendingStateUpdate applies state with isTeleporting: true (invisible drone)
-      // 2. AnimationManager waits for React, starts animation
-      // 3. At 70%, AnimationManager calls revealTeleportedDrones()
-      // 4. revealTeleportedDrones applies pendingFinalState (visible drone)
-      try {
-        await this.animationManager.executeWithStateUpdate(animations, this);
-      } finally {
-        this.pendingStateUpdate = null;
-        this.pendingFinalState = null;
-      }
-
-      // NOTE: Turn transitions now handled by GameFlowManager
-      // Deployment always ends turn
+      await this._executeAnimationPhase(animations, newPlayerStates);
 
       debugLog('TURN_TRANSITION_DEBUG', 'processDeployment returning', {
         success: result.success,
@@ -1444,31 +1346,7 @@ setAnimationManager(animationManager) {
       this.pendingActionAnimations.push(...animations);
     }
 
-    // Prepare states for TELEPORT_IN animation timing (e.g., token creation)
-    const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
-      animations,
-      result.newPlayerStates
-    );
-
-    // Set pending states for Animation Manager
-    this.pendingStateUpdate = pendingStateUpdate;
-    this.pendingFinalState = pendingFinalState;
-
-    // HOST: Broadcast IMMEDIATELY (before execution starts)
-    // Guest receives execution plan with zero delay
-    if (gameMode === 'host') {
-      this.broadcastStateToGuest();
-    }
-
-    // Execute with proper timing (BOTH HOST and GUEST use same path)
-    // Animation Manager orchestrates: pre-state anims → state update → post-state anims
-    // For TELEPORT_IN animations (e.g., token creation), proper invisible→visible transition
-    try {
-      await this.animationManager.executeWithStateUpdate(animations, this);
-    } finally {
-      this.pendingStateUpdate = null;
-      this.pendingFinalState = null;
-    }
+    await this._executeAnimationPhase(animations, result.newPlayerStates);
 
     // Check for win conditions after card play
     this.checkWinCondition();
@@ -2118,34 +1996,7 @@ setAnimationManager(animationManager) {
       this.pendingActionAnimations.push(...animations);
     }
 
-    // Prepare states for TELEPORT_IN animation timing (if ship abilities can spawn drones)
-    const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
-      animations,
-      result.newPlayerStates
-    );
-
-    // Set pending states for Animation Manager
-    this.pendingStateUpdate = pendingStateUpdate;
-    this.pendingFinalState = pendingFinalState;
-
-    // HOST: Broadcast IMMEDIATELY (before execution starts)
-    // Guest receives execution plan with zero delay
-    if (gameMode === 'host') {
-      this.broadcastStateToGuest();
-    }
-
-    // Execute with proper timing (BOTH HOST and GUEST use same path)
-    // Animation Manager orchestrates: pre-state anims → state update → post-state anims
-    // For TELEPORT_IN animations (if ship abilities can spawn drones), proper invisible→visible transition
-    try {
-      await this.animationManager.executeWithStateUpdate(animations, this);
-    } finally {
-      this.pendingStateUpdate = null;
-      this.pendingFinalState = null;
-    }
-
-    // NOTE: Turn transitions now handled by GameFlowManager based on shouldEndTurn flag
-    // GameFlowManager processes turn transitions after ship ability animations complete
+    await this._executeAnimationPhase(animations, result.newPlayerStates);
 
     // Return result with animations for optimistic action tracking
     return {
@@ -3159,6 +3010,35 @@ setAnimationManager(animationManager) {
       pendingStateUpdate: stateWithInvisibleDrones,  // Invisible drones (with isTeleporting)
       pendingFinalState: completeNewState            // Visible drones (without isTeleporting)
     };
+  }
+
+  /**
+   * Execute a single animation phase: prepare teleport states, broadcast to guest, execute, clean up.
+   * Extracts the repeated boilerplate from processAttack, processAbility, processDeployment,
+   * processCardPlay, and processShipAbility.
+   * @param {Array} animations - Animation events to execute
+   * @param {Object} newPlayerStates - { player1, player2 } from game logic result
+   */
+  async _executeAnimationPhase(animations, newPlayerStates) {
+    const { pendingStateUpdate, pendingFinalState } = this.prepareTeleportStates(
+      animations,
+      newPlayerStates
+    );
+
+    this.pendingStateUpdate = pendingStateUpdate;
+    this.pendingFinalState = pendingFinalState;
+
+    const gameMode = this.gameStateManager.get('gameMode');
+    if (gameMode === 'host') {
+      this.broadcastStateToGuest();
+    }
+
+    try {
+      await this.animationManager.executeWithStateUpdate(animations, this);
+    } finally {
+      this.pendingStateUpdate = null;
+      this.pendingFinalState = null;
+    }
   }
 
   /**
