@@ -55,6 +55,7 @@ const DEBUG_CONFIG = {
     FIRST_PLAYER: false,        // First player determination and seeded random (DISABLED for clean logs)
     SHIP_ABILITY: false,        // Ship ability execution and turn ending
     EXTRACTION: true,           // Single-player extraction mode (hangar, tactical map, deployment)
+    SAVE: false,                 // Save game migration and format conversion
     ENCOUNTER: false,          // Random encounter rolls and combat triggers
     QUICK_DEPLOY: false,         // Quick deployment validation and selection (ENABLED for phase chaos investigation)
     PHASE_FLOW: false,           // Phase transitions and announcements (ENABLED for phase chaos investigation)

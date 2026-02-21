@@ -4,6 +4,7 @@
  */
 
 import { getAllTacticalItemIds } from '../../data/tacticalItemData.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 // --- Drone Slot Migrations ---
 
@@ -28,6 +29,11 @@ export function createEmptyDroneSlots() {
  */
 export function migrateDroneSlotsToNewFormat(oldSlots) {
   if (!oldSlots) return createEmptyDroneSlots();
+
+  const hasOldFormat = oldSlots.some(s => s.isDamaged !== undefined || s.droneName !== undefined);
+  if (hasOldFormat) {
+    debugLog('SAVE', 'Migrating drone slots from old format (isDamaged/droneName)', { slotCount: oldSlots.length });
+  }
 
   return oldSlots.map((slot, i) => ({
     slotIndex: i,
@@ -90,12 +96,16 @@ export function convertComponentsToSectionSlots(shipComponents = {}) {
 export function migrateShipSlotToNewFormat(oldSlot) {
   // If already migrated (has droneSlots and sectionSlots), return as-is
   if (oldSlot.droneSlots && oldSlot.sectionSlots) {
+    if (oldSlot.drones) {
+      debugLog('SAVE', 'Stripping legacy drones array from already-migrated ship slot', { slotId: oldSlot.id });
+    }
     // Remove legacy drones array if present
     const { drones, ...rest } = oldSlot;
     return rest;
   }
 
   // Migrate from old format
+  debugLog('SAVE', 'Migrating ship slot from legacy format to slot-based damage', { slotId: oldSlot.id, hasDrones: !!oldSlot.drones });
   const { drones, ...rest } = oldSlot;
   return {
     ...rest,
@@ -117,6 +127,7 @@ export function migrateTacticalItems(profile) {
 
   // If no tacticalItems at all, create the object
   if (!profile.tacticalItems) {
+    debugLog('SAVE', 'Backfilling missing tacticalItems object', { itemCount: allItemIds.length });
     return {
       ...profile,
       tacticalItems: allItemIds.reduce((acc, id) => {
@@ -128,10 +139,12 @@ export function migrateTacticalItems(profile) {
 
   // If tacticalItems exists but might be missing some IDs, add them
   const updatedItems = { ...profile.tacticalItems };
-  allItemIds.forEach(id => {
-    if (updatedItems[id] === undefined) {
-      updatedItems[id] = 0;
-    }
+  const missingIds = allItemIds.filter(id => updatedItems[id] === undefined);
+  if (missingIds.length > 0) {
+    debugLog('SAVE', 'Backfilling missing tactical item IDs', { missingIds });
+  }
+  missingIds.forEach(id => {
+    updatedItems[id] = 0;
   });
 
   return {

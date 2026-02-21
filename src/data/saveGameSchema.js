@@ -119,7 +119,6 @@ export const defaultPlayerProfile = {
  */
 export const defaultInventory = {};
 
-
 /**
  * Default discovered cards - empty at start
  * Cards added when unlocked from card packs
