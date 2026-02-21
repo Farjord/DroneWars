@@ -4586,11 +4586,16 @@ setAnimationManager(animationManager) {
   }
 
   /**
-   * Consume Snared status from a drone (for human player UI path)
-   * Sets isSnared = false, isExhausted = true, logs the cancellation
+   * Consume a status effect from a drone (snared or suppressed)
+   * Clears the status flag, exhausts the drone, logs the cancellation, plays animation
+   * @param {string} statusType - 'snared' or 'suppressed'
    * @param {Object} params - { droneId, playerId }
    */
-  async processSnaredConsumption({ droneId, playerId }) {
+  async processStatusConsumption(statusType, { droneId, playerId }) {
+    const statusFlag = statusType === 'snared' ? 'isSnared' : 'isSuppressed';
+    const actionVerb = statusType === 'snared' ? 'move' : 'attack';
+    const statusLabel = statusType === 'snared' ? 'Snare' : 'Suppressed';
+
     const currentState = this.gameStateManager.getState();
     const playerState = currentState[playerId];
     const newPlayerState = JSON.parse(JSON.stringify(playerState));
@@ -4598,7 +4603,7 @@ setAnimationManager(animationManager) {
     for (const lane in newPlayerState.dronesOnBoard) {
       const drone = newPlayerState.dronesOnBoard[lane].find(d => d.id === droneId);
       if (drone) {
-        drone.isSnared = false;
+        drone[statusFlag] = false;
         drone.isExhausted = true;
         this.gameStateManager.updatePlayerState(playerId, newPlayerState);
         this.gameStateManager.addLogEntry({
@@ -4606,7 +4611,7 @@ setAnimationManager(animationManager) {
           actionType: 'STATUS_CONSUMED',
           source: drone.name,
           target: lane.replace('lane', 'Lane '),
-          outcome: `${drone.name}'s move was cancelled — Snare effect consumed. Drone is now exhausted.`
+          outcome: `${drone.name}'s ${actionVerb} was cancelled — ${statusLabel} effect consumed. Drone is now exhausted.`
         });
 
         const laneNumber = lane.replace('lane', '');
@@ -4616,17 +4621,16 @@ setAnimationManager(animationManager) {
           payload: {
             droneName: drone.name,
             laneNumber,
-            statusType: 'snared',
+            statusType,
             targetPlayer: playerId,
             timestamp: Date.now()
           }
         }];
 
-        // Broadcast-first pattern: send state + animations to guest BEFORE blocking on local animation
         const gameMode = this.gameStateManager.get('gameMode');
         if (gameMode === 'host' && animation.length > 0) {
           this.pendingActionAnimations.push(...animation);
-          this.broadcastStateToGuest('snaredConsumption');
+          this.broadcastStateToGuest(`${statusType}Consumption`);
         }
         if (this.animationManager) {
           const source = gameMode === 'guest' ? 'GUEST_OPTIMISTIC' : gameMode === 'host' ? 'HOST_LOCAL' : 'LOCAL';
@@ -4644,63 +4648,13 @@ setAnimationManager(animationManager) {
     }
   }
 
-  /**
-   * Consume Suppressed status from a drone (for human player UI path)
-   * Sets isSuppressed = false, isExhausted = true, logs the cancellation
-   * @param {Object} params - { droneId, playerId }
-   */
-  async processSuppressedConsumption({ droneId, playerId }) {
-    const currentState = this.gameStateManager.getState();
-    const playerState = currentState[playerId];
-    const newPlayerState = JSON.parse(JSON.stringify(playerState));
+  // Delegate methods for backwards compatibility with switch cases
+  async processSnaredConsumption(params) {
+    return this.processStatusConsumption('snared', params);
+  }
 
-    for (const lane in newPlayerState.dronesOnBoard) {
-      const drone = newPlayerState.dronesOnBoard[lane].find(d => d.id === droneId);
-      if (drone) {
-        drone.isSuppressed = false;
-        drone.isExhausted = true;
-        this.gameStateManager.updatePlayerState(playerId, newPlayerState);
-        this.gameStateManager.addLogEntry({
-          player: playerState.name,
-          actionType: 'STATUS_CONSUMED',
-          source: drone.name,
-          target: lane.replace('lane', 'Lane '),
-          outcome: `${drone.name}'s attack was cancelled — Suppressed effect consumed. Drone is now exhausted.`
-        });
-
-        const laneNumber = lane.replace('lane', '');
-        const animation = [{
-          animationName: 'STATUS_CONSUMPTION',
-          timing: 'independent',
-          payload: {
-            droneName: drone.name,
-            laneNumber,
-            statusType: 'suppressed',
-            targetPlayer: playerId,
-            timestamp: Date.now()
-          }
-        }];
-
-        // Broadcast-first pattern: send state + animations to guest BEFORE blocking on local animation
-        const gameMode = this.gameStateManager.get('gameMode');
-        if (gameMode === 'host' && animation.length > 0) {
-          this.pendingActionAnimations.push(...animation);
-          this.broadcastStateToGuest('suppressedConsumption');
-        }
-        if (this.animationManager) {
-          const source = gameMode === 'guest' ? 'GUEST_OPTIMISTIC' : gameMode === 'host' ? 'HOST_LOCAL' : 'LOCAL';
-          await this.animationManager.executeAnimations(animation, source);
-        }
-
-        return {
-          success: true,
-          animations: {
-            actionAnimations: animation,
-            systemAnimations: []
-          }
-        };
-      }
-    }
+  async processSuppressedConsumption(params) {
+    return this.processStatusConsumption('suppressed', params);
   }
 }
 
