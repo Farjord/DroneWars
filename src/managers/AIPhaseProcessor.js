@@ -68,13 +68,6 @@ class AIPhaseProcessor {
     // Subscribe to game state changes for AI turn detection
     if (gameStateManager) {
       this.stateSubscriptionCleanup = gameStateManager.subscribe((event) => {
-        debugLog('TURN_TRANSITION_DEBUG', 'AI subscription received state change', {
-          eventType: event.type,
-          currentPlayer: event.state?.currentPlayer,
-          turnPhase: event.state?.turnPhase,
-          gameMode: event.state?.gameMode,
-          isProcessing: this.isProcessing
-        });
         this.checkForAITurn(event.state);
       });
     }
@@ -146,7 +139,7 @@ class AIPhaseProcessor {
     const availableDrones = this.extractDronesFromDeck(deckDroneNames);
 
     if (availableDrones.length < 5) {
-      console.error('❌ Failed to extract minimum required drones from deck');
+      debugLog('AI_DECISIONS', '❌ Failed to extract minimum required drones from deck');
       throw new Error(`Only extracted ${availableDrones.length} drones from AI deck (minimum 5 required)`);
     }
 
@@ -168,7 +161,7 @@ class AIPhaseProcessor {
     const drones = droneNames.map(name => {
       const drone = this.dronePool?.find(d => d.name === name);
       if (!drone) {
-        console.warn(`⚠️ Drone "${name}" not found in drone collection`);
+        debugLog('AI_DECISIONS', `⚠️ Drone "${name}" not found in drone collection`);
       }
       return drone;
     }).filter(Boolean); // Remove undefined entries
@@ -744,50 +737,28 @@ class AIPhaseProcessor {
    */
   async executeShieldAllocationTurn(gameState) {
     debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.executeShieldAllocationTurn starting...');
-    debugLog('SHIELD_CLICKS', '🤖 [AI SHIELD ALLOC] Starting AI shield allocation');
 
     if (!this.actionProcessor) {
       throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
     }
 
-    const aiState = gameState.player2;
     const aiPlacedSections = gameState.opponentPlacedSections;
-
-    // Get total shields available to allocate
     const shieldsToAllocate = gameState.opponentShieldsToAllocate || 0;
 
-    debugLog('SHIELD_CLICKS', `🤖 [AI SHIELD ALLOC] AI has ${shieldsToAllocate} shields to allocate`);
-
-    if (shieldsToAllocate === 0) {
-      debugLog('AI_DECISIONS', '🤖 AI has no shields to allocate');
-      debugLog('SHIELD_CLICKS', '🤖 [AI SHIELD ALLOC] Early return - no shields');
+    if (shieldsToAllocate === 0 || aiPlacedSections.length === 0) {
+      debugLog('AI_DECISIONS', '🤖 AI has no shields to allocate or no sections');
       return;
     }
 
-    // Get list of all placed sections
-    // Note: aiPlacedSections is already an array of section name strings like ['powerCell', 'bridge', 'droneControlHub']
-    debugLog('SHIELD_CLICKS', `🤖 [AI SHIELD ALLOC] AI placed sections:`, aiPlacedSections);
+    debugLog('AI_DECISIONS', `🤖 AI distributing ${shieldsToAllocate} shields across ${aiPlacedSections.length} sections`);
 
-    if (aiPlacedSections.length === 0) {
-      debugLog('AI_DECISIONS', '🤖 AI has no placed sections to allocate shields to');
-      debugLog('SHIELD_CLICKS', '🤖 [AI SHIELD ALLOC] Early return - no sections');
-      return;
-    }
-
-    // Distribute shields evenly across all sections
+    // Distribute one shield at a time in round-robin fashion for even distribution
     let remainingShields = shieldsToAllocate;
     let currentSectionIndex = 0;
 
-    debugLog('AI_DECISIONS', `🤖 AI distributing ${shieldsToAllocate} shields evenly across ${aiPlacedSections.length} sections`);
-    debugLog('SHIELD_CLICKS', `🤖 [AI SHIELD ALLOC] Starting distribution loop: ${remainingShields} shields to distribute`);
-
-    // Distribute one shield at a time in round-robin fashion for even distribution
     while (remainingShields > 0) {
       const sectionName = aiPlacedSections[currentSectionIndex];
 
-      debugLog('SHIELD_CLICKS', `🤖 [AI SHIELD ALLOC] Loop iteration: ${remainingShields} remaining, adding to ${sectionName}`);
-
-      // Add shield to current section via ActionProcessor
       // Use direct call instead of queueAction to avoid deadlock (we're already inside a queued action)
       await this.actionProcessor.processAddShield({
         sectionName,
@@ -796,13 +767,9 @@ class AIPhaseProcessor {
 
       remainingShields--;
       currentSectionIndex = (currentSectionIndex + 1) % aiPlacedSections.length;
-
-      debugLog('AI_DECISIONS', `🤖 AI allocated shield to ${sectionName}, ${remainingShields} remaining`);
-      debugLog('SHIELD_CLICKS', `🤖 [AI SHIELD ALLOC] Shield added, now ${remainingShields} remaining`);
     }
 
     debugLog('AI_DECISIONS', '✅ AI shield allocation complete');
-    debugLog('SHIELD_CLICKS', '✅ [AI SHIELD ALLOC] AI shield allocation complete - exiting');
   }
 
   /**
@@ -810,19 +777,6 @@ class AIPhaseProcessor {
    * @param {Object} state - Current game state
    */
   checkForAITurn(state) {
-    debugLog('TURN_TRANSITION_DEBUG', 'checkForAITurn called', {
-      currentPlayer: state.currentPlayer,
-      turnPhase: state.turnPhase,
-      gameMode: state.gameMode,
-      isProcessing: this.isProcessing,
-      player2Passed: state.passInfo?.player2Passed,
-      willTrigger: state.gameMode === 'local' &&
-                   state.currentPlayer === 'player2' &&
-                   ['deployment', 'action'].includes(state.turnPhase) &&
-                   !this.isProcessing &&
-                   !state.passInfo?.player2Passed
-    });
-
     // Don't process if AI is already taking a turn or in wrong mode
     if (this.isProcessing || state.gameMode !== 'local') {
       return;
@@ -925,7 +879,7 @@ class AIPhaseProcessor {
       } else if (state.turnPhase === 'action') {
         result = await this.executeActionTurn(state);
       } else {
-        console.warn(`⚠️ AIPhaseProcessor: Unknown sequential phase: ${state.turnPhase}`);
+        debugLog('AI_DECISIONS', `⚠️ AIPhaseProcessor: Unknown sequential phase: ${state.turnPhase}`);
         return;
       }
 
@@ -955,7 +909,7 @@ class AIPhaseProcessor {
       }
 
     } catch (error) {
-      console.error('❌ AIPhaseProcessor: Error executing turn:', error);
+      debugLog('AI_DECISIONS', '❌ AIPhaseProcessor: Error executing turn:', error);
     } finally {
       this.isProcessing = false;
     }
@@ -1043,7 +997,7 @@ class AIPhaseProcessor {
     debugLog('QUICK_DEPLOY', '🤖 AI evaluating single deployment...');
 
     if (!this.gameStateManager) {
-      console.error('[AI Single Deploy] GameStateManager not available');
+      debugLog('QUICK_DEPLOY', '[AI Single Deploy] GameStateManager not available');
       return null;
     }
 
