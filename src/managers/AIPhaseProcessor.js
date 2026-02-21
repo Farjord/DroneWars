@@ -288,17 +288,7 @@ class AIPhaseProcessor {
 
     // Check if AI should pass
     if (this.shouldPass(gameState, 'deployment')) {
-      // Execute pass directly through ActionProcessor
-      await this.actionProcessor.queueAction({
-        type: 'playerPass',
-        payload: {
-          playerId: 'player2',
-          playerName: 'AI Player',
-          turnPhase: 'deployment',
-          passInfo: gameState.passInfo,
-          opponentPlayerId: 'player1'
-        }
-      });
+      await this.actionProcessor.queueAction(this._buildPassAction('deployment', gameState.passInfo));
       return;
     }
 
@@ -341,16 +331,7 @@ class AIPhaseProcessor {
 
     // Execute the decision directly through ActionProcessor
     if (aiDecision.type === 'pass') {
-      await this.actionProcessor.queueAction({
-        type: 'playerPass',
-        payload: {
-          playerId: 'player2',
-          playerName: 'AI Player',
-          turnPhase: 'deployment',
-          passInfo: gameState.passInfo,
-          opponentPlayerId: 'player1'
-        }
-      });
+      await this.actionProcessor.queueAction(this._buildPassAction('deployment', gameState.passInfo));
     } else if (aiDecision.type === 'deploy') {
       // Execute deployment
       const result = await this.actionProcessor.queueAction({
@@ -386,19 +367,9 @@ class AIPhaseProcessor {
           actualTurn: gameState.turn
         });
 
-        // BUG FIX: When deployment fails (e.g., CPU limit reached), pass the turn
-        // to prevent infinite loop where AI keeps trying to deploy the same drone
+        // When deployment fails (e.g., CPU limit reached), pass the turn to prevent infinite loop
         debugLog('AI_DEPLOYMENT', `🔄 Deployment failed - forcing AI to pass turn to prevent infinite loop`);
-        await this.actionProcessor.queueAction({
-          type: 'playerPass',
-          payload: {
-            playerId: 'player2',
-            playerName: 'AI Player',
-            turnPhase: 'deployment',
-            passInfo: gameState.passInfo,
-            opponentPlayerId: 'player1'
-          }
-        });
+        await this.actionProcessor.queueAction(this._buildPassAction('deployment', gameState.passInfo));
       }
     }
   }
@@ -413,17 +384,7 @@ class AIPhaseProcessor {
 
     // Check if AI should pass
     if (this.shouldPass(gameState, 'action')) {
-      // Execute pass directly through ActionProcessor
-      await this.actionProcessor.queueAction({
-        type: 'playerPass',
-        payload: {
-          playerId: 'player2',
-          playerName: 'AI Player',
-          turnPhase: 'action',
-          passInfo: gameState.passInfo,
-          opponentPlayerId: 'player1'
-        }
-      });
+      await this.actionProcessor.queueAction(this._buildPassAction('action', gameState.passInfo));
       return;
     }
 
@@ -469,17 +430,8 @@ class AIPhaseProcessor {
 
     // Execute the decision directly through ActionProcessor
     if (aiDecision.type === 'pass') {
-      await this.actionProcessor.queueAction({
-        type: 'playerPass',
-        payload: {
-          playerId: 'player2',
-          playerName: 'AI Player',
-          turnPhase: 'action',
-          passInfo: gameState.passInfo,
-          opponentPlayerId: 'player1'
-        }
-      });
-      return null; // No special result for pass
+      await this.actionProcessor.queueAction(this._buildPassAction('action', gameState.passInfo));
+      return null;
     } else {
       // Execute action through ActionProcessor
       const result = await this.actionProcessor.queueAction({
@@ -703,6 +655,25 @@ class AIPhaseProcessor {
       dronesToRemove,
       playerId: 'player2',
       updatedPlayerState: aiState
+    };
+  }
+
+  /**
+   * Build a standard pass action for the AI player
+   * @param {string} phase - Current turn phase
+   * @param {Object} passInfo - Current pass state
+   * @returns {Object} Action object for playerPass
+   */
+  _buildPassAction(phase, passInfo) {
+    return {
+      type: 'playerPass',
+      payload: {
+        playerId: 'player2',
+        playerName: 'AI Player',
+        turnPhase: phase,
+        passInfo,
+        opponentPlayerId: 'player1'
+      }
     };
   }
 
