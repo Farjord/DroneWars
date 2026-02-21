@@ -208,3 +208,17 @@ All 7 instances listed in Problems section must be converted:
 - Verify hex grid positions are deterministic (same seed = same layout)
 - Check that tutorial dismissal state persists correctly
 - Run full test suite after each extraction step
+
+---
+
+## Behavioral Baseline
+<!-- IMMUTABLE — do not edit after initial writing -->
+
+*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+
+## Change Log
+
+*Append entries here as refactoring steps are completed.*
+
+| Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
+|-|-|-|-|-|-|

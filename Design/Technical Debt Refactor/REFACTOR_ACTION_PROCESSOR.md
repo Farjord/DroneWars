@@ -387,3 +387,17 @@ After each extraction step, manually test:
 3. Manual playthrough: complete one full game in local mode after each phase
 4. Manual playthrough: complete one round in host/guest P2P mode after Phase 3
 5. Check browser console for any raw `console.log/warn/error` calls (should be zero)
+
+---
+
+## Behavioral Baseline
+<!-- IMMUTABLE — do not edit after initial writing -->
+
+*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+
+## Change Log
+
+*Append entries here as refactoring steps are completed.*
+
+| Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
+|-|-|-|-|-|-|

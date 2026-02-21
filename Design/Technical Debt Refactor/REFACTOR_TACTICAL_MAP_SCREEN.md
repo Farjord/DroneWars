@@ -259,3 +259,17 @@ Each step is independently committable with tests green.
 3. **Console audit**: After logging migration, verify no raw `console.log` remains. Run `grep -r "console\." src/components/screens/TacticalMapScreen.jsx` to confirm.
 4. **Import audit**: After each extraction, verify no circular dependencies. Run the app and check for import errors.
 5. **State persistence**: Verify combat -> tactical map -> combat round-trip preserves waypoints, detection, and salvage state. This is the highest-risk flow.
+
+---
+
+## Behavioral Baseline
+<!-- IMMUTABLE — do not edit after initial writing -->
+
+*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+
+## Change Log
+
+*Append entries here as refactoring steps are completed.*
+
+| Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
+|-|-|-|-|-|-|

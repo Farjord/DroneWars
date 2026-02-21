@@ -416,3 +416,17 @@ Each step is independently committable: extract/clean -> test -> review -> fix -
 - Verify multiplayer by testing local + guest mode
 - Check browser console for any new errors/warnings after each extraction
 - Verify animation playback for attacks, deployments, card plays, and phase transitions
+
+---
+
+## Behavioral Baseline
+<!-- IMMUTABLE — do not edit after initial writing -->
+
+*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+
+## Change Log
+
+*Append entries here as refactoring steps are completed.*
+
+| Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
+|-|-|-|-|-|-|

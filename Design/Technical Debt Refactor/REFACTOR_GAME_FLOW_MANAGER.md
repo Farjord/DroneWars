@@ -183,3 +183,17 @@ All 27 `console.error`/`console.warn` calls should use `debugLog()`. Specific ex
 - Manual smoke test: Play a full single-player game (deckSelection through multiple rounds)
 - Manual smoke test: Quick deploy flow in Round 1
 - Verify no raw `console.log` calls remain after logging step
+
+---
+
+## Behavioral Baseline
+<!-- IMMUTABLE — do not edit after initial writing -->
+
+*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+
+## Change Log
+
+*Append entries here as refactoring steps are completed.*
+
+| Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
+|-|-|-|-|-|-|

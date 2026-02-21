@@ -68,6 +68,17 @@ Refer to `Design/Technical Debt Refactor/CODE_STANDARDS.md` for full standards.
 - **Every refactored file must pass review by a strict principal technical architect agent** before being committed. The review checks: best practices, clean architecture, no code smell, proper patterns, intent-based tests, correct logging, useful comments only, and no dead code.
 - Use `superpowers:code-reviewer` agent after completing each file refactor.
 
+## Refactoring Process
+
+- **Understand before changing.** Before modifying any code during a refactor:
+  1. Read and understand every function/block being touched
+  2. Document its current behavior, intent, contracts, and edge cases in a `## Behavioral Baseline` section of the refactor plan doc
+  3. Describe what the code does, what it depends on, what depends on it, and any non-obvious design decisions
+  4. This baseline is **immutable** — once written, it must not be edited or removed, even after the refactor is complete. It is the permanent "before" record.
+- **State changes explicitly.** For every change, clearly state: what is being changed, why, what behavior is preserved, and what behavior (if any) is intentionally altered.
+- **Small, verifiable steps.** Each commit must be independently testable. If a step breaks something, we must be able to identify exactly which change caused it by referencing the behavioral baseline.
+- **When in doubt, ask.** If the intent behind existing code is unclear, flag it for discussion rather than guessing. Many patterns exist for good reasons that aren't obvious.
+
 ## Interaction Paradigm
 
 - **Drag-and-drop is the canonical model for ACTION INITIATION only**: playing cards from hand, moving drones, attacking with drones. These are drag-initiated, not click-initiated.

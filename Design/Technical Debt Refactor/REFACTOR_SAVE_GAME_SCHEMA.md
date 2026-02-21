@@ -209,3 +209,17 @@ Write comprehensive tests for behavior that will be moved, ensuring no regressio
 - Run full test suite (`npm test`) after every extraction step
 - Run the game and verify: new game creation, save/load cycle, slot migration on old save files
 - Grep for old import paths to ensure none remain after each step
+
+---
+
+## Behavioral Baseline
+<!-- IMMUTABLE — do not edit after initial writing -->
+
+*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+
+## Change Log
+
+*Append entries here as refactoring steps are completed.*
+
+| Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
+|-|-|-|-|-|-|
