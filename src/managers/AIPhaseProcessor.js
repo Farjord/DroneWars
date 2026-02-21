@@ -111,7 +111,7 @@ class AIPhaseProcessor {
 
   /**
    * Process AI drone selection for droneSelection phase
-   * NEW FLOW: Selects 5 drones from AI's deck of 10 drones
+   * Selects 5 drones from AI's deck of 10 drones
    * @param {Object} aiPersonality - Optional AI personality override (future use)
    * @returns {Promise<Array>} Array of 5 selected drone objects
    */
@@ -184,7 +184,7 @@ class AIPhaseProcessor {
 
   /**
    * Process AI deck selection for deckSelection phase
-   * NEW FLOW: Returns both deck (40 cards) and drones (10 drones)
+   * Returns both deck (40 cards) and drones (10 drones)
    * @param {Object} aiPersonality - Optional AI personality override
    * @returns {Promise<Object>} Object with { deck: Array, drones: Array }
    */
@@ -277,10 +277,6 @@ class AIPhaseProcessor {
 
     return placedSections;
   }
-
-  // REMOVED: Legacy hard-coded placement strategy methods (selectSectionsForPlacement,
-  // arrangeAggressivePlacement, arrangeEconomicPlacement, arrangeBalancedPlacement)
-  // All AIs now use their defined shipComponents with component IDs
 
   /**
    * Execute AI turn for deployment phase
