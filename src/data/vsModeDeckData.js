@@ -24,7 +24,7 @@ const vsDecks = [
     { id: 'CARD019', quantity: 2 },
     { id: 'CARD023', quantity: 2 },
     { id: 'CARD060', quantity: 2 },
-    { id: 'CARD032_Enhanced', quantity: 1 },
+    { id: 'CARD032_ENHANCED', quantity: 1 },
     { id: 'CARD035', quantity: 2 },
     { id: 'DOCTRINE_003', quantity: 1 }
   ],

@@ -1126,7 +1126,7 @@ const fullCardCollection = [
 },
 
 {
-    id: 'CARD032_Enhanced',
+    id: 'CARD032_ENHANCED',
     baseCardId: 'CARD032',
     name: 'Barrage+',
     maxInDeck: 2,
@@ -1316,7 +1316,7 @@ const fullCardCollection = [
     },
     effect: {
       type: 'RESTORE_SECTION_SHIELDS',
-      value: 2,
+      value: 3,
       goAgain: true
     }
 },
@@ -2215,7 +2215,7 @@ const fullCardCollection = [
     name: 'Raise the Alarm',
     maxInDeck: 2,
     rarity: 'Uncommon',
-    type: 'Tactics',
+    type: 'Tactic',
     cost: 3,
     momentumCost: 1,
     aiOnly: true,
