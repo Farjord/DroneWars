@@ -2637,13 +2637,7 @@ class GameFlowManager {
 
       // AI deploys any remaining drones
       if (this.actionProcessor && this.actionProcessor.aiPhaseProcessor) {
-        const aiProcessor = this.actionProcessor.aiPhaseProcessor;
-        if (aiProcessor.finishDeploymentPhase) {
-          await aiProcessor.finishDeploymentPhase();
-        } else if (aiProcessor.handleQuickDeployResponse) {
-          // Fallback to old behavior if new methods not available
-          await aiProcessor.handleQuickDeployResponse();
-        }
+        await this.actionProcessor.aiPhaseProcessor.finishDeploymentPhase();
       }
 
       // Clear pending quick deploy
