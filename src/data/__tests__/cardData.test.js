@@ -45,13 +45,20 @@ describe('fullCardCollection', () => {
     });
   });
 
-  describe('enhanced card baseCardId matching', () => {
+  describe('baseCardId conventions', () => {
     const enhancedCards = fullCardCollection.filter((c) => c.id.toUpperCase().endsWith('_ENHANCED'));
-    const baseIds = new Set(fullCardCollection.map((c) => c.id));
+    const baseCards = fullCardCollection.filter((c) => !c.id.toUpperCase().endsWith('_ENHANCED'));
+    const allIds = new Set(fullCardCollection.map((c) => c.id));
+
+    baseCards.forEach((card) => {
+      it(`${card.id} has self-referential baseCardId`, () => {
+        expect(card.baseCardId).toBe(card.id);
+      });
+    });
 
     enhancedCards.forEach((card) => {
       it(`${card.id} references an existing base card via baseCardId`, () => {
-        expect(baseIds).toContain(card.baseCardId);
+        expect(allIds).toContain(card.baseCardId);
       });
 
       it(`${card.id} has _ENHANCED suffix in correct casing`, () => {
