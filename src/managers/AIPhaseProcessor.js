@@ -21,6 +21,10 @@ import {
   shouldPass as _shouldPass,
   buildPassAction
 } from '../logic/ai/AISequentialTurnStrategy.js';
+import {
+  executeSingleDeployment as _executeSingleDeployment,
+  finishDeploymentPhase as _finishDeploymentPhase
+} from '../logic/ai/AIQuickDeployHandler.js';
 import GameDataService from '../services/GameDataService.js';
 import { debugLog } from '../utils/debugLogger.js';
 
@@ -400,110 +404,14 @@ class AIPhaseProcessor {
     return result;
   }
 
-  /**
-   * Execute a single AI deployment in response to player's quick deploy
-   * Returns result if deployment succeeded, null if AI passed or no drones available
-   * @returns {Object|null} Deployment result or null
-   */
+  // --- Quick Deploy Delegation ---
+
   async executeSingleDeployment() {
-    debugLog('QUICK_DEPLOY', '🤖 AI evaluating single deployment...');
-
-    if (!this.gameStateManager) {
-      debugLog('QUICK_DEPLOY', '[AI Single Deploy] GameStateManager not available');
-      return null;
-    }
-
-    const gameState = this.gameStateManager.getState();
-
-    // Check if AI should pass
-    if (this.shouldPass(gameState, 'deployment')) {
-      debugLog('QUICK_DEPLOY', '🤖 AI passes (shouldPass returned true)');
-      return null;
-    }
-
-    const { aiBrain } = await import('../logic/aiLogic.js');
-    const { gameEngine } = await import('../logic/gameLogic.js');
-    const { default: DeploymentProcessor } = await import('../logic/deployment/DeploymentProcessor.js');
-
-    const addLogEntry = (entry, source, context) => {
-      this.gameStateManager.addLogEntry(entry, source, context);
-    };
-
-    const aiDecision = aiBrain.handleOpponentTurn({
-      player1: gameState.player1,
-      player2: gameState.player2,
-      turn: gameState.turn,
-      placedSections: gameState.placedSections,
-      opponentPlacedSections: gameState.opponentPlacedSections,
-      getShipStatus: gameEngine.getShipStatus,
-      calculateEffectiveShipStats: this.effectiveShipStatsWrapper,
-      gameStateManager: this.gameStateManager,
-      addLogEntry  // ← Logs AI deployment decisions
-    });
-
-    debugLog('QUICK_DEPLOY', '🤖 AI decision:', aiDecision?.type);
-
-    if (aiDecision.type !== 'deploy') {
-      debugLog('QUICK_DEPLOY', '🤖 AI decides not to deploy');
-      return null;
-    }
-
-    // Execute deployment (DeploymentProcessor handles ON_DEPLOY)
-    const { droneToDeploy, targetLane } = aiDecision.payload;
-    debugLog('QUICK_DEPLOY', `🤖 AI deploying ${droneToDeploy?.name} to ${targetLane}`);
-
-    const deploymentProcessor = new DeploymentProcessor();
-    let player2State = JSON.parse(JSON.stringify(gameState.player2));
-    const placedSections = {
-      player1: gameState.placedSections,
-      player2: gameState.opponentPlacedSections
-    };
-
-    // Log callback for DeploymentProcessor (logs drone placement details)
-    const logCallback = (entry) => this.gameStateManager.addLogEntry(entry);
-
-    const result = deploymentProcessor.executeDeployment(
-      droneToDeploy,
-      targetLane,
-      gameState.roundNumber || 1,
-      player2State,
-      gameState.player1,
-      placedSections,
-      logCallback,  // ← Logs AI drone placements
-      'player2'
-    );
-
-    if (result.success) {
-      // Update game state with new AI state and any opponent changes from ON_DEPLOY
-      this.gameStateManager.setState({
-        player2: result.newPlayerState,
-        player1: result.opponentState || gameState.player1
-      });
-      debugLog('QUICK_DEPLOY', `🤖 AI deployed ${droneToDeploy?.name} successfully`);
-      return { success: true, drone: result.deployedDrone };
-    }
-
-    debugLog('QUICK_DEPLOY', `🤖 AI deployment failed: ${result.error}`);
-    return null;
+    return _executeSingleDeployment(this.gameStateManager, this.effectiveShipStatsWrapper);
   }
 
-  /**
-   * Finish deployment phase by deploying all remaining AI drones
-   * Called after player's quick deploy is complete
-   */
   async finishDeploymentPhase() {
-    debugLog('QUICK_DEPLOY', '🤖 AI finishing deployment phase...');
-
-    let maxIterations = 10;  // Safety limit
-    let deploymentsCount = 0;
-
-    while (maxIterations-- > 0) {
-      const result = await this.executeSingleDeployment();
-      if (!result) break;
-      deploymentsCount++;
-    }
-
-    debugLog('QUICK_DEPLOY', `🤖 AI finished deployment phase (${deploymentsCount} additional drones deployed)`);
+    return _finishDeploymentPhase(this.gameStateManager, this.effectiveShipStatsWrapper);
   }
 }
 
