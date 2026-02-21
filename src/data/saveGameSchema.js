@@ -6,7 +6,6 @@
 
 import { starterDeck } from './playerDeckData.js';
 import { ECONOMY } from './economyData.js';
-import { createEmptyDroneSlots, convertComponentsToSectionSlots } from '../logic/migration/saveGameMigrations.js';
 
 export const SAVE_VERSION = '1.0';
 
@@ -142,79 +141,6 @@ export const defaultDiscoveredCards = [];
 export const defaultQuickDeployments = [];
 
 /**
- * Create default ship slot
- * @param {number} id - Slot ID (0-5)
- * @returns {Object} Ship slot configuration
- */
-export function createDefaultShipSlot(id) {
-  if (id === 0) {
-    // Slot 0: Immutable starter deck
-    return {
-      id: 0,
-      name: 'Starter Deck',
-      status: 'active',
-      isImmutable: true,
-      shipId: starterDeck.shipId,
-
-      // Use starter deck configuration
-      decklist: JSON.parse(JSON.stringify(starterDeck.decklist)),
-      shipComponents: JSON.parse(JSON.stringify(starterDeck.shipComponents)),
-
-      // Slot-based damage format
-      droneSlots: JSON.parse(JSON.stringify(starterDeck.droneSlots)),
-      sectionSlots: convertComponentsToSectionSlots(starterDeck.shipComponents),
-    };
-  } else {
-    // Slots 1-5: Empty slots
-    return {
-      id,
-      name: `Ship Slot ${id}`,
-      status: 'empty',
-      isImmutable: false,
-      shipId: null,
-
-      decklist: [],
-      shipComponents: {},
-
-      // Slot-based damage format
-      droneSlots: createEmptyDroneSlots(),
-      sectionSlots: {
-        l: { componentId: null, damageDealt: 0 },
-        m: { componentId: null, damageDealt: 0 },
-        r: { componentId: null, damageDealt: 0 }
-      },
-    };
-  }
-}
-
-/**
- * Default ship slots (6 total)
- */
-export const defaultShipSlots = Array.from({ length: 6 }, (_, i) =>
-  createDefaultShipSlot(i)
-);
-
-/**
- * Create complete save game object
- * @returns {Object} New save game data
- */
-export function createNewSave() {
-  return {
-    saveVersion: SAVE_VERSION,
-    savedAt: Date.now(),
-
-    playerProfile: JSON.parse(JSON.stringify(defaultPlayerProfile)),
-    inventory: JSON.parse(JSON.stringify(defaultInventory)),
-    droneInstances: [],  // Empty at start
-    shipComponentInstances: [],  // Empty at start
-    discoveredCards: JSON.parse(JSON.stringify(defaultDiscoveredCards)),
-    shipSlots: defaultShipSlots.map(slot => JSON.parse(JSON.stringify(slot))),
-    quickDeployments: [],  // Empty at start - deck-agnostic deployment templates
-    currentRunState: null,
-  };
-}
-
-/**
  * Validate save file structure
  * @param {Object} saveData - Save data to validate
  * @returns {Object} Validation result { valid: boolean, errors: string[] }
@@ -348,11 +274,8 @@ export default {
   defaultInventory,
   defaultDiscoveredCards,
   defaultQuickDeployments,
-  defaultShipSlots,
   starterPoolCards,
   starterPoolDroneNames,
   starterPoolShipIds,
-  createDefaultShipSlot,
-  createNewSave,
   validateSaveFile,
 };

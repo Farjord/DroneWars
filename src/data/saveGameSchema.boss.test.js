@@ -2,9 +2,9 @@ import { describe, it, expect } from 'vitest';
 import {
   defaultPlayerProfile,
   validateSaveFile,
-  createNewSave,
   SAVE_VERSION
 } from './saveGameSchema.js';
+import { createNewSave } from '../logic/save/saveGameFactory.js';
 
 /**
  * TDD Tests for Boss Progress in Save Schema

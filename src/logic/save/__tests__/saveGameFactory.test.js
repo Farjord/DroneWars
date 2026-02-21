@@ -1,9 +1,6 @@
 import { describe, test, expect } from 'vitest';
-import {
-  createDefaultShipSlot,
-  createNewSave,
-  SAVE_VERSION,
-} from '../../../data/saveGameSchema.js';
+import { createDefaultShipSlot, createNewSave } from '../saveGameFactory.js';
+import { SAVE_VERSION } from '../../../data/saveGameSchema.js';
 
 // --- createDefaultShipSlot ---
 
