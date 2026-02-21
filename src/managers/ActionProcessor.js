@@ -580,20 +580,15 @@ setAnimationManager(animationManager) {
         const defendingPlayerId = attackDetails.attackingPlayer === 'player1' ? 'player2' : 'player1';
 
         // Set unified interception pending state (shows "opponent deciding" modal to attacker)
-        try {
-          this.gameStateManager._updateContext = 'ActionProcessor';
-          this.gameStateManager.setState({
-            interceptionPending: {
-              attackDetails,
-              defendingPlayerId,
-              attackingPlayerId: attackDetails.attackingPlayer,
-              interceptors: interceptionResult.interceptors,
-              timestamp: Date.now()
-            }
-          });
-        } finally {
-          this.gameStateManager._updateContext = null;
-        }
+        this._withUpdateContext(() => this.gameStateManager.setState({
+          interceptionPending: {
+            attackDetails,
+            defendingPlayerId,
+            attackingPlayerId: attackDetails.attackingPlayer,
+            interceptors: interceptionResult.interceptors,
+            timestamp: Date.now()
+          }
+        }));
 
         // AI Defender - wait then decide automatically
         if (defendingPlayerId === 'player2' && currentState.gameMode === 'local') {
@@ -621,28 +616,18 @@ setAnimationManager(animationManager) {
               finalAttackDetails.interceptor = decision.interceptor;
 
               // Emit interception result for badge display
-              try {
-                this.gameStateManager._updateContext = 'ActionProcessor';
-                this.gameStateManager.setState({
-                  lastInterception: {
-                    interceptor: decision.interceptor,
-                    originalTarget: attackDetails.target,
-                    timestamp: Date.now()
-                  }
-                });
-              } finally {
-                this.gameStateManager._updateContext = null;
-              }
+              this._withUpdateContext(() => this.gameStateManager.setState({
+                lastInterception: {
+                  interceptor: decision.interceptor,
+                  originalTarget: attackDetails.target,
+                  timestamp: Date.now()
+                }
+              }));
             }
           }
 
           // Complete interception (clears state, closes modal)
-          try {
-            this.gameStateManager._updateContext = 'ActionProcessor';
-            this.gameStateManager.setState({ interceptionPending: null });
-          } finally {
-            this.gameStateManager._updateContext = null;
-          }
+          this._withUpdateContext(() => this.gameStateManager.setState({ interceptionPending: null }));
 
           // Continue with attack
         }
@@ -751,12 +736,7 @@ setAnimationManager(animationManager) {
     // Clear interceptionPending state after attack completes (closes "opponent deciding" modal)
     if (currentState.interceptionPending) {
       debugLog('COMBAT', '🛡️ [INTERCEPTION] Clearing interceptionPending after attack completed');
-      try {
-        this.gameStateManager._updateContext = 'ActionProcessor';
-        this.gameStateManager.setState({ interceptionPending: null });
-      } finally {
-        this.gameStateManager._updateContext = null;
-      }
+      this._withUpdateContext(() => this.gameStateManager.setState({ interceptionPending: null }));
     }
 
     // Check for win conditions after attack
@@ -2440,12 +2420,7 @@ setAnimationManager(animationManager) {
 
     // Apply the phase change and any phase-specific updates
     stateUpdates.turnPhase = newPhase;
-    try {
-      this.gameStateManager._updateContext = 'ActionProcessor';
-      this.gameStateManager.setState(stateUpdates);
-    } finally {
-      this.gameStateManager._updateContext = null;
-    }
+    this._withUpdateContext(() => this.gameStateManager.setState(stateUpdates));
 
     // Reset commitments for the new phase (clean slate)
     // Only clear the new phase's commitments, preserve old phase commitments for reference
@@ -2576,24 +2551,19 @@ setAnimationManager(animationManager) {
     );
 
     // Apply all round start changes
-    try {
-      this.gameStateManager._updateContext = 'ActionProcessor';
-      this.gameStateManager.setState({
-        turn: newTurn,
-        turnPhase: newPhase,
-        currentPlayer: determinedFirstPlayer,
-        firstPlayerOfRound: determinedFirstPlayer,
-        firstPasserOfPreviousRound: currentState.passInfo.firstPasser,
-        actionsTakenThisTurn: 0,  // Reset for new round (NOT_FIRST_ACTION ability condition)
-        passInfo: {
-          firstPasser: null,
-          player1Passed: false,
-          player2Passed: false
-        }
-      });
-    } finally {
-      this.gameStateManager._updateContext = null;
-    }
+    this._withUpdateContext(() => this.gameStateManager.setState({
+      turn: newTurn,
+      turnPhase: newPhase,
+      currentPlayer: determinedFirstPlayer,
+      firstPlayerOfRound: determinedFirstPlayer,
+      firstPasserOfPreviousRound: currentState.passInfo.firstPasser,
+      actionsTakenThisTurn: 0,
+      passInfo: {
+        firstPasser: null,
+        player1Passed: false,
+        player2Passed: false
+      }
+    }));
 
     // Update player states
     this.gameStateManager.setPlayerStates(newPlayer1State, newPlayer2State);
@@ -3042,6 +3012,19 @@ setAnimationManager(animationManager) {
   }
 
   /**
+   * Execute a function with _updateContext set to 'ActionProcessor'.
+   * Replaces 18 try/finally blocks that set and clear _updateContext.
+   */
+  _withUpdateContext(fn) {
+    try {
+      this.gameStateManager._updateContext = 'ActionProcessor';
+      return fn();
+    } finally {
+      this.gameStateManager._updateContext = null;
+    }
+  }
+
+  /**
    * Add isTeleporting flags to drones in TELEPORT_IN animations
    * Creates modified state where teleporting drones are invisible (isTeleporting: true)
    * @param {Object} newPlayerStates - Player states to modify
@@ -3276,12 +3259,7 @@ setAnimationManager(animationManager) {
     debugLog('PASS_LOGIC', '[PLAYER PASS DEBUG] Updating pass info:', newPassInfo);
 
     // Update pass info through GameStateManager with proper context
-    try {
-      this.gameStateManager._updateContext = 'ActionProcessor';
-      this.gameStateManager.setState({ passInfo: newPassInfo }, 'PASS_INFO_SET');
-    } finally {
-      this.gameStateManager._updateContext = null;
-    }
+    this._withUpdateContext(() => this.gameStateManager.setState({ passInfo: newPassInfo }, 'PASS_INFO_SET'));
 
     // PHASE MANAGER INTEGRATION: Notify PhaseManager of pass action
     const gameMode = this.gameStateManager.get('gameMode');
@@ -3310,15 +3288,10 @@ setAnimationManager(animationManager) {
     // Turn tracks individual player actions within a round (resets to 1 at round start)
     if (turnPhase === 'action') {
       const currentTurn = currentState.turn || 0;
-      try {
-        this.gameStateManager._updateContext = 'ActionProcessor';
-        this.gameStateManager.setState({
-          turn: currentTurn + 1
-        }, 'TURN_INCREMENT', 'playerPass');
-        debugLog('PASS_LOGIC', `[TURN INCREMENT] Turn incremented: ${currentTurn} → ${currentTurn + 1}`);
-      } finally {
-        this.gameStateManager._updateContext = null;
-      }
+      this._withUpdateContext(() => this.gameStateManager.setState({
+        turn: currentTurn + 1
+      }, 'TURN_INCREMENT', 'playerPass'));
+      debugLog('PASS_LOGIC', `[TURN INCREMENT] Turn incremented: ${currentTurn} → ${currentTurn + 1}`);
     }
 
     // Handle turn switching when one player passes but the other hasn't
@@ -3337,14 +3310,9 @@ setAnimationManager(animationManager) {
 
       if (nextPlayer) {
         debugLog('PASS_LOGIC', `[PLAYER PASS DEBUG] Switching turn to ${nextPlayer} (opponent hasn't passed)`);
-        try {
-          this.gameStateManager._updateContext = 'ActionProcessor';
-          this.gameStateManager.setState({
-            currentPlayer: nextPlayer
-          }, 'TURN_SWITCH', 'playerPass');
-        } finally {
-          this.gameStateManager._updateContext = null;
-        }
+        this._withUpdateContext(() => this.gameStateManager.setState({
+          currentPlayer: nextPlayer
+        }, 'TURN_SWITCH', 'playerPass'));
       }
     } else {
       debugLog('PASS_LOGIC', '[PLAYER PASS DEBUG] Both players passed - GameFlowManager will handle phase transition');
@@ -3375,14 +3343,9 @@ setAnimationManager(animationManager) {
     });
 
     // Update opponent placed sections through GameStateManager
-    try {
-      this.gameStateManager._updateContext = 'ActionProcessor';
-      this.gameStateManager.setState({
-        opponentPlacedSections: placement
-      }, 'aiShipPlacement');
-    } finally {
-      this.gameStateManager._updateContext = null;
-    }
+    this._withUpdateContext(() => this.gameStateManager.setState({
+      opponentPlacedSections: placement
+    }, 'aiShipPlacement'));
 
     // Add log entry
     this.gameStateManager.addLogEntry({
@@ -3510,15 +3473,10 @@ setAnimationManager(animationManager) {
     const reasonText = getFirstPlayerReasonText(currentState);
 
     // Update state with first player information
-    try {
-      this.gameStateManager._updateContext = 'ActionProcessor';
-      this.gameStateManager.setState({
-        currentPlayer: firstPlayer,
-        firstPlayerOfRound: firstPlayer
-      });
-    } finally {
-      this.gameStateManager._updateContext = null;
-    }
+    this._withUpdateContext(() => this.gameStateManager.setState({
+      currentPlayer: firstPlayer,
+      firstPlayerOfRound: firstPlayer
+    }));
 
     debugLog('PHASE_TRANSITIONS', `✅ First player determination complete: ${firstPlayer}`);
 
@@ -3576,14 +3534,9 @@ setAnimationManager(animationManager) {
       debugLog('COMMITMENTS', '🔄 Cleared all phase commitments');
     }
 
-    try {
-      this.gameStateManager._updateContext = 'ActionProcessor';
-      this.gameStateManager.setState({
-        commitments: currentState.commitments
-      });
-    } finally {
-      this.gameStateManager._updateContext = null;
-    }
+    this._withUpdateContext(() => this.gameStateManager.setState({
+      commitments: currentState.commitments
+    }));
   }
 
   /**
@@ -3657,18 +3610,13 @@ setAnimationManager(animationManager) {
     }
 
     // Update the state with specific event type for commitment changes
-    try {
-      this.gameStateManager._updateContext = 'ActionProcessor';
-      this.gameStateManager.setState({
-        commitments: currentState.commitments,
-        player1: currentState.player1,
-        player2: currentState.player2,
-        shieldsToAllocate: currentState.shieldsToAllocate,
-        opponentShieldsToAllocate: currentState.opponentShieldsToAllocate
-      }, 'COMMITMENT_UPDATE');
-    } finally {
-      this.gameStateManager._updateContext = null;
-    }
+    this._withUpdateContext(() => this.gameStateManager.setState({
+      commitments: currentState.commitments,
+      player1: currentState.player1,
+      player2: currentState.player2,
+      shieldsToAllocate: currentState.shieldsToAllocate,
+      opponentShieldsToAllocate: currentState.opponentShieldsToAllocate
+    }, 'COMMITMENT_UPDATE'));
 
     // PHASE MANAGER INTEGRATION: Notify PhaseManager of commitment
     if (this.phaseManager) {
@@ -4018,15 +3966,7 @@ setAnimationManager(animationManager) {
     debugLog('CARDS', '🃏 ActionProcessor: Processing automatic draw');
 
     // Update player states with draw results
-    try {
-      this.gameStateManager._updateContext = 'ActionProcessor';
-      this.gameStateManager.setState({
-        player1,
-        player2
-      });
-    } finally {
-      this.gameStateManager._updateContext = null;
-    }
+    this._withUpdateContext(() => this.gameStateManager.setState({ player1, player2 }));
 
     return {
       success: true,
@@ -4109,20 +4049,10 @@ setAnimationManager(animationManager) {
 
     // Update shields to allocate if provided (round 2+ only)
     if (shieldsToAllocate !== undefined) {
-      try {
-        this.gameStateManager._updateContext = 'ActionProcessor';
-        this.gameStateManager.setState({ shieldsToAllocate });
-      } finally {
-        this.gameStateManager._updateContext = null;
-      }
+      this._withUpdateContext(() => this.gameStateManager.setState({ shieldsToAllocate }));
     }
     if (opponentShieldsToAllocate !== undefined) {
-      try {
-        this.gameStateManager._updateContext = 'ActionProcessor';
-        this.gameStateManager.setState({ opponentShieldsToAllocate });
-      } finally {
-        this.gameStateManager._updateContext = null;
-      }
+      this._withUpdateContext(() => this.gameStateManager.setState({ opponentShieldsToAllocate }));
     }
 
     debugLog('ENERGY', `✅ Energy reset complete - Shields to allocate: ${shieldsToAllocate || 0}, ${opponentShieldsToAllocate || 0}`);
@@ -4370,14 +4300,9 @@ setAnimationManager(animationManager) {
     this.gameStateManager.updatePlayerState(playerId, result.newPlayerState);
 
     // Update shields to allocate count
-    try {
-      this.gameStateManager._updateContext = 'ActionProcessor';
-      this.gameStateManager.setState({
-        [shieldsToAllocateKey]: result.newShieldsToAllocate
-      });
-    } finally {
-      this.gameStateManager._updateContext = null;
-    }
+    this._withUpdateContext(() => this.gameStateManager.setState({
+      [shieldsToAllocateKey]: result.newShieldsToAllocate
+    }));
 
     debugLog('ENERGY', `✅ Shield added to ${sectionName}, ${result.newShieldsToAllocate} shields remaining`);
 
@@ -4419,14 +4344,9 @@ setAnimationManager(animationManager) {
 
     // Update shields to allocate count
     const shieldsToAllocateKey = playerId === 'player1' ? 'shieldsToAllocate' : 'opponentShieldsToAllocate';
-    try {
-      this.gameStateManager._updateContext = 'ActionProcessor';
-      this.gameStateManager.setState({
-        [shieldsToAllocateKey]: result.newShieldsToAllocate
-      });
-    } finally {
-      this.gameStateManager._updateContext = null;
-    }
+    this._withUpdateContext(() => this.gameStateManager.setState({
+      [shieldsToAllocateKey]: result.newShieldsToAllocate
+    }));
 
     debugLog('ENERGY', `✅ Shield allocation reset, ${result.newShieldsToAllocate} shields available`);
 
