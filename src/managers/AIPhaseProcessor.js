@@ -193,34 +193,25 @@ class AIPhaseProcessor {
 
     debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.processDeckSelection starting (selecting 40 cards + drones)...');
 
-    // Get current game state for accessing gameSeed
+    const { gameEngine, startingDecklist, startingDroneList } = await import('../logic/gameLogic.js');
     const gameState = this.gameStateManager.getState();
 
     // Select cards for deck
     let selectedDeck = [];
     if (personality && personality.decklist && personality.decklist.length > 0) {
-      // Use AI's custom decklist from personality
       debugLog('AI_DECISIONS', `🎯 Using ${personality.name} personality decklist`);
-
-      // Import the game engine to build the deck
-      const { gameEngine } = await import('../logic/gameLogic.js');
       selectedDeck = gameEngine.buildDeckFromList(personality.decklist, 'player2', gameState.gameSeed);
     } else {
-      // Fallback to standard deck
       debugLog('AI_DECISIONS', `🎯 Using standard deck as fallback`);
-
-      const { gameEngine, startingDecklist } = await import('../logic/gameLogic.js');
       selectedDeck = gameEngine.buildDeckFromList(startingDecklist, 'player2', gameState.gameSeed);
     }
 
     // Select drones from personality's dronePool (5-10 drones allowed)
     let selectedDrones = [];
     if (personality && personality.dronePool && Array.isArray(personality.dronePool)) {
-      // Use AI's dronePool from personality
-      selectedDrones = [...personality.dronePool]; // Copy the personality's drone list
+      selectedDrones = [...personality.dronePool];
       debugLog('AI_DECISIONS', `🎯 Using ${personality.name} personality dronePool: ${selectedDrones.length} drones`);
 
-      // Validate drone count
       if (selectedDrones.length < 5) {
         throw new Error(`AI personality '${personality.name}' has only ${selectedDrones.length} drones in dronePool. Minimum 5 required.`);
       }
@@ -228,9 +219,7 @@ class AIPhaseProcessor {
         throw new Error(`AI personality '${personality.name}' has ${selectedDrones.length} drones in dronePool. Maximum 10 allowed.`);
       }
     } else {
-      // Fallback to standard drone list if personality doesn't have dronePool
       debugLog('AI_DECISIONS', `⚠️ Personality missing dronePool, using standard drone list as fallback`);
-      const { startingDroneList } = await import('../logic/gameLogic.js');
       selectedDrones = [...startingDroneList];
     }
 
@@ -296,11 +285,9 @@ class AIPhaseProcessor {
       throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
     }
 
-    // Import aiLogic to make deployment decision
     const { aiBrain } = await import('../logic/aiLogic.js');
     const { gameEngine } = await import('../logic/gameLogic.js');
 
-    // Call aiLogic with proper game state format
     const aiDecision = aiBrain.handleOpponentTurn({
       player1: gameState.player1,
       player2: gameState.player2,
@@ -392,12 +379,10 @@ class AIPhaseProcessor {
       throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
     }
 
-    // Import aiLogic to make action decision
     const { aiBrain } = await import('../logic/aiLogic.js');
     const { gameEngine } = await import('../logic/gameLogic.js');
     const TargetingRouter = (await import('../logic/TargetingRouter.js')).default;
 
-    // Create targeting router instance for AI targeting
     const targetingRouter = new TargetingRouter();
 
     // Create getValidTargets wrapper for AI (maintains existing API)
@@ -904,7 +889,6 @@ class AIPhaseProcessor {
 
     const { aiBrain } = await import('../logic/aiLogic.js');
 
-    // Delegate to aiLogic for decision with full attack context, gameDataService, and gameStateManager
     const result = aiBrain.makeInterceptionDecision(
       interceptors,
       attackDetails.attacker,  // The attacker drone (was incorrectly labeled as target before)
@@ -976,12 +960,10 @@ class AIPhaseProcessor {
       return null;
     }
 
-    // Get AI deployment decision (existing logic from handleQuickDeployResponse)
     const { aiBrain } = await import('../logic/aiLogic.js');
     const { gameEngine } = await import('../logic/gameLogic.js');
     const { default: DeploymentProcessor } = await import('../logic/deployment/DeploymentProcessor.js');
 
-    // Pass addLogEntry callback so AI decisions are logged in combat log
     const addLogEntry = (entry, source, context) => {
       this.gameStateManager.addLogEntry(entry, source, context);
     };
