@@ -47,6 +47,10 @@ Refer to `Design/Technical Debt Refactor/CODE_STANDARDS.md` for full standards.
 - **Test intent, not implementation**: Tests verify *what* code does (behavior, outcomes, contracts), not *how*. Test public interfaces. Assert on observable results.
 - **Refactoring safety net**: Before extracting code, ensure tests exist for the behaviors being moved. Write them first if missing. Tests must pass before and after.
 - **No mocking internals**: Mock at boundaries (network, storage, timers), not between internal modules.
+- **Targeted, not exhaustive**: Write the fewest tests that catch real bugs. One aggregate test over a collection beats N per-item tests. Collapse near-identical assertions into parameterized or loop-based tests. If a test wouldn't catch a plausible bug, don't write it.
+- **Data files get structural tests only**: Test invariants (unique IDs, required fields, valid enums) as aggregate checks over the full collection — never per-entry. Don't test that static constants have specific types or shapes unless the shape is load-bearing for compatibility.
+- **Collapse, don't multiply**: When testing N similar inputs (required fields, type checks), use one parameterized test that loops — not N individual tests. Individual tests are for distinct behaviors, not variations of the same check.
+- **Zero failures required**: The test suite must be completely clean (0 failures) before any work is committed or progressed. Any failure is a regression caused by current work and must be fixed before moving forward. Never accept or ignore test failures.
 
 ## Logging
 

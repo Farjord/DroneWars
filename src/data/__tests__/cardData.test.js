@@ -11,67 +11,59 @@ describe('fullCardCollection', () => {
     expect(fullCardCollection.length).toBeGreaterThan(0);
   });
 
-  describe('required fields', () => {
-    fullCardCollection.forEach((card) => {
-      it(`${card.id} has all required fields`, () => {
-        for (const field of REQUIRED_FIELDS) {
-          expect(card).toHaveProperty(field);
-        }
-      });
-    });
+  it('every card has a unique id', () => {
+    const ids = fullCardCollection.map((c) => c.id);
+    const duplicates = ids.filter((id, i) => ids.indexOf(id) !== i);
+    expect(duplicates).toEqual([]);
   });
 
-  describe('unique IDs', () => {
-    it('every card has a unique id', () => {
-      const ids = fullCardCollection.map((c) => c.id);
-      const duplicates = ids.filter((id, i) => ids.indexOf(id) !== i);
-      expect(duplicates).toEqual([]);
-    });
+  it('every card has all required fields', () => {
+    const failures = [];
+    for (const card of fullCardCollection) {
+      for (const field of REQUIRED_FIELDS) {
+        if (!(field in card)) failures.push(`${card.id} missing ${field}`);
+      }
+    }
+    expect(failures).toEqual([]);
   });
 
-  describe('valid rarity values', () => {
-    fullCardCollection.forEach((card) => {
-      it(`${card.id} has a valid rarity`, () => {
-        expect(VALID_RARITIES).toContain(card.rarity);
-      });
-    });
+  it('every card has a valid rarity', () => {
+    const failures = fullCardCollection
+      .filter((c) => !VALID_RARITIES.includes(c.rarity))
+      .map((c) => `${c.id}: ${c.rarity}`);
+    expect(failures).toEqual([]);
   });
 
-  describe('valid type values', () => {
-    fullCardCollection.forEach((card) => {
-      it(`${card.id} has a valid type`, () => {
-        expect(VALID_TYPES).toContain(card.type);
-      });
-    });
+  it('every card has a valid type', () => {
+    const failures = fullCardCollection
+      .filter((c) => !VALID_TYPES.includes(c.type))
+      .map((c) => `${c.id}: ${c.type}`);
+    expect(failures).toEqual([]);
   });
 
-  describe('baseCardId conventions', () => {
-    const enhancedCards = fullCardCollection.filter((c) => c.id.toUpperCase().endsWith('_ENHANCED'));
+  it('base cards have self-referential baseCardId', () => {
     const baseCards = fullCardCollection.filter((c) => !c.id.toUpperCase().endsWith('_ENHANCED'));
-    const allIds = new Set(fullCardCollection.map((c) => c.id));
-
-    baseCards.forEach((card) => {
-      it(`${card.id} has self-referential baseCardId`, () => {
-        expect(card.baseCardId).toBe(card.id);
-      });
-    });
-
-    enhancedCards.forEach((card) => {
-      it(`${card.id} references an existing base card via baseCardId`, () => {
-        expect(allIds).toContain(card.baseCardId);
-      });
-
-      it(`${card.id} has _ENHANCED suffix in correct casing`, () => {
-        expect(card.id).toMatch(/_ENHANCED$/);
-      });
-    });
+    const failures = baseCards
+      .filter((c) => c.baseCardId !== c.id)
+      .map((c) => `${c.id}: baseCardId=${c.baseCardId}`);
+    expect(failures).toEqual([]);
   });
 
-  describe('image paths', () => {
-    fullCardCollection.forEach((card) => {
-      it(`${card.id} image path follows /DroneWars/cards/ pattern`, () => {
-        expect(card.image).toMatch(/^\/DroneWars\/cards\/.+\.png$/);
-      });
-    });
+  it('enhanced cards reference existing base cards', () => {
+    const allIds = new Set(fullCardCollection.map((c) => c.id));
+    const enhancedCards = fullCardCollection.filter((c) => c.id.toUpperCase().endsWith('_ENHANCED'));
+    const failures = [];
+    for (const card of enhancedCards) {
+      if (!allIds.has(card.baseCardId)) failures.push(`${card.id}: baseCardId=${card.baseCardId} not found`);
+      if (!card.id.endsWith('_ENHANCED')) failures.push(`${card.id}: suffix casing wrong`);
+    }
+    expect(failures).toEqual([]);
+  });
+
+  it('every card image follows /DroneWars/cards/ pattern', () => {
+    const failures = fullCardCollection
+      .filter((c) => !/^\/DroneWars\/cards\/.+\.png$/.test(c.image))
+      .map((c) => `${c.id}: ${c.image}`);
+    expect(failures).toEqual([]);
   });
 });

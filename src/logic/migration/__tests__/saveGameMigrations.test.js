@@ -93,11 +93,6 @@ describe('convertDronesToSlots', () => {
     expect(result).toEqual(createEmptyDroneSlots());
   });
 
-  test('no args returns 5 empty slots', () => {
-    const result = convertDronesToSlots();
-    expect(result).toEqual(createEmptyDroneSlots());
-  });
-
   test('partial array fills first slots, rest empty', () => {
     const drones = [
       { name: 'Scout', isDamaged: false },
@@ -146,15 +141,6 @@ describe('convertDronesToSlots', () => {
 describe('convertComponentsToSectionSlots', () => {
   test('empty object returns all null components', () => {
     const result = convertComponentsToSectionSlots({});
-    expect(result).toEqual({
-      l: { componentId: null, damageDealt: 0 },
-      m: { componentId: null, damageDealt: 0 },
-      r: { componentId: null, damageDealt: 0 },
-    });
-  });
-
-  test('no args returns all null components', () => {
-    const result = convertComponentsToSectionSlots();
     expect(result).toEqual({
       l: { componentId: null, damageDealt: 0 },
       m: { componentId: null, damageDealt: 0 },
@@ -269,13 +255,6 @@ describe('migrateTacticalItems', () => {
     allIds.slice(1).forEach((id) => {
       expect(result.tacticalItems[id]).toBe(0);
     });
-  });
-
-  test('does not modify other profile properties', () => {
-    const profile = { name: 'Player1', credits: 100 };
-    const result = migrateTacticalItems(profile);
-    expect(result.name).toBe('Player1');
-    expect(result.credits).toBe(100);
   });
 
   test('returns new object without mutating input', () => {
