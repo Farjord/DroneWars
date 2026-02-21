@@ -190,106 +190,6 @@ class AIPhaseProcessor {
   }
 
   /**
-   * Select 5 drones for AI based on personality preferences
-   * @param {Array} availableDrones - Pool of available drones
-   * @param {Object} personality - AI personality with preferences
-   * @returns {Array} Array of 5 selected drone objects
-   */
-  selectDronesForAI(availableDrones, personality) {
-    let selected = [];
-
-    // Strategy 1: Use personality's preferred drones if available
-    if (personality && personality.preferredDrones) {
-      const preferredAvailable = availableDrones.filter(drone =>
-        personality.preferredDrones.includes(drone.name)
-      );
-
-      // Take up to 3 preferred drones
-      const preferredCount = Math.min(3, preferredAvailable.length);
-      selected = preferredAvailable.slice(0, preferredCount);
-
-      debugLog('AI_DECISIONS', `🎯 AI selected ${selected.length} preferred drones:`,
-        selected.map(d => d.name).join(', '));
-    }
-
-    // Strategy 2: Fill remaining slots with balanced selection
-    const remaining = availableDrones.filter(drone => !selected.includes(drone));
-    const needed = 5 - selected.length;
-
-    if (needed > 0) {
-      // Prioritize different drone types for variety
-      const balancedSelection = this.selectBalancedDrones(remaining, needed, personality);
-      selected = [...selected, ...balancedSelection];
-    }
-
-    // Strategy 3: Random fallback if still not enough
-    const gameState = this.gameStateManager?.getState();
-    const rng = SeededRandom.fromGameState(gameState || {});
-    while (selected.length < 5 && remaining.length > 0) {
-      const randomIndex = rng.randomInt(0, remaining.length);
-      const drone = remaining.splice(randomIndex, 1)[0];
-      selected.push(drone);
-    }
-
-    if (selected.length !== 5) {
-      throw new Error(`AI selection failed: only selected ${selected.length} of 5 drones`);
-    }
-
-    return selected;
-  }
-
-  /**
-   * Select drones with balanced approach (variety in types/costs)
-   * @param {Array} availableDrones - Remaining available drones
-   * @param {number} count - Number of drones to select
-   * @param {Object} personality - AI personality for weighting
-   * @returns {Array} Selected drones
-   */
-  selectBalancedDrones(availableDrones, count, personality) {
-    const selected = [];
-    const remaining = [...availableDrones];
-    const gameState = this.gameStateManager?.getState();
-    const rng = SeededRandom.fromGameState(gameState || {});
-
-    // Sort by a combination of cost and capabilities for balanced selection
-    remaining.sort((a, b) => {
-      const scoreA = (a.energyCost || 1) + (a.health || 0) + (a.attack || 0);
-      const scoreB = (b.energyCost || 1) + (b.health || 0) + (b.attack || 0);
-      return scoreB - scoreA; // Higher scoring drones first
-    });
-
-    // AI personality influences selection weights
-    const aggressionWeight = personality?.aggression || 0.5;
-    const economyWeight = personality?.economy || 0.5;
-
-    for (let i = 0; i < count && remaining.length > 0; i++) {
-      let selectedIndex = 0;
-
-      // Add some variation based on personality
-      if (aggressionWeight > 0.7) {
-        // Aggressive AI: prefer high-attack drones
-        selectedIndex = remaining.findIndex(drone => (drone.attack || 0) > 2);
-        if (selectedIndex === -1) selectedIndex = 0;
-      } else if (economyWeight > 0.7) {
-        // Economic AI: prefer low-cost drones
-        selectedIndex = remaining.findIndex(drone => (drone.energyCost || 1) <= 2);
-        if (selectedIndex === -1) selectedIndex = 0;
-      } else {
-        // Balanced selection with some randomness
-        const topChoices = Math.min(3, remaining.length);
-        selectedIndex = rng.randomInt(0, topChoices);
-      }
-
-      selected.push(remaining.splice(selectedIndex, 1)[0]);
-    }
-
-    debugLog('AI_DECISIONS', `🎯 AI balanced selection (${count}):`,
-      selected.map(d => d.name).join(', '));
-
-    return selected;
-  }
-
-  /**
    * Process AI deck selection for deckSelection phase
    * NEW FLOW: Returns both deck (40 cards) and drones (10 drones)
    * @param {Object} aiPersonality - Optional AI personality override
@@ -838,22 +738,6 @@ class AIPhaseProcessor {
   }
 
   /**
-   * Execute AI pass for the current phase
-   * @param {string} phase - Current phase
-   * @returns {Promise<Object>} Pass execution result
-   */
-  async executePass(phase) {
-    debugLog('AI_DECISIONS', `🏳️ AIPhaseProcessor: Returning pass decision for ${phase} phase`);
-
-    // Return the pass decision for ActionProcessor to execute
-    return {
-      type: 'pass',
-      phase: phase,
-      playerId: 'player2'
-    };
-  }
-
-  /**
    * Execute AI shield allocation - distributes shields evenly across all placed sections
    * @param {Object} gameState - Current game state
    * @returns {Promise<void>} Shield allocation complete
@@ -1148,23 +1032,6 @@ class AIPhaseProcessor {
     }
 
     return result;
-  }
-
-  /**
-   * Get AI processing capabilities
-   * @returns {Object} Available AI processing methods
-   */
-  getCapabilities() {
-    return {
-      droneSelection: true, // ✅ implemented
-      deckSelection: true, // ✅ implemented
-      placement: true, // ✅ implemented
-      deployment: true, // ✅ implemented
-      action: true, // ✅ implemented
-      interception: true, // ✅ implemented
-      quickDeployResponse: true, // ✅ implemented
-      version: '1.4.0'
-    };
   }
 
   /**
