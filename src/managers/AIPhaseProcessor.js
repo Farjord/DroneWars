@@ -4,8 +4,14 @@
 // Handles AI processing for simultaneous phases in single-player mode
 // Provides instant AI decisions for SimultaneousActionManager commitment system
 
+import {
+  processDeckSelection as _processDeckSelection,
+  processDroneSelection as _processDroneSelection,
+  processPlacement as _processPlacement,
+  extractDronesFromDeck as _extractDronesFromDeck,
+  randomlySelectDrones as _randomlySelectDrones
+} from '../logic/ai/AISimultaneousPhaseStrategy.js';
 import GameDataService from '../services/GameDataService.js';
-import { shipComponentsToPlacement } from '../utils/deckExportUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 import SeededRandom from '../utils/seededRandom.js';
 
@@ -109,162 +115,26 @@ class AIPhaseProcessor {
     debugLog('AI_DECISIONS', '✅ AIPhaseProcessor: Cleanup complete');
   }
 
-  /**
-   * Process AI drone selection for droneSelection phase
-   * Selects 5 drones from AI's deck of 10 drones
-   * @param {Object} aiPersonality - Optional AI personality override (future use)
-   * @returns {Promise<Array>} Array of 5 selected drone objects
-   */
+  // --- Simultaneous Phase Delegation ---
+
   async processDroneSelection(aiPersonality = null) {
-    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.processDroneSelection starting (selecting 5 from deck)...');
-
-    // Get AI's deck drones from commitments (set during deckSelection phase)
-    const gameState = this.gameStateManager.getState();
-    const commitments = gameState.commitments;
-    const deckCommitments = commitments?.deckSelection;
-
-    if (!deckCommitments || !deckCommitments.player2) {
-      throw new Error('AI deck commitment not found - deckSelection phase must complete first');
-    }
-
-    // Extract the AI's deck drones (5-10 drones allowed)
-    const deckDroneNames = deckCommitments.player2.drones || [];
-    debugLog('AI_DECISIONS', `🎲 AI deck contains ${deckDroneNames.length} drones:`, deckDroneNames.join(', '));
-
-    if (deckDroneNames.length < 5 || deckDroneNames.length > 10) {
-      throw new Error(`AI deck must have 5-10 drones, found ${deckDroneNames.length}`);
-    }
-
-    // Map drone names to full drone objects
-    const availableDrones = this.extractDronesFromDeck(deckDroneNames);
-
-    if (availableDrones.length < 5) {
-      debugLog('AI_DECISIONS', '❌ Failed to extract minimum required drones from deck');
-      throw new Error(`Only extracted ${availableDrones.length} drones from AI deck (minimum 5 required)`);
-    }
-
-    // Randomly select 5 drones from available pool (works for 5-10 drones)
-    const selectedDrones = this.randomlySelectDrones(availableDrones, 5);
-
-    const selectedNames = selectedDrones.map(d => d.name).join(', ');
-    debugLog('AI_DECISIONS', `🤖 AI randomly selected 5 drones from ${availableDrones.length} available: ${selectedNames}`);
-
-    return selectedDrones;
+    return _processDroneSelection(this.gameStateManager, this.dronePool);
   }
 
-  /**
-   * Extract drone objects from drone names array
-   * @param {Array} droneNames - Array of drone names
-   * @returns {Array} Array of drone objects
-   */
   extractDronesFromDeck(droneNames) {
-    const drones = droneNames.map(name => {
-      const drone = this.dronePool?.find(d => d.name === name);
-      if (!drone) {
-        debugLog('AI_DECISIONS', `⚠️ Drone "${name}" not found in drone collection`);
-      }
-      return drone;
-    }).filter(Boolean); // Remove undefined entries
-
-    return drones;
+    return _extractDronesFromDeck(droneNames, this.dronePool);
   }
 
-  /**
-   * Randomly select N drones from available pool
-   * @param {Array} availableDrones - Pool of drones to select from
-   * @param {number} count - Number of drones to select
-   * @returns {Array} Array of randomly selected drones
-   */
   randomlySelectDrones(availableDrones, count) {
-    const gameState = this.gameStateManager?.getState();
-    const rng = SeededRandom.fromGameState(gameState || {});
-    const shuffled = rng.shuffle(availableDrones);
-    return shuffled.slice(0, count);
+    return _randomlySelectDrones(availableDrones, count, this.gameStateManager);
   }
 
-  /**
-   * Process AI deck selection for deckSelection phase
-   * Returns both deck (40 cards) and drones (10 drones)
-   * @param {Object} aiPersonality - Optional AI personality override
-   * @returns {Promise<Object>} Object with { deck: Array, drones: Array }
-   */
   async processDeckSelection(aiPersonality = null) {
-    const personality = aiPersonality || this.currentAIPersonality;
-
-    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.processDeckSelection starting (selecting 40 cards + drones)...');
-
-    const { gameEngine, startingDecklist, startingDroneList } = await import('../logic/gameLogic.js');
-    const gameState = this.gameStateManager.getState();
-
-    // Select cards for deck
-    let selectedDeck = [];
-    if (personality && personality.decklist && personality.decklist.length > 0) {
-      debugLog('AI_DECISIONS', `🎯 Using ${personality.name} personality decklist`);
-      selectedDeck = gameEngine.buildDeckFromList(personality.decklist, 'player2', gameState.gameSeed);
-    } else {
-      debugLog('AI_DECISIONS', `🎯 Using standard deck as fallback`);
-      selectedDeck = gameEngine.buildDeckFromList(startingDecklist, 'player2', gameState.gameSeed);
-    }
-
-    // Select drones from personality's dronePool (5-10 drones allowed)
-    let selectedDrones = [];
-    if (personality && personality.dronePool && Array.isArray(personality.dronePool)) {
-      selectedDrones = [...personality.dronePool];
-      debugLog('AI_DECISIONS', `🎯 Using ${personality.name} personality dronePool: ${selectedDrones.length} drones`);
-
-      if (selectedDrones.length < 5) {
-        throw new Error(`AI personality '${personality.name}' has only ${selectedDrones.length} drones in dronePool. Minimum 5 required.`);
-      }
-      if (selectedDrones.length > 10) {
-        throw new Error(`AI personality '${personality.name}' has ${selectedDrones.length} drones in dronePool. Maximum 10 allowed.`);
-      }
-    } else {
-      debugLog('AI_DECISIONS', `⚠️ Personality missing dronePool, using standard drone list as fallback`);
-      selectedDrones = [...startingDroneList];
-    }
-
-    debugLog('AI_DECISIONS', `✅ AI selected deck: ${selectedDeck.length} cards + ${selectedDrones.length} drones`);
-    debugLog('AI_DECISIONS', `🎲 AI drones: ${selectedDrones.join(', ')}`);
-
-    // Read shipComponents directly from personality
-    const shipComponents = personality?.shipComponents || {
-      'BRIDGE_001': 'l',
-      'POWERCELL_001': 'm',
-      'DRONECONTROL_001': 'r'
-    };
-    debugLog('AI_DECISIONS', `🎯 Using ${personality?.name || 'default'} ship components:`, shipComponents);
-
-    return {
-      deck: selectedDeck,
-      drones: selectedDrones,
-      shipComponents: shipComponents
-    };
+    return _processDeckSelection(this.gameStateManager, aiPersonality || this.currentAIPersonality);
   }
 
-  /**
-   * Process AI ship placement for placement phase
-   * @param {Object} aiPersonality - Optional AI personality override
-   * @returns {Promise<Array>} Array of placed ship section keys [lane0, lane1, lane2]
-   */
   async processPlacement(aiPersonality = null) {
-    const personality = aiPersonality || this.currentAIPersonality;
-
-    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.processPlacement starting...');
-
-    // Convert shipComponents to legacy placement array
-    let placedSections;
-
-    if (personality?.shipComponents) {
-      placedSections = shipComponentsToPlacement(personality.shipComponents);
-      debugLog('AI_DECISIONS', `🎯 Using ${personality.name} placement: ${placedSections.join(', ')}`);
-    } else {
-      placedSections = ['bridge', 'powerCell', 'droneControlHub'];
-      debugLog('AI_DECISIONS', `⚠️ No shipComponents in personality, using default: ${placedSections.join(', ')}`);
-    }
-
-    debugLog('AI_DECISIONS', `🤖 AI placement completed: ${placedSections.join(', ')}`);
-
-    return placedSections;
+    return _processPlacement(aiPersonality || this.currentAIPersonality);
   }
 
   /**
