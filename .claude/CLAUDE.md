@@ -79,6 +79,85 @@ Refer to `Design/Technical Debt Refactor/CODE_STANDARDS.md` for full standards.
 - **Small, verifiable steps.** Each commit must be independently testable. If a step breaks something, we must be able to identify exactly which change caused it by referencing the behavioral baseline.
 - **When in doubt, ask.** If the intent behind existing code is unclear, flag it for discussion rather than guessing. Many patterns exist for good reasons that aren't obvious.
 
+### Mandatory Refactoring Workflow
+
+Every file refactor MUST follow these phases. Skills listed are mandatory, not optional.
+
+**Phase 0 — Pre-flight:**
+1. Run `tech-debt-review` skill to capture the "before" state
+2. Use `superpowers:using-git-worktrees` to isolate the work on a separate branch
+
+**Phase 1 — Understand:**
+3. Use `Explore` agents to map the file's dependencies, consumers, and patterns
+4. Populate the `## Behavioral Baseline` in the REFACTOR_*.md (immutable once written)
+5. Use `superpowers:brainstorming` if the extraction strategy isn't obvious
+
+**Phase 2 — Test First:**
+6. Use `superpowers:test-driven-development` — write or verify tests for existing behavior BEFORE changing anything
+7. Run tests to confirm green baseline
+
+**Phase 3 — Extract (iterative):**
+8. Use `superpowers:writing-plans` or `superpowers:executing-plans` for multi-step extractions
+9. Each extraction step: make one small change → run tests (`superpowers:verification-before-completion`) → if broken, use `superpowers:systematic-debugging` → checkpoint commit
+10. Use `superpowers:dispatching-parallel-agents` for independent extractions when safe
+
+**Phase 4 — Review:**
+11. Use `superpowers:requesting-code-review` → triggers `superpowers:code-reviewer` architect agent
+12. Address feedback using `superpowers:receiving-code-review`
+13. Update the `## Change Log` in the REFACTOR_*.md
+
+**Phase 5 — Complete:**
+14. Run `tech-debt-review` again — compare before/after metrics
+15. Use `superpowers:finishing-a-development-branch` to merge
+16. Final commit and push
+
+### Behavioral Baseline Template
+
+Every `## Behavioral Baseline` section in a REFACTOR_*.md must include these subsections:
+
+- **Exports / public API** — every exported function, constant, class, and its contract (params, return, side effects)
+- **State mutations and their triggers** — what state is changed, by which methods, and what triggers them
+- **Side effects** — animations fired, events emitted, network calls, localStorage writes
+- **Known edge cases** — race conditions, null guards, fallback behaviors, timing dependencies
+
+### Minimum Viable Test Coverage
+
+Phase 2 (Test First) requires at minimum:
+- All exported functions / public API methods must have at least one test
+- Internal helpers tested indirectly through public API (not directly)
+- For untested god objects: test the top-level orchestration paths first, not every internal branch
+
+### Integration Smoke Test Checklist
+
+After each extraction step in Phase 3, verify:
+- [ ] App loads without console errors
+- [ ] Deploy a drone to the board
+- [ ] Play a card from hand
+- [ ] Complete one combat round
+- [ ] Save and load a game
+
+### Refactoring Order
+
+Mandatory bottom-up sequence — earlier files have no dependencies on later files:
+
+| Order | File | Reason |
+|-|-|-|
+| 1 | cardData.js | No dependencies on other 10 files |
+| 2 | saveGameSchema.js | Depends only on cardData |
+| 3 | AIPhaseProcessor.js | No dependencies on other 10 files |
+| 4 | ActionProcessor.js | Depends on AIPhaseProcessor |
+| 5 | GameStateManager.js | Depends on cardData, saveGameSchema, ActionProcessor |
+| 6 | GameFlowManager.js | Depends on GameStateManager, AIPhaseProcessor |
+| 7 | DeckBuilder.jsx | Depends on cardData only |
+| 8 | HangarScreen.jsx | Depends on cardData only |
+| 9 | TacticalMapScreen.jsx | Depends on GameStateManager, GameFlowManager |
+| 10 | App.jsx | Depends on most files — must be last |
+
+### Parallel Extraction Safety Rule
+
+- Only use `superpowers:dispatching-parallel-agents` for extractions from pure data files or files with no shared mutable state
+- For god objects with shared state (App.jsx, ActionProcessor, GameStateManager), extractions must be sequential
+
 ## Interaction Paradigm
 
 - **Drag-and-drop is the canonical model for ACTION INITIATION only**: playing cards from hand, moving drones, attacking with drones. These are drag-initiated, not click-initiated.

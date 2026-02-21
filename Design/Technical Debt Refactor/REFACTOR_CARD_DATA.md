@@ -43,11 +43,9 @@
 - **Why**: `RARITY_COLORS` is a UI display constant imported by 8+ UI components. It is conceptually separate from card gameplay data. Extracting it reduces the import surface for components that only need colors.
 - **Dependencies affected**: `HiddenShipSectionCard.jsx`, `HiddenShipCard.jsx`, `HiddenCard.jsx`, `DronePicker.jsx`, `RaritySymbol.jsx`, `DeckBuilder.jsx`, `HangarScreen.jsx`, `BlueprintsModal.jsx`, `InventoryModal.jsx` — all update import path. Re-export from `cardData.js` for backward compatibility during migration.
 
-### Extraction 2 (Optional): Split by card category
-- **What**: Group cards into logical subcollections (ordnance, support, tactic, upgrade, token-deployers, doctrine, AI-only)
-- **Where**: Keep in `cardData.js` but reorganize with clear section comment separators
-- **Why**: Improves navigability without breaking imports. The file is pure data so splitting into multiple files adds import complexity with minimal benefit.
-- **Alternative**: If the team prefers splitting, use `src/data/cards/ordnanceCards.js`, `src/data/cards/supportCards.js`, etc., with a barrel `src/data/cards/index.js` that re-exports the merged collection.
+### ~~Extraction 2: Split by card category~~ — DROPPED
+
+Not worth the complexity for a pure data file. Section separator comments (step 4) provide sufficient navigability.
 
 ## Dead Code Removal
 - **No dead code found.** The file contains only data definitions with no functions, no commented-out code blocks, and no legacy click handlers.
@@ -98,7 +96,7 @@
 
 1. **Add data integrity tests**: Create `src/data/__tests__/cardData.test.js` with schema validation and snapshot tests. Commit.
 
-2. **Fix data bugs**: Fix `CARD037_ENHANCED` effect value (2 -> 3), `CARD032_Enhanced` ID casing, `Raise_the_Alarm` type (`Tactics` -> `Tactic`). Run tests. Commit.
+2. **Fix data bugs (blocking prerequisite)**: First, grep the entire codebase for `'Tactics'` (with 's') — fix ALL references to `'Tactic'` (singular) in the same commit as the `Raise_the_Alarm` type change. Then fix `CARD037_ENHANCED` effect value (2 -> 3) and `CARD032_Enhanced` ID casing (no migration needed). Run tests. Commit.
 
 3. **Normalize formatting**: Apply consistent 2-space indentation, trailing commas, and blank-line spacing across all card entries. Run tests. Commit.
 
@@ -111,7 +109,7 @@
 ## Risk Assessment
 
 ### What Could Break
-- **Step 2 (data bugs)**: Fixing `CARD037_ENHANCED` value changes gameplay balance. Fixing `Raise_the_Alarm` type could break any code filtering by `type === 'Tactics'`. Fixing `CARD032_Enhanced` ID could break saved games referencing the old ID.
+- **Step 2 (data bugs)**: Fixing `CARD037_ENHANCED` value changes gameplay balance. Fixing `Raise_the_Alarm` type could break any code filtering by `type === 'Tactics'`. No backwards compatibility needed for saved games — fix `CARD032_Enhanced` → `CARD032_ENHANCED` directly.
 - **Step 4 (reorder)**: Array order change could affect anything that indexes by position (unlikely but worth checking).
 - **Step 5-6 (extract RARITY_COLORS)**: Import path changes could cause build failures if any importer is missed.
 

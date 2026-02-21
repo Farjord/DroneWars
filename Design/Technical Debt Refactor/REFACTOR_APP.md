@@ -128,8 +128,11 @@
 - Refs: arrowLineRef, cardDragArrowRef, droneDragArrowRef, actionCardDragArrowRef, costReminderArrowRef
 - Functions: handleCardDragStart, handleCardDragEnd, handleDroneDragStart, handleDroneDragEnd, handleActionCardDragStart, handleActionCardDragEnd
 - Effects: All mouse tracking effects (lines 2050-2235), all mouseup cleanup effects (lines 2106-2235)
-- **Where**: `src/hooks/useDragMechanics.js`
-- **Why**: Drag-and-drop is a distinct interaction layer with 8 state vars, 5 refs, 6 handlers, 7 effects. ~1200 lines.
+- **Where**: Split into 3 sub-hooks due to ~1200-line size:
+  - `src/hooks/useCardDrag.js` — card drag start/end, card arrow state, card mouseup cleanup
+  - `src/hooks/useDroneDrag.js` — drone drag start/end, drone arrow state, drone mouseup cleanup
+  - `src/hooks/useActionCardDrag.js` — action card drag start/end, action card arrow state, action card mouseup cleanup
+- **Why**: Drag-and-drop is a distinct interaction layer with 8 state vars, 5 refs, 6 handlers, 7 effects. At ~1200 lines, a single hook would itself be a god object. Each drag type has independent state and handlers.
 - **Dependencies**: gameAreaRef, droneRefs, sectionRefs, resolveAttack, executeDeployment, multiSelectState, singleMoveMode, additionalCostState, validCardTargets
 
 ### Hook 7: useModals
@@ -165,6 +168,20 @@
 - **Where**: `src/hooks/useGameLifecycle.js`
 - **Why**: Game lifecycle management (reset, exit, phase transitions, mandatory actions) is a cohesive concern. ~600 lines.
 - **Dependencies**: gameStateManager, processActionWithGuestRouting, resetGame, endGame
+- **Post-extraction review**: This hook is the "remainder" bucket and may need further splitting after extraction. Known sub-concerns: mandatory action handling, phase transition effects, game reset/exit, footer state, deck import. Review after extraction and split if >400 lines.
+
+### Inter-Hook Communication Pattern
+
+Hooks return values consumed by other hooks via local variables in App.jsx — no React Context needed since all hooks live in the same component. Example:
+
+```javascript
+// In App.jsx
+const { draggedCard, handleCardDragStart } = useCardDrag(...);
+const { validCardTargets } = useCardSelection(draggedCard, ...);
+const { handleTargetClick } = useTargeting(validCardTargets, ...);
+```
+
+This keeps data flow explicit and avoids hidden dependencies between hooks.
 
 ### Sub-component Extractions (Render Section)
 
@@ -285,7 +302,7 @@ Each step is independently committable: extract/clean -> test -> review -> fix -
 - Remove 3 console.trace calls
 - Remove banned comments (`// NEW`, `// CHANGED`)
 - Remove stale comments
-- Move `extractDroneNameFromId` to `src/utils/gameUtils.js`
+- Move `extractDroneNameFromId` to `src/logic/droneUtils.js` (domain logic, not generic utils)
 - Move `targetingRouter` instantiation inside component or to a separate module
 
 **Step 2: Remove legacy click-to-initiate-action code**

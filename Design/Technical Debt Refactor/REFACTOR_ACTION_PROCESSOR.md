@@ -132,56 +132,70 @@
 ### 2. Combat Action Strategy — `CombatActionStrategy.js`
 
 - **What**: Extract `processAttack` (268 lines), `processMove` (219 lines), `processAbility` (128 lines)
-- **Where**: `src/managers/strategies/CombatActionStrategy.js`
+- **Where**: `src/logic/actions/CombatActionStrategy.js`
 - **Why**: Strategy pattern per CODE_STANDARDS. These three methods handle all direct drone-to-drone interactions and share common patterns (animation orchestration, win condition checks, go-again logic).
 - **Dependencies**: resolveAttack, calculateAiInterception, calculateEffectiveStats, AbilityResolver, LaneControlCalculator, processMineTrigger, checkRallyBeaconGoAgain, gameEngine.applyOnMoveEffects/updateAuras
 
 ### 3. Card Action Strategy — `CardActionStrategy.js`
 
 - **What**: Extract `processCardPlay` (184 lines), `processAdditionalCostCardPlay` (117 lines), `processAdditionalCostEffectSelectionComplete` (67 lines), `processMovementCompletion` (267 lines), `processSearchAndDrawCompletion` (99 lines)
-- **Where**: `src/managers/strategies/CardActionStrategy.js`
+- **Where**: `src/logic/actions/CardActionStrategy.js`
 - **Why**: Strategy pattern. All five methods handle card-play flows and share the same callback/state/animation patterns.
 - **Dependencies**: gameEngine.resolveCardPlay/payCardCosts/finishCardPlay, CardPlayManager, MovementEffectProcessor, ConditionalEffectProcessor, EffectRouter
 
 ### 4. Ship Ability Strategy — `ShipAbilityStrategy.js`
 
 - **What**: Extract `processShipAbility`, `processShipAbilityCompletion`, `processRecallAbility`, `processTargetLockAbility`, `processRecalculateAbility`, `processRecalculateComplete`, `processReallocateShieldsAbility`, `processReallocateShieldsComplete`, `validateShipAbilityActivationLimit` (9 methods, ~300 lines total)
-- **Where**: `src/managers/strategies/ShipAbilityStrategy.js`
+- **Where**: `src/logic/actions/ShipAbilityStrategy.js`
 - **Why**: Strategy pattern. All are ship-section ability variants sharing the same validate-resolve-update pattern.
 - **Dependencies**: AbilityResolver, RecallAbilityProcessor, TargetLockAbilityProcessor, RecalculateAbilityProcessor, ReallocateShieldsAbilityProcessor, shipComponentCollection
 
 ### 5. Phase & Turn Strategy — `PhaseTransitionStrategy.js`
 
 - **What**: Extract `processTurnTransition` (62 lines), `processPhaseTransition` (172 lines), `processRoundStart` (75 lines), `processFirstPlayerDetermination` (32 lines)
-- **Where**: `src/managers/strategies/PhaseTransitionStrategy.js`
+- **Where**: `src/logic/actions/PhaseTransitionStrategy.js`
 - **Why**: Strategy pattern. Phase/turn/round lifecycle is a cohesive concern separate from gameplay actions.
 - **Dependencies**: gameEngine.calculateTurnTransition, RoundManager, firstPlayerUtils, PhaseManager, phaseAnimationQueue
 
 ### 6. Commitment Strategy — `CommitmentStrategy.js`
 
 - **What**: Extract `processCommitment` (163 lines), `handleAICommitment` (130 lines), `applyPhaseCommitments` (109 lines), `getPhaseCommitmentStatus` (20 lines), `clearPhaseCommitments` (25 lines)
-- **Where**: `src/managers/strategies/CommitmentStrategy.js`
+- **Where**: `src/logic/actions/CommitmentStrategy.js`
 - **Why**: Commitment system is a self-contained concern for simultaneous phase management. Reduces ActionProcessor by ~450 lines.
 - **Dependencies**: aiPhaseProcessor, PhaseManager, gameEngine, initializeDroneAvailability
 
 ### 7. State Pass-Through Strategy — `StateUpdateStrategy.js`
 
 - **What**: Extract `processDraw`, `processEnergyReset`, `processRoundStartTriggers`, `processRebuildProgress`, `processMomentumAward` (5 methods, ~215 lines total)
-- **Where**: `src/managers/strategies/StateUpdateStrategy.js`
+- **Where**: `src/logic/actions/StateUpdateStrategy.js`
 - **Why**: These methods are trivial state-forwarding wrappers. Grouping them reduces noise in the core file.
 - **Dependencies**: gameStateManager only
 
-### 8. Utility Actions Strategy — `UtilityActionStrategy.js`
+### 8a. Drone Action Strategy — `DroneActionStrategy.js`
 
-- **What**: Extract `processDestroyDrone`, `processOptionalDiscard`, `processPlayerPass`, `processAiShipPlacement`, `processAiAction`, `processReallocateShields`, `processAddShield`, `processResetShields`, `processSnaredConsumption`, `processSuppressedConsumption`, `processDebugAddCardsToHand`, `processForceWin` (12 methods, ~700 lines)
-- **Where**: `src/managers/strategies/UtilityActionStrategy.js`
-- **Why**: Miscellaneous actions that don't fit the other strategy groups. Consider further splitting if this file exceeds 400 lines after extraction.
-- **Dependencies**: gameEngine, ShieldManager, phaseAnimationQueue, PhaseManager
+- **What**: Extract `processDestroyDrone`, `processOptionalDiscard`, `processPlayerPass`, `processAiShipPlacement`, `processAiAction` (5 methods, ~350 lines)
+- **Where**: `src/logic/actions/DroneActionStrategy.js`
+- **Why**: Drone lifecycle actions (destroy, discard, pass, AI placement) are a cohesive group.
+- **Dependencies**: gameEngine, PhaseManager, phaseAnimationQueue
+
+### 8b. Shield Action Strategy — `ShieldActionStrategy.js`
+
+- **What**: Extract `processReallocateShields`, `processAddShield`, `processResetShields` (3 methods, ~200 lines)
+- **Where**: `src/logic/actions/ShieldActionStrategy.js`
+- **Why**: Shield operations share state validation and ShieldManager dependency.
+- **Dependencies**: ShieldManager, gameStateManager
+
+### 8c. Misc Action Strategy — `MiscActionStrategy.js`
+
+- **What**: Extract `processSnaredConsumption`, `processSuppressedConsumption` (after dedup), `processDebugAddCardsToHand`, `processForceWin` (3-4 methods, ~150 lines)
+- **Where**: `src/logic/actions/MiscActionStrategy.js`
+- **Why**: Remaining actions that don't fit other strategy groups.
+- **Dependencies**: gameStateManager, gameEngine
 
 ### 9. Network/Broadcast Helper — `NetworkBroadcastHelper.js`
 
 - **What**: Extract `processNetworkAction`, `processGuestAction`, `broadcastStateToGuest`, `getAndClearPendingActionAnimations`, `getAndClearPendingSystemAnimations` (5 methods, ~150 lines)
-- **Where**: `src/managers/helpers/NetworkBroadcastHelper.js`
+- **Where**: `src/logic/actions/helpers/NetworkBroadcastHelper.js`
 - **Why**: P2P broadcasting is a cross-cutting concern. Extraction makes ActionProcessor testable without mocking network code.
 - **Dependencies**: p2pManager, gameStateManager, pendingActionAnimations, pendingSystemAnimations
 
@@ -196,12 +210,23 @@
 After extractions, ActionProcessor's `processAction` switch becomes a strategy dispatcher:
 
 ```javascript
+// ActionContext — passed to all strategies instead of `this`
+const actionContext = {
+  gameStateManager: this.gameStateManager,
+  animationManager: this.animationManager,
+  p2pManager: this.p2pManager,
+  lockAction: (type) => this.lockAction(type),
+  unlockAction: (type) => this.unlockAction(type),
+  executeActionWithAnimations: (...args) => this._executeActionWithAnimations(...args),
+  broadcastStateToGuest: (...args) => this.broadcastStateToGuest(...args),
+};
+
 // In constructor
 this.strategies = {
-  attack: new CombatActionStrategy(this),
-  move: new CombatActionStrategy(this),
-  ability: new CombatActionStrategy(this),
-  cardPlay: new CardActionStrategy(this),
+  attack: new CombatActionStrategy(actionContext),
+  move: new CombatActionStrategy(actionContext),
+  ability: new CombatActionStrategy(actionContext),
+  cardPlay: new CardActionStrategy(actionContext),
   // ... etc
 };
 
@@ -214,7 +239,11 @@ if (strategy) {
 }
 ```
 
-Each strategy receives a reference to the ActionProcessor (or a context object) for accessing shared state (gameStateManager, animationManager, etc.).
+Strategies receive an `ActionContext` object with only the fields/methods they need — not `this`. Lock cleanup is owned by `processAction`'s try/catch, not individual strategies.
+
+### Error Handling & Lock Ownership
+
+Lock cleanup is owned by `processAction`'s try/catch/finally — not by individual strategies. Strategies throw on error; `processAction` catches, logs, unlocks, and emits the failure event. This prevents lock deadlocks if a strategy throws before cleanup.
 
 ## Dead Code Removal
 
@@ -306,7 +335,7 @@ These tests lock in current behavior so extraction can be validated:
 
 ### Tests to Update AFTER Extraction
 
-After strategies are extracted, update imports in all test files above. Strategy-specific tests can be moved to strategy-specific test files (e.g., `src/managers/strategies/__tests__/CombatActionStrategy.test.js`).
+After strategies are extracted, update imports in all test files above. Strategy-specific tests can be moved to strategy-specific test files (e.g., `src/logic/actions/__tests__/CombatActionStrategy.test.js`).
 
 ## Execution Order
 
@@ -338,29 +367,23 @@ Each step is independently committable. After each: extract/clean, test, code re
 
 ### Phase 3: Strategy Extractions
 
-11. **Extract CombatActionStrategy**: Move processAttack, processMove, processAbility to `src/managers/strategies/CombatActionStrategy.js`. Update processAction to delegate. All tests green.
+11. **Extract CombatActionStrategy + CardActionStrategy**: Move processAttack, processMove, processAbility, processCardPlay, processAdditionalCostCardPlay, processAdditionalCostEffectSelectionComplete, processMovementCompletion, processSearchAndDrawCompletion to `src/logic/actions/`. All tests green.
 
-12. **Extract CardActionStrategy**: Move processCardPlay, processAdditionalCostCardPlay, processAdditionalCostEffectSelectionComplete, processMovementCompletion, processSearchAndDrawCompletion to `src/managers/strategies/CardActionStrategy.js`. All tests green.
+12. **Extract ShipAbilityStrategy + PhaseTransitionStrategy**: Move all 9 ship ability methods and 4 phase/turn methods to `src/logic/actions/`. All tests green.
 
-13. **Extract ShipAbilityStrategy**: Move all 9 ship ability methods to `src/managers/strategies/ShipAbilityStrategy.js`. All tests green.
+13. **Extract CommitmentStrategy + StateUpdateStrategy**: Move 5 commitment methods and 5 state pass-through methods to `src/logic/actions/`. All tests green.
 
-14. **Extract PhaseTransitionStrategy**: Move processTurnTransition, processPhaseTransition, processRoundStart, processFirstPlayerDetermination to `src/managers/strategies/PhaseTransitionStrategy.js`. All tests green.
+14. **Extract DroneActionStrategy + ShieldActionStrategy + MiscActionStrategy**: Move remaining process methods to `src/logic/actions/`. All tests green.
 
-15. **Extract CommitmentStrategy**: Move processCommitment, handleAICommitment, applyPhaseCommitments, getPhaseCommitmentStatus, clearPhaseCommitments to `src/managers/strategies/CommitmentStrategy.js`. All tests green.
-
-16. **Extract StateUpdateStrategy**: Move processDraw, processEnergyReset, processRoundStartTriggers, processRebuildProgress, processMomentumAward to `src/managers/strategies/StateUpdateStrategy.js`. All tests green.
-
-17. **Extract UtilityActionStrategy**: Move remaining process methods to `src/managers/strategies/UtilityActionStrategy.js`. If file exceeds 400 lines, split further. All tests green.
-
-18. **Extract NetworkBroadcastHelper**: Move P2P methods to `src/managers/helpers/NetworkBroadcastHelper.js`. All tests green.
+15. **Extract NetworkBroadcastHelper**: Move P2P methods to `src/logic/actions/helpers/NetworkBroadcastHelper.js`. All tests green.
 
 ### Phase 4: Finalization
 
-19. **Implement strategy registry**: Replace the 35-case switch in processAction with a strategy map lookup. All tests green.
+16. **Implement strategy registry**: Replace the 35-case switch in processAction with a strategy map lookup. All tests green.
 
-20. **Trim verbose logging**: Condense processEnergyReset debug logging and processAction finally block logging. All tests green.
+17. **Trim verbose logging**: Condense processEnergyReset debug logging and processAction finally block logging. All tests green.
 
-21. **Final review**: Verify ActionProcessor core is under 400 lines. Verify each strategy file is under 400 lines. Verify all tests pass. Update this document with final line counts.
+18. **Final review**: Verify ActionProcessor core is under 400 lines. Verify each strategy file is under 400 lines. Verify all tests pass. Update this document with final line counts.
 
 ## Risk Assessment
 

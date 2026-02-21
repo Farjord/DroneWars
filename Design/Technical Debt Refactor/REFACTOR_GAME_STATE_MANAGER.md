@@ -78,6 +78,10 @@
 
 ## Extraction Plan
 
+### Singleton Wiring Pattern
+
+All extracted managers receive the `GameStateManager` singleton instance in their constructor (constructor injection). Extracted managers access state via `this.gsm.state` and `this.gsm.setState()`. No back-imports of the singleton — extracted managers never `import gameStateManager from './GameStateManager'`. This eliminates circular dependency risk.
+
 ### Extraction 1: SinglePlayerInventoryManager
 
 **What**: All single-player inventory, card discovery, and save/load methods.
@@ -158,7 +162,7 @@
 - `logPlayerStateChanges()` (line 727)
 - `isInitializationPhase()` (line 815)
 
-**Where**: `src/services/StateValidationService.js`
+**Where**: `src/logic/state/StateValidationService.js`
 
 **Why**: 585 lines of validation/debugging infrastructure that is orthogonal to state management. Pure analysis with no state mutation. Can be injected or called from `setState()`.
 
@@ -200,6 +204,27 @@
 **Why**: Guest synchronization is completely independent of local game state management. Includes its own state (`validatingState`), constants, and service delegation.
 
 **Dependencies affected**: `GuestMessageQueueService.js`, `AppRouter.jsx` (P2P setup).
+
+## Import Direction Diagram
+
+After all extractions, the import graph looks like this (`A → B` means A imports from B):
+
+```
+SinglePlayerInventoryManager → GameStateManager (constructor injection)
+ShipSlotManager              → GameStateManager (constructor injection)
+TacticalItemManager          → GameStateManager (constructor injection)
+RunLifecycleManager          → GameStateManager (constructor injection)
+RunLifecycleManager          → SinglePlayerInventoryManager
+RunLifecycleManager          → ShipSlotManager
+RunLifecycleManager          → TacticalItemManager
+GuestSyncManager             → GameStateManager (constructor injection)
+StateValidationService       → (no imports from this group — receives state as args)
+
+GameStateManager             → StateValidationService (calls validate in setState)
+GameStateManager             → (does NOT import extracted managers — they register themselves)
+```
+
+**No circular dependencies**: Extracted managers import GameStateManager (singleton passed via constructor). GameStateManager does not import them back. `RunLifecycleManager` imports peer managers but none import it.
 
 ## Dead Code Removal
 
@@ -256,8 +281,9 @@ All 56 `console.log/warn/error/debug` calls should be converted to `debugLog()`.
 
 1. **Characterization tests for `startRun`**: Test hull calculation from sectionSlots, legacy fallback, default sections, security token deduction, map generation. File: `src/managers/__tests__/GameStateManager.startRun.test.js` (migrate existing).
 2. **Characterization tests for `endRun`**: Test loot transfer, damage persistence, MIA protocol, reputation award, shop pack refresh, run summary shape. File: `src/managers/__tests__/GameStateManager.endRun.test.js` (adapt existing `endRunBroadcast` and `credits` tests).
-3. **Inventory method tests**: Test `addToInventory`, `updateCardDiscoveryState` state changes. File: `src/managers/__tests__/SinglePlayerInventoryManager.test.js`.
-4. **Ship slot CRUD tests**: Test save/delete/unlock/repair flows. File: `src/managers/__tests__/ShipSlotManager.test.js`.
+3. **Characterization tests for `endRun` events**: Before converting direct mutations to `setState()`, test which events currently fire during `endRun`. Record the exact event sequence. After conversion, verify the same events fire in the same order. File: `src/managers/__tests__/GameStateManager.endRunEvents.test.js`.
+4. **Inventory method tests**: Test `addToInventory`, `updateCardDiscoveryState` state changes. File: `src/managers/__tests__/SinglePlayerInventoryManager.test.js`.
+5. **Ship slot CRUD tests**: Test save/delete/unlock/repair flows. File: `src/managers/__tests__/ShipSlotManager.test.js`.
 
 ### After Extraction
 
@@ -274,7 +300,7 @@ All 56 `console.log/warn/error/debug` calls should be converted to `debugLog()`.
 | SinglePlayerInventoryManager.test.js | `src/managers/__tests__/SinglePlayerInventoryManager.test.js` |
 | ShipSlotManager.test.js | `src/managers/__tests__/ShipSlotManager.test.js` |
 | TacticalItemManager.test.js | `src/managers/__tests__/TacticalItemManager.test.js` |
-| StateValidationService.test.js | `src/services/__tests__/StateValidationService.test.js` |
+| StateValidationService.test.js | `src/logic/state/__tests__/StateValidationService.test.js` |
 | RunLifecycleManager.test.js | `src/managers/__tests__/RunLifecycleManager.test.js` |
 | GuestSyncManager.test.js | `src/managers/__tests__/GuestSyncManager.test.js` |
 
@@ -301,8 +327,8 @@ Each step is independently committable with tests green.
 |-|-|-|
 | Singleton wiring: extracted managers need access to `gameStateManager.state` and `setState` | High | Pass `gameStateManager` as constructor arg or use shared state reference |
 | Direct state mutation in `endRun` (lines 2990-3018) currently works but bypasses events | Medium | Fix mutations to use `setState()` before extraction; verify no UI depends on missing events |
-| 73 files import `gameStateManager` -- mass import changes | Medium | Keep facade methods on GameStateManager during transition; deprecate over time |
-| Test files reference `gameStateManager` methods directly | Medium | Maintain backward-compatible delegation on GameStateManager until all tests updated |
+| 73 files import `gameStateManager` -- mass import changes | Medium | Keep facade methods during transition. Remove facade methods in the commit immediately after all import sites are updated — not "over time". |
+| Test files reference `gameStateManager` methods directly | Medium | Update all test imports in the same commit as facade removal. |
 | HMR singleton preservation | Low | Extracted managers also need HMR preservation if they hold state |
 | Stack-trace-based validation breaks after extraction (different file names) | Low | Already handled by `_updateContext` flag; stack-based fallback is secondary |
 

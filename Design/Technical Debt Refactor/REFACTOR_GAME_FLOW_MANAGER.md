@@ -59,9 +59,10 @@
 
 ### 1. Extract Round Initialization Logic
 - **What**: `processRoundInitialization()` Steps 1-5 and supporting methods
-- **Where**: `src/logic/round/RoundInitializationProcessor.js`
+- **Where**: `src/managers/RoundInitializationProcessor.js` (it's an orchestrator that coordinates multiple managers, not pure logic)
 - **Why**: Single responsibility violation. 373 lines of round setup logic (energy reset, first player determination, card draw, rebuild progress, momentum, quick deploy) is a distinct concern from phase flow orchestration. Strategy pattern per CODE_STANDARDS.md.
 - **Dependencies**: `RoundManager`, `EffectRouter`, `LaneControlCalculator`, `GameDataService`, `cardDrawUtils`, `DroneAvailabilityManager`. GFM would call `roundInitProcessor.process()` and receive the next phase.
+- **Guest/Host branching**: `RoundInitializationProcessor` receives a `mode` parameter (`'host'` / `'guest'` / `'solo'`) and branches internally. The caller (GFM) determines the mode and passes it — the processor does not inspect `gameState.gameMode` itself.
 
 ### 2. Extract Phase Requirement Checker
 - **What**: `isPhaseRequired()`, `anyPlayerExceedsHandLimit()`, `anyPlayerHasShieldsToAllocate()`, `anyPlayerHasCards()`, `anyPlayerExceedsDroneLimit()`, `playerExceedsHandLimit()`, `playerExceedsDroneLimit()`
@@ -86,10 +87,39 @@
 - **Where**: `src/managers/__tests__/GameFlowManager.test.js`, etc.
 - **Why**: Test convention from CODE_STANDARDS.md
 
+## Import Direction Diagram
+
+After all extractions, the import graph looks like this (`A → B` means A imports from B):
+
+```
+RoundInitializationProcessor → GameStateManager
+RoundInitializationProcessor → RoundManager
+RoundInitializationProcessor → EffectRouter
+RoundInitializationProcessor → LaneControlCalculator
+RoundInitializationProcessor → GameDataService
+RoundInitializationProcessor → cardDrawUtils
+
+PhaseRequirementChecker      → GameDataService
+PhaseRequirementChecker      → (receives gameState as parameter — no singleton import)
+
+QuickDeployProcessor         → DeploymentProcessor
+QuickDeployProcessor         → fullDroneCollection
+QuickDeployProcessor         → tacticalMapStateManager
+QuickDeployProcessor         → AIPhaseProcessor
+
+GameFlowManager              → RoundInitializationProcessor
+GameFlowManager              → PhaseRequirementChecker
+GameFlowManager              → QuickDeployProcessor
+GameFlowManager              → GameStateManager
+GameFlowManager              → AIPhaseProcessor
+```
+
+**No circular dependencies**: All extracted files import from GameFlowManager's dependencies, not from GFM itself. GFM imports the extracted processors/checkers.
+
 ## Dead Code Removal
 
 | Method | Lines | Reason |
-|-|-|
+|-|-|-|
 | `processAutomaticDrawPhase()` | 1438-1493 | Superseded by `processRoundInitialization()` Step 4. No callers. |
 | `processAutomaticFirstPlayerPhase()` | 1499-1533 | Superseded by `processRoundInitialization()` Step 2. No callers. |
 | `processAutomaticEnergyResetPhase()` | 1539-1722 | Superseded by `processRoundInitialization()` Step 3. No callers. 284 lines of dead code. |

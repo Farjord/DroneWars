@@ -59,6 +59,10 @@
 - **Where**: `src/hooks/useDeckBuilderState.js`
 - **Why**: The component has massive state surface area. Grouping related state (filters, sort, panel views, modals) into a single hook cleans up the component body.
 - **Dependencies**: None external -- pure state management.
+- **State grouping**: Split the 25+ useState calls by concern into 2-3 sub-groups within the hook:
+  - **Filter state**: `typeFilters`, `rarityFilters`, `costFilters`, `keywordFilters`, `sortConfig`, `droneFilterConfig` — managed as a single `useReducer` or grouped object
+  - **Modal state**: `showExportModal`, `showImportModal`, `showLoadDeckModal`, `showFilterModal`, `showDroneFilter` — boolean flags
+  - **Panel state**: `activeLeftTab`, `activeRightTab`, `viewMode`, `droneViewMode`, `showSaveToast` — UI navigation
 
 ### 2. Extract `useDeckBuilderData` hook
 - **What**: `processedCardCollection`, `processedDroneCollection`, `activeComponentCollection`, `filterOptions`, `droneFilterOptions`, `filteredAndSortedCards`, `filteredAndSortedDrones`, `deckStats`, `droneStats`, `viewDeckData`, deck/drone/component counts and validation memos
@@ -98,7 +102,7 @@
 
 ### 8. Move utility functions
 - **What**: `getTypeBackgroundClass`, `getTypeTextClass` (lines 38-66), `COLORS` constant (line 706), `renderCustomizedLabel` (lines 993-1014)
-- **Where**: `src/utils/deckBuilderUtils.js`
+- **Where**: `getTypeBackgroundClass` and `getTypeTextClass` → `src/logic/cardTypeStyles.js` (domain knowledge mapping card types to CSS classes, not generic utils). `COLORS` constant and `renderCustomizedLabel` → `src/utils/deckBuilderUtils.js` (chart-specific utilities).
 - **Why**: Pure utility functions with no component dependency.
 
 ## Dead Code Removal
@@ -157,14 +161,15 @@ DeckBuilder already uses `debugLog` consistently (no raw `console.log` found). H
 ## Execution Order
 
 1. **Remove dead code**: Delete toast DOM inspection effect (lines 672-703), reduce save toast debug logging. Remove banned comments. _Commit._
-2. **Extract utility functions**: Move `getTypeBackgroundClass`, `getTypeTextClass`, `COLORS`, `renderCustomizedLabel` to `src/utils/deckBuilderUtils.js`. _Commit._
-3. **Extract popup components**: Move `CardDetailPopup`, `DroneDetailPopup`, `ShipComponentDetailPopup` to `src/components/ui/`. _Commit._
-4. **Extract inline modals**: Move `ExportModal`, `ImportModal`, `LoadDeckModal` to `src/components/modals/`. Pass state/callbacks as props instead of closure capture. _Commit._
-5. **Extract `useDeckBuilderData` hook**: Move all data-processing memos (card processing, filter options, counts, validation, stats). _Commit._
-6. **Extract `DeckStatisticsCharts`**: Pull chart rendering into its own component. _Commit._
-7. **Extract `DeckBuilderLeftPanel`**: Pull left panel render section. _Commit._
-8. **Extract `DeckBuilderRightPanel`**: Pull right panel render section. _Commit._
-9. **Write tests**: Add intent-based tests for hooks and key validation logic. _Commit._
+2. **Write intent-based tests (Phase 2)**: Create `src/components/screens/__tests__/DeckBuilder.test.jsx` with tests for deck count computation, deck validation, ship component validation, filter/sort integration, and drone count computation. Tests must pass on current code before any extractions. _Commit._
+3. **Extract utility functions**: Move `getTypeBackgroundClass`, `getTypeTextClass`, `COLORS`, `renderCustomizedLabel` to `src/utils/deckBuilderUtils.js`. _Commit._
+4. **Extract popup components**: Move `CardDetailPopup`, `DroneDetailPopup`, `ShipComponentDetailPopup` to `src/components/ui/`. _Commit._
+5. **Extract inline modals**: Move `ExportModal`, `ImportModal`, `LoadDeckModal` to `src/components/modals/`. Pass state/callbacks as props instead of closure capture. _Commit._
+6. **Extract `useDeckBuilderData` hook**: Move all data-processing memos (card processing, filter options, counts, validation, stats). _Commit._
+7. **Extract `DeckStatisticsCharts`**: Pull chart rendering into its own component. _Commit._
+8. **Extract `DeckBuilderLeftPanel`**: Pull left panel render section. _Commit._
+9. **Extract `DeckBuilderRightPanel`**: Pull right panel render section. _Commit._
+10. **Write tests**: Intent-based tests should have been written BEFORE extractions (Phase 2). This step is for any remaining integration tests verifying the composed component still works after all extractions. _Commit._
 
 ## Risk Assessment
 

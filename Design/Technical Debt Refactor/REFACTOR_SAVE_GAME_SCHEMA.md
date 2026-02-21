@@ -86,6 +86,8 @@
 
 **Internal dependency**: `createEmptyDroneSlots` is used by `convertDronesToSlots` and `createDefaultShipSlot`. Extract it alongside the migrations since it's a factory helper, not static data.
 
+**Single location rule**: `createEmptyDroneSlots` lives exclusively in `saveGameFactory.js`. Migrations import it from the factory, not from the schema.
+
 ### Extraction 2: Factory Functions
 
 **What to extract**: `createEmptyDroneSlots`, `createDefaultShipSlot`, `createNewSave`
@@ -101,6 +103,8 @@
 
 **Note**: `defaultShipSlots` (line 336-338) is a computed constant using `createDefaultShipSlot`. After extraction, the data file imports the factory and calls it at module load. This is acceptable — the data file still exports a constant.
 
+**Circular import resolution**: `saveGameFactory.js` receives data constants as parameters (not importing from schema). Schema imports nothing from factory. Factory imports nothing from schema — receives defaults via function args. This prevents the circular import risk identified in the Risk Assessment.
+
 ### Extraction 3: Validation Function
 
 **What to extract**: `validateSaveFile`
@@ -112,6 +116,10 @@
 **Dependencies affected**:
 - `SaveGameService.js` imports `validateSaveFile` — update import path
 - Test files import `validateSaveFile` — update import paths
+
+### Default Export Transition Strategy
+
+Default export preserved as facade during transition — re-exports named exports from extracted files. Removed in the final cleanup step (step 8) after all consumers are updated to named imports.
 
 ## Dead Code Removal
 

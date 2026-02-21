@@ -89,6 +89,7 @@ No legacy click-to-initiate-action dead code was found. The click handlers prese
 **Where**: `src/hooks/useTacticalEncounters.js`
 **Why**: ~700 lines of encounter/combat initiation logic. Distinct concern from movement and extraction.
 **Dependencies**: Encounter state from `useTacticalMapState`, movement refs from `useTacticalMovement`, `EncounterController`, `SalvageController`, `SinglePlayerCombatInitializer`, `transitionManager`, `DetectionManager`.
+- **Deduplication prerequisite**: Before or during extraction, consolidate `handleEncounterProceedWithQuickDeploy`, `handleSalvageCombat`, and `handleBlockadeCombat` into shared logic. These three handlers duplicate large blocks of combat initiation code. Extract the shared pattern into a private helper (e.g., `initiateCombatEncounter(config)`) within the hook.
 
 ### 4. Extract `useTacticalExtraction` hook
 
@@ -121,7 +122,7 @@ No legacy click-to-initiate-action dead code was found. The click handlers prese
 ### 8. Move `buildShipSections` to logic layer
 
 **What**: `buildShipSections()` function (lines 74-134)
-**Where**: `src/logic/singlePlayer/ShipSectionBuilder.js`
+**Where**: `src/logic/singlePlayer/shipSectionBuilder.js` (camelCase per CODE_STANDARDS — not a class, it's a utility function)
 **Why**: Pure utility with no React dependency. Data transformation belongs in logic layer.
 **Dependencies**: `shipComponentCollection`, `getAllShips`, `getDefaultShip`, `calculateSectionBaseStats`.
 
@@ -138,6 +139,7 @@ No legacy click-to-initiate-action dead code was found. The click handlers prese
 **Where**: `src/components/ui/TacticalMapModals.jsx`
 **Why**: Modal orchestration is a distinct rendering concern. ~220 lines of JSX.
 **Dependencies**: All modal show/hide state and handler props. This is a "prop relay" component, but it reduces the main component's JSX from ~430 to ~210 lines.
+- **Known smell**: This is a "prop relay" component — it receives all modal show/hide state and handler props from the parent. This is an acceptable intermediate step; a future refactor could introduce a modal context or modal manager pattern. Document as tech debt for future revisit, not a blocker for this extraction.
 
 ## Dead Code Removal
 
@@ -217,7 +219,7 @@ After extraction, move relevant tests to hook-specific test files:
 
 ### Tests for extracted utility
 
-- `src/logic/singlePlayer/__tests__/ShipSectionBuilder.test.js`: Test `buildShipSections` with run-state sections, component instances, and base stats fallback.
+- `src/logic/singlePlayer/__tests__/shipSectionBuilder.test.js`: Test `buildShipSections` with run-state sections, component instances, and base stats fallback.
 
 ## Execution Order
 

@@ -60,7 +60,7 @@
 
 ### 1. Extract hex grid geometry to utility
 - **What**: `generateHexGrid`, `getHexCoordinate`, `getOffScreenPOIs`, `getArrowEdgePosition`, `clampPan`, `GRID_COLS`, `GRID_ROWS`
-- **Where**: `src/utils/hexGridUtils.js`
+- **Where**: `src/logic/singlePlayer/hexGrid.js` (uses domain-specific SeededRandom and mapTiers — not a generic utility)
 - **Why**: ~200 lines of pure geometry/math. Zero React dependency. Easily testable in isolation.
 - **Dependencies**: `SeededRandom`, `mapTiers`
 
@@ -78,7 +78,7 @@
 
 ### 4. Move deck creation business logic to service/manager
 - **What**: `handleConfirmCopyStarter` (lines 678-762), `handleConfirmEmptyDeck` (lines 770-809)
-- **Where**: `src/logic/singlePlayer/DeckSlotService.js` (new) or extend `gameStateManager` methods
+- **Where**: `src/logic/singlePlayer/deckSlotFactory.js` (camelCase per CODE_STANDARDS — it creates deck slot data, not a service class)
 - **Why**: These contain pure business logic -- inventory mutations, credit deduction, instance creation. The component should just call a single service method.
 - **Dependencies**: `gameStateManager`, `starterDeck`, `ECONOMY`, `singlePlayerProfile`, etc.
 
@@ -156,29 +156,30 @@ All 7 instances listed in Problems section must be converted:
 - Test deck creation logic: verify `handleConfirmCopyStarter` correctly computes inventory changes and credit deduction (test against extracted service)
 
 ### After Extraction (unit tests for new files)
-- `src/utils/__tests__/hexGridUtils.test.js` -- pure geometry tests
+- `src/logic/singlePlayer/__tests__/hexGrid.test.js` -- pure geometry tests
 - `src/hooks/__tests__/useHangarMapState.test.js` -- pan/zoom behavior
-- `src/logic/singlePlayer/__tests__/DeckSlotService.test.js` -- deck creation business logic
+- `src/logic/singlePlayer/__tests__/deckSlotFactory.test.js` -- deck creation business logic
 
 ### Test File Locations
 - `src/components/screens/__tests__/HangarScreen.test.jsx`
-- `src/utils/__tests__/hexGridUtils.test.js`
+- `src/logic/singlePlayer/__tests__/hexGrid.test.js`
 - `src/hooks/__tests__/useHangarData.test.js`
-- `src/logic/singlePlayer/__tests__/DeckSlotService.test.js`
+- `src/logic/singlePlayer/__tests__/deckSlotFactory.test.js`
 
 ## Execution Order
 
 1. **Fix logging**: Replace all 7 raw `console.*` calls with `debugLog`. Reduce noisy log sequences. _Commit._
 2. **Remove dead code**: Delete placeholder "Deck Editor" modal (lines 1918-1929) after confirming it's unreachable. _Commit._
-3. **Extract hex grid utilities**: Move `generateHexGrid`, `getHexCoordinate`, `getOffScreenPOIs`, `getArrowEdgePosition`, `clampPan`, grid constants to `src/utils/hexGridUtils.js`. Write tests. _Commit._
-4. **Extract `useHangarMapState` hook**: Move pan/zoom state, refs, mouse handlers, wheel effect. _Commit._
-5. **Extract `useHangarData` hook**: Move grid generation effect, map generation effect, boss placement effect, tutorial effect, music effect, computed memos. _Commit._
-6. **Extract deck creation logic**: Move `handleConfirmCopyStarter` and `handleConfirmEmptyDeck` logic to `DeckSlotService.js`. Component calls service method. Write tests. _Commit._
-7. **Extract `HangarHeader`**: Pull header section. _Commit._
-8. **Extract `HangarHexMap`**: Pull map area rendering. _Commit._
-9. **Extract `HangarSidebar`**: Pull right sidebar. _Commit._
-10. **Extract `HangarModals`**: Pull modal section. Consolidate tutorial modals into data-driven pattern. _Commit._
-11. **Write integration tests**: Verify screen renders, modals open/close, deploy flow. _Commit._
+3. **Write intent-based tests (Phase 2)**: Create `src/components/screens/__tests__/HangarScreen.test.jsx` with tests for `generateHexGrid`, `getOffScreenPOIs`, `clampPan`, and deck creation logic. Tests must pass on current code before any extractions. _Commit._
+4. **Extract hex grid utilities**: Move `generateHexGrid`, `getHexCoordinate`, `getOffScreenPOIs`, `getArrowEdgePosition`, `clampPan`, grid constants to `src/logic/singlePlayer/hexGrid.js`. Write tests. _Commit._
+5. **Extract `useHangarMapState` hook**: Move pan/zoom state, refs, mouse handlers, wheel effect. _Commit._
+6. **Extract `useHangarData` hook**: Move grid generation effect, map generation effect, boss placement effect, tutorial effect, music effect, computed memos. _Commit._
+7. **Extract deck creation logic**: Move `handleConfirmCopyStarter` and `handleConfirmEmptyDeck` logic to `deckSlotFactory.js`. Component calls factory function. Write tests. _Commit._
+8. **Extract `HangarHeader`**: Pull header section. _Commit._
+9. **Extract `HangarHexMap`**: Pull map area rendering. _Commit._
+10. **Extract `HangarSidebar`**: Pull right sidebar. _Commit._
+11. **Extract `HangarModals`**: Pull modal section. Consolidate tutorial modals into data-driven pattern. _Commit._
+12. **Write integration tests**: Verify screen renders, modals open/close, deploy flow. _Commit._
 
 ## Risk Assessment
 

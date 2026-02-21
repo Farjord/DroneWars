@@ -80,6 +80,7 @@
 - **Where**: `src/logic/ai/AISequentialTurnStrategy.js`
 - **Why**: These are AI decision-making functions for sequential turns. They share a common pattern (get state, make decision via aiBrain, execute via actionProcessor). Strategy pattern.
 - **Dependencies**: `aiBrain` (aiLogic), `gameEngine`, `TargetingRouter`, `GameDataService`, `SeededRandom`, `actionProcessor`
+- **Size risk**: If `AISequentialTurnStrategy.js` exceeds 400 lines after extraction, split into `AIDeploymentTurnStrategy.js` (deployment turns) and `AIDiscardRemovalTurnStrategy.js` (discard/removal/shield turns).
 
 ### 3. Extract AI Quick Deploy Handler
 - **What**: `handleQuickDeployResponse()`, `executeSingleDeployment()`, `finishDeploymentPhase()`
@@ -92,10 +93,40 @@
 - **Why**: These are orchestration concerns -- when and how to trigger AI. The processor delegates decisions to extracted strategies.
 - **Estimated size after extraction**: ~300-350 lines
 
+## Import Direction Diagram
+
+After all extractions, the import graph looks like this (`A → B` means A imports from B):
+
+```
+AISimultaneousPhaseStrategy → gameEngine
+AISimultaneousPhaseStrategy → SeededRandom
+AISimultaneousPhaseStrategy → shipComponentsToPlacement
+AISimultaneousPhaseStrategy → GameDataService
+
+AISequentialTurnStrategy    → aiLogic (aiBrain)
+AISequentialTurnStrategy    → gameEngine
+AISequentialTurnStrategy    → TargetingRouter
+AISequentialTurnStrategy    → GameDataService
+AISequentialTurnStrategy    → actionProcessor
+
+AIQuickDeployHandler        → aiLogic (aiBrain)
+AIQuickDeployHandler        → gameEngine
+AIQuickDeployHandler        → DeploymentProcessor
+AIQuickDeployHandler        → GameDataService
+
+AIPhaseProcessor            → AISimultaneousPhaseStrategy
+AIPhaseProcessor            → AISequentialTurnStrategy
+AIPhaseProcessor            → AIQuickDeployHandler
+AIPhaseProcessor            → GameStateManager
+AIPhaseProcessor            → actionProcessor
+```
+
+**No circular dependencies**: Extracted strategies import from shared logic/data modules, not from AIPhaseProcessor. AIPhaseProcessor imports the strategies it orchestrates.
+
 ## Dead Code Removal
 
 | Method | Lines | Reason |
-|-|-|
+|-|-|-|
 | `selectDronesForAI()` | 198-239 | Superseded by `randomlySelectDrones()`. No callers. |
 | `selectBalancedDrones()` | 248-290 | Only called by dead `selectDronesForAI()`. |
 | `executePass()` | 845-854 | Never called. Pass logic is inline in turn methods. |
@@ -133,6 +164,8 @@
 - Line 294: `* NEW FLOW: Returns both deck (40 cards) and drones (10 drones)` -- remove `NEW FLOW:` prefix
 - Lines 388-390: `// REMOVED: Legacy hard-coded placement strategy methods...` -- delete entirely (references deleted code)
 
+**Note**: These line numbers should be independently verified before cleanup — they may have been copied from another plan and may not match the actual file.
+
 ### Useful comments to add
 - Add a brief class-level description of the orchestrator pattern after extraction (AIPhaseProcessor orchestrates, strategies decide)
 
@@ -163,7 +196,7 @@
 
 ## Execution Order
 
-1. **Delete dead code** (~270 lines): Remove `selectDronesForAI`, `selectBalancedDrones`, `executePass`, `getCapabilities`, `handleQuickDeployResponse`. Remove GFM fallback reference to `handleQuickDeployResponse` (GFM line 2643-2645). Commit.
+1. **Delete dead code** (~270 lines): Remove `selectDronesForAI`, `selectBalancedDrones`, `executePass`, `getCapabilities`. Commit. Then in a **separate atomic commit**: delete `handleQuickDeployResponse` AND remove the GFM fallback reference (GFM line 2643-2645) in the same commit. Add a test verifying GFM doesn't call `handleQuickDeployResponse`.
 
 2. **Fix logging**: Convert 6 `console.error`/`console.warn` to `debugLog()`. Reduce `SHIELD_CLICKS` noise. Remove `TURN_TRANSITION_DEBUG` from subscription. Commit.
 
@@ -171,7 +204,7 @@
 
 4. **Deduplicate pass action construction**: Extract `buildPassAction(phase)` helper to reduce 5 copies to 1. Commit.
 
-5. **Convert dynamic imports to top-level**: Move repeated `await import('../logic/aiLogic.js')` and `await import('../logic/gameLogic.js')` to static imports at top of file. Commit.
+5. **Convert dynamic imports to top-level (with dependency check)**: Before converting, run a dependency graph analysis to verify no circular dependencies will be introduced by making `aiLogic.js` and `gameLogic.js` static imports. If circular dependencies exist, keep those specific imports dynamic and document why. Convert the safe ones to static. Commit.
 
 6. **Extract `AISimultaneousPhaseStrategy`**: Write intent tests. Extract 5 methods. AIPhaseProcessor delegates. Commit.
 
