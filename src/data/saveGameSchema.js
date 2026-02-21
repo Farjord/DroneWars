@@ -5,7 +5,6 @@
  */
 
 import { starterDeck } from './playerDeckData.js';
-import fullCardCollection from './cardData.js';
 import { ECONOMY } from './economyData.js';
 import { getAllTacticalItemIds } from './tacticalItemData.js';
 
@@ -121,17 +120,6 @@ export const defaultPlayerProfile = {
  */
 export const defaultInventory = {};
 
-/**
- * Default drone instances - DEPRECATED (legacy support only)
- * Now using slot-based damage model with droneSlots array
- */
-export const defaultDroneInstances = [];
-
-/**
- * Default ship component instances - DEPRECATED (legacy support only)
- * Now using slot-based damage model with sectionSlots object
- */
-export const defaultShipComponentInstances = [];
 
 /**
  * Create empty drone slots array with new format
@@ -489,8 +477,6 @@ export default {
   SAVE_VERSION,
   defaultPlayerProfile,
   defaultInventory,
-  defaultDroneInstances,
-  defaultShipComponentInstances,
   defaultDiscoveredCards,
   defaultQuickDeployments,
   defaultShipSlots,
