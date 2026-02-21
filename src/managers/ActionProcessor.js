@@ -1,7 +1,3 @@
-// ========================================
-// ACTION PROCESSOR
-// ========================================
-// Centralized action processing system to prevent race conditions.
 // All game actions must go through this processor to ensure serialization.
 
 import { gameEngine } from '../logic/gameLogic.js';
@@ -185,7 +181,6 @@ setAnimationManager(animationManager) {
    * @returns {Promise} Resolves when action is complete
    */
   async queueAction(action) {
-    // DEBUG: Prove queueAction is called
     debugLog('PASS_LOGIC', `🟣 [QUEUE ACTION] Action queued`, {
       type: action.type,
       gameMode: this.gameStateManager?.getState()?.gameMode,
@@ -207,7 +202,6 @@ setAnimationManager(animationManager) {
    * Process the action queue serially
    */
   async processQueue() {
-    // DEBUG: Prove processQueue is called
     debugLog('PASS_LOGIC', `🟠 [PROCESS QUEUE] Processing queue`, {
       isProcessing: this.isProcessing,
       queueLength: this.actionQueue.length,
@@ -249,7 +243,6 @@ setAnimationManager(animationManager) {
   async processAction(action) {
     const { type, payload, isNetworkAction = false } = action;
 
-    // DEBUG: Prove processAction is called
     debugLog('PASS_LOGIC', `🔵 [ACTION PROCESSOR] processAction called`, {
       type,
       isNetworkAction,
@@ -505,7 +498,6 @@ setAnimationManager(animationManager) {
         'suppressedConsumption'
       ];
 
-      // DEBUG: Log finally block execution to diagnose why emission might not happen
       debugLog('PASS_LOGIC', `🔧 [ACTION PROCESSOR] Finally block executing`, {
         type,
         isPlayerAction: playerActionTypes.includes(type),
@@ -514,7 +506,6 @@ setAnimationManager(animationManager) {
         gameMode: this.gameStateManager?.getState()?.gameMode
       });
 
-      // TURN TRANSITION DEBUG: Diagnose event chain breakdown
       debugLog('TURN_TRANSITION_DEBUG', 'Finally block executing', {
         type,
         isPlayerAction: playerActionTypes.includes(type),
@@ -4175,7 +4166,6 @@ setAnimationManager(animationManager) {
 
     debugLog('ENERGY', '⚡ ActionProcessor: Processing energy reset');
 
-    // DEBUG: Log what was received from GameFlowManager
     debugLog('RESOURCE_RESET', `📥 [ACTIONPROCESSOR] Received energyReset payload`, {
       roundNumber,
       player1: {
@@ -4210,7 +4200,6 @@ setAnimationManager(animationManager) {
       ...(roundNumber !== undefined && { roundNumber })
     }, 'PLAYER_STATES_SET');
 
-    // DEBUG: Log what's actually in the game state after setState
     const currentState = this.gameStateManager.getState();
     debugLog('RESOURCE_RESET', `✅ [ACTIONPROCESSOR] Game state after setState (atomic update)`, {
       roundNumber: currentState.roundNumber,
