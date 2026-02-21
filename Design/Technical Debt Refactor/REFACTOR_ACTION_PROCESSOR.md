@@ -101,7 +101,151 @@
 ### Behavioral Baseline
 <!-- IMMUTABLE — do not edit after initial writing -->
 
-*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+#### Exports / Public API
+
+**Default export**: `ActionProcessor` class (singleton pattern)
+
+| Export | Type | Contract |
+|-|-|-|
+| `ActionProcessor.getInstance(gameStateManager, phaseAnimationQueue?)` | Static | Returns singleton instance. Creates on first call. |
+| `ActionProcessor.reset()` | Static | Nulls singleton. Used for testing and new games. |
+| `queueAction(action)` | Async | Enqueues `{type, payload}`, returns Promise resolving to action result. Serial processing via internal queue. |
+| `subscribe(listener)` | Sync | Registers event listener. Returns unsubscribe function. |
+| `emit(eventType, data)` | Sync | Fires `{type: eventType, ...data}` to all listeners. |
+| `setP2PManager(p2pManager)` | Sync | Stores P2P manager reference for multiplayer broadcasting. |
+| `setPhaseManager(phaseManager)` | Sync | Stores PhaseManager reference for pass/commitment notifications. |
+| `setAIPhaseProcessor(aiPhaseProcessor)` | Sync | Stores AIPhaseProcessor reference for AI interception decisions. |
+| `setAnimationManager(animationManager)` | Sync | Stores AnimationManager reference for animation orchestration. |
+| `checkWinCondition()` | Sync | Checks ship section hull values via WinConditionChecker. Sets winner in gameStateManager if found. Returns result or null. |
+| `processForceWin()` | Sync | DEV ONLY. Sets all player2 ship sections to hull 0, then calls checkWinCondition. |
+| `isActionInProgress()` | Sync | Returns `true` if queue is processing OR any action lock is held. |
+| `getQueueLength()` | Sync | Returns `actionQueue.length`. |
+| `getAndClearPendingActionAnimations()` | Sync | Returns and clears `pendingActionAnimations` array. Used by broadcastStateToGuest. |
+| `getAndClearPendingSystemAnimations()` | Sync | Returns and clears `pendingSystemAnimations` array. Used by broadcastStateToGuest. |
+| `executeAndCaptureAnimations(animations, isSystem?, wait?)` | Async | Executes animations via AnimationManager. Captures to pending arrays for host broadcasting. |
+| `executeGoAgainAnimation(actingPlayerId)` | Async | Fires GO_AGAIN_NOTIFICATION animation via executeAndCaptureAnimations. |
+| `broadcastStateToGuest(trigger?)` | Sync | Host-only. Sends pendingFinalState or pendingStateUpdate or current state + pending animations to guest via p2pManager. |
+| `prepareTeleportStates(animations, newPlayerStates)` | Sync | Returns `{pendingStateUpdate, pendingFinalState}`. If TELEPORT_IN animations exist, pendingStateUpdate has isTeleporting flags; pendingFinalState has clean state. |
+| `addTeleportingFlags(newPlayerStates, animations)` | Sync | Deep-clones player states and adds `isTeleporting: true` to drones targeted by TELEPORT_IN animations. |
+| `applyPendingStateUpdate()` | Sync | Called by AnimationManager during orchestration. Applies `pendingStateUpdate` to gameStateManager. |
+| `getAnimationSource()` | Sync | Returns 'LOCAL', 'HOST_LOCAL', or 'GUEST_OPTIMISTIC' based on gameMode. |
+| `revealTeleportedDrones(teleportAnimations)` | Sync | Called by AnimationManager at 70% of TELEPORT_IN. Applies `pendingFinalState` (removes isTeleporting flags). |
+| `processNetworkAction(actionData)` | Async | Wraps action with `isNetworkAction: true` and queues it. |
+| `processGuestAction(action)` | Async | Host-only. Queues guest action non-blocking (fire-and-forget with .then/.catch). Returns `{success: true, processing: true}` immediately. |
+| `clearQueue()` | Sync | Rejects all queued actions, resets all locks, clears listeners, clears pending animations/state. Emergency use. |
+| `getPhaseCommitmentStatus(phase)` | Sync | Returns `{phase, commitments, bothComplete}` from gameState.commitments. |
+| `clearPhaseCommitments(phase?)` | Sync | Resets commitments for a phase (or all phases) in gameState. |
+| `applyPhaseCommitments(phase)` | Sync | Transfers commitment data to permanent game state fields. Returns state updates object. Handles: droneSelection, deckSelection, placement, mandatoryDiscard, optionalDiscard, mandatoryDroneRemoval, allocateShields, determineFirstPlayer. |
+
+#### State Mutations and Their Triggers
+
+**Internal mutable fields** (on `this`):
+
+| Field | Type | Mutated by | Purpose |
+|-|-|-|-|
+| `actionQueue` | Array | queueAction (push), processQueue (shift), clearQueue (empty) | Serial action processing queue |
+| `isProcessing` | Boolean | processQueue (set/clear) | Prevents concurrent queue processing |
+| `actionLocks` | Object | processAction (set/clear per type) | Prevents duplicate concurrent actions of same type |
+| `listeners` | Array | subscribe (push), clearQueue (empty) | Event listener registry |
+| `lastActionResult` | Object | processAction (set in try, clear in finally) | Temp storage for event emission in finally block |
+| `lastActionType` | String | processAction (set in try, clear in finally) | Temp storage for event emission in finally block |
+| `pendingActionAnimations` | Array | executeAndCaptureAnimations (push), getAndClearPending* (clear), clearQueue (clear) | Host-only animation buffer for guest broadcast |
+| `pendingSystemAnimations` | Array | executeAndCaptureAnimations (push), getAndClearPending* (clear), clearQueue (clear) | Host-only system animation buffer |
+| `pendingStateUpdate` | Object | processAttack/Ability/Deployment/CardPlay/ShipAbility (set/clear) | State with isTeleporting flags for AnimationManager |
+| `pendingFinalState` | Object | Same as pendingStateUpdate | Clean state for TELEPORT_IN reveal |
+
+**GameStateManager mutations** (via `this.gameStateManager`):
+
+| State field | Mutated by methods | Mechanism |
+|-|-|-|
+| `player1`, `player2` | processAttack, processMove, processAbility, processDeployment, processCardPlay, processMovementCompletion, processSearchAndDrawCompletion, processShipAbility, processShipAbilityCompletion, all ship ability methods, processCommitment, processDraw, processEnergyReset, processRoundStartTriggers, processRebuildProgress, processMomentumAward, processDestroyDrone, processDebugAddCardsToHand, processAddShield, processResetShields, processSnaredConsumption, processSuppressedConsumption, processOptionalDiscard, processRoundStart, processReallocateShields, applyPhaseCommitments | setState, setPlayerStates, updatePlayerState |
+| `currentPlayer` | processTurnTransition, processPhaseTransition, processRoundStart, processFirstPlayerDetermination, processPlayerPass | setCurrentPlayer, setState |
+| `turnPhase` | processTurnTransition, processPhaseTransition, processRoundStart | setTurnPhase, setState |
+| `turn` | processPlayerPass (action phase), processRoundStart | setState |
+| `roundNumber` | processEnergyReset (conditional) | setState |
+| `passInfo` | processPhaseTransition (reset), processPlayerPass (update), processRoundStart (reset) | setState, setPassInfo |
+| `actionsTakenThisTurn` | processAction (increment for qualifying types), processTurnTransition (reset on player change), processRoundStart (reset), processAdditionalCostCardPlay (increment), processAdditionalCostEffectSelectionComplete (increment) | setState |
+| `commitments` | processCommitment (store), clearPhaseCommitments (reset) | setState |
+| `interceptionPending` | processAttack (set for interception, clear after) | setState |
+| `lastInterception` | processAttack (set when AI intercepts) | setState |
+| `winner` | checkWinCondition → WinConditionChecker → setWinnerCallback | setWinner |
+| `shieldsToAllocate` / `opponentShieldsToAllocate` | processEnergyReset, processAddShield, processResetShields, processCommitment (allocateShields) | setState |
+| `firstPlayerOfRound` | processRoundStart, processFirstPlayerDetermination | setState |
+| `firstPasserOfPreviousRound` | processRoundStart | setState |
+| `placedSections` / `opponentPlacedSections` | processPhaseTransition (placement init), processAiShipPlacement, applyPhaseCommitments (placement) | setState |
+| `unplacedSections` | processPhaseTransition (placement init) | setState |
+| `log` | Nearly all process methods via gameStateManager.addLogEntry | addLogEntry |
+
+#### Side Effects
+
+**AnimationManager calls** (blocking unless noted):
+- `executeWithStateUpdate(animations, this)` — used by processAttack, processAbility, processDeployment, processCardPlay, processShipAbility. Orchestrates pre-state → state update → post-state animation sequencing.
+- `executeAnimations(animations, source)` — used by executeAndCaptureAnimations. Blocking by default, non-blocking when `waitForCompletion=false`.
+- `waitForReactRender()` — used by processMove and processMovementCompletion before mine trigger animations to ensure DOM is updated.
+
+**P2P broadcasts** (host-only):
+- `broadcastStateToGuest()` called after: processAttack (mine phases, single phase), processAbility, processDeployment, processCardPlay, processShipAbility, processCommitment (host→guest), processSnaredConsumption, processSuppressedConsumption.
+- `p2pManager.broadcastState(state, actionAnimations, systemAnimations)` — the actual send.
+
+**Event emissions**:
+- `action_completed` event emitted in processAction's finally block for player action types: attack, ability, move, deployment, cardPlay, additionalCostCardPlay, shipAbility, shipAbilityCompletion, movementCompletion, searchAndDrawCompletion, aiAction, aiTurn, playerPass, turnTransition, recallAbility, targetLockAbility, recalculateComplete, reallocateShieldsComplete, snaredConsumption, suppressedConsumption.
+- Payload: `{actionType, payload, result}`. GameFlowManager subscribes to this for turn transitions and broadcasting.
+
+**PhaseManager notifications**:
+- `phaseManager.notifyHostAction('commit'|'pass', {phase})` — in processCommitment and processPlayerPass for host/local player1.
+- `phaseManager.notifyGuestAction('commit'|'pass', {phase})` — for guest/local player2.
+
+**PhaseAnimationQueue**:
+- `phaseAnimationQueue.queueAnimation(phase, text, subtitle, source)` — in processPhaseTransition (phase announcements) and processPlayerPass (pass notifications).
+- `phaseAnimationQueue.startPlayback(source)` — in processPlayerPass only (phase transitions rely on GameFlowManager to start playback).
+
+**Dynamic imports**:
+- `import('../utils/firstPlayerUtils.js')` — in processRoundStart and processFirstPlayerDetermination. Async import at call time.
+
+#### Known Edge Cases
+
+**Action lock deadlocks**:
+- Lock is set in processAction's try block and cleared in finally block. If a strategy method throws, the finally block still releases the lock. However, if the promise itself is never resolved (e.g., AnimationManager hangs), the lock stays held indefinitely. `clearQueue()` is the emergency escape hatch.
+
+**Animation callback ordering**:
+- `pendingStateUpdate` and `pendingFinalState` are set before `executeWithStateUpdate` and cleared in its finally block. AnimationManager calls `applyPendingStateUpdate()` during orchestration and `revealTeleportedDrones()` at 70% of TELEPORT_IN. If AnimationManager is null/undefined, the state update is skipped entirely (no crash, but state won't update).
+
+**Teleport state timing**:
+- For TELEPORT_IN animations, the sequence is: (1) pendingStateUpdate applied (drone with isTeleporting=true, invisible), (2) animation plays, (3) at 70% mark, revealTeleportedDrones applies pendingFinalState (drone visible). If no TELEPORT_IN, pendingFinalState is null and pendingStateUpdate contains the clean state directly.
+
+**Go-again flow**:
+- processAttack: if `!result.shouldEndTurn`, executes GO_AGAIN_NOTIFICATION animation. GameFlowManager decides actual turn transition based on shouldEndTurn from the action_completed event.
+- processMove: Rally Beacon grants go-again (shouldEndTurn=false). Drone destroyed by mine forces shouldEndTurn=true regardless.
+- processCardPlay: if `!shouldEndTurn && !needsCardSelection`, fires go-again animation. needsCardSelection suppresses it when card enters lane/drone picker.
+
+**Pass validation in sequential vs simultaneous phases**:
+- Sequential phases (deployment, action): processAction checks if acting player matches currentPlayer. Network actions from host skip this check.
+- All phases: processAction checks passInfo to block player action types after a player has passed.
+- processPlayerPass: switches currentPlayer to opponent if opponent hasn't passed. If both passed, GameFlowManager handles phase transition.
+
+**Mine two-phase execution in processAttack**:
+- When attack triggers mines AND has attack animations: mine animations execute first with intermediate state (mines removed, no attack damage), then attack animations execute with full final state. This ensures mine tokens disappear before attack animation plays. When no mines, single-phase execution.
+
+**processMove commit-then-animate pattern**:
+- Unlike processAttack/Ability/CardPlay which use executeWithStateUpdate, processMove commits state immediately (drone in destination lane), waits for React render, then plays mine animations. This is because move animations need the drone visually in the destination lane before mine triggers.
+
+**processCommitment AI auto-commit**:
+- In local mode, when player1 commits and player2 hasn't, processCommitment calls handleAICommitment which recursively calls processCommitment for player2. This means processCommitment can re-enter itself. The bothComplete flag is recalculated from fresh state after AI auto-commit returns.
+
+**handleAICommitment error swallowing**:
+- The outer try/catch in handleAICommitment catches and logs errors via console.error but does NOT re-throw. This means AI commitment failures are silently swallowed. processCommitment's own try/catch DOES re-throw. These have different error handling semantics.
+
+**processGuestAction fire-and-forget**:
+- processGuestAction queues the action and returns immediately without waiting for completion. Errors are caught by `.catch()` and logged. The host UI remains responsive while guest actions process in background.
+
+**Shield allocation phase routing**:
+- processAction has special early-return handling for allocateShields phase: allocateShield and resetShieldAllocation types are TODO stubs returning success. endShieldAllocation routes through processCommitment. These bypass the normal switch statement.
+
+**Action counter types**:
+- Only 6 action types increment actionsTakenThisTurn: attack, cardPlay, move, ability, deployment, shipAbility. This counter is used for NOT_FIRST_ACTION ability conditions. It resets on player change (processTurnTransition) and round start (processRoundStart).
+
+**processEnergyReset verbose logging**:
+- Contains ~60 lines of RESOURCE_RESET debug logging that was added to diagnose a race condition where energy/deploymentBudget fields were lost. The atomic setState update on line 4327 was the fix. The debug logging remains.
 
 ## TO DO
 
