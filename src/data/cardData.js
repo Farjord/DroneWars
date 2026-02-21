@@ -1,6 +1,3 @@
-// Re-export for backward compatibility — import directly from './rarityColors' for new code
-export { RARITY_COLORS } from './rarityColors';
-
 const fullCardCollection = [
 
   // --- Ordnance Cards ---

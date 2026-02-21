@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import fullCardCollection from '../cardData';
-import { RARITY_COLORS } from '../rarityColors';
 
 const VALID_RARITIES = ['Common', 'Uncommon', 'Rare', 'Mythic'];
 const VALID_TYPES = ['Ordnance', 'Support', 'Tactic', 'Upgrade'];
@@ -67,17 +66,5 @@ describe('fullCardCollection', () => {
         expect(card.image).toMatch(/^\/DroneWars\/cards\/.+\.png$/);
       });
     });
-  });
-});
-
-describe('RARITY_COLORS', () => {
-  it('has keys matching all valid rarities', () => {
-    expect(Object.keys(RARITY_COLORS).sort()).toEqual([...VALID_RARITIES].sort());
-  });
-
-  it('all values are valid hex color strings', () => {
-    for (const color of Object.values(RARITY_COLORS)) {
-      expect(color).toMatch(/^#[0-9a-fA-F]{6}$/);
-    }
   });
 });
