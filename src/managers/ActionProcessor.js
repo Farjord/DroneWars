@@ -28,6 +28,11 @@ import SeededRandom from '../utils/seededRandom.js';
 import { initializeForCombat as initializeDroneAvailability } from '../logic/availability/DroneAvailabilityManager.js';
 import { checkRallyBeaconGoAgain } from '../logic/utils/rallyBeaconHelper.js';
 import { processTrigger as processMineTrigger } from '../logic/effects/mines/MineTriggeredEffectProcessor.js';
+import {
+  processAttack as _processAttack,
+  processMove as _processMove,
+  processAbility as _processAbility
+} from '../logic/actions/CombatActionStrategy.js';
 
 class ActionProcessor {
   // Singleton instance
@@ -108,6 +113,62 @@ class ActionProcessor {
     this.lastActionType = null;
 
     debugLog('STATE_SYNC', '⚙️ ActionProcessor initialized');
+  }
+
+  // --- Action Context (shared interface for extracted strategies) ---
+
+  /**
+   * Lazily-created context object passed to all strategy functions.
+   * Uses getters for late-bound references (animationManager, aiPhaseProcessor, etc.).
+   */
+  _getActionContext() {
+    if (this._actionContext) return this._actionContext;
+    const ap = this;
+    this._actionContext = {
+      // State access
+      getState: () => ap.gameStateManager.getState(),
+      get: (key) => ap.gameStateManager.get(key),
+      setState: (...args) => ap._withUpdateContext(() => ap.gameStateManager.setState(...args)),
+      setPlayerStates: (...args) => ap.gameStateManager.setPlayerStates(...args),
+      updatePlayerState: (...args) => ap.gameStateManager.updatePlayerState(...args),
+      addLogEntry: (...args) => ap.gameStateManager.addLogEntry(...args),
+      getLocalPlayerId: () => ap.gameStateManager.getLocalPlayerId(),
+      getLocalPlacedSections: () => ap.gameStateManager.getLocalPlacedSections(),
+      createCallbacks: (...args) => ap.gameStateManager.createCallbacks(...args),
+
+      // Animation (late-bound via getters since set after construction)
+      getAnimationManager: () => ap.animationManager,
+      executeAnimationPhase: (anims, states) => ap._executeAnimationPhase(anims, states),
+      executeGoAgainAnimation: (pid) => ap.executeGoAgainAnimation(pid),
+      executeAndCaptureAnimations: (...args) => ap.executeAndCaptureAnimations(...args),
+      mapAnimationEvents: (events) => (events || []).map(event => {
+        const animDef = ap.animationManager?.animations[event.type];
+        return {
+          animationName: event.type,
+          timing: animDef?.timing || 'pre-state',
+          payload: {
+            ...event,
+            droneId: event.sourceId || event.targetId
+          }
+        };
+      }),
+      captureAnimationsForBroadcast: (animations) => {
+        const gameMode = ap.gameStateManager.get('gameMode');
+        if (gameMode === 'host' && animations.length > 0) {
+          ap.pendingActionAnimations.push(...animations);
+        }
+      },
+
+      // Win condition
+      checkWinCondition: () => ap.checkWinCondition(),
+
+      // Late-bound references
+      getAiPhaseProcessor: () => ap.aiPhaseProcessor,
+      getPhaseManager: () => ap.phaseManager,
+      getPhaseAnimationQueue: () => ap.phaseAnimationQueue,
+      getGameDataService: () => ap.gameDataService,
+    };
+    return this._actionContext;
   }
 
   /**
@@ -553,542 +614,16 @@ setAnimationManager(animationManager) {
     }
   }
 
-  /**
-   * Process attack action
-   */
   async processAttack(payload) {
-    const { attackDetails } = payload;
-
-    const currentState = this.gameStateManager.getState();
-    const allPlacedSections = {
-      player1: currentState.placedSections,
-      player2: currentState.opponentPlacedSections
-    };
-
-    // Check for interception opportunity BEFORE resolving attack
-    let finalAttackDetails = { ...attackDetails };
-
-    // Only drone attacks can be intercepted - skip interception for card-based attacks
-    if (attackDetails.interceptor === undefined && !attackDetails.sourceCardInstanceId) {
-      const interceptionResult = calculateAiInterception(
-        attackDetails,
-        { player1: currentState.player1, player2: currentState.player2 },
-        allPlacedSections
-      );
-
-      if (interceptionResult.hasInterceptors) {
-        const defendingPlayerId = attackDetails.attackingPlayer === 'player1' ? 'player2' : 'player1';
-
-        // Set unified interception pending state (shows "opponent deciding" modal to attacker)
-        this._withUpdateContext(() => this.gameStateManager.setState({
-          interceptionPending: {
-            attackDetails,
-            defendingPlayerId,
-            attackingPlayerId: attackDetails.attackingPlayer,
-            interceptors: interceptionResult.interceptors,
-            timestamp: Date.now()
-          }
-        }));
-
-        // AI Defender - wait then decide automatically
-        if (defendingPlayerId === 'player2' && currentState.gameMode === 'local') {
-          debugLog('COMBAT', '🛡️ [INTERCEPTION] AI defender has interceptors');
-
-          // Wait 1 second (modal visible to human attacker)
-          await new Promise(resolve => setTimeout(resolve, 1000));
-
-          // AI makes decision
-          debugLog('COMBAT', '🔍 [INTERCEPTION] Checking aiPhaseProcessor:', {
-            hasAIPhaseProcessor: !!this.aiPhaseProcessor,
-            aiPhaseProcessorType: this.aiPhaseProcessor?.constructor?.name || 'undefined'
-          });
-
-          if (this.aiPhaseProcessor) {
-            const decision = await this.aiPhaseProcessor.makeInterceptionDecision(
-              interceptionResult.interceptors,
-              attackDetails
-            );
-
-            debugLog('COMBAT', '🛡️ [INTERCEPTION] AI decision:', decision.interceptor ? 'INTERCEPT' : 'DECLINE');
-
-            // Apply decision
-            if (decision.interceptor) {
-              finalAttackDetails.interceptor = decision.interceptor;
-
-              // Emit interception result for badge display
-              this._withUpdateContext(() => this.gameStateManager.setState({
-                lastInterception: {
-                  interceptor: decision.interceptor,
-                  originalTarget: attackDetails.target,
-                  timestamp: Date.now()
-                }
-              }));
-            }
-          }
-
-          // Complete interception (clears state, closes modal)
-          this._withUpdateContext(() => this.gameStateManager.setState({ interceptionPending: null }));
-
-          // Continue with attack
-        }
-        // Human Defender - return to show choice modal
-        else {
-          debugLog('COMBAT', '🛡️ [INTERCEPTION] Human defender has interceptors');
-          return {
-            needsInterceptionDecision: true,
-            interceptionData: {
-              interceptors: interceptionResult.interceptors,
-              attackDetails: interceptionResult.attackDetails
-            }
-          };
-        }
-      }
-    }
-
-    const logCallback = (entry) => {
-      this.gameStateManager.addLogEntry(entry, 'resolveAttack',
-        finalAttackDetails.attackingPlayer === 'player2' ? finalAttackDetails.aiContext : null);
-    };
-
-    // UI callbacks are handled by App.jsx
-    const triggerExplosion = () => {};
-    const triggerHitAnimation = () => {};
-
-    const result = resolveAttack(
-      finalAttackDetails,
-      { player1: currentState.player1, player2: currentState.player2 },
-      allPlacedSections,
-      logCallback
-    );
-
-    // Use animation events from gameEngine result
-    // Spread all event properties to ensure logical position data flows through
-    // Include timing property from AnimationManager for proper sequencing on guest side
-    const animations = (result.animationEvents || []).map(event => {
-      const animDef = this.animationManager?.animations[event.type];
-      return {
-        animationName: event.type,
-        timing: animDef?.timing || 'pre-state',  // Include timing from definition
-        payload: {
-          ...event,  // Pass ALL properties from event (sourcePlayer, sourceLane, targetPlayer, etc.)
-          droneId: event.sourceId  // Add alias for backwards compatibility
-        }
-      };
-    });
-
-    debugLog('COMBAT', '[ANIMATION EVENTS] ActionProcessor received:', result.animationEvents);
-    debugLog('COMBAT', '[ANIMATION EVENTS] Mapped to animations:', animations);
-
-    debugLog('COMBAT', '🎬 [AI ANIMATION DEBUG] Built animations array:', {
-      count: animations.length,
-      animations: animations.map(a => ({
-        name: a.animationName,
-        sourceId: a.payload.sourceId,
-        targetId: a.payload.targetId
-      })),
-      hasAnimationManager: !!this.animationManager
-    });
-
-    // Capture animations for broadcasting (host only)
-    const gameMode = this.gameStateManager.get('gameMode');
-    if (gameMode === 'host' && animations.length > 0) {
-      this.pendingActionAnimations.push(...animations);
-    }
-
-    const mineCount = result.mineAnimationEventCount || 0;
-
-    // Two-phase execution: mine animations play and update state first,
-    // then attack animations play with the remaining state update.
-    // This ensures the mine token disappears before the attack animation starts.
-    if (mineCount > 0 && animations.length > mineCount) {
-      const mineAnimations = animations.slice(0, mineCount);
-      const attackAnimations = animations.slice(mineCount);
-
-      // Phase 1: Mine destruction - build intermediate state with mines removed but no attack damage
-      const currentState = this.gameStateManager.getState();
-      const intermediatePlayerStates = {
-        player1: JSON.parse(JSON.stringify(currentState.player1)),
-        player2: JSON.parse(JSON.stringify(currentState.player2))
-      };
-
-      // Remove destroyed mines from intermediate state using mine animation event data
-      for (const mineAnim of mineAnimations) {
-        const { targetId, targetPlayer, targetLane } = mineAnim.payload;
-        if (targetId && targetPlayer && targetLane) {
-          const laneDrones = intermediatePlayerStates[targetPlayer]?.dronesOnBoard?.[targetLane];
-          if (laneDrones) {
-            intermediatePlayerStates[targetPlayer].dronesOnBoard[targetLane] =
-              laneDrones.filter(d => d.id !== targetId);
-          }
-        }
-      }
-
-      // Phase 1: Execute mine animations with intermediate state (mine removal only)
-      await this._executeAnimationPhase(mineAnimations, intermediatePlayerStates);
-
-      // Phase 2: Execute attack animations with full final state (includes attack damage)
-      await this._executeAnimationPhase(attackAnimations, result.newPlayerStates);
-    } else {
-      // Single-phase execution: no mine animations or only mine animations (no attack after)
-      await this._executeAnimationPhase(animations, result.newPlayerStates);
-    }
-
-    // Clear interceptionPending state after attack completes (closes "opponent deciding" modal)
-    if (currentState.interceptionPending) {
-      debugLog('COMBAT', '🛡️ [INTERCEPTION] Clearing interceptionPending after attack completed');
-      this._withUpdateContext(() => this.gameStateManager.setState({ interceptionPending: null }));
-    }
-
-    // Check for win conditions after attack
-    this.checkWinCondition();
-
-    // Show Go Again notification when the turn continues (goAgain attacks)
-    if (!result.shouldEndTurn) {
-      await this.executeGoAgainAnimation(attackDetails.attackingPlayer);
-    }
-
-    // NOTE: Turn transitions now handled by GameFlowManager based on shouldEndTurn flag
-    // GameFlowManager monitors action completion and processes turn transitions after animations complete
-
-    // Return result with animations for optimistic action tracking
-    return {
-      ...result,
-      animations: {
-        actionAnimations: animations,
-        systemAnimations: []
-      }
-    };
+    return _processAttack(payload, this._getActionContext());
   }
 
-  /**
-   * Process move action
-   */
   async processMove(payload) {
-    const { droneId, fromLane, toLane, playerId } = payload;
-
-    const currentState = this.gameStateManager.getState();
-    const playerState = currentState[playerId];
-    const opponentPlayerId = playerId === 'player1' ? 'player2' : 'player1';
-    const opponentPlayerState = currentState[opponentPlayerId];
-
-    if (!playerState) {
-      throw new Error(`Player ${playerId} not found`);
-    }
-
-    // Find the drone in the fromLane
-    const droneIndex = playerState.dronesOnBoard[fromLane].findIndex(d => d.id === droneId);
-    if (droneIndex === -1) {
-      throw new Error(`Drone ${droneId} not found in ${fromLane}`);
-    }
-
-    const drone = playerState.dronesOnBoard[fromLane][droneIndex];
-
-    // Get placed sections for INERT check and later updateAuras
-    const placedSections = {
-      player1: currentState.placedSections,
-      player2: currentState.opponentPlacedSections
-    };
-
-    // Check if drone has INERT keyword (cannot move)
-    const effectiveStats = calculateEffectiveStats(drone, fromLane, playerState, opponentPlayerState, placedSections);
-    if (effectiveStats.keywords.has('INERT')) {
-      return {
-        success: false,
-        error: `${drone.name} cannot move (Inert).`,
-        shouldShowErrorModal: true
-      };
-    }
-
-    // Check for INHIBIT_MOVEMENT keyword in source lane (prevents moving OUT)
-    const dronesInFromLane = playerState.dronesOnBoard[fromLane] || [];
-    const hasMovementInhibitor = dronesInFromLane.some(d =>
-      d.abilities?.some(a => a.effect?.keyword === 'INHIBIT_MOVEMENT')
-    );
-    if (hasMovementInhibitor) {
-      return {
-        success: false,
-        error: `${drone.name} cannot move out of ${fromLane} - Thruster Inhibitor is active.`,
-        shouldShowErrorModal: true
-      };
-    }
-
-    // Check if drone is Snared (one-shot movement cancellation for AI path)
-    if (drone.isSnared) {
-      let newPlayerState = JSON.parse(JSON.stringify(playerState));
-      const snaredDrone = newPlayerState.dronesOnBoard[fromLane].find(d => d.id === droneId);
-      if (snaredDrone) {
-        snaredDrone.isSnared = false;
-        snaredDrone.isExhausted = true;
-      }
-      this.gameStateManager.updatePlayerState(playerId, newPlayerState);
-      this.gameStateManager.addLogEntry({
-        player: playerState.name,
-        actionType: 'STATUS_CONSUMED',
-        source: drone.name,
-        target: fromLane.replace('lane', 'Lane '),
-        outcome: `${drone.name}'s move was cancelled — Snare effect consumed. Drone is now exhausted.`
-      });
-      return { success: true, snaredConsumed: true, shouldEndTurn: true };
-    }
-
-    // Create a copy of the entire player state for processing
-    let newPlayerState = JSON.parse(JSON.stringify(playerState));
-
-    // Check if drone has RAPID keyword (first move doesn't exhaust)
-    const baseDrone = fullDroneCollection.find(d => d.name === drone.name);
-    const hasRapid = baseDrone?.abilities?.some(
-      a => a.effect?.type === 'GRANT_KEYWORD' && a.effect?.keyword === 'RAPID'
-    );
-    const canUseRapid = hasRapid && !drone.rapidUsed;
-
-    // Check if drone has INFILTRATE keyword (doesn't exhaust when moving into uncontrolled lane)
-    const hasInfiltrate = baseDrone?.abilities?.some(
-      a => a.effect?.type === 'GRANT_KEYWORD' && a.effect?.keyword === 'INFILTRATE'
-    );
-    let canUseInfiltrate = false;
-    if (hasInfiltrate) {
-      // Check lane control BEFORE movement - does not exhaust if destination lane is NOT controlled
-      const laneControl = LaneControlCalculator.calculateLaneControl(
-        this.gameStateManager.getState().player1,
-        this.gameStateManager.getState().player2
-      );
-      canUseInfiltrate = laneControl[toLane] !== playerId;
-    }
-
-    // Move the drone - RAPID or INFILTRATE allows move without exhaustion
-    const movedDrone = {
-      ...drone,
-      isExhausted: (canUseRapid || canUseInfiltrate) ? false : true,
-      rapidUsed: canUseRapid ? true : drone.rapidUsed
-    };
-    newPlayerState.dronesOnBoard[fromLane] = newPlayerState.dronesOnBoard[fromLane].filter(d => d.id !== droneId);
-    newPlayerState.dronesOnBoard[toLane].push(movedDrone);
-
-    // Apply ON_MOVE effects (e.g., Phase Jumper's Phase Shift)
-    let { newState: stateAfterMoveEffects, animationEvents: onMoveAnimationEvents } = gameEngine.applyOnMoveEffects(
-      newPlayerState,
-      movedDrone,
-      fromLane,
-      toLane,
-      (entry) => this.gameStateManager.addLogEntry(entry)
-    );
-
-    // Update auras after movement
-    stateAfterMoveEffects.dronesOnBoard = gameEngine.updateAuras(
-      stateAfterMoveEffects,
-      opponentPlayerState,
-      placedSections
-    );
-
-    // --- Phase 1: Commit movement (drone appears in destination lane) ---
-    this.gameStateManager.updatePlayerState(playerId, stateAfterMoveEffects);
-
-    // Wait for React to render drone in new lane before querying DOM for animation positions
-    if (this.animationManager) {
-      await this.animationManager.waitForReactRender();
-    }
-
-    // Play ON_MOVE heal animations (drone is now visually in destination lane)
-    if (onMoveAnimationEvents && onMoveAnimationEvents.length > 0) {
-      const healAnimations = onMoveAnimationEvents.map(event => ({
-        animationName: event.type,
-        timing: this.animationManager?.animations[event.type]?.timing || 'independent',
-        payload: { ...event, targetPlayer: playerId }
-      }));
-      await this.executeAndCaptureAnimations(healAnimations);
-    }
-
-    // --- Phase 2: Process mine triggers on committed state (drone is now visually in destination lane) ---
-    const committedState = this.gameStateManager.getState();
-    const minePlayerStates = {
-      [playerId]: JSON.parse(JSON.stringify(committedState[playerId])),
-      [opponentPlayerId]: JSON.parse(JSON.stringify(committedState[opponentPlayerId]))
-    };
-    const movedDroneInLane = minePlayerStates[playerId].dronesOnBoard[toLane].find(d => d.id === droneId);
-    const mineResult = processMineTrigger('ON_LANE_MOVEMENT_IN', {
-      lane: toLane,
-      triggeringDrone: movedDroneInLane,
-      triggeringPlayerId: playerId
-    }, {
-      playerStates: minePlayerStates,
-      placedSections,
-      logCallback: (entry) => this.gameStateManager.addLogEntry(entry)
-    });
-
-    // Play mine animations (drone is now visually in destination lane)
-    if (mineResult.triggered && mineResult.animationEvents.length > 0) {
-      const mineAnimations = mineResult.animationEvents.map(event => {
-        const animDef = this.animationManager?.animations[event.type];
-        return {
-          animationName: event.type,
-          timing: animDef?.timing || 'pre-state',
-          payload: { ...event }
-        };
-      });
-      await this.executeAndCaptureAnimations(mineAnimations);
-    }
-
-    // Commit mine destruction state (removes destroyed mine/drone from DOM)
-    if (mineResult.triggered) {
-      this.gameStateManager.updatePlayerState(playerId, minePlayerStates[playerId]);
-      this.gameStateManager.updatePlayerState(opponentPlayerId, minePlayerStates[opponentPlayerId]);
-    }
-
-    // Check if the moved drone was destroyed by the mine
-    const finalPlayerState = this.gameStateManager.getState()[playerId];
-    const droneDestroyedByMine = mineResult.triggered &&
-      !finalPlayerState.dronesOnBoard[toLane].some(d => d.id === droneId);
-
-    // Log the move
-    this.gameStateManager.addLogEntry({
-      player: playerState.name,
-      actionType: 'MOVE',
-      source: drone.name,
-      target: toLane.replace('lane', 'Lane '),
-      outcome: `Moved from ${fromLane.replace('lane', 'Lane ')} to ${toLane.replace('lane', 'Lane ')}.`
-    });
-
-    debugLog('COMBAT', `✅ Moved ${drone.name} from ${fromLane} to ${toLane}`);
-
-    // If drone was destroyed by mine, end turn immediately (no rally beacon check)
-    if (droneDestroyedByMine) {
-      return {
-        success: true,
-        shouldEndTurn: true,
-        message: `${drone.name} moved from ${fromLane} to ${toLane} but was destroyed by a mine`,
-        drone: drone,
-        fromLane: fromLane,
-        toLane: toLane
-      };
-    }
-
-    // Check if a Rally Beacon in the destination lane grants go-again
-    const rallyGoAgain = checkRallyBeaconGoAgain(
-      finalPlayerState, toLane, false,
-      (entry) => this.gameStateManager.addLogEntry(entry)
-    );
-
-    // Show Go Again notification if Rally Beacon triggered
-    if (rallyGoAgain) {
-      await this.executeGoAgainAnimation(playerId);
-    }
-
-    return {
-      success: true,
-      shouldEndTurn: !rallyGoAgain,
-      message: `${drone.name} moved from ${fromLane} to ${toLane}`,
-      drone: drone,
-      fromLane: fromLane,
-      toLane: toLane
-    };
+    return _processMove(payload, this._getActionContext());
   }
 
-  /**
-   * Process ability action
-   */
   async processAbility(payload) {
-    const { droneId, abilityIndex, targetId } = payload;
-
-    const currentState = this.gameStateManager.getState();
-    const playerStates = { player1: currentState.player1, player2: currentState.player2 };
-    const allPlacedSections = {
-      player1: currentState.placedSections,
-      player2: currentState.opponentPlacedSections
-    };
-
-    // Find the drone and ability
-    let userDrone = null;
-    let targetDrone = null;
-
-    // Search for the drone in all lanes, tracking owner
-    for (const [playerId, player] of Object.entries(playerStates)) {
-      for (const lane of Object.values(player.dronesOnBoard)) {
-        for (const drone of lane) {
-          if (drone.id === droneId) {
-            userDrone = { ...drone, owner: playerId };
-          }
-          if (drone.id === targetId) {
-            targetDrone = { ...drone, owner: playerId };
-          }
-        }
-      }
-    }
-
-    // Check if targetId is a lane (for lane-targeted abilities)
-    if (targetId && typeof targetId === 'string' && targetId.startsWith('lane') && !targetDrone) {
-      // Create a lane target object for lane-targeted abilities
-      targetDrone = { id: targetId };
-    }
-
-    if (!userDrone || !userDrone.abilities[abilityIndex]) {
-      throw new Error(`Invalid drone or ability: ${droneId}, ${abilityIndex}`);
-    }
-
-    const ability = userDrone.abilities[abilityIndex];
-
-    // Validate activation limit (per-round usage)
-    if (ability.activationLimit != null) {
-      const activations = userDrone.abilityActivations?.[abilityIndex] || 0;
-      if (activations >= ability.activationLimit) {
-        throw new Error(`Ability ${ability.name} has reached its activation limit for this round`);
-      }
-    }
-
-    const logCallback = (entry) => {
-      this.gameStateManager.addLogEntry(entry, 'resolveAbility');
-    };
-
-    const resolveAttackCallback = async (attackDetails) => {
-      return await this.processAttack({ attackDetails });
-    };
-
-    const result = AbilityResolver.resolveAbility(
-      ability,
-      userDrone,
-      targetDrone,
-      playerStates,
-      allPlacedSections,
-      logCallback,
-      resolveAttackCallback
-    );
-
-    // Collect animation events
-    // Spread all event properties to ensure logical position data flows through
-    // Include timing property from AnimationManager for proper sequencing on guest side
-    const animations = (result.animationEvents || []).map(event => {
-      const animDef = this.animationManager?.animations[event.type];
-      return {
-        animationName: event.type,
-        timing: animDef?.timing || 'pre-state',  // Include timing from definition
-        payload: {
-          ...event,  // Pass ALL properties from event (sourcePlayer, sourceLane, targetPlayer, etc.)
-          droneId: event.sourceId  // Add alias for backwards compatibility
-        }
-      };
-    });
-
-    // Capture animations for broadcasting (host only)
-    const gameMode = this.gameStateManager.get('gameMode');
-    if (gameMode === 'host' && animations.length > 0) {
-      this.pendingActionAnimations.push(...animations);
-    }
-
-    await this._executeAnimationPhase(animations, result.newPlayerStates);
-
-    // Check for win conditions after ability
-    this.checkWinCondition();
-
-    // NOTE: Turn transitions now handled by GameFlowManager based on shouldEndTurn flag
-    // GameFlowManager processes turn transitions after ability animations complete
-
-    // Return result with animations for optimistic action tracking
-    return {
-      ...result,
-      animations: {
-        actionAnimations: animations,
-        systemAnimations: []
-      }
-    };
+    return _processAbility(payload, this._getActionContext());
   }
 
   /**
