@@ -61,7 +61,7 @@ class ActionProcessor {
   constructor(gameStateManager, phaseAnimationQueue = null) {
     // Enforce singleton pattern
     if (ActionProcessor.instance) {
-      console.warn('⚠️ ActionProcessor already exists. Use getInstance() instead of new ActionProcessor()');
+      debugLog('STATE_SYNC', 'ActionProcessor already exists. Use getInstance() instead of new ActionProcessor()');
       return ActionProcessor.instance;
     }
 
@@ -140,7 +140,7 @@ class ActionProcessor {
       try {
         listener({ type: eventType, ...data });
       } catch (error) {
-        console.error('ActionProcessor listener error:', error);
+        debugLog('STATE_SYNC', 'ActionProcessor listener error:', error);
       }
     });
   }
@@ -228,7 +228,7 @@ setAnimationManager(animationManager) {
           const result = await this.processAction(action);
           action.resolve(result);
         } catch (error) {
-          console.error('Action processing error:', error);
+          debugLog('STATE_SYNC', 'Action processing error:', error);
           action.reject(error);
         }
       }
@@ -3010,7 +3010,7 @@ setAnimationManager(animationManager) {
     const gameMode = this.gameStateManager.get('gameMode');
 
     if (gameMode !== 'host') {
-      console.warn('⚠️ processGuestAction should only be called by host');
+      debugLog('STATE_SYNC', 'processGuestAction called on non-host');
       return;
     }
 
@@ -3028,7 +3028,7 @@ setAnimationManager(animationManager) {
       // Note: Broadcasting already happened inside action method via broadcastStateToGuest()
       return result;
     }).catch((error) => {
-      console.error('[HOST] Error processing guest action:', error);
+      debugLog('STATE_SYNC', '[HOST] Error processing guest action:', error);
     });
 
     // Return immediately - host UI remains responsive
@@ -3134,7 +3134,7 @@ setAnimationManager(animationManager) {
   prepareTeleportStates(animations, newPlayerStates) {
     // Guard against incomplete result structure from async operations
     if (!newPlayerStates || !newPlayerStates.player1 || !newPlayerStates.player2) {
-      console.warn('[prepareTeleportStates] Incomplete newPlayerStates, skipping teleport preparation');
+      debugLog('ANIMATIONS', 'prepareTeleportStates: Incomplete newPlayerStates, skipping teleport preparation');
       return { pendingStateUpdate: null, pendingFinalState: null };
     }
 
@@ -3862,7 +3862,7 @@ setAnimationManager(animationManager) {
           debugLog('COMMITMENTS', `🔄 Recalculated bothComplete after AI commit: ${bothComplete}`);
           debugLog('SHIELD_CLICKS', `🔄 Both players complete: ${bothComplete}`);
         } catch (error) {
-          console.error('❌ AI commitment error:', error);
+          debugLog('COMMITMENTS', 'AI commitment error:', error);
           debugLog('SHIELD_CLICKS', '❌ Error during AI commitment:', error);
           throw error; // Propagate error so player knows something went wrong
         }
@@ -4012,11 +4012,11 @@ setAnimationManager(animationManager) {
           break;
 
         default:
-          console.warn(`⚠️ No AI handler for phase: ${phase}`);
+          debugLog('COMMITMENTS', `No AI handler for phase: ${phase}`);
       }
 
     } catch (error) {
-      console.error('AI commitment error:', error);
+      debugLog('COMMITMENTS', 'AI commitment error:', error);
     }
   }
 
@@ -4031,7 +4031,7 @@ setAnimationManager(animationManager) {
     const phaseCommitments = currentState.commitments[phase];
 
     if (!phaseCommitments) {
-      console.warn(`⚠️ No commitments found for phase: ${phase}`);
+      debugLog('COMMITMENTS', `No commitments found for phase: ${phase}`);
       return {};
     }
 
@@ -4130,7 +4130,7 @@ setAnimationManager(animationManager) {
         break;
 
       default:
-        console.warn(`⚠️ No commitment application logic for phase: ${phase}`);
+        debugLog('COMMITMENTS', `No commitment application logic for phase: ${phase}`);
     }
 
     return stateUpdates;
@@ -4493,7 +4493,7 @@ setAnimationManager(animationManager) {
     );
 
     if (!result.success) {
-      console.warn(`⚠️ Shield allocation failed: ${result.error}`);
+      debugLog('ENERGY', `Shield allocation failed: ${result.error}`);
       return result;
     }
 
@@ -4541,7 +4541,7 @@ setAnimationManager(animationManager) {
     const result = ShieldManager.processResetShieldAllocation(currentState, playerId);
 
     if (!result.success) {
-      console.warn(`⚠️ Shield reset failed: ${result.error}`);
+      debugLog('ENERGY', `Shield reset failed: ${result.error}`);
       return result;
     }
 
