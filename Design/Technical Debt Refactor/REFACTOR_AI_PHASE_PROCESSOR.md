@@ -242,7 +242,63 @@ AIPhaseProcessor            → actionProcessor
 ## Behavioral Baseline
 <!-- IMMUTABLE — do not edit after initial writing -->
 
-*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+### Exports / Public API
+
+**Default export**: Singleton instance `aiPhaseProcessor = new AIPhaseProcessor()`.
+
+| Method | Params | Returns | Contract |
+|-|-|-|-|
+| `initialize(aiPersonalities, dronePool, currentPersonality, actionProcessor?, gameStateManager?)` | AI config + game services | void | Idempotent (skips if `isInitialized`). Cleans up prior subscription. Creates `GameDataService`, `effectiveShipStatsWrapper`. Subscribes to state changes for AI turn detection. |
+| `cleanup()` | none | void | Clears `turnTimer`, unsubscribes from state, resets `isProcessing`/`isInitialized`. |
+| `processDroneSelection(aiPersonality?)` | optional personality | `Promise<Array>` (5 drones) | Reads AI deck from `commitments.deckSelection.player2`. Maps names→objects via `extractDronesFromDeck`. Selects 5 randomly via `randomlySelectDrones`. Throws if <5 drones extracted. |
+| `extractDronesFromDeck(droneNames)` | string[] | drone[] | Maps names to objects from `this.dronePool`. Filters nulls. Warns on missing drones. |
+| `randomlySelectDrones(availableDrones, count)` | drones[], number | drone[] | Uses `SeededRandom.fromGameState` for deterministic shuffle, returns first N. |
+| `processDeckSelection(aiPersonality?)` | optional personality | `Promise<{deck, drones, shipComponents}>` | Builds deck via `gameEngine.buildDeckFromList` using personality decklist or fallback. Returns 40-card deck, 5-10 drone names, and shipComponents map. |
+| `processPlacement(aiPersonality?)` | optional personality | `Promise<string[]>` | Converts `personality.shipComponents` to placement array via `shipComponentsToPlacement`. Falls back to `['bridge', 'powerCell', 'droneControlHub']`. |
+| `executeDeploymentTurn(gameState)` | game state | `Promise<void>` | Checks `shouldPass`. If not, calls `aiBrain.handleOpponentTurn` for deployment decision. On deploy success: queues deployment + turnTransition. On deploy failure: forces pass (prevents infinite loop). On pass decision: queues playerPass. |
+| `executeActionTurn(gameState)` | game state | `Promise<Object\|null>` | Checks `shouldPass`. Calls `aiBrain.handleOpponentAction`. On pass: queues playerPass, returns null. On action: queues aiAction, returns result (may contain `needsInterceptionDecision`). |
+| `executeOptionalDiscardTurn(gameState)` | game state | `Promise<{type, cardsToDiscard, playerId, updatedPlayerState}>` | Discards excess cards above hand limit (lowest cost first). Draws to hand limit via `gameEngine.drawToHandLimit`. Returns updated state. |
+| `executeMandatoryDiscardTurn(gameState)` | game state | `Promise<{type, cardsToDiscard, playerId, updatedPlayerState}>` | Discards lowest-cost cards to meet hand limit. Groups by cost, shuffles within group, selects from lowest. |
+| `executeMandatoryDroneRemovalTurn(gameState)` | game state | `Promise<{type, dronesToRemove, playerId, updatedPlayerState}>` | Removes drones exceeding CPU limit. Prioritizes: cheapest drones from strongest lanes (lane score = AI power - opponent power). |
+| `shouldPass(gameState, phase)` | game state, phase string | boolean | Returns true if `passInfo.player2Passed` is true. Otherwise false. |
+| `executeShieldAllocationTurn(gameState)` | game state | `Promise<void>` | Round-robin distributes `opponentShieldsToAllocate` across placed sections via `actionProcessor.processAddShield`. |
+| `checkForAITurn(state)` | game state | void | Guards: not processing, local mode, not game over, sequential phase, player2 turn, not passed. Clears existing timer, schedules `executeTurn()` after 1500ms. |
+| `executeTurn()` | none | `Promise<void>` | Fetches fresh state. Re-validates: still player2 turn, not passed, sequential phase. Checks animation blocking (phaseAnimationQueue, animationManager). If blocked, reschedules after 500ms. Dispatches to `executeDeploymentTurn` or `executeActionTurn`. Handles interception pause. Schedules continuation if AI still has turn. |
+| `makeInterceptionDecision(interceptors, attackDetails)` | interceptors[], attack context | `Promise<{interceptor}>` | Delegates to `aiBrain.makeInterceptionDecision`. Logs decision to game state via `addLogEntry`. |
+| `executeSingleDeployment()` | none | `Promise<{success, drone}\|null>` | Gets fresh state. Calls `aiBrain.handleOpponentTurn`. If deploy, uses `DeploymentProcessor.executeDeployment` directly. Updates state. Returns result or null. |
+| `finishDeploymentPhase()` | none | `Promise<void>` | Loop: calls `executeSingleDeployment` up to 10 times until null returned. |
+
+**Dead code methods** (no external callers): `selectDronesForAI`, `selectBalancedDrones`, `executePass`, `getCapabilities`, `handleQuickDeployResponse`.
+
+### State Mutations and Their Triggers
+
+| State | Mutated By | Trigger |
+|-|-|-|
+| `this.isProcessing` | `executeTurn()` | Set true at start, false in finally block and on interception pause |
+| `this.turnTimer` | `checkForAITurn()`, `executeTurn()` | `setTimeout` IDs for 1500ms delay (initial) or 500ms retry (animation blocked) |
+| `this.isInitialized` | `initialize()`, `cleanup()` | Set true after init, false on cleanup |
+| `this.stateSubscriptionCleanup` | `initialize()`, `cleanup()` | Subscription cleanup function from `gameStateManager.subscribe` |
+| `gameStateManager state` | `executeSingleDeployment()` | Direct `setState({player2: ...})` after successful deployment |
+| `actionProcessor queue` | `executeDeploymentTurn`, `executeActionTurn`, `executeShieldAllocationTurn` | Via `queueAction()` and `processAddShield()` |
+
+### Side Effects
+
+- **Timers**: `setTimeout` in `checkForAITurn` (1500ms), `executeTurn` animation retry (500ms), continuation scheduling (100ms)
+- **State subscription**: `gameStateManager.subscribe` in `initialize()` — fires `checkForAITurn` on every state change
+- **Action queue writes**: `actionProcessor.queueAction` for deployment, pass, turnTransition, aiAction
+- **Direct state writes**: `gameStateManager.setState` in `executeSingleDeployment` (quick deploy path only)
+- **Log entries**: `gameStateManager.addLogEntry` in `makeInterceptionDecision`, `executeSingleDeployment` log callbacks
+- **Dynamic imports**: `aiLogic.js`, `gameLogic.js`, `TargetingRouter.js`, `DeploymentProcessor.js` loaded on demand
+
+### Known Edge Cases
+
+- **Animation blocking**: `executeTurn` checks both `phaseAnimationQueue.isPlaying()` and `animationManager.isBlocking` before acting. If either is true, reschedules after 500ms. This creates a circular reference: `AIPhaseProcessor → gameStateManager → gameFlowManager → phaseAnimationQueue`.
+- **Infinite loop guard**: `executeDeploymentTurn` forces pass on deployment failure to prevent AI repeatedly trying to deploy an undeployable drone.
+- **CPU limit fallback**: When deployment fails for any reason (CPU limit, energy, deployment limit), AI passes turn.
+- **Interception pause**: When AI attack triggers human interception decision, `isProcessing` is set false and AI turn loop stops until state change re-triggers it.
+- **Fresh state pattern**: `executeTurn()` always fetches fresh state, never trusts the delayed callback's captured state.
+- **Singleton**: Exported as module-level singleton. `initialize()` is idempotent via `isInitialized` guard.
+- **Quick deploy dual path**: `executeSingleDeployment` uses `DeploymentProcessor` directly (not `actionProcessor.queueAction`), bypassing the normal action queue. This is intentional for silent interleaved deployment.
 
 ## Change Log
 
@@ -250,3 +306,15 @@ AIPhaseProcessor            → actionProcessor
 
 | Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
 |-|-|-|-|-|-|
+| 1 | 2026-02-21 | Behavioral Baseline + Implementation Plan Doc | N/A | N/A | None |
+| 2 | 2026-02-21 | Move test file to `__tests__/` directory | All tests pass | None | None |
+| 3 | 2026-02-21 | Remove 4 dead methods (~134 lines): selectDronesForAI, selectBalancedDrones, executePass, getCapabilities | All tests pass | None | None |
+| 4 | 2026-02-21 | Remove handleQuickDeployResponse + GFM fallback | All tests pass | GFM fallback simplified to direct call | None |
+| 5 | 2026-02-21 | Fix logging: 5 console calls → debugLog, reduce SHIELD_CLICKS noise, remove TURN_TRANSITION_DEBUG | All tests pass | None | None |
+| 6 | 2026-02-21 | Remove banned comment patterns (NEW FLOW:, REMOVED:) | All tests pass | None | None |
+| 7 | 2026-02-21 | Deduplicate pass action construction via _buildPassAction helper | All tests pass | None | None |
+| 8 | 2026-02-21 | Consolidate dynamic imports per method | All tests pass | None | Static conversion aborted — Vite SSR module init order issue with gameLogic.js deep chain |
+| 9 | 2026-02-21 | Extract AISimultaneousPhaseStrategy.js (151 lines, 8 tests) | All 16 tests pass | None | None |
+| 10 | 2026-02-21 | Extract AISequentialTurnStrategy.js (347 lines, 11 tests) | All 19 tests pass | None | None |
+| 11 | 2026-02-21 | Extract AIQuickDeployHandler.js (114 lines, 2 tests) | All 29 tests pass | None | None |
+| 12 | 2026-02-21 | Fix circular dependency: isAnimationBlocking callback replaces gameStateManager→gameFlowManager chain | All 29 tests pass | None | None |

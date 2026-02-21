@@ -131,7 +131,7 @@ class AIPhaseProcessor {
 
   // --- Simultaneous Phase Delegation ---
 
-  async processDroneSelection(aiPersonality = null) {
+  async processDroneSelection() {
     return _processDroneSelection(this.gameStateManager, this.dronePool);
   }
 
