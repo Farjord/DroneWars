@@ -125,7 +125,43 @@ Not worth the complexity for a pure data file. Section separator comments (step 
 ## Behavioral Baseline
 <!-- IMMUTABLE — do not edit after initial writing -->
 
-*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+### Exports / Public API
+
+| Export | Kind | Description |
+|-|-|-|
+| `RARITY_COLORS` | Named export (object) | Maps rarity strings to hex color codes: `{ Common: '#808080', Uncommon: '#22c55e', Rare: '#3b82f6', Mythic: '#a855f7' }` |
+| `fullCardCollection` | Default export (array) | Array of 101 card definition objects. Order matters — `fullCardCollection[0]` is accessed positionally in `modalShowcaseHelpers.js:57`. |
+
+**Card object schema — required fields:** `id`, `baseCardId`, `name`, `maxInDeck`, `rarity`, `type`, `cost`, `image`, `description`, `effect`
+
+**Card object schema — optional fields:** `targeting`, `visualEffect`, `aiOnly`, `momentumCost`
+
+**Valid `type` values (current):** `'Ordnance'`, `'Support'`, `'Tactic'`, `'Upgrade'` (plus bug: `'Tactics'` on `Raise_the_Alarm`)
+
+**Valid `rarity` values:** `'Common'`, `'Uncommon'`, `'Rare'`, `'Mythic'`
+
+**Card ID conventions:**
+- Base cards: `CARD0XX` or `Name_With_Underscores` (AI-only cards)
+- Enhanced cards: `CARD0XX_ENHANCED` (all caps, except bug: `CARD032_Enhanced`)
+- 12 cards have `momentumCost` property (values 1-2)
+- 2 cards have `aiOnly: true` flag (`Raise_the_Alarm`, `Transmit_Threat`)
+
+### State Mutations and Their Triggers
+
+None. This is a pure data file. Both exports are static constants defined at module load time. No mutations occur.
+
+### Side Effects
+
+None. No animations, events, network calls, or localStorage writes. Module evaluation has no side effects beyond defining the two exported constants.
+
+### Known Edge Cases
+
+- **Positional access**: `modalShowcaseHelpers.js:57` accesses `fullCardCollection[0]` directly — card reordering must preserve first element or update this reference.
+- **`CARD032_Enhanced` casing bug**: Referenced by ID in `vsModeDeckData.js:27` — both the cardData ID and vsModeDeckData reference must be updated together.
+- **`CARD037_ENHANCED` value/description mismatch**: Description says "Restore up to 3 shields" but `effect.value` is `2` (same as base card CARD037). Bug: value should be `3`.
+- **`Raise_the_Alarm` type typo**: `type: 'Tactics'` instead of `'Tactic'`. Only occurrence of `'Tactics'` in entire codebase — no consumer code checks for this plural form, so fix is safe.
+- **Card ID numbering gaps**: IDs jump from CARD054 to CARD060, then to CARD063. Not sequential but not a bug — IDs are used as string keys, not indices.
+- **Importers**: 34 files import `fullCardCollection`, 9 files import `RARITY_COLORS`. All use ES6 imports (no `require()`).
 
 ## Change Log
 
