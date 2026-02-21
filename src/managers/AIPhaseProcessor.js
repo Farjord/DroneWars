@@ -11,9 +11,18 @@ import {
   extractDronesFromDeck as _extractDronesFromDeck,
   randomlySelectDrones as _randomlySelectDrones
 } from '../logic/ai/AISimultaneousPhaseStrategy.js';
+import {
+  executeDeploymentTurn as _executeDeploymentTurn,
+  executeActionTurn as _executeActionTurn,
+  executeOptionalDiscardTurn as _executeOptionalDiscardTurn,
+  executeMandatoryDiscardTurn as _executeMandatoryDiscardTurn,
+  executeMandatoryDroneRemovalTurn as _executeMandatoryDroneRemovalTurn,
+  executeShieldAllocationTurn as _executeShieldAllocationTurn,
+  shouldPass as _shouldPass,
+  buildPassAction
+} from '../logic/ai/AISequentialTurnStrategy.js';
 import GameDataService from '../services/GameDataService.js';
 import { debugLog } from '../utils/debugLogger.js';
-import SeededRandom from '../utils/seededRandom.js';
 
 /**
  * AIPhaseProcessor - Handles AI completion of simultaneous phases
@@ -137,461 +146,43 @@ class AIPhaseProcessor {
     return _processPlacement(aiPersonality || this.currentAIPersonality);
   }
 
-  /**
-   * Execute AI turn for deployment phase
-   * @param {Object} gameState - Current game state
-   * @returns {Promise<Object>} Execution result
-   */
-  async executeDeploymentTurn(gameState) {
-    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.executeDeploymentTurn starting...');
+  // --- Sequential Turn Delegation ---
 
-    // Check if AI should pass
-    if (this.shouldPass(gameState, 'deployment')) {
-      await this.actionProcessor.queueAction(this._buildPassAction('deployment', gameState.passInfo));
-      return;
-    }
-
-    if (!this.actionProcessor) {
-      throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
-    }
-
-    const { aiBrain } = await import('../logic/aiLogic.js');
-    const { gameEngine } = await import('../logic/gameLogic.js');
-
-    const aiDecision = aiBrain.handleOpponentTurn({
-      player1: gameState.player1,
-      player2: gameState.player2,
-      turn: gameState.turn,
-      placedSections: gameState.placedSections,
-      opponentPlacedSections: gameState.opponentPlacedSections,
-      getShipStatus: gameEngine.getShipStatus,
-      calculateEffectiveShipStats: this.effectiveShipStatsWrapper,
-      gameStateManager: this.gameStateManager,
-      addLogEntry: (entry, debugSource, aiDecisionContext) => {
-        this.gameStateManager?.addLogEntry(entry, debugSource, aiDecisionContext);
-      }
-    });
-
-    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor executing deployment decision:', aiDecision);
-
-    // AI_DEPLOYMENT logging for bug investigation
-    debugLog('AI_DEPLOYMENT', `🤖 AI decision made`, {
-      decisionType: aiDecision.type,
-      droneName: aiDecision.payload?.droneToDeploy?.name,
-      targetLane: aiDecision.payload?.targetLane,
-      score: aiDecision.score,
-      turnUsed: gameState.roundNumber,
-      actualTurn: gameState.turn,
-      player2Energy: gameState.player2?.energy,
-      player2Budget: gameState.player2?.deploymentBudget
-    });
-
-    // Execute the decision directly through ActionProcessor
-    if (aiDecision.type === 'pass') {
-      await this.actionProcessor.queueAction(this._buildPassAction('deployment', gameState.passInfo));
-    } else if (aiDecision.type === 'deploy') {
-      // Execute deployment
-      const result = await this.actionProcessor.queueAction({
-        type: 'deployment',
-        payload: {
-          droneData: aiDecision.payload.droneToDeploy,
-          laneId: aiDecision.payload.targetLane,
-          playerId: 'player2',
-          turn: gameState.roundNumber
-        }
-      });
-
-      // End turn after successful deployment (same as human players do)
-      if (result.success) {
-        debugLog('AI_DEPLOYMENT', `✅ Deployment executed`, {
-          droneName: aiDecision.payload?.droneToDeploy?.name,
-          targetLane: aiDecision.payload?.targetLane
-        });
-        await this.actionProcessor.queueAction({
-          type: 'turnTransition',
-          payload: {
-            newPlayer: 'player1',
-            reason: 'deploymentCompleted'
-          }
-        });
-      } else {
-        debugLog('AI_DEPLOYMENT', `❌ Deployment FAILED`, {
-          droneName: aiDecision.payload?.droneToDeploy?.name,
-          targetLane: aiDecision.payload?.targetLane,
-          error: result.error,
-          reason: result.reason,
-          turnUsed: gameState.roundNumber,
-          actualTurn: gameState.turn
-        });
-
-        // When deployment fails (e.g., CPU limit reached), pass the turn to prevent infinite loop
-        debugLog('AI_DEPLOYMENT', `🔄 Deployment failed - forcing AI to pass turn to prevent infinite loop`);
-        await this.actionProcessor.queueAction(this._buildPassAction('deployment', gameState.passInfo));
-      }
-    }
-  }
-
-  /**
-   * Execute AI turn for action phase
-   * @param {Object} gameState - Current game state
-   * @returns {Promise<Object>} Execution result
-   */
-  async executeActionTurn(gameState) {
-    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.executeActionTurn starting...');
-
-    // Check if AI should pass
-    if (this.shouldPass(gameState, 'action')) {
-      await this.actionProcessor.queueAction(this._buildPassAction('action', gameState.passInfo));
-      return;
-    }
-
-    if (!this.actionProcessor) {
-      throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
-    }
-
-    const { aiBrain } = await import('../logic/aiLogic.js');
-    const { gameEngine } = await import('../logic/gameLogic.js');
-    const TargetingRouter = (await import('../logic/TargetingRouter.js')).default;
-
-    const targetingRouter = new TargetingRouter();
-
-    // Create getValidTargets wrapper for AI (maintains existing API)
-    const getValidTargets = (actingPlayerId, source, definition, player1, player2) => {
-      return targetingRouter.routeTargeting({
-        actingPlayerId,
-        source,
-        definition,
-        player1,
-        player2
-      });
-    };
-
-    // Call aiLogic with proper game state format
-    const aiDecision = aiBrain.handleOpponentAction({
-      player1: gameState.player1,
-      player2: gameState.player2,
-      placedSections: gameState.placedSections,
-      opponentPlacedSections: gameState.opponentPlacedSections,
-      getShipStatus: gameEngine.getShipStatus,
-      getLaneOfDrone: gameEngine.getLaneOfDrone,
-      getValidTargets,
-      gameStateManager: this.gameStateManager,
-      addLogEntry: (entry, debugSource, aiDecisionContext) => {
-        this.gameStateManager?.addLogEntry(entry, debugSource, aiDecisionContext);
-      }
-    });
-
-    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor executing action decision:', aiDecision);
-
-    // Execute the decision directly through ActionProcessor
-    if (aiDecision.type === 'pass') {
-      await this.actionProcessor.queueAction(this._buildPassAction('action', gameState.passInfo));
-      return null;
-    } else {
-      // Execute action through ActionProcessor
-      const result = await this.actionProcessor.queueAction({
-        type: 'aiAction',
-        payload: { aiDecision: aiDecision }
-      });
-
-      // Return result so caller can check for interception needs
-      return result;
-    }
-  }
-
-  /**
-   * Execute AI turn for optional discard phase
-   * Handles both discard of excess cards and drawing to hand limit
-   * @param {Object} gameState - Current game state
-   * @returns {Promise<Object>} Execution result with updated player state
-   */
-  async executeOptionalDiscardTurn(gameState) {
-    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.executeOptionalDiscardTurn starting...');
-
-    if (!this.actionProcessor) {
-      throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
-    }
-
-    const { gameEngine } = await import('../logic/gameLogic.js');
-    const aiState = gameState.player2;
-    const opponentPlacedSections = gameState.opponentPlacedSections;
-
-    // Early return if AI has no cards
-    if (!aiState.hand || aiState.hand.length === 0) {
-      debugLog('AI_DECISIONS', '🤖 AI has no cards, auto-completing optional discard');
-      return {
-        type: 'optionalDiscard',
-        cardsToDiscard: [],
-        playerId: 'player2',
-        updatedPlayerState: aiState
-      };
-    }
-
-    // Calculate effective hand limit
-    const effectiveStats = this.gameDataService.getEffectiveShipStats(aiState, opponentPlacedSections);
-    const handLimit = effectiveStats.totals.handLimit;
-
-    let updatedAiState = { ...aiState };
-    let cardsToDiscard = [];
-
-    // Handle hand limit enforcement (discard excess cards)
-    if (updatedAiState.hand.length > handLimit) {
-      const excessCards = updatedAiState.hand.length - handLimit;
-      cardsToDiscard = updatedAiState.hand.slice(0, excessCards);
-
-      updatedAiState = {
-        ...updatedAiState,
-        hand: updatedAiState.hand.slice(excessCards),
-        discardPile: [...updatedAiState.discardPile, ...cardsToDiscard]
-      };
-
-      debugLog('AI_DECISIONS', `🤖 AI discarding ${excessCards} excess cards to meet hand limit of ${handLimit}`);
-    }
-
-    // Draw cards to hand limit using gameLogic function
-    updatedAiState = gameEngine.drawToHandLimit(updatedAiState, handLimit);
-
-    const cardsDrawn = updatedAiState.hand.length - (aiState.hand.length - cardsToDiscard.length);
-    if (cardsDrawn > 0) {
-      debugLog('AI_DECISIONS', `🤖 AI drew ${cardsDrawn} cards to reach hand limit`);
-    }
-
-    return {
-      type: 'optionalDiscard',
-      cardsToDiscard,
-      playerId: 'player2',
-      updatedPlayerState: updatedAiState
-    };
-  }
-
-  /**
-   * Execute AI turn for mandatory discard phase
-   * @param {Object} gameState - Current game state
-   * @returns {Promise<Object>} Execution result with cards to discard
-   */
-  async executeMandatoryDiscardTurn(gameState) {
-    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.executeMandatoryDiscardTurn starting...');
-
-    if (!this.actionProcessor) {
-      throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
-    }
-
-    const aiState = gameState.player2;
-    const opponentPlacedSections = gameState.opponentPlacedSections;
-
-    // Calculate effective hand limit
-    const effectiveStats = this.gameDataService.getEffectiveShipStats(aiState, opponentPlacedSections);
-    const handLimit = effectiveStats.totals.handLimit;
-
-    // Early return if AI is already at or below hand limit
-    if (!aiState.hand || aiState.hand.length <= handLimit) {
-      debugLog('AI_DECISIONS', '🤖 AI already at/below hand limit, auto-completing mandatory discard');
-      return {
-        type: 'mandatoryDiscard',
-        cardsToDiscard: [],
-        playerId: 'player2',
-        updatedPlayerState: aiState
-      };
-    }
-
-    // Calculate cards to discard
-    const excessCards = aiState.hand.length - handLimit;
-    let cardsToDiscard = [];
-
-    // AI logic: discard lowest cost cards first, randomize within same cost
-    // Group cards by cost
-    const cardsByCost = aiState.hand.reduce((acc, card) => {
-      if (!acc[card.cost]) acc[card.cost] = [];
-      acc[card.cost].push(card);
-      return acc;
-    }, {});
-
-    // Sort costs (lowest first)
-    const sortedCosts = Object.keys(cardsByCost).map(Number).sort((a, b) => a - b);
-
-    // Randomly shuffle within each cost group, then select from lowest costs
-    const rng = SeededRandom.fromGameState(gameState);
-    for (const cost of sortedCosts) {
-      const shuffled = rng.shuffle(cardsByCost[cost]);
-      cardsToDiscard.push(...shuffled);
-      if (cardsToDiscard.length >= excessCards) break;
-    }
-    cardsToDiscard = cardsToDiscard.slice(0, excessCards);
-
-    debugLog('AI_DECISIONS', `🤖 AI discarding ${cardsToDiscard.length} excess cards to meet hand limit`);
-
-    return {
-      type: 'mandatoryDiscard',
-      cardsToDiscard,
-      playerId: 'player2',
-      updatedPlayerState: aiState
-    };
-  }
-
-  /**
-   * Execute AI turn for mandatory drone removal phase
-   * @param {Object} gameState - Current game state
-   * @returns {Promise<Object>} Execution result with drones to remove
-   */
-  async executeMandatoryDroneRemovalTurn(gameState) {
-    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.executeMandatoryDroneRemovalTurn starting...');
-
-    if (!this.actionProcessor) {
-      throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
-    }
-
-    const aiState = gameState.player2;
-    const opponentPlacedSections = gameState.opponentPlacedSections;
-
-    // Calculate effective drone limit
-    const effectiveStats = this.gameDataService.getEffectiveShipStats(aiState, opponentPlacedSections);
-    const droneLimit = effectiveStats.totals.cpuLimit;
-
-    // Count total non-token drones on board (token drones don't count toward CPU limit)
-    const totalDrones = Object.values(aiState.dronesOnBoard || {}).flat().filter(d => !d.isToken).length;
-
-    // Early return if AI is already at or below drone limit
-    if (totalDrones <= droneLimit) {
-      debugLog('AI_DECISIONS', '🤖 AI already at/below drone limit, auto-completing mandatory drone removal');
-      return {
-        type: 'mandatoryDroneRemoval',
-        dronesToRemove: [],
-        playerId: 'player2',
-        updatedPlayerState: aiState
-      };
-    }
-
-    // Calculate drones to remove
-    const excessDrones = totalDrones - droneLimit;
-    let dronesToRemove = [];
-
-    // AI logic: remove lowest class (CPU cost) drones from strongest lanes
-    // Calculate lane scores (AI power - opponent power)
-    const opponentState = gameState.player1;
-    const calculateLanePower = (drones, lane) => {
-      return drones.reduce((sum, drone) => {
-        const stats = this.gameDataService.getEffectiveStats(drone, lane);
-        return sum + (stats.attack || 0) + (stats.hull || 0);
-      }, 0);
-    };
-
-    const laneScores = {
-      lane1: calculateLanePower(aiState.dronesOnBoard.lane1 || [], 'lane1') -
-             calculateLanePower(opponentState.dronesOnBoard.lane1 || [], 'lane1'),
-      lane2: calculateLanePower(aiState.dronesOnBoard.lane2 || [], 'lane2') -
-             calculateLanePower(opponentState.dronesOnBoard.lane2 || [], 'lane2'),
-      lane3: calculateLanePower(aiState.dronesOnBoard.lane3 || [], 'lane3') -
-             calculateLanePower(opponentState.dronesOnBoard.lane3 || [], 'lane3')
-    };
-
-    // Collect all drones with their lane score
-    const allDrones = [];
-    Object.entries(aiState.dronesOnBoard || {}).forEach(([lane, drones]) => {
-      drones.filter(drone => !drone.isToken).forEach(drone => {
-        allDrones.push({ ...drone, lane, laneScore: laneScores[lane] });
-      });
-    });
-
-    // Sort by lane score (highest first), then by class (lowest first)
-    // This removes cheap drones from winning lanes, preserving expensive drones and protecting losing lanes
-    allDrones.sort((a, b) => {
-      if (b.laneScore !== a.laneScore) {
-        return b.laneScore - a.laneScore; // Highest lane score first
-      }
-      return a.class - b.class; // Lowest class (CPU cost) first
-    });
-
-    dronesToRemove = allDrones.slice(0, excessDrones);
-
-    debugLog('AI_DECISIONS', `🤖 AI removing ${dronesToRemove.length} excess drones to meet drone limit`);
-
-    return {
-      type: 'mandatoryDroneRemoval',
-      dronesToRemove,
-      playerId: 'player2',
-      updatedPlayerState: aiState
-    };
-  }
-
-  /**
-   * Build a standard pass action for the AI player
-   * @param {string} phase - Current turn phase
-   * @param {Object} passInfo - Current pass state
-   * @returns {Object} Action object for playerPass
-   */
   _buildPassAction(phase, passInfo) {
-    return {
-      type: 'playerPass',
-      payload: {
-        playerId: 'player2',
-        playerName: 'AI Player',
-        turnPhase: phase,
-        passInfo,
-        opponentPlayerId: 'player1'
-      }
-    };
+    return buildPassAction(phase, passInfo);
   }
 
-  /**
-   * Determine if AI should pass in the current phase
-   * @param {Object} gameState - Current game state
-   * @param {string} phase - Current phase (deployment, action)
-   * @returns {boolean} True if AI should pass
-   */
   shouldPass(gameState, phase) {
-    const aiPassKey = 'player2Passed'; // AI is always player2
-
-    // If AI has already passed, return true
-    if (gameState.passInfo && gameState.passInfo[aiPassKey]) {
-      debugLog('AI_DECISIONS', '🤖 AI has already passed');
-      return true;
-    }
-
-    // Add AI personality-based pass logic here in the future
-    // For now, only pass if already marked as passed
-    return false;
+    return _shouldPass(gameState, phase);
   }
 
-  /**
-   * Execute AI shield allocation - distributes shields evenly across all placed sections
-   * @param {Object} gameState - Current game state
-   * @returns {Promise<void>} Shield allocation complete
-   */
+  async executeDeploymentTurn(gameState) {
+    return _executeDeploymentTurn(gameState, this.actionProcessor, {
+      effectiveShipStatsWrapper: this.effectiveShipStatsWrapper,
+      gameStateManager: this.gameStateManager
+    });
+  }
+
+  async executeActionTurn(gameState) {
+    return _executeActionTurn(gameState, this.actionProcessor, {
+      gameStateManager: this.gameStateManager
+    });
+  }
+
+  async executeOptionalDiscardTurn(gameState) {
+    return _executeOptionalDiscardTurn(gameState, this.gameDataService);
+  }
+
+  async executeMandatoryDiscardTurn(gameState) {
+    return _executeMandatoryDiscardTurn(gameState, this.gameDataService);
+  }
+
+  async executeMandatoryDroneRemovalTurn(gameState) {
+    return _executeMandatoryDroneRemovalTurn(gameState, this.gameDataService);
+  }
+
   async executeShieldAllocationTurn(gameState) {
-    debugLog('AI_DECISIONS', '🤖 AIPhaseProcessor.executeShieldAllocationTurn starting...');
-
-    if (!this.actionProcessor) {
-      throw new Error('AIPhaseProcessor not properly initialized - missing actionProcessor');
-    }
-
-    const aiPlacedSections = gameState.opponentPlacedSections;
-    const shieldsToAllocate = gameState.opponentShieldsToAllocate || 0;
-
-    if (shieldsToAllocate === 0 || aiPlacedSections.length === 0) {
-      debugLog('AI_DECISIONS', '🤖 AI has no shields to allocate or no sections');
-      return;
-    }
-
-    debugLog('AI_DECISIONS', `🤖 AI distributing ${shieldsToAllocate} shields across ${aiPlacedSections.length} sections`);
-
-    // Distribute one shield at a time in round-robin fashion for even distribution
-    let remainingShields = shieldsToAllocate;
-    let currentSectionIndex = 0;
-
-    while (remainingShields > 0) {
-      const sectionName = aiPlacedSections[currentSectionIndex];
-
-      // Use direct call instead of queueAction to avoid deadlock (we're already inside a queued action)
-      await this.actionProcessor.processAddShield({
-        sectionName,
-        playerId: 'player2'
-      });
-
-      remainingShields--;
-      currentSectionIndex = (currentSectionIndex + 1) % aiPlacedSections.length;
-    }
-
-    debugLog('AI_DECISIONS', '✅ AI shield allocation complete');
+    return _executeShieldAllocationTurn(gameState, this.actionProcessor);
   }
 
   /**
