@@ -5,16 +5,15 @@ import ActionProcessor from './ActionProcessor';
 /**
  * GameFlowManager Subscription Lifecycle Tests
  *
- * Architecture Principle: Just-In-Time Subscription Setup
- * - Subscriptions should NOT be set up during app initialization
- * - Subscriptions should be set up when gameplay begins (startGame)
- * - This prevents cleanup operations from breaking subscriptions
+ * Architecture: Eager Subscription via initialize()
+ * - initialize() calls resubscribe() at the end, making the subscription active immediately
+ * - clearQueue() wipes all listeners, requiring resubscribe() to restore them
+ * - resubscribe() is idempotent — it unsubscribes first, then re-subscribes
  *
  * Flow:
- * 1. AppRouter calls GameFlowManager.initialize() - NO subscription yet
- * 2. MenuScreen can safely call clearQueue() - nothing to break
- * 3. User starts game, startGame() calls resubscribe() - subscription active
- * 4. Game ends, endGame() clears queue and resubscribes for next game
+ * 1. GameFlowManager.initialize() sets up subscription via resubscribe()
+ * 2. clearQueue() can wipe listeners for a clean slate
+ * 3. resubscribe() restores listeners after any clearQueue() call
  */
 describe('GameFlowManager Subscription Lifecycle', () => {
   let gameFlowManager;
@@ -49,13 +48,12 @@ describe('GameFlowManager Subscription Lifecycle', () => {
     ActionProcessor.instance = null;
   });
 
-  describe('Architecture: Lazy Subscription Initialization', () => {
-    it('should NOT have subscription after initialize() - subscriptions set up later', () => {
-      // ARCHITECTURE: initialize() should NOT set up ActionProcessor subscription
-      // This allows cleanup (like MenuScreen) to run without breaking subscriptions
+  describe('Architecture: Eager Subscription Initialization', () => {
+    it('should have subscription after initialize() - resubscribe() called during init', () => {
+      // initialize() calls resubscribe() at the end, setting up the ActionProcessor subscription immediately
       gameFlowManager.initialize(mockGameStateManager, actionProcessor, () => false);
 
-      expect(actionProcessor.listeners.length).toBe(0);
+      expect(actionProcessor.listeners.length).toBeGreaterThan(0);
     });
 
     it('should have subscription after resubscribe() is called', () => {
@@ -107,10 +105,10 @@ describe('GameFlowManager Subscription Lifecycle', () => {
       expect(handleSpy).toHaveBeenCalled();
     });
 
-    it('should NOT receive events when subscription is not active', () => {
-      // ARCHITECTURE: Without resubscribe(), no events are received
+    it('should NOT receive events after clearQueue() removes subscription', () => {
+      // After clearQueue() wipes listeners, events should not reach the handler
       gameFlowManager.initialize(mockGameStateManager, actionProcessor, () => false);
-      // Note: NO resubscribe() call
+      actionProcessor.clearQueue();
       const handleSpy = vi.spyOn(gameFlowManager, 'handleActionCompletion');
 
       actionProcessor.emit('action_completed', {

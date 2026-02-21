@@ -212,7 +212,7 @@ describe('ReputationCalculator - Starter Pool Exclusion', () => {
         drones: starterPoolDroneNames.map(name => ({ name })),
         shipComponents: {
           'POWERCELL_001': 'l',
-          'BRIDGE_002': 'm',
+          'BRIDGE_001': 'm',
           'DRONECONTROL_001': 'r'
         }
       };

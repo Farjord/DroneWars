@@ -111,7 +111,7 @@ describe('DroneLanesDisplay lane targeting styles', () => {
       });
     });
 
-    it('should have ring highlight on targetable lanes (without pulse)', () => {
+    it('should have pulse overlay on targetable lanes (without animate-pulse on container)', () => {
       const props = {
         ...defaultProps,
         draggedActionCard: { card: mockLaneTargetingCard },
@@ -123,12 +123,13 @@ describe('DroneLanesDisplay lane targeting styles', () => {
       const laneContainers = container.querySelectorAll('.flex-1.rounded-lg');
       const lane1 = laneContainers[0]; // First lane
 
-      // Lane should have ring highlight
-      expect(lane1.className).toContain('ring-2');
-      expect(lane1.className).toContain('ring-cyan-400/30');
+      // Lane should have a pulse overlay child (not ring classes on the container)
+      const pulseOverlay = lane1.querySelector('.lane-target-pulse');
+      expect(pulseOverlay).not.toBeNull();
+      expect(pulseOverlay.className).toContain('absolute');
     });
 
-    it('should have cyan background highlight on targetable lanes', () => {
+    it('should have background color on pulse overlay for targetable lanes', () => {
       const props = {
         ...defaultProps,
         draggedActionCard: { card: mockLaneTargetingCard },
@@ -140,8 +141,10 @@ describe('DroneLanesDisplay lane targeting styles', () => {
       const laneContainers = container.querySelectorAll('.flex-1.rounded-lg');
       const lane1 = laneContainers[0]; // First lane
 
-      // Lane should have background highlight
-      expect(lane1.className).toContain('bg-cyan-800/40');
+      // Pulse overlay should have a backgroundColor style (inline, not class)
+      const pulseOverlay = lane1.querySelector('.lane-target-pulse');
+      expect(pulseOverlay).not.toBeNull();
+      expect(pulseOverlay.style.backgroundColor).toBeTruthy();
     });
   });
 

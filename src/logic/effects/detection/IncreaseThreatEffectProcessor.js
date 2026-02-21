@@ -57,7 +57,7 @@ class IncreaseThreatEffectProcessor extends BaseEffectProcessor {
       value = value * droneCount;
     }
 
-    if (value <= 0) {
+    if (value < 0) {
       // No threat to add (0 drones found, or 0 value)
       debugLog('EFFECT_PROCESSING', `[INCREASE_THREAT] No threat added (value=${value}, droneCount=${droneCount})`, {
         actingPlayer: context.actingPlayerId

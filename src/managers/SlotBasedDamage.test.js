@@ -134,11 +134,11 @@ describe('Slot-Based Damage Model', () => {
       const midHull = calculateSectionHull(shipSlot, 'm');
       const rightHull = calculateSectionHull(shipSlot, 'r');
 
-      // SHIP_001 has baseHull = 8, standard components have hullModifier = 0
-      expect(leftHull.current).toBe(5);  // 8 - 3
-      expect(leftHull.max).toBe(8);
-      expect(midHull.current).toBe(8);  // 8 - 0
-      expect(rightHull.current).toBe(3);  // 8 - 5
+      // SHIP_001 has baseHull = 10, standard components have hullModifier = 0
+      expect(leftHull.current).toBe(7);  // 10 - 3
+      expect(leftHull.max).toBe(10);
+      expect(midHull.current).toBe(10);  // 10 - 0
+      expect(rightHull.current).toBe(5);  // 10 - 5
     });
 
     it('should apply component hull modifiers', () => {
@@ -148,9 +148,9 @@ describe('Slot-Based Damage Model', () => {
       });
 
       const hull = calculateSectionHull(shipSlot, 'l');
-      // SHIP_001 has baseHull = 8, BRIDGE_HEAVY has hullModifier = 2
-      expect(hull.max).toBe(10);    // 8 baseline + 2 modifier
-      expect(hull.current).toBe(7); // 10 - 3
+      // SHIP_001 has baseHull = 10, BRIDGE_HEAVY has hullModifier = 2
+      expect(hull.max).toBe(12);    // 10 baseline + 2 modifier
+      expect(hull.current).toBe(9); // 12 - 3
     });
 
     it('should clamp currentHull to minimum 0', () => {
@@ -515,11 +515,11 @@ describe('Slot-Based Damage Model', () => {
       });
 
       const runState = tacticalMapStateManager.getState();
-      // SHIP_001 has baseHull = 8, standard components have hullModifier = 0
+      // SHIP_001 has baseHull = 10, standard components have hullModifier = 0
       // Keys use lowercase camelCase: 'bridge', 'powerCell', 'droneControlHub'
-      expect(runState.shipSections['bridge'].hull).toBe(5);  // 8 - 3
-      expect(runState.shipSections['powerCell'].hull).toBe(8); // 8 - 0
-      expect(runState.shipSections['droneControlHub'].hull).toBe(1); // 8 - 7
+      expect(runState.shipSections['bridge'].hull).toBe(7);  // 10 - 3
+      expect(runState.shipSections['powerCell'].hull).toBe(10); // 10 - 0
+      expect(runState.shipSections['droneControlHub'].hull).toBe(3); // 10 - 7
     });
 
     it('should apply -1 limit to drones in damaged slots', () => {
@@ -586,8 +586,8 @@ describe('Slot-Based Damage Model', () => {
 
       // Check damage persisted
       const shipSlot = gameStateManager.getState().singlePlayerShipSlots[0];
-      // SHIP_001 has baseHull = 8, hull was set to 4, so damageDealt = 8 - 4 = 4
-      expect(shipSlot.sectionSlots.l.damageDealt).toBe(4);
+      // SHIP_001 has baseHull = 10, hull was set to 4, so damageDealt = 10 - 4 = 6
+      expect(shipSlot.sectionSlots.l.damageDealt).toBe(6);
     });
 
     it('should NOT persist damage for slot 0 (starter deck)', () => {

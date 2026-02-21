@@ -30,6 +30,30 @@ vi.mock('../CardBackPlaceholder.jsx', () => ({
   default: () => <div data-testid="card-back-placeholder" />
 }));
 
+vi.mock('../../../utils/debugLogger.js', () => ({
+  debugLog: vi.fn()
+}));
+
+vi.mock('../../../managers/SoundManager.js', () => ({
+  default: { getInstance: () => ({ play: vi.fn() }) }
+}));
+
+vi.mock('../../../data/droneData.js', () => ({
+  default: []
+}));
+
+vi.mock('../../../utils/cardAnimationUtils.js', () => ({
+  calculateCardFanRotation: () => 0,
+  getHoverTransform: () => 'none',
+  getCardTransition: () => 'none',
+  calculateCardArcOffset: () => 0,
+  CARD_FAN_CONFIG: {
+    cardOverlapPx: -30,
+    zIndex: { hovered: 100, normal: (i) => i },
+    transformOrigin: 'bottom center'
+  }
+}));
+
 describe('DronesView drag-and-drop', () => {
   const mockDrone1 = {
     name: 'Dart',
@@ -61,7 +85,11 @@ describe('DronesView drag-and-drop', () => {
       deployedDroneCounts: {},
       appliedUpgrades: {},
       discardPile: [],
-      deck: []
+      deck: [],
+      dronesOnBoard: { lane1: [], lane2: [], lane3: [] }
+    },
+    localPlayerEffectiveStats: {
+      totals: { cpuLimit: 10 }
     },
     sortedLocalActivePool: [mockDrone1, mockDrone2],
     selectedCard: null,

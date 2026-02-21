@@ -34,6 +34,7 @@ describe('RoundManager - RAPID/ASSAULT flag reset', () => {
     shields: 1,
     speed: 5,
     isExhausted: true,
+    doesNotReady: false,
     rapidUsed: true,  // Used this round
     assaultUsed: false,
     statMods: [],
@@ -54,6 +55,7 @@ describe('RoundManager - RAPID/ASSAULT flag reset', () => {
     shields: 1,
     speed: 3,
     isExhausted: true,
+    doesNotReady: false,
     rapidUsed: false,
     assaultUsed: true,  // Used this round
     statMods: [],

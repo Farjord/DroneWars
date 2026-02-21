@@ -16,6 +16,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Tests for buildShipSections function to ensure it uses correct hull values
 // from calculateSectionBaseStats() instead of deprecated absolute values.
 
+// Mock ShipIconRenderer to avoid Vite asset import (/Ships/Corvette/MapIcon.png) failing in test env
+vi.mock('../../components/ships/ShipIconRenderer.jsx', () => ({
+  default: () => null
+}));
+
 import { calculateSectionBaseStats } from '../../logic/statsCalculator.js';
 import { getDefaultShip, getAllShips } from '../../data/shipData.js';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
@@ -88,10 +93,9 @@ describe('buildShipSections Hull Calculation', () => {
   }
 
   describe('Hull values from ship card', () => {
-    it('should use Reconnaissance Corvette baseHull of 8, not deprecated 10', () => {
-      // EXPLANATION: Reconnaissance Corvette has baseHull=8 in shipData.js
-      // The deprecated values in shipSectionData.js are 10/10
-      // This test ensures we use the ship card values
+    it('should use Reconnaissance Corvette baseHull of 10 from shipData', () => {
+      // EXPLANATION: Reconnaissance Corvette has baseHull=10 in shipData.js
+      // All section components have hullModifier=0, so final hull equals baseHull
 
       const mockShipSlot = {
         shipId: 'SHIP_001', // Reconnaissance Corvette
@@ -104,10 +108,10 @@ describe('buildShipSections Hull Calculation', () => {
 
       const sections = buildShipSectionsCorrect(mockShipSlot, 0, [], null);
 
-      // Each section should have hull=8, not hull=10
+      // Each section should have hull=10 (baseHull with 0 modifiers)
       sections.forEach(section => {
-        expect(section.maxHull).toBe(8);
-        expect(section.hull).toBe(8);
+        expect(section.maxHull).toBe(10);
+        expect(section.hull).toBe(10);
       });
     });
 
@@ -155,8 +159,8 @@ describe('buildShipSections Hull Calculation', () => {
   });
 
   describe('Thresholds from ship card', () => {
-    it('should use Reconnaissance Corvette thresholds (damaged=4, critical=0)', () => {
-      // EXPLANATION: Thresholds should come from shipData.js baseThresholds
+    it('should use Reconnaissance Corvette thresholds (damaged=6, critical=3)', () => {
+      // EXPLANATION: Thresholds come from shipData.js baseThresholds + section modifiers (all 0)
 
       const mockShipSlot = {
         shipId: 'SHIP_001', // Reconnaissance Corvette
@@ -168,8 +172,8 @@ describe('buildShipSections Hull Calculation', () => {
       const sections = buildShipSectionsCorrect(mockShipSlot, 0, [], null);
 
       expect(sections[0].thresholds).toBeDefined();
-      expect(sections[0].thresholds.damaged).toBe(4);
-      expect(sections[0].thresholds.critical).toBe(0);
+      expect(sections[0].thresholds.damaged).toBe(6);
+      expect(sections[0].thresholds.critical).toBe(3);
     });
 
     it('should use Heavy Assault Carrier thresholds (damaged=5, critical=2)', () => {

@@ -45,7 +45,8 @@ describe('AIPhaseProcessor - Deployment Failure Handling', () => {
       getState: vi.fn(),
       setState: vi.fn(),
       subscribe: vi.fn(() => vi.fn()),
-      addLogEntry: vi.fn()
+      addLogEntry: vi.fn(),
+      addAIDecisionToHistory: vi.fn()
     };
 
     // Create mock ActionProcessor

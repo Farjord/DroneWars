@@ -314,10 +314,9 @@ describe('DroneLanesDisplay lane hover for action card targeting', () => {
       const laneContainers = container.querySelectorAll('.flex-1.rounded-lg');
       const lane1 = laneContainers[0];
 
-      // Lane should have ring highlight (but not pulse - that's on drones only)
-      expect(lane1.className).toContain('ring-2');
-      expect(lane1.className).toContain('ring-cyan-400/30');
-      expect(lane1.className).toContain('bg-cyan-800/40');
+      // Targetable lane gets a pulse overlay child with lane-target-pulse class
+      const pulseOverlay = lane1.querySelector('.lane-target-pulse');
+      expect(pulseOverlay).not.toBeNull();
     });
   });
 });

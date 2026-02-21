@@ -79,7 +79,8 @@ describe('AI Logic - CPU Limit Bug', () => {
     mockGameStateManager = {
       getState: vi.fn(() => ({})),
       setState: vi.fn(),
-      subscribe: vi.fn(() => vi.fn()) // Returns unsubscribe function
+      subscribe: vi.fn(() => vi.fn()),
+      addAIDecisionToHistory: vi.fn()
     };
 
     // Create a mock GameDataService that will be used

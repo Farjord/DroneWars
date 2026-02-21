@@ -27,7 +27,7 @@ import GameHeader from './GameHeader.jsx'
 
 describe('GameHeader - Interception Mode', () => {
   const mockHandleShowInterceptionDialog = vi.fn()
-  const mockHandleDeclineInterceptionFromHeader = vi.fn()
+  const mockHandleResetInterception = vi.fn()
   const mockHandleConfirmInterception = vi.fn()
 
   const defaultProps = {
@@ -82,11 +82,11 @@ describe('GameHeader - Interception Mode', () => {
     handleConfirmMultiMoveDrones: vi.fn(),
     selectedBackground: null,
     onBackgroundChange: vi.fn(),
-    // NEW: Interception mode props
+    // Interception mode props
     interceptionModeActive: false,
     selectedInterceptor: null,
     handleShowInterceptionDialog: mockHandleShowInterceptionDialog,
-    handleDeclineInterceptionFromHeader: mockHandleDeclineInterceptionFromHeader,
+    handleResetInterception: mockHandleResetInterception,
     handleConfirmInterception: mockHandleConfirmInterception
   }
 
@@ -99,8 +99,7 @@ describe('GameHeader - Interception Mode', () => {
       render(<GameHeader {...defaultProps} interceptionModeActive={false} />)
 
       expect(screen.queryByText('Show Dialog')).toBeNull()
-      expect(screen.queryByText('Decline')).toBeNull()
-      // Note: "Confirm" might exist for other button groups, but interception-specific Confirm should not
+      // Note: "Reset" and "Confirm" might exist for other button groups, but interception-specific ones should not
     })
   })
 
@@ -111,10 +110,10 @@ describe('GameHeader - Interception Mode', () => {
       expect(screen.getByText('Show Dialog')).toBeTruthy()
     })
 
-    it('should render Decline button when interceptionModeActive is true', () => {
+    it('should render Reset button when interceptionModeActive is true', () => {
       render(<GameHeader {...defaultProps} interceptionModeActive={true} />)
 
-      expect(screen.getByText('Decline')).toBeTruthy()
+      expect(screen.getByText('Reset')).toBeTruthy()
     })
 
     it('should render Confirm button when interceptionModeActive is true', () => {
@@ -134,17 +133,17 @@ describe('GameHeader - Interception Mode', () => {
       expect(mockHandleShowInterceptionDialog).toHaveBeenCalled()
     })
 
-    it('should call handleDeclineInterceptionFromHeader when Decline is clicked', () => {
+    it('should call handleResetInterception when Reset is clicked', () => {
       render(<GameHeader {...defaultProps} interceptionModeActive={true} />)
 
-      const declineButton = screen.getByText('Decline')
-      fireEvent.click(declineButton)
+      const resetButton = screen.getByText('Reset')
+      fireEvent.click(resetButton)
 
-      expect(mockHandleDeclineInterceptionFromHeader).toHaveBeenCalled()
+      expect(mockHandleResetInterception).toHaveBeenCalled()
     })
 
     describe('Confirm button state', () => {
-      it('should have Confirm button disabled when no interceptor selected', () => {
+      it('should have Confirm button always enabled (no disabled state based on selectedInterceptor)', () => {
         render(
           <GameHeader
             {...defaultProps}
@@ -154,11 +153,11 @@ describe('GameHeader - Interception Mode', () => {
         )
 
         const confirmButtons = screen.getAllByText('Confirm')
-        // Find the interception Confirm button (should be disabled)
-        const interceptionConfirm = confirmButtons.find(btn =>
-          btn.closest('button')?.disabled
+        // The interception Confirm button should be enabled (source has no disabled prop)
+        const enabledConfirm = confirmButtons.find(btn =>
+          !btn.closest('button')?.disabled
         )
-        expect(interceptionConfirm).toBeTruthy()
+        expect(enabledConfirm).toBeTruthy()
       })
 
       it('should have Confirm button enabled when interceptor is selected', () => {
@@ -179,29 +178,7 @@ describe('GameHeader - Interception Mode', () => {
         expect(enabledConfirm).toBeTruthy()
       })
 
-      it('should call handleConfirmInterception when Confirm is clicked with interceptor selected', () => {
-        const mockInterceptor = { id: 'drone-1', name: 'Test Interceptor' }
-        render(
-          <GameHeader
-            {...defaultProps}
-            interceptionModeActive={true}
-            selectedInterceptor={mockInterceptor}
-          />
-        )
-
-        // Find and click the enabled Confirm button
-        const confirmButtons = screen.getAllByText('Confirm')
-        const enabledConfirm = confirmButtons.find(btn =>
-          !btn.closest('button')?.disabled
-        )
-        if (enabledConfirm) {
-          fireEvent.click(enabledConfirm)
-        }
-
-        expect(mockHandleConfirmInterception).toHaveBeenCalled()
-      })
-
-      it('should NOT call handleConfirmInterception when Confirm is clicked without interceptor', () => {
+      it('should call handleConfirmInterception when Confirm is clicked', () => {
         render(
           <GameHeader
             {...defaultProps}
@@ -210,15 +187,14 @@ describe('GameHeader - Interception Mode', () => {
           />
         )
 
+        // Find and click the Confirm button
         const confirmButtons = screen.getAllByText('Confirm')
-        // Try to click the disabled button
-        confirmButtons.forEach(btn => {
-          if (btn.closest('button')?.disabled) {
-            fireEvent.click(btn)
-          }
-        })
+        const confirmBtn = confirmButtons.find(btn =>
+          !btn.closest('button')?.disabled
+        )
+        fireEvent.click(confirmBtn)
 
-        expect(mockHandleConfirmInterception).not.toHaveBeenCalled()
+        expect(mockHandleConfirmInterception).toHaveBeenCalled()
       })
     })
 
@@ -242,12 +218,11 @@ describe('GameHeader - Interception Mode', () => {
       expect(showDialogButton.className).toContain('dw-btn-confirm')
     })
 
-    it('Decline button should have danger styling', () => {
+    it('Reset button should have warning styling', () => {
       render(<GameHeader {...defaultProps} interceptionModeActive={true} />)
 
-      const declineButton = screen.getByText('Decline').closest('button')
-      // Check for danger button class (styled via CSS)
-      expect(declineButton.className).toContain('dw-btn-danger')
+      const resetButton = screen.getByText('Reset').closest('button')
+      expect(resetButton.className).toContain('dw-btn-warning')
     })
   })
 })

@@ -21,6 +21,7 @@ describe('MovementEffectProcessor - cannotMove restriction', () => {
       player1: {
         name: 'Test Player',
         energy: 10,
+        appliedUpgrades: {},
         dronesOnBoard: {
           lane1: [
             {
@@ -40,6 +41,7 @@ describe('MovementEffectProcessor - cannotMove restriction', () => {
       player2: {
         name: 'Opponent',
         energy: 10,
+        appliedUpgrades: {},
         dronesOnBoard: {
           lane1: [],
           lane2: [],

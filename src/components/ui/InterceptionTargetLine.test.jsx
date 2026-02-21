@@ -45,7 +45,7 @@ describe('InterceptionTargetLine', () => {
 
     mockShipSectionRefs = {
       current: {
-        'player-bridge': { id: 'target-section' }
+        'local-bridge': { id: 'target-section' }
       }
     };
 

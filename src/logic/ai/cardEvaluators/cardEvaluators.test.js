@@ -934,7 +934,7 @@ describe('evaluateHealHullCard', () => {
     expect(result.logic.some(l => l.includes('Go Again'))).toBe(true);
   });
 
-  it('returns zero for drone at full hull', () => {
+  it('returns invalid score for drone at full hull', () => {
     const card = {
       id: 'CARD006',
       cost: 1,
@@ -945,7 +945,7 @@ describe('evaluateHealHullCard', () => {
 
     const result = evaluateHealHullCard(card, target, context);
 
-    expect(result.score).toBe(0);
+    expect(result.score).toBe(INVALID_SCORE);
     expect(result.logic.some(l => l.includes('full hull'))).toBe(true);
   });
 });
@@ -1013,8 +1013,8 @@ describe('evaluateRestoreSectionShieldsCard', () => {
 
     const result = evaluateRestoreSectionShieldsCard(card, target, context);
 
-    expect(result.score).toBe(0);
-    expect(result.logic).toContain('⚠️ Section at full shields');
+    expect(result.score).toBe(INVALID_SCORE);
+    expect(result.logic.some(l => l.includes('full shields'))).toBe(true);
   });
 
   it('handles enhanced version with higher restore value', () => {
@@ -1370,7 +1370,7 @@ describe('evaluateMultiMoveCard', () => {
 
     const result = evaluateMultiMoveCard(card, target, context);
 
-    expect(result.score).toBe(0);
+    expect(result.score).toBe(INVALID_SCORE);
     expect(result.logic.some(l => l.includes('No drones'))).toBe(true);
   });
 
@@ -1733,11 +1733,11 @@ describe('Damage Type AI Scoring', () => {
       const result = evaluateDamageCard(card, target, context);
 
       // Base: Ready(25) + Class1(3) + Attack2(4) = 32
-      // Lethal bonus (damage 3 >= hull 3): +20 (note: AI doesn't know ION can't deal hull damage)
+      // ION can never kill (shield-only damage), so no lethal bonus
       // ION_NO_SHIELDS_PENALTY: -50
       // Cost: 8
-      // Expected: 32 + 20 - 50 - 8 = -6
-      expect(result.score).toBe(-6);
+      // Expected: 32 - 50 - 8 = -26
+      expect(result.score).toBe(-26);
       expect(result.logic.some(l => l.includes('Ion vs no shields'))).toBe(true);
     });
 
