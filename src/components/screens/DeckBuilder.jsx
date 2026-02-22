@@ -8,6 +8,9 @@ import CardDetailPopup from '../ui/CardDetailPopup.jsx';
 import DroneDetailPopup from '../ui/DroneDetailPopup.jsx';
 import ShipComponentDetailPopup from '../ui/ShipComponentDetailPopup.jsx';
 import ViewDeckModal from '../modals/ViewDeckModal.jsx';
+import DeckExportModal from '../modals/DeckExportModal.jsx';
+import DeckImportModal from '../modals/DeckImportModal.jsx';
+import DeckLoadModal from '../modals/DeckLoadModal.jsx';
 import ShipSection from '../ui/ShipSection.jsx';
 import ShipConfigurationTab from '../ui/ShipConfigurationTab.jsx';
 import CardFilterModal from '../modals/CardFilterModal.jsx';
@@ -20,9 +23,6 @@ import { gameEngine } from '../../logic/gameLogic.js';
 import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js';
 import { getTypeBackgroundClass, getTypeTextClass, getRarityDisplay } from '../../utils/cardTypeStyles.js';
 import { CHART_COLORS, renderCustomizedLabel } from '../../utils/chartUtils.jsx';
-import { generateJSObjectLiteral, convertToAIFormat, convertFromAIFormat, downloadDeckFile } from '../../utils/deckExportUtils.js';
-import vsDecks from '../../data/vsModeDeckData.js';
-import aiPersonalities from '../../data/aiData.js';
 import { calculateEffectiveMaxForCard } from '../../utils/singlePlayerDeckUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { DEV_CONFIG } from '../../config/devConfig.js';
@@ -726,246 +726,15 @@ const DeckBuilder = ({
     });
   };
 
-  // --- Modal Components ---
-    const ExportModal = () => {
-    const [copySuccess, setCopySuccess] = useState('');
-    const textAreaRef = useRef(null);
-
-    // Generate JS object literal format (aiData.js style)
-    const deckCode = useMemo(() => {
-      const aiFormat = convertToAIFormat(
-        deck,
-        selectedDrones,
-        selectedShipComponents,
-        activeShip,
-        preservedFields
-      );
-      return generateJSObjectLiteral(aiFormat);
-    }, [deck, selectedDrones, selectedShipComponents, activeShip, preservedFields]);
-
-    const copyToClipboard = () => {
-      navigator.clipboard.writeText(deckCode);
-      setCopySuccess('Copied!');
-      setTimeout(() => setCopySuccess(''), 2000);
-    };
-
-    const handleDownload = () => {
-      const exportName = preservedFields.name || 'deck-export';
-      const safeName = exportName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      downloadDeckFile(deckCode, `${safeName}.js`);
-    };
-
-  return (
-    <div className="dw-modal-overlay" onClick={() => setShowExportModal(false)}>
-      <div className="dw-modal-content dw-modal--lg dw-modal--action" onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div className="dw-modal-header">
-          <div className="dw-modal-header-icon">
-            <Download size={28} />
-          </div>
-          <div className="dw-modal-header-info">
-            <h2 className="dw-modal-header-title">Export Deck</h2>
-            <p className="dw-modal-header-subtitle">Save or share your configuration</p>
-          </div>
-          <button onClick={() => setShowExportModal(false)} className="dw-modal-close">
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="dw-modal-body">
-          <p className="dw-modal-text dw-modal-text--left">
-            Copy or download your deck configuration in JavaScript format.
-          </p>
-          <textarea
-            ref={textAreaRef}
-            readOnly
-            value={deckCode}
-            className="w-full p-3 rounded font-mono text-sm dw-modal-scroll"
-            style={{
-              background: 'rgba(17, 24, 39, 0.8)',
-              border: '1px solid var(--modal-action-border)',
-              color: 'var(--modal-text-primary)',
-              resize: 'vertical',
-              minHeight: '200px',
-              maxHeight: '400px'
-            }}
-          />
-          {copySuccess && (
-            <div className="dw-modal-feedback dw-modal-feedback--success" style={{ marginTop: '12px' }}>
-              {copySuccess}
-            </div>
-          )}
-        </div>
-
-        {/* Actions */}
-        <div className="dw-modal-actions">
-          <button onClick={() => setShowExportModal(false)} className="dw-btn dw-btn-cancel">
-            Close
-          </button>
-          <button onClick={handleDownload} className="dw-btn dw-btn-confirm" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Download size={16} /> Download File
-          </button>
-          <button onClick={copyToClipboard} className="dw-btn dw-btn-confirm" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Copy size={16} /> Copy
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-  };
-
-  const ImportModal = () => {
-    const [deckCode, setDeckCode] = useState('');
-    const [error, setError] = useState('');
-
-    const handleImport = () => {
-      setError('');
-      const result = onImportDeck(deckCode);
-      if (result.success) {
-        setShowImportModal(false);
-      } else {
-        setError(result.message || 'Invalid deck format.');
-      }
-    };
-
-    const placeholder = 'Paste your deck code here';
-
-    return (
-      <div className="dw-modal-overlay" onClick={() => setShowImportModal(false)}>
-        <div className="dw-modal-content dw-modal--lg dw-modal--action" onClick={e => e.stopPropagation()}>
-          {/* Header */}
-          <div className="dw-modal-header">
-            <div className="dw-modal-header-icon">
-              <Upload size={28} />
-            </div>
-            <div className="dw-modal-header-info">
-              <h2 className="dw-modal-header-title">Import Deck</h2>
-              <p className="dw-modal-header-subtitle">Load a saved configuration</p>
-            </div>
-            <button onClick={() => setShowImportModal(false)} className="dw-modal-close">
-              <X size={20} />
-            </button>
-          </div>
-
-          {/* Body */}
-          <div className="dw-modal-body">
-            <p className="dw-modal-text dw-modal-text--left">
-              Paste a deck configuration in JavaScript object format (matching aiData.js style).
-            </p>
-            <textarea
-              value={deckCode}
-              onChange={(e) => setDeckCode(e.target.value)}
-              className="w-full p-3 rounded font-mono text-sm dw-modal-scroll"
-              style={{
-                background: 'rgba(17, 24, 39, 0.8)',
-                border: '1px solid var(--modal-action-border)',
-                color: 'var(--modal-text-primary)',
-                resize: 'vertical',
-                minHeight: '200px',
-                maxHeight: '400px'
-              }}
-              placeholder={placeholder}
-            />
-            {error && (
-              <div className="dw-modal-feedback dw-modal-feedback--error" style={{ marginTop: '12px' }}>
-                {error}
-              </div>
-            )}
-          </div>
-
-          {/* Actions */}
-          <div className="dw-modal-actions">
-            <button onClick={() => setShowImportModal(false)} className="dw-btn dw-btn-cancel">
-              Cancel
-            </button>
-            <button onClick={handleImport} className="dw-btn dw-btn-confirm">
-              Load Deck
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const LoadDeckModal = () => {
-    const vsAIs = aiPersonalities.filter(ai => ai.modes?.includes('vs'));
-
-    const handleLoadDeck = (deckData) => {
-      const result = convertFromAIFormat(deckData);
-      const importResult = onImportDeck(generateJSObjectLiteral({
-        shipId: deckData.shipId,
-        decklist: deckData.decklist,
-        dronePool: deckData.dronePool,
-        shipComponents: deckData.shipComponents || {}
-      }));
-      if (importResult.success) {
-        setShowLoadDeckModal(false);
-      }
-    };
-
-    const deckRow = (deck, index) => (
-      <button
-        key={index}
-        onClick={() => handleLoadDeck(deck)}
-        className="w-full text-left p-3 rounded border border-gray-600/50 hover:border-cyan-500/60 hover:bg-cyan-900/20 transition-colors"
-        style={{ background: 'rgba(17, 24, 39, 0.5)' }}
-      >
-        <div className="font-medium text-cyan-300 text-sm">{deck.name}</div>
-        {deck.description && (
-          <div className="text-gray-400 text-xs mt-1">{deck.description}</div>
-        )}
-      </button>
-    );
-
-    return (
-      <div className="dw-modal-overlay" onClick={() => setShowLoadDeckModal(false)}>
-        <div className="dw-modal-content dw-modal--lg dw-modal--action" onClick={e => e.stopPropagation()}>
-          <div className="dw-modal-header">
-            <div className="dw-modal-header-icon">
-              <Rocket size={28} />
-            </div>
-            <div className="dw-modal-header-info">
-              <h2 className="dw-modal-header-title">Load Deck</h2>
-              <p className="dw-modal-header-subtitle">Load a pre-existing deck configuration</p>
-            </div>
-            <button onClick={() => setShowLoadDeckModal(false)} className="dw-modal-close">
-              <X size={20} />
-            </button>
-          </div>
-          <div className="dw-modal-body dw-modal-scroll" style={{ maxHeight: '60vh' }}>
-            <div className="mb-4">
-              <h3 className="text-cyan-400 font-medium text-sm mb-2 uppercase tracking-wider">VS Decks</h3>
-              <div className="flex flex-col gap-2">
-                {vsDecks.map((deck, i) => deckRow(deck, `vs-${i}`))}
-              </div>
-            </div>
-            <div>
-              <h3 className="text-cyan-400 font-medium text-sm mb-2 uppercase tracking-wider">AI Decks</h3>
-              <div className="flex flex-col gap-2">
-                {vsAIs.map((ai, i) => deckRow(ai, `ai-${i}`))}
-              </div>
-            </div>
-          </div>
-          <div className="dw-modal-actions">
-            <button onClick={() => setShowLoadDeckModal(false)} className="dw-btn dw-btn-cancel">
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <>
     <div className="w-full flex flex-col text-white font-exo mt-8 text-sm">
       {detailedCard && <CardDetailPopup card={detailedCard} onClose={() => setDetailedCard(null)} />}
       {detailedDrone && <DroneDetailPopup drone={detailedDrone} onClose={() => setDetailedDrone(null)} />}
       {detailedShipComponent && <ShipComponentDetailPopup component={detailedShipComponent} onClose={() => setDetailedShipComponent(null)} ship={activeShip} />}
-      {showExportModal && <ExportModal />}
-      {showImportModal && <ImportModal />}
-      {showLoadDeckModal && <LoadDeckModal />}
+      {showExportModal && <DeckExportModal deck={deck} selectedDrones={selectedDrones} selectedShipComponents={selectedShipComponents} activeShip={activeShip} preservedFields={preservedFields} onClose={() => setShowExportModal(false)} />}
+      {showImportModal && <DeckImportModal onImportDeck={onImportDeck} onClose={() => setShowImportModal(false)} />}
+      {showLoadDeckModal && <DeckLoadModal onImportDeck={onImportDeck} onClose={() => setShowLoadDeckModal(false)} />}
       <ViewDeckModal
         isOpen={showViewDeckModal}
         onClose={() => setShowViewDeckModal(false)}
