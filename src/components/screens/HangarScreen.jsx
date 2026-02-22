@@ -1853,19 +1853,6 @@ const HangarScreen = () => {
         );
       })()}
 
-      {/* Deck Editor Modal (placeholder) */}
-      {activeModal === 'deckEditor' && (
-        <div className="modal-overlay">
-          <div className="modal-container modal-container-md">
-            <h2 className="modal-title">Deck Editor</h2>
-            <p className="modal-text">Coming in Phase 3.5</p>
-            <button onClick={closeAllModals} className="dw-btn dw-btn-confirm" style={{ width: '100%', marginTop: '1rem' }}>
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Run Summary Modal - shown after returning from a run */}
       {lastRunSummary && (
         <RunSummaryModal
