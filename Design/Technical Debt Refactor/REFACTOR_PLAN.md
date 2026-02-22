@@ -17,7 +17,7 @@
 ## Tier 2 — High Value
 | # | File | Plan | Status | Notes |
 |-|-|-|-|-|
-| 6 | DeckBuilder.jsx (2,583) | REFACTOR_DECK_BUILDER.md | [ ] | |
+| 6 | DeckBuilder.jsx (2,583) | REFACTOR_DECK_BUILDER.md | [x] | Complete 2026-02-22. 2,584→386 lines (85% reduction). 10 extractions: 3 popups, 3 modals, 1 data hook, 1 chart component, 2 panel components. 21 tests. |
 | 7 | HangarScreen.jsx (2,204) | REFACTOR_HANGAR_SCREEN.md | [ ] | |
 | 8 | saveGameSchema.js (503→140) | REFACTOR_SAVE_GAME_SCHEMA.md | [x] | Complete 2026-02-21. 9 functions extracted to 3 files, 106 tests, pure data file. |
 | 9 | AIPhaseProcessor.js (1,414→406) | REFACTOR_AI_PHASE_PROCESSOR.md | [x] | Complete 2026-02-21. 3 strategy modules extracted, 5 dead methods removed, circular dependency fixed, 29 tests. |

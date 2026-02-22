@@ -35,7 +35,110 @@
 ### Behavioral Baseline
 <!-- IMMUTABLE — do not edit after initial writing -->
 
-*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+#### Exports / Public API
+
+- **Default export**: `DeckBuilder` React component
+- **Local sub-components** (not exported): `CardDetailPopup`, `DroneDetailPopup`, `ShipComponentDetailPopup`, `ExportModal`, `ImportModal`, `LoadDeckModal`
+- **Local helpers** (not exported): `getTypeBackgroundClass(type)` → CSS class string, `getTypeTextClass(type)` → CSS class string, `renderCustomizedLabel(props)` → SVG text element for pie charts
+- **Local constant**: `COLORS` — array of 5 hex colors for pie chart segments
+
+#### Props Interface (27 props)
+
+| Prop | Type | Purpose |
+|-|-|-|
+| fullCardCollection | Array | Full card pool |
+| deck | Object {cardId: qty} | Current card selections |
+| onDeckChange(cardId, qty) | Function | Card quantity change callback |
+| selectedDrones | Object {droneName: qty} | Current drone selections |
+| onDronesChange(droneName, qty) | Function | Drone quantity change callback |
+| selectedShipComponents | Object {componentId: laneId} | Ship component lane assignments |
+| onShipComponentsChange(componentId, lane) | Function | Component lane assignment callback |
+| selectedShip | Object or null | Selected ship; uses default if null |
+| onShipChange(ship) | Function | Ship selection change callback |
+| onConfirmDeck() | Function | Save/confirm handler |
+| onImportDeck(deckCode) | Function | Import handler; returns {success, message} |
+| onBack() | Function | Navigation back callback |
+| preservedFields | Object {name, description} | Round-trip export metadata |
+| onPreservedFieldsChange | Function | Preserved field update callback |
+| maxDrones | Number | Drone limit (5 extraction, 10 multiplayer) |
+| droneInstances | Array | Drone damage state (extraction only) |
+| componentInstances | Array | Component hull state (extraction only) |
+| readOnly | Boolean | Disables all interactions |
+| allowInvalidSave | Boolean | True in extraction mode; allows incomplete saves |
+| mode | String | 'multiplayer' or 'extraction' |
+| onSaveInvalid() | Function | Incomplete save callback (extraction) |
+| deckName | String | Current deck name (extraction) |
+| onDeckNameChange(name) | Function | Deck name change callback |
+| availableDrones | Array | Filtered drone pool (extraction only) |
+| availableComponents | Array | Filtered component pool (extraction only) |
+| availableShips | Array | Filtered ship pool (extraction only) |
+| shipSlot | Object | Slot config (extraction only) |
+| droneSlots | Array | Slot array (extraction only) |
+| credits | Number | Credits for repairs (extraction only) |
+| onRepairDroneSlot | Function | Drone repair callback (extraction) |
+| onRepairSectionSlot | Function | Section repair callback (extraction) |
+
+#### State Mutations and Their Triggers
+
+| State | Type | Trigger |
+|-|-|-|
+| detailedCard | null / card object | Eye icon click in card list; closes via modal |
+| detailedDrone | null / drone object | Eye icon click in drone list; closes via modal |
+| detailedShipComponent | null / component object | Eye icon click in component list; closes via modal |
+| showExportModal | Boolean | Export button toggle |
+| showImportModal | Boolean | Import button toggle |
+| showLoadDeckModal | Boolean | Load deck button toggle |
+| showViewDeckModal | Boolean | View deck button toggle |
+| leftPanelView | 'shipCard' / 'cards' / 'drones' / 'shipComponents' | Tab button clicks |
+| rightPanelView | 'ship' / 'deck' / 'drones' / 'shipComponents' / 'config' | Tab button clicks |
+| mobileActivePanel | 'left' / 'right' | Mobile panel toggle |
+| filters | Object (searchText, cost, rarity[], type[], target[], damageType[], abilities[], hideEnhanced, includeAIOnly) | CardFilterModal updates; reset button |
+| sortConfig | {key, direction} | Column header clicks toggle |
+| droneFilters | Object (searchText, rarity[], class[], abilities[], damageType[], includeAIOnly) | DroneFilterModal updates; reset button |
+| droneSortConfig | {key, direction} | Drone column header clicks |
+| cardsViewMode | 'table' / 'grid' | View mode toggle buttons |
+| dronesViewMode | 'table' / 'grid' | View mode toggle buttons |
+| activeChartView | 'cost' / 'type' / 'ability' etc. | Chart tab clicks |
+| isStatsVisible | Boolean | Statistics toggle button |
+| showSaveToast | Boolean | Set true by handleSaveWithToast; auto-hidden after 1500ms |
+
+#### Side Effects (useEffect)
+
+1. **Cost filter initialization** (lines 522-529): Sets filters.cost.min/max once filterOptions is calculated. Fires once when filterOptions changes.
+2. **showSaveToast logger** (line 660): Logs state change. Debug only.
+3. **Mount/unmount logger** (lines 665-670): Logs component lifecycle. Debug only.
+4. **Toast DOM inspection** (lines 673-703): Queries DOM for `.save-toast` and logs computed styles. Dead debug code.
+
+#### useMemo Computations
+
+| Memo | Output | Dependencies |
+|-|-|-|
+| processedCardCollection | Cards enriched with keywords[] and targetingText | fullCardCollection |
+| processedDroneCollection | Drones enriched with keywords[], description, aiOnly | availableDrones |
+| activeComponentCollection | Ship components from availableComponents or shipComponentCollection | availableComponents, mode |
+| filterOptions | Min/max cost, rarities, types, targets, damageTypes, abilities; adds "Starter" in extraction | processedCardCollection, mode |
+| droneFilterOptions | Rarities, classes, abilities, damageTypes; adds "Starter" in extraction | processedDroneCollection, mode |
+| {cardCount, deckListForDisplay, baseCardCounts, typeCounts} | Deck summary with per-type counts | deck, processedCardCollection |
+| {droneCount, droneListForDisplay} | Drone summary | selectedDrones, processedDroneCollection |
+| {shipComponentCount, shipComponentsValid, ...} | Component count, lane conflict validation, type coverage | selectedShipComponents, activeComponentCollection |
+| isDeckValid | Boolean: card count matches ship limit, types within limits | cardCount, typeCounts, selectedShip |
+| filteredAndSortedCards | Card list after filters + sort applied | processedCardCollection, filters, sortConfig, mode |
+| filteredAndSortedDrones | Drone list after filters + sort applied | processedDroneCollection, droneFilters, droneSortConfig, mode |
+| deckStats | Cost/ability/type distributions for bar/pie charts | deckListForDisplay |
+| droneStats | 8 stat distributions + ability pie chart | droneListForDisplay |
+| viewDeckData | {drones[], cards[]} for ViewDeckModal | selectedDrones, deck, collections |
+
+#### Known Edge Cases
+
+- **readOnly mode**: All quantity buttons disabled; save button hidden; modals still accessible for viewing
+- **Extraction mode** (mode === 'extraction'): Shows ShipConfigurationTab; "Starter" rarity variant in filter/display; filtered collections from props; allows incomplete save with warning via onSaveInvalid
+- **Rarity display**: Cards from starter pool display "Starter" instead of actual rarity; only in extraction mode
+- **Component lane conflicts**: UI disables occupied lanes; validation ensures unique lanes per component
+- **Mobile responsive**: Left/right panels toggled via mobileActivePanel; hidden on small screens
+- **Damage indicators**: Yellow triangle on drone list entries if drone slot is damaged; extraction mode only
+- **Hull display**: Extraction mode only; shows health bar with repair button if credits available
+- **Toast timing**: showSaveToast auto-hides after 1500ms via setTimeout; skipped in readOnly mode
+- **Null ship guard**: If selectedShip is null, uses getDefaultShip() fallback
 
 ## TO DO
 
@@ -209,11 +312,39 @@ DeckBuilder already uses `debugLog` consistently (no raw `console.log` found). H
 
 ### Final State
 
-*To be completed after refactoring.*
+**DeckBuilder.jsx**: 386 lines (down from 2,584 — 85% reduction)
+
+| File | Lines | Location |
+|-|-|-|
+| DeckBuilder.jsx | 386 | src/components/screens/ |
+| DeckBuilderLeftPanel.jsx | 632 | src/components/ui/ |
+| DeckBuilderRightPanel.jsx | 443 | src/components/ui/ |
+| DeckStatisticsCharts.jsx | 204 | src/components/ui/ |
+| CardDetailPopup.jsx | 23 | src/components/ui/ |
+| DroneDetailPopup.jsx | 25 | src/components/ui/ |
+| ShipComponentDetailPopup.jsx | 132 | src/components/ui/ |
+| DeckExportModal.jsx | 89 | src/components/modals/ |
+| DeckImportModal.jsx | 72 | src/components/modals/ |
+| DeckLoadModal.jsx | 76 | src/components/modals/ |
+| useDeckBuilderData.js | 454 | src/hooks/ |
+| cardTypeStyles.js | 42 | src/utils/ |
+| DeckBuilder.test.jsx | 430 | src/components/screens/__tests__/ |
+| ExtractionDeckBuilder.test.jsx | — | src/components/screens/__tests__/ |
+
+**Tests**: 21 DeckBuilder-specific tests (19 + 2 extraction), 3,686 total suite
 
 ### Change Log
 
-*Append entries here as refactoring steps are completed.*
-
 | Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
 |-|-|-|-|-|-|
+| 0 | 2026-02-22 | Migrate misplaced test files to `__tests__/` | All | None | None |
+| 1 | 2026-02-22 | Remove dead code (toast DOM inspection, excessive debug logging) and banned comments | All | None — debug-only code removed | None |
+| 2 | 2026-02-22 | Write intent-based tests (19 tests covering counts, validation, save, read-only) | All | None | None |
+| 3 | 2026-02-22 | Extract `cardTypeStyles.js` (getTypeBackgroundClass, getTypeTextClass, getRarityDisplay) and chart utilities (COLORS, renderCustomizedLabel) | All | None | getRarityDisplay also moved (not originally in plan) |
+| 4 | 2026-02-22 | Extract popup components (CardDetailPopup, DroneDetailPopup, ShipComponentDetailPopup) to `src/components/ui/` | All | None | None |
+| 5 | 2026-02-22 | Extract inline modals (DeckExportModal, DeckImportModal, DeckLoadModal) to `src/components/modals/` | All | None — closure capture replaced with props | None |
+| 6 | 2026-02-22 | Extract `useDeckBuilderData` hook (~470 lines of data processing memos) | All | None | None |
+| 7 | 2026-02-22 | Extract `DeckStatisticsCharts` component (~238 lines of chart rendering) | All | None | None |
+| 8 | 2026-02-22 | Extract `DeckBuilderLeftPanel` (~593 lines: ship selection, cards table/grid, drones table/grid, ship components table) | All | None | Also removed dead imports (Bolt, Sword, Shield, Copy, X, ShipSection, gameEngine, resolveShipSectionStats, createDefaultCardFilters, createDefaultDroneFilters, useRef) |
+| 9 | 2026-02-22 | Extract `DeckBuilderRightPanel` (~398 lines: deck list, drone list, ship components layout, config tab, statistics, save button) | All | None | Also removed remaining panel-only imports (Eye, AlertTriangle, Settings, ShipCard, ShipConfigurationTab, DeckStatisticsCharts) |
+| 10 | 2026-02-22 | Verify tests (21 pass), no additional integration tests needed — existing tests exercise full component tree | All | None | None |
