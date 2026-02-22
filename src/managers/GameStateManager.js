@@ -2971,63 +2971,64 @@ class GameStateManager {
 
     debugLog('EXTRACTION', 'Run summary generated', { lastRunSummary });
 
+    // Build all state changes immutably, then apply via setState at the end
+    const newInventory = { ...this.state.singlePlayerInventory };
+    const newProfile = {
+      ...this.state.singlePlayerProfile,
+      stats: { ...this.state.singlePlayerProfile.stats }
+    };
+    let newShipSlots = [...this.state.singlePlayerShipSlots];
+
     if (success) {
       // Transfer loot to inventory
+      const newBlueprints = [...(newProfile.unlockedBlueprints || [])];
       runState.collectedLoot.forEach(item => {
         if (item.type === 'card') {
-          const cardId = item.cardId;
-          this.state.singlePlayerInventory[cardId] =
-            (this.state.singlePlayerInventory[cardId] || 0) + 1;
+          newInventory[item.cardId] = (newInventory[item.cardId] || 0) + 1;
         } else if (item.type === 'blueprint') {
-          // Add to unlocked blueprints
-          const blueprintId = item.blueprintId;
-          if (!this.state.singlePlayerProfile.unlockedBlueprints.includes(blueprintId)) {
-            this.state.singlePlayerProfile.unlockedBlueprints.push(blueprintId);
+          if (!newBlueprints.includes(item.blueprintId)) {
+            newBlueprints.push(item.blueprintId);
           }
         }
       });
+      newProfile.unlockedBlueprints = newBlueprints;
 
       // Add credits (calculated from salvage items, not legacy creditsEarned)
-      this.state.singlePlayerProfile.credits += extractedCredits;
+      newProfile.credits += extractedCredits;
 
       // Add AI Cores earned from combat
-      this.state.singlePlayerProfile.aiCores =
-        (this.state.singlePlayerProfile.aiCores || 0) + (runState.aiCoresEarned || 0);
+      newProfile.aiCores = (newProfile.aiCores || 0) + (runState.aiCoresEarned || 0);
 
       // Update statistics
-      this.state.singlePlayerProfile.stats.runsCompleted++;
-      this.state.singlePlayerProfile.stats.totalCreditsEarned += extractedCredits;
-      this.state.singlePlayerProfile.stats.totalCombatsWon =
-        (this.state.singlePlayerProfile.stats.totalCombatsWon || 0) + (runState.combatsWon || 0);
+      newProfile.stats.runsCompleted++;
+      newProfile.stats.totalCreditsEarned += extractedCredits;
+      newProfile.stats.totalCombatsWon =
+        (newProfile.stats.totalCombatsWon || 0) + (runState.combatsWon || 0);
 
       // Track highest tier completed
       const currentTier = runState.mapTier || 1;
-      if (currentTier > (this.state.singlePlayerProfile.stats.highestTierCompleted || 0)) {
-        this.state.singlePlayerProfile.stats.highestTierCompleted = currentTier;
+      if (currentTier > (newProfile.stats.highestTierCompleted || 0)) {
+        newProfile.stats.highestTierCompleted = currentTier;
       }
 
       // Refresh shop pack for next hangar visit (uses updated highestTierCompleted)
-      const highestTier = this.state.singlePlayerProfile.stats.highestTierCompleted || 0;
-      this.state.singlePlayerProfile.shopPack = generateRandomShopPack(highestTier, Date.now());
-      debugLog('EXTRACTION', 'Shop pack refreshed', { shopPack: this.state.singlePlayerProfile.shopPack });
+      const highestTier = newProfile.stats.highestTierCompleted || 0;
+      newProfile.shopPack = generateRandomShopPack(highestTier, Date.now());
+      debugLog('EXTRACTION', 'Shop pack refreshed', { shopPack: newProfile.shopPack });
 
       debugLog('EXTRACTION', 'Run ended successfully - loot transferred');
 
       // Persist ship section hull damage using slot-based format
-      // Damage is stored in sectionSlots[lane].damageDealt, not in instance arrays
       if (runState.shipSlotId !== 0 && runState.shipSections) {
-        const slots = [...this.state.singlePlayerShipSlots];
-        const slotIndex = slots.findIndex(s => s.id === runState.shipSlotId);
+        const slotIndex = newShipSlots.findIndex(s => s.id === runState.shipSlotId);
 
-        if (slotIndex >= 0 && slots[slotIndex].sectionSlots) {
-          const shipSlot = { ...slots[slotIndex] };
+        if (slotIndex >= 0 && newShipSlots[slotIndex].sectionSlots) {
+          const shipSlot = { ...newShipSlots[slotIndex] };
           const newSectionSlots = { ...shipSlot.sectionSlots };
 
-          // Map section names to lanes for persistence
           Object.entries(runState.shipSections).forEach(([sectionName, sectionData]) => {
-            const lane = sectionData.lane; // 'l', 'm', or 'r'
+            const lane = sectionData.lane;
             if (lane && newSectionSlots[lane]) {
-              // Calculate damage dealt = maxHull - currentHull
               const damageDealt = (sectionData.maxHull || 10) - (sectionData.hull || 0);
               newSectionSlots[lane] = {
                 ...newSectionSlots[lane],
@@ -3037,23 +3038,22 @@ class GameStateManager {
           });
 
           shipSlot.sectionSlots = newSectionSlots;
-          slots[slotIndex] = shipSlot;
-          this.state.singlePlayerShipSlots = slots;
+          newShipSlots[slotIndex] = shipSlot;
           debugLog('EXTRACTION', 'Ship section hull damage persisted to sectionSlots');
         }
       }
     } else {
       // MIA: Wipe loot, mark slot
-      const shipSlot = this.state.singlePlayerShipSlots.find(
-        s => s.id === runState.shipSlotId
-      );
       // Slot 0 (Starter Deck) never goes MIA - player just loses loot
-      if (shipSlot && shipSlot.id !== 0) {
-        shipSlot.status = 'mia';
+      if (runState.shipSlotId !== 0) {
+        const slotIndex = newShipSlots.findIndex(s => s.id === runState.shipSlotId);
+        if (slotIndex >= 0) {
+          newShipSlots[slotIndex] = { ...newShipSlots[slotIndex], status: 'mia' };
+        }
       }
 
       // Update statistics
-      this.state.singlePlayerProfile.stats.runsLost++;
+      newProfile.stats.runsLost++;
 
       debugLog('EXTRACTION', 'Run ended - MIA protocol triggered');
     }
@@ -3069,9 +3069,7 @@ class GameStateManager {
     });
 
     // Award reputation based on loadout value + combat reputation
-    const shipSlot = this.state.singlePlayerShipSlots.find(
-      s => s.id === runState.shipSlotId
-    );
+    const shipSlot = newShipSlots.find(s => s.id === runState.shipSlotId);
     const reputationResult = ReputationService.awardReputation(
       shipSlot,
       runState.mapTier || 1,
@@ -3103,12 +3101,12 @@ class GameStateManager {
     tacticalMapStateManager.endRun();
     debugLog('STATE_SYNC', 'TacticalMapStateManager run ended');
 
-    // Set summary for display at hangar
-    // Include singlePlayerProfile so React subscribers see the stats change
-    // NOTE: Run state is cleared via tacticalMapStateManager.endRun() above
+    // Apply all state changes via setState so subscribers are notified
     this.setState({
       lastRunSummary,
-      singlePlayerProfile: { ...this.state.singlePlayerProfile }
+      singlePlayerProfile: newProfile,
+      singlePlayerInventory: newInventory,
+      singlePlayerShipSlots: newShipSlots,
     });
 
     debugLog('SP_COMBAT', '=== END RUN COMPLETE ===', {
