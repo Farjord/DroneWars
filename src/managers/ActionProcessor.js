@@ -402,12 +402,6 @@ setAnimationManager(animationManager) {
   async processAction(action) {
     const { type, payload, isNetworkAction = false } = action;
 
-    debugLog('PASS_LOGIC', `🔵 [ACTION PROCESSOR] processAction called`, {
-      type,
-      isNetworkAction,
-      gameMode: this.gameStateManager?.getState()?.gameMode
-    });
-
     // Get current state for validation
     const currentState = this.gameStateManager.getState();
 
@@ -510,73 +504,33 @@ setAnimationManager(animationManager) {
 
       return result;
     } finally {
-      // Emit action completed event for GameFlowManager
-      // Only emit for player actions that might need turn transitions or broadcasting
+      // Emit action_completed for GameFlowManager (player actions only)
       const playerActionTypes = [
         'attack', 'ability', 'move', 'deployment', 'cardPlay',
         'additionalCostCardPlay',
         'shipAbility', 'shipAbilityCompletion',
         'movementCompletion', 'searchAndDrawCompletion',
         'aiAction', 'aiTurn', 'playerPass', 'turnTransition',
-        // Ship abilities (single-step abilities and multi-step completions only)
-        'recallAbility',
-        'targetLockAbility',
-        'recalculateComplete',
-        'reallocateShieldsComplete',
-        'snaredConsumption',
-        'suppressedConsumption'
+        'recallAbility', 'targetLockAbility',
+        'recalculateComplete', 'reallocateShieldsComplete',
+        'snaredConsumption', 'suppressedConsumption'
       ];
 
-      debugLog('PASS_LOGIC', `🔧 [ACTION PROCESSOR] Finally block executing`, {
-        type,
-        isPlayerAction: playerActionTypes.includes(type),
-        hasResult: !!this.lastActionResult,
-        willEmit: playerActionTypes.includes(type) && !!this.lastActionResult,
-        gameMode: this.gameStateManager?.getState()?.gameMode
-      });
-
-      debugLog('TURN_TRANSITION_DEBUG', 'Finally block executing', {
-        type,
-        isPlayerAction: playerActionTypes.includes(type),
-        hasResult: !!this.lastActionResult,
-        willEmit: playerActionTypes.includes(type) && !!this.lastActionResult,
-        listenerCount: this.listeners?.length || 0
-      });
-
       if (playerActionTypes.includes(type) && this.lastActionResult) {
-        debugLog('PASS_LOGIC', `📢 [ACTION PROCESSOR] Emitting action_completed event`, {
-          actionType: type,
-          hasResult: !!this.lastActionResult,
-          gameMode: this.gameStateManager?.getState()?.gameMode,
-          willEmit: true
+        debugLog('TURN_TRANSITION_DEBUG', `Emitting action_completed: ${type}`, {
+          shouldEndTurn: this.lastActionResult?.shouldEndTurn,
+          listenerCount: this.listeners?.length || 0
         });
-
-        debugLog('TURN_TRANSITION_DEBUG', 'Emitting action_completed event', {
-          actionType: type,
-          listenerCount: this.listeners?.length || 0,
-          shouldEndTurn: this.lastActionResult?.shouldEndTurn
-        });
-
-        // Consumption debug logging
-        if (type === 'snaredConsumption' || type === 'suppressedConsumption') {
-          debugLog('CONSUMPTION_DEBUG', '🟢 [3] ActionProcessor: About to emit action_completed', { type, result: this.lastActionResult, listenerCount: this.listeners?.length });
-        }
 
         this.emit('action_completed', {
-          actionType: type,  // Use 'actionType' to avoid collision with event.type
+          actionType: type,
           payload: payload,
           result: this.lastActionResult
         });
       }
 
-      // NOTE: Broadcast moved to GameFlowManager.handleActionCompletion()
-      // This ensures broadcast happens AFTER turn transitions complete
-      // Prevents desync where guest receives stale currentPlayer value
-
-      // Always release the lock
+      // Broadcast moved to GameFlowManager.handleActionCompletion() to prevent desync
       this.actionLocks[type] = false;
-
-      // Clear last action tracking
       this.lastActionResult = null;
       this.lastActionType = null;
     }
@@ -586,93 +540,23 @@ setAnimationManager(animationManager) {
     return _processAttack(payload, this._getActionContext());
   }
 
-  async processMove(payload) {
-    return _processMove(payload, this._getActionContext());
-  }
-
-  async processAbility(payload) {
-    return _processAbility(payload, this._getActionContext());
-  }
-
-  /**
-   * Process deployment action
-   */
-  async processDeployment(payload) {
-    return _processDeployment(payload, this._getActionContext());
-  }
-
-  async processCardPlay(payload) {
-    return _processCardPlay(payload, this._getActionContext());
-  }
-
-  /**
-   * Process movement card completion (SINGLE_MOVE or MULTI_MOVE)
-   * Called after user has selected drones and destination in UI
-   * Card costs are paid here (not during initial card play)
-   */
-  async processAdditionalCostCardPlay(payload) {
-    return _processAdditionalCostCardPlay(payload, this._getActionContext());
-  }
-
-  /**
-   * Process additional cost effect selection completion
-   *
-   * Called when user completes selecting the effect target for an additional cost card
-   * (e.g., after selecting which enemy drone to move in Forced Repositioning)
-   *
-   * @param {Object} payload - { selectionContext, effectSelection, playerId }
-   * @returns {Object} { success, newPlayerStates, shouldEndTurn, animationEvents }
-   */
-  async processAdditionalCostEffectSelectionComplete(payload) {
-    return _processAdditionalCostEffectSelectionComplete(payload, this._getActionContext());
-  }
-
-  async processMovementCompletion(payload) {
-    return _processMovementCompletion(payload, this._getActionContext());
-  }
-
-  async processSearchAndDrawCompletion(payload) {
-    return _processSearchAndDrawCompletion(payload, this._getActionContext());
-  }
-
-  /**
-   * Process ship ability action
-   */
-  async processShipAbility(payload) {
-    return _processShipAbility(payload, this._getActionContext());
-  }
-
-  async processShipAbilityCompletion(payload) {
-    return _processShipAbilityCompletion(payload, this._getActionContext());
-  }
-
-  async processRecallAbility(payload) {
-    return _processRecallAbility(payload, this._getActionContext());
-  }
-
-  async processTargetLockAbility(payload) {
-    return _processTargetLockAbility(payload, this._getActionContext());
-  }
-
-  validateShipAbilityActivationLimit(sectionName, playerId, playerStates) {
-    return _validateShipAbilityActivationLimit(sectionName, playerId, playerStates);
-  }
-
-  async processRecalculateAbility(payload) {
-    return _processRecalculateAbility(payload, this._getActionContext());
-  }
-
-  async processRecalculateComplete(payload) {
-    return _processRecalculateComplete(payload, this._getActionContext());
-  }
-
-  async processReallocateShieldsAbility(payload) {
-    return _processReallocateShieldsAbility(payload, this._getActionContext());
-  }
-
-  async processReallocateShieldsComplete(payload) {
-    return _processReallocateShieldsComplete(payload, this._getActionContext());
-  }
+  async processMove(payload) { return _processMove(payload, this._getActionContext()); }
+  async processAbility(payload) { return _processAbility(payload, this._getActionContext()); }
+  async processDeployment(payload) { return _processDeployment(payload, this._getActionContext()); }
+  async processCardPlay(payload) { return _processCardPlay(payload, this._getActionContext()); }
+  async processAdditionalCostCardPlay(payload) { return _processAdditionalCostCardPlay(payload, this._getActionContext()); }
+  async processAdditionalCostEffectSelectionComplete(payload) { return _processAdditionalCostEffectSelectionComplete(payload, this._getActionContext()); }
+  async processMovementCompletion(payload) { return _processMovementCompletion(payload, this._getActionContext()); }
+  async processSearchAndDrawCompletion(payload) { return _processSearchAndDrawCompletion(payload, this._getActionContext()); }
+  async processShipAbility(payload) { return _processShipAbility(payload, this._getActionContext()); }
+  async processShipAbilityCompletion(payload) { return _processShipAbilityCompletion(payload, this._getActionContext()); }
+  async processRecallAbility(payload) { return _processRecallAbility(payload, this._getActionContext()); }
+  async processTargetLockAbility(payload) { return _processTargetLockAbility(payload, this._getActionContext()); }
+  validateShipAbilityActivationLimit(sectionName, playerId, playerStates) { return _validateShipAbilityActivationLimit(sectionName, playerId, playerStates); }
+  async processRecalculateAbility(payload) { return _processRecalculateAbility(payload, this._getActionContext()); }
+  async processRecalculateComplete(payload) { return _processRecalculateComplete(payload, this._getActionContext()); }
+  async processReallocateShieldsAbility(payload) { return _processReallocateShieldsAbility(payload, this._getActionContext()); }
+  async processReallocateShieldsComplete(payload) { return _processReallocateShieldsComplete(payload, this._getActionContext()); }
 
   /**
    * Check for win conditions after state-changing actions
@@ -711,57 +595,17 @@ setAnimationManager(animationManager) {
     return result;
   }
 
-  /**
-   * Process Force Win (DEV ONLY)
-   * Damages all opponent sections and triggers win condition check.
-   * Routes through ActionProcessor to avoid architecture violations.
-   */
-  processForceWin() {
-    return _processForceWin(null, this._getActionContext());
-  }
+  processForceWin() { return _processForceWin(null, this._getActionContext()); }
+  async processTurnTransition(payload) { return _processTurnTransition(payload, this._getActionContext()); }
+  async processPhaseTransition(payload) { return _processPhaseTransition(payload, this._getActionContext()); }
+  async processRoundStart(payload) { return _processRoundStart(payload, this._getActionContext()); }
+  async processReallocateShields(payload) { return _processReallocateShields(payload, this._getActionContext()); }
+  async processAiAction(payload) { return _processAiAction(payload, this._getActionContext()); }
 
-  /**
-   * Process turn transition
-   */
-  async processTurnTransition(payload) {
-    return _processTurnTransition(payload, this._getActionContext());
-  }
-
-  async processPhaseTransition(payload) {
-    return _processPhaseTransition(payload, this._getActionContext());
-  }
-
-  async processRoundStart(payload) {
-    return _processRoundStart(payload, this._getActionContext());
-  }
-
-
-  /**
-   * Process shield reallocation action (ACTION PHASE ONLY)
-   * Handles shield reallocation abilities during action phase gameplay.
-   * Round start shield allocation should use direct GameStateManager updates.
-   */
-  async processReallocateShields(payload) {
-    return _processReallocateShields(payload, this._getActionContext());
-  }
-
-  /**
-   * Process AI action
-   */
-  async processAiAction(payload) {
-    return _processAiAction(payload, this._getActionContext());
-  }
-
-  /**
-   * Check if any actions are currently being processed
-   */
   isActionInProgress() {
     return this.isProcessing || Object.values(this.actionLocks).some(locked => locked);
   }
 
-  /**
-   * Get current queue length
-   */
   getQueueLength() {
     return this.actionQueue.length;
   }
@@ -836,71 +680,31 @@ setAnimationManager(animationManager) {
   }
 
   async executeAndCaptureAnimations(animations, isSystemAnimation = false, waitForCompletion = true) {
-    if (!animations || animations.length === 0) {
-      return;
-    }
+    if (!animations || animations.length === 0) return;
 
     const gameMode = this.gameStateManager.get('gameMode');
 
-    timingLog('[ANIM QUEUE] Animation requested', {
-      count: animations.length,
-      names: animations.map(a => a.animationName).join(', '),
-      waitForCompletion,
-      isSystemAnimation,
-      gameMode,
-      blockingReason: 'entering_queue'
-    });
-
-    // Capture animations for guest broadcasting (host only)
+    // Capture for guest broadcasting (host only)
     if (gameMode === 'host') {
-      if (isSystemAnimation) {
-        this.pendingSystemAnimations.push(...animations);
-      } else {
-        this.pendingActionAnimations.push(...animations);
-      }
+      (isSystemAnimation ? this.pendingSystemAnimations : this.pendingActionAnimations).push(...animations);
     }
 
-    // Execute animations with source tracking
     if (this.animationManager) {
       const source = gameMode === 'guest' ? 'GUEST_OPTIMISTIC' : gameMode === 'host' ? 'HOST_LOCAL' : 'LOCAL';
-
-      timingLog('[ANIM QUEUE] Starting execution', {
-        names: animations.map(a => a.animationName).join(', '),
-        source,
-        blockingReason: 'none_executing_now'
-      });
-
       if (waitForCompletion) {
-        // Blocking: Wait for animations to complete before continuing
         await this.animationManager.executeAnimations(animations, source);
-
-        timingLog('[ANIM QUEUE] Execution complete', {
-          names: animations.map(a => a.animationName).join(', '),
-          blockingReason: 'animations_finished'
-        });
       } else {
-        // Non-blocking: Execute animations in parallel without waiting
-        // This allows state updates and multiplayer broadcasting to happen immediately
-        // Return the promise for special cases that need to coordinate timing (e.g., teleport)
         return this.animationManager.executeAnimations(animations, source);
       }
     }
   }
 
-  /**
-   * Get and clear pending action animations for broadcasting
-   * @returns {Array} Pending action animations
-   */
   getAndClearPendingActionAnimations() {
     const animations = [...this.pendingActionAnimations];
     this.pendingActionAnimations = [];
     return animations;
   }
 
-  /**
-   * Get and clear pending system animations for broadcasting
-   * @returns {Array} Pending system animations
-   */
   getAndClearPendingSystemAnimations() {
     const animations = [...this.pendingSystemAnimations];
     this.pendingSystemAnimations = [];
@@ -1119,215 +923,37 @@ setAnimationManager(animationManager) {
     }
 
     if (this.p2pManager && this.p2pManager.isConnected) {
-      const broadcastStartTime = timingLog('[HOST] Broadcast preparing', {
-        phase: this.gameStateManager.get('turnPhase'),
-        currentPlayer: this.gameStateManager.get('currentPlayer'),
-        trigger: trigger
-      });
-
-      // Use pendingFinalState (for TELEPORT_IN) or pendingStateUpdate (for other actions)
-      // Falls back to current state if neither is available
-      // Priority: finalState > pendingState > currentState
-      // - pendingFinalState: Final state after TELEPORT_IN reveal (no isTeleporting flags)
-      // - pendingStateUpdate: New state for normal actions or invisible state for TELEPORT_IN
-      // - currentState: Fallback for non-action broadcasts
+      // Priority: finalState (post-teleport) > pendingState (pre-teleport/normal) > currentState
       const stateToBroadcast = this.pendingFinalState || this.pendingStateUpdate || this.gameStateManager.getState();
       const actionAnimations = this.getAndClearPendingActionAnimations();
       const systemAnimations = this.getAndClearPendingSystemAnimations();
 
-      // VALIDATION LOG: Verify state completeness before broadcast
       const stateSource = this.pendingFinalState ? 'FINAL' : this.pendingStateUpdate ? 'PENDING' : 'CURRENT';
-      debugLog('BROADCAST_TIMING', `📡 [HOST BROADCAST] Source: ${stateSource} | Phase: ${stateToBroadcast.turnPhase} | Player: ${stateToBroadcast.currentPlayer} | Fields: ${Object.keys(stateToBroadcast).length} | Anims: ${actionAnimations.length + systemAnimations.length}`);
-
-      debugLog('STATE_SYNC', '📡 [ANIMATION BROADCAST] Sending state with animations:', {
-        actionAnimationCount: actionAnimations.length,
-        systemAnimationCount: systemAnimations.length,
-        actionAnimations: actionAnimations.map(a => a.animationName),
-        systemAnimations: systemAnimations.map(a => a.animationName),
-        usingFinalState: !!this.pendingFinalState,
-        usingPendingState: !this.pendingFinalState && !!this.pendingStateUpdate,
-        usingCurrentState: !this.pendingFinalState && !this.pendingStateUpdate
-      });
-
-      // Get animation names for logging
-      const allAnimNames = [
-        ...actionAnimations.map(a => a.animationName),
-        ...systemAnimations.map(a => a.animationName)
-      ];
-
-      timingLog('[HOST] Broadcast sending', {
-        phase: stateToBroadcast.turnPhase,
-        actionAnims: actionAnimations.length,
-        systemAnims: systemAnimations.length,
-        totalAnims: actionAnimations.length + systemAnimations.length,
-        trigger: trigger,
-        animNames: allAnimNames.length > 0 ? allAnimNames.join(', ') : 'none'
-      }, broadcastStartTime);
+      debugLog('BROADCAST_TIMING', `📡 [HOST BROADCAST] Source: ${stateSource} | Trigger: ${trigger} | Anims: ${actionAnimations.length + systemAnimations.length}`);
 
       this.p2pManager.broadcastState(stateToBroadcast, actionAnimations, systemAnimations);
     }
   }
 
-  /**
-   * Process player pass action
-   */
-  async processPlayerPass(payload) {
-    return _processPlayerPass(payload, this._getActionContext());
-  }
-
-  /**
-   * Process AI ship placement action
-   */
-  async processAiShipPlacement(payload) {
-    return _processAiShipPlacement(payload, this._getActionContext());
-  }
-
-
-  /**
-   * Process optional discard action
-   */
-  async processOptionalDiscard(payload) {
-    return _processOptionalDiscard(payload, this._getActionContext());
-  }
-
-  /**
-   * Process first player determination for the round
-   * @returns {Object} First player determination result
-   */
-  async processFirstPlayerDetermination() {
-    return _processFirstPlayerDetermination(null, this._getActionContext());
-  }
-
-  /**
-   * Get phase commitment status
-   * @param {string} phase - Phase name
-   * @returns {Object|null} Commitment status
-   */
-  getPhaseCommitmentStatus(phase) {
-    return _getPhaseCommitmentStatus(phase, this._getActionContext());
-  }
-
-  /**
-   * Clear commitments for a specific phase or all phases
-   * @param {string} phase - Optional phase name, if not provided clears all
-   */
-  clearPhaseCommitments(phase = null) {
-    return _clearPhaseCommitments(phase, this._getActionContext());
-  }
-
-  /**
-   * Process commitment action for simultaneous phases
-   * @param {Object} payload - Commitment payload
-   * @returns {Object} Commitment result
-   */
-  async processCommitment(payload) {
-    return _processCommitment(payload, this._getActionContext());
-  }
-
-  /**
-   * Handle AI commitment for simultaneous phases
-   * @param {string} phase - Phase name
-   * @param {Object} currentState - Current game state
-   */
-  async handleAICommitment(phase, currentState) {
-    return _handleAICommitment(phase, currentState, this._getActionContext());
-  }
-
-  /**
-   * Apply phase commitments to permanent game state
-   * Transfers commitment data from temporary commitments object to actual game state fields
-   * @param {string} phase - Phase name
-   * @returns {Object} State updates to apply
-   */
-  applyPhaseCommitments(phase) {
-    return _applyPhaseCommitments(phase, this._getActionContext());
-  }
-
-  /**
-   * Process automatic draw action
-   * @param {Object} payload - Draw payload containing player states
-   * @returns {Object} Draw result
-   */
-  async processDraw(payload) {
-    return _processDraw(payload, this._getActionContext());
-  }
-
-  /**
-   * Process energy reset action
-   * @param {Object} payload - Energy reset payload containing updated player states
-   * @returns {Object} Energy reset result
-   */
-  async processEnergyReset(payload) {
-    return _processEnergyReset(payload, this._getActionContext());
-  }
-
-  /**
-   * Process ON_ROUND_START triggered abilities
-   * Updates player states after round start triggers have been processed
-   * @param {Object} payload - { player1, player2 } with updated states
-   * @returns {Object} Round start triggers result
-   */
-  async processRoundStartTriggers(payload) {
-    return _processRoundStartTriggers(payload, this._getActionContext());
-  }
-
-  /**
-   * Process drone rebuild progress
-   * Updates droneAvailability state after rebuild progress has been calculated
-   * Called at the start of each round after ON_ROUND_START triggers
-   * @param {Object} payload - { player1?, player2? } with updated droneAvailability
-   * @returns {Object} Rebuild progress result
-   */
-  async processRebuildProgress(payload) {
-    return _processRebuildProgress(payload, this._getActionContext());
-  }
-
-  /**
-   * Process momentum award
-   * Awards momentum to the player controlling more lanes
-   * @param {Object} payload - { player1?, player2? }
-   * @returns {Object} Momentum award result
-   */
-  async processMomentumAward(payload) {
-    return _processMomentumAward(payload, this._getActionContext());
-  }
-
-  /**
-   * Process drone destruction
-   * Handles mandatoryDroneRemoval phase and other drone destruction scenarios
-   * @param {Object} payload - { droneId, playerId }
-   * @returns {Object} Destruction result
-   */
-  async processDestroyDrone(payload) {
-    return _processDestroyDrone(payload, this._getActionContext());
-  }
-
-  /**
-   * Process adding cards to a player's hand (DEBUG FEATURE)
-   * @param {Object} payload - { playerId, cardInstances }
-   * @returns {Object} Result of adding cards
-   */
-  async processDebugAddCardsToHand(payload) {
-    return _processDebugAddCardsToHand(payload, this._getActionContext());
-  }
-
-  /**
-   * Process adding a shield during allocation phase
-   * @param {Object} payload - { sectionName, playerId }
-   * @returns {Object} Shield addition result
-   */
-  async processAddShield(payload) {
-    return _processAddShield(payload, this._getActionContext());
-  }
-
-  /**
-   * Process shield allocation reset
-   * @param {Object} payload - { playerId }
-   * @returns {Object} Shield reset result
-   */
-  async processResetShields(payload) {
-    return _processResetShields(payload, this._getActionContext());
-  }
+  // --- Delegation methods (public API for external callers and ActionContext) ---
+  async processPlayerPass(payload) { return _processPlayerPass(payload, this._getActionContext()); }
+  async processAiShipPlacement(payload) { return _processAiShipPlacement(payload, this._getActionContext()); }
+  async processOptionalDiscard(payload) { return _processOptionalDiscard(payload, this._getActionContext()); }
+  async processFirstPlayerDetermination() { return _processFirstPlayerDetermination(null, this._getActionContext()); }
+  getPhaseCommitmentStatus(phase) { return _getPhaseCommitmentStatus(phase, this._getActionContext()); }
+  clearPhaseCommitments(phase = null) { return _clearPhaseCommitments(phase, this._getActionContext()); }
+  async processCommitment(payload) { return _processCommitment(payload, this._getActionContext()); }
+  async handleAICommitment(phase, currentState) { return _handleAICommitment(phase, currentState, this._getActionContext()); }
+  applyPhaseCommitments(phase) { return _applyPhaseCommitments(phase, this._getActionContext()); }
+  async processDraw(payload) { return _processDraw(payload, this._getActionContext()); }
+  async processEnergyReset(payload) { return _processEnergyReset(payload, this._getActionContext()); }
+  async processRoundStartTriggers(payload) { return _processRoundStartTriggers(payload, this._getActionContext()); }
+  async processRebuildProgress(payload) { return _processRebuildProgress(payload, this._getActionContext()); }
+  async processMomentumAward(payload) { return _processMomentumAward(payload, this._getActionContext()); }
+  async processDestroyDrone(payload) { return _processDestroyDrone(payload, this._getActionContext()); }
+  async processDebugAddCardsToHand(payload) { return _processDebugAddCardsToHand(payload, this._getActionContext()); }
+  async processAddShield(payload) { return _processAddShield(payload, this._getActionContext()); }
+  async processResetShields(payload) { return _processResetShields(payload, this._getActionContext()); }
 
   /**
    * Clear all pending actions (emergency use only)
