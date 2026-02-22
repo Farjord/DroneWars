@@ -15,15 +15,15 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import React from 'react';
 
 // Mock dependencies BEFORE importing the component
-vi.mock('../../hooks/useGameState.js', () => ({
+vi.mock('../../../hooks/useGameState.js', () => ({
   useGameState: vi.fn()
 }));
 
-vi.mock('../../utils/debugLogger.js', () => ({
+vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }));
 
-vi.mock('../../utils/mapGenerator.js', () => ({
+vi.mock('../../../utils/mapGenerator.js', () => ({
   generateMapData: vi.fn(() => ({
     name: 'Test Sector',
     tier: 1,
@@ -35,17 +35,17 @@ vi.mock('../../utils/mapGenerator.js', () => ({
   }))
 }));
 
-vi.mock('../../utils/seededRandom.js', () => ({
+vi.mock('../../../utils/seededRandom.js', () => ({
   SeededRandom: class {
     shuffle(arr) { return [...arr]; }
   }
 }));
 
-vi.mock('../../data/mapData.js', () => ({
+vi.mock('../../../data/mapData.js', () => ({
   mapTiers: [{ tier: 1, gridZone: { minDistance: 0, maxDistance: 1 } }]
 }));
 
-vi.mock('../../data/aiData.js', () => ({
+vi.mock('../../../data/aiData.js', () => ({
   default: [
     {
       bossId: 'BOSS_T1_NEMESIS',
@@ -61,13 +61,13 @@ vi.mock('../../data/aiData.js', () => ({
   ]
 }));
 
-vi.mock('../../logic/singlePlayer/SinglePlayerCombatInitializer.js', () => ({
+vi.mock('../../../logic/singlePlayer/SinglePlayerCombatInitializer.js', () => ({
   default: {
     initiateBossCombat: vi.fn(() => Promise.resolve(true))
   }
 }));
 
-vi.mock('../../logic/reputation/ReputationService.js', () => ({
+vi.mock('../../../logic/reputation/ReputationService.js', () => ({
   default: {
     getLevelData: vi.fn(() => ({ currentRep: 0, level: 0, progress: 0, currentInLevel: 0, requiredForNext: 100, isMaxLevel: false })),
     getUnclaimedRewards: vi.fn(() => []),
@@ -76,21 +76,21 @@ vi.mock('../../logic/reputation/ReputationService.js', () => ({
   }
 }));
 
-vi.mock('../../logic/singlePlayer/MIARecoveryService.js', () => ({
+vi.mock('../../../logic/singlePlayer/MIARecoveryService.js', () => ({
   default: {
     calculateRecoveryCost: vi.fn(() => 1000)
   }
 }));
 
-vi.mock('../../utils/singlePlayerDeckUtils.js', () => ({
+vi.mock('../../../utils/singlePlayerDeckUtils.js', () => ({
   validateDeckForDeployment: vi.fn(() => ({ valid: true, errors: [] }))
 }));
 
-vi.mock('../../utils/slotDamageUtils.js', () => ({
+vi.mock('../../../utils/slotDamageUtils.js', () => ({
   validateShipSlot: vi.fn(() => ({ isUndeployable: false }))
 }));
 
-vi.mock('../../data/economyData.js', () => ({
+vi.mock('../../../data/economyData.js', () => ({
   ECONOMY: {
     STARTER_DECK_COPY_COST: 500,
     DECK_SLOT_UNLOCK_COSTS: [0, 500, 1000, 2000, 4000, 8000],
@@ -99,15 +99,15 @@ vi.mock('../../data/economyData.js', () => ({
   }
 }));
 
-vi.mock('../../data/cardData.js', () => ({
+vi.mock('../../../data/cardData.js', () => ({
   RARITY_COLORS: { Common: '#808080', Uncommon: '#22c55e', Rare: '#3b82f6', Mythic: '#a855f7' }
 }));
 
-vi.mock('../../data/shipData.js', () => ({
+vi.mock('../../../data/shipData.js', () => ({
   getShipById: vi.fn(() => null)
 }));
 
-vi.mock('../../data/playerDeckData.js', () => ({
+vi.mock('../../../data/playerDeckData.js', () => ({
   starterDeck: {
     shipId: 'SHIP_001',
     decklist: [],
@@ -117,17 +117,17 @@ vi.mock('../../data/playerDeckData.js', () => ({
 }));
 
 // Mock child components
-vi.mock('../modals/SaveLoadModal', () => ({ default: () => null }));
-vi.mock('../modals/InventoryModal', () => ({ default: () => null }));
-vi.mock('../modals/MapOverviewModal', () => ({ default: () => null }));
-vi.mock('../modals/BlueprintsModal', () => ({ default: () => null }));
-vi.mock('../modals/ReplicatorModal', () => ({ default: () => null }));
-vi.mock('../modals/ShopModal', () => ({ default: () => null }));
-vi.mock('../modals/RunSummaryModal', () => ({ default: () => null }));
-vi.mock('../modals/MIARecoveryModal', () => ({ default: () => null }));
-vi.mock('../modals/ConfirmationModal', () => ({ default: () => null }));
-vi.mock('../ui/DeployingScreen', () => ({ default: () => null }));
-vi.mock('../ui/LoadingEncounterScreen', () => ({
+vi.mock('../../modals/SaveLoadModal', () => ({ default: () => null }));
+vi.mock('../../modals/InventoryModal', () => ({ default: () => null }));
+vi.mock('../../modals/MapOverviewModal', () => ({ default: () => null }));
+vi.mock('../../modals/BlueprintsModal', () => ({ default: () => null }));
+vi.mock('../../modals/ReplicatorModal', () => ({ default: () => null }));
+vi.mock('../../modals/ShopModal', () => ({ default: () => null }));
+vi.mock('../../modals/RunSummaryModal', () => ({ default: () => null }));
+vi.mock('../../modals/MIARecoveryModal', () => ({ default: () => null }));
+vi.mock('../../modals/ConfirmationModal', () => ({ default: () => null }));
+vi.mock('../../ui/DeployingScreen', () => ({ default: () => null }));
+vi.mock('../../ui/LoadingEncounterScreen', () => ({
   default: ({ onComplete }) => {
     // Auto-trigger onComplete for tests to simulate player clicking "Engage"
     React.useEffect(() => {
@@ -136,12 +136,12 @@ vi.mock('../ui/LoadingEncounterScreen', () => ({
     return <div data-testid="loading-encounter-screen">Loading...</div>;
   }
 }));
-vi.mock('../quickDeploy/QuickDeployManager', () => ({ default: () => null }));
-vi.mock('../ui/ReputationTrack', () => ({ default: () => <div data-testid="reputation-track" /> }));
-vi.mock('../modals/ReputationProgressModal', () => ({ default: () => null }));
-vi.mock('../modals/ReputationRewardModal', () => ({ default: () => null }));
-vi.mock('../ui/NewsTicker', () => ({ default: () => null }));
-vi.mock('../modals/BossEncounterModal', () => ({
+vi.mock('../../quickDeploy/QuickDeployManager', () => ({ default: () => null }));
+vi.mock('../../ui/ReputationTrack', () => ({ default: () => <div data-testid="reputation-track" /> }));
+vi.mock('../../modals/ReputationProgressModal', () => ({ default: () => null }));
+vi.mock('../../modals/ReputationRewardModal', () => ({ default: () => null }));
+vi.mock('../../ui/NewsTicker', () => ({ default: () => null }));
+vi.mock('../../modals/BossEncounterModal', () => ({
   default: ({ bossId, onChallenge, onClose }) => (
     <div data-testid="boss-encounter-modal">
       <span data-testid="boss-id">{bossId}</span>
@@ -152,8 +152,8 @@ vi.mock('../modals/BossEncounterModal', () => ({
 }));
 
 // Import after mocks
-import { useGameState } from '../../hooks/useGameState.js';
-import SinglePlayerCombatInitializer from '../../logic/singlePlayer/SinglePlayerCombatInitializer.js';
+import { useGameState } from '../../../hooks/useGameState.js';
+import SinglePlayerCombatInitializer from '../../../logic/singlePlayer/SinglePlayerCombatInitializer.js';
 
 // Helper to create mock game state
 const createMockGameState = (overrides = {}) => ({
@@ -214,7 +214,7 @@ describe('Boss Hex on Hangar Grid', () => {
     }));
 
     // Dynamic import to ensure mocks are applied
-    const module = await import('./HangarScreen.jsx');
+    const module = await import('../HangarScreen.jsx');
     HangarScreen = module.default;
   });
 
@@ -369,7 +369,7 @@ describe('Boss Challenge Flow', () => {
       bottom: 600
     }));
 
-    const module = await import('./HangarScreen.jsx');
+    const module = await import('../HangarScreen.jsx');
     HangarScreen = module.default;
   });
 

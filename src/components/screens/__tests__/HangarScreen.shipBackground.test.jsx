@@ -17,7 +17,7 @@ const mockGetShipById = vi.fn((shipId) => {
   return ships[shipId] || null;
 });
 
-vi.mock('../../data/shipData.js', () => ({
+vi.mock('../../../data/shipData.js', () => ({
   getShipById: (shipId) => mockGetShipById(shipId),
   getAllShips: () => [],
   getDefaultShip: () => ({ id: 'SHIP_001', name: 'Corvette', image: '/DroneWars/Ships/corvette.png' }),

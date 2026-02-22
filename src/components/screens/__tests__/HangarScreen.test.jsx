@@ -37,7 +37,7 @@ const createDefaultState = (overrides = {}) => ({
 
 let currentMockState = createDefaultState()
 
-vi.mock('../../managers/GameStateManager.js', () => ({
+vi.mock('../../../managers/GameStateManager.js', () => ({
   default: {
     getState: () => currentMockState,
     setState: (update) => mockSetState(update),
@@ -49,7 +49,7 @@ vi.mock('../../managers/GameStateManager.js', () => ({
 }))
 
 // Mock useGameState hook
-vi.mock('../../hooks/useGameState.js', () => ({
+vi.mock('../../../hooks/useGameState.js', () => ({
   useGameState: () => ({
     singlePlayerProfile: currentMockState.singlePlayerProfile,
     singlePlayerInventory: currentMockState.singlePlayerInventory,
@@ -60,11 +60,11 @@ vi.mock('../../hooks/useGameState.js', () => ({
   })
 }))
 
-vi.mock('../../utils/debugLogger.js', () => ({
+vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }))
 
-vi.mock('../../data/playerDeckData.js', () => ({
+vi.mock('../../../data/playerDeckData.js', () => ({
   starterDeck: {
     decklist: [
       { id: 'CARD_001', quantity: 2 },
@@ -82,25 +82,25 @@ vi.mock('../../data/playerDeckData.js', () => ({
   }
 }))
 
-vi.mock('../../data/economyData.js', () => ({
+vi.mock('../../../data/economyData.js', () => ({
   ECONOMY: {
     STARTER_DECK_COPY_COST: 0  // Free deck creation
   }
 }))
 
-vi.mock('../../data/cardLibrary.js', () => ({
+vi.mock('../../../data/cardLibrary.js', () => ({
   cardLibrary: {}
 }))
 
-vi.mock('../../data/droneData.js', () => ({
+vi.mock('../../../data/droneData.js', () => ({
   droneData: {}
 }))
 
-vi.mock('../../data/shipComponentData.js', () => ({
+vi.mock('../../../data/shipComponentData.js', () => ({
   shipComponentData: {}
 }))
 
-vi.mock('../../utils/seededRandom.js', () => ({
+vi.mock('../../../utils/seededRandom.js', () => ({
   SeededRandom: class {
     next() { return 0.5 }
   }
@@ -143,7 +143,7 @@ describe('HangarScreen - Deck Creation Persistence', () => {
       // 3. Navigate to deck builder for optional editing
 
       // Verify the mock infrastructure is in place
-      const gameStateManager = (await import('../../managers/GameStateManager.js')).default
+      const gameStateManager = (await import('../../../managers/GameStateManager.js')).default
       expect(typeof gameStateManager.saveShipSlotDeck).toBe('function')
 
       // Simulate what SHOULD happen: handleConfirmCopyStarter calls saveShipSlotDeck

@@ -9,8 +9,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import gameStateManager from '../../managers/GameStateManager.js';
-import { starterDeck } from '../../data/playerDeckData.js';
+import gameStateManager from '../../../managers/GameStateManager.js';
+import { starterDeck } from '../../../data/playerDeckData.js';
 
 /**
  * Helper: Simulates the instance creation logic from HangarScreen.handleConfirmCopyStarter
