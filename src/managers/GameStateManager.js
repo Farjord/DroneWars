@@ -11,7 +11,6 @@ import fullDroneCollection from '../data/droneData.js';
 import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
 import { starterPoolCards, starterPoolDroneNames } from '../data/saveGameSchema.js';
-import { createNewSave } from '../logic/save/saveGameFactory.js';
 import { convertComponentsToSectionSlots } from '../logic/migration/saveGameMigrations.js';
 import { ECONOMY } from '../data/economyData.js';
 import { generateMapData } from '../utils/mapGenerator.js';
@@ -30,6 +29,7 @@ import tacticalMapStateManager from './TacticalMapStateManager.js';
 import transitionManager from './TransitionManager.js';
 import StateValidationService from '../logic/state/StateValidationService.js';
 import GuestSyncManager from './GuestSyncManager.js';
+import SinglePlayerInventoryManager from './SinglePlayerInventoryManager.js';
 
 class GameStateManager {
   constructor() {
@@ -112,6 +112,9 @@ class GameStateManager {
 
     // Guest sync manager (extracted — handles P2P integration, optimistic actions, host state)
     this.guestSyncManager = new GuestSyncManager(this);
+
+    // Single-player inventory manager (extracted — save/load, inventory, card discovery, ship components)
+    this.singlePlayerInventoryManager = new SinglePlayerInventoryManager(this);
 
     // Context flag for production-safe validation (avoids minification breaking stack traces)
     this._updateContext = null;
@@ -901,168 +904,19 @@ class GameStateManager {
     this.gameFlowManager?.resubscribe();
   }
 
-  // ========================================
-  // SINGLE-PLAYER (EXTRACTION MODE) METHODS
-  // ========================================
+  // --- SINGLE-PLAYER INVENTORY FACADES ---
+  // External callers (EremosEntryScreen, SaveLoadModal, BlueprintsModal, RepairService) use these.
+  // Delegation to singlePlayerInventoryManager.
 
-  /**
-   * Create new single-player profile
-   * Initializes a new save with default values
-   */
-  createNewSinglePlayerProfile() {
-    const newSave = createNewSave();
-    this.loadSinglePlayerSave(newSave);
-    debugLog('SP_SAVE', 'New single-player profile created');
-  }
-
-  /**
-   * Load single-player save
-   * @param {Object} saveData - Save data to load
-   */
-  loadSinglePlayerSave(saveData) {
-    // Migration: Calculate highestUnlockedSlot for saves without it
-    const profile = { ...saveData.playerProfile };
-    if (profile.highestUnlockedSlot === undefined) {
-      // Find highest slot that has a deck (active or mia status)
-      const activeSlotIds = (saveData.shipSlots || [])
-        .filter(s => s.id > 0 && s.status !== 'empty')
-        .map(s => s.id);
-      profile.highestUnlockedSlot = activeSlotIds.length > 0 ? Math.max(...activeSlotIds) : 0;
-      debugLog('SP_SAVE', `Migration: Set highestUnlockedSlot to ${profile.highestUnlockedSlot}`);
-    }
-
-    // Migration: Generate shop pack if not present (new saves and old saves)
-    if (!profile.shopPack) {
-      const highestTier = profile.stats?.highestTierCompleted || 0;
-      profile.shopPack = generateRandomShopPack(highestTier, Date.now());
-      debugLog('SP_SAVE', 'Migration: Generated shop pack', { shopPack: profile.shopPack });
-    }
-
-    this.setState({
-      singlePlayerProfile: profile,
-      singlePlayerInventory: saveData.inventory,
-      singlePlayerDroneInstances: saveData.droneInstances,
-      singlePlayerShipComponentInstances: saveData.shipComponentInstances,
-      singlePlayerDiscoveredCards: saveData.discoveredCards,
-      singlePlayerShipSlots: saveData.shipSlots,
-      quickDeployments: saveData.quickDeployments || [],  // Backwards compat default
-    });
-
-    // Load run state to TacticalMapStateManager if present
-    if (saveData.currentRunState) {
-      tacticalMapStateManager.loadFromSave(saveData.currentRunState);
-      debugLog('SP_SAVE', 'Run state loaded to TacticalMapStateManager');
-    }
-
-    debugLog('SP_SAVE', 'Single-player save loaded');
-  }
-
-  /**
-   * Get current save data for serialization
-   * @returns {Object} Save data
-   */
-  getSaveData() {
-    return {
-      playerProfile: this.state.singlePlayerProfile,
-      inventory: this.state.singlePlayerInventory,
-      droneInstances: this.state.singlePlayerDroneInstances,
-      shipComponentInstances: this.state.singlePlayerShipComponentInstances,
-      discoveredCards: this.state.singlePlayerDiscoveredCards,
-      shipSlots: this.state.singlePlayerShipSlots,
-      currentRunState: tacticalMapStateManager.getState(),  // Get from TacticalMapStateManager
-      quickDeployments: this.state.quickDeployments || [],
-    };
-  }
-
-  /**
-   * Update card discovery state
-   * @param {string} cardId - Card ID
-   * @param {string} newState - New state: 'owned' | 'discovered' | 'undiscovered'
-   */
-  updateCardDiscoveryState(cardId, newState) {
-    const validStates = ['owned', 'discovered', 'undiscovered'];
-    if (!validStates.includes(newState)) {
-      throw new Error(`Invalid discovery state: ${newState}`);
-    }
-
-    const discoveredCards = [...this.state.singlePlayerDiscoveredCards];
-    const index = discoveredCards.findIndex(entry => entry.cardId === cardId);
-
-    if (index >= 0) {
-      discoveredCards[index] = { ...discoveredCards[index], state: newState };
-    } else {
-      // Add new entry if card doesn't exist
-      discoveredCards.push({ cardId, state: newState });
-    }
-
-    this.setState({ singlePlayerDiscoveredCards: discoveredCards });
-    debugLog('SP_INVENTORY', `Card ${cardId} discovery state updated to ${newState}`);
-  }
-
-  /**
-   * Add card to discovered cards when unlocked from pack
-   * @param {string} cardId - Card ID
-   */
-  addDiscoveredCard(cardId) {
-    this.updateCardDiscoveryState(cardId, 'discovered');
-  }
-
-  /**
-   * Add card to inventory (from loot, crafting, etc.)
-   * @param {string} cardId - Card ID
-   * @param {number} quantity - Quantity to add (default 1)
-   */
-  addToInventory(cardId, quantity = 1) {
-    const newInventory = {
-      ...this.state.singlePlayerInventory,
-      [cardId]: (this.state.singlePlayerInventory[cardId] || 0) + quantity
-    };
-
-    this.setState({ singlePlayerInventory: newInventory });
-
-    // Also mark as owned in discovery
-    this.updateCardDiscoveryState(cardId, 'owned');
-
-    debugLog('SP_INVENTORY', `Added ${quantity}x ${cardId} to inventory`);
-  }
-
-  /**
-   * Add ship component instance
-   * @param {Object} instance - Component instance { instanceId, componentId, shipSlotId, currentHull, maxHull }
-   */
-  addShipComponentInstance(instance) {
-    const instances = [...this.state.singlePlayerShipComponentInstances];
-    instances.push(instance);
-    this.setState({ singlePlayerShipComponentInstances: instances });
-    debugLog('SP_INVENTORY', 'Ship component instance added', { instance });
-  }
-
-  /**
-   * Update ship component hull
-   * @param {string} instanceId - Instance ID
-   * @param {number} newHull - New hull value
-   */
-  updateShipComponentHull(instanceId, newHull) {
-    const instances = [...this.state.singlePlayerShipComponentInstances];
-    const index = instances.findIndex(inst => inst.instanceId === instanceId);
-
-    if (index >= 0) {
-      instances[index] = { ...instances[index], currentHull: newHull };
-      this.setState({ singlePlayerShipComponentInstances: instances });
-      debugLog('SP_INVENTORY', `Ship component ${instanceId} hull updated to ${newHull}`);
-    } else {
-      debugLog('SP_INVENTORY', `⚠️ Ship component instance ${instanceId} not found`);
-    }
-  }
-
-  /**
-   * Get ship component instance
-   * @param {string} instanceId - Instance ID
-   * @returns {Object|null} Component instance or null if not found
-   */
-  getShipComponentInstance(instanceId) {
-    return this.state.singlePlayerShipComponentInstances.find(inst => inst.instanceId === instanceId) || null;
-  }
+  createNewSinglePlayerProfile() { this.singlePlayerInventoryManager.createNewSinglePlayerProfile(); }
+  loadSinglePlayerSave(saveData) { this.singlePlayerInventoryManager.loadSinglePlayerSave(saveData); }
+  getSaveData() { return this.singlePlayerInventoryManager.getSaveData(); }
+  updateCardDiscoveryState(cardId, newState) { this.singlePlayerInventoryManager.updateCardDiscoveryState(cardId, newState); }
+  addDiscoveredCard(cardId) { this.singlePlayerInventoryManager.addDiscoveredCard(cardId); }
+  addToInventory(cardId, quantity = 1) { this.singlePlayerInventoryManager.addToInventory(cardId, quantity); }
+  addShipComponentInstance(instance) { this.singlePlayerInventoryManager.addShipComponentInstance(instance); }
+  updateShipComponentHull(instanceId, newHull) { this.singlePlayerInventoryManager.updateShipComponentHull(instanceId, newHull); }
+  getShipComponentInstance(instanceId) { return this.singlePlayerInventoryManager.getShipComponentInstance(instanceId); }
 
   // ========================================
   // TACTICAL ITEMS METHODS
