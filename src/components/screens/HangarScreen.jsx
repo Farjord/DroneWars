@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useRef } from 'react';
 import { useGameState } from '../../hooks/useGameState';
 import useHangarMapState from '../../hooks/useHangarMapState.js';
+import useHangarData from '../../hooks/useHangarData.js';
 import SoundManager from '../../managers/SoundManager.js';
 import SaveLoadModal from '../modals/SaveLoadModal';
 import InventoryModal from '../modals/InventoryModal';
@@ -36,17 +37,14 @@ import {
   DeckBuilderTutorialModal,
 } from '../modals/tutorials';
 import NewsTicker from '../ui/NewsTicker';
-import { generateMapData } from '../../utils/mapGenerator';
 import {
-  generateHexGrid, getHexCoordinate, getOffScreenPOIs, getArrowEdgePosition,
+  getOffScreenPOIs, getArrowEdgePosition,
   getTierColor, GRID_COLS, GRID_ROWS
 } from '../../logic/singlePlayer/hexGrid.js';
 import { getMapType, getMapBackground } from '../../logic/extraction/mapExtraction';
-import MusicManager from '../../managers/MusicManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js';
 import { validateShipSlot } from '../../utils/slotDamageUtils.js';
-import { SeededRandom } from '../../utils/seededRandom.js';
 import { ECONOMY } from '../../data/economyData.js';
 import { starterDeck } from '../../data/playerDeckData.js';
 import { Plus, Minus, RotateCcw, ChevronRight, Star, Trash2, AlertTriangle, Cpu, Lock, HelpCircle } from 'lucide-react';
@@ -75,8 +73,6 @@ const HangarScreen = () => {
 
   // State management
   const [sidebarMode, setSidebarMode] = useState('options'); // 'options' or 'ships'
-  const [hexGridData, setHexGridData] = useState(null); // Hex grid cells and dimensions
-  const [generatedMaps, setGeneratedMaps] = useState([]);
   const [activeModal, setActiveModal] = useState(null);
   const [selectedSlotId, setSelectedSlotId] = useState(null);
   const [selectedMap, setSelectedMap] = useState(null);
@@ -92,34 +88,10 @@ const HangarScreen = () => {
   const [showDeployingScreen, setShowDeployingScreen] = useState(false); // Show deploying transition screen
   const [deployingData, setDeployingData] = useState(null); // Data for deploying screen (slotId, map, gateId, quickDeploy)
   const [selectedBossId, setSelectedBossId] = useState(null); // Boss ID for BossEncounterModal
-  const [bossHexCell, setBossHexCell] = useState(null); // Boss hex cell data
   const [showBossLoadingScreen, setShowBossLoadingScreen] = useState(false); // Boss encounter transition
   const [bossLoadingData, setBossLoadingData] = useState(null); // Data for boss loading screen
   const [showMissionTracker, setShowMissionTracker] = useState(false); // Show mission tracker modal
-  const [showTutorial, setShowTutorial] = useState(null); // Current tutorial modal to show
   const [isHelpIconTutorial, setIsHelpIconTutorial] = useState(false); // Track if tutorial triggered from help icon
-
-  // Compute maps with correct grid coordinates for the news ticker
-  const mapsWithCoordinates = useMemo(() => {
-    if (!hexGridData || generatedMaps.length === 0) return generatedMaps;
-
-    return generatedMaps.map((map, index) => {
-      const cell = hexGridData.allCells.find(c => c.mapIndex === index);
-      if (cell) {
-        return { ...map, name: `Sector ${cell.coordinate}` };
-      }
-      return map;
-    });
-  }, [hexGridData, generatedMaps]);
-
-  // Pan/Zoom state and handlers from hook
-  const {
-    zoom, pan, isDragging,
-    mapContainerRef, transformRef,
-    zoomToSector,
-    handleMapMouseDown, handleMapMouseMove, handleMapMouseUp,
-    handleResetView
-  } = useHangarMapState(hexGridData);
 
   // Extract single-player state
   const {
@@ -132,150 +104,24 @@ const HangarScreen = () => {
     lastRunSummary,
   } = gameState;
 
-  // Music override for deploying transition screen
-  useEffect(() => {
-    if (showDeployingScreen) {
-      MusicManager.getInstance().setOverride('deploying');
-    }
-    return () => {
-      if (showDeployingScreen) MusicManager.getInstance().clearOverride();
-    };
-  }, [showDeployingScreen]);
+  // Shared ref for map container (used by both hooks)
+  const mapContainerRef = useRef(null);
 
-  /**
-   * Generate hex grid on mount (uses game seed + total deployments for varied placement)
-   */
-  useEffect(() => {
-    const generateGrid = () => {
-      if (mapContainerRef.current && singlePlayerProfile?.gameSeed) {
-        const { width, height } = mapContainerRef.current.getBoundingClientRect();
-        // Total deployments = completed runs + lost/abandoned runs
-        // This ensures hex positions change each time player returns from tactical map
-        const totalDeployments = (singlePlayerProfile?.stats?.runsCompleted || 0) +
-                                 (singlePlayerProfile?.stats?.runsLost || 0);
-        const gridData = generateHexGrid(width, height, singlePlayerProfile.gameSeed, 6, totalDeployments);
-        setHexGridData({ ...gridData, width, height });
-      }
-    };
+  // Derived data: hex grid, maps, boss, tutorials
+  const {
+    hexGridData, generatedMaps, bossHexCell,
+    mapsWithCoordinates, activeSectors,
+    showTutorial, setShowTutorial
+  } = useHangarData(singlePlayerProfile, mapContainerRef, showDeployingScreen);
 
-    // Generate after a brief delay to ensure container is rendered
-    const timer = setTimeout(generateGrid, 100);
-
-    return () => clearTimeout(timer);
-  }, [singlePlayerProfile?.gameSeed,
-      singlePlayerProfile?.stats?.runsCompleted,
-      singlePlayerProfile?.stats?.runsLost]);
-
-  /**
-   * Check for intro tutorial on mount (only shows for new games)
-   */
-  useEffect(() => {
-    if (singlePlayerProfile && !MissionService.isTutorialDismissed('intro')) {
-      // Small delay to let the UI render first
-      const timer = setTimeout(() => {
-        setShowTutorial('intro');
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [singlePlayerProfile]);
-
-  /**
-   * Generate 6 procedural maps on mount (one per icon)
-   * Uses game seed + total deployments for deterministic but fresh maps each return
-   */
-  useEffect(() => {
-    if (!singlePlayerProfile?.gameSeed) return;
-
-    const generateMapsForSession = () => {
-      const maps = [];
-      const { gameSeed } = singlePlayerProfile;
-      // Total deployments = completed runs + lost/abandoned runs
-      // This ensures maps regenerate each time player returns from tactical map
-      const totalDeployments = (singlePlayerProfile?.stats?.runsCompleted || 0) +
-                               (singlePlayerProfile?.stats?.runsLost || 0);
-
-      // Generate 6 maps using mapGenerator utility
-      // For now, all Tier 1 and GENERIC type (can mix later)
-      for (let i = 0; i < 6; i++) {
-        // Offset seed by totalDeployments * 1000 to ensure unique maps each return
-        const mapSeed = gameSeed + i + (totalDeployments * 1000);
-        const mapType = 'GENERIC';  // For MVP: all generic, later add type selection
-        const mapData = generateMapData(mapSeed, 1, mapType); // Tier 1, GENERIC type
-        maps.push({
-          id: i + 1,
-          ...mapData
-        });
-      }
-
-      setGeneratedMaps(maps);
-    };
-
-    generateMapsForSession();
-  }, [singlePlayerProfile?.gameSeed,
-      singlePlayerProfile?.stats?.runsCompleted,
-      singlePlayerProfile?.stats?.runsLost]);
-
-  /**
-   * Generate boss hex cell after hex grid is generated
-   * Places boss in a valid position that doesn't overlap with map sectors
-   */
-  useEffect(() => {
-    if (!hexGridData || !singlePlayerProfile?.gameSeed) return;
-
-    // Find the first boss AI
-    const bossAI = aiPersonalities.find(ai => ai.modes?.includes('boss'));
-    if (!bossAI) {
-      debugLog('HANGAR', 'No boss AI found');
-      return;
-    }
-
-    // Get active map cells to avoid
-    const activeCells = hexGridData.allCells.filter(c => c.isActive);
-    const activeCoords = new Set(activeCells.map(c => c.coordinate));
-
-    // Find valid cells for boss (not on edge, not active)
-    const validBossCells = hexGridData.allCells.filter(cell =>
-      cell.col >= 2 && cell.col < 26 - 2 &&
-      cell.row >= 1 && cell.row < 18 - 1 &&
-      !activeCoords.has(cell.coordinate) &&
-      // Ensure minimum distance from active cells
-      !activeCells.some(active =>
-        Math.abs(active.col - cell.col) < 3 && Math.abs(active.row - cell.row) < 2
-      )
-    );
-
-    // Use seeded random for deterministic boss placement
-    const rng = new SeededRandom(singlePlayerProfile.gameSeed + 999);
-    const shuffled = rng.shuffle(validBossCells);
-
-    if (shuffled.length > 0) {
-      const bossCell = {
-        ...shuffled[0],
-        isBoss: true,
-        bossId: bossAI.bossId
-      };
-      setBossHexCell(bossCell);
-      debugLog('HANGAR', 'Boss hex placed at:', bossCell.coordinate);
-    }
-  }, [hexGridData, singlePlayerProfile?.gameSeed]);
-
-  /**
-   * Build sorted list of active sectors for navigation
-   * Order: left-to-right within each row, top-to-bottom across rows
-   */
-  const activeSectors = useMemo(() => {
-    if (!hexGridData) return [];
-    return hexGridData.allCells
-      .filter(cell => cell.isActive)
-      .sort((a, b) => {
-        if (a.row !== b.row) return a.row - b.row;
-        return a.col - b.col;
-      })
-      .map(cell => ({
-        coordinate: cell.coordinate,
-        mapIndex: cell.mapIndex
-      }));
-  }, [hexGridData]);
+  // Pan/Zoom state and handlers
+  const {
+    zoom, pan, isDragging,
+    transformRef,
+    zoomToSector,
+    handleMapMouseDown, handleMapMouseMove, handleMapMouseUp,
+    handleResetView
+  } = useHangarMapState(hexGridData, mapContainerRef);
 
 
 

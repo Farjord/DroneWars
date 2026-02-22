@@ -3,16 +3,15 @@ import { clampPan } from '../logic/singlePlayer/hexGrid.js';
 
 /**
  * Hook managing pan/zoom interaction state for the Hangar hex grid map.
- * Creates and owns mapContainerRef and transformRef.
+ * Receives mapContainerRef from caller (shared with useHangarData).
  * Uses direct DOM manipulation during drag for smooth panning.
  */
-const useHangarMapState = (hexGridData) => {
+const useHangarMapState = (hexGridData, mapContainerRef) => {
   const [zoom, setZoom] = useState(1.5);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  const mapContainerRef = useRef(null);
   const transformRef = useRef(null);
   const panRef = useRef({ x: 0, y: 0 });
 
@@ -113,7 +112,7 @@ const useHangarMapState = (hexGridData) => {
 
   return {
     zoom, pan, isDragging,
-    mapContainerRef, transformRef,
+    transformRef,
     zoomToSector,
     handleMapMouseDown, handleMapMouseMove, handleMapMouseUp,
     handleResetView
