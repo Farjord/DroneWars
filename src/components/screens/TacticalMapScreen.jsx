@@ -9,38 +9,14 @@ import HexGridRenderer from '../ui/HexGridRenderer.jsx';
 import TacticalMapHUD from '../ui/TacticalMapHUD.jsx';
 import HexInfoPanel from '../ui/HexInfoPanel.jsx';
 import TacticalTicker from '../ui/TacticalTicker.jsx';
-import POIEncounterModal from '../modals/POIEncounterModal.jsx';
-import BlueprintEncounterModal from '../modals/BlueprintEncounterModal.jsx';
-import DroneBlueprintRewardModal from '../modals/DroneBlueprintRewardModal.jsx';
-import SalvageModal from '../modals/SalvageModal.jsx';
-import EscapeConfirmModal from '../modals/EscapeConfirmModal.jsx';
-import QuickDeploySelectionModal from '../modals/QuickDeploySelectionModal.jsx';
-import LoadingEncounterScreen from '../ui/LoadingEncounterScreen.jsx';
-import ExtractionLoadingScreen from '../ui/ExtractionLoadingScreen.jsx';
-import EscapeLoadingScreen from '../ui/EscapeLoadingScreen.jsx';
-import RunInventoryModal from '../modals/RunInventoryModal.jsx';
-import LootRevealModal from '../modals/LootRevealModal.jsx';
-import AbandonRunModal from '../modals/AbandonRunModal.jsx';
-import ExtractionLootSelectionModal from '../modals/ExtractionLootSelectionModal.jsx';
-import ExtractionConfirmModal from '../modals/ExtractionConfirmModal.jsx';
-import DetectionManager from '../../logic/detection/DetectionManager.js';
-import ExtractionController from '../../logic/singlePlayer/ExtractionController.js';
-import aiPersonalities from '../../data/aiData.js';
+import TacticalMapModals from '../ui/TacticalMapModals.jsx';
 import gameStateManager from '../../managers/GameStateManager.js';
 import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import { mapTiers } from '../../data/mapData.js';
 import { buildShipSections } from '../../logic/singlePlayer/shipSectionBuilder.js';
-import SoundManager from '../../managers/SoundManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
-import { ECONOMY } from '../../data/economyData.js';
-import ReputationService from '../../logic/reputation/ReputationService.js';
-import MissionService from '../../logic/missions/MissionService.js';
-import MissionPanel from '../ui/MissionPanel.jsx';
-import MissionTrackerModal from '../modals/MissionTrackerModal.jsx';
-import { TacticalMapTutorialModal } from '../modals/tutorials';
-import { HelpCircle } from 'lucide-react';
+import TacticalMapHeader from '../ui/TacticalMapHeader.jsx';
 import TacticalItemsPanel from '../ui/TacticalItemsPanel.jsx';
-import TacticalItemConfirmationModal from '../modals/TacticalItemConfirmationModal.jsx';
 import { useTacticalSubscriptions } from '../../hooks/useTacticalSubscriptions.js';
 import { useTacticalPostCombat } from '../../hooks/useTacticalPostCombat.js';
 import { useTacticalWaypoints } from '../../hooks/useTacticalWaypoints.js';
@@ -486,49 +462,6 @@ function TacticalMapScreen() {
     setShowInventory(false);
   };
 
-  // Calculate stats for header (moved from TacticalMapHUD)
-  const { creditsEarned, collectedLoot, shipSections: runShipSections } = currentRunState;
-
-  // Calculate extraction limit
-  const isStarterDeck = currentRunState.shipSlotId === 0;
-  const baseLimit = isStarterDeck
-    ? (ECONOMY.STARTER_DECK_EXTRACTION_LIMIT || 3)
-    : (ECONOMY.CUSTOM_DECK_EXTRACTION_LIMIT || 6);
-  const reputationBonus = isStarterDeck ? 0 : ReputationService.getExtractionBonus();
-  const damagedCount = runShipSections
-    ? Object.values(runShipSections).filter(section => {
-        const threshold = section.thresholds?.damaged ?? 5;
-        return section.hull <= threshold;
-      }).length
-    : 0;
-  const extractionLimit = Math.max(0, baseLimit + reputationBonus - damagedCount);
-  const isOverLimit = collectedLoot.length > extractionLimit;
-
-  // Calculate total hull
-  const totalHull = shipSections.reduce((sum, s) => sum + s.hull, 0);
-  const totalMaxHull = shipSections.reduce((sum, s) => sum + s.maxHull, 0);
-  const totalHullPercentage = totalMaxHull > 0 ? (totalHull / totalMaxHull) * 100 : 0;
-
-  // Hull color helpers
-  const getSectionColorClass = (section) => {
-    if (section.thresholds) {
-      const { damaged, critical } = section.thresholds;
-      if (section.hull <= critical) return 'stat-value-critical';
-      if (section.hull <= damaged) return 'stat-value-warning';
-      return 'stat-value-healthy';
-    }
-    const pct = section.maxHull > 0 ? (section.hull / section.maxHull) * 100 : 0;
-    if (pct >= 70) return 'stat-value-healthy';
-    if (pct >= 40) return 'stat-value-warning';
-    return 'stat-value-critical';
-  };
-
-  const getHullColorClass = (percentage) => {
-    if (percentage >= 70) return 'stat-value-healthy';
-    if (percentage >= 40) return 'stat-value-warning';
-    return 'stat-value-critical';
-  };
-
   return (
     <div className="tactical-map-screen">
       {/* Threat Level Change Alert Overlay */}
@@ -540,97 +473,13 @@ function TacticalMapScreen() {
         </div>
       )}
 
-      {/* Header Bar - matching Hangar/Repair Bay style */}
-      <header style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: '320px', // Stop before HexInfoPanel
-        background: 'linear-gradient(45deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px), linear-gradient(-45deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px), linear-gradient(180deg, rgba(20, 28, 42, 0.95) 0%, rgba(10, 14, 22, 0.95) 100%)',
-        backgroundSize: '10px 10px, 10px 10px, 100% 100%',
-        height: '60px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 2rem',
-        borderBottom: '1px solid rgba(6, 182, 212, 0.3)',
-        zIndex: 150
-      }}>
-        {/* Left: Title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <h1 style={{
-            fontSize: '1.5rem',
-            color: '#e5e7eb',
-            letterSpacing: '0.1em',
-            margin: 0
-          }}>TACTICAL MAP</h1>
-          <button
-            onClick={() => setShowTutorial('tacticalMap')}
-            title="Show help"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px',
-              color: '#06b6d4',
-              opacity: 0.7,
-              transition: 'opacity 0.2s ease'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
-          >
-            <HelpCircle size={18} />
-          </button>
-        </div>
-
-        {/* Right: Stats */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          {/* Per-Section Hull */}
-          {shipSections.map(section => (
-            <div key={section.id} className="dw-stat-box" style={{ minWidth: '70px', padding: '6px 10px' }}>
-              <span className="dw-stat-box-label">{section.type}</span>
-              <span className={`dw-stat-box-value ${getSectionColorClass(section)}`}>
-                {section.hull}/{section.maxHull}
-              </span>
-            </div>
-          ))}
-
-          {/* Total Hull */}
-          <div className="dw-stat-box" style={{ minWidth: '70px', padding: '6px 10px', borderColor: 'rgba(6, 182, 212, 0.5)' }}>
-            <span className="dw-stat-box-label">Total</span>
-            <span className={`dw-stat-box-value ${getHullColorClass(totalHullPercentage)}`}>
-              {totalHull}/{totalMaxHull}
-            </span>
-          </div>
-
-          {/* Credits */}
-          <div className="dw-stat-box" style={{ minWidth: '70px', padding: '6px 10px' }}>
-            <span className="dw-stat-box-label">Credits</span>
-            <span className="dw-stat-box-value" style={{ color: '#fbbf24' }}>{creditsEarned}</span>
-          </div>
-
-          {/* Loot */}
-          <div className="dw-stat-box" style={{ minWidth: '70px', padding: '6px 10px' }}>
-            <span className="dw-stat-box-label">Loot</span>
-            <span className="dw-stat-box-value" style={{ color: '#60a5fa' }}>{collectedLoot.length}</span>
-          </div>
-
-          {/* Extract Limit */}
-          <div className="dw-stat-box" style={{ minWidth: '70px', padding: '6px 10px' }} title={isStarterDeck ? "Starter deck extraction limit" : `Custom deck extraction limit (Base: ${baseLimit}${reputationBonus > 0 ? `, Rep: +${reputationBonus}` : ''}${damagedCount > 0 ? `, Damage: -${damagedCount}` : ''})`}>
-            <span className="dw-stat-box-label">Extract Limit</span>
-            <span className={`dw-stat-box-value ${isOverLimit ? 'stat-value-warning' : 'stat-value-healthy'}`}>
-              {Math.min(collectedLoot.length, extractionLimit)}/{extractionLimit}
-            </span>
-          </div>
-
-          {/* Mission Tracker */}
-          <MissionPanel
-            activeCount={MissionService.getActiveCount()}
-            claimableCount={MissionService.getClaimableCount()}
-            onClick={() => { SoundManager.getInstance().play('ui_click'); setShowMissionTracker(true); }}
-          />
-        </div>
-      </header>
+      {/* Header Bar */}
+      <TacticalMapHeader
+        shipSections={shipSections}
+        currentRunState={currentRunState}
+        onShowTutorial={setShowTutorial}
+        onShowMissionTracker={() => setShowMissionTracker(true)}
+      />
 
       {/* Tactical Ticker - Intel feed below header */}
       <div style={{
@@ -734,225 +583,84 @@ function TacticalMapScreen() {
         encounterDetectionChance={currentRunState.encounterDetectionChance || 0}
       />
 
-      {/* Blueprint Encounter Modal (Phase 5) */}
-      {showBlueprintEncounterModal && pendingBlueprintEncounter && (
-        <BlueprintEncounterModal
-          encounter={pendingBlueprintEncounter}
-          show={showBlueprintEncounterModal}
-          onAccept={handleBlueprintEncounterAccept}
-          onDecline={handleBlueprintEncounterDecline}
-          onQuickDeploy={handleBlueprintQuickDeploy}
-          validQuickDeployments={validQuickDeployments}
-        />
-      )}
-
-      {/* POI Encounter Modal */}
-      {showPOIModal && currentEncounter && (
-        <POIEncounterModal
-          encounter={currentEncounter}
-          onProceed={handleEncounterProceed}
-          onQuickDeploy={() => {
-            setShowPOIModal(false);
-            setShowQuickDeploySelection(true);
-          }}
-          validQuickDeployments={validQuickDeployments}
-          onEscape={() => handleEscapeRequest({ type: 'poi', isPOI: true })}
-          onEvade={handleEvadeItem}
-          evadeItemCount={gameStateManager.getTacticalItemCount('ITEM_EVADE')}
-          onClose={handleEncounterClose}
-        />
-      )}
-
-      {/* Quick Deploy Selection Modal */}
-      {showQuickDeploySelection && (
-        <QuickDeploySelectionModal
-          validQuickDeployments={validQuickDeployments}
-          onSelect={(deployment) => {
-            setSelectedQuickDeploy(deployment);
-            setShowQuickDeploySelection(false);
-
-            // Check if this is from a blueprint encounter
-            if (blueprintQuickDeployPending) {
-              setBlueprintQuickDeployPending(false);
-              // Blueprint quick deploy - same flow but set fromBlueprintPoI flag
-              handleBlueprintEncounterAcceptWithQuickDeploy(deployment);
-            } else {
-              // Regular POI/blockade/extraction/salvage quick deploy
-              handleEncounterProceedWithQuickDeploy(deployment);
-            }
-          }}
-          onBack={() => {
-            setShowQuickDeploySelection(false);
-            // Return to appropriate modal based on context
-            if (blueprintQuickDeployPending) {
-              setBlueprintQuickDeployPending(false);
-              setShowBlueprintEncounterModal(true);
-            } else if (extractionQuickDeployPending) {
-              setExtractionQuickDeployPending(false);
-              setShowExtractionConfirm(true);
-            } else if (salvageQuickDeployPending) {
-              setSalvageQuickDeployPending(false);
-              setShowSalvageModal(true);
-            } else {
-              setShowPOIModal(true);
-            }
-          }}
-        />
-      )}
-
-      {/* Salvage Modal (progressive POI salvage) */}
-      {showSalvageModal && activeSalvage && (
-        <SalvageModal
-          salvageState={activeSalvage}
-          tierConfig={tierConfig}
-          detection={activeSalvage.detection || DetectionManager.getCurrentDetection()}
-          onSalvageSlot={handleSalvageSlot}
-          onLeave={handleSalvageLeave}
-          onEngageCombat={handleSalvageCombat}
-          onQuickDeploy={() => {
-            setShowSalvageModal(false);
-            setShowQuickDeploySelection(true);
-            setSalvageQuickDeployPending(true);
-          }}
-          onEscape={() => handleEscapeRequest({ type: 'salvage', isPOI: true })}
-          validQuickDeployments={validQuickDeployments}
-          onQuit={handleSalvageQuit}
-        />
-      )}
-
-      {/* Extraction Confirmation Modal */}
-      {showExtractionConfirm && (
-        <ExtractionConfirmModal
-          detection={DetectionManager.getCurrentDetection()}
-          onCancel={handleExtractionCancel}
-          onExtract={handleExtractionConfirmed}
-          onExtractWithItem={handleExtractionWithItem}
-          extractItemCount={gameStateManager.getTacticalItemCount('ITEM_EXTRACT')}
-          onEngageCombat={handleBlockadeCombat}
-          onQuickDeploy={handleBlockadeQuickDeploy}
-          validQuickDeployments={validQuickDeployments}
-        />
-      )}
-
-      {/* Tactical Item Confirmation Modal */}
-      <TacticalItemConfirmationModal
-        show={!!tacticalItemConfirmation}
-        item={tacticalItemConfirmation?.item}
-        currentDetection={tacticalItemConfirmation?.currentDetection || 0}
-        onCancel={handleTacticalItemCancel}
-        onConfirm={handleTacticalItemConfirm}
+      {/* All modals and loading screens */}
+      <TacticalMapModals
+        showBlueprintEncounterModal={showBlueprintEncounterModal}
+        pendingBlueprintEncounter={pendingBlueprintEncounter}
+        handleBlueprintEncounterAccept={handleBlueprintEncounterAccept}
+        handleBlueprintEncounterDecline={handleBlueprintEncounterDecline}
+        handleBlueprintQuickDeploy={handleBlueprintQuickDeploy}
+        validQuickDeployments={validQuickDeployments}
+        showPOIModal={showPOIModal}
+        currentEncounter={currentEncounter}
+        handleEncounterProceed={handleEncounterProceed}
+        setShowPOIModal={setShowPOIModal}
+        setShowQuickDeploySelection={setShowQuickDeploySelection}
+        handleEscapeRequest={handleEscapeRequest}
+        handleEvadeItem={handleEvadeItem}
+        handleEncounterClose={handleEncounterClose}
+        showQuickDeploySelection={showQuickDeploySelection}
+        setSelectedQuickDeploy={setSelectedQuickDeploy}
+        blueprintQuickDeployPending={blueprintQuickDeployPending}
+        setBlueprintQuickDeployPending={setBlueprintQuickDeployPending}
+        handleBlueprintEncounterAcceptWithQuickDeploy={handleBlueprintEncounterAcceptWithQuickDeploy}
+        handleEncounterProceedWithQuickDeploy={handleEncounterProceedWithQuickDeploy}
+        extractionQuickDeployPending={extractionQuickDeployPending}
+        setExtractionQuickDeployPending={setExtractionQuickDeployPending}
+        setShowExtractionConfirm={setShowExtractionConfirm}
+        salvageQuickDeployPending={salvageQuickDeployPending}
+        setSalvageQuickDeployPending={setSalvageQuickDeployPending}
+        setShowSalvageModal={setShowSalvageModal}
+        setShowBlueprintEncounterModal={setShowBlueprintEncounterModal}
+        showSalvageModal={showSalvageModal}
+        activeSalvage={activeSalvage}
+        tierConfig={tierConfig}
+        handleSalvageSlot={handleSalvageSlot}
+        handleSalvageLeave={handleSalvageLeave}
+        handleSalvageCombat={handleSalvageCombat}
+        handleSalvageQuit={handleSalvageQuit}
+        showExtractionConfirm={showExtractionConfirm}
+        handleExtractionCancel={handleExtractionCancel}
+        handleExtractionConfirmed={handleExtractionConfirmed}
+        handleExtractionWithItem={handleExtractionWithItem}
+        handleBlockadeCombat={handleBlockadeCombat}
+        handleBlockadeQuickDeploy={handleBlockadeQuickDeploy}
+        tacticalItemConfirmation={tacticalItemConfirmation}
+        handleTacticalItemCancel={handleTacticalItemCancel}
+        handleTacticalItemConfirm={handleTacticalItemConfirm}
+        showLoadingEncounter={showLoadingEncounter}
+        loadingEncounterData={loadingEncounterData}
+        handleLoadingEncounterComplete={handleLoadingEncounterComplete}
+        showExtractionScreen={showExtractionScreen}
+        extractionScreenData={extractionScreenData}
+        handleExtractionScreenComplete={handleExtractionScreenComplete}
+        showEscapeLoadingScreen={showEscapeLoadingScreen}
+        escapeLoadingData={escapeLoadingData}
+        handleEscapeLoadingComplete={handleEscapeLoadingComplete}
+        showInventory={showInventory}
+        handleCloseInventory={handleCloseInventory}
+        currentRunState={currentRunState}
+        showBlueprintRewardModal={showBlueprintRewardModal}
+        pendingBlueprintReward={pendingBlueprintReward}
+        handleBlueprintRewardAccepted={handleBlueprintRewardAccepted}
+        poiLootToReveal={poiLootToReveal}
+        handlePOILootCollected={handlePOILootCollected}
+        showAbandonModal={showAbandonModal}
+        setShowAbandonModal={setShowAbandonModal}
+        handleConfirmAbandon={handleConfirmAbandon}
+        showEscapeConfirm={showEscapeConfirm}
+        handleEscapeConfirm={handleEscapeConfirm}
+        handleEscapeCancel={handleEscapeCancel}
+        shipSections={shipSections}
+        escapeContext={escapeContext}
+        showLootSelectionModal={showLootSelectionModal}
+        pendingLootSelection={pendingLootSelection}
+        handleLootSelectionConfirm={handleLootSelectionConfirm}
+        showMissionTracker={showMissionTracker}
+        setShowMissionTracker={setShowMissionTracker}
+        showTutorial={showTutorial}
+        setShowTutorial={setShowTutorial}
       />
-
-      {/* Loading Encounter Screen (combat transition) */}
-      {showLoadingEncounter && loadingEncounterData && (
-        <LoadingEncounterScreen
-          encounterData={loadingEncounterData}
-          onComplete={handleLoadingEncounterComplete}
-        />
-      )}
-
-      {/* Extraction Loading Screen (extraction transition) */}
-      {showExtractionScreen && (
-        <ExtractionLoadingScreen
-          extractionData={extractionScreenData}
-          onComplete={handleExtractionScreenComplete}
-        />
-      )}
-
-      {/* Escape Loading Screen (escape transition) */}
-      {showEscapeLoadingScreen && escapeLoadingData && (
-        <EscapeLoadingScreen
-          escapeData={escapeLoadingData}
-          onComplete={handleEscapeLoadingComplete}
-        />
-      )}
-
-      {/* Run Inventory Modal */}
-      {showInventory && (
-        <RunInventoryModal
-          currentRunState={currentRunState}
-          onClose={handleCloseInventory}
-        />
-      )}
-
-      {/* Blueprint Reward Modal (dedicated reveal animation) */}
-      {showBlueprintRewardModal && pendingBlueprintReward && (
-        <DroneBlueprintRewardModal
-          blueprint={pendingBlueprintReward}
-          onAccept={handleBlueprintRewardAccepted}
-          show={true}
-        />
-      )}
-
-      {/* POI Loot Reveal Modal (for card packs and mixed loot) */}
-      {poiLootToReveal && (
-        <LootRevealModal
-          loot={poiLootToReveal}
-          onCollect={handlePOILootCollected}
-          show={true}
-        />
-      )}
-
-      {/* Abandon Run Confirmation Modal */}
-      <AbandonRunModal
-        show={showAbandonModal}
-        onCancel={() => setShowAbandonModal(false)}
-        onConfirm={handleConfirmAbandon}
-        lootCount={currentRunState?.collectedLoot?.length || 0}
-        creditsEarned={currentRunState?.creditsEarned || 0}
-      />
-
-      {/* Escape Confirmation Modal */}
-      {(() => {
-        // Get AI personality for escape damage calculation
-        const escapeAiId = currentEncounter?.aiId;
-        // Use first AI as default for damage preview if no aiId (escape modal display only)
-        const escapeAiPersonality = escapeAiId
-          ? aiPersonalities.find(ai => ai.name === escapeAiId) || aiPersonalities[0]
-          : aiPersonalities[0];
-        const escapeCheckResult = currentRunState
-          ? ExtractionController.checkEscapeCouldDestroy(currentRunState, escapeAiPersonality)
-          : { couldDestroy: false, escapeDamageRange: { min: 2, max: 2 } };
-
-        return (
-          <EscapeConfirmModal
-            show={showEscapeConfirm}
-            onConfirm={handleEscapeConfirm}
-            onCancel={handleEscapeCancel}
-            shipSections={shipSections}
-            couldDestroyShip={escapeCheckResult.couldDestroy}
-            isPOIEncounter={escapeContext?.isPOI || false}
-            escapeDamageRange={escapeCheckResult.escapeDamageRange}
-            encounterDetectionChance={currentRunState?.encounterDetectionChance || 0}
-          />
-        );
-      })()}
-
-      {/* Loot Selection Modal (for Slot 0 extraction limit) */}
-      <ExtractionLootSelectionModal
-        isOpen={showLootSelectionModal}
-        collectedLoot={pendingLootSelection?.collectedLoot || []}
-        limit={pendingLootSelection?.limit || 3}
-        onConfirm={handleLootSelectionConfirm}
-        onCancel={() => handleLootSelectionConfirm([])}
-      />
-
-      {/* Mission Tracker Modal */}
-      {showMissionTracker && (
-        <MissionTrackerModal
-          onClose={() => setShowMissionTracker(false)}
-        />
-      )}
-
-      {/* Tactical Map Tutorial Modal */}
-      {showTutorial === 'tacticalMap' && (
-        <TacticalMapTutorialModal
-          onDismiss={() => {
-            MissionService.dismissTutorial('tacticalMap');
-            setShowTutorial(null);
-          }}
-        />
-      )}
 
       {/* Map info display */}
       <div className="tactical-map-info">
