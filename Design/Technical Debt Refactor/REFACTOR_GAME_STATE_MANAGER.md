@@ -50,7 +50,202 @@
 ### Behavioral Baseline
 <!-- IMMUTABLE — do not edit after initial writing -->
 
-*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+#### Exports / Public API
+
+Single default export: `gameStateManager` (singleton instance of `GameStateManager`). HMR-preserved via `import.meta.hot`.
+
+**Core State (lines 36-144)**
+
+| Method | Contract |
+|-|-|
+| `constructor()` | Initializes 107-line state object, creates `ActionProcessor` singleton, sets up `OptimisticActionService`, initializes `MILESTONE_PHASES` and `validatingState`. No params. |
+| `getState()` | Returns shallow copy `{ ...this.state }`. Read-only snapshot. |
+| `get(key)` | Returns `this.state[key]` directly (NOT a copy — mutable reference for objects). |
+| `setState(updates, eventType, context)` | Merges updates into state, runs validation pipeline (stack-trace parsing, ownership checks), emits event to all listeners. Creates `new Error().stack` on EVERY call for caller detection. |
+| `subscribe(listener)` | Adds listener to `this.listeners` Set. Returns unsubscribe function. Listener receives `{ type, payload, state }`. |
+| `emit(type, payload)` | Calls every listener with `{ type, payload, state: this.getState() }`. Catches and logs errors per listener. |
+
+**Game Lifecycle (lines 1146-1357)**
+
+| Method | Contract |
+|-|-|
+| `reset()` | Resets to preGame state, clears `GameDataService`, clears `ActionProcessor` queue, re-subscribes `GameFlowManager`. Does NOT clear SP state. |
+| `startGame(gameMode, p1Config, p2Config)` | Clears SP context, validates pre-game state (calls `resetGameState()` on dirty state), generates `gameSeed` (null for guest), initializes players via `gameEngine.initialPlayerState()`, sets appState='inGame'. |
+| `endGame()` | Calls `resetGameState()`, sets appState='menu', clears `GameDataService`/`ActionProcessor`/`AIPhaseProcessor`, resets `GameFlowManager`. |
+| `initializeTestMode(testConfig)` | Dynamic import of `testGameInitializer.js`. Returns true immediately — async initialization. |
+| `resetGameState()` | Sets `_updateContext='GameFlowManager'` to bypass ownership validation. Resets ALL combat state to defaults (gameActive=false, players=null, turnPhase=null). Resets `GameFlowManager`, clears `ActionProcessor` queue, cleans up `AIPhaseProcessor`. try/finally clears `_updateContext`. |
+| `clearSinglePlayerContext()` | Ends run via `tacticalMapStateManager.endRun()` if active, clears `singlePlayerEncounter`. |
+| `transitionToAppState(newState)` | Cleans up active game or active run if transitioning to 'menu'. Sets appState. |
+
+**Thin Setters (lines 1359-1520)**
+
+All are trivial `setState()` wrappers. No validation logic, no side effects beyond event emission.
+
+| Method | State key(s) set |
+|-|-|
+| `setMultiplayerMode(mode)` | `gameMode` |
+| `updatePlayers(p1Updates, p2Updates)` | `player1`, `player2` (merged) |
+| `updatePlayerState(playerId, updates)` | delegates to `updatePlayers` |
+| `setPlayerStates(p1, p2)` | `player1`, `player2` (replaced) |
+| `setCurrentPlayer(playerId)` | `currentPlayer` |
+| `setTurnPhase(phase)` | `turnPhase` |
+| `setFirstPlayerOfRound(playerId)` | `firstPlayerOfRound` |
+| `setFirstPasserOfPreviousRound(playerId)` | `firstPasserOfPreviousRound` |
+| `setFirstPlayerOverride(playerId)` | `firstPlayerOverride` |
+| `updatePassInfo(passUpdates)` | `passInfo` (merged) — **DUPLICATE at line 1656** |
+| `setPassInfo(passInfo)` | `passInfo` (replaced) |
+| `isMyTurn()` | Returns boolean. Maps gameMode to which player is local. |
+| `getLocalPlayerId()` | Returns 'player1' or 'player2' based on gameMode. |
+| `getOpponentPlayerId()` | Inverse of `getLocalPlayerId()`. |
+| `getLocalPlayerState()` | Returns `this.state[localId]`. |
+| `getOpponentPlayerState()` | Returns `this.state[opponentId]`. |
+| `isLocalPlayer(playerId)` | Returns `playerId === getLocalPlayerId()`. |
+| `setWinner(winnerId)` | SP extraction: sets winner only (WinnerModal handles transition). PvP: sets winner. |
+
+**Placed Sections & Optimistic Animations (lines 1522-1589)**
+
+| Method | Contract |
+|-|-|
+| `getLocalPlacedSections()` | Returns `placedSections` or `opponentPlacedSections` based on gameMode perspective. |
+| `getOpponentPlacedSections()` | Inverse perspective. Logs during placement phase. |
+| `trackOptimisticAnimations(animations)` | Delegates to `OptimisticActionService.trackAction()`. |
+| `filterAnimations(action, system)` | Delegates to `OptimisticActionService.filterAnimations()`. |
+| `hasRecentOptimisticActions()` | Checks if tracked animations exist. |
+| `clearOptimisticActions()` | Clears tracked animations. |
+
+**Logging & AI History (lines 1591-1659)**
+
+| Method | Contract |
+|-|-|
+| `addLogEntry(entry, debugSource, aiDecisionContext)` | Adds timestamped entry to `gameLog`. Merges optional debugSource and aiDecisionContext. |
+| `addAIDecisionToHistory(phase, turn, possibleActions, gameState)` | Appends to `aiDecisionHistory` for CSV export. Structures decision data. |
+| `updatePassInfo(passUpdates)` (duplicate at 1656) | Exact copy of line 1458. Dead code — JS uses last definition in class body. |
+
+**Action Processing Delegation (lines 1681-1717)**
+
+| Method | Contract |
+|-|-|
+| `processAction(actionType, payload)` | Async. Delegates to `actionProcessor.queueAction()`. |
+| `isActionInProgress()` | Delegates to `actionProcessor.isActionInProgress()`. |
+| `getActionQueueLength()` | Delegates to `actionProcessor.getQueueLength()`. |
+| `clearActionQueue()` | Delegates to `actionProcessor.clearQueue()`, re-subscribes `GameFlowManager`. |
+
+**Validation Subsystem (lines 460-1038)**
+
+| Method | Contract |
+|-|-|
+| `validateStateUpdate(updates, prevState, context)` | Orchestrator. Checks: concurrent action processing (warns if non-AP external update during action), ActionProcessor bypass, player state consistency, phase transitions. Uses `_updateContext` flag + stack trace fallback. |
+| `validatePlayerStates(p1, p2)` | Checks for negative energy/deploymentBudget (console.error), duplicate drone IDs across players (console.error). |
+| `validateTurnPhaseTransition(from, to)` | Validates against 18-entry transition map. Skips in testMode. console.warn on invalid. |
+| `validateActionProcessorUsage(updates, prevState, isFromAP, stack)` | Complex 130-line method. Skips during init/simultaneous/automatic phases. Checks if critical game state updates bypass ActionProcessor. Allows GameFlowManager and SequentialPhaseManager specific updates. |
+| `validateFunctionAppropriateForStateUpdate(updates, prevState, isFromAP, stack)` | Checks call stack for inappropriate callers (UI handlers, render, modal). Allows GameStateManager, ActionProcessor, gameLogic, setup functions. |
+| `extractCallerInfo(stackLines)` | Parses stack trace for function names and file names. Returns `{ functions, files, primaryCaller, primaryFile }`. |
+| `validateOwnershipBoundaries(updates, stack)` | Enforces field ownership rules: turnPhase→GameFlowManager, passInfo→SequentialPhaseManager/GFM, currentPlayer→AP/GFM. Uses `_updateContext` first, stack trace fallback. |
+| `logPlayerStateChanges(updates, prevState, caller, eventType)` | Detailed diffing of player state critical props (energy, activeDronePool, hand, deck, dronesOnBoard, deploymentBudget). Creates `new Error().stack` for activeDronePool changes. |
+| `isInitializationPhase(turnPhase)` | Returns true for null/preGame/droneSelection/deckSelection/deckBuilding/placement/gameInitializing/initialDraw. |
+| `validatePreGameState()` | Checks 9 conditions for clean state before new game. Returns `{ valid, issues }`. |
+| `validatePreRunState()` | Checks for active run, encounter, or game in progress. Returns `{ valid, issues }`. |
+
+**Guest Sync / P2P (lines 156-331)**
+
+| Method | Contract |
+|-|-|
+| `setupP2PIntegration(p2pManager)` | One-time setup (guarded by `p2pIntegrationSetup` flag). Wires ActionProcessor↔P2P, subscribes to P2P events. Creates `GuestMessageQueueService` for guest mode. Handles `multiplayer_mode_change`, `state_update_received`, `state_sync_requested` (deprecated). |
+| `startValidation(targetPhase, guestState)` | Sets `validatingState` with deep copy of guest state. Used for guest checkpoint validation. |
+| `shouldValidateBroadcast(incomingPhase)` | Returns true if validating and phase matches target. |
+| `isMilestonePhase(phase)` | Checks against `MILESTONE_PHASES` array. |
+| `applyHostState(hostState)` | Guest-only. Overwrites `this.state` with hostState (NOT via setState). Preserves local gameMode. Emits 'HOST_STATE_UPDATE'. Does NOT run validation pipeline. |
+
+**SP Profile / Save / Inventory (lines 1719-1880)**
+
+| Method | Contract |
+|-|-|
+| `createNewSinglePlayerProfile()` | Creates save via `createNewSave()`, loads via `loadSinglePlayerSave()`. |
+| `loadSinglePlayerSave(saveData)` | Migrations: calculates `highestUnlockedSlot` if missing, generates `shopPack` if missing. Sets 7 state keys via `setState()`. Loads run state to `TacticalMapStateManager` if present. |
+| `getSaveData()` | Returns object with all SP state keys + `tacticalMapStateManager.getState()` for run state. |
+| `updateCardDiscoveryState(cardId, newState)` | Validates state is 'owned'/'discovered'/'undiscovered'. Updates or creates entry in `singlePlayerDiscoveredCards`. Via `setState()`. |
+| `addDiscoveredCard(cardId)` | Delegates to `updateCardDiscoveryState(cardId, 'discovered')`. |
+| `addToInventory(cardId, quantity)` | Adds quantity to inventory map. Also marks card as 'owned' via `updateCardDiscoveryState()`. Via `setState()`. |
+| `addShipComponentInstance(instance)` | Pushes to `singlePlayerShipComponentInstances`. Via `setState()`. |
+| `updateShipComponentHull(instanceId, newHull)` | Finds by instanceId, updates `currentHull`. Via `setState()`. |
+| `getShipComponentInstance(instanceId)` | Find-or-null in `singlePlayerShipComponentInstances`. |
+
+**Tactical Items (lines 1882-2015)**
+
+| Method | Contract |
+|-|-|
+| `purchaseTacticalItem(itemId)` | Validates item exists, credits sufficient, below max capacity. Deducts credits, increments quantity. Returns `{ success, newQuantity }` or `{ success: false, error }`. Via `setState()`. |
+| `purchaseCardPack()` | Uses `shopPack` from profile. Validates pack exists and credits sufficient. Generates cards via `rewardManager.generateShopPack()`. Adds cards to inventory. Clears shopPack (consumed). Returns `{ success, cards, cost }`. Via `setState()`. |
+| `useTacticalItem(itemId)` | Decrements quantity. Returns `{ success, remaining }`. Via `setState()`. |
+| `getTacticalItemCount(itemId)` | Returns quantity from profile, defaulting to 0. |
+
+**Ship Slot / Deck Management (lines 2017-2576)**
+
+| Method | Contract |
+|-|-|
+| `setDefaultShipSlot(slotId)` | Validates 0-5 range and active status. Updates `defaultShipSlotId` in profile. |
+| `isSlotUnlocked(slotId)` | Returns `slotId <= highestUnlockedSlot`. |
+| `getNextUnlockableSlot()` | Returns `{ slotId, cost }` for next sequential unlock, or null if all unlocked. |
+| `unlockNextDeckSlot()` | Sequential unlock. Deducts credits. Updates `highestUnlockedSlot`. Returns `{ success, slotId }`. |
+| `saveShipSlotDeck(slotId, deckData)` | Cannot modify slot 0. Clears old instances, preserves/converts sectionSlots, saves deck data. Via `setState()`. |
+| `deleteShipSlotDeck(slotId)` | Cannot delete slot 0. Returns non-starter cards to inventory. Clears instances. Resets slot to empty. Resets default if this was default. Via `setState()`. |
+| `clearSlotInstances(slotId)` | Filters out drone/component instances for slot. Via `setState()`. |
+| `updateShipSlotDroneOrder(slotId, newDroneSlots)` | Updates drone slots array for a ship slot. Via `setState()`. |
+| `repairDroneSlot(slotId, position)` | Cannot modify slot 0. Validates damaged state (supports both `slotDamaged` and legacy `isDamaged`). Deducts `DRONE_SLOT_REPAIR_COST`. Sets both field names for compat. Returns `{ success }`. |
+| `repairSectionSlot(slotId, lane)` | Cannot modify slot 0. Full repair: `cost = damageDealt * SECTION_DAMAGE_REPAIR_COST`. Sets damageDealt=0. Returns `{ success }`. |
+| `repairSectionSlotPartial(slotId, lane, hpToRepair)` | Partial repair. Caps to actual damage. Different default cost constant (200 vs 10). Returns `{ success, cost, repairedHP, remainingDamage }`. |
+| `createDroneInstance(droneName, slotId)` | Skips starter pool drones. Generates unique ID with timestamp+random. Returns instanceId. |
+| `updateDroneInstance(instanceId, isDamaged)` | Updates damage state by instanceId. |
+| `findDroneInstance(slotId, droneName)` | Find by slotId AND droneName. Returns instance or null. |
+| `getDroneDamageStateForSlot(slotId)` | Slot 0 always returns `{}`. Returns map of `droneName → isDamaged`. |
+| `createComponentInstance(componentId, slotId)` | Skips starter pool. Looks up component in `shipComponentCollection` for hull values. Generates unique ID. Returns instanceId. |
+
+**Run Lifecycle (lines 2578-3135)**
+
+| Method | Contract |
+|-|-|
+| `startRun(shipSlotId, mapTier, entryGateId, preGeneratedMap, quickDeploy)` | 230 lines. Validates ship slot active. Gets ship card for hull calculation. Uses pre-generated or generates new map. Deducts security token if required. Builds `runShipSections` from sectionSlots (new format) or shipComponents (legacy) with `calculateSectionBaseStats()`. Fallback to default sections using ship card values. Creates `runState` object. Initializes `TacticalMapStateManager`. Sets appState='tacticalMap'. Resets `TransitionManager`. |
+| `endRun(success)` | 235 lines. Reads run state from `TacticalMapStateManager`. Generates `lastRunSummary`. **On success**: transfers loot to inventory via DIRECT MUTATION (`this.state.singlePlayerInventory[cardId] = ...`), adds credits/AI cores, updates stats, refreshes shop pack, persists hull damage to sectionSlots — all via DIRECT MUTATION of `this.state`. Only `singlePlayerProfile` is spread into final `setState()`. **On failure**: marks slot as MIA (direct mutation: `shipSlot.status = 'mia'`), increments `runsLost`. Awards reputation via `ReputationService`. Ends run in `TacticalMapStateManager`. |
+
+#### State Mutations and Their Triggers
+
+**Via `setState()` (correct path)** — most methods above use this pattern: build new state immutably, call `this.setState()`, which triggers validation + event emission.
+
+**Via direct mutation (bypassing events)** — `endRun()` only:
+- `this.state.singlePlayerInventory[cardId] = ...` (line 2992-2993)
+- `this.state.singlePlayerProfile.unlockedBlueprints.push(...)` (line 2998)
+- `this.state.singlePlayerProfile.credits += ...` (line 3004)
+- `this.state.singlePlayerProfile.aiCores = ...` (line 3007-3008)
+- `this.state.singlePlayerProfile.stats.runsCompleted++` (line 3011)
+- `this.state.singlePlayerProfile.stats.totalCreditsEarned += ...` (line 3012)
+- `this.state.singlePlayerProfile.stats.totalCombatsWon = ...` (line 3013-3014)
+- `this.state.singlePlayerProfile.stats.highestTierCompleted = ...` (line 3018-3019)
+- `this.state.singlePlayerProfile.shopPack = ...` (line 3024)
+- `this.state.singlePlayerShipSlots = slots` (line 3054) — after slot-based hull damage persistence
+- `shipSlot.status = 'mia'` (line 3065) — MIA failure path
+
+**Via `applyHostState()` (special path)** — direct overwrite: `this.state = { ...hostState }` (line 303). Bypasses all validation. Only restores `gameMode`.
+
+#### Side Effects
+
+- **Event emission**: Every `setState()` call emits to all subscribers via `emit(eventType, { updates, prevState })`.
+- **Stack trace creation**: `setState()` creates `new Error().stack` on every call for caller detection. `logPlayerStateChanges()` creates another stack trace for activeDronePool changes.
+- **Singleton resets**: `reset()`, `endGame()`, `resetGameState()` all clear/reset `GameDataService`, `ActionProcessor`, `GameFlowManager`, and `AIPhaseProcessor`.
+- **TacticalMapStateManager delegation**: `startRun()` calls `tacticalMapStateManager.startRun()`, `endRun()` calls `tacticalMapStateManager.endRun()`, `clearSinglePlayerContext()` calls `tacticalMapStateManager.endRun()`.
+- **TransitionManager reset**: `startRun()` calls `transitionManager.forceReset()`.
+- **Save migration**: `loadSinglePlayerSave()` performs in-place migrations for `highestUnlockedSlot` and `shopPack`.
+
+#### Known Edge Cases
+
+- **`endRun()` direct mutations**: Inventory and ship slot changes bypass event system — subscribers are NOT notified of these changes. Only `singlePlayerProfile` is included in the final `setState()` call. The profile is spread (`{ ...this.state.singlePlayerProfile }`) to force React re-render.
+- **Duplicate `updatePassInfo()`**: Method defined at line 1458 AND line 1656. JavaScript class semantics: last definition wins, so the first is effectively dead code (though they are identical).
+- **`state_sync_requested` handler**: Marked as deprecated but still present (lines 197-205). Sends full state to requesting peer.
+- **`applyHostState()` bypasses validation**: Directly overwrites `this.state` without going through `setState()` validation pipeline. This is intentional — guest trusts host state.
+- **Stack trace parsing in production**: Minified code may break function name extraction in `extractCallerInfo()`. Mitigated by `_updateContext` flag as primary check.
+- **`repairSectionSlotPartial()` vs `repairSectionSlot()`**: Different default costs — `SECTION_DAMAGE_REPAIR_COST` defaults to 10 in `repairSectionSlot` but 200 in `repairSectionSlotPartial`. Both read from the same `ECONOMY` constant, but the fallback defaults differ.
+- **`initializeTestMode()` is fire-and-forget**: Returns `true` immediately; actual init is async via dynamic import. Caller cannot know if it succeeded.
+- **Slot 0 immutability**: Starter deck (slot 0) cannot be modified, deleted, repaired, or go MIA. Multiple methods guard this independently.
+- **HMR preservation**: Only `state` and `listeners` are preserved. Action processor, game flow manager references are NOT preserved — may cause stale references after HMR.
 
 ## TO DO
 
@@ -351,13 +546,21 @@ Each step is independently committable with tests green.
 
 ## NOW
 
-### Final State
+### Final State (Session A — Cleanup + Test Migration)
 
-*To be completed after refactoring.*
+- **Line count**: 3,142 (down from 3,157 — minor reduction from dead code removal)
+- **Console calls**: 0 raw console.log/warn/error/debug remaining
+- **Banned comments**: 0 remaining
+- **Test files**: 12 migrated to `src/managers/__tests__/`
+- **New debug categories**: SP_SAVE, SP_INVENTORY, SP_SHIP, SP_REPAIR, SP_SHOP, SP_DRONE (added to debugLogger.js)
 
 ### Change Log
 
-*Append entries here as refactoring steps are completed.*
-
 | Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
 |-|-|-|-|-|-|
+| 0 | 2026-02-22 | Pre-flight audit: 3,157 lines, 56 console calls, 3 banned comments, 12 misplaced tests | N/A | N/A | None |
+| 1 | 2026-02-22 | Behavioral baseline populated in BEFORE section | N/A | N/A | None |
+| 2 | 2026-02-22 | Removed duplicate updatePassInfo (line 1656), 3 banned `// NEW:` comments, 3 stale migration comments | Yes — identical duplicate removed | None | state_sync_requested handler left for GuestSyncManager extraction |
+| 3 | 2026-02-22 | Converted 56 console calls to debugLog with 6 new categories | Logging destinations changed from console to debugLog | Logs now filtered by category toggle; test assertions updated to verify behavior instead of console spies | None |
+| 4 | 2026-02-22 | Fixed endRun direct state mutations — all changes now via immutable build + setState | Yes — same data transformations | Subscribers now notified of singlePlayerInventory and singlePlayerShipSlots changes (previously silent mutations) | None |
+| 5 | 2026-02-22 | Migrated 12 GSM test files to `src/managers/__tests__/`, fixed all imports | Yes — all 871 tests pass | None | None |
