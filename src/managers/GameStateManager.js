@@ -21,15 +21,14 @@ import { calculateSectionBaseStats } from '../logic/statsCalculator.js';
 import fullCardCollection from '../data/cardData.js';
 import ReputationService from '../logic/reputation/ReputationService.js';
 import { calculateExtractedCredits } from '../logic/singlePlayer/ExtractionController.js';
-import { getTacticalItemById } from '../data/tacticalItemData.js';
-import { generateRandomShopPack, getPackCostForTier } from '../data/cardPackData.js';
-import rewardManager from './RewardManager.js';
+import { generateRandomShopPack } from '../data/cardPackData.js';
 import aiPhaseProcessor from './AIPhaseProcessor.js';
 import tacticalMapStateManager from './TacticalMapStateManager.js';
 import transitionManager from './TransitionManager.js';
 import StateValidationService from '../logic/state/StateValidationService.js';
 import GuestSyncManager from './GuestSyncManager.js';
 import SinglePlayerInventoryManager from './SinglePlayerInventoryManager.js';
+import TacticalItemManager from './TacticalItemManager.js';
 
 class GameStateManager {
   constructor() {
@@ -115,6 +114,9 @@ class GameStateManager {
 
     // Single-player inventory manager (extracted — save/load, inventory, card discovery, ship components)
     this.singlePlayerInventoryManager = new SinglePlayerInventoryManager(this);
+
+    // Tactical item manager (extracted — item purchase/use, card pack shop)
+    this.tacticalItemManager = new TacticalItemManager(this);
 
     // Context flag for production-safe validation (avoids minification breaking stack traces)
     this._updateContext = null;
@@ -918,140 +920,14 @@ class GameStateManager {
   updateShipComponentHull(instanceId, newHull) { this.singlePlayerInventoryManager.updateShipComponentHull(instanceId, newHull); }
   getShipComponentInstance(instanceId) { return this.singlePlayerInventoryManager.getShipComponentInstance(instanceId); }
 
-  // ========================================
-  // TACTICAL ITEMS METHODS
-  // ========================================
+  // --- TACTICAL ITEM FACADES ---
+  // External callers (ShopModal, TacticalMapScreen, ExtractionController) use these.
+  // Delegation to tacticalItemManager.
 
-  /**
-   * Purchase a tactical item
-   * @param {string} itemId - The item ID (e.g., 'ITEM_EVADE')
-   * @returns {Object} { success: boolean, newQuantity?: number, error?: string }
-   */
-  purchaseTacticalItem(itemId) {
-    const item = getTacticalItemById(itemId);
-
-    if (!item) {
-      return { success: false, error: 'Item not found' };
-    }
-
-    const profile = this.state.singlePlayerProfile;
-
-    if (profile.credits < item.cost) {
-      return { success: false, error: 'Insufficient credits' };
-    }
-
-    const currentQty = profile.tacticalItems?.[itemId] || 0;
-
-    if (currentQty >= item.maxCapacity) {
-      return { success: false, error: `Already at max capacity (${item.maxCapacity})` };
-    }
-
-    const newQuantity = currentQty + 1;
-
-    this.setState({
-      singlePlayerProfile: {
-        ...profile,
-        credits: profile.credits - item.cost,
-        tacticalItems: {
-          ...profile.tacticalItems,
-          [itemId]: newQuantity
-        }
-      }
-    });
-
-    debugLog('SP_SHOP', `Purchased ${item.name} for ${item.cost} credits. Now have ${newQuantity}`);
-
-    return { success: true, newQuantity };
-  }
-
-  /**
-   * Purchase the currently available shop card pack
-   * @returns {Object} { success: boolean, cards?: Array, cost?: number, error?: string }
-   */
-  purchaseCardPack() {
-    const profile = this.state.singlePlayerProfile;
-    const shopPack = profile?.shopPack;
-
-    if (!shopPack) {
-      return { success: false, error: 'No pack available' };
-    }
-
-    const { packType, tier, seed } = shopPack;
-    const cost = getPackCostForTier(tier);
-
-    if (profile.credits < cost) {
-      return { success: false, error: 'Insufficient credits' };
-    }
-
-    // Generate pack contents using seeded RNG for deterministic results
-    const result = rewardManager.generateShopPack(packType, tier, seed);
-
-    if (!result.cards || result.cards.length === 0) {
-      return { success: false, error: 'Failed to generate cards' };
-    }
-
-    // Deduct credits
-    const newCredits = profile.credits - cost;
-
-    // Add cards to inventory
-    const newInventory = { ...this.state.singlePlayerInventory };
-    result.cards.forEach(card => {
-      newInventory[card.cardId] = (newInventory[card.cardId] || 0) + 1;
-    });
-
-    // Clear shop pack (consumed) and update state
-    this.setState({
-      singlePlayerProfile: {
-        ...profile,
-        credits: newCredits,
-        shopPack: null // Pack consumed
-      },
-      singlePlayerInventory: newInventory
-    });
-
-    debugLog('SP_SHOP', `Purchased ${packType} T${tier} for ${cost} credits`, { cards: result.cards.map(c => c.cardId) });
-
-    return { success: true, cards: result.cards, cost };
-  }
-
-  /**
-   * Use a tactical item (during a run)
-   * @param {string} itemId - The item ID
-   * @returns {Object} { success: boolean, remaining?: number, error?: string }
-   */
-  useTacticalItem(itemId) {
-    const profile = this.state.singlePlayerProfile;
-    const currentQty = profile.tacticalItems?.[itemId] || 0;
-
-    if (currentQty <= 0) {
-      return { success: false, error: 'No items available' };
-    }
-
-    const remaining = currentQty - 1;
-
-    this.setState({
-      singlePlayerProfile: {
-        ...profile,
-        tacticalItems: {
-          ...profile.tacticalItems,
-          [itemId]: remaining
-        }
-      }
-    });
-
-    debugLog('SP_SHOP', `Used tactical item ${itemId}. Remaining: ${remaining}`);
-
-    return { success: true, remaining };
-  }
-
-  /**
-   * Get the current count of a tactical item
-   * @param {string} itemId - The item ID
-   * @returns {number} The current quantity (0 if not found)
-   */
-  getTacticalItemCount(itemId) {
-    return this.state.singlePlayerProfile?.tacticalItems?.[itemId] || 0;
-  }
+  purchaseTacticalItem(itemId) { return this.tacticalItemManager.purchaseTacticalItem(itemId); }
+  purchaseCardPack() { return this.tacticalItemManager.purchaseCardPack(); }
+  useTacticalItem(itemId) { return this.tacticalItemManager.useTacticalItem(itemId); }
+  getTacticalItemCount(itemId) { return this.tacticalItemManager.getTacticalItemCount(itemId); }
 
   // ========================================
   // DECK MANAGEMENT METHODS
