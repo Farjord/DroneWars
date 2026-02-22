@@ -37,7 +37,151 @@
 ### Behavioral Baseline
 <!-- IMMUTABLE — do not edit after initial writing -->
 
-*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+#### Exports / Public API
+- **`HangarScreen`** (default export): React component. No props. Reads all state via `useGameState()` hook. Single consumer: `src/AppRouter.jsx`. Returns the single-player extraction hub UI with hex grid map, sidebar, and modal layer.
+
+#### useState Hooks (27 total)
+
+| Variable | Initial | Purpose |
+|-|-|-|
+| `sidebarMode` | `'options'` | Toggle options/ships sidebar view |
+| `hexGridData` | `null` | Generated hex grid cells + dimensions |
+| `generatedMaps` | `[]` | 6 procedural maps for session |
+| `activeModal` | `null` | Current modal name string |
+| `selectedSlotId` | `null` | Ship slot ID for current action |
+| `selectedMap` | `null` | Map data for modal display |
+| `selectedCoordinate` | `null` | Hex coordinate string |
+| `selectedMiaSlot` | `null` | Ship slot in MIA status |
+| `newDeckOption` | `null` | `'empty'` or `'copyFromSlot0'` |
+| `deleteConfirmation` | `null` | `{ slotId, slotName }` for delete confirm |
+| `copyStarterConfirmation` | `false` | Show copy starter cost confirm |
+| `emptyDeckConfirmation` | `false` | Show empty deck cost confirm |
+| `hoveredButton` | `null` | Image button key being hovered |
+| `showReputationProgress` | `false` | Reputation progress modal |
+| `showReputationRewards` | `false` | Reputation reward claim modal |
+| `showDeployingScreen` | `false` | Deployment transition screen |
+| `deployingData` | `null` | `{ slotId, map, entryGateId, quickDeploy, shipName }` |
+| `selectedBossId` | `null` | Boss ID for encounter modal |
+| `bossHexCell` | `null` | Boss hex cell data with `isBoss: true` |
+| `showBossLoadingScreen` | `false` | Boss encounter transition |
+| `bossLoadingData` | `null` | `{ aiName, difficulty, threatLevel, isAmbush, slotId, bossId }` |
+| `showMissionTracker` | `false` | Mission tracker modal |
+| `showTutorial` | `null` | Current tutorial key string |
+| `isHelpIconTutorial` | `false` | Tutorial triggered from help icon |
+| `zoom` | `1.5` | Map zoom level (range 1.2–3) |
+| `pan` | `{ x: 0, y: 0 }` | Map pan offset pixels |
+| `isDragging` | `false` | Map drag in progress |
+| `dragStart` | `{ x: 0, y: 0 }` | Mouse position at drag start |
+
+#### useEffect Hooks (7 total)
+
+| Deps | Purpose | Side Effects |
+|-|-|-|
+| `[showDeployingScreen]` | Override music during deploy transition | `MusicManager.setOverride('deploying')` / `clearOverride()` |
+| `[gameSeed, runsCompleted, runsLost]` | Generate hex grid with 100ms delay | Sets `hexGridData` via `generateHexGrid()` |
+| `[singlePlayerProfile]` | Check intro tutorial on mount | Sets `showTutorial('intro')` with 500ms delay |
+| `[gameSeed, runsCompleted, runsLost]` | Generate 6 procedural maps | Calls `generateMapData()` 6x with offset seeds, sets `generatedMaps` |
+| `[hexGridData, gameSeed]` | Place boss hex after grid ready | Uses `SeededRandom(seed + 999)`, sets `bossHexCell` |
+| `[]` | Attach wheel listener `{ passive: false }` | Manages zoom/pan on wheel; prevents default scroll |
+| `[pan]` | Sync panRef with state | `panRef.current = pan` |
+
+#### useMemo Hooks (2 total)
+
+| Deps | Computes |
+|-|-|
+| `[hexGridData, generatedMaps]` | Maps with injected `name: 'Sector X-Y'` coordinates |
+| `[hexGridData]` | Active sectors sorted top-to-bottom, left-to-right |
+
+#### useRef Hooks (3 total)
+
+| Name | Purpose |
+|-|-|
+| `mapContainerRef` | DOM ref for map container (dimensions for hex grid, pan clamping) |
+| `transformRef` | DOM ref for grid transform (direct style mutation during drag) |
+| `panRef` | Track pan during drag without re-renders; synced to state on mouseup |
+
+#### Key Internal Functions
+
+| Function | Params | Returns | Side Effects |
+|-|-|-|-|
+| `generateHexGrid` | `(w, h, seed, activeCount, totalDeployments)` | `{ allCells, hexWidth, hexHeight, offsetX, offsetY }` | None (pure). Uses `SeededRandom` |
+| `getHexCoordinate` | `(col, row)` | String like `'A-1'` | None (pure) |
+| `getTierColor` | `(tier)` | Hex color string from `RARITY_COLORS` | None (pure) |
+| `clampPan` | `(panX, panY, zoomLevel)` | Clamped `{ x, y }` | None (pure, reads `mapContainerRef`) |
+| `zoomToSector` | `(coordinate)` | `undefined` | Sets `zoom` to 2, computes and sets `pan` |
+| `getOffScreenPOIs` | `()` | Array of `{ cell, angle, screenX, screenY }` | None (reads state) |
+| `getArrowEdgePosition` | `(angle, w, h)` | `{ left, top }` | None (pure) |
+| `handleMapMouseDown` | `(e)` | `undefined` | Sets `isDragging`, `dragStart` |
+| `handleMapMouseMove` | `(e)` | `undefined` | **Direct DOM mutation**: `transformRef.current.style.transform`; updates `panRef` |
+| `handleMapMouseUp` | `()` | `undefined` | Syncs `panRef` → `setPan()`; clears `isDragging` |
+| `handleResetView` | `()` | `undefined` | Resets zoom/pan to defaults |
+| `handleSlotClick` | `(slot)` | `undefined` | Sound: `ui_click`. Navigates to deck builder (active), opens MIA modal (MIA), opens new deck prompt (empty) |
+| `handleStarToggle` | `(e, slotId)` | `undefined` | Calls `gameStateManager.setDefaultShipSlot()` |
+| `handleDeleteClick` | `(e, slot)` | `undefined` | Sets `deleteConfirmation` state |
+| `handleDeleteConfirm` | `()` | `undefined` | Calls `gameStateManager.deleteShipSlotDeck()` |
+| `handleUnlockSlot` | `(e)` | `undefined` | Calls `gameStateManager.unlockNextDeckSlot()` |
+| `handleNewDeckOption` | `(option)` | `undefined` | Sets confirmation modals for `'copyFromSlot0'` or `'empty'` |
+| `handleConfirmCopyStarter` | `()` | `undefined` | Deducts credits, copies starter deck items to inventory, creates drone/component instances, saves deck, navigates to deck builder |
+| `handleConfirmEmptyDeck` | `()` | `undefined` | Deducts credits, creates empty deck, navigates to deck builder |
+| `handleActionClick` | `(action)` | `undefined` | Sound: `ui_click`. Records mission progress. Opens modal or navigates to repairBay |
+| `handleMapSelected` | `(mapData)` | `undefined` | Checks tutorials. Sets modal/tutorial state |
+| `handleMapIconClick` | `(mapIndex, coordinate)` | `undefined` | Sound: `hex_click`. Validates ship slot. Opens mapOverview modal |
+| `handleBossHexClick` | `(bossId)` | `undefined` | Opens bossEncounter modal |
+| `handleBossChallenge` | `(slotId, bossId)` | `undefined` | Sets boss loading data, shows loading screen |
+| `handleBossLoadingComplete` | `()` | Promise | Awaits `SinglePlayerCombatInitializer.initiateBossCombat()` |
+| `handleDeploy` | `(slotId, map, entryGateId, quickDeploy)` | `undefined` | Validates params, shows deploying screen |
+| `handleDeployingComplete` | `()` | `undefined` | Calls `gameStateManager.startRun()` |
+| `closeAllModals` | `()` | `undefined` | Clears all modal/selection state |
+
+#### State Mutations via gameStateManager
+
+| Method | Context |
+|-|-|
+| `setState({ appState: 'extractionDeckBuilder', extractionDeckSlotId, extractionNewDeckOption: null })` | Navigate to deck builder (3 call sites) |
+| `setState({ singlePlayerProfile, singlePlayerInventory, singlePlayerDroneInstances, singlePlayerShipComponentInstances })` | Update inventory after starter deck copy |
+| `setState({ singlePlayerProfile })` | Deduct credits for empty deck |
+| `setState({ appState: 'repairBay' })` | Navigate to repair bay (2 call sites) |
+| `setState({ appState: 'menu' })` | Exit to main menu |
+| `setState({ lastRunSummary: null })` | Dismiss run summary |
+| `setDefaultShipSlot(slotId)` | Toggle default ship slot |
+| `deleteShipSlotDeck(slotId)` | Delete a ship slot deck |
+| `unlockNextDeckSlot()` | Unlock next available slot |
+| `saveShipSlotDeck(slotId, deckData)` | Persist deck data (copy starter / empty) |
+| `startRun(slotId, map, entryGateId, quickDeploy)` | Begin extraction run |
+
+#### Side Effects & Service Calls
+
+| Service | Method | Context |
+|-|-|-|
+| `MusicManager` | `setOverride('deploying')` / `clearOverride()` | Deploy transition screen |
+| `SoundManager` | `play('ui_click')` | Various UI interactions |
+| `SoundManager` | `play('hex_click')` | Map icon clicks |
+| `SoundManager` | `play('hover_over')` | Image button hover |
+| `MissionService` | `isTutorialDismissed(action)` | Check tutorial display state |
+| `MissionService` | `recordProgress('SCREEN_VISIT', { screen })` | Log visits for missions |
+| `MissionService` | `dismissTutorial(action)` | Mark tutorial dismissed |
+| `MissionService` | `skipIntroMissions()` | Skip intro missions |
+| `MissionService` | `getActiveCount()` / `getClaimableCount()` | Mission panel stats |
+| `ReputationService` | `getLevelData()` | Header reputation display |
+| `ReputationService` | `getUnclaimedRewards()` | Check pending rewards |
+| `ReputationService` | `getLoadoutValue(slot)` | Slot value display |
+| `SinglePlayerCombatInitializer` | `initiateBossCombat(bossId, slotId)` | Start boss fight |
+
+#### Known Edge Cases
+
+| Pattern | Details |
+|-|-|
+| **Seeded Random** | `SeededRandom(seed + totalDeployments * 1000)` for hex grid; `SeededRandom(seed + 999)` for boss placement. Ensures deterministic but varied layout per session |
+| **Direct DOM Mutation** | `transformRef.current.style.transform` during drag for smooth pan (bypasses React re-render). Synced to state on mouseup |
+| **Passive Wheel Event** | `{ passive: false }` on wheel listener to allow `preventDefault()` |
+| **panRef Pattern** | Ref updated during drag moves, synced to state on mouseup — avoids re-renders during drag |
+| **Non-deterministic Instance IDs** | `Date.now() + Math.random().toString(36).substr(2, 9)` for drone/component instances |
+| **Timeout Delays** | 100ms for hex grid gen (DOM ready); 500ms for intro tutorial (visual timing) |
+| **Tutorial/Modal Overlap** | Tutorial modals can appear on top of other modals; not mutually exclusive with `activeModal` |
+| **Validation Before Deploy** | `validateShipSlot()` checks if ship is undeployable (all sections destroyed); returns early |
+| **Boss Hex Distance Check** | Boss hex avoids active map cells with minimum distance of 2 cells |
+| **IIFE in Render** | Reputation data computation (lines 1173-1188) and deck validation (lines 1707-1722) use inline IIFEs |
+| **debugLog IIFE in MapOverviewModal render** | Lines 1895-1902: debugLog fires on every render, not just on modal open |
 
 ## TO DO
 
@@ -223,11 +367,47 @@ All 7 instances listed in Problems section must be converted:
 
 ### Final State
 
-*To be completed after refactoring.*
+**HangarScreen.jsx**: 568 lines (was 2,204 — 74% reduction)
+
+**New files created:**
+| File | Lines | Purpose |
+|-|-|-|
+| src/logic/singlePlayer/hexGrid.js | ~130 | Hex grid geometry utilities |
+| src/hooks/useHangarMapState.js | ~122 | Pan/zoom interaction hook |
+| src/hooks/useHangarData.js | ~130 | Data derivation hook |
+| src/logic/singlePlayer/deckSlotFactory.js | ~85 | Deck creation business logic |
+| src/components/ui/HangarHeader.jsx | ~100 | Header sub-component |
+| src/components/ui/HangarHexMap.jsx | ~340 | Hex map sub-component |
+| src/components/ui/HangarSidebar.jsx | ~270 | Sidebar sub-component |
+| src/components/ui/HangarModals.jsx | ~310 | Modals container component |
+
+**Test files:**
+| File | Tests |
+|-|-|
+| src/logic/singlePlayer/__tests__/hexGrid.test.js | 15 |
+| src/logic/singlePlayer/__tests__/deckSlotFactory.test.js | 8 |
+| src/components/screens/__tests__/HangarScreen.test.jsx | 16 |
+| src/components/screens/__tests__/HangarScreen.boss.test.jsx | 5 |
+| src/components/screens/__tests__/HangarScreen.deploy.test.jsx | 7 |
+| src/components/screens/__tests__/HangarScreen.mapRegeneration.test.jsx | 4 |
+| src/components/screens/__tests__/HangarScreen.shipSlotId.test.jsx | 12 |
+
+All 3,709 tests pass (217 test files, 0 failures).
 
 ### Change Log
 
-*Append entries here as refactoring steps are completed.*
-
 | Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
 |-|-|-|-|-|-|
+| 0a | 2026-02-22 | Migrate 5 test files to __tests__/ | All | None | Fixed pre-existing import path issues |
+| 0b | 2026-02-22 | Populate Behavioral Baseline | N/A | N/A | None |
+| 1 | 2026-02-22 | Fix logging: 7 console.* → debugLog, reduce noisy sequences | All | None | None |
+| 2 | 2026-02-22 | Remove dead deckEditor modal placeholder | All | None | None |
+| 3 | 2026-02-22 | Write hex grid tests (15 tests) | N/A | N/A | None |
+| 4 | 2026-02-22 | Extract hexGrid.js (~130 lines) | All | clampPan/getOffScreenPOIs now pure functions | By design |
+| 5 | 2026-02-22 | Extract useHangarMapState hook (~120 lines) | All | None | mapContainerRef created in parent to break circular dep |
+| 6 | 2026-02-22 | Extract useHangarData hook (~200 lines) | All | None | mapContainerRef passed from parent |
+| 7 | 2026-02-22 | Extract deckSlotFactory.js (~100 lines, 8 tests) | All | None | shipSlotId tests updated to read from new file |
+| 8 | 2026-02-22 | Extract HangarHeader component (~85 lines) | All | None | None |
+| 9 | 2026-02-22 | Extract HangarHexMap component (~362 lines) | All | None | Added setZoom to hook return |
+| 10 | 2026-02-22 | Extract HangarSidebar component (~290 lines) | All | None | hangarImages moved to sidebar |
+| 11 | 2026-02-22 | Extract HangarModals component (~310 lines) | All | None | 5 simple tutorials consolidated to data-driven |

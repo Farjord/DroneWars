@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { generateHexGrid } from '../logic/singlePlayer/hexGrid.js';
+import { generateHexGrid, GRID_COLS, GRID_ROWS } from '../logic/singlePlayer/hexGrid.js';
 import { generateMapData } from '../utils/mapGenerator';
 import aiPersonalities from '../data/aiData.js';
 import { SeededRandom } from '../utils/seededRandom.js';
@@ -85,8 +85,8 @@ const useHangarData = (singlePlayerProfile, mapContainerRef, showDeployingScreen
     const activeCoords = new Set(activeCells.map(c => c.coordinate));
 
     const validBossCells = hexGridData.allCells.filter(cell =>
-      cell.col >= 2 && cell.col < 26 - 2 &&
-      cell.row >= 1 && cell.row < 18 - 1 &&
+      cell.col >= 2 && cell.col < GRID_COLS - 2 &&
+      cell.row >= 1 && cell.row < GRID_ROWS - 1 &&
       !activeCoords.has(cell.coordinate) &&
       !activeCells.some(active =>
         Math.abs(active.col - cell.col) < 3 && Math.abs(active.row - cell.row) < 2

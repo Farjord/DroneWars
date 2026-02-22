@@ -4,7 +4,7 @@ import ReputationTrack from './ReputationTrack';
 import MissionPanel from './MissionPanel';
 import ReputationService from '../../logic/reputation/ReputationService';
 import MissionService from '../../logic/missions/MissionService';
-import { HelpCircle, Cpu } from 'lucide-react';
+import { HelpCircle } from 'lucide-react';
 
 const HangarHeader = ({
   singlePlayerProfile,
@@ -57,7 +57,7 @@ const HangarHeader = ({
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
         {[
           { label: 'CREDITS', value: singlePlayerProfile?.credits || 0, color: '#fbbf24' },
-          { label: 'AI CORES', value: singlePlayerProfile?.aiCores || 0, color: '#f97316', icon: Cpu },
+          { label: 'AI CORES', value: singlePlayerProfile?.aiCores || 0, color: '#f97316' },
           { label: 'TOKENS', value: singlePlayerProfile?.securityTokens || 0, color: '#06b6d4' },
           { label: 'MAP KEYS', value: 0, color: '#60a5fa' },
           { label: 'RUNS', value: singlePlayerProfile?.stats?.runsCompleted || 0, color: '#e5e7eb' },
