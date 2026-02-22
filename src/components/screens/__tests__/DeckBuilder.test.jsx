@@ -92,6 +92,9 @@ vi.mock('recharts', () => ({
 vi.mock('../../ui/ActionCard.jsx', () => ({ default: () => <div data-testid="action-card" /> }));
 vi.mock('../../ui/DroneCard.jsx', () => ({ default: () => <div data-testid="drone-card" /> }));
 vi.mock('../../ui/ShipCard.jsx', () => ({ default: () => <div data-testid="ship-card" /> }));
+vi.mock('../../ui/CardDetailPopup.jsx', () => ({ default: () => null }));
+vi.mock('../../ui/DroneDetailPopup.jsx', () => ({ default: () => null }));
+vi.mock('../../ui/ShipComponentDetailPopup.jsx', () => ({ default: () => null }));
 vi.mock('../../modals/ViewDeckModal.jsx', () => ({ default: () => null }));
 vi.mock('../../ui/ShipSection.jsx', () => ({ default: () => null }));
 vi.mock('../../ui/ShipConfigurationTab.jsx', () => ({ default: () => null }));
