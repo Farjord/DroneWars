@@ -36,8 +36,10 @@ import {
 } from '../modals/tutorials';
 import NewsTicker from '../ui/NewsTicker';
 import { generateMapData } from '../../utils/mapGenerator';
-import { mapTiers } from '../../data/mapData';
-import { RARITY_COLORS } from '../../data/rarityColors';
+import {
+  generateHexGrid, getHexCoordinate, getOffScreenPOIs, getArrowEdgePosition,
+  clampPan, getTierColor, GRID_COLS, GRID_ROWS
+} from '../../logic/singlePlayer/hexGrid.js';
 import { getMapType, getMapBackground } from '../../logic/extraction/mapExtraction';
 import MusicManager from '../../managers/MusicManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
@@ -130,122 +132,6 @@ const HangarScreen = () => {
     singlePlayerDiscoveredCards,
     lastRunSummary,
   } = gameState;
-
-  // Fixed grid dimensions - always the same regardless of screen size
-  const GRID_COLS = 26;  // A-Z
-  const GRID_ROWS = 18;  // 1-18
-
-  /**
-   * Convert col/row to coordinate string (e.g., "A-1", "H-4", "P-8")
-   */
-  const getHexCoordinate = (col, row) => {
-    const colLetter = String.fromCharCode(65 + col); // A=0, B=1, etc.
-    return `${colLetter}-${row + 1}`;
-  };
-
-  /**
-   * Generate hex grid with fixed dimensions and integrated map icons
-   * Grid is always 26x18, hex size scales to fit container
-   * totalDeployments is used to vary positions on each return from tactical map
-   */
-  const generateHexGrid = (containerWidth, containerHeight, gameSeed, activeCount = 6, totalDeployments = 0) => {
-    // Calculate hex size to fit width (primary constraint)
-    const hexWidth = containerWidth / (GRID_COLS + 0.5); // +0.5 for stagger offset
-
-    // Pointy-top hex: height = width * (2 / sqrt(3)) ≈ width * 1.1547
-    const hexHeight = hexWidth * 1.1547;
-    const verticalSpacing = hexHeight * 0.75; // Rows overlap by 25%
-
-    // Calculate total grid dimensions
-    const gridWidth = GRID_COLS * hexWidth + hexWidth / 2;
-    const gridHeight = (GRID_ROWS - 1) * verticalSpacing + hexHeight;
-
-    // Center the grid (may overflow top/bottom - that's OK, we clip)
-    const offsetX = (containerWidth - gridWidth) / 2;
-    const offsetY = (containerHeight - gridHeight) / 2;
-
-    // Calculate grid center for distance calculations
-    const centerCol = GRID_COLS / 2;
-    const centerRow = GRID_ROWS / 2;
-
-    const allCells = [];
-
-    for (let row = 0; row < GRID_ROWS; row++) {
-      const isOddRow = row % 2 === 1;
-      const xOffset = isOddRow ? hexWidth / 2 : 0;
-
-      for (let col = 0; col < GRID_COLS; col++) {
-        // Calculate normalized distance from center (0 = center, 1 = edge)
-        const distanceFromCenter = Math.sqrt(
-          Math.pow((col - centerCol) / (GRID_COLS / 2), 2) +
-          Math.pow((row - centerRow) / (GRID_ROWS / 2), 2)
-        );
-
-        allCells.push({
-          col,
-          row,
-          coordinate: getHexCoordinate(col, row),
-          x: offsetX + col * hexWidth + xOffset,
-          y: offsetY + row * verticalSpacing,
-          isActive: false,
-          mapIndex: null,
-          distanceFromCenter
-        });
-      }
-    }
-
-    // Select cells for active maps using seeded random (deterministic)
-    // Avoid edge cells for active maps
-    const validCells = allCells.filter(cell =>
-      cell.col >= 2 && cell.col < GRID_COLS - 2 &&
-      cell.row >= 1 && cell.row < GRID_ROWS - 1
-    );
-
-    // Get tier zone config (currently tier 1)
-    const tier = 1;
-    const tierConfig = mapTiers.find(t => t.tier === tier);
-    const gridZone = tierConfig?.gridZone || { minDistance: 0, maxDistance: 1 };
-
-    // Filter to cells within the tier's grid zone
-    const zoneCells = validCells.filter(cell =>
-      cell.distanceFromCenter >= gridZone.minDistance &&
-      cell.distanceFromCenter <= gridZone.maxDistance
-    );
-
-    // Use seeded random for deterministic placement
-    // Include totalDeployments to vary positions on each return from tactical map
-    const rng = new SeededRandom((gameSeed || 12345) + (totalDeployments * 1000));
-    const shuffled = rng.shuffle(zoneCells.length > 0 ? zoneCells : validCells);
-    const selected = [];
-
-    for (const cell of shuffled) {
-      if (selected.length >= activeCount) break;
-
-      // Ensure minimum 3 cells apart from other active cells
-      const tooClose = selected.some(sel =>
-        Math.abs(sel.col - cell.col) < 3 && Math.abs(sel.row - cell.row) < 2
-      );
-
-      if (!tooClose) {
-        cell.isActive = true;
-        cell.mapIndex = selected.length;
-        selected.push(cell);
-      }
-    }
-
-    return { allCells, hexWidth, hexHeight, offsetX, offsetY };
-  };
-
-  // Get tier-based border color (moved outside render for reuse)
-  const getTierColor = (tier) => {
-    const tierToRarity = {
-      1: 'Common',    // Grey
-      2: 'Uncommon',  // Green
-      3: 'Rare',      // Blue
-      4: 'Mythic'     // Purple
-    };
-    return RARITY_COLORS[tierToRarity[tier]] || '#808080';
-  };
 
   // Music override for deploying transition screen
   useEffect(() => {
@@ -429,18 +315,11 @@ const HangarScreen = () => {
     panRef.current = pan;
   }, [pan]);
 
-  /**
-   * Pan/Zoom helper functions
-   */
-  const clampPan = (panX, panY, zoomLevel) => {
-    if (!mapContainerRef.current || zoomLevel <= 1) return { x: 0, y: 0 };
+  // Wrapper: reads container dimensions from ref and delegates to extracted clampPan
+  const clampPanFromRef = (panX, panY, zoomLevel) => {
+    if (!mapContainerRef.current) return { x: 0, y: 0 };
     const { width, height } = mapContainerRef.current.getBoundingClientRect();
-    const maxPanX = (width * (zoomLevel - 1)) / 2;
-    const maxPanY = (height * (zoomLevel - 1)) / 2;
-    return {
-      x: Math.max(-maxPanX, Math.min(maxPanX, panX)),
-      y: Math.max(-maxPanY, Math.min(maxPanY, panY))
-    };
+    return clampPan(panX, panY, zoomLevel, width, height);
   };
 
   /**
@@ -467,7 +346,7 @@ const HangarScreen = () => {
     const panY = (containerCenterY - cellCenterY) * targetZoom;
 
     // Clamp pan values
-    const clamped = clampPan(panX, panY, targetZoom);
+    const clamped = clampPanFromRef(panX, panY, targetZoom);
 
     setZoom(targetZoom);
     setPan(clamped);
@@ -485,7 +364,7 @@ const HangarScreen = () => {
     if (isDragging && transformRef.current) {
       const newX = e.clientX - dragStart.x;
       const newY = e.clientY - dragStart.y;
-      const clamped = clampPan(newX, newY, zoom);
+      const clamped = clampPanFromRef(newX, newY, zoom);
       // Direct DOM update - bypasses React re-render for smooth panning
       transformRef.current.style.transform =
         `scale(${zoom}) translate(${clamped.x / zoom}px, ${clamped.y / zoom}px)`;
@@ -506,83 +385,6 @@ const HangarScreen = () => {
     panRef.current = { x: 0, y: 0 };
   };
 
-  /**
-   * Off-screen POI detection for direction arrows
-   */
-  const getOffScreenPOIs = () => {
-    if (!hexGridData || !mapContainerRef.current || zoom <= 1) return [];
-
-    const container = mapContainerRef.current.getBoundingClientRect();
-    const { width, height } = container;
-    const centerX = width / 2;
-    const centerY = height / 2;
-
-    const offScreen = [];
-    const padding = 50; // POI must be this far off-screen to show arrow
-
-    hexGridData.allCells.filter(cell => cell.isActive).forEach(cell => {
-      const cellCenterX = cell.x + hexGridData.hexWidth / 2;
-      const cellCenterY = cell.y + hexGridData.hexHeight / 2;
-
-      // Calculate screen position of this POI
-      // Transform: scale(zoom) translate(pan.x/zoom, pan.y/zoom) with origin at center
-      const screenX = (cellCenterX - centerX) * zoom + centerX + pan.x;
-      const screenY = (cellCenterY - centerY) * zoom + centerY + pan.y;
-
-      // Check if POI is off-screen (with padding)
-      const isOffScreen =
-        screenX < -padding ||
-        screenX > width + padding ||
-        screenY < -padding ||
-        screenY > height + padding;
-
-      if (isOffScreen) {
-        // Calculate angle from screen center to POI's screen position
-        const dx = screenX - centerX;
-        const dy = screenY - centerY;
-        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-
-        offScreen.push({
-          cell,
-          angle,
-          screenX,
-          screenY
-        });
-      }
-    });
-
-    return offScreen;
-  };
-
-  /**
-   * Calculate arrow position at screen edge pointing toward off-screen POI
-   */
-  const getArrowEdgePosition = (angle, containerWidth, containerHeight) => {
-    const radians = angle * (Math.PI / 180);
-    const padding = 40;
-    const halfW = containerWidth / 2 - padding;
-    const halfH = containerHeight / 2 - padding;
-
-    // Calculate intersection point with screen edge
-    const tanAngle = Math.tan(radians);
-    let x, y;
-
-    // Check if intersection is with left/right edge or top/bottom edge
-    if (Math.abs(Math.cos(radians)) * halfH > Math.abs(Math.sin(radians)) * halfW) {
-      // Intersects left or right edge
-      x = Math.cos(radians) > 0 ? halfW : -halfW;
-      y = x * tanAngle;
-    } else {
-      // Intersects top or bottom edge
-      y = Math.sin(radians) > 0 ? halfH : -halfH;
-      x = y / tanAngle;
-    }
-
-    return {
-      left: containerWidth / 2 + x - 12,
-      top: containerHeight / 2 + y - 12
-    };
-  };
 
   /**
    * Event Handlers
@@ -1496,7 +1298,7 @@ const HangarScreen = () => {
           {/* POI Direction Arrows */}
           {hexGridData && mapContainerRef.current && zoom > 1 && (() => {
             const container = mapContainerRef.current.getBoundingClientRect();
-            const offScreenPOIs = getOffScreenPOIs();
+            const offScreenPOIs = getOffScreenPOIs(hexGridData, zoom, pan, container.width, container.height);
             return offScreenPOIs.map((poi, i) => {
               const pos = getArrowEdgePosition(poi.angle, container.width, container.height);
               return (
