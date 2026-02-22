@@ -185,6 +185,13 @@ Every refactoring task MUST update these docs before the final commit:
 - Only use `superpowers:dispatching-parallel-agents` for extractions from pure data files or files with no shared mutable state
 - For god objects with shared state (App.jsx, ActionProcessor, GameStateManager), extractions must be sequential
 
+### Deferred Improvements Tracking
+
+- **`Design/Technical Debt Refactor/FUTURE_IMPROVEMENTS.md`** is the single source of truth for deferred improvements.
+- **When to add an entry**: Any time you identify an issue during refactoring or code review that is NOT a bug and NOT blocking, but should be fixed later. Examples: code smells deferred for behavior preservation, files exceeding size targets, inconsistent naming, latent risks.
+- **When to resolve an entry**: When touching a file listed in FUTURE_IMPROVEMENTS.md, check for applicable items and fix them. Move resolved items to the "Resolved Items" table with date and method.
+- **Never say "noted for future improvement" without actually writing it down.** If you defer something, add it to the doc in the same commit.
+
 ## Interaction Paradigm
 
 - **Drag-and-drop is the canonical model for ACTION INITIATION only**: playing cards from hand, moving drones, attacking with drones. These are drag-initiated, not click-initiated.
