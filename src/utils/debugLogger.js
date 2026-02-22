@@ -125,6 +125,14 @@ const DEBUG_CONFIG = {
     SP_REPAIR: false,                  // Drone slot and section repair operations
     SP_SHOP: false,                    // Tactical item and card pack purchases
     SP_DRONE: false,                   // Drone instance creation, updates, queries
+
+    // Tactical Map Screen
+    MOVEMENT: false,                   // Hex movement loop, scan, journey commence/pause/stop
+    ENCOUNTER: false,                  // POI encounters, blueprint encounters, combat init
+    SALVAGE: false,                    // Salvage slot selection, leave, combat, quit
+    LOOT: false,                       // Loot collection, POI loot, blueprint rewards
+    QUICK_DEPLOY: false,               // Quick deploy validation, selection, routing
+    EXTRACTION: false,                 // Extraction, blockade, abandon run
   }
 };
 

@@ -152,7 +152,6 @@ function buildShipSections(shipSlot, slotId, shipComponentInstances, runShipSect
  */
 function TacticalMapScreen() {
   const [gameState, setGameState] = useState(gameStateManager.getState());
-  // State from TacticalMapStateManager (new architecture - will replace currentRunState)
   const [tacticalMapRunState, setTacticalMapRunState] = useState(() => {
     const state = tacticalMapStateManager.getState();
     debugLog('RUN_STATE', 'TacticalMapScreen INIT useState:', {
@@ -196,9 +195,6 @@ function TacticalMapScreen() {
   const [showEscapeLoadingScreen, setShowEscapeLoadingScreen] = useState(false);
   const [escapeLoadingData, setEscapeLoadingData] = useState(null);
 
-  // NOTE: FailedRunLoadingScreen state has been consolidated to App.jsx
-  // TacticalMapScreen now uses ExtractionController.abandonRun() which
-  // sets showFailedRunScreen in GameStateManager for App.jsx to render
 
   // Inventory modal state
   const [showInventory, setShowInventory] = useState(false);
@@ -444,7 +440,7 @@ function TacticalMapScreen() {
         salvageFullyLooted,
         poi: { q, r, poiName }
       });
-      console.log('[TacticalMap] Pending PoI combat detected after combat:', runState.pendingPOICombat);
+      debugLog('ENCOUNTER', 'Pending PoI combat detected after combat', runState.pendingPOICombat);
 
       // Clear pendingPOICombat from run state
       tacticalMapStateManager.setState({
@@ -464,7 +460,7 @@ function TacticalMapScreen() {
         const pendingSalvageState = tacticalRunState?.pendingSalvageState;
 
         if (pendingSalvageState) {
-          console.log('[TacticalMap] Salvage combat victory - restoring salvage modal');
+          debugLog('SALVAGE', 'Salvage combat victory - restoring salvage modal');
 
           // Calculate high alert bonus (combat at POI increases encounter chance)
           const highAlertBonus = HighAlertManager.getAlertBonus(tacticalRunState, { q, r }) * 100;
@@ -495,28 +491,25 @@ function TacticalMapScreen() {
             statePreserved: !salvageComplete
           });
 
-          console.log('[TacticalMap] Salvage modal restored with',
-            restoredState.slots.filter(s => s.revealed).length, 'revealed slots',
-            salvageComplete ? '(complete - state cleared)' : '(preserving state for next combat)');
           return;
         }
 
         // Fallback: If no pending salvage state (shouldn't happen), use old behavior
-        console.warn('[TacticalMap] No pendingSalvageState found, using fallback behavior');
+        debugLog('SALVAGE', '[WARN] No pendingSalvageState found, using fallback behavior');
 
         if (salvageFullyLooted) {
           const lootedPOIs = tacticalRunState?.lootedPOIs || [];
           tacticalMapStateManager.setState({
             lootedPOIs: [...lootedPOIs, { q, r }]
           });
-          console.log('[TacticalMap] POI marked as looted (fallback)');
+          debugLog('ENCOUNTER', 'POI marked as looted (fallback)');
           return;
         } else {
           const updatedRunState = HighAlertManager.addHighAlert(tacticalRunState, { q, r });
           tacticalMapStateManager.setState({
             highAlertPOIs: updatedRunState.highAlertPOIs
           });
-          console.log('[TacticalMap] POI in high alert (fallback)');
+          debugLog('ENCOUNTER', 'POI in high alert (fallback)');
           return;
         }
       }
@@ -553,7 +546,7 @@ function TacticalMapScreen() {
         });
       }
 
-      console.log('[TacticalMap] Generated PoI loot after regular combat:', poiLoot);
+      debugLog('LOOT', 'Generated PoI loot after regular combat', poiLoot);
 
       // Check if there's actually any loot to display
       const hasVisibleLoot = !!((poiLoot.cards?.length > 0) ||
@@ -611,7 +604,7 @@ function TacticalMapScreen() {
   useEffect(() => {
     const runState = tacticalMapStateManager.getState();
     if (runState?.pendingBlockadeExtraction) {
-      console.log('[TacticalMap] Pending blockade extraction detected - will auto-extract');
+      debugLog('EXTRACTION', 'Pending blockade extraction detected - will auto-extract');
       pendingBlockadeExtractionRef.current = true;
 
       // Clear the flag
@@ -627,7 +620,7 @@ function TacticalMapScreen() {
       pendingBlockadeExtractionRef.current = false;
       // Small delay to ensure state is updated
       const timer = setTimeout(() => {
-        console.log('[TacticalMap] Triggering auto-extraction after blockade victory');
+        debugLog('EXTRACTION', 'Triggering auto-extraction after blockade victory');
         // Call the extraction handler directly - it will handle loot selection and run summary
         const runState = tacticalMapStateManager.getState();
         if (runState) {
@@ -758,15 +751,12 @@ function TacticalMapScreen() {
       setLoadingEncounterData(null);
       setCurrentEncounter(null);
 
-      console.warn('[TacticalMap] No active run detected, returning to hangar');
+      debugLog('MODE_TRANSITION', '[WARN] No active run detected, returning to hangar');
       gameStateManager.setState({ appState: 'hangar' });
     }
   }, [currentRunState, currentEncounter, isMoving, showLoadingEncounter]);
 
-  // ========================================
-  // HOOKS MUST BE BEFORE EARLY RETURNS
-  // React requires hooks to be called in the same order every render
-  // ========================================
+  // --- Hooks must be above early returns ---
 
   /**
    * Helper to wait with pause support
@@ -831,7 +821,7 @@ function TacticalMapScreen() {
     // Increase Signal Lock (encounter detection chance) after each move
     EncounterController.increaseEncounterDetection(tierConfig, newHexesMoved);
 
-    console.log(`[TacticalMap] Moved to hex (${hex.q}, ${hex.r}) - Zone: ${hex.zone} - Detection: ${runState.detection.toFixed(1)}% -> ${newDetection.toFixed(1)}% (+${hexCost.toFixed(1)}%)`);
+    debugLog('MOVEMENT', `Moved to hex (${hex.q}, ${hex.r}) - Zone: ${hex.zone} - Detection: ${runState.detection.toFixed(1)}% -> ${newDetection.toFixed(1)}% (+${hexCost.toFixed(1)}%)`);
 
     // Check for MIA trigger
     if (newDetection >= 100) {
@@ -851,7 +841,7 @@ function TacticalMapScreen() {
   const handleCommenceJourney = useCallback(async () => {
     if (waypoints.length === 0) return;
 
-    console.log('[TacticalMap] Commencing journey with', waypoints.length, 'waypoints');
+    debugLog('MOVEMENT', 'Commencing journey with', waypoints.length, 'waypoints');
     totalWaypointsRef.current = waypoints.length;
     setIsMoving(true);
     setIsPaused(false);
@@ -878,7 +868,7 @@ function TacticalMapScreen() {
 
       if (!path || path.length < 2) continue;
 
-      console.log(`[TacticalMap] Moving to waypoint ${wpIndex + 1}: ${path.length - 1} hexes`);
+      debugLog('MOVEMENT', `Moving to waypoint ${wpIndex + 1}: ${path.length - 1} hexes`);
 
       // Move through each hex in the path (skip first hex - that's current position)
       for (let hexIndex = 1; hexIndex < path.length; hexIndex++) {
@@ -926,7 +916,7 @@ function TacticalMapScreen() {
 
         if (encounterResult) {
           // Pause movement and show encounter modal
-          console.log('[TacticalMap] Random encounter triggered on hex!');
+          debugLog('ENCOUNTER', 'Random encounter triggered on hex!');
           setCurrentEncounter(encounterResult);
           setShowPOIModal(true);
 
@@ -947,7 +937,7 @@ function TacticalMapScreen() {
 
       // Arrived at waypoint - handle arrival
       const arrivedHex = waypoint.hex;
-      console.log(`[TacticalMap] Arrived at waypoint ${wpIndex + 1}: ${arrivedHex.type}`);
+      debugLog('MOVEMENT', `Arrived at waypoint ${wpIndex + 1}: ${arrivedHex.type}`);
 
       if (arrivedHex.type === 'poi') {
         // Check if POI has already been looted
@@ -955,7 +945,7 @@ function TacticalMapScreen() {
         const alreadyLooted = lootedPOIs.some(p => p.q === arrivedHex.q && p.r === arrivedHex.r);
 
         if (alreadyLooted) {
-          console.log(`[TacticalMap] PoI at (${arrivedHex.q}, ${arrivedHex.r}) already looted, skipping encounter`);
+          debugLog('ENCOUNTER', `PoI at (${arrivedHex.q}, ${arrivedHex.r}) already looted, skipping encounter`);
           // Skip encounter and continue to next waypoint
         } else {
           // Phase 5: Check for guardian encounter (blueprint PoIs) BEFORE salvage
@@ -963,7 +953,7 @@ function TacticalMapScreen() {
 
           // If this is a blueprint PoI requiring confirmation, show modal
           if (encounterResult && encounterResult.requiresConfirmation && encounterResult.outcome === 'encounterPending') {
-            console.log('[TacticalMap] Blueprint PoI detected - showing confirmation modal');
+            debugLog('ENCOUNTER', 'Blueprint PoI detected - showing confirmation modal');
 
             setPendingBlueprintEncounter(encounterResult);
             setShowBlueprintEncounterModal(true);
@@ -983,7 +973,7 @@ function TacticalMapScreen() {
             }
           } else {
             // Regular PoI (no guardian) - proceed with salvage
-            console.log('[TacticalMap] PoI arrived - initializing salvage');
+            debugLog('SALVAGE', 'PoI arrived - initializing salvage');
 
             // Initialize salvage state for this POI
             const zone = arrivedHex.zone || 'mid';
@@ -1011,7 +1001,7 @@ function TacticalMapScreen() {
             // Signal to skip waypoint removal since loot handler will restore waypoints
             skipWaypointRemovalRef.current = remainingWps.length > 0;
 
-            console.log('[TacticalMap] Salvage initialized:', {
+            debugLog('SALVAGE', 'Salvage initialized', {
               totalSlots: salvageState.totalSlots,
               zone: salvageState.zone,
               baseEncounterChance: salvageState.currentEncounterChance
@@ -1037,7 +1027,7 @@ function TacticalMapScreen() {
           }
         }
       } else if (arrivedHex.type === 'gate') {
-        console.log('[TacticalMap] Arrived at gate - extraction available');
+        debugLog('EXTRACTION', 'Arrived at gate - extraction available');
         // Gate extraction handled via HUD Extract button
       }
 
@@ -1069,14 +1059,14 @@ function TacticalMapScreen() {
 
     // Journey complete - clear waypoints and reset state
     // Skip clearing if: (1) transitioning to combat, (2) escaped from encounter, (3) loading screen active, or (4) loot resume in progress
-    console.log('[TacticalMap] Journey complete');
+    debugLog('MOVEMENT', 'Journey complete');
     if (!transitionManager.hasSnapshot() && !escapedWithWaypoints.current && !pendingCombatLoadingRef.current && !skipWaypointRemovalRef.current) {
       debugLog('PATH_HIGHLIGHTING', 'Journey complete - clearing all waypoints');
       setWaypoints([]);
     } else if (skipWaypointRemovalRef.current) {
       debugLog('PATH_HIGHLIGHTING', 'Skipping journey complete clear - loot resume in progress');
     } else {
-      console.log('[TacticalMap] Skipping waypoint clear - pending combat, loading screen, or escape');
+      debugLog('MOVEMENT', 'Skipping waypoint clear - pending combat, loading screen, or escape');
     }
     skipWaypointRemovalRef.current = false; // Reset after the check
     escapedWithWaypoints.current = false; // Reset flag for next journey
@@ -1095,7 +1085,7 @@ function TacticalMapScreen() {
     setIsPaused(prev => {
       const newValue = !prev;
       isPausedRef.current = newValue;
-      console.log(`[TacticalMap] Movement ${newValue ? 'paused' : 'resumed'}`);
+      debugLog('MOVEMENT', `Movement ${newValue ? 'paused' : 'resumed'}`);
       return newValue;
     });
   }, []);
@@ -1104,7 +1094,7 @@ function TacticalMapScreen() {
    * Stop movement completely (cancel journey)
    */
   const handleStopMovement = useCallback(() => {
-    console.log('[TacticalMap] Movement cancelled');
+    debugLog('MOVEMENT', 'Movement cancelled');
     shouldStopMovement.current = true;
     isPausedRef.current = false;
     setIsScanningHex(false);  // Turn off scan overlay immediately
@@ -1116,17 +1106,16 @@ function TacticalMapScreen() {
   const handleEncounterProceed = useCallback(() => {
     if (!currentEncounter) return;
 
-    console.log('[TacticalMap] Encounter proceed clicked');
-    console.log('[TacticalMap] Encounter outcome:', currentEncounter.outcome);
+    debugLog('ENCOUNTER', 'Encounter proceed clicked, outcome:', currentEncounter.outcome);
 
     // Check if this encounter triggers combat
     if (currentEncounter.outcome === 'combat') {
-      console.log('[TacticalMap] Combat encounter - showing loading screen');
+      debugLog('COMBAT_FLOW', 'Combat encounter - showing loading screen');
 
       // Find AI personality info for the loading screen
       const aiId = currentEncounter.aiId;
       if (!aiId) {
-        console.error('[TacticalMap] CRITICAL: No aiId in currentEncounter for POI combat', currentEncounter);
+        debugLog('COMBAT_FLOW', '[ERROR] CRITICAL: No aiId in currentEncounter for POI combat', currentEncounter);
         return;
       }
       const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
@@ -1163,14 +1152,14 @@ function TacticalMapScreen() {
 
     // For loot outcome - generate loot and show reveal modal
     if (currentEncounter.outcome === 'loot') {
-      console.log('[TacticalMap] Loot encounter - generating loot');
+      debugLog('LOOT', 'Loot encounter - generating loot');
 
       // Get pack type from POI reward
       const packType = currentEncounter.reward?.rewardType;
 
       // Empty hex encounters have null rewardType - no POI loot to generate
       if (!packType) {
-        console.log('[TacticalMap] No pack type (empty hex loot outcome) - skipping loot generation');
+        debugLog('LOOT', 'No pack type (empty hex loot outcome) - skipping loot generation');
         setCurrentEncounter(null);
         return;
       }
@@ -1198,7 +1187,7 @@ function TacticalMapScreen() {
             source: 'contraband_cache'
           }
         };
-        console.log('[TacticalMap] Generated token reward:', loot);
+        debugLog('LOOT', 'Generated token reward', loot);
       } else {
         // Generate loot using RewardManager with zone-based weighting
         loot = rewardManager.generatePOIRewards({
@@ -1208,7 +1197,7 @@ function TacticalMapScreen() {
           zone: zone,
           tierConfig: tierConfig
         });
-        console.log('[TacticalMap] Generated loot:', { zone, loot });
+        debugLog('LOOT', 'Generated loot', { zone, loot });
       }
 
       // Store encounter for later completion (need to add detection after loot collected)
@@ -1257,7 +1246,7 @@ function TacticalMapScreen() {
   const handleBlueprintEncounterAccept = useCallback(async () => {
     if (!pendingBlueprintEncounter) return;
 
-    console.log('[TacticalMap] Blueprint encounter accepted - initiating combat');
+    debugLog('ENCOUNTER', 'Blueprint encounter accepted - initiating combat');
     setShowBlueprintEncounterModal(false);
 
     const encounter = pendingBlueprintEncounter;
@@ -1310,7 +1299,7 @@ function TacticalMapScreen() {
    * PoI remains available for re-engagement
    */
   const handleBlueprintEncounterDecline = useCallback(() => {
-    console.log('[TacticalMap] Blueprint encounter declined - staying on hex');
+    debugLog('ENCOUNTER', 'Blueprint encounter declined - staying on hex');
 
     setShowBlueprintEncounterModal(false);
     setPendingBlueprintEncounter(null);
@@ -1331,7 +1320,7 @@ function TacticalMapScreen() {
    * Opens quick deploy selection modal
    */
   const handleBlueprintQuickDeploy = useCallback(() => {
-    console.log('[TacticalMap] Blueprint encounter - opening quick deploy selection');
+    debugLog('QUICK_DEPLOY', 'Blueprint encounter - opening quick deploy selection');
     setShowBlueprintEncounterModal(false);
     setShowQuickDeploySelection(true);
     setBlueprintQuickDeployPending(true);  // Flag to track blueprint quick deploy
@@ -1343,7 +1332,7 @@ function TacticalMapScreen() {
   const handleBlueprintEncounterAcceptWithQuickDeploy = useCallback((deployment) => {
     if (!pendingBlueprintEncounter) return;
 
-    console.log('[TacticalMap] Blueprint encounter accepted with quick deploy:', deployment.name);
+    debugLog('QUICK_DEPLOY', 'Blueprint encounter accepted with quick deploy:', deployment.name);
 
     const encounter = pendingBlueprintEncounter;
 
@@ -1400,7 +1389,7 @@ function TacticalMapScreen() {
   const handleSalvageSlot = useCallback(() => {
     if (!activeSalvage) return;
 
-    console.log('[TacticalMap] Salvage slot attempt');
+    debugLog('SALVAGE', 'Salvage slot attempt');
 
     const runState = tacticalMapStateManager.getState();
     const tierConfig = runState?.mapData ? mapTiers[runState.mapData.tier - 1] : null;
@@ -1411,7 +1400,7 @@ function TacticalMapScreen() {
     // Use the updated salvage state directly from the result
     setActiveSalvage(result.salvageState);
 
-    console.log('[TacticalMap] Salvage result:', {
+    debugLog('SALVAGE', 'Salvage result', {
       slotContent: result.slotContent,
       encounterTriggered: result.encounterTriggered,
       newEncounterChance: result.salvageState.currentEncounterChance.toFixed(1)
@@ -1424,7 +1413,7 @@ function TacticalMapScreen() {
   const handleSalvageLeave = useCallback(() => {
     if (!activeSalvage) return;
 
-    console.log('[TacticalMap] Salvage leave - preparing loot reveal');
+    debugLog('SALVAGE', 'Salvage leave - preparing loot reveal');
 
     // Collect revealed loot
     const loot = SalvageController.collectRevealedLoot(activeSalvage);
@@ -1447,7 +1436,7 @@ function TacticalMapScreen() {
         tokens: loot.tokens || []
       };
 
-      console.log('[TacticalMap] Showing loot reveal modal:', lootForModal);
+      debugLog('LOOT', 'Showing loot reveal modal', lootForModal);
 
       // Set pending encounter info for handlePOILootCollected
       setPendingLootEncounter({ poi: activeSalvage.poi });
@@ -1457,7 +1446,7 @@ function TacticalMapScreen() {
       // Note: encounterResolveRef will be resolved by handlePOILootCollected
     } else {
       // No loot revealed - just resume journey
-      console.log('[TacticalMap] No loot revealed, resuming journey');
+      debugLog('SALVAGE', 'No loot revealed, resuming journey');
 
       if (encounterResolveRef.current) {
         encounterResolveRef.current();
@@ -1478,7 +1467,7 @@ function TacticalMapScreen() {
       detail: 'User clicked Engage on salvage encounter'
     });
 
-    console.log('[TacticalMap] Salvage encounter - engaging combat');
+    debugLog('SALVAGE', 'Salvage encounter - engaging combat');
 
     // First collect current revealed loot
     const loot = SalvageController.collectRevealedLoot(activeSalvage);
@@ -1578,7 +1567,7 @@ function TacticalMapScreen() {
   const handleSalvageQuit = useCallback(() => {
     if (!activeSalvage) return;
 
-    console.log('[TacticalMap] Salvage abort - triggering MIA');
+    debugLog('SALVAGE', 'Salvage abort - triggering MIA');
 
     // Close salvage modal
     setActiveSalvage(null);
@@ -1592,17 +1581,17 @@ function TacticalMapScreen() {
    * Handle POI encounter with quick deploy - similar to handleEncounterProceed but with quick deploy
    */
   const handleEncounterProceedWithQuickDeploy = useCallback((deployment) => {
-    console.log('[TacticalMap] Quick deploy selected:', deployment.name);
+    debugLog('QUICK_DEPLOY', 'Quick deploy selected:', deployment.name);
 
     // Check if this is an extraction blockade quick deploy
     if (extractionQuickDeployPending) {
-      console.log('[TacticalMap] Extraction blockade with quick deploy');
+      debugLog('QUICK_DEPLOY', 'Extraction blockade with quick deploy');
       setExtractionQuickDeployPending(false);
 
       const runState = tacticalMapStateManager.getState();
 
       if (!runState) {
-        console.warn('[TacticalMap] No run state for blockade quick deploy');
+        debugLog('QUICK_DEPLOY', '[WARN] No run state for blockade quick deploy');
         return;
       }
 
@@ -1645,7 +1634,7 @@ function TacticalMapScreen() {
 
     // Check if this is a salvage encounter quick deploy
     if (salvageQuickDeployPending && activeSalvage) {
-      console.log('[TacticalMap] Salvage combat with quick deploy');
+      debugLog('QUICK_DEPLOY', 'Salvage combat with quick deploy');
       setSalvageQuickDeployPending(false);
 
       // Collect current revealed loot (same as handleSalvageCombat)
@@ -1737,12 +1726,12 @@ function TacticalMapScreen() {
 
     // Only combat encounters use quick deploy
     if (currentEncounter.outcome === 'combat') {
-      console.log('[TacticalMap] Combat encounter with quick deploy - showing loading screen');
+      debugLog('QUICK_DEPLOY', 'Combat encounter with quick deploy - showing loading screen');
 
       // Find AI personality info for the loading screen
       const aiId = currentEncounter.aiId;
       if (!aiId) {
-        console.error('[TacticalMap] CRITICAL: No aiId in currentEncounter for quick deploy combat', currentEncounter);
+        debugLog('QUICK_DEPLOY', '[ERROR] CRITICAL: No aiId in currentEncounter for quick deploy combat', currentEncounter);
         return;
       }
       const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
@@ -1824,7 +1813,7 @@ function TacticalMapScreen() {
     // Get AI from the encounter - CRITICAL: must have valid aiId
     const aiId = currentEncounter?.aiId;
     if (!aiId) {
-      console.error('[TacticalMap] CRITICAL: No aiId in currentEncounter for combat initialization', currentEncounter);
+      debugLog('COMBAT_FLOW', '[ERROR] CRITICAL: No aiId in currentEncounter for combat initialization', currentEncounter);
       setShowLoadingEncounter(false);
       setLoadingEncounterData(null);
       setCurrentEncounter(null);
@@ -1872,7 +1861,7 @@ function TacticalMapScreen() {
       // Clear pending combat loading ref - prepareForCombat has captured the waypoints
       pendingCombatLoadingRef.current = false;
     } catch (error) {
-      console.error('[TacticalMap] TransitionManager.prepareForCombat failed:', error);
+      debugLog('COMBAT_FLOW', '[ERROR] TransitionManager.prepareForCombat failed:', error);
 
       // Reset TransitionManager to prevent stuck state
       // Note: prepareForCombat now auto-resets on failure, but this is a safety net
@@ -1940,7 +1929,7 @@ function TacticalMapScreen() {
     );
 
     if (!success) {
-      console.error('[TacticalMap] Failed to initialize combat');
+      debugLog('COMBAT_FLOW', '[ERROR] Failed to initialize combat');
 
       // Reset TransitionManager since prepareForCombat succeeded but combat init failed
       transitionManager.forceReset();
@@ -1959,7 +1948,7 @@ function TacticalMapScreen() {
    * Handle extraction button click - show confirmation modal or extract directly if blockade already cleared
    */
   const handleExtract = useCallback(() => {
-    console.log('[TacticalMap] Extraction button clicked');
+    debugLog('EXTRACTION', 'Extraction button clicked');
 
     // Stop any ongoing movement
     shouldStopMovement.current = true;
@@ -1971,7 +1960,7 @@ function TacticalMapScreen() {
     const runState = tacticalMapStateManager.getState();
 
     if (runState?.blockadeCleared) {
-      console.log('[TacticalMap] Blockade already cleared - skipping modal, extracting directly');
+      debugLog('EXTRACTION', 'Blockade already cleared - skipping modal, extracting directly');
 
       const result = ExtractionController.completeExtraction(runState);
 
@@ -1991,7 +1980,7 @@ function TacticalMapScreen() {
     }
 
     // Normal flow - show confirmation modal (modal handles blockade check internally)
-    console.log('[TacticalMap] Showing extraction confirmation modal');
+    debugLog('EXTRACTION', 'Showing extraction confirmation modal');
     setShowExtractionConfirm(true);
   }, []);
 
@@ -1999,7 +1988,7 @@ function TacticalMapScreen() {
    * Handle extraction cancel - close confirmation modal
    */
   const handleExtractionCancel = useCallback(() => {
-    console.log('[TacticalMap] Extraction cancelled');
+    debugLog('EXTRACTION', 'Extraction cancelled');
     setShowExtractionConfirm(false);
   }, []);
 
@@ -2008,13 +1997,13 @@ function TacticalMapScreen() {
    * Called when modal completes scan and no blockade triggered
    */
   const handleExtractionConfirmed = useCallback(() => {
-    console.log('[TacticalMap] Safe extraction confirmed - completing run');
+    debugLog('EXTRACTION', 'Safe extraction confirmed - completing run');
     setShowExtractionConfirm(false);
 
     const runState = tacticalMapStateManager.getState();
 
     if (!runState) {
-      console.warn('[TacticalMap] No run state for extraction');
+      debugLog('EXTRACTION', '[WARN] No run state for extraction');
       return;
     }
 
@@ -2039,12 +2028,12 @@ function TacticalMapScreen() {
    * Bypasses blockade check entirely
    */
   const handleExtractionWithItem = useCallback(() => {
-    console.log('[TacticalMap] Extraction with Clearance Override');
+    debugLog('EXTRACTION', 'Extraction with Clearance Override');
 
     const runState = tacticalMapStateManager.getState();
 
     if (!runState) {
-      console.warn('[TacticalMap] No run state for extraction with item');
+      debugLog('EXTRACTION', '[WARN] No run state for extraction with item');
       return;
     }
 
@@ -2052,7 +2041,7 @@ function TacticalMapScreen() {
     const result = ExtractionController.initiateExtractionWithItem(runState, true);
 
     if (result.action === 'extract' && result.itemUsed) {
-      console.log('[TacticalMap] Clearance Override successful - extracting');
+      debugLog('EXTRACTION', 'Clearance Override successful - extracting');
       setShowExtractionConfirm(false);
 
       // Complete extraction (no blockade check needed)
@@ -2072,7 +2061,7 @@ function TacticalMapScreen() {
       setShowExtractionScreen(true);
     } else {
       // Item use failed - shouldn't happen if button is only shown when available
-      console.warn('[TacticalMap] Clearance Override failed');
+      debugLog('EXTRACTION', '[WARN] Clearance Override failed');
     }
   }, []);
 
@@ -2087,13 +2076,13 @@ function TacticalMapScreen() {
       detail: 'User clicked Engage on blockade at extraction gate'
     });
 
-    console.log('[TacticalMap] Blockade detected - engaging combat');
+    debugLog('EXTRACTION', 'Blockade detected - engaging combat');
     setShowExtractionConfirm(false);
 
     const runState = tacticalMapStateManager.getState();
 
     if (!runState) {
-      console.warn('[TacticalMap] No run state for blockade combat');
+      debugLog('EXTRACTION', '[WARN] No run state for blockade combat');
       return;
     }
 
@@ -2131,7 +2120,7 @@ function TacticalMapScreen() {
    * Called when modal detects blockade and player clicks Quick Deploy
    */
   const handleBlockadeQuickDeploy = useCallback(() => {
-    console.log('[TacticalMap] Blockade detected - opening quick deploy selection');
+    debugLog('QUICK_DEPLOY', 'Blockade detected - opening quick deploy selection');
     setShowExtractionConfirm(false);
     setShowQuickDeploySelection(true);
     setExtractionQuickDeployPending(true);
@@ -2148,7 +2137,7 @@ function TacticalMapScreen() {
     pendingExtractionRef.current = null;
 
     if (result?.action === 'selectLoot') {
-      console.log('[TacticalMap] Loot selection required:', result.limit, 'max from', result.collectedLoot.length);
+      debugLog('LOOT', 'Loot selection required:', result.limit, 'max from', result.collectedLoot.length);
       setPendingLootSelection({
         collectedLoot: result.collectedLoot,
         limit: result.limit
@@ -2156,7 +2145,7 @@ function TacticalMapScreen() {
       setShowLootSelectionModal(true);
     } else {
       // Normal extraction complete - go directly to hangar (RunSummaryModal shows there)
-      console.log('[TacticalMap] Extraction complete - returning to hangar');
+      debugLog('EXTRACTION', 'Extraction complete - returning to hangar');
       // Use ExtractionController to avoid direct gameStateManager.setState() call (architecture pattern)
       ExtractionController.completeExtractionTransition();
     }
@@ -2166,7 +2155,7 @@ function TacticalMapScreen() {
    * Handle abandon run button click - show confirmation modal
    */
   const handleAbandon = useCallback(() => {
-    console.log('[TacticalMap] Abandon run requested');
+    debugLog('MODE_TRANSITION', 'Abandon run requested');
     setShowAbandonModal(true);
   }, []);
 
@@ -2182,7 +2171,7 @@ function TacticalMapScreen() {
       detail: 'User confirmed abandon in modal'
     });
 
-    console.log('[TacticalMap] Abandon confirmed - triggering failed run');
+    debugLog('MODE_TRANSITION', 'Abandon confirmed - triggering failed run');
 
     // Stop any ongoing movement
     shouldStopMovement.current = true;
@@ -2205,7 +2194,7 @@ function TacticalMapScreen() {
    * @param {Object} context - { type: 'poi' | 'salvage', isPOI: boolean }
    */
   const handleEscapeRequest = useCallback((context) => {
-    console.log('[TacticalMap] Escape requested:', context);
+    debugLog('COMBAT_FLOW', 'Escape requested', context);
     setEscapeContext(context);
     setShowEscapeConfirm(true);
   }, []);
@@ -2215,16 +2204,16 @@ function TacticalMapScreen() {
    * Uses the Emergency Jammer tactical item
    */
   const handleEvadeItem = useCallback(() => {
-    console.log('[TacticalMap] Evade item used');
+    debugLog('COMBAT_FLOW', 'Evade item used');
 
     // Use the tactical item
     const result = gameStateManager.useTacticalItem('ITEM_EVADE');
     if (!result.success) {
-      console.warn('[TacticalMap] Failed to use evade item:', result.error);
+      debugLog('COMBAT_FLOW', '[WARN] Failed to use evade item:', result.error);
       return;
     }
 
-    console.log('[TacticalMap] Evade successful, remaining:', result.remaining);
+    debugLog('COMBAT_FLOW', 'Evade successful, remaining:', result.remaining);
 
     // Mark POI as fled (no loot gained, encounter skipped via evade)
     if (currentEncounter?.poi) {
@@ -2233,7 +2222,7 @@ function TacticalMapScreen() {
       tacticalMapStateManager.setState({
         fledPOIs: [...fledPOIs, { q: currentEncounter.poi.q, r: currentEncounter.poi.r }]
       });
-      console.log('[TacticalMap] POI marked as fled (evaded):', currentEncounter.poi.q, currentEncounter.poi.r);
+      debugLog('ENCOUNTER', 'POI marked as fled (evaded)', { q: currentEncounter.poi.q, r: currentEncounter.poi.r });
     }
 
     // Close encounter modal and clear state
@@ -2243,7 +2232,7 @@ function TacticalMapScreen() {
     // Resume movement if waypoints remain
     const runState = tacticalMapStateManager.getState();
     if (runState?.waypoints && runState.waypoints.length > 0) {
-      console.log('[TacticalMap] Resuming movement after evade');
+      debugLog('MOVEMENT', 'Resuming movement after evade');
       setIsMoving(true);
     }
   }, [currentEncounter]);
@@ -2253,7 +2242,7 @@ function TacticalMapScreen() {
    * Reduces current detection by random amount within item's effectValueMin/Max range
    */
   const handleUseThreatReduce = useCallback(() => {
-    console.log('[TacticalMap] Signal Dampener used');
+    debugLog('RUN_STATE', 'Signal Dampener used');
 
     // Get the item data for effect range
     const item = getTacticalItemById('ITEM_THREAT_REDUCE');
@@ -2270,14 +2259,14 @@ function TacticalMapScreen() {
     // Use the tactical item (consume it)
     const result = gameStateManager.useTacticalItem('ITEM_THREAT_REDUCE');
     if (!result.success) {
-      console.warn('[TacticalMap] Failed to use threat reduce item:', result.error);
+      debugLog('RUN_STATE', '[WARN] Failed to use threat reduce item:', result.error);
       return;
     }
 
     // Reduce detection
     DetectionManager.addDetection(-reductionAmount, 'Signal Dampener used');
 
-    console.log('[TacticalMap] Detection reduced by', reductionAmount, '% (range:', min, '-', max, '), remaining items:', result.remaining);
+    debugLog('RUN_STATE', `Detection reduced by ${reductionAmount}% (range: ${min}-${max}), remaining items: ${result.remaining}`);
   }, []);
 
   /**
@@ -2313,7 +2302,7 @@ function TacticalMapScreen() {
    * Handle escape cancel - close escape confirmation modal
    */
   const handleEscapeCancel = useCallback(() => {
-    console.log('[TacticalMap] Escape cancelled');
+    debugLog('COMBAT_FLOW', 'Escape cancelled');
     setShowEscapeConfirm(false);
     setEscapeContext(null);
   }, []);
@@ -2322,19 +2311,19 @@ function TacticalMapScreen() {
    * Handle escape confirmation - apply damage and show loading screen or trigger MIA
    */
   const handleEscapeConfirm = useCallback(() => {
-    console.log('[TacticalMap] Escape confirmed');
+    debugLog('COMBAT_FLOW', 'Escape confirmed');
 
     const runState = tacticalMapStateManager.getState();
 
     if (!runState) {
-      console.warn('[TacticalMap] No run state for escape');
+      debugLog('COMBAT_FLOW', '[WARN] No run state for escape');
       return;
     }
 
     // Get the AI personality for this encounter (affects escape damage)
     const aiId = currentEncounter?.aiId;
     if (!aiId) {
-      console.warn('[TacticalMap] No aiId in currentEncounter for escape - using default damage', currentEncounter);
+      debugLog('COMBAT_FLOW', '[WARN] No aiId in currentEncounter for escape - using default damage', currentEncounter);
     }
     const aiPersonality = aiId
       ? aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0]
@@ -2345,7 +2334,7 @@ function TacticalMapScreen() {
 
     if (wouldDestroy) {
       // Ship destroyed - trigger MIA
-      console.log('[TacticalMap] Escape destroyed ship - triggering MIA');
+      debugLog('COMBAT_FLOW', 'Escape destroyed ship - triggering MIA');
       setShowEscapeConfirm(false);
       setEscapeContext(null);
       setShowPOIModal(false);
@@ -2357,7 +2346,7 @@ function TacticalMapScreen() {
     }
 
     // Ship survived - show escape loading screen
-    console.log('[TacticalMap] Escape successful - showing loading screen');
+    debugLog('COMBAT_FLOW', 'Escape successful - showing loading screen');
 
     // Capture FULL remaining journey including current position
     let remainingWps = [];
@@ -2394,7 +2383,7 @@ function TacticalMapScreen() {
 
     setPendingResumeWaypoints(remainingWps.length > 0 ? remainingWps : null);
     escapedWithWaypoints.current = remainingWps.length > 0; // Flag to prevent journey loop from clearing
-    console.log('[TacticalMap] Captured remaining journey for escape:', remainingWps.length, 'waypoints');
+    debugLog('COMBAT_FLOW', 'Captured remaining journey for escape:', remainingWps.length, 'waypoints');
 
     // Close confirm modal and show loading screen
     setShowEscapeConfirm(false);
@@ -2414,7 +2403,7 @@ function TacticalMapScreen() {
    * Handle escape loading screen completion - resume journey
    */
   const handleEscapeLoadingComplete = useCallback(() => {
-    console.log('[TacticalMap] Escape animation complete - resuming journey');
+    debugLog('COMBAT_FLOW', 'Escape animation complete - resuming journey');
 
     setShowEscapeLoadingScreen(false);
     setEscapeLoadingData(null);
@@ -2426,7 +2415,7 @@ function TacticalMapScreen() {
       tacticalMapStateManager.setState({
         fledPOIs: [...fledPOIs, { q: currentEncounter.poi.q, r: currentEncounter.poi.r }]
       });
-      console.log('[TacticalMap] POI marked as fled (escaped):', currentEncounter.poi.q, currentEncounter.poi.r);
+      debugLog('ENCOUNTER', 'POI marked as fled (escaped)', { q: currentEncounter.poi.q, r: currentEncounter.poi.r });
     }
 
     // If this was a salvage encounter, mark POI as fled (escaped during salvage)
@@ -2436,7 +2425,7 @@ function TacticalMapScreen() {
       tacticalMapStateManager.setState({
         fledPOIs: [...fledPOIs, { q: activeSalvage.poi.q, r: activeSalvage.poi.r }]
       });
-      console.log('[TacticalMap] POI marked as fled (salvage escaped):', activeSalvage.poi.q, activeSalvage.poi.r);
+      debugLog('ENCOUNTER', 'POI marked as fled (salvage escaped)', { q: activeSalvage.poi.q, r: activeSalvage.poi.r });
     }
 
     // Close all escape/encounter modals
@@ -2460,7 +2449,6 @@ function TacticalMapScreen() {
     // Restore remaining waypoints if any were captured during escape
     if (pendingResumeWaypoints?.length > 0) {
       debugLog('PATH_HIGHLIGHTING', 'Restoring waypoints after escape:', { count: pendingResumeWaypoints?.length });
-      console.log('[TacticalMap] Restoring waypoints after escape:', pendingResumeWaypoints.length);
       setWaypoints(pendingResumeWaypoints);
       setPendingResumeWaypoints(null);
     }
@@ -2477,7 +2465,7 @@ function TacticalMapScreen() {
       lootCount: selectedLoot.length
     });
 
-    console.log('[TacticalMap] Loot selection confirmed:', selectedLoot.length, 'items');
+    debugLog('LOOT', 'Loot selection confirmed:', selectedLoot.length, 'items');
 
     setShowLootSelectionModal(false);
     setPendingLootSelection(null);
@@ -2496,12 +2484,12 @@ function TacticalMapScreen() {
    * Handle POI loot collection - called when player reveals all cards and clicks Continue
    */
   const handlePOILootCollected = useCallback((loot) => {
-    console.log('[TacticalMap] POI loot collected:', loot);
+    debugLog('LOOT', 'POI loot collected', loot);
 
     const runState = tacticalMapStateManager.getState();
 
     if (!runState) {
-      console.warn('[TacticalMap] No run state for loot collection');
+      debugLog('LOOT', '[WARN] No run state for loot collection');
       return;
     }
 
@@ -2529,7 +2517,7 @@ function TacticalMapScreen() {
 
     // Add blueprint to loot record (blueprint PoI rewards)
     if (loot.blueprint) {
-      console.log('[TacticalMap] Adding blueprint to collectedLoot:', loot.blueprint.blueprintId);
+      debugLog('LOOT', 'Adding blueprint to collectedLoot:', loot.blueprint.blueprintId);
       newCardLoot.push({
         type: 'blueprint',
         blueprintId: loot.blueprint.blueprintId,
@@ -2577,7 +2565,7 @@ function TacticalMapScreen() {
           securityTokens: currentTokens + loot.token.amount
         }
       });
-      console.log(`[TacticalMap] Security token collected! Total: ${currentTokens + loot.token.amount}`);
+      debugLog('LOOT', `Security token collected! Total: ${currentTokens + loot.token.amount}`);
     }
     // Handle tokens array (salvage)
     if (loot.tokens && loot.tokens.length > 0) {
@@ -2590,7 +2578,7 @@ function TacticalMapScreen() {
           securityTokens: currentTokens + totalNewTokens
         }
       });
-      console.log(`[TacticalMap] Security tokens collected from salvage! Total: ${currentTokens + totalNewTokens}`);
+      debugLog('LOOT', `Security tokens collected from salvage! Total: ${currentTokens + totalNewTokens}`);
     }
 
     // Mark POI as looted (prevents re-looting)
@@ -2613,7 +2601,7 @@ function TacticalMapScreen() {
     if (pendingLootEncounter) {
       const threatIncrease = pendingLootEncounter.poi?.poiData?.threatIncrease || 10;
       DetectionManager.addDetection(threatIncrease, `Looting ${pendingLootEncounter.poi?.poiData?.name || 'PoI'}`);
-      console.log(`[TacticalMap] POI marked as looted: (${poiCoords?.q}, ${poiCoords?.r})`);
+      debugLog('ENCOUNTER', `POI marked as looted: (${poiCoords?.q}, ${poiCoords?.r})`);
 
       // Record mission progress for POI visit
       MissionService.recordProgress('POI_LOOTED', {});
@@ -2636,13 +2624,12 @@ function TacticalMapScreen() {
         count: pendingResumeWaypoints?.length,
         destinations: pendingResumeWaypoints?.map(w => w.hex)
       });
-      console.log('[TacticalMap] Resuming journey with remaining waypoints:', pendingResumeWaypoints.length);
       setWaypoints(pendingResumeWaypoints);
       setPendingResumeWaypoints(null);
       // Movement will start via the executeMovement useEffect that watches waypoints
     }
 
-    console.log('[TacticalMap] POI loot finalized, resuming movement');
+    debugLog('LOOT', 'POI loot finalized, resuming movement');
   }, [pendingLootEncounter, pendingResumeWaypoints]);
 
   /**
@@ -2650,7 +2637,7 @@ function TacticalMapScreen() {
    * Called when player clicks Accept on DroneBlueprintRewardModal
    */
   const handleBlueprintRewardAccepted = useCallback((blueprint) => {
-    console.log('[TacticalMap] Blueprint reward accepted:', blueprint.blueprintId);
+    debugLog('ENCOUNTER', 'Blueprint reward accepted:', blueprint.blueprintId);
 
     // Close blueprint modal
     setShowBlueprintRewardModal(false);
@@ -2675,7 +2662,7 @@ function TacticalMapScreen() {
       collectedLoot: updatedLoot
     });
 
-    console.log('[TacticalMap] Blueprint added to collectedLoot. Total items:', updatedLoot.length);
+    debugLog('ENCOUNTER', 'Blueprint added to collectedLoot. Total items:', updatedLoot.length);
 
     // Mark POI as looted (if from encounter)
     if (pendingLootEncounter?.poi) {
@@ -2687,7 +2674,7 @@ function TacticalMapScreen() {
 
       if (hexToUpdate && hexToUpdate.poi) {
         hexToUpdate.poi.looted = true;
-        console.log(`[TacticalMap] Marked blueprint PoI at (${q}, ${r}) as looted`);
+        debugLog('ENCOUNTER', `Marked blueprint PoI at (${q}, ${r}) as looted`);
 
         tacticalMapStateManager.setState({
           mapData: updatedMapData
@@ -2707,7 +2694,6 @@ function TacticalMapScreen() {
     // Resume journey if waypoints remain (handled by existing logic)
     if (pendingResumeWaypoints?.length > 0) {
       debugLog('PATH_HIGHLIGHTING', 'Resuming journey after blueprint:', { count: pendingResumeWaypoints?.length });
-      console.log('[TacticalMap] Resuming journey with remaining waypoints:', pendingResumeWaypoints.length);
       setWaypoints(pendingResumeWaypoints);
       setPendingResumeWaypoints(null);
       // Movement will start via the executeMovement useEffect that watches waypoints
@@ -2720,7 +2706,7 @@ function TacticalMapScreen() {
     }
 
     setIsPaused(false);
-    console.log('[TacticalMap] Blueprint reward finalized, resuming movement');
+    debugLog('ENCOUNTER', 'Blueprint reward finalized, resuming movement');
   }, [pendingLootEncounter, pendingResumeWaypoints]);
 
   // ========================================
@@ -2791,7 +2777,7 @@ function TacticalMapScreen() {
 
   // Safety check - ensure ship slot exists
   if (!shipSlot) {
-    console.error('[TacticalMap] Ship slot not found:', currentRunState.shipSlotId);
+    debugLog('RUN_STATE', '[ERROR] Ship slot not found:', currentRunState.shipSlotId);
     return (
       <div className="tactical-map-error">
         <p>Error: Ship slot not found. Returning to hangar...</p>
@@ -2870,11 +2856,9 @@ function TacticalMapScreen() {
    * Add a waypoint to the end of the journey
    */
   const addWaypoint = (hex) => {
-    console.log('[TacticalMap] addWaypoint called with hex:', hex);
-    console.log('[TacticalMap] hex q:', hex?.q, 'r:', hex?.r);
+    debugLog('WAYPOINT_MANAGER', 'addWaypoint called', { hex: { q: hex?.q, r: hex?.r }, lastPosition: getLastJourneyPosition() });
 
     const lastPosition = getLastJourneyPosition();
-    console.log('[TacticalMap] lastPosition:', lastPosition);
 
     // Calculate path from last position to new waypoint
     // Use encounter-based or threat-based weighted A* based on pathfinding mode
@@ -2894,7 +2878,7 @@ function TacticalMapScreen() {
     }
 
     if (!path) {
-      console.warn('[TacticalMap] No path available to waypoint');
+      debugLog('WAYPOINT_MANAGER', '[WARN] No path available to waypoint');
       return false;
     }
 
@@ -2917,8 +2901,7 @@ function TacticalMapScreen() {
     const segmentPNoEncounter = (100 - segmentEncounterRisk) / 100;
     const cumulativeEncounterRisk = (1 - (prevPNoEncounter * segmentPNoEncounter)) * 100;
 
-    console.log(`[TacticalMap] Adding waypoint: +${segmentCost.toFixed(1)}% detection → ${cumulativeDetection.toFixed(1)}%`);
-    console.log(`[TacticalMap] Encounter risk: ${segmentEncounterRisk.toFixed(1)}% segment → ${cumulativeEncounterRisk.toFixed(1)}% cumulative`);
+    debugLog('WAYPOINT_MANAGER', `Adding waypoint: +${segmentCost.toFixed(1)}% detection -> ${cumulativeDetection.toFixed(1)}%, encounter risk: ${segmentEncounterRisk.toFixed(1)}% segment -> ${cumulativeEncounterRisk.toFixed(1)}% cumulative`);
 
     setWaypoints([...waypoints, {
       hex,
@@ -2936,7 +2919,7 @@ function TacticalMapScreen() {
    * Remove a waypoint and recalculate subsequent paths
    */
   const removeWaypoint = (index) => {
-    console.log(`[TacticalMap] Removing waypoint ${index + 1}`);
+    debugLog('WAYPOINT_MANAGER', `Removing waypoint ${index + 1}`);
 
     const newWaypoints = [...waypoints];
     newWaypoints.splice(index, 1);
@@ -2989,7 +2972,7 @@ function TacticalMapScreen() {
         };
       } else {
         // Path broken - remove this and all subsequent waypoints
-        console.warn(`[TacticalMap] Path broken at waypoint ${i + 1}, removing subsequent`);
+        debugLog('WAYPOINT_MANAGER', `[WARN] Path broken at waypoint ${i + 1}, removing subsequent`);
         setWaypoints(recalculated.slice(0, i));
         return;
       }
@@ -3002,7 +2985,7 @@ function TacticalMapScreen() {
    * Clear all waypoints
    */
   const clearAllWaypoints = () => {
-    console.log('[TacticalMap] Clearing all waypoints');
+    debugLog('WAYPOINT_MANAGER', 'Clearing all waypoints');
     setWaypoints([]);
   };
 
@@ -3037,16 +3020,15 @@ function TacticalMapScreen() {
    * Add or remove waypoint (called from Hex Info view)
    */
   const handleToggleWaypoint = (hex) => {
-    console.log('[TacticalMap] handleToggleWaypoint called with hex:', hex);
+    debugLog('WAYPOINT_MANAGER', 'handleToggleWaypoint called', { q: hex?.q, r: hex?.r });
 
     if (isWaypoint(hex)) {
       const index = waypoints.findIndex(w => w.hex.q === hex.q && w.hex.r === hex.r);
-      console.log('[TacticalMap] Removing waypoint at index:', index);
+      debugLog('WAYPOINT_MANAGER', 'Removing waypoint at index:', index);
       removeWaypoint(index);
     } else {
-      console.log('[TacticalMap] Adding new waypoint');
       const success = addWaypoint(hex);
-      console.log('[TacticalMap] addWaypoint result:', success);
+      debugLog('WAYPOINT_MANAGER', 'addWaypoint result:', success);
     }
     // Return to waypoint list after action
     setInspectedHex(null);
@@ -3056,7 +3038,7 @@ function TacticalMapScreen() {
    * Handle inventory view - show RunInventoryModal
    */
   const handleInventory = () => {
-    console.log('[TacticalMap] Opening inventory modal');
+    debugLog('MODE_TRANSITION', 'Opening inventory modal');
     setShowInventory(true);
   };
 
