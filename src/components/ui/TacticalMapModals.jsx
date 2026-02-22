@@ -41,7 +41,6 @@ const TacticalMapModals = ({
   handleEncounterClose,
   // Quick deploy selection
   showQuickDeploySelection,
-  setSelectedQuickDeploy,
   blueprintQuickDeployPending,
   setBlueprintQuickDeployPending,
   handleBlueprintEncounterAcceptWithQuickDeploy,
@@ -151,7 +150,6 @@ const TacticalMapModals = ({
         <QuickDeploySelectionModal
           validQuickDeployments={validQuickDeployments}
           onSelect={(deployment) => {
-            setSelectedQuickDeploy(deployment);
             setShowQuickDeploySelection(false);
 
             if (blueprintQuickDeployPending) {

@@ -20,6 +20,10 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 12 | DeckBuilderLeftPanel.jsx | Ship components section (lines 486-627) has 3 nearly identical ~40-line blocks for Bridge/Power Cell/Drone Control Hub differing only in type string and color class. Extract a `ShipComponentSection` helper to eliminate ~80 lines. | DeckBuilder code review | 2026-02-22 | Medium |
 | 13 | DeckBuilderLeftPanel.jsx | Sortable table headers repeated 15+ times across cards/drones tables with identical className logic. Extract a `SortableHeader` component. | DeckBuilder code review | 2026-02-22 | Medium |
 | 14 | HangarScreen.jsx | At 568 lines, above 400-line guideline but below 800. Remaining code is handlers + state declarations — cohesive orchestration. Further splitting would fragment the handler logic. | HangarScreen refactoring | 2026-02-22 | Low |
+| 15 | useTacticalEncounters.js | At 935 lines, far exceeds 400-line guideline. Splitting into POI/Salvage/Blueprint sub-hooks would create circular deps through quick deploy dispatch. Combat init dedup (5 similar patterns) deferred for behavior preservation. | TacticalMapScreen refactoring | 2026-02-22 | Medium |
+| 16 | TacticalMapScreen.jsx | Orchestrator at 675 lines — above 400 target. Remaining code is ~45 useState + ~12 useRef declarations, 7 hook calls, sharedRefs bundle, and core JSX layout. Further splitting would fragment React state. | TacticalMapScreen refactoring | 2026-02-22 | Low |
+| 17 | TacticalMapModals.jsx | Prop relay pattern (337 lines, 40+ props). Future refactor could use modal context or modal manager to reduce prop drilling. | TacticalMapScreen refactoring | 2026-02-22 | Low |
+| 18 | useTacticalMovement.js | At 390 lines, near 400-line guideline. handleCommenceJourney alone is ~240 lines. Acceptable — splitting would break the async movement loop's closure. | TacticalMapScreen refactoring | 2026-02-22 | Low |
 
 ## Resolved Items
 

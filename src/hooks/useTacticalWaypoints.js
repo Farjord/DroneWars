@@ -4,7 +4,7 @@
 // Manages waypoint CRUD, hex interaction handlers, path preview,
 // and escape route computation for TacticalMapScreen
 
-import React, { useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import MovementController from '../logic/map/MovementController.js';
 import EscapeRouteCalculator from '../logic/map/EscapeRouteCalculator.js';
 import DetectionManager from '../logic/detection/DetectionManager.js';

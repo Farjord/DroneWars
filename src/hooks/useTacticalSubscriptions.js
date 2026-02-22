@@ -306,5 +306,5 @@ export const useTacticalSubscriptions = ({
   }, [currentRunState, currentEncounter, isMoving, showLoadingEncounter,
       setIsMoving, setShowLoadingEncounter, setLoadingEncounterData, setCurrentEncounter, sharedRefs]);
 
-  return { validQuickDeployments, isBlueprintRewardType };
+  return { validQuickDeployments };
 };

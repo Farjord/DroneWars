@@ -10,7 +10,7 @@
 |-|-|-|-|-|
 | 1 | App.jsx (7,007) | REFACTOR_APP.md | [ ] | |
 | 2 | ActionProcessor.js (4,837→1,005) | REFACTOR_ACTION_PROCESSOR.md | [x] | Complete 2026-02-22. 9 strategy files extracted to src/logic/actions/, strategy registry replaces 37-case switch, 21 tests passing. |
-| 3 | TacticalMapScreen.jsx (3,548) | REFACTOR_TACTICAL_MAP_SCREEN.md | [ ] | |
+| 3 | TacticalMapScreen.jsx (3,548→675) | REFACTOR_TACTICAL_MAP_SCREEN.md | [x] | Complete 2026-02-22. 11 extraction steps: 7 hooks + 2 components + 1 utility. 81% reduction, 118 console calls migrated, 6 test files relocated. useTacticalEncounters at 935 lines (dedup deferred). |
 | 4 | GameStateManager.js (3,156→1,068) | REFACTOR_GAME_STATE_MANAGER.md | [x] | Complete 2026-02-22. Sessions A+B+C: 6 extractions (StateValidationService, GuestSyncManager, SinglePlayerInventoryManager, TacticalItemManager, ShipSlotManager, RunLifecycleManager). 66% reduction, 35 new tests, 14 imports cleaned. |
 | 5 | GameFlowManager.js (2,666→1,671) | REFACTOR_GAME_FLOW_MANAGER.md | [x] | Complete 2026-02-22: Sessions A+B. Cleanup (dead code, logging, test migration) + 3 extractions (PhaseRequirementChecker, RoundInitializationProcessor, QuickDeployExecutor) + DRY animation playback. -995 lines (-37%), 40 new tests. Still above 800-line target — remaining code is cohesive phase flow orchestration. |
 

@@ -74,7 +74,7 @@ function TacticalMapScreen() {
 
   // Quick Deploy selection state
   const [showQuickDeploySelection, setShowQuickDeploySelection] = useState(false);
-  const [selectedQuickDeploy, setSelectedQuickDeploy] = useState(null);
+
 
   // Loading Encounter screen state (for combat transitions)
   const [showLoadingEncounter, setShowLoadingEncounter] = useState(false);
@@ -269,7 +269,6 @@ function TacticalMapScreen() {
     setPendingBlueprintReward,
     setShowBlueprintRewardModal,
     setShowQuickDeploySelection,
-    setSelectedQuickDeploy,
     setShowLoadingEncounter,
     loadingEncounterData,
     setLoadingEncounterData,
@@ -600,7 +599,6 @@ function TacticalMapScreen() {
         handleEvadeItem={handleEvadeItem}
         handleEncounterClose={handleEncounterClose}
         showQuickDeploySelection={showQuickDeploySelection}
-        setSelectedQuickDeploy={setSelectedQuickDeploy}
         blueprintQuickDeployPending={blueprintQuickDeployPending}
         setBlueprintQuickDeployPending={setBlueprintQuickDeployPending}
         handleBlueprintEncounterAcceptWithQuickDeploy={handleBlueprintEncounterAcceptWithQuickDeploy}

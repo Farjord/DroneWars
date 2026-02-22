@@ -275,11 +275,42 @@ Each step is independently committable with tests green.
 
 ### Final State
 
-*To be completed after refactoring.*
+| File | Lines | Location |
+|-|-|-|
+| TacticalMapScreen.jsx (orchestrator) | 675 | src/components/screens/ |
+| useTacticalSubscriptions.js | 310 | src/hooks/ |
+| useTacticalPostCombat.js | 229 | src/hooks/ |
+| useTacticalWaypoints.js | 287 | src/hooks/ |
+| useTacticalMovement.js | 390 | src/hooks/ |
+| useTacticalEncounters.js | 935 | src/hooks/ |
+| useTacticalExtraction.js | 297 | src/hooks/ |
+| useTacticalEscape.js | 328 | src/hooks/ |
+| useTacticalLoot.js | 307 | src/hooks/ |
+| TacticalMapHeader.jsx | 151 | src/components/ui/ |
+| TacticalMapModals.jsx | 337 | src/components/ui/ |
+| shipSectionBuilder.js | 79 | src/logic/singlePlayer/ |
+| **Total** | **4,325** | |
+
+- Orchestrator reduction: 3,548 → 675 lines (81%)
+- Total across all files: 4,325 (22% increase from dedup overhead + useCallback wrapping)
+- Test files migrated: 6 (to `__tests__/` directories)
+- Raw console calls eliminated: 118 → 0
+- New debugLog categories added: 6 (MOVEMENT, ENCOUNTER, SALVAGE, LOOT, QUICK_DEPLOY, EXTRACTION)
+- Tests: 219 files, 3,744 tests, 0 failures
 
 ### Change Log
 
-*Append entries here as refactoring steps are completed.*
-
 | Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
 |-|-|-|-|-|-|
+| 0 | 2026-02-22 | Pre-work: migrate 6 test files, replace 97 console.* calls, remove stale comments | All | None | Found 6 misplaced tests (plan said 4) |
+| 1 | 2026-02-22 | Extract buildShipSections to shipSectionBuilder.js (79 lines) | All | None | None |
+| 2 | 2026-02-22 | Extract useTacticalSubscriptions hook (310 lines, -251 from orchestrator) | All | None | None |
+| 3 | 2026-02-22 | Extract useTacticalPostCombat hook (229 lines, -190 from orchestrator) | All | None | None |
+| 4 | 2026-02-22 | Extract useTacticalWaypoints hook (287 lines, -255 from orchestrator) | All | None | None |
+| 5 | 2026-02-22 | Extract useTacticalMovement hook (390 lines, -319 from orchestrator) | All | None | Hook 390 lines vs planned 340 |
+| 6 | 2026-02-22 | Extract useTacticalEncounters hook (935 lines, -798 from orchestrator) | All | None | 935 lines vs planned 450 — combat dedup skipped (behavior risk) |
+| 7 | 2026-02-22 | Extract useTacticalExtraction hook (297 lines, -244 from orchestrator) | All | None | None |
+| 8 | 2026-02-22 | Extract useTacticalEscape hook (328 lines, -230 from orchestrator) | All | None | None |
+| 9 | 2026-02-22 | Extract useTacticalLoot hook (307 lines, -203 from orchestrator) | All | None | None |
+| 10 | 2026-02-22 | Extract TacticalMapHeader component (151 lines) | All | None | None |
+| 11 | 2026-02-22 | Extract TacticalMapModals component (337 lines, -292 from orchestrator) | All | None | None |

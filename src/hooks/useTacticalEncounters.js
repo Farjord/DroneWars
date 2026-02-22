@@ -49,7 +49,6 @@ export function useTacticalEncounters({
   setPendingBlueprintReward,
   setShowBlueprintRewardModal,
   setShowQuickDeploySelection,
-  setSelectedQuickDeploy,
   setShowLoadingEncounter,
   loadingEncounterData,
   setLoadingEncounterData,
@@ -588,8 +587,7 @@ export function useTacticalEncounters({
       // Close quick deploy selection
       setShowQuickDeploySelection(false);
 
-      // Store selected quick deploy
-      setSelectedQuickDeploy(deployment);
+
 
       // Set up loading encounter data with quick deploy info
       setLoadingEncounterData({
@@ -671,8 +669,7 @@ export function useTacticalEncounters({
       setActiveSalvage(null);
       setShowSalvageModal(false);
 
-      // Store selected quick deploy
-      setSelectedQuickDeploy(deployment);
+
 
       // Set up loading encounter data with quick deploy info
       setLoadingEncounterData({
@@ -717,8 +714,7 @@ export function useTacticalEncounters({
         quickDeployId: deployment.id  // Pass the quick deploy ID
       });
 
-      // Store selected quick deploy
-      setSelectedQuickDeploy(deployment);
+
 
       // Show loading screen
       pendingCombatLoadingRef.current = true; // Prevent waypoint clearing during loading
