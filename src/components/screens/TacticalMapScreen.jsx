@@ -38,13 +38,8 @@ import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import waypointManager from '../../managers/WaypointManager.js';
 import transitionManager from '../../managers/TransitionManager.js';
 import rewardManager from '../../managers/RewardManager.js';
-import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { mapTiers } from '../../data/mapData.js';
-import { getValidDeploymentsForDeck } from '../../logic/quickDeploy/QuickDeployValidator.js';
-import { getAllShips } from '../../data/shipData.js';
-import { calculateSectionBaseStats } from '../../logic/statsCalculator.js';
 import { buildShipSections } from '../../logic/singlePlayer/shipSectionBuilder.js';
-import MusicManager from '../../managers/MusicManager.js';
 import SoundManager from '../../managers/SoundManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
@@ -58,6 +53,7 @@ import { HelpCircle } from 'lucide-react';
 import TacticalItemsPanel from '../ui/TacticalItemsPanel.jsx';
 import TacticalItemConfirmationModal from '../modals/TacticalItemConfirmationModal.jsx';
 import { getTacticalItemById } from '../../data/tacticalItemData.js';
+import { useTacticalSubscriptions } from '../../hooks/useTacticalSubscriptions.js';
 import './TacticalMapScreen.css';
 
 /**
@@ -184,9 +180,6 @@ function TacticalMapScreen() {
   // Ref to resolve encounter promise (allows async waiting in movement loop)
   const encounterResolveRef = useRef(null);
 
-  // Ref to track initial mount (skip safety redirect on first render)
-  const isInitialMount = useRef(true);
-
   // Movement animation speed (ms per hex)
   // Split into scan + move for dramatic effect
   const SCAN_DELAY = 500;   // Time to show scan animation
@@ -198,128 +191,9 @@ function TacticalMapScreen() {
 
   // Threat level change animation
   const [threatAlert, setThreatAlert] = useState(null);  // 'medium' | 'high' | null
-  const prevThresholdRef = useRef(null);
 
   // Pathfinding mode state: 'lowEncounter' (lowest encounter chance) or 'lowThreat' (lowest detection)
   const [pathfindingMode, setPathfindingMode] = useState('lowEncounter');
-
-  // Music override for extraction success screen
-  useEffect(() => {
-    if (showExtractionScreen) {
-      MusicManager.getInstance().setOverride('victory');
-    }
-    return () => {
-      if (showExtractionScreen) MusicManager.getInstance().clearOverride();
-    };
-  }, [showExtractionScreen]);
-
-  // Music override for escape loading screen
-  useEffect(() => {
-    if (showEscapeLoadingScreen) {
-      MusicManager.getInstance().setOverride('victory');
-    }
-    return () => {
-      if (showEscapeLoadingScreen) MusicManager.getInstance().clearOverride();
-    };
-  }, [showEscapeLoadingScreen]);
-
-  // Helper: apply threat-based music override
-  const applyThreatMusic = useCallback((detection) => {
-    if (detection == null) return;
-    const musicManager = MusicManager.getInstance();
-    const threshold = detection < 50 ? 'low' : detection < 80 ? 'medium' : 'high';
-
-    if (threshold === 'low') {
-      musicManager.clearOverride();
-    } else if (threshold === 'medium') {
-      musicManager.setOverride('tactical_medium');
-    } else {
-      musicManager.setOverride('tactical_high');
-    }
-  }, []);
-
-  // Apply threat music when detection changes during gameplay
-  useEffect(() => {
-    applyThreatMusic(tacticalMapRunState?.detection);
-  }, [tacticalMapRunState?.detection, applyThreatMusic]);
-
-  // Also apply on mount (handles return from combat where detection is unchanged)
-  // Reads directly from state manager to avoid stale closure / dependency issues
-  useEffect(() => {
-    applyThreatMusic(tacticalMapStateManager.getState()?.detection);
-    return () => MusicManager.getInstance().clearOverride();
-  }, [applyThreatMusic]);
-
-  // Threat level change animation
-  useEffect(() => {
-    const detection = tacticalMapRunState?.detection;
-    if (detection == null) return;
-
-    const threshold = detection < 50 ? 'low' : detection < 80 ? 'medium' : 'high';
-    const prev = prevThresholdRef.current;
-    prevThresholdRef.current = threshold;
-
-    // Only animate on increases (not on mount or decreases)
-    if (prev == null) return;
-    const levels = { low: 0, medium: 1, high: 2 };
-    if (levels[threshold] > levels[prev]) {
-      setThreatAlert(threshold);
-      const timer = setTimeout(() => setThreatAlert(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [tacticalMapRunState?.detection]);
-
-  // Subscribe to game state updates (both GameStateManager and TacticalMapStateManager)
-  useEffect(() => {
-    const unsubscribeGame = gameStateManager.subscribe(() => {
-      setGameState(gameStateManager.getState());
-    });
-    const unsubscribeTactical = tacticalMapStateManager.subscribe((event) => {
-      debugLog('RUN_STATE', 'TacticalMapStateManager subscription UPDATE:', {
-        eventType: event?.type,
-        hasMapData: !!event?.state?.mapData,
-        backgroundIndex: event?.state?.mapData?.backgroundIndex
-      });
-      setTacticalMapRunState(tacticalMapStateManager.getState());
-    });
-    return () => {
-      unsubscribeGame();
-      unsubscribeTactical();
-    };
-  }, []);
-
-  // Component lifecycle logging
-  useEffect(() => {
-    const runState = tacticalMapStateManager.getState();
-    debugLog('COMBAT_FLOW', 'TacticalMapScreen mounted', {
-      appState: gameStateManager.getState().appState,
-      hasRunState: !!runState,
-      playerPosition: runState?.playerPosition,
-      hasPendingPath: !!runState?.pendingPath,
-      hasPendingPOICombat: !!runState?.pendingPOICombat,
-      hasPendingBlockadeExtraction: !!runState?.pendingBlockadeExtraction
-    });
-
-    return () => {
-      debugLog('COMBAT_FLOW', 'TacticalMapScreen unmounting');
-    };
-  }, []);
-
-  // Check for tactical map tutorial on first visit
-  useEffect(() => {
-    if (!MissionService.isTutorialDismissed('tacticalMap')) {
-      setShowTutorial('tacticalMap');
-    }
-    // Record screen visit for missions
-    MissionService.recordProgress('SCREEN_VISIT', { screen: 'tacticalMap' });
-  }, []);
-
-  /**
-   * Check if reward type is a drone blueprint
-   */
-  const isBlueprintRewardType = (rewardType) => {
-    return rewardType?.startsWith('DRONE_BLUEPRINT_');
-  };
 
   // Check for pending waypoints after returning from combat
   // This restores waypoints for journey resumption (SEPARATE from POI loot logic)
@@ -523,165 +397,40 @@ function TacticalMapScreen() {
     }
   }, []); // Run once on mount
 
-  // Track if we need to auto-extract after blockade victory
-  const pendingBlockadeExtractionRef = useRef(false);
-
-  // Check for pending blockade extraction on mount
-  // This handles returning from blockade combat - triggers extraction automatically
-  useEffect(() => {
-    const runState = tacticalMapStateManager.getState();
-    if (runState?.pendingBlockadeExtraction) {
-      debugLog('EXTRACTION', 'Pending blockade extraction detected - will auto-extract');
-      pendingBlockadeExtractionRef.current = true;
-
-      // Clear the flag
-      tacticalMapStateManager.setState({
-        pendingBlockadeExtraction: undefined
-      });
-    }
-  }, []); // Run once on mount
-
-  // Effect to trigger extraction after flag is detected (separate to avoid calling handleExtract during render)
-  useEffect(() => {
-    if (pendingBlockadeExtractionRef.current) {
-      pendingBlockadeExtractionRef.current = false;
-      // Small delay to ensure state is updated
-      const timer = setTimeout(() => {
-        debugLog('EXTRACTION', 'Triggering auto-extraction after blockade victory');
-        // Call the extraction handler directly - it will handle loot selection and run summary
-        const runState = tacticalMapStateManager.getState();
-        if (runState) {
-          const result = ExtractionController.completeExtraction(runState);
-
-          // Prepare extraction screen data
-          setExtractionScreenData({
-            creditsEarned: runState.creditsEarned || 0,
-            cardsCollected: runState.collectedLoot?.filter(l => l.type === 'card').length || 0,
-            aiCoresEarned: runState.aiCoresEarned || 0
-          });
-
-          // Store the result for after animation
-          pendingExtractionRef.current = result;
-
-          // Show extraction loading screen
-          setShowExtractionScreen(true);
-        }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, []); // Run once on mount
-
   // Read run state from TacticalMapStateManager
   // This ensures backgroundIndex and other critical data persists across combat transitions
   const { singlePlayerShipSlots, singlePlayerShipComponentInstances, quickDeployments } = gameState;
   const currentRunState = tacticalMapRunState;
 
-  // Calculate valid quick deployments for current ship slot
-  const validQuickDeployments = React.useMemo(() => {
-    debugLog('QUICK_DEPLOY', '=== Validation Start ===');
-    debugLog('QUICK_DEPLOY', 'quickDeployments count:', quickDeployments?.length);
-    debugLog('QUICK_DEPLOY', 'shipSlotId:', currentRunState?.shipSlotId);
+  // Shared refs passed to subscription hook (used by both subscription effects and handlers)
+  const sharedRefs = React.useMemo(() => ({
+    shouldStopMovement,
+    pendingExtractionRef,
+  }), []);
 
-    if (!quickDeployments || !singlePlayerShipSlots || currentRunState?.shipSlotId == null) {
-      debugLog('QUICK_DEPLOY', 'Early return - missing data', {
-        hasQuickDeployments: !!quickDeployments,
-        hasShipSlots: !!singlePlayerShipSlots,
-        shipSlotId: currentRunState?.shipSlotId
-      });
-      return [];
-    }
-
-    const currentSlot = singlePlayerShipSlots.find(s => s.id === currentRunState.shipSlotId);
-    debugLog('QUICK_DEPLOY', 'currentSlot found:', { found: !!currentSlot, status: currentSlot?.status });
-
-    if (!currentSlot || currentSlot.status !== 'active') {
-      debugLog('QUICK_DEPLOY', 'Early return - slot not found or not active');
-      return [];
-    }
-
-    debugLog('QUICK_DEPLOY', 'slot drones:', currentSlot?.droneSlots?.filter(s => s.assignedDrone).map(s => s.assignedDrone));
-
-    // Get ship card for stats calculation
-    const shipCard = getAllShips().find(s => s.id === currentSlot.shipId);
-    debugLog('QUICK_DEPLOY', 'shipCard found:', { found: !!shipCard, shipId: currentSlot.shipId });
-
-    if (!shipCard) {
-      debugLog('QUICK_DEPLOY', 'Early return - ship card not found');
-      return [];
-    }
-
-    // Convert shipComponents { sectionId: lane } to ordered array [left, middle, right]
-    const shipComponentsObj = currentSlot.shipComponents || {};
-    const laneOrder = { 'l': 0, 'm': 1, 'r': 2 };
-    const placedSections = Object.entries(shipComponentsObj)
-      .sort((a, b) => laneOrder[a[1]] - laneOrder[b[1]])
-      .map(([sectionId]) => sectionId);
-
-    debugLog('QUICK_DEPLOY', 'placedSections:', placedSections);
-
-    // Build proper ship sections with hull/thresholds
-    const shipSections = {};
-    for (const sectionId of placedSections) {
-      const sectionTemplate = shipComponentCollection.find(c => c.id === sectionId);
-      if (sectionTemplate) {
-        const baseStats = calculateSectionBaseStats(shipCard, sectionTemplate);
-        shipSections[sectionId] = {
-          ...JSON.parse(JSON.stringify(sectionTemplate)),
-          hull: baseStats.hull,
-          maxHull: baseStats.maxHull,
-          thresholds: baseStats.thresholds
-        };
-      }
-    }
-
-    debugLog('QUICK_DEPLOY', 'shipSections built:', Object.keys(shipSections));
-    debugLog('QUICK_DEPLOY', '=== Calling validator ===');
-
-    const mockPlayerState = { shipSections };
-    const result = getValidDeploymentsForDeck(quickDeployments, currentSlot, mockPlayerState, placedSections);
-
-    debugLog('QUICK_DEPLOY', 'Valid deployments returned:', result.length);
-    return result;
-  }, [quickDeployments, singlePlayerShipSlots, currentRunState?.shipSlotId]);
-
-  // Safety check - redirect to hangar if no active run
-  // Skip on initial mount to avoid race condition with state propagation
-  // Enhanced: Cancel all pending async operations before redirecting
-  useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-
-    if (!currentRunState || !currentRunState.mapData) {
-      debugLog('MODE_TRANSITION', '=== MODE: tacticalMap -> hangar (safety redirect) ===', {
-        trigger: 'safety_check',
-        source: 'TacticalMapScreen.useEffect[safety]',
-        detail: 'No active run detected - auto-redirecting to hangar',
-        hadEncounter: !!currentEncounter,
-        isMoving,
-        hadLoadingEncounter: showLoadingEncounter,
-        runAbandoning: gameStateManager.get('runAbandoning')
-      });
-
-      debugLog('SP_COMBAT', 'Safety check triggered - no active run', {
-        hadEncounter: !!currentEncounter,
-        isMoving: isMoving,
-        hadLoadingEncounter: showLoadingEncounter,
-        runAbandoning: gameStateManager.get('runAbandoning')
-      });
-
-      // Cancel any pending operations BEFORE triggering navigation
-      shouldStopMovement.current = true;
-      setIsMoving(false);
-      setShowLoadingEncounter(false);
-      setLoadingEncounterData(null);
-      setCurrentEncounter(null);
-
-      debugLog('MODE_TRANSITION', '[WARN] No active run detected, returning to hangar');
-      gameStateManager.setState({ appState: 'hangar' });
-    }
-  }, [currentRunState, currentEncounter, isMoving, showLoadingEncounter]);
+  // --- State subscriptions, music, threat, tutorial, blockade, quick deploy validation ---
+  const { validQuickDeployments, isBlueprintRewardType } = useTacticalSubscriptions({
+    showExtractionScreen,
+    showEscapeLoadingScreen,
+    tacticalMapRunState,
+    currentEncounter,
+    isMoving,
+    showLoadingEncounter,
+    setGameState,
+    setTacticalMapRunState,
+    setShowTutorial,
+    setThreatAlert,
+    setExtractionScreenData,
+    setShowExtractionScreen,
+    setIsMoving,
+    setShowLoadingEncounter,
+    setLoadingEncounterData,
+    setCurrentEncounter,
+    sharedRefs,
+    singlePlayerShipSlots,
+    quickDeployments,
+    currentRunState,
+  });
 
   // --- Hooks must be above early returns ---
 
