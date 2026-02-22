@@ -11,7 +11,7 @@
 | 1 | App.jsx (7,007) | REFACTOR_APP.md | [ ] | |
 | 2 | ActionProcessor.js (4,837→1,005) | REFACTOR_ACTION_PROCESSOR.md | [x] | Complete 2026-02-22. 9 strategy files extracted to src/logic/actions/, strategy registry replaces 37-case switch, 21 tests passing. |
 | 3 | TacticalMapScreen.jsx (3,548) | REFACTOR_TACTICAL_MAP_SCREEN.md | [ ] | |
-| 4 | GameStateManager.js (3,155→2,069) | REFACTOR_GAME_STATE_MANAGER.md | [~] | Sessions A+B complete 2026-02-22: cleanup, logging, test migration, endRun fix, 4 extractions (StateValidationService, GuestSyncManager, SinglePlayerInventoryManager, TacticalItemManager). Session C pending for ShipSlotManager + RunLifecycleManager. |
+| 4 | GameStateManager.js (3,155→2,074) | REFACTOR_GAME_STATE_MANAGER.md | [~] | Sessions A+B complete 2026-02-22: cleanup, logging, test migration, endRun fix, 4 extractions (StateValidationService, GuestSyncManager, SinglePlayerInventoryManager, TacticalItemManager). Session C pending for ShipSlotManager + RunLifecycleManager. |
 | 5 | GameFlowManager.js (2,671) | REFACTOR_GAME_FLOW_MANAGER.md | [ ] | |
 
 ## Tier 2 — High Value

@@ -196,16 +196,4 @@ class GuestSyncManager {
   }
 }
 
-// Singleton — initialized when GSM is ready (see GameStateManager constructor)
-let guestSyncManager = null;
-
-export function initGuestSyncManager(gsm) {
-  guestSyncManager = new GuestSyncManager(gsm);
-  return guestSyncManager;
-}
-
-export function getGuestSyncManager() {
-  return guestSyncManager;
-}
-
 export default GuestSyncManager;

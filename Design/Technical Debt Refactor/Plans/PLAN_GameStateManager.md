@@ -49,9 +49,9 @@
 
 ### Session B (2026-02-22)
 - **Before**: 3,142 lines, 12 tests in `__tests__/`
-- **After**: 2,069 lines (34% reduction), 4 new files, 23 new tests
-- **Extractions**: StateValidationService (582 lines), GuestSyncManager (221 lines), SinglePlayerInventoryManager (146 lines), TacticalItemManager (124 lines)
+- **After**: 2,074 lines (34% reduction), 4 new files, 23 new tests
+- **Extractions**: StateValidationService (474 lines), GuestSyncManager (199 lines), SinglePlayerInventoryManager (140 lines), TacticalItemManager (130 lines)
 - **Tests**: 3,622 passing full suite, 212 test files
-- **Commits**: 4 (one per extraction)
-- **Deviations**: Plan called for updating external callers to import new managers directly. Instead, kept facades on GSM for all callers — behavioral result identical, reduces blast radius. Facade cleanup deferred to FUTURE_IMPROVEMENTS.md.
-- **Behavior changes**: None — all facades are pass-through delegation
+- **Commits**: 6 (one per extraction + docs + code review fixes)
+- **Deviations**: Plan called for updating external callers to import new managers directly. Instead, kept facades on GSM for all callers — behavioral result identical, reduces blast radius. Facade cleanup deferred to FUTURE_IMPROVEMENTS.md. Code review caught 2 missed property accesses (optimisticActionService, validatingState) that bypassed method facades — fixed with getter proxies.
+- **Behavior changes**: None — all facades and property proxies are pass-through delegation

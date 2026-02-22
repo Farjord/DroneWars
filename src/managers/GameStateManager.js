@@ -152,6 +152,11 @@ class GameStateManager {
   hasRecentOptimisticActions() { return this.guestSyncManager.hasRecentOptimisticActions(); }
   clearOptimisticActions() { this.guestSyncManager.clearOptimisticActions(); }
 
+  // Property proxies — external code accesses these directly on GSM
+  get optimisticActionService() { return this.guestSyncManager.optimisticActionService; }
+  get validatingState() { return this.guestSyncManager.validatingState; }
+  set validatingState(value) { this.guestSyncManager.validatingState = value; }
+
   // --- EVENT SYSTEM ---
 
   /**

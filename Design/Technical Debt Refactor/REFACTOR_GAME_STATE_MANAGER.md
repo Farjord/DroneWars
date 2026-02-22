@@ -556,10 +556,10 @@ Each step is independently committable with tests green.
 
 ### Final State (Session B — Extract 4 Managers)
 
-- **GSM line count**: 2,069 (down from 3,142 — 1,073 lines removed, 34% reduction)
+- **GSM line count**: 2,074 (down from 3,142 — 1,068 lines removed, 34% reduction)
 - **New files created**:
   - `src/logic/state/StateValidationService.js` (474 lines) — 9 validation methods
-  - `src/managers/GuestSyncManager.js` (211 lines) — P2P guest sync, optimistic actions
+  - `src/managers/GuestSyncManager.js` (199 lines) — P2P guest sync, optimistic actions
   - `src/managers/SinglePlayerInventoryManager.js` (140 lines) — save/load, inventory, components
   - `src/managers/TacticalItemManager.js` (130 lines) — tactical items, card pack shop
 - **New test files**:
@@ -578,7 +578,8 @@ Each step is independently committable with tests green.
 | 3 | 2026-02-22 | Converted 56 console calls to debugLog with 6 new categories | Logging destinations changed from console to debugLog | Logs now filtered by category toggle; test assertions updated to verify behavior instead of console spies | None |
 | 4 | 2026-02-22 | Fixed endRun direct state mutations — all changes now via immutable build + setState | Yes — same data transformations | Subscribers now notified of singlePlayerInventory and singlePlayerShipSlots changes (previously silent mutations) | None |
 | 5 | 2026-02-22 | Migrated 12 GSM test files to `src/managers/__tests__/`, fixed all imports | Yes — all 871 tests pass | None | None |
-| 6 | 2026-02-22 | Extracted StateValidationService (582 lines, 9 methods) to src/logic/state/ | Yes — all delegations verified via facades | None | Updated consecutiveCombat test to spy on stateValidationService instead of GSM |
-| 7 | 2026-02-22 | Extracted GuestSyncManager (221 lines, 9 methods + constructor state) to src/managers/ | Yes — facades on GSM for GFM/GMQS consumers | None | Facades kept for GFM/GMQS (constructor injection change deferred) |
-| 8 | 2026-02-22 | Extracted SinglePlayerInventoryManager (146 lines, 9 methods) to src/managers/ | Yes — all save/load tests pass via facades | None | External callers keep using GSM facades |
-| 9 | 2026-02-22 | Extracted TacticalItemManager (124 lines, 4 methods) to src/managers/ | Yes — all tactical item and card pack tests pass via facades | None | External callers keep using GSM facades |
+| 6 | 2026-02-22 | Extracted StateValidationService (474 lines, 9 methods) to src/logic/state/ | Yes — all delegations verified via facades | None | Updated consecutiveCombat test to spy on stateValidationService instead of GSM |
+| 7 | 2026-02-22 | Extracted GuestSyncManager (199 lines, 9 methods + constructor state) to src/managers/ | Yes — facades on GSM for GFM/GMQS consumers | None | Facades kept for GFM/GMQS (constructor injection change deferred) |
+| 8 | 2026-02-22 | Extracted SinglePlayerInventoryManager (140 lines, 9 methods) to src/managers/ | Yes — all save/load tests pass via facades | None | External callers keep using GSM facades |
+| 9 | 2026-02-22 | Extracted TacticalItemManager (130 lines, 4 methods) to src/managers/ | Yes — all tactical item and card pack tests pass via facades | None | External callers keep using GSM facades |
+| 10 | 2026-02-22 | Code review fixes: added getter proxies for optimisticActionService/validatingState on GSM, removed dead singleton code from GuestSyncManager | Yes — property access paths preserved | None | None |
