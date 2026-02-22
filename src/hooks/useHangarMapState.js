@@ -111,7 +111,7 @@ const useHangarMapState = (hexGridData, mapContainerRef) => {
   };
 
   return {
-    zoom, pan, isDragging,
+    zoom, setZoom, pan, isDragging,
     transformRef,
     zoomToSector,
     handleMapMouseDown, handleMapMouseMove, handleMapMouseUp,
