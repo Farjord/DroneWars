@@ -176,9 +176,7 @@ class GameFlowManager {
 
               debugLog('PASS_LOGIC', '📋 [GUEST] Queued OPPONENT PASSED animation from state detection');
 
-              // Trigger playback if not already playing
-              if (!this.phaseAnimationQueue.isPlaying()) {
-                this.phaseAnimationQueue.startPlayback('GFM:opponent_detected:170');
+              if (this._tryStartPlayback('GFM:opponent_detected:170')) {
                 debugLog('PASS_LOGIC', '🎬 [GUEST] Started playback for OPPONENT PASSED');
               }
             }
@@ -285,23 +283,13 @@ class GameFlowManager {
           alreadyPlaying: this.phaseAnimationQueue?.isPlaying() || false
         });
 
-        if (this.phaseAnimationQueue) {
-          const queueLength = this.phaseAnimationQueue.getQueueLength();
-          if (queueLength > 0 && !this.phaseAnimationQueue.isPlaying()) {
-            debugLog('PASS_LOGIC', `🎬 [GUEST] Starting pass notification playback`, {
-              queuedAnimations: queueLength,
-              bothPassed,
-              explanation: bothPassed
-                ? 'Starting playback despite bothPassed=true (optimistic processing race condition fixed)'
-                : 'Starting playback for single player pass'
-            });
-            this.phaseAnimationQueue.startPlayback('GFM:guest_pass:256');
-          } else {
-            debugLog('PASS_LOGIC', `ℹ️ [GUEST] No playback needed`, {
-              queueLength,
-              alreadyPlaying: this.phaseAnimationQueue.isPlaying()
-            });
-          }
+        if (this._tryStartPlayback('GFM:guest_pass:256')) {
+          debugLog('PASS_LOGIC', `🎬 [GUEST] Starting pass notification playback`, {
+            bothPassed,
+            explanation: bothPassed
+              ? 'Starting playback despite bothPassed=true (optimistic processing race condition fixed)'
+              : 'Starting playback for single player pass'
+          });
         }
 
         // PHASE MANAGER INTEGRATION: Guest now waits for Host's PhaseManager broadcast
@@ -335,14 +323,8 @@ class GameFlowManager {
         // Single player passed - start PhaseAnimationQueue playback for pass notification
         // (Pass notification was queued by ActionProcessor.processPlayerPass)
         // This handles both Host and Local modes
-        if (this.phaseAnimationQueue) {
-          const queueLength = this.phaseAnimationQueue.getQueueLength();
-          if (queueLength > 0 && !this.phaseAnimationQueue.isPlaying()) {
-            debugLog('TIMING', `🎬 [${currentState.gameMode.toUpperCase()}] Starting pass notification playback`, {
-              queuedAnimations: queueLength
-            });
-            this.phaseAnimationQueue.startPlayback('GFM:host_pass:302');
-          }
+        if (this._tryStartPlayback('GFM:host_pass:302')) {
+          debugLog('TIMING', `🎬 [${currentState.gameMode.toUpperCase()}] Starting pass notification playback`);
         }
       }
     }
@@ -649,16 +631,8 @@ class GameFlowManager {
         // Start animation playback for host after transitioning to sequential phase
         // This ensures queued phase announcements (like DEPLOYMENT) play for the host
         // (Guest gets playback via cascade finally block, but host needs it here)
-        if (this.phaseAnimationQueue) {
-          const queueLength = this.phaseAnimationQueue.getQueueLength();
-          if (queueLength > 0 && !this.phaseAnimationQueue.isPlaying()) {
-            debugLog('TIMING', `🎬 [HOST] Starting animation playback after simultaneous→sequential transition`, {
-              queuedAnimations: queueLength,
-              phase: nextPhase,
-              gameMode
-            });
-            this.phaseAnimationQueue.startPlayback('GFM:sim_to_seq:599');
-          }
+        if (this._tryStartPlayback('GFM:sim_to_seq:599')) {
+          debugLog('TIMING', `🎬 [HOST] Starting animation playback after simultaneous→sequential transition`, { phase: nextPhase, gameMode });
         }
       } else {
         // Continue with normal simultaneous phase transition
@@ -675,16 +649,8 @@ class GameFlowManager {
 
         // Start animation playback after transitioning to another simultaneous phase
         // This ensures queued phase announcements play before players can interact
-        if (this.phaseAnimationQueue) {
-          const queueLength = this.phaseAnimationQueue.getQueueLength();
-          if (queueLength > 0 && !this.phaseAnimationQueue.isPlaying()) {
-            debugLog('TIMING', `🎬 [${gameMode.toUpperCase()}] Starting animation playback after simultaneous→simultaneous transition`, {
-              queuedAnimations: queueLength,
-              phase: nextPhase,
-              gameMode
-            });
-            this.phaseAnimationQueue.startPlayback('GFM:sim_to_sim:625');
-          }
+        if (this._tryStartPlayback('GFM:sim_to_sim:625')) {
+          debugLog('TIMING', `🎬 [${gameMode.toUpperCase()}] Starting animation playback after simultaneous→simultaneous transition`, { phase: nextPhase, gameMode });
         }
       }
       // Note: Commitment cleanup handled by ActionProcessor.processPhaseTransition()
@@ -895,16 +861,9 @@ class GameFlowManager {
       const inCascade = this.isInCheckpointCascade;
       const currentPhase = currentState.turnPhase;
 
-      if (!isGuest && !inCascade && !this.isAutomaticPhase(currentPhase) && this.phaseAnimationQueue) {
-        // We've finished automatic cascade and landed on non-automatic phase - start playback
-        const queueLength = this.phaseAnimationQueue.getQueueLength();
-        if (queueLength > 0) {
-          debugLog('TIMING', `🎬 [HOST/LOCAL] Starting animation playback after automatic cascade`, {
-            queuedAnimations: queueLength,
-            finalPhase: currentPhase,
-            gameMode: currentState.gameMode
-          });
-          this.phaseAnimationQueue.startPlayback('GFM:auto_cascade:880');
+      if (!isGuest && !inCascade && !this.isAutomaticPhase(currentPhase)) {
+        if (this._tryStartPlayback('GFM:auto_cascade:880')) {
+          debugLog('TIMING', `🎬 [HOST/LOCAL] Starting animation playback after automatic cascade`, { finalPhase: currentPhase, gameMode: currentState.gameMode });
         }
       }
     }
@@ -1004,15 +963,8 @@ class GameFlowManager {
       // Start animation playback for guest after optimistic processing completes
       // Guest has queued all phase announcements (DETERMINING FIRST PLAYER, ENERGY RESET, etc.)
       // and is now waiting at checkpoint - start playback so user sees announcements
-      if (this.phaseAnimationQueue) {
-        const queueLength = this.phaseAnimationQueue.getQueueLength();
-        if (queueLength > 0 && !this.phaseAnimationQueue.isPlaying()) {
-          debugLog('TIMING', `🎬 [GUEST] Starting animation playback after optimistic cascade`, {
-            queuedAnimations: queueLength,
-            note: 'Guest will see all phase announcements while waiting at checkpoint'
-          });
-          this.phaseAnimationQueue.startPlayback('GFM:guest_cascade:987');
-        }
+      if (this._tryStartPlayback('GFM:guest_cascade:987')) {
+        debugLog('TIMING', `🎬 [GUEST] Starting animation playback after optimistic cascade`);
       }
     }
   }
@@ -1132,6 +1084,18 @@ class GameFlowManager {
     }
 
     return null;
+  }
+
+  // Start animation playback if queue has pending items and isn't already playing.
+  // Returns true if playback was started.
+  _tryStartPlayback(source) {
+    if (!this.phaseAnimationQueue) return false;
+    const queueLength = this.phaseAnimationQueue.getQueueLength();
+    if (queueLength > 0 && !this.phaseAnimationQueue.isPlaying()) {
+      this.phaseAnimationQueue.startPlayback(source);
+      return true;
+    }
+    return false;
   }
 
   // Lazy-init for paths that set gameStateManager without calling initialize()
@@ -1440,15 +1404,9 @@ class GameFlowManager {
     const currentState = this.gameStateManager.getState();
     const inCascade = this.isInCheckpointCascade;
 
-    if (!inCascade && this.isSequentialPhase(newPhase) && this.phaseAnimationQueue) {
-      const queueLength = this.phaseAnimationQueue.getQueueLength();
-      if (queueLength > 0 && !this.phaseAnimationQueue.isPlaying()) {
-        debugLog('TIMING', `🎬 [${currentState.gameMode.toUpperCase()}] Starting animation playback after sequential transition`, {
-          queuedAnimations: queueLength,
-          phase: newPhase,
-          gameMode: currentState.gameMode
-        });
-        this.phaseAnimationQueue.startPlayback('GFM:seq_transition:2060');
+    if (!inCascade && this.isSequentialPhase(newPhase)) {
+      if (this._tryStartPlayback('GFM:seq_transition:2060')) {
+        debugLog('TIMING', `🎬 [${currentState.gameMode.toUpperCase()}] Starting animation playback after sequential transition`, { phase: newPhase, gameMode: currentState.gameMode });
       }
     }
 
