@@ -20,11 +20,9 @@ import ConfirmationModal from '../modals/ConfirmationModal';
 import DeployingScreen from '../ui/DeployingScreen';
 import LoadingEncounterScreen from '../ui/LoadingEncounterScreen';
 import QuickDeployManager from '../quickDeploy/QuickDeployManager';
-import ReputationTrack from '../ui/ReputationTrack';
 import ReputationProgressModal from '../modals/ReputationProgressModal';
 import ReputationRewardModal from '../modals/ReputationRewardModal';
 import ReputationService from '../../logic/reputation/ReputationService';
-import MissionPanel from '../ui/MissionPanel';
 import MissionTrackerModal from '../modals/MissionTrackerModal';
 import MissionService from '../../logic/missions/MissionService';
 import {
@@ -37,6 +35,7 @@ import {
   TacticalMapOverviewTutorialModal,
   DeckBuilderTutorialModal,
 } from '../modals/tutorials';
+import HangarHeader from '../ui/HangarHeader';
 import NewsTicker from '../ui/NewsTicker';
 import {
   getOffScreenPOIs, getArrowEdgePosition,
@@ -48,7 +47,7 @@ import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js'
 import { validateShipSlot } from '../../utils/slotDamageUtils.js';
 import { ECONOMY } from '../../data/economyData.js';
 import { starterDeck } from '../../data/playerDeckData.js';
-import { Plus, Minus, RotateCcw, ChevronRight, Star, Trash2, AlertTriangle, Cpu, Lock, HelpCircle } from 'lucide-react';
+import { Plus, Minus, RotateCcw, ChevronRight, Star, Trash2, AlertTriangle, Lock } from 'lucide-react';
 import { getShipById } from '../../data/shipData.js';
 
 // Background image for the map area
@@ -512,91 +511,12 @@ const HangarScreen = () => {
       overflow: 'hidden',
       backgroundColor: 'var(--color-bg-primary)'
     }}>
-      {/* Header Section */}
-      <header style={{
-        background: 'linear-gradient(45deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px), linear-gradient(-45deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px), linear-gradient(180deg, rgba(20, 28, 42, 0.95) 0%, rgba(10, 14, 22, 0.95) 100%)',
-        backgroundSize: '10px 10px, 10px 10px, 100% 100%',
-        height: '60px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 2rem',
-        borderBottom: '1px solid rgba(6, 182, 212, 0.3)',
-        zIndex: 10
-      }}>
-        {/* Left: Title */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <h1 style={{
-            fontSize: '1.5rem',
-            color: '#e5e7eb',
-            letterSpacing: '0.1em'
-          }}>HANGAR</h1>
-          <button
-            onClick={() => {
-              setShowTutorial('intro');
-              setIsHelpIconTutorial(true);
-            }}
-            title="Show help"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px',
-              color: '#06b6d4',
-              opacity: 0.7,
-              transition: 'opacity 0.2s ease'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.7'}
-          >
-            <HelpCircle size={18} />
-          </button>
-        </div>
-
-        {/* Right: Stats */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          {[
-            { label: 'CREDITS', value: singlePlayerProfile?.credits || 0, color: '#fbbf24' },
-            { label: 'AI CORES', value: singlePlayerProfile?.aiCores || 0, color: '#f97316', icon: Cpu },
-            { label: 'TOKENS', value: singlePlayerProfile?.securityTokens || 0, color: '#06b6d4' },
-            { label: 'MAP KEYS', value: 0, color: '#60a5fa' },
-            { label: 'RUNS', value: singlePlayerProfile?.stats?.runsCompleted || 0, color: '#e5e7eb' },
-            { label: 'EXTRACTIONS', value: singlePlayerProfile?.stats?.runsCompleted || 0, color: '#22c55e' },
-            { label: 'COMBATS WON', value: singlePlayerProfile?.stats?.totalCombatsWon || 0, color: '#10b981' },
-            { label: 'MAX TIER', value: singlePlayerProfile?.stats?.highestTierCompleted || 1, color: '#a855f7' }
-          ].map(({ label, value, color, icon: Icon }) => (
-            <div key={label} className="dw-stat-box" style={{ minWidth: '70px', padding: '6px 10px' }}>
-              <span className="dw-stat-box-label">{label}</span>
-              <span className="dw-stat-box-value" style={{ color }}>{value}</span>
-            </div>
-          ))}
-
-          {/* Reputation Track */}
-          {(() => {
-            const repData = ReputationService.getLevelData();
-            const unclaimed = ReputationService.getUnclaimedRewards();
-            return (
-              <ReputationTrack
-                current={repData.currentRep}
-                level={repData.level}
-                progress={repData.progress}
-                currentInLevel={repData.currentInLevel}
-                requiredForNext={repData.requiredForNext}
-                unclaimedCount={unclaimed.length}
-                isMaxLevel={repData.isMaxLevel}
-                onClick={() => { SoundManager.getInstance().play('ui_click'); setShowReputationProgress(true); }}
-              />
-            );
-          })()}
-
-          {/* Mission Panel */}
-          <MissionPanel
-            activeCount={MissionService.getActiveCount()}
-            claimableCount={MissionService.getClaimableCount()}
-            onClick={() => { SoundManager.getInstance().play('ui_click'); setShowMissionTracker(true); }}
-          />
-        </div>
-      </header>
+      <HangarHeader
+        singlePlayerProfile={singlePlayerProfile}
+        onShowHelp={() => { setShowTutorial('intro'); setIsHelpIconTutorial(true); }}
+        onShowReputationProgress={() => setShowReputationProgress(true)}
+        onShowMissionTracker={() => setShowMissionTracker(true)}
+      />
 
       {/* Main Content Area */}
       <div style={{
