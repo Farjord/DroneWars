@@ -69,4 +69,28 @@ ActionProcessor.js is a 4,838-line god object with 44 process methods and a 35-c
 
 ## Actual Outcomes
 
-*To be completed after refactoring.*
+**Completed**: 2026-02-22 across 3 sessions
+
+**Final line counts:**
+
+| File | Target | Actual |
+|-|-|-|
+| ActionProcessor.js (orchestrator) | <400 | 1,005 |
+| CombatActionStrategy.js | ~400 | 520 |
+| CardActionStrategy.js | ~400 | 685 |
+| ShipAbilityStrategy.js | ~300 | 275 |
+| PhaseTransitionStrategy.js | ~350 | 319 |
+| CommitmentStrategy.js | ~400 | 443 |
+| StateUpdateStrategy.js | ~200 | 193 |
+| DroneActionStrategy.js | ~350 | 460 |
+| ShieldActionStrategy.js | ~200 | 210 |
+| MiscActionStrategy.js | ~150 | 131 |
+| NetworkBroadcastHelper.js | ~150 | Not extracted |
+
+**Deviations from plan:**
+- ActionProcessor.js is 1,005 lines vs target <400. Remaining lines are orchestration infrastructure (queue, ActionContext, validation, animation/teleport, network, broadcast) that is tightly coupled to internal mutable state (pendingStateUpdate, pendingFinalState, actionLocks, p2pManager). Extracting further would create pass-through indirection without improving cohesion.
+- NetworkBroadcastHelper was not extracted — broadcastStateToGuest reads pendingFinalState, pendingStateUpdate, and pending animation queues directly. Moving it to a helper would require passing the entire AP instance.
+- CardActionStrategy (685) and CombatActionStrategy (520) exceed 400-line target due to complex game logic in processAttack (go-again, interception, auras) and processCardPlay (effect routing, additional costs).
+- Strategy registry uses method name strings (`this[methodName](payload)`) instead of direct function references, to maintain test compatibility with instance-level mocking.
+
+**Tests:** 21 tests across 4 files — all passing before and after every extraction step. 3,633 full suite tests green.

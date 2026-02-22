@@ -68,6 +68,8 @@ export async function processStatusConsumption(statusType, { droneId, playerId }
       };
     }
   }
+
+  return { success: false, error: `Drone ${droneId} not found on board` };
 }
 
 /**

@@ -107,6 +107,7 @@ const ACTION_STRATEGIES = {
   addShield: 'processAddShield',
   resetShields: 'processResetShields',
   debugAddCardsToHand: 'processDebugAddCardsToHand',
+  forceWin: 'processForceWin',
 };
 
 // Status consumption actions need special routing (status type + shouldEndTurn)

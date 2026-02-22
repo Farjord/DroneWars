@@ -1,11 +1,5 @@
-// ========================================
-// FORCE WIN - DEV FEATURE
-// ========================================
-// Allows developers to quickly win combat for testing
-// extraction mode flows.
-//
-// REFACTORED: Routes through ActionProcessor to avoid
-// architecture violations when called from App.jsx.
+// Force Win — DEV FEATURE
+// Routes through ActionProcessor to trigger proper state updates.
 
 import gameStateManager from '../../managers/GameStateManager.js';
 

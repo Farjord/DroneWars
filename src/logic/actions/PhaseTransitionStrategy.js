@@ -194,13 +194,10 @@ export async function processPhaseTransition(payload, ctx) {
 
     if (phaseAnimationQueue) {
       phaseAnimationQueue.queueAnimation(newPhase, phaseText, subtitle, 'AP:host_transition:1892');
-      debugLog('PHASE_TRANSITIONS', `✅ [PHASE ANNOUNCEMENT] Successfully queued: ${newPhase}`);
       debugLog('PHASE_TRANSITIONS', `🎬 [PHASE ANNOUNCEMENT] Animation queued for: ${newPhase}`);
     } else {
       debugLog('PHASE_TRANSITIONS', `❌ [PHASE ANNOUNCEMENT] Queue not available for: ${newPhase}`);
     }
-
-    debugLog('PHASE_TRANSITIONS', `🎬 [PHASE ANNOUNCEMENT] Animation queued for: ${newPhase}`);
   }
 
   debugLog('PHASE_TRANSITIONS', `[PHASE TRANSITION DEBUG] Phase transition complete: ${currentState.turnPhase} → ${newPhase}`);

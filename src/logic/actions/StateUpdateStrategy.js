@@ -32,33 +32,7 @@ export async function processDraw(payload, ctx) {
 export async function processEnergyReset(payload, ctx) {
   const { player1, player2, shieldsToAllocate, opponentShieldsToAllocate, roundNumber } = payload;
 
-  debugLog('ENERGY', '⚡ ActionProcessor: Processing energy reset');
-
-  debugLog('RESOURCE_RESET', `📥 [ACTIONPROCESSOR] Received energyReset payload`, {
-    roundNumber,
-    player1: {
-      name: player1?.name,
-      energy: player1?.energy,
-      initialDeploymentBudget: player1?.initialDeploymentBudget,
-      deploymentBudget: player1?.deploymentBudget,
-      hasAllFields: {
-        energy: 'energy' in player1,
-        initialDeploymentBudget: 'initialDeploymentBudget' in player1,
-        deploymentBudget: 'deploymentBudget' in player1
-      }
-    },
-    player2: {
-      name: player2?.name,
-      energy: player2?.energy,
-      initialDeploymentBudget: player2?.initialDeploymentBudget,
-      deploymentBudget: player2?.deploymentBudget,
-      hasAllFields: {
-        energy: 'energy' in player2,
-        initialDeploymentBudget: 'initialDeploymentBudget' in player2,
-        deploymentBudget: 'deploymentBudget' in player2
-      }
-    }
-  });
+  debugLog('RESOURCE_RESET', `⚡ Processing energy reset (round ${roundNumber})`);
 
   // Update player states AND roundNumber atomically to prevent race condition
   ctx.setState({
@@ -66,33 +40,6 @@ export async function processEnergyReset(payload, ctx) {
     player2,
     ...(roundNumber !== undefined && { roundNumber })
   }, 'PLAYER_STATES_SET');
-
-  const currentState = ctx.getState();
-  debugLog('RESOURCE_RESET', `✅ [ACTIONPROCESSOR] Game state after setState (atomic update)`, {
-    roundNumber: currentState.roundNumber,
-    player1: {
-      name: currentState.player1?.name,
-      energy: currentState.player1?.energy,
-      initialDeploymentBudget: currentState.player1?.initialDeploymentBudget,
-      deploymentBudget: currentState.player1?.deploymentBudget,
-      hasAllFields: {
-        energy: 'energy' in currentState.player1,
-        initialDeploymentBudget: 'initialDeploymentBudget' in currentState.player1,
-        deploymentBudget: 'deploymentBudget' in currentState.player1
-      }
-    },
-    player2: {
-      name: currentState.player2?.name,
-      energy: currentState.player2?.energy,
-      initialDeploymentBudget: currentState.player2?.initialDeploymentBudget,
-      deploymentBudget: currentState.player2?.deploymentBudget,
-      hasAllFields: {
-        energy: 'energy' in currentState.player2,
-        initialDeploymentBudget: 'initialDeploymentBudget' in currentState.player2,
-        deploymentBudget: 'deploymentBudget' in currentState.player2
-      }
-    }
-  });
 
   // Update shields to allocate if provided (round 2+ only)
   if (shieldsToAllocate !== undefined) {

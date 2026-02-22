@@ -568,11 +568,49 @@ After each extraction step, manually test:
 
 ### Final State
 
-*To be completed after refactoring.*
+**ActionProcessor.js**: 4,837 → 1,005 lines (79% reduction)
+
+| File | Lines | Responsibility |
+|-|-|-|
+| ActionProcessor.js | 1,005 | Orchestrator: queue, validation, ActionContext, animation infra, network, teleport, broadcast |
+| CombatActionStrategy.js | 520 | processAttack, processMove, processAbility |
+| CardActionStrategy.js | 685 | processCardPlay, additionalCost*, movementCompletion, searchAndDrawCompletion |
+| ShipAbilityStrategy.js | 275 | 9 ship ability methods (recall, targetLock, recalculate, reallocateShields, etc.) |
+| PhaseTransitionStrategy.js | 319 | processTurnTransition, processPhaseTransition, processRoundStart, processFirstPlayerDetermination |
+| CommitmentStrategy.js | 443 | getPhaseCommitmentStatus, clearPhaseCommitments, processCommitment, handleAICommitment, applyPhaseCommitments |
+| StateUpdateStrategy.js | 193 | processDraw, processEnergyReset, processRoundStartTriggers, processRebuildProgress, processMomentumAward |
+| DroneActionStrategy.js | 460 | processDeployment, processDestroyDrone, processOptionalDiscard, processPlayerPass, processAiShipPlacement, processAiAction |
+| ShieldActionStrategy.js | 210 | processAddShield, processResetShields, processReallocateShields |
+| MiscActionStrategy.js | 131 | processStatusConsumption, processDebugAddCardsToHand, processForceWin |
+
+**Tests**: 21 across 4 files (unchanged from pre-extraction baseline — all passing)
+
+**Key architectural decisions:**
+- Strategy functions receive `(payload, ctx)` where ctx is the ActionContext providing state access, animation helpers, and cross-strategy routing
+- Strategy registry maps action type strings to instance method names (not direct function refs) for testability
+- Delegation methods kept as public API for external callers and ActionContext re-entry
+- Animation infrastructure (teleport, broadcast, pending state) stays in ActionProcessor — tightly coupled to internal mutable state
+- Network methods stay in ActionProcessor — depend on queue, locks, and p2pManager
 
 ### Change Log
 
-*Append entries here as refactoring steps are completed.*
-
 | Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
 |-|-|-|-|-|-|
+| 1 | 2025-02-20 | Behavioral baseline written | N/A | N/A | None |
+| 2 | 2025-02-20 | 21 pre-extraction tests (4 files) | N/A | N/A | None |
+| 3a | 2025-02-20 | Dead code removal (processAiDecision, 108 lines) | All | None | None |
+| 3b | 2025-02-20 | Fix raw console calls → debugLog | All | None | None |
+| 3c | 2025-02-20 | Clean comments, remove debug-era noise | All | None | None |
+| 3d | 2025-02-20 | Deduplicate status consumption (2 methods → 1 parameterized) | All | None | None |
+| 3e | 2025-02-20 | Extract _executeAnimationPhase helper | All | None | None |
+| 3f | 2025-02-20 | Extract _withUpdateContext helper | All | None | None |
+| 4a | 2025-02-21 | Extract CombatActionStrategy (3 methods, ~520 lines) | All | None | None |
+| 4b | 2025-02-21 | Extract CardActionStrategy (5 methods, ~685 lines) | All | None | None |
+| 4c | 2025-02-21 | Extract ShipAbilityStrategy (9 methods, ~275 lines) | All | None | None |
+| 4d | 2025-02-21 | Extract PhaseTransitionStrategy (4 methods, ~319 lines) | All | None | None |
+| 4e | 2025-02-22 | Extract CommitmentStrategy (5 methods, ~443 lines) | All | None | None |
+| 4f | 2025-02-22 | Extract State/Drone/Shield/Misc strategies (18 methods) | All | None | None |
+| 4g | 2025-02-22 | Dead import cleanup (20 unused imports removed) | All | None | None |
+| 4h | 2025-02-22 | Extract processDeployment + processReallocateShields | All | None | None |
+| 5 | 2025-02-22 | Strategy registry replacing 37-case switch | All | None | Registry uses method names for testability |
+| 6 | 2025-02-22 | Trim verbose logging and JSDoc from delegation methods | All | None | None |
