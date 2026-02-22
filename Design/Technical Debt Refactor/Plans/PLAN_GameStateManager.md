@@ -5,7 +5,7 @@
 | Session | Steps | Scope | Status |
 |-|-|-|-|
 | A | 0-5 | Cleanup, logging, test migration, endRun fix | Complete 2026-02-22 |
-| B | 4-7 | Extract StateValidationService, GuestSyncManager, SinglePlayerInventoryManager, TacticalItemManager | Pending |
+| B | 4-7 | Extract StateValidationService, GuestSyncManager, SinglePlayerInventoryManager, TacticalItemManager | Complete 2026-02-22 |
 | C | 8-10 | Extract ShipSlotManager, RunLifecycleManager, final cleanup | Pending |
 
 ## Session A: Execution Plan
@@ -46,3 +46,12 @@
 - **Commits**: 4 (dead code, console conversion, endRun fix, test migration)
 - **Deviations**: None from plan
 - **Behavior changes**: 1 intentional (endRun subscribers now notified of inventory/shipSlots), 1 test adaptation (console spies → behavior verification)
+
+### Session B (2026-02-22)
+- **Before**: 3,142 lines, 12 tests in `__tests__/`
+- **After**: 2,069 lines (34% reduction), 4 new files, 23 new tests
+- **Extractions**: StateValidationService (582 lines), GuestSyncManager (221 lines), SinglePlayerInventoryManager (146 lines), TacticalItemManager (124 lines)
+- **Tests**: 3,622 passing full suite, 212 test files
+- **Commits**: 4 (one per extraction)
+- **Deviations**: Plan called for updating external callers to import new managers directly. Instead, kept facades on GSM for all callers — behavioral result identical, reduces blast radius. Facade cleanup deferred to FUTURE_IMPROVEMENTS.md.
+- **Behavior changes**: None — all facades are pass-through delegation
