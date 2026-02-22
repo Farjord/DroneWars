@@ -25,8 +25,8 @@ describe('GameStateManager - SP combat phase transitions', () => {
 
   describe('validateTurnPhaseTransition', () => {
     it('should allow null -> roundInitialization transition for SP combat', () => {
-      // Spy on validateTurnPhaseTransition to capture calls and check if it reports invalid
-      const spy = vi.spyOn(gameStateManager, 'validateTurnPhaseTransition');
+      // Spy on the extracted StateValidationService
+      const spy = vi.spyOn(gameStateManager.stateValidationService, 'validateTurnPhaseTransition');
 
       gameStateManager.resetGameState();
       spy.mockClear();
