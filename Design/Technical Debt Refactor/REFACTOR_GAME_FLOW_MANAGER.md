@@ -34,7 +34,99 @@
 ### Behavioral Baseline
 <!-- IMMUTABLE — do not edit after initial writing -->
 
-*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+#### Architecture Overview
+
+GameFlowManager is a **singleton** class that owns the canonical phase state and orchestrates all phase transitions in the game. It mediates between GameStateManager (state), ActionProcessor (actions/broadcasts), PhaseManager (authoritative phase tracking), and AIPhaseProcessor (AI decisions). Three execution modes: **local** (single-player, full authority), **host** (multiplayer authority, broadcasts to guest), **guest** (optimistic execution, waits for host broadcasts).
+
+#### Exports / Public API
+
+**Class: `GameFlowManager`** (default export)
+
+| Method | Contract |
+|-|-|
+| `constructor(phaseAnimationQueue?)` | Singleton. Returns existing instance if already created. Initializes phase arrays, state tracking, event listeners array. Stores optional `phaseAnimationQueue` for non-blocking announcements. |
+| `initialize(gsm, ap, isMultiplayerFn, aiPhaseProcessor)` | Idempotent (guarded by `isInitialized`). Wires up GSM, ActionProcessor, PhaseManager. Re-initializes AIPhaseProcessor with execution deps in single-player. Calls `setupEventListeners()` and `resubscribe()`. Sets `isInitialized = true`. |
+| `setupEventListeners()` | Subscribes to GSM state changes. On each event: calls `checkSequentialPhaseCompletion` (no-op), calls `checkSimultaneousPhaseCompletion` (non-guest only). Also detects guest opponent pass from `passInfo` changes and queues animation. Captures `previousPassInfo` in closure. |
+| `resubscribe()` | Unsubscribes existing AP listener, re-subscribes to `action_completed` events. Calls `handleActionCompletion()` on each event. Stores unsubscribe function. |
+| `handleActionCompletion(event)` | **Async**. Handles turn transitions after actions. For `playerPass`: guest only does animation playback then returns; host/local checks `bothPassed` → if true, calls `onSequentialPhaseComplete` + broadcasts; if false, starts pass notification playback. For non-pass in guest+P2P mode: early return. For sequential phases with `shouldEndTurn`: calls `processTurnTransition` via AP, broadcasts. For goAgain: broadcasts without transition. |
+| `subscribe(listener)` | Adds listener to array. Returns unsubscribe function. |
+| `emit(eventType, data)` | Calls all listeners with `{ type: eventType, ...data }`. Catches listener errors (console.error). |
+| `getCurrentPhaseInfo()` | Returns `{ currentPhase, gameStage, roundNumber, isPreGame, isRoundLoop, isGameOver }`. |
+| `startGameFlow(startingPhase='deckSelection')` | **Async**. Guest guard (returns early). Sets `currentPhase`, syncs `gameStage`/`roundNumber` from GSM. If `deckSelection`: initializes ship placement data. Calls `processPhaseTransition` via AP, applies phase data via `_updateContext` pattern. Emits `phaseTransition`. |
+| `onSimultaneousPhaseComplete(phase, data)` | **Async**. Guest guard. Applies commitments via AP. Special handling for `deckSelection` → initializes drone selection data for both players (extracts drones from deck commitments, creates selection trios via SeededRandom). Special handling for `placement` → immediate broadcast to guest, queues ROUND announcement. Determines next phase: if sequential → `initiateSequentialPhase` + broadcast + start playback; if simultaneous → `transitionToPhase` + broadcast + start playback. |
+| `checkSequentialPhaseCompletion(state, eventType)` | **DEPRECATED**. Body starts with `return;` — all subsequent code is unreachable dead code. |
+| `checkSimultaneousPhaseCompletion(state, eventType)` | Filters for `COMMITMENT_UPDATE` events on simultaneous phases. Checks if both players' commitments are completed. If so: emits `bothPlayersComplete` event, calls `onSimultaneousPhaseComplete`. |
+| `onSequentialPhaseComplete(phase, data)` | **Async**. Guest guard. Gets next phase. If `deployment` → `action`: queues DEPLOYMENT COMPLETE announcement. If end of action: queues ACTION PHASE COMPLETE, calls `startNewRound`. Otherwise: `transitionToPhase`. |
+| `getNextPhase(currentPhase)` | Delegates to `getNextPreGamePhase` or `getNextRoundPhase` based on `gameStage`. |
+| `getNextMilestonePhase(currentPhase)` | Searches forward in phase list for next milestone phase (via `GSM.isMilestonePhase`). Fallback: `'deployment'`. Used by guest validation. |
+| `processAutomaticPhase(phase, previousPhase)` | **Async**. Guest mode: syncs `gameStage`/`roundNumber` from GSM. Sets `isProcessingAutomaticPhase = true`. Calls `processPhaseLogicOnly` → `transitionToPhase` with result. In finally: clears flag, tracks optimistic animations for guest, starts animation playback for host/local if landed on non-automatic phase. |
+| `processPhaseLogicOnly(phase, previousPhase)` | **Async**. Routes to `processRoundInitialization` for `roundInitialization` phase. Returns next phase name without transitioning. |
+| `processAutomaticPhasesUntilCheckpoint(startPhase)` | **Async**. Guest optimistic cascade. Sets `isInCheckpointCascade = true`. Transitions to start phase, then loops: process logic → if no next phase, stop; if next is milestone, transition and stop; else transition and continue. In finally: clears flag, starts animation playback for guest. |
+| `processRoundInitialization(previousPhase)` | **Async**. 373 lines. Step 1: transition to roundLoop stage, init round 1 if `roundNumber === 0`. Step 2: first player determination via AP. Step 3: energy/resource reset (effective stats, ready drones, restore shields, set energy/deployment budgets, calculate shields). Step 3b: ON_ROUND_START triggers via RoundManager + EffectRouter. Step 3b2: momentum award (round 2+, lane control based, cap 4). Step 3c: drone rebuild progress via DroneAvailabilityManager. Step 4: card draw via `performAutomaticDraw`. Step 5: quick deploy (round 1 only, if `pendingQuickDeploy` exists). Final: emit event, broadcast to guest, return next phase. |
+| `processAutomaticDrawPhase(previousPhase)` | **DEAD CODE**. Never called. Superseded by `processRoundInitialization` Step 4. |
+| `processAutomaticFirstPlayerPhase(previousPhase)` | **DEAD CODE**. Never called. Superseded by `processRoundInitialization` Step 2. |
+| `processAutomaticEnergyResetPhase(previousPhase)` | **DEAD CODE**. 284 lines. Never called. Superseded by `processRoundInitialization` Step 3. Contains verbose diagnostic logging. |
+| `processGameInitializingPhase(previousPhase)` | **DEAD CODE**. Never called. Superseded by `processRoundInitialization` Step 1. |
+| `getNextPreGamePhase(currentPhase)` | Returns next phase in `PRE_GAME_PHASES` array. At end of pre-game (`roundInitialization`): delegates to `getNextRequiredPhase`. |
+| `getNextRoundPhase(currentPhase)` | Iterates forward in `ROUND_PHASES`, returns first phase where `isPhaseRequired` is true. Returns null at end of round. |
+| `getNextRequiredPhase(currentPhase)` | Same as `getNextRoundPhase` but with GUEST_CASCADE logging. Used by guest optimistic cascade. |
+| `isPhaseRequired(phase)` | Switch on phase name. `roundInitialization`: false on round 1 (already ran via PRE_GAME_PHASES), true round 2+. `mandatoryDiscard`: checks `anyPlayerExceedsHandLimit`. `optionalDiscard`: false round 1, else `anyPlayerHasCards`. `allocateShields`: checks `anyPlayerHasShieldsToAllocate`. `mandatoryDroneRemoval`: checks `anyPlayerExceedsDroneLimit`. `deployment`: false if `_quickDeployExecutedThisRound && roundNumber === 1` (clears flag), else true. `action`: always true. Default: true. |
+| `anyPlayerExceedsHandLimit(gameState)` | Uses GameDataService to get effective hand limits for both players. Returns true if either player's hand count exceeds their limit. |
+| `anyPlayerHasShieldsToAllocate(gameState)` | Returns false for round 1. Returns true if `shieldsToAllocate > 0` or `opponentShieldsToAllocate > 0`. |
+| `anyPlayerHasCards(gameState)` | Returns true if either player has at least 1 card in hand. |
+| `anyPlayerExceedsDroneLimit(gameState)` | Uses GameDataService to get effective CPU limits. Counts non-token drones on board. Returns true if either player exceeds limit. |
+| `playerExceedsHandLimit(playerId, gameState)` | Per-player hand limit check using GameDataService. |
+| `playerExceedsDroneLimit(playerId, gameState)` | Per-player drone limit check using GameDataService. |
+| `isSimultaneousPhase(phase)` | Returns `SIMULTANEOUS_PHASES.includes(phase)`. |
+| `isSequentialPhase(phase)` | Returns `SEQUENTIAL_PHASES.includes(phase)`. |
+| `isAutomaticPhase(phase)` | Returns `AUTOMATIC_PHASES.includes(phase)`. |
+| `initiateSequentialPhase(phase)` | Updates `currentPhase`. Calls `processPhaseTransition` via AP (not `queueAction`). Emits `phaseTransition` with `handoverType: 'simultaneous-to-sequential'`. |
+| `transitionToPhase(newPhase, trigger='unknown')` | **Async**. Guest mode: queues announcement only (via `queueAction` with `guestAnnouncementOnly`), returns. Guards against redundant transitions. PhaseManager validates transition. Updates `currentPhase`, sets `gameStage = 'roundLoop'` if entering round phase. For `placement` phase: initializes ship placement data. Calls `queueAction` for phase transition, then `_updateContext` pattern for metadata (gameStage, roundNumber, phaseData). If automatic phase and not in cascade: calls `processAutomaticPhase`. If simultaneous: calls `autoCompleteUnnecessaryCommitments`. Starts animation playback for sequential transitions. |
+| `autoCompleteUnnecessaryCommitments(phase)` | **Async**. Only for `allocateShields`, `mandatoryDiscard`, `mandatoryDroneRemoval`. Checks which players need to act. Auto-commits for players who don't. In single-player: triggers AI commitment if AI needs to act but human doesn't. |
+| `startNewRound()` | **Async**. Resets `_quickDeployExecutedThisRound`. Captures `firstPasser` from current round. Increments round number via GSM. Queues ROUND announcement. Finds first required phase, transitions to it. |
+| `endGame(winnerId)` | Sets `gameStage = 'gameOver'`, `currentPhase = 'gameOver'`. Calls `processPhaseTransition` via AP. Sets game stage and winner via `_updateContext` pattern. Emits `gameEnded`. |
+| `reset()` | Resets all local state: `currentPhase`, `gameStage`, `roundNumber`, flags. Clears listeners array. Resets PhaseManager. Emits `gameReset`. |
+| `getDebugInfo()` | Returns snapshot of current flow state including phase, stage, round, connected systems. |
+| `extractDronesFromDeck(droneNames)` | Maps drone name strings to full drone objects from `fullDroneCollection`. Filters out not-found. Warns per missing drone. |
+| `executeQuickDeploy(quickDeploy)` | **Async**. 120 lines. Imports DeploymentProcessor. Iterates deployment order, for each: deploys player drone, updates state immediately, triggers AI single deployment response. After loop: AI finishes remaining deployments. Clears `pendingQuickDeploy` from both GSM and tacticalMapStateManager. On error: clears pending flag to prevent infinite loop. |
+
+#### State Mutations and Their Triggers
+
+| State | Mutated by | Trigger |
+|-|-|-|
+| `this.currentPhase` | `startGameFlow`, `initiateSequentialPhase`, `transitionToPhase`, `endGame`, `reset` | Phase transitions |
+| `this.gameStage` | `startGameFlow`, `processRoundInitialization`, `transitionToPhase`, `endGame`, `reset` | Stage transitions |
+| `this.roundNumber` | `startGameFlow`, `processAutomaticPhase` (guest sync), `startNewRound`, `reset` | Round changes (local copy, GSM is source of truth) |
+| `this.isProcessingAutomaticPhase` | `processAutomaticPhase` | Set true at start, false in finally |
+| `this.isInCheckpointCascade` | `processAutomaticPhasesUntilCheckpoint`, `reset` | Set true at start, false in finally |
+| `this._quickDeployExecutedThisRound` | `processRoundInitialization`, `isPhaseRequired`, `startNewRound`, `reset` | Quick deploy lifecycle |
+| `this.listeners` | `subscribe`, `reset` | Pub/sub management |
+| `this.actionProcessorUnsubscribe` | `resubscribe` | AP subscription lifecycle |
+| GSM state (via `_updateContext`) | `startGameFlow`, `onSimultaneousPhaseComplete`, `transitionToPhase`, `startNewRound`, `endGame` | Direct state metadata updates |
+| GSM state (via `actionProcessor.queueAction`) | `processRoundInitialization`, `transitionToPhase`, `executeQuickDeploy`, `handleActionCompletion` | Game actions |
+
+#### Side Effects
+
+- **Broadcasts to guest** (host mode): After phase transitions, turn transitions, goAgain actions, round initialization, placement completion. Via `actionProcessor.broadcastStateToGuest(source)`.
+- **Animation queue operations**: `phaseAnimationQueue.queueAnimation()` for opponent pass notification. `phaseAnimationQueue.startPlayback(source)` at 8 distinct call sites after various transitions.
+- **Events emitted**: `phaseTransition`, `bothPlayersComplete`, `gameEnded`, `gameReset`.
+- **Optimistic animation tracking**: Guest mode tracks animations via `gameStateManager.trackOptimisticAnimations()` in `processAutomaticPhase` finally block.
+- **AI operations**: `aiPhaseProcessor.executeSingleDeployment()` and `finishDeploymentPhase()` in `executeQuickDeploy`. `actionProcessor.handleAICommitment()` in `autoCompleteUnnecessaryCommitments`.
+- **Dynamic imports**: `cardDrawUtils.js`, `GameDataService.js`, `DeploymentProcessor.js` are dynamically imported within methods.
+- **tacticalMapStateManager**: `executeQuickDeploy` clears `pendingQuickDeploy` from both GSM and run state.
+
+#### Known Edge Cases
+
+- **Guest mode early returns**: Almost every method has a guest guard. Guest can only queue announcements, not transition state.
+- **Singleton pattern**: Constructor returns existing instance. `reset()` clears state but doesn't destroy instance.
+- **Pass race condition in guest mode**: `handleActionCompletion` always triggers playback for guest regardless of `bothPassed` because optimistic processing may set `bothPassed=true` before handler runs.
+- **`_quickDeployExecutedThisRound` flag**: Set in `processRoundInitialization` Step 5, consumed and cleared in `isPhaseRequired('deployment')`. Prevents deployment phase after quick deploy. Reset in `startNewRound` and `reset`.
+- **Redundant transition guard**: `transitionToPhase` blocks if `newPhase === previousPhase`.
+- **`_updateContext` pattern**: try/finally to set and clear `gameStateManager._updateContext = 'GameFlowManager'` for 4 state update call sites. Indicates which manager is performing the update.
+- **`isInCheckpointCascade` suppression**: During cascade, automatic phases are NOT auto-processed by `transitionToPhase` — the cascade loop handles them explicitly.
+- **Dynamic import of GameDataService**: `processRoundInitialization` re-imports GameDataService despite `this.gameDataService` already being set in `initialize`. The dead `processAutomaticEnergyResetPhase` has the same pattern.
+- **Round 1 vs Round 2+ branching**: `isPhaseRequired` returns different results for round 1 (skips `roundInitialization`, `optionalDiscard`, `allocateShields`). Energy reset uses `initialDeploymentBudget` for round 1, `deploymentBudget` for round 2+.
+- **Animation playback 8 call sites**: All follow same pattern — check queue length > 0 && !isPlaying() → startPlayback(source). Located in: `setupEventListeners` (opponent pass), `handleActionCompletion` (guest pass, host/local single pass), `onSimultaneousPhaseComplete` (sim→seq, sim→sim), `processAutomaticPhase` (host/local after cascade), `processAutomaticPhasesUntilCheckpoint` (guest after cascade), `transitionToPhase` (sequential transition).
 
 ## TO DO
 
