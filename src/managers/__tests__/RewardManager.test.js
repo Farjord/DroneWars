@@ -13,19 +13,19 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import rewardManager from './RewardManager.js';
-import gameStateManager from './GameStateManager.js';
-import metaGameStateManager from './MetaGameStateManager.js';
+import rewardManager from '../RewardManager.js';
+import gameStateManager from '../GameStateManager.js';
+import metaGameStateManager from '../MetaGameStateManager.js';
 
 // Mock managers
-vi.mock('./GameStateManager.js', () => ({
+vi.mock('../GameStateManager.js', () => ({
   default: {
     getState: vi.fn(),
     setState: vi.fn()
   }
 }));
 
-vi.mock('./MetaGameStateManager.js', () => ({
+vi.mock('../MetaGameStateManager.js', () => ({
   default: {
     getState: vi.fn(),
     setState: vi.fn(),
@@ -721,7 +721,7 @@ describe('RewardManager', () => {
       // Generate 50 iterations with different seeds
       for (let i = 0; i < 50; i++) {
         gameStateManager.getState.mockReturnValue({
-          meta: { seed: 99999 + i * 7, rewardCounter: 500 + i }
+          masterSeed: 99999 + i * 7
         });
 
         const slots = rewardManager.generateSalvageSlots('SALVAGE_COMMON', 1, 'core', tierConfig);
@@ -741,7 +741,7 @@ describe('RewardManager', () => {
       // Generate 50 iterations and ensure all have at least 1 card
       for (let i = 0; i < 50; i++) {
         gameStateManager.getState.mockReturnValue({
-          meta: { seed: 77777 + i * 13, rewardCounter: 600 + i }
+          masterSeed: 77777 + i * 13
         });
 
         const slots = rewardManager.generateSalvageSlots('SALVAGE_COMMON', 1, 'mid', tierConfig);
@@ -756,7 +756,7 @@ describe('RewardManager', () => {
       // All slots should be either card or salvageItem
       for (let i = 0; i < 30; i++) {
         gameStateManager.getState.mockReturnValue({
-          meta: { seed: 55555 + i * 11, rewardCounter: 700 + i }
+          masterSeed: 55555 + i * 11
         });
 
         const slots = rewardManager.generateSalvageSlots('SALVAGE_COMMON', 1, 'perimeter', tierConfig);
@@ -773,7 +773,7 @@ describe('RewardManager', () => {
       expect(typeof rewardManager.rollCardCount).toBe('function');
 
       gameStateManager.getState.mockReturnValue({
-        meta: { seed: 33333, rewardCounter: 400 }
+        masterSeed: 33333
       });
 
       const rng = rewardManager.createRNG(33333);
@@ -784,10 +784,7 @@ describe('RewardManager', () => {
     });
   });
 
-  // ==============================================
-  // NEW TESTS: Pack Type & Tier Compliance (TDD - RED)
-  // Cards should use packType for type/rarity, not random selection
-  // ==============================================
+  // --- Pack Type & Tier Compliance ---
   describe('generateSalvageSlots - Pack Type & Tier Compliance', () => {
     const tierConfig = {
       zoneRewardWeights: {
@@ -806,7 +803,7 @@ describe('RewardManager', () => {
       // Run multiple times to ensure guaranteed type is working
       for (let i = 0; i < 20; i++) {
         gameStateManager.getState.mockReturnValue({
-          meta: { seed: 44444 + i * 17, rewardCounter: 800 + i }
+          masterSeed: 44444 + i * 17
         });
 
         const slots = rewardManager.generateSalvageSlots('ORDNANCE_PACK', 1, 'core', tierConfig);
@@ -824,7 +821,7 @@ describe('RewardManager', () => {
 
       for (let i = 0; i < 50; i++) {
         gameStateManager.getState.mockReturnValue({
-          meta: { seed: 55555 + i * 23, rewardCounter: 900 + i }
+          masterSeed: 55555 + i * 23
         });
 
         const slots = rewardManager.generateSalvageSlots('ORDNANCE_PACK', 1, 'core', tierConfig);
@@ -835,16 +832,16 @@ describe('RewardManager', () => {
       }
 
       // T1 rarityWeights: { Common: 90, Uncommon: 10 }
-      // With variance, expect at least 70% Common
-      const commonPercent = (commonCount / totalCards) * 100;
-      expect(commonPercent).toBeGreaterThan(70);
+      // Deterministic LCG with fixed seeds: exactly 99/109 cards are Common (90.8%)
+      expect(commonCount).toBe(99);
+      expect(totalCards).toBe(109);
     });
 
     it('should never include Upgrade cards in ORDNANCE_PACK (additionalCardWeights.Upgrade = 0)', () => {
       // ORDNANCE_PACK has Upgrade: 0 in additionalCardWeights
       for (let i = 0; i < 30; i++) {
         gameStateManager.getState.mockReturnValue({
-          meta: { seed: 66666 + i * 29, rewardCounter: 1000 + i }
+          masterSeed: 66666 + i * 29
         });
 
         const slots = rewardManager.generateSalvageSlots('ORDNANCE_PACK', 1, 'core', tierConfig);
@@ -860,7 +857,7 @@ describe('RewardManager', () => {
     it('should guarantee Support card from SUPPORT_PACK', () => {
       for (let i = 0; i < 20; i++) {
         gameStateManager.getState.mockReturnValue({
-          meta: { seed: 77777 + i * 31, rewardCounter: 1100 + i }
+          masterSeed: 77777 + i * 31
         });
 
         const slots = rewardManager.generateSalvageSlots('SUPPORT_PACK', 1, 'mid', tierConfig);
