@@ -952,12 +952,8 @@ class GameStateManager {
   // External callers (HangarScreen, CombatOutcomeProcessor, ExtractionController, DetectionManager) use these.
   // Delegation to runLifecycleManager.
 
-  startRun(shipSlotId, mapTier, entryGateId = 0, preGeneratedMap = null, quickDeploy = null) {
-    this.runLifecycleManager.startRun(shipSlotId, mapTier, entryGateId, preGeneratedMap, quickDeploy);
-  }
-  endRun(success = true) {
-    this.runLifecycleManager.endRun(success);
-  }
+  startRun(...args) { this.runLifecycleManager.startRun(...args); }
+  endRun(...args) { this.runLifecycleManager.endRun(...args); }
 
   /**
    * Reset game state to pre-game defaults

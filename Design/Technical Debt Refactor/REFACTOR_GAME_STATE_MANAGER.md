@@ -568,6 +568,20 @@ Each step is independently committable with tests green.
 - **Full suite**: 3,622 tests passing, 212 test files
 - **Facades**: All extracted methods have thin one-liner facades on GSM for backward compatibility. GFM/GMQS facades documented in FUTURE_IMPROVEMENTS.md.
 
+### Final State (Session C — ShipSlotManager + RunLifecycleManager)
+
+- **GSM line count**: 1,068 (down from 2,074 — 1,006 lines removed, 48% reduction)
+- **New files created**:
+  - `src/managers/ShipSlotManager.js` (577 lines) — 16 methods: slot CRUD, repair, drone/component instances
+  - `src/managers/RunLifecycleManager.js` (494 lines) — startRun + endRun orchestration
+- **New test files**:
+  - `src/managers/__tests__/ShipSlotManager.test.js` (23 tests)
+  - `src/managers/__tests__/RunLifecycleManager.test.js` (12 tests)
+- **Full suite**: 3,744 tests passing, 219 test files
+- **Facades**: 18 new facade methods on GSM (16 ShipSlot + 2 RunLifecycle). Total ~40 facade methods across all 6 extractions.
+- **Imports cleaned**: 14 unused imports removed from GSM after extractions
+- **Total extraction summary**: 6 managers extracted over 3 sessions. GSM reduced from 3,156 → 1,068 lines (66% reduction). 1,068 lines includes ~60 lines of facade methods.
+
 ### Change Log
 
 | Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
@@ -583,3 +597,6 @@ Each step is independently committable with tests green.
 | 8 | 2026-02-22 | Extracted SinglePlayerInventoryManager (140 lines, 9 methods) to src/managers/ | Yes — all save/load tests pass via facades | None | External callers keep using GSM facades |
 | 9 | 2026-02-22 | Extracted TacticalItemManager (130 lines, 4 methods) to src/managers/ | Yes — all tactical item and card pack tests pass via facades | None | External callers keep using GSM facades |
 | 10 | 2026-02-22 | Code review fixes: added getter proxies for optimisticActionService/validatingState on GSM, removed dead singleton code from GuestSyncManager | Yes — property access paths preserved | None | None |
+| 11 | 2026-02-22 | Extracted ShipSlotManager (577 lines, 16 methods) to src/managers/ | Yes — all ship slot/repair/instance tests pass via facades | None | None |
+| 12 | 2026-02-22 | Extracted RunLifecycleManager (494 lines, 2 methods) to src/managers/ | Yes — all startRun/endRun tests pass via facades | None | None |
+| 13 | 2026-02-22 | Code review fixes: simplified facade signatures to use ...args, fixed deprecated substr→substring | Yes — no behavioral change | None | Repair cost fallback discrepancy (FUTURE_IMPROVEMENTS #8) preserved per behavior-preservation rule |

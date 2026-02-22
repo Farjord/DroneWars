@@ -11,7 +11,7 @@
 | 1 | App.jsx (7,007) | REFACTOR_APP.md | [ ] | |
 | 2 | ActionProcessor.js (4,837→1,005) | REFACTOR_ACTION_PROCESSOR.md | [x] | Complete 2026-02-22. 9 strategy files extracted to src/logic/actions/, strategy registry replaces 37-case switch, 21 tests passing. |
 | 3 | TacticalMapScreen.jsx (3,548) | REFACTOR_TACTICAL_MAP_SCREEN.md | [ ] | |
-| 4 | GameStateManager.js (3,155→2,074) | REFACTOR_GAME_STATE_MANAGER.md | [~] | Sessions A+B complete 2026-02-22: cleanup, logging, test migration, endRun fix, 4 extractions (StateValidationService, GuestSyncManager, SinglePlayerInventoryManager, TacticalItemManager). Session C pending for ShipSlotManager + RunLifecycleManager. |
+| 4 | GameStateManager.js (3,156→1,068) | REFACTOR_GAME_STATE_MANAGER.md | [x] | Complete 2026-02-22. Sessions A+B+C: 6 extractions (StateValidationService, GuestSyncManager, SinglePlayerInventoryManager, TacticalItemManager, ShipSlotManager, RunLifecycleManager). 66% reduction, 35 new tests, 14 imports cleaned. |
 | 5 | GameFlowManager.js (2,666→1,671) | REFACTOR_GAME_FLOW_MANAGER.md | [x] | Complete 2026-02-22: Sessions A+B. Cleanup (dead code, logging, test migration) + 3 extractions (PhaseRequirementChecker, RoundInitializationProcessor, QuickDeployExecutor) + DRY animation playback. -995 lines (-37%), 40 new tests. Still above 800-line target — remaining code is cohesive phase flow orchestration. |
 
 ## Tier 2 — High Value
