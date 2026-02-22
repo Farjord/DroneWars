@@ -64,6 +64,29 @@ import {
   handleAICommitment as _handleAICommitment,
   applyPhaseCommitments as _applyPhaseCommitments
 } from '../logic/actions/CommitmentStrategy.js';
+import {
+  processDraw as _processDraw,
+  processEnergyReset as _processEnergyReset,
+  processRoundStartTriggers as _processRoundStartTriggers,
+  processRebuildProgress as _processRebuildProgress,
+  processMomentumAward as _processMomentumAward
+} from '../logic/actions/StateUpdateStrategy.js';
+import {
+  processDestroyDrone as _processDestroyDrone,
+  processOptionalDiscard as _processOptionalDiscard,
+  processPlayerPass as _processPlayerPass,
+  processAiShipPlacement as _processAiShipPlacement,
+  processAiAction as _processAiAction
+} from '../logic/actions/DroneActionStrategy.js';
+import {
+  processAddShield as _processAddShield,
+  processResetShields as _processResetShields
+} from '../logic/actions/ShieldActionStrategy.js';
+import {
+  processStatusConsumption as _processStatusConsumption,
+  processDebugAddCardsToHand as _processDebugAddCardsToHand,
+  processForceWin as _processForceWin
+} from '../logic/actions/MiscActionStrategy.js';
 
 class ActionProcessor {
   // Singleton instance
@@ -196,9 +219,13 @@ class ActionProcessor {
 
       // Action delegation (for callbacks that re-enter ActionProcessor)
       processAttack: (payload) => ap.processAttack(payload),
+      processMove: (payload) => ap.processMove(payload),
+      processAbility: (payload) => ap.processAbility(payload),
+      processCardPlay: (payload) => ap.processCardPlay(payload),
+      processDeployment: (payload) => ap.processDeployment(payload),
       processCommitment: (payload) => ap.processCommitment(payload),
       processDestroyDrone: (payload) => ap.processDestroyDrone(payload),
-      broadcastStateToGuest: () => ap.broadcastStateToGuest(),
+      broadcastStateToGuest: (...args) => ap.broadcastStateToGuest(...args),
 
       // Win condition
       checkWinCondition: () => ap.checkWinCondition(),
@@ -881,30 +908,7 @@ setAnimationManager(animationManager) {
    * Routes through ActionProcessor to avoid architecture violations.
    */
   processForceWin() {
-    const currentState = this.gameStateManager.getState();
-
-    // Log the dev action
-    this.gameStateManager.addLogEntry({
-      player: 'SYSTEM',
-      actionType: 'DEV_ACTION',
-      source: 'Force Win',
-      target: 'Opponent Ship',
-      outcome: 'All opponent ship sections destroyed (DEV)'
-    }, 'forceWin');
-
-    // Damage all opponent sections to hull 0
-    const damagedSections = {
-      bridge: { ...currentState.player2.shipSections.bridge, hull: 0 },
-      powerCell: { ...currentState.player2.shipSections.powerCell, hull: 0 },
-      droneControlHub: { ...currentState.player2.shipSections.droneControlHub, hull: 0 }
-    };
-
-    this.gameStateManager.updatePlayerState('player2', {
-      shipSections: damagedSections
-    });
-
-    // Use ActionProcessor's own checkWinCondition (proper callbacks)
-    this.checkWinCondition();
+    return _processForceWin(null, this._getActionContext());
   }
 
   /**
@@ -1052,76 +1056,7 @@ setAnimationManager(animationManager) {
    * Process AI action
    */
   async processAiAction(payload) {
-    const { aiDecision } = payload;
-
-    // Route AI decision to appropriate action processor
-    switch (aiDecision.type) {
-      case 'deploy':
-        const { droneToDeploy, targetLane } = aiDecision.payload;
-        return await this.processDeployment({
-          droneData: droneToDeploy,
-          laneId: targetLane,
-          playerId: 'player2', // AI is always player2
-          turn: this.gameStateManager.get('turn')
-        });
-
-      case 'action':
-        const chosenAction = aiDecision.payload;
-        switch (chosenAction.type) {
-          case 'attack':
-            debugLog('COMBAT', '🎬 [AI ANIMATION DEBUG] processAiAction attack case:', {
-              attackerId: chosenAction.attacker?.id,
-              targetId: chosenAction.target?.id,
-              lane: chosenAction.attacker?.lane,
-              targetType: chosenAction.targetType,
-              hasAttackerObject: !!chosenAction.attacker,
-              hasTargetObject: !!chosenAction.target
-            });
-            return await this.processAttack({
-              attackDetails: {
-                attacker: chosenAction.attacker,        // Full object
-                target: chosenAction.target,            // Full object
-                targetType: chosenAction.targetType || 'drone',  // Default to drone
-                lane: chosenAction.attacker.lane,       // Extract lane from attacker object
-                attackingPlayer: 'player2',
-                aiContext: aiDecision.logContext
-              }
-            });
-
-          case 'play_card':
-            return await this.processCardPlay({
-              card: chosenAction.card,
-              targetId: chosenAction.target?.id,
-              playerId: 'player2'
-            });
-
-          case 'move':
-            // Handle move through processMove method
-            return await this.processMove({
-              droneId: chosenAction.drone.id,
-              fromLane: chosenAction.fromLane,
-              toLane: chosenAction.toLane,
-              playerId: 'player2'
-            });
-
-          case 'ability':
-            return await this.processAbility({
-              droneId: chosenAction.drone.id,
-              abilityIndex: chosenAction.abilityIndex,
-              targetId: chosenAction.target?.id
-            });
-
-          default:
-            throw new Error(`Unknown AI action subtype: ${chosenAction.type}`);
-        }
-
-      case 'pass':
-        // Handle AI pass - already handled by GameStateManager
-        return { success: true, action: 'pass' };
-
-      default:
-        throw new Error(`Unknown AI action type: ${aiDecision.type}`);
-    }
+    return _processAiAction(payload, this._getActionContext());
   }
 
   /**
@@ -1544,167 +1479,14 @@ setAnimationManager(animationManager) {
    * Process player pass action
    */
   async processPlayerPass(payload) {
-    const { playerId, playerName, turnPhase, passInfo, opponentPlayerId } = payload;
-
-    debugLog('PASS_LOGIC', '[PLAYER PASS DEBUG] Processing player pass through ActionProcessor:', {
-      playerId,
-      playerName,
-      turnPhase,
-      currentPassInfo: passInfo
-    });
-
-    const currentState = this.gameStateManager.getState();
-
-    // Add log entry
-    this.gameStateManager.addLogEntry({
-      player: playerName,
-      actionType: 'PASS',
-      source: 'N/A',
-      target: 'N/A',
-      outcome: `Passed during ${turnPhase} phase.`
-    }, 'playerPass');
-
-    // Queue pass notification in PhaseAnimationQueue for sequential playback
-    // This ensures pass notifications play sequentially with phase announcements
-    // (PhaseAnimationQueue handles all game flow animations, AnimationManager handles action animations)
-    if (this.phaseAnimationQueue) {
-      const localPlayerId = this.gameStateManager.getLocalPlayerId();
-      const isLocalPlayer = playerId === localPlayerId;
-      const passText = isLocalPlayer ? 'YOU PASSED' : 'OPPONENT PASSED';
-
-      this.phaseAnimationQueue.queueAnimation('playerPass', passText, null, 'AP:playerPass:2716');
-
-      debugLog('PASS_LOGIC', '[PLAYER PASS DEBUG] Queued pass notification in PhaseAnimationQueue:', {
-        playerId,
-        isLocalPlayer,
-        passText
-      });
-
-      // Start playback if not already playing
-      // If queue is already playing, this does nothing (PhaseAnimationQueue.startPlayback() guards against duplicate playback)
-      // If queue is idle, this starts playback of the pass notification
-      if (!this.phaseAnimationQueue.isPlaying()) {
-        this.phaseAnimationQueue.startPlayback('AP:after_pass:2728');
-        debugLog('PASS_LOGIC', '[PLAYER PASS DEBUG] Started playback for pass notification');
-      }
-    }
-
-    // Calculate pass info updates
-    const opponentPassKey = `${opponentPlayerId}Passed`;
-    const localPassKey = `${playerId}Passed`;
-    const wasFirstToPass = !passInfo[opponentPassKey];
-    const newPassInfo = {
-      ...passInfo,
-      [localPassKey]: true,
-      firstPasser: passInfo.firstPasser || (wasFirstToPass ? playerId : null)
-    };
-
-    debugLog('PASS_LOGIC', '[PLAYER PASS DEBUG] Updating pass info:', newPassInfo);
-
-    // Update pass info through GameStateManager with proper context
-    this._withUpdateContext(() => this.gameStateManager.setState({ passInfo: newPassInfo }, 'PASS_INFO_SET'));
-
-    // PHASE MANAGER INTEGRATION: Notify PhaseManager of pass action
-    const gameMode = this.gameStateManager.get('gameMode');
-    if (this.phaseManager) {
-      if (gameMode === 'host' && playerId === 'player1') {
-        // Host passed
-        this.phaseManager.notifyHostAction('pass', { phase: turnPhase });
-        debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: Host passed in ${turnPhase}`);
-      } else if (gameMode === 'host' && playerId === 'player2') {
-        // Guest passed (received via network on Host)
-        this.phaseManager.notifyGuestAction('pass', { phase: turnPhase });
-        debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: Guest passed in ${turnPhase} (via network)`);
-      } else if (gameMode === 'local') {
-        // Local mode: Notify for both players (AI or human)
-        if (playerId === 'player1') {
-          this.phaseManager.notifyHostAction('pass', { phase: turnPhase });
-        } else {
-          this.phaseManager.notifyGuestAction('pass', { phase: turnPhase });
-        }
-        debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: ${playerId} passed in ${turnPhase} (local mode)`);
-      }
-      // Note: Guest mode doesn't call processPlayerPass for local player (blocked by guards)
-    }
-
-    // Increment turn counter ONLY for action phase passes
-    // Turn tracks individual player actions within a round (resets to 1 at round start)
-    if (turnPhase === 'action') {
-      const currentTurn = currentState.turn || 0;
-      this._withUpdateContext(() => this.gameStateManager.setState({
-        turn: currentTurn + 1
-      }, 'TURN_INCREMENT', 'playerPass'));
-      debugLog('PASS_LOGIC', `[TURN INCREMENT] Turn incremented: ${currentTurn} → ${currentTurn + 1}`);
-    }
-
-    // Handle turn switching when one player passes but the other hasn't
-    // ActionProcessor owns currentPlayer per ARCHITECTURE_REFACTOR.md
-    // GameFlowManager will handle phase transitions when both players pass
-    const bothPassed = newPassInfo.player1Passed && newPassInfo.player2Passed;
-
-    if (!bothPassed) {
-      // Switch to the player who hasn't passed yet
-      let nextPlayer = null;
-      if (playerId === 'player1' && !newPassInfo.player2Passed) {
-        nextPlayer = 'player2';
-      } else if (playerId === 'player2' && !newPassInfo.player1Passed) {
-        nextPlayer = 'player1';
-      }
-
-      if (nextPlayer) {
-        debugLog('PASS_LOGIC', `[PLAYER PASS DEBUG] Switching turn to ${nextPlayer} (opponent hasn't passed)`);
-        this._withUpdateContext(() => this.gameStateManager.setState({
-          currentPlayer: nextPlayer
-        }, 'TURN_SWITCH', 'playerPass'));
-      }
-    } else {
-      debugLog('PASS_LOGIC', '[PLAYER PASS DEBUG] Both players passed - GameFlowManager will handle phase transition');
-    }
-
-    // Note: State broadcasting handled by queueAction's finally block via broadcastStateToGuest()
-    // Pass notification is queued in PhaseAnimationQueue (not AnimationManager), so no animations to return
-
-    return {
-      success: true,
-      newPassInfo,
-      animations: {
-        actionAnimations: [],
-        systemAnimations: []
-      }
-    };
+    return _processPlayerPass(payload, this._getActionContext());
   }
 
   /**
    * Process AI ship placement action
    */
   async processAiShipPlacement(payload) {
-    const { placement, aiPersonality } = payload;
-
-    debugLog('STATE_SYNC', '[AI SHIP PLACEMENT] Processing AI ship placement:', {
-      placement,
-      aiPersonality
-    });
-
-    // Update opponent placed sections through GameStateManager
-    this._withUpdateContext(() => this.gameStateManager.setState({
-      opponentPlacedSections: placement
-    }, 'aiShipPlacement'));
-
-    // Add log entry
-    this.gameStateManager.addLogEntry({
-      player: 'AI Opponent',
-      actionType: 'SHIP_PLACEMENT',
-      source: 'AI System',
-      target: 'Ship Sections',
-      outcome: `${aiPersonality} deployed ship sections: ${placement.join(', ')}`
-    }, 'aiShipPlacement');
-
-    // Note: State broadcasting handled by queueAction's finally block via broadcastStateToGuest()
-
-    return {
-      success: true,
-      placement
-    };
+    return _processAiShipPlacement(payload, this._getActionContext());
   }
 
 
@@ -1712,91 +1494,7 @@ setAnimationManager(animationManager) {
    * Process optional discard action
    */
   async processOptionalDiscard(payload) {
-    const { playerId, cardsToDiscard, isMandatory = false, abilityMetadata = null } = payload;
-    const currentState = this.gameStateManager.getState();
-
-    debugLog('CARDS', `[OPTIONAL DISCARD DEBUG] Processing ${isMandatory ? 'mandatory' : 'optional'} discard for ${playerId}:`, cardsToDiscard);
-
-    if (!Array.isArray(cardsToDiscard)) {
-      throw new Error('Cards to discard must be an array');
-    }
-
-    const playerState = currentState[playerId];
-    if (!playerState) {
-      throw new Error(`Player ${playerId} not found`);
-    }
-
-    // Validate mandatory phase-based discards to prevent over-discarding
-    if (isMandatory && currentState.turnPhase === 'mandatoryDiscard' && !abilityMetadata) {
-      // Calculate effective hand limit (accounts for critical damage, etc.)
-      const placedSections = playerId === 'player1' ? currentState.placedSections : currentState.opponentPlacedSections;
-      const effectiveStats = this.gameDataService.getEffectiveShipStats(playerState, placedSections);
-      const handLimit = effectiveStats.totals.handLimit;
-      const currentHandSize = playerState.hand.length;
-      const excessCards = currentHandSize - handLimit;
-
-      // Check if player is trying to discard more than they should
-      if (excessCards <= 0) {
-        debugLog('CARDS', `🚫 [VALIDATION] Player ${playerId} cannot discard - already at or below hand limit`, {
-          currentHandSize,
-          handLimit,
-          excessCards
-        });
-        throw new Error(`Cannot discard - already at hand limit (${handLimit})`);
-      }
-
-      // Only allow discarding one card at a time during mandatory discard
-      if (cardsToDiscard.length > 1) {
-        debugLog('CARDS', `🚫 [VALIDATION] Player ${playerId} cannot discard multiple cards at once during mandatory discard phase`);
-        throw new Error('Can only discard one card at a time during mandatory discard phase');
-      }
-    }
-
-    // Add log entry for each discarded card
-    cardsToDiscard.forEach(card => {
-      this.gameStateManager.addLogEntry({
-        player: playerState.name,
-        actionType: isMandatory ? 'DISCARD_MANDATORY' : 'DISCARD_OPTIONAL',
-        source: card.name,
-        target: 'N/A',
-        outcome: `Discarded ${card.name}.`
-      });
-    });
-
-    // Remove cards from hand and add to discard pile
-    const newHand = playerState.hand.filter(card =>
-      !cardsToDiscard.some(discardCard => card.instanceId === discardCard.instanceId)
-    );
-    const newDiscardPile = [...playerState.discardPile, ...cardsToDiscard];
-
-    // Update player state
-    this.gameStateManager.updatePlayerState(playerId, {
-      hand: newHand,
-      discardPile: newDiscardPile
-    });
-
-    debugLog('CARDS', `[OPTIONAL DISCARD DEBUG] Discarded ${cardsToDiscard.length} cards for ${playerId}`);
-
-    // If this was the final discard for an ability, execute the SHIP_ABILITY_REVEAL animation
-    if (abilityMetadata) {
-      debugLog('CARDS', `[OPTIONAL DISCARD DEBUG] Final ability discard - executing SHIP_ABILITY_REVEAL animation`, abilityMetadata);
-      const abilityRevealAnimation = [{
-        animationName: 'SHIP_ABILITY_REVEAL',
-        payload: {
-          abilityName: abilityMetadata.abilityName,
-          sectionName: abilityMetadata.sectionName,
-          actingPlayerId: abilityMetadata.actingPlayerId
-        }
-      }];
-      // Execute animation and wait for completion to ensure proper sequencing
-      await this.executeAndCaptureAnimations(abilityRevealAnimation);
-    }
-
-    return {
-      success: true,
-      message: `Discarded ${cardsToDiscard.length} cards`,
-      cardsDiscarded: cardsToDiscard
-    };
+    return _processOptionalDiscard(payload, this._getActionContext());
   }
 
   /**
@@ -1858,19 +1556,7 @@ setAnimationManager(animationManager) {
    * @returns {Object} Draw result
    */
   async processDraw(payload) {
-    const { player1, player2 } = payload;
-
-    debugLog('CARDS', '🃏 ActionProcessor: Processing automatic draw');
-
-    // Update player states with draw results
-    this._withUpdateContext(() => this.gameStateManager.setState({ player1, player2 }));
-
-    return {
-      success: true,
-      message: 'Draw completed',
-      player1,
-      player2
-    };
+    return _processDraw(payload, this._getActionContext());
   }
 
   /**
@@ -1879,89 +1565,7 @@ setAnimationManager(animationManager) {
    * @returns {Object} Energy reset result
    */
   async processEnergyReset(payload) {
-    const { player1, player2, shieldsToAllocate, opponentShieldsToAllocate, roundNumber } = payload;
-
-    debugLog('ENERGY', '⚡ ActionProcessor: Processing energy reset');
-
-    debugLog('RESOURCE_RESET', `📥 [ACTIONPROCESSOR] Received energyReset payload`, {
-      roundNumber,
-      player1: {
-        name: player1?.name,
-        energy: player1?.energy,
-        initialDeploymentBudget: player1?.initialDeploymentBudget,
-        deploymentBudget: player1?.deploymentBudget,
-        hasAllFields: {
-          energy: 'energy' in player1,
-          initialDeploymentBudget: 'initialDeploymentBudget' in player1,
-          deploymentBudget: 'deploymentBudget' in player1
-        }
-      },
-      player2: {
-        name: player2?.name,
-        energy: player2?.energy,
-        initialDeploymentBudget: player2?.initialDeploymentBudget,
-        deploymentBudget: player2?.deploymentBudget,
-        hasAllFields: {
-          energy: 'energy' in player2,
-          initialDeploymentBudget: 'initialDeploymentBudget' in player2,
-          deploymentBudget: 'deploymentBudget' in player2
-        }
-      }
-    });
-
-    // Update player states AND roundNumber atomically to prevent race condition
-    // This ensures React components receive both updates together
-    this.gameStateManager.setState({
-      player1,
-      player2,
-      ...(roundNumber !== undefined && { roundNumber })
-    }, 'PLAYER_STATES_SET');
-
-    const currentState = this.gameStateManager.getState();
-    debugLog('RESOURCE_RESET', `✅ [ACTIONPROCESSOR] Game state after setState (atomic update)`, {
-      roundNumber: currentState.roundNumber,
-      player1: {
-        name: currentState.player1?.name,
-        energy: currentState.player1?.energy,
-        initialDeploymentBudget: currentState.player1?.initialDeploymentBudget,
-        deploymentBudget: currentState.player1?.deploymentBudget,
-        hasAllFields: {
-          energy: 'energy' in currentState.player1,
-          initialDeploymentBudget: 'initialDeploymentBudget' in currentState.player1,
-          deploymentBudget: 'deploymentBudget' in currentState.player1
-        }
-      },
-      player2: {
-        name: currentState.player2?.name,
-        energy: currentState.player2?.energy,
-        initialDeploymentBudget: currentState.player2?.initialDeploymentBudget,
-        deploymentBudget: currentState.player2?.deploymentBudget,
-        hasAllFields: {
-          energy: 'energy' in currentState.player2,
-          initialDeploymentBudget: 'initialDeploymentBudget' in currentState.player2,
-          deploymentBudget: 'deploymentBudget' in currentState.player2
-        }
-      }
-    });
-
-    // Update shields to allocate if provided (round 2+ only)
-    if (shieldsToAllocate !== undefined) {
-      this._withUpdateContext(() => this.gameStateManager.setState({ shieldsToAllocate }));
-    }
-    if (opponentShieldsToAllocate !== undefined) {
-      this._withUpdateContext(() => this.gameStateManager.setState({ opponentShieldsToAllocate }));
-    }
-
-    debugLog('ENERGY', `✅ Energy reset complete - Shields to allocate: ${shieldsToAllocate || 0}, ${opponentShieldsToAllocate || 0}`);
-
-    return {
-      success: true,
-      message: 'Energy reset completed',
-      player1,
-      player2,
-      shieldsToAllocate,
-      opponentShieldsToAllocate
-    };
+    return _processEnergyReset(payload, this._getActionContext());
   }
 
   /**
@@ -1971,24 +1575,7 @@ setAnimationManager(animationManager) {
    * @returns {Object} Round start triggers result
    */
   async processRoundStartTriggers(payload) {
-    const { player1, player2 } = payload;
-
-    debugLog('ROUND_START', '🎯 ActionProcessor: Processing round start triggers');
-
-    // Update player states with any modifications from ON_ROUND_START abilities
-    this.gameStateManager.setState({
-      player1,
-      player2
-    }, 'ROUND_START_TRIGGERS');
-
-    debugLog('ROUND_START', '✅ Round start triggers complete');
-
-    return {
-      success: true,
-      message: 'Round start triggers processed',
-      player1,
-      player2
-    };
+    return _processRoundStartTriggers(payload, this._getActionContext());
   }
 
   /**
@@ -1999,26 +1586,7 @@ setAnimationManager(animationManager) {
    * @returns {Object} Rebuild progress result
    */
   async processRebuildProgress(payload) {
-    const { player1, player2 } = payload;
-
-    debugLog('PHASE_MANAGER', '🔧 ActionProcessor: Processing drone rebuild progress');
-
-    // Build state update object
-    const stateUpdate = {};
-    if (player1) stateUpdate.player1 = player1;
-    if (player2) stateUpdate.player2 = player2;
-
-    // Update player states with rebuild progress
-    this.gameStateManager.setState(stateUpdate, 'REBUILD_PROGRESS');
-
-    debugLog('PHASE_MANAGER', '✅ Drone rebuild progress complete');
-
-    return {
-      success: true,
-      message: 'Drone rebuild progress processed',
-      player1,
-      player2
-    };
+    return _processRebuildProgress(payload, this._getActionContext());
   }
 
   /**
@@ -2028,27 +1596,7 @@ setAnimationManager(animationManager) {
    * @returns {Object} Momentum award result
    */
   async processMomentumAward(payload) {
-    const { player1, player2 } = payload;
-
-    debugLog('PHASE_MANAGER', '🚀 ActionProcessor: Processing momentum award');
-
-    // Build state update object
-    const stateUpdate = {};
-    if (player1) stateUpdate.player1 = player1;
-    if (player2) stateUpdate.player2 = player2;
-
-    // Update player states with momentum changes
-    this.gameStateManager.setState(stateUpdate, 'MOMENTUM_AWARD');
-
-    const awardedTo = player1 ? 'Player 1' : player2 ? 'Player 2' : 'None';
-    debugLog('PHASE_MANAGER', `✅ Momentum award complete - Awarded to: ${awardedTo}`);
-
-    return {
-      success: true,
-      message: 'Momentum award processed',
-      player1,
-      player2
-    };
+    return _processMomentumAward(payload, this._getActionContext());
   }
 
   /**
@@ -2058,70 +1606,7 @@ setAnimationManager(animationManager) {
    * @returns {Object} Destruction result
    */
   async processDestroyDrone(payload) {
-    const { droneId, playerId } = payload;
-
-    debugLog('COMBAT', `💥 ActionProcessor: Processing drone destruction for ${playerId}, drone ${droneId}`);
-
-    // OPTIMISTIC PROCESSING: Guest now processes drone destruction locally
-    // Host remains authoritative via validation at milestone phases
-
-    // Get current player state
-    const currentState = this.gameStateManager.getState();
-    const gameMode = currentState.gameMode;
-    const playerState = currentState[playerId];
-
-    if (!playerState) {
-      return { success: false, error: `Player ${playerId} not found` };
-    }
-
-    // Find drone lane
-    const lane = gameEngine.getLaneOfDrone(droneId, playerState);
-    if (!lane) {
-      return { success: false, error: `Drone ${droneId} not found on board` };
-    }
-
-    // Find the actual drone object
-    const drone = playerState.dronesOnBoard[lane].find(d => d.id === droneId);
-    if (!drone) {
-      return { success: false, error: `Drone ${droneId} not found in lane ${lane}` };
-    }
-
-    // Create immutable copy of player state
-    let newPlayerState = {
-      ...playerState,
-      dronesOnBoard: { ...playerState.dronesOnBoard }
-    };
-
-    // Remove drone from lane
-    newPlayerState.dronesOnBoard[lane] = newPlayerState.dronesOnBoard[lane].filter(d => d.id !== droneId);
-
-    // Apply destruction updates (like deployedDroneCounts)
-    const onDestroyUpdates = gameEngine.onDroneDestroyed(newPlayerState, drone);
-    Object.assign(newPlayerState, onDestroyUpdates);
-
-    // Get opponent state and placed sections for aura updates
-    const opponentPlayerId = playerId === 'player1' ? 'player2' : 'player1';
-    const opponentPlayerState = currentState[opponentPlayerId];
-    const placedSections = {
-      player1: currentState.placedSections,
-      player2: currentState.opponentPlacedSections
-    };
-
-    // Update auras
-    newPlayerState.dronesOnBoard = gameEngine.updateAuras(newPlayerState, opponentPlayerState, placedSections);
-
-    // Update GameStateManager with new player state
-    this.gameStateManager.updatePlayerState(playerId, newPlayerState);
-
-    debugLog('COMBAT', `✅ Drone ${droneId} destroyed successfully from ${lane}`);
-
-    return {
-      success: true,
-      message: `Drone destroyed from ${lane}`,
-      droneId,
-      lane,
-      droneName: drone.name
-    };
+    return _processDestroyDrone(payload, this._getActionContext());
   }
 
   /**
@@ -2130,35 +1615,7 @@ setAnimationManager(animationManager) {
    * @returns {Object} Result of adding cards
    */
   async processDebugAddCardsToHand(payload) {
-    const { playerId, cardInstances } = payload;
-
-    debugLog('DEBUG_TOOLS', `🎴 ActionProcessor: Adding ${cardInstances.length} cards to ${playerId}'s hand`);
-
-    // OPTIMISTIC PROCESSING: Guest now processes debug actions locally
-    // Host remains authoritative via validation at milestone phases
-
-    // Get current player state
-    const currentState = this.gameStateManager.getState();
-    const gameMode = currentState.gameMode;
-    const playerState = currentState[playerId];
-
-    if (!playerState) {
-      return { success: false, error: `Player ${playerId} not found` };
-    }
-
-    // Create updated hand
-    const updatedHand = [...playerState.hand, ...cardInstances];
-
-    // Update GameStateManager with new hand
-    this.gameStateManager.updatePlayerState(playerId, { hand: updatedHand });
-
-    debugLog('DEBUG_TOOLS', `✅ Cards added successfully. New hand size: ${updatedHand.length}`);
-
-    return {
-      success: true,
-      message: `Added ${cardInstances.length} cards to hand`,
-      newHandSize: updatedHand.length
-    };
+    return _processDebugAddCardsToHand(payload, this._getActionContext());
   }
 
   /**
@@ -2167,48 +1624,7 @@ setAnimationManager(animationManager) {
    * @returns {Object} Shield addition result
    */
   async processAddShield(payload) {
-    const { sectionName, playerId } = payload;
-
-    debugLog('ENERGY', `🛡️ ActionProcessor: Processing shield addition for ${playerId}, section ${sectionName}`);
-
-    // OPTIMISTIC PROCESSING: Guest now processes shield allocation locally
-    // Host remains authoritative via validation at milestone phases
-
-    // Get current game state
-    const currentState = this.gameStateManager.getState();
-    const gameMode = currentState.gameMode;
-
-    // Determine which shieldsToAllocate to use
-    const shieldsToAllocateKey = playerId === 'player1' ? 'shieldsToAllocate' : 'opponentShieldsToAllocate';
-
-    // Process shield allocation via ShieldManager
-    const result = ShieldManager.processShieldAllocation(
-      { ...currentState, shieldsToAllocate: currentState[shieldsToAllocateKey] },
-      playerId,
-      sectionName
-    );
-
-    if (!result.success) {
-      debugLog('ENERGY', `Shield allocation failed: ${result.error}`);
-      return result;
-    }
-
-    // Update player state
-    this.gameStateManager.updatePlayerState(playerId, result.newPlayerState);
-
-    // Update shields to allocate count
-    this._withUpdateContext(() => this.gameStateManager.setState({
-      [shieldsToAllocateKey]: result.newShieldsToAllocate
-    }));
-
-    debugLog('ENERGY', `✅ Shield added to ${sectionName}, ${result.newShieldsToAllocate} shields remaining`);
-
-    return {
-      success: true,
-      message: `Shield added to ${sectionName}`,
-      sectionName,
-      shieldsRemaining: result.newShieldsToAllocate
-    };
+    return _processAddShield(payload, this._getActionContext());
   }
 
   /**
@@ -2217,41 +1633,7 @@ setAnimationManager(animationManager) {
    * @returns {Object} Shield reset result
    */
   async processResetShields(payload) {
-    const { playerId } = payload;
-
-    debugLog('ENERGY', `🔄 ActionProcessor: Processing shield allocation reset for ${playerId}`);
-
-    // OPTIMISTIC PROCESSING: Guest now processes shield reset locally
-    // Host remains authoritative via validation at milestone phases
-
-    // Get current game state
-    const currentState = this.gameStateManager.getState();
-    const gameMode = currentState.gameMode;
-
-    // Process shield reset via ShieldManager
-    const result = ShieldManager.processResetShieldAllocation(currentState, playerId);
-
-    if (!result.success) {
-      debugLog('ENERGY', `Shield reset failed: ${result.error}`);
-      return result;
-    }
-
-    // Update player state
-    this.gameStateManager.updatePlayerState(playerId, result.newPlayerState);
-
-    // Update shields to allocate count
-    const shieldsToAllocateKey = playerId === 'player1' ? 'shieldsToAllocate' : 'opponentShieldsToAllocate';
-    this._withUpdateContext(() => this.gameStateManager.setState({
-      [shieldsToAllocateKey]: result.newShieldsToAllocate
-    }));
-
-    debugLog('ENERGY', `✅ Shield allocation reset, ${result.newShieldsToAllocate} shields available`);
-
-    return {
-      success: true,
-      message: 'Shield allocation reset',
-      shieldsToAllocate: result.newShieldsToAllocate
-    };
+    return _processResetShields(payload, this._getActionContext());
   }
 
   /**
@@ -2288,61 +1670,8 @@ setAnimationManager(animationManager) {
    * @param {string} statusType - 'snared' or 'suppressed'
    * @param {Object} params - { droneId, playerId }
    */
-  async processStatusConsumption(statusType, { droneId, playerId }) {
-    const statusFlag = statusType === 'snared' ? 'isSnared' : 'isSuppressed';
-    const actionVerb = statusType === 'snared' ? 'move' : 'attack';
-    const statusLabel = statusType === 'snared' ? 'Snare' : 'Suppressed';
-
-    const currentState = this.gameStateManager.getState();
-    const playerState = currentState[playerId];
-    const newPlayerState = JSON.parse(JSON.stringify(playerState));
-
-    for (const lane in newPlayerState.dronesOnBoard) {
-      const drone = newPlayerState.dronesOnBoard[lane].find(d => d.id === droneId);
-      if (drone) {
-        drone[statusFlag] = false;
-        drone.isExhausted = true;
-        this.gameStateManager.updatePlayerState(playerId, newPlayerState);
-        this.gameStateManager.addLogEntry({
-          player: playerState.name,
-          actionType: 'STATUS_CONSUMED',
-          source: drone.name,
-          target: lane.replace('lane', 'Lane '),
-          outcome: `${drone.name}'s ${actionVerb} was cancelled — ${statusLabel} effect consumed. Drone is now exhausted.`
-        });
-
-        const laneNumber = lane.replace('lane', '');
-        const animation = [{
-          animationName: 'STATUS_CONSUMPTION',
-          timing: 'independent',
-          payload: {
-            droneName: drone.name,
-            laneNumber,
-            statusType,
-            targetPlayer: playerId,
-            timestamp: Date.now()
-          }
-        }];
-
-        const gameMode = this.gameStateManager.get('gameMode');
-        if (gameMode === 'host' && animation.length > 0) {
-          this.pendingActionAnimations.push(...animation);
-          this.broadcastStateToGuest(`${statusType}Consumption`);
-        }
-        if (this.animationManager) {
-          const source = gameMode === 'guest' ? 'GUEST_OPTIMISTIC' : gameMode === 'host' ? 'HOST_LOCAL' : 'LOCAL';
-          await this.animationManager.executeAnimations(animation, source);
-        }
-
-        return {
-          success: true,
-          animations: {
-            actionAnimations: animation,
-            systemAnimations: []
-          }
-        };
-      }
-    }
+  async processStatusConsumption(statusType, params) {
+    return _processStatusConsumption(statusType, params, this._getActionContext());
   }
 
   // Delegate methods for backwards compatibility with switch cases
