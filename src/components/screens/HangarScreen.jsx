@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useGameState } from '../../hooks/useGameState';
 import useHangarMapState from '../../hooks/useHangarMapState.js';
 import useHangarData from '../../hooks/useHangarData.js';
+import { createCopyStarterDeckSlot, createEmptyDeckSlot } from '../../logic/singlePlayer/deckSlotFactory.js';
 import SoundManager from '../../managers/SoundManager.js';
 import SaveLoadModal from '../modals/SaveLoadModal';
 import InventoryModal from '../modals/InventoryModal';
@@ -216,90 +217,33 @@ const HangarScreen = () => {
     }
   };
 
-  // Handle confirm copy from starter deck - pay cost and create inventory copies
+  // Handle confirm copy from starter deck
   const handleConfirmCopyStarter = () => {
-    const cost = ECONOMY.STARTER_DECK_COPY_COST ?? 0;
-    const credits = singlePlayerProfile?.credits || 0;
-
-    if (credits < cost) {
+    const result = createCopyStarterDeckSlot(
+      selectedSlotId, singlePlayerProfile, singlePlayerInventory,
+      singlePlayerDroneInstances, singlePlayerShipComponentInstances
+    );
+    if (!result) {
       setCopyStarterConfirmation(false);
       return;
     }
 
-    // Deduct credits
-    const newProfile = {
-      ...singlePlayerProfile,
-      credits: singlePlayerProfile.credits - cost
-    };
-
-    // Add starter deck cards to inventory
-    const newInventory = { ...singlePlayerInventory };
-    (starterDeck.decklist || []).forEach(card => {
-      newInventory[card.id] = (newInventory[card.id] || 0) + card.quantity;
-    });
-
-    // Add starter ship to inventory
-    if (starterDeck.shipId) {
-      newInventory[starterDeck.shipId] = (newInventory[starterDeck.shipId] || 0) + 1;
-    }
-
-    // Add starter drones as instances
-    const newDroneInstances = [...(singlePlayerDroneInstances || [])];
-    (starterDeck.droneSlots || []).forEach(slot => {
-      if (slot.assignedDrone) {
-        newDroneInstances.push({
-          id: `DRONE_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          droneName: slot.assignedDrone,
-          shipSlotId: selectedSlotId,
-          isDamaged: false,
-          isMIA: false
-        });
-      }
-    });
-
-    // Add starter components as instances
-    const newComponentInstances = [...(singlePlayerShipComponentInstances || [])];
-    Object.keys(starterDeck.shipComponents || {}).forEach(compId => {
-      // Get max hull from component data (simplified - just use 10 as default)
-      newComponentInstances.push({
-        id: `COMP_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        componentId: compId,
-        shipSlotId: selectedSlotId,
-        currentHull: 10,
-        maxHull: 10
-      });
-    });
-
-    // Update state
     gameStateManager.setState({
-      singlePlayerProfile: newProfile,
-      singlePlayerInventory: newInventory,
-      singlePlayerDroneInstances: newDroneInstances,
-      singlePlayerShipComponentInstances: newComponentInstances
+      singlePlayerProfile: result.profileUpdate,
+      singlePlayerInventory: result.inventoryUpdate,
+      singlePlayerDroneInstances: result.droneInstances,
+      singlePlayerShipComponentInstances: result.componentInstances
     });
+    gameStateManager.saveShipSlotDeck(selectedSlotId, result.deckData);
 
-    // IMMEDIATELY create the deck - deck exists as soon as credits are paid
-    // This ensures deck persists even if user exits deck builder without saving
-    const deckData = {
-      name: `Ship ${selectedSlotId}`,
-      decklist: starterDeck.decklist.map(card => ({ id: card.id, quantity: card.quantity })),
-      droneSlots: JSON.parse(JSON.stringify(starterDeck.droneSlots)),
-      shipComponents: { ...starterDeck.shipComponents },
-      shipId: starterDeck.shipId
-    };
-    gameStateManager.saveShipSlotDeck(selectedSlotId, deckData);
-
-    debugLog('HANGAR', `Created deck in slot ${selectedSlotId} immediately`);
-
-    // Close confirmation and navigate to deck builder for optional editing
     setCopyStarterConfirmation(false);
     gameStateManager.setState({
       appState: 'extractionDeckBuilder',
       extractionDeckSlotId: selectedSlotId,
-      extractionNewDeckOption: null  // Deck already exists - editing mode
+      extractionNewDeckOption: null
     });
 
-    debugLog('HANGAR', `Copied starter deck for ${cost} credits`);
+    debugLog('HANGAR', `Copied starter deck to slot ${selectedSlotId}`);
   };
 
   // Handle cancel copy starter
@@ -307,46 +251,25 @@ const HangarScreen = () => {
     setCopyStarterConfirmation(false);
   };
 
-  // Handle confirm empty deck creation - pay cost and create empty deck
+  // Handle confirm empty deck creation
   const handleConfirmEmptyDeck = () => {
-    const cost = ECONOMY.STARTER_DECK_COPY_COST ?? 0;
-    const credits = singlePlayerProfile?.credits || 0;
-
-    if (credits < cost) {
+    const result = createEmptyDeckSlot(selectedSlotId, singlePlayerProfile);
+    if (!result) {
       setEmptyDeckConfirmation(false);
       return;
     }
 
-    // Deduct credits
-    const newProfile = {
-      ...singlePlayerProfile,
-      credits: singlePlayerProfile.credits - cost
-    };
+    gameStateManager.setState({ singlePlayerProfile: result.profileUpdate });
+    gameStateManager.saveShipSlotDeck(selectedSlotId, result.deckData);
 
-    // Update state with credit deduction
-    gameStateManager.setState({
-      singlePlayerProfile: newProfile
-    });
-
-    // IMMEDIATELY create the empty deck - deck exists as soon as credits are paid
-    const deckData = {
-      name: `Ship ${selectedSlotId}`,
-      decklist: [],
-      drones: [],
-      shipComponents: {},
-      shipId: null
-    };
-    gameStateManager.saveShipSlotDeck(selectedSlotId, deckData);
-
-    debugLog('HANGAR', `Created empty deck in slot ${selectedSlotId} for ${cost} credits`);
-
-    // Close confirmation and navigate to deck builder
     setEmptyDeckConfirmation(false);
     gameStateManager.setState({
       appState: 'extractionDeckBuilder',
       extractionDeckSlotId: selectedSlotId,
-      extractionNewDeckOption: null  // Deck already exists - editing mode
+      extractionNewDeckOption: null
     });
+
+    debugLog('HANGAR', `Created empty deck in slot ${selectedSlotId}`);
   };
 
   // Handle cancel empty deck creation

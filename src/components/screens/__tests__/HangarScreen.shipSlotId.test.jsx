@@ -141,50 +141,35 @@ describe('HangarScreen - Instance Creation with shipSlotId', () => {
     });
   });
 
-  describe('Integration: Verify HangarScreen creates instances with shipSlotId', () => {
-    /**
-     * This test reads the actual HangarScreen.jsx code and verifies
-     * that the instance creation includes shipSlotId.
-     *
-     * This will FAIL until the fix is applied.
-     */
-    it('HangarScreen should create drone instances with shipSlotId', async () => {
-      // Read the actual source code to verify the fix
+  describe('Integration: Verify deckSlotFactory creates instances with shipSlotId', () => {
+    it('should create drone instances with shipSlotId', async () => {
       const fs = await import('fs');
       const path = await import('path');
 
-      const hangarPath = path.join(process.cwd(), 'src/components/screens/HangarScreen.jsx');
-      const source = fs.readFileSync(hangarPath, 'utf-8');
+      const factoryPath = path.join(process.cwd(), 'src/logic/singlePlayer/deckSlotFactory.js');
+      const source = fs.readFileSync(factoryPath, 'utf-8');
 
-      // Find the drone instance creation code (around line 595-601)
       const droneInstanceMatch = source.match(
         /newDroneInstances\.push\(\{[\s\S]*?droneName:\s*slot\.assignedDrone[\s\S]*?\}\)/
       );
 
       expect(droneInstanceMatch).not.toBeNull();
-
-      // Verify shipSlotId is included
-      const droneCode = droneInstanceMatch[0];
-      expect(droneCode).toContain('shipSlotId');
+      expect(droneInstanceMatch[0]).toContain('shipSlotId');
     });
 
-    it('HangarScreen should create component instances with shipSlotId', async () => {
+    it('should create component instances with shipSlotId', async () => {
       const fs = await import('fs');
       const path = await import('path');
 
-      const hangarPath = path.join(process.cwd(), 'src/components/screens/HangarScreen.jsx');
-      const source = fs.readFileSync(hangarPath, 'utf-8');
+      const factoryPath = path.join(process.cwd(), 'src/logic/singlePlayer/deckSlotFactory.js');
+      const source = fs.readFileSync(factoryPath, 'utf-8');
 
-      // Find the component instance creation code (around line 595-600)
       const componentInstanceMatch = source.match(
         /newComponentInstances\.push\(\{[\s\S]*?componentId:\s*compId[\s\S]*?\}\)/
       );
 
       expect(componentInstanceMatch).not.toBeNull();
-
-      // Verify shipSlotId is included
-      const componentCode = componentInstanceMatch[0];
-      expect(componentCode).toContain('shipSlotId');
+      expect(componentInstanceMatch[0]).toContain('shipSlotId');
     });
   });
 });
