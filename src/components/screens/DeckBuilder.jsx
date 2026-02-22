@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp, Sword, Rocket, Shield, Grid, ArrowLeft, LayoutGrid, List, AlertTriangle, Settings, Filter } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { Eye, Bolt, Upload, Download, Copy, X, Sword, Rocket, Shield, Grid, ArrowLeft, LayoutGrid, List, AlertTriangle, Settings, Filter } from 'lucide-react';
+import DeckStatisticsCharts from '../ui/DeckStatisticsCharts.jsx';
 import ActionCard from '../ui/ActionCard.jsx';
 import DroneCard from '../ui/DroneCard.jsx';
 import ShipCard from '../ui/ShipCard.jsx';
@@ -21,7 +21,6 @@ import useDeckBuilderData from '../../hooks/useDeckBuilderData.js';
 import { gameEngine } from '../../logic/gameLogic.js';
 import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js';
 import { getTypeBackgroundClass, getTypeTextClass, getRarityDisplay } from '../../utils/cardTypeStyles.js';
-import { CHART_COLORS, renderCustomizedLabel } from '../../utils/chartUtils.jsx';
 import { calculateEffectiveMaxForCard } from '../../utils/singlePlayerDeckUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { DEV_CONFIG } from '../../config/devConfig.js';
@@ -1278,256 +1277,19 @@ const DeckBuilder = ({
             />
           )}
 
-{/* --- Statistics Section --- */}
-          {/* DECK STATISTICS */}
-          {rightPanelView === 'deck' && cardCount > 0 && (
-            <div className="dw-stats-section">
-              <button
-                onClick={() => setIsStatsVisible(!isStatsVisible)}
-                className="dw-stats-toggle"
-              >
-                Deck Statistics
-                <ChevronUp size={18} className={`dw-stats-toggle-icon ${!isStatsVisible ? 'dw-stats-toggle-icon--collapsed' : ''}`} />
-              </button>
-
-              <div className={`dw-stats-content ${isStatsVisible ? 'dw-stats-content--visible' : 'dw-stats-content--hidden'}`}>
-                <div className="dw-modal-tabs" style={{ justifyContent: 'center', borderBottom: 'none', marginBottom: '8px', paddingBottom: '8px' }}>
-                  <button onClick={() => setActiveChartView('cost')} className={`dw-modal-tab ${activeChartView === 'cost' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '12px', padding: '6px 12px' }}>
-                    Cost
-                  </button>
-                  <button onClick={() => setActiveChartView('type')} className={`dw-modal-tab ${activeChartView === 'type' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '12px', padding: '6px 12px' }}>
-                    Type
-                  </button>
-                  <button onClick={() => setActiveChartView('ability')} className={`dw-modal-tab ${activeChartView === 'ability' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '12px', padding: '6px 12px' }}>
-                    Abilities
-                  </button>
-                </div>
-                <div className="text-xs h-48 sm:h-56 lg:h-72">
-                  {activeChartView === 'cost' && (
-                    <div className="w-full h-full flex flex-col items-center">
-                      <h4 className="font-semibold mb-1">Card Cost Distribution</h4>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={deckStats.barChartData} margin={{ top: 5, right: 20, left: -15, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-                          <XAxis dataKey="name" tick={{ fill: '#A0AEC0' }} interval={0} />
-                          <YAxis allowDecimals={false} tick={{ fill: '#A0AEC0' }} />
-                          <Tooltip cursor={{fill: 'rgba(128, 90, 213, 0.2)'}} contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
-                          <Bar dataKey="count" fill="#8884d8" name="Card Count" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                  {activeChartView === 'type' && (
-                    <div className="w-full h-full flex flex-col items-center">
-                      <h4 className="font-semibold mb-1">Card Type Distribution</h4>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
-                          <Pie
-                            data={[
-                              { name: 'Ordnance', value: deckListForDisplay.filter(card => card.type === 'Ordnance').reduce((sum, card) => sum + card.quantity, 0), color: '#ef4444' },
-                              { name: 'Tactic', value: deckListForDisplay.filter(card => card.type === 'Tactic').reduce((sum, card) => sum + card.quantity, 0), color: '#f59e0b' },
-                              { name: 'Support', value: deckListForDisplay.filter(card => card.type === 'Support').reduce((sum, card) => sum + card.quantity, 0), color: '#10b981' },
-                              { name: 'Upgrade', value: deckListForDisplay.filter(card => card.type === 'Upgrade').reduce((sum, card) => sum + card.quantity, 0), color: '#c084fc' }
-                            ].filter(item => item.value > 0)}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
-                            outerRadius={80}
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {[
-                              { name: 'Ordnance', value: deckListForDisplay.filter(card => card.type === 'Ordnance').reduce((sum, card) => sum + card.quantity, 0), color: '#ef4444' },
-                              { name: 'Tactic', value: deckListForDisplay.filter(card => card.type === 'Tactic').reduce((sum, card) => sum + card.quantity, 0), color: '#f59e0b' },
-                              { name: 'Support', value: deckListForDisplay.filter(card => card.type === 'Support').reduce((sum, card) => sum + card.quantity, 0), color: '#10b981' },
-                              { name: 'Upgrade', value: deckListForDisplay.filter(card => card.type === 'Upgrade').reduce((sum, card) => sum + card.quantity, 0), color: '#c084fc' }
-                            ].filter(item => item.value > 0).map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={entry.color} />
-                            ))}
-                          </Pie>
-                          <Tooltip />
-                          <Legend />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                  {activeChartView === 'ability' && (
-                    <div className="w-full h-full flex flex-col items-center">
-                      <h4 className="font-semibold mb-1">Ability Breakdown</h4>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
-                          <Pie
-                            data={deckStats.pieChartData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={renderCustomizedLabel}
-                            outerRadius={60}
-                            dataKey="value"
-                          >
-                            {deckStats.pieChartData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* DRONE STATISTICS */}
-          {rightPanelView === 'drones' && droneCount > 0 && (
-            <div className="dw-stats-section">
-              <button
-                onClick={() => setIsStatsVisible(!isStatsVisible)}
-                className="dw-stats-toggle"
-              >
-                Drone Statistics
-                <ChevronUp size={18} className={`dw-stats-toggle-icon ${!isStatsVisible ? 'dw-stats-toggle-icon--collapsed' : ''}`} />
-              </button>
-
-              <div className={`dw-stats-content ${isStatsVisible ? 'dw-stats-content--visible' : 'dw-stats-content--hidden'}`}>
-                <div className="dw-modal-tabs" style={{ justifyContent: 'center', borderBottom: 'none', marginBottom: '8px', paddingBottom: '8px', flexWrap: 'wrap' }}>
-                  <button onClick={() => setActiveChartView('cost')} className={`dw-modal-tab ${activeChartView === 'cost' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Cost</button>
-                  <button onClick={() => setActiveChartView('attack')} className={`dw-modal-tab ${activeChartView === 'attack' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Attack</button>
-                  <button onClick={() => setActiveChartView('speed')} className={`dw-modal-tab ${activeChartView === 'speed' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Speed</button>
-                  <button onClick={() => setActiveChartView('shields')} className={`dw-modal-tab ${activeChartView === 'shields' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Shields</button>
-                  <button onClick={() => setActiveChartView('hull')} className={`dw-modal-tab ${activeChartView === 'hull' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Hull</button>
-                  <button onClick={() => setActiveChartView('limit')} className={`dw-modal-tab ${activeChartView === 'limit' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Limit</button>
-                  <button onClick={() => setActiveChartView('upgrades')} className={`dw-modal-tab ${activeChartView === 'upgrades' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Upgrades</button>
-                  <button onClick={() => setActiveChartView('ability')} className={`dw-modal-tab ${activeChartView === 'ability' ? 'dw-modal-tab--active' : ''}`} style={{ fontSize: '11px', padding: '5px 10px' }}>Abilities</button>
-                </div>
-                <div className="text-xs h-48 sm:h-56 lg:h-72">
-                  {activeChartView === 'cost' && (
-                    <div className="w-full h-full flex flex-col items-center">
-                      <h4 className="font-semibold mb-1">Drone Cost Distribution</h4>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={droneStats.costData} margin={{ top: 5, right: 20, left: -15, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-                          <XAxis dataKey="name" tick={{ fill: '#A0AEC0' }} interval={0} />
-                          <YAxis allowDecimals={false} tick={{ fill: '#A0AEC0' }} />
-                          <Tooltip cursor={{fill: 'rgba(128, 90, 213, 0.2)'}} contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
-                          <Bar dataKey="count" fill="#8884d8" name="Drone Count" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                  {activeChartView === 'attack' && (
-                    <div className="w-full h-full flex flex-col items-center">
-                      <h4 className="font-semibold mb-1">Attack Distribution</h4>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={droneStats.attackData} margin={{ top: 5, right: 20, left: -15, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-                          <XAxis dataKey="name" tick={{ fill: '#A0AEC0' }} interval={0} />
-                          <YAxis allowDecimals={false} tick={{ fill: '#A0AEC0' }} />
-                          <Tooltip cursor={{fill: 'rgba(128, 90, 213, 0.2)'}} contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
-                          <Bar dataKey="count" fill="#ef4444" name="Drone Count" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                  {activeChartView === 'speed' && (
-                    <div className="w-full h-full flex flex-col items-center">
-                      <h4 className="font-semibold mb-1">Speed Distribution</h4>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={droneStats.speedData} margin={{ top: 5, right: 20, left: -15, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-                          <XAxis dataKey="name" tick={{ fill: '#A0AEC0' }} interval={0} />
-                          <YAxis allowDecimals={false} tick={{ fill: '#A0AEC0' }} />
-                          <Tooltip cursor={{fill: 'rgba(128, 90, 213, 0.2)'}} contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
-                          <Bar dataKey="count" fill="#3b82f6" name="Drone Count" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                  {activeChartView === 'shields' && (
-                    <div className="w-full h-full flex flex-col items-center">
-                      <h4 className="font-semibold mb-1">Shield Distribution</h4>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={droneStats.shieldsData} margin={{ top: 5, right: 20, left: -15, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-                          <XAxis dataKey="name" tick={{ fill: '#A0AEC0' }} interval={0} />
-                          <YAxis allowDecimals={false} tick={{ fill: '#A0AEC0' }} />
-                          <Tooltip cursor={{fill: 'rgba(128, 90, 213, 0.2)'}} contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
-                          <Bar dataKey="count" fill="#06b6d4" name="Drone Count" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                  {activeChartView === 'hull' && (
-                    <div className="w-full h-full flex flex-col items-center">
-                      <h4 className="font-semibold mb-1">Hull Distribution</h4>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={droneStats.hullData} margin={{ top: 5, right: 20, left: -15, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-                          <XAxis dataKey="name" tick={{ fill: '#A0AEC0' }} interval={0} />
-                          <YAxis allowDecimals={false} tick={{ fill: '#A0AEC0' }} />
-                          <Tooltip cursor={{fill: 'rgba(128, 90, 213, 0.2)'}} contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
-                          <Bar dataKey="count" fill="#22c55e" name="Drone Count" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                  {activeChartView === 'limit' && (
-                    <div className="w-full h-full flex flex-col items-center">
-                      <h4 className="font-semibold mb-1">Deployment Limit Distribution</h4>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={droneStats.limitData} margin={{ top: 5, right: 20, left: -15, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-                          <XAxis dataKey="name" tick={{ fill: '#A0AEC0' }} interval={0} />
-                          <YAxis allowDecimals={false} tick={{ fill: '#A0AEC0' }} />
-                          <Tooltip cursor={{fill: 'rgba(128, 90, 213, 0.2)'}} contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
-                          <Bar dataKey="count" fill="#f59e0b" name="Drone Count" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                  {activeChartView === 'upgrades' && (
-                    <div className="w-full h-full flex flex-col items-center">
-                      <h4 className="font-semibold mb-1">Upgrade Slots Distribution</h4>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={droneStats.upgradesData} margin={{ top: 5, right: 20, left: -15, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
-                          <XAxis dataKey="name" tick={{ fill: '#A0AEC0' }} interval={0} />
-                          <YAxis allowDecimals={false} tick={{ fill: '#A0AEC0' }} />
-                          <Tooltip cursor={{fill: 'rgba(128, 90, 213, 0.2)'}} contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
-                          <Bar dataKey="count" fill="#a855f7" name="Drone Count" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                  {activeChartView === 'ability' && (
-                    <div className="w-full h-full flex flex-col items-center">
-                      <h4 className="font-semibold mb-1">Ability Breakdown</h4>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
-                          <Pie
-                            data={droneStats.abilityData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
-                            outerRadius={60}
-                            dataKey="value"
-                          >
-                            {droneStats.abilityData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
+          {/* --- Statistics Section --- */}
+          <DeckStatisticsCharts
+            rightPanelView={rightPanelView}
+            cardCount={cardCount}
+            droneCount={droneCount}
+            deckStats={deckStats}
+            droneStats={droneStats}
+            deckListForDisplay={deckListForDisplay}
+            activeChartView={activeChartView}
+            setActiveChartView={setActiveChartView}
+            isStatsVisible={isStatsVisible}
+            setIsStatsVisible={setIsStatsVisible}
+          />
 
                     {/* Save/Confirm Button - hidden in readOnly mode */}
                     {!readOnly && (
