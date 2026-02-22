@@ -528,7 +528,6 @@ const DeckBuilder = ({
     }
   }, [filterOptions.minCost, filterOptions.maxCost]);
 
-  // --- MODIFIED: Memoize calculations for performance, now using processedCardCollection ---
   const { cardCount, deckListForDisplay, baseCardCounts, typeCounts } = useMemo(() => {
     const counts = {};
     const types = { Ordnance: 0, Tactic: 0, Support: 0, Upgrade: 0 };
@@ -631,81 +630,18 @@ const DeckBuilder = ({
     return { shipComponentCount: count, shipComponentsValid: isValid };
   }, [selectedShipComponents, activeComponentCollection]);
 
-  // Handle save with toast notification
   const handleSaveWithToast = () => {
-    debugLog('DECK_BUILDER', '>>> handleSaveWithToast START', { mode, readOnly });
-
-    // Call the parent's confirm handler
-    debugLog('DECK_BUILDER', 'Calling onConfirmDeck...');
+    debugLog('DECK_BUILDER', 'handleSaveWithToast', { mode, readOnly });
     onConfirmDeck();
-    debugLog('DECK_BUILDER', 'onConfirmDeck returned');
 
-    // Show toast (unless in readOnly mode)
     if (!readOnly) {
-      debugLog('DECK_BUILDER', 'About to call setShowSaveToast(true)');
       setShowSaveToast(true);
-      debugLog('DECK_BUILDER', 'setShowSaveToast(true) called');
-      setTimeout(() => {
-        debugLog('DECK_BUILDER', 'Timeout firing: setShowSaveToast(false)');
-        setShowSaveToast(false);
-      }, 1500);
-    } else {
-      debugLog('DECK_BUILDER', 'Skipping toast - readOnly mode');
+      setTimeout(() => setShowSaveToast(false), 1500);
     }
-
-    debugLog('DECK_BUILDER', '<<< handleSaveWithToast END');
   };
 
-  // Debug: track showSaveToast state changes
-  useEffect(() => {
-    debugLog('DECK_BUILDER', 'showSaveToast state changed', { showSaveToast });
-  }, [showSaveToast]);
-
-  // Debug: track component mount/unmount to detect remounting
-  useEffect(() => {
-    debugLog('DECK_BUILDER', 'DeckBuilder MOUNTED', { mode });
-    return () => {
-      debugLog('DECK_BUILDER', 'DeckBuilder UNMOUNTED', { mode });
-    };
-  }, []);
-
-  // Debug: verify toast element is actually in DOM and check its properties
-  useEffect(() => {
-    if (showSaveToast) {
-      // Give React a moment to render, then check the DOM
-      setTimeout(() => {
-        const toastElement = document.querySelector('.save-toast');
-        if (toastElement) {
-          const rect = toastElement.getBoundingClientRect();
-          const styles = window.getComputedStyle(toastElement);
-          debugLog('DECK_BUILDER', 'Toast element FOUND in DOM', {
-            exists: true,
-            rect: { top: rect.top, left: rect.left, width: rect.width, height: rect.height },
-            computedStyles: {
-              position: styles.position,
-              display: styles.display,
-              visibility: styles.visibility,
-              opacity: styles.opacity,
-              zIndex: styles.zIndex,
-              transform: styles.transform,
-              background: styles.background
-            },
-            parentElement: toastElement.parentElement?.tagName
-          });
-        } else {
-          debugLog('DECK_BUILDER', 'Toast element NOT FOUND in DOM', {
-            exists: false,
-            documentBodyChildren: document.body.children.length
-          });
-        }
-      }, 50);
-    }
-  }, [showSaveToast]);
-
-  // --- NEW: Define colors for the Pie Chart ---
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943', '#A45D5D', '#8C5DA4'];
 
-  // --- NEW: Memoize statistics for the charts ---
   const deckStats = useMemo(() => {
     // Bar chart data (cost distribution)
     const costDistribution = {};
@@ -894,7 +830,6 @@ const DeckBuilder = ({
     return sortableItems;
   }, [processedDroneCollection, droneFilters, droneSortConfig, mode]);
 
-  // --- NEW: Handler for sorting ---
   const requestSort = (key) => {
     let direction = 'ascending';
     if (sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -1525,7 +1460,6 @@ const DeckBuilder = ({
           {cardsViewMode === 'table' && (
           <div className="flex-grow overflow-y-auto pr-2 dw-modal-scroll">
             <table className="w-full text-left deck-builder-table">
-              {/* --- MODIFIED: Sortable Headers --- */}
               <thead>
                 <tr>
                   <th>Info</th>
@@ -2039,7 +1973,6 @@ const DeckBuilder = ({
                 const isAtMax = baseCardCounts[card.baseCardId] >= card.maxInDeck;
                 return (
                   <div key={card.id} className="deck-list-item">
-                    {/* --- NEW ICON BUTTON --- */}
                     <button
                       onClick={() => setDetailedCard(card)}
                       className="p-1 text-gray-400 hover:text-white flex-shrink-0 mr-3"
