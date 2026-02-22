@@ -20,7 +20,7 @@ import { getValidDeploymentsForDeck } from '../logic/quickDeploy/QuickDeployVali
 
 // --- Helper ---
 
-const isBlueprintRewardType = (rewardType) => {
+export const isBlueprintRewardType = (rewardType) => {
   return rewardType?.startsWith('DRONE_BLUEPRINT_');
 };
 
