@@ -40,6 +40,17 @@ import {
   processMovementCompletion as _processMovementCompletion,
   processSearchAndDrawCompletion as _processSearchAndDrawCompletion
 } from '../logic/actions/CardActionStrategy.js';
+import {
+  processShipAbility as _processShipAbility,
+  processShipAbilityCompletion as _processShipAbilityCompletion,
+  processRecallAbility as _processRecallAbility,
+  processTargetLockAbility as _processTargetLockAbility,
+  processRecalculateAbility as _processRecalculateAbility,
+  processRecalculateComplete as _processRecalculateComplete,
+  processReallocateShieldsAbility as _processReallocateShieldsAbility,
+  processReallocateShieldsComplete as _processReallocateShieldsComplete,
+  validateShipAbilityActivationLimit as _validateShipAbilityActivationLimit
+} from '../logic/actions/ShipAbilityStrategy.js';
 
 class ActionProcessor {
   // Singleton instance
@@ -769,275 +780,39 @@ setAnimationManager(animationManager) {
    * Process ship ability action
    */
   async processShipAbility(payload) {
-    const { ability, sectionName, targetId, playerId } = payload;
-
-    const currentState = this.gameStateManager.getState();
-    const playerStates = { player1: currentState.player1, player2: currentState.player2 };
-    const placedSections = {
-      player1: currentState.placedSections,
-      player2: currentState.opponentPlacedSections
-    };
-
-    const callbacks = {
-      logCallback: (entry) => this.gameStateManager.addLogEntry(entry),
-      resolveAttackCallback: async (attackPayload) => {
-        // Recursively handle attack through action processor
-        return await this.processAttack(attackPayload);
-      }
-    };
-
-    const result = AbilityResolver.resolveShipAbility(
-      ability,
-      sectionName,
-      targetId,
-      playerStates,
-      placedSections,
-      callbacks,
-      playerId
-    );
-
-    // Collect animation events
-    // Spread all event properties to ensure logical position data flows through
-    // Include timing property from AnimationManager for proper sequencing on guest side
-    const animations = (result.animationEvents || []).map(event => {
-      const animDef = this.animationManager?.animations[event.type];
-      return {
-        animationName: event.type,
-        timing: animDef?.timing || 'pre-state',  // Include timing from definition
-        payload: {
-          ...event,  // Pass ALL properties from event (sourcePlayer, sourceLane, targetPlayer, etc.)
-          droneId: event.sourceId  // Add alias for backwards compatibility
-        }
-      };
-    });
-
-    // Capture animations for broadcasting (host only)
-    const gameMode = this.gameStateManager.get('gameMode');
-    if (gameMode === 'host' && animations.length > 0) {
-      this.pendingActionAnimations.push(...animations);
-    }
-
-    await this._executeAnimationPhase(animations, result.newPlayerStates);
-
-    // Return result with animations for optimistic action tracking
-    return {
-      ...result,
-      animations: {
-        actionAnimations: animations,
-        systemAnimations: []
-      }
-    };
+    return _processShipAbility(payload, this._getActionContext());
   }
 
-  /**
-   * Process ship ability completion (after UI confirmation)
-   * Used for abilities that require multi-step UI interactions (e.g., shield reallocation)
-   * Deducts energy cost and ends turn without re-executing ability logic
-   */
   async processShipAbilityCompletion(payload) {
-    const { ability, sectionName, playerId } = payload;
-
-    const currentState = this.gameStateManager.getState();
-    const playerState = currentState[playerId];
-
-    // Deduct energy cost
-    const newPlayerState = {
-      ...playerState,
-      energy: playerState.energy - ability.cost.energy
-    };
-
-    this.gameStateManager.updatePlayerState(playerId, newPlayerState);
-
-    // Log the ability completion
-    this.gameStateManager.addLogEntry({
-      player: playerState.name,
-      actionType: 'SHIP_ABILITY',
-      source: `${sectionName}'s ${ability.name}`,
-      target: 'N/A',
-      outcome: `Completed ${ability.name}.`
-    });
-
-    debugLog('ENERGY', `💰 Ship ability completion: ${ability.name} cost ${ability.cost.energy} energy`, {
-      playerId,
-      previousEnergy: playerState.energy,
-      newEnergy: newPlayerState.energy
-    });
-
-    // Return result indicating turn should end
-    return {
-      success: true,
-      shouldEndTurn: true,
-      newPlayerStates: {
-        player1: currentState.player1,
-        player2: currentState.player2,
-        [playerId]: newPlayerState
-      }
-    };
+    return _processShipAbilityCompletion(payload, this._getActionContext());
   }
 
-  /**
-   * Process Recall ship ability
-   * Single-action: Recall drone + deduct energy + end turn
-   */
   async processRecallAbility(payload) {
-    const currentState = this.gameStateManager.getState();
-    const { sectionName, playerId } = payload;
-
-    // Validate activation limit
-    const limitError = this.validateShipAbilityActivationLimit(sectionName, playerId, { player1: currentState.player1, player2: currentState.player2 });
-    if (limitError) return limitError;
-
-    const placedSections = playerId === 'player1' ? currentState.placedSections : currentState.opponentPlacedSections;
-
-    const result = RecallAbilityProcessor.process(
-      payload,
-      { player1: currentState.player1, player2: currentState.player2 },
-      placedSections
-    );
-
-    if (result.newPlayerStates) {
-      this.gameStateManager.updatePlayerState('player1', result.newPlayerStates.player1);
-      this.gameStateManager.updatePlayerState('player2', result.newPlayerStates.player2);
-    }
-
-    return result;
+    return _processRecallAbility(payload, this._getActionContext());
   }
 
-  /**
-   * Process Target Lock ship ability
-   * Single-action: Mark drone + deduct energy + end turn
-   */
   async processTargetLockAbility(payload) {
-    const currentState = this.gameStateManager.getState();
-    const { sectionName, playerId } = payload;
-
-    // Validate activation limit
-    const limitError = this.validateShipAbilityActivationLimit(sectionName, playerId, { player1: currentState.player1, player2: currentState.player2 });
-    if (limitError) return limitError;
-
-    const result = TargetLockAbilityProcessor.process(
-      payload,
-      { player1: currentState.player1, player2: currentState.player2 }
-    );
-
-    if (result.newPlayerStates) {
-      this.gameStateManager.updatePlayerState('player1', result.newPlayerStates.player1);
-      this.gameStateManager.updatePlayerState('player2', result.newPlayerStates.player2);
-    }
-
-    return result;
+    return _processTargetLockAbility(payload, this._getActionContext());
   }
 
-  /**
-   * Validate ship ability activation limit
-   * @param {string} sectionName - Ship section name
-   * @param {string} playerId - Player ID
-   * @param {Object} playerStates - Current player states
-   * @returns {Object|null} Error object if limit reached, null if valid
-   */
   validateShipAbilityActivationLimit(sectionName, playerId, playerStates) {
-    // Find the ability definition from ship section data
-    const sectionDefinition = shipComponentCollection.find(s =>
-      s.type.toLowerCase() === sectionName.toLowerCase() || s.name?.toLowerCase() === sectionName.toLowerCase()
-    );
-    const ability = sectionDefinition?.ability;
-
-    if (ability?.activationLimit != null) {
-      const sectionData = playerStates[playerId]?.shipSections?.[sectionName];
-      const activations = sectionData?.abilityActivationCount || 0;
-      if (activations >= ability.activationLimit) {
-        return {
-          error: `Ability ${ability.name} has reached its activation limit for this round`,
-          shouldEndTurn: false,
-          animationEvents: []
-        };
-      }
-    }
-    return null;
+    return _validateShipAbilityActivationLimit(sectionName, playerId, playerStates);
   }
 
-  /**
-   * Process Recalculate ship ability
-   * Multi-step: Deduct energy + draw card, return mandatoryAction
-   */
   async processRecalculateAbility(payload) {
-    const currentState = this.gameStateManager.getState();
-    const localPlayerId = this.gameStateManager.getLocalPlayerId();
-    const { sectionName, playerId } = payload;
-
-    // Validate activation limit
-    const limitError = this.validateShipAbilityActivationLimit(sectionName, playerId, { player1: currentState.player1, player2: currentState.player2 });
-    if (limitError) return limitError;
-
-    const result = RecalculateAbilityProcessor.process(
-      payload,
-      { player1: currentState.player1, player2: currentState.player2 },
-      localPlayerId,
-      currentState.gameMode
-    );
-
-    if (result.newPlayerStates) {
-      this.gameStateManager.updatePlayerState('player1', result.newPlayerStates.player1);
-      this.gameStateManager.updatePlayerState('player2', result.newPlayerStates.player2);
-    }
-
-    return result;
+    return _processRecalculateAbility(payload, this._getActionContext());
   }
 
-  /**
-   * Complete Recalculate ability after mandatory discard
-   */
   async processRecalculateComplete(payload) {
-    const currentState = this.gameStateManager.getState();
-
-    const result = RecalculateAbilityProcessor.complete(
-      payload,
-      { player1: currentState.player1, player2: currentState.player2 }
-    );
-
-    // No state changes needed - discard already processed
-    return result;
+    return _processRecalculateComplete(payload, this._getActionContext());
   }
 
-  /**
-   * Process Reallocate Shields ship ability actions
-   * Handles remove/add/restore actions during UI flow
-   */
   async processReallocateShieldsAbility(payload) {
-    const currentState = this.gameStateManager.getState();
-
-    const result = ReallocateShieldsAbilityProcessor.process(
-      payload,
-      { player1: currentState.player1, player2: currentState.player2 },
-      currentState
-    );
-
-    if (result.newPlayerStates) {
-      this.gameStateManager.updatePlayerState('player1', result.newPlayerStates.player1);
-      this.gameStateManager.updatePlayerState('player2', result.newPlayerStates.player2);
-    }
-
-    return result;
+    return _processReallocateShieldsAbility(payload, this._getActionContext());
   }
 
-  /**
-   * Complete Reallocate Shields ability
-   * Deduct energy and end turn when confirmed
-   */
   async processReallocateShieldsComplete(payload) {
-    const currentState = this.gameStateManager.getState();
-
-    const result = ReallocateShieldsAbilityProcessor.complete(
-      payload,
-      { player1: currentState.player1, player2: currentState.player2 }
-    );
-
-    if (result.newPlayerStates) {
-      this.gameStateManager.updatePlayerState('player1', result.newPlayerStates.player1);
-      this.gameStateManager.updatePlayerState('player2', result.newPlayerStates.player2);
-    }
-
-    return result;
+    return _processReallocateShieldsComplete(payload, this._getActionContext());
   }
 
   /**
