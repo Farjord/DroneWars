@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Eye, Bolt, Upload, Download, Copy, X, ChevronUp, Sword, Rocket, Shield, Grid, ArrowLeft, LayoutGrid, List, AlertTriangle, Settings, Filter } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import ActionCard from '../ui/ActionCard.jsx';
@@ -16,9 +16,8 @@ import ShipConfigurationTab from '../ui/ShipConfigurationTab.jsx';
 import CardFilterModal from '../modals/CardFilterModal.jsx';
 import DroneFilterModal from '../modals/DroneFilterModal.jsx';
 import FilterChip from '../ui/FilterChip.jsx';
-import fullDroneCollection from '../../data/droneData.js';
-import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { getAllShips, getDefaultShip } from '../../data/shipData.js';
+import useDeckBuilderData from '../../hooks/useDeckBuilderData.js';
 import { gameEngine } from '../../logic/gameLogic.js';
 import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js';
 import { getTypeBackgroundClass, getTypeTextClass, getRarityDisplay } from '../../utils/cardTypeStyles.js';
@@ -27,9 +26,6 @@ import { calculateEffectiveMaxForCard } from '../../utils/singlePlayerDeckUtils.
 import { debugLog } from '../../utils/debugLogger.js';
 import { DEV_CONFIG } from '../../config/devConfig.js';
 import {
-  filterCards,
-  filterDrones,
-  sortByRarity,
   countActiveFilters,
   countActiveDroneFilters,
   generateFilterChips,
@@ -130,199 +126,24 @@ const DeckBuilder = ({
   const [cardsViewMode, setCardsViewMode] = useState('table'); // 'table' or 'grid'
   const [dronesViewMode, setDronesViewMode] = useState('table'); // 'table' or 'grid'
 
-  // --- Memoize a processed card collection with keywords for efficient filtering/sorting ---
-  const processedCardCollection = useMemo(() => {
-    const formatKeyword = (type) => {
-        if (!type) return '';
-        const formatted = type.replace(/_/g, ' ').toLowerCase();
-        return formatted.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-    };
+  // --- Data Processing Hook ---
+  const {
+    processedCardCollection, processedDroneCollection, activeComponentCollection,
+    filterOptions, droneFilterOptions,
+    cardCount, deckListForDisplay, baseCardCounts, typeCounts,
+    typeLimits, totalCardLimit, typeValid, isDeckValid,
+    droneCount, droneListForDisplay, isDronesValid,
+    shipComponentCount, shipComponentsValid,
+    deckStats, droneStats, viewDeckData,
+    filteredAndSortedCards, filteredAndSortedDrones,
+  } = useDeckBuilderData({
+    fullCardCollection, availableDrones, availableComponents,
+    deck, selectedDrones, selectedShipComponents,
+    mode, activeShip, maxDrones,
+    filters, sortConfig, droneFilters, droneSortConfig,
+  });
 
-    return fullCardCollection.map(card => {
-        const keywords = [];
-        const effect = card.effect;
-
-        if (effect.type === 'REPEATING_EFFECT') {
-            keywords.push(formatKeyword(effect.type));
-            if (effect.effects && Array.isArray(effect.effects)) {
-                effect.effects.forEach(subEffect => {
-                    if (subEffect.type) keywords.push(formatKeyword(subEffect.type));
-                });
-            }
-        } else if (effect.type === 'MODIFY_DRONE_BASE' && effect.mod) {
-            // Create specific modification keywords
-            const stat = effect.mod.stat;
-            const value = effect.mod.value;
-
-            if (stat === 'attack') {
-                keywords.push(value > 0 ? 'Attack Buff' : 'Attack Debuff');
-            } else if (stat === 'speed') {
-                keywords.push(value > 0 ? 'Speed Buff' : 'Speed Debuff');
-            } else if (stat === 'shields') {
-                keywords.push(value > 0 ? 'Shield Buff' : 'Shield Debuff');
-            } else if (stat === 'cost') {
-                keywords.push(value < 0 ? 'Cost Reduction' : 'Cost Increase');
-            } else if (stat === 'limit') {
-                keywords.push(value > 0 ? 'Limit Buff' : 'Limit Debuff');
-            } else if (stat === 'ability') {
-                keywords.push('Ability Grant');
-                // Also add the specific ability being granted
-                if (effect.mod.abilityToAdd && effect.mod.abilityToAdd.name) {
-                    keywords.push(effect.mod.abilityToAdd.name);
-                }
-            } else {
-                keywords.push(formatKeyword(`${stat} Modification`));
-            }
-        } else if (effect.type === 'MODIFY_STAT' && effect.mod) {
-            // Create specific stat modification keywords
-            const stat = effect.mod.stat;
-            const value = effect.mod.value;
-            const type = effect.mod.type; // temporary or permanent
-
-            if (stat === 'attack') {
-                keywords.push(value > 0 ? 'Attack Buff' : 'Attack Debuff');
-            } else if (stat === 'speed') {
-                keywords.push(value > 0 ? 'Speed Buff' : 'Speed Debuff');
-            } else if (stat === 'shields') {
-                keywords.push(value > 0 ? 'Shield Buff' : 'Shield Debuff');
-            } else {
-                keywords.push(value > 0 ? `${stat} Buff` : `${stat} Debuff`);
-            }
-        } else if (effect.type === 'SEARCH_AND_DRAW') {
-            // Add both Search and Draw keywords for better filtering
-            keywords.push(formatKeyword(effect.type)); // "Search And Draw"
-            keywords.push('Draw'); // Also include the draw keyword
-        } else if (effect.type) {
-            keywords.push(formatKeyword(effect.type));
-        }
-        if (effect.goAgain) keywords.push('Go Again');
-        if (effect.damageType === 'PIERCING') keywords.push('Piercing');
-        if (effect.mod?.type) keywords.push(formatKeyword(effect.mod.type));
-        
-        const targetingText = (() => {
-            if (card.targeting) {
-                const t = formatKeyword(card.targeting.type);
-                if (card.targeting.affinity) {
-                    const a = card.targeting.affinity.charAt(0) + card.targeting.affinity.slice(1).toLowerCase();
-                    return `${t} (${a})`;
-                }
-                return t;
-            } else if (effect.type === 'MULTI_MOVE' && effect.source) {
-                // Handle MULTI_MOVE cards that have targeting in the effect
-                const sourceLocation = effect.source.location || 'Any';
-                const sourceAffinity = effect.source.affinity || 'Any';
-                const formattedAffinity = sourceAffinity.charAt(0).toUpperCase() + sourceAffinity.slice(1).toLowerCase();
-                return `${formatKeyword(sourceLocation)} (${formattedAffinity})`;
-            } else if (effect.type === 'SINGLE_MOVE') {
-                // Handle SINGLE_MOVE cards - they typically target friendly drones
-                return 'Drone (Friendly)';
-            }
-            return 'N/A';
-        })();
-
-        return { ...card, keywords: [...new Set(keywords)], targetingText };
-    });
-  }, [fullCardCollection]);
-
-  // --- Memoize a processed drone collection with keywords for efficient filtering/sorting ---
-  const processedDroneCollection = useMemo(() => {
-    // Use availableDrones if provided (extraction mode), otherwise use full collection
-    const droneSource = availableDrones || fullDroneCollection;
-    return droneSource
-      .map(drone => {
-      const keywords = [];
-      // Mark drones with selectable: false as AI-only (for the Include AI Only filter)
-      const isAiOnly = drone.selectable === false;
-
-      // Extract ability names as keywords
-      if (drone.abilities && drone.abilities.length > 0) {
-        drone.abilities.forEach(ability => {
-          if (ability.name) keywords.push(ability.name);
-
-          // Add ability type keywords
-          if (ability.type) {
-            keywords.push(ability.type === 'ACTIVE' ? 'Active' : ability.type === 'PASSIVE' ? 'Passive' : 'Triggered');
-          }
-
-          // Add effect type keywords
-          if (ability.effect?.keyword) {
-            keywords.push(ability.effect.keyword);
-          }
-        });
-      }
-
-      // Concatenate all ability descriptions (without ability names)
-      const description = drone.abilities && drone.abilities.length > 0
-        ? drone.abilities.map(a => a.description).join(' | ')
-        : 'No abilities';
-
-      return { ...drone, keywords: [...new Set(keywords)], description, aiOnly: isAiOnly };
-    });
-  }, [availableDrones]);
-
-  // --- Use availableComponents if provided, otherwise use full collection ---
-  const activeComponentCollection = useMemo(() => {
-    return availableComponents || shipComponentCollection;
-  }, [availableComponents]);
-
-  const filterOptions = useMemo(() => {
-    const costs = new Set();
-    const targets = new Set();
-    const abilities = new Set();
-    const damageTypes = new Set();
-    processedCardCollection.forEach(card => {
-        costs.add(card.cost);
-        if (card.targetingText && card.targetingText !== 'N/A') {
-          targets.add(card.targetingText);
-        }
-        card.keywords.forEach(k => abilities.add(k));
-        if (card.effect?.damageType) {
-          damageTypes.add(card.effect.damageType);
-        }
-    });
-
-    const costValues = Array.from(costs);
-
-    // Determine rarities based on mode
-    const rarities = mode === 'extraction'
-      ? ['Starter', 'Common', 'Uncommon', 'Rare', 'Mythic']
-      : ['Common', 'Uncommon', 'Rare', 'Mythic'];
-
-    return {
-        minCost: Math.min(...costValues),
-        maxCost: Math.max(...costValues),
-        rarities,
-        types: ['Ordnance', 'Tactic', 'Support', 'Upgrade'],
-        targets: Array.from(targets).sort(),
-        damageTypes: Array.from(damageTypes).sort(),
-        abilities: Array.from(abilities).sort(),
-    };
-  }, [processedCardCollection, mode]);
-
-  const droneFilterOptions = useMemo(() => {
-    const abilities = new Set();
-    const damageTypes = new Set();
-    processedDroneCollection.forEach(drone => {
-      drone.keywords.forEach(k => abilities.add(k));
-      if (drone.damageType) {
-        damageTypes.add(drone.damageType);
-      }
-    });
-
-    // Determine rarities based on mode
-    const rarities = mode === 'extraction'
-      ? ['Starter', 'Common', 'Uncommon', 'Rare', 'Mythic']
-      : ['Common', 'Uncommon', 'Rare', 'Mythic'];
-
-    return {
-      rarities,
-      classes: [1, 2, 3, 4, 5],
-      damageTypes: Array.from(damageTypes).sort(),
-      abilities: Array.from(abilities).sort()
-    };
-  }, [processedDroneCollection, mode]);
-
-  // This effect initializes the cost filter range once the options are calculated
+  // Initialize cost filter range once filter options are calculated
   useEffect(() => {
     if (filterOptions.minCost !== Infinity && filterOptions.maxCost !== -Infinity) {
       setFilters(prev => ({
@@ -331,108 +152,6 @@ const DeckBuilder = ({
       }));
     }
   }, [filterOptions.minCost, filterOptions.maxCost]);
-
-  const { cardCount, deckListForDisplay, baseCardCounts, typeCounts } = useMemo(() => {
-    const counts = {};
-    const types = { Ordnance: 0, Tactic: 0, Support: 0, Upgrade: 0 };
-    let total = 0;
-
-    // Iterate over the deck object, which is { cardId: quantity }
-    Object.entries(deck).forEach(([cardId, quantity]) => {
-      if (quantity > 0) {
-        total += quantity;
-        const card = processedCardCollection.find(c => c.id === cardId);
-        if (card) {
-          const baseId = card.baseCardId;
-          counts[baseId] = (counts[baseId] || 0) + quantity;
-
-          // Track type counts
-          if (card.type) {
-            types[card.type] = (types[card.type] || 0) + quantity;
-          }
-        }
-      }
-    });
-
-    const displayList = Object.entries(deck)
-      .filter(([, quantity]) => quantity > 0)
-      .map(([cardId, quantity]) => {
-        const card = processedCardCollection.find(c => c.id === cardId);
-        return { ...card, quantity };
-      })
-      .sort((a, b) => a.name.localeCompare(b.name));
-
-    return { cardCount: total, deckListForDisplay: displayList, baseCardCounts: counts, typeCounts: types };
-  }, [deck, processedCardCollection]);
-
-  // Type limits derived from selected ship card
-  const typeLimits = {
-    Ordnance: activeShip?.deckLimits?.ordnanceLimit ?? 15,
-    Tactic: activeShip?.deckLimits?.tacticLimit ?? 15,
-    Support: activeShip?.deckLimits?.supportLimit ?? 15,
-    Upgrade: activeShip?.deckLimits?.upgradeLimit ?? 10
-  };
-  const totalCardLimit = activeShip?.deckLimits?.totalCards ?? 40;
-
-  // Validate type limits
-  const typeValid = Object.keys(typeLimits).every(
-    type => typeCounts[type] <= typeLimits[type]
-  );
-
-  // Deck is valid if it has exactly the required card count and respects type limits
-  const isDeckValid = cardCount === totalCardLimit && typeValid;
-
-  // --- Drone counts and display list ---
-  const { droneCount, droneListForDisplay } = useMemo(() => {
-    let total = 0;
-    const displayList = [];
-
-    Object.entries(selectedDrones || {}).forEach(([droneName, quantity]) => {
-      if (quantity > 0) {
-        total += quantity;
-        const drone = processedDroneCollection.find(d => d.name === droneName);
-        if (drone) {
-          displayList.push({ ...drone, quantity });
-        }
-      }
-    });
-
-    displayList.sort((a, b) => a.name.localeCompare(b.name));
-
-    return { droneCount: total, droneListForDisplay: displayList };
-  }, [selectedDrones, processedDroneCollection]);
-
-  const isDronesValid = droneCount === maxDrones;
-
-  // --- Ship component counts and validation ---
-  const { shipComponentCount, shipComponentsValid } = useMemo(() => {
-    const components = selectedShipComponents || {};
-    const count = Object.keys(components).filter(key => components[key]).length;
-
-    // Check that we have one of each type
-    const hasBridge = Object.keys(components).some(key => {
-      const comp = activeComponentCollection.find(c => c.id === key);
-      return comp && comp.type === 'Bridge' && components[key];
-    });
-    const hasPowerCell = Object.keys(components).some(key => {
-      const comp = activeComponentCollection.find(c => c.id === key);
-      return comp && comp.type === 'Power Cell' && components[key];
-    });
-    const hasDroneControl = Object.keys(components).some(key => {
-      const comp = activeComponentCollection.find(c => c.id === key);
-      return comp && comp.type === 'Drone Control Hub' && components[key];
-    });
-
-    // Check that all components have lane assignments and no conflicts
-    const lanes = Object.values(components).filter(l => l);
-    const uniqueLanes = new Set(lanes);
-    const allAssigned = lanes.length === 3;
-    const noConflicts = uniqueLanes.size === 3;
-
-    const isValid = hasBridge && hasPowerCell && hasDroneControl && allAssigned && noConflicts;
-
-    return { shipComponentCount: count, shipComponentsValid: isValid };
-  }, [selectedShipComponents, activeComponentCollection]);
 
   const handleSaveWithToast = () => {
     debugLog('DECK_BUILDER', 'handleSaveWithToast', { mode, readOnly });
@@ -443,194 +162,6 @@ const DeckBuilder = ({
       setTimeout(() => setShowSaveToast(false), 1500);
     }
   };
-
-  const deckStats = useMemo(() => {
-    // Bar chart data (cost distribution)
-    const costDistribution = {};
-    deckListForDisplay.forEach(card => {
-      const cost = card.cost || 0;
-      costDistribution[cost] = (costDistribution[cost] || 0) + card.quantity;
-    });
-    const barChartData = Object.entries(costDistribution)
-      .map(([cost, count]) => ({ name: `${cost}`, count }))
-      .sort((a, b) => parseInt(a.name) - parseInt(b.name));
-
-    // Pie chart data (ability distribution)
-    const abilityDistribution = {};
-    deckListForDisplay.forEach(card => {
-      // The card might not be found if the collection is loading, so check for keywords
-      if (card.keywords) {
-        card.keywords.forEach(keyword => {
-          abilityDistribution[keyword] = (abilityDistribution[keyword] || 0) + card.quantity;
-        });
-      }
-    });
-    const pieChartData = Object.entries(abilityDistribution)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-
-    return { barChartData, pieChartData };
-  }, [deckListForDisplay]);
-
-  // --- Drone statistics for charts ---
-  const droneStats = useMemo(() => {
-    const createDistribution = (statName) => {
-      const distribution = {};
-      droneListForDisplay.forEach(drone => {
-        const value = drone[statName] || 0;
-        distribution[value] = (distribution[value] || 0) + drone.quantity;
-      });
-      return Object.entries(distribution)
-        .map(([value, count]) => ({ name: `${value}`, count }))
-        .sort((a, b) => parseInt(a.name) - parseInt(b.name));
-    };
-
-    const costData = createDistribution('class'); // 'class' is the cost field in drones
-    const attackData = createDistribution('attack');
-    const speedData = createDistribution('speed');
-    const shieldsData = createDistribution('shields');
-    const hullData = createDistribution('hull');
-    const limitData = createDistribution('limit');
-    const upgradesData = createDistribution('upgradeSlots');
-
-    // Ability distribution (pie chart)
-    const abilityDistribution = {};
-    droneListForDisplay.forEach(drone => {
-      if (drone.keywords) {
-        drone.keywords.forEach(keyword => {
-          abilityDistribution[keyword] = (abilityDistribution[keyword] || 0) + drone.quantity;
-        });
-      }
-    });
-    const abilityData = Object.entries(abilityDistribution)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-
-    return {
-      costData,
-      attackData,
-      speedData,
-      shieldsData,
-      hullData,
-      limitData,
-      upgradesData,
-      abilityData
-    };
-  }, [droneListForDisplay]);
-
-  // --- Process data for ViewDeckModal ---
-  const viewDeckData = useMemo(() => {
-    // Process drones: filter selected drones (quantity > 0)
-    const selectedDronesList = [];
-    Object.entries(selectedDrones || {}).forEach(([droneName, quantity]) => {
-      if (quantity > 0) {
-        const drone = processedDroneCollection.find(d => d.name === droneName);
-        if (drone) {
-          selectedDronesList.push(drone);
-        }
-      }
-    });
-
-    // Process cards: convert deck object to {card, quantity} array
-    const deckCardsList = [];
-    Object.entries(deck).forEach(([cardId, quantity]) => {
-      if (quantity > 0) {
-        const card = processedCardCollection.find(c => c.id === cardId);
-        if (card) {
-          deckCardsList.push({ card, quantity });
-        }
-      }
-    });
-
-    return {
-      drones: selectedDronesList,
-      cards: deckCardsList
-    };
-  }, [selectedDrones, deck, processedDroneCollection, processedCardCollection]);
-
- // --- Memoize the filtered and sorted list for display using new filter utilities ---
-  const filteredAndSortedCards = useMemo(() => {
-    // Use the filterCards utility with new OR/AND logic
-    let sortableItems = filterCards(processedCardCollection, filters);
-
-    // Sort logic - special handling for rarity to support Starter in extraction mode
-    if (sortConfig.key !== null) {
-      if (sortConfig.key === 'rarity') {
-        // Use rarity sorting utility that handles Starter properly
-        sortableItems = sortByRarity(sortableItems, mode === 'extraction');
-        if (sortConfig.direction === 'descending') {
-          sortableItems.reverse();
-        }
-      } else {
-        sortableItems.sort((a, b) => {
-          const aVal = a[sortConfig.key];
-          const bVal = b[sortConfig.key];
-
-          // Handle null/undefined values
-          if (aVal == null && bVal == null) return 0;
-          if (aVal == null) return 1;
-          if (bVal == null) return -1;
-
-          // Convert to string for consistent comparison
-          const aStr = String(aVal).toLowerCase();
-          const bStr = String(bVal).toLowerCase();
-
-          if (aStr < bStr) {
-            return sortConfig.direction === 'ascending' ? -1 : 1;
-          }
-          if (aStr > bStr) {
-            return sortConfig.direction === 'ascending' ? 1 : -1;
-          }
-          // Secondary sort by ID for stability
-          return a.id.localeCompare(b.id);
-        });
-      }
-    }
-
-    return sortableItems;
-  }, [processedCardCollection, filters, sortConfig, mode]);
-
-  // --- Filtered and sorted drones list using new filter utilities ---
-  const filteredAndSortedDrones = useMemo(() => {
-    // Use the filterDrones utility with new OR/AND logic
-    let sortableItems = filterDrones(processedDroneCollection, droneFilters);
-
-    // Sort logic - special handling for rarity to support Starter in extraction mode
-    if (droneSortConfig.key !== null) {
-      if (droneSortConfig.key === 'rarity') {
-        // Use rarity sorting utility that handles Starter properly
-        sortableItems = sortByRarity(sortableItems, mode === 'extraction');
-        if (droneSortConfig.direction === 'descending') {
-          sortableItems.reverse();
-        }
-      } else {
-        sortableItems.sort((a, b) => {
-          const aVal = a[droneSortConfig.key];
-          const bVal = b[droneSortConfig.key];
-
-          // Handle null/undefined values
-          if (aVal == null && bVal == null) return 0;
-          if (aVal == null) return 1;
-          if (bVal == null) return -1;
-
-          // Convert to string for consistent comparison
-          const aStr = String(aVal).toLowerCase();
-          const bStr = String(bVal).toLowerCase();
-
-          if (aStr < bStr) {
-            return droneSortConfig.direction === 'ascending' ? -1 : 1;
-          }
-          if (aStr > bStr) {
-            return droneSortConfig.direction === 'ascending' ? 1 : -1;
-          }
-          // Secondary sort by name for stability
-          return a.name.localeCompare(b.name);
-        });
-      }
-    }
-
-    return sortableItems;
-  }, [processedDroneCollection, droneFilters, droneSortConfig, mode]);
 
   const requestSort = (key) => {
     let direction = 'ascending';
