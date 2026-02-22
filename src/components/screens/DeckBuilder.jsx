@@ -15,7 +15,8 @@ import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { getAllShips, getDefaultShip } from '../../data/shipData.js';
 import { gameEngine } from '../../logic/gameLogic.js';
 import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js';
-import { RARITY_COLORS } from '../../data/rarityColors';
+import { getTypeBackgroundClass, getTypeTextClass, getRarityDisplay } from '../../utils/cardTypeStyles.js';
+import { CHART_COLORS, renderCustomizedLabel } from '../../utils/chartUtils.jsx';
 import { generateJSObjectLiteral, convertToAIFormat, convertFromAIFormat, downloadDeckFile } from '../../utils/deckExportUtils.js';
 import vsDecks from '../../data/vsModeDeckData.js';
 import aiPersonalities from '../../data/aiData.js';
@@ -34,36 +35,6 @@ import {
   createDefaultDroneFilters,
 } from '../../utils/deckFilterUtils.js';
 
-// Helper functions to get type-based colors for table styling
-const getTypeBackgroundClass = (type) => {
-  switch (type) {
-    case 'Ordnance':
-      return 'bg-red-900/10';
-    case 'Tactic':
-      return 'bg-cyan-900/10';
-    case 'Support':
-      return 'bg-emerald-900/10';
-    case 'Upgrade':
-      return 'bg-purple-900/10';
-    default:
-      return '';
-  }
-};
-
-const getTypeTextClass = (type) => {
-  switch (type) {
-    case 'Ordnance':
-      return 'text-red-400';
-    case 'Tactic':
-      return 'text-cyan-400';
-    case 'Support':
-      return 'text-emerald-400';
-    case 'Upgrade':
-      return 'text-purple-400';
-    default:
-      return 'text-gray-400';
-  }
-};
 
 // Card detail popup using the actual ActionCard component
 const CardDetailPopup = ({ card, onClose }) => {
@@ -640,8 +611,6 @@ const DeckBuilder = ({
     }
   };
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943', '#A45D5D', '#8C5DA4'];
-
   const deckStats = useMemo(() => {
     // Bar chart data (cost distribution)
     const costDistribution = {};
@@ -923,31 +892,6 @@ const DeckBuilder = ({
       }
     });
   };
-
-  // --- Custom renderer for Pie Chart labels with lines ---
-  const RADIAN = Math.PI / 180;
-  const renderCustomizedLabel = ({ cx, cy, midAngle, outerRadius, fill, name, value }) => {
-    const sin = Math.sin(-RADIAN * midAngle);
-    const cos = Math.cos(-RADIAN * midAngle);
-    const sx = cx + (outerRadius + 5) * cos;
-    const sy = cy + (outerRadius + 5) * sin;
-    const mx = cx + (outerRadius + 15) * cos;
-    const my = cy + (outerRadius + 15) * sin;
-    const ex = mx + (cos >= 0 ? 1 : -1) * 12;
-    const ey = my;
-    const textAnchor = cos >= 0 ? 'start' : 'end';
-
-    return (
-      <g>
-        <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" />
-        <circle cx={ex} cy={ey} r={2} fill={fill} stroke="none" />
-        <text x={ex + (cos >= 0 ? 1 : -1) * 8} y={ey} dy={4} textAnchor={textAnchor} fill="#9CA3AF" fontSize="11px">
-          {`${name} (${value})`}
-        </text>
-      </g>
-    );
-  };
-
 
   // --- Modal Components ---
     const ExportModal = () => {
@@ -1484,7 +1428,7 @@ const DeckBuilder = ({
                       <td><button onClick={() => setDetailedCard(card)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
                       <td className="font-bold">{card.name}</td>
                       <td className={`font-semibold ${getTypeTextClass(card.type)}`}>{card.type}</td>
-                      <td style={{ color: (mode === 'extraction' && card.isStarterPool) ? '#06b6d4' : (RARITY_COLORS[card.rarity] || '#808080') }}>{(mode === 'extraction' && card.isStarterPool) ? 'Starter' : card.rarity}</td>
+                      <td style={{ color: getRarityDisplay(card, mode).color }}>{getRarityDisplay(card, mode).text}</td>
                       <td>{card.cost}</td>
                       <td className="text-xs text-gray-400">{card.description}</td>
                       <td><div className="flex flex-wrap gap-2">{card.keywords.map(k => <span key={k} className="ability-chip">{k}</span>)}</div></td>
@@ -1643,7 +1587,7 @@ const DeckBuilder = ({
                     <tr key={`${drone.name}-${index}`}>
                       <td><button onClick={() => setDetailedDrone(drone)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
                       <td className="font-bold">{drone.name}</td>
-                      <td style={{ color: (mode === 'extraction' && drone.isStarterPool) ? '#06b6d4' : (RARITY_COLORS[drone.rarity] || '#808080') }}>{(mode === 'extraction' && drone.isStarterPool) ? 'Starter' : drone.rarity}</td>
+                      <td style={{ color: getRarityDisplay(drone, mode).color }}>{getRarityDisplay(drone, mode).text}</td>
                       <td>{drone.class}</td>
                       <td>{drone.attack}</td>
                       <td>{drone.speed}</td>
@@ -1757,7 +1701,7 @@ const DeckBuilder = ({
                       <td><button onClick={() => setDetailedShipComponent(component)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
                       <td className="font-semibold text-cyan-400">{component.type}</td>
                       <td className="font-bold">{component.name}</td>
-                      <td style={{ color: (mode === 'extraction' && component.isStarterPool) ? '#06b6d4' : (RARITY_COLORS[component.rarity] || '#808080') }}>{(mode === 'extraction' && component.isStarterPool) ? 'Starter' : component.rarity}</td>
+                      <td style={{ color: getRarityDisplay(component, mode).color }}>{getRarityDisplay(component, mode).text}</td>
                       <td className="text-xs text-gray-400">{component.description}</td>
                       <td>
                         <div className="flex gap-2">
@@ -1798,7 +1742,7 @@ const DeckBuilder = ({
                       <td><button onClick={() => setDetailedShipComponent(component)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
                       <td className="font-semibold text-purple-400">{component.type}</td>
                       <td className="font-bold">{component.name}</td>
-                      <td style={{ color: (mode === 'extraction' && component.isStarterPool) ? '#06b6d4' : (RARITY_COLORS[component.rarity] || '#808080') }}>{(mode === 'extraction' && component.isStarterPool) ? 'Starter' : component.rarity}</td>
+                      <td style={{ color: getRarityDisplay(component, mode).color }}>{getRarityDisplay(component, mode).text}</td>
                       <td className="text-xs text-gray-400">{component.description}</td>
                       <td>
                         <div className="flex gap-2">
@@ -1839,7 +1783,7 @@ const DeckBuilder = ({
                       <td><button onClick={() => setDetailedShipComponent(component)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
                       <td className="font-semibold text-red-400">{component.type}</td>
                       <td className="font-bold">{component.name}</td>
-                      <td style={{ color: (mode === 'extraction' && component.isStarterPool) ? '#06b6d4' : (RARITY_COLORS[component.rarity] || '#808080') }}>{(mode === 'extraction' && component.isStarterPool) ? 'Starter' : component.rarity}</td>
+                      <td style={{ color: getRarityDisplay(component, mode).color }}>{getRarityDisplay(component, mode).text}</td>
                       <td className="text-xs text-gray-400">{component.description}</td>
                       <td>
                         <div className="flex gap-2">
@@ -2290,7 +2234,7 @@ const DeckBuilder = ({
                             dataKey="value"
                           >
                             {deckStats.pieChartData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                             ))}
                           </Pie>
                           <Tooltip contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />
@@ -2439,7 +2383,7 @@ const DeckBuilder = ({
                             dataKey="value"
                           >
                             {droneStats.abilityData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                             ))}
                           </Pie>
                           <Tooltip contentStyle={{ backgroundColor: '#1A202C', border: '1px solid #4A5568' }} />

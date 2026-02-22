@@ -31,6 +31,15 @@ vi.mock('../../../data/shipSectionData.js', () => ({
 vi.mock('../../../data/rarityColors', () => ({
   RARITY_COLORS: { Common: '#888', Uncommon: '#0f0', Rare: '#00f', Mythic: '#ff0', Starter: '#aaa' }
 }));
+vi.mock('../../../utils/cardTypeStyles.js', () => ({
+  getTypeBackgroundClass: vi.fn(() => ''),
+  getTypeTextClass: vi.fn(() => ''),
+  getRarityDisplay: vi.fn((item) => ({ text: item?.rarity || 'Common', color: '#888' }))
+}));
+vi.mock('../../../utils/chartUtils.jsx', () => ({
+  CHART_COLORS: ['#0088FE'],
+  renderCustomizedLabel: vi.fn(() => null)
+}));
 vi.mock('../../../logic/gameLogic.js', () => ({
   gameEngine: { validateDeck: vi.fn(() => ({ valid: true, errors: [] })) }
 }));
