@@ -1,33 +1,10 @@
 // All game actions must go through this processor to ensure serialization.
 
-import { gameEngine } from '../logic/gameLogic.js';
-import CardPlayManager from '../logic/cards/CardPlayManager.js';
-import { resolveAttack } from '../logic/combat/AttackProcessor.js';
-import fullDroneCollection from '../data/droneData.js';
-import { calculateEffectiveStats } from '../logic/statsCalculator.js';
-import { LaneControlCalculator } from '../logic/combat/LaneControlCalculator.js';
-import { calculatePotentialInterceptors, calculateAiInterception } from '../logic/combat/InterceptionProcessor.js';
-import MovementEffectProcessor from '../logic/effects/movement/MovementEffectProcessor.js';
-import ConditionalEffectProcessor from '../logic/effects/conditional/ConditionalEffectProcessor.js';
-import EffectRouter from '../logic/EffectRouter.js';
-import DeploymentProcessor from '../logic/deployment/DeploymentProcessor.js';
-import RoundManager from '../logic/round/RoundManager.js';
-import ShieldManager from '../logic/shields/ShieldManager.js';
 import WinConditionChecker from '../logic/game/WinConditionChecker.js';
-import AbilityResolver from '../logic/abilities/AbilityResolver.js';
-import RecallAbilityProcessor from '../logic/abilities/ship/RecallAbilityProcessor.js';
-import TargetLockAbilityProcessor from '../logic/abilities/ship/TargetLockAbilityProcessor.js';
-import RecalculateAbilityProcessor from '../logic/abilities/ship/RecalculateAbilityProcessor.js';
-import ReallocateShieldsAbilityProcessor from '../logic/abilities/ship/ReallocateShieldsAbilityProcessor.js';
 import aiPhaseProcessor from './AIPhaseProcessor.js';
 import GameDataService from '../services/GameDataService.js';
 import PhaseManager from './PhaseManager.js';
-import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
-import { shipComponentCollection } from '../data/shipSectionData.js';
-import SeededRandom from '../utils/seededRandom.js';
-import { initializeForCombat as initializeDroneAvailability } from '../logic/availability/DroneAvailabilityManager.js';
-import { checkRallyBeaconGoAgain } from '../logic/utils/rallyBeaconHelper.js';
-import { processTrigger as processMineTrigger } from '../logic/effects/mines/MineTriggeredEffectProcessor.js';
+import { debugLog, timingLog } from '../utils/debugLogger.js';
 import {
   processAttack as _processAttack,
   processMove as _processMove,
@@ -72,6 +49,7 @@ import {
   processMomentumAward as _processMomentumAward
 } from '../logic/actions/StateUpdateStrategy.js';
 import {
+  processDeployment as _processDeployment,
   processDestroyDrone as _processDestroyDrone,
   processOptionalDiscard as _processOptionalDiscard,
   processPlayerPass as _processPlayerPass,
@@ -80,7 +58,8 @@ import {
 } from '../logic/actions/DroneActionStrategy.js';
 import {
   processAddShield as _processAddShield,
-  processResetShields as _processResetShields
+  processResetShields as _processResetShields,
+  processReallocateShields as _processReallocateShields
 } from '../logic/actions/ShieldActionStrategy.js';
 import {
   processStatusConsumption as _processStatusConsumption,
@@ -701,95 +680,7 @@ setAnimationManager(animationManager) {
    * Process deployment action
    */
   async processDeployment(payload) {
-    const { droneData, laneId, playerId, turn } = payload;
-
-    debugLog('DEPLOYMENT', '📥 ActionProcessor.processDeployment: Received payload:', {
-      droneDataName: droneData?.name,
-      droneDataType: typeof droneData,
-      droneDataKeys: droneData ? Object.keys(droneData) : 'null',
-      laneId,
-      playerId,
-      turn
-    });
-
-    const currentState = this.gameStateManager.getState();
-    const playerState = currentState[playerId];
-    const opponentId = playerId === 'player1' ? 'player2' : 'player1';
-    const opponentState = currentState[opponentId];
-
-    const placedSections = {
-      player1: currentState.placedSections,
-      player2: currentState.opponentPlacedSections
-    };
-
-    const logCallback = (entry) => {
-      this.gameStateManager.addLogEntry(entry);
-    };
-
-    // Use DeploymentProcessor instead of gameEngine
-    const deploymentProcessor = new DeploymentProcessor();
-    const result = deploymentProcessor.executeDeployment(
-      droneData,
-      laneId,
-      turn || currentState.turn,
-      playerState,
-      opponentState,
-      placedSections,
-      logCallback,
-      playerId
-    );
-
-    if (result.success) {
-      const deployedDroneId = result.deployedDrone?.id || droneData.id;
-
-      // Extract animation events from gameLogic result
-      // Include timing property from AnimationManager for proper sequencing on guest side
-      const animations = (result.animationEvents || []).map(event => {
-        const animDef = this.animationManager?.animations[event.type];
-        return {
-          animationName: event.type,
-          timing: animDef?.timing || 'pre-state',  // Include timing from definition
-          payload: {
-            ...event,
-            droneId: event.targetId
-          }
-        };
-      });
-
-      // Capture animations for broadcasting (host only)
-      const gameMode = this.gameStateManager.get('gameMode');
-      if (gameMode === 'host' && animations.length > 0) {
-        this.pendingActionAnimations.push(...animations);
-      }
-
-      // Prepare states for TELEPORT_IN animation timing
-      // Handle ON_DEPLOY effects that may have modified opponent state
-      const opponentId = playerId === 'player1' ? 'player2' : 'player1';
-      const newPlayerStates = {
-        player1: playerId === 'player1' ? result.newPlayerState : (result.opponentState || currentState.player1),
-        player2: playerId === 'player2' ? result.newPlayerState : (result.opponentState || currentState.player2)
-      };
-
-      await this._executeAnimationPhase(animations, newPlayerStates);
-
-      debugLog('TURN_TRANSITION_DEBUG', 'processDeployment returning', {
-        success: result.success,
-        shouldEndTurn: true,
-        currentPlayer: currentState.currentPlayer
-      });
-
-      // Return result with animations for optimistic action tracking
-      return {
-        ...result,
-        shouldEndTurn: true, // Deployment always ends turn
-        animations: {
-          actionAnimations: animations,
-          systemAnimations: []
-        }
-      };
-    }
-
-    return result;
+    return _processDeployment(payload, this._getActionContext());
   }
 
   async processCardPlay(payload) {
@@ -933,123 +824,7 @@ setAnimationManager(animationManager) {
    * Round start shield allocation should use direct GameStateManager updates.
    */
   async processReallocateShields(payload) {
-    const {
-      action, // 'remove', 'add', or 'restore'
-      sectionName,
-      originalShipSections, // for 'restore' action
-      playerId = this.gameStateManager.getLocalPlayerId()
-    } = payload;
-
-    const currentState = this.gameStateManager.getState();
-
-    // Validate this is only used during action phase
-    if (currentState.turnPhase !== 'action') {
-      throw new Error(`Shield reallocation through ActionProcessor is only valid during action phase, not ${currentState.turnPhase}`);
-    }
-
-    debugLog('ENERGY', `[SHIELD REALLOCATION DEBUG] Processing action phase shield reallocation:`, { action, sectionName, playerId });
-
-    const playerState = currentState[playerId];
-
-    if (action === 'remove') {
-      // Validate shield removal
-      const section = playerState.shipSections[sectionName];
-      if (!section || section.allocatedShields <= 0) {
-        return {
-          success: false,
-          error: 'Cannot remove shield from this section'
-        };
-      }
-
-      // Create new player state with shield removed
-      const newShipSections = {
-        ...playerState.shipSections,
-        [sectionName]: {
-          ...playerState.shipSections[sectionName],
-          allocatedShields: playerState.shipSections[sectionName].allocatedShields - 1
-        }
-      };
-
-      const newPlayerState = {
-        ...playerState,
-        shipSections: newShipSections
-      };
-
-      this.gameStateManager.updatePlayerState(playerId, newPlayerState);
-
-      debugLog('ENERGY', `[SHIELD REALLOCATION DEBUG] Shield removed from ${sectionName}`);
-      return {
-        success: true,
-        action: 'remove',
-        sectionName,
-        newPlayerState
-      };
-
-    } else if (action === 'add') {
-      // Validate shield addition - need access to placed sections for effective max calculation
-      const placedSections = playerId === 'player1' ? currentState.placedSections : currentState.opponentPlacedSections;
-      const effectiveMaxShields = gameEngine.getEffectiveSectionMaxShields(sectionName, playerState, placedSections);
-      const section = playerState.shipSections[sectionName];
-
-      if (!section || section.allocatedShields >= effectiveMaxShields) {
-        return {
-          success: false,
-          error: 'Cannot add shield to this section'
-        };
-      }
-
-      // Create new player state with shield added
-      const newShipSections = {
-        ...playerState.shipSections,
-        [sectionName]: {
-          ...playerState.shipSections[sectionName],
-          allocatedShields: playerState.shipSections[sectionName].allocatedShields + 1
-        }
-      };
-
-      const newPlayerState = {
-        ...playerState,
-        shipSections: newShipSections
-      };
-
-      this.gameStateManager.updatePlayerState(playerId, newPlayerState);
-
-      debugLog('ENERGY', `[SHIELD REALLOCATION DEBUG] Shield added to ${sectionName}`);
-      return {
-        success: true,
-        action: 'add',
-        sectionName,
-        newPlayerState
-      };
-
-    } else if (action === 'restore') {
-      // Restore original shield configuration
-      if (!originalShipSections) {
-        return {
-          success: false,
-          error: 'No original ship sections provided for restore'
-        };
-      }
-
-      const newPlayerState = {
-        ...playerState,
-        shipSections: originalShipSections
-      };
-
-      this.gameStateManager.updatePlayerState(playerId, newPlayerState);
-
-      debugLog('ENERGY', `[SHIELD REALLOCATION DEBUG] Shield allocation restored to original state`);
-      return {
-        success: true,
-        action: 'restore',
-        newPlayerState
-      };
-    }
-
-    return {
-      success: false,
-      error: `Unknown reallocation action: ${action}`
-    };
+    return _processReallocateShields(payload, this._getActionContext());
   }
 
   /**

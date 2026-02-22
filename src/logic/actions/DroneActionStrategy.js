@@ -1,9 +1,83 @@
-// Drone & player action strategies: processDestroyDrone, processOptionalDiscard,
-// processPlayerPass, processAiShipPlacement, processAiAction
-// Extracted from ActionProcessor.js — handles drone destruction, discards, passes, AI routing.
+// Drone & player action strategies: processDeployment, processDestroyDrone,
+// processOptionalDiscard, processPlayerPass, processAiShipPlacement, processAiAction
+// Extracted from ActionProcessor.js — handles drone deployment/destruction, discards, passes, AI routing.
 
 import { gameEngine } from '../gameLogic.js';
+import DeploymentProcessor from '../deployment/DeploymentProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
+
+/**
+ * Process drone deployment
+ * @param {Object} payload - { droneData, laneId, playerId, turn }
+ * @param {Object} ctx - ActionContext from ActionProcessor
+ */
+export async function processDeployment(payload, ctx) {
+  const { droneData, laneId, playerId, turn } = payload;
+
+  debugLog('DEPLOYMENT', '📥 ActionProcessor.processDeployment: Received payload:', {
+    droneDataName: droneData?.name,
+    droneDataType: typeof droneData,
+    droneDataKeys: droneData ? Object.keys(droneData) : 'null',
+    laneId,
+    playerId,
+    turn
+  });
+
+  const currentState = ctx.getState();
+  const playerState = currentState[playerId];
+  const opponentId = playerId === 'player1' ? 'player2' : 'player1';
+  const opponentState = currentState[opponentId];
+
+  const placedSections = {
+    player1: currentState.placedSections,
+    player2: currentState.opponentPlacedSections
+  };
+
+  const logCallback = (entry) => {
+    ctx.addLogEntry(entry);
+  };
+
+  const deploymentProcessor = new DeploymentProcessor();
+  const result = deploymentProcessor.executeDeployment(
+    droneData,
+    laneId,
+    turn || currentState.turn,
+    playerState,
+    opponentState,
+    placedSections,
+    logCallback,
+    playerId
+  );
+
+  if (result.success) {
+    const animations = ctx.mapAnimationEvents(result.animationEvents);
+    ctx.captureAnimationsForBroadcast(animations);
+
+    const newPlayerStates = {
+      player1: playerId === 'player1' ? result.newPlayerState : (result.opponentState || currentState.player1),
+      player2: playerId === 'player2' ? result.newPlayerState : (result.opponentState || currentState.player2)
+    };
+
+    await ctx.executeAnimationPhase(animations, newPlayerStates);
+
+    debugLog('TURN_TRANSITION_DEBUG', 'processDeployment returning', {
+      success: result.success,
+      shouldEndTurn: true,
+      currentPlayer: currentState.currentPlayer
+    });
+
+    return {
+      ...result,
+      shouldEndTurn: true,
+      animations: {
+        actionAnimations: animations,
+        systemAnimations: []
+      }
+    };
+  }
+
+  return result;
+}
 
 /**
  * Process drone destruction
