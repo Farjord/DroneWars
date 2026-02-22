@@ -7,8 +7,6 @@
 import { gameEngine, startingDecklist } from '../logic/gameLogic.js';
 import ActionProcessor from './ActionProcessor.js';
 import GameDataService from '../services/GameDataService.js';
-import GuestMessageQueueService from './GuestMessageQueueService.js';
-import OptimisticActionService from './OptimisticActionService.js';
 import fullDroneCollection from '../data/droneData.js';
 import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
 import { debugLog } from '../utils/debugLogger.js';
@@ -31,6 +29,7 @@ import aiPhaseProcessor from './AIPhaseProcessor.js';
 import tacticalMapStateManager from './TacticalMapStateManager.js';
 import transitionManager from './TransitionManager.js';
 import StateValidationService from '../logic/state/StateValidationService.js';
+import GuestSyncManager from './GuestSyncManager.js';
 
 class GameStateManager {
   constructor() {
@@ -41,10 +40,6 @@ class GameStateManager {
 
     // State validation service (extracted — validates state updates, phase transitions, ownership)
     this.stateValidationService = new StateValidationService(this);
-
-    // Optimistic action tracking for client-side prediction (guest mode)
-    // Uses fine-grained animation deduplication service
-    this.optimisticActionService = new OptimisticActionService();
 
     // Core application state (minimal until game starts)
     this.state = {
@@ -115,28 +110,11 @@ class GameStateManager {
     // Game flow manager reference (set during initialization)
     this.gameFlowManager = null;
 
-    // Guest message queue service (initialized when guest joins)
-    this.guestQueueService = null;
-
-    // P2P integration will be set up lazily when needed
-    this.p2pIntegrationSetup = false;
+    // Guest sync manager (extracted — handles P2P integration, optimistic actions, host state)
+    this.guestSyncManager = new GuestSyncManager(this);
 
     // Context flag for production-safe validation (avoids minification breaking stack traces)
     this._updateContext = null;
-
-    // --- CHECKPOINT PHASES (Guest Validation) ---
-    // Phases where guest stops and validates state with host
-    // Includes all simultaneous phases that require player interaction
-    this.MILESTONE_PHASES = ['droneSelection', 'placement', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval', 'deployment'];
-
-    // --- VALIDATION STATE (Guest) ---
-    // Tracks when guest is waiting for specific broadcast to validate optimistic state
-    this.validatingState = {
-      isValidating: false,
-      targetPhase: null,      // Phase we're expecting from host
-      guestState: null,       // Guest's optimistic state snapshot
-      timestamp: null         // When we started validating
-    };
 
     // Log initial application state
     debugLog('STATE_SYNC', '🔄 GAMESTATE INITIALIZATION: GameStateManager created');
@@ -155,182 +133,19 @@ class GameStateManager {
     this.gameFlowManager = gameFlowManager;
   }
 
-  // --- P2P INTEGRATION ---
+  // --- GUEST SYNC FACADES ---
+  // GFM and GMQS access these via this.gameStateManager — thin delegation to guestSyncManager
+  // TODO: Remove facades when GFM/GMQS are updated to receive guestSyncManager directly
 
-  /**
-   * Set up P2P integration (called lazily when needed)
-   * @param {Object} p2pManager - P2P manager instance
-   */
-  setupP2PIntegration(p2pManager) {
-    if (this.p2pIntegrationSetup) return;
-
-    // Wire up bidirectional integration
-    this.actionProcessor.setP2PManager(p2pManager);
-    p2pManager.setActionProcessor(this.actionProcessor);
-
-    // Subscribe to P2P events
-    p2pManager.subscribe((event) => {
-      switch (event.type) {
-        case 'multiplayer_mode_change':
-          this.setMultiplayerMode(event.data.mode, event.data.isHost);
-
-          // Initialize guest queue service when becoming guest
-          if (event.data.mode === 'guest' && !this.guestQueueService) {
-            debugLog('STATE_SYNC', '🎯 [GUEST QUEUE] Initializing service for guest mode');
-            const phaseAnimationQueue = this.actionProcessor?.phaseAnimationQueue || null;
-            this.guestQueueService = new GuestMessageQueueService(this, phaseAnimationQueue);
-            this.guestQueueService.initialize(p2pManager);
-          }
-          break;
-        case 'state_update_received':
-          // Guest mode: Route through queue service for sequential processing
-          // Host mode: Not applicable (host doesn't receive state updates)
-          if (this.state.gameMode === 'guest') {
-            if (this.guestQueueService) {
-              // Queue service handles this - no need to do anything here
-              // Service is already subscribed to P2P events
-            } else {
-              debugLog('STATE_SYNC', '⚠️ [GUEST QUEUE] Service not initialized, applying state directly (fallback)');
-              this.applyHostState(event.data.state);
-              // Note: Animations will be lost in fallback mode
-            }
-          }
-          break;
-        case 'state_sync_requested':
-          // Send current state for initial sync (deprecated, kept for compatibility)
-          const currentState = this.getState();
-          p2pManager.sendData({
-            type: 'GAME_STATE_SYNC',
-            state: currentState,
-            timestamp: Date.now(),
-          });
-          break;
-      }
-    });
-
-    this.p2pIntegrationSetup = true;
-  }
-
-
-  /**
-   * Start validation mode - guest expects specific phase broadcast from host
-   * @param {string} targetPhase - Phase to validate against
-   * @param {Object} guestState - Guest's current optimistic state
-   */
-  startValidation(targetPhase, guestState) {
-    this.validatingState = {
-      isValidating: true,
-      targetPhase: targetPhase,
-      guestState: JSON.parse(JSON.stringify(guestState)), // Deep copy
-      timestamp: Date.now()
-    };
-
-    debugLog('VALIDATION', '🔍 [START VALIDATION] Waiting for host broadcast', {
-      targetPhase,
-      currentPhase: guestState.turnPhase
-    });
-  }
-
-  /**
-   * Check if incoming broadcast should trigger validation
-   * @param {string} incomingPhase - Phase from incoming broadcast
-   * @returns {boolean} True if this broadcast matches validation target
-   */
-  shouldValidateBroadcast(incomingPhase) {
-    return this.validatingState.isValidating &&
-           this.validatingState.targetPhase === incomingPhase;
-  }
-
-  /**
-   * Check if a phase is a milestone (requires user interaction)
-   * @param {string} phase - Phase to check
-   * @returns {boolean} True if milestone phase
-   */
-  isMilestonePhase(phase) {
-    return this.MILESTONE_PHASES.includes(phase);
-  }
-
-  /**
-   * Apply state update from host (guest only)
-   * Guest is a thin client that receives authoritative state from host
-   * NOTE: Animations are handled by GuestMessageQueueService after render
-   * @param {Object} hostState - Complete game state from host
-   */
-  applyHostState(hostState) {
-    if (this.state.gameMode !== 'guest') {
-      debugLog('STATE_SYNC', '⚠️ applyHostState should only be called in guest mode');
-      return;
-    }
-
-    // VALIDATION LOG: Verify state before/after application
-    const beforeFields = Object.keys(this.state).length;
-    debugLog('BROADCAST_TIMING', `📝 [GUEST APPLY] Before: ${beforeFields} fields | Incoming: ${Object.keys(hostState).length} fields | Phase: ${hostState.turnPhase} → ${this.state.turnPhase}`);
-
-    debugLog('STATE_SYNC', '[GUEST STATE UPDATE] Applying state from host:', {
-      turnPhase: hostState.turnPhase,
-      currentPlayer: hostState.currentPlayer,
-      roundNumber: hostState.roundNumber
-    });
-
-    debugLog('STATE_SYNC', '[GUEST] Received player2 hand from host:', {
-      handSize: hostState.player2?.hand?.length || 0,
-      sampleCard: hostState.player2?.hand?.[0] || null,
-      sampleInstanceId: hostState.player2?.hand?.[0]?.instanceId,
-      hasInstanceId: hostState.player2?.hand?.[0]?.instanceId !== undefined
-    });
-
-    // Log commitment values if present
-    if (hostState.commitments && Object.keys(hostState.commitments).length > 0) {
-      debugLog('COMMITMENTS', '[GUEST] Received commitment values from host:', {
-        phases: Object.keys(hostState.commitments),
-        fullCommitments: hostState.commitments,
-        currentPhase: hostState.turnPhase
-      });
-
-      // Log specific commitment status for current phase
-      const currentPhaseCommitments = hostState.commitments[hostState.turnPhase];
-      if (currentPhaseCommitments) {
-        debugLog('COMMITMENTS', `[GUEST] Current phase (${hostState.turnPhase}) commitment status:`, {
-          player1Completed: currentPhaseCommitments.player1?.completed || false,
-          player2Completed: currentPhaseCommitments.player2?.completed || false
-        });
-      }
-    }
-
-    // Preserve guest's local gameMode (guest must know it's the guest)
-    const localGameMode = this.state.gameMode;
-
-    // Guest directly applies host's authoritative state without validation
-    // No game logic execution on guest side
-    this.state = { ...hostState };
-
-    // Restore guest's gameMode so it knows which player it controls
-    this.state.gameMode = localGameMode;
-
-    // VALIDATION LOG: Verify critical fields after application
-    const missing = [];
-    if (this.state.turnPhase === undefined) missing.push('turnPhase');
-    if (this.state.currentPlayer === undefined) missing.push('currentPlayer');
-    if (this.state.player1 === undefined) missing.push('player1');
-    if (this.state.player2 === undefined) missing.push('player2');
-    if (missing.length > 0) {
-      debugLog('BROADCAST_TIMING', `🚨 [GUEST APPLY] MISSING FIELDS: ${missing.join(', ')}`);
-    } else {
-      debugLog('BROADCAST_TIMING', `✅ [GUEST APPLY] State complete | After: ${Object.keys(this.state).length} fields`);
-    }
-
-    debugLog('STATE_SYNC', '[GUEST] After applying state - player2 hand check:', {
-      handSize: this.state.player2?.hand?.length || 0,
-      sampleCard: this.state.player2?.hand?.[0] || null,
-      sampleInstanceId: this.state.player2?.hand?.[0]?.instanceId,
-      hasInstanceId: this.state.player2?.hand?.[0]?.instanceId !== undefined
-    });
-
-    // Emit state change for UI updates (triggers React re-render)
-    this.emit('HOST_STATE_UPDATE', { hostState });
-
-    // Animations are executed by GuestMessageQueueService after React renders
-  }
+  setupP2PIntegration(p2pManager) { this.guestSyncManager.setupP2PIntegration(p2pManager); }
+  startValidation(targetPhase, guestState) { this.guestSyncManager.startValidation(targetPhase, guestState); }
+  shouldValidateBroadcast(incomingPhase) { return this.guestSyncManager.shouldValidateBroadcast(incomingPhase); }
+  isMilestonePhase(phase) { return this.guestSyncManager.isMilestonePhase(phase); }
+  applyHostState(hostState) { this.guestSyncManager.applyHostState(hostState); }
+  trackOptimisticAnimations(animations) { this.guestSyncManager.trackOptimisticAnimations(animations); }
+  filterAnimations(actionAnimations, systemAnimations) { return this.guestSyncManager.filterAnimations(actionAnimations, systemAnimations); }
+  hasRecentOptimisticActions() { return this.guestSyncManager.hasRecentOptimisticActions(); }
+  clearOptimisticActions() { this.guestSyncManager.clearOptimisticActions(); }
 
   // --- EVENT SYSTEM ---
 
@@ -964,42 +779,6 @@ class GameStateManager {
     }
 
     return result;
-  }
-
-  /**
-   * Track optimistic animations for fine-grained deduplication (guest mode)
-   * Used to prevent duplicate animations when host echoes back guest's action
-   * @param {Object} animations - {actionAnimations: [], systemAnimations: []}
-   */
-  trackOptimisticAnimations(animations) {
-    this.optimisticActionService.trackAction(animations);
-  }
-
-  /**
-   * Filter incoming animations to remove duplicates
-   * Used by GuestMessageQueueService when processing host responses
-   * @param {Array} actionAnimations - Action animations from host
-   * @param {Array} systemAnimations - System animations from host
-   * @returns {Object} - {actionAnimations: [], systemAnimations: []}
-   */
-  filterAnimations(actionAnimations, systemAnimations) {
-    return this.optimisticActionService.filterAnimations(actionAnimations, systemAnimations);
-  }
-
-  /**
-   * Check if we have tracked optimistic animations
-   * Used by GuestMessageQueueService to determine filtering strategy
-   */
-  hasRecentOptimisticActions() {
-    const status = this.optimisticActionService.getStatus();
-    return status.actionAnimationsTracked > 0 || status.systemAnimationsTracked > 0;
-  }
-
-  /**
-   * Clear all tracked optimistic animations
-   */
-  clearOptimisticActions() {
-    this.optimisticActionService.clearTrackedAnimations();
   }
 
   /**
