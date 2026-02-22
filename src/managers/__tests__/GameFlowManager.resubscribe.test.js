@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import GameFlowManager from './GameFlowManager';
-import ActionProcessor from './ActionProcessor';
+import GameFlowManager from '../GameFlowManager';
+import ActionProcessor from '../ActionProcessor';
 
 /**
  * GameFlowManager.resubscribe() Tests

@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import GameFlowManager from './GameFlowManager.js';
-import PhaseManager from './PhaseManager.js';
+import GameFlowManager from '../GameFlowManager.js';
+import PhaseManager from '../PhaseManager.js';
 import {
   createIntegrationGameState,
   createIntegrationGameStateManager,
   createIntegrationActionProcessor
-} from '../test/helpers/phaseTestHelpers.js';
+} from '../../test/helpers/phaseTestHelpers.js';
 
 /**
  * INTEGRATION TESTS - Phase 5

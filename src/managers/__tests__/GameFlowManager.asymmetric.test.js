@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import GameFlowManager from './GameFlowManager.js';
+import GameFlowManager from '../GameFlowManager.js';
 
 /**
  * ASYMMETRIC PHASE TESTS - GameFlowManager.autoCompleteUnnecessaryCommitments()

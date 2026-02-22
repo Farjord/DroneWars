@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import PhaseManager from './PhaseManager.js';
-import GameFlowManager from './GameFlowManager.js';
+import PhaseManager from '../PhaseManager.js';
+import GameFlowManager from '../GameFlowManager.js';
 
 // Mock debug logger
-vi.mock('../utils/debugLogger.js', () => ({
+vi.mock('../../utils/debugLogger.js', () => ({
   debugLog: vi.fn(),
   timingLog: vi.fn(() => Date.now()),
   getTimestamp: vi.fn(() => Date.now())

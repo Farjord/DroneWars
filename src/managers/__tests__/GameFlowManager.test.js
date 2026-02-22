@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import GameFlowManager from './GameFlowManager.js';
-import PhaseManager from './PhaseManager.js';
-import { createMockGameStateManager, createMockPlayer } from '../test/helpers/phaseTestHelpers.js';
+import GameFlowManager from '../GameFlowManager.js';
+import PhaseManager from '../PhaseManager.js';
+import { createMockGameStateManager, createMockPlayer } from '../../test/helpers/phaseTestHelpers.js';
 
 // ========================================
 // GAMEFLOWMANAGER SEQUENTIAL PHASE TESTS
