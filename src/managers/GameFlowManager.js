@@ -17,6 +17,7 @@ import tacticalMapStateManager from './TacticalMapStateManager.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
 import { processRebuildProgress } from '../logic/availability/DroneAvailabilityManager.js';
 import { LaneControlCalculator } from '../logic/combat/LaneControlCalculator.js';
+import PhaseRequirementChecker from '../logic/phase/PhaseRequirementChecker.js';
 
 /**
  * GameFlowManager - Central authority for game phase flow and transitions
@@ -94,9 +95,12 @@ class GameFlowManager {
       actionProcessor.setPhaseManager(this.phaseManager);
     }
 
-    // Initialize GameDataService for phase requirement checks
+    // Initialize GameDataService and PhaseRequirementChecker for phase requirement checks
     if (!this.gameDataService) {
       this.gameDataService = GameDataService.getInstance(gameStateManager);
+    }
+    if (!this.phaseRequirementChecker) {
+      this.phaseRequirementChecker = new PhaseRequirementChecker(this.gameDataService);
     }
 
     // Initialize AIPhaseProcessor with execution dependencies (single-player only)
@@ -1427,6 +1431,16 @@ class GameFlowManager {
     return null;
   }
 
+  // Lazy-init for paths that set gameStateManager without calling initialize()
+  _ensurePhaseRequirementChecker() {
+    if (!this.phaseRequirementChecker) {
+      if (!this.gameDataService && this.gameStateManager) {
+        this.gameDataService = GameDataService.getInstance(this.gameStateManager);
+      }
+      this.phaseRequirementChecker = new PhaseRequirementChecker(this.gameDataService);
+    }
+  }
+
   /**
    * Check if a phase is required based on current game state
    * @param {string} phase - Phase to check
@@ -1435,56 +1449,21 @@ class GameFlowManager {
   isPhaseRequired(phase) {
     if (!this.gameStateManager) {
       debugLog('PHASE_TRANSITIONS', 'GameStateManager not available for phase requirement check');
-      return true; // Default to required if we can't check
+      return true;
     }
 
+    this._ensurePhaseRequirementChecker();
     const gameState = this.gameStateManager.getState();
+    const result = this.phaseRequirementChecker.isPhaseRequired(phase, gameState, {
+      quickDeployExecutedThisRound: this._quickDeployExecutedThisRound
+    });
 
-    switch(phase) {
-      case 'roundInitialization':
-        // Round 1: runs via PRE_GAME_PHASES (after placement)
-        // Round 2+: runs via ROUND_PHASES (after optionalDiscard)
-        // Skip when encountered in ROUND_PHASES during Round 1 to avoid running twice
-        if (gameState.roundNumber === 1) {
-          return false; // Already ran via PRE_GAME_PHASES
-        }
-        return true; // Run in Round 2+ via ROUND_PHASES
-      case 'mandatoryDiscard':
-        // Required when any player's hand count exceeds their effective hand limit
-        // Checked after draw phases (roundInitialization, optionalDiscard)
-        return this.anyPlayerExceedsHandLimit(gameState);
-      case 'optionalDiscard':
-        // Skip in Round 1 - cards already drawn in roundInitialization
-        // Round 2+: Only required if players have cards to optionally discard
-        if (gameState.roundNumber === 1) {
-          return false;
-        }
-        return this.anyPlayerHasCards(gameState);
-      case 'allocateShields':
-        // Required when any player has unallocated shields
-        // Skipped in Round 1 (no shields to allocate yet)
-        return this.anyPlayerHasShieldsToAllocate(gameState);
-      case 'mandatoryDroneRemoval':
-        // Required when any player exceeds their maximum drone limit
-        // Checked after phases where drones can be deployed
-        return this.anyPlayerExceedsDroneLimit(gameState);
-      case 'deployment':
-        // Check if quick deploy was executed during processRoundInitialization
-        // This flag-based approach avoids the race condition where executeQuickDeploy
-        // was called from here without being awaited (causing intermittent failures)
-        if (this._quickDeployExecutedThisRound && gameState.roundNumber === 1) {
-          debugLog('PHASE_TRANSITIONS', '⚡ Quick deploy was executed, skipping deployment phase');
-          // Clear the flag so it doesn't affect future rounds
-          this._quickDeployExecutedThisRound = false;
-          return false; // Skip deployment phase
-        }
-
-        return true; // Normal deployment required
-      case 'action':
-        return true; // Always required
-      default:
-        return true; // Default to required for unknown phases
+    // Side effect: clear the quick deploy flag after it's been consumed
+    if (phase === 'deployment' && this._quickDeployExecutedThisRound && gameState.roundNumber === 1) {
+      this._quickDeployExecutedThisRound = false;
     }
+
+    return result;
   }
 
   /**
@@ -1493,38 +1472,8 @@ class GameFlowManager {
    * @returns {boolean} True if any player needs to discard
    */
   anyPlayerExceedsHandLimit(gameState) {
-    // Use GameDataService to check effective hand limits
-    if (!this.gameDataService) {
-      debugLog('PHASE_TRANSITIONS', 'GameDataService not initialized for hand limit check');
-      return false;
-    }
-
-    // Check player1
-    const player1HandCount = gameState.player1.hand ? gameState.player1.hand.length : 0;
-    const player1Stats = this.gameDataService.getEffectiveShipStats(gameState.player1, gameState.placedSections);
-    const player1HandLimit = player1Stats.totals.handLimit;
-
-    // Check player2
-    const player2HandCount = gameState.player2.hand ? gameState.player2.hand.length : 0;
-    const player2Stats = this.gameDataService.getEffectiveShipStats(gameState.player2, gameState.opponentPlacedSections);
-    const player2HandLimit = player2Stats.totals.handLimit;
-
-    const player1Exceeds = player1HandCount > player1HandLimit;
-    const player2Exceeds = player2HandCount > player2HandLimit;
-    const anyExceeds = player1Exceeds || player2Exceeds;
-
-    debugLog('PHASE_TRANSITIONS', `🃏 Hand limit check:`, {
-      gameMode: gameState.gameMode,
-      player1: { handCount: player1HandCount, handLimit: player1HandLimit, exceeds: player1Exceeds },
-      player2: { handCount: player2HandCount, handLimit: player2HandLimit, exceeds: player2Exceeds },
-      anyPlayerExceeds: anyExceeds
-    });
-
-    if (player1Exceeds || player2Exceeds) {
-      return true;
-    }
-
-    return false;
+    this._ensurePhaseRequirementChecker();
+    return this.phaseRequirementChecker.anyPlayerExceedsHandLimit(gameState);
   }
 
   /**
@@ -1533,33 +1482,8 @@ class GameFlowManager {
    * @returns {boolean} True if any player has unallocated shields
    */
   anyPlayerHasShieldsToAllocate(gameState) {
-    const gameMode = gameState.gameMode || 'unknown';
-    const currentPhase = gameState.turnPhase || 'unknown';
-
-    debugLog('PHASE_TRANSITIONS', `🛡️ [SHIELD CHECK] Checking if shields phase required`, {
-      gameMode,
-      currentPhase,
-      roundNumber: gameState.roundNumber,
-      shieldsToAllocate: gameState.shieldsToAllocate,
-      opponentShieldsToAllocate: gameState.opponentShieldsToAllocate
-    });
-
-    // Shield allocation phase starts from Round 2 onwards (skip Round 1)
-    if (gameState.roundNumber === 1) {
-      debugLog('PHASE_TRANSITIONS', `🛡️ [SHIELD CHECK] Round ${gameState.roundNumber} is first round - skipping shields phase`);
-      return false;
-    }
-
-    // Check if either player has shields available to allocate
-    const hasShields = gameState.shieldsToAllocate > 0 || gameState.opponentShieldsToAllocate > 0;
-
-    debugLog('PHASE_TRANSITIONS', `🛡️ [SHIELD CHECK] Result: ${hasShields ? 'REQUIRED' : 'SKIP'}`, {
-      player1Shields: gameState.shieldsToAllocate,
-      player2Shields: gameState.opponentShieldsToAllocate,
-      decision: hasShields ? 'Phase required - has shields' : 'Phase not required - no shields'
-    });
-
-    return hasShields;
+    this._ensurePhaseRequirementChecker();
+    return this.phaseRequirementChecker.anyPlayerHasShieldsToAllocate(gameState);
   }
 
   /**
@@ -1568,10 +1492,8 @@ class GameFlowManager {
    * @returns {boolean} True if any player has at least 1 card in hand
    */
   anyPlayerHasCards(gameState) {
-    const player1HasCards = gameState.player1.hand && gameState.player1.hand.length > 0;
-    const player2HasCards = gameState.player2.hand && gameState.player2.hand.length > 0;
-
-    return player1HasCards || player2HasCards;
+    this._ensurePhaseRequirementChecker();
+    return this.phaseRequirementChecker.anyPlayerHasCards(gameState);
   }
 
   /**
@@ -1580,38 +1502,8 @@ class GameFlowManager {
    * @returns {boolean} True if any player has too many drones
    */
   anyPlayerExceedsDroneLimit(gameState) {
-    // Use GameDataService to check effective drone limits
-    if (!this.gameDataService) {
-      debugLog('PHASE_TRANSITIONS', 'GameDataService not initialized for drone limit check');
-      return false;
-    }
-
-    // Check player1
-    const player1DronesCount = Object.values(gameState.player1.dronesOnBoard || {}).flat().filter(d => !d.isToken).length;
-    const player1Stats = this.gameDataService.getEffectiveShipStats(gameState.player1, gameState.placedSections);
-    const player1DroneLimit = player1Stats.totals.cpuLimit;
-
-    if (player1DronesCount > player1DroneLimit) {
-      return true;
-    }
-
-    // Check player2
-    const player2DronesCount = Object.values(gameState.player2.dronesOnBoard || {}).flat().filter(d => !d.isToken).length;
-    const player2Stats = this.gameDataService.getEffectiveShipStats(gameState.player2, gameState.opponentPlacedSections);
-    const player2DroneLimit = player2Stats.totals.cpuLimit;
-
-    debugLog('PHASE_TRANSITIONS', '🔍 Checking player2 drone limit:', {
-      player2DronesCount,
-      player2DroneLimit,
-      exceeds: player2DronesCount > player2DroneLimit,
-      opponentPlacedSections: gameState.opponentPlacedSections
-    });
-
-    if (player2DronesCount > player2DroneLimit) {
-      return true;
-    }
-
-    return false;
+    this._ensurePhaseRequirementChecker();
+    return this.phaseRequirementChecker.anyPlayerExceedsDroneLimit(gameState);
   }
 
   /**
@@ -1622,22 +1514,8 @@ class GameFlowManager {
    * @returns {boolean} True if this specific player exceeds their hand limit
    */
   playerExceedsHandLimit(playerId, gameState) {
-    if (!this.gameDataService) {
-      debugLog('PHASE_TRANSITIONS', 'GameDataService not initialized for hand limit check');
-      return false;
-    }
-
-    const player = gameState[playerId];
-    if (!player) return false;
-
-    const handCount = player.hand ? player.hand.length : 0;
-    const placedSections = playerId === 'player1'
-      ? gameState.placedSections
-      : gameState.opponentPlacedSections;
-    const stats = this.gameDataService.getEffectiveShipStats(player, placedSections);
-    const handLimit = stats.totals.handLimit;
-
-    return handCount > handLimit;
+    this._ensurePhaseRequirementChecker();
+    return this.phaseRequirementChecker.playerExceedsHandLimit(playerId, gameState);
   }
 
   /**
@@ -1648,22 +1526,8 @@ class GameFlowManager {
    * @returns {boolean} True if this specific player exceeds their drone limit
    */
   playerExceedsDroneLimit(playerId, gameState) {
-    if (!this.gameDataService) {
-      debugLog('PHASE_TRANSITIONS', 'GameDataService not initialized for drone limit check');
-      return false;
-    }
-
-    const player = gameState[playerId];
-    if (!player) return false;
-
-    const droneCount = Object.values(player.dronesOnBoard || {}).flat().filter(d => !d.isToken).length;
-    const placedSections = playerId === 'player1'
-      ? gameState.placedSections
-      : gameState.opponentPlacedSections;
-    const stats = this.gameDataService.getEffectiveShipStats(player, placedSections);
-    const droneLimit = stats.totals.cpuLimit;
-
-    return droneCount > droneLimit;
+    this._ensurePhaseRequirementChecker();
+    return this.phaseRequirementChecker.playerExceedsDroneLimit(playerId, gameState);
   }
 
   /**
