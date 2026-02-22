@@ -117,6 +117,14 @@ const DEBUG_CONFIG = {
     MOMENTUM_GLOW: false,             // Card hover logging for momentum glow debugging
     CONSUMPTION_DEBUG: true,           // Snared/suppressed consumption flow tracing
     ON_MOVE_EFFECTS: true,             // ON_MOVE ability trigger flow (HEAL, PERMANENT_STAT_MOD)
+
+    // Single-Player State Management
+    SP_SAVE: false,                    // Save/load, profile creation, migration
+    SP_INVENTORY: false,               // Card inventory, discovery state
+    SP_SHIP: false,                    // Ship slot CRUD, deck management, component instances
+    SP_REPAIR: false,                  // Drone slot and section repair operations
+    SP_SHOP: false,                    // Tactical item and card pack purchases
+    SP_DRONE: false,                   // Drone instance creation, updates, queries
   }
 };
 

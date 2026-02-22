@@ -12,9 +12,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import gameStateManager from './GameStateManager.js';
 
 describe('GameStateManager - Game State Initialization/Cleanup', () => {
-  // Store original console.error to restore after tests
-  const originalConsoleError = console.error;
-
   beforeEach(() => {
     // Reset to clean state before each test
     // Manually set to a known clean state
@@ -51,14 +48,6 @@ describe('GameStateManager - Game State Initialization/Cleanup', () => {
 
     // Also ensure actionsTakenThisTurn is reset
     gameStateManager.setState({ actionsTakenThisTurn: 0 });
-
-    // Mock console.error to capture calls
-    console.error = vi.fn();
-  });
-
-  afterEach(() => {
-    // Restore console.error
-    console.error = originalConsoleError;
   });
 
   describe('validatePreGameState()', () => {
@@ -378,39 +367,36 @@ describe('GameStateManager - Game State Initialization/Cleanup', () => {
   });
 
   describe('startGame() - dirty state detection', () => {
-    it('should not log error when state is clean', () => {
+    it('should not call resetGameState when state is clean', () => {
       // State is already clean from beforeEach
+      const resetSpy = vi.spyOn(gameStateManager, 'resetGameState');
 
       gameStateManager.startGame('local');
 
-      // console.error should not have been called with dirty state message
-      const errorCalls = console.error.mock.calls;
-      const dirtyStateCall = errorCalls.find(call =>
-        call[0]?.includes?.('DIRTY STATE DETECTED')
-      );
-      expect(dirtyStateCall).toBeUndefined();
+      // resetGameState should not be called when state is clean
+      expect(resetSpy).not.toHaveBeenCalled();
+      resetSpy.mockRestore();
     });
 
-    it('should log error and cleanup when gameStage is dirty', () => {
+    it('should detect and cleanup dirty gameStage', () => {
       gameStateManager.setState({ gameStage: 'roundLoop' });
+      const resetSpy = vi.spyOn(gameStateManager, 'resetGameState');
 
       gameStateManager.startGame('local');
 
-      // Should have logged error about dirty state
-      expect(console.error).toHaveBeenCalled();
-      const errorCalls = console.error.mock.calls;
-      const dirtyStateCall = errorCalls.find(call =>
-        call[0]?.includes?.('DIRTY STATE DETECTED')
-      );
-      expect(dirtyStateCall).toBeDefined();
+      // Should have called resetGameState to clean up
+      expect(resetSpy).toHaveBeenCalled();
+      resetSpy.mockRestore();
     });
 
-    it('should log error and cleanup when roundNumber is non-zero', () => {
+    it('should detect and cleanup when roundNumber is non-zero', () => {
       gameStateManager.setState({ roundNumber: 5 });
+      const resetSpy = vi.spyOn(gameStateManager, 'resetGameState');
 
       gameStateManager.startGame('local');
 
-      expect(console.error).toHaveBeenCalled();
+      expect(resetSpy).toHaveBeenCalled();
+      resetSpy.mockRestore();
     });
 
     it('should still initialize game correctly after cleaning dirty state', () => {
@@ -452,15 +438,12 @@ describe('GameStateManager - Game State Initialization/Cleanup', () => {
       const validation = gameStateManager.validatePreGameState();
       expect(validation.valid).toBe(true);
 
-      // Start second game - should not log dirty state error
-      console.error.mockClear();
+      // Start second game - should not need cleanup
+      const resetSpy = vi.spyOn(gameStateManager, 'resetGameState');
       gameStateManager.startGame('local');
 
-      const errorCalls = console.error.mock.calls;
-      const dirtyStateCall = errorCalls.find(call =>
-        call[0]?.includes?.('DIRTY STATE DETECTED')
-      );
-      expect(dirtyStateCall).toBeUndefined();
+      expect(resetSpy).not.toHaveBeenCalled();
+      resetSpy.mockRestore();
     });
 
     it('should detect dirty state if endGame was not called', () => {
@@ -474,11 +457,12 @@ describe('GameStateManager - Game State Initialization/Cleanup', () => {
       });
 
       // Skip endGame() - directly try to start new game
-      console.error.mockClear();
+      const resetSpy = vi.spyOn(gameStateManager, 'resetGameState');
       gameStateManager.startGame('local');
 
-      // Should detect and report dirty state
-      expect(console.error).toHaveBeenCalled();
+      // Should detect dirty state and call resetGameState
+      expect(resetSpy).toHaveBeenCalled();
+      resetSpy.mockRestore();
     });
   });
 

@@ -186,7 +186,7 @@ class GameStateManager {
               // Queue service handles this - no need to do anything here
               // Service is already subscribed to P2P events
             } else {
-              console.warn('⚠️ [GUEST QUEUE] Service not initialized, applying state directly (fallback)');
+              debugLog('STATE_SYNC', '⚠️ [GUEST QUEUE] Service not initialized, applying state directly (fallback)');
               this.applyHostState(event.data.state);
               // Note: Animations will be lost in fallback mode
             }
@@ -254,7 +254,7 @@ class GameStateManager {
    */
   applyHostState(hostState) {
     if (this.state.gameMode !== 'guest') {
-      console.warn('⚠️ applyHostState should only be called in guest mode');
+      debugLog('STATE_SYNC', '⚠️ applyHostState should only be called in guest mode');
       return;
     }
 
@@ -350,7 +350,7 @@ class GameStateManager {
       try {
         listener({ type, payload, state: this.getState() });
       } catch (error) {
-        console.error('Error in state listener:', error);
+        debugLog('STATE_SYNC', '🚨 Error in state listener', { error });
       }
     });
   }
@@ -405,9 +405,10 @@ class GameStateManager {
     const isLegitimateCall = isViaActionProcessor || isViaPhaseManager || isViaExtractionController;
 
     if (isAppJsxCaller && !isLegitimateCall) {
-      console.error('🚨 ARCHITECTURE VIOLATION: App.jsx is directly updating GameStateManager!');
-      console.error('📋 App.jsx should only call ActionProcessor, PhaseManager, or ExtractionController methods');
-      console.error('🔍 Stack trace:', stack);
+      debugLog('VALIDATION', '🚨 ARCHITECTURE VIOLATION: App.jsx is directly updating GameStateManager!', {
+        recommendation: 'App.jsx should only call ActionProcessor, PhaseManager, or ExtractionController methods',
+        stack
+      });
     }
 
     // Comprehensive state change logging
@@ -478,14 +479,14 @@ class GameStateManager {
         const isLegitimateManagerUpdate = isPhaseTransition && isFromGameFlowManager;
 
         if (hasDangerousUpdate && !isLegitimateManagerUpdate) {
-          console.warn('Race condition detected: External state update during action processing', {
+          debugLog('VALIDATION', '⚠️ Race condition detected: External state update during action processing', {
             updates: Object.keys(updates),
             actionInProgress: true,
             queueLength: this.actionProcessor.getQueueLength(),
             context: context,
             isFromGameFlowManager: isFromGameFlowManager,
             isPhaseTransition: isPhaseTransition,
-            stack: stack?.split('\n').slice(0, 5) // First 5 lines of stack for debugging
+            stack: stack?.split('\n').slice(0, 5)
           });
         }
       }
@@ -515,10 +516,10 @@ class GameStateManager {
     const validatePlayerValues = (player, playerId) => {
       if (!player) return;
       if (typeof player.energy === 'number' && player.energy < 0) {
-        console.error(`Invalid state: ${playerId} has negative energy: ${player.energy}`);
+        debugLog('VALIDATION', `🚨 Invalid state: ${playerId} has negative energy: ${player.energy}`);
       }
       if (typeof player.deploymentBudget === 'number' && player.deploymentBudget < 0) {
-        console.error(`Invalid state: ${playerId} has negative deployment budget: ${player.deploymentBudget}`);
+        debugLog('VALIDATION', `🚨 Invalid state: ${playerId} has negative deployment budget: ${player.deploymentBudget}`);
       }
     };
 
@@ -532,7 +533,7 @@ class GameStateManager {
         Object.values(player.dronesOnBoard).forEach(lane => {
           lane.forEach(drone => {
             if (allDroneIds.has(drone.id)) {
-              console.error(`Duplicate drone ID detected: ${drone.id} in player${playerIndex + 1}`);
+              debugLog('VALIDATION', `🚨 Duplicate drone ID detected: ${drone.id} in player${playerIndex + 1}`);
             }
             allDroneIds.add(drone.id);
           });
@@ -575,7 +576,7 @@ class GameStateManager {
     };
 
     if (!validTransitions[fromPhase]?.includes(toPhase)) {
-      console.warn(`Invalid turn phase transition: ${fromPhase} -> ${toPhase}`);
+      debugLog('VALIDATION', `⚠️ Invalid turn phase transition: ${fromPhase} -> ${toPhase}`);
     }
   }
 
@@ -685,7 +686,7 @@ class GameStateManager {
         line.includes('.jsx') && !line.includes('GameStateManager')
       ) || stackLines[2] || 'Unknown';
 
-      console.warn('⚠️ ActionProcessor bypass detected: Critical game state updated directly', {
+      debugLog('VALIDATION', '⚠️ ActionProcessor bypass detected: Critical game state updated directly', {
         updates: criticalUpdates,
         turnPhase: prevState.turnPhase,
         caller: callerLine.trim(),
@@ -695,7 +696,7 @@ class GameStateManager {
       });
 
       // Log detailed debug information
-      console.debug('🐛 ActionProcessor bypass debug info:', {
+      debugLog('VALIDATION', '🐛 ActionProcessor bypass debug info', {
         stackTrace: stackLines.slice(0, 8),
         currentState: {
           turnPhase: prevState.turnPhase,
@@ -708,7 +709,7 @@ class GameStateManager {
 
     // Log informational message for allowed UI updates (only in debug mode)
     if (allowedUpdates.length > 0 && !isFromActionProcessor && process.env.NODE_ENV === 'development') {
-      console.debug('ℹ️ UI state update (allowed):', {
+      debugLog('VALIDATION', 'ℹ️ UI state update (allowed)', {
         updates: allowedUpdates,
         turnPhase: prevState.turnPhase
       });
@@ -744,7 +745,7 @@ class GameStateManager {
             if (prop === 'energy' || prop === 'deploymentBudget' || prop === 'initialDeploymentBudget') {
               debugLog('STATE_SYNC', `  💰 ${prop}: ${oldValue} → ${newValue}`);
               if (newValue === undefined || newValue === null || isNaN(newValue)) {
-                console.error(`  🚨 WARNING: ${prop} became ${newValue}!`);
+                debugLog('VALIDATION', `🚨 WARNING: ${prop} became ${newValue}!`);
               }
             } else if (prop === 'activeDronePool') {
               const oldCount = Array.isArray(oldValue) ? oldValue.length : 'undefined';
@@ -916,7 +917,7 @@ class GameStateManager {
 
     // Only flag if we have inappropriate callers and no appropriate ones
     if (inappropriateCallers.length > 0 && appropriateCallers.length === 0) {
-      console.warn('🚨 Inappropriate function updating game state:', {
+      debugLog('VALIDATION', '🚨 Inappropriate function updating game state', {
         inappropriateFunctions: inappropriateCallers,
         updates: Object.keys(updates),
         turnPhase: prevState.turnPhase,
@@ -926,7 +927,7 @@ class GameStateManager {
       });
 
       // Log detailed debug information
-      console.debug('🔍 Function validation debug info:', {
+      debugLog('VALIDATION', '🔍 Function validation debug info', {
         allFunctionsInStack: callerInfo.functions,
         inappropriateFound: inappropriateCallers,
         appropriateFound: appropriateCallers,
@@ -1024,7 +1025,7 @@ class GameStateManager {
                              isSequentialPhaseManager ? 'SequentialPhaseManager' :
                              isActionProcessor ? 'ActionProcessor' : 'Unknown';
 
-        console.warn(`🚨 OWNERSHIP VIOLATION: ${currentManager} cannot update '${updateKey}'`, {
+        debugLog('VALIDATION', `🚨 OWNERSHIP VIOLATION: ${currentManager} cannot update '${updateKey}'`, {
           updateKey,
           currentManager,
           allowedOwners: allowedOwnersList,
@@ -1199,14 +1200,11 @@ class GameStateManager {
     // Validate pre-game state and cleanup if dirty
     const validation = this.validatePreGameState();
     if (!validation.valid) {
-      console.error(
-        '=== DIRTY STATE DETECTED AT GAME START ===\n' +
-        'Issues found:\n' +
-        validation.issues.map(i => `  - ${i}`).join('\n') + '\n' +
-        'Calling resetGameState() to clean up.\n' +
-        'Stack trace:',
-        new Error().stack
-      );
+      debugLog('VALIDATION', '🚨 DIRTY STATE DETECTED AT GAME START', {
+        issues: validation.issues,
+        action: 'Calling resetGameState() to clean up',
+        stack: new Error().stack
+      });
       this.resetGameState();
     }
 
@@ -1348,7 +1346,7 @@ class GameStateManager {
         debugLog('STATE_SYNC', '❌ TEST MODE: Test game initialization failed');
       }
     }).catch(error => {
-      console.error('❌ TEST MODE: Error importing testGameInitializer:', error);
+      debugLog('STATE_SYNC', '🚨 TEST MODE: Error importing testGameInitializer', { error });
     });
 
     return true; // Return immediately, actual initialization happens asynchronously
@@ -1717,7 +1715,7 @@ class GameStateManager {
   createNewSinglePlayerProfile() {
     const newSave = createNewSave();
     this.loadSinglePlayerSave(newSave);
-    console.log('New single-player profile created');
+    debugLog('SP_SAVE', 'New single-player profile created');
   }
 
   /**
@@ -1733,14 +1731,14 @@ class GameStateManager {
         .filter(s => s.id > 0 && s.status !== 'empty')
         .map(s => s.id);
       profile.highestUnlockedSlot = activeSlotIds.length > 0 ? Math.max(...activeSlotIds) : 0;
-      console.log(`Migration: Set highestUnlockedSlot to ${profile.highestUnlockedSlot}`);
+      debugLog('SP_SAVE', `Migration: Set highestUnlockedSlot to ${profile.highestUnlockedSlot}`);
     }
 
     // Migration: Generate shop pack if not present (new saves and old saves)
     if (!profile.shopPack) {
       const highestTier = profile.stats?.highestTierCompleted || 0;
       profile.shopPack = generateRandomShopPack(highestTier, Date.now());
-      console.log('Migration: Generated shop pack:', profile.shopPack);
+      debugLog('SP_SAVE', 'Migration: Generated shop pack', { shopPack: profile.shopPack });
     }
 
     this.setState({
@@ -1756,10 +1754,10 @@ class GameStateManager {
     // Load run state to TacticalMapStateManager if present
     if (saveData.currentRunState) {
       tacticalMapStateManager.loadFromSave(saveData.currentRunState);
-      console.log('Run state loaded to TacticalMapStateManager');
+      debugLog('SP_SAVE', 'Run state loaded to TacticalMapStateManager');
     }
 
-    console.log('Single-player save loaded');
+    debugLog('SP_SAVE', 'Single-player save loaded');
   }
 
   /**
@@ -1801,7 +1799,7 @@ class GameStateManager {
     }
 
     this.setState({ singlePlayerDiscoveredCards: discoveredCards });
-    console.log(`Card ${cardId} discovery state updated to ${newState}`);
+    debugLog('SP_INVENTORY', `Card ${cardId} discovery state updated to ${newState}`);
   }
 
   /**
@@ -1828,7 +1826,7 @@ class GameStateManager {
     // Also mark as owned in discovery
     this.updateCardDiscoveryState(cardId, 'owned');
 
-    console.log(`Added ${quantity}x ${cardId} to inventory`);
+    debugLog('SP_INVENTORY', `Added ${quantity}x ${cardId} to inventory`);
   }
 
   /**
@@ -1839,7 +1837,7 @@ class GameStateManager {
     const instances = [...this.state.singlePlayerShipComponentInstances];
     instances.push(instance);
     this.setState({ singlePlayerShipComponentInstances: instances });
-    console.log('Ship component instance added:', instance);
+    debugLog('SP_INVENTORY', 'Ship component instance added', { instance });
   }
 
   /**
@@ -1854,9 +1852,9 @@ class GameStateManager {
     if (index >= 0) {
       instances[index] = { ...instances[index], currentHull: newHull };
       this.setState({ singlePlayerShipComponentInstances: instances });
-      console.log(`Ship component ${instanceId} hull updated to ${newHull}`);
+      debugLog('SP_INVENTORY', `Ship component ${instanceId} hull updated to ${newHull}`);
     } else {
-      console.warn(`Ship component instance ${instanceId} not found`);
+      debugLog('SP_INVENTORY', `⚠️ Ship component instance ${instanceId} not found`);
     }
   }
 
@@ -1910,7 +1908,7 @@ class GameStateManager {
       }
     });
 
-    console.log(`Purchased ${item.name} for ${item.cost} credits. Now have ${newQuantity}`);
+    debugLog('SP_SHOP', `Purchased ${item.name} for ${item.cost} credits. Now have ${newQuantity}`);
 
     return { success: true, newQuantity };
   }
@@ -1960,7 +1958,7 @@ class GameStateManager {
       singlePlayerInventory: newInventory
     });
 
-    console.log(`Purchased ${packType} T${tier} for ${cost} credits. Cards:`, result.cards.map(c => c.cardId));
+    debugLog('SP_SHOP', `Purchased ${packType} T${tier} for ${cost} credits`, { cards: result.cards.map(c => c.cardId) });
 
     return { success: true, cards: result.cards, cost };
   }
@@ -1990,7 +1988,7 @@ class GameStateManager {
       }
     });
 
-    console.log(`Used tactical item ${itemId}. Remaining: ${remaining}`);
+    debugLog('SP_SHOP', `Used tactical item ${itemId}. Remaining: ${remaining}`);
 
     return { success: true, remaining };
   }
@@ -2028,7 +2026,7 @@ class GameStateManager {
     };
 
     this.setState({ singlePlayerProfile: updatedProfile });
-    console.log(`Default ship slot set to ${slotId}`);
+    debugLog('SP_SHIP', `Default ship slot set to ${slotId}`);
   }
 
   /**
@@ -2089,7 +2087,7 @@ class GameStateManager {
     };
 
     this.setState({ singlePlayerProfile: updatedProfile });
-    console.log(`Unlocked deck slot ${nextSlotId} for ${cost} credits`);
+    debugLog('SP_SHIP', `Unlocked deck slot ${nextSlotId} for ${cost} credits`);
     return { success: true, slotId: nextSlotId };
   }
 
@@ -2147,7 +2145,7 @@ class GameStateManager {
     };
 
     this.setState({ singlePlayerShipSlots: slots });
-    console.log(`Deck saved to slot ${slotId}:`, deckData);
+    debugLog('SP_SHIP', `Deck saved to slot ${slotId}`, { deckData });
   }
 
   /**
@@ -2219,7 +2217,7 @@ class GameStateManager {
       singlePlayerProfile: updatedProfile
     });
 
-    console.log(`Deck deleted from slot ${slotId}, cards returned to inventory`);
+    debugLog('SP_SHIP', `Deck deleted from slot ${slotId}, cards returned to inventory`);
   }
 
   /**
@@ -2251,7 +2249,7 @@ class GameStateManager {
     const slotIndex = slots.findIndex(s => s.id === slotId);
 
     if (slotIndex === -1) {
-      console.warn(`updateShipSlotDroneOrder: Slot ${slotId} not found`);
+      debugLog('SP_SHIP', `⚠️ updateShipSlotDroneOrder: Slot ${slotId} not found`);
       return;
     }
 
@@ -2319,7 +2317,7 @@ class GameStateManager {
       singlePlayerProfile: profile
     });
 
-    console.log(`Repaired drone slot ${position} in ship slot ${slotId} for ${cost} credits`);
+    debugLog('SP_REPAIR', `Repaired drone slot ${position} in ship slot ${slotId} for ${cost} credits`);
     return { success: true };
   }
 
@@ -2376,7 +2374,7 @@ class GameStateManager {
       singlePlayerProfile: profile
     });
 
-    console.log(`Repaired section ${lane} in ship slot ${slotId} for ${cost} credits (${damageDealt} damage)`);
+    debugLog('SP_REPAIR', `Repaired section ${lane} in ship slot ${slotId} for ${cost} credits (${damageDealt} damage)`);
     return { success: true };
   }
 
@@ -2441,7 +2439,7 @@ class GameStateManager {
       singlePlayerProfile: profile
     });
 
-    console.log(`Partial repair: ${actualRepair} HP on section ${lane} in slot ${slotId} for ${cost} credits (${newDamage} damage remaining)`);
+    debugLog('SP_REPAIR', `Partial repair: ${actualRepair} HP on section ${lane} in slot ${slotId} for ${cost} credits (${newDamage} damage remaining)`);
     return {
       success: true,
       cost,
@@ -2474,7 +2472,7 @@ class GameStateManager {
     const instances = [...this.state.singlePlayerDroneInstances, instance];
     this.setState({ singlePlayerDroneInstances: instances });
 
-    console.log(`Created drone instance: ${instanceId} for ${droneName}`);
+    debugLog('SP_DRONE', `Created drone instance: ${instanceId} for ${droneName}`);
     return instanceId;
   }
 
@@ -2490,9 +2488,9 @@ class GameStateManager {
     if (index >= 0) {
       instances[index] = { ...instances[index], isDamaged };
       this.setState({ singlePlayerDroneInstances: instances });
-      console.log(`Drone instance ${instanceId} damage updated to ${isDamaged}`);
+      debugLog('SP_DRONE', `Drone instance ${instanceId} damage updated to ${isDamaged}`);
     } else {
-      console.warn(`Drone instance ${instanceId} not found`);
+      debugLog('SP_DRONE', `⚠️ Drone instance ${instanceId} not found`);
     }
   }
 
@@ -2561,7 +2559,7 @@ class GameStateManager {
     const instances = [...this.state.singlePlayerShipComponentInstances, instance];
     this.setState({ singlePlayerShipComponentInstances: instances });
 
-    console.log(`Created component instance: ${instanceId} for ${componentId}`);
+    debugLog('SP_DRONE', `Created component instance: ${instanceId} for ${componentId}`);
     return instanceId;
   }
 
@@ -2615,7 +2613,7 @@ class GameStateManager {
     if (mapData.requiresToken) {
       const currentTokens = this.state.singlePlayerProfile?.securityTokens || 0;
       if (currentTokens < 1) {
-        console.error('[GameStateManager] Cannot start run - insufficient tokens');
+        debugLog('EXTRACTION', '🚨 Cannot start run - insufficient tokens');
         return;
       }
 
@@ -2626,7 +2624,7 @@ class GameStateManager {
           securityTokens: currentTokens - 1
         }
       });
-      console.log(`[GameStateManager] Deducted 1 security token. Remaining: ${currentTokens - 1}`);
+      debugLog('EXTRACTION', `Deducted 1 security token. Remaining: ${currentTokens - 1}`);
     }
 
     // Set player starting position to selected entry gate
@@ -2792,8 +2790,8 @@ class GameStateManager {
     // This prevents "Transition already in progress" errors when entering combat
     transitionManager.forceReset();
 
-    console.log('Run started via TacticalMapStateManager');
-    console.log('Map generated:', mapData.name, `(${mapData.poiCount} PoIs, ${mapData.gateCount} gates)`);
+    debugLog('EXTRACTION', 'Run started via TacticalMapStateManager');
+    debugLog('EXTRACTION', `Map generated: ${mapData.name} (${mapData.poiCount} PoIs, ${mapData.gateCount} gates)`);
   }
 
   /**
@@ -2903,7 +2901,7 @@ class GameStateManager {
     // Read run state from TacticalMapStateManager
     const runState = tacticalMapStateManager.getState();
     if (!runState) {
-      console.warn('No active run to end');
+      debugLog('EXTRACTION', '⚠️ No active run to end');
       debugLog('SP_COMBAT', 'WARNING: No active run to end');
       return;
     }
@@ -2971,7 +2969,7 @@ class GameStateManager {
       finalDetection: runState.detection || 0,
     };
 
-    console.log('Run summary generated:', lastRunSummary);
+    debugLog('EXTRACTION', 'Run summary generated', { lastRunSummary });
 
     if (success) {
       // Transfer loot to inventory
@@ -3011,9 +3009,9 @@ class GameStateManager {
       // Refresh shop pack for next hangar visit (uses updated highestTierCompleted)
       const highestTier = this.state.singlePlayerProfile.stats.highestTierCompleted || 0;
       this.state.singlePlayerProfile.shopPack = generateRandomShopPack(highestTier, Date.now());
-      console.log('Shop pack refreshed:', this.state.singlePlayerProfile.shopPack);
+      debugLog('EXTRACTION', 'Shop pack refreshed', { shopPack: this.state.singlePlayerProfile.shopPack });
 
-      console.log('Run ended successfully - loot transferred');
+      debugLog('EXTRACTION', 'Run ended successfully - loot transferred');
 
       // Persist ship section hull damage using slot-based format
       // Damage is stored in sectionSlots[lane].damageDealt, not in instance arrays
@@ -3041,7 +3039,7 @@ class GameStateManager {
           shipSlot.sectionSlots = newSectionSlots;
           slots[slotIndex] = shipSlot;
           this.state.singlePlayerShipSlots = slots;
-          console.log('Ship section hull damage persisted to sectionSlots');
+          debugLog('EXTRACTION', 'Ship section hull damage persisted to sectionSlots');
         }
       }
     } else {
@@ -3057,7 +3055,7 @@ class GameStateManager {
       // Update statistics
       this.state.singlePlayerProfile.stats.runsLost++;
 
-      console.log('Run ended - MIA protocol triggered');
+      debugLog('EXTRACTION', 'Run ended - MIA protocol triggered');
     }
 
     // Calculate total combat reputation from run
@@ -3099,7 +3097,7 @@ class GameStateManager {
       tierCap: reputationResult.tierCap || 0,
     };
 
-    console.log('Reputation awarded:', lastRunSummary.reputation);
+    debugLog('EXTRACTION', 'Reputation awarded', { reputation: lastRunSummary.reputation });
 
     // End the run in TacticalMapStateManager
     tacticalMapStateManager.endRun();
