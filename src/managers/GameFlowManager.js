@@ -10,14 +10,11 @@ import { initializeShipPlacement } from '../utils/shipPlacementUtils.js';
 import fullDroneCollection from '../data/droneData.js';
 import GameDataService from '../services/GameDataService.js';
 import { gameEngine } from '../logic/gameLogic.js';
-import RoundManager from '../logic/round/RoundManager.js';
-import EffectRouter from '../logic/EffectRouter.js';
 import PhaseManager from './PhaseManager.js';
 import tacticalMapStateManager from './TacticalMapStateManager.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
-import { processRebuildProgress } from '../logic/availability/DroneAvailabilityManager.js';
-import { LaneControlCalculator } from '../logic/combat/LaneControlCalculator.js';
 import PhaseRequirementChecker from '../logic/phase/PhaseRequirementChecker.js';
+import RoundInitializationProcessor from './RoundInitializationProcessor.js';
 
 /**
  * GameFlowManager - Central authority for game phase flow and transitions
@@ -1030,318 +1027,25 @@ class GameFlowManager {
     debugLog('PHASE_TRANSITIONS', '🎯 GameFlowManager: Processing roundInitialization phase (atomic round setup)');
 
     try {
-      // NOTE: ROUND announcement is now queued BEFORE entering this phase
-      // (either in onSimultaneousPhaseComplete for Round 1, or in startNewRound for Round 2+)
-      // This ensures ROUND shows immediately without waiting for UPKEEP to finish
-
-      const currentState = this.gameStateManager.getState();
       const gameMode = this.gameStateManager.get('gameMode');
 
-      // ========================================
-      // STEP 1: Game Stage Transition & Round Number Initialization
-      // ========================================
-      // Transition to roundLoop game stage (first time only)
-      if (this.gameStage !== 'roundLoop') {
+      // Delegate Steps 1-5 to RoundInitializationProcessor
+      const processor = new RoundInitializationProcessor(this.gameStateManager, this.actionProcessor);
+      const result = await processor.process({
+        isRoundLoop: this.gameStage === 'roundLoop',
+        executeQuickDeploy: (quickDeploy) => this.executeQuickDeploy(quickDeploy)
+      });
+
+      // Apply flow-control state from processor result
+      if (result.gameStageTransitioned) {
         this.gameStage = 'roundLoop';
-        debugLog('PHASE_TRANSITIONS', '✅ Game stage transitioned to roundLoop');
+      }
+      if (result.quickDeployExecuted) {
+        this._quickDeployExecutedThisRound = true;
       }
 
-      // Initialize Round 1 (only happens once, first time entering roundInitialization from placement)
-      // Reuse currentState from earlier (no state changes between line 1024 and here)
-      if (currentState.roundNumber === 0) {
-        this.gameStateManager.setState({
-          roundNumber: 1,
-          turn: 1
-        });
-        debugLog('PHASE_TRANSITIONS', '✅ Round number initialized to 1 (first gameplay round)');
-      }
-
-      // ========================================
-      // STEP 2: Determine First Player
-      // ========================================
-      debugLog('PHASE_TRANSITIONS', '🎯 Step 2: Determining first player');
-      const firstPlayerResult = await this.actionProcessor.processFirstPlayerDetermination();
-      debugLog('PHASE_TRANSITIONS', '✅ First player determination completed:', firstPlayerResult);
-
-      // ========================================
-      // STEP 3: Energy & Resource Reset
-      // ========================================
-      debugLog('PHASE_TRANSITIONS', '⚡ Step 3: Resetting energy and resources');
-
-      const currentGameState = this.gameStateManager.getState();
-
-      // Calculate effective ship stats for both players
-      const GameDataService = (await import('../services/GameDataService.js')).default;
-      const gameDataService = GameDataService.getInstance(this.gameStateManager);
-
-      const player1EffectiveStats = gameDataService.getEffectiveShipStats(
-        currentGameState.player1,
-        currentGameState.placedSections
-      );
-      const player2EffectiveStats = gameDataService.getEffectiveShipStats(
-        currentGameState.player2,
-        currentGameState.opponentPlacedSections
-      );
-
-      // Ready drones (unexhaust, restore shields, remove temporary mods)
-      const allPlacedSections = {
-        player1: currentGameState.placedSections,
-        player2: currentGameState.opponentPlacedSections
-      };
-
-      const readiedPlayer1 = RoundManager.readyDronesAndRestoreShields(
-        currentGameState.player1,
-        currentGameState.player2,
-        allPlacedSections
-      );
-      const readiedPlayer2 = RoundManager.readyDronesAndRestoreShields(
-        currentGameState.player2,
-        currentGameState.player1,
-        allPlacedSections
-      );
-
-      // Apply energy and deployment budgets
-      // Round 1: initialDeploymentBudget, Round 2+: deploymentBudget
       const currentRoundNumber = this.gameStateManager.get('roundNumber');
 
-      const updatedPlayer1 = {
-        ...readiedPlayer1,
-        energy: player1EffectiveStats.totals.energyPerTurn,
-        initialDeploymentBudget: currentRoundNumber === 1 ? player1EffectiveStats.totals.initialDeployment : 0,
-        deploymentBudget: currentRoundNumber === 1 ? 0 : player1EffectiveStats.totals.deploymentBudget
-      };
-
-      const updatedPlayer2 = {
-        ...readiedPlayer2,
-        energy: player2EffectiveStats.totals.energyPerTurn,
-        initialDeploymentBudget: currentRoundNumber === 1 ? player2EffectiveStats.totals.initialDeployment : 0,
-        deploymentBudget: currentRoundNumber === 1 ? 0 : player2EffectiveStats.totals.deploymentBudget
-      };
-
-      debugLog('PHASE_TRANSITIONS', `✅ Energy reset complete - Round ${currentRoundNumber}`, {
-        player1: {
-          energy: updatedPlayer1.energy,
-          initialDeploymentBudget: updatedPlayer1.initialDeploymentBudget,
-          deploymentBudget: updatedPlayer1.deploymentBudget
-        },
-        player2: {
-          energy: updatedPlayer2.energy,
-          initialDeploymentBudget: updatedPlayer2.initialDeploymentBudget,
-          deploymentBudget: updatedPlayer2.deploymentBudget
-        }
-      });
-
-      // Calculate shields to allocate (Round 2+ only)
-      const shieldsToAllocate = currentRoundNumber >= 2 ? player1EffectiveStats.totals.shieldsPerTurn : 0;
-      const opponentShieldsToAllocate = currentRoundNumber >= 2 ? player2EffectiveStats.totals.shieldsPerTurn : 0;
-
-      // Update player states via ActionProcessor
-      // Include roundNumber to ensure atomic update (prevents race condition with UI)
-      await this.actionProcessor.queueAction({
-        type: 'energyReset',
-        payload: {
-          player1: updatedPlayer1,
-          player2: updatedPlayer2,
-          shieldsToAllocate,
-          opponentShieldsToAllocate,
-          roundNumber: currentRoundNumber
-        }
-      });
-
-      // ========================================
-      // STEP 3b: ON_ROUND_START Triggered Abilities
-      // ========================================
-      // Process ON_ROUND_START abilities for all drones (e.g., Signal Beacon, War Machine)
-      // AI drones process first, then player drones
-      debugLog('PHASE_TRANSITIONS', '🎯 Step 3b: Processing ON_ROUND_START triggers');
-
-      const preTriggersState = this.gameStateManager.getState();
-      const effectRouter = new EffectRouter();
-
-      const roundStartResult = RoundManager.processRoundStartTriggers(
-        preTriggersState.player1,
-        preTriggersState.player2,
-        allPlacedSections,
-        effectRouter
-      );
-
-      // Update state with any modifications from ON_ROUND_START abilities
-      if (roundStartResult) {
-        await this.actionProcessor.queueAction({
-          type: 'roundStartTriggers',
-          payload: {
-            player1: roundStartResult.player1,
-            player2: roundStartResult.player2
-          }
-        });
-
-        debugLog('PHASE_TRANSITIONS', '✅ ON_ROUND_START triggers processed', {
-          animationEventsCount: roundStartResult.animationEvents?.length || 0
-        });
-      }
-
-      // ========================================
-      // STEP 3b2: Momentum Award (Lane Control Bonus)
-      // ========================================
-      // Award +1 momentum to player controlling most lanes (checked after start-of-round effects)
-      // Rules: No momentum on ties, no momentum on round 1, cap at 4
-      const momentumRoundNumber = this.gameStateManager.get('roundNumber');
-      if (momentumRoundNumber >= 2) {
-        debugLog('PHASE_TRANSITIONS', '🚀 Step 3b2: Processing momentum award');
-
-        const postTriggersState = this.gameStateManager.getState();
-        const laneControl = LaneControlCalculator.calculateLaneControl(
-          postTriggersState.player1,
-          postTriggersState.player2
-        );
-
-        // Count lanes controlled by each player
-        let player1Lanes = 0;
-        let player2Lanes = 0;
-        ['lane1', 'lane2', 'lane3'].forEach(lane => {
-          if (laneControl[lane] === 'player1') player1Lanes++;
-          if (laneControl[lane] === 'player2') player2Lanes++;
-        });
-
-        debugLog('PHASE_TRANSITIONS', '📊 Lane control status:', {
-          player1Lanes,
-          player2Lanes,
-          laneControl
-        });
-
-        // Award momentum to player controlling more lanes (no award on tie)
-        let momentumUpdates = {};
-        const MOMENTUM_CAP = 4;
-
-        if (player1Lanes > player2Lanes) {
-          const newMomentum = Math.min((postTriggersState.player1.momentum || 0) + 1, MOMENTUM_CAP);
-          momentumUpdates.player1 = { ...postTriggersState.player1, momentum: newMomentum };
-          debugLog('PHASE_TRANSITIONS', '🎯 Player 1 awarded +1 momentum', {
-            oldMomentum: postTriggersState.player1.momentum || 0,
-            newMomentum,
-            lanesControlled: player1Lanes
-          });
-        } else if (player2Lanes > player1Lanes) {
-          const newMomentum = Math.min((postTriggersState.player2.momentum || 0) + 1, MOMENTUM_CAP);
-          momentumUpdates.player2 = { ...postTriggersState.player2, momentum: newMomentum };
-          debugLog('PHASE_TRANSITIONS', '🎯 Player 2 awarded +1 momentum', {
-            oldMomentum: postTriggersState.player2.momentum || 0,
-            newMomentum,
-            lanesControlled: player2Lanes
-          });
-        } else {
-          debugLog('PHASE_TRANSITIONS', '⚖️ Lane control tied - no momentum awarded');
-        }
-
-        // Update state with momentum changes
-        if (momentumUpdates.player1 || momentumUpdates.player2) {
-          await this.actionProcessor.queueAction({
-            type: 'momentumAward',
-            payload: momentumUpdates
-          });
-          debugLog('PHASE_TRANSITIONS', '✅ Momentum award complete');
-        }
-      } else {
-        debugLog('PHASE_TRANSITIONS', '⏭️ Skipping momentum award (Round 1)');
-      }
-
-      // ========================================
-      // STEP 3c: Drone Rebuild Progress
-      // ========================================
-      // Process rebuild progress for destroyed drones (availability system)
-      // Advances rebuild timers and converts completed rebuilds to ready copies
-      debugLog('PHASE_TRANSITIONS', '🔧 Step 3c: Processing drone rebuild progress');
-
-      const preRebuildState = this.gameStateManager.getState();
-      let rebuildUpdates = {};
-
-      // Process player 1 rebuild progress
-      if (preRebuildState.player1?.droneAvailability) {
-        const newAvailability = processRebuildProgress(preRebuildState.player1.droneAvailability);
-        rebuildUpdates.player1 = {
-          ...preRebuildState.player1,
-          droneAvailability: newAvailability
-        };
-        debugLog('PHASE_TRANSITIONS', '   ↳ Player 1 rebuild progress processed');
-      }
-
-      // Process player 2 (AI) rebuild progress
-      if (preRebuildState.player2?.droneAvailability) {
-        const newAvailability = processRebuildProgress(preRebuildState.player2.droneAvailability);
-        rebuildUpdates.player2 = {
-          ...preRebuildState.player2,
-          droneAvailability: newAvailability
-        };
-        debugLog('PHASE_TRANSITIONS', '   ↳ Player 2 rebuild progress processed');
-      }
-
-      // Update state with rebuild progress
-      if (rebuildUpdates.player1 || rebuildUpdates.player2) {
-        await this.actionProcessor.queueAction({
-          type: 'rebuildProgress',
-          payload: rebuildUpdates
-        });
-        debugLog('PHASE_TRANSITIONS', '✅ Drone rebuild progress complete');
-      }
-
-      // ========================================
-      // STEP 4: Card Draw
-      // ========================================
-      debugLog('PHASE_TRANSITIONS', '🃏 Step 4: Drawing cards');
-
-      // Get FRESH state after energy reset and round start triggers
-      const updatedGameState = this.gameStateManager.getState();
-
-      const { performAutomaticDraw } = await import('../utils/cardDrawUtils.js');
-      const drawResult = performAutomaticDraw(updatedGameState, this.gameStateManager);
-
-      // Update game state with draw results via ActionProcessor
-      await this.actionProcessor.queueAction({
-        type: 'draw',
-        payload: {
-          player1: drawResult.player1,
-          player2: drawResult.player2
-        }
-      });
-
-      debugLog('PHASE_TRANSITIONS', '✅ Card draw complete');
-
-      // ========================================
-      // STEP 5: Quick Deploy (Round 1 only)
-      // ========================================
-      // Execute quick deploy BEFORE phase determination to avoid async race conditions
-      // Quick deploy happens after card draw, so player has cards in hand during action phase
-      if (currentRoundNumber === 1) {
-        const quickDeployState = this.gameStateManager.getState();
-        const pendingQuickDeployId = quickDeployState.pendingQuickDeploy;
-
-        if (pendingQuickDeployId) {
-          debugLog('PHASE_TRANSITIONS', '⚡ Step 5: Executing quick deploy');
-
-          // Look up the full quick deploy object by ID
-          const quickDeploy = quickDeployState.quickDeployments?.find(
-            qd => qd.id === pendingQuickDeployId
-          );
-
-          if (quickDeploy) {
-            // Set flag BEFORE execution to indicate quick deploy is being handled
-            this._quickDeployExecutedThisRound = true;
-
-            // Execute quick deploy synchronously (await the async function)
-            await this.executeQuickDeploy(quickDeploy);
-
-            debugLog('PHASE_TRANSITIONS', '✅ Quick deploy execution complete');
-          } else {
-            debugLog('QUICK_DEPLOY', 'Template not found for ID:', pendingQuickDeployId);
-            // Clear the pending flag to prevent infinite loop
-            this.gameStateManager.setState({ pendingQuickDeploy: null });
-          }
-        }
-      }
-
-      // ========================================
-      // FINAL: Emit Event & Broadcast
-      // ========================================
       // Emit single phaseTransition event for roundInitialization
       this.emit('phaseTransition', {
         newPhase: 'roundInitialization',
@@ -1352,7 +1056,6 @@ class GameFlowManager {
       });
 
       // Broadcast state to guest ONCE after all updates complete (host only)
-      // Reuse gameMode from earlier (line 1026) - no state changes between
       if (gameMode === 'host' && this.actionProcessor.p2pManager) {
         debugLog('PHASE_TRANSITIONS', `📡 Broadcasting state after roundInitialization`);
         this.actionProcessor.broadcastStateToGuest();
