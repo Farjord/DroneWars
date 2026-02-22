@@ -216,3 +216,99 @@ describe('ActionProcessor — applyPhaseCommitments', () => {
     expect(updates.opponentPlacedSections).toEqual(['droneControlHub', 'bridge', 'powerCell']);
   });
 });
+
+describe('ActionProcessor — allocateShields Phase', () => {
+  let ap;
+  let storedState;
+  let gsm;
+
+  beforeEach(() => {
+    ActionProcessor.reset();
+    storedState = {
+      gameMode: 'host',
+      currentPlayer: 'player1',
+      turnPhase: 'allocateShields',
+      turn: 1, roundNumber: 1, actionsTakenThisTurn: 0,
+      winner: null,
+      passInfo: { firstPasser: null, player1Passed: false, player2Passed: false },
+      commitments: {},
+      player1: {
+        name: 'Player 1',
+        dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
+        hand: [], energy: 5,
+        shipSections: {
+          core: { allocatedShields: 3 },
+          left: { allocatedShields: 2 },
+          right: { allocatedShields: 0 }
+        },
+        shieldsToAllocate: 0
+      },
+      player2: {
+        name: 'Player 2',
+        dronesOnBoard: { lane1: [], lane2: [], lane3: [] },
+        hand: [], energy: 5,
+        shipSections: {
+          core: { allocatedShields: 0 },
+          left: { allocatedShields: 0 },
+          right: { allocatedShields: 0 }
+        },
+        shieldsToAllocate: 0
+      },
+      placedSections: [null, null, null],
+      opponentPlacedSections: [null, null, null],
+      shieldsToAllocate: 0,
+      opponentShieldsToAllocate: 0
+    };
+    gsm = {
+      getState: vi.fn(() => storedState),
+      get: vi.fn((key) => storedState[key]),
+      setState: vi.fn((updates) => { Object.assign(storedState, updates); }),
+      setPlayerStates: vi.fn(),
+      updatePlayerState: vi.fn(),
+      setTurnPhase: vi.fn(),
+      setCurrentPlayer: vi.fn(),
+      setPassInfo: vi.fn(),
+      setWinner: vi.fn(),
+      addLogEntry: vi.fn(),
+      getLocalPlayerId: vi.fn(() => 'player1'),
+      getLocalPlacedSections: vi.fn(() => [null, null, null]),
+      _updateContext: null
+    };
+    ap = ActionProcessor.getInstance(gsm);
+    ap.setAnimationManager(null);
+  });
+
+  afterEach(() => {
+    ActionProcessor.reset();
+    vi.clearAllMocks();
+  });
+
+  it('clears existing shield allocations before applying new ones', async () => {
+    await ap.processCommitment({
+      playerId: 'player1',
+      phase: 'allocateShields',
+      actionData: { shieldAllocations: { right: 4 } }
+    });
+
+    // processCommitment mutates state directly then calls setState
+    // Check storedState which was mutated in-place
+    expect(storedState.player1.shipSections.core.allocatedShields).toBe(0);
+    expect(storedState.player1.shipSections.left.allocatedShields).toBe(0);
+    expect(storedState.player1.shipSections.right.allocatedShields).toBe(4);
+  });
+
+  it('resets opponentShieldsToAllocate after player2 shield allocation', async () => {
+    storedState.opponentShieldsToAllocate = 3;
+
+    await ap.processCommitment({
+      playerId: 'player2',
+      phase: 'allocateShields',
+      actionData: { shieldAllocations: { core: 3 } }
+    });
+
+    expect(gsm.setState).toHaveBeenCalledWith(
+      expect.objectContaining({ opponentShieldsToAllocate: 0 }),
+      'COMMITMENT_UPDATE'
+    );
+  });
+});

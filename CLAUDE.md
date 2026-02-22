@@ -90,6 +90,7 @@ Every file refactor MUST follow these phases. Skills listed are mandatory, not o
 
 **Phase 0 — Pre-flight:**
 1. Run `tech-debt-review` skill to capture the "before" state
+2. **Audit existing tests**: Search for `*.test.*` files in the target file's directory that are NOT inside `__tests__/`. If misplaced tests exist, migrate them to `__tests__/` as part of this refactoring — not deferred to a cross-cutting concern.
 
 **Phase 1 — Understand:**
 2. Use `Explore` agents to map the file's dependencies, consumers, and patterns

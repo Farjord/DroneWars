@@ -614,3 +614,4 @@ After each extraction step, manually test:
 | 4h | 2025-02-22 | Extract processDeployment + processReallocateShields | All | None | None |
 | 5 | 2025-02-22 | Strategy registry replacing 37-case switch | All | None | Registry uses method names for testability |
 | 6 | 2025-02-22 | Trim verbose logging and JSDoc from delegation methods | All | None | None |
+| 7 | 2026-02-22 | Migrated misplaced tests from src/managers/ to __tests__/, deleted originals | All (unique tests preserved, duplicates dropped) | None | Baseline incorrectly stated "zero tests" — 2 test files existed in wrong location. Game Mode tests skipped: spy approach broken after extraction (handleAICommitment called as standalone fn, not instance method). |

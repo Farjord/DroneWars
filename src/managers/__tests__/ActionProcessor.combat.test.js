@@ -295,3 +295,121 @@ describe('ActionProcessor — processAbility activation limit', () => {
     ).rejects.toThrow('activation limit');
   });
 });
+
+describe('ActionProcessor — processMove RAPID keyword', () => {
+  let ap;
+  let gsm;
+
+  // RAPID is checked via fullDroneCollection base drone lookup, not calculateEffectiveStats.
+  // The droneData mock includes TestDrone with GRANT_KEYWORD: RAPID.
+  const createRapidDrone = (overrides = {}) => ({
+    id: 'rapid_1',
+    name: 'TestDrone',
+    attack: 2, hull: 2, shields: 1, speed: 5,
+    isExhausted: false, rapidUsed: false, assaultUsed: false,
+    abilities: [{
+      name: 'Rapid Response',
+      type: 'PASSIVE',
+      effect: { type: 'GRANT_KEYWORD', keyword: 'RAPID' }
+    }],
+    ...overrides
+  });
+
+  const createNonRapidDrone = (overrides = {}) => ({
+    id: 'std_1',
+    name: 'NormalDrone',
+    attack: 1, hull: 1, shields: 1, speed: 6,
+    isExhausted: false, rapidUsed: false, assaultUsed: false,
+    abilities: [],
+    ...overrides
+  });
+
+  const mockAnimManager = {
+    animations: {},
+    executeAnimations: vi.fn(),
+    executeWithStateUpdate: vi.fn(),
+    waitForReactRender: vi.fn()
+  };
+
+  afterEach(() => {
+    ActionProcessor.reset();
+    vi.clearAllMocks();
+  });
+
+  it('does NOT exhaust drone on first move when rapidUsed=false', async () => {
+    ActionProcessor.reset();
+    gsm = createMockGSM({
+      player1: {
+        name: 'Player 1',
+        dronesOnBoard: { lane1: [createRapidDrone()], lane2: [], lane3: [] },
+        hand: [], energy: 5, shipSections: {}
+      }
+    });
+    ap = ActionProcessor.getInstance(gsm);
+    ap.setAnimationManager(mockAnimManager);
+
+    await ap.processMove({ droneId: 'rapid_1', fromLane: 'lane1', toLane: 'lane2', playerId: 'player1' });
+
+    const updateCall = gsm.updatePlayerState.mock.calls[0];
+    expect(updateCall).toBeDefined();
+    const movedDrone = updateCall[1].dronesOnBoard.lane2.find(d => d.id === 'rapid_1');
+    expect(movedDrone.isExhausted).toBe(false);
+  });
+
+  it('sets rapidUsed to true after first move', async () => {
+    ActionProcessor.reset();
+    gsm = createMockGSM({
+      player1: {
+        name: 'Player 1',
+        dronesOnBoard: { lane1: [createRapidDrone()], lane2: [], lane3: [] },
+        hand: [], energy: 5, shipSections: {}
+      }
+    });
+    ap = ActionProcessor.getInstance(gsm);
+    ap.setAnimationManager(mockAnimManager);
+
+    await ap.processMove({ droneId: 'rapid_1', fromLane: 'lane1', toLane: 'lane2', playerId: 'player1' });
+
+    const updateCall = gsm.updatePlayerState.mock.calls[0];
+    const movedDrone = updateCall[1].dronesOnBoard.lane2.find(d => d.id === 'rapid_1');
+    expect(movedDrone.rapidUsed).toBe(true);
+  });
+
+  it('exhausts drone on second move when rapidUsed=true', async () => {
+    ActionProcessor.reset();
+    gsm = createMockGSM({
+      player1: {
+        name: 'Player 1',
+        dronesOnBoard: { lane1: [createRapidDrone({ rapidUsed: true })], lane2: [], lane3: [] },
+        hand: [], energy: 5, shipSections: {}
+      }
+    });
+    ap = ActionProcessor.getInstance(gsm);
+    ap.setAnimationManager(mockAnimManager);
+
+    await ap.processMove({ droneId: 'rapid_1', fromLane: 'lane1', toLane: 'lane2', playerId: 'player1' });
+
+    const updateCall = gsm.updatePlayerState.mock.calls[0];
+    const movedDrone = updateCall[1].dronesOnBoard.lane2.find(d => d.id === 'rapid_1');
+    expect(movedDrone.isExhausted).toBe(true);
+  });
+
+  it('exhausts drone without RAPID keyword normally on move', async () => {
+    ActionProcessor.reset();
+    gsm = createMockGSM({
+      player1: {
+        name: 'Player 1',
+        dronesOnBoard: { lane1: [createNonRapidDrone()], lane2: [], lane3: [] },
+        hand: [], energy: 5, shipSections: {}
+      }
+    });
+    ap = ActionProcessor.getInstance(gsm);
+    ap.setAnimationManager(mockAnimManager);
+
+    await ap.processMove({ droneId: 'std_1', fromLane: 'lane1', toLane: 'lane2', playerId: 'player1' });
+
+    const updateCall = gsm.updatePlayerState.mock.calls[0];
+    const movedDrone = updateCall[1].dronesOnBoard.lane2.find(d => d.id === 'std_1');
+    expect(movedDrone.isExhausted).toBe(true);
+  });
+});
