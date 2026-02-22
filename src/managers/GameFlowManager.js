@@ -982,8 +982,10 @@ class GameFlowManager {
       const gameMode = this.gameStateManager.get('gameMode');
 
       // Delegate Steps 1-5 to RoundInitializationProcessor
-      const processor = new RoundInitializationProcessor(this.gameStateManager, this.actionProcessor);
-      const result = await processor.process({
+      if (!this._roundInitProcessor) {
+        this._roundInitProcessor = new RoundInitializationProcessor(this.gameStateManager, this.actionProcessor);
+      }
+      const result = await this._roundInitProcessor.process({
         isRoundLoop: this.gameStage === 'roundLoop',
         executeQuickDeploy: (quickDeploy) => this.executeQuickDeploy(quickDeploy)
       });

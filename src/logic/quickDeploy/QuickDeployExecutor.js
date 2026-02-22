@@ -4,6 +4,7 @@
 // This ensures ON_DEPLOY effects (like Scanner's MARK_RANDOM_ENEMY) see correct board state.
 
 import fullDroneCollection from '../../data/droneData.js';
+import DeploymentProcessor from '../deployment/DeploymentProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
 class QuickDeployExecutor {
@@ -26,7 +27,6 @@ class QuickDeployExecutor {
     debugLog('QUICK_DEPLOY', '⚡ Executing quick deploy:', quickDeploy.name);
 
     try {
-      const { default: DeploymentProcessor } = await import('../../logic/deployment/DeploymentProcessor.js');
       const deploymentProcessor = new DeploymentProcessor();
 
       const laneIdMap = { 0: 'lane1', 1: 'lane2', 2: 'lane3' };

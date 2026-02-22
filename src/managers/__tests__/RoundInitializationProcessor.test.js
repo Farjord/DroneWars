@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import RoundInitializationProcessor from '../RoundInitializationProcessor.js';
+import RoundManager from '../../logic/round/RoundManager.js';
+import { LaneControlCalculator } from '../../logic/combat/LaneControlCalculator.js';
 
 vi.mock('../../utils/debugLogger.js', () => ({
   debugLog: vi.fn(),
@@ -276,6 +278,92 @@ describe('RoundInitializationProcessor', () => {
       await processor.process({ isRoundLoop: false });
 
       expect(callOrder.indexOf('firstPlayer')).toBeLessThan(callOrder.indexOf('energyReset'));
+    });
+  });
+
+  // --- Step 3b: ON_ROUND_START triggers ---
+
+  describe('Step 3b: Round-start triggers', () => {
+    it('queues roundStartTriggers when triggers produce results', async () => {
+      RoundManager.processRoundStartTriggers.mockReturnValueOnce({
+        player1: { hand: [], dronesOnBoard: {}, modified: true },
+        player2: { hand: [], dronesOnBoard: {} },
+        animationEvents: [{ type: 'effect' }]
+      });
+
+      await processor.process({ isRoundLoop: false });
+
+      const triggerCalls = mockAP.queueAction.mock.calls.filter(c => c[0].type === 'roundStartTriggers');
+      expect(triggerCalls.length).toBe(1);
+      expect(triggerCalls[0][0].payload.player1.modified).toBe(true);
+    });
+
+    it('skips roundStartTriggers when no triggers fire', async () => {
+      // Default mock returns null — should not queue action
+      await processor.process({ isRoundLoop: false });
+
+      const triggerCalls = mockAP.queueAction.mock.calls.filter(c => c[0].type === 'roundStartTriggers');
+      expect(triggerCalls.length).toBe(0);
+    });
+  });
+
+  // --- Step 3b2: Momentum award ---
+
+  describe('Step 3b2: Momentum award', () => {
+    it('awards momentum to player controlling more lanes on round 2+', async () => {
+      mockGSM = createMockGameStateManager({ roundNumber: 2 });
+      processor = new RoundInitializationProcessor(mockGSM, mockAP);
+
+      LaneControlCalculator.calculateLaneControl.mockReturnValueOnce({
+        lane1: 'player1', lane2: 'player1', lane3: 'player2'
+      });
+
+      await processor.process({ isRoundLoop: true });
+
+      const momentumCalls = mockAP.queueAction.mock.calls.filter(c => c[0].type === 'momentumAward');
+      expect(momentumCalls.length).toBe(1);
+      expect(momentumCalls[0][0].payload.player1).toBeDefined();
+      expect(momentumCalls[0][0].payload.player1.momentum).toBe(1);
+    });
+
+    it('does not award momentum on tied lane control', async () => {
+      mockGSM = createMockGameStateManager({ roundNumber: 2 });
+      processor = new RoundInitializationProcessor(mockGSM, mockAP);
+
+      LaneControlCalculator.calculateLaneControl.mockReturnValueOnce({
+        lane1: 'player1', lane2: 'player2', lane3: null
+      });
+
+      await processor.process({ isRoundLoop: true });
+
+      const momentumCalls = mockAP.queueAction.mock.calls.filter(c => c[0].type === 'momentumAward');
+      expect(momentumCalls.length).toBe(0);
+    });
+
+    it('skips momentum award on round 1', async () => {
+      // Default state: roundNumber 0 → becomes 1
+      await processor.process({ isRoundLoop: false });
+
+      const momentumCalls = mockAP.queueAction.mock.calls.filter(c => c[0].type === 'momentumAward');
+      expect(momentumCalls.length).toBe(0);
+    });
+
+    it('caps momentum at 4', async () => {
+      mockGSM = createMockGameStateManager({
+        roundNumber: 2,
+        player1: { hand: [], dronesOnBoard: {}, energy: 0, momentum: 4 }
+      });
+      processor = new RoundInitializationProcessor(mockGSM, mockAP);
+
+      LaneControlCalculator.calculateLaneControl.mockReturnValueOnce({
+        lane1: 'player1', lane2: 'player1', lane3: 'player1'
+      });
+
+      await processor.process({ isRoundLoop: true });
+
+      const momentumCalls = mockAP.queueAction.mock.calls.filter(c => c[0].type === 'momentumAward');
+      expect(momentumCalls.length).toBe(1);
+      expect(momentumCalls[0][0].payload.player1.momentum).toBe(4); // Capped, not 5
     });
   });
 });

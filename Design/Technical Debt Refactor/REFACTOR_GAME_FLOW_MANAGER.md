@@ -319,11 +319,27 @@ All 27 `console.error`/`console.warn` calls should use `debugLog()`. Specific ex
 
 ### Final State
 
-*To be completed after refactoring.*
+| File | Lines | Tests |
+|-|-|-|
+| `src/managers/GameFlowManager.js` | 1,671 (was 2,666) | 133 existing (7 test files in `__tests__/`) |
+| `src/logic/phase/PhaseRequirementChecker.js` | 178 (new) | 15 in `__tests__/PhaseRequirementChecker.test.js` |
+| `src/managers/RoundInitializationProcessor.js` | 319 (new) | 15 in `__tests__/RoundInitializationProcessor.test.js` |
+| `src/logic/quickDeploy/QuickDeployExecutor.js` | 119 (new) | 10 in `__tests__/QuickDeployExecutor.test.js` |
+
+**Total reduction**: 2,666 → 1,671 lines (**-995 lines, -37%**). 40 new tests, 173 total passing across all GFM-related files. Full suite: 3,662 passing.
+
+**GFM at 1,671 lines** — above the 800-line target. Remaining methods are cohesive phase flow orchestration (transitions, event handling, pub/sub, completion detection, game stage management). Further splitting would fragment a single concern.
 
 ### Change Log
 
-*Append entries here as refactoring steps are completed.*
-
 | Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
 |-|-|-|-|-|-|
+| A1 | 2026-02-22 | Wrote behavioral baseline + saved implementation plan | N/A (docs only) | N/A | None |
+| A2 | 2026-02-22 | Deleted 356 lines of dead code (4 orphaned processors + deprecated checkSequentialPhaseCompletion) | All — dead code only | None | Plan estimated ~570 lines; actual was 356 (some dead code was less than estimated) |
+| A3 | 2026-02-22 | Fixed logging: 21 console calls → debugLog, consolidated categories, removed verbose diagnostic blocks | All | None | Plan said 27 console calls; actual was 21 |
+| A4 | 2026-02-22 | No-op: banned comment patterns already removed with dead code in A2 | N/A | N/A | None |
+| A5 | 2026-02-22 | Moved 7 test files to `__tests__/`, updated import paths | All | None | None |
+| B1 | 2026-02-22 | Extracted PhaseRequirementChecker (7 methods) to `src/logic/phase/` | All — stateless query methods, GFM keeps thin wrappers | None | Added `_ensurePhaseRequirementChecker()` lazy-init for backwards compat with tests that skip `initialize()` |
+| B2 | 2026-02-22 | Extracted RoundInitializationProcessor (Steps 1-5) to `src/managers/` | All — processor returns flags, GFM handles emit/broadcast/next-phase | None | None |
+| B3 | 2026-02-22 | Extracted QuickDeployExecutor to `src/logic/quickDeploy/` | All — GFM keeps 5-line delegating wrapper | None | `extractDronesFromDeck` kept in GFM (used by deck selection, not quick deploy) |
+| B4 | 2026-02-22 | DRY animation playback: `_tryStartPlayback()` helper replacing 8 identical patterns | All | None | None |

@@ -105,4 +105,36 @@ After Session B completion:
 
 ## Actual Outcomes
 
-*To be populated after implementation.*
+### Line Count Progression (Actual vs Projected)
+
+| Step | Projected | Actual | Running Total |
+|-|-|-|-|
+| Starting | 2,666 | 2,666 | 2,666 |
+| A2: Dead code | -570 | -356 | 2,310 |
+| A3: Verbose logging | -46 | -55 | 2,255 |
+| B1: PhaseRequirementChecker | -200 | -136 | 2,119 |
+| B2: RoundInitProcessor | -340 | -297 | 1,822 |
+| B3: QuickDeployExecutor | -100 | -109 | 1,713 |
+| B4: Animation DRY | -30 | -42 | 1,671 |
+| **Total** | **-1,286** | **-995** | **1,671** |
+
+**Final: 1,671 lines** (projected 1,380). Delta due to A2 dead code being less than estimated (356 vs 570). The 4 orphaned processors were shorter than measured during planning.
+
+### Deviations from Plan
+
+- **A2**: Plan estimated ~570 lines dead code. Actual was 356 — the orphaned automatic phase processors were shorter than the line ranges suggested (some had been partially trimmed in earlier work).
+- **A3**: Plan said 27 console calls; actual was 21 (some removed with dead code in A2).
+- **A4**: No-op — banned comment patterns (`// NEW FLOW:`, `// REMOVED:`) were inside the dead code already removed in A2.
+- **B1**: Added `_ensurePhaseRequirementChecker()` lazy-init helper (not in plan) — needed for backwards compatibility with tests that create GFM without calling `initialize()`.
+- **B3**: `extractDronesFromDeck` kept in GFM (used by deck selection handler, not by quick deploy) — plan had it colocated with QuickDeployExecutor but it's a different concern.
+
+### Test Counts
+
+| Test File | Tests |
+|-|-|
+| PhaseRequirementChecker.test.js (new) | 15 |
+| RoundInitializationProcessor.test.js (new) | 15 |
+| QuickDeployExecutor.test.js (new) | 10 |
+| Existing GFM tests (7 files) | 133 |
+| **Total GFM-related** | **173** |
+| **Full suite** | **3,662** |
