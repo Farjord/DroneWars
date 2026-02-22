@@ -10,8 +10,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import gameStateManager from './GameStateManager.js';
-import tacticalMapStateManager from './TacticalMapStateManager.js';
+import gameStateManager from '../GameStateManager.js';
+import tacticalMapStateManager from '../TacticalMapStateManager.js';
 
 // Mock dependencies that startRun() needs
 vi.mock('../logic/loot/LootGenerator.js', () => ({
@@ -34,7 +34,7 @@ vi.mock('../logic/extraction/mapGenerator.js', () => ({
 }));
 
 // Mock tacticalMapStateManager
-vi.mock('./TacticalMapStateManager.js', () => ({
+vi.mock('../TacticalMapStateManager.js', () => ({
   default: {
     getState: vi.fn(),
     setState: vi.fn(),

@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import gameStateManager from './GameStateManager.js';
+import gameStateManager from '../GameStateManager.js';
 
 describe('GameStateManager - Game State Initialization/Cleanup', () => {
   beforeEach(() => {

@@ -9,12 +9,12 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import gameStateManager from './GameStateManager.js';
-import tacticalMapStateManager from './TacticalMapStateManager.js';
-import ExtractionController from '../logic/singlePlayer/ExtractionController.js';
+import gameStateManager from '../GameStateManager.js';
+import tacticalMapStateManager from '../TacticalMapStateManager.js';
+import ExtractionController from '../../logic/singlePlayer/ExtractionController.js';
 
 // Mock tacticalMapStateManager
-vi.mock('./TacticalMapStateManager.js', () => ({
+vi.mock('../TacticalMapStateManager.js', () => ({
   default: {
     getState: vi.fn(),
     setState: vi.fn(),

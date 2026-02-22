@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import gameStateManager from './GameStateManager.js';
-import { generateRandomShopPack, getPackCostForTier } from '../data/cardPackData.js';
+import gameStateManager from '../GameStateManager.js';
+import { generateRandomShopPack, getPackCostForTier } from '../../data/cardPackData.js';
 
 describe('GameStateManager Card Pack Shop', () => {
   beforeEach(() => {

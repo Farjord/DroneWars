@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock tacticalMapStateManager
-vi.mock('./TacticalMapStateManager.js', () => ({
+vi.mock('../TacticalMapStateManager.js', () => ({
   default: {
     getState: vi.fn(),
     setState: vi.fn(),
@@ -32,10 +32,10 @@ describe('GameStateManager.endRun - Stats Broadcasting', () => {
     vi.resetModules();
 
     // Import fresh instances
-    const module = await import('./GameStateManager.js');
+    const module = await import('../GameStateManager.js');
     gameStateManager = module.default;
 
-    const tacticalModule = await import('./TacticalMapStateManager.js');
+    const tacticalModule = await import('../TacticalMapStateManager.js');
     tacticalMapStateManager = tacticalModule.default;
 
     // Set up initial state with a profile

@@ -15,7 +15,7 @@ describe('GameStateManager - SP combat phase transitions', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    const module = await import('./GameStateManager.js');
+    const module = await import('../GameStateManager.js');
     gameStateManager = module.default;
   });
 

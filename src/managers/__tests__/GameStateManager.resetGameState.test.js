@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import gameStateManager from './GameStateManager.js';
+import gameStateManager from '../GameStateManager.js';
 
 // Mock the map generator to avoid complex dependencies
 vi.mock('../logic/map/generateMapData.js', () => ({

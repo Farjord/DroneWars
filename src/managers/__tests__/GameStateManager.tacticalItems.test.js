@@ -4,8 +4,8 @@
  */
 
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import gameStateManager from './GameStateManager.js';
-import { getTacticalItemById, tacticalItemCollection } from '../data/tacticalItemData.js';
+import gameStateManager from '../GameStateManager.js';
+import { getTacticalItemById, tacticalItemCollection } from '../../data/tacticalItemData.js';
 
 describe('GameStateManager - tacticalItems', () => {
   beforeEach(() => {

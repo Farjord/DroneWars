@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import gameStateManager from './GameStateManager.js';
+import gameStateManager from '../GameStateManager.js';
 
 describe('GameStateManager - Quick Deployments Save/Load', () => {
   const mockQuickDeployments = [
