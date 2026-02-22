@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useGameState } from '../../hooks/useGameState';
+import useHangarMapState from '../../hooks/useHangarMapState.js';
 import SoundManager from '../../managers/SoundManager.js';
 import SaveLoadModal from '../modals/SaveLoadModal';
 import InventoryModal from '../modals/InventoryModal';
@@ -38,7 +39,7 @@ import NewsTicker from '../ui/NewsTicker';
 import { generateMapData } from '../../utils/mapGenerator';
 import {
   generateHexGrid, getHexCoordinate, getOffScreenPOIs, getArrowEdgePosition,
-  clampPan, getTierColor, GRID_COLS, GRID_ROWS
+  getTierColor, GRID_COLS, GRID_ROWS
 } from '../../logic/singlePlayer/hexGrid.js';
 import { getMapType, getMapBackground } from '../../logic/extraction/mapExtraction';
 import MusicManager from '../../managers/MusicManager.js';
@@ -111,16 +112,14 @@ const HangarScreen = () => {
     });
   }, [hexGridData, generatedMaps]);
 
-  // Pan/Zoom state for map area
-  const [zoom, setZoom] = useState(1.5);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-
-  // Ref for map container to get dimensions
-  const mapContainerRef = useRef(null);
-  const transformRef = useRef(null);
-  const panRef = useRef({ x: 0, y: 0 }); // Track pan during drag without re-renders
+  // Pan/Zoom state and handlers from hook
+  const {
+    zoom, pan, isDragging,
+    mapContainerRef, transformRef,
+    zoomToSector,
+    handleMapMouseDown, handleMapMouseMove, handleMapMouseUp,
+    handleResetView
+  } = useHangarMapState(hexGridData);
 
   // Extract single-player state
   const {
@@ -278,112 +277,6 @@ const HangarScreen = () => {
       }));
   }, [hexGridData]);
 
-  /**
-   * Attach wheel listener with { passive: false } to allow preventDefault
-   * This fixes the "Unable to preventDefault inside passive event listener" error
-   */
-  useEffect(() => {
-    const container = mapContainerRef.current;
-    if (!container) return;
-
-    const handleWheel = (e) => {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      setZoom(prevZoom => {
-        const newZoom = Math.min(3, Math.max(1.2, prevZoom + delta));
-        // Also update pan using functional update
-        setPan(p => {
-          if (!mapContainerRef.current || newZoom <= 1) return { x: 0, y: 0 };
-          const { width, height } = mapContainerRef.current.getBoundingClientRect();
-          const maxPanX = (width * (newZoom - 1)) / 2;
-          const maxPanY = (height * (newZoom - 1)) / 2;
-          return {
-            x: Math.max(-maxPanX, Math.min(maxPanX, p.x)),
-            y: Math.max(-maxPanY, Math.min(maxPanY, p.y))
-          };
-        });
-        return newZoom;
-      });
-    };
-
-    container.addEventListener('wheel', handleWheel, { passive: false });
-    return () => container.removeEventListener('wheel', handleWheel);
-  }, []);
-
-  // Keep panRef in sync when pan state changes from non-drag sources
-  useEffect(() => {
-    panRef.current = pan;
-  }, [pan]);
-
-  // Wrapper: reads container dimensions from ref and delegates to extracted clampPan
-  const clampPanFromRef = (panX, panY, zoomLevel) => {
-    if (!mapContainerRef.current) return { x: 0, y: 0 };
-    const { width, height } = mapContainerRef.current.getBoundingClientRect();
-    return clampPan(panX, panY, zoomLevel, width, height);
-  };
-
-  /**
-   * Zoom and pan to center on a specific sector
-   */
-  const zoomToSector = (coordinate) => {
-    const cell = hexGridData?.allCells.find(c => c.coordinate === coordinate);
-    if (!cell || !mapContainerRef.current) return;
-
-    const container = mapContainerRef.current.getBoundingClientRect();
-    const targetZoom = 2; // Zoom level when focusing on a sector
-
-    // Calculate center of the cell
-    const cellCenterX = cell.x + hexGridData.hexWidth / 2;
-    const cellCenterY = cell.y + hexGridData.hexHeight / 2;
-
-    // Calculate pan needed to center this cell
-    // The transform origin is center, so we need to offset from container center
-    const containerCenterX = container.width / 2;
-    const containerCenterY = container.height / 2;
-
-    // Pan = (containerCenter - cellCenter) at the target zoom level
-    const panX = (containerCenterX - cellCenterX) * targetZoom;
-    const panY = (containerCenterY - cellCenterY) * targetZoom;
-
-    // Clamp pan values
-    const clamped = clampPanFromRef(panX, panY, targetZoom);
-
-    setZoom(targetZoom);
-    setPan(clamped);
-    panRef.current = clamped;
-  };
-
-  const handleMapMouseDown = (e) => {
-    if (e.button === 0) {
-      setIsDragging(true);
-      setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
-    }
-  };
-
-  const handleMapMouseMove = (e) => {
-    if (isDragging && transformRef.current) {
-      const newX = e.clientX - dragStart.x;
-      const newY = e.clientY - dragStart.y;
-      const clamped = clampPanFromRef(newX, newY, zoom);
-      // Direct DOM update - bypasses React re-render for smooth panning
-      transformRef.current.style.transform =
-        `scale(${zoom}) translate(${clamped.x / zoom}px, ${clamped.y / zoom}px)`;
-      panRef.current = clamped; // Store for sync on mouse up
-    }
-  };
-
-  const handleMapMouseUp = () => {
-    if (isDragging) {
-      setPan(panRef.current); // Sync final position to state
-    }
-    setIsDragging(false);
-  };
-
-  const handleResetView = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-    panRef.current = { x: 0, y: 0 };
-  };
 
 
   /**
