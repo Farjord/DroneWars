@@ -57,6 +57,13 @@ import {
   processRoundStart as _processRoundStart,
   processFirstPlayerDetermination as _processFirstPlayerDetermination
 } from '../logic/actions/PhaseTransitionStrategy.js';
+import {
+  getPhaseCommitmentStatus as _getPhaseCommitmentStatus,
+  clearPhaseCommitments as _clearPhaseCommitments,
+  processCommitment as _processCommitment,
+  handleAICommitment as _handleAICommitment,
+  applyPhaseCommitments as _applyPhaseCommitments
+} from '../logic/actions/CommitmentStrategy.js';
 
 class ActionProcessor {
   // Singleton instance
@@ -189,6 +196,9 @@ class ActionProcessor {
 
       // Action delegation (for callbacks that re-enter ActionProcessor)
       processAttack: (payload) => ap.processAttack(payload),
+      processCommitment: (payload) => ap.processCommitment(payload),
+      processDestroyDrone: (payload) => ap.processDestroyDrone(payload),
+      broadcastStateToGuest: () => ap.broadcastStateToGuest(),
 
       // Win condition
       checkWinCondition: () => ap.checkWinCondition(),
@@ -1803,24 +1813,7 @@ setAnimationManager(animationManager) {
    * @returns {Object|null} Commitment status
    */
   getPhaseCommitmentStatus(phase) {
-    const currentState = this.gameStateManager.getState();
-
-    if (!currentState.commitments[phase]) {
-      return {
-        phase,
-        commitments: { player1: { completed: false }, player2: { completed: false } },
-        bothComplete: false
-      };
-    }
-
-    const commitments = currentState.commitments[phase];
-    const bothComplete = commitments.player1.completed && commitments.player2.completed;
-
-    return {
-      phase,
-      commitments,
-      bothComplete
-    };
+    return _getPhaseCommitmentStatus(phase, this._getActionContext());
   }
 
   /**
@@ -1828,24 +1821,7 @@ setAnimationManager(animationManager) {
    * @param {string} phase - Optional phase name, if not provided clears all
    */
   clearPhaseCommitments(phase = null) {
-    const currentState = this.gameStateManager.getState();
-
-    if (phase) {
-      if (currentState.commitments[phase]) {
-        currentState.commitments[phase] = {
-          player1: { completed: false },
-          player2: { completed: false }
-        };
-      }
-      debugLog('COMMITMENTS', `🔄 Cleared commitments for phase: ${phase}`);
-    } else {
-      currentState.commitments = {};
-      debugLog('COMMITMENTS', '🔄 Cleared all phase commitments');
-    }
-
-    this._withUpdateContext(() => this.gameStateManager.setState({
-      commitments: currentState.commitments
-    }));
+    return _clearPhaseCommitments(phase, this._getActionContext());
   }
 
   /**
@@ -1854,162 +1830,7 @@ setAnimationManager(animationManager) {
    * @returns {Object} Commitment result
    */
   async processCommitment(payload) {
-    const { playerId, phase, actionData } = payload;
-
-    debugLog('COMMITMENTS', `🤝 ActionProcessor: Processing ${phase} commitment for ${playerId}`);
-    debugLog('COMMITMENTS', `📦 Full commitment payload:`, {
-      playerId,
-      phase,
-      actionDataKeys: actionData ? Object.keys(actionData) : [],
-      actionDataSummary: actionData ? {
-        selectedDrones: actionData.selectedDrones?.length,
-        deck: actionData.deck?.length,
-        drones: actionData.drones?.length,
-        shipComponents: actionData.shipComponents?.length,
-        placedSections: actionData.placedSections?.length
-      } : null
-    });
-
-    // OPTIMISTIC PROCESSING: Guest now processes commitments locally
-    // Host remains authoritative via validation at milestone phases
-
-    // Get current state
-    const currentState = this.gameStateManager.getState();
-    const gameMode = currentState.gameMode;
-
-    // Initialize commitments for this phase if not exists
-    if (!currentState.commitments[phase]) {
-      currentState.commitments[phase] = {
-        player1: { completed: false },
-        player2: { completed: false }
-      };
-    }
-
-    // Store the commitment
-    currentState.commitments[phase][playerId] = {
-      completed: true,
-      ...actionData
-    };
-
-    // SPECIAL HANDLING: Apply shield allocations from commitment data
-    if (phase === 'allocateShields' && actionData.shieldAllocations) {
-      debugLog('SHIELD_CLICKS', `🛡️ Applying shield allocations for ${playerId}`, {
-        shieldAllocations: actionData.shieldAllocations
-      });
-
-      // Get player state
-      const playerState = currentState[playerId];
-
-      // Clear all current shield allocations for this player
-      Object.keys(playerState.shipSections).forEach(sectionName => {
-        playerState.shipSections[sectionName].allocatedShields = 0;
-      });
-
-      // Apply all shield allocations from the commitment
-      Object.entries(actionData.shieldAllocations).forEach(([sectionName, count]) => {
-        if (playerState.shipSections[sectionName]) {
-          playerState.shipSections[sectionName].allocatedShields = count;
-          debugLog('SHIELD_CLICKS', `✅ Allocated ${count} shields to ${sectionName}`);
-        }
-      });
-
-      // Reset shields to allocate counter to 0 (all allocated)
-      const shieldsKey = playerId === 'player1' ? 'shieldsToAllocate' : 'opponentShieldsToAllocate';
-      currentState[shieldsKey] = 0;
-    }
-
-    // Update the state with specific event type for commitment changes
-    this._withUpdateContext(() => this.gameStateManager.setState({
-      commitments: currentState.commitments,
-      player1: currentState.player1,
-      player2: currentState.player2,
-      shieldsToAllocate: currentState.shieldsToAllocate,
-      opponentShieldsToAllocate: currentState.opponentShieldsToAllocate
-    }, 'COMMITMENT_UPDATE'));
-
-    // PHASE MANAGER INTEGRATION: Notify PhaseManager of commitment
-    if (this.phaseManager) {
-      if (gameMode === 'host' && playerId === 'player1') {
-        // Host committed
-        this.phaseManager.notifyHostAction('commit', { phase });
-        debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: Host committed to ${phase}`);
-      } else if (gameMode === 'host' && playerId === 'player2') {
-        // Guest committed (received via network on Host)
-        this.phaseManager.notifyGuestAction('commit', { phase });
-        debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: Guest committed to ${phase} (via network)`);
-      } else if (gameMode === 'local') {
-        // Local mode: Notify for both players (AI or human)
-        if (playerId === 'player1') {
-          this.phaseManager.notifyHostAction('commit', { phase });
-        } else {
-          this.phaseManager.notifyGuestAction('commit', { phase });
-        }
-        debugLog('PHASE_MANAGER', `📥 Notified PhaseManager: ${playerId} committed to ${phase} (local mode)`);
-      }
-      // Note: Guest mode doesn't call processCommitment for local player (blocked by guards)
-    }
-
-    // Check if both players have committed
-    let bothComplete = currentState.commitments[phase].player1.completed &&
-                        currentState.commitments[phase].player2.completed;
-
-    debugLog('COMMITMENTS', `✅ ${playerId} ${phase} committed, both complete: ${bothComplete}`);
-    debugLog('COMMITMENTS', `📊 Commitment state after update:`, {
-      phase,
-      player1Completed: currentState.commitments[phase].player1.completed,
-      player2Completed: currentState.commitments[phase].player2.completed,
-      bothComplete
-    });
-
-    // HOST: Broadcast commitment state to guest immediately
-    // This ensures guest sees their commitment status and can show waiting modal
-    // Must happen even when isNetworkAction=true (guest-initiated commitments)
-    if (gameMode === 'host') {
-      debugLog('COMMITMENTS', `📡 Broadcasting commitment state to guest for ${phase}`);
-      this.broadcastStateToGuest();
-      debugLog('COMMITMENTS', `✅ Commitment state broadcast complete`);
-    }
-
-    // For single-player mode, auto-complete AI commitment immediately (not async)
-    if (playerId === 'player1' && currentState.gameMode === 'local' && !bothComplete) {
-      debugLog('COMMITMENTS', '🤖 Single-player mode: Auto-completing AI commitment immediately');
-      debugLog('SHIELD_CLICKS', '🤖 About to call handleAICommitment for AI auto-commit');
-      // Trigger AI auto-completion through AIPhaseProcessor
-      if (aiPhaseProcessor) {
-        try {
-          debugLog('SHIELD_CLICKS', '⏳ Calling handleAICommitment...');
-          await this.handleAICommitment(phase, currentState);
-          // After AI commits, both should be complete
-          debugLog('COMMITMENTS', '✅ AI commitment completed successfully');
-          debugLog('SHIELD_CLICKS', '✅ handleAICommitment returned successfully');
-
-          // Recalculate bothComplete from fresh state after AI auto-commit
-          const freshState = this.gameStateManager.getState();
-          bothComplete = freshState.commitments[phase].player1.completed &&
-                        freshState.commitments[phase].player2.completed;
-          debugLog('COMMITMENTS', `🔄 Recalculated bothComplete after AI commit: ${bothComplete}`);
-          debugLog('SHIELD_CLICKS', `🔄 Both players complete: ${bothComplete}`);
-        } catch (error) {
-          debugLog('COMMITMENTS', 'AI commitment error:', error);
-          debugLog('SHIELD_CLICKS', '❌ Error during AI commitment:', error);
-          throw error; // Propagate error so player knows something went wrong
-        }
-      } else {
-        debugLog('SHIELD_CLICKS', '⚠️ aiPhaseProcessor not available!');
-      }
-    }
-
-    debugLog('SHIELD_CLICKS', '🏁 processCommitment about to return', { success: true, bothComplete });
-
-    return {
-      success: true,
-      data: {
-        playerId,
-        phase,
-        actionData,
-        bothPlayersComplete: bothComplete
-      }
-    };
+    return _processCommitment(payload, this._getActionContext());
   }
 
   /**
@@ -2018,134 +1839,7 @@ setAnimationManager(animationManager) {
    * @param {Object} currentState - Current game state
    */
   async handleAICommitment(phase, currentState) {
-    try {
-      debugLog('COMMITMENTS', `🤖 Processing AI commitment for phase: ${phase}`);
-
-      let aiResult;
-      switch(phase) {
-        case 'droneSelection':
-          aiResult = await aiPhaseProcessor.processDroneSelection();
-          await this.processCommitment({
-            playerId: 'player2',
-            phase: 'droneSelection',
-            actionData: { drones: aiResult }
-          });
-          break;
-
-        case 'deckSelection':
-          aiResult = await aiPhaseProcessor.processDeckSelection();
-          // aiResult now contains { deck, drones, shipComponents }
-          await this.processCommitment({
-            playerId: 'player2',
-            phase: 'deckSelection',
-            actionData: {
-              deck: aiResult.deck,
-              drones: aiResult.drones,
-              shipComponents: aiResult.shipComponents
-            }
-          });
-          break;
-
-        case 'placement':
-          aiResult = await aiPhaseProcessor.processPlacement();
-          await this.processCommitment({
-            playerId: 'player2',
-            phase: 'placement',
-            actionData: { placedSections: aiResult }
-          });
-          break;
-
-        case 'mandatoryDiscard':
-          aiResult = await aiPhaseProcessor.executeMandatoryDiscardTurn(currentState);
-
-          // Actually discard the cards from AI hand
-          if (aiResult.cardsToDiscard.length > 0) {
-            const aiState = currentState.player2;
-            const newHand = aiState.hand.filter(card =>
-              !aiResult.cardsToDiscard.some(discardCard => card.instanceId === discardCard.instanceId)
-            );
-            const newDiscardPile = [...aiState.discardPile, ...aiResult.cardsToDiscard];
-
-            this.gameStateManager.updatePlayerState('player2', {
-              hand: newHand,
-              discardPile: newDiscardPile
-            });
-
-            debugLog('COMMITMENTS', `🤖 AI discarded ${aiResult.cardsToDiscard.length} cards for mandatory discard`);
-          }
-
-          await this.processCommitment({
-            playerId: 'player2',
-            phase: 'mandatoryDiscard',
-            actionData: { discardedCards: aiResult.cardsToDiscard }
-          });
-          break;
-
-        case 'optionalDiscard':
-          aiResult = await aiPhaseProcessor.executeOptionalDiscardTurn(currentState);
-          await this.processCommitment({
-            playerId: 'player2',
-            phase: 'optionalDiscard',
-            actionData: { discardedCards: aiResult.cardsToDiscard }
-          });
-          break;
-
-        case 'allocateShields':
-          debugLog('SHIELD_CLICKS', '🤖 [HANDLE AI] About to call executeShieldAllocationTurn');
-          // AI executes shield allocation
-          await aiPhaseProcessor.executeShieldAllocationTurn(currentState);
-          debugLog('SHIELD_CLICKS', '🤖 [HANDLE AI] executeShieldAllocationTurn completed, now committing');
-          // After AI finishes allocating, commit the phase
-          await this.processCommitment({
-            playerId: 'player2',
-            phase: 'allocateShields',
-            actionData: { committed: true }
-          });
-          debugLog('SHIELD_CLICKS', '🤖 [HANDLE AI] AI commitment complete');
-          break;
-
-        case 'mandatoryDroneRemoval':
-          aiResult = await aiPhaseProcessor.executeMandatoryDroneRemovalTurn(currentState);
-
-          // Actually remove the drones from AI board
-          if (aiResult.dronesToRemove.length > 0) {
-            for (const droneToRemove of aiResult.dronesToRemove) {
-              await this.processDestroyDrone({
-                droneId: droneToRemove.id,
-                playerId: 'player2'
-              });
-            }
-            debugLog('COMMITMENTS', `🤖 AI removed ${aiResult.dronesToRemove.length} drones for mandatory drone removal`);
-          }
-
-          await this.processCommitment({
-            playerId: 'player2',
-            phase: 'mandatoryDroneRemoval',
-            actionData: { removedDrones: aiResult.dronesToRemove }
-          });
-          break;
-
-        case 'determineFirstPlayer':
-          // AI automatically acknowledges first player determination with 1-second delay
-          await new Promise(resolve => {
-            setTimeout(async () => {
-              await this.processCommitment({
-                playerId: 'player2',
-                phase: 'determineFirstPlayer',
-                actionData: { acknowledged: true }
-              });
-              resolve();
-            }, 1000);
-          });
-          break;
-
-        default:
-          debugLog('COMMITMENTS', `No AI handler for phase: ${phase}`);
-      }
-
-    } catch (error) {
-      debugLog('COMMITMENTS', 'AI commitment error:', error);
-    }
+    return _handleAICommitment(phase, currentState, this._getActionContext());
   }
 
   /**
@@ -2155,113 +1849,7 @@ setAnimationManager(animationManager) {
    * @returns {Object} State updates to apply
    */
   applyPhaseCommitments(phase) {
-    const currentState = this.gameStateManager.getState();
-    const phaseCommitments = currentState.commitments[phase];
-
-    if (!phaseCommitments) {
-      debugLog('COMMITMENTS', `No commitments found for phase: ${phase}`);
-      return {};
-    }
-
-    debugLog('COMMITMENTS', `📋 ActionProcessor: Applying ${phase} commitments to game state`, phaseCommitments);
-
-    const stateUpdates = {};
-
-    switch(phase) {
-      case 'droneSelection':
-        // Apply drone selections to player states
-        if (phaseCommitments.player1?.drones) {
-          const p1Drones = phaseCommitments.player1.drones;
-          const p1Upgrades = currentState.player1?.appliedUpgrades || {};
-          stateUpdates.player1 = {
-            ...currentState.player1,
-            activeDronePool: p1Drones,
-            deployedDroneCounts: p1Drones.reduce((acc, drone) => {
-              acc[drone.name] = 0;
-              return acc;
-            }, {}),
-            droneAvailability: initializeDroneAvailability(p1Drones, p1Upgrades)
-          };
-        }
-        if (phaseCommitments.player2?.drones) {
-          const p2Drones = phaseCommitments.player2.drones;
-          const p2Upgrades = currentState.player2?.appliedUpgrades || {};
-          stateUpdates.player2 = {
-            ...currentState.player2,
-            activeDronePool: p2Drones,
-            deployedDroneCounts: p2Drones.reduce((acc, drone) => {
-              acc[drone.name] = 0;
-              return acc;
-            }, {}),
-            droneAvailability: initializeDroneAvailability(p2Drones, p2Upgrades)
-          };
-        }
-        debugLog('COMMITMENTS', '✅ Applied drone selections to player states');
-        break;
-
-      case 'deckSelection':
-        // Apply deck selections to player states (cards, drones, and ship components)
-        if (phaseCommitments.player1?.deck) {
-          stateUpdates.player1 = {
-            ...currentState.player1,
-            deck: phaseCommitments.player1.deck,
-            deckDronePool: phaseCommitments.player1.drones || [],  // Store 10 deck drones
-            selectedShipComponents: phaseCommitments.player1.shipComponents || {},  // Store ship component selections
-            discard: []
-          };
-        }
-        if (phaseCommitments.player2?.deck) {
-          stateUpdates.player2 = {
-            ...currentState.player2,
-            deck: phaseCommitments.player2.deck,
-            deckDronePool: phaseCommitments.player2.drones || [],  // Store 10 deck drones
-            selectedShipComponents: phaseCommitments.player2.shipComponents || {},  // Store ship component selections
-            discard: []
-          };
-        }
-        debugLog('COMMITMENTS', '✅ Applied deck selections (cards + drones + ship components) to player states');
-        break;
-
-      case 'placement':
-        // Apply ship placements to top-level game state
-        if (phaseCommitments.player1?.placedSections) {
-          stateUpdates.placedSections = phaseCommitments.player1.placedSections;
-        }
-        if (phaseCommitments.player2?.placedSections) {
-          stateUpdates.opponentPlacedSections = phaseCommitments.player2.placedSections;
-        }
-        debugLog('COMMITMENTS', '✅ Applied ship placements:', {
-          player1: stateUpdates.placedSections,
-          player2: stateUpdates.opponentPlacedSections
-        });
-        break;
-
-      case 'determineFirstPlayer':
-        // First player determination handled separately via processFirstPlayerDetermination
-        debugLog('COMMITMENTS', '✅ First player determination (handled separately)');
-        break;
-
-      case 'mandatoryDiscard':
-      case 'optionalDiscard':
-        // Discard handled via card actions during commitment
-        debugLog('COMMITMENTS', '✅ Discard commitments (handled via card actions)');
-        break;
-
-      case 'mandatoryDroneRemoval':
-        // Drone removal handled via processDestroyDrone during commitment
-        debugLog('COMMITMENTS', '✅ Mandatory drone removal (handled via processDestroyDrone)');
-        break;
-
-      case 'allocateShields':
-        // Shield allocation handled separately
-        debugLog('COMMITMENTS', '✅ Shield allocation (handled separately)');
-        break;
-
-      default:
-        debugLog('COMMITMENTS', `No commitment application logic for phase: ${phase}`);
-    }
-
-    return stateUpdates;
+    return _applyPhaseCommitments(phase, this._getActionContext());
   }
 
   /**
