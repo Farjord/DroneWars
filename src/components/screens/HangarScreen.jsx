@@ -4,42 +4,15 @@ import useHangarMapState from '../../hooks/useHangarMapState.js';
 import useHangarData from '../../hooks/useHangarData.js';
 import { createCopyStarterDeckSlot, createEmptyDeckSlot } from '../../logic/singlePlayer/deckSlotFactory.js';
 import SoundManager from '../../managers/SoundManager.js';
-import SaveLoadModal from '../modals/SaveLoadModal';
-import InventoryModal from '../modals/InventoryModal';
-import MapOverviewModal from '../modals/MapOverviewModal';
-import BlueprintsModal from '../modals/BlueprintsModal';
-import ReplicatorModal from '../modals/ReplicatorModal';
-import ShopModal from '../modals/ShopModal';
-import RunSummaryModal from '../modals/RunSummaryModal';
-import MIARecoveryModal from '../modals/MIARecoveryModal';
-import BossEncounterModal from '../modals/BossEncounterModal';
 import SinglePlayerCombatInitializer from '../../logic/singlePlayer/SinglePlayerCombatInitializer.js';
 import aiPersonalities from '../../data/aiData.js';
-import ConfirmationModal from '../modals/ConfirmationModal';
-import DeployingScreen from '../ui/DeployingScreen';
-import LoadingEncounterScreen from '../ui/LoadingEncounterScreen';
-import QuickDeployManager from '../quickDeploy/QuickDeployManager';
-import ReputationProgressModal from '../modals/ReputationProgressModal';
-import ReputationRewardModal from '../modals/ReputationRewardModal';
-import MissionTrackerModal from '../modals/MissionTrackerModal';
 import MissionService from '../../logic/missions/MissionService';
-import {
-  IntroTutorialModal,
-  InventoryTutorialModal,
-  ReplicatorTutorialModal,
-  BlueprintsTutorialModal,
-  ShopTutorialModal,
-  RepairBayTutorialModal,
-  TacticalMapOverviewTutorialModal,
-  DeckBuilderTutorialModal,
-} from '../modals/tutorials';
 import HangarHeader from '../ui/HangarHeader';
 import HangarHexMap from '../ui/HangarHexMap';
 import HangarSidebar from '../ui/HangarSidebar';
-import { getMapType, getMapBackground } from '../../logic/extraction/mapExtraction';
+import HangarModals from '../ui/HangarModals';
 import { debugLog } from '../../utils/debugLogger.js';
 import { validateShipSlot } from '../../utils/slotDamageUtils.js';
-import { starterDeck } from '../../data/playerDeckData.js';
 
 // Background image for the map area
 const eremosBackground = new URL('/Eremos/Eremos.jpg', import.meta.url).href;
@@ -544,316 +517,50 @@ const HangarScreen = () => {
         />
       </div>
 
-      {/* Modals (conditionally rendered) */}
-      {activeModal === 'saveLoad' && <SaveLoadModal onClose={closeAllModals} />}
-      {activeModal === 'inventory' && <InventoryModal onClose={closeAllModals} onShowHelp={() => setShowTutorial('inventory')} />}
-      {activeModal === 'blueprints' && <BlueprintsModal onClose={closeAllModals} onShowHelp={() => setShowTutorial('blueprints')} />}
-      {activeModal === 'replicator' && <ReplicatorModal onClose={closeAllModals} onShowHelp={() => setShowTutorial('replicator')} />}
-      {activeModal === 'shop' && <ShopModal onClose={closeAllModals} onShowHelp={() => setShowTutorial('shop')} />}
-      {activeModal === 'quickDeploy' && <QuickDeployManager onClose={closeAllModals} />}
-
-      {/* Boss Encounter Modal */}
-      {activeModal === 'bossEncounter' && selectedBossId && (
-        <BossEncounterModal
-          bossId={selectedBossId}
-          selectedSlotId={selectedSlotId}
-          onChallenge={handleBossChallenge}
-          onClose={closeAllModals}
-        />
-      )}
-
-      {activeModal === 'mapOverview' && (() => {
-        debugLog('EXTRACTION', '🖼️ Rendering MapOverviewModal', {
-          selectedSlotId,
-          selectedMapName: selectedMap?.name,
-          selectedCoordinate,
-          hasSlotId: selectedSlotId != null,
-          hasMap: selectedMap != null
-        });
-
-        return (
-          <MapOverviewModal
-            selectedSlotId={selectedSlotId}
-            selectedMap={selectedMap}
-            selectedCoordinate={selectedCoordinate}
-            activeSectors={activeSectors}
-            onNavigate={handleNavigateSector}
-            onDeploy={handleDeploy}
-            onClose={closeAllModals}
-            onShowHelp={() => setShowTutorial('tacticalMapOverview')}
-          />
-        );
-      })()}
-
-      {/* Run Summary Modal - shown after returning from a run */}
-      {lastRunSummary && (
-        <RunSummaryModal
-          summary={lastRunSummary}
-          onClose={handleDismissRunSummary}
-        />
-      )}
-
-      {/* MIA Recovery Modal - shown when clicking on MIA ship slot */}
-      {activeModal === 'miaRecovery' && selectedMiaSlot && (
-        <MIARecoveryModal
-          shipSlot={selectedMiaSlot}
-          onClose={handleCloseMiaModal}
-        />
-      )}
-
-      {/* New Deck Prompt Modal */}
-      {activeModal === 'newDeckPrompt' && (
-        <div className="dw-modal-overlay" onClick={closeAllModals}>
-          <div className="dw-modal-content dw-modal--sm dw-modal--action" onClick={e => e.stopPropagation()}>
-            <div className="dw-modal-header">
-              <div className="dw-modal-header-info">
-                <h2 className="dw-modal-header-title">Create New Deck</h2>
-              </div>
-            </div>
-            <div className="dw-modal-body">
-              <p className="dw-modal-text">How would you like to start your new deck?</p>
-            </div>
-            <div className="dw-modal-actions" style={{ flexDirection: 'column', gap: '0.75rem' }}>
-              <button
-                onClick={() => handleNewDeckOption('empty')}
-                className="dw-btn dw-btn-confirm dw-btn--full"
-              >
-                Start Empty
-              </button>
-              {singlePlayerShipSlots[0]?.status === 'active' && (
-                <button
-                  onClick={() => handleNewDeckOption('copyFromSlot0')}
-                  className="dw-btn dw-btn-secondary dw-btn--full"
-                >
-                  Copy from {singlePlayerShipSlots[0]?.name || 'Starter Deck'}
-                </button>
-              )}
-              <button
-                onClick={closeAllModals}
-                className="dw-btn dw-btn-cancel dw-btn--full"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Deck Confirmation Modal */}
-      {deleteConfirmation && (
-        <ConfirmationModal
-          confirmationModal={{
-            type: 'delete',
-            text: `Delete "${deleteConfirmation.slotName}"? All non-starter cards will be returned to your inventory.`,
-            onConfirm: handleDeleteConfirm,
-            onCancel: handleDeleteCancel
-          }}
-          show={true}
-        />
-      )}
-
-      {/* Copy Starter Deck Confirmation Modal */}
-      {copyStarterConfirmation && (
-        <div className="dw-modal-overlay" onClick={handleCancelCopyStarter}>
-          <div className="dw-modal-content dw-modal--sm dw-modal--action" onClick={e => e.stopPropagation()}>
-            <div className="dw-modal-header">
-              <div className="dw-modal-header-info">
-                <h2 className="dw-modal-header-title">Copy Starter Deck</h2>
-              </div>
-            </div>
-            <div className="dw-modal-body">
-              <p className="dw-modal-text" style={{ marginBottom: '12px' }}>
-                This will create owned copies of all starter deck items in your inventory:
-              </p>
-              <ul style={{ fontSize: '12px', color: 'var(--modal-text-secondary)', marginBottom: '12px', paddingLeft: '20px' }}>
-                <li>{starterDeck.decklist?.reduce((sum, c) => sum + c.quantity, 0) || 40} cards</li>
-                <li>{starterDeck.droneSlots?.filter(s => s.assignedDrone).length || 5} drones</li>
-                <li>{Object.keys(starterDeck.shipComponents || {}).length || 3} ship components</li>
-                <li>1 ship</li>
-              </ul>
-            </div>
-            <div className="dw-modal-actions">
-              <button
-                onClick={handleCancelCopyStarter}
-                className="dw-btn dw-btn-cancel"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmCopyStarter}
-                className="dw-btn dw-btn-confirm"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Empty Deck Creation Confirmation Modal */}
-      {emptyDeckConfirmation && (
-        <div className="dw-modal-overlay" onClick={handleCancelEmptyDeck}>
-          <div className="dw-modal-content dw-modal--sm dw-modal--action" onClick={e => e.stopPropagation()}>
-            <div className="dw-modal-header">
-              <div className="dw-modal-header-info">
-                <h2 className="dw-modal-header-title">Create Empty Deck</h2>
-              </div>
-            </div>
-            <div className="dw-modal-body">
-              <p className="dw-modal-text" style={{ marginBottom: '12px' }}>
-                This will create a new empty deck slot that you can customize with any cards.
-              </p>
-              <p className="dw-modal-text" style={{ fontSize: '12px', color: 'var(--modal-text-secondary)', marginBottom: '12px' }}>
-                Starter cards are always available in unlimited quantities for deck building.
-              </p>
-            </div>
-            <div className="dw-modal-actions">
-              <button
-                onClick={handleCancelEmptyDeck}
-                className="dw-btn dw-btn-cancel"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmEmptyDeck}
-                className="dw-btn dw-btn-confirm"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Reputation Progress Modal */}
-      {showReputationProgress && (
-        <ReputationProgressModal
-          onClose={() => setShowReputationProgress(false)}
-          onClaimRewards={() => {
-            setShowReputationProgress(false);
-            setShowReputationRewards(true);
-          }}
-        />
-      )}
-
-      {/* Reputation Reward Modal */}
-      {showReputationRewards && (
-        <ReputationRewardModal
-          onClose={() => setShowReputationRewards(false)}
-        />
-      )}
-
-      {/* Mission Tracker Modal */}
-      {showMissionTracker && (
-        <MissionTrackerModal
-          onClose={() => setShowMissionTracker(false)}
-          onRewardClaimed={() => {
-            // Force re-render to update mission counts
-          }}
-        />
-      )}
-
-      {/* Tutorial Modals */}
-      {showTutorial === 'intro' && (
-        <IntroTutorialModal
-          onDismiss={() => {
-            MissionService.dismissTutorial('intro');
-            setShowTutorial(null);
-            setIsHelpIconTutorial(false);
-          }}
-          onSkipAll={!isHelpIconTutorial ? () => {
-            MissionService.skipIntroMissions();
-            MissionService.dismissTutorial('intro');
-            MissionService.dismissTutorial('inventory');
-            MissionService.dismissTutorial('replicator');
-            MissionService.dismissTutorial('blueprints');
-            MissionService.dismissTutorial('shop');
-            MissionService.dismissTutorial('repairBay');
-            MissionService.dismissTutorial('deckBuilder');
-            setShowTutorial(null);
-            setIsHelpIconTutorial(false);
-          } : undefined}
-        />
-      )}
-      {showTutorial === 'inventory' && (
-        <InventoryTutorialModal
-          onDismiss={() => {
-            MissionService.dismissTutorial('inventory');
-            setShowTutorial(null);
-          }}
-        />
-      )}
-      {showTutorial === 'replicator' && (
-        <ReplicatorTutorialModal
-          onDismiss={() => {
-            MissionService.dismissTutorial('replicator');
-            setShowTutorial(null);
-          }}
-        />
-      )}
-      {showTutorial === 'blueprints' && (
-        <BlueprintsTutorialModal
-          onDismiss={() => {
-            MissionService.dismissTutorial('blueprints');
-            setShowTutorial(null);
-          }}
-        />
-      )}
-      {showTutorial === 'shop' && (
-        <ShopTutorialModal
-          onDismiss={() => {
-            MissionService.dismissTutorial('shop');
-            setShowTutorial(null);
-          }}
-        />
-      )}
-      {showTutorial === 'repairBay' && (
-        <RepairBayTutorialModal
-          onDismiss={() => {
-            MissionService.dismissTutorial('repairBay');
-            MissionService.recordProgress('SCREEN_VISIT', { screen: 'repairBay' });
-            setShowTutorial(null);
-            gameStateManager.setState({ appState: 'repairBay' });
-          }}
-        />
-      )}
-      {showTutorial === 'tacticalMapOverview' && (
-        <TacticalMapOverviewTutorialModal
-          onDismiss={() => {
-            MissionService.dismissTutorial('tacticalMapOverview');
-            setShowTutorial(null);
-          }}
-        />
-      )}
-      {showTutorial === 'deckBuilder' && (
-        <DeckBuilderTutorialModal
-          onDismiss={() => {
-            MissionService.dismissTutorial('deckBuilder');
-            MissionService.recordProgress('SCREEN_VISIT', { screen: 'deckBuilder' });
-            setShowTutorial(null);
-            // DeckBuilder is accessed from other places, not HangarScreen directly
-          }}
-        />
-      )}
-
-      {/* Deploying Screen (transition from Hangar to Tactical Map) */}
-      {showDeployingScreen && (
-        <DeployingScreen
-          deployData={{
-            shipName: deployingData?.shipName,
-            destination: deployingData?.map?.name || `Sector ${selectedCoordinate}`
-          }}
-          onComplete={handleDeployingComplete}
-        />
-      )}
-
-      {/* Boss Encounter Loading Screen (transition before boss combat) */}
-      {showBossLoadingScreen && bossLoadingData && (
-        <LoadingEncounterScreen
-          encounterData={bossLoadingData}
-          onComplete={handleBossLoadingComplete}
-        />
-      )}
+      <HangarModals
+        activeModal={activeModal}
+        closeAllModals={closeAllModals}
+        selectedBossId={selectedBossId}
+        selectedSlotId={selectedSlotId}
+        selectedMap={selectedMap}
+        selectedCoordinate={selectedCoordinate}
+        activeSectors={activeSectors}
+        onBossChallenge={handleBossChallenge}
+        onNavigateSector={handleNavigateSector}
+        onDeploy={handleDeploy}
+        lastRunSummary={lastRunSummary}
+        onDismissRunSummary={handleDismissRunSummary}
+        selectedMiaSlot={selectedMiaSlot}
+        onCloseMiaModal={handleCloseMiaModal}
+        singlePlayerShipSlots={singlePlayerShipSlots}
+        onNewDeckOption={handleNewDeckOption}
+        deleteConfirmation={deleteConfirmation}
+        onDeleteConfirm={handleDeleteConfirm}
+        onDeleteCancel={handleDeleteCancel}
+        copyStarterConfirmation={copyStarterConfirmation}
+        onCancelCopyStarter={handleCancelCopyStarter}
+        onConfirmCopyStarter={handleConfirmCopyStarter}
+        emptyDeckConfirmation={emptyDeckConfirmation}
+        onCancelEmptyDeck={handleCancelEmptyDeck}
+        onConfirmEmptyDeck={handleConfirmEmptyDeck}
+        showReputationProgress={showReputationProgress}
+        setShowReputationProgress={setShowReputationProgress}
+        showReputationRewards={showReputationRewards}
+        setShowReputationRewards={setShowReputationRewards}
+        showMissionTracker={showMissionTracker}
+        setShowMissionTracker={setShowMissionTracker}
+        showTutorial={showTutorial}
+        setShowTutorial={setShowTutorial}
+        isHelpIconTutorial={isHelpIconTutorial}
+        setIsHelpIconTutorial={setIsHelpIconTutorial}
+        gameStateManager={gameStateManager}
+        showDeployingScreen={showDeployingScreen}
+        deployingData={deployingData}
+        onDeployingComplete={handleDeployingComplete}
+        showBossLoadingScreen={showBossLoadingScreen}
+        bossLoadingData={bossLoadingData}
+        onBossLoadingComplete={handleBossLoadingComplete}
+      />
     </div>
   );
 };
