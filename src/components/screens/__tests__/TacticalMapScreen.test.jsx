@@ -24,74 +24,9 @@ vi.mock('../../../components/ships/ShipIconRenderer.jsx', () => ({
 import { calculateSectionBaseStats } from '../../../logic/statsCalculator.js';
 import { getDefaultShip, getAllShips } from '../../../data/shipData.js';
 import { shipComponentCollection } from '../../../data/shipSectionData.js';
+import { buildShipSections } from '../../../logic/singlePlayer/shipSectionBuilder.js';
 
 describe('buildShipSections Hull Calculation', () => {
-  /**
-   * Helper function that replicates the CORRECT buildShipSections logic.
-   * This is what the actual implementation should do.
-   */
-  function buildShipSectionsCorrect(shipSlot, slotId, shipComponentInstances, runShipSections) {
-    const sections = [];
-
-    // If we have run-state ship sections, use those (contains live damage from combat)
-    if (runShipSections && Object.keys(runShipSections).length > 0) {
-      for (const [sectionType, sectionData] of Object.entries(runShipSections)) {
-        sections.push({
-          id: sectionData.id || sectionType,
-          name: sectionData.name || sectionType,
-          type: sectionData.type || sectionType,
-          hull: sectionData.hull ?? 8,
-          maxHull: sectionData.maxHull ?? 8,
-          thresholds: sectionData.thresholds || { damaged: 4, critical: 0 },
-          lane: sectionData.lane ?? 1
-        });
-      }
-      return sections;
-    }
-
-    // Get ship card for proper calculation
-    const shipCard = shipSlot?.shipId
-      ? getAllShips().find(s => s.id === shipSlot.shipId)
-      : getDefaultShip();
-
-    // Fallback: build from ship slot components
-    const componentEntries = Object.entries(shipSlot?.shipComponents || {});
-
-    for (const [componentId, lane] of componentEntries) {
-      const componentData = shipComponentCollection.find(c => c.id === componentId);
-      if (!componentData) continue;
-
-      // Calculate base stats using ship card + section modifiers (CORRECT approach)
-      const baseStats = calculateSectionBaseStats(shipCard, componentData);
-      let currentHull = baseStats.hull;
-      let maxHull = baseStats.maxHull;
-      let thresholds = baseStats.thresholds;
-
-      // For slots 1-5, check instances for persistent damage
-      if (slotId !== 0) {
-        const instance = shipComponentInstances?.find(
-          i => i.id === componentId && i.assignedToSlot === slotId
-        );
-        if (instance) {
-          currentHull = instance.currentHull;
-          maxHull = instance.maxHull;
-        }
-      }
-
-      sections.push({
-        id: componentId,
-        name: componentData.name,
-        type: componentData.type,
-        hull: currentHull,
-        maxHull: maxHull,
-        thresholds: thresholds,
-        lane: lane
-      });
-    }
-
-    return sections;
-  }
-
   describe('Hull values from ship card', () => {
     it('should use Reconnaissance Corvette baseHull of 10 from shipData', () => {
       // EXPLANATION: Reconnaissance Corvette has baseHull=10 in shipData.js
@@ -106,7 +41,7 @@ describe('buildShipSections Hull Calculation', () => {
         }
       };
 
-      const sections = buildShipSectionsCorrect(mockShipSlot, 0, [], null);
+      const sections = buildShipSections(mockShipSlot, 0, [], null);
 
       // Each section should have hull=10 (baseHull with 0 modifiers)
       sections.forEach(section => {
@@ -127,7 +62,7 @@ describe('buildShipSections Hull Calculation', () => {
         }
       };
 
-      const sections = buildShipSectionsCorrect(mockShipSlot, 0, [], null);
+      const sections = buildShipSections(mockShipSlot, 0, [], null);
 
       // Each section should have hull=12
       sections.forEach(section => {
@@ -148,7 +83,7 @@ describe('buildShipSections Hull Calculation', () => {
         }
       };
 
-      const sections = buildShipSectionsCorrect(mockShipSlot, 0, [], null);
+      const sections = buildShipSections(mockShipSlot, 0, [], null);
 
       // Each section should have hull=5
       sections.forEach(section => {
@@ -169,7 +104,7 @@ describe('buildShipSections Hull Calculation', () => {
         }
       };
 
-      const sections = buildShipSectionsCorrect(mockShipSlot, 0, [], null);
+      const sections = buildShipSections(mockShipSlot, 0, [], null);
 
       expect(sections[0].thresholds).toBeDefined();
       expect(sections[0].thresholds.damaged).toBe(6);
@@ -184,7 +119,7 @@ describe('buildShipSections Hull Calculation', () => {
         }
       };
 
-      const sections = buildShipSectionsCorrect(mockShipSlot, 0, [], null);
+      const sections = buildShipSections(mockShipSlot, 0, [], null);
 
       expect(sections[0].thresholds).toBeDefined();
       expect(sections[0].thresholds.damaged).toBe(5);
@@ -209,7 +144,7 @@ describe('buildShipSections Hull Calculation', () => {
         }
       };
 
-      const sections = buildShipSectionsCorrect({}, 0, [], runShipSections);
+      const sections = buildShipSections({}, 0, [], runShipSections);
 
       expect(sections[0].hull).toBe(5);
       expect(sections[0].maxHull).toBe(8);
