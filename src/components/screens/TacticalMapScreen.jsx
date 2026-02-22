@@ -4,7 +4,7 @@
 // Main screen for in-run hex map navigation (Exploring the Eremos mode)
 // Orchestrates hex grid rendering, player movement, encounters, and extraction
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef } from 'react';
 import HexGridRenderer from '../ui/HexGridRenderer.jsx';
 import TacticalMapHUD from '../ui/TacticalMapHUD.jsx';
 import HexInfoPanel from '../ui/HexInfoPanel.jsx';
@@ -24,7 +24,6 @@ import AbandonRunModal from '../modals/AbandonRunModal.jsx';
 import ExtractionLootSelectionModal from '../modals/ExtractionLootSelectionModal.jsx';
 import ExtractionConfirmModal from '../modals/ExtractionConfirmModal.jsx';
 import DetectionManager from '../../logic/detection/DetectionManager.js';
-import EncounterController from '../../logic/encounters/EncounterController.js';
 import ExtractionController from '../../logic/singlePlayer/ExtractionController.js';
 import aiPersonalities from '../../data/aiData.js';
 import gameStateManager from '../../managers/GameStateManager.js';
@@ -33,7 +32,6 @@ import { mapTiers } from '../../data/mapData.js';
 import { buildShipSections } from '../../logic/singlePlayer/shipSectionBuilder.js';
 import SoundManager from '../../managers/SoundManager.js';
 import { debugLog } from '../../utils/debugLogger.js';
-import SeededRandom from '../../utils/seededRandom.js';
 import { ECONOMY } from '../../data/economyData.js';
 import ReputationService from '../../logic/reputation/ReputationService.js';
 import MissionService from '../../logic/missions/MissionService.js';
@@ -43,12 +41,14 @@ import { TacticalMapTutorialModal } from '../modals/tutorials';
 import { HelpCircle } from 'lucide-react';
 import TacticalItemsPanel from '../ui/TacticalItemsPanel.jsx';
 import TacticalItemConfirmationModal from '../modals/TacticalItemConfirmationModal.jsx';
-import { getTacticalItemById } from '../../data/tacticalItemData.js';
 import { useTacticalSubscriptions } from '../../hooks/useTacticalSubscriptions.js';
 import { useTacticalPostCombat } from '../../hooks/useTacticalPostCombat.js';
 import { useTacticalWaypoints } from '../../hooks/useTacticalWaypoints.js';
 import { useTacticalMovement } from '../../hooks/useTacticalMovement.js';
 import { useTacticalEncounters } from '../../hooks/useTacticalEncounters.js';
+import { useTacticalExtraction } from '../../hooks/useTacticalExtraction.js';
+import { useTacticalEscape } from '../../hooks/useTacticalEscape.js';
+import { useTacticalLoot } from '../../hooks/useTacticalLoot.js';
 import './TacticalMapScreen.css';
 
 /**
@@ -310,772 +310,95 @@ function TacticalMapScreen() {
     sharedRefs,
   });
 
-  // --- Hooks must be above early returns ---
-
-  /**
-   * Handle extraction button click - show confirmation modal or extract directly if blockade already cleared
-   */
-  const handleExtract = useCallback(() => {
-    debugLog('EXTRACTION', 'Extraction button clicked');
-
-    // Stop any ongoing movement
-    shouldStopMovement.current = true;
-    setIsMoving(false);
-    setIsScanningHex(false);
-
-    // Check if blockade was already cleared (player won blockade combat)
-    // This prevents double blockade encounters if auto-extraction failed to trigger
-    const runState = tacticalMapStateManager.getState();
-
-    if (runState?.blockadeCleared) {
-      debugLog('EXTRACTION', 'Blockade already cleared - skipping modal, extracting directly');
-
-      const result = ExtractionController.completeExtraction(runState);
-
-      // Prepare extraction screen data
-      setExtractionScreenData({
-        creditsEarned: runState.creditsEarned || 0,
-        cardsCollected: runState.collectedLoot?.filter(l => l.type === 'card').length || 0,
-        aiCoresEarned: runState.aiCoresEarned || 0
-      });
-
-      // Store the result for after animation
-      pendingExtractionRef.current = result;
-
-      // Show extraction loading screen
-      setShowExtractionScreen(true);
-      return;
-    }
-
-    // Normal flow - show confirmation modal (modal handles blockade check internally)
-    debugLog('EXTRACTION', 'Showing extraction confirmation modal');
-    setShowExtractionConfirm(true);
-  }, []);
-
-  /**
-   * Handle extraction cancel - close confirmation modal
-   */
-  const handleExtractionCancel = useCallback(() => {
-    debugLog('EXTRACTION', 'Extraction cancelled');
-    setShowExtractionConfirm(false);
-  }, []);
-
-  /**
-   * Handle safe extraction confirmed - complete the run
-   * Called when modal completes scan and no blockade triggered
-   */
-  const handleExtractionConfirmed = useCallback(() => {
-    debugLog('EXTRACTION', 'Safe extraction confirmed - completing run');
-    setShowExtractionConfirm(false);
-
-    const runState = tacticalMapStateManager.getState();
-
-    if (!runState) {
-      debugLog('EXTRACTION', '[WARN] No run state for extraction');
-      return;
-    }
-
-    const result = ExtractionController.completeExtraction(runState);
-
-    // Prepare extraction screen data
-    setExtractionScreenData({
-      creditsEarned: runState.creditsEarned || 0,
-      cardsCollected: runState.collectedLoot?.filter(l => l.type === 'card').length || 0,
-      aiCoresEarned: runState.aiCoresEarned || 0
-    });
-
-    // Store the result for after animation
-    pendingExtractionRef.current = result;
-
-    // Show extraction loading screen
-    setShowExtractionScreen(true);
-  }, []);
-
-  /**
-   * Handle extraction with Clearance Override item
-   * Bypasses blockade check entirely
-   */
-  const handleExtractionWithItem = useCallback(() => {
-    debugLog('EXTRACTION', 'Extraction with Clearance Override');
-
-    const runState = tacticalMapStateManager.getState();
-
-    if (!runState) {
-      debugLog('EXTRACTION', '[WARN] No run state for extraction with item');
-      return;
-    }
-
-    // Use the item and extract
-    const result = ExtractionController.initiateExtractionWithItem(runState, true);
-
-    if (result.action === 'extract' && result.itemUsed) {
-      debugLog('EXTRACTION', 'Clearance Override successful - extracting');
-      setShowExtractionConfirm(false);
-
-      // Complete extraction (no blockade check needed)
-      const extractionResult = ExtractionController.completeExtraction(runState);
-
-      // Prepare extraction screen data
-      setExtractionScreenData({
-        creditsEarned: runState.creditsEarned || 0,
-        cardsCollected: runState.collectedLoot?.filter(l => l.type === 'card').length || 0,
-        aiCoresEarned: runState.aiCoresEarned || 0
-      });
-
-      // Store the result for after animation
-      pendingExtractionRef.current = extractionResult;
-
-      // Show extraction loading screen
-      setShowExtractionScreen(true);
-    } else {
-      // Item use failed - shouldn't happen if button is only shown when available
-      debugLog('EXTRACTION', '[WARN] Clearance Override failed');
-    }
-  }, []);
-
-  /**
-   * Handle blockade combat - engage with standard deploy
-   * Called when modal detects blockade and player clicks Engage/Standard Deploy
-   */
-  const handleBlockadeCombat = useCallback(() => {
-    debugLog('MODE_TRANSITION', '=== MODE: tacticalMap -> inGame (user action) ===', {
-      trigger: 'user_action',
-      source: 'TacticalMapScreen.handleBlockadeCombat',
-      detail: 'User clicked Engage on blockade at extraction gate'
-    });
-
-    debugLog('EXTRACTION', 'Blockade detected - engaging combat');
-    setShowExtractionConfirm(false);
-
-    const runState = tacticalMapStateManager.getState();
-
-    if (!runState) {
-      debugLog('EXTRACTION', '[WARN] No run state for blockade combat');
-      return;
-    }
-
-    // Get AI for blockade combat
-    const tier = runState.mapData?.tier || 1;
-    const tierCfg = mapTiers[tier - 1];
-    const detection = DetectionManager.getCurrentDetection();
-    const aiId = EncounterController.getAIForThreat(tierCfg, detection, null);
-
-    // Find AI personality info for the loading screen
-    const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
-
-    // Set up loading encounter data
-    setLoadingEncounterData({
-      aiName: aiPersonality?.name || 'Blockade Fleet',
-      difficulty: aiPersonality?.difficulty || 'Hard',
-      threatLevel: 'high',
-      isAmbush: false,
-      isBlockade: true
-    });
-
-    // Store encounter for combat handling
-    setCurrentEncounter({
-      outcome: 'combat',
-      aiId,
-      isBlockade: true
-    });
-
-    // Show loading screen (will transition to combat)
-    setShowLoadingEncounter(true);
-  }, []);
-
-  /**
-   * Handle blockade with quick deploy - show quick deploy selection
-   * Called when modal detects blockade and player clicks Quick Deploy
-   */
-  const handleBlockadeQuickDeploy = useCallback(() => {
-    debugLog('QUICK_DEPLOY', 'Blockade detected - opening quick deploy selection');
-    setShowExtractionConfirm(false);
-    setShowQuickDeploySelection(true);
-    setExtractionQuickDeployPending(true);
-  }, []);
-
-  /**
-   * Handle extraction loading screen complete - proceed to loot selection or hangar
-   */
-  const handleExtractionScreenComplete = useCallback(() => {
-    setShowExtractionScreen(false);
-    setExtractionScreenData(null);
-
-    const result = pendingExtractionRef.current;
-    pendingExtractionRef.current = null;
-
-    if (result?.action === 'selectLoot') {
-      debugLog('LOOT', 'Loot selection required:', result.limit, 'max from', result.collectedLoot.length);
-      setPendingLootSelection({
-        collectedLoot: result.collectedLoot,
-        limit: result.limit
-      });
-      setShowLootSelectionModal(true);
-    } else {
-      // Normal extraction complete - go directly to hangar (RunSummaryModal shows there)
-      debugLog('EXTRACTION', 'Extraction complete - returning to hangar');
-      // Use ExtractionController to avoid direct gameStateManager.setState() call (architecture pattern)
-      ExtractionController.completeExtractionTransition();
-    }
-  }, []);
-
-  /**
-   * Handle abandon run button click - show confirmation modal
-   */
-  const handleAbandon = useCallback(() => {
-    debugLog('MODE_TRANSITION', 'Abandon run requested');
-    setShowAbandonModal(true);
-  }, []);
-
-  /**
-   * Handle abandon confirmation - trigger failed run flow
-   * Uses ExtractionController.abandonRun() which sets showFailedRunScreen in GameStateManager
-   * App.jsx renders the global FailedRunLoadingScreen based on that state
-   */
-  const handleConfirmAbandon = useCallback(() => {
-    debugLog('MODE_TRANSITION', '=== MODE: tacticalMap -> failedRunScreen ===', {
-      trigger: 'user_action',
-      source: 'TacticalMapScreen.handleConfirmAbandon',
-      detail: 'User confirmed abandon in modal'
-    });
-
-    debugLog('MODE_TRANSITION', 'Abandon confirmed - triggering failed run');
-
-    // Stop any ongoing movement
-    shouldStopMovement.current = true;
-    setIsMoving(false);
-    setIsScanningHex(false);
-
-    // Close modal
-    setShowAbandonModal(false);
-
-    // Let ExtractionController handle the failed run flow
-    // This sets showFailedRunScreen in GameStateManager which App.jsx renders
-    ExtractionController.abandonRun();
-  }, []);
-
-  // NOTE: handleFailedRunComplete has been removed - FailedRunLoadingScreen
-  // is now handled globally by App.jsx using ExtractionController.completeFailedRunTransition()
-
-  /**
-   * Handle escape button click - show escape confirmation modal
-   * @param {Object} context - { type: 'poi' | 'salvage', isPOI: boolean }
-   */
-  const handleEscapeRequest = useCallback((context) => {
-    debugLog('COMBAT_FLOW', 'Escape requested', context);
-    setEscapeContext(context);
-    setShowEscapeConfirm(true);
-  }, []);
-
-  /**
-   * Handle evade item usage - skip encounter without combat or damage
-   * Uses the Emergency Jammer tactical item
-   */
-  const handleEvadeItem = useCallback(() => {
-    debugLog('COMBAT_FLOW', 'Evade item used');
-
-    // Use the tactical item
-    const result = gameStateManager.useTacticalItem('ITEM_EVADE');
-    if (!result.success) {
-      debugLog('COMBAT_FLOW', '[WARN] Failed to use evade item:', result.error);
-      return;
-    }
-
-    debugLog('COMBAT_FLOW', 'Evade successful, remaining:', result.remaining);
-
-    // Mark POI as fled (no loot gained, encounter skipped via evade)
-    if (currentEncounter?.poi) {
-      const runState = tacticalMapStateManager.getState();
-      const fledPOIs = runState?.fledPOIs || [];
-      tacticalMapStateManager.setState({
-        fledPOIs: [...fledPOIs, { q: currentEncounter.poi.q, r: currentEncounter.poi.r }]
-      });
-      debugLog('ENCOUNTER', 'POI marked as fled (evaded)', { q: currentEncounter.poi.q, r: currentEncounter.poi.r });
-    }
-
-    // Close encounter modal and clear state
-    setShowPOIModal(false);
-    setCurrentEncounter(null);
-
-    // Resume movement if waypoints remain
-    const runState = tacticalMapStateManager.getState();
-    if (runState?.waypoints && runState.waypoints.length > 0) {
-      debugLog('MOVEMENT', 'Resuming movement after evade');
-      setIsMoving(true);
-    }
-  }, [currentEncounter]);
-
-  /**
-   * Handle threat reduction item usage
-   * Reduces current detection by random amount within item's effectValueMin/Max range
-   */
-  const handleUseThreatReduce = useCallback(() => {
-    debugLog('RUN_STATE', 'Signal Dampener used');
-
-    // Get the item data for effect range
-    const item = getTacticalItemById('ITEM_THREAT_REDUCE');
-    const min = item?.effectValueMin ?? 5;
-    const max = item?.effectValueMax ?? 15;
-
-    // Use seeded random for determinism (offset by remaining item count for unique rolls)
-    const remainingCount = gameStateManager.getTacticalItemCount('ITEM_THREAT_REDUCE');
-    const baseRng = SeededRandom.fromGameState(gameStateManager.getState());
-    const itemUseOffset = 8888 + (remainingCount * 100);
-    const rng = new SeededRandom(baseRng.seed + itemUseOffset);
-    const reductionAmount = rng.randomIntInclusive(min, max);
-
-    // Use the tactical item (consume it)
-    const result = gameStateManager.useTacticalItem('ITEM_THREAT_REDUCE');
-    if (!result.success) {
-      debugLog('RUN_STATE', '[WARN] Failed to use threat reduce item:', result.error);
-      return;
-    }
-
-    // Reduce detection
-    DetectionManager.addDetection(-reductionAmount, 'Signal Dampener used');
-
-    debugLog('RUN_STATE', `Detection reduced by ${reductionAmount}% (range: ${min}-${max}), remaining items: ${result.remaining}`);
-  }, []);
-
-  /**
-   * Handle request to use threat reduce item (shows confirmation modal)
-   */
-  const handleRequestThreatReduce = useCallback(() => {
-    const item = getTacticalItemById('ITEM_THREAT_REDUCE');
-    setTacticalItemConfirmation({
-      item,
-      currentDetection: currentRunState?.detection || 0
-    });
-  }, [currentRunState?.detection]);
-
-  /**
-   * Handle tactical item confirmation cancel
-   */
-  const handleTacticalItemCancel = useCallback(() => {
-    setTacticalItemConfirmation(null);
-  }, []);
-
-  /**
-   * Handle tactical item confirmation confirm
-   */
-  const handleTacticalItemConfirm = useCallback(() => {
-    setTacticalItemConfirmation(null);
-    // Delay execution to allow modal to close
-    setTimeout(() => {
-      handleUseThreatReduce();
-    }, 400);
-  }, [handleUseThreatReduce]);
-
-  /**
-   * Handle escape cancel - close escape confirmation modal
-   */
-  const handleEscapeCancel = useCallback(() => {
-    debugLog('COMBAT_FLOW', 'Escape cancelled');
-    setShowEscapeConfirm(false);
-    setEscapeContext(null);
-  }, []);
-
-  /**
-   * Handle escape confirmation - apply damage and show loading screen or trigger MIA
-   */
-  const handleEscapeConfirm = useCallback(() => {
-    debugLog('COMBAT_FLOW', 'Escape confirmed');
-
-    const runState = tacticalMapStateManager.getState();
-
-    if (!runState) {
-      debugLog('COMBAT_FLOW', '[WARN] No run state for escape');
-      return;
-    }
-
-    // Get the AI personality for this encounter (affects escape damage)
-    const aiId = currentEncounter?.aiId;
-    if (!aiId) {
-      debugLog('COMBAT_FLOW', '[WARN] No aiId in currentEncounter for escape - using default damage', currentEncounter);
-    }
-    const aiPersonality = aiId
-      ? aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0]
-      : aiPersonalities[0];  // Default to first AI for damage calculation
-
-    // Execute escape - applies variable damage based on AI type
-    const { wouldDestroy, updatedSections, totalDamage, damageHits, initialSections } = ExtractionController.executeEscape(runState, aiPersonality);
-
-    if (wouldDestroy) {
-      // Ship destroyed - trigger MIA
-      debugLog('COMBAT_FLOW', 'Escape destroyed ship - triggering MIA');
-      setShowEscapeConfirm(false);
-      setEscapeContext(null);
-      setShowPOIModal(false);
-      setShowSalvageModal(false);
-      setActiveSalvage(null);
-      setCurrentEncounter(null);
-      ExtractionController.abandonRun();
-      return;
-    }
-
-    // Ship survived - show escape loading screen
-    debugLog('COMBAT_FLOW', 'Escape successful - showing loading screen');
-
-    // Capture FULL remaining journey including current position
-    let remainingWps = [];
-
-    // Use pathProgressRef for synchronous access to current waypoint index
-    // (React state can be stale in closures)
-    const { waypointIndex = 0 } = pathProgressRef.current || {};
-
-    // Guard against invalid index
-    if (waypointIndex >= 0 && waypointIndex < waypoints.length) {
-      const currentWp = waypoints[waypointIndex];
-      if (currentWp && currentWp.pathFromPrev) {
-        // Path is already trimmed to start from current position after each move
-        // So we use the remaining path as-is (no slice needed)
-        if (currentWp.pathFromPrev.length > 1) {
-          remainingWps.push({
-            ...currentWp,
-            pathFromPrev: currentWp.pathFromPrev
-          });
-        }
-      }
-    }
-
-    // Add all subsequent waypoints using ref's waypointIndex
-    remainingWps = [...remainingWps, ...waypoints.slice(waypointIndex + 1)];
-
-    debugLog('PATH_HIGHLIGHTING', 'Escape capturing remaining waypoints:', {
-      refWaypointIndex: pathProgressRef.current?.waypointIndex,
-      stateWaypointIndex: currentWaypointIndex,  // For comparison
-      waypointsLength: waypoints.length,
-      currentPathLength: waypoints[waypointIndex]?.pathFromPrev?.length,
-      remainingWpsCount: remainingWps.length
-    });
-
-    setPendingResumeWaypoints(remainingWps.length > 0 ? remainingWps : null);
-    escapedWithWaypoints.current = remainingWps.length > 0; // Flag to prevent journey loop from clearing
-    debugLog('COMBAT_FLOW', 'Captured remaining journey for escape:', remainingWps.length, 'waypoints');
-
-    // Close confirm modal and show loading screen
-    setShowEscapeConfirm(false);
-
-    // Set up escape loading data with damage hits for real-time display
-    setEscapeLoadingData({
-      totalDamage,
-      shipSections: updatedSections,
-      initialSections,
-      damageHits,
-      aiName: aiPersonality?.name || 'Unknown'
-    });
-    setShowEscapeLoadingScreen(true);
-  }, [currentEncounter, waypoints, currentWaypointIndex]); // Note: currentWaypointIndex kept for debug logging comparison
-
-  /**
-   * Handle escape loading screen completion - resume journey
-   */
-  const handleEscapeLoadingComplete = useCallback(() => {
-    debugLog('COMBAT_FLOW', 'Escape animation complete - resuming journey');
-
-    setShowEscapeLoadingScreen(false);
-    setEscapeLoadingData(null);
-
-    // If this was a POI encounter, mark POI as fled (no loot, escaped combat)
-    if (escapeContext?.isPOI && currentEncounter?.poi) {
-      const updatedRunState = tacticalMapStateManager.getState();
-      const fledPOIs = updatedRunState?.fledPOIs || [];
-      tacticalMapStateManager.setState({
-        fledPOIs: [...fledPOIs, { q: currentEncounter.poi.q, r: currentEncounter.poi.r }]
-      });
-      debugLog('ENCOUNTER', 'POI marked as fled (escaped)', { q: currentEncounter.poi.q, r: currentEncounter.poi.r });
-    }
-
-    // If this was a salvage encounter, mark POI as fled (escaped during salvage)
-    if (escapeContext?.type === 'salvage' && activeSalvage?.poi) {
-      const updatedRunState = tacticalMapStateManager.getState();
-      const fledPOIs = updatedRunState?.fledPOIs || [];
-      tacticalMapStateManager.setState({
-        fledPOIs: [...fledPOIs, { q: activeSalvage.poi.q, r: activeSalvage.poi.r }]
-      });
-      debugLog('ENCOUNTER', 'POI marked as fled (salvage escaped)', { q: activeSalvage.poi.q, r: activeSalvage.poi.r });
-    }
-
-    // Close all escape/encounter modals
-    setEscapeContext(null);
-    setShowPOIModal(false);
-    setShowSalvageModal(false);
-    setActiveSalvage(null);
-    setCurrentEncounter(null);
-
-    // Stop movement
-    shouldStopMovement.current = true;
-    setIsMoving(false);
-    setIsScanningHex(false);
-
-    // Resolve any pending encounter promise to continue flow
-    if (encounterResolveRef.current) {
-      encounterResolveRef.current();
-      encounterResolveRef.current = null;
-    }
-
-    // Restore remaining waypoints if any were captured during escape
-    if (pendingResumeWaypoints?.length > 0) {
-      debugLog('PATH_HIGHLIGHTING', 'Restoring waypoints after escape:', { count: pendingResumeWaypoints?.length });
-      setWaypoints(pendingResumeWaypoints);
-      setPendingResumeWaypoints(null);
-    }
-  }, [currentEncounter, activeSalvage, escapeContext, pendingResumeWaypoints]);
-
-  /**
-   * Handle loot selection confirmation - complete extraction with selected items
-   */
-  const handleLootSelectionConfirm = useCallback((selectedLoot) => {
-    debugLog('MODE_TRANSITION', '=== MODE: tacticalMap -> hangar (extraction) ===', {
-      trigger: 'user_action',
-      source: 'TacticalMapScreen.handleLootSelectionConfirm',
-      detail: 'User confirmed loot selection for extraction',
-      lootCount: selectedLoot.length
-    });
-
-    debugLog('LOOT', 'Loot selection confirmed:', selectedLoot.length, 'items');
-
-    setShowLootSelectionModal(false);
-    setPendingLootSelection(null);
-
-    // Get current run state and complete extraction with selected loot
-    const runState = tacticalMapStateManager.getState();
-
-    if (runState) {
-      ExtractionController.completeExtraction(runState, selectedLoot);
-      // Go directly to hangar (RunSummaryModal shows there)
-      gameStateManager.setState({ appState: 'hangar' });
-    }
-  }, []);
-
-  /**
-   * Handle POI loot collection - called when player reveals all cards and clicks Continue
-   */
-  const handlePOILootCollected = useCallback((loot) => {
-    debugLog('LOOT', 'POI loot collected', loot);
-
-    const runState = tacticalMapStateManager.getState();
-
-    if (!runState) {
-      debugLog('LOOT', '[WARN] No run state for loot collection');
-      return;
-    }
-
-    // Add loot cards to collectedLoot
-    const newCardLoot = (loot.cards || []).map(card => ({
-      ...card,  // Already has cardId, cardName from RewardManager
-      type: 'card',  // Override card.type with 'card' for collectedLoot
-      source: 'poi_loot'
-    }));
-
-    // Add salvage items (each item is a separate entry in collectedLoot)
-    if (loot.salvageItems && loot.salvageItems.length > 0) {
-      loot.salvageItems.forEach(salvageItem => {
-        newCardLoot.push({
-          type: 'salvageItem',
-          itemId: salvageItem.itemId,
-          name: salvageItem.name,
-          creditValue: salvageItem.creditValue,
-          image: salvageItem.image,
-          description: salvageItem.description,
-          source: 'poi_loot'
-        });
-      });
-    }
-
-    // Add blueprint to loot record (blueprint PoI rewards)
-    if (loot.blueprint) {
-      debugLog('LOOT', 'Adding blueprint to collectedLoot:', loot.blueprint.blueprintId);
-      newCardLoot.push({
-        type: 'blueprint',
-        blueprintId: loot.blueprint.blueprintId,
-        blueprintType: loot.blueprint.blueprintType || 'drone',
-        rarity: loot.blueprint.rarity,
-        droneData: loot.blueprint.droneData,
-        source: loot.blueprint.source || 'poi_loot'
-      });
-    }
-
-    // Add token to loot record (for display in run summary)
-    // Handle both single token (direct encounter) and tokens array (salvage)
-    if (loot.token) {
-      newCardLoot.push({
-        type: 'token',
-        tokenType: loot.token.tokenType,
-        amount: loot.token.amount,
-        source: 'poi_loot'
-      });
-    }
-    // Handle tokens array from salvage
-    if (loot.tokens && loot.tokens.length > 0) {
-      loot.tokens.forEach(token => {
-        newCardLoot.push({
-          type: 'token',
-          tokenType: token.tokenType,
-          amount: token.amount,
-          source: 'poi_loot'
-        });
-      });
-    }
-
-    const updatedLoot = [...(runState?.collectedLoot || []), ...newCardLoot];
-    const salvageTotalCredits = (loot.salvageItems || []).reduce((sum, item) => sum + (item.creditValue || 0), 0);
-    const newCredits = (runState?.creditsEarned || 0) + salvageTotalCredits;
-
-    // Handle token collection - save to singlePlayerProfile (persistent across runs)
-    // Handle single token (direct encounter)
-    if (loot.token) {
-      const saveData = gameStateManager.getState();
-      const currentTokens = saveData.singlePlayerProfile?.securityTokens || 0;
-      gameStateManager.setState({
-        singlePlayerProfile: {
-          ...saveData.singlePlayerProfile,
-          securityTokens: currentTokens + loot.token.amount
-        }
-      });
-      debugLog('LOOT', `Security token collected! Total: ${currentTokens + loot.token.amount}`);
-    }
-    // Handle tokens array (salvage)
-    if (loot.tokens && loot.tokens.length > 0) {
-      const saveData = gameStateManager.getState();
-      const currentTokens = saveData.singlePlayerProfile?.securityTokens || 0;
-      const totalNewTokens = loot.tokens.reduce((sum, t) => sum + (t.amount || 0), 0);
-      gameStateManager.setState({
-        singlePlayerProfile: {
-          ...saveData.singlePlayerProfile,
-          securityTokens: currentTokens + totalNewTokens
-        }
-      });
-      debugLog('LOOT', `Security tokens collected from salvage! Total: ${currentTokens + totalNewTokens}`);
-    }
-
-    // Mark POI as looted (prevents re-looting)
-    const lootedPOIs = runState.lootedPOIs || [];
-    const poiCoords = pendingLootEncounter?.poi
-      ? { q: pendingLootEncounter.poi.q, r: pendingLootEncounter.poi.r }
-      : null;
-    const updatedLootedPOIs = poiCoords
-      ? [...lootedPOIs, poiCoords]
-      : lootedPOIs;
-
-    // Update run state
-    tacticalMapStateManager.setState({
-      collectedLoot: updatedLoot,
-      creditsEarned: newCredits,
-      lootedPOIs: updatedLootedPOIs
-    });
-
-    // Add detection for looting (from pending encounter)
-    if (pendingLootEncounter) {
-      const threatIncrease = pendingLootEncounter.poi?.poiData?.threatIncrease || 10;
-      DetectionManager.addDetection(threatIncrease, `Looting ${pendingLootEncounter.poi?.poiData?.name || 'PoI'}`);
-      debugLog('ENCOUNTER', `POI marked as looted: (${poiCoords?.q}, ${poiCoords?.r})`);
-
-      // Record mission progress for POI visit
-      MissionService.recordProgress('POI_LOOTED', {});
-    }
-
-    // Clear loot state
-    setPoiLootToReveal(null);
-    setPendingLootEncounter(null);
-
-    // Resume movement by resolving the waiting promise (normal flow)
-    if (encounterResolveRef.current) {
-      encounterResolveRef.current();
-      encounterResolveRef.current = null;
-    }
-
-    // Resume journey with remaining waypoints (post-combat flow)
-    // This happens when player won combat at a PoI and just collected PoI loot
-    if (pendingResumeWaypoints?.length > 0) {
-      debugLog('PATH_HIGHLIGHTING', 'Resuming journey after loot:', {
-        count: pendingResumeWaypoints?.length,
-        destinations: pendingResumeWaypoints?.map(w => w.hex)
-      });
-      setWaypoints(pendingResumeWaypoints);
-      setPendingResumeWaypoints(null);
-      // Movement will start via the executeMovement useEffect that watches waypoints
-    }
-
-    debugLog('LOOT', 'POI loot finalized, resuming movement');
-  }, [pendingLootEncounter, pendingResumeWaypoints]);
-
-  /**
-   * Handle blueprint reward modal acceptance
-   * Called when player clicks Accept on DroneBlueprintRewardModal
-   */
-  const handleBlueprintRewardAccepted = useCallback((blueprint) => {
-    debugLog('ENCOUNTER', 'Blueprint reward accepted:', blueprint.blueprintId);
-
-    // Close blueprint modal
-    setShowBlueprintRewardModal(false);
-    setPendingBlueprintReward(null);
-
-    const runState = tacticalMapStateManager.getState();
-
-    // Add blueprint to collectedLoot
-    const blueprintLootItem = {
-      type: 'blueprint',
-      blueprintId: blueprint.blueprintId,
-      blueprintType: blueprint.blueprintType || 'drone',
-      rarity: blueprint.rarity,
-      droneData: blueprint.droneData,
-      source: blueprint.source || 'poi_loot'
-    };
-
-    const updatedLoot = [...(runState?.collectedLoot || []), blueprintLootItem];
-
-    // Update run state with blueprint
-    tacticalMapStateManager.setState({
-      collectedLoot: updatedLoot
-    });
-
-    debugLog('ENCOUNTER', 'Blueprint added to collectedLoot. Total items:', updatedLoot.length);
-
-    // Mark POI as looted (if from encounter)
-    if (pendingLootEncounter?.poi) {
-      const { q, r } = pendingLootEncounter.poi;
-
-      // Update hex data to mark as looted
-      const updatedMapData = { ...runState.mapData };
-      const hexToUpdate = updatedMapData.hexes.find(h => h.q === q && h.r === r);
-
-      if (hexToUpdate && hexToUpdate.poi) {
-        hexToUpdate.poi.looted = true;
-        debugLog('ENCOUNTER', `Marked blueprint PoI at (${q}, ${r}) as looted`);
-
-        tacticalMapStateManager.setState({
-          mapData: updatedMapData
-        });
-      }
-
-      // Add detection for looting
-      const threatIncrease = pendingLootEncounter.poi.poiData?.threatIncrease || 10;
-      DetectionManager.addDetection(threatIncrease, `Looting ${pendingLootEncounter.poi.poiData?.name || 'Blueprint PoI'}`);
-
-      // Record mission progress for POI visit
-      MissionService.recordProgress('POI_LOOTED', {});
-
-      setPendingLootEncounter(null);
-    }
-
-    // Resume journey if waypoints remain (handled by existing logic)
-    if (pendingResumeWaypoints?.length > 0) {
-      debugLog('PATH_HIGHLIGHTING', 'Resuming journey after blueprint:', { count: pendingResumeWaypoints?.length });
-      setWaypoints(pendingResumeWaypoints);
-      setPendingResumeWaypoints(null);
-      // Movement will start via the executeMovement useEffect that watches waypoints
-    }
-
-    // Resume movement by resolving the waiting promise
-    if (encounterResolveRef.current) {
-      encounterResolveRef.current();
-      encounterResolveRef.current = null;
-    }
-
-    setIsPaused(false);
-    debugLog('ENCOUNTER', 'Blueprint reward finalized, resuming movement');
-  }, [pendingLootEncounter, pendingResumeWaypoints]);
+  // --- Extraction and abandon handlers ---
+  const {
+    handleExtract,
+    handleExtractionCancel,
+    handleExtractionConfirmed,
+    handleExtractionWithItem,
+    handleBlockadeCombat,
+    handleBlockadeQuickDeploy,
+    handleExtractionScreenComplete,
+    handleAbandon,
+    handleConfirmAbandon,
+  } = useTacticalExtraction({
+    setShowExtractionConfirm,
+    setExtractionQuickDeployPending,
+    setShowQuickDeploySelection,
+    setExtractionScreenData,
+    setShowExtractionScreen,
+    setShowLoadingEncounter,
+    setLoadingEncounterData,
+    setShowAbandonModal,
+    setShowLootSelectionModal,
+    setPendingLootSelection,
+    setIsMoving,
+    setIsScanningHex,
+    setCurrentEncounter,
+    currentRunState,
+    sharedRefs,
+    validQuickDeployments,
+  });
+
+  // --- Escape, evade, and tactical item handlers ---
+  const {
+    handleEscapeRequest,
+    handleEvadeItem,
+    handleUseThreatReduce,
+    handleRequestThreatReduce,
+    handleTacticalItemCancel,
+    handleTacticalItemConfirm,
+    handleEscapeCancel,
+    handleEscapeConfirm,
+    handleEscapeLoadingComplete,
+  } = useTacticalEscape({
+    currentEncounter,
+    activeSalvage,
+    waypoints,
+    currentWaypointIndex,
+    setWaypoints,
+    setIsMoving,
+    setIsScanningHex,
+    setIsPaused,
+    setShowEscapeConfirm,
+    setEscapeContext,
+    escapeContext,
+    setTacticalItemConfirmation,
+    setShowEscapeLoadingScreen,
+    setEscapeLoadingData,
+    setShowPOIModal,
+    setShowSalvageModal,
+    setCurrentEncounter,
+    setActiveSalvage,
+    setPendingResumeWaypoints,
+    pendingResumeWaypoints,
+    currentRunState,
+    sharedRefs,
+  });
+
+  // --- Loot collection handlers ---
+  const {
+    handleLootSelectionConfirm,
+    handlePOILootCollected,
+    handleBlueprintRewardAccepted,
+  } = useTacticalLoot({
+    pendingLootSelection,
+    setPendingLootSelection,
+    setShowLootSelectionModal,
+    pendingLootEncounter,
+    setPendingLootEncounter,
+    poiLootToReveal,
+    setPoiLootToReveal,
+    pendingBlueprintReward,
+    setPendingBlueprintReward,
+    setShowBlueprintRewardModal,
+    pendingResumeWaypoints,
+    setPendingResumeWaypoints,
+    setWaypoints,
+    setIsPaused,
+    currentRunState,
+    sharedRefs,
+  });
 
   // ========================================
   // WAYPOINT HOOK (must be before early returns — contains useMemo/useCallback)
