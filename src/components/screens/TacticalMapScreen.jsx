@@ -23,8 +23,6 @@ import LootRevealModal from '../modals/LootRevealModal.jsx';
 import AbandonRunModal from '../modals/AbandonRunModal.jsx';
 import ExtractionLootSelectionModal from '../modals/ExtractionLootSelectionModal.jsx';
 import ExtractionConfirmModal from '../modals/ExtractionConfirmModal.jsx';
-import MovementController from '../../logic/map/MovementController.js';
-import EscapeRouteCalculator from '../../logic/map/EscapeRouteCalculator.js';
 import { generateSalvageItemFromValue } from '../../data/salvageItemData.js';
 import DetectionManager from '../../logic/detection/DetectionManager.js';
 import EncounterController from '../../logic/encounters/EncounterController.js';
@@ -55,6 +53,7 @@ import TacticalItemConfirmationModal from '../modals/TacticalItemConfirmationMod
 import { getTacticalItemById } from '../../data/tacticalItemData.js';
 import { useTacticalSubscriptions } from '../../hooks/useTacticalSubscriptions.js';
 import { useTacticalPostCombat } from '../../hooks/useTacticalPostCombat.js';
+import { useTacticalWaypoints } from '../../hooks/useTacticalWaypoints.js';
 import './TacticalMapScreen.css';
 
 /**
@@ -2196,53 +2195,37 @@ function TacticalMapScreen() {
   }, [pendingLootEncounter, pendingResumeWaypoints]);
 
   // ========================================
-  // HOOKS THAT MUST BE BEFORE EARLY RETURNS
+  // WAYPOINT HOOK (must be before early returns — contains useMemo/useCallback)
   // ========================================
-  // These hooks were moved here to fix the "Rendered fewer hooks than expected"
-  // error that occurred during extraction when currentRunState becomes null.
-  // All hooks must be called unconditionally on every render.
-
-  /**
-   * Calculate escape route data for display in HexInfoPanel
-   * Shows minimum threat cost to reach nearest extraction gate
-   * NOTE: Derives mapData/tierConfig from currentRunState to work before early returns
-   */
-  const escapeRouteData = React.useMemo(() => {
-    // Derive values from currentRunState (may be null)
-    const mapData = currentRunState?.mapData;
-    const playerPosition = currentRunState?.playerPosition;
-    const detection = currentRunState?.detection;
-    const tierConfig = mapData ? mapTiers[mapData.tier - 1] : null;
-
-    if (!mapData || !tierConfig || !playerPosition) return null;
-
-    const lastWaypointPosition = waypoints.length > 0
-      ? waypoints[waypoints.length - 1].hex
-      : playerPosition;
-
-    const journeyEndDetection = waypoints.length > 0
-      ? waypoints[waypoints.length - 1].cumulativeDetection
-      : detection;
-
-    return EscapeRouteCalculator.calculateEscapeRoutes(
-      playerPosition,
-      lastWaypointPosition,
-      detection,
-      journeyEndDetection,
-      mapData,
-      tierConfig,
-      currentRunState
-    );
-  }, [currentRunState, waypoints]);
-
-  /**
-   * Handle pathfinding mode change
-   */
-  const handlePathModeChange = useCallback((newMode) => {
-    setPathfindingMode(newMode);
-    // TODO: If we want to recalculate existing waypoints with new mode,
-    // that would be done here. For now, mode only affects new waypoints.
-  }, []);
+  const {
+    addWaypoint,
+    removeWaypoint,
+    clearAllWaypoints,
+    isWaypoint,
+    handleHexClick,
+    handleToggleWaypoint,
+    handleWaypointClick,
+    handleBackToJourney,
+    handlePathModeChange,
+    getPreviewPath,
+    escapeRouteData,
+    getLastJourneyPosition,
+    getJourneyEndDetection,
+    getJourneyEndEncounterRisk,
+  } = useTacticalWaypoints({
+    waypoints,
+    setWaypoints,
+    inspectedHex,
+    setInspectedHex,
+    pathfindingMode,
+    setPathfindingMode,
+    isMoving,
+    playerPosition: currentRunState?.playerPosition,
+    mapData: currentRunState?.mapData,
+    tierConfig: currentRunState?.mapData ? mapTiers[currentRunState.mapData.tier - 1] : null,
+    detection: currentRunState?.detection,
+    currentRunState,
+  });
 
   // ========================================
   // EARLY RETURNS (safe now - all hooks above)
@@ -2280,245 +2263,7 @@ function TacticalMapScreen() {
     currentRunState.shipSections
   );
 
-  // Calculate preview path for inspected hex (shown before adding as waypoint)
-  // Uses same weighted pathfinding as addWaypoint to ensure preview matches actual path
-  const getPreviewPath = () => {
-    if (!inspectedHex || isMoving) return null;
-    // Don't show preview for current position
-    if (inspectedHex.q === playerPosition.q && inspectedHex.r === playerPosition.r) return null;
-    // Don't show preview if already a waypoint
-    if (waypoints.some(w => w.hex.q === inspectedHex.q && w.hex.r === inspectedHex.r)) return null;
-
-    const lastPosition = waypoints.length > 0
-      ? waypoints[waypoints.length - 1].hex
-      : playerPosition;
-
-    // Use weighted pathfinding based on mode (same as addWaypoint)
-    if (pathfindingMode === 'lowThreat') {
-      const result = EscapeRouteCalculator.findLowestThreatPath(
-        lastPosition, inspectedHex, mapData.hexes, tierConfig, mapData.radius
-      );
-      return result?.path || null;
-    } else {
-      const result = EscapeRouteCalculator.findLowestEncounterPath(
-        lastPosition, inspectedHex, mapData.hexes, tierConfig, mapData
-      );
-      return result?.path || null;
-    }
-  };
-
   const previewPath = getPreviewPath();
-
-  // ========================================
-  // WAYPOINT MANAGEMENT
-  // ========================================
-
-  /**
-   * Check if a hex is already a waypoint
-   */
-  const isWaypoint = (hex) =>
-    waypoints.some(w => w.hex.q === hex.q && w.hex.r === hex.r);
-
-  /**
-   * Get the last position in the journey (last waypoint or player position)
-   */
-  const getLastJourneyPosition = () =>
-    waypoints.length > 0 ? waypoints[waypoints.length - 1].hex : playerPosition;
-
-  /**
-   * Get cumulative detection at end of current journey
-   */
-  const getJourneyEndDetection = () =>
-    waypoints.length > 0 ? waypoints[waypoints.length - 1].cumulativeDetection : detection;
-
-  /**
-   * Get cumulative encounter risk at end of current journey (0-100)
-   * Returns 0 if no waypoints (fresh start)
-   */
-  const getJourneyEndEncounterRisk = () =>
-    waypoints.length > 0 ? waypoints[waypoints.length - 1].cumulativeEncounterRisk : 0;
-
-  /**
-   * Add a waypoint to the end of the journey
-   */
-  const addWaypoint = (hex) => {
-    debugLog('WAYPOINT_MANAGER', 'addWaypoint called', { hex: { q: hex?.q, r: hex?.r }, lastPosition: getLastJourneyPosition() });
-
-    const lastPosition = getLastJourneyPosition();
-
-    // Calculate path from last position to new waypoint
-    // Use encounter-based or threat-based weighted A* based on pathfinding mode
-    let path;
-    if (pathfindingMode === 'lowThreat') {
-      // Use weighted A* that minimizes threat/detection cost
-      const result = EscapeRouteCalculator.findLowestThreatPath(
-        lastPosition, hex, mapData.hexes, tierConfig, mapData.radius
-      );
-      path = result?.path || null;
-    } else {
-      // Default (lowEncounter): Use weighted A* that minimizes encounter chance
-      const result = EscapeRouteCalculator.findLowestEncounterPath(
-        lastPosition, hex, mapData.hexes, tierConfig, mapData
-      );
-      path = result?.path || null;
-    }
-
-    if (!path) {
-      debugLog('WAYPOINT_MANAGER', '[WARN] No path available to waypoint');
-      return false;
-    }
-
-    // Calculate detection costs (using zone-based rates)
-    let segmentCost = MovementController.calculateDetectionCost(path, tierConfig, mapData.radius);
-    // Add looting threat if waypoint is a POI (POI-specific or fallback)
-    if (hex.type === 'poi') {
-      segmentCost += hex.poiData?.threatIncrease || tierConfig.detectionTriggers.looting;
-    }
-    const prevDetection = getJourneyEndDetection();
-    const cumulativeDetection = prevDetection + segmentCost;
-
-    // Calculate encounter risk for this segment
-    const segmentEncounterRisk = MovementController.calculateEncounterRisk(path, tierConfig, mapData);
-
-    // Calculate cumulative encounter risk using probability formula:
-    // P(at least one in journey) = 1 - P(none in all segments)
-    // P(none) = P(none in prev) × P(none in this segment)
-    const prevPNoEncounter = (100 - getJourneyEndEncounterRisk()) / 100;
-    const segmentPNoEncounter = (100 - segmentEncounterRisk) / 100;
-    const cumulativeEncounterRisk = (1 - (prevPNoEncounter * segmentPNoEncounter)) * 100;
-
-    debugLog('WAYPOINT_MANAGER', `Adding waypoint: +${segmentCost.toFixed(1)}% detection -> ${cumulativeDetection.toFixed(1)}%, encounter risk: ${segmentEncounterRisk.toFixed(1)}% segment -> ${cumulativeEncounterRisk.toFixed(1)}% cumulative`);
-
-    setWaypoints([...waypoints, {
-      hex,
-      pathFromPrev: path,
-      segmentCost,
-      cumulativeDetection,
-      segmentEncounterRisk,
-      cumulativeEncounterRisk
-    }]);
-
-    return true;
-  };
-
-  /**
-   * Remove a waypoint and recalculate subsequent paths
-   */
-  const removeWaypoint = (index) => {
-    debugLog('WAYPOINT_MANAGER', `Removing waypoint ${index + 1}`);
-
-    const newWaypoints = [...waypoints];
-    newWaypoints.splice(index, 1);
-
-    // Recalculate paths and detection from the removed index onward
-    recalculateWaypoints(newWaypoints, index);
-  };
-
-  /**
-   * Recalculate paths, cumulative detection, and encounter risk from a given index
-   */
-  const recalculateWaypoints = (waypointList, fromIndex) => {
-    if (waypointList.length === 0) {
-      setWaypoints([]);
-      return;
-    }
-
-    const recalculated = [...waypointList];
-
-    for (let i = fromIndex; i < recalculated.length; i++) {
-      const prevPosition = i === 0 ? playerPosition : recalculated[i - 1].hex;
-      const prevDetection = i === 0 ? detection : recalculated[i - 1].cumulativeDetection;
-      const prevEncounterRisk = i === 0 ? 0 : recalculated[i - 1].cumulativeEncounterRisk;
-
-      const path = MovementController.calculatePath(prevPosition, recalculated[i].hex, mapData.hexes);
-
-      if (path) {
-        // Calculate detection cost
-        let segmentCost = MovementController.calculateDetectionCost(path, tierConfig, mapData.radius);
-        // Add looting threat if waypoint is a POI (POI-specific or fallback)
-        if (recalculated[i].hex.type === 'poi') {
-          segmentCost += recalculated[i].hex.poiData?.threatIncrease || tierConfig.detectionTriggers.looting;
-        }
-
-        // Calculate encounter risk for this segment
-        const segmentEncounterRisk = MovementController.calculateEncounterRisk(path, tierConfig, mapData);
-
-        // Calculate cumulative encounter risk
-        const prevPNoEncounter = (100 - prevEncounterRisk) / 100;
-        const segmentPNoEncounter = (100 - segmentEncounterRisk) / 100;
-        const cumulativeEncounterRisk = (1 - (prevPNoEncounter * segmentPNoEncounter)) * 100;
-
-        recalculated[i] = {
-          ...recalculated[i],
-          pathFromPrev: path,
-          segmentCost,
-          cumulativeDetection: prevDetection + segmentCost,
-          segmentEncounterRisk,
-          cumulativeEncounterRisk
-        };
-      } else {
-        // Path broken - remove this and all subsequent waypoints
-        debugLog('WAYPOINT_MANAGER', `[WARN] Path broken at waypoint ${i + 1}, removing subsequent`);
-        setWaypoints(recalculated.slice(0, i));
-        return;
-      }
-    }
-
-    setWaypoints(recalculated);
-  };
-
-  /**
-   * Clear all waypoints
-   */
-  const clearAllWaypoints = () => {
-    debugLog('WAYPOINT_MANAGER', 'Clearing all waypoints');
-    setWaypoints([]);
-  };
-
-  // ========================================
-  // HEX INTERACTION
-  // ========================================
-
-  /**
-   * Handle hex click - open Hex Info view
-   */
-  const handleHexClick = (hex) => {
-    if (isMoving) return; // Can't inspect while moving
-    SoundManager.getInstance().play('hex_click');
-    setInspectedHex(hex);
-  };
-
-  /**
-   * Handle waypoint click in list - open Hex Info view for that waypoint
-   */
-  const handleWaypointClick = (waypointIndex) => {
-    setInspectedHex(waypoints[waypointIndex].hex);
-  };
-
-  /**
-   * Close Hex Info view, return to Waypoint List
-   */
-  const handleBackToJourney = () => {
-    setInspectedHex(null);
-  };
-
-  /**
-   * Add or remove waypoint (called from Hex Info view)
-   */
-  const handleToggleWaypoint = (hex) => {
-    debugLog('WAYPOINT_MANAGER', 'handleToggleWaypoint called', { q: hex?.q, r: hex?.r });
-
-    if (isWaypoint(hex)) {
-      const index = waypoints.findIndex(w => w.hex.q === hex.q && w.hex.r === hex.r);
-      debugLog('WAYPOINT_MANAGER', 'Removing waypoint at index:', index);
-      removeWaypoint(index);
-    } else {
-      const success = addWaypoint(hex);
-      debugLog('WAYPOINT_MANAGER', 'addWaypoint result:', success);
-    }
-    // Return to waypoint list after action
-    setInspectedHex(null);
-  };
 
   /**
    * Handle inventory view - show RunInventoryModal
