@@ -659,7 +659,7 @@ const HangarScreen = () => {
     e.stopPropagation(); // Prevent slot click
     const result = gameStateManager.unlockNextDeckSlot();
     if (!result.success) {
-      console.warn('Failed to unlock slot:', result.error);
+      debugLog('HANGAR', 'Failed to unlock slot:', result.error);
     }
   };
 
@@ -880,19 +880,11 @@ const HangarScreen = () => {
   // Map icon click handler
   const handleMapIconClick = (mapIndex, coordinate) => {
     SoundManager.getInstance().play('hex_click');
-    debugLog('EXTRACTION', '🗺️ Map icon clicked', { mapIndex, coordinate });
-
     const map = generatedMaps[mapIndex];
     if (!map) {
-      debugLog('EXTRACTION', '❌ Map data not generated yet', {
-        mapIndex,
-        generatedMapsLength: generatedMaps.length
-      });
-      console.error('[HangarScreen] Map data not generated yet');
+      debugLog('EXTRACTION', 'Map data not generated yet', { mapIndex });
       return;
     }
-
-    debugLog('EXTRACTION', '✅ Map found', { mapName: map.name, tier: map.tier });
 
     // Zoom to the clicked sector
     zoomToSector(coordinate);
@@ -909,31 +901,17 @@ const HangarScreen = () => {
     }
 
     if (!activeSlot) {
-      debugLog('EXTRACTION', '❌ No active ship available', {
-        totalSlots: singlePlayerShipSlots.length,
-        activeCount: singlePlayerShipSlots.filter(s => s.status === 'active').length
-      });
-      console.error('[HangarScreen] No active ship available for deployment');
+      debugLog('EXTRACTION', 'No active ship available for map click');
       return;
     }
 
-    // Check if the ship is undeployable (all sections destroyed)
     const slotValidation = validateShipSlot(activeSlot);
     if (slotValidation.isUndeployable) {
-      debugLog('EXTRACTION', '❌ Ship is undeployable - all sections destroyed', {
-        slotId: activeSlot.id,
-        slotName: activeSlot.name
-      });
-      console.error('[HangarScreen] Ship is undeployable - repair sections in deck builder');
+      debugLog('EXTRACTION', 'Ship undeployable', { slotId: activeSlot.id });
       return;
     }
 
-    debugLog('EXTRACTION', '✅ Active slot found', { slotId: activeSlot.id });
-    debugLog('EXTRACTION', '📝 Setting state for deployment', {
-      slotId: activeSlot.id,
-      mapName: map.name,
-      coordinate
-    });
+    debugLog('EXTRACTION', 'Map icon clicked', { mapIndex, coordinate, slotId: activeSlot.id });
 
     setSelectedSlotId(activeSlot.id);
     setSelectedMap(map);
@@ -996,62 +974,28 @@ const HangarScreen = () => {
     // Now initiate boss combat
     const result = await SinglePlayerCombatInitializer.initiateBossCombat(bossId, slotId);
     if (!result) {
-      debugLog('HANGAR', '❌ Failed to initiate boss combat');
-      console.error('[HangarScreen] Failed to initiate boss combat');
+      debugLog('HANGAR', 'Failed to initiate boss combat');
     }
   };
 
   // Deploy handler - shows deploying screen first
   const handleDeploy = (slotId, map, entryGateId = 0, quickDeploy = null) => {
-    debugLog('MODE_TRANSITION', '=== MODE: hangar -> tacticalMap (initiating) ===', {
-      trigger: 'user_action',
-      source: 'HangarScreen.handleDeploy',
-      detail: 'Deploy button clicked',
-      slotId,
-      mapTier: map?.tier,
-      mapName: map?.name
-    });
-    debugLog('EXTRACTION', '🚀 handleDeploy called', {
-      slotId,
-      mapName: map?.name,
-      entryGateId,
-      quickDeploy: quickDeploy?.name || 'standard',
-      hasSlotId: slotId != null,
-      hasMap: map != null
-    });
-
-    // Validate parameters
     if (slotId == null || map == null) {
-      debugLog('EXTRACTION', '❌ Cannot deploy: missing parameters', {
-        slotId,
-        map,
-        selectedSlotIdState: selectedSlotId,
-        selectedMapState: selectedMap?.name
-      });
-      console.error('[HangarScreen] Cannot deploy: missing parameters');
+      debugLog('EXTRACTION', 'Cannot deploy: missing parameters', { slotId, hasMap: map != null });
       return;
     }
 
-    // Check if ship is undeployable (all sections destroyed)
     const shipSlot = singlePlayerShipSlots.find(s => s.id === slotId);
     if (shipSlot) {
       const slotValidation = validateShipSlot(shipSlot);
       if (slotValidation.isUndeployable) {
-        debugLog('EXTRACTION', '❌ Cannot deploy: ship undeployable', {
-          slotId,
-          slotName: shipSlot.name
-        });
-        console.error('[HangarScreen] Cannot deploy: ship is undeployable - all sections destroyed');
+        debugLog('EXTRACTION', 'Cannot deploy: ship undeployable', { slotId });
         return;
       }
     }
 
-    debugLog('EXTRACTION', '✅ Showing deploying screen', {
-      slotId,
-      mapName: map.name,
-      tier: map.tier,
-      entryGateId,
-      quickDeploy: quickDeploy?.name || 'standard'
+    debugLog('MODE_TRANSITION', 'hangar -> tacticalMap', {
+      slotId, mapName: map.name, tier: map.tier, entryGateId
     });
 
     // Store deploy data and show deploying screen
@@ -1064,13 +1008,7 @@ const HangarScreen = () => {
   const handleDeployingComplete = () => {
     if (deployingData) {
       const { slotId, map, entryGateId, quickDeploy } = deployingData;
-      debugLog('EXTRACTION', '✅ Deploying screen complete, starting run', {
-        slotId,
-        mapName: map.name,
-        tier: map.tier,
-        entryGateId,
-        quickDeploy: quickDeploy?.name || 'standard'
-      });
+      debugLog('EXTRACTION', 'Deploying complete, starting run', { slotId, mapName: map.name });
 
       gameStateManager.startRun(slotId, map.tier, entryGateId, map, quickDeploy);
     }
