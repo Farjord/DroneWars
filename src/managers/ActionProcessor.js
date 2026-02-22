@@ -67,6 +67,54 @@ import {
   processForceWin as _processForceWin
 } from '../logic/actions/MiscActionStrategy.js';
 
+// --- Strategy Registry ---
+// Maps action type strings to instance method names.
+// processAction uses this map instead of a switch statement.
+const ACTION_STRATEGIES = {
+  attack: 'processAttack',
+  ability: 'processAbility',
+  move: 'processMove',
+  deployment: 'processDeployment',
+  cardPlay: 'processCardPlay',
+  additionalCostCardPlay: 'processAdditionalCostCardPlay',
+  additionalCostEffectSelectionComplete: 'processAdditionalCostEffectSelectionComplete',
+  movementCompletion: 'processMovementCompletion',
+  searchAndDrawCompletion: 'processSearchAndDrawCompletion',
+  shipAbility: 'processShipAbility',
+  shipAbilityCompletion: 'processShipAbilityCompletion',
+  recallAbility: 'processRecallAbility',
+  targetLockAbility: 'processTargetLockAbility',
+  recalculateAbility: 'processRecalculateAbility',
+  recalculateComplete: 'processRecalculateComplete',
+  reallocateShieldsAbility: 'processReallocateShieldsAbility',
+  reallocateShieldsComplete: 'processReallocateShieldsComplete',
+  turnTransition: 'processTurnTransition',
+  phaseTransition: 'processPhaseTransition',
+  roundStart: 'processRoundStart',
+  processFirstPlayerDetermination: 'processFirstPlayerDetermination',
+  reallocateShields: 'processReallocateShields',
+  aiAction: 'processAiAction',
+  playerPass: 'processPlayerPass',
+  aiShipPlacement: 'processAiShipPlacement',
+  optionalDiscard: 'processOptionalDiscard',
+  commitment: 'processCommitment',
+  draw: 'processDraw',
+  energyReset: 'processEnergyReset',
+  roundStartTriggers: 'processRoundStartTriggers',
+  rebuildProgress: 'processRebuildProgress',
+  momentumAward: 'processMomentumAward',
+  destroyDrone: 'processDestroyDrone',
+  addShield: 'processAddShield',
+  resetShields: 'processResetShields',
+  debugAddCardsToHand: 'processDebugAddCardsToHand',
+};
+
+// Status consumption actions need special routing (status type + shouldEndTurn)
+const STATUS_CONSUMPTION_TYPES = {
+  snaredConsumption: 'snared',
+  suppressedConsumption: 'suppressed',
+};
+
 class ActionProcessor {
   // Singleton instance
   static instance = null;
@@ -433,150 +481,20 @@ setAnimationManager(animationManager) {
     // Set lock for this action type
     this.actionLocks[type] = true;
 
-    let result; // Capture result for event emission
+    let result;
     try {
-      switch (type) {
-        case 'attack':
-          result = await this.processAttack(payload);
-          break;
+      // Strategy registry lookup
+      const methodName = ACTION_STRATEGIES[type];
+      const statusType = STATUS_CONSUMPTION_TYPES[type];
 
-        case 'ability':
-          result = await this.processAbility(payload);
-          break;
-
-        case 'move':
-          result = await this.processMove(payload);
-          break;
-
-        case 'deployment':
-          result = await this.processDeployment(payload);
-          break;
-
-        case 'cardPlay':
-          result = await this.processCardPlay(payload);
-          break;
-
-        case 'additionalCostCardPlay':
-          result = await this.processAdditionalCostCardPlay(payload);
-          break;
-
-        case 'additionalCostEffectSelectionComplete':
-          result = await this.processAdditionalCostEffectSelectionComplete(payload);
-          break;
-
-        case 'movementCompletion':
-          result = await this.processMovementCompletion(payload);
-          break;
-
-        case 'searchAndDrawCompletion':
-          result = await this.processSearchAndDrawCompletion(payload);
-          break;
-
-        case 'shipAbility':
-          result = await this.processShipAbility(payload);
-          break;
-
-        case 'shipAbilityCompletion':
-          result = await this.processShipAbilityCompletion(payload);
-          break;
-
-        case 'recallAbility':
-          result = await this.processRecallAbility(payload);
-          break;
-
-        case 'targetLockAbility':
-          result = await this.processTargetLockAbility(payload);
-          break;
-
-        case 'recalculateAbility':
-          result = await this.processRecalculateAbility(payload);
-          break;
-
-        case 'recalculateComplete':
-          result = await this.processRecalculateComplete(payload);
-          break;
-
-        case 'reallocateShieldsAbility':
-          result = await this.processReallocateShieldsAbility(payload);
-          break;
-
-        case 'reallocateShieldsComplete':
-          result = await this.processReallocateShieldsComplete(payload);
-          break;
-
-        case 'turnTransition':
-          result = await this.processTurnTransition(payload);
-          break;
-
-        case 'phaseTransition':
-          result = await this.processPhaseTransition(payload);
-          break;
-
-        case 'roundStart':
-          result = await this.processRoundStart(payload); break;
-
-        case 'reallocateShields':
-          result = await this.processReallocateShields(payload); break;
-
-        case 'aiAction':
-          result = await this.processAiAction(payload); break;
-
-        case 'playerPass':
-          result = await this.processPlayerPass(payload); break;
-
-        case 'aiShipPlacement':
-          result = await this.processAiShipPlacement(payload); break;
-
-        case 'optionalDiscard':
-          result = await this.processOptionalDiscard(payload); break;
-
-        case 'processFirstPlayerDetermination':
-          result = await this.processFirstPlayerDetermination(); break;
-
-        case 'commitment':
-          result = await this.processCommitment(payload); break;
-
-        case 'draw':
-          result = await this.processDraw(payload); break;
-
-        case 'energyReset':
-          result = await this.processEnergyReset(payload); break;
-
-        case 'roundStartTriggers':
-          result = await this.processRoundStartTriggers(payload); break;
-
-        case 'rebuildProgress':
-          result = await this.processRebuildProgress(payload); break;
-
-        case 'momentumAward':
-          result = await this.processMomentumAward(payload); break;
-
-        case 'destroyDrone':
-          result = await this.processDestroyDrone(payload); break;
-
-        case 'addShield':
-          result = await this.processAddShield(payload); break;
-
-        case 'resetShields':
-          result = await this.processResetShields(payload); break;
-
-        case 'debugAddCardsToHand':
-          result = await this.processDebugAddCardsToHand(payload); break;
-
-        case 'snaredConsumption':
-          debugLog('CONSUMPTION_DEBUG', '🟢 [2] ActionProcessor: snaredConsumption case hit', { payload });
-          result = await this.processSnaredConsumption(payload);
-          result.shouldEndTurn = true;
-          break;
-
-        case 'suppressedConsumption':
-          debugLog('CONSUMPTION_DEBUG', '🟢 [2] ActionProcessor: suppressedConsumption case hit', { payload });
-          result = await this.processSuppressedConsumption(payload);
-          result.shouldEndTurn = true;
-          break;
-
-        default:
-          throw new Error(`Unknown action type: ${type}`);
+      if (methodName) {
+        result = await this[methodName](payload);
+      } else if (statusType) {
+        debugLog('CONSUMPTION_DEBUG', `🟢 [2] ActionProcessor: ${type} case hit`, { payload });
+        result = await _processStatusConsumption(statusType, payload, this._getActionContext());
+        result.shouldEndTurn = true;
+      } else {
+        throw new Error(`Unknown action type: ${type}`);
       }
 
       // Store result for event emission in finally block
