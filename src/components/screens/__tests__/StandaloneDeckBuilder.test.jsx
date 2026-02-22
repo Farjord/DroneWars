@@ -2,18 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 
 // Mock dependencies
-vi.mock('../../data/cardData.js', () => ({ default: [] }));
-vi.mock('../../data/droneData.js', () => ({ default: [] }));
-vi.mock('../../data/ships.js', () => ({
+vi.mock('../../../data/cardData.js', () => ({ default: [] }));
+vi.mock('../../../data/droneData.js', () => ({ default: [] }));
+vi.mock('../../../data/ships.js', () => ({
   default: [],
   getDefaultShip: vi.fn(() => ({ id: 'test-ship', name: 'Test Ship' })),
   getShipById: vi.fn()
 }));
-vi.mock('./DeckBuilder.jsx', () => ({
+vi.mock('../DeckBuilder.jsx', () => ({
   default: ({ deck }) => <div data-testid="deck-builder" data-deck={JSON.stringify(deck)} />
 }));
 
-import StandaloneDeckBuilder from './StandaloneDeckBuilder.jsx';
+import StandaloneDeckBuilder from '../StandaloneDeckBuilder.jsx';
 
 describe('StandaloneDeckBuilder - Initial State', () => {
   beforeEach(() => {
