@@ -30,7 +30,6 @@ import rewardManager from './RewardManager.js';
 import aiPhaseProcessor from './AIPhaseProcessor.js';
 import tacticalMapStateManager from './TacticalMapStateManager.js';
 import transitionManager from './TransitionManager.js';
-// PhaseManager dependency removed - using direct phase checks
 
 class GameStateManager {
   constructor() {
@@ -93,7 +92,6 @@ class GameStateManager {
       singlePlayerShipComponentInstances: [],  // Ship component instances with hull tracking
       singlePlayerDiscoveredCards: [],   // Card discovery states (owned/discovered/undiscovered)
       singlePlayerShipSlots: [],         // 6 ship slots
-      // NOTE: currentRunState has been moved to TacticalMapStateManager
       quickDeployments: [],              // Quick deploy templates (max 5)
 
       // --- EXTRACTION DECK BUILDER NAVIGATION ---
@@ -1651,14 +1649,6 @@ class GameStateManager {
   }
 
   /**
-   * Update pass information
-   */
-  updatePassInfo(passUpdates) {
-    const updatedPassInfo = { ...this.state.passInfo, ...passUpdates };
-    this.setState({ passInfo: updatedPassInfo }, 'PASS_INFO_UPDATED');
-  }
-
-  /**
    * Set winner
    * For single-player extraction mode, processes combat outcome (victory/defeat)
    */
@@ -2851,7 +2841,6 @@ class GameStateManager {
         lastCombatResult: null,
         winner: null,
         singlePlayerEncounter: null,
-        // NOTE: currentRunState now managed by TacticalMapStateManager
 
         // UI state - ship placement
         placedSections: [],
@@ -3089,14 +3078,14 @@ class GameStateManager {
       shipSlot,
       runState.mapTier || 1,
       success,
-      totalCombatRep  // NEW: Pass combat reputation
+      totalCombatRep
     );
 
     // Add reputation info to run summary
     lastRunSummary.reputation = {
       repGained: reputationResult.repGained || 0,
-      loadoutRepGained: reputationResult.loadoutRepGained || 0,  // NEW: Breakdown
-      combatRepGained: reputationResult.combatRepGained || 0,     // NEW: Breakdown
+      loadoutRepGained: reputationResult.loadoutRepGained || 0,
+      combatRepGained: reputationResult.combatRepGained || 0,
       previousRep: reputationResult.previousRep || 0,
       newRep: reputationResult.newRep || 0,
       previousLevel: reputationResult.previousLevel || 1,
