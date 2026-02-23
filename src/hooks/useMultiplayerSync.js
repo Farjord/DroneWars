@@ -243,6 +243,15 @@ const useMultiplayerSync = ({
     }
   }, [turnPhase, gameState.commitments, isMultiplayer, getLocalPlayerId, getOpponentPlayerId, waitingForPlayerPhase, phaseAnimationQueue]);
 
+  // --- Guest render completion for animations ---
+  // Signal to GuestMessageQueueService that React has finished rendering
+  // This ensures animations (like teleport effects) have valid DOM elements to target
+  useEffect(() => {
+    if (gameState.gameMode === 'guest') {
+      gameStateManager.emit('render_complete');
+    }
+  }, [gameState, gameStateManager]);
+
   return {
     waitingForPlayerPhase,
     setWaitingForPlayerPhase,

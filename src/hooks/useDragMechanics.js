@@ -38,6 +38,7 @@ const useDragMechanics = ({
   cancelAllActions, opponentPlayerState, gameState, gameDataService,
   getPlacedSectionsForEngine, multiSelectFlowInProgress, additionalCostFlowInProgress,
   droneRefs, setMoveConfirmation, resolveAttack, getEffectiveStats, selectedDrone,
+  abilityMode,
 }) => {
   // --- Drag State ---
   // NOTE: draggedDrone and costReminderArrowState are hoisted to App.jsx
@@ -58,6 +59,25 @@ const useDragMechanics = ({
   const droneDragArrowRef = useRef(null);
   const actionCardDragArrowRef = useRef(null);
   const costReminderArrowRef = useRef(null);
+
+  // --- Selection-driven effects ---
+
+  // Clear hoveredTarget when selectedDrone changes
+  useEffect(() => {
+    setHoveredTarget(null);
+  }, [selectedDrone]);
+
+  // Show/hide click-based targeting arrow based on selectedDrone
+  useEffect(() => {
+    if (selectedDrone && !abilityMode && !singleMoveMode && turnPhase === 'action') {
+      const startPos = getElementCenter(droneRefs.current[selectedDrone.id], gameAreaRef.current);
+      if (startPos) {
+        setArrowState({ visible: true, start: startPos, end: { x: startPos.x, y: startPos.y } });
+      }
+    } else {
+      setArrowState(prev => ({ ...prev, visible: false }));
+    }
+  }, [selectedDrone, turnPhase, abilityMode, singleMoveMode]);
 
   // --- Handlers ---
 

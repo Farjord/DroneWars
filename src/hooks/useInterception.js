@@ -30,6 +30,7 @@ const useInterception = ({
   getLocalPlayerId,
   getPlacedSectionsForEngine,
   resolveAttack,
+  getEffectiveStats,
 }) => {
   const { turnPhase } = gameState;
 
@@ -40,6 +41,7 @@ const useInterception = ({
   const [interceptedBadge, setInterceptedBadge] = useState(null);
   const [interceptionModeActive, setInterceptionModeActive] = useState(false);
   const [selectedInterceptor, setSelectedInterceptor] = useState(null);
+  const [potentialGuardians, setPotentialGuardians] = useState([]);
 
   // --- Effects ---
 
@@ -116,6 +118,36 @@ const useInterception = ({
     }
   }, [gameState.lastInterception]);
 
+  // --- Guardian Highlighting ---
+  // Calculate potential guardian blockers when drone is selected
+  // Highlights opponent drones with GUARDIAN keyword in the same lane
+  useEffect(() => {
+    if (singleMoveMode) {
+      setPotentialGuardians([]);
+      return;
+    }
+
+    if (turnPhase === 'action' && selectedDrone && !selectedDrone.isExhausted) {
+      const [attackerLane] = Object.entries(localPlayerState.dronesOnBoard)
+        .find(([_, drones]) => drones.some(d => d.id === selectedDrone.id)) || [];
+
+      if (attackerLane) {
+        const opponentDronesInLane = opponentPlayerState.dronesOnBoard[attackerLane] || [];
+        const guardians = opponentDronesInLane
+          .filter(drone => {
+            const effectiveStats = getEffectiveStats(drone, attackerLane);
+            return effectiveStats.keywords.has('GUARDIAN');
+          })
+          .map(drone => drone.id);
+        setPotentialGuardians(guardians);
+      } else {
+        setPotentialGuardians([]);
+      }
+    } else {
+      setPotentialGuardians([]);
+    }
+  }, [selectedDrone, turnPhase, localPlayerState, opponentPlayerState, getEffectiveStats, singleMoveMode]);
+
   // --- Handlers ---
 
   // Enter interception mode for battlefield selection
@@ -190,12 +222,14 @@ const useInterception = ({
     // State (read by App.jsx for prop passing)
     playerInterceptionChoice,
     potentialInterceptors,
+    potentialGuardians,
     showOpponentDecidingModal,
     interceptedBadge,
     interceptionModeActive,
     selectedInterceptor,
 
-    // Setters needed by drag logic in App.jsx
+    // Setters needed by drag logic and modal callbacks in App.jsx
+    setPotentialGuardians,
     setSelectedInterceptor,
     setInterceptionModeActive,
     setPlayerInterceptionChoice,

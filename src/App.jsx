@@ -157,8 +157,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [selectedDrone, setSelectedDrone] = useState(null);
   const [hoveredCardId, setHoveredCardId] = useState(null);
 
-  // Combat and attack state
-  const [potentialGuardians, setPotentialGuardians] = useState([]);
+  // Combat and attack state — potentialGuardians moved to useInterception
 
   // AI behavior and reporting state
   const [aiCardPlayReport, setAiCardPlayReport] = useState(null);
@@ -205,7 +204,7 @@ const App = ({ phaseAnimationQueue }) => {
   const sectionRefs = useRef({});
   const gameAreaRef = useRef(null);
   const isResolvingAttackRef = useRef(false);
-  const footerPreviousPhaseRef = useRef(null); // Track previous turnPhase for footer view switching
+  // footerPreviousPhaseRef moved to useGameLifecycle
   const roundStartCascadeTriggered = useRef(false); // Prevent duplicate round start cascade triggers
   const deploymentToActionTriggered = useRef(false); // Prevent duplicate deployment → action triggers
   const multiSelectFlowInProgress = useRef(false); // Track multi-select flow to prevent premature cleanup
@@ -777,6 +776,7 @@ const App = ({ phaseAnimationQueue }) => {
   const {
     playerInterceptionChoice,
     potentialInterceptors,
+    potentialGuardians,
     showOpponentDecidingModal,
     interceptedBadge,
     interceptionModeActive,
@@ -801,6 +801,7 @@ const App = ({ phaseAnimationQueue }) => {
     getLocalPlayerId,
     getPlacedSectionsForEngine,
     resolveAttack,
+    getEffectiveStats,
   });
 
   // --- DRAG MECHANICS HOOK ---
@@ -837,6 +838,7 @@ const App = ({ phaseAnimationQueue }) => {
     cancelAllActions, opponentPlayerState, gameState, gameDataService,
     getPlacedSectionsForEngine, multiSelectFlowInProgress, additionalCostFlowInProgress,
     droneRefs, setMoveConfirmation, resolveAttack, getEffectiveStats, selectedDrone,
+    abilityMode,
   });
 
   // Positioned after useDragMechanics — depends on draggedActionCard (useDragMechanics)
@@ -1247,34 +1249,7 @@ const App = ({ phaseAnimationQueue }) => {
 
 
 
-  /**
-   * HANDLE FOOTER VIEW TOGGLE
-   * Switches between hand and drones views in experimental footer.
-   * Footer is always visible, only view changes.
-   * @param {string} view - The footer view to display ('hand' or 'drones')
-   */
-  const handleFooterViewToggle = (view) => {
-    setFooterView(view);
-  };
-
-  /**
-   * HANDLE FOOTER BUTTON CLICK (Classic Footer Only)
-   * Toggles footer panel visibility and switches between footer views.
-   * Used by the original non-experimental footer.
-   * @param {string} view - The footer view to display ('hand', 'drones', 'log')
-   */
-  const handleFooterButtonClick = (view) => {
-    if (!isFooterOpen) {
-      setIsFooterOpen(true);
-      setFooterView(view);
-    } else {
-      if (footerView === view) {
-        setIsFooterOpen(false);
-      } else {
-        setFooterView(view);
-      }
-    }
-  };
+  // Footer view handlers (handleFooterViewToggle, handleFooterButtonClick) moved to useGameLifecycle
 
   // ========================================
   // SECTION 8: EFFECT HOOKS
@@ -1330,59 +1305,8 @@ const App = ({ phaseAnimationQueue }) => {
     }
   }, [winner, showWinnerModal]);
 
-  // --- 8.5 GUARDIAN HIGHLIGHTING ---
-  // Calculate potential guardian blockers when drone is selected
-  // Highlights opponent drones with GUARDIAN keyword in the same lane
-  useEffect(() => {
-    // Skip guardian highlighting during SINGLE_MOVE card flow
-    if (singleMoveMode) {
-      setPotentialGuardians([]);
-      return;
-    }
-
-    if (turnPhase === 'action' && selectedDrone && !selectedDrone.isExhausted) {
-      // Find which lane the selected drone is in
-      const [attackerLane] = Object.entries(localPlayerState.dronesOnBoard)
-        .find(([_, drones]) => drones.some(d => d.id === selectedDrone.id)) || [];
-
-      if (attackerLane) {
-        // Find all opponent drones in that lane with GUARDIAN keyword
-        const opponentDronesInLane = opponentPlayerState.dronesOnBoard[attackerLane] || [];
-        const guardians = opponentDronesInLane
-          .filter(drone => {
-            const effectiveStats = getEffectiveStats(drone, attackerLane);
-            return effectiveStats.keywords.has('GUARDIAN');
-          })
-          .map(drone => drone.id);
-        setPotentialGuardians(guardians);
-      } else {
-        setPotentialGuardians([]);
-      }
-    } else {
-      setPotentialGuardians([]);
-    }
-  }, [selectedDrone, turnPhase, localPlayerState, opponentPlayerState, getEffectiveStats, singleMoveMode]);
-
-  useEffect(() => {
-   setHoveredTarget(null);
-  }, [selectedDrone]);
-
-  // This hook now ONLY handles showing/hiding the arrow and setting its start point.
-  // It only runs when the selected drone changes, not on every mouse move.
-  useEffect(() => {
-    if (selectedDrone && !abilityMode && !singleMoveMode && turnPhase === 'action') {
-        const startPos = getElementCenter(droneRefs.current[selectedDrone.id], gameAreaRef.current);
-        if(startPos) {
-            // Set state once to make the arrow visible and position its start point.
-            setArrowState({ visible: true, start: startPos, end: { x: startPos.x, y: startPos.y } });
-        }
-    } else {
-        // Set state once to hide the arrow.
-        setArrowState(prev => ({ ...prev, visible: false }));
-    }
-  }, [selectedDrone, turnPhase, abilityMode, singleMoveMode]);
-
-  // Effects 8.4c, 8.4e, 8.4g moved to useDragMechanics hook
+  // Effects 8.5 (guardian highlighting), hoveredTarget clear, and arrow state
+  // moved to useInterception and useDragMechanics hooks
 
    // --- 8.5 DEFENSIVE STATE CLEANUP ---
   // Reset attack flag when critical game state changes to prevent infinite loops
@@ -1401,70 +1325,9 @@ const App = ({ phaseAnimationQueue }) => {
   // Animations now play BEFORE state updates (while entities still exist in DOM)
   // See GuestMessageQueueService.js for details
 
-  // --- 8.8 GUEST RENDER COMPLETION FOR ANIMATIONS ---
-  // Signal to GuestMessageQueueService that React has finished rendering
-  // This ensures animations (like teleport effects) have valid DOM elements to target
-  // Same pattern used in DroneSelectionScreen, DeckSelectionScreen, and ShipPlacementScreen
-  useEffect(() => {
-    if (gameState.gameMode === 'guest') {
-      gameStateManager.emit('render_complete');
-    }
-  }, [gameState, gameStateManager]);
+  // Guest render completion effect moved to useMultiplayerSync
 
-  // --- 8.9 MANDATORY ACTION INITIALIZATION ---
-  // Manage ability-based mandatory action clearing and UI state for mandatory phases
-  // Note: Phase-based mandatory actions now derive UI state from turnPhase + commitments (see Section 5.5)
-  useEffect(() => {
-    const prevPhase = footerPreviousPhaseRef.current;
-    const enteredMandatoryDiscard = turnPhase === 'mandatoryDiscard' && prevPhase !== 'mandatoryDiscard';
-    const enteredMandatoryRemoval = turnPhase === 'mandatoryDroneRemoval' && prevPhase !== 'mandatoryDroneRemoval';
-    const enteredOptionalDiscard = turnPhase === 'optionalDiscard' && prevPhase !== 'optionalDiscard';
-    const enteredDeployment = turnPhase === 'deployment' && prevPhase !== 'deployment';
-    const enteredAction = turnPhase === 'action' && prevPhase !== 'action';
-
-    // Open footer and set view to hand when first entering mandatoryDiscard phase
-    if (enteredMandatoryDiscard) {
-      setFooterView('hand');
-      setIsFooterOpen(true);
-    }
-
-    // Open footer and set view to hand when first entering optionalDiscard phase
-    if (enteredOptionalDiscard) {
-      setFooterView('hand');
-      setIsFooterOpen(true);
-    }
-
-    // Open footer and set view to drones when first entering mandatoryDroneRemoval phase
-    if (enteredMandatoryRemoval) {
-      setFooterView('drones');
-      setIsFooterOpen(true);
-    }
-
-    // Open footer and set view to drones when first entering deployment phase
-    if (enteredDeployment) {
-      setFooterView('drones');
-      setIsFooterOpen(true);
-    }
-
-    // Open footer and set view to hand when first entering action phase
-    if (enteredAction) {
-      setFooterView('hand');
-      setIsFooterOpen(true);
-    }
-
-    // Clear ability-based mandatoryAction when transitioning FROM a mandatory phase TO a non-mandatory phase
-    // This only affects ability-triggered mandatory actions (e.g., "discard 2 cards" from ship ability)
-    const wasInMandatoryPhase = prevPhase === 'mandatoryDiscard' || prevPhase === 'mandatoryDroneRemoval';
-    const isInMandatoryPhase = turnPhase === 'mandatoryDiscard' || turnPhase === 'mandatoryDroneRemoval';
-
-    if (wasInMandatoryPhase && !isInMandatoryPhase && mandatoryAction && mandatoryAction.fromAbility) {
-      debugLog('PHASE_TRANSITIONS', `✅ Clearing ability-based mandatoryAction (transitioned from ${prevPhase} to ${turnPhase})`);
-      setMandatoryAction(null);
-    }
-
-    // Update ref for next comparison
-    footerPreviousPhaseRef.current = turnPhase;
-  }, [turnPhase, mandatoryAction]);
+  // Mandatory action init + footer state on phase transitions moved to useGameLifecycle
 
   // ========================================
   // SECTION 9: EARLY RETURN FOR NULL PLAYER STATE
@@ -1521,6 +1384,7 @@ const App = ({ phaseAnimationQueue }) => {
     handleMandatoryDiscardContinue, handleMandatoryDroneRemovalContinue,
     checkBothPlayersHandLimitComplete, handleConfirmMandatoryDestroy,
     downloadLogAsCSV, handleCardInfoClick,
+    handleFooterViewToggle, handleFooterButtonClick,
   } = useGameLifecycle({
     // Game state
     gameState, localPlayerState, opponentPlayerState, turnPhase, passInfo,
@@ -1539,6 +1403,8 @@ const App = ({ phaseAnimationQueue }) => {
     cancelAllActions, resetGame, endGame,
     // Refs
     isResolvingAttackRef,
+    // Footer state
+    footerView, isFooterOpen, setFooterView, setIsFooterOpen,
     // External
     gameStateManager, phaseAnimationQueue, gameLog,
   });
@@ -1635,8 +1501,6 @@ const App = ({ phaseAnimationQueue }) => {
       debugLog('CONSUMPTION_DEBUG', '🟢 [1] App.jsx: Calling processAction snaredConsumption', { droneId, owner });
       await processActionWithGuestRouting('snaredConsumption', { droneId, playerId: owner });
       setSelectedDrone(null);
-      setPotentialInterceptors([]);
-      setPotentialGuardians([]);
       setDraggedDrone(null);
       setValidCardTargets([]);
       return;
@@ -1650,8 +1514,6 @@ const App = ({ phaseAnimationQueue }) => {
         });
         await resolveSingleMove(card, droneId, owner, from, to);
         setSelectedDrone(null);
-        setPotentialInterceptors([]);
-        setPotentialGuardians([]);
         setDraggedDrone(null);
         setValidCardTargets([]);
       } else {

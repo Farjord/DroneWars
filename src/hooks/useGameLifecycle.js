@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react';
 import fullCardCollection from '../data/cardData.js';
 import ExtractionController from '../logic/singlePlayer/ExtractionController.js';
 import { forceWinCombat } from '../logic/game/ForceWin.js';
@@ -58,11 +59,20 @@ export default function useGameLifecycle({
   // --- Refs ---
   isResolvingAttackRef,
 
+  // --- Footer state ---
+  footerView,
+  isFooterOpen,
+  setFooterView,
+  setIsFooterOpen,
+
   // --- External ---
   gameStateManager,
   phaseAnimationQueue,
   gameLog,
 }) {
+
+  // Track previous turnPhase for footer view switching and mandatory action clearing
+  const footerPreviousPhaseRef = useRef(null);
 
   // --- handleReset ---
 
@@ -484,6 +494,71 @@ export default function useGameLifecycle({
     }
   };
 
+  // --- Footer view handlers ---
+
+  const handleFooterViewToggle = (view) => {
+    setFooterView(view);
+  };
+
+  const handleFooterButtonClick = (view) => {
+    if (!isFooterOpen) {
+      setIsFooterOpen(true);
+      setFooterView(view);
+    } else {
+      if (footerView === view) {
+        setIsFooterOpen(false);
+      } else {
+        setFooterView(view);
+      }
+    }
+  };
+
+  // --- Mandatory action initialization + footer state on phase transitions ---
+  useEffect(() => {
+    const prevPhase = footerPreviousPhaseRef.current;
+    const enteredMandatoryDiscard = turnPhase === 'mandatoryDiscard' && prevPhase !== 'mandatoryDiscard';
+    const enteredMandatoryRemoval = turnPhase === 'mandatoryDroneRemoval' && prevPhase !== 'mandatoryDroneRemoval';
+    const enteredOptionalDiscard = turnPhase === 'optionalDiscard' && prevPhase !== 'optionalDiscard';
+    const enteredDeployment = turnPhase === 'deployment' && prevPhase !== 'deployment';
+    const enteredAction = turnPhase === 'action' && prevPhase !== 'action';
+
+    if (enteredMandatoryDiscard) {
+      setFooterView('hand');
+      setIsFooterOpen(true);
+    }
+
+    if (enteredOptionalDiscard) {
+      setFooterView('hand');
+      setIsFooterOpen(true);
+    }
+
+    if (enteredMandatoryRemoval) {
+      setFooterView('drones');
+      setIsFooterOpen(true);
+    }
+
+    if (enteredDeployment) {
+      setFooterView('drones');
+      setIsFooterOpen(true);
+    }
+
+    if (enteredAction) {
+      setFooterView('hand');
+      setIsFooterOpen(true);
+    }
+
+    // Clear ability-based mandatoryAction when transitioning FROM a mandatory phase TO a non-mandatory phase
+    const wasInMandatoryPhase = prevPhase === 'mandatoryDiscard' || prevPhase === 'mandatoryDroneRemoval';
+    const isInMandatoryPhase = turnPhase === 'mandatoryDiscard' || turnPhase === 'mandatoryDroneRemoval';
+
+    if (wasInMandatoryPhase && !isInMandatoryPhase && mandatoryAction && mandatoryAction.fromAbility) {
+      debugLog('PHASE_TRANSITIONS', `Clearing ability-based mandatoryAction (transitioned from ${prevPhase} to ${turnPhase})`);
+      setMandatoryAction(null);
+    }
+
+    footerPreviousPhaseRef.current = turnPhase;
+  }, [turnPhase, mandatoryAction]);
+
   return {
     handleReset,
     handleExitGame,
@@ -502,5 +577,7 @@ export default function useGameLifecycle({
     handleConfirmMandatoryDestroy,
     downloadLogAsCSV,
     handleCardInfoClick,
+    handleFooterViewToggle,
+    handleFooterButtonClick,
   };
 }
