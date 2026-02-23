@@ -13,9 +13,9 @@
 // - Card effects
 // - perDrone: multiplies value by count of named drones on acting player's board
 
-import BaseEffectProcessor from '../BaseEffectProcessor.js';
-import DetectionManager from '../../detection/DetectionManager.js';
-import { debugLog } from '../../../utils/debugLogger.js';
+import BaseEffectProcessor from './BaseEffectProcessor.js';
+import DetectionManager from '../detection/DetectionManager.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * IncreaseThreatEffectProcessor

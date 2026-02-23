@@ -19,7 +19,7 @@ import { createSectionDamagedAnimation } from './animations/SectionDamagedAnimat
 import { createDroneReturnAnimation } from './animations/DroneReturnAnimation.js';
 import { createDogfightDamageAnimation } from './animations/DogfightDamageAnimation.js';
 import { createRetaliationDamageAnimation } from './animations/RetaliationDamageAnimation.js';
-import { processTrigger as processMineTrigger } from '../effects/mines/MineTriggeredEffectProcessor.js';
+import { processTrigger as processMineTrigger } from '../effects/MineTriggeredEffectProcessor.js';
 
 /**
  * Calculate damage distribution based on damage type

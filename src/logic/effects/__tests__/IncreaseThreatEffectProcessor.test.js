@@ -7,16 +7,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock DetectionManager before importing the processor
-vi.mock('../../../detection/DetectionManager.js', () => ({
+vi.mock('../../detection/DetectionManager.js', () => ({
   default: { addDetection: vi.fn() }
 }));
 
-vi.mock('../../../../utils/debugLogger.js', () => ({
+vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }));
 
 import IncreaseThreatEffectProcessor from '../IncreaseThreatEffectProcessor.js';
-import DetectionManager from '../../../detection/DetectionManager.js';
+import DetectionManager from '../../detection/DetectionManager.js';
 
 describe('IncreaseThreatEffectProcessor', () => {
   let processor;

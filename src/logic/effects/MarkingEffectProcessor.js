@@ -4,8 +4,8 @@
 // Handles MARK_DRONE and MARK_RANDOM_ENEMY card effects
 // Extracted from gameLogic.js Phase 9.4A
 
-import BaseEffectProcessor from '../BaseEffectProcessor.js';
-import { debugLog } from '../../../utils/debugLogger.js';
+import BaseEffectProcessor from './BaseEffectProcessor.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * MarkingEffectProcessor

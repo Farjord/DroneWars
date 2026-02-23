@@ -7,10 +7,10 @@
 //
 // ANIMATION: TELEPORT_IN for token spawning
 
-import BaseEffectProcessor from '../BaseEffectProcessor.js';
-import { debugLog } from '../../../utils/debugLogger.js';
-import fullDroneCollection from '../../../data/droneData.js';
-import { countDroneTypeInLane } from '../../utils/gameEngineUtils.js';
+import BaseEffectProcessor from './BaseEffectProcessor.js';
+import { debugLog } from '../../utils/debugLogger.js';
+import fullDroneCollection from '../../data/droneData.js';
+import { countDroneTypeInLane } from '../utils/gameEngineUtils.js';
 
 /**
  * Processor for CREATE_TOKENS effect type

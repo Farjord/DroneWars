@@ -14,7 +14,7 @@ import { buildDefaultMovementAnimation } from './animations/DefaultMovementAnima
 import { debugLog } from '../../../utils/debugLogger.js';
 import { LaneControlCalculator } from '../../combat/LaneControlCalculator.js';
 import { checkRallyBeaconGoAgain } from '../../utils/rallyBeaconHelper.js';
-import { processTrigger as processMineTrigger } from '../mines/MineTriggeredEffectProcessor.js';
+import { processTrigger as processMineTrigger } from '../MineTriggeredEffectProcessor.js';
 
 /**
  * MovementEffectProcessor

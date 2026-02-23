@@ -10,7 +10,7 @@ import fullDroneCollection from '../../data/droneData.js';
 import EffectRouter from '../EffectRouter.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import { onDroneDeployed } from '../availability/DroneAvailabilityManager.js';
-import { processTrigger as processMineTrigger } from '../effects/mines/MineTriggeredEffectProcessor.js';
+import { processTrigger as processMineTrigger } from '../effects/MineTriggeredEffectProcessor.js';
 
 /**
  * DeploymentProcessor

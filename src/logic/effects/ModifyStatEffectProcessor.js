@@ -8,8 +8,8 @@
 //
 // NO ANIMATIONS: Stat modifications are silent mechanical effects
 
-import BaseEffectProcessor from '../BaseEffectProcessor.js';
-import { debugLog } from '../../../utils/debugLogger.js';
+import BaseEffectProcessor from './BaseEffectProcessor.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * Processor for MODIFY_STAT effect type

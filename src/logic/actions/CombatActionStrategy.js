@@ -9,7 +9,7 @@ import { calculateAiInterception } from '../combat/InterceptionProcessor.js';
 import AbilityResolver from '../abilities/AbilityResolver.js';
 import { gameEngine } from '../gameLogic.js';
 import { checkRallyBeaconGoAgain } from '../utils/rallyBeaconHelper.js';
-import { processTrigger as processMineTrigger } from '../effects/mines/MineTriggeredEffectProcessor.js';
+import { processTrigger as processMineTrigger } from '../effects/MineTriggeredEffectProcessor.js';
 import { debugLog } from '../../utils/debugLogger.js';
 
 /**

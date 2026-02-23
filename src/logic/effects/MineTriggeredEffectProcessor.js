@@ -8,9 +8,9 @@
 // This is a standalone utility class — NOT routed through EffectRouter.
 // Called directly from trigger hooks in Movement, Deployment, and Attack processors.
 
-import { onDroneDestroyed } from '../../utils/droneStateUtils.js';
-import { updateAuras } from '../../utils/auraManager.js';
-import { debugLog } from '../../../utils/debugLogger.js';
+import { onDroneDestroyed } from '../utils/droneStateUtils.js';
+import { updateAuras } from '../utils/auraManager.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * Process a mine trigger event.
