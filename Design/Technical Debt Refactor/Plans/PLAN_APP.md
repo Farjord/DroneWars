@@ -71,3 +71,27 @@ A detailed extraction plan exists at `Design/Technical Debt Refactor/REFACTOR_AP
 - handleCardClick (235 lines): Stays in App.jsx due to circular dependency with cancelAllActions.
 
 **Test results:** 220 files, 3748 passed, 0 failures. Build clean.
+
+## Session 4 Outcomes
+
+### Actual Outcomes
+
+**Completed:**
+- Steps 10b-10c: Moved handleActionCardDragStart (93 lines), handleActionCardDragEnd (485 lines), handleDroneDragStart (136 lines), handleDroneDragEnd (533 lines) + 3 mouseup cleanup effects (78 lines) into useDragMechanics hook. Resolved circular dependency by hoisting `draggedDrone` and `costReminderArrowState` to App.jsx level. Reordered hooks: multiplayerSync → shieldAllocation → cardSelection → interception → dragMechanics. Repositioned handleLaneHover after useDragMechanics to resolve TDZ.
+- Steps 13.5 + 14: Extracted ModalLayer sub-component (430 lines). Extracted 11 complex inline modal onConfirm/onCancel callbacks to named functions. Moved 28 modal component imports to ModalLayer.jsx. ModalLayer is a pure rendering component (React.memo, no hooks/state/effects).
+
+**Line count:** 5,086 → 3,541 (1,545 lines removed)
+
+**Key decisions:**
+- Hoisted `draggedDrone` and `costReminderArrowState` to App.jsx to break circular dependency chain: useDragMechanics → setCostReminderArrowState → useCardSelection → setAffectedDroneIds → useDragMechanics, and useDragMechanics → draggedDrone → useInterception → interceptionModeActive → useDragMechanics.
+- useDragMechanics at 1,633 lines (2x the 800-line threshold). Kept as one cohesive hook per architect correction #3. Noted in FUTURE_IMPROVEMENTS.md.
+- Drag handlers kept as plain functions (not useCallback) to match original render-per-cycle behavior, avoiding stale closure issues without needing refs.
+
+**Deferred to Session 5:**
+- useTargeting extraction (~400 lines)
+- useGameLifecycle extraction (~600 lines)
+- useActionRouting extraction (~150 lines)
+- handleCardClick (236 lines), handleLaneClick (255 lines), handleTokenClick (139 lines) — cross-cutting handlers with cancelAllActions dependency
+- useDragMechanics size reduction (1,633 lines → potential sub-hook split)
+
+**Test results:** 220 files, 3748 passed, 0 failures. Build clean.

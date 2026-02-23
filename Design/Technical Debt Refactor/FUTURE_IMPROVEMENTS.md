@@ -24,6 +24,9 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 16 | TacticalMapScreen.jsx | Orchestrator at 675 lines — above 400 target. Remaining code is ~45 useState + ~12 useRef declarations, 7 hook calls, sharedRefs bundle, and core JSX layout. Further splitting would fragment React state. | TacticalMapScreen refactoring | 2026-02-22 | Low |
 | 17 | TacticalMapModals.jsx | Prop relay pattern (337 lines, 40+ props). Future refactor could use modal context or modal manager to reduce prop drilling. | TacticalMapScreen refactoring | 2026-02-22 | Low |
 | 18 | useTacticalMovement.js | At 390 lines, near 400-line guideline. handleCommenceJourney alone is ~240 lines. Acceptable — splitting would break the async movement loop's closure. | TacticalMapScreen refactoring | 2026-02-22 | Low |
+| 19 | useDragMechanics.js | At 1,633 lines (2x 800-line threshold). All drag handlers consolidated into one hook per architect correction #3. Potential split: useDeploymentDrag (~100 lines), useActionCardDrag (~600 lines), useDroneDrag (~900 lines). Deferred because handlers share 10 state vars + 5 refs. | App.jsx Session 4 | 2026-02-23 | Medium |
+| 20 | ModalLayer.jsx | Prop relay pattern (430 lines, 60+ props). Similar to TacticalMapModals (#17). Future refactor could use modal context or modal manager. | App.jsx Session 4 | 2026-02-23 | Low |
+| 21 | App.jsx | handleCardClick (236 lines), handleLaneClick (255 lines), handleTokenClick (139 lines) remain due to cancelAllActions circular dep. Could extract to a useClickHandlers hook if cancelAllActions is also extracted. | App.jsx Session 4 | 2026-02-23 | Medium |
 
 ## Resolved Items
 
