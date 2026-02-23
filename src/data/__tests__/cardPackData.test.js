@@ -10,7 +10,7 @@ import {
   getPackCostForTier,
   generateRandomShopPack,
   createSeededRNG
-} from './cardPackData.js';
+} from '../cardPackData.js';
 
 describe('Shop Pack Constants', () => {
   it('defines correct tier costs', () => {

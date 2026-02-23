@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { calculateAICoresDrop, AI_CORES } from './aiCoresData.js';
+import { calculateAICoresDrop, AI_CORES } from '../aiCoresData.js';
 
 /**
  * Create a mock RNG that returns a specific sequence of values

@@ -21,7 +21,7 @@ import {
   findEligibleItems,
   selectSalvageItem,
   generateSalvageItemFromValue
-} from './salvageItemData.js';
+} from '../salvageItemData.js';
 
 /**
  * Create a mock RNG that returns a specific sequence of values

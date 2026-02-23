@@ -14,7 +14,7 @@ import {
   getMissionById,
   getIntroMissions,
   getMissionsByCategory,
-} from './missionData.js';
+} from '../missionData.js';
 
 describe('Mission Data Structure', () => {
 

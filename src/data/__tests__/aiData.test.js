@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import aiPersonalities from './aiData.js';
+import aiPersonalities from '../aiData.js';
 
 /**
  * TDD Tests for Boss AI Configuration

@@ -8,7 +8,7 @@ import {
   tacticalItemCollection,
   getTacticalItemById,
   getTacticalItemsByType
-} from './tacticalItemData.js';
+} from '../tacticalItemData.js';
 
 describe('tacticalItemData', () => {
   describe('tacticalItemCollection', () => {
