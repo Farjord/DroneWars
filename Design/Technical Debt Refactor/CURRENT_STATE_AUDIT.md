@@ -1,143 +1,80 @@
-# Tech Debt Audit — 2026-02-21 (Baseline)
+# Tech Debt Audit — Post-Codebase Audit (2026-02-23)
 
 ## Summary
 
-| Metric | Count |
-|-|-|
-| Files over 800 lines | 46 |
-| Files 400-799 lines | 32 |
-| Tests outside `__tests__/` | 199 of 201 |
-| Data files with logic | 9 |
-| Naming violations | 0 |
-| Source files without tests | 313 of 431 (27% file-level coverage) |
+| Metric | Pre-Refactoring (Feb 21) | Post-Audit (Feb 23) | Change |
+|-|-|-|-|
+| Files over 800 lines | 46 | 27 | -19 |
+| Files 400-799 lines | 32 | 54 | +22 (extractions added mid-size files) |
+| Tests outside `__tests__/` | 199 of 201 | 0 of 220 | -199 (migration complete) |
+| Data files with logic | 9 | 9 | 0 (not yet addressed) |
+| Source files without tests | 313 of 431 (27%) | ~280 of 500 (56%) | Metric corrected — previous 27% was wrong |
+| Total source lines (non-test) | ~140k (est.) | 122,846 | -17k from refactoring |
+| Audit issues found | — | ~433 | Baseline established |
 
-## Critical (800+ lines)
+## Critical (800+ lines) — 27 files
 
-| File | Lines |
-|-|-|
-| src/App.jsx | 7007 |
-| src/managers/ActionProcessor.js | 4837 |
-| src/components/screens/TacticalMapScreen.jsx | 3548 |
-| src/managers/GameStateManager.js | 3155 |
-| src/managers/GameFlowManager.js | 2671 |
-| src/components/screens/DeckBuilder.jsx | 2583 |
-| src/data/cardData.js | 2324 |
-| src/components/screens/HangarScreen.jsx | 2204 |
-| src/managers/AIPhaseProcessor.js | 1413 |
-| src/components/modals/InventoryModal.jsx | 1270 |
-| src/logic/aiLogic.js | 1209 |
-| src/managers/GuestMessageQueueService.js | 1125 |
-| src/components/screens/modalShowcaseHelpers.js | 1113 |
-| src/components/screens/TestingSetupScreen.jsx | 1111 |
-| src/managers/RewardManager.js | 1028 |
-| src/components/ui/GameHeader.jsx | 994 |
-| src/data/droneData.js | 993 |
-| src/components/ui/HexInfoPanel.jsx | 970 |
-| src/components/ui/HexGridRenderer.jsx | 958 |
-| src/components/screens/QuickDeployEditorScreen.jsx | 904 |
-| src/hooks/useAnimationSetup.js | 899 |
-| src/logic/cards/CardPlayManager.js | 868 |
-| src/logic/singlePlayer/CombatOutcomeProcessor.js | 866 |
-| src/components/modals/GlossaryModal.jsx | 851 |
-| src/utils/glossaryAnalyzer.js | 834 |
-| src/logic/combat/AttackProcessor.js | 809 |
-| src/logic/singlePlayer/SinglePlayerCombatInitializer.js | 808 |
-
-Note: 19 additional 800+ line files are test files (not listed — tests are expected to be longer).
-
-## Warning (400-799 lines)
-
-| File | Lines |
-|-|-|
-| src/logic/loot/LootGenerator.js | 747 |
-| src/components/screens/RepairBayScreen.jsx | 729 |
-| src/components/modals/AIStrategyModal.jsx | 711 |
-| src/logic/encounters/EncounterController.js | 693 |
-| src/logic/effects/damage/DamageEffectProcessor.js | 684 |
-| src/data/descriptions/aiStrategyDescriptions.js | 678 |
-| src/managers/TransitionManager.js | 642 |
-| src/logic/effects/movement/MovementEffectProcessor.js | 633 |
-| src/components/modals/MapOverviewModal.jsx | 618 |
-| src/logic/ai/cardEvaluators/droneCards.js | 604 |
-| src/components/screens/DeckSelectionScreen.jsx | 602 |
-| src/network/P2PManager.js | 593 |
-| src/components/modals/ViewDeckModal.jsx | 587 |
-| src/managers/AnimationManager.js | 579 |
-| src/services/testGameInitializer.js | 577 |
-
-Note: 17 additional 400-799 line files are test files (not listed).
+| File | Lines | Notes |
+|-|-|-|
+| cardData.js | 1821 | Pure data — acceptable |
+| GameFlowManager.js | 1673 | FI #11 — cohesive orchestration |
+| useDragMechanics.js | 1653 | FI #19 — shared state prevents split |
+| App.jsx | 1332 | FI #21 resolved — orchestration root |
+| InventoryModal.jsx | 1270 | Complex multi-tab modal |
+| aiLogic.js | 1209 | Strategy evaluation engine |
+| GuestMessageQueueService.js | 1125 | Multiplayer message queue |
+| modalShowcaseHelpers.js | 1113 | Dev-only showcase |
+| TestingSetupScreen.jsx | 1111 | Dev-only testing screen |
+| GameStateManager.js | 1068 | FI #6 — post-extraction residual |
+| RewardManager.js | 1028 | Complex reward logic |
+| ActionProcessor.js | 1006 | FI #4,5 — post-strategy-pattern extraction |
+| droneData.js | 993 | Pure data — acceptable |
+| GameHeader.jsx | 982 | Complex HUD component |
+| HexInfoPanel.jsx | 970 | Complex info display |
+| HexGridRenderer.jsx | 958 | Hex grid rendering engine |
+| useClickHandlers.js | 956 | FI #22 — shared params prevent split |
+| useTacticalEncounters.js | 931 | FI #15 — circular dep prevents split |
+| QuickDeployEditorScreen.jsx | 904 | Complex editor screen |
+| useAnimationSetup.js | 899 | Single 890-line useEffect |
+| CardPlayManager.js | 868 | Card play logic engine |
+| CombatOutcomeProcessor.js | 866 | Combat resolution |
+| GlossaryModal.jsx | 851 | Auto-generated glossary |
+| glossaryAnalyzer.js | 834 | Should move to logic/ |
+| SinglePlayerCombatInitializer.js | 810 | Combat setup |
+| AttackProcessor.js | 809 | Attack resolution engine |
+| (27th file near 800) | ~800 | Borderline |
 
 ## Misplaced Tests
 
-**199 of 201 test files** are co-located with source files rather than in `__tests__/` subdirectories. Only 2 test files are in `__tests__/` folders.
-
-This is a project-wide pattern, not an isolated issue. Migration should be done incrementally per-directory during related refactoring work.
+**0 of 220 test files** outside `__tests__/` — migration complete.
 
 ## Data File Impurity
 
-Files in `src/data/` that contain logic functions alongside data definitions:
+Unchanged from baseline — 9 data files with 30+ logic functions. See baseline audit for details.
 
-| File | Functions |
-|-|-|
-| saveGameSchema.js | `createEmptyDroneSlots`, `migrateDroneSlotsToNewFormat`, `convertDronesToSlots`, `convertComponentsToSectionSlots`, `migrateShipSlotToNewFormat`, `migrateTacticalItems`, `createDefaultShipSlot`, `createNewSave`, `validateSaveFile` |
-| cardPackData.js | `createSeededRNG`, `getPackCostForTier`, `generateRandomShopPack` |
-| salvageItemData.js | `findEligibleItems`, `selectSalvageItem`, `generateSalvageItemFromValue` |
-| missionData.js | `getMissionById`, `getIntroMissions`, `getMissionsByCategory` |
-| tutorialData.js | `getTutorialByScreen`, `getAllTutorialScreenIds`, `createDefaultTutorialDismissals` |
-| reputationRewardsData.js | `getLevelData`, `getNewlyUnlockedLevels` |
-| aiCoresData.js | `calculateAICoresDrop`, `getAICoresCost` |
-| shipData.js | `getShipById`, `getAllShips`, `getDefaultShip` |
-| tacticalItemData.js | `getTacticalItemById`, `getTacticalItemsByType`, `getAllTacticalItemIds` |
+## Test Coverage by Directory (Post-Audit)
 
-**Total: 9 data files with 30+ logic functions that should be extracted.**
+| Directory | Source Files | Test Files | Untested |
+|-|-|-|-|
+| src/hooks | 26 | 0 | 26 (100%) |
+| src/components/animations | 20 | 0 | 20 (100%) |
+| src/components/ui | 75 | 24 | 51 (68%) |
+| src/components/modals | 65 | 23 | 42 (65%) |
+| src/logic/** | ~150 | ~90 | ~60 (40%) |
+| src/data | ~25 | 8 | ~17 (68%) |
+| src/managers | 24 | 13 | 11 (46%) |
+| src/utils | ~26 | 7 | ~19 (73%) |
+| src/services | 6 | 2 | 4 (67%) |
+| src/config | 4 | 0 | 4 (100%) |
+| src/network | 1 | 0 | 1 (100%) |
+| src/contexts | 1 | 0 | 1 (100%) |
+| src/theme | 1 | 0 | 1 (100%) |
 
-## File Type Purity
+**High-risk untested:** All 26 hooks (10,413 lines), all 20 animation components, P2PManager, all config files.
 
-- **Utils/Logic contamination**: None detected — `src/utils/` and `src/logic/` have no React imports.
-- **Component naming**: All `.jsx` files in `src/components/` follow PascalCase.
-- **modalShowcaseHelpers.js** (1,113 lines) in `src/components/screens/` — utility/helper file mixed with screen components.
+## Key Improvements Since Baseline
 
-## Prioritized Refactoring Targets
-
-### Tier 1 — Highest Impact
-
-1. **App.jsx** (7,007 lines) — The monolith. Extract screens, hooks, state management, routing.
-2. **ActionProcessor.js** (4,837 lines) — Strategy pattern candidate. Extract per-action-type processors.
-3. **TacticalMapScreen.jsx** (3,548 lines) — Extract sub-components, hooks, map logic.
-4. **GameStateManager.js** (3,155 lines) — Extract domain-specific state slices.
-5. **GameFlowManager.js** (2,671 lines) — Extract phase-specific handlers.
-
-### Tier 2 — High Value
-
-6. **DeckBuilder.jsx** (2,583 lines) — Extract sub-components and filter logic.
-7. **HangarScreen.jsx** (2,204 lines) — Extract sub-components.
-8. **saveGameSchema.js** — Extract 9 functions to `src/logic/state/` or `src/logic/migration/`.
-9. **AIPhaseProcessor.js** (1,413 lines) — Extract strategy-specific logic.
-10. **cardData.js** (2,324 lines) — Review if pure data or needs splitting.
-
-### Tier 3 — Data File Cleanup
-
-11. Extract logic from all 9 impure data files (30+ functions total).
-
-### Tier 4 — Incremental
-
-12. Migrate test files to `__tests__/` subdirectories during related work.
-13. Address remaining 400-799 line files during feature work.
-
-## Test Coverage by Directory
-
-| Directory | Tested/Total | Untested |
-|-|-|-|
-| src/components | 48/179 | 131 |
-| src/logic | 41/151 | 110 |
-| src/data | 7/25 | 18 |
-| src/utils | 8/24 | 16 |
-| src/managers | 12/18 | 6 |
-| src/services | 2/6 | 4 |
-| src/hooks | 0/6 | 6 |
-| src/config | 0/4 | 4 |
-| src/contexts | 0/1 | 1 |
-| src/network | 0/1 | 1 |
-| src/theme | 0/1 | 1 |
-
-**Completely untested directories**: config, contexts, hooks, network, theme.
+1. **10-file refactoring complete** — App.jsx 7007→1332, ActionProcessor 4837→1006, TacticalMapScreen 3548→675, GSM 3155→1068, GFM 2671→1673, DeckBuilder 2583→split, HangarScreen 2204→568
+2. **Test migration complete** — 151 files moved to `__tests__/`, 0 misplaced
+3. **Full codebase audit** — ~500 files reviewed, ~433 issues catalogued in `Design/CODEBASE_AUDIT.md`
+4. **7 standards challenges** identified for CODE_STANDARDS.md evolution
