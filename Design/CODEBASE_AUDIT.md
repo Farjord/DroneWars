@@ -3,9 +3,9 @@
 ## Meta
 - Started: 2026-02-23
 - Last Session: 2026-02-23
-- Progress: 0/~500 source files (0%)
-- Current Phase: Phase A — Foundation
-- Next File: src/data/ (first file)
+- Progress: 57/~500 source files (11%)
+- Current Phase: Phase B — Logic
+- Next File: src/logic/ai/ (first file)
 - Test Migration: Complete (151 files moved, 220 total tests in __tests__/, 3748 tests passing)
 
 ## Structure Review
@@ -160,26 +160,177 @@
 - **Challenge:** The lack of a documented standard means inconsistency will grow. The 2 CSS Module files contradict the plain CSS majority. Should document: (a) co-located plain CSS for components, (b) `styles/` for shared/global, (c) decide on CSS Modules.
 - **Decision:** Pending user discussion
 
-(Additional challenges will be collected during file-by-file reviews in Phases A-F)
+### STD-CHALLENGE-04: Utils purity standard is systematically violated
+
+- **Current standard:** "Pure utility functions with no domain knowledge" (CODE_STANDARDS.md)
+- **Observed reality:** 10+ of 26 utils files contain deep domain logic (game phases, targeting, damage rules, deck validation, map generation). These import from `data/`, `logic/`, and hard-code game-specific rules.
+- **Challenge:** The standard is correct but unenforced. Two options: (a) bulk-migrate domain-aware utils to `src/logic/` subdirectories, or (b) create a `src/logic/helpers/` category for "domain utils" that are too small for their own module but too domain-specific for `utils/`.
+- **Decision:** Pending user discussion
+
+(Additional challenges will be collected during file-by-file reviews in Phases B-F)
 
 ## Review Log
 
-### Phase A — Foundation
-#### A1: src/data/
-| File | Lines | Issues | Status |
-|-|-|-|-|
+### Phase A — Foundation (57 files, reviewed 2026-02-23)
 
-#### A2: src/config/
-| File | Lines | Issues | Status |
-|-|-|-|-|
+#### A1: src/data/ (26 files)
 
-#### A3: src/theme/
-| File | Lines | Issues | Status |
+| File | Lines | Issues | Tags |
 |-|-|-|-|
+| aiCoresData.js | 76 | 1 | PURITY |
+| aiData.js | 240 | 2 | NAME, EDGE |
+| cardData.js | 1821 | 1 | SIZE |
+| cardPackData.js | 256 | 2 | PURITY, DEAD |
+| descriptions/aiStrategyDescriptions.js | 678 | 1 | SIZE |
+| descriptions/codePatternDescriptions.js | 402 | 1 | SIZE |
+| descriptions/glossaryDescriptions.js | 181 | 0 | -- |
+| droneData.js | 993 | 2 | SIZE, TODO |
+| droneHelpText.js | 43 | 0 | -- |
+| economyData.js | 111 | 0 | -- |
+| hexInfoHelpText.js | 69 | 0 | -- |
+| mapData.js | 199 | 0 | -- |
+| mapMetaData.js | 61 | 1 | TODO |
+| missionData.js | 341 | 1 | PURITY |
+| playerDeckData.js | 44 | 1 | COMMENT |
+| pointsOfInterestData.js | 162 | 2 | COMMENT, DUP |
+| rarityColors.js | 9 | 0 | -- |
+| reputationData.js | 35 | 0 | -- |
+| reputationRewardsData.js | 197 | 1 | PURITY |
+| salvageItemData.js | 350 | 1 | PURITY |
+| saveGameSchema.js | 140 | 1 | PURITY |
+| shipData.js | 136 | 2 | PURITY, COMMENT |
+| shipSectionData.js | 188 | 2 | COMMENT, DUP |
+| tacticalItemData.js | 68 | 1 | PURITY |
+| tutorialData.js | 262 | 2 | PURITY, COMMENT |
+| vsModeDeckData.js | 113 | 3 | NAME, DUP, COMMENT |
 
-#### A4: src/utils/
-| File | Lines | Issues | Status |
+**Priority defect:**
+- **aiData.js:182,216** [NAME] `CARD053_Enhanced` uses wrong casing — canonical ID is `CARD053_ENHANCED`. **Runtime bug**: these AI decks (Capital-Class Blockade Fleet, Nemesis boss) will produce broken card lookups.
+
+**Purity violations (already tracked in CODE_STANDARDS.md):**
+- aiCoresData.js — `calculateAICoresDrop()`, `getAICoresCost()`
+- cardPackData.js — `createSeededRNG()`, `getPackCostForTier()`, `generateRandomShopPack()`
+- missionData.js — `getMissionById()`, `getIntroMissions()`, `getMissionsByCategory()`
+- reputationRewardsData.js — `getLevelData()`, `getNewlyUnlockedLevels()`
+- salvageItemData.js — `findEligibleItems()`, `selectSalvageItem()`, `generateSalvageItemFromValue()`
+- shipData.js — `getShipById()`, `getAllShips()`, `getDefaultShip()`
+- tacticalItemData.js — `getTacticalItemById()`, `getTacticalItemsByType()`, `getAllTacticalItemIds()`
+- tutorialData.js — `getTutorialByScreen()`, `getAllTutorialScreenIds()`, `createDefaultTutorialDismissals()`
+- saveGameSchema.js — `defaultPlayerProfile` calls `Date.now()` and derives arrays via `.map`/`.filter` at import time; this is a factory function, not static data. Not in CODE_STANDARDS known violations list.
+
+**Other findings:**
+- [DEAD] cardPackData.js: `fullCardCollection` import on line 7 is unused. Remove.
+- [DUP] cardPackData.js: `RARITY_COLORS` (lines 12-17) is an exact duplicate of `src/data/rarityColors.js`. Remove and redirect consumers to canonical source.
+- [SIZE] cardData.js (1821), droneData.js (993) exceed 800 lines but are cohesive flat data arrays — low urgency.
+- [SIZE] aiStrategyDescriptions.js (678), codePatternDescriptions.js (402) — pure text data, acceptable.
+- [TODO] droneData.js:8 — "Recovery rate of 0. (Cannot recover - needs cards to do so)" — triage needed.
+- [TODO] mapMetaData.js:41 — "Add more map types as game design develops" — triage needed.
+- [COMMENT] shipSectionData.js — banned `// NEW: Modifier fields` pattern on 5 lines. Also `// DEPRECATED:` on 5 lines — verify if `key` properties are still consumed or remove.
+- [DEAD] shipSectionData.js — `key` property on each component labeled "Legacy key for backward compatibility" — verify if still consumed.
+- [COMMENT] tutorialData.js — multiple spelling errors in user-facing text ("dissarray", "protocals", "constatly", "sucessfully", "ultiamately", "escaltes", "hear"→"here", "previosuly", "avaialbel").
+- [COMMENT] shipData.js:78 — typo "Leightweight reconnocence" → "Lightweight reconnaissance".
+- [COMMENT] playerDeckData.js:4 — typo "leightweight" → "lightweight".
+- [COMMENT] vsModeDeckData.js:5 — typo "subtefuge" → "subterfuge".
+- [COMMENT] pointsOfInterestData.js — stale "TBD (placeholder)" comments in tierAIMapping.
+- [DUP] vsModeDeckData.js — VS_DECK_002 and VS_DECK_003 have identical decklists/dronePools/shipComponents. Only names differ. Likely copy-paste placeholder bug.
+- [DUP] pointsOfInterestData.js — three drone PoI entries repeat identical boolean config blocks.
+- [DUP] shipSectionData.js — BRIDGE_001 and BRIDGE_HEAVY have identical ability objects.
+- [NAME] vsModeDeckData.js — inconsistent indentation (1-space vs 4-space).
+- [EDGE] aiData.js — no validation that card IDs in AI decklists exist in `fullCardCollection`.
+
+#### A2: src/config/ (4 files)
+
+| File | Lines | Issues | Tags |
 |-|-|-|-|
+| backgrounds.js | 61 | 3 | NAME, COMMENT, DEAD |
+| devConfig.js | 53 | 1 | SMELL |
+| gameConfig.js | 26 | 0 | -- |
+| soundConfig.js | 210 | 2 | COMMENT, DEAD |
+
+**Findings:**
+- [NAME] backgrounds.js — inconsistent ID casing: `nebula_1` (snake_case) vs `Orbit_1`, `Deep_Space_1` (Pascal_Snake). Normalize to snake_case.
+- [COMMENT] backgrounds.js — scaffolding "Add more backgrounds here" comment. Remove.
+- [DEAD] backgrounds.js — `getBackgroundById` fallback chain could return undefined despite JSDoc contract.
+- [SMELL] devConfig.js — `DEV_MODE = true` is hardcoded. Should derive from `import.meta.env.DEV` or warn about manual toggle.
+- [DEAD] devConfig.js — redundant dual export (named + default). Pick one convention.
+- [COMMENT] soundConfig.js — commented-out "Phase 2 (future)" railgun sounds. Track in FUTURE_IMPROVEMENTS.md or delete.
+- [DEAD] soundConfig.js — `getSoundManifest()` is a trivial getter for `SOUND_MANIFEST`. Only one consumer; consider removing.
+
+#### A3: src/theme/ (1 file)
+
+| File | Lines | Issues | Tags |
+|-|-|-|-|
+| theme.js | 71 | 1 | DEAD |
+
+**Findings:**
+- [DEAD] **Entire file is dead code** — zero imports found across the codebase. `tailwindTheme`, `theme`, `getCSSCustomProperty`, `setCSSCustomProperty` are all unused. Delete or integrate.
+
+#### A4: src/utils/ (26 files)
+
+| File | Lines | Issues | Tags |
+|-|-|-|-|
+| blueprintDropCalculator.js | 131 | 1 | PURITY |
+| cardAnimationUtils.js | 101 | 1 | COMMENT |
+| cardBorderUtils.js | 122 | 1 | DUP |
+| cardDrawUtils.js | 262 | 3 | DEAD, LOG, DUP |
+| cardTypeStyles.js | 42 | 1 | DUP |
+| chartUtils.jsx | 28 | 1 | SMELL |
+| csvExport.js | 255 | 2 | DUP, DEAD |
+| debugLogger.js | 326 | 5 | DEAD, COMMENT, PURITY, LOG |
+| deckExportUtils.js | 495 | 2 | SIZE, PURITY |
+| deckFilterUtils.js | 487 | 1 | SIZE |
+| deckStateUtils.js | 49 | 0 | -- |
+| droneSelectionUtils.js | 124 | 0 | -- |
+| firstPlayerUtils.js | 142 | 0 | -- |
+| gameUtils.js | 179 | 3 | PURITY, SMELL, DUP |
+| glossaryAnalyzer.js | 834 | 3 | SIZE, PURITY, PLACE |
+| hexGrid.js | 101 | 1 | TEST |
+| hexHeadingUtils.js | 99 | 0 | -- |
+| iconMap.js | 89 | 0 | -- |
+| mapGenerator.js | 388 | 3 | LOG, PURITY, SMELL |
+| phaseValidation.js | 271 | 3 | LOG, PURITY, PLACE |
+| seededRandom.js | 162 | 1 | DEAD |
+| shipPlacementUtils.js | 122 | 2 | PURITY, PLACE |
+| shipSectionImageResolver.js | 230 | 1 | PURITY |
+| singlePlayerDeckUtils.js | 352 | 3 | PURITY, SMELL, PLACE |
+| slotDamageUtils.js | 264 | 2 | PURITY, PLACE |
+| uiTargetingHelpers.js | 531 | 4 | SIZE, PURITY, PLACE, SMELL |
+
+**Priority findings:**
+
+**debugLogger.js** (5 issues):
+- [DEAD] Line 7: `import { FastForward } from "lucide-react"` — unused React icon import in a logging utility.
+- [COMMENT] 35+ stale annotations in category config: `(DISABLED - not needed)`, `(ENABLED for Railgun investigation)`, `(NEW - for refactor)`. Duplicate category keys: `QUICK_DEPLOY`, `EXTRACTION`, `ENCOUNTER` (later keys shadow earlier).
+- [PURITY] Timing utilities (`getTimestamp`, `timingLog`, `getBrowserState`) are separate concerns from logging.
+- [LOG] `setDebugEnabled`/`setDebugCategory` use raw `console.log` for announcements.
+
+**[STD-CHALLENGE-04]: Utils purity is systematically violated.** 10 of 13 utils files in batch 2 contain domain knowledge. Key misplacements:
+- glossaryAnalyzer.js (834 lines) → should be `logic/glossary/` or `data/descriptions/`
+- phaseValidation.js → should be `logic/`
+- shipPlacementUtils.js → should be `logic/placement/`
+- singlePlayerDeckUtils.js → should be `logic/deckBuilding/`
+- slotDamageUtils.js → should be `logic/damage/`
+- uiTargetingHelpers.js → should be `logic/targeting/`
+- mapGenerator.js → should be `logic/map/`
+- gameUtils.js — phase display names, lane calculations = domain knowledge
+
+**Other findings:**
+- [LOG] cardDrawUtils.js — 6x `console.warn` instead of debugLog.
+- [LOG] mapGenerator.js:76,80 — raw `console.log` in production code.
+- [LOG] phaseValidation.js — 6x `console.warn` instead of debugLog.
+- [DEAD] cardDrawUtils.js — `calculateHandLimit` exported but never imported.
+- [DEAD] csvExport.js — `navigator.msSaveBlob` IE10 compat code is dead in 2026.
+- [DEAD] seededRandom.js — orphaned JSDoc block for deleted `forCardShuffle` factory.
+- [DUP] cardDrawUtils.js — player 1/player 2 processing blocks are near-identical copy-paste (~30 lines each).
+- [DUP] csvExport.js — `convertDecisionsToCsv` and `convertFullHistoryToCsv` share identical header/row logic.
+- [DUP] cardBorderUtils.js ↔ cardTypeStyles.js — duplicate type color mappings.
+- [DUP] gameUtils.js — `shuffleArray` trivially wraps `SeededRandom.shuffle`.
+- [SIZE] glossaryAnalyzer.js (834), uiTargetingHelpers.js (531), deckExportUtils.js (495), deckFilterUtils.js (487).
+- [SMELL] chartUtils.jsx — magic numbers throughout.
+- [SMELL] mapGenerator.js — magic numbers (`5`, `10`).
+- [SMELL] uiTargetingHelpers.js — `calculateAllValidTargets` (9+ params), `calculateAffectedDroneIds` (7 params).
+- [SMELL] singlePlayerDeckUtils.js — magic `99` used 4x for "unlimited", magic `5`, `40`.
+- [TEST] No test files exist for hexGrid.js (non-trivial math). Multiple utils with complex logic lack tests.
 
 ### Phase B — Logic
 #### B1: src/logic/ai/
