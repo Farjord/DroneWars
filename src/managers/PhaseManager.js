@@ -397,16 +397,7 @@ class PhaseManager {
    * Check if phase is simultaneous
    */
   isSimultaneousPhase(phase) {
-    const simultaneousPhases = [
-      'deckSelection',
-      'droneSelection',
-      'placement',
-      'mandatoryDiscard',
-      'optionalDiscard',
-      'allocateShields',
-      'mandatoryDroneRemoval'
-    ];
-    return simultaneousPhases.includes(phase);
+    return PhaseManager.SIMULTANEOUS_PHASES.includes(phase);
   }
 
   /**

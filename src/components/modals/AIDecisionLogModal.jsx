@@ -103,7 +103,7 @@ const AIDecisionLogModal = ({ decisionLog, show, onClose, getLocalPlayerId, game
                 </tr>
               </thead>
               <tbody>
-                {decisionLog.sort((a,b) => b.score - a.score).map((action, index) => (
+                {[...decisionLog].sort((a,b) => b.score - a.score).map((action, index) => (
                   <tr
                     key={index}
                     style={{

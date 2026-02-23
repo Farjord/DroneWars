@@ -46,7 +46,7 @@ const TacticalTicker = ({ isMoving, currentRunState }) => {
       const initialMessages = generateAllTacticalMessages(currentRunState);
       setMessages(initialMessages);
     }
-  }, []); // Only on mount
+  }, [isMoving, currentRunState]); // Only on mount
 
   // Render scanning mode
   if (showScanning) {

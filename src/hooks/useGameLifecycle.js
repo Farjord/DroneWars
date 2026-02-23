@@ -463,6 +463,7 @@ export default function useGameLifecycle({
     const csvRows = gameLog.map(log => {
       const row = [
         log.round,
+        log.timestampUTC,
         log.player,
         log.actionType,
         log.source,
