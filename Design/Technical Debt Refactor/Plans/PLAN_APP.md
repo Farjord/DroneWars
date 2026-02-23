@@ -37,3 +37,20 @@ A detailed extraction plan exists at `Design/Technical Debt Refactor/REFACTOR_AP
 - targetingRouter: Kept module-level — it's stateless, moving inside component would recreate every render. No benefit.
 
 **Test results:** 219 files, 3744 passed, 0 failures. Build clean.
+
+## Session 2 Outcomes
+
+### Actual Outcomes
+
+**Completed:**
+- Step 4: Extracted useShieldAllocation hook (428 lines) — 11 state vars, 14 handler functions, 1 useEffect, 1 useMemo. Added clearReallocationState() for modal onConfirm cleanup.
+- Step 5: Extracted useInterception hook (213 lines) — 6 state vars, 5 handler functions, 3 useEffects. Removed calculatePotentialInterceptors import from App.jsx.
+- Step 6: Extracted AnimationLayer.jsx (239 lines) + TargetingArrowLayer.jsx (51 lines) — 18 animation component imports removed from App.jsx. Pure JSX extraction.
+
+**Line count:** 6,622 → 5,855 (767 lines removed)
+
+**Deferred:**
+- Step 7 (useModals): Extracting 25+ modal states without ModalLayer gives poor ROI (~40 lines of declarations vs re-exporting 25 setters). Will extract alongside Step 13.5 (modal onConfirm callbacks) + ModalLayer in Session 4.
+- useAnimationEffects hook: Animation state is deeply threaded through useAnimationSetup and useExplosions hooks. Moving state to a new hook requires significant rethreading. Deferred.
+
+**Test results:** 220 files, 3748 passed, 0 failures. Build clean.
