@@ -54,3 +54,20 @@ A detailed extraction plan exists at `Design/Technical Debt Refactor/REFACTOR_AP
 - useAnimationEffects hook: Animation state is deeply threaded through useAnimationSetup and useExplosions hooks. Moving state to a new hook requires significant rethreading. Deferred.
 
 **Test results:** 220 files, 3748 passed, 0 failures. Build clean.
+
+## Session 3 Outcomes
+
+### Actual Outcomes
+
+**Completed:**
+- Step 8: Extracted useMultiplayerSync hook (252 lines) — 1 state var (waitingForPlayerPhase), 1 ref (previousPhaseRef), 4 useEffects (GameFlowManager subscription, P2P data subscription, guest phase transition detection, simultaneous phase waiting modal monitoring). Discovered and removed `sendPhaseCompletion` dead code. Updated stale footerPreviousPhaseRef comment.
+- Step 9: Extracted useCardSelection hook (326 lines) — 14 state vars (selectedCard, validCardTargets, validAbilityTargets, affectedDroneIds, hoveredLane, cardConfirmation, multiSelectState with debug wrapper, singleMoveMode, additionalCostState/Confirmation/SelectionContext, destroyUpgradeModal, upgradeSelectionModal, viewUpgradesModal), 7 functions (cancelCardSelection, cancelSingleMoveMode, cancelAdditionalCostMode, confirmAdditionalCostCard, handleCancelMultiMove, handleConfirmMultiMoveDrones, cancelCardState), 2 useEffects (targeting calculations, additional cost highlighting).
+- Step 10: Extracted useDragMechanics hook (265 lines) — 10 state vars (hoveredTarget, arrowState, cardDragArrowState, draggedCard, draggedDrone, droneDragArrowState, draggedActionCard, actionCardDragArrowState, costReminderArrowState, deploymentConfirmation), 5 refs, 3 handlers (handleSetHoveredTarget, handleCardDragStart, handleCardDragEnd), 4 arrow tracking effects. Moved executeDeployment + handleLaneHover to resolve TDZ issues. Removed calculatePolygonPoints import.
+
+**Line count:** 5,855 → 5,086 (769 lines removed)
+
+**Deferred:**
+- handleDroneDragEnd (695 lines) and handleActionCardDragEnd (494 lines): Too large and deeply cross-cutting for this session. Stale closure issues (architect correction #4) need surrounding extractions first. Will extract in Session 4 alongside useTargeting.
+- handleCardClick (235 lines): Stays in App.jsx due to circular dependency with cancelAllActions.
+
+**Test results:** 220 files, 3748 passed, 0 failures. Build clean.
