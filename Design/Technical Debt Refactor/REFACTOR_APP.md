@@ -571,7 +571,14 @@ Each step is independently committable: extract/clean -> test -> review -> fix -
 
 ### Final State
 
-*To be completed after all sessions.*
+- **App.jsx**: 1,331 lines (down from 7,007 at start, 2,169 at Session 5 end)
+- **Total hooks extracted**: 11 (useMultiplayerSync, useShieldAllocation, useCardSelection, useInterception, useDragMechanics, useGameLifecycle, useClickHandlers, useResolvers, useActionRouting + useGameState, useGameData pre-existing)
+- **Sub-components extracted**: 3 (AnimationLayer, TargetingArrowLayer, ModalLayer)
+- **New hooks this session**: useResolvers (608 lines), useActionRouting (106 lines)
+- **useState in App.jsx**: ~40 (animation + modal declarations, UI state)
+- **useEffect in App.jsx**: 4 (beforeunload, lane control, win condition, phase animation)
+- **Business logic functions in App.jsx**: 0 (only cancelAllActions + handleConfirmDeployment)
+- **Test results**: 220 files, 3748 passed, 0 failures
 
 ### Change Log
 
@@ -592,3 +599,7 @@ Each step is independently committable: extract/clean -> test -> review -> fix -
 | Phase D, Steps 13.5+14 | 2026-02-23 | Extracted ModalLayer.jsx (430 lines): 31 modal components. Extracted 11 inline callbacks to named functions. Removed 28 modal imports from App.jsx. Removed calculateCostTargets unused import. App.jsx 3745→3541 | All behavior preserved — pure JSX extraction + callback naming | None | None |
 | Phase C, Step 11 | 2026-02-23 | Extracted useClickHandlers hook (956 lines): 7 click handlers (handleToggleDroneSelection, handleAbilityIconClick, handleShipAbilityClick, handleTargetClick, handleTokenClick, handleLaneClick, handleCardClick). Module-level TargetingRouter moved to hook. Removed 5 imports from App.jsx. App.jsx 3541→2692 | All behavior preserved | None | None |
 | Phase C, Step 12 | 2026-02-23 | Extracted useGameLifecycle hook (507 lines): 17 lifecycle functions (reset, exit, pass, mandatory discard/destroy, round start, CSV download, card info). Removed 4 imports from App.jsx. App.jsx 2692→2169 | All behavior preserved | None | resolve* functions remain in App.jsx (useCallback-wrapped, shared deps) |
+| Session 6, Step 1 | 2026-02-23 | Moved 5 effects to destination hooks: guardian highlighting→useInterception, hoveredTarget clear + arrow state→useDragMechanics, guest render completion→useMultiplayerSync, mandatory action init + footer handlers→useGameLifecycle. Removed dead setPotentialInterceptors calls. App.jsx 2169→2031 | All behavior preserved | None | Dead setPotentialInterceptors calls discovered and removed (never in scope — latent bug) |
+| Session 6, Step 2 | 2026-02-23 | Extracted useResolvers hook (608 lines): 7 resolve functions, cancelAbilityMode, handleCloseAiCardReport, 10 modal callbacks, 4 state vars. Circular dep resolved via interceptionRef. Removed calculateAllValidTargets unused import. App.jsx 2031→1413 | All behavior preserved | None | shipAbilityConfirmation kept in App.jsx (needed by useShieldAllocation). handleConfirmDeployment kept (depends on useDragMechanics state) |
+| Session 6, Step 3 | 2026-02-23 | Extracted useActionRouting hook (107 lines): processActionWithGuestRouting + executeDeployment. All 6 consumer hooks already receive processActionWithGuestRouting as param. App.jsx 1413→1347 | All behavior preserved | None | None |
+| Session 6, Step 4 | 2026-02-23 | Moved handleBackgroundChange, handleViewShipSection, handleShowOpponentDrones to useGameLifecycle. App.jsx 1347→1331 | All behavior preserved | None | None |

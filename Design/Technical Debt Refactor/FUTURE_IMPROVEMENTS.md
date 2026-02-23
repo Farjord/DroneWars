@@ -26,7 +26,7 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | 18 | useTacticalMovement.js | At 390 lines, near 400-line guideline. handleCommenceJourney alone is ~240 lines. Acceptable — splitting would break the async movement loop's closure. | TacticalMapScreen refactoring | 2026-02-22 | Low |
 | 19 | useDragMechanics.js | At 1,633 lines (2x 800-line threshold). All drag handlers consolidated into one hook per architect correction #3. Potential split: useDeploymentDrag (~100 lines), useActionCardDrag (~600 lines), useDroneDrag (~900 lines). Deferred because handlers share 10 state vars + 5 refs. | App.jsx Session 4 | 2026-02-23 | Medium |
 | 20 | ModalLayer.jsx | Prop relay pattern (430 lines, 60+ props). Similar to TacticalMapModals (#17). Future refactor could use modal context or modal manager. | App.jsx Session 4 | 2026-02-23 | Low |
-| 21 | App.jsx | At 2,169 lines after all extractions (9 hooks, 2 sub-components). Remaining: resolve* functions (~350 lines, useCallback-wrapped shared business logic), Section 8 effects (~230 lines), modal confirmation callbacks (~170 lines), JSX return (~385 lines). Further splitting would fragment cohesive orchestration. | App.jsx Session 5 | 2026-02-23 | Low |
+| 21 | App.jsx | At 1,331 lines after Session 6 (11 hooks, 3 sub-components). Remaining: ~40 useState declarations, 4 useEffects, cancelAllActions, handleConfirmDeployment, JSX return (~385 lines). Pure orchestration/composition root — no further extraction warranted. | App.jsx Session 6 | 2026-02-23 | Resolved |
 | 22 | useClickHandlers.js | At 956 lines (above 800-line threshold). Contains 7 click handlers + module-level TargetingRouter. Potential split: useCardInteractions (handleCardClick, handleTargetClick) vs useUnitInteractions (handleTokenClick, handleLaneClick, handleAbilityIconClick, handleShipAbilityClick). Deferred because handlers share many params. | App.jsx Session 5 | 2026-02-23 | Low |
 
 ## Resolved Items
@@ -34,3 +34,4 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 | # | File | Issue | Resolved | How |
 |-|-|-|-|-|
 | 21 | App.jsx | handleCardClick, handleLaneClick, handleTokenClick remain due to cancelAllActions circular dep | 2026-02-23 | Extracted to useClickHandlers hook; cancelAllActions passed as param |
+| 21 | App.jsx | At 2,169 lines — resolve* functions, effects, modal callbacks remain | 2026-02-23 | Session 6: extracted useResolvers (608 lines) + useActionRouting (106 lines), moved 5 effects + 3 handlers. App.jsx now 1,331 lines — pure orchestration root |

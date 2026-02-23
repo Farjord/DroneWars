@@ -121,3 +121,23 @@ multiplayerSync → shieldAllocation → cardSelection → interception → drag
 - useDragMechanics size reduction (1,633 lines) — already in FUTURE_IMPROVEMENTS #19
 
 **Test results:** 220 files, 3748 passed, 0 failures. Build clean.
+
+## Session 6 Outcomes
+
+### Actual Outcomes
+
+**Completed:**
+- Step 1: Moved 5 effects to destination hooks (guardian highlighting→useInterception, hoveredTarget clear + arrow state→useDragMechanics, guest render completion→useMultiplayerSync, mandatory action init + footer handlers→useGameLifecycle). Removed dead setPotentialInterceptors calls (latent bug). App.jsx 2169→2031.
+- Step 2: Extracted useResolvers hook (608 lines) — 7 resolve functions (resolveAttack, resolveAbility, resolveShipAbility, resolveCardPlay, handleCardSelection, resolveMultiMove, resolveSingleMove), cancelAbilityMode, handleCloseAiCardReport, 10 modal confirmation callbacks, 4 state vars. Circular dep with useInterception resolved via interceptionRef pattern. App.jsx 2031→1413.
+- Step 3: Extracted useActionRouting hook (106 lines) — processActionWithGuestRouting + executeDeployment. All consumer hooks already receive processActionWithGuestRouting as a param. App.jsx 1413→1347.
+- Step 4: Moved handleBackgroundChange, handleViewShipSection, handleShowOpponentDrones to useGameLifecycle. App.jsx 1347→1331.
+
+**Line count:** 2,169 → 1,331 (838 lines removed, 39% reduction)
+
+**Key decisions:**
+- interceptionRef pattern for circular dep between resolveAttack↔useInterception (resolveAttack needs setPlayerInterceptionChoice, useInterception needs resolveAttack)
+- shipAbilityConfirmation kept in App.jsx (needed by useShieldAllocation which runs before useResolvers)
+- handleConfirmDeployment kept in App.jsx (depends on useDragMechanics state)
+- Functions in useGameLifecycle not wrapped in useCallback (matches existing pattern — plain functions per render cycle)
+
+**Test results:** 220 files, 3748 passed, 0 failures. Build clean.

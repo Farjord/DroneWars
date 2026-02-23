@@ -8,7 +8,7 @@
 ## Tier 1 — Highest Impact
 | # | File | Plan | Status | Notes |
 |-|-|-|-|-|
-| 1 | App.jsx (7,007→5,855) | REFACTOR_APP.md | [~] | Session 2 complete 2026-02-23: Phase B extractions — useShieldAllocation (428 lines), useInterception (213 lines), AnimationLayer (239 lines), TargetingArrowLayer (51 lines). useModals deferred to Session 4. 3 more sessions planned. |
+| 1 | App.jsx (7,007→1,331) | REFACTOR_APP.md | [x] | Complete 2026-02-23. 6 sessions: 11 hooks + 3 sub-components extracted. 81% reduction. Session 6: useResolvers (608 lines), useActionRouting (106 lines), 5 effects moved, 3 handlers moved. 220 test files passing. |
 | 2 | ActionProcessor.js (4,837→1,005) | REFACTOR_ACTION_PROCESSOR.md | [x] | Complete 2026-02-22. 9 strategy files extracted to src/logic/actions/, strategy registry replaces 37-case switch, 21 tests passing. |
 | 3 | TacticalMapScreen.jsx (3,548→675) | REFACTOR_TACTICAL_MAP_SCREEN.md | [x] | Complete 2026-02-22. 11 extraction steps: 7 hooks + 2 components + 1 utility. 81% reduction, 118 console calls migrated, 6 test files relocated. useTacticalEncounters at 935 lines (dedup deferred). |
 | 4 | GameStateManager.js (3,156→1,068) | REFACTOR_GAME_STATE_MANAGER.md | [x] | Complete 2026-02-22. Sessions A+B+C: 6 extractions (StateValidationService, GuestSyncManager, SinglePlayerInventoryManager, TacticalItemManager, ShipSlotManager, RunLifecycleManager). 66% reduction, 35 new tests, 14 imports cleaned. |

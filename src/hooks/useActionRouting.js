@@ -70,18 +70,17 @@ const useActionRouting = ({
   // --- Deployment Execution ---
   const executeDeployment = async (lane, droneToDeployed = selectedDrone) => {
     debugLog('DRAG_DROP_DEPLOY', '🚀 executeDeployment entered', { lane, droneName: droneToDeployed?.name, hasSelectedDrone: !!selectedDrone, usedParam: droneToDeployed !== selectedDrone });
-    const drone = droneToDeployed;
     try {
-      debugLog('DEPLOYMENT', '🎯 App.jsx: Deploying drone:', {
-        droneName: drone?.name,
-        droneObject: drone,
+      debugLog('DEPLOYMENT', '🎯 Deploying drone:', {
+        droneName: droneToDeployed?.name,
+        droneObject: droneToDeployed,
         lane,
         playerId: getLocalPlayerId(),
         turn
       });
 
       const result = await processActionWithGuestRouting('deployment', {
-        droneData: drone,
+        droneData: droneToDeployed,
         laneId: lane,
         playerId: getLocalPlayerId(),
         turn: roundNumber
