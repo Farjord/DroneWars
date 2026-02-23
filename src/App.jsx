@@ -23,10 +23,7 @@ import DronesView from './components/ui/footer/DronesView.jsx';
 import FloatingCardControls from './components/ui/FloatingCardControls.jsx';
 import LogModal from './components/modals/LogModal.jsx';
 import ModalContainer from './components/ui/ModalContainer.jsx';
-import TargetingArrow, { calculatePolygonPoints } from './components/ui/TargetingArrow.jsx';
-import InterceptionTargetLine from './components/ui/InterceptionTargetLine.jsx';
-import InterceptionSelectionLine from './components/ui/InterceptionSelectionLine.jsx';
-import ExplosionEffect from './components/animations/ExplosionEffect.jsx';
+import { calculatePolygonPoints } from './components/ui/TargetingArrow.jsx';
 import WaitingOverlay from './components/ui/WaitingOverlay';
 import InterceptedBadge from './components/ui/InterceptedBadge.jsx';
 import FailedRunLoadingScreen from './components/ui/FailedRunLoadingScreen.jsx';
@@ -95,24 +92,8 @@ import { extractDroneNameFromId } from './logic/droneUtils.js';
 // --- 1.8 ANIMATION IMPORTS ---
 import AnimationManager from './managers/AnimationManager.js';
 import tacticalMapStateManager from './managers/TacticalMapStateManager.js';
-import FlyingDrone from './components/animations/FlyingDrone.jsx';
-import FlashEffect from './components/animations/FlashEffect.jsx';
-import HealEffect from './components/animations/HealEffect.jsx';
-import CardVisualEffect from './components/animations/CardVisualEffect.jsx';
-import CardRevealOverlay from './components/animations/CardRevealOverlay.jsx';
-import ShipAbilityRevealOverlay from './components/animations/ShipAbilityRevealOverlay.jsx';
-import PassNotificationOverlay from './components/animations/PassNotificationOverlay.jsx';
-import GoAgainOverlay from './components/animations/GoAgainOverlay.jsx';
-import StatusConsumptionOverlay from './components/animations/StatusConsumptionOverlay.jsx';
-import CardWarningOverlay from './components/animations/CardWarningOverlay.jsx';
-import PhaseAnnouncementOverlay from './components/animations/PhaseAnnouncementOverlay.jsx';
-import LaserEffect from './components/animations/LaserEffect.jsx';
-import TeleportEffect from './components/animations/TeleportEffect.jsx';
-import OverflowProjectile from './components/animations/OverflowProjectile.jsx';
-import SplashEffect from './components/animations/SplashEffect.jsx';
-import BarrageImpact from './components/animations/BarrageImpact.jsx';
-import RailgunTurret from './components/animations/RailgunTurret.jsx';
-import RailgunBeam from './components/animations/RailgunBeam.jsx';
+import AnimationLayer from './components/ui/AnimationLayer.jsx';
+import TargetingArrowLayer from './components/ui/TargetingArrowLayer.jsx';
 
 // Initialize TargetingRouter for card targeting validation
 const targetingRouter = new TargetingRouter();
@@ -5144,212 +5125,47 @@ const App = ({ phaseAnimationQueue }) => {
      ) : (
        <StaticBackground imagePath={currentBackground.path} />
      )}
-     <TargetingArrow visible={arrowState.visible} start={arrowState.start} end={arrowState.end} lineRef={arrowLineRef} />
-     <TargetingArrow visible={cardDragArrowState.visible} start={cardDragArrowState.start} end={cardDragArrowState.end} lineRef={cardDragArrowRef} color="#22d3ee" />
-     <TargetingArrow visible={droneDragArrowState.visible} start={droneDragArrowState.start} end={droneDragArrowState.end} lineRef={droneDragArrowRef} color="#ff0055" showPulses={false} />
-     <TargetingArrow visible={actionCardDragArrowState.visible} start={actionCardDragArrowState.start} end={actionCardDragArrowState.end} lineRef={actionCardDragArrowRef} color="#22d3ee" />
-     <TargetingArrow visible={costReminderArrowState.visible} start={costReminderArrowState.start} end={costReminderArrowState.end} lineRef={costReminderArrowRef} color="#22d3ee" showPulses={false} zIndex={15} />
-     <InterceptionTargetLine
-       visible={!!playerInterceptionChoice}
-       attackDetails={playerInterceptionChoice?.attackDetails}
+     <TargetingArrowLayer
+       arrowState={arrowState}
+       cardDragArrowState={cardDragArrowState}
+       droneDragArrowState={droneDragArrowState}
+       actionCardDragArrowState={actionCardDragArrowState}
+       costReminderArrowState={costReminderArrowState}
+       arrowLineRef={arrowLineRef}
+       cardDragArrowRef={cardDragArrowRef}
+       droneDragArrowRef={droneDragArrowRef}
+       actionCardDragArrowRef={actionCardDragArrowRef}
+       costReminderArrowRef={costReminderArrowRef}
+       playerInterceptionChoice={playerInterceptionChoice}
+       interceptionModeActive={interceptionModeActive}
+       selectedInterceptor={selectedInterceptor}
        droneRefs={droneRefs}
-       shipSectionRefs={sectionRefs}
+       sectionRefs={sectionRefs}
        gameAreaRef={gameAreaRef}
      />
-     <InterceptionSelectionLine
-       visible={!!(interceptionModeActive && selectedInterceptor)}
-       interceptor={selectedInterceptor}
-       attacker={playerInterceptionChoice?.attackDetails?.attacker}
-       droneRefs={droneRefs}
-       gameAreaRef={gameAreaRef}
+     <AnimationLayer
+       explosions={explosions}
+       flyingDrones={flyingDrones}
+       flashEffects={flashEffects}
+       healEffects={healEffects}
+       cardVisuals={cardVisuals}
+       cardReveals={cardReveals}
+       statusConsumptions={statusConsumptions}
+       shipAbilityReveals={shipAbilityReveals}
+       phaseAnnouncements={phaseAnnouncements}
+       passNotifications={passNotifications}
+       goAgainNotifications={goAgainNotifications}
+       cardPlayWarning={cardPlayWarning}
+       laserEffects={laserEffects}
+       teleportEffects={teleportEffects}
+       overflowProjectiles={overflowProjectiles}
+       splashEffects={splashEffects}
+       barrageImpacts={barrageImpacts}
+       railgunTurrets={railgunTurrets}
+       railgunBeams={railgunBeams}
+       animationBlocking={animationBlocking}
+       setBarrageImpacts={setBarrageImpacts}
      />
-     {explosions.map(exp => <ExplosionEffect key={exp.id} top={exp.top} left={exp.left} size={exp.size} />)}
-     {flyingDrones.map(fd => (
-
-      <FlyingDrone
-        key={fd.id}
-        droneData={fd.droneData}
-        startPos={fd.startPos}
-        endPos={fd.endPos}
-        config={fd.config}
-        onComplete={fd.onComplete}
-      />
-    ))}
-    {flashEffects.map(flash => (
-      <FlashEffect
-        key={flash.id}
-        position={flash.position}
-        color={flash.color}
-        intensity={flash.intensity}
-        onComplete={flash.onComplete}
-      />
-    ))}
-    {healEffects.map(heal => (
-      <HealEffect
-        key={heal.id}
-        position={heal.position}
-        healAmount={heal.healAmount}
-        onComplete={heal.onComplete}
-      />
-    ))}
-    {cardVisuals.map(visual => (
-      <CardVisualEffect
-        key={visual.id}
-        visualType={visual.visualType}
-        startPos={visual.startPos}
-        endPos={visual.endPos}
-        duration={visual.duration}
-        onComplete={visual.onComplete}
-      />
-    ))}
-    {cardReveals.map(reveal => (
-      <CardRevealOverlay
-        key={reveal.id}
-        card={reveal.card}
-        label={reveal.label}
-        onComplete={reveal.onComplete}
-      />
-    ))}
-    {statusConsumptions.map(consumption => (
-      <StatusConsumptionOverlay
-        key={consumption.id}
-        label={consumption.label}
-        droneName={consumption.droneName}
-        statusType={consumption.statusType}
-        onComplete={consumption.onComplete}
-      />
-    ))}
-    {shipAbilityReveals.map(reveal => (
-      <ShipAbilityRevealOverlay
-        key={reveal.id}
-        abilityName={reveal.abilityName}
-        label={reveal.label}
-        onComplete={reveal.onComplete}
-      />
-    ))}
-    {phaseAnnouncements.map(announcement => (
-      <PhaseAnnouncementOverlay
-        key={announcement.id}
-        phaseText={announcement.phaseText}
-        subtitle={announcement.subtitle}
-        onComplete={announcement.onComplete}
-      />
-    ))}
-    {passNotifications.map(notification => (
-      <PassNotificationOverlay
-        key={notification.id}
-        label={notification.label}
-        onComplete={notification.onComplete}
-      />
-    ))}
-    {goAgainNotifications.map(notification => (
-      <GoAgainOverlay
-        key={notification.id}
-        label={notification.label}
-        isLocalPlayer={notification.isLocalPlayer}
-        onComplete={notification.onComplete}
-      />
-    ))}
-    {cardPlayWarning && (
-      <CardWarningOverlay
-        key={cardPlayWarning.id}
-        reasons={cardPlayWarning.reasons}
-      />
-    )}
-    {laserEffects.map(laser => (
-      <LaserEffect
-        key={laser.id}
-        startPos={laser.startPos}
-        endPos={laser.endPos}
-        attackValue={laser.attackValue}
-        duration={laser.duration}
-        onComplete={laser.onComplete}
-      />
-    ))}
-    {teleportEffects.map(teleport => (
-      <TeleportEffect
-        key={teleport.id}
-        top={teleport.top}
-        left={teleport.left}
-        color={teleport.color}
-        duration={teleport.duration}
-        onComplete={teleport.onComplete}
-      />
-    ))}
-    {overflowProjectiles.map(projectile => (
-      <OverflowProjectile
-        key={projectile.id}
-        startPos={projectile.startPos}
-        dronePos={projectile.dronePos}
-        shipPos={projectile.shipPos}
-        hasOverflow={projectile.hasOverflow}
-        isPiercing={projectile.isPiercing}
-        duration={projectile.duration}
-        onComplete={projectile.onComplete}
-      />
-    ))}
-    {splashEffects.map(splash => (
-      <SplashEffect
-        key={splash.id}
-        centerPos={splash.centerPos}
-        duration={splash.duration}
-        onComplete={splash.onComplete}
-      />
-    ))}
-    {barrageImpacts.map(impact => (
-      <BarrageImpact
-        key={impact.id}
-        position={impact.position}
-        size={impact.size}
-        delay={impact.delay}
-        onComplete={() => {
-          setBarrageImpacts(prev => prev.filter(i => i.id !== impact.id));
-        }}
-      />
-    ))}
-    {railgunTurrets.map(turret => (
-      <div
-        key={turret.id}
-        style={{
-          position: 'fixed',
-          left: turret.position.x,
-          top: turret.position.y,
-          transform: 'translate(-50%, -50%)',
-          pointerEvents: 'none',
-          zIndex: 9999
-        }}
-      >
-        <RailgunTurret
-          rotation={turret.rotation}
-          onComplete={turret.onComplete}
-        />
-      </div>
-    ))}
-    {railgunBeams.map(beam => (
-      <RailgunBeam
-        key={beam.id}
-        startPos={beam.startPos}
-        endPos={beam.endPos}
-        attackValue={beam.attackValue}
-        duration={beam.duration}
-        onComplete={beam.onComplete}
-      />
-    ))}
-    {animationBlocking && (
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 99999,
-          cursor: 'not-allowed',
-          pointerEvents: 'all',
-          backgroundColor: 'transparent'
-        }}
-      />
-    )}
 
       <GameHeader
         localPlayerState={localPlayerState}
