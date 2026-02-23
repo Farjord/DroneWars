@@ -81,7 +81,7 @@ class BaseEffectProcessor {
   createResult(newPlayerStates, animationEventsOrAdditionalEffects = [], additionalEffects = []) {
     // Auto-detect: animation events have 'type' property, additional effects don't
     const isAnimations = animationEventsOrAdditionalEffects.length > 0 &&
-                         animationEventsOrAdditionalEffects[0]?.type;
+                         'type' in (animationEventsOrAdditionalEffects[0] ?? {});
 
     return {
       newPlayerStates,
