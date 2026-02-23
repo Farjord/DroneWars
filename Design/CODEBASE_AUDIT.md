@@ -3,9 +3,9 @@
 ## Meta
 - Started: 2026-02-23
 - Last Session: 2026-02-23
-- Progress: 269/~500 source files (54%)
-- Current Phase: Phase D — Hooks
-- Next File: src/hooks/ (first file)
+- Progress: 295/~500 source files (59%)
+- Current Phase: Phase E — Components
+- Next File: src/components/animations/ (first file)
 - Test Migration: Complete (151 files moved, 220 total tests in __tests__/, 3748 tests passing)
 
 ## Structure Review
@@ -755,10 +755,202 @@
 6. **[DUP] `addTeleportingFlags`** — Nearly identical in ActionProcessor and GuestMessageQueueService. Extract shared utility.
 7. **[SMELL] GameStateManager.js:217** — `new Error().stack` on every `setState()` is expensive. Should be debug-only.
 
-### Phase D — Hooks
+### Phase D — Hooks (26 files, reviewed 2026-02-23)
+
+**Totals:** 26 files, 10,413 lines, 98 issues (4 [SIZE] 800+, 12 [LOG], 14 [DUP], 12 [SMELL], 6 [PURITY], 26 [TEST] (zero hooks tested), 24 other)
+
 #### D1: src/hooks/
 | File | Lines | Issues | Status |
 |-|-|-|-|
+| useDragMechanics.js | 1653 | 12 | Reviewed |
+| useClickHandlers.js | 956 | 9 | Reviewed |
+| useTacticalEncounters.js | 931 | 10 | Reviewed |
+| useAnimationSetup.js | 899 | 9 | Reviewed |
+| useResolvers.js | 608 | 8 | Reviewed |
+| useGameLifecycle.js | 606 | 7 | Reviewed |
+| useDeckBuilderData.js | 454 | 3 | Reviewed |
+| useShieldAllocation.js | 428 | 4 | Reviewed |
+| useTacticalMovement.js | 390 | 3 | Reviewed |
+| useTacticalEscape.js | 328 | 3 | Reviewed |
+| useCardSelection.js | 326 | 3 | Reviewed |
+| useTacticalSubscriptions.js | 310 | 2 | Reviewed |
+| useTacticalLoot.js | 307 | 2 | Reviewed |
+| useTacticalExtraction.js | 297 | 2 | Reviewed |
+| useTacticalWaypoints.js | 287 | 3 | Reviewed |
+| useMultiplayerSync.js | 261 | 3 | Reviewed |
+| useInterception.js | 247 | 2 | Reviewed |
+| useGameState.js | 241 | 3 | Reviewed |
+| useTacticalPostCombat.js | 229 | 2 | Reviewed |
+| useHangarData.js | 136 | 1 | Reviewed |
+| useHangarMapState.js | 122 | 2 | Reviewed |
+| useActionRouting.js | 106 | 1 | Reviewed |
+| useGameData.js | 104 | 1 | Reviewed |
+| useSoundSetup.js | 82 | 0 | Reviewed |
+| useExplosions.js | 57 | 1 | Reviewed |
+| useMusicSetup.js | 48 | 1 | Reviewed |
+
+**Per-file issues:**
+
+**useDragMechanics.js (1653 lines, 12 issues):**
+- **[SIZE]** — 1653 lines, 2x the 800-line threshold. Contains deployment drag, action card drag, drone drag, interception drag, additional cost drag, arrow tracking, mouseup cleanup — at least 3 extractable concerns.
+- **[SMELL] :275-760** — `handleActionCardDragEnd` is 485 lines — a god function handling movement cards, no-target, upgrade, additional cost, and generic targeted cards.
+- **[SMELL] :908-1440** — `handleDroneDragEnd` is 532 lines — another god function.
+- **[SMELL] :174** — Inconsistent memoization: `handleActionCardDragStart` is a plain function while `handleCardDragStart` at line 102 uses `useCallback`.
+- **[PURITY] :174-266, :275-760** — `handleActionCardDragStart` and `handleActionCardDragEnd` not `useCallback`-wrapped despite accessing closure state.
+- **[STD-CHALLENGE] :114** — Magic number `20` for `startY` offset repeated at lines 263, 784, 815, 854, 891. Should be named constant.
+- **[DUP] :1061-1096** — Cost reminder arrow for FORCED_REPOSITION duplicated with `useClickHandlers.js:489-561`.
+- **[DUP] :296-306, :219-229** — `calculateAllValidTargets` call pattern duplicated within the same function.
+- **[EDGE] :330** — `Object.entries(...).find(...)` can return `undefined`, fragile destructuring.
+- **[LOGIC] :1134-1136** — Hardcoded `lineNumber: 4106` and `lineNumber: 3641` are stale App.jsx references.
+- **[TODO] :34** — Architectural smell (hoisted to App.jsx for circular dependency) not tracked in FUTURE_IMPROVEMENTS.md.
+- **[TEST]** — Zero tests for the most complex hook in the codebase.
+
+**useClickHandlers.js (956 lines, 9 issues):**
+- **[SIZE]** — 956 lines, exceeds 800-line threshold. 7 distinct handler functions.
+- **[SMELL] :710-944** — `handleCardClick` is 234 lines routing across 8+ card interaction types.
+- **[SMELL] :452-706** — `handleLaneClick` is 254 lines covering 6 interaction modes.
+- **[PURITY] :196-226** — `handleShipAbilityClick` hardcodes ability names (`'Reallocate Shields'`, `'Recalculate'`, etc.) for routing. Should use IDs or lookup table.
+- **[TODO] :146,898,915** — Three `// TODO: TECHNICAL DEBT` comments for `gameEngine` direct calls.
+- **[DUP] :489-561** — Cost movement destination logic duplicates `useDragMechanics.js:1034-1096`.
+- **[IMPORT] :3** — `extractDroneNameFromId` imported but only used once for a debug log.
+- **[EDGE] :99** — `handleToggleDroneSelection` compares by `drone.name` not `drone.id`. Could mismatch with duplicate-named drones.
+- **[TEST]** — Zero tests.
+
+**useTacticalEncounters.js (931 lines, 10 issues):**
+- **[SIZE]** — 931 lines, exceeds 800-line threshold. Manages POI encounters, blueprints, salvage, quick deploy, combat loading — 5 distinct concerns.
+- **[PURITY]** — Contains significant business logic (loot generation, AI selection, salvage collection, combat init) that belongs in logic/ or managers/.
+- **[DUP] :432-531 vs :608-691** — `handleSalvageCombat` and salvage branch of `handleEncounterProceedWithQuickDeploy` share ~80% identical code.
+- **[DUP] :229-267 vs :305-351** — `handleBlueprintEncounterAccept` and `handleBlueprintEncounterAcceptWithQuickDeploy` nearly identical except for `quickDeployId` field.
+- **[SMELL] :556-728** — `handleEncounterProceedWithQuickDeploy` is 172 lines handling 3 completely different pathways.
+- **[DEAD] :590-591, :671-672, :716-717** — Consecutive blank lines, remnants of removed code.
+- **[LOGIC] :152** — `Math.random()` used directly for credit generation; breaks seeded RNG reproducibility.
+- **[LOGIC] :153** — `const rng = { random: () => Math.random() }` creates non-seeded RNG wrapper, defeating the `rng` parameter abstraction.
+- **[EDGE] :330** — Destructures result without undefined check.
+- **[TEST]** — Zero tests.
+
+**useAnimationSetup.js (899 lines, 9 issues):**
+- **[SIZE]** — 899 lines, exceeds 800-line threshold. Single `useEffect` with 16 registered visual handlers.
+- **[LOG] :64,108,125,172,278,515,577,647,679** — 9 `console.warn` calls. Most numerous logging violation in the hooks layer.
+- **[IMPORT] :3-4** — `FlashEffect` and `CardVisualEffect` imported but never used. Dead imports.
+- **[SMELL] :7** — Function signature has 16 positional parameters. Should accept a single options object.
+- **[SMELL] :8-899** — Entire hook body is a single 890-line `useEffect`.
+- **[STD-CHALLENGE] :89,498,527,612,627,658,695,843,861,881** — Multiple magic numbers for animation durations, offsets, delays.
+- **[DUP] :588-589** — `localPlayerId` recalculated 3 lines after already being set; inner const shadows outer.
+- **[LOGIC] :82,137,186...** — Animation IDs use `Date.now()` which can collide in same millisecond. Use counter or UUID.
+- **[TEST]** — Zero tests.
+
+**useResolvers.js (608 lines, 8 issues):**
+- **[SIZE]** — 608 lines, above 400-line threshold. Modal callbacks (lines 401-560) could extract to `useModalCallbacks`.
+- **[EDGE] :489-526** — 4 modal confirm handlers lack null guards that peer handlers have. Race-condition crash risk.
+- **[EDGE] :148** — `resolveShipAbility` lacks try/catch around `processActionWithGuestRouting`. If call fails, `result.mandatoryAction` throws.
+- **[SMELL] :436** — `setTimeout(async () => { ... }, 400)` pattern used 6 times. Magic 400ms delay unexplained.
+- **[SMELL] :522-560** — `handleConfirmShipAbility` routes by `abilityType` string with 4 if/else-if branches.
+- **[LOGIC] :79** — Defensive cleanup `useEffect` deps include `turnPhase`/`currentPlayer` but body only checks `winner`. Fires unnecessarily.
+- **[DUP] :219-226** — Friendly-drones calculation appears identically in `useClickHandlers:855-858` and `useDragMechanics:458-461`. Should be shared utility.
+- **[TEST]** — Zero tests.
+
+**useGameLifecycle.js (606 lines, 7 issues):**
+- **[SIZE]** — 606 lines (400+ threshold). Bundles reset, exit, pass, mandatory discard/removal, debug tools, footer toggle, modals — a grab-bag of unrelated concerns.
+- **[LOGIC] :461-473** — **BUG:** `downloadLogAsCSV` headers have 8 columns but row mapping writes 7 values (skips `TimestampUTC`). Produces misaligned CSV output.
+- **[DEAD] :293,316,356** — `const result = await processActionWithGuestRouting(...)` assigned but never read in 3 functions.
+- **[DUP] :313-349 vs :352-389** — `handleMandatoryDiscardContinue` and `handleMandatoryDroneRemovalContinue` nearly identical.
+- **[DUP] :84-98 vs :102-127** — `handleReset` and `handleExitGame` share 10 identical setter-clearing lines.
+- **[SMELL] :457** — Raw browser `alert()` call. Should use project's modal/toast system.
+- **[STD-CHALLENGE] :168** — `Date.now()` + `Math.random()` for instance IDs. Non-deterministic, could desync multiplayer.
+
+**useDeckBuilderData.js (454 lines, 3 issues):**
+- **[SIZE]** — 454 lines (400+ threshold). 95 lines of module-level helpers could extract to `deckBuilderDataHelpers.js`.
+- **[PURITY] :12-118** — 5 standalone pure utility functions at module scope. Generic enough (`sortItems`, `buildDistribution`) to live in shared utility.
+- **[EDGE] :292-298** — `typeLimits` computed outside `useMemo` but used in memoized `isDeckValid`. Could be stale relative to `activeShip` changes.
+
+**useShieldAllocation.js (428 lines, 4 issues):**
+- **[SIZE]** — 428 lines (400+ threshold).
+- **[DUP] :246-255 vs :379-388** — `handleCancelReallocation` and `clearReallocationState` perform same 8 state resets.
+- **[LOGIC] :53-71** — `useEffect` depends on entire `localPlayerState` object. Any unrelated change resets user's in-progress allocation.
+- **[SMELL] :140** — `const { turnPhase } = gameState` shadows the `turnPhase` already destructured at line 33.
+
+**useTacticalMovement.js (390 lines, 3 issues):**
+- **[PURITY] :138-365** — `handleCommenceJourney` is 227 lines. Business logic (waypoint iteration, encounter pauses, path trimming) should live in `src/logic/`.
+- **[SMELL] :138-365** — God function at 227 lines. Should decompose into `processWaypointPath`, `handlePOIArrival`, `handleSalvageEncounter`, `journeyCleanup`.
+- **[STD-CHALLENGE] :324** — Inline magic `500` for waypoint pause delay, despite named constants for other delays at lines 21-23.
+
+**useTacticalEscape.js (328 lines, 3 issues):**
+- **[STD-CHALLENGE] :115** — Magic number `8888` as seed offset. Should be named constant.
+- **[STD-CHALLENGE] :158** — Magic `400ms` delay for "allow modal to close."
+- **[LOGIC] :93** — Redundant `tacticalMapStateManager.getState()` call (already fetched at line 80).
+
+**useCardSelection.js (326 lines, 3 issues):**
+- **[SMELL] :43-55** — `new Error().stack` on every `setMultiSelectState` call. Expensive for debugging only.
+- **[SMELL] :92** — Same stack trace capture in `cancelCardSelection`, slicing 10 frames.
+- **[LOGIC] :267** — `useEffect` deps include `additionalCostState` but early-returns skip recalculation for certain phases. Fires unnecessarily.
+
+**useTacticalSubscriptions.js (310 lines, 2 issues):**
+- **[SMELL] :204-268** — `validQuickDeployments` useMemo is 64 lines of business logic (mock player state, component conversion, section stats). Belongs in `src/logic/quickDeploy/`.
+- **[LOGIC] :80,108** — Detection thresholds `50` and `80` are magic numbers. Should be named constants.
+
+**useTacticalLoot.js (307 lines, 2 issues):**
+- **[DUP] :76-223 vs :229-299** — `handlePOILootCollected` and `handleBlueprintRewardAccepted` share duplicated "finalize loot and resume" sequence.
+- **[SMELL] :76** — `handlePOILootCollected` at 147 lines is a god function handling 8+ loot types + POI marking + detection + mission progress + encounter resolution + waypoint resumption.
+
+**useTacticalExtraction.js (297 lines, 2 issues):**
+- **[DUP] :62-77 vs :96-121 vs :127-163** — Extraction completion pattern repeated 3 times. Extract `showExtractionResult(runState)`.
+- **[LOGIC] :187** — `tier || 1` should be `tier ?? 1` to handle falsy-but-valid `0`.
+
+**useTacticalWaypoints.js (287 lines, 3 issues):**
+- **[TODO] :76** — Open TODO not tracked in FUTURE_IMPROVEMENTS.md.
+- **[DUP] :117-127 vs :138-148** — Pathfinding mode branching duplicated between `getPreviewPath` and `addWaypoint`.
+- **[DUP] :155-166 vs :198-207** — Detection cost + encounter risk calculation duplicated between `addWaypoint` and `recalculateWaypoints`.
+
+**useMultiplayerSync.js (261 lines, 3 issues):**
+- **[DUP] :142-243** — Simultaneous-phase commitment check block copy-pasted 4 times (~100 lines of duplication). Only the phase string differs.
+- **[EDGE] :249-253** — `gameStateManager.emit('render_complete')` fires on every `gameState` change (entire object dependency). Excessive fire rate.
+- **[SMELL] :29-53** — Destructured `data` and `playerId` from event but neither used.
+
+**useInterception.js (247 lines, 2 issues):**
+- **[SMELL] :187-189, :216-218** — `setTimeout(async () => { await resolveAttack(...); }, 400)` — fire-and-forget async. If `resolveAttack` throws, unhandled rejection.
+- **[ERROR] :131-132** — `Object.entries(...).find(...)` can return `undefined`, fragile destructuring with `|| []` fallback.
+
+**useGameState.js (241 lines, 3 issues):**
+- **[LOG] :94** — `console.error('CRITICAL - getOpponentPlacedSections')` — raw console.error.
+- **[LOG] :185** — `console.warn('Simultaneous phase action...')` — raw console.warn.
+- **[PURITY]** — Thin pass-through wrapper forwarding 25+ methods 1:1 to `gameStateManager`. Hook provides subscription value but forwarding adds pure indirection.
+
+**useTacticalPostCombat.js (229 lines, 2 issues):**
+- **[SMELL] :204** — Magic number `threatIncrease: 10` hardcoded. Should reference `tierConfig.detectionTriggers.looting` or named constant.
+- **[SIZE]** — Entire hook is a single `useEffect` with ~200-line function body. Business logic should extract to pure function in `src/logic/`.
+
+**useHangarData.js (136 lines, 1 issue):**
+- **[SMELL] :66** — Magic multiplier `totalDeployments * 1000` for seed generation, `6` for grid radius.
+
+**useHangarMapState.js (122 lines, 2 issues):**
+- **[SMELL] :34** — Magic numbers `3`, `1.2`, `1.5`, `2` for zoom levels. Should be named constants.
+- **[EDGE] :84** — `handleMapMouseDown` reads `pan.x`/`pan.y` from stale closure. Should use `panRef.current`.
+
+**useActionRouting.js (106 lines, 1 issue):**
+- **[SMELL] :71** — `executeDeployment` declared as plain async function, not `useCallback`-wrapped. Recreated every render.
+
+**useGameData.js (104 lines, 1 issue):**
+- **[SMELL] :44** — `setInterval(updateStats, 5000)` polls cache stats unconditionally in production. Should be debug-only.
+
+**useSoundSetup.js (82 lines):** Clean. No issues.
+
+**useExplosions.js (57 lines, 1 issue):**
+- **[LOG] :50** — `console.warn('No position found...')` — raw console.warn.
+
+**useMusicSetup.js (48 lines, 1 issue):**
+- **[SMELL] :31-38** — Polling with `setInterval(..., 500)` to detect audio unlock. Event-based approach would be cleaner.
+
+#### Phase D — Critical Findings Summary
+
+1. **[LOGIC] useGameLifecycle.js:461-473** — BUG: CSV header/data column mismatch (8 headers, 7 data columns) produces corrupt output.
+2. **[EDGE] useResolvers.js:148** — `resolveShipAbility` lacks try/catch. Will throw on failed action routing.
+3. **[EDGE] useResolvers.js:489-526** — 4 modal confirm handlers lack null guards that peer handlers have. Race-condition crash risk.
+4. **[LOG]** — 12 raw console calls across useAnimationSetup (9), useGameState (2), useExplosions (1).
+5. **[SIZE]** — 4 hooks exceed 800 lines: useDragMechanics (1653), useClickHandlers (956), useTacticalEncounters (931), useAnimationSetup (899). God functions: `handleDroneDragEnd` (532 lines), `handleActionCardDragEnd` (485 lines), `handleLaneClick` (254 lines), `handleCardClick` (234 lines).
+6. **[DUP]** — 14 duplication issues. Worst: useMultiplayerSync commitment check block copy-pasted 4 times (~100 lines). Cost reminder arrow logic duplicated between useDragMechanics and useClickHandlers. Friendly-drones calculation duplicated across 3 hooks.
+7. **[TEST]** — `src/hooks/__tests__/` directory does not exist. Zero of 26 hooks have any test coverage. This is 10,413 lines of untested UI interaction logic.
+8. **[PURITY]** — Multiple hooks contain business logic (loot generation, AI selection, combat init, movement state machines) that belongs in logic/ or managers/.
+9. **[LOGIC]** — `Math.random()` in useTacticalEncounters breaks seeded RNG. `Date.now()` for animation IDs risks collision. useShieldAllocation over-broad dependency resets user state.
 
 ### Phase E — Components
 #### E1: src/components/animations/
