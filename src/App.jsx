@@ -38,6 +38,7 @@ import useDragMechanics from './hooks/useDragMechanics.js';
 import useClickHandlers from './hooks/useClickHandlers.js';
 import useGameLifecycle from './hooks/useGameLifecycle.js';
 import useResolvers from './hooks/useResolvers.js';
+import useActionRouting from './hooks/useActionRouting.js';
 
 // --- 1.5 DATA/LOGIC IMPORTS ---
 import { gameEngine } from './logic/gameLogic.js';
@@ -461,82 +462,15 @@ const App = ({ phaseAnimationQueue }) => {
   // All handlers use useCallback for performance optimization.
   // Event handlers coordinate between UI actions and manager layer.
 
-  // --- 6.0 GUEST ACTION ROUTING ---
-  // Wrapper for processAction that routes guest actions to host
-  // ========================================
-
-  /**
-   * Process action with guest mode routing.
-   * All actions are optimistic — guest processes locally with animation tracking,
-   * host remains authoritative via validation at milestone phases.
-   */
-  const processActionWithGuestRouting = useCallback(async (type, payload) => {
-    // Guest mode: Route actions to host
-    if (gameState.gameMode === 'guest') {
-      // Optimistic actions: Process locally for instant feedback AND send to host
-      debugLog('MULTIPLAYER', '🔮 [GUEST OPTIMISTIC] Processing action locally and sending to host:', type);
-
-      // Send to host IMMEDIATELY for authoritative processing (zero delay)
-      // Host receives action while guest processes locally - parallel execution
-      debugLog('MULTIPLAYER', '📤 [GUEST OPTIMISTIC] Sending action to host immediately (before local processing):', type);
-      p2pManager.sendActionToHost(type, payload);
-
-      // Process action locally for instant visual feedback (client-side prediction)
-      debugLog('ANIMATIONS', '🎬 [GUEST OPTIMISTIC] About to process action locally (will generate animations)');
-      const localResult = await processAction(type, payload);
-      debugLog('ANIMATIONS', '✅ [GUEST OPTIMISTIC] Local processing complete (animations should have played)');
-
-      // Track animations from this optimistic action for fine-grained deduplication
-      if (localResult.animations) {
-        gameStateManager.trackOptimisticAnimations(localResult.animations);
-        const status = gameStateManager.optimisticActionService.getStatus();
-        debugLog('OPTIMISTIC', '🔮 [SERVICE] Tracked optimistic animations:', {
-          type,
-          actionCount: localResult.animations.actionAnimations?.length || 0,
-          systemCount: localResult.animations.systemAnimations?.length || 0,
-          totalActionTracked: status.actionAnimationsTracked,
-          totalSystemTracked: status.systemAnimationsTracked
-        });
-      }
-
-      // Return local result immediately so UI updates instantly
-      return localResult;
-    }
-
-    // Host/Local mode: Process action normally
-    return await processAction(type, payload);
-  }, [gameState.gameMode, processAction, p2pManager, gameStateManager]);
-
-  // Deployment execution — positioned before hooks that depend on it
-  const executeDeployment = async (lane, droneToDeployed = selectedDrone) => {
-    debugLog('DRAG_DROP_DEPLOY', '🚀 executeDeployment entered', { lane, droneName: droneToDeployed?.name, hasSelectedDrone: !!selectedDrone, usedParam: droneToDeployed !== selectedDrone });
-    const drone = droneToDeployed;
-    try {
-      debugLog('DEPLOYMENT', '🎯 App.jsx: Deploying drone:', {
-        droneName: drone?.name,
-        droneObject: drone,
-        lane,
-        playerId: getLocalPlayerId(),
-        turn
-      });
-
-      const result = await processActionWithGuestRouting('deployment', {
-        droneData: drone,
-        laneId: lane,
-        playerId: getLocalPlayerId(),
-        turn: roundNumber
-      });
-
-      if (result.success) {
-        setSelectedDrone(null);
-      } else {
-        setModalContent({ title: result.error, text: result.message, isBlocking: true });
-      }
-    } catch (error) {
-      debugLog('DEPLOYMENT', '❌ Error executing deployment:', error);
-      setModalContent({ title: 'Deployment Error', text: 'Failed to execute deployment', isBlocking: true });
-    }
-  };
+  // --- 6.0 ACTION ROUTING HOOK ---
+  const {
+    processActionWithGuestRouting,
+    executeDeployment,
+  } = useActionRouting({
+    gameState, processAction, p2pManager, gameStateManager,
+    getLocalPlayerId, selectedDrone, roundNumber, turn,
+    setSelectedDrone, setModalContent,
+  });
 
   // --- Hoisted drag state (shared between useDragMechanics, useCardSelection, useInterception) ---
   const [draggedDrone, setDraggedDrone] = useState(null);
