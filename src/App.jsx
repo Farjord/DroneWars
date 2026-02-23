@@ -37,6 +37,7 @@ import useCardSelection from './hooks/useCardSelection.js';
 import useDragMechanics from './hooks/useDragMechanics.js';
 import useClickHandlers from './hooks/useClickHandlers.js';
 import useGameLifecycle from './hooks/useGameLifecycle.js';
+import useResolvers from './hooks/useResolvers.js';
 
 // --- 1.5 DATA/LOGIC IMPORTS ---
 import { gameEngine } from './logic/gameLogic.js';
@@ -53,7 +54,7 @@ import p2pManager from './network/P2PManager.js';
 // --- 1.7 UTILITY IMPORTS ---
 import { getElementCenter } from './utils/gameUtils.js';
 import { debugLog } from './utils/debugLogger.js';
-import { calculateAllValidTargets, calculateAffectedDroneIds } from './utils/uiTargetingHelpers.js';
+import { calculateAffectedDroneIds } from './utils/uiTargetingHelpers.js';
 import DEV_CONFIG from './config/devConfig.js';
 
 // --- 1.8 ANIMATION IMPORTS ---
@@ -144,8 +145,6 @@ const App = ({ phaseAnimationQueue }) => {
   const [cardPlayWarning, setCardPlayWarning] = useState(null); // { id, reasons: string[] }
   const [animationBlocking, setAnimationBlocking] = useState(false);
   const [modalContent, setModalContent] = useState(null);
-  const [moveConfirmation, setMoveConfirmation] = useState(null);
-  const [attackConfirmation, setAttackConfirmation] = useState(null);
   const [detailedDroneInfo, setDetailedDroneInfo] = useState(null); // { drone, isPlayer }
   const [cardToView, setCardToView] = useState(null);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
@@ -159,8 +158,7 @@ const App = ({ phaseAnimationQueue }) => {
 
   // Combat and attack state — potentialGuardians moved to useInterception
 
-  // AI behavior and reporting state
-  const [aiCardPlayReport, setAiCardPlayReport] = useState(null);
+  // AI behavior and reporting state — aiCardPlayReport moved to useResolvers
   const [aiDecisionLogToShow, setAiDecisionLogToShow] = useState(null);
 
   // UI and visual effects state
@@ -180,7 +178,6 @@ const App = ({ phaseAnimationQueue }) => {
   const [abilityMode, setAbilityMode] = useState(null); // { drone, ability }
   const [shipAbilityMode, setShipAbilityMode] = useState(null); // { sectionName, ability }
   const [shipAbilityConfirmation, setShipAbilityConfirmation] = useState(null);
-  const [abilityConfirmation, setAbilityConfirmation] = useState(null);
 
   // Mandatory actions and special phases state
   const [mandatoryAction, setMandatoryAction] = useState(null); // e.g., { type: 'discard'/'destroy', player: getLocalPlayerId(), count: X }
@@ -639,24 +636,7 @@ const App = ({ phaseAnimationQueue }) => {
     setViewShipSectionModal(sectionData);
   }, []);
 
-  const handleCloseAiCardReport = useCallback(async () => {
-      // The turn ends only if the card doesn't grant another action.
-      if (aiCardPlayReport && !aiCardPlayReport.card.effect.goAgain) {
-          // Use ActionProcessor for turn transition instead of direct endTurn call
-          await processActionWithGuestRouting('turnTransition', {
-              newPlayer: getLocalPlayerId(),
-              reason: 'aiCardReportClosed'
-          });
-      } else if (aiCardPlayReport && aiCardPlayReport.card.effect.goAgain && !winner) {
-           // If AI can go again and game hasn't ended, the AI's turn continues.
-           // Use ActionProcessor for player transition instead of direct setCurrentPlayer call
-           await processActionWithGuestRouting('turnTransition', {
-               newPlayer: getOpponentPlayerId(),
-               reason: 'aiGoAgain'
-           });
-      }
-      setAiCardPlayReport(null);
-  }, [processActionWithGuestRouting, getLocalPlayerId, getOpponentPlayerId, aiCardPlayReport, winner]);
+  // handleCloseAiCardReport moved to useResolvers
 
   /**
    * Handle showing opponent's selected drones modal
@@ -666,111 +646,60 @@ const App = ({ phaseAnimationQueue }) => {
   }, []);
 
   // ========================================
-  // SECTION 7: GAME LOGIC FUNCTIONS
+  // SECTION 7: RESOLVERS HOOK + CANCEL ALL ACTIONS
   // ========================================
-  // Business logic wrappers that coordinate between UI and game engine.
-  // These functions handle game rule execution, validation, and state updates.
-  // All game logic is delegated to gameEngine for clean separation of concerns.
 
-  // --- 7.1 PHASE TRANSITION FUNCTIONS ---
+  // Ref for circular dependency: useResolvers needs setPlayerInterceptionChoice
+  // from useInterception, but useInterception needs resolveAttack from useResolvers.
+  // The ref is populated after useInterception returns (see wiring below).
+  const interceptionRef = useRef({});
 
-  /**
-   * CANCEL ABILITY MODE
-   * Cancels any active ability targeting mode and clears selections.
-   * Resets UI state when player cancels an ability activation.
-   */
-  const cancelAbilityMode = useCallback(() => {
-    setAbilityMode(null);
-    setSelectedDrone(null);
-    setValidAbilityTargets([]);
-  }, [setValidAbilityTargets]);
+  const {
+    resolveAttack, resolveAbility, resolveShipAbility, resolveCardPlay,
+    handleCardSelection, resolveMultiMove, resolveSingleMove,
+    cancelAbilityMode, handleCloseAiCardReport,
+    moveConfirmation, attackConfirmation, abilityConfirmation, aiCardPlayReport,
+    setMoveConfirmation, setAttackConfirmation, setAbilityConfirmation, setAiCardPlayReport,
+    handleConfirmMove, handleConfirmAttack, handleCancelAttack,
+    handleConfirmIntercept, handleDeclineIntercept,
+    handleConfirmCardPlay, handleConfirmAdditionalCost, handleCancelAdditionalCost,
+    handleConfirmDroneAbility, handleConfirmShipAbility,
+    clearConfirmations,
+  } = useResolvers({
+    processActionWithGuestRouting, getLocalPlayerId, getOpponentPlayerId,
+    isResolvingAttackRef, multiSelectFlowInProgress, additionalCostFlowInProgress,
+    interceptionRef,
+    localPlayerState, opponentPlayerState, winner, turnPhase, currentPlayer,
+    gameStateManager,
+    setSelectedDrone, setAbilityMode, setValidAbilityTargets, setMandatoryAction,
+    setFooterView, setIsFooterOpen, setShipAbilityMode, setDraggedDrone,
+    setCardSelectionModal, setShipAbilityConfirmation,
+    cancelCardSelection, setSingleMoveMode, setSelectedCard, setValidCardTargets,
+    setMultiSelectState, setAdditionalCostState, setAdditionalCostConfirmation,
+    setAdditionalCostSelectionContext, setCostReminderArrowState, setCardConfirmation,
+    setAffectedDroneIds, confirmAdditionalCostCard,
+    singleMoveMode, additionalCostSelectionContext, cardConfirmation,
+    pendingShieldChanges, clearReallocationState,
+  });
 
-  /**
-   * CANCEL ALL ACTIONS
-   * Master cancellation function that clears ALL active action states.
-   * Called when starting a new action to ensure only one action is in progress at a time.
-   */
   const cancelAllActions = () => {
     if (selectedDrone) setSelectedDrone(null);
     if (abilityMode) setAbilityMode(null);
     if (shipAbilityMode) setShipAbilityMode(null);
 
-    // Cancel card selection state (from useCardSelection hook)
     cancelCardState();
 
-    // Cancel shield reallocation (async but non-blocking)
     if (reallocationPhase) handleCancelReallocation();
 
-    // Cancel confirmation modals
-    if (abilityConfirmation) setAbilityConfirmation(null);
+    // Clear confirmation modals from useResolvers + App.jsx state
+    clearConfirmations();
     if (shipAbilityConfirmation) setShipAbilityConfirmation(null);
     if (cardConfirmation) setCardConfirmation(null);
     if (deploymentConfirmation) setDeploymentConfirmation(null);
   };
 
-  // --- 7.2 COMBAT RESOLUTION ---
-
-  /**
-   * RESOLVE ATTACK
-   * Processes drone-to-drone combat using ActionProcessor.
-   * Handles animations, state updates, and turn transitions.
-   * @param {Object} attackDetails - Attack configuration with attacker, target, damage
-
-   */
-  const resolveAttack = useCallback(async (attackDetails) => {
-    // Check if attacker is Suppressed - show confirmation modal instead of attacking
-    if (attackDetails.attacker?.isSuppressed) {
-      setAttackConfirmation(attackDetails);
-      return;
-    }
-
-    // --- Prevent duplicate runs ---
-    if (isResolvingAttackRef.current) {
-        debugLog('COMBAT', '⚠️ Attack already in progress. Aborting duplicate call.');
-        return;
-    }
-    isResolvingAttackRef.current = true;
-
-    try {
-        // Add a brief delay before attack animation starts
-        await new Promise(resolve => setTimeout(resolve, 250));
-
-        // Process attack through ActionProcessor (ActionProcessor handles state updates)
-        const result = await processActionWithGuestRouting('attack', {
-            attackDetails: attackDetails
-        });
-
-        // Check if interception decision is needed from human defender
-        if (result?.needsInterceptionDecision) {
-            debugLog('COMBAT', '🛡️ [APP] Interception decision needed, checking if local player is defender...');
-
-            // Only show modal if local player is the defender
-            const attackingPlayerId = result.interceptionData.attackDetails.attackingPlayer;
-            const defendingPlayerId = attackingPlayerId === 'player1' ? 'player2' : 'player1';
-            const localPlayerId = getLocalPlayerId();
-
-            if (defendingPlayerId === localPlayerId) {
-                debugLog('COMBAT', '🛡️ [APP] Local player is defender, showing interception modal');
-                setPlayerInterceptionChoice(result.interceptionData);
-                isResolvingAttackRef.current = false; // Allow interception modal to re-trigger attack
-                return; // Stop processing until human makes decision
-            } else {
-                debugLog('COMBAT', '🛡️ [APP] Local player is attacker, not showing interception modal');
-                // Attacker will see "opponent deciding" modal via interceptionPending state
-            }
-        }
-
-        // All animations now handled by AnimationManager through ActionProcessor
-        // No direct UI effects needed here - the animation pipeline handles everything
-
-    } catch (error) {
-        debugLog('COMBAT', '❌ Error in resolveAttack:', error);
-    } finally {
-        // --- GUARANTEED CLEANUP (always runs) ---
-        isResolvingAttackRef.current = false;
-    }
-
-}, [triggerExplosion, processAction, getLocalPlayerId, getOpponentPlayerId]);
+  // resolveAttack, resolveAbility, resolveShipAbility, resolveCardPlay,
+  // handleCardSelection, resolveMultiMove, resolveSingleMove — all in useResolvers
 
   // --- INTERCEPTION HOOK ---
   const {
@@ -803,6 +732,9 @@ const App = ({ phaseAnimationQueue }) => {
     resolveAttack,
     getEffectiveStats,
   });
+
+  // Wire up circular dependency ref — useResolvers needs these from useInterception
+  interceptionRef.current = { setPlayerInterceptionChoice, playerInterceptionChoice };
 
   // --- DRAG MECHANICS HOOK ---
   // Positioned after useCardSelection + useInterception to receive their values.
@@ -867,385 +799,8 @@ const App = ({ phaseAnimationQueue }) => {
     }
   }, [draggedActionCard, gameState.player1, gameState.player2, getLocalPlayerId, gameDataService, getPlacedSectionsForEngine]);
 
-  // --- 7.3 ABILITY RESOLUTION ---
-
-  /**
-   * RESOLVE ABILITY
-   * Processes drone ability activation using ActionProcessor.
-   * Updates game state and handles turn transitions.
-   * @param {Object} ability - The ability being activated
-   * @param {Object} userDrone - The drone using the ability
-   * @param {Object} targetDrone - The target of the ability (if any)
-   */
-  const resolveAbility = useCallback(async (ability, userDrone, targetDrone) => {
-    try {
-      // Process ability through ActionProcessor
-      const result = await processActionWithGuestRouting('ability', {
-        droneId: userDrone.id,
-        abilityIndex: userDrone.abilities.findIndex(a => a.name === ability.name),
-        targetId: targetDrone?.id || null
-      });
-
-      cancelAbilityMode();
-    } catch (error) {
-      debugLog('COMBAT', '❌ Error in resolveAbility:', error);
-      cancelAbilityMode();
-    }
-  }, [processActionWithGuestRouting, getLocalPlayerId, cancelAbilityMode]);
-
-  // --- 7.4 SHIP ABILITY RESOLUTION ---
-
-  /**
-   * RESOLVE SHIP ABILITY
-   * Processes ship section ability activation using gameEngine logic.
-   * Handles special UI flows like mandatory actions and shield reallocation.
-   * @param {Object} ability - The ship ability being activated
-   * @param {string} sectionName - Name of the ship section using the ability
-   * @param {Object} target - The target of the ability (if any)
-   */
-  const resolveShipAbility = useCallback(async (ability, sectionName, target) => {
-    // Use ActionProcessor instead of direct gameEngine call
-    const result = await processActionWithGuestRouting('shipAbility', {
-      ability: ability,
-      sectionName: sectionName,
-      targetId: target?.id || null,
-      playerId: getLocalPlayerId()
-    });
-
-    // Handle UI state based on result
-    if (result.mandatoryAction) {
-        setMandatoryAction(result.mandatoryAction);
-        setFooterView('hand');
-        setIsFooterOpen(true);
-        setShipAbilityMode(null);
-        setShipAbilityConfirmation(null);
-        return; // Exit early to prevent additional state changes
-    }
-
-    if (result.requiresShieldReallocation) {
-        // Trigger shield reallocation UI (handled by existing reallocation system)
-        setShipAbilityMode(null);
-        setShipAbilityConfirmation(null);
-        return; // Shield reallocation modal will handle the rest
-    }
-
-    // For standard abilities (like Recall), complete the ability to deduct energy and end turn
-    await processActionWithGuestRouting('shipAbilityCompletion', {
-        ability: ability,
-        sectionName: sectionName,
-        playerId: getLocalPlayerId()
-    });
-
-    // Standard cleanup for completed abilities
-    setShipAbilityMode(null);
-    setShipAbilityConfirmation(null);
-
-    return result;
-}, [processActionWithGuestRouting, getLocalPlayerId]);
-
-  // --- 7.5 CARD RESOLUTION ---
-
-  /**
-   * RESOLVE CARD PLAY
-   * Processes card activation using gameEngine logic.
-   * Handles AI reporting, state updates, and chained effects.
-   * @param {Object} card - The card being played
-   * @param {Object} target - The target of the card (if any)
-   * @param {string} actingPlayerId - getLocalPlayerId() or getOpponentPlayerId()
-   * @param {Object} aiContext - AI decision context for logging
-   */
-  const resolveCardPlay = useCallback(async (card, target, actingPlayerId, aiContext = null) => {
-    // Set up AI card play report if needed (before resolving, since ActionProcessor doesn't know about UI)
-    if (actingPlayerId === getOpponentPlayerId()) {
-        let targetDisplayName = '';
-        let targetLane = '';
-
-        if (target) {
-            if (target.name) {
-                targetDisplayName = target.name;
-
-                // Find the lane for drone targets
-                if (target.id && target.owner) {
-                    const targetPlayerState = target.owner === getLocalPlayerId() ? localPlayerState : opponentPlayerState;
-                    for (const [lane, drones] of Object.entries(targetPlayerState.dronesOnBoard)) {
-                        if (drones.some(drone => drone.id === target.id)) {
-                            targetLane = lane.replace('lane', 'Lane ');
-                            break;
-                        }
-                    }
-                }
-            } else if (target.id.startsWith('lane')) {
-                targetDisplayName = `Lane ${target.id.slice(-1)}`;
-                targetLane = `Lane ${target.id.slice(-1)}`;
-            } else {
-                targetDisplayName = target.id.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-            }
-        }
-        setAiCardPlayReport({ card, targetName: targetDisplayName, targetLane });
-    }
-
-    // Use ActionProcessor instead of direct gameEngine call
-    const result = await processActionWithGuestRouting('cardPlay', {
-      card: card,
-      targetId: target?.id || null,
-      playerId: actingPlayerId
-    });
-
-    // Check if card needs selection (e.g., SEARCH_AND_DRAW or MOVEMENT)
-    if (result.needsCardSelection) {
-        // Handle movement cards differently - use multiSelectState instead of modal
-        if (result.needsCardSelection.type === 'single_move' || result.needsCardSelection.type === 'multi_move') {
-            // For SINGLE_MOVE, highlight all friendly drones as valid targets
-            if (result.needsCardSelection.type === 'single_move') {
-                // Determine which player's drones should be selectable based on who is acting
-                const actingPlayerState = actingPlayerId === getLocalPlayerId()
-                    ? localPlayerState
-                    : opponentPlayerState;
-                const friendlyDrones = Object.values(actingPlayerState.dronesOnBoard)
-                    .flat()
-                    .map(drone => ({ id: drone.id, type: 'drone', owner: actingPlayerId }));
-                setValidCardTargets(friendlyDrones);
-            }
-
-            setMultiSelectState({
-                card: result.needsCardSelection.card,
-                phase: result.needsCardSelection.phase,
-                selectedDrones: [],
-                sourceLane: null,
-                maxDrones: result.needsCardSelection.maxDrones,
-                actingPlayerId: actingPlayerId
-            });
-            return; // Don't process other effects yet
-        }
-
-        // Handle other card selections (like SEARCH_AND_DRAW) with modal
-        setCardSelectionModal({
-            ...result.needsCardSelection,
-            onConfirm: async (selectedCards) => {
-                // Handle the card selection - costs will be paid in completion handler
-                await handleCardSelection(selectedCards, result.needsCardSelection, card, target, actingPlayerId, aiContext, null);
-                setCardSelectionModal(null);
-            },
-            onCancel: () => {
-                // Return cards to deck and cancel
-                setCardSelectionModal(null);
-                if (actingPlayerId === getLocalPlayerId()) {
-                    cancelCardSelection('user-cancel-card-selection-modal');
-                    setCardConfirmation(null);
-                }
-            }
-        });
-        return; // Don't process other effects yet
-    }
-
-    // Handle UI cleanup for player cards
-    if (actingPlayerId === getLocalPlayerId()) {
-        cancelCardSelection();
-        setCardConfirmation(null);
-    }
-
-
-    return result;
-}, [processActionWithGuestRouting, getLocalPlayerId, localPlayerState, opponentPlayerState]);
-
-  // --- 7.6 CARD SELECTION HANDLING ---
-
-  /**
-   * HANDLE CARD SELECTION
-   * Processes the result of a card selection modal (e.g., SEARCH_AND_DRAW).
-   * Delegates to ActionProcessor to maintain proper architecture.
-   */
-  const handleCardSelection = useCallback(async (selectedCards, selectionData, originalCard, target, actingPlayerId, aiContext, playerStatesWithEnergyCosts = null) => {
-    // Delegate to ActionProcessor (proper architecture)
-    await processActionWithGuestRouting('searchAndDrawCompletion', {
-      card: originalCard,
-      selectedCards,
-      selectionData,
-      playerId: actingPlayerId,
-      playerStatesWithEnergyCosts
-    });
-
-    // UI cleanup only
-    if (actingPlayerId === getLocalPlayerId()) {
-      cancelCardSelection('confirm-card-selection');
-      setCardConfirmation(null);
-    }
-  }, [processActionWithGuestRouting, getLocalPlayerId, cancelCardSelection]);
-
-  // --- 7.7 MOVEMENT RESOLUTION ---
-
-  /**
-   * RESOLVE MULTI MOVE
-   * Processes multi-drone movement cards through ActionProcessor.
-   * @param {Object} card - The movement card being played
-   * @param {Array} dronesToMove - Array of drones to move
-   * @param {string} fromLane - Source lane ID
-   * @param {string} toLane - Destination lane ID
-   */
-  const resolveMultiMove = useCallback(async (card, dronesToMove, fromLane, toLane) => {
-    await processActionWithGuestRouting('movementCompletion', {
-      card,
-      movementType: 'multi_move',
-      drones: dronesToMove,
-      fromLane,
-      toLane,
-      playerId: getLocalPlayerId()
-    });
-
-    // Clean up UI state
-    setMultiSelectState(null);
-    cancelCardSelection('confirm-multi-move');
-  }, [processActionWithGuestRouting, getLocalPlayerId]);
-
-
-  /**
-   * RESOLVE SINGLE MOVE
-   * Processes single-drone movement cards through ActionProcessor.
-   * @param {Object} card - The movement card being played
-   * @param {string} droneId - The ID of the drone to move
-   * @param {string} droneOwner - The owner of the drone (player1 or player2)
-   * @param {string} fromLane - Source lane ID
-   * @param {string} toLane - Destination lane ID
-   */
-  const resolveSingleMove = useCallback(async (card, droneId, droneOwner, fromLane, toLane) => {
-    debugLog('ADDITIONAL_COST_EFFECT_FLOW', '🔵 resolveSingleMove ENTRY', {
-      cardName: card.name,
-      cardId: card.id,
-      droneId,
-      droneOwner,
-      fromLane,
-      toLane,
-      hasAdditionalCostContext: !!additionalCostSelectionContext,
-      contextCardId: additionalCostSelectionContext?.card?.id
-    });
-
-    // CHECKPOINT 10: Inside resolveSingleMove
-    debugLog('SINGLE_MOVE_FLOW', '⚙️ CHECKPOINT 10: Inside resolveSingleMove', {
-      receivedCard: card?.name,
-      receivedDroneId: droneId,
-      receivedDroneOwner: droneOwner,
-      receivedFromLane: fromLane,
-      receivedToLane: toLane,
-      allParametersDefined: !!(card && droneId && droneOwner && fromLane && toLane),
-      hasAdditionalCostContext: !!additionalCostSelectionContext
-    });
-
-    // Look up the CURRENT drone from game state
-    const currentState = gameStateManager.getState();
-    const ownerState = currentState?.[droneOwner];
-
-    debugLog('SINGLE_MOVE_FLOW', '🔍 CHECKPOINT 10b: Looking up drone in state', {
-      droneOwner: droneOwner,
-      fromLane: fromLane,
-      ownerStateExists: !!ownerState,
-      dronesInLane: ownerState?.dronesOnBoard?.[fromLane]?.map(d => ({ id: d.id, name: d.name })),
-      searchingForId: droneId
-    });
-
-    // Find the drone in the source lane
-    const currentDrone = ownerState?.dronesOnBoard?.[fromLane]?.find(d => d.id === droneId);
-
-    if (!currentDrone) {
-      debugLog('SINGLE_MOVE_FLOW', '❌ CHECKPOINT 10c: Drone NOT FOUND', {
-        droneId: droneId,
-        fromLane: fromLane,
-        droneOwner: droneOwner,
-        ownerState: ownerState,
-        availableDrones: ownerState?.dronesOnBoard?.[fromLane]
-      });
-      debugLog('SINGLE_MOVE_FLOW', '❌ resolveSingleMove: Could not find drone', { droneId, fromLane, droneOwner });
-      setMultiSelectState(null);
-      cancelCardSelection('error-single-move-drone-not-found');
-      return;
-    }
-
-    debugLog('SINGLE_MOVE_FLOW', '✅ CHECKPOINT 10d: Drone FOUND, proceeding with move', {
-      foundDrone: { id: currentDrone.id, name: currentDrone.name },
-      fromLane: fromLane,
-      toLane: toLane
-    });
-
-    // Check if this is completing an additional cost effect selection
-    if (additionalCostSelectionContext && additionalCostSelectionContext.card.id === card.id) {
-      debugLog('ADDITIONAL_COST_EFFECT_FLOW', '✅ Additional cost effect selection detected', {
-        cardName: card.name,
-        contextCard: additionalCostSelectionContext.card.name,
-        willDispatchAction: true
-      });
-
-      debugLog('ADDITIONAL_COST', '✅ Completing additional cost effect selection', {
-        drone: currentDrone.name,
-        from: fromLane,
-        to: toLane
-      });
-
-      debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   🔵 Dispatching additionalCostEffectSelectionComplete action', {
-        selectionType: 'single_move',
-        droneId,
-        droneOwner,
-        fromLane,
-        toLane,
-        playerId: getLocalPlayerId()
-      });
-
-      const result = await processActionWithGuestRouting('additionalCostEffectSelectionComplete', {
-        selectionContext: additionalCostSelectionContext,
-        effectSelection: {
-          type: 'single_move',
-          drone: { ...currentDrone, owner: droneOwner },  // Pass full drone object
-          fromLane,
-          toLane,
-          playerId: getLocalPlayerId()
-        },
-        playerId: getLocalPlayerId()
-      });
-
-      debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ Action dispatched, clearing state', {
-        resultSuccess: result?.success,
-        hasAnimations: !!result?.animationEvents,
-        animationCount: result?.animationEvents?.length || 0
-      });
-
-      // Clear context and UI state
-      setAdditionalCostSelectionContext(null);
-      setMultiSelectState(null);
-      setAdditionalCostState(null);
-      setCostReminderArrowState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
-      setSelectedCard(null);
-      setValidCardTargets([]);
-      setAffectedDroneIds([]);
-      additionalCostFlowInProgress.current = false;
-
-      debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ Cleanup complete');
-
-      debugLog('ADDITIONAL_COST_EFFECT_FLOW', '✅ resolveSingleMove complete (additional cost path)');
-      return;
-    }
-
-    debugLog('ADDITIONAL_COST_EFFECT_FLOW', '🔵 No additional cost context - normal movement path');
-
-    // Normal movement completion (existing code)
-    await processActionWithGuestRouting('movementCompletion', {
-      card,
-      movementType: 'single_move',
-      drones: [{ ...currentDrone, owner: droneOwner }],
-      fromLane,
-      toLane,
-      playerId: getLocalPlayerId()
-    });
-
-    // CHECKPOINT 11: Move Executed
-    debugLog('SINGLE_MOVE_FLOW', '🎉 CHECKPOINT 11: Move completed successfully', {
-      drone: currentDrone.name,
-      from: fromLane,
-      to: toLane,
-      card: card.name
-    });
-
-    // Clean up UI state
-    setMultiSelectState(null);
-    cancelCardSelection('confirm-single-move');
-  }, [processActionWithGuestRouting, getLocalPlayerId, additionalCostSelectionContext]);
+  // All resolve functions (resolveAbility, resolveShipAbility, resolveCardPlay,
+  // handleCardSelection, resolveMultiMove, resolveSingleMove) extracted to useResolvers
 
 
 
@@ -1308,17 +863,7 @@ const App = ({ phaseAnimationQueue }) => {
   // Effects 8.5 (guardian highlighting), hoveredTarget clear, and arrow state
   // moved to useInterception and useDragMechanics hooks
 
-   // --- 8.5 DEFENSIVE STATE CLEANUP ---
-  // Reset attack flag when critical game state changes to prevent infinite loops
-  useEffect(() => {
-    // Reset attack flag on turn changes or game reset
-    if (winner) {
-      if (isResolvingAttackRef.current) {
-        debugLog('COMBAT', '[DEFENSIVE CLEANUP] Resetting stuck attack flag due to game state change');
-        isResolvingAttackRef.current = false;
-      }
-    }
-  }, [winner, turnPhase, currentPlayer]);
+  // Defensive state cleanup moved to useResolvers
 
   // --- 8.6 GUEST RENDER NOTIFICATION ---
   // Note: Guest render notification removed - no longer needed after animation timing fix
@@ -1455,7 +1000,9 @@ const App = ({ phaseAnimationQueue }) => {
   });
 
 
-  // --- Modal confirmation callbacks (extracted for ModalLayer) ---
+  // --- Modal confirmation callbacks ---
+  // Most callbacks extracted to useResolvers. handleConfirmDeployment stays here
+  // because it depends on useDragMechanics state (deploymentConfirmation).
 
   const handleConfirmDeployment = async () => {
     if (!deploymentConfirmation) return;
@@ -1463,171 +1010,6 @@ const App = ({ phaseAnimationQueue }) => {
     setDeploymentConfirmation(null);
     setTimeout(async () => {
       await executeDeployment(lane, drone);
-    }, 400);
-  };
-
-  const handleConfirmMove = async () => {
-    if (!moveConfirmation) return;
-
-    debugLog('SINGLE_MOVE_FLOW', '✅ CHECKPOINT 8: Modal confirmed, extracting data', {
-      moveConfirmation: moveConfirmation,
-      moveConfirmationKeys: Object.keys(moveConfirmation),
-      droneIdPresent: 'droneId' in moveConfirmation,
-      ownerPresent: 'owner' in moveConfirmation,
-      dronePresent: 'drone' in moveConfirmation,
-      rawDroneId: moveConfirmation.droneId,
-      rawOwner: moveConfirmation.owner,
-      rawFrom: moveConfirmation.from,
-      rawTo: moveConfirmation.to
-    });
-
-    const { droneId, owner, from, to, card, isSnared: wasSnared } = moveConfirmation;
-
-    debugLog('SINGLE_MOVE_FLOW', '🔓 CHECKPOINT 8b: Data destructured from moveConfirmation', {
-      droneId, owner, from, to,
-      hasCard: !!card, cardName: card?.name,
-      allDefined: !!(droneId && owner && from && to),
-      typeofDroneId: typeof droneId, typeofOwner: typeof owner
-    });
-
-    setMoveConfirmation(null);
-
-    if (singleMoveMode) {
-      setSingleMoveMode(null);
-      setSelectedCard(null);
-    }
-
-    if (wasSnared) {
-      debugLog('CONSUMPTION_DEBUG', '🟢 [1] App.jsx: Calling processAction snaredConsumption', { droneId, owner });
-      await processActionWithGuestRouting('snaredConsumption', { droneId, playerId: owner });
-      setSelectedDrone(null);
-      setDraggedDrone(null);
-      setValidCardTargets([]);
-      return;
-    }
-
-    setTimeout(async () => {
-      if (card) {
-        debugLog('SINGLE_MOVE_FLOW', '🚀 CHECKPOINT 9: Calling resolveSingleMove', {
-          card: card.name, droneId, owner, fromLane: from, toLane: to,
-          parameters: { card, droneId, owner, from, to }
-        });
-        await resolveSingleMove(card, droneId, owner, from, to);
-        setSelectedDrone(null);
-        setDraggedDrone(null);
-        setValidCardTargets([]);
-      } else {
-        await processActionWithGuestRouting('move', {
-          droneId, fromLane: from, toLane: to, playerId: getLocalPlayerId()
-        });
-        setSelectedDrone(null);
-      }
-    }, 400);
-  };
-
-  const handleConfirmAttack = async () => {
-    if (!attackConfirmation) return;
-    const { attacker } = attackConfirmation;
-    debugLog('CONSUMPTION_DEBUG', '🟢 [1] App.jsx: Calling processAction suppressedConsumption', { droneId: attacker.id, owner: attackConfirmation.attackingPlayer });
-    setAttackConfirmation(null);
-    setSelectedDrone(null);
-    await processActionWithGuestRouting('suppressedConsumption', {
-      droneId: attacker.id,
-      playerId: attackConfirmation.attackingPlayer
-    });
-  };
-
-  const handleCancelAttack = () => {
-    setAttackConfirmation(null);
-    setSelectedDrone(null);
-  };
-
-  const handleConfirmIntercept = async (interceptor) => {
-    const attackDetails = { ...playerInterceptionChoice.attackDetails, interceptor };
-    setPlayerInterceptionChoice(null);
-    setTimeout(async () => {
-      await resolveAttack(attackDetails);
-    }, 400);
-  };
-
-  const handleDeclineIntercept = async () => {
-    const attackDetails = { ...playerInterceptionChoice.attackDetails, interceptor: null };
-    setPlayerInterceptionChoice(null);
-    setTimeout(async () => {
-      await resolveAttack(attackDetails);
-    }, 400);
-  };
-
-  const handleConfirmCardPlay = async () => {
-    const card = cardConfirmation.card;
-    const target = cardConfirmation.target;
-    setCardConfirmation(null);
-    setTimeout(async () => {
-      await resolveCardPlay(card, target, getLocalPlayerId());
-    }, 400);
-  };
-
-  const handleConfirmAdditionalCost = async () => {
-    const card = additionalCostConfirmation.card;
-    const costSelection = additionalCostConfirmation.costSelection;
-    const effectTarget = additionalCostConfirmation.effectTarget;
-    setAdditionalCostConfirmation(null);
-    setTimeout(async () => {
-      await confirmAdditionalCostCard(card, costSelection, effectTarget);
-    }, 400);
-  };
-
-  const handleCancelAdditionalCost = () => {
-    setAdditionalCostConfirmation(null);
-  };
-
-  const handleConfirmDroneAbility = () => {
-    const ability = abilityConfirmation.ability;
-    const drone = abilityConfirmation.drone;
-    const target = abilityConfirmation.target;
-    setAbilityConfirmation(null);
-    setTimeout(() => {
-      resolveAbility(ability, drone, target);
-    }, 400);
-  };
-
-  const handleConfirmShipAbility = async () => {
-    const ability = shipAbilityConfirmation.ability;
-    const sectionName = shipAbilityConfirmation.sectionName;
-    const target = shipAbilityConfirmation.target;
-    const abilityType = shipAbilityConfirmation.abilityType;
-    setShipAbilityConfirmation(null);
-
-    setTimeout(async () => {
-      if (abilityType === 'recall' || ability.name === 'Recall') {
-        const result = await processActionWithGuestRouting('recallAbility', {
-          targetId: target?.id || null, sectionName, playerId: getLocalPlayerId()
-        });
-        debugLog('SHIP_ABILITY', `Recall ability completed:`, result);
-      } else if (abilityType === 'targetLock' || ability.name === 'Target Lock') {
-        const result = await processActionWithGuestRouting('targetLockAbility', {
-          targetId: target?.id || null, sectionName, playerId: getLocalPlayerId()
-        });
-        debugLog('SHIP_ABILITY', `Target Lock ability completed:`, result);
-      } else if (abilityType === 'recalculate' || ability.name === 'Recalculate') {
-        const result = await processActionWithGuestRouting('recalculateAbility', {
-          sectionName, playerId: getLocalPlayerId()
-        });
-        if (result.mandatoryAction) {
-          setMandatoryAction(result.mandatoryAction);
-          setFooterView('hand');
-          setIsFooterOpen(true);
-        }
-        debugLog('SHIP_ABILITY', `Recalculate ability completed:`, result);
-      } else if (abilityType === 'reallocateShields' || ability.name === 'Reallocate Shields') {
-        const result = await processActionWithGuestRouting('reallocateShieldsComplete', {
-          playerId: getLocalPlayerId(), pendingChanges: pendingShieldChanges
-        });
-        clearReallocationState();
-        debugLog('SHIP_ABILITY', `Reallocate Shields ability completed:`, result);
-      }
-      setShipAbilityMode(null);
-      clearReallocationState();
     }, 400);
   };
 
