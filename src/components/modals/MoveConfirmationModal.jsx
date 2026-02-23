@@ -6,19 +6,7 @@
 
 import React from 'react';
 import { Move, ArrowRight } from 'lucide-react';
-
-/**
- * Helper function to extract drone name from drone ID
- * @param {string} droneId - The drone ID (e.g., "player2_Talon_0006")
- * @returns {string} - The drone name (e.g., "Talon")
- */
-const extractDroneNameFromId = (droneId) => {
-  if (!droneId) return '';
-  // ID format: "player2_Talon_0006" → extract "Talon"
-  const parts = droneId.split('_');
-  // Remove player prefix and sequence number, join remaining parts for multi-word names
-  return parts.slice(1, -1).join('_');
-};
+import { extractDroneNameFromId } from '../../logic/droneUtils.js';
 
 /**
  * MOVE CONFIRMATION MODAL COMPONENT

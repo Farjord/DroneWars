@@ -41,7 +41,125 @@
 ### Behavioral Baseline
 <!-- IMMUTABLE — do not edit after initial writing -->
 
-*To be completed before refactoring begins. This section documents the current behavior, intent, contracts, dependencies, edge cases, and non-obvious design decisions of the code being refactored. Once written, this section is never modified — it serves as the permanent "before" record.*
+#### Exports / Public API
+
+- **Default export**: `App` — React component, the main game UI orchestrator
+- **Props**: `{ phaseAnimationQueue }` — animation queue instance passed from AppRouter
+- **Module-level definitions** (outside component):
+  - `targetingRouter` (line 117): `new TargetingRouter()` instance for card targeting validation
+  - `extractDroneNameFromId(droneId)` (line 124): Pure helper, extracts drone name from ID format `"player2_Talon_0006"` → `"Talon"`
+
+#### State Mutations and Their Triggers
+
+**70+ useState declarations across 10 concern areas:**
+
+| Concern | State Vars | Key Mutators | Trigger |
+|-|-|-|-|
+| Animation | flyingDrones, flashEffects, healEffects, cardVisuals, cardReveals, shipAbilityReveals, phaseAnnouncements, currentPhaseAnimation, isPhaseAnimationPlaying, laserEffects, teleportEffects, overflowProjectiles, splashEffects, barrageImpacts, railgunTurrets, railgunBeams, passNotifications, goAgainNotifications, statusConsumptions, cardPlayWarning, animationBlocking (21 vars) | useAnimationSetup passes 18 setters; phaseAnimationQueue subscription | Manager events, phase transitions |
+| Modals | showAiHandModal, showDebugModal, showGlossaryModal, showAIStrategyModal, showAddCardModal, showAbandonRunModal, viewShipSectionModal, modalContent, deploymentConfirmation, moveConfirmation, attackConfirmation, detailedDroneInfo, cardToView, showWinnerModal, isViewDeckModalOpen, isViewDiscardModalOpen, showOpponentDronesModal, aiCardPlayReport, aiDecisionLogToShow, showMandatoryActionModal, confirmationModal, cardSelectionModal, abilityConfirmation, shipAbilityConfirmation, waitingForPlayerPhase (25 vars) | Various open/close handlers | User clicks, game events |
+| Card Selection | selectedCard, validCardTargets, affectedDroneIds, cardConfirmation, multiSelectState (raw+wrapped), singleMoveMode, additionalCostState, additionalCostConfirmation, additionalCostSelectionContext, destroyUpgradeModal, upgradeSelectionModal, viewUpgradesModal (12 vars) | handleCardClick, handleActionCardDragEnd, cancelCardSelection, cancelAllActions | User drag/click, card play flow |
+| Shield Allocation | reallocationPhase, shieldsToAdd, shieldsToRemove, originalShieldAllocation, postRemovalShieldAllocation, initialShieldAllocation, reallocationAbility, pendingShieldChanges, postRemovalPendingChanges, pendingShieldAllocations, pendingShieldsRemaining (11 vars) | handleAllocateShield, handleRemoveShield, handleAddShield, handleConfirmShields, handleResetShields, handleConfirmReallocation, handleCancelReallocation (14 functions) | User clicks on ship sections, phase entry |
+| Interception | playerInterceptionChoice, potentialInterceptors, potentialGuardians, showOpponentDecidingModal, interceptionModeActive, selectedInterceptor, interceptedBadge (7 vars) | handleConfirmInterception, handleDeclineInterceptionFromHeader, handleShowInterceptionDialog, handleResetInterception | Interception pending event, user decision |
+| Drag-and-Drop | draggedCard, draggedDrone, draggedActionCard, arrowState, cardDragArrowState, droneDragArrowState, actionCardDragArrowState, costReminderArrowState (8 vars) | handleCardDragStart/End, handleDroneDragStart/End, handleActionCardDragStart/End | User mouse drag events |
+| Targeting | selectedDrone, hoveredTarget, hoveredCardId, hoveredLane, abilityMode, validAbilityTargets, shipAbilityMode (7 vars) | handleSetHoveredTarget, handleLaneHover, handleToggleDroneSelection, handleTokenClick, handleTargetClick, handleLaneClick | User hover/click/drag over game elements |
+| Game Lifecycle | deck, lastCurrentPlayer, lastTurnPhase, optionalDiscardCount, mandatoryAction, laneControl (6 vars) | handleReset, handleExitGame, handleImportDeck, handleConfirmMandatoryDiscard | User actions, phase transitions |
+| UI State | footerView, isFooterOpen, isLogModalOpen, recentlyHitDrones, selectedBackground (5 vars) | handleFooterViewToggle, handleFooterButtonClick, handleBackgroundChange | User clicks |
+
+**Key mutation patterns:**
+- `processActionWithGuestRouting(type, payload)` is the central action dispatcher (102 functions route through it)
+- `cancelAllActions()` bulk-resets 10+ state vars to clear all active selections
+- `cancelCardSelection()` resets card/multi-select/single-move state
+- Shield allocation has a two-phase mutation flow: remove phase → add phase → confirm
+
+#### Side Effects
+
+**28 useEffect hooks:**
+
+| # | Lines | Purpose | Deps | External Effects |
+|-|-|-|-|-|
+| 1 | 432-479 | PhaseManager event subscription | isMultiplayer, gameMode, waitingForPlayerPhase | Subscribes to gameFlowManager; clears waiting overlay on phase complete |
+| 2 | 483-494 | Page unload warning | gameActive | window.addEventListener('beforeunload') |
+| 3 | 539-547 | Ref sync (3 effects) | passInfo, turnPhase, winner | Keeps refs current for async callbacks |
+| 4 | 573-594 | Multiplayer P2P subscription | isMultiplayer, p2pManager, gameStateManager | Subscribes to p2pManager; handles PHASE_COMPLETED, sync_requested |
+| 5 | 597-616 | Shield allocation init | turnPhase, shieldsToAllocate, localPlayerState | Initializes pending allocations on phase entry |
+| 6 | 650-673 | Lane control calculation | player1/player2 dronesOnBoard | Calls LaneControlCalculator |
+| 7 | 676-686 | Additional cost logging | additionalCostState, validCardTargets | debugLog only |
+| 8 | 1804-1869 | Targeting calculations | abilityMode, shipAbilityMode, selectedCard, multiSelectState, singleMoveMode, additionalCostState | Calls calculateAllValidTargets() |
+| 9 | 1874-1907 | Phase animation queue | phaseAnimationQueue | Subscribes to animationStarted/animationEnded/playbackStateChanged |
+| 10 | 1912-1916 | Win condition monitor | winner, showWinnerModal | Sets showWinnerModal |
+| 11 | 1922-1955 | Interception monitoring | selectedDrone, draggedDrone, turnPhase, +6 deps | Calls calculatePotentialInterceptors() |
+| 12 | 1960-1988 | Guardian highlighting | selectedDrone, turnPhase, playerStates | Calculates GUARDIAN keyword drones |
+| 13 | 1991-2013 | Interception pending monitor | interceptionPending, localPlayerId | Sets interception/opponent deciding modals |
+| 14 | 2015-2026 | Interception badge | lastInterception | Sets interceptedBadge display |
+| 15 | 2029-2031 | Hovered target clear | selectedDrone | Clears hoveredTarget on drone change |
+| 16 | 2035-2046 | Attack arrow visibility | selectedDrone, turnPhase, abilityMode, singleMoveMode | Sets arrowState visible + start position |
+| 17 | 2050-2069 | Arrow mouse tracking | arrowState.visible | DOM: addEventListener mousemove, setAttribute on SVG |
+| 18 | 2074-2102 | Card drag arrow tracking | cardDragArrowState.visible | DOM: addEventListener mousemove, calculatePolygonPoints |
+| 19 | 2106-2121 | Card drag mouseup cancel | draggedCard | DOM: addEventListener mouseup, setTimeout(0) cleanup |
+| 20 | 2126-2148 | Drone drag arrow tracking | droneDragArrowState | DOM: addEventListener mousemove, calculatePolygonPoints |
+| 21 | 2152-2188 | Drone drag mouseup cancel | draggedDrone | DOM: addEventListener mouseup, setTimeout(0) cleanup |
+| 22 | 2192-2215 | Action card drag arrow tracking | actionCardDragArrowState | DOM: addEventListener mousemove, calculatePolygonPoints |
+| 23 | 2219-2235 | Action card global mouseup | draggedActionCard | DOM: document addEventListener mouseup |
+| 24 | 2239-2247 | Defensive state cleanup | winner, turnPhase, currentPlayer | Resets isResolvingAttackRef when game state changes |
+| 25 | 2258-2310 | Guest phase transition detection | turnPhase, gameStage, roundNumber, gameMode | Guest-only: synthesizes phaseTransition events |
+| 26 | 2316-2320 | Guest render completion | gameState, gameStateManager | Guest-only: emits 'render_complete' for animation DOM targeting |
+| 27 | 2325-2375 | Mandatory action initialization | turnPhase, mandatoryAction | Opens footer, sets view for mandatory phases |
+| 28 | 2384-2498 | Simultaneous phase waiting | turnPhase, commitments, +4 deps | Shows/hides waiting overlay for 4 simultaneous phases |
+
+**Event emissions:**
+- `p2pManager.sendActionToHost(type, payload)` — Guest sends actions to host (lines 808, 820)
+- `p2pManager.sendData(message)` — Sends PHASE_COMPLETED to opponent (line 865)
+- `p2pManager.sendFullSyncResponse(currentState)` — Host responds to guest sync (line 587)
+- `gameStateManager.emit('render_complete')` — Guest signals render done (line 2318)
+
+**localStorage:**
+- Read: `localStorage.getItem('gameBackground')` (line 291, state initializer)
+- Write: `localStorage.setItem('gameBackground', backgroundId)` (line 882)
+
+**DOM manipulation:**
+- 7 addEventListener/removeEventListener pairs for mousemove/mouseup on gameAreaRef and document
+- Direct SVG attribute updates via refs (arrowLineRef, cardDragArrowRef, droneDragArrowRef, actionCardDragArrowRef)
+- `getElementCenter()` and `getBoundingClientRect()` calls for arrow positioning
+
+#### Known Edge Cases
+
+**Race condition guards (ref-based flags):**
+- `isResolvingAttackRef` (line 374): Prevents duplicate attack processing; reset in finally block + defensive cleanup on game state change
+- `multiSelectFlowInProgress` (line 379): Tracks multi-select to prevent premature cleanup in mouseup handlers
+- `additionalCostFlowInProgress` (line 380): Same pattern for additional cost card flow
+- `roundStartCascadeTriggered` (line 377): Prevents duplicate round start cascade triggers
+- `deploymentToActionTriggered` (line 378): Prevents duplicate deployment→action phase triggers
+
+**Double phase ref pattern** (lines 375-376):
+- `previousPhaseRef`: Tracks phase for guest phase transition detection
+- `footerPreviousPhaseRef`: Separate ref for footer view switching — prevents race condition where both would trigger on same phase change
+
+**Stale closure mitigations:**
+- `passInfoRef`, `turnPhaseRef`, `winnerRef` kept in sync via 3 dedicated useEffect hooks — async callbacks (setTimeout, attack resolution) read from refs, not state
+- Zero-timeout (`setTimeout(fn, 0)`) pattern used in 6 mouseup handlers to allow React event handlers to fire before cleanup
+
+**Timing dependencies:**
+- 400ms delay before attack resolution after interception decision (lines 1083, 1119)
+- 250ms delay before attack animation in resolveAttack (line 1339)
+- Zero-timeout flushes in modal confirm callbacks (deployment line 6521, move line 6599, attack line 6666, card play line 6783, cost confirm line 6804)
+- `waitForBothPlayersComplete()` uses 1s polling interval with 30s timeout (lines 3126-3164)
+
+**Null guards / early returns:**
+- Main render guard: `if (!localPlayerState || !opponentPlayerState)` returns loading placeholder (line 2513)
+- Failed run screen: `if (gameState.showFailedRunScreen)` returns FailedRunLoadingScreen (line 2517)
+- Drag handlers guard: phase + current player checks before allowing drag start
+- Interception handlers guard: `if (!playerInterceptionChoice) return`
+
+**Phase-based action guards:**
+- Card drag requires `turnPhase === 'deployment'` + current player match
+- Action card drag requires `turnPhase === 'action'` + current player match
+- Drone drag requires action phase
+- Shield allocation requires `turnPhase === 'allocateShields'`
+- Mandatory discard/removal derive from `turnPhase` + commitments state (not mandatoryAction state)
+
+**Defensive cleanup:**
+- Effect #24 (line 2239): Resets `isResolvingAttackRef.current = false` when winner/turnPhase/currentPlayer changes — prevents infinite attack lock after unexpected state change
+- `cancelAllActions()` bulk-resets 10+ state variables as escape hatch
 
 ## TO DO
 
@@ -137,12 +255,14 @@
 - Refs: arrowLineRef, cardDragArrowRef, droneDragArrowRef, actionCardDragArrowRef, costReminderArrowRef
 - Functions: handleCardDragStart, handleCardDragEnd, handleDroneDragStart, handleDroneDragEnd, handleActionCardDragStart, handleActionCardDragEnd
 - Effects: All mouse tracking effects (lines 2050-2235), all mouseup cleanup effects (lines 2106-2235)
-- **Where**: Split into 3 sub-hooks due to ~1200-line size:
-  - `src/hooks/useCardDrag.js` — card drag start/end, card arrow state, card mouseup cleanup
-  - `src/hooks/useDroneDrag.js` — drone drag start/end, drone arrow state, drone mouseup cleanup
-  - `src/hooks/useActionCardDrag.js` — action card drag start/end, action card arrow state, action card mouseup cleanup
-- **Why**: Drag-and-drop is a distinct interaction layer with 8 state vars, 5 refs, 6 handlers, 7 effects. At ~1200 lines, a single hook would itself be a god object. Each drag type has independent state and handlers.
-- **Dependencies**: gameAreaRef, droneRefs, sectionRefs, resolveAttack, executeDeployment, multiSelectState, singleMoveMode, additionalCostState, validCardTargets
+- **⚠️ ARCHITECT CORRECTION #3**: Split by behavior, not by object type. Options:
+  - Option A (preferred): Keep as one `useDragMechanics` hook (~900 lines post-cleanup) since drag is one cohesive concern
+  - Option B: Split by behavior — `useDeploymentDrag` (~100 lines), `useActionCardDrag` (~200 lines), `useDroneDrag` (~600 lines)
+  - Do NOT split by object type (useCardDrag/useDroneDrag/useActionCardDrag) — that splits shared arrow state and shared cleanup patterns
+- **Where**: `src/hooks/useDragMechanics.js` (Option A) or `src/hooks/useDeploymentDrag.js` + `src/hooks/useActionCardDrag.js` + `src/hooks/useDroneDrag.js` (Option B)
+- **Why**: Drag-and-drop is a distinct interaction layer with 8 state vars, 5 refs, 6 handlers, 7 effects.
+- **Dependencies**: sharedDragRefs (memoized ref bundle), resolveAttack, executeDeployment, multiSelectState, singleMoveMode, additionalCostState, validCardTargets
+- **⚠️ ARCHITECT CORRECTION #4**: handleDroneDragEnd (530 lines) references cross-hook values via closures. After extraction, values read inside setTimeout callbacks MUST use refs (not state), following the existing `isResolvingAttackRef` pattern. Add `draggedDroneRef` and `additionalCostStateRef` to prevent stale closures in async callbacks.
 
 #### Hook 7: useModals
 **What to extract:**
@@ -152,13 +272,14 @@
 - **Why**: 25 modal state vars constitute purely UI state with no business logic. ~300 lines.
 - **Dependencies**: processActionWithGuestRouting (for a few handlers)
 
-#### Hook 8: useActionRouting
+#### Hook 8: useActionRouting (EXTRACT LAST)
 **What to extract:**
 - Functions: processActionWithGuestRouting, handleGameAction, handleSimultaneousAction
 - Constant: HOST_ONLY_ACTIONS
 - **Where**: `src/hooks/useActionRouting.js`
 - **Why**: Action routing is cross-cutting infrastructure. Extracting it clarifies the multiplayer architecture. ~150 lines.
 - **Dependencies**: gameState.gameMode, processAction, p2pManager, gameStateManager
+- **⚠️ ARCHITECT CORRECTION #1**: processActionWithGuestRouting stays in App.jsx during Phases B/C. It is consumed by useShieldAllocation, useCardSelection, useMultiplayerSync, useGameLifecycle — extracting it early breaks all downstream hooks. Extract useActionRouting LAST (after all consumers are extracted and receive it as a parameter).
 
 #### Hook 9: useMultiplayerSync
 **What to extract:**
@@ -181,11 +302,16 @@
 
 ### Inter-Hook Communication Pattern
 
-Hooks return values consumed by other hooks via local variables in App.jsx — no React Context needed since all hooks live in the same component. Example:
+**⚠️ ARCHITECT CORRECTION #2**: No React Context. Hooks communicate through App.jsx local variables — same pattern as TacticalMapScreen's 8 hooks. Use a `sharedDragRefs` memoized object for refs shared between drag hooks.
 
 ```javascript
-// In App.jsx
-const { draggedCard, handleCardDragStart } = useCardDrag(...);
+// In App.jsx — hooks return values consumed by other hooks via local variables
+const sharedDragRefs = useMemo(() => ({
+  droneRefs, sectionRefs, gameAreaRef, arrowLineRef,
+  cardDragArrowRef, droneDragArrowRef, actionCardDragArrowRef, costReminderArrowRef
+}), []); // Refs are stable, empty deps is correct
+
+const { draggedCard, handleCardDragStart } = useCardDrag(sharedDragRefs, ...);
 const { validCardTargets } = useCardSelection(draggedCard, ...);
 const { handleTargetClick } = useTargeting(validCardTargets, ...);
 ```
@@ -339,61 +465,59 @@ Each step is independently committable: extract/clean -> test -> review -> fix -
 - Well-isolated combat subsystem
 - Write tests first, then extract
 
-**Step 6: Extract useAnimationEffects**
+**Step 6: Extract useAnimationEffects + AnimationLayer + TargetingArrowLayer**
 - 21 state vars, 2 callbacks
 - Purely presentational state
-- Extract alongside AnimationLayer sub-component
+- **⚠️ ARCHITECT CORRECTION #5**: Extract AnimationLayer + TargetingArrowLayer sub-components during Phase B (alongside useAnimationEffects), NOT Phase D. Their render JSX is purely animation state → JSX with no business logic callbacks. ModalLayer stays in Phase D because its onConfirm callbacks depend on hook functions.
 
 **Step 7: Extract useModals**
 - 25 state vars, 7 functions
 - Pure UI state management
-- Extract alongside ModalLayer sub-component
+- ModalLayer extraction deferred to Phase D (depends on hook functions for onConfirm callbacks)
 
 #### Phase C: Extract Complex Hooks (Higher Risk)
 
-**Step 8: Extract useActionRouting**
-- 3 functions, 1 constant
-- Cross-cutting but small
-- Write tests verifying guest routing behavior
-
-**Step 9: Extract useMultiplayerSync**
+**Step 8: Extract useMultiplayerSync**
 - 3 functions, 4 effects
 - Network-dependent logic
 - Write tests with P2P mocking
 
-**Step 10: Extract useCardSelection**
+**Step 9: Extract useCardSelection**
 - 12 state vars, 2 refs, 8 functions, 1 effect
-- Most complex flow -- additional cost cards have 5-step state machine
+- Most complex flow — additional cost cards have 5-step state machine
 - Write comprehensive tests covering all card selection paths first
 
-**Step 11: Extract useDragMechanics**
+**Step 10: Extract useDragMechanics**
 - 8 state vars, 5 refs, 6 functions, 7 effects
 - Heavy DOM interaction (mouseup/mousemove listeners)
 - Write tests, then extract carefully
 
-**Step 12: Extract useTargeting**
+**Step 11: Extract useTargeting**
 - 3 state vars, 2 callbacks, routing functions
 - Depends on cardSelection and interception hooks
 - Extract after those hooks are stable
 
-**Step 13: Extract useGameLifecycle**
+**Step 12: Extract useGameLifecycle**
 - Mixed state, effects, and lifecycle functions
-- Extract last as it contains the "remainder" logic
+- "Remainder" bucket — review size after extraction
 - Includes mandatory action handling and phase transition effects
+
+**Step 13: Extract useActionRouting (LAST)**
+- 3 functions, 1 constant
+- **⚠️ ARCHITECT CORRECTION #1 applied**: Extracted LAST because processActionWithGuestRouting is consumed by useShieldAllocation, useCardSelection, useMultiplayerSync, useGameLifecycle. During Phases B/C, it stays in App.jsx and is passed as a parameter to extracted hooks.
+- Write tests verifying guest routing behavior
 
 #### Phase D: Sub-component Extraction (Low Risk)
 
-**Step 14: Extract AnimationLayer sub-component**
-- All animation `.map()` JSX (lines 6119-6305)
-- Pure render component, no state
+**Step 14: (MOVED TO PHASE B Step 6)** — AnimationLayer + TargetingArrowLayer now extracted with useAnimationEffects
 
-**Step 15: Extract TargetingArrowLayer sub-component**
-- 5 TargetingArrow + 2 interception line components (lines 6100-6118)
-- Pure render component
+**Step 15: Extract inline modal onConfirm callbacks**
+- **⚠️ ARCHITECT CORRECTION #6**: Extract inline modal onConfirm callbacks to named hook functions BEFORE extracting ModalLayer. ShipAbilityConfirmation onConfirm alone is 73 lines of business logic (lines 6904-6977). Other modals with substantial inline callbacks: DeploymentConfirmationModal, MoveConfirmationModal, AttackConfirmationModal, CardConfirmationModal, AdditionalCostConfirmationModal.
+- Move each callback to a named function in the appropriate hook (e.g., ShipAbilityConfirmation.onConfirm → useShieldAllocation or useGameLifecycle)
 
 **Step 16: Extract ModalLayer sub-component**
 - All 30+ modal components (lines 6492-6989)
-- Many have inline onConfirm/onCancel callbacks that need extraction
+- After Step 15, all onConfirm callbacks are named functions passed as props
 - Largest render sub-component extraction
 
 #### Phase E: Consolidation
@@ -406,7 +530,7 @@ Each step is independently committable: extract/clean -> test -> review -> fix -
 - Wrap remaining non-useCallback functions
 
 **Step 18: Final review**
-- Verify App.jsx is under 800 lines
+- **⚠️ ARCHITECT CORRECTION #7**: Target ~700 lines for final App.jsx (prop-passing JSX for GameHeader/GameBattlefield/GameFooter is ~150 lines irreducible baseline)
 - Verify all hooks have tests in `__tests__/` subdirectory
 - Verify no business logic remains in App.jsx
 - Update this plan document with final state
@@ -447,11 +571,13 @@ Each step is independently committable: extract/clean -> test -> review -> fix -
 
 ### Final State
 
-*To be completed after refactoring.*
+*To be completed after all sessions.*
 
 ### Change Log
 
-*Append entries here as refactoring steps are completed.*
-
 | Step | Date | Change | Behavior Preserved | Behavior Altered | Deviations |
 |-|-|-|-|-|-|
+| Phase A, Step 1 | 2026-02-23 | Removed dead code: HOST_ONLY_ACTIONS+branch, RACE_CONDITION_DEBUG, handleGameAction, handleSimultaneousAction, waitForBothPlayersComplete, handleDeployDrone, duplicate multi-move block, dead queueAnimations ref. Moved extractDroneNameFromId to src/logic/droneUtils.js. Replaced 17 console calls with debugLog. Removed banned/stale comments. | All behavior preserved — only unreachable code paths removed | None | handleToggleDroneSelection kept (used by DronesView footer); targetingRouter kept module-level (stateless) |
+| Phase A, Step 2 | 2026-02-23 | Removed legacy click-to-initiate-action code: click-to-attack-drone (handleTokenClick), click-to-attack-section (handleTargetClick), click-to-move + click-to-deploy (handleLaneClick) | All behavior preserved — drag-and-drop is canonical for action initiation; removed paths were unreachable | None | None |
+| Pre-flight | 2026-02-23 | Migrated 3 misplaced test files (App.footerPhaseSync, App.hooks, App.movementCard) to src/__tests__/ | N/A | N/A | None |
+| Baseline | 2026-02-23 | Completed IMMUTABLE Behavioral Baseline + applied 7 architect corrections to TO DO section | N/A | N/A | None |

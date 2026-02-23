@@ -12,6 +12,7 @@ import DEV_CONFIG from '../../config/devConfig.js';
 import { BACKGROUNDS } from '../../config/backgrounds.js';
 import HullIntegrityBadge from './HullIntegrityBadge.jsx';
 import KPIChangePopup from '../animations/KPIChangePopup.jsx';
+import { extractDroneNameFromId } from '../../logic/droneUtils.js';
 
 /**
  * Hook to track the previous value of a state/prop
@@ -24,19 +25,6 @@ const usePrevious = (value) => {
     ref.current = value;
   }, [value]);
   return ref.current;
-};
-
-/**
- * Helper function to extract drone name from drone ID
- * @param {string} droneId - The drone ID (e.g., "player2_Talon_0006")
- * @returns {string} - The drone name (e.g., "Talon")
- */
-const extractDroneNameFromId = (droneId) => {
-  if (!droneId) return '';
-  // ID format: "player2_Talon_0006" → extract "Talon"
-  const parts = droneId.split('_');
-  // Remove player prefix and sequence number, join remaining parts for multi-word names
-  return parts.slice(1, -1).join('_');
 };
 
 /**

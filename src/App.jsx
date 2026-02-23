@@ -90,6 +90,7 @@ import { debugLog } from './utils/debugLogger.js';
 import { calculateAllValidTargets, calculateAffectedDroneIds, calculateCostTargets, calculateEffectTargetsWithCostContext } from './utils/uiTargetingHelpers.js';
 import DEV_CONFIG from './config/devConfig.js';
 import SeededRandom from './utils/seededRandom.js';
+import { extractDroneNameFromId } from './logic/droneUtils.js';
 
 // --- 1.8 ANIMATION IMPORTS ---
 import AnimationManager from './managers/AnimationManager.js';
@@ -115,19 +116,6 @@ import RailgunBeam from './components/animations/RailgunBeam.jsx';
 
 // Initialize TargetingRouter for card targeting validation
 const targetingRouter = new TargetingRouter();
-
-/**
- * Helper function to extract drone name from drone ID
- * @param {string} droneId - The drone ID (e.g., "player2_Talon_0006")
- * @returns {string} - The drone name (e.g., "Talon")
- */
-const extractDroneNameFromId = (droneId) => {
-  if (!droneId) return '';
-  // ID format: "player2_Talon_0006" → extract "Talon"
-  const parts = droneId.split('_');
-  // Remove player prefix and sequence number, join remaining parts for multi-word names
-  return parts.slice(1, -1).join('_');
-};
 
 // ========================================
 // SECTION 2: MAIN COMPONENT DECLARATION
@@ -178,8 +166,7 @@ const App = ({ phaseAnimationQueue }) => {
   // Grouped by functionality: modal state, targeting state, game state, UI state.
   // This centralization makes state management more maintainable and predictable.
   // Debug and development flags
-  const AI_HAND_DEBUG_MODE = DEV_CONFIG.features.aiHandDebug; // Controlled by DEV_CONFIG
-  const RACE_CONDITION_DEBUG = true; // Set to false to disable race condition monitoring
+  const AI_HAND_DEBUG_MODE = DEV_CONFIG.features.aiHandDebug;
 
   // Modal state
   const [showAiHandModal, setShowAiHandModal] = useState(false);
@@ -226,10 +213,6 @@ const App = ({ phaseAnimationQueue }) => {
   const [selectedDrone, setSelectedDrone] = useState(null);
   const [hoveredTarget, setHoveredTarget] = useState(null);
   const [hoveredCardId, setHoveredCardId] = useState(null);
-
-  // Performance-optimized hoveredTarget setter
-  // Skips state update if hovering same target to prevent unnecessary re-renders
-  // Note: handleSetHoveredTarget is defined later after draggedDrone state
 
   // Combat and attack state
   const [playerInterceptionChoice, setPlayerInterceptionChoice] = useState(null);
@@ -378,8 +361,6 @@ const App = ({ phaseAnimationQueue }) => {
   const deploymentToActionTriggered = useRef(false); // Prevent duplicate deployment → action triggers
   const multiSelectFlowInProgress = useRef(false); // Track multi-select flow to prevent premature cleanup
   const additionalCostFlowInProgress = useRef(false); // Track additional cost flow to prevent premature cleanup
-  // NOTE: enteredMandatoryDiscardWithExcess and enteredMandatoryRemovalWithExcess refs REMOVED
-  // Auto-completion for mandatory phases is now handled consistently by GameFlowManager.autoCompleteUnnecessaryCommitments()
 
   // --- 3.4 HOOKS DEPENDENT ON REFS ---
   // These hooks require refs as parameters and must be called after ref initialization.
@@ -788,29 +769,14 @@ const App = ({ phaseAnimationQueue }) => {
   // Wrapper for processAction that routes guest actions to host
   // ========================================
 
-  // ALL ACTIONS NOW OPTIMISTIC - Guest processes locally with animation tracking
-  // Host remains authoritative via validation at milestone phases
-  const HOST_ONLY_ACTIONS = [];
-
   /**
-   * Process action with guest mode routing
-   * Guest sends actions to host, host/local process normally
+   * Process action with guest mode routing.
+   * All actions are optimistic — guest processes locally with animation tracking,
+   * host remains authoritative via validation at milestone phases.
    */
   const processActionWithGuestRouting = useCallback(async (type, payload) => {
     // Guest mode: Route actions to host
     if (gameState.gameMode === 'guest') {
-      const isHostOnly = HOST_ONLY_ACTIONS.includes(type);
-
-      if (isHostOnly) {
-        // Host-only actions: ONLY send to host, do NOT process locally
-        // These actions require both players' state and have guest guards in ActionProcessor
-        debugLog('MULTIPLAYER', '🔒 [GUEST HOST-ONLY] Sending action to host (no local processing):', type);
-        p2pManager.sendActionToHost(type, payload);
-
-        // Return success - actual state will arrive via host broadcast
-        return { success: true, hostProcessing: true };
-      }
-
       // Optimistic actions: Process locally for instant feedback AND send to host
       debugLog('MULTIPLAYER', '🔮 [GUEST OPTIMISTIC] Processing action locally and sending to host:', type);
 
@@ -1329,7 +1295,7 @@ const App = ({ phaseAnimationQueue }) => {
 
     // --- Prevent duplicate runs ---
     if (isResolvingAttackRef.current) {
-        console.warn("Attack already in progress. Aborting duplicate call.");
+        debugLog('COMBAT', '⚠️ Attack already in progress. Aborting duplicate call.');
         return;
     }
     isResolvingAttackRef.current = true;
@@ -1367,7 +1333,7 @@ const App = ({ phaseAnimationQueue }) => {
         // No direct UI effects needed here - the animation pipeline handles everything
 
     } catch (error) {
-        console.error('Error in resolveAttack:', error);
+        debugLog('COMBAT', '❌ Error in resolveAttack:', error);
     } finally {
         // --- GUARANTEED CLEANUP (always runs) ---
         isResolvingAttackRef.current = false;
@@ -1396,7 +1362,7 @@ const App = ({ phaseAnimationQueue }) => {
 
       cancelAbilityMode();
     } catch (error) {
-      console.error('Error in resolveAbility:', error);
+      debugLog('COMBAT', '❌ Error in resolveAbility:', error);
       cancelAbilityMode();
     }
   }, [processActionWithGuestRouting, getLocalPlayerId, cancelAbilityMode]);
@@ -1661,7 +1627,7 @@ const App = ({ phaseAnimationQueue }) => {
         ownerState: ownerState,
         availableDrones: ownerState?.dronesOnBoard?.[fromLane]
       });
-      console.error('resolveSingleMove: Could not find drone', { droneId, fromLane, droneOwner });
+      debugLog('SINGLE_MOVE_FLOW', '❌ resolveSingleMove: Could not find drone', { droneId, fromLane, droneOwner });
       setMultiSelectState(null);
       cancelCardSelection('error-single-move-drone-not-found');
       return;
@@ -1725,11 +1691,6 @@ const App = ({ phaseAnimationQueue }) => {
       additionalCostFlowInProgress.current = false;
 
       debugLog('ADDITIONAL_COST_EFFECT_FLOW', '   ✅ Cleanup complete');
-
-      // Handle animations and game flow
-      if (result && result.animationEvents) {
-        queueAnimations(result.animationEvents);
-      }
 
       debugLog('ADDITIONAL_COST_EFFECT_FLOW', '✅ resolveSingleMove complete (additional cost path)');
       return;
@@ -2539,20 +2500,6 @@ const App = ({ phaseAnimationQueue }) => {
     );
   }
 
-  // --- 8.11-8.13 REMOVED: AUTO-TRIGGER FOR MANDATORY PHASES ---
-  // Previous implementation used client-side useEffects to auto-trigger Continue when player
-  // entered mandatoryDiscard or mandatoryDroneRemoval with no excess cards/drones.
-  //
-  // This has been CONSOLIDATED into GameFlowManager.autoCompleteUnnecessaryCommitments()
-  // which now handles ALL mandatory simultaneous phases (allocateShields, mandatoryDiscard,
-  // mandatoryDroneRemoval) consistently on the server-side.
-  //
-  // Benefits:
-  // - Single source of truth for auto-completion logic
-  // - No race conditions between client-side useEffect dependencies
-  // - Consistent handling across all game modes (local, host, guest)
-  // - Proper integration with AI auto-commit for single-player mode
-
   /**
    * HANDLE RESET
    * Resets the entire game state back to initial conditions.
@@ -2663,7 +2610,7 @@ const App = ({ phaseAnimationQueue }) => {
     Object.entries(selectedCards).forEach(([cardId, quantity]) => {
       const cardTemplate = fullCardCollection.find(c => c.id === cardId);
       if (!cardTemplate) {
-        console.error(`Card template not found for ID: ${cardId}`);
+        debugLog('DEBUG_TOOLS', 'Card template not found for ID:', cardId);
         return;
       }
 
@@ -2972,7 +2919,7 @@ const App = ({ phaseAnimationQueue }) => {
       debugLog('ENERGY', `🛡️ Routing to action phase shield handling (sequential)`);
       processActionWithGuestRouting(actionType, payload);
     } else {
-      console.warn(`⚠️ Shield action ${actionType} not valid for phase ${phase}`);
+      debugLog('ENERGY', '⚠️ Shield action not valid:', { actionType, phase });
     }
   };
 
@@ -2988,7 +2935,7 @@ const App = ({ phaseAnimationQueue }) => {
 
     // Validate we're in the correct phase
     if (turnPhase !== 'allocateShields') {
-      console.warn(`⚠️ Round start shield action ${actionType} called during ${turnPhase} phase`);
+      debugLog('ENERGY', '⚠️ Round start shield action called during wrong phase:', { actionType, turnPhase });
       return;
     }
 
@@ -3000,7 +2947,7 @@ const App = ({ phaseAnimationQueue }) => {
           if (payload.sectionName) {
             handleAllocateShield(payload.sectionName);
           } else {
-            console.error('allocateShield action missing sectionName in payload');
+            debugLog('ENERGY', '❌ allocateShield action missing sectionName in payload');
           }
           break;
 
@@ -3013,161 +2960,17 @@ const App = ({ phaseAnimationQueue }) => {
           break;
 
         default:
-          console.warn(`⚠️ Unknown round start shield action: ${actionType}`);
+          debugLog('ENERGY', '⚠️ Unknown round start shield action:', actionType);
           break;
       }
     } catch (error) {
-      console.error(`❌ Error processing round start shield action ${actionType}:`, error);
-    }
-  };
-
-  // ========================================
-  // PHASE-AWARE ACTION ROUTING
-  // ========================================
-
-  /**
-   * HANDLE GAME ACTION
-   * Phase-aware routing function that directs actions to appropriate handlers.
-   * Routes based on phase type: sequential phases use ActionProcessor,
-   * simultaneous phases use direct GameStateManager updates.
-   * @param {string} actionType - The type of action to perform
-   * @param {Object} payload - Action-specific data
-   * @returns {Promise} Result of the action processing
-   */
-  const handleGameAction = async (actionType, payload) => {
-    const phase = gameState.turnPhase;
-    // TODO: FUTURE WORK - Could get phase type from GameFlowManager.getPhaseType() when available
-    const isSequential = ['deployment', 'action'].includes(phase);
-
-    debugLog('PHASE_TRANSITIONS', `[PHASE ROUTING] ${actionType} in ${phase} → ${isSequential ? 'ActionProcessor' : 'Direct Update'}`);
-
-    // Special case for shield actions
-    if (actionType.includes('Shield') || actionType.includes('shield')) {
-      debugLog('ENERGY', `[SHIELD ROUTING] ${actionType} in ${phase} → ${phase === 'allocateShields' ? 'Round Start (Simultaneous)' : 'Action Phase (Sequential)'}`);
-    }
-
-    if (isSequential) {
-      // Sequential phases: use ActionProcessor for serialized execution
-      return await processActionWithGuestRouting(actionType, payload);
-    } else {
-      // Simultaneous phases: use direct updates for parallel execution
-      return handleSimultaneousAction(actionType, payload);
-    }
-  };
-
-  /**
-   * HANDLE SIMULTANEOUS ACTION
-   * Routes simultaneous phase actions to appropriate direct update functions.
-   * Handles parallel player actions during setup and round start phases.
-   * @param {string} actionType - The type of action to perform
-   * @param {Object} payload - Action-specific data
-   * @returns {Object} Result of the action processing
-   */
-  const handleSimultaneousAction = (actionType, payload) => {
-    const { turnPhase } = gameState;
-
-    debugLog('PHASE_TRANSITIONS', `⚡ handleSimultaneousAction: ${actionType} in ${turnPhase} phase`);
-
-    try {
-      // Route based on action type and current phase
-      switch (actionType) {
-        // Shield allocation actions are now handled by ActionProcessor routing
-
-
-
-        // Initial draw actions - now handled by GameFlowManager
-        case 'drawCard':
-        case 'confirmInitialHand':
-          // These actions are no longer handled here - managed by phase system
-          break;
-
-        // Phase transitions are handled by GameFlowManager automatically
-        // updateGameState actions should go through managers, not direct updates
-
-        default:
-          console.warn(`⚠️ Unhandled simultaneous action: ${actionType} in phase ${turnPhase}`);
-          return {
-            success: false,
-            error: `No handler for simultaneous action: ${actionType} in phase ${turnPhase}`
-          };
-      }
-
-      // If we get here, the action was not appropriate for the current phase
-      return {
-        success: false,
-        error: `Action ${actionType} not valid for current phase ${turnPhase}`
-      };
-    } catch (error) {
-      console.error(`❌ Error in handleSimultaneousAction:`, error);
-      return {
-        success: false,
-        error: error.message
-      };
+      debugLog('ENERGY', '❌ Error processing round start shield action:', { actionType, error });
     }
   };
 
   // ========================================
   // ROUND START SEQUENCE
   // ========================================
-
-
-  /**
-   * WAIT FOR BOTH PLAYERS COMPLETE
-   * Waits for both players to complete a simultaneous phase before proceeding.
-   * Handles both local AI and multiplayer scenarios.
-   * @param {string} phase - The phase to wait for completion
-   * @returns {Promise} Resolves when both players are complete
-   */
-  const waitForBothPlayersComplete = async (phase) => {
-    return new Promise((resolve, reject) => {
-      debugLog('PHASE_TRANSITIONS', `⏳ Waiting for both players to complete ${phase} phase`);
-
-      // Set up timeout for safety (30 seconds max wait)
-      const timeout = setTimeout(() => {
-        console.warn(`⚠️ Timeout waiting for ${phase} completion`);
-        resolve(); // Continue anyway to prevent game lockup
-      }, 30000);
-
-      const checkCompletion = () => {
-        if (!isMultiplayer()) {
-          // Single player mode - AI completion handled by SimultaneousActionManager
-          debugLog('PHASE_TRANSITIONS', `🤖 Single player mode: AI completion delegated to SimultaneousActionManager for ${phase}`);
-          clearTimeout(timeout);
-          resolve();
-          return;
-        }
-
-        // Multiplayer mode - check if both players are ready
-        if (areBothPlayersReady(phase)) {
-          debugLog('PHASE_TRANSITIONS', `✅ Both players completed ${phase} phase`);
-          clearTimeout(timeout);
-          resolve();
-          return;
-        }
-
-        // Not ready yet - continue waiting
-        debugLog('PHASE_TRANSITIONS', `⏳ Still waiting for ${phase} completion`);
-      };
-
-      // Initial check
-      checkCompletion();
-
-      // Set up periodic checking for multiplayer
-      if (isMultiplayer()) {
-        const checkInterval = setInterval(() => {
-          if (areBothPlayersReady(phase)) {
-            clearInterval(checkInterval);
-            clearTimeout(timeout);
-            debugLog('PHASE_TRANSITIONS', `✅ Both players completed ${phase} phase`);
-            resolve();
-          }
-        }, 1000); // Check every second
-
-        // Store interval for cleanup on timeout
-        timeout._checkInterval = checkInterval;
-      }
-    });
-  };
 
 
   /**
@@ -3215,7 +3018,7 @@ const App = ({ phaseAnimationQueue }) => {
       return { success: true };
 
     } catch (error) {
-      console.error("Deck import failed:", error);
+      debugLog('DEBUG_TOOLS', '❌ Deck import failed:', error);
       return { success: false, message: error.message };
     }
   };
@@ -3270,39 +3073,9 @@ const App = ({ phaseAnimationQueue }) => {
         setModalContent({ title: result.error, text: result.message, isBlocking: true });
       }
     } catch (error) {
-      console.error('Error executing deployment:', error);
+      debugLog('DEPLOYMENT', '❌ Error executing deployment:', error);
       setModalContent({ title: 'Deployment Error', text: 'Failed to execute deployment', isBlocking: true });
     }
-  };
-
-  /**
-   * HANDLE DEPLOY DRONE
-   * Validates and initiates drone deployment to specified lane.
-   * Shows confirmation for turn 1 deployments requiring energy.
-   * @param {string} lane - The target lane for deployment
-   */
-  const handleDeployDrone = (lane) => {
-    if (!selectedDrone || currentPlayer !== getLocalPlayerId() || passInfo[getLocalPlayerId() + 'Passed']) return;
-
-    cancelAllActions(); // Cancel all other actions before deploying drone
-
-    // For round 1, we need cost information for confirmation modal
-    if (roundNumber === 1) {
-      // TODO: UI VALIDATION - validateDeployment used for UI validation before deployment - appropriate for UI layer
-      const validationResult = gameEngine.validateDeployment(localPlayerState, selectedDrone, roundNumber, totalLocalPlayerDrones, localPlayerEffectiveStats);
-      if (!validationResult.isValid) {
-        setModalContent({ title: validationResult.reason, text: validationResult.message, isBlocking: true });
-        return;
-      }
-      const { budgetCost, energyCost } = validationResult;
-      if (energyCost > 0) {
-        setDeploymentConfirmation({ lane, budgetCost, energyCost, drone: selectedDrone });
-        return;
-      }
-    }
-
-    // Execute deployment (handles its own validation)
-    executeDeployment(lane);
   };
 
   /**
@@ -3315,7 +3088,7 @@ const App = ({ phaseAnimationQueue }) => {
     if (turnPhase !== 'deployment' || currentPlayer !== getLocalPlayerId()) return;
 
     setDraggedCard(drone);
-    setSelectedDrone(drone); // Set selected for handleDeployDrone
+    setSelectedDrone(drone); // Set selected for executeDeployment
 
     // Get start position from top-center of the card element
     if (gameAreaRef.current) {
@@ -3361,8 +3134,7 @@ const App = ({ phaseAnimationQueue }) => {
     setCardDragArrowState(prev => ({ ...prev, visible: false }));
 
     if (lane) {
-      // Deploy to lane - call executeDeployment directly with the dragged drone
-      // We bypass handleDeployDrone to avoid cancelAllActions clearing selectedDrone
+      // Deploy to lane — call executeDeployment directly with the dragged drone
       if (currentPlayer !== getLocalPlayerId() || passInfo[getLocalPlayerId() + 'Passed']) {
         debugLog('DRAG_DROP_DEPLOY', '⛔ handleCardDragEnd early return - not current player or passed', { currentPlayer, localPlayerId: getLocalPlayerId(), passed: passInfo[getLocalPlayerId() + 'Passed'] });
         return;
@@ -3577,7 +3349,7 @@ const App = ({ phaseAnimationQueue }) => {
             return;
           }
 
-          // NEW FLOW: For SINGLE_MOVE cards, enter singleMoveMode instead of multiSelectState
+          // For SINGLE_MOVE cards, enter singleMoveMode instead of multiSelectState
           if (card.effect.type === 'SINGLE_MOVE') {
             // CHECKPOINT 2: Card Dropped on Drone Target
             debugLog('SINGLE_MOVE_FLOW', '🎯 CHECKPOINT 2: Card dropped on drone target', {
@@ -4376,7 +4148,7 @@ const App = ({ phaseAnimationQueue }) => {
           additionalCostPhase: additionalCostState?.phase,
           turnPhase: turnPhase
         });
-        console.trace('Invalid Move modal call stack');
+        debugLog('MODAL_TRIGGER', '🚨 Invalid Move modal call stack');
         setModalContent({
           title: "Invalid Move",
           text: "You can only move this drone to an adjacent lane.",
@@ -4662,7 +4434,7 @@ const App = ({ phaseAnimationQueue }) => {
           additionalCostPhase: additionalCostState?.phase,
           turnPhase: turnPhase
         });
-        console.trace('Invalid Move modal call stack');
+        debugLog('MODAL_TRIGGER', '🚨 Invalid Move modal call stack');
         setModalContent({ title: "Invalid Move", text: "Drones can only move to adjacent lanes.", isBlocking: true });
       }
       return;
@@ -4837,7 +4609,7 @@ const App = ({ phaseAnimationQueue }) => {
       e.stopPropagation();
       debugLog('COMBAT', `--- handleTokenClick triggered for ${token.name} (isPlayer: ${isPlayer}) ---`);
 
-      // NEW: Prioritize multi-move selection
+      // Multi-move selection takes priority over other click handlers
       if (multiSelectState && multiSelectState.phase === 'select_drones' && isPlayer) {
           // Validate drone is a valid target (includes exhaustion check + any future filters)
           const tokenOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
@@ -4956,53 +4728,7 @@ const App = ({ phaseAnimationQueue }) => {
           return;
       }
 
-      // 2. Handle standard attack logic directly
-      if (turnPhase === 'action' && isMyTurn() && selectedDrone && !selectedDrone.isExhausted && !isPlayer) {
-          debugLog('COMBAT', "Action: Attempting a standard attack.");
-          debugLog('COMBAT', "Attacker selected:", selectedDrone.name, `(ID: ${selectedDrone.id})`);
-          debugLog('COMBAT', "Target clicked:", token.name, `(ID: ${token.id})`);
-
-          const [attackerLane] = Object.entries(localPlayerState.dronesOnBoard).find(([_, drones]) => drones.some(d => d.id === selectedDrone.id)) || [];
-          const [targetLane] = Object.entries(opponentPlayerState.dronesOnBoard).find(([_, drones]) => drones.some(d => d.id === token.id)) || [];
-          
-          debugLog('COMBAT', "Calculated Attacker Lane:", attackerLane);
-          debugLog('COMBAT', "Calculated Target Lane:", targetLane);
-
-          if (attackerLane && targetLane && attackerLane === targetLane) {
-              debugLog('COMBAT', "SUCCESS: Lanes match. Processing attack...");
-              const attackDetails = { attacker: selectedDrone, target: token, targetType: 'drone', lane: attackerLane, attackingPlayer: getLocalPlayerId() };
-
-              // ActionProcessor will handle interception check
-              resolveAttack(attackDetails);
-              setSelectedDrone(null);
-          } else {
-              debugLog('COMBAT', "FAILURE: Lanes do not match or could not be found.");
-              setModalContent({ title: "Invalid Target", text: "You can only attack targets in the same lane.", isBlocking: true });
-          }
-          return;
-      }
-
-      // 3. Handle multi-move drone selection
-      if (multiSelectState && multiSelectState.phase === 'select_drones' && isPlayer) {
-          // Validate drone is a valid target (includes exhaustion check + any future filters)
-          const tokenOwner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
-          if (!validCardTargets.some(t => t.id === token.id && t.owner === tokenOwner)) {
-              debugLog('COMBAT', "Action prevented: Drone is not a valid target for movement.");
-              return;
-          }
-
-          debugLog('COMBAT', "Action: Multi-move drone selection.");
-          const { selectedDrones, maxDrones } = multiSelectState;
-          const isAlreadySelected = selectedDrones.some(d => d.id === token.id);
-          if (isAlreadySelected) {
-              setMultiSelectState(prev => ({ ...prev, selectedDrones: prev.selectedDrones.filter(d => d.id !== token.id) }));
-          } else if (selectedDrones.length < maxDrones) {
-              setMultiSelectState(prev => ({ ...prev, selectedDrones: [...prev.selectedDrones, token] }));
-          }
-          return;
-      }
-
-      // 4. Handle mandatory destruction (phase-based or ability-based)
+      // 3. Handle mandatory destruction (phase-based or ability-based)
 
       if ((shouldShowRemovalUI || mandatoryAction?.type === 'destroy') && isPlayer) {
           debugLog('COMBAT', "Action: Mandatory destruction.");
@@ -5097,58 +4823,6 @@ const App = ({ phaseAnimationQueue }) => {
           setCardConfirmation({ card: selectedCard, target: { ...target, owner } });
           return;
         }
-      }
-
-      // Handle standard ship section attacks
-      if (turnPhase === 'action' && isMyTurn() && selectedDrone && !selectedDrone.isExhausted && !isPlayer && targetType === 'section') {
-          debugLog('COMBAT', "Action: Attempting ship section attack.");
-          debugLog('COMBAT', "Attacker selected:", selectedDrone.name, `(ID: ${selectedDrone.id})`);
-          debugLog('COMBAT', "Target clicked:", target.name, `(Type: ${targetType})`);
-
-          const [attackerLane] = Object.entries(localPlayerState.dronesOnBoard).find(([_, drones]) => drones.some(d => d.id === selectedDrone.id)) || [];
-
-          debugLog('COMBAT', "Calculated Attacker Lane:", attackerLane);
-
-          if (attackerLane) {
-              // Validate that the target ship section is in the same lane as the attacking drone
-              const targetLaneIndex = opponentPlacedSections.indexOf(target.name);
-              const targetLane = targetLaneIndex !== -1 ? `lane${targetLaneIndex + 1}` : null;
-
-              debugLog('COMBAT', "Target section lane:", targetLane, "Attacker lane:", attackerLane);
-
-              if (targetLane !== attackerLane) {
-                  debugLog('COMBAT', "FAILURE: Drone and ship section are not in the same lane.");
-                  setModalContent({
-                      title: "Invalid Target",
-                      text: `Your drone can only attack the ship section in its lane.`,
-                      isBlocking: true
-                  });
-                  return;
-              }
-
-              debugLog('COMBAT', "SUCCESS: Found attacker lane. Checking for Guardian...");
-              const opponentDronesInLane = opponentPlayerState.dronesOnBoard[attackerLane];
-              const hasGuardian = opponentDronesInLane && opponentDronesInLane.some(drone => {
-                  const effectiveStats = getEffectiveStats(drone, attackerLane);
-                  return effectiveStats.keywords.has('GUARDIAN') && !drone.isExhausted;
-              });
-
-              if (hasGuardian) {
-                  debugLog('COMBAT', "FAILURE: Ship section is protected by a Guardian drone.");
-                  setModalContent({ title: "Invalid Target", text: "This lane is protected by a Guardian drone. You must destroy it before targeting the ship section.", isBlocking: true });
-              } else {
-                  debugLog('COMBAT', "SUCCESS: No Guardian. Processing attack...");
-                  const attackDetails = { attacker: selectedDrone, target: target, targetType: 'section', lane: attackerLane, attackingPlayer: getLocalPlayerId() };
-
-                  // ActionProcessor will handle interception check
-                  resolveAttack(attackDetails);
-                  setSelectedDrone(null);
-              }
-          } else {
-              debugLog('COMBAT', "FAILURE: Could not determine attacker lane.");
-              setModalContent({ title: "Invalid Attack", text: "Could not determine the attacking drone's lane.", isBlocking: true });
-          }
-          return;
       }
 
       // If no ability/card is active, clicking any drone just shows its details.
@@ -5420,66 +5094,6 @@ const App = ({ phaseAnimationQueue }) => {
       return;
     }
 
-    if (turnPhase === 'deployment' && isPlayer) {
-      handleDeployDrone(lane);
-    } else if (turnPhase === 'action' && isPlayer && selectedDrone) {
-        const [sourceLaneName] = Object.entries(localPlayerState.dronesOnBoard).find(([_, drones]) => drones.some(d => d.id === selectedDrone.id)) || [];
-        if (!sourceLaneName) return;
-
-        const sourceLaneIndex = parseInt(sourceLaneName.replace('lane', ''), 10);
-        const targetLaneIndex = parseInt(lane.replace('lane', ''), 10);
-
-        if (Math.abs(sourceLaneIndex - targetLaneIndex) === 1) {
-           // Include card from multiSelectState if movement card is active
-           const movementCard = multiSelectState?.card?.effect?.type === 'SINGLE_MOVE' ||
-                                multiSelectState?.card?.effect?.type === 'MULTI_MOVE'
-                                ? multiSelectState.card : null;
-
-           const moveConfData = {
-             droneId: selectedDrone.id,
-             owner: getLocalPlayerId(),
-             from: sourceLaneName,
-             to: lane,
-             card: movementCard,
-             isSnared: selectedDrone.isSnared || false
-           };
-
-           debugLog('SINGLE_MOVE_FLOW', '⚠️ setMoveConfirmation called from [handleLaneClick - selectedDrone move]', {
-             location: 'handleLaneClick - selectedDrone move',
-             lineNumber: 4287,
-             dataStructure: {
-               hasDroneId: 'droneId' in moveConfData,
-               hasDrone: 'drone' in moveConfData,
-               hasOwner: 'owner' in moveConfData,
-               keys: Object.keys(moveConfData)
-             },
-             data: moveConfData
-           });
-
-           setMoveConfirmation(moveConfData);
-        } else {
-           debugLog('MODAL_TRIGGER', '🚨 INVALID MOVE MODAL TRIGGERED', {
-             location: 'handleLaneClick - selected drone move',
-             lineNumber: 5020,
-             timestamp: Date.now(),
-             lane: lane,
-             isPlayer: isPlayer,
-             selectedDrone: selectedDrone,
-             sourceLaneName: sourceLaneName,
-             sourceLaneIndex: sourceLaneIndex,
-             targetLaneIndex: targetLaneIndex,
-             distance: Math.abs(sourceLaneIndex - targetLaneIndex),
-             additionalCostState: additionalCostState,
-             additionalCostPhase: additionalCostState?.phase,
-             additionalCostFlowInProgress: additionalCostFlowInProgress.current,
-             turnPhase: turnPhase,
-             validCardTargets: validCardTargets,
-             validCardTargetsCount: validCardTargets?.length
-           });
-           console.trace('Invalid Move modal call stack');
-           setModalContent({ title: "Invalid Move", text: "Drones can only move to adjacent lanes.", isBlocking: true });
-        }
-    }
   };
 
   /**
@@ -5969,7 +5583,7 @@ const App = ({ phaseAnimationQueue }) => {
     });
 
     if (!result.success) {
-      console.error('Failed to destroy drone:', result.error);
+      debugLog('COMBAT', '❌ Failed to destroy drone:', result.error);
       return;
     }
 
@@ -6070,7 +5684,7 @@ const App = ({ phaseAnimationQueue }) => {
     if (card) {
       setCardToView(card);
     } else {
-      console.warn('Card not found in collection:', cardName);
+      debugLog('DEBUG_TOOLS', '⚠️ Card not found in collection:', cardName);
     }
   };
 

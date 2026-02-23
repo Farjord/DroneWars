@@ -6,22 +6,7 @@
 
 import React from 'react';
 import { AlertCircle, Check, X } from 'lucide-react';
-
-/**
- * Extract drone name from drone ID
- * @param {string} droneId - Drone ID (e.g., "player1-vanguard-1")
- * @returns {string} - Drone name
- */
-const extractDroneNameFromId = (droneId) => {
-  if (!droneId) return 'Unknown';
-  const parts = droneId.split('-');
-  if (parts.length >= 2) {
-    return parts.slice(1, -1).map(word =>
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
-  }
-  return droneId;
-};
+import { extractDroneNameFromId } from '../../logic/droneUtils.js';
 
 /**
  * ADDITIONAL COST CONFIRMATION MODAL COMPONENT
