@@ -3,9 +3,9 @@
 ## Meta
 - Started: 2026-02-23
 - Last Session: 2026-02-23
-- Progress: 238/~500 source files (48%)
-- Current Phase: Phase C — Services + Managers
-- Next File: src/services/ (first file)
+- Progress: 269/~500 source files (54%)
+- Current Phase: Phase D — Hooks
+- Next File: src/hooks/ (first file)
 - Test Migration: Complete (151 files moved, 220 total tests in __tests__/, 3748 tests passing)
 
 ## Structure Review
@@ -575,18 +575,185 @@
 - **[LOGIC] LaneTargetingProcessor.js:39** — `affinity === 'ANY'` pushes 2 entries per lane (6 targets for 3 lanes). Consumers must handle correctly.
 - **[LOGIC] BaseEffectProcessor.js:83** — fragile auto-detect of animation vs effect arrays.
 
-### Phase C — Services + Managers
-#### C1: src/services/
-| File | Lines | Issues | Status |
-|-|-|-|-|
+### Phase C — Services + Managers + Network (31 files, reviewed 2026-02-23)
 
-#### C2: src/managers/
-| File | Lines | Issues | Status |
-|-|-|-|-|
+**Totals:** 31 files, 14,607 lines, 73 issues (1 critical bug, 22 [LOG], 8 [SIZE], 7 [DUP], 5 [TEST], 12 other)
 
-#### C3: src/network/
+#### C1: src/services/ (6 files, 14 issues)
 | File | Lines | Issues | Status |
 |-|-|-|-|
+| assetManifest.js | 159 | 1 | Reviewed |
+| AssetPreloader.js | 288 | 2 | Reviewed |
+| gameDataCache.js | 174 | 1 | Reviewed |
+| GameDataService.js | 338 | 3 | Reviewed |
+| SaveGameService.js | 237 | 2 | Reviewed |
+| testGameInitializer.js | 579 | 5 | Reviewed |
+
+**Per-file issues:**
+
+- **[NAME] assetManifest.js:76-77,152** — Property `hanger` but UI label says "Hangar Interface". Spelling inconsistency propagates to consumers.
+- **[LOGIC] AssetPreloader.js:97-100** — `.catch()` swallows errors silently, returning `undefined`. This makes `Promise.allSettled` at line 115 report "fulfilled with undefined" instead of "rejected". Defeats the purpose of `allSettled`.
+- **[LOG] AssetPreloader.js:233** — `console.warn('Failed to load assets:')` should use `debugLog`. File already imports `debugLog` elsewhere.
+- **[SMELL] gameDataCache.js:74,76** — Magic numbers `1000` (max cache) and `200` (eviction batch). Should be named constants.
+- **[LOG] GameDataService.js:51** — `console.warn` in constructor should use `debugLog`.
+- **[SMELL] GameDataService.js:246** — `getPlayerIdFromState` fallback uses `JSON.stringify(...).length` as identifier. String length is not a meaningful ID — different states can produce same length.
+- **[LOGIC] GameDataService.js:285-295** — `hasGuardianInLane` with no `drones` arg → `getLaneData` → `hasGuardianInLane`. Fragile indirect recursion that only works because `getLaneData` always passes `opponentDrones`.
+- **[LOG] SaveGameService.js:61-220** — 12 raw `console.log/warn/error` calls. Worst offender in services. No `debugLog` import at all.
+- **[TEST] SaveGameService.js** — Test exists but only covers quickDeployments serialization; no coverage for MIA protocol or migration logic.
+- **[SIZE] testGameInitializer.js** — 579 lines (400+ threshold). Three large functions; `createPlayerStateFromConfig` (127 lines) could extract.
+- **[LOG] testGameInitializer.js:114,280,349** — 3 raw `console.error/warn` calls despite importing `debugLog`.
+- **[LOGIC] testGameInitializer.js:318** — `sort(() => 0.5 - Math.random())` is a biased shuffle. Fine for test init but not uniform.
+- **[DUP] testGameInitializer.js:150-163,296-300** — Ship section initialization (`JSON.parse(JSON.stringify(shipComponentCollection.find(...)))`) duplicated between two functions.
+- **[EDGE] testGameInitializer.js:152-154,297-299** — `shipComponentCollection.find(c => c.key === 'bridge')` could return `undefined`. `JSON.stringify(undefined)` would throw.
+
+#### C2: src/managers/ (24 files, 48 issues)
+| File | Lines | Issues | Status |
+|-|-|-|-|
+| GameFlowManager.js | 1673 | 5 | Reviewed |
+| GuestMessageQueueService.js | 1125 | 5 | Reviewed |
+| GameStateManager.js | 1068 | 5 | Reviewed |
+| RewardManager.js | 1028 | 5 | Reviewed |
+| ActionProcessor.js | 1006 | 4 | Reviewed |
+| TransitionManager.js | 642 | 1 | Reviewed |
+| AnimationManager.js | 579 | 3 | Reviewed |
+| ShipSlotManager.js | 577 | 3 | Reviewed |
+| RunLifecycleManager.js | 494 | 3 | Reviewed |
+| PhaseManager.js | 485 | 5 | Reviewed |
+| AIPhaseProcessor.js | 406 | 2 | Reviewed |
+| SoundManager.js | 378 | 2 | Reviewed |
+| MetaGameStateManager.js | 373 | 1 | Reviewed |
+| CombatStateManager.js | 320 | 1 | Reviewed |
+| RoundInitializationProcessor.js | 319 | 0 | Reviewed |
+| PhaseAnimationQueue.js | 301 | 1 | Reviewed |
+| OptimisticActionService.js | 284 | 1 | Reviewed |
+| TacticalMapStateManager.js | 209 | 1 | Reviewed |
+| MusicManager.js | 204 | 0 | Reviewed |
+| GuestSyncManager.js | 199 | 1 | Reviewed |
+| WaypointManager.js | 173 | 1 | Reviewed |
+| SinglePlayerInventoryManager.js | 140 | 0 | Reviewed |
+| TacticalItemManager.js | 130 | 0 | Reviewed |
+| SoundEventBridge.js | 126 | 0 | Reviewed |
+
+**Per-file issues:**
+
+**GameFlowManager.js (1673 lines, 5 issues):**
+- **[SIZE]** — 1673 lines, largest file in codebase. `onSimultaneousPhaseComplete` (lines 505-661) is 156 lines with drone extraction + RNG init logic that belongs in a dedicated handler.
+- **[DUP] :343** — `const sequentialPhases = ['deployment', 'action']` repeated in GameFlowManager, ActionProcessor:433, AIPhaseProcessor:209, AIPhaseProcessor:259, and PhaseManager. Should be a shared constant.
+- **[SMELL] :578,1360** — `this.gameStateManager._updateContext = 'GameFlowManager'` try/finally pattern appears 5 times. ActionProcessor already has `_withUpdateContext()`. Should share.
+- **[LOGIC] :1083** — `getNextRequiredPhase` log references `ROUND_PHASES[i-1]` which on first iteration may reference the current phase, producing misleading log.
+- **[TEST]** — Has 6 test files (main, quickDeploy, subscription, resubscribe, asymmetric, integration). Coverage exists.
+
+**GuestMessageQueueService.js (1125 lines, 5 issues):**
+- **[SIZE]** — 1125 lines. `processStateUpdate` (lines 634-1022) is 388 lines — a god function handling state comparison, animation filtering, teleport logic, phase queueing, cascade triggers, and state application.
+- **[LOG] :64,517,626,953,967** — 5 raw `console.error`/`console.warn` calls.
+- **[DUP] :130-184** — `addTeleportingFlags` nearly identical to `ActionProcessor.js:810-862`. Extract to shared utility.
+- **[DUP] :193-287** — `arraysMatch` and `dronesMatch` comparison utilities belong in a shared module.
+- **[PURITY]** — Mixed concerns: message queuing + state comparison + animation orchestration + teleport management + phase inference.
+
+**GameStateManager.js (1068 lines, 5 issues):**
+- **[SIZE]** — 1068 lines. Still has ~30 facade one-liners (lines 911-956) despite extracting 5 sub-managers.
+- **[SMELL] :217** — `new Error().stack` on **every** `setState()` for caller detection. Performance concern in hot paths. Should be debug-only.
+- **[LOGIC] :576-588** — `initializeTestMode` calls async `import().then()` but returns `true` synchronously. Caller has no way to know when init completes or fails.
+- **[TODO] :136** — `// TODO: Remove facades when GFM/GMQS are updated` — stale TODO.
+- **[IMPORT] :12** — Imports `tacticalMapStateManager` singleton directly, coupling two independent state domains.
+
+**RewardManager.js (1028 lines, 5 issues):**
+- **[SIZE]** — 1028 lines. Card selection pipeline (`selectCard`, `rollRarity`, `rollCardType`, `weightedRoll`, `shuffleArray`, `createRNG`) is a natural extraction seam.
+- **[LOG] :336,497,609,833** — 4 `console.warn` calls.
+- **[DEAD] :82-88** — `DEFAULT_STATE` constant defined but never referenced. Constructor creates same structure inline.
+- **[TODO] :468** — `reputation: 0, // TODO: Calculate reputation` not tracked in FUTURE_IMPROVEMENTS.md.
+- **[COMMENT]** — Test file `__tests__/RewardManager.test.js` contains banned `// NEW` comments (5 occurrences).
+
+**ActionProcessor.js (1006 lines, 4 issues):**
+- **[SIZE]** — 1006 lines. Teleport state management (~80 lines) could extract to shared `TeleportStateHandler`.
+- **[TODO] :452,457** — Two TODOs for unimplemented shield allocation/reset in a live code path. If `allocateShields` phase is reachable, players get silent no-ops.
+- **[DUP] :810-862** — `addTeleportingFlags` duplicated with GuestMessageQueueService.
+- **[SMELL] :333-335** — `setAnimationManager` has inconsistent indentation.
+
+**TransitionManager.js (642 lines, 1 issue):**
+- **[IMPORT] :31-32** — Direct singleton imports of both `tacticalMapStateManager` and `gameStateManager`. Makes unit testing difficult without module mocking.
+
+**AnimationManager.js (579 lines, 3 issues):**
+- **[LOG] :446,453,494,500,524,531** — 6 raw `console.warn` calls.
+- **[SMELL] :375-571** — `executeAnimations` is 196 lines with nested while/if/else branches. Sequence, damage-group, and sequential branches should be private methods.
+- **[TEST]** — No test file exists.
+
+**ShipSlotManager.js (577 lines, 3 issues):**
+- **[SIZE]** — 577 lines (400+ threshold). Repair operations and instance operations are two sub-concerns.
+- **[LOGIC] :362** — **CRITICAL BUG:** Fallback `ECONOMY.SECTION_DAMAGE_REPAIR_COST || 10` uses `10`, but the constant is `200`. Line 425 correctly uses `|| 200`. Inconsistent fallback would silently use wrong repair cost if constant removed.
+- **[DUP] :194-216** — Empty slot template in `deleteShipSlotDeck` is a structural constant that likely duplicates `saveGameSchema.js` shape.
+
+**RunLifecycleManager.js (494 lines, 3 issues):**
+- **[SIZE]** — 494 lines. `startRun` (lines 34-255, ~220 lines) and `endRun` (lines 261-491, ~230 lines) are both large.
+- **[SMELL] :34** — `startRun` accepts 5 parameters. Consider options object.
+- **[TODO] :67-68** — Two TODOs (`// TODO: Use profile-based seed`, `// TODO: Support map type selection in Phase 4+`) not tracked in FUTURE_IMPROVEMENTS.md.
+
+**PhaseManager.js (485 lines, 5 issues):**
+- **[LOG] :87,92** — 2 `console.warn` calls alongside `debugLog`.
+- **[LOG] :233,240,286** — 3 `console.error` calls alongside `debugLog`.
+- **[DUP] :392-410** — **LATENT BUG:** `isSequentialPhase()` and `isSimultaneousPhase()` duplicate the static class arrays `SEQUENTIAL_PHASES`/`SIMULTANEOUS_PHASES` with local arrays. `determineFirstPlayer` is in static `SIMULTANEOUS_PHASES` but MISSING from instance `isSimultaneousPhase()`. This means `checkReadyToTransition` at line 184 treats `determineFirstPlayer` as "automatic" and transitions immediately instead of waiting for both players.
+- **[SIZE]** — 485 lines (400+ threshold). Borderline; cohesive class.
+- **[TODO] :336** — `broadcastPhaseUpdate` is a no-op stub. Not tracked in FUTURE_IMPROVEMENTS.md.
+
+**AIPhaseProcessor.js (406 lines, 2 issues):**
+- **[DUP] :209,259** — `const sequentialPhases = ['deployment', 'action']` duplicated twice, plus 3 more times in other files.
+- **[SIZE]** — 406 lines (400+ threshold). Clean delegation-focused design.
+
+**SoundManager.js (378 lines, 2 issues):**
+- **[LOG] :69,178** — 2 `console.warn` calls for AudioContext creation/unlock failures.
+- **[DUP] :186-230** — `preload()` duplicates the fetch-decode loop from `preloadOnly()` (lines 84-152). Extract shared `_loadBuffers`.
+
+**MetaGameStateManager.js (373 lines, 1 issue):**
+- **[LOG] :104** — `console.error` in `_emit` listener error handler.
+
+**CombatStateManager.js (320 lines, 1 issue):**
+- **[LOG] :67** — Raw `console.error` in `_emit`.
+
+**PhaseAnimationQueue.js (301 lines, 1 issue):**
+- **[SMELL] :180** — Magic number `1800` (1500ms display + 300ms fade). Should be named constants.
+
+**OptimisticActionService.js (284 lines, 1 issue):**
+- **[SMELL] :263** — `new Error().stack` in `clearTrackedAnimations()` for caller ID. Stack trace is expensive in hot animation path.
+
+**TacticalMapStateManager.js (209 lines, 1 issue):**
+- **[LOG] :68** — Raw `console.error` in `_emit()`.
+
+**GuestSyncManager.js (199 lines, 1 issue):**
+- **[DEAD] :62-63** — Empty `if` block with comment-only body. Remove dead branch.
+
+**WaypointManager.js (173 lines, 1 issue):**
+- **[LOG] :35** — Raw `console.log` for diagnostic logging.
+
+**MusicManager.js (204 lines):** Clean. No issues.
+**SinglePlayerInventoryManager.js (140 lines):** Clean. No issues.
+**TacticalItemManager.js (130 lines):** Clean. No issues.
+**SoundEventBridge.js (126 lines):** Clean. No issues.
+**RoundInitializationProcessor.js (319 lines):** Clean. No issues.
+
+**Test coverage gaps (no test file):** AnimationManager, OptimisticActionService, SoundManager, MusicManager, SinglePlayerInventoryManager, TacticalItemManager, SoundEventBridge (7 of 24 managers untested).
+
+#### C3: src/network/ (1 file, 5 issues)
+| File | Lines | Issues | Status |
+|-|-|-|-|
+| P2PManager.js | 593 | 5 | Reviewed |
+
+**Per-file issues:**
+
+- **[LOG] P2PManager.js** — 21 raw `console.error`/`console.warn` calls throughout (lines 65, 126, 240, 328, 339, 352, 355, 368, 373, 409, 421, 426, 439, 450, 455, 468, 480, 485, 507, 516). Worst logging violation in the codebase.
+- **[SIZE]** — 593 lines (400+ threshold). Three sub-concerns: connection lifecycle (~170 lines), message sending (~150 lines), action handler setup (~85 lines).
+- **[DUP]** — Guard pattern `if (!this.isConnected || !this.currentPeerId) { console.warn(...); return; }` copy-pasted in 5 methods. Extract `_requireConnection(context)`.
+- **[DEAD] :515-526** — `syncGameState()` is deprecated with `console.warn`. Remove or fix callers.
+- **[TEST]** — No test file. 593 lines of WebRTC lifecycle with no coverage is a significant gap.
+
+#### Phase C — Critical Findings Summary
+
+1. **[LOGIC] ShipSlotManager.js:362** — CRITICAL: Wrong fallback `|| 10` should be `|| 200` (silent pricing bug)
+2. **[DUP] PhaseManager.js:392-410** — LATENT BUG: `isSimultaneousPhase()` hardcoded list missing `determineFirstPlayer`, diverges from static `SIMULTANEOUS_PHASES`. Causes premature phase transition.
+3. **[LOG]** — 22 files have raw console calls. Worst: P2PManager (21), SaveGameService (12), AnimationManager (6), GuestMessageQueueService (5), PhaseManager (5).
+4. **[SIZE]** — 5 files exceed 800 lines: GameFlowManager (1673), GuestMessageQueueService (1125), GameStateManager (1068), RewardManager (1028), ActionProcessor (1006). GuestMessageQueueService's `processStateUpdate` at 388 lines is the worst single method.
+5. **[DUP] `sequentialPhases`** — Same array defined 5 times across 4 files. Single shared constant needed.
+6. **[DUP] `addTeleportingFlags`** — Nearly identical in ActionProcessor and GuestMessageQueueService. Extract shared utility.
+7. **[SMELL] GameStateManager.js:217** — `new Error().stack` on every `setState()` is expensive. Should be debug-only.
 
 ### Phase D — Hooks
 #### D1: src/hooks/
