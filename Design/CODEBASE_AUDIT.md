@@ -144,28 +144,28 @@
 - **Current standard:** All hooks in `src/hooks/` (CODE_STANDARDS.md: "Hooks (`src/hooks/` or co-located)")
 - **Observed reality:** 24/26 hooks have exactly 1 consumer. The flat directory is a navigational dead-zone — you never browse it, you always arrive from a consumer.
 - **Challenge:** Single-consumer hooks should co-locate with their consumer screen (e.g., `screens/TacticalMapScreen/hooks/useTacticalMovement.js`). Shared hooks (`useGameState`, `useGameData`) remain in `src/hooks/`.
-- **Decision:** Pending user discussion
+- **Decision:** Co-locate screen-specific hooks with their consumer screens; app-level and shared hooks stay in `src/hooks/`
 
 ### STD-CHALLENGE-02: `logic/effects/` directory granularity
 
 - **Current standard:** Each effect type gets its own subdirectory (implicit convention, not explicitly documented)
 - **Observed reality:** 8 of 15 effect subdirectories contain a single source file
 - **Challenge:** Single-file directories create unnecessary navigation depth. A file like `effects/damage/DamageEffectProcessor.js` could live directly in `effects/` without ambiguity. Subdirectories should only exist when they contain 2+ related source files.
-- **Decision:** Pending user discussion
+- **Decision:** Flatten single-file subdirectories into parent `effects/`; keep multi-file subdirectories
 
 ### STD-CHALLENGE-03: CSS strategy not documented
 
 - **Current standard:** CODE_STANDARDS.md doesn't mention CSS at all
 - **Observed reality:** Hybrid approach — 12 global files in `styles/`, 28 co-located component CSS files, 2 CSS Module files (`.module.css`)
 - **Challenge:** The lack of a documented standard means inconsistency will grow. The 2 CSS Module files contradict the plain CSS majority. Should document: (a) co-located plain CSS for components, (b) `styles/` for shared/global, (c) decide on CSS Modules.
-- **Decision:** Pending user discussion
+- **Decision:** Deferred — needs dedicated CSS strategy discussion
 
 ### STD-CHALLENGE-04: Utils purity standard is systematically violated
 
 - **Current standard:** "Pure utility functions with no domain knowledge" (CODE_STANDARDS.md)
 - **Observed reality:** 10+ of 26 utils files contain deep domain logic (game phases, targeting, damage rules, deck validation, map generation). These import from `data/`, `logic/`, and hard-code game-specific rules.
 - **Challenge:** The standard is correct but unenforced. Two options: (a) bulk-migrate domain-aware utils to `src/logic/` subdirectories, or (b) create a `src/logic/helpers/` category for "domain utils" that are too small for their own module but too domain-specific for `utils/`.
-- **Decision:** Pending user discussion
+- **Decision:** Migrate domain-aware utils to `src/logic/` subdirectories
 
 (Additional challenges will be collected during file-by-file reviews in Phases B-F)
 
@@ -1320,22 +1320,22 @@ All [STD-CHALLENGE] items collected from the audit:
 **STD-CHALLENGE-01: Hook co-location vs centralized `hooks/`**
 - 24/26 hooks have exactly 1 consumer
 - Single-consumer hooks should co-locate with their screen
-- Decision: Pending
+- Decision: Co-locate screen hooks; app-level/shared hooks stay in `src/hooks/`
 
 **STD-CHALLENGE-02: `logic/effects/` directory granularity**
 - 8 of 15 subdirectories contain a single source file
 - Single-file directories create unnecessary navigation depth
-- Decision: Pending
+- Decision: Flatten single-file subdirectories into parent `effects/`
 
 **STD-CHALLENGE-03: CSS strategy not documented**
 - Hybrid: 10 global, 13 co-located, 2 CSS Modules
 - No standard in CODE_STANDARDS.md
-- Decision: Pending
+- Decision: Deferred — needs dedicated CSS strategy discussion
 
 **STD-CHALLENGE-04: Utils purity standard systematically violated**
 - 10+ of 26 utils files contain deep domain logic
 - Standard correct but unenforced
-- Decision: Pending
+- Decision: Migrate domain-aware utils to `src/logic/` subdirectories
 
 **STD-CHALLENGE-05: Error boundary console.error**
 - `componentDidCatch` using raw `console.error` is defensible
@@ -1346,13 +1346,13 @@ All [STD-CHALLENGE] items collected from the audit:
 - Animation durations, delays, offsets, zoom levels, thresholds appear as raw numbers throughout hooks and components
 - Especially bad in: useAnimationSetup, HexGridRenderer, useTacticalEscape, PhaseAnimationQueue
 - Recommend: named constants at module level for all timing/layout values
-- Decision: Pending
+- Decision: Extract named constants at module level in worst-offender files
 
 **STD-CHALLENGE-07: `Date.now()` / `Math.random()` for IDs**
 - Used throughout hooks for animation IDs, instance IDs
 - Collision risk in same-millisecond scenarios; breaks seeded RNG
 - Recommend: counter-based or `crypto.randomUUID()` for non-seeded contexts
-- Decision: Pending
+- Decision: Replace `Date.now()`/`Math.random()` IDs with `crypto.randomUUID()`
 
 #### Phase F+G — Critical Findings Summary
 
