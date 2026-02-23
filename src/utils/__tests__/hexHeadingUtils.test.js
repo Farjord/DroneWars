@@ -14,7 +14,7 @@
 //   - "Southwest" (q-1, r+1): 150 degrees (slightly down-left)
 
 import { describe, it, expect } from 'vitest';
-import { calculateHexHeading, getShipHeadingForWaypoints } from './hexHeadingUtils.js';
+import { calculateHexHeading, getShipHeadingForWaypoints } from '../hexHeadingUtils.js';
 
 describe('hexHeadingUtils', () => {
   describe('calculateHexHeading', () => {

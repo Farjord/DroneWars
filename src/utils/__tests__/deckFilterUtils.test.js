@@ -20,7 +20,7 @@ import {
   generateDroneFilterChips,
   RARITY_ORDER,
   RARITY_ORDER_EXTRACTION,
-} from './deckFilterUtils.js';
+} from '../deckFilterUtils.js';
 
 // ========================================
 // MOCK DATA

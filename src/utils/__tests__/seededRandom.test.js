@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import SeededRandom from './seededRandom.js';
+import SeededRandom from '../seededRandom.js';
 
 describe('SeededRandom', () => {
   describe('constructor and basic random()', () => {

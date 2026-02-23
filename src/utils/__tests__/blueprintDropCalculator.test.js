@@ -7,7 +7,7 @@ import {
   calculatePoolSize,
   calculateDropProbability,
   getDroneDropInfo
-} from './blueprintDropCalculator.js';
+} from '../blueprintDropCalculator.js';
 
 describe('blueprintDropCalculator - Constants Export', () => {
   it('CLASS_BAND_WEIGHTS should be defined with correct structure', () => {

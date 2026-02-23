@@ -12,7 +12,7 @@ import {
   normalizeSectionType,
   getFallbackImagePath,
   getShipSpecificImagePath
-} from './shipSectionImageResolver.js';
+} from '../shipSectionImageResolver.js';
 
 // ========================================
 // NORMALIZE SECTION TYPE TESTS

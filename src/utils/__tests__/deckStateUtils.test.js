@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { updateDeckState, updateDroneState } from './deckStateUtils.js';
+import { updateDeckState, updateDroneState } from '../deckStateUtils.js';
 
 // ========================================
 // DECK STATE UTILS TESTS

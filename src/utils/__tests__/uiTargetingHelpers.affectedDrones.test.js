@@ -5,7 +5,7 @@
 // Tests filtering logic for LANE-targeting cards
 
 import { describe, it, expect, vi } from 'vitest';
-import { calculateAffectedDroneIds } from './uiTargetingHelpers.js';
+import { calculateAffectedDroneIds } from '../uiTargetingHelpers.js';
 
 describe('calculateAffectedDroneIds', () => {
   // Mock effective stats function - returns drone stats directly unless overridden
