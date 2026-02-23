@@ -3,9 +3,9 @@
 ## Meta
 - Started: 2026-02-23
 - Last Session: 2026-02-23
-- Progress: 57/~500 source files (11%)
-- Current Phase: Phase B — Logic
-- Next File: src/logic/ai/ (first file)
+- Progress: 238/~500 source files (48%)
+- Current Phase: Phase C — Services + Managers
+- Next File: src/services/ (first file)
 - Test Migration: Complete (151 files moved, 220 total tests in __tests__/, 3748 tests passing)
 
 ## Structure Review
@@ -332,26 +332,248 @@
 - [SMELL] singlePlayerDeckUtils.js — magic `99` used 4x for "unlimited", magic `5`, `40`.
 - [TEST] No test files exist for hexGrid.js (non-trivial math). Multiple utils with complex logic lack tests.
 
-### Phase B — Logic
-#### B1: src/logic/ai/
-| File | Lines | Issues | Status |
-|-|-|-|-|
+### Phase B — Logic (181 files, reviewed 2026-02-23)
 
-#### B2: src/logic/targeting/
-| File | Lines | Issues | Status |
-|-|-|-|-|
+#### B1: src/logic/ai/ + aiLogic.js (39 files)
 
-#### B3: src/logic/combat/
-| File | Lines | Issues | Status |
+| File | Lines | Issues | Tags |
 |-|-|-|-|
+| aiLogic.js | 1209 | 8 | SIZE, LOG, SMELL, PURITY, DUP, EDGE, LOGIC, DEAD |
+| ai/aiConstants.js | 520 | 1 | SIZE |
+| ai/AIQuickDeployHandler.js | 114 | 1 | DUP |
+| ai/AISequentialTurnStrategy.js | 347 | 0 | -- |
+| ai/AISimultaneousPhaseStrategy.js | 151 | 0 | -- |
+| ai/index.js | 42 | 1 | DEAD |
+| ai/moveEvaluator.js | 115 | 0 | -- |
+| ai/adjustmentPasses/antiShipAdjustment.js | 69 | 0 | -- |
+| ai/adjustmentPasses/index.js | 24 | 2 | DEAD, IMPORT |
+| ai/adjustmentPasses/interceptionAdjustment.js | 250 | 0 | -- |
+| ai/adjustmentPasses/jammerAdjustment.js | 146 | 0 | -- |
+| ai/adjustmentPasses/movementInhibitorAdjustment.js | 89 | 0 | -- |
+| ai/attackEvaluators/droneAttack.js | 208 | 1 | LOGIC |
+| ai/attackEvaluators/index.js | 7 | 0 | -- |
+| ai/attackEvaluators/shipAttack.js | 120 | 0 | -- |
+| ai/cardEvaluators/conditionalEvaluator.js | 301 | 1 | LOG |
+| ai/cardEvaluators/damageCards.js | 476 | 1 | SMELL |
+| ai/cardEvaluators/droneCards.js | 604 | 2 | DEAD, SIZE |
+| ai/cardEvaluators/healCards.js | 98 | 0 | -- |
+| ai/cardEvaluators/index.js | 115 | 1 | LOG |
+| ai/cardEvaluators/movementCards.js | 213 | 1 | SMELL |
+| ai/cardEvaluators/statCards.js | 210 | 0 | -- |
+| ai/cardEvaluators/statusEffectCards.js | 433 | 1 | SMELL |
+| ai/cardEvaluators/threatCards.js | 65 | 0 | -- |
+| ai/cardEvaluators/upgradeCards.js | 186 | 0 | -- |
+| ai/cardEvaluators/utilityCards.js | 208 | 0 | -- |
+| ai/decisions/actionDecision.js | 39 | 1 | COMMENT |
+| ai/decisions/deploymentDecision.js | 29 | 1 | COMMENT |
+| ai/decisions/interceptionDecision.js | 32 | 1 | COMMENT |
+| ai/decisions/index.js | 8 | 0 | -- |
+| ai/helpers/droneHelpers.js | 67 | 1 | DEAD |
+| ai/helpers/hullIntegrityHelpers.js | 183 | 0 | -- |
+| ai/helpers/index.js | 10 | 0 | -- |
+| ai/helpers/jammerHelpers.js | 37 | 0 | -- |
+| ai/helpers/keywordHelpers.js | 182 | 1 | DEAD |
+| ai/helpers/upgradeHelpers.js | 114 | 0 | -- |
+| ai/scoring/droneImpact.js | 55 | 1 | DEAD |
+| ai/scoring/index.js | 8 | 0 | -- |
+| ai/scoring/interceptionAnalysis.js | 248 | 0 | -- |
+| ai/scoring/laneScoring.js | 113 | 1 | DEAD |
+| ai/scoring/targetScoring.js | 302 | 0 | -- |
 
-#### B4: src/logic/effects/
-| File | Lines | Issues | Status |
-|-|-|-|-|
+**Critical findings:**
 
-#### B5: src/logic/ (remaining)
-| File | Lines | Issues | Status |
+- **[EDGE] aiLogic.js:799** — `positiveActionPool` can be empty, causing crash. `positiveActionPool[Math.floor(Math.random() * 0)]` returns `undefined`, next line crashes.
+- **[SMELL] aiLogic.js** — 4x `Math.random()` instead of `SeededRandom`. Non-deterministic AI decisions.
+- **[SIZE] aiLogic.js (1209)** — `handleOpponentAction` is ~385 lines, `makeInterceptionDecision` ~260 lines. God functions. Should be in `logic/ai/` not root.
+- **[LOG] aiLogic.js:246** — raw `console.error`.
+- **[DEAD] adjustmentPasses/index.js** — `applyAllAdjustments` exported but never imported. Uses `require()` in ES module.
+- **[DEAD] ai/helpers/droneHelpers.js** — entire file unused (zero external consumers).
+- **[DEAD] ai/scoring/droneImpact.js, laneScoring.js** — exported functions with zero consumers.
+- **[COMMENT] ai/decisions/*.js** — stale "Future integration" stubs. Track or remove.
+- **[SMELL] cardEvaluators/damageCards.js, movementCards.js, statusEffectCards.js** — magic numbers should be in `aiConstants.js`.
+- **[LOGIC] droneAttack.js:138** — `Math.min` with `INTERCEPTION_COVERAGE_MIN` may have sign mismatch.
+
+#### B2: src/logic/actions/ + abilities/ (14 files)
+
+| File | Lines | Issues | Tags |
 |-|-|-|-|
+| actions/CardActionStrategy.js | 685 | 3 | SIZE, DUP, PURITY |
+| actions/CombatActionStrategy.js | 520 | 2 | SIZE, SMELL |
+| actions/CommitmentStrategy.js | 442 | 3 | SIZE, LOGIC, ERROR |
+| actions/DroneActionStrategy.js | 455 | 1 | SIZE |
+| actions/MiscActionStrategy.js | 133 | 0 | -- |
+| actions/PhaseTransitionStrategy.js | 316 | 1 | DUP |
+| actions/ShieldActionStrategy.js | 202 | 0 | -- |
+| actions/ShipAbilityStrategy.js | 275 | 0 | -- |
+| actions/StateUpdateStrategy.js | 140 | 0 | -- |
+| abilities/AbilityResolver.js | 466 | 3 | LOG, SIZE, DUP |
+| abilities/ship/ReallocateShieldsAbilityProcessor.js | 220 | 1 | LOG |
+| abilities/ship/RecalculateAbilityProcessor.js | 176 | 1 | LOG |
+| abilities/ship/RecallAbilityProcessor.js | 124 | 1 | LOG |
+| abilities/ship/TargetLockAbilityProcessor.js | 100 | 2 | LOG, EDGE |
+
+**Critical findings:**
+
+- **[TEST] No tests exist for any of these 14 files.** Core game logic with zero test coverage.
+- **[ERROR] CommitmentStrategy.js:330** — `handleAICommitment` silently swallows errors (catch block logs but doesn't rethrow). AI commitment failure appears to succeed.
+- **[LOGIC] CommitmentStrategy.js:44** — `clearPhaseCommitments` directly mutates `currentState` before `setState`. Mixed mutation/immutability.
+- **[EDGE] TargetLockAbilityProcessor.js** — spends energy and ends turn even when target drone not found.
+- **[LOG] 11x raw `console.warn`** across 5 ability files.
+- **[DUP] CardActionStrategy.js** — `CARD_REVEAL` animation block duplicated 3x, callbacks object duplicated 2x.
+- **[DUP] AbilityResolver.js** — `resolveShipRecallEffect` duplicates `RecallAbilityProcessor.process`. Dead code path.
+
+#### B3: src/logic/combat/ + animations (11 files)
+
+| File | Lines | Issues | Tags |
+|-|-|-|-|
+| combat/AttackProcessor.js | 809 | 5 | SIZE, SMELL, DUP, PURITY, EDGE |
+| combat/InterceptionProcessor.js | 104 | 2 | IMPORT, DUP |
+| combat/LaneControlCalculator.js | 159 | 2 | DEAD, DUP |
+| combat/animations/ (8 files, 27-47 lines) | -- | 0 | Clean |
+
+**Findings:**
+
+- **[SIZE] AttackProcessor.js (809)** — `resolveAttack` is ~524 lines. God function with 6x duplicate "find drone in lanes" pattern.
+- **[DUP] AttackProcessor.js** — `getLaneOfDrone` called 4x for same target in same path. Cache result.
+- **[DEAD] LaneControlCalculator.js** — `getLanesNotControlled` exported but never imported.
+- **[DUP] LaneControlCalculator.js** — `countLanesControlled` could be `getLanesControlled().length`.
+- **[IMPORT] InterceptionProcessor.js** — imports from legacy `gameLogic.js` barrel instead of canonical `gameEngineUtils.js`.
+
+#### B4: src/logic/effects/ (32 files)
+
+| File | Lines | Issues | Tags |
+|-|-|-|-|
+| effects/BaseEffectProcessor.js | 125 | 1 | LOGIC |
+| effects/ConditionalSectionDamageProcessor.js | 265 | 2 | DUP |
+| effects/cards/DiscardEffectProcessor.js | 102 | 0 | -- |
+| effects/cards/DrawEffectProcessor.js | 86 | 0 | -- |
+| effects/cards/DrawThenDiscardProcessor.js | 176 | 0 | -- |
+| effects/cards/SearchAndDrawProcessor.js | 233 | 1 | SMELL |
+| effects/conditional/ConditionalEffectProcessor.js | 199 | 0 | -- |
+| effects/conditional/ConditionEvaluator.js | 382 | 0 | -- |
+| effects/damage/DamageEffectProcessor.js | 684 | 3 | LOG, SIZE, DUP |
+| effects/damage/animations/ (5 files) | -- | 0 | Clean |
+| effects/destroy/DestroyEffectProcessor.js | 390 | 1 | DUP |
+| effects/destroy/animations/ (2 files) | -- | 0 | Clean |
+| effects/detection/IncreaseThreatEffectProcessor.js | 106 | 1 | EDGE |
+| effects/energy/ (2 files) | -- | 0 | Clean |
+| effects/healing/animations/HealAnimation.js | 46 | 0 | -- |
+| effects/healing/HullHealProcessor.js | 247 | 0 | -- |
+| effects/healing/ShieldHealProcessor.js | 160 | 0 | -- |
+| effects/healing/ShipShieldRestoreProcessor.js | 134 | 0 | -- |
+| effects/marking/MarkingEffectProcessor.js | 151 | 0 | -- |
+| effects/meta/CompositeEffectProcessor.js | 82 | 0 | -- |
+| effects/meta/RepeatingEffectProcessor.js | 175 | 1 | DEAD |
+| effects/mines/MineTriggeredEffectProcessor.js | 271 | 1 | DEAD |
+| effects/movement/animations/DefaultMovementAnimation.js | 30 | 0 | -- |
+| effects/movement/MovementEffectProcessor.js | 633 | 1 | SIZE |
+| effects/stat_modification/ModifyStatEffectProcessor.js | 137 | 0 | -- |
+| effects/state/ExhaustDroneEffectProcessor.js | 95 | 0 | -- |
+| effects/state/ReadyDroneEffectProcessor.js | 72 | 0 | -- |
+| effects/state/StatusEffectProcessor.js | 193 | 1 | LOG |
+| effects/tokens/TokenCreationProcessor.js | 163 | 0 | -- |
+| effects/upgrades/DestroyUpgradeEffectProcessor.js | 85 | 0 | -- |
+| effects/upgrades/ModifyDroneBaseEffectProcessor.js | 116 | 0 | -- |
+
+**Findings:**
+
+- **[LOGIC] BaseEffectProcessor.js:83** — `createResult` auto-detects animation vs additional effects by checking `[0]?.type`. Fragile: effects also have `.type`. Latent bug.
+- **[DUP] ConditionalSectionDamageProcessor.js** — `calculateDamageByType` copy-pasted from DamageEffectProcessor. Comment admits it.
+- **[DUP] DamageEffectProcessor.js** — `processOverflowDamage` (158 lines) re-implements damage logic already in `calculateDamageByType`.
+- **[DUP] DestroyEffectProcessor.js** — `onDroneDestroyed` + cleanup pattern repeated 5x across methods.
+- **[LOG] DamageEffectProcessor.js** — 3x `console.warn`. StatusEffectProcessor.js:184 — template literal in single quotes (bug: logs literal `${target.id}`).
+- **[SIZE] MovementEffectProcessor.js (633)** — `executeSingleMove` (186 lines) and `executeMultiMove` (166 lines) share significant structural duplication.
+
+#### B5: src/logic/ remaining (85 files)
+
+| File | Lines | Issues | Tags |
+|-|-|-|-|
+| availability/DroneAvailabilityManager.js | 232 | 2 | COMMENT |
+| cards/CardPlayManager.js | 868 | 7 | SIZE, LOG, COMMENT, SMELL, DUP, PURITY |
+| cards/HandLimitManager.js | 149 | 0 | -- |
+| costs/AdditionalCostProcessor.js | 240 | 1 | DUP |
+| deployment/DeploymentProcessor.js | 436 | 2 | SMELL, DUP |
+| detection/DetectionManager.js | 188 | 3 | LOG, PURITY |
+| droneUtils.js | 12 | 0 | -- |
+| economy/CreditManager.js | 106 | 0 | -- |
+| economy/RepairService.js | 254 | 0 | -- |
+| economy/ReplicatorService.js | 154 | 0 | -- |
+| EffectRouter.js | 151 | 1 | DUP |
+| encounters/EncounterController.js | 693 | 5 | SIZE, LOG, COMMENT, TODO, DUP |
+| extraction/ (4 files) | -- | 0 | Clean |
+| game/ForceWin.js | 15 | 0 | -- |
+| game/WinConditionChecker.js | 160 | 0 | -- |
+| gameLogic.js | 154 | 0 | -- |
+| loot/LootGenerator.js | 747 | 5 | LOG, SIZE, DUP, SMELL, LOGIC |
+| map/EscapeRouteCalculator.js | 382 | 2 | DUP, LOGIC |
+| map/MovementController.js | 262 | 3 | LOG, TODO, DEAD |
+| map/PathValidator.js | 139 | 2 | LOG, DUP |
+| migration/saveGameMigrations.js | 154 | 0 | -- |
+| missions/MissionConditionEvaluator.js | 123 | 0 | -- |
+| missions/MissionService.js | 370 | 1 | PURITY |
+| phase/PhaseRequirementChecker.js | 178 | 0 | -- |
+| quickDeploy/ (4 files) | -- | 1 | SMELL |
+| reputation/ReputationCalculator.js | 284 | 0 | -- |
+| reputation/ReputationService.js | 289 | 1 | DUP |
+| round/RoundManager.js | 331 | 0 | -- |
+| salvage/HighAlertManager.js | 97 | 1 | LOGIC |
+| salvage/SalvageController.js | 302 | 2 | COMMENT, PURITY |
+| save/saveGameFactory.js | 86 | 1 | DUP |
+| save/saveGameValidator.js | 134 | 1 | EDGE |
+| shields/ShieldManager.js | 330 | 2 | COMMENT, SIZE |
+| shields/ShieldResetUtils.js | 75 | 1 | DEAD |
+| singlePlayer/CombatOutcomeProcessor.js | 866 | 5 | SIZE, SMELL, PURITY, DUP, COMMENT |
+| singlePlayer/deckSlotFactory.js | 98 | 1 | SMELL |
+| singlePlayer/DroneDamageProcessor.js | 108 | 1 | NAME |
+| singlePlayer/ExtractionController.js | 557 | 3 | SIZE, PURITY, DUP |
+| singlePlayer/hexGrid.js | 187 | 1 | IMPORT |
+| singlePlayer/MIARecoveryService.js | 263 | 1 | DUP |
+| singlePlayer/shipSectionBuilder.js | 79 | 0 | -- |
+| singlePlayer/SinglePlayerCombatInitializer.js | 810 | 5 | SIZE, SMELL, TODO, DUP, PURITY |
+| state/StateInitializer.js | 165 | 0 | -- |
+| state/StateValidationService.js | 474 | 2 | SIZE, SMELL |
+| statsCalculator.js | 306 | 1 | SMELL |
+| targeting/BaseTargetingProcessor.js | 478 | 1 | SIZE |
+| targeting/CardConditionValidator.js | 33 | 0 | -- |
+| targeting/cards/ (3 files) | -- | 0 | Clean |
+| targeting/drone/AllMarkedProcessor.js | 68 | 0 | -- |
+| targeting/drone/DroneTargetingProcessor.js | 339 | 2 | DUP, COMMENT |
+| targeting/lane/LaneTargetingProcessor.js | 55 | 1 | LOGIC |
+| targeting/LaneControlValidator.js | 97 | 0 | -- |
+| targeting/ship/ShipSectionTargetingProcessor.js | 128 | 0 | -- |
+| TargetingRouter.js | 98 | 0 | -- |
+| ticker/ (10 files) | -- | 1 | DEAD |
+| turn/TurnTransitionManager.js | 289 | 0 | -- |
+| utils/abilityHelpers.js | 224 | 1 | DUP |
+| utils/auraManager.js | 52 | 0 | -- |
+| utils/droneStateUtils.js | 79 | 0 | -- |
+| utils/gameEngineUtils.js | 75 | 0 | -- |
+| utils/rallyBeaconHelper.js | 37 | 0 | -- |
+
+**Critical findings:**
+
+- **[LOGIC] LootGenerator.js:417** — `this.generateSalvageItemFromValue(100, rng)` calls `this.` but it's an imported function. Will throw at runtime on fallback path.
+- **[LOGIC] HighAlertManager.js:21** — `Math.random()` instead of `SeededRandom`. Breaks determinism.
+- **[SIZE] CardPlayManager.js (868)** — god class. `resolveCardPlay` is 275 lines. Banned `// NEW:` comments. 2x `console.warn`.
+- **[SIZE] CombatOutcomeProcessor.js (866)** — `processVictory` ~230 lines. Mixed mutation patterns. Should split into Victory/Defeat/LootCollector.
+- **[SIZE] SinglePlayerCombatInitializer.js (810)** — `initiateCombat` ~260 lines, `buildPlayerState` ~170 lines.
+- **[ERROR] CommitmentStrategy.js:330** — silently swallows AI commitment errors.
+- **[DEAD] ShieldResetUtils.js:65** — `calculateReallocationDisplayShields` documented as "CURRENT BUG: not called". Dead code with known bug.
+- **[DEAD] MovementController.js** — `handleHexArrival` and `movePlayer` appear to be dead code.
+- **[DEAD] tickerConfig.js** — `MESSAGE_TEMPLATES` (100 lines) never imported by any generator.
+- **[LOG] DetectionManager.js** — 4x raw `console.log`/`console.warn` including on every hex move.
+- **[LOG] MovementController.js** — 7x raw `console.log`/`console.error`.
+- **[LOG] LootGenerator.js** — 4x `console.warn`.
+- **[LOG] PathValidator.js** — 2x raw `console.log`.
+- **[DUP] A* search** implemented 3x across PathValidator and EscapeRouteCalculator. Extract shared utility.
+- **[DUP] ExtractionController.js:358** — own LCG RNG implementation duplicating `SeededRandom`.
+- **[DUP] saveGameFactory.js** — 6x `JSON.parse(JSON.stringify(...))`. Use `structuredClone`.
+- **[TODO] SinglePlayerCombatInitializer.js:672** — "Load from ship slot if upgrades supported" — unresolved.
+- **[TODO] EncounterController.js:405** — "Track looted POIs in currentRunState" — unresolved.
+- **[TODO] MovementController.js:160,166** — stale TODOs for systems that exist elsewhere.
+- **[PURITY] MissionService.js** — tutorial management (lines 302-366) bundled into MissionService. Should be `TutorialService`.
+- **[LOGIC] LaneTargetingProcessor.js:39** — `affinity === 'ANY'` pushes 2 entries per lane (6 targets for 3 lanes). Consumers must handle correctly.
+- **[LOGIC] BaseEffectProcessor.js:83** — fragile auto-detect of animation vs effect arrays.
 
 ### Phase C — Services + Managers
 #### C1: src/services/
