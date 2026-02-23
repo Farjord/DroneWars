@@ -46,15 +46,14 @@ Refer to `Design/Technical Debt Refactor/CODE_STANDARDS.md` for all project stan
 - Track in `Design/Technical Debt Refactor/FUTURE_IMPROVEMENTS.md`.
 - When deferring an improvement, write it down in the same commit — never just say "noted for later."
 - When touching a file listed there, check for applicable items and resolve them.
+- **When resolving items**: move them to the `## Resolved Items` table in the same commit as the fix. Never leave stale entries in the Active/Bugs tables.
+
+## Audit Tracking
+
+- **Audit doc**: `Design/CODEBASE_AUDIT.md`
+- When fixing an issue listed in the audit, prefix the finding with `[FIXED]` in the audit doc in the same commit.
+- The audit is a historical record — don't delete findings, just mark them resolved.
 
 ## Refactoring
 
 - For large-scale refactoring projects, activate the workflow in `Design/Technical Debt Refactor/REFACTORING_WORKFLOW.md`.
-
-## Active Audit
-
-- **Audit doc**: `Design/CODEBASE_AUDIT.md`
-- **Current phase**: COMPLETE — all phases reviewed
-- **Test migration**: Complete (151 files moved, 220 tests in __tests__/, all passing)
-
-Resume protocol: Read the `## Meta` section of the audit doc, then continue from the next unreviewed file.

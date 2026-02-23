@@ -31,32 +31,18 @@ Items deferred during refactoring — not bugs, not blocking, but worth fixing w
 
 ## Audit Findings (2026-02-23)
 
-Items discovered during the full codebase audit (`Design/CODEBASE_AUDIT.md`). Bugs are High priority; structural issues are Medium/Low.
-
-### Bugs
-
-| # | File | Issue | Priority |
-|-|-|-|-|
-| 23 | useGameLifecycle.js:461-473 | CSV `downloadLogAsCSV` has 8 headers but 7 data columns (skips TimestampUTC). Produces misaligned CSV. | High |
-| 24 | AIDecisionLogModal.jsx:106 | `decisionLog.sort(...)` mutates prop array in-place during render. Must use `[...decisionLog].sort(...)`. | High |
-| 25 | TacticalTicker.jsx:49 | Stale closure: useEffect has `[]` deps but reads `isMoving` and `currentRunState`. | High |
-| 26 | PhaseManager.js:392-410 | `isSimultaneousPhase()` hardcoded list missing `determineFirstPlayer`. Diverges from static `SIMULTANEOUS_PHASES`. Causes premature phase transition. | High |
-| 27 | quickDeploy/index.js:7 | Broken barrel export for nonexistent `QuickDeployEditor`. | High |
-| 28 | useResolvers.js:489-526 | 4 modal confirm handlers lack null guards that peer handlers have. Race-condition crash risk. | Medium |
-| 29 | useResolvers.js:148 | `resolveShipAbility` lacks try/catch around `processActionWithGuestRouting`. | Medium |
-| 30 | FlashEffect.jsx + LaserEffect.jsx | Timer cleanup missing on unmount. | Medium |
-| 31 | BaseEffectProcessor.js:83 | `createResult` auto-detects animation vs additional effects by checking `[0]?.type`. Fragile — effects also have `.type`. | Low |
+Items discovered during the full codebase audit (`Design/CODEBASE_AUDIT.md`). Structural issues are Medium/Low.
 
 ### Structural
 
 | # | File/Area | Issue | Priority |
 |-|-|-|-|
-| 32 | ~200 raw `console.log` calls | Across ~64 non-test files. Top: P2PManager (20), SaveGameService (11), useAnimationSetup (9), cardDrawUtils (8). | Medium |
-| 33 | 26 hooks — zero test coverage | 10,413 lines completely untested. Highest risk: useDragMechanics (1653), useClickHandlers (956), useTacticalEncounters (931). | Medium |
-| 34 | 10+ utils files with domain logic | glossaryAnalyzer.js, phaseValidation.js, shipPlacementUtils.js, etc. Violate "pure utility" standard. Should relocate to `logic/`. | Medium |
-| 35 | useAnimationSetup.js:8-899 | Entire hook body is a single 890-line useEffect. | Medium |
-| 36 | useGameLifecycle.js:293,316,356 | 3 `const result = await processActionWithGuestRouting(...)` assigned but never read. Dead code. | Low |
-| 37 | 23 actionable TODOs in production code | Spread across ActionProcessor, RunLifecycleManager, ShipPlacementScreen, useClickHandlers, MovementController, PhaseManager, RewardManager, GSM. | Low |
+| 23 | ~200 raw `console.log` calls | Across ~64 non-test files. Top: P2PManager (20), SaveGameService (11), useAnimationSetup (9), cardDrawUtils (8). | Medium |
+| 24 | 26 hooks — zero test coverage | 10,413 lines completely untested. Highest risk: useDragMechanics (1653), useClickHandlers (956), useTacticalEncounters (931). | Medium |
+| 25 | 10+ utils files with domain logic | glossaryAnalyzer.js, phaseValidation.js, shipPlacementUtils.js, etc. Violate "pure utility" standard. Should relocate to `logic/`. | Medium |
+| 26 | useAnimationSetup.js:8-899 | Entire hook body is a single 890-line useEffect. | Medium |
+| 27 | useGameLifecycle.js:293,316,356 | 3 `const result = await processActionWithGuestRouting(...)` assigned but never read. Dead code. | Low |
+| 28 | 23 actionable TODOs in production code | Spread across ActionProcessor, RunLifecycleManager, ShipPlacementScreen, useClickHandlers, MovementController, PhaseManager, RewardManager, GSM. | Low |
 
 ## Resolved Items
 
@@ -64,3 +50,6 @@ Items discovered during the full codebase audit (`Design/CODEBASE_AUDIT.md`). Bu
 |-|-|-|-|-|
 | 21 | App.jsx | handleCardClick, handleLaneClick, handleTokenClick remain due to cancelAllActions circular dep | 2026-02-23 | Extracted to useClickHandlers hook; cancelAllActions passed as param |
 | 21 | App.jsx | At 2,169 lines — resolve* functions, effects, modal callbacks remain | 2026-02-23 | Session 6: extracted useResolvers (608 lines) + useActionRouting (106 lines), moved 5 effects + 3 handlers. App.jsx now 1,331 lines — pure orchestration root |
+| 23–27 | useGameLifecycle, AIDecisionLogModal, TacticalTicker, PhaseManager, quickDeploy/index | 5 high-priority bugs: CSV column mismatch, prop mutation, stale closure, phase list divergence, broken export | 2026-02-23 | Direct fix |
+| 28–30 | useResolvers, FlashEffect, LaserEffect | 3 medium-priority bugs: null guards, try/catch, timer cleanup | 2026-02-23 | Direct fix |
+| 31 | BaseEffectProcessor.js | Fragile type detection in createResult | 2026-02-23 | Direct fix |

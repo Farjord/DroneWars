@@ -477,7 +477,7 @@
 
 **Findings:**
 
-- **[LOGIC] BaseEffectProcessor.js:83** — `createResult` auto-detects animation vs additional effects by checking `[0]?.type`. Fragile: effects also have `.type`. Latent bug.
+- **[FIXED] BaseEffectProcessor.js:83** — `createResult` auto-detects animation vs additional effects by checking `[0]?.type`. Fragile: effects also have `.type`. Latent bug.
 - **[DUP] ConditionalSectionDamageProcessor.js** — `calculateDamageByType` copy-pasted from DamageEffectProcessor. Comment admits it.
 - **[DUP] DamageEffectProcessor.js** — `processOverflowDamage` (158 lines) re-implements damage logic already in `calculateDamageByType`.
 - **[DUP] DestroyEffectProcessor.js** — `onDroneDestroyed` + cleanup pattern repeated 5x across methods.
@@ -573,7 +573,7 @@
 - **[TODO] MovementController.js:160,166** — stale TODOs for systems that exist elsewhere.
 - **[PURITY] MissionService.js** — tutorial management (lines 302-366) bundled into MissionService. Should be `TutorialService`.
 - **[LOGIC] LaneTargetingProcessor.js:39** — `affinity === 'ANY'` pushes 2 entries per lane (6 targets for 3 lanes). Consumers must handle correctly.
-- **[LOGIC] BaseEffectProcessor.js:83** — fragile auto-detect of animation vs effect arrays.
+- **[FIXED] BaseEffectProcessor.js:83** — fragile auto-detect of animation vs effect arrays.
 
 ### Phase C — Services + Managers + Network (31 files, reviewed 2026-02-23)
 
@@ -748,7 +748,7 @@
 #### Phase C — Critical Findings Summary
 
 1. **[LOGIC] ShipSlotManager.js:362** — CRITICAL: Wrong fallback `|| 10` should be `|| 200` (silent pricing bug)
-2. **[DUP] PhaseManager.js:392-410** — LATENT BUG: `isSimultaneousPhase()` hardcoded list missing `determineFirstPlayer`, diverges from static `SIMULTANEOUS_PHASES`. Causes premature phase transition.
+2. **[FIXED] PhaseManager.js:392-410** — LATENT BUG: `isSimultaneousPhase()` hardcoded list missing `determineFirstPlayer`, diverges from static `SIMULTANEOUS_PHASES`. Causes premature phase transition.
 3. **[LOG]** — 22 files have raw console calls. Worst: P2PManager (21), SaveGameService (12), AnimationManager (6), GuestMessageQueueService (5), PhaseManager (5).
 4. **[SIZE]** — 5 files exceed 800 lines: GameFlowManager (1673), GuestMessageQueueService (1125), GameStateManager (1068), RewardManager (1028), ActionProcessor (1006). GuestMessageQueueService's `processStateUpdate` at 388 lines is the worst single method.
 5. **[DUP] `sequentialPhases`** — Same array defined 5 times across 4 files. Single shared constant needed.
@@ -942,9 +942,9 @@
 
 #### Phase D — Critical Findings Summary
 
-1. **[LOGIC] useGameLifecycle.js:461-473** — BUG: CSV header/data column mismatch (8 headers, 7 data columns) produces corrupt output.
-2. **[EDGE] useResolvers.js:148** — `resolveShipAbility` lacks try/catch. Will throw on failed action routing.
-3. **[EDGE] useResolvers.js:489-526** — 4 modal confirm handlers lack null guards that peer handlers have. Race-condition crash risk.
+1. **[FIXED] useGameLifecycle.js:461-473** — BUG: CSV header/data column mismatch (8 headers, 7 data columns) produces corrupt output.
+2. **[FIXED] useResolvers.js:148** — `resolveShipAbility` lacks try/catch. Will throw on failed action routing.
+3. **[FIXED] useResolvers.js:489-526** — 4 modal confirm handlers lack null guards that peer handlers have. Race-condition crash risk.
 4. **[LOG]** — 12 raw console calls across useAnimationSetup (9), useGameState (2), useExplosions (1).
 5. **[SIZE]** — 4 hooks exceed 800 lines: useDragMechanics (1653), useClickHandlers (956), useTacticalEncounters (931), useAnimationSetup (899). God functions: `handleDroneDragEnd` (532 lines), `handleActionCardDragEnd` (485 lines), `handleLaneClick` (254 lines), `handleCardClick` (234 lines).
 6. **[DUP]** — 14 duplication issues. Worst: useMultiplayerSync commitment check block copy-pasted 4 times (~100 lines). Cost reminder arrow logic duplicated between useDragMechanics and useClickHandlers. Friendly-drones calculation duplicated across 3 hooks.
@@ -1203,10 +1203,10 @@
 
 #### Phase E — Critical Findings Summary
 
-1. **[LOGIC] AIDecisionLogModal.jsx:106** — BUG: `decisionLog.sort(...)` mutates prop array in-place during render. Must use `[...decisionLog].sort(...)`.
-2. **[LOGIC] TacticalTicker.jsx:49** — BUG: stale closure — useEffect has `[]` deps but reads changing state.
-3. **[IMPORT] quickDeploy/index.js:7** — Broken barrel export for nonexistent `QuickDeployEditor`.
-4. **[LOGIC] FlashEffect.jsx + LaserEffect.jsx** — Timer cleanup missing on unmount.
+1. **[FIXED] AIDecisionLogModal.jsx:106** — BUG: `decisionLog.sort(...)` mutates prop array in-place during render. Must use `[...decisionLog].sort(...)`.
+2. **[FIXED] TacticalTicker.jsx:49** — BUG: stale closure — useEffect has `[]` deps but reads changing state.
+3. **[FIXED] quickDeploy/index.js:7** — Broken barrel export for nonexistent `QuickDeployEditor`.
+4. **[FIXED] FlashEffect.jsx + LaserEffect.jsx** — Timer cleanup missing on unmount.
 5. **[SIZE]** — 6 files exceed 800 lines: InventoryModal (1270), modalShowcaseHelpers (1113), TestingSetupScreen (1111), GameHeader (983), HexInfoPanel (970), HexGridRenderer (958).
 6. **[LOG]** — 15+ files with raw console calls. Worst: modalShowcaseHelpers (~60), InterceptionTargetLine (5).
 7. **[PURITY]** — 10 components contain business logic: HexInfoPanel, TacticalMapModals, WinnerModal, ReputationRewardModal, DroneSelectionScreen, LobbyScreen, RepairBayScreen, QuickDeployManager, MIARecoveryModal, ReputationProgressModal.
