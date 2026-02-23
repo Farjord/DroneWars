@@ -3,9 +3,9 @@
 ## Meta
 - Started: 2026-02-23
 - Last Session: 2026-02-23
-- Progress: 295/~500 source files (59%)
-- Current Phase: Phase E — Components
-- Next File: src/components/animations/ (first file)
+- Progress: 478/~500 source files (96%)
+- Current Phase: Phase F — App Root
+- Next File: src/App.jsx
 - Test Migration: Complete (151 files moved, 220 total tests in __tests__/, 3748 tests passing)
 
 ## Structure Review
@@ -952,30 +952,265 @@
 8. **[PURITY]** — Multiple hooks contain business logic (loot generation, AI selection, combat init, movement state machines) that belongs in logic/ or managers/.
 9. **[LOGIC]** — `Math.random()` in useTacticalEncounters breaks seeded RNG. `Date.now()` for animation IDs risks collision. useShieldAllocation over-broad dependency resets user state.
 
-### Phase E — Components
-#### E1: src/components/animations/
-| File | Lines | Issues | Status |
-|-|-|-|-|
+### Phase E — Components (~183 files, reviewed 2026-02-23)
 
-#### E2: src/components/ships/
-| File | Lines | Issues | Status |
-|-|-|-|-|
+**Totals:** ~183 files, 44,079 lines, 91 issues (6 [SIZE] 800+, 15 [LOG], 10 [DUP], 10 [PURITY], 7 [DEAD], 5 [SMELL], 4 [LOGIC], 2 [COMMENT], 32 other)
 
-#### E3: src/components/quickDeploy/
-| File | Lines | Issues | Status |
-|-|-|-|-|
+#### E1: src/components/animations/ (20 files, 10 issues)
 
-#### E4: src/components/ui/
 | File | Lines | Issues | Status |
 |-|-|-|-|
+| RailgunTurret.jsx | 341 | 0 | Reviewed |
+| PhaseAnnouncementOverlay.jsx | 283 | 1 | Reviewed |
+| OverflowProjectile.jsx | 179 | 2 | Reviewed |
+| HealEffect.jsx | 168 | 1 | Reviewed |
+| SplashEffect.jsx | 166 | 0 | Reviewed |
+| CardVisualEffect.jsx | 159 | 2 | Reviewed |
+| TeleportEffect.jsx | 149 | 0 | Reviewed |
+| GoAgainOverlay.jsx | 130 | 0 | Reviewed |
+| StatusConsumptionOverlay.jsx | 127 | 1 | Reviewed |
+| RailgunBeam.jsx | 120 | 0 | Reviewed |
+| PassNotificationOverlay.jsx | 112 | 0 | Reviewed |
+| KPIChangePopup.jsx | 104 | 0 | Reviewed |
+| CardRevealOverlay.jsx | 99 | 0 | Reviewed |
+| ShipAbilityRevealOverlay.jsx | 99 | 0 | Reviewed |
+| FlyingDrone.jsx | 94 | 1 | Reviewed |
+| LaserEffect.jsx | 92 | 1 | Reviewed |
+| ExplosionEffect.jsx | 91 | 0 | Reviewed |
+| CardWarningOverlay.jsx | 81 | 0 | Reviewed |
+| BarrageImpact.jsx | 72 | 0 | Reviewed |
+| FlashEffect.jsx | 52 | 1 | Reviewed |
 
-#### E5: src/components/modals/
-| File | Lines | Issues | Status |
-|-|-|-|-|
+**Per-file issues:**
+- **[LOGIC] FlashEffect.jsx:18-26** — Three `setTimeout` calls with no cleanup. If component unmounts mid-animation, setState fires on unmounted component.
+- **[LOGIC] LaserEffect.jsx:23-27** — Same timer cleanup issue; only 1 of 3 timers is cleared on unmount.
+- **[DEAD] OverflowProjectile.jsx:160-176** — `const styles` template literal assigned but never used.
+- **[LOGIC] OverflowProjectile.jsx:87** — `progress` hardcoded to `0.5` in travel-to-ship phase; animation never actually interpolates.
+- **[DEAD] CardVisualEffect.jsx:71** — `EnergyWaveEffect` accepts `startPos` but never uses it.
+- **[SMELL] CardVisualEffect.jsx:132-158** — Commented-out CSS keyframes block.
+- **[DUP] HealEffect.jsx:27-34, 64-69** — Size determination + config computed identically twice.
+- **[DEAD] StatusConsumptionOverlay.jsx:17** — `droneName` prop destructured but never used.
+- **[SMELL] PhaseAnnouncementOverlay.jsx:26-43** — ~50 lines of performance.mark/measure instrumentation. Debug scaffolding left in production.
+- **[SMELL] FlyingDrone.jsx:51-52** — Magic numbers `35` and `60` for trail particle offset.
 
-#### E6: src/components/screens/
+#### E2: src/components/ships/ (2 files, 2 issues)
+
 | File | Lines | Issues | Status |
 |-|-|-|-|
+| CorvetteIcon.jsx | 126 | 1 | Reviewed |
+| ShipIconRenderer.jsx | 118 | 1 | Reviewed |
+
+- **[DEAD] CorvetteIcon.jsx** — Orphaned component. Only imported by commented-out code in ShipIconRenderer (uses PNG instead).
+- **[DEAD] ShipIconRenderer.jsx:22-26** — `FACTION_COLORS` constant only referenced in commented-out code.
+
+#### E3: src/components/quickDeploy/ (4 files, 4 issues)
+
+| File | Lines | Issues | Status |
+|-|-|-|-|
+| QuickDeployManager.jsx | 385 | 2 | Reviewed |
+| DronePicker.jsx | 225 | 0 | Reviewed |
+| DeploymentOrderQueue.jsx | 170 | 1 | Reviewed |
+| index.js | 9 | 1 | Reviewed |
+
+- **[IMPORT] index.js:7** — Broken barrel export for `QuickDeployEditor` — file does not exist at that path.
+- **[LOG] QuickDeployManager.jsx:132** — Raw `console.error`.
+- **[PURITY] QuickDeployManager.jsx:35-88** — ~50 lines of business logic (mock player states, validation) in useMemo. Should be in logic/service.
+- **[PURITY] DeploymentOrderQueue.jsx:9** — Imports `fullDroneCollection` directly. Presentation component should receive image URLs via props.
+
+#### E4: src/components/ui/ (75 files, 27 issues)
+
+**Files over 800 lines (3 files, 9 issues):**
+
+| File | Lines | Issues | Status |
+|-|-|-|-|
+| GameHeader.jsx | 983 | 3 | Reviewed |
+| HexInfoPanel.jsx | 970 | 3 | Reviewed |
+| HexGridRenderer.jsx | 958 | 3 | Reviewed |
+
+- **[SIZE] GameHeader.jsx** — 983 lines, 70+ props. Strongest god-component candidate. Phase-specific button groups could be extracted.
+- **[SMELL] GameHeader.jsx:74-145** — 70+ props. Largest prop list in the codebase.
+- **[DUP] GameHeader.jsx:502-551** — Reallocation "removing" and "adding" button groups nearly identical.
+- **[SIZE] HexInfoPanel.jsx** — 970 lines. Three render branches (moving, hex-info, waypoint-list) could split.
+- **[PURITY] HexInfoPanel.jsx:362-399** — `getHexPreview()` calls `MovementController`, `DetectionManager`, `SalvageController` directly. Business logic in UI.
+- **[DUP] HexInfoPanel.jsx:420-446,540-562,825-853** — Detection meter block rendered identically 3 times.
+- **[SIZE] HexGridRenderer.jsx** — 958 lines. Decorative hex, pan/zoom, fill/stroke are extraction candidates.
+- **[PURITY] HexGridRenderer.jsx:16-22** — `tacticalBackgrounds` static data in component file.
+- **[SMELL] HexGridRenderer.jsx:257-263** — Inconsistent zoom limits across handlers (min 3.5/max 6 vs min 2.8/max 4).
+
+**Files 400-800 lines (7 files, 5 issues):**
+
+| File | Lines | Issues | Status |
+|-|-|-|-|
+| DeckBuilderLeftPanel.jsx | 632 | 2 | Reviewed |
+| DroneLanesDisplay.jsx | 510 | 2 | Reviewed |
+| DroneToken.jsx | 468 | 1 | Reviewed |
+| DeckBuilderRightPanel.jsx | 443 | 0 | Reviewed |
+| ModalLayer.jsx | 430 | 1 | Reviewed |
+| HangarHexMap.jsx | 391 | 0 | Reviewed |
+| AvailabilityDots.jsx | 390 | 1 | Reviewed |
+
+- **[DUP] DeckBuilderLeftPanel.jsx:500-622** — Three component-type sections (Bridge, Power Cell, Drone Control Hub) copy-pasted.
+- **[SIZE] DeckBuilderLeftPanel.jsx** — 632 lines (400+ threshold).
+- **[SMELL] DroneLanesDisplay.jsx:39-76** — `renderDronesOnBoard` standalone function with 28 positional parameters.
+- **[SIZE] DroneLanesDisplay.jsx** — 510 lines (400+ threshold).
+- **[LOGIC] ModalLayer.jsx:206-218** — Debug IIFE calls `debugLog` during render (side effect).
+- **[COMMENT] AvailabilityDots.jsx:92** — Banned `// NEW MODEL:` temporal comment.
+
+**Files under 350 lines (~65 files, 13 issues):**
+
+| File | Lines | Issues | Status |
+|-|-|-|-|
+| TacticalMapModals.jsx | 336 | 1 | Reviewed |
+| ShipConfigurationTab.jsx | 300 | 1 | Reviewed |
+| ShipSectionCompact.jsx | 267 | 1 | Reviewed |
+| ShipSection.jsx | 260 | 1 | Reviewed |
+| CardBackPlaceholder.jsx | 211 | 1 | Reviewed |
+| ResourceCard.jsx | 192 | 1 | Reviewed |
+| NewsTicker.jsx | 193 | 1 | Reviewed |
+| TacticalItemsPanel.jsx | 174 | 1 | Reviewed |
+| InterceptionTargetLine.jsx | 151 | 1 | Reviewed |
+| ActionCard.jsx | 224 | 1 | Reviewed |
+| AngularBandsBackground.jsx | 127 | 1 | Reviewed |
+| TacticalTicker.jsx | 78 | 1 | Reviewed |
+| WaitingOverlay.jsx | 36 | 1 | Reviewed |
+| ~52 other files | varies | 0 | Reviewed |
+
+- **[LOG] InterceptionTargetLine.jsx:32-57** — 5 raw `console.log` calls.
+- **[LOGIC] TacticalTicker.jsx:49** — **BUG:** useEffect has `[]` deps but reads `isMoving` and `currentRunState` — stale closure bug.
+- **[DEAD] WaitingOverlay.jsx** — 6 props destructured but never used.
+- **[DUP] ShipSection.jsx + ShipSectionCompact.jsx** — Both define identical `ShipAbilityIcon` inner component.
+- **[PURITY] ResourceCard.jsx:16-52** — Inline `RESOURCE_CONFIG` data object.
+- **[PURITY] CardBackPlaceholder.jsx:10-51** — Inline color config objects.
+- **[PURITY] ShipConfigurationTab.jsx** — Directly imports data collections.
+- **[PURITY] TacticalMapModals.jsx:283-303** — Imports and calls logic singletons inline (`DetectionManager`, `ExtractionController`, `aiPersonalities`).
+- **[PURITY] TacticalItemsPanel.jsx:12-14** — Module-level data fetches.
+- **[SMELL] NewsTicker.jsx:83-131** — Diagnostic logging interval runs every 1s parsing CSS transforms. Dev code in production.
+- **[NAME] AngularBandsBackground.jsx** — File exports `MorphingBackground` but filename says `AngularBandsBackground`.
+- **[LOG] ActionCard.jsx:77-83** — `debugLog` runs on every render of every card. Performance concern.
+- **[DUP] HiddenShipCard.jsx + HiddenShipSectionCard.jsx** — Nearly identical to `HiddenCard.jsx`, only icon differs.
+
+#### E5: src/components/modals/ (65 files, 17 issues)
+
+**Files over 320 lines (13 files, 10 issues):**
+
+| File | Lines | Issues | Status |
+|-|-|-|-|
+| InventoryModal.jsx | 1270 | 4 | Reviewed |
+| GlossaryModal.jsx | 851 | 1 | Reviewed |
+| AIStrategyModal.jsx | 711 | 0 | Reviewed |
+| MapOverviewModal.jsx | 618 | 2 | Reviewed |
+| ViewDeckModal.jsx | 587 | 1 | Reviewed |
+| BlueprintsModal.jsx | 538 | 0 | Reviewed |
+| DeckBuildingModal.jsx | 498 | 1 | Reviewed |
+| ReplicatorModal.jsx | 393 | 0 | Reviewed |
+| ShopModal.jsx | 377 | 0 | Reviewed |
+| SalvageModal.jsx | 377 | 1 | Reviewed |
+| RunInventoryModal.jsx | 360 | 0 | Reviewed |
+| ExtractionLootSelectionModal.jsx | 357 | 0 | Reviewed |
+| POIEncounterModal.jsx | 252 | 1 | Reviewed |
+
+- **[SIZE] InventoryModal.jsx** — 1270 lines, far exceeds 800-line threshold.
+- **[DEAD] InventoryModal.jsx:33** — `selectedItem`/`setSelectedItem` state declared, never used.
+- **[DUP] InventoryModal.jsx:528-618** — Rarity-stats grid rendered identically for 3 tabs.
+- **[SMELL] InventoryModal.jsx:658-730** — Card-tile pattern duplicated across all tabs.
+- **[SIZE] GlossaryModal.jsx** — 851 lines. Each `renderXxx` function is extraction candidate.
+- **[LOG] MapOverviewModal.jsx:97,222** — 2 raw `console.error`/`console.warn`.
+- **[DUP] ViewDeckModal.jsx:83-104,131-157** — `getColumnGroups`/`getGroups` contain identical group definitions.
+- **[LOG] DeckBuildingModal.jsx:165** — Raw `console.error`.
+- **[DUP] SalvageModal.jsx:15-19 + POIEncounterModal.jsx:11-16** — `IconPOI` component duplicated identically.
+
+**Files under 320 lines (51 files, 7 issues):**
+
+| File | Lines | Issues | Status |
+|-|-|-|-|
+| ReputationProgressModal.jsx | 294 | 1 | Reviewed |
+| GameDebugModal.jsx | 280 | 0 | Reviewed |
+| WinnerModal.jsx | 272 | 1 | Reviewed |
+| DroneFilterModal.jsx | 249 | 0 | Reviewed |
+| ReputationRewardModal.jsx | 247 | 2 | Reviewed |
+| EscapeConfirmModal.jsx | 240 | 0 | Reviewed |
+| MIARecoveryModal.jsx | 233 | 1 | Reviewed |
+| LootRevealModal.jsx | 297 | 1 | Reviewed |
+| DroneSelectionModal.jsx | 201 | 1 | Reviewed |
+| AIDecisionLogModal.jsx | 139 | 1 | Reviewed |
+| ~41 other files | varies | 0 | Reviewed |
+
+- **[LOGIC] AIDecisionLogModal.jsx:106** — **BUG:** `decisionLog.sort(...)` mutates prop array in-place during render. Should be `[...decisionLog].sort(...)`.
+- **[PURITY] WinnerModal.jsx:34-89** — Reads `gameStateManager`/`tacticalMapStateManager`, calls `CombatOutcomeProcessor`. Business logic in component.
+- **[DEAD] ReputationRewardModal.jsx:13** — `getLevelData` imported but never used.
+- **[PURITY] ReputationRewardModal.jsx:48-65** — `handleCollectLoot` mutates gameStateManager state directly. Business logic in component.
+- **[PURITY] MIARecoveryModal.jsx** — Imports `miaRecoveryService` and calls it directly.
+- **[PURITY] LootRevealModal.jsx** — Imports `SoundManager` singleton directly.
+- **[PURITY] ReputationProgressModal.jsx** — Calls `ReputationService` methods directly.
+- **[LOG] DroneSelectionModal.jsx:68** — Raw `console.log`.
+
+#### E6: src/components/screens/ (17 files, 31 issues)
+
+**Files over 500 lines (8 files, 20 issues):**
+
+| File | Lines | Issues | Status |
+|-|-|-|-|
+| modalShowcaseHelpers.js | 1113 | 2 | Reviewed |
+| TestingSetupScreen.jsx | 1111 | 4 | Reviewed |
+| QuickDeployEditorScreen.jsx | 904 | 3 | Reviewed |
+| RepairBayScreen.jsx | 729 | 3 | Reviewed |
+| TacticalMapScreen.jsx | 673 | 2 | Reviewed |
+| DeckSelectionScreen.jsx | 602 | 3 | Reviewed |
+| HangarScreen.jsx | 568 | 0 | Reviewed |
+| ShipPlacementScreen.jsx | 546 | 3 | Reviewed |
+
+- **[SIZE] modalShowcaseHelpers.js** — 1113 lines. `getModalsByCategory` manually duplicates keys from `modalConfigs`; could derive.
+- **[LOG] modalShowcaseHelpers.js** — ~60 raw `console.log` in mock callbacks (showcase-only, low priority).
+- **[SIZE] TestingSetupScreen.jsx** — 1111 lines. Contains 3 extractable sub-components.
+- **[LOG] TestingSetupScreen.jsx:46,243** — 2 raw `console.error`.
+- **[DUP] TestingSetupScreen.jsx:862-1005** — Lane controls for lane1/lane2/lane3 copy-pasted 3 times.
+- **[SIZE] QuickDeployEditorScreen.jsx** — 904 lines.
+- **[LOG] QuickDeployEditorScreen.jsx:451** — Raw `console.error`.
+- **[DUP] QuickDeployEditorScreen.jsx:346-374,392-417** — Deployment order index remapping duplicated.
+- **[PURITY] RepairBayScreen.jsx:33-105** — 5 domain logic functions in component file. `resolveComponentIdForLane` is even exported.
+- **[DUP] RepairBayScreen.jsx:384-398** — Header stat bar duplicated from HangarHeader.
+- **[SMELL] RepairBayScreen.jsx:401-416** — IIFE inside JSX for ReputationTrack.
+- **[SMELL] TacticalMapScreen.jsx:47-161** — 40+ useState + 10+ useRef declarations.
+- **[SMELL] TacticalMapScreen.jsx:586-661** — TacticalMapModals receives ~75 props.
+- **[LOG] DeckSelectionScreen.jsx:144,284** — 2 raw `console.error`.
+- **[COMMENT] DeckSelectionScreen.jsx:341** — Stale `// DEBUG LOGGING - Remove after fixing multiplayer issue`.
+- **[LOG] ShipPlacementScreen.jsx:185,255** — 2 raw console calls.
+- **[COMMENT] ShipPlacementScreen.jsx:284** — Same stale debug comment as DeckSelectionScreen.
+
+**Files under 500 lines (9 files, 11 issues):**
+
+| File | Lines | Issues | Status |
+|-|-|-|-|
+| DroneSelectionScreen.jsx | 438 | 3 | Reviewed |
+| ExtractionDeckBuilder.jsx | 425 | 2 | Reviewed |
+| LobbyScreen.jsx | 397 | 4 | Reviewed |
+| DeckBuilder.jsx | 385 | 0 | Reviewed |
+| MenuScreen.jsx | 377 | 0 | Reviewed |
+| MultiplayerLobby.jsx | 363 | 1 | Reviewed |
+| ModalShowcaseScreen.jsx | 361 | 1 | Reviewed |
+
+- **[LOG] DroneSelectionScreen.jsx:199,204** — 2 raw `console.error`.
+- **[PURITY] DroneSelectionScreen.jsx:194** — Calls `gameStateManager.actionProcessor.queueAction()` and `p2pManager.sendActionToHost()` directly.
+- **[SIZE] DroneSelectionScreen.jsx** — 438 lines (400+ threshold).
+- **[LOG] ExtractionDeckBuilder.jsx:338,348,357** — 3 raw console calls.
+- **[SIZE] ExtractionDeckBuilder.jsx** — 425 lines (400+ threshold).
+- **[LOG] LobbyScreen.jsx:59,66,73** — 3 raw `console.error`.
+- **[COMMENT] LobbyScreen.jsx:379** — Banned comment: `{/* FIXED: Properly closed the wrapper div here */}`.
+- **[SMELL] LobbyScreen.jsx:60,67,74** — `alert()` for error display.
+- **[PURITY] LobbyScreen.jsx:81-113** — Game initialization logic in component.
+- **[LOG] MultiplayerLobby.jsx:78,98,111** — 3 raw `console.error`.
+- **[LOG] ModalShowcaseScreen.jsx:126-142,208** — Raw `console.log`/`console.warn` in dev tool.
+
+#### Phase E — Critical Findings Summary
+
+1. **[LOGIC] AIDecisionLogModal.jsx:106** — BUG: `decisionLog.sort(...)` mutates prop array in-place during render. Must use `[...decisionLog].sort(...)`.
+2. **[LOGIC] TacticalTicker.jsx:49** — BUG: stale closure — useEffect has `[]` deps but reads changing state.
+3. **[IMPORT] quickDeploy/index.js:7** — Broken barrel export for nonexistent `QuickDeployEditor`.
+4. **[LOGIC] FlashEffect.jsx + LaserEffect.jsx** — Timer cleanup missing on unmount.
+5. **[SIZE]** — 6 files exceed 800 lines: InventoryModal (1270), modalShowcaseHelpers (1113), TestingSetupScreen (1111), GameHeader (983), HexInfoPanel (970), HexGridRenderer (958).
+6. **[LOG]** — 15+ files with raw console calls. Worst: modalShowcaseHelpers (~60), InterceptionTargetLine (5).
+7. **[PURITY]** — 10 components contain business logic: HexInfoPanel, TacticalMapModals, WinnerModal, ReputationRewardModal, DroneSelectionScreen, LobbyScreen, RepairBayScreen, QuickDeployManager, MIARecoveryModal, ReputationProgressModal.
+8. **[DUP]** — 10 duplication issues. Worst: TestingSetupScreen lane controls 3x, HexInfoPanel detection meter 3x, DeckBuilderLeftPanel component sections 3x.
 
 ### Phase F — App Root
 #### F1: Root files
