@@ -36,19 +36,17 @@ import useMultiplayerSync from './hooks/useMultiplayerSync.js';
 import useCardSelection from './hooks/useCardSelection.js';
 import useDragMechanics from './hooks/useDragMechanics.js';
 import useClickHandlers from './hooks/useClickHandlers.js';
+import useGameLifecycle from './hooks/useGameLifecycle.js';
 
 // --- 1.5 DATA/LOGIC IMPORTS ---
-import fullCardCollection from './data/cardData.js';
 import { gameEngine } from './logic/gameLogic.js';
 import ExtractionController from './logic/singlePlayer/ExtractionController.js';
-import { forceWinCombat } from './logic/game/ForceWin.js';
 import WinConditionChecker from './logic/game/WinConditionChecker.js';
 import { BACKGROUNDS, DEFAULT_BACKGROUND, getBackgroundById } from './config/backgrounds.js';
 import { LaneControlCalculator } from './logic/combat/LaneControlCalculator.js';
 
 // --- 1.6 MANAGER/STATE IMPORTS ---
 // Note: gameFlowManager is initialized in AppRouter and accessed via gameStateManager
-import aiPhaseProcessor from './managers/AIPhaseProcessor.js';
 import p2pManager from './network/P2PManager.js';
 // ActionProcessor is created internally by GameStateManager
 
@@ -57,7 +55,6 @@ import { getElementCenter } from './utils/gameUtils.js';
 import { debugLog } from './utils/debugLogger.js';
 import { calculateAllValidTargets, calculateAffectedDroneIds } from './utils/uiTargetingHelpers.js';
 import DEV_CONFIG from './config/devConfig.js';
-import SeededRandom from './utils/seededRandom.js';
 
 // --- 1.8 ANIMATION IMPORTS ---
 import AnimationManager from './managers/AnimationManager.js';
@@ -1511,513 +1508,43 @@ const App = ({ phaseAnimationQueue }) => {
     );
   }
 
-  /**
-   * HANDLE RESET
-   * Resets the entire game state back to initial conditions.
-   * Clears all players, modals, selections, and game progress.
-   */
-  const handleReset = () => {
-   // Reset using GameStateManager
-   resetGame();
-   // Reset attack flag to prevent stuck state
-   isResolvingAttackRef.current = false;
-   // Reset UI-only state (GameStateManager handles core game state)
-   setSelectedDrone(null);
-   setModalContent(null);
-   setAbilityMode(null);
-   setValidAbilityTargets([]);
-   setMandatoryAction(null);
-   setShowMandatoryActionModal(false);
-   setConfirmationModal(null);
-   setSelectedCard(null);
-   setValidCardTargets([]);
-   setCardConfirmation(null);
-   setShowWinnerModal(false);
-  };
 
-  /**
-   * HANDLE EXIT GAME
-   * Exits the current game and returns to the menu screen.
-   * In Extract mode (single-player run), shows abandon run confirmation first.
-   * Properly cleans up all running services, timers, and subscriptions.
-   */
-  const handleExitGame = () => {
-    // Check if in Extract mode (single-player run active)
-    if (tacticalMapStateManager.isRunActive()) {
-      // In Extract mode - show abandon run confirmation instead of exiting
-      setShowAbandonRunModal(true);
-      return;
-    }
 
-    // Not in Extract mode - exit normally
-    // Clean up AI processor (clear timer and unsubscribe)
-    if (gameState.gameMode === 'local') {
-      aiPhaseProcessor.cleanup();
-    }
 
-    // End game and return to menu (also cleans up GameDataService and ActionProcessor)
-    endGame();
-
-    // Reset attack flag to prevent stuck state
-    isResolvingAttackRef.current = false;
-
-    // Reset UI-only state
-    setSelectedDrone(null);
-    setModalContent(null);
-    setAbilityMode(null);
-    setValidAbilityTargets([]);
-    setMandatoryAction(null);
-    setShowMandatoryActionModal(false);
-    setConfirmationModal(null);
-    setSelectedCard(null);
-    setValidCardTargets([]);
-    setCardConfirmation(null);
-    setShowWinnerModal(false);
-  };
-
-  /**
-   * HANDLE CONFIRM ABANDON RUN
-   * Called when user confirms abandoning their run in Extract mode.
-   * Uses ExtractionController to abandon the run and return to hangar.
-   */
-  const handleConfirmAbandonRun = () => {
-    debugLog('MODE_TRANSITION', '=== MODE: current -> failedRunScreen (abandon via modal) ===', {
-      trigger: 'user_action',
-      source: 'App.handleConfirmAbandonRun',
-      detail: 'User confirmed abandon in global abandon modal',
-      currentAppState: appState
-    });
-    setShowAbandonRunModal(false);
-    ExtractionController.abandonRun(); // Goes to hangar, not main menu
-  };
-
-  /**
-   * HANDLE OPEN ADD CARD MODAL (DEBUG)
-   * Opens the debug modal for adding cards to hands
-   */
-  const handleOpenAddCardModal = () => {
-    setShowAddCardModal(true);
-  };
-
-  /**
-   * HANDLE FORCE WIN (DEV)
-   * Instantly wins combat by damaging all opponent ship sections.
-   * Routes through ActionProcessor to avoid architecture violations.
-   */
-  const handleForceWin = () => {
-    forceWinCombat();
-  };
-
-  /**
-   * HANDLE ADD CARDS TO HAND (DEBUG)
-   * Adds selected cards to a player's hand
-   * @param {Object} data - {playerId, selectedCards}
-   */
-  const handleAddCardsToHand = async ({ playerId, selectedCards }) => {
-    debugLog('DEBUG_TOOLS', '🎴 Adding cards to hand', { playerId, selectedCards });
-
-    // Convert selectedCards composition to array of card instances
-    const cardInstances = [];
-    Object.entries(selectedCards).forEach(([cardId, quantity]) => {
-      const cardTemplate = fullCardCollection.find(c => c.id === cardId);
-      if (!cardTemplate) {
-        debugLog('DEBUG_TOOLS', 'Card template not found for ID:', cardId);
-        return;
-      }
-
-      for (let i = 0; i < quantity; i++) {
-        // Create unique instance ID
-        const instanceId = `${playerId}-${cardId}-${Date.now()}-${Math.random()}`;
-        cardInstances.push({ ...cardTemplate, instanceId });
-      }
-    });
-
-    // Route through ActionProcessor instead of direct state update
-    await processActionWithGuestRouting('debugAddCardsToHand', { playerId, cardInstances });
-
-    debugLog('DEBUG_TOOLS', '✅ Cards added through ActionProcessor');
-  };
-
-  // ========================================
-  // ROUND START SEQUENCE
-  // ========================================
-
-
-  /**
-   * HANDLE IMPORT DECK
-   * Imports deck from deck code string for quick deck building.
-   * Validates deck format and card quantities.
-   * @param {string} deckCode - Formatted deck code string
-   */
-  const handleImportDeck = (deckCode) => {
-    try {
-      const newDeck = {};
-      const baseCardCounts = {};
-      
-      // 1. Parse the deck code string
-      const entries = deckCode.split(',').filter(Boolean);
-      for (const entry of entries) {
-        const [cardId, quantityStr] = entry.split(':');
-        const quantity = parseInt(quantityStr, 10);
-
-        // 2. Validate the entry
-        const cardTemplate = fullCardCollection.find(c => c.id === cardId);
-        if (!cardTemplate || isNaN(quantity) || quantity <= 0 || quantity > cardTemplate.maxInDeck) {
-          throw new Error(`Invalid entry for card "${cardId}".`);
-        }
-        
-        // 3. Store the card and quantity
-        newDeck[cardId] = quantity;
-
-        // 4. Track counts for variants
-        const baseId = cardTemplate.baseCardId;
-        baseCardCounts[baseId] = (baseCardCounts[baseId] || 0) + quantity;
-      }
-
-      // 5. Final validation for shared limits (e.g., Laser Blast variants)
-      for (const baseId in baseCardCounts) {
-        const totalQuantity = baseCardCounts[baseId];
-        const baseCard = fullCardCollection.find(c => c.baseCardId === baseId);
-        if (totalQuantity > baseCard.maxInDeck) {
-          throw new Error(`Exceeded max limit for "${baseCard.name}". Total is ${totalQuantity}, max is ${baseCard.maxInDeck}.`);
-        }
-      }
-
-      // 6. If all checks pass, update the deck state
-      setDeck(newDeck);
-      return { success: true };
-
-    } catch (error) {
-      debugLog('DEBUG_TOOLS', '❌ Deck import failed:', error);
-      return { success: false, message: error.message };
-    }
-  };
-
-
-
-  // handleActionCardDragStart, handleActionCardDragEnd, handleDroneDragStart,
-  // handleDroneDragEnd — all moved to useDragMechanics hook
-
-
-  /**
-   * HANDLE PLAYER PASS
-   * Processes player passing during deployment or action phase.
-   * Manages turn transitions and phase ending logic.
-   */
-  const handlePlayerPass = async () => {
-    if (passInfo[`${getLocalPlayerId()}Passed`]) return;
-
-    cancelAllActions(); // Cancel all other actions before passing
-
-    await processActionWithGuestRouting('playerPass', {
-      playerId: getLocalPlayerId(),
-      playerName: localPlayerState.name,
-      turnPhase: turnPhase,
-      passInfo: passInfo,
-      opponentPlayerId: getOpponentPlayerId()
-    });
-  };
-
-  /**
-   * HANDLE CONFIRM MANDATORY DISCARD
-   * Processes confirmed mandatory card discard.
-   * Manages discard count and phase transitions.
-   * @param {Object} card - The card being discarded
-   */
-  const handleConfirmMandatoryDiscard = async (card) => {
-    // Determine if this is phase-based or ability-based mandatory discard
-    const isAbilityBased = mandatoryAction?.fromAbility;
-    const currentCount = isAbilityBased ? mandatoryAction.count : excessCards;
-
-    // For phase-based mandatory discards, check if we've already discarded enough
-    if (!isAbilityBased && excessCards <= 0) {
-      debugLog('DISCARD', '🚫 Cannot discard more cards - already at hand limit');
-      setConfirmationModal(null);
-      return;
-    }
-
-    // Determine if this is the last discard
-    const newCount = currentCount - 1;
-    const isLastDiscard = newCount <= 0;
-
-    // Prepare payload for discard action
-    const discardPayload = {
-        playerId: getLocalPlayerId(),
-        cardsToDiscard: [card],
-        isMandatory: true
-    };
-
-    // If this is the last discard from an ability, include metadata for animation
-    if (isLastDiscard && isAbilityBased && mandatoryAction.abilityName) {
-        discardPayload.abilityMetadata = {
-            abilityName: mandatoryAction.abilityName,
-            sectionName: mandatoryAction.sectionName,
-            actingPlayerId: mandatoryAction.actingPlayerId
-        };
-    }
-
-    // Process discard action (ActionProcessor handles logging and animations)
-    await processActionWithGuestRouting('optionalDiscard', discardPayload);
-
-    // Clear the confirmation modal immediately
-    setConfirmationModal(null);
-
-    // Handle ability-based completion (phase-based is handled by Continue button)
-    if (isLastDiscard && isAbilityBased) {
-        // Clear ability-based mandatoryAction
-        setMandatoryAction(null);
-
-        // Complete the Recalculate ability (ends turn)
-        await processActionWithGuestRouting('recalculateComplete', {
-            playerId: mandatoryAction.actingPlayerId
-        });
-    } else if (!isLastDiscard && isAbilityBased) {
-        // More discards needed for ability-based
-        // Update ability-based mandatoryAction count
-        setMandatoryAction(prev => ({ ...prev, count: newCount }));
-    }
-    // Note: Phase-based mandatory discard completion is handled by Continue button
-    // For phase-based, count is derived from excessCards, no need to update anything
-  };
-
-  /**
-   * HANDLE ROUND START DISCARD
-   * Processes optional discard during optionalDiscard phase.
-   * Updates local discard count and calls ActionProcessor for state management.
-   * @param {Object} card - The card being discarded
-   */
-  const handleRoundStartDiscard = async (card) => {
-    // Use ActionProcessor for proper state management (ActionProcessor handles logging)
-    await processActionWithGuestRouting('optionalDiscard', {
-      playerId: getLocalPlayerId(),
-      cardsToDiscard: [card],
-      isMandatory: false
-    });
-
-    // Increment optional discard count
-    setOptionalDiscardCount(prev => prev + 1);
-
-    // Clear confirmation modal
-    setConfirmationModal(null);
-  };
-
-  /**
-   * HANDLE ROUND START DRAW
-   * Completes the optionalDiscard phase by committing and transitioning to draw phase.
-   * Resets the optional discard count for the next round.
-   */
-  const handleRoundStartDraw = async () => {
-    debugLog('PHASE_TRANSITIONS', '[OPTIONAL DISCARD] Player completing optional discard phase');
-
-    // Reset discard count for next round
-    setOptionalDiscardCount(0);
-
-    // Commit completion of optionalDiscard phase
-    const result = await processActionWithGuestRouting('commitment', {
-      playerId: getLocalPlayerId(),
-      phase: 'optionalDiscard',
-      actionData: { completed: true }
-    });
-
-    // Unified logic: Check opponent commitment status directly from state
-    const commitments = gameState.commitments || {};
-    const phaseCommitments = commitments.optionalDiscard || {};
-    const opponentCommitted = phaseCommitments[getOpponentPlayerId()]?.completed;
-
-    if (!opponentCommitted) {
-      debugLog('PHASE_TRANSITIONS', '✋ Opponent not committed yet, showing waiting overlay');
-      setWaitingForPlayerPhase('optionalDiscard');
-    } else {
-      debugLog('PHASE_TRANSITIONS', '✅ Both players complete, no waiting overlay');
-    }
-  };
-
-  /**
-   * HANDLE MANDATORY DISCARD CONTINUE
-   * Completes the mandatoryDiscard phase by committing and transitioning to next phase.
-   * Called when player has finished all mandatory discards (or had none to begin with).
-   */
-  const handleMandatoryDiscardContinue = async () => {
-    debugLog('PHASE_TRANSITIONS', '[MANDATORY DISCARD] Player completing mandatory discard phase');
-
-    // Commit completion of mandatoryDiscard phase
-    const result = await processActionWithGuestRouting('commitment', {
-      playerId: getLocalPlayerId(),
-      phase: 'mandatoryDiscard',
-      actionData: { completed: true }
-    });
-
-    // Check opponent commitment status directly from state
-    const commitments = gameState.commitments || {};
-    const phaseCommitments = commitments.mandatoryDiscard || {};
-    const opponentCommitted = phaseCommitments[getOpponentPlayerId()]?.completed;
-
-    if (!opponentCommitted) {
-      debugLog('PHASE_TRANSITIONS', '✋ Opponent not committed yet, showing waiting overlay');
-
-      // Wait for phase announcements to finish before showing waiting modal
-      // Check if announcements are queued OR currently playing
-      if (phaseAnimationQueue) {
-        const queueLength = phaseAnimationQueue.getQueueLength();
-        const isPlaying = phaseAnimationQueue.isPlaying();
-
-        if (queueLength > 0 || isPlaying) {
-          debugLog('PHASE_TRANSITIONS', '⏳ Waiting for announcement queue to complete before showing waiting modal', { queueLength, isPlaying });
-          const unsubscribe = phaseAnimationQueue.onComplete(() => {
-            setWaitingForPlayerPhase('mandatoryDiscard');
-            unsubscribe(); // Clean up listener
-            debugLog('PHASE_TRANSITIONS', '✅ Announcement queue complete, showing waiting modal');
-          });
-        } else {
-          // No queued announcements, show immediately
-          setWaitingForPlayerPhase('mandatoryDiscard');
-        }
-      } else {
-        // No animation queue available, show immediately
-        setWaitingForPlayerPhase('mandatoryDiscard');
-      }
-    } else {
-      debugLog('PHASE_TRANSITIONS', '✅ Both players complete, no waiting overlay');
-    }
-  };
-
-  /**
-   * HANDLE MANDATORY DRONE REMOVAL CONTINUE
-   * Completes the mandatoryDroneRemoval phase by committing and transitioning to next phase.
-   * Called when player has finished all mandatory drone removals (or had none to begin with).
-   */
-  const handleMandatoryDroneRemovalContinue = async () => {
-    debugLog('PHASE_TRANSITIONS', '[MANDATORY DRONE REMOVAL] Player completing mandatory drone removal phase');
-
-    // Commit completion of mandatoryDroneRemoval phase
-    const result = await processActionWithGuestRouting('commitment', {
-      playerId: getLocalPlayerId(),
-      phase: 'mandatoryDroneRemoval',
-      actionData: { completed: true }
-    });
-
-    // Check opponent commitment status directly from state
-    const commitments = gameState.commitments || {};
-    const phaseCommitments = commitments.mandatoryDroneRemoval || {};
-    const opponentCommitted = phaseCommitments[getOpponentPlayerId()]?.completed;
-
-    if (!opponentCommitted) {
-      debugLog('PHASE_TRANSITIONS', '✋ Opponent not committed yet, showing waiting overlay');
-
-      // Wait for phase announcements to finish before showing waiting modal
-      // Check if announcements are queued OR currently playing
-      if (phaseAnimationQueue) {
-        const queueLength = phaseAnimationQueue.getQueueLength();
-        const isPlaying = phaseAnimationQueue.isPlaying();
-
-        if (queueLength > 0 || isPlaying) {
-          debugLog('PHASE_TRANSITIONS', '⏳ Waiting for announcement queue to complete before showing waiting modal', { queueLength, isPlaying });
-          const unsubscribe = phaseAnimationQueue.onComplete(() => {
-            setWaitingForPlayerPhase('mandatoryDroneRemoval');
-            unsubscribe(); // Clean up listener
-            debugLog('PHASE_TRANSITIONS', '✅ Announcement queue complete, showing waiting modal');
-          });
-        } else {
-          // No queued announcements, show immediately
-          setWaitingForPlayerPhase('mandatoryDroneRemoval');
-        }
-      } else {
-        // No animation queue available, show immediately
-        setWaitingForPlayerPhase('mandatoryDroneRemoval');
-      }
-    } else {
-      debugLog('PHASE_TRANSITIONS', '✅ Both players complete, no waiting overlay');
-    }
-  };
-
-  /**
-   * CHECK BOTH PLAYERS HAND LIMIT COMPLETE
-   * Checks if both players have completed the optionalDiscard phase.
-   * Used to determine if phase can advance to draw.
-   * @returns {boolean} True if both players have committed
-   */
-  const checkBothPlayersHandLimitComplete = () => {
-    const commitmentStatus = gameStateManager.actionProcessor?.getPhaseCommitmentStatus('optionalDiscard');
-    debugLog('PHASE_TRANSITIONS', '[OPTIONAL DISCARD] Commitment status:', commitmentStatus);
-    return commitmentStatus?.bothComplete || false;
-  };
-
-  /**
-   * HANDLE CONFIRM MANDATORY DESTROY
-   * Processes confirmed mandatory drone destruction during mandatoryDroneRemoval phase.
-   * Uses ActionProcessor architecture for proper multiplayer synchronization.
-   * Handles both player destruction and AI opponent compliance checking.
-   * @param {Object} drone - The drone being destroyed
-   */
-  const handleConfirmMandatoryDestroy = async (drone) => {
-    // Determine if this is phase-based or ability-based mandatory removal
-    const isAbilityBased = mandatoryAction?.fromAbility;
-    const currentCount = isAbilityBased ? mandatoryAction.count : excessDrones;
-
-    // Use ActionProcessor to handle destruction (supports multiplayer routing)
-    const result = await processActionWithGuestRouting('destroyDrone', {
-      droneId: drone.id,
-      playerId: getLocalPlayerId()
-    });
-
-    if (!result.success) {
-      debugLog('COMBAT', '❌ Failed to destroy drone:', result.error);
-      return;
-    }
-
-    // Calculate new count
-    const newCount = currentCount - 1;
-
-    if (newCount <= 0) {
-      // Check if opponent (AI in single-player) also needs to destroy drones
-      const p2IsOver = totalOpponentPlayerDrones > opponentPlayerEffectiveStats.totals.cpuLimit;
-      if (p2IsOver && gameState.gameMode === 'local') {
-        // In single-player mode, handle AI opponent destruction
-        const dronesToDestroyCount = Object.values(opponentPlayerState.dronesOnBoard).flat().filter(d => !d.isToken).length -
-                                     getEffectiveShipStats(opponentPlayerState, opponentPlacedSections).totals.cpuLimit;
-
-        // Destroy AI drones one by one using ActionProcessor
-        for (let i = 0; i < dronesToDestroyCount; i++) {
-          const allDrones = Object.entries(opponentPlayerState.dronesOnBoard)
-            .flatMap(([lane, drones]) => drones.map(d => ({...d, lane})));
-
-          if (allDrones.length === 0) break;
-
-          const lowestClass = Math.min(...allDrones.map(d => d.class));
-          const candidates = allDrones.filter(d => d.class === lowestClass);
-          const rng = SeededRandom.fromGameState(gameState);
-          const droneToDestroy = rng.select(candidates);
-
-          // Use ActionProcessor for AI drone destruction too
-          await processActionWithGuestRouting('destroyDrone', {
-            droneId: droneToDestroy.id,
-            playerId: getOpponentPlayerId()
-          });
-        }
-      }
-
-      if (isAbilityBased) {
-        // Clear ability-based mandatoryAction
-        setMandatoryAction(null);
-        // For ability-based, might need additional logic here (end turn, etc.)
-        // Currently there are no abilities that force drone destruction, so this path is unused
-      }
-      // Note: Phase-based mandatory drone removal completion is handled by Continue button
-    } else {
-      // More drones need to be destroyed
-      if (isAbilityBased) {
-        // Update ability-based mandatoryAction count
-        setMandatoryAction(prev => ({ ...prev, count: newCount }));
-      }
-      // For phase-based, count is derived from excessDrones, no need to update anything
-    }
-
-    setConfirmationModal(null);
-  };
+  // --- GAME LIFECYCLE HOOK ---
+  // Positioned after resolve* functions (used as deps by lifecycle handlers).
+  const {
+    handleReset, handleExitGame, handleConfirmAbandonRun,
+    handleOpenAddCardModal, handleForceWin, handleAddCardsToHand,
+    handleImportDeck, handlePlayerPass,
+    handleConfirmMandatoryDiscard, handleRoundStartDiscard, handleRoundStartDraw,
+    handleMandatoryDiscardContinue, handleMandatoryDroneRemovalContinue,
+    checkBothPlayersHandLimitComplete, handleConfirmMandatoryDestroy,
+    downloadLogAsCSV, handleCardInfoClick,
+  } = useGameLifecycle({
+    // Game state
+    gameState, localPlayerState, opponentPlayerState, turnPhase, passInfo,
+    mandatoryAction, excessCards, excessDrones,
+    // Computed values
+    totalOpponentPlayerDrones, opponentPlayerEffectiveStats,
+    opponentPlacedSections, getEffectiveShipStats,
+    // State setters
+    setSelectedDrone, setModalContent, setAbilityMode, setValidAbilityTargets,
+    setMandatoryAction, setShowMandatoryActionModal, setConfirmationModal,
+    setSelectedCard, setValidCardTargets, setCardConfirmation,
+    setShowWinnerModal, setShowAbandonRunModal, setShowAddCardModal,
+    setOptionalDiscardCount, setWaitingForPlayerPhase, setDeck, setCardToView,
+    // Functions
+    processActionWithGuestRouting, getLocalPlayerId, getOpponentPlayerId,
+    cancelAllActions, resetGame, endGame,
+    // Refs
+    isResolvingAttackRef,
+    // External
+    gameStateManager, phaseAnimationQueue, gameLog, appState,
+  });
 
   // --- CLICK HANDLERS HOOK ---
-  // Positioned after handleConfirmMandatoryDestroy (passed as param) and
-  // resolveAbility/resolveSingleMove/resolveMultiMove (passed as params).
+  // Positioned after useGameLifecycle (provides handleConfirmMandatoryDestroy).
   const {
     handleToggleDroneSelection,
     handleAbilityIconClick,
@@ -2061,56 +1588,6 @@ const App = ({ phaseAnimationQueue }) => {
     droneRefs, gameAreaRef,
   });
 
-
-    const downloadLogAsCSV = () => {
-      if (gameLog.length === 0) {
-        alert("The game log is empty.");
-        return;
-      }
-  
-      const headers = ['Round', 'TimestampUTC', 'Player', 'Action', 'Source', 'Target', 'Outcome', 'DebugSource'];
-      
-      const csvRows = gameLog.map(log => {
-        const row = [
-          log.round,
-          log.player,
-          log.actionType,
-          log.source,
-          log.target,
-          log.outcome,
-          log.debugSource || 'N/A'
-        ];
-        return row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',');
-      });
-  
-      const csvContent = [headers.join(','), ...csvRows].join('\n');
-  
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement("a");
-      if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `drone-wars-log-${new Date().toISOString()}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-    };
-
-  /**
-   * Handle card info icon click from game log
-   * Looks up the full card data from card name and opens detail modal
-   * @param {string} cardName - The name of the card from the log entry
-   */
-  const handleCardInfoClick = (cardName) => {
-    const card = fullCardCollection.find(c => c.name === cardName);
-    if (card) {
-      setCardToView(card);
-    } else {
-      debugLog('DEBUG_TOOLS', '⚠️ Card not found in collection:', cardName);
-    }
-  };
 
   // --- Modal confirmation callbacks (extracted for ModalLayer) ---
 
