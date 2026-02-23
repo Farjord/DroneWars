@@ -65,6 +65,7 @@ import { useAnimationSetup } from './hooks/useAnimationSetup';
 import useShieldAllocation from './hooks/useShieldAllocation.js';
 import useInterception from './hooks/useInterception.js';
 import useMultiplayerSync from './hooks/useMultiplayerSync.js';
+import useCardSelection from './hooks/useCardSelection.js';
 
 // --- 1.5 DATA/LOGIC IMPORTS ---
 import fullCardCollection from './data/cardData.js';
@@ -247,46 +248,11 @@ const App = ({ phaseAnimationQueue }) => {
     return localStorage.getItem('gameBackground') || DEFAULT_BACKGROUND;
   });
 
-  // Ability and card interaction state
+  // Ability state (not part of card selection hook — separate concern)
   const [abilityMode, setAbilityMode] = useState(null); // { drone, ability }
-  const [validAbilityTargets, setValidAbilityTargets] = useState([]);
   const [shipAbilityMode, setShipAbilityMode] = useState(null); // { sectionName, ability }
-  const [singleMoveMode, setSingleMoveMode] = useState(null); // { card, drone, owner, sourceLane }
   const [shipAbilityConfirmation, setShipAbilityConfirmation] = useState(null);
-  const [selectedCard, setSelectedCard] = useState(null); // { card data }
-  const [validCardTargets, setValidCardTargets] = useState([]); // [id1, id2, ...]
-  const [affectedDroneIds, setAffectedDroneIds] = useState([]); // Drone IDs affected by LANE-targeting cards with filters
-  const [hoveredLane, setHoveredLane] = useState(null); // { laneId: 'lane1', owner: 'player2' } for hover-based targeting
-  const [cardConfirmation, setCardConfirmation] = useState(null); // { card, target }
   const [abilityConfirmation, setAbilityConfirmation] = useState(null);
-
-  // Multi-select state with logged setter for debugging
-  const [multiSelectStateRaw, setMultiSelectStateRaw] = useState(null); // To manage multi-step card effects
-  const multiSelectState = multiSelectStateRaw;
-  const setMultiSelectState = useCallback((value) => {
-    const timestamp = performance.now();
-    const isFunction = typeof value === 'function';
-
-    debugLog('BUTTON_CLICKS', '🔴 setMultiSelectState CALLED', {
-      timestamp,
-      valueType: typeof value,
-      isUpdaterFunction: isFunction,
-      directValue: isFunction ? 'UPDATER_FUNCTION' : value,
-      callStack: new Error().stack.split('\n').slice(2, 4).join('\n')
-    });
-
-    setMultiSelectStateRaw(value);
-  }, []);
-
-  // Additional cost selection state
-  const [additionalCostState, setAdditionalCostState] = useState(null); // { phase, card, costSelection, effectSelection, validTargets }
-  const [additionalCostConfirmation, setAdditionalCostConfirmation] = useState(null); // { card, costSelection, effectTarget }
-  const [additionalCostSelectionContext, setAdditionalCostSelectionContext] = useState(null); // Context for multi-step additional cost cards
-
-  // Upgrade system state
-  const [destroyUpgradeModal, setDestroyUpgradeModal] = useState(null); // For targeting specific upgrades to destroy
-  const [upgradeSelectionModal, setUpgradeSelectionModal] = useState(null); // For the new upgrade target selection modal
-  const [viewUpgradesModal, setViewUpgradesModal] = useState(null); // To view applied upgrades on a drone card
 
   // Mandatory actions and special phases state
   const [mandatoryAction, setMandatoryAction] = useState(null); // e.g., { type: 'discard'/'destroy', player: getLocalPlayerId(), count: X }
@@ -514,19 +480,6 @@ const App = ({ phaseAnimationQueue }) => {
     }
   }, [gameState.player1?.dronesOnBoard, gameState.player2?.dronesOnBoard]);
 
-  // Log highlighting state changes for Additional Cost cards debugging
-  useEffect(() => {
-    if (additionalCostState || validCardTargets.length > 0) {
-      debugLog('ADDITIONAL_COST_HIGHLIGHT', '🎨 Highlighting state changed', {
-        additionalCostStatePhase: additionalCostState?.phase,
-        validCardTargetsCount: validCardTargets?.length,
-        validCardTargetIds: validCardTargets?.map(t => t.id),
-        affectedDroneIdsCount: affectedDroneIds?.length,
-        affectedDroneIds
-      });
-    }
-  }, [additionalCostState, validCardTargets, affectedDroneIds]);
-
   // addLogEntry is now provided by useGameState hook
 
   // --- 5.3 PERFORMANCE OPTIMIZED COMPUTED VALUES ---
@@ -713,6 +666,34 @@ const App = ({ phaseAnimationQueue }) => {
     setShipAbilityConfirmation,
   });
 
+  // --- CARD SELECTION HOOK ---
+  const {
+    selectedCard, validCardTargets, validAbilityTargets, affectedDroneIds,
+    hoveredLane, cardConfirmation, multiSelectState, singleMoveMode,
+    additionalCostState, additionalCostConfirmation, additionalCostSelectionContext,
+    destroyUpgradeModal, upgradeSelectionModal, viewUpgradesModal,
+    setSelectedCard, setValidCardTargets, setValidAbilityTargets, setAffectedDroneIds,
+    setHoveredLane, setCardConfirmation, setMultiSelectState, setSingleMoveMode,
+    setAdditionalCostState, setAdditionalCostConfirmation, setAdditionalCostSelectionContext,
+    setDestroyUpgradeModal, setUpgradeSelectionModal, setViewUpgradesModal,
+    cancelCardSelection, cancelSingleMoveMode, cancelAdditionalCostMode,
+    confirmAdditionalCostCard, handleCancelMultiMove, handleConfirmMultiMoveDrones,
+    cancelCardState,
+  } = useCardSelection({
+    processActionWithGuestRouting,
+    getLocalPlayerId,
+    gameState,
+    gameDataService,
+    abilityMode,
+    setAbilityMode,
+    shipAbilityMode,
+    setShipAbilityMode,
+    setSelectedDrone,
+    setCostReminderArrowState,
+    multiSelectFlowInProgress,
+    additionalCostFlowInProgress,
+  });
+
   // --- 6.2 UI EVENT HANDLERS ---
 
   const showCardPlayWarning = useCallback((reasons) => {
@@ -756,57 +737,6 @@ const App = ({ phaseAnimationQueue }) => {
     setShowOpponentDronesModal(true);
   }, []);
 
-  /**
-   * HANDLE CANCEL MULTI MOVE
-   * Cancels multi-move card selection and clears state
-   */
-  const handleCancelMultiMove = useCallback(() => {
-    setMultiSelectState(null);
-    setValidCardTargets([]);
-    setSelectedCard(null);
-  }, []);
-
-  /**
-   * HANDLE CONFIRM MULTI MOVE DRONES
-   * Transitions from drone selection to destination lane selection
-   */
-  const handleConfirmMultiMoveDrones = useCallback(() => {
-    debugLog('CARD_PLAY', '🔵 MULTI_MOVE: handleConfirmMultiMoveDrones called', { timestamp: performance.now() });
-    debugLog('CARD_PLAY', '   Current multiSelectState:', multiSelectState);
-
-    if (!multiSelectState) {
-      debugLog('CARD_PLAY', '   ❌ Early return: multiSelectState is null/undefined');
-      return;
-    }
-
-    if (multiSelectState.selectedDrones.length === 0) {
-      debugLog('CARD_PLAY', '   ❌ Early return: No drones selected');
-      return;
-    }
-
-    debugLog('CARD_PLAY', '   ✅ Validation passed. Selected drones:', multiSelectState.selectedDrones.length);
-
-    // Calculate valid destination lanes (all lanes except source)
-    const validDestinations = ['lane1', 'lane2', 'lane3']
-      .filter(laneId => laneId !== multiSelectState.sourceLane)
-      .map(laneId => ({ id: laneId, owner: getLocalPlayerId() }));
-
-    debugLog('CARD_PLAY', '   📍 Calculated validDestinations:', validDestinations);
-    debugLog('BUTTON_CLICKS', '   🔄 About to call setValidCardTargets (manual)', { timestamp: performance.now(), validDestinations });
-    setValidCardTargets(validDestinations);
-    debugLog('BUTTON_CLICKS', '   ✅ setValidCardTargets (manual) returned', { timestamp: performance.now() });
-
-    debugLog('BUTTON_CLICKS', '   🔄 About to call setMultiSelectState', { timestamp: performance.now() });
-    setMultiSelectState(prev => {
-      const newState = { ...prev, phase: 'select_destination_lane' };
-      debugLog('CARD_PLAY', '   ✅ New multiSelectState:', newState);
-      return newState;
-    });
-    debugLog('BUTTON_CLICKS', '   ✅ setMultiSelectState returned', { timestamp: performance.now() });
-
-    debugLog('CARD_PLAY', '   ✅ handleConfirmMultiMoveDrones completed', { timestamp: performance.now() });
-  }, [multiSelectState, getLocalPlayerId]);
-
   // ========================================
   // SECTION 7: GAME LOGIC FUNCTIONS
   // ========================================
@@ -825,170 +755,23 @@ const App = ({ phaseAnimationQueue }) => {
     setAbilityMode(null);
     setSelectedDrone(null);
     setValidAbilityTargets([]);
-  }, []);
-
-  /**
-   * CANCEL SINGLE-MOVE MODE
-   * Cancels the single-move card interaction mode where user drags a drone to adjacent lane.
-   * Resets UI state when player cancels single-move card play.
-   */
-  const cancelSingleMoveMode = useCallback(() => {
-    debugLog('SINGLE_MOVE_MODE', '🚨 cancelSingleMoveMode CALLED', {
-      timestamp: performance.now(),
-      hadSingleMoveMode: singleMoveMode !== null
-    });
-    setSingleMoveMode(null);
-    setSelectedCard(null);
-    setSelectedDrone(null);        // Clear drone highlighting
-    setValidCardTargets([]);       // Clear lane highlighting
-  }, [singleMoveMode]);
-
-  /**
-   * Cancel additional cost mode
-   * Resets UI state when player cancels additional cost card play
-   */
-  const cancelAdditionalCostMode = useCallback(() => {
-    debugLog('ADDITIONAL_COST_UI', '🚨 Canceling additional cost mode');
-
-    additionalCostFlowInProgress.current = false; // Reset flag when canceling
-    setAdditionalCostState(null);
-    setCostReminderArrowState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
-    setSelectedCard(null);
-    setValidCardTargets([]);
-    setAffectedDroneIds([]);
-  }, []);
-
-  /**
-   * Confirm additional cost card play
-   * Processes card with both cost and effect
-   */
-  const confirmAdditionalCostCard = useCallback(async (card, costSelection, effectTarget) => {
-    debugLog('ADDITIONAL_COST_UI', '✅ Confirming additional cost card', {
-      cardName: card.name,
-      costSelection,
-      effectTarget
-    });
-
-    // Process via ActionProcessor
-    const result = await processActionWithGuestRouting('additionalCostCardPlay', {
-      card,
-      costSelection,
-      effectTarget,
-      playerId: getLocalPlayerId()
-    });
-
-    // Check if effect needs additional selection
-    if (result && result.needsEffectSelection) {
-      debugLog('ADDITIONAL_COST', '🔄 Entering effect selection mode', {
-        cardName: card.name,
-        selectionType: result.needsEffectSelection.selectionData.type
-      });
-
-      // Store selection context for completion later
-      setAdditionalCostSelectionContext(result.needsEffectSelection);
-
-      // CRITICAL: Clear additional cost state to prevent interference with multiSelectState
-      setAdditionalCostConfirmation(null);
-      setAdditionalCostState(null);  // Clear to avoid conflicting UI state
-      setCostReminderArrowState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
-      setValidCardTargets([]);  // Clear old targets
-      setAffectedDroneIds([]);  // Clear old affected drones
-
-      // Enter movement selection mode based on effect type
-      if (result.needsEffectSelection.selectionData.type === 'single_move') {
-        setMultiSelectState({
-          active: true,
-          card: card,
-          phase: 'select_drone',  // Start movement selection
-          maxDrones: 1,
-          selectedDrones: [],
-          doNotExhaust: result.needsEffectSelection.selectionData.doNotExhaust
-        });
-      }
-      // Handle other selection types as needed
-
-      return;  // Don't clear additional state - already done above
-    }
-
-    // Normal completion path (effect didn't need selection)
-    additionalCostFlowInProgress.current = false; // Reset flag when confirming
-    setAdditionalCostConfirmation(null);
-    setAdditionalCostState(null);
-    setCostReminderArrowState({ visible: false, start: { x: 0, y: 0 }, end: { x: 0, y: 0 } });
-    setSelectedCard(null);
-    setValidCardTargets([]);
-    setAffectedDroneIds([]);
-  }, [processActionWithGuestRouting, getLocalPlayerId]);
-
-  /**
-   * CANCEL CARD SELECTION
-   * Cancels active card selection and multi-select targeting modes.
-   * Resets UI state when player cancels card play.
-   * @param {string} callerInfo - Identifier for debugging which code path triggered the cancel
-   */
-  const cancelCardSelection = (callerInfo = 'unknown') => {
-    debugLog('BUTTON_CLICKS', '🚨 cancelCardSelection CALLED', {
-      timestamp: performance.now(),
-      caller: callerInfo,
-      additionalCostFlowRef: additionalCostFlowInProgress.current,
-      multiSelectFlowRef: multiSelectFlowInProgress.current,
-      multiSelectStateExists: multiSelectState !== null,
-      selectedCardExists: selectedCard !== null,
-      singleMoveModeExists: singleMoveMode !== null,
-      additionalCostStateExists: additionalCostState !== null,
-      additionalCostPhase: additionalCostState?.phase || 'none',
-      callStack: new Error().stack.split('\n').slice(0, 10).join('\n')
-    });
-
-    // Don't clear state if we're in additional cost flow (unless explicitly intended)
-    if (additionalCostFlowInProgress.current && callerInfo !== 'user-cancel' && callerInfo !== 'confirm') {
-      debugLog('BUTTON_CLICKS', '⏭️ Skipping cancelCardSelection - additional cost flow in progress', {
-        caller: callerInfo,
-        additionalCostPhase: additionalCostState?.phase || 'none'
-      });
-      return;
-    }
-
-    additionalCostFlowInProgress.current = false; // Reset additional cost flow flag when canceling
-    multiSelectFlowInProgress.current = false; // Reset flag when canceling
-    setSelectedCard(null);
-    setMultiSelectState(null);
-    setSingleMoveMode(null); // Also cancel single-move mode
-    setValidCardTargets([]);  // Clear target highlights
-    setAffectedDroneIds([]);  // Clear affected drone highlights
-  };
+  }, [setValidAbilityTargets]);
 
   /**
    * CANCEL ALL ACTIONS
    * Master cancellation function that clears ALL active action states.
    * Called when starting a new action to ensure only one action is in progress at a time.
-   * Provides consistent UX where initiating any action cancels all other pending actions.
    */
   const cancelAllActions = () => {
-    // Cancel attack selection
     if (selectedDrone) setSelectedDrone(null);
+    if (abilityMode) setAbilityMode(null);
+    if (shipAbilityMode) setShipAbilityMode(null);
 
-    // Cancel ability modes
-    if (abilityMode) {
-      setAbilityMode(null);
-    }
-    if (shipAbilityMode) {
-      setShipAbilityMode(null);
-    }
-
-    // Cancel card selection
-    if (selectedCard || multiSelectState) {
-      setSelectedCard(null);
-      setMultiSelectState(null);
-    }
-
-    // Clear visual targeting feedback
-    setAffectedDroneIds([]);
+    // Cancel card selection state (from useCardSelection hook)
+    cancelCardState();
 
     // Cancel shield reallocation (async but non-blocking)
-    if (reallocationPhase) {
-      handleCancelReallocation();
-    }
+    if (reallocationPhase) handleCancelReallocation();
 
     // Cancel confirmation modals
     if (abilityConfirmation) setAbilityConfirmation(null);
@@ -1508,76 +1291,6 @@ const App = ({ phaseAnimationQueue }) => {
   // Side effects and monitoring grouped by purpose for maintainability.
   // These useEffect hooks monitor game state changes and trigger automated responses.
   // Organized into game state monitoring, UI effects, and phase transition effects.
-
-  // --- 8.1 TARGETING CALCULATIONS ---
-
-  // TODO: TECHNICAL DEBT - calculateAllValidTargets needed for multi-select targeting UI - no GameDataService equivalent
-  useEffect(() => {
-    debugLog('TARGETING_PROCESSING', '🎯 TARGETING USEEFFECT TRIGGERED', {
-      selectedCard: selectedCard?.name || null,
-      selectedCardId: selectedCard?.id || null,
-      abilityMode: abilityMode?.drone?.name || null,
-      shipAbilityMode: shipAbilityMode?.sectionName || null,
-      multiSelectState_phase: multiSelectState?.phase || null,
-      multiSelectState_sourceLane: multiSelectState?.sourceLane || null,
-      multiSelectState_full: multiSelectState ? JSON.stringify(multiSelectState) : null,
-      singleMoveMode_drone: singleMoveMode?.drone?.name || null,
-      singleMoveMode_sourceLane: singleMoveMode?.sourceLane || null,
-      additionalCostState_phase: additionalCostState?.phase || null,
-      willSkipCalculation: !selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState && !singleMoveMode
-    });
-
-    // Early return: Only calculate if actually in a targeting mode
-    if (!selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState && !singleMoveMode) {
-      // No selection active - clear targeting and skip calculation
-      setValidAbilityTargets([]);
-      setValidCardTargets([]);
-      return;
-    }
-
-    // Skip recalculation if in ANY additional cost phase
-    // Targets have already been manually set for these phases:
-    // - 'select_cost': Targets set for card-in-hand selection
-    // - 'select_cost_movement_destination': Targets set to adjacent lanes
-    // - 'select_effect': Targets calculated with cost context
-    if (additionalCostState?.phase === 'select_effect' ||
-        additionalCostState?.phase === 'select_cost_movement_destination' ||
-        additionalCostState?.phase === 'select_cost') {
-
-      // CRITICAL: Allow recalculation if multiSelectState is active
-      // This happens when effect selection needs drone targeting after cost is confirmed
-      if (!multiSelectState) {
-        debugLog('TARGETING_PROCESSING', '⏭️ Skipping recalculation - additional cost phase in progress', {
-          cardName: selectedCard?.name,
-          costPhase: additionalCostState.phase
-        });
-        return;
-      }
-      // If multiSelectState IS active, fall through to recalculate for it
-    }
-
-    // Only calculate when something is actually selected
-    const { validAbilityTargets, validCardTargets } = calculateAllValidTargets(
-      abilityMode,
-      shipAbilityMode,
-      multiSelectState,
-      selectedCard,
-      gameState.player1,
-      gameState.player2,
-      getLocalPlayerId(),
-      singleMoveMode,  // Pass singleMoveMode for adjacent lane highlighting
-      gameDataService.getEffectiveStats.bind(gameDataService)  // Pass stat calculator
-    );
-
-    setValidAbilityTargets(validAbilityTargets);
-    setValidCardTargets(validCardTargets);
-
-    // Clear conflicting selections
-    if (abilityMode) {
-      setSelectedCard(null);
-      setShipAbilityMode(null);
-    }
-  }, [abilityMode, shipAbilityMode, selectedCard, multiSelectState, singleMoveMode, additionalCostState]);
 
   // --- 8.2 PHASE ANIMATION QUEUE SUBSCRIPTION ---
 
