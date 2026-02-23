@@ -62,7 +62,6 @@ export default function useGameLifecycle({
   gameStateManager,
   phaseAnimationQueue,
   gameLog,
-  appState,
 }) {
 
   // --- handleReset ---
@@ -119,7 +118,7 @@ export default function useGameLifecycle({
       trigger: 'user_action',
       source: 'App.handleConfirmAbandonRun',
       detail: 'User confirmed abandon in global abandon modal',
-      currentAppState: appState
+      currentAppState: gameState.appState
     });
     setShowAbandonRunModal(false);
     ExtractionController.abandonRun();

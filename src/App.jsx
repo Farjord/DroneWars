@@ -1540,7 +1540,7 @@ const App = ({ phaseAnimationQueue }) => {
     // Refs
     isResolvingAttackRef,
     // External
-    gameStateManager, phaseAnimationQueue, gameLog, appState,
+    gameStateManager, phaseAnimationQueue, gameLog,
   });
 
   // --- CLICK HANDLERS HOOK ---
