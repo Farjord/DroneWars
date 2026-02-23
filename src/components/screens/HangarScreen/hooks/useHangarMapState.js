@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { clampPan } from '../logic/singlePlayer/hexGrid.js';
+import { clampPan } from '../../../../logic/singlePlayer/hexGrid.js';
 
 /**
  * Hook managing pan/zoom interaction state for the Hangar hex grid map.

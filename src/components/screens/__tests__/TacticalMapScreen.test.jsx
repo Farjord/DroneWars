@@ -933,7 +933,7 @@ describe('Preview Path - Pathfinding Mode Consistency', () => {
 // fires before these hooks are called, causing a hooks count mismatch.
 
 import { render, act } from '@testing-library/react';
-import TacticalMapScreen from '../TacticalMapScreen.jsx';
+import TacticalMapScreen from '../TacticalMapScreen/TacticalMapScreen.jsx';
 
 describe('TacticalMapScreen - Hooks Ordering (Extraction Crash Fix)', () => {
   // Store original console.error to restore later

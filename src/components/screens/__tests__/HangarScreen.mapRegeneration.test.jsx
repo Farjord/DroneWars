@@ -211,7 +211,7 @@ describe('HangarScreen - Map Regeneration', () => {
     vi.clearAllMocks();
 
     // Dynamically import HangarScreen after mocks are set up
-    const module = await import('../HangarScreen.jsx');
+    const module = await import('../HangarScreen/HangarScreen.jsx');
     HangarScreen = module.default;
   });
 
@@ -360,7 +360,7 @@ describe('HangarScreen - Hex Grid Position Regeneration', () => {
     vi.clearAllMocks();
 
     // Dynamically import HangarScreen after mocks are set up
-    const module = await import('../HangarScreen.jsx');
+    const module = await import('../HangarScreen/HangarScreen.jsx');
     HangarScreen = module.default;
   });
 

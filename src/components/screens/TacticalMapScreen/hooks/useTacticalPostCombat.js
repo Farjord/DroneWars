@@ -5,13 +5,13 @@
 // Handles: waypoint restoration, POI loot generation, salvage modal restoration.
 
 import { useEffect } from 'react';
-import tacticalMapStateManager from '../managers/TacticalMapStateManager.js';
-import waypointManager from '../managers/WaypointManager.js';
-import rewardManager from '../managers/RewardManager.js';
-import HighAlertManager from '../logic/salvage/HighAlertManager.js';
-import SalvageController from '../logic/salvage/SalvageController.js';
-import { mapTiers } from '../data/mapData.js';
-import { debugLog } from '../utils/debugLogger.js';
+import tacticalMapStateManager from '../../../../managers/TacticalMapStateManager.js';
+import waypointManager from '../../../../managers/WaypointManager.js';
+import rewardManager from '../../../../managers/RewardManager.js';
+import HighAlertManager from '../../../../logic/salvage/HighAlertManager.js';
+import SalvageController from '../../../../logic/salvage/SalvageController.js';
+import { mapTiers } from '../../../../data/mapData.js';
+import { debugLog } from '../../../../utils/debugLogger.js';
 import { isBlueprintRewardType } from './useTacticalSubscriptions.js';
 
 /**

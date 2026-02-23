@@ -6,13 +6,13 @@
 // Extracted from TacticalMapScreen.jsx (Step 7).
 
 import { useCallback } from 'react';
-import tacticalMapStateManager from '../managers/TacticalMapStateManager.js';
-import DetectionManager from '../logic/detection/DetectionManager.js';
-import EncounterController from '../logic/encounters/EncounterController.js';
-import ExtractionController from '../logic/singlePlayer/ExtractionController.js';
-import aiPersonalities from '../data/aiData.js';
-import { mapTiers } from '../data/mapData.js';
-import { debugLog } from '../utils/debugLogger.js';
+import tacticalMapStateManager from '../../../../managers/TacticalMapStateManager.js';
+import DetectionManager from '../../../../logic/detection/DetectionManager.js';
+import EncounterController from '../../../../logic/encounters/EncounterController.js';
+import ExtractionController from '../../../../logic/singlePlayer/ExtractionController.js';
+import aiPersonalities from '../../../../data/aiData.js';
+import { mapTiers } from '../../../../data/mapData.js';
+import { debugLog } from '../../../../utils/debugLogger.js';
 
 /**
  * Hook that provides all extraction and abandon handlers for TacticalMapScreen.

@@ -5,7 +5,7 @@
 // Handles card/drone availability filtering and instance management
 
 import React, { useState, useEffect, useMemo } from 'react';
-import DeckBuilder from './DeckBuilder.jsx';
+import DeckBuilder from './DeckBuilder/DeckBuilder.jsx';
 import { useGameState } from '../../hooks/useGameState';
 import {
   calculateAvailableCards,

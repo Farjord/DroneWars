@@ -6,16 +6,16 @@
 // Extracted from TacticalMapScreen.jsx (Step 5).
 
 import { useCallback } from 'react';
-import tacticalMapStateManager from '../managers/TacticalMapStateManager.js';
-import DetectionManager from '../logic/detection/DetectionManager.js';
-import EncounterController from '../logic/encounters/EncounterController.js';
-import SalvageController from '../logic/salvage/SalvageController.js';
-import SoundManager from '../managers/SoundManager.js';
-import waypointManager from '../managers/WaypointManager.js';
-import transitionManager from '../managers/TransitionManager.js';
-import gameStateManager from '../managers/GameStateManager.js';
-import { mapTiers } from '../data/mapData.js';
-import { debugLog } from '../utils/debugLogger.js';
+import tacticalMapStateManager from '../../../../managers/TacticalMapStateManager.js';
+import DetectionManager from '../../../../logic/detection/DetectionManager.js';
+import EncounterController from '../../../../logic/encounters/EncounterController.js';
+import SalvageController from '../../../../logic/salvage/SalvageController.js';
+import SoundManager from '../../../../managers/SoundManager.js';
+import waypointManager from '../../../../managers/WaypointManager.js';
+import transitionManager from '../../../../managers/TransitionManager.js';
+import gameStateManager from '../../../../managers/GameStateManager.js';
+import { mapTiers } from '../../../../data/mapData.js';
+import { debugLog } from '../../../../utils/debugLogger.js';
 
 // --- Movement Constants ---
 export const SCAN_DELAY = 500;   // Time to show scan animation

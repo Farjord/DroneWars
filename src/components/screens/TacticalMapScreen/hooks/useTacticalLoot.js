@@ -7,12 +7,12 @@
 // Extracted from TacticalMapScreen.jsx (Step 9).
 
 import { useCallback } from 'react';
-import tacticalMapStateManager from '../managers/TacticalMapStateManager.js';
-import gameStateManager from '../managers/GameStateManager.js';
-import ExtractionController from '../logic/singlePlayer/ExtractionController.js';
-import DetectionManager from '../logic/detection/DetectionManager.js';
-import MissionService from '../logic/missions/MissionService.js';
-import { debugLog } from '../utils/debugLogger.js';
+import tacticalMapStateManager from '../../../../managers/TacticalMapStateManager.js';
+import gameStateManager from '../../../../managers/GameStateManager.js';
+import ExtractionController from '../../../../logic/singlePlayer/ExtractionController.js';
+import DetectionManager from '../../../../logic/detection/DetectionManager.js';
+import MissionService from '../../../../logic/missions/MissionService.js';
+import { debugLog } from '../../../../utils/debugLogger.js';
 
 /**
  * Hook that provides all loot collection handlers for TacticalMapScreen.

@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
-import { generateHexGrid, GRID_COLS, GRID_ROWS } from '../logic/singlePlayer/hexGrid.js';
-import { generateMapData } from '../utils/mapGenerator';
-import aiPersonalities from '../data/aiData.js';
-import { SeededRandom } from '../utils/seededRandom.js';
-import MusicManager from '../managers/MusicManager.js';
-import MissionService from '../logic/missions/MissionService';
-import { debugLog } from '../utils/debugLogger.js';
+import { generateHexGrid, GRID_COLS, GRID_ROWS } from '../../../../logic/singlePlayer/hexGrid.js';
+import { generateMapData } from '../../../../utils/mapGenerator';
+import aiPersonalities from '../../../../data/aiData.js';
+import { SeededRandom } from '../../../../utils/seededRandom.js';
+import MusicManager from '../../../../managers/MusicManager.js';
+import MissionService from '../../../../logic/missions/MissionService';
+import { debugLog } from '../../../../utils/debugLogger.js';
 
 /**
  * Hook managing derived data for the Hangar screen:

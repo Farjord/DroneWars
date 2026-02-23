@@ -10,7 +10,7 @@ import { WaitingForOpponentScreen, SubmittingOverlay } from './DroneSelectionScr
 import { gameEngine } from '../../logic/gameLogic.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import p2pManager from '../../network/P2PManager.js';
-import DeckBuilder from './DeckBuilder.jsx';
+import DeckBuilder from './DeckBuilder/DeckBuilder.jsx';
 import fullCardCollection from '../../data/cardData.js';
 import fullDroneCollection from '../../data/droneData.js';
 import vsDecks from '../../data/vsModeDeckData.js';

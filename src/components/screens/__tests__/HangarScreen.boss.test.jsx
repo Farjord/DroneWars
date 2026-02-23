@@ -214,7 +214,7 @@ describe('Boss Hex on Hangar Grid', () => {
     }));
 
     // Dynamic import to ensure mocks are applied
-    const module = await import('../HangarScreen.jsx');
+    const module = await import('../HangarScreen/HangarScreen.jsx');
     HangarScreen = module.default;
   });
 
@@ -369,7 +369,7 @@ describe('Boss Challenge Flow', () => {
       bottom: 600
     }));
 
-    const module = await import('../HangarScreen.jsx');
+    const module = await import('../HangarScreen/HangarScreen.jsx');
     HangarScreen = module.default;
   });
 

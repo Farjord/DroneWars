@@ -107,7 +107,7 @@ vi.mock('../../ui/FilterChip.jsx', () => ({
   default: vi.fn(() => null)
 }));
 
-import DeckBuilder from '../DeckBuilder.jsx';
+import DeckBuilder from '../DeckBuilder/DeckBuilder.jsx';
 
 // --- Test Data ---
 

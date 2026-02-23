@@ -5,13 +5,13 @@
 // and escape route computation for TacticalMapScreen
 
 import { useCallback, useMemo } from 'react';
-import MovementController from '../logic/map/MovementController.js';
-import EscapeRouteCalculator from '../logic/map/EscapeRouteCalculator.js';
-import DetectionManager from '../logic/detection/DetectionManager.js';
-import EncounterController from '../logic/encounters/EncounterController.js';
-import SoundManager from '../managers/SoundManager.js';
-import { mapTiers } from '../data/mapData.js';
-import { debugLog } from '../utils/debugLogger.js';
+import MovementController from '../../../../logic/map/MovementController.js';
+import EscapeRouteCalculator from '../../../../logic/map/EscapeRouteCalculator.js';
+import DetectionManager from '../../../../logic/detection/DetectionManager.js';
+import EncounterController from '../../../../logic/encounters/EncounterController.js';
+import SoundManager from '../../../../managers/SoundManager.js';
+import { mapTiers } from '../../../../data/mapData.js';
+import { debugLog } from '../../../../utils/debugLogger.js';
 
 /**
  * Hook encapsulating all waypoint management, hex interaction handlers,

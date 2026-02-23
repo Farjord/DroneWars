@@ -7,14 +7,14 @@
 // Extracted from TacticalMapScreen.jsx (Step 8).
 
 import { useCallback } from 'react';
-import tacticalMapStateManager from '../managers/TacticalMapStateManager.js';
-import gameStateManager from '../managers/GameStateManager.js';
-import ExtractionController from '../logic/singlePlayer/ExtractionController.js';
-import DetectionManager from '../logic/detection/DetectionManager.js';
-import aiPersonalities from '../data/aiData.js';
-import { getTacticalItemById } from '../data/tacticalItemData.js';
-import SeededRandom from '../utils/seededRandom.js';
-import { debugLog } from '../utils/debugLogger.js';
+import tacticalMapStateManager from '../../../../managers/TacticalMapStateManager.js';
+import gameStateManager from '../../../../managers/GameStateManager.js';
+import ExtractionController from '../../../../logic/singlePlayer/ExtractionController.js';
+import DetectionManager from '../../../../logic/detection/DetectionManager.js';
+import aiPersonalities from '../../../../data/aiData.js';
+import { getTacticalItemById } from '../../../../data/tacticalItemData.js';
+import SeededRandom from '../../../../utils/seededRandom.js';
+import { debugLog } from '../../../../utils/debugLogger.js';
 
 /**
  * Hook that provides all escape, evade, and tactical item handlers for TacticalMapScreen.

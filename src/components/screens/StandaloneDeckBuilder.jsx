@@ -5,7 +5,7 @@
 // Manages its own state and provides localStorage persistence
 
 import React, { useState, useEffect } from 'react';
-import DeckBuilder from './DeckBuilder.jsx';
+import DeckBuilder from './DeckBuilder/DeckBuilder.jsx';
 import fullCardCollection from '../../data/cardData.js';
 import fullDroneCollection from '../../data/droneData.js';
 import { getShipById, getDefaultShip } from '../../data/shipData.js';

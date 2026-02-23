@@ -6,18 +6,18 @@
 // Extracted from TacticalMapScreen.jsx (Step 6).
 
 import { useCallback } from 'react';
-import tacticalMapStateManager from '../managers/TacticalMapStateManager.js';
-import gameStateManager from '../managers/GameStateManager.js';
-import transitionManager from '../managers/TransitionManager.js';
-import SinglePlayerCombatInitializer from '../logic/singlePlayer/SinglePlayerCombatInitializer.js';
-import DetectionManager from '../logic/detection/DetectionManager.js';
-import EncounterController from '../logic/encounters/EncounterController.js';
-import SalvageController from '../logic/salvage/SalvageController.js';
-import rewardManager from '../managers/RewardManager.js';
-import aiPersonalities from '../data/aiData.js';
-import { generateSalvageItemFromValue } from '../data/salvageItemData.js';
-import { mapTiers } from '../data/mapData.js';
-import { debugLog } from '../utils/debugLogger.js';
+import tacticalMapStateManager from '../../../../managers/TacticalMapStateManager.js';
+import gameStateManager from '../../../../managers/GameStateManager.js';
+import transitionManager from '../../../../managers/TransitionManager.js';
+import SinglePlayerCombatInitializer from '../../../../logic/singlePlayer/SinglePlayerCombatInitializer.js';
+import DetectionManager from '../../../../logic/detection/DetectionManager.js';
+import EncounterController from '../../../../logic/encounters/EncounterController.js';
+import SalvageController from '../../../../logic/salvage/SalvageController.js';
+import rewardManager from '../../../../managers/RewardManager.js';
+import aiPersonalities from '../../../../data/aiData.js';
+import { generateSalvageItemFromValue } from '../../../../data/salvageItemData.js';
+import { mapTiers } from '../../../../data/mapData.js';
+import { debugLog } from '../../../../utils/debugLogger.js';
 
 /**
  * Hook that provides all encounter-related handlers for TacticalMapScreen.

@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
-import fullDroneCollection from '../data/droneData.js';
-import { shipComponentCollection } from '../data/shipSectionData.js';
+import fullDroneCollection from '../../../../data/droneData.js';
+import { shipComponentCollection } from '../../../../data/shipSectionData.js';
 import {
   filterCards,
   filterDrones,
   sortByRarity,
-} from '../utils/deckFilterUtils.js';
+} from '../../../../utils/deckFilterUtils.js';
 
 // --- Keyword Processing ---
 

@@ -7,16 +7,16 @@
  */
 
 import { useEffect, useCallback, useRef, useMemo } from 'react';
-import MusicManager from '../managers/MusicManager.js';
-import MissionService from '../logic/missions/MissionService.js';
-import ExtractionController from '../logic/singlePlayer/ExtractionController.js';
-import gameStateManager from '../managers/GameStateManager.js';
-import tacticalMapStateManager from '../managers/TacticalMapStateManager.js';
-import { debugLog } from '../utils/debugLogger.js';
-import { getAllShips } from '../data/shipData.js';
-import { shipComponentCollection } from '../data/shipSectionData.js';
-import { calculateSectionBaseStats } from '../logic/statsCalculator.js';
-import { getValidDeploymentsForDeck } from '../logic/quickDeploy/QuickDeployValidator.js';
+import MusicManager from '../../../../managers/MusicManager.js';
+import MissionService from '../../../../logic/missions/MissionService.js';
+import ExtractionController from '../../../../logic/singlePlayer/ExtractionController.js';
+import gameStateManager from '../../../../managers/GameStateManager.js';
+import tacticalMapStateManager from '../../../../managers/TacticalMapStateManager.js';
+import { debugLog } from '../../../../utils/debugLogger.js';
+import { getAllShips } from '../../../../data/shipData.js';
+import { shipComponentCollection } from '../../../../data/shipSectionData.js';
+import { calculateSectionBaseStats } from '../../../../logic/statsCalculator.js';
+import { getValidDeploymentsForDeck } from '../../../../logic/quickDeploy/QuickDeployValidator.js';
 
 // --- Helper ---
 

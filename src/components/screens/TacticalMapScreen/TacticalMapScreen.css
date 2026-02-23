@@ -1,0 +1,194 @@
+/* ========================================
+   TACTICAL MAP SCREEN STYLES
+   ======================================== */
+
+.tactical-map-screen {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Monitor screen vignette effect */
+.tactical-map-screen::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.5) 60%, rgba(0,0,0,0.95) 100%);
+  box-shadow: inset 0 0 100px rgba(0,0,0,0.7);
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* CRT scanline effect - subtle */
+.tactical-map-screen::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 1.5px,
+    rgba(0, 0, 0, 0.02) 1.5px,
+    rgba(0, 0, 0, 0.02) 3px
+  );
+  pointer-events: none;
+  z-index: 101;
+}
+
+/* Loading/Error states */
+.tactical-map-loading,
+.tactical-map-error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background: #1a1a1a;
+  color: #fff;
+  font-family: 'Exo', sans-serif;
+  font-size: 18px;
+}
+
+.tactical-map-error {
+  color: #ef4444;
+}
+
+/* ========================================
+   THREAT SCAN WARNING OVERLAY
+   ======================================== */
+
+.threat-scan-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
+  pointer-events: none;
+  display: flex;
+  justify-content: center;
+  padding-top: 60px;
+}
+
+.threat-scan-text {
+  font-family: 'Exo', sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #ef4444;
+  text-shadow:
+    0 0 10px rgba(239, 68, 68, 0.8),
+    0 0 20px rgba(239, 68, 68, 0.5),
+    0 0 30px rgba(239, 68, 68, 0.3);
+  animation: threat-scan-pulse 0.3s ease-in-out infinite alternate;
+}
+
+@keyframes threat-scan-pulse {
+  from {
+    opacity: 0.7;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Map info display (left side of bottom bar, before zoom controls) */
+.tactical-map-info {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  background: linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 28, 0.95) 100%);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  border-radius: 2px;
+  padding: 8px 12px;
+  color: #e5e7eb;
+  font-family: 'Exo', sans-serif;
+  font-size: 11px;
+  z-index: 200;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.tactical-map-info p {
+  margin: 2px 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .tactical-map-info {
+    bottom: 16px;
+    left: 8px;
+    font-size: 10px;
+  }
+}
+
+/* ========================================
+   THREAT LEVEL CHANGE ALERT
+   ======================================== */
+
+.threat-level-alert {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 500;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: threat-alert-fade 3s ease-out forwards;
+}
+
+.threat-level-alert--medium {
+  background: radial-gradient(ellipse at center, rgba(245, 158, 11, 0.15) 0%, transparent 70%);
+  border-top: 2px solid rgba(245, 158, 11, 0.6);
+  border-bottom: 2px solid rgba(245, 158, 11, 0.6);
+}
+
+.threat-level-alert--high {
+  background: radial-gradient(ellipse at center, rgba(239, 68, 68, 0.2) 0%, transparent 70%);
+  border-top: 2px solid rgba(239, 68, 68, 0.7);
+  border-bottom: 2px solid rgba(239, 68, 68, 0.7);
+}
+
+.threat-level-alert-text {
+  font-family: 'Exo', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  animation: threat-text-pulse 0.4s ease-in-out infinite alternate;
+}
+
+.threat-level-alert--medium .threat-level-alert-text {
+  color: #f59e0b;
+  text-shadow:
+    0 0 10px rgba(245, 158, 11, 0.8),
+    0 0 20px rgba(245, 158, 11, 0.5),
+    0 0 40px rgba(245, 158, 11, 0.3);
+}
+
+.threat-level-alert--high .threat-level-alert-text {
+  color: #ef4444;
+  text-shadow:
+    0 0 10px rgba(239, 68, 68, 0.8),
+    0 0 20px rgba(239, 68, 68, 0.5),
+    0 0 40px rgba(239, 68, 68, 0.3);
+}
+
+@keyframes threat-alert-fade {
+  0%   { opacity: 0; }
+  10%  { opacity: 1; }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes threat-text-pulse {
+  from { opacity: 0.7; transform: scale(0.98); }
+  to   { opacity: 1;   transform: scale(1); }
+}
