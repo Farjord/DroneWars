@@ -64,6 +64,7 @@ import { useExplosions } from './hooks/useExplosions';
 import { useAnimationSetup } from './hooks/useAnimationSetup';
 import useShieldAllocation from './hooks/useShieldAllocation.js';
 import useInterception from './hooks/useInterception.js';
+import useMultiplayerSync from './hooks/useMultiplayerSync.js';
 
 // --- 1.5 DATA/LOGIC IMPORTS ---
 import fullCardCollection from './data/cardData.js';
@@ -184,7 +185,6 @@ const App = ({ phaseAnimationQueue }) => {
   const [attackConfirmation, setAttackConfirmation] = useState(null);
   const [detailedDroneInfo, setDetailedDroneInfo] = useState(null); // { drone, isPlayer }
   const [cardToView, setCardToView] = useState(null);
-  const [waitingForPlayerPhase, setWaitingForPlayerPhase] = useState(null); // Track which phase we're waiting for player acknowledgment
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [isViewDeckModalOpen, setIsViewDeckModalOpen] = useState(false);
   const [isViewDiscardModalOpen, setIsViewDiscardModalOpen] = useState(false);
@@ -313,8 +313,7 @@ const App = ({ phaseAnimationQueue }) => {
   const sectionRefs = useRef({});
   const gameAreaRef = useRef(null);
   const isResolvingAttackRef = useRef(false);
-  const previousPhaseRef = useRef(null); // Track previous turnPhase for guest phase detection
-  const footerPreviousPhaseRef = useRef(null); // Separate ref for footer view switching (avoids race condition with previousPhaseRef)
+  const footerPreviousPhaseRef = useRef(null); // Track previous turnPhase for footer view switching
   const roundStartCascadeTriggered = useRef(false); // Prevent duplicate round start cascade triggers
   const deploymentToActionTriggered = useRef(false); // Prevent duplicate deployment → action triggers
   const multiSelectFlowInProgress = useRef(false); // Track multi-select flow to prevent premature cleanup
@@ -366,56 +365,6 @@ const App = ({ phaseAnimationQueue }) => {
   // No initialization needed here - managers are already set up
 
   // --- 4.2 EVENT SUBSCRIPTIONS ---
-
-  // PhaseManager event listeners
-  useEffect(() => {
-    // Only subscribe to GameFlowManager on host/local - guest uses state-watching (Section 8.7)
-    if (gameState.gameMode === 'guest') return;
-
-    const handlePhaseEvent = (event) => {
-      const { type, phase, playerId, data } = event;
-
-      debugLog('PHASE_TRANSITIONS', `🔔 App.jsx received PhaseManager event: ${type}`, { phase, playerId });
-
-      if (type === 'bothPlayersComplete') {
-        // Handle both players completing a simultaneous phase
-        const { phase: completedPhase } = event;
-        debugLog('PHASE_TRANSITIONS', `🎯 Both players completed phase: ${completedPhase}`);
-
-        // Clear waiting overlay immediately when both players complete
-        if (waitingForPlayerPhase === completedPhase) {
-          debugLog('PHASE_TRANSITIONS', `✅ Clearing waiting overlay immediately for completed phase: ${completedPhase}`);
-          setWaitingForPlayerPhase(null);
-        }
-      }
-
-      if (type === 'phaseTransition') {
-        // Handle phase transitions from GameFlowManager
-        const { newPhase, previousPhase, firstPlayerResult } = event;
-        debugLog('PHASE_TRANSITIONS', `🔄 App.jsx handling phase transition: ${previousPhase} → ${newPhase}`);
-
-        // Clear waiting modal when transitioning away from the waiting phase
-        debugLog('PHASE_TRANSITIONS', `🔍 Waiting overlay check: waitingForPlayerPhase="${waitingForPlayerPhase}", previousPhase="${previousPhase}", match=${waitingForPlayerPhase === previousPhase}`);
-        if (waitingForPlayerPhase === previousPhase) {
-          debugLog('PHASE_TRANSITIONS', `✅ Clearing waiting overlay for phase: ${previousPhase}`);
-          setWaitingForPlayerPhase(null);
-        } else if (waitingForPlayerPhase) {
-          debugLog('PHASE_TRANSITIONS', `⚠️ Waiting overlay NOT cleared: waiting for "${waitingForPlayerPhase}" but transition is from "${previousPhase}"`);
-        }
-
-        // First player determination is now handled automatically by GameFlowManager
-      }
-    };
-
-    // Subscribe to game flow manager for phase events (host/local only)
-    const unsubscribeGameFlow = gameStateManager.gameFlowManager?.subscribe(handlePhaseEvent);
-
-    return () => {
-      if (typeof unsubscribeGameFlow === 'function') {
-        unsubscribeGameFlow();
-      }
-    };
-  }, [isMultiplayer, getLocalPlayerId, setModalContent, waitingForPlayerPhase, gameState.gameMode]);
 
   // --- 4.3 PAGE UNLOAD WARNING ---
   // Warn user before closing/refreshing if game is in progress
@@ -507,30 +456,6 @@ const App = ({ phaseAnimationQueue }) => {
   }, [gameState.placedSections, gameState.opponentPlacedSections]);
 
 
-
-  // --- 5.4 MULTIPLAYER PHASE SYNC HANDLER ---
-  useEffect(() => {
-    if (!isMultiplayer()) return;
-
-    // Listen for phase completion messages from opponent
-    const handleP2PData = (event) => {
-      debugLog('MULTIPLAYER', '🔥 P2P Event received in App:', event);
-      if (event.type === 'PHASE_COMPLETED') {
-        const { phase } = event.data || event; // Handle both event.data and direct event
-        debugLog('MULTIPLAYER', `🔥 Opponent completed phase: ${phase}`);
-      }
-      // Host-only: Handle sync requests from guest
-      if (event.type === 'sync_requested' && gameStateManager.isHost()) {
-        debugLog('MULTIPLAYER', '🔄 Guest requested full state sync - sending response');
-        const currentState = gameStateManager.getState();
-        p2pManager.sendFullSyncResponse(currentState);
-      }
-    };
-
-    // Subscribe to P2P data events
-    const unsubscribe = p2pManager.subscribe(handleP2PData);
-    return unsubscribe;
-  }, [isMultiplayer, p2pManager, gameStateManager]);
 
   // Combined lane hover handler - calculates affected drones synchronously to prevent visual flash
   // When hovering a lane with a LANE-targeting card, we need both hoveredLane and affectedDroneIds
@@ -739,6 +664,22 @@ const App = ({ phaseAnimationQueue }) => {
     return await processAction(type, payload);
   }, [gameState.gameMode, processAction, p2pManager, gameStateManager]);
 
+  // --- MULTIPLAYER SYNC HOOK ---
+  const {
+    waitingForPlayerPhase,
+    setWaitingForPlayerPhase,
+  } = useMultiplayerSync({
+    gameState,
+    turnPhase,
+    isMultiplayer,
+    getLocalPlayerId,
+    getOpponentPlayerId,
+    p2pManager,
+    gameStateManager,
+    phaseAnimationQueue,
+    passInfo,
+  });
+
   // --- SHIELD ALLOCATION HOOK ---
   const {
     reallocationPhase,
@@ -771,30 +712,6 @@ const App = ({ phaseAnimationQueue }) => {
     setWaitingForPlayerPhase,
     setShipAbilityConfirmation,
   });
-
-  // --- 6.1 MULTIPLAYER PHASE SYNCHRONIZATION ---
-  // Handlers for coordinating game phases in multiplayer mode
-  // ========================================
-
-  /**
-   * Send phase completion message to opponent
-   */
-  const sendPhaseCompletion = useCallback((phase) => {
-    debugLog('MULTIPLAYER', `🔥 sendPhaseCompletion called for phase: ${phase}`);
-
-
-    if (isMultiplayer()) {
-      const message = {
-        type: 'PHASE_COMPLETED',
-        data: { phase }
-      };
-      debugLog('MULTIPLAYER', `🔥 Sending phase completion message:`, message);
-      p2pManager.sendData(message);
-      debugLog('MULTIPLAYER', `🔥 Sent phase completion: ${phase}`);
-    } else {
-      debugLog('MULTIPLAYER', `🔥 Not multiplayer, skipping network send`);
-    }
-  }, [isMultiplayer, p2pManager]);
 
   // --- 6.2 UI EVENT HANDLERS ---
 
@@ -1967,64 +1884,6 @@ const App = ({ phaseAnimationQueue }) => {
   // Animations now play BEFORE state updates (while entities still exist in DOM)
   // See GuestMessageQueueService.js for details
 
-  // --- 8.7 GUEST PHASE TRANSITION DETECTION ---
-  // Guest watches turnPhase changes and synthesizes phaseTransition events locally
-  // This allows guest to clear waiting modals and show deployment complete modal
-  // Works by leveraging existing state sync from ActionProcessor broadcasts
-  useEffect(() => {
-    // Only run on guest - host gets real events from GameFlowManager
-    if (gameState.gameMode !== 'guest') return;
-
-    // Track previous phase to detect actual changes
-    const previousPhase = previousPhaseRef.current;
-
-    // On first mount, just record current phase
-    if (previousPhase === null) {
-      previousPhaseRef.current = turnPhase;
-      return;
-    }
-
-    // Detect actual phase change
-    if (previousPhase !== turnPhase) {
-      debugLog('PHASE_TRANSITIONS', `👁️ Guest detected phase change: ${previousPhase} → ${turnPhase}`);
-
-      // NOTE: Guest optimistic processing and checkpoint validation is now handled entirely by:
-      // 1. GameFlowManager - for optimistic phase transitions
-      // 2. GuestMessageQueueService - for checkpoint validation and phase announcements
-      // App.jsx only responds to phase changes for UI updates (passive role)
-
-      // Synthesize phaseTransition event with same structure as GameFlowManager
-      const syntheticEvent = {
-        type: 'phaseTransition',
-        newPhase: turnPhase,
-        previousPhase: previousPhase,
-        gameStage: gameState.gameStage,
-        roundNumber: gameState.roundNumber,
-        firstPlayerResult: null
-      };
-
-      // Call same handler that host uses for UI updates
-      const handlePhaseEvent = (event) => {
-        const { type } = event;
-
-        if (type === 'phaseTransition') {
-          const { newPhase, previousPhase } = event;
-          debugLog('PHASE_TRANSITIONS', `🔄 Guest handling synthetic phase transition: ${previousPhase} → ${newPhase}`);
-
-          // Clear waiting modal when transitioning away from the waiting phase
-          if (waitingForPlayerPhase === previousPhase) {
-            setWaitingForPlayerPhase(null);
-          }
-        }
-      };
-
-      handlePhaseEvent(syntheticEvent);
-
-      // Update ref for next change
-      previousPhaseRef.current = turnPhase;
-    }
-  }, [turnPhase, gameState.gameStage, gameState.roundNumber, gameState.gameMode, waitingForPlayerPhase, passInfo]);
-
   // --- 8.8 GUEST RENDER COMPLETION FOR ANIMATIONS ---
   // Signal to GuestMessageQueueService that React has finished rendering
   // This ensures animations (like teleport effects) have valid DOM elements to target
@@ -2089,129 +1948,6 @@ const App = ({ phaseAnimationQueue }) => {
     // Update ref for next comparison
     footerPreviousPhaseRef.current = turnPhase;
   }, [turnPhase, mandatoryAction]);
-
-  // --- 8.10 SIMULTANEOUS PHASE WAITING MODAL ---
-  // Monitor commitment status for simultaneous phases and show waiting modal when appropriate
-  // Coordinates with phase animation queue to prevent race conditions:
-  // - If announcements are queued or playing, waits for them to complete before showing modal
-  // - If no announcements, shows modal immediately
-  // - Prevents UI conflicts where waiting modal overlays phase announcements
-  // Applied to: mandatoryDiscard, optionalDiscard, allocateShields, mandatoryDroneRemoval
-  useEffect(() => {
-    // Only check in multiplayer
-    if (!isMultiplayer()) return;
-
-    const localPlayerId = getLocalPlayerId();
-    const opponentPlayerId = getOpponentPlayerId();
-
-    // Check mandatoryDiscard phase
-    if (turnPhase === 'mandatoryDiscard') {
-      const localCommitted = gameState.commitments?.mandatoryDiscard?.[localPlayerId]?.completed;
-      const opponentCommitted = gameState.commitments?.mandatoryDiscard?.[opponentPlayerId]?.completed;
-
-      if (localCommitted && !opponentCommitted) {
-        debugLog('COMMITMENTS', '✋ Local player committed but opponent has not - showing waiting modal for mandatoryDiscard');
-
-        // Wait for phase announcements to complete before showing waiting modal
-        if (phaseAnimationQueue && (phaseAnimationQueue.getQueueLength() > 0 || phaseAnimationQueue.isPlaying())) {
-          debugLog('PHASE_TRANSITIONS', '⏳ Waiting for announcement queue to complete before showing waiting modal', {
-            queueLength: phaseAnimationQueue.getQueueLength(),
-            isPlaying: phaseAnimationQueue.isPlaying()
-          });
-          const unsubscribe = phaseAnimationQueue.onComplete(() => {
-            setWaitingForPlayerPhase('mandatoryDiscard');
-            unsubscribe();
-          });
-        } else {
-          setWaitingForPlayerPhase('mandatoryDiscard');
-        }
-      } else if (localCommitted && opponentCommitted && waitingForPlayerPhase === 'mandatoryDiscard') {
-        debugLog('COMMITMENTS', '✅ Both players committed - clearing waiting modal for mandatoryDiscard');
-        setWaitingForPlayerPhase(null);
-      }
-    }
-
-    // Check optionalDiscard phase
-    if (turnPhase === 'optionalDiscard') {
-      const localCommitted = gameState.commitments?.optionalDiscard?.[localPlayerId]?.completed;
-      const opponentCommitted = gameState.commitments?.optionalDiscard?.[opponentPlayerId]?.completed;
-
-      if (localCommitted && !opponentCommitted) {
-        debugLog('COMMITMENTS', '✋ Local player committed but opponent has not - showing waiting modal for optionalDiscard');
-
-        // Wait for phase announcements to complete before showing waiting modal
-        if (phaseAnimationQueue && (phaseAnimationQueue.getQueueLength() > 0 || phaseAnimationQueue.isPlaying())) {
-          debugLog('PHASE_TRANSITIONS', '⏳ Waiting for announcement queue to complete before showing waiting modal', {
-            queueLength: phaseAnimationQueue.getQueueLength(),
-            isPlaying: phaseAnimationQueue.isPlaying()
-          });
-          const unsubscribe = phaseAnimationQueue.onComplete(() => {
-            setWaitingForPlayerPhase('optionalDiscard');
-            unsubscribe();
-          });
-        } else {
-          setWaitingForPlayerPhase('optionalDiscard');
-        }
-      } else if (localCommitted && opponentCommitted && waitingForPlayerPhase === 'optionalDiscard') {
-        debugLog('COMMITMENTS', '✅ Both players committed - clearing waiting modal for optionalDiscard');
-        setWaitingForPlayerPhase(null);
-      }
-    }
-
-    // Check allocateShields phase
-    if (turnPhase === 'allocateShields') {
-      const localCommitted = gameState.commitments?.allocateShields?.[localPlayerId]?.completed;
-      const opponentCommitted = gameState.commitments?.allocateShields?.[opponentPlayerId]?.completed;
-
-      if (localCommitted && !opponentCommitted) {
-        debugLog('COMMITMENTS', '✋ Local player committed but opponent has not - showing waiting modal for allocateShields');
-
-        // Wait for phase announcements to complete before showing waiting modal
-        if (phaseAnimationQueue && (phaseAnimationQueue.getQueueLength() > 0 || phaseAnimationQueue.isPlaying())) {
-          debugLog('PHASE_TRANSITIONS', '⏳ Waiting for announcement queue to complete before showing waiting modal', {
-            queueLength: phaseAnimationQueue.getQueueLength(),
-            isPlaying: phaseAnimationQueue.isPlaying()
-          });
-          const unsubscribe = phaseAnimationQueue.onComplete(() => {
-            setWaitingForPlayerPhase('allocateShields');
-            unsubscribe();
-          });
-        } else {
-          setWaitingForPlayerPhase('allocateShields');
-        }
-      } else if (localCommitted && opponentCommitted && waitingForPlayerPhase === 'allocateShields') {
-        debugLog('COMMITMENTS', '✅ Both players committed - clearing waiting modal for allocateShields');
-        setWaitingForPlayerPhase(null);
-      }
-    }
-
-    // Check mandatoryDroneRemoval phase
-    if (turnPhase === 'mandatoryDroneRemoval') {
-      const localCommitted = gameState.commitments?.mandatoryDroneRemoval?.[localPlayerId]?.completed;
-      const opponentCommitted = gameState.commitments?.mandatoryDroneRemoval?.[opponentPlayerId]?.completed;
-
-      if (localCommitted && !opponentCommitted) {
-        debugLog('COMMITMENTS', '✋ Local player committed but opponent has not - showing waiting modal for mandatoryDroneRemoval');
-
-        // Wait for phase announcements to complete before showing waiting modal
-        if (phaseAnimationQueue && (phaseAnimationQueue.getQueueLength() > 0 || phaseAnimationQueue.isPlaying())) {
-          debugLog('PHASE_TRANSITIONS', '⏳ Waiting for announcement queue to complete before showing waiting modal', {
-            queueLength: phaseAnimationQueue.getQueueLength(),
-            isPlaying: phaseAnimationQueue.isPlaying()
-          });
-          const unsubscribe = phaseAnimationQueue.onComplete(() => {
-            setWaitingForPlayerPhase('mandatoryDroneRemoval');
-            unsubscribe();
-          });
-        } else {
-          setWaitingForPlayerPhase('mandatoryDroneRemoval');
-        }
-      } else if (localCommitted && opponentCommitted && waitingForPlayerPhase === 'mandatoryDroneRemoval') {
-        debugLog('COMMITMENTS', '✅ Both players committed - clearing waiting modal for mandatoryDroneRemoval');
-        setWaitingForPlayerPhase(null);
-      }
-    }
-  }, [turnPhase, gameState.commitments, isMultiplayer, getLocalPlayerId, getOpponentPlayerId, waitingForPlayerPhase]);
 
   // ========================================
   // SECTION 9: EARLY RETURN FOR NULL PLAYER STATE
