@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // Mock all dependencies before import
-vi.mock('../../hooks/useGameState', () => ({
+vi.mock('../../../hooks/useGameState', () => ({
   useGameState: vi.fn(() => ({
     gameState: {
       quickDeployEditorData: {
@@ -26,7 +26,7 @@ vi.mock('../../hooks/useGameState', () => ({
   }))
 }));
 
-vi.mock('../../data/droneData', () => ({
+vi.mock('../../../data/droneData', () => ({
   default: [
     { name: 'Talon', type: 'Fighter', cost: 2, limit: 3, image: '/test.png', baseHealth: 10, baseAttack: 5 },
     { name: 'Mammoth', type: 'Heavy', cost: 4, limit: 2, image: '/test.png', baseHealth: 20, baseAttack: 3 },
@@ -36,11 +36,11 @@ vi.mock('../../data/droneData', () => ({
   ]
 }));
 
-vi.mock('../../data/saveGameSchema', () => ({
+vi.mock('../../../data/saveGameSchema', () => ({
   starterPoolDroneNames: ['Talon', 'Mammoth', 'Dart', 'Bastion', 'Seraph']
 }));
 
-vi.mock('../../logic/quickDeploy/QuickDeployValidator', () => ({
+vi.mock('../../../logic/quickDeploy/QuickDeployValidator', () => ({
   calculateTotalCost: vi.fn(() => 0),
   getDroneByName: vi.fn((name) => ({
     name, type: 'Fighter', cost: 2, limit: 3, image: '/test.png', baseHealth: 10, baseAttack: 5
@@ -48,20 +48,20 @@ vi.mock('../../logic/quickDeploy/QuickDeployValidator', () => ({
   validateAgainstDeck: vi.fn(() => ({ valid: true, reasons: [] }))
 }));
 
-vi.mock('../../logic/statsCalculator', () => ({
+vi.mock('../../../logic/statsCalculator', () => ({
   calculateEffectiveStats: vi.fn((drone) => drone),
   calculateSectionBaseStats: vi.fn(() => ({}))
 }));
 
-vi.mock('../../data/shipSectionData', () => ({
+vi.mock('../../../data/shipSectionData', () => ({
   shipComponentCollection: []
 }));
 
-vi.mock('../../data/shipData', () => ({
+vi.mock('../../../data/shipData', () => ({
   getAllShips: vi.fn(() => [])
 }));
 
-vi.mock('../../logic/quickDeploy/QuickDeployService', () => ({
+vi.mock('../../../logic/quickDeploy/QuickDeployService', () => ({
   default: class MockQuickDeployService {
     constructor() {}
     create = vi.fn();
@@ -70,13 +70,13 @@ vi.mock('../../logic/quickDeploy/QuickDeployService', () => ({
 }));
 
 // Mock TargetingArrow to render with data-testid
-vi.mock('../ui/TargetingArrow', () => ({
+vi.mock('../../ui/TargetingArrow', () => ({
   default: ({ visible }) => visible ? <div data-testid="targeting-arrow">Arrow</div> : null,
   calculatePolygonPoints: vi.fn(() => '0,0 10,0 10,10 0,10')
 }));
 
 // Mock UI components
-vi.mock('../ui/DroneLanesDisplay', () => ({
+vi.mock('../../ui/DroneLanesDisplay', () => ({
   default: ({ onLaneClick, handleDroneDragEnd, draggedDrone }) => (
     <div data-testid="drone-lanes-display">
       {['left', 'middle', 'right'].map(lane => (
@@ -97,7 +97,7 @@ vi.mock('../ui/DroneLanesDisplay', () => ({
   )
 }));
 
-vi.mock('../ui/DroneCard', () => ({
+vi.mock('../../ui/DroneCard', () => ({
   default: ({ drone, onClick, isSelected }) => (
     <div
       data-testid={`drone-card-${drone.name}`}
@@ -109,19 +109,19 @@ vi.mock('../ui/DroneCard', () => ({
   )
 }));
 
-vi.mock('../quickDeploy/DronePicker', () => ({
+vi.mock('../../quickDeploy/DronePicker', () => ({
   default: () => null
 }));
 
-vi.mock('../quickDeploy/DeploymentOrderQueue', () => ({
+vi.mock('../../quickDeploy/DeploymentOrderQueue', () => ({
   default: () => <div data-testid="deployment-order-queue" />
 }));
 
-vi.mock('../../contexts/EditorStatsContext', () => ({
+vi.mock('../../../contexts/EditorStatsContext', () => ({
   EditorStatsProvider: ({ children }) => <div>{children}</div>
 }));
 
-import QuickDeployEditorScreen from './QuickDeployEditorScreen.jsx';
+import QuickDeployEditorScreen from '../QuickDeployEditorScreen.jsx';
 
 describe('QuickDeployEditorScreen - Drag and Drop with Movement Threshold', () => {
   beforeEach(() => {

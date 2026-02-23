@@ -11,7 +11,7 @@ import { render, screen } from '@testing-library/react';
 // Mock the PNG import that fails in test environment (absolute path /Ships/... is not resolvable)
 vi.mock('/Ships/Corvette/MapIcon.png', () => ({ default: 'mocked-map-icon.png' }));
 
-import ShipIconRenderer from './ShipIconRenderer.jsx';
+import ShipIconRenderer from '../ShipIconRenderer.jsx';
 
 describe('ShipIconRenderer', () => {
   describe('Ship icon selection', () => {

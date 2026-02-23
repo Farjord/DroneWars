@@ -8,7 +8,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import DeploymentOrderQueue from './DeploymentOrderQueue.jsx';
+import DeploymentOrderQueue from '../DeploymentOrderQueue.jsx';
 
 describe('DeploymentOrderQueue', () => {
   const mockPlacements = [

@@ -15,11 +15,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 // Mock dependencies BEFORE importing component
-vi.mock('../../hooks/useGameState.js', () => ({
+vi.mock('../../../hooks/useGameState.js', () => ({
   useGameState: vi.fn()
 }));
 
-vi.mock('../../managers/GameStateManager.js', () => ({
+vi.mock('../../../managers/GameStateManager.js', () => ({
   default: {
     getState: vi.fn(),
     setState: vi.fn(),
@@ -29,7 +29,7 @@ vi.mock('../../managers/GameStateManager.js', () => ({
   }
 }));
 
-vi.mock('../../logic/economy/RepairService.js', () => ({
+vi.mock('../../../logic/economy/RepairService.js', () => ({
   default: {
     getDroneRepairCost: vi.fn().mockReturnValue(500),
     repairDroneSlot: vi.fn().mockReturnValue({ success: true }),
@@ -38,7 +38,7 @@ vi.mock('../../logic/economy/RepairService.js', () => ({
   }
 }));
 
-vi.mock('../../logic/reputation/ReputationService.js', () => ({
+vi.mock('../../../logic/reputation/ReputationService.js', () => ({
   default: {
     getReputation: vi.fn().mockReturnValue({ current: 0, level: 1, unclaimedRewards: [] }),
     getLevelData: vi.fn().mockReturnValue({ level: 1, title: 'Rookie', xpToNext: 100, xpForLevel: 0 }),
@@ -46,7 +46,7 @@ vi.mock('../../logic/reputation/ReputationService.js', () => ({
   }
 }));
 
-vi.mock('../../data/droneData.js', () => ({
+vi.mock('../../../data/droneData.js', () => ({
   default: [
     { name: 'Dart', class: 1, hull: 2, shields: 0, speed: 3, attack: 1, rarity: 'Common', image: 'scout.png' },
     { name: 'Mammoth', class: 2, hull: 4, shields: 1, speed: 2, attack: 3, rarity: 'Uncommon', image: 'heavy.png' },
@@ -54,7 +54,7 @@ vi.mock('../../data/droneData.js', () => ({
   ]
 }));
 
-vi.mock('../../data/shipSectionData.js', () => ({
+vi.mock('../../../data/shipSectionData.js', () => ({
   shipComponentCollection: [
     { id: 'BRIDGE_001', name: 'Command Bridge', type: 'Bridge', stats: { hull: 10 } },
     { id: 'POWERCELL_001', name: 'Power Cell', type: 'Power Cell', stats: { hull: 8 } },
@@ -62,7 +62,7 @@ vi.mock('../../data/shipSectionData.js', () => ({
   ]
 }));
 
-vi.mock('../../data/shipData.js', () => ({
+vi.mock('../../../data/shipData.js', () => ({
   getAllShips: () => [
     { id: 'SHIP_001', name: 'Corvette', baseHull: 8 }
   ],
@@ -71,11 +71,11 @@ vi.mock('../../data/shipData.js', () => ({
 }));
 
 // Import after mocks
-import { useGameState } from '../../hooks/useGameState.js';
-import gameStateManager from '../../managers/GameStateManager.js';
+import { useGameState } from '../../../hooks/useGameState.js';
+import gameStateManager from '../../../managers/GameStateManager.js';
 
 // Import component
-import RepairBayScreen from './RepairBayScreen.jsx';
+import RepairBayScreen from '../RepairBayScreen.jsx';
 
 // Mock ship slots for testing
 const createMockShipSlots = () => [
@@ -537,7 +537,7 @@ describe('RepairBayScreen', () => {
     describe('resolveComponentIdForLane helper', () => {
       it('should return componentId from sectionSlots when available', async () => {
         // Import the helper (must be exported from component)
-        const { resolveComponentIdForLane } = await import('./RepairBayScreen.jsx');
+        const { resolveComponentIdForLane } = await import('../RepairBayScreen.jsx');
 
         const slot = {
           sectionSlots: {
@@ -554,7 +554,7 @@ describe('RepairBayScreen', () => {
       });
 
       it('should fallback to shipComponents when sectionSlots has null componentId', async () => {
-        const { resolveComponentIdForLane } = await import('./RepairBayScreen.jsx');
+        const { resolveComponentIdForLane } = await import('../RepairBayScreen.jsx');
 
         // This is the bug case: sectionSlots exists but has null componentIds
         const slot = {
@@ -576,7 +576,7 @@ describe('RepairBayScreen', () => {
       });
 
       it('should return null when neither sectionSlots nor shipComponents has the component', async () => {
-        const { resolveComponentIdForLane } = await import('./RepairBayScreen.jsx');
+        const { resolveComponentIdForLane } = await import('../RepairBayScreen.jsx');
 
         const slot = {
           sectionSlots: {
@@ -590,7 +590,7 @@ describe('RepairBayScreen', () => {
       });
 
       it('should handle missing slot gracefully', async () => {
-        const { resolveComponentIdForLane } = await import('./RepairBayScreen.jsx');
+        const { resolveComponentIdForLane } = await import('../RepairBayScreen.jsx');
 
         expect(resolveComponentIdForLane(null, 'l')).toBeNull();
         expect(resolveComponentIdForLane(undefined, 'm')).toBeNull();
@@ -600,7 +600,7 @@ describe('RepairBayScreen', () => {
     describe('Section display with legacy format', () => {
       it('should resolve components for slots with legacy shipComponents format', async () => {
         // Test that the helper correctly resolves components for the legacy format slot
-        const { resolveComponentIdForLane } = await import('./RepairBayScreen.jsx');
+        const { resolveComponentIdForLane } = await import('../RepairBayScreen.jsx');
 
         // The legacy format slot (id: 2) has sectionSlots with null componentIds
         // but shipComponents has the actual assignments
@@ -618,7 +618,7 @@ describe('RepairBayScreen', () => {
       });
 
       it('should calculate hull correctly for sections using legacy format', async () => {
-        const { resolveComponentIdForLane } = await import('./RepairBayScreen.jsx');
+        const { resolveComponentIdForLane } = await import('../RepairBayScreen.jsx');
 
         // The legacy format slot (id: 2) has damageDealt values
         // l: damageDealt: 2, m: damageDealt: 0, r: damageDealt: 4
