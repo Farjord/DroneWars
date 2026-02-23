@@ -50,3 +50,11 @@ Refer to `Design/Technical Debt Refactor/CODE_STANDARDS.md` for all project stan
 ## Refactoring
 
 - For large-scale refactoring projects, activate the workflow in `Design/Technical Debt Refactor/REFACTORING_WORKFLOW.md`.
+
+## Active Audit
+
+- **Audit doc**: `Design/CODEBASE_AUDIT.md`
+- **Current phase**: Setup — Test Migration
+- **Test migration**: In progress
+
+Resume protocol: Read the `## Meta` section of the audit doc, then continue from the next unreviewed file.
