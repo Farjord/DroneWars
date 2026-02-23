@@ -66,11 +66,11 @@ import { useGameData } from './hooks/useGameData';
 import { useExplosions } from './hooks/useExplosions';
 import { useAnimationSetup } from './hooks/useAnimationSetup';
 import useShieldAllocation from './hooks/useShieldAllocation.js';
+import useInterception from './hooks/useInterception.js';
 
 // --- 1.5 DATA/LOGIC IMPORTS ---
 import fullCardCollection from './data/cardData.js';
 import { gameEngine } from './logic/gameLogic.js';
-import { calculatePotentialInterceptors } from './logic/combat/InterceptionProcessor.js';
 import TargetingRouter from './logic/TargetingRouter.js';
 import ExtractionController from './logic/singlePlayer/ExtractionController.js';
 import { forceWinCombat } from './logic/game/ForceWin.js';
@@ -215,15 +215,7 @@ const App = ({ phaseAnimationQueue }) => {
   const [hoveredCardId, setHoveredCardId] = useState(null);
 
   // Combat and attack state
-  const [playerInterceptionChoice, setPlayerInterceptionChoice] = useState(null);
-  const [potentialInterceptors, setPotentialInterceptors] = useState([]);
   const [potentialGuardians, setPotentialGuardians] = useState([]);
-  const [showOpponentDecidingModal, setShowOpponentDecidingModal] = useState(false); // For attacker waiting on defender
-  const [interceptedBadge, setInterceptedBadge] = useState(null); // { droneId, timestamp }
-
-  // Interception mode state (for battlefield selection instead of modal)
-  const [interceptionModeActive, setInterceptionModeActive] = useState(false);
-  const [selectedInterceptor, setSelectedInterceptor] = useState(null);
 
   // AI behavior and reporting state
   const [aiCardPlayReport, setAiCardPlayReport] = useState(null);
@@ -917,100 +909,6 @@ const App = ({ phaseAnimationQueue }) => {
     debugLog('CARD_PLAY', '   ✅ handleConfirmMultiMoveDrones completed', { timestamp: performance.now() });
   }, [multiSelectState, getLocalPlayerId]);
 
-  // --- 6.5 INTERCEPTION MODE HANDLERS ---
-
-  /**
-   * HANDLE VIEW BATTLEFIELD
-   * Called when player clicks "View Battlefield" in the interception modal.
-   * Closes modal and enters interception mode for battlefield selection.
-   */
-  const handleViewBattlefield = useCallback(() => {
-    debugLog('INTERCEPTION_MODE', '🌍 Entering interception mode from modal');
-    setInterceptionModeActive(true);
-  }, []);
-
-  /**
-   * HANDLE SHOW INTERCEPTION DIALOG
-   * Called when player clicks "Show Dialog" button in header during interception mode.
-   * Reopens the interception modal.
-   */
-  const handleShowInterceptionDialog = useCallback(() => {
-    debugLog('INTERCEPTION_MODE', '📖 Reopening interception modal');
-    setInterceptionModeActive(false);
-    setSelectedInterceptor(null);
-  }, []);
-
-  /**
-   * HANDLE RESET INTERCEPTION
-   * Called when player clicks "Reset" button in header during interception mode.
-   * Clears the selected interceptor, allowing them to re-drag or confirm without intercepting.
-   */
-  const handleResetInterception = useCallback(() => {
-    debugLog('INTERCEPTION_MODE', '🔄 Resetting interception selection');
-    setSelectedInterceptor(null);
-  }, []);
-
-  /**
-   * HANDLE DECLINE INTERCEPTION FROM HEADER
-   * Called when player clicks "Decline" button in header during interception mode.
-   * Declines the interception and resolves the attack.
-   */
-  const handleDeclineInterceptionFromHeader = useCallback(async () => {
-    if (!playerInterceptionChoice) return;
-
-    debugLog('INTERCEPTION_MODE', '⛔ Declining interception from header');
-
-    const attackDetails = {
-      ...playerInterceptionChoice.attackDetails,
-      interceptor: null
-    };
-
-    // Cleanup interception mode state
-    setInterceptionModeActive(false);
-    setSelectedInterceptor(null);
-    setPlayerInterceptionChoice(null);
-
-    setTimeout(async () => {
-      await resolveAttack(attackDetails);
-    }, 400);
-  }, [playerInterceptionChoice]);
-
-  /**
-   * HANDLE CONFIRM INTERCEPTION
-   * Called when player clicks "Confirm" button in header during interception mode.
-   * Confirms the current board state:
-   * - If an interceptor is selected (via drag), resolves attack with interception
-   * - If no interceptor selected, resolves attack without interception
-   */
-  const handleConfirmInterception = useCallback(async () => {
-    if (!playerInterceptionChoice) {
-      debugLog('INTERCEPTION_MODE', '⛔ Cannot confirm - no interception pending');
-      return;
-    }
-
-    if (selectedInterceptor) {
-      debugLog('INTERCEPTION_MODE', '✅ Confirming interception', {
-        interceptor: selectedInterceptor.name
-      });
-    } else {
-      debugLog('INTERCEPTION_MODE', '⛔ Confirming without interception (no interceptor selected)');
-    }
-
-    const attackDetails = {
-      ...playerInterceptionChoice.attackDetails,
-      interceptor: selectedInterceptor || null
-    };
-
-    // Cleanup interception mode state
-    setInterceptionModeActive(false);
-    setSelectedInterceptor(null);
-    setPlayerInterceptionChoice(null);
-
-    setTimeout(async () => {
-      await resolveAttack(attackDetails);
-    }, 400);
-  }, [selectedInterceptor, playerInterceptionChoice]);
-
   // ========================================
   // SECTION 7: GAME LOGIC FUNCTIONS
   // ========================================
@@ -1264,6 +1162,36 @@ const App = ({ phaseAnimationQueue }) => {
     }
 
 }, [triggerExplosion, processAction, getLocalPlayerId, getOpponentPlayerId]);
+
+  // --- INTERCEPTION HOOK ---
+  const {
+    playerInterceptionChoice,
+    potentialInterceptors,
+    showOpponentDecidingModal,
+    interceptedBadge,
+    interceptionModeActive,
+    selectedInterceptor,
+    setSelectedInterceptor,
+    setInterceptionModeActive,
+    setPlayerInterceptionChoice,
+    setShowOpponentDecidingModal,
+    handleViewBattlefield,
+    handleShowInterceptionDialog,
+    handleResetInterception,
+    handleDeclineInterceptionFromHeader,
+    handleConfirmInterception,
+  } = useInterception({
+    gameState,
+    localPlayerState,
+    opponentPlayerState,
+    selectedDrone,
+    draggedDrone,
+    singleMoveMode,
+    abilityMode,
+    getLocalPlayerId,
+    getPlacedSectionsForEngine,
+    resolveAttack,
+  });
 
   // --- 7.3 ABILITY RESOLUTION ---
 
@@ -1800,45 +1728,6 @@ const App = ({ phaseAnimationQueue }) => {
     }
   }, [winner, showWinnerModal]);
 
-  // --- 8.4 INTERCEPTION MONITORING ---
-  // TODO: UI MONITORING - Interception monitoring is appropriate UI-only effect - calculates UI hints for user
-  // Calculates potential interceptors for both clicked drone (selectedDrone) and dragged drone (draggedDrone)
-  // Also highlights valid interceptors during interception mode
-  useEffect(() => {
-    // In interception mode, highlight the valid interceptors from the choice
-    if (interceptionModeActive && playerInterceptionChoice?.interceptors) {
-        const interceptorIds = playerInterceptionChoice.interceptors.map(i => i.id);
-        setPotentialInterceptors(interceptorIds);
-        return;
-    }
-
-    // Skip interception calculations during SINGLE_MOVE card flow
-    if (singleMoveMode) {
-        setPotentialInterceptors([]);
-        return;
-    }
-
-    // Skip interception calculations during ability targeting (abilities can't be intercepted)
-    if (abilityMode) {
-        setPotentialInterceptors([]);
-        return;
-    }
-
-    if (turnPhase === 'action') {
-        // Use draggedDrone if actively dragging, otherwise use selectedDrone
-        const activeDrone = draggedDrone?.drone || selectedDrone;
-        const potential = calculatePotentialInterceptors(
-            activeDrone,
-            localPlayerState,
-            opponentPlayerState,
-            getPlacedSectionsForEngine()
-        );
-        setPotentialInterceptors(potential);
-    } else {
-        setPotentialInterceptors([]);
-    }
-}, [selectedDrone, draggedDrone, turnPhase, localPlayerState, opponentPlayerState, gameEngine, localPlacedSections, opponentPlacedSections, interceptionModeActive, playerInterceptionChoice, singleMoveMode, abilityMode]);
-
   // --- 8.5 GUARDIAN HIGHLIGHTING ---
   // Calculate potential guardian blockers when drone is selected
   // Highlights opponent drones with GUARDIAN keyword in the same lane
@@ -1871,45 +1760,6 @@ const App = ({ phaseAnimationQueue }) => {
       setPotentialGuardians([]);
     }
   }, [selectedDrone, turnPhase, localPlayerState, opponentPlayerState, getEffectiveStats, singleMoveMode]);
-
-  // Monitor unified interceptionPending state for both AI and human defenders
-  useEffect(() => {
-    const localPlayerId = getLocalPlayerId();
-
-    if (gameState.interceptionPending) {
-      const { attackingPlayerId, defendingPlayerId, attackDetails, interceptors } = gameState.interceptionPending;
-
-      // Show "opponent deciding" modal to attacker
-      if (attackingPlayerId === localPlayerId) {
-        setShowOpponentDecidingModal(true);
-      }
-      // Show interception choice modal to defender (human only, AI auto-decides)
-      else if (defendingPlayerId === localPlayerId) {
-        setPlayerInterceptionChoice({
-          attackDetails,
-          interceptors
-        });
-      }
-    } else {
-      // Clear both modals when interception complete
-      setShowOpponentDecidingModal(false);
-      setPlayerInterceptionChoice(null);
-    }
-  }, [gameState.interceptionPending, getLocalPlayerId]);
-
-  // Monitor gameState.lastInterception for badge display only
-  useEffect(() => {
-    if (gameState.lastInterception) {
-      const { interceptor, timestamp } = gameState.lastInterception;
-
-      // Show intercepted badge on the intercepting drone
-      setInterceptedBadge({
-        droneId: interceptor.id,
-        timestamp: timestamp
-      });
-    }
-  }, [gameState.lastInterception]);
-
 
   useEffect(() => {
    setHoveredTarget(null);
