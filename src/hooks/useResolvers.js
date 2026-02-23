@@ -145,38 +145,44 @@ const useResolvers = ({
 
   // --- Resolve Ship Ability ---
   const resolveShipAbility = useCallback(async (ability, sectionName, target) => {
-    const result = await processActionWithGuestRouting('shipAbility', {
-      ability: ability,
-      sectionName: sectionName,
-      targetId: target?.id || null,
-      playerId: getLocalPlayerId()
-    });
+    try {
+      const result = await processActionWithGuestRouting('shipAbility', {
+        ability: ability,
+        sectionName: sectionName,
+        targetId: target?.id || null,
+        playerId: getLocalPlayerId()
+      });
 
-    if (result.mandatoryAction) {
-      setMandatoryAction(result.mandatoryAction);
-      setFooterView('hand');
-      setIsFooterOpen(true);
+      if (result.mandatoryAction) {
+        setMandatoryAction(result.mandatoryAction);
+        setFooterView('hand');
+        setIsFooterOpen(true);
+        setShipAbilityMode(null);
+        setShipAbilityConfirmation(null);
+        return;
+      }
+
+      if (result.requiresShieldReallocation) {
+        setShipAbilityMode(null);
+        setShipAbilityConfirmation(null);
+        return;
+      }
+
+      await processActionWithGuestRouting('shipAbilityCompletion', {
+        ability: ability,
+        sectionName: sectionName,
+        playerId: getLocalPlayerId()
+      });
+
       setShipAbilityMode(null);
       setShipAbilityConfirmation(null);
-      return;
-    }
 
-    if (result.requiresShieldReallocation) {
+      return result;
+    } catch (error) {
+      debugLog('COMBAT', 'Error in resolveShipAbility:', error);
       setShipAbilityMode(null);
       setShipAbilityConfirmation(null);
-      return;
     }
-
-    await processActionWithGuestRouting('shipAbilityCompletion', {
-      ability: ability,
-      sectionName: sectionName,
-      playerId: getLocalPlayerId()
-    });
-
-    setShipAbilityMode(null);
-    setShipAbilityConfirmation(null);
-
-    return result;
   }, [processActionWithGuestRouting, getLocalPlayerId]);
 
   // --- Resolve Card Play ---
@@ -487,6 +493,7 @@ const useResolvers = ({
   };
 
   const handleConfirmCardPlay = async () => {
+    if (!cardConfirmation) return;
     const card = cardConfirmation.card;
     const target = cardConfirmation.target;
     setCardConfirmation(null);
@@ -496,6 +503,7 @@ const useResolvers = ({
   };
 
   const handleConfirmAdditionalCost = async () => {
+    if (!additionalCostConfirmation) return;
     const card = additionalCostConfirmation.card;
     const costSelection = additionalCostConfirmation.costSelection;
     const effectTarget = additionalCostConfirmation.effectTarget;
@@ -510,6 +518,7 @@ const useResolvers = ({
   };
 
   const handleConfirmDroneAbility = () => {
+    if (!abilityConfirmation) return;
     const ability = abilityConfirmation.ability;
     const drone = abilityConfirmation.drone;
     const target = abilityConfirmation.target;
@@ -520,6 +529,7 @@ const useResolvers = ({
   };
 
   const handleConfirmShipAbility = async () => {
+    if (!shipAbilityConfirmation) return;
     const ability = shipAbilityConfirmation.ability;
     const sectionName = shipAbilityConfirmation.sectionName;
     const target = shipAbilityConfirmation.target;

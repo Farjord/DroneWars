@@ -20,11 +20,11 @@ const LaserEffect = ({ startPos, endPos, attackValue = 1, duration = 500, onComp
 
   useEffect(() => {
     // Fade in quickly
-    setTimeout(() => setOpacity(1), 50);
+    const fadeInTimer = setTimeout(() => setOpacity(1), 50);
 
     // Fade out and complete
     const fadeOutTime = duration * 0.7; // Start fading at 70% of duration
-    setTimeout(() => setOpacity(0), fadeOutTime);
+    const fadeOutTimer = setTimeout(() => setOpacity(0), fadeOutTime);
 
     // Complete
     const completeTimer = setTimeout(() => {
@@ -32,6 +32,8 @@ const LaserEffect = ({ startPos, endPos, attackValue = 1, duration = 500, onComp
     }, duration);
 
     return () => {
+      clearTimeout(fadeInTimer);
+      clearTimeout(fadeOutTimer);
       clearTimeout(completeTimer);
     };
   }, [duration, onComplete]);

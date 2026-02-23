@@ -15,16 +15,17 @@ const FlashEffect = ({ position, color = '#00bcd4', intensity = 0.6, onComplete 
     const fadeOutDuration = 150;
 
     // Fade in
-    setTimeout(() => setOpacity(intensity), 10);
+    const t1 = setTimeout(() => setOpacity(intensity), 10);
 
     // Start fade out
-    setTimeout(() => setOpacity(0), fadeInDuration + holdDuration);
+    const t2 = setTimeout(() => setOpacity(0), fadeInDuration + holdDuration);
 
     // Complete
-    setTimeout(() => {
+    const t3 = setTimeout(() => {
       onComplete?.();
     }, fadeInDuration + holdDuration + fadeOutDuration);
 
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, [intensity, onComplete, position]);
 
   if (!position) return null;
