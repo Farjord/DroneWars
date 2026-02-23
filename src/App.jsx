@@ -14,49 +14,18 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 // --- 1.2 UI COMPONENT IMPORTS ---
 import SpaceBackground from './components/ui/SpaceBackground.jsx';
 import StaticBackground from './components/ui/StaticBackground.jsx';
-import GamePhaseModal from './components/ui/GamePhaseModal.jsx';
 import GameHeader from './components/ui/GameHeader.jsx';
 import GameBattlefield from './components/ui/GameBattlefield.jsx';
 import GameFooter from './components/ui/GameFooter.jsx';
 import HandView from './components/ui/footer/HandView.jsx';
 import DronesView from './components/ui/footer/DronesView.jsx';
 import FloatingCardControls from './components/ui/FloatingCardControls.jsx';
-import LogModal from './components/modals/LogModal.jsx';
-import ModalContainer from './components/ui/ModalContainer.jsx';
+import ModalLayer from './components/ui/ModalLayer.jsx';
 import WaitingOverlay from './components/ui/WaitingOverlay';
 import InterceptedBadge from './components/ui/InterceptedBadge.jsx';
 import FailedRunLoadingScreen from './components/ui/FailedRunLoadingScreen.jsx';
 
-// --- 1.3 MODAL COMPONENT IMPORTS ---
-import CardViewerModal from './components/modals/CardViewerModal';
-import CardSelectionModal from './components/modals/CardSelectionModal';
-import AICardPlayReportModal from './components/modals/AICardPlayReportModal.jsx';
-import DetailedDroneModal from './components/modals/debug/DetailedDroneModal.jsx';
-import WaitingForPlayerModal from './components/modals/WaitingForPlayerModal.jsx';
-import ConfirmationModal from './components/modals/ConfirmationModal.jsx';
-import MandatoryActionModal from './components/modals/MandatoryActionModal.jsx';
-import WinnerModal from './components/modals/WinnerModal.jsx';
-import AIDecisionLogModal from './components/modals/AIDecisionLogModal.jsx';
-import ViewShipSectionModal from './components/modals/ViewShipSectionModal.jsx';
-import DeploymentConfirmationModal from './components/modals/DeploymentConfirmationModal.jsx';
-import MoveConfirmationModal from './components/modals/MoveConfirmationModal.jsx';
-import AttackConfirmationModal from './components/modals/AttackConfirmationModal.jsx';
-import InterceptionOpportunityModal from './components/modals/InterceptionOpportunityModal.jsx';
-import OpponentDecidingInterceptionModal from './components/modals/OpponentDecidingInterceptionModal.jsx';
-import CardConfirmationModal from './components/modals/CardConfirmationModal.jsx';
-import AdditionalCostConfirmationModal from './components/modals/AdditionalCostConfirmationModal.jsx';
-import DroneAbilityConfirmationModal from './components/modals/DroneAbilityConfirmationModal.jsx';
-import ShipAbilityConfirmationModal from './components/modals/ShipAbilityConfirmationModal.jsx';
-import AIHandDebugModal from './components/modals/AIHandDebugModal.jsx';
-import GameDebugModal from './components/modals/GameDebugModal.jsx';
-import OpponentDronesModal from './components/modals/OpponentDronesModal.jsx';
-import GlossaryModal from './components/modals/GlossaryModal.jsx';
-import AIStrategyModal from './components/modals/AIStrategyModal.jsx';
-import AddCardToHandModal from './components/modals/AddCardToHandModal.jsx';
-import CardDetailModal from './components/modals/CardDetailModal.jsx';
-import AbandonRunModal from './components/modals/AbandonRunModal.jsx';
-
-// --- 1.4 HOOK IMPORTS ---
+// --- 1.3 HOOK IMPORTS ---
 import { useGameState } from './hooks/useGameState';
 import { useGameData } from './hooks/useGameData';
 import { useExplosions } from './hooks/useExplosions';
@@ -2992,6 +2961,186 @@ const App = ({ phaseAnimationQueue }) => {
     }
   };
 
+  // --- Modal confirmation callbacks (extracted for ModalLayer) ---
+
+  const handleConfirmDeployment = async () => {
+    if (!deploymentConfirmation) return;
+    const { lane, drone } = deploymentConfirmation;
+    setDeploymentConfirmation(null);
+    setTimeout(async () => {
+      await executeDeployment(lane, drone);
+    }, 400);
+  };
+
+  const handleConfirmMove = async () => {
+    if (!moveConfirmation) return;
+
+    debugLog('SINGLE_MOVE_FLOW', '✅ CHECKPOINT 8: Modal confirmed, extracting data', {
+      moveConfirmation: moveConfirmation,
+      moveConfirmationKeys: Object.keys(moveConfirmation),
+      droneIdPresent: 'droneId' in moveConfirmation,
+      ownerPresent: 'owner' in moveConfirmation,
+      dronePresent: 'drone' in moveConfirmation,
+      rawDroneId: moveConfirmation.droneId,
+      rawOwner: moveConfirmation.owner,
+      rawFrom: moveConfirmation.from,
+      rawTo: moveConfirmation.to
+    });
+
+    const { droneId, owner, from, to, card, isSnared: wasSnared } = moveConfirmation;
+
+    debugLog('SINGLE_MOVE_FLOW', '🔓 CHECKPOINT 8b: Data destructured from moveConfirmation', {
+      droneId, owner, from, to,
+      hasCard: !!card, cardName: card?.name,
+      allDefined: !!(droneId && owner && from && to),
+      typeofDroneId: typeof droneId, typeofOwner: typeof owner
+    });
+
+    setMoveConfirmation(null);
+
+    if (singleMoveMode) {
+      setSingleMoveMode(null);
+      setSelectedCard(null);
+    }
+
+    if (wasSnared) {
+      debugLog('CONSUMPTION_DEBUG', '🟢 [1] App.jsx: Calling processAction snaredConsumption', { droneId, owner });
+      await processActionWithGuestRouting('snaredConsumption', { droneId, playerId: owner });
+      setSelectedDrone(null);
+      setPotentialInterceptors([]);
+      setPotentialGuardians([]);
+      setDraggedDrone(null);
+      setValidCardTargets([]);
+      return;
+    }
+
+    setTimeout(async () => {
+      if (card) {
+        debugLog('SINGLE_MOVE_FLOW', '🚀 CHECKPOINT 9: Calling resolveSingleMove', {
+          card: card.name, droneId, owner, fromLane: from, toLane: to,
+          parameters: { card, droneId, owner, from, to }
+        });
+        await resolveSingleMove(card, droneId, owner, from, to);
+        setSelectedDrone(null);
+        setPotentialInterceptors([]);
+        setPotentialGuardians([]);
+        setDraggedDrone(null);
+        setValidCardTargets([]);
+      } else {
+        await processActionWithGuestRouting('move', {
+          droneId, fromLane: from, toLane: to, playerId: getLocalPlayerId()
+        });
+        setSelectedDrone(null);
+      }
+    }, 400);
+  };
+
+  const handleConfirmAttack = async () => {
+    if (!attackConfirmation) return;
+    const { attacker } = attackConfirmation;
+    debugLog('CONSUMPTION_DEBUG', '🟢 [1] App.jsx: Calling processAction suppressedConsumption', { droneId: attacker.id, owner: attackConfirmation.attackingPlayer });
+    setAttackConfirmation(null);
+    setSelectedDrone(null);
+    await processActionWithGuestRouting('suppressedConsumption', {
+      droneId: attacker.id,
+      playerId: attackConfirmation.attackingPlayer
+    });
+  };
+
+  const handleCancelAttack = () => {
+    setAttackConfirmation(null);
+    setSelectedDrone(null);
+  };
+
+  const handleConfirmIntercept = async (interceptor) => {
+    const attackDetails = { ...playerInterceptionChoice.attackDetails, interceptor };
+    setPlayerInterceptionChoice(null);
+    setTimeout(async () => {
+      await resolveAttack(attackDetails);
+    }, 400);
+  };
+
+  const handleDeclineIntercept = async () => {
+    const attackDetails = { ...playerInterceptionChoice.attackDetails, interceptor: null };
+    setPlayerInterceptionChoice(null);
+    setTimeout(async () => {
+      await resolveAttack(attackDetails);
+    }, 400);
+  };
+
+  const handleConfirmCardPlay = async () => {
+    const card = cardConfirmation.card;
+    const target = cardConfirmation.target;
+    setCardConfirmation(null);
+    setTimeout(async () => {
+      await resolveCardPlay(card, target, getLocalPlayerId());
+    }, 400);
+  };
+
+  const handleConfirmAdditionalCost = async () => {
+    const card = additionalCostConfirmation.card;
+    const costSelection = additionalCostConfirmation.costSelection;
+    const effectTarget = additionalCostConfirmation.effectTarget;
+    setAdditionalCostConfirmation(null);
+    setTimeout(async () => {
+      await confirmAdditionalCostCard(card, costSelection, effectTarget);
+    }, 400);
+  };
+
+  const handleCancelAdditionalCost = () => {
+    setAdditionalCostConfirmation(null);
+  };
+
+  const handleConfirmDroneAbility = () => {
+    const ability = abilityConfirmation.ability;
+    const drone = abilityConfirmation.drone;
+    const target = abilityConfirmation.target;
+    setAbilityConfirmation(null);
+    setTimeout(() => {
+      resolveAbility(ability, drone, target);
+    }, 400);
+  };
+
+  const handleConfirmShipAbility = async () => {
+    const ability = shipAbilityConfirmation.ability;
+    const sectionName = shipAbilityConfirmation.sectionName;
+    const target = shipAbilityConfirmation.target;
+    const abilityType = shipAbilityConfirmation.abilityType;
+    setShipAbilityConfirmation(null);
+
+    setTimeout(async () => {
+      if (abilityType === 'recall' || ability.name === 'Recall') {
+        const result = await processActionWithGuestRouting('recallAbility', {
+          targetId: target?.id || null, sectionName, playerId: getLocalPlayerId()
+        });
+        debugLog('SHIP_ABILITY', `Recall ability completed:`, result);
+      } else if (abilityType === 'targetLock' || ability.name === 'Target Lock') {
+        const result = await processActionWithGuestRouting('targetLockAbility', {
+          targetId: target?.id || null, sectionName, playerId: getLocalPlayerId()
+        });
+        debugLog('SHIP_ABILITY', `Target Lock ability completed:`, result);
+      } else if (abilityType === 'recalculate' || ability.name === 'Recalculate') {
+        const result = await processActionWithGuestRouting('recalculateAbility', {
+          sectionName, playerId: getLocalPlayerId()
+        });
+        if (result.mandatoryAction) {
+          setMandatoryAction(result.mandatoryAction);
+          setFooterView('hand');
+          setIsFooterOpen(true);
+        }
+        debugLog('SHIP_ABILITY', `Recalculate ability completed:`, result);
+      } else if (abilityType === 'reallocateShields' || ability.name === 'Reallocate Shields') {
+        const result = await processActionWithGuestRouting('reallocateShieldsComplete', {
+          playerId: getLocalPlayerId(), pendingChanges: pendingShieldChanges
+        });
+        clearReallocationState();
+        debugLog('SHIP_ABILITY', `Reallocate Shields ability completed:`, result);
+      }
+      setShipAbilityMode(null);
+      clearReallocationState();
+    }, 400);
+  };
+
   // ========================================
   // SECTION 9: RENDER
   // ========================================
@@ -3242,480 +3391,127 @@ const App = ({ phaseAnimationQueue }) => {
         onCardPlayWarningClear={clearCardPlayWarning}
       />
 
-      {/* Modals are unaffected and remain at the end */}
-      <LogModal
-        isOpen={isLogModalOpen}
-        onClose={() => setIsLogModalOpen(false)}
-        gameLog={gameLog}
+      <ModalLayer
+        // Modal state
+        isLogModalOpen={isLogModalOpen}
+        modalContent={modalContent}
+        waitingForPlayerPhase={waitingForPlayerPhase}
+        deploymentConfirmation={deploymentConfirmation}
+        moveConfirmation={moveConfirmation}
+        attackConfirmation={attackConfirmation}
+        playerInterceptionChoice={playerInterceptionChoice}
+        interceptionModeActive={interceptionModeActive}
+        showOpponentDecidingModal={showOpponentDecidingModal}
+        detailedDroneInfo={detailedDroneInfo}
+        cardToView={cardToView}
+        aiCardPlayReport={aiCardPlayReport}
+        aiDecisionLogToShow={aiDecisionLogToShow}
+        winner={winner}
+        showWinnerModal={showWinnerModal}
+        showAbandonRunModal={showAbandonRunModal}
+        viewShipSectionModal={viewShipSectionModal}
+        mandatoryAction={mandatoryAction}
+        localPlayerEffectiveStats={localPlayerEffectiveStats}
+        showMandatoryActionModal={showMandatoryActionModal}
+        shouldShowDiscardUI={shouldShowDiscardUI}
+        shouldShowRemovalUI={shouldShowRemovalUI}
+        isInMandatoryDiscardPhase={isInMandatoryDiscardPhase}
+        hasCommittedDiscard={hasCommittedDiscard}
+        excessCards={excessCards}
+        isInMandatoryRemovalPhase={isInMandatoryRemovalPhase}
+        hasCommittedRemoval={hasCommittedRemoval}
+        excessDrones={excessDrones}
+        confirmationModal={confirmationModal}
+        viewUpgradesModal={viewUpgradesModal}
+        destroyUpgradeModal={destroyUpgradeModal}
+        upgradeSelectionModal={upgradeSelectionModal}
+        cardConfirmation={cardConfirmation}
+        additionalCostConfirmation={additionalCostConfirmation}
+        abilityConfirmation={abilityConfirmation}
+        showAiHandModal={showAiHandModal}
+        AI_HAND_DEBUG_MODE={AI_HAND_DEBUG_MODE}
+        opponentPlayerState={opponentPlayerState}
+        showOpponentDronesModal={showOpponentDronesModal}
+        opponentSelectedDrones={opponentSelectedDrones}
+        showDebugModal={showDebugModal}
+        showGlossaryModal={showGlossaryModal}
+        showAIStrategyModal={showAIStrategyModal}
+        showAddCardModal={showAddCardModal}
+        isViewDeckModalOpen={isViewDeckModalOpen}
+        isViewDiscardModalOpen={isViewDiscardModalOpen}
+        localPlayerState={localPlayerState}
+        cardSelectionModal={cardSelectionModal}
+        shipAbilityConfirmation={shipAbilityConfirmation}
+        gameState={gameState}
+        // Callbacks
+        onCloseLogModal={() => setIsLogModalOpen(false)}
+        onCloseGamePhaseModal={() => setModalContent(null)}
+        onCancelDeployment={() => setDeploymentConfirmation(null)}
+        onConfirmDeployment={handleConfirmDeployment}
+        onCancelMove={() => setMoveConfirmation(null)}
+        onConfirmMove={handleConfirmMove}
+        onCancelAttack={handleCancelAttack}
+        onConfirmAttack={handleConfirmAttack}
+        onViewBattlefield={handleViewBattlefield}
+        onConfirmIntercept={handleConfirmIntercept}
+        onDeclineIntercept={handleDeclineIntercept}
+        onCloseDetailedDrone={() => setDetailedDroneInfo(null)}
+        onCloseCardDetail={() => setCardToView(null)}
+        onCloseAiCardPlayReport={() => setAiCardPlayReport(null)}
+        onCloseAiDecisionLog={() => setAiDecisionLogToShow(null)}
+        onCloseWinnerModal={() => setShowWinnerModal(false)}
+        onCancelAbandonRun={() => setShowAbandonRunModal(false)}
+        onConfirmAbandonRun={handleConfirmAbandonRun}
+        onCloseViewShipSection={() => setViewShipSectionModal(null)}
+        onCloseMandatoryActionModal={() => setShowMandatoryActionModal(false)}
+        onCancelCardConfirmation={() => setCardConfirmation(null)}
+        onConfirmCardPlay={handleConfirmCardPlay}
+        onConfirmAdditionalCost={handleConfirmAdditionalCost}
+        onCancelAdditionalCost={handleCancelAdditionalCost}
+        onCancelDroneAbility={() => setAbilityConfirmation(null)}
+        onConfirmDroneAbility={handleConfirmDroneAbility}
+        onCloseAiHandModal={() => setShowAiHandModal(false)}
+        onCloseOpponentDronesModal={() => setShowOpponentDronesModal(false)}
+        onCloseDebugModal={() => setShowDebugModal(false)}
+        onCloseGlossaryModal={() => setShowGlossaryModal(false)}
+        onCloseAIStrategyModal={() => setShowAIStrategyModal(false)}
+        onCloseAddCardModal={() => setShowAddCardModal(false)}
+        onConfirmAddCards={handleAddCardsToHand}
+        onCloseViewDeckModal={() => setIsViewDeckModalOpen(false)}
+        onCloseViewDiscardModal={() => setIsViewDiscardModalOpen(false)}
+        onCloseCardSelectionModal={() => setCardSelectionModal(null)}
+        onConfirmCardSelection={() => {}}
+        onCancelShipAbility={() => setShipAbilityConfirmation(null)}
+        onConfirmShipAbility={handleConfirmShipAbility}
+        handleCardInfoClick={handleCardInfoClick}
         downloadLogAsCSV={downloadLogAsCSV}
         setAiDecisionLogToShow={setAiDecisionLogToShow}
-        onCardInfoClick={handleCardInfoClick}
-      />
-      {modalContent && <GamePhaseModal title={modalContent.title} text={modalContent.text} onClose={modalContent.onClose === null ? null : (modalContent.onClose || (() => setModalContent(null)))}>{modalContent.children}</GamePhaseModal>}
-      <WaitingForPlayerModal
-        show={!!waitingForPlayerPhase}
-        phase={waitingForPlayerPhase}
-        opponentName={opponentPlayerState.name}
-        roomCode={p2pManager.roomCode}
-      />
-      <DeploymentConfirmationModal
-        deploymentConfirmation={deploymentConfirmation}
-        show={!!deploymentConfirmation}
-        onCancel={() => setDeploymentConfirmation(null)}
-        onConfirm={async () => {
-          if (!deploymentConfirmation) return;
-          // Store data before closing modal
-          const { lane, drone } = deploymentConfirmation;
-
-          // Close modal immediately
-          setDeploymentConfirmation(null);
-
-          // Wait for modal to unmount before playing animations
-          setTimeout(async () => {
-            await executeDeployment(lane, drone);
-          }, 400);
-        }}
-      />
-      {/* CHECKPOINT 7: Modal Displayed */}
-      {moveConfirmation && (() => {
-        debugLog('SINGLE_MOVE_FLOW', '🪟 CHECKPOINT 7: Modal displayed', {
-          moveConfirmation: moveConfirmation,
-          droneId: moveConfirmation.droneId,
-          owner: moveConfirmation.owner,
-          from: moveConfirmation.from,
-          to: moveConfirmation.to,
-          hasCard: !!moveConfirmation.card,
-          cardName: moveConfirmation.card?.name,
-          hasAllRequiredFields: !!(moveConfirmation.droneId && moveConfirmation.owner && moveConfirmation.from && moveConfirmation.to)
-        });
-        return null;
-      })()}
-      <MoveConfirmationModal
-        moveConfirmation={moveConfirmation}
-        show={!!moveConfirmation}
-        isSnared={moveConfirmation?.isSnared}
-        onCancel={() => setMoveConfirmation(null)}
-        onConfirm={async () => {
-          if (!moveConfirmation) return;
-
-          // CHECKPOINT 8: Log state before destructuring
-          debugLog('SINGLE_MOVE_FLOW', '✅ CHECKPOINT 8: Modal confirmed, extracting data', {
-            moveConfirmation: moveConfirmation,
-            moveConfirmationKeys: Object.keys(moveConfirmation),
-            droneIdPresent: 'droneId' in moveConfirmation,
-            ownerPresent: 'owner' in moveConfirmation,
-            dronePresent: 'drone' in moveConfirmation,
-            rawDroneId: moveConfirmation.droneId,
-            rawOwner: moveConfirmation.owner,
-            rawFrom: moveConfirmation.from,
-            rawTo: moveConfirmation.to
-          });
-
-          // Store data before closing modal
-          const { droneId, owner, from, to, card, isSnared: wasSnared } = moveConfirmation;
-
-          // CHECKPOINT 8b: Log after destructuring
-          debugLog('SINGLE_MOVE_FLOW', '🔓 CHECKPOINT 8b: Data destructured from moveConfirmation', {
-            droneId: droneId,
-            owner: owner,
-            from: from,
-            to: to,
-            hasCard: !!card,
-            cardName: card?.name,
-            allDefined: !!(droneId && owner && from && to),
-            typeofDroneId: typeof droneId,
-            typeofOwner: typeof owner
-          });
-
-          // Close modal immediately
-          setMoveConfirmation(null);
-
-          // Clean up singleMoveMode if it was active
-          if (singleMoveMode) {
-            setSingleMoveMode(null);
-            setSelectedCard(null);
-          }
-
-          // If snared: consume the flag, exhaust the drone, skip actual movement
-          if (wasSnared) {
-            debugLog('CONSUMPTION_DEBUG', '🟢 [1] App.jsx: Calling processAction snaredConsumption', { droneId, owner });
-            await processActionWithGuestRouting('snaredConsumption', { droneId, playerId: owner });
-            setSelectedDrone(null);
-            setPotentialInterceptors([]);
-            setPotentialGuardians([]);
-            setDraggedDrone(null);
-            setValidCardTargets([]);
-            return;
-          }
-
-          // Wait for modal to unmount before playing animations
-          setTimeout(async () => {
-            if (card) {
-              // CHECKPOINT 9: Calling resolveSingleMove
-              debugLog('SINGLE_MOVE_FLOW', '🚀 CHECKPOINT 9: Calling resolveSingleMove', {
-                card: card.name,
-                droneId: droneId,
-                owner: owner,
-                fromLane: from,
-                toLane: to,
-                parameters: { card, droneId, owner, from, to }
-              });
-
-              // Card-based movement (Tactical Repositioning, etc.)
-              await resolveSingleMove(card, droneId, owner, from, to);
-
-              // Clean up all UI selection states
-              setSelectedDrone(null);
-              setPotentialInterceptors([]);
-              setPotentialGuardians([]);
-              setDraggedDrone(null);
-              setValidCardTargets([]);
-            } else {
-              // Normal drone movement (no card)
-              await processActionWithGuestRouting('move', {
-                droneId: droneId,
-                fromLane: from,
-                toLane: to,
-                playerId: getLocalPlayerId()
-              });
-              setSelectedDrone(null);
-            }
-          }, 400);
-        }}
-      />
-
-      <AttackConfirmationModal
-        attackConfirmation={attackConfirmation}
-        show={!!attackConfirmation}
-        onCancel={() => {
-          setAttackConfirmation(null);
-          setSelectedDrone(null);
-        }}
-        onConfirm={async () => {
-          if (!attackConfirmation) return;
-          const { attacker } = attackConfirmation;
-          debugLog('CONSUMPTION_DEBUG', '🟢 [1] App.jsx: Calling processAction suppressedConsumption', { droneId: attacker.id, owner: attackConfirmation.attackingPlayer });
-          setAttackConfirmation(null);
-          setSelectedDrone(null);
-          await processActionWithGuestRouting('suppressedConsumption', {
-            droneId: attacker.id,
-            playerId: attackConfirmation.attackingPlayer
-          });
-        }}
-      />
-
-      <InterceptionOpportunityModal
-        choiceData={playerInterceptionChoice}
-        show={!!(playerInterceptionChoice && !interceptionModeActive)}
-        onViewBattlefield={handleViewBattlefield}
-        onIntercept={async (interceptor) => {
-          // Store attack details before closing modal
-          const attackDetails = { ...playerInterceptionChoice.attackDetails, interceptor };
-
-          // Close modal UI immediately (ActionProcessor will clear interceptionPending state)
-          setPlayerInterceptionChoice(null);
-
-          // Wait for modal to unmount/fade out before resolving attack
-          setTimeout(async () => {
-            await resolveAttack(attackDetails);
-          }, 400); // Delay to allow modal to close
-        }}
-        onDecline={async () => {
-          // Store attack details before closing modal
-          const attackDetails = { ...playerInterceptionChoice.attackDetails, interceptor: null };
-
-          // Close modal UI immediately (ActionProcessor will clear interceptionPending state)
-          setPlayerInterceptionChoice(null);
-
-          // Wait for modal to unmount/fade out before resolving attack
-          setTimeout(async () => {
-            await resolveAttack(attackDetails);
-          }, 400); // Delay to allow modal to close
-        }}
+        // Game data
+        gameLog={gameLog}
         gameEngine={gameEngine}
         turnPhase={turnPhase}
         isMyTurn={isMyTurn}
         passInfo={passInfo}
         getLocalPlayerId={getLocalPlayerId}
-        localPlayerState={localPlayerState}
         shipAbilityMode={shipAbilityMode}
         droneRefs={droneRefs}
-        mandatoryAction={mandatoryAction}
-      />
-      <OpponentDecidingInterceptionModal
-        show={showOpponentDecidingModal}
-        opponentName={opponentPlayerState?.name || 'Opponent'}
-      />
-      <DetailedDroneModal
-        isOpen={!!detailedDroneInfo}
-        drone={detailedDroneInfo?.drone}
-        droneAvailability={
-          detailedDroneInfo?.isPlayer
-            ? localPlayerState?.droneAvailability
-            : opponentPlayerState?.droneAvailability
-        }
-        onClose={() => setDetailedDroneInfo(null)}
-      />
-      <CardDetailModal isOpen={!!cardToView} card={cardToView} onClose={() => setCardToView(null)} />
-      {aiCardPlayReport && <AICardPlayReportModal report={aiCardPlayReport} onClose={() => setAiCardPlayReport(null)} />}
-      <AIDecisionLogModal
-        decisionLog={aiDecisionLogToShow}
-        show={!!aiDecisionLogToShow}
-        onClose={() => setAiDecisionLogToShow(null)}
-        getLocalPlayerId={getLocalPlayerId}
-        gameState={gameState}
-      />
-
-      <WinnerModal
-        winner={winner}
-        localPlayerId={getLocalPlayerId()}
-        show={winner && showWinnerModal}
-        onClose={() => setShowWinnerModal(false)}
-      />
-
-      <AbandonRunModal
-        show={showAbandonRunModal}
-        onCancel={() => setShowAbandonRunModal(false)}
-        onConfirm={handleConfirmAbandonRun}
+        p2pRoomCode={p2pManager.roomCode}
         lootCount={tacticalMapStateManager.getState()?.collectedLoot?.length || 0}
         creditsEarned={0}
-      />
-
-      <ViewShipSectionModal
-        isOpen={!!viewShipSectionModal}
-        onClose={() => setViewShipSectionModal(null)}
-        data={viewShipSectionModal}
-      />
-
-      <MandatoryActionModal
-        mandatoryAction={
-          mandatoryAction?.fromAbility
-            ? mandatoryAction  // Use ability-based mandatoryAction
-            : isInMandatoryDiscardPhase && !hasCommittedDiscard
-              ? { type: 'discard', count: excessCards }
-              : isInMandatoryRemovalPhase && !hasCommittedRemoval
-                ? { type: 'destroy', count: excessDrones }
-                : null
-        }
-        effectiveStats={localPlayerEffectiveStats}
-        show={(shouldShowDiscardUI || shouldShowRemovalUI || mandatoryAction?.fromAbility) && showMandatoryActionModal}
-        onClose={() => setShowMandatoryActionModal(false)}
-      />
-      <ConfirmationModal
-        confirmationModal={confirmationModal}
-        show={!!confirmationModal}
-      />
-
-      {/* Upgrade-related modals consolidated into ModalContainer */}
-      <ModalContainer
-        viewUpgradesModal={viewUpgradesModal}
-        setViewUpgradesModal={setViewUpgradesModal}
-        destroyUpgradeModal={destroyUpgradeModal}
-        setDestroyUpgradeModal={setDestroyUpgradeModal}
-        upgradeSelectionModal={upgradeSelectionModal}
-        setUpgradeSelectionModal={setUpgradeSelectionModal}
-        resolveCardPlay={resolveCardPlay}
-        getLocalPlayerId={getLocalPlayerId}
-        cancelCardSelection={cancelCardSelection}
-      />
-
-      <CardConfirmationModal
-        cardConfirmation={cardConfirmation}
-        show={!!cardConfirmation}
-        onCancel={() => setCardConfirmation(null)}
-        onConfirm={async () => {
-          // Store card details before closing modal
-          const card = cardConfirmation.card;
-          const target = cardConfirmation.target;
-
-          // Close modal immediately
-          setCardConfirmation(null);
-
-          // Wait for modal to unmount/fade out before resolving card play
-          setTimeout(async () => {
-            await resolveCardPlay(card, target, getLocalPlayerId());
-          }, 400); // Delay to allow modal to close
-        }}
-      />
-
-      {additionalCostConfirmation && (
-        <AdditionalCostConfirmationModal
-          card={additionalCostConfirmation.card}
-          costSelection={additionalCostConfirmation.costSelection}
-          effectTarget={additionalCostConfirmation.effectTarget}
-          onConfirm={async () => {
-            // Store data before closing modal
-            const card = additionalCostConfirmation.card;
-            const costSelection = additionalCostConfirmation.costSelection;
-            const effectTarget = additionalCostConfirmation.effectTarget;
-
-            // Close modal immediately
-            setAdditionalCostConfirmation(null);
-
-            // Wait for modal to unmount/fade out before processing card
-            setTimeout(async () => {
-              await confirmAdditionalCostCard(card, costSelection, effectTarget);
-            }, 400); // Delay to allow modal to close
-          }}
-          onCancel={() => {
-            setAdditionalCostConfirmation(null);
-            // Don't clear additionalCostState - user can reselect effect target
-          }}
-        />
-      )}
-
-      <DroneAbilityConfirmationModal
-        abilityConfirmation={abilityConfirmation}
-        show={!!abilityConfirmation}
-        onCancel={() => setAbilityConfirmation(null)}
-        onConfirm={() => {
-          // Store data before closing modal
-          const ability = abilityConfirmation.ability;
-          const drone = abilityConfirmation.drone;
-          const target = abilityConfirmation.target;
-
-          // Close modal immediately
-          setAbilityConfirmation(null);
-
-          // Wait for modal to unmount before playing animations
-          setTimeout(() => {
-            resolveAbility(ability, drone, target);
-          }, 400);
-        }}
-      />
-
-
-
-      <AIHandDebugModal
-        opponentPlayerState={opponentPlayerState}
-        show={showAiHandModal}
-        debugMode={AI_HAND_DEBUG_MODE}
-        onClose={() => setShowAiHandModal(false)}
-      />
-
-      <OpponentDronesModal
-        isOpen={showOpponentDronesModal}
-        onClose={() => setShowOpponentDronesModal(false)}
-        drones={opponentSelectedDrones}
-        appliedUpgrades={opponentPlayerState.appliedUpgrades}
-        droneAvailability={opponentPlayerState.droneAvailability}
-      />
-
-      <GameDebugModal
-        show={showDebugModal}
-        onClose={() => setShowDebugModal(false)}
         gameStateManager={gameStateManager}
         gameDataService={gameDataService}
-      />
-
-      {showGlossaryModal && (
-        <GlossaryModal onClose={() => setShowGlossaryModal(false)} />
-      )}
-
-      {showAIStrategyModal && (
-        <AIStrategyModal onClose={() => setShowAIStrategyModal(false)} />
-      )}
-
-      <AddCardToHandModal
-        isOpen={showAddCardModal}
-        onClose={() => setShowAddCardModal(false)}
-        onConfirm={handleAddCardsToHand}
         gameMode={gameState.gameMode}
+        deckCards={localPlayerState.deck}
+        allDeckCards={[...localPlayerState.deck, ...localPlayerState.hand, ...localPlayerState.discardPile]}
+        discardPileCards={localPlayerState.discardPile}
+        // Upgrade modal setters
+        setViewUpgradesModal={setViewUpgradesModal}
+        setDestroyUpgradeModal={setDestroyUpgradeModal}
+        setUpgradeSelectionModal={setUpgradeSelectionModal}
+        resolveCardPlay={resolveCardPlay}
+        cancelCardSelection={cancelCardSelection}
+        setCardSelectionModal={setCardSelectionModal}
       />
-
-      {/* Renders the modal for viewing the deck */}
-      <CardViewerModal
-        isOpen={isViewDeckModalOpen}
-        onClose={() => setIsViewDeckModalOpen(false)}
-        cards={localPlayerState.deck}
-        allCards={[...localPlayerState.deck, ...localPlayerState.hand, ...localPlayerState.discardPile]}
-        title="Remaining Cards in Deck"
-        groupByType={true}
-      />
-
-      {/* Renders the modal for viewing the discard pile */}
-      <CardViewerModal
-        isOpen={isViewDiscardModalOpen}
-        onClose={() => setIsViewDiscardModalOpen(false)}
-        cards={localPlayerState.discardPile}
-        title="Discard Pile"
-        shouldSort={false}
-      />
-
-      {/* Card Selection Modal for SEARCH_AND_DRAW effects */}
-      <CardSelectionModal
-        isOpen={!!cardSelectionModal}
-        onClose={cardSelectionModal?.onCancel || (() => setCardSelectionModal(null))}
-        onConfirm={cardSelectionModal?.onConfirm || (() => {})}
-        selectionData={cardSelectionModal}
-        mandatory={true}
-      />
-      <ShipAbilityConfirmationModal
-        shipAbilityConfirmation={shipAbilityConfirmation}
-        show={!!shipAbilityConfirmation}
-        onCancel={() => setShipAbilityConfirmation(null)}
-        onConfirm={async () => {
-          // Store data before closing modal
-          const ability = shipAbilityConfirmation.ability;
-          const sectionName = shipAbilityConfirmation.sectionName;
-          const target = shipAbilityConfirmation.target;
-          const abilityType = shipAbilityConfirmation.abilityType;
-
-          // Close modal immediately
-          setShipAbilityConfirmation(null);
-
-          // Wait for modal to unmount before resolving ability
-          setTimeout(async () => {
-            // Route to specific action type based on ability
-            if (abilityType === 'recall' || ability.name === 'Recall') {
-              const result = await processActionWithGuestRouting('recallAbility', {
-                targetId: target?.id || null,
-                sectionName: sectionName,
-                playerId: getLocalPlayerId()
-              });
-              debugLog('SHIP_ABILITY', `Recall ability completed:`, result);
-            } else if (abilityType === 'targetLock' || ability.name === 'Target Lock') {
-              const result = await processActionWithGuestRouting('targetLockAbility', {
-                targetId: target?.id || null,
-                sectionName: sectionName,
-                playerId: getLocalPlayerId()
-              });
-              debugLog('SHIP_ABILITY', `Target Lock ability completed:`, result);
-            } else if (abilityType === 'recalculate' || ability.name === 'Recalculate') {
-              const result = await processActionWithGuestRouting('recalculateAbility', {
-                sectionName: sectionName,
-                playerId: getLocalPlayerId()
-              });
-
-              // Handle mandatoryAction for discard
-              if (result.mandatoryAction) {
-                setMandatoryAction(result.mandatoryAction);
-                setFooterView('hand');
-                setIsFooterOpen(true);
-              }
-
-              debugLog('SHIP_ABILITY', `Recalculate ability completed:`, result);
-            } else if (abilityType === 'reallocateShields' || ability.name === 'Reallocate Shields') {
-              // Pass pending changes to complete() - this is where game state is actually modified
-              const result = await processActionWithGuestRouting('reallocateShieldsComplete', {
-                playerId: getLocalPlayerId(),
-                pendingChanges: pendingShieldChanges
-              });
-
-              clearReallocationState();
-
-              debugLog('SHIP_ABILITY', `Reallocate Shields ability completed:`, result);
-            }
-
-            // Clear ship ability targeting mode after completion
-            setShipAbilityMode(null);
-
-            // Clear reallocation UI state after ability completion
-            clearReallocationState();
-          }, 400);
-        }}
-      />
-
 
       {/* Failed Run Loading Screen (MIA transition) */}
       {gameState.showFailedRunScreen && (
