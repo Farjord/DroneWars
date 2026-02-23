@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { assetManifest, getAllAssetPaths } from './assetManifest.js';
+import { assetManifest, getAllAssetPaths } from '../assetManifest.js';
 
 describe('assetManifest - Ship Section Images', () => {
   describe('shipSectionImages category', () => {

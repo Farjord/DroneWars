@@ -4,13 +4,13 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import SaveGameService from './SaveGameService.js';
+import SaveGameService from '../SaveGameService.js';
 
 // Mock validateSaveFile to always pass for test simplicity
-vi.mock('../logic/save/saveGameValidator.js', () => ({
+vi.mock('../../logic/save/saveGameValidator.js', () => ({
   validateSaveFile: vi.fn(() => ({ valid: true, errors: [] })),
 }));
-vi.mock('../data/saveGameSchema.js', () => ({
+vi.mock('../../data/saveGameSchema.js', () => ({
   SAVE_VERSION: '1.0'
 }));
 
