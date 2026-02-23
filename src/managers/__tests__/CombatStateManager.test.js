@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { CombatStateManager } from './CombatStateManager.js';
+import { CombatStateManager } from '../CombatStateManager.js';
 
 describe('CombatStateManager', () => {
   let manager;

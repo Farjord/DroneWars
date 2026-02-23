@@ -9,11 +9,11 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import waypointManager from './WaypointManager.js';
-import tacticalMapStateManager from './TacticalMapStateManager.js';
+import waypointManager from '../WaypointManager.js';
+import tacticalMapStateManager from '../TacticalMapStateManager.js';
 
 // Mock TacticalMapStateManager
-vi.mock('./TacticalMapStateManager.js', () => ({
+vi.mock('../TacticalMapStateManager.js', () => ({
   default: {
     getState: vi.fn(),
     setState: vi.fn()

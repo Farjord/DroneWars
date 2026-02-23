@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import PhaseAnimationQueue from './PhaseAnimationQueue.js';
+import PhaseAnimationQueue from '../PhaseAnimationQueue.js';
 
 // Mock debug logger
 vi.mock('../utils/debugLogger.js', () => ({

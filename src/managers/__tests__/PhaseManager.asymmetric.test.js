@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import PhaseManager from './PhaseManager.js';
+import PhaseManager from '../PhaseManager.js';
 import {
   createLocalModeGameStateManager,
   createHostModeGameStateManager,
@@ -7,7 +7,7 @@ import {
   createMockHostBroadcast,
   ASYMMETRIC_SCENARIOS,
   getExpectedBehavior
-} from '../test/helpers/phaseTestHelpers.js';
+} from '../../test/helpers/phaseTestHelpers.js';
 
 /**
  * ASYMMETRIC PHASE TESTS

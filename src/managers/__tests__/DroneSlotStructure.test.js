@@ -10,13 +10,13 @@ import {
   createEmptyDroneSlots,
   migrateDroneSlotsToNewFormat,
   convertDronesToSlots
-} from '../logic/migration/saveGameMigrations.js';
+} from '../../logic/migration/saveGameMigrations.js';
 import {
   addDroneToSlots,
   removeDroneFromSlots,
   getDroneEffectiveLimit,
   buildActiveDronePool
-} from '../utils/slotDamageUtils.js';
+} from '../../utils/slotDamageUtils.js';
 
 describe('Drone Slot Structure - New Format', () => {
   describe('Data Structure', () => {

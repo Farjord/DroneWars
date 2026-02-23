@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import PhaseManager from './PhaseManager.js';
-import { createMockGameStateManager, simulatePass, simulateCommitment } from '../test/helpers/phaseTestHelpers.js';
+import PhaseManager from '../PhaseManager.js';
+import { createMockGameStateManager, simulatePass, simulateCommitment } from '../../test/helpers/phaseTestHelpers.js';
 
 // ========================================
 // PHASE MANAGER TESTS

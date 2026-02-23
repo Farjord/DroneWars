@@ -8,12 +8,12 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import transitionManager from './TransitionManager.js';
-import tacticalMapStateManager from './TacticalMapStateManager.js';
-import gameStateManager from './GameStateManager.js';
+import transitionManager from '../TransitionManager.js';
+import tacticalMapStateManager from '../TacticalMapStateManager.js';
+import gameStateManager from '../GameStateManager.js';
 
 // Mock dependencies
-vi.mock('./TacticalMapStateManager.js', () => ({
+vi.mock('../TacticalMapStateManager.js', () => ({
   default: {
     getState: vi.fn(),
     setState: vi.fn(),
@@ -21,7 +21,7 @@ vi.mock('./TacticalMapStateManager.js', () => ({
   }
 }));
 
-vi.mock('./GameStateManager.js', () => ({
+vi.mock('../GameStateManager.js', () => ({
   default: {
     getState: vi.fn(),
     setState: vi.fn()
@@ -29,7 +29,7 @@ vi.mock('./GameStateManager.js', () => ({
 }));
 
 // Mock debugLogger
-vi.mock('../utils/debugLogger.js', () => ({
+vi.mock('../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }));
 
@@ -368,7 +368,7 @@ describe('TransitionManager', () => {
 
     describe('Logging', () => {
       it('should log transition start with full context', async () => {
-        const { debugLog } = await import('../utils/debugLogger.js');
+        const { debugLog } = await import('../../utils/debugLogger.js');
 
         transitionManager.prepareForCombat({
           entryReason: 'poi_encounter',
@@ -595,7 +595,7 @@ describe('TransitionManager', () => {
 
     describe('Defeat Outcomes', () => {
       it('should log game over chain for defeat', async () => {
-        const { debugLog } = await import('../utils/debugLogger.js');
+        const { debugLog } = await import('../../utils/debugLogger.js');
         prepareSnapshot();
 
         transitionManager.returnFromCombat({
@@ -680,7 +680,7 @@ describe('TransitionManager', () => {
 
     describe('Logging', () => {
       it('should log transition complete with state diff', async () => {
-        const { debugLog } = await import('../utils/debugLogger.js');
+        const { debugLog } = await import('../../utils/debugLogger.js');
         prepareSnapshot();
 
         transitionManager.returnFromCombat({

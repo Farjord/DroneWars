@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import GuestMessageQueueService from './GuestMessageQueueService.js';
+import GuestMessageQueueService from '../GuestMessageQueueService.js';
 
 // Mock debug logger
 vi.mock('../utils/debugLogger.js', () => ({

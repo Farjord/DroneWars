@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MetaGameStateManager } from './MetaGameStateManager.js';
+import { MetaGameStateManager } from '../MetaGameStateManager.js';
 
 describe('MetaGameStateManager', () => {
   let manager;

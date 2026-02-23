@@ -9,8 +9,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import gameStateManager from './GameStateManager.js';
-import tacticalMapStateManager from './TacticalMapStateManager.js';
+import gameStateManager from '../GameStateManager.js';
+import tacticalMapStateManager from '../TacticalMapStateManager.js';
 import {
   calculateSectionHull,
   getDroneEffectiveLimit,
@@ -19,8 +19,8 @@ import {
   validateShipSlot,
   buildActiveDronePool,
   getDroneHandOrder
-} from '../utils/slotDamageUtils.js';
-import { migrateShipSlotToNewFormat } from '../logic/migration/saveGameMigrations.js';
+} from '../../utils/slotDamageUtils.js';
+import { migrateShipSlotToNewFormat } from '../../logic/migration/saveGameMigrations.js';
 
 // Mock the map generator
 vi.mock('../logic/map/generateMapData.js', () => ({
