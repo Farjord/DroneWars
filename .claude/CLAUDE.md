@@ -54,7 +54,7 @@ Refer to `Design/Technical Debt Refactor/CODE_STANDARDS.md` for all project stan
 ## Active Audit
 
 - **Audit doc**: `Design/CODEBASE_AUDIT.md`
-- **Current phase**: Phase F — App Root
+- **Current phase**: COMPLETE — all phases reviewed
 - **Test migration**: Complete (151 files moved, 220 tests in __tests__/, all passing)
 
 Resume protocol: Read the `## Meta` section of the audit doc, then continue from the next unreviewed file.

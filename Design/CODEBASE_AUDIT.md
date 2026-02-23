@@ -3,9 +3,9 @@
 ## Meta
 - Started: 2026-02-23
 - Last Session: 2026-02-23
-- Progress: 478/~500 source files (96%)
-- Current Phase: Phase F — App Root
-- Next File: src/App.jsx
+- Progress: ~500/~500 source files (100%)
+- Current Phase: COMPLETE
+- Next File: N/A — all phases reviewed
 - Test Migration: Complete (151 files moved, 220 total tests in __tests__/, 3748 tests passing)
 
 ## Structure Review
@@ -1212,10 +1212,153 @@
 7. **[PURITY]** — 10 components contain business logic: HexInfoPanel, TacticalMapModals, WinnerModal, ReputationRewardModal, DroneSelectionScreen, LobbyScreen, RepairBayScreen, QuickDeployManager, MIARecoveryModal, ReputationProgressModal.
 8. **[DUP]** — 10 duplication issues. Worst: TestingSetupScreen lane controls 3x, HexInfoPanel detection meter 3x, DeckBuilderLeftPanel component sections 3x.
 
-### Phase F — App Root
-#### F1: Root files
+### Phase F — App Root (4 files, reviewed 2026-02-23)
+
+**Totals:** 4 files, 1,764 lines, 13 issues
+
+#### F1: Root files + contexts
 | File | Lines | Issues | Status |
 |-|-|-|-|
+| App.jsx | 1333 | 9 | Reviewed |
+| AppRouter.jsx | 406 | 4 | Reviewed |
+| main.jsx | 13 | 0 | Reviewed |
+| contexts/EditorStatsContext.jsx | 12 | 0 | Reviewed |
 
-### Phase G — Cross-cutting
-(Import analysis, CSS strategy, standards synthesis)
+**Per-file issues:**
+
+**App.jsx (1333 lines, 9 issues):**
+- **[SIZE]** — 1333 lines. Despite heavy hook extraction, still owns ~50 useState, ~10 refs, ~10 hooks, and a 400-line render prop-pass. Animation state cluster (lines 127-146, ~20 setters) could extract to `useAnimationState`. ModalLayer prop-pass could collapse into a context.
+- **[DEAD] :160,162,205,723,780,782,789,791** — Eight "moved to..." breadcrumb comments (e.g., `// Combat and attack state -- potentialGuardians moved to useInterception`). Banned per comment standards.
+- **[DEAD] :443-452** — Commented-out debugLog block.
+- **[DEAD] :1317-1326** — `WaitingOverlay` rendered with `isVisible={false}` and `lastAction={null}`. Inert dead code.
+- **[DEAD] :374** — `// addLogEntry is now provided by useGameState hook` — stale breadcrumb.
+- **[SMELL] :215-242** — `useAnimationSetup` receives 18 individual setter functions as arguments. Brittle call signature.
+- **[SMELL] :601-615** — `cancelAllActions` is a plain function (not `useCallback`) but passed as dependency to `useDragMechanics`. New reference every render defeats memoization.
+- **[COMMENT] :785** — `// Note: Guest render notification removed` — describes a past change. Banned pattern.
+- **[PURITY] :806-833** — Early return renders inline JSX with hardcoded styles for loading placeholder.
+
+**AppRouter.jsx (406 lines, 4 issues):**
+- **[SIZE]** — 406 lines (400+ threshold). Error boundary class (lines 365-404) should live in its own file.
+- **[LOG] :128** — `console.error('Asset preload error:')` — should use `debugLog`.
+- **[LOG] :345** — `console.warn('Unknown app state:')` — should use `debugLog`.
+- **[STD-CHALLENGE] :376-377** — `console.error` in `componentDidCatch`. Defensible: error boundaries are last-resort crash handlers where `debugLog` may itself be broken. Recommend keeping with explicit comment.
+
+**main.jsx (13 lines):** Clean.
+**EditorStatsContext.jsx (12 lines):** Clean.
+
+### Phase G — Cross-cutting Analysis (2026-02-23)
+
+#### G1: Import Depth
+
+- **114 files** use 3+ level deep relative imports (`../../..` or deeper)
+- Concentrated in test files (which are 1 level deeper in `__tests__/`) and logic subdirectories
+- Worst offenders: test files in deeply nested logic/ subdirectories (e.g., `src/logic/effects/detection/__tests__/`)
+- **Recommendation:** Consider path aliases (e.g., `@/logic/`, `@/data/`) via vite config to eliminate relative import depth
+
+#### G2: CSS Strategy
+
+| Type | Count |
+|-|-|
+| Global CSS (src/styles/) | 10 files |
+| Co-located component CSS | 13 files |
+| CSS Modules (.module.css) | 2 files |
+
+- Hybrid approach: mostly global + co-located plain CSS
+- 2 CSS Module files (FloatingCardControls, GameFooter) contradict the plain CSS majority
+- **No documented CSS standard** in CODE_STANDARDS.md (see STD-CHALLENGE-03)
+
+#### G3: Raw Console Usage
+
+- **297 instances** across 66 non-test source files
+- Top offenders:
+
+| File | Count |
+|-|-|
+| modalShowcaseHelpers.js | 79 |
+| P2PManager.js | 20 |
+| debugLogger.js | 16 (intentional) |
+| SaveGameService.js | 11 |
+| useAnimationSetup.js | 9 |
+| cardDrawUtils.js | 8 |
+| MovementController.js | 7 |
+| AnimationManager.js | 6 |
+| PhaseManager.js | 5 |
+| DetectionManager.js | 5 |
+
+- Excluding `debugLogger.js` (intentional) and `modalShowcaseHelpers.js` (dev-only), **~200 violations** remain across ~64 files
+
+#### G4: Test Coverage
+
+| Metric | Count |
+|-|-|
+| Source files (non-test) | ~500 |
+| Test files | 220 |
+| Files with tests | ~220 (~44%) |
+| Files without tests | ~280 (~56%) |
+
+- **High-risk untested areas:** all 26 hooks (10,413 lines), components/animations, most components/ui, P2PManager (593 lines), several managers
+- **Well-tested areas:** logic/ subdirectories (especially effects, cards, combat), managers (core orchestration)
+
+#### G5: TODO/FIXME Comments
+
+- **137 occurrences** across 16 files
+- 114 are placeholder tests in `singleMoveMode.test.jsx` (single file)
+- **23 actionable TODOs** across production code:
+  - ActionProcessor.js:452,457 — shield allocation stubs
+  - RunLifecycleManager.js:67-68 — profile seed, map type selection
+  - ShipPlacementScreen.jsx — error UI handling
+  - useClickHandlers.js — targeting logic
+  - MovementController.js — encounter/extraction triggers
+  - PhaseManager.js:336 — broadcastPhaseUpdate no-op
+  - RewardManager.js:468 — reputation calculation
+  - GameStateManager.js:136 — facade removal
+
+#### G6: Standards Challenge Synthesis
+
+All [STD-CHALLENGE] items collected from the audit:
+
+**STD-CHALLENGE-01: Hook co-location vs centralized `hooks/`**
+- 24/26 hooks have exactly 1 consumer
+- Single-consumer hooks should co-locate with their screen
+- Decision: Pending
+
+**STD-CHALLENGE-02: `logic/effects/` directory granularity**
+- 8 of 15 subdirectories contain a single source file
+- Single-file directories create unnecessary navigation depth
+- Decision: Pending
+
+**STD-CHALLENGE-03: CSS strategy not documented**
+- Hybrid: 10 global, 13 co-located, 2 CSS Modules
+- No standard in CODE_STANDARDS.md
+- Decision: Pending
+
+**STD-CHALLENGE-04: Utils purity standard systematically violated**
+- 10+ of 26 utils files contain deep domain logic
+- Standard correct but unenforced
+- Decision: Pending
+
+**STD-CHALLENGE-05: Error boundary console.error**
+- `componentDidCatch` using raw `console.error` is defensible
+- Recommend explicit exemption comment
+- Decision: Keep with annotation
+
+**STD-CHALLENGE-06: Magic numbers pervasive**
+- Animation durations, delays, offsets, zoom levels, thresholds appear as raw numbers throughout hooks and components
+- Especially bad in: useAnimationSetup, HexGridRenderer, useTacticalEscape, PhaseAnimationQueue
+- Recommend: named constants at module level for all timing/layout values
+- Decision: Pending
+
+**STD-CHALLENGE-07: `Date.now()` / `Math.random()` for IDs**
+- Used throughout hooks for animation IDs, instance IDs
+- Collision risk in same-millisecond scenarios; breaks seeded RNG
+- Recommend: counter-based or `crypto.randomUUID()` for non-seeded contexts
+- Decision: Pending
+
+#### Phase F+G — Critical Findings Summary
+
+1. **[SIZE] App.jsx** — 1333 lines. Largest React component. ~50 useState, ~10 refs. Animation state cluster and ModalLayer prop-pass are extraction candidates.
+2. **[DEAD] App.jsx** — 8 banned "moved to" breadcrumb comments + 2 dead code blocks.
+3. **[SMELL] App.jsx:601** — `cancelAllActions` not wrapped in `useCallback`. Defeats memoization in consuming hooks.
+4. **[LOG]** — 297 raw console calls across 66 files. ~200 actionable violations after excluding debugLogger and showcase.
+5. **[TEST]** — ~280 of ~500 source files (56%) have no test coverage. All 26 hooks untested.
+6. **[TODO]** — 23 actionable TODOs in production code, most not tracked in FUTURE_IMPROVEMENTS.md.
