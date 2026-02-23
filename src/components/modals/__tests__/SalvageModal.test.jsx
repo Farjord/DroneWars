@@ -9,7 +9,7 @@
 import React from 'react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import SalvageModal from './SalvageModal.jsx';
+import SalvageModal from '../SalvageModal.jsx';
 
 describe('SalvageModal', () => {
   const mockOnSalvageSlot = vi.fn();

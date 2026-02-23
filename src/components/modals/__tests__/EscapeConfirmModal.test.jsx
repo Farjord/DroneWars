@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import EscapeConfirmModal from './EscapeConfirmModal.jsx'
+import EscapeConfirmModal from '../EscapeConfirmModal.jsx'
 
 // ========================================
 // ESCAPE CONFIRM MODAL TESTS

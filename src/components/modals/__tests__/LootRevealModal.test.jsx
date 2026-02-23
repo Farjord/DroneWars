@@ -11,22 +11,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 // Mock dependencies
-vi.mock('../../data/cardPackData.js', () => ({
+vi.mock('../../../data/cardPackData.js', () => ({
   RARITY_COLORS: { Common: '#808080', Uncommon: '#22c55e', Rare: '#3b82f6', Mythic: '#a855f7' }
 }));
 
-vi.mock('../../data/cardData.js', () => ({
+vi.mock('../../../data/cardData.js', () => ({
   default: [
     { id: 'CARD001', name: 'Test Card', type: 'Ordnance', rarity: 'Common' }
   ]
 }));
 
 // Mock UI components
-vi.mock('../ui/ActionCard', () => ({
+vi.mock('../../ui/ActionCard', () => ({
   default: ({ card }) => <div data-testid="action-card">{card?.name || 'Unknown'}</div>
 }));
 
-vi.mock('../ui/HiddenCard', () => ({
+vi.mock('../../ui/HiddenCard', () => ({
   default: ({ variant, rarity }) => (
     <div data-testid="hidden-card" data-variant={variant} data-rarity={rarity}>
       Hidden {variant || rarity}
@@ -34,7 +34,7 @@ vi.mock('../ui/HiddenCard', () => ({
   )
 }));
 
-vi.mock('../ui/ResourceCard', () => ({
+vi.mock('../../ui/ResourceCard', () => ({
   default: ({ resourceType, salvageItem, tokenData }) => (
     <div data-testid="resource-card" data-type={resourceType}>
       {resourceType === 'token' ? `Token: ${tokenData?.amount}` : salvageItem?.name || 'Resource'}
@@ -43,7 +43,7 @@ vi.mock('../ui/ResourceCard', () => ({
 }));
 
 // Import after mocks
-import LootRevealModal from './LootRevealModal.jsx';
+import LootRevealModal from '../LootRevealModal.jsx';
 
 describe('LootRevealModal - Token Display', () => {
   const mockOnCollect = vi.fn();

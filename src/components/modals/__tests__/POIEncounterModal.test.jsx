@@ -6,10 +6,10 @@
 import React from 'react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import POIEncounterModal from './POIEncounterModal.jsx';
+import POIEncounterModal from '../POIEncounterModal.jsx';
 
 // Mock gameStateManager
-vi.mock('../../managers/GameStateManager.js', () => ({
+vi.mock('../../../managers/GameStateManager.js', () => ({
   default: {
     getState: vi.fn(() => ({
       singlePlayerProfile: {

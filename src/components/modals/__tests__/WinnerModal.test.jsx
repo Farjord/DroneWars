@@ -8,7 +8,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 // Specifically tests that resetGameState() is called when exiting to menu
 
 // Mock dependencies BEFORE importing the component
-vi.mock('../../managers/GameStateManager.js', () => ({
+vi.mock('../../../managers/GameStateManager.js', () => ({
   default: {
     getState: vi.fn(),
     setState: vi.fn(),
@@ -16,7 +16,7 @@ vi.mock('../../managers/GameStateManager.js', () => ({
   }
 }))
 
-vi.mock('../../managers/TacticalMapStateManager.js', () => ({
+vi.mock('../../../managers/TacticalMapStateManager.js', () => ({
   default: {
     getState: vi.fn(),
     setState: vi.fn(),
@@ -26,7 +26,7 @@ vi.mock('../../managers/TacticalMapStateManager.js', () => ({
   }
 }))
 
-vi.mock('../../logic/singlePlayer/CombatOutcomeProcessor.js', () => ({
+vi.mock('../../../logic/singlePlayer/CombatOutcomeProcessor.js', () => ({
   default: {
     processCombatEnd: vi.fn(),
     finalizeLootCollection: vi.fn(),
@@ -35,7 +35,7 @@ vi.mock('../../logic/singlePlayer/CombatOutcomeProcessor.js', () => ({
 }))
 
 // Mock LootRevealModal
-vi.mock('./LootRevealModal.jsx', () => ({
+vi.mock('../LootRevealModal.jsx', () => ({
   default: ({ loot, onCollect, show }) => {
     if (!show) return null;
     return (
@@ -49,7 +49,7 @@ vi.mock('./LootRevealModal.jsx', () => ({
 }))
 
 // Mock DroneBlueprintRewardModal
-vi.mock('./DroneBlueprintRewardModal.jsx', () => ({
+vi.mock('../DroneBlueprintRewardModal.jsx', () => ({
   default: ({ blueprint, onAccept, show }) => {
     if (!show) return null;
     return (
@@ -64,10 +64,10 @@ vi.mock('./DroneBlueprintRewardModal.jsx', () => ({
 }))
 
 // Import after mocks
-import gameStateManager from '../../managers/GameStateManager.js'
-import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js'
-import CombatOutcomeProcessor from '../../logic/singlePlayer/CombatOutcomeProcessor.js'
-import WinnerModal from './WinnerModal.jsx'
+import gameStateManager from '../../../managers/GameStateManager.js'
+import tacticalMapStateManager from '../../../managers/TacticalMapStateManager.js'
+import CombatOutcomeProcessor from '../../../logic/singlePlayer/CombatOutcomeProcessor.js'
+import WinnerModal from '../WinnerModal.jsx'
 
 describe('WinnerModal', () => {
   beforeEach(() => {

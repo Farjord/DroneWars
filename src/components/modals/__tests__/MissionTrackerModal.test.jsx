@@ -28,7 +28,7 @@ const mockMissions = [
   },
 ];
 
-vi.mock('../../logic/missions/MissionService.js', () => ({
+vi.mock('../../../logic/missions/MissionService.js', () => ({
   default: {
     getActiveMissions: vi.fn(() => mockMissions),
     claimReward: vi.fn(() => ({ success: true, reward: { credits: 200 } })),
@@ -36,8 +36,8 @@ vi.mock('../../logic/missions/MissionService.js', () => ({
   },
 }));
 
-import MissionTrackerModal from './MissionTrackerModal.jsx';
-import MissionService from '../../logic/missions/MissionService.js';
+import MissionTrackerModal from '../MissionTrackerModal.jsx';
+import MissionService from '../../../logic/missions/MissionService.js';
 
 describe('MissionTrackerModal', () => {
   const defaultProps = {

@@ -6,7 +6,7 @@
 import React from 'react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import ReplicatorModal from './ReplicatorModal.jsx';
+import ReplicatorModal from '../ReplicatorModal.jsx';
 
 // Use vi.hoisted() to ensure mockCards is available before vi.mock() runs
 // (vi.mock is hoisted to top of file, so regular const declarations aren't available)
@@ -34,7 +34,7 @@ const { mockCards } = vi.hoisted(() => ({
 }));
 
 // Mock replicatorService
-vi.mock('../../logic/economy/ReplicatorService.js', () => ({
+vi.mock('../../../logic/economy/ReplicatorService.js', () => ({
   default: {
     getReplicatableCards: vi.fn(() => mockCards),
     getAllCosts: vi.fn(() => ({ Common: 1000, Uncommon: 2500, Rare: 3000, Mythic: 5000 })),
@@ -43,7 +43,7 @@ vi.mock('../../logic/economy/ReplicatorService.js', () => ({
 }));
 
 // Mock useGameState
-vi.mock('../../hooks/useGameState', () => ({
+vi.mock('../../../hooks/useGameState', () => ({
   useGameState: () => ({
     gameState: {
       singlePlayerProfile: { credits: 5000 },
@@ -53,7 +53,7 @@ vi.mock('../../hooks/useGameState', () => ({
 }));
 
 // Mock MissionService
-vi.mock('../../logic/missions/MissionService.js', () => ({
+vi.mock('../../../logic/missions/MissionService.js', () => ({
   default: { recordProgress: vi.fn() }
 }));
 

@@ -5,7 +5,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import BlueprintEncounterModal from './BlueprintEncounterModal';
+import BlueprintEncounterModal from '../BlueprintEncounterModal';
 
 describe('BlueprintEncounterModal - Quick Deploy', () => {
   const mockEncounter = {

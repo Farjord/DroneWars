@@ -17,7 +17,7 @@ vi.mock('lucide-react', () => ({
   ShieldMinus: (props) => <svg data-testid="shield-minus-icon" {...props} />
 }));
 
-import TacticalItemConfirmationModal from './TacticalItemConfirmationModal.jsx';
+import TacticalItemConfirmationModal from '../TacticalItemConfirmationModal.jsx';
 
 describe('TacticalItemConfirmationModal', () => {
   const mockItem = {

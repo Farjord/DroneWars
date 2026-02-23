@@ -6,11 +6,11 @@
 import React from 'react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import ShopModal from './ShopModal.jsx';
-import { tacticalItemCollection } from '../../data/tacticalItemData.js';
+import ShopModal from '../ShopModal.jsx';
+import { tacticalItemCollection } from '../../../data/tacticalItemData.js';
 
 // Mock the gameStateManager
-vi.mock('../../managers/GameStateManager.js', () => ({
+vi.mock('../../../managers/GameStateManager.js', () => ({
   default: {
     getState: vi.fn(() => ({
       singlePlayerProfile: {
@@ -33,7 +33,7 @@ vi.mock('../../managers/GameStateManager.js', () => ({
 }));
 
 // Mock the useGameState hook
-vi.mock('../../hooks/useGameState', () => ({
+vi.mock('../../../hooks/useGameState', () => ({
   useGameState: () => ({
     gameState: {
       singlePlayerProfile: {
@@ -87,7 +87,7 @@ describe('ShopModal', () => {
   describe('Buy Button States', () => {
     test('Buy button disabled when insufficient credits', async () => {
       // Re-mock with low credits
-      vi.doMock('../../hooks/useGameState', () => ({
+      vi.doMock('../../../hooks/useGameState', () => ({
         useGameState: () => ({
           gameState: {
             singlePlayerProfile: {

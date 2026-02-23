@@ -9,7 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
-import CardFilterModal from './CardFilterModal.jsx';
+import CardFilterModal from '../CardFilterModal.jsx';
 
 // Mock filter options
 const mockFilterOptions = {

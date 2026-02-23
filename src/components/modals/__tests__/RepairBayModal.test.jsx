@@ -13,11 +13,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 // Mock dependencies BEFORE importing component
-vi.mock('../../hooks/useGameState.js', () => ({
+vi.mock('../../../hooks/useGameState.js', () => ({
   useGameState: vi.fn()
 }));
 
-vi.mock('../../managers/GameStateManager.js', () => ({
+vi.mock('../../../managers/GameStateManager.js', () => ({
   default: {
     getState: vi.fn(),
     setState: vi.fn(),
@@ -26,9 +26,9 @@ vi.mock('../../managers/GameStateManager.js', () => ({
 }));
 
 // Import after mocks
-import { useGameState } from '../../hooks/useGameState.js';
-import gameStateManager from '../../managers/GameStateManager.js';
-import RepairBayModal from './RepairBayModal.jsx';
+import { useGameState } from '../../../hooks/useGameState.js';
+import gameStateManager from '../../../managers/GameStateManager.js';
+import RepairBayModal from '../RepairBayModal.jsx';
 
 // Mock ship slots for testing
 const createMockShipSlots = () => [

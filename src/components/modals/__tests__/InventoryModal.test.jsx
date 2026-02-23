@@ -13,20 +13,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 // Mock all dependencies BEFORE importing the component
-vi.mock('../../hooks/useGameState.js', () => ({
+vi.mock('../../../hooks/useGameState.js', () => ({
   useGameState: vi.fn()
 }));
 
-vi.mock('../../data/cardData.js', () => ({
+vi.mock('../../../data/cardData.js', () => ({
   default: [],
   RARITY_COLORS: { Common: '#808080', Uncommon: '#1eff00', Rare: '#0070dd', Mythic: '#a335ee' }
 }));
 
-vi.mock('../../data/droneData.js', () => ({
+vi.mock('../../../data/droneData.js', () => ({
   default: []
 }));
 
-vi.mock('../../data/shipSectionData.js', () => ({
+vi.mock('../../../data/shipSectionData.js', () => ({
   shipComponentCollection: [
     { id: 'BRIDGE_001', type: 'Bridge', name: 'Standard Command Bridge', rarity: 'Common' },
     { id: 'POWERCELL_001', type: 'Power Cell', name: 'Standard Power Cell', rarity: 'Common' },
@@ -35,42 +35,42 @@ vi.mock('../../data/shipSectionData.js', () => ({
   ]
 }));
 
-vi.mock('../../data/shipData.js', () => ({
+vi.mock('../../../data/shipData.js', () => ({
   shipCollection: []
 }));
 
 // Mock the card components to simplify testing
-vi.mock('../ui/HiddenCard', () => ({
+vi.mock('../../ui/HiddenCard', () => ({
   default: ({ rarity }) => <div data-testid="hidden-card">Hidden {rarity}</div>
 }));
 
-vi.mock('../ui/HiddenShipCard', () => ({
+vi.mock('../../ui/HiddenShipCard', () => ({
   default: ({ rarity }) => <div data-testid="hidden-ship-card">Hidden Ship {rarity}</div>
 }));
 
-vi.mock('../ui/HiddenShipSectionCard', () => ({
+vi.mock('../../ui/HiddenShipSectionCard', () => ({
   default: ({ rarity }) => <div data-testid="hidden-section-card">Hidden Section {rarity}</div>
 }));
 
-vi.mock('../ui/ActionCard', () => ({
+vi.mock('../../ui/ActionCard', () => ({
   default: ({ card }) => <div data-testid="action-card">{card.name}</div>
 }));
 
-vi.mock('../ui/DroneCard', () => ({
+vi.mock('../../ui/DroneCard', () => ({
   default: ({ drone }) => <div data-testid="drone-card">{drone.name}</div>
 }));
 
-vi.mock('../ui/ShipCard', () => ({
+vi.mock('../../ui/ShipCard', () => ({
   default: ({ ship }) => <div data-testid="ship-card">{ship.name}</div>
 }));
 
-vi.mock('../ui/ShipSectionCard', () => ({
+vi.mock('../../ui/ShipSectionCard', () => ({
   default: ({ section }) => <div data-testid="section-card">{section.name}</div>
 }));
 
 // Import after mocks
-import { useGameState } from '../../hooks/useGameState.js';
-import InventoryModal from './InventoryModal.jsx';
+import { useGameState } from '../../../hooks/useGameState.js';
+import InventoryModal from '../InventoryModal.jsx';
 
 describe('InventoryModal - Ship Section Starter Component Detection', () => {
   beforeEach(() => {

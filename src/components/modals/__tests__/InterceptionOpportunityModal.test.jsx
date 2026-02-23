@@ -7,7 +7,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 // Tests for the interception modal, including the new View Battlefield feature
 
 // Mock DroneToken and ShipSection to simplify rendering
-vi.mock('../ui/DroneToken.jsx', () => ({
+vi.mock('../../ui/DroneToken.jsx', () => ({
   default: ({ drone, onClick }) => (
     <div
       data-testid={`drone-token-${drone.id}`}
@@ -18,7 +18,7 @@ vi.mock('../ui/DroneToken.jsx', () => ({
   )
 }))
 
-vi.mock('../ui/ShipSection.jsx', () => ({
+vi.mock('../../ui/ShipSection.jsx', () => ({
   default: ({ section }) => (
     <div data-testid={`ship-section-${section}`}>
       {section}
@@ -26,7 +26,7 @@ vi.mock('../ui/ShipSection.jsx', () => ({
   )
 }))
 
-import InterceptionOpportunityModal from './InterceptionOpportunityModal.jsx'
+import InterceptionOpportunityModal from '../InterceptionOpportunityModal.jsx'
 
 describe('InterceptionOpportunityModal', () => {
   const mockOnIntercept = vi.fn()

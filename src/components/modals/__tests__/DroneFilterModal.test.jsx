@@ -8,7 +8,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
-import DroneFilterModal from './DroneFilterModal.jsx';
+import DroneFilterModal from '../DroneFilterModal.jsx';
 
 // Mock filter options
 const mockFilterOptions = {

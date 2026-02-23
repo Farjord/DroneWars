@@ -14,11 +14,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 
 // Mock dependencies BEFORE importing the component
-vi.mock('../../hooks/useGameState.js', () => ({
+vi.mock('../../../hooks/useGameState.js', () => ({
   useGameState: vi.fn()
 }));
 
-vi.mock('../../data/aiData.js', () => ({
+vi.mock('../../../data/aiData.js', () => ({
   default: [
     {
       bossId: 'BOSS_T1_NEMESIS',
@@ -35,17 +35,17 @@ vi.mock('../../data/aiData.js', () => ({
   ]
 }));
 
-vi.mock('../../utils/debugLogger.js', () => ({
+vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }));
 
-vi.mock('../../utils/singlePlayerDeckUtils.js', () => ({
+vi.mock('../../../utils/singlePlayerDeckUtils.js', () => ({
   validateDeckForDeployment: vi.fn(() => ({ valid: true, errors: [] }))
 }));
 
 // Import after mocks
-import { useGameState } from '../../hooks/useGameState.js';
-import BossEncounterModal from './BossEncounterModal.jsx';
+import { useGameState } from '../../../hooks/useGameState.js';
+import BossEncounterModal from '../BossEncounterModal.jsx';
 
 // Helper to create mock game state
 const createMockGameState = (overrides = {}) => ({

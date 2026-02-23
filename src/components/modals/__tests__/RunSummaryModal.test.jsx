@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import RunSummaryModal from './RunSummaryModal.jsx';
+import RunSummaryModal from '../RunSummaryModal.jsx';
 
 describe('RunSummaryModal - Reputation Display', () => {
   const baseSummary = {

@@ -6,7 +6,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import StarterDeckWarningModal from './StarterDeckWarningModal.jsx';
+import StarterDeckWarningModal from '../StarterDeckWarningModal.jsx';
 
 describe('StarterDeckWarningModal', () => {
   const mockOnCancel = vi.fn();

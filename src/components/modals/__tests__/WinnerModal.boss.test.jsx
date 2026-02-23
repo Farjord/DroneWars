@@ -11,7 +11,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
  */
 
 // Mock dependencies
-vi.mock('../../managers/GameStateManager.js', () => ({
+vi.mock('../../../managers/GameStateManager.js', () => ({
   default: {
     getState: vi.fn(),
     setState: vi.fn(),
@@ -19,14 +19,14 @@ vi.mock('../../managers/GameStateManager.js', () => ({
   }
 }));
 
-vi.mock('../../managers/TacticalMapStateManager.js', () => ({
+vi.mock('../../../managers/TacticalMapStateManager.js', () => ({
   default: {
     isRunActive: vi.fn(),
     getState: vi.fn(() => ({}))
   }
 }));
 
-vi.mock('../../logic/singlePlayer/CombatOutcomeProcessor.js', () => ({
+vi.mock('../../../logic/singlePlayer/CombatOutcomeProcessor.js', () => ({
   default: {
     processCombatEnd: vi.fn(() => ({
       success: true,
@@ -39,10 +39,10 @@ vi.mock('../../logic/singlePlayer/CombatOutcomeProcessor.js', () => ({
 }));
 
 // Import after mocks
-import WinnerModal from './WinnerModal.jsx';
-import gameStateManager from '../../managers/GameStateManager.js';
-import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
-import CombatOutcomeProcessor from '../../logic/singlePlayer/CombatOutcomeProcessor.js';
+import WinnerModal from '../WinnerModal.jsx';
+import gameStateManager from '../../../managers/GameStateManager.js';
+import tacticalMapStateManager from '../../../managers/TacticalMapStateManager.js';
+import CombatOutcomeProcessor from '../../../logic/singlePlayer/CombatOutcomeProcessor.js';
 
 describe('WinnerModal - Boss Combat Detection', () => {
   beforeEach(() => {

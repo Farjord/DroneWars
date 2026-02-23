@@ -13,38 +13,38 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within, fireEvent } from '@testing-library/react';
 
 // Mock dependencies BEFORE importing the component
-vi.mock('../../hooks/useGameState.js', () => ({
+vi.mock('../../../hooks/useGameState.js', () => ({
   useGameState: vi.fn()
 }));
 
-vi.mock('../../data/economyData.js', () => ({
+vi.mock('../../../data/economyData.js', () => ({
   ECONOMY: {
     STARTER_DECK_EXTRACTION_LIMIT: 3,
     CUSTOM_DECK_EXTRACTION_LIMIT: 6
   }
 }));
 
-vi.mock('../../logic/reputation/ReputationService.js', () => ({
+vi.mock('../../../logic/reputation/ReputationService.js', () => ({
   default: {
     getExtractionBonus: vi.fn(() => 0)
   }
 }));
 
-vi.mock('../../utils/debugLogger.js', () => ({
+vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }));
 
-vi.mock('../../utils/singlePlayerDeckUtils.js', () => ({
+vi.mock('../../../utils/singlePlayerDeckUtils.js', () => ({
   validateDeckForDeployment: vi.fn(() => ({ valid: true, errors: [] }))
 }));
 
-vi.mock('../ui/MapPreviewRenderer', () => ({
+vi.mock('../../ui/MapPreviewRenderer', () => ({
   default: ({ hexes }) => <div data-testid="map-preview">Map Preview</div>
 }));
 
 // Import after mocks
-import { useGameState } from '../../hooks/useGameState.js';
-import MapOverviewModal from './MapOverviewModal.jsx';
+import { useGameState } from '../../../hooks/useGameState.js';
+import MapOverviewModal from '../MapOverviewModal.jsx';
 
 // Helper to create mock game state
 const createMockGameState = (overrides = {}) => ({

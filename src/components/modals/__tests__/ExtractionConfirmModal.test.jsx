@@ -7,15 +7,15 @@ import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 // Tests for the extraction confirmation modal with scanning animation
 
 // Mock ExtractionController
-vi.mock('../../logic/singlePlayer/ExtractionController.js', () => ({
+vi.mock('../../../logic/singlePlayer/ExtractionController.js', () => ({
   default: {
     checkBlockade: vi.fn()
   }
 }))
 
 // Import after mock setup
-import ExtractionConfirmModal from './ExtractionConfirmModal.jsx'
-import ExtractionController from '../../logic/singlePlayer/ExtractionController.js'
+import ExtractionConfirmModal from '../ExtractionConfirmModal.jsx'
+import ExtractionController from '../../../logic/singlePlayer/ExtractionController.js'
 
 // Default props for testing
 const createDefaultProps = () => ({

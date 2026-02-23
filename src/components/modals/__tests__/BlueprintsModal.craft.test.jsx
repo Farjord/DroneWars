@@ -15,12 +15,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // Mock dependencies BEFORE importing the component
-vi.mock('../../hooks/useGameState.js', () => ({
+vi.mock('../../../hooks/useGameState.js', () => ({
   useGameState: vi.fn()
 }));
 
 // Mock drone data with starter and non-starter drones
-vi.mock('../../data/droneData.js', () => ({
+vi.mock('../../../data/droneData.js', () => ({
   default: [
     // Starter drones (should NOT create instances)
     { name: 'Dart', rarity: 'Common', selectable: true },
@@ -32,7 +32,7 @@ vi.mock('../../data/droneData.js', () => ({
 }));
 
 // Mock ship section data with starter and non-starter components
-vi.mock('../../data/shipSectionData.js', () => ({
+vi.mock('../../../data/shipSectionData.js', () => ({
   shipComponentCollection: [
     // Starter components (should NOT create instances)
     { id: 'BRIDGE_001', name: 'Standard Command Bridge', type: 'Bridge', rarity: 'Common', hull: 10, maxHull: 10 },
@@ -43,7 +43,7 @@ vi.mock('../../data/shipSectionData.js', () => ({
 }));
 
 // Mock ship data
-vi.mock('../../data/shipData.js', () => ({
+vi.mock('../../../data/shipData.js', () => ({
   getAllShips: () => [
     { id: 'SHIP_001', name: 'Reconnaissance Corvette', rarity: 'Common', baseHull: 8, baseShields: 3 },
     { id: 'SHIP_002', name: 'Assault Frigate', rarity: 'Uncommon', baseHull: 12, baseShields: 4 },
@@ -51,12 +51,12 @@ vi.mock('../../data/shipData.js', () => ({
 }));
 
 // Mock card data for rarity colors
-vi.mock('../../data/cardData.js', () => ({
+vi.mock('../../../data/cardData.js', () => ({
   RARITY_COLORS: { Common: '#808080', Uncommon: '#1eff00', Rare: '#0070dd', Mythic: '#a335ee' }
 }));
 
 // Mock starter deck data
-vi.mock('../../data/playerDeckData.js', () => ({
+vi.mock('../../../data/playerDeckData.js', () => ({
   starterDeck: {
     droneSlots: [
       { slotIndex: 0, slotDamaged: false, assignedDrone: 'Dart' },
@@ -69,20 +69,20 @@ vi.mock('../../data/playerDeckData.js', () => ({
 }));
 
 // Mock starter pool IDs
-vi.mock('../../data/saveGameSchema.js', () => ({
+vi.mock('../../../data/saveGameSchema.js', () => ({
   starterPoolShipIds: ['SHIP_001'],
   starterPoolDroneNames: ['Dart', 'Talon']
 }));
 
 // Mock economy data
-vi.mock('../../data/economyData.js', () => ({
+vi.mock('../../../data/economyData.js', () => ({
   ECONOMY: {
     REPLICATION_COSTS: { Common: 100, Uncommon: 250, Rare: 600, Mythic: 1500 }
   }
 }));
 
 // Mock AI cores data
-vi.mock('../../data/aiCoresData.js', () => ({
+vi.mock('../../../data/aiCoresData.js', () => ({
   getAICoresCost: (rarity) => {
     const costs = { Common: 1, Uncommon: 2, Rare: 3, Mythic: 5 };
     return costs[rarity] || 1;
@@ -90,8 +90,8 @@ vi.mock('../../data/aiCoresData.js', () => ({
 }));
 
 // Import after mocks
-import { useGameState } from '../../hooks/useGameState.js';
-import BlueprintsModal from './BlueprintsModal.jsx';
+import { useGameState } from '../../../hooks/useGameState.js';
+import BlueprintsModal from '../BlueprintsModal.jsx';
 
 describe('BlueprintsModal - Crafting Creates Instances', () => {
   const mockGameStateManager = {

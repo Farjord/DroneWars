@@ -12,7 +12,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 // Mock ShipCard component
-vi.mock('../ui/ShipCard.jsx', () => ({
+vi.mock('../../ui/ShipCard.jsx', () => ({
   default: ({ ship, isSelectable }) => (
     <div data-testid="ship-card" data-ship-name={ship?.name} data-selectable={isSelectable}>
       {ship?.name}
@@ -21,7 +21,7 @@ vi.mock('../ui/ShipCard.jsx', () => ({
 }));
 
 // Mock ShipSection component
-vi.mock('../ui/ShipSection.jsx', () => ({
+vi.mock('../../ui/ShipSection.jsx', () => ({
   default: ({ section, stats }) => (
     <div data-testid={`ship-section-${section}`} data-image={stats?.image}>
       {section}
@@ -30,21 +30,21 @@ vi.mock('../ui/ShipSection.jsx', () => ({
 }));
 
 // Mock DroneCard component
-vi.mock('../ui/DroneCard.jsx', () => ({
+vi.mock('../../ui/DroneCard.jsx', () => ({
   default: ({ drone }) => (
     <div data-testid="drone-card">{drone?.name}</div>
   )
 }));
 
 // Mock ActionCard component
-vi.mock('../ui/ActionCard.jsx', () => ({
+vi.mock('../../ui/ActionCard.jsx', () => ({
   default: ({ card }) => (
     <div data-testid="action-card">{card?.name}</div>
   )
 }));
 
 // Mock shipSectionData
-vi.mock('../../data/shipSectionData.js', () => ({
+vi.mock('../../../data/shipSectionData.js', () => ({
   shipComponentCollection: [
     {
       id: 'BRIDGE_001',
@@ -77,12 +77,12 @@ vi.mock('../../data/shipSectionData.js', () => ({
 }));
 
 // Mock gameEngine
-vi.mock('../../logic/gameLogic.js', () => ({
+vi.mock('../../../logic/gameLogic.js', () => ({
   gameEngine: {}
 }));
 
 // Mock resolveShipSectionStats to return stats with resolved image
-vi.mock('../../utils/shipSectionImageResolver.js', () => ({
+vi.mock('../../../utils/shipSectionImageResolver.js', () => ({
   resolveShipSectionStats: vi.fn((stats, ship) => {
     if (!stats || !ship) return stats;
     // Simulate resolved image path
@@ -97,8 +97,8 @@ vi.mock('../../utils/shipSectionImageResolver.js', () => ({
 }));
 
 // Import component after mocks
-import ViewDeckModal from './ViewDeckModal.jsx';
-import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js';
+import ViewDeckModal from '../ViewDeckModal.jsx';
+import { resolveShipSectionStats } from '../../../utils/shipSectionImageResolver.js';
 
 describe('ViewDeckModal', () => {
   const mockShip = {

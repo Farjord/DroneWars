@@ -23,7 +23,7 @@ vi.mock('lucide-react', () => ({
   Zap: (props) => <svg data-testid="zap-icon" {...props} />
 }));
 
-import DeploymentConfirmationModal from './DeploymentConfirmationModal.jsx';
+import DeploymentConfirmationModal from '../DeploymentConfirmationModal.jsx';
 
 describe('DeploymentConfirmationModal - Icon Tests', () => {
   const defaultProps = {

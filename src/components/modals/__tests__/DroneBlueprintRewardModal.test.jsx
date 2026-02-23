@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 
 // Mock RARITY_COLORS
-vi.mock('../../data/cardPackData.js', () => ({
+vi.mock('../../../data/cardPackData.js', () => ({
   RARITY_COLORS: {
     Common: '#808080',
     Uncommon: '#22c55e',
@@ -21,7 +21,7 @@ vi.mock('../../data/cardPackData.js', () => ({
 }));
 
 // Mock DroneCard component
-vi.mock('../ui/DroneCard', () => ({
+vi.mock('../../ui/DroneCard', () => ({
   default: ({ drone, showStats }) => (
     <div data-testid="drone-card" data-drone-name={drone?.name}>
       <span data-testid="drone-name">{drone?.name}</span>
@@ -37,7 +37,7 @@ vi.mock('../ui/DroneCard', () => ({
 }));
 
 // Mock HiddenCard component (for face-down state)
-vi.mock('../ui/HiddenCard', () => ({
+vi.mock('../../ui/HiddenCard', () => ({
   default: ({ variant }) => (
     <div data-testid="hidden-card" data-variant={variant}>
       Hidden Blueprint
@@ -46,7 +46,7 @@ vi.mock('../ui/HiddenCard', () => ({
 }));
 
 // Import after mocks
-import DroneBlueprintRewardModal from './DroneBlueprintRewardModal.jsx';
+import DroneBlueprintRewardModal from '../DroneBlueprintRewardModal.jsx';
 
 describe('DroneBlueprintRewardModal', () => {
   const mockOnAccept = vi.fn();
