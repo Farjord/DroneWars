@@ -6,10 +6,10 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import ActionCard from './ActionCard.jsx';
+import ActionCard from '../ActionCard.jsx';
 
 // Mock the image loading
-vi.mock('../../services/assetService', () => ({
+vi.mock('../../../services/assetService', () => ({
   getAssetPath: (path) => path
 }));
 

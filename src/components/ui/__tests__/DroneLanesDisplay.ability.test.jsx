@@ -10,13 +10,13 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import DroneLanesDisplay from './DroneLanesDisplay.jsx';
+import DroneLanesDisplay from '../DroneLanesDisplay.jsx';
 
 // Track props passed to DroneToken
 let droneTokenProps = [];
 
 // Mock DroneToken to capture the props it receives
-vi.mock('./DroneToken.jsx', () => ({
+vi.mock('../DroneToken.jsx', () => ({
   default: (props) => {
     droneTokenProps.push(props);
     return (
@@ -30,7 +30,7 @@ vi.mock('./DroneToken.jsx', () => ({
   }
 }));
 
-vi.mock('../../hooks/useGameData.js', () => ({
+vi.mock('../../../hooks/useGameData.js', () => ({
   useGameData: () => ({
     getEffectiveStats: vi.fn()
   })

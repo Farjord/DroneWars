@@ -5,12 +5,12 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import DroneToken from './DroneToken.jsx';
-import { GameDataProvider } from '../../hooks/useGameData.js';
+import DroneToken from '../DroneToken.jsx';
+import { GameDataProvider } from '../../../hooks/useGameData.js';
 
 // Mock the useGameData hook
-vi.mock('../../hooks/useGameData.js', async () => {
-  const actual = await vi.importActual('../../hooks/useGameData.js');
+vi.mock('../../../hooks/useGameData.js', async () => {
+  const actual = await vi.importActual('../../../hooks/useGameData.js');
   return {
     ...actual,
     useGameData: () => ({
@@ -26,7 +26,7 @@ vi.mock('../../hooks/useGameData.js', async () => {
 });
 
 // Mock the EditorStatsContext
-vi.mock('../../contexts/EditorStatsContext.jsx', () => ({
+vi.mock('../../../contexts/EditorStatsContext.jsx', () => ({
   useEditorStats: () => null
 }));
 

@@ -7,7 +7,7 @@ import { render, screen } from '@testing-library/react';
 // Tests for the Hull Integrity display component.
 // Shows remaining damage needed to win / total damage threshold.
 
-import HullIntegrityBadge from './HullIntegrityBadge.jsx';
+import HullIntegrityBadge from '../HullIntegrityBadge.jsx';
 
 describe('HullIntegrityBadge', () => {
   describe('display format', () => {

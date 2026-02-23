@@ -7,7 +7,7 @@ import { render, screen, act, fireEvent } from '@testing-library/react'
 // Tests for the escape animation screen shown after confirming escape
 // Shows real-time damage hits and requires user acknowledgment
 
-import EscapeLoadingScreen from './EscapeLoadingScreen.jsx'
+import EscapeLoadingScreen from '../EscapeLoadingScreen.jsx'
 
 describe('EscapeLoadingScreen', () => {
   const mockOnComplete = vi.fn()

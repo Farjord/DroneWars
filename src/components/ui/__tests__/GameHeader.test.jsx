@@ -7,23 +7,23 @@ import { render, screen, fireEvent } from '@testing-library/react'
 // Tests for the interception mode button group in the header
 
 // Mock dependencies
-vi.mock('../../utils/gameUtils.js', () => ({
+vi.mock('../../../utils/gameUtils.js', () => ({
   getPhaseDisplayName: vi.fn((phase) => phase || 'Unknown Phase')
 }))
 
-vi.mock('../../utils/debugLogger.js', () => ({
+vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }))
 
-vi.mock('../../config/devConfig.js', () => ({
+vi.mock('../../../config/devConfig.js', () => ({
   default: { AI_HAND_DEBUG_MODE: false }
 }))
 
-vi.mock('../../config/backgrounds.js', () => ({
+vi.mock('../../../config/backgrounds.js', () => ({
   BACKGROUNDS: []
 }))
 
-import GameHeader from './GameHeader.jsx'
+import GameHeader from '../GameHeader.jsx'
 
 describe('GameHeader - Interception Mode', () => {
   const mockHandleShowInterceptionDialog = vi.fn()

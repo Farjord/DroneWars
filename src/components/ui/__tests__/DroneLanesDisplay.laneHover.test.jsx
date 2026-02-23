@@ -9,22 +9,22 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import DroneLanesDisplay from './DroneLanesDisplay.jsx';
+import DroneLanesDisplay from '../DroneLanesDisplay.jsx';
 
 // Mock the hooks
-vi.mock('../../hooks/useGameData.js', () => ({
+vi.mock('../../../hooks/useGameData.js', () => ({
   useGameData: () => ({
     getEffectiveStats: vi.fn(() => ({ speed: 3, attack: 2, hull: 2, maxShields: 0 }))
   })
 }));
 
 // Mock debugLog
-vi.mock('../../utils/debugLogger.js', () => ({
+vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }));
 
 // Mock DroneToken to avoid deep component rendering issues
-vi.mock('./DroneToken.jsx', () => ({
+vi.mock('../DroneToken.jsx', () => ({
   default: ({ drone, isActionTarget }) => (
     <div data-testid={`drone-${drone.id}`} data-is-action-target={isActionTarget}>
       {drone.name}

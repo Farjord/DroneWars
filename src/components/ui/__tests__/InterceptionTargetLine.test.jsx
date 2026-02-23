@@ -7,10 +7,10 @@
 import React from 'react';
 import { render, act, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import InterceptionTargetLine from './InterceptionTargetLine';
+import InterceptionTargetLine from '../InterceptionTargetLine';
 
 // Mock getElementCenter utility
-vi.mock('../../utils/gameUtils.js', () => ({
+vi.mock('../../../utils/gameUtils.js', () => ({
   getElementCenter: vi.fn((element, gameArea) => {
     if (!element || !gameArea) return null;
     // Return mock positions based on element id

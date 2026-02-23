@@ -8,10 +8,10 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import ShipSectionsDisplay from './ShipSectionsDisplay.jsx';
+import ShipSectionsDisplay from '../ShipSectionsDisplay.jsx';
 
 // Mock dependencies
-vi.mock('./ShipSectionCompact.jsx', () => ({
+vi.mock('../ShipSectionCompact.jsx', () => ({
   default: ({ section, onClick, isCardTarget }) => (
     <div
       data-testid={`section-${section}`}
@@ -23,17 +23,17 @@ vi.mock('./ShipSectionCompact.jsx', () => ({
   )
 }));
 
-vi.mock('../../hooks/useGameData.js', () => ({
+vi.mock('../../../hooks/useGameData.js', () => ({
   useGameData: () => ({
     getEffectiveShipStats: () => ({ bySection: {} })
   })
 }));
 
-vi.mock('../../utils/debugLogger.js', () => ({
+vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }));
 
-vi.mock('../../utils/shipSectionImageResolver.js', () => ({
+vi.mock('../../../utils/shipSectionImageResolver.js', () => ({
   resolveShipSectionStats: (stats) => stats
 }));
 

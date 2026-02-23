@@ -8,7 +8,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import FilterChip from './FilterChip.jsx';
+import FilterChip from '../FilterChip.jsx';
 
 describe('FilterChip', () => {
   // ========================================

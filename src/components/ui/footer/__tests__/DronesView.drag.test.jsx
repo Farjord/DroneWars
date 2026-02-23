@@ -6,10 +6,10 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import DronesView from './DronesView.jsx';
+import DronesView from '../DronesView.jsx';
 
 // Mock dependencies
-vi.mock('../DroneCard.jsx', () => ({
+vi.mock('../../DroneCard.jsx', () => ({
   default: ({ drone, onClick, isSelectable, isSelected }) => (
     <div
       data-testid={`drone-card-${drone.name}`}
@@ -22,27 +22,27 @@ vi.mock('../DroneCard.jsx', () => ({
   )
 }));
 
-vi.mock('../ActionCard.jsx', () => ({
+vi.mock('../../ActionCard.jsx', () => ({
   default: ({ card }) => <div data-testid="action-card">{card.name}</div>
 }));
 
-vi.mock('../CardBackPlaceholder.jsx', () => ({
+vi.mock('../../CardBackPlaceholder.jsx', () => ({
   default: () => <div data-testid="card-back-placeholder" />
 }));
 
-vi.mock('../../../utils/debugLogger.js', () => ({
+vi.mock('../../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }));
 
-vi.mock('../../../managers/SoundManager.js', () => ({
+vi.mock('../../../../managers/SoundManager.js', () => ({
   default: { getInstance: () => ({ play: vi.fn() }) }
 }));
 
-vi.mock('../../../data/droneData.js', () => ({
+vi.mock('../../../../data/droneData.js', () => ({
   default: []
 }));
 
-vi.mock('../../../utils/cardAnimationUtils.js', () => ({
+vi.mock('../../../../utils/cardAnimationUtils.js', () => ({
   calculateCardFanRotation: () => 0,
   getHoverTransform: () => 'none',
   getCardTransition: () => 'none',

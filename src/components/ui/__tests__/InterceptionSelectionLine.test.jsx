@@ -7,7 +7,7 @@ import { render, screen, waitFor, cleanup } from '@testing-library/react'
 // Tests for the blue dotted line showing interceptor -> attacker selection
 
 // Mock getElementCenter utility
-vi.mock('../../utils/gameUtils.js', () => ({
+vi.mock('../../../utils/gameUtils.js', () => ({
   getElementCenter: vi.fn((element, container) => {
     if (!element) return null;
     // Return mock positions based on test data attributes
@@ -19,8 +19,8 @@ vi.mock('../../utils/gameUtils.js', () => ({
   })
 }))
 
-import InterceptionSelectionLine from './InterceptionSelectionLine.jsx'
-import { getElementCenter } from '../../utils/gameUtils.js'
+import InterceptionSelectionLine from '../InterceptionSelectionLine.jsx'
+import { getElementCenter } from '../../../utils/gameUtils.js'
 
 describe('InterceptionSelectionLine', () => {
   let mockGameAreaRef;

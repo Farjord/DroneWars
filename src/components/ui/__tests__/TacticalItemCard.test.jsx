@@ -6,8 +6,8 @@
 import React from 'react';
 import { describe, test, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import TacticalItemCard from './TacticalItemCard.jsx';
-import { getTacticalItemById } from '../../data/tacticalItemData.js';
+import TacticalItemCard from '../TacticalItemCard.jsx';
+import { getTacticalItemById } from '../../../data/tacticalItemData.js';
 
 describe('TacticalItemCard', () => {
   const mockItem = getTacticalItemById('ITEM_EVADE');

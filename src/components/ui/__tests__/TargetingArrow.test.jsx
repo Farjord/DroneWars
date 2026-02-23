@@ -6,7 +6,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import TargetingArrow, { calculatePolygonPoints } from './TargetingArrow';
+import TargetingArrow, { calculatePolygonPoints } from '../TargetingArrow';
 
 describe('TargetingArrow', () => {
   describe('visibility', () => {

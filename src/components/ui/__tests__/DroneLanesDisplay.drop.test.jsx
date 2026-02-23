@@ -6,14 +6,14 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import DroneLanesDisplay from './DroneLanesDisplay.jsx';
+import DroneLanesDisplay from '../DroneLanesDisplay.jsx';
 
 // Mock dependencies
-vi.mock('./DroneToken.jsx', () => ({
+vi.mock('../DroneToken.jsx', () => ({
   default: ({ drone }) => <div data-testid={`drone-token-${drone.id}`}>{drone.name}</div>
 }));
 
-vi.mock('../../hooks/useGameData.js', () => ({
+vi.mock('../../../hooks/useGameData.js', () => ({
   useGameData: () => ({
     getEffectiveStats: vi.fn()
   })

@@ -7,7 +7,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 // Tests for blockade risk display below detection meter
 
 // Mock DetectionManager
-vi.mock('../../logic/detection/DetectionManager.js', () => ({
+vi.mock('../../../logic/detection/DetectionManager.js', () => ({
   default: {
     getCurrentDetection: vi.fn(),
     getHexDetectionCost: vi.fn(() => 5),
@@ -16,14 +16,14 @@ vi.mock('../../logic/detection/DetectionManager.js', () => ({
 }))
 
 // Mock SalvageController
-vi.mock('../../logic/salvage/SalvageController.js', () => ({
+vi.mock('../../../logic/salvage/SalvageController.js', () => ({
   default: {
     _calculateThreatBonus: vi.fn(() => 0)
   }
 }))
 
 // Mock MovementController
-vi.mock('../../logic/map/MovementController.js', () => ({
+vi.mock('../../../logic/map/MovementController.js', () => ({
   default: {
     getMovementPreview: vi.fn(() => ({
       valid: true,
@@ -37,9 +37,9 @@ vi.mock('../../logic/map/MovementController.js', () => ({
 }))
 
 // Import after mocks
-import HexInfoPanel from './HexInfoPanel.jsx'
-import DetectionManager from '../../logic/detection/DetectionManager.js'
-import SalvageController from '../../logic/salvage/SalvageController.js'
+import HexInfoPanel from '../HexInfoPanel.jsx'
+import DetectionManager from '../../../logic/detection/DetectionManager.js'
+import SalvageController from '../../../logic/salvage/SalvageController.js'
 
 // Default props for testing
 const createDefaultProps = () => ({

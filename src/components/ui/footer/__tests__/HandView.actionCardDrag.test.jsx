@@ -6,10 +6,10 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import HandView from './HandView.jsx';
+import HandView from '../HandView.jsx';
 
 // Mock dependencies
-vi.mock('../ActionCard.jsx', () => ({
+vi.mock('../../ActionCard.jsx', () => ({
   default: ({ card, isPlayable, isDimmed, isDragging, onClick }) => (
     <div
       data-testid={`action-card-${card.id}`}
@@ -23,11 +23,11 @@ vi.mock('../ActionCard.jsx', () => ({
   )
 }));
 
-vi.mock('../CardBackPlaceholder.jsx', () => ({
+vi.mock('../../CardBackPlaceholder.jsx', () => ({
   default: () => <div data-testid="card-back-placeholder" />
 }));
 
-vi.mock('../../../logic/TargetingRouter.js', () => ({
+vi.mock('../../../../logic/TargetingRouter.js', () => ({
   default: class MockTargetingRouter {
     routeTargeting() {
       return [{ id: 'target1' }]; // Has valid targets

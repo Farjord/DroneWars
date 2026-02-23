@@ -6,10 +6,10 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import DroneToken from './DroneToken.jsx';
+import DroneToken from '../DroneToken.jsx';
 
 // Mock dependencies
-vi.mock('../../data/droneData.js', () => ({
+vi.mock('../../../data/droneData.js', () => ({
   default: [{
     name: 'Dart',
     hull: 2,
@@ -21,7 +21,7 @@ vi.mock('../../data/droneData.js', () => ({
   }]
 }));
 
-vi.mock('../../hooks/useGameData.js', () => ({
+vi.mock('../../../hooks/useGameData.js', () => ({
   useGameData: () => ({
     getEffectiveStats: (drone) => ({
       attack: 2,
@@ -33,7 +33,7 @@ vi.mock('../../hooks/useGameData.js', () => ({
   })
 }));
 
-vi.mock('../../contexts/EditorStatsContext.jsx', () => ({
+vi.mock('../../../contexts/EditorStatsContext.jsx', () => ({
   useEditorStats: () => null
 }));
 
