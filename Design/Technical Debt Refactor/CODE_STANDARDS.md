@@ -26,12 +26,14 @@ Each file owns one concern. A cohesive 400-line file is preferable to four scatt
 
 ### Known Data File Violations
 
+> Last audited: 2026-02-23
+
 These `src/data/` files currently contain logic that should be extracted:
 
 - `aiCoresData.js` — contains `calculateAICoresDrop()`, `getAICoresCost()`
 - `cardPackData.js` — contains `createSeededRNG()`, `getPackCostForTier()`, `generateRandomShopPack()`
 - `salvageItemData.js` — contains `findEligibleItems()`, `selectSalvageItem()`, `generateSalvageItemFromValue()`
-- `saveGameSchema.js` — contains 8+ migration/factory/validation functions
+- ~~`saveGameSchema.js`~~ — refactored to pure 140-line data file (2026-02-23)
 - `missionData.js` — contains query helpers like `getMissionById()`
 - `reputationRewardsData.js` — contains `getLevelData()`, `getNewlyUnlockedLevels()`
 - `tutorialData.js` — contains query/factory helpers
@@ -115,3 +117,37 @@ src/
 4. Propose extraction plan with rationale
 5. Execute incrementally — tests green at every step
 6. Update imports across the codebase
+
+## Logging Standards
+
+- **All logging MUST use `debugLog()` from `src/utils/debugLogger.js`** — no raw `console.log` in source files.
+- **Use existing categories** where applicable. Add new categories to `DEBUG_CONFIG.categories` only when genuinely new concerns arise.
+- **Logs must fire once per event**, not on every render cycle or useEffect update. If a `debugLog` is inside a useEffect, ensure it only triggers on the specific dependency change it's tracking. Guard with condition checks where necessary.
+- When touching a file, ensure its logging is consistent, categorized, and useful for debugging.
+
+## Comment Standards
+
+Only three types of comments are permitted:
+
+1. **Code explanation** — explains WHY something works the way it does, the pattern being used, or non-obvious implementation details. Not what the code does (that should be self-evident).
+2. **Section separators** — brief labels to delineate logical sections in longer files (e.g., `// --- Targeting Logic ---`). Keep minimal.
+3. **TODO comments** — `// TODO: <actionable description>` for work that still needs to be done.
+
+**Banned patterns**: `// NEW`, `// CHANGED`, `// ADDED`, `// MODIFIED`, `// Updated for X`, `// Refactored`, or any comment that describes *what changed* rather than *what the code does*. Remove stale comments when touching a file.
+
+## Interaction Paradigm
+
+- **Drag-and-drop is the canonical model for ACTION INITIATION only**: playing cards from hand, moving drones, attacking with drones. These are drag-initiated, not click-initiated.
+- **Click-based interactions remain valid** for: sub-action selections (choosing targets after a card is played), drone token abilities, ship card abilities, UI buttons, modal interactions, and any secondary selection steps within a multi-step action flow.
+- **Legacy click-to-initiate-action code** (clicking a card in hand to play it, clicking to initiate a drone move/attack) is dead code and should be removed when encountered.
+- When in doubt: if it initiates an action → legacy (remove). If it responds to a sub-selection within an already-initiated action → active (keep).
+
+## Testing Philosophy
+
+- **Test intent, not implementation**: Tests verify *what* code does (behavior, outcomes, contracts), not *how*. Test public interfaces. Assert on observable results.
+- **Refactoring safety net**: Before extracting code, ensure tests exist for the behaviors being moved. Write them first if missing. Tests must pass before and after.
+- **Mock at boundaries only**: Mock network, storage, and timers — not between internal modules.
+- **Targeted, not exhaustive**: Write the fewest tests that catch real bugs. Collapse near-identical assertions into parameterized or loop-based tests. If a test wouldn't catch a plausible bug, don't write it.
+- **Data files get structural tests only**: Test invariants (unique IDs, required fields, valid enums) as aggregate checks over the full collection — never per-entry.
+- **Collapse, don't multiply**: When testing N similar inputs, use one parameterized test that loops — not N individual tests.
+- **Zero failures required**: The test suite must be completely clean (0 failures) before any work is committed. Never accept or ignore test failures.
