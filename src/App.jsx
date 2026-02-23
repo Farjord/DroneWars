@@ -561,24 +561,6 @@ const App = ({ phaseAnimationQueue }) => {
 
   const clearCardPlayWarning = useCallback(() => setCardPlayWarning(null), []);
 
-  const handleBackgroundChange = useCallback((backgroundId) => {
-    setSelectedBackground(backgroundId);
-    localStorage.setItem('gameBackground', backgroundId);
-  }, []);
-
-  const handleViewShipSection = useCallback((sectionData) => {
-    setViewShipSectionModal(sectionData);
-  }, []);
-
-  // handleCloseAiCardReport moved to useResolvers
-
-  /**
-   * Handle showing opponent's selected drones modal
-   */
-  const handleShowOpponentDrones = useCallback(() => {
-    setShowOpponentDronesModal(true);
-  }, []);
-
   // ========================================
   // SECTION 7: RESOLVERS HOOK + CANCEL ALL ACTIONS
   // ========================================
@@ -864,6 +846,7 @@ const App = ({ phaseAnimationQueue }) => {
     checkBothPlayersHandLimitComplete, handleConfirmMandatoryDestroy,
     downloadLogAsCSV, handleCardInfoClick,
     handleFooterViewToggle, handleFooterButtonClick,
+    handleBackgroundChange, handleViewShipSection, handleShowOpponentDrones,
   } = useGameLifecycle({
     // Game state
     gameState, localPlayerState, opponentPlayerState, turnPhase, passInfo,
@@ -884,6 +867,8 @@ const App = ({ phaseAnimationQueue }) => {
     isResolvingAttackRef,
     // Footer state
     footerView, isFooterOpen, setFooterView, setIsFooterOpen,
+    // UI modal state
+    setSelectedBackground, setViewShipSectionModal, setShowOpponentDronesModal,
     // External
     gameStateManager, phaseAnimationQueue, gameLog,
   });

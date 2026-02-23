@@ -65,6 +65,11 @@ export default function useGameLifecycle({
   setFooterView,
   setIsFooterOpen,
 
+  // --- UI modal state ---
+  setSelectedBackground,
+  setViewShipSectionModal,
+  setShowOpponentDronesModal,
+
   // --- External ---
   gameStateManager,
   phaseAnimationQueue,
@@ -559,6 +564,21 @@ export default function useGameLifecycle({
     footerPreviousPhaseRef.current = turnPhase;
   }, [turnPhase, mandatoryAction]);
 
+  // --- UI modal/preference handlers ---
+
+  const handleBackgroundChange = (backgroundId) => {
+    setSelectedBackground(backgroundId);
+    localStorage.setItem('gameBackground', backgroundId);
+  };
+
+  const handleViewShipSection = (sectionData) => {
+    setViewShipSectionModal(sectionData);
+  };
+
+  const handleShowOpponentDrones = () => {
+    setShowOpponentDronesModal(true);
+  };
+
   return {
     handleReset,
     handleExitGame,
@@ -579,5 +599,8 @@ export default function useGameLifecycle({
     handleCardInfoClick,
     handleFooterViewToggle,
     handleFooterButtonClick,
+    handleBackgroundChange,
+    handleViewShipSection,
+    handleShowOpponentDrones,
   };
 }
