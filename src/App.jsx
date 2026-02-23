@@ -65,6 +65,7 @@ import { useGameState } from './hooks/useGameState';
 import { useGameData } from './hooks/useGameData';
 import { useExplosions } from './hooks/useExplosions';
 import { useAnimationSetup } from './hooks/useAnimationSetup';
+import useShieldAllocation from './hooks/useShieldAllocation.js';
 
 // --- 1.5 DATA/LOGIC IMPORTS ---
 import fullCardCollection from './data/cardData.js';
@@ -72,7 +73,6 @@ import { gameEngine } from './logic/gameLogic.js';
 import { calculatePotentialInterceptors } from './logic/combat/InterceptionProcessor.js';
 import TargetingRouter from './logic/TargetingRouter.js';
 import ExtractionController from './logic/singlePlayer/ExtractionController.js';
-import { calculateRoundStartReset } from './logic/shields/ShieldResetUtils.js';
 import { forceWinCombat } from './logic/game/ForceWin.js';
 import WinConditionChecker from './logic/game/WinConditionChecker.js';
 import { BACKGROUNDS, DEFAULT_BACKGROUND, getBackgroundById } from './config/backgrounds.js';
@@ -321,24 +321,9 @@ const App = ({ phaseAnimationQueue }) => {
   const [confirmationModal, setConfirmationModal] = useState(null); // For confirm/cancel popups
   const [cardSelectionModal, setCardSelectionModal] = useState(null); // For search and draw card selection
 
-  // Shield reallocation state
-  const [reallocationPhase, setReallocationPhase] = useState(null); // 'removing' | 'adding' | null
-  const [shieldsToAdd, setShieldsToAdd] = useState(0);
-  const [shieldsToRemove, setShieldsToRemove] = useState(0);
-  const [originalShieldAllocation, setOriginalShieldAllocation] = useState(null);
-  const [postRemovalShieldAllocation, setPostRemovalShieldAllocation] = useState(null); // For 'adding' phase reset
-  const [initialShieldAllocation, setInitialShieldAllocation] = useState(null); // For shield allocation reset
-  const [reallocationAbility, setReallocationAbility] = useState(null);
-  const [pendingShieldChanges, setPendingShieldChanges] = useState({}); // Tracks pending shield changes: { sectionName: delta }
-  const [postRemovalPendingChanges, setPostRemovalPendingChanges] = useState({}); // Snapshot of pending changes after removal phase
-
   // Phase and turn tracking for modal management
   const [lastTurnPhase, setLastTurnPhase] = useState(null); // Track last phase to detect phase transitions
   const [optionalDiscardCount, setOptionalDiscardCount] = useState(0); // Track number of optional discards during optionalDiscard phase
-
-  // Pending shield allocation state (privacy: keep allocations local until confirmed)
-  const [pendingShieldAllocations, setPendingShieldAllocations] = useState({}); // { sectionName: count }
-  const [pendingShieldsRemaining, setPendingShieldsRemaining] = useState(null); // Remaining shields to allocate
 
   // Lane control state for lane-control cards
   const [laneControl, setLaneControl] = useState({ lane1: null, lane2: null, lane3: null });
@@ -574,28 +559,6 @@ const App = ({ phaseAnimationQueue }) => {
     return unsubscribe;
   }, [isMultiplayer, p2pManager, gameStateManager]);
 
-  // Initialize pending shield allocations when entering allocateShields phase
-  useEffect(() => {
-    if (turnPhase === 'allocateShields' && shieldsToAllocate > 0) {
-      // Initialize pending state from current allocations
-      const currentAllocations = {};
-      if (localPlayerState?.shipSections) {
-        Object.entries(localPlayerState.shipSections).forEach(([sectionName, section]) => {
-          if (section.allocatedShields > 0) {
-            currentAllocations[sectionName] = section.allocatedShields;
-          }
-        });
-      }
-      setPendingShieldAllocations(currentAllocations);
-      setInitialShieldAllocation(currentAllocations); // Store snapshot for reset
-      setPendingShieldsRemaining(shieldsToAllocate);
-      debugLog('SHIELD_CLICKS', '🆕 Initialized pending shield allocations', {
-        currentAllocations,
-        shieldsToAllocate
-      });
-    }
-  }, [turnPhase, shieldsToAllocate, localPlayerState]);
-
   // Combined lane hover handler - calculates affected drones synchronously to prevent visual flash
   // When hovering a lane with a LANE-targeting card, we need both hoveredLane and affectedDroneIds
   // to update in the same render. React batches setState calls in event handlers, so setting both
@@ -710,14 +673,6 @@ const App = ({ phaseAnimationQueue }) => {
     });
   }, [localPlayerState?.activeDronePool]);
 
-  // Shield allocation calculations
-  const canAllocateMoreShields = useMemo(() => {
-    if (!localPlayerState?.shipSections) return false;
-    return Object.keys(localPlayerState.shipSections).some(sectionName =>
-        localPlayerState.shipSections[sectionName].allocatedShields < gameDataService.getEffectiveSectionMaxShields(sectionName, localPlayerState, localPlacedSections)
-    );
-  }, [localPlayerState?.shipSections, localPlacedSections, gameDataService]);
-
   // --- 5.5 PHASE-BASED MANDATORY ACTION DERIVED STATE ---
   // Derive UI state for mandatory discard/removal phases directly from phase + commitments
   // This eliminates timing issues with mandatoryAction state for phase-based actions
@@ -811,6 +766,39 @@ const App = ({ phaseAnimationQueue }) => {
     return await processAction(type, payload);
   }, [gameState.gameMode, processAction, p2pManager, gameStateManager]);
 
+  // --- SHIELD ALLOCATION HOOK ---
+  const {
+    reallocationPhase,
+    shieldsToAdd,
+    shieldsToRemove,
+    pendingShieldAllocations,
+    pendingShieldsRemaining,
+    pendingShieldChanges,
+    setReallocationPhase,
+    setShieldsToRemove,
+    setShieldsToAdd,
+    setOriginalShieldAllocation,
+    setReallocationAbility,
+    handleResetShields,
+    handleConfirmShields,
+    handleCancelReallocation,
+    handleContinueToAddPhase,
+    handleResetReallocation,
+    handleConfirmReallocation,
+    handleShipSectionClick,
+    clearReallocationState,
+  } = useShieldAllocation({
+    gameState,
+    localPlayerState,
+    localPlacedSections,
+    gameDataService,
+    getLocalPlayerId,
+    getOpponentPlayerId,
+    processActionWithGuestRouting,
+    setWaitingForPlayerPhase,
+    setShipAbilityConfirmation,
+  });
+
   // --- 6.1 MULTIPLAYER PHASE SYNCHRONIZATION ---
   // Handlers for coordinating game phases in multiplayer mode
   // ========================================
@@ -872,75 +860,11 @@ const App = ({ phaseAnimationQueue }) => {
   }, [processActionWithGuestRouting, getLocalPlayerId, getOpponentPlayerId, aiCardPlayReport, winner]);
 
   /**
-   * Handle reset shields button - restores shields to initial snapshot
-   */
-  const handleResetShields = useCallback(async () => {
-    // Use utility function to calculate reset values
-    const snapshot = initialShieldAllocation || {};
-    const { newPending, newRemaining } = calculateRoundStartReset(snapshot, shieldsToAllocate);
-
-    setPendingShieldAllocations(newPending);
-    setPendingShieldsRemaining(newRemaining);
-
-    debugLog('SHIELD_CLICKS', '🔄 Reset pending shield allocations to initial snapshot', {
-      initialSnapshot: snapshot,
-      newPending,
-      newRemaining
-    });
-  }, [shieldsToAllocate, initialShieldAllocation]);
-
-  /**
    * Handle showing opponent's selected drones modal
    */
   const handleShowOpponentDrones = useCallback(() => {
     setShowOpponentDronesModal(true);
   }, []);
-
-  /**
-   * Handle confirm shields button - commits allocation
-   */
-  const handleConfirmShields = useCallback(async () => {
-    debugLog('COMMITMENTS', '🏁 handleConfirmShields called');
-    debugLog('SHIELD_CLICKS', '🔵 Confirm Shields button clicked');
-
-    // Commit allocation via ActionProcessor with all pending allocations
-    const result = await processActionWithGuestRouting('commitment', {
-      playerId: getLocalPlayerId(),
-      phase: 'allocateShields',
-      actionData: {
-        committed: true,
-        shieldAllocations: pendingShieldAllocations  // Send all pending allocations at once
-      }
-    });
-
-    debugLog('COMMITMENTS', '🏁 Shield allocation commitment result:', {
-      hasData: !!result.data,
-      bothPlayersComplete: result.data?.bothPlayersComplete,
-      shieldAllocations: pendingShieldAllocations,
-      fullResult: result
-    });
-    debugLog('SHIELD_CLICKS', '📥 Commitment result:', result);
-
-    // Unified logic: Check opponent commitment status directly from state
-    const commitments = gameState.commitments || {};
-    const phaseCommitments = commitments.allocateShields || {};
-    const opponentCommitted = phaseCommitments[getOpponentPlayerId()]?.completed;
-
-    debugLog('SHIELD_CLICKS', '🔍 Checking opponent commitment:', {
-      hasCommitments: !!commitments,
-      hasPhaseCommitments: !!phaseCommitments,
-      opponentCommitted
-    });
-
-    if (!opponentCommitted) {
-      debugLog('COMMITMENTS', '✋ Opponent not committed yet, showing waiting overlay');
-      debugLog('SHIELD_CLICKS', '⏳ Setting waiting overlay');
-      setWaitingForPlayerPhase('allocateShields');
-    } else {
-      debugLog('COMMITMENTS', '✅ Both players complete, no waiting overlay');
-      debugLog('SHIELD_CLICKS', '✅ Both players committed, proceeding');
-    }
-  }, [processActionWithGuestRouting, getLocalPlayerId, gameState.commitments, getOpponentPlayerId, pendingShieldAllocations]);
 
   /**
    * HANDLE CANCEL MULTI MOVE
@@ -2625,347 +2549,6 @@ const App = ({ phaseAnimationQueue }) => {
     await processActionWithGuestRouting('debugAddCardsToHand', { playerId, cardInstances });
 
     debugLog('DEBUG_TOOLS', '✅ Cards added through ActionProcessor');
-  };
-
-  /**
-   * HANDLE ALLOCATE SHIELD
-   * Allocates a shield to a specific ship section.
-   * Routes to appropriate manager based on current phase.
-   * @param {string} sectionName - Name of the section receiving the shield
-   */
-  const handleAllocateShield = async (sectionName) => {
-    const { turnPhase } = gameState;
-
-    debugLog('SHIELD_CLICKS', `🟢 handleAllocateShield called`, {
-      sectionName,
-      turnPhase,
-      localPlayerId: getLocalPlayerId(),
-      pendingShieldsRemaining,
-      currentPhaseMatch: turnPhase === 'allocateShields'
-    });
-
-    if (turnPhase === 'allocateShields') {
-      // Round start shield allocation - use pending state (privacy: don't send to opponent until confirmed)
-      if (pendingShieldsRemaining <= 0) {
-        debugLog('SHIELD_CLICKS', '❌ No shields remaining to allocate');
-        return;
-      }
-
-      // Check if section can accept more shields
-      const section = localPlayerState.shipSections[sectionName];
-      const maxShields = gameDataService.getEffectiveSectionMaxShields(sectionName, localPlayerState, localPlacedSections);
-      const currentPending = pendingShieldAllocations[sectionName] || 0;
-
-      if (currentPending >= maxShields) {
-        debugLog('SHIELD_CLICKS', `❌ Section ${sectionName} already at max shields (${maxShields})`);
-        return;
-      }
-
-      // Update pending state only (no network communication)
-      setPendingShieldAllocations(prev => ({
-        ...prev,
-        [sectionName]: currentPending + 1
-      }));
-      setPendingShieldsRemaining(prev => prev - 1);
-
-      debugLog('SHIELD_CLICKS', `✅ Added shield to ${sectionName} in pending state`, {
-        newPending: currentPending + 1,
-        remainingShields: pendingShieldsRemaining - 1
-      });
-    } else {
-      debugLog('SHIELD_CLICKS', `🔄 Using reallocation path instead`);
-      // Action phase shield reallocation - uses ActionProcessor directly
-      await processActionWithGuestRouting('reallocateShields', {
-        action: 'add',
-        sectionName: sectionName,
-        playerId: getLocalPlayerId()
-      });
-    }
-  };
-
-  /**
-   * HANDLE REMOVE SHIELD
-   * Removes a shield from a section during shield reallocation.
-   * Transfers removed shields to allocation pool.
-   * @param {string} sectionName - Name of the section losing the shield
-   */
-  const handleRemoveShield = async (sectionName) => {
-    if (shieldsToRemove <= 0) return;
-
-    const section = localPlayerState.shipSections[sectionName];
-    // Check current allocated shields MINUS any pending removals
-    const currentPendingDelta = pendingShieldChanges[sectionName] || 0;
-    const effectiveAllocated = section.allocatedShields + currentPendingDelta;
-    if (effectiveAllocated <= 0) return;
-
-    // Validate with ActionProcessor (doesn't modify game state)
-    const result = await processActionWithGuestRouting('reallocateShieldsAbility', {
-      action: 'remove',
-      sectionName: sectionName,
-      playerId: getLocalPlayerId()
-    });
-
-    if (result.success) {
-      // Track pending change locally (game state unchanged)
-      setPendingShieldChanges(prev => ({
-        ...prev,
-        [sectionName]: (prev[sectionName] || 0) - 1
-      }));
-      setShieldsToRemove(prev => prev - 1);
-      setShieldsToAdd(prev => prev + 1);
-    }
-  };
-
-  /**
-   * HANDLE ADD SHIELD
-   * Adds a shield to a section during shield reallocation.
-   * Validation is handled by ActionProcessor.
-   * @param {string} sectionName - Name of the section receiving the shield
-   */
-  const handleAddShield = async (sectionName) => {
-    if (shieldsToAdd <= 0) return;
-
-    // Validate with ActionProcessor (doesn't modify game state)
-    const result = await processActionWithGuestRouting('reallocateShieldsAbility', {
-      action: 'add',
-      sectionName: sectionName,
-      playerId: getLocalPlayerId()
-    });
-
-    if (result.success) {
-      // Track pending change locally (game state unchanged)
-      setPendingShieldChanges(prev => ({
-        ...prev,
-        [sectionName]: (prev[sectionName] || 0) + 1
-      }));
-      setShieldsToAdd(prev => prev - 1);
-    }
-  };
-
-  /**
-   * HANDLE CONTINUE TO ADD PHASE
-   * Transitions from shield removal to shield addition phase during reallocation.
-   * Saves current pending changes for 'adding' phase reset functionality.
-   */
-  const handleContinueToAddPhase = () => {
-    // Save current pending changes as the baseline for 'adding' phase resets
-    setPostRemovalPendingChanges({ ...pendingShieldChanges });
-    setReallocationPhase('adding');
-  };
-
-  /**
-   * HANDLE RESET REALLOCATION
-   * Resets shield reallocation to the start of the current phase.
-   * - During 'removing': Clears all pending changes (game state never modified)
-   * - During 'adding': Restores to post-removal pending changes (before any additions)
-   */
-  const handleResetReallocation = () => {
-    if (reallocationPhase === 'removing') {
-      // Clear all pending changes (game state was never modified)
-      setPendingShieldChanges({});
-
-      // Reset counters to initial values
-      setShieldsToRemove(reallocationAbility.ability.effect.value.maxShields);
-      setShieldsToAdd(0);
-    } else if (reallocationPhase === 'adding') {
-      // Restore to post-removal pending changes (remove only addition changes)
-      setPendingShieldChanges({ ...postRemovalPendingChanges });
-
-      // Calculate how many shields were removed (sum of negative deltas)
-      const removedCount = Object.values(postRemovalPendingChanges)
-        .filter(delta => delta < 0)
-        .reduce((sum, delta) => sum + Math.abs(delta), 0);
-
-      // Reset shields to add counter (restore full amount)
-      setShieldsToAdd(removedCount);
-    }
-  };
-
-  /**
-   * HANDLE CANCEL REALLOCATION
-   * Cancels shield reallocation and clears all pending changes.
-   * Game state was never modified during editing, so no restore needed.
-   */
-  const handleCancelReallocation = () => {
-    // Clear all pending changes (game state was never modified)
-    setPendingShieldChanges({});
-    setPostRemovalPendingChanges({});
-
-    // Clear reallocation state
-    setReallocationPhase(null);
-    setShieldsToRemove(0);
-    setShieldsToAdd(0);
-    setOriginalShieldAllocation(null);
-    setPostRemovalShieldAllocation(null);
-    setReallocationAbility(null);
-  };
-
-  /**
-   * HANDLE CONFIRM REALLOCATION
-   * Confirms shield reallocation and triggers ability resolution.
-   * Shows final confirmation modal with energy deduction.
-   */
-  const handleConfirmReallocation = () => {
-    // Show confirmation modal with energy deduction
-    setShipAbilityConfirmation({
-      ability: reallocationAbility.ability,
-      sectionName: reallocationAbility.sectionName,
-      target: null,
-      abilityType: 'reallocateShields'
-    });
-  };
-
-  /**
-   * HANDLE SHIP SECTION CLICK
-   * Processes clicks on ship sections for shield allocation or reallocation.
-   * Routes to appropriate handler based on current phase.
-   * @param {string} sectionName - Name of the clicked ship section
-   */
-  const handleShipSectionClick = (sectionName) => {
-    debugLog('SHIELD_CLICKS', `🔵 handleShipSectionClick called`, {
-      sectionName,
-      turnPhase,
-      reallocationPhase,
-      shieldsToAllocate,
-      willHandleReallocation: !!reallocationPhase,
-      willHandleAllocation: turnPhase === 'allocateShields'
-    });
-
-    // Handle shield reallocation if active
-    if (reallocationPhase) {
-      debugLog('SHIELD_CLICKS', `🔄 Routing to reallocation handler (${reallocationPhase})`);
-      if (reallocationPhase === 'removing') {
-        handleRemoveShield(sectionName);
-      } else if (reallocationPhase === 'adding') {
-        handleAddShield(sectionName);
-      }
-      return;
-    }
-
-    // Handle normal shield allocation during allocateShields phase
-    if (turnPhase === 'allocateShields') {
-      debugLog('SHIELD_CLICKS', `🛡️ Routing to handleAllocateShield`);
-      handleAllocateShield(sectionName);
-    } else {
-      debugLog('SHIELD_CLICKS', `⚠️ Click ignored - not in allocateShields phase or reallocation mode`);
-    }
-  };
-  
-  /**
-   * HANDLE RESET SHIELD ALLOCATION
-   * Resets shield allocation back to initial state.
-   * Restores original shield distribution.
-   */
-  const handleResetShieldAllocation = async () => {
-    // Use ActionProcessor for all shield resets - routes to appropriate manager
-    await processActionWithGuestRouting('resetShieldAllocation', {
-      playerId: getLocalPlayerId()
-    });
-  };
-
-  /**
-   * HANDLE END ALLOCATION
-   * Completes shield allocation phase and handles AI shield allocation.
-   * Routes to appropriate manager based on current phase.
-   */
-  const handleEndAllocation = async () => {
-    debugLog('COMMITMENTS', '🏁 handleEndAllocation called');
-
-    // Use ActionProcessor for all shield allocation endings - routes to appropriate manager
-    const result = await processActionWithGuestRouting('endShieldAllocation', {
-      playerId: getLocalPlayerId()
-    });
-
-    debugLog('COMMITMENTS', '🏁 endShieldAllocation result:', {
-      hasData: !!result.data,
-      bothPlayersComplete: result.data?.bothPlayersComplete,
-      fullResult: result
-    });
-
-    // Show waiting modal if opponent hasn't finished yet
-    if (result.data && !result.data.bothPlayersComplete) {
-      debugLog('COMMITMENTS', '✋ Setting waiting overlay for allocateShields phase');
-      setWaitingForPlayerPhase('allocateShields');
-    } else {
-      debugLog('COMMITMENTS', '✅ Both players complete or no data, not showing waiting overlay', {
-        hasData: !!result.data,
-        bothComplete: result.data?.bothPlayersComplete
-      });
-    }
-  };
-
-  // ========================================
-  // SHIELD ALLOCATION CONTEXT DETECTION
-  // ========================================
-
-  /**
-   * HANDLE SHIELD ACTION
-   * Smart routing for shield actions based on phase context.
-   * Routes between round start (simultaneous) and action phase (sequential) handling.
-   * @param {string} actionType - The shield action type
-   * @param {Object} payload - Action payload data
-   */
-  const handleShieldAction = (actionType, payload) => {
-    const phase = gameState.turnPhase;
-
-    debugLog('ENERGY', `🛡️ handleShieldAction: ${actionType} in phase ${phase}`);
-
-    if (phase === 'allocateShields') {
-      // Round start shield allocation - simultaneous phase processing
-      debugLog('ENERGY', `🛡️ Routing to round start shield handling (simultaneous)`);
-      handleRoundStartShieldAction(actionType, payload);
-    } else if (phase === 'action') {
-      // Action phase shield reallocation - sequential phase processing
-      debugLog('ENERGY', `🛡️ Routing to action phase shield handling (sequential)`);
-      processActionWithGuestRouting(actionType, payload);
-    } else {
-      debugLog('ENERGY', '⚠️ Shield action not valid:', { actionType, phase });
-    }
-  };
-
-  /**
-   * HANDLE ROUND START SHIELD ACTION
-   * Processes shield actions during round start allocateShields phase.
-   * Uses direct GameStateManager updates for simultaneous processing.
-   * @param {string} actionType - The shield action type
-   * @param {Object} payload - Action payload data
-   */
-  const handleRoundStartShieldAction = async (actionType, payload) => {
-    const { turnPhase } = gameState;
-
-    // Validate we're in the correct phase
-    if (turnPhase !== 'allocateShields') {
-      debugLog('ENERGY', '⚠️ Round start shield action called during wrong phase:', { actionType, turnPhase });
-      return;
-    }
-
-    debugLog('ENERGY', `🛡️⚡ Processing round start shield action: ${actionType}`);
-
-    try {
-      switch (actionType) {
-        case 'allocateShield':
-          if (payload.sectionName) {
-            handleAllocateShield(payload.sectionName);
-          } else {
-            debugLog('ENERGY', '❌ allocateShield action missing sectionName in payload');
-          }
-          break;
-
-        case 'resetShieldAllocation':
-          await handleResetShieldAllocation();
-          break;
-
-        case 'endShieldAllocation':
-          await handleEndAllocation();
-          break;
-
-        default:
-          debugLog('ENERGY', '⚠️ Unknown round start shield action:', actionType);
-          break;
-      }
-    } catch (error) {
-      debugLog('ENERGY', '❌ Error processing round start shield action:', { actionType, error });
-    }
   };
 
   // ========================================
@@ -6563,15 +6146,7 @@ const App = ({ phaseAnimationQueue }) => {
                 pendingChanges: pendingShieldChanges
               });
 
-              // Clear reallocation UI state including pending changes
-              setReallocationPhase(null);
-              setShieldsToRemove(0);
-              setShieldsToAdd(0);
-              setOriginalShieldAllocation(null);
-              setPostRemovalShieldAllocation(null);
-              setReallocationAbility(null);
-              setPendingShieldChanges({});
-              setPostRemovalPendingChanges({});
+              clearReallocationState();
 
               debugLog('SHIP_ABILITY', `Reallocate Shields ability completed:`, result);
             }
@@ -6580,14 +6155,7 @@ const App = ({ phaseAnimationQueue }) => {
             setShipAbilityMode(null);
 
             // Clear reallocation UI state after ability completion
-            setReallocationPhase(null);
-            setShieldsToRemove(0);
-            setShieldsToAdd(0);
-            setOriginalShieldAllocation(null);
-            setPostRemovalShieldAllocation(null);
-            setReallocationAbility(null);
-            setPendingShieldChanges({});
-            setPostRemovalPendingChanges({});
+            clearReallocationState();
           }, 400);
         }}
       />
