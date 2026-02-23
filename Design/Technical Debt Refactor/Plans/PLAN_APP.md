@@ -95,3 +95,29 @@ A detailed extraction plan exists at `Design/Technical Debt Refactor/REFACTOR_AP
 - useDragMechanics size reduction (1,633 lines → potential sub-hook split)
 
 **Test results:** 220 files, 3748 passed, 0 failures. Build clean.
+
+## Session 5 Outcomes
+
+### Actual Outcomes
+
+**Completed:**
+- Step 11: Extracted useClickHandlers hook (956 lines) — 7 click handler functions (handleToggleDroneSelection, handleAbilityIconClick, handleShipAbilityClick, handleTargetClick, handleTokenClick, handleLaneClick, handleCardClick). Module-level TargetingRouter singleton moved to hook. Removed TargetingRouter, extractDroneNameFromId, calculateEffectTargetsWithCostContext, calculateLaneDestinationPoint imports from App.jsx.
+- Step 12: Extracted useGameLifecycle hook (507 lines) — 17 lifecycle functions (handleReset, handleExitGame, handleConfirmAbandonRun, handleOpenAddCardModal, handleForceWin, handleAddCardsToHand, handleImportDeck, handlePlayerPass, handleConfirmMandatoryDiscard, handleRoundStartDiscard, handleRoundStartDraw, handleMandatoryDiscardContinue, handleMandatoryDroneRemovalContinue, checkBothPlayersHandLimitComplete, handleConfirmMandatoryDestroy, downloadLogAsCSV, handleCardInfoClick). Removed fullCardCollection, forceWinCombat, SeededRandom, aiPhaseProcessor imports from App.jsx.
+
+**Line count:** 3,541 → 2,169 (1,372 lines removed across 2 extractions)
+
+**Hook ordering (final):**
+multiplayerSync → shieldAllocation → cardSelection → interception → dragMechanics → handleLaneHover → resolve* functions → useGameLifecycle → useClickHandlers
+
+**Key decisions:**
+- cancelAllActions (18 lines) and cancelAbilityMode (5 lines) remain in App.jsx — shared by multiple hooks as params.
+- resolve* functions (resolveAbility, resolveShipAbility, resolveCardPlay, handleCardSelection, resolveMultiMove, resolveSingleMove, resolveAttack — ~350 lines) remain in App.jsx as useCallback-wrapped shared business logic. Extracting would require significant rethreading of hook dependencies.
+- Section 8 effects (~230 lines) remain — React hooks can't be moved to a non-hook utility.
+- Modal confirmation callbacks (~170 lines) remain — thin wrappers needed by ModalLayer.
+
+**Deferred (noted in FUTURE_IMPROVEMENTS.md):**
+- useTargeting extraction — deferred; validCardTargets/validAbilityTargets calculations are in useCardSelection already
+- useActionRouting extraction (~150 lines) — processActionWithGuestRouting stays for now, used by 5+ hooks as a param
+- useDragMechanics size reduction (1,633 lines) — already in FUTURE_IMPROVEMENTS #19
+
+**Test results:** 220 files, 3748 passed, 0 failures. Build clean.
