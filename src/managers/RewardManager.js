@@ -46,38 +46,24 @@
  */
 
 import packTypes from '../data/cardPackData.js';
-import fullCardCollection from '../data/cardData.js';
 import fullDroneCollection from '../data/droneData.js';
-import { starterDeck } from '../data/playerDeckData.js';
 import { starterPoolDroneNames } from '../data/saveGameSchema.js';
 import { calculateAICoresDrop } from '../data/aiCoresData.js';
 import { generateSalvageItemFromValue, SALVAGE_ITEMS } from '../data/salvageItemData.js';
 import { debugLog } from '../utils/debugLogger.js';
 import { CLASS_BAND_WEIGHTS, RARITY_WEIGHTS } from '../logic/loot/blueprintDropCalculator.js';
+import { createRNG, shuffleArray } from '../logic/loot/SeededRNG.js';
+import {
+  STARTER_CARD_IDS,
+  transformCardForLoot,
+  weightedRoll,
+  rollRarity,
+  rollCardType,
+  selectCard,
+  rollWeightedCardCount
+} from '../logic/loot/CardSelectionPipeline.js';
 import gameStateManager from './GameStateManager.js';
 import metaGameStateManager from './MetaGameStateManager.js';
-
-// Starter card IDS to exclude (players have infinite copies)
-const STARTER_CARD_IDS = new Set(starterDeck.decklist.map(entry => entry.id));
-
-/**
- * Transform raw card object to collectedLoot format
- *
- * Cards from cardData.js have {id, name, rarity, ...} properties.
- * But collectedLoot array requires {cardId, cardName, rarity, ...} format.
- * This function transforms at the RewardManager boundary (single source of truth).
- *
- * @param {Object} card - Raw card from cardData.js with {id, name, rarity, ...}
- * @returns {Object} Card in collectedLoot format with {cardId, cardName, rarity, ...}
- */
-function transformCardForLoot(card) {
-  const { id, name, ...rest } = card;
-  return {
-    cardId: id,
-    cardName: name,
-    ...rest
-  };
-}
 
 class RewardManager {
   constructor() {
@@ -106,44 +92,6 @@ class RewardManager {
   }
 
   /**
-   * Create RNG from seed (same as LootGenerator)
-   * @private
-   */
-  createRNG(seed) {
-    let state = seed;
-    return {
-      random: () => {
-        state = (state * 1664525 + 1013904223) % 4294967296;
-        return state / 4294967296;
-      }
-    };
-  }
-
-  /**
-   * Weighted roll (same as LootGenerator)
-   * @private
-   */
-  weightedRoll(weights, rng) {
-    const totalWeight = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
-    let roll = rng.random() * totalWeight;
-
-    for (const [key, weight] of Object.entries(weights)) {
-      roll -= weight;
-      if (roll <= 0) return key;
-    }
-
-    return Object.keys(weights)[0];
-  }
-
-  /**
-   * Roll rarity (same as LootGenerator)
-   * @private
-   */
-  rollRarity(weights, rng) {
-    return this.weightedRoll(weights, rng);
-  }
-
-  /**
    * Roll salvage slot count using weighted distribution from tier config
    * @private
    * @param {string} zone - Zone name (perimeter/mid/core)
@@ -165,7 +113,7 @@ class RewardManager {
       || defaultWeights.mid;
 
     // Roll weighted slot count (weightedRoll returns string, parse to number)
-    return parseInt(this.weightedRoll(zoneWeights, rng), 10);
+    return parseInt(weightedRoll(zoneWeights, rng), 10);
   }
 
   /**
@@ -191,111 +139,7 @@ class RewardManager {
       || defaultWeights.mid;
 
     // Roll weighted card count (weightedRoll returns string, parse to number)
-    return parseInt(this.weightedRoll(zoneWeights, rng), 10);
-  }
-
-  /**
-   * Fisher-Yates shuffle using seeded RNG
-   * @private
-   * @param {Array} array - Array to shuffle in place
-   * @param {SeededRandom} rng - Random number generator
-   */
-  shuffleArray(array, rng) {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(rng.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
-    }
-  }
-
-  /**
-   * Select card (same as LootGenerator)
-   * @private
-   */
-  selectCard(cardType, rarity, allowedRarities, rng) {
-    const notStarter = (c) => !STARTER_CARD_IDS.has(c.id);
-    const notAIOnly = (c) => !c.aiOnly;
-    const isAllowedRarity = (c) => allowedRarities.includes(c.rarity || 'Common');
-
-    // Primary: exact type + rarity
-    let pool = fullCardCollection.filter(c =>
-      c.type === cardType &&
-      (c.rarity || 'Common') === rarity &&
-      notStarter(c) &&
-      notAIOnly(c)
-    );
-
-    // Fallback 1: same type, any allowed rarity
-    if (pool.length === 0) {
-      pool = fullCardCollection.filter(c =>
-        c.type === cardType &&
-        isAllowedRarity(c) &&
-        notStarter(c) &&
-        notAIOnly(c)
-      );
-    }
-
-    // Fallback 2: same type, any rarity
-    if (pool.length === 0) {
-      pool = fullCardCollection.filter(c =>
-        c.type === cardType &&
-        notStarter(c) &&
-        notAIOnly(c)
-      );
-    }
-
-    // Fallback 3: any type with requested rarity (when cardType is null or no match)
-    if (pool.length === 0) {
-      pool = fullCardCollection.filter(c =>
-        (c.rarity || 'Common') === rarity &&
-        notStarter(c) &&
-        notAIOnly(c)
-      );
-    }
-
-    // Fallback 4: any non-starter, non-AI-only card
-    if (pool.length === 0) {
-      pool = fullCardCollection.filter(c => notStarter(c) && notAIOnly(c));
-    }
-
-    if (pool.length === 0) return null;
-
-    const index = Math.floor(rng.random() * pool.length);
-    return transformCardForLoot(pool[index]);  // Transform to collectedLoot format
-  }
-
-  /**
-   * Roll card type (same as LootGenerator)
-   * @private
-   */
-  rollCardType(config, isGuaranteed, rng) {
-    if (isGuaranteed && config.guaranteedTypes && config.guaranteedTypes.length > 0) {
-      // First card is guaranteed to be the pack's primary type
-      return config.guaranteedTypes[0];
-    }
-    // Additional cards use weighted distribution
-    return this.weightedRoll(config.additionalCardWeights, rng);
-  }
-
-  /**
-   * Roll weighted card count (same as LootGenerator)
-   * @private
-   */
-  _rollWeightedCardCount(min, max, weights, rng) {
-    if (!weights) {
-      return Math.floor(rng.random() * (max - min + 1)) + min;
-    }
-
-    const counts = [];
-    for (let i = min; i <= max; i++) {
-      counts.push(i);
-    }
-
-    const weightMap = {};
-    counts.forEach((count, index) => {
-      weightMap[count] = weights[index] !== undefined ? weights[index] : 1;
-    });
-
-    return parseInt(this.weightedRoll(weightMap, rng));
+    return parseInt(weightedRoll(zoneWeights, rng), 10);
   }
 
   /**
@@ -329,7 +173,7 @@ class RewardManager {
       return { cards: [], credits: 0, seed };
     }
 
-    const rng = this.createRNG(seed);
+    const rng = createRNG(seed);
     const tierKey = `tier${tier}`;
 
     // Get rarity weights and allowed rarities
@@ -342,7 +186,7 @@ class RewardManager {
     // Determine card count
     let cardCount;
     if (config.cardCount.useZoneWeights && zoneWeights) {
-      cardCount = this._rollWeightedCardCount(
+      cardCount = rollWeightedCardCount(
         config.cardCount.min,
         config.cardCount.max,
         zoneWeights.cardCountWeights,
@@ -357,9 +201,9 @@ class RewardManager {
     const cards = [];
     for (let i = 0; i < cardCount; i++) {
       // First card uses guaranteed type, others use weighted roll
-      const cardType = this.rollCardType(config, i === 0, rng);
-      const rolledRarity = this.rollRarity(rarityWeights, rng);
-      const card = this.selectCard(cardType, rolledRarity, allowedRarities, rng);
+      const cardType = rollCardType(config, i === 0, rng);
+      const rolledRarity = rollRarity(rarityWeights, rng);
+      const card = selectCard(cardType, rolledRarity, allowedRarities, rng);
 
       if (card) {
         cards.push(card);  // Already transformed by selectCard()
@@ -413,7 +257,7 @@ class RewardManager {
     const { enemyDeck, tier = 1, aiDifficulty = null } = combatContext;
 
     const seed = this.getNextSeed();
-    const rng = this.createRNG(seed);
+    const rng = createRNG(seed);
 
     // Filter enemy deck (remove starter cards by ID or rarity, and AI-only cards)
     const filteredDeck = enemyDeck.filter(card =>
@@ -491,7 +335,7 @@ class RewardManager {
     }
 
     const weights = RARITY_WEIGHTS[`tier${tier}`] || RARITY_WEIGHTS.tier1;
-    const rng = this.createRNG(seed);
+    const rng = createRNG(seed);
 
     // Get unlocked blueprints from player profile
     const profile = metaGameStateManager.getState().singlePlayerProfile;
@@ -504,10 +348,10 @@ class RewardManager {
 
     for (let attempt = 0; attempt < MAX_REROLL_ATTEMPTS; attempt++) {
       // Roll a class based on POI weights
-      const rolledClass = parseInt(this.weightedRoll(classBandWeights, rng));
+      const rolledClass = parseInt(weightedRoll(classBandWeights, rng));
 
       // Roll rarity based on tier weights
-      rolledRarity = this.rollRarity(weights, rng);
+      rolledRarity = rollRarity(weights, rng);
 
       // Filter drones by class, rarity, and exclusions
       const availableDrones = fullDroneCollection.filter(d => {
@@ -638,7 +482,7 @@ class RewardManager {
    */
   generateSalvageSlots(packType, tier = 1, zone = null, tierConfig = null) {
     const seed = this.getNextSeed();
-    const rng = this.createRNG(seed);
+    const rng = createRNG(seed);
     const actualZone = zone || 'mid';
 
     // Step 1: Roll total slot count from salvageSlotCountWeights
@@ -665,8 +509,8 @@ class RewardManager {
       const cardChance = config?.cardChance ?? 0.25;
       if (rng.random() < cardChance) {
         const rarityWeights = config?.cardRarityWeights || { Common: 70, Uncommon: 25, Rare: 5 };
-        const rolledRarity = this.rollRarity(rarityWeights, rng);
-        const card = this.selectCard(null, rolledRarity, Object.keys(rarityWeights), rng);
+        const rolledRarity = rollRarity(rarityWeights, rng);
+        const card = selectCard(null, rolledRarity, Object.keys(rarityWeights), rng);
         if (card) {
           slots.push({ type: 'card', content: card, revealed: false });
         }
@@ -684,7 +528,7 @@ class RewardManager {
         });
       }
 
-      this.shuffleArray(slots, rng);
+      shuffleArray(slots, rng);
       slots.seed = seed;
 
       debugLog('REWARD_MANAGER', `Generated TOKEN_REWARD slots (seed: ${seed})`, {
@@ -727,7 +571,7 @@ class RewardManager {
         });
       }
 
-      this.shuffleArray(slots, rng);
+      shuffleArray(slots, rng);
       slots.seed = seed;
 
       debugLog('REWARD_MANAGER', `Generated CREDITS_PACK slots (seed: ${seed})`, {
@@ -763,9 +607,9 @@ class RewardManager {
 
     for (let i = 0; i < cardCount; i++) {
       // First card uses guaranteed type, others use additionalCardWeights
-      const cardType = config ? this.rollCardType(config, i === 0, rng) : null;
-      const rolledRarity = this.rollRarity(rarityWeights, rng);
-      const card = this.selectCard(cardType, rolledRarity, allowedRarities, rng);
+      const cardType = config ? rollCardType(config, i === 0, rng) : null;
+      const rolledRarity = rollRarity(rarityWeights, rng);
+      const card = selectCard(cardType, rolledRarity, allowedRarities, rng);
 
       if (card) {
         slots.push({
@@ -787,7 +631,7 @@ class RewardManager {
     }
 
     // Step 7: Shuffle slots so player doesn't know card vs salvage order
-    this.shuffleArray(slots, rng);
+    shuffleArray(slots, rng);
 
     slots.seed = seed;  // Attach seed to array for debugging
 
@@ -826,7 +670,7 @@ class RewardManager {
       return { cards: [], seed };
     }
 
-    const rng = this.createRNG(seed);
+    const rng = createRNG(seed);
     const tierKey = `tier${tier}`;
 
     const rarityWeights = config.rarityWeights[tierKey] || config.rarityWeights.tier1;
@@ -838,9 +682,9 @@ class RewardManager {
     const cards = [];
     for (let i = 0; i < cardCount; i++) {
       // First card uses guaranteed type, others use weighted roll
-      const cardType = this.rollCardType(config, i === 0, rng);
-      const rolledRarity = this.rollRarity(rarityWeights, rng);
-      const card = this.selectCard(cardType, rolledRarity, allowedRarities, rng);
+      const cardType = rollCardType(config, i === 0, rng);
+      const rolledRarity = rollRarity(rarityWeights, rng);
+      const card = selectCard(cardType, rolledRarity, allowedRarities, rng);
 
       if (card) {
         cards.push(card);  // Already transformed by selectCard()

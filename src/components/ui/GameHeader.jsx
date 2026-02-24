@@ -5,14 +5,14 @@
 // Extracted from App.jsx for better component organization
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Power, Files, Cpu, ShieldCheck, RotateCcw, Settings, ChevronDown, BookOpen, Brain, Plus, Image, ChevronRight, Check, AlertTriangle, Zap, ChevronsUp } from 'lucide-react';
-import { getPhaseDisplayName } from '../../utils/gameUtils.js';
+import { Power, Files, Cpu, ShieldCheck, ChevronsUp, AlertTriangle } from 'lucide-react';
 import { debugLog } from '../../utils/debugLogger.js';
-import DEV_CONFIG from '../../config/devConfig.js';
-import { BACKGROUNDS } from '../../config/backgrounds.js';
 import HullIntegrityBadge from './HullIntegrityBadge.jsx';
 import KPIChangePopup from '../animations/KPIChangePopup.jsx';
-import { extractDroneNameFromId } from '../../logic/droneUtils.js';
+import PhaseStatusText from './gameheader/PhaseStatusText.jsx';
+import ActionPhaseButtons from './gameheader/ActionPhaseButtons.jsx';
+import InitPhaseButtons from './gameheader/InitPhaseButtons.jsx';
+import SettingsDropdown from './gameheader/SettingsDropdown.jsx';
 
 /**
  * Hook to track the previous value of a state/prop
@@ -144,7 +144,6 @@ function GameHeader({
   opponentHullIntegrity
 }) {
   const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
-  const [showBackgroundSubmenu, setShowBackgroundSubmenu] = useState(false);
   const dropdownRef = useRef(null);
 
   // KPI Change Popup refs and state
@@ -364,85 +363,23 @@ function GameHeader({
       {/* Center Phase and Turn Indicator */}
       <div className="text-center flex flex-col items-center gap-2">
         {/* Phase Display */}
-        <h2
-          className="text-base font-bold uppercase tracking-widest text-white"
-          style={{
-            WebkitTextStroke: '1px black'
-          }}
-        >
-          {getPhaseDisplayName(turnPhase)}
-          {turnPhase === 'allocateShields' && (
-            <span className="text-base font-semibold text-cyan-300 ml-2">
-              ({pendingShieldsRemaining !== null ? pendingShieldsRemaining : shieldsToAllocate} shields to assign)
-            </span>
-          )}
-          {reallocationPhase === 'removing' && (
-            <span className="text-base font-semibold text-orange-300 ml-2">
-              ({shieldsToRemove} shields to remove)
-            </span>
-          )}
-          {reallocationPhase === 'adding' && (
-            <span className="text-base font-semibold text-green-300 ml-2">
-              ({shieldsToAdd} shields to add)
-            </span>
-          )}
-          {(turnPhase === 'mandatoryDiscard' || mandatoryAction?.type === 'discard') && (mandatoryAction?.type === 'discard' || excessCards > 0) && (
-            <span className="text-base font-semibold text-orange-300 ml-2">
-              ({(mandatoryAction?.count || excessCards)} {(mandatoryAction?.count || excessCards) === 1 ? 'card' : 'cards'} to discard)
-            </span>
-          )}
-          {turnPhase === 'mandatoryDroneRemoval' && (mandatoryAction?.type === 'destroy' || excessDrones > 0) && (
-            <span className="text-base font-semibold text-orange-300 ml-2">
-              ({(mandatoryAction?.count || excessDrones)} {(mandatoryAction?.count || excessDrones) === 1 ? 'drone' : 'drones'} to remove)
-            </span>
-          )}
-          {turnPhase === 'optionalDiscard' && (
-            <span className="text-base font-semibold text-yellow-300 ml-2">
-              ({localPlayerEffectiveStats.totals.discardLimit - optionalDiscardCount} {(localPlayerEffectiveStats.totals.discardLimit - optionalDiscardCount) === 1 ? 'card' : 'cards'} to discard)
-            </span>
-          )}
-          {/* MULTI_MOVE Status Text */}
-          {multiSelectState?.phase === 'select_source_lane' && (
-            <span className="text-base font-semibold text-cyan-300 ml-2">
-              (Select source lane)
-            </span>
-          )}
-          {multiSelectState?.phase === 'select_drone' && (
-            <span className="text-base font-semibold text-cyan-300 ml-2">
-              (Select drone to move)
-            </span>
-          )}
-          {multiSelectState?.phase === 'select_drones' && (
-            <span className="text-base font-semibold text-cyan-300 ml-2">
-              ({multiSelectState.selectedDrones.length} / {multiSelectState.maxDrones} drones selected)
-            </span>
-          )}
-          {multiSelectState?.phase === 'select_destination_lane' && (
-            <span className="text-base font-semibold text-green-300 ml-2">
-              (Select destination lane)
-            </span>
-          )}
-          {/* Interception Mode Status Text */}
-          {interceptionModeActive && (
-            <span className="text-base font-semibold text-cyan-300 ml-2">
-              (Intercepting - select interceptor)
-            </span>
-          )}
-          {/* Single Move Mode Status Text */}
-          {singleMoveMode && (
-            <span className="text-base font-semibold text-cyan-300 ml-2">
-              (Moving {extractDroneNameFromId(singleMoveMode.droneId)} - drag to adjacent lane)
-            </span>
-          )}
-          {/* Additional Cost Mode Status Text */}
-          {additionalCostState && (
-            <span className="text-base font-semibold text-cyan-300 ml-2">
-              {additionalCostState.phase === 'select_cost' && `(Select ${additionalCostState.card.additionalCost.description || 'cost'})`}
-              {additionalCostState.phase === 'select_cost_movement_destination' && `(Moving ${extractDroneNameFromId(additionalCostState.costSelection.drone.id)} - select destination)`}
-              {additionalCostState.phase === 'select_effect' && `(Select target for ${additionalCostState.card.name})`}
-            </span>
-          )}
-        </h2>
+        <PhaseStatusText
+          turnPhase={turnPhase}
+          shieldsToAllocate={shieldsToAllocate}
+          pendingShieldsRemaining={pendingShieldsRemaining}
+          reallocationPhase={reallocationPhase}
+          shieldsToRemove={shieldsToRemove}
+          shieldsToAdd={shieldsToAdd}
+          mandatoryAction={mandatoryAction}
+          excessCards={excessCards}
+          excessDrones={excessDrones}
+          optionalDiscardCount={optionalDiscardCount}
+          localPlayerEffectiveStats={localPlayerEffectiveStats}
+          multiSelectState={multiSelectState}
+          interceptionModeActive={interceptionModeActive}
+          singleMoveMode={singleMoveMode}
+          additionalCostState={additionalCostState}
+        />
 
         {/* Turn Indicator - Always show */}
         <div className="flex items-center gap-3">
@@ -487,149 +424,29 @@ function GameHeader({
                 </div>
               )}
 
-            {/* Pass Button - Hide during reallocation */}
-            {isMyTurn() && !mandatoryAction && !multiSelectState && !singleMoveMode && !additionalCostState && !reallocationPhase && (
-              <button
-                onClick={handlePlayerPass}
-                disabled={passInfo[`${getLocalPlayerId()}Passed`]}
-                className="dw-btn dw-btn-danger dw-btn--sm"
-              >
-                Pass
-              </button>
-            )}
-
-            {/* Shield Reallocation Controls - Removing Phase */}
-            {reallocationPhase === 'removing' && (
-              <>
-                <button
-                  onClick={handleCancelReallocation}
-                  className="dw-btn dw-btn-danger dw-btn--sm"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={handleResetReallocation}
-                  className="dw-btn dw-btn-warning dw-btn--sm"
-                >
-                  Reset
-                </button>
-
-                <button
-                  onClick={handleContinueToAddPhase}
-                  className="dw-btn dw-btn-confirm dw-btn--sm"
-                >
-                  Continue
-                </button>
-              </>
-            )}
-
-            {/* Shield Reallocation Controls - Adding Phase */}
-            {reallocationPhase === 'adding' && (
-              <>
-                <button
-                  onClick={handleCancelReallocation}
-                  className="dw-btn dw-btn-danger dw-btn--sm"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={handleResetReallocation}
-                  className="dw-btn dw-btn-warning dw-btn--sm"
-                >
-                  Reset
-                </button>
-
-                <button
-                  onClick={handleConfirmReallocation}
-                  className="dw-btn dw-btn-confirm dw-btn--sm"
-                >
-                  Confirm
-                </button>
-              </>
-            )}
-
-            {/* MULTI_MOVE Controls */}
-            {multiSelectState && (
-              <>
-                {/* Cancel button - visible for ALL phases */}
-                <button
-                  onClick={handleCancelMultiMove}
-                  className="dw-btn dw-btn-danger dw-btn--sm"
-                >
-                  Cancel
-                </button>
-
-                {/* Confirm button - only during select_drones phase */}
-                {multiSelectState.phase === 'select_drones' && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation(); // Prevent click from bubbling to game area div
-                      debugLog('BUTTON_CLICKS', '🖱️ CONFIRM DRONES button clicked', {
-                        timestamp: performance.now(),
-                        selectedDrones: multiSelectState.selectedDrones.length,
-                        sourceLane: multiSelectState.sourceLane
-                      });
-                      handleConfirmMultiMoveDrones();
-                      debugLog('BUTTON_CLICKS', '✅ handleConfirmMultiMoveDrones returned', {
-                        timestamp: performance.now()
-                      });
-                    }}
-                    disabled={multiSelectState.selectedDrones.length === 0}
-                    className="dw-btn dw-btn-confirm dw-btn--sm"
-                  >
-                    Confirm Drones
-                  </button>
-                )}
-              </>
-            )}
-
-            {/* Interception Mode Controls */}
-            {interceptionModeActive && (
-              <>
-                <button
-                  onClick={handleShowInterceptionDialog}
-                  className="dw-btn dw-btn-confirm dw-btn--sm"
-                >
-                  Show Dialog
-                </button>
-
-                <button
-                  onClick={handleResetInterception}
-                  className="dw-btn dw-btn-warning dw-btn--sm"
-                >
-                  Reset
-                </button>
-
-                <button
-                  onClick={handleConfirmInterception}
-                  className="dw-btn dw-btn-confirm dw-btn--sm"
-                >
-                  Confirm
-                </button>
-              </>
-            )}
-
-            {/* Single Move Mode Controls */}
-            {singleMoveMode && (
-              <button
-                onClick={handleCancelSingleMove}
-                className="dw-btn dw-btn-danger dw-btn--sm"
-              >
-                Cancel
-              </button>
-            )}
-
-            {/* Additional Cost Mode Controls */}
-            {additionalCostState && !multiSelectState && (
-              <button
-                onClick={handleCancelAdditionalCost}
-                className="dw-btn dw-btn-danger dw-btn--sm"
-              >
-                Cancel
-              </button>
-            )}
+            <ActionPhaseButtons
+              isMyTurn={isMyTurn}
+              mandatoryAction={mandatoryAction}
+              multiSelectState={multiSelectState}
+              singleMoveMode={singleMoveMode}
+              additionalCostState={additionalCostState}
+              reallocationPhase={reallocationPhase}
+              passInfo={passInfo}
+              getLocalPlayerId={getLocalPlayerId}
+              handlePlayerPass={handlePlayerPass}
+              handleCancelReallocation={handleCancelReallocation}
+              handleResetReallocation={handleResetReallocation}
+              handleContinueToAddPhase={handleContinueToAddPhase}
+              handleConfirmReallocation={handleConfirmReallocation}
+              handleCancelMultiMove={handleCancelMultiMove}
+              handleConfirmMultiMoveDrones={handleConfirmMultiMoveDrones}
+              interceptionModeActive={interceptionModeActive}
+              handleShowInterceptionDialog={handleShowInterceptionDialog}
+              handleResetInterception={handleResetInterception}
+              handleConfirmInterception={handleConfirmInterception}
+              handleCancelSingleMove={handleCancelSingleMove}
+              handleCancelAdditionalCost={handleCancelAdditionalCost}
+            />
             </>
           ) : (
             // Initialising phase - show in cyan/white colors for both players
@@ -652,56 +469,16 @@ function GameHeader({
                 </span>
               </div>
 
-              {/* Shield Allocation Controls - Show during allocateShields phase */}
-              {turnPhase === 'allocateShields' && (
-                <>
-                  <button
-                    onClick={handleResetShields}
-                    className="dw-btn dw-btn-warning dw-btn--sm"
-                  >
-                    Reset
-                  </button>
-
-                  <button
-                    onClick={handleConfirmShields}
-                    className="dw-btn dw-btn-confirm dw-btn--sm"
-                  >
-                    Confirm
-                  </button>
-                </>
-              )}
-
-              {/* Optional Discard Controls - Show during optionalDiscard phase */}
-              {turnPhase === 'optionalDiscard' && (
-                <button
-                  onClick={handleRoundStartDraw}
-                  className="dw-btn dw-btn-confirm dw-btn--sm"
-                >
-                  Confirm
-                </button>
-              )}
-
-              {/* Mandatory Discard Controls - Show during mandatoryDiscard phase */}
-              {turnPhase === 'mandatoryDiscard' && (
-                <button
-                  onClick={handleMandatoryDiscardContinue}
-                  disabled={excessCards > 0}
-                  className="dw-btn dw-btn-confirm dw-btn--sm"
-                >
-                  Continue
-                </button>
-              )}
-
-              {/* Mandatory Drone Removal Controls - Show during mandatoryDroneRemoval phase */}
-              {turnPhase === 'mandatoryDroneRemoval' && (
-                <button
-                  onClick={handleMandatoryDroneRemovalContinue}
-                  disabled={excessDrones > 0}
-                  className="dw-btn dw-btn-confirm dw-btn--sm"
-                >
-                  Continue
-                </button>
-              )}
+              <InitPhaseButtons
+                turnPhase={turnPhase}
+                excessCards={excessCards}
+                excessDrones={excessDrones}
+                handleResetShields={handleResetShields}
+                handleConfirmShields={handleConfirmShields}
+                handleRoundStartDraw={handleRoundStartDraw}
+                handleMandatoryDiscardContinue={handleMandatoryDiscardContinue}
+                handleMandatoryDroneRemovalContinue={handleMandatoryDroneRemovalContinue}
+              />
             </>
           )}
         </div>
@@ -801,16 +578,16 @@ function GameHeader({
             />
           )}
           {reallocationPhase === 'removing' && (
-            <ResourceBadge 
-              icon={ShieldCheck} 
+            <ResourceBadge
+              icon={ShieldCheck}
               value={shieldsToRemove}
               iconColor="text-orange-300"
               isPlayer={true}
             />
           )}
           {reallocationPhase === 'adding' && (
-            <ResourceBadge 
-              icon={ShieldCheck} 
+            <ResourceBadge
+              icon={ShieldCheck}
               value={shieldsToAdd}
               iconColor="text-green-300"
               isPlayer={true}
@@ -818,151 +595,19 @@ function GameHeader({
           )}
 
           {/* Settings Dropdown */}
-          <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
-              className="relative"
-              style={{
-                background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.95) 0%, rgba(10, 15, 28, 0.95) 100%)',
-                border: '1px solid rgba(6, 182, 212, 0.3)',
-                borderRadius: '2px',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(6, 182, 212, 0.1)',
-                clipPath: 'polygon(0 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%)'
-              }}
-              aria-label="Settings"
-            >
-              {/* Angular corner accent */}
-              <div
-                className="absolute top-0 left-0 w-2 h-2 z-10 pointer-events-none"
-                style={{
-                  borderTop: '1px solid rgba(6, 182, 212, 0.5)',
-                  borderLeft: '1px solid rgba(6, 182, 212, 0.5)'
-                }}
-              />
-              <div className="px-2 py-1.5 flex items-center gap-1">
-                <Settings size={20} className="text-cyan-400" />
-                <ChevronDown size={16} className="text-cyan-400" />
-              </div>
-            </button>
-
-            {showSettingsDropdown && (
-              <div
-                className="absolute right-0 mt-2 w-48 rounded-lg shadow-xl border border-gray-700 z-50"
-                style={{ background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(10, 15, 28, 0.98) 100%)' }}
-              >
-                {DEV_CONFIG.features.debugView && (
-                  <button
-                    onClick={() => {
-                      onShowDebugModal && onShowDebugModal();
-                      setShowSettingsDropdown(false);
-                    }}
-                    className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center gap-2 border-b border-gray-700"
-                  >
-                    <Settings size={16} />
-                    Debug View
-                  </button>
-                )}
-
-                {/* Background Submenu */}
-                <div
-                  className="relative"
-                  onMouseEnter={() => setShowBackgroundSubmenu(true)}
-                  onMouseLeave={() => setShowBackgroundSubmenu(false)}
-                >
-                  <button
-                    className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center justify-between gap-2 border-b border-gray-700"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Image size={16} />
-                      Background
-                    </div>
-                    <ChevronRight size={16} />
-                  </button>
-
-                  {showBackgroundSubmenu && (
-                    <div
-                      className="absolute right-full top-0 w-48 rounded-lg shadow-xl border border-gray-700 z-50"
-                      style={{ background: 'linear-gradient(180deg, rgba(17, 24, 39, 0.98) 0%, rgba(10, 15, 28, 0.98) 100%)' }}
-                    >
-                      {BACKGROUNDS.map((bg) => (
-                        <button
-                          key={bg.id}
-                          onClick={() => {
-                            onBackgroundChange && onBackgroundChange(bg.id);
-                            setShowSettingsDropdown(false);
-                            setShowBackgroundSubmenu(false);
-                          }}
-                          className={`w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center justify-between gap-2 ${
-                            bg.id === BACKGROUNDS[BACKGROUNDS.length - 1].id ? 'rounded-b-lg' : 'border-b border-gray-700'
-                          } ${
-                            bg.id === BACKGROUNDS[0].id ? 'rounded-t-lg' : ''
-                          }`}
-                        >
-                          <span>{bg.name}</span>
-                          {selectedBackground === bg.id && <Check size={16} className="text-green-400" />}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {DEV_CONFIG.features.addCardToHand && (
-                  <button
-                    onClick={() => {
-                      onShowAddCardModal && onShowAddCardModal();
-                      setShowSettingsDropdown(false);
-                    }}
-                    className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center gap-2 border-b border-gray-700"
-                  >
-                    <Plus size={16} />
-                    Add Card to Hand
-                  </button>
-                )}
-                {DEV_CONFIG.features.forceWin && (
-                  <button
-                    onClick={() => {
-                      onForceWin && onForceWin();
-                      setShowSettingsDropdown(false);
-                    }}
-                    className="w-full text-left px-4 py-3 text-yellow-400 hover:bg-gray-700 transition-colors flex items-center gap-2 border-b border-gray-700"
-                  >
-                    <Zap size={16} />
-                    Force Win (DEV)
-                  </button>
-                )}
-                <button
-                  onClick={() => {
-                    onShowGlossary && onShowGlossary();
-                    setShowSettingsDropdown(false);
-                  }}
-                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center gap-2 border-b border-gray-700"
-                >
-                  <BookOpen size={16} />
-                  Mechanics Glossary
-                </button>
-                <button
-                  onClick={() => {
-                    onShowAIStrategy && onShowAIStrategy();
-                    setShowSettingsDropdown(false);
-                  }}
-                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors flex items-center gap-2 border-b border-gray-700"
-                >
-                  <Brain size={16} />
-                  AI Strategy Guide
-                </button>
-                <button
-                  onClick={() => {
-                    handleExitGame();
-                    setShowSettingsDropdown(false);
-                  }}
-                  className="w-full text-left px-4 py-3 text-white hover:bg-gray-700 transition-colors rounded-b-lg flex items-center gap-2"
-                >
-                  <RotateCcw size={16} />
-                  Exit
-                </button>
-              </div>
-            )}
-          </div>
+          <SettingsDropdown
+            showSettingsDropdown={showSettingsDropdown}
+            setShowSettingsDropdown={setShowSettingsDropdown}
+            dropdownRef={dropdownRef}
+            selectedBackground={selectedBackground}
+            onBackgroundChange={onBackgroundChange}
+            onShowDebugModal={onShowDebugModal}
+            onShowAddCardModal={onShowAddCardModal}
+            onForceWin={onForceWin}
+            onShowGlossary={onShowGlossary}
+            onShowAIStrategy={onShowAIStrategy}
+            handleExitGame={handleExitGame}
+          />
         </div>
       </div>
 

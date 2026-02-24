@@ -16,6 +16,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import rewardManager from '../RewardManager.js';
 import gameStateManager from '../GameStateManager.js';
 import metaGameStateManager from '../MetaGameStateManager.js';
+import { createRNG } from '../../logic/loot/SeededRNG.js';
 
 // Mock managers
 vi.mock('../GameStateManager.js', () => ({
@@ -776,7 +777,7 @@ describe('RewardManager', () => {
         masterSeed: 33333
       });
 
-      const rng = rewardManager.createRNG(33333);
+      const rng = createRNG(33333);
       const cardCount = rewardManager.rollCardCount('core', tierConfig, rng);
 
       expect(cardCount).toBeGreaterThanOrEqual(1);
