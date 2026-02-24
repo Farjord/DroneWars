@@ -1,10 +1,10 @@
-import { mapTiers } from '../data/mapData.js';
-import { mapTypes } from '../data/mapMetaData.js';
-import { SeededRandom } from './seededRandom.js';
-import { hexesInRadius, getZone, axialDistance } from './hexGrid.js';
-import { getRandomPoIType } from '../logic/extraction/poiUtils.js';
-import PathValidator from '../logic/map/PathValidator.js';
-import aiPersonalities from '../data/aiData.js';
+import { mapTiers } from '../../data/mapData.js';
+import { mapTypes } from '../../data/mapMetaData.js';
+import { SeededRandom } from '../../utils/seededRandom.js';
+import { hexesInRadius, getZone, axialDistance } from '../../utils/hexGrid.js';
+import { getRandomPoIType } from '../extraction/poiUtils.js';
+import PathValidator from './PathValidator.js';
+import aiPersonalities from '../../data/aiData.js';
 
 /**
  * Get starting detection value from tier config based on POI count

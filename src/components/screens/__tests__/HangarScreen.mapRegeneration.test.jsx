@@ -22,7 +22,7 @@ vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }));
 
-vi.mock('../../../utils/mapGenerator.js', () => ({
+vi.mock('../../../logic/map/mapGenerator.js', () => ({
   generateMapData: vi.fn((seed, tier, type) => {
     generateMapDataCalls.push({ seed, tier, type });
     return {
@@ -91,11 +91,11 @@ vi.mock('../../../logic/singlePlayer/MIARecoveryService.js', () => ({
   }
 }));
 
-vi.mock('../../../utils/singlePlayerDeckUtils.js', () => ({
+vi.mock('../../../logic/singlePlayer/singlePlayerDeckUtils.js', () => ({
   validateDeckForDeployment: vi.fn(() => ({ valid: true, errors: [] }))
 }));
 
-vi.mock('../../../utils/slotDamageUtils.js', () => ({
+vi.mock('../../../logic/combat/slotDamageUtils.js', () => ({
   validateShipSlot: vi.fn(() => ({ isUndeployable: false }))
 }));
 
@@ -146,7 +146,7 @@ vi.mock('../../modals/BossEncounterModal', () => ({ default: () => null }));
 
 // Import after mocks
 import { useGameState } from '../../../hooks/useGameState.js';
-import { generateMapData } from '../../../utils/mapGenerator.js';
+import { generateMapData } from '../../../logic/map/mapGenerator.js';
 
 // Helper to create mock game state
 const createMockGameState = (overrides = {}) => ({

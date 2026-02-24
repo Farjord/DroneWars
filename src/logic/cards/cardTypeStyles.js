@@ -1,4 +1,4 @@
-import { RARITY_COLORS } from '../data/rarityColors';
+import { RARITY_COLORS } from '../../data/rarityColors';
 
 const STARTER_COLOR = '#06b6d4';
 const DEFAULT_RARITY_COLOR = '#808080';

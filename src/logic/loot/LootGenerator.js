@@ -12,7 +12,7 @@ import { starterPoolDroneNames } from '../../data/saveGameSchema.js';
 import { calculateAICoresDrop } from '../../data/aiCoresData.js';
 import { generateSalvageItemFromValue, SALVAGE_ITEMS } from '../../data/salvageItemData.js';
 import { debugLog } from '../../utils/debugLogger.js';
-import { CLASS_BAND_WEIGHTS, RARITY_WEIGHTS } from '../../utils/blueprintDropCalculator.js';
+import { CLASS_BAND_WEIGHTS, RARITY_WEIGHTS } from './blueprintDropCalculator.js';
 
 // Starter card IDs to exclude (players have infinite copies)
 const STARTER_CARD_IDS = new Set(starterDeck.decklist.map(entry => entry.id));

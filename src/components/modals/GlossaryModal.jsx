@@ -8,7 +8,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { BookOpen } from 'lucide-react';
-import { generateCompleteGlossary, generateMechanicsSummary } from '../../utils/glossaryAnalyzer';
+import { generateCompleteGlossary, generateMechanicsSummary } from '../../logic/cards/glossaryAnalyzer';
 
 const GlossaryModal = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState('overview');

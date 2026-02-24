@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { debugLog } from '../utils/debugLogger.js';
-import { calculateAllValidTargets } from '../utils/uiTargetingHelpers.js';
+import { calculateAllValidTargets } from '../logic/targeting/uiTargetingHelpers.js';
 
 const useCardSelection = ({
   processActionWithGuestRouting,

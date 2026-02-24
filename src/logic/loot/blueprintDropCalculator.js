@@ -6,8 +6,8 @@
  * to ensure consistency and prevent configuration drift.
  */
 
-import fullDroneCollection from '../data/droneData.js';
-import { starterPoolDroneNames } from '../data/saveGameSchema.js';
+import fullDroneCollection from '../../data/droneData.js';
+import { starterPoolDroneNames } from '../../data/saveGameSchema.js';
 
 /**
  * POI type → class band weights

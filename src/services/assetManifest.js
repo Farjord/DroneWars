@@ -17,7 +17,7 @@ import {
   SHIP_FOLDER_NAMES,
   SECTION_FILE_NAMES,
   FALLBACK_PATHS
-} from '../utils/shipSectionImageResolver.js';
+} from '../logic/cards/shipSectionImageResolver.js';
 
 /**
  * Extract unique, non-null values from an array of objects

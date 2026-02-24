@@ -4,7 +4,7 @@
 // Resolves the correct image path for ship sections based on ship type.
 // Returns ship-specific images when available, falls back to generic images.
 
-import { getShipById } from '../data/shipData.js';
+import { getShipById } from '../../data/shipData.js';
 
 // ========================================
 // SHIP NAME MAPPINGS

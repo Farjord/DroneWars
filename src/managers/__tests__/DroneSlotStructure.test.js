@@ -16,7 +16,7 @@ import {
   removeDroneFromSlots,
   getDroneEffectiveLimit,
   buildActiveDronePool
-} from '../../utils/slotDamageUtils.js';
+} from '../../logic/combat/slotDamageUtils.js';
 
 describe('Drone Slot Structure - New Format', () => {
   describe('Data Structure', () => {

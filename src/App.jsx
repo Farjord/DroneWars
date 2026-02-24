@@ -55,7 +55,7 @@ import p2pManager from './network/P2PManager.js';
 // --- 1.7 UTILITY IMPORTS ---
 import { getElementCenter } from './utils/gameUtils.js';
 import { debugLog } from './utils/debugLogger.js';
-import { calculateAffectedDroneIds } from './utils/uiTargetingHelpers.js';
+import { calculateAffectedDroneIds } from './logic/targeting/uiTargetingHelpers.js';
 import DEV_CONFIG from './config/devConfig.js';
 
 // --- 1.8 ANIMATION IMPORTS ---

@@ -8,7 +8,7 @@ import React from 'react';
 import ShipSectionCompact from './ShipSectionCompact.jsx';
 import { useGameData } from '../../hooks/useGameData.js';
 import { debugLog } from '../../utils/debugLogger.js';
-import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js';
+import { resolveShipSectionStats } from '../../logic/cards/shipSectionImageResolver.js';
 
 /**
  * SHIP SECTIONS DISPLAY COMPONENT

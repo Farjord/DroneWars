@@ -6,7 +6,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { debugLog } from '../utils/debugLogger.js';
 import { calculatePolygonPoints } from '../components/ui/TargetingArrow.jsx';
-import { calculateAllValidTargets, calculateAffectedDroneIds, calculateCostTargets, calculateEffectTargetsWithCostContext } from '../utils/uiTargetingHelpers.js';
+import { calculateAllValidTargets, calculateAffectedDroneIds, calculateCostTargets, calculateEffectTargetsWithCostContext } from '../logic/targeting/uiTargetingHelpers.js';
 import { getElementCenter, calculateLaneDestinationPoint } from '../utils/gameUtils.js';
 
 const useDragMechanics = ({

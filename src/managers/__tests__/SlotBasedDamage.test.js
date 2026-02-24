@@ -19,7 +19,7 @@ import {
   validateShipSlot,
   buildActiveDronePool,
   getDroneHandOrder
-} from '../../utils/slotDamageUtils.js';
+} from '../../logic/combat/slotDamageUtils.js';
 import { migrateShipSlotToNewFormat } from '../../logic/migration/saveGameMigrations.js';
 
 // Mock the map generator

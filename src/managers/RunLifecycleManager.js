@@ -13,7 +13,7 @@ import fullCardCollection from '../data/cardData.js';
 import ReputationService from '../logic/reputation/ReputationService.js';
 import { calculateExtractedCredits } from '../logic/singlePlayer/ExtractionController.js';
 import { generateRandomShopPack } from '../data/cardPackData.js';
-import { generateMapData } from '../utils/mapGenerator.js';
+import { generateMapData } from '../logic/map/mapGenerator.js';
 import tacticalMapStateManager from './TacticalMapStateManager.js';
 import transitionManager from './TransitionManager.js';
 import { debugLog } from '../utils/debugLogger.js';

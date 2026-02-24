@@ -25,7 +25,7 @@ vi.mock('../../logic/singlePlayer/ExtractionController.js', () => ({
 vi.mock('../../data/cardPackData.js', () => ({
   generateRandomShopPack: vi.fn(() => ({ cards: ['card1'] })),
 }));
-vi.mock('../../utils/mapGenerator.js', () => ({
+vi.mock('../../logic/map/mapGenerator.js', () => ({
   generateMapData: vi.fn(() => ({
     hexes: [{ q: 0, r: 0 }, { q: 1, r: 0 }],
     gates: [{ q: 0, r: 0 }],

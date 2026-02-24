@@ -13,9 +13,9 @@
 // - Import from this file in UI components (App.jsx, etc.)
 // - For game logic targeting validation, use TargetingRouter directly
 
-import fullDroneCollection from '../data/droneData.js';
-import TargetingRouter from '../logic/TargetingRouter.js';
-import { debugLog } from './debugLogger.js';
+import fullDroneCollection from '../../data/droneData.js';
+import TargetingRouter from '../TargetingRouter.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 // Initialize TargetingRouter for ability/card targeting
 const targetingRouter = new TargetingRouter();

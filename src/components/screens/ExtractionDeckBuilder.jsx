@@ -12,7 +12,7 @@ import {
   calculateAvailableDrones,
   calculateAvailableComponents,
   calculateAvailableShips
-} from '../../utils/singlePlayerDeckUtils.js';
+} from '../../logic/singlePlayer/singlePlayerDeckUtils.js';
 import { getShipById, getDefaultShip } from '../../data/shipData.js';
 import { updateDeckState } from '../../utils/deckStateUtils.js';
 import {
@@ -22,7 +22,7 @@ import {
 import {
   addDroneToSlots,
   removeDroneFromSlots
-} from '../../utils/slotDamageUtils.js';
+} from '../../logic/combat/slotDamageUtils.js';
 import { parseJSObjectLiteral, convertFromAIFormat } from '../../utils/deckExportUtils.js';
 
 /**

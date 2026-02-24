@@ -31,7 +31,7 @@ vi.mock('../../../data/shipSectionData.js', () => ({
 vi.mock('../../../data/rarityColors', () => ({
   RARITY_COLORS: { Common: '#888', Uncommon: '#0f0', Rare: '#00f', Mythic: '#ff0', Starter: '#aaa' }
 }));
-vi.mock('../../../utils/cardTypeStyles.js', () => ({
+vi.mock('../../../logic/cards/cardTypeStyles.js', () => ({
   getTypeBackgroundClass: vi.fn(() => ''),
   getTypeTextClass: vi.fn(() => ''),
   getRarityDisplay: vi.fn((item) => ({ text: item?.rarity || 'Common', color: '#888' }))
@@ -43,7 +43,7 @@ vi.mock('../../../utils/chartUtils.jsx', () => ({
 vi.mock('../../../logic/gameLogic.js', () => ({
   gameEngine: { validateDeck: vi.fn(() => ({ valid: true, errors: [] })) }
 }));
-vi.mock('../../../utils/shipSectionImageResolver.js', () => ({
+vi.mock('../../../logic/cards/shipSectionImageResolver.js', () => ({
   resolveShipSectionStats: vi.fn(c => c)
 }));
 vi.mock('../../../utils/deckExportUtils.js', () => ({
@@ -52,7 +52,7 @@ vi.mock('../../../utils/deckExportUtils.js', () => ({
   convertFromAIFormat: vi.fn(() => ({ deck: {}, selectedDrones: {}, selectedShipComponents: {} })),
   downloadDeckFile: vi.fn()
 }));
-vi.mock('../../../utils/singlePlayerDeckUtils.js', () => ({
+vi.mock('../../../logic/singlePlayer/singlePlayerDeckUtils.js', () => ({
   calculateEffectiveMaxForCard: vi.fn(() => 4)
 }));
 vi.mock('../../../utils/debugLogger.js', () => ({
@@ -63,7 +63,7 @@ vi.mock('../../../config/devConfig.js', () => ({
 }));
 vi.mock('../../../data/vsModeDeckData.js', () => ({ default: [] }));
 vi.mock('../../../data/aiData.js', () => ({ default: [] }));
-vi.mock('../../../utils/deckFilterUtils.js', () => ({
+vi.mock('../../../logic/cards/deckFilterUtils.js', () => ({
   filterCards: vi.fn(cards => cards),
   filterDrones: vi.fn(drones => drones),
   sortByRarity: vi.fn(items => items),

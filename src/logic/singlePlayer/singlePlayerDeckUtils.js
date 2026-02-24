@@ -3,11 +3,11 @@
  * Helper functions for calculating card/drone/component availability in Extraction Mode
  */
 
-import fullCardCollection from '../data/cardData.js';
-import fullDroneCollection from '../data/droneData.js';
-import { shipComponentCollection } from '../data/shipSectionData.js';
-import { getAllShips } from '../data/shipData.js';
-import { starterPoolCards, starterPoolDroneNames, starterPoolShipIds } from '../data/saveGameSchema.js';
+import fullCardCollection from '../../data/cardData.js';
+import fullDroneCollection from '../../data/droneData.js';
+import { shipComponentCollection } from '../../data/shipSectionData.js';
+import { getAllShips } from '../../data/shipData.js';
+import { starterPoolCards, starterPoolDroneNames, starterPoolShipIds } from '../../data/saveGameSchema.js';
 
 /**
  * Calculate available cards for a specific ship slot

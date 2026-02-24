@@ -1,7 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import ShipSection from './ShipSection.jsx';
-import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js';
+import { resolveShipSectionStats } from '../../logic/cards/shipSectionImageResolver.js';
 import { gameEngine } from '../../logic/gameLogic.js';
 
 const ShipComponentDetailPopup = ({ component, onClose, ship }) => {

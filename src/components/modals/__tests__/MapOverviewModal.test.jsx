@@ -34,7 +34,7 @@ vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }));
 
-vi.mock('../../../utils/singlePlayerDeckUtils.js', () => ({
+vi.mock('../../../logic/singlePlayer/singlePlayerDeckUtils.js', () => ({
   validateDeckForDeployment: vi.fn(() => ({ valid: true, errors: [] }))
 }));
 

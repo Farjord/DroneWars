@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Info } from 'lucide-react';
-import { getDroneDropInfo } from '../../utils/blueprintDropCalculator.js';
+import { getDroneDropInfo } from '../../logic/loot/blueprintDropCalculator.js';
 import './BlueprintDropInfo.css';
 
 const POI_NAMES = {

@@ -23,7 +23,7 @@ vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }));
 
-vi.mock('../../../utils/mapGenerator.js', () => ({
+vi.mock('../../../logic/map/mapGenerator.js', () => ({
   generateMapData: vi.fn(() => ({
     name: 'Test Sector',
     tier: 1,
@@ -82,11 +82,11 @@ vi.mock('../../../logic/singlePlayer/MIARecoveryService.js', () => ({
   }
 }));
 
-vi.mock('../../../utils/singlePlayerDeckUtils.js', () => ({
+vi.mock('../../../logic/singlePlayer/singlePlayerDeckUtils.js', () => ({
   validateDeckForDeployment: vi.fn(() => ({ valid: true, errors: [] }))
 }));
 
-vi.mock('../../../utils/slotDamageUtils.js', () => ({
+vi.mock('../../../logic/combat/slotDamageUtils.js', () => ({
   validateShipSlot: vi.fn(() => ({ isUndeployable: false }))
 }));
 

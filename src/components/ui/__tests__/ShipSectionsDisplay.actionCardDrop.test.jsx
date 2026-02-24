@@ -33,7 +33,7 @@ vi.mock('../../../utils/debugLogger.js', () => ({
   debugLog: vi.fn()
 }));
 
-vi.mock('../../../utils/shipSectionImageResolver.js', () => ({
+vi.mock('../../../logic/cards/shipSectionImageResolver.js', () => ({
   resolveShipSectionStats: (stats) => stats
 }));
 

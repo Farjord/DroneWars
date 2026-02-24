@@ -3,8 +3,8 @@ import { Star, Trash2, AlertTriangle, Lock } from 'lucide-react';
 import SoundManager from '../../managers/SoundManager.js';
 import ReputationService from '../../logic/reputation/ReputationService';
 import miaRecoveryService from '../../logic/singlePlayer/MIARecoveryService.js';
-import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js';
-import { validateShipSlot } from '../../utils/slotDamageUtils.js';
+import { validateDeckForDeployment } from '../../logic/singlePlayer/singlePlayerDeckUtils.js';
+import { validateShipSlot } from '../../logic/combat/slotDamageUtils.js';
 import { ECONOMY } from '../../data/economyData.js';
 import { getShipById } from '../../data/shipData.js';
 

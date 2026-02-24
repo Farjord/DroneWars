@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useGameState } from '../../hooks/useGameState';
 import { debugLog } from '../../utils/debugLogger.js';
-import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js';
+import { validateDeckForDeployment } from '../../logic/singlePlayer/singlePlayerDeckUtils.js';
 import { ECONOMY } from '../../data/economyData.js';
 import ReputationService from '../../logic/reputation/ReputationService.js';
 import MapPreviewRenderer from '../ui/MapPreviewRenderer';

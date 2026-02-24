@@ -4,7 +4,7 @@
 // Standalone utility functions for ship placement phase logic
 // Handles initialization and management of ship section placement data
 
-import { debugLog } from './debugLogger.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * Initialize ship placement data for the beginning of a game

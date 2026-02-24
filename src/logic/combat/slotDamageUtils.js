@@ -3,10 +3,10 @@
  * Helper functions for calculating hull, damage effects, repair costs, and validation
  */
 
-import { ECONOMY } from '../data/economyData.js';
-import { shipComponentCollection } from '../data/shipSectionData.js';
-import { getShipById, getDefaultShip } from '../data/shipData.js';
-import fullDroneCollection from '../data/droneData.js';
+import { ECONOMY } from '../../data/economyData.js';
+import { shipComponentCollection } from '../../data/shipSectionData.js';
+import { getShipById, getDefaultShip } from '../../data/shipData.js';
+import fullDroneCollection from '../../data/droneData.js';
 
 /**
  * Calculate section hull values for a specific lane

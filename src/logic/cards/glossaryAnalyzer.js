@@ -6,8 +6,8 @@
  * effect types, targeting patterns, and their parameters.
  */
 
-import fullCardCollection from '../data/cardData.js';
-import fullDroneCollection from '../data/droneData.js';
+import fullCardCollection from '../../data/cardData.js';
+import fullDroneCollection from '../../data/droneData.js';
 import {
   effectDescriptions,
   targetingDescriptions,
@@ -17,7 +17,7 @@ import {
   comparisonDescriptions,
   affinityDescriptions,
   locationDescriptions
-} from '../data/descriptions/glossaryDescriptions.js';
+} from '../../data/descriptions/glossaryDescriptions.js';
 import {
   effectPatterns,
   targetingPatterns,
@@ -26,7 +26,7 @@ import {
   keywordPatterns,
   scopePatterns,
   specialProperties
-} from '../data/descriptions/codePatternDescriptions.js';
+} from '../../data/descriptions/codePatternDescriptions.js';
 
 /**
  * Analyzes all effects from cards and drone abilities

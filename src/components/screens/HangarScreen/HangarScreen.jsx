@@ -12,7 +12,7 @@ import HangarHexMap from '../../ui/HangarHexMap';
 import HangarSidebar from '../../ui/HangarSidebar';
 import HangarModals from '../../ui/HangarModals';
 import { debugLog } from '../../../utils/debugLogger.js';
-import { validateShipSlot } from '../../../utils/slotDamageUtils.js';
+import { validateShipSlot } from '../../../logic/combat/slotDamageUtils.js';
 
 // Background image for the map area
 const eremosBackground = new URL('/Eremos/Eremos.jpg', import.meta.url).href;

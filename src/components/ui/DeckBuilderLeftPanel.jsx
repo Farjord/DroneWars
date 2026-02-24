@@ -4,14 +4,14 @@ import ShipCard from './ShipCard.jsx';
 import ActionCard from './ActionCard.jsx';
 import DroneCard from './DroneCard.jsx';
 import FilterChip from './FilterChip.jsx';
-import { getTypeBackgroundClass, getTypeTextClass, getRarityDisplay } from '../../utils/cardTypeStyles.js';
-import { calculateEffectiveMaxForCard } from '../../utils/singlePlayerDeckUtils.js';
+import { getTypeBackgroundClass, getTypeTextClass, getRarityDisplay } from '../../logic/cards/cardTypeStyles.js';
+import { calculateEffectiveMaxForCard } from '../../logic/singlePlayer/singlePlayerDeckUtils.js';
 import {
   countActiveFilters,
   countActiveDroneFilters,
   generateFilterChips,
   generateDroneFilterChips,
-} from '../../utils/deckFilterUtils.js';
+} from '../../logic/cards/deckFilterUtils.js';
 
 const DeckBuilderLeftPanel = ({
   leftPanelView, setLeftPanelView, setRightPanelView,

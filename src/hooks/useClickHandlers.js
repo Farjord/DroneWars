@@ -1,7 +1,7 @@
 import TargetingRouter from '../logic/TargetingRouter.js';
 import { getElementCenter, calculateLaneDestinationPoint } from '../utils/gameUtils.js';
 import { extractDroneNameFromId } from '../logic/droneUtils.js';
-import { calculateEffectTargetsWithCostContext } from '../utils/uiTargetingHelpers.js';
+import { calculateEffectTargetsWithCostContext } from '../logic/targeting/uiTargetingHelpers.js';
 import { debugLog } from '../utils/debugLogger.js';
 
 // Stateless singleton — safe as module-level (no component state dependency)

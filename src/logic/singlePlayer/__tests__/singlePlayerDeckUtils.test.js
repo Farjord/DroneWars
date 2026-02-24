@@ -14,10 +14,10 @@ import {
   calculateAvailableShips,
   calculateEffectiveMaxForCard
 } from '../singlePlayerDeckUtils.js';
-import { starterPoolCards, starterPoolDroneNames, starterPoolShipIds } from '../../data/saveGameSchema.js';
-import fullCardCollection from '../../data/cardData.js';
-import fullDroneCollection from '../../data/droneData.js';
-import { shipComponentCollection } from '../../data/shipSectionData.js';
+import { starterPoolCards, starterPoolDroneNames, starterPoolShipIds } from '../../../data/saveGameSchema.js';
+import fullCardCollection from '../../../data/cardData.js';
+import fullDroneCollection from '../../../data/droneData.js';
+import { shipComponentCollection } from '../../../data/shipSectionData.js';
 
 describe('calculateAvailableCards - Infinite Starter Cards', () => {
   const mockShipSlots = [

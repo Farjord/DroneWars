@@ -15,7 +15,7 @@ import {
   calculateDroneSlotRepairCost,
   calculateSectionRepairCost,
   validateShipSlot
-} from '../../utils/slotDamageUtils.js';
+} from '../../logic/combat/slotDamageUtils.js';
 
 /**
  * Hull bar component for displaying section health

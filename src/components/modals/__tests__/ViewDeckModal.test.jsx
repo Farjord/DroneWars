@@ -82,7 +82,7 @@ vi.mock('../../../logic/gameLogic.js', () => ({
 }));
 
 // Mock resolveShipSectionStats to return stats with resolved image
-vi.mock('../../../utils/shipSectionImageResolver.js', () => ({
+vi.mock('../../../logic/cards/shipSectionImageResolver.js', () => ({
   resolveShipSectionStats: vi.fn((stats, ship) => {
     if (!stats || !ship) return stats;
     // Simulate resolved image path
@@ -98,7 +98,7 @@ vi.mock('../../../utils/shipSectionImageResolver.js', () => ({
 
 // Import component after mocks
 import ViewDeckModal from '../ViewDeckModal.jsx';
-import { resolveShipSectionStats } from '../../../utils/shipSectionImageResolver.js';
+import { resolveShipSectionStats } from '../../../logic/cards/shipSectionImageResolver.js';
 
 describe('ViewDeckModal', () => {
   const mockShip = {

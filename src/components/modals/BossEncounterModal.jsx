@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useGameState } from '../../hooks/useGameState';
 import { debugLog } from '../../utils/debugLogger.js';
-import { validateDeckForDeployment } from '../../utils/singlePlayerDeckUtils.js';
+import { validateDeckForDeployment } from '../../logic/singlePlayer/singlePlayerDeckUtils.js';
 import aiPersonalities from '../../data/aiData.js';
 import { getShipById } from '../../data/shipData.js';
 import { Skull, AlertTriangle, Trophy, Coins, Cpu, Star } from 'lucide-react';

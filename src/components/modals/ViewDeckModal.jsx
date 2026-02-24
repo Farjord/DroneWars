@@ -6,7 +6,7 @@ import ShipCard from '../ui/ShipCard.jsx';
 import ShipSection from '../ui/ShipSection.jsx';
 import { shipComponentCollection } from '../../data/shipSectionData.js';
 import { gameEngine } from '../../logic/gameLogic.js';
-import { resolveShipSectionStats } from '../../utils/shipSectionImageResolver.js';
+import { resolveShipSectionStats } from '../../logic/cards/shipSectionImageResolver.js';
 
 // Swimlane configuration constants
 const TYPE_ORDER = { Ordnance: 0, Support: 1, Tactic: 2, Upgrade: 3 };

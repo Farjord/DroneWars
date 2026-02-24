@@ -5,7 +5,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { generateMapData } from '../mapGenerator.js';
-import { axialDistance } from '../hexGrid.js';
+import { axialDistance } from '../../../utils/hexGrid.js';
 
 describe('mapGenerator', () => {
   describe('gate placement', () => {

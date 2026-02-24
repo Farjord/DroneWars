@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { generateHexGrid, GRID_COLS, GRID_ROWS } from '../../../../logic/singlePlayer/hexGrid.js';
-import { generateMapData } from '../../../../utils/mapGenerator';
+import { generateMapData } from '../../../../logic/map/mapGenerator';
 import aiPersonalities from '../../../../data/aiData.js';
 import { SeededRandom } from '../../../../utils/seededRandom.js';
 import MusicManager from '../../../../managers/MusicManager.js';

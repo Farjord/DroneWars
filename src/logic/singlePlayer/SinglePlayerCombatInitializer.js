@@ -18,7 +18,7 @@ import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import { shipComponentsToPlacement } from '../../utils/deckExportUtils.js';
 import { debugLog } from '../../utils/debugLogger.js';
 import SeededRandom from '../../utils/seededRandom.js';
-import { buildActiveDronePool as buildDronePoolFromSlots } from '../../utils/slotDamageUtils.js';
+import { buildActiveDronePool as buildDronePoolFromSlots } from '../combat/slotDamageUtils.js';
 import { initializeForCombat as initializeDroneAvailability } from '../availability/DroneAvailabilityManager.js';
 
 /**

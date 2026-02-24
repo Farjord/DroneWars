@@ -6,7 +6,7 @@
 
 import { initializeDroneSelection } from '../utils/droneSelectionUtils.js';
 import { SeededRandom } from '../utils/seededRandom.js';
-import { initializeShipPlacement } from '../utils/shipPlacementUtils.js';
+import { initializeShipPlacement } from '../logic/map/shipPlacementUtils.js';
 import fullDroneCollection from '../data/droneData.js';
 import GameDataService from '../services/GameDataService.js';
 import { gameEngine } from '../logic/gameLogic.js';
