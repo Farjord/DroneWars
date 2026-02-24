@@ -18,6 +18,7 @@ import { debugLog } from '../../../../utils/debugLogger.js';
 
 // Delay before executing threat reduce after modal close (ms)
 const CONFIRMATION_DELAY = 400;
+const THREAT_REDUCE_SEED_OFFSET = 8888;
 
 /**
  * Hook that provides all escape, evade, and tactical item handlers for TacticalMapScreen.
@@ -115,7 +116,7 @@ export function useTacticalEscape({
     // Use seeded random for determinism (offset by remaining item count for unique rolls)
     const remainingCount = gameStateManager.getTacticalItemCount('ITEM_THREAT_REDUCE');
     const baseRng = SeededRandom.fromGameState(gameStateManager.getState());
-    const itemUseOffset = 8888 + (remainingCount * 100);
+    const itemUseOffset = THREAT_REDUCE_SEED_OFFSET + (remainingCount * 100);
     const rng = new SeededRandom(baseRng.seed + itemUseOffset);
     const reductionAmount = rng.randomIntInclusive(min, max);
 

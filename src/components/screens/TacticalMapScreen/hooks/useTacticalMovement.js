@@ -21,6 +21,7 @@ import { debugLog } from '../../../../utils/debugLogger.js';
 export const SCAN_DELAY = 500;   // Time to show scan animation
 export const MOVE_DELAY = 400;   // Time after moving to next hex
 export const TOTAL_MOVEMENT_DELAY = SCAN_DELAY + MOVE_DELAY;
+const WAYPOINT_PAUSE_DELAY = 500;
 
 /**
  * Hook that provides the async movement loop and movement controls.
@@ -321,7 +322,7 @@ export function useTacticalMovement({
 
       // Brief pause at waypoint before continuing to next
       if (wpIndex < waypoints.length - 1) {
-        const shouldContinue = await waitWithPauseSupport(500);
+        const shouldContinue = await waitWithPauseSupport(WAYPOINT_PAUSE_DELAY);
         if (!shouldContinue) break;
       }
 
