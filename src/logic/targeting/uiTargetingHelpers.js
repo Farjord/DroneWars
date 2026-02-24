@@ -529,3 +529,159 @@ export function calculateEffectTargetsWithCostContext(card, costSelection, playe
 
   return validTargets;
 }
+
+/**
+ * Resolve valid secondary targets for a card with secondaryTargeting.
+ *
+ * Called after the primary target is selected. Uses the primary result
+ * to compute which entities are valid for the second DnD step.
+ *
+ * @param {Object} primaryResult - { target, lane, owner } from primary selection
+ * @param {Object} secondaryTargetingDef - card.secondaryTargeting definition
+ * @param {Object} context - { actingPlayerId, player1, player2, getEffectiveStats }
+ * @returns {Array} Valid secondary targets
+ */
+export function resolveSecondaryTargets(primaryResult, secondaryTargetingDef, context) {
+  const { actingPlayerId, player1, player2 } = context;
+  const { type, location, affinity, restrictions } = secondaryTargetingDef;
+
+  debugLog('SECONDARY_TARGETING', '🎯 resolveSecondaryTargets called', {
+    primaryTargetId: primaryResult.target?.id,
+    primaryLane: primaryResult.lane,
+    secondaryType: type,
+    secondaryLocation: location,
+    secondaryAffinity: affinity
+  });
+
+  // --- LANE secondary targets (movement destination) ---
+  if (type === 'LANE') {
+    if (location === 'ADJACENT_TO_PRIMARY') {
+      const sourceLaneIndex = parseInt(primaryResult.lane.replace('lane', ''), 10);
+      const targets = [];
+
+      ['lane1', 'lane2', 'lane3'].forEach(laneId => {
+        const laneIndex = parseInt(laneId.replace('lane', ''), 10);
+        if (Math.abs(sourceLaneIndex - laneIndex) === 1) {
+          targets.push({ id: laneId, owner: actingPlayerId, type: 'lane' });
+        }
+      });
+
+      debugLog('SECONDARY_TARGETING', '✅ ADJACENT_TO_PRIMARY lanes resolved', {
+        sourceLane: primaryResult.lane,
+        adjacentLanes: targets.map(t => t.id)
+      });
+      return targets;
+    }
+  }
+
+  // --- DRONE secondary targets (Feint, Forced Repositioning) ---
+  if (type === 'DRONE') {
+    const opponentId = actingPlayerId === 'player1' ? 'player2' : 'player1';
+
+    // Determine which lane to search
+    let searchLane = null;
+    if (location === 'PRIMARY_SOURCE_LANE') {
+      searchLane = primaryResult.lane;
+    }
+
+    const targets = [];
+    const lanesToSearch = searchLane ? [searchLane] : ['lane1', 'lane2', 'lane3'];
+
+    // Build list of player states to search based on affinity
+    const playerEntries = [];
+    if (affinity === 'ANY' || affinity === 'FRIENDLY') {
+      const friendlyState = actingPlayerId === 'player1' ? player1 : player2;
+      playerEntries.push({ state: friendlyState, id: actingPlayerId });
+    }
+    if (affinity === 'ANY' || affinity === 'ENEMY') {
+      const enemyState = opponentId === 'player1' ? player1 : player2;
+      playerEntries.push({ state: enemyState, id: opponentId });
+    }
+
+    for (const { state: pState, id: pId } of playerEntries) {
+      for (const lane of lanesToSearch) {
+        const drones = pState.dronesOnBoard[lane] || [];
+        for (const drone of drones) {
+          if (passesSecondaryRestrictions(drone, restrictions, primaryResult, lane, context)) {
+            targets.push({ ...drone, lane, owner: pId });
+          }
+        }
+      }
+    }
+
+    debugLog('SECONDARY_TARGETING', '✅ DRONE secondary targets resolved', {
+      location,
+      searchLane,
+      targetCount: targets.length,
+      targets: targets.map(t => ({ id: t.id, name: t.name, lane: t.lane }))
+    });
+    return targets;
+  }
+
+  debugLog('SECONDARY_TARGETING', '⚠️ Unhandled secondary targeting type', { type, location });
+  return [];
+}
+
+/**
+ * Check if a drone passes secondary targeting restrictions.
+ * Supports PRIMARY_TARGET reference for stat comparisons.
+ */
+function passesSecondaryRestrictions(drone, restrictions, primaryResult, lane, context) {
+  if (!restrictions || restrictions.length === 0) return true;
+
+  for (const criterion of restrictions) {
+    if (typeof criterion === 'string') {
+      if (criterion === 'MARKED' && !drone.isMarked) return false;
+      if (criterion === 'NOT_MARKED' && drone.isMarked) return false;
+      if (criterion === 'EXHAUSTED' && !drone.isExhausted) return false;
+      continue;
+    }
+
+    if (criterion.type === 'STAT_COMPARISON' && criterion.reference === 'PRIMARY_TARGET') {
+      const primaryTarget = primaryResult.target;
+      if (!primaryTarget) return false;
+
+      const droneStat = criterion.stat;
+      const refStat = criterion.referenceStat || criterion.stat;
+
+      let droneValue = drone[droneStat] || 0;
+      let refValue = primaryTarget[refStat] || 0;
+
+      if (context.getEffectiveStats) {
+        try {
+          const droneStats = context.getEffectiveStats(drone, lane);
+          droneValue = droneStats[droneStat] ?? droneValue;
+          const primaryStats = context.getEffectiveStats(primaryTarget, primaryResult.lane);
+          refValue = primaryStats[refStat] ?? refValue;
+        } catch { /* fall back to base stats */ }
+      }
+
+      let passes = true;
+      switch (criterion.comparison) {
+        case 'GT': passes = droneValue > refValue; break;
+        case 'GTE': passes = droneValue >= refValue; break;
+        case 'LT': passes = droneValue < refValue; break;
+        case 'LTE': passes = droneValue <= refValue; break;
+        case 'EQ': passes = droneValue === refValue; break;
+      }
+      if (!passes) return false;
+      continue;
+    }
+
+    // Simple stat comparison (no reference)
+    if (criterion.stat && criterion.comparison && criterion.value !== undefined) {
+      const droneValue = drone[criterion.stat] || 0;
+      let passes = true;
+      switch (criterion.comparison) {
+        case 'GT': passes = droneValue > criterion.value; break;
+        case 'GTE': passes = droneValue >= criterion.value; break;
+        case 'LT': passes = droneValue < criterion.value; break;
+        case 'LTE': passes = droneValue <= criterion.value; break;
+        case 'EQ': passes = droneValue === criterion.value; break;
+      }
+      if (!passes) return false;
+    }
+  }
+
+  return true;
+}

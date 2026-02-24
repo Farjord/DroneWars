@@ -35,6 +35,8 @@ const useDragMechanics = ({
   additionalCostState, selectedCard, multiSelectState, singleMoveMode,
   // From useInterception
   interceptionModeActive, playerInterceptionChoice, setSelectedInterceptor,
+  // From useCardSelection — secondary targeting
+  enterSecondaryTargeting, secondaryTargetingState,
   // Hoisted to App.jsx to break circular dependency with useCardSelection/useInterception
   draggedDrone, setDraggedDrone,
   costReminderArrowState, setCostReminderArrowState,
@@ -351,6 +353,19 @@ const useDragMechanics = ({
               droneId: target.id
             });
             cancelCardSelection('movement-lane-not-found');
+            return;
+          }
+
+          // For SINGLE_MOVE cards with secondaryTargeting, use the new secondary targeting flow
+          if (card.effect.type === 'SINGLE_MOVE' && card.secondaryTargeting) {
+            debugLog('SECONDARY_TARGETING', '🎯 Card with secondaryTargeting dropped on primary target', {
+              cardName: card.name,
+              targetId: target.id,
+              targetName: target.name,
+              targetLane,
+              targetOwner
+            });
+            enterSecondaryTargeting(card, target, targetLane, targetOwner);
             return;
           }
 

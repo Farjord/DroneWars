@@ -16,7 +16,8 @@ import {
   processAdditionalCostCardPlay as _processAdditionalCostCardPlay,
   processAdditionalCostEffectSelectionComplete as _processAdditionalCostEffectSelectionComplete,
   processMovementCompletion as _processMovementCompletion,
-  processSearchAndDrawCompletion as _processSearchAndDrawCompletion
+  processSearchAndDrawCompletion as _processSearchAndDrawCompletion,
+  processSecondaryTargetingCardPlay as _processSecondaryTargetingCardPlay
 } from '../logic/actions/CardActionStrategy.js';
 import {
   processShipAbility as _processShipAbility,
@@ -80,6 +81,7 @@ const ACTION_STRATEGIES = {
   additionalCostCardPlay: 'processAdditionalCostCardPlay',
   additionalCostEffectSelectionComplete: 'processAdditionalCostEffectSelectionComplete',
   movementCompletion: 'processMovementCompletion',
+  secondaryTargetingCardPlay: 'processSecondaryTargetingCardPlay',
   searchAndDrawCompletion: 'processSearchAndDrawCompletion',
   shipAbility: 'processShipAbility',
   shipAbilityCompletion: 'processShipAbilityCompletion',
@@ -410,7 +412,7 @@ setAnimationManager(animationManager) {
     // PASS STATE VALIDATION - Prevent actions after players have passed
     if (currentState.passInfo) {
       // Actions that should be blocked if current player has passed
-      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'additionalCostCardPlay', 'shipAbility', 'recallAbility', 'targetLockAbility', 'recalculateAbility', 'reallocateShieldsAbility'];
+      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'additionalCostCardPlay', 'secondaryTargetingCardPlay', 'shipAbility', 'recallAbility', 'targetLockAbility', 'recalculateAbility', 'reallocateShieldsAbility'];
       if (playerActionTypes.includes(type)) {
         // Determine the current player for this action
         let actionPlayerId = payload.playerId || currentState.currentPlayer;
@@ -433,7 +435,7 @@ setAnimationManager(animationManager) {
     // Sequential phases (deployment, action) are turn-based - only currentPlayer can act
     const sequentialPhases = ['deployment', 'action'];
     if (sequentialPhases.includes(currentState.turnPhase)) {
-      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'additionalCostCardPlay', 'shipAbility', 'movementCompletion', 'searchAndDrawCompletion'];
+      const playerActionTypes = ['attack', 'ability', 'deployment', 'cardPlay', 'additionalCostCardPlay', 'shipAbility', 'movementCompletion', 'secondaryTargetingCardPlay', 'searchAndDrawCompletion'];
       if (playerActionTypes.includes(type)) {
         // Determine which player is attempting this action
         const actionPlayerId = payload.playerId || currentState.currentPlayer;
@@ -509,7 +511,7 @@ setAnimationManager(animationManager) {
       // Emit action_completed for GameFlowManager (player actions only)
       const playerActionTypes = [
         'attack', 'ability', 'move', 'deployment', 'cardPlay',
-        'additionalCostCardPlay',
+        'additionalCostCardPlay', 'secondaryTargetingCardPlay',
         'shipAbility', 'shipAbilityCompletion',
         'movementCompletion', 'searchAndDrawCompletion',
         'aiAction', 'aiTurn', 'playerPass', 'turnTransition',
@@ -549,6 +551,7 @@ setAnimationManager(animationManager) {
   async processAdditionalCostCardPlay(payload) { return _processAdditionalCostCardPlay(payload, this._getActionContext()); }
   async processAdditionalCostEffectSelectionComplete(payload) { return _processAdditionalCostEffectSelectionComplete(payload, this._getActionContext()); }
   async processMovementCompletion(payload) { return _processMovementCompletion(payload, this._getActionContext()); }
+  async processSecondaryTargetingCardPlay(payload) { return _processSecondaryTargetingCardPlay(payload, this._getActionContext()); }
   async processSearchAndDrawCompletion(payload) { return _processSearchAndDrawCompletion(payload, this._getActionContext()); }
   async processShipAbility(payload) { return _processShipAbility(payload, this._getActionContext()); }
   async processShipAbilityCompletion(payload) { return _processShipAbilityCompletion(payload, this._getActionContext()); }

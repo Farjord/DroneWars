@@ -590,6 +590,223 @@ export async function processMovementCompletion(payload, ctx) {
 }
 
 /**
+ * Process a card play that uses secondaryTargeting (two-step DnD flow).
+ *
+ * Two patterns:
+ * 1. Movement cards (effect only, no secondaryEffect): secondary target is the
+ *    destination lane — delegates to processMovementCompletion.
+ * 2. Dual-effect cards (effect + secondaryEffect): primary effect fires on
+ *    primary target, secondary effect fires on secondary target.
+ *
+ * @param {Object} payload - { card, primaryTarget, primaryLane, secondaryTarget, secondaryLane, playerId }
+ * @param {Object} ctx - ActionContext from ActionProcessor
+ */
+export async function processSecondaryTargetingCardPlay(payload, ctx) {
+  const { card, primaryTarget, primaryLane, secondaryTarget, secondaryLane, playerId } = payload;
+
+  debugLog('SECONDARY_TARGETING', '⚙️ processSecondaryTargetingCardPlay', {
+    cardName: card.name,
+    primaryTargetId: primaryTarget?.id,
+    primaryLane,
+    secondaryTargetId: secondaryTarget?.id,
+    secondaryLane,
+    hasSecondaryEffect: !!card.secondaryEffect,
+    effectType: card.effect?.type
+  });
+
+  // --- Pattern 1: Movement card (secondary = destination lane) ---
+  if (card.effect?.type === 'SINGLE_MOVE' && !card.secondaryEffect) {
+    const destinationLane = secondaryLane || secondaryTarget?.id;
+
+    return processMovementCompletion({
+      card,
+      movementType: 'single_move',
+      drones: [primaryTarget],
+      fromLane: primaryLane,
+      toLane: destinationLane,
+      playerId,
+    }, ctx);
+  }
+
+  // --- Pattern 2: Dual-effect card (primary effect + secondary effect) ---
+  const currentState = ctx.getState();
+
+  // Pay card costs
+  const playerStates = gameEngine.payCardCosts(card, playerId, {
+    player1: currentState.player1,
+    player2: currentState.player2
+  });
+
+  const placedSections = {
+    player1: currentState.placedSections,
+    player2: currentState.opponentPlacedSections
+  };
+
+  const callbacks = {
+    logCallback: (entry) => ctx.addLogEntry(entry),
+    resolveAttackCallback: async (attackPayload) => {
+      return await ctx.processAttack(attackPayload);
+    },
+    applyOnMoveEffectsCallback: gameEngine.applyOnMoveEffects,
+    updateAurasCallback: gameEngine.updateAuras,
+    actionsTakenThisTurn: currentState.actionsTakenThisTurn || 0
+  };
+
+  const effectRouter = new EffectRouter();
+
+  // Execute primary effect on primary target
+  const primaryContext = {
+    target: primaryTarget,
+    actingPlayerId: playerId,
+    playerStates: { player1: JSON.parse(JSON.stringify(playerStates.player1)), player2: JSON.parse(JSON.stringify(playerStates.player2)) },
+    placedSections,
+    callbacks,
+    card
+  };
+
+  let currentStates = primaryContext.playerStates;
+  let allAnimationEvents = [];
+
+  // Route primary effect
+  const primaryResult = effectRouter.routeEffect(card.effect, primaryContext);
+
+  if (primaryResult?.newPlayerStates) {
+    currentStates = primaryResult.newPlayerStates;
+  }
+  if (primaryResult?.animationEvents) {
+    allAnimationEvents.push(...primaryResult.animationEvents);
+  }
+
+  debugLog('SECONDARY_TARGETING', '✅ Primary effect executed', {
+    cardName: card.name,
+    primaryEffectType: card.effect.type,
+    primaryTargetId: primaryTarget?.id
+  });
+
+  // Execute secondary effect on secondary target
+  if (card.secondaryEffect && secondaryTarget) {
+    const secondaryContext = {
+      target: secondaryTarget,
+      actingPlayerId: playerId,
+      playerStates: currentStates,
+      placedSections,
+      callbacks,
+      card
+    };
+
+    // For SINGLE_MOVE secondary effects, use MovementEffectProcessor
+    if (card.secondaryEffect.type === 'SINGLE_MOVE') {
+      const opponentPlayerId = playerId === 'player1' ? 'player2' : 'player1';
+      const movementProcessor = new MovementEffectProcessor();
+      const moveResult = movementProcessor.executeSingleMove(
+        { ...card, effect: card.secondaryEffect },
+        secondaryTarget,
+        secondaryLane || secondaryTarget.lane,
+        null, // destination set by UI or auto-resolved
+        playerId,
+        currentStates,
+        opponentPlayerId,
+        secondaryContext
+      );
+
+      if (moveResult.newPlayerStates) {
+        currentStates = moveResult.newPlayerStates;
+      }
+      if (moveResult.animationEvents) {
+        allAnimationEvents.push(...moveResult.animationEvents);
+      }
+    } else {
+      const secondaryResult = effectRouter.routeEffect(card.secondaryEffect, secondaryContext);
+
+      if (secondaryResult?.newPlayerStates) {
+        currentStates = secondaryResult.newPlayerStates;
+      }
+      if (secondaryResult?.animationEvents) {
+        allAnimationEvents.push(...secondaryResult.animationEvents);
+      }
+    }
+
+    debugLog('SECONDARY_TARGETING', '✅ Secondary effect executed', {
+      cardName: card.name,
+      secondaryEffectType: card.secondaryEffect.type,
+      secondaryTargetId: secondaryTarget?.id
+    });
+  }
+
+  // Process POST conditionals (covers movement cards with conditionalEffects)
+  let dynamicGoAgain = false;
+  if (card.conditionalEffects && card.conditionalEffects.length > 0) {
+    const conditionalProcessor = new ConditionalEffectProcessor();
+    const postContext = {
+      target: primaryTarget,
+      actingPlayerId: playerId,
+      playerStates: currentStates,
+      placedSections,
+      callbacks,
+      card
+    };
+
+    const postResult = conditionalProcessor.processPostConditionals(
+      card.conditionalEffects,
+      postContext,
+      {}
+    );
+
+    if (postResult.grantsGoAgain) {
+      dynamicGoAgain = true;
+    }
+
+    let statesForEffects = postResult.newPlayerStates;
+    for (const effect of postResult.additionalEffects || []) {
+      const effectContext = { ...postContext, playerStates: statesForEffects, target: primaryTarget };
+      const effResult = effectRouter.routeEffect(effect, effectContext);
+      if (effResult?.newPlayerStates) {
+        statesForEffects = effResult.newPlayerStates;
+      }
+    }
+    currentStates = statesForEffects;
+  }
+
+  // Finish card play (discard card, check go-again)
+  const completion = gameEngine.finishCardPlay(card, playerId, currentStates, dynamicGoAgain);
+
+  ctx.setPlayerStates(
+    completion.newPlayerStates.player1,
+    completion.newPlayerStates.player2
+  );
+
+  if (allAnimationEvents.length > 0) {
+    ctx.captureAnimationsForBroadcast(allAnimationEvents);
+  }
+
+  // Execute CARD_REVEAL animation
+  const animMgr = ctx.getAnimationManager();
+  const animDef = animMgr?.animations['CARD_REVEAL'];
+  const cardRevealAnimation = [{
+    animationName: 'CARD_REVEAL',
+    timing: animDef?.timing || 'independent',
+    payload: {
+      cardId: card.id,
+      cardName: card.name,
+      cardData: card,
+      targetPlayer: playerId,
+      timestamp: Date.now()
+    }
+  }];
+  await ctx.executeAndCaptureAnimations(cardRevealAnimation);
+
+  if (!completion.shouldEndTurn) {
+    await ctx.executeGoAgainAnimation(playerId);
+  }
+
+  return {
+    success: true,
+    shouldEndTurn: completion.shouldEndTurn,
+    animationEvents: allAnimationEvents
+  };
+}
+
+/**
  * Process SEARCH_AND_DRAW card completion after player modal selection
  * Card costs are paid here (not during initial card play)
  * @param {Object} payload - { card, selectedCards, selectionData, playerId }

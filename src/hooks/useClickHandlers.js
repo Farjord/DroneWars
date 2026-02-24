@@ -75,6 +75,8 @@ export default function useClickHandlers({
   additionalCostSelectionContext,
   singleMoveMode,
   setSingleMoveMode,
+  secondaryTargetingState,
+  cancelSecondaryTargeting,
 
   // --- From useShieldAllocation ---
   shipAbilityMode,
@@ -99,6 +101,9 @@ export default function useClickHandlers({
   resolveSingleMove,
   resolveMultiMove,
   handleConfirmMandatoryDestroy,
+
+  // --- Action dispatching ---
+  processActionWithGuestRouting,
 
   // --- External services ---
   gameEngine,
@@ -545,6 +550,32 @@ export default function useClickHandlers({
       }
 
       return;
+    }
+
+    // --- 9.1.7 HANDLE SECONDARY TARGETING LANE SELECTION ---
+    if (secondaryTargetingState?.phase === 'secondary' &&
+        secondaryTargetingState.card?.secondaryTargeting?.type === 'LANE') {
+      const owner = isPlayer ? getLocalPlayerId() : getOpponentPlayerId();
+      if (validCardTargets.some(t => t.id === lane && t.owner === owner)) {
+        debugLog('SECONDARY_TARGETING', '🎯 Secondary lane target selected', {
+          lane,
+          owner,
+          cardName: secondaryTargetingState.card.name,
+          primaryTargetId: secondaryTargetingState.primaryTarget?.id
+        });
+
+        processActionWithGuestRouting('secondaryTargetingCardPlay', {
+          card: secondaryTargetingState.card,
+          primaryTarget: secondaryTargetingState.primaryTarget,
+          primaryLane: secondaryTargetingState.primaryLane,
+          secondaryTarget: { id: lane, owner },
+          secondaryLane: lane,
+          playerId: getLocalPlayerId()
+        });
+
+        cancelSecondaryTargeting();
+        return;
+      }
     }
 
     // --- 9.2 HANDLE SINGLE-MOVE MODE LANE CLICKS ---

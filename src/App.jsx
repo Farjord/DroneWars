@@ -520,6 +520,8 @@ const App = ({ phaseAnimationQueue }) => {
     cancelCardSelection, cancelSingleMoveMode, cancelAdditionalCostMode,
     confirmAdditionalCostCard, handleCancelMultiMove, handleConfirmMultiMoveDrones,
     cancelCardState,
+    secondaryTargetingState, setSecondaryTargetingState,
+    enterSecondaryTargeting, cancelSecondaryTargeting,
   } = useCardSelection({
     processActionWithGuestRouting,
     getLocalPlayerId,
@@ -656,6 +658,8 @@ const App = ({ phaseAnimationQueue }) => {
     setUpgradeSelectionModal, setDestroyUpgradeModal, setAdditionalCostState,
     setAdditionalCostConfirmation, setValidCardTargets, validCardTargets,
     additionalCostState, selectedCard, multiSelectState, singleMoveMode,
+    // From useCardSelection — secondary targeting
+    enterSecondaryTargeting, secondaryTargetingState,
     // From useInterception
     interceptionModeActive, playerInterceptionChoice, setSelectedInterceptor,
     // Hoisted state
@@ -861,6 +865,7 @@ const App = ({ phaseAnimationQueue }) => {
     additionalCostState, setAdditionalCostState,
     additionalCostFlowInProgress, additionalCostSelectionContext,
     singleMoveMode, setSingleMoveMode,
+    secondaryTargetingState, cancelSecondaryTargeting,
     // From useShieldAllocation
     shipAbilityMode, setShipAbilityMode,
     setReallocationPhase, setShieldsToRemove, setShieldsToAdd,
@@ -872,6 +877,8 @@ const App = ({ phaseAnimationQueue }) => {
     getLocalPlayerId, getOpponentPlayerId,
     resolveAbility, resolveSingleMove, resolveMultiMove,
     handleConfirmMandatoryDestroy,
+    // Action dispatching
+    processActionWithGuestRouting,
     // External services
     gameEngine, gameDataService,
     // Refs

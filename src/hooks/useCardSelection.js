@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { debugLog } from '../utils/debugLogger.js';
-import { calculateAllValidTargets } from '../logic/targeting/uiTargetingHelpers.js';
+import { calculateAllValidTargets, resolveSecondaryTargets } from '../logic/targeting/uiTargetingHelpers.js';
 
 const useCardSelection = ({
   processActionWithGuestRouting,
@@ -36,6 +36,10 @@ const useCardSelection = ({
   const [upgradeSelectionModal, setUpgradeSelectionModal] = useState(null);
   const [viewUpgradesModal, setViewUpgradesModal] = useState(null);
 
+  // Secondary targeting state for cards with secondaryTargeting field
+  // { card, primaryTarget, primaryLane, primaryOwner, phase: 'secondary' }
+  const [secondaryTargetingState, setSecondaryTargetingState] = useState(null);
+
   // Multi-select state with logged setter for debugging
   const [multiSelectStateRaw, setMultiSelectStateRaw] = useState(null);
   const multiSelectState = multiSelectStateRaw;
@@ -57,6 +61,29 @@ const useCardSelection = ({
   }, []);
 
   // --- Cancel/Confirm Functions ---
+
+  const enterSecondaryTargeting = useCallback((card, primaryTarget, primaryLane, primaryOwner) => {
+    debugLog('SECONDARY_TARGETING', '🎯 Entering secondary targeting phase', {
+      cardName: card.name,
+      primaryTargetId: primaryTarget.id,
+      primaryLane,
+      primaryOwner
+    });
+    setSecondaryTargetingState({
+      card,
+      primaryTarget,
+      primaryLane,
+      primaryOwner,
+      phase: 'secondary'
+    });
+  }, []);
+
+  const cancelSecondaryTargeting = useCallback(() => {
+    debugLog('SECONDARY_TARGETING', '🚨 cancelSecondaryTargeting CALLED');
+    setSecondaryTargetingState(null);
+    setSelectedCard(null);
+    setValidCardTargets([]);
+  }, []);
 
   const cancelSingleMoveMode = useCallback(() => {
     debugLog('SINGLE_MOVE_MODE', '🚨 cancelSingleMoveMode CALLED', {
@@ -110,6 +137,7 @@ const useCardSelection = ({
     setSelectedCard(null);
     setMultiSelectState(null);
     setSingleMoveMode(null);
+    setSecondaryTargetingState(null);
     setValidCardTargets([]);
     setAffectedDroneIds([]);
   }, [additionalCostFlowInProgress, multiSelectFlowInProgress, multiSelectState, selectedCard, singleMoveMode, additionalCostState, setMultiSelectState]);
@@ -230,10 +258,30 @@ const useCardSelection = ({
       willSkipCalculation: !selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState && !singleMoveMode
     });
 
-    if (!selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState && !singleMoveMode) {
+    if (!selectedCard && !abilityMode && !shipAbilityMode && !multiSelectState && !singleMoveMode && !secondaryTargetingState) {
       setValidAbilityTargets([]);
       setValidCardTargets([]);
       return;
+    }
+
+    // Secondary targeting phase — compute targets from secondaryTargeting definition
+    if (secondaryTargetingState) {
+      const { card, primaryTarget, primaryLane, primaryOwner } = secondaryTargetingState;
+      if (card.secondaryTargeting) {
+        const secondaryTargets = resolveSecondaryTargets(
+          { target: primaryTarget, lane: primaryLane, owner: primaryOwner },
+          card.secondaryTargeting,
+          {
+            actingPlayerId: getLocalPlayerId(),
+            player1: gameState.player1,
+            player2: gameState.player2,
+            getEffectiveStats: gameDataService.getEffectiveStats.bind(gameDataService)
+          }
+        );
+        setValidAbilityTargets([]);
+        setValidCardTargets(secondaryTargets);
+        return;
+      }
     }
 
     // Skip recalculation if in additional cost phase (targets already manually set)
@@ -268,7 +316,7 @@ const useCardSelection = ({
       setSelectedCard(null);
       setShipAbilityMode(null);
     }
-  }, [abilityMode, shipAbilityMode, selectedCard, multiSelectState, singleMoveMode, additionalCostState]);
+  }, [abilityMode, shipAbilityMode, selectedCard, multiSelectState, singleMoveMode, additionalCostState, secondaryTargetingState]);
 
   // Additional cost highlighting debug logging
   useEffect(() => {
@@ -299,6 +347,7 @@ const useCardSelection = ({
     destroyUpgradeModal,
     upgradeSelectionModal,
     viewUpgradesModal,
+    secondaryTargetingState,
 
     // State setters (needed by App.jsx handlers that stay in parent)
     setSelectedCard,
@@ -315,11 +364,14 @@ const useCardSelection = ({
     setDestroyUpgradeModal,
     setUpgradeSelectionModal,
     setViewUpgradesModal,
+    setSecondaryTargetingState,
 
     // Functions
     cancelCardSelection,
     cancelSingleMoveMode,
     cancelAdditionalCostMode,
+    enterSecondaryTargeting,
+    cancelSecondaryTargeting,
     confirmAdditionalCostCard,
     handleCancelMultiMove,
     handleConfirmMultiMoveDrones,
