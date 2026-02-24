@@ -45,7 +45,7 @@ vi.mock('../../logic/combat/LaneControlCalculator.js', () => ({
   }
 }));
 
-vi.mock('../../utils/cardDrawUtils.js', () => ({
+vi.mock('../../logic/cards/cardDrawUtils.js', () => ({
   performAutomaticDraw: vi.fn(() => ({
     player1: { hand: [{ name: 'card1' }] },
     player2: { hand: [{ name: 'card2' }] }

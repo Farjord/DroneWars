@@ -818,7 +818,7 @@
 - **[FIXED] [PURITY] :196-226** — `handleShipAbilityClick` ability routing extracted to `ABILITY_CONFIG` lookup table (inlined as module-level constant in useClickHandlers.js, Phase L1).
 - **[TODO] :146,898,915** — Three `// TODO: TECHNICAL DEBT` comments for `gameEngine` direct calls.
 - **[FIXED] [DUP] :489-561** — Cost movement destination logic extracted to shared `calculateCostReminderArrow` in `gameUtils.js`.
-- **[FIXED] [IMPORT] :3** — `extractDroneNameFromId` imported but only used once for a debug log. **Fixed:** Import removed during Phase L1 refactor.
+- **[FIXED] [IMPORT] :3** — `extractDroneNameFromId` imported but only used once for a debug log. **Fixed:** Import removed in Phase G.
 - **[EDGE] :99** — `handleToggleDroneSelection` compares by `drone.name` not `drone.id`. Could mismatch with duplicate-named drones.
 - **[TEST]** — Zero tests.
 
