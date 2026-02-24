@@ -25,7 +25,7 @@ Full codebase audit completed (Feb 23): ~500 files, ~433 issues catalogued in `D
 | B2 | Console.log Migration | Done |
 | C | Deduplication | Pending |
 | D | Data File Purity | Pending |
-| E | Structural Moves | Pending |
+| E | Structural Moves | Done |
 | F | Large File Decomposition | Pending |
 
 ---
@@ -167,7 +167,7 @@ All 8 data files now have backward-compatible re-exports. 20 functions extracted
 
 ## Phase E: Structural Moves
 
-**Status: In Progress**
+**Status: Done**
 
 **Goal:** Implement decided standards challenges and fix misplaced files.
 
@@ -194,14 +194,14 @@ Keep as subdirectories (multi-file): `cards/`, `conditional/`, `damage/`, `energ
 ### Batch E4 — Hook co-location (STD-CHALLENGE-01, HIGH RISK)
 
 *E4a — TacticalMapScreen hooks:*
-- [ ] Remaining `useTactical*` hooks → `screens/TacticalMapScreen/hooks/`
+- [x] All `useTactical*` hooks already co-located in `screens/TacticalMapScreen/hooks/`
 
 *E4b — Screen-specific hooks:*
-- [ ] `useHangarData`, `useHangarMapState` → `screens/HangarScreen/hooks/`
-- [ ] `useDeckBuilderData` → `screens/DeckBuilder/hooks/`
+- [x] `useHangarData`, `useHangarMapState` already in `screens/HangarScreen/hooks/`
+- [x] `useDeckBuilderData` already in `screens/DeckBuilder/hooks/`
 
 *E4c — App-level hooks triage:*
-- [ ] Decide: keep in `src/hooks/` or create `src/App/hooks/`
+- [x] Decision: keep in `src/hooks/`. 8 App-only + 7 shared hooks stay together — App.jsx isn't in a directory, so `src/App/hooks/` would fragment without benefit
 
 **Verification:** Full test suite + build after each sub-batch.
 
