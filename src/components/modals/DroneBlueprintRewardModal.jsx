@@ -8,7 +8,7 @@
 
 import { useState, useEffect } from 'react';
 import { Star } from 'lucide-react';
-import { RARITY_COLORS } from '../../data/cardPackData.js';
+import { RARITY_COLORS } from '../../data/rarityColors.js';
 import DroneCard from '../ui/DroneCard.jsx';
 import HiddenCard from '../ui/HiddenCard.jsx';
 import './DroneBlueprintRewardModal.css';

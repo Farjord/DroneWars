@@ -6,6 +6,8 @@
 // Prevents race conditions and message loss on guest side
 
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
+import { addTeleportingFlags } from '../utils/teleportUtils.js';
+import { arraysMatch, dronesMatch } from '../utils/stateComparisonUtils.js';
 
 class GuestMessageQueueService {
   constructor(gameStateManager, phaseAnimationQueue = null) {
@@ -127,61 +129,6 @@ class GuestMessageQueueService {
    * @param {Array} animations - All animations being played
    * @returns {Object} Modified state with isTeleporting flags
    */
-  addTeleportingFlags(state, animations) {
-    // Extract TELEPORT_IN animations and their target drones
-    const teleportAnimations = animations.filter(anim => anim.animationName === 'TELEPORT_IN');
-
-    if (teleportAnimations.length === 0) {
-      return state; // No changes needed
-    }
-
-    debugLog('ANIMATIONS', '🌀 [TELEPORT] Adding isTeleporting flags to drones:', {
-      animationCount: teleportAnimations.length
-    });
-
-    // Create deep copy of state to modify - preserve ALL top-level properties
-    // Critical: Must copy turnPhase, currentPlayer, roundNumber, etc. to avoid desyncs
-    const modifiedState = {
-      ...state, // Copy all top-level properties (turnPhase, currentPlayer, etc.)
-      player1: JSON.parse(JSON.stringify(state.player1)),
-      player2: JSON.parse(JSON.stringify(state.player2))
-    };
-
-    // Add isTeleporting flag to each drone being teleported
-    teleportAnimations.forEach((anim, index) => {
-      const { targetPlayer, targetLane, targetId } = anim.payload || {};
-
-      if (!targetPlayer || !targetLane || !targetId) {
-        debugLog('ANIMATIONS', '⚠️ [TELEPORT] Missing payload data in TELEPORT_IN animation:', anim);
-        return;
-      }
-
-      // Find and mark the drone as teleporting
-      const playerState = modifiedState[targetPlayer];
-      const lane = playerState?.dronesOnBoard?.[targetLane];
-
-      if (lane && Array.isArray(lane)) {
-        const droneIndex = lane.findIndex(d => d.id === targetId);
-        if (droneIndex !== -1) {
-          lane[droneIndex].isTeleporting = true;
-          debugLog('ANIMATIONS', `🌀 [TELEPORT ${index + 1}/${teleportAnimations.length}] Marked drone as invisible:`, {
-            targetPlayer,
-            targetLane,
-            targetId,
-            droneName: lane[droneIndex].name
-          });
-        } else {
-          debugLog('ANIMATIONS', '⚠️ [TELEPORT] Drone not found in lane:', {
-            targetPlayer,
-            targetLane,
-            targetId
-          });
-        }
-      }
-    });
-
-    return modifiedState;
-  }
 
   /**
    * Compare two arrays for equality
@@ -190,101 +137,6 @@ class GuestMessageQueueService {
    * @param {string} context - Context for logging (e.g., 'player1.hand')
    * @returns {boolean} True if arrays match
    */
-  arraysMatch(arr1, arr2, context = 'arrays') {
-    if (!arr1 || !arr2) {
-      const match = arr1 === arr2;
-      if (!match) {
-        debugLog('OPTIMISTIC', `❌ [STATE COMPARE] ${context} - null/undefined mismatch:`, {
-          arr1: arr1,
-          arr2: arr2
-        });
-      }
-      return match;
-    }
-
-    if (arr1.length !== arr2.length) {
-      debugLog('OPTIMISTIC', `❌ [STATE COMPARE] ${context} - length mismatch:`, {
-        current: arr1.length,
-        host: arr2.length
-      });
-      return false;
-    }
-
-    for (let i = 0; i < arr1.length; i++) {
-      if (arr1[i] !== arr2[i]) {
-        debugLog('OPTIMISTIC', `❌ [STATE COMPARE] ${context}[${i}] - element mismatch:`, {
-          current: arr1[i],
-          host: arr2[i]
-        });
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  /**
-   * Compare two drone arrays for equality
-   * @param {Array} drones1 - First drone array
-   * @param {Array} drones2 - Second drone array
-   * @param {string} lane - Lane identifier for logging (e.g., 'player1.lane1')
-   * @returns {boolean} True if drone arrays match
-   */
-  dronesMatch(drones1, drones2, lane = 'lane') {
-    if (drones1.length !== drones2.length) {
-      debugLog('OPTIMISTIC', `❌ [STATE COMPARE] ${lane} - drone count mismatch:`, {
-        current: drones1.length,
-        host: drones2.length
-      });
-      return false;
-    }
-
-    for (let i = 0; i < drones1.length; i++) {
-      const d1 = drones1[i];
-      const d2 = drones2[i];
-
-      // Compare critical drone properties
-      if (d1.id !== d2.id) {
-        debugLog('OPTIMISTIC', `❌ [STATE COMPARE] ${lane}[${i}].id - mismatch:`, {
-          current: d1.id,
-          host: d2.id
-        });
-        return false;
-      }
-
-      if (d1.health !== d2.health) {
-        debugLog('OPTIMISTIC', `❌ [STATE COMPARE] ${lane}[${i}].health - mismatch:`, {
-          droneId: d1.id,
-          current: d1.health,
-          host: d2.health
-        });
-        return false;
-      }
-
-      if (d1.name !== d2.name) {
-        debugLog('OPTIMISTIC', `❌ [STATE COMPARE] ${lane}[${i}].name - mismatch:`, {
-          droneId: d1.id,
-          current: d1.name,
-          host: d2.name
-        });
-        return false;
-      }
-
-      if (d1.isTeleporting !== d2.isTeleporting) {
-        debugLog('OPTIMISTIC', `❌ [STATE COMPARE] ${lane}[${i}].isTeleporting - mismatch:`, {
-          droneId: d1.id,
-          current: d1.isTeleporting,
-          host: d2.isTeleporting
-        });
-        return false;
-      }
-
-      // Note: Not comparing all properties to avoid false negatives
-      // Focus on gameplay-critical fields that affect rendering
-    }
-
-    return true;
-  }
 
   /**
    * Compare current game state with incoming host state
@@ -332,7 +184,7 @@ class GuestMessageQueueService {
       // Compare hand (card instance IDs)
       const hand1Ids = p1.hand?.map(c => c.instanceId) || [];
       const hand2Ids = p2.hand?.map(c => c.instanceId) || [];
-      if (!this.arraysMatch(hand1Ids, hand2Ids, `${player}.hand`)) {
+      if (!arraysMatch(hand1Ids, hand2Ids, `${player}.hand`)) {
         return false;
       }
 
@@ -341,7 +193,7 @@ class GuestMessageQueueService {
         const drones1 = p1.dronesOnBoard?.[lane] || [];
         const drones2 = p2.dronesOnBoard?.[lane] || [];
 
-        if (!this.dronesMatch(drones1, drones2, `${player}.${lane}`)) {
+        if (!dronesMatch(drones1, drones2, `${player}.${lane}`)) {
           return false;
         }
       }
@@ -979,7 +831,11 @@ class GuestMessageQueueService {
       debugLog('ANIMATIONS', '🌀 [TELEPORT] Detected TELEPORT_IN animations, preparing invisible drone state');
 
       // Create modified state with isTeleporting flags for affected drones
-      const stateWithInvisibleDrones = this.addTeleportingFlags(state, allAnimations);
+      const modifiedPlayers = addTeleportingFlags(
+        { player1: state.player1, player2: state.player2 },
+        allAnimations
+      );
+      const stateWithInvisibleDrones = { ...state, ...modifiedPlayers };
 
       // Set both states for TELEPORT_IN reveal flow
       this.pendingHostState = stateWithInvisibleDrones;  // Invisible drones (with isTeleporting)
@@ -1099,7 +955,7 @@ class GuestMessageQueueService {
 
       // Arrays
       if (Array.isArray(guestVal) && Array.isArray(hostVal)) {
-        if (!this.arraysMatch(guestVal, hostVal, fullPath)) {
+        if (!arraysMatch(guestVal, hostVal, fullPath)) {
           mismatches.push(`${fullPath}: array mismatch (lengths: ${guestVal.length} vs ${hostVal.length})`);
         }
         continue;

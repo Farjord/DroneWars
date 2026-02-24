@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { RARITY_COLORS } from '../../data/cardPackData.js';
+import { RARITY_COLORS } from '../../data/rarityColors.js';
 import fullCardCollection from '../../data/cardData.js';
 import ActionCard from '../ui/ActionCard.jsx';
 import HiddenCard from '../ui/HiddenCard.jsx';

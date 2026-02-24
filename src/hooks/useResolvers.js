@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { debugLog } from '../utils/debugLogger.js';
+import { getFriendlyDroneTargets } from '../logic/droneUtils.js';
 
 const useResolvers = ({
   // --- Core action routing ---
@@ -225,9 +226,7 @@ const useResolvers = ({
           const actingPlayerState = actingPlayerId === getLocalPlayerId()
             ? localPlayerState
             : opponentPlayerState;
-          const friendlyDrones = Object.values(actingPlayerState.dronesOnBoard)
-            .flat()
-            .map(drone => ({ id: drone.id, type: 'drone', owner: actingPlayerId }));
+          const friendlyDrones = getFriendlyDroneTargets(actingPlayerState, actingPlayerId);
           setValidCardTargets(friendlyDrones);
         }
 

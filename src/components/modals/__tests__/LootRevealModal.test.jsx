@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 // Mock dependencies
-vi.mock('../../../data/cardPackData.js', () => ({
+vi.mock('../../../data/rarityColors.js', () => ({
   RARITY_COLORS: { Common: '#808080', Uncommon: '#22c55e', Rare: '#3b82f6', Mythic: '#a855f7' }
 }));
 

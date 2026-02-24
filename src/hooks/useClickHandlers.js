@@ -1,6 +1,6 @@
 import TargetingRouter from '../logic/TargetingRouter.js';
-import { getElementCenter, calculateLaneDestinationPoint } from '../utils/gameUtils.js';
-import { extractDroneNameFromId } from '../logic/droneUtils.js';
+import { getElementCenter, calculateLaneDestinationPoint, calculateCostReminderArrow } from '../utils/gameUtils.js';
+import { extractDroneNameFromId, getFriendlyDroneTargets } from '../logic/droneUtils.js';
 import { calculateEffectTargetsWithCostContext } from '../logic/targeting/uiTargetingHelpers.js';
 import { debugLog } from '../utils/debugLogger.js';
 
@@ -523,41 +523,10 @@ export default function useClickHandlers({
       setValidCardTargets(effectTargets);
 
       // Show cost reminder arrow for Forced Repositioning
-      if (additionalCostState.card.id === 'FORCED_REPOSITION') {
-        const costDrone = additionalCostState.costSelection?.drone;
-        const fromLane = additionalCostState.costSelection?.sourceLane;
-        const toLane = lane;
-
-        if (costDrone && droneRefs.current[costDrone.id]) {
-          // Get drone center position
-          const dronePos = getElementCenter(
-            droneRefs.current[costDrone.id],
-            gameAreaRef.current
-          );
-
-          if (dronePos) {
-            // Calculate destination lane position
-            const arrowEnd = calculateLaneDestinationPoint(
-              fromLane,
-              toLane,
-              dronePos,
-              gameAreaRef.current
-            );
-
-            setCostReminderArrowState({
-              visible: true,
-              start: dronePos,
-              end: arrowEnd
-            });
-
-            debugLog('ADDITIONAL_COST_UI', '🏹 Cost reminder arrow shown', {
-              fromLane,
-              toLane,
-              dronePos,
-              arrowEnd
-            });
-          }
-        }
+      const arrowState = calculateCostReminderArrow(additionalCostState, lane, droneRefs.current, gameAreaRef.current);
+      if (arrowState) {
+        setCostReminderArrowState(arrowState);
+        debugLog('ADDITIONAL_COST_UI', '🏹 Cost reminder arrow shown', arrowState);
       }
 
       return;
@@ -852,10 +821,7 @@ export default function useClickHandlers({
           debugLog('MOVEMENT_LANES', `gameMode: ${gameState.gameMode}, localPlayerId: ${getLocalPlayerId()}`);
 
           // For SINGLE_MOVE, highlight all friendly non-exhausted drones as valid targets
-          const friendlyDrones = Object.values(localPlayerState.dronesOnBoard)
-            .flat()
-            .filter(drone => !drone.isExhausted)
-            .map(drone => ({ id: drone.id, type: 'drone', owner: getLocalPlayerId() }));
+          const friendlyDrones = getFriendlyDroneTargets(localPlayerState, getLocalPlayerId(), { excludeExhausted: true });
 
           debugLog('MOVEMENT_LANES', `Valid drone targets:`, friendlyDrones);
           setValidCardTargets(friendlyDrones);

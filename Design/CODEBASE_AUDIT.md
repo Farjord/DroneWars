@@ -220,7 +220,7 @@
 
 **Other findings:**
 - [FIXED] [DEAD] cardPackData.js: `fullCardCollection` import on line 7 is unused. Remove.
-- [DUP] cardPackData.js: `RARITY_COLORS` (lines 12-17) is an exact duplicate of `src/data/rarityColors.js`. Remove and redirect consumers to canonical source.
+- [FIXED] [DUP] cardPackData.js: `RARITY_COLORS` removed, 4 consumers redirected to `rarityColors.js`.
 - [SIZE] cardData.js (1821), droneData.js (993) exceed 800 lines but are cohesive flat data arrays — low urgency.
 - [SIZE] aiStrategyDescriptions.js (678), codePatternDescriptions.js (402) — pure text data, acceptable.
 - [TODO] droneData.js:8 — "Recovery rate of 0. (Cannot recover - needs cards to do so)" — triage needed.
@@ -646,8 +646,8 @@
 **GuestMessageQueueService.js (1125 lines, 5 issues):**
 - **[SIZE]** — 1125 lines. `processStateUpdate` (lines 634-1022) is 388 lines — a god function handling state comparison, animation filtering, teleport logic, phase queueing, cascade triggers, and state application.
 - **[LOG] :64,517,626,953,967** — 5 raw `console.error`/`console.warn` calls.
-- **[DUP] :130-184** — `addTeleportingFlags` nearly identical to `ActionProcessor.js:810-862`. Extract to shared utility.
-- **[DUP] :193-287** — `arraysMatch` and `dronesMatch` comparison utilities belong in a shared module.
+- **[FIXED] [DUP] :130-184** — `addTeleportingFlags` extracted to `utils/teleportUtils.js`.
+- **[FIXED] [DUP] :193-287** — `arraysMatch` and `dronesMatch` extracted to `utils/stateComparisonUtils.js`.
 - **[PURITY]** — Mixed concerns: message queuing + state comparison + animation orchestration + teleport management + phase inference.
 
 **GameStateManager.js (1068 lines, 5 issues):**
@@ -667,7 +667,7 @@
 **ActionProcessor.js (1006 lines, 4 issues):**
 - **[SIZE]** — 1006 lines. Teleport state management (~80 lines) could extract to shared `TeleportStateHandler`.
 - **[TODO] :452,457** — Two TODOs for unimplemented shield allocation/reset in a live code path. If `allocateShields` phase is reachable, players get silent no-ops.
-- **[DUP] :810-862** — `addTeleportingFlags` duplicated with GuestMessageQueueService.
+- **[FIXED] [DUP] :810-862** — `addTeleportingFlags` extracted to shared `utils/teleportUtils.js`.
 - **[SMELL] :333-335** — `setAnimationManager` has inconsistent indentation.
 
 **TransitionManager.js (642 lines, 1 issue):**
@@ -691,7 +691,7 @@
 **PhaseManager.js (485 lines, 5 issues):**
 - **[LOG] :87,92** — 2 `console.warn` calls alongside `debugLog`.
 - **[LOG] :233,240,286** — 3 `console.error` calls alongside `debugLog`.
-- **[DUP] :392-410** — **LATENT BUG:** `isSequentialPhase()` and `isSimultaneousPhase()` duplicate the static class arrays `SEQUENTIAL_PHASES`/`SIMULTANEOUS_PHASES` with local arrays. `determineFirstPlayer` is in static `SIMULTANEOUS_PHASES` but MISSING from instance `isSimultaneousPhase()`. This means `checkReadyToTransition` at line 184 treats `determineFirstPlayer` as "automatic" and transitions immediately instead of waiting for both players.
+- **[FIXED] [DUP] :392-410** — `SEQUENTIAL_PHASES` unified: PhaseManager + GameFlowManager now import from `gameUtils.js`.
 - **[SIZE]** — 485 lines (400+ threshold). Borderline; cohesive class.
 - **[TODO] :336** — `broadcastPhaseUpdate` is a no-op stub. Not tracked in FUTURE_IMPROVEMENTS.md.
 
@@ -751,8 +751,8 @@
 2. **[FIXED] PhaseManager.js:392-410** — LATENT BUG: `isSimultaneousPhase()` hardcoded list missing `determineFirstPlayer`, diverges from static `SIMULTANEOUS_PHASES`. Causes premature phase transition.
 3. **[LOG]** — 22 files have raw console calls. Worst: P2PManager (21), SaveGameService (12), AnimationManager (6), GuestMessageQueueService (5), PhaseManager (5).
 4. **[SIZE]** — 5 files exceed 800 lines: GameFlowManager (1673), GuestMessageQueueService (1125), GameStateManager (1068), RewardManager (1028), ActionProcessor (1006). GuestMessageQueueService's `processStateUpdate` at 388 lines is the worst single method.
-5. **[DUP] `sequentialPhases`** — Same array defined 5 times across 4 files. Single shared constant needed.
-6. **[DUP] `addTeleportingFlags`** — Nearly identical in ActionProcessor and GuestMessageQueueService. Extract shared utility.
+5. **[FIXED] [DUP] `sequentialPhases`** — Unified to single `SEQUENTIAL_PHASES` in `gameUtils.js`, imported by PhaseManager + GameFlowManager.
+6. **[FIXED] [DUP] `addTeleportingFlags`** — Extracted to `utils/teleportUtils.js`, both consumers updated.
 7. **[SMELL] GameStateManager.js:217** — `new Error().stack` on every `setState()` is expensive. Should be debug-only.
 
 ### Phase D — Hooks (26 files, reviewed 2026-02-23)

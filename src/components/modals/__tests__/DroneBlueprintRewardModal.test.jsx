@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 
 // Mock RARITY_COLORS
-vi.mock('../../../data/cardPackData.js', () => ({
+vi.mock('../../../data/rarityColors.js', () => ({
   RARITY_COLORS: {
     Common: '#808080',
     Uncommon: '#22c55e',

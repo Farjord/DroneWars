@@ -13,6 +13,7 @@ import { gameEngine } from '../logic/gameLogic.js';
 import PhaseManager from './PhaseManager.js';
 import tacticalMapStateManager from './TacticalMapStateManager.js';
 import { debugLog, timingLog, getTimestamp } from '../utils/debugLogger.js';
+import { SEQUENTIAL_PHASES } from '../utils/gameUtils.js';
 import PhaseRequirementChecker from '../logic/phase/PhaseRequirementChecker.js';
 import RoundInitializationProcessor from './RoundInitializationProcessor.js';
 
@@ -32,7 +33,7 @@ class GameFlowManager {
 
     // Phase type classification
     this.SIMULTANEOUS_PHASES = ['droneSelection', 'deckSelection', 'placement', 'mandatoryDiscard', 'optionalDiscard', 'allocateShields', 'mandatoryDroneRemoval'];
-    this.SEQUENTIAL_PHASES = ['deployment', 'action'];
+    this.SEQUENTIAL_PHASES = SEQUENTIAL_PHASES;
     this.AUTOMATIC_PHASES = ['roundInitialization']; // Automatic phase handled directly by GameFlowManager
 
     // Current game state

@@ -498,128 +498,53 @@ const DeckBuilderLeftPanel = ({
             </tr>
           </thead>
           <tbody>
-            {/* Bridge Section */}
-            <tr className="bg-cyan-900/20">
-              <td colSpan="6" className="font-bold text-cyan-400 text-sm py-2">BRIDGE</td>
-            </tr>
-            {activeComponentCollection.filter(comp => comp.type === 'Bridge').map((component, index) => {
-              const selectedLane = selectedShipComponents?.[component.id] || null;
-              const occupiedLanes = Object.entries(selectedShipComponents || {})
-                .filter(([id, lane]) => id !== component.id && lane)
-                .map(([id, lane]) => lane);
-
-              return (
-                <tr key={`${component.id}-${index}`}>
-                  <td><button onClick={() => setDetailedShipComponent(component)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
-                  <td className="font-semibold text-cyan-400">{component.type}</td>
-                  <td className="font-bold">{component.name}</td>
-                  <td style={{ color: getRarityDisplay(component, mode).color }}>{getRarityDisplay(component, mode).text}</td>
-                  <td className="text-xs text-gray-400">{component.description}</td>
-                  <td>
-                    <div className="flex gap-2">
-                      {['l', 'm', 'r'].map(lane => (
-                        <button
-                          key={lane}
-                          onClick={() => !readOnly && onShipComponentsChange(component.id, selectedLane === lane ? null : lane)}
-                          disabled={readOnly || (occupiedLanes.includes(lane) && selectedLane !== lane)}
-                          className={`px-3 py-1 rounded text-xs font-bold transition-all ${readOnly ? 'opacity-50' : ''} ${
-                            selectedLane === lane
-                              ? 'bg-cyan-500 text-white'
-                              : readOnly || occupiedLanes.includes(lane)
-                              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                              : 'bg-gray-700 text-gray-300 hover:bg-cyan-600 hover:text-white'
-                          }`}
-                        >
-                          {lane.toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
-                  </td>
+            {[
+              { type: 'Bridge', label: 'BRIDGE', headerBg: 'bg-cyan-900/20', textColor: 'text-cyan-400', activeBg: 'bg-cyan-500', hoverBg: 'hover:bg-cyan-600' },
+              { type: 'Power Cell', label: 'POWER CELL', headerBg: 'bg-purple-900/20', textColor: 'text-purple-400', activeBg: 'bg-purple-500', hoverBg: 'hover:bg-purple-600' },
+              { type: 'Drone Control Hub', label: 'DRONE CONTROL HUB', headerBg: 'bg-red-900/20', textColor: 'text-red-400', activeBg: 'bg-red-500', hoverBg: 'hover:bg-red-600' },
+            ].map(({ type, label, headerBg, textColor, activeBg, hoverBg }) => (
+              <React.Fragment key={type}>
+                <tr className={headerBg}>
+                  <td colSpan="6" className={`font-bold ${textColor} text-sm py-2`}>{label}</td>
                 </tr>
-              );
-            })}
+                {activeComponentCollection.filter(comp => comp.type === type).map((component, index) => {
+                  const selectedLane = selectedShipComponents?.[component.id] || null;
+                  const occupiedLanes = Object.entries(selectedShipComponents || {})
+                    .filter(([id, lane]) => id !== component.id && lane)
+                    .map(([id, lane]) => lane);
 
-            {/* Power Cell Section */}
-            <tr className="bg-purple-900/20">
-              <td colSpan="6" className="font-bold text-purple-400 text-sm py-2">POWER CELL</td>
-            </tr>
-            {activeComponentCollection.filter(comp => comp.type === 'Power Cell').map((component, index) => {
-              const selectedLane = selectedShipComponents?.[component.id] || null;
-              const occupiedLanes = Object.entries(selectedShipComponents || {})
-                .filter(([id, lane]) => id !== component.id && lane)
-                .map(([id, lane]) => lane);
-
-              return (
-                <tr key={`${component.id}-${index}`}>
-                  <td><button onClick={() => setDetailedShipComponent(component)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
-                  <td className="font-semibold text-purple-400">{component.type}</td>
-                  <td className="font-bold">{component.name}</td>
-                  <td style={{ color: getRarityDisplay(component, mode).color }}>{getRarityDisplay(component, mode).text}</td>
-                  <td className="text-xs text-gray-400">{component.description}</td>
-                  <td>
-                    <div className="flex gap-2">
-                      {['l', 'm', 'r'].map(lane => (
-                        <button
-                          key={lane}
-                          onClick={() => !readOnly && onShipComponentsChange(component.id, selectedLane === lane ? null : lane)}
-                          disabled={readOnly || (occupiedLanes.includes(lane) && selectedLane !== lane)}
-                          className={`px-3 py-1 rounded text-xs font-bold transition-all ${readOnly ? 'opacity-50' : ''} ${
-                            selectedLane === lane
-                              ? 'bg-purple-500 text-white'
-                              : readOnly || occupiedLanes.includes(lane)
-                              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                              : 'bg-gray-700 text-gray-300 hover:bg-purple-600 hover:text-white'
-                          }`}
-                        >
-                          {lane.toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-
-            {/* Drone Control Hub Section */}
-            <tr className="bg-red-900/20">
-              <td colSpan="6" className="font-bold text-red-400 text-sm py-2">DRONE CONTROL HUB</td>
-            </tr>
-            {activeComponentCollection.filter(comp => comp.type === 'Drone Control Hub').map((component, index) => {
-              const selectedLane = selectedShipComponents?.[component.id] || null;
-              const occupiedLanes = Object.entries(selectedShipComponents || {})
-                .filter(([id, lane]) => id !== component.id && lane)
-                .map(([id, lane]) => lane);
-
-              return (
-                <tr key={`${component.id}-${index}`}>
-                  <td><button onClick={() => setDetailedShipComponent(component)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
-                  <td className="font-semibold text-red-400">{component.type}</td>
-                  <td className="font-bold">{component.name}</td>
-                  <td style={{ color: getRarityDisplay(component, mode).color }}>{getRarityDisplay(component, mode).text}</td>
-                  <td className="text-xs text-gray-400">{component.description}</td>
-                  <td>
-                    <div className="flex gap-2">
-                      {['l', 'm', 'r'].map(lane => (
-                        <button
-                          key={lane}
-                          onClick={() => !readOnly && onShipComponentsChange(component.id, selectedLane === lane ? null : lane)}
-                          disabled={readOnly || (occupiedLanes.includes(lane) && selectedLane !== lane)}
-                          className={`px-3 py-1 rounded text-xs font-bold transition-all ${readOnly ? 'opacity-50' : ''} ${
-                            selectedLane === lane
-                              ? 'bg-red-500 text-white'
-                              : readOnly || occupiedLanes.includes(lane)
-                              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                              : 'bg-gray-700 text-gray-300 hover:bg-red-600 hover:text-white'
-                          }`}
-                        >
-                          {lane.toUpperCase()}
-                        </button>
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+                  return (
+                    <tr key={`${component.id}-${index}`}>
+                      <td><button onClick={() => setDetailedShipComponent(component)} className="p-1 text-gray-400 hover:text-white"><Eye size={18} /></button></td>
+                      <td className={`font-semibold ${textColor}`}>{component.type}</td>
+                      <td className="font-bold">{component.name}</td>
+                      <td style={{ color: getRarityDisplay(component, mode).color }}>{getRarityDisplay(component, mode).text}</td>
+                      <td className="text-xs text-gray-400">{component.description}</td>
+                      <td>
+                        <div className="flex gap-2">
+                          {['l', 'm', 'r'].map(lane => (
+                            <button
+                              key={lane}
+                              onClick={() => !readOnly && onShipComponentsChange(component.id, selectedLane === lane ? null : lane)}
+                              disabled={readOnly || (occupiedLanes.includes(lane) && selectedLane !== lane)}
+                              className={`px-3 py-1 rounded text-xs font-bold transition-all ${readOnly ? 'opacity-50' : ''} ${
+                                selectedLane === lane
+                                  ? `${activeBg} text-white`
+                                  : readOnly || occupiedLanes.includes(lane)
+                                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                                  : `bg-gray-700 text-gray-300 ${hoverBg} hover:text-white`
+                              }`}
+                            >
+                              {lane.toUpperCase()}
+                            </button>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </React.Fragment>
+            ))}
           </tbody>
         </table>
       </div>

@@ -15,6 +15,7 @@
  */
 
 import { debugLog } from '../utils/debugLogger.js';
+import { SEQUENTIAL_PHASES } from '../utils/gameUtils.js';
 
 class PhaseManager {
   // Valid phase names - transitions to invalid phases will be rejected
@@ -25,7 +26,7 @@ class PhaseManager {
   ];
 
   // Sequential phases: players take turns passing
-  static SEQUENTIAL_PHASES = ['deployment', 'action'];
+  static SEQUENTIAL_PHASES = SEQUENTIAL_PHASES;
 
   // Simultaneous phases: both players commit at once
   static SIMULTANEOUS_PHASES = [

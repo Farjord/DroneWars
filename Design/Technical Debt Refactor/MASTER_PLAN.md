@@ -115,30 +115,30 @@ Excluded: `debugLogger.js` (6, intentional), `modalShowcaseHelpers.js` (79, dev-
 
 ## Phase C: Deduplication
 
-**Status: Pending**
+**Status: Done**
 
 **Goal:** Extract shared code from copy-pasted blocks.
 
 ### Batch C1 — Shared constants & utilities (low risk)
-- [ ] Extract `SEQUENTIAL_PHASES` constant (defined 5x across 4 files)
-- [ ] Extract `addTeleportingFlags` to shared utility (ActionProcessor ↔ GuestMessageQueueService)
-- [ ] Remove `RARITY_COLORS` duplicate from `cardPackData.js` → use `rarityColors.js`
-- [ ] Extract `arraysMatch`/`dronesMatch` from GuestMessageQueueService to shared module
-- [ ] Replace 6x `JSON.parse(JSON.stringify(...))` with `structuredClone` in `saveGameFactory.js`
+- [x] Extract `SEQUENTIAL_PHASES` constant (defined 5x across 4 files) → canonical in `gameUtils.js`, PhaseManager + GameFlowManager import it
+- [x] Extract `addTeleportingFlags` to `utils/teleportUtils.js` (ActionProcessor ↔ GuestMessageQueueService)
+- [x] Remove `RARITY_COLORS` duplicate from `cardPackData.js` → 4 consumers redirected to `rarityColors.js`
+- [x] Extract `arraysMatch`/`dronesMatch` to `utils/stateComparisonUtils.js`
+- [x] Replace 7x `JSON.parse(JSON.stringify(...))` with `structuredClone` in `saveGameFactory.js`
 
 ### Batch C2 — Component-level deduplication (medium risk)
-- [ ] Extract `ShipComponentSection` helper from `DeckBuilderLeftPanel.jsx` (3 identical blocks)
-- [ ] Extract `DetectionMeter` component from `HexInfoPanel.jsx` (3 identical renders)
-- [ ] Merge `ShipAbilityIcon` from `ShipSection.jsx` + `ShipSectionCompact.jsx`
-- [ ] Extract `IconPOI` from `SalvageModal.jsx` + `POIEncounterModal.jsx`
+- [x] Extract `ShipComponentSection` → data-driven map in `DeckBuilderLeftPanel.jsx` (3 blocks → 1 loop)
+- [x] Extract `DetectionSection` local component in `HexInfoPanel.jsx` (3 identical renders → 1 component)
+- [x] Extract `ShipAbilityIcon` to shared `components/ui/ShipAbilityIcon.jsx`
+- [x] Extract `IconPOI` to shared `components/icons/IconPOI.jsx`
 
 ### Batch C3 — Hook-level deduplication (higher risk)
-- [ ] Extract cost-reminder arrow logic shared between `useDragMechanics` and `useClickHandlers`
-- [ ] Extract friendly-drones calculation shared across `useResolvers`, `useClickHandlers`, `useDragMechanics`
-- [ ] Collapse 4x commitment check block in `useMultiplayerSync` to loop
-- [ ] Extract shared salvage/blueprint handler patterns in `useTacticalEncounters`
+- [x] Extract `calculateCostReminderArrow` to `gameUtils.js` (useDragMechanics ↔ useClickHandlers)
+- [x] Extract `getFriendlyDroneTargets` to `logic/droneUtils.js` (useResolvers, useClickHandlers, useDragMechanics)
+- [x] Collapse 4x commitment check block in `useMultiplayerSync` to loop (~100 lines → ~20 lines)
+- [x] Extract `collectAndStoreSalvageLoot`/`initiateSalvageCombat` helpers in `useTacticalEncounters`
 
-**Verification:** Full test suite + manual smoke test after each batch.
+**Verification:** `npx vitest run` → 3748 passing. `npx vite build` → clean.
 
 ---
 

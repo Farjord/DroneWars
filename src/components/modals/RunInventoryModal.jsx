@@ -6,7 +6,7 @@
 
 import React from 'react';
 import fullCardCollection from '../../data/cardData';
-import { RARITY_COLORS } from '../../data/cardPackData';
+import { RARITY_COLORS } from '../../data/rarityColors';
 import { ECONOMY } from '../../data/economyData.js';
 import { EXTRACTION_LIMIT_BONUS_RANKS } from '../../data/reputationRewardsData.js';
 import { useGameState } from '../../hooks/useGameState';

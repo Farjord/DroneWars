@@ -5,6 +5,7 @@ import aiPhaseProcessor from './AIPhaseProcessor.js';
 import GameDataService from '../services/GameDataService.js';
 import PhaseManager from './PhaseManager.js';
 import { debugLog, timingLog } from '../utils/debugLogger.js';
+import { addTeleportingFlags } from '../utils/teleportUtils.js';
 import {
   processAttack as _processAttack,
   processMove as _processMove,
@@ -750,7 +751,7 @@ setAnimationManager(animationManager) {
     debugLog('ANIMATIONS', '🌀 [TELEPORT PREP] Detected TELEPORT_IN animations, preparing invisible drone state');
 
     // Create modified state with isTeleporting flags for affected drones
-    const stateWithInvisibleDrones = this.addTeleportingFlags(completeNewState, animations);
+    const stateWithInvisibleDrones = addTeleportingFlags(completeNewState, animations);
 
     return {
       pendingStateUpdate: stateWithInvisibleDrones,  // Invisible drones (with isTeleporting)
@@ -807,60 +808,6 @@ setAnimationManager(animationManager) {
    * @param {Array} animations - All animations being played
    * @returns {Object} Modified player states with isTeleporting flags
    */
-  addTeleportingFlags(newPlayerStates, animations) {
-    // Extract TELEPORT_IN animations and their target drones
-    const teleportAnimations = animations.filter(anim => anim.animationName === 'TELEPORT_IN');
-
-    if (teleportAnimations.length === 0) {
-      return newPlayerStates; // No changes needed
-    }
-
-    debugLog('ANIMATIONS', '🌀 [TELEPORT PREP] Adding isTeleporting flags to drones:', {
-      animationCount: teleportAnimations.length
-    });
-
-    // Create deep copy of states to modify
-    const modifiedStates = {
-      player1: JSON.parse(JSON.stringify(newPlayerStates.player1)),
-      player2: JSON.parse(JSON.stringify(newPlayerStates.player2))
-    };
-
-    // Add isTeleporting flag to each drone being teleported
-    teleportAnimations.forEach((anim, index) => {
-      const { targetPlayer, targetLane, targetId } = anim.payload || {};
-
-      if (!targetPlayer || !targetLane || !targetId) {
-        debugLog('ANIMATIONS', '⚠️ [TELEPORT PREP] Missing payload data in TELEPORT_IN animation:', anim);
-        return;
-      }
-
-      // Find and mark the drone as teleporting
-      const playerState = modifiedStates[targetPlayer];
-      const lane = playerState?.dronesOnBoard?.[targetLane];
-
-      if (lane && Array.isArray(lane)) {
-        const droneIndex = lane.findIndex(d => d.id === targetId);
-        if (droneIndex !== -1) {
-          lane[droneIndex].isTeleporting = true;
-          debugLog('ANIMATIONS', `🌀 [TELEPORT PREP ${index + 1}/${teleportAnimations.length}] Marked drone as invisible:`, {
-            targetPlayer,
-            targetLane,
-            targetId,
-            droneName: lane[droneIndex].name
-          });
-        } else {
-          debugLog('ANIMATIONS', '⚠️ [TELEPORT PREP] Drone not found in lane:', {
-            targetPlayer,
-            targetLane,
-            targetId
-          });
-        }
-      }
-    });
-
-    return modifiedStates;
-  }
-
   /**
    * Apply pending state update (called by AnimationManager during orchestration)
    * Used by AnimationManager.executeWithStateUpdate() to apply state at correct timing

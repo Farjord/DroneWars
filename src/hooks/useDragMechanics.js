@@ -7,7 +7,8 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { debugLog } from '../utils/debugLogger.js';
 import { calculatePolygonPoints } from '../components/ui/TargetingArrow.jsx';
 import { calculateAllValidTargets, calculateAffectedDroneIds, calculateCostTargets, calculateEffectTargetsWithCostContext } from '../logic/targeting/uiTargetingHelpers.js';
-import { getElementCenter, calculateLaneDestinationPoint } from '../utils/gameUtils.js';
+import { getElementCenter, calculateLaneDestinationPoint, calculateCostReminderArrow } from '../utils/gameUtils.js';
+import { getFriendlyDroneTargets } from '../logic/droneUtils.js';
 
 const useDragMechanics = ({
   gameAreaRef,
@@ -455,10 +456,7 @@ const useDragMechanics = ({
         debugLog('DRAG_DROP_DEPLOY', '🎯 SINGLE_MOVE without targeting - using multiSelectState');
         // Keep card selected for UI greyscale effect on other cards
         setSelectedCard(card);
-        const friendlyDrones = Object.values(localPlayerState.dronesOnBoard)
-          .flat()
-          .filter(drone => !drone.isExhausted)
-          .map(drone => ({ id: drone.id, type: 'drone', owner: getLocalPlayerId() }));
+        const friendlyDrones = getFriendlyDroneTargets(localPlayerState, getLocalPlayerId(), { excludeExhausted: true });
 
         setValidCardTargets(friendlyDrones);
         setMultiSelectState({
@@ -1058,41 +1056,10 @@ const useDragMechanics = ({
       setValidCardTargets(effectTargets);
 
       // Show cost reminder arrow for Forced Repositioning
-      if (additionalCostState.card.id === 'FORCED_REPOSITION') {
-        const costDrone = additionalCostState.costSelection?.drone;
-        const fromLane = additionalCostState.costSelection?.sourceLane;
-        const toLane = targetLane;
-
-        if (costDrone && droneRefs.current[costDrone.id]) {
-          // Get drone center position
-          const dronePos = getElementCenter(
-            droneRefs.current[costDrone.id],
-            gameAreaRef.current
-          );
-
-          if (dronePos) {
-            // Calculate destination lane position
-            const arrowEnd = calculateLaneDestinationPoint(
-              fromLane,
-              toLane,
-              dronePos,
-              gameAreaRef.current
-            );
-
-            setCostReminderArrowState({
-              visible: true,
-              start: dronePos,
-              end: arrowEnd
-            });
-
-            debugLog('ADDITIONAL_COST_UI', '🏹 Cost reminder arrow shown (drag-drop path)', {
-              fromLane,
-              toLane,
-              dronePos,
-              arrowEnd
-            });
-          }
-        }
+      const arrowState = calculateCostReminderArrow(additionalCostState, targetLane, droneRefs.current, gameAreaRef.current);
+      if (arrowState) {
+        setCostReminderArrowState(arrowState);
+        debugLog('ADDITIONAL_COST_UI', '🏹 Cost reminder arrow shown (drag-drop path)', arrowState);
       }
 
       return;

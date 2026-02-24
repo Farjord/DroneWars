@@ -341,6 +341,34 @@ function HexInfoPanel({
     return 'signal-lock-critical';
   };
 
+  // Shared detection display used in multiple panel views
+  const DetectionSection = ({ children }) => (
+    <div className="hex-info-detection">
+      <DetectionMeter detection={currentDetection} />
+      {/* Blockade Risk Display */}
+      <div className="blockade-risk-display">
+        <StatLabel text="Extraction Blockade Chance" helpKey="extractionBlockadeChance" />
+        <span
+          className={`blockade-risk-value ${currentDetection >= 80 ? 'blockade-critical' : currentDetection >= 50 ? 'blockade-warning' : ''}`}
+          data-testid="blockade-risk-value"
+        >
+          {Math.round(currentDetection)}%
+        </span>
+      </div>
+      {/* Signal Lock Display */}
+      <div className={`signal-lock-display ${getSignalLockColorClass(encounterDetectionChance)}`}>
+        <div className="signal-lock-header">
+          <span className="signal-lock-icon">&#9678;</span>
+          <StatLabel text="Signal Lock" helpKey="signalLock" />
+        </div>
+        <span className="signal-lock-value" data-testid="signal-lock-value">
+          {Math.round(encounterDetectionChance)}%
+        </span>
+      </div>
+      {children}
+    </div>
+  );
+
 
   // Get reward quality label based on zone (for risk/reward indication)
   const getRewardQualityLabel = (zone) => {
@@ -417,29 +445,7 @@ function HexInfoPanel({
           <h2 className="hex-info-title">{isPaused ? 'Paused' : 'Moving...'}</h2>
         </div>
 
-        <div className="hex-info-detection">
-          <DetectionMeter detection={currentDetection} />
-          {/* Blockade Risk Display */}
-          <div className="blockade-risk-display">
-            <StatLabel text="Extraction Blockade Chance" helpKey="extractionBlockadeChance" />
-            <span
-              className={`blockade-risk-value ${currentDetection >= 80 ? 'blockade-critical' : currentDetection >= 50 ? 'blockade-warning' : ''}`}
-              data-testid="blockade-risk-value"
-            >
-              {Math.round(currentDetection)}%
-            </span>
-          </div>
-          {/* Signal Lock Display */}
-          <div className={`signal-lock-display ${getSignalLockColorClass(encounterDetectionChance)}`}>
-            <div className="signal-lock-header">
-              <span className="signal-lock-icon">◎</span>
-              <StatLabel text="Signal Lock" helpKey="signalLock" />
-            </div>
-            <span className="signal-lock-value" data-testid="signal-lock-value">
-              {Math.round(encounterDetectionChance)}%
-            </span>
-          </div>
-        </div>
+        <DetectionSection />
 
         <div className="hex-info-content">
           <div className="movement-progress">
@@ -537,29 +543,7 @@ function HexInfoPanel({
           <h2 className="hex-info-title">Hex Details</h2>
         </div>
 
-        <div className="hex-info-detection">
-          <DetectionMeter detection={currentDetection} />
-          {/* Blockade Risk Display */}
-          <div className="blockade-risk-display">
-            <StatLabel text="Extraction Blockade Chance" helpKey="extractionBlockadeChance" />
-            <span
-              className={`blockade-risk-value ${currentDetection >= 80 ? 'blockade-critical' : currentDetection >= 50 ? 'blockade-warning' : ''}`}
-              data-testid="blockade-risk-value"
-            >
-              {Math.round(currentDetection)}%
-            </span>
-          </div>
-          {/* Signal Lock Display */}
-          <div className={`signal-lock-display ${getSignalLockColorClass(encounterDetectionChance)}`}>
-            <div className="signal-lock-header">
-              <span className="signal-lock-icon">◎</span>
-              <StatLabel text="Signal Lock" helpKey="signalLock" />
-            </div>
-            <span className="signal-lock-value" data-testid="signal-lock-value">
-              {Math.round(encounterDetectionChance)}%
-            </span>
-          </div>
-        </div>
+        <DetectionSection />
 
         <div className="hex-info-content">
           {isCurrentPosition ? (
@@ -822,35 +806,14 @@ function HexInfoPanel({
         <h2 className="hex-info-title">Waypoints</h2>
       </div>
 
-      <div className="hex-info-detection">
-        <DetectionMeter detection={currentDetection} />
-        {/* Blockade Risk Display */}
-        <div className="blockade-risk-display">
-          <StatLabel text="Extraction Blockade Chance" helpKey="extractionBlockadeChance" />
-          <span
-            className={`blockade-risk-value ${currentDetection >= 80 ? 'blockade-critical' : currentDetection >= 50 ? 'blockade-warning' : ''}`}
-            data-testid="blockade-risk-value"
-          >
-            {Math.round(currentDetection)}%
-          </span>
-        </div>
-        {/* Signal Lock Display */}
-        <div className={`signal-lock-display ${getSignalLockColorClass(encounterDetectionChance)}`}>
-          <div className="signal-lock-header">
-            <span className="signal-lock-icon">◎</span>
-            <StatLabel text="Signal Lock" helpKey="signalLock" />
-          </div>
-          <span className="signal-lock-value" data-testid="signal-lock-value">
-            {Math.round(encounterDetectionChance)}%
-          </span>
-        </div>
+      <DetectionSection>
         {/* Escape Route Display */}
         <EscapeRouteDisplay
           escapeRouteData={escapeRouteData}
           hasWaypoints={waypoints.length > 0}
           mapRadius={mapRadius}
         />
-      </div>
+      </DetectionSection>
 
       <div className="hex-info-content">
         {/* MIA Warning */}

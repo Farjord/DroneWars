@@ -75,6 +75,90 @@ export function useTacticalEncounters({
   } = sharedRefs;
 
   // ========================================
+  // SHARED HELPERS
+  // ========================================
+
+  /**
+   * Collect revealed salvage loot and store it for post-combat combination.
+   * Used by both handleSalvageCombat and quick deploy salvage combat paths.
+   */
+  const collectAndStoreSalvageLoot = (salvage, { includePendingSalvageState = false } = {}) => {
+    const loot = SalvageController.collectRevealedLoot(salvage);
+    const runState = tacticalMapStateManager.getState();
+
+    const totalCreditValue = (loot.salvageItems || []).reduce((sum, item) => sum + (item.creditValue || 0), 0);
+    const firstSalvageItem = loot.salvageItems?.[0];
+    const hasLoot = loot && (loot.cards?.length > 0 || loot.salvageItems?.length > 0 || loot.tokens?.length > 0);
+
+    if (runState && hasLoot) {
+      const stateUpdate = {
+        pendingSalvageLoot: {
+          cards: loot.cards || [],
+          salvageItem: loot.salvageItems?.length > 0 ? {
+            itemId: loot.salvageItems.length > 1 ? 'combined_salvage' : firstSalvageItem?.itemId,
+            name: loot.salvageItems.length > 1 ? `${loot.salvageItems.length} Salvage Items` : firstSalvageItem?.name,
+            creditValue: totalCreditValue,
+            image: firstSalvageItem?.image,
+            description: loot.salvageItems.length > 1
+              ? `Combined value of ${loot.salvageItems.length} salvage items`
+              : firstSalvageItem?.description
+          } : null,
+          tokens: loot.tokens || []
+        }
+      };
+      if (includePendingSalvageState) {
+        stateUpdate.pendingSalvageState = salvage;
+      }
+      tacticalMapStateManager.setState(stateUpdate);
+    }
+
+    return loot;
+  };
+
+  /**
+   * Set up salvage combat: AI selection, encounter creation, loading screen, stop movement.
+   * Used by both handleSalvageCombat and quick deploy salvage combat paths.
+   */
+  const initiateSalvageCombat = (salvage, { quickDeployId = null, salvageFullyLooted = false } = {}) => {
+    const runState = tacticalMapStateManager.getState();
+    const tier = runState?.mapData?.tier || 1;
+    const tierConfig = mapTiers[tier - 1];
+    const detection = DetectionManager.getCurrentDetection();
+
+    const aiId = EncounterController.getAIForThreat(tierConfig, detection, salvage?.poi);
+    const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
+
+    setCurrentEncounter({
+      poi: salvage.poi,
+      outcome: 'combat',
+      aiId,
+      reward: {
+        credits: 50,
+        rewardType: salvage.poi?.poiData?.rewardType || null,
+        poiName: salvage.poi?.poiData?.name || 'Unknown Location'
+      },
+      detection,
+      threatLevel: DetectionManager.getThreshold(),
+      fromSalvage: true,
+      ...(salvageFullyLooted && { salvageFullyLooted })
+    });
+
+    const loadingData = {
+      aiName: aiPersonality?.name || 'Unknown Hostile',
+      difficulty: aiPersonality?.difficulty || 'Medium',
+      threatLevel: DetectionManager.getThreshold(),
+      isAmbush: false
+    };
+    if (quickDeployId) loadingData.quickDeployId = quickDeployId;
+    setLoadingEncounterData(loadingData);
+
+    pendingCombatLoadingRef.current = true;
+    setShowLoadingEncounter(true);
+    shouldStopMovement.current = true;
+    setIsMoving(false);
+  };
+
+  // ========================================
   // POI ENCOUNTER HANDLERS
   // ========================================
 
@@ -441,55 +525,8 @@ export function useTacticalEncounters({
 
     debugLog('SALVAGE', 'Salvage encounter - engaging combat');
 
-    // First collect current revealed loot
-    const loot = SalvageController.collectRevealedLoot(activeSalvage);
-
-    // Store salvage loot for combination with combat rewards in CombatOutcomeProcessor
-    // This allows both salvage loot and combat rewards to appear in one LootRevealModal
-    const runState = tacticalMapStateManager.getState();
-
-    // Store salvage loot and FULL salvage state for post-combat restoration
-    // Convert salvageItems array to single salvageItem for CombatOutcomeProcessor
-    const totalCreditValue = (loot.salvageItems || []).reduce((sum, item) => sum + (item.creditValue || 0), 0);
-    const firstSalvageItem = loot.salvageItems?.[0];
-
-    // Check for cards OR salvageItems OR tokens
-    const hasLoot = loot && (loot.cards?.length > 0 || loot.salvageItems?.length > 0 || loot.tokens?.length > 0);
-
-    if (runState) {
-      tacticalMapStateManager.setState({
-        // Store revealed loot for later collection on salvage screen
-        pendingSalvageLoot: hasLoot ? {
-          cards: loot.cards || [],
-          salvageItem: loot.salvageItems?.length > 0 ? {
-            itemId: loot.salvageItems.length > 1 ? 'combined_salvage' : firstSalvageItem?.itemId,
-            name: loot.salvageItems.length > 1 ? `${loot.salvageItems.length} Salvage Items` : firstSalvageItem?.name,
-            creditValue: totalCreditValue,
-            image: firstSalvageItem?.image,
-            description: loot.salvageItems.length > 1
-              ? `Combined value of ${loot.salvageItems.length} salvage items`
-              : firstSalvageItem?.description
-          } : null,
-          // Include tokens from salvage
-          tokens: loot.tokens || []
-        } : null,
-        // Store FULL salvage state for restoring modal after combat
-        pendingSalvageState: activeSalvage
-      });
-    }
-
-    // NOTE: Do NOT mark POI as looted before combat.
-    // If player wins, they can continue looting (POI enters High Alert state).
-    // If player escapes, POI will be marked as looted then.
-
-    // Get tier config for AI selection
-    const tier = runState?.mapData?.tier || 1;
-    const tierConfig = mapTiers[tier - 1];
-    const detection = DetectionManager.getCurrentDetection();
-
-    // Get AI from threat level (pass POI for location-based seeding)
-    const aiId = EncounterController.getAIForThreat(tierConfig, detection, activeSalvage?.poi);
-    const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
+    // Collect and store revealed salvage loot for post-combat combination
+    collectAndStoreSalvageLoot(activeSalvage, { includePendingSalvageState: true });
 
     // Close salvage modal
     setActiveSalvage(null);
@@ -498,37 +535,8 @@ export function useTacticalEncounters({
     // Check if all slots were revealed (for determining High Alert vs Looted after combat)
     const salvageFullyLooted = SalvageController.isFullyLooted(activeSalvage);
 
-    // Create encounter for loading screen
-    setCurrentEncounter({
-      poi: activeSalvage.poi,
-      outcome: 'combat',
-      aiId,
-      reward: {
-        credits: 50,
-        rewardType: activeSalvage.poi?.poiData?.rewardType || null,
-        poiName: activeSalvage.poi?.poiData?.name || 'Unknown Location'
-      },
-      detection,
-      threatLevel: DetectionManager.getThreshold(),
-      fromSalvage: true,
-      salvageFullyLooted
-    });
-
-    // Set up loading encounter data
-    setLoadingEncounterData({
-      aiName: aiPersonality?.name || 'Unknown Hostile',
-      difficulty: aiPersonality?.difficulty || 'Medium',
-      threatLevel: DetectionManager.getThreshold(),
-      isAmbush: false
-    });
-
-    // Show loading screen
-    pendingCombatLoadingRef.current = true; // Prevent waypoint clearing during loading
-    setShowLoadingEncounter(true);
-
-    // Stop movement
-    shouldStopMovement.current = true;
-    setIsMoving(false);
+    // Initiate combat with salvage AI
+    initiateSalvageCombat(activeSalvage, { salvageFullyLooted });
   }, [activeSalvage, waypoints]);
 
   /**
@@ -610,84 +618,15 @@ export function useTacticalEncounters({
       debugLog('QUICK_DEPLOY', 'Salvage combat with quick deploy');
       setSalvageQuickDeployPending(false);
 
-      // Collect current revealed loot (same as handleSalvageCombat)
-      const loot = SalvageController.collectRevealedLoot(activeSalvage);
-
-      // Store salvage loot for combination with combat rewards
-      const runState = tacticalMapStateManager.getState();
-
-      if (runState && loot && (loot.cards?.length > 0 || loot.salvageItems?.length > 0 || loot.tokens?.length > 0)) {
-        const totalCreditValue = (loot.salvageItems || []).reduce((sum, item) => sum + (item.creditValue || 0), 0);
-        const firstSalvageItem = loot.salvageItems?.[0];
-
-        tacticalMapStateManager.setState({
-          pendingSalvageLoot: {
-            cards: loot.cards || [],
-            salvageItem: loot.salvageItems?.length > 0 ? {
-              itemId: loot.salvageItems.length > 1 ? 'combined_salvage' : firstSalvageItem?.itemId,
-              name: loot.salvageItems.length > 1 ? `${loot.salvageItems.length} Salvage Items` : firstSalvageItem?.name,
-              creditValue: totalCreditValue,
-              image: firstSalvageItem?.image,
-              description: loot.salvageItems.length > 1
-                ? `Combined value of ${loot.salvageItems.length} salvage items`
-                : firstSalvageItem?.description
-            } : null,
-            // Include tokens from salvage
-            tokens: loot.tokens || []
-          }
-        });
-      }
-
-      // NOTE: Do NOT mark POI as looted before combat.
-      // If player wins, they can continue looting (POI enters High Alert state).
-      // If player escapes, POI will be marked as looted then.
-
-      // Get tier config for AI selection
-      const tier = runState?.mapData?.tier || 1;
-      const salvageTierConfig = mapTiers[tier - 1];
-      const detection = DetectionManager.getCurrentDetection();
-
-      // Get AI from threat level
-      const aiId = EncounterController.getAIForThreat(salvageTierConfig, detection, activeSalvage?.poi);
-      const aiPersonality = aiPersonalities.find(ai => ai.name === aiId) || aiPersonalities[0];
-
-      // Create encounter for combat
-      setCurrentEncounter({
-        poi: activeSalvage.poi,
-        outcome: 'combat',
-        aiId,
-        reward: {
-          credits: 50,
-          rewardType: activeSalvage.poi?.poiData?.rewardType || null,
-          poiName: activeSalvage.poi?.poiData?.name || 'Unknown Location'
-        },
-        detection,
-        threatLevel: DetectionManager.getThreshold(),
-        fromSalvage: true
-      });
+      // Collect and store revealed salvage loot for post-combat combination
+      collectAndStoreSalvageLoot(activeSalvage);
 
       // Close salvage modal
       setActiveSalvage(null);
       setShowSalvageModal(false);
 
-
-
-      // Set up loading encounter data with quick deploy info
-      setLoadingEncounterData({
-        aiName: aiPersonality?.name || 'Unknown Hostile',
-        difficulty: aiPersonality?.difficulty || 'Medium',
-        threatLevel: DetectionManager.getThreshold(),
-        isAmbush: false,
-        quickDeployId: deployment.id
-      });
-
-      // Show loading screen
-      pendingCombatLoadingRef.current = true; // Prevent waypoint clearing during loading
-      setShowLoadingEncounter(true);
-
-      // Stop movement
-      shouldStopMovement.current = true;
-      setIsMoving(false);
+      // Initiate combat with salvage AI (with quick deploy)
+      initiateSalvageCombat(activeSalvage, { quickDeployId: deployment.id });
       return;
     }
 

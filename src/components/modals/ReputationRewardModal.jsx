@@ -9,7 +9,8 @@ import ReputationService from '../../logic/reputation/ReputationService';
 import rewardManager from '../../managers/RewardManager';
 import LootRevealModal from './LootRevealModal';
 import gameStateManager from '../../managers/GameStateManager';
-import { packTypes, RARITY_COLORS } from '../../data/cardPackData';
+import { packTypes } from '../../data/cardPackData';
+import { RARITY_COLORS } from '../../data/rarityColors';
 import { getLevelData } from '../../data/reputationRewardsData';
 
 function ReputationRewardModal({ onClose }) {

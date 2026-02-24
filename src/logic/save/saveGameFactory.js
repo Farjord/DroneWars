@@ -28,11 +28,11 @@ export function createDefaultShipSlot(id) {
       shipId: starterDeck.shipId,
 
       // Use starter deck configuration
-      decklist: JSON.parse(JSON.stringify(starterDeck.decklist)),
-      shipComponents: JSON.parse(JSON.stringify(starterDeck.shipComponents)),
+      decklist: structuredClone(starterDeck.decklist),
+      shipComponents: structuredClone(starterDeck.shipComponents),
 
       // Slot-based damage format
-      droneSlots: JSON.parse(JSON.stringify(starterDeck.droneSlots)),
+      droneSlots: structuredClone(starterDeck.droneSlots),
       sectionSlots: convertComponentsToSectionSlots(starterDeck.shipComponents),
     };
   } else {
@@ -74,12 +74,12 @@ export function createNewSave() {
     saveVersion: SAVE_VERSION,
     savedAt: Date.now(),
 
-    playerProfile: JSON.parse(JSON.stringify(defaultPlayerProfile)),
-    inventory: JSON.parse(JSON.stringify(defaultInventory)),
+    playerProfile: structuredClone(defaultPlayerProfile),
+    inventory: structuredClone(defaultInventory),
     droneInstances: [],
     shipComponentInstances: [],
-    discoveredCards: JSON.parse(JSON.stringify(defaultDiscoveredCards)),
-    shipSlots: defaultShipSlots.map(slot => JSON.parse(JSON.stringify(slot))),
+    discoveredCards: structuredClone(defaultDiscoveredCards),
+    shipSlots: structuredClone(defaultShipSlots),
     quickDeployments: [],
     currentRunState: null,
   };
