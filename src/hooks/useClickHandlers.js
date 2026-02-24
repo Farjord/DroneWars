@@ -1,6 +1,4 @@
-import TargetingRouter from '../logic/TargetingRouter.js';
 import { getElementCenter, calculateLaneDestinationPoint, calculateCostReminderArrow } from '../utils/gameUtils.js';
-import { getFriendlyDroneTargets } from '../logic/droneUtils.js';
 import { calculateEffectTargetsWithCostContext } from '../logic/targeting/uiTargetingHelpers.js';
 import { debugLog } from '../utils/debugLogger.js';
 
@@ -20,9 +18,6 @@ const ABILITY_CONFIG = {
 
 /** Look up the handler config for a given ability */
 const getAbilityHandlerConfig = (ability) => ABILITY_CONFIG[ability.name] || null;
-
-// Stateless singleton — safe as module-level (no component state dependency)
-const targetingRouter = new TargetingRouter();
 
 /**
  * Consolidates all click-based interaction handlers from App.jsx.
@@ -837,18 +832,11 @@ export default function useClickHandlers({
     }
 
     // Movement cards - Set up UI state directly (don't call ActionProcessor until selection complete)
-    if (card.effect.type === 'MULTI_MOVE' || card.effect.type === 'SINGLE_MOVE') {
-      debugLog('CARD_PLAY', `✅ Movement card - setting up UI: ${card.name}`, { effectType: card.effect.type });
+    // MULTI_MOVE cards — click-based multi-select setup (3+ step flow stays)
+    // SINGLE_MOVE cards now use DnD + secondaryTargeting, so they fall through to generic selection
+    if (card.effect.type === 'MULTI_MOVE') {
+      debugLog('CARD_PLAY', `✅ MULTI_MOVE card - setting up UI: ${card.name}`);
 
-      // CHECKPOINT 1: Card Selection
-      if (card.effect.type === 'SINGLE_MOVE') {
-        debugLog('SINGLE_MOVE_FLOW', '📦 CHECKPOINT 1: SINGLE_MOVE card selected', {
-          cardId: card.id,
-          cardName: card.name,
-          targeting: card.targeting,
-          effect: card.effect
-        });
-      }
       if (multiSelectState && multiSelectState.card.instanceId === card.instanceId) {
         debugLog('BUTTON_CLICKS', '🔍 cancelCardSelection called from handleCardClick - Toggle off movement card', {
           timestamp: performance.now(),
@@ -858,44 +846,21 @@ export default function useClickHandlers({
         });
         cancelCardSelection('card-click-toggle-off');
       } else {
-        cancelAllActions(); // Cancel all other actions before starting movement card
-        setSelectedCard(card); // Keep card selected for greyscale effect on other cards
-
-        // Set up UI state directly (like abilities do) - don't send action until selection complete
-        if (card.effect.type === 'SINGLE_MOVE') {
-          debugLog('MOVEMENT_LANES', `SINGLE_MOVE card clicked: ${card.name}`);
-          debugLog('MOVEMENT_LANES', `gameMode: ${gameState.gameMode}, localPlayerId: ${getLocalPlayerId()}`);
-
-          // For SINGLE_MOVE, highlight all friendly non-exhausted drones as valid targets
-          const friendlyDrones = getFriendlyDroneTargets(localPlayerState, getLocalPlayerId(), { excludeExhausted: true });
-
-          debugLog('MOVEMENT_LANES', `Valid drone targets:`, friendlyDrones);
-          setValidCardTargets(friendlyDrones);
-
-          setMultiSelectState({
-            card: card,
-            phase: 'select_drone',
-            selectedDrones: [],
-            sourceLane: null,
-            maxDrones: 1,
-            actingPlayerId: getLocalPlayerId()
-          });
-        } else { // MULTI_MOVE
-          setMultiSelectState({
-            card: card,
-            phase: 'select_source_lane',
-            selectedDrones: [],
-            sourceLane: null,
-            maxDrones: card.effect.count || 3,
-            actingPlayerId: getLocalPlayerId()
-          });
-        }
-
-        // Action will be sent when selection is complete (in resolveMultiMove/resolveSingleMove)
+        cancelAllActions();
+        setSelectedCard(card);
+        setMultiSelectState({
+          card: card,
+          phase: 'select_source_lane',
+          selectedDrones: [],
+          sourceLane: null,
+          maxDrones: card.effect.count || 3,
+          actingPlayerId: getLocalPlayerId()
+        });
       }
       return;
     }
 
+    // Deselect if clicking the already-selected card
     if (selectedCard?.instanceId === card.instanceId) {
       debugLog('CARD_PLAY', `✅ Card deselected: ${card.name}`);
       debugLog('BUTTON_CLICKS', '🔍 cancelCardSelection called from handleCardClick - Deselect card', {
@@ -905,52 +870,16 @@ export default function useClickHandlers({
         cardInstanceId: card.instanceId
       });
       cancelCardSelection('card-click-deselect');
-    } else if (card.name === 'System Sabotage') {
-        debugLog('CARD_PLAY', `✅ System Sabotage card - getting targets`, { card: card.name });
-        // See FUTURE_IMPROVEMENTS #38 — getValidTargets for special card targeting
-        // Ensure player states are always passed in correct order (player1, player2)
-        const localPlayerId = getLocalPlayerId();
-        const player1State = localPlayerId === 'player1' ? localPlayerState : opponentPlayerState;
-        const player2State = localPlayerId === 'player1' ? opponentPlayerState : localPlayerState;
-        const validTargets = targetingRouter.routeTargeting({
-          actingPlayerId: localPlayerId,
-          source: null,
-          definition: card,
-          player1: player1State,
-          player2: player2State
-        });
-        debugLog('CARD_PLAY', `✅ System Sabotage targets found: ${validTargets.length}`, { targets: validTargets });
-        cancelAllActions(); // Cancel all other actions before starting System Sabotage
-        setDestroyUpgradeModal({ card, targets: validTargets, opponentState: opponentPlayerState });
-    } else if (card.type === 'Upgrade') {
-        debugLog('CARD_PLAY', `✅ Upgrade card - getting targets: ${card.name}`);
-        // See FUTURE_IMPROVEMENTS #38 — getValidTargets for upgrade card targeting
-        // Ensure player states are always passed in correct order (player1, player2)
-        const localPlayerId = getLocalPlayerId();
-        const player1State = localPlayerId === 'player1' ? localPlayerState : opponentPlayerState;
-        const player2State = localPlayerId === 'player1' ? opponentPlayerState : localPlayerState;
-        const validTargets = targetingRouter.routeTargeting({
-          actingPlayerId: localPlayerId,
-          source: null,
-          definition: card,
-          player1: player1State,
-          player2: player2State
-        });
-        debugLog('CARD_PLAY', `✅ Upgrade targets found: ${validTargets.length}`, { targets: validTargets });
-        if (validTargets.length > 0) {
-            cancelAllActions(); // Cancel all other actions before starting upgrade selection
-            setUpgradeSelectionModal({ card, targets: validTargets });
-        } else {
-            setModalContent({ title: "No Valid Targets", text: `There are no drone types that can accept the '${card.name}' upgrade right now.`, isBlocking: true });
-        }
     } else {
+        // All other cards: click selects (shows valid targets), DnD plays
+        // Covers: DRONE, LANE, SHIP_SECTION, NONE (upgrades, System Sabotage, Purge Protocol), SINGLE_MOVE
         if (!card.targeting) {
             debugLog('CARD_PLAY', `✅ Non-targeted card - showing confirmation: ${card.name}`);
-            cancelAllActions(); // Cancel all other actions before starting card confirmation
+            cancelAllActions();
             setCardConfirmation({ card, target: null });
         } else {
-            debugLog('CARD_PLAY', `✅ Targeted card - waiting for target selection: ${card.name}`, { targeting: card.targeting });
-            cancelAllActions(); // Cancel all other actions before starting targeted card
+            debugLog('CARD_PLAY', `✅ Card selected - drag to play: ${card.name}`, { targeting: card.targeting });
+            cancelAllActions();
             setSelectedCard(card);
         }
     }

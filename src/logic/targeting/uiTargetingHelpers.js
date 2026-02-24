@@ -323,6 +323,31 @@ export const calculateAffectedDroneIds = (
     getEffectiveStatsFn,
     placedSections
 ) => {
+    // NONE-type cards with affectedFilter — global scope (all lanes, filtered by affinity)
+    if (card?.targeting?.type === 'NONE' && card.targeting.affectedFilter) {
+        const affinity = card.targeting.affinity;
+        const opponentId = localPlayerId === 'player1' ? 'player2' : 'player1';
+        const targetPlayerId = affinity === 'ENEMY' ? opponentId : localPlayerId;
+        const targetState = targetPlayerId === 'player1' ? player1 : player2;
+        const affectedIds = [];
+
+        for (const laneId of ['lane1', 'lane2', 'lane3']) {
+            const drones = targetState.dronesOnBoard[laneId] || [];
+            for (const drone of drones) {
+                const passes = card.targeting.affectedFilter.every(filter => {
+                    if (typeof filter === 'string') {
+                        if (filter === 'MARKED') return drone.isMarked === true;
+                        if (filter === 'EXHAUSTED') return drone.isExhausted === true;
+                        return false;
+                    }
+                    return false;
+                });
+                if (passes) affectedIds.push(drone.id);
+            }
+        }
+        return affectedIds;
+    }
+
     // Only process LANE-targeting cards
     if (!card || card.targeting?.type !== 'LANE') {
         return [];
