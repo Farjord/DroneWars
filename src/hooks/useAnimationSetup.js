@@ -85,7 +85,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       const targetEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, targetType);
 
       if (!droneEl || !targetEl) {
-        console.warn('⚠️ [LASER DEBUG] Missing DOM elements, skipping laser', {
+        debugLog('ANIMATIONS', '⚠️ [LASER DEBUG] Missing DOM elements, skipping laser', {
           hasDrone: !!droneEl,
           hasTarget: !!targetEl,
           sourcePlayer,
@@ -129,7 +129,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         // Pass size from config
         triggerExplosion(targetId, pos, config?.size || 'large');
       } else {
-        console.warn('⚠️ [EXPLOSION DEBUG] Target element not found:', {
+        debugLog('ANIMATIONS', '⚠️ [EXPLOSION DEBUG] Target element not found:', {
           targetId,
           targetPlayer,
           targetLane,
@@ -146,7 +146,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       const targetEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, targetType);
 
       if (!targetEl) {
-        console.warn('⚠️ [FLASH DEBUG] Target element not found:', {
+        debugLog('ANIMATIONS', '⚠️ [FLASH DEBUG] Target element not found:', {
           targetId,
           targetPlayer,
           targetLane,
@@ -193,7 +193,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       const targetEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, targetType);
 
       if (!targetEl) {
-        console.warn('⚠️ [HEAL DEBUG] Target element not found:', {
+        debugLog('ANIMATIONS', '⚠️ [HEAL DEBUG] Target element not found:', {
           targetId,
           targetPlayer,
           targetLane,
@@ -299,7 +299,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         const targetEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, targetType);
 
         if (!targetEl) {
-          console.warn('⚠️ [CARD VISUAL DEBUG] Target element not found:', {
+          debugLog('ANIMATIONS', '⚠️ [CARD VISUAL DEBUG] Target element not found:', {
             targetId,
             targetPlayer,
             targetLane,
@@ -536,7 +536,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
         const droneEl = droneRefs.current[targetId];
 
         if (!droneEl) {
-          console.warn('⚠️ [TELEPORT DEBUG] Drone element not found - placeholder may not have rendered yet:', targetId);
+          debugLog('ANIMATIONS', '⚠️ [TELEPORT DEBUG] Drone element not found - placeholder may not have rendered yet:', targetId);
           onComplete?.();
           return;
         }
@@ -598,7 +598,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       // Get drone position
       const droneEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, 'drone');
       if (!droneEl) {
-        console.warn('⚠️ [OVERFLOW DEBUG] Drone element not found:', targetId);
+        debugLog('ANIMATIONS', '⚠️ [OVERFLOW DEBUG] Drone element not found:', targetId);
         onComplete?.();
         return;
       }
@@ -668,7 +668,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       // Get primary target position
       const droneEl = getElementFromLogicalPosition(targetPlayer, targetLane, primaryTargetId, 'drone');
       if (!droneEl) {
-        console.warn('⚠️ [SPLASH DEBUG] Primary target element not found:', primaryTargetId);
+        debugLog('ANIMATIONS', '⚠️ [SPLASH DEBUG] Primary target element not found:', primaryTargetId);
         onComplete?.();
         return;
       }
@@ -700,7 +700,7 @@ export function useAnimationSetup(gameStateManager, droneRefs, sectionRefs, getL
       // Get target drone position
       const droneEl = getElementFromLogicalPosition(targetPlayer, targetLane, targetId, 'drone');
       if (!droneEl) {
-        console.warn('⚠️ [BARRAGE DEBUG] Target drone element not found:', targetId);
+        debugLog('ANIMATIONS', '⚠️ [BARRAGE DEBUG] Target drone element not found:', targetId);
         onComplete?.();
         return;
       }

@@ -58,7 +58,7 @@ class SinglePlayerCombatInitializer {
         hasMapData: !!currentRunState?.mapData,
         isBossCombat: !!currentRunState?.isBossCombat
       });
-      console.error('[SP Combat] Attempted to initiate combat with null run state - aborting');
+      debugLog('SP_COMBAT', '[SP Combat] Attempted to initiate combat with null run state - aborting');
       return false;
     }
 
@@ -115,7 +115,7 @@ class SinglePlayerCombatInitializer {
       // 1. Get AI personality
       const aiPersonality = this.getAIPersonality(aiId);
       if (!aiPersonality) {
-        console.error('[SP Combat] AI personality not found:', aiId);
+        debugLog('SP_COMBAT', '[SP Combat] AI personality not found:', aiId);
         return false;
       }
       debugLog('SP_COMBAT', 'Found AI:', aiPersonality.name);
@@ -126,7 +126,7 @@ class SinglePlayerCombatInitializer {
       const shipSlot = shipSlots.find(s => s.id === shipSlotId);
 
       if (!shipSlot) {
-        console.error('[SP Combat] Ship slot not found:', shipSlotId);
+        debugLog('SP_COMBAT', '[SP Combat] Ship slot not found:', shipSlotId);
         // Fall back to default deck for testing
         debugLog('SP_COMBAT', 'Using fallback deck for testing');
       }
@@ -359,14 +359,14 @@ class SinglePlayerCombatInitializer {
           debugLog('SP_COMBAT', 'Phase transition complete');
         }
       } else {
-        console.warn('[SP Combat] GameFlowManager not available - round initialization skipped');
+        debugLog('SP_COMBAT', '[SP Combat] GameFlowManager not available - round initialization skipped');
       }
 
       debugLog('SP_COMBAT', '=== Combat Initialized Successfully ===');
 
       return true;
     } catch (error) {
-      console.error('[SP Combat] Error initializing combat:', error);
+      debugLog('SP_COMBAT', '[SP Combat] Error initializing combat:', error);
       return false;
     }
   }
@@ -387,7 +387,7 @@ class SinglePlayerCombatInitializer {
       // 1. Get boss AI by bossId
       const bossAI = this.getBossAIByBossId(bossId);
       if (!bossAI) {
-        console.error('[Boss Combat] Boss AI not found:', bossId);
+        debugLog('SP_COMBAT', '[Boss Combat] Boss AI not found:', bossId);
         return false;
       }
       debugLog('SP_COMBAT', 'Found Boss AI:', bossAI.name);
@@ -468,7 +468,7 @@ class SinglePlayerCombatInitializer {
 
       return result;
     } catch (error) {
-      console.error('[Boss Combat] Error initiating boss combat:', error);
+      debugLog('SP_COMBAT', '[Boss Combat] Error initiating boss combat:', error);
       return false;
     }
   }

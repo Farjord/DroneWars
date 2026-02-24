@@ -8,6 +8,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { ArrowLeft, Save, AlertCircle } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
 import SoundManager from '../../managers/SoundManager.js';
+import { debugLog } from '../../utils/debugLogger.js';
 import fullDroneCollection from '../../data/droneData';
 import { starterPoolDroneNames } from '../../data/saveGameSchema';
 import { calculateTotalCost, getDroneByName, validateAgainstDeck } from '../../logic/quickDeploy/QuickDeployValidator';
@@ -448,7 +449,7 @@ const QuickDeployEditorScreen = () => {
         quickDeployEditorData: null
       });
     } catch (error) {
-      console.error('Failed to save quick deployment:', error);
+      debugLog('QUICK_DEPLOY', 'Failed to save quick deployment:', error);
     }
   };
 

@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import DroneCard from '../ui/DroneCard.jsx';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * DroneSelectionModal - Select drones from full collection
@@ -65,7 +66,7 @@ const DroneSelectionModal = ({
       } else {
         // Show feedback that limit is reached
         // Could add a toast notification here
-        console.log('Maximum 5 drones already selected');
+        debugLog('DRONE_SELECTION', 'Maximum 5 drones already selected');
       }
     }
   };

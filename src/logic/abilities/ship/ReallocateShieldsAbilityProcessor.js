@@ -191,7 +191,7 @@ class ReallocateShieldsAbilityProcessor {
 
     // Deduct energy cost (1 energy)
     if (playerState.energy < 1) {
-      console.warn('⚠️ ReallocateShieldsAbilityProcessor: Insufficient energy at completion');
+      debugLog('SHIP_ABILITY', '⚠️ ReallocateShieldsAbilityProcessor: Insufficient energy at completion');
       // This shouldn't happen since we validate before starting
       // But handle gracefully - still end turn
     } else {

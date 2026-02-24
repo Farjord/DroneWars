@@ -30,7 +30,7 @@ export const reshuffleDiscardIntoDeck = (playerState, gameState, playerId) => {
 
   if (playerState.discardPile.length === 0) {
     // Both deck and discard are empty - can't draw
-    console.warn(`⚠️ ${playerState.name} has no cards left to draw (deck and discard both empty)`);
+    debugLog('CARDS', `⚠️ ${playerState.name} has no cards left to draw (deck and discard both empty)`);
     return playerState;
   }
 
@@ -70,7 +70,7 @@ export const drawCardsForPlayer = (playerState, cardCount, gameState, playerId) 
   const actualDrawCount = Math.min(cardCount, availableCards);
 
   if (actualDrawCount === 0) {
-    console.warn(`⚠️ ${playerState.name} cannot draw any cards (no cards available)`);
+    debugLog('CARDS', `⚠️ ${playerState.name} cannot draw any cards (no cards available)`);
     return updatedPlayer;
   }
 
@@ -147,10 +147,10 @@ export const performAutomaticDraw = (gameState, gameStateManager = null) => {
       player1HandLimit = player1EffectiveStats.totals.handLimit;
       debugLog('CARDS', `📊 Player 1 effective hand limit: ${player1HandLimit} (with placed sections: ${gameState.placedSections.join(', ')})`);
     } catch (error) {
-      console.warn('⚠️ Failed to calculate Player 1 effective stats, using default hand limit:', error);
+      debugLog('CARDS', '⚠️ Failed to calculate Player 1 effective stats, using default hand limit:', error);
     }
   } else {
-    console.warn('⚠️ GameDataService not available, using default hand limit for Player 1');
+    debugLog('CARDS', '⚠️ GameDataService not available, using default hand limit for Player 1');
   }
 
   const player1CardsToDraw = Math.max(0, player1HandLimit - gameState.player1.hand.length);
@@ -163,7 +163,7 @@ export const performAutomaticDraw = (gameState, gameStateManager = null) => {
       // Extract the newly drawn cards
       drawResults.player1.drawnCards = updatedGameState.player1.hand.slice(oldHandSize);
     } else {
-      console.warn(`Player 1 draw validation failed: ${validation1.message}`);
+      debugLog('CARDS', `⚠️ Player 1 draw validation failed: ${validation1.message}`);
     }
   } else {
     debugLog('CARDS', `🃏 Player 1 already at hand limit (${gameState.player1.hand.length}/${player1HandLimit})`);
@@ -177,10 +177,10 @@ export const performAutomaticDraw = (gameState, gameStateManager = null) => {
       player2HandLimit = player2EffectiveStats.totals.handLimit;
       debugLog('CARDS', `📊 Player 2 effective hand limit: ${player2HandLimit} (with placed sections: ${gameState.opponentPlacedSections.join(', ')})`);
     } catch (error) {
-      console.warn('⚠️ Failed to calculate Player 2 effective stats, using default hand limit:', error);
+      debugLog('CARDS', '⚠️ Failed to calculate Player 2 effective stats, using default hand limit:', error);
     }
   } else {
-    console.warn('⚠️ GameDataService not available, using default hand limit for Player 2');
+    debugLog('CARDS', '⚠️ GameDataService not available, using default hand limit for Player 2');
   }
 
   const player2CardsToDraw = Math.max(0, player2HandLimit - gameState.player2.hand.length);
@@ -193,7 +193,7 @@ export const performAutomaticDraw = (gameState, gameStateManager = null) => {
       // Extract the newly drawn cards
       drawResults.player2.drawnCards = updatedGameState.player2.hand.slice(oldHandSize);
     } else {
-      console.warn(`Player 2 draw validation failed: ${validation2.message}`);
+      debugLog('CARDS', `⚠️ Player 2 draw validation failed: ${validation2.message}`);
     }
   } else {
     debugLog('CARDS', `🃏 Player 2 already at hand limit (${gameState.player2.hand.length}/${player2HandLimit})`);

@@ -48,7 +48,7 @@ class GameDataService {
   constructor(gameStateManager) {
     // Enforce singleton pattern
     if (GameDataService.instance) {
-      console.warn('⚠️ GameDataService already exists. Use getInstance() instead of new GameDataService()');
+      debugLog('STATE_SYNC', '⚠️ GameDataService already exists. Use getInstance() instead of new GameDataService()');
       return GameDataService.instance;
     }
 

@@ -25,7 +25,7 @@ export const validatePhaseAction = (phase, actionType) => {
       return 'sequential';
     }
     if (phase === 'action' && actionType !== 'reallocateShields') {
-      console.warn(`⚠️ Round start shield action ${actionType} used during action phase - should use reallocateShields`);
+      debugLog('PHASE_FLOW', `⚠️ Round start shield action ${actionType} used during action phase - should use reallocateShields`);
       return 'error';
     }
   }
@@ -72,15 +72,15 @@ export const validatePhaseAction = (phase, actionType) => {
 
   // Check for mismatched actions in simultaneous phases
   if (isSimultaneousPhase(phase) && sequentialActions.includes(actionType)) {
-    console.warn(`⚠️ Sequential action ${actionType} attempted in simultaneous phase ${phase}`);
-    console.warn(`💡 Recommendation: Use direct GameStateManager updates for simultaneous phases`);
+    debugLog('PHASE_FLOW', `⚠️ Sequential action ${actionType} attempted in simultaneous phase ${phase}`);
+    debugLog('PHASE_FLOW', `💡 Recommendation: Use direct GameStateManager updates for simultaneous phases`);
     return 'error';
   }
 
   // Check for mismatched actions in sequential phases
   if (isSequentialPhase(phase) && simultaneousActions.includes(actionType)) {
-    console.warn(`⚠️ Simultaneous action ${actionType} attempted in sequential phase ${phase}`);
-    console.warn(`💡 Recommendation: Use ActionProcessor for sequential phases`);
+    debugLog('PHASE_FLOW', `⚠️ Simultaneous action ${actionType} attempted in sequential phase ${phase}`);
+    debugLog('PHASE_FLOW', `💡 Recommendation: Use ActionProcessor for sequential phases`);
     return 'error';
   }
 
@@ -96,7 +96,7 @@ export const validatePhaseAction = (phase, actionType) => {
   }
 
   // Unknown action or phase combination
-  console.warn(`⚠️ Unknown action ${actionType} for phase ${phase}`);
+  debugLog('PHASE_FLOW', `⚠️ Unknown action ${actionType} for phase ${phase}`);
   return null;
 };
 
@@ -254,7 +254,7 @@ export const logPhaseValidation = (phase, actionType) => {
   });
 
   if (validation === 'error') {
-    console.warn('⚠️ Invalid Action/Phase Combination');
+    debugLog('PHASE_FLOW', '⚠️ Invalid Action/Phase Combination');
     debugLog('PHASE_TRANSITIONS', 'Explanation:', routing.recommendation.explanation);
     debugLog('PHASE_TRANSITIONS', 'Example:', routing.recommendation.example);
   }

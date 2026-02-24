@@ -56,21 +56,21 @@ function LobbyScreen() {
       // Validate AI drone pool has minimum required drones
       if (!selectedAI.dronePool || !Array.isArray(selectedAI.dronePool)) {
         const errorMsg = `Cannot start game: AI '${selectedAI.name}' has invalid dronePool configuration.`;
-        console.error('❌', errorMsg);
+        debugLog('MULTIPLAYER', '❌', errorMsg);
         alert(errorMsg);
         return;
       }
 
       if (selectedAI.dronePool.length < 5) {
         const errorMsg = `Cannot start game: AI '${selectedAI.name}' has only ${selectedAI.dronePool.length} drones. Minimum 5 drones required.`;
-        console.error('❌', errorMsg);
+        debugLog('MULTIPLAYER', '❌', errorMsg);
         alert(errorMsg);
         return;
       }
 
       if (selectedAI.dronePool.length > 10) {
         const errorMsg = `Cannot start game: AI '${selectedAI.name}' has ${selectedAI.dronePool.length} drones. Maximum 10 drones allowed.`;
-        console.error('❌', errorMsg);
+        debugLog('MULTIPLAYER', '❌', errorMsg);
         alert(errorMsg);
         return;
       }

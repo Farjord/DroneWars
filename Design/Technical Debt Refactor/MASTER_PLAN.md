@@ -22,7 +22,7 @@ Full codebase audit completed (Feb 23): ~500 files, ~433 issues catalogued in `D
 | 0 | Documentation Setup | Done |
 | A | Critical Bugs | Done |
 | B | Dead Code & Comment Cleanup | Done |
-| B2 | Console.log Migration | Pending |
+| B2 | Console.log Migration | Done |
 | C | Deduplication | Pending |
 | D | Data File Purity | Pending |
 | E | Structural Moves | Pending |
@@ -101,18 +101,15 @@ Full codebase audit completed (Feb 23): ~500 files, ~433 issues catalogued in `D
 
 ## Phase B2: Console.log Migration
 
-**Status: Pending**
+**Status: Done**
 
 **Goal:** Replace ~200 raw `console.log/warn/error` calls with `debugLog()` across ~64 files.
 
-Exclude: `debugLogger.js` (intentional), `modalShowcaseHelpers.js` (dev-only), `componentDidCatch` in error boundaries (STD-CHALLENGE-05).
+Excluded: `debugLogger.js` (6, intentional), `modalShowcaseHelpers.js` (79, dev-only).
 
-**Top 8 files (~80 violations):**
-- `P2PManager.js` (20), `SaveGameService.js` (11), `useAnimationSetup.js` (9), `cardDrawUtils.js` (8), `MovementController.js` (7), `AnimationManager.js` (6), `PhaseManager.js` (5), `DetectionManager.js` (5)
+**Result:** 193 console calls replaced across 61 files. 17 new `debugLog` imports added. Zero remaining console calls in production code.
 
-**Remaining ~54 files** with 1-3 violations each.
-
-**Verification:** `npx vitest run` → 0 failures. `npx vite build` → clean.
+**Verification:** `npx vitest run` → 3748 passing. `npx vite build` → clean.
 
 ---
 

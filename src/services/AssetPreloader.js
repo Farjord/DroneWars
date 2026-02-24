@@ -232,7 +232,7 @@ class AssetPreloader {
       );
 
       if (this.failedAssets.length > 0) {
-        console.warn('Failed to load assets:', this.failedAssets);
+        debugLog('ASSET_PRELOAD', '⚠️ Failed to load assets:', this.failedAssets);
       }
 
       return this.getLoadResult();

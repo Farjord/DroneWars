@@ -91,7 +91,7 @@ export const useGameState = () => {
     const sections = gameStateManager.getOpponentPlacedSections();
     // Only debug during placement phase when sections should exist
     if (gameState.turnPhase === 'placement' && sections.some(s => s !== null)) {
-      console.error('🔥 CRITICAL - getOpponentPlacedSections returning:', sections, 'from gameState:', gameState.opponentPlacedSections);
+      debugLog('STATE_SYNC', '⚠️ CRITICAL - getOpponentPlacedSections returning:', { sections, opponentPlacedSections: gameState.opponentPlacedSections });
     }
     return sections;
   }, [gameState.gameMode, gameState.placedSections, gameState.opponentPlacedSections, gameState.turnPhase]);
@@ -182,7 +182,7 @@ export const useGameState = () => {
       return await processAction(actionType, payload);
     } else {
       // Simultaneous phases: direct updates (requires implementation in calling component)
-      console.warn(`⚠️ Simultaneous phase action ${actionType} requires direct GameStateManager updates in component`);
+      debugLog('STATE_SYNC', `⚠️ Simultaneous phase action ${actionType} requires direct GameStateManager updates in component`);
       return {
         success: false,
         error: `Simultaneous phase action ${actionType} should use direct updates (updateGameState/updatePlayerState) rather than routeAction`,

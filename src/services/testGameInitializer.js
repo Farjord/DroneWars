@@ -111,7 +111,7 @@ export function initializeTestGame(config, gameStateManager) {
   // Validate configuration
   const validation = validateTestConfig(config);
   if (!validation.valid) {
-    console.error('❌ TEST MODE: Invalid configuration:', validation.errors);
+    debugLog('STATE_SYNC', '❌ TEST MODE: Invalid configuration:', validation.errors);
     alert(`Test configuration invalid:\n${validation.errors.join('\n')}`);
     return false;
   }
@@ -277,7 +277,7 @@ export function initializeTestGame(config, gameStateManager) {
 
     return true;
   } catch (error) {
-    console.error('❌ TEST MODE: Error initializing test game:', error);
+    debugLog('STATE_SYNC', '❌ TEST MODE: Error initializing test game:', error);
     alert(`Failed to initialize test game: ${error.message}`);
     return false;
   }
@@ -346,7 +346,7 @@ function createPlayerStateFromConfig(playerConfig, playerName, calculatedResourc
         if (cardTemplate) {
           hand.push(gameEngine.createCard(cardTemplate, `hand-${Date.now()}-${handInstanceCounter++}`));
         } else {
-          console.warn(`⚠️ TEST MODE: Card ID "${cardIdOrObject}" not found in card collection`);
+          debugLog('STATE_SYNC', `⚠️ TEST MODE: Card ID "${cardIdOrObject}" not found in card collection`);
         }
       } else if (cardIdOrObject && cardIdOrObject.id) {
         // It's a card object, use it directly (but ensure it has instanceId)

@@ -56,7 +56,7 @@ export const validatePlacement = (placedSections, unplacedSections) => {
   const isValid = allPlaced && noneUnplaced && correctCount;
 
   if (!isValid) {
-    console.warn(`⚠️ Invalid placement: placed=${placedSections.length}, unplaced=${unplacedSections.length}, allPlaced=${allPlaced}`);
+    debugLog('PLACEMENT', `⚠️ Invalid placement: placed=${placedSections.length}, unplaced=${unplacedSections.length}, allPlaced=${allPlaced}`);
   }
 
   return isValid;

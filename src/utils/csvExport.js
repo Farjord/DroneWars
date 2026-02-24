@@ -3,6 +3,8 @@
 // ========================================
 // Utilities for exporting AI decision data to CSV format for analysis
 
+import { debugLog } from './debugLogger.js';
+
 /**
  * Escape CSV special characters (quotes, commas, newlines)
  * @param {string} value - Value to escape
@@ -198,7 +200,7 @@ export const convertFullHistoryToCsv = (decisionHistory) => {
  */
 export const downloadCsv = (csvContent, filename) => {
   if (!csvContent) {
-    console.warn('[CSV Export] No content to download');
+    debugLog('STATE_SYNC', '⚠️ [CSV Export] No content to download');
     return;
   }
 
@@ -219,7 +221,7 @@ export const downloadCsv = (csvContent, filename) => {
   // Clean up object URL
   setTimeout(() => URL.revokeObjectURL(link.href), 100);
 
-  console.log(`[CSV Export] Downloaded: ${fullFilename}`);
+  debugLog('STATE_SYNC', `[CSV Export] Downloaded: ${fullFilename}`);
 };
 
 /**

@@ -9,6 +9,7 @@ import { useGameState } from '../../hooks/useGameState';
 import miaRecoveryService from '../../logic/singlePlayer/MIARecoveryService.js';
 import fullCardCollection from '../../data/cardData.js';
 import { AlertCircle, Check, X, Coins } from 'lucide-react';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * MIARecoveryModal - Recovery options for MIA ships
@@ -52,7 +53,7 @@ function MIARecoveryModal({ shipSlot, onClose }) {
     const result = miaRecoveryService.recover(shipSlot.id);
 
     if (!result.success) {
-      console.error('Recovery failed:', result.error);
+      debugLog('SP_COMBAT', 'Recovery failed:', result.error);
       return;
     }
 
@@ -63,7 +64,7 @@ function MIARecoveryModal({ shipSlot, onClose }) {
     const result = miaRecoveryService.scrap(shipSlot.id);
 
     if (!result.success) {
-      console.error('Scrap failed:', result.error);
+      debugLog('SP_COMBAT', 'Scrap failed:', result.error);
       return;
     }
 

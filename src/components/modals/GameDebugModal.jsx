@@ -25,7 +25,7 @@ const GameDebugModal = ({ show, onClose, gameStateManager, gameDataService }) =>
   const copyToClipboard = (data, label) => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2))
       .then(() => debugLog('STATE_SYNC', `${label} copied to clipboard`))
-      .catch(err => console.error('Failed to copy:', err));
+      .catch(err => debugLog('STATE_SYNC', 'Failed to copy:', err));
   };
 
   const downloadGameState = () => {

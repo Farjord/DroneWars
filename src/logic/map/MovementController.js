@@ -10,6 +10,7 @@ import DetectionManager from '../detection/DetectionManager.js';
 import gameStateManager from '../../managers/GameStateManager.js';
 import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import { mapTiers } from '../../data/mapData.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * MovementController - Singleton controller for player movement
@@ -108,7 +109,7 @@ class MovementController {
     const currentRunState = tacticalMapStateManager.getState();
 
     if (!currentRunState || !currentRunState.mapData) {
-      console.error('[Movement] Cannot move: No active run');
+      debugLog('MOVEMENT_EFFECT', '[Movement] Cannot move: No active run');
       return false;
     }
 
@@ -124,13 +125,13 @@ class MovementController {
     );
 
     if (!validation.valid) {
-      console.error(`[Movement] Invalid move: ${validation.reason}`);
+      debugLog('MOVEMENT_EFFECT', `[Movement] Invalid move: ${validation.reason}`);
       return false;
     }
 
     const { path, cost } = validation;
 
-    console.log(`[Movement] Moving ${path.length - 1} hexes (cost: +${cost.toFixed(1)}% detection)`);
+    debugLog('MOVEMENT_EFFECT', `[Movement] Moving ${path.length - 1} hexes (cost: +${cost.toFixed(1)}% detection)`);
 
     // Add detection
     DetectionManager.addDetection(cost, 'Movement');
@@ -152,23 +153,23 @@ class MovementController {
    * @param {Object} gameState - Current game state
    */
   handleHexArrival(hex, gameState) {
-    console.log(`[Movement] Arrived at hex (${hex.q}, ${hex.r}) - Type: ${hex.type}`);
+    debugLog('MOVEMENT_EFFECT', `[Movement] Arrived at hex (${hex.q}, ${hex.r}) - Type: ${hex.type}`);
 
     // Phase 6: PoI encounters
     if (hex.type === 'poi') {
-      console.log(`[Movement] PoI encounter: ${hex.poiType}`);
+      debugLog('MOVEMENT_EFFECT', `[Movement] PoI encounter: ${hex.poiType}`);
       // TODO: Trigger EncounterController
     }
 
     // Phase 9: Extraction gates
     else if (hex.type === 'gate') {
-      console.log('[Movement] Arrived at extraction gate');
+      debugLog('MOVEMENT_EFFECT', '[Movement] Arrived at extraction gate');
       // TODO: Trigger ExtractionController
     }
 
     // Empty hex - no special behavior
     else {
-      console.log('[Movement] Empty hex - no encounter');
+      debugLog('MOVEMENT_EFFECT', '[Movement] Empty hex - no encounter');
     }
   }
 

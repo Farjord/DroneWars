@@ -141,7 +141,7 @@ function DeckSelectionScreen() {
     const submissionResult = await gameStateManager.actionProcessor.processCommitment(payload);
 
     if (!submissionResult.success) {
-      console.error('❌ Deck selection submission failed:', submissionResult.error);
+      debugLog('DECK_SELECTION', '❌ Deck selection submission failed:', submissionResult.error);
       return;
     }
 
@@ -280,7 +280,7 @@ function DeckSelectionScreen() {
     const submissionResult = await gameStateManager.actionProcessor.processCommitment(payload);
 
     if (!submissionResult.success) {
-      console.error('❌ Custom deck submission failed:', submissionResult.error);
+      debugLog('DECK_SELECTION', '❌ Custom deck submission failed:', submissionResult.error);
       return;
     }
 

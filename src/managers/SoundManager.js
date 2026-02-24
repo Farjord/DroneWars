@@ -66,7 +66,7 @@ class SoundManager {
 
       return true;
     } catch (error) {
-      console.warn('[SoundManager] Failed to create AudioContext:', error.message);
+      debugLog('SOUND', '[SoundManager] Failed to create AudioContext:', error.message);
       return false;
     }
   }
@@ -175,7 +175,7 @@ class SoundManager {
         this.preload();
       }
     } catch (error) {
-      console.warn('[SoundManager] Failed to unlock AudioContext:', error.message);
+      debugLog('SOUND', '[SoundManager] Failed to unlock AudioContext:', error.message);
     }
   }
 

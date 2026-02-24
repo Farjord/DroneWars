@@ -75,7 +75,7 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
       const code = await p2pManager.hostGame();
       debugLog('MULTIPLAYER', 'Room created with code:', code);
     } catch (error) {
-      console.error('Failed to host game:', error);
+      debugLog('MULTIPLAYER', 'Failed to host game:', error);
       setError(error.message);
       setIsLoading(false);
       setMode('menu');
@@ -95,7 +95,7 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
     try {
       await p2pManager.joinGame(inputRoomCode);
     } catch (error) {
-      console.error('Failed to join game:', error);
+      debugLog('MULTIPLAYER', 'Failed to join game:', error);
       setError(error.message);
       setIsLoading(false);
       setMode('menu');
@@ -108,7 +108,7 @@ const MultiplayerLobby = ({ onGameStart, onBack }) => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      console.error('Failed to copy room code:', error);
+      debugLog('MULTIPLAYER', 'Failed to copy room code:', error);
     }
   };
 

@@ -24,6 +24,7 @@ import {
   removeDroneFromSlots
 } from '../../logic/combat/slotDamageUtils.js';
 import { parseJSObjectLiteral, convertFromAIFormat } from '../../utils/deckExportUtils.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * ExtractionDeckBuilder
@@ -335,7 +336,7 @@ const ExtractionDeckBuilder = () => {
 
       return { success: true };
     } catch (error) {
-      console.error('Error importing deck:', error);
+      debugLog('DECK_BUILDER', 'Error importing deck:', error);
       return { success: false, message: 'Failed to parse deck code. Ensure it is valid JS object format.' };
     }
   };
@@ -345,7 +346,7 @@ const ExtractionDeckBuilder = () => {
     if (isReadOnly || !slotId) return;
     const result = gameStateManager.repairDroneSlot(slotId, position);
     if (!result.success) {
-      console.warn('Failed to repair drone slot:', result.reason);
+      debugLog('DECK_BUILDER', 'Failed to repair drone slot:', result.reason);
     }
   };
 
@@ -354,7 +355,7 @@ const ExtractionDeckBuilder = () => {
     if (isReadOnly || !slotId) return;
     const result = gameStateManager.repairSectionSlot(slotId, lane);
     if (!result.success) {
-      console.warn('Failed to repair section slot:', result.reason);
+      debugLog('DECK_BUILDER', 'Failed to repair section slot:', result.reason);
     }
   };
 

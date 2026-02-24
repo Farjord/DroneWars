@@ -483,10 +483,10 @@ class CardPlayManager {
       case 'MULTI_MOVE':
         // Note: These movement effects reference resolveMovementEffect which should be
         // imported from gameLogic.js if still needed, or handled by MovementEffectProcessor
-        console.warn(`Movement effect ${effect.type} reached fallback - should be handled by MovementEffectProcessor`);
+        debugLog('CARD_PLAY', `Movement effect ${effect.type} reached fallback - should be handled by MovementEffectProcessor`);
         return { newPlayerStates: playerStates, additionalEffects: [] };
       default:
-        console.warn(`Unknown effect type: ${effect.type}`);
+        debugLog('CARD_PLAY', `Unknown effect type: ${effect.type}`);
         return { newPlayerStates: playerStates, additionalEffects: [] };
     }
   }

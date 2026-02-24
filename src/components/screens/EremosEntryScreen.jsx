@@ -103,7 +103,7 @@ function EremosEntryScreen() {
         gameMode: 'singlePlayer'
       });
     } catch (err) {
-      console.error('Failed to load save:', err);
+      debugLog('MODE_TRANSITION', 'Failed to load save:', err);
       setError(`Failed to load save: ${err.message}`);
     }
 

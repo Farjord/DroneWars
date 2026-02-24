@@ -125,7 +125,7 @@ function AppRouter() {
               imageLoadedSoFar: imageProgress.loaded,
               imageTotal: imageProgress.total
             });
-            console.error('Asset preload error:', error);
+            debugLog('MODE_TRANSITION', '⚠️ Asset preload error:', error);
           });
 
       // Sound loading promise
@@ -342,7 +342,7 @@ function AppRouter() {
       break;
 
     default:
-      console.warn('Unknown app state:', gameState.appState, 'defaulting to menu');
+      debugLog('MODE_TRANSITION', '⚠️ Unknown app state, defaulting to menu:', gameState.appState);
       currentScreen = <MenuScreen />;
   }
 
@@ -373,8 +373,8 @@ class AppErrorBoundary extends React.Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('🚨 AppErrorBoundary caught error:', error.message);
-    console.error('🚨 Component stack:', errorInfo.componentStack);
+    debugLog('MODE_TRANSITION', '⚠️ AppErrorBoundary caught error:', error.message);
+    debugLog('MODE_TRANSITION', '⚠️ Component stack:', errorInfo.componentStack);
     this.setState({ errorInfo });
   }
 

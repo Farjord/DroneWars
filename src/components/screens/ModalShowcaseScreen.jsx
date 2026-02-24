@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { Layers } from 'lucide-react';
 import gameStateManager from '../../managers/GameStateManager.js';
+import { debugLog } from '../../utils/debugLogger.js';
 import { getMockPropsForModal, getModalsByCategory, MODAL_CATEGORIES } from './modalShowcaseHelpers.js';
 
 // Import all modal components
@@ -123,23 +124,23 @@ function ModalShowcaseScreen() {
       onClose: closeModalPreview,
       onCancel: closeModalPreview,
       onConfirm: () => {
-        console.log(`${selectedModal}: Confirmed`);
+        debugLog('STATE_SYNC', `${selectedModal}: Confirmed`);
         closeModalPreview();
       },
       onIntercept: (drone) => {
-        console.log(`${selectedModal}: Intercept with`, drone);
+        debugLog('STATE_SYNC', `${selectedModal}: Intercept with`, drone);
         closeModalPreview();
       },
       onDecline: () => {
-        console.log(`${selectedModal}: Declined`);
+        debugLog('STATE_SYNC', `${selectedModal}: Declined`);
         closeModalPreview();
       },
       onComplete: () => {
-        console.log(`${selectedModal}: Completed`);
+        debugLog('STATE_SYNC', `${selectedModal}: Completed`);
         closeModalPreview();
       },
       onSelect: (selection) => {
-        console.log(`${selectedModal}: Selected`, selection);
+        debugLog('STATE_SYNC', `${selectedModal}: Selected`, selection);
         closeModalPreview();
       }
     };
@@ -205,7 +206,7 @@ function ModalShowcaseScreen() {
 
     const ModalComponent = modalComponents[selectedModal];
     if (!ModalComponent) {
-      console.warn(`Modal component not found: ${selectedModal}`);
+      debugLog('STATE_SYNC', `Modal component not found: ${selectedModal}`);
       return null;
     }
 

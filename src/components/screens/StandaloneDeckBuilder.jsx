@@ -13,6 +13,7 @@ import gameStateManager from '../../managers/GameStateManager.js';
 import { updateDeckState, updateDroneState } from '../../utils/deckStateUtils.js';
 import { parseJSObjectLiteral, convertFromAIFormat } from '../../utils/deckExportUtils.js';
 import MissionService from '../../logic/missions/MissionService.js';
+import { debugLog } from '../../utils/debugLogger.js';
 import { DeckBuilderTutorialModal } from '../modals/tutorials';
 
 /**
@@ -91,9 +92,9 @@ function StandaloneDeckBuilder() {
       localStorage.setItem('customShipId', selectedShip?.id || 'SHIP_001');
       localStorage.setItem('customPreservedFields', JSON.stringify(preservedFields));
 
-      console.log('✅ Deck saved successfully to localStorage');
+      debugLog('DECK_BUILDER', '✅ Deck saved successfully to localStorage');
     } catch (error) {
-      console.error('❌ Error saving deck:', error);
+      debugLog('DECK_BUILDER', '❌ Error saving deck:', error);
     }
   };
 
@@ -149,7 +150,7 @@ function StandaloneDeckBuilder() {
 
       return { success: true };
     } catch (error) {
-      console.error('Error importing deck:', error);
+      debugLog('DECK_BUILDER', 'Error importing deck:', error);
       return { success: false, message: 'Failed to parse deck code. Ensure it is valid JS object format.' };
     }
   };

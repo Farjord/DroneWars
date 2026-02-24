@@ -8,6 +8,7 @@
 import gameStateManager from '../../managers/GameStateManager.js';
 import tacticalMapStateManager from '../../managers/TacticalMapStateManager.js';
 import { getZone } from '../../utils/hexGrid.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * DetectionManager - Singleton manager for detection system
@@ -43,7 +44,7 @@ class DetectionManager {
     const runState = tacticalMapStateManager.getState();
 
     if (!runState) {
-      console.warn('Cannot add detection: No active run');
+      debugLog('ENCOUNTER', 'Cannot add detection: No active run');
       return;
     }
 
@@ -54,7 +55,7 @@ class DetectionManager {
       detection: newValue
     });
 
-    console.log(`[Detection] ${current.toFixed(1)}% -> ${newValue.toFixed(1)}% (+${amount.toFixed(1)}%) [${reason}]`);
+    debugLog('ENCOUNTER', `[Detection] ${current.toFixed(1)}% -> ${newValue.toFixed(1)}% (+${amount.toFixed(1)}%) [${reason}]`);
 
     // Check for MIA trigger
     if (newValue >= 100) {
@@ -114,7 +115,7 @@ class DetectionManager {
    * Ends run as failure, locks ship slot as MIA
    */
   triggerMIA() {
-    console.warn('[Detection] 100% reached - MIA TRIGGERED');
+    debugLog('ENCOUNTER', '[Detection] 100% reached - MIA TRIGGERED');
 
     // Get isStarterDeck BEFORE endRun clears the run state
     const runState = tacticalMapStateManager.getState();
@@ -172,7 +173,7 @@ class DetectionManager {
    */
   reset() {
     if (!tacticalMapStateManager.isRunActive()) {
-      console.warn('Cannot reset detection: No active run');
+      debugLog('ENCOUNTER', 'Cannot reset detection: No active run');
       return;
     }
 
@@ -180,7 +181,7 @@ class DetectionManager {
       detection: 0
     });
 
-    console.log('[Detection] Reset to 0%');
+    debugLog('ENCOUNTER', '[Detection] Reset to 0%');
   }
 }
 

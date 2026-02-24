@@ -50,7 +50,7 @@ class TargetLockAbilityProcessor {
 
     // Step 1: Deduct energy cost (2 energy)
     if (playerState.energy < 2) {
-      console.warn('⚠️ TargetLockAbilityProcessor: Insufficient energy');
+      debugLog('SHIP_ABILITY', '⚠️ TargetLockAbilityProcessor: Insufficient energy');
       return {
         newPlayerStates: playerStates, // Return original state
         shouldEndTurn: false,

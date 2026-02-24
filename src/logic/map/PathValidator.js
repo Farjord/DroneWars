@@ -5,6 +5,7 @@
  */
 
 import { hexNeighbors, axialDistance } from '../../utils/hexGrid.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 class PathValidator {
   /**
@@ -21,13 +22,13 @@ class PathValidator {
         const path = this.findPath(gate, poi, map.hexes);
 
         if (!path) {
-          console.log(`No path found between gate ${gate.gateId} and PoI ${poi.poiId}`);
+          debugLog('MOVEMENT_EFFECT', `No path found between gate ${gate.gateId} and PoI ${poi.poiId}`);
           return false;
         }
 
         const cost = path.length * tierConfig.detectionTriggers.movementPerHex;
         if (cost > tierConfig.maxPathCostPercent) {
-          console.log(
+          debugLog('MOVEMENT_EFFECT',
             `Path cost ${cost.toFixed(1)}% exceeds max ${tierConfig.maxPathCostPercent}% ` +
             `(gate ${gate.gateId} to PoI ${poi.poiId}, ${path.length} hexes)`
           );

@@ -7,6 +7,7 @@ import React, { useState, useRef } from 'react';
 import { Save } from 'lucide-react';
 import { useGameState } from '../../hooks/useGameState';
 import SaveGameService from '../../services/SaveGameService';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * SaveLoadModal Component
@@ -51,7 +52,7 @@ const SaveLoadModal = ({ onClose }) => {
         setFeedback({ type: 'error', message: `Download failed: ${result.error}` });
       }
     } catch (error) {
-      console.error('Download error:', error);
+      debugLog('SAVE', 'Download error:', error);
       setFeedback({ type: 'error', message: `Download failed: ${error.message}` });
     }
   };
@@ -84,7 +85,7 @@ const SaveLoadModal = ({ onClose }) => {
         onClose();
       }, 1500);
     } catch (error) {
-      console.error('Upload error:', error);
+      debugLog('SAVE', 'Upload error:', error);
       setFeedback({ type: 'error', message: `Load failed: ${error.message}` });
     }
 

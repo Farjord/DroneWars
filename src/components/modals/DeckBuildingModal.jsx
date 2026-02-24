@@ -12,6 +12,7 @@ import {
   generateJSObjectLiteral,
   downloadDeckFile
 } from '../../utils/deckExportUtils.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * DeckBuildingModal - Grid-based deck building interface
@@ -162,7 +163,7 @@ function DeckBuildingModal({
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      debugLog('DECK_BUILDER', 'Failed to copy:', err);
     }
   };
 

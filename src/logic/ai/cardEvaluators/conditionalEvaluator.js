@@ -5,6 +5,7 @@
 // This is a modular system - any base effect can have any conditional effect
 
 import { CARD_EVALUATION, SCORING_WEIGHTS } from '../aiConstants.js';
+import { debugLog } from '../../../utils/debugLogger.js';
 
 /**
  * Evaluate PRE-timing conditional effects for AI scoring
@@ -96,7 +97,7 @@ function evaluateCondition(condition, target, context) {
 
     default:
       // Unknown condition type - don't trigger
-      console.warn(`[AI] Unknown condition type: ${type}`);
+      debugLog('AI_DECISIONS', `[AI] Unknown condition type: ${type}`);
       return false;
   }
 }
@@ -210,7 +211,7 @@ function scoreGrantedEffect(effect, target, context) {
       return scoreModifyStat(effect);
 
     default:
-      console.warn(`[AI] Unknown granted effect type: ${type}`);
+      debugLog('AI_DECISIONS', `[AI] Unknown granted effect type: ${type}`);
       return { score: 0, logic: [] };
   }
 }

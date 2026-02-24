@@ -196,12 +196,12 @@ function DroneSelectionScreen() {
       payload: payload
     }).then(submissionResult => {
       if (!submissionResult.success) {
-        console.error('❌ Drone selection submission failed:', submissionResult.error);
+        debugLog('DRONE_SELECTION', '❌ Drone selection submission failed:', submissionResult.error);
         return;
       }
       debugLog('DRONE_SELECTION', '✅ Drone selection submitted successfully');
     }).catch(error => {
-      console.error('❌ Drone selection submission error:', error);
+      debugLog('DRONE_SELECTION', '❌ Drone selection submission error:', error);
     });
 
     debugLog('DRONE_SELECTION', '✅ Drone selection submitted to PhaseManager');

@@ -13,6 +13,7 @@ import { evaluateModifyDroneBaseCard } from './upgradeCards.js';
 import { evaluateConditionalEffects } from './conditionalEvaluator.js';
 import { evaluateApplyCannotMoveCard, evaluateApplyCannotAttackCard, evaluateApplyCannotInterceptCard, evaluateApplyDoesNotReadyCard, evaluateClearAllStatusCard } from './statusEffectCards.js';
 import { evaluateIncreaseThreatCard } from './threatCards.js';
+import { debugLog } from '../../../utils/debugLogger.js';
 
 // Re-export all evaluators
 export * from './damageCards.js';
@@ -80,7 +81,7 @@ export const evaluateCardPlay = (card, target, context, moveData = null) => {
   const evaluator = cardEvaluatorRegistry[effectType];
 
   if (!evaluator) {
-    console.warn(`[AI] No evaluator registered for card effect type: ${effectType}`);
+    debugLog('AI_DECISIONS', `[AI] No evaluator registered for card effect type: ${effectType}`);
     return { score: 0, logic: [`⚠️ Unknown effect type: ${effectType}`] };
   }
 

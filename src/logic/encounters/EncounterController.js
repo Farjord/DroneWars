@@ -370,7 +370,7 @@ class EncounterController {
     // Combat encounters are handled separately via SinglePlayerCombatInitializer
     // This method should only be called for non-combat outcomes
     if (outcome === 'combat') {
-      console.warn(`[Encounter] completeEncounter called with combat outcome - this should not happen`);
+      debugLog('ENCOUNTER', `[Encounter] completeEncounter called with combat outcome - this should not happen`);
       return;
     }
 

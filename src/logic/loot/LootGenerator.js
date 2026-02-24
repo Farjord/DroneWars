@@ -34,7 +34,7 @@ class LootGenerator {
 
     const config = packTypes[normalizedPackType];
     if (!config) {
-      console.warn(`Unknown pack type: ${packType}`);
+      debugLog('SALVAGE_LOOT', `Unknown pack type: ${packType}`);
       return { cards: [], credits: 0 };
     }
 
@@ -323,7 +323,7 @@ class LootGenerator {
   generateDroneBlueprint(rewardType, tier = 1, unlockedBlueprints = []) {
     const classBandWeights = CLASS_BAND_WEIGHTS[rewardType];
     if (!classBandWeights) {
-      console.warn(`Unknown drone blueprint reward type: ${rewardType}`);
+      debugLog('SALVAGE_LOOT', `Unknown drone blueprint reward type: ${rewardType}`);
       return null;
     }
 
@@ -413,7 +413,7 @@ class LootGenerator {
 
     if (eligibleSalvage.length === 0) {
       // Fallback to any salvage if somehow no items match
-      console.warn(`No salvage items found for rarity ${targetSalvageRarity}`);
+      debugLog('SALVAGE_LOOT', `No salvage items found for rarity ${targetSalvageRarity}`);
       return generateSalvageItemFromValue(100, rng);
     }
 
@@ -524,7 +524,7 @@ class LootGenerator {
 
     // Handle unknown pack type
     if (!config) {
-      console.warn(`Unknown pack type: ${packType}`);
+      debugLog('SALVAGE_LOOT', `Unknown pack type: ${packType}`);
       return this._generateDefaultSlots(slotCount, tierConfig, zone, rng);
     }
 

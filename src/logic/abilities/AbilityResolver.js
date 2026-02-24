@@ -285,7 +285,7 @@ class AbilityResolver {
 
     // Handle effects not yet extracted to processors
     if (result === null) {
-      console.warn(`Drone ability effect ${effect.type} not yet extracted to processor`);
+      debugLog('SHIP_ABILITY', `Drone ability effect ${effect.type} not yet extracted to processor`);
       return { newPlayerStates: playerStates, additionalEffects: [], animationEvents: [] };
     }
 
@@ -336,10 +336,10 @@ class AbilityResolver {
         return this.resolveShipRecallEffect(effect, sectionName, target, playerStates, placedSections, callbacks, playerId);
       case 'MARK_DRONE':
         // MARK_DRONE is now handled by MarkingEffectProcessor
-        console.warn('MARK_DRONE should be handled by MarkingEffectProcessor');
+        debugLog('SHIP_ABILITY', 'MARK_DRONE should be handled by MarkingEffectProcessor');
         return { newPlayerStates: playerStates, additionalEffects: [], animationEvents: [] };
       default:
-        console.warn(`Unknown ship ability effect type: ${effect.type}`);
+        debugLog('SHIP_ABILITY', `Unknown ship ability effect type: ${effect.type}`);
         return { newPlayerStates: playerStates, additionalEffects: [], animationEvents: [] };
     }
   }
@@ -420,7 +420,7 @@ class AbilityResolver {
       const droneToRecall = newPlayerStates[playerId].dronesOnBoard[lane].find(d => d.id === target);
 
       if (!droneToRecall) {
-        console.warn('⚠️ [RECALL DEBUG] Drone not found in lane:', target, 'lane:', lane);
+        debugLog('SHIP_ABILITY', '⚠️ [RECALL DEBUG] Drone not found in lane:', target, 'lane:', lane);
         return {
           newPlayerStates,
           additionalEffects: [],

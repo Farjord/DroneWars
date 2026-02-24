@@ -243,7 +243,7 @@ const currentLaneScores = {
 
         // Log if drone not found - crash is intentional to catch data issues
         if (!baseDrone) {
-          console.error(`[AI] FATAL: Drone "${drone.name}" not found in fullDroneCollection. Check aiData.js for typos.`);
+          debugLog('AI_DECISIONS', `[AI] FATAL: Drone "${drone.name}" not found in fullDroneCollection. Check aiData.js for typos.`);
         }
 
         // Check maxPerLane restriction

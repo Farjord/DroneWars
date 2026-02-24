@@ -5,6 +5,7 @@ import { hexesInRadius, getZone, axialDistance } from '../../utils/hexGrid.js';
 import { getRandomPoIType } from '../extraction/poiUtils.js';
 import PathValidator from './PathValidator.js';
 import aiPersonalities from '../../data/aiData.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * Get starting detection value from tier config based on POI count
@@ -73,13 +74,13 @@ export function generateMapData(seed, tier, typeId = 'GENERIC') {
       // Validate map
       const validator = new PathValidator();
       if (validator.validateMap(mapData, tierConfig)) {
-        console.log(`Map generated successfully on attempt ${attempt + 1}`);
+        debugLog('EXTRACTION', `Map generated successfully on attempt ${attempt + 1}`);
         return mapData;
       }
 
-      console.log(`Map generation attempt ${attempt + 1} failed validation`);
+      debugLog('EXTRACTION', `Map generation attempt ${attempt + 1} failed validation`);
     } catch (error) {
-      console.warn(`Map generation attempt ${attempt + 1} threw error:`, error.message);
+      debugLog('EXTRACTION', `Map generation attempt ${attempt + 1} threw error:`, error.message);
     }
   }
 
@@ -339,7 +340,7 @@ function placeInZone(hexes, count, pois, gates, tierConfig, rng, zoneName) {
             name: guardianAI?.name || guardianAIName
           };
         } else {
-          console.warn(`[MapGenerator] No AI mapping for tier ${tier} in ${poiData.id}`);
+          debugLog('EXTRACTION', `[MapGenerator] No AI mapping for tier ${tier} in ${poiData.id}`);
         }
       } else {
         // Fallback for backward compatibility (if tierAIMapping not defined)

@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getElementCenter } from '../../utils/gameUtils.js';
+import { debugLog } from '../../utils/debugLogger.js';
 
 /**
  * INTERCEPTION TARGET LINE COMPONENT
@@ -29,32 +30,32 @@ const InterceptionTargetLine = ({ attackDetails, droneRefs, shipSectionRefs, gam
       const { attacker, target, targetType } = attackDetails;
 
       // Debug: log available drone refs
-      console.log('[InterceptionTargetLine] Looking for attacker:', attacker?.id);
-      console.log('[InterceptionTargetLine] Available droneRefs keys:', Object.keys(droneRefs?.current || {}));
+      debugLog('ANIMATIONS', '[InterceptionTargetLine] Looking for attacker:', attacker?.id);
+      debugLog('ANIMATIONS', '[InterceptionTargetLine] Available droneRefs keys:', Object.keys(droneRefs?.current || {}));
 
       // Get attacker position (opponent's drone)
       const attackerEl = droneRefs?.current?.[attacker?.id];
       const attackerPos = getElementCenter(attackerEl, gameAreaRef.current);
 
-      console.log('[InterceptionTargetLine] Attacker element found:', !!attackerEl);
-      console.log('[InterceptionTargetLine] Attacker position:', attackerPos);
+      debugLog('ANIMATIONS', '[InterceptionTargetLine] Attacker element found:', !!attackerEl);
+      debugLog('ANIMATIONS', '[InterceptionTargetLine] Attacker position:', attackerPos);
 
       // Get target position (drone or ship section)
       let targetPos = null;
       if (targetType === 'drone') {
         const targetEl = droneRefs?.current?.[target?.id];
         targetPos = getElementCenter(targetEl, gameAreaRef.current);
-        console.log('[InterceptionTargetLine] Target drone element found:', !!targetEl);
+        debugLog('ANIMATIONS', '[InterceptionTargetLine] Target drone element found:', !!targetEl);
       } else if (targetType === 'section' && target?.name) {
         // Section refs use format: "local-{sectionName}" or "opponent-{sectionName}"
         // For interception, the target is the local player's own section being defended
         const sectionKey = `local-${target.name}`;
         const sectionEl = shipSectionRefs?.current?.[sectionKey];
         targetPos = getElementCenter(sectionEl, gameAreaRef.current);
-        console.log('[InterceptionTargetLine] Target section element found:', !!sectionEl);
+        debugLog('ANIMATIONS', '[InterceptionTargetLine] Target section element found:', !!sectionEl);
       }
 
-      console.log('[InterceptionTargetLine] Target position:', targetPos);
+      debugLog('ANIMATIONS', '[InterceptionTargetLine] Target position:', targetPos);
 
       if (attackerPos && targetPos) {
         setPositions({ start: attackerPos, end: targetPos });

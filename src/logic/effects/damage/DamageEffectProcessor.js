@@ -116,7 +116,7 @@ class DamageEffectProcessor extends BaseEffectProcessor {
         break;
 
       default:
-        console.warn(`[DamageEffectProcessor] Unknown damage effect type: ${effect.type}`);
+        debugLog('COMBAT', `[DamageEffectProcessor] Unknown damage effect type: ${effect.type}`);
         result = this.createResult(context.playerStates, []);
     }
 
@@ -411,7 +411,7 @@ class DamageEffectProcessor extends BaseEffectProcessor {
     }
 
     if (targetLane === null || targetIndex === -1) {
-      console.warn('[SPLASH_DAMAGE] Target drone not found');
+      debugLog('COMBAT', '[SPLASH_DAMAGE] Target drone not found');
       return this.createResult(newPlayerStates, []);
     }
 
@@ -542,7 +542,7 @@ class DamageEffectProcessor extends BaseEffectProcessor {
     }
 
     if (!targetDrone || !targetLane) {
-      console.warn('[OVERFLOW_DAMAGE] Target drone not found');
+      debugLog('COMBAT', '[OVERFLOW_DAMAGE] Target drone not found');
       return this.createResult(newPlayerStates, []);
     }
 

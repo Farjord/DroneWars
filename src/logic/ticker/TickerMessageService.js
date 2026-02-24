@@ -79,7 +79,7 @@ class TickerMessageService {
         const messages = generator.generate(maps);
         allMessages = allMessages.concat(messages);
       } catch (error) {
-        console.warn(`Ticker generator error:`, error);
+        debugLog('TICKER', `Ticker generator error:`, error);
       }
     }
 

@@ -64,7 +64,7 @@ class TargetingRouter {
     if (!processor) {
       // No processor found - throw detailed error for debugging
       const errorMsg = `No targeting processor found for type: ${targetingType}`;
-      console.error(errorMsg, {
+      debugLog('TARGETING_ROUTING', errorMsg, {
         targetingType,
         actingPlayer: context.actingPlayerId,
         sourceName: context.source?.name,

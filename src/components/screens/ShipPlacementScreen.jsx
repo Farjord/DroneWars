@@ -182,7 +182,7 @@ function ShipPlacementScreen() {
     // Validate that all sections are placed
     const hasEmptySections = localPlacedSections.some(section => section === null || section === undefined);
     if (hasEmptySections) {
-      console.warn('⚠️ Cannot confirm placement: All ship sections must be placed');
+      debugLog('PLACEMENT', '⚠️ Cannot confirm placement: All ship sections must be placed');
       // TODO: Add error UI handling if needed
       return;
     }
@@ -241,7 +241,7 @@ function ShipPlacementScreen() {
       const submissionResult = await gameStateManager.actionProcessor.processCommitment(payload);
 
       if (!submissionResult.success) {
-        console.error('❌ Placement submission failed:', submissionResult.error);
+        debugLog('PLACEMENT', '❌ Placement submission failed:', submissionResult.error);
         // TODO: Add error UI handling if needed
         return;
       }
@@ -252,7 +252,7 @@ function ShipPlacementScreen() {
       // No modal needed - WaitingForOpponentScreen component handles this
 
     } catch (error) {
-      console.error('❌ Error submitting placement:', error);
+      debugLog('PLACEMENT', '❌ Error submitting placement:', error);
       // TODO: Add error UI handling if needed
     }
   };

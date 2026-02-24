@@ -53,7 +53,7 @@ class RecallAbilityProcessor {
 
     // Step 1: Deduct energy cost (1 energy)
     if (playerState.energy < 1) {
-      console.warn('⚠️ RecallAbilityProcessor: Insufficient energy');
+      debugLog('SHIP_ABILITY', '⚠️ RecallAbilityProcessor: Insufficient energy');
       return {
         newPlayerStates: playerStates, // Return original state
         shouldEndTurn: false,
@@ -69,7 +69,7 @@ class RecallAbilityProcessor {
     const lane = getLaneOfDrone(targetId, playerState);
 
     if (!lane) {
-      console.warn('⚠️ RecallAbilityProcessor: Drone not found on board:', targetId);
+      debugLog('SHIP_ABILITY', '⚠️ RecallAbilityProcessor: Drone not found on board:', targetId);
       return {
         newPlayerStates,
         shouldEndTurn: true, // Still end turn even if drone not found
@@ -81,7 +81,7 @@ class RecallAbilityProcessor {
     const droneToRecall = playerState.dronesOnBoard[lane].find(d => d.id === targetId);
 
     if (!droneToRecall) {
-      console.warn('⚠️ RecallAbilityProcessor: Drone object not found in lane:', targetId, 'lane:', lane);
+      debugLog('SHIP_ABILITY', '⚠️ RecallAbilityProcessor: Drone object not found in lane:', targetId, 'lane:', lane);
       return {
         newPlayerStates,
         shouldEndTurn: true,

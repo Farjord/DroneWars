@@ -43,7 +43,7 @@ function TestingSetupScreen() {
     const success = initializeTestGame(config, gameStateManager);
 
     if (!success) {
-      console.error('Failed to initialize test game');
+      debugLog('STATE_SYNC', 'Failed to initialize test game');
       // Error already shown in initializeTestGame
     }
     // If successful, game state will be updated and AppRouter will route to game screen
@@ -240,7 +240,7 @@ function TestingSetupScreen() {
       debugLog('TESTING', `📥 Imported deck for ${player}: ${Object.values(importedDeck).reduce((a, b) => a + b, 0)} cards, ${importedDrones.length} drones`);
       alert(`Deck imported successfully!\n${Object.values(importedDeck).reduce((a, b) => a + b, 0)} cards${importedDrones.length > 0 ? ` and ${Math.min(importedDrones.length, 5)} drones` : ''}`);
     } catch (error) {
-      console.error('Error importing deck:', error);
+      debugLog('STATE_SYNC', 'Error importing deck:', error);
       alert('Failed to parse deck code. Please check the format.');
     }
   };

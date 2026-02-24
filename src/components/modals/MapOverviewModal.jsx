@@ -94,7 +94,7 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
       hasMap: selectedMap != null
     });
 
-    console.error('[MapOverviewModal] Cannot render: null props', { selectedSlotId, selectedMap });
+    debugLog('EXTRACTION', '[MapOverviewModal] Cannot render: null props', { selectedSlotId, selectedMap });
 
     return (
       <div className="dw-modal-overlay" onClick={onClose}>
@@ -219,7 +219,7 @@ const MapOverviewModal = ({ selectedSlotId, selectedMap, selectedCoordinate, act
 
     if (!validation.valid) {
       debugLog('EXTRACTION', '❌ Validation failed', { error: validation.error });
-      console.warn('[MapOverviewModal] Validation failed:', validation.error);
+      debugLog('EXTRACTION', '[MapOverviewModal] Validation failed:', validation.error);
       setValidationError(validation.error);
       return;
     }

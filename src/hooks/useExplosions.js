@@ -47,7 +47,7 @@ export const useExplosions = (droneRefs, gameAreaRef) => {
         setExplosions(prev => prev.filter(ex => ex.id !== explosionId));
       }, explosionEffect.duration);
     } else {
-      console.warn('🔥 [EXPLOSION] No position found, explosion not triggered');
+      debugLog('ANIMATIONS', '⚠️ [EXPLOSION] No position found, explosion not triggered');
     }
   }, [droneRefs, gameAreaRef]);
 

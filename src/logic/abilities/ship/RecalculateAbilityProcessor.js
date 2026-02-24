@@ -53,7 +53,7 @@ class RecalculateAbilityProcessor {
 
     // Step 1: Deduct energy cost FIRST (1 energy)
     if (playerState.energy < 1) {
-      console.warn('⚠️ RecalculateAbilityProcessor: Insufficient energy');
+      debugLog('SHIP_ABILITY', '⚠️ RecalculateAbilityProcessor: Insufficient energy');
       return {
         newPlayerStates: playerStates, // Return original state
         shouldEndTurn: false,

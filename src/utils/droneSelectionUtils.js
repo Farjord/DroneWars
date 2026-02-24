@@ -49,7 +49,7 @@ export const initializeDroneSelection = (droneCollection, initialSize = 3, rng =
  */
 export const advanceDroneSelectionTrio = (currentPool, trioSize = 3) => {
   if (!currentPool || currentPool.length === 0) {
-    console.warn('⚠️ No drones remaining in pool for next trio');
+    debugLog('DRONE_SELECTION', '⚠️ No drones remaining in pool for next trio');
     return {
       droneSelectionTrio: [],
       droneSelectionPool: []

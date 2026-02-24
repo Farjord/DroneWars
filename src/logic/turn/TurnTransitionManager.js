@@ -4,6 +4,8 @@
 // Handles turn and phase transition logic
 // Extracted from gameLogic.js Phase 9.3
 
+import { debugLog } from '../../utils/debugLogger.js';
+
 /**
  * TurnTransitionManager
  * Manages turn transitions, pass sequences, and phase changes
@@ -232,7 +234,7 @@ class TurnTransitionManager {
         break;
 
       default:
-        console.warn(`Unknown phase: ${newPhase}`);
+        debugLog('PHASE_TRANSITIONS', `Unknown phase: ${newPhase}`);
     }
 
     return {
